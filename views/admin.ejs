@@ -421,6 +421,8 @@
         <button class="tab-btn" data-tab="rooms">🏠 ห้อง</button>
         <button class="tab-btn" data-tab="banned">🚫 รายการแบน</button>
         <button class="tab-btn" data-tab="stats">📊 สถิติ</button>
+        <button class="tab-btn" data-tab="logs">📋 Logs</button>
+        <button class="tab-btn" data-tab="settings">🔧 ตั้งค่าเกม</button>
         <button class="tab-btn" data-tab="system">⚙️ ระบบ</button>
     </div>
     
@@ -546,6 +548,95 @@
                         <tr><td colspan="9" class="empty-message">กำลังโหลด...</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Logs Tab -->
+    <div class="tab-content" id="tab-logs">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>📋 Server Activity Logs</h2>
+                <div class="panel-actions">
+                    <select id="logFilter" class="search-box" style="width: auto;">
+                        <option value="all">ทั้งหมด</option>
+                        <option value="join">เข้าห้อง</option>
+                        <option value="leave">ออกจากห้อง</option>
+                        <option value="game">เกม</option>
+                        <option value="admin">Admin</option>
+                        <option value="error">Error</option>
+                    </select>
+                    <button class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง Logs</button>
+                    <button class="btn-admin btn-success" onclick="exportLogs()">📥 Export</button>
+                </div>
+            </div>
+            <div id="logsContainer" style="max-height: 500px; overflow-y: auto; background: #0a0a0a; border-radius: 8px; padding: 15px; font-family: 'Consolas', monospace; font-size: 0.85em;">
+                <div class="empty-message">Logs จะแสดงที่นี่เมื่อมีกิจกรรม...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Settings Tab -->
+    <div class="tab-content" id="tab-settings">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>🔧 ตั้งค่าเกมเริ่มต้น</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="setting-group">
+                    <label style="color: #888; display: block; margin-bottom: 8px;">⏱️ เวลาเริ่มต้น (นาที)</label>
+                    <input type="number" id="defaultTimer" class="search-box" style="width: 100%;" value="5" min="1" max="30">
+                </div>
+                <div class="setting-group">
+                    <label style="color: #888; display: block; margin-bottom: 8px;">👥 จำนวนผู้เล่นขั้นต่ำ</label>
+                    <input type="number" id="minPlayers" class="search-box" style="width: 100%;" value="4" min="3" max="10">
+                </div>
+                <div class="setting-group">
+                    <label style="color: #888; display: block; margin-bottom: 8px;">👥 จำนวนผู้เล่นสูงสุด</label>
+                    <input type="number" id="maxPlayers" class="search-box" style="width: 100%;" value="8" min="4" max="20">
+                </div>
+                <div class="setting-group">
+                    <label style="color: #888; display: block; margin-bottom: 8px;">📂 ประเภทคำ</label>
+                    <select id="wordCategory" class="search-box" style="width: 100%;">
+                        <option value="famille">ครอบครัว (famille.csv)</option>
+                        <option value="random">สุ่ม</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-admin btn-success" onclick="saveGameSettings()" style="width: 100%; margin-top: 20px; padding: 15px;">💾 บันทึกการตั้งค่า</button>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <h2>📝 จัดการคำในเกม</h2>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="color: #888; display: block; margin-bottom: 8px;">เพิ่มคำใหม่ (คั่นด้วยจุลภาค)</label>
+                <textarea id="newWords" class="broadcast-input" placeholder="คำที่ 1, คำที่ 2, คำที่ 3..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-admin btn-success" onclick="addWords()">➕ เพิ่มคำ</button>
+                <button class="btn-admin btn-primary" onclick="viewWords()">👁️ ดูคำทั้งหมด</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <h2>🛡️ ตั้งค่าความปลอดภัย</h2>
+            </div>
+            <div style="display: grid; gap: 15px;">
+                <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="enableBanSystem" checked style="width: 20px; height: 20px;">
+                    🚫 เปิดใช้งานระบบแบน
+                </label>
+                <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="enableProfanityFilter" style="width: 20px; height: 20px;">
+                    🤬 กรองคำหยาบอัตโนมัติ
+                </label>
+                <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="requireApproval" style="width: 20px; height: 20px;">
+                    ✅ ผู้เล่นใหม่ต้องได้รับอนุมัติ
+                </label>
             </div>
         </div>
     </div>
@@ -711,6 +802,7 @@ $(function() {
         rooms.forEach(function(room) {
             const statusClass = room.gameStatus === 'playing' ? 'status-playing' : 'status-waiting';
             const statusText = room.gameStatus === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
+            const gamePhase = room.gamePhase || '-';
             
             const row = `
                 <tr>
@@ -720,6 +812,7 @@ $(function() {
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>${room.locked ? '🔒' : '🔓'}</td>
                     <td>
+                        <button class="action-btn view" onclick="viewRoomDetails('${room.roomId}', '${escapeHtml(room.name)}')">👁️ ดู</button>
                         ${room.locked ? `<button class="action-btn unlock" onclick="unlockRoom('${room.roomId}')">ปลดล็อค</button>` : ''}
                         <button class="action-btn reset" onclick="resetRoom('${room.roomId}')">รีเซ็ต</button>
                         <button class="action-btn close" onclick="closeRoom('${room.roomId}', '${escapeHtml(room.name)}')">ปิดห้อง</button>
@@ -1187,6 +1280,194 @@ $(function() {
             }
         });
     };
+    
+    // ========== Room Details ==========
+    window.viewRoomDetails = function(roomId, roomName) {
+        socket.emit('admin_getRoomDetails', { roomId }, function(res) {
+            if (res.success) {
+                const room = res.room;
+                const playersHtml = room.players.length > 0 
+                    ? room.players.map(p => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #222; border-radius: 6px; margin-bottom: 5px;">
+                            <span>
+                                <span style="display: inline-block; width: 12px; height: 12px; background: ${p.color}; border-radius: 50%; margin-right: 8px;"></span>
+                                ${escapeHtml(p.name)}
+                                ${p.isAdmin ? ' 👑' : ''}
+                                ${p.role ? ` <small style="color: #888;">(${p.role})</small>` : ''}
+                            </span>
+                            <button class="action-btn kick" onclick="kickPlayerFromRoom('${roomId}', '${p.id}', '${escapeHtml(p.name)}')">เตะ</button>
+                        </div>
+                    `).join('') 
+                    : '<div style="color: #888; text-align: center;">ไม่มีผู้เล่น</div>';
+                
+                Swal.fire({
+                    title: `🏠 ${roomName}`,
+                    html: `
+                        <div style="text-align: left; color: #ddd;">
+                            <p><strong>Room ID:</strong> <code>${roomId}</code></p>
+                            <p><strong>สถานะ:</strong> ${room.gameStatus === 'playing' ? '🎮 กำลังเล่น' : '⏳ รอผู้เล่น'}</p>
+                            <p><strong>Phase:</strong> ${room.gamePhase || '-'}</p>
+                            <p><strong>ล็อค:</strong> ${room.locked ? '🔒 ล็อค' : '🔓 ไม่ล็อค'}</p>
+                            <p><strong>คำปัจจุบัน:</strong> ${room.currentWord || '-'}</p>
+                            <hr style="border-color: #444; margin: 15px 0;">
+                            <p><strong>ผู้เล่น (${room.players.length}/${room.maxPlayers}):</strong></p>
+                            <div style="max-height: 200px; overflow-y: auto;">
+                                ${playersHtml}
+                            </div>
+                        </div>
+                    `,
+                    width: 500,
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    showConfirmButton: true,
+                    confirmButtonText: 'ปิด'
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    window.kickPlayerFromRoom = function(roomId, playerId, playerName) {
+        socket.emit('admin_kickPlayerFromRoom', { roomId, playerId }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: `เตะ ${playerName} สำเร็จ`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                // Refresh room details
+                Swal.close();
+                loadData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    // ========== Logs Functions ==========
+    let serverLogs = [];
+    
+    function addLog(type, message) {
+        const timestamp = new Date().toLocaleTimeString('th-TH');
+        const colors = {
+            'join': '#2ecc71',
+            'leave': '#e74c3c', 
+            'game': '#3498db',
+            'admin': '#9b59b6',
+            'error': '#ff6b6b',
+            'info': '#f39c12'
+        };
+        const icons = {
+            'join': '➡️',
+            'leave': '⬅️',
+            'game': '🎮',
+            'admin': '👑',
+            'error': '❌',
+            'info': 'ℹ️'
+        };
+        
+        serverLogs.unshift({ type, message, timestamp, color: colors[type] || '#fff', icon: icons[type] || '•' });
+        if (serverLogs.length > 200) serverLogs.pop();
+        renderLogs();
+    }
+    
+    function renderLogs() {
+        const filter = $('#logFilter').val();
+        const filtered = filter === 'all' ? serverLogs : serverLogs.filter(l => l.type === filter);
+        
+        const $container = $('#logsContainer');
+        if (filtered.length === 0) {
+            $container.html('<div class="empty-message">ไม่มี Logs</div>');
+            return;
+        }
+        
+        $container.html(filtered.map(log => 
+            `<div style="margin-bottom: 4px; color: ${log.color};">
+                <span style="color: #666;">[${log.timestamp}]</span> ${log.icon} ${log.message}
+            </div>`
+        ).join(''));
+    }
+    
+    $('#logFilter').on('change', renderLogs);
+    
+    window.clearLogs = function() {
+        serverLogs = [];
+        renderLogs();
+        Swal.fire({ icon: 'success', title: 'ล้าง Logs สำเร็จ', timer: 1000, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+    };
+    
+    window.exportLogs = function() {
+        const logsText = serverLogs.map(l => `[${l.timestamp}] [${l.type.toUpperCase()}] ${l.message}`).join('\n');
+        const blob = new Blob([logsText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'server_logs_' + new Date().toISOString().slice(0,10) + '.txt';
+        a.click();
+    };
+    
+    // ========== Settings Functions ==========
+    window.saveGameSettings = function() {
+        const settings = {
+            defaultTimer: parseInt($('#defaultTimer').val()),
+            minPlayers: parseInt($('#minPlayers').val()),
+            maxPlayers: parseInt($('#maxPlayers').val()),
+            wordCategory: $('#wordCategory').val()
+        };
+        
+        socket.emit('admin_saveSettings', settings, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'บันทึกการตั้งค่าสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    window.addWords = function() {
+        const wordsText = $('#newWords').val().trim();
+        if (!wordsText) {
+            Swal.fire({ icon: 'warning', title: 'กรุณาพิมพ์คำที่ต้องการเพิ่ม', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        
+        const words = wordsText.split(',').map(w => w.trim()).filter(w => w);
+        socket.emit('admin_addWords', { words }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: `เพิ่ม ${res.addedCount} คำสำเร็จ`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                $('#newWords').val('');
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    window.viewWords = function() {
+        socket.emit('admin_getWords', {}, function(res) {
+            if (res.success) {
+                Swal.fire({
+                    title: '📝 คำในเกมทั้งหมด',
+                    html: `
+                        <div style="max-height: 400px; overflow-y: auto; text-align: left; background: #111; padding: 15px; border-radius: 8px;">
+                            <p style="color: #888; margin-bottom: 10px;">รวม ${res.words.length} คำ</p>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                ${res.words.map(w => `<span style="background: #333; padding: 4px 10px; border-radius: 15px; font-size: 0.9em;">${escapeHtml(w)}</span>`).join('')}
+                            </div>
+                        </div>
+                    `,
+                    width: 600,
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    showConfirmButton: true,
+                    confirmButtonText: 'ปิด'
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    // Listen for real-time events
+    socket.on('admin_log', function(data) {
+        addLog(data.type, data.message);
+    });
     
     // Load initial data
     loadData();

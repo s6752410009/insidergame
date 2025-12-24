@@ -501,12 +501,73 @@
   }
 
   .chat-msg {
-    margin-bottom: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+  }
+
+  .chat-msg.my-msg {
+    align-self: flex-end;
+    margin-left: auto;
+  }
+
+  .chat-msg.other-msg {
+    align-self: flex-start;
+    margin-right: auto;
+  }
+
+  .chat-msg.system-msg {
+    align-self: center;
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .chat-msg-bubble {
+    padding: 8px 12px;
+    border-radius: 12px;
+    word-wrap: break-word;
+  }
+
+  .chat-msg.my-msg .chat-msg-bubble {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border-bottom-right-radius: 4px;
+  }
+
+  .chat-msg.other-msg .chat-msg-bubble {
+    background: #3a3a3a;
+    border-bottom-left-radius: 4px;
+  }
+
+  .chat-msg.system-msg .chat-msg-bubble {
+    background: rgba(243, 156, 18, 0.2);
+    border: 1px solid #f39c12;
+    font-style: italic;
+  }
+
+  .chat-msg-name {
+    font-weight: 700;
+    margin-bottom: 2px;
+    font-size: 0.85em;
+  }
+
+  .chat-msg-text {
+    font-size: 0.95em;
   }
 
   .chat-msg-meta {
-    font-size: 0.75em;
+    font-size: 0.7em;
     color: #888;
+    margin-top: 3px;
+  }
+
+  .chat-msg.my-msg .chat-msg-meta {
+    text-align: right;
+  }
+
+  .room-chat-messages {
+    display: flex;
+    flex-direction: column;
   }
 </style>
 
@@ -541,9 +602,7 @@
         <span id="lobbyStatusText">
           รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม
         </span>
-        <% if (room.isAdmin) { %>
-          <button id="btnStartGameLobby" disabled>เริ่มเกม</button>
-        <% } %>
+        <button id="btnStartGameLobby" disabled style="display: <%= room.isAdmin ? 'inline-block' : 'none' %>;">เริ่มเกม</button>
       </div>
     </div>
 
@@ -552,12 +611,10 @@
       <h3>👥 ผู้เล่นในห้อง</h3>
       <div id="lobbyPlayers"></div>
 
-      <% if (room.isAdmin) { %>
-      <div class="lobby-admin-controls">
+      <div id="adminControlsSection" class="lobby-admin-controls" style="display: <%= room.isAdmin ? 'block' : 'none' %>;">
         <h4>👑 Admin Controls</h4>
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
       </div>
-      <% } %>
     </div>
   </div>
 </div>
@@ -573,7 +630,58 @@
     const socket = io();
     const playerId = '<%= player.playerId %>';
     const roomId = '<%= room.roomId %>';
-    const isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
+    let isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
+    
+    // ===== ป้องกันกดย้อนกลับ / ปิดหน้า =====
+    let allowNavigation = false; // flag สำหรับการ navigate ที่ตั้งใจ
+    
+    // 1. ถามยืนยันก่อนปิด/รีโหลดหน้า (เฉพาะกรณีไม่ได้ตั้งใจ)
+    window.addEventListener('beforeunload', function(e) {
+        if (allowNavigation) return; // ถ้าตั้งใจ navigate -> ไม่ถาม
+        e.preventDefault();
+        e.returnValue = 'คุณกำลังอยู่ในห้อง ต้องการออกจริงหรือ?';
+        return e.returnValue;
+    });
+
+    // 2. ดักปุ่มย้อนกลับ (History API)
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function(e) {
+        // กดย้อนกลับ -> แสดง popup ถาม
+        Swal.fire({
+            icon: 'warning',
+            title: 'ต้องการออกจากห้องหรือ?',
+            text: 'ถ้าออกจากห้อง คุณจะถูกนำออกจากห้องนี้',
+            showCancelButton: true,
+            confirmButtonText: 'ออกจากห้อง',
+            cancelButtonText: 'อยู่ต่อ',
+            confirmButtonColor: '#e74c3c',
+            cancelButtonColor: '#3085d6',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // ออกจากห้องจริง
+                allowNavigation = true;
+                socket.emit('leaveRoom', {}, function() {
+                    window.location.href = '/rooms?playerId=' + playerId;
+                });
+            } else {
+                // อยู่ต่อ -> push state กลับ
+                history.pushState(null, null, location.href);
+            }
+        });
+    });
+    
+    // Function to show/hide admin controls
+    function updateAdminUI() {
+      if (isAdmin) {
+        $('#btnStartGameLobby').show();
+        $('#adminControlsSection').show();
+      } else {
+        $('#btnStartGameLobby').hide();
+        $('#adminControlsSection').hide();
+      }
+    }
 
     function updateStartButtonState(players) {
       const btn = $('#btnStartGameLobby');
@@ -659,32 +767,97 @@
 
     // ได้รับ/โอน admin
     socket.on('adminTransferred', function(data) {
-      Swal.fire({
-        icon: 'success',
-        title: data.message || 'สิทธิ์ Admin เปลี่ยนแปลงแล้ว',
-        background: '#1e1e1e',
-        color: '#fff',
-        timer: 2000,
-        showConfirmButton: false
-      });
-      // รีโหลดหน้าหลังจาก 2 วินาทีเพื่อแสดง UI ใหม่
-      setTimeout(function() {
-        window.location.reload();
-      }, 2000);
+      // ถ้าผมได้รับ admin ใหม่
+      if (data.newAdminId === playerId) {
+        Swal.fire({
+          icon: 'success',
+          title: '👑 คุณได้รับสิทธิ์ Admin แล้ว!',
+          text: 'คุณเป็น Admin ของห้องนี้แล้ว',
+          background: '#1e1e1e',
+          color: '#fff',
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false
+        });
+        // Update local admin status
+        isAdmin = true;
+        // Show admin controls without reload
+        updateAdminUI();
+        // Re-request room update to re-render player list with admin icons
+        socket.emit('requestRoomUpdate', { roomId: roomId });
+      } else if (data.oldAdminId === playerId) {
+        // ถ้าผมเคยเป็น admin แล้วถูกโอน
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'info',
+          title: 'สิทธิ์ Admin ถูกโอนไปแล้ว',
+          background: '#1e1e1e',
+          color: '#fff',
+          timer: 2500,
+          showConfirmButton: false
+        });
+        isAdmin = false;
+        updateAdminUI();
+        socket.emit('requestRoomUpdate', { roomId: roomId });
+      } else {
+        // คนอื่นๆ รับรู้ว่า admin เปลี่ยนแล้ว (ไม่ต้อง reload)
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'info',
+          title: data.message || 'สิทธิ์ Admin เปลี่ยนแปลงแล้ว',
+          background: '#1e1e1e',
+          color: '#fff',
+          timer: 2500,
+          showConfirmButton: false
+        });
+      }
     });
 
     // ===== Chat =====
+    const myPlayerName = '<%= player.name %>';
+    const myPlayerColor = '<%= playerInfo.color %>';
+    
     function appendChatMessage(data) {
       const $area = $('#lobbyChatMessages');
       const safeName = $('<div>').text(data.playerName).html();
       const safeMsg = $('<div>').text(data.message).html();
       const timestamp = data.timestamp || '';
-      const $msg = $(`
-        <div class="chat-msg">
-          <div><span style="font-weight:700;color:${data.color || '#fff'};">${safeName}</span>: ${safeMsg}</div>
-          <div class="chat-msg-meta">${timestamp}</div>
-        </div>
-      `);
+      const playerColor = data.color || '#fff';
+      
+      // Determine message type
+      let msgClass = 'other-msg';
+      if (data.playerName === 'System') {
+        msgClass = 'system-msg';
+      } else if (data.playerName === myPlayerName) {
+        msgClass = 'my-msg';
+      }
+      
+      let $msg;
+      if (msgClass === 'system-msg') {
+        // System message - centered
+        $msg = $(`
+          <div class="chat-msg ${msgClass}">
+            <div class="chat-msg-bubble">
+              <div class="chat-msg-text">🔔 ${safeMsg}</div>
+            </div>
+            <div class="chat-msg-meta">${timestamp}</div>
+          </div>
+        `);
+      } else {
+        // Player message - left or right
+        $msg = $(`
+          <div class="chat-msg ${msgClass}">
+            <div class="chat-msg-bubble" style="border-left: 3px solid ${playerColor};">
+              <div class="chat-msg-name" style="color:${playerColor};">${safeName}</div>
+              <div class="chat-msg-text">${safeMsg}</div>
+            </div>
+            <div class="chat-msg-meta">${timestamp}</div>
+          </div>
+        `);
+      }
+      
       $area.append($msg);
       $area[0].scrollTop = $area[0].scrollHeight;
     }
@@ -709,6 +882,40 @@
 
     socket.on('newMessage', function (data) {
       appendChatMessage(data);
+    });
+
+    // รับ broadcast จากระบบ (Admin)
+    socket.on('systemBroadcast', function(data) {
+      Swal.fire({
+        icon: 'info',
+        title: '📢 ประกาศจากระบบ',
+        text: data.message,
+        background: '#1e1e1e',
+        color: '#fff',
+        confirmButtonColor: '#e74c3c'
+      });
+      // Also show in chat
+      appendChatMessage({
+        playerName: 'System',
+        message: '📢 ' + data.message,
+        timestamp: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+      });
+    });
+
+    // ถูกแบน
+    socket.on('banned', function(data) {
+      Swal.fire({
+        icon: 'error',
+        title: '🚫 คุณถูกแบน!',
+        html: `<p><strong>เหตุผล:</strong> ${data.reason}</p><p><strong>ระยะเวลา:</strong> ${data.durationHours === null ? 'ถาวร' : data.durationHours + ' ชั่วโมง'}</p>`,
+        confirmButtonText: 'ตกลง',
+        background: '#1e1e1e',
+        color: '#fff',
+        allowOutsideClick: false
+      }).then(() => {
+        allowNavigation = true;
+        window.location.href = '/banned?playerId=' + playerId;
+      });
     });
 
     // ===== Admin actions =====
@@ -945,8 +1152,8 @@
         btn.text('กำลังเริ่มเกม...');
         socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
           btn.data('loading', false);
-          btn.text('🎮 เริ่มเกม');
           if (!res || !res.success) {
+            btn.text('🎮 เริ่มเกม');
             Swal.fire({
               icon: 'error',
               title: 'เริ่มเกมไม่สำเร็จ',
@@ -955,9 +1162,32 @@
               color: '#fff'
             });
           }
+          // ไม่ต้อง redirect ที่นี่ รอให้ server ส่ง event 'gameStarting' แทน
         });
       });
     }
+
+    // รับ event จาก server ว่าเกมเริ่มแล้ว → redirect ทุกคนพร้อมกัน
+    socket.on('gameStarting', function(data) {
+      console.log('[gameStarting] Redirecting to game...');
+      Swal.fire({
+        icon: 'success',
+        title: 'เกมเริ่มแล้ว!',
+        text: 'กำลังเข้าสู่เกม...',
+        timer: 1000,
+        showConfirmButton: false,
+        background: '#1e1e1e',
+        color: '#fff'
+      }).then(() => {
+        allowNavigation = true; // อนุญาต navigate โดยไม่ถาม
+        window.location.href = `/game/${data.roomId}?playerId=${playerId}`;
+      });
+      // Fallback redirect
+      setTimeout(() => {
+        allowNavigation = true;
+        window.location.href = `/game/${data.roomId}?playerId=${playerId}`;
+      }, 1100);
+    });
 
     // ปุ่มออกห้อง - emit leaveRoom แล้วรอ callback ก่อน redirect
     $('#btnLeaveRoom').on('click', function() {
@@ -986,11 +1216,13 @@
           
           // emit leaveRoom พร้อม callback
           socket.emit('leaveRoom', {}, function(response) {
+            allowNavigation = true;
             window.location.href = '/rooms?playerId=' + playerId;
           });
           
           // Fallback: ถ้าไม่ได้รับ callback ใน 2 วินาที ให้ redirect เลย
           setTimeout(function() {
+            allowNavigation = true;
             window.location.href = '/rooms?playerId=' + playerId;
           }, 2000);
         }
@@ -1000,6 +1232,7 @@
     // ทุกคนใน room รับ event นี้เมื่อเกมเริ่ม
     socket.on('gameStarted', function (data) {
       // เปลี่ยนไปหน้า board.ejs
+      allowNavigation = true;
       window.location.href = '/game/' + roomId + '?playerId=' + playerId;
     });
   });

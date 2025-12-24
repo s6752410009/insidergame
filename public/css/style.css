@@ -160,8 +160,23 @@ footer.footer {
     font-size: 50px;
 }
 
-#displayVote1, #vote1 button, #vote1Result, #displayVote2, #vote2 button, #vote2Result {
+#displayVote1, #vote1 button, #vote1Result, #displayVote2, #vote2Result {
     margin: 5px auto 15px auto;
+}
+
+/* Vote 2 Custom Styles */
+#vote2 {
+    background: transparent !important;
+    padding: 20px 0;
+}
+
+.vote2-choices {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    background: transparent !important;
+    padding: 15px;
 }
 
 #vote1 button, #vote1Result {

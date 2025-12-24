@@ -58,10 +58,10 @@
 </div>
 
 <div id="reset">
-    <p class="role hidden <% if (status == 'role') { %>appear<% } %>">คุณคือ <strong><%= player.role %></strong></p>
+    <p class="role" style="display:<% if (status == 'role') { %>block<% } else { %>none<% } %>;">คุณคือ <strong><%= player.role %></strong></p>
 </div>
 
-<div id="chooseWord" class="hidden <% if (status == 'role' && player.role === 'ผู้ดำเนินเกม') { %>current<% } %>">
+<div id="chooseWord" class="hidden">
     <form id="wordForm" method="post" name="wordForm" action="setWord" autocomplete="off">
         <div class="form-group">
             <input type="text" name="word" class="form-control" id="wordInput" style="width: 60%; display: inline;" placeholder="คำที่ต้องการให้ทาย" />
@@ -119,10 +119,7 @@
     <div id="vote2" class="hidden">
         <h4>โหวตรอบ 2</h4>        
         <h4>คิดว่าใครคือผู้ทรยศ?</h4>
-        <form class="inline-block" id="playerChoiceForm" method="post" name="playerForm" action="game">
-            <div class="choices"></div>
-            <button class="btn btn-warning">โหวต</button>
-        </form>
+        <div class="vote2-choices"></div>
     </div>
     <div id="vote2Result" class="hidden">
         <h4>ผลการโหวต</h4>
@@ -376,6 +373,80 @@
         color: #fff !important;
         background: rgba(255,255,255,0.05) !important;
     }
+    
+    /* Vote 2 - Player Buttons */
+    #vote2 {
+        background: transparent !important;
+    }
+    
+    .vote2-choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+        margin-top: 25px;
+        padding: 10px;
+        background: transparent !important;
+    }
+    
+    .btn-vote2-player {
+        padding: 20px 40px;
+        font-size: 1.4em;
+        font-weight: 700;
+        font-family: 'Rajdhani', sans-serif;
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        border: 4px solid #c0392b;
+        border-radius: 16px;
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        min-width: 150px;
+        text-shadow: 2px 2px 3px rgba(0,0,0,0.4);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-vote2-player::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-vote2-player:hover::before {
+        left: 100%;
+    }
+    
+    .btn-vote2-player:hover {
+        transform: translateY(-5px) scale(1.08);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+        border-color: #a93226;
+    }
+    
+    .btn-vote2-player:active {
+        transform: translateY(-2px) scale(1.02);
+    }
+    
+    .btn-vote2-player.ghost {
+        opacity: 0.5;
+        background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+        border-color: #6c7a7d;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    #vote2 h4 {
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.4em;
+        margin-bottom: 10px;
+    }
 </style>
          
 <%- contentFor('script') %>
@@ -392,16 +463,18 @@
         padding: 15px;
         box-shadow: -3px 0 10px rgba(0,0,0,0.3);
         z-index: 10002;
-        transition: transform 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        transition: transform 0.3s ease-in-out, opacity 0.2s ease-in-out, visibility 0.2s;
         overflow-y: auto;
         transform: translateX(100%);  /* เลื่อนไปนอกจอ */
         opacity: 0;                    /* ไม่ให้มองเห็น */
+        visibility: hidden;            /* ซ่อนจริงๆ */
         pointer-events: none;          /* ห้ามคลิกตอนปิด */
     }
 
     #playerSidebar.open {
         transform: translateX(0);
         opacity: 1;
+        visibility: visible;
         pointer-events: auto;
     }
 
@@ -1308,6 +1381,44 @@ $(function() {
         $('#adminRevealModal').show();
     });
 
+    // ===== ป้องกันกดย้อนกลับ / ปิดหน้า =====
+    let allowNavigation = false; // flag สำหรับการ navigate ที่ตั้งใจ
+    
+    // 1. ถามยืนยันก่อนปิด/รีโหลดหน้า (เฉพาะกรณีไม่ได้ตั้งใจ)
+    window.addEventListener('beforeunload', function(e) {
+        if (allowNavigation) return; // ถ้าตั้งใจ navigate -> ไม่ถาม
+        e.preventDefault();
+        e.returnValue = 'คุณกำลังเล่นเกมอยู่ ต้องการออกจริงหรือ?';
+        return e.returnValue;
+    });
+
+    // 2. ดักปุ่มย้อนกลับ (History API)
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function(e) {
+        // กดย้อนกลับ -> แสดง popup ถาม
+        Swal.fire({
+            icon: 'warning',
+            title: 'ต้องการออกจากเกมหรือ?',
+            text: 'ถ้าออกจากเกม คุณจะถูกนำออกจากห้องและอาจทำให้เกมมีปัญหา',
+            showCancelButton: true,
+            confirmButtonText: 'ออกจากเกม',
+            cancelButtonText: 'อยู่ต่อ',
+            confirmButtonColor: '#e74c3c',
+            cancelButtonColor: '#3085d6',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // ออกจากเกมจริง
+                allowNavigation = true;
+                window.location.href = '/room/' + '<%= room.roomId %>' + '?playerId=' + '<%= player.playerId %>';
+            } else {
+                // อยู่ต่อ -> push state กลับ
+                history.pushState(null, null, location.href);
+            }
+        });
+    });
+
     function soundNotify(notifType) {
         let audiof;
         switch (notifType) {
@@ -1337,18 +1448,22 @@ $(function() {
     }
 
     function addPlayerVote(player, checked) {
-        let templateVote = '<div class="form__group optionalClass"><div class="form__radio-group"><input checked type="radio" class="form__radio-input" id="playerName" name="player" value="playerName"><label for="playerName" class="form__radio-label">playerName</label></div></div>';
+        const ghostClass = player.isGhost ? 'ghost' : '';
+        const btn = `<button class="btn btn-vote2-player ${ghostClass}" data-player="${player.name}">${player.name}</button>`;
+        $('#vote2 .vote2-choices').append(btn);
+    }
 
-        if(!checked) {
-            templateVote = templateVote.replace('checked ', '');
-        }
-        templateVote = templateVote.replace('optionalClass', player.isGhost ? 'ghost' : '');
-
-        $('#vote2 form .choices').append(templateVote.replace(/playerName/g, player.name));
+    // ฟังก์ชันซ่อน element เกมทั้งหมด - ใช้ก่อนแสดง step ใหม่
+    function hideAllGameElements() {
+        $('#waiting, #reset .role, #chooseWord, #reveal button, #word, #startGame, #countdown, #displayVote1, #vote1, #vote1Result, #displayVote2, #vote2, #vote2Result, #status').hide();
     }
 
     function updateCountdown(counter) {
-        $("#timer").html(formatCountdown(counter));
+        // แปลงวินาทีเป็น mm:ss
+        var minutes = Math.floor(counter / 60);
+        var seconds = counter % 60;
+        var display = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        $("#timer").html(display);
     }
 
     function getResultIssue(result) {
@@ -1399,6 +1514,17 @@ $(function() {
                 $("#chooseWord").removeClass('current').hide();
                 // แสดงปุ่มเปิดเผยคำ
                 $('#reveal button').removeClass('hidden').show();
+                
+                // แสดงข้อความยืนยัน
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: 'ส่งคำสำเร็จ!', 
+                    text: 'กรุณากดปุ่ม "เปิดเผยคำ" เพื่อเริ่มเกม', 
+                    timer: 3000,
+                    showConfirmButton: false,
+                    background: '#1e1e1e',
+                    color: '#fff'
+                });
                 console.log('[Word] Success! Form hidden, reveal button shown');
             } else {
                 // Reset button on error
@@ -1451,8 +1577,10 @@ $(function() {
         var $a = $(this);
         if ($a.data('disabled')) { e.preventDefault(); return; }
         $a.data('disabled', true);
+        console.log('[startGame click] Emitting startGame');
         socket.emit('startGame');
-        $("#countdown").fadeIn();
+        $("#startGame").hide();
+        $("#countdown").removeClass('hidden').fadeIn();
         setTimeout(function(){ $a.data('disabled', false); }, 2000);
         e.preventDefault();
     });
@@ -1471,35 +1599,98 @@ $(function() {
     });
 
     $( "#vote1 button").click(function(e){
-        $('.hidden').hide();
         socket.emit('vote1', {player: '<%= player.name %>', vote: $(this).data('vote')});
-        $(this).attr("disabled", true);
+        // ซ่อน vote1 section ทันทีหลังกด
+        $('#vote1').fadeOut();
+        // แสดงข้อความรอ
+        $('#status p').html('กำลังรอผู้เล่นคนอื่นโหวต...');
+        $('#status').removeClass('hidden').fadeIn();
     });
 
-    $( "#vote2 button").click(function(e){
-        $('.hidden').hide();
-        socket.emit('vote2', {player: '<%= player.name %>', vote: $("#vote2 input[name='player']:checked").val()});
+    // Vote2 - กดปุ่มชื่อผู้เล่นเพื่อโหวตทันที
+    $(document).on('click', '.btn-vote2-player', function(e) {
         e.preventDefault();
-        $(this).attr("disabled", true);
+        const votedPlayer = $(this).data('player');
+        socket.emit('vote2', {player: '<%= player.name %>', vote: votedPlayer});
+        // ซ่อน vote2 section ทันทีหลังกด
+        $('#vote2').fadeOut();
+        // แสดงข้อความรอ
+        $('#status p').html('กำลังรอผู้เล่นคนอื่นโหวต...');
+        $('#status').removeClass('hidden').fadeIn();
     });
 
-    $( "#reveal button").click(function(){
+    $("#reveal button").click(function(){
+        const $btn = $(this);
+        if ($btn.prop('disabled')) return; // ป้องกันการกดซ้ำ
+        
+        console.log('[revealWord] Sending reveal word event');
+        $btn.prop('disabled', true).text('กำลังเปิดเผย...');
+        
         socket.emit('revealWord');
-        $(this).attr("disabled", true).hide();
+        
+        // รอ 2 วินาที แล้วซ่อนปุ่ม (ให้เวลา server ประมวลผล)
+        setTimeout(function() {
+            $btn.hide();
+        }, 2000);
     });
 
     // Initialize player and room context
     const playerId = '<%= player.playerId || "" %>';
     const roomId = '<%= room.roomId %>';
+    let isInitialized = false; // ป้องกันการ init ซ้ำ
 
-    socket.emit('initPlayer', playerId);
-    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    // ฟังก์ชันสำหรับ init room
+    function initializeRoom() {
+        if (isInitialized) {
+            console.log('[initializeRoom] Already initialized, skipping');
+            return;
+        }
+        socket.emit('initPlayer', playerId);
+        socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+        isInitialized = true;
+        console.log('[initializeRoom] Room initialized');
+    }
+
+    // Init ครั้งแรกเมื่อโหลดหน้า
+    initializeRoom();
+    
+    // ถ้าเป็น phase แสดงบทบาท → แสดงตรงๆ
+    <% if (status === 'role') { %>
+        const myRole = '<%= player.role %>';
+        const isGM = (myRole === 'ผู้ดำเนินเกม');
+        console.log('[Init] My role:', myRole);
+        
+        // บทบาทแสดงอยู่แล้ว (จาก HTML) - ซ่อนหลัง 5 วิ
+        setTimeout(function() {
+            $('#reset .role').hide();
+            if(isGM) { 
+                console.log('[Init] GM - showing word form (reveal button shows after submit)');
+                $("#chooseWord").removeClass('hidden').show();
+                // ปุ่มเปิดเผยคำจะแสดงหลังส่งคำแล้ว
+            } else { 
+                console.log('[Init] Others - showing wait message');
+                $("#waiting").removeClass('hidden').show();
+                $('#waiting p').html('กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...');
+            }
+        }, 5000);
+        
+        soundNotify('mysterious');
+    <% } %>
+
 
     // เมื่อ Socket.IO reconnect อัตโนมัติ
     socket.on('reconnect', function() {
-        console.log('Socket reconnected, reinitializing...');
-        socket.emit('initPlayer', playerId);
-        socket.emit('setRoom', roomId);
+        console.log('Socket reconnected');
+        // ไม่ต้อง init ใหม่ เพราะ socket จะ auto-rejoin room
+        // แค่แจ้งเตือน
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'เชื่อมต่อสำเร็จ',
+            showConfirmButton: false,
+            timer: 2000
+        });
     });
 
     // รับข้อมูลอัปเดตห้อง (รายชื่อผู้เล่น)
@@ -1591,100 +1782,121 @@ $(function() {
     });
 
     socket.on('newRole', function(data) {
-        // เริ่มรอบใหม่: ให้สามารถตั้งคำได้อีกครั้ง (แต่จะถูกปิดหลังส่ง)
+        console.log('[newRole] Received:', data);
         wordSubmitted = false;
-        $('.hidden').hide(); // ซ่อนทุกองค์ประกอบที่มี class 'hidden'
+        $('.hidden').hide();
         $('#word').html('');
-        $('#vote2 form .choices').html('');
-        $('#reveal button, #newGame, #vote1 button, #vote2 button, #startGame a').attr("disabled", false); 
+        $('#vote2 .vote2-choices').html('');
+        $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
 
-        var playerIsGameMaster = false;
+        // วนหาบทบาทของตัวเอง (ใช้ playerId หรือ name)
+        var myPlayer = null;
         $.each(data.players, function(i, obj) {
-            if(obj.name == '<%= player.name %>') {
-                $('.role strong').html(obj.role);
-                if(obj.role === 'ผู้ดำเนินเกม') { 
-                    playerIsGameMaster = true;
-                }
-                // แสดงบทบาทผู้เล่นชั่วคราว แล้วจางหายไป
-                $('#reset .role').fadeIn(1000).delay(6000).fadeOut("slow", function(){
-                    if(playerIsGameMaster && !wordSubmitted) { 
-                        $("#chooseWord").fadeIn(); // ผู้ดำเนินเกมจะเห็นช่องใส่คำ (ถ้ายังไม่ได้ส่ง)
-                    } else { // ผู้เล่นคนอื่น
-                        if (data.status === 'role') { // ถ้ารับรู้ว่าสถานะคือ 'role' (รอตั้งคำ)
-                            $("#status").fadeIn(); // แสดง div สถานะ
-                            $('#status p').html('กำลังรอ <strong>ผู้ดำเนินเกม</strong> ส่งคำศัพท์...'); // แสดงข้อความเฉพาะ
-                        }
-                    }
-                });
+            if(obj.playerId == '<%= player.playerId %>' || obj.name == '<%= player.name %>') {
+                myPlayer = obj;
                 return false;
-            };
+            }
         });
+        
+        if(myPlayer) {
+            console.log('[newRole] My role:', myPlayer.role);
+            $('.role strong').html(myPlayer.role);
+            $('#reset .role').css('display', 'block');
+            
+            // ซ่อนหลัง 5 วิ แล้วแสดงขั้นต่อไป
+            setTimeout(function() {
+                $('#reset .role').hide();
+                if(myPlayer.role == 'ผู้ดำเนินเกม' && !wordSubmitted) {
+                    console.log('[newRole] GM - showing word form (reveal button shows after submit)');
+                    $("#chooseWord").removeClass('hidden').show();
+                    // ปุ่มเปิดเผยคำจะแสดงหลังส่งคำแล้ว (ใน submitWord callback)
+                } else {
+                    console.log('[newRole] Others - showing wait');
+                    $("#waiting").removeClass('hidden').show();
+                    $('#waiting p').html('กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...');
+                }
+            }, 5000);
+        } else {
+            console.log('[newRole] Player not found in data!');
+        }
         soundNotify('mysterious');
     });
 
     socket.on('revealWord', function(data) {
+        console.log('[revealWord] Received:', data);
+        
+        // วนหาบทบาทของตัวเอง (ใช้ playerId หรือ name)
+        var myPlayer = null;
         $.each(data.players, function(i, obj) {
-            if(obj.name == '<%= player.name %>') {
-                if(obj.role == 'ผู้ดำเนินเกม' || obj.role == 'ผู้ทรยศ') {
-                    $('#word').html("<span>คำที่ต้องทายคือ <strong>"+data.word+"</strong></span>");
-                } else {
-                    $('#word').html("<span>ผู้ดำเนินเกมและผู้ทรยศ <br />จะเห็นคำนี้</span>");
-                }
+            if(obj.playerId == '<%= player.playerId %>' || obj.name == '<%= player.name %>') {
+                myPlayer = obj;
                 return false;
-            };
+            }
         });
 
-        $('#word').fadeIn(1000).delay(5000).fadeOut("slow", function() {
-            $("#startGame").fadeIn();
+        if(myPlayer) {
+            if(myPlayer.role == 'ผู้ดำเนินเกม' || myPlayer.role == 'ผู้ทรยศ') {
+                $('#word').html("<span>คำที่ต้องทายคือ <strong>"+data.word+"</strong></span>");
+            } else {
+                $('#word').html("<span>ผู้ดำเนินเกมและผู้ทรยศ <br />จะเห็นคำนี้</span>");
+            }
+        }
+
+        $('#word').removeClass('hidden').fadeIn(1000).delay(5000).fadeOut("slow", function() {
+            $("#startGame").removeClass('hidden').fadeIn();
         });
         soundNotify('message');
     });
 
     socket.on('wordFound', function() {
-        $('.hidden').hide();
-        $('#displayVote1').fadeIn();
+        console.log('[wordFound] Received - going to vote');
+        hideAllGameElements();
+        $('#displayVote1').removeClass('hidden').fadeIn();
         showNotification('🎯 ตอบคำได้ถูกต้อง! ไปลงคะแนนกัน', 'success', 3000);
     });
 
     socket.on('displayVote1', function() {
-        $('.hidden').hide();
-        $('#vote1').fadeIn();
+        console.log('[displayVote1] Received');
+        hideAllGameElements();
+        $('#vote1').removeClass('hidden').fadeIn();
         $("#vote1 button").attr("disabled", false);
         soundNotify('message');
         showNotification('🗳️ เข้าสู่รอบโหวตที่ 1!', 'warning', 3000);
     });
 
     socket.on('displayVote2', function(players) {
-        $('.hidden').hide();
-        $("#vote2 button").attr("disabled", false);
-        $('#vote2 form .choices').html('');
+        console.log('[displayVote2] Received');
+        hideAllGameElements();
+        $('#vote2 .vote2-choices').html('');
         players.forEach(function(votePlayer, index) {
             let checked = (index === 0 ? true : false);
             addPlayerVote(votePlayer, checked);
         });
-        $('#vote2').fadeIn();
+        $('#vote2').removeClass('hidden').fadeIn();
         showNotification('🗳️ เข้าสู่รอบโหวตที่ 2!', 'warning', 3000);
     });
     
     socket.on('vote1Ended', function(result) {
-        $('.hidden').hide();
-        $('#vote1Result').fadeIn();
+        console.log('[vote1Ended] Received:', result);
+        hideAllGameElements();
+        $('#vote1Result').removeClass('hidden').fadeIn();
         $('#vote1Result .resultUp strong').html(result.up);
         $('#vote1Result .resultDown strong').html(result.down);
-        $('#displayVote2').fadeIn();
+        $('#displayVote2').removeClass('hidden').fadeIn();
         soundNotify('tada');
         showNotification('✅ รอบโหวตที่ 1 เสร็จแล้ว!', 'success', 3000);
     });
 
     socket.on('vote2Ended', function(result) {
-        $('.hidden').hide();
+        console.log('[vote2Ended] Received:', result);
+        hideAllGameElements();
         $('#vote2Result ul').html('');
         result.voteDetail.forEach(function(votePlayer, index) {
             $('#vote2Result ul').append('<li>'+votePlayer.name+' ('+votePlayer.nbVote2+')</li>');
         });
         finalResult = getResultIssue(result);
         $('#vote2Result #finalResult').html(finalResult);
-        $('#vote2Result').fadeIn();
+        $('#vote2Result').removeClass('hidden').fadeIn();
         soundNotify('tada');
         // Show game result notification
         if (result.hasWon) {
@@ -1693,7 +1905,7 @@ $(function() {
             showNotification('💀 ผู้ทรยศ/ปีศาจชนะ!', 'error', 5000);
         }
         // ADDED: เปิดใช้งานปุ่มทั้งหมดเมื่อเกมจบลง
-        $('#reveal button, #newGame, #vote1 button, #vote2 button, #startGame a').attr("disabled", false); 
+        $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
     });
 
     // Return to Lobby after game ends
@@ -1712,6 +1924,7 @@ $(function() {
     });
 
     socket.on('redirectToLobby', function(data) {
+        allowNavigation = true;
         window.location.href = '/room/' + data.roomId + '?playerId=' + playerId;
     });
 
@@ -1726,6 +1939,7 @@ $(function() {
             timer: 3000,
             showConfirmButton: false
         }).then(() => {
+            allowNavigation = true;
             window.location.href = '/room/' + roomId + '?playerId=' + playerId;
         });
     });
@@ -1735,14 +1949,16 @@ $(function() {
     });
 
     socket.on('countdownUpdate', function(counter) {
-        $('.hidden').hide();
+        console.log('[countdownUpdate] Received counter:', counter);
+        hideAllGameElements();
         updateCountdown(counter);
-        $("#countdown").show();
+        $("#countdown").removeClass('hidden').show();
     });
 
     socket.on('startGame', function() {
-        $('.hidden').hide();
-        $("#countdown").fadeIn();
+        console.log('[startGame event] Received');
+        hideAllGameElements();
+        $("#countdown").removeClass('hidden').fadeIn();
         soundNotify('ding');
     });
 
