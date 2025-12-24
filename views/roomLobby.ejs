@@ -1,0 +1,1007 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Popup แก้ไขห้อง - Modern Style */
+  .room-popup {
+      max-width: 480px !important;
+      border-radius: 20px !important;
+      border: 3px solid #333 !important;
+      background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%) !important;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+  }
+  
+  .room-popup .swal2-title {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      margin: 0 !important;
+      padding: 20px 24px !important;
+      font-family: 'Orbitron', sans-serif !important;
+      font-size: 1.4em !important;
+      font-weight: 700 !important;
+      color: #fff !important;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .room-popup .swal2-html-container {
+      margin: 0 !important;
+      padding: 24px !important;
+      overflow: visible !important;
+  }
+  
+  .room-popup .swal2-actions {
+      padding: 0 24px 24px !important;
+      gap: 12px !important;
+  }
+  
+  .room-form-group {
+      margin-bottom: 20px;
+  }
+  
+  .room-form-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #aaa;
+      font-size: 0.95em;
+      font-family: 'Rajdhani', sans-serif;
+  }
+  
+  .room-form-label .icon {
+      font-size: 1.1em;
+  }
+  
+  .room-form-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #0d0d1a;
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.1em;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+  }
+  
+  .room-form-input:focus {
+      outline: none;
+      border-color: #e74c3c;
+      box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2);
+  }
+  
+  .room-form-input::placeholder {
+      color: #555;
+      font-weight: 400;
+  }
+  
+  /* Slider Style */
+  .room-slider-container {
+      position: relative;
+      padding: 10px 0;
+  }
+  
+  .room-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #333 0%, #333 100%);
+      outline: none;
+      transition: all 0.3s;
+  }
+  
+  .room-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      cursor: pointer;
+      border: 3px solid #fff;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+      transition: all 0.2s;
+  }
+  
+  .room-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+  }
+  
+  .room-slider::-moz-range-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      cursor: pointer;
+      border: 3px solid #fff;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+  }
+  
+  .room-slider-value {
+      position: absolute;
+      right: 0;
+      top: -5px;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 1em;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+  }
+  
+  /* Button Styles */
+  .room-btn-confirm {
+      padding: 14px 28px !important;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+      border: none !important;
+      border-radius: 12px !important;
+      color: #fff !important;
+      font-family: 'Rajdhani', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.1em !important;
+      cursor: pointer;
+      transition: all 0.3s !important;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+  }
+  
+  .room-btn-confirm:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4) !important;
+  }
+  
+  .room-btn-cancel {
+      padding: 14px 28px !important;
+      background: transparent !important;
+      border: 2px solid #555 !important;
+      border-radius: 12px !important;
+      color: #aaa !important;
+      font-family: 'Rajdhani', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 1.1em !important;
+      cursor: pointer;
+      transition: all 0.3s !important;
+  }
+  
+  .room-btn-cancel:hover {
+      border-color: #888 !important;
+      color: #fff !important;
+      background: rgba(255,255,255,0.05) !important;
+  }
+
+  /* Checkbox container for locked room */
+  .room-checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #0d0d1a;
+      border: 2px solid #333;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+  }
+  
+  .room-checkbox-container:hover {
+      border-color: #555;
+  }
+  
+  .room-checkbox-container.checked {
+      border-color: #e74c3c;
+      background: rgba(231, 76, 60, 0.1);
+  }
+  
+  .room-checkbox {
+      display: none;
+  }
+  
+  .room-checkbox-custom {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #555;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: transparent;
+      font-size: 14px;
+      transition: all 0.3s;
+  }
+  
+  .room-checkbox-container.checked .room-checkbox-custom {
+      background: #e74c3c;
+      border-color: #e74c3c;
+      color: #fff;
+  }
+  
+  .room-checkbox-text {
+      flex: 1;
+      font-weight: 600;
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.05em;
+  }
+
+  .room-lobby-container {
+    max-width: 1400px;
+    margin: 20px auto 40px;
+    padding: 10px 20px 30px;
+    font-family: 'Rajdhani', sans-serif;
+    color: #fff;
+    overflow-x: hidden;
+  }
+
+  .room-lobby-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .room-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6em;
+    font-weight: 800;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+  }
+
+  .room-meta {
+    font-size: 0.95em;
+    color: #ddd;
+  }
+
+  .room-meta span {
+    margin-right: 12px;
+  }
+
+  .room-main-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+
+  .room-chat-area {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .lobby-player-list {
+    flex: 0 0 280px;
+    max-width: 300px;
+  }
+
+  .room-card-dark {
+    background: linear-gradient(135deg, #151515 0%, #222 100%);
+    border-radius: 16px;
+    border: 2px solid #444;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    padding: 18px 20px 16px;
+  }
+
+  .room-chat-area.room-card-dark {
+    height: 380px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Mobile responsive for room lobby */
+  @media (max-width: 768px) {
+    .room-main-panel {
+      flex-direction: column;
+    }
+    
+    .room-chat-area {
+      min-width: 100%;
+      height: 280px !important;
+      max-height: 280px;
+    }
+    
+    .lobby-player-list {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
+  }
+
+  .room-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    min-height: 0;
+    max-height: calc(100% - 60px);
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .room-chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  #lobbyChatInput {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #444;
+    background: #111;
+    color: #fff;
+    resize: none;
+    min-height: 34px;
+    max-height: 90px;
+  }
+
+  #lobbyChatInput:focus {
+    outline: none;
+    border-color: #e74c3c;
+  }
+
+  .btn-send-chat {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    background: #e74c3c;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+
+  .btn-send-chat:active {
+    transform: translateY(1px);
+  }
+
+  .lobby-player-list h3 {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+
+  .lobby-player-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #333;
+    font-size: 0.95em;
+  }
+
+  .lobby-player-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .lobby-player-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2ecc71;
+  }
+
+  .lobby-player-name {
+    font-weight: 600;
+  }
+
+  .lobby-player-role {
+    font-size: 0.8em;
+    color: #ffdd59;
+  }
+
+  .lobby-player-admin-badge {
+    font-size: 0.8em;
+    color: #f39c12;
+  }
+
+  .player-action-icons {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .player-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    opacity: 0.7;
+  }
+
+  .player-action-btn:hover {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+
+  .player-action-btn.kick-btn:hover {
+    background: rgba(231, 76, 60, 0.3);
+  }
+
+  .player-action-btn.crown-btn:hover {
+    background: rgba(243, 156, 18, 0.3);
+  }
+
+  .lobby-admin-controls {
+    margin-top: 12px;
+    border-top: 1px solid #333;
+    padding-top: 8px;
+  }
+
+  .lobby-admin-controls h4 {
+    font-size: 1em;
+    margin-bottom: 6px;
+  }
+
+  .btn-admin-small {
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+
+  .btn-kick {
+    background: #e74c3c;
+    color: #fff;
+  }
+
+  .btn-transfer {
+    background: #3498db;
+    color: #fff;
+  }
+
+  .btn-edit-room {
+    background: #f39c12;
+    color: #111;
+  }
+
+  .start-game-bar {
+    margin-top: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .start-game-bar span {
+    font-size: 0.95em;
+    color: #ddd;
+  }
+
+  #btnStartGameLobby {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 1em;
+    cursor: pointer;
+    background: #2ecc71;
+    color: #111;
+  }
+
+  #btnStartGameLobby:disabled {
+    background: #555;
+    color: #aaa;
+    cursor: not-allowed;
+  }
+
+  .chat-msg {
+    margin-bottom: 6px;
+  }
+
+  .chat-msg-meta {
+    font-size: 0.75em;
+    color: #888;
+  }
+</style>
+
+<div class="room-lobby-container">
+  <div class="room-lobby-header">
+    <div>
+      <div class="room-title">🎮 ห้อง: <%= room.name %></div>
+      <div class="room-meta">
+        <span>ID: <strong><%= room.roomId %></strong></span>
+        <span>ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<%= room.maxPlayers %></span>
+        <span>สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
+      </div>
+    </div>
+    <div>
+      <button id="btnLeaveRoom" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif;">← กลับ Room List</button>
+    </div>
+  </div>
+
+  <div class="room-main-panel">
+    <!-- Chat / status -->
+    <div class="room-card-dark room-chat-area">
+      <div style="margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
+        <div>💬 แชทในห้อง</div>
+        <div style="font-size:0.85em; color:#aaa;">คุณ: <span style="color:<%= playerInfo.color %>;"><%= player.name %></span></div>
+      </div>
+      <div id="lobbyChatMessages" class="room-chat-messages"></div>
+      <div class="room-chat-input-row">
+        <textarea id="lobbyChatInput" rows="1" placeholder="พิมพ์ข้อความ..."></textarea>
+        <button id="btnSendLobbyChat" class="btn-send-chat">ส่ง</button>
+      </div>
+      <div class="start-game-bar">
+        <span id="lobbyStatusText">
+          รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม
+        </span>
+        <% if (room.isAdmin) { %>
+          <button id="btnStartGameLobby" disabled>เริ่มเกม</button>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Players / admin controls -->
+    <div class="room-card-dark lobby-player-list">
+      <h3>👥 ผู้เล่นในห้อง</h3>
+      <div id="lobbyPlayers"></div>
+
+      <% if (room.isAdmin) { %>
+      <div class="lobby-admin-controls">
+        <h4>👑 Admin Controls</h4>
+        <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- contentFor('footer') %>
+<!-- ไม่มี footer พิเศษ -->
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  $(function () {
+    const socket = io();
+    const playerId = '<%= player.playerId %>';
+    const roomId = '<%= room.roomId %>';
+    const isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
+
+    function updateStartButtonState(players) {
+      const btn = $('#btnStartGameLobby');
+      if (!btn.length) return;
+      const count = players.length;
+      if (count >= 3) {
+        btn.prop('disabled', false);
+        $('#lobbyStatusText').text('พร้อมแล้ว! กดเริ่มเกมได้เลยเมื่อทุกคนพร้อม');
+      } else {
+        btn.prop('disabled', true);
+        $('#lobbyStatusText').text('รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม');
+      }
+    }
+
+    function renderPlayers(payload) {
+      const players = payload.players || [];
+      const adminId = payload.admin;
+      $('#lobbyPlayerCount').text(payload.playerCount || players.length);
+      $('#lobbyRoomLock').text(payload.locked ? '🔒 ล็อค' : '🔓 เปิด');
+
+      const $list = $('#lobbyPlayers');
+      $list.empty();
+
+      players.forEach(p => {
+        const isAdminPlayer = p.playerId === adminId;
+        const isSelf = p.playerId === playerId;
+        const color = p.color || '#fff';
+        const safeName = $('<div>').text(p.playerName).html();
+
+        // สร้าง action icons สำหรับ admin (ไม่แสดงสำหรับตัวเอง)
+        let actionIcons = '';
+        if (isAdmin && !isSelf) {
+          actionIcons = `
+            <div class="player-action-icons">
+              ${!isAdminPlayer ? `<button class="player-action-btn crown-btn" data-player-id="${p.playerId}" data-player-name="${safeName}" title="โอนสิทธิ์ Admin">👑</button>` : ''}
+              <button class="player-action-btn kick-btn" data-player-id="${p.playerId}" data-player-name="${safeName}" title="เตะผู้เล่น">🚫</button>
+            </div>
+          `;
+        }
+
+        const $row = $(`
+          <div class="lobby-player-item">
+            <div class="lobby-player-main">
+              <span class="lobby-player-dot"></span>
+              <span class="lobby-player-name" style="color:${color};">${safeName}</span>
+              ${isAdminPlayer ? '<span class="lobby-player-admin-badge" style="margin-left:6px;">👑</span>' : ''}
+            </div>
+            ${actionIcons}
+          </div>
+        `);
+        $list.append($row);
+      });
+
+      updateStartButtonState(players);
+    }
+
+    // ===== Socket init =====
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+
+    socket.on('roomUpdate', function (payload) {
+      // รับทุก roomUpdate ที่มาจากห้องนี้ (ไม่ต้องเช็ค roomId เพราะ socket.io จัดการให้แล้ว)
+      if (!payload) return;
+      console.log('[roomUpdate]', payload);
+      renderPlayers(payload);
+    });
+
+    // ถูกเตะออกจากห้อง
+    socket.on('kickedFromRoom', function(data) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ถูกเตะออกจากห้อง',
+        text: data.message || 'คุณถูกเตะออกจากห้องนี้',
+        background: '#1e1e1e',
+        color: '#fff',
+        confirmButtonText: 'ตกลง',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+      }).then(() => {
+        window.location.href = '/rooms?playerId=' + playerId;
+      });
+    });
+
+    // ได้รับ/โอน admin
+    socket.on('adminTransferred', function(data) {
+      Swal.fire({
+        icon: 'success',
+        title: data.message || 'สิทธิ์ Admin เปลี่ยนแปลงแล้ว',
+        background: '#1e1e1e',
+        color: '#fff',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      // รีโหลดหน้าหลังจาก 2 วินาทีเพื่อแสดง UI ใหม่
+      setTimeout(function() {
+        window.location.reload();
+      }, 2000);
+    });
+
+    // ===== Chat =====
+    function appendChatMessage(data) {
+      const $area = $('#lobbyChatMessages');
+      const safeName = $('<div>').text(data.playerName).html();
+      const safeMsg = $('<div>').text(data.message).html();
+      const timestamp = data.timestamp || '';
+      const $msg = $(`
+        <div class="chat-msg">
+          <div><span style="font-weight:700;color:${data.color || '#fff'};">${safeName}</span>: ${safeMsg}</div>
+          <div class="chat-msg-meta">${timestamp}</div>
+        </div>
+      `);
+      $area.append($msg);
+      $area[0].scrollTop = $area[0].scrollHeight;
+    }
+
+    $('#btnSendLobbyChat').on('click', function () {
+      const $input = $('#lobbyChatInput');
+      const msg = $input.val().trim();
+      if (!msg) return;
+      socket.emit('sendMessage', {
+        message: msg,
+        playerName: '<%= player.name %>'
+      });
+      $input.val('');
+    });
+
+    $('#lobbyChatInput').on('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        $('#btnSendLobbyChat').click();
+      }
+    });
+
+    socket.on('newMessage', function (data) {
+      appendChatMessage(data);
+    });
+
+    // ===== Admin actions =====
+    if (isAdmin) {
+      // Kick player via icon
+      $(document).on('click', '.kick-btn', function () {
+        const target = $(this).data('player-id');
+        const playerName = $(this).data('player-name');
+        
+        Swal.fire({
+          icon: 'warning',
+          title: 'เตะผู้เล่น',
+          text: `ต้องการเตะ ${playerName} ออกจากห้องหรือไม่?`,
+          background: '#1e1e1e',
+          color: '#fff',
+          showCancelButton: true,
+          confirmButtonColor: '#e74c3c',
+          cancelButtonColor: '#555',
+          confirmButtonText: 'เตะ',
+          cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            socket.emit('kickPlayer', { targetPlayerId: target }, function (res) {
+              if (!res || !res.success) {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'เตะผู้เล่นไม่สำเร็จ',
+                  text: res && res.error ? res.error : '',
+                  background: '#1e1e1e',
+                  color: '#fff'
+                });
+              }
+            });
+          }
+        });
+      });
+
+      // Transfer admin via icon
+      $(document).on('click', '.crown-btn', function () {
+        const target = $(this).data('player-id');
+        const playerName = $(this).data('player-name');
+        
+        Swal.fire({
+          icon: 'question',
+          title: 'โอนสิทธิ์ Admin',
+          text: `ต้องการให้ ${playerName} เป็น Admin หรือไม่?`,
+          background: '#1e1e1e',
+          color: '#fff',
+          showCancelButton: true,
+          confirmButtonColor: '#f39c12',
+          cancelButtonColor: '#555',
+          confirmButtonText: 'โอนสิทธิ์',
+          cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            socket.emit('transferAdmin', { newAdminPlayerId: target }, function (res) {
+              if (!res || !res.success) {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'โอนสิทธิไม่สำเร็จ',
+                  text: res && res.error ? res.error : '',
+                  background: '#1e1e1e',
+                  color: '#fff'
+                });
+              }
+              // Success handled by adminTransferred event
+            });
+          }
+        });
+      });
+
+      $('#btnEditRoom').on('click', function () {
+        const currentMaxPlayers = <%= room.maxPlayers %>;
+        const currentRoundTime = <%= room.roundTime %>;
+        const currentLocked = <%= room.locked ? 'true' : 'false' %>;
+        const currentPassword = '<%= room.password %>';
+        
+        Swal.fire({
+          title: '⚙️ แก้ไขห้อง',
+          customClass: {
+            popup: 'room-popup',
+            confirmButton: 'room-btn-confirm',
+            cancelButton: 'room-btn-cancel'
+          },
+          html: `
+            <div style="font-family: 'Rajdhani', sans-serif;">
+              <div class="room-form-group">
+                <label class="room-form-label">
+                  <span class="icon">📝</span> ชื่อห้อง:
+                </label>
+                <input id="editRoomName" class="room-form-input" value="<%= room.name %>" placeholder="กรอกชื่อห้อง..." maxlength="20">
+              </div>
+              
+              <div class="room-form-group">
+                <label class="room-form-label">
+                  <span class="icon">👥</span> จำนวนผู้เล่นสูงสุด:
+                </label>
+                <div class="room-slider-container">
+                  <span class="room-slider-value" id="editMaxPlayersValue">${currentMaxPlayers}</span>
+                  <input type="range" id="editMaxPlayers" class="room-slider" min="3" max="10" value="${currentMaxPlayers}">
+                </div>
+              </div>
+              
+              <div class="room-form-group">
+                <label class="room-form-label">
+                  <span class="icon">⏱️</span> เวลาเล่นต่อรอบ:
+                </label>
+                <div class="room-slider-container">
+                  <span class="room-slider-value" id="editRoundTimeValue">${currentRoundTime} นาที</span>
+                  <input type="range" id="editRoundTime" class="room-slider" min="1" max="10" value="${currentRoundTime}">
+                </div>
+              </div>
+              
+              <div class="room-form-group">
+                <label class="room-form-label">
+                  <span class="icon">🔐</span> ความปลอดภัย:
+                </label>
+                <div class="room-checkbox-container ${currentLocked ? 'checked' : ''}" id="editLockedContainer">
+                  <input type="checkbox" id="editLocked" class="room-checkbox" ${currentLocked ? 'checked' : ''}>
+                  <div class="room-checkbox-custom">✓</div>
+                  <span class="room-checkbox-text">🔒 ล็อคห้อง (ต้องใช้รหัสผ่าน)</span>
+                </div>
+              </div>
+              
+              <div class="room-form-group" id="editPasswordGroup" style="display: ${currentLocked ? 'block' : 'none'};">
+                <label class="room-form-label">
+                  <span class="icon">🔑</span> รหัสผ่าน:
+                </label>
+                <input id="editPassword" class="room-form-input" placeholder="รหัสผ่าน 4 หลัก" maxlength="4" pattern="[0-9]*" inputmode="numeric" value="${currentPassword}">
+              </div>
+            </div>
+          `,
+          background: 'transparent',
+          showCancelButton: true,
+          confirmButtonText: '✅ บันทึก',
+          cancelButtonText: '❌ ยกเลิก',
+          focusConfirm: false,
+          didOpen: () => {
+            // Slider handlers
+            const maxPlayersSlider = document.getElementById('editMaxPlayers');
+            const maxPlayersValue = document.getElementById('editMaxPlayersValue');
+            const roundTimeSlider = document.getElementById('editRoundTime');
+            const roundTimeValue = document.getElementById('editRoundTimeValue');
+            
+            maxPlayersSlider.addEventListener('input', function() {
+              maxPlayersValue.textContent = this.value;
+              updateSliderBackground(this);
+            });
+            
+            roundTimeSlider.addEventListener('input', function() {
+              roundTimeValue.textContent = this.value + ' นาที';
+              updateSliderBackground(this);
+            });
+            
+            function updateSliderBackground(slider) {
+              const percent = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+              slider.style.background = `linear-gradient(90deg, #e74c3c 0%, #e74c3c ${percent}%, #333 ${percent}%, #333 100%)`;
+            }
+            
+            updateSliderBackground(maxPlayersSlider);
+            updateSliderBackground(roundTimeSlider);
+            
+            // Lock checkbox handler
+            const lockedContainer = document.getElementById('editLockedContainer');
+            const lockedCheckbox = document.getElementById('editLocked');
+            const passwordGroup = document.getElementById('editPasswordGroup');
+            
+            lockedContainer.addEventListener('click', function() {
+              lockedCheckbox.checked = !lockedCheckbox.checked;
+              this.classList.toggle('checked', lockedCheckbox.checked);
+              passwordGroup.style.display = lockedCheckbox.checked ? 'block' : 'none';
+              if (!lockedCheckbox.checked) {
+                document.getElementById('editPassword').value = '';
+              }
+            });
+          },
+          preConfirm: () => {
+            const name = document.getElementById('editRoomName').value.trim();
+            const maxPlayers = parseInt(document.getElementById('editMaxPlayers').value, 10);
+            const roundTime = parseInt(document.getElementById('editRoundTime').value, 10);
+            const locked = document.getElementById('editLocked').checked;
+            const password = document.getElementById('editPassword').value.trim();
+            
+            if (!name) {
+              Swal.showValidationMessage('กรุณากรอกชื่อห้อง');
+              return false;
+            }
+            
+            if (locked && (!password || !/^\d{4}$/.test(password))) {
+              Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');
+              return false;
+            }
+            
+            return {
+              name,
+              maxPlayers,
+              roundTime,
+              locked,
+              password: locked ? password : ''
+            };
+          }
+        }).then(result => {
+          if (result.isConfirmed && result.value) {
+            socket.emit('updateRoom', result.value, function (res) {
+              if (!res || !res.success) {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'แก้ไขห้องไม่สำเร็จ',
+                  text: res && res.error ? res.error : '',
+                  background: '#1e1e1e',
+                  color: '#fff'
+                });
+              } else {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'บันทึกสำเร็จ',
+                  background: '#1e1e1e',
+                  color: '#fff',
+                  timer: 1500,
+                  showConfirmButton: false
+                }).then(() => {
+                  window.location.reload();
+                });
+              }
+            });
+          }
+        });
+      });
+
+      $('#btnStartGameLobby').on('click', function () {
+        const btn = $(this);
+        if (btn.data('loading')) return;
+        btn.data('loading', true);
+        btn.text('กำลังเริ่มเกม...');
+        socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
+          btn.data('loading', false);
+          btn.text('🎮 เริ่มเกม');
+          if (!res || !res.success) {
+            Swal.fire({
+              icon: 'error',
+              title: 'เริ่มเกมไม่สำเร็จ',
+              text: res && res.error ? res.error : 'เกิดข้อผิดพลาด',
+              background: '#1e1e1e',
+              color: '#fff'
+            });
+          }
+        });
+      });
+    }
+
+    // ปุ่มออกห้อง - emit leaveRoom แล้วรอ callback ก่อน redirect
+    $('#btnLeaveRoom').on('click', function() {
+      Swal.fire({
+        icon: 'question',
+        title: 'ออกจากห้อง?',
+        text: 'คุณต้องการออกจากห้องนี้หรือไม่?',
+        background: '#1e1e1e',
+        color: '#fff',
+        showCancelButton: true,
+        confirmButtonColor: '#e74c3c',
+        cancelButtonColor: '#555',
+        confirmButtonText: 'ออกจากห้อง',
+        cancelButtonText: 'ยกเลิก'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // แสดง loading
+          Swal.fire({
+            title: 'กำลังออกจากห้อง...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            background: '#1e1e1e',
+            color: '#fff',
+            didOpen: () => { Swal.showLoading(); }
+          });
+          
+          // emit leaveRoom พร้อม callback
+          socket.emit('leaveRoom', {}, function(response) {
+            window.location.href = '/rooms?playerId=' + playerId;
+          });
+          
+          // Fallback: ถ้าไม่ได้รับ callback ใน 2 วินาที ให้ redirect เลย
+          setTimeout(function() {
+            window.location.href = '/rooms?playerId=' + playerId;
+          }, 2000);
+        }
+      });
+    });
+
+    // ทุกคนใน room รับ event นี้เมื่อเกมเริ่ม
+    socket.on('gameStarted', function (data) {
+      // เปลี่ยนไปหน้า board.ejs
+      window.location.href = '/game/' + roomId + '?playerId=' + playerId;
+    });
+  });
+</script>
+

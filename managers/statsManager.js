@@ -1,0 +1,222 @@
+/**
+ * StatsManager - จัดการสถิติผู้เล่น
+ * - บันทึกสถิติเมื่อเกมจบ
+ * - เก็บข้อมูล: totalGames, wins, losses, roleStats, winByRole
+ * - ใช้ playerId เป็น key
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const STATS_FILE = path.join(__dirname, '../data/playerStats.json');
+
+// เก็บสถิติใน memory (key: playerId)
+const stats = new Map();
+
+// สร้างโฟลเดอร์ data ถ้ายังไม่มี
+const dataDir = path.dirname(STATS_FILE);
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+/**
+ * โหลดสถิติจากไฟล์
+ */
+function loadStats() {
+    if (fs.existsSync(STATS_FILE)) {
+        try {
+            const data = fs.readFileSync(STATS_FILE, 'utf8');
+            const statsData = JSON.parse(data);
+            // โหลดเข้า Map
+            for (const [playerId, stat] of Object.entries(statsData)) {
+                stats.set(playerId, stat);
+            }
+            console.log(`Loaded stats for ${stats.size} players`);
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+}
+
+/**
+ * บันทึกสถิติลงไฟล์
+ */
+function saveStats() {
+    try {
+        const statsData = {};
+        for (const [playerId, stat] of stats.entries()) {
+            statsData[playerId] = stat;
+        }
+        fs.writeFileSync(STATS_FILE, JSON.stringify(statsData, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error saving stats:', error);
+    }
+}
+
+/**
+ * สร้างสถิติเริ่มต้นสำหรับผู้เล่น
+ */
+function initializeStats(playerId, playerName) {
+    if (!stats.has(playerId)) {
+        stats.set(playerId, {
+            playerId,
+            playerName,
+            totalGames: 0,
+            wins: 0,
+            losses: 0,
+            roleStats: {
+                gameMasterCount: 0,
+                traitorCount: 0,
+                citizenCount: 0
+            },
+            winByRole: {
+                winAsTraitor: 0,
+                winAsCitizen: 0
+            },
+            lastPlayedAt: null
+        });
+    }
+    return stats.get(playerId);
+}
+
+/**
+ * บันทึกสถิติเมื่อเกมจบ
+ * @param {string} roomId - ID ของห้อง
+ * @param {Object} gameResult - ผลการเล่นเกม { resultVote2, players }
+ */
+function recordGameEnd(roomId, gameResult) {
+    const { resultVote2, players } = gameResult;
+    
+    if (!resultVote2 || !players) {
+        console.warn('Invalid game result data');
+        return;
+    }
+
+    const hasWon = resultVote2.hasWon; // true = พลเมืองชนะ, false = ผู้ทรยศชนะ
+
+    // อัปเดตสถิติสำหรับทุกผู้เล่นในเกม
+    players.forEach(player => {
+        // player ต้องมี playerId และ role
+        if (!player.playerId || !player.role) return;
+
+        const playerId = player.playerId;
+        const role = player.role;
+        const stat = initializeStats(playerId, player.playerName || player.name);
+
+        // อัปเดต totalGames
+        stat.totalGames += 1;
+
+        // ตรวจสอบว่าเป็นผู้ชนะหรือไม่ (ตาม role)
+        if (role === 'ผู้ทรยศ') {
+            // ผู้ทรยศชนะ = พลเมืองแพ้
+            if (!hasWon) {
+                stat.wins += 1;
+                stat.winByRole.winAsTraitor += 1;
+            } else {
+                stat.losses += 1;
+            }
+            stat.roleStats.traitorCount += 1;
+        } else if (role === 'ผู้ดำเนินเกม') {
+            // GM ไม่นับเป็น win/loss แต่บันทึก role
+            stat.roleStats.gameMasterCount += 1;
+            // GM ถือว่าชนะถ้าพลเมืองชนะ
+            if (hasWon) {
+                stat.wins += 1;
+            } else {
+                stat.losses += 1;
+            }
+        } else {
+            // พลเมือง (หรือ defaultRole)
+            if (hasWon) {
+                stat.wins += 1;
+                stat.winByRole.winAsCitizen += 1;
+            } else {
+                stat.losses += 1;
+            }
+            stat.roleStats.citizenCount += 1;
+        }
+
+        // อัปเดต lastPlayedAt
+        stat.lastPlayedAt = new Date().toISOString();
+    });
+
+    // บันทึกลงไฟล์
+    saveStats();
+}
+
+/**
+ * ดึงสถิติผู้เล่น
+ */
+function getStats(playerId) {
+    if (!stats.has(playerId)) {
+        return initializeStats(playerId, 'Unknown');
+    }
+    return stats.get(playerId);
+}
+
+/**
+ * อัปเดตชื่อผู้เล่นในสถิติ (เมื่อผู้เล่นเปลี่ยนชื่อ)
+ */
+function updatePlayerNameInStats(playerId, newName) {
+    if (stats.has(playerId)) {
+        stats.get(playerId).playerName = newName;
+        saveStats();
+    }
+}
+
+/**
+ * ดึงสถิติทั้งหมด (สำหรับ admin/dashboard)
+ */
+function getAllStats() {
+    return Array.from(stats.values());
+}
+
+/**
+ * รีเซ็ตสถิติผู้เล่น (สำหรับ admin)
+ */
+function resetPlayerStats(playerId) {
+    if (stats.has(playerId)) {
+        const stat = stats.get(playerId);
+        stat.totalGames = 0;
+        stat.wins = 0;
+        stat.losses = 0;
+        stat.roleStats = {
+            gameMasterCount: 0,
+            traitorCount: 0,
+            citizenCount: 0
+        };
+        stat.winByRole = {
+            winAsTraitor: 0,
+            winAsCitizen: 0
+        };
+        stat.lastPlayedAt = null;
+        saveStats();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * ลบสถิติผู้เล่น (สำหรับ admin)
+ */
+function deletePlayerStats(playerId) {
+    if (stats.has(playerId)) {
+        stats.delete(playerId);
+        saveStats();
+        return true;
+    }
+    return false;
+}
+
+// โหลดสถิติเมื่อเริ่มต้น
+loadStats();
+
+module.exports = {
+    recordGameEnd,
+    getStats,
+    updatePlayerNameInStats,
+    getAllStats,
+    resetPlayerStats,
+    deletePlayerStats,
+    saveStats
+};

@@ -1,0 +1,60 @@
+<%- contentFor('content') %>
+<h2>รายชื่อผู้เล่น</h2>
+
+<ul id="playerList">
+    <% players.forEach(function(player, index) { %>
+        <li><%= player.name %> <a href="/deletePlayer?player=<%= player.name %>" class="remove"><i class="far fa-trash-alt"></i></a></li>
+    <% }); %>
+</ul>
+
+<form id="roundTimeForm" method="post" action="/setRoundTime">
+    <div class="form-group">
+        <label for="roundTime">ตั้งเวลาต่อรอบ (วินาที)</label>
+        <select name="roundTime" id="roundTime" class="form-control" style="width: 30%; display: inline;">
+            <option value="60" <% if (settings && settings.roundTime == 60) { %>selected<% } %>>1 นาที</option>
+            <option value="120" <% if (settings && settings.roundTime == 120) { %>selected<% } %>>2 นาที</option>
+            <option value="180" <% if (settings && settings.roundTime == 180) { %>selected<% } %>>3 นาที</option>
+            <option value="300" <% if (!settings || settings.roundTime == 300) { %>selected<% } %>>5 นาที</option>
+            <option value="360" <% if (settings && settings.roundTime == 360) { %>selected<% } %>>6 นาที</option>
+            <option value="420" <% if (settings && settings.roundTime == 420) { %>selected<% } %>>7 นาที</option>
+            <option value="480" <% if (settings && settings.roundTime == 480) { %>selected<% } %>>8 นาที</option>
+            <option value="600" <% if (settings && settings.roundTime == 600) { %>selected<% } %>>10 นาที</option>
+        </select>
+        <button type="submit" class="btn btn-primary">บันทึก</button>
+    </div>
+</form>
+
+<form id="playerAddForm" method="post" name="playerForm" action="addPlayer">
+    <div class="form-group">
+        <label for="playerName">เพิ่มผู้เล่น</label>
+        <p>
+            <input type="checkbox" name="admin" /> ผู้ดูแลระบบ
+        </p> 
+        <input type="text" name="player" class="form-control" id="playerName" style="width: 60%; display: inline;" placeholder="ชื่อผู้เล่น">
+        <button type="submit" class="btn btn-warning">เพิ่ม</button>
+    </div>
+    <div class="info">
+        <p>
+            ผู้ดูแลระบบจะเป็นผู้ดำเนินเกมเพื่อเรียกใช้การดำเนินการต่อไปนี้:
+            <ul>
+                <li>สุ่มบทบาท</li>
+                <li>เริ่มจับเวลา</li>
+                <li>หยุดจับเวลา</li>
+                <li>เริ่มการโหวต</li>
+            </ul>
+        </p>
+    </div>
+</form>
+
+<%- contentFor('footer') %>
+<div class="container">
+    <a href='/' class="btn btn-dark cta" id="newGame">กลับไปที่เกม</a>
+</div>
+
+<%- contentFor('script') %>
+<script>
+    $(function() {
+        
+    });
+</script>
+</html>

@@ -1,0 +1,76 @@
+<%- contentFor('body') %>
+<style>
+    .error-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80vh;
+        text-align: center;
+        padding: 20px;
+    }
+    .error-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+    }
+    .error-title {
+        font-size: 2.5em;
+        color: #e74c3c;
+        margin-bottom: 10px;
+    }
+    .error-message {
+        font-size: 1.2em;
+        color: #bbb;
+        margin-bottom: 30px;
+    }
+    .error-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.1em;
+        border-radius: 30px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-decoration: none;
+    }
+    .error-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    .countdown {
+        font-size: 1em;
+        color: #888;
+        margin-top: 20px;
+    }
+    .countdown span {
+        color: #f39c12;
+        font-weight: bold;
+    }
+</style>
+
+<div class="error-container">
+    <div class="error-icon">🚫</div>
+    <h1 class="error-title">404</h1>
+    <p class="error-message"><%= message %></p>
+    <a href="<%= redirectUrl %>" class="error-btn">🏠 กลับหน้าแรก</a>
+    <p class="countdown">กำลังพาคุณกลับหน้าแรกใน <span id="countdown">5</span> วินาที...</p>
+</div>
+
+<%- contentFor('script') %>
+<script>
+    var countdown = 5;
+    var redirectUrl = '<%= redirectUrl %>';
+    
+    var countdownInterval = setInterval(function() {
+        countdown--;
+        document.getElementById('countdown').textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            window.location.href = redirectUrl;
+        }
+    }, 1000);
+</script>

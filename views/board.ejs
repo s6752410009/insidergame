@@ -1,0 +1,2020 @@
+<%- contentFor('content') %>
+<div class="player">
+    <div class="playerStatus"></div>
+    เริ่มเกมแล้ว <strong style="color: <%= playerInfo.color %>;"><%= player.name %></strong> !
+</div>
+<!-- Room Info - แยกบรรทัด -->
+<div style="text-align: center; margin-top: 5px; margin-bottom: 10px;">
+    <div style="padding: 12px 20px; background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border: 2px solid #444; border-radius: 10px; display: inline-block; color: #fff; font-family: 'Rajdhani', sans-serif;">
+        <strong style="color: #f39c12;">🎮 ห้อง:</strong> <%= room.name %> (ID: <%= room.roomId %>) | 
+        <strong style="color: #3498db;">👥 ผู้เล่น:</strong> <%= room.playerCount %>/<%= room.maxPlayers %>
+        <% if (room.admin) { %>
+            | <span style="color: #e74c3c;">👑 Admin</span>
+        <% } %>
+    </div>
+</div>
+<!-- Connection Status Indicator -->
+<div id="connectionStatus" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #f39c12; color: #000; padding: 8px 16px; border-radius: 20px; display: none; z-index: 10001; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">กำลัง reconnect...</div>
+
+<!-- ปุ่มสำหรับเปิด/ปิดแถบข้าง -->
+<button id="toggleSidebarBtn" class="btn btn-secondary">
+    <i class="fas fa-users"></i> ผู้เล่นออนไลน์
+</button>
+
+<!-- แถบข้างสำหรับแสดงรายชื่อผู้เล่นที่ออนไลน์ -->
+<div id="playerSidebar">
+    <div id="onlinePlayers">
+        <h4>ผู้เล่นในห้อง:</h4>
+        <ul id="onlinePlayerList">
+            <!-- รายชื่อผู้เล่นจะถูกแทรกโดย JavaScript -->
+        </ul>
+        <% if (room.admin) { %>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                <h5>Admin Controls</h5>
+                <button id="updateRoomBtn" class="btn btn-sm btn-warning" style="width: 100%; margin-bottom: 5px;">⚙️ แก้ไขห้อง</button>
+                <button id="transferAdminBtn" class="btn btn-sm btn-info" style="width: 100%; margin-bottom: 5px;">👑 โอนสิทธิ Admin</button>
+                <div id="kickPlayerSection" style="margin-top: 10px;">
+                    <label style="font-size: 0.9em;">เตะผู้เล่น:</label>
+                    <select id="kickPlayerSelect" class="form-control form-control-sm" style="margin-bottom: 5px;">
+                        <option value="">เลือกผู้เล่น...</option>
+                    </select>
+                    <button id="kickPlayerBtn" class="btn btn-sm btn-danger" style="width: 100%;">🚫 เตะ</button>
+                </div>
+            </div>
+        <% } %>
+        <!-- ปุ่มออกจากห้อง - ทุกคนใช้ได้ -->
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #555;">
+            <button id="leaveRoomBtn" class="btn btn-sm btn-outline-danger" style="width: 100%;">🚪 ออกจากห้อง</button>
+        </div>
+        <button id="closeSidebarBtn" class="btn btn-sm btn-secondary mt-3">ปิด</button>
+    </div>
+</div>
+<!-- Overlay สำหรับเมื่อแถบข้างเปิดอยู่ -->
+<div id="sidebarOverlay"></div>
+
+
+<div id="waiting" class="hidden <% if (status === '') { %>current<% } %>">
+    <p>รอให้ทุกคนพร้อม ...</p>
+</div>
+
+<div id="reset">
+    <p class="role hidden <% if (status == 'role') { %>appear<% } %>">คุณคือ <strong><%= player.role %></strong></p>
+</div>
+
+<div id="chooseWord" class="hidden <% if (status == 'role' && player.role === 'ผู้ดำเนินเกม') { %>current<% } %>">
+    <form id="wordForm" method="post" name="wordForm" action="setWord" autocomplete="off">
+        <div class="form-group">
+            <input type="text" name="word" class="form-control" id="wordInput" style="width: 60%; display: inline;" placeholder="คำที่ต้องการให้ทาย" />
+            <button type="submit" class="btn btn-warning">ส่ง</button>
+            <small class="form-text">กดส่งเลยถ้าคิดคำไม่ออก เราคิดให้</small>
+        </div>
+    </form>
+</div>
+
+<div id="reveal">
+    <% if (player.role === 'ผู้ดำเนินเกม') { %>
+        <button class="btn btn-warning cta hidden">เปิดเผยคำ</button>
+    <% } %>
+    <div id="word" class="hidden"></div>
+</div>
+
+<div id="startGame" class="hidden">
+    <% if (player.permission == 'admin') { %>
+        <a href=""><i class="fas fa-play-circle"></i></a>
+    <% } %>
+</div>
+
+<div id="countdown" class="hidden">
+    <span id="timer"></span>
+    <% if (player.permission == 'admin') { %>
+        <a href=""><i class="fas fa-stop-circle"></i></a>
+    <% } %>
+</div>
+
+<div id="voteForm">
+    <% if (player.permission == 'admin') { %>
+        <button id="displayVote1" class="btn btn-warning cta hidden">โหวต</button>
+    <% } %>
+    <div id="vote1" class="hidden">
+        <h4>คุณคิดว่าคนที่ทายคำได้คือผู้ทรยศหรือไม่?</h4>
+        <button data-vote="1" class="btn btn-warning"><i class="fas fa-thumbs-up"></i></button>
+        <button data-vote="0" class="btn btn-warning"><i class="fas fa-thumbs-down"></i></button>
+    </div>
+    <div id="vote1Result" class="hidden">
+        <h4>ผลการโหวต</h4>
+        <span class="resultUp">
+            <strong>
+                <% if(resultVote1 !== null) {%><%= resultVote1.up %><% } %>
+            </strong> <i class="fas fa-thumbs-up"></i>
+        </span>
+        <span class="resultDown">
+            <strong>
+                <% if(resultVote1 !== null) {%><%= resultVote1.down %><% } %>
+            </strong> <i class="fas fa-thumbs-down"></i>
+        </span>
+    </div>
+    <% if (player.permission == 'admin') { %>
+        <button id="displayVote2" class="btn btn-warning cta hidden">โหวต</button>
+    <% } %>
+    <div id="vote2" class="hidden">
+        <h4>โหวตรอบ 2</h4>        
+        <h4>คิดว่าใครคือผู้ทรยศ?</h4>
+        <form class="inline-block" id="playerChoiceForm" method="post" name="playerForm" action="game">
+            <div class="choices"></div>
+            <button class="btn btn-warning">โหวต</button>
+        </form>
+    </div>
+    <div id="vote2Result" class="hidden">
+        <h4>ผลการโหวต</h4>
+        <ul id="playerList"></ul>
+        <p id="finalResult"></p>
+    </div>
+</div>
+
+<div id="status" class="hidden">
+    <p>กำลังรอ <strong>ผู้ดำเนินเกม</strong> หรือ <strong> แอดมิน </strong> ...</p>
+</div>
+
+
+
+<!-- CHAT UI (re-styled) -->
+<div id="chatBox" class="chat-box" aria-hidden="true" style="display:none;">
+    <div class="chat-header">
+        <div class="chat-title">💬 CHAT</div>
+        <button id="closeChat" class="chat-close" aria-label="Close chat">✕</button>
+    </div>
+    
+    <!-- ย้าย replyPreview มาไว้ที่นี่ -->
+    <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+        <div class="reply-content">
+            <span class="reply-indicator">ตอบกลับ </span>
+            <span class="reply-player-name"></span>: 
+            <span class="reply-message-content"></span>
+        </div>
+        <button class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+    </div>
+
+    <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+    
+    <% if (player.role === 'ผู้ดำเนินเกม') { %>
+    <!-- ปุ่มตอบด่วนสำหรับผู้ดำเนินเกม -->
+    <div class="gm-quick-reply">
+        <span class="gm-quick-label">🎭 ตอบด่วน:</span>
+        <button class="gm-reply-btn gm-yes" data-reply="yes" title="ใช่">✅ ใช่</button>
+        <button class="gm-reply-btn gm-no" data-reply="no" title="ไม่ใช่">❌ ไม่ใช่</button>
+        <button class="gm-reply-btn gm-maybe" data-reply="maybe" title="อาจจะ">🤔 อาจจะ</button>
+    </div>
+    <% } %>
+    
+    <!-- ย้าย chat-input-wrap มาไว้ที่นี่ (ด้านล่างสุด) -->
+    <div class="chat-input-wrap">
+        <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+        <button id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+    </div>
+</div>
+
+<button id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+    CHAT <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<!-- 🔔 Notification Center (เปลี่ยนชื่อจากเดิม) -->
+<div id="notificationCenter" class="notification-center"></div>
+
+<%- contentFor('footer') %>
+<!-- Return to Lobby Popup (สำหรับทุกคน) -->
+<div id="returnToLobbyModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:999999; align-items:center; justify-content:center;">
+    <div style="background:#222; color:#fff; padding:32px 48px; border-radius:12px; text-align:center; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+        <h3 style="margin-bottom:16px;">🎮 จบเกมแล้ว!</h3>
+        <p style="font-size:18px; margin-bottom:12px;">กำลังพาท่านกลับ Lobby...</p>
+        <p style="font-size:24px; font-weight:bold; color:#f39c12;" id="returnCountdown">5</p>
+    </div>
+</div>
+
+<% if (player.permission == 'admin') { %>
+<div id="adminRevealModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center;">
+    <div style="background:#fff; padding:24px; border-radius:8px; min-width:300px; max-width:90vw; margin:40px auto;">
+        <h4>คำที่ต้องทาย: <span id="modalWord"></span></h4>
+        <h5>บทบาทผู้เล่น</h5>
+        <ul id="modalRoles"></ul>
+        <button id="closeAdminReveal" class="btn btn-danger">ปิด</button>
+    </div>
+</div>
+<% } %>
+
+<%- contentFor('style') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    /* Popup แก้ไขห้อง - Modern Style */
+    .room-popup {
+        max-width: 480px !important;
+        border-radius: 20px !important;
+        border: 3px solid #333 !important;
+        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%) !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    
+    .room-popup .swal2-title {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        margin: 0 !important;
+        padding: 20px 24px !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 1.4em !important;
+        font-weight: 700 !important;
+        color: #fff !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .room-popup .swal2-html-container {
+        margin: 0 !important;
+        padding: 24px !important;
+        overflow: visible !important;
+    }
+    
+    .room-popup .swal2-actions {
+        padding: 0 24px 24px !important;
+        gap: 12px !important;
+    }
+    
+    .room-form-group {
+        margin-bottom: 20px;
+    }
+    
+    .room-form-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #aaa;
+        font-size: 0.95em;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .room-form-label .icon {
+        font-size: 1.1em;
+    }
+    
+    .room-form-input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #333;
+        border-radius: 12px;
+        background: #0d0d1a;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1em;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+    
+    .room-form-input:focus {
+        outline: none;
+        border-color: #e74c3c;
+        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2);
+    }
+    
+    .room-form-input::placeholder {
+        color: #555;
+        font-weight: 400;
+    }
+    
+    /* Slider Style */
+    .room-slider-container {
+        position: relative;
+        padding: 10px 0;
+    }
+    
+    .room-slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #333 0%, #333 100%);
+        outline: none;
+        transition: all 0.3s;
+    }
+    
+    .room-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        cursor: pointer;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        transition: all 0.2s;
+    }
+    
+    .room-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+    }
+    
+    .room-slider::-moz-range-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        cursor: pointer;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+    }
+    
+    .room-slider-value {
+        position: absolute;
+        right: 0;
+        top: -5px;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1em;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+    
+    /* Button Styles */
+    .room-btn-confirm {
+        padding: 14px 28px !important;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        color: #fff !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 1.1em !important;
+        cursor: pointer;
+        transition: all 0.3s !important;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+    
+    .room-btn-confirm:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4) !important;
+    }
+    
+    .room-btn-cancel {
+        padding: 14px 28px !important;
+        background: transparent !important;
+        border: 2px solid #555 !important;
+        border-radius: 12px !important;
+        color: #aaa !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 1.1em !important;
+        cursor: pointer;
+        transition: all 0.3s !important;
+    }
+    
+    .room-btn-cancel:hover {
+        border-color: #888 !important;
+        color: #fff !important;
+        background: rgba(255,255,255,0.05) !important;
+    }
+</style>
+         
+<%- contentFor('script') %>
+<style>
+    /* CSS สำหรับแถบข้างผู้เล่น */
+    #playerSidebar {
+        position: fixed;
+        top: 0;
+        right: 0;          /* ตรึงที่ขอบขวา */
+        width: 240px;
+        height: 100%;
+        background-color: #2d2d2d;
+        color: #fff;
+        padding: 15px;
+        box-shadow: -3px 0 10px rgba(0,0,0,0.3);
+        z-index: 10002;
+        transition: transform 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        overflow-y: auto;
+        transform: translateX(100%);  /* เลื่อนไปนอกจอ */
+        opacity: 0;                    /* ไม่ให้มองเห็น */
+        pointer-events: none;          /* ห้ามคลิกตอนปิด */
+    }
+
+    #playerSidebar.open {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #onlinePlayers {
+        padding: 0; 
+        padding-top: 10px;
+    }
+
+    #onlinePlayers h4 {
+        color: #fff;
+        margin-bottom: 15px;
+        font-size: 1.1em;
+    }
+
+    #onlinePlayerList {
+        list-style-type: none;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+
+    #onlinePlayerList li {
+        margin-bottom: 8px;
+        font-size: 0.95em;
+        display: flex;
+        align-items: center;
+    }
+
+    #onlinePlayerList li i {
+        margin-right: 8px;
+        font-size: 0.7em;
+    }
+
+    .status-online {
+        color: #28a745;
+    }
+
+    .status-disconnected {
+        color: #ffc107;
+    }
+
+    /* CSS สำหรับปุ่มเปิด/ปิดแถบข้าง - ปุ่มเล็กๆ มุมขวาบน */
+    #toggleSidebarBtn {
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        z-index: 10001;
+        background-color: #343a40;
+        color: #fff;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.75em;
+        white-space: nowrap;
+    }
+
+    #toggleSidebarBtn i {
+        margin-right: 4px;
+    }
+
+    /* CSS สำหรับ Overlay */
+    #sidebarOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 10000;
+        display: none;
+    }
+
+    /* ปรับแต่งสำหรับมือถือ */
+    @media (max-width: 768px) {
+        #playerSidebar {
+            width: 85%;
+            max-width: 280px;
+            right: -85%;
+        }
+
+        #playerSidebar.open {
+            right: 0;
+        }
+
+        #toggleSidebarBtn {
+            top: auto;
+            bottom: 75px;
+            right: 10px;
+            padding: 8px 12px;
+            font-size: 0.7em;
+            border-radius: 20px;
+        }
+
+        #onlinePlayerList li {
+            font-size: 0.85em;
+        }
+    }
+
+    /* CSS สำหรับแชท */
+    /* Chat styles */
+.chat-box {
+    position: fixed;
+    bottom: 100px;
+    right: 15px;
+    width: 380px;
+    max-width: 95vw;
+    height: 450px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    border: 2px solid #333;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    overflow: hidden;
+    z-index: 10003;
+    display: none;
+    font-family: 'Rajdhani', sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    border-bottom: none;
+    font-weight:700;
+    font-size: 1rem;
+}
+
+.chat-title {
+    letter-spacing: 0.06em;
+    color: #fff;
+}
+
+.chat-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.chat-close:hover { background: rgba(255,255,255,0.3); }
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: #fff;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Base style for each message wrapper (div.chat-message-wrapper) */
+.chat-message-wrapper {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+    max-width: 80%; /* Limit bubble width */
+}
+
+/* Align other messages (default) to the left */
+.chat-message-wrapper.other {
+    align-self: flex-start;
+    text-align: left;
+}
+
+/* Align self messages to the right */
+.chat-message-wrapper.self {
+    align-self: flex-end;
+    text-align: right;
+}
+
+/* Style for the message bubble itself */
+.chat-message-bubble {
+    padding: 8px 12px;
+    border-radius: 18px;
+    word-wrap: break-word;
+    background-color: #2d3748; /* Dark background for others */
+    color: #fff;
+    font-size: 0.9em;
+    line-height: 1.4;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    display: inline-block; /* Make bubble adapt to content */
+}
+
+/* Distinct color for self message bubble */
+.chat-message-wrapper.self .chat-message-bubble {
+    background-color: #e74c3c; /* Red for self */
+    color: #fff;
+}
+
+/* Style for timestamp/info */
+.chat-message-info {
+    font-size: 0.75em;
+    color: #aaa;
+    margin-top: 2px;
+    /* Aligned by parent .chat-message-wrapper */
+}
+
+/* Adjust info color for self messages */
+.chat-message-wrapper.self .chat-message-info {
+    color: #ccc; /* Lighter for self info */
+}
+
+/* Style for player name inside bubble */
+.chat-message-name {
+    font-weight: bold;
+    margin-right: 5px;
+    font-size: 0.85em;
+    display: inline; /* Keep name on same line as message text */
+    color: #fff;
+}
+
+/* Adjust name color for self messages to ensure readability */
+.chat-message-wrapper.self .chat-message-name {
+    color: #fff;
+}
+
+/* Input area */
+.chat-input-wrap {
+    display:flex;
+    gap:8px;
+    padding:10px;
+    border-top: 1px solid rgba(0,0,0,0.04);
+    background: transparent;
+    align-items: center;
+}
+#chatInput {
+    flex:1;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    resize: none;
+    background: #fff;
+    font-size: 0.95rem;
+    line-height:1.25;
+    min-height:34px;
+    max-height:100px; /* <--- เปลี่ยนจาก 80px เป็น 100px เพื่อให้เห็นข้อความได้มากขึ้น */
+}
+.btn-chat-send {
+    padding:8px 12px;
+    border-radius:8px;
+    background:#ffb703;
+    color:#000;
+    border:none;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow: 0 6px 12px rgba(255,183,3,0.12);
+}
+
+.btn-chat-send:active { transform: translateY(1px); }
+
+/* GM Quick Reply Buttons */
+.gm-quick-reply {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-top: 1px solid #444;
+}
+
+.gm-quick-label {
+    font-size: 0.85em;
+    color: #a0aec0;
+    white-space: nowrap;
+}
+
+.gm-reply-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.gm-reply-btn.gm-yes {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: #fff;
+}
+.gm-reply-btn.gm-yes:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.gm-reply-btn.gm-no {
+    background: linear-gradient(135deg, #fc8181 0%, #e53e3e 100%);
+    color: #fff;
+}
+.gm-reply-btn.gm-no:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(229, 62, 62, 0.4);
+}
+
+.gm-reply-btn.gm-maybe {
+    background: linear-gradient(135deg, #f6e05e 0%, #ecc94b 100%);
+    color: #744210;
+}
+.gm-reply-btn.gm-maybe:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(236, 201, 75, 0.4);
+}
+
+/* GM Reply Reaction (emoji after message) */
+.gm-reaction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 1.1em;
+    animation: reactionPop 0.3s ease-out;
+}
+
+.gm-reaction.yes { background: rgba(72, 187, 120, 0.3); }
+.gm-reaction.no { background: rgba(229, 62, 62, 0.3); }
+.gm-reaction.maybe { background: rgba(236, 201, 75, 0.3); }
+
+@keyframes reactionPop {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Toggle button */
+.chat-toggle {
+    position: fixed;
+    bottom: 40px;
+    right: 15px;
+    z-index: 10004;
+    background: #111827;
+    color: #ffffff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+}
+.chat-toggle:active { transform: translateY(1px); }
+
+/* Unread red dot */
+.unread-dot {
+    display:inline-block;
+    width:10px;
+    height:10px;
+    background:#e11d48; /* red */
+    border-radius:50%;
+    margin-left:8px;
+    vertical-align:middle;
+    box-shadow: 0 0 0 rgba(225,29,72,0.6);
+    animation: chatPulse 1.4s infinite;
+}
+@keyframes chatPulse {
+    0% { transform: scale(1); opacity:1; }
+    50% { transform: scale(1.45); opacity:0.75; }
+    100% { transform: scale(1); opacity:1; }
+}
+
+/* GM Selected Message */
+.chat-message-wrapper.gm-selected .chat-message-bubble {
+    outline: 3px solid #f6e05e !important;
+    outline-offset: 2px;
+    animation: selectedPulse 1s ease-in-out infinite;
+}
+
+@keyframes selectedPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(246, 224, 94, 0.4); }
+    50% { box-shadow: 0 0 15px 5px rgba(246, 224, 94, 0.3); }
+}
+
+/* Clickable message for GM */
+<% if (typeof player !== 'undefined' && player.role === 'ผู้ดำเนินเกม') { %>
+.chat-message-wrapper.other .chat-message-bubble {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.chat-message-wrapper.other .chat-message-bubble:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 10px rgba(255,255,255,0.1);
+}
+<% } %>
+
+/* small screens */
+@media (max-width: 480px) {
+    .chat-box { width: 95%; right: 2.5%; left: 2.5%; bottom: 80px; height: 400px; }
+    .chat-toggle { right: 2.5%; }
+    .gm-quick-reply { flex-wrap: wrap; }
+    .gm-quick-label { width: 100%; margin-bottom: 6px; }
+    .gm-reply-btn { font-size: 0.8em; padding: 6px 8px; }
+}
+
+/* Reply Preview Bar */
+.chat-reply-preview-bar {
+    background-color: #e0e0e0;
+    padding: 8px 12px;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: -1px; /* Overlap with input border */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%; /* Ensure it spans the input width */
+    font-size: 0.85em;
+    color: #555;
+    border-bottom: 1px solid #d1d5db;
+    box-sizing: border-box; /* Include padding/border in width */
+}
+
+.chat-reply-preview-bar .reply-content {
+    flex-grow: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis; /* Truncate long content */
+    margin-right: 10px;
+}
+
+.chat-reply-preview-bar .reply-indicator {
+    font-weight: bold;
+    color: #333;
+    margin-right: 5px;
+}
+.chat-reply-preview-bar .reply-player-name {
+    font-weight: bold;
+    color: #333; /* Will be overwritten by JS color if available */
+}
+.chat-reply-preview-bar .reply-message-content {
+    color: #666;
+}
+
+.reply-cancel-btn {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 1.1em;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+.reply-cancel-btn:hover {
+    color: #333;
+}
+
+/* Style for reply indicator inside message bubble (when viewing a message that is a reply) */
+.chat-message-bubble .reply-to-text {
+    font-size: 0.75em;
+    color: #666; /* Default color for other's reply indicator */
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(0,0,0,0.1); /* Subtle separator */
+    display: block;
+    word-wrap: break-word;
+    max-height: 3em; /* Limit height of original message snippet */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Specific style for self's reply indicator */
+.chat-message-wrapper.self .chat-message-bubble .reply-to-text {
+    color: #333; /* Darker for self's reply indicator */
+    border-bottom-color: rgba(0,0,0,0.2);
+}
+
+/* Ensure name in reply-to-text uses its color */
+.chat-message-bubble .reply-to-text .reply-name {
+    font-weight: bold;
+}
+
+/* Notification Center */
+.notification-center {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10005;
+    width: 90%;
+    max-width: 500px;
+    pointer-events: none; /* ให้ notification ไม่กีดขวางการคลิก */
+}
+
+.notification {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: bold;
+    animation: slideIn 0.3s ease-out, slideOut 0.3s ease-out 4.7s;
+    pointer-events: auto;
+}
+
+.notification.success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.notification.error {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+.notification.warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.notification.info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+}
+</style>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+$(function() {
+    var socket = io({
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 5000,
+        randomizationFactor: 0.5,
+        timeout: 30000,
+        transports: ['websocket', 'polling'],
+        upgrade: true,
+        forceNew: false
+    });
+
+    // Socket.IO connection monitoring
+    socket.on('connect', function() {
+        console.log('[Socket] Connected:', socket.id);
+        $('#connectionStatus').hide();
+    });
+
+    socket.on('disconnect', function(reason) {
+        console.log('[Socket] Disconnected:', reason);
+        if (reason !== 'io server disconnect') {
+            $('#connectionStatus').text('กำลังเชื่อมต่อใหม่...').show();
+        }
+    });
+
+    socket.on('reconnect', function(attemptNumber) {
+        console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
+        $('#connectionStatus').hide();
+        // Re-join room after reconnect
+        socket.emit('joinRoom', { roomId: '<%= room.roomId %>' });
+    });
+
+    socket.on('reconnect_attempt', function(attemptNumber) {
+        console.log('[Socket] Reconnect attempt:', attemptNumber);
+    });
+
+    socket.on('reconnect_error', function(error) {
+        console.log('[Socket] Reconnect error:', error.message);
+    });
+
+    var replyingTo = null; // เพิ่มตัวแปรสำหรับเก็บข้อมูลข้อความที่กำลังจะตอบกลับ
+    var wordSubmitted = false; // flag กันไม่ให้ฟอร์มตั้งคำกลับมาโชว์ซ้ำหลังส่งแล้ว
+
+    // ฟังก์ชันสำหรับเปิด/ปิดแถบข้าง
+    function toggleSidebar() {
+        $('#playerSidebar').toggleClass('open');
+        $('#sidebarOverlay').toggle(); // สลับการแสดงผลของ overlay
+    }
+
+    function displayPlayerStatus(online, offline) {
+        // ฟังก์ชันนี้ถูกใช้เพื่อแสดงวงกลมสถานะ online/offline ด้านบน
+        // การอัปเดตรายชื่อผู้เล่นด้านล่างจะใช้ updateOnlinePlayerList แทน
+        // ถ้าไม่ต้องการวงกลมด้านบนแล้ว สามารถลบโค้ดส่วนนี้ออกได้
+        $('.playerStatus').html('');
+        for (var i = 0; i < online; i++) {
+            $('.playerStatus').append('<i class="fas fa-circle online"></i>')
+        }
+        for (var i = 0; i < offline; i++) {
+            $('.playerStatus').append('<i class="fas fa-circle offline"></i>')
+        }
+    }
+
+    // Store current room players for admin controls
+    let currentRoomPlayers = [];
+
+    // ฟังก์ชันสำหรับอัปเดตรายชื่อผู้เล่นที่ออนไลน์
+    // รับข้อมูลเป็น Array ของ object { playerId, playerName, color, permission }
+    function updateOnlinePlayerList(players) {
+        currentRoomPlayers = players; // Store for admin controls
+        
+        $('#onlinePlayerList').empty();
+        $('#kickPlayerSelect').empty();
+        $('#kickPlayerSelect').append('<option value="">เลือกผู้เล่น...</option>');
+        
+        if (players.length === 0) {
+            $('#onlinePlayerList').append('<li>ไม่มีผู้เล่นในห้องนี้</li>');
+        } else {
+            players.forEach(function(player) {
+                const isAdmin = player.permission === 'admin';
+                const isCurrentPlayer = player.playerId === playerId;
+                const playerNameHtml = `<span style="color: ${player.color || '#333'};">${escapeHtml(player.playerName)}</span>`;
+                const adminBadge = isAdmin ? ' <span style="color: #e74c3c;">👑</span>' : '';
+                $('#onlinePlayerList').append(`<li><i class="fas fa-circle status-online"></i> ${playerNameHtml}${adminBadge}</li>`);
+                
+                // Add to kick select (exclude current player and admin)
+                if (!isCurrentPlayer && !isAdmin) {
+                    $('#kickPlayerSelect').append(`<option value="${player.playerId}">${escapeHtml(player.playerName)}</option>`);
+                }
+            });
+        }
+    }
+    
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+    
+    // Event Listeners สำหรับแถบข้าง
+    $('#toggleSidebarBtn').on('click', toggleSidebar);
+    $('#closeSidebarBtn').on('click', toggleSidebar);
+    $('#sidebarOverlay').on('click', toggleSidebar); // คลิกที่ overlay เพื่อปิดแถบข้าง
+
+    // ปุ่มออกจากห้อง
+    $('#leaveRoomBtn').on('click', function() {
+        Swal.fire({
+            icon: 'question',
+            title: 'ออกจากห้อง?',
+            text: 'คุณต้องการออกจากเกมนี้หรือไม่?',
+            background: '#1e1e1e',
+            color: '#fff',
+            showCancelButton: true,
+            confirmButtonColor: '#e74c3c',
+            cancelButtonColor: '#555',
+            confirmButtonText: 'ออกจากห้อง',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'กำลังออกจากห้อง...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                socket.emit('leaveRoom', {}, function(response) {
+                    window.location.href = '/rooms?playerId=' + playerId;
+                });
+                
+                // Fallback
+                setTimeout(function() {
+                    window.location.href = '/rooms?playerId=' + playerId;
+                }, 2000);
+            }
+        });
+    });
+
+    // Admin Controls
+    <% if (room.admin) { %>
+        // Update Room
+        $('#updateRoomBtn').on('click', function() {
+            const currentRoomName = '<%= room.name %>';
+            const currentMaxPlayers = <%= room.maxPlayers %>;
+            const currentRoundTime = <%= room.settings ? Math.floor(room.settings.roundTime / 60) : 5 %>;
+            
+            Swal.fire({
+                title: '⚙️ แก้ไขห้อง',
+                customClass: {
+                    popup: 'room-popup',
+                    confirmButton: 'room-btn-confirm',
+                    cancelButton: 'room-btn-cancel'
+                },
+                html: `
+                    <div style="font-family: 'Rajdhani', sans-serif;">
+                        <div class="room-form-group">
+                            <label class="room-form-label">
+                                <span class="icon">📝</span> ชื่อห้อง:
+                            </label>
+                            <input id="editRoomName" class="room-form-input" value="${currentRoomName}" placeholder="กรอกชื่อห้อง..." maxlength="20">
+                        </div>
+                        
+                        <div class="room-form-group">
+                            <label class="room-form-label">
+                                <span class="icon">👥</span> จำนวนผู้เล่นสูงสุด:
+                            </label>
+                            <div class="room-slider-container">
+                                <span class="room-slider-value" id="editMaxPlayersValue">${currentMaxPlayers}</span>
+                                <input type="range" id="editMaxPlayers" class="room-slider" min="3" max="10" value="${currentMaxPlayers}">
+                            </div>
+                        </div>
+                        
+                        <div class="room-form-group">
+                            <label class="room-form-label">
+                                <span class="icon">⏱️</span> เวลาเล่นต่อรอบ:
+                            </label>
+                            <div class="room-slider-container">
+                                <span class="room-slider-value" id="editRoundTimeValue">${currentRoundTime} นาที</span>
+                                <input type="range" id="editRoundTime" class="room-slider" min="1" max="10" value="${currentRoundTime}">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                background: 'transparent',
+                showCancelButton: true,
+                confirmButtonText: '💾 บันทึก',
+                cancelButtonText: '❌ ยกเลิก',
+                focusConfirm: false,
+                didOpen: () => {
+                    // Slider handlers
+                    const maxPlayersSlider = document.getElementById('editMaxPlayers');
+                    const maxPlayersValue = document.getElementById('editMaxPlayersValue');
+                    const roundTimeSlider = document.getElementById('editRoundTime');
+                    const roundTimeValue = document.getElementById('editRoundTimeValue');
+                    
+                    function updateSliderBackground(slider) {
+                        const percent = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+                        slider.style.background = `linear-gradient(90deg, #e74c3c 0%, #e74c3c ${percent}%, #333 ${percent}%, #333 100%)`;
+                    }
+                    
+                    maxPlayersSlider.addEventListener('input', function() {
+                        maxPlayersValue.textContent = this.value;
+                        updateSliderBackground(this);
+                    });
+                    
+                    roundTimeSlider.addEventListener('input', function() {
+                        roundTimeValue.textContent = this.value + ' นาที';
+                        updateSliderBackground(this);
+                    });
+                    
+                    updateSliderBackground(maxPlayersSlider);
+                    updateSliderBackground(roundTimeSlider);
+                },
+                preConfirm: () => {
+                    return {
+                        name: document.getElementById('editRoomName').value.trim(),
+                        maxPlayers: parseInt(document.getElementById('editMaxPlayers').value),
+                        roundTime: parseInt(document.getElementById('editRoundTime').value)
+                    };
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    socket.emit('updateRoom', result.value, function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'อัปเดตสำเร็จ',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'อัปเดตไม่สำเร็จ',
+                                text: response.error || 'เกิดข้อผิดพลาด'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // Transfer Admin
+        $('#transferAdminBtn').on('click', function() {
+            const otherPlayers = currentRoomPlayers.filter(p => p.playerId !== playerId);
+            
+            if (otherPlayers.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่มีผู้เล่นอื่น',
+                    text: 'ไม่สามารถโอนสิทธิได้'
+                });
+                return;
+            }
+            
+            const options = otherPlayers.map(p => `<option value="${p.playerId}">${escapeHtml(p.playerName)}</option>`).join('');
+            
+            Swal.fire({
+                title: 'โอนสิทธิ Admin',
+                html: `
+                    <label>เลือกผู้เล่นที่จะโอนสิทธิ:</label>
+                    <select id="newAdminSelect" class="swal2-select" style="width: 100%;">
+                        ${options}
+                    </select>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'โอนสิทธิ',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: () => {
+                    return document.getElementById('newAdminSelect').value;
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    socket.emit('transferAdmin', { newAdminPlayerId: result.value }, function(response) {
+                        if (!response.success) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'โอนสิทธิไม่สำเร็จ',
+                                text: response.error || 'เกิดข้อผิดพลาด'
+                            });
+                        }
+                        // Success handled by adminTransferred event
+                    });
+                }
+            });
+        });
+
+        // Kick Player
+        $('#kickPlayerBtn').on('click', function() {
+            const targetPlayerId = $('#kickPlayerSelect').val();
+            if (!targetPlayerId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณาเลือกผู้เล่น',
+                    text: 'เลือกผู้เล่นที่ต้องการเตะ'
+                });
+                return;
+            }
+            
+            Swal.fire({
+                icon: 'warning',
+                title: 'เตะผู้เล่น',
+                text: 'คุณแน่ใจหรือไม่ว่าต้องการเตะผู้เล่นนี้?',
+                showCancelButton: true,
+                confirmButtonText: 'เตะ',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    socket.emit('kickPlayer', { targetPlayerId: targetPlayerId }, function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'เตะผู้เล่นสำเร็จ',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เตะผู้เล่นไม่สำเร็จ',
+                                text: response.error || 'เกิดข้อผิดพลาด'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+    <% } %>
+
+    // ปุ่มแอดมินดูคำและบทบาท (footer)
+    $(document).on('click', '#showWordAndRoles', function() {
+        socket.emit('admin_request_word_roles');
+    });
+    $(document).on('click', '#closeAdminReveal', function() {
+        $('#adminRevealModal').hide();
+    });
+    socket.on('admin_word_roles', function(data) {
+        $('#modalWord').text(data.word);
+        $('#modalRoles').empty();
+        data.players.forEach(function(p) {
+            $('#modalRoles').append('<li>' + p.name + ' : ' + p.role + '</li>');
+        });
+        $('#adminRevealModal').show();
+    });
+
+    function soundNotify(notifType) {
+        let audiof;
+        switch (notifType) {
+          case 'message':
+            audiof = new Audio('/static/sound/message.mp3');
+            break;
+          case 'mysterious':
+            audiof = new Audio('/static/sound/mysterious.mp3');
+            break;
+          case 'ding':
+            audiof = new Audio('/static/sound/ding.mp3');
+            break;
+          case 'dong':
+            audiof = new Audio('/static/sound/dong.mp3');
+            break;
+          case 'tada':
+            audiof = new Audio('/static/sound/tada.mp3');
+            break;
+          default:
+            audiof = new Audio('/static/sound/ding.mp3');
+        }
+        
+        // เล่นเสียง พร้อม catch error เพื่อไม่ให้ขึ้น console error
+        audiof.play().catch(function(e) {
+            // Browser อาจ block autoplay - ไม่ต้องทำอะไร
+        });
+    }
+
+    function addPlayerVote(player, checked) {
+        let templateVote = '<div class="form__group optionalClass"><div class="form__radio-group"><input checked type="radio" class="form__radio-input" id="playerName" name="player" value="playerName"><label for="playerName" class="form__radio-label">playerName</label></div></div>';
+
+        if(!checked) {
+            templateVote = templateVote.replace('checked ', '');
+        }
+        templateVote = templateVote.replace('optionalClass', player.isGhost ? 'ghost' : '');
+
+        $('#vote2 form .choices').append(templateVote.replace(/playerName/g, player.name));
+    }
+
+    function updateCountdown(counter) {
+        $("#timer").html(formatCountdown(counter));
+    }
+
+    function getResultIssue(result) {
+        let message = '';
+        if (result.hasTraitor) {
+            // กรณีมีผู้ทรยศในเกม
+            if (result.hasWon) {
+                message = `เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
+            } else {
+                message = `ผู้ทรยศชนะ! พลเมืองโหวตพลาด <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
+            }
+        } else {
+            // กรณีไม่มีผู้ทรยศในเกม
+            if (result.hasWon) {
+                message = `เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ไม่มีผู้ทรยศในเกมนี้ (เจอ Ghost Player)`;
+            } else {
+                message = `พลเมืองโหวตพลาด! ไม่มีผู้ทรยศในเกมนี้ แต่คุณก็ยังโหวตพลาด`;
+            }
+        }
+        return message;
+    }
+
+    $('.appear').fadeIn().delay(3000).fadeOut();
+
+    // Submit word via Socket.IO (acknowledged) - SIMPLER VERSION
+    var isSubmittingWord = false;
+    
+    function submitWord() {
+        if (isSubmittingWord || wordSubmitted) {
+            console.log('[Word] Already submitting or submitted');
+            return;
+        }
+        
+        isSubmittingWord = true;
+        var wordVal = $('#wordInput').val().trim();
+        console.log('[Word] Submitting:', wordVal || '(random)');
+        
+        // Disable button while submitting
+        $('#wordForm button').prop('disabled', true).text('กำลังส่ง...');
+
+        socket.emit('setWord', { word: wordVal }, function(response){
+            console.log('[Word] Response:', response);
+            isSubmittingWord = false;
+            
+            if (response && response.ok) {
+                wordSubmitted = true;
+                // ต้องเอา class 'current' ออกด้วย เพราะ CSS มี .hidden.current { display: block !important }
+                $("#chooseWord").removeClass('current').hide();
+                // แสดงปุ่มเปิดเผยคำ
+                $('#reveal button').removeClass('hidden').show();
+                console.log('[Word] Success! Form hidden, reveal button shown');
+            } else {
+                // Reset button on error
+                $('#wordForm button').prop('disabled', false).text('ส่ง');
+                var msg = (response && response.error) ? response.error : 'ไม่อนุญาตให้ตั้งคำ';
+                console.log('[Word] Error:', msg);
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'ส่งคำไม่สำเร็จ', 
+                    text: msg, 
+                    confirmButtonText: 'ตกลง',
+                    background: '#1e1e1e',
+                    color: '#fff'
+                });
+            }
+        });
+        
+        // Timeout fallback: if no response in 5 seconds, reset
+        setTimeout(function() {
+            if (isSubmittingWord) {
+                console.log('[Word] Timeout - no response');
+                isSubmittingWord = false;
+                $('#wordForm button').prop('disabled', false).text('ส่ง');
+            }
+        }, 5000);
+    }
+    
+    $("#wordForm").submit(function(e) {
+        e.preventDefault();
+        submitWord();
+    });
+    
+    // Also handle direct button click
+    $('#wordForm button').on('click', function(e) {
+        e.preventDefault();
+        submitWord();
+    });
+
+    // newGame: prevent immediate double-submit but re-enable after 2s (do not disable forever)
+    $("#newGame").click(function(){
+        var $btn = $(this);
+        if ($btn.data('disabled')) return;
+        $btn.data('disabled', true);
+        socket.emit('resetGame');
+        setTimeout(function(){ $btn.data('disabled', false); }, 2000);
+    });
+
+    // startGame anchor: short client-side debounce to avoid instant double-clicks
+    $("#startGame a").click(function(e){
+        var $a = $(this);
+        if ($a.data('disabled')) { e.preventDefault(); return; }
+        $a.data('disabled', true);
+        socket.emit('startGame');
+        $("#countdown").fadeIn();
+        setTimeout(function(){ $a.data('disabled', false); }, 2000);
+        e.preventDefault();
+    });
+
+    $( "#countdown a").click(function(e){
+        socket.emit('wordFound');
+        e.preventDefault();
+    });
+
+    $( "#displayVote1").click(function(e){
+        socket.emit('displayVote1');
+    });
+
+    $( "#displayVote2").click(function(e){
+        socket.emit('displayVote2');
+    });
+
+    $( "#vote1 button").click(function(e){
+        $('.hidden').hide();
+        socket.emit('vote1', {player: '<%= player.name %>', vote: $(this).data('vote')});
+        $(this).attr("disabled", true);
+    });
+
+    $( "#vote2 button").click(function(e){
+        $('.hidden').hide();
+        socket.emit('vote2', {player: '<%= player.name %>', vote: $("#vote2 input[name='player']:checked").val()});
+        e.preventDefault();
+        $(this).attr("disabled", true);
+    });
+
+    $( "#reveal button").click(function(){
+        socket.emit('revealWord');
+        $(this).attr("disabled", true).hide();
+    });
+
+    // Initialize player and room context
+    const playerId = '<%= player.playerId || "" %>';
+    const roomId = '<%= room.roomId %>';
+
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+
+    // เมื่อ Socket.IO reconnect อัตโนมัติ
+    socket.on('reconnect', function() {
+        console.log('Socket reconnected, reinitializing...');
+        socket.emit('initPlayer', playerId);
+        socket.emit('setRoom', roomId);
+    });
+
+    // รับข้อมูลอัปเดตห้อง (รายชื่อผู้เล่น)
+    socket.on('roomUpdate', function(data) {
+        if (data.players) {
+            updateOnlinePlayerList(data.players);
+        }
+    });
+
+    // ถูกเตะออกจากห้อง
+    socket.on('kickedFromRoom', function(data) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'คุณถูกเตะออกจากห้อง',
+            text: data.message || 'คุณถูกเตะออกจากห้องนี้',
+            confirmButtonText: 'ตกลง'
+        }).then(() => {
+            window.location.href = '/rooms?playerId=' + playerId;
+        });
+    });
+
+    // ถูกเตะจาก Admin ระบบ
+    socket.on('kicked', function(data) {
+        Swal.fire({
+            icon: 'error',
+            title: '❌ ถูกเตะออก',
+            text: data.reason || 'คุณถูกเตะออกจากระบบ',
+            confirmButtonText: 'ตกลง',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then(() => {
+            window.location.href = '/?playerId=' + playerId;
+        });
+    });
+
+    // ถูกแบน - ส่งไปหน้า banned ทันที
+    socket.on('banned', function(data) {
+        Swal.fire({
+            icon: 'error',
+            title: '🚫 คุณถูกแบน!',
+            html: `<p><strong>เหตุผล:</strong> ${data.reason}</p><p><strong>ระยะเวลา:</strong> ${data.durationHours === null ? 'ถาวร' : data.durationHours + ' ชั่วโมง'}</p>`,
+            confirmButtonText: 'ตกลง',
+            background: '#1e1e1e',
+            color: '#fff',
+            allowOutsideClick: false
+        }).then(() => {
+            window.location.href = '/banned?playerId=' + playerId;
+        });
+    });
+
+    // รับ broadcast จากระบบ
+    socket.on('systemBroadcast', function(data) {
+        Swal.fire({
+            icon: 'info',
+            title: '📢 ประกาศจากระบบ',
+            text: data.message,
+            background: '#1e1e1e',
+            color: '#fff',
+            confirmButtonColor: '#e74c3c'
+        });
+    });
+
+    // ได้รับ/โอน admin
+    socket.on('adminTransferred', function(data) {
+        Swal.fire({
+            icon: 'success',
+            title: data.message || 'สิทธิ์ Admin เปลี่ยนแปลงแล้ว',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        // รีโหลดหน้าหลังจาก 2 วินาทีเพื่อแสดง UI ใหม่
+        setTimeout(function() {
+            location.reload();
+        }, 2000);
+    });
+
+    // จัดการกรณีที่ชื่อถูกใช้งานอยู่
+    socket.on('nameInUse', function(data) {
+        Swal.fire({
+            icon: 'error',
+            title: 'ชื่อถูกใช้งานแล้ว!',
+            text: data.message,
+            confirmButtonText: 'ตกลง'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '/?playerId=' + playerId;
+            }
+        });
+    });
+
+    socket.on('newRole', function(data) {
+        // เริ่มรอบใหม่: ให้สามารถตั้งคำได้อีกครั้ง (แต่จะถูกปิดหลังส่ง)
+        wordSubmitted = false;
+        $('.hidden').hide(); // ซ่อนทุกองค์ประกอบที่มี class 'hidden'
+        $('#word').html('');
+        $('#vote2 form .choices').html('');
+        $('#reveal button, #newGame, #vote1 button, #vote2 button, #startGame a').attr("disabled", false); 
+
+        var playerIsGameMaster = false;
+        $.each(data.players, function(i, obj) {
+            if(obj.name == '<%= player.name %>') {
+                $('.role strong').html(obj.role);
+                if(obj.role === 'ผู้ดำเนินเกม') { 
+                    playerIsGameMaster = true;
+                }
+                // แสดงบทบาทผู้เล่นชั่วคราว แล้วจางหายไป
+                $('#reset .role').fadeIn(1000).delay(6000).fadeOut("slow", function(){
+                    if(playerIsGameMaster && !wordSubmitted) { 
+                        $("#chooseWord").fadeIn(); // ผู้ดำเนินเกมจะเห็นช่องใส่คำ (ถ้ายังไม่ได้ส่ง)
+                    } else { // ผู้เล่นคนอื่น
+                        if (data.status === 'role') { // ถ้ารับรู้ว่าสถานะคือ 'role' (รอตั้งคำ)
+                            $("#status").fadeIn(); // แสดง div สถานะ
+                            $('#status p').html('กำลังรอ <strong>ผู้ดำเนินเกม</strong> ส่งคำศัพท์...'); // แสดงข้อความเฉพาะ
+                        }
+                    }
+                });
+                return false;
+            };
+        });
+        soundNotify('mysterious');
+    });
+
+    socket.on('revealWord', function(data) {
+        $.each(data.players, function(i, obj) {
+            if(obj.name == '<%= player.name %>') {
+                if(obj.role == 'ผู้ดำเนินเกม' || obj.role == 'ผู้ทรยศ') {
+                    $('#word').html("<span>คำที่ต้องทายคือ <strong>"+data.word+"</strong></span>");
+                } else {
+                    $('#word').html("<span>ผู้ดำเนินเกมและผู้ทรยศ <br />จะเห็นคำนี้</span>");
+                }
+                return false;
+            };
+        });
+
+        $('#word').fadeIn(1000).delay(5000).fadeOut("slow", function() {
+            $("#startGame").fadeIn();
+        });
+        soundNotify('message');
+    });
+
+    socket.on('wordFound', function() {
+        $('.hidden').hide();
+        $('#displayVote1').fadeIn();
+        showNotification('🎯 ตอบคำได้ถูกต้อง! ไปลงคะแนนกัน', 'success', 3000);
+    });
+
+    socket.on('displayVote1', function() {
+        $('.hidden').hide();
+        $('#vote1').fadeIn();
+        $("#vote1 button").attr("disabled", false);
+        soundNotify('message');
+        showNotification('🗳️ เข้าสู่รอบโหวตที่ 1!', 'warning', 3000);
+    });
+
+    socket.on('displayVote2', function(players) {
+        $('.hidden').hide();
+        $("#vote2 button").attr("disabled", false);
+        $('#vote2 form .choices').html('');
+        players.forEach(function(votePlayer, index) {
+            let checked = (index === 0 ? true : false);
+            addPlayerVote(votePlayer, checked);
+        });
+        $('#vote2').fadeIn();
+        showNotification('🗳️ เข้าสู่รอบโหวตที่ 2!', 'warning', 3000);
+    });
+    
+    socket.on('vote1Ended', function(result) {
+        $('.hidden').hide();
+        $('#vote1Result').fadeIn();
+        $('#vote1Result .resultUp strong').html(result.up);
+        $('#vote1Result .resultDown strong').html(result.down);
+        $('#displayVote2').fadeIn();
+        soundNotify('tada');
+        showNotification('✅ รอบโหวตที่ 1 เสร็จแล้ว!', 'success', 3000);
+    });
+
+    socket.on('vote2Ended', function(result) {
+        $('.hidden').hide();
+        $('#vote2Result ul').html('');
+        result.voteDetail.forEach(function(votePlayer, index) {
+            $('#vote2Result ul').append('<li>'+votePlayer.name+' ('+votePlayer.nbVote2+')</li>');
+        });
+        finalResult = getResultIssue(result);
+        $('#vote2Result #finalResult').html(finalResult);
+        $('#vote2Result').fadeIn();
+        soundNotify('tada');
+        // Show game result notification
+        if (result.hasWon) {
+            showNotification('🎉 พลเมืองชนะ! ' + (result.finalTraitorName || ''), 'success', 5000);
+        } else {
+            showNotification('💀 ผู้ทรยศ/ปีศาจชนะ!', 'error', 5000);
+        }
+        // ADDED: เปิดใช้งานปุ่มทั้งหมดเมื่อเกมจบลง
+        $('#reveal button, #newGame, #vote1 button, #vote2 button, #startGame a').attr("disabled", false); 
+    });
+
+    // Return to Lobby after game ends
+    socket.on('returnToLobby', function(data) {
+        var countdown = data.countdown || 5;
+        $('#returnToLobbyModal').css('display', 'flex');
+        $('#returnCountdown').text(countdown);
+        
+        var countdownInterval = setInterval(function() {
+            countdown--;
+            $('#returnCountdown').text(countdown);
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+    });
+
+    socket.on('redirectToLobby', function(data) {
+        window.location.href = '/room/' + data.roomId + '?playerId=' + playerId;
+    });
+
+    // Bug #1 Fix: รับ event restartGame จาก admin dashboard
+    socket.on('restartGame', function() {
+        Swal.fire({
+            icon: 'info',
+            title: '🔄 เกมถูกรีเซ็ต',
+            text: 'ผู้ดูแลระบบได้รีเซ็ตเกมนี้ กำลังกลับไป Lobby...',
+            background: '#1e1e1e',
+            color: '#fff',
+            timer: 3000,
+            showConfirmButton: false
+        }).then(() => {
+            window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+        });
+    });
+
+    socket.on('playerStatusUpdate', function(playerStatus) {
+        displayPlayerStatus(playerStatus.online, playerStatus.offline)
+    });
+
+    socket.on('countdownUpdate', function(counter) {
+        $('.hidden').hide();
+        updateCountdown(counter);
+        $("#countdown").show();
+    });
+
+    socket.on('startGame', function() {
+        $('.hidden').hide();
+        $("#countdown").fadeIn();
+        soundNotify('ding');
+    });
+
+    // Toggle chat visibility
+    $('#toggleChat').on('click', function() {
+        var isVisible = $('#chatBox').is(':visible');
+        if (!isVisible) {
+            $('#chatBox').show();
+            $(this).attr('aria-expanded', 'true');
+            $('#chatUnreadDot').hide();
+            $('#chatInput').focus();
+        } else {
+            $('#chatBox').hide();
+            $(this).attr('aria-expanded', 'false');
+        }
+    });
+
+    // Close chat button (inside)
+    $(document).on('click', '#closeChat', function(){
+        $('#chatBox').hide();
+        $('#toggleChat').attr('aria-expanded', 'false');
+    });
+
+    // Enter to send (Shift+Enter => newline)
+    $('#chatInput').on('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            $('#sendChat').trigger('click');
+        }
+    });
+
+    // Click send
+    $('#sendChat').on('click', function() {
+        var msg = $('#chatInput').val().trim();
+        if (msg) {
+            // ตรวจจับคำสั่ง /m สำหรับ admin ดูคำและบทบาท
+            if (msg === '/m') {
+                <% if (player.permission == 'admin') { %>
+                    socket.emit('admin_request_word_roles');
+                <% } else { %>
+                    // ไม่ใช่ admin แสดงข้อความแจ้งเตือน
+                    var $msgArea = $('#chatMessages');
+                    $msgArea.append('<div class="chat-message-wrapper other"><div class="chat-message-bubble" style="background:#ffcccc;"><span class="chat-message-name" style="color:#c00;">System:</span> คำสั่งนี้ใช้ได้เฉพาะ Admin เท่านั้น</div></div>');
+                    $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
+                <% } %>
+                $('#chatInput').val('');
+                return;
+            }
+            
+            var messageData = { 
+                message: msg, 
+                playerName: '<%= player.name %>' 
+            };
+            if (replyingTo) { // ถ้าอยู่ในโหมดตอบกลับ
+                messageData.replyTo = replyingTo;
+                replyingTo = null; // รีเซ็ตโหมดตอบกลับ
+                $('#replyPreview').hide(); // ซ่อนแถบพรีวิว
+                $('#replyPreview .reply-player-name').empty();
+                $('#replyPreview .reply-message-content').empty();
+            }
+            socket.emit('sendMessage', messageData);
+            $('#chatInput').val('');
+            $('#chatInput').focus();
+            $('#chatUnreadDot').hide();
+        }
+    });
+
+    socket.on('newMessage', function(data) {
+        var $msgArea = $('#chatMessages');
+        var isMyMessage = (data.playerName === '<%= player.name %>');
+
+        // Sanitize name, message, and timestamp to prevent XSS
+        var safeName = $('<div>').text(data.playerName).html();
+        var safeMsg  = $('<div>').text(data.message).html();
+        var timestamp = $('<div>').text(data.timestamp).html();
+
+        // Create a wrapper div for each message to control its alignment
+        var $messageWrapper = $('<div class="chat-message-wrapper ' + (isMyMessage ? 'self' : 'other') + '" data-message-id="' + data.messageId + '"></div>');
+        var $bubble = $('<div class="chat-message-bubble"></div>');
+        var $info = $('<div class="chat-message-info"></div>');
+
+        // Apply background color with transparency for other messages
+        if (!isMyMessage && data.color) {
+            $bubble.css('background-color', data.color + '33'); // 20% opacity for background
+        }
+        
+        // Add reply indicator if this message is a reply
+        if (data.replyTo) {
+            var replyColor = (data.replyTo.name === '<%= player.name %>') ? '#333' : (data.replyTo.color || '#000');
+            $bubble.append(
+                '<span class="reply-to-text">' +
+                    '<span class="reply-indicator">ตอบกลับ </span>' +
+                    '<span class="reply-name" style="color: ' + replyColor + ';">' + $('<div>').text(data.replyTo.name).html() + ':</span> ' + 
+                    $('<div>').text(data.replyTo.content).html() +
+                '</span>'
+            );
+        }
+
+        // Append name and message content to the bubble
+        $bubble.append('<span class="chat-message-name" style="color: ' + (isMyMessage ? '#333' : (data.color || '#000')) + ';">' + safeName + ':</span> ' + safeMsg);
+        
+        // Append timestamp to info div
+        $info.append(timestamp);
+
+        // Assemble the message
+        $messageWrapper.append($bubble, $info);
+        $msgArea.append($messageWrapper);
+
+        // Auto-scroll to the bottom of the chat
+        $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
+
+        // Show unread dot and play sound if chat is hidden
+        if (!$('#chatBox').is(':visible')) {
+            $('#chatUnreadDot').show();
+            soundNotify('message');
+        }
+    });
+
+    // เพิ่ม event listener สำหรับการกดเพื่อตอบกลับ (คลิกที่ bubble ข้อความ)
+    $(document).on('click', '.chat-message-bubble', function() {
+        var $wrapper = $(this).closest('.chat-message-wrapper');
+        var messageId = $wrapper.data('message-id');
+        
+        // ต้องหาชื่อผู้เล่นและเนื้อหาข้อความจาก DOM หรือจากข้อมูลที่แนบมา
+        // เนื่องจากเราไม่ได้เก็บข้อมูลข้อความทั้งหมดใน DOM อย่างละเอียด เราจะใช้ข้อมูลที่มองเห็นได้
+        var playerName = $wrapper.find('.chat-message-name').text().replace(':', '').trim();
+        var messageContent = $(this).contents().filter(function() {
+            return this.nodeType === 3 || (this.nodeType === 1 && $(this).is(':not(.chat-message-name, .reply-to-text)'));
+        }).text().trim(); // ดึงเฉพาะ text node และไม่รวมชื่อกับ reply-to-text
+
+        // ถ้าข้อความที่คลิกเป็น reply อยู่แล้ว ให้ดึงข้อมูลของข้อความที่ถูก reply ไปอีกที (เพื่อตอบกลับ reply)
+        var $replyToText = $wrapper.find('.reply-to-text');
+        if ($replyToText.length) {
+            var originalReplyName = $replyToText.find('.reply-name').text().replace(':', '').trim();
+            var originalReplyContent = $replyToText.contents().filter(function() {
+                return this.nodeType === 3 || (this.nodeType === 1 && $(this).is(':not(.reply-indicator, .reply-name)'));
+            }).text().trim();
+            // ถ้าเป็นข้อความที่ reply มา ให้ reply กลับไปหาข้อความนั้น
+            playerName = originalReplyName;
+            messageContent = originalReplyContent;
+            // ณ ตอนนี้ messageId ยังคงเป็นของข้อความหลัก แต่ replyTo จะชี้ไปที่ต้นฉบับของ reply
+        }
+
+        replyingTo = {
+            id: messageId, // ID ของข้อความที่ถูกตอบกลับ (หรือข้อความที่ reply to)
+            name: playerName,
+            content: messageContent.split('\n')[0] // เอาแค่บรรทัดแรกของข้อความ
+        };
+
+        $('#replyPreview .reply-player-name').css('color', $wrapper.find('.chat-message-name').css('color')); // ใช้สีชื่อผู้เล่นต้นฉบับ
+        $('#replyPreview .reply-player-name').text(replyingTo.name);
+        $('#replyPreview .reply-message-content').text(replyingTo.content);
+        $('#replyPreview').show();
+        $('#chatInput').focus();
+    });
+
+    // เพิ่ม event listener สำหรับปุ่มยกเลิกการตอบกลับ
+    $(document).on('click', '#replyPreview .reply-cancel-btn', function() {
+        replyingTo = null;
+        $('#replyPreview').hide();
+        $('#replyPreview .reply-player-name').empty();
+        $('#replyPreview .reply-message-content').empty();
+    });
+
+    // ==================== NOTIFICATION SYSTEM ====================
+function showNotification(message, type = 'info', duration = 5000) {
+    const notification = $('<div class="notification ' + type + '">' + message + '</div>');
+    $('#notificationCenter').append(notification);
+    
+    setTimeout(() => {
+        notification.fadeOut(300, function() { $(this).remove(); });
+    }, duration);
+}
+
+// NOTE: ไม่ลงทะเบียน socket listeners ซ้ำที่นี่
+// Notifications ถูกเรียกจาก main listeners ด้านบนแทน
+
+    // ===== GM Quick Reply System =====
+    <% if (player.role === 'ผู้ดำเนินเกม') { %>
+    var selectedMessageId = null; // ID ข้อความที่เลือกจะตอบ
+    
+    // คลิกที่ข้อความเพื่อเลือกจะตอบ (สำหรับ GM)
+    $(document).on('click', '.chat-message-wrapper.other .chat-message-bubble', function(e) {
+        e.stopPropagation();
+        var $wrapper = $(this).closest('.chat-message-wrapper');
+        var messageId = $wrapper.data('message-id');
+        var playerName = $wrapper.find('.chat-message-name').text().replace(':', '').trim();
+        
+        // ไม่ตอบข้อความ System
+        if (playerName === 'System') return;
+        
+        // ลบการเลือกเก่า
+        $('.chat-message-wrapper').removeClass('gm-selected');
+        
+        // เลือกข้อความนี้
+        $wrapper.addClass('gm-selected');
+        selectedMessageId = messageId;
+        
+        // แสดง preview ว่ากำลังจะตอบข้อความไหน
+        var msgPreview = $(this).text().substring(0, 50);
+        $('.gm-quick-label').html('🎯 ตอบ: <span style="color:#f6e05e;">' + playerName + '</span>');
+    });
+    
+    // คลิกที่พื้นที่อื่นเพื่อยกเลิกการเลือก
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.chat-message-bubble, .gm-reply-btn').length) {
+            $('.chat-message-wrapper').removeClass('gm-selected');
+            selectedMessageId = null;
+            $('.gm-quick-label').html('🎭 ตอบด่วน:');
+        }
+    });
+    
+    // เมื่อกดปุ่มตอบด่วน
+    $('.gm-reply-btn').on('click', function() {
+        var replyType = $(this).data('reply'); // 'yes', 'no', 'maybe'
+        
+        if (!selectedMessageId) {
+            // ไม่ได้เลือกข้อความ แสดงคำแนะนำ
+            Swal.fire({
+                icon: 'info',
+                title: '💡 วิธีใช้',
+                html: 'คลิกที่ <strong>ข้อความคำถาม</strong> ที่ต้องการตอบก่อน<br>จากนั้นค่อยกดปุ่มตอบด่วน',
+                background: '#1e1e1e',
+                color: '#fff',
+                timer: 3000,
+                showConfirmButton: false
+            });
+            return;
+        }
+        
+        // ส่ง GM reaction ไปที่ข้อความที่เลือก
+        socket.emit('gmReaction', {
+            targetMessageId: selectedMessageId,
+            reactionType: replyType,
+            playerName: '<%= player.name %>'
+        });
+        
+        // รีเซ็ตการเลือก
+        $('.chat-message-wrapper').removeClass('gm-selected');
+        selectedMessageId = null;
+        $('.gm-quick-label').html('🎭 ตอบด่วน:');
+    });
+    <% } %>
+    
+    // รับ GM reaction และแสดงที่ข้อความ
+    socket.on('gmReactionReceived', function(data) {
+        var $targetMsg = $('.chat-message-wrapper[data-message-id="' + data.targetMessageId + '"]');
+        if ($targetMsg.length) {
+            // ลบ reaction เก่าถ้ามี
+            $targetMsg.find('.gm-reaction').remove();
+            
+            // เพิ่ม reaction ใหม่
+            var emoji, reactionClass;
+            if (data.reactionType === 'yes') {
+                emoji = '✅';
+                reactionClass = 'yes';
+            } else if (data.reactionType === 'no') {
+                emoji = '❌';
+                reactionClass = 'no';
+            } else {
+                emoji = '🤔';
+                reactionClass = 'maybe';
+            }
+            
+            $targetMsg.find('.chat-message-bubble').append(
+                '<span class="gm-reaction ' + reactionClass + '">' + emoji + '</span>'
+            );
+            
+            // Scroll to bottom
+            var $msgArea = $('#chatMessages');
+            $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
+        }
+    });
+});
+</script>

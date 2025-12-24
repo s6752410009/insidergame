@@ -1,0 +1,275 @@
+html {
+    position: relative;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: "Gill Sans", sans-serif;
+    overflow-x: hidden;
+}
+
+.content .hidden {
+    display: none !important;
+}
+
+.content .hidden.current {
+    display: block !important;
+}
+
+a.remove, #countdown a, #startGame a {
+    color: #ffc107;
+}
+
+a.remove:active, #countdown a:active, #startGame a:active {
+    color: #000;
+}
+
+.container-fluid {
+  min-height: calc(100vh - 70px);
+  margin-bottom: 70px;
+  background-color: #DE3C31;
+  overflow-x: hidden;
+}
+
+header {
+  background-image: url("/static/image/frise.jpg");
+  background-repeat: repeat-x;
+  background-position: bottom center;
+  background-color: #DE3C31; 
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+header img {
+  max-width: 100%;
+  height: auto;
+  max-height: 90px;
+  display: block;
+}
+
+footer.footer {
+    position: fixed; 
+    background-color: #DE3C31; 
+    bottom: 0;
+    width: 100%;
+    height: 70px;
+    padding-top: 10px;
+}
+
+#playerList {
+    display: inline-block;
+    text-align: left;
+    margin: 15px auto;
+}
+
+#playerAddForm {
+    width: 300px;
+    margin: 10px auto;
+}
+#playerAddForm label{
+    display: block;
+}
+
+#playerAddForm label{
+    display: block;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.content #playerAddForm .info {
+    font-size: 14px;
+    color: #4c4c4c;
+}
+
+.content #playerAddForm .info ul {
+    display: inline-block;
+    text-align: left;
+}
+.content #playerAddForm .info ul li {
+    font-size: 14px;
+    line-height: 16px;
+}
+
+.content h2 {
+    margin: 10px 0 0 0;
+    color: #000;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.content {
+    text-align: center;
+}
+
+.content ul {
+    text-align: left;
+}
+
+.content ul li {
+    font-size: 20px;
+    line-height: 25px;
+}
+
+.content ul li label {
+    margin-left: 8px;
+    vertical-align: top;
+}
+
+#reset {
+    margin-top: 25px;
+}
+
+.homelink {
+    font-size: 12px;
+    display: block;
+    margin: 0 0 20px 0;
+}
+.homelink a {
+    color: #000;
+    text-decoration: underline;
+}
+
+#reset, #reveal, #word, #timer, .role, .player {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.role, #word {
+    background-color: #23272b;
+    color: #fff;
+}
+
+.role {
+    padding: 10px;
+}
+
+#word span{
+    display: block;
+    padding: 10px;
+}
+
+.role strong, #word strong, .player {
+    font-size: 25px;
+    display: block;
+}
+
+#countdown, #startGame {
+    font-weight: bold;
+    font-size: 50px;
+}
+
+#displayVote1, #vote1 button, #vote1Result, #displayVote2, #vote2 button, #vote2Result {
+    margin: 5px auto 15px auto;
+}
+
+#vote1 button, #vote1Result {
+    padding: 1rem 2rem;
+    font-size: 30px;
+    margin-left: 10px;
+}
+
+#vote2Result #finalResult {
+    font-weight: bold;
+    font-size: 20px;
+    background-color: #23272b;
+    color: #fff;
+    padding: 10px;
+}
+
+.content button.cta, .content a.cta {
+    width: 260px;
+    max-width: 90%;
+    height: 50px;
+    margin: 0 auto;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 32px;
+    display: block;
+}
+
+.content button.cta.hidden,
+.content a.cta.hidden {
+    display: none;
+}
+
+.inline-block {
+    display: inline-block;
+    text-align: left;
+    max-width: 100%;
+    padding: 0 15px;
+    box-sizing: border-box;
+}
+
+.playerStatus i {
+    margin-left: 3px;
+}
+.playerStatus .online {
+    color: #46A049;
+}
+.playerStatus .offline {
+    color: #5F5F5F;
+}
+.player .playerStatus {
+    font-size: 10px;
+}
+
+.ghost {
+    color: #55585c;
+    font-style: italic;
+}
+
+/* Base responsive adjustments */
+@media (max-width: 768px) {
+    header {
+        height: auto;
+        padding: 10px 0;
+    }
+    
+    header img {
+        max-width: 100%;
+        height: auto;
+        max-height: 80px;
+    }
+    
+    .container-fluid {
+        padding: 10px;
+    }
+    
+    footer.footer {
+        height: auto;
+        min-height: 60px;
+        padding: 10px;
+    }
+    
+    #playerAddForm {
+        width: 100%;
+        max-width: 300px;
+        padding: 0 10px;
+    }
+    
+    #countdown, #startGame {
+        font-size: 40px;
+    }
+    
+    .content h2 {
+        font-size: 20px;
+    }
+    
+    .content ul li {
+        font-size: 16px;
+        line-height: 22px;
+    }
+    
+    .role strong, #word strong, .player {
+        font-size: 20px;
+    }
+    
+    #vote1 button, #vote1Result {
+        padding: 0.8rem 1.5rem;
+        font-size: 24px;
+        margin-left: 5px;
+    }
+}
+

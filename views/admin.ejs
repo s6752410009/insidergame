@@ -1,0 +1,1202 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .admin-container {
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 20px;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .admin-header h1 {
+        margin: 0;
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid #444;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .stat-card h3 {
+        margin: 0 0 10px 0;
+        color: #888;
+        font-size: 0.85em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 2.2em;
+        font-weight: 700;
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+    }
+    
+    .stat-card.players .stat-value { color: #3498db; }
+    .stat-card.rooms .stat-value { color: #2ecc71; }
+    .stat-card.playing .stat-value { color: #e67e22; }
+    .stat-card.banned .stat-value { color: #e74c3c; }
+    .stat-card.games .stat-value { color: #9b59b6; }
+    
+    .panel {
+        background: linear-gradient(135deg, #151515 0%, #222 100%);
+        border: 3px solid #444;
+        border-radius: 18px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }
+    
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #333;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .panel-header h2 {
+        margin: 0;
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.4em;
+    }
+    
+    .panel-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-admin {
+        padding: 8px 16px;
+        border: 2px solid;
+        border-radius: 8px;
+        color: #fff;
+        cursor: pointer;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 0.9em;
+        transition: all 0.3s;
+        background: transparent;
+    }
+    
+    .btn-admin:hover {
+        transform: translateY(-2px);
+    }
+    
+    .btn-refresh {
+        border-color: #3498db;
+        color: #3498db;
+    }
+    .btn-refresh:hover {
+        background: #3498db;
+        color: #fff;
+    }
+    
+    .btn-danger {
+        border-color: #e74c3c;
+        color: #e74c3c;
+    }
+    .btn-danger:hover {
+        background: #e74c3c;
+        color: #fff;
+    }
+    
+    .btn-warning {
+        border-color: #f39c12;
+        color: #f39c12;
+    }
+    .btn-warning:hover {
+        background: #f39c12;
+        color: #fff;
+    }
+    
+    .btn-success {
+        border-color: #2ecc71;
+        color: #2ecc71;
+    }
+    .btn-success:hover {
+        background: #2ecc71;
+        color: #fff;
+    }
+    
+    .btn-primary {
+        border-color: #9b59b6;
+        color: #9b59b6;
+    }
+    .btn-primary:hover {
+        background: #9b59b6;
+        color: #fff;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    th, td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+    
+    th {
+        background: #1a1a1a;
+        color: #888;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8em;
+        letter-spacing: 1px;
+    }
+    
+    td {
+        color: #ddd;
+        font-size: 0.95em;
+    }
+    
+    tr:hover td {
+        background: rgba(255,255,255,0.05);
+    }
+    
+    .player-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 8px;
+        border: 2px solid rgba(255,255,255,0.3);
+    }
+    
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+    
+    .status-online { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+    .status-offline { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+    .status-waiting { background: rgba(52, 152, 219, 0.2); color: #3498db; border: 1px solid #3498db; }
+    .status-playing { background: rgba(230, 126, 34, 0.2); color: #e67e22; border: 1px solid #e67e22; }
+    .status-banned { background: rgba(231, 76, 60, 0.3); color: #ff6b6b; border: 1px solid #e74c3c; }
+    
+    .action-btn {
+        padding: 5px 10px;
+        border-radius: 5px;
+        border: 1px solid;
+        cursor: pointer;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 0.85em;
+        transition: all 0.2s;
+        margin: 2px;
+    }
+    
+    .action-btn.ban { border-color: #e74c3c; color: #e74c3c; background: transparent; }
+    .action-btn.ban:hover { background: #e74c3c; color: #fff; }
+    .action-btn.unban { border-color: #2ecc71; color: #2ecc71; background: transparent; }
+    .action-btn.unban:hover { background: #2ecc71; color: #fff; }
+    .action-btn.kick { border-color: #f39c12; color: #f39c12; background: transparent; }
+    .action-btn.kick:hover { background: #f39c12; color: #fff; }
+    .action-btn.delete { border-color: #c0392b; color: #c0392b; background: transparent; }
+    .action-btn.delete:hover { background: #c0392b; color: #fff; }
+    .action-btn.edit { border-color: #3498db; color: #3498db; background: transparent; }
+    .action-btn.edit:hover { background: #3498db; color: #fff; }
+    .action-btn.view { border-color: #9b59b6; color: #9b59b6; background: transparent; }
+    .action-btn.view:hover { background: #9b59b6; color: #fff; }
+    .action-btn.close { border-color: #e74c3c; color: #e74c3c; background: transparent; }
+    .action-btn.close:hover { background: #e74c3c; color: #fff; }
+    .action-btn.unlock { border-color: #2ecc71; color: #2ecc71; background: transparent; }
+    .action-btn.unlock:hover { background: #2ecc71; color: #fff; }
+    .action-btn.reset { border-color: #f39c12; color: #f39c12; background: transparent; }
+    .action-btn.reset:hover { background: #f39c12; color: #fff; }
+    
+    .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        padding: 10px 20px;
+        background: #333;
+        border: 2px solid #444;
+        border-radius: 8px;
+        color: #fff;
+        cursor: pointer;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .tab-btn.active {
+        background: #e74c3c;
+        border-color: #c0392b;
+    }
+    
+    .tab-btn:hover:not(.active) {
+        background: #444;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .search-box {
+        padding: 10px 15px;
+        border: 2px solid #444;
+        border-radius: 8px;
+        background: #1a1a1a;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1em;
+        width: 200px;
+    }
+    
+    .search-box:focus {
+        outline: none;
+        border-color: #e74c3c;
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 40px;
+        color: #888;
+    }
+    
+    .room-players {
+        font-size: 0.85em;
+        color: #888;
+    }
+    
+    .room-players span {
+        display: inline-block;
+        margin: 2px;
+        padding: 2px 8px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+    
+    .last-seen {
+        font-size: 0.85em;
+        color: #666;
+    }
+    
+    .broadcast-input {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #444;
+        border-radius: 8px;
+        background: #1a1a1a;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1em;
+        margin-bottom: 15px;
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    .broadcast-input:focus {
+        outline: none;
+        border-color: #9b59b6;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .quick-action-btn {
+        padding: 20px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid #444;
+        border-radius: 12px;
+        color: #fff;
+        cursor: pointer;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 1em;
+        transition: all 0.3s;
+        text-align: center;
+    }
+    
+    .quick-action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+    }
+    
+    .quick-action-btn .icon {
+        font-size: 2em;
+        display: block;
+        margin-bottom: 10px;
+    }
+    
+    .quick-action-btn.danger { border-color: #e74c3c; }
+    .quick-action-btn.danger:hover { background: rgba(231, 76, 60, 0.2); }
+    .quick-action-btn.warning { border-color: #f39c12; }
+    .quick-action-btn.warning:hover { background: rgba(243, 156, 18, 0.2); }
+    .quick-action-btn.success { border-color: #2ecc71; }
+    .quick-action-btn.success:hover { background: rgba(46, 204, 113, 0.2); }
+    .quick-action-btn.primary { border-color: #9b59b6; }
+    .quick-action-btn.primary:hover { background: rgba(155, 89, 182, 0.2); }
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>🛠️ Admin Dashboard</h1>
+        <div>
+            <a href="/" class="btn-admin btn-refresh" style="text-decoration: none;">← กลับหน้าแรก</a>
+            <a href="/admin/logout" class="btn-admin btn-danger" style="text-decoration: none; margin-left: 10px;">🚪 ออกจากระบบ</a>
+        </div>
+    </div>
+    
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+        <div class="stat-card players">
+            <h3>👥 ผู้เล่นทั้งหมด</h3>
+            <div class="stat-value" id="totalPlayers">0</div>
+        </div>
+        <div class="stat-card rooms">
+            <h3>🏠 ห้องทั้งหมด</h3>
+            <div class="stat-value" id="totalRooms">0</div>
+        </div>
+        <div class="stat-card playing">
+            <h3>🎮 กำลังเล่นเกม</h3>
+            <div class="stat-value" id="playingRooms">0</div>
+        </div>
+        <div class="stat-card banned">
+            <h3>🚫 ถูกแบน</h3>
+            <div class="stat-value" id="bannedPlayers">0</div>
+        </div>
+        <div class="stat-card games">
+            <h3>📊 เกมที่เล่นแล้ว</h3>
+            <div class="stat-value" id="totalGames">0</div>
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="players">👥 ผู้เล่น</button>
+        <button class="tab-btn" data-tab="rooms">🏠 ห้อง</button>
+        <button class="tab-btn" data-tab="banned">🚫 รายการแบน</button>
+        <button class="tab-btn" data-tab="stats">📊 สถิติ</button>
+        <button class="tab-btn" data-tab="system">⚙️ ระบบ</button>
+    </div>
+    
+    <!-- Players Tab -->
+    <div class="tab-content active" id="tab-players">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>👥 จัดการผู้เล่น</h2>
+                <div class="panel-actions">
+                    <input type="text" class="search-box" id="searchPlayers" placeholder="🔍 ค้นหา...">
+                    <button class="btn-admin btn-danger" onclick="deleteSelectedPlayers()" id="btnDeleteSelected" style="display: none;">🗑️ ลบที่เลือก (<span id="selectedCount">0</span>)</button>
+                    <button class="btn-admin btn-danger" onclick="deleteAllPlayers()">💥 ลบทั้งหมด</button>
+                    <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAllPlayers" onclick="toggleSelectAll(this)"></th>
+                            <th>ผู้เล่น</th>
+                            <th>Player ID</th>
+                            <th>สถานะ</th>
+                            <th>ออนไลน์ล่าสุด</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playersTable">
+                        <tr><td colspan="6" class="empty-message">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rooms Tab -->
+    <div class="tab-content" id="tab-rooms">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>🏠 จัดการห้อง</h2>
+                <div class="panel-actions">
+                    <button class="btn-admin btn-warning" onclick="clearEmptyRooms()">🧹 ล้างห้องว่าง</button>
+                    <button class="btn-admin btn-danger" onclick="clearAllRooms()">💥 ล้างห้องทั้งหมด</button>
+                    <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อห้อง</th>
+                            <th>Room ID</th>
+                            <th>ผู้เล่น</th>
+                            <th>สถานะ</th>
+                            <th>ล็อค</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomsTable">
+                        <tr><td colspan="6" class="empty-message">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Banned Tab -->
+    <div class="tab-content" id="tab-banned">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>🚫 รายการผู้เล่นที่ถูกแบน</h2>
+                <div class="panel-actions">
+                    <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ผู้เล่น</th>
+                            <th>Player ID</th>
+                            <th>เหตุผล</th>
+                            <th>ระยะเวลา</th>
+                            <th>เหลือเวลา</th>
+                            <th>แบนโดย</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bannedTable">
+                        <tr><td colspan="7" class="empty-message">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Tab -->
+    <div class="tab-content" id="tab-stats">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>📊 สถิติผู้เล่น</h2>
+                <div class="panel-actions">
+                    <button class="btn-admin btn-primary" onclick="exportStats()">📥 Export CSV</button>
+                    <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ผู้เล่น</th>
+                            <th>เกม</th>
+                            <th>ชนะ</th>
+                            <th>แพ้</th>
+                            <th>Win%</th>
+                            <th>GM</th>
+                            <th>ทรยศ</th>
+                            <th>พลเมือง</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsTable">
+                        <tr><td colspan="9" class="empty-message">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Tab -->
+    <div class="tab-content" id="tab-system">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>📢 ประกาศ (Broadcast)</h2>
+            </div>
+            <textarea class="broadcast-input" id="broadcastMessage" placeholder="พิมพ์ข้อความที่ต้องการประกาศให้ทุกคน..."></textarea>
+            <button class="btn-admin btn-primary" onclick="sendBroadcast()" style="width: 100%; padding: 15px; font-size: 1.1em;">📢 ส่งประกาศ</button>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <h2>⚡ Quick Actions</h2>
+            </div>
+            <div class="quick-actions">
+                <button class="quick-action-btn warning" onclick="clearEmptyRooms()">
+                    <span class="icon">🧹</span>
+                    ล้างห้องว่าง
+                </button>
+                <button class="quick-action-btn danger" onclick="clearAllRooms()">
+                    <span class="icon">💥</span>
+                    ล้างห้องทั้งหมด
+                </button>
+                <button class="quick-action-btn success" onclick="exportAllData()">
+                    <span class="icon">📥</span>
+                    Export ข้อมูลทั้งหมด
+                </button>
+                <button class="quick-action-btn primary" onclick="loadData()">
+                    <span class="icon">🔄</span>
+                    รีเฟรชข้อมูล
+                </button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <div class="panel-header">
+                <h2>ℹ️ ข้อมูลระบบ</h2>
+            </div>
+            <div style="color: #aaa; line-height: 2;">
+                <p>📦 <strong>Version:</strong> 1.0.0</p>
+                <p>🖥️ <strong>Server:</strong> Node.js + Express + Socket.IO</p>
+                <p>💾 <strong>Data Storage:</strong> JSON Files (players.json, playerStats.json, bannedPlayers.json)</p>
+                <p>🕐 <strong>Server Time:</strong> <span id="serverTime">-</span></p>
+                <p>⏱️ <strong>Uptime:</strong> <span id="uptime">-</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(function() {
+    const socket = io();
+    let allData = {};
+    
+    // Tab switching
+    $('.tab-btn').on('click', function() {
+        const tab = $(this).data('tab');
+        $('.tab-btn').removeClass('active');
+        $(this).addClass('active');
+        $('.tab-content').removeClass('active');
+        $('#tab-' + tab).addClass('active');
+    });
+    
+    // Search players
+    $('#searchPlayers').on('input', function() {
+        const search = $(this).val().toLowerCase();
+        $('#playersTable tr').each(function() {
+            const text = $(this).text().toLowerCase();
+            $(this).toggle(text.includes(search));
+        });
+    });
+    
+    // Load data from server
+    window.loadData = function() {
+        socket.emit('admin_getData', function(response) {
+            if (response.success) {
+                allData = response;
+                updateStats(response);
+                updatePlayersTable(response.players, response.bannedPlayers);
+                updateRoomsTable(response.rooms);
+                updateBannedTable(response.bannedPlayers);
+                updateStatsTable(response.playerStats);
+            }
+        });
+    };
+    
+    function updateStats(data) {
+        $('#totalPlayers').text(data.players.length);
+        $('#totalRooms').text(data.rooms.length);
+        $('#playingRooms').text(data.rooms.filter(r => r.gameStatus === 'playing').length);
+        $('#bannedPlayers').text(data.bannedPlayers ? data.bannedPlayers.length : 0);
+        const totalGames = data.playerStats.reduce((sum, p) => sum + (p.totalGames || 0), 0) / 2;
+        $('#totalGames').text(Math.floor(totalGames));
+        $('#serverTime').text(new Date().toLocaleString('th-TH'));
+    }
+    
+    function updatePlayersTable(players, bannedPlayers) {
+        const $table = $('#playersTable');
+        $table.empty();
+        
+        if (players.length === 0) {
+            $table.html('<tr><td colspan="6" class="empty-message">ไม่มีผู้เล่น</td></tr>');
+            return;
+        }
+        
+        const bannedIds = (bannedPlayers || []).map(b => b.playerId);
+        players.sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+        
+        players.forEach(function(player) {
+            const lastSeen = new Date(player.lastSeen).toLocaleString('th-TH');
+            const isRecent = (Date.now() - new Date(player.lastSeen)) < 5 * 60 * 1000;
+            const isBanned = bannedIds.includes(player.playerId);
+            
+            const statusBadge = isBanned 
+                ? '<span class="status-badge status-banned">แบน</span>'
+                : (isRecent ? '<span class="status-badge status-online">ออนไลน์</span>' : '<span class="status-badge status-offline">ออฟไลน์</span>');
+            
+            const actions = isBanned 
+                ? `<button class="action-btn unban" onclick="unbanPlayer('${player.playerId}')">ปลดแบน</button>`
+                : `<button class="action-btn ban" onclick="banPlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">แบน</button>`;
+            
+            const row = `
+                <tr data-player-id="${player.playerId}">
+                    <td><input type="checkbox" class="player-checkbox" data-player-id="${player.playerId}" data-player-name="${escapeHtml(player.playerName)}" onclick="updateSelectedCount()"></td>
+                    <td>
+                        <span class="player-color" style="background: ${player.color}"></span>
+                        ${escapeHtml(player.playerName)}
+                    </td>
+                    <td><code style="font-size: 0.8em; color: #888;">${player.playerId.substring(0, 8)}...</code></td>
+                    <td>${statusBadge}</td>
+                    <td class="last-seen">${lastSeen}</td>
+                    <td>
+                        ${actions}
+                        <button class="action-btn edit" onclick="editPlayerName('${player.playerId}', '${escapeHtml(player.playerName)}')">แก้ไข</button>
+                        <button class="action-btn delete" onclick="deletePlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">ลบ</button>
+                    </td>
+                </tr>
+            `;
+            $table.append(row);
+        });
+        
+        // Reset select all checkbox
+        $('#selectAllPlayers').prop('checked', false);
+        updateSelectedCount();
+    }
+    
+    function updateRoomsTable(rooms) {
+        const $table = $('#roomsTable');
+        $table.empty();
+        
+        if (rooms.length === 0) {
+            $table.html('<tr><td colspan="6" class="empty-message">ไม่มีห้อง</td></tr>');
+            return;
+        }
+        
+        rooms.forEach(function(room) {
+            const statusClass = room.gameStatus === 'playing' ? 'status-playing' : 'status-waiting';
+            const statusText = room.gameStatus === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
+            
+            const row = `
+                <tr>
+                    <td>${escapeHtml(room.name)}</td>
+                    <td><code style="font-size: 0.85em; color: #888;">${room.roomId}</code></td>
+                    <td>${room.playerCount} / ${room.maxPlayers}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>${room.locked ? '🔒' : '🔓'}</td>
+                    <td>
+                        ${room.locked ? `<button class="action-btn unlock" onclick="unlockRoom('${room.roomId}')">ปลดล็อค</button>` : ''}
+                        <button class="action-btn reset" onclick="resetRoom('${room.roomId}')">รีเซ็ต</button>
+                        <button class="action-btn close" onclick="closeRoom('${room.roomId}', '${escapeHtml(room.name)}')">ปิดห้อง</button>
+                    </td>
+                </tr>
+            `;
+            $table.append(row);
+        });
+    }
+    
+    function updateBannedTable(bannedPlayers) {
+        const $table = $('#bannedTable');
+        $table.empty();
+        
+        if (!bannedPlayers || bannedPlayers.length === 0) {
+            $table.html('<tr><td colspan="7" class="empty-message">ไม่มีผู้เล่นที่ถูกแบน</td></tr>');
+            return;
+        }
+        
+        bannedPlayers.forEach(function(ban) {
+            const bannedAt = new Date(ban.bannedAt).toLocaleString('th-TH');
+            
+            // คำนวณระยะเวลาที่เหลือ
+            let durationText = '';
+            let remainingText = '';
+            
+            if (ban.isPermanent || !ban.expiresAt) {
+                durationText = '<span style="color: #e74c3c;">ถาวร ♾️</span>';
+                remainingText = '<span style="color: #e74c3c;">-</span>';
+            } else {
+                const expiresAt = new Date(ban.expiresAt);
+                const now = new Date();
+                const remainingMs = expiresAt - now;
+                
+                if (remainingMs <= 0) {
+                    durationText = `${ban.durationHours} ชม.`;
+                    remainingText = '<span style="color: #2ecc71;">หมดอายุแล้ว</span>';
+                } else {
+                    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+                    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                    durationText = `${ban.durationHours} ชม.`;
+                    remainingText = hours > 0 ? `${hours} ชม. ${minutes} น.` : `${minutes} นาที`;
+                }
+            }
+            
+            const row = `
+                <tr>
+                    <td>${escapeHtml(ban.playerName)}</td>
+                    <td><code style="font-size: 0.8em; color: #888;">${ban.playerId.substring(0, 8)}...</code></td>
+                    <td>${escapeHtml(ban.reason)}</td>
+                    <td>${durationText}</td>
+                    <td style="color: #f39c12;">${remainingText}</td>
+                    <td>${escapeHtml(ban.bannedBy)}</td>
+                    <td>
+                        <button class="action-btn unban" onclick="unbanPlayer('${ban.playerId}')">ปลดแบน</button>
+                    </td>
+                </tr>
+            `;
+            $table.append(row);
+        });
+    }
+    
+    function updateStatsTable(stats) {
+        const $table = $('#statsTable');
+        $table.empty();
+        
+        if (stats.length === 0) {
+            $table.html('<tr><td colspan="9" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
+            return;
+        }
+        
+        stats.sort((a, b) => (b.totalGames || 0) - (a.totalGames || 0));
+        
+        stats.forEach(function(stat) {
+            const winRate = stat.totalGames > 0 ? Math.round((stat.wins / stat.totalGames) * 100) : 0;
+            const row = `
+                <tr>
+                    <td>${escapeHtml(stat.playerName || 'Unknown')}</td>
+                    <td>${stat.totalGames || 0}</td>
+                    <td style="color: #2ecc71;">${stat.wins || 0}</td>
+                    <td style="color: #e74c3c;">${stat.losses || 0}</td>
+                    <td style="color: ${winRate >= 50 ? '#2ecc71' : '#e74c3c'};">${winRate}%</td>
+                    <td>${stat.roleStats?.gameMasterCount || 0}</td>
+                    <td>${stat.roleStats?.traitorCount || 0}</td>
+                    <td>${stat.roleStats?.citizenCount || 0}</td>
+                    <td>
+                        <button class="action-btn reset" onclick="resetPlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">รีเซ็ต</button>
+                    </td>
+                </tr>
+            `;
+            $table.append(row);
+        });
+    }
+    
+    // ========== Admin Actions ==========
+    
+    window.banPlayer = function(playerId, playerName) {
+        Swal.fire({
+            title: '🚫 แบนผู้เล่น',
+            html: `
+                <p>ต้องการแบน <strong>${playerName}</strong>?</p>
+                <div style="text-align: left; margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 5px; color: #888;">เหตุผลในการแบน:</label>
+                    <input type="text" id="banReason" class="swal2-input" placeholder="กรุณาระบุเหตุผล..." style="margin: 0 0 15px 0; width: 100%; box-sizing: border-box;">
+                    
+                    <label style="display: block; margin-bottom: 5px; color: #888;">ระยะเวลาแบน:</label>
+                    <select id="banDuration" class="swal2-select" style="width: 100%; padding: 10px; border-radius: 5px; background: #1a1a1a; color: #fff; border: 1px solid #444;">
+                        <option value="1">1 ชั่วโมง</option>
+                        <option value="6">6 ชั่วโมง</option>
+                        <option value="24">1 วัน (24 ชั่วโมง)</option>
+                        <option value="72">3 วัน</option>
+                        <option value="168">7 วัน (1 สัปดาห์)</option>
+                        <option value="720">30 วัน (1 เดือน)</option>
+                        <option value="0">ถาวร ♾️</option>
+                    </select>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '🚫 แบน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff',
+            preConfirm: () => {
+                return {
+                    reason: document.getElementById('banReason').value || 'ไม่ระบุเหตุผล',
+                    duration: parseInt(document.getElementById('banDuration').value)
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const { reason, duration } = result.value;
+                socket.emit('admin_banPlayer', { 
+                    playerId, 
+                    reason,
+                    durationHours: duration === 0 ? null : duration // null = ถาวร
+                }, function(res) {
+                    if (res.success) {
+                        const durationText = duration === 0 ? 'ถาวร' : `${duration} ชั่วโมง`;
+                        Swal.fire({ 
+                            icon: 'success', 
+                            title: 'แบนสำเร็จ', 
+                            html: `แบน <strong>${playerName}</strong><br>ระยะเวลา: ${durationText}`,
+                            timer: 2000, 
+                            showConfirmButton: false, 
+                            background: '#1e1e1e', 
+                            color: '#fff' 
+                        });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    window.unbanPlayer = function(playerId) {
+        socket.emit('admin_unbanPlayer', { playerId }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'ปลดแบนสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                loadData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    window.editPlayerName = function(playerId, currentName) {
+        Swal.fire({
+            title: '✏️ แก้ไขชื่อ',
+            input: 'text',
+            inputValue: currentName,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                socket.emit('admin_editPlayerName', { playerId, newName: result.value }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'แก้ไขสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    window.deletePlayer = function(playerId, playerName) {
+        Swal.fire({
+            title: '🗑️ ลบผู้เล่น',
+            html: `ต้องการลบ <strong>${playerName}</strong>?<br><small style="color:#e74c3c;">การดำเนินการนี้ไม่สามารถย้อนกลับได้!</small>`,
+            showCancelButton: true,
+            confirmButtonText: 'ลบ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_deletePlayer', { playerId }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    window.closeRoom = function(roomId, roomName) {
+        Swal.fire({
+            title: '❌ ปิดห้อง',
+            html: `ต้องการปิดห้อง <strong>${roomName}</strong>?<br><small>ผู้เล่นทุกคนจะถูกเตะออก</small>`,
+            showCancelButton: true,
+            confirmButtonText: 'ปิดห้อง',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_closeRoom', { roomId }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'ปิดห้องสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    window.unlockRoom = function(roomId) {
+        socket.emit('admin_unlockRoom', { roomId }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'ปลดล็อคสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                loadData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    window.resetRoom = function(roomId) {
+        socket.emit('admin_resetRoom', { roomId }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'รีเซ็ตเกมสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                loadData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+    
+    window.resetPlayerStats = function(playerId, playerName) {
+        Swal.fire({
+            title: '🔄 รีเซ็ตสถิติ',
+            html: `ต้องการรีเซ็ตสถิติของ <strong>${playerName}</strong>?`,
+            showCancelButton: true,
+            confirmButtonText: 'รีเซ็ต',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#f39c12',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_resetPlayerStats', { playerId }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'รีเซ็ตสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    window.clearEmptyRooms = function() {
+        socket.emit('admin_clearEmptyRooms', function(res) {
+            Swal.fire({ icon: 'success', title: `ล้างห้องว่าง ${res.count} ห้อง`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+            loadData();
+        });
+    };
+    
+    window.clearAllRooms = function() {
+        Swal.fire({
+            title: '💥 ล้างห้องทั้งหมด',
+            html: '<span style="color:#e74c3c;">คำเตือน: การดำเนินการนี้จะปิดห้องทั้งหมดทันที!</span>',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_clearAllRooms', function(res) {
+                    Swal.fire({ icon: 'success', title: `ล้างห้องทั้งหมด ${res.count} ห้อง`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                    loadData();
+                });
+            }
+        });
+    };
+    
+    window.sendBroadcast = function() {
+        const message = $('#broadcastMessage').val().trim();
+        if (!message) {
+            Swal.fire({ icon: 'warning', title: 'กรุณาพิมพ์ข้อความ', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        
+        socket.emit('admin_broadcast', { message }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'ส่งประกาศสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                $('#broadcastMessage').val('');
+            }
+        });
+    };
+    
+    window.exportStats = function() {
+        if (!allData.playerStats) return;
+        
+        let csv = 'Player Name,Total Games,Wins,Losses,Win Rate,GM Count,Traitor Count,Citizen Count\n';
+        allData.playerStats.forEach(s => {
+            const winRate = s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0;
+            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0}\n`;
+        });
+        
+        downloadCSV(csv, 'player_stats.csv');
+    };
+    
+    window.exportAllData = function() {
+        const dataStr = JSON.stringify(allData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'insider_game_data_' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+    };
+    
+    function downloadCSV(csv, filename) {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+    
+    // ========== Bulk Selection Functions ==========
+    
+    window.toggleSelectAll = function(checkbox) {
+        $('.player-checkbox').prop('checked', checkbox.checked);
+        updateSelectedCount();
+    };
+    
+    window.updateSelectedCount = function() {
+        const selectedCount = $('.player-checkbox:checked').length;
+        $('#selectedCount').text(selectedCount);
+        
+        if (selectedCount > 0) {
+            $('#btnDeleteSelected').show();
+        } else {
+            $('#btnDeleteSelected').hide();
+        }
+    };
+    
+    window.deleteSelectedPlayers = function() {
+        const selectedCheckboxes = $('.player-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        
+        if (count === 0) {
+            Swal.fire({ icon: 'warning', title: 'กรุณาเลือกผู้เล่น', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        
+        const playerIds = [];
+        const playerNames = [];
+        selectedCheckboxes.each(function() {
+            playerIds.push($(this).data('player-id'));
+            playerNames.push($(this).data('player-name'));
+        });
+        
+        Swal.fire({
+            title: '🗑️ ลบผู้เล่นที่เลือก',
+            html: `ต้องการลบ <strong>${count}</strong> คน?<br><br>
+                   <div style="max-height: 150px; overflow-y: auto; text-align: left; background: #111; padding: 10px; border-radius: 8px; font-size: 0.9em;">
+                   ${playerNames.map(n => `• ${n}`).join('<br>')}
+                   </div>
+                   <br><small style="color:#e74c3c;">การดำเนินการนี้ไม่สามารถย้อนกลับได้!</small>`,
+            showCancelButton: true,
+            confirmButtonText: `ลบ ${count} คน`,
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_bulkDeletePlayers', { playerIds }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ 
+                            icon: 'success', 
+                            title: `ลบสำเร็จ ${res.deletedCount} คน`, 
+                            timer: 2000, 
+                            showConfirmButton: false, 
+                            background: '#1e1e1e', 
+                            color: '#fff' 
+                        });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    window.deleteAllPlayers = function() {
+        const totalPlayers = $('#playersTable tr').length;
+        
+        Swal.fire({
+            title: '💥 ลบผู้เล่นทั้งหมด',
+            html: `<span style="color:#e74c3c; font-size: 1.2em;">⚠️ คำเตือน!</span><br><br>
+                   ต้องการลบผู้เล่นทั้งหมด <strong>${totalPlayers}</strong> คน?<br><br>
+                   <small style="color:#e74c3c;">การดำเนินการนี้ไม่สามารถย้อนกลับได้!<br>ข้อมูลทั้งหมดจะหายไป!</small>`,
+            showCancelButton: true,
+            confirmButtonText: '💥 ยืนยันลบทั้งหมด',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_deleteAllPlayers', {}, function(res) {
+                    if (res.success) {
+                        Swal.fire({ 
+                            icon: 'success', 
+                            title: `ลบทั้งหมด ${res.deletedCount} คน`, 
+                            timer: 2000, 
+                            showConfirmButton: false, 
+                            background: '#1e1e1e', 
+                            color: '#fff' 
+                        });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    // Load initial data
+    loadData();
+    
+    // Auto refresh every 15 seconds
+    setInterval(loadData, 15000);
+    
+    // Update server time every second
+    setInterval(() => {
+        $('#serverTime').text(new Date().toLocaleString('th-TH'));
+    }, 1000);
+});
+</script>

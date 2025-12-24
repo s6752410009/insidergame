@@ -1,0 +1,937 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .room-list-container {
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 20px;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .room-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    /* กล่องดำหลักสำหรับลิสต์ห้อง (เหมือนกรอบโปรไฟล์ในรูปที่ 2) */
+    .room-panel {
+        background: linear-gradient(135deg, #151515 0%, #222 100%);
+        border: 3px solid #444;
+        border-radius: 18px;
+        padding: 24px 24px 32px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        min-height: 260px;
+    }
+
+    /* Popup สร้างห้อง/แก้ไขห้อง - Modern Style */
+    .room-popup {
+        max-width: 480px !important;
+        border-radius: 20px !important;
+        border: 3px solid #333 !important;
+        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%) !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    
+    .room-popup .swal2-title {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        margin: 0 !important;
+        padding: 20px 24px !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 1.4em !important;
+        font-weight: 700 !important;
+        color: #fff !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .room-popup .swal2-html-container {
+        margin: 0 !important;
+        padding: 24px !important;
+        overflow: visible !important;
+    }
+    
+    .room-popup .swal2-actions {
+        padding: 0 24px 24px !important;
+        gap: 12px !important;
+    }
+    
+    .room-form-group {
+        margin-bottom: 20px;
+    }
+    
+    .room-form-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #aaa;
+        font-size: 0.95em;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .room-form-label .icon {
+        font-size: 1.1em;
+    }
+    
+    .room-form-input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #333;
+        border-radius: 12px;
+        background: #0d0d1a;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1em;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+    
+    .room-form-input:focus {
+        outline: none;
+        border-color: #e74c3c;
+        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2);
+    }
+    
+    .room-form-input::placeholder {
+        color: #555;
+        font-weight: 400;
+    }
+    
+    /* Slider Style */
+    .room-slider-container {
+        position: relative;
+        padding: 10px 0;
+    }
+    
+    .room-slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #333 0%, #333 100%);
+        outline: none;
+        transition: all 0.3s;
+    }
+    
+    .room-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        cursor: pointer;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        transition: all 0.2s;
+    }
+    
+    .room-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+    }
+    
+    .room-slider::-moz-range-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        cursor: pointer;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+    }
+    
+    .room-slider-value {
+        position: absolute;
+        right: 0;
+        top: -5px;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1em;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+    
+    /* Checkbox Style */
+    .room-checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: #0d0d1a;
+        border: 2px solid #333;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .room-checkbox-container:hover {
+        border-color: #e74c3c;
+        background: rgba(231, 76, 60, 0.1);
+    }
+    
+    .room-checkbox-container.checked {
+        border-color: #e74c3c;
+        background: rgba(231, 76, 60, 0.15);
+    }
+    
+    .room-checkbox {
+        display: none;
+    }
+    
+    .room-checkbox-custom {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #555;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+    
+    .room-checkbox-container.checked .room-checkbox-custom {
+        background: #e74c3c;
+        border-color: #e74c3c;
+    }
+    
+    .room-checkbox-text {
+        flex: 1;
+        font-weight: 600;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.05em;
+    }
+    
+    /* Button Styles */
+    .room-btn-confirm {
+        padding: 14px 28px !important;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        color: #fff !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 1.1em !important;
+        cursor: pointer;
+        transition: all 0.3s !important;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+    
+    .room-btn-confirm:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4) !important;
+    }
+    
+    .room-btn-cancel {
+        padding: 14px 28px !important;
+        background: transparent !important;
+        border: 2px solid #555 !important;
+        border-radius: 12px !important;
+        color: #aaa !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 1.1em !important;
+        cursor: pointer;
+        transition: all 0.3s !important;
+    }
+    
+    .room-btn-cancel:hover {
+        border-color: #888 !important;
+        color: #fff !important;
+        background: rgba(255,255,255,0.05) !important;
+    }
+    
+    .room-list-header h1 {
+        margin: 0;
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        letter-spacing: 2px;
+    }
+    
+    .room-controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    #searchRoomInput {
+        padding: 12px 16px;
+        border: 2px solid #444;
+        border-radius: 8px;
+        width: 280px;
+        background: #1a1a1a;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1em;
+        transition: all 0.3s;
+    }
+    
+    #searchRoomInput:focus {
+        outline: none;
+        border-color: #ff6b6b;
+        box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+    }
+    
+    #searchRoomInput::placeholder {
+        color: #888;
+    }
+    
+    .btn-room {
+        padding: 12px 24px;
+        border: 2px solid;
+        border-radius: 8px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 1em;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    #refreshBtn {
+        background: #2c3e50;
+        border-color: #34495e;
+        color: #fff;
+    }
+    
+    #refreshBtn:hover {
+        background: #34495e;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    #createRoomBtn {
+        background: #e74c3c;
+        border-color: #c0392b;
+        color: #fff;
+    }
+    
+    #createRoomBtn:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+    }
+    
+    #roomList {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 25px;
+    }
+    
+    .room-card {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        border: 3px solid #444;
+        border-radius: 12px;
+        padding: 25px;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .room-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #e74c3c, #c0392b);
+        transform: scaleX(0);
+        transition: transform 0.3s;
+    }
+    
+    .room-card:hover {
+        transform: translateY(-5px);
+        border-color: #e74c3c;
+        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+    }
+    
+    .room-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .room-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+    }
+    
+    .room-card-title {
+        flex: 1;
+    }
+    
+    .room-card-title h3 {
+        margin: 0 0 8px 0;
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.4em;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    .room-card-id {
+        margin: 0;
+        color: #aaa;
+        font-size: 0.9em;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .room-card-id strong {
+        color: #ff6b6b;
+        font-weight: 600;
+    }
+    
+    .room-lock-icon {
+        font-size: 2em;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    
+    .room-card-info {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .room-info-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #ddd;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1em;
+    }
+    
+    .room-info-item strong {
+        color: #fff;
+        font-weight: 600;
+    }
+    
+    .room-info-icon {
+        font-size: 1.3em;
+    }
+    
+    #noRooms {
+        text-align: center;
+        padding: 60px 40px;
+        color: #aaa;
+        display: none;
+    }
+    
+    #noRooms p {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.3em;
+        margin: 10px 0;
+    }
+    
+    #noRooms p:first-child {
+        font-size: 1.6em;
+        color: #fff;
+        font-weight: 600;
+    }
+    
+    /* SweetAlert2 Dark Theme */
+    .swal2-popup {
+        background: #1e1e1e !important;
+        color: #fff !important;
+        font-family: 'Rajdhani', sans-serif !important;
+    }
+    
+    .swal2-title {
+        color: #fff !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-weight: 700 !important;
+    }
+    
+    .swal2-content {
+        color: #ddd !important;
+    }
+    
+    .swal2-input, .swal2-select {
+        background: #1a1a1a !important;
+        border: 2px solid #444 !important;
+        color: #fff !important;
+        font-family: 'Rajdhani', sans-serif !important;
+    }
+    
+    .swal2-input:focus, .swal2-select:focus {
+        border-color: #e74c3c !important;
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.3) !important;
+    }
+    
+    .swal2-confirm {
+        background: #e74c3c !important;
+        border-color: #c0392b !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 600 !important;
+    }
+    
+    .swal2-confirm:hover {
+        background: #c0392b !important;
+    }
+    
+    .swal2-cancel {
+        background: #555 !important;
+        border-color: #444 !important;
+        color: #fff !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        font-weight: 600 !important;
+    }
+    
+    .swal2-cancel:hover {
+        background: #666 !important;
+    }
+</style>
+
+<div class="room-list-container">
+    <div class="room-list-header">
+        <h1>🎮 ห้องเกม</h1>
+        <div class="room-controls">
+            <input type="text" id="searchRoomInput" placeholder="🔍 ค้นหาห้องด้วยเลข Room ID">
+            <button id="refreshBtn" class="btn-room">🔄 Refresh</button>
+            <button id="createRoomBtn" class="btn-room">➕ สร้างห้อง</button>
+        </div>
+    </div>
+
+    <!-- กรอบดำหลักสำหรับรายชื่อห้อง / ข้อความไม่มีห้อง -->
+    <div class="room-panel">
+        <div id="roomList">
+            <!-- Rooms will be populated by JavaScript -->
+        </div>
+
+        <div id="noRooms">
+            <p>ไม่มีห้องเกมในขณะนี้</p>
+            <p>กดปุ่ม "สร้างห้อง" เพื่อสร้างห้องใหม่</p>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('footer') %>
+<div class="container">
+    <a href="/" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif; font-weight: 600;">← กลับไป Lobby</a>
+</div>
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(function() {
+    const socket = io();
+    const playerId = '<%= player.playerId %>';
+    const playerName = '<%= player.playerName %>';
+
+    // Init player เพื่อให้ socket รับ events ได้
+    socket.emit('initPlayer', playerId);
+
+    let rooms = [];
+
+    // แสดง message จาก URL param (ถ้ามี)
+    const urlParams = new URLSearchParams(window.location.search);
+    const msg = urlParams.get('msg');
+    if (msg) {
+        const messages = {
+            'room_not_found': { icon: 'warning', title: 'ห้องไม่พบ', text: 'ห้องที่คุณต้องการเข้าไม่มีอยู่แล้ว' },
+            'room_full': { icon: 'warning', title: 'ห้องเต็ม', text: 'ห้องนี้มีผู้เล่นครบแล้ว' },
+            'room_locked': { icon: 'warning', title: 'ห้องล็อค', text: 'ห้องนี้ต้องการรหัสผ่าน' },
+            'game_in_progress': { icon: 'info', title: 'เกมกำลังดำเนินอยู่', text: 'ไม่สามารถเข้าห้องได้ระหว่างเกม' },
+            'join_failed': { icon: 'error', title: 'เข้าห้องไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' },
+            'game_state_error': { icon: 'error', title: 'ข้อผิดพลาด', text: 'เกิดปัญหากับสถานะเกม กรุณาลองใหม่' },
+            'kicked': { icon: 'warning', title: 'ถูกเตะออก', text: 'คุณถูกเตะออกจากห้อง' }
+        };
+        
+        const msgConfig = messages[msg] || { icon: 'info', title: 'แจ้งเตือน', text: msg };
+        Swal.fire({
+            icon: msgConfig.icon,
+            title: msgConfig.title,
+            text: msgConfig.text,
+            background: '#1e1e1e',
+            color: '#fff',
+            confirmButtonColor: '#e74c3c',
+            timer: 4000,
+            timerProgressBar: true
+        });
+        
+        // ลบ param ออกจาก URL (ไม่ให้ popup ซ้ำเวลา refresh)
+        window.history.replaceState({}, document.title, '/rooms?playerId=' + playerId);
+    }
+
+    // Render room list
+    function renderRoomList() {
+        const $roomList = $('#roomList');
+        const $noRooms = $('#noRooms');
+        
+        $roomList.empty();
+        
+        if (rooms.length === 0) {
+            $noRooms.show();
+            return;
+        }
+        
+        $noRooms.hide();
+        
+        rooms.forEach(function(room) {
+            const isLocked = room.locked;
+            const isPlaying = room.gameStatus === 'playing';
+            const playerPercentage = (room.playerCount / room.maxPlayers) * 100;
+            const statusText = isPlaying ? 'กำลังดำเนินเกม' : 'กำลังรอผู้เล่น';
+            const statusColor = isPlaying ? '#e67e22' : '#2ecc71';
+            const roomCard = `
+                <div class="room-card" data-room-id="${room.roomId}">
+                    <div class="room-card-header">
+                        <div class="room-card-title">
+                            <h3>${escapeHtml(room.name)}</h3>
+                            <p class="room-card-id">Room ID: <strong>${room.roomId}</strong></p>
+                        </div>
+                        ${isLocked ? '<span class="room-lock-icon">🔒</span>' : ''}
+                    </div>
+                    <div class="room-card-info">
+                        <div class="room-info-item">
+                            <span class="room-info-icon">👥</span>
+                            <span><strong>ผู้เล่น:</strong> ${room.playerCount} / ${room.maxPlayers}</span>
+                        </div>
+                        <div class="room-info-item">
+                            <span class="room-info-icon">${isPlaying ? '🎮' : '⏳'}</span>
+                            <span><strong>สถานะ:</strong> <span style="color: ${statusColor}">${statusText}</span></span>
+                        </div>
+                        <div style="margin-top: 10px; height: 6px; background: #333; border-radius: 3px; overflow: hidden;">
+                            <div style="height: 100%; background: linear-gradient(90deg, #e74c3c, #c0392b); width: ${playerPercentage}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $roomList.append(roomCard);
+        });
+
+        // Click handler for room cards
+        $('.room-card').on('click', function() {
+            const roomId = $(this).data('room-id');
+            const room = rooms.find(r => r.roomId === roomId);
+            
+            if (room && room.locked) {
+                // Prompt for password
+                Swal.fire({
+                    title: '🔒 ห้องนี้ถูกล็อค',
+                    input: 'text',
+                    inputLabel: 'กรอกรหัสผ่าน 4 หลัก',
+                    inputPlaceholder: '0000',
+                    inputAttributes: {
+                        maxlength: 4,
+                        pattern: '[0-9]*',
+                        inputmode: 'numeric',
+                        style: 'background: #1a1a1a; border: 2px solid #444; color: #fff; font-family: Rajdhani, sans-serif;'
+                    },
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c',
+                    cancelButtonColor: '#555',
+                    showCancelButton: true,
+                    confirmButtonText: '✅ เข้าร่วม',
+                    cancelButtonText: '❌ ยกเลิก',
+                    inputValidator: (value) => {
+                        if (!value || !/^\d{4}$/.test(value)) {
+                            return 'กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)';
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        joinRoom(roomId, result.value);
+                    }
+                });
+            } else {
+                joinRoom(roomId, null);
+            }
+        });
+    }
+
+    // Join room
+    function joinRoom(roomId, password) {
+        socket.emit('joinRoom', { roomId: roomId, password: password, playerId: playerId }, function(response) {
+            if (response.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '✅ เข้าห้องสำเร็จ!',
+                    text: 'กำลังพาคุณไปยังห้อง...',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    background: '#1e1e1e',
+                    color: '#fff'
+                }).then(() => {
+                    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: '❌ เข้าห้องไม่สำเร็จ',
+                    text: response.error || 'เกิดข้อผิดพลาด',
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c'
+                });
+            }
+        });
+    }
+
+    // Create room popup
+    $('#createRoomBtn').on('click', function() {
+        Swal.fire({
+            title: '⚙️ สร้างห้องใหม่',
+            customClass: {
+                popup: 'room-popup',
+                confirmButton: 'room-btn-confirm',
+                cancelButton: 'room-btn-cancel'
+            },
+            html: `
+                <div style="font-family: 'Rajdhani', sans-serif;">
+                    <div class="room-form-group">
+                        <label class="room-form-label">
+                            <span class="icon">📝</span> ชื่อห้อง:
+                        </label>
+                        <input id="roomName" class="room-form-input" placeholder="กรอกชื่อห้อง..." maxlength="20">
+                    </div>
+                    
+                    <div class="room-form-group">
+                        <label class="room-form-label">
+                            <span class="icon">👥</span> จำนวนผู้เล่นสูงสุด:
+                        </label>
+                        <div class="room-slider-container">
+                            <span class="room-slider-value" id="maxPlayersValue">5</span>
+                            <input type="range" id="maxPlayers" class="room-slider" min="3" max="10" value="5">
+                        </div>
+                    </div>
+                    
+                    <div class="room-form-group">
+                        <label class="room-form-label">
+                            <span class="icon">⏱️</span> เวลาเล่นต่อรอบ:
+                        </label>
+                        <div class="room-slider-container">
+                            <span class="room-slider-value" id="roundTimeValue">5 นาที</span>
+                            <input type="range" id="roundTime" class="room-slider" min="1" max="10" value="5">
+                        </div>
+                    </div>
+                    
+                    <div class="room-form-group">
+                        <label class="room-form-label">
+                            <span class="icon">🔐</span> ความปลอดภัย:
+                        </label>
+                        <div class="room-checkbox-container" id="lockedContainer">
+                            <input type="checkbox" id="locked" class="room-checkbox">
+                            <div class="room-checkbox-custom">✓</div>
+                            <span class="room-checkbox-text">🔒 ล็อคห้อง (ต้องใช้รหัสผ่าน)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="room-form-group" id="passwordGroup" style="display: none;">
+                        <label class="room-form-label">
+                            <span class="icon">🔑</span> รหัสผ่าน:
+                        </label>
+                        <input id="password" class="room-form-input" placeholder="รหัสผ่าน 4 หลัก" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+                    </div>
+                </div>
+            `,
+            background: 'transparent',
+            showCancelButton: true,
+            confirmButtonText: '✅ สร้างห้อง',
+            cancelButtonText: '❌ ยกเลิก',
+            focusConfirm: false,
+            didOpen: () => {
+                // Slider handlers
+                const maxPlayersSlider = document.getElementById('maxPlayers');
+                const maxPlayersValue = document.getElementById('maxPlayersValue');
+                const roundTimeSlider = document.getElementById('roundTime');
+                const roundTimeValue = document.getElementById('roundTimeValue');
+                
+                maxPlayersSlider.addEventListener('input', function() {
+                    maxPlayersValue.textContent = this.value;
+                    updateSliderBackground(this);
+                });
+                
+                roundTimeSlider.addEventListener('input', function() {
+                    roundTimeValue.textContent = this.value + ' นาที';
+                    updateSliderBackground(this);
+                });
+                
+                function updateSliderBackground(slider) {
+                    const percent = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+                    slider.style.background = `linear-gradient(90deg, #e74c3c 0%, #e74c3c ${percent}%, #333 ${percent}%, #333 100%)`;
+                }
+                
+                updateSliderBackground(maxPlayersSlider);
+                updateSliderBackground(roundTimeSlider);
+                
+                // Lock checkbox handler
+                const lockedContainer = document.getElementById('lockedContainer');
+                const lockedCheckbox = document.getElementById('locked');
+                const passwordGroup = document.getElementById('passwordGroup');
+                
+                lockedContainer.addEventListener('click', function() {
+                    lockedCheckbox.checked = !lockedCheckbox.checked;
+                    this.classList.toggle('checked', lockedCheckbox.checked);
+                    passwordGroup.style.display = lockedCheckbox.checked ? 'block' : 'none';
+                    if (!lockedCheckbox.checked) {
+                        document.getElementById('password').value = '';
+                    }
+                });
+            },
+            preConfirm: () => {
+                const roomName = document.getElementById('roomName').value.trim();
+                const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+                const roundTime = parseInt(document.getElementById('roundTime').value);
+                const locked = document.getElementById('locked').checked;
+                const password = document.getElementById('password').value.trim();
+                
+                if (!roomName) {
+                    Swal.showValidationMessage('กรุณากรอกชื่อห้อง');
+                    return false;
+                }
+                
+                if (locked && (!password || !/^\d{4}$/.test(password))) {
+                    Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');
+                    return false;
+                }
+                
+                return {
+                    name: roomName,
+                    maxPlayers: maxPlayers,
+                    roundTime: roundTime,
+                    locked: locked,
+                    password: locked ? password : null
+                };
+            }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    const payload = Object.assign({}, result.value, { playerId: playerId });
+                    socket.emit('createRoom', payload, function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '✅ สร้างห้องสำเร็จ!',
+                                text: 'กำลังพาคุณไปยังห้อง...',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                background: '#1e1e1e',
+                                color: '#fff'
+                            }).then(() => {
+                                window.location.href = '/room/' + response.roomId + '?playerId=' + playerId;
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '❌ สร้างห้องไม่สำเร็จ',
+                                text: response.error || 'เกิดข้อผิดพลาด',
+                                background: '#1e1e1e',
+                                color: '#fff',
+                                confirmButtonColor: '#e74c3c'
+                            });
+                        }
+                    });
+                }
+            });
+    });
+
+    // Refresh room list
+    $('#refreshBtn').on('click', function() {
+        socket.emit('getRoomList', function(response) {
+            if (response.success) {
+                rooms = response.rooms;
+                renderRoomList();
+            }
+        });
+    });
+
+    // Search room
+    $('#searchRoomInput').on('keypress', function(e) {
+        if (e.which === 13) { // Enter key
+            const searchTerm = $(this).val().trim().toUpperCase();
+            if (searchTerm) {
+                const room = rooms.find(r => r.roomId.toUpperCase() === searchTerm);
+                if (room) {
+                    $('html, body').animate({
+                        scrollTop: $(`.room-card[data-room-id="${room.roomId}"]`).offset().top - 100
+                    }, 500);
+                    $(`.room-card[data-room-id="${room.roomId}"]`).css('border-color', '#ff6b6b').animate({
+                        'border-color': '#444'
+                    }, 1000);
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'ℹ️ ไม่พบห้อง',
+                        text: 'ไม่พบห้องที่ต้องการ',
+                        background: '#1e1e1e',
+                        color: '#fff',
+                        confirmButtonColor: '#3498db'
+                    });
+                }
+            }
+        }
+    });
+
+    // Socket event: Room list update
+    socket.on('roomListUpdate', function(updatedRooms) {
+        rooms = updatedRooms;
+        renderRoomList();
+    });
+
+    // Listen for system broadcasts
+    socket.on('systemBroadcast', function(data) {
+        Swal.fire({
+            icon: 'info',
+            title: '📢 ประกาศจากระบบ',
+            text: data.message,
+            background: '#1e1e1e',
+            color: '#fff',
+            confirmButtonColor: '#e74c3c'
+        });
+    });
+
+    // ถูกแบน - ส่งไปหน้า banned ทันที
+    socket.on('banned', function(data) {
+        Swal.fire({
+            icon: 'error',
+            title: '🚫 คุณถูกแบน!',
+            html: `<p><strong>เหตุผล:</strong> ${data.reason}</p><p><strong>ระยะเวลา:</strong> ${data.durationHours === null ? 'ถาวร' : data.durationHours + ' ชั่วโมง'}</p>`,
+            confirmButtonText: 'ตกลง',
+            background: '#1e1e1e',
+            color: '#fff',
+            allowOutsideClick: false
+        }).then(() => {
+            window.location.href = '/banned?playerId=' + playerId;
+        });
+    });
+
+    // Initial load
+    socket.emit('getRoomList', function(response) {
+        if (response.success) {
+            rooms = response.rooms;
+            renderRoomList();
+        }
+    });
+
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+});
+</script>

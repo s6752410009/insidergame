@@ -1,0 +1,234 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .banned-container {
+        max-width: 600px;
+        margin: 80px auto;
+        padding: 20px;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .banned-box {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 3px solid #e74c3c;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3);
+        text-align: center;
+    }
+    
+    .banned-icon {
+        font-size: 5em;
+        margin-bottom: 20px;
+        animation: shake 0.5s ease-in-out infinite alternate;
+    }
+    
+    @keyframes shake {
+        0% { transform: rotate(-5deg); }
+        100% { transform: rotate(5deg); }
+    }
+    
+    .banned-box h1 {
+        margin: 0 0 10px 0;
+        color: #e74c3c;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    .banned-box .subtitle {
+        color: #888;
+        font-size: 1.2em;
+        margin-bottom: 30px;
+    }
+    
+    .ban-info {
+        background: rgba(231, 76, 60, 0.1);
+        border: 2px solid rgba(231, 76, 60, 0.3);
+        border-radius: 12px;
+        padding: 25px;
+        margin: 20px 0;
+        text-align: left;
+    }
+    
+    .ban-info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .ban-info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .ban-info-label {
+        color: #888;
+        font-weight: 600;
+    }
+    
+    .ban-info-value {
+        color: #fff;
+        font-weight: 700;
+    }
+    
+    .ban-info-value.reason {
+        color: #f39c12;
+    }
+    
+    .ban-info-value.time {
+        color: #e74c3c;
+        font-family: 'Orbitron', sans-serif;
+    }
+    
+    .ban-info-value.permanent {
+        color: #e74c3c;
+        font-size: 1.1em;
+    }
+    
+    .countdown-box {
+        background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 25px 0;
+    }
+    
+    .countdown-label {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.9em;
+        margin-bottom: 10px;
+    }
+    
+    .countdown-value {
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 2em;
+        font-weight: 900;
+    }
+    
+    .permanent-badge {
+        background: #e74c3c;
+        color: #fff;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 700;
+        display: inline-block;
+        margin: 15px 0;
+    }
+    
+    .contact-info {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    .contact-info a {
+        color: #3498db;
+        text-decoration: none;
+    }
+    
+    .refresh-btn {
+        margin-top: 20px;
+        padding: 12px 30px;
+        background: transparent;
+        border: 2px solid #3498db;
+        border-radius: 10px;
+        color: #3498db;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        font-size: 1em;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .refresh-btn:hover {
+        background: #3498db;
+        color: #fff;
+    }
+</style>
+
+<div class="banned-container">
+    <div class="banned-box">
+        <div class="banned-icon">🚫</div>
+        <h1>บัญชีถูกระงับ</h1>
+        <p class="subtitle">คุณไม่สามารถใช้งานเกมได้ในขณะนี้</p>
+        
+        <div class="ban-info">
+            <div class="ban-info-row">
+                <span class="ban-info-label">📝 เหตุผล:</span>
+                <span class="ban-info-value reason"><%= banInfo.reason %></span>
+            </div>
+            <div class="ban-info-row">
+                <span class="ban-info-label">👤 แบนโดย:</span>
+                <span class="ban-info-value"><%= banInfo.bannedBy %></span>
+            </div>
+            <div class="ban-info-row">
+                <span class="ban-info-label">📅 แบนเมื่อ:</span>
+                <span class="ban-info-value"><%= new Date(banInfo.bannedAt).toLocaleString('th-TH') %></span>
+            </div>
+            <% if (!banInfo.isPermanent && banInfo.expiresAt) { %>
+            <div class="ban-info-row">
+                <span class="ban-info-label">⏰ หมดอายุ:</span>
+                <span class="ban-info-value time"><%= new Date(banInfo.expiresAt).toLocaleString('th-TH') %></span>
+            </div>
+            <% } %>
+        </div>
+        
+        <% if (banInfo.isPermanent) { %>
+            <div class="permanent-badge">🔒 แบนถาวร</div>
+            <p style="color: #888; margin-top: 15px;">บัญชีนี้ถูกระงับอย่างถาวร</p>
+        <% } else { %>
+            <div class="countdown-box">
+                <div class="countdown-label">⏳ เวลาที่เหลือ</div>
+                <div class="countdown-value" id="countdown"><%= banInfo.remainingText || 'กำลังคำนวณ...' %></div>
+            </div>
+            <button class="refresh-btn" onclick="location.reload()">🔄 ตรวจสอบสถานะ</button>
+        <% } %>
+        
+        <div class="contact-info">
+            <p>หากคิดว่ามีข้อผิดพลาด กรุณาติดต่อผู้ดูแลระบบ</p>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('script') %>
+<script>
+$(function() {
+    <% if (!banInfo.isPermanent && banInfo.expiresAt) { %>
+    // Countdown timer
+    const expiresAt = new Date('<%= banInfo.expiresAt %>');
+    
+    function updateCountdown() {
+        const now = new Date();
+        const remaining = expiresAt - now;
+        
+        if (remaining <= 0) {
+            // หมดเวลาแบนแล้ว - redirect กลับหน้าแรก
+            window.location.href = '/';
+            return;
+        }
+        
+        const hours = Math.floor(remaining / (1000 * 60 * 60));
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+        
+        let text = '';
+        if (hours > 0) {
+            text = `${hours} ชั่วโมง ${minutes} นาที ${seconds} วินาที`;
+        } else if (minutes > 0) {
+            text = `${minutes} นาที ${seconds} วินาที`;
+        } else {
+            text = `${seconds} วินาที`;
+        }
+        
+        $('#countdown').text(text);
+    }
+    
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+    <% } %>
+});
+</script>
