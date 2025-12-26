@@ -117,5 +117,56 @@
       "winAsCitizen": 1
     },
     "lastPlayedAt": "2025-12-26T10:47:28.562Z"
+  },
+  "28df83d3-459f-4310-b494-e697f9e2ee8c": {
+    "playerId": "28df83d3-459f-4310-b494-e697f9e2ee8c",
+    "playerName": "Unknown",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 0,
+      "citizenCount": 0
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": "2025-12-26T18:00:30.097Z"
+  },
+  "023b1741-a86c-46db-a2c5-1b11c79f1119": {
+    "playerId": "023b1741-a86c-46db-a2c5-1b11c79f1119",
+    "playerName": "guest252674",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 1
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": "2025-12-26T18:00:30.097Z"
+  },
+  "daf653df-f778-4e33-93be-a23387fc5849": {
+    "playerId": "daf653df-f778-4e33-93be-a23387fc5849",
+    "playerName": "guest45986",
+    "totalGames": 1,
+    "wins": 1,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 1,
+      "citizenCount": 0
+    },
+    "winByRole": {
+      "winAsTraitor": 1,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": "2025-12-26T18:00:30.097Z"
   }
 }

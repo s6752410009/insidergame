@@ -17,7 +17,7 @@
 <div id="connectionStatus" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #f39c12; color: #000; padding: 8px 16px; border-radius: 20px; display: none; z-index: 10001; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">กำลัง reconnect...</div>
 
 <!-- ปุ่มสำหรับเปิด/ปิดแถบข้าง -->
-<button id="toggleSidebarBtn" class="btn btn-secondary">
+<button id="toggleSidebarBtn">
     <i class="fas fa-users"></i> ผู้เล่นออนไลน์
 </button>
 
@@ -515,24 +515,38 @@
         color: #ffc107;
     }
 
-    /* CSS สำหรับปุ่มเปิด/ปิดแถบข้าง - ปุ่มเล็กๆ มุมขวาบน */
+    /* CSS สำหรับปุ่มเปิด/ปิดแถบข้าง - Floating button style เหมือน chat */
     #toggleSidebarBtn {
-        position: fixed;
-        top: 15px;
-        right: 15px;
-        z-index: 10001;
-        background-color: #343a40;
-        color: #fff;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 6px;
+        position: fixed !important;
+        bottom: 75px !important;
+        right: 15px !important;
+        top: auto !important;
+        left: auto !important;
+        width: auto !important;
+        height: auto !important;
+        z-index: 10001 !important;
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+        color: #fff !important;
+        border: none !important;
+        padding: 12px 18px !important;
+        border-radius: 25px !important;
         cursor: pointer;
-        font-size: 0.75em;
+        font-size: 0.85em !important;
+        font-weight: bold;
         white-space: nowrap;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        transition: all 0.3s ease;
+        display: inline-flex !important;
+        align-items: center;
+    }
+
+    #toggleSidebarBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
     }
 
     #toggleSidebarBtn i {
-        margin-right: 4px;
+        margin-right: 6px;
     }
 
     /* CSS สำหรับ Overlay */
@@ -560,11 +574,10 @@
         }
 
         #toggleSidebarBtn {
-            top: auto;
-            bottom: 75px;
+            bottom: 140px;
             right: 10px;
-            padding: 8px 12px;
-            font-size: 0.7em;
+            padding: 10px 14px;
+            font-size: 0.75em;
             border-radius: 20px;
         }
 
