@@ -104,7 +104,7 @@ footer.footer {
 
 .content h2 {
     margin: 10px 0 0 0;
-    color: #000;
+    color: #fff;
     font-size: 24px;
     font-weight: bold;
 }
@@ -137,13 +137,14 @@ footer.footer {
     margin: 0 0 20px 0;
 }
 .homelink a {
-    color: #000;
+    color: #fff;
     text-decoration: underline;
 }
 
 #reset, #reveal, #word, #timer, .role, .player {
     text-align: center;
     margin: 20px 0;
+    color: #fff;
 }
 
 .role, #word {
@@ -168,6 +169,12 @@ footer.footer {
 #countdown, #startGame {
     font-weight: bold;
     font-size: 50px;
+    color: #fff;
+}
+
+#countdown #timer {
+    color: #f39c12;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
 
 #displayVote1, #vote1 button, #vote1Result, #displayVote2, #vote2Result {
@@ -193,6 +200,12 @@ footer.footer {
     padding: 1rem 2rem;
     font-size: 30px;
     margin-left: 10px;
+}
+
+/* Vote sections text color */
+#voteForm h4, #vote1 h4, #vote2 h4, #vote1Result h4, #vote2Result h4, #status p {
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
 #vote2Result #finalResult {
