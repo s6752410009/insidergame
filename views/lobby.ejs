@@ -1,0 +1,891 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .lobby-container {
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 20px;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    /* Player Card */
+    .player-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 3px solid #444;
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .player-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, #e74c3c, #f39c12, #e74c3c);
+    }
+    
+    .player-info {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .player-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5em;
+        border: 4px solid;
+        box-shadow: 0 0 20px rgba(255,255,255,0.2);
+    }
+    
+    .player-details h2 {
+        margin: 0 0 5px 0;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.8em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    .player-details p {
+        margin: 0;
+        color: #888;
+        font-size: 0.9em;
+    }
+    
+    .player-details p code {
+        background: rgba(255,255,255,0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    /* Menu Grid */
+    .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .menu-item {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        border: 3px solid #444;
+        border-radius: 16px;
+        padding: 30px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .menu-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s;
+    }
+    
+    .menu-item:hover::before {
+        left: 100%;
+    }
+    
+    .menu-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    
+    .menu-item.play {
+        border-color: #e74c3c;
+        grid-column: span 2;
+    }
+    
+    .menu-item.play:hover {
+        border-color: #ff6b6b;
+        box-shadow: 0 10px 30px rgba(231, 76, 60, 0.4);
+    }
+    
+    .menu-item.profile {
+        border-color: #3498db;
+    }
+    
+    .menu-item.profile:hover {
+        border-color: #5dade2;
+        box-shadow: 0 10px 30px rgba(52, 152, 219, 0.4);
+    }
+    
+    .menu-item.settings {
+        border-color: #f39c12;
+    }
+    
+    .menu-item.settings:hover {
+        border-color: #f1c40f;
+        box-shadow: 0 10px 30px rgba(243, 156, 18, 0.4);
+    }
+    
+    .menu-item.howto {
+        border-color: #9b59b6;
+        grid-column: span 2;
+    }
+    
+    .menu-item.howto:hover {
+        border-color: #a569bd;
+        box-shadow: 0 10px 30px rgba(155, 89, 182, 0.4);
+    }
+    
+    .menu-item.howto .menu-icon {
+        font-size: 4em;
+    }
+    
+    .menu-item.howto .menu-title {
+        font-size: 1.8em;
+    }
+    
+    .menu-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    .menu-item.play .menu-icon {
+        font-size: 4em;
+    }
+    
+    .menu-title {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.4em;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+    
+    .menu-item.play .menu-title {
+        font-size: 1.8em;
+    }
+    
+    .menu-desc {
+        color: #888;
+        font-size: 0.95em;
+    }
+    
+    /* Quick Stats */
+    .quick-stats {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #333;
+    }
+    
+    .quick-stat {
+        text-align: center;
+    }
+    
+    .quick-stat-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #fff;
+    }
+    
+    .quick-stat-label {
+        color: #666;
+        font-size: 0.85em;
+    }
+    
+    /* Bottom Links */
+    .bottom-links {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .bottom-link {
+        padding: 12px 24px;
+        background: #333;
+        border: 2px solid #444;
+        border-radius: 8px;
+        color: #aaa;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .bottom-link:hover {
+        background: #444;
+        color: #fff;
+        border-color: #555;
+    }
+    
+    .bottom-link.admin {
+        border-color: #9b59b6;
+        color: #9b59b6;
+    }
+    
+    .bottom-link.admin:hover {
+        background: #9b59b6;
+        color: #fff;
+    }
+
+    @media (max-width: 600px) {
+        .menu-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .menu-item {
+            padding: 20px 12px;
+        }
+        
+        .menu-item .menu-icon {
+            font-size: 2em;
+        }
+        
+        .menu-item .menu-title {
+            font-size: 1em;
+        }
+        
+        .menu-item .menu-desc {
+            font-size: 0.75em;
+        }
+        
+        .menu-item.play {
+            grid-column: span 2;
+        }
+        
+        .player-info {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .quick-stats {
+            flex-wrap: wrap;
+        }
+        
+        .leaderboard-card {
+            padding: 15px;
+        }
+        
+        .leaderboard-header h3 {
+            font-size: 1.1em;
+        }
+        
+        .lobby-container {
+            padding: 15px;
+        }
+        
+        .lobby-container h1 {
+            font-size: 1.8em;
+        }
+    }
+    
+    /* Leaderboard */
+    .leaderboard-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 3px solid #444;
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    
+    .leaderboard-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #333;
+    }
+    
+    .leaderboard-header h3 {
+        margin: 0;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.4em;
+        color: #ffd700;
+    }
+    
+    .leaderboard-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .leaderboard-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 12px 15px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 12px;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .leaderboard-item:hover {
+        background: rgba(255,255,255,0.08);
+        transform: translateX(5px);
+    }
+    
+    .leaderboard-rank {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 0.9em;
+    }
+    
+    .leaderboard-rank.rank-1 { background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%); color: #000; }
+    .leaderboard-rank.rank-2 { background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%); color: #000; }
+    .leaderboard-rank.rank-3 { background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%); color: #fff; }
+    .leaderboard-rank.rank-other { background: #333; color: #888; }
+    
+    .leaderboard-avatar {
+        position: relative;
+        width: 45px;
+        height: 45px;
+    }
+    
+    .leaderboard-avatar-inner {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5em;
+        border: 3px solid;
+        position: relative;
+        z-index: 2;
+        background: #1a1a2e;
+    }
+    
+    .leaderboard-avatar-frame {
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    .leaderboard-info {
+        flex: 1;
+    }
+    
+    .leaderboard-name {
+        font-weight: 700;
+        font-size: 1.1em;
+        color: #fff;
+    }
+    
+    .leaderboard-stats-mini {
+        font-size: 0.85em;
+        color: #888;
+    }
+    
+    .leaderboard-wins {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        color: #2ecc71;
+        font-size: 1.1em;
+    }
+    
+    .leaderboard-empty {
+        text-align: center;
+        padding: 30px;
+        color: #666;
+    }
+    
+    /* Profile Modal */
+    .profile-modal-content {
+        text-align: left;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .profile-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #333;
+    }
+    
+    .profile-modal-avatar {
+        position: relative;
+        width: 80px;
+        height: 80px;
+    }
+    
+    .profile-modal-avatar-inner {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5em;
+        border: 4px solid;
+        position: relative;
+        z-index: 2;
+        background: #1a1a2e;
+    }
+    
+    .profile-modal-avatar-frame {
+        position: absolute;
+        top: -5px;
+        left: -5px;
+        right: -5px;
+        bottom: -5px;
+        border-radius: 50%;
+        z-index: 1;
+    }
+    
+    .profile-modal-name {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.5em;
+        margin: 0;
+    }
+    
+    .profile-modal-joined {
+        color: #888;
+        font-size: 0.9em;
+    }
+    
+    .profile-modal-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .profile-stat-box {
+        background: rgba(255,255,255,0.05);
+        padding: 15px;
+        border-radius: 12px;
+        text-align: center;
+    }
+    
+    .profile-stat-value {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.5em;
+    }
+    
+    .profile-stat-label {
+        color: #888;
+        font-size: 0.85em;
+    }
+    
+    .profile-roles {
+        background: rgba(255,255,255,0.05);
+        padding: 15px;
+        border-radius: 12px;
+    }
+    
+    .profile-roles h4 {
+        margin: 0 0 10px 0;
+        color: #f39c12;
+        font-size: 1em;
+    }
+    
+    .profile-role-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #333;
+    }
+    
+    .profile-role-row:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<div class="lobby-container">
+    <!-- Player Card -->
+    <div class="player-card">
+        <div class="player-info">
+            <div class="player-avatar" style="background: <%= player.color %>20; border-color: <%= player.color %>; color: <%= player.color %>;">
+                <%= player.avatar || '👤' %>
+            </div>
+            <div class="player-details">
+                <h2 style="color: <%= player.color %>;"><%= player.playerName %></h2>
+                <p>Player ID: <code><%= player.playerId.substring(0, 8) %>...</code></p>
+            </div>
+        </div>
+        
+        <div class="quick-stats">
+            <div class="quick-stat">
+                <div class="quick-stat-value" style="color: #3498db;"><%= stats ? stats.totalGames : 0 %></div>
+                <div class="quick-stat-label">เกมที่เล่น</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-value" style="color: #2ecc71;"><%= stats ? stats.wins : 0 %></div>
+                <div class="quick-stat-label">ชนะ</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-value" style="color: #f39c12;"><%= stats ? (stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0) : 0 %>%</div>
+                <div class="quick-stat-label">Win Rate</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Menu Grid -->
+    <div class="menu-grid">
+        <a href="/rooms?playerId=<%= player.playerId %>" class="menu-item play">
+            <span class="menu-icon">🎮</span>
+            <div class="menu-title">เริ่มเกม</div>
+            <div class="menu-desc">เข้าร่วมห้องหรือสร้างห้องใหม่</div>
+        </a>
+        
+        <a href="#" class="menu-item howto" id="howToPlayBtn">
+            <span class="menu-icon">📖</span>
+            <div class="menu-title">กฎการเล่น</div>
+            <div class="menu-desc">เรียนรู้วิธีเล่น Insider</div>
+        </a>
+        
+        <a href="/profile?playerId=<%= player.playerId %>" class="menu-item profile">
+            <span class="menu-icon">👤</span>
+            <div class="menu-title">โปรไฟล์</div>
+            <div class="menu-desc">ดูสถิติและแก้ไขข้อมูล</div>
+        </a>
+        
+        <a href="/settings?playerId=<%= player.playerId %>" class="menu-item settings">
+            <span class="menu-icon">⚙️</span>
+            <div class="menu-title">ตั้งค่า</div>
+            <div class="menu-desc">เสียง, แจ้งเตือน, อื่นๆ</div>
+        </a>
+    </div>
+    
+    <!-- Leaderboard -->
+    <div class="leaderboard-card">
+        <div class="leaderboard-header">
+            <h3>🏆 Leaderboard</h3>
+        </div>
+        <div class="leaderboard-list" id="leaderboardList">
+            <div class="leaderboard-empty">กำลังโหลด...</div>
+        </div>
+    </div>
+    
+    <!-- Bottom Links (Admin link hidden - access via /admin/login) -->
+    <!-- <div class="bottom-links">
+        <a href="/admin" class="bottom-link admin">🛠️ Admin Dashboard</a>
+    </div> -->
+</div>
+
+<%- contentFor('footer') %>
+<!-- No footer needed -->
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(function() {
+    // เก็บ playerId ใน sessionStorage สำหรับ tab นี้
+    const playerId = '<%= player.playerId %>';
+    sessionStorage.setItem('playerId', playerId);
+    
+    // Connect to socket for broadcast messages
+    const socket = io();
+    
+    // Listen for system broadcasts
+    socket.on('systemBroadcast', function(data) {
+        Swal.fire({
+            icon: 'info',
+            title: '📢 ประกาศจากระบบ',
+            text: data.message,
+            background: '#1e1e1e',
+            color: '#fff',
+            confirmButtonColor: '#e74c3c'
+        });
+    });
+    
+    // Frame styles lookup
+    const frameStyles = {
+        'none': 'none',
+        'bronze': 'linear-gradient(135deg, #cd7f32 0%, #8b4513 100%)',
+        'silver': 'linear-gradient(135deg, #c0c0c0 0%, #808080 100%)',
+        'gold': 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
+        'diamond': 'linear-gradient(135deg, #b9f2ff 0%, #00bfff 100%)',
+        'fire': 'linear-gradient(135deg, #ff4500 0%, #ff0000 100%)',
+        'rainbow': 'linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)',
+        'neon': 'linear-gradient(135deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%)'
+    };
+    
+    // Load Leaderboard
+    function loadLeaderboard() {
+        console.log('Loading leaderboard...');
+        $.ajax({
+            url: '/api/leaderboard?limit=5',
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                console.log('Leaderboard data:', data);
+                var $list = $('#leaderboardList');
+                $list.empty();
+                
+                // ตรวจสอบว่า data เป็น array
+                var leaderboardData = Array.isArray(data) ? data : [];
+                
+                if (leaderboardData.length === 0) {
+                    $list.html('<div class="leaderboard-empty">ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!</div>');
+                    return;
+                }
+                
+                for (var i = 0; i < leaderboardData.length; i++) {
+                    var entry = leaderboardData[i];
+                    const rankClass = entry.rank <= 3 ? 'rank-' + entry.rank : 'rank-other';
+                    const frameStyle = frameStyles[entry.avatarFrame] || 'none';
+                const frameBorder = frameStyle !== 'none' ? 'border-image: ' + frameStyle + ' 1;' : '';
+                
+                const html = `
+                    <div class="leaderboard-item" data-player-id="${entry.playerId}">
+                        <div class="leaderboard-rank ${rankClass}">${entry.rank}</div>
+                        <div class="leaderboard-avatar">
+                            <div class="leaderboard-avatar-inner" style="background: ${entry.color}20; border-color: ${entry.color};">
+                                ${entry.avatar}
+                            </div>
+                            ${frameStyle !== 'none' ? '<div class="leaderboard-avatar-frame" style="background: ' + frameStyle + ';"></div>' : ''}
+                        </div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name" style="color: ${entry.color};">${escapeHtml(entry.playerName)}</div>
+                            <div class="leaderboard-stats-mini">${entry.totalGames} เกม · ${entry.winRate}% win</div>
+                        </div>
+                        <div class="leaderboard-wins">${entry.wins} 🏆</div>
+                    </div>
+                `;
+                    $list.append(html);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Leaderboard error:', error);
+                $('#leaderboardList').html('<div class="leaderboard-empty">ไม่สามารถโหลดข้อมูลได้</div>');
+            }
+        });
+    }
+    
+    // Load leaderboard on page load
+    loadLeaderboard();
+    
+    // Click on leaderboard item to view profile
+    $(document).on('click', '.leaderboard-item', function() {
+        const targetPlayerId = $(this).data('player-id');
+        showPlayerProfile(targetPlayerId);
+    });
+    
+    // Show player profile modal
+    function showPlayerProfile(targetPlayerId) {
+        $.get('/api/player/' + targetPlayerId + '/profile', function(data) {
+            const frameStyle = frameStyles[data.avatarFrame] || 'none';
+            const joinedDate = new Date(data.createdAt).toLocaleDateString('th-TH');
+            const lastPlayed = data.stats?.lastPlayedAt ? new Date(data.stats.lastPlayedAt).toLocaleDateString('th-TH') : 'ยังไม่เคยเล่น';
+            
+            const stats = data.stats || { totalGames: 0, wins: 0, losses: 0, winRate: 0, roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 }, winByRole: { winAsTraitor: 0, winAsCitizen: 0 } };
+            
+            const html = `
+                <div class="profile-modal-content">
+                    <div class="profile-modal-header">
+                        <div class="profile-modal-avatar">
+                            <div class="profile-modal-avatar-inner" style="background: ${data.color}20; border-color: ${data.color};">
+                                ${data.avatar}
+                            </div>
+                            ${frameStyle !== 'none' ? '<div class="profile-modal-avatar-frame" style="background: ' + frameStyle + ';"></div>' : ''}
+                        </div>
+                        <div>
+                            <h2 class="profile-modal-name" style="color: ${data.color};">${escapeHtml(data.playerName)}</h2>
+                            <p class="profile-modal-joined">เข้าร่วมเมื่อ: ${joinedDate}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-modal-stats">
+                        <div class="profile-stat-box">
+                            <div class="profile-stat-value" style="color: #3498db;">${stats.totalGames}</div>
+                            <div class="profile-stat-label">เกมที่เล่น</div>
+                        </div>
+                        <div class="profile-stat-box">
+                            <div class="profile-stat-value" style="color: #2ecc71;">${stats.wins}</div>
+                            <div class="profile-stat-label">ชนะ</div>
+                        </div>
+                        <div class="profile-stat-box">
+                            <div class="profile-stat-value" style="color: #f39c12;">${stats.winRate}%</div>
+                            <div class="profile-stat-label">Win Rate</div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-roles">
+                        <h4>🎭 สถิติบทบาท</h4>
+                        <div class="profile-role-row">
+                            <span>🟢 ผู้ดำเนินเกม</span>
+                            <span>${stats.roleStats.gameMasterCount} ครั้ง</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🔴 ผู้ทรยศ</span>
+                            <span>${stats.roleStats.traitorCount} ครั้ง (ชนะ ${stats.winByRole.winAsTraitor})</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🔵 พลเมือง</span>
+                            <span>${stats.roleStats.citizenCount} ครั้ง (ชนะ ${stats.winByRole.winAsCitizen})</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🕐 เล่นล่าสุด</span>
+                            <span>${lastPlayed}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            Swal.fire({
+                title: '',
+                html: html,
+                background: '#1a1a2e',
+                color: '#fff',
+                showConfirmButton: true,
+                confirmButtonText: 'ปิด',
+                confirmButtonColor: '#e74c3c',
+                width: 450
+            });
+        }).fail(function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไม่พบข้อมูล',
+                text: 'ไม่สามารถโหลดโปรไฟล์ได้',
+                background: '#1e1e1e',
+                color: '#fff',
+                confirmButtonColor: '#e74c3c'
+            });
+        });
+    }
+    
+    // Escape HTML helper
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // กฎการเล่น Modal
+    $('#howToPlayBtn').on('click', function(e) {
+        e.preventDefault();
+        
+        Swal.fire({
+            title: '📖 กฎการเล่น Insider',
+            html: `
+                <div style="text-align: left; font-family: 'Rajdhani', sans-serif; max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+                    
+                    <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; color: #fff;">🎯 เป้าหมายของเกม</h3>
+                        <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">
+                            ทายคำให้ถูกต้องและหา <strong>"ผู้ทรยศ (Insider)"</strong> ให้เจอ!
+                        </p>
+                    </div>
+                    
+                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #f39c12;">
+                        <h4 style="margin: 0 0 10px 0; color: #f39c12;">👥 บทบาทผู้เล่น</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
+                                <strong style="color: #e74c3c;">🎭 ผู้ดำเนินเกม (Game Master)</strong>
+                                <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9em;">รู้คำตอบ ตอบคำถามได้แค่ "ใช่" "ไม่ใช่" หรือ "อาจจะ"</p>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
+                                <strong style="color: #9b59b6;">🕵️ ผู้ทรยศ (Insider)</strong>
+                                <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9em;">รู้คำตอบแต่ต้องซ่อนตัว! พยายามนำทางคนอื่นโดยไม่ให้ถูกจับได้</p>
+                            </div>
+                            <div style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
+                                <strong style="color: #3498db;">👤 พลเมือง (Citizen)</strong>
+                                <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9em;">ไม่รู้คำตอบ ต้องช่วยกันถามคำถามเพื่อทายคำ</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #3498db;">
+                        <h4 style="margin: 0 0 10px 0; color: #3498db;">📝 ขั้นตอนการเล่น</h4>
+                        <ol style="margin: 0; padding-left: 20px; color: #ccc; font-size: 0.95em;">
+                            <li style="margin-bottom: 8px;"><strong>แจกบทบาท</strong> - ระบบสุ่มบทบาทให้ผู้เล่นแต่ละคน</li>
+                            <li style="margin-bottom: 8px;"><strong>กำหนดคำ</strong> - ผู้ดำเนินเกมเลือกคำที่ต้องทาย</li>
+                            <li style="margin-bottom: 8px;"><strong>ถาม-ตอบ</strong> - ผู้เล่นถามคำถาม ผู้ดำเนินเกมตอบ ✅❌🤔</li>
+                            <li style="margin-bottom: 8px;"><strong>ทายคำ</strong> - เมื่อมีคนทายคำถูก เกมเข้าสู่รอบโหวต</li>
+                            <li style="margin-bottom: 8px;"><strong>โหวตหาผู้ทรยศ</strong> - ทุกคนโหวตว่าใครคือผู้ทรยศ</li>
+                        </ol>
+                    </div>
+                    
+                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #2ecc71;">
+                        <h4 style="margin: 0 0 10px 0; color: #2ecc71;">🎭 ปุ่มตอบด่วนสำหรับผู้ดำเนินเกม</h4>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 10px;">
+                            ผู้ดำเนินเกมจะมีปุ่มตอบด่วน 3 ปุ่มในช่องแชท:
+                        </p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <span style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 700;">✅ ใช่</span>
+                            <span style="background: linear-gradient(135deg, #fc8181 0%, #e53e3e 100%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 700;">❌ ไม่ใช่</span>
+                            <span style="background: linear-gradient(135deg, #f6e05e 0%, #ecc94b 100%); padding: 8px 16px; border-radius: 8px; color: #744210; font-weight: 700;">🤔 อาจจะ</span>
+                        </div>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 10px;">
+                            💡 <strong>วิธีใช้:</strong> คลิกที่ข้อความคำถามที่ต้องการตอบ จะมีกรอบสีเหลือง จากนั้นกดปุ่มตอบด่วน
+                        </p>
+                    </div>
+                    
+                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; border-left: 4px solid #e74c3c;">
+                        <h4 style="margin: 0 0 10px 0; color: #e74c3c;">🏆 เงื่อนไขชนะ</h4>
+                        <div style="color: #ccc; font-size: 0.95em;">
+                            <p style="margin: 0 0 8px 0;"><strong style="color: #2ecc71;">พลเมืองชนะ:</strong> ทายคำถูก + จับผู้ทรยศได้</p>
+                            <p style="margin: 0;"><strong style="color: #9b59b6;">ผู้ทรยศชนะ:</strong> ไม่ถูกจับ หรือ หมดเวลาทายคำ</p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #f39c12;">
+                        <h4 style="margin: 0 0 10px 0; color: #f39c12;">👑 หน้าที่เจ้าของห้อง (Room Host)</h4>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 10px;">
+                            ผู้ที่สร้างห้องจะเป็น <strong style="color: #f39c12;">เจ้าของห้อง</strong> มีสิทธิ์พิเศษดังนี้:
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px; color: #ccc; font-size: 0.95em;">
+                            <li style="margin-bottom: 8px;"><strong style="color: #2ecc71;">🎮 เริ่มเกม</strong> - กดปุ่มเริ่มเกมเมื่อทุกคนพร้อม (ขั้นต่ำ 3 คน)</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #3498db;">⏱️ จับเวลา</strong> - ควบคุมการเริ่ม/หยุดนับถอยหลัง 5 นาที</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #9b59b6;">🗳️ เริ่มโหวต</strong> - กดเริ่มการโหวตเมื่อทายคำถูกแล้ว</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #e74c3c;">🚫 เตะผู้เล่น</strong> - นำผู้เล่นออกจากห้องได้</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #f39c12;">👑 โอนเจ้าของห้อง</strong> - โอนสิทธิ์ให้ผู้เล่นอื่นได้</li>
+                            <li style="margin-bottom: 8px;"><strong style="color: #1abc9c;">⚙️ แก้ไขห้อง</strong> - เปลี่ยนชื่อห้อง, จำนวนผู้เล่น, ล็อค/ปลดล็อค</li>
+                        </ul>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+                            💡 <strong>หมายเหตุ:</strong> ถ้าเจ้าของห้องออก สิทธิ์จะถูกโอนให้ผู้เล่นคนถัดไปอัตโนมัติ
+                        </p>
+                    </div>
+                    
+                </div>
+            `,
+            width: 600,
+            background: '#1a1a2e',
+            color: '#fff',
+            showCloseButton: true,
+            showConfirmButton: false,
+            customClass: {
+                popup: 'howto-popup'
+            }
+        });
+    });
+});
+</script>

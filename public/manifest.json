@@ -1,0 +1,29 @@
+{
+  "name": "Insider Game - เกมผู้ทรยศ",
+  "short_name": "Insider",
+  "description": "เกมหาตัวผู้ทรยศในกลุ่ม - เล่นกับเพื่อนออนไลน์",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e74c3c",
+  "orientation": "portrait",
+  "lang": "th",
+  "icons": [
+    {
+      "src": "/static/image/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/image/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/image/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    }
+  ]
+}

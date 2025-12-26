@@ -1,0 +1,654 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 30px auto;
+        padding: 20px;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .settings-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .settings-header h1 {
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        margin-bottom: 10px;
+    }
+    
+    .settings-header p {
+        color: #888;
+        font-size: 1.1em;
+    }
+    
+    .settings-section {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        border: 3px solid #444;
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    }
+    
+    .settings-section h2 {
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.3em;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #444;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .settings-section h2 .icon {
+        font-size: 1.2em;
+    }
+    
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid #333;
+    }
+    
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+    
+    .setting-info h3 {
+        color: #fff;
+        font-size: 1.1em;
+        font-weight: 600;
+        margin: 0 0 5px 0;
+    }
+    
+    .setting-info p {
+        color: #888;
+        font-size: 0.9em;
+        margin: 0;
+    }
+    
+    /* Toggle Switch */
+    .toggle-switch {
+        position: relative;
+        width: 60px;
+        height: 32px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #444;
+        border-radius: 32px;
+        transition: all 0.3s;
+    }
+    
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        height: 24px;
+        width: 24px;
+        left: 4px;
+        bottom: 4px;
+        background: #fff;
+        border-radius: 50%;
+        transition: all 0.3s;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider {
+        background: #2ecc71;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(28px);
+    }
+    
+    /* Volume Slider */
+    .volume-control {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .volume-slider {
+        -webkit-appearance: none;
+        width: 150px;
+        height: 8px;
+        border-radius: 4px;
+        background: #444;
+        outline: none;
+    }
+    
+    .volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #e74c3c;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .volume-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+    }
+    
+    .volume-value {
+        color: #fff;
+        font-weight: 600;
+        min-width: 45px;
+        text-align: center;
+    }
+    
+    /* Select Dropdown */
+    .setting-select {
+        padding: 10px 15px;
+        background: #333;
+        border: 2px solid #444;
+        border-radius: 8px;
+        color: #fff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1em;
+        cursor: pointer;
+        min-width: 150px;
+    }
+    
+    .setting-select:focus {
+        outline: none;
+        border-color: #e74c3c;
+    }
+    
+    /* Buttons */
+    .settings-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+    
+    .btn-settings {
+        padding: 12px 30px;
+        border: 2px solid;
+        border-radius: 8px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-save {
+        background: #2ecc71;
+        border-color: #27ae60;
+        color: #fff;
+    }
+    
+    .btn-save:hover {
+        background: #27ae60;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+    }
+    
+    .btn-reset {
+        background: transparent;
+        border-color: #888;
+        color: #888;
+    }
+    
+    .btn-reset:hover {
+        border-color: #e74c3c;
+        color: #e74c3c;
+    }
+    
+    .btn-back {
+        display: inline-block;
+        padding: 12px 24px;
+        background: #333;
+        border: 2px solid #444;
+        border-radius: 8px;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .btn-back:hover {
+        background: #444;
+        color: #fff;
+    }
+    
+    /* Info Box */
+    .info-box {
+        background: rgba(52, 152, 219, 0.1);
+        border: 2px solid #3498db;
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin-top: 20px;
+    }
+    
+    .info-box p {
+        color: #3498db;
+        margin: 0;
+        font-size: 0.95em;
+    }
+    
+    .info-box .icon {
+        margin-right: 8px;
+    }
+    
+    /* Theme Grid */
+    .theme-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .theme-option {
+        position: relative;
+        padding: 15px;
+        border: 3px solid #444;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .theme-option:hover {
+        border-color: #666;
+        transform: translateY(-2px);
+    }
+    
+    .theme-option.active {
+        border-color: #2ecc71;
+        box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
+    }
+    
+    .theme-preview {
+        width: 100%;
+        height: 60px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .theme-name {
+        display: block;
+        color: #fff;
+        font-weight: 600;
+        font-size: 1em;
+    }
+    
+    .theme-check {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        background: #2ecc71;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: #fff;
+    }
+    
+    .theme-option.active .theme-check {
+        display: flex;
+    }
+    
+    /* Save Button */
+    .btn-save {
+        background: #2ecc71;
+        border-color: #27ae60;
+        color: #fff;
+    }
+    
+    .btn-save:hover {
+        background: #27ae60;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+    }
+    
+    /* Version Info */
+    .version-info {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #333;
+    }
+    
+    .version-info p {
+        color: #666;
+        font-size: 0.9em;
+        margin: 5px 0;
+    }
+    
+    .version-info .version {
+        color: #888;
+        font-family: 'Orbitron', sans-serif;
+    }
+    
+    @media (max-width: 480px) {
+        .theme-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="settings-container">
+    <div class="settings-header">
+        <h1>⚙️ ตั้งค่า</h1>
+        <p>ปรับแต่งประสบการณ์การเล่นเกมของคุณ</p>
+    </div>
+    
+    <!-- Sound Settings -->
+    <div class="settings-section">
+        <h2><span class="icon">🔊</span> เสียง</h2>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>เพลงพื้นหลัง</h3>
+                <p>เปิด/ปิดเพลงประกอบในเกม</p>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="bgmToggle" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>ระดับเสียงเพลง</h3>
+                <p>ปรับความดังของเพลงพื้นหลัง</p>
+            </div>
+            <div class="volume-control">
+                <input type="range" class="volume-slider" id="bgmVolume" min="0" max="100" value="50">
+                <span class="volume-value" id="bgmVolumeValue">50%</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Settings -->
+    <div class="settings-section">
+        <h2><span class="icon">🎮</span> การเล่นเกม</h2>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>ยืนยันก่อนออกห้อง</h3>
+                <p>ถามก่อนออกจากห้องเกม</p>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="confirmLeaveToggle" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        
+    </div>
+    
+    <!-- Theme Settings -->
+    <div class="settings-section">
+        <h2><span class="icon">🎨</span> ธีมสี</h2>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>เลือกธีม</h3>
+                <p>เปลี่ยนสีพื้นหลังและตัวอักษรของเกม</p>
+            </div>
+        </div>
+        
+        <div class="theme-grid">
+            <div class="theme-option" data-theme="default">
+                <div class="theme-preview" style="background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
+                <span class="theme-name">🌌 Default</span>
+                <span class="theme-check">✓</span>
+            </div>
+            <div class="theme-option" data-theme="dark">
+                <div class="theme-preview" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);"></div>
+                <span class="theme-name">🌙 Dark</span>
+                <span class="theme-check">✓</span>
+            </div>
+            <div class="theme-option" data-theme="red">
+                <div class="theme-preview" style="background: linear-gradient(135deg, #4a0000 0%, #8b0000 50%, #4a0000 100%);"></div>
+                <span class="theme-name">🔴 Red</span>
+                <span class="theme-check">✓</span>
+            </div>
+            <div class="theme-option" data-theme="white">
+                <div class="theme-preview" style="background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #f5f5f5 100%);"></div>
+                <span class="theme-name">☀️ Light</span>
+                <span class="theme-check">✓</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Box -->
+    <div class="info-box">
+        <p><span class="icon">💡</span> กดปุ่ม "บันทึกการตั้งค่า" เพื่อบันทึกการเปลี่ยนแปลง</p>
+    </div>
+    
+    <!-- Actions -->
+    <div class="settings-actions">
+        <button class="btn-settings btn-save" id="saveSettings">💾 บันทึกการตั้งค่า</button>
+        <button class="btn-settings btn-reset" id="resetSettings">🔄 รีเซ็ตค่าเริ่มต้น</button>
+    </div>
+    
+    <!-- Version Info -->
+    <div class="version-info">
+        <p>Insider Game</p>
+        <p class="version">Version 1.0.0</p>
+    </div>
+</div>
+
+<%- contentFor('footer') %>
+<div class="container" style="text-align: center; padding: 20px;">
+    <a href="/?playerId=<%= encodeURIComponent(player.playerId) %>" class="btn-back">← กลับไป Lobby</a>
+</div>
+
+<%- contentFor('script') %>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(function() {
+    // Safe localStorage wrapper
+    const Storage = {
+        get(key, defaultValue = {}) {
+            try {
+                const item = localStorage.getItem(key);
+                return item ? JSON.parse(item) : defaultValue;
+            } catch (e) {
+                console.warn('localStorage read error:', e);
+                return defaultValue;
+            }
+        },
+        set(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch (e) {
+                console.warn('localStorage write error:', e);
+                return false;
+            }
+        },
+        remove(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (e) {
+                console.warn('localStorage remove error:', e);
+            }
+        }
+    };
+
+    // Get audio element safely
+    function getAudio() {
+        const audio = document.getElementById('background-music');
+        return audio && typeof audio.play === 'function' ? audio : null;
+    }
+
+    // Load settings from localStorage
+    function loadSettings() {
+        const settings = Storage.get('gameSettings', {});
+        
+        // Sound
+        $('#bgmToggle').prop('checked', settings.bgmEnabled !== false);
+        $('#bgmVolume').val(settings.bgmVolume ?? 50);
+        $('#bgmVolumeValue').text((settings.bgmVolume ?? 50) + '%');
+        
+        // Game
+        $('#confirmLeaveToggle').prop('checked', settings.confirmLeave !== false);
+        
+        // Theme
+        selectedTheme = settings.theme || 'default';
+        updateThemeUI();
+        applyTheme(selectedTheme);
+        
+        // Apply BGM setting
+        const audio = getAudio();
+        if (audio) {
+            audio.muted = !$('#bgmToggle').is(':checked');
+            audio.volume = Math.min(1, Math.max(0, $('#bgmVolume').val() / 100));
+        }
+    }
+    
+    // Theme selection click handler
+    $('.theme-option').on('click', function() {
+        selectedTheme = $(this).data('theme');
+        updateThemeUI();
+        // Preview theme immediately
+        applyTheme(selectedTheme);
+    });
+    
+    // Current selected theme (not saved until save button clicked)
+    let selectedTheme = Storage.get('gameSettings', {}).theme || 'default';
+    
+    // Save settings to localStorage
+    function saveSettings(showNotification = false) {
+        const settings = {
+            bgmEnabled: $('#bgmToggle').is(':checked'),
+            bgmVolume: Math.min(100, Math.max(0, parseInt($('#bgmVolume').val()) || 50)),
+            confirmLeave: $('#confirmLeaveToggle').is(':checked'),
+            theme: selectedTheme
+        };
+        
+        Storage.set('gameSettings', settings);
+        
+        // Apply BGM settings immediately
+        const audio = getAudio();
+        if (audio) {
+            audio.muted = !settings.bgmEnabled;
+            audio.volume = settings.bgmVolume / 100;
+        }
+        Storage.set('isMusicMuted', !settings.bgmEnabled);
+        
+        // Apply theme
+        applyTheme(settings.theme);
+        
+        if (showNotification) {
+            Swal.fire({
+                icon: 'success',
+                title: '✅ บันทึกสำเร็จ',
+                text: 'การตั้งค่าถูกบันทึกเรียบร้อยแล้ว',
+                timer: 1500,
+                showConfirmButton: false,
+                background: '#1e1e1e',
+                color: '#fff'
+            });
+        }
+    }
+    
+    // Apply theme to page (use documentElement for html tag)
+    function applyTheme(theme) {
+        document.documentElement.classList.remove('theme-default', 'theme-dark', 'theme-red', 'theme-white');
+        if (theme && theme !== 'default') {
+            document.documentElement.classList.add('theme-' + theme);
+        }
+        Storage.set('currentTheme', theme);
+    }
+    
+    // Update theme selection UI
+    function updateThemeUI() {
+        $('.theme-option').removeClass('active');
+        $(`.theme-option[data-theme="${selectedTheme}"]`).addClass('active');
+    }
+    
+    // Volume sliders
+    $('#bgmVolume').on('input', function() {
+        $('#bgmVolumeValue').text($(this).val() + '%');
+        saveSettings();
+    });
+    
+    // All toggles and selects (auto-save without notification)
+    $('input[type="checkbox"], select').on('change', function() {
+        saveSettings(false);
+    });
+    
+    // Save button click
+    $('#saveSettings').on('click', function() {
+        saveSettings(true);
+    });
+    
+    // Reset settings
+    $('#resetSettings').on('click', function() {
+        Swal.fire({
+            title: '🔄 รีเซ็ตการตั้งค่า?',
+            text: 'ต้องการคืนค่าการตั้งค่าทั้งหมดเป็นค่าเริ่มต้น?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e74c3c',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'รีเซ็ต',
+            cancelButtonText: 'ยกเลิก',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                localStorage.removeItem('gameSettings');
+                localStorage.removeItem('isMusicMuted');
+                localStorage.removeItem('currentTheme');
+                selectedTheme = 'default';
+                loadSettings();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: '✅ รีเซ็ตสำเร็จ',
+                    text: 'การตั้งค่าถูกคืนค่าเริ่มต้นแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    background: '#1e1e1e',
+                    color: '#fff'
+                });
+            }
+        });
+    });
+    
+    // Sync settings across tabs
+    $(window).on('storage', function(e) {
+        if (e.originalEvent.key === 'gameSettings') {
+            loadSettings();
+        }
+    });
+    
+    // Load settings on page load
+    loadSettings();
+});
+</script>

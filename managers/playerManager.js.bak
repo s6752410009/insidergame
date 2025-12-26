@@ -1,0 +1,438 @@
+/**
+ * PlayerManager - จัดการข้อมูลผู้เล่นและ identity
+ * - สร้าง playerId แบบ unique (UUID)
+ * - สุ่มชื่ออัตโนมัติ (guest + random number)
+ * - บันทึกข้อมูลลงไฟล์ (persist)
+ */
+
+const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
+
+const PLAYERS_FILE = path.join(__dirname, '../data/players.json');
+
+// เก็บผู้เล่นทั้งหมดใน memory (key: playerId, value: player object)
+const players = new Map();
+
+// สีที่ใช้ได้ (12 สี - ตรงกับที่แสดงในหน้า profile)
+const AVAILABLE_COLORS = [
+    '#3498db', // ฟ้า
+    '#2ecc71', // เขียว
+    '#e74c3c', // แดง
+    '#f39c12', // ส้ม
+    '#9b59b6', // ม่วง
+    '#1abc9c', // เขียวอมฟ้า
+    '#e67e22', // ส้มเข้ม
+    '#e91e63', // ชมพู
+    '#ffeb3b', // เหลือง
+    '#00bcd4', // ฟ้าอ่อน
+    '#ff5722', // ส้มแดง
+    '#8e44ad'  // ม่วงเข้ม
+];
+
+// สร้างโฟลเดอร์ data ถ้ายังไม่มี
+const dataDir = path.dirname(PLAYERS_FILE);
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+/**
+ * โหลดข้อมูลผู้เล่นจากไฟล์
+ */
+function loadPlayers() {
+    if (fs.existsSync(PLAYERS_FILE)) {
+        try {
+            const data = fs.readFileSync(PLAYERS_FILE, 'utf8');
+            const playersData = JSON.parse(data);
+            for (const [playerId, player] of Object.entries(playersData)) {
+                players.set(playerId, player);
+            }
+            console.log(`Loaded ${players.size} players from file`);
+        } catch (error) {
+            console.error('Error loading players:', error);
+        }
+    }
+}
+
+/**
+ * บันทึกข้อมูลผู้เล่นลงไฟล์
+ */
+function savePlayers() {
+    try {
+        const playersData = {};
+        for (const [playerId, player] of players.entries()) {
+            playersData[playerId] = player;
+        }
+        fs.writeFileSync(PLAYERS_FILE, JSON.stringify(playersData, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error saving players:', error);
+    }
+}
+
+// โหลดข้อมูลเมื่อเริ่มต้น
+loadPlayers();
+
+/**
+ * สร้าง playerId ใหม่และชื่อสุ่ม
+ */
+function generateRandomName() {
+    const randomNum = Math.floor(Math.random() * 1000000);
+    return `guest${randomNum}`;
+}
+
+/**
+ * สุ่มสีให้ผู้เล่นใหม่
+ */
+function getRandomColor() {
+    return AVAILABLE_COLORS[Math.floor(Math.random() * AVAILABLE_COLORS.length)];
+}
+
+/**
+ * สร้างผู้เล่นใหม่
+ * @param {string} playerId - ถ้ามี playerId ให้ใช้ตัวนี้, ถ้าไม่มีให้สร้างใหม่
+ * @returns {Object} player object
+ */
+function createOrGetPlayer(playerId = null) {
+    if (playerId && players.has(playerId)) {
+        // อัปเดต lastSeen
+        const player = players.get(playerId);
+        player.lastSeen = new Date().toISOString();
+        savePlayers();
+        return player;
+    }
+
+    const newPlayerId = playerId || uuidv4();
+    const newPlayer = {
+        playerId: newPlayerId,
+        playerName: generateRandomName(),
+        color: getRandomColor(),
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString()
+    };
+
+    players.set(newPlayerId, newPlayer);
+    savePlayers();
+    return newPlayer;
+}
+
+/**
+ * เช็คว่าชื่อซ้ำกับผู้เล่นคนอื่นหรือไม่
+ * @param {string} name - ชื่อที่ต้องการเช็ค
+ * @param {string} excludePlayerId - playerId ที่จะไม่นับ (สำหรับการเปลี่ยนชื่อตัวเอง)
+ * @returns {boolean} true ถ้าชื่อซ้ำ
+ */
+function isNameTaken(name, excludePlayerId = null) {
+    const normalizedName = name.trim().toLowerCase();
+    for (const player of players.values()) {
+        if (excludePlayerId && player.playerId === excludePlayerId) {
+            continue; // ข้ามตัวเอง
+        }
+        if (player.playerName.toLowerCase() === normalizedName) {
+            return true; // ชื่อซ้ำ!
+        }
+    }
+    return false;
+}
+
+/**
+ * อัปเดตชื่อผู้เล่น
+ */
+function updatePlayerName(playerId, newName) {
+    if (!players.has(playerId)) {
+        throw new Error('Player not found');
+    }
+    
+    const trimmedName = newName.trim();
+    
+    // เช็คความยาวชื่อ
+    if (trimmedName.length < 2) {
+        throw new Error('ชื่อต้องมีอย่างน้อย 2 ตัวอักษร');
+    }
+    if (trimmedName.length > 20) {
+        throw new Error('ชื่อต้องไม่เกิน 20 ตัวอักษร');
+    }
+    
+    // เช็คชื่อซ้ำ
+    if (isNameTaken(trimmedName, playerId)) {
+        throw new Error('ชื่อนี้ถูกใช้แล้ว กรุณาเลือกชื่ออื่น');
+    }
+    
+    const player = players.get(playerId);
+    player.playerName = trimmedName;
+    player.lastSeen = new Date().toISOString();
+    savePlayers();
+    return player;
+}
+
+/**
+ * อัปเดตสีผู้เล่น
+ */
+function updatePlayerColor(playerId, color) {
+    if (!players.has(playerId)) {
+        throw new Error('Player not found');
+    }
+    
+    if (!AVAILABLE_COLORS.includes(color)) {
+        throw new Error('Invalid color');
+    }
+
+    const player = players.get(playerId);
+    player.color = color;
+    player.lastSeen = new Date().toISOString();
+    savePlayers();
+    return player;
+}
+
+/**
+ * ดึงข้อมูลผู้เล่น
+ */
+function getPlayer(playerId) {
+    return players.get(playerId) || null;
+}
+
+/**
+ * ดึงข้อมูลผู้เล่นตามชื่อ (สำหรับ backward compatibility)
+ */
+function getPlayerByName(playerName) {
+    for (const player of players.values()) {
+        if (player.playerName === playerName) {
+            return player;
+        }
+    }
+    return null;
+}
+
+/**
+ * อัปเดต lastSeen
+ */
+function updateLastSeen(playerId) {
+    if (players.has(playerId)) {
+        players.get(playerId).lastSeen = new Date().toISOString();
+        savePlayers();
+    }
+}
+
+/**
+ * ดึงผู้เล่นทั้งหมด (สำหรับ admin)
+ */
+function getAllPlayers() {
+    return Array.from(players.values());
+}
+
+/**
+ * ลบผู้เล่น (สำหรับ admin)
+ */
+function deletePlayer(playerId) {
+    if (players.has(playerId)) {
+        players.delete(playerId);
+        savePlayers();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * นับจำนวนผู้เล่นทั้งหมด
+ */
+function getPlayerCount() {
+    return players.size;
+}
+
+// ========== BAN SYSTEM ==========
+const BANNED_FILE = path.join(__dirname, '../data/bannedPlayers.json');
+const bannedPlayers = new Map(); // key: playerId, value: { playerId, playerName, reason, bannedAt, bannedBy }
+
+/**
+ * โหลดรายชื่อผู้เล่นที่ถูกแบน
+ */
+function loadBannedPlayers() {
+    if (fs.existsSync(BANNED_FILE)) {
+        try {
+            const data = fs.readFileSync(BANNED_FILE, 'utf8');
+            const bannedData = JSON.parse(data);
+            for (const [playerId, banInfo] of Object.entries(bannedData)) {
+                bannedPlayers.set(playerId, banInfo);
+            }
+            console.log(`Loaded ${bannedPlayers.size} banned players`);
+        } catch (error) {
+            console.error('Error loading banned players:', error);
+        }
+    }
+}
+
+/**
+ * บันทึกรายชื่อผู้เล่นที่ถูกแบน
+ */
+function saveBannedPlayers() {
+    try {
+        const bannedData = {};
+        for (const [playerId, banInfo] of bannedPlayers.entries()) {
+            bannedData[playerId] = banInfo;
+        }
+        fs.writeFileSync(BANNED_FILE, JSON.stringify(bannedData, null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error saving banned players:', error);
+    }
+}
+
+// โหลดรายชื่อแบนเมื่อเริ่มต้น
+loadBannedPlayers();
+
+/**
+ * แบนผู้เล่น
+ * @param {string} playerId - ID ผู้เล่น
+ * @param {string} playerName - ชื่อผู้เล่น
+ * @param {string} reason - เหตุผล
+ * @param {string} bannedBy - ผู้แบน
+ * @param {number|null} durationHours - ระยะเวลาแบน (ชั่วโมง), null = ถาวร
+ */
+function banPlayer(playerId, playerName, reason = 'ไม่ระบุเหตุผล', bannedBy = 'Admin', durationHours = null) {
+    const player = players.get(playerId);
+    const name = playerName || (player ? player.playerName : 'Unknown');
+    
+    const bannedAt = new Date();
+    let expiresAt = null;
+    
+    if (durationHours !== null && durationHours > 0) {
+        expiresAt = new Date(bannedAt.getTime() + (durationHours * 60 * 60 * 1000));
+    }
+    
+    const banInfo = {
+        playerId: playerId,
+        playerName: name,
+        reason: reason,
+        bannedAt: bannedAt.toISOString(),
+        bannedBy: bannedBy,
+        durationHours: durationHours,
+        expiresAt: expiresAt ? expiresAt.toISOString() : null, // null = ถาวร
+        isPermanent: durationHours === null || durationHours === 0
+    };
+    
+    bannedPlayers.set(playerId, banInfo);
+    saveBannedPlayers();
+    return banInfo;
+}
+
+/**
+ * ปลดแบนผู้เล่น
+ */
+function unbanPlayer(playerId) {
+    if (bannedPlayers.has(playerId)) {
+        bannedPlayers.delete(playerId);
+        saveBannedPlayers();
+        return true;
+    }
+    return false;
+}
+
+/**
+ * ตรวจสอบว่าผู้เล่นถูกแบนหรือไม่ (รวมเช็คหมดอายุ)
+ */
+function isPlayerBanned(playerId) {
+    if (!bannedPlayers.has(playerId)) return false;
+    
+    const banInfo = bannedPlayers.get(playerId);
+    
+    // ถ้าแบนถาวร
+    if (banInfo.isPermanent || !banInfo.expiresAt) {
+        return true;
+    }
+    
+    // เช็คว่าหมดอายุหรือยัง
+    const now = new Date();
+    const expiresAt = new Date(banInfo.expiresAt);
+    
+    if (now >= expiresAt) {
+        // หมดอายุแล้ว - ปลดแบนอัตโนมัติ
+        bannedPlayers.delete(playerId);
+        saveBannedPlayers();
+        console.log(`Auto-unbanned player ${playerId} (ban expired)`);
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * ดึงข้อมูลการแบน (รวมเวลาที่เหลือ)
+ */
+function getBanInfo(playerId) {
+    if (!bannedPlayers.has(playerId)) return null;
+    
+    const banInfo = bannedPlayers.get(playerId);
+    
+    // คำนวณเวลาที่เหลือ
+    if (banInfo.expiresAt && !banInfo.isPermanent) {
+        const now = new Date();
+        const expiresAt = new Date(banInfo.expiresAt);
+        const remainingMs = expiresAt - now;
+        
+        if (remainingMs <= 0) {
+            // หมดอายุแล้ว
+            bannedPlayers.delete(playerId);
+            saveBannedPlayers();
+            return null;
+        }
+        
+        // คำนวณเวลาที่เหลือ
+        const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+        const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        return {
+            ...banInfo,
+            remainingMs,
+            remainingHours,
+            remainingMinutes,
+            remainingText: remainingHours > 0 
+                ? `${remainingHours} ชั่วโมง ${remainingMinutes} นาที`
+                : `${remainingMinutes} นาที`
+        };
+    }
+    
+    return {
+        ...banInfo,
+        remainingText: 'ถาวร'
+    };
+}
+
+/**
+ * ดึงรายชื่อผู้เล่นที่ถูกแบนทั้งหมด
+ */
+function getAllBannedPlayers() {
+    return Array.from(bannedPlayers.values());
+}
+
+/**
+ * แก้ไขชื่อผู้เล่น (Admin)
+ */
+function adminUpdatePlayerName(playerId, newName) {
+    if (!players.has(playerId)) {
+        throw new Error('Player not found');
+    }
+    const player = players.get(playerId);
+    const oldName = player.playerName;
+    player.playerName = newName.trim();
+    savePlayers();
+    return { oldName, newName: player.playerName };
+}
+
+module.exports = {
+    createOrGetPlayer,
+    updatePlayerName,
+    updatePlayerColor,
+    getPlayer,
+    getPlayerByName,
+    updateLastSeen,
+    getAllPlayers,
+    deletePlayer,
+    getPlayerCount,
+    isNameTaken,
+    AVAILABLE_COLORS,
+    // Ban system
+    banPlayer,
+    unbanPlayer,
+    isPlayerBanned,
+    getBanInfo,
+    getAllBannedPlayers,
+    adminUpdatePlayerName
+};

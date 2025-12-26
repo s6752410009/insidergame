@@ -1,0 +1,121 @@
+{
+  "bbb41a5f-a8e6-4597-9c04-39b5718ae12e": {
+    "playerId": "bbb41a5f-a8e6-4597-9c04-39b5718ae12e",
+    "playerName": "guest4157911",
+    "totalGames": 0,
+    "wins": 0,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": null
+  },
+  "f7148263-784b-4dc1-b1de-401ad7937ee1": {
+    "playerId": "f7148263-784b-4dc1-b1de-401ad7937ee1",
+    "playerName": "guest208803",
+    "totalGames": 3,
+    "wins": 1,
+    "losses": 2,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 1,
+      "citizenCount": 1
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 1
+    },
+    "lastPlayedAt": "2025-12-20T05:20:22.116Z"
+  },
+  "d335783d-78c6-4909-9a44-1dd30b8855e8": {
+    "playerId": "d335783d-78c6-4909-9a44-1dd30b8855e8",
+    "playerName": "guest607031",
+    "totalGames": 3,
+    "wins": 1,
+    "losses": 2,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 1,
+      "citizenCount": 1
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": "2025-12-20T05:20:22.116Z"
+  },
+  "0b31748b-b163-44d8-a1f0-be3e12090839": {
+    "playerId": "0b31748b-b163-44d8-a1f0-be3e12090839",
+    "playerName": "guest818921",
+    "totalGames": 3,
+    "wins": 3,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 1,
+      "citizenCount": 1
+    },
+    "winByRole": {
+      "winAsTraitor": 1,
+      "winAsCitizen": 1
+    },
+    "lastPlayedAt": "2025-12-20T05:20:22.116Z"
+  },
+  "7af12fd6-63ca-456f-8015-87b58badf307": {
+    "playerId": "7af12fd6-63ca-456f-8015-87b58badf307",
+    "playerName": "com1",
+    "totalGames": 17,
+    "wins": 4,
+    "losses": 13,
+    "roleStats": {
+      "gameMasterCount": 6,
+      "traitorCount": 6,
+      "citizenCount": 5
+    },
+    "winByRole": {
+      "winAsTraitor": 1,
+      "winAsCitizen": 1
+    },
+    "lastPlayedAt": "2025-12-26T10:47:28.562Z"
+  },
+  "08aca07a-51a3-4bb2-b942-825f480d624d": {
+    "playerId": "08aca07a-51a3-4bb2-b942-825f480d624d",
+    "playerName": "Unknown",
+    "totalGames": 3,
+    "wins": 3,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 2,
+      "citizenCount": 0
+    },
+    "winByRole": {
+      "winAsTraitor": 2,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": "2025-12-26T10:47:28.562Z"
+  },
+  "616689a5-589f-482d-b83c-4be5d047d4fa": {
+    "playerId": "616689a5-589f-482d-b83c-4be5d047d4fa",
+    "playerName": "com3",
+    "totalGames": 3,
+    "wins": 1,
+    "losses": 2,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 0,
+      "citizenCount": 2
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 1
+    },
+    "lastPlayedAt": "2025-12-26T10:47:28.562Z"
+  }
+}
