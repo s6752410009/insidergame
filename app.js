@@ -62,6 +62,10 @@ const adminSockets = new Set();
 // เก็บ admin tokens ชั่วคราว (Key: token, Value: { createdAt, used })
 const adminTokens = new Map();
 
+// เก็บ server activity logs (เก็บ 500 logs ล่าสุด)
+const serverLogs = [];
+const MAX_SERVER_LOGS = 500;
+
 // สร้าง admin token
 function generateAdminToken() {
     const crypto = require('crypto');
@@ -376,6 +380,56 @@ function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo =
             timeZone: 'Asia/Bangkok'
         }),
         replyTo: replyTo
+    });
+}
+
+/**
+ * Send game log to room (no longer broadcasts to room, only stores for admin)
+ * @param {Object} io - Socket.io instance
+ * @param {string} roomId - Room ID
+ * @param {string} message - Log message
+ * @param {string} type - Log type: 'info', 'success', 'warning', 'error', 'vote', 'role', 'system'
+ * @param {string} icon - Optional emoji icon
+ * @param {string} haptic - Optional haptic feedback type
+ */
+function sendGameLog(io, roomId, message, type = 'info', icon = null, haptic = null) {
+    // Store log for admin dashboard
+    addServerLog(io, 'game', roomId, message, type);
+}
+
+/**
+ * Add a server activity log
+ * @param {Object} io - Socket.io instance  
+ * @param {string} category - Log category: 'join', 'leave', 'game', 'admin', 'error', 'chat', 'system'
+ * @param {string} roomId - Room ID (optional)
+ * @param {string} message - Log message
+ * @param {string} type - Log type: 'info', 'success', 'warning', 'error'
+ */
+function addServerLog(io, category, roomId, message, type = 'info') {
+    const room = roomId ? roomManager.getRoom(roomId) : null;
+    const roomName = room ? room.name : roomId || 'ระบบ';
+    
+    const logEntry = {
+        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+        timestamp: new Date().toISOString(),
+        category: category,
+        roomId: roomId || null,
+        roomName: roomName,
+        message: message,
+        type: type
+    };
+    
+    // Add to beginning of array (newest first)
+    serverLogs.unshift(logEntry);
+    
+    // Keep only MAX_SERVER_LOGS
+    if (serverLogs.length > MAX_SERVER_LOGS) {
+        serverLogs.length = MAX_SERVER_LOGS;
+    }
+    
+    // Broadcast to all admin sockets
+    adminSockets.forEach(socketId => {
+        io.to(socketId).emit('adminLog', logEntry);
     });
 }
 
@@ -1052,6 +1106,7 @@ io.sockets.on('connection', function(socket) {
             const player = playerManager.getPlayer(playerId);
             if (player) {
                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง`, '#e74c3c');
+                addServerLog(io, 'leave', roomId, `${player.playerName} ออกจากห้อง`, 'warning');
             }
             
             // ถ้า Admin ออก → แจ้งเตือนว่า Admin ใหม่คือใคร
@@ -1321,6 +1376,62 @@ io.sockets.on('connection', function(socket) {
             }
         } catch (error) {
             console.error('Error getting admin data:', error);
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    // Admin: Get server logs
+    socket.on('admin_getLogs', function(data, callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized' });
+                }
+                return;
+            }
+            
+            const { filter, limit } = data || {};
+            let logs = [...serverLogs]; // Clone array
+            
+            // Filter by category if specified
+            if (filter && filter !== 'all') {
+                logs = logs.filter(log => log.category === filter);
+            }
+            
+            // Limit results
+            if (limit && limit > 0) {
+                logs = logs.slice(0, limit);
+            }
+            
+            if (typeof callback === 'function') {
+                callback({ success: true, logs: logs });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    // Admin: Clear server logs
+    socket.on('admin_clearLogs', function(callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized' });
+                }
+                return;
+            }
+            
+            serverLogs.length = 0;
+            addServerLog(io, 'admin', null, 'Logs ถูกล้างโดย Admin', 'warning');
+            
+            if (typeof callback === 'function') {
+                callback({ success: true });
+            }
+        } catch (error) {
             if (typeof callback === 'function') {
                 callback({ success: false, error: error.message });
             }
@@ -1990,6 +2101,7 @@ io.sockets.on('connection', function(socket) {
                 const player = playerManager.getPlayer(playerId);
                 if (player) {
                     sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} เข้าห้อง`, '#3498db');
+                    addServerLog(io, 'join', roomId, `${player.playerName} เข้าห้อง`, 'info');
                 }
             }
 
@@ -2172,6 +2284,7 @@ io.sockets.on('connection', function(socket) {
         
         // Send chat notification
         sendChatMessageToRoom(io, roomId, 'System', 'เริ่มเกมใหม่! บทบาทถูกสุ่มแล้ว', '#9b59b6');
+        addServerLog(io, 'game', roomId, '🎮 เกมเริ่มแล้ว! สุ่มบทบาท', 'success');
     });
 
     // Reveal word (only GM can do this, and only after word is set)
@@ -2207,6 +2320,7 @@ io.sockets.on('connection', function(socket) {
         
         // Send chat notification
         sendChatMessageToRoom(io, roomId, 'System', 'คำได้ถูกเปิดเผยแล้ว', '#3498db');
+        addServerLog(io, 'game', roomId, `📝 คำเปิดเผย: ${room.gameState.word}`, 'info');
     });
 
     // Set word
@@ -2361,15 +2475,25 @@ io.sockets.on('connection', function(socket) {
             io.to(roomId).emit('vote2Ended', room.gameState.resultVote2);
             room.gameState.status = 'end';
 
-            // Record statistics
+            // Record statistics (including game history)
             statsManager.recordGameEnd(roomId, {
                 resultVote2: room.gameState.resultVote2,
-                players: room.gameState.players
+                players: room.gameState.players,
+                word: room.gameState.word,
+                roomName: room.name || roomId
             });
 
             // Send chat notification
             const resultMsg = room.gameState.resultVote2.hasWon ? 'พลเมืองชนะ!' : 'ผู้ทรยศชนะ!';
             sendChatMessageToRoom(io, roomId, 'System', `เกมจบ! ${resultMsg}`, '#f39c12');
+            
+            // Game log for end
+            const traitorName = room.gameState.resultVote2.finalTraitorName || 'ไม่ทราบ';
+            if (room.gameState.resultVote2.hasWon) {
+                addServerLog(io, 'game', roomId, `🎉 พลเมืองชนะ! (ผู้ทรยศ: ${traitorName})`, 'success');
+            } else {
+                addServerLog(io, 'game', roomId, `💀 ผู้ทรยศชนะ! (ผู้ทรยศ: ${traitorName})`, 'error');
+            }
 
             // Auto return to lobby after 5 seconds
             setTimeout(() => {
@@ -2636,6 +2760,17 @@ async function startServer() {
     server.listen(PORT, () => {
         console.log(`Server started on port ${PORT}`);
         console.log('Multi-Room Insider Game is ready!');
+        
+        // Add startup log
+        serverLogs.unshift({
+            id: Date.now() + '-startup',
+            timestamp: new Date().toISOString(),
+            category: 'system',
+            roomId: null,
+            roomName: 'ระบบ',
+            message: '🚀 Server เริ่มทำงานแล้ว',
+            type: 'success'
+        });
     });
 }
 

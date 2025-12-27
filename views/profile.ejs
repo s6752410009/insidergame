@@ -291,6 +291,109 @@
         color: #fff;
     }
     
+    /* Game History Styles */
+    .game-history-section {
+        background: linear-gradient(135deg, #1e3a5f 0%, #0d1f3c 100%);
+        border: 3px solid #2c5282;
+        border-radius: 15px;
+        padding: 30px;
+        margin-top: 30px;
+    }
+    
+    .game-history-section h2 {
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 1.6em;
+        margin-bottom: 20px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        border-bottom: 2px solid #4299e1;
+        padding-bottom: 10px;
+    }
+    
+    .game-history-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .game-history-item {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-left: 4px solid #4299e1;
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin-bottom: 12px;
+        transition: all 0.2s;
+    }
+    
+    .game-history-item:hover {
+        transform: translateX(5px);
+        background: rgba(255,255,255,0.08);
+    }
+    
+    .game-history-item.won {
+        border-left-color: #48bb78;
+    }
+    
+    .game-history-item.lost {
+        border-left-color: #fc8181;
+    }
+    
+    .game-history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .game-history-result {
+        font-weight: 700;
+        font-size: 1.1em;
+        font-family: 'Rajdhani', sans-serif;
+    }
+    
+    .game-history-result.won {
+        color: #48bb78;
+    }
+    
+    .game-history-result.lost {
+        color: #fc8181;
+    }
+    
+    .game-history-date {
+        color: #a0aec0;
+        font-size: 0.85em;
+    }
+    
+    .game-history-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+        font-size: 0.9em;
+        color: #e2e8f0;
+    }
+    
+    .game-history-detail {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .game-history-detail-icon {
+        font-size: 0.9em;
+    }
+    
+    .game-history-empty {
+        text-align: center;
+        padding: 40px;
+        color: #a0aec0;
+    }
+    
+    .game-history-empty p {
+        font-size: 1.1em;
+        margin: 10px 0;
+    }
+    
     /* SweetAlert2 Dark Theme */
     .swal2-popup {
         background: #1e1e1e !important;
@@ -542,8 +645,13 @@
                     winAsTraitor: 0,
                     winAsCitizen: 0
                 },
-                lastPlayedAt: null
+                lastPlayedAt: null,
+                gameHistory: []
             };
+            // Ensure gameHistory exists for old stats
+            if (!displayStats.gameHistory) {
+                displayStats.gameHistory = [];
+            }
             const winRate = displayStats.totalGames > 0 ? Math.round((displayStats.wins / displayStats.totalGames) * 100) : 0;
         %>
         
@@ -620,6 +728,56 @@
                     <span style="color: #888;">ยังไม่เคยเล่น</span>
                 <% } %>
             </p>
+        </div>
+        
+        <!-- Game History Section -->
+        <div class="game-history-section">
+            <h2>📜 ประวัติเกมล่าสุด</h2>
+            <div class="game-history-list">
+                <% if (displayStats.gameHistory && displayStats.gameHistory.length > 0) { %>
+                    <% displayStats.gameHistory.forEach(function(game) { %>
+                        <div class="game-history-item <%= game.won ? 'won' : 'lost' %>">
+                            <div class="game-history-header">
+                                <span class="game-history-result <%= game.won ? 'won' : 'lost' %>">
+                                    <%= game.won ? '🏆 ชนะ' : '💔 แพ้' %>
+                                </span>
+                                <span class="game-history-date">
+                                    <%= new Date(game.date).toLocaleString('th-TH', { 
+                                        year: 'numeric', 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) %>
+                                </span>
+                            </div>
+                            <div class="game-history-details">
+                                <div class="game-history-detail">
+                                    <span class="game-history-detail-icon">🎭</span>
+                                    <span><%= game.role %></span>
+                                </div>
+                                <div class="game-history-detail">
+                                    <span class="game-history-detail-icon">📝</span>
+                                    <span><%= game.word %></span>
+                                </div>
+                                <div class="game-history-detail">
+                                    <span class="game-history-detail-icon">🔴</span>
+                                    <span>ผู้ทรยศ: <%= game.traitor %></span>
+                                </div>
+                                <div class="game-history-detail">
+                                    <span class="game-history-detail-icon">👥</span>
+                                    <span><%= game.playerCount %> คน</span>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="game-history-empty">
+                        <p>📭 ยังไม่มีประวัติเกม</p>
+                        <p style="font-size: 0.9em;">เริ่มเล่นเพื่อบันทึกประวัติ!</p>
+                    </div>
+                <% } %>
+            </div>
         </div>
     </div>
 </div>

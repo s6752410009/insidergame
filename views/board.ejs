@@ -174,7 +174,7 @@
     CHAT <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 
-<!-- 🔔 Notification Center (เปลี่ยนชื่อจากเดิม) -->
+<!-- �🔔 Notification Center (เปลี่ยนชื่อจากเดิม) -->
 <div id="notificationCenter" class="notification-center"></div>
 
 <%- contentFor('footer') %>
@@ -1150,6 +1150,82 @@ $(function() {
     $('#closeSidebarBtn').on('click', toggleSidebar);
     $('#sidebarOverlay').on('click', toggleSidebar); // คลิกที่ overlay เพื่อปิดแถบข้าง
 
+    // ===== MOBILE UX: Swipe Gestures & Haptic Feedback =====
+    (function() {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        const swipeThreshold = 80; // minimum distance for swipe
+        
+        // Haptic feedback function
+        function haptic(type = 'light') {
+            if ('vibrate' in navigator) {
+                switch(type) {
+                    case 'light': navigator.vibrate(10); break;
+                    case 'medium': navigator.vibrate(25); break;
+                    case 'heavy': navigator.vibrate(50); break;
+                    case 'success': navigator.vibrate([10, 50, 10]); break;
+                    case 'error': navigator.vibrate([50, 30, 50]); break;
+                }
+            }
+        }
+        window.haptic = haptic; // Make global
+        
+        // Track touch start
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+        
+        // Track touch end and detect swipe
+        document.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, { passive: true });
+        
+        function handleSwipe() {
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            
+            // Only handle horizontal swipes (ignore if more vertical)
+            if (Math.abs(diffX) < swipeThreshold || Math.abs(diffY) > Math.abs(diffX)) return;
+            
+            const chatBox = document.getElementById('chatBox');
+            const sidebar = document.getElementById('playerSidebar');
+            const chatOpen = chatBox && chatBox.style.display !== 'none';
+            const sidebarOpen = sidebar && sidebar.classList.contains('open');
+            
+            if (diffX > 0) {
+                // Swipe RIGHT → Close sidebar or open chat
+                if (sidebarOpen) {
+                    toggleSidebar();
+                    haptic('light');
+                }
+            } else {
+                // Swipe LEFT → Open sidebar or close chat
+                if (!sidebarOpen && !chatOpen) {
+                    toggleSidebar();
+                    haptic('light');
+                } else if (chatOpen) {
+                    $('#chatBox').hide();
+                    haptic('light');
+                }
+            }
+        }
+        
+        // Add haptic to buttons
+        $(document).on('click touchstart', 'button, .btn, .chat-toggle', function() {
+            haptic('light');
+        });
+        
+        // Haptic on vote
+        $(document).on('click', '[data-vote], .btn-vote2-player', function() {
+            haptic('medium');
+        });
+    })();
+
     // ปุ่มออกจากห้อง
     $('#leaveRoomBtn').on('click', function() {
         Swal.fire({
@@ -2030,6 +2106,7 @@ $(function() {
         } else {
             showNotification('💀 ผู้ทรยศชนะ! ผู้ทรยศคือ: ' + (result.finalTraitorName || '???'), 'error', 5000);
         }
+        
         // ADDED: เปิดใช้งานปุ่มทั้งหมดเมื่อเกมจบลง
         $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
     });

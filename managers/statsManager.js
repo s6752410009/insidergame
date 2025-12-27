@@ -73,19 +73,25 @@ function initializeStats(playerId, playerName) {
                 winAsTraitor: 0,
                 winAsCitizen: 0
             },
-            lastPlayedAt: null
+            lastPlayedAt: null,
+            gameHistory: [] // เพิ่ม: ประวัติเกมล่าสุด (เก็บ 20 เกมล่าสุด)
         });
     }
-    return stats.get(playerId);
+    // Migrate old stats that don't have gameHistory
+    const stat = stats.get(playerId);
+    if (!stat.gameHistory) {
+        stat.gameHistory = [];
+    }
+    return stat;
 }
 
 /**
  * บันทึกสถิติเมื่อเกมจบ
  * @param {string} roomId - ID ของห้อง
- * @param {Object} gameResult - ผลการเล่นเกม { resultVote2, players }
+ * @param {Object} gameResult - ผลการเล่นเกม { resultVote2, players, word, roomName }
  */
 function recordGameEnd(roomId, gameResult) {
-    const { resultVote2, players } = gameResult;
+    const { resultVote2, players, word, roomName } = gameResult;
     
     if (!resultVote2 || !players) {
         console.warn('Invalid game result data');
@@ -93,6 +99,8 @@ function recordGameEnd(roomId, gameResult) {
     }
 
     const hasWon = resultVote2.hasWon; // true = พลเมืองชนะ, false = ผู้ทรยศชนะ
+    const gameTimestamp = new Date().toISOString();
+    const traitorName = resultVote2.finalTraitorName || 'ไม่ทราบ';
 
     // อัปเดตสถิติสำหรับทุกผู้เล่นในเกม
     players.forEach(player => {
@@ -106,12 +114,16 @@ function recordGameEnd(roomId, gameResult) {
         // อัปเดต totalGames
         stat.totalGames += 1;
 
+        // คำนวณผลชนะ/แพ้
+        let playerWon = false;
+        
         // ตรวจสอบว่าเป็นผู้ชนะหรือไม่ (ตาม role)
         if (role === 'ผู้ทรยศ') {
             // ผู้ทรยศชนะ = พลเมืองแพ้
             if (!hasWon) {
                 stat.wins += 1;
                 stat.winByRole.winAsTraitor += 1;
+                playerWon = true;
             } else {
                 stat.losses += 1;
             }
@@ -122,6 +134,7 @@ function recordGameEnd(roomId, gameResult) {
             // GM ถือว่าชนะถ้าพลเมืองชนะ
             if (hasWon) {
                 stat.wins += 1;
+                playerWon = true;
             } else {
                 stat.losses += 1;
             }
@@ -130,6 +143,7 @@ function recordGameEnd(roomId, gameResult) {
             if (hasWon) {
                 stat.wins += 1;
                 stat.winByRole.winAsCitizen += 1;
+                playerWon = true;
             } else {
                 stat.losses += 1;
             }
@@ -137,7 +151,28 @@ function recordGameEnd(roomId, gameResult) {
         }
 
         // อัปเดต lastPlayedAt
-        stat.lastPlayedAt = new Date().toISOString();
+        stat.lastPlayedAt = gameTimestamp;
+        
+        // บันทึกประวัติเกม
+        const gameEntry = {
+            date: gameTimestamp,
+            roomId: roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            role: role,
+            won: playerWon,
+            word: word || 'ไม่ทราบ',
+            traitor: traitorName,
+            citizensWon: hasWon,
+            playerCount: players.length
+        };
+        
+        // เพิ่มเกมล่าสุดที่หัว array
+        stat.gameHistory.unshift(gameEntry);
+        
+        // เก็บแค่ 20 เกมล่าสุด
+        if (stat.gameHistory.length > 20) {
+            stat.gameHistory = stat.gameHistory.slice(0, 20);
+        }
     });
 
     // บันทึกลงไฟล์
@@ -152,6 +187,19 @@ function getStats(playerId) {
         return initializeStats(playerId, 'Unknown');
     }
     return stats.get(playerId);
+}
+
+/**
+ * ดึงประวัติเกมของผู้เล่น
+ * @param {string} playerId - ID ผู้เล่น
+ * @param {number} limit - จำนวนที่ต้องการ (default 20)
+ */
+function getGameHistory(playerId, limit = 20) {
+    const stat = getStats(playerId);
+    if (!stat || !stat.gameHistory) {
+        return [];
+    }
+    return stat.gameHistory.slice(0, limit);
 }
 
 /**
@@ -244,6 +292,7 @@ loadStats();
 module.exports = {
     recordGameEnd,
     getStats,
+    getGameHistory,
     updatePlayerNameInStats,
     getAllStats,
     resetPlayerStats,

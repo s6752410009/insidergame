@@ -564,6 +564,7 @@
                         <option value="leave">ออกจากห้อง</option>
                         <option value="game">เกม</option>
                         <option value="admin">Admin</option>
+                        <option value="system">ระบบ</option>
                         <option value="error">Error</option>
                     </select>
                     <button class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง Logs</button>
@@ -708,6 +709,7 @@ $(function() {
             console.log('[Admin] Socket authenticated successfully');
             isAuthenticated = true;
             loadData(); // โหลดข้อมูลหลัง authenticate สำเร็จ
+            loadLogs(); // โหลด logs ด้วย
         } else {
             console.error('[Admin] Authentication failed:', response.error);
             Swal.fire({
@@ -1381,33 +1383,27 @@ $(function() {
     // ========== Logs Functions ==========
     let serverLogs = [];
     
-    function addLog(type, message) {
-        const timestamp = new Date().toLocaleTimeString('th-TH');
-        const colors = {
-            'join': '#2ecc71',
-            'leave': '#e74c3c', 
-            'game': '#3498db',
-            'admin': '#9b59b6',
-            'error': '#ff6b6b',
-            'info': '#f39c12'
-        };
-        const icons = {
-            'join': '➡️',
-            'leave': '⬅️',
-            'game': '🎮',
-            'admin': '👑',
-            'error': '❌',
-            'info': 'ℹ️'
-        };
-        
-        serverLogs.unshift({ type, message, timestamp, color: colors[type] || '#fff', icon: icons[type] || '•' });
-        if (serverLogs.length > 200) serverLogs.pop();
-        renderLogs();
+    // Load existing logs from server
+    function loadLogs() {
+        const filter = $('#logFilter').val();
+        socket.emit('admin_getLogs', { filter: filter, limit: 200 }, function(response) {
+            if (response.success) {
+                serverLogs = response.logs || [];
+                renderLogs();
+            }
+        });
     }
+    
+    // Receive new log entries in real-time
+    socket.on('adminLog', function(logEntry) {
+        serverLogs.unshift(logEntry);
+        if (serverLogs.length > 500) serverLogs.length = 500;
+        renderLogs();
+    });
     
     function renderLogs() {
         const filter = $('#logFilter').val();
-        const filtered = filter === 'all' ? serverLogs : serverLogs.filter(l => l.type === filter);
+        const filtered = filter === 'all' ? serverLogs : serverLogs.filter(l => l.category === filter);
         
         const $container = $('#logsContainer');
         if (filtered.length === 0) {
@@ -1415,23 +1411,81 @@ $(function() {
             return;
         }
         
-        $container.html(filtered.map(log => 
-            `<div style="margin-bottom: 4px; color: ${log.color};">
-                <span style="color: #666;">[${log.timestamp}]</span> ${log.icon} ${log.message}
-            </div>`
-        ).join(''));
+        const colors = {
+            'join': '#2ecc71',
+            'leave': '#e74c3c', 
+            'game': '#3498db',
+            'admin': '#9b59b6',
+            'error': '#ff6b6b',
+            'chat': '#f39c12',
+            'system': '#95a5a6'
+        };
+        const typeColors = {
+            'info': '#3498db',
+            'success': '#2ecc71',
+            'warning': '#f39c12',
+            'error': '#e74c3c'
+        };
+        const icons = {
+            'join': '➡️',
+            'leave': '⬅️',
+            'game': '🎮',
+            'admin': '👑',
+            'error': '❌',
+            'chat': '💬',
+            'system': '⚙️'
+        };
+        
+        $container.html(filtered.map(log => {
+            const time = new Date(log.timestamp).toLocaleTimeString('th-TH');
+            const color = typeColors[log.type] || colors[log.category] || '#fff';
+            const icon = icons[log.category] || '•';
+            const roomInfo = log.roomName ? `<span style="color: #888;">[${log.roomName}]</span> ` : '';
+            return `<div style="margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid ${color}; background: rgba(255,255,255,0.03);">
+                <span style="color: #666;">[${time}]</span> ${icon} ${roomInfo}<span style="color: ${color};">${log.message}</span>
+            </div>`;
+        }).join(''));
+        
+        // Auto scroll to top (newest)
+        $container.scrollTop(0);
     }
     
-    $('#logFilter').on('change', renderLogs);
+    $('#logFilter').on('change', function() {
+        loadLogs();
+    });
     
     window.clearLogs = function() {
-        serverLogs = [];
-        renderLogs();
-        Swal.fire({ icon: 'success', title: 'ล้าง Logs สำเร็จ', timer: 1000, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+        Swal.fire({
+            title: '🗑️ ล้าง Logs',
+            text: 'ต้องการล้าง Logs ทั้งหมด?',
+            showCancelButton: true,
+            confirmButtonText: 'ล้าง',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_clearLogs', function(response) {
+                    if (response.success) {
+                        serverLogs = [];
+                        renderLogs();
+                        Swal.fire({ icon: 'success', title: 'ล้าง Logs สำเร็จ', timer: 1000, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
     };
     
     window.exportLogs = function() {
-        const logsText = serverLogs.map(l => `[${l.timestamp}] [${l.type.toUpperCase()}] ${l.message}`).join('\n');
+        if (serverLogs.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'ไม่มี Logs', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        const logsText = serverLogs.map(l => {
+            const time = new Date(l.timestamp).toLocaleString('th-TH');
+            return `[${time}] [${l.category.toUpperCase()}] ${l.roomName ? '[' + l.roomName + '] ' : ''}${l.message}`;
+        }).join('\n');
         const blob = new Blob([logsText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1439,6 +1493,13 @@ $(function() {
         a.download = 'server_logs_' + new Date().toISOString().slice(0,10) + '.txt';
         a.click();
     };
+    
+    // Load logs after authentication
+    socket.on('connect', function() {
+        if (isAuthenticated) {
+            loadLogs();
+        }
+    });
     
     // ========== Settings Functions ==========
     window.saveGameSettings = function() {
