@@ -1786,6 +1786,72 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // Admin: Clear all player stats
+    socket.on('admin_clearAllStats', function(callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                }
+                return;
+            }
+            
+            const count = statsManager.clearAllStats();
+            addServerLog(io, 'admin', null, `Admin ล้างสถิติทั้งหมด (${count} รายการ)`, 'warning');
+            callback({ success: true, count });
+        } catch (error) {
+            console.error('Error clearing all stats:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
+    // Admin: Bulk delete player stats
+    socket.on('admin_bulkDeleteStats', function(data, callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                }
+                return;
+            }
+            
+            const { playerIds } = data;
+            if (!Array.isArray(playerIds) || playerIds.length === 0) {
+                callback({ success: false, error: 'ไม่มีรายการที่เลือก' });
+                return;
+            }
+            
+            const count = statsManager.bulkDeleteStats(playerIds);
+            addServerLog(io, 'admin', null, `Admin ลบสถิติ ${count} รายการ`, 'warning');
+            callback({ success: true, count });
+        } catch (error) {
+            console.error('Error bulk deleting stats:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
+    // Admin: Delete single player stats
+    socket.on('admin_deletePlayerStats', function(data, callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                }
+                return;
+            }
+            
+            const { playerId, playerName } = data;
+            const success = statsManager.deletePlayerStats(playerId);
+            if (success) {
+                addServerLog(io, 'admin', null, `Admin ลบสถิติของ ${playerName || playerId}`, 'warning');
+            }
+            callback({ success });
+        } catch (error) {
+            console.error('Error deleting player stats:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
     // Admin: Clear empty rooms
     socket.on('admin_clearEmptyRooms', function(callback) {
         try {

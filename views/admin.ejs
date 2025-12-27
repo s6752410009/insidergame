@@ -525,6 +525,8 @@
             <div class="panel-header">
                 <h2>📊 สถิติผู้เล่น</h2>
                 <div class="panel-actions">
+                    <button class="btn-admin btn-danger" onclick="clearAllStats()" id="clearAllStatsBtn" style="display:none;">🗑️ ลบทั้งหมด</button>
+                    <button class="btn-admin btn-warning" onclick="deleteSelectedStats()" id="deleteSelectedBtn" style="display:none;">🗑️ ลบที่เลือก (<span id="selectedCount">0</span>)</button>
                     <button class="btn-admin btn-primary" onclick="exportStats()">📥 Export CSV</button>
                     <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
                 </div>
@@ -533,6 +535,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th style="width:40px;"><input type="checkbox" id="selectAllStats" onchange="toggleSelectAllStats(this)"></th>
                             <th>ผู้เล่น</th>
                             <th>เกม</th>
                             <th>ชนะ</th>
@@ -918,8 +921,17 @@ $(function() {
         const $table = $('#statsTable');
         $table.empty();
         
+        // แสดง/ซ่อนปุ่ม Clear All
+        if (stats.length > 0) {
+            $('#clearAllStatsBtn').show();
+        } else {
+            $('#clearAllStatsBtn').hide();
+        }
+        $('#deleteSelectedBtn').hide();
+        $('#selectAllStats').prop('checked', false);
+        
         if (stats.length === 0) {
-            $table.html('<tr><td colspan="9" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
+            $table.html('<tr><td colspan="10" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
             return;
         }
         
@@ -928,7 +940,8 @@ $(function() {
         stats.forEach(function(stat) {
             const winRate = stat.totalGames > 0 ? Math.round((stat.wins / stat.totalGames) * 100) : 0;
             const row = `
-                <tr>
+                <tr data-player-id="${stat.playerId}">
+                    <td><input type="checkbox" class="stat-checkbox" data-player-id="${stat.playerId}" data-player-name="${escapeHtml(stat.playerName || 'Unknown')}" onchange="updateSelectedCount()"></td>
                     <td>${escapeHtml(stat.playerName || 'Unknown')}</td>
                     <td>${stat.totalGames || 0}</td>
                     <td style="color: #2ecc71;">${stat.wins || 0}</td>
@@ -939,6 +952,7 @@ $(function() {
                     <td>${stat.roleStats?.citizenCount || 0}</td>
                     <td>
                         <button class="action-btn reset" onclick="resetPlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">รีเซ็ต</button>
+                        <button class="action-btn kick" onclick="deletePlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">ลบ</button>
                     </td>
                 </tr>
             `;
@@ -1129,6 +1143,110 @@ $(function() {
                 socket.emit('admin_resetPlayerStats', { playerId }, function(res) {
                     if (res.success) {
                         Swal.fire({ icon: 'success', title: 'รีเซ็ตสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    // ลบสถิติผู้เล่นรายคน
+    window.deletePlayerStats = function(playerId, playerName) {
+        Swal.fire({
+            title: '🗑️ ลบสถิติ',
+            html: `ต้องการลบสถิติของ <strong>${playerName}</strong>?<br><span style="color:#e74c3c;">ข้อมูลจะถูกลบถาวร!</span>`,
+            showCancelButton: true,
+            confirmButtonText: 'ลบ',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_deletePlayerStats', { playerId, playerName }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    // ลบสถิติทั้งหมด
+    window.clearAllStats = function() {
+        Swal.fire({
+            title: '🗑️ ลบสถิติทั้งหมด',
+            html: '<span style="color:#e74c3c;">คำเตือน: ข้อมูลสถิติทั้งหมดจะถูกลบถาวร!</span>',
+            showCancelButton: true,
+            confirmButtonText: 'ลบทั้งหมด',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_clearAllStats', function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: `ลบสถิติ ${res.count} รายการ`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    // เลือก/ยกเลิกเลือกทั้งหมด
+    window.toggleSelectAllStats = function(checkbox) {
+        $('.stat-checkbox').prop('checked', checkbox.checked);
+        updateSelectedCount();
+    };
+    
+    // อัพเดทจำนวนที่เลือก
+    window.updateSelectedCount = function() {
+        const count = $('.stat-checkbox:checked').length;
+        $('#selectedCount').text(count);
+        if (count > 0) {
+            $('#deleteSelectedBtn').show();
+        } else {
+            $('#deleteSelectedBtn').hide();
+        }
+    };
+    
+    // ลบสถิติที่เลือก
+    window.deleteSelectedStats = function() {
+        const selected = [];
+        const names = [];
+        $('.stat-checkbox:checked').each(function() {
+            selected.push($(this).data('player-id'));
+            names.push($(this).data('player-name'));
+        });
+        
+        if (selected.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'กรุณาเลือกรายการ', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        
+        Swal.fire({
+            title: '🗑️ ลบสถิติที่เลือก',
+            html: `ต้องการลบสถิติ <strong>${selected.length}</strong> รายการ?<br><span style="color:#888;font-size:0.9em;">${names.slice(0, 5).join(', ')}${names.length > 5 ? '...' : ''}</span><br><span style="color:#e74c3c;">ข้อมูลจะถูกลบถาวร!</span>`,
+            showCancelButton: true,
+            confirmButtonText: 'ลบที่เลือก',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                socket.emit('admin_bulkDeleteStats', { playerIds: selected }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: `ลบสถิติ ${res.count} รายการ`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
                         loadData();
                     } else {
                         Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });

@@ -257,6 +257,34 @@ function deletePlayerStats(playerId) {
 }
 
 /**
+ * ลบสถิติทั้งหมด (Clear All)
+ */
+function clearAllStats() {
+    const count = stats.size;
+    stats.clear();
+    saveStats();
+    return count;
+}
+
+/**
+ * ลบสถิติหลายคน (Bulk Delete)
+ * @param {Array} playerIds - รายการ playerId ที่ต้องการลบ
+ */
+function bulkDeleteStats(playerIds) {
+    let deletedCount = 0;
+    playerIds.forEach(playerId => {
+        if (stats.has(playerId)) {
+            stats.delete(playerId);
+            deletedCount++;
+        }
+    });
+    if (deletedCount > 0) {
+        saveStats();
+    }
+    return deletedCount;
+}
+
+/**
  * ดึง Leaderboard (top players by wins)
  * @param {number} limit - จำนวนที่ต้องการ (default 10)
  */
@@ -297,6 +325,8 @@ module.exports = {
     getAllStats,
     resetPlayerStats,
     deletePlayerStats,
+    clearAllStats,
+    bulkDeleteStats,
     getLeaderboard,
     saveStats
 };
