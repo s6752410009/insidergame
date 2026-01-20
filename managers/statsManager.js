@@ -1,5 +1,6 @@
 /**
  * StatsManager - จัดการสถิติผู้เล่น
+ * - รองรับทั้ง MongoDB และ JSON fallback
  * - บันทึกสถิติเมื่อเกมจบ
  * - เก็บข้อมูล: totalGames, wins, losses, roleStats, winByRole
  * - ใช้ playerId เป็น key
@@ -7,6 +8,15 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Try to load MongoDB models
+let PlayerStats, useDatabase = false;
+try {
+    const models = require('./models');
+    PlayerStats = models.PlayerStats;
+} catch (e) {
+    console.log('PlayerStats model not loaded, will use JSON fallback');
+}
 
 const STATS_FILE = path.join(__dirname, '../data/playerStats.json');
 
@@ -19,10 +29,64 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
-/**
- * โหลดสถิติจากไฟล์
- */
-function loadStats() {
+// ============ Initialize ============
+async function initStatsManager() {
+    // Check if MongoDB is available
+    if (process.env.MONGO_URL && PlayerStats) {
+        try {
+            const { connectDB, isDBConnected } = require('./database');
+            await connectDB();
+            if (isDBConnected()) {
+                useDatabase = true;
+                console.log('✅ StatsManager using MongoDB');
+                await loadStatsFromDB();
+                return;
+            }
+        } catch (e) {
+            console.log('MongoDB not available for stats:', e.message);
+        }
+    }
+    
+    // Fallback to JSON
+    useDatabase = false;
+    console.log('📁 StatsManager using JSON files');
+    loadStatsFromFile();
+}
+
+// ============ Load Functions ============
+async function loadStatsFromDB() {
+    try {
+        const dbStats = await PlayerStats.find({});
+        stats.clear();
+        dbStats.forEach(s => {
+            stats.set(s.playerId, {
+                playerId: s.playerId,
+                playerName: s.playerName,
+                totalGames: s.totalGames || 0,
+                wins: s.wins || 0,
+                losses: s.losses || 0,
+                roleStats: s.roleStats || {
+                    gameMasterCount: 0,
+                    traitorCount: 0,
+                    citizenCount: 0
+                },
+                winByRole: s.winByRole || {
+                    winAsTraitor: 0,
+                    winAsCitizen: 0
+                },
+                lastPlayedAt: s.lastPlayedAt || null,
+                gameHistory: s.gameHistory || []
+            });
+        });
+        console.log(`Loaded stats for ${stats.size} players from MongoDB`);
+    } catch (e) {
+        console.error('Error loading stats from MongoDB:', e.message);
+        // Fallback to JSON
+        loadStatsFromFile();
+    }
+}
+
+function loadStatsFromFile() {
     if (fs.existsSync(STATS_FILE)) {
         try {
             const data = fs.readFileSync(STATS_FILE, 'utf8');
@@ -31,17 +95,45 @@ function loadStats() {
             for (const [playerId, stat] of Object.entries(statsData)) {
                 stats.set(playerId, stat);
             }
-            console.log(`Loaded stats for ${stats.size} players`);
+            console.log(`Loaded stats for ${stats.size} players from file`);
         } catch (error) {
             console.error('Error loading stats:', error);
         }
     }
 }
 
-/**
- * บันทึกสถิติลงไฟล์
- */
-function saveStats() {
+// ============ Save Functions ============
+async function saveStats() {
+    if (useDatabase) {
+        await saveStatsToDB();
+    } else {
+        saveStatsToFile();
+    }
+}
+
+async function saveStatsToDB() {
+    try {
+        const bulkOps = [];
+        for (const [playerId, stat] of stats.entries()) {
+            bulkOps.push({
+                updateOne: {
+                    filter: { playerId },
+                    update: { $set: stat },
+                    upsert: true
+                }
+            });
+        }
+        if (bulkOps.length > 0) {
+            await PlayerStats.bulkWrite(bulkOps);
+        }
+    } catch (e) {
+        console.error('Error saving stats to MongoDB:', e.message);
+        // Fallback to JSON
+        saveStatsToFile();
+    }
+}
+
+function saveStatsToFile() {
     try {
         const statsData = {};
         for (const [playerId, stat] of stats.entries()) {
@@ -222,7 +314,7 @@ function getAllStats() {
 /**
  * รีเซ็ตสถิติผู้เล่น (สำหรับ admin)
  */
-function resetPlayerStats(playerId) {
+async function resetPlayerStats(playerId) {
     if (stats.has(playerId)) {
         const stat = stats.get(playerId);
         stat.totalGames = 0;
@@ -238,7 +330,8 @@ function resetPlayerStats(playerId) {
             winAsCitizen: 0
         };
         stat.lastPlayedAt = null;
-        saveStats();
+        stat.gameHistory = [];
+        await saveStats();
         return true;
     }
     return false;
@@ -247,10 +340,20 @@ function resetPlayerStats(playerId) {
 /**
  * ลบสถิติผู้เล่น (สำหรับ admin)
  */
-function deletePlayerStats(playerId) {
+async function deletePlayerStats(playerId) {
     if (stats.has(playerId)) {
         stats.delete(playerId);
-        saveStats();
+        
+        // ถ้าใช้ MongoDB ต้องลบจาก DB ด้วย
+        if (useDatabase && PlayerStats) {
+            try {
+                await PlayerStats.deleteOne({ playerId });
+            } catch (e) {
+                console.error('Error deleting stats from MongoDB:', e.message);
+            }
+        }
+        
+        await saveStats();
         return true;
     }
     return false;
@@ -259,10 +362,20 @@ function deletePlayerStats(playerId) {
 /**
  * ลบสถิติทั้งหมด (Clear All)
  */
-function clearAllStats() {
+async function clearAllStats() {
     const count = stats.size;
     stats.clear();
-    saveStats();
+    
+    // ถ้าใช้ MongoDB ต้องลบทั้งหมดจาก DB ด้วย
+    if (useDatabase && PlayerStats) {
+        try {
+            await PlayerStats.deleteMany({});
+        } catch (e) {
+            console.error('Error clearing stats from MongoDB:', e.message);
+        }
+    }
+    
+    await saveStats();
     return count;
 }
 
@@ -270,7 +383,7 @@ function clearAllStats() {
  * ลบสถิติหลายคน (Bulk Delete)
  * @param {Array} playerIds - รายการ playerId ที่ต้องการลบ
  */
-function bulkDeleteStats(playerIds) {
+async function bulkDeleteStats(playerIds) {
     let deletedCount = 0;
     playerIds.forEach(playerId => {
         if (stats.has(playerId)) {
@@ -278,8 +391,18 @@ function bulkDeleteStats(playerIds) {
             deletedCount++;
         }
     });
+    
     if (deletedCount > 0) {
-        saveStats();
+        // ถ้าใช้ MongoDB ต้องลบจาก DB ด้วย
+        if (useDatabase && PlayerStats) {
+            try {
+                await PlayerStats.deleteMany({ playerId: { $in: playerIds } });
+            } catch (e) {
+                console.error('Error bulk deleting stats from MongoDB:', e.message);
+            }
+        }
+        
+        await saveStats();
     }
     return deletedCount;
 }
@@ -314,10 +437,11 @@ function getLeaderboard(limit = 10) {
         }));
 }
 
-// โหลดสถิติเมื่อเริ่มต้น
-loadStats();
+// โหลดสถิติเมื่อเริ่มต้น (สำหรับ backward compatibility)
+loadStatsFromFile();
 
 module.exports = {
+    initStatsManager,
     recordGameEnd,
     getStats,
     getGameHistory,

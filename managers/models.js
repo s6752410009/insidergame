@@ -25,7 +25,13 @@ const playerStatsSchema = new mongoose.Schema({
         gameMasterCount: { type: Number, default: 0 },
         traitorCount: { type: Number, default: 0 },
         citizenCount: { type: Number, default: 0 }
-    }
+    },
+    winByRole: {
+        winAsTraitor: { type: Number, default: 0 },
+        winAsCitizen: { type: Number, default: 0 }
+    },
+    lastPlayedAt: { type: Date },
+    gameHistory: { type: Array, default: [] }
 }, { timestamps: true });
 
 // Banned Player Schema

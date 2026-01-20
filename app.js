@@ -2819,6 +2819,10 @@ async function startServer() {
         // Initialize player manager with MongoDB if available
         await playerManager.initPlayerManager();
         console.log('✅ Player Manager initialized');
+        
+        // Initialize stats manager with MongoDB if available
+        await statsManager.initStatsManager();
+        console.log('✅ Stats Manager initialized');
     } catch (e) {
         console.log('⚠️ Starting without MongoDB:', e.message);
     }
