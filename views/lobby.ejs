@@ -1052,5 +1052,63 @@ $(function() {
             $(this).removeClass('show');
         }
     });
+    
+    // ==================== PATCH NOTES POPUP ====================
+    const playerId = '<%= player.playerId %>';
+    const patchVersion = '2.0.0';
+    const patchSeenKey = `seen_patch_${patchVersion}_${playerId}`;
+    
+    // Check if player has seen this patch notes
+    if (!localStorage.getItem(patchSeenKey)) {
+        // Show patch notes popup
+        Swal.fire({
+            title: '🚀 อัปเดต Version 2.0.0!',
+            html: `
+                <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
+                    <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
+                        ขอบคุณที่เล่น Insider Game! นี่คือสิ่งใหม่ในเวอร์ชันนี้:
+                    </p>
+                    
+                    <h4 style="color: #2ecc71; margin: 15px 0 10px 0;">✨ ฟีเจอร์ใหม่</h4>
+                    <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.95em;">
+                        <li>🎁 <strong>ปุ่ม Donate</strong> - สนับสนุนผู้พัฒนา</li>
+                        <li>💬 <strong>ระบบแชทใหม่</strong> - Swipe/เมนูตอบกลับ</li>
+                        <li>⏱️ <strong>Auto-Timer</strong> - ป้องกันเกมค้าง</li>
+                        <li>🎨 <strong>Animated Countdown</strong> - สวยงามขึ้น</li>
+                        <li>📞 <strong>ข้อมูลติดต่อ</strong> - ในหน้าตั้งค่า</li>
+                    </ul>
+                    
+                    <h4 style="color: #3498db; margin: 15px 0 10px 0;">🔧 ปรับปรุง</h4>
+                    <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.95em;">
+                        <li>💾 <strong>ข้อมูลเก็บใน Database</strong> - ไม่หายอีกแล้ว</li>
+                        <li>🛡️ <strong>ระบบเสถียรขึ้น</strong></li>
+                    </ul>
+                    
+                    <div style="background: rgba(231, 76, 60, 0.2); padding: 12px; border-radius: 8px; border-left: 4px solid #e74c3c;">
+                        <h4 style="color: #e74c3c; margin: 0 0 8px 0;">🏆 รีเซ็ตอันดับ</h4>
+                        <p style="margin: 0; font-size: 0.9em; color: #ddd;">
+                            เพื่อความยุติธรรม อันดับ Leaderboard ถูกรีเซ็ตให้ทุกคนเริ่มต้นใหม่
+                        </p>
+                    </div>
+                    
+                    <p style="color: #888; font-size: 0.85em; margin-top: 15px; text-align: center;">
+                        📋 อ่านรายละเอียดเพิ่มเติมได้ที่ <strong style="color: #f39c12;">หน้าตั้งค่า</strong>
+                    </p>
+                </div>
+            `,
+            icon: 'info',
+            confirmButtonText: '👍 เข้าใจแล้ว!',
+            confirmButtonColor: '#2ecc71',
+            background: '#1a1a2e',
+            color: '#fff',
+            width: 500,
+            customClass: {
+                popup: 'patch-notes-popup'
+            }
+        }).then(() => {
+            // Mark as seen
+            localStorage.setItem(patchSeenKey, 'true');
+        });
+    }
 });
 </script>
