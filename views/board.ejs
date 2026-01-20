@@ -66,29 +66,59 @@
         <div class="form-group">
             <input type="text" name="word" class="form-control" id="wordInput" style="width: 60%; display: inline;" placeholder="คำที่ต้องการให้ทาย" />
             <button type="submit" class="btn btn-warning">ส่ง</button>
-            <small class="form-text">กดส่งเลยถ้าคิดคำไม่ออก เราคิดให้</small>
+            <div class="word-timer-container">
+                <div class="word-timer-bar" id="wordTimerBar"></div>
+                <span class="word-timer-text" id="wordTimerText">30</span>
+            </div>
+            <small class="form-text">คุณมีเวลา 30 วินาทีในการคิดคำ ถ้าหมดเวลาระบบจะสุ่มให้</small>
         </div>
     </form>
 </div>
 
 <div id="reveal">
     <% if (player.role === 'ผู้ดำเนินเกม') { %>
-        <button class="btn btn-warning cta hidden">เปิดเผยคำ</button>
+        <div class="reveal-container">
+            <button class="btn btn-warning cta hidden">เปิดเผยคำ</button>
+            <div class="auto-timer-hint" id="revealTimerHint" style="display:none;">
+                <span class="auto-timer-icon">⏱️</span>
+                <span class="auto-timer-text">จะเปิดอัตโนมัติใน <span id="revealCountdown">5</span> วิ</span>
+            </div>
+        </div>
     <% } %>
     <div id="word" class="hidden"></div>
 </div>
 
 <div id="startGame" class="hidden">
     <% if (player.permission == 'admin') { %>
-        <a href=""><i class="fas fa-play-circle"></i></a>
+        <div class="start-game-container">
+            <a href=""><i class="fas fa-play-circle"></i></a>
+            <div class="auto-timer-hint" id="startTimerHint" style="display:none;">
+                <span class="auto-timer-icon">⏱️</span>
+                <span class="auto-timer-text">จะเริ่มอัตโนมัติใน <span id="startCountdown">5</span> วิ</span>
+            </div>
+        </div>
+    <% } else { %>
+        <div class="waiting-for-host">
+            <div class="pulse-icon">⏳</div>
+            <p>รอเจ้าของห้องเริ่มเกม...</p>
+        </div>
     <% } %>
 </div>
 
 <div id="countdown" class="hidden">
-    <span id="timer"></span>
-    <% if (player.permission == 'admin') { %>
-        <a href=""><i class="fas fa-stop-circle"></i></a>
-    <% } %>
+    <div class="countdown-container">
+        <div class="countdown-rings">
+            <div class="ring ring1"></div>
+            <div class="ring ring2"></div>
+            <div class="ring ring3"></div>
+        </div>
+        <div class="countdown-center">
+            <span id="timer"></span>
+            <% if (player.permission == 'admin') { %>
+                <a href="" class="stop-timer-btn"><i class="fas fa-stop-circle"></i></a>
+            <% } %>
+        </div>
+    </div>
 </div>
 
 <div id="voteForm">
@@ -201,6 +231,258 @@
 <%- contentFor('style') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+    /* ==================== AUTO TIMER STYLES ==================== */
+    /* Word Timer for GM */
+    .word-timer-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+        padding: 10px 15px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 10px;
+    }
+    
+    .word-timer-bar {
+        flex: 1;
+        height: 8px;
+        background: #333;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .word-timer-bar::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: var(--timer-percent, 100%);
+        background: linear-gradient(90deg, #e74c3c, #f39c12, #27ae60);
+        transition: width 1s linear;
+    }
+    
+    .word-timer-bar.warning::before {
+        background: #f39c12;
+        animation: pulse-warning 0.5s ease-in-out infinite;
+    }
+    
+    .word-timer-bar.danger::before {
+        background: #e74c3c;
+        animation: pulse-danger 0.3s ease-in-out infinite;
+    }
+    
+    .word-timer-text {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #fff;
+        min-width: 40px;
+        text-align: center;
+    }
+    
+    .word-timer-text.warning { color: #f39c12; }
+    .word-timer-text.danger { color: #e74c3c; animation: blink 0.5s infinite; }
+    
+    @keyframes pulse-warning {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    @keyframes pulse-danger {
+        0%, 100% { opacity: 1; transform: scaleX(1); }
+        50% { opacity: 0.8; transform: scaleX(1.02); }
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    /* Auto Timer Hint */
+    .auto-timer-hint {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 15px;
+        padding: 12px 20px;
+        background: linear-gradient(135deg, rgba(243, 156, 18, 0.2), rgba(231, 76, 60, 0.2));
+        border: 2px solid #f39c12;
+        border-radius: 10px;
+        animation: hint-pulse 1.5s ease-in-out infinite;
+    }
+    
+    .auto-timer-icon {
+        font-size: 1.5em;
+        animation: icon-bounce 1s ease-in-out infinite;
+    }
+    
+    .auto-timer-text {
+        color: #fff;
+        font-size: 1em;
+    }
+    
+    .auto-timer-text span {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: bold;
+        color: #f39c12;
+        font-size: 1.2em;
+    }
+    
+    @keyframes hint-pulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(243, 156, 18, 0.3); }
+        50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(243, 156, 18, 0.5); }
+    }
+    
+    @keyframes icon-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+    
+    /* Reveal and Start Game Containers */
+    .reveal-container, .start-game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    /* Waiting for Host */
+    .waiting-for-host {
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .waiting-for-host .pulse-icon {
+        font-size: 4em;
+        animation: pulse-scale 2s ease-in-out infinite;
+    }
+    
+    .waiting-for-host p {
+        color: #888;
+        margin-top: 10px;
+    }
+    
+    @keyframes pulse-scale {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    /* ==================== COUNTDOWN ANIMATIONS ==================== */
+    #countdown {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 250px;
+    }
+    
+    .countdown-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .countdown-rings {
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .ring {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        border-radius: 50%;
+        border: 4px solid rgba(255,255,255,0.1);
+    }
+    
+    .ring1 {
+        width: 180px;
+        height: 180px;
+        margin-left: -90px;
+        margin-top: -90px;
+        border-color: #e74c3c transparent transparent transparent;
+        box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        animation: spin-ring1 1.5s linear infinite;
+    }
+    
+    .ring2 {
+        width: 150px;
+        height: 150px;
+        margin-left: -75px;
+        margin-top: -75px;
+        border-color: transparent #f39c12 transparent transparent;
+        box-shadow: 0 0 15px rgba(243, 156, 18, 0.5);
+        animation: spin-ring2 1.2s linear infinite;
+    }
+    
+    .ring3 {
+        width: 120px;
+        height: 120px;
+        margin-left: -60px;
+        margin-top: -60px;
+        border-color: transparent transparent #3498db transparent;
+        box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+        animation: spin-ring3 0.9s linear infinite;
+    }
+    
+    @keyframes spin-ring1 {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes spin-ring2 {
+        0% { transform: rotate(120deg); }
+        100% { transform: rotate(480deg); }
+    }
+    
+    @keyframes spin-ring3 {
+        0% { transform: rotate(240deg); }
+        100% { transform: rotate(600deg); }
+    }
+    
+    .countdown-center {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    #countdown #timer {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 3em;
+        font-weight: 900;
+        color: #e74c3c;
+        text-shadow: 0 0 30px rgba(231, 76, 60, 0.6);
+    }
+    
+    .stop-timer-btn {
+        font-size: 1.5em;
+        color: #e74c3c;
+        transition: all 0.3s;
+    }
+    
+    .stop-timer-btn:hover {
+        color: #ff6b6b;
+        transform: scale(1.2);
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 480px) {
+        .countdown-rings { width: 160px; height: 160px; }
+        .ring1 { width: 140px; height: 140px; }
+        .ring2 { width: 110px; height: 110px; }
+        .ring3 { width: 80px; height: 80px; }
+        #countdown #timer { font-size: 2.2em; }
+    }
+
     /* Popup แก้ไขห้อง - Modern Style */
     .room-popup {
         max-width: 480px !important;
@@ -897,6 +1179,151 @@
     .gm-quick-reply { flex-wrap: wrap; }
     .gm-quick-label { width: 100%; margin-bottom: 6px; }
     .gm-reply-btn { font-size: 0.8em; padding: 6px 8px; }
+}
+
+/* ==================== IMPROVED CHAT MESSAGE ACTIONS ==================== */
+/* Message wrapper with actions container */
+.chat-message-wrapper {
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+/* Message actions menu button (3 dots) - for desktop */
+.chat-message-actions {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+}
+
+.chat-message-wrapper.other .chat-message-actions {
+    right: -30px;
+}
+
+.chat-message-wrapper.self .chat-message-actions {
+    left: -30px;
+}
+
+.chat-message-wrapper:hover .chat-message-actions {
+    opacity: 1;
+}
+
+.chat-action-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #aaa;
+    font-size: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.chat-action-btn:hover {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+/* Message context menu popup */
+.chat-context-menu {
+    position: fixed;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    border: 1px solid #444;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 10010;
+    min-width: 150px;
+    overflow: hidden;
+    animation: menuFadeIn 0.15s ease;
+}
+
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.chat-context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: #fff;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.chat-context-menu-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.chat-context-menu-item:first-child {
+    border-radius: 12px 12px 0 0;
+}
+
+.chat-context-menu-item:last-child {
+    border-radius: 0 0 12px 12px;
+}
+
+.chat-context-menu-item .menu-icon {
+    font-size: 1.1em;
+}
+
+/* Swipe indicator for mobile */
+.swipe-reply-indicator {
+    position: absolute;
+    left: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #e74c3c;
+    color: #fff;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.chat-message-wrapper.swiping .swipe-reply-indicator {
+    opacity: 1;
+}
+
+.chat-message-wrapper.swiped .swipe-reply-indicator {
+    transform: translateY(-50%) scale(1.2);
+    background: #27ae60;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .chat-message-actions {
+        display: none !important; /* Hide 3-dot menu on mobile */
+    }
+    
+    .chat-message-wrapper {
+        touch-action: pan-y; /* Allow vertical scroll but capture horizontal */
+    }
+}
+
+/* Desktop - hide swipe indicator */
+@media (min-width: 769px) {
+    .swipe-reply-indicator {
+        display: none !important;
+    }
 }
 
 /* Reply Preview Bar */
@@ -1687,6 +2114,125 @@ $(function() {
 
     $('.appear').fadeIn().delay(3000).fadeOut();
 
+    // ==================== AUTO TIMER SYSTEM ====================
+    var wordTimer = null;
+    var wordTimeLeft = 30;
+    var revealTimer = null;
+    var revealTimeLeft = 5;
+    var startGameTimer = null;
+    var startGameTimeLeft = 5;
+    
+    // Function to start word input timer (30 seconds)
+    function startWordTimer() {
+        wordTimeLeft = 30;
+        updateWordTimerUI();
+        
+        wordTimer = setInterval(function() {
+            wordTimeLeft--;
+            updateWordTimerUI();
+            
+            if (wordTimeLeft <= 0) {
+                clearInterval(wordTimer);
+                // Auto submit (will generate random word if empty)
+                if (!wordSubmitted) {
+                    console.log('[WordTimer] Time up! Auto-submitting...');
+                    submitWord();
+                }
+            }
+        }, 1000);
+    }
+    
+    // Update word timer UI
+    function updateWordTimerUI() {
+        var $bar = $('#wordTimerBar');
+        var $text = $('#wordTimerText');
+        var percent = (wordTimeLeft / 30) * 100;
+        
+        $bar.css('--timer-width', percent + '%');
+        $bar.find('::after').css('width', percent + '%');
+        // Use a pseudo-element trick via CSS variable
+        $bar.attr('style', '--timer-percent: ' + percent + '%;');
+        $text.text(wordTimeLeft);
+        
+        // Remove previous classes
+        $bar.removeClass('warning danger');
+        $text.removeClass('warning danger');
+        
+        if (wordTimeLeft <= 5) {
+            $bar.addClass('danger');
+            $text.addClass('danger');
+        } else if (wordTimeLeft <= 10) {
+            $bar.addClass('warning');
+            $text.addClass('warning');
+        }
+    }
+    
+    // Stop word timer
+    function stopWordTimer() {
+        if (wordTimer) {
+            clearInterval(wordTimer);
+            wordTimer = null;
+        }
+    }
+    
+    // Function to start reveal countdown (5 seconds)
+    function startRevealTimer() {
+        revealTimeLeft = 5;
+        $('#revealTimerHint').show();
+        $('#revealCountdown').text(revealTimeLeft);
+        
+        revealTimer = setInterval(function() {
+            revealTimeLeft--;
+            $('#revealCountdown').text(revealTimeLeft);
+            
+            if (revealTimeLeft <= 0) {
+                clearInterval(revealTimer);
+                // Auto reveal
+                console.log('[RevealTimer] Time up! Auto-revealing...');
+                $('#reveal button').trigger('click');
+            }
+        }, 1000);
+    }
+    
+    // Stop reveal timer
+    function stopRevealTimer() {
+        if (revealTimer) {
+            clearInterval(revealTimer);
+            revealTimer = null;
+        }
+        $('#revealTimerHint').hide();
+    }
+    
+    // Function to start game countdown (5 seconds)
+    function startStartGameTimer() {
+        startGameTimeLeft = 5;
+        $('#startTimerHint').show();
+        $('#startCountdown').text(startGameTimeLeft);
+        
+        startGameTimer = setInterval(function() {
+            startGameTimeLeft--;
+            $('#startCountdown').text(startGameTimeLeft);
+            
+            if (startGameTimeLeft <= 0) {
+                clearInterval(startGameTimer);
+                // Auto start game
+                console.log('[StartGameTimer] Time up! Auto-starting...');
+                $('#startGame a').trigger('click');
+            }
+        }, 1000);
+    }
+    
+    // Stop start game timer
+    function stopStartGameTimer() {
+        if (startGameTimer) {
+            clearInterval(startGameTimer);
+            startGameTimer = null;
+        }
+        $('#startTimerHint').hide();
+    }
+    
+    // ==================== END AUTO TIMER SYSTEM ====================
+
     // Submit word via Socket.IO (acknowledged) - SIMPLER VERSION
     var isSubmittingWord = false;
     
@@ -1695,6 +2241,9 @@ $(function() {
             console.log('[Word] Already submitting or submitted');
             return;
         }
+        
+        // Stop the word timer when submitting
+        stopWordTimer();
         
         isSubmittingWord = true;
         var wordVal = $('#wordInput').val().trim();
@@ -1714,12 +2263,15 @@ $(function() {
                 // แสดงปุ่มเปิดเผยคำ
                 $('#reveal button').removeClass('hidden').show();
                 
+                // Start reveal timer (5 seconds)
+                startRevealTimer();
+                
                 // แสดงข้อความยืนยัน
                 Swal.fire({ 
                     icon: 'success', 
                     title: 'ส่งคำสำเร็จ!', 
-                    text: 'กรุณากดปุ่ม "เปิดเผยคำ" เพื่อเริ่มเกม', 
-                    timer: 3000,
+                    text: 'กดปุ่ม "เปิดเผยคำ" หรือรอ 5 วินาที', 
+                    timer: 2000,
                     showConfirmButton: false,
                     background: '#1e1e1e',
                     color: '#fff'
@@ -1729,6 +2281,7 @@ $(function() {
                 // Reset button on error
                 $('#wordForm button').prop('disabled', false).text('ส่ง');
                 var msg = (response && response.error) ? response.error : 'ไม่อนุญาตให้ตั้งคำ';
+
                 console.log('[Word] Error:', msg);
                 Swal.fire({ 
                     icon: 'error', 
@@ -1776,6 +2329,10 @@ $(function() {
         var $a = $(this);
         if ($a.data('disabled')) { e.preventDefault(); return; }
         $a.data('disabled', true);
+        
+        // Stop start game timer
+        stopStartGameTimer();
+        
         console.log('[startGame click] Emitting startGame');
         socket.emit('startGame');
         $("#startGame").hide();
@@ -1807,6 +2364,9 @@ $(function() {
         const $btn = $(this);
         if ($btn.prop('disabled')) return; // ป้องกันการกดซ้ำ
         
+        // Stop reveal timer
+        stopRevealTimer();
+        
         console.log('[revealWord] Sending reveal word event');
         $btn.prop('disabled', true).text('กำลังเปิดเผย...');
         
@@ -1815,6 +2375,7 @@ $(function() {
         // รอ 2 วินาที แล้วซ่อนปุ่ม (ให้เวลา server ประมวลผล)
         setTimeout(function() {
             $btn.hide();
+            $('#revealTimerHint').hide();
         }, 2000);
     });
 
@@ -1850,6 +2411,8 @@ $(function() {
             if(isGM) { 
                 console.log('[Init] GM - showing word form (reveal button shows after submit)');
                 $("#chooseWord").removeClass('hidden').show();
+                // Start 30 second timer for word input
+                startWordTimer();
                 // ปุ่มเปิดเผยคำจะแสดงหลังส่งคำแล้ว
             } else { 
                 console.log('[Init] Others - showing wait message');
@@ -2013,6 +2576,8 @@ $(function() {
                 if(myPlayer.role == 'ผู้ดำเนินเกม' && !wordSubmitted) {
                     console.log('[newRole] GM - showing word form (reveal button shows after submit)');
                     $("#chooseWord").removeClass('hidden').show();
+                    // Start 30 second timer for word input
+                    startWordTimer();
                     // ปุ่มเปิดเผยคำจะแสดงหลังส่งคำแล้ว (ใน submitWord callback)
                 } else {
                     console.log('[newRole] Others - showing wait');
@@ -2048,6 +2613,10 @@ $(function() {
 
         $('#word').removeClass('hidden').fadeIn(1000).delay(5000).fadeOut("slow", function() {
             $("#startGame").removeClass('hidden').fadeIn();
+            // Start 5 second timer for host to start game (only for admin)
+            <% if (player.permission == 'admin') { %>
+            startStartGameTimer();
+            <% } %>
         });
         soundNotify('message');
     });
@@ -2266,8 +2835,14 @@ $(function() {
         // Append timestamp to info div
         $info.append(timestamp);
 
+        // Add action button (3 dots menu) for desktop
+        var $actionBtn = $('<div class="chat-message-actions"><button class="chat-action-btn" title="ตัวเลือก">⋮</button></div>');
+        
+        // Add swipe indicator for mobile
+        var $swipeIndicator = $('<div class="swipe-reply-indicator">↩️</div>');
+
         // Assemble the message
-        $messageWrapper.append($bubble, $info);
+        $messageWrapper.append($swipeIndicator, $bubble, $actionBtn, $info);
         $msgArea.append($messageWrapper);
 
         // Auto-scroll to the bottom of the chat
@@ -2283,43 +2858,8 @@ $(function() {
         }
     });
 
-    // เพิ่ม event listener สำหรับการกดเพื่อตอบกลับ (คลิกที่ bubble ข้อความ)
-    $(document).on('click', '.chat-message-bubble', function() {
-        var $wrapper = $(this).closest('.chat-message-wrapper');
-        var messageId = $wrapper.data('message-id');
-        
-        // ต้องหาชื่อผู้เล่นและเนื้อหาข้อความจาก DOM หรือจากข้อมูลที่แนบมา
-        // เนื่องจากเราไม่ได้เก็บข้อมูลข้อความทั้งหมดใน DOM อย่างละเอียด เราจะใช้ข้อมูลที่มองเห็นได้
-        var playerName = $wrapper.find('.chat-message-name').text().replace(':', '').trim();
-        var messageContent = $(this).contents().filter(function() {
-            return this.nodeType === 3 || (this.nodeType === 1 && $(this).is(':not(.chat-message-name, .reply-to-text)'));
-        }).text().trim(); // ดึงเฉพาะ text node และไม่รวมชื่อกับ reply-to-text
-
-        // ถ้าข้อความที่คลิกเป็น reply อยู่แล้ว ให้ดึงข้อมูลของข้อความที่ถูก reply ไปอีกที (เพื่อตอบกลับ reply)
-        var $replyToText = $wrapper.find('.reply-to-text');
-        if ($replyToText.length) {
-            var originalReplyName = $replyToText.find('.reply-name').text().replace(':', '').trim();
-            var originalReplyContent = $replyToText.contents().filter(function() {
-                return this.nodeType === 3 || (this.nodeType === 1 && $(this).is(':not(.reply-indicator, .reply-name)'));
-            }).text().trim();
-            // ถ้าเป็นข้อความที่ reply มา ให้ reply กลับไปหาข้อความนั้น
-            playerName = originalReplyName;
-            messageContent = originalReplyContent;
-            // ณ ตอนนี้ messageId ยังคงเป็นของข้อความหลัก แต่ replyTo จะชี้ไปที่ต้นฉบับของ reply
-        }
-
-        replyingTo = {
-            id: messageId, // ID ของข้อความที่ถูกตอบกลับ (หรือข้อความที่ reply to)
-            name: playerName,
-            content: messageContent.split('\n')[0] // เอาแค่บรรทัดแรกของข้อความ
-        };
-
-        $('#replyPreview .reply-player-name').css('color', $wrapper.find('.chat-message-name').css('color')); // ใช้สีชื่อผู้เล่นต้นฉบับ
-        $('#replyPreview .reply-player-name').text(replyingTo.name);
-        $('#replyPreview .reply-message-content').text(replyingTo.content);
-        $('#replyPreview').show();
-        $('#chatInput').focus();
-    });
+    // ลบ event listener เก่าที่ใช้คลิกเพื่อ reply - ใช้ระบบใหม่แทน (3-dot menu / swipe)
+    // Old click-to-reply code removed - now using improved context menu and swipe system
 
     // เพิ่ม event listener สำหรับปุ่มยกเลิกการตอบกลับ
     $(document).on('click', '#replyPreview .reply-cancel-btn', function() {
@@ -2327,6 +2867,185 @@ $(function() {
         $('#replyPreview').hide();
         $('#replyPreview .reply-player-name').empty();
         $('#replyPreview .reply-message-content').empty();
+    });
+
+    // ==================== IMPROVED CHAT ACTIONS SYSTEM ====================
+    
+    // Function to set reply to a message
+    function setReplyToMessage($wrapper) {
+        var messageId = $wrapper.data('message-id');
+        var playerName = $wrapper.find('.chat-message-name').text().replace(':', '').trim();
+        var $bubble = $wrapper.find('.chat-message-bubble');
+        var messageContent = $bubble.contents().filter(function() {
+            return this.nodeType === 3 || (this.nodeType === 1 && $(this).is(':not(.chat-message-name, .reply-to-text)'));
+        }).text().trim();
+
+        replyingTo = {
+            id: messageId,
+            name: playerName,
+            content: messageContent.split('\n')[0]
+        };
+
+        $('#replyPreview .reply-player-name').css('color', $wrapper.find('.chat-message-name').css('color'));
+        $('#replyPreview .reply-player-name').text(replyingTo.name);
+        $('#replyPreview .reply-message-content').text(replyingTo.content);
+        $('#replyPreview').show();
+        $('#chatInput').focus();
+        
+        // Close context menu if open
+        $('.chat-context-menu').remove();
+    }
+
+    // Function to copy message text
+    function copyMessageText($wrapper) {
+        var $bubble = $wrapper.find('.chat-message-bubble');
+        var messageContent = $bubble.contents().filter(function() {
+            return this.nodeType === 3 || (this.nodeType === 1 && $(this).is(':not(.chat-message-name, .reply-to-text)'));
+        }).text().trim();
+        
+        navigator.clipboard.writeText(messageContent).then(function() {
+            // Show brief notification
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                icon: 'success',
+                title: 'คัดลอกข้อความแล้ว',
+                showConfirmButton: false,
+                timer: 1500,
+                background: '#1e1e1e',
+                color: '#fff'
+            });
+        }).catch(function() {
+            // Fallback for older browsers
+            var $temp = $('<textarea>');
+            $('body').append($temp);
+            $temp.val(messageContent).select();
+            document.execCommand('copy');
+            $temp.remove();
+        });
+        
+        // Close context menu
+        $('.chat-context-menu').remove();
+    }
+
+    // Show context menu
+    function showContextMenu($wrapper, x, y) {
+        // Remove any existing menu
+        $('.chat-context-menu').remove();
+        
+        var $menu = $(`
+            <div class="chat-context-menu" style="left: ${x}px; top: ${y}px;">
+                <button class="chat-context-menu-item" data-action="reply">
+                    <span class="menu-icon">↩️</span> ตอบกลับ
+                </button>
+                <button class="chat-context-menu-item" data-action="copy">
+                    <span class="menu-icon">📋</span> คัดลอก
+                </button>
+            </div>
+        `);
+        
+        $('body').append($menu);
+        
+        // Adjust position if menu goes off screen
+        var menuWidth = $menu.outerWidth();
+        var menuHeight = $menu.outerHeight();
+        var windowWidth = $(window).width();
+        var windowHeight = $(window).height();
+        
+        if (x + menuWidth > windowWidth) {
+            $menu.css('left', windowWidth - menuWidth - 10);
+        }
+        if (y + menuHeight > windowHeight) {
+            $menu.css('top', windowHeight - menuHeight - 10);
+        }
+        
+        // Store wrapper reference
+        $menu.data('wrapper', $wrapper);
+    }
+
+    // Handle context menu item click
+    $(document).on('click', '.chat-context-menu-item', function() {
+        var action = $(this).data('action');
+        var $wrapper = $(this).closest('.chat-context-menu').data('wrapper');
+        
+        if (action === 'reply') {
+            setReplyToMessage($wrapper);
+        } else if (action === 'copy') {
+            copyMessageText($wrapper);
+        }
+    });
+
+    // Handle 3-dot button click (desktop)
+    $(document).on('click', '.chat-action-btn', function(e) {
+        e.stopPropagation();
+        var $wrapper = $(this).closest('.chat-message-wrapper');
+        var rect = this.getBoundingClientRect();
+        showContextMenu($wrapper, rect.left, rect.bottom + 5);
+    });
+
+    // Close context menu when clicking outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.chat-context-menu, .chat-action-btn').length) {
+            $('.chat-context-menu').remove();
+        }
+    });
+
+    // ==================== SWIPE GESTURE FOR MOBILE ====================
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var swipeThreshold = 80;
+    var swipingWrapper = null;
+
+    $(document).on('touchstart', '.chat-message-wrapper', function(e) {
+        touchStartX = e.originalEvent.touches[0].clientX;
+        touchStartY = e.originalEvent.touches[0].clientY;
+        swipingWrapper = $(this);
+    });
+
+    $(document).on('touchmove', '.chat-message-wrapper', function(e) {
+        if (!swipingWrapper) return;
+        
+        var touchX = e.originalEvent.touches[0].clientX;
+        var touchY = e.originalEvent.touches[0].clientY;
+        var diffX = touchX - touchStartX;
+        var diffY = Math.abs(touchY - touchStartY);
+        
+        // Only handle horizontal swipes (swipe right to reply)
+        if (diffX > 20 && diffY < 50) {
+            e.preventDefault();
+            
+            var swipeDistance = Math.min(diffX, 100);
+            swipingWrapper.css('transform', 'translateX(' + swipeDistance + 'px)');
+            
+            if (diffX > swipeThreshold) {
+                swipingWrapper.addClass('swiping swiped');
+            } else {
+                swipingWrapper.addClass('swiping').removeClass('swiped');
+            }
+        }
+    });
+
+    $(document).on('touchend', '.chat-message-wrapper', function(e) {
+        if (!swipingWrapper) return;
+        
+        var touchEndX = e.originalEvent.changedTouches[0].clientX;
+        var diffX = touchEndX - touchStartX;
+        
+        // Reset position
+        swipingWrapper.css('transform', '');
+        swipingWrapper.removeClass('swiping swiped');
+        
+        // If swiped enough, trigger reply
+        if (diffX > swipeThreshold) {
+            setReplyToMessage(swipingWrapper);
+            
+            // Haptic feedback if available
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+        
+        swipingWrapper = null;
     });
 
     // ==================== NOTIFICATION SYSTEM ====================

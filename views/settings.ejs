@@ -448,6 +448,40 @@
         <p><span class="icon">💡</span> กดปุ่ม "บันทึกการตั้งค่า" เพื่อบันทึกการเปลี่ยนแปลง</p>
     </div>
     
+    <!-- Support & Contact Section -->
+    <div class="settings-section">
+        <h2><span class="icon">💬</span> ติดต่อและสนับสนุน</h2>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>📧 ติดต่อทางอีเมล</h3>
+                <p><strong>markrock342@gmail.com</strong></p>
+                <p style="color: #666; font-size: 0.8em;">ส่งข้อเสนอแนะหรือรายงานปัญหาไปที่อีเมลนี้</p>
+            </div>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>💬 Line ID</h3>
+                <p><strong>marc342</strong></p>
+                <p style="color: #666; font-size: 0.8em;">ติดต่อผ่าน Line สำหรับการสอบถามอื่น ๆ</p>
+            </div>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-info">
+                <h3>⭐ ให้คะแนนและรีวิว</h3>
+                <p>ช่วยให้ฉันปรับปรุงเกมโดยแชร์ข้อมูลเสริมความรู้และรีวิวของคุณ</p>
+            </div>
+            <button class="btn-settings" id="feedbackBtn" style="background: #3498db; border-color: #2980b9; width: auto; padding: 12px 20px; white-space: nowrap;">📝 ให้รีวิว</button>
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="info-box">
+        <p><span class="icon">💡</span> กดปุ่ม "บันทึกการตั้งค่า" เพื่อบันทึกการเปลี่ยนแปลง</p>
+    </div>
+    
     <!-- Actions -->
     <div class="settings-actions">
         <button class="btn-settings btn-save" id="saveSettings">💾 บันทึกการตั้งค่า</button>
@@ -457,8 +491,9 @@
     <!-- Version Info -->
     <div class="version-info">
         <p>Insider Game</p>
-        <p class="version">Version 1.0.0</p>
+        <p class="version">Version 2.0.0</p>
     </div>
+
 </div>
 
 <%- contentFor('footer') %>
@@ -650,5 +685,30 @@ $(function() {
     
     // Load settings on page load
     loadSettings();
+    
+    // Feedback Button Handler
+    $('#feedbackBtn').on('click', function() {
+        Swal.fire({
+            title: '📝 ให้รีวิวและข้อเสนอแนะ',
+            html: '<div style="text-align: left; color: #ccc;">' +
+                  '<p><strong>คุณสามารถติดต่อเราได้ผ่าน:</strong></p>' +
+                  '<p><strong style="color: #fff;">📧 อีเมล:</strong> markrock342@gmail.com</p>' +
+                  '<p><strong style="color: #fff;">💬 Line ID:</strong> marc342</p>' +
+                  '<p style="margin-top: 20px; font-size: 0.9em;">' +
+                  'กรุณาแชร์ข้อมูลเสริมความรู้ เช่น:' +
+                  '<ul style="text-align: left; margin: 10px 0;">' +
+                  '<li>ปัญหาที่เกิดขึ้น</li>' +
+                  '<li>ฟีเจอร์ที่ต้องการ</li>' +
+                  '<li>ข้อเสนอแนะเพื่อปรับปรุง</li>' +
+                  '</ul>' +
+                  '</p>' +
+                  '</div>',
+            icon: 'info',
+            confirmButtonColor: '#2ecc71',
+            confirmButtonText: 'ปิด',
+            background: '#1e1e1e',
+            color: '#fff'
+        });
+    });
 });
 </script>
