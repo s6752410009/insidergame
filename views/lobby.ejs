@@ -1055,15 +1055,19 @@ $(function() {
     
     // ==================== PATCH NOTES POPUP ====================
     const patchVersion = '2.0.0';
-    const patchSeenKey = `seen_patch_${patchVersion}_${playerId}`;
+    const patchSeenKey = `hide_patch_${patchVersion}_${playerId}`;
+    const hideUntil = localStorage.getItem(patchSeenKey);
+    const now = Date.now();
     
-    // Check if player has seen this patch notes
-    if (!localStorage.getItem(patchSeenKey)) {
+    // Check if popup should be hidden (user ticked "don't show for 7 days")
+    const shouldHide = hideUntil && parseInt(hideUntil) > now;
+    
+    if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
             title: '🚀 อัปเดต Version 2.0.0!',
             html: `
-                <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
+                <div style="text-align: left; color: #ccc; max-height: 350px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
                         ขอบคุณที่เล่น Insider Game! นี่คือสิ่งใหม่ในเวอร์ชันนี้:
                     </p>
@@ -1094,6 +1098,13 @@ $(function() {
                         📋 อ่านรายละเอียดเพิ่มเติมได้ที่ <strong style="color: #f39c12;">หน้าตั้งค่า</strong>
                     </p>
                 </div>
+                
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+                    <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: #888; font-size: 0.85em;">
+                        <input type="checkbox" id="hidePatchFor7Days" style="width: 16px; height: 16px; cursor: pointer;">
+                        <span>ไม่แสดงอีก 7 วัน</span>
+                    </label>
+                </div>
             `,
             icon: 'info',
             confirmButtonText: '👍 เข้าใจแล้ว!',
@@ -1105,8 +1116,13 @@ $(function() {
                 popup: 'patch-notes-popup'
             }
         }).then(() => {
-            // Mark as seen
-            localStorage.setItem(patchSeenKey, 'true');
+            // Check if user ticked the checkbox
+            const hideCheckbox = document.getElementById('hidePatchFor7Days');
+            if (hideCheckbox && hideCheckbox.checked) {
+                // Hide for 7 days
+                const sevenDaysFromNow = Date.now() + (7 * 24 * 60 * 60 * 1000);
+                localStorage.setItem(patchSeenKey, sevenDaysFromNow.toString());
+            }
         });
     }
 });
