@@ -92,13 +92,17 @@ function loadStatsFromFile() {
             const data = fs.readFileSync(STATS_FILE, 'utf8');
             const statsData = JSON.parse(data);
             // โหลดเข้า Map
-            for (const [playerId, stat] of Object.entries(statsData)) {
-                stats.set(playerId, stat);
+            if (statsData && typeof statsData === 'object') {
+                for (const [playerId, stat] of Object.entries(statsData)) {
+                    stats.set(playerId, stat);
+                }
             }
             console.log(`Loaded stats for ${stats.size} players from file`);
         } catch (error) {
             console.error('Error loading stats:', error);
         }
+    } else {
+        console.log('Stats file not found, starting fresh');
     }
 }
 
