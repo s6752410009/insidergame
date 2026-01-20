@@ -1,3 +1,8 @@
 node_modules
 .DS_Store
 docker-compose.override.yml
+
+# Data files (stored in MongoDB, don't push local data)
+data/playerStats.json
+data/players.json
+data/bannedPlayers.json
