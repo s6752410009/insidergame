@@ -1711,5 +1711,109 @@
       });
     }
   });
+
+  // ปุ่ม ? สอนติดตั้ง PWA
+  function showInstallGuide() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    let html = `
+      <div style="text-align: left; font-family: 'Rajdhani', sans-serif;">
+        <p style="color: #aaa; margin-bottom: 20px; text-align: center;">
+          📱 ติดตั้งเกมนี้บนหน้าจอหลักเพื่อเล่นได้เร็วขึ้น!
+        </p>
+        
+        <div style="margin-bottom: 24px;">
+          <h3 style="color: #4CAF50; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.5em;">🤖</span> Android (Chrome)
+          </h3>
+          <ol style="color: #ddd; padding-left: 20px; line-height: 1.8;">
+            <li>เปิดเว็บนี้ใน <b style="color: #fff;">Google Chrome</b></li>
+            <li>กดปุ่ม <b style="color: #fff;">⋮</b> (เมนู 3 จุด) มุมขวาบน</li>
+            <li>เลือก <b style="color: #4CAF50;">"เพิ่มไปหน้าจอหลัก"</b> หรือ <b style="color: #4CAF50;">"Install app"</b></li>
+            <li>กด <b style="color: #fff;">"เพิ่ม"</b> เพื่อยืนยัน</li>
+          </ol>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <h3 style="color: #007AFF; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.5em;">🍎</span> iPhone / iPad (Safari)
+          </h3>
+          <ol style="color: #ddd; padding-left: 20px; line-height: 1.8;">
+            <li>เปิดเว็บนี้ใน <b style="color: #fff;">Safari</b> เท่านั้น</li>
+            <li>กดปุ่ม <b style="color: #fff;">แชร์</b> <span style="background: #333; padding: 2px 8px; border-radius: 4px;">⬆️</span> ด้านล่าง</li>
+            <li>เลื่อนหา <b style="color: #007AFF;">"เพิ่มไปยังหน้าจอโฮม"</b></li>
+            <li>กด <b style="color: #fff;">"เพิ่ม"</b> มุมขวาบน</li>
+          </ol>
+        </div>
+        
+        <div style="background: #2a2a3e; padding: 12px 16px; border-radius: 10px; border-left: 4px solid #f39c12;">
+          <p style="color: #f39c12; margin: 0; font-size: 0.9em;">
+            💡 <b>แนะนำ:</b> ใช้ Chrome สำหรับ Android และ Safari สำหรับ iOS เพื่อประสบการณ์ที่ดีที่สุด
+          </p>
+        </div>
+      </div>
+    `;
+    
+    Swal.fire({
+      title: '📲 วิธีติดตั้งแอป',
+      html: html,
+      background: '#1a1a2e',
+      color: '#fff',
+      showConfirmButton: true,
+      confirmButtonText: 'เข้าใจแล้ว!',
+      confirmButtonColor: '#e74c3c',
+      width: 480,
+      customClass: {
+        popup: 'install-guide-popup'
+      }
+    });
+  }
 </script>
 
+<!-- ปุ่ม ? ลอยมุมล่างซ้าย -->
+<button onclick="showInstallGuide()" class="floating-help-btn" title="วิธีติดตั้งแอป">
+  ?
+</button>
+
+<style>
+  .floating-help-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+    z-index: 1000;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .floating-help-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+  }
+  
+  .floating-help-btn:active {
+    transform: scale(0.95);
+  }
+  
+  @media (max-width: 768px) {
+    .floating-help-btn {
+      bottom: 15px;
+      left: 15px;
+      width: 44px;
+      height: 44px;
+      font-size: 22px;
+    }
+  }
+</style>
