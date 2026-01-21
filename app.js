@@ -1786,6 +1786,32 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // Admin: Edit player stats (เทพ!)
+    socket.on('admin_editPlayerStats', async function(data, callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                }
+                return;
+            }
+            
+            const { playerId, playerName, totalGames, wins, losses, roleStats } = data;
+            await statsManager.editPlayerStats(playerId, {
+                playerName,
+                totalGames,
+                wins,
+                losses,
+                roleStats
+            });
+            addServerLog(io, 'admin', null, `Admin แก้ไขสถิติ ${playerName}: ${wins}W/${losses}L`, 'warning');
+            callback({ success: true });
+        } catch (error) {
+            console.error('Error editing player stats:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
     // Admin: Clear all player stats
     socket.on('admin_clearAllStats', function(callback) {
         try {

@@ -342,6 +342,57 @@ async function resetPlayerStats(playerId) {
 }
 
 /**
+ * แก้ไขสถิติผู้เล่น (สำหรับ Admin เทพ!)
+ */
+async function editPlayerStats(playerId, newData) {
+    // ถ้ายังไม่มี stats ให้สร้างใหม่
+    if (!stats.has(playerId)) {
+        stats.set(playerId, {
+            playerId,
+            playerName: newData.playerName || 'Unknown',
+            totalGames: 0,
+            wins: 0,
+            losses: 0,
+            roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 },
+            winByRole: { winAsTraitor: 0, winAsCitizen: 0 },
+            lastPlayedAt: new Date(),
+            gameHistory: []
+        });
+    }
+    
+    const stat = stats.get(playerId);
+    
+    // อัพเดทค่าที่ส่งมา
+    if (newData.playerName !== undefined) stat.playerName = newData.playerName;
+    if (newData.totalGames !== undefined) stat.totalGames = newData.totalGames;
+    if (newData.wins !== undefined) stat.wins = newData.wins;
+    if (newData.losses !== undefined) stat.losses = newData.losses;
+    if (newData.roleStats) {
+        if (newData.roleStats.gameMasterCount !== undefined) stat.roleStats.gameMasterCount = newData.roleStats.gameMasterCount;
+        if (newData.roleStats.traitorCount !== undefined) stat.roleStats.traitorCount = newData.roleStats.traitorCount;
+        if (newData.roleStats.citizenCount !== undefined) stat.roleStats.citizenCount = newData.roleStats.citizenCount;
+    }
+    
+    // บันทึก
+    await saveStats();
+    
+    // ถ้าใช้ MongoDB อัพเดทใน DB ด้วย
+    if (useDatabase && PlayerStats) {
+        try {
+            await PlayerStats.updateOne(
+                { playerId },
+                { $set: stat },
+                { upsert: true }
+            );
+        } catch (e) {
+            console.error('Error updating stats in MongoDB:', e.message);
+        }
+    }
+    
+    return stat;
+}
+
+/**
  * ลบสถิติผู้เล่น (สำหรับ admin)
  */
 async function deletePlayerStats(playerId) {
@@ -452,6 +503,7 @@ module.exports = {
     updatePlayerNameInStats,
     getAllStats,
     resetPlayerStats,
+    editPlayerStats,
     deletePlayerStats,
     clearAllStats,
     bulkDeleteStats,

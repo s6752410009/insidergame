@@ -951,7 +951,7 @@ $(function() {
                     <td>${stat.roleStats?.traitorCount || 0}</td>
                     <td>${stat.roleStats?.citizenCount || 0}</td>
                     <td>
-                        <button class="action-btn reset" onclick="resetPlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">รีเซ็ต</button>
+                        <button class="action-btn edit" onclick="editPlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}', ${stat.totalGames || 0}, ${stat.wins || 0}, ${stat.losses || 0}, ${stat.roleStats?.gameMasterCount || 0}, ${stat.roleStats?.traitorCount || 0}, ${stat.roleStats?.citizenCount || 0})">แก้ไข</button>
                         <button class="action-btn kick" onclick="deletePlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">ลบ</button>
                     </td>
                 </tr>
@@ -1143,6 +1143,82 @@ $(function() {
                 socket.emit('admin_resetPlayerStats', { playerId }, function(res) {
                     if (res.success) {
                         Swal.fire({ icon: 'success', title: 'รีเซ็ตสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            }
+        });
+    };
+    
+    // แก้ไขสถิติผู้เล่น (Admin เทพ!)
+    window.editPlayerStats = function(playerId, playerName, totalGames, wins, losses, gmCount, traitorCount, citizenCount) {
+        Swal.fire({
+            title: '✏️ แก้ไขสถิติ',
+            html: `
+                <p style="margin-bottom: 20px;">แก้ไขสถิติของ <strong style="color: #f39c12;">${playerName}</strong></p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🎮 จำนวนเกม</label>
+                        <input type="number" id="editTotalGames" class="swal2-input" value="${totalGames}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🏆 ชนะ</label>
+                        <input type="number" id="editWins" class="swal2-input" value="${wins}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">💀 แพ้</label>
+                        <input type="number" id="editLosses" class="swal2-input" value="${losses}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">👑 GM</label>
+                        <input type="number" id="editGMCount" class="swal2-input" value="${gmCount}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🔴 ทรยศ</label>
+                        <input type="number" id="editTraitorCount" class="swal2-input" value="${traitorCount}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🔵 พลเมือง</label>
+                        <input type="number" id="editCitizenCount" class="swal2-input" value="${citizenCount}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '💾 บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#2ecc71',
+            background: '#1e1e1e',
+            color: '#fff',
+            width: 500,
+            preConfirm: () => {
+                return {
+                    totalGames: parseInt(document.getElementById('editTotalGames').value) || 0,
+                    wins: parseInt(document.getElementById('editWins').value) || 0,
+                    losses: parseInt(document.getElementById('editLosses').value) || 0,
+                    gmCount: parseInt(document.getElementById('editGMCount').value) || 0,
+                    traitorCount: parseInt(document.getElementById('editTraitorCount').value) || 0,
+                    citizenCount: parseInt(document.getElementById('editCitizenCount').value) || 0
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const data = result.value;
+                socket.emit('admin_editPlayerStats', { 
+                    playerId, 
+                    playerName,
+                    totalGames: data.totalGames,
+                    wins: data.wins,
+                    losses: data.losses,
+                    roleStats: {
+                        gameMasterCount: data.gmCount,
+                        traitorCount: data.traitorCount,
+                        citizenCount: data.citizenCount
+                    }
+                }, function(res) {
+                    if (res.success) {
+                        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
                         loadData();
                     } else {
                         Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
