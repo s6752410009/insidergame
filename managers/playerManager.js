@@ -90,7 +90,9 @@ async function loadPlayersFromDB() {
             players.set(p.playerId, {
                 playerId: p.playerId,
                 playerName: p.playerName,
-                color: p.color,
+                color: p.color || '#3498db',
+                avatar: p.avatar || '👤',
+                avatarFrame: p.avatarFrame || 'none',
                 createdAt: p.createdAt,
                 lastSeen: p.lastSeen
             });

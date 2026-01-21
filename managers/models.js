@@ -10,6 +10,8 @@ const playerSchema = new mongoose.Schema({
     playerId: { type: String, required: true, unique: true, index: true },
     playerName: { type: String, required: true },
     color: { type: String, default: '#3498db' },
+    avatar: { type: String, default: '👤' },
+    avatarFrame: { type: String, default: 'none' },
     createdAt: { type: Date, default: Date.now },
     lastSeen: { type: Date, default: Date.now }
 }, { timestamps: true });
