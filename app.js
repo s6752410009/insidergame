@@ -171,7 +171,9 @@ function randomRoles(gameState, settings) {
     const actualPlayersCount = players.length - 1; // ลบ GM ออก
     let numTraitors = 1;
 
-    if (actualPlayersCount >= 6) {
+    // ใช้ setting dualTraitorMode แทนการคำนวณอัตโนมัติ
+    // ต้องมีผู้เล่น 5+ คน (ไม่รวม GM = 4+) ถึงจะเปิดโหมด 2 ผู้ทรยศได้
+    if (settings.dualTraitorMode && actualPlayersCount >= 4) {
         numTraitors = 2;
     }
 
@@ -256,13 +258,18 @@ function isGhostPlayer(player) {
 }
 
 /**
- * Add vote count for vote2
+ * Add vote count for vote2 - รองรับทั้ง string (1 คน) และ array (2 คน)
  */
 function addPlayerVote2(gameState, playerVote) {
-    gameState.players.forEach(function(player) {
-        if(playerVote === player.name) {
-            player.nbVote2 += 1;
-        }
+    // รองรับทั้ง string และ array
+    const votes = Array.isArray(playerVote) ? playerVote : [playerVote];
+    
+    votes.forEach(function(voteName) {
+        gameState.players.forEach(function(player) {
+            if(voteName === player.name) {
+                player.nbVote2 += 1;
+            }
+        });
     });
 }
 
@@ -291,7 +298,7 @@ function processVote1Result(gameState) {
 }
 
 /**
- * Process vote2 result
+ * Process vote2 result - รองรับ 1 หรือ 2 ผู้ทรยศ
  */
 function processVote2Result(gameState) {
     gameState.players.forEach(function(player) {
@@ -301,21 +308,49 @@ function processVote2Result(gameState) {
     const votePlayers = gameState.players.filter(isNotGameMaster);
     votePlayers.sort(compareVote);
 
-    const actualTraitor = gameState.players.find(p => p.role === traitorRole);
-    let hasTraitorInGame = !!actualTraitor;
+    // หาผู้ทรยศทั้งหมด (อาจมี 1 หรือ 2 คน)
+    const allTraitors = gameState.players.filter(p => p.role === traitorRole);
+    const numTraitors = allTraitors.length;
+    let hasTraitorInGame = numTraitors > 0;
 
     let hasWon;
     let finalResultTraitorName = '';
+    
+    // หาผู้เล่นที่ได้โหวตสูงสุด (อาจมีหลายคนที่ได้โหวตเท่ากัน)
     const topVotedPlayer = votePlayers[0];
     const secondVotedPlayer = votePlayers[1];
 
     if (hasTraitorInGame) {
-        if (topVotedPlayer && topVotedPlayer.role === traitorRole && (secondVotedPlayer ? topVotedPlayer.nbVote2 > secondVotedPlayer.nbVote2 : true)) {
-            hasWon = true;
-            finalResultTraitorName = topVotedPlayer.name;
+        if (numTraitors === 1) {
+            // กรณีผู้ทรยศ 1 คน - logic เดิม
+            if (topVotedPlayer && topVotedPlayer.role === traitorRole && (secondVotedPlayer ? topVotedPlayer.nbVote2 > secondVotedPlayer.nbVote2 : true)) {
+                hasWon = true;
+                finalResultTraitorName = topVotedPlayer.name;
+            } else {
+                hasWon = false;
+                finalResultTraitorName = allTraitors[0].name;
+            }
         } else {
-            hasWon = false;
-            finalResultTraitorName = actualTraitor.name;
+            // กรณีผู้ทรยศ 2 คน - ต้องจับได้ทั้งคู่ถึงจะชนะ
+            // หาว่าผู้เล่นที่ได้โหวตสูงสุด 2 อันดับแรกเป็นผู้ทรยศหรือไม่
+            const top2Voted = votePlayers.slice(0, 2);
+            const traitorsCaught = top2Voted.filter(p => p.role === traitorRole);
+            
+            // ต้องจับได้ทั้ง 2 คน และต้องมีโหวตมากกว่าคนอื่น
+            const thirdVotedPlayer = votePlayers[2];
+            const secondHasMoreVotesThanThird = !thirdVotedPlayer || (secondVotedPlayer && secondVotedPlayer.nbVote2 > thirdVotedPlayer.nbVote2);
+            
+            if (traitorsCaught.length === 2 && secondHasMoreVotesThanThird) {
+                hasWon = true;
+                finalResultTraitorName = traitorsCaught.map(t => t.name).join(' และ ');
+            } else if (traitorsCaught.length === 1) {
+                hasWon = false; // จับได้แค่คนเดียว
+                const uncaughtTraitor = allTraitors.find(t => !traitorsCaught.includes(t));
+                finalResultTraitorName = `จับได้ ${traitorsCaught[0].name} แต่พลาด ${uncaughtTraitor.name}`;
+            } else {
+                hasWon = false;
+                finalResultTraitorName = allTraitors.map(t => t.name).join(' และ ');
+            }
         }
     } else {
         if (topVotedPlayer && topVotedPlayer.isGhost && (secondVotedPlayer ? topVotedPlayer.nbVote2 > secondVotedPlayer.nbVote2 : true)) {
@@ -334,6 +369,7 @@ function processVote2Result(gameState) {
         hasWon: hasWon, 
         voteDetail: votePlayers, 
         hasTraitor: hasTraitorInGame,
+        numTraitors: numTraitors, // เพิ่มจำนวนผู้ทรยศ
         finalTraitorName: finalResultTraitorName,
         // เพิ่มบทบาททุกคนสำหรับเฉลยตอนจบ
         allRoles: gameState.players.map(p => ({ name: p.name, role: p.role }))
@@ -580,6 +616,15 @@ app.get('/banned', function(req, res) {
     res.render('banned.ejs', { banInfo: banInfo });
 });
 
+// Keep-alive endpoint for UptimeRobot (Glitch)
+app.get('/ping', function(req, res) {
+    res.status(200).json({ 
+        status: 'alive', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 // Lobby page
 app.get('/', function(req, res) {
     // ดึง player จาก middleware (ซึ่งจะสร้างใหม่ถ้าไม่มี)
@@ -733,6 +778,7 @@ app.get('/room/:roomId', function(req, res) {
             roundTime: Math.floor(room.settings.roundTime / 60), // แปลงกลับเป็นนาที
             locked: room.settings.locked,
             password: room.settings.password || '',
+            dualTraitorMode: room.settings.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ
             adminId: room.admin,
             isAdmin: room.admin === req.playerId
         },
@@ -1284,6 +1330,49 @@ io.sockets.on('connection', function(socket) {
             if (typeof callback === 'function') {
                 callback({ success: false, error: error.message });
             }
+        }
+    });
+    
+    // Quick toggle dual traitor mode
+    socket.on('toggleDualTraitorMode', function(data) {
+        try {
+            const roomId = socket.roomId || data.roomId;
+            const adminPlayerId = socket.playerId;
+            const enabled = data.enabled;
+            
+            if (!roomId || !adminPlayerId) return;
+            
+            const room = roomManager.getRoom(roomId);
+            if (!room) return;
+            
+            // Check if player is admin
+            if (room.admin !== adminPlayerId) return;
+            
+            // Check player count
+            if (enabled && room.players.length < 5) return;
+            
+            // Update setting
+            room.settings.dualTraitorMode = enabled;
+            
+            // Emit to room
+            io.to(roomId).emit('roomUpdate', {
+                roomId: roomId,
+                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
+                playerCount: room.players.length,
+                settings: room.settings,
+                admin: room.admin
+            });
+
+            // Send chat notification
+            const modeText = enabled ? '🔴🔴 เปิดโหมด 2 ผู้ทรยศ!' : '🔴 ปิดโหมด 2 ผู้ทรยศ (ใช้โหมดปกติ)';
+            sendChatMessageToRoom(io, roomId, 'System', modeText, '#e74c3c');
+            
+            // Update room list for all clients
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+            
+            console.log(`[toggleDualTraitorMode] Room ${roomId}: ${enabled ? 'enabled' : 'disabled'}`);
+        } catch (error) {
+            console.error('Error toggling dual traitor mode:', error);
         }
     });
 
@@ -2367,16 +2456,22 @@ io.sockets.on('connection', function(socket) {
         randomRoles(room.gameState, room.settings);
         room.gameState.word = getWord(wordFamille);
         room.gameState.status = 'role';
+        
+        // นับจำนวนผู้ทรยศในเกมนี้
+        const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
 
-        // Broadcast newRole แบบเดิม
+        // Broadcast newRole แบบเดิม + เพิ่มข้อมูล dual traitor mode
         io.to(roomId).emit('newRole', { 
             players: room.gameState.players,
-            status: room.gameState.status 
+            status: room.gameState.status,
+            dualTraitorMode: room.settings.dualTraitorMode,
+            numTraitors: numTraitors
         });
         
         // Send chat notification
-        sendChatMessageToRoom(io, roomId, 'System', 'เริ่มเกมใหม่! บทบาทถูกสุ่มแล้ว', '#9b59b6');
-        addServerLog(io, 'game', roomId, '🎮 เกมเริ่มแล้ว! สุ่มบทบาท', 'success');
+        const modeMsg = numTraitors === 2 ? ' (โหมด 2 ผู้ทรยศ!)' : '';
+        sendChatMessageToRoom(io, roomId, 'System', `เริ่มเกมใหม่! บทบาทถูกสุ่มแล้ว${modeMsg}`, '#9b59b6');
+        addServerLog(io, 'game', roomId, `🎮 เกมเริ่มแล้ว! สุ่มบทบาท${modeMsg}`, 'success');
     });
 
     // Reveal word (only GM can do this, and only after word is set)
@@ -2475,7 +2570,11 @@ io.sockets.on('connection', function(socket) {
 
         // ไปโหวต 2 เลย ไม่ต้องผ่านโหวต 1
         resetVote(room.gameState, 2);
-        io.to(roomId).emit('displayVote2', room.gameState.players.filter(isNotGameMaster));
+        const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
+        io.to(roomId).emit('displayVote2', {
+            players: room.gameState.players.filter(isNotGameMaster),
+            numTraitors: numTraitors
+        });
         room.gameState.status = 'vote2';
     });
 
@@ -2491,7 +2590,11 @@ io.sockets.on('connection', function(socket) {
         if (!isAdminSocket(room, socket)) return;
 
         resetVote(room.gameState, 2);
-        io.to(roomId).emit('displayVote2', room.gameState.players.filter(isNotGameMaster));
+        const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
+        io.to(roomId).emit('displayVote2', {
+            players: room.gameState.players.filter(isNotGameMaster),
+            numTraitors: numTraitors
+        });
         room.gameState.status = 'vote2';
     });
 
@@ -2559,7 +2662,13 @@ io.sockets.on('connection', function(socket) {
         }
         player._votingInProgress2 = true;
 
-        player.vote2 = object.vote;
+        // รองรับทั้ง vote (1 คน) และ votes (2 คน)
+        if (object.votes && Array.isArray(object.votes)) {
+            // โหมด 2 ผู้ทรยศ - votes เป็น array
+            player.vote2 = object.votes; // เก็บเป็น array
+        } else {
+            player.vote2 = object.vote; // เก็บเป็น string (โหมดปกติ)
+        }
         player._votingInProgress2 = false;
 
         if(everybodyHasVoted(room.gameState, 2)) {

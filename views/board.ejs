@@ -146,10 +146,25 @@
     <% if (player.permission == 'admin') { %>
         <button id="displayVote2" class="btn btn-warning cta hidden">โหวต</button>
     <% } %>
-    <div id="vote2" class="hidden">
-        <h4>โหวตรอบ 2</h4>        
-        <h4>คิดว่าใครคือผู้ทรยศ?</h4>
-        <div class="vote2-choices"></div>
+    <div id="vote2" class="hidden vote2-container" style="background: linear-gradient(145deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 50, 0.99)); border: 2px solid rgba(231, 76, 60, 0.5); border-radius: 24px; padding: 30px; margin: 20px auto; max-width: 700px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(231, 76, 60, 0.2);">
+        <div class="vote2-header" style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #e74c3c, #c0392b); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; box-shadow: 0 8px 30px rgba(231, 76, 60, 0.5);">
+                <i class="fas fa-user-secret" style="font-size: 2em; color: #fff;"></i>
+            </div>
+            <h4 style="color: #fff; font-size: 1.8em; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); margin: 10px 0;">โหวต ผู้ทรยศ</h4>
+        </div>
+        <div id="dualTraitorModeIndicator" style="display: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 50%, #a93226 100%); padding: 15px 25px; border-radius: 16px; margin-bottom: 20px; text-align: center; box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);">
+            <span style="font-size: 1.3em; font-weight: 700; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);">🔴🔴 โหมด 2 ผู้ทรยศ - เลือก 2 คน!</span>
+        </div>
+        <h4 id="vote2Title" style="color: #ffd700; font-size: 1.3em; font-weight: 600; text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); margin: 10px 0 20px 0; text-align: center;">คิดว่าใครคือผู้ทรยศ?</h4>
+        <div class="vote2-choices" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; padding: 20px 10px;"></div>
+        <div id="vote2SelectedInfo" style="display: none; margin-top: 25px; padding: 20px; background: linear-gradient(145deg, rgba(46, 204, 113, 0.2), rgba(39, 174, 96, 0.15)); border: 2px solid rgba(46, 204, 113, 0.5); border-radius: 16px; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                <span style="color: #fff; font-size: 1.1em;">เลือกแล้ว</span>
+                <span style="font-size: 1.5em; color: #2ecc71; font-weight: 700;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
+            </div>
+            <button id="confirmVote2Btn" style="display: none; padding: 15px 40px; font-size: 1.2em; font-weight: 700; background: linear-gradient(135deg, #2ecc71, #27ae60); border: none; border-radius: 12px; color: #fff; cursor: pointer; box-shadow: 0 8px 25px rgba(46, 204, 113, 0.4); text-transform: uppercase; letter-spacing: 2px;">✅ ยืนยันโหวต</button>
+        </div>
     </div>
     <div id="vote2Result" class="hidden">
         <h4>ผลการโหวต</h4>
@@ -656,72 +671,335 @@
         background: rgba(255,255,255,0.05) !important;
     }
     
-    /* Vote 2 - Player Buttons */
-    #vote2 {
-        background: transparent !important;
-    }
-    
-    .vote2-choices {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        justify-content: center;
-        margin-top: 25px;
-        padding: 10px;
-        background: transparent !important;
-    }
-    
-    .btn-vote2-player {
-        padding: 20px 40px;
-        font-size: 1.4em;
-        font-weight: 700;
-        font-family: 'Rajdhani', sans-serif;
-        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-        border: 4px solid #c0392b;
-        border-radius: 16px;
-        color: #fff;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-        min-width: 150px;
-        text-shadow: 2px 2px 3px rgba(0,0,0,0.4);
+    /* ==================== VOTE2 CONTAINER ==================== */
+    .vote2-container {
+        background: linear-gradient(145deg, rgba(20, 20, 40, 0.95), rgba(30, 30, 50, 0.98));
+        border: 2px solid rgba(231, 76, 60, 0.4);
+        border-radius: 24px;
+        padding: 30px;
+        margin: 20px auto;
+        max-width: 700px;
+        box-shadow: 
+            0 20px 60px rgba(0, 0, 0, 0.6),
+            0 0 40px rgba(231, 76, 60, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
         position: relative;
         overflow: hidden;
     }
     
-    .btn-vote2-player::before {
+    .vote2-container::before {
         content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(231, 76, 60, 0.08) 0%, transparent 50%);
+        animation: vote2Glow 4s ease-in-out infinite;
+    }
+    
+    @keyframes vote2Glow {
+        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+        50% { transform: translate(10%, 10%) scale(1.1); opacity: 0.8; }
+    }
+    
+    /* Header */
+    .vote2-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 15px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .vote2-icon-wrapper {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        box-shadow: 0 8px 30px rgba(231, 76, 60, 0.5);
+        animation: iconPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes iconPulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 8px 30px rgba(231, 76, 60, 0.5); }
+        50% { transform: scale(1.05); box-shadow: 0 12px 40px rgba(231, 76, 60, 0.7); }
+    }
+    
+    .vote2-icon {
+        font-size: 2em;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .vote2-main-title {
+        color: #fff;
+        font-size: 1.8em;
+        font-weight: 700;
+        font-family: 'Rajdhani', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        margin: 0;
+    }
+    
+    .vote2-subtitle {
+        color: #ffd700;
+        font-size: 1.3em;
+        font-weight: 600;
+        font-family: 'Rajdhani', sans-serif;
+        text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+        margin: 10px 0 20px 0;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Dual Traitor Badge */
+    .dual-traitor-badge {
+        display: none;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 50%, #a93226 100%);
+        padding: 15px 25px;
+        border-radius: 16px;
+        margin-bottom: 20px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 
+            0 8px 25px rgba(231, 76, 60, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        animation: badgePulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes badgePulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4); }
+        50% { transform: scale(1.02); box-shadow: 0 12px 35px rgba(231, 76, 60, 0.6); }
+    }
+    
+    .dual-badge-glow {
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-        transition: left 0.5s;
+        animation: badgeShine 2s infinite;
+    }
+    
+    @keyframes badgeShine {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+    
+    .dual-badge-text {
+        font-size: 1.3em;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Vote Choices */
+    .vote2-choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+        padding: 20px 10px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Vote Buttons */
+    .btn-vote2-player {
+        padding: 18px 35px !important;
+        font-size: 1.2em !important;
+        font-weight: 700 !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        background: linear-gradient(145deg, #2c3e50, #1a252f) !important;
+        border: 3px solid #3498db !important;
+        border-radius: 16px !important;
+        color: #fff !important;
+        cursor: pointer !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        box-shadow: 
+            0 8px 25px rgba(0,0,0,0.4),
+            0 0 15px rgba(52, 152, 219, 0.3),
+            inset 0 1px 0 rgba(255,255,255,0.1) !important;
+        min-width: 140px !important;
+        text-shadow: 2px 2px 3px rgba(0,0,0,0.5) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        letter-spacing: 1px !important;
+    }
+    
+    .btn-vote2-player::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: -100% !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent) !important;
+        transition: left 0.6s !important;
+    }
+    
+    .btn-vote2-player::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 3px !important;
+        background: linear-gradient(90deg, #3498db, #2ecc71, #3498db) !important;
+        transform: scaleX(0) !important;
+        transition: transform 0.4s !important;
     }
     
     .btn-vote2-player:hover::before {
-        left: 100%;
+        left: 100% !important;
+    }
+    
+    .btn-vote2-player:hover::after {
+        transform: scaleX(1) !important;
     }
     
     .btn-vote2-player:hover {
-        transform: translateY(-5px) scale(1.08);
-        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-        background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
-        border-color: #a93226;
+        transform: translateY(-8px) scale(1.05) !important;
+        box-shadow: 
+            0 20px 40px rgba(0,0,0,0.5),
+            0 0 30px rgba(52, 152, 219, 0.5) !important;
+        border-color: #2ecc71 !important;
+        background: linear-gradient(145deg, #34495e, #2c3e50) !important;
     }
     
     .btn-vote2-player:active {
-        transform: translateY(-2px) scale(1.02);
+        transform: translateY(-3px) scale(1.02) !important;
+        transition: all 0.1s !important;
     }
     
     .btn-vote2-player.ghost {
-        opacity: 0.5;
-        background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
-        border-color: #6c7a7d;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        opacity: 0.4 !important;
+        background: linear-gradient(145deg, #555, #444) !important;
+        border-color: #666 !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
     }
     
+    .btn-vote2-player.ghost:hover {
+        opacity: 0.6 !important;
+        transform: translateY(-3px) !important;
+    }
+    
+    /* Selected State */
+    .btn-vote2-player.selected {
+        background: linear-gradient(145deg, #e74c3c, #c0392b) !important;
+        border-color: #2ecc71 !important;
+        transform: scale(1.08) !important;
+        box-shadow: 
+            0 0 30px rgba(231, 76, 60, 0.6),
+            0 0 60px rgba(231, 76, 60, 0.3),
+            inset 0 0 20px rgba(255, 255, 255, 0.1) !important;
+        animation: selectedGlow 1.5s ease-in-out infinite !important;
+    }
+    
+    @keyframes selectedGlow {
+        0%, 100% { box-shadow: 0 0 30px rgba(231, 76, 60, 0.6), 0 0 60px rgba(231, 76, 60, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(231, 76, 60, 0.8), 0 0 80px rgba(231, 76, 60, 0.4); }
+    }
+    
+    .btn-vote2-player.selected .checkmark {
+        position: absolute !important;
+        top: -12px !important;
+        right: -12px !important;
+        background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: bold;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.5);
+        animation: checkPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    @keyframes checkPop {
+        0% { transform: scale(0); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+    
+    /* Selection Info */
+    .vote2-selection-info {
+        display: none;
+        margin-top: 25px;
+        padding: 20px;
+        background: linear-gradient(145deg, rgba(46, 204, 113, 0.15), rgba(39, 174, 96, 0.1));
+        border: 2px solid rgba(46, 204, 113, 0.4);
+        border-radius: 16px;
+        text-align: center;
+        position: relative;
+        z-index: 1;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .selection-counter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .selection-label {
+        color: #aaa;
+        font-size: 1em;
+    }
+    
+    .selection-count {
+        font-size: 1.5em;
+        color: #2ecc71;
+        font-weight: 700;
+    }
+    
+    .confirm-vote-btn {
+        display: none;
+        padding: 15px 40px;
+        font-size: 1.2em;
+        font-weight: 700;
+        font-family: 'Rajdhani', sans-serif;
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 8px 25px rgba(46, 204, 113, 0.4);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    .confirm-vote-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(46, 204, 113, 0.6);
+        background: linear-gradient(135deg, #27ae60, #229954);
+    }
+    
+    .confirm-vote-btn:active {
+        transform: translateY(-1px);
+    }
+    
+    /* Legacy vote2 h4 override */
     #vote2 h4 {
         color: #fff;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
@@ -2075,8 +2353,29 @@ $(function() {
 
     function addPlayerVote(player, checked) {
         const ghostClass = player.isGhost ? 'ghost' : '';
-        const btn = `<button class="btn btn-vote2-player ${ghostClass}" data-player="${player.name}">${player.name}</button>`;
+        const ghostStyle = player.isGhost ? 'opacity: 0.4; background: linear-gradient(145deg, #555, #444) !important; border-color: #666 !important;' : '';
+        const btn = `<button class="btn btn-vote2-player ${ghostClass}" data-player="${player.name}" style="padding: 18px 35px; font-size: 1.2em; font-weight: 700; background: linear-gradient(145deg, #2c3e50, #1a252f); border: 3px solid #3498db; border-radius: 16px; color: #fff; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 25px rgba(0,0,0,0.4), 0 0 15px rgba(52, 152, 219, 0.3); min-width: 140px; text-shadow: 2px 2px 3px rgba(0,0,0,0.5); ${ghostStyle}">${player.name}</button>`;
         $('#vote2 .vote2-choices').append(btn);
+    }
+    
+    // ตัวแปรสำหรับโหมด 2 ผู้ทรยศ
+    let currentNumTraitors = 1;
+    let selectedVotes = [];
+    
+    function updateVoteSelection() {
+        $('#selectedCount').text(selectedVotes.length);
+        $('#maxSelect').text(currentNumTraitors);
+        
+        if (currentNumTraitors === 2) {
+            $('#vote2SelectedInfo').css('display', 'block');
+            if (selectedVotes.length === 2) {
+                $('#confirmVote2Btn').css('display', 'inline-block');
+            } else {
+                $('#confirmVote2Btn').hide();
+            }
+        } else {
+            $('#vote2SelectedInfo').hide();
+        }
     }
 
     // ฟังก์ชันซ่อน element เกมทั้งหมด - ใช้ก่อนแสดง step ใหม่ (ไม่มี vote1 แล้ว)
@@ -2094,19 +2393,29 @@ $(function() {
 
     function getResultIssue(result) {
         let message = '';
+        const numTraitors = result.numTraitors || 1;
+        
         if (result.hasTraitor) {
             // กรณีมีผู้ทรยศในเกม
             if (result.hasWon) {
-                message = `เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
+                if (numTraitors === 2) {
+                    message = `🎉 เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>จับผู้ทรยศได้ทั้ง 2 คน: ${result.finalTraitorName}`;
+                } else {
+                    message = `🎉 เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
+                }
             } else {
-                message = `ผู้ทรยศชนะ! พลเมืองโหวตพลาด <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
+                if (numTraitors === 2) {
+                    message = `💀 ผู้ทรยศชนะ! พลเมืองโหวตพลาด <br/>${result.finalTraitorName}`;
+                } else {
+                    message = `💀 ผู้ทรยศชนะ! พลเมืองโหวตพลาด <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
+                }
             }
         } else {
             // กรณีไม่มีผู้ทรยศในเกม
             if (result.hasWon) {
-                message = `เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ไม่มีผู้ทรยศในเกมนี้ (เจอ Ghost Player)`;
+                message = `🎉 เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ไม่มีผู้ทรยศในเกมนี้ (เจอ Ghost Player)`;
             } else {
-                message = `พลเมืองโหวตพลาด! ไม่มีผู้ทรยศในเกมนี้ แต่คุณก็ยังโหวตพลาด`;
+                message = `💀 พลเมืองโหวตพลาด! ไม่มีผู้ทรยศในเกมนี้ แต่คุณก็ยังโหวตพลาด`;
             }
         }
         return message;
@@ -2348,14 +2657,48 @@ $(function() {
 
     // Vote1 ถูกตัดออก - ไม่ต้องใช้ displayVote1 และ vote1 handlers
 
-    // Vote2 - กดปุ่มชื่อผู้เล่นเพื่อโหวตทันที
+    // Vote2 - รองรับทั้งโหมด 1 และ 2 ผู้ทรยศ
     $(document).on('click', '.btn-vote2-player', function(e) {
         e.preventDefault();
-        const votedPlayer = $(this).data('player');
-        socket.emit('vote2', {player: '<%= player.name %>', vote: votedPlayer});
-        // ซ่อน vote2 section ทันทีหลังกด
+        const $btn = $(this);
+        const votedPlayer = $btn.data('player');
+        
+        if (currentNumTraitors === 2) {
+            // โหมด 2 ผู้ทรยศ - เลือกได้ 2 คน
+            if ($btn.hasClass('selected')) {
+                // ยกเลิกการเลือก
+                $btn.removeClass('selected');
+                $btn.find('.checkmark').remove();
+                selectedVotes = selectedVotes.filter(v => v !== votedPlayer);
+            } else if (selectedVotes.length < 2) {
+                // เลือกเพิ่ม
+                $btn.addClass('selected');
+                $btn.append('<span class="checkmark">✓</span>');
+                selectedVotes.push(votedPlayer);
+            } else {
+                showNotification('⚠️ เลือกได้แค่ 2 คน! กดที่คนที่เลือกไว้เพื่อยกเลิก', 'warning', 2000);
+            }
+            updateVoteSelection();
+        } else {
+            // โหมดปกติ - โหวตทันที
+            socket.emit('vote2', {player: '<%= player.name %>', vote: votedPlayer});
+            $('#vote2').fadeOut();
+            $('#status p').html('กำลังรอผู้เล่นคนอื่นโหวต...');
+            $('#status').removeClass('hidden').fadeIn();
+        }
+    });
+    
+    // ปุ่มยืนยันโหวต (สำหรับโหมด 2 ผู้ทรยศ)
+    $(document).on('click', '#confirmVote2Btn', function(e) {
+        e.preventDefault();
+        if (selectedVotes.length !== 2) {
+            showNotification('⚠️ กรุณาเลือก 2 คน!', 'warning', 2000);
+            return;
+        }
+        
+        // ส่งโหวต 2 คน
+        socket.emit('vote2', {player: '<%= player.name %>', votes: selectedVotes});
         $('#vote2').fadeOut();
-        // แสดงข้อความรอ
         $('#status p').html('กำลังรอผู้เล่นคนอื่นโหวต...');
         $('#status').removeClass('hidden').fadeIn();
     });
@@ -2555,6 +2898,9 @@ $(function() {
         $('#word').html('');
         $('#vote2 .vote2-choices').html('');
         $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
+        
+        // เก็บข้อมูลโหมด 2 ผู้ทรยศ
+        currentNumTraitors = data.numTraitors || 1;
 
         // วนหาบทบาทของตัวเอง (ใช้ playerId หรือ name)
         var myPlayer = null;
@@ -2569,6 +2915,11 @@ $(function() {
             console.log('[newRole] My role:', myPlayer.role);
             $('.role strong').html(myPlayer.role);
             $('#reset .role').css('display', 'block');
+            
+            // แสดง notification โหมด 2 ผู้ทรยศ
+            if (data.dualTraitorMode && data.numTraitors === 2) {
+                showNotification('🔴🔴 โหมด 2 ผู้ทรยศ! มีผู้ทรยศ 2 คนในเกมนี้', 'warning', 6000);
+            }
             
             // ซ่อนหลัง 5 วิ แล้วแสดงขั้นต่อไป
             setTimeout(function() {
@@ -2624,17 +2975,43 @@ $(function() {
     // wordFound ถูกเปลี่ยนให้ไป displayVote2 เลยจาก server
     // ไม่ต้องมี listener แยกแล้ว
 
-    socket.on('displayVote2', function(players) {
-        console.log('[displayVote2] Received - เริ่มโหวตหาผู้ทรยศ');
+    socket.on('displayVote2', function(data) {
+        // รองรับทั้ง format เก่า (array) และ format ใหม่ (object)
+        const players = Array.isArray(data) ? data : data.players;
+        const numTraitors = data.numTraitors || 1;
+        
+        // เก็บค่าสำหรับการเลือก
+        currentNumTraitors = numTraitors;
+        selectedVotes = [];
+        
+        console.log('[displayVote2] Received - เริ่มโหวตหาผู้ทรยศ, จำนวน:', numTraitors);
         hideAllGameElements();
         $('#vote2 .vote2-choices').html('');
         players.forEach(function(votePlayer, index) {
-            let checked = (index === 0 ? true : false);
-            addPlayerVote(votePlayer, checked);
+            addPlayerVote(votePlayer, false);
         });
+        
+        // อัปเดต UI ตามจำนวนผู้ทรยศ
+        if (numTraitors === 2) {
+            $('#dualTraitorModeIndicator').show();
+            $('#vote2Title').text('เลือกผู้ทรยศ 2 คน!');
+            $('#vote2SelectedInfo').css('display', 'block');
+            $('#maxSelect').text('2');
+        } else {
+            $('#dualTraitorModeIndicator').hide();
+            $('#vote2Title').text('คิดว่าใครคือผู้ทรยศ?');
+            $('#vote2SelectedInfo').hide();
+        }
+        
+        updateVoteSelection();
         $('#vote2').removeClass('hidden').fadeIn();
         soundNotify('popup');
-        showNotification('🎯 หยุดเวลา! โหวตหาผู้ทรยศ', 'warning', 3000);
+        
+        if (numTraitors === 2) {
+            showNotification('🎯 โหมด 2 ผู้ทรยศ! เลือก 2 คนที่คิดว่าเป็นผู้ทรยศ', 'warning', 5000);
+        } else {
+            showNotification('🎯 หยุดเวลา! โหวตหาผู้ทรยศ', 'warning', 3000);
+        }
     });
     
     socket.on('vote2Ended', function(result) {

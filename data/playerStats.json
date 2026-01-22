@@ -1,1 +1,610 @@
-{}
+{
+  "daf653df-f778-4e33-93be-a23387fc5849": {
+    "playerId": "daf653df-f778-4e33-93be-a23387fc5849",
+    "playerName": "Unknown",
+    "totalGames": 9,
+    "wins": 5,
+    "losses": 4,
+    "roleStats": {
+      "gameMasterCount": 2,
+      "traitorCount": 3,
+      "citizenCount": 4
+    },
+    "winByRole": {
+      "winAsTraitor": 3,
+      "winAsCitizen": 2
+    },
+    "lastPlayedAt": "2026-01-22T11:51:10.540Z",
+    "gameHistory": [
+      {
+        "date": "2026-01-22T11:51:10.540Z",
+        "roomId": "c9e97db2",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "แมลง",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:41:02.506Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "จิ๊กซอว์",
+        "traitor": "จับได้ guest326358 แต่พลาด guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:38:31.844Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "วันขอบคุณพระเจ้า",
+        "traitor": "guest326358",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:37:48.314Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "เสื้อยืด",
+        "traitor": "guest621342",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:33:26.698Z",
+        "roomId": "808ecb9c",
+        "roomName": "1",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "เครื่องถ่ายเอกสาร",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:16:59.917Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "วอลเลย์บอล",
+        "traitor": "guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:15:17.316Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": true,
+        "word": "ใบปลิว",
+        "traitor": "guest621342",
+        "citizensWon": true,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:59:20.988Z",
+        "roomId": "abe0f305",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "แอโรบิค",
+        "traitor": "guest45986 และ guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:49:02.134Z",
+        "roomId": "f485c08b",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": true,
+        "word": "นักวิทยาศาสตร์",
+        "traitor": "guest633688",
+        "citizensWon": true,
+        "playerCount": 5
+      }
+    ]
+  },
+  "28df83d3-459f-4310-b494-e697f9e2ee8c": {
+    "playerId": "28df83d3-459f-4310-b494-e697f9e2ee8c",
+    "playerName": "Unknown",
+    "totalGames": 9,
+    "wins": 4,
+    "losses": 5,
+    "roleStats": {
+      "gameMasterCount": 1,
+      "traitorCount": 2,
+      "citizenCount": 6
+    },
+    "winByRole": {
+      "winAsTraitor": 2,
+      "winAsCitizen": 2
+    },
+    "lastPlayedAt": "2026-01-22T11:51:10.540Z",
+    "gameHistory": [
+      {
+        "date": "2026-01-22T11:51:10.540Z",
+        "roomId": "c9e97db2",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "แมลง",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:41:02.506Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "จิ๊กซอว์",
+        "traitor": "จับได้ guest326358 แต่พลาด guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:38:31.844Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "วันขอบคุณพระเจ้า",
+        "traitor": "guest326358",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:37:48.314Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "เสื้อยืด",
+        "traitor": "guest621342",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:33:26.698Z",
+        "roomId": "808ecb9c",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "เครื่องถ่ายเอกสาร",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:16:59.917Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "วอลเลย์บอล",
+        "traitor": "guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:15:17.316Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": true,
+        "word": "ใบปลิว",
+        "traitor": "guest621342",
+        "citizensWon": true,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:59:20.988Z",
+        "roomId": "abe0f305",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "แอโรบิค",
+        "traitor": "guest45986 และ guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:49:02.134Z",
+        "roomId": "f485c08b",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": true,
+        "word": "นักวิทยาศาสตร์",
+        "traitor": "guest633688",
+        "citizensWon": true,
+        "playerCount": 5
+      }
+    ]
+  },
+  "285db684-443b-4d14-9da6-4659aeb810cb": {
+    "playerId": "285db684-443b-4d14-9da6-4659aeb810cb",
+    "playerName": "Unknown",
+    "totalGames": 9,
+    "wins": 4,
+    "losses": 5,
+    "roleStats": {
+      "gameMasterCount": 2,
+      "traitorCount": 4,
+      "citizenCount": 3
+    },
+    "winByRole": {
+      "winAsTraitor": 3,
+      "winAsCitizen": 1
+    },
+    "lastPlayedAt": "2026-01-22T11:51:10.540Z",
+    "gameHistory": [
+      {
+        "date": "2026-01-22T11:51:10.540Z",
+        "roomId": "c9e97db2",
+        "roomName": "ๅ",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "แมลง",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:41:02.506Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "จิ๊กซอว์",
+        "traitor": "จับได้ guest326358 แต่พลาด guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:38:31.844Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "วันขอบคุณพระเจ้า",
+        "traitor": "guest326358",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:37:48.314Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "เสื้อยืด",
+        "traitor": "guest621342",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:33:26.698Z",
+        "roomId": "808ecb9c",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "เครื่องถ่ายเอกสาร",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:16:59.917Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "วอลเลย์บอล",
+        "traitor": "guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:15:17.316Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": true,
+        "word": "ใบปลิว",
+        "traitor": "guest621342",
+        "citizensWon": true,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:59:20.988Z",
+        "roomId": "abe0f305",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "แอโรบิค",
+        "traitor": "guest45986 และ guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:49:02.134Z",
+        "roomId": "f485c08b",
+        "roomName": "1",
+        "role": "ผู้ทรยศ",
+        "won": false,
+        "word": "นักวิทยาศาสตร์",
+        "traitor": "guest633688",
+        "citizensWon": true,
+        "playerCount": 5
+      }
+    ]
+  },
+  "e4dcdde7-914c-47aa-ae9a-35768c110152": {
+    "playerId": "e4dcdde7-914c-47aa-ae9a-35768c110152",
+    "playerName": "Unknown",
+    "totalGames": 9,
+    "wins": 4,
+    "losses": 5,
+    "roleStats": {
+      "gameMasterCount": 2,
+      "traitorCount": 2,
+      "citizenCount": 5
+    },
+    "winByRole": {
+      "winAsTraitor": 2,
+      "winAsCitizen": 1
+    },
+    "lastPlayedAt": "2026-01-22T11:51:10.540Z",
+    "gameHistory": [
+      {
+        "date": "2026-01-22T11:51:10.540Z",
+        "roomId": "c9e97db2",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "แมลง",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:41:02.506Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "จิ๊กซอว์",
+        "traitor": "จับได้ guest326358 แต่พลาด guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:38:31.844Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "วันขอบคุณพระเจ้า",
+        "traitor": "guest326358",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:37:48.314Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "เสื้อยืด",
+        "traitor": "guest621342",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:33:26.698Z",
+        "roomId": "808ecb9c",
+        "roomName": "1",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "เครื่องถ่ายเอกสาร",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:16:59.917Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "วอลเลย์บอล",
+        "traitor": "guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:15:17.316Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "ผู้ดำเนินเกม",
+        "won": true,
+        "word": "ใบปลิว",
+        "traitor": "guest621342",
+        "citizensWon": true,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:59:20.988Z",
+        "roomId": "abe0f305",
+        "roomName": "ๅ",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "แอโรบิค",
+        "traitor": "guest45986 และ guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:49:02.134Z",
+        "roomId": "f485c08b",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": true,
+        "word": "นักวิทยาศาสตร์",
+        "traitor": "guest633688",
+        "citizensWon": true,
+        "playerCount": 5
+      }
+    ]
+  },
+  "48880a31-d864-4f9b-9477-5cb6879928db": {
+    "playerId": "48880a31-d864-4f9b-9477-5cb6879928db",
+    "playerName": "Unknown",
+    "totalGames": 9,
+    "wins": 2,
+    "losses": 7,
+    "roleStats": {
+      "gameMasterCount": 2,
+      "traitorCount": 2,
+      "citizenCount": 5
+    },
+    "winByRole": {
+      "winAsTraitor": 1,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": "2026-01-22T11:51:10.540Z",
+    "gameHistory": [
+      {
+        "date": "2026-01-22T11:51:10.540Z",
+        "roomId": "c9e97db2",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "แมลง",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:41:02.506Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "จิ๊กซอว์",
+        "traitor": "จับได้ guest326358 แต่พลาด guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:38:31.844Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "วันขอบคุณพระเจ้า",
+        "traitor": "guest326358",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:37:48.314Z",
+        "roomId": "1701f243",
+        "roomName": "ๅ",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "เสื้อยืด",
+        "traitor": "guest621342",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:33:26.698Z",
+        "roomId": "808ecb9c",
+        "roomName": "1",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "เครื่องถ่ายเอกสาร",
+        "traitor": "จับได้ guest45986 แต่พลาด guest850684",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:16:59.917Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "วอลเลย์บอล",
+        "traitor": "guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T11:15:17.316Z",
+        "roomId": "c78ccfa1",
+        "roomName": "1",
+        "role": "ผู้ทรยศ",
+        "won": false,
+        "word": "ใบปลิว",
+        "traitor": "guest621342",
+        "citizensWon": true,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:59:20.988Z",
+        "roomId": "abe0f305",
+        "roomName": "ๅ",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "แอโรบิค",
+        "traitor": "guest45986 และ guest633688",
+        "citizensWon": false,
+        "playerCount": 5
+      },
+      {
+        "date": "2026-01-22T10:49:02.134Z",
+        "roomId": "f485c08b",
+        "roomName": "1",
+        "role": "ผู้ดำเนินเกม",
+        "won": true,
+        "word": "นักวิทยาศาสตร์",
+        "traitor": "guest633688",
+        "citizensWon": true,
+        "playerCount": 5
+      }
+    ]
+  },
+  "77bdf5a8-ddd2-4f2b-a997-01a545fe5570": {
+    "playerId": "77bdf5a8-ddd2-4f2b-a997-01a545fe5570",
+    "playerName": "Unknown",
+    "totalGames": 0,
+    "wins": 0,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0
+    },
+    "lastPlayedAt": null,
+    "gameHistory": []
+  }
+}

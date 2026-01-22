@@ -1,0 +1,13 @@
+{
+  "install": "npm install",
+  "start": "node app.js",
+  "watch": {
+    "restart": {
+      "exclude": [
+        "data/",
+        "public/",
+        "screenshots/"
+      ]
+    }
+  }
+}

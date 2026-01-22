@@ -1025,6 +1025,22 @@ $(function() {
                         </p>
                     </div>
                     
+                    <div style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%); padding: 15px; border-radius: 12px; margin-top: 15px; border: 2px solid #ff6b6b;">
+                        <h4 style="margin: 0 0 10px 0; color: #fff;">🔴🔴 โหมด 2 ผู้ทรยศ <span style="background: #fff; color: #e74c3c; padding: 2px 8px; border-radius: 8px; font-size: 0.7em; margin-left: 8px;">NEW v2.1</span></h4>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 0.95em; margin-bottom: 10px;">
+                            เมื่อมีผู้เล่น <strong>5 คนขึ้นไป</strong> เจ้าของห้องสามารถเปิดโหมด 2 ผู้ทรยศได้!
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px; color: rgba(255,255,255,0.85); font-size: 0.9em;">
+                            <li style="margin-bottom: 8px;">🎭 จะมี <strong>ผู้ทรยศ 2 คน</strong> ในเกม (ทั้งคู่รู้คำตอบ)</li>
+                            <li style="margin-bottom: 8px;">🗳️ ตอนโหวต <strong>ต้องเลือก 2 คน</strong> ที่คิดว่าเป็นผู้ทรยศ</li>
+                            <li style="margin-bottom: 8px;">🏆 พลเมืองชนะเมื่อ <strong>จับผู้ทรยศได้ทั้ง 2 คน</strong></li>
+                            <li style="margin-bottom: 8px;">💀 ผู้ทรยศชนะเมื่อ <strong>มีอย่างน้อย 1 คน</strong> ไม่ถูกจับ</li>
+                        </ul>
+                        <p style="color: rgba(255,255,255,0.7); font-size: 0.85em; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
+                            💡 <strong>วิธีเปิด:</strong> ไปที่ ⚙️ แก้ไขห้อง → ติ๊ก "🔴🔴 โหมด 2 ผู้ทรยศ"
+                        </p>
+                    </div>
+                    
                 </div>
             `,
             width: 600,
@@ -1065,36 +1081,48 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🚀 อัปเดต Version 2.0.0!',
+            title: '🚀 อัปเดต Version 2.1.0!',
             html: `
-                <div style="text-align: left; color: #ccc; max-height: 350px; overflow-y: auto;">
+                <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
                         ขอบคุณที่เล่น Insider Game! นี่คือสิ่งใหม่ในเวอร์ชันนี้:
                     </p>
                     
-                    <h4 style="color: #2ecc71; margin: 15px 0 10px 0;">✨ ฟีเจอร์ใหม่</h4>
-                    <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.95em;">
-                        <li>🎁 <strong>ปุ่ม Donate</strong> - สนับสนุนผู้พัฒนา</li>
-                        <li>💬 <strong>ระบบแชทใหม่</strong> - Swipe/เมนูตอบกลับ</li>
-                        <li>⏱️ <strong>Auto-Timer</strong> - ป้องกันเกมค้าง</li>
-                        <li>🎨 <strong>Animated Countdown</strong> - สวยงามขึ้น</li>
-                        <li>📞 <strong>ข้อมูลติดต่อ</strong> - ในหน้าตั้งค่า</li>
-                    </ul>
-                    
-                    <h4 style="color: #3498db; margin: 15px 0 10px 0;">🔧 ปรับปรุง</h4>
-                    <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.95em;">
-                        <li>💾 <strong>ข้อมูลเก็บใน Database</strong> - ไม่หายอีกแล้ว</li>
-                        <li>🛡️ <strong>ระบบเสถียรขึ้น</strong></li>
-                    </ul>
-                    
-                    <div style="background: rgba(231, 76, 60, 0.2); padding: 12px; border-radius: 8px; border-left: 4px solid #e74c3c;">
-                        <h4 style="color: #e74c3c; margin: 0 0 8px 0;">🏆 รีเซ็ตอันดับ</h4>
-                        <p style="margin: 0; font-size: 0.9em; color: #ddd;">
-                            เพื่อความยุติธรรม อันดับ Leaderboard ถูกรีเซ็ตให้ทุกคนเริ่มต้นใหม่
-                        </p>
+                    <!-- Version 2.1.0 -->
+                    <div style="background: rgba(231, 76, 60, 0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #e74c3c; margin-bottom: 15px;">
+                        <h4 style="color: #e74c3c; margin: 0 0 10px 0;">🔴🔴 โหมดใหม่: 2 ผู้ทรยศ!</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
+                            <li>เมื่อมีผู้เล่น <strong>5 คนขึ้นไป</strong> สามารถเปิดโหมดนี้ได้</li>
+                            <li>จะมี <strong>ผู้ทรยศ 2 คน</strong> แทนที่จะเป็น 1 คน</li>
+                            <li>ตอนโหวตต้อง <strong>เลือก 2 คน</strong> ที่คิดว่าเป็นผู้ทรยศ</li>
+                            <li>เปิด/ปิดได้ในการตั้งค่าห้อง</li>
+                        </ul>
                     </div>
                     
-                    <p style="color: #888; font-size: 0.85em; margin-top: 15px; text-align: center;">
+                    <!-- Version 2.0.0 -->
+                    <details style="margin-bottom: 15px;">
+                        <summary style="color: #3498db; cursor: pointer; font-weight: bold; padding: 8px 0;">
+                            📦 ดูอัปเดต Version 2.0.0
+                        </summary>
+                        <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 10px 0;">✨ ฟีเจอร์ใหม่</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>🎁 <strong>ปุ่ม Donate</strong> - สนับสนุนผู้พัฒนา</li>
+                                <li>💬 <strong>ระบบแชทใหม่</strong> - Swipe/เมนูตอบกลับ</li>
+                                <li>⏱️ <strong>Auto-Timer</strong> - ป้องกันเกมค้าง</li>
+                                <li>🎨 <strong>Animated Countdown</strong> - สวยงามขึ้น</li>
+                                <li>📞 <strong>ข้อมูลติดต่อ</strong> - ในหน้าตั้งค่า</li>
+                            </ul>
+                            
+                            <h4 style="color: #3498db; margin: 10px 0 10px 0;">🔧 ปรับปรุง</h4>
+                            <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>💾 <strong>ข้อมูลเก็บใน Database</strong> - ไม่หายอีกแล้ว</li>
+                                <li>🛡️ <strong>ระบบเสถียรขึ้น</strong></li>
+                            </ul>
+                        </div>
+                    </details>
+                    
+                    <p style="color: #888; font-size: 0.85em; margin-top: 10px; text-align: center;">
                         📋 อ่านรายละเอียดเพิ่มเติมได้ที่ <strong style="color: #f39c12;">หน้าตั้งค่า</strong>
                     </p>
                 </div>

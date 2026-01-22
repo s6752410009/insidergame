@@ -589,6 +589,7 @@ $(function() {
         rooms.forEach(function(room) {
             const isLocked = room.locked;
             const isPlaying = room.gameStatus === 'playing';
+            const isDualTraitor = room.settings && room.settings.dualTraitorMode;
             const playerPercentage = (room.playerCount / room.maxPlayers) * 100;
             const statusText = isPlaying ? 'กำลังดำเนินเกม' : 'กำลังรอผู้เล่น';
             const statusColor = isPlaying ? '#e67e22' : '#2ecc71';
@@ -599,7 +600,10 @@ $(function() {
                             <h3>${escapeHtml(room.name)}</h3>
                             <p class="room-card-id">Room ID: <strong>${room.roomId}</strong></p>
                         </div>
-                        ${isLocked ? '<span class="room-lock-icon">🔒</span>' : ''}
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            ${isDualTraitor ? '<span style="background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 700; white-space: nowrap;">🔴🔴 2 ผู้ทรยศ</span>' : ''}
+                            ${isLocked ? '<span class="room-lock-icon">🔒</span>' : ''}
+                        </div>
                     </div>
                     <div class="room-card-info">
                         <div class="room-info-item">

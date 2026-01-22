@@ -219,6 +219,12 @@
       color: #fff;
   }
   
+  .room-checkbox-container.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+  }
+  
   .room-checkbox-text {
       flex: 1;
       font-weight: 600;
@@ -718,6 +724,27 @@
   .profile-role-row:last-child {
     border-bottom: none;
   }
+  
+  /* Toggle Switch Style */
+  .toggle-switch input:checked + .toggle-slider {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+  }
+  
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+  }
+  
+  .toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+  }
 </style>
 
 <div class="room-lobby-container">
@@ -728,6 +755,7 @@
         <span>ID: <strong><%= room.roomId %></strong></span>
         <span>ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<%= room.maxPlayers %></span>
         <span>สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
+        <span id="dualTraitorBadge" style="display: <%= room.dualTraitorMode ? 'inline' : 'none' %>; background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 2px 8px; border-radius: 10px; font-size: 0.85em;">🔴🔴 2 ผู้ทรยศ</span>
       </div>
     </div>
     <div>
@@ -762,12 +790,23 @@
 
       <div id="adminControlsSection" class="lobby-admin-controls" style="display: <%= room.isAdmin ? 'block' : 'none' %>;">
         <h4>👑 Admin Controls</h4>
+        
+        <!-- Quick Toggle: Dual Traitor Mode -->
+        <div id="dualTraitorQuickToggle" style="display: none; margin-bottom: 15px; padding: 12px 15px; background: linear-gradient(135deg, rgba(231,76,60,0.15), rgba(192,57,43,0.1)); border: 2px solid rgba(231,76,60,0.4); border-radius: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+            <div style="font-weight: 700; color: #e74c3c; font-size: 1em;">🔴🔴 โหมด 2 ผู้ทรยศ <span style="font-size: 0.8em; color: #aaa; font-weight: 400;">(5+ คน)</span></div>
+            <label class="toggle-switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+              <input type="checkbox" id="quickDualTraitorToggle" <%= room.dualTraitorMode ? 'checked' : '' %> style="opacity: 0; width: 0; height: 0;">
+              <span class="toggle-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s; border-radius: 30px;"></span>
+            </label>
+          </div>
+        </div>
+        
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
       </div>
     </div>
   </div>
 </div>
-
 <%- contentFor('footer') %>
 <!-- ไม่มี footer พิเศษ -->
 
@@ -964,6 +1003,64 @@
         $('#lobbyStatusText').text('รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม');
       }
     }
+    
+    // ฟังก์ชันแสดง/ซ่อน dual traitor toggle
+    function updateDualTraitorToggleVisibility(playerCount) {
+      const toggle = document.getElementById('dualTraitorQuickToggle');
+      if (!toggle) return;
+      
+      if (isAdmin && playerCount >= 5) {
+        toggle.style.display = 'block';
+      } else {
+        toggle.style.display = 'none';
+        // ถ้าผู้เล่นน้อยกว่า 5 และโหมดเปิดอยู่ ให้ปิดอัตโนมัติ
+        const checkbox = document.getElementById('quickDualTraitorToggle');
+        if (checkbox && checkbox.checked && playerCount < 5) {
+          checkbox.checked = false;
+          // ส่ง socket เพื่อปิด
+          socket.emit('toggleDualTraitorMode', { roomId: roomId, enabled: false });
+        }
+      }
+    }
+    
+    // Event handler สำหรับ quick toggle
+    $(document).on('change', '#quickDualTraitorToggle', function() {
+      const enabled = this.checked;
+      const playerCount = parseInt($('#lobbyPlayerCount').text()) || 0;
+      
+      if (enabled && playerCount < 5) {
+        this.checked = false;
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่สามารถเปิดได้',
+          text: 'ต้องมีผู้เล่นอย่างน้อย 5 คนจึงจะเปิดโหมด 2 ผู้ทรยศได้',
+          background: '#1e1e1e',
+          color: '#fff'
+        });
+        return;
+      }
+      
+      socket.emit('toggleDualTraitorMode', { roomId: roomId, enabled: enabled });
+      
+      // อัปเดต badge ทันที
+      const badge = document.getElementById('dualTraitorBadge');
+      if (badge) {
+        badge.style.display = enabled ? 'inline' : 'none';
+      }
+      
+      // แจ้งเตือน
+      if (enabled) {
+        Swal.fire({
+          icon: 'success',
+          title: '🔴🔴 เปิดโหมด 2 ผู้ทรยศ!',
+          text: 'เกมนี้จะมีผู้ทรยศ 2 คน',
+          background: '#1e1e1e',
+          color: '#fff',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+    });
 
     function renderPlayers(payload) {
       const players = payload.players || [];
@@ -1031,6 +1128,23 @@
           }
         }
       }
+      
+      // อัปเดต dual traitor badge
+      if (payload.settings) {
+        const badge = document.getElementById('dualTraitorBadge');
+        if (badge) {
+          badge.style.display = payload.settings.dualTraitorMode ? 'inline' : 'none';
+        }
+        // อัปเดต quick toggle ถ้ามี
+        const quickToggle = document.getElementById('quickDualTraitorToggle');
+        if (quickToggle) {
+          quickToggle.checked = payload.settings.dualTraitorMode;
+        }
+      }
+      
+      // แสดง/ซ่อน dual traitor quick toggle ตามจำนวนผู้เล่น
+      const playerCount = (payload.players || []).length;
+      updateDualTraitorToggleVisibility(playerCount);
       
       renderPlayers(payload);
     });
@@ -1329,6 +1443,8 @@
         const currentRoundTime = <%= room.roundTime %>;
         const currentLocked = <%= room.locked ? 'true' : 'false' %>;
         const currentPassword = '<%= room.password %>';
+        const currentDualTraitor = <%= room.dualTraitorMode ? 'true' : 'false' %>;
+        const currentPlayerCount = parseInt($('#lobbyPlayerCount').text()) || <%= room.playerCount %>;
         
         Swal.fire({
           title: '⚙️ แก้ไขห้อง',
@@ -1414,6 +1530,17 @@
             
             updateSliderBackground(maxPlayersSlider);
             updateSliderBackground(roundTimeSlider);
+            
+            // Dual Traitor checkbox handler
+            const dualTraitorContainer = document.getElementById('editDualTraitorContainer');
+            const dualTraitorCheckbox = document.getElementById('editDualTraitor');
+            
+            if (dualTraitorContainer && !dualTraitorContainer.classList.contains('disabled')) {
+              dualTraitorContainer.addEventListener('click', function() {
+                dualTraitorCheckbox.checked = !dualTraitorCheckbox.checked;
+                this.classList.toggle('checked', dualTraitorCheckbox.checked);
+              });
+            }
             
             // Lock checkbox handler
             const lockedContainer = document.getElementById('editLockedContainer');

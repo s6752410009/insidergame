@@ -36,6 +36,7 @@ function createRoom(roomData, creatorPlayerId) {
             maxPlayers: roomData.maxPlayers || 5,
             roundTime: (roomData.roundTime || 5) * 60, // แปลงนาทีเป็นวินาที
             traitorOptional: roomData.traitorOptional !== undefined ? roomData.traitorOptional : true,
+            dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ (ต้องมี 5+ คน)
             locked: roomData.locked || false,
             password: roomData.password || null
         },
@@ -300,6 +301,16 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (updates.traitorOptional !== undefined) {
         room.settings.traitorOptional = updates.traitorOptional;
     }
+    
+    // อัปเดตโหมด 2 ผู้ทรยศ (ต้องมีผู้เล่น 5+ คนถึงจะเปิดได้)
+    if (updates.dualTraitorMode !== undefined) {
+        if (updates.dualTraitorMode && room.players.length < 5) {
+            // ไม่อนุญาตให้เปิดถ้าผู้เล่นไม่ถึง 5 คน
+            room.settings.dualTraitorMode = false;
+        } else {
+            room.settings.dualTraitorMode = updates.dualTraitorMode;
+        }
+    }
 
     if (updates.locked !== undefined) {
         room.settings.locked = updates.locked;
@@ -332,7 +343,10 @@ function getAllRooms() {
             maxPlayers: room.settings.maxPlayers,
             locked: room.settings.locked,
             admin: room.admin,
-            gameStatus: isInGame ? 'playing' : 'waiting' // เพิ่มสถานะเกม
+            gameStatus: isInGame ? 'playing' : 'waiting', // เพิ่มสถานะเกม
+            settings: {
+                dualTraitorMode: room.settings.dualTraitorMode || false
+            }
         };
     });
 }
