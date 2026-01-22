@@ -484,6 +484,17 @@ app.use(expressLayouts)
    .set('view engine', 'ejs')
    .set('layout', 'layouts/layout');
 
+// SEO: Serve robots.txt and sitemap.xml
+app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.sendFile(__dirname + '/public/robots.txt');
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    res.sendFile(__dirname + '/public/sitemap.xml');
+});
+
 // Middleware: Initialize player identity
 // ใช้ query parameter เท่านั้น (ไม่ใช้ cookie อีกต่อไป)
 app.use(async function(req, res, next) {

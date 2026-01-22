@@ -1,0 +1,11 @@
+# Robots.txt for Insider Game
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://insider-th.me/sitemap.xml
+
+# Block unnecessary paths
+Disallow: /socket.io/
+Disallow: /admin
+Disallow: /api/
