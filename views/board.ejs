@@ -74,7 +74,7 @@
         </div>
     </form>
     <script>
-    // นับถอยหลัง 30 วินาที
+    // นับถอยหลัง 30 วินาที (แบบเรียลไทม์ทุกครั้งที่แสดง chooseWord)
     (function() {
         var timer = 30;
         var timerText = document.getElementById('wordTimerText');
@@ -99,14 +99,33 @@
                 if (form) form.submit();
             }
         }
-        // เฉพาะเมื่อแสดง chooseWord เท่านั้น
-        document.addEventListener('DOMContentLoaded', function() {
-            var chooseWord = document.getElementById('chooseWord');
-            if (chooseWord && !chooseWord.classList.contains('hidden')) {
-                interval = setInterval(tick, 1000);
-                updateBar();
-            }
+        function startTimer() {
+            clearInterval(interval);
+            timer = 30;
+            if (timerText) timerText.textContent = timer;
+            updateBar();
+            interval = setInterval(tick, 1000);
+        }
+        // สังเกตการเปลี่ยน class ของ chooseWord เพื่อเริ่ม timer ทุกครั้งที่แสดง
+        var chooseWord = document.getElementById('chooseWord');
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class') {
+                    if (!chooseWord.classList.contains('hidden')) {
+                        startTimer();
+                    } else {
+                        clearInterval(interval);
+                    }
+                }
+            });
         });
+        if (chooseWord) {
+            observer.observe(chooseWord, { attributes: true });
+        }
+        // เริ่ม timer ถ้าแสดงอยู่ตอนโหลด
+        if (chooseWord && !chooseWord.classList.contains('hidden')) {
+            startTimer();
+        }
     })();
     </script>
 </div>
@@ -2796,7 +2815,7 @@ $(function() {
             } else { 
                 console.log('[Init] Others - showing wait message');
                 $("#waiting").removeClass('hidden').show();
-                $('#waiting p').html('กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...');
+                $('#waiting p').html('<span style="color:#fff;">กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...</span>');
             }
         }, 5000);
         
@@ -2969,7 +2988,7 @@ $(function() {
                 } else {
                     console.log('[newRole] Others - showing wait');
                     $("#waiting").removeClass('hidden').show();
-                    $('#waiting p').html('กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...');
+                    $('#waiting p').html('<span style="color:#fff;">กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...</span>');
                 }
             }, 5000);
         } else {
