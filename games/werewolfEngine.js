@@ -131,10 +131,6 @@ function sanitizeRoleSelection(roleIds) {
         sanitized.unshift('werewolf');
     }
 
-    if (!sanitized.includes('werewolf')) {
-        sanitized.unshift('werewolf');
-    }
-
     return sanitized;
 }
 
@@ -157,23 +153,38 @@ function getRolePlan(playerCount, settings = {}) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = ROLE_PLANS[normalizedCount] || ROLE_PLANS[3];
     const enabledRoleIds = getConfiguredRoleIds(settings);
+
+    if (enabledRoleIds.length > 0 && enabledRoleIds.length <= normalizedCount) {
+        const exactRoleIds = [...enabledRoleIds];
+
+        while (exactRoleIds.length < normalizedCount) {
+            exactRoleIds.push('villager');
+        }
+
+        return exactRoleIds.slice(0, normalizedCount).map(roleId => ROLE_DEFINITIONS[roleId]);
+    }
+
     const wolfSlotCount = basePlan.filter(isWerewolfRole).length;
     const plannedRoleIds = [];
     let missingSpecialSlots = 0;
     const selectedSpecialIds = [];
     const fallbackSpecialIds = [];
+    const enabledWolfIds = enabledRoleIds.filter(isWerewolfRole);
+    const basePlanWolfIds = basePlan.filter(isWerewolfRole);
+    const preferredPrimaryWolfId = basePlanWolfIds.includes('alphaWolf') && enabledWolfIds.includes('alphaWolf')
+        ? 'alphaWolf'
+        : (enabledWolfIds.includes('werewolf') ? 'werewolf' : (enabledWolfIds.includes('alphaWolf') ? 'alphaWolf' : 'werewolf'));
+    const fallbackWolfId = enabledWolfIds.includes('werewolf')
+        ? 'werewolf'
+        : (enabledWolfIds.includes('alphaWolf') ? 'alphaWolf' : 'werewolf');
 
-    if (wolfSlotCount > 1 && enabledRoleIds.includes('alphaWolf')) {
-        plannedRoleIds.push('alphaWolf');
-    } else {
-        plannedRoleIds.push('werewolf');
+    if (wolfSlotCount > 0) {
+        plannedRoleIds.push(preferredPrimaryWolfId);
     }
 
     while (plannedRoleIds.filter(isWerewolfRole).length < wolfSlotCount) {
-        plannedRoleIds.push('werewolf');
+        plannedRoleIds.push(fallbackWolfId);
     }
-
-    const specialIds = [];
 
     basePlan.forEach(roleId => {
         if (isWerewolfRole(roleId)) {
@@ -237,6 +248,7 @@ function createInitialState() {
             witchPoisons: {}
         },
         dayVotes: {},
+        discussionSkips: {},
         dayActionUsedBy: {},
         lastProtectedByBodyguard: {},
         lastResolvedNight: null,
@@ -322,6 +334,29 @@ function markPlayerDead(player, reason) {
     player.lastNightResult = reason || null;
 }
 
+function applySeerVision(room, seerId, targetPlayerId) {
+    const seer = getPlayer(room, seerId);
+    const target = getPlayer(room, targetPlayerId);
+    if (!seer || !target) {
+        return;
+    }
+
+    const seenRole = `${target.name} คือ ${target.roleInfo?.thaiName || target.role}`;
+    const seenEntry = {
+        dayNumber: room.gameState.dayNumber || 1,
+        targetPlayerId: target.playerId,
+        targetName: target.name,
+        roleName: target.roleInfo?.thaiName || target.role,
+        summary: seenRole
+    };
+
+    seer.lastSeenRole = seenRole;
+    seer.seerHistory = [
+        seenEntry,
+        ...(Array.isArray(seer.seerHistory) ? seer.seerHistory : []).filter(entry => Number(entry?.dayNumber) !== Number(seenEntry.dayNumber))
+    ].slice(0, 8);
+}
+
 function clearPlayerTransientState(room) {
     room.gameState.players.forEach(player => {
         player.lastNightResult = null;
@@ -341,6 +376,7 @@ function resetNightActions(room) {
 
 function resetDayState(room) {
     room.gameState.dayVotes = {};
+    room.gameState.discussionSkips = {};
     room.gameState.dayActionUsedBy = {};
     room.gameState.lastResolvedDay = null;
 }
@@ -360,16 +396,35 @@ function startNightPhase(room, incrementDay = true) {
     pushHistory(room, `คืนที่ ${room.gameState.dayNumber} เริ่มแล้ว`, 'night');
 }
 
-function startDayPhase(room) {
-    room.gameState.phase = 'day-vote';
+function startDiscussionPhase(room) {
+    room.gameState.phase = 'day-discussion';
     room.gameState.phaseEndsAt = null;
-    room.gameState.status = 'werewolf_day_vote';
+    room.gameState.status = 'werewolf_day_discussion';
     room.gameState.dayVotes = {};
+    room.gameState.discussionSkips = {};
     room.gameState.dayActionUsedBy = {};
     room.gameState.lastResolvedDay = null;
     room.gameState.lastAction = Date.now();
     syncAlivePlayerIds(room);
-    pushHistory(room, `กลางวันของวันที่ ${room.gameState.dayNumber} เริ่มขึ้นแล้ว ทุกคนเตรียมโหวต`, 'day');
+    pushHistory(room, `เช้าวันที่ ${room.gameState.dayNumber} เริ่มขึ้นแล้ว หมู่บ้านมีเวลาพูดคุยก่อนเปิดโหวต`, 'day');
+}
+
+function startDayPhase(room, trigger = 'discussion-ended') {
+    room.gameState.phase = 'day-vote';
+    room.gameState.phaseEndsAt = null;
+    room.gameState.status = 'werewolf_day_vote';
+    room.gameState.dayVotes = {};
+    room.gameState.discussionSkips = {};
+    room.gameState.dayActionUsedBy = {};
+    room.gameState.lastResolvedDay = null;
+    room.gameState.lastAction = Date.now();
+    syncAlivePlayerIds(room);
+
+    if (trigger === 'consensus-skip') {
+        pushHistory(room, `ทุกคนพร้อมใจกันข้ามช่วงคุยของวันที่ ${room.gameState.dayNumber} และเข้าสู่การโหวตทันที`, 'day');
+    } else {
+        pushHistory(room, `ช่วงคุยของวันที่ ${room.gameState.dayNumber} จบแล้ว ทุกคนเตรียมโหวต`, 'day');
+    }
 }
 
 function resetRoomGame(room) {
@@ -394,33 +449,71 @@ function assignRoles(room) {
     const roleIds = room.gameState.rolePlan.map(role => role.id);
     const players = room.gameState.players;
 
-    // Collect previous roles (from last round) to avoid repeats
-    const previousRoles = {};
-    players.forEach(p => {
-        if (p.role) previousRoles[p.playerId] = p.role;
-    });
+    function buildBestRoleAssignment(playerStates, availableRoleIds, previousRolesByPlayerId) {
+        const roleCounts = availableRoleIds.reduce((counts, roleId) => {
+            counts[roleId] = (counts[roleId] || 0) + 1;
+            return counts;
+        }, {});
+        const searchPlayers = shuffle(playerStates);
+        let bestAssignment = null;
+        let bestRepeatCount = Number.POSITIVE_INFINITY;
 
-    // Try up to 20 shuffles to find one where no player repeats their previous role
-    let bestShuffle = shuffle(roleIds);
-    let bestRepeatCount = players.length; // worst case
+        function backtrack(index, assignment, repeatCount) {
+            if (repeatCount >= bestRepeatCount) {
+                return;
+            }
 
-    for (let attempt = 0; attempt < 20; attempt++) {
-        const candidate = shuffle(roleIds);
-        let repeats = 0;
-        for (let i = 0; i < players.length; i++) {
-            if (previousRoles[players[i].playerId] === candidate[i]) {
-                repeats++;
+            if (index >= searchPlayers.length) {
+                bestAssignment = { ...assignment };
+                bestRepeatCount = repeatCount;
+                return;
+            }
+
+            const player = searchPlayers[index];
+            const previousRoleId = previousRolesByPlayerId[player.playerId] || null;
+            const uniqueRoleIds = shuffle(Object.keys(roleCounts).filter(roleId => roleCounts[roleId] > 0));
+            uniqueRoleIds.sort((left, right) => {
+                const leftPenalty = left === previousRoleId ? 1 : 0;
+                const rightPenalty = right === previousRoleId ? 1 : 0;
+                return leftPenalty - rightPenalty;
+            });
+
+            for (const roleId of uniqueRoleIds) {
+                roleCounts[roleId] -= 1;
+                assignment[player.playerId] = roleId;
+                backtrack(index + 1, assignment, repeatCount + (roleId === previousRoleId ? 1 : 0));
+                delete assignment[player.playerId];
+                roleCounts[roleId] += 1;
+
+                if (bestRepeatCount === 0) {
+                    return;
+                }
             }
         }
-        if (repeats < bestRepeatCount) {
-            bestRepeatCount = repeats;
-            bestShuffle = candidate;
+
+        backtrack(0, {}, 0);
+
+        if (bestAssignment) {
+            return bestAssignment;
         }
-        if (repeats === 0) break;
+
+        const fallbackRoleIds = shuffle(availableRoleIds);
+        return playerStates.reduce((assignment, playerState, index) => {
+            assignment[playerState.playerId] = fallbackRoleIds[index];
+            return assignment;
+        }, {});
     }
 
-    room.gameState.players = players.map((playerState, index) => {
-        const roleId = bestShuffle[index];
+    const previousRoles = players.reduce((result, playerState) => {
+        if (playerState.role) {
+            result[playerState.playerId] = playerState.role;
+        }
+        return result;
+    }, {});
+    const roleAssignmentByPlayerId = buildBestRoleAssignment(players, roleIds, previousRoles);
+
+    room.gameState.players = players.map(playerState => {
+        const roleId = roleAssignmentByPlayerId[playerState.playerId];
         const roleInfo = ROLE_DEFINITIONS[roleId];
         return {
             ...playerState,
@@ -439,24 +532,32 @@ function assignRoles(room) {
 }
 
 function startGame(room) {
-    // Save previous roles before reset so assignRoles can avoid repeats
-    const previousRoles = {};
-    if (room.gameState && room.gameState.players) {
-        room.gameState.players.forEach(p => {
-            if (p.role) previousRoles[p.playerId] = p.role;
-        });
+    const previousRoles = room.gameState && room.gameState.players
+        ? room.gameState.players.reduce((result, playerState) => {
+            if (playerState.role) {
+                result[playerState.playerId] = playerState.role;
+            }
+            return result;
+        }, {})
+        : { ...(room.lastWerewolfRolesByPlayerId || {}) };
+
+    if (Object.keys(previousRoles).length === 0 && room.lastWerewolfRolesByPlayerId) {
+        Object.assign(previousRoles, room.lastWerewolfRolesByPlayerId);
     }
 
     room.gameState = resetRoomGame(room);
 
-    // Restore previous roles onto fresh player states
-    room.gameState.players.forEach(p => {
-        if (previousRoles[p.playerId]) {
-            p.role = previousRoles[p.playerId];
+    room.gameState.players.forEach(playerState => {
+        if (previousRoles[playerState.playerId]) {
+            playerState.role = previousRoles[playerState.playerId];
         }
     });
 
     assignRoles(room);
+    room.lastWerewolfRolesByPlayerId = room.gameState.players.reduce((result, playerState) => {
+        result[playerState.playerId] = playerState.role;
+        return result;
+    }, {});
     room.gameState.dayNumber = 0;
     room.gameState.winner = null;
     room.gameState.history = [];
@@ -606,20 +707,7 @@ function resolveNight(room) {
         if (!targetId || targetId === SKIP_TARGET_ID) {
             return;
         }
-        const seer = getPlayer(room, seerId);
-        const target = getPlayer(room, targetId);
-        if (seer && target) {
-            const seenRole = `${target.name} คือ ${target.roleInfo?.thaiName || target.role}`;
-            const seenEntry = {
-                dayNumber: room.gameState.dayNumber || 1,
-                targetPlayerId: target.playerId,
-                targetName: target.name,
-                roleName: target.roleInfo?.thaiName || target.role,
-                summary: seenRole
-            };
-            seer.lastSeenRole = seenRole;
-            seer.seerHistory = [seenEntry, ...(Array.isArray(seer.seerHistory) ? seer.seerHistory : [])].slice(0, 8);
-        }
+        applySeerVision(room, seerId, targetId);
     });
 
     Object.entries(room.gameState.nightActions.bodyguardProtects).forEach(([guardId, protectedId]) => {
@@ -656,8 +744,19 @@ function resolveNight(room) {
         return { resolved: true, winner: room.gameState.winner };
     }
 
-    startDayPhase(room);
+    startDiscussionPhase(room);
     return { resolved: true, winner: null };
+}
+
+function getDiscussionSkipCount(room) {
+    return Object.keys(room.gameState.discussionSkips || {}).filter(playerId => {
+        const player = getPlayer(room, playerId);
+        return !!player && player.alive !== false;
+    }).length;
+}
+
+function canSkipDiscussion(room) {
+    return getDiscussionSkipCount(room) >= getAlivePlayers(room).length;
 }
 
 function getCompletedDayActorIds(room) {
@@ -756,6 +855,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 throw new Error('Seer ตรวจตัวเองไม่ได้');
             }
             room.gameState.nightActions.seerChecks[actorId] = targetPlayerId;
+            applySeerVision(room, actorId, targetPlayerId);
             break;
         case 'doctor':
             if (isSkip) {
@@ -835,6 +935,32 @@ function submitDayVote(room, actorId, targetPlayerId) {
     room.gameState.lastAction = Date.now();
 
     return { resolved: false };
+}
+
+function submitDiscussionSkip(room, actorId) {
+    if (room.gameState.phase !== 'day-discussion') {
+        throw new Error('ยังไม่ใช่ช่วงพูดคุยตอนเช้า');
+    }
+
+    const actor = getPlayer(room, actorId);
+    if (!actor || actor.alive === false) {
+        throw new Error('ผู้เล่นนี้ไม่สามารถกดข้ามได้');
+    }
+
+    room.gameState.discussionSkips[actorId] = true;
+    room.gameState.lastAction = Date.now();
+
+    if (canSkipDiscussion(room)) {
+        startDayPhase(room, 'consensus-skip');
+        return { resolved: true, skippedToVote: true };
+    }
+
+    return {
+        resolved: false,
+        skippedToVote: false,
+        skipCount: getDiscussionSkipCount(room),
+        totalAlive: getAlivePlayers(room).length
+    };
 }
 
 function useRevealAction(room, actorId, targetPlayerId) {
@@ -960,6 +1086,11 @@ function autoResolvePhase(room) {
         if (canResolveNight(room)) {
             return { ...resolveNight(room), autoResolved: true };
         }
+    }
+
+    if (room.gameState.phase === 'day-discussion') {
+        startDayPhase(room, 'timeout');
+        return { resolved: true, winner: null, autoResolved: true, skippedToVote: true };
     }
 
     if (room.gameState.phase === 'day-vote') {
@@ -1128,6 +1259,28 @@ function getDayActionOptions(room, viewer) {
         canReveal: viewer.role === 'revealer' && !viewer.revealerUsed,
         revealUsed: !!viewer.revealerUsed,
         revealTargets: viewer.role === 'revealer' && !viewer.revealerUsed ? targets : []
+    };
+}
+
+function getDiscussionActionState(room, viewer) {
+    const totalAlive = getAlivePlayers(room).length;
+    const skipCount = getDiscussionSkipCount(room);
+    const hasSkipped = !!room.gameState.discussionSkips?.[viewer?.playerId];
+
+    if (!viewer || viewer.alive === false || room.gameState.phase !== 'day-discussion') {
+        return {
+            canSkip: false,
+            hasSkipped: false,
+            skipCount,
+            totalAlive
+        };
+    }
+
+    return {
+        canSkip: !hasSkipped,
+        hasSkipped,
+        skipCount,
+        totalAlive
     };
 }
 
@@ -1308,7 +1461,7 @@ function buildClientState(room, viewerPlayerId) {
         status: room.gameState.status || '',
         dayNumber: room.gameState.dayNumber || 0,
         winner: room.gameState.winner || null,
-        morningAnnouncement: room.gameState.phase === 'day-vote' ? buildMorningAnnouncement(room) : null,
+        morningAnnouncement: room.gameState.phase === 'day-discussion' ? buildMorningAnnouncement(room) : null,
         dayResolutionAnnouncement: room.gameState.phase === 'night' ? buildDayResolutionAnnouncement(room) : null,
         playerRole: viewer ? {
             id: viewer.role,
@@ -1354,6 +1507,7 @@ function buildClientState(room, viewerPlayerId) {
             completedDayDecisions: Array.from(getCompletedDayActorIds(room)).length,
             requiredDayDecisions: getAlivePlayers(room).length,
             nightActions: getNightActionOptions(room, viewer),
+            discussionActions: getDiscussionActionState(room, viewer),
             dayActions: getDayActionOptions(room, viewer)
         }
     };
@@ -1374,6 +1528,7 @@ module.exports = {
     resetRoomGame,
     startGame,
     submitNightAction,
+    submitDiscussionSkip,
     submitDayVote,
     useRevealAction,
     autoResolvePhase,

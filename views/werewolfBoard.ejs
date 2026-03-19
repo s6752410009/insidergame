@@ -405,7 +405,7 @@
     const roomId = '<%= room.roomId %>';
     const playerId = '<%= player.playerId %>';
     const myPlayerName = '<%= player.name %>';
-    const isRoomAdmin = <%= room.admin ? 'true' : 'false' %>;
+    const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
     const initialChatHistory = <%- JSON.stringify(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
     let currentState = <%- JSON.stringify(typeof werewolfState !== 'undefined' ? werewolfState : {}) %>;
     let allowNavigation = false;
@@ -458,6 +458,7 @@
       const icons = {
         lobby: '🏕️',
         night: '🌙',
+        'day-discussion': '💬',
         'day-vote': '☀️',
         finished: '🏁'
       };
@@ -613,7 +614,8 @@
       const labels = {
         lobby: '🏕️ รวมตัวก่อนเกม',
         night: '🌙 กลางคืน',
-        'day-vote': '☀️ เวลากลางวัน',
+        'day-discussion': '💬 ช่วงคุยตอนเช้า',
+        'day-vote': '🗳️ ช่วงโหวตกลางวัน',
         finished: '🏁 จบเกม'
       };
 
@@ -774,7 +776,7 @@
 
       stopAmbient(0.45);
 
-      if (phase !== 'night' && phase !== 'day-vote') {
+      if (phase !== 'night' && phase !== 'day-discussion' && phase !== 'day-vote') {
         return;
       }
 
@@ -821,7 +823,7 @@
       secondary.start(now);
       lfo.start(now);
 
-      const targetGain = phase === 'night' ? 0.13 : 0.08;
+      const targetGain = phase === 'night' ? 0.13 : (phase === 'day-discussion' ? 0.07 : 0.08);
       masterGain.gain.exponentialRampToValueAtTime(targetGain, now + 1.6);
 
       ambientController = {
@@ -837,7 +839,7 @@
       const phase = state?.phase;
       const winner = state?.winner;
 
-      if (winner || (phase !== 'night' && phase !== 'day-vote')) {
+      if (winner || (phase !== 'night' && phase !== 'day-discussion' && phase !== 'day-vote')) {
         stopAmbient(0.8);
         return;
       }
@@ -1048,6 +1050,78 @@
 
     function classifyChatGroup(data) {
       return classifyMessageType(data) === 'player' ? 'player' : 'system';
+    }
+
+    function getChatComposerState(state) {
+      const selfPlayer = (state?.players || []).find(function(player) {
+        return player.isSelf;
+      });
+      const roleId = state?.playerRole?.id || null;
+      const phase = state?.phase || 'lobby';
+      const isAlive = !selfPlayer || selfPlayer.alive;
+      const canWolfNightChat = phase === 'night' && isAlive && (roleId === 'werewolf' || roleId === 'alphaWolf');
+      const chatLocked = Boolean(state?.winner)
+        ? false
+        : (!isAlive || (phase === 'night' && !canWolfNightChat));
+
+      return {
+        isAlive,
+        phase,
+        canWolfNightChat,
+        chatLocked,
+        adminCommandOnly: Boolean(isRoomAdmin && chatLocked)
+      };
+    }
+
+    function syncChatComposerState(state) {
+      const composerState = getChatComposerState(state);
+      const placeholder = !composerState.isAlive
+        ? (composerState.adminCommandOnly
+          ? 'คุณตายแล้ว แชทปกติถูกปิด แต่หัวหน้าห้องยังใช้ /m ได้'
+          : 'คุณตายแล้ว จึงไม่สามารถพิมพ์ข้อความได้')
+        : (composerState.canWolfNightChat
+          ? 'แชทลับหมาป่า ใช้คุยกันเฉพาะทีมหมาป่าในตอนกลางคืน'
+          : (composerState.phase === 'night'
+            ? (composerState.adminCommandOnly
+              ? 'ตอนกลางคืนหมู่บ้านคุยไม่ได้ แต่หัวหน้าห้องยังใช้ /m ได้'
+              : 'ตอนกลางคืนหมู่บ้านยังคุยไม่ได้')
+            : 'พิมพ์ข้อความของคุณ...'));
+
+      $('#werewolfChatInput').prop('disabled', composerState.chatLocked && !composerState.adminCommandOnly).attr('placeholder', placeholder);
+      $('#sendWerewolfChat').prop('disabled', composerState.chatLocked && !composerState.adminCommandOnly);
+    }
+
+    function showAdminReveal(data) {
+      if (!data) {
+        return;
+      }
+
+      const phaseText = phaseLabel(data.phase || 'lobby');
+      const playerRows = (data.players || []).map(function(player) {
+        const statusText = player.alive ? 'ยังอยู่' : 'ตายแล้ว';
+        const teamText = teamEmoji(player.team) + ' ' + escapeHtml(player.team || '-');
+        return '<div style="display:flex; justify-content:space-between; gap:12px; padding:10px 12px; margin-top:8px; border-radius:12px; background:rgba(255,255,255,0.06); text-align:left;">'
+          + '<div><div style="font-weight:700; color:#fff;">' + escapeHtml(player.name) + '</div><div style="color:#cbd5e1; font-size:0.9rem;">'
+          + escapeHtml(player.roleName || player.roleId || '-') + ' • ' + teamText + '</div></div>'
+          + '<div style="align-self:center; color:' + (player.alive ? '#f8d189' : '#94a3b8') + '; font-weight:700; white-space:nowrap;">' + statusText + '</div></div>';
+      }).join('');
+
+      const html = '<div style="text-align:left;">'
+        + '<div style="margin-bottom:12px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,0.06);">'
+        + '<div style="font-weight:700; color:#fff;">ห้อง: ' + escapeHtml(data.roomName || roomId) + '</div>'
+        + '<div style="color:#cbd5e1; margin-top:4px;">เฟส: ' + escapeHtml(phaseText) + ' | วันที่ ' + escapeHtml(String(data.dayNumber || 0)) + '</div>'
+        + '</div>'
+        + '<div style="max-height:50vh; overflow:auto; padding-right:4px;">' + (playerRows || '<div style="color:#cbd5e1;">ยังไม่มีข้อมูลผู้เล่น</div>') + '</div>'
+        + '</div>';
+
+      Swal.fire({
+        title: 'ข้อมูลลับ /m',
+        html: html,
+        width: 640,
+        confirmButtonText: 'ปิด',
+        background: '#101726',
+        color: '#f8fafc'
+      });
     }
 
     function applyChatFilter() {
@@ -1436,6 +1510,23 @@
       });
     }
 
+    function submitDiscussionSkip() {
+      if (currentState.phase !== 'day-discussion') {
+        socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
+        return;
+      }
+      if (pendingActionSubmission) {
+        return;
+      }
+      setActionButtonsPending(true);
+      socket.emit('werewolf_skipDiscussion', { roomId: roomId, playerId: playerId }, function(response) {
+        if (!response || !response.success) {
+          setActionButtonsPending(false);
+          Swal.fire({ icon: 'error', title: 'กดข้ามไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    }
+
     function submitRevealAction(targetPlayerId) {
       if (currentState.phase !== 'day-vote') {
         socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
@@ -1494,6 +1585,10 @@
       submitDayVote(targetPlayerId);
     };
 
+    window.skipDiscussionPhase = function() {
+      submitDiscussionSkip();
+    };
+
     window.selectRevealTarget = function(targetPlayerId) {
       Swal.fire({
         icon: 'warning',
@@ -1542,6 +1637,31 @@
             `);
           });
         }
+        syncMobileGamePanel();
+        return;
+      }
+
+      if (phase === 'day-discussion') {
+        const discussion = actionState?.discussionActions || {};
+        const skipCount = Number(discussion.skipCount || 0);
+        const totalAlive = Number(discussion.totalAlive || 0);
+        const statusText = totalAlive > 0
+          ? `ตอนนี้มี ${skipCount}/${totalAlive} คนกดพร้อมข้ามช่วงคุยแล้ว ถ้าครบทุกคนจะเปิดโหวตทันที`
+          : 'กำลังรอระบบอัปเดตจำนวนผู้เล่นที่ยังอยู่ในเกม';
+        const buttonHtml = discussion.canSkip
+          ? '<button class="action-btn" onclick="skipDiscussionPhase()">⏭️ พร้อมแล้ว ข้ามไปโหวต</button>'
+          : (discussion.hasSkipped
+            ? '<button class="action-btn selected" disabled>✅ คุณกดพร้อมแล้ว</button>'
+            : '<button class="action-btn" disabled>⏳ รอช่วงพูดคุย</button>');
+
+        $root.append(`
+          <div class="history-row" style="display:block;">
+            <div class="action-title"><span>💬</span><strong>ช่วงคุยก่อนโหวต</strong></div>
+            <div class="subtle">คุยหาหลักฐาน จับพิรุธ และค่อยตัดสินใจว่าจะเปิดโหวตทันทีหรือปล่อยให้เวลาคุยหมดเอง</div>
+            <div class="highlight" style="margin-top:8px;">${escapeHtml(statusText)}</div>
+            <div style="margin-top:12px;">${buttonHtml}</div>
+          </div>
+        `);
         syncMobileGamePanel();
         return;
       }
@@ -1617,10 +1737,17 @@
         };
       }
 
-      if (state.phase === 'day-vote') {
+      if (state.phase === 'day-discussion') {
         return {
           title: `☀️ เช้าวันที่ ${state.dayNumber || 1}`,
-          subtitle: 'คุยกันก่อน แล้วค่อยโหวตคนที่น่าสงสัยที่สุด'
+          subtitle: 'เปิดช่วงคุยก่อนโหวต ถ้าทุกคนพร้อมสามารถกดข้ามไปเปิดโหวตได้ทันที'
+        };
+      }
+
+      if (state.phase === 'day-vote') {
+        return {
+          title: `🗳️ เริ่มโหวตวันที่ ${state.dayNumber || 1}`,
+          subtitle: 'ช่วงพูดคุยจบแล้ว ทุกคนลงคะแนนแบบเปิดได้เลย'
         };
       }
 
@@ -1647,7 +1774,7 @@
         return [];
       }
 
-      if (state.phase === 'day-vote' && state.morningAnnouncement) {
+      if (state.phase === 'day-discussion' && state.morningAnnouncement) {
         const morningSound = state.morningAnnouncement.outcomeType === 'death'
           ? 'morning-death'
           : (state.morningAnnouncement.outcomeType === 'saved' ? 'morning-saved' : 'morning-peaceful');
@@ -1663,6 +1790,11 @@
             title: state.morningAnnouncement.lead,
             subtitle: state.morningAnnouncement.detail,
             duration: 3800
+          },
+          {
+            title: phaseCopy.title,
+            subtitle: phaseCopy.subtitle,
+            duration: 2600
           }
         ];
       }
@@ -1774,6 +1906,7 @@
       syncHistoryToChat(currentState.history || []);
       renderNotes(currentState.personalNotes || {});
       renderActionPanels(currentState.actionState || {}, currentState.phase, currentState.winner);
+      syncChatComposerState(currentState);
       syncAmbientForState(currentState);
       syncMobileHeaderState();
       syncMobileGamePanel();
@@ -1911,6 +2044,30 @@
       appendChatMessage(data);
     });
 
+    socket.on('werewolfChatSync', function(entries) {
+      $('#werewolfChatMessages').empty();
+      renderedMessageIds.clear();
+      (entries || []).forEach(function(entry) {
+        appendChatMessage(entry, { silent: true });
+      });
+      applyChatFilter();
+      scrollChatToBottom();
+    });
+
+    socket.on('chatError', function(data) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ส่งข้อความไม่ได้',
+        text: data?.message || 'ข้อความนี้ส่งไม่ได้ในสถานะปัจจุบัน',
+        background: '#1e1e1e',
+        color: '#fff'
+      });
+    });
+
+    socket.on('werewolf_admin_roles', function(data) {
+      showAdminReveal(data);
+    });
+
     socket.on('restartGame', function() {
       Swal.fire({
         icon: 'info',
@@ -1977,6 +2134,37 @@
       const $input = $('#werewolfChatInput');
       const message = $input.val().trim();
       if (!message) {
+        return;
+      }
+
+      if (message === '/m') {
+        socket.emit('werewolf_admin_request_roles', { roomId: roomId }, function(response) {
+          if (!response || !response.success) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'ใช้ /m ไม่ได้',
+              text: response?.error || 'คำสั่งนี้ใช้ได้เฉพาะหัวหน้าห้องเท่านั้น',
+              background: '#1e1e1e',
+              color: '#fff'
+            });
+          }
+        });
+        setReplyPreview(null);
+        $input.val('').focus();
+        return;
+      }
+
+      const composerState = getChatComposerState(currentState);
+      if (composerState.chatLocked) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ส่งข้อความไม่ได้',
+          text: !composerState.isAlive
+            ? 'คุณตายแล้ว จึงส่งข้อความในเกมนี้ไม่ได้'
+            : 'ตอนกลางคืนมีเฉพาะหมาป่าที่ยังมีชีวิตเท่านั้นที่คุยกันเองได้',
+          background: '#1e1e1e',
+          color: '#fff'
+        });
         return;
       }
 

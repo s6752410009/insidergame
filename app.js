@@ -547,6 +547,107 @@ function buildWerewolfStatePayload(room, playerId) {
     return engine.buildClientState(room, playerId);
 }
 
+function buildWerewolfAdminRevealPayload(room) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return null;
+    }
+
+    const engine = getGameEngine('werewolf');
+    const roleDefinitions = engine.ROLE_DEFINITIONS || {};
+    const players = Array.isArray(room.gameState?.players)
+        ? room.gameState.players.map(player => {
+            const roleInfo = player.roleInfo || roleDefinitions[player.role] || null;
+            return {
+                playerId: player.playerId,
+                name: player.name || player.playerName || resolveDisplayPlayerName(player.playerId, 'Unknown'),
+                roleId: player.role || '',
+                roleName: roleInfo?.thaiName || player.role || '-',
+                team: roleInfo?.team || '-',
+                alive: player.alive !== false
+            };
+        })
+        : [];
+
+    return {
+        roomId: room.roomId,
+        roomName: room.name,
+        phase: room.gameState?.phase || 'lobby',
+        dayNumber: Number(room.gameState?.dayNumber || 0),
+        players
+    };
+}
+
+function isWerewolfNightChatEligible(room, playerId) {
+    if (!room || room.settings.gameMode !== 'werewolf' || room.gameState?.phase !== 'night' || !playerId) {
+        return false;
+    }
+
+    const gamePlayer = room.gameState.players.find(player => player.playerId === playerId);
+    return !!gamePlayer && gamePlayer.alive !== false && ['werewolf', 'alphaWolf'].includes(gamePlayer.role);
+}
+
+function buildWerewolfChatHistory(room, playerId) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return room?.chatHistory || [];
+    }
+
+    const publicHistory = Array.isArray(room.chatHistory) ? room.chatHistory : [];
+    const wolfHistory = isWerewolfNightChatEligible(room, playerId) && Array.isArray(room.werewolfChatHistory)
+        ? room.werewolfChatHistory
+        : [];
+
+    return [...publicHistory, ...wolfHistory].sort((left, right) => {
+        const leftOrder = Number(String(left?.messageId || '').replace(/[^0-9]/g, '')) || 0;
+        const rightOrder = Number(String(right?.messageId || '').replace(/[^0-9]/g, '')) || 0;
+        return leftOrder - rightOrder;
+    });
+}
+
+function emitWerewolfChatHistory(room, targetSocketId, playerId) {
+    if (!room || room.settings.gameMode !== 'werewolf' || !targetSocketId) {
+        return;
+    }
+
+    io.to(targetSocketId).emit('werewolfChatSync', buildWerewolfChatHistory(room, playerId));
+}
+
+function sendWerewolfNightTeamMessage(io, room, player, message, replyTo = null) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return;
+    }
+
+    const messageId = `msg-${nextMessageId++}`;
+    const payload = {
+        messageId,
+        message,
+        playerName: player.playerName,
+        color: player.color,
+        playerId: player.playerId,
+        avatar: player.avatar || '👤',
+        messageType: 'wolf-team',
+        timestamp: new Date().toLocaleTimeString('th-TH', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Bangkok'
+        }),
+        replyTo
+    };
+
+    if (!Array.isArray(room.werewolfChatHistory)) {
+        room.werewolfChatHistory = [];
+    }
+    room.werewolfChatHistory.push(payload);
+    room.werewolfChatHistory = room.werewolfChatHistory.slice(-100);
+
+    room.players.forEach(roomPlayer => {
+        if (roomPlayer.socketId && isWerewolfNightChatEligible(room, roomPlayer.playerId)) {
+            io.to(roomPlayer.socketId).emit('newMessage', payload);
+        }
+    });
+}
+
 function finalizeWerewolfGameIfNeeded(room) {
     if (!room || room.settings.gameMode !== 'werewolf' || !room.gameState) {
         return;
@@ -675,7 +776,7 @@ function syncWerewolfPhaseTimer(room) {
     }
 
     const phase = room.gameState.phase;
-    const activePhase = phase === 'night' || phase === 'day-vote';
+    const activePhase = phase === 'night' || phase === 'day-discussion' || phase === 'day-vote';
     if (!activePhase || room.gameState.winner) {
         clearWerewolfPhaseTimer(room.roomId);
         return;
@@ -688,7 +789,16 @@ function syncWerewolfPhaseTimer(room) {
 
     clearWerewolfPhaseTimer(room.roomId, false);
 
-    const durationMs = Math.max(15000, (Number(room.settings.roundTime) || 300) * 1000);
+    const roundDurationMs = Math.max(15000, (Number(room.settings.roundTime) || 300) * 1000);
+    const minVoteDurationMs = 7000;
+    const discussionDurationMs = Math.min(
+        Math.max(8000, Math.round(roundDurationMs * 0.55)),
+        Math.max(8000, roundDurationMs - minVoteDurationMs)
+    );
+    const voteDurationMs = Math.max(minVoteDurationMs, roundDurationMs - discussionDurationMs);
+    const durationMs = phase === 'night'
+        ? roundDurationMs
+        : (phase === 'day-discussion' ? discussionDurationMs : voteDurationMs);
     room.gameState.phaseEndsAt = Date.now() + durationMs;
 
     const timeoutId = setTimeout(() => {
@@ -710,7 +820,9 @@ function syncWerewolfPhaseTimer(room) {
                 io,
                 currentRoom.roomId,
                 'System',
-                phase === 'night' ? 'หมดคืนแล้ว เกมกำลังพาเข้าสู่ช่วงถัดไป' : 'หมดเวลาคุยแล้ว เกมกำลังสรุปผลโหวต',
+                phase === 'night'
+                    ? 'หมดคืนแล้ว เกมกำลังพาเข้าสู่ช่วงเช้า'
+                    : (phase === 'day-discussion' ? 'หมดเวลาพูดคุยแล้ว เปิดให้ทุกคนโหวตทันที' : 'หมดเวลาโหวตแล้ว เกมกำลังสรุปผลโหวต'),
                 '#95a5a6'
             );
 
@@ -1172,7 +1284,7 @@ app.get('/game/:roomId', async function(req, res) {
                 settings: room.settings
             },
             werewolfState: buildWerewolfStatePayload(room, playerId),
-            chatHistory: room.chatHistory || []
+            chatHistory: buildWerewolfChatHistory(room, playerId)
         });
     }
 
@@ -2739,6 +2851,7 @@ io.sockets.on('connection', function(socket) {
             if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
+                    emitWerewolfChatHistory(room, socket.id, playerId);
                 } else {
                     io.to(socket.id).emit('newRole', {
                         players: room.gameState.players,
@@ -2770,6 +2883,30 @@ io.sockets.on('connection', function(socket) {
 
         syncWerewolfPhaseTimer(room);
         emitWerewolfState(room, socket.id, playerId);
+    });
+
+    socket.on('werewolf_admin_request_roles', function(data, callback) {
+        const roomId = data?.roomId || socket.roomId;
+        const room = roomManager.getRoom(roomId);
+
+        if (!room || room.settings.gameMode !== 'werewolf') {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: 'ไม่พบห้อง Werewolf' });
+            }
+            return;
+        }
+
+        if (!isAdminSocket(room, socket)) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: 'คำสั่งนี้ใช้ได้เฉพาะหัวหน้าห้องเท่านั้น' });
+            }
+            return;
+        }
+
+        io.to(socket.id).emit('werewolf_admin_roles', buildWerewolfAdminRevealPayload(room));
+        if (typeof callback === 'function') {
+            callback({ success: true });
+        }
     });
 
     socket.on('werewolf_submitNightAction', function(data, callback) {
@@ -2819,6 +2956,34 @@ io.sockets.on('connection', function(socket) {
 
             const werewolfEngine = getGameEngine('werewolf');
             const result = werewolfEngine.submitDayVote(room, playerId, targetPlayerId);
+            emitWerewolfRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('werewolf_skipDiscussion', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!playerId) {
+                throw new Error('ข้อมูลการกดข้ามไม่ครบ');
+            }
+
+            const werewolfEngine = getGameEngine('werewolf');
+            const result = werewolfEngine.submitDiscussionSkip(room, playerId);
             emitWerewolfRoomState(room);
 
             if (typeof callback === 'function') {
@@ -2961,6 +3126,7 @@ io.sockets.on('connection', function(socket) {
                     clearWerewolfTransitionTimer(roomId);
                     werewolfEngine.startGame(currentRoom);
                     currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+                    currentRoom.werewolfChatHistory = [];
 
                     io.to(roomId).emit('gameStarting', { roomId: roomId });
                     currentOnlinePlayers.forEach(p => {
@@ -3409,6 +3575,8 @@ io.sockets.on('connection', function(socket) {
 
         const player = playerManager.getPlayer(playerId);
         if (!player) return;
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
         roomManager.markPlayerActive(roomId, playerId);
 
         // XSS Protection: sanitize message (escape HTML special chars only, preserve Thai/Unicode)
@@ -3423,6 +3591,29 @@ io.sockets.on('connection', function(socket) {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+
+        if (room.settings.gameMode === 'werewolf') {
+            const gamePlayer = room.gameState?.players?.find(candidate => candidate.playerId === playerId);
+            if (!gamePlayer) {
+                io.to(socket.id).emit('chatError', { message: 'ไม่พบสถานะผู้เล่นในเกม Werewolf' });
+                return;
+            }
+
+            if (gamePlayer.alive === false && !room.gameState?.winner) {
+                io.to(socket.id).emit('chatError', { message: 'คุณตายแล้ว จึงส่งข้อความในเกมนี้ไม่ได้' });
+                return;
+            }
+
+            if (room.gameState?.phase === 'night') {
+                if (!isWerewolfNightChatEligible(room, playerId)) {
+                    io.to(socket.id).emit('chatError', { message: 'ตอนกลางคืนมีเฉพาะหมาป่าที่ยังมีชีวิตเท่านั้นที่คุยกันเองได้' });
+                    return;
+                }
+
+                sendWerewolfNightTeamMessage(io, room, player, safeMessage, data.replyTo);
+                return;
+            }
+        }
 
         sendChatMessageToRoom(io, roomId, player.playerName, safeMessage, player.color, data.replyTo, playerId, player.avatar || '👤');
     });

@@ -686,6 +686,16 @@ function resetRoomGame(roomId) {
     if (!room) {
         return { success: false, error: 'Room not found' };
     }
+
+    if (room.settings.gameMode === 'werewolf' && room.gameState && Array.isArray(room.gameState.players)) {
+        room.lastWerewolfRolesByPlayerId = room.gameState.players.reduce((result, playerState) => {
+            if (playerState.role) {
+                result[playerState.playerId] = playerState.role;
+            }
+            return result;
+        }, {});
+    }
+
     const gameEngine = getGameEngine(room.settings.gameMode);
     room.gameState = gameEngine.resetRoomGame(room);
     room.rejoinableGamePlayers = new Map();

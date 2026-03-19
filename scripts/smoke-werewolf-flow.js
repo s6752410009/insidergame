@@ -267,10 +267,31 @@ async function submitDayVote(client, roomId, targetPlayerId) {
     return response;
 }
 
+async function submitDiscussionSkip(client, roomId) {
+    const response = await emitAck(client.socket, 'werewolf_skipDiscussion', {
+        roomId,
+        playerId: client.playerId
+    }, EVENT_TIMEOUT_MS);
+
+    assert(response && response.success, `${client.label} discussion skip failed: ${response?.error || 'unknown error'}`);
+    return response;
+}
+
 async function submitConsensusVote(clients, roomId, targetPlayerId) {
     for (const client of clients) {
         const voteTargetId = client.playerId === targetPlayerId ? '__skip__' : targetPlayerId;
         await submitDayVote(client, roomId, voteTargetId);
+    }
+}
+
+async function skipDiscussionForAlive(clients, roomId) {
+    for (const client of clients) {
+        const player = getPlayerView(client.lastState, client.playerId);
+        if (!player || !player.alive) {
+            continue;
+        }
+
+        await submitDiscussionSkip(client, roomId);
     }
 }
 
@@ -379,9 +400,14 @@ async function main() {
             }
         }
 
-        await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, null, 30000);
+        await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, null, 30000);
 
-        console.log('6. Day 1: vote out a regular villager to keep Witch and Fool alive');
+        console.log('6. Discussion 1: everyone skips to open voting early');
+        checkpoint = createStateCheckpoint(clients);
+        await skipDiscussionForAlive(clients, roomId);
+        await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 1, 30000);
+
+        console.log('7. Day 1: vote out a regular villager to keep Witch and Fool alive');
         const dayOneTargetClient = pickDayOneElimination(roleAssignments);
         assert(dayOneTargetClient, 'Could not find a safe Day 1 elimination target');
         assert(dayOneTargetClient.playerId !== witchClient.playerId, 'Day 1 target should not be Witch');
@@ -396,7 +422,7 @@ async function main() {
 
         await waitForPhaseAfter(clients, roomId, 'night', checkpoint, payload => payload.dayNumber === 2, 30000);
 
-        console.log('7. Night 2: wolves target Fool and Witch spends heal');
+        console.log('8. Night 2: wolves target Fool and Witch spends heal');
         const foolInWolfTargets = wolfClients.some(client => {
             const actions = client.lastState?.actionState?.nightActions || [];
             const killAction = actions.find(action => action.type === 'night-kill');
@@ -441,14 +467,21 @@ async function main() {
             }
         }
 
+        const dayTwoDiscussionStates = await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, payload => payload.dayNumber === 2, 30000);
+        const dayTwoDiscussionState = dayTwoDiscussionStates[0];
+        const discussionActions = dayTwoDiscussionState.actionState?.discussionActions || {};
+        assert(discussionActions.skipCount === 0, 'Discussion skip count should reset at the start of a new morning');
+        assert(discussionActions.totalAlive >= 1, 'Discussion state should report alive players');
+        assert(dayTwoDiscussionState.morningAnnouncement && dayTwoDiscussionState.morningAnnouncement.outcomeType === 'immune', 'Night 2 should announce Fool immunity');
+        assert(/คนบ้า/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should explain Fool immunity');
+        checkpoint = createStateCheckpoint(clients);
+        await skipDiscussionForAlive(clients, roomId);
         const dayTwoStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 2, 30000);
         const dayTwoState = dayTwoStates[0];
-        assert(dayTwoState.morningAnnouncement && dayTwoState.morningAnnouncement.outcomeType === 'immune', 'Night 2 should announce Fool immunity');
-        assert(/คนบ้า/.test(dayTwoState.morningAnnouncement.detail || ''), 'Morning announcement should explain Fool immunity');
         const witchDayTwoState = dayTwoStates.find(state => state.playerRole && state.playerRole.id === 'witch');
         assert(witchDayTwoState && Array.isArray(witchDayTwoState.personalNotes?.roleNotes) && witchDayTwoState.personalNotes.roleNotes.some(note => /ใช้ยาฟื้นไปแล้ว/.test(note)), 'Witch heal usage should be reflected in personal notes');
 
-        console.log('8. Day 2: vote out Doctor to keep Fool for final solo-win test');
+        console.log('9. Day 2: vote out Doctor to keep Fool for final solo-win test');
         const dayTwoTargetClient = pickClientByRoleOrder(roleAssignments, ['doctor', 'seer', 'bodyguard', 'mayor', 'revealer']);
         assert(dayTwoTargetClient, 'Could not find a safe Day 2 elimination target');
         assert(dayTwoTargetClient.playerId !== foolClient.playerId, 'Day 2 target should not be Fool yet');
@@ -463,7 +496,7 @@ async function main() {
 
         await waitForPhaseAfter(clients, roomId, 'night', checkpoint, payload => payload.dayNumber === 3, 30000);
 
-        console.log('9. Night 3: wolves kill Seer, Witch poisons one wolf');
+        console.log('10. Night 3: wolves kill Seer, Witch poisons one wolf');
         const nightThreeTargetClient = pickClientByRoleOrder(roleAssignments, ['seer', 'doctor', 'bodyguard', 'mayor', 'revealer']);
         assert(nightThreeTargetClient && getPlayerView(creator.lastState, nightThreeTargetClient.playerId)?.alive, 'Need a living Night 3 target for wolves');
         const poisonWolfClient = wolfClients.find(client => client.playerId !== wolfClients[0].playerId) || wolfClients[0];
@@ -501,12 +534,15 @@ async function main() {
             }
         }
 
+        const dayThreeDiscussionStates = await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, payload => payload.dayNumber === 3, 30000);
+        checkpoint = createStateCheckpoint(clients);
+        await skipDiscussionForAlive(clients, roomId);
         const dayThreeStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 3, 30000);
         const dayThreeState = dayThreeStates[0];
         const deadWolves = (dayThreeState.players || []).filter(player => !player.alive && (player.revealedRole === 'หมาป่า' || player.revealedRole === 'อัลฟ่าหมาป่า'));
         assert(deadWolves.length >= 1, 'Night 3 should leave at least one revealed dead wolf from Witch poison');
 
-        console.log('10. Day 3: vote out Fool and confirm solo win');
+        console.log('11. Day 3: vote out Fool and confirm solo win');
         const finalAliveClients = clients.filter(client => {
             const player = getPlayerView(client.lastState, client.playerId);
             return player && player.alive;
@@ -523,6 +559,8 @@ async function main() {
             winner: 'fool',
             tested: {
                 witch: true,
+                discussionPhase: true,
+                unanimousDiscussionSkip: true,
                 foolImmunity: true,
                 foolSoloWin: true,
                 liveVoteTallies: true,
