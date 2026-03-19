@@ -77,8 +77,9 @@
 
   /* -- mobile game panel (scrollable, shown when game tab active) -- */
   .ww-game-panel { display: none; flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 10px; }
-  .ww-game-panel.active { display: flex; flex-direction: column; gap: 12px; }
+  .ww-game-panel.active { display: flex; flex-direction: column; gap: 8px; }
   .ww-game-section { padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+  .ww-game-section:first-child { flex: 1 1 auto; }
   .ww-game-section-title { font-family: 'Orbitron', sans-serif; font-size: 0.92rem; font-weight: 700; margin: 0 0 8px; }
   .ww-game-links { display: flex; gap: 8px; }
   .ww-game-link { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.04); color: #cfd8eb; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.82rem; padding: 6px 12px; cursor: pointer; }
@@ -303,10 +304,6 @@
     <div class="ww-game-section">
       <div class="ww-game-section-title">👥 ผู้เล่น</div>
       <div id="mobilePlayerGrid" class="player-grid"></div>
-    </div>
-    <div class="ww-game-links">
-      <button id="openModeGuide" class="ww-game-link">📖 วิธีเล่น</button>
-      <button id="openRoleCatalog" class="ww-game-link">📋 คู่มือบทบาท</button>
     </div>
   </div>
 
