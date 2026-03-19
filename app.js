@@ -35,6 +35,7 @@ const wordFamille = fs.readFileSync('words/famille.csv','utf8')
 const playerManager = require('./managers/playerManager');
 const roomManager = require('./managers/roomManager');
 const statsManager = require('./managers/statsManager');
+const { getGameEngine, getAvailableGameModes } = require('./games/engineRegistry');
 
 // Load settings (including admin password)
 const settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'));
@@ -53,6 +54,12 @@ const socketRoomMap = new Map(); // Key: socket.id, Value: roomId
 // เก็บ countdown intervals ต่อห้อง (Key: roomId, Value: interval)
 const roomCountdowns = new Map();
 
+// เก็บ timeout สำหรับ phase อัตโนมัติของ Werewolf
+const werewolfPhaseTimeouts = new Map();
+
+// เก็บ timeout ช่วงคั่นก่อน broadcast phase ถัดไปของ Werewolf
+const werewolfTransitionTimeouts = new Map();
+
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
 const disconnectTimeouts = new Map();
 
@@ -65,6 +72,10 @@ const adminTokens = new Map();
 // เก็บ server activity logs (เก็บ 500 logs ล่าสุด)
 const serverLogs = [];
 const MAX_SERVER_LOGS = 500;
+
+const ROOM_OFFLINE_GRACE_MS = 10 * 60 * 1000;
+const ROOM_SWEEP_INTERVAL_MS = 60 * 1000;
+const WEREWOLF_PHASE_TRANSITION_DELAY_MS = 2600;
 
 // สร้าง admin token
 function generateAdminToken() {
@@ -123,10 +134,14 @@ function shuffle(array) {
 function comparePlayer(a, b) {
     if (a.isGhost) {
         return 1; 
+    } else if (b.isGhost) {
+        return -1;
     } else if (a.name > b.name) {
-        return 0;
+        return 1;
+    } else if (a.name < b.name) {
+        return -1;
     }
-    return -1;
+    return 0;
 }
 
 /**
@@ -401,13 +416,28 @@ function actionAllowedCooldown(gameState, seconds) {
  */
 function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo = null, playerId = null, avatar = '👤') {
     const messageId = `msg-${nextMessageId++}`;
-    io.to(roomId).emit('newMessage', {
+    let messageType = 'player';
+
+    if (playerName === 'System') {
+        if (/เข้าห้อง|ออกจากห้อง|หลุดการเชื่อมต่อ/i.test(message)) {
+            messageType = 'presence';
+        } else if (/Admin|สิทธิ์/i.test(message)) {
+            messageType = 'admin';
+        } else if (/คืนที่|กลางวัน|หมดคืน|หมดเวลา|โหวต|เกม Werewolf เริ่มแล้ว|เริ่มรอบใหม่|เกมจบ/i.test(message)) {
+            messageType = 'phase';
+        } else {
+            messageType = 'system';
+        }
+    }
+
+    const payload = {
         messageId: messageId,
         message: message,
         playerName: playerName,
         color: color,
         playerId: playerId,
         avatar: avatar,
+        messageType: messageType,
         timestamp: new Date().toLocaleTimeString('th-TH', { 
             hour: '2-digit', 
             minute: '2-digit', 
@@ -416,7 +446,18 @@ function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo =
             timeZone: 'Asia/Bangkok'
         }),
         replyTo: replyTo
-    });
+    };
+
+    const room = roomManager.getRoom(roomId);
+    if (room) {
+        if (!Array.isArray(room.chatHistory)) {
+            room.chatHistory = [];
+        }
+        room.chatHistory.push(payload);
+        room.chatHistory = room.chatHistory.slice(-100);
+    }
+
+    io.to(roomId).emit('newMessage', payload);
 }
 
 /**
@@ -469,6 +510,412 @@ function addServerLog(io, category, roomId, message, type = 'info') {
     });
 }
 
+function buildRoomUpdatePayload(room) {
+    const gameEngine = getGameEngine(room.settings.gameMode);
+    const isInGame = !!(room.gameState.status && room.gameState.status !== 'waiting' && room.gameState.status !== '');
+
+    return {
+        roomId: room.roomId,
+        players: room.players.map(player => ({
+            playerId: player.playerId,
+            playerName: player.playerName,
+            color: player.color,
+            avatar: player.avatar,
+            avatarFrame: player.avatarFrame,
+            permission: player.permission,
+            online: !!player.socketId
+        })),
+        playerCount: roomManager.getOnlinePlayerCount(room),
+        onlineCount: roomManager.getOnlinePlayerCount(room),
+        totalPlayerCount: room.players.length,
+        admin: room.admin,
+        locked: room.settings.locked,
+        gameMode: room.settings.gameMode,
+        gameModeLabel: gameEngine.label,
+        gameStatus: isInGame ? 'playing' : 'waiting',
+        settings: room.settings
+    };
+}
+
+function buildWerewolfStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return null;
+    }
+
+    finalizeWerewolfGameIfNeeded(room);
+    const engine = getGameEngine('werewolf');
+    return engine.buildClientState(room, playerId);
+}
+
+function finalizeWerewolfGameIfNeeded(room) {
+    if (!room || room.settings.gameMode !== 'werewolf' || !room.gameState) {
+        return;
+    }
+
+    if (room.gameState.status !== 'werewolf_finished' || !room.gameState.winner || room.gameState.statsRecordedAt) {
+        return;
+    }
+
+    statsManager.recordGameEnd(room.roomId, {
+        mode: 'werewolf',
+        winner: room.gameState.winner,
+        players: room.gameState.players,
+        roomName: room.name,
+        dayNumber: room.gameState.dayNumber
+    });
+    room.gameState.statsRecordedAt = new Date().toISOString();
+}
+
+function emitWerewolfState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return;
+    }
+
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('werewolfState', buildWerewolfStatePayload(room, playerId));
+        return;
+    }
+
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('werewolfState', buildWerewolfStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function clearWerewolfTransitionTimer(roomId) {
+    const timer = werewolfTransitionTimeouts.get(roomId);
+    if (!timer) {
+        return;
+    }
+
+    clearTimeout(timer.timeoutId);
+    werewolfTransitionTimeouts.delete(roomId);
+}
+
+function emitWerewolfRoomState(room) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return;
+    }
+
+    clearWerewolfTransitionTimer(room.roomId);
+    syncWerewolfPhaseTimer(room);
+    emitWerewolfState(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+function scheduleWerewolfStateBroadcast(room, delayMs = WEREWOLF_PHASE_TRANSITION_DELAY_MS) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return;
+    }
+
+    clearWerewolfPhaseTimer(room.roomId);
+    clearWerewolfTransitionTimer(room.roomId);
+
+    if (!delayMs || delayMs <= 0) {
+        emitWerewolfRoomState(room);
+        return;
+    }
+
+    room.gameState.phaseEndsAt = null;
+    const expectedPhase = room.gameState.phase;
+    const expectedDayNumber = room.gameState.dayNumber;
+    const expectedWinner = room.gameState.winner || null;
+
+    const timeoutId = setTimeout(() => {
+        werewolfTransitionTimeouts.delete(room.roomId);
+
+        const currentRoom = roomManager.getRoom(room.roomId);
+        if (!currentRoom || currentRoom.settings.gameMode !== 'werewolf') {
+            return;
+        }
+
+        if (
+            currentRoom.gameState.phase !== expectedPhase ||
+            currentRoom.gameState.dayNumber !== expectedDayNumber ||
+            (currentRoom.gameState.winner || null) !== expectedWinner
+        ) {
+            return;
+        }
+
+        emitWerewolfRoomState(currentRoom);
+    }, delayMs);
+
+    werewolfTransitionTimeouts.set(room.roomId, {
+        timeoutId,
+        phase: expectedPhase,
+        dayNumber: expectedDayNumber
+    });
+}
+
+function clearWerewolfPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = werewolfPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        werewolfPhaseTimeouts.delete(roomId);
+    }
+
+    if (!resetPhaseEndsAt) {
+        return;
+    }
+
+    const room = roomManager.getRoom(roomId);
+    if (room && room.settings.gameMode === 'werewolf' && room.gameState) {
+        room.gameState.phaseEndsAt = null;
+    }
+}
+
+function syncWerewolfPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'werewolf') {
+        return;
+    }
+
+    if (werewolfTransitionTimeouts.has(room.roomId)) {
+        return;
+    }
+
+    const phase = room.gameState.phase;
+    const activePhase = phase === 'night' || phase === 'day-vote';
+    if (!activePhase || room.gameState.winner) {
+        clearWerewolfPhaseTimer(room.roomId);
+        return;
+    }
+
+    const existingTimer = werewolfPhaseTimeouts.get(room.roomId);
+    if (existingTimer && existingTimer.phase === phase && room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > Date.now()) {
+        return;
+    }
+
+    clearWerewolfPhaseTimer(room.roomId, false);
+
+    const durationMs = Math.max(15000, (Number(room.settings.roundTime) || 300) * 1000);
+    room.gameState.phaseEndsAt = Date.now() + durationMs;
+
+    const timeoutId = setTimeout(() => {
+        werewolfPhaseTimeouts.delete(room.roomId);
+
+        const currentRoom = roomManager.getRoom(room.roomId);
+        if (!currentRoom || currentRoom.settings.gameMode !== 'werewolf') {
+            return;
+        }
+
+        if (currentRoom.gameState.phase !== phase || currentRoom.gameState.winner) {
+            return;
+        }
+
+        try {
+            const werewolfEngine = getGameEngine('werewolf');
+            const resolution = werewolfEngine.autoResolvePhase(currentRoom);
+            sendChatMessageToRoom(
+                io,
+                currentRoom.roomId,
+                'System',
+                phase === 'night' ? 'หมดคืนแล้ว เกมกำลังพาเข้าสู่ช่วงถัดไป' : 'หมดเวลาคุยแล้ว เกมกำลังสรุปผลโหวต',
+                '#95a5a6'
+            );
+
+            emitWerewolfRoomState(currentRoom);
+        } catch (error) {
+            console.error('[werewolf] auto resolve failed:', error);
+        }
+    }, durationMs);
+
+    werewolfPhaseTimeouts.set(room.roomId, { phase, timeoutId });
+}
+
+function runRoomCleanupSweep() {
+    const activeSocketIds = new Set(Array.from(io.sockets.sockets.keys()));
+    const staleSocketPlayers = roomManager.reconcileSocketState(activeSocketIds, ROOM_OFFLINE_GRACE_MS);
+    const removedOfflinePlayers = roomManager.purgeDisconnectedPlayers(ROOM_OFFLINE_GRACE_MS);
+    const affectedRoomIds = new Set();
+
+    staleSocketPlayers.forEach(entry => {
+        affectedRoomIds.add(entry.roomId);
+        addServerLog(io, 'system', entry.roomId, `[Cleanup] ${entry.playerName} (${entry.reason})`, 'warning');
+    });
+
+    removedOfflinePlayers.forEach(entry => {
+        affectedRoomIds.add(entry.roomId);
+        addServerLog(io, 'system', entry.roomId, `[Cleanup] ลบ ${entry.playerName} ออกจากห้องเพราะ offline นานเกินกำหนด`, 'warning');
+    });
+
+    affectedRoomIds.forEach(roomId => {
+        const room = roomManager.getRoom(roomId);
+        if (room) {
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+        } else {
+            clearWerewolfPhaseTimer(roomId);
+            clearWerewolfTransitionTimer(roomId);
+        }
+    });
+
+    if (affectedRoomIds.size > 0) {
+        io.emit('roomListUpdate', roomManager.getAllRooms());
+    }
+}
+
+async function ensurePersistedPlayer(playerId) {
+    if (!playerManager.isValidPlayerId(playerId)) {
+        throw new Error('Invalid player ID');
+    }
+
+    const existingPlayer = playerManager.getPlayer(playerId);
+    if (existingPlayer) {
+        await playerManager.updateLastSeen(playerId);
+        return existingPlayer;
+    }
+
+    return playerManager.createOrGetPlayer(playerId);
+}
+
+function getRenderablePlayer(playerId) {
+    return playerManager.buildTransientPlayer(playerId);
+}
+
+function resolveDisplayPlayerName(playerId, fallbackName = 'Unknown') {
+    const player = playerManager.getPlayer(playerId);
+    if (player && player.playerName && player.playerName.trim()) {
+        return player.playerName;
+    }
+    return fallbackName;
+}
+
+function getPlayerRoomMembership(playerId) {
+    const memberships = [];
+    roomManager.getAllRooms().forEach(roomInfo => {
+        const room = roomManager.getRoom(roomInfo.roomId);
+        if (!room) return;
+
+        const member = room.players.find(p => p.playerId === playerId);
+        if (member) {
+            memberships.push({
+                roomId: room.roomId,
+                roomName: room.name,
+                online: !!member.socketId,
+                isAdmin: room.admin === playerId
+            });
+        }
+    });
+    return memberships;
+}
+
+function classifyPlayerForAdmin(player, stat, bannedPlayerIds = new Set()) {
+    const memberships = getPlayerRoomMembership(player.playerId);
+    const totalGames = stat?.totalGames || 0;
+    const isAutoNamed = playerManager.isAutoGeneratedName(player.playerName);
+    const defaultProfile = playerManager.isDefaultProfile(player);
+    const isBanned = bannedPlayerIds.has(player.playerId);
+    const lastSeenMs = player.lastSeen ? new Date(player.lastSeen).getTime() : 0;
+    const ageHours = lastSeenMs > 0 ? (Date.now() - lastSeenMs) / (1000 * 60 * 60) : null;
+    const isCleanupCandidate = isAutoNamed && defaultProfile && totalGames === 0 && memberships.length === 0 && !isBanned;
+
+    let category = 'real';
+    let categoryLabel = 'ผู้เล่นจริง';
+
+    if (isCleanupCandidate) {
+        category = 'ghost';
+        categoryLabel = 'ghost/cleanup';
+    } else if (isAutoNamed) {
+        category = totalGames > 0 ? 'guest-active' : 'guest-idle';
+        categoryLabel = totalGames > 0 ? 'guest ที่เคยเล่น' : 'guest อัตโนมัติ';
+    }
+
+    return {
+        ...player,
+        totalGames,
+        hasStats: !!stat,
+        statsLastPlayedAt: stat?.lastPlayedAt || null,
+        inRooms: memberships,
+        category,
+        categoryLabel,
+        isCleanupCandidate,
+        isAutoGenerated: isAutoNamed,
+        isDefaultProfile: defaultProfile,
+        isBanned,
+        ageHours
+    };
+}
+
+function getAdminPlayersData() {
+    const players = playerManager.getAllPlayers();
+    const stats = statsManager.getAllStats();
+    const statsByPlayerId = new Map(stats.map(stat => [stat.playerId, stat]));
+    const bannedPlayerIds = new Set(playerManager.getAllBannedPlayers().map(ban => ban.playerId));
+
+    const annotatedPlayers = players.map(player => classifyPlayerForAdmin(player, statsByPlayerId.get(player.playerId), bannedPlayerIds));
+    const cleanupCandidates = annotatedPlayers.filter(player => player.isCleanupCandidate);
+
+    return {
+        annotatedPlayers,
+        cleanupCandidates,
+        statsByPlayerId,
+        summary: {
+            realPlayers: annotatedPlayers.filter(player => player.category === 'real').length,
+            guestActivePlayers: annotatedPlayers.filter(player => player.category === 'guest-active').length,
+            guestIdlePlayers: annotatedPlayers.filter(player => player.category === 'guest-idle').length,
+            cleanupCandidates: cleanupCandidates.length
+        }
+    };
+}
+
+async function removePlayerCompletely(playerId, options = {}) {
+    const { deleteStats = true, reason = 'บัญชีของคุณถูกลบโดยแอดมิน' } = options;
+
+    const targetSockets = [];
+    io.sockets.sockets.forEach((connectedSocket) => {
+        if (connectedSocket.playerId === playerId) {
+            targetSockets.push(connectedSocket);
+        }
+    });
+
+    targetSockets.forEach(connectedSocket => {
+        connectedSocket.emit('playerDeleted', { message: reason });
+        connectedSocket.disconnect(true);
+    });
+
+    roomManager.getAllRooms().forEach(roomInfo => {
+        roomManager.leaveRoom(roomInfo.roomId, playerId);
+    });
+
+    const deletedPlayer = await playerManager.deletePlayer(playerId);
+    if (deleteStats) {
+        await statsManager.deletePlayerStats(playerId);
+    }
+
+    disconnectTimeouts.delete(playerId);
+    return deletedPlayer;
+}
+
+async function cleanupGhostPlayers(options = {}) {
+    const minAgeHours = Number.isFinite(Number(options.minAgeHours)) ? Number(options.minAgeHours) : 24;
+    const dryRun = !!options.dryRun;
+    const { cleanupCandidates } = getAdminPlayersData();
+
+    const targets = cleanupCandidates.filter(player => player.ageHours === null || player.ageHours >= minAgeHours);
+
+    if (dryRun) {
+        return {
+            deletedCount: 0,
+            candidates: targets,
+            minAgeHours
+        };
+    }
+
+    for (const player of targets) {
+        await removePlayerCompletely(player.playerId, {
+            deleteStats: true,
+            reason: 'บัญชี ghost/auto-generated ถูกล้างโดยแอดมิน'
+        });
+    }
+
+    io.emit('roomListUpdate', roomManager.getAllRooms());
+    return {
+        deletedCount: targets.length,
+        candidates: targets,
+        minAgeHours
+    };
+}
+
 // ==================== EXPRESS MIDDLEWARE & ROUTES ====================
 
 app.use(expressLayouts)
@@ -516,26 +963,19 @@ app.use(async function(req, res, next) {
     let playerId = req.query.playerId;
     
     // ป้องกัน "undefined" หรือ "null" string
-    if (!playerId || playerId === 'undefined' || playerId === 'null' || playerId === '') {
+    if (!playerId || playerId === 'undefined' || playerId === 'null' || playerId === '' || !playerManager.isValidPlayerId(playerId)) {
         playerId = null;
     }
     
     if (playerId) {
-        // ตรวจสอบว่า playerId นี้มีอยู่จริงหรือไม่
         const existingPlayer = playerManager.getPlayer(playerId);
         if (existingPlayer) {
-            playerManager.updateLastSeen(playerId);
-            req.playerId = playerId;
-        } else {
-            // ไม่พบ player - สร้างใหม่ด้วย playerId เดิม
-            // (อาจเกิดจาก server restart หรือ database ถูก clear)
-            console.log(`[Middleware] Player not found, recreating with same ID: ${playerId}`);
-            await playerManager.createOrGetPlayer(playerId);
-            req.playerId = playerId;
+            await playerManager.updateLastSeen(playerId);
         }
+        req.playerId = playerId;
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
-        // แทนที่จะสร้าง player ใหม่ที่ server ทันที (ป้องกัน ghost players)
+        // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
         return res.send(`
             <!DOCTYPE html>
             <html>
@@ -638,8 +1078,7 @@ app.get('/ping', function(req, res) {
 
 // Lobby page
 app.get('/', function(req, res) {
-    // ดึง player จาก middleware (ซึ่งจะสร้างใหม่ถ้าไม่มี)
-    const player = playerManager.getPlayer(req.playerId);
+    const player = getRenderablePlayer(req.playerId);
     const stats = statsManager.getStats(req.playerId);
     res.render('lobby.ejs', { player: player, stats: stats });
 });
@@ -651,10 +1090,19 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
         const { roomId, playerId } = data;
         
         if (roomId && playerId) {
-            const room = roomManager.getRoom(roomId);
-            if (room) {
-                roomManager.leaveRoom(roomId, playerId);
-                io.to(roomId).emit('playerList', { players: room.players });
+            const updatedRoom = roomManager.leaveRoom(roomId, playerId);
+            if (updatedRoom) {
+                io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
+                io.emit('roomListUpdate', roomManager.getAllRooms());
+                const player = playerManager.getPlayer(playerId);
+                if (player) {
+                    sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง`, '#e74c3c');
+                }
+                console.log(`[API] Player ${playerId} left room ${roomId} via sendBeacon`);
+            } else {
+                clearWerewolfPhaseTimer(roomId);
+                clearWerewolfTransitionTimer(roomId);
+                io.emit('roomListUpdate', roomManager.getAllRooms());
                 console.log(`[API] Player ${playerId} left room ${roomId} via sendBeacon`);
             }
         }
@@ -666,19 +1114,24 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
 
 // Settings page
 app.get('/settings', function(req, res) {
-    const player = playerManager.getPlayer(req.playerId);
+    const player = getRenderablePlayer(req.playerId);
     res.render('settings.ejs', { player: player });
 });
 
 // Room List page
 app.get('/rooms', function(req, res) {
-    const player = playerManager.getPlayer(req.playerId);
+    const player = getRenderablePlayer(req.playerId);
     const rooms = roomManager.getAllRooms();
-    res.render('roomList.ejs', { player: player, rooms: rooms });
+    res.render('roomList.ejs', {
+        player: player,
+        rooms: rooms,
+        gameModes: getAvailableGameModes(),
+        werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles()
+    });
 });
 
 // Game/Board page จริง
-app.get('/game/:roomId', function(req, res) {
+app.get('/game/:roomId', async function(req, res) {
     const roomId = req.params.roomId;
     const playerId = req.playerId;
     const room = roomManager.getRoom(roomId);
@@ -688,7 +1141,7 @@ app.get('/game/:roomId', function(req, res) {
         return res.redirect('/rooms?msg=room_not_found');
     }
 
-    const player = playerManager.getPlayer(playerId);
+    const player = await ensurePersistedPlayer(playerId);
     if (!player) {
         return res.redirect('/');
     }
@@ -703,6 +1156,24 @@ app.get('/game/:roomId', function(req, res) {
     const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
     if (!gameStatePlayer) {
         return res.redirect('/room/' + roomId + '?playerId=' + playerId);
+    }
+
+    if (room.settings.gameMode === 'werewolf') {
+        return res.render('werewolfBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                settings: room.settings
+            },
+            werewolfState: buildWerewolfStatePayload(room, playerId),
+            chatHistory: room.chatHistory || []
+        });
     }
 
     res.render('board.ejs', {
@@ -724,7 +1195,7 @@ app.get('/game/:roomId', function(req, res) {
 });
 
 // Room Lobby page (ก่อนเริ่มเกม)
-app.get('/room/:roomId', function(req, res) {
+app.get('/room/:roomId', async function(req, res) {
     const roomId = req.params.roomId;
     const playerId = req.playerId;
     const room = roomManager.getRoom(roomId);
@@ -734,7 +1205,7 @@ app.get('/room/:roomId', function(req, res) {
         return res.redirect('/rooms?msg=room_not_found');
     }
 
-    const player = playerManager.getPlayer(playerId);
+    const player = await ensurePersistedPlayer(playerId);
     if (!player) {
         return res.redirect('/');
     }
@@ -781,6 +1252,7 @@ app.get('/room/:roomId', function(req, res) {
     res.render('roomLobby.ejs', {
         player: gameStatePlayer,
         playerInfo: playerInRoom,
+        initialRoomPayload: buildRoomUpdatePayload(room),
         room: {
             roomId: room.roomId,
             name: room.name,
@@ -789,17 +1261,21 @@ app.get('/room/:roomId', function(req, res) {
             roundTime: Math.floor(room.settings.roundTime / 60), // แปลงกลับเป็นนาที
             locked: room.settings.locked,
             password: room.settings.password || '',
+            gameMode: room.settings.gameMode,
+            gameModeLabel: getGameEngine(room.settings.gameMode).label,
             dualTraitorMode: room.settings.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ
+            werewolfRoles: room.settings.werewolfRoles || [],
             adminId: room.admin,
             isAdmin: room.admin === req.playerId
         },
-        status: room.gameState.status
+        status: room.gameState.status,
+        werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles()
     });
 });
 
 // Profile page
 app.get('/profile', function(req, res) {
-    const player = playerManager.getPlayer(req.playerId);
+    const player = getRenderablePlayer(req.playerId);
     const stats = statsManager.getStats(req.playerId);
     res.render('profile.ejs', { player: player, stats: stats, availableColors: playerManager.AVAILABLE_COLORS });
 });
@@ -846,7 +1322,9 @@ app.post('/profile/updateName', async function(req, res) {
         if (!newName || newName.length === 0) {
             return res.json({ success: false, error: 'Invalid name' });
         }
-        await playerManager.updatePlayerName(req.playerId, newName);
+        await ensurePersistedPlayer(req.playerId);
+        const updatedPlayer = await playerManager.updatePlayerName(req.playerId, newName);
+        roomManager.syncPlayerProfile(req.playerId, { playerName: updatedPlayer.playerName });
         statsManager.updatePlayerNameInStats(req.playerId, newName);
         res.json({ success: true });
     } catch (error) {
@@ -858,7 +1336,9 @@ app.post('/profile/updateName', async function(req, res) {
 app.post('/profile/updateColor', async function(req, res) {
     try {
         const color = req.body.color;
-        await playerManager.updatePlayerColor(req.playerId, color);
+        await ensurePersistedPlayer(req.playerId);
+        const updatedPlayer = await playerManager.updatePlayerColor(req.playerId, color);
+        roomManager.syncPlayerProfile(req.playerId, { color: updatedPlayer.color });
         res.json({ success: true });
     } catch (error) {
         res.json({ success: false, error: error.message });
@@ -869,7 +1349,9 @@ app.post('/profile/updateColor', async function(req, res) {
 app.post('/profile/updateAvatar', async function(req, res) {
     try {
         const avatar = req.body.avatar;
-        await playerManager.updatePlayerAvatar(req.playerId, avatar);
+        await ensurePersistedPlayer(req.playerId);
+        const updatedPlayer = await playerManager.updatePlayerAvatar(req.playerId, avatar);
+        roomManager.syncPlayerProfile(req.playerId, { avatar: updatedPlayer.avatar });
         res.json({ success: true });
     } catch (error) {
         res.json({ success: false, error: error.message });
@@ -880,7 +1362,9 @@ app.post('/profile/updateAvatar', async function(req, res) {
 app.post('/profile/updateAvatarFrame', async function(req, res) {
     try {
         const frameId = req.body.frameId;
-        await playerManager.updatePlayerAvatarFrame(req.playerId, frameId);
+        await ensurePersistedPlayer(req.playerId);
+        const updatedPlayer = await playerManager.updatePlayerAvatarFrame(req.playerId, frameId);
+        roomManager.syncPlayerProfile(req.playerId, { avatarFrame: updatedPlayer.avatarFrame });
         res.json({ success: true });
     } catch (error) {
         res.json({ success: false, error: error.message });
@@ -905,6 +1389,7 @@ app.get('/api/leaderboard', function(req, res) {
         const player = playerManager.getPlayer(entry.playerId);
         return {
             ...entry,
+            playerName: resolveDisplayPlayerName(entry.playerId, entry.playerName),
             avatar: player?.avatar || '👤',
             avatarFrame: player?.avatarFrame || 'none',
             color: player?.color || '#3498db'
@@ -939,7 +1424,9 @@ app.get('/api/player/:playerId/profile', function(req, res) {
             winRate: stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0,
             roleStats: stats.roleStats,
             winByRole: stats.winByRole,
-            lastPlayedAt: stats.lastPlayedAt
+            modeStats: stats.modeStats,
+            lastPlayedAt: stats.lastPlayedAt,
+            gameHistory: Array.isArray(stats.gameHistory) ? stats.gameHistory.slice(0, 5) : []
         } : null
     });
 });
@@ -962,6 +1449,7 @@ io.sockets.on('connection', function(socket) {
 
     // Create room
     socket.on('createRoom', function(roomData, callback) {
+        (async function() {
         try {
             // รับ playerId จาก client (ถ้ามี) หรือจาก socket เก่า
             const playerId = roomData.playerId || socket.playerId;
@@ -970,12 +1458,7 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
 
-            // ตรวจสอบว่า player มีอยู่จริง
-            const player = playerManager.getPlayer(playerId);
-            if (!player) {
-                if (typeof callback === 'function') callback({ success: false, error: 'Invalid player' });
-                return;
-            }
+            await ensurePersistedPlayer(playerId);
 
             const room = roomManager.createRoom(roomData, playerId);
             socketRoomMap.set(socket.id, room.roomId);
@@ -984,6 +1467,11 @@ io.sockets.on('connection', function(socket) {
             // Update socket info
             socket.playerId = playerId;
             socket.roomId = room.roomId;
+
+            // The creator was added during room creation before this socket was bound.
+            // Mark them online now so room list counts are correct immediately.
+            roomManager.updatePlayerSocketId(room.roomId, playerId, socket.id);
+            roomManager.markPlayerActive(room.roomId, playerId);
             
             // Emit to room list
             io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -998,10 +1486,12 @@ io.sockets.on('connection', function(socket) {
                 callback({ success: false, error: error.message });
             }
         }
+        })();
     });
 
     // Join room
     socket.on('joinRoom', function(data, callback) {
+        (async function() {
         try {
             const { roomId, password, playerId: clientPlayerId } = data;
             // Use playerId from client or socket, prefer client
@@ -1012,17 +1502,13 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
 
-            // ตรวจสอบว่า player มีอยู่จริง
-            const player = playerManager.getPlayer(playerId);
-            if (!player) {
-                if (typeof callback === 'function') callback({ success: false, error: 'Invalid player' });
-                return;
-            }
+            await ensurePersistedPlayer(playerId);
             
             // Set socket.playerId for future use
             socket.playerId = playerId;
 
             const room = roomManager.joinRoom(roomId, playerId, socket.id, password);
+            roomManager.markPlayerActive(roomId, playerId);
             socketRoomMap.set(socket.id, roomId);
             socket.join(roomId);
             
@@ -1045,10 +1531,7 @@ io.sockets.on('connection', function(socket) {
 
             // Emit to all in room
             io.to(roomId).emit('roomUpdate', {
-                roomId: roomId,
-                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                playerCount: room.players.length,
-                admin: room.admin
+                ...buildRoomUpdatePayload(room)
             });
 
             // ไม่ส่ง chat notification ที่นี่แล้ว - จะส่งใน setRoom แทน เพื่อให้ผู้เล่นเห็นตัวเองด้วย
@@ -1065,6 +1548,7 @@ io.sockets.on('connection', function(socket) {
                 callback({ success: false, error: error.message });
             }
         }
+        })();
     });
 
     // Request room update (for re-rendering after admin change)
@@ -1077,17 +1561,7 @@ io.sockets.on('connection', function(socket) {
         
         // Send room update to requesting socket
         io.to(socket.id).emit('roomUpdate', {
-            roomId: roomId,
-            players: room.players.map(p => ({ 
-                playerId: p.playerId, 
-                playerName: p.playerName, 
-                color: p.color, 
-                permission: p.permission, 
-                online: !!p.socketId 
-            })),
-            playerCount: room.players.length,
-            admin: room.admin,
-            locked: room.settings.locked
+            ...buildRoomUpdatePayload(room)
         });
     });
 
@@ -1111,24 +1585,14 @@ io.sockets.on('connection', function(socket) {
         }
         
         // ถ้ายังอยู่ → อัปเดต socketId และ rejoin room
-        playerInRoom.socketId = socket.id;
+        roomManager.updatePlayerSocketId(roomId, playerId, socket.id);
+        roomManager.markPlayerActive(roomId, playerId);
         socket.join(roomId);
         socket.roomId = roomId;
         socket.playerId = playerId;
         
         // ส่งข้อมูลห้องกลับ
-        io.to(roomId).emit('roomUpdate', {
-            roomId: roomId,
-            players: room.players.map(p => ({ 
-                playerId: p.playerId, 
-                playerName: p.playerName, 
-                color: p.color, 
-                permission: p.permission, 
-                online: !!p.socketId 
-            })),
-            playerCount: room.players.length,
-            admin: room.admin
-        });
+        io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
     });
 
     // Leave room
@@ -1153,10 +1617,7 @@ io.sockets.on('connection', function(socket) {
         if (room) {
             // Emit to remaining players
             io.to(roomId).emit('roomUpdate', {
-                roomId: roomId,
-                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                playerCount: room.players.length,
-                admin: room.admin
+                ...buildRoomUpdatePayload(room)
             });
 
             // Send chat notification
@@ -1181,6 +1642,11 @@ io.sockets.on('connection', function(socket) {
                     });
                 }
             }
+        }
+
+        if (!room) {
+            clearWerewolfPhaseTimer(roomId);
+            clearWerewolfTransitionTimer(roomId);
         }
 
         // Update room list
@@ -1232,10 +1698,7 @@ io.sockets.on('connection', function(socket) {
             const updatedRoom = roomManager.getRoom(roomId);
             if (updatedRoom) {
                 io.to(roomId).emit('roomUpdate', {
-                    roomId: roomId,
-                    players: updatedRoom.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                    playerCount: updatedRoom.players.length,
-                    admin: updatedRoom.admin
+                    ...buildRoomUpdatePayload(updatedRoom)
                 });
 
                 // Send chat notification
@@ -1272,11 +1735,7 @@ io.sockets.on('connection', function(socket) {
             
             // Emit to room
             io.to(roomId).emit('roomUpdate', {
-                roomId: roomId,
-                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                playerCount: room.players.length,
-                admin: room.admin,
-                locked: room.settings.locked
+                ...buildRoomUpdatePayload(room)
             });
 
             // Send chat notification
@@ -1320,11 +1779,7 @@ io.sockets.on('connection', function(socket) {
             
             // Emit to room
             io.to(roomId).emit('roomUpdate', {
-                roomId: roomId,
-                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                playerCount: room.players.length,
-                settings: room.settings,
-                admin: room.admin
+                ...buildRoomUpdatePayload(room)
             });
 
             // Send chat notification
@@ -1367,11 +1822,7 @@ io.sockets.on('connection', function(socket) {
             
             // Emit to room
             io.to(roomId).emit('roomUpdate', {
-                roomId: roomId,
-                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                playerCount: room.players.length,
-                settings: room.settings,
-                admin: room.admin
+                ...buildRoomUpdatePayload(room)
             });
 
             // Send chat notification
@@ -1450,7 +1901,7 @@ io.sockets.on('connection', function(socket) {
             }
             
             // ดึงข้อมูลผู้เล่นทั้งหมด
-            const players = playerManager.getAllPlayers();
+            const adminPlayersData = getAdminPlayersData();
             
             // ดึงข้อมูลห้องทั้งหมด พร้อมชื่อผู้เล่นในห้อง
             const allRooms = roomManager.getAllRooms();
@@ -1463,15 +1914,20 @@ io.sockets.on('connection', function(socket) {
             });
             
             // ดึงสถิติผู้เล่นทั้งหมด
-            const playerStats = statsManager.getAllStats();
+            const playerStats = statsManager.getAllStats().map(stat => ({
+                ...stat,
+                playerName: resolveDisplayPlayerName(stat.playerId, stat.playerName)
+            }));
             
             if (typeof callback === 'function') {
                 callback({
                     success: true,
-                    players: players,
+                    players: adminPlayersData.annotatedPlayers,
                     rooms: roomsWithPlayers,
                     playerStats: playerStats,
-                    bannedPlayers: playerManager.getAllBannedPlayers()
+                    bannedPlayers: playerManager.getAllBannedPlayers(),
+                    playerSummary: adminPlayersData.summary,
+                    cleanupCandidates: adminPlayersData.cleanupCandidates
                 });
             }
         } catch (error) {
@@ -1610,7 +2066,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Edit player name
-    socket.on('admin_editPlayerName', function(data, callback) {
+    socket.on('admin_editPlayerName', async function(data, callback) {
         try {
             // ตรวจสอบสิทธิ์ admin
             if (!isAdminAuthenticated(socket.id)) {
@@ -1621,7 +2077,9 @@ io.sockets.on('connection', function(socket) {
             }
             
             const { playerId, newName } = data;
-            playerManager.adminUpdatePlayerName(playerId, newName);
+            const updateResult = await playerManager.adminUpdatePlayerName(playerId, newName);
+            roomManager.syncPlayerProfile(playerId, { playerName: updateResult.newName });
+            statsManager.updatePlayerNameInStats(playerId, updateResult.newName);
             callback({ success: true });
         } catch (error) {
             console.error('Error editing player name:', error);
@@ -1630,7 +2088,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Delete player
-    socket.on('admin_deletePlayer', function(data, callback) {
+    socket.on('admin_deletePlayer', async function(data, callback) {
         try {
             // ตรวจสอบสิทธิ์ admin
             if (!isAdminAuthenticated(socket.id)) {
@@ -1641,31 +2099,8 @@ io.sockets.on('connection', function(socket) {
             }
             
             const { playerId } = data;
-            
-            // ส่ง event ให้ client ของผู้เล่นที่ถูกลบรู้ และ disconnect
-            // หา socket ของผู้เล่นนั้น
-            const targetSockets = [];
-            io.sockets.sockets.forEach((s) => {
-                if (s.playerId === playerId) {
-                    targetSockets.push(s);
-                }
-            });
-            
-            // ส่ง event playerDeleted ให้ client
-            targetSockets.forEach(s => {
-                s.emit('playerDeleted', { message: 'บัญชีของคุณถูกลบโดยแอดมิน' });
-                s.disconnect(true);
-            });
-            
-            // Remove from all rooms first
-            const allRooms = roomManager.getAllRooms();
-            allRooms.forEach(roomInfo => {
-                roomManager.leaveRoom(roomInfo.roomId, playerId);
-            });
-            
-            // Delete player and stats
-            playerManager.deletePlayer(playerId);
-            statsManager.deletePlayerStats(playerId);
+            await removePlayerCompletely(playerId);
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             
             callback({ success: true });
         } catch (error) {
@@ -1675,7 +2110,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Bulk delete players
-    socket.on('admin_bulkDeletePlayers', function(data, callback) {
+    socket.on('admin_bulkDeletePlayers', async function(data, callback) {
         try {
             // ตรวจสอบสิทธิ์ admin
             if (!isAdminAuthenticated(socket.id)) {
@@ -1692,32 +2127,16 @@ io.sockets.on('connection', function(socket) {
                 return callback({ success: false, error: 'ไม่มี playerIds' });
             }
             
-            playerIds.forEach(playerId => {
+            for (const playerId of playerIds) {
                 try {
-                    // ส่ง event playerDeleted ให้ client และ disconnect
-                    io.sockets.sockets.forEach((s) => {
-                        if (s.playerId === playerId) {
-                            s.emit('playerDeleted', { message: 'บัญชีของคุณถูกลบโดยแอดมิน' });
-                            s.disconnect(true);
-                        }
-                    });
-                    
-                    // Remove from all rooms first
-                    const allRooms = roomManager.getAllRooms();
-                    allRooms.forEach(roomInfo => {
-                        roomManager.leaveRoom(roomInfo.roomId, playerId);
-                    });
-                    
-                    // Delete player and stats
-                    playerManager.deletePlayer(playerId);
-                    statsManager.deletePlayerStats(playerId);
+                    await removePlayerCompletely(playerId);
                     deletedCount++;
                 } catch (err) {
                     console.error('Error deleting player:', playerId, err);
                 }
-            });
+            }
             
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, deletedCount });
         } catch (error) {
             console.error('Error bulk deleting players:', error);
@@ -1726,7 +2145,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Delete all players
-    socket.on('admin_deleteAllPlayers', function(data, callback) {
+    socket.on('admin_deleteAllPlayers', async function(data, callback) {
         try {
             // ตรวจสอบสิทธิ์ admin
             if (!isAdminAuthenticated(socket.id)) {
@@ -1739,32 +2158,16 @@ io.sockets.on('connection', function(socket) {
             const allPlayers = playerManager.getAllPlayers();
             let deletedCount = 0;
             
-            allPlayers.forEach(player => {
+            for (const player of allPlayers) {
                 try {
-                    // ส่ง event playerDeleted ให้ client และ disconnect
-                    io.sockets.sockets.forEach((s) => {
-                        if (s.playerId === player.playerId) {
-                            s.emit('playerDeleted', { message: 'บัญชีของคุณถูกลบโดยแอดมิน' });
-                            s.disconnect(true);
-                        }
-                    });
-                    
-                    // Remove from all rooms first
-                    const allRooms = roomManager.getAllRooms();
-                    allRooms.forEach(roomInfo => {
-                        roomManager.leaveRoom(roomInfo.roomId, player.playerId);
-                    });
-                    
-                    // Delete player and stats
-                    playerManager.deletePlayer(player.playerId);
-                    statsManager.deletePlayerStats(player.playerId);
+                    await removePlayerCompletely(player.playerId);
                     deletedCount++;
                 } catch (err) {
                     console.error('Error deleting player:', player.playerId, err);
                 }
-            });
+            }
             
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, deletedCount });
         } catch (error) {
             console.error('Error deleting all players:', error);
@@ -1798,7 +2201,7 @@ io.sockets.on('connection', function(socket) {
             });
             
             roomManager.forceCloseRoom(roomId);
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             
             callback({ success: true });
         } catch (error) {
@@ -1820,7 +2223,7 @@ io.sockets.on('connection', function(socket) {
             
             const { roomId } = data;
             roomManager.unlockRoom(roomId);
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true });
         } catch (error) {
             console.error('Error unlocking room:', error);
@@ -1857,7 +2260,7 @@ io.sockets.on('connection', function(socket) {
             
             // Notify all players in room
             io.to(roomId).emit('restartGame');
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             
             callback({ success: true });
         } catch (error) {
@@ -1867,7 +2270,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Reset player stats
-    socket.on('admin_resetPlayerStats', function(data, callback) {
+    socket.on('admin_resetPlayerStats', async function(data, callback) {
         try {
             // ตรวจสอบสิทธิ์ admin
             if (!isAdminAuthenticated(socket.id)) {
@@ -1878,7 +2281,7 @@ io.sockets.on('connection', function(socket) {
             }
             
             const { playerId } = data;
-            statsManager.resetPlayerStats(playerId);
+            await statsManager.resetPlayerStats(playerId);
             callback({ success: true });
         } catch (error) {
             console.error('Error resetting player stats:', error);
@@ -1913,7 +2316,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Clear all player stats
-    socket.on('admin_clearAllStats', function(callback) {
+    socket.on('admin_clearAllStats', async function(callback) {
         try {
             if (!isAdminAuthenticated(socket.id)) {
                 if (typeof callback === 'function') {
@@ -1922,7 +2325,7 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
             
-            const count = statsManager.clearAllStats();
+            const count = await statsManager.clearAllStats();
             addServerLog(io, 'admin', null, `Admin ล้างสถิติทั้งหมด (${count} รายการ)`, 'warning');
             callback({ success: true, count });
         } catch (error) {
@@ -1932,7 +2335,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Bulk delete player stats
-    socket.on('admin_bulkDeleteStats', function(data, callback) {
+    socket.on('admin_bulkDeleteStats', async function(data, callback) {
         try {
             if (!isAdminAuthenticated(socket.id)) {
                 if (typeof callback === 'function') {
@@ -1947,7 +2350,7 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
             
-            const count = statsManager.bulkDeleteStats(playerIds);
+            const count = await statsManager.bulkDeleteStats(playerIds);
             addServerLog(io, 'admin', null, `Admin ลบสถิติ ${count} รายการ`, 'warning');
             callback({ success: true, count });
         } catch (error) {
@@ -1957,7 +2360,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin: Delete single player stats
-    socket.on('admin_deletePlayerStats', function(data, callback) {
+    socket.on('admin_deletePlayerStats', async function(data, callback) {
         try {
             if (!isAdminAuthenticated(socket.id)) {
                 if (typeof callback === 'function') {
@@ -1967,13 +2370,38 @@ io.sockets.on('connection', function(socket) {
             }
             
             const { playerId, playerName } = data;
-            const success = statsManager.deletePlayerStats(playerId);
+            const success = await statsManager.deletePlayerStats(playerId);
             if (success) {
                 addServerLog(io, 'admin', null, `Admin ลบสถิติของ ${playerName || playerId}`, 'warning');
             }
             callback({ success });
         } catch (error) {
             console.error('Error deleting player stats:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
+    socket.on('admin_cleanupGhostPlayers', async function(data, callback) {
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof callback === 'function') {
+                    callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                }
+                return;
+            }
+
+            const result = await cleanupGhostPlayers({
+                minAgeHours: data?.minAgeHours,
+                dryRun: data?.dryRun
+            });
+
+            if (!data?.dryRun) {
+                addServerLog(io, 'admin', null, `Admin cleanup ghost players ${result.deletedCount} คน (เก่ากว่า ${result.minAgeHours} ชม.)`, 'warning');
+            }
+
+            callback({ success: true, ...result });
+        } catch (error) {
+            console.error('Error cleaning ghost players:', error);
             callback({ success: false, error: error.message });
         }
     });
@@ -1990,7 +2418,7 @@ io.sockets.on('connection', function(socket) {
             }
             
             const count = roomManager.clearEmptyRooms();
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, count });
         } catch (error) {
             console.error('Error clearing empty rooms:', error);
@@ -2023,7 +2451,7 @@ io.sockets.on('connection', function(socket) {
             });
             
             const count = roomManager.clearAllRooms();
-            io.emit('roomListUpdate');
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, count });
         } catch (error) {
             console.error('Error clearing all rooms:', error);
@@ -2067,13 +2495,16 @@ io.sockets.on('connection', function(socket) {
             if (!room) {
                 return callback({ success: false, error: 'ไม่พบห้อง' });
             }
+
+            const inGameStatuses = ['role', 'word', 'vote1', 'vote2', 'in_progress'];
+            const isPlaying = inGameStatuses.includes(room.gameState.status);
             
             const players = room.players.map(p => ({
                 id: p.playerId,
                 name: p.playerName,
                 color: p.color,
-                isAdmin: p.playerId === room.adminId,
-                role: room.gameStatus === 'playing' ? (room.roles ? room.roles[p.playerId] : null) : null
+                isAdmin: p.playerId === room.admin,
+                role: isPlaying ? (room.gameState.players.find(gp => gp.playerId === p.playerId)?.role || null) : null
             }));
             
             callback({
@@ -2081,11 +2512,11 @@ io.sockets.on('connection', function(socket) {
                 room: {
                     roomId: room.roomId,
                     name: room.name,
-                    gameStatus: room.gameStatus,
-                    gamePhase: room.gamePhase || null,
+                    gameStatus: isPlaying ? 'playing' : 'waiting',
+                    gamePhase: room.gameState.status || null,
                     locked: room.settings?.locked || false,
-                    maxPlayers: room.maxPlayers,
-                    currentWord: room.gameStatus === 'playing' ? room.currentWord : null,
+                    maxPlayers: room.settings?.maxPlayers,
+                    currentWord: isPlaying ? room.gameState.word : null,
                     players
                 }
             });
@@ -2125,13 +2556,13 @@ io.sockets.on('connection', function(socket) {
             }
             
             // Remove from room
-            roomManager.removePlayerFromRoom(roomId, playerId);
+            const updatedRoom = roomManager.leaveRoom(roomId, playerId);
             
             // Update room for others
-            io.to(roomId).emit('roomUpdate', {
-                players: room.players,
-                admin: room.adminId
-            });
+            if (updatedRoom) {
+                io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
+            }
+            io.emit('roomListUpdate', roomManager.getAllRooms());
             
             callback({ success: true });
         } catch (error) {
@@ -2266,27 +2697,33 @@ io.sockets.on('connection', function(socket) {
         }
         
         socket.playerId = playerId;
-        socket.roomId = roomId;
-        socket.join(roomId);
-        socketRoomMap.set(socket.id, roomId);
-        
         const room = roomManager.getRoom(roomId);
         if (room) {
             // เช็คว่าเป็นการเข้าใหม่หรือ reconnect/duplicate setRoom
             const playerInRoom = room.players.find(p => p.playerId === playerId);
+            if (!playerInRoom) {
+                console.warn(`[setRoom] Player ${playerId} is not a member of room ${roomId}`);
+                io.to(socket.id).emit('kickedFromRoom', { message: 'คุณไม่ได้อยู่ในห้องนี้แล้ว' });
+                socketRoomMap.delete(socket.id);
+                return;
+            }
+
             const wasOnline = playerInRoom && playerInRoom.socketId;
             const isDuplicate = playerInRoom && playerInRoom.socketId === socket.id;
+
+            socket.roomId = roomId;
+            socket.join(roomId);
+            socketRoomMap.set(socket.id, roomId);
             
             // Make sure player is in room (in case they joined via HTTP redirect)
             roomManager.updatePlayerSocketId(roomId, playerId, socket.id);
+            roomManager.markPlayerActive(roomId, playerId);
             
             // Emit room update to all
-            io.to(roomId).emit('roomUpdate', {
-                roomId: roomId,
-                players: room.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                playerCount: room.players.length,
-                admin: room.admin
-            });
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+
+            // Also refresh the global room list because onlineCount depends on socket binding.
+            io.emit('roomListUpdate', roomManager.getAllRooms());
 
             // ส่ง chat notification เฉพาะกรณีเข้าใหม่จริงๆ (ไม่ใช่ reconnect หรือ duplicate)
             if (!wasOnline && !isDuplicate) {
@@ -2300,19 +2737,161 @@ io.sockets.on('connection', function(socket) {
             // Sync game state: ส่ง players array แบบเดิม
             const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
             if (gameStatePlayer && gameStatePlayer.role) {
-                io.to(socket.id).emit('newRole', {
-                    players: room.gameState.players,
-                    status: room.gameState.status
-                });
-
-                // ถ้าเกมอยู่ในช่วงที่มีคำแล้ว ให้ sync
-                const shouldSyncWord = ['word', 'in_progress', 'vote1', 'vote2', 'end'].includes(room.gameState.status);
-                if (shouldSyncWord && room.gameState.word) {
-                    io.to(socket.id).emit('revealWord', {
+                if (room.settings.gameMode === 'werewolf') {
+                    emitWerewolfState(room, socket.id, playerId);
+                } else {
+                    io.to(socket.id).emit('newRole', {
                         players: room.gameState.players,
-                        word: room.gameState.word
+                        status: room.gameState.status
                     });
+
+                    // ถ้าเกมอยู่ในช่วงที่มีคำแล้ว ให้ sync
+                    const shouldSyncWord = ['word', 'in_progress', 'vote1', 'vote2', 'end'].includes(room.gameState.status);
+                    if (shouldSyncWord && room.gameState.word) {
+                        io.to(socket.id).emit('revealWord', {
+                            players: room.gameState.players,
+                            word: room.gameState.word
+                        });
+                    }
                 }
+            }
+        } else {
+            io.to(socket.id).emit('roomClosed', { message: 'ห้องถูกปิดไปแล้ว' });
+        }
+    });
+
+    socket.on('werewolf_requestState', function(data) {
+        const roomId = data?.roomId || socket.roomId;
+        const playerId = data?.playerId || socket.playerId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || room.settings.gameMode !== 'werewolf' || !playerId) {
+            return;
+        }
+
+        syncWerewolfPhaseTimer(room);
+        emitWerewolfState(room, socket.id, playerId);
+    });
+
+    socket.on('werewolf_submitNightAction', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const targetPlayerId = data?.targetPlayerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!playerId || !targetPlayerId) {
+                throw new Error('ข้อมูล action ไม่ครบ');
+            }
+
+            const werewolfEngine = getGameEngine('werewolf');
+            const result = werewolfEngine.submitNightAction(room, playerId, targetPlayerId);
+            emitWerewolfRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('werewolf_submitDayVote', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const targetPlayerId = data?.targetPlayerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!playerId || !targetPlayerId) {
+                throw new Error('ข้อมูลการโหวตไม่ครบ');
+            }
+
+            const werewolfEngine = getGameEngine('werewolf');
+            const result = werewolfEngine.submitDayVote(room, playerId, targetPlayerId);
+            emitWerewolfRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('werewolf_useRevealAction', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const targetPlayerId = data?.targetPlayerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!playerId || !targetPlayerId) {
+                throw new Error('ข้อมูลการเปิดโปงไม่ครบ');
+            }
+
+            const werewolfEngine = getGameEngine('werewolf');
+            const result = werewolfEngine.useRevealAction(room, playerId, targetPlayerId);
+            emitWerewolfRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('werewolf_restartGame', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!isAdminSocket(room, socket)) {
+                throw new Error('ต้องเป็นหัวหน้าห้องเท่านั้น');
+            }
+
+            clearWerewolfPhaseTimer(roomId);
+            clearWerewolfTransitionTimer(roomId);
+            roomManager.resetRoomGame(roomId);
+
+            const refreshedRoom = roomManager.getRoom(roomId);
+            if (!refreshedRoom) {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            sendChatMessageToRoom(io, roomId, 'System', 'เริ่มรอบใหม่ กลับไปที่ห้องเพื่อพร้อมเล่นอีกครั้ง', '#9b59b6');
+            io.to(roomId).emit('restartGame');
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+
+            if (typeof callback === 'function') {
+                callback({ success: true });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
             }
         }
     });
@@ -2372,6 +2951,25 @@ io.sockets.on('connection', function(socket) {
                 const currentOnlinePlayers = currentRoom.players.filter(p => p.socketId);
                 if (currentOnlinePlayers.length < 3) {
                     io.to(roomId).emit('gameStartCancelled', { error: 'ผู้เล่นไม่ครบ 3 คน' });
+                    room.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'werewolf') {
+                    const werewolfEngine = getGameEngine('werewolf');
+                    clearWerewolfTransitionTimer(roomId);
+                    werewolfEngine.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    sendChatMessageToRoom(io, roomId, 'System', 'เกม Werewolf เริ่มแล้ว คืนแรกกำลังเริ่ม ทุกคนเช็กบทของตัวเองได้เลย', '#2ecc71');
+                    emitWerewolfRoomState(currentRoom);
                     room.gameStarting = false;
                     return;
                 }
@@ -2810,6 +3408,7 @@ io.sockets.on('connection', function(socket) {
 
         const player = playerManager.getPlayer(playerId);
         if (!player) return;
+        roomManager.markPlayerActive(roomId, playerId);
 
         // XSS Protection: sanitize message (escape HTML special chars only, preserve Thai/Unicode)
         let safeMessage = data.message;
@@ -2876,12 +3475,7 @@ io.sockets.on('connection', function(socket) {
             const updatedRoom = roomManager.disconnectPlayer(roomId, playerId);
             if (updatedRoom) {
                 // ส่ง roomUpdate ทันที (เพื่ออัปเดต online status)
-                io.to(roomId).emit('roomUpdate', {
-                    roomId: roomId,
-                    players: updatedRoom.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                    playerCount: updatedRoom.players.length,
-                    admin: updatedRoom.admin
-                });
+                io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
 
                 // ตั้ง timeout ก่อนส่งข้อความ "หลุดการเชื่อมต่อ" และลบผู้เล่นออกจากห้อง
                 const player = playerManager.getPlayer(playerId);
@@ -2910,12 +3504,7 @@ io.sockets.on('connection', function(socket) {
                                             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
                                             if (updatedRoom) {
                                                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง (Timeout)`, '#e74c3c');
-                                                io.to(roomId).emit('roomUpdate', {
-                                                    roomId: roomId,
-                                                    players: updatedRoom.players.map(p => ({ playerId: p.playerId, playerName: p.playerName, color: p.color, permission: p.permission, online: !!p.socketId })),
-                                                    playerCount: updatedRoom.players.length,
-                                                    admin: updatedRoom.admin
-                                                });
+                                                io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
                                                 io.emit('roomListUpdate', roomManager.getAllRooms());
                                             }
                                             console.log(`[Timeout] Removed player ${player.playerName} from room ${roomId}`);
@@ -2942,16 +3531,11 @@ io.sockets.on('connection', function(socket) {
 // ==================== 404 ERROR HANDLER ====================
 // ต้องอยู่หลัง routes ทั้งหมด
 app.use(async function(req, res) {
-    // ใช้ playerId ที่มีอยู่แล้ว (จาก middleware) หรือสร้างใหม่
-    let playerId = req.query.playerId || req.playerId;
-    if (!playerId) {
-        const newPlayer = await playerManager.createOrGetPlayer();
-        playerId = newPlayer.playerId;
-    }
+    const playerId = req.playerId || req.query.playerId;
     res.status(404).render('error.ejs', { 
         playerId: playerId,
         message: 'ไม่พบหน้าที่คุณต้องการ',
-        redirectUrl: '/?playerId=' + playerId
+        redirectUrl: playerId ? '/?playerId=' + playerId : '/'
     });
 });
 
@@ -2969,6 +3553,11 @@ async function startServer() {
         // Initialize stats manager with MongoDB if available
         await statsManager.initStatsManager();
         console.log('✅ Stats Manager initialized');
+
+        const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
+        if (repairedStatsNames.repairedCount > 0) {
+            console.log(`✅ Repaired ${repairedStatsNames.repairedCount} stats player names`);
+        }
     } catch (e) {
         console.log('⚠️ Starting without MongoDB:', e.message);
     }
@@ -2991,3 +3580,5 @@ async function startServer() {
 }
 
 startServer();
+
+setInterval(runRoomCleanupSweep, ROOM_SWEEP_INTERVAL_MS);

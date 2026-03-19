@@ -5,6 +5,43 @@
 
 const mongoose = require('mongoose');
 
+function createDefaultWerewolfRoleStats() {
+    return {
+        villager: 0,
+        werewolf: 0,
+        alphaWolf: 0,
+        mayor: 0,
+        bodyguard: 0,
+        seer: 0,
+        doctor: 0,
+        revealer: 0
+    };
+}
+
+function createDefaultRoleStats() {
+    return {
+        gameMasterCount: 0,
+        traitorCount: 0,
+        citizenCount: 0,
+        werewolf: createDefaultWerewolfRoleStats()
+    };
+}
+
+function createDefaultWinByRole() {
+    return {
+        winAsTraitor: 0,
+        winAsCitizen: 0,
+        werewolf: createDefaultWerewolfRoleStats()
+    };
+}
+
+function createDefaultModeStats() {
+    return {
+        insider: { games: 0, wins: 0, losses: 0 },
+        werewolf: { games: 0, wins: 0, losses: 0 }
+    };
+}
+
 // Player Schema
 const playerSchema = new mongoose.Schema({
     playerId: { type: String, required: true, unique: true, index: true },
@@ -23,15 +60,9 @@ const playerStatsSchema = new mongoose.Schema({
     totalGames: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
     losses: { type: Number, default: 0 },
-    roleStats: {
-        gameMasterCount: { type: Number, default: 0 },
-        traitorCount: { type: Number, default: 0 },
-        citizenCount: { type: Number, default: 0 }
-    },
-    winByRole: {
-        winAsTraitor: { type: Number, default: 0 },
-        winAsCitizen: { type: Number, default: 0 }
-    },
+    roleStats: { type: mongoose.Schema.Types.Mixed, default: createDefaultRoleStats },
+    winByRole: { type: mongoose.Schema.Types.Mixed, default: createDefaultWinByRole },
+    modeStats: { type: mongoose.Schema.Types.Mixed, default: createDefaultModeStats },
     lastPlayedAt: { type: Date },
     gameHistory: { type: Array, default: [] }
 }, { timestamps: true });

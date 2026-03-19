@@ -525,6 +525,83 @@
     .profile-role-row:last-child {
         border-bottom: none;
     }
+
+    .profile-history {
+        margin-top: 16px;
+        background: rgba(255,255,255,0.05);
+        padding: 15px;
+        border-radius: 12px;
+    }
+
+    .profile-history h4 {
+        margin: 0 0 10px 0;
+        color: #8fd3ff;
+        font-size: 1em;
+    }
+
+    .profile-history-list {
+        display: grid;
+        gap: 8px;
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
+    .profile-history-item {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        border-left: 3px solid rgba(255,255,255,0.12);
+    }
+
+    .profile-history-item.won {
+        border-left-color: #2ecc71;
+    }
+
+    .profile-history-item.lost {
+        border-left-color: #e74c3c;
+    }
+
+    .profile-history-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
+    }
+
+    .profile-history-mode {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75em;
+        font-weight: 700;
+        background: rgba(255,255,255,0.08);
+    }
+
+    .profile-history-mode.werewolf {
+        color: #ffb4a8;
+    }
+
+    .profile-history-mode.insider {
+        color: #8fd3ff;
+    }
+
+    .profile-history-meta {
+        color: #aaa;
+        font-size: 0.82em;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .profile-history-empty {
+        color: #888;
+        text-align: center;
+        padding: 12px;
+    }
 </style>
 
 <div class="lobby-container">
@@ -856,8 +933,54 @@ $(function() {
             const joinedDate = new Date(data.createdAt).toLocaleDateString('th-TH');
             const lastPlayed = data.stats?.lastPlayedAt ? new Date(data.stats.lastPlayedAt).toLocaleDateString('th-TH') : 'ยังไม่เคยเล่น';
             
-            const stats = data.stats || { totalGames: 0, wins: 0, losses: 0, winRate: 0, roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 }, winByRole: { winAsTraitor: 0, winAsCitizen: 0 } };
+            const stats = data.stats || {
+                totalGames: 0,
+                wins: 0,
+                losses: 0,
+                winRate: 0,
+                roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 },
+                winByRole: { winAsTraitor: 0, winAsCitizen: 0 },
+                modeStats: {
+                    insider: { games: 0, wins: 0, losses: 0 },
+                    werewolf: { games: 0, wins: 0, losses: 0 }
+                }
+            };
             
+            const history = Array.isArray(stats.gameHistory) ? stats.gameHistory.slice(0, 5) : [];
+            const historyHtml = history.length > 0
+                ? history.map(function(game) {
+                    const isWerewolf = game.mode === 'werewolf';
+                    const modeLabel = isWerewolf ? '🐺 Werewolf' : '🎯 Insider';
+                    const detailPrimary = isWerewolf
+                        ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
+                        : 'ผู้ทรยศ: ' + escapeHtml(game.traitor || 'ไม่ทราบ');
+                    const detailSecondary = isWerewolf
+                        ? (game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ')
+                        : escapeHtml(game.word || 'ไม่ทราบคำ');
+                    const gameDate = game.date
+                        ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : '-';
+
+                    return `
+                        <div class="profile-history-item ${game.won ? 'won' : 'lost'}">
+                            <div class="profile-history-top">
+                                <span>${game.won ? '🏆 ชนะ' : '💔 แพ้'} · ${escapeHtml(game.role || 'ไม่ทราบบท')}</span>
+                                <span class="profile-history-mode ${isWerewolf ? 'werewolf' : 'insider'}">${modeLabel}</span>
+                            </div>
+                            <div class="profile-history-meta">
+                                <span>🏠 ${escapeHtml(game.roomName || 'ไม่ทราบห้อง')}</span>
+                                <span>👥 ${game.playerCount || 0} คน</span>
+                                <span>🕒 ${gameDate}</span>
+                            </div>
+                            <div class="profile-history-meta" style="margin-top: 4px;">
+                                <span>${detailPrimary}</span>
+                                <span>${detailSecondary}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('')
+                : '<div class="profile-history-empty">ยังไม่มีประวัติให้ดู</div>';
+
             const html = `
                 <div class="profile-modal-content">
                     <div class="profile-modal-header">
@@ -906,6 +1029,19 @@ $(function() {
                             <span>🕐 เล่นล่าสุด</span>
                             <span>${lastPlayed}</span>
                         </div>
+                        <div class="profile-role-row">
+                            <span>🎯 Insider</span>
+                            <span>${stats.modeStats?.insider?.games || 0} เกม</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🐺 Werewolf</span>
+                            <span>${stats.modeStats?.werewolf?.games || 0} เกม</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-history">
+                        <h4>📜 5 เกมล่าสุด</h4>
+                        <div class="profile-history-list">${historyHtml}</div>
                     </div>
                 </div>
             `;
@@ -918,7 +1054,7 @@ $(function() {
                 showConfirmButton: true,
                 confirmButtonText: 'ปิด',
                 confirmButtonColor: '#e74c3c',
-                width: 450
+                width: 520
             });
         }).fail(function() {
             Swal.fire({
@@ -1070,7 +1206,7 @@ $(function() {
     });
     
     // ==================== PATCH NOTES POPUP ====================
-    const patchVersion = '2.0.0';
+    const patchVersion = '3.0.0';
     const patchSeenKey = `hide_patch_${patchVersion}_${playerId}`;
     const hideUntil = localStorage.getItem(patchSeenKey);
     const now = Date.now();
@@ -1081,41 +1217,44 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🚀 อัปเดต Version 2.1.0!',
+            title: '🚀 อัปเดต Version 3.0!',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        ขอบคุณที่เล่น Insider Game! นี่คือสิ่งใหม่ในเวอร์ชันนี้:
+                        Werewolf ถูกยกขึ้นเป็นโหมดหลักเต็มตัวแล้ว พร้อม profile, history และการ reconnect ที่นิ่งขึ้นทั้งระบบ
                     </p>
                     
-                    <!-- Version 2.1.0 -->
-                    <div style="background: rgba(231, 76, 60, 0.15); padding: 12px; border-radius: 8px; border-left: 4px solid #e74c3c; margin-bottom: 15px;">
-                        <h4 style="color: #e74c3c; margin: 0 0 10px 0;">🔴🔴 โหมดใหม่: 2 ผู้ทรยศ!</h4>
+                    <div style="background: rgba(192, 57, 43, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #c0392b; margin-bottom: 15px;">
+                        <h4 style="color: #ffb4a8; margin: 0 0 10px 0;">🐺 ไฮไลต์ v3.0</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>เมื่อมีผู้เล่น <strong>5 คนขึ้นไป</strong> สามารถเปิดโหมดนี้ได้</li>
-                            <li>จะมี <strong>ผู้ทรยศ 2 คน</strong> แทนที่จะเป็น 1 คน</li>
-                            <li>ตอนโหวตต้อง <strong>เลือก 2 คน</strong> ที่คิดว่าเป็นผู้ทรยศ</li>
-                            <li>เปิด/ปิดได้ในการตั้งค่าห้อง</li>
+                            <li><strong>Werewolf พร้อมเล่นเต็มตา</strong> มีทั้งกลางคืน กลางวัน บทบาท และเงื่อนไขชนะครบแล้ว</li>
+                            <li><strong>โปรไฟล์จำผลงานให้แล้ว</strong> ดูได้ทั้งชนะ-แพ้ บทที่เคยได้ และประวัติแต่ละเกม</li>
+                            <li><strong>กลับเข้าเกมได้เนียนขึ้น</strong> รีเฟรชแล้วไม่หลุดจากห้องง่ายเหมือนเดิม</li>
+                            <li><strong>มีคู่มือสั้นในหน้าเกม</strong> เปิดดูได้ทันทีเวลาอยากทวนว่าแต่ละช่วงต้องทำอะไร</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(52, 152, 219, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 15px;">
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 เข้า Werewolf แล้วทำอะไรบ้าง</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
+                            <li>คืนแรก: ทุกคนเริ่มอ่านเกมก่อน หมาป่ายังฆ่าใครไม่ได้</li>
+                            <li>กลางคืนถัดไป: คนมีสกิลใช้สกิล หมาป่าเลือกเหยื่อ</li>
+                            <li>กลางวัน: ทุกคนคุยกันในแชท แล้วโหวตคนต้องสงสัย</li>
+                            <li>ชาวบ้านชนะเมื่อกำจัดหมาป่าหมด</li>
+                            <li>หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่เหลือ</li>
                         </ul>
                     </div>
                     
-                    <!-- Version 2.0.0 -->
                     <details style="margin-bottom: 15px;">
                         <summary style="color: #3498db; cursor: pointer; font-weight: bold; padding: 8px 0;">
-                            📦 ดูอัปเดต Version 2.0.0
+                            📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
-                            <h4 style="color: #2ecc71; margin: 10px 0 10px 0;">✨ ฟีเจอร์ใหม่</h4>
+                            <h4 style="color: #2ecc71; margin: 10px 0 10px 0;">✨ ฟีเจอร์เดิมที่ยังอยู่</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>🎁 <strong>ปุ่ม Donate</strong> - สนับสนุนผู้พัฒนา</li>
                                 <li>💬 <strong>ระบบแชทใหม่</strong> - Swipe/เมนูตอบกลับ</li>
                                 <li>⏱️ <strong>Auto-Timer</strong> - ป้องกันเกมค้าง</li>
-                                <li>🎨 <strong>Animated Countdown</strong> - สวยงามขึ้น</li>
-                                <li>📞 <strong>ข้อมูลติดต่อ</strong> - ในหน้าตั้งค่า</li>
-                            </ul>
-                            
-                            <h4 style="color: #3498db; margin: 10px 0 10px 0;">🔧 ปรับปรุง</h4>
-                            <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>💾 <strong>ข้อมูลเก็บใน Database</strong> - ไม่หายอีกแล้ว</li>
                                 <li>🛡️ <strong>ระบบเสถียรขึ้น</strong></li>
                             </ul>

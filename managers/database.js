@@ -15,12 +15,14 @@ async function connectDB() {
     const mongoUrl = process.env.MONGO_URL;
     
     if (!mongoUrl) {
-        console.log('⚠️ MONGO_URL not found, using in-memory storage');
+        console.log('⚠️ MONGO_URL not found, using JSON file fallback');
         return false;
     }
 
     try {
-        await mongoose.connect(mongoUrl);
+        await mongoose.connect(mongoUrl, {
+            serverSelectionTimeoutMS: 10000
+        });
         isConnected = true;
         console.log('✅ Connected to MongoDB');
         return true;

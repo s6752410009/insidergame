@@ -1771,8 +1771,9 @@ $(function() {
     socket.on('reconnect', function(attemptNumber) {
         console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
         $('#connectionStatus').hide();
-        // Re-join room after reconnect
-        socket.emit('joinRoom', { roomId: '<%= room.roomId %>' });
+        socket.emit('initPlayer', playerId);
+        socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+        socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
     });
 
     socket.on('reconnect_attempt', function(attemptNumber) {
@@ -2277,12 +2278,9 @@ $(function() {
     // 3. ดัก beforeunload (กรณีปิด tab/refresh)
     window.addEventListener('beforeunload', function(e) {
         if (allowNavigation) return;
+
+        // ไม่ส่ง leave-room ตอน refresh/close แล้ว รอระบบ disconnect/reconnect ฝั่ง server แทน
         if (!shouldConfirmLeave()) {
-            // ถ้าปิดการยืนยัน → ส่ง leaveRoom แล้วออกเลย
-            navigator.sendBeacon('/api/leave-room', JSON.stringify({
-                roomId: roomId,
-                playerId: playerId
-            }));
             return;
         }
         
@@ -2294,14 +2292,10 @@ $(function() {
     
     // 4. ดัก pagehide (สำหรับ mobile browsers - เมื่อออกจริงๆ แล้ว)
     window.addEventListener('pagehide', function(e) {
-        // ถ้า allowNavigation = true แปลว่ากำลัง redirect กลับห้อง ไม่ต้องส่ง leave
+        // ถ้า allowNavigation = true แปลว่ากำลัง redirect กลับห้อง ไม่ต้องทำอะไร
         if (allowNavigation) return;
-        
-        // ส่ง leaveRoom ผ่าน sendBeacon เมื่อหน้าปิดจริงๆ
-        navigator.sendBeacon('/api/leave-room', JSON.stringify({
-            roomId: roomId,
-            playerId: playerId
-        }));
+
+        sessionStorage.setItem('boardHiddenTime', Date.now().toString());
     });
     
     // 5. ดัก visibilitychange (เมื่อ user สลับ tab หรือ minimize)
@@ -2762,23 +2756,6 @@ $(function() {
         
         soundNotify('mysterious');
     <% } %>
-
-
-    // เมื่อ Socket.IO reconnect อัตโนมัติ
-    socket.on('reconnect', function() {
-        console.log('Socket reconnected');
-        // ไม่ต้อง init ใหม่ เพราะ socket จะ auto-rejoin room
-        // แค่แจ้งเตือน
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'เชื่อมต่อสำเร็จ',
-            showConfirmButton: false,
-            timer: 2000
-        });
-    });
-
     // รับข้อมูลอัปเดตห้อง (รายชื่อผู้เล่น)
     socket.on('roomUpdate', function(data) {
         if (data.players) {

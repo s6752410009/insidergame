@@ -19,9 +19,154 @@ try {
 }
 
 const STATS_FILE = path.join(__dirname, '../data/playerStats.json');
+const MAX_GAME_HISTORY = 20;
+const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'revealer'];
+const WEREWOLF_ROLE_LABELS = {
+    villager: 'ชาวบ้าน',
+    werewolf: 'หมาป่า',
+    alphaWolf: 'อัลฟ่าหมาป่า',
+    mayor: 'นายก',
+    bodyguard: 'บอดี้การ์ด',
+    seer: 'Seer',
+    doctor: 'หมอ',
+    revealer: 'จอมเปิดโปง'
+};
 
 // เก็บสถิติใน memory (key: playerId)
 const stats = new Map();
+
+function createDefaultWerewolfRoleStats() {
+    return {
+        villager: 0,
+        werewolf: 0,
+        alphaWolf: 0,
+        mayor: 0,
+        bodyguard: 0,
+        seer: 0,
+        doctor: 0,
+        revealer: 0
+    };
+}
+
+function createDefaultRoleStats() {
+    return {
+        gameMasterCount: 0,
+        traitorCount: 0,
+        citizenCount: 0,
+        werewolf: createDefaultWerewolfRoleStats()
+    };
+}
+
+function createDefaultWinByRole() {
+    return {
+        winAsTraitor: 0,
+        winAsCitizen: 0,
+        werewolf: createDefaultWerewolfRoleStats()
+    };
+}
+
+function createDefaultModeStats() {
+    return {
+        insider: { games: 0, wins: 0, losses: 0 },
+        werewolf: { games: 0, wins: 0, losses: 0 }
+    };
+}
+
+function normalizeCounter(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return 0;
+    }
+    return parsed;
+}
+
+function isWerewolfTeamRole(roleId) {
+    return roleId === 'werewolf' || roleId === 'alphaWolf';
+}
+
+function createDefaultStatsRecord(playerId, playerName) {
+    return {
+        playerId,
+        playerName: isPlaceholderPlayerName(playerName) ? 'Unknown' : playerName,
+        totalGames: 0,
+        wins: 0,
+        losses: 0,
+        roleStats: createDefaultRoleStats(),
+        winByRole: createDefaultWinByRole(),
+        modeStats: createDefaultModeStats(),
+        lastPlayedAt: null,
+        gameHistory: []
+    };
+}
+
+function normalizeGameHistoryEntry(entry) {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const mode = entry.mode === 'werewolf' ? 'werewolf' : 'insider';
+    return {
+        ...entry,
+        mode,
+        roomName: entry.roomName || 'ไม่ทราบ',
+        role: entry.role || 'ไม่ทราบ',
+        playerCount: normalizeCounter(entry.playerCount),
+        won: !!entry.won
+    };
+}
+
+function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlayerName = 'Unknown') {
+    const stat = createDefaultStatsRecord(
+        rawStat.playerId || fallbackPlayerId,
+        isPlaceholderPlayerName(rawStat.playerName) ? fallbackPlayerName : rawStat.playerName
+    );
+
+    stat.totalGames = normalizeCounter(rawStat.totalGames);
+    stat.wins = normalizeCounter(rawStat.wins);
+    stat.losses = normalizeCounter(rawStat.losses);
+
+    const rawRoleStats = rawStat.roleStats || {};
+    stat.roleStats.gameMasterCount = normalizeCounter(rawRoleStats.gameMasterCount);
+    stat.roleStats.traitorCount = normalizeCounter(rawRoleStats.traitorCount);
+    stat.roleStats.citizenCount = normalizeCounter(rawRoleStats.citizenCount);
+
+    const rawWerewolfRoleStats = rawRoleStats.werewolf || rawRoleStats.werewolfRoles || {};
+    WEREWOLF_ROLE_IDS.forEach(roleId => {
+        stat.roleStats.werewolf[roleId] = normalizeCounter(rawWerewolfRoleStats[roleId]);
+    });
+
+    const rawWinByRole = rawStat.winByRole || {};
+    stat.winByRole.winAsTraitor = normalizeCounter(rawWinByRole.winAsTraitor);
+    stat.winByRole.winAsCitizen = normalizeCounter(rawWinByRole.winAsCitizen);
+
+    const rawWerewolfWins = rawWinByRole.werewolf || rawWinByRole.werewolfWins || {};
+    WEREWOLF_ROLE_IDS.forEach(roleId => {
+        stat.winByRole.werewolf[roleId] = normalizeCounter(rawWerewolfWins[roleId]);
+    });
+
+    const rawModeStats = rawStat.modeStats || {};
+    ['insider', 'werewolf'].forEach(mode => {
+        const modeStat = rawModeStats[mode] || {};
+        stat.modeStats[mode] = {
+            games: normalizeCounter(modeStat.games),
+            wins: normalizeCounter(modeStat.wins),
+            losses: normalizeCounter(modeStat.losses)
+        };
+    });
+
+    if (stat.modeStats.insider.games === 0 && stat.modeStats.werewolf.games === 0 && stat.totalGames > 0) {
+        stat.modeStats.insider.games = stat.totalGames;
+        stat.modeStats.insider.wins = stat.wins;
+        stat.modeStats.insider.losses = stat.losses;
+    }
+
+    stat.lastPlayedAt = rawStat.lastPlayedAt || null;
+    stat.gameHistory = Array.isArray(rawStat.gameHistory)
+        ? rawStat.gameHistory.map(normalizeGameHistoryEntry).filter(Boolean).slice(0, MAX_GAME_HISTORY)
+        : [];
+
+    return stat;
+}
 
 // สร้างโฟลเดอร์ data ถ้ายังไม่มี
 const dataDir = path.dirname(STATS_FILE);
@@ -59,24 +204,7 @@ async function loadStatsFromDB() {
         const dbStats = await PlayerStats.find({});
         stats.clear();
         dbStats.forEach(s => {
-            stats.set(s.playerId, {
-                playerId: s.playerId,
-                playerName: s.playerName,
-                totalGames: s.totalGames || 0,
-                wins: s.wins || 0,
-                losses: s.losses || 0,
-                roleStats: s.roleStats || {
-                    gameMasterCount: 0,
-                    traitorCount: 0,
-                    citizenCount: 0
-                },
-                winByRole: s.winByRole || {
-                    winAsTraitor: 0,
-                    winAsCitizen: 0
-                },
-                lastPlayedAt: s.lastPlayedAt || null,
-                gameHistory: s.gameHistory || []
-            });
+            stats.set(s.playerId, normalizeStatsShape(s.toObject ? s.toObject() : s, s.playerId, s.playerName));
         });
         console.log(`Loaded stats for ${stats.size} players from MongoDB`);
     } catch (e) {
@@ -94,7 +222,7 @@ function loadStatsFromFile() {
             // โหลดเข้า Map
             if (statsData && typeof statsData === 'object') {
                 for (const [playerId, stat] of Object.entries(statsData)) {
-                    stats.set(playerId, stat);
+                    stats.set(playerId, normalizeStatsShape(stat, playerId, stat.playerName));
                 }
             }
             console.log(`Loaded stats for ${stats.size} players from file`);
@@ -149,34 +277,23 @@ function saveStatsToFile() {
     }
 }
 
+function isPlaceholderPlayerName(playerName) {
+    if (typeof playerName !== 'string') return true;
+    const normalizedName = playerName.trim();
+    return normalizedName.length === 0 || normalizedName.toLowerCase() === 'unknown';
+}
+
 /**
  * สร้างสถิติเริ่มต้นสำหรับผู้เล่น
  */
 function initializeStats(playerId, playerName) {
     if (!stats.has(playerId)) {
-        stats.set(playerId, {
-            playerId,
-            playerName,
-            totalGames: 0,
-            wins: 0,
-            losses: 0,
-            roleStats: {
-                gameMasterCount: 0,
-                traitorCount: 0,
-                citizenCount: 0
-            },
-            winByRole: {
-                winAsTraitor: 0,
-                winAsCitizen: 0
-            },
-            lastPlayedAt: null,
-            gameHistory: [] // เพิ่ม: ประวัติเกมล่าสุด (เก็บ 20 เกมล่าสุด)
-        });
+        stats.set(playerId, createDefaultStatsRecord(playerId, playerName));
     }
-    // Migrate old stats that don't have gameHistory
-    const stat = stats.get(playerId);
-    if (!stat.gameHistory) {
-        stat.gameHistory = [];
+    const stat = normalizeStatsShape(stats.get(playerId), playerId, playerName);
+    stats.set(playerId, stat);
+    if (!isPlaceholderPlayerName(playerName) && isPlaceholderPlayerName(stat.playerName)) {
+        stat.playerName = playerName;
     }
     return stat;
 }
@@ -187,6 +304,14 @@ function initializeStats(playerId, playerName) {
  * @param {Object} gameResult - ผลการเล่นเกม { resultVote2, players, word, roomName }
  */
 function recordGameEnd(roomId, gameResult) {
+    if (gameResult?.mode === 'werewolf') {
+        return recordWerewolfGameEnd(roomId, gameResult);
+    }
+
+    return recordInsiderGameEnd(roomId, gameResult);
+}
+
+function recordInsiderGameEnd(roomId, gameResult) {
     const { resultVote2, players, word, roomName } = gameResult;
     
     if (!resultVote2 || !players) {
@@ -209,6 +334,7 @@ function recordGameEnd(roomId, gameResult) {
 
         // อัปเดต totalGames
         stat.totalGames += 1;
+        stat.modeStats.insider.games += 1;
 
         // คำนวณผลชนะ/แพ้
         let playerWon = false;
@@ -218,10 +344,12 @@ function recordGameEnd(roomId, gameResult) {
             // ผู้ทรยศชนะ = พลเมืองแพ้
             if (!hasWon) {
                 stat.wins += 1;
+                stat.modeStats.insider.wins += 1;
                 stat.winByRole.winAsTraitor += 1;
                 playerWon = true;
             } else {
                 stat.losses += 1;
+                stat.modeStats.insider.losses += 1;
             }
             stat.roleStats.traitorCount += 1;
         } else if (role === 'ผู้ดำเนินเกม') {
@@ -230,18 +358,22 @@ function recordGameEnd(roomId, gameResult) {
             // GM ถือว่าชนะถ้าพลเมืองชนะ
             if (hasWon) {
                 stat.wins += 1;
+                stat.modeStats.insider.wins += 1;
                 playerWon = true;
             } else {
                 stat.losses += 1;
+                stat.modeStats.insider.losses += 1;
             }
         } else {
             // พลเมือง (หรือ defaultRole)
             if (hasWon) {
                 stat.wins += 1;
+                stat.modeStats.insider.wins += 1;
                 stat.winByRole.winAsCitizen += 1;
                 playerWon = true;
             } else {
                 stat.losses += 1;
+                stat.modeStats.insider.losses += 1;
             }
             stat.roleStats.citizenCount += 1;
         }
@@ -251,6 +383,7 @@ function recordGameEnd(roomId, gameResult) {
         
         // บันทึกประวัติเกม
         const gameEntry = {
+            mode: 'insider',
             date: gameTimestamp,
             roomId: roomId,
             roomName: roomName || 'ไม่ทราบ',
@@ -266,8 +399,8 @@ function recordGameEnd(roomId, gameResult) {
         stat.gameHistory.unshift(gameEntry);
         
         // เก็บแค่ 20 เกมล่าสุด
-        if (stat.gameHistory.length > 20) {
-            stat.gameHistory = stat.gameHistory.slice(0, 20);
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
         }
     });
 
@@ -275,14 +408,78 @@ function recordGameEnd(roomId, gameResult) {
     saveStats();
 }
 
+function recordWerewolfGameEnd(roomId, gameResult) {
+    const { winner, players, roomName, dayNumber } = gameResult;
+
+    if (!winner || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid werewolf game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const winnerLabel = winner === 'village' ? 'ชาวบ้าน' : 'หมาป่า';
+
+    players.forEach(player => {
+        if (!player.playerId || !player.role) {
+            return;
+        }
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        const roleId = player.role;
+        const team = player.roleInfo?.team || (isWerewolfTeamRole(roleId) ? 'werewolf' : 'village');
+        const playerWon = team === winner;
+        const roleLabel = player.roleInfo?.thaiName || player.revealedRole || WEREWOLF_ROLE_LABELS[roleId] || roleId;
+
+        stat.totalGames += 1;
+        stat.modeStats.werewolf.games += 1;
+        stat.roleStats.werewolf[roleId] = normalizeCounter(stat.roleStats.werewolf[roleId]) + 1;
+
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.werewolf.wins += 1;
+            stat.winByRole.werewolf[roleId] = normalizeCounter(stat.winByRole.werewolf[roleId]) + 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.werewolf.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'werewolf',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            roleId,
+            role: roleLabel,
+            team,
+            won: playerWon,
+            winner,
+            winnerLabel,
+            playerCount: players.length,
+            dayNumber: normalizeCounter(dayNumber),
+            survived: player.alive !== false
+        });
+
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
 /**
  * ดึงสถิติผู้เล่น
  */
 function getStats(playerId) {
-    if (!stats.has(playerId)) {
-        return initializeStats(playerId, 'Unknown');
+    const stat = stats.get(playerId);
+    if (!stat) {
+        return null;
     }
-    return stats.get(playerId);
+
+    const normalized = normalizeStatsShape(stat, playerId, stat.playerName);
+    stats.set(playerId, normalized);
+    return normalized;
 }
 
 /**
@@ -308,6 +505,36 @@ function updatePlayerNameInStats(playerId, newName) {
     }
 }
 
+async function repairStatsPlayerNames(players) {
+    if (!Array.isArray(players) || players.length === 0) {
+        return { repairedCount: 0, repairedPlayers: [] };
+    }
+
+    const playersById = new Map(players.map(player => [player.playerId, player.playerName]));
+    const repairedPlayers = [];
+
+    for (const stat of stats.values()) {
+        if (!isPlaceholderPlayerName(stat.playerName)) {
+            continue;
+        }
+
+        const restoredName = playersById.get(stat.playerId);
+        if (!isPlaceholderPlayerName(restoredName)) {
+            stat.playerName = restoredName;
+            repairedPlayers.push({ playerId: stat.playerId, playerName: restoredName });
+        }
+    }
+
+    if (repairedPlayers.length > 0) {
+        await saveStats();
+    }
+
+    return {
+        repairedCount: repairedPlayers.length,
+        repairedPlayers
+    };
+}
+
 /**
  * ดึงสถิติทั้งหมด (สำหรับ admin/dashboard)
  */
@@ -320,21 +547,9 @@ function getAllStats() {
  */
 async function resetPlayerStats(playerId) {
     if (stats.has(playerId)) {
-        const stat = stats.get(playerId);
-        stat.totalGames = 0;
-        stat.wins = 0;
-        stat.losses = 0;
-        stat.roleStats = {
-            gameMasterCount: 0,
-            traitorCount: 0,
-            citizenCount: 0
-        };
-        stat.winByRole = {
-            winAsTraitor: 0,
-            winAsCitizen: 0
-        };
-        stat.lastPlayedAt = null;
-        stat.gameHistory = [];
+        const currentStat = stats.get(playerId);
+        const stat = createDefaultStatsRecord(playerId, currentStat.playerName);
+        stats.set(playerId, stat);
         await saveStats();
         return true;
     }
@@ -347,20 +562,11 @@ async function resetPlayerStats(playerId) {
 async function editPlayerStats(playerId, newData) {
     // ถ้ายังไม่มี stats ให้สร้างใหม่
     if (!stats.has(playerId)) {
-        stats.set(playerId, {
-            playerId,
-            playerName: newData.playerName || 'Unknown',
-            totalGames: 0,
-            wins: 0,
-            losses: 0,
-            roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 },
-            winByRole: { winAsTraitor: 0, winAsCitizen: 0 },
-            lastPlayedAt: new Date(),
-            gameHistory: []
-        });
+        stats.set(playerId, createDefaultStatsRecord(playerId, newData.playerName || 'Unknown'));
     }
     
-    const stat = stats.get(playerId);
+    const stat = normalizeStatsShape(stats.get(playerId), playerId, newData.playerName || 'Unknown');
+    stats.set(playerId, stat);
     
     // อัพเดทค่าที่ส่งมา
     if (newData.playerName !== undefined) stat.playerName = newData.playerName;
@@ -499,8 +705,10 @@ module.exports = {
     initStatsManager,
     recordGameEnd,
     getStats,
+    initializeStats,
     getGameHistory,
     updatePlayerNameInStats,
+    repairStatsPlayerNames,
     getAllStats,
     resetPlayerStats,
     editPlayerStats,

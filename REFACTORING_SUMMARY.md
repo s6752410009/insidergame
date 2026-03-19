@@ -166,7 +166,7 @@
 
 - **Platform**: Railway
 - **Domain**: insider-th.me (Namecheap - GitHub Education)
-- **Database**: JSON files (persistent via Docker volume / Railway volume)
+- **Database**: MongoDB via `MONGO_URL` or JSON file fallback in `data/`
 
 ## 📱 Browser Support
 

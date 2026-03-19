@@ -14,9 +14,12 @@
     "uuid": "^8.3.2"
   },
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "check:db": "node scripts/uploadStats.js",
+    "smoke:rooms": "node scripts/smoke-room-flow.js"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "socket.io-client": "^4.8.3"
   }
 }

@@ -233,6 +233,26 @@
     .role-stat-card.gamemaster {
         border-left-color: #f39c12;
     }
+
+    .role-stat-card.werewolf-role {
+        border-left-color: #c0392b;
+    }
+
+    .role-stat-card.village-role {
+        border-left-color: #3498db;
+    }
+
+    .role-stat-card.support-role {
+        border-left-color: #16a085;
+    }
+
+    .role-stat-card.mode-insider {
+        border-left-color: #8e44ad;
+    }
+
+    .role-stat-card.mode-werewolf {
+        border-left-color: #c0392b;
+    }
     
     .role-stat-icon {
         font-size: 2em;
@@ -344,6 +364,15 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 10px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .game-history-topline {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
     
     .game-history-result {
@@ -363,6 +392,28 @@
     .game-history-date {
         color: #a0aec0;
         font-size: 0.85em;
+    }
+
+    .game-mode-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85em;
+        font-weight: 700;
+        color: #fff;
+        background: rgba(255,255,255,0.1);
+    }
+
+    .game-mode-badge.insider {
+        background: rgba(52, 152, 219, 0.2);
+        color: #8fd3ff;
+    }
+
+    .game-mode-badge.werewolf {
+        background: rgba(192, 57, 43, 0.2);
+        color: #ffb4a8;
     }
     
     .game-history-details {
@@ -639,11 +690,35 @@
                 roleStats: {
                     gameMasterCount: 0,
                     traitorCount: 0,
-                    citizenCount: 0
+                    citizenCount: 0,
+                    werewolf: {
+                        villager: 0,
+                        werewolf: 0,
+                        alphaWolf: 0,
+                        mayor: 0,
+                        bodyguard: 0,
+                        seer: 0,
+                        doctor: 0,
+                        revealer: 0
+                    }
                 },
                 winByRole: {
                     winAsTraitor: 0,
-                    winAsCitizen: 0
+                    winAsCitizen: 0,
+                    werewolf: {
+                        villager: 0,
+                        werewolf: 0,
+                        alphaWolf: 0,
+                        mayor: 0,
+                        bodyguard: 0,
+                        seer: 0,
+                        doctor: 0,
+                        revealer: 0
+                    }
+                },
+                modeStats: {
+                    insider: { games: 0, wins: 0, losses: 0 },
+                    werewolf: { games: 0, wins: 0, losses: 0 }
                 },
                 lastPlayedAt: null,
                 gameHistory: []
@@ -652,7 +727,30 @@
             if (!displayStats.gameHistory) {
                 displayStats.gameHistory = [];
             }
+            if (!displayStats.roleStats.werewolf) {
+                displayStats.roleStats.werewolf = { villager: 0, werewolf: 0, alphaWolf: 0, mayor: 0, bodyguard: 0, seer: 0, doctor: 0, revealer: 0 };
+            }
+            if (!displayStats.winByRole.werewolf) {
+                displayStats.winByRole.werewolf = { villager: 0, werewolf: 0, alphaWolf: 0, mayor: 0, bodyguard: 0, seer: 0, doctor: 0, revealer: 0 };
+            }
+            if (!displayStats.modeStats) {
+                displayStats.modeStats = { insider: { games: 0, wins: 0, losses: 0 }, werewolf: { games: 0, wins: 0, losses: 0 } };
+            }
             const winRate = displayStats.totalGames > 0 ? Math.round((displayStats.wins / displayStats.totalGames) * 100) : 0;
+            const insiderStats = displayStats.modeStats.insider || { games: 0, wins: 0, losses: 0 };
+            const werewolfStats = displayStats.modeStats.werewolf || { games: 0, wins: 0, losses: 0 };
+            const insiderWinRate = insiderStats.games > 0 ? Math.round((insiderStats.wins / insiderStats.games) * 100) : 0;
+            const werewolfWinRate = werewolfStats.games > 0 ? Math.round((werewolfStats.wins / werewolfStats.games) * 100) : 0;
+            const werewolfRoleCards = [
+                { id: 'villager', icon: '🙂', label: 'ชาวบ้าน', className: 'village-role' },
+                { id: 'werewolf', icon: '🐺', label: 'หมาป่า', className: 'werewolf-role' },
+                { id: 'alphaWolf', icon: '👑', label: 'อัลฟ่าหมาป่า', className: 'werewolf-role' },
+                { id: 'mayor', icon: '🎖️', label: 'นายก', className: 'village-role' },
+                { id: 'bodyguard', icon: '🛡️', label: 'บอดี้การ์ด', className: 'support-role' },
+                { id: 'seer', icon: '🔮', label: 'Seer', className: 'support-role' },
+                { id: 'doctor', icon: '💉', label: 'หมอ', className: 'support-role' },
+                { id: 'revealer', icon: '💥', label: 'จอมเปิดโปง', className: 'support-role' }
+            ];
         %>
         
         <div class="stats-grid">
@@ -683,7 +781,21 @@
             </div>
         </div>
 
-        <h3 class="stats-section-title">🎭 สถิติตามบทบาท</h3>
+        <h3 class="stats-section-title">🧭 สรุปตามโหมด</h3>
+        <div class="role-stats-grid">
+            <div class="role-stat-card mode-insider">
+                <div class="role-stat-icon">🎯</div>
+                <div class="role-stat-value" style="color: #9b59b6;"><%= insiderStats.games %></div>
+                <div class="role-stat-label">Insider · ชนะ <%= insiderStats.wins %> · แพ้ <%= insiderStats.losses %> · <%= insiderWinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-werewolf">
+                <div class="role-stat-icon">🐺</div>
+                <div class="role-stat-value" style="color: #ff8f7b;"><%= werewolfStats.games %></div>
+                <div class="role-stat-label">Werewolf · ชนะ <%= werewolfStats.wins %> · แพ้ <%= werewolfStats.losses %> · <%= werewolfWinRate %>%</div>
+            </div>
+        </div>
+
+        <h3 class="stats-section-title">🎭 Insider: สถิติตามบทบาท</h3>
         <div class="role-stats-grid">
             <div class="role-stat-card gamemaster">
                 <div class="role-stat-icon">👑</div>
@@ -704,7 +816,18 @@
             </div>
         </div>
 
-        <h3 class="stats-section-title">🎯 ชนะตามบทบาท</h3>
+        <h3 class="stats-section-title">🐺 Werewolf: บทบาทที่เคยได้รับ</h3>
+        <div class="role-stats-grid">
+            <% werewolfRoleCards.forEach(function(role) { %>
+                <div class="role-stat-card <%= role.className %>">
+                    <div class="role-stat-icon"><%= role.icon %></div>
+                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.roleStats.werewolf[role.id] || 0 %></div>
+                    <div class="role-stat-label"><%= role.label %></div>
+                </div>
+            <% }); %>
+        </div>
+
+        <h3 class="stats-section-title">🎯 Insider: ชนะตามบทบาท</h3>
         <div class="role-stats-grid">
             <div class="role-stat-card traitor">
                 <div class="role-stat-icon">😈</div>
@@ -717,6 +840,17 @@
                 <div class="role-stat-value" style="color: #3498db;"><%= displayStats.winByRole.winAsCitizen %></div>
                 <div class="role-stat-label">ชนะเป็นพลเมือง</div>
             </div>
+        </div>
+
+        <h3 class="stats-section-title">🏁 Werewolf: ชนะตามบทบาท</h3>
+        <div class="role-stats-grid">
+            <% werewolfRoleCards.forEach(function(role) { %>
+                <div class="role-stat-card <%= role.className %>">
+                    <div class="role-stat-icon"><%= role.icon %></div>
+                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.winByRole.werewolf[role.id] || 0 %></div>
+                    <div class="role-stat-label">ชนะเป็น <%= role.label %></div>
+                </div>
+            <% }); %>
         </div>
 
         <div class="last-played">
@@ -736,11 +870,16 @@
             <div class="game-history-list">
                 <% if (displayStats.gameHistory && displayStats.gameHistory.length > 0) { %>
                     <% displayStats.gameHistory.forEach(function(game) { %>
+                        <% const gameMode = game.mode === 'werewolf' ? 'werewolf' : 'insider'; %>
+                        <% const winnerText = gameMode === 'werewolf' ? (game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน')) : (game.citizensWon ? 'พลเมือง' : 'ผู้ทรยศ'); %>
                         <div class="game-history-item <%= game.won ? 'won' : 'lost' %>">
                             <div class="game-history-header">
-                                <span class="game-history-result <%= game.won ? 'won' : 'lost' %>">
-                                    <%= game.won ? '🏆 ชนะ' : '💔 แพ้' %>
-                                </span>
+                                <div class="game-history-topline">
+                                    <span class="game-history-result <%= game.won ? 'won' : 'lost' %>">
+                                        <%= game.won ? '🏆 ชนะ' : '💔 แพ้' %>
+                                    </span>
+                                    <span class="game-mode-badge <%= gameMode %>"><%= gameMode === 'werewolf' ? '🐺 Werewolf' : '🎯 Insider' %></span>
+                                </div>
                                 <span class="game-history-date">
                                     <%= new Date(game.date).toLocaleString('th-TH', { 
                                         year: 'numeric', 
@@ -757,6 +896,28 @@
                                     <span><%= game.role %></span>
                                 </div>
                                 <div class="game-history-detail">
+                                    <span class="game-history-detail-icon">🏠</span>
+                                    <span><%= game.roomName || 'ไม่ทราบห้อง' %></span>
+                                </div>
+                                <% if (gameMode === 'werewolf') { %>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon"><%= game.team === 'werewolf' ? '🐾' : '🏡' %></span>
+                                        <span>ทีม: <%= game.team === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน' %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🏁</span>
+                                        <span>ทีมชนะ: <%= winnerText %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🌅</span>
+                                        <span>ถึงวันที่ <%= game.dayNumber || 0 %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon"><%= game.survived ? '✨' : '💀' %></span>
+                                        <span><%= game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ' %></span>
+                                    </div>
+                                <% } else { %>
+                                <div class="game-history-detail">
                                     <span class="game-history-detail-icon">📝</span>
                                     <span><%= game.word %></span>
                                 </div>
@@ -764,6 +925,7 @@
                                     <span class="game-history-detail-icon">🔴</span>
                                     <span>ผู้ทรยศ: <%= game.traitor %></span>
                                 </div>
+                                <% } %>
                                 <div class="game-history-detail">
                                     <span class="game-history-detail-icon">👥</span>
                                     <span><%= game.playerCount %> คน</span>

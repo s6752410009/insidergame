@@ -535,6 +535,29 @@
 $(function() {
     const socket = io();
     const playerId = '<%= player.playerId %>';
+    const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
+
+    function buildWerewolfRoleSelectionHtml(selectedRoleIds) {
+        const selected = Array.isArray(selectedRoleIds) ? selectedRoleIds : [];
+
+        return `
+            <div style="display:grid; gap:8px;">
+                ${werewolfRoleOptions.map(role => `
+                    <div class="room-checkbox-container werewolf-role-option ${selected.includes(role.id) ? 'checked' : ''}" data-role-id="${role.id}" style="margin-bottom:0; justify-content:flex-start;">
+                        <input type="checkbox" class="room-checkbox" ${selected.includes(role.id) ? 'checked' : ''}>
+                        <div class="room-checkbox-custom">✓</div>
+                        <span class="room-checkbox-text"><strong>${role.thaiName}</strong> <span style="color:#aaa;">${role.description}</span></span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function collectWerewolfRoleSelection(container) {
+        return Array.from(container.querySelectorAll('.werewolf-role-option'))
+            .filter(option => option.querySelector('input')?.checked)
+            .map(option => option.dataset.roleId);
+    }
     const playerName = '<%= player.playerName %>';
 
     // Init player เพื่อให้ socket รับ events ได้
@@ -589,10 +612,15 @@ $(function() {
         rooms.forEach(function(room) {
             const isLocked = room.locked;
             const isPlaying = room.gameStatus === 'playing';
-            const isDualTraitor = room.settings && room.settings.dualTraitorMode;
-            const playerPercentage = (room.playerCount / room.maxPlayers) * 100;
+            const isDualTraitor = room.settings && room.settings.dualTraitorMode && room.gameMode === 'insider';
+            const onlineCount = room.onlineCount || 0;
+            const playerPercentage = (onlineCount / room.maxPlayers) * 100;
             const statusText = isPlaying ? 'กำลังดำเนินเกม' : 'กำลังรอผู้เล่น';
             const statusColor = isPlaying ? '#e67e22' : '#2ecc71';
+            const gameModeLabel = room.gameModeLabel || (room.gameMode === 'werewolf' ? 'Werewolf' : 'Insider');
+            const modeBadgeStyle = room.gameMode === 'werewolf'
+                ? 'background: linear-gradient(135deg, #34495e, #111827);'
+                : 'background: linear-gradient(135deg, #e67e22, #d35400);';
             const roomCard = `
                 <div class="room-card" data-room-id="${room.roomId}">
                     <div class="room-card-header">
@@ -601,6 +629,7 @@ $(function() {
                             <p class="room-card-id">Room ID: <strong>${room.roomId}</strong></p>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="${modeBadgeStyle} padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 700; white-space: nowrap;">${escapeHtml(gameModeLabel)}</span>
                             ${isDualTraitor ? '<span style="background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 700; white-space: nowrap;">🔴🔴 2 ผู้ทรยศ</span>' : ''}
                             ${isLocked ? '<span class="room-lock-icon">🔒</span>' : ''}
                         </div>
@@ -608,7 +637,7 @@ $(function() {
                     <div class="room-card-info">
                         <div class="room-info-item">
                             <span class="room-info-icon">👥</span>
-                            <span><strong>ผู้เล่น:</strong> ${room.playerCount} / ${room.maxPlayers}</span>
+                            <span><strong>ออนไลน์:</strong> ${onlineCount} / ${room.maxPlayers}</span>
                         </div>
                         <div class="room-info-item">
                             <span class="room-info-icon">${isPlaying ? '🎮' : '⏳'}</span>
@@ -712,6 +741,25 @@ $(function() {
                     
                     <div class="room-form-group">
                         <label class="room-form-label">
+                            <span class="icon">🎲</span> โหมดเกม:
+                        </label>
+                        <select id="gameMode" class="room-form-input">
+                            <% (gameModes || []).forEach(function(mode) { %>
+                                <option value="<%= mode.id %>"><%= mode.label %> - <%= mode.description %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="room-form-group" id="werewolfRolesGroup" style="display:none;">
+                        <label class="room-form-label">
+                            <span class="icon">🐺</span> บทบาทที่เปิดในห้อง:
+                        </label>
+                        <div id="werewolfRolesSelector"></div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">ระบบจะคงหมาป่าปกติไว้เสมอ และเติมชาวบ้านอัตโนมัติเมื่อบทบาทพิเศษไม่พอ</div>
+                    </div>
+
+                    <div class="room-form-group">
+                        <label class="room-form-label">
                             <span class="icon">👥</span> จำนวนผู้เล่นสูงสุด:
                         </label>
                         <div class="room-slider-container">
@@ -722,7 +770,7 @@ $(function() {
                     
                     <div class="room-form-group">
                         <label class="room-form-label">
-                            <span class="icon">⏱️</span> เวลาเล่นต่อรอบ:
+                            <span class="icon" id="roundTimeLabelIcon">⏱️</span> <span id="roundTimeLabelText">เวลาเล่นต่อรอบ:</span>
                         </label>
                         <div class="room-slider-container">
                             <span class="room-slider-value" id="roundTimeValue">5 นาที</span>
@@ -760,6 +808,11 @@ $(function() {
                 const maxPlayersValue = document.getElementById('maxPlayersValue');
                 const roundTimeSlider = document.getElementById('roundTime');
                 const roundTimeValue = document.getElementById('roundTimeValue');
+                const roundTimeLabelText = document.getElementById('roundTimeLabelText');
+                const gameModeSelect = document.getElementById('gameMode');
+                const werewolfRolesGroup = document.getElementById('werewolfRolesGroup');
+                const werewolfRolesSelector = document.getElementById('werewolfRolesSelector');
+                const defaultWerewolfRoles = werewolfRoleOptions.filter(role => role.defaultEnabled).map(role => role.id);
                 
                 maxPlayersSlider.addEventListener('input', function() {
                     maxPlayersValue.textContent = this.value;
@@ -778,6 +831,34 @@ $(function() {
                 
                 updateSliderBackground(maxPlayersSlider);
                 updateSliderBackground(roundTimeSlider);
+
+                werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(defaultWerewolfRoles);
+
+                function updateWerewolfRoleVisibility() {
+                    const isWerewolfMode = gameModeSelect.value === 'werewolf';
+                    werewolfRolesGroup.style.display = isWerewolfMode ? 'block' : 'none';
+                    roundTimeLabelText.textContent = isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:';
+
+                    if (isWerewolfMode && Number(maxPlayersSlider.value) < 8) {
+                        maxPlayersSlider.value = '8';
+                        maxPlayersValue.textContent = maxPlayersSlider.value;
+                        updateSliderBackground(maxPlayersSlider);
+                    }
+                }
+
+                gameModeSelect.addEventListener('change', updateWerewolfRoleVisibility);
+                updateWerewolfRoleVisibility();
+
+                werewolfRolesSelector.addEventListener('click', function(event) {
+                    const option = event.target.closest('.werewolf-role-option');
+                    if (!option) {
+                        return;
+                    }
+
+                    const checkbox = option.querySelector('input');
+                    checkbox.checked = !checkbox.checked;
+                    option.classList.toggle('checked', checkbox.checked);
+                });
                 
                 // Lock checkbox handler
                 const lockedContainer = document.getElementById('lockedContainer');
@@ -795,10 +876,14 @@ $(function() {
             },
             preConfirm: () => {
                 const roomName = document.getElementById('roomName').value.trim();
+                const gameMode = document.getElementById('gameMode').value;
                 const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
                 const roundTime = parseInt(document.getElementById('roundTime').value);
                 const locked = document.getElementById('locked').checked;
                 const password = document.getElementById('password').value.trim();
+                const werewolfRoles = gameMode === 'werewolf'
+                    ? collectWerewolfRoleSelection(document.getElementById('werewolfRolesSelector'))
+                    : undefined;
                 
                 if (!roomName) {
                     Swal.showValidationMessage('กรุณากรอกชื่อห้อง');
@@ -812,8 +897,10 @@ $(function() {
                 
                 return {
                     name: roomName,
+                    gameMode: gameMode,
                     maxPlayers: maxPlayers,
                     roundTime: roundTime,
+                    werewolfRoles: werewolfRoles,
                     locked: locked,
                     password: locked ? password : null
                 };

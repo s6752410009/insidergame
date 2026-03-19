@@ -7,6 +7,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const playerManager = require('./playerManager');
+const { normalizeGameMode, getGameEngine } = require('../games/engineRegistry');
 
 // เก็บห้องทั้งหมด (key: roomId, value: room object)
 const rooms = new Map();
@@ -16,16 +17,38 @@ const gameMasterRole = 'ผู้ดำเนินเกม';
 const traitorRole = 'ผู้ทรยศ';
 const defaultRole = 'พลเมือง';
 
+function nowIso() {
+    return new Date().toISOString();
+}
+
+function getOnlinePlayerCount(room) {
+    return room.players.filter(player => !!player.socketId).length;
+}
+
+function isRoomGameActive(room) {
+    if (!room || !room.gameState) {
+        return false;
+    }
+
+    return !!(room.gameState.status && room.gameState.status !== '' && room.gameState.status !== 'waiting');
+}
+
 /**
  * สร้างห้องใหม่
  */
 function createRoom(roomData, creatorPlayerId) {
     const roomId = uuidv4().substring(0, 8); // ใช้ 8 ตัวแรกของ UUID เป็น roomId
     const creator = playerManager.getPlayer(creatorPlayerId);
+    const gameMode = normalizeGameMode(roomData.gameMode);
+    const gameEngine = getGameEngine(gameMode);
     
     if (!creator) {
         throw new Error('Creator player not found');
     }
+
+    const werewolfRoles = gameMode === 'werewolf' && typeof gameEngine.sanitizeRoleSelection === 'function'
+        ? gameEngine.sanitizeRoleSelection(roomData.werewolfRoles)
+        : undefined;
 
     const room = {
         roomId,
@@ -33,23 +56,18 @@ function createRoom(roomData, creatorPlayerId) {
         players: [], // Array of { playerId, playerName, color, socketId, permission }
         admin: creatorPlayerId, // playerId ของ admin
         settings: {
+            gameMode,
             maxPlayers: roomData.maxPlayers || 5,
             roundTime: (roomData.roundTime || 5) * 60, // แปลงนาทีเป็นวินาที
             traitorOptional: roomData.traitorOptional !== undefined ? roomData.traitorOptional : true,
             dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ (ต้องมี 5+ คน)
+            werewolfRoles,
             locked: roomData.locked || false,
             password: roomData.password || null
         },
-        // Game state (clone จากโครงสร้างเดิม)
-        gameState: {
-            players: [], // Array of player objects with role, vote1, vote2, etc.
-            word: '',
-            countdown: null,
-            resultVote1: null,
-            resultVote2: null,
-            status: '', // '', 'role', 'word', 'vote1', 'vote2', 'in_progress', 'end'
-            lastAction: 0
-        },
+        gameState: gameEngine.createInitialState(),
+        chatHistory: [],
+        rejoinableGamePlayers: new Map(),
         createdAt: new Date().toISOString()
     };
 
@@ -76,6 +94,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null) {
     }
 
     const player = playerManager.getPlayer(playerId);
+    const gameEngine = getGameEngine(room.settings.gameMode);
     if (!player) {
         throw new Error('Player not found');
     }
@@ -95,6 +114,8 @@ function joinRoom(roomId, playerId, socketId = null, password = null) {
         // อัปเดต socketId ถ้ามี
         if (socketId) {
             room.players[existingPlayerIndex].socketId = socketId;
+            room.players[existingPlayerIndex].lastActiveAt = nowIso();
+            room.players[existingPlayerIndex].disconnectedAt = null;
         }
         return room;
     }
@@ -107,22 +128,39 @@ function joinRoom(roomId, playerId, socketId = null, password = null) {
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
         socketId: socketId,
-        permission: playerId === room.admin ? 'admin' : null
+        permission: playerId === room.admin ? 'admin' : null,
+        joinedAt: nowIso(),
+        lastActiveAt: nowIso(),
+        disconnectedAt: socketId ? null : nowIso()
     });
+
+    const rejoinableGamePlayer = room.rejoinableGamePlayers instanceof Map
+        ? room.rejoinableGamePlayers.get(playerId)
+        : null;
 
     // เพิ่มใน gameState.players ด้วย (สำหรับเกม)
     // Bug #5 Fix: เพิ่ม socketId เพื่อใช้เช็คว่า online หรือไม่
-    room.gameState.players.push({
-        playerId: player.playerId,
-        socketId: socketId,
-        name: player.playerName,
-        role: '',
-        vote1: null,
-        vote2: null,
-        nbVote2: 0,
-        isGhost: false,
-        permission: playerId === room.admin ? 'admin' : null
-    });
+    if (rejoinableGamePlayer && isRoomGameActive(room)) {
+        room.gameState.players.push({
+            ...rejoinableGamePlayer,
+            name: player.playerName,
+            color: player.color,
+            avatar: player.avatar || '👤',
+            avatarFrame: player.avatarFrame || 'none',
+            socketId,
+            permission: playerId === room.admin ? 'admin' : null
+        });
+        room.rejoinableGamePlayers.delete(playerId);
+    } else {
+        room.gameState.players.push(gameEngine.createPlayerState(player, {
+            socketId,
+            isAdmin: playerId === room.admin
+        }));
+    }
+
+    if (Array.isArray(room.gameState.alivePlayerIds)) {
+        room.gameState.alivePlayerIds = room.players.map(existingPlayer => existingPlayer.playerId);
+    }
 
     return room;
 }
@@ -145,6 +183,7 @@ function disconnectPlayer(roomId, playerId) {
 
     // แค่เคลียร์ socketId ไม่ลบผู้เล่นออก
     room.players[playerIndex].socketId = null;
+    room.players[playerIndex].disconnectedAt = nowIso();
 
     // Bug #5 Fix: อัปเดตใน gameState.players ด้วย
     const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
@@ -171,12 +210,34 @@ function leaveRoom(roomId, playerId) {
 
     const wasAdmin = room.admin === playerId;
     
+    const wasGameActive = isRoomGameActive(room);
+    const roomPlayer = room.players[playerIndex];
+
     // ลบผู้เล่นออก
     room.players.splice(playerIndex, 1);
     
     // ลบออกจาก gameState.players ด้วย
     const gameStatePlayerIndex = room.gameState.players.findIndex(p => p.playerId === playerId);
     if (gameStatePlayerIndex >= 0) {
+        if (wasGameActive) {
+            if (!(room.rejoinableGamePlayers instanceof Map)) {
+                room.rejoinableGamePlayers = new Map();
+            }
+
+            room.rejoinableGamePlayers.set(playerId, {
+                ...room.gameState.players[gameStatePlayerIndex],
+                socketId: null,
+                permission: wasAdmin ? null : room.gameState.players[gameStatePlayerIndex].permission,
+                leftAt: nowIso(),
+                lastKnownRoomProfile: roomPlayer ? {
+                    playerName: roomPlayer.playerName,
+                    color: roomPlayer.color,
+                    avatar: roomPlayer.avatar || '👤',
+                    avatarFrame: roomPlayer.avatarFrame || 'none'
+                } : null
+            });
+        }
+
         room.gameState.players.splice(gameStatePlayerIndex, 1);
     }
 
@@ -223,6 +284,10 @@ function kickPlayer(roomId, adminPlayerId, targetPlayerId) {
 
     // ลบผู้เล่น
     leaveRoom(roomId, targetPlayerId);
+
+    if (room.rejoinableGamePlayers instanceof Map) {
+        room.rejoinableGamePlayers.delete(targetPlayerId);
+    }
     
     return room;
 }
@@ -317,6 +382,20 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.password = updates.password || null;
     }
 
+    if (room.settings.gameMode === 'werewolf' && updates.werewolfRoles !== undefined) {
+        const gameEngine = getGameEngine(room.settings.gameMode);
+        if (typeof gameEngine.sanitizeRoleSelection === 'function') {
+            room.settings.werewolfRoles = gameEngine.sanitizeRoleSelection(updates.werewolfRoles);
+        }
+    }
+
+    if (room.settings.gameMode === 'werewolf') {
+        const gameEngine = getGameEngine(room.settings.gameMode);
+        if (typeof gameEngine.getRolePlan === 'function') {
+            room.gameState.rolePlan = gameEngine.getRolePlan(room.players.length, room.settings);
+        }
+    }
+
     return room;
 }
 
@@ -332,19 +411,22 @@ function getRoom(roomId) {
  */
 function getAllRooms() {
     return Array.from(rooms.values()).map(room => {
-        // ตรวจสอบสถานะเกม: ถ้า status ไม่ใช่ '' หรือเป็น role, word, vote1, vote2, in_progress = กำลังเล่น
-        const inGameStatuses = ['role', 'word', 'vote1', 'vote2', 'in_progress'];
-        const isInGame = inGameStatuses.includes(room.gameState.status);
+        const gameEngine = getGameEngine(room.settings.gameMode);
+        const isInGame = !!(room.gameState.status && room.gameState.status !== 'waiting');
         
         return {
             roomId: room.roomId,
             name: room.name,
             playerCount: room.players.length, // นับผู้เล่นทั้งหมด ไม่ว่าจะมี socketId หรือไม่
+            onlineCount: getOnlinePlayerCount(room),
             maxPlayers: room.settings.maxPlayers,
             locked: room.settings.locked,
             admin: room.admin,
+            gameMode: room.settings.gameMode,
+            gameModeLabel: gameEngine.label,
             gameStatus: isInGame ? 'playing' : 'waiting', // เพิ่มสถานะเกม
             settings: {
+                gameMode: room.settings.gameMode,
                 dualTraitorMode: room.settings.dualTraitorMode || false
             }
         };
@@ -365,6 +447,8 @@ function updatePlayerSocketId(roomId, playerId, socketId) {
     const player = room.players.find(p => p.playerId === playerId);
     if (player) {
         player.socketId = socketId;
+        player.lastActiveAt = nowIso();
+        player.disconnectedAt = socketId ? null : (player.disconnectedAt || nowIso());
     }
 
     // Bug #5 Fix: อัปเดตใน gameState.players ด้วย
@@ -374,6 +458,43 @@ function updatePlayerSocketId(roomId, playerId, socketId) {
     }
 
     return room;
+}
+
+function markPlayerActive(roomId, playerId) {
+    const room = rooms.get(roomId);
+    if (!room) {
+        return null;
+    }
+
+    const player = room.players.find(p => p.playerId === playerId);
+    if (player) {
+        player.lastActiveAt = nowIso();
+        if (player.socketId) {
+            player.disconnectedAt = null;
+        }
+    }
+
+    return room;
+}
+
+function syncPlayerProfile(playerId, updates = {}) {
+    rooms.forEach(room => {
+        const roomPlayer = room.players.find(player => player.playerId === playerId);
+        if (roomPlayer) {
+            if (updates.playerName !== undefined) roomPlayer.playerName = updates.playerName;
+            if (updates.color !== undefined) roomPlayer.color = updates.color;
+            if (updates.avatar !== undefined) roomPlayer.avatar = updates.avatar;
+            if (updates.avatarFrame !== undefined) roomPlayer.avatarFrame = updates.avatarFrame;
+        }
+
+        const gameStatePlayer = room.gameState.players.find(player => player.playerId === playerId);
+        if (gameStatePlayer) {
+            if (updates.playerName !== undefined) gameStatePlayer.name = updates.playerName;
+            if (updates.color !== undefined) gameStatePlayer.color = updates.color;
+            if (updates.avatar !== undefined) gameStatePlayer.avatar = updates.avatar;
+            if (updates.avatarFrame !== undefined) gameStatePlayer.avatarFrame = updates.avatarFrame;
+        }
+    });
 }
 
 /**
@@ -387,6 +508,77 @@ function getPlayerIdBySocket(roomId, socketId) {
 
     const player = room.players.find(p => p.socketId === socketId);
     return player ? player.playerId : null;
+}
+
+function purgeDisconnectedPlayers(maxOfflineMs = 10 * 60 * 1000) {
+    const now = Date.now();
+    const removedPlayers = [];
+
+    for (const [roomId, room] of rooms.entries()) {
+        const stalePlayers = room.players.filter(player => {
+            if (player.socketId) return false;
+
+            const referenceTime = player.disconnectedAt || player.lastActiveAt || player.joinedAt;
+            if (!referenceTime) return false;
+
+            return (now - new Date(referenceTime).getTime()) >= maxOfflineMs;
+        });
+
+        stalePlayers.forEach(player => {
+            const roomName = room.name;
+            leaveRoom(roomId, player.playerId);
+            removedPlayers.push({
+                roomId,
+                roomName,
+                playerId: player.playerId,
+                playerName: player.playerName,
+                reason: 'offline-timeout'
+            });
+        });
+    }
+
+    return removedPlayers;
+}
+
+function reconcileSocketState(activeSocketIds, staleSocketMs = 10 * 60 * 1000) {
+    const now = Date.now();
+    const affectedPlayers = [];
+
+    for (const [roomId, room] of rooms.entries()) {
+        const snapshot = [...room.players];
+
+        snapshot.forEach(player => {
+            if (!player.socketId || activeSocketIds.has(player.socketId)) {
+                return;
+            }
+
+            const referenceTime = player.lastActiveAt || player.joinedAt;
+            const ageMs = referenceTime ? (now - new Date(referenceTime).getTime()) : Number.MAX_SAFE_INTEGER;
+
+            if (ageMs >= staleSocketMs) {
+                const roomName = room.name;
+                leaveRoom(roomId, player.playerId);
+                affectedPlayers.push({
+                    roomId,
+                    roomName,
+                    playerId: player.playerId,
+                    playerName: player.playerName,
+                    reason: 'stale-socket-removed'
+                });
+            } else {
+                disconnectPlayer(roomId, player.playerId);
+                affectedPlayers.push({
+                    roomId,
+                    roomName: room.name,
+                    playerId: player.playerId,
+                    playerName: player.playerName,
+                    reason: 'stale-socket-marked-offline'
+                });
+            }
+        });
+    }
+
+    return affectedPlayers;
 }
 
 // ========== ADMIN FUNCTIONS ==========
@@ -494,28 +686,9 @@ function resetRoomGame(roomId) {
     if (!room) {
         return { success: false, error: 'Room not found' };
     }
-    
-    room.gameState = {
-        players: room.players.map(p => ({
-            playerId: p.playerId,
-            name: p.playerName,
-            color: p.color,
-            permission: p.permission,
-            role: '',
-            vote1: null,
-            vote2: null,
-            nbVote2: 0,        // Bug #7 Fix: เพิ่ม nbVote2
-            isGhost: false,    // Bug #7 Fix: เพิ่ม isGhost
-            hasVoted1: false,
-            hasVoted2: false
-        })),
-        word: '',
-        countdown: null,
-        resultVote1: null,
-        resultVote2: null,
-        status: '',
-        lastAction: 0
-    };
+    const gameEngine = getGameEngine(room.settings.gameMode);
+    room.gameState = gameEngine.resetRoomGame(room);
+    room.rejoinableGamePlayers = new Map();
     
     return { success: true };
 }
@@ -547,8 +720,13 @@ module.exports = {
     updateRoom,
     getRoom,
     getAllRooms,
+    getOnlinePlayerCount,
     updatePlayerSocketId,
+    markPlayerActive,
+    syncPlayerProfile,
     getPlayerIdBySocket,
+    purgeDisconnectedPlayers,
+    reconcileSocketState,
     gameMasterRole,
     traitorRole,
     defaultRole,

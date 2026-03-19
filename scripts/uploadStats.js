@@ -4,18 +4,22 @@
  */
 
 const mongoose = require('mongoose');
-const fs = require('fs');
-const path = require('path');
-
-// MongoDB connection - use PUBLIC URL for local access
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo:LyvzhhmQFIlaSZgphLeTzxMoffxmHDKO@nozomi.proxy.rlwy.net:32138';
+const MONGO_URL = process.env.MONGO_URL;
 
 async function checkMongoDB() {
+    if (!MONGO_URL) {
+        console.error('❌ MONGO_URL is required');
+        process.exitCode = 1;
+        return;
+    }
+
     try {
         console.log('Connecting to MongoDB...');
         console.log('URL:', MONGO_URL.replace(/:[^:@]+@/, ':****@'));
         
-        await mongoose.connect(MONGO_URL);
+        await mongoose.connect(MONGO_URL, {
+            serverSelectionTimeoutMS: 10000
+        });
         console.log('✅ Connected to MongoDB\n');
 
         // List all collections
@@ -48,8 +52,10 @@ async function checkMongoDB() {
     } catch (error) {
         console.error('❌ Error:', error.message);
     } finally {
-        await mongoose.disconnect();
-        console.log('\nDisconnected from MongoDB');
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect();
+            console.log('\nDisconnected from MongoDB');
+        }
     }
 }
 
