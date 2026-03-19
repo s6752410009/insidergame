@@ -27,7 +27,8 @@
     color: #f4f6fb;
     display: flex;
     flex-direction: column;
-    height: 100svh;
+    min-height: var(--ww-shell-height, auto);
+    height: var(--ww-shell-height, auto);
     overflow: hidden;
   }
 
@@ -397,6 +398,18 @@
     let swipingWrapper = null;
     const seenHistoryKeys = new Set();
     const renderedMessageIds = new Set();
+
+    function syncShellHeight() {
+      const shell = document.getElementById('werewolfShell');
+      if (!shell) {
+        return;
+      }
+
+      const shellTop = shell.getBoundingClientRect().top;
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+      const availableHeight = Math.max(420, viewportHeight - Math.max(0, shellTop) - 12);
+      shell.style.setProperty('--ww-shell-height', availableHeight + 'px');
+    }
 
     function escapeHtml(value) {
       return $('<div>').text(value || '').html();
@@ -1747,10 +1760,14 @@
     }
 
     renderInitialChatHistory();
+    syncShellHeight();
     renderState(currentState);
     bindRoom();
     syncMobileHeaderState();
     syncMobileGamePanel();
+
+    window.addEventListener('resize', syncShellHeight);
+    window.addEventListener('orientationchange', syncShellHeight);
 
     // View switcher (mobile)
     $(document).on('click', '.ww-view-tab', function() {
