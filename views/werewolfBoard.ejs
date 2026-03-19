@@ -184,6 +184,8 @@
   .note-row.note-revealer { background: linear-gradient(135deg, rgba(244,114,182,0.18), rgba(236,72,153,0.08)); border-color: rgba(251,207,232,0.18); }
   .note-row.note-werewolf { background: linear-gradient(135deg, rgba(192,57,43,0.2), rgba(127,29,29,0.1)); border-color: rgba(248,113,113,0.2); }
   .note-row.note-villager { background: linear-gradient(135deg, rgba(34,197,94,0.16), rgba(20,184,166,0.08)); border-color: rgba(134,239,172,0.16); }
+  .note-row.note-witch { background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,95,70,0.08)); border-color: rgba(110,231,183,0.2); }
+  .note-row.note-fool { background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(91,33,182,0.08)); border-color: rgba(216,180,254,0.22); }
   .note-row.note-info { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); }
   .note-row.note-alert { background: linear-gradient(135deg, rgba(239,68,68,0.18), rgba(220,38,38,0.08)); border-color: rgba(252,165,165,0.2); }
   .note-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -198,9 +200,11 @@
   .action-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .player-row.dead { opacity: 0.55; }
   .player-name-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .player-side-meta { display: grid; justify-items: end; gap: 6px; }
   .player-status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 0.82rem; background: rgba(255,255,255,0.06); }
   .player-status-badge.alive { color: #f8d189; }
   .player-status-badge.dead { color: #aab4c8; }
+  .vote-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: 5px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; background: rgba(231,76,60,0.15); color: #ffd4c7; border: 1px solid rgba(248,113,113,0.18); }
   .subtle { color: #aab4c8; }
   .highlight { color: #f8d189; }
   .winner-banner { margin-top: 12px; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(21,128,61,0.24)); color: #dcfce7; font-weight: 700; }
@@ -442,6 +446,8 @@
         bodyguard: '🛡️',
         seer: '🔮',
         doctor: '💉',
+        witch: '🧪',
+        fool: '🤪',
         revealer: '💥'
       };
 
@@ -462,7 +468,8 @@
     function teamEmoji(team) {
       const icons = {
         village: '🏡',
-        werewolf: '🐺'
+        werewolf: '🐺',
+        solo: '🎭'
       };
 
       return icons[team] || '🎭';
@@ -481,6 +488,8 @@
         bodyguard: 'กลางคืนคุณเลือกคุ้มกันผู้เล่นได้ 1 คน เลือกคนสำคัญที่ไม่อยากให้ถูกเก็บ',
         seer: 'กลางคืนคุณเลือกตรวจผู้เล่นได้ 1 คน เพื่อดูว่าเขาอยู่ฝั่งไหน',
         doctor: 'กลางคืนคุณเลือกช่วยผู้เล่นได้ 1 คน เพื่อกันการถูกกำจัด',
+        witch: 'กลางคืนคุณมียาฟื้น 1 ครั้งและยาพิษ 1 ครั้ง เลือกใช้ให้คุ้มเพราะหมดแล้วหมดเลย',
+        fool: 'คุณเป็นบทเดี่ยว หมาป่าฆ่าคุณไม่ได้ และถ้าถูกโหวตออกตอนกลางวันคุณจะชนะทันที',
         revealer: 'ตอนกลางวันคุณมีสกิลเปิดโปง หากเลือกหมาป่าถูกมันจะตายทันที แต่ถ้าพลาดคุณจะตายเอง'
       };
 
@@ -530,7 +539,10 @@
         'night-kill': '🐾',
         'seer-check': '🔮',
         'doctor-save': '💉',
-        'bodyguard-protect': '🛡️'
+        'bodyguard-protect': '🛡️',
+        'witch-heal': '🧪',
+        'witch-poison': '☠️',
+        'witch-rest': '🔮'
       };
 
       return icons[actionType] || '🎯';
@@ -582,8 +594,8 @@
 
       // Mobile winner bar (always visible above tabs)
       if (currentState.winner && isMobileLayout()) {
-        var winnerEmoji = currentState.winner === 'village' ? '🏡' : '🐺';
-        var winnerLabel = currentState.winner === 'village' ? 'ชาวบ้านชนะแล้ว!' : 'ฝั่งหมาป่าชนะแล้ว!';
+        var winnerEmoji = currentState.winner === 'village' ? '🏡' : (currentState.winner === 'werewolf' ? '🐺' : '🤪');
+        var winnerLabel = currentState.winner === 'village' ? 'ชาวบ้านชนะแล้ว!' : (currentState.winner === 'werewolf' ? 'ฝั่งหมาป่าชนะแล้ว!' : 'คนบ้าชนะคนเดียวแล้ว!');
         $('#mobileWinnerText').text(winnerEmoji + ' ' + winnerLabel);
         var btns = '';
         if (isRoomAdmin) {
@@ -973,6 +985,7 @@
         const selfText = player.isSelf ? ' (คุณ)' : '';
         const revealText = player.revealedRole ? `<div class="subtle">บทบาท: ${escapeHtml(player.revealedRole)}</div>` : '';
         const mayorText = player.voteWeight > 1 ? `<div class="highlight">🎖️ โหวตหนัก ${player.voteWeight} เสียง</div>` : '';
+        const voteText = currentState.phase === 'day-vote' && player.voteCount > 0 ? `<div class="vote-count-badge">🗳️ ${player.voteCount} โหวต</div>` : '';
         const playerEmoji = player.revealedRole ? '🎭' : (player.isSelf ? '🫵' : '👤');
         $root.append(`
           <div class="player-row ${player.alive ? '' : 'dead'}">
@@ -981,7 +994,10 @@
               ${revealText}
               ${mayorText}
             </div>
-            <div class="player-status-badge ${player.alive ? 'alive' : 'dead'}">${statusEmoji(player.alive)} ${aliveText}</div>
+            <div class="player-side-meta">
+              ${voteText}
+              <div class="player-status-badge ${player.alive ? 'alive' : 'dead'}">${statusEmoji(player.alive)} ${aliveText}</div>
+            </div>
           </div>
         `);
       });
@@ -1101,6 +1117,8 @@
       const tones = {
         seer: 'seer',
         doctor: 'doctor',
+        witch: 'witch',
+        fool: 'fool',
         bodyguard: 'bodyguard',
         mayor: 'mayor',
         revealer: 'revealer',
@@ -1244,7 +1262,7 @@
       const notes = currentState.personalNotes || {};
       const winner = currentState.winner;
       const winnerText = winner
-        ? `<div style="padding:12px 14px; border-radius:12px; background:${winner === 'village' ? 'rgba(34,197,94,0.16)' : 'rgba(192,57,43,0.18)'}; border:1px solid rgba(255,255,255,0.08); font-weight:700;">${winner === 'village' ? '🏡 ชาวบ้านชนะแล้ว' : '🐺 ฝั่งหมาป่าชนะแล้ว'}</div>`
+        ? `<div style="padding:12px 14px; border-radius:12px; background:${winner === 'village' ? 'rgba(34,197,94,0.16)' : (winner === 'werewolf' ? 'rgba(192,57,43,0.18)' : 'rgba(168,85,247,0.18)')}; border:1px solid rgba(255,255,255,0.08); font-weight:700;">${winner === 'village' ? '🏡 ชาวบ้านชนะแล้ว' : (winner === 'werewolf' ? '🐺 ฝั่งหมาป่าชนะแล้ว' : '🤪 คนบ้าชนะคนเดียวแล้ว')}</div>`
         : '';
       const noteHtml = renderNoteCards(buildNoteItems(notes, role.id));
 
@@ -1283,12 +1301,14 @@
           ${players.map(function(player) {
             const revealText = player.revealedRole ? `<div style="margin-top:4px; color:#d9e4f8;">บทบาท: ${escapeHtml(player.revealedRole)}</div>` : '';
             const weightText = player.voteWeight > 1 ? `<div style="margin-top:4px; color:#f8d189;">🎖️ โหวตหนัก ${player.voteWeight} เสียง</div>` : '';
+            const voteText = currentState.phase === 'day-vote' && player.voteCount > 0 ? `<div style="margin-top:4px; color:#ffd4c7;">🗳️ ตอนนี้โดน ${player.voteCount} โหวต</div>` : '';
             return `
               <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
                 <div>
                   <div style="font-weight:700;">${player.revealedRole ? '🎭' : (player.isSelf ? '🫵' : '👤')} ${escapeHtml(player.name)}${player.isSelf ? ' (คุณ)' : ''}</div>
                   ${revealText}
                   ${weightText}
+                  ${voteText}
                 </div>
                 <div style="white-space:nowrap; color:${player.alive ? '#f8d189' : '#aab4c8'};">${player.alive ? '✨ ยังอยู่ในเกม' : '💀 ออกจากเกมแล้ว'}</div>
               </div>
@@ -1382,7 +1402,7 @@
       applyChatFilter();
     }
 
-    function submitNightAction(targetPlayerId) {
+    function submitNightAction(actionType, targetPlayerId) {
       if (currentState.phase !== 'night') {
         socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
         return;
@@ -1391,7 +1411,7 @@
         return;
       }
       setActionButtonsPending(true);
-      socket.emit('werewolf_submitNightAction', { roomId: roomId, targetPlayerId: targetPlayerId }, function(response) {
+      socket.emit('werewolf_submitNightAction', { roomId: roomId, targetPlayerId: targetPlayerId, actionType: actionType }, function(response) {
         if (!response || !response.success) {
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'สั่ง action ไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
@@ -1433,7 +1453,7 @@
       });
     }
 
-    function buildTargetCards(action, handlerName, buttonClass) {
+    function buildTargetCards(action, handlerName, buttonClass, handlerArg) {
       if (!action.targets || action.targets.length === 0) {
         if (!action.allowSkip) {
           return '<div class="target-card subtle">ไม่มีเป้าหมายให้เลือก</div>';
@@ -1441,12 +1461,14 @@
         return '';
       }
 
+      const prefixArg = handlerArg ? `'${handlerArg}', ` : '';
+
       const cards = action.targets.map(function(target) {
         const isSelected = action.selectedTargetId && action.selectedTargetId === target.playerId;
         return `
           <div class="target-card">
             <div class="target-card-title"><span class="target-emoji">🎯</span><strong>${escapeHtml(target.name)}</strong></div>
-            <button class="action-btn ${buttonClass || ''} ${isSelected ? 'selected' : ''}" onclick="${handlerName}('${target.playerId}')">${isSelected ? '✅ เลือกแล้ว' : '👉 เลือกคนนี้'}</button>
+            <button class="action-btn ${buttonClass || ''} ${isSelected ? 'selected' : ''}" onclick="${handlerName}(${prefixArg}'${target.playerId}')">${isSelected ? '✅ เลือกแล้ว' : '👉 เลือกคนนี้'}</button>
           </div>
         `;
       });
@@ -1456,7 +1478,7 @@
         cards.push(`
           <div class="target-card">
             <div class="target-card-title"><span class="target-emoji">🫥</span><strong>ข้ามรอบนี้</strong></div>
-            <button class="action-btn ${isSkipSelected ? 'selected' : ''}" onclick="${handlerName}('__skip__')">${isSkipSelected ? '✅ เลือกแล้ว' : '😌 ขอข้าม'}</button>
+            <button class="action-btn ${isSkipSelected ? 'selected' : ''}" onclick="${handlerName}(${prefixArg}'__skip__')">${isSkipSelected ? '✅ เลือกแล้ว' : '😌 ขอข้าม'}</button>
           </div>
         `);
       }
@@ -1464,8 +1486,8 @@
       return cards.join('');
     }
 
-    window.selectNightTarget = function(targetPlayerId) {
-      submitNightAction(targetPlayerId);
+    window.selectNightTarget = function(actionType, targetPlayerId) {
+      submitNightAction(actionType, targetPlayerId);
     };
 
     window.selectVoteTarget = function(targetPlayerId) {
@@ -1509,7 +1531,7 @@
           $root.append('<div class="history-row">😴 คืนนี้คุณไม่มีสกิล ให้คุยวางแผนหรือรอระบบสรุปช่วงนี้ได้เลย</div>');
         } else {
           actions.forEach(function(action) {
-            const targetCards = buildTargetCards(action, 'selectNightTarget', '');
+            const targetCards = buildTargetCards(action, 'selectNightTarget', '', action.type);
             const extraState = targetCards ? `<div class="target-grid">${targetCards}</div>` : `<div class="subtle" style="margin-top:10px;">${escapeHtml(action.emptyStateText || 'รอให้คืนดำเนินต่อ')}</div>`;
             $root.append(`
               <div class="history-row" style="display:block;">
@@ -1526,17 +1548,25 @@
 
       if (phase === 'day-vote') {
         const dayActions = actionState?.dayActions || {};
-        $root.append('<div class="history-row">☀️ กลางวันทุกคนที่ยังมีชีวิตโหวตได้เท่ากันตามปกติ ส่วนสกิลพิเศษจะขึ้นเฉพาะบทที่มีจริง</div>');
+        const liveVoteText = Object.entries(dayActions.voteTallies || {})
+          .filter(function(entry) { return Number(entry[1]) > 0; })
+          .map(function(entry) {
+            const player = (currentState.players || []).find(function(item) { return item.playerId === entry[0]; });
+            return player ? `${player.name} ${entry[1]} โหวต` : '';
+          })
+          .filter(Boolean)
+          .join(' | ');
+        $root.append(`<div class="history-row" style="display:block;">☀️ กลางวันนี้คุยและลงคะแนนแบบเปิด ผลโหวตสดขึ้นทันที และระบบจะสรุปตอนหมดเวลา${liveVoteText ? `<div class="highlight" style="margin-top:6px;">${escapeHtml(liveVoteText)}</div>` : ''}</div>`);
         if (dayActions.canVote) {
           $root.append(`
             <div class="history-row" style="display:block;">
               <div class="action-title"><span>🗳️</span><strong>สิทธิ์โหวตกลางวันของทุกคน</strong></div>
-              <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน</div>
+              <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน ตอนนี้มีคนลงคะแนนแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน</div>
               <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote }, 'selectVoteTarget', '')}</div>
             </div>
           `);
         } else {
-          $root.append('<div class="history-row">✅ คุณตัดสินใจแล้ว รอคนอื่นคุยต่อหรือรอระบบสรุป</div>');
+          $root.append('<div class="history-row">✅ คุณลงคะแนนแล้ว แต่ยังเปลี่ยนใจได้จนกว่าจะหมดเวลา</div>');
         }
 
         if (dayActions.canReveal) {
@@ -1565,11 +1595,11 @@
         return;
       }
 
-      const winnerText = winner === 'village' ? 'ชาวบ้านชนะแล้ว' : 'ฝั่งหมาป่าชนะแล้ว';
+      const winnerText = winner === 'village' ? 'ชาวบ้านชนะแล้ว' : (winner === 'werewolf' ? 'ฝั่งหมาป่าชนะแล้ว' : 'คนบ้าชนะคนเดียวแล้ว');
       const actionHtml = isRoomAdmin
         ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นรอบใหม่</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับไปที่ห้อง</button></div>'
         : '<div class="winner-actions"><button id="backToRoomLobby" class="ghost-btn">🏠 กลับไปที่ห้อง</button></div>';
-      $banner.html('<div>' + (winner === 'village' ? '🏡 ' : '🐺 ') + winnerText + '</div>' + actionHtml);
+      $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : '🤪 ')) + winnerText + '</div>' + actionHtml);
       $banner.show();
     }
 

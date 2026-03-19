@@ -20,7 +20,7 @@ try {
 
 const STATS_FILE = path.join(__dirname, '../data/playerStats.json');
 const MAX_GAME_HISTORY = 20;
-const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'revealer'];
+const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'witch', 'fool', 'revealer'];
 const WEREWOLF_ROLE_LABELS = {
     villager: 'ชาวบ้าน',
     werewolf: 'หมาป่า',
@@ -29,6 +29,8 @@ const WEREWOLF_ROLE_LABELS = {
     bodyguard: 'บอดี้การ์ด',
     seer: 'Seer',
     doctor: 'หมอ',
+    witch: 'แม่มด',
+    fool: 'คนบ้า',
     revealer: 'จอมเปิดโปง'
 };
 
@@ -417,7 +419,7 @@ function recordWerewolfGameEnd(roomId, gameResult) {
     }
 
     const gameTimestamp = new Date().toISOString();
-    const winnerLabel = winner === 'village' ? 'ชาวบ้าน' : 'หมาป่า';
+    const winnerLabel = winner === 'village' ? 'ชาวบ้าน' : (winner === 'werewolf' ? 'หมาป่า' : 'คนบ้า');
 
     players.forEach(player => {
         if (!player.playerId || !player.role) {
@@ -427,7 +429,7 @@ function recordWerewolfGameEnd(roomId, gameResult) {
         const stat = initializeStats(player.playerId, player.playerName || player.name);
         const roleId = player.role;
         const team = player.roleInfo?.team || (isWerewolfTeamRole(roleId) ? 'werewolf' : 'village');
-        const playerWon = team === winner;
+        const playerWon = winner === roleId || team === winner;
         const roleLabel = player.roleInfo?.thaiName || player.revealedRole || WEREWOLF_ROLE_LABELS[roleId] || roleId;
 
         stat.totalGames += 1;

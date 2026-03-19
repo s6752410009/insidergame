@@ -2777,6 +2777,7 @@ io.sockets.on('connection', function(socket) {
             const roomId = socket.roomId || data?.roomId;
             const playerId = socket.playerId || data?.playerId;
             const targetPlayerId = data?.targetPlayerId;
+            const actionType = data?.actionType || null;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'werewolf') {
@@ -2788,7 +2789,7 @@ io.sockets.on('connection', function(socket) {
             }
 
             const werewolfEngine = getGameEngine('werewolf');
-            const result = werewolfEngine.submitNightAction(room, playerId, targetPlayerId);
+            const result = werewolfEngine.submitNightAction(room, playerId, targetPlayerId, actionType);
             emitWerewolfRoomState(room);
 
             if (typeof callback === 'function') {

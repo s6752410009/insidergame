@@ -14,6 +14,8 @@ function createDefaultWerewolfRoleStats() {
         bodyguard: 0,
         seer: 0,
         doctor: 0,
+        witch: 0,
+        fool: 0,
         revealer: 0
     };
 }
