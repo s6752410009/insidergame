@@ -3,6 +3,34 @@
 <style>
   * { box-sizing: border-box; }
 
+  /* ===== VIEWPORT LOCK: prevent dual-scroll on mobile ===== */
+  @media (max-width: 960px) {
+    html.ww-active,
+    html.ww-active body.content {
+      overflow: hidden !important;
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    html.ww-active header,
+    html.ww-active .footer {
+      display: none !important;
+    }
+    html.ww-active .container-fluid {
+      padding: 0 !important;
+      margin: 0 !important;
+      height: 100% !important;
+    }
+    html.ww-active .container-fluid > .row {
+      margin: 0 !important;
+      height: 100% !important;
+    }
+    html.ww-active .col-lg-12 {
+      padding: 0 !important;
+      height: 100% !important;
+    }
+  }
+
   /* ===== PHASE TRANSITION OVERLAY ===== */
   .phase-transition-banner { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(7,10,18,0.72); backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: opacity 0.45s ease; z-index: 1200; }
   .phase-transition-banner.visible { opacity: 1; pointer-events: auto; }
@@ -27,8 +55,8 @@
     color: #f4f6fb;
     display: flex;
     flex-direction: column;
-    min-height: var(--ww-shell-height, auto);
-    height: var(--ww-shell-height, auto);
+    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
   }
 
@@ -399,16 +427,8 @@
     const seenHistoryKeys = new Set();
     const renderedMessageIds = new Set();
 
-    function syncShellHeight() {
-      const shell = document.getElementById('werewolfShell');
-      if (!shell) {
-        return;
-      }
-
-      const shellTop = shell.getBoundingClientRect().top;
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-      const availableHeight = Math.max(420, viewportHeight - Math.max(0, shellTop) - 12);
-      shell.style.setProperty('--ww-shell-height', availableHeight + 'px');
+    function activateViewportLock() {
+      document.documentElement.classList.add('ww-active');
     }
 
     function escapeHtml(value) {
@@ -1759,15 +1779,12 @@
       socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
     }
 
+    activateViewportLock();
     renderInitialChatHistory();
-    syncShellHeight();
     renderState(currentState);
     bindRoom();
     syncMobileHeaderState();
     syncMobileGamePanel();
-
-    window.addEventListener('resize', syncShellHeight);
-    window.addEventListener('orientationchange', syncShellHeight);
 
     // View switcher (mobile)
     $(document).on('click', '.ww-view-tab', function() {
