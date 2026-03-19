@@ -16,7 +16,10 @@
   "scripts": {
     "start": "node app.js",
     "check:db": "node scripts/uploadStats.js",
-    "smoke:rooms": "node scripts/smoke-room-flow.js"
+    "smoke:rooms": "node scripts/smoke-room-flow.js",
+    "smoke:werewolf": "node scripts/smoke-werewolf-flow.js",
+    "smoke:werewolf:5": "SMOKE_WEREWOLF_CASE=5 node scripts/smoke-werewolf-balance.js",
+    "smoke:werewolf:6": "SMOKE_WEREWOLF_CASE=6 node scripts/smoke-werewolf-balance.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

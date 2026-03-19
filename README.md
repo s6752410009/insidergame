@@ -20,6 +20,14 @@ Check that the app can reach MongoDB before starting:
 MONGO_URL="your-mongo-url" npm run check:db
 ```
 
+Run the self-contained Werewolf smoke test:
+
+```bash
+npm run smoke:werewolf
+npm run smoke:werewolf:5
+npm run smoke:werewolf:6
+```
+
 If `MONGO_URL` is not provided, the app falls back to local JSON files in `data/`.
 
 App is responding by default on port `8080`.

@@ -74,11 +74,11 @@ const ROLE_DEFINITIONS = {
 const ROLE_PLANS = {
     3: ['werewolf', 'seer', 'villager'],
     4: ['werewolf', 'seer', 'doctor', 'villager'],
-    5: ['werewolf', 'seer', 'doctor', 'fool', 'villager'],
+    5: ['werewolf', 'seer', 'doctor', 'bodyguard', 'villager'],
     6: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'villager'],
-    7: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard'],
-    8: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor'],
-    9: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer'],
+    7: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'villager'],
+    8: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'villager'],
+    9: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'villager'],
     10: ['alphaWolf', 'werewolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer']
 };
 
@@ -157,8 +157,11 @@ function getRolePlan(playerCount, settings = {}) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = ROLE_PLANS[normalizedCount] || ROLE_PLANS[3];
     const enabledRoleIds = getConfiguredRoleIds(settings);
-    const plannedRoleIds = [];
     const wolfSlotCount = basePlan.filter(isWerewolfRole).length;
+    const plannedRoleIds = [];
+    let missingSpecialSlots = 0;
+    const selectedSpecialIds = [];
+    const fallbackSpecialIds = [];
 
     if (wolfSlotCount > 1 && enabledRoleIds.includes('alphaWolf')) {
         plannedRoleIds.push('alphaWolf');
@@ -170,13 +173,25 @@ function getRolePlan(playerCount, settings = {}) {
         plannedRoleIds.push('werewolf');
     }
 
-    const baseSpecialIds = basePlan.filter(roleId => roleId !== 'villager' && !isWerewolfRole(roleId));
     const specialIds = [];
 
-    baseSpecialIds.forEach(roleId => {
-        if (enabledRoleIds.includes(roleId) && !specialIds.includes(roleId)) {
-            specialIds.push(roleId);
+    basePlan.forEach(roleId => {
+        if (isWerewolfRole(roleId)) {
+            return;
         }
+
+        if (roleId === 'villager') {
+            plannedRoleIds.push('villager');
+            return;
+        }
+
+        if (enabledRoleIds.includes(roleId)) {
+            plannedRoleIds.push(roleId);
+            selectedSpecialIds.push(roleId);
+            return;
+        }
+
+        missingSpecialSlots += 1;
     });
 
     CONFIGURABLE_ROLE_IDS.forEach(roleId => {
@@ -184,13 +199,14 @@ function getRolePlan(playerCount, settings = {}) {
             return;
         }
 
-        if (enabledRoleIds.includes(roleId) && !specialIds.includes(roleId)) {
-            specialIds.push(roleId);
+        if (enabledRoleIds.includes(roleId) && !selectedSpecialIds.includes(roleId)) {
+            fallbackSpecialIds.push(roleId);
         }
     });
 
-    const slotsRemaining = normalizedCount - plannedRoleIds.length;
-    plannedRoleIds.push(...specialIds.slice(0, slotsRemaining));
+    if (missingSpecialSlots > 0) {
+        plannedRoleIds.push(...fallbackSpecialIds.slice(0, missingSpecialSlots));
+    }
 
     while (plannedRoleIds.length < normalizedCount) {
         plannedRoleIds.push('villager');
@@ -415,7 +431,9 @@ function assignRoles(room) {
             lastNightResult: null,
             lastSeenRole: null,
             seerHistory: [],
-            revealerUsed: false
+            revealerUsed: false,
+            witchHealUsed: false,
+            witchPoisonUsed: false
         };
     });
 }
@@ -727,9 +745,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             if (isWerewolfRole(target.role)) {
                 throw new Error('หมาป่าเลือกโจมตีหมาป่าด้วยกันเองไม่ได้');
             }
-            if (isFoolRole(target.role)) {
-                throw new Error('หมาป่าฆ่าคนบ้าไม่ได้');
-            }
             room.gameState.nightActions.werewolfVotes[actorId] = targetPlayerId;
             break;
         case 'seer':
@@ -876,7 +891,7 @@ function fillMissingNightActions(room) {
                 if (isFirstNight(room)) {
                     break;
                 }
-                const targets = getAlivePlayers(room).filter(player => !isWerewolfRole(player.role) && !isFoolRole(player.role));
+                const targets = getAlivePlayers(room).filter(player => !isWerewolfRole(player.role));
                 const target = chooseRandom(targets);
                 if (target) {
                     room.gameState.nightActions.werewolfVotes[actor.playerId] = target.playerId;
