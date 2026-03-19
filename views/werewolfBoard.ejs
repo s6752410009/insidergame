@@ -123,6 +123,7 @@
 
   /* -- desktop layout: on mobile, becomes a flex column for chat -- */
   .ww-desktop-layout { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+  .ww-desktop-layout.game-active { display: none; }
   .ww-desktop-layout > .ww-col-left { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
   .ww-desktop-layout > .ww-col-right { display: none; }
   .ww-chat-wrap { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
@@ -225,7 +226,7 @@
     .ww-chat-view { display: contents !important; }
     .ww-desktop-hero { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 24px; padding: 24px; border-radius: 22px; background: radial-gradient(circle at top left, rgba(192,57,43,0.35), transparent 34%), linear-gradient(135deg, #0e121c 0%, #171c2a 60%, #20283a 100%); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 18px 46px rgba(0,0,0,0.35); }
     .ww-desktop-hero h1 { margin: 0 0 8px; font-family: 'Orbitron', sans-serif; font-size: 2rem; }
-    .ww-desktop-layout { display: grid; grid-template-columns: 1.5fr 0.85fr; gap: 18px; flex: none; }
+    .ww-desktop-layout { display: grid !important; grid-template-columns: 1.5fr 0.85fr; gap: 18px; flex: none; }
     .ww-desktop-layout > .ww-col-left { display: grid; gap: 18px; }
     .ww-desktop-layout > .ww-col-right { display: grid; gap: 18px; }
 
@@ -1716,6 +1717,7 @@
       if (nextView === 'game') {
         $('.ww-chat-view').addClass('hidden');
         $('.ww-composer').hide();
+        $('.ww-desktop-layout').addClass('game-active');
         $('#mobileGamePanel').addClass('active');
         syncMobileGamePanel();
         return;
@@ -1723,6 +1725,7 @@
 
       $('.ww-chat-view').removeClass('hidden');
       $('.ww-composer').show();
+      $('.ww-desktop-layout').removeClass('game-active');
       $('#mobileGamePanel').removeClass('active');
       scrollChatToBottom();
     }
