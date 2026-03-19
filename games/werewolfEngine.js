@@ -58,8 +58,8 @@ const ROLE_DEFINITIONS = {
 };
 
 const ROLE_PLANS = {
-    3: ['werewolf', 'seer', 'doctor'],
-    4: ['werewolf', 'seer', 'doctor', 'mayor'],
+    3: ['werewolf', 'seer', 'villager'],
+    4: ['werewolf', 'seer', 'doctor', 'villager'],
     5: ['werewolf', 'seer', 'doctor', 'bodyguard', 'villager'],
     6: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'bodyguard', 'mayor'],
     7: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'bodyguard', 'mayor', 'revealer'],
@@ -330,9 +330,36 @@ function resetRoomGame(room) {
 }
 
 function assignRoles(room) {
-    const shuffledRoles = shuffle(room.gameState.rolePlan.map(role => role.id));
-    room.gameState.players = room.gameState.players.map((playerState, index) => {
-        const roleId = shuffledRoles[index];
+    const roleIds = room.gameState.rolePlan.map(role => role.id);
+    const players = room.gameState.players;
+
+    // Collect previous roles (from last round) to avoid repeats
+    const previousRoles = {};
+    players.forEach(p => {
+        if (p.role) previousRoles[p.playerId] = p.role;
+    });
+
+    // Try up to 20 shuffles to find one where no player repeats their previous role
+    let bestShuffle = shuffle(roleIds);
+    let bestRepeatCount = players.length; // worst case
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = shuffle(roleIds);
+        let repeats = 0;
+        for (let i = 0; i < players.length; i++) {
+            if (previousRoles[players[i].playerId] === candidate[i]) {
+                repeats++;
+            }
+        }
+        if (repeats < bestRepeatCount) {
+            bestRepeatCount = repeats;
+            bestShuffle = candidate;
+        }
+        if (repeats === 0) break;
+    }
+
+    room.gameState.players = players.map((playerState, index) => {
+        const roleId = bestShuffle[index];
         const roleInfo = ROLE_DEFINITIONS[roleId];
         return {
             ...playerState,
@@ -349,7 +376,23 @@ function assignRoles(room) {
 }
 
 function startGame(room) {
+    // Save previous roles before reset so assignRoles can avoid repeats
+    const previousRoles = {};
+    if (room.gameState && room.gameState.players) {
+        room.gameState.players.forEach(p => {
+            if (p.role) previousRoles[p.playerId] = p.role;
+        });
+    }
+
     room.gameState = resetRoomGame(room);
+
+    // Restore previous roles onto fresh player states
+    room.gameState.players.forEach(p => {
+        if (previousRoles[p.playerId]) {
+            p.role = previousRoles[p.playerId];
+        }
+    });
+
     assignRoles(room);
     room.gameState.dayNumber = 0;
     room.gameState.winner = null;
