@@ -151,8 +151,41 @@
 
   /* -- mobile inline sections (above chat) -- */
   .ww-mobile-players { flex-shrink: 0; padding: 6px 10px 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ww-mobile-notes { flex-shrink: 0; padding: 0 10px 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ww-mobile-notes:empty { display: none; }
+  .notes-strip { display: flex; gap: 6px; padding: 2px 0; }
+  .notes-strip:empty { display: none; }
+  .note-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; color: #e2e8f0; }
+  .note-pill.tone-seer { background: rgba(79,70,229,0.22); border-color: rgba(129,140,248,0.28); color: #c4b5fd; }
+  .note-pill.tone-alert { background: rgba(239,68,68,0.2); border-color: rgba(252,165,165,0.22); color: #fca5a5; }
+  .note-pill.tone-doctor { background: rgba(5,150,105,0.2); border-color: rgba(110,231,183,0.2); color: #6ee7b7; }
+  .note-pill.tone-witch { background: rgba(16,185,129,0.2); border-color: rgba(110,231,183,0.22); color: #6ee7b7; }
+  .note-pill.tone-werewolf { background: rgba(192,57,43,0.22); border-color: rgba(248,113,113,0.22); color: #fca5a5; }
+  .note-pill.tone-bodyguard { background: rgba(234,179,8,0.2); border-color: rgba(253,224,71,0.22); color: #fde68a; }
+  .note-pill.tone-fool { background: rgba(168,85,247,0.22); border-color: rgba(216,180,254,0.24); color: #d8b4fe; }
+  .note-pill.tone-info { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
   .ww-mobile-actions { flex-shrink: 0; padding: 0 10px 4px; }
   .ww-mobile-actions .actions-grid:empty { display: none; }
+  /* -- compact mobile action bar -- */
+  .mobile-action-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
+  .mobile-action-bar .mobile-action-label { flex: 1; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mobile-action-bar .mobile-action-hint { font-size: 0.78rem; color: #97a4bf; white-space: nowrap; }
+  .mobile-action-bar .mobile-action-btn { flex-shrink: 0; border: 0; border-radius: 8px; padding: 6px 14px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: #fff; background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+  .mobile-action-bar .mobile-action-btn.skip { background: rgba(255,255,255,0.1); }
+  .mobile-action-bar .mobile-action-btn.selected { background: rgba(34,197,94,0.3); border: 1px solid rgba(34,197,94,0.4); }
+  .mobile-action-bar .mobile-action-btn.reveal { background: linear-gradient(135deg, #d97706, #b45309); }
+  .mobile-action-bar .mobile-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mobile-action-bar.bar-night { border-color: rgba(96,165,250,0.2); background: rgba(30,58,138,0.15); }
+  .mobile-action-bar.bar-vote { border-color: rgba(250,204,21,0.2); background: rgba(120,90,10,0.12); }
+  .mobile-action-bar.bar-focus { border-color: rgba(250,204,21,0.25); box-shadow: 0 0 8px rgba(250,204,21,0.1); }
+  /* -- player grid: tap-to-target -- */
+  .player-row.seat-target { cursor: pointer; border-color: rgba(250,204,21,0.4) !important; box-shadow: 0 0 10px rgba(250,204,21,0.15); transition: all 0.2s; }
+  .player-row.seat-target:active { transform: scale(0.93); }
+  .player-row.seat-target.target-selected { border-color: rgba(34,197,94,0.5) !important; box-shadow: 0 0 14px rgba(34,197,94,0.2); background: linear-gradient(145deg, rgba(34,197,94,0.14), rgba(34,197,94,0.04)) !important; }
+  .player-row.seat-target .player-avatar-stage::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px dashed rgba(250,204,21,0.35); animation: targetPulse 1.5s ease-in-out infinite; pointer-events: none; }
+  .player-row.seat-target.target-selected .player-avatar-stage::after { border-color: rgba(34,197,94,0.5); animation: none; }
+  .player-row .player-avatar-stage { position: relative; }
+  @keyframes targetPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
   /* -- layout: chat fills remaining space -- */
   .ww-desktop-layout { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
@@ -173,7 +206,9 @@
   .chat-message-bubble { min-width: 80px; max-width: 100%; padding: 8px 12px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
   .chat-message-wrapper.self .chat-message-bubble { background: linear-gradient(135deg, rgba(37,99,235,0.3), rgba(29,78,216,0.22)); border-color: rgba(96,165,250,0.2); }
   .chat-message-wrapper.other .chat-message-bubble { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); }
-  .chat-message-wrapper.system .chat-message-bubble { min-width: 0; text-align: center; border-radius: 12px; padding: 6px 12px; }
+  .chat-message-wrapper.system .chat-message-bubble { min-width: 0; text-align: center; border-radius: 12px; padding: 4px 10px; }
+  .chat-message-wrapper.system .chat-channel-badge { display: none; }
+  .chat-message-wrapper.system .chat-message-body { font-size: 0.82rem; }
   .chat-message-wrapper.system .chat-message-bubble.message-presence { background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(59,130,246,0.12)); border-color: rgba(125,211,252,0.18); }
   .chat-message-wrapper.system .chat-message-bubble.message-phase,
   .chat-message-wrapper.system .chat-message-bubble.message-history-night,
@@ -433,6 +468,7 @@
     .ww-topbar { display: none; }
     .ww-mobile-winner { display: none !important; }
     .ww-mobile-players { display: none !important; }
+    .ww-mobile-notes { display: none !important; }
     .ww-mobile-actions { display: none !important; }
     .phase-hud { margin-bottom: 14px; padding: 12px 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); background: linear-gradient(145deg, #141927, #1b2232); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
     .phase-hud-title { font-size: 1.2rem; }
@@ -452,6 +488,8 @@
     .ww-chat-head h3 { margin: 0; font-family: 'Orbitron', sans-serif; }
     .ww-filters { padding: 0; margin-bottom: 12px; }
     .ww-chat-scroll { flex: none; min-height: 480px; max-height: 56vh; padding: 8px 4px 8px 0; }
+    .chat-message-wrapper.system .chat-channel-badge { display: inline-flex; }
+    .chat-message-wrapper.system .chat-message-bubble { padding: 6px 12px; }
     .ww-composer { padding: 0; padding-top: 14px; border-top: 0; background: transparent; }
     .ww-input-row textarea { max-height: none; resize: vertical; padding: 12px 14px; border-radius: 12px; }
 
@@ -582,7 +620,12 @@
     <div id="mobileInlineRoleStrip" class="role-strip"></div>
   </div>
 
-  <!-- ===== MOBILE ACTION BUTTONS (inline above chat) ===== -->
+  <!-- ===== MOBILE NOTES STRIP (seer/role results) ===== -->
+  <div class="ww-mobile-notes">
+    <div id="mobileNotesStrip" class="notes-strip"></div>
+  </div>
+
+  <!-- ===== MOBILE ACTION BAR (compact) ===== -->
   <div class="ww-mobile-actions">
     <div id="mobileInlineActions" class="actions-grid"></div>
   </div>
@@ -748,6 +791,7 @@
     let touchStartX = 0;
     let touchStartY = 0;
     let swipingWrapper = null;
+    let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
     const seenHistoryKeys = new Set();
     const renderedMessageIds = new Set();
 
@@ -1817,14 +1861,25 @@
       $('#mobileInlinePlayerGrid').html(playerHtml);
       // Mirror role strip
       $('#mobileInlineRoleStrip').html($('#roleStrip').html());
-      // Mirror action panels to inline mobile area (no recap, just buttons)
-      var inlineActionHtml = '';
-      $('#actionPanels').children().each(function() {
-        var $el = $(this);
-        if ($el.hasClass('phase-recap-card') || $el.hasClass('decision-receipt') || $el.hasClass('spectator-card')) return;
-        inlineActionHtml += $el[0].outerHTML;
-      });
-      $('#mobileInlineActions').html(inlineActionHtml);
+      // Render notes strip (seer results, role notes)
+      renderMobileNotesStrip();
+      // Build compact mobile action bar (replaces verbose action panels)
+      var mobileActionHtml = buildMobileActionBar();
+      mobileActionHtml += buildMobileSecondaryBars();
+      $('#mobileInlineActions').html(mobileActionHtml);
+      // Apply target overlay to mobile player grid
+      if (currentMobileTargetAction) {
+        $('#mobileInlinePlayerGrid .player-row').each(function() {
+          var $row = $(this);
+          var pid = $row.data('player-id');
+          if (pid && currentMobileTargetAction.targetIds.has(pid)) {
+            $row.addClass('seat-target');
+            if (currentMobileTargetAction.selectedId === pid) {
+              $row.addClass('target-selected');
+            }
+          }
+        });
+      }
       // Show badge on game tab if there are actions
       var hasActions = hasOpenMobileActions();
       $('#actionBadge').toggle(hasActions);
@@ -2381,8 +2436,12 @@
           statusParts.push(`<div class="player-vote-badge received">🗳 ${targetVoteCounts.get(player.playerId)}</div>`);
         }
 
+        // Target-on-grid: check if this player is a valid target
+        const isTarget = currentMobileTargetAction && currentMobileTargetAction.targetIds.has(player.playerId);
+        const isTargetSelected = isTarget && currentMobileTargetAction.selectedId === player.playerId;
+
         $root.append(`
-          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''}">
+          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''} ${isTarget ? 'seat-target' : ''} ${isTargetSelected ? 'target-selected' : ''}" data-player-id="${escapeHtml(player.playerId)}">
             <div class="player-seat-number">${seatNumber}</div>
             <div class="player-avatar-stage" style="background:${escapeHtml(avatarBg)};">${avatarEmoji}</div>
             <div class="player-name">${escapeHtml(player.name)}</div>
@@ -2390,6 +2449,147 @@
           </div>
         `);
       });
+    }
+
+    // ===== MOBILE NOTES STRIP =====
+    function renderMobileNotesStrip() {
+      const $strip = $('#mobileNotesStrip');
+      const notes = currentState.personalNotes || {};
+      const roleId = currentState.playerRole?.id;
+      const items = buildNoteItems(notes, roleId);
+      if (!items.length) { $strip.empty(); return; }
+      var html = items.map(function(item) {
+        var tone = escapeHtml(item.tone || 'info');
+        var icon = item.icon || 'ℹ️';
+        var body = item.body || '';
+        // Truncate long text for pill
+        if (body.length > 40) body = body.substring(0, 38) + '…';
+        return '<span class="note-pill tone-' + tone + '">' + icon + ' ' + escapeHtml(body) + '</span>';
+      }).join('');
+      $strip.html(html);
+    }
+
+    // ===== MOBILE COMPACT ACTION BAR =====
+    function buildMobileActionBar() {
+      const phase = currentState.phase || '';
+      const winner = currentState.winner;
+      const actionState = currentState.actionState || {};
+
+      if (winner) {
+        var btnHtml = '';
+        if (isRoomAdmin) {
+          btnHtml = '<button class="mobile-action-btn" onclick="document.getElementById(\'restartWerewolfGame\')?.click(); return false;">🎲 เล่นอีก</button>';
+        }
+        btnHtml += '<button class="mobile-action-btn skip" onclick="document.getElementById(\'backToRoomLobby\')?.click(); return false;">🏠 กลับ</button>';
+        return '<div class="mobile-action-bar">' +
+          '<span class="mobile-action-label">🏁 จบรอบ!</span>' + btnHtml + '</div>';
+      }
+
+      if (phase === 'night') {
+        var actions = actionState.nightActions || [];
+        if (actions.length === 0) {
+          return '<div class="mobile-action-bar bar-night"><span class="mobile-action-label">😴 รอเช้า...</span></div>';
+        }
+        // Set up target action for player grid
+        var firstAction = actions[0];
+        var targetIds = new Set((firstAction.targets || []).map(function(t) { return t.playerId; }));
+        currentMobileTargetAction = {
+          handlerName: 'selectNightTarget',
+          actionType: firstAction.type,
+          targetIds: targetIds,
+          selectedId: firstAction.selectedTargetId || null,
+          allowSkip: false
+        };
+        var label = (actionEmoji(firstAction.type) || '🌙') + ' ' + escapeHtml(firstAction.label || 'เลือกเป้าหมาย');
+        var lockedHtml = firstAction.locked
+          ? '<span class="mobile-action-hint">🔒 เลือกแล้ว</span>'
+          : '<span class="mobile-action-hint">แตะที่ผู้เล่น</span>';
+        return '<div class="mobile-action-bar bar-night bar-focus">' +
+          '<span class="mobile-action-label">' + label + '</span>' + lockedHtml + '</div>';
+      }
+
+      if (phase === 'day-discussion') {
+        var discussion = actionState.discussionActions || {};
+        var skipCount = Number(discussion.skipCount || 0);
+        var totalAlive = Number(discussion.totalAlive || 0);
+        currentMobileTargetAction = null; // No targeting in discussion
+        var parts = '<span class="mobile-action-label">💬 ประชุม · ข้าม ' + skipCount + '/' + totalAlive + '</span>';
+        if (discussion.canSkip) {
+          parts += '<button class="mobile-action-btn" onclick="skipDiscussionPhase()">⏩ ข้าม</button>';
+        } else if (discussion.hasSkipped) {
+          parts += '<button class="mobile-action-btn selected" disabled>✅ พร้อม</button>';
+        }
+        if (discussion.canRevealMayor) {
+          parts += '<button class="mobile-action-btn reveal" onclick="revealMayorRole()">🎖️ นายก</button>';
+        }
+        var focusClass = (discussion.canSkip || discussion.canRevealMayor) ? ' bar-focus' : '';
+        return '<div class="mobile-action-bar' + focusClass + '">' + parts + '</div>';
+      }
+
+      if (phase === 'day-vote') {
+        var dayActions = actionState.dayActions || {};
+        currentMobileTargetAction = null;
+        var barParts = '';
+        if (dayActions.canVote) {
+          var vTargetIds = new Set((dayActions.voteTargets || []).map(function(t) { return t.playerId; }));
+          currentMobileTargetAction = {
+            handlerName: 'selectVoteTarget',
+            actionType: 'day-vote',
+            targetIds: vTargetIds,
+            selectedId: dayActions.selectedVoteTargetId || null,
+            allowSkip: dayActions.allowSkipVote
+          };
+          var completed = dayActions.completedVotes || 0;
+          var total = dayActions.totalVoters || 0;
+          barParts = '<span class="mobile-action-label">🗳️ โหวต · ' + completed + '/' + total + ' คน</span>';
+          barParts += '<span class="mobile-action-hint">แตะที่ผู้เล่น</span>';
+          if (dayActions.allowSkipVote) {
+            barParts += '<button class="mobile-action-btn skip" onclick="selectVoteTarget(\'__skip__\')">⏭️ ข้าม</button>';
+          }
+          if (dayActions.canRevealMayor) {
+            barParts += '<button class="mobile-action-btn reveal" onclick="revealMayorRole()">🎖️ นายก</button>';
+          }
+          return '<div class="mobile-action-bar bar-vote bar-focus">' + barParts + '</div>';
+        } else {
+          barParts = '<span class="mobile-action-label">✅ โหวตแล้ว เปลี่ยนใจได้</span>';
+          // Still allow targeting for changing vote
+          var vTargetIds2 = new Set((dayActions.voteTargets || []).map(function(t) { return t.playerId; }));
+          if (vTargetIds2.size > 0) {
+            currentMobileTargetAction = {
+              handlerName: 'selectVoteTarget',
+              actionType: 'day-vote',
+              targetIds: vTargetIds2,
+              selectedId: dayActions.selectedVoteTargetId || null,
+              allowSkip: dayActions.allowSkipVote
+            };
+          }
+          return '<div class="mobile-action-bar bar-vote">' + barParts + '</div>';
+        }
+      }
+
+      // Reveal action (day-vote phase, revealer role)
+      // This is handled below as a secondary bar
+
+      return '';
+    }
+
+    // Build secondary action bars (e.g., revealer during vote)
+    function buildMobileSecondaryBars() {
+      var html = '';
+      var phase = currentState.phase || '';
+      var actionState = currentState.actionState || {};
+      if (phase === 'day-vote') {
+        var dayActions = actionState.dayActions || {};
+        if (dayActions.canReveal) {
+          html += '<div class="mobile-action-bar bar-focus" style="margin-top:4px;">' +
+            '<span class="mobile-action-label">💥 เปิดโปง</span>' +
+            '<span class="mobile-action-hint">เลือกจาก target ด้านล่าง</span></div>';
+        } else if (dayActions.revealUsed) {
+          html += '<div class="mobile-action-bar" style="margin-top:4px;">' +
+            '<span class="mobile-action-label">💥 ใช้เปิดโปงไปแล้ว</span></div>';
+        }
+      }
+      return html;
     }
 
     function syncHistoryToChat(history) {
@@ -4035,6 +4235,21 @@
 
     $(document).on('click', '.target-card-actionable', function() {
       triggerActionCardFeedback(this, this.dataset.actionType || 'action-confirm');
+    });
+
+    // Tap-to-target: click on player seat in mobile grid
+    $(document).on('click', '#mobileInlinePlayerGrid .player-row.seat-target, #werewolfPlayers .player-row.seat-target', function() {
+      if (!currentMobileTargetAction) return;
+      var playerId = $(this).data('player-id');
+      if (!playerId) return;
+      var action = currentMobileTargetAction;
+      if (action.handlerName === 'selectNightTarget') {
+        selectNightTarget(action.actionType, playerId);
+      } else if (action.handlerName === 'selectVoteTarget') {
+        selectVoteTarget(playerId);
+      } else if (action.handlerName === 'selectRevealTarget') {
+        selectRevealTarget(playerId);
+      }
     });
   });
 </script>
