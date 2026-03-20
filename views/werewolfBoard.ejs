@@ -121,7 +121,7 @@
 
   /* -- chat/composer hidden when game tab is active -- */
   .ww-chat-view { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
-  .ww-chat-view.hidden { display: none; }
+  .ww-chat-view.hidden { display: flex; }
 
   /* -- filter tabs -- */
   .ww-filters { flex-shrink: 0; display: flex; gap: 6px; padding: 6px 10px; }
@@ -357,8 +357,8 @@
   .room-role-count { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #fde68a; font-size: 0.78rem; font-weight: 700; }
   .room-role-card-body { color: #d5def0; line-height: 1.45; font-size: 0.92rem; }
   .room-role-card-team { margin-top: 7px; color: #97a4bf; font-size: 0.82rem; }
-  .phase-recap-card { display: grid; gap: 12px; padding: 16px 18px; border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
-  .phase-recap-card.recap-cinematic { background: radial-gradient(circle at top left, rgba(248,113,113,0.18), transparent 32%), linear-gradient(145deg, rgba(28,37,68,0.94), rgba(15,23,42,0.9)); border-color: rgba(251,191,36,0.2); }
+  .phase-recap-card { display: none; }
+  .phase-recap-card.recap-cinematic { display: none; }
   .phase-recap-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .phase-recap-kicker { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #fde68a; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
   .phase-recap-title { font-family: 'Orbitron', sans-serif; font-size: 1.02rem; font-weight: 700; color: #fff; }
@@ -367,7 +367,8 @@
   .phase-recap-item { padding: 12px 13px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); }
   .phase-recap-label { color: #dbeafe; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px; }
   .phase-recap-body { color: #f8fafc; line-height: 1.5; font-size: 0.96rem; }
-  .decision-receipt { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); }
+  .decision-receipt { display: none; }
+  .spectator-card { display: none; }
   .decision-receipt-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
   .decision-receipt-title { color: #fff; font-weight: 700; font-size: 0.96rem; }
   .decision-receipt-subtitle { color: #aab4c8; font-size: 0.84rem; }
@@ -455,6 +456,10 @@
 
     .ww-action-section { display: block; background: linear-gradient(145deg, #141927, #1b2232); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 20px; box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
     .ww-action-section h3 { display: block; }
+    .phase-recap-card { display: grid; gap: 12px; padding: 16px 18px; border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); }
+    .phase-recap-card.recap-cinematic { background: radial-gradient(circle at top left, rgba(248,113,113,0.18), transparent 32%), linear-gradient(145deg, rgba(28,37,68,0.94), rgba(15,23,42,0.9)); border-color: rgba(251,191,36,0.2); }
+    .decision-receipt { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); }
+    .spectator-card { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(148,163,184,0.16); background: linear-gradient(145deg, rgba(71,85,105,0.28), rgba(15,23,42,0.45)); }
     .target-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   }
 
@@ -3520,24 +3525,11 @@
     }
 
     function setMobileView(view) {
-      const nextView = view === 'game' ? 'game' : 'chat';
-      $('.ww-view-tab').removeClass('active');
-      $('.ww-view-tab[data-view="' + nextView + '"]').addClass('active');
-
-      if (nextView === 'game') {
-        $('.ww-chat-view').addClass('hidden');
-        $('.ww-composer').hide();
-        $('.ww-desktop-layout').addClass('game-active');
-        $('#mobileGamePanel').addClass('active');
+      // No-op: merged layout shows players + chat together, no tab switching needed
+      if (view === 'game') {
         syncMobileGamePanel();
-        return;
       }
-
-      $('.ww-chat-view').removeClass('hidden');
-      $('.ww-composer').show();
-      $('.ww-desktop-layout').removeClass('game-active');
-      $('#mobileGamePanel').removeClass('active');
-      scrollChatToBottom();
+    }
     }
 
     function scrollToGameSection(target) {
