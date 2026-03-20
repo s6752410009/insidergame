@@ -18,7 +18,7 @@ const ROLE_DEFINITIONS = {
         name: 'Alpha Wolf',
         thaiName: 'อัลฟ่าหมาป่า',
         team: 'werewolf',
-        description: 'หัวหน้าฝั่งหมาป่า โหวตล่าเหยื่อตอนกลางคืนด้วยน้ำหนัก 2 เสียง'
+        description: 'หัวหน้าฝั่งหมาป่า โหวตล่าเหยื่อตอนกลางคืนด้วยน้ำหนัก 2 เสียง และถ้า Seer ตรวจจะขึ้นว่าไม่ทราบ'
     },
     mayor: {
         id: 'mayor',
@@ -39,7 +39,7 @@ const ROLE_DEFINITIONS = {
         name: 'Seer',
         thaiName: 'Seer',
         team: 'village',
-        description: 'ตรวจสอบบทบาทจริงของผู้เล่น 1 คนในตอนกลางคืน และดูได้เพียงครั้งเดียวต่อคืน'
+        description: 'ตรวจออร่าผู้เล่น 1 คนในตอนกลางคืน และจะเห็นผลแค่ ดี, ไม่ดี หรือ ไม่ทราบ โดยดูได้เพียงครั้งเดียวต่อคืน'
     },
     doctor: {
         id: 'doctor',
@@ -60,7 +60,7 @@ const ROLE_DEFINITIONS = {
         name: 'Fool',
         thaiName: 'คนบ้า',
         team: 'solo',
-        description: 'หมาป่าฆ่าคุณไม่ได้ และถ้าคุณถูกโหวตออกตอนกลางวัน คุณจะชนะคนเดียวทันทีโดยที่เกมไม่เปิดเผยเหตุผลตอนเช้า'
+        description: 'หมาป่าฆ่าคุณไม่ได้ ถ้าคุณถูกโหวตออกตอนกลางวันคุณจะชนะคนเดียวทันที และถ้า Seer ตรวจจะขึ้นว่าไม่ทราบ'
     },
     revealer: {
         id: 'revealer',
@@ -113,6 +113,34 @@ function isWerewolfRole(roleId) {
 
 function isFoolRole(roleId) {
     return roleId === 'fool';
+}
+
+function getSeerAlignment(roleId) {
+    if (roleId === 'alphaWolf' || isFoolRole(roleId)) {
+        return {
+            code: 'unknown',
+            label: 'ไม่ทราบ'
+        };
+    }
+
+    if (roleId === 'werewolf') {
+        return {
+            code: 'bad',
+            label: 'ไม่ดี'
+        };
+    }
+
+    if (ROLE_DEFINITIONS[roleId]?.team === 'village') {
+        return {
+            code: 'good',
+            label: 'ดี'
+        };
+    }
+
+    return {
+        code: 'unknown',
+        label: 'ไม่ทราบ'
+    };
 }
 
 function sanitizeRoleSelection(roleIds) {
@@ -374,12 +402,14 @@ function applySeerVision(room, seerId, targetPlayerId) {
         return;
     }
 
-    const seenRole = `${target.name} คือ ${target.roleInfo?.thaiName || target.role}`;
+    const reading = getSeerAlignment(target.role);
+    const seenRole = `${target.name} มีออร่า ${reading.label}`;
     const seenEntry = {
         dayNumber: room.gameState.dayNumber || 1,
         targetPlayerId: target.playerId,
         targetName: target.name,
-        roleName: target.roleInfo?.thaiName || target.role,
+        resultCode: reading.code,
+        roleName: reading.label,
         summary: seenRole
     };
 
@@ -1595,6 +1625,8 @@ function buildRoleNotes(room, viewer) {
         }
         case 'seer':
             notes.push('🔮 คุณตรวจผู้เล่นได้คืนละ 1 คน และดูตัวเองไม่ได้');
+            notes.push('🌓 ผลตรวจจะเห็นแค่ ดี, ไม่ดี หรือ ไม่ทราบ');
+            notes.push('🕶️ อัลฟ่าหมาป่าและคนบ้าจะขึ้นว่า ไม่ทราบ');
             break;
         case 'doctor':
             notes.push(`💉 คุณช่วยตัวเองหรือคนอื่นได้ แต่ใช้ได้รวม ${Math.max(0, 2 - Number(viewer.doctorSaveUses || 0))} ครั้งที่เหลือตลอดเกม`);

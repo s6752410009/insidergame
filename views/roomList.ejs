@@ -536,19 +536,141 @@ $(function() {
     const socket = io();
     const playerId = '<%= player.playerId %>';
     const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
+    const werewolfRoleVisuals = {
+        werewolf: { emoji: '🐺', teamLabel: 'ฝั่งหมาป่า' },
+        alphaWolf: { emoji: '👑', teamLabel: 'หมาป่านำทีม' },
+        seer: { emoji: '🔮', teamLabel: 'สายอ่านเกม' },
+        doctor: { emoji: '💉', teamLabel: 'สายช่วยทีม' },
+        witch: { emoji: '🧪', teamLabel: 'สายพลิกเกม' },
+        fool: { emoji: '🤪', teamLabel: 'บทเดี่ยว' },
+        bodyguard: { emoji: '🛡️', teamLabel: 'สายกันตาย' },
+        mayor: { emoji: '🎖️', teamLabel: 'สายคุมโหวต' },
+        revealer: { emoji: '💥', teamLabel: 'สายเสี่ยงแตก' }
+    };
+    const werewolfRolePresets = [
+        {
+            id: 'classic-pack',
+            name: 'คลาสสิก',
+            tagline: 'อ่านง่าย เล่นลื่น',
+            minPlayers: 6,
+            roles: ['werewolf', 'seer', 'doctor', 'witch', 'bodyguard']
+        },
+        {
+            id: 'mindgame-pack',
+            name: 'อ่านใจ',
+            tagline: 'โกหกกันมันขึ้น',
+            minPlayers: 7,
+            roles: ['werewolf', 'alphaWolf', 'seer', 'doctor', 'mayor', 'bodyguard', 'fool']
+        },
+        {
+            id: 'chaos-pack',
+            name: 'ปั่นจัด',
+            tagline: 'เช้าละเรื่อง',
+            minPlayers: 8,
+            roles: ['werewolf', 'alphaWolf', 'seer', 'witch', 'fool', 'mayor', 'revealer', 'bodyguard']
+        }
+    ];
+
+    function matchesWerewolfPreset(selectedRoleIds, preset) {
+        const selected = [...(Array.isArray(selectedRoleIds) ? selectedRoleIds : [])].sort();
+        const presetRoles = [...preset.roles].sort();
+        return selected.length === presetRoles.length && presetRoles.every((roleId, index) => roleId === selected[index]);
+    }
+
+    function renderSelectedWerewolfRoleSummary(selectedRoleIds) {
+        const selected = Array.isArray(selectedRoleIds) ? selectedRoleIds : [];
+        const selectedRoles = werewolfRoleOptions.filter(role => selected.includes(role.id));
+        const chips = selectedRoles.map(role => {
+            const visual = werewolfRoleVisuals[role.id] || { emoji: '🎭', teamLabel: 'พิเศษ' };
+            return `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-size:0.85em;">${visual.emoji} ${role.thaiName}</span>`;
+        }).join('');
+
+        if (!selectedRoles.length) {
+            return '<div style="color:#f8d189; font-size:0.9em;">ยังไม่ได้ติ๊กบทพิเศษเพิ่ม ระบบจะเติมหมาป่าปกติให้เองถ้าจำเป็น</div>';
+        }
+
+        return `
+            <div style="display:grid; gap:8px;">
+                <div style="color:#8fd3ff; font-size:0.88em;">ตอนนี้เปิดอยู่ ${selectedRoles.length} บท ระบบจะเติมชาวบ้านให้ครบจำนวนคนอัตโนมัติ</div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">${chips}</div>
+            </div>
+        `;
+    }
+
+    function syncWerewolfRolePicker(container) {
+        if (!container) {
+            return;
+        }
+
+        const selected = collectWerewolfRoleSelection(container);
+        const summary = container.querySelector('.werewolf-role-summary');
+        if (summary) {
+            summary.innerHTML = renderSelectedWerewolfRoleSummary(selected);
+        }
+
+        container.querySelectorAll('.werewolf-role-preset').forEach(button => {
+            const preset = werewolfRolePresets.find(item => item.id === button.dataset.presetId);
+            button.classList.toggle('active', !!preset && matchesWerewolfPreset(selected, preset));
+            button.style.borderColor = button.classList.contains('active') ? '#f39c12' : 'rgba(255,255,255,0.08)';
+            button.style.background = button.classList.contains('active') ? 'linear-gradient(135deg, rgba(243,156,18,0.24), rgba(192,57,43,0.18))' : 'rgba(255,255,255,0.04)';
+        });
+    }
+
+    function applyWerewolfRolePreset(container, presetId) {
+        const preset = werewolfRolePresets.find(item => item.id === presetId);
+        if (!container || !preset) {
+            return;
+        }
+
+        container.querySelectorAll('.werewolf-role-option').forEach(option => {
+            const checkbox = option.querySelector('input');
+            const enabled = preset.roles.includes(option.dataset.roleId);
+            if (checkbox) {
+                checkbox.checked = enabled;
+            }
+            option.classList.toggle('checked', enabled);
+        });
+    }
 
     function buildWerewolfRoleSelectionHtml(selectedRoleIds) {
         const selected = Array.isArray(selectedRoleIds) ? selectedRoleIds : [];
 
         return `
-            <div style="display:grid; gap:8px;">
-                ${werewolfRoleOptions.map(role => `
-                    <div class="room-checkbox-container werewolf-role-option ${selected.includes(role.id) ? 'checked' : ''}" data-role-id="${role.id}" style="margin-bottom:0; justify-content:flex-start;">
-                        <input type="checkbox" class="room-checkbox" ${selected.includes(role.id) ? 'checked' : ''}>
-                        <div class="room-checkbox-custom">✓</div>
-                        <span class="room-checkbox-text"><strong>${role.thaiName}</strong> <span style="color:#aaa;">${role.description}</span></span>
+            <div style="display:grid; gap:12px;">
+                <div style="display:grid; gap:8px;">
+                    <div style="color:#fff; font-weight:700;">เลือกแนวห้องเร็ว ๆ</div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px;">
+                        ${werewolfRolePresets.map(preset => `
+                            <button type="button" class="werewolf-role-preset ${matchesWerewolfPreset(selected, preset) ? 'active' : ''}" data-preset-id="${preset.id}" data-min-players="${preset.minPlayers}" style="border:1px solid ${matchesWerewolfPreset(selected, preset) ? '#f39c12' : 'rgba(255,255,255,0.08)'}; border-radius:12px; background:${matchesWerewolfPreset(selected, preset) ? 'linear-gradient(135deg, rgba(243,156,18,0.24), rgba(192,57,43,0.18))' : 'rgba(255,255,255,0.04)'}; color:#fff; padding:10px 12px; text-align:left; cursor:pointer; font-family:Rajdhani, sans-serif;">
+                                <div style="font-weight:700; font-size:1em;">${preset.name}</div>
+                                <div style="color:#f8d189; font-size:0.82em;">${preset.tagline}</div>
+                                <div style="color:#97a4bf; font-size:0.78em; margin-top:4px;">แนะนำ ${preset.minPlayers}+ คน</div>
+                            </button>
+                        `).join('')}
                     </div>
-                `).join('')}
+                </div>
+                <div class="werewolf-role-summary" style="padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">
+                    ${renderSelectedWerewolfRoleSummary(selected)}
+                </div>
+                <details style="padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+                    <summary style="cursor:pointer; color:#8fd3ff; font-weight:700;">ปรับบทเองทีละบท</summary>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:8px; margin-top:12px;">
+                        ${werewolfRoleOptions.map(role => {
+                            const visual = werewolfRoleVisuals[role.id] || { emoji: '🎭', teamLabel: 'พิเศษ' };
+                            return `
+                                <div class="room-checkbox-container werewolf-role-option ${selected.includes(role.id) ? 'checked' : ''}" data-role-id="${role.id}" style="margin-bottom:0; align-items:flex-start; gap:10px; padding:12px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:rgba(255,255,255,0.03); justify-content:flex-start;">
+                                    <input type="checkbox" class="room-checkbox" ${selected.includes(role.id) ? 'checked' : ''}>
+                                    <div class="room-checkbox-custom">✓</div>
+                                    <span class="room-checkbox-text" style="display:grid; gap:4px;">
+                                        <strong>${visual.emoji} ${role.thaiName}</strong>
+                                        <span style="color:#8fd3ff; font-size:0.8em;">${visual.teamLabel}</span>
+                                        <span style="color:#aaa; font-size:0.85em; line-height:1.35;">${role.description}</span>
+                                    </span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </details>
             </div>
         `;
     }
@@ -833,14 +955,15 @@ $(function() {
                 updateSliderBackground(roundTimeSlider);
 
                 werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(defaultWerewolfRoles);
+                syncWerewolfRolePicker(werewolfRolesSelector);
 
                 function updateWerewolfRoleVisibility() {
                     const isWerewolfMode = gameModeSelect.value === 'werewolf';
                     werewolfRolesGroup.style.display = isWerewolfMode ? 'block' : 'none';
                     roundTimeLabelText.textContent = isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:';
 
-                    if (isWerewolfMode && Number(maxPlayersSlider.value) < 8) {
-                        maxPlayersSlider.value = '8';
+                    if (isWerewolfMode && Number(maxPlayersSlider.value) < 6) {
+                        maxPlayersSlider.value = '6';
                         maxPlayersValue.textContent = maxPlayersSlider.value;
                         updateSliderBackground(maxPlayersSlider);
                     }
@@ -850,6 +973,19 @@ $(function() {
                 updateWerewolfRoleVisibility();
 
                 werewolfRolesSelector.addEventListener('click', function(event) {
+                    const presetButton = event.target.closest('.werewolf-role-preset');
+                    if (presetButton) {
+                        applyWerewolfRolePreset(werewolfRolesSelector, presetButton.dataset.presetId);
+                        const minPlayers = Number(presetButton.dataset.minPlayers || 0);
+                        if (minPlayers && Number(maxPlayersSlider.value) < minPlayers) {
+                            maxPlayersSlider.value = String(minPlayers);
+                            maxPlayersValue.textContent = maxPlayersSlider.value;
+                            updateSliderBackground(maxPlayersSlider);
+                        }
+                        syncWerewolfRolePicker(werewolfRolesSelector);
+                        return;
+                    }
+
                     const option = event.target.closest('.werewolf-role-option');
                     if (!option) {
                         return;
@@ -858,6 +994,7 @@ $(function() {
                     const checkbox = option.querySelector('input');
                     checkbox.checked = !checkbox.checked;
                     option.classList.toggle('checked', checkbox.checked);
+                    syncWerewolfRolePicker(werewolfRolesSelector);
                 });
                 
                 // Lock checkbox handler

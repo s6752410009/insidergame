@@ -553,6 +553,7 @@
                         <tr>
                             <th>ชื่อห้อง</th>
                             <th>Room ID</th>
+                            <th>โหมด</th>
                             <th>ผู้เล่น</th>
                             <th>สถานะ</th>
                             <th>ล็อค</th>
@@ -560,7 +561,7 @@
                         </tr>
                     </thead>
                     <tbody id="roomsTable">
-                        <tr><td colspan="6" class="empty-message">กำลังโหลด...</td></tr>
+                        <tr><td colspan="7" class="empty-message">กำลังโหลด...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -619,9 +620,9 @@
                             <th>ชนะ</th>
                             <th>แพ้</th>
                             <th>Win%</th>
-                            <th>GM</th>
-                            <th>ทรยศ</th>
-                            <th>พลเมือง</th>
+                            <th>แยกตามโหมด</th>
+                            <th>Insider</th>
+                            <th>Werewolf</th>
                             <th>จัดการ</th>
                         </tr>
                     </thead>
@@ -790,6 +791,48 @@ $(function() {
     const socket = io();
     let allData = {};
     let isAuthenticated = false;
+    const WEREWOLF_ROLE_META = [
+        { id: 'villager', label: 'ชาวบ้าน', emoji: '🙂' },
+        { id: 'werewolf', label: 'หมาป่า', emoji: '🐺' },
+        { id: 'alphaWolf', label: 'อัลฟ่าหมาป่า', emoji: '👑' },
+        { id: 'seer', label: 'Seer', emoji: '🔮' },
+        { id: 'doctor', label: 'หมอ', emoji: '💉' },
+        { id: 'witch', label: 'แม่มด', emoji: '🧪' },
+        { id: 'bodyguard', label: 'บอดี้การ์ด', emoji: '🛡️' },
+        { id: 'mayor', label: 'นายก', emoji: '🎖️' },
+        { id: 'revealer', label: 'จอมเปิดโปง', emoji: '💥' },
+        { id: 'fool', label: 'คนบ้า', emoji: '🤪' }
+    ];
+
+    function renderModeSummary(modeStats) {
+        const insider = modeStats?.insider || {};
+        const werewolf = modeStats?.werewolf || {};
+        return `
+            <div style="display:grid; gap:6px; min-width:170px;">
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🎯 Insider ${insider.games || 0} เกม</span><span class="status-badge status-online">🏆 ${insider.wins || 0}W</span><span class="status-badge status-offline">💀 ${insider.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">🐺 Werewolf ${werewolf.games || 0} เกม</span><span class="status-badge status-online">🏆 ${werewolf.wins || 0}W</span><span class="status-badge status-offline">💀 ${werewolf.losses || 0}L</span></div>
+            </div>
+        `;
+    }
+
+    function renderInsiderRoleSummary(roleStats) {
+        return `
+            <div style="display:flex; flex-wrap:wrap; gap:6px; min-width:150px;">
+                <span class="status-badge status-playing">👑 GM ${roleStats?.gameMasterCount || 0}</span>
+                <span class="status-badge status-banned">🔴 ทรยศ ${roleStats?.traitorCount || 0}</span>
+                <span class="status-badge status-online">🔵 พลเมือง ${roleStats?.citizenCount || 0}</span>
+            </div>
+        `;
+    }
+
+    function renderWerewolfRoleSummary(roleStats) {
+        const nonZeroRoles = WEREWOLF_ROLE_META.filter(role => Number(roleStats?.werewolf?.[role.id] || 0) > 0);
+        if (!nonZeroRoles.length) {
+            return '<span style="color:#888;">ยังไม่มีสถิติ Werewolf</span>';
+        }
+
+        return `<div style="display:flex; flex-wrap:wrap; gap:6px; min-width:220px;">${nonZeroRoles.map(role => `<span class="status-badge status-guest">${role.emoji} ${role.label} ${roleStats.werewolf[role.id] || 0}</span>`).join('')}</div>`;
+    }
     
     // Admin token จาก server (ใช้ได้ครั้งเดียว หมดอายุใน 60 วินาที)
     const adminToken = '<%= adminToken %>';
@@ -940,19 +983,23 @@ $(function() {
         $table.empty();
         
         if (rooms.length === 0) {
-            $table.html('<tr><td colspan="6" class="empty-message">ไม่มีห้อง</td></tr>');
+            $table.html('<tr><td colspan="7" class="empty-message">ไม่มีห้อง</td></tr>');
             return;
         }
         
         rooms.forEach(function(room) {
             const statusClass = room.gameStatus === 'playing' ? 'status-playing' : 'status-waiting';
             const statusText = room.gameStatus === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
-            const gamePhase = room.gamePhase || '-';
+            const roomMode = room.gameMode || 'insider';
+            const modeBadge = roomMode === 'werewolf'
+                ? '<span class="status-badge status-banned">🐺 Werewolf</span>'
+                : '<span class="status-badge status-online">🎯 Insider</span>';
             
             const row = `
                 <tr>
                     <td>${escapeHtml(room.name)}</td>
                     <td><code style="font-size: 0.85em; color: #888;">${room.roomId}</code></td>
+                    <td>${modeBadge}</td>
                     <td>${room.playerCount} / ${room.maxPlayers}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>${room.locked ? '🔒' : '🔓'}</td>
@@ -1050,11 +1097,11 @@ $(function() {
                     <td style="color: #2ecc71;">${stat.wins || 0}</td>
                     <td style="color: #e74c3c;">${stat.losses || 0}</td>
                     <td style="color: ${winRate >= 50 ? '#2ecc71' : '#e74c3c'};">${winRate}%</td>
-                    <td>${stat.roleStats?.gameMasterCount || 0}</td>
-                    <td>${stat.roleStats?.traitorCount || 0}</td>
-                    <td>${stat.roleStats?.citizenCount || 0}</td>
+                    <td>${renderModeSummary(stat.modeStats)}</td>
+                    <td>${renderInsiderRoleSummary(stat.roleStats)}</td>
+                    <td>${renderWerewolfRoleSummary(stat.roleStats)}</td>
                     <td>
-                        <button class="action-btn edit" onclick="editPlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}', ${stat.totalGames || 0}, ${stat.wins || 0}, ${stat.losses || 0}, ${stat.roleStats?.gameMasterCount || 0}, ${stat.roleStats?.traitorCount || 0}, ${stat.roleStats?.citizenCount || 0})">แก้ไข</button>
+                        <button class="action-btn edit" onclick="editPlayerStats('${stat.playerId}')">แก้ไข</button>
                         <button class="action-btn kick" onclick="deletePlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">ลบ</button>
                     </td>
                 </tr>
@@ -1256,35 +1303,60 @@ $(function() {
     };
     
     // แก้ไขสถิติผู้เล่น (Admin เทพ!)
-    window.editPlayerStats = function(playerId, playerName, totalGames, wins, losses, gmCount, traitorCount, citizenCount) {
+    window.editPlayerStats = function(playerId) {
+        const stat = (allData.playerStats || []).find(item => item.playerId === playerId);
+        if (!stat) {
+            Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลสถิติ', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+
+        const playerName = stat.playerName || 'Unknown';
+        const roleStats = stat.roleStats || {};
+        const insiderMode = stat.modeStats?.insider || {};
+        const werewolfMode = stat.modeStats?.werewolf || {};
+        const werewolfInputs = WEREWOLF_ROLE_META.map(role => `
+            <div>
+                <label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">${role.emoji} ${role.label}</label>
+                <input type="number" id="editRole_${role.id}" class="swal2-input" value="${roleStats?.werewolf?.[role.id] || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;">
+            </div>
+        `).join('');
+
         Swal.fire({
             title: '✏️ แก้ไขสถิติ',
             html: `
-                <p style="margin-bottom: 20px;">แก้ไขสถิติของ <strong style="color: #f39c12;">${playerName}</strong></p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🎮 จำนวนเกม</label>
-                        <input type="number" id="editTotalGames" class="swal2-input" value="${totalGames}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+                <div style="text-align:left; max-height:70vh; overflow-y:auto; padding-right:8px;">
+                    <p style="margin-bottom:18px;">แก้ไขสถิติของ <strong style="color:#f39c12;">${escapeHtml(playerName)}</strong></p>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:18px;">
+                        <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.9em;">🎮 จำนวนเกมรวม</label><input type="number" id="editTotalGames" class="swal2-input" value="${stat.totalGames || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.9em;">🏆 ชนะรวม</label><input type="number" id="editWins" class="swal2-input" value="${stat.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.9em;">💀 แพ้รวม</label><input type="number" id="editLosses" class="swal2-input" value="${stat.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
                     </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🏆 ชนะ</label>
-                        <input type="number" id="editWins" class="swal2-input" value="${wins}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+
+                    <div style="margin-bottom:16px; padding:14px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <div style="font-weight:700; color:#8fd3ff; margin-bottom:10px;">🎯 โหมด Insider</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModeInsiderGames" class="swal2-input" value="${insiderMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModeInsiderWins" class="swal2-input" value="${insiderMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeInsiderLosses" class="swal2-input" value="${insiderMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">👑 GM</label><input type="number" id="editGMCount" class="swal2-input" value="${roleStats.gameMasterCount || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">🔴 ทรยศ</label><input type="number" id="editTraitorCount" class="swal2-input" value="${roleStats.traitorCount || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">🔵 พลเมือง</label><input type="number" id="editCitizenCount" class="swal2-input" value="${roleStats.citizenCount || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
                     </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">💀 แพ้</label>
-                        <input type="number" id="editLosses" class="swal2-input" value="${losses}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">👑 GM</label>
-                        <input type="number" id="editGMCount" class="swal2-input" value="${gmCount}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🔴 ทรยศ</label>
-                        <input type="number" id="editTraitorCount" class="swal2-input" value="${traitorCount}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; color: #888; font-size: 0.9em;">🔵 พลเมือง</label>
-                        <input type="number" id="editCitizenCount" class="swal2-input" value="${citizenCount}" min="0" style="margin: 0; width: 100%; box-sizing: border-box;">
+
+                    <div style="padding:14px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <div style="font-weight:700; color:#f8d189; margin-bottom:10px;">🐺 โหมด Werewolf</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin-bottom:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModeWerewolfGames" class="swal2-input" value="${werewolfMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModeWerewolfWins" class="swal2-input" value="${werewolfMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeWerewolfLosses" class="swal2-input" value="${werewolfMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;">
+                            ${werewolfInputs}
+                        </div>
                     </div>
                 </div>
             `,
@@ -1294,31 +1366,48 @@ $(function() {
             confirmButtonColor: '#2ecc71',
             background: '#1e1e1e',
             color: '#fff',
-            width: 500,
+            width: 860,
             preConfirm: () => {
+                const werewolfRoleStats = {};
+                WEREWOLF_ROLE_META.forEach(role => {
+                    werewolfRoleStats[role.id] = parseInt(document.getElementById(`editRole_${role.id}`).value, 10) || 0;
+                });
+
                 return {
-                    totalGames: parseInt(document.getElementById('editTotalGames').value) || 0,
-                    wins: parseInt(document.getElementById('editWins').value) || 0,
-                    losses: parseInt(document.getElementById('editLosses').value) || 0,
-                    gmCount: parseInt(document.getElementById('editGMCount').value) || 0,
-                    traitorCount: parseInt(document.getElementById('editTraitorCount').value) || 0,
-                    citizenCount: parseInt(document.getElementById('editCitizenCount').value) || 0
+                    totalGames: parseInt(document.getElementById('editTotalGames').value, 10) || 0,
+                    wins: parseInt(document.getElementById('editWins').value, 10) || 0,
+                    losses: parseInt(document.getElementById('editLosses').value, 10) || 0,
+                    roleStats: {
+                        gameMasterCount: parseInt(document.getElementById('editGMCount').value, 10) || 0,
+                        traitorCount: parseInt(document.getElementById('editTraitorCount').value, 10) || 0,
+                        citizenCount: parseInt(document.getElementById('editCitizenCount').value, 10) || 0,
+                        werewolf: werewolfRoleStats
+                    },
+                    modeStats: {
+                        insider: {
+                            games: parseInt(document.getElementById('editModeInsiderGames').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModeInsiderWins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModeInsiderLosses').value, 10) || 0
+                        },
+                        werewolf: {
+                            games: parseInt(document.getElementById('editModeWerewolfGames').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModeWerewolfWins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModeWerewolfLosses').value, 10) || 0
+                        }
+                    }
                 };
             }
         }).then((result) => {
             if (result.isConfirmed) {
                 const data = result.value;
-                socket.emit('admin_editPlayerStats', { 
-                    playerId, 
+                socket.emit('admin_editPlayerStats', {
+                    playerId,
                     playerName,
                     totalGames: data.totalGames,
                     wins: data.wins,
                     losses: data.losses,
-                    roleStats: {
-                        gameMasterCount: data.gmCount,
-                        traitorCount: data.traitorCount,
-                        citizenCount: data.citizenCount
-                    }
+                    roleStats: data.roleStats,
+                    modeStats: data.modeStats
                 }, function(res) {
                     if (res.success) {
                         Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
@@ -1480,10 +1569,12 @@ $(function() {
     window.exportStats = function() {
         if (!allData.playerStats) return;
         
-        let csv = 'Player Name,Total Games,Wins,Losses,Win Rate,GM Count,Traitor Count,Citizen Count\n';
+        const roleHeaders = WEREWOLF_ROLE_META.map(role => `${role.label} Count`).join(',');
+        let csv = `Player Name,Total Games,Wins,Losses,Win Rate,Insider Games,Insider Wins,Insider Losses,Werewolf Games,Werewolf Wins,Werewolf Losses,GM Count,Traitor Count,Citizen Count,${roleHeaders}\n`;
         allData.playerStats.forEach(s => {
             const winRate = s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0;
-            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0}\n`;
+            const werewolfCounts = WEREWOLF_ROLE_META.map(role => s.roleStats?.werewolf?.[role.id] || 0).join(',');
+            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.modeStats?.insider?.games || 0},${s.modeStats?.insider?.wins || 0},${s.modeStats?.insider?.losses || 0},${s.modeStats?.werewolf?.games || 0},${s.modeStats?.werewolf?.wins || 0},${s.modeStats?.werewolf?.losses || 0},${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0},${werewolfCounts}\n`;
         });
         
         downloadCSV(csv, 'player_stats.csv');
@@ -1748,6 +1839,7 @@ $(function() {
                     html: `
                         <div style="text-align: left; color: #ddd;">
                             <p><strong>Room ID:</strong> <code>${roomId}</code></p>
+                            <p><strong>โหมด:</strong> ${(room.gameMode || room.settings?.gameMode) === 'werewolf' ? '🐺 Werewolf' : '🎯 Insider'}</p>
                             <p><strong>สถานะ:</strong> ${room.gameStatus === 'playing' ? '🎮 กำลังเล่น' : '⏳ รอผู้เล่น'}</p>
                             <p><strong>Phase:</strong> ${room.gamePhase || '-'}</p>
                             <p><strong>ล็อค:</strong> ${room.locked ? '🔒 ล็อค' : '🔓 ไม่ล็อค'}</p>
@@ -1845,8 +1937,11 @@ $(function() {
             const color = typeColors[log.type] || colors[log.category] || '#fff';
             const icon = icons[log.category] || '•';
             const roomInfo = log.roomName ? `<span style="color: #888;">[${log.roomName}]</span> ` : '';
+            const modeBadge = log.gameMode
+                ? `<span style="display:inline-flex; align-items:center; gap:4px; margin-right:6px; padding:1px 7px; border-radius:999px; background:${log.gameMode === 'werewolf' ? 'rgba(192,57,43,0.2)' : 'rgba(52,152,219,0.18)'}; color:${log.gameMode === 'werewolf' ? '#ffd5d0' : '#d6ebff'}; font-size:0.75em; font-weight:700;">${log.gameMode === 'werewolf' ? '🐺 Werewolf' : '🎯 Insider'}</span>`
+                : '';
             return `<div style="margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid ${color}; background: rgba(255,255,255,0.03);">
-                <span style="color: #666;">[${time}]</span> ${icon} ${roomInfo}<span style="color: ${color};">${log.message}</span>
+                <span style="color: #666;">[${time}]</span> ${icon} ${modeBadge}${roomInfo}<span style="color: ${color};">${log.message}</span>
             </div>`;
         }).join(''));
         
@@ -1888,7 +1983,8 @@ $(function() {
         }
         const logsText = serverLogs.map(l => {
             const time = new Date(l.timestamp).toLocaleString('th-TH');
-            return `[${time}] [${l.category.toUpperCase()}] ${l.roomName ? '[' + l.roomName + '] ' : ''}${l.message}`;
+            const modeLabel = l.gameMode ? `[${l.gameMode.toUpperCase()}] ` : '';
+            return `[${time}] [${l.category.toUpperCase()}] ${modeLabel}${l.roomName ? '[' + l.roomName + '] ' : ''}${l.message}`;
         }).join('\n');
         const blob = new Blob([logsText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);

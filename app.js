@@ -283,9 +283,9 @@ function addPlayerVote2(gameState, playerVote) {
     // รองรับทั้ง string และ array
     const votes = Array.isArray(playerVote) ? playerVote : [playerVote];
     
-    votes.forEach(function(voteName) {
+    votes.forEach(function(voteTarget) {
         gameState.players.forEach(function(player) {
-            if(voteName === player.name) {
+            if(voteTarget === player.name || voteTarget === player.playerId) {
                 player.nbVote2 += 1;
             }
         });
@@ -489,6 +489,7 @@ function sendGameLog(io, roomId, message, type = 'info', icon = null, haptic = n
 function addServerLog(io, category, roomId, message, type = 'info') {
     const room = roomId ? roomManager.getRoom(roomId) : null;
     const roomName = room ? room.name : roomId || 'ระบบ';
+    const gameMode = room?.settings?.gameMode || null;
     
     const logEntry = {
         id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -496,6 +497,7 @@ function addServerLog(io, category, roomId, message, type = 'info') {
         category: category,
         roomId: roomId || null,
         roomName: roomName,
+        gameMode,
         message: message,
         type: type
     };
@@ -2415,13 +2417,14 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
             
-            const { playerId, playerName, totalGames, wins, losses, roleStats } = data;
+            const { playerId, playerName, totalGames, wins, losses, roleStats, modeStats } = data;
             await statsManager.editPlayerStats(playerId, {
                 playerName,
                 totalGames,
                 wins,
                 losses,
-                roleStats
+                roleStats,
+                modeStats
             });
             addServerLog(io, 'admin', null, `Admin แก้ไขสถิติ ${playerName}: ${wins}W/${losses}L`, 'warning');
             callback({ success: true });

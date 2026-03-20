@@ -195,8 +195,59 @@
   .note-body strong { color: #fff4c2; font-weight: 700; }
   .player-grid, .actions-grid, .note-grid, .target-grid { display: grid; gap: 8px; }
   .target-grid { grid-template-columns: 1fr; margin-top: 10px; }
-  .target-card { padding: 10px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
-  .target-card-title { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .target-card { position: relative; overflow: hidden; padding: 14px; border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease; isolation: isolate; }
+  .target-card::before { content: ''; position: absolute; inset: -24%; background: radial-gradient(circle at center, var(--target-accent, rgba(250,204,21,0.24)), transparent 58%); opacity: 0; transform: scale(0.5); pointer-events: none; z-index: 0; }
+  .target-card::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 36%); opacity: 0.55; pointer-events: none; }
+  .target-card.target-card-actionable { cursor: pointer; }
+  .target-card.target-card-actionable:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.18); box-shadow: 0 14px 28px rgba(0,0,0,0.24); }
+  .target-card.target-card-actionable:active { transform: scale(0.985); }
+  .target-card.target-selected { border-color: rgba(250,204,21,0.55); box-shadow: 0 0 0 1px rgba(250,204,21,0.22), 0 18px 36px rgba(0,0,0,0.28); animation: targetCardSelectedPulse 1.6s ease-in-out infinite; }
+  .target-card.target-disabled { opacity: 0.56; filter: grayscale(0.12); }
+  .target-card.feedback-burst::before { animation: targetCardFlash 0.52s ease-out; }
+  .target-card.target-theme-vote { background: linear-gradient(145deg, rgba(37,99,235,0.2), rgba(15,23,42,0.8)); }
+  .target-card.target-theme-kill { background: linear-gradient(145deg, rgba(127,29,29,0.42), rgba(68,10,10,0.82)); }
+  .target-card.target-theme-seer { background: linear-gradient(145deg, rgba(79,70,229,0.28), rgba(30,41,59,0.82)); }
+  .target-card.target-theme-protect, .target-card.target-theme-heal { background: linear-gradient(145deg, rgba(5,150,105,0.24), rgba(20,83,45,0.82)); }
+  .target-card.target-theme-poison, .target-card.target-theme-reveal { background: linear-gradient(145deg, rgba(217,119,6,0.3), rgba(120,53,15,0.82)); }
+  .target-card.target-theme-skip { background: linear-gradient(145deg, rgba(71,85,105,0.35), rgba(15,23,42,0.84)); }
+  .target-card-head { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .target-card-title { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .target-card-avatar { width: 50px; height: 50px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; border: 1px solid rgba(255,255,255,0.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); flex-shrink: 0; }
+  .target-card-text { min-width: 0; display: grid; gap: 4px; }
+  .target-card-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: #fff; font-size: 1rem; font-weight: 700; }
+  .target-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: #cdd5e5; font-size: 0.84rem; }
+  .target-card-body { position: relative; z-index: 1; margin-top: 12px; display: grid; gap: 8px; }
+  .target-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .target-card-tap { display: inline-flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; font-size: 0.92rem; }
+  .target-card-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 0.82rem; background: rgba(255,255,255,0.08); color: #f8fafc; border: 1px solid rgba(255,255,255,0.1); }
+  .target-card-status.status-selected { background: rgba(250,204,21,0.18); border-color: rgba(250,204,21,0.28); color: #fde68a; }
+  .target-card-status.status-locked { background: rgba(148,163,184,0.16); border-color: rgba(148,163,184,0.2); color: #dbe4f4; }
+  .target-card-status.status-ready { background: rgba(34,197,94,0.16); border-color: rgba(134,239,172,0.2); color: #d1fae5; }
+  .target-card-tag, .target-card-badge, .target-card-votes { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.08); color: #fff; }
+  .target-card-votes { background: rgba(239,68,68,0.18); border-color: rgba(252,165,165,0.22); color: #fee2e2; }
+  .target-card-badge.badge-self { background: rgba(59,130,246,0.2); color: #dbeafe; }
+  .target-card-badge.badge-dead { background: rgba(100,116,139,0.2); color: #e2e8f0; }
+  .target-card-badge.badge-revealed { background: rgba(217,119,6,0.2); color: #fde68a; }
+  .target-card-badge.badge-weight { background: rgba(249,115,22,0.22); color: #ffedd5; }
+  .target-card-hint { color: #d7def0; font-size: 0.88rem; line-height: 1.4; }
+  .target-card-particle-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .target-card-particle { position: absolute; left: var(--particle-left, 50%); top: var(--particle-top, 50%); width: var(--particle-size, 12px); height: var(--particle-size, 12px); border-radius: 999px; background: var(--particle-color, rgba(255,255,255,0.8)); box-shadow: 0 0 14px var(--particle-color, rgba(255,255,255,0.55)); opacity: 0; transform: translate(-50%, -50%) scale(0.35); animation: targetParticleBurst 0.64s ease-out forwards; }
+  .target-card-particle.shape-drop { border-radius: 70% 70% 70% 0; transform: translate(-50%, -50%) rotate(45deg) scale(0.35); }
+  .target-card-particle.shape-ring { background: transparent; border: 2px solid var(--particle-color, rgba(255,255,255,0.8)); box-shadow: none; }
+  @keyframes targetCardFlash {
+    0% { opacity: 0; transform: scale(0.42); }
+    28% { opacity: 0.72; }
+    100% { opacity: 0; transform: scale(1.14); }
+  }
+  @keyframes targetParticleBurst {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+    18% { opacity: 0.95; }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--particle-x, 0px)), calc(-50% + var(--particle-y, 0px))) scale(1.1); }
+  }
+  @keyframes targetCardSelectedPulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(250,204,21,0.22), 0 18px 36px rgba(0,0,0,0.28); }
+    50% { box-shadow: 0 0 0 1px rgba(250,204,21,0.35), 0 22px 40px rgba(0,0,0,0.34), 0 0 28px rgba(250,204,21,0.16); }
+  }
   .action-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .player-row.dead { opacity: 0.55; }
   .player-name-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -215,6 +266,7 @@
   .note-inline { margin-top: 10px; display: grid; gap: 6px; }
 
   .ww-page.phase-lock .action-btn, .ww-page.phase-lock .werewolf-btn, .ww-page.phase-lock .ghost-btn, .ww-page.phase-lock textarea { pointer-events: none; opacity: 0.7; }
+  .ww-page.phase-lock .target-card-actionable, .ww-page.pending-actions .target-card-actionable { pointer-events: none; opacity: 0.68; }
 
   /* ===== DESKTOP OVERRIDES (≥961px) ===== */
   .ww-card { background: linear-gradient(145deg, #141927, #1b2232); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 20px; box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
@@ -245,6 +297,13 @@
     .ww-input-row textarea { max-height: none; resize: vertical; padding: 12px 14px; border-radius: 12px; }
 
     .ww-action-section { display: block; }
+    .target-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  }
+
+  @media (max-width: 640px) {
+    .target-card { padding: 12px; border-radius: 16px; }
+    .target-card-avatar { width: 46px; height: 46px; border-radius: 14px; }
+    .target-card-name { font-size: 0.96rem; }
   }
 </style>
 
@@ -484,10 +543,10 @@
       const hints = {
         villager: 'คุณไม่มีสกิลกดใช้ ให้โฟกัสการฟังแชท จับพิรุธ และโหวตคนที่น่าสงสัยที่สุดตอนกลางวัน',
         werewolf: 'คุณอยู่ฝั่งหมาป่า กลางคืนให้คุยกับทีมและเลือกเป้าหมายเมื่อระบบเปิดให้ลงมือ',
-        alphaWolf: 'คุณเป็นหมาป่าฝั่งนำ ช่วยชี้เป้าและพาทีมหมาป่าตัดสินใจตอนกลางคืน',
-        mayor: 'คะแนนโหวตของคุณมีน้ำหนักมากกว่าปกติ ใช้ตอนกลางวันให้คุ้มเพื่อพลิกเกม',
+        alphaWolf: 'คุณเป็นหมาป่าฝั่งนำ โหวตล่ากลางคืนหนัก 2 เสียง และถ้า Seer ตรวจคุณจะขึ้นว่าไม่ทราบ',
+        mayor: 'ตอนเช้าคุณกดเปิดตัวได้เอง ถ้าเปิดแล้วเสียงโหวตของคุณจะกลายเป็น 2 เสียง',
         bodyguard: 'กลางคืนคุณเลือกคุ้มกันผู้เล่นได้ 1 คน เลือกคนสำคัญที่ไม่อยากให้ถูกเก็บ',
-        seer: 'กลางคืนคุณเลือกตรวจผู้เล่นได้ 1 คน เพื่อดูว่าเขาอยู่ฝั่งไหน',
+        seer: 'กลางคืนคุณเลือกตรวจผู้เล่นได้ 1 คน แต่ผลจะเห็นแค่ ดี, ไม่ดี หรือ ไม่ทราบ',
         doctor: 'กลางคืนคุณเลือกช่วยผู้เล่นได้ 1 คน เพื่อกันการถูกกำจัด',
         witch: 'กลางคืนคุณมียาฟื้น 1 ครั้งและยาพิษ 1 ครั้ง เลือกใช้ให้คุ้มเพราะหมดแล้วหมดเลย',
         fool: 'คุณเป็นบทเดี่ยว หมาป่าฆ่าคุณไม่ได้ และถ้าถูกโหวตออกตอนกลางวันคุณจะชนะทันที',
@@ -554,6 +613,180 @@
       return alive ? '✨' : '💀';
     }
 
+    function getPlayerById(targetPlayerId) {
+      return (currentState?.players || []).find(function(player) {
+        return player.playerId === targetPlayerId;
+      }) || null;
+    }
+
+    function getActionTheme(actionType) {
+      const themeMap = {
+        'night-kill': 'kill',
+        'seer-check': 'seer',
+        'doctor-save': 'protect',
+        'bodyguard-protect': 'protect',
+        'witch-heal': 'heal',
+        'witch-poison': 'poison',
+        'witch-rest': 'skip',
+        'day-vote': 'vote',
+        'reveal-action': 'reveal',
+        'discussion-skip': 'skip'
+      };
+
+      return themeMap[actionType] || 'vote';
+    }
+
+    function getActionSelectionIcon(actionType, isSelected) {
+      if (actionType === 'night-kill') return isSelected ? '🩸' : '🐾';
+      if (actionType === 'seer-check') return isSelected ? '👁️' : '🔮';
+      if (actionType === 'doctor-save') return isSelected ? '💚' : '💉';
+      if (actionType === 'bodyguard-protect') return isSelected ? '🛡️' : '🪖';
+      if (actionType === 'witch-heal') return isSelected ? '✨' : '🧪';
+      if (actionType === 'witch-poison') return isSelected ? '☠️' : '🧪';
+      if (actionType === 'reveal-action') return isSelected ? '💥' : '🎯';
+      if (actionType === 'day-vote') return isSelected ? '🗳️' : '☀️';
+      return isSelected ? '✅' : '👉';
+    }
+
+    function getActionSelectionLabel(actionType, isSelected, locked) {
+      if (locked && !isSelected) {
+        return 'ล็อกแล้ว';
+      }
+
+      if (isSelected) {
+        if (actionType === 'night-kill') return 'ขย้ำเป้าหมายนี้';
+        if (actionType === 'seer-check') return 'คืนนี้จะตรวจคนนี้';
+        if (actionType === 'doctor-save') return 'คืนนี้จะช่วยคนนี้';
+        if (actionType === 'bodyguard-protect') return 'คืนนี้จะคุ้มกันคนนี้';
+        if (actionType === 'witch-heal') return 'ใช้ยาฟื้นกับคนนี้';
+        if (actionType === 'witch-poison') return 'ใช้ยาพิษใส่คนนี้';
+        if (actionType === 'reveal-action') return 'ล็อกเป้าเปิดโปงคนนี้';
+        if (actionType === 'day-vote') return 'คุณโหวตคนนี้อยู่';
+        return 'เลือกคนนี้แล้ว';
+      }
+
+      if (actionType === 'night-kill') return 'แตะเพื่อเลือกเป็นเหยื่อ';
+      if (actionType === 'seer-check') return 'แตะเพื่อตรวจออร่า';
+      if (actionType === 'doctor-save') return 'แตะเพื่อช่วยชีวิต';
+      if (actionType === 'bodyguard-protect') return 'แตะเพื่อคุ้มกัน';
+      if (actionType === 'witch-heal') return 'แตะเพื่อฟื้นคนนี้';
+      if (actionType === 'witch-poison') return 'แตะเพื่อวางยาคนนี้';
+      if (actionType === 'reveal-action') return 'แตะเพื่อเปิดโปง';
+      if (actionType === 'day-vote') return 'แตะเพื่อเทคะแนนให้คนนี้';
+      return 'แตะเพื่อเลือก';
+    }
+
+    function getActionSoundType(actionType, targetPlayerId) {
+      if (targetPlayerId === '__skip__') {
+        return 'action-skip';
+      }
+
+      const soundMap = {
+        'night-kill': 'action-kill',
+        'seer-check': 'action-seer',
+        'doctor-save': 'action-protect',
+        'bodyguard-protect': 'action-protect',
+        'witch-heal': 'action-heal',
+        'witch-poison': 'action-poison',
+        'day-vote': 'action-vote',
+        'reveal-action': 'action-reveal',
+        'discussion-skip': 'action-skip',
+        'mayor-reveal': 'action-mayor'
+      };
+
+      return soundMap[actionType] || 'action-confirm';
+    }
+
+    function getActionAccentColor(actionType) {
+      const accentMap = {
+        'night-kill': 'rgba(248, 113, 113, 0.72)',
+        'seer-check': 'rgba(165, 180, 252, 0.72)',
+        'doctor-save': 'rgba(52, 211, 153, 0.72)',
+        'bodyguard-protect': 'rgba(253, 224, 71, 0.72)',
+        'witch-heal': 'rgba(110, 231, 183, 0.72)',
+        'witch-poison': 'rgba(251, 191, 36, 0.72)',
+        'day-vote': 'rgba(96, 165, 250, 0.72)',
+        'reveal-action': 'rgba(244, 114, 182, 0.72)',
+        'discussion-skip': 'rgba(148, 163, 184, 0.68)',
+        'action-skip': 'rgba(148, 163, 184, 0.68)',
+        'mayor-reveal': 'rgba(251, 191, 36, 0.72)'
+      };
+
+      return accentMap[actionType] || 'rgba(250, 204, 21, 0.72)';
+    }
+
+    function triggerActionCardHaptic(actionType) {
+      if (!navigator.vibrate) {
+        return;
+      }
+
+      const vibrationMap = {
+        'night-kill': [18, 24, 36],
+        'seer-check': [16],
+        'doctor-save': [14, 18, 14],
+        'bodyguard-protect': [20, 14, 20],
+        'witch-heal': [12, 20, 12],
+        'witch-poison': [14, 28],
+        'day-vote': [18],
+        'reveal-action': [26, 20, 30],
+        'discussion-skip': [10],
+        'action-skip': [10],
+        'mayor-reveal': [18, 22]
+      };
+
+      navigator.vibrate(vibrationMap[actionType] || [16]);
+    }
+
+    function spawnActionParticles(cardElement, actionType) {
+      const layer = cardElement ? cardElement.querySelector('.target-card-particle-layer') : null;
+      if (!layer) {
+        return;
+      }
+
+      const accent = getActionAccentColor(actionType);
+      const shape = actionType === 'night-kill' ? 'shape-drop' : (actionType === 'seer-check' ? 'shape-ring' : '');
+      layer.innerHTML = '';
+
+      for (let index = 0; index < 7; index += 1) {
+        const particle = document.createElement('span');
+        const angle = (-58 + (index * 19)) * (Math.PI / 180);
+        const radius = 22 + (index * 5);
+        particle.className = `target-card-particle ${shape}`.trim();
+        particle.style.setProperty('--particle-color', accent);
+        particle.style.setProperty('--particle-left', `${24 + ((index % 4) * 18)}%`);
+        particle.style.setProperty('--particle-top', `${28 + ((index % 3) * 17)}%`);
+        particle.style.setProperty('--particle-size', `${index % 3 === 0 ? 14 : 10}px`);
+        particle.style.setProperty('--particle-x', `${Math.cos(angle) * radius}px`);
+        particle.style.setProperty('--particle-y', `${Math.sin(angle) * radius}px`);
+        particle.style.animationDelay = `${index * 24}ms`;
+        layer.appendChild(particle);
+      }
+
+      window.setTimeout(function() {
+        layer.innerHTML = '';
+      }, 760);
+    }
+
+    function triggerActionCardFeedback(cardElement, actionType) {
+      if (!cardElement) {
+        return;
+      }
+
+      cardElement.style.setProperty('--target-accent', getActionAccentColor(actionType));
+      cardElement.classList.remove('feedback-burst');
+      void cardElement.offsetWidth;
+      cardElement.classList.add('feedback-burst');
+      spawnActionParticles(cardElement, actionType);
+      triggerActionCardHaptic(actionType);
+      window.setTimeout(function() {
+        cardElement.classList.remove('feedback-burst');
+      }, 580);
+    }
+
+    function playActionSelectionSound(actionType, targetPlayerId) {
+      playSound(getActionSoundType(actionType, targetPlayerId));
+    }
+
     function isMobileLayout() {
       return window.matchMedia('(max-width: 960px)').matches;
     }
@@ -565,6 +798,7 @@
 
     function setActionButtonsPending(isPending) {
       pendingActionSubmission = Boolean(isPending);
+      $('#werewolfShell').toggleClass('pending-actions', pendingActionSubmission);
       $('.action-btn').prop('disabled', pendingActionSubmission).toggleClass('pending-action', pendingActionSubmission);
     }
 
@@ -961,6 +1195,94 @@
         return;
       }
 
+      if (type === 'action-kill') {
+        playToneSequence([
+          { frequency: 174.61, duration: 0.05, wave: 'square', volume: 0.034 },
+          { frequency: 138.59, duration: 0.08, wave: 'sawtooth', volume: 0.05, gap: 0.02 },
+          { frequency: 103.83, duration: 0.16, wave: 'sawtooth', volume: 0.062 },
+          { frequency: 77.78, duration: 0.22, wave: 'triangle', volume: 0.056, gap: 0.03 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-seer') {
+        playToneSequence([
+          { frequency: 587.33, duration: 0.05, wave: 'triangle', volume: 0.024 },
+          { frequency: 783.99, duration: 0.08, wave: 'sine', volume: 0.03 },
+          { frequency: 1046.5, duration: 0.12, wave: 'triangle', volume: 0.036, gap: 0.03 },
+          { frequency: 1318.51, duration: 0.18, wave: 'sine', volume: 0.03 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-protect') {
+        playToneSequence([
+          { frequency: 349.23, duration: 0.08, wave: 'triangle', volume: 0.03 },
+          { frequency: 523.25, duration: 0.11, wave: 'triangle', volume: 0.034 },
+          { frequency: 698.46, duration: 0.14, wave: 'sine', volume: 0.036 },
+          { frequency: 523.25, duration: 0.12, wave: 'triangle', volume: 0.032, gap: 0.02 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-heal') {
+        playToneSequence([
+          { frequency: 523.25, duration: 0.08, wave: 'sine', volume: 0.028 },
+          { frequency: 659.25, duration: 0.1, wave: 'triangle', volume: 0.032 },
+          { frequency: 783.99, duration: 0.12, wave: 'sine', volume: 0.034 },
+          { frequency: 987.77, duration: 0.18, wave: 'triangle', volume: 0.036 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-poison') {
+        playToneSequence([
+          { frequency: 392.0, duration: 0.06, wave: 'square', volume: 0.03 },
+          { frequency: 329.63, duration: 0.08, wave: 'square', volume: 0.034 },
+          { frequency: 246.94, duration: 0.12, wave: 'sawtooth', volume: 0.038, gap: 0.02 },
+          { frequency: 207.65, duration: 0.18, wave: 'triangle', volume: 0.04 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-vote') {
+        playToneSequence([
+          { frequency: 220.0, duration: 0.05, wave: 'triangle', volume: 0.028 },
+          { frequency: 164.81, duration: 0.08, wave: 'triangle', volume: 0.03, gap: 0.02 },
+          { frequency: 220.0, duration: 0.07, wave: 'triangle', volume: 0.028 },
+          { frequency: 146.83, duration: 0.14, wave: 'sine', volume: 0.03 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-reveal') {
+        playToneSequence([
+          { frequency: 493.88, duration: 0.06, wave: 'square', volume: 0.03 },
+          { frequency: 659.25, duration: 0.08, wave: 'sawtooth', volume: 0.034 },
+          { frequency: 880.0, duration: 0.12, wave: 'triangle', volume: 0.036, gap: 0.03 },
+          { frequency: 1174.66, duration: 0.14, wave: 'sine', volume: 0.038 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-skip') {
+        playToneSequence([
+          { frequency: 392.0, duration: 0.05, wave: 'sine', volume: 0.022 },
+          { frequency: 349.23, duration: 0.08, wave: 'triangle', volume: 0.024 },
+          { frequency: 293.66, duration: 0.14, wave: 'sine', volume: 0.024 }
+        ]);
+        return;
+      }
+
+      if (type === 'action-mayor' || type === 'action-confirm') {
+        playToneSequence([
+          { frequency: 523.25, duration: 0.06, wave: 'triangle', volume: 0.026 },
+          { frequency: 659.25, duration: 0.09, wave: 'triangle', volume: 0.03 },
+          { frequency: 783.99, duration: 0.14, wave: 'sine', volume: 0.032 }
+        ]);
+        return;
+      }
+
       let source = '/static/sound/ding.mp3';
       if (type === 'phase') {
         source = '/static/sound/go.mp3';
@@ -988,7 +1310,6 @@
         const selfText = player.isSelf ? ' (คุณ)' : '';
         const revealText = player.revealedRole ? `<div class="subtle">บทบาท: ${escapeHtml(player.revealedRole)}</div>` : '';
         const mayorText = player.voteWeight > 1 ? `<div class="highlight">🎖️ โหวตหนัก ${player.voteWeight} เสียง</div>` : '';
-        const voteText = currentState.phase === 'day-vote' && player.voteCount > 0 ? `<div class="vote-count-badge">🗳️ ${player.voteCount} โหวต</div>` : '';
         const playerEmoji = player.revealedRole ? '🎭' : (player.isSelf ? '🫵' : '👤');
         $root.append(`
           <div class="player-row ${player.alive ? '' : 'dead'}">
@@ -998,7 +1319,6 @@
               ${mayorText}
             </div>
             <div class="player-side-meta">
-              ${voteText}
               <div class="player-status-badge ${player.alive ? 'alive' : 'dead'}">${statusEmoji(player.alive)} ${aliveText}</div>
             </div>
           </div>
@@ -1078,13 +1398,13 @@
       const composerState = getChatComposerState(state);
       const placeholder = !composerState.isAlive
         ? (composerState.adminCommandOnly
-          ? 'คุณตายแล้ว แชทปกติถูกปิด แต่หัวหน้าห้องยังใช้ /m ได้'
+          ? 'คุณตายแล้ว แชทปกติถูกปิด แต่ยังใช้ช่องนี้สำหรับคำสั่งผู้ดูแลได้'
           : 'คุณตายแล้ว จึงไม่สามารถพิมพ์ข้อความได้')
         : (composerState.canWolfNightChat
           ? 'แชทลับหมาป่า ใช้คุยกันเฉพาะทีมหมาป่าในตอนกลางคืน'
           : (composerState.phase === 'night'
             ? (composerState.adminCommandOnly
-              ? 'ตอนกลางคืนหมู่บ้านคุยไม่ได้ แต่หัวหน้าห้องยังใช้ /m ได้'
+              ? 'ตอนกลางคืนหมู่บ้านคุยไม่ได้ แต่ช่องนี้ยังรองรับคำสั่งผู้ดูแล'
               : 'ตอนกลางคืนหมู่บ้านยังคุยไม่ได้')
             : 'พิมพ์ข้อความของคุณ...'));
 
@@ -1116,7 +1436,7 @@
         + '</div>';
 
       Swal.fire({
-        title: 'ข้อมูลลับ /m',
+        title: 'ข้อมูลผู้ดูแล',
         html: html,
         width: 640,
         confirmButtonText: 'ปิด',
@@ -1319,7 +1639,9 @@
           <div style="display:grid; gap:10px; text-align:left; font-family: Rajdhani, sans-serif;">
             <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">🌙 <strong>คืนแรก</strong> ทุกคนเริ่มจับจังหวะก่อน หมาป่ายังฆ่าใครไม่ได้</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">🌙 <strong>คืนถัดไป</strong> หมาป่าเลือกเหยื่อ ส่วนบทพิเศษใช้สกิลของตัวเอง</div>
-            <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">☀️ <strong>กลางวัน</strong> ทุกคนคุยกันในแชท แล้วโหวตคนต้องสงสัยออกจากเกม</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">☀️ <strong>กลางวัน</strong> ทุกคนคุยกันในแชท แล้วโหวตคนต้องสงสัยออกจากเกม ถ้าโหวตครบหรือข้ามเกินครึ่ง เกมจะตัดผลทันที</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(79,70,229,0.16); border:1px solid rgba(129,140,248,0.2);">🔮 <strong>Seer</strong> เห็นผลแค่ ดี / ไม่ดี / ไม่ทราบ โดยอัลฟ่าหมาป่าและคนบ้าจะขึ้นว่าไม่ทราบ</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(249,115,22,0.16); border:1px solid rgba(251,191,36,0.2);">🎖️ <strong>นายก</strong> ต้องกดเปิดตัวเองก่อน ถึงจะได้ 2 เสียงตอนโหวต</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(46,204,113,0.12);">🏡 <strong>ชาวบ้านชนะ</strong> เมื่อกำจัดหมาป่าจนหมด</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(192,57,43,0.16);">🐺 <strong>หมาป่าชนะ</strong> เมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่เหลือ</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(52,152,219,0.12);">💡 เช็กบทของตัวเอง อ่านประกาศในแชท และกดเลือกเฉพาะตอนที่ถึงตาของคุณ</div>
@@ -1490,7 +1812,9 @@
         if (!response || !response.success) {
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'สั่ง action ไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          return;
         }
+        playActionSelectionSound(actionType, targetPlayerId);
       });
     }
 
@@ -1507,7 +1831,9 @@
         if (!response || !response.success) {
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'โหวตไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          return;
         }
+        playActionSelectionSound('day-vote', targetPlayerId);
       });
     }
 
@@ -1524,7 +1850,9 @@
         if (!response || !response.success) {
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'กดข้ามไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          return;
         }
+        playActionSelectionSound('discussion-skip', '__skip__');
       });
     }
 
@@ -1541,7 +1869,9 @@
         if (!response || !response.success) {
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'เปิดโปงไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          return;
         }
+        playActionSelectionSound('reveal-action', targetPlayerId);
       });
     }
 
@@ -1558,7 +1888,9 @@
         if (!response || !response.success) {
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'เปิดเผยตัวไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          return;
         }
+        playActionSelectionSound('mayor-reveal', playerId);
       });
     }
 
@@ -1570,29 +1902,84 @@
         return '';
       }
 
-      const prefixArg = handlerArg ? `'${handlerArg}', ` : '';
+      const actionType = handlerArg || action.type || 'day-vote';
+      const theme = getActionTheme(actionType);
+      const voteTallies = action.voteTallies || {};
 
       const cards = action.targets.map(function(target) {
+        const roomPlayer = getPlayerById(target.playerId) || {};
         const isSelected = action.selectedTargetId && action.selectedTargetId === target.playerId;
         const isDisabled = Boolean(action.locked && !isSelected);
+        const voteCount = Number(voteTallies[target.playerId] || roomPlayer.voteCount || 0);
+        const selectionIcon = getActionSelectionIcon(actionType, isSelected);
+        const selectionLabel = getActionSelectionLabel(actionType, isSelected, action.locked);
+        const badges = [];
+
+        if (roomPlayer.isSelf) {
+          badges.push('<span class="target-card-badge badge-self">🫵 คุณ</span>');
+        }
+        if (roomPlayer.voteWeight > 1) {
+          badges.push(`<span class="target-card-badge badge-weight">🎖️ เสียง ${roomPlayer.voteWeight}</span>`);
+        }
+        if (roomPlayer.revealedRole) {
+          badges.push(`<span class="target-card-badge badge-revealed">🎭 ${escapeHtml(roomPlayer.revealedRole)}</span>`);
+        }
+        if (roomPlayer.alive === false) {
+          badges.push('<span class="target-card-badge badge-dead">💀 ออกแล้ว</span>');
+        }
+
+        const statusClass = isSelected ? 'status-selected' : (action.locked ? 'status-locked' : 'status-ready');
+        const statusIcon = isSelected ? selectionIcon : (action.locked ? '🔒' : actionEmoji(actionType));
         return `
-          <div class="target-card">
-            <div class="target-card-title"><span class="target-emoji">🎯</span><strong>${escapeHtml(target.name)}</strong></div>
-            <button class="action-btn ${buttonClass || ''} ${isSelected ? 'selected' : ''}" ${isDisabled ? 'disabled' : `onclick="${handlerName}(${prefixArg}'${target.playerId}')"`}>
-              ${isSelected ? '✅ เลือกแล้ว' : (action.locked ? '🔒 ล็อกแล้ว' : '👉 เลือกคนนี้')}
-            </button>
+          <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : ''} ${isDisabled ? 'target-disabled' : ''} ${isDisabled ? '' : 'target-card-actionable'}" data-action-type="${escapeHtml(actionType)}" data-target-player-id="${escapeHtml(target.playerId)}" ${isDisabled ? '' : `onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '${target.playerId}'` : `'${target.playerId}'`})"`}>
+            <div class="target-card-particle-layer" aria-hidden="true"></div>
+            <div class="target-card-head">
+              <div class="target-card-title">
+                <div class="target-card-avatar" style="background:${escapeHtml(roomPlayer.color || 'rgba(255,255,255,0.08)')};">${escapeHtml(roomPlayer.avatar || '👤')}</div>
+                <div class="target-card-text">
+                  <div class="target-card-name"><strong>${escapeHtml(target.name)}</strong></div>
+                  <div class="target-card-meta">
+                    <span class="target-card-tag">${roomPlayer.alive === false ? '💀 ออกจากเกมแล้ว' : '✨ ยังอยู่ในเกม'}</span>
+                    ${voteCount > 0 ? `<span class="target-card-votes">🗳️ ${voteCount} โหวต</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="target-card-status ${statusClass}">${statusIcon} ${escapeHtml(isSelected ? 'เลือกแล้ว' : (action.locked ? 'ล็อกแล้ว' : 'พร้อมเลือก'))}</div>
+            </div>
+            <div class="target-card-body">
+              ${badges.length ? `<div class="target-card-meta">${badges.join('')}</div>` : ''}
+              <div class="target-card-foot">
+                <div class="target-card-tap">${selectionIcon} ${escapeHtml(selectionLabel)}</div>
+                ${action.locked && !isSelected ? '<span class="target-card-tag">รอรอบถัดไป</span>' : ''}
+              </div>
+            </div>
           </div>
         `;
       });
 
       if (action.allowSkip) {
         const isSkipSelected = action.selectedTargetId === '__skip__';
+        const isSkipDisabled = Boolean(action.locked && !isSkipSelected);
+        const skipCount = Number(action.skipVoteWeight || 0);
         cards.push(`
-          <div class="target-card">
-            <div class="target-card-title"><span class="target-emoji">🫥</span><strong>ข้ามรอบนี้</strong></div>
-            <button class="action-btn ${isSkipSelected ? 'selected' : ''}" ${action.locked && !isSkipSelected ? 'disabled' : `onclick="${handlerName}(${prefixArg}'__skip__')"`}>
-              ${isSkipSelected ? '✅ เลือกแล้ว' : (action.locked ? '🔒 ล็อกแล้ว' : '😌 ขอข้าม')}
-            </button>
+          <div class="target-card target-theme-skip ${isSkipSelected ? 'target-selected' : ''} ${isSkipDisabled ? 'target-disabled' : ''} ${isSkipDisabled ? '' : 'target-card-actionable'}" data-action-type="action-skip" data-target-player-id="__skip__" ${isSkipDisabled ? '' : `onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '__skip__'` : `'__skip__'`})"`}>
+            <div class="target-card-particle-layer" aria-hidden="true"></div>
+            <div class="target-card-head">
+              <div class="target-card-title">
+                <div class="target-card-avatar" style="background:linear-gradient(145deg, rgba(148,163,184,0.35), rgba(71,85,105,0.6));">🫥</div>
+                <div class="target-card-text">
+                  <div class="target-card-name"><strong>ข้ามรอบนี้</strong></div>
+                  <div class="target-card-meta">
+                    <span class="target-card-tag">ไม่ลงเป้าที่ผู้เล่นคนไหน</span>
+                    ${skipCount > 0 ? `<span class="target-card-votes">⏭️ ${skipCount} เสียง</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="target-card-status ${isSkipSelected ? 'status-selected' : (action.locked ? 'status-locked' : 'status-ready')}">${isSkipSelected ? '😌' : (action.locked ? '🔒' : '⏭️')} ${isSkipSelected ? 'เลือกข้ามแล้ว' : (action.locked ? 'ล็อกแล้ว' : 'พร้อมข้าม')}</div>
+            </div>
+            <div class="target-card-body">
+              <div class="target-card-hint">เหมาะตอนยังข้อมูลไม่พอ หรืออยากดันเกมไปเฟสถัดไปโดยไม่เทคะแนนให้ใคร</div>
+            </div>
           </div>
         `);
       }
@@ -1704,26 +2091,18 @@
         const skipVoteText = Number(dayActions.skipVoteWeight || 0) > 0
           ? ` | ข้ามโหวต ${dayActions.skipVoteWeight}/${dayActions.totalVoteWeight || 0} เสียง`
           : '';
-        const liveVoteText = Object.entries(dayActions.voteTallies || {})
-          .filter(function(entry) { return Number(entry[1]) > 0; })
-          .map(function(entry) {
-            const player = (currentState.players || []).find(function(item) { return item.playerId === entry[0]; });
-            return player ? `${player.name} ${entry[1]} โหวต` : '';
-          })
-          .filter(Boolean)
-          .join(' | ');
         const mayorVoteHtml = dayActions.canRevealMayor
           ? '<div style="margin-top:12px;"><button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดเผยตัวว่าเป็นนายกเพื่อให้เสียงโหวตเป็น 2</button></div>'
           : (dayActions.mayorRevealed
             ? `<div class="highlight" style="margin-top:10px;">🎖️ คุณเปิดเผยตัวแล้ว เสียงโหวตของคุณตอนนี้เป็น ${dayActions.currentVoteWeight || 2}</div>`
             : '');
-        $root.append(`<div class="history-row" style="display:block;">☀️ กลางวันนี้คุยและลงคะแนนแบบเปิด ผลโหวตสดขึ้นทันที ถ้าเสียงข้ามโหวตเกินครึ่งจะตัดเข้ากลางคืนทันที${skipVoteText}${liveVoteText ? `<div class="highlight" style="margin-top:6px;">${escapeHtml(liveVoteText)}</div>` : ''}${mayorVoteHtml}</div>`);
+        $root.append(`<div class="history-row" style="display:block;">☀️ กลางวันนี้คุยและลงคะแนนแบบเปิด ผลโหวตสดจะขึ้นบนการ์ดแต่ละคนทันที ถ้าเสียงข้ามโหวตเกินครึ่งจะตัดเข้ากลางคืนทันที${skipVoteText}${mayorVoteHtml}</div>`);
         if (dayActions.canVote) {
           $root.append(`
             <div class="history-row" style="display:block;">
               <div class="action-title"><span>🗳️</span><strong>สิทธิ์โหวตกลางวันของทุกคน</strong></div>
               <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน ตอนนี้มีคนลงคะแนนแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน ถ้าทุกคนลงครบระบบจะสรุปทันที</div>
-              <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote }, 'selectVoteTarget', '')}</div>
+              <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote, voteTallies: dayActions.voteTallies, skipVoteWeight: dayActions.skipVoteWeight }, 'selectVoteTarget', '', 'day-vote')}</div>
             </div>
           `);
         } else {
@@ -1735,7 +2114,7 @@
             <div class="history-row" style="display:block;">
               <div class="action-title"><span>💥</span><strong>สกิลจอมเปิดโปง</strong></div>
               <div class="subtle">ถ้าเลือกหมาป่าถูก หมาป่าจะตายทันที ถ้าพลาดคุณตายเอง</div>
-              <div class="target-grid">${buildTargetCards({ targets: dayActions.revealTargets }, 'selectRevealTarget', 'reveal')}</div>
+              <div class="target-grid">${buildTargetCards({ targets: dayActions.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div>
             </div>
           `);
         } else if (dayActions.revealUsed) {
@@ -2313,6 +2692,10 @@
       socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, function() {
         window.location.href = '/rooms?playerId=' + playerId;
       });
+    });
+
+    $(document).on('click', '.target-card-actionable', function() {
+      triggerActionCardFeedback(this, this.dataset.actionType || 'action-confirm');
     });
   });
 </script>

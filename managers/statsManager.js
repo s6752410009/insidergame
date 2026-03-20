@@ -46,6 +46,8 @@ function createDefaultWerewolfRoleStats() {
         bodyguard: 0,
         seer: 0,
         doctor: 0,
+        witch: 0,
+        fool: 0,
         revealer: 0
     };
 }
@@ -579,6 +581,27 @@ async function editPlayerStats(playerId, newData) {
         if (newData.roleStats.gameMasterCount !== undefined) stat.roleStats.gameMasterCount = newData.roleStats.gameMasterCount;
         if (newData.roleStats.traitorCount !== undefined) stat.roleStats.traitorCount = newData.roleStats.traitorCount;
         if (newData.roleStats.citizenCount !== undefined) stat.roleStats.citizenCount = newData.roleStats.citizenCount;
+
+        if (newData.roleStats.werewolf && typeof newData.roleStats.werewolf === 'object') {
+            WEREWOLF_ROLE_IDS.forEach(roleId => {
+                if (newData.roleStats.werewolf[roleId] !== undefined) {
+                    stat.roleStats.werewolf[roleId] = normalizeCounter(newData.roleStats.werewolf[roleId]);
+                }
+            });
+        }
+    }
+
+    if (newData.modeStats && typeof newData.modeStats === 'object') {
+        ['insider', 'werewolf'].forEach(mode => {
+            if (!newData.modeStats[mode]) {
+                return;
+            }
+
+            const modeUpdate = newData.modeStats[mode];
+            if (modeUpdate.games !== undefined) stat.modeStats[mode].games = normalizeCounter(modeUpdate.games);
+            if (modeUpdate.wins !== undefined) stat.modeStats[mode].wins = normalizeCounter(modeUpdate.wins);
+            if (modeUpdate.losses !== undefined) stat.modeStats[mode].losses = normalizeCounter(modeUpdate.losses);
+        });
     }
     
     // บันทึก

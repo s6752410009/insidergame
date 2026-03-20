@@ -206,11 +206,57 @@ function testBodyguardRules() {
     };
 }
 
+function testSeerReadingRules() {
+    const room = createRoom(['alphaWolf', 'werewolf', 'seer', 'fool'], 5);
+    const seer = getSingleRole(room, 'seer');
+    const alphaWolf = getSingleRole(room, 'alphaWolf');
+    const werewolf = getSingleRole(room, 'werewolf');
+    const fool = getSingleRole(room, 'fool');
+    const villager = getAliveVillager(room);
+
+    function inspectTarget(targetPlayer, dayNumber) {
+        resetNightPhase(room, dayNumber);
+        werewolfEngine.submitNightAction(room, alphaWolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+        werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+        werewolfEngine.submitNightAction(room, seer.playerId, targetPlayer.playerId);
+
+        const state = werewolfEngine.buildClientState(room, seer.playerId);
+        return {
+            lastSeenRole: state.personalNotes?.lastSeenRole || '',
+            latestHistory: state.personalNotes?.seerHistory?.[0] || null
+        };
+    }
+
+    const alphaReading = inspectTarget(alphaWolf, 2);
+    assert(/ไม่ทราบ/.test(alphaReading.lastSeenRole), 'seer should read Alpha Wolf as unknown');
+    assert(alphaReading.latestHistory?.resultCode === 'unknown', 'seer history should mark Alpha Wolf as unknown');
+
+    const foolReading = inspectTarget(fool, 3);
+    assert(/ไม่ทราบ/.test(foolReading.lastSeenRole), 'seer should read Fool as unknown');
+    assert(foolReading.latestHistory?.resultCode === 'unknown', 'seer history should mark Fool as unknown');
+
+    const wolfReading = inspectTarget(werewolf, 4);
+    assert(/ไม่ดี/.test(wolfReading.lastSeenRole), 'seer should read normal werewolf as bad');
+    assert(wolfReading.latestHistory?.resultCode === 'bad', 'seer history should mark normal werewolf as bad');
+
+    const villagerReading = inspectTarget(villager, 5);
+    assert(/ดี/.test(villagerReading.lastSeenRole), 'seer should read villager as good');
+    assert(villagerReading.latestHistory?.resultCode === 'good', 'seer history should mark villager as good');
+
+    return {
+        seerAlphaUnknown: true,
+        seerFoolUnknown: true,
+        seerWerewolfBad: true,
+        seerVillagerGood: true
+    };
+}
+
 function main() {
     const tested = {
         ...testMayorRules(),
         ...testDoctorRules(),
-        ...testBodyguardRules()
+        ...testBodyguardRules(),
+        ...testSeerReadingRules()
     };
 
     console.log(`SMOKE_RESULT ${JSON.stringify({ tested })}`);

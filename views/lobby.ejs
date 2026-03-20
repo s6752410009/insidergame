@@ -644,7 +644,7 @@
         <a href="#" class="menu-item howto" id="howToPlayBtn">
             <span class="menu-icon">📖</span>
             <div class="menu-title">กฎการเล่น</div>
-            <div class="menu-desc">เรียนรู้วิธีเล่น Insider</div>
+            <div class="menu-desc">ดูวิธีเล่น Insider และ Werewolf</div>
         </a>
         
         <a href="/profile?playerId=<%= player.playerId %>" class="menu-item profile">
@@ -1080,103 +1080,87 @@ $(function() {
         e.preventDefault();
         
         Swal.fire({
-            title: '📖 กฎการเล่น Insider',
+            title: '📖 กฎการเล่น',
             html: `
-                <div style="text-align: left; font-family: 'Rajdhani', sans-serif; max-height: 60vh; overflow-y: auto; padding-right: 10px;">
-                    
-                    <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                        <h3 style="margin: 0 0 10px 0; color: #fff;">🎯 เป้าหมายของเกม</h3>
-                        <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">
-                            ทายคำให้ถูกต้องและหา <strong>"ผู้ทรยศ (Insider)"</strong> ให้เจอ!
-                        </p>
+                <div style="font-family: 'Rajdhani', sans-serif; text-align:left;">
+                    <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:14px;">
+                        <button type="button" class="guide-tab-btn active" data-guide-tab="insider" style="border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 12px; background:linear-gradient(135deg, rgba(231,76,60,0.22), rgba(192,57,43,0.16)); color:#fff; font-weight:700;">🎯 Insider</button>
+                        <button type="button" class="guide-tab-btn" data-guide-tab="werewolf" style="border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 12px; background:rgba(255,255,255,0.04); color:#fff; font-weight:700;">🐺 Werewolf</button>
                     </div>
-                    
-                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #f39c12;">
-                        <h4 style="margin: 0 0 10px 0; color: #f39c12;">👥 บทบาทผู้เล่น</h4>
-                        <div style="display: grid; gap: 10px;">
-                            <div style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
-                                <strong style="color: #e74c3c;">🎭 ผู้ดำเนินเกม (Game Master)</strong>
-                                <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9em;">รู้คำตอบ ตอบคำถามได้แค่ "ใช่" "ไม่ใช่" หรือ "อาจจะ"</p>
+
+                    <div style="max-height:60vh; overflow-y:auto; padding-right:10px; display:grid; gap:12px;">
+                        <div class="guide-tab-panel" data-guide-panel="insider" style="display:grid; gap:12px;">
+                            <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 15px; border-radius: 12px;">
+                                <h3 style="margin: 0 0 10px 0; color: #fff;">🎯 เป้าหมายของ Insider</h3>
+                                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">ทายคำให้ถูก และจับให้ได้ว่าใครคือผู้ทรยศ</p>
                             </div>
-                            <div style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
-                                <strong style="color: #9b59b6;">🕵️ ผู้ทรยศ (Insider)</strong>
-                                <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9em;">รู้คำตอบแต่ต้องซ่อนตัว! พยายามนำทางคนอื่นโดยไม่ให้ถูกจับได้</p>
+
+                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #f39c12;">
+                                <h4 style="margin:0 0 10px 0; color:#f39c12;">👥 บทบาทหลัก</h4>
+                                <div style="display:grid; gap:10px; color:#ccc; font-size:0.95em;">
+                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#e74c3c;">🎭 ผู้ดำเนินเกม</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำตอบ และตอบได้แค่ ใช่ / ไม่ใช่ / อาจจะ</p></div>
+                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#9b59b6;">🕵️ ผู้ทรยศ</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำ แต่ต้องซ่อนตัวและเนียนไปกับวง</p></div>
+                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#3498db;">👤 พลเมือง</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">ช่วยกันถาม ช่วยกันทาย และช่วยกันจับคนเนียน</p></div>
+                                </div>
                             </div>
-                            <div style="background: #1a1a1a; padding: 10px; border-radius: 8px;">
-                                <strong style="color: #3498db;">👤 พลเมือง (Citizen)</strong>
-                                <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.9em;">ไม่รู้คำตอบ ต้องช่วยกันถามคำถามเพื่อทายคำ</p>
+
+                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #3498db; color:#ccc;">
+                                <h4 style="margin:0 0 10px 0; color:#3498db;">📝 วิธีเล่นแบบสั้น</h4>
+                                <ol style="margin:0; padding-left:20px; font-size:0.95em;">
+                                    <li style="margin-bottom:8px;">ระบบแจกบทบาทให้ทุกคน</li>
+                                    <li style="margin-bottom:8px;">ผู้ดำเนินเกมเลือกคำ</li>
+                                    <li style="margin-bottom:8px;">ทุกคนถามคำถาม แล้วไล่ทายคำ</li>
+                                    <li style="margin-bottom:8px;">ถ้าทายถูก เกมจะเข้าสู่ช่วงโหวตหาผู้ทรยศ</li>
+                                    <li>ถ้าจับถูก พลเมืองชนะ ถ้าจับพลาด ผู้ทรยศชนะ</li>
+                                </ol>
+                            </div>
+
+                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #2ecc71; color:#ccc;">
+                                <h4 style="margin:0 0 10px 0; color:#2ecc71;">💡 ทริกสำคัญ</h4>
+                                <div style="display:grid; gap:8px; font-size:0.95em;">
+                                    <div>คนที่รีบนำเกินไปอาจกำลังปั่นวง แต่คนเงียบผิดปกติก็อาจซ่อนอยู่เหมือนกัน</div>
+                                    <div>ถ้าเปิดโหมด 2 ผู้ทรยศ ตอนโหวตต้องเดาให้ครบ 2 คนถึงจะชนะ</div>
+                                    <div>เจ้าของห้องมีสิทธิ์เริ่มเกม, จับเวลา, เริ่มโหวต, เตะคน, โอนห้อง และแก้ไขห้อง</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="guide-tab-panel" data-guide-panel="werewolf" style="display:none; gap:12px;">
+                            <div style="background: linear-gradient(135deg, #34495e 0%, #111827 100%); padding: 15px; border-radius: 12px;">
+                                <h3 style="margin: 0 0 10px 0; color: #fff;">🐺 เป้าหมายของ Werewolf</h3>
+                                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">ชาวบ้านต้องจับหมาป่าให้หมด ส่วนหมาป่าต้องอยู่ให้จำนวนไม่น้อยกว่าคนอื่นที่เหลือ</p>
+                            </div>
+
+                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #8fd3ff; color:#ccc;">
+                                <h4 style="margin:0 0 10px 0; color:#8fd3ff;">🌙 กลางคืน / ☀️ กลางวัน</h4>
+                                <div style="display:grid; gap:8px; font-size:0.95em;">
+                                    <div><strong>คืนแรก</strong> หมาป่ายังฆ่าไม่ได้ ทุกคนใช้เวลาอ่านหน้ากันก่อน</div>
+                                    <div><strong>คืนถัดไป</strong> หมาป่าเลือกเหยื่อ ส่วนบทพิเศษใช้สกิลตามหน้าที่</div>
+                                    <div><strong>ตอนเช้า</strong> อ่านประกาศ, คุยกัน และโหวตคนต้องสงสัย</div>
+                                    <div><strong>ถ้าข้ามโหวตเกินครึ่ง</strong> หรือทุกคนโหวตครบ เกมจะตัดผลทันที</div>
+                                </div>
+                            </div>
+
+                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #f39c12; color:#ccc;">
+                                <h4 style="margin:0 0 10px 0; color:#f39c12;">🔮 กติกา Seer แบบใหม่</h4>
+                                <div style="display:grid; gap:8px; font-size:0.95em;">
+                                    <div>Seer ดูได้คืนละ 1 คน</div>
+                                    <div>ผลตรวจจะเห็นแค่ <strong style="color:#7ee2a8;">ดี</strong>, <strong style="color:#ff9aa2;">ไม่ดี</strong> หรือ <strong style="color:#f8d189;">ไม่ทราบ</strong></div>
+                                    <div><strong>อัลฟ่าหมาป่า</strong> และ <strong>คนบ้า</strong> จะขึ้นว่า <strong>ไม่ทราบ</strong></div>
+                                </div>
+                            </div>
+
+                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #2ecc71; color:#ccc;">
+                                <h4 style="margin:0 0 10px 0; color:#2ecc71;">🎭 บทเด่นที่เล่นแล้วมัน</h4>
+                                <div style="display:grid; gap:8px; font-size:0.95em;">
+                                    <div><strong>อัลฟ่าหมาป่า</strong> โหวตล่ากลางคืนหนัก 2 เสียง แต่ Seer อ่านไม่ออก</div>
+                                    <div><strong>นายก</strong> ต้องเปิดตัวเองก่อนถึงจะได้ 2 เสียงตอนโหวต</div>
+                                    <div><strong>บอดี้การ์ด</strong> กันสำเร็จแล้วเกราะแตก เล่นพลาดคือหมดแรงคุ้มกันทันที</div>
+                                    <div><strong>คนบ้า</strong> ถ้าถูกโหวตออกจะชนะคนเดียว และ Seer ก็ยังอ่านไม่ออก</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #3498db;">
-                        <h4 style="margin: 0 0 10px 0; color: #3498db;">📝 ขั้นตอนการเล่น</h4>
-                        <ol style="margin: 0; padding-left: 20px; color: #ccc; font-size: 0.95em;">
-                            <li style="margin-bottom: 8px;"><strong>แจกบทบาท</strong> - ระบบสุ่มบทบาทให้ผู้เล่นแต่ละคน</li>
-                            <li style="margin-bottom: 8px;"><strong>กำหนดคำ</strong> - ผู้ดำเนินเกมเลือกคำที่ต้องทาย</li>
-                            <li style="margin-bottom: 8px;"><strong>ถาม-ตอบ</strong> - ผู้เล่นถามคำถาม ผู้ดำเนินเกมตอบ ✅❌🤔</li>
-                            <li style="margin-bottom: 8px;"><strong>ทายคำ</strong> - เมื่อมีคนทายคำถูก เกมเข้าสู่รอบโหวต</li>
-                            <li style="margin-bottom: 8px;"><strong>โหวตหาผู้ทรยศ</strong> - ทุกคนโหวตว่าใครคือผู้ทรยศ</li>
-                        </ol>
-                    </div>
-                    
-                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #2ecc71;">
-                        <h4 style="margin: 0 0 10px 0; color: #2ecc71;">🎭 ปุ่มตอบด่วนสำหรับผู้ดำเนินเกม</h4>
-                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 10px;">
-                            ผู้ดำเนินเกมจะมีปุ่มตอบด่วน 3 ปุ่มในช่องแชท:
-                        </p>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <span style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 700;">✅ ใช่</span>
-                            <span style="background: linear-gradient(135deg, #fc8181 0%, #e53e3e 100%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 700;">❌ ไม่ใช่</span>
-                            <span style="background: linear-gradient(135deg, #f6e05e 0%, #ecc94b 100%); padding: 8px 16px; border-radius: 8px; color: #744210; font-weight: 700;">🤔 อาจจะ</span>
-                        </div>
-                        <p style="color: #888; font-size: 0.85em; margin-top: 10px;">
-                            💡 <strong>วิธีใช้:</strong> คลิกที่ข้อความคำถามที่ต้องการตอบ จะมีกรอบสีเหลือง จากนั้นกดปุ่มตอบด่วน
-                        </p>
-                    </div>
-                    
-                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; border-left: 4px solid #e74c3c;">
-                        <h4 style="margin: 0 0 10px 0; color: #e74c3c;">🏆 เงื่อนไขชนะ</h4>
-                        <div style="color: #ccc; font-size: 0.95em;">
-                            <p style="margin: 0 0 8px 0;"><strong style="color: #2ecc71;">พลเมืองชนะ:</strong> ทายคำถูก + จับผู้ทรยศได้</p>
-                            <p style="margin: 0;"><strong style="color: #9b59b6;">ผู้ทรยศชนะ:</strong> ไม่ถูกจับ หรือ หมดเวลาทายคำ</p>
-                        </div>
-                    </div>
-                    
-                    <div style="background: #2d2d2d; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid #f39c12;">
-                        <h4 style="margin: 0 0 10px 0; color: #f39c12;">👑 หน้าที่เจ้าของห้อง (Room Host)</h4>
-                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 10px;">
-                            ผู้ที่สร้างห้องจะเป็น <strong style="color: #f39c12;">เจ้าของห้อง</strong> มีสิทธิ์พิเศษดังนี้:
-                        </p>
-                        <ul style="margin: 0; padding-left: 20px; color: #ccc; font-size: 0.95em;">
-                            <li style="margin-bottom: 8px;"><strong style="color: #2ecc71;">🎮 เริ่มเกม</strong> - กดปุ่มเริ่มเกมเมื่อทุกคนพร้อม (ขั้นต่ำ 3 คน)</li>
-                            <li style="margin-bottom: 8px;"><strong style="color: #3498db;">⏱️ จับเวลา</strong> - ควบคุมการเริ่ม/หยุดนับถอยหลัง 5 นาที</li>
-                            <li style="margin-bottom: 8px;"><strong style="color: #9b59b6;">🗳️ เริ่มโหวต</strong> - กดเริ่มการโหวตเมื่อทายคำถูกแล้ว</li>
-                            <li style="margin-bottom: 8px;"><strong style="color: #e74c3c;">🚫 เตะผู้เล่น</strong> - นำผู้เล่นออกจากห้องได้</li>
-                            <li style="margin-bottom: 8px;"><strong style="color: #f39c12;">👑 โอนเจ้าของห้อง</strong> - โอนสิทธิ์ให้ผู้เล่นอื่นได้</li>
-                            <li style="margin-bottom: 8px;"><strong style="color: #1abc9c;">⚙️ แก้ไขห้อง</strong> - เปลี่ยนชื่อห้อง, จำนวนผู้เล่น, ล็อค/ปลดล็อค</li>
-                        </ul>
-                        <p style="color: #888; font-size: 0.85em; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
-                            💡 <strong>หมายเหตุ:</strong> ถ้าเจ้าของห้องออก สิทธิ์จะถูกโอนให้ผู้เล่นคนถัดไปอัตโนมัติ
-                        </p>
-                    </div>
-                    
-                    <div style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%); padding: 15px; border-radius: 12px; margin-top: 15px; border: 2px solid #ff6b6b;">
-                        <h4 style="margin: 0 0 10px 0; color: #fff;">🔴🔴 โหมด 2 ผู้ทรยศ <span style="background: #fff; color: #e74c3c; padding: 2px 8px; border-radius: 8px; font-size: 0.7em; margin-left: 8px;">NEW v2.1</span></h4>
-                        <p style="color: rgba(255,255,255,0.9); font-size: 0.95em; margin-bottom: 10px;">
-                            เมื่อมีผู้เล่น <strong>5 คนขึ้นไป</strong> เจ้าของห้องสามารถเปิดโหมด 2 ผู้ทรยศได้!
-                        </p>
-                        <ul style="margin: 0; padding-left: 20px; color: rgba(255,255,255,0.85); font-size: 0.9em;">
-                            <li style="margin-bottom: 8px;">🎭 จะมี <strong>ผู้ทรยศ 2 คน</strong> ในเกม (ทั้งคู่รู้คำตอบ)</li>
-                            <li style="margin-bottom: 8px;">🗳️ ตอนโหวต <strong>ต้องเลือก 2 คน</strong> ที่คิดว่าเป็นผู้ทรยศ</li>
-                            <li style="margin-bottom: 8px;">🏆 พลเมืองชนะเมื่อ <strong>จับผู้ทรยศได้ทั้ง 2 คน</strong></li>
-                            <li style="margin-bottom: 8px;">💀 ผู้ทรยศชนะเมื่อ <strong>มีอย่างน้อย 1 คน</strong> ไม่ถูกจับ</li>
-                        </ul>
-                        <p style="color: rgba(255,255,255,0.7); font-size: 0.85em; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-                            💡 <strong>วิธีเปิด:</strong> ไปที่ ⚙️ แก้ไขห้อง → ติ๊ก "🔴🔴 โหมด 2 ผู้ทรยศ"
-                        </p>
-                    </div>
-                    
                 </div>
             `,
             width: 600,
@@ -1186,6 +1170,31 @@ $(function() {
             showConfirmButton: false,
             customClass: {
                 popup: 'howto-popup'
+            },
+            didOpen: () => {
+                const buttons = Array.from(document.querySelectorAll('.guide-tab-btn'));
+                const panels = Array.from(document.querySelectorAll('.guide-tab-panel'));
+
+                function activateTab(tabId) {
+                    buttons.forEach(button => {
+                        const active = button.dataset.guideTab === tabId;
+                        button.classList.toggle('active', active);
+                        button.style.background = active
+                            ? 'linear-gradient(135deg, rgba(231,76,60,0.22), rgba(192,57,43,0.16))'
+                            : 'rgba(255,255,255,0.04)';
+                        button.style.borderColor = active ? '#ff8a7a' : 'rgba(255,255,255,0.1)';
+                    });
+
+                    panels.forEach(panel => {
+                        panel.style.display = panel.dataset.guidePanel === tabId ? 'grid' : 'none';
+                    });
+                }
+
+                buttons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        activateTab(button.dataset.guideTab);
+                    });
+                });
             }
         });
     });
