@@ -1,6 +1,6 @@
 {
   "name": "concept-boardgame",
-  "version": "2.1.0",
+  "version": "3.1.0",
   "dependencies": {
     "body-parser": "^1.20.4",
     "cookie-parser": "^1.4.7",
@@ -19,6 +19,7 @@
     "smoke:rooms": "node scripts/smoke-room-flow.js",
     "smoke:werewolf": "node scripts/smoke-werewolf-flow.js",
     "smoke:werewolf:selection": "node scripts/smoke-werewolf-selection.js",
+    "smoke:werewolf:roles": "node scripts/smoke-werewolf-role-rules.js",
     "smoke:werewolf:5": "SMOKE_WEREWOLF_CASE=5 node scripts/smoke-werewolf-balance.js",
     "smoke:werewolf:6": "SMOKE_WEREWOLF_CASE=6 node scripts/smoke-werewolf-balance.js"
   },

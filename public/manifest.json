@@ -1,7 +1,7 @@
 {
-  "name": "Insider Game - เกมผู้ทรยศ",
-  "short_name": "Insider",
-  "description": "เกมหาตัวผู้ทรยศในกลุ่ม - เล่นกับเพื่อนออนไลน์",
+  "name": "Insider Game + Werewolf - เกมผู้ทรยศและเกมหมาป่า",
+  "short_name": "InsiderWolf",
+  "description": "เล่นเกม Insider และ Werewolf ออนไลน์กับเพื่อนฟรี ผ่านเว็บ ไม่ต้องโหลดแอป",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1a2e",

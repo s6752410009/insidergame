@@ -26,6 +26,8 @@ const io = new Server(server, {
 
 const fs = require('fs');
 const path = require('path');
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+const APP_VERSION = packageJson.version || '0.0.0';
 const wordFamille = fs.readFileSync('words/famille.csv','utf8')
                       .split(/\r?\n/)
                       .map(word => word.trim())
@@ -36,6 +38,8 @@ const playerManager = require('./managers/playerManager');
 const roomManager = require('./managers/roomManager');
 const statsManager = require('./managers/statsManager');
 const { getGameEngine, getAvailableGameModes } = require('./games/engineRegistry');
+
+app.locals.appVersion = APP_VERSION;
 
 // Load settings (including admin password)
 const settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'));
@@ -2956,6 +2960,34 @@ io.sockets.on('connection', function(socket) {
 
             const werewolfEngine = getGameEngine('werewolf');
             const result = werewolfEngine.submitDayVote(room, playerId, targetPlayerId);
+            emitWerewolfRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('werewolf_revealMayor', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!playerId) {
+                throw new Error('ข้อมูลนายกไม่ครบ');
+            }
+
+            const werewolfEngine = getGameEngine('werewolf');
+            const result = werewolfEngine.submitMayorReveal(room, playerId);
             emitWerewolfRoomState(room);
 
             if (typeof callback === 'function') {

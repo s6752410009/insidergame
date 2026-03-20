@@ -543,7 +543,8 @@
         'bodyguard-protect': '🛡️',
         'witch-heal': '🧪',
         'witch-poison': '☠️',
-        'witch-rest': '🔮'
+        'witch-rest': '🔮',
+        'mayor-reveal': '🎖️'
       };
 
       return icons[actionType] || '🎯';
@@ -966,7 +967,7 @@
       } else if (type === 'warning') {
         source = '/static/sound/dong.mp3';
       } else if (type === 'chat') {
-        source = '/static/sound/message.mp3';
+        source = '/static/sound/popup.mp3';
       }
 
       const audio = new Audio(source);
@@ -1544,6 +1545,23 @@
       });
     }
 
+    function submitMayorReveal() {
+      if (currentState.phase !== 'day-discussion' && currentState.phase !== 'day-vote') {
+        socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
+        return;
+      }
+      if (pendingActionSubmission) {
+        return;
+      }
+      setActionButtonsPending(true);
+      socket.emit('werewolf_revealMayor', { roomId: roomId }, function(response) {
+        if (!response || !response.success) {
+          setActionButtonsPending(false);
+          Swal.fire({ icon: 'error', title: 'เปิดเผยตัวไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    }
+
     function buildTargetCards(action, handlerName, buttonClass, handlerArg) {
       if (!action.targets || action.targets.length === 0) {
         if (!action.allowSkip) {
@@ -1556,10 +1574,13 @@
 
       const cards = action.targets.map(function(target) {
         const isSelected = action.selectedTargetId && action.selectedTargetId === target.playerId;
+        const isDisabled = Boolean(action.locked && !isSelected);
         return `
           <div class="target-card">
             <div class="target-card-title"><span class="target-emoji">🎯</span><strong>${escapeHtml(target.name)}</strong></div>
-            <button class="action-btn ${buttonClass || ''} ${isSelected ? 'selected' : ''}" onclick="${handlerName}(${prefixArg}'${target.playerId}')">${isSelected ? '✅ เลือกแล้ว' : '👉 เลือกคนนี้'}</button>
+            <button class="action-btn ${buttonClass || ''} ${isSelected ? 'selected' : ''}" ${isDisabled ? 'disabled' : `onclick="${handlerName}(${prefixArg}'${target.playerId}')"`}>
+              ${isSelected ? '✅ เลือกแล้ว' : (action.locked ? '🔒 ล็อกแล้ว' : '👉 เลือกคนนี้')}
+            </button>
           </div>
         `;
       });
@@ -1569,7 +1590,9 @@
         cards.push(`
           <div class="target-card">
             <div class="target-card-title"><span class="target-emoji">🫥</span><strong>ข้ามรอบนี้</strong></div>
-            <button class="action-btn ${isSkipSelected ? 'selected' : ''}" onclick="${handlerName}(${prefixArg}'__skip__')">${isSkipSelected ? '✅ เลือกแล้ว' : '😌 ขอข้าม'}</button>
+            <button class="action-btn ${isSkipSelected ? 'selected' : ''}" ${action.locked && !isSkipSelected ? 'disabled' : `onclick="${handlerName}(${prefixArg}'__skip__')"`}>
+              ${isSkipSelected ? '✅ เลือกแล้ว' : (action.locked ? '🔒 ล็อกแล้ว' : '😌 ขอข้าม')}
+            </button>
           </div>
         `);
       }
@@ -1587,6 +1610,10 @@
 
     window.skipDiscussionPhase = function() {
       submitDiscussionSkip();
+    };
+
+    window.revealMayorRole = function() {
+      submitMayorReveal();
     };
 
     window.selectRevealTarget = function(targetPlayerId) {
@@ -1645,6 +1672,11 @@
         const discussion = actionState?.discussionActions || {};
         const skipCount = Number(discussion.skipCount || 0);
         const totalAlive = Number(discussion.totalAlive || 0);
+        const mayorHtml = discussion.canRevealMayor
+          ? '<button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดเผยตัวว่าเป็นนายกเพื่อให้เสียงโหวตเป็น 2</button>'
+          : (discussion.mayorRevealed
+            ? `<div class="highlight" style="margin-top:12px;">🎖️ คุณเปิดเผยตัวแล้ว เสียงโหวตของคุณตอนนี้เป็น ${discussion.currentVoteWeight || 2}</div>`
+            : '');
         const statusText = totalAlive > 0
           ? `ตอนนี้มี ${skipCount}/${totalAlive} คนกดพร้อมข้ามช่วงคุยแล้ว ถ้าครบทุกคนจะเปิดโหวตทันที`
           : 'กำลังรอระบบอัปเดตจำนวนผู้เล่นที่ยังอยู่ในเกม';
@@ -1660,6 +1692,7 @@
             <div class="subtle">คุยหาหลักฐาน จับพิรุธ และค่อยตัดสินใจว่าจะเปิดโหวตทันทีหรือปล่อยให้เวลาคุยหมดเอง</div>
             <div class="highlight" style="margin-top:8px;">${escapeHtml(statusText)}</div>
             <div style="margin-top:12px;">${buttonHtml}</div>
+            ${mayorHtml ? `<div style="margin-top:12px;">${mayorHtml}</div>` : ''}
           </div>
         `);
         syncMobileGamePanel();
@@ -1668,6 +1701,9 @@
 
       if (phase === 'day-vote') {
         const dayActions = actionState?.dayActions || {};
+        const skipVoteText = Number(dayActions.skipVoteWeight || 0) > 0
+          ? ` | ข้ามโหวต ${dayActions.skipVoteWeight}/${dayActions.totalVoteWeight || 0} เสียง`
+          : '';
         const liveVoteText = Object.entries(dayActions.voteTallies || {})
           .filter(function(entry) { return Number(entry[1]) > 0; })
           .map(function(entry) {
@@ -1676,12 +1712,17 @@
           })
           .filter(Boolean)
           .join(' | ');
-        $root.append(`<div class="history-row" style="display:block;">☀️ กลางวันนี้คุยและลงคะแนนแบบเปิด ผลโหวตสดขึ้นทันที และระบบจะสรุปตอนหมดเวลา${liveVoteText ? `<div class="highlight" style="margin-top:6px;">${escapeHtml(liveVoteText)}</div>` : ''}</div>`);
+        const mayorVoteHtml = dayActions.canRevealMayor
+          ? '<div style="margin-top:12px;"><button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดเผยตัวว่าเป็นนายกเพื่อให้เสียงโหวตเป็น 2</button></div>'
+          : (dayActions.mayorRevealed
+            ? `<div class="highlight" style="margin-top:10px;">🎖️ คุณเปิดเผยตัวแล้ว เสียงโหวตของคุณตอนนี้เป็น ${dayActions.currentVoteWeight || 2}</div>`
+            : '');
+        $root.append(`<div class="history-row" style="display:block;">☀️ กลางวันนี้คุยและลงคะแนนแบบเปิด ผลโหวตสดขึ้นทันที ถ้าเสียงข้ามโหวตเกินครึ่งจะตัดเข้ากลางคืนทันที${skipVoteText}${liveVoteText ? `<div class="highlight" style="margin-top:6px;">${escapeHtml(liveVoteText)}</div>` : ''}${mayorVoteHtml}</div>`);
         if (dayActions.canVote) {
           $root.append(`
             <div class="history-row" style="display:block;">
               <div class="action-title"><span>🗳️</span><strong>สิทธิ์โหวตกลางวันของทุกคน</strong></div>
-              <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน ตอนนี้มีคนลงคะแนนแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน</div>
+              <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน ตอนนี้มีคนลงคะแนนแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน ถ้าทุกคนลงครบระบบจะสรุปทันที</div>
               <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote }, 'selectVoteTarget', '')}</div>
             </div>
           `);

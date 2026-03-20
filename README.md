@@ -25,6 +25,7 @@ Run the self-contained Werewolf smoke test:
 ```bash
 npm run smoke:werewolf
 npm run smoke:werewolf:selection
+npm run smoke:werewolf:roles
 npm run smoke:werewolf:5
 npm run smoke:werewolf:6
 ```

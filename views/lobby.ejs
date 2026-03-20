@@ -1206,7 +1206,7 @@ $(function() {
     });
     
     // ==================== PATCH NOTES POPUP ====================
-    const patchVersion = '3.0.0';
+    const patchVersion = '<%= appVersion %>';
     const patchSeenKey = `hide_patch_${patchVersion}_${playerId}`;
     const hideUntil = localStorage.getItem(patchSeenKey);
     const now = Date.now();
@@ -1217,31 +1217,30 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🚀 อัปเดต Version 3.0!',
+            title: '🚀 อัปเดต Version <%= appVersion %>!',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        Werewolf ถูกยกขึ้นเป็นโหมดหลักเต็มตัวแล้ว พร้อม profile, history และการ reconnect ที่นิ่งขึ้นทั้งระบบ
+                        Werewolf ถูกจูนกติกาเพิ่มอีกชุด และหน้าแอดมิน/ตั้งค่าถูก sync version ให้ตรงกับ release ปัจจุบันแล้ว
                     </p>
                     
                     <div style="background: rgba(192, 57, 43, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #c0392b; margin-bottom: 15px;">
-                        <h4 style="color: #ffb4a8; margin: 0 0 10px 0;">🐺 ไฮไลต์ v3.0</h4>
+                        <h4 style="color: #ffb4a8; margin: 0 0 10px 0;">🐺 ไฮไลต์ v<%= appVersion %></h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>Werewolf พร้อมเล่นเต็มตา</strong> มีทั้งกลางคืน กลางวัน บทบาท และเงื่อนไขชนะครบแล้ว</li>
-                            <li><strong>โปรไฟล์จำผลงานให้แล้ว</strong> ดูได้ทั้งชนะ-แพ้ บทที่เคยได้ และประวัติแต่ละเกม</li>
-                            <li><strong>กลับเข้าเกมได้เนียนขึ้น</strong> รีเฟรชแล้วไม่หลุดจากห้องง่ายเหมือนเดิม</li>
-                            <li><strong>มีคู่มือสั้นในหน้าเกม</strong> เปิดดูได้ทันทีเวลาอยากทวนว่าแต่ละช่วงต้องทำอะไร</li>
+                            <li><strong>Mayor ต้อง reveal เอง</strong> ก่อนจะได้ 2 เสียงในช่วงโหวต</li>
+                            <li><strong>Skip vote เกินครึ่งข้ามวันได้ทันที</strong> และถ้าโหวตครบทุกคนจะไม่รอ timer</li>
+                            <li><strong>Doctor / Bodyguard แยกบทชัดขึ้น</strong> หมอมี 2 use ต่อเกม ส่วนบอดี้การ์ดเกราะแตกหลังกันสำเร็จ</li>
+                            <li><strong>Seer / Witch ล็อก action ต่อคืน</strong> และ Fool ไม่โดน reveal จากข้อความตอนเช้า</li>
                         </ul>
                     </div>
 
                     <div style="background: rgba(52, 152, 219, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 เข้า Werewolf แล้วทำอะไรบ้าง</h4>
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 มีอะไรเพิ่มใน release นี้</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>คืนแรก: ทุกคนเริ่มอ่านเกมก่อน หมาป่ายังฆ่าใครไม่ได้</li>
-                            <li>กลางคืนถัดไป: คนมีสกิลใช้สกิล หมาป่าเลือกเหยื่อ</li>
-                            <li>กลางวัน: ทุกคนคุยกันในแชท แล้วโหวตคนต้องสงสัย</li>
-                            <li>ชาวบ้านชนะเมื่อกำจัดหมาป่าหมด</li>
-                            <li>หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่เหลือ</li>
+                            <li>หน้า Settings มี changelog ชุดล่าสุดแล้ว</li>
+                            <li>หน้า Admin ดึงเลข version จากระบบอัตโนมัติ</li>
+                            <li>เสียงแชท Werewolf สั้นลง ฟังง่ายขึ้น</li>
+                            <li>เพิ่ม smoke test แยกคุม Mayor, Doctor, Bodyguard โดยตรง</li>
                         </ul>
                     </div>
                     
@@ -1253,10 +1252,10 @@ $(function() {
                             <h4 style="color: #2ecc71; margin: 10px 0 10px 0;">✨ ฟีเจอร์เดิมที่ยังอยู่</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>🎁 <strong>ปุ่ม Donate</strong> - สนับสนุนผู้พัฒนา</li>
-                                <li>💬 <strong>ระบบแชทใหม่</strong> - Swipe/เมนูตอบกลับ</li>
+                                <li>💬 <strong>ระบบแชทตอบกลับ</strong> - Swipe/เมนูตอบกลับยังอยู่</li>
                                 <li>⏱️ <strong>Auto-Timer</strong> - ป้องกันเกมค้าง</li>
-                                <li>💾 <strong>ข้อมูลเก็บใน Database</strong> - ไม่หายอีกแล้ว</li>
-                                <li>🛡️ <strong>ระบบเสถียรขึ้น</strong></li>
+                                <li>💾 <strong>Profile / History</strong> - เก็บผลงาน Werewolf และ Insider ต่อเนื่อง</li>
+                                <li>🛡️ <strong>Reconnect / stability</strong> - ระบบหลักยังอยู่ครบ</li>
                             </ul>
                         </div>
                     </details>

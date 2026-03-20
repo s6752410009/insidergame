@@ -380,6 +380,7 @@ async function main() {
 
         const witchClient = findClientByRole(roleAssignments, 'witch');
         const foolClient = findClientByRole(roleAssignments, 'fool');
+        const seerClient = findClientByRole(roleAssignments, 'seer');
         const wolfClients = ['alphaWolf', 'werewolf'].map(roleId => roleAssignments[roleId]).filter(Boolean);
         assert(wolfClients.length === 2, '7-player plan should include 2 wolves');
 
@@ -388,7 +389,12 @@ async function main() {
         for (const client of clients) {
             const state = client.lastState;
             const actions = state?.actionState?.nightActions || [];
+            let witchActed = false;
             for (const action of actions) {
+                if (client.playerId === witchClient.playerId && witchActed) {
+                    continue;
+                }
+
                 if (!action.targets || action.targets.length === 0) {
                     continue;
                 }
@@ -397,7 +403,23 @@ async function main() {
                     ? foolClient.playerId
                     : '__skip__';
                 await submitNightChoice(client, roomId, action.type, targetId);
+
+                if (client.playerId === witchClient.playerId) {
+                    witchActed = true;
+                }
             }
+        }
+
+        const seerTargets = seerClient?.lastState?.actionState?.nightActions?.find(action => action.type === 'seer-check')?.targets || [];
+        const secondSeerTarget = seerTargets.find(target => target.playerId !== foolClient.playerId);
+        if (seerClient && secondSeerTarget) {
+            const secondSeerAttempt = await emitAck(seerClient.socket, 'werewolf_submitNightAction', {
+                roomId,
+                playerId: seerClient.playerId,
+                targetPlayerId: secondSeerTarget.playerId,
+                actionType: 'seer-check'
+            }, EVENT_TIMEOUT_MS);
+            assert(secondSeerAttempt && !secondSeerAttempt.success && /1 คนต่อคืน/.test(secondSeerAttempt.error || ''), 'Seer should be limited to one inspection per night');
         }
 
         await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, null, 30000);
@@ -417,8 +439,12 @@ async function main() {
         await submitConsensusVote(clients, roomId, dayOneTargetClient.playerId);
 
         const tallyState = await requestLatestState(creator, roomId);
-        const dayOneTargetView = getPlayerView(tallyState, dayOneTargetClient.playerId);
-        assert(dayOneTargetView && dayOneTargetView.voteCount >= ROOM_SIZE - 1, 'Live vote tally did not update during day vote');
+        if (tallyState.phase === 'day-vote') {
+            const dayOneTargetView = getPlayerView(tallyState, dayOneTargetClient.playerId);
+            assert(dayOneTargetView && dayOneTargetView.voteCount >= ROOM_SIZE - 1, 'Live vote tally did not update during day vote');
+        } else {
+            assert(tallyState.phase === 'night', 'Day vote should either stay open briefly or resolve straight into night when everyone votes');
+        }
 
         await waitForPhaseAfter(clients, roomId, 'night', checkpoint, payload => payload.dayNumber === 2, 30000);
 
@@ -456,7 +482,12 @@ async function main() {
 
             const state = client.lastState;
             const actions = state?.actionState?.nightActions || [];
+            let witchActed = false;
             for (const action of actions) {
+                if (client.playerId === witchClient.playerId && witchActed) {
+                    continue;
+                }
+
                 let targetId = '__skip__';
 
                 if (client.playerId === witchClient.playerId && action.type === 'witch-heal') {
@@ -464,6 +495,25 @@ async function main() {
                 }
 
                 await submitNightChoice(client, roomId, action.type, targetId);
+
+                if (client.playerId === witchClient.playerId && action.type === 'witch-heal') {
+                    const witchSecondActionAttempt = await emitAck(witchClient.socket, 'werewolf_submitNightAction', {
+                        roomId,
+                        playerId: witchClient.playerId,
+                        targetPlayerId: wolfClients[0].playerId,
+                        actionType: 'witch-poison'
+                    }, EVENT_TIMEOUT_MS);
+                    assert(
+                        witchSecondActionAttempt
+                            && !witchSecondActionAttempt.success
+                            && (/คืนละ 1 สกิล|1 สกิล.*ต่อคืน/.test(witchSecondActionAttempt.error || '') || /ยังไม่ใช่ช่วงกลางคืน/.test(witchSecondActionAttempt.error || '')),
+                        'Witch should not be able to use two skills in the same night'
+                    );
+                }
+
+                if (client.playerId === witchClient.playerId) {
+                    witchActed = true;
+                }
             }
         }
 
@@ -473,7 +523,7 @@ async function main() {
         assert(discussionActions.skipCount === 0, 'Discussion skip count should reset at the start of a new morning');
         assert(discussionActions.totalAlive >= 1, 'Discussion state should report alive players');
         assert(dayTwoDiscussionState.morningAnnouncement && dayTwoDiscussionState.morningAnnouncement.outcomeType === 'immune', 'Night 2 should announce Fool immunity');
-        assert(/คนบ้า/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should explain Fool immunity');
+        assert(/ไม่สำเร็จ|ไม่รู้ว่าเพราะอะไร/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should keep Fool immunity generic');
         checkpoint = createStateCheckpoint(clients);
         await skipDiscussionForAlive(clients, roomId);
         const dayTwoStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 2, 30000);
@@ -523,7 +573,12 @@ async function main() {
             }
 
             const actions = client.lastState?.actionState?.nightActions || [];
+            let witchActed = false;
             for (const action of actions) {
+                if (client.playerId === witchClient.playerId && witchActed) {
+                    continue;
+                }
+
                 let targetId = '__skip__';
 
                 if (client.playerId === witchClient.playerId && action.type === 'witch-poison') {
@@ -531,6 +586,10 @@ async function main() {
                 }
 
                 await submitNightChoice(client, roomId, action.type, targetId);
+
+                if (client.playerId === witchClient.playerId) {
+                    witchActed = true;
+                }
             }
         }
 
@@ -561,6 +620,7 @@ async function main() {
                 witch: true,
                 discussionPhase: true,
                 unanimousDiscussionSkip: true,
+                seerNightLimit: true,
                 foolImmunity: true,
                 foolSoloWin: true,
                 liveVoteTallies: true,

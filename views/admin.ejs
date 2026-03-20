@@ -762,19 +762,21 @@
                 <h2>ℹ️ ข้อมูลระบบ</h2>
             </div>
             <div style="color: #aaa; line-height: 2;">
-                <p>📦 <strong>Version:</strong> 2.1.0 <span style="background: #e74c3c; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; margin-left: 10px;">NEW</span></p>
+                <p>📦 <strong>Version:</strong> <%= appVersion %> <span style="background: #e74c3c; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; margin-left: 10px;">LIVE</span></p>
                 <p>🖥️ <strong>Server:</strong> Node.js + Express + Socket.IO</p>
                 <p>💾 <strong>Data Storage:</strong> JSON Files (players.json, playerStats.json, bannedPlayers.json)</p>
                 <p>🕐 <strong>Server Time:</strong> <span id="serverTime">-</span></p>
                 <p>⏱️ <strong>Uptime:</strong> <span id="uptime">-</span></p>
             </div>
             <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #444;">
-                <h4 style="color: #f39c12; margin-bottom: 10px;">🆕 What's New in v2.1.0</h4>
+                <h4 style="color: #f39c12; margin-bottom: 10px;">🆕 What's New in v<%= appVersion %></h4>
                 <ul style="color: #888; line-height: 1.8; padding-left: 20px;">
-                    <li>🔴🔴 <strong>โหมด 2 ผู้ทรยศ</strong> - เปิดได้เมื่อมี 5+ คน</li>
-                    <li>🗳️ โหวตเลือก 2 คน เมื่อเปิดโหมด 2 ผู้ทรยศ</li>
-                    <li>🎯 แสดง indicator ให้ผู้เล่นรู้ว่าเล่นโหมดไหน</li>
-                    <li>📊 ปรับปรุงการคำนวณผลโหวตสำหรับ 2 ผู้ทรยศ</li>
+                    <li>🎖️ Mayor เปิดเผยตัวตอนเช้าเองก่อน ถึงจะได้ 2 เสียง</li>
+                    <li>⏭️ Skip vote เกินครึ่งตัดเข้ากลางคืนทันที และถ้าโหวตครบทุกคนก็ไม่รอเวลา</li>
+                    <li>💉 Doctor ใช้สิทธิ์ช่วยได้รวม 2 ครั้งต่อเกม</li>
+                    <li>🛡️ Bodyguard ป้องกันตัวเองได้ ห้ามกันเป้าหมายเดิม 2 คืนติด และเกราะแตกหลังกันสำเร็จ</li>
+                    <li>🔮 Seer / Witch ถูกล็อกตามกติกาใหม่ต่อคืน และ Fool ไม่ถูกเปิดเผยจากข้อความเช้า</li>
+                    <li>🔎 SEO และหน้าแอดมิน/ตั้งค่าถูก sync version ให้ตรงกับ release ปัจจุบัน</li>
                 </ul>
             </div>
         </div>

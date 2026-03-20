@@ -483,41 +483,44 @@
         
         <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #e74c3c;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #e74c3c; font-family: 'Orbitron', sans-serif;">🚀 Version 2.0.0</h3>
+                <h3 style="margin: 0; color: #e74c3c; font-family: 'Orbitron', sans-serif;">🚀 Version <%= appVersion %></h3>
                 <span style="background: #e74c3c; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.8em;">ล่าสุด</span>
             </div>
-            <p style="color: #888; font-size: 0.85em; margin-bottom: 15px;">21 มกราคม 2569</p>
+            <p style="color: #888; font-size: 0.85em; margin-bottom: 15px;">20 มีนาคม 2569</p>
             
             <div style="color: #ccc; font-size: 0.95em;">
                 <h4 style="color: #2ecc71; margin: 10px 0;">✨ ฟีเจอร์ใหม่</h4>
                 <ul style="margin: 0 0 15px 0; padding-left: 20px;">
-                    <li>🎁 <strong>ปุ่ม Donate</strong> - สนับสนุนผู้พัฒนาผ่าน PromptPay QR Code</li>
-                    <li>💬 <strong>ระบบแชทใหม่</strong> - Swipe เพื่อตอบกลับ (มือถือ) / เมนู 3 จุด (PC)</li>
-                    <li>⏱️ <strong>Auto-Timer</strong> - ป้องกันเกมค้างเมื่อผู้เล่นลืมกดปุ่ม</li>
-                    <li>🎨 <strong>Animated Countdown</strong> - วงแหวนหมุนสวยงามระหว่างนับถอยหลัง</li>
-                    <li>📞 <strong>ข้อมูลติดต่อ</strong> - Email และ Line ID ในหน้าตั้งค่า</li>
-                    <li>📝 <strong>ปุ่มให้รีวิว</strong> - ช่วยเราปรับปรุงเกม</li>
+                    <li>🎖️ <strong>Mayor Reveal</strong> - นายกต้องกดเปิดเผยตัวตอนเช้าก่อน เสียงโหวตถึงจะเพิ่มเป็น 2</li>
+                    <li>⏭️ <strong>Skip Vote ตัดจบทันที</strong> - ถ้าเสียงข้ามเกินครึ่ง วันนั้นจะข้ามและเข้ากลางคืนทันที</li>
+                    <li>⚡ <strong>โหวตครบไม่ต้องรอเวลา</strong> - ถ้าผู้เล่นที่ยังมีชีวิตโหวตครบ ระบบจะตัดสินผลทันที</li>
+                    <li>🛡️ <strong>บอดี้การ์ดรีบาลานซ์</strong> - ป้องกันตัวเองได้ ป้องกันคนอื่นได้ แต่ห้ามซ้ำเป้าหมาย 2 คืนติด และเกราะแตกเมื่อกันสำเร็จ</li>
+                    <li>💉 <strong>หมอจำกัด 2 ครั้งต่อเกม</strong> - เลือกช่วยตัวเองหรือคนอื่นได้รวมแค่ 2 ครั้ง</li>
+                    <li>🔊 <strong>เสียงแชท Werewolf ใหม่</strong> - เปลี่ยนเป็นเสียงสั้นขึ้นเพื่อไม่รบกวนจังหวะเล่น</li>
                 </ul>
                 
                 <h4 style="color: #3498db; margin: 10px 0;">🔧 ปรับปรุง</h4>
                 <ul style="margin: 0 0 15px 0; padding-left: 20px;">
-                    <li>💾 <strong>MongoDB Stats</strong> - ข้อมูลสถิติเก็บใน Database ไม่หายอีกแล้ว</li>
-                    <li>🛡️ <strong>ปรับปรุงความเสถียร</strong> - ระบบเชื่อถือได้มากขึ้น</li>
+                    <li>🔮 <strong>Seer ดูได้คืนละ 1 คน</strong> - ล็อกการตรวจสอบให้ชัดเจนตามกติกา</li>
+                    <li>🧪 <strong>Witch ใช้ได้คืนละ 1 สกิล</strong> - ยาฟื้นและยาพิษยังใช้ได้อย่างละ 1 ครั้งต่อเกม</li>
+                    <li>🤪 <strong>Fool ไม่โดนเปิดเผยจากข้อความเช้า</strong> - ถ้าหมาป่าฆ่าไม่สำเร็จ ระบบจะบอกแค่การสังหารล้มเหลว</li>
+                    <li>👑 <strong>Admin/Settings sync version</strong> - หน้าแอดมินและหน้าตั้งค่าดึง version เดียวกับระบบแล้ว</li>
+                    <li>🔎 <strong>SEO เพิ่มคำค้น Werewolf</strong> - meta และ manifest ปรับให้ค้นหาเจอโหมด Werewolf ชัดขึ้น</li>
                 </ul>
                 
                 <h4 style="color: #f39c12; margin: 10px 0;">⚠️ หมายเหตุ</h4>
                 <p style="margin: 0; background: rgba(243, 156, 18, 0.1); padding: 10px; border-radius: 8px;">
-                    🏆 <strong>รีเซ็ตอันดับ Leaderboard</strong> - เพื่อให้ทุกคนเริ่มต้นใหม่อย่างยุติธรรม อันดับผู้เล่นถูกรีเซ็ตในเวอร์ชันนี้
+                    🧪 <strong>Regression smoke tests ใหม่</strong> - เพิ่มชุดทดสอบแยกสำหรับ Mayor, Doctor และ Bodyguard โดยตรง
                 </p>
             </div>
         </div>
         
         <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; border-left: 4px solid #666;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #888; font-family: 'Orbitron', sans-serif;">📦 Version 1.x</h3>
+                <h3 style="margin: 0; color: #888; font-family: 'Orbitron', sans-serif;">📦 Version 3.0.0 และก่อนหน้า</h3>
             </div>
             <p style="color: #666; font-size: 0.9em; margin: 0;">
-                เวอร์ชันก่อนหน้า - ระบบพื้นฐานของเกม Insider
+                Werewolf กลายเป็นโหมดหลักเต็มตัว พร้อม profile, history, reconnect, แชท และระบบพื้นฐานของ Insider ที่มีอยู่เดิม
             </p>
         </div>
     </div>
@@ -535,8 +538,8 @@
     
     <!-- Version Info -->
     <div class="version-info">
-        <p>Insider Game</p>
-        <p class="version">Version 2.0.0</p>
+        <p>Insider Game + Werewolf</p>
+        <p class="version">Version <%= appVersion %></p>
     </div>
 
 </div>
