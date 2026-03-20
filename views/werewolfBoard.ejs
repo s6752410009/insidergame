@@ -85,10 +85,14 @@
   .phase-hud-timer-label { color: #97a4bf; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
   .phase-hud-timer { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: #fff4c2; line-height: 1.1; margin-top: 4px; }
   .phase-hud-meta { color: #cbd5e1; font-size: 0.8rem; margin-top: 4px; }
-  .phase-hud-rail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .phase-hud-step { padding: 10px 11px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
-  .phase-hud-step-label { color: #97a4bf; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-  .phase-hud-step-body { margin-top: 4px; color: #f8fafc; font-size: 0.86rem; line-height: 1.35; display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .phase-hud-rail { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .phase-hud-rail::-webkit-scrollbar { display: none; }
+  .phase-hud-step { flex: 0 0 auto; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); min-width: 0; max-width: 200px; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: background 0.2s; }
+  .phase-hud-step:hover { background: rgba(255,255,255,0.09); }
+  .phase-hud-step.expanded { flex: 1 1 100%; max-width: none; border-radius: 14px; flex-wrap: wrap; padding: 8px 11px; }
+  .phase-hud-step-label { color: #97a4bf; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .phase-hud-step-body { color: #f8fafc; font-size: 0.8rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phase-hud-step.expanded .phase-hud-step-body { white-space: normal; overflow: visible; text-overflow: unset; }
   .phase-status-strip { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(30,41,59,0.7)); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
   .phase-status-strip.tone-turn { border-color: rgba(250,204,21,0.24); background: radial-gradient(circle at top right, rgba(250,204,21,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
   .phase-status-strip.tone-watch { border-color: rgba(96,165,250,0.2); background: radial-gradient(circle at top right, rgba(59,130,246,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
@@ -328,7 +332,16 @@
   .player-status-tag.dead { color: #ef4444; }
   .player-status-tag.voted { color: #60a5fa; }
   .player-status-tag.mayor-tag { color: #fbbf24; }
+  .player-vote-badge { font-size: 0.62rem; font-weight: 700; color: #fbbf24; padding: 2px 6px; border-radius: 999px; background: rgba(250,204,21,0.12); border: 1px solid rgba(250,204,21,0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .player-vote-badge.received { color: #fb923c; background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.2); }
   .player-main, .player-topline, .player-role-line, .player-chip-row, .player-chip, .player-status-badge { display: none; }
+
+  /* -- Night overlay on player grid -- */
+  .player-grid.night-phase { position: relative; }
+  .player-grid.night-phase::before { content: ''; position: absolute; inset: -4px; border-radius: 18px; background: radial-gradient(ellipse at center, rgba(15,23,42,0.55), rgba(5,10,25,0.75)); pointer-events: none; z-index: 1; }
+  .player-grid.night-phase .player-row { position: relative; z-index: 2; opacity: 0.55; transition: opacity 0.3s; }
+  .player-grid.night-phase .player-row.self-seat,
+  .player-grid.night-phase .player-row.night-targetable { opacity: 1; box-shadow: 0 0 12px rgba(96,165,250,0.18); }
   .vote-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: 5px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; background: rgba(231,76,60,0.15); color: #ffd4c7; border: 1px solid rgba(248,113,113,0.18); }
   .subtle { color: #aab4c8; }
   .highlight { color: #f8d189; }
@@ -427,7 +440,7 @@
     .phase-hud-title { font-size: 1.3rem; }
     .phase-hud-current { font-size: 1rem; }
     .phase-hud-timer-box { min-width: 132px; }
-    .phase-hud-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .phase-hud-rail { flex-wrap: nowrap; }
     .ww-chat-view { display: contents !important; }
     .ww-desktop-hero { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 24px; padding: 24px; border-radius: 22px; background: radial-gradient(circle at top left, rgba(192,57,43,0.35), transparent 34%), linear-gradient(135deg, #0e121c 0%, #171c2a 60%, #20283a 100%); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 18px 46px rgba(0,0,0,0.35); }
     .ww-desktop-hero h1 { margin: 0 0 8px; font-family: 'Orbitron', sans-serif; font-size: 2rem; }
@@ -458,7 +471,7 @@
     .spectator-card { padding: 13px 14px; }
     .phase-hud-main { align-items: stretch; }
     .phase-hud-timer-box { min-width: 92px; }
-    .phase-hud-rail { grid-template-columns: 1fr; }
+    .phase-hud-rail { flex-wrap: wrap; }
     .phase-status-main { flex-direction: column; }
     .phase-status-actions { justify-content: stretch; }
     .phase-status-cta { width: 100%; }
@@ -2215,16 +2228,51 @@
         return;
       }
 
+      const phase = currentState?.phase || '';
+      const isNight = phase === 'night';
+      const isVote = phase === 'day-vote';
+
+      // Vote-phase data
       const pendingIds = new Set(((currentState?.actionState?.dayActions?.dayVoteSummary?.pendingActors) || []).map(function(player) {
         return player.playerId;
       }));
       const completedIds = new Set((currentState?.actionState?.dayActions?.dayVoteSummary?.completedActors) || []);
 
+      // Build voter→target map and target→voteCount map from dayVoteSummary
+      const voterToTarget = new Map();
+      const targetVoteCounts = new Map();
+      if (isVote) {
+        const targets = (currentState?.actionState?.dayActions?.dayVoteSummary?.targets) || [];
+        targets.forEach(function(t) {
+          targetVoteCounts.set(t.playerId, Number(t.count || 0));
+          (t.voters || []).forEach(function(v) {
+            voterToTarget.set(v.playerId, t.playerId);
+          });
+        });
+      }
+
+      // Night: collect all targetable player IDs
+      const nightTargetableIds = new Set();
+      if (isNight) {
+        getActiveNightActions(currentState).forEach(function(action) {
+          (action.targets || []).forEach(function(t) {
+            nightTargetableIds.add(t.playerId);
+          });
+        });
+      }
+
+      // Player name lookup
+      const nameById = new Map((players || []).map(function(p) { return [p.playerId, p.name]; }));
+
+      // Toggle night-phase class on grid
+      $root.toggleClass('night-phase', isNight);
+
       players.forEach(function(player, index) {
         const seatNumber = index + 1;
         const playerEmoji = player.revealedRole ? roleEmoji(player.revealedRole) : (player.isSelf ? '🫵' : '👤');
-        const isPending = currentState?.phase === 'day-vote' && player.alive && pendingIds.has(player.playerId);
-        const isCompleted = currentState?.phase === 'day-vote' && player.alive && completedIds.has(player.playerId);
+        const isPending = isVote && player.alive && pendingIds.has(player.playerId);
+        const isCompleted = isVote && player.alive && completedIds.has(player.playerId);
+        const isNightTarget = isNight && nightTargetableIds.has(player.playerId);
 
         const statusParts = [];
         if (!player.alive) {
@@ -2241,8 +2289,19 @@
           statusParts.push(`<div class="player-status-tag">${escapeHtml(player.revealedRole)}</div>`);
         }
 
+        // Vote badge: show who this player voted for
+        if (isVote && voterToTarget.has(player.playerId)) {
+          const targetId = voterToTarget.get(player.playerId);
+          const targetName = nameById.get(targetId) || '?';
+          statusParts.push(`<div class="player-vote-badge">→ ${escapeHtml(targetName)}</div>`);
+        }
+        // Vote badge: show how many votes this player received
+        if (isVote && (targetVoteCounts.get(player.playerId) || 0) > 0) {
+          statusParts.push(`<div class="player-vote-badge received">🗳 ${targetVoteCounts.get(player.playerId)}</div>`);
+        }
+
         $root.append(`
-          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''}">
+          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''}">
             <div class="player-seat-number">${seatNumber}</div>
             <div class="player-avatar-stage">${playerEmoji}</div>
             <div class="player-name">${escapeHtml(player.name)}</div>
@@ -3545,6 +3604,16 @@
 
     $(document).on('click', '.phase-status-cta', function() {
       scrollToGameSection($(this).attr('data-strip-target'));
+    });
+
+    // HUD step tap-to-expand
+    $(document).on('click', '.phase-hud-step', function() {
+      const $step = $(this);
+      const wasExpanded = $step.hasClass('expanded');
+      $('.phase-hud-step').removeClass('expanded');
+      if (!wasExpanded) {
+        $step.addClass('expanded');
+      }
     });
 
     // Delegate winner/restart buttons from mobile panels
