@@ -8,9 +8,12 @@
     html.ww-active,
     html.ww-active body.content {
       overflow: hidden !important;
-      height: 100% !important;
+      height: var(--ww-app-height, 100dvh) !important;
+      min-height: var(--ww-app-height, 100dvh) !important;
       margin: 0 !important;
       padding: 0 !important;
+      background: #0b1220 !important;
+      overscroll-behavior: none !important;
     }
     html.ww-active header,
     html.ww-active .footer {
@@ -55,9 +58,13 @@
     color: #f4f6fb;
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    height: 100dvh;
+    height: var(--ww-app-height, 100dvh);
+    min-height: var(--ww-app-height, 100dvh);
     overflow: hidden;
+    background: #0b1220;
+  }
+  @media (max-width: 960px) {
+    .ww-page { position: fixed; inset: 0; width: 100%; max-height: var(--ww-app-height, 100dvh); }
   }
 
   /* -- top bar (mobile) -- */
@@ -68,6 +75,36 @@
   .ww-topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .ww-topbar-btn { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.05); color: #f4f6fb; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.78rem; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
   .ww-topbar-btn.danger { background: linear-gradient(135deg, #c0392b, #7f1d1d); border: 0; }
+  .phase-hud { flex-shrink: 0; display: grid; gap: 10px; padding: 12px 12px 10px; background: linear-gradient(180deg, rgba(11,18,32,0.98), rgba(14,24,40,0.94)); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .phase-hud-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .phase-hud-copy { min-width: 0; display: grid; gap: 5px; }
+  .phase-hud-kicker { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 4px 10px; border-radius: 999px; background: rgba(250,204,21,0.14); color: #fde68a; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .phase-hud-title { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; line-height: 1.2; color: #fff; }
+  .phase-hud-current { color: #dbeafe; font-size: 0.94rem; line-height: 1.45; }
+  .phase-hud-timer-box { min-width: 102px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); text-align: right; }
+  .phase-hud-timer-label { color: #97a4bf; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .phase-hud-timer { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: #fff4c2; line-height: 1.1; margin-top: 4px; }
+  .phase-hud-meta { color: #cbd5e1; font-size: 0.8rem; margin-top: 4px; }
+  .phase-hud-rail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .phase-hud-step { padding: 10px 11px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
+  .phase-hud-step-label { color: #97a4bf; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .phase-hud-step-body { margin-top: 4px; color: #f8fafc; font-size: 0.86rem; line-height: 1.35; display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .phase-status-strip { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(30,41,59,0.7)); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+  .phase-status-strip.tone-turn { border-color: rgba(250,204,21,0.24); background: radial-gradient(circle at top right, rgba(250,204,21,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
+  .phase-status-strip.tone-watch { border-color: rgba(96,165,250,0.2); background: radial-gradient(circle at top right, rgba(59,130,246,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
+  .phase-status-strip.tone-lock { border-color: rgba(134,239,172,0.18); background: radial-gradient(circle at top right, rgba(34,197,94,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
+  .phase-status-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .phase-status-copy { min-width: 0; display: grid; gap: 4px; }
+  .phase-status-kicker { color: #fde68a; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .phase-status-headline { color: #fff; font-family: 'Orbitron', sans-serif; font-size: 1rem; line-height: 1.25; }
+  .phase-status-detail { color: #dbeafe; font-size: 0.9rem; line-height: 1.42; }
+  .phase-status-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .phase-status-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06); color: #f8fafc; font-family: 'Rajdhani', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+  .phase-status-cta.primary { border: 0; background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+  .phase-status-cta.secondary { color: #dbeafe; }
+  .phase-status-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .phase-status-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #e2e8f0; font-size: 0.82rem; font-weight: 700; }
+  .phase-status-chip strong { color: #fff; font-weight: 700; }
 
   /* -- view switcher (mobile: 2 tabs Chat/Game) -- */
   .ww-view-switcher { flex-shrink: 0; display: flex; background: rgba(20,25,39,0.95); border-bottom: 1px solid rgba(255,255,255,0.04); }
@@ -76,7 +113,7 @@
   .ww-view-tab .ww-tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: #e74c3c; color: #fff; font-size: 0.68rem; font-weight: 700; vertical-align: middle; }
 
   /* -- mobile game panel (scrollable, shown when game tab active) -- */
-  .ww-game-panel { display: none; flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 10px; }
+  .ww-game-panel { display: none; flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   .ww-game-panel.active { display: flex; flex-direction: column; gap: 8px; }
   .ww-game-section { padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
   .ww-game-section:first-child { flex: 1 1 auto; }
@@ -95,7 +132,7 @@
   .ww-chat-head { display: none; }
 
   /* -- chat/composer hidden when game tab is active -- */
-  .ww-chat-view { display: contents; }
+  .ww-chat-view { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
   .ww-chat-view.hidden { display: none; }
 
   /* -- filter tabs -- */
@@ -106,7 +143,7 @@
   .chat-tab[data-chat-filter="wolf"].active { background: linear-gradient(135deg, rgba(127,29,29,0.42), rgba(185,28,28,0.22)); border-color: rgba(248,113,113,0.32); }
 
   /* -- chat messages -- */
-  .ww-chat-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .ww-chat-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 6px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
   /* -- composer -- */
   .ww-composer { flex-shrink: 0; padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); background: rgba(14,18,28,0.96); border-top: 1px solid rgba(255,255,255,0.06); }
@@ -125,11 +162,11 @@
   .ww-action-section { display: none; }
 
   /* -- desktop layout: on mobile, becomes a flex column for chat -- */
-  .ww-desktop-layout { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+  .ww-desktop-layout { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
   .ww-desktop-layout.game-active { display: none; }
   .ww-desktop-layout > .ww-col-left { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
   .ww-desktop-layout > .ww-col-right { display: none; }
-  .ww-chat-wrap { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+  .ww-chat-wrap { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
   .ww-chat-head { display: none; }
 
   /* ===== CHAT MESSAGE BUBBLES ===== */
@@ -157,7 +194,7 @@
   .chat-message-wrapper.chat-group-wolf .chat-avatar { background: rgba(127,29,29,0.38); }
   .chat-message-wrapper.chat-group-wolf .chat-message-meta { color: #fca5a5; }
   .chat-message-name { font-weight: 700; font-size: 0.82rem; margin-bottom: 2px; }
-  .chat-message-wrapper.system .chat-message-name { display: flex; justify-content: center; font-size: 0.78rem; }
+    .chat-message-wrapper.system .chat-message-name { display: none; }
   .chat-channel-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 4px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
   .chat-channel-badge.channel-public { background: rgba(59,130,246,0.16); color: #dbeafe; border: 1px solid rgba(96,165,250,0.16); }
   .chat-channel-badge.channel-wolf { background: rgba(127,29,29,0.36); color: #fee2e2; border: 1px solid rgba(248,113,113,0.18); }
@@ -184,7 +221,7 @@
   .action-btn.reveal { background: linear-gradient(135deg, #d97706, #b45309); }
   .action-btn.selected { box-shadow: 0 0 0 2px rgba(255,255,255,0.16) inset; }
   .action-btn:disabled, .werewolf-btn:disabled, .ghost-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .history-row, .player-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.04); }
+  .history-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.04); }
   .note-row { display: grid; gap: 8px; padding: 12px 13px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
   .note-row.note-empty { color: #aab4c8; }
   .note-row.note-seer { background: linear-gradient(135deg, rgba(79,70,229,0.18), rgba(59,130,246,0.08)); border-color: rgba(129,140,248,0.22); }
@@ -204,6 +241,7 @@
   .note-body { color: #f5f7fc; line-height: 1.45; font-size: 0.98rem; }
   .note-body strong { color: #fff4c2; font-weight: 700; }
   .player-grid, .actions-grid, .note-grid, .target-grid { display: grid; gap: 8px; }
+  .player-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .target-grid { grid-template-columns: 1fr; margin-top: 10px; }
   .target-card { position: relative; overflow: hidden; padding: 14px; border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease; isolation: isolate; }
   .target-card::before { content: ''; position: absolute; inset: -24%; background: radial-gradient(circle at center, var(--target-accent, rgba(250,204,21,0.24)), transparent 58%); opacity: 0; transform: scale(0.5); pointer-events: none; z-index: 0; }
@@ -274,12 +312,23 @@
     50% { box-shadow: 0 0 0 1px rgba(250,204,21,0.35), 0 22px 40px rgba(0,0,0,0.34), 0 0 28px rgba(250,204,21,0.16); }
   }
   .action-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-  .player-row.dead { opacity: 0.55; }
-  .player-name-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .player-side-meta { display: grid; justify-items: end; gap: 6px; }
-  .player-status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 0.82rem; background: rgba(255,255,255,0.06); }
-  .player-status-badge.alive { color: #f8d189; }
-  .player-status-badge.dead { color: #aab4c8; }
+  .player-row { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 10px; border-radius: 16px; background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.06); text-align: center; overflow: hidden; min-width: 0; }
+  .player-row.dead { opacity: 0.42; }
+  .player-row.dead .player-name { text-decoration: line-through; }
+  .player-row.self-seat { border-color: rgba(250,204,21,0.35); background: linear-gradient(145deg, rgba(250,204,21,0.08), rgba(255,255,255,0.02)); }
+  .player-row.revealed-seat { border-color: rgba(96,165,250,0.28); }
+  .player-row.pending-decision { border-color: rgba(248,113,113,0.2); }
+  .player-row.completed-decision { border-color: rgba(34,197,94,0.18); }
+  .player-seat-number { position: absolute; top: 4px; left: 6px; font-size: 0.68rem; font-weight: 700; color: #97a4bf; }
+  .player-avatar-stage { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.6rem; background: linear-gradient(145deg, rgba(37,99,235,0.15), rgba(15,23,42,0.28)); border: 2px solid rgba(255,255,255,0.1); }
+  .player-row.dead .player-avatar-stage { background: linear-gradient(145deg, rgba(71,85,105,0.2), rgba(15,23,42,0.2)); border-color: rgba(255,255,255,0.05); }
+  .player-name { font-size: 0.78rem; font-weight: 700; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .player-status-tag { font-size: 0.64rem; font-weight: 700; color: #aab4c8; }
+  .player-status-tag.alive { color: #a3e635; }
+  .player-status-tag.dead { color: #ef4444; }
+  .player-status-tag.voted { color: #60a5fa; }
+  .player-status-tag.mayor-tag { color: #fbbf24; }
+  .player-main, .player-topline, .player-role-line, .player-chip-row, .player-chip, .player-status-badge { display: none; }
   .vote-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: 5px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; background: rgba(231,76,60,0.15); color: #ffd4c7; border: 1px solid rgba(248,113,113,0.18); }
   .subtle { color: #aab4c8; }
   .highlight { color: #f8d189; }
@@ -296,6 +345,68 @@
   .room-role-count { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #fde68a; font-size: 0.78rem; font-weight: 700; }
   .room-role-card-body { color: #d5def0; line-height: 1.45; font-size: 0.92rem; }
   .room-role-card-team { margin-top: 7px; color: #97a4bf; font-size: 0.82rem; }
+  .phase-recap-card { display: grid; gap: 12px; padding: 16px 18px; border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03); }
+  .phase-recap-card.recap-cinematic { background: radial-gradient(circle at top left, rgba(248,113,113,0.18), transparent 32%), linear-gradient(145deg, rgba(28,37,68,0.94), rgba(15,23,42,0.9)); border-color: rgba(251,191,36,0.2); }
+  .phase-recap-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .phase-recap-kicker { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #fde68a; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+  .phase-recap-title { font-family: 'Orbitron', sans-serif; font-size: 1.02rem; font-weight: 700; color: #fff; }
+  .phase-recap-phase { color: #cbd5e1; font-size: 0.84rem; }
+  .phase-recap-grid { display: grid; gap: 10px; }
+  .phase-recap-item { padding: 12px 13px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); }
+  .phase-recap-label { color: #dbeafe; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px; }
+  .phase-recap-body { color: #f8fafc; line-height: 1.5; font-size: 0.96rem; }
+  .decision-receipt { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); }
+  .decision-receipt-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .decision-receipt-title { color: #fff; font-weight: 700; font-size: 0.96rem; }
+  .decision-receipt-subtitle { color: #aab4c8; font-size: 0.84rem; }
+  .decision-receipt-list { display: grid; gap: 8px; }
+  .receipt-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); }
+  .receipt-item-icon { width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+  .receipt-item-body { display: grid; gap: 3px; }
+  .receipt-item-title { color: #fff; font-weight: 700; font-size: 0.94rem; }
+  .receipt-item-caption { color: #cbd5e1; font-size: 0.82rem; }
+  .receipt-item.tone-soft { border-color: rgba(125,211,252,0.18); background: linear-gradient(145deg, rgba(14,165,233,0.12), rgba(30,41,59,0.32)); }
+  .receipt-item.tone-vote { border-color: rgba(96,165,250,0.22); background: linear-gradient(145deg, rgba(37,99,235,0.18), rgba(15,23,42,0.36)); }
+  .receipt-item.tone-heavy { border-color: rgba(248,113,113,0.22); background: linear-gradient(145deg, rgba(127,29,29,0.32), rgba(69,10,10,0.36)); }
+  .receipt-item.tone-lock { border-color: rgba(251,191,36,0.22); background: linear-gradient(145deg, rgba(180,83,9,0.22), rgba(120,53,15,0.34)); }
+  .spectator-card { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(148,163,184,0.16); background: linear-gradient(145deg, rgba(71,85,105,0.28), rgba(15,23,42,0.45)); }
+  .spectator-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .spectator-title { color: #fff; font-weight: 700; font-size: 0.98rem; }
+  .spectator-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #e2e8f0; font-size: 0.78rem; font-weight: 700; }
+  .spectator-grid { display: grid; gap: 8px; }
+  .spectator-item { padding: 11px 12px; border-radius: 13px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); }
+  .memory-rail { display: grid; gap: 8px; margin-bottom: 8px; }
+  .memory-rail-title { display: inline-flex; align-items: center; gap: 8px; color: #fde68a; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+  .memory-rail-items { display: grid; gap: 8px; }
+  .memory-rail-item { padding: 10px 11px; border-radius: 13px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); display: grid; gap: 4px; }
+  .memory-rail-head { display: flex; align-items: center; gap: 8px; color: #dbeafe; font-size: 0.8rem; font-weight: 700; }
+  .memory-rail-body { color: #f5f7fc; line-height: 1.42; font-size: 0.9rem; }
+  .player-row.pending-decision { border: 1px solid rgba(248,113,113,0.16); background: linear-gradient(145deg, rgba(127,29,29,0.18), rgba(255,255,255,0.04)); }
+  .player-row.completed-decision { border: 1px solid rgba(34,197,94,0.12); }
+  .player-decision-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.08); }
+  .player-decision-badge.pending { background: rgba(127,29,29,0.36); color: #fee2e2; border-color: rgba(248,113,113,0.18); }
+  .player-decision-badge.ready { background: rgba(5,150,105,0.18); color: #d1fae5; border-color: rgba(110,231,183,0.18); }
+  .target-vote-pending-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .target-vote-pending-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(127,29,29,0.38); border: 1px solid rgba(248,113,113,0.18); color: #fee2e2; font-size: 0.8rem; font-weight: 700; }
+  .target-vote-pending-badge.done { background: rgba(5,150,105,0.18); border-color: rgba(110,231,183,0.18); color: #d1fae5; }
+  .turn-focus { position: relative; border: 1px solid rgba(250,204,21,0.22); box-shadow: 0 0 0 1px rgba(250,204,21,0.08), 0 18px 34px rgba(0,0,0,0.28); }
+  .turn-focus::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid rgba(250,204,21,0.24); opacity: 0.9; pointer-events: none; animation: spotlightPulse 1.9s ease-in-out infinite; }
+  .turn-focus .action-title strong { color: #fff4c2; }
+  .ww-page.my-turn-active::after { content: ''; position: fixed; inset: 0; background: rgba(5,8,15,0.68); backdrop-filter: blur(4px); pointer-events: none; z-index: 40; }
+  .ww-page.phase-lock.my-turn-active::after { opacity: 0; }
+  .ww-page.my-turn-active .turn-focus,
+  .ww-page.my-turn-active .decision-receipt,
+  .ww-page.my-turn-active .phase-recap-card,
+  .ww-page.my-turn-active .spectator-card { position: relative; z-index: 60; }
+  .ww-page.my-turn-active .ww-action-section,
+  .ww-page.my-turn-active #mobileActionPanels { position: relative; z-index: 55; }
+  .ww-page.keyboard-open .phase-hud { gap: 8px; padding-bottom: 8px; }
+  .ww-page.keyboard-open .phase-hud-rail,
+  .ww-page.keyboard-open .phase-status-strip { display: none; }
+  @keyframes spotlightPulse {
+    0%, 100% { opacity: 0.62; box-shadow: 0 0 0 0 rgba(250,204,21,0.08); }
+    50% { opacity: 1; box-shadow: 0 0 0 10px rgba(250,204,21,0.02); }
+  }
 
   .ww-page.phase-lock .action-btn, .ww-page.phase-lock .werewolf-btn, .ww-page.phase-lock .ghost-btn, .ww-page.phase-lock textarea { pointer-events: none; opacity: 0.7; }
   .ww-page.phase-lock .target-card-actionable, .ww-page.pending-actions .target-card-actionable { pointer-events: none; opacity: 0.68; }
@@ -312,6 +423,11 @@
     .ww-view-switcher { display: none; }
     .ww-mobile-winner { display: none !important; }
     .ww-game-panel { display: none !important; }
+    .phase-hud { margin-bottom: 18px; padding: 16px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06); background: linear-gradient(145deg, #141927, #1b2232); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
+    .phase-hud-title { font-size: 1.3rem; }
+    .phase-hud-current { font-size: 1rem; }
+    .phase-hud-timer-box { min-width: 132px; }
+    .phase-hud-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .ww-chat-view { display: contents !important; }
     .ww-desktop-hero { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 24px; padding: 24px; border-radius: 22px; background: radial-gradient(circle at top left, rgba(192,57,43,0.35), transparent 34%), linear-gradient(135deg, #0e121c 0%, #171c2a 60%, #20283a 100%); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 18px 46px rgba(0,0,0,0.35); }
     .ww-desktop-hero h1 { margin: 0 0 8px; font-family: 'Orbitron', sans-serif; font-size: 2rem; }
@@ -337,7 +453,23 @@
     .target-card-avatar { width: 46px; height: 46px; border-radius: 14px; }
     .target-card-name { font-size: 0.96rem; }
     .target-vote-live-head { align-items: flex-start; }
+    .phase-recap-card,
+    .decision-receipt,
+    .spectator-card { padding: 13px 14px; }
+    .phase-hud-main { align-items: stretch; }
+    .phase-hud-timer-box { min-width: 92px; }
+    .phase-hud-rail { grid-template-columns: 1fr; }
+    .phase-status-main { flex-direction: column; }
+    .phase-status-actions { justify-content: stretch; }
+    .phase-status-cta { width: 100%; }
   }
+
+    @media (min-width: 720px) {
+      .player-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    }
+    @media (min-width: 1100px) {
+      .player-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
 
   @media (prefers-reduced-motion: reduce) {
     .target-card,
@@ -387,6 +519,49 @@
     </div>
   </div>
 
+  <div id="phaseHud" class="phase-hud">
+    <div class="phase-hud-main">
+      <div class="phase-hud-copy">
+        <div id="phaseHudKicker" class="phase-hud-kicker">📍 ตอนนี้</div>
+        <div id="phaseHudTitle" class="phase-hud-title"><%= werewolfState?.phase || 'lobby' %></div>
+        <div id="phaseHudCurrent" class="phase-hud-current">รอระบบสรุปสถานะของเกม</div>
+      </div>
+      <div class="phase-hud-timer-box">
+        <div class="phase-hud-timer-label">เวลาที่เหลือ</div>
+        <div id="phaseHudTimer" class="phase-hud-timer">-</div>
+        <div id="phaseHudMeta" class="phase-hud-meta">วันที่ <%= werewolfState?.dayNumber || 0 %></div>
+      </div>
+    </div>
+    <div class="phase-hud-rail">
+      <div class="phase-hud-step">
+        <div class="phase-hud-step-label">เมื่อกี้</div>
+        <div id="phaseHudPast" class="phase-hud-step-body">รอข้อมูล</div>
+      </div>
+      <div class="phase-hud-step">
+        <div class="phase-hud-step-label">ทำอะไรได้</div>
+        <div id="phaseHudNow" class="phase-hud-step-body">รอข้อมูล</div>
+      </div>
+      <div class="phase-hud-step">
+        <div class="phase-hud-step-label">เป้าหมาย</div>
+        <div id="phaseHudGoal" class="phase-hud-step-body">รอข้อมูล</div>
+      </div>
+    </div>
+    <div id="phaseStatusStrip" class="phase-status-strip tone-watch">
+      <div class="phase-status-main">
+        <div class="phase-status-copy">
+          <div id="phaseStatusKicker" class="phase-status-kicker">สิ่งที่ควรทำตอนนี้</div>
+          <div id="phaseStatusHeadline" class="phase-status-headline">ดูสถานะโต๊ะ แล้วตัดสินใจจากการ์ดผู้เล่น</div>
+          <div id="phaseStatusDetail" class="phase-status-detail">ระบบจะชี้ให้ว่าควรเปิดตาของคุณหรือควรไล่ดูผู้เล่นก่อน</div>
+        </div>
+        <div class="phase-status-actions">
+          <button id="phaseStatusPrimary" class="phase-status-cta primary" type="button" data-strip-target="actions">🎯 เปิดตาของคุณ</button>
+          <button id="phaseStatusSecondary" class="phase-status-cta secondary" type="button" data-strip-target="players">👥 ดูผู้เล่น</button>
+        </div>
+      </div>
+      <div id="phaseStatusChips" class="phase-status-chips"></div>
+    </div>
+  </div>
+
   <!-- ===== MOBILE VIEW SWITCHER ===== -->
   <div class="ww-view-switcher">
     <button class="ww-view-tab active" type="button" data-view="chat">💬 แชท</button>
@@ -401,8 +576,8 @@
 
   <!-- ===== MOBILE GAME PANEL (inline, no popups) ===== -->
   <div id="mobileGamePanel" class="ww-game-panel">
-    <div class="ww-game-section">
-      <div class="ww-game-section-title">🎯 ตาของคุณ</div>
+    <div id="mobileActionSection" class="ww-game-section">
+      <div class="ww-game-section-title">🎯 สกิลของคุณ</div>
       <div id="mobileActionPanels" class="actions-grid"></div>
     </div>
     <div class="ww-game-section">
@@ -417,8 +592,8 @@
       <div class="ww-game-section-title">📚 บทที่เปิดในห้องนี้</div>
       <div id="mobileRoomRoleSummary" class="room-role-summary"></div>
     </div>
-    <div class="ww-game-section">
-      <div class="ww-game-section-title">👥 ผู้เล่น</div>
+    <div id="mobilePlayerSection" class="ww-game-section">
+      <div class="ww-game-section-title">👥 ที่นั่ง</div>
       <div id="mobilePlayerGrid" class="player-grid"></div>
     </div>
   </div>
@@ -482,8 +657,8 @@
       </div>
 
       <!-- Action panels (desktop only) -->
-      <div class="ww-action-section ww-card">
-        <h3>ตาของคุณ</h3>
+      <div id="actionSection" class="ww-action-section ww-card">
+        <h3>สกิลของคุณ</h3>
         <div id="actionPanels" class="actions-grid"></div>
       </div>
     </div>
@@ -508,8 +683,8 @@
         </div>
         <div id="roomRoleSummary" class="room-role-summary"></div>
       </div>
-      <div class="ww-card">
-        <h3>ผู้เล่นในเกม</h3>
+      <div id="playerBoardSection" class="ww-card">
+        <h3>ที่นั่ง</h3>
         <div id="werewolfPlayers" class="player-grid"></div>
       </div>
     </div>
@@ -766,6 +941,386 @@
       }) || null;
     }
 
+    function getSelfPlayer() {
+      return getPlayerById(playerId);
+    }
+
+    function describeTarget(targetPlayerId, fallbackLabel) {
+      if (!targetPlayerId) {
+        return fallbackLabel || 'เป้าหมาย';
+      }
+
+      if (targetPlayerId === '__skip__') {
+        return 'ข้ามรอบนี้';
+      }
+
+      return getPlayerById(targetPlayerId)?.name || fallbackLabel || 'เป้าหมาย';
+    }
+
+    function getActiveNightActions(state) {
+      return Array.isArray(state?.actionState?.nightActions)
+        ? state.actionState.nightActions.filter(function(action) {
+            return action && Object.prototype.hasOwnProperty.call(action, 'targets');
+          })
+        : [];
+    }
+
+    function hasLiveTurnFocus(state) {
+      if (!state || state.winner) {
+        return false;
+      }
+
+      const selfPlayer = (state.players || []).find(function(player) {
+        return player.isSelf;
+      });
+      if (selfPlayer && selfPlayer.alive === false) {
+        return false;
+      }
+
+      if (state.phase === 'night') {
+        return getActiveNightActions(state).some(function(action) {
+          return Array.isArray(action.targets) && (action.targets.length > 0 || action.allowSkip);
+        });
+      }
+
+      if (state.phase === 'day-discussion') {
+        const discussion = state?.actionState?.discussionActions || {};
+        return Boolean(discussion.canSkip || discussion.canRevealMayor);
+      }
+
+      if (state.phase === 'day-vote') {
+        const dayActions = state?.actionState?.dayActions || {};
+        return Boolean(dayActions.canVote || dayActions.canReveal || dayActions.canRevealMayor);
+      }
+
+      return false;
+    }
+
+    function buildPhaseRecapModel(state) {
+      const phase = state?.phase || 'lobby';
+      const selfPlayer = (state?.players || []).find(function(player) {
+        return player.isSelf;
+      });
+      const isAlive = !selfPlayer || selfPlayer.alive !== false;
+      const nightActions = getActiveNightActions(state);
+      const dayActions = state?.actionState?.dayActions || {};
+      const daySummary = dayActions.dayVoteSummary || null;
+      const discussion = state?.actionState?.discussionActions || {};
+      const morning = state?.morningAnnouncement || null;
+      const dayResolution = state?.dayResolutionAnnouncement || null;
+
+      const model = {
+        title: phase === 'finished' ? 'สรุปรอบ' : 'สถานะเกม',
+        phaseText: phaseLabel(phase),
+        kicker: phase === 'finished' ? 'จบรอบ' : 'Recap',
+        tone: phase === 'finished' ? 'cinematic' : 'normal',
+        sections: []
+      };
+
+      if (phase === 'night') {
+        const canAct = nightActions.some(function(action) {
+          return Array.isArray(action.targets) && (action.targets.length > 0 || action.allowSkip);
+        });
+        model.sections = [
+          {
+            label: 'เมื่อกี้',
+            body: dayResolution ? dayResolution.lead : (Number(state?.dayNumber || 1) === 1 ? 'เกมเพิ่งเริ่ม! คืนแรกเปิดฉาก' : 'โหวตจบ เข้ากลางคืน')
+          },
+          {
+            label: 'ทำอะไรได้',
+            body: !isAlive
+              ? 'ตายแล้ว ดูได้อย่างเดียว'
+              : (canAct
+                ? 'ถึงตาแล้ว! กดใช้สกิลเลย'
+                : 'คืนนี้ไม่มีสกิล นั่งรอเช้า')
+          },
+          {
+            label: 'เป้าหมาย',
+            body: !isAlive
+              ? 'จับข้อมูลไว้อ่านเกมตอนเช้า'
+              : (canAct
+                ? 'ล็อกเป้าหมายให้เรียบร้อยก่อนหมดเวลา'
+                : 'รอทุกคนเล่นจบคืน แล้วเช็กผลตอนเช้า')
+          }
+        ];
+        return model;
+      }
+
+      if (phase === 'day-discussion') {
+        model.sections = [
+          {
+            label: 'เมื่อคืน',
+            body: morning ? morning.lead : 'คืนจบแล้ว รอฟังข่าวเช้า'
+          },
+          {
+            label: 'ทำอะไรได้',
+            body: !isAlive
+              ? 'ตายแล้ว อ่านแชทได้อย่างเดียว'
+              : (discussion.canSkip
+                ? 'คุยจับพิรุธ กดข้ามไปโหวตได้ถ้าพร้อม'
+                : 'คุยต่อไป รอเปิดโหวต')
+          },
+          {
+            label: 'เป้าหมาย',
+            body: !isAlive
+              ? 'ดูว่ากระแสสงสัยไหลไปทางไหน'
+              : 'แคบวงให้เหลือคนน่าสงสัยก่อนโหวต'
+          }
+        ];
+        return model;
+      }
+
+      if (phase === 'day-vote') {
+        const completed = Number(daySummary?.totalCompletedDecisions || dayActions.completedVotes || 0);
+        const total = Number(daySummary?.totalAlive || dayActions.totalVoters || 0);
+        model.sections = [
+          {
+            label: 'เมื่อกี้',
+            body: morning ? (morning.detail || morning.lead) : 'ประชุมจบ เปิดโหวต!'
+          },
+          {
+            label: 'ทำอะไรได้',
+            body: !isAlive
+              ? 'ดูผลโหวตสดได้ แต่โหวตไม่ได้'
+              : (dayActions.canVote
+                ? 'เลือกคนที่สงสัย หรือข้ามโหวตก็ได้'
+                : 'โหวตแล้ว เปลี่ยนใจได้จนกว่าหมดเวลา')
+          },
+          {
+            label: 'เป้าหมาย',
+            body: total > 0
+              ? `โหวตแล้ว ${completed}/${total} คน`
+              : 'ตัดสินใจว่าจะไล่ใครออกจากหมู่บ้าน'
+          }
+        ];
+        return model;
+      }
+
+      if (phase === 'finished') {
+        const winnerText = state?.winner === 'village'
+          ? '🏡 ชาวบ้านชนะ!'
+          : (state?.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : '🤪 คนบ้าชนะ!');
+        model.sections = [
+          {
+            label: 'ผลรอบนี้',
+            body: winnerText
+          },
+          {
+            label: 'ทำอะไรได้',
+            body: isRoomAdmin ? 'กดเริ่มรอบใหม่ได้เลย' : 'รอหัวหน้าห้องเริ่มรอบใหม่'
+          },
+          {
+            label: 'เป้าหมาย',
+            body: 'ดูบทที่เปิด แล้วเล่นรอบต่อไป!'
+          }
+        ];
+        return model;
+      }
+
+      model.sections = [
+        {
+          label: 'เมื่อกี้',
+          body: 'กำลังจัดห้อง เตรียมเริ่ม Werewolf'
+        },
+        {
+          label: 'ทำอะไรได้',
+          body: 'เช็กบทที่เปิด แล้วรอเริ่มเกม'
+        },
+        {
+          label: 'เป้าหมาย',
+          body: 'เตรียมตัวก่อนเข้าคืนแรก'
+        }
+      ];
+      return model;
+    }
+
+    function buildPhaseRecapHtml(state) {
+      const recap = buildPhaseRecapModel(state);
+      if (!recap || !Array.isArray(recap.sections) || recap.sections.length === 0) {
+        return '';
+      }
+
+      return `
+        <div class="phase-recap-card ${recap.tone === 'cinematic' ? 'recap-cinematic' : ''}">
+          <div class="phase-recap-head">
+            <div>
+              <div class="phase-recap-kicker">📌 ${escapeHtml(recap.kicker || 'Phase Recap')}</div>
+              <div class="phase-recap-title">${escapeHtml(recap.title || 'สรุปเฟส')}</div>
+            </div>
+            <div class="phase-recap-phase">${escapeHtml(recap.phaseText || '')}</div>
+          </div>
+          <div class="phase-recap-grid">
+            ${recap.sections.map(function(section) {
+              return `
+                <div class="phase-recap-item">
+                  <div class="phase-recap-label">${escapeHtml(section.label || '')}</div>
+                  <div class="phase-recap-body">${escapeHtml(section.body || '-')}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function decisionReceiptTone(actionType, locked) {
+      if (locked) {
+        return 'tone-lock';
+      }
+      if (actionType === 'day-vote' || actionType === 'discussion-skip') {
+        return 'tone-vote';
+      }
+      if (actionType === 'night-kill' || actionType === 'witch-poison' || actionType === 'reveal-action') {
+        return 'tone-heavy';
+      }
+      return 'tone-soft';
+    }
+
+    function buildDecisionReceiptItems(state) {
+      const phase = state?.phase || 'lobby';
+      const items = [];
+      const dayActions = state?.actionState?.dayActions || {};
+      const discussion = state?.actionState?.discussionActions || {};
+
+      if (phase === 'night') {
+        getActiveNightActions(state).forEach(function(action) {
+          if (!action?.selectedTargetId) {
+            return;
+          }
+
+          const targetName = describeTarget(action.selectedTargetId, 'เป้าหมาย');
+          const copyMap = {
+            'night-kill': `คุณเลือกเหยื่อเป็น ${targetName} แล้ว`,
+            'seer-check': `คุณเลือกตรวจ ${targetName} แล้ว`,
+            'doctor-save': `คุณเลือกช่วย ${targetName} แล้ว`,
+            'bodyguard-protect': `คุณเลือกคุ้มกัน ${targetName} แล้ว`,
+            'witch-heal': action.selectedTargetId === '__skip__' ? 'คุณเลือกเก็บยาฟื้นไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาฟื้นกับ ${targetName} แล้ว`,
+            'witch-poison': action.selectedTargetId === '__skip__' ? 'คุณเลือกเก็บยาพิษไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาพิษกับ ${targetName} แล้ว`
+          };
+          items.push({
+            icon: actionEmoji(action.type),
+            title: copyMap[action.type] || `คุณเลือก ${targetName} แล้ว`,
+            caption: action.locked ? 'ระบบรับการตัดสินใจแล้ว และจะค้างไว้จนจบเฟสนี้' : 'ระบบรับอินพุตแล้ว ถ้ากติกาอนุญาตคุณยังเปลี่ยนเป้าได้',
+            tone: decisionReceiptTone(action.type, action.locked)
+          });
+        });
+      }
+
+      if (phase === 'day-discussion') {
+        if (discussion.hasSkipped) {
+          items.push({
+            icon: '⏭️',
+            title: 'คุณกดพร้อมข้ามช่วงคุยแล้ว',
+            caption: 'ระบบนับคุณในฝั่งคนที่พร้อมเปิดโหวตทันที',
+            tone: decisionReceiptTone('discussion-skip', true)
+          });
+        }
+        if (state?.playerRole?.id === 'mayor' && discussion.mayorRevealed) {
+          items.push({
+            icon: '🎖️',
+            title: 'คุณเปิดตัวเป็นนายกแล้ว',
+            caption: `เสียงโหวตของคุณตอนนี้หนัก ${discussion.currentVoteWeight || 2} เสียง`,
+            tone: 'tone-lock'
+          });
+        }
+      }
+
+      if (phase === 'day-vote') {
+        if (dayActions.selectedVoteTargetId) {
+          const targetName = describeTarget(dayActions.selectedVoteTargetId, 'เป้าหมาย');
+          items.push({
+            icon: '🗳️',
+            title: dayActions.selectedVoteTargetId === '__skip__'
+              ? 'คุณเลือกข้ามโหวตรอบนี้แล้ว'
+              : `คุณเลือกโหวต ${targetName} แล้ว`,
+            caption: 'ระบบรับคะแนนของคุณแล้ว และทุกคนเห็นผลสดบนการ์ด',
+            tone: decisionReceiptTone('day-vote', false)
+          });
+        }
+        if (state?.playerRole?.id === 'mayor' && dayActions.mayorRevealed) {
+          items.push({
+            icon: '🎖️',
+            title: 'คุณเปิดตัวเป็นนายกแล้ว',
+            caption: `เสียงโหวตของคุณตอนนี้หนัก ${dayActions.currentVoteWeight || 2} เสียง`,
+            tone: 'tone-lock'
+          });
+        }
+        if (state?.playerRole?.id === 'revealer' && dayActions.revealUsed) {
+          items.push({
+            icon: '💥',
+            title: 'คุณใช้สกิลเปิดโปงแล้ว',
+            caption: 'สกิลนี้ถูกใช้ไปแล้วในรอบนี้',
+            tone: 'tone-heavy'
+          });
+        }
+      }
+
+      return items;
+    }
+
+    function buildDecisionReceiptHtml(state) {
+      const items = buildDecisionReceiptItems(state);
+      if (!items.length) {
+        return '';
+      }
+
+      return `
+        <div class="decision-receipt" aria-live="polite">
+          <div class="decision-receipt-head">
+            <div class="decision-receipt-title">สถานะของคุณ</div>
+            <div class="decision-receipt-subtitle">ระบบรับคำสั่งแล้ว</div>
+          </div>
+          <div class="decision-receipt-list">
+            ${items.map(function(item) {
+              return `
+                <div class="receipt-item ${escapeHtml(item.tone || 'tone-soft')}">
+                  <div class="receipt-item-icon">${escapeHtml(item.icon || '✅')}</div>
+                  <div class="receipt-item-body">
+                    <div class="receipt-item-title">${escapeHtml(item.title || '-')}</div>
+                    <div class="receipt-item-caption">${escapeHtml(item.caption || '')}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function buildSpectatorModeHtml(state) {
+      const selfPlayer = (state?.players || []).find(function(player) {
+        return player.isSelf;
+      });
+      if (!selfPlayer || selfPlayer.alive !== false || state?.winner) {
+        return '';
+      }
+
+      const items = [
+        { title: 'ดูอะไรได้บ้าง', body: 'ดูประกาศ แชทที่ระบบเปิดให้เห็น และตามจังหวะของแต่ละเฟสได้ต่อ' },
+        { title: 'เห็นผลโหวตสด', body: 'ช่วงโหวตกลางวันคุณยังเห็นว่าใครลงให้ใคร และใครยังไม่ตัดสินใจ' },
+        { title: 'ทำอะไรไม่ได้แล้ว', body: 'คุณใช้สกิล ส่งข้อความ และลงคะแนนไม่ได้ จังหวะนี้คือโหมดสังเกตการณ์เต็มตัว' }
+      ];
+
+      return `
+        <div class="spectator-card">
+          <div class="spectator-head">
+            <div class="spectator-title">โหมดหลังตาย</div>
+            <div class="spectator-pill">💀 Spectator</div>
+          </div>
+          <div class="spectator-grid">
+            ${items.map(function(item) {
+              return `
+                <div class="spectator-item">
+                  <div class="phase-recap-label">${escapeHtml(item.title)}</div>
+                  <div class="phase-recap-body">${escapeHtml(item.body)}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     function getActionTheme(actionType) {
       const themeMap = {
         'night-kill': 'kill',
@@ -938,15 +1493,221 @@
       return window.matchMedia('(max-width: 960px)').matches;
     }
 
+    function syncViewportHeight() {
+      const viewport = window.visualViewport;
+      const height = viewport ? Math.round(viewport.height) : window.innerHeight;
+      const keyboardOffset = viewport ? Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)) : 0;
+      document.documentElement.style.setProperty('--ww-app-height', height + 'px');
+      document.documentElement.style.setProperty('--ww-keyboard-offset', keyboardOffset + 'px');
+
+      const isKeyboardOpen = keyboardOffset > 120 || (viewport ? (window.innerHeight - viewport.height) > 140 : false);
+      $('#werewolfShell').toggleClass('keyboard-open', isKeyboardOpen);
+
+      if (isKeyboardOpen && !$('#mobileGamePanel').hasClass('active')) {
+        window.requestAnimationFrame(function() {
+          scrollChatToBottom();
+        });
+      }
+    }
+
+    function buildPhaseHudModel(state) {
+      const recap = buildPhaseRecapModel(state);
+      const sections = recap?.sections || [];
+      const phase = state?.phase || 'lobby';
+      const dayNumber = Number(state?.dayNumber || 0);
+      const dayActions = state?.actionState?.dayActions || {};
+      const daySummary = dayActions.dayVoteSummary || null;
+      const discussion = state?.actionState?.discussionActions || {};
+      const canAct = hasLiveTurnFocus(state);
+      let metaText = dayNumber > 0 ? `วันที่ ${dayNumber}` : 'ก่อนเริ่มเกม';
+
+      if (phase === 'day-vote' && daySummary) {
+        metaText += ` • ตัดสินใจแล้ว ${daySummary.totalCompletedDecisions || 0}/${daySummary.totalAlive || 0}`;
+      } else if (phase === 'day-discussion' && Number(discussion.totalAlive || 0) > 0) {
+        metaText += ` • พร้อมข้าม ${discussion.skipCount || 0}/${discussion.totalAlive || 0}`;
+      } else if (canAct) {
+        metaText += ' • ถึงตาคุณ';
+      }
+
+      return {
+        title: `${phaseIcon(phase)} ${phaseLabel(phase)}`,
+        current: sections[1]?.body || 'รอระบบอัปเดตสถานะของเกม',
+        past: sections[0]?.body || 'รอข้อมูล',
+        now: sections[1]?.body || 'รอข้อมูล',
+        goal: sections[2]?.body || 'รอข้อมูล',
+        timer: formatCountdown(state?.phaseEndsAt || null),
+        meta: metaText,
+        kicker: canAct ? '🎯 ถึงตา!' : (state?.winner ? '🏁 จบ!' : '📍 สถานะ')
+      };
+    }
+
+    function buildPhaseStatusStripModel(state) {
+      const phase = state?.phase || 'lobby';
+      const players = Array.isArray(state?.players) ? state.players : [];
+      const selfPlayer = players.find(function(player) {
+        return player.isSelf;
+      });
+      const isAlive = !selfPlayer || selfPlayer.alive !== false;
+      const aliveCount = players.filter(function(player) {
+        return player.alive !== false;
+      }).length;
+      const totalPlayers = players.length;
+      const canAct = hasLiveTurnFocus(state);
+      const discussion = state?.actionState?.discussionActions || {};
+      const dayActions = state?.actionState?.dayActions || {};
+      const daySummary = dayActions.dayVoteSummary || null;
+      const nightActions = getActiveNightActions(state);
+      const actionableNightActions = nightActions.filter(function(action) {
+        return Array.isArray(action.targets) && (action.targets.length > 0 || action.allowSkip);
+      });
+
+      let tone = canAct ? 'tone-turn' : 'tone-watch';
+      let kicker = canAct ? 'ถึงตาคุณ!' : 'จับตาดู';
+      let headline = 'ดูที่นั่งผู้เล่น ตามจังหวะโต๊ะ';
+      let detail = 'ยังไม่มีปุ่มให้กด ดูที่นั่งแล้วตามข่าวจากระบบ';
+      let primaryLabel = '🎯 เปิดสกิล';
+      let primaryTarget = 'actions';
+      let secondaryLabel = '👥 ดูที่นั่ง';
+      let secondaryTarget = 'players';
+
+      if (state?.winner) {
+        tone = 'tone-lock';
+        kicker = 'จบรอบ!';
+        headline = 'ดูผลรอบนี้';
+        detail = isRoomAdmin ? 'กดเริ่มรอบใหม่ได้เลย' : 'รอหัวหน้าห้องเริ่มรอบใหม่';
+        primaryLabel = '🎯 ดูสรุป';
+        primaryTarget = 'actions';
+      } else if (!isAlive) {
+        kicker = 'คุณตายแล้ว';
+        headline = 'นั่งดูเกม ดูที่นั่งประกอบ';
+        detail = phase === 'day-vote'
+          ? 'ดูว่าเสียงโหวตไหลไปทางไหน'
+          : 'ตามข่าวแล้วอ่านเกมจากที่นั่ง';
+        primaryLabel = '👥 ดูที่นั่ง';
+        primaryTarget = 'players';
+        secondaryLabel = '🎯 ดูสรุป';
+        secondaryTarget = 'actions';
+      } else if (phase === 'night') {
+        if (actionableNightActions.length > 0) {
+          const firstNightAction = actionableNightActions[0];
+          headline = 'เลือกเป้าหมายกลางคืน!';
+          detail = `ล็อก ${firstNightAction.label} ก่อนหมดเวลา`;
+          primaryLabel = `🎯 ${firstNightAction.label}`;
+        } else {
+          kicker = 'ไม่มีสกิลคืนนี้';
+          headline = 'ดูที่นั่ง เตรียมข้อมูลไว้สำหรับเช้า';
+          detail = 'คืนนี้ไม่มีปุ่มให้กด ดูว่าใครยังอยู่แล้วเตรียมคุย';
+          primaryLabel = '👥 ดูที่นั่ง';
+          primaryTarget = 'players';
+          secondaryLabel = '🎯 ดูสรุปคืน';
+          secondaryTarget = 'actions';
+        }
+      } else if (phase === 'day-discussion') {
+        const skipCount = Number(discussion.skipCount || 0);
+        const totalAlive = Number(discussion.totalAlive || 0);
+        if (discussion.canSkip || discussion.canRevealMayor) {
+          headline = 'คุย จับพิรุธ กดข้ามเมื่อพร้อม';
+          detail = discussion.canRevealMayor
+            ? 'เปิดบทนายกหรือกดข้ามไปโหวตเมื่อทุกคนพร้อม'
+            : 'หาเป้าหมาย แล้วกดข้ามไปโหวตได้';
+          primaryLabel = discussion.canRevealMayor ? '🎯 เปิดปุ่ม' : '🎯 กดข้าม / สกิล';
+        } else {
+          headline = 'ช่วงประชุม ดูที่นั่งจับพิรุธ';
+          detail = 'ปุ่มถูกกดแล้วหรือยังไม่เปิด ดูที่นั่งตามคนน่าสงสัย';
+          primaryLabel = '👥 ดูที่นั่ง';
+          primaryTarget = 'players';
+          secondaryLabel = '🎯 ดูสถานะ';
+          secondaryTarget = 'actions';
+        }
+      } else if (phase === 'day-vote') {
+        const completedVotes = Number(daySummary?.totalCompletedDecisions || dayActions.completedVotes || 0);
+        const totalVoters = Number(daySummary?.totalAlive || dayActions.totalVoters || 0);
+        if (dayActions.canVote) {
+          headline = 'เลือกคนจากที่นั่ง แล้วลงคะแนน!';
+          detail = dayActions.selectedVoteTargetId
+            ? `กำลังเล็ง ${describeTarget(dayActions.selectedVoteTargetId, 'เป้าหมาย')} อยู่ เปลี่ยนใจได้`
+            : 'ดูที่นั่งแล้วแตะคนที่สงสัย';
+          primaryLabel = '🗳️ โหวต';
+        } else if (dayActions.canReveal) {
+          headline = 'โหวตแล้ว ถ้าจะเปิดโปงกดต่อ';
+          detail = 'ดูที่นั่งก่อนใช้สกิลเปิดโปง';
+          primaryLabel = '💥 เปิดโปง';
+        } else {
+          tone = 'tone-lock';
+          kicker = 'ล็อกแล้ว';
+          headline = `รอโต๊ะลงครบ ${totalVoters > 0 ? `(${completedVotes}/${totalVoters})` : ''}`.trim();
+          detail = 'เปลี่ยนใจได้จนกว่าหมดเวลา';
+          primaryLabel = '👥 ดูที่นั่ง';
+          primaryTarget = 'players';
+          secondaryLabel = '🎯 ดูสถานะ';
+          secondaryTarget = 'actions';
+        }
+      }
+
+      const chips = [
+        `<div class="phase-status-chip">👤 <strong>${isAlive ? (canAct ? 'ถึงตา' : 'มีชีวิต') : 'ตาย'}</strong></div>`,
+        `<div class="phase-status-chip">👥 <strong>${aliveCount}/${totalPlayers || 0}</strong> รอด</div>`
+      ];
+
+      if (phase === 'night') {
+        chips.push(`<div class="phase-status-chip">🌙 <strong>${actionableNightActions.length > 0 ? `${actionableNightActions.length} สกิล` : 'รอเช้า'}</strong></div>`);
+      } else if (phase === 'day-discussion') {
+        chips.push(`<div class="phase-status-chip">💬 ข้าม <strong>${Number(discussion.skipCount || 0)}/${Number(discussion.totalAlive || 0)}</strong></div>`);
+      } else if (phase === 'day-vote') {
+        chips.push(`<div class="phase-status-chip">🗳️ <strong>${Number(daySummary?.totalCompletedDecisions || dayActions.completedVotes || 0)}/${Number(daySummary?.totalAlive || dayActions.totalVoters || 0)}</strong> โหวตแล้ว</div>`);
+      } else if (state?.winner) {
+        chips.push(`<div class="phase-status-chip">🏁 <strong>จบ</strong></div>`);
+      }
+
+      return {
+        tone: tone,
+        kicker: kicker,
+        headline: headline,
+        detail: detail,
+        primaryLabel: primaryLabel,
+        primaryTarget: primaryTarget,
+        secondaryLabel: secondaryLabel,
+        secondaryTarget: secondaryTarget,
+        chipsHtml: chips.join('')
+      };
+    }
+
+    function syncPhaseStatusStrip(state) {
+      const model = buildPhaseStatusStripModel(state || currentState || {});
+      const $strip = $('#phaseStatusStrip');
+      $strip.removeClass('tone-turn tone-watch tone-lock').addClass(model.tone);
+      $('#phaseStatusKicker').text(model.kicker);
+      $('#phaseStatusHeadline').text(model.headline);
+      $('#phaseStatusDetail').text(model.detail);
+      $('#phaseStatusChips').html(model.chipsHtml);
+      $('#phaseStatusPrimary').text(model.primaryLabel).attr('data-strip-target', model.primaryTarget);
+      $('#phaseStatusSecondary').text(model.secondaryLabel).attr('data-strip-target', model.secondaryTarget);
+    }
+
+    function syncPhaseHud(state) {
+      const hud = buildPhaseHudModel(state || currentState || {});
+      $('#phaseHudKicker').text(hud.kicker);
+      $('#phaseHudTitle').text(hud.title);
+      $('#phaseHudCurrent').text(hud.current);
+      $('#phaseHudTimer').text(hud.timer);
+      $('#phaseHudMeta').text(hud.meta);
+      $('#phaseHudPast').text(hud.past);
+      $('#phaseHudNow').text(hud.now);
+      $('#phaseHudGoal').text(hud.goal);
+    }
+
     function syncMobileHeaderState() {
       $('#mobilePhaseLabel').text(phaseLabel(currentState.phase));
       $('#mobilePhaseCountdown').text(formatCountdown(currentState.phaseEndsAt || null));
+      syncPhaseHud(currentState);
+      syncPhaseStatusStrip(currentState);
     }
 
     function setActionButtonsPending(isPending) {
       pendingActionSubmission = Boolean(isPending);
       $('#werewolfShell').toggleClass('pending-actions', pendingActionSubmission);
       $('.action-btn').prop('disabled', pendingActionSubmission).toggleClass('pending-action', pendingActionSubmission);
+      syncTurnSpotlight();
     }
 
     function hasOpenMobileActions() {
@@ -978,7 +1739,7 @@
       // Mobile winner bar (always visible above tabs)
       if (currentState.winner && isMobileLayout()) {
         var winnerEmoji = currentState.winner === 'village' ? '🏡' : (currentState.winner === 'werewolf' ? '🐺' : '🤪');
-        var winnerLabel = currentState.winner === 'village' ? 'ชาวบ้านชนะแล้ว!' : (currentState.winner === 'werewolf' ? 'ฝั่งหมาป่าชนะแล้ว!' : 'คนบ้าชนะคนเดียวแล้ว!');
+        var winnerLabel = currentState.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : (currentState.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : '🤪 คนบ้าชนะ!');
         $('#mobileWinnerText').text(winnerEmoji + ' ' + winnerLabel);
         var btns = '';
         if (isRoomAdmin) {
@@ -994,11 +1755,11 @@
 
     function phaseLabel(phase) {
       const labels = {
-        lobby: '🏕️ รวมตัวก่อนเกม',
+        lobby: '🏕️ เตรียมตัว',
         night: '🌙 กลางคืน',
-        'day-discussion': '💬 ช่วงคุยตอนเช้า',
-        'day-vote': '🗳️ ช่วงโหวตกลางวัน',
-        finished: '🏁 จบเกม'
+        'day-discussion': '☀️ ประชุม',
+        'day-vote': '🗳️ โหวต',
+        finished: '🏁 จบ'
       };
 
       return labels[phase] || phase || 'lobby';
@@ -1026,6 +1787,7 @@
       }
       $('#phaseCountdown').text(formatCountdown(phaseEndsAt));
       $('#mobilePhaseCountdown').text(formatCountdown(phaseEndsAt));
+      $('#phaseHudTimer').text(formatCountdown(phaseEndsAt));
       if (!phaseEndsAt) {
         return;
       }
@@ -1034,6 +1796,7 @@
         const secondsLeft = Math.max(0, Math.ceil((phaseEndsAt - Date.now()) / 1000));
         $('#phaseCountdown').text(formatCountdown(phaseEndsAt));
         $('#mobilePhaseCountdown').text(formatCountdown(phaseEndsAt));
+        $('#phaseHudTimer').text(formatCountdown(phaseEndsAt));
         if (secondsLeft <= 10 && secondsLeft > 0 && lastWarningKey !== String(phaseEndsAt)) {
           lastWarningKey = String(phaseEndsAt);
           playSound('warning');
@@ -1448,26 +2211,42 @@
       $root.empty();
 
       if (!players || players.length === 0) {
-        $root.append('<div class="history-row">ยังไม่มีข้อมูลผู้เล่น</div>');
+        $root.append('<div class="history-row">รอผู้เล่น...</div>');
         return;
       }
 
-      players.forEach(function(player) {
-        const aliveText = player.alive ? 'ยังอยู่ในเกม' : 'ออกจากเกมแล้ว';
-        const selfText = player.isSelf ? ' (คุณ)' : '';
-        const revealText = player.revealedRole ? `<div class="subtle">บทบาท: ${escapeHtml(player.revealedRole)}</div>` : '';
-        const mayorText = player.voteWeight > 1 ? `<div class="highlight">🎖️ โหวตหนัก ${player.voteWeight} เสียง</div>` : '';
-        const playerEmoji = player.revealedRole ? '🎭' : (player.isSelf ? '🫵' : '👤');
+      const pendingIds = new Set(((currentState?.actionState?.dayActions?.dayVoteSummary?.pendingActors) || []).map(function(player) {
+        return player.playerId;
+      }));
+      const completedIds = new Set((currentState?.actionState?.dayActions?.dayVoteSummary?.completedActors) || []);
+
+      players.forEach(function(player, index) {
+        const seatNumber = index + 1;
+        const playerEmoji = player.revealedRole ? roleEmoji(player.revealedRole) : (player.isSelf ? '🫵' : '👤');
+        const isPending = currentState?.phase === 'day-vote' && player.alive && pendingIds.has(player.playerId);
+        const isCompleted = currentState?.phase === 'day-vote' && player.alive && completedIds.has(player.playerId);
+
+        const statusParts = [];
+        if (!player.alive) {
+          statusParts.push('<div class="player-status-tag dead">💀 ตาย</div>');
+        } else if (isPending) {
+          statusParts.push('<div class="player-status-tag">⏳</div>');
+        } else if (isCompleted) {
+          statusParts.push('<div class="player-status-tag voted">✅</div>');
+        }
+        if (player.voteWeight > 1) {
+          statusParts.push('<div class="player-status-tag mayor-tag">🎖️</div>');
+        }
+        if (player.revealedRole) {
+          statusParts.push(`<div class="player-status-tag">${escapeHtml(player.revealedRole)}</div>`);
+        }
+
         $root.append(`
-          <div class="player-row ${player.alive ? '' : 'dead'}">
-            <div>
-              <div class="player-name-line"><span>${playerEmoji}</span><strong>${escapeHtml(player.name)}${selfText}</strong></div>
-              ${revealText}
-              ${mayorText}
-            </div>
-            <div class="player-side-meta">
-              <div class="player-status-badge ${player.alive ? 'alive' : 'dead'}">${statusEmoji(player.alive)} ${aliveText}</div>
-            </div>
+          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''}">
+            <div class="player-seat-number">${seatNumber}</div>
+            <div class="player-avatar-stage">${playerEmoji}</div>
+            <div class="player-name">${escapeHtml(player.name)}</div>
+            ${statusParts.join('')}
           </div>
         `);
       });
@@ -1564,6 +2343,10 @@
       const pendingNames = (summary.pendingActors || []).map(function(player) {
         return player.name;
       });
+      const completedActors = new Set(Array.isArray(summary.completedActors) ? summary.completedActors : []);
+      const alivePlayers = (currentState?.players || []).filter(function(player) {
+        return player.alive !== false;
+      });
       let statusText = `ตัดสินใจแล้ว ${summary.totalCompletedDecisions || 0}/${summary.totalAlive || 0} คน`;
       if (pendingNames.length) {
         statusText += ` • รอ ${pendingNames.join(', ')}`;
@@ -1580,15 +2363,29 @@
         pills.push('<span class="target-vote-live-pill empty">ยังไม่มีใครลงคะแนน</span>');
       }
 
+      const pressureBadges = alivePlayers.map(function(player) {
+        const isPending = !completedActors.has(player.playerId);
+        return `<span class="target-vote-pending-badge ${isPending ? '' : 'done'}">${isPending ? '⏳' : '✅'} ${escapeHtml(player.name)} ${isPending ? 'ยังไม่ตัดสินใจ' : 'ตัดสินใจแล้ว'}</span>`;
+      }).join('');
+
       return `
         <div class="target-vote-live-board">
           <div class="target-vote-live-head">
             <div class="target-vote-live-title">ทุกคนเห็นสดว่าใครโหวตใคร</div>
             <div class="target-vote-live-status">${escapeHtml(statusText)}</div>
           </div>
+          <div class="target-vote-pending-row">${pressureBadges}</div>
           <div class="target-vote-live-feed">${pills.join('')}</div>
         </div>
       `;
+    }
+
+    function syncTurnSpotlight() {
+      const hasFocus = !pendingActionSubmission
+        && !$('#werewolfShell').hasClass('phase-lock')
+        && $('.turn-focus').length > 0
+        && hasLiveTurnFocus(currentState);
+      $('#werewolfShell').toggleClass('my-turn-active', hasFocus);
     }
 
     function getChatComposerState(state) {
@@ -1813,12 +2610,37 @@
       }).join('');
     }
 
+    function buildMemoryRailHtml(items) {
+      if (!items.length) {
+        return '';
+      }
+
+      return `
+        <div class="memory-rail">
+          <div class="memory-rail-title">🧠 Private Memory Rail</div>
+          <div class="memory-rail-items">
+            ${items.slice(0, 4).map(function(item) {
+              return `
+                <div class="memory-rail-item">
+                  <div class="memory-rail-head"><span>${escapeHtml(item.icon || '📝')}</span><span>${escapeHtml(item.label || 'ข้อมูล')}</span></div>
+                  <div class="memory-rail-body">${escapeHtml(item.body || '-')}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     function renderNotes(notes) {
       const $root = $('#personalNotes');
       $root.empty();
 
       const items = buildNoteItems(notes, currentState.playerRole?.id);
-      $root.html(renderNoteCards(items));
+      const memoryRailHtml = buildMemoryRailHtml(items);
+      const remainingItems = items.length > 4 ? items.slice(4) : [];
+      const detailHtml = remainingItems.length ? renderNoteCards(remainingItems) : '';
+      $root.html((memoryRailHtml || '') + (detailHtml || (!memoryRailHtml ? renderNoteCards(items) : '')));
     }
 
     function showRoleCatalogPopup() {
@@ -1980,7 +2802,7 @@
       const chatGroup = classifyChatGroup(data);
       const channelBadge = getChatChannelBadge(messageType);
       const wrapperClass = isSystem ? 'system' : (isSelf ? 'self' : 'other');
-      const decoratedName = isSystem ? '📣 System' : safeName;
+      const decoratedName = safeName;
       const replyBlock = data.replyTo
         ? `<div class="chat-reply-quote"><div class="reply-name">${escapeHtml(data.replyTo.name || 'ข้อความก่อนหน้า')}</div><div>${escapeHtml(data.replyTo.content || '')}</div></div>`
         : '';
@@ -1998,7 +2820,7 @@
             <div class="chat-message-bubble message-${escapeHtml(messageType)}">
               ${replyBlock}
               <div class="chat-channel-badge ${escapeHtml(channelBadge.className)}">${escapeHtml(channelBadge.label)}</div>
-              <div class="chat-message-name" style="color:${escapeHtml(nameColor)};">${decoratedName}</div>
+              ${isSystem ? '' : `<div class="chat-message-name" style="color:${escapeHtml(nameColor)};">${decoratedName}</div>`}
               <div class="chat-message-body">${safeMsg}</div>
             </div>
             ${replyButton}
@@ -2281,11 +3103,27 @@
       const $root = $('#actionPanels');
       $root.empty();
 
+      const recapHtml = buildPhaseRecapHtml(currentState);
+      const receiptHtml = buildDecisionReceiptHtml(currentState);
+      const spectatorHtml = buildSpectatorModeHtml(currentState);
+
+      if (recapHtml) {
+        $root.append(recapHtml);
+      }
+
+      if (receiptHtml) {
+        $root.append(receiptHtml);
+      }
+
+      if (spectatorHtml) {
+        $root.append(spectatorHtml);
+      }
+
       if (winner) {
         if (isRoomAdmin) {
-          $root.append('<div class="history-row">เกมจบแล้ว กดเริ่มรอบใหม่เพื่อกลับไปจัดทีมใหม่ในห้องได้</div>');
+          $root.append('<div class="history-row">จบรอบ! กดเริ่มรอบใหม่ได้เลย</div>');
         } else {
-          $root.append('<div class="history-row">เกมจบแล้ว รอหัวหน้าห้องกดเริ่มรอบใหม่ หรือออกกลับไปที่ห้อง</div>');
+          $root.append('<div class="history-row">จบรอบ! รอหัวหน้าห้องเริ่มใหม่</div>');
         }
         syncMobileGamePanel();
         return;
@@ -2294,13 +3132,14 @@
       if (phase === 'night') {
         const actions = actionState?.nightActions || [];
         if (actions.length === 0) {
-          $root.append('<div class="history-row">😴 คืนนี้คุณไม่มีสกิล ให้คุยวางแผนหรือรอระบบสรุปช่วงนี้ได้เลย</div>');
+          $root.append('<div class="history-row">😴 คืนนี้ไม่มีสกิล นั่งรอเช้า</div>');
         } else {
           actions.forEach(function(action) {
             const targetCards = buildTargetCards(action, 'selectNightTarget', '', action.type);
-            const extraState = targetCards ? `<div class="target-grid">${targetCards}</div>` : `<div class="subtle" style="margin-top:10px;">${escapeHtml(action.emptyStateText || 'รอให้คืนดำเนินต่อ')}</div>`;
+            const extraState = targetCards ? `<div class="target-grid">${targetCards}</div>` : `<div class="subtle" style="margin-top:10px;">${escapeHtml(action.emptyStateText || 'รอคืนดำเนินต่อ')}</div>`;
+            const focusClass = targetCards ? 'turn-focus' : '';
             $root.append(`
-              <div class="history-row" style="display:block;">
+              <div class="history-row ${focusClass}" style="display:block;">
                 <div class="action-title"><span>${actionEmoji(action.type)}</span><strong>${escapeHtml(action.label)}</strong></div>
                 <div class="subtle">${escapeHtml(action.description)}</div>
                 ${extraState}
@@ -2317,23 +3156,23 @@
         const skipCount = Number(discussion.skipCount || 0);
         const totalAlive = Number(discussion.totalAlive || 0);
         const mayorHtml = discussion.canRevealMayor
-          ? '<button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดเผยตัวว่าเป็นนายกเพื่อให้เสียงโหวตเป็น 2</button>'
+          ? '<button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดบทนายก (โหวต ×2)</button>'
           : (discussion.mayorRevealed
-            ? `<div class="highlight" style="margin-top:12px;">🎖️ คุณเปิดเผยตัวแล้ว เสียงโหวตของคุณตอนนี้เป็น ${discussion.currentVoteWeight || 2}</div>`
+            ? `<div class="highlight" style="margin-top:12px;">🎖️ เปิดตัวแล้ว! โหวตคุณ = ${discussion.currentVoteWeight || 2} เสียง</div>`
             : '');
         const statusText = totalAlive > 0
-          ? `ตอนนี้มี ${skipCount}/${totalAlive} คนกดพร้อมข้ามช่วงคุยแล้ว ถ้าครบทุกคนจะเปิดโหวตทันที`
-          : 'กำลังรอระบบอัปเดตจำนวนผู้เล่นที่ยังอยู่ในเกม';
+          ? `พร้อมข้าม ${skipCount}/${totalAlive} คน ครบ = เปิดโหวตเลย`
+          : 'รอข้อมูลจำนวนผู้เล่น';
         const buttonHtml = discussion.canSkip
-          ? '<button class="action-btn" onclick="skipDiscussionPhase()">⏭️ พร้อมแล้ว ข้ามไปโหวต</button>'
+          ? '<button class="action-btn" onclick="skipDiscussionPhase()">⏭️ พร้อม ข้ามไปโหวต!</button>'
           : (discussion.hasSkipped
-            ? '<button class="action-btn selected" disabled>✅ คุณกดพร้อมแล้ว</button>'
-            : '<button class="action-btn" disabled>⏳ รอช่วงพูดคุย</button>');
+            ? '<button class="action-btn selected" disabled>✅ กดพร้อมแล้ว</button>'
+            : '<button class="action-btn" disabled>⏳ รอช่วงประชุม</button>');
 
         $root.append(`
-          <div class="history-row" style="display:block;">
-            <div class="action-title"><span>💬</span><strong>ช่วงคุยก่อนโหวต</strong></div>
-            <div class="subtle">คุยหาหลักฐาน จับพิรุธ และค่อยตัดสินใจว่าจะเปิดโหวตทันทีหรือปล่อยให้เวลาคุยหมดเอง</div>
+          <div class="history-row ${discussion.canSkip || discussion.canRevealMayor ? 'turn-focus' : ''}" style="display:block;">
+            <div class="action-title"><span>💬</span><strong>ประชุม</strong></div>
+            <div class="subtle">คุย จับพิรุธ กดข้ามได้ถ้าพร้อม</div>
             <div class="highlight" style="margin-top:8px;">${escapeHtml(statusText)}</div>
             <div style="margin-top:12px;">${buttonHtml}</div>
             ${mayorHtml ? `<div style="margin-top:12px;">${mayorHtml}</div>` : ''}
@@ -2347,43 +3186,43 @@
         const dayActions = actionState?.dayActions || {};
         const voteBoardHtml = buildVoteProgressBoardHtml(dayActions.dayVoteSummary);
         const skipVoteText = Number(dayActions.skipVoteWeight || 0) > 0
-          ? ` | ข้ามโหวต ${dayActions.skipVoteWeight}/${dayActions.totalVoteWeight || 0} เสียง`
+          ? ` | ข้าม ${dayActions.skipVoteWeight}/${dayActions.totalVoteWeight || 0} เสียง`
           : '';
         const mayorVoteHtml = dayActions.canRevealMayor
-          ? '<div style="margin-top:12px;"><button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดเผยตัวว่าเป็นนายกเพื่อให้เสียงโหวตเป็น 2</button></div>'
+          ? '<div style="margin-top:12px;"><button class="action-btn" onclick="revealMayorRole()">🎖️ เปิดบทนายก (โหวต ×2)</button></div>'
           : (dayActions.mayorRevealed
-            ? `<div class="highlight" style="margin-top:10px;">🎖️ คุณเปิดเผยตัวแล้ว เสียงโหวตของคุณตอนนี้เป็น ${dayActions.currentVoteWeight || 2}</div>`
+            ? `<div class="highlight" style="margin-top:10px;">🎖️ เปิดตัวแล้ว! โหวตคุณ = ${dayActions.currentVoteWeight || 2} เสียง</div>`
             : '');
-        $root.append(`<div class="history-row" style="display:block;">☀️ กลางวันนี้คุยและลงคะแนนแบบเปิด ผลโหวตสดจะขึ้นบนการ์ดแต่ละคนทันที ถ้าเสียงข้ามโหวตเกินครึ่งจะตัดเข้ากลางคืนทันที${skipVoteText}${mayorVoteHtml}</div>`);
+        $root.append(`<div class="history-row" style="display:block;">☀️ โหวตแบบเปิด! ผลสดขึ้นบนที่นั่งทันที${skipVoteText}${mayorVoteHtml}</div>`);
         if (dayActions.canVote) {
           $root.append(`
-            <div class="history-row" style="display:block;">
-              <div class="action-title"><span>🗳️</span><strong>สิทธิ์โหวตกลางวันของทุกคน</strong></div>
-              <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน ตอนนี้มีคนลงคะแนนแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน ถ้าทุกคนลงครบระบบจะสรุปทันที</div>
+            <div class="history-row turn-focus" style="display:block;">
+              <div class="action-title"><span>🗳️</span><strong>โหวตขับออก</strong></div>
+              <div class="subtle">เลือก 1 คน โหวตแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน</div>
               ${voteBoardHtml}
               <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote, voteTallies: dayActions.voteTallies, dayVoteSummary: dayActions.dayVoteSummary, skipVoteWeight: dayActions.skipVoteWeight }, 'selectVoteTarget', '', 'day-vote')}</div>
             </div>
           `);
         } else {
-          $root.append('<div class="history-row">✅ คุณลงคะแนนแล้ว แต่ยังเปลี่ยนใจได้จนกว่าจะหมดเวลา</div>');
+          $root.append('<div class="history-row">✅ โหวตแล้ว เปลี่ยนใจได้จนหมดเวลา</div>');
         }
 
         if (dayActions.canReveal) {
           $root.append(`
-            <div class="history-row" style="display:block;">
-              <div class="action-title"><span>💥</span><strong>สกิลจอมเปิดโปง</strong></div>
-              <div class="subtle">ถ้าเลือกหมาป่าถูก หมาป่าจะตายทันที ถ้าพลาดคุณตายเอง</div>
+            <div class="history-row turn-focus" style="display:block;">
+              <div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div>
+              <div class="subtle">ถ้าเลือกหมาป่าถูก → มันตาย | ถ้าพลาด → คุณตาย</div>
               <div class="target-grid">${buildTargetCards({ targets: dayActions.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div>
             </div>
           `);
         } else if (dayActions.revealUsed) {
-          $root.append('<div class="history-row">💥 คุณใช้สกิลเปิดโปงไปแล้ว</div>');
+          $root.append('<div class="history-row">💥 ใช้สกิลเปิดโปงไปแล้ว</div>');
         }
         syncMobileGamePanel();
         return;
       }
 
-      $root.append('<div class="history-row">🎬 กำลังรอให้รอบเริ่ม</div>');
+      $root.append('<div class="history-row">🎬 รอเริ่มเกม...</div>');
       syncMobileGamePanel();
     }
 
@@ -2394,10 +3233,10 @@
         return;
       }
 
-      const winnerText = winner === 'village' ? 'ชาวบ้านชนะแล้ว' : (winner === 'werewolf' ? 'ฝั่งหมาป่าชนะแล้ว' : 'คนบ้าชนะคนเดียวแล้ว');
+      const winnerText = winner === 'village' ? '🏡 ชาวบ้านชนะ!' : (winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : '🤪 คนบ้าชนะ!');
       const actionHtml = isRoomAdmin
-        ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นรอบใหม่</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับไปที่ห้อง</button></div>'
-        : '<div class="winner-actions"><button id="backToRoomLobby" class="ghost-btn">🏠 กลับไปที่ห้อง</button></div>';
+        ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นอีก!</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>'
+        : '<div class="winner-actions"><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>';
       $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : '🤪 ')) + winnerText + '</div>' + actionHtml);
       $banner.show();
     }
@@ -2409,31 +3248,31 @@
 
       if (state.phase === 'night') {
         return {
-          title: `🌙 คืน ${state.dayNumber || 1}`,
+          title: `🌙 คืนที่ ${state.dayNumber || 1}`,
           subtitle: state.dayNumber === 1
-            ? 'คืนแรกเริ่มแล้ว คืนนี้หมาป่ายังฆ่าใครไม่ได้'
-            : 'กลางคืนเริ่มแล้ว คนมีบทกดความสามารถของตัวเองได้เลย'
+            ? 'คืนแรก! หมาป่ายังฆ่าใครไม่ได้'
+            : 'เข้ากลางคืน คนมีบทกดสกิลได้เลย'
         };
       }
 
       if (state.phase === 'day-discussion') {
         return {
           title: `☀️ เช้าวันที่ ${state.dayNumber || 1}`,
-          subtitle: 'เปิดช่วงคุยก่อนโหวต ถ้าทุกคนพร้อมสามารถกดข้ามไปเปิดโหวตได้ทันที'
+          subtitle: 'เปิดประชุม! คุยจับพิรุธ กดข้ามได้ถ้าพร้อม'
         };
       }
 
       if (state.phase === 'day-vote') {
         return {
-          title: `🗳️ เริ่มโหวตวันที่ ${state.dayNumber || 1}`,
-          subtitle: 'ช่วงพูดคุยจบแล้ว ทุกคนลงคะแนนแบบเปิดได้เลย'
+          title: `🗳️ โหวตวันที่ ${state.dayNumber || 1}`,
+          subtitle: 'ประชุมจบ! โหวตแบบเปิดได้เลย'
         };
       }
 
       if (state.phase === 'finished' && state.winner) {
         return {
-          title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ' : '🐺 หมาป่าชนะ',
-          subtitle: 'รอบนี้จบแล้ว จะเล่นต่อหรือกลับไปจัดห้องใหม่ก็ได้'
+          title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : '🐺 หมาป่าชนะ!',
+          subtitle: 'จบรอบ! เล่นต่อหรือกลับไปจัดห้องใหม่ก็ได้'
         };
       }
 
@@ -2457,25 +3296,47 @@
         const morningSound = state.morningAnnouncement.outcomeType === 'death'
           ? 'morning-death'
           : (state.morningAnnouncement.outcomeType === 'saved' ? 'morning-saved' : 'morning-peaceful');
+        const personalAftermath = state.personalNotes?.lastNightResult;
 
-        return [
+        const steps = [
           {
-            title: phaseCopy.title,
-            subtitle: 'หมู่บ้านกำลังตื่นขึ้นและรับฟังข่าวจากเมื่อคืน',
-            duration: 2500,
+            title: '🌘 คืนจบลงแล้ว',
+            subtitle: 'หมู่บ้านกำลังรอฟังว่าเมื่อคืนเกิดอะไรขึ้น',
+            duration: 2200,
             sound: morningSound
           },
           {
             title: state.morningAnnouncement.lead,
-            subtitle: state.morningAnnouncement.detail,
-            duration: 3800
-          },
-          {
-            title: phaseCopy.title,
-            subtitle: phaseCopy.subtitle,
-            duration: 2600
+            subtitle: state.morningAnnouncement.outcomeType === 'death'
+              ? 'นี่คือข่าวแรกที่ทั้งโต๊ะได้รับพร้อมกัน'
+              : 'ข่าวเช้านี้เริ่มค่อย ๆ เปิดออกทีละชั้น',
+            duration: 2800
           }
         ];
+
+        if (state.morningAnnouncement.detail && state.morningAnnouncement.detail !== state.morningAnnouncement.lead) {
+          steps.push({
+            title: '📜 ผลที่ถูกเปิดเผย',
+            subtitle: state.morningAnnouncement.detail,
+            duration: 3000
+          });
+        }
+
+        if (personalAftermath) {
+          steps.push({
+            title: '🧠 สิ่งที่คุณรับรู้',
+            subtitle: personalAftermath,
+            duration: 2600
+          });
+        }
+
+        steps.push({
+          title: phaseCopy.title,
+          subtitle: 'เปิดช่วงคุยแล้ว ใช้ recap ด้านบนตามเกมต่อได้ทันที',
+          duration: 2600
+        });
+
+        return steps;
       }
 
       if (state.phase === 'night' && state.dayResolutionAnnouncement) {
@@ -2568,6 +3429,36 @@
       scrollChatToBottom();
     }
 
+    function scrollToGameSection(target) {
+      const nextTarget = target === 'players' ? 'players' : (target === 'chat' ? 'chat' : 'actions');
+
+      if (nextTarget === 'chat') {
+        if (isMobileLayout()) {
+          setMobileView('chat');
+        }
+        scrollChatToBottom();
+        return;
+      }
+
+      if (isMobileLayout()) {
+        setMobileView('game');
+        window.setTimeout(function() {
+          const mobileSelector = nextTarget === 'players' ? '#mobilePlayerSection' : '#mobileActionSection';
+          const mobileElement = document.querySelector(mobileSelector);
+          if (mobileElement) {
+            mobileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 40);
+        return;
+      }
+
+      const desktopSelector = nextTarget === 'players' ? '#playerBoardSection' : '#actionSection';
+      const desktopElement = document.querySelector(desktopSelector);
+      if (desktopElement) {
+        desktopElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
     function renderState(state) {
       const previousPhase = currentState.phase;
       currentState = state || {};
@@ -2609,10 +3500,17 @@
           if (isPhaseChanged) {
             showPhaseTransition(currentState);
           }
+          syncTurnSpotlight();
         });
       } else if (isPhaseChanged) {
         showPhaseTransition(currentState);
       }
+
+      if (isMobileLayout() && hasLiveTurnFocus(currentState) && (!previousPhase || isPhaseChanged)) {
+        setMobileView('game');
+      }
+
+      syncTurnSpotlight();
 
       lastRenderedPhase = currentState.phase || null;
     }
@@ -2624,15 +3522,29 @@
     }
 
     activateViewportLock();
+    syncViewportHeight();
     renderInitialChatHistory();
     renderState(currentState);
     bindRoom();
     syncMobileHeaderState();
     syncMobileGamePanel();
 
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportHeight);
+      window.visualViewport.addEventListener('scroll', syncViewportHeight);
+    }
+    window.addEventListener('resize', syncViewportHeight);
+    window.addEventListener('orientationchange', function() {
+      window.setTimeout(syncViewportHeight, 120);
+    });
+
     // View switcher (mobile)
     $(document).on('click', '.ww-view-tab', function() {
       setMobileView($(this).data('view'));
+    });
+
+    $(document).on('click', '.phase-status-cta', function() {
+      scrollToGameSection($(this).attr('data-strip-target'));
     });
 
     // Delegate winner/restart buttons from mobile panels
@@ -2946,6 +3858,29 @@
         event.preventDefault();
         $('#sendWerewolfChat').click();
       }
+    });
+
+    $('#werewolfChatInput').on('focus', function() {
+      if (!isMobileLayout()) {
+        return;
+      }
+
+      window.setTimeout(function() {
+        syncViewportHeight();
+        scrollChatToBottom();
+      }, 80);
+      window.setTimeout(function() {
+        syncViewportHeight();
+        scrollChatToBottom();
+      }, 260);
+    });
+
+    $('#werewolfChatInput').on('blur', function() {
+      if (!isMobileLayout()) {
+        return;
+      }
+
+      window.setTimeout(syncViewportHeight, 160);
     });
 
     $('#leaveWerewolfRoom').on('click', function() {
