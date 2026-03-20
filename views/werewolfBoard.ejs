@@ -155,7 +155,7 @@
   .ww-mobile-notes:empty { display: none; }
   .notes-strip { display: flex; gap: 6px; padding: 2px 0; }
   .notes-strip:empty { display: none; }
-  .note-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; color: #e2e8f0; }
+  .note-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; color: #e2e8f0; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
   .note-pill.tone-seer { background: rgba(79,70,229,0.22); border-color: rgba(129,140,248,0.28); color: #c4b5fd; }
   .note-pill.tone-alert { background: rgba(239,68,68,0.2); border-color: rgba(252,165,165,0.22); color: #fca5a5; }
   .note-pill.tone-doctor { background: rgba(5,150,105,0.2); border-color: rgba(110,231,183,0.2); color: #6ee7b7; }
@@ -374,7 +374,8 @@
   .player-grid.night-phase::before { content: ''; position: absolute; inset: -4px; border-radius: 18px; background: radial-gradient(ellipse at center, rgba(15,23,42,0.55), rgba(5,10,25,0.75)); pointer-events: none; z-index: 1; }
   .player-grid.night-phase .player-row { position: relative; z-index: 2; opacity: 0.55; transition: opacity 0.3s; }
   .player-grid.night-phase .player-row.self-seat,
-  .player-grid.night-phase .player-row.night-targetable { opacity: 1; box-shadow: 0 0 12px rgba(96,165,250,0.18); }
+  .player-grid.night-phase .player-row.night-targetable,
+  .player-grid.night-phase .player-row.seat-target { opacity: 1; box-shadow: 0 0 12px rgba(96,165,250,0.18); }
   .vote-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: 5px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; background: rgba(231,76,60,0.15); color: #ffd4c7; border: 1px solid rgba(248,113,113,0.18); }
   .subtle { color: #aab4c8; }
   .highlight { color: #f8d189; }
@@ -1871,7 +1872,7 @@
       if (currentMobileTargetAction) {
         $('#mobileInlinePlayerGrid .player-row').each(function() {
           var $row = $(this);
-          var pid = $row.data('player-id');
+          var pid = $row.attr('data-player-id');
           if (pid && currentMobileTargetAction.targetIds.has(pid)) {
             $row.addClass('seat-target');
             if (currentMobileTargetAction.selectedId === pid) {
@@ -2506,8 +2507,6 @@
         var tone = escapeHtml(item.tone || 'info');
         var icon = item.icon || 'ℹ️';
         var body = item.body || '';
-        // Truncate long text for pill
-        if (body.length > 40) body = body.substring(0, 38) + '…';
         return '<span class="note-pill tone-' + tone + '">' + icon + ' ' + escapeHtml(body) + '</span>';
       }).join('');
       $strip.html(html);
@@ -4286,7 +4285,7 @@
     // Tap-to-target: click on player seat in mobile grid
     $(document).on('click', '#mobileInlinePlayerGrid .player-row.seat-target, #werewolfPlayers .player-row.seat-target', function() {
       if (!currentMobileTargetAction) return;
-      var playerId = $(this).data('player-id');
+      var playerId = $(this).attr('data-player-id');
       if (!playerId) return;
       var action = currentMobileTargetAction;
       if (action.handlerName === 'selectNightTarget') {
