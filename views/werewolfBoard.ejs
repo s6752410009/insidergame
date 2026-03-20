@@ -2451,6 +2451,50 @@
       });
     }
 
+    // ===== UPDATE MOBILE TARGET ACTION (set before renderPlayers) =====
+    function updateMobileTargetAction() {
+      const phase = currentState.phase || '';
+      const winner = currentState.winner;
+      const actionState = currentState.actionState || {};
+
+      // Reset targeting
+      currentMobileTargetAction = null;
+
+      if (winner) return;
+
+      if (phase === 'night') {
+        var actions = actionState.nightActions || [];
+        if (actions.length > 0) {
+          var firstAction = actions[0];
+          var targetIds = new Set((firstAction.targets || []).map(function(t) { return t.playerId; }));
+          currentMobileTargetAction = {
+            handlerName: 'selectNightTarget',
+            actionType: firstAction.type,
+            targetIds: targetIds,
+            selectedId: firstAction.selectedTargetId || null,
+            allowSkip: false
+          };
+        }
+        return;
+      }
+
+      if (phase === 'day-vote') {
+        var dayActions = actionState.dayActions || {};
+        var voteTargets = dayActions.voteTargets || [];
+        if (voteTargets.length > 0) {
+          var vTargetIds = new Set(voteTargets.map(function(t) { return t.playerId; }));
+          currentMobileTargetAction = {
+            handlerName: 'selectVoteTarget',
+            actionType: 'day-vote',
+            targetIds: vTargetIds,
+            selectedId: dayActions.selectedVoteTargetId || null,
+            allowSkip: dayActions.allowSkipVote
+          };
+        }
+        return;
+      }
+    }
+
     // ===== MOBILE NOTES STRIP =====
     function renderMobileNotesStrip() {
       const $strip = $('#mobileNotesStrip');
@@ -3798,6 +3842,8 @@
       $('#myRoleDescription').text(currentState.playerRole?.description || 'เมื่อเริ่มเกมแล้ว บทบาทของคุณจะปรากฏที่นี่');
       startPhaseCountdown(currentState.phaseEndsAt || null);
       renderWinner(currentState.winner);
+      // Set up targeting BEFORE renderPlayers so target overlays work
+      updateMobileTargetAction();
       renderPlayers(currentState.players || []);
       syncHistoryToChat(currentState.history || []);
       renderNotes(currentState.personalNotes || {});
