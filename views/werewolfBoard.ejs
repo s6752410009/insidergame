@@ -313,8 +313,9 @@
   .player-row.pending-decision { border-color: rgba(248,113,113,0.2); }
   .player-row.completed-decision { border-color: rgba(34,197,94,0.18); }
   .player-seat-number { position: absolute; top: 4px; left: 6px; font-size: 0.68rem; font-weight: 700; color: #97a4bf; }
-  .player-avatar-stage { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.6rem; background: linear-gradient(145deg, rgba(37,99,235,0.15), rgba(15,23,42,0.28)); border: 2px solid rgba(255,255,255,0.1); }
-  .player-row.dead .player-avatar-stage { background: linear-gradient(145deg, rgba(71,85,105,0.2), rgba(15,23,42,0.2)); border-color: rgba(255,255,255,0.05); }
+  .player-avatar-stage { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; border: 2px solid rgba(255,255,255,0.12); }
+  .player-row.dead .player-avatar-stage { filter: grayscale(0.7); border-color: rgba(255,255,255,0.05); opacity: 0.6; }
+  .player-row.self-seat .player-avatar-stage { border-color: rgba(250,204,21,0.55); box-shadow: 0 0 8px rgba(250,204,21,0.15); }
   .player-name { font-size: 0.78rem; font-weight: 700; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .player-status-tag { font-size: 0.64rem; font-weight: 700; color: #aab4c8; }
   .player-status-tag.alive { color: #a3e635; }
@@ -324,6 +325,15 @@
   .player-vote-badge { font-size: 0.62rem; font-weight: 700; color: #fbbf24; padding: 2px 6px; border-radius: 999px; background: rgba(250,204,21,0.12); border: 1px solid rgba(250,204,21,0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .player-vote-badge.received { color: #fb923c; background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.2); }
   .player-main, .player-topline, .player-role-line, .player-chip-row, .player-chip, .player-status-badge { display: none; }
+
+  /* -- Role strip (compact role summary under player grid) -- */
+  .role-strip { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 8px 4px; }
+  .role-strip-item { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); font-size: 0.76rem; font-weight: 700; color: #e2e8f0; white-space: nowrap; }
+  .role-strip-item .rs-emoji { font-size: 0.9rem; }
+  .role-strip-item .rs-count { color: #fde68a; font-size: 0.72rem; }
+  .role-strip-item.team-werewolf { border-color: rgba(248,113,113,0.2); background: rgba(127,29,29,0.15); }
+  .role-strip-item.team-village { border-color: rgba(134,239,172,0.18); background: rgba(34,197,94,0.08); }
+  .role-strip-item.team-solo { border-color: rgba(216,180,254,0.18); background: rgba(168,85,247,0.1); }
 
   /* -- Night overlay on player grid -- */
   .player-grid.night-phase { position: relative; }
@@ -684,6 +694,7 @@
       <div id="playerBoardSection" class="ww-card">
         <h3>ที่นั่ง</h3>
         <div id="werewolfPlayers" class="player-grid"></div>
+        <div id="roleStrip" class="role-strip"></div>
       </div>
     </div>
   </div>
@@ -893,6 +904,21 @@
       const html = buildRoomRoleSummaryHtml();
       $('#roomRoleSummary').html(html);
       $('#mobileRoomRoleSummary').html(html);
+      renderRoleStrip();
+    }
+
+    function renderRoleStrip() {
+      const items = getRoomRoleSummaryItems();
+      if (!items.length) {
+        $('#roleStrip').empty();
+        return;
+      }
+      var html = items.map(function(role) {
+        var teamClass = role.team === 'werewolf' ? 'team-werewolf' : (role.team === 'solo' ? 'team-solo' : 'team-village');
+        var countLabel = role.count > 1 ? ' ×' + role.count : '';
+        return '<div class="role-strip-item ' + teamClass + '"><span class="rs-emoji">' + roleEmoji(role.id) + '</span>' + escapeHtml(role.thaiName || role.id) + (countLabel ? '<span class="rs-count">' + escapeHtml(countLabel) + '</span>' : '') + '</div>';
+      }).join('');
+      $('#roleStrip').html(html);
     }
 
     function roleActionHint(role) {
@@ -2294,7 +2320,8 @@
 
       players.forEach(function(player, index) {
         const seatNumber = index + 1;
-        const playerEmoji = player.revealedRole ? roleEmoji(player.revealedRole) : (player.isSelf ? '🫵' : '👤');
+        const avatarEmoji = player.revealedRole ? roleEmoji(player.revealedRole) : (player.avatar || '👤');
+        const avatarBg = player.color || '#2563eb';
         const isPending = isVote && player.alive && pendingIds.has(player.playerId);
         const isCompleted = isVote && player.alive && completedIds.has(player.playerId);
         const isNightTarget = isNight && nightTargetableIds.has(player.playerId);
@@ -2328,7 +2355,7 @@
         $root.append(`
           <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''}">
             <div class="player-seat-number">${seatNumber}</div>
-            <div class="player-avatar-stage">${playerEmoji}</div>
+            <div class="player-avatar-stage" style="background:${escapeHtml(avatarBg)};">${avatarEmoji}</div>
             <div class="player-name">${escapeHtml(player.name)}</div>
             ${statusParts.join('')}
           </div>
