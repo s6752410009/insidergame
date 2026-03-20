@@ -201,6 +201,9 @@
   .target-card.target-card-actionable { cursor: pointer; }
   .target-card.target-card-actionable:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.18); box-shadow: 0 14px 28px rgba(0,0,0,0.24); }
   .target-card.target-card-actionable:active { transform: scale(0.985); }
+  @media (hover: none) {
+    .target-card.target-card-actionable:hover { transform: none; border-color: rgba(255,255,255,0.08); box-shadow: none; }
+  }
   .target-card.target-selected { border-color: rgba(250,204,21,0.55); box-shadow: 0 0 0 1px rgba(250,204,21,0.22), 0 18px 36px rgba(0,0,0,0.28); animation: targetCardSelectedPulse 1.6s ease-in-out infinite; }
   .target-card.target-disabled { opacity: 0.56; filter: grayscale(0.12); }
   .target-card.feedback-burst::before { animation: targetCardFlash 0.52s ease-out; }
@@ -304,6 +307,22 @@
     .target-card { padding: 12px; border-radius: 16px; }
     .target-card-avatar { width: 46px; height: 46px; border-radius: 14px; }
     .target-card-name { font-size: 0.96rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .target-card,
+    .target-card::before,
+    .target-card-particle,
+    .target-card.target-selected {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    .target-card.target-card-actionable:hover,
+    .target-card.target-card-actionable:active {
+      transform: none !important;
+      box-shadow: none !important;
+    }
   }
 </style>
 
