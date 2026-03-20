@@ -75,55 +75,39 @@
   .ww-topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .ww-topbar-btn { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.05); color: #f4f6fb; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.78rem; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
   .ww-topbar-btn.danger { background: linear-gradient(135deg, #c0392b, #7f1d1d); border: 0; }
-  .phase-hud { flex-shrink: 0; display: grid; gap: 10px; padding: 12px 12px 10px; background: linear-gradient(180deg, rgba(11,18,32,0.98), rgba(14,24,40,0.94)); border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .phase-hud-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .phase-hud-copy { min-width: 0; display: grid; gap: 5px; }
-  .phase-hud-kicker { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 4px 10px; border-radius: 999px; background: rgba(250,204,21,0.14); color: #fde68a; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-  .phase-hud-title { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; line-height: 1.2; color: #fff; }
-  .phase-hud-current { color: #dbeafe; font-size: 0.94rem; line-height: 1.45; }
-  .phase-hud-timer-box { min-width: 102px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); text-align: right; }
-  .phase-hud-timer-label { color: #97a4bf; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-  .phase-hud-timer { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: #fff4c2; line-height: 1.1; margin-top: 4px; }
-  .phase-hud-meta { color: #cbd5e1; font-size: 0.8rem; margin-top: 4px; }
-  .phase-hud-rail { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .phase-hud-rail::-webkit-scrollbar { display: none; }
-  .phase-hud-step { flex: 0 0 auto; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); min-width: 0; max-width: 200px; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: background 0.2s; }
-  .phase-hud-step:hover { background: rgba(255,255,255,0.09); }
-  .phase-hud-step.expanded { flex: 1 1 100%; max-width: none; border-radius: 14px; flex-wrap: wrap; padding: 8px 11px; }
-  .phase-hud-step-label { color: #97a4bf; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-  .phase-hud-step-body { color: #f8fafc; font-size: 0.8rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .phase-hud-step.expanded .phase-hud-step-body { white-space: normal; overflow: visible; text-overflow: unset; }
-  .phase-status-strip { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(30,41,59,0.7)); border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
-  .phase-status-strip.tone-turn { border-color: rgba(250,204,21,0.24); background: radial-gradient(circle at top right, rgba(250,204,21,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
-  .phase-status-strip.tone-watch { border-color: rgba(96,165,250,0.2); background: radial-gradient(circle at top right, rgba(59,130,246,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
-  .phase-status-strip.tone-lock { border-color: rgba(134,239,172,0.18); background: radial-gradient(circle at top right, rgba(34,197,94,0.12), transparent 32%), linear-gradient(145deg, rgba(15,23,42,0.96), rgba(30,41,59,0.76)); }
-  .phase-status-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-  .phase-status-copy { min-width: 0; display: grid; gap: 4px; }
-  .phase-status-kicker { color: #fde68a; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-  .phase-status-headline { color: #fff; font-family: 'Orbitron', sans-serif; font-size: 1rem; line-height: 1.25; }
-  .phase-status-detail { color: #dbeafe; font-size: 0.9rem; line-height: 1.42; }
-  .phase-status-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-  .phase-status-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06); color: #f8fafc; font-family: 'Rajdhani', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
-  .phase-status-cta.primary { border: 0; background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-  .phase-status-cta.secondary { color: #dbeafe; }
-  .phase-status-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .phase-status-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #e2e8f0; font-size: 0.82rem; font-weight: 700; }
-  .phase-status-chip strong { color: #fff; font-weight: 700; }
+  /* -- compact phase bar (Wolvesville-style) -- */
+  .phase-hud { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; background: linear-gradient(180deg, rgba(11,18,32,0.98), rgba(14,24,40,0.94)); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .phase-hud-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .phase-hud-copy { min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .phase-hud-kicker { display: none; }
+  .phase-hud-title { font-family: 'Orbitron', sans-serif; font-size: 1rem; line-height: 1; color: #fff; white-space: nowrap; }
+  .phase-hud-current { display: none; }
+  .phase-hud-timer-box { display: flex; align-items: center; gap: 8px; padding: 0; border-radius: 0; background: none; border: 0; min-width: auto; text-align: right; }
+  .phase-hud-timer-label { display: none; }
+  .phase-hud-timer { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; color: #fff4c2; line-height: 1; margin: 0; }
+  .phase-hud-meta { color: #cbd5e1; font-size: 0.78rem; margin: 0; white-space: nowrap; }
+  .phase-hud-rail { display: none; }
+  .phase-hud-step, .phase-hud-step-label, .phase-hud-step-body { display: none; }
+  /* -- status strip: hidden in compact mode -- */
+  .phase-status-strip { display: none !important; }
+  .phase-status-main, .phase-status-copy, .phase-status-kicker, .phase-status-headline, .phase-status-detail, .phase-status-actions, .phase-status-cta, .phase-status-chips, .phase-status-chip { display: none !important; }
 
-  /* -- view switcher (mobile: 2 tabs Chat/Game) -- */
-  .ww-view-switcher { flex-shrink: 0; display: flex; background: rgba(20,25,39,0.95); border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .ww-view-tab { flex: 1; border: 0; background: transparent; color: #8896b3; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.92rem; padding: 10px 0; cursor: pointer; text-align: center; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
-  .ww-view-tab.active { color: #fff; border-bottom-color: #e74c3c; }
-  .ww-view-tab .ww-tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: #e74c3c; color: #fff; font-size: 0.68rem; font-weight: 700; vertical-align: middle; }
+  /* -- GM toast (game master guidance) -- */
+  .gm-toast { flex-shrink: 0; text-align: center; padding: 0; max-height: 0; overflow: hidden; opacity: 0; font-weight: 700; font-size: 0.9rem; color: #fde68a; background: linear-gradient(135deg, rgba(250,204,21,0.08), rgba(180,83,9,0.05)); border-bottom: 1px solid rgba(250,204,21,0.1); transition: opacity 0.4s ease, max-height 0.4s ease, padding 0.4s ease; }
+  .gm-toast.visible { opacity: 1; max-height: 50px; padding: 8px 14px; }
+  .gm-toast .gm-toast-icon { margin-right: 6px; }
 
-  /* -- mobile game panel (scrollable, shown when game tab active) -- */
-  .ww-game-panel { display: none; flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .ww-game-panel.active { display: flex; flex-direction: column; gap: 8px; }
-  .ww-game-section { padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
-  .ww-game-section:first-child { flex: 1 1 auto; }
-  .ww-game-section-title { font-family: 'Orbitron', sans-serif; font-size: 0.92rem; font-weight: 700; margin: 0 0 8px; }
-  .ww-game-links { display: flex; gap: 8px; }
-  .ww-game-link { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.04); color: #cfd8eb; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.82rem; padding: 6px 12px; cursor: pointer; }
+  /* -- Day/Night atmosphere -- */
+  .ww-page.phase-night { background: linear-gradient(180deg, #04060c 0%, #08101e 40%, #0c1628 100%); }
+  .ww-page.phase-day-discussion, .ww-page.phase-day-vote { background: linear-gradient(180deg, #10182a 0%, #182240 50%, #1e2a48 100%); }
+
+  /* -- view switcher: hidden in compact mode -- */
+  .ww-view-switcher { display: none !important; }
+  .ww-view-tab, .ww-tab-badge { display: none !important; }
+
+  /* -- mobile game panel: hidden (players shown inline) -- */
+  .ww-game-panel { display: none !important; }
+  .ww-game-section, .ww-game-section-title, .ww-game-links, .ww-game-link { display: none !important; }
 
   /* -- mobile winner bar (shows above chat/game when game ends) -- */
   .ww-mobile-winner { display: none; flex-shrink: 0; padding: 10px; background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(21,128,61,0.25)); border-bottom: 1px solid rgba(134,239,172,0.2); }
@@ -162,14 +146,19 @@
   .ww-send-btn { border: 0; border-radius: 10px; padding: 8px 16px; background: linear-gradient(135deg, #c0392b, #7f1d1d); color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.92rem; cursor: pointer; white-space: nowrap; align-self: stretch; }
 
   /* -- desktop-only blocks: hidden on mobile -- */
-  .ww-desktop-hero { display: none; }
-  .ww-action-section { display: none; }
+  .ww-desktop-hero { display: none !important; }
+  .ww-action-section { display: block; padding: 8px 10px; background: transparent; border: none; box-shadow: none; border-radius: 0; }
+  .ww-action-section h3 { display: none; }
+  .ww-action-section .actions-grid:empty { display: none; }
 
-  /* -- desktop layout: on mobile, becomes a flex column for chat -- */
+  /* -- layout: merged players + chat (no tabs) -- */
   .ww-desktop-layout { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
-  .ww-desktop-layout.game-active { display: none; }
+  .ww-desktop-layout.game-active { display: flex; }
   .ww-desktop-layout > .ww-col-left { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
-  .ww-desktop-layout > .ww-col-right { display: none; }
+  .ww-desktop-layout > .ww-col-right { display: flex !important; flex-direction: column; order: -1; flex-shrink: 0; padding: 6px 10px; }
+  .ww-col-right > .ww-card { display: none !important; }
+  #playerBoardSection { display: block !important; background: transparent !important; border: none !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+  #playerBoardSection > h3 { display: none; }
   .ww-chat-wrap { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
   .ww-chat-head { display: none; }
 
@@ -413,9 +402,8 @@
   .ww-page.my-turn-active .spectator-card { position: relative; z-index: 60; }
   .ww-page.my-turn-active .ww-action-section,
   .ww-page.my-turn-active #mobileActionPanels { position: relative; z-index: 55; }
-  .ww-page.keyboard-open .phase-hud { gap: 8px; padding-bottom: 8px; }
-  .ww-page.keyboard-open .phase-hud-rail,
-  .ww-page.keyboard-open .phase-status-strip { display: none; }
+  .ww-page.keyboard-open .phase-hud { padding: 6px 14px; }
+  .ww-page.keyboard-open .gm-toast { display: none; }
   @keyframes spotlightPulse {
     0%, 100% { opacity: 0.62; box-shadow: 0 0 0 0 rgba(250,204,21,0.08); }
     50% { opacity: 1; box-shadow: 0 0 0 10px rgba(250,204,21,0.02); }
@@ -433,20 +421,18 @@
   @media (min-width: 961px) {
     .ww-page { height: auto; overflow: visible; max-width: 1320px; margin: 24px auto; padding: 20px; }
     .ww-topbar { display: none; }
-    .ww-view-switcher { display: none; }
     .ww-mobile-winner { display: none !important; }
-    .ww-game-panel { display: none !important; }
-    .phase-hud { margin-bottom: 18px; padding: 16px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06); background: linear-gradient(145deg, #141927, #1b2232); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
-    .phase-hud-title { font-size: 1.3rem; }
-    .phase-hud-current { font-size: 1rem; }
-    .phase-hud-timer-box { min-width: 132px; }
-    .phase-hud-rail { flex-wrap: nowrap; }
+    .phase-hud { margin-bottom: 14px; padding: 12px 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); background: linear-gradient(145deg, #141927, #1b2232); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+    .phase-hud-title { font-size: 1.2rem; }
+    .gm-toast { border-radius: 12px; margin-bottom: 14px; border: 1px solid rgba(250,204,21,0.1); border-bottom: 1px solid rgba(250,204,21,0.1); }
     .ww-chat-view { display: contents !important; }
-    .ww-desktop-hero { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 24px; padding: 24px; border-radius: 22px; background: radial-gradient(circle at top left, rgba(192,57,43,0.35), transparent 34%), linear-gradient(135deg, #0e121c 0%, #171c2a 60%, #20283a 100%); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 18px 46px rgba(0,0,0,0.35); }
-    .ww-desktop-hero h1 { margin: 0 0 8px; font-family: 'Orbitron', sans-serif; font-size: 2rem; }
-    .ww-desktop-layout { display: grid !important; grid-template-columns: 1.5fr 0.85fr; gap: 18px; flex: none; }
-    .ww-desktop-layout > .ww-col-left { display: grid; gap: 18px; }
-    .ww-desktop-layout > .ww-col-right { display: grid; gap: 18px; }
+    .ww-desktop-hero { display: none !important; }
+    .ww-desktop-layout { display: grid !important; grid-template-columns: 1.2fr 0.8fr; gap: 18px; flex: none; }
+    .ww-desktop-layout > .ww-col-left { display: grid; gap: 18px; order: 2; }
+    .ww-desktop-layout > .ww-col-right { display: grid !important; gap: 18px; order: 1; flex-direction: column; padding: 0; }
+    .ww-col-right > .ww-card { display: none !important; }
+    #playerBoardSection { display: block !important; background: linear-gradient(145deg, #141927, #1b2232) !important; border: 1px solid rgba(255,255,255,0.06) !important; border-radius: 20px !important; padding: 20px !important; box-shadow: 0 12px 28px rgba(0,0,0,0.25) !important; }
+    #playerBoardSection > h3 { display: block; margin-top: 0; font-family: 'Orbitron', sans-serif; }
 
     /* Chat section becomes a card on desktop */
     .ww-chat-wrap { display: block; flex: none; background: linear-gradient(145deg, #141927, #1b2232); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 20px; box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
@@ -457,7 +443,8 @@
     .ww-composer { padding: 0; padding-top: 14px; border-top: 0; background: transparent; }
     .ww-input-row textarea { max-height: none; resize: vertical; padding: 12px 14px; border-radius: 12px; }
 
-    .ww-action-section { display: block; }
+    .ww-action-section { display: block; background: linear-gradient(145deg, #141927, #1b2232); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 20px; box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
+    .ww-action-section h3 { display: block; }
     .target-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   }
 
@@ -469,12 +456,7 @@
     .phase-recap-card,
     .decision-receipt,
     .spectator-card { padding: 13px 14px; }
-    .phase-hud-main { align-items: stretch; }
-    .phase-hud-timer-box { min-width: 92px; }
-    .phase-hud-rail { flex-wrap: wrap; }
-    .phase-status-main { flex-direction: column; }
-    .phase-status-actions { justify-content: stretch; }
-    .phase-status-cta { width: 100%; }
+    .phase-hud-main { align-items: center; }
   }
 
     @media (min-width: 720px) {
@@ -574,6 +556,9 @@
       <div id="phaseStatusChips" class="phase-status-chips"></div>
     </div>
   </div>
+
+  <!-- ===== GM TOAST (game master guidance) ===== -->
+  <div id="gmToast" class="gm-toast"></div>
 
   <!-- ===== MOBILE VIEW SWITCHER ===== -->
   <div class="ww-view-switcher">
@@ -730,6 +715,7 @@
     let audioUnlockBound = false;
     let pendingActionSubmission = false;
     let replyingTo = null;
+    let gmToastTimeout = null;
     let currentChatFilter = 'all';
     let touchStartX = 0;
     let touchStartY = 0;
@@ -743,6 +729,45 @@
 
     function escapeHtml(value) {
       return $('<div>').text(value || '').html();
+    }
+
+    function showGmToast(message, duration) {
+      var $toast = $('#gmToast');
+      $toast.text(message).addClass('visible');
+      clearTimeout(gmToastTimeout);
+      gmToastTimeout = setTimeout(function() {
+        $toast.removeClass('visible');
+      }, duration || 5000);
+    }
+
+    function syncPhaseTheme(phase) {
+      var $shell = $('#werewolfShell');
+      $shell.removeClass('phase-lobby phase-night phase-day-discussion phase-day-vote phase-finished');
+      if (phase) {
+        $shell.addClass('phase-' + phase);
+      }
+    }
+
+    function getGmMessage(state) {
+      var phase = state?.phase || 'lobby';
+      var selfPlayer = (state?.players || []).find(function(p) { return p.isSelf; });
+      var isAlive = !selfPlayer || selfPlayer.alive !== false;
+      var nightActions = getActiveNightActions(state);
+      var canActNight = nightActions.some(function(a) { return Array.isArray(a.targets) && (a.targets.length > 0 || a.allowSkip); });
+      var dayActions = state?.actionState?.dayActions || {};
+
+      if (phase === 'lobby') return '🏕️ รอผู้เล่นครบ แล้วเริ่มเกม!';
+      if (phase === 'finished') {
+        var w = state?.winner;
+        if (w === 'village') return '🏡 ชาวบ้านชนะ! เล่นรอบใหม่?';
+        if (w === 'werewolf') return '🐺 หมาป่าชนะ! เล่นรอบใหม่?';
+        return '🏁 จบเกม!';
+      }
+      if (!isAlive) return '💀 คุณตายแล้ว — ดูเกมต่อได้';
+      if (phase === 'night') return canActNight ? '🌙 กลางคืน — ถึงตาคุณแล้ว!' : '🌙 กลางคืน — รอทุกคนเล่นจบ';
+      if (phase === 'day-discussion') return '☀️ เช้าแล้ว! คุยหาคนผิดกัน';
+      if (phase === 'day-vote') return dayActions.canVote ? '🗳️ โหวต! เลือกคนที่สงสัย' : '🗳️ รอผลโหวต...';
+      return '';
     }
 
     function roleEmoji(roleId) {
@@ -3539,10 +3564,17 @@
       syncChatComposerState(currentState);
       syncWolfChatFilterVisibility(currentState);
       syncAmbientForState(currentState);
+      syncPhaseTheme(currentState.phase);
       syncMobileHeaderState();
       syncMobileGamePanel();
 
       const isPhaseChanged = Boolean(previousPhase && previousPhase !== currentState.phase);
+
+      // GM toast: show guidance on phase change or first load
+      if (isPhaseChanged || !previousPhase) {
+        var gmMsg = getGmMessage(currentState);
+        if (gmMsg) showGmToast(gmMsg);
+      }
       const shouldShowRoleAnnouncement = currentState.phase === 'night'
         && Number(currentState.dayNumber || 1) === 1
         && currentState.playerRole?.id;
