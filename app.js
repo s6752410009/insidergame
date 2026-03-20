@@ -293,6 +293,74 @@ function addPlayerVote2(gameState, playerVote) {
 }
 
 /**
+ * Build vote2 progress so clients can render live vote counts and voter lists.
+ */
+function buildVote2Progress(gameState) {
+    const voteTargets = gameState.players
+        .filter(isNotGameMaster)
+        .map(function(player) {
+            return {
+                playerId: player.playerId,
+                name: player.name,
+                count: 0,
+                voters: []
+            };
+        });
+    const targetMap = new Map(voteTargets.map(function(target) {
+        return [target.playerId || target.name, target];
+    }));
+    const eligibleVoters = gameState.players.filter(function(player) {
+        return player.role !== gameMasterRole && !player.isGhost && !!player.socketId;
+    });
+    const voterChoices = [];
+
+    eligibleVoters.forEach(function(player) {
+        if (player.vote2 === null || typeof player.vote2 === 'undefined') {
+            return;
+        }
+
+        const submittedVotes = Array.isArray(player.vote2) ? player.vote2 : [player.vote2];
+        const voteValues = submittedVotes.filter(Boolean);
+        const targetNames = [];
+
+        voteValues.forEach(function(voteTarget) {
+            const targetPlayer = gameState.players.find(function(candidate) {
+                return candidate.playerId === voteTarget || candidate.name === voteTarget;
+            });
+            if (!targetPlayer) return;
+
+            const voteSummary = targetMap.get(targetPlayer.playerId || targetPlayer.name);
+            if (voteSummary) {
+                voteSummary.count += 1;
+                voteSummary.voters.push(player.name);
+            }
+            targetNames.push(targetPlayer.name);
+        });
+
+        voterChoices.push({
+            voterId: player.playerId,
+            voterName: player.name,
+            voteValues: voteValues,
+            targets: targetNames
+        });
+    });
+
+    return {
+        targets: voteTargets,
+        voterChoices: voterChoices,
+        pendingVoters: eligibleVoters
+            .filter(function(player) {
+                return player.vote2 === null || typeof player.vote2 === 'undefined';
+            })
+            .map(function(player) {
+                return player.name;
+            }),
+        totalEligibleVoters: eligibleVoters.length,
+        totalSubmittedVoters: voterChoices.length
+    };
+}
+
+/**
  * Compare votes for sorting
  */
 function compareVote(a, b) {
@@ -680,12 +748,14 @@ function emitWerewolfState(room, targetSocketId = null, playerId = null) {
 
     if (targetSocketId && playerId) {
         io.to(targetSocketId).emit('werewolfState', buildWerewolfStatePayload(room, playerId));
+        emitWerewolfChatHistory(room, targetSocketId, playerId);
         return;
     }
 
     room.players.forEach(player => {
         if (player.socketId) {
             io.to(player.socketId).emit('werewolfState', buildWerewolfStatePayload(room, player.playerId));
+            emitWerewolfChatHistory(room, player.socketId, player.playerId);
         }
     });
 }
@@ -3384,7 +3454,8 @@ io.sockets.on('connection', function(socket) {
         const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
         io.to(roomId).emit('displayVote2', {
             players: room.gameState.players.filter(isNotGameMaster),
-            numTraitors: numTraitors
+            numTraitors: numTraitors,
+            progress: buildVote2Progress(room.gameState)
         });
         room.gameState.status = 'vote2';
     });
@@ -3481,6 +3552,8 @@ io.sockets.on('connection', function(socket) {
             player.vote2 = object.vote; // เก็บเป็น string (โหมดปกติ)
         }
         player._votingInProgress2 = false;
+
+        io.to(roomId).emit('vote2Progress', buildVote2Progress(room.gameState));
 
         if(everybodyHasVoted(room.gameState, 2)) {
             processVote2Result(room.gameState);

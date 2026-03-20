@@ -102,6 +102,8 @@
   .ww-filters { flex-shrink: 0; display: flex; gap: 6px; padding: 6px 10px; }
   .chat-tab { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #cfd8eb; border-radius: 999px; padding: 5px 12px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
   .chat-tab.active { background: linear-gradient(135deg, rgba(37,99,235,0.26), rgba(29,78,216,0.18)); border-color: rgba(96,165,250,0.24); color: #fff; }
+  .chat-tab[data-chat-filter="wolf"] { border-color: rgba(248,113,113,0.16); }
+  .chat-tab[data-chat-filter="wolf"].active { background: linear-gradient(135deg, rgba(127,29,29,0.42), rgba(185,28,28,0.22)); border-color: rgba(248,113,113,0.32); }
 
   /* -- chat messages -- */
   .ww-chat-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
@@ -150,8 +152,16 @@
   .chat-message-wrapper.system .chat-message-bubble.message-admin { background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(234,88,12,0.13)); border-color: rgba(253,224,71,0.14); }
   .chat-message-wrapper.system .chat-message-bubble.message-history-result,
   .chat-message-wrapper.system .chat-message-bubble.message-system { background: linear-gradient(135deg, rgba(34,197,94,0.16), rgba(20,184,166,0.1)); border-color: rgba(134,239,172,0.16); }
+  .chat-message-bubble.message-player { background: linear-gradient(135deg, rgba(37,99,235,0.24), rgba(30,41,59,0.42)); border-color: rgba(96,165,250,0.14); }
+  .chat-message-bubble.message-wolf-team { background: linear-gradient(135deg, rgba(127,29,29,0.42), rgba(69,10,10,0.58)); border-color: rgba(248,113,113,0.26); box-shadow: 0 0 0 1px rgba(248,113,113,0.08) inset; }
+  .chat-message-wrapper.chat-group-wolf .chat-avatar { background: rgba(127,29,29,0.38); }
+  .chat-message-wrapper.chat-group-wolf .chat-message-meta { color: #fca5a5; }
   .chat-message-name { font-weight: 700; font-size: 0.82rem; margin-bottom: 2px; }
   .chat-message-wrapper.system .chat-message-name { display: flex; justify-content: center; font-size: 0.78rem; }
+  .chat-channel-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 4px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
+  .chat-channel-badge.channel-public { background: rgba(59,130,246,0.16); color: #dbeafe; border: 1px solid rgba(96,165,250,0.16); }
+  .chat-channel-badge.channel-wolf { background: rgba(127,29,29,0.36); color: #fee2e2; border: 1px solid rgba(248,113,113,0.18); }
+  .chat-channel-badge.channel-system { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.08); }
   .chat-message-body { white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; }
   .chat-message-meta { font-size: 0.72rem; color: #97a4bf; padding: 0 4px; }
   .chat-message-wrapper.self .chat-message-meta { text-align: right; }
@@ -233,6 +243,18 @@
   .target-card-badge.badge-revealed { background: rgba(217,119,6,0.2); color: #fde68a; }
   .target-card-badge.badge-weight { background: rgba(249,115,22,0.22); color: #ffedd5; }
   .target-card-hint { color: #d7def0; font-size: 0.88rem; line-height: 1.4; }
+  .target-card-voters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .target-card-voter-pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); color: #e2e8f0; }
+  .target-card-voter-pill.weighted { background: rgba(249,115,22,0.18); border-color: rgba(251,191,36,0.18); color: #ffedd5; }
+  .target-card-voter-pill.empty { background: rgba(148,163,184,0.14); border-color: rgba(148,163,184,0.16); color: #cbd5e1; }
+  .target-vote-live-board { display: grid; gap: 10px; margin: 14px 0 12px; padding: 14px 16px; border-radius: 16px; background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); }
+  .target-vote-live-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .target-vote-live-title { color: #fde68a; font-weight: 700; font-size: 0.95rem; }
+  .target-vote-live-status { color: #dbeafe; font-size: 0.86rem; }
+  .target-vote-live-feed { display: flex; flex-wrap: wrap; gap: 8px; }
+  .target-vote-live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; background: rgba(231,76,60,0.14); border: 1px solid rgba(248,113,113,0.18); color: #fff5f5; }
+  .target-vote-live-pill.empty { background: rgba(148,163,184,0.14); border-color: rgba(148,163,184,0.16); color: #cbd5e1; }
+  .target-vote-live-arrow { color: #fca5a5; }
   .target-card-particle-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
   .target-card-particle { position: absolute; left: var(--particle-left, 50%); top: var(--particle-top, 50%); width: var(--particle-size, 12px); height: var(--particle-size, 12px); border-radius: 999px; background: var(--particle-color, rgba(255,255,255,0.8)); box-shadow: 0 0 14px var(--particle-color, rgba(255,255,255,0.55)); opacity: 0; transform: translate(-50%, -50%) scale(0.35); animation: targetParticleBurst 0.64s ease-out forwards; }
   .target-card-particle.shape-drop { border-radius: 70% 70% 70% 0; transform: translate(-50%, -50%) rotate(45deg) scale(0.35); }
@@ -267,6 +289,13 @@
   .team-badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); margin-bottom: 8px; }
   .role-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
   .note-inline { margin-top: 10px; display: grid; gap: 6px; }
+  .room-role-summary { display: grid; gap: 10px; margin-top: 12px; }
+  .room-role-card { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
+  .room-role-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .room-role-card-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: #fff; }
+  .room-role-count { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #fde68a; font-size: 0.78rem; font-weight: 700; }
+  .room-role-card-body { color: #d5def0; line-height: 1.45; font-size: 0.92rem; }
+  .room-role-card-team { margin-top: 7px; color: #97a4bf; font-size: 0.82rem; }
 
   .ww-page.phase-lock .action-btn, .ww-page.phase-lock .werewolf-btn, .ww-page.phase-lock .ghost-btn, .ww-page.phase-lock textarea { pointer-events: none; opacity: 0.7; }
   .ww-page.phase-lock .target-card-actionable, .ww-page.pending-actions .target-card-actionable { pointer-events: none; opacity: 0.68; }
@@ -307,6 +336,7 @@
     .target-card { padding: 12px; border-radius: 16px; }
     .target-card-avatar { width: 46px; height: 46px; border-radius: 14px; }
     .target-card-name { font-size: 0.96rem; }
+    .target-vote-live-head { align-items: flex-start; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -384,6 +414,10 @@
       <div id="mobileWinnerBanner" class="winner-banner" style="display:none;"></div>
     </div>
     <div class="ww-game-section">
+      <div class="ww-game-section-title">📚 บทที่เปิดในห้องนี้</div>
+      <div id="mobileRoomRoleSummary" class="room-role-summary"></div>
+    </div>
+    <div class="ww-game-section">
       <div class="ww-game-section-title">👥 ผู้เล่น</div>
       <div id="mobilePlayerGrid" class="player-grid"></div>
     </div>
@@ -403,7 +437,7 @@
     </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       <button class="ghost-btn" onclick="document.getElementById('openModeGuide').click()">วิธีเล่น 1 นาที</button>
-      <button class="ghost-btn" onclick="document.getElementById('openRoleCatalog').click()">คู่มือบทบาท</button>
+      <button id="openRoleCatalog" class="ghost-btn">คู่มือบทบาท</button>
       <button class="werewolf-btn" onclick="document.getElementById('leaveWerewolfRoom').click()">← ออกจากห้อง</button>
     </div>
   </div>
@@ -422,7 +456,8 @@
         <!-- Shared filter tabs (flat on mobile, inside card on desktop) -->
         <div class="ww-filters">
           <button class="chat-tab active" type="button" data-chat-filter="all">ทั้งหมด</button>
-          <button class="chat-tab" type="button" data-chat-filter="player">ผู้เล่น</button>
+          <button class="chat-tab" type="button" data-chat-filter="player">วงหลัก</button>
+          <button class="chat-tab" type="button" data-chat-filter="wolf">หมาป่า</button>
           <button class="chat-tab" type="button" data-chat-filter="system">ระบบ</button>
         </div>
 
@@ -465,6 +500,13 @@
           <div id="winnerBanner" class="winner-banner" style="display:none;"></div>
           <div id="personalNotes" class="note-inline"></div>
         </div>
+      </div>
+      <div class="ww-card">
+        <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+          <h3>บทที่เปิดในห้องนี้</h3>
+          <button id="openRoleCatalogInline" class="ghost-btn" type="button">เปิดแบบเต็ม</button>
+        </div>
+        <div id="roomRoleSummary" class="room-role-summary"></div>
       </div>
       <div class="ww-card">
         <h3>ผู้เล่นในเกม</h3>
@@ -552,6 +594,92 @@
       };
 
       return icons[team] || '🎭';
+    }
+
+    function teamLabel(team) {
+      const labels = {
+        village: 'ฝ่ายชาวบ้าน',
+        werewolf: 'ฝ่ายหมาป่า',
+        solo: 'บทเดี่ยว'
+      };
+
+      return labels[team] || (team || '-');
+    }
+
+    function getRoomRoleSummaryItems() {
+      const rolePlan = Array.isArray(currentState.rolePlan) ? currentState.rolePlan : [];
+      const roleCatalog = Array.isArray(currentState.roleCatalog) ? currentState.roleCatalog : [];
+      const roleMap = new Map();
+
+      rolePlan.forEach(function(role) {
+        if (!role || !role.id) {
+          return;
+        }
+
+        const existing = roleMap.get(role.id);
+        if (existing) {
+          existing.count += 1;
+          return;
+        }
+
+        roleMap.set(role.id, {
+          id: role.id,
+          thaiName: role.thaiName,
+          team: role.team,
+          description: role.description,
+          count: 1
+        });
+      });
+
+      if (!roleMap.size) {
+        roleCatalog.filter(function(role) {
+          return role.enabledInRoom;
+        }).forEach(function(role) {
+          roleMap.set(role.id, {
+            id: role.id,
+            thaiName: role.thaiName,
+            team: role.team,
+            description: role.description,
+            count: 1
+          });
+        });
+      }
+
+      return Array.from(roleMap.values()).sort(function(left, right) {
+        if (left.team === right.team) {
+          return String(left.thaiName || '').localeCompare(String(right.thaiName || ''), 'th');
+        }
+
+        const order = { werewolf: 0, village: 1, solo: 2 };
+        return (order[left.team] ?? 9) - (order[right.team] ?? 9);
+      });
+    }
+
+    function buildRoomRoleSummaryHtml() {
+      const items = getRoomRoleSummaryItems();
+      if (!items.length) {
+        return '<div class="room-role-card"><div class="room-role-card-body">ยังไม่พบบทที่เปิดใช้ในห้องนี้</div></div>';
+      }
+
+      return items.map(function(role) {
+        const countLabel = role.count > 1 ? `มี ${role.count} ใบ` : 'มี 1 ใบ';
+        return `
+          <div class="room-role-card">
+            <div class="room-role-card-head">
+              <div class="room-role-card-title">${roleEmoji(role.id)} <span>${escapeHtml(role.thaiName || role.id)}</span></div>
+              <div class="room-role-count">${escapeHtml(countLabel)}</div>
+            </div>
+            <div class="room-role-card-body">${escapeHtml(role.description || 'ไม่มีคำอธิบาย')}</div>
+            <div class="room-role-card-team">${teamEmoji(role.team)} ${escapeHtml(teamLabel(role.team))}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRoomRoleSummary() {
+      const html = buildRoomRoleSummaryHtml();
+      $('#roomRoleSummary').html(html);
+      $('#mobileRoomRoleSummary').html(html);
     }
 
     function roleActionHint(role) {
@@ -1389,7 +1517,78 @@
     }
 
     function classifyChatGroup(data) {
-      return classifyMessageType(data) === 'player' ? 'player' : 'system';
+      const messageType = classifyMessageType(data);
+      if (messageType === 'wolf-team') {
+        return 'wolf';
+      }
+
+      return messageType === 'player' ? 'player' : 'system';
+    }
+
+    function getChatChannelBadge(messageType) {
+      if (messageType === 'wolf-team') {
+        return {
+          className: 'channel-wolf',
+          label: '🐺 แชทหมาป่า'
+        };
+      }
+
+      if (messageType === 'player') {
+        return {
+          className: 'channel-public',
+          label: '💬 วงหลัก'
+        };
+      }
+
+      return {
+        className: 'channel-system',
+        label: '📣 ระบบ'
+      };
+    }
+
+    function syncWolfChatFilterVisibility(state) {
+      const canSeeWolfChat = ['werewolf', 'alphaWolf'].includes(state?.playerRole?.id || '');
+      const $wolfTab = $('.chat-tab[data-chat-filter="wolf"]');
+      $wolfTab.toggle(canSeeWolfChat);
+
+      if (!canSeeWolfChat && currentChatFilter === 'wolf') {
+        currentChatFilter = 'all';
+      }
+    }
+
+    function buildVoteProgressBoardHtml(summary) {
+      if (!summary) {
+        return '';
+      }
+
+      const pendingNames = (summary.pendingActors || []).map(function(player) {
+        return player.name;
+      });
+      let statusText = `ตัดสินใจแล้ว ${summary.totalCompletedDecisions || 0}/${summary.totalAlive || 0} คน`;
+      if (pendingNames.length) {
+        statusText += ` • รอ ${pendingNames.join(', ')}`;
+      } else {
+        statusText += ' • ครบทุกคนแล้ว';
+      }
+
+      const pills = (summary.voterChoices || []).map(function(choice) {
+        const suffix = choice.weight > 1 ? ` (${choice.weight} เสียง)` : '';
+        return `<span class="target-vote-live-pill">${escapeHtml(choice.voterName)}${escapeHtml(suffix)} <span class="target-vote-live-arrow">→</span> ${escapeHtml(choice.targetName)}</span>`;
+      });
+
+      if (!pills.length) {
+        pills.push('<span class="target-vote-live-pill empty">ยังไม่มีใครลงคะแนน</span>');
+      }
+
+      return `
+        <div class="target-vote-live-board">
+          <div class="target-vote-live-head">
+            <div class="target-vote-live-title">ทุกคนเห็นสดว่าใครโหวตใคร</div>
+            <div class="target-vote-live-status">${escapeHtml(statusText)}</div>
+          </div>
+          <div class="target-vote-live-feed">${pills.join('')}</div>
+        </div>
+      `;
     }
 
     function getChatComposerState(state) {
@@ -1623,21 +1822,31 @@
     }
 
     function showRoleCatalogPopup() {
+      const summaryHtml = buildRoomRoleSummaryHtml();
       const roles = currentState.roleCatalog || [];
       const html = `
-        <div style="display:grid; gap:10px; text-align:left; font-family: Rajdhani, sans-serif;">
-          ${roles.map(function(role) {
-            return `
-              <div style="padding:12px 14px; border-radius:12px; background:${role.enabledInRoom ? 'rgba(46,204,113,0.12)' : 'rgba(255,255,255,0.05)'}; border:1px solid rgba(255,255,255,0.08);">
-                <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
-                  <strong>${escapeHtml(role.thaiName)}</strong>
-                  <span style="color:${role.enabledInRoom ? '#7ee2a8' : '#97a4bf'};">${role.enabledInRoom ? 'เปิดในห้องนี้' : 'ปิดในห้องนี้'}</span>
-                </div>
-                <div style="margin-top:6px; color:#cdd5e5;">${escapeHtml(role.description)}</div>
-                <div style="margin-top:6px; color:#97a4bf;">ทีม: ${escapeHtml(role.team)}</div>
-              </div>
-            `;
-          }).join('')}
+        <div style="display:grid; gap:14px; text-align:left; font-family: Rajdhani, sans-serif;">
+          <div>
+            <div style="font-weight:700; margin-bottom:8px; color:#fde68a;">บทที่กำลังเปิดอยู่ในห้องนี้</div>
+            <div class="room-role-summary">${summaryHtml}</div>
+          </div>
+          <div>
+            <div style="font-weight:700; margin-bottom:8px; color:#dbeafe;">บททั้งหมดของโหมด Werewolf</div>
+            <div style="display:grid; gap:10px;">
+              ${roles.map(function(role) {
+                return `
+                  <div style="padding:12px 14px; border-radius:12px; background:${role.enabledInRoom ? 'rgba(46,204,113,0.12)' : 'rgba(255,255,255,0.05)'}; border:1px solid rgba(255,255,255,0.08);">
+                    <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+                      <strong>${roleEmoji(role.id)} ${escapeHtml(role.thaiName)}</strong>
+                      <span style="color:${role.enabledInRoom ? '#7ee2a8' : '#97a4bf'};">${role.enabledInRoom ? 'เปิดในห้องนี้' : 'ปิดในห้องนี้'}</span>
+                    </div>
+                    <div style="margin-top:6px; color:#cdd5e5;">${escapeHtml(role.description)}</div>
+                    <div style="margin-top:6px; color:#97a4bf;">ทีม: ${teamEmoji(role.team)} ${escapeHtml(teamLabel(role.team))}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
         </div>
       `;
 
@@ -1664,6 +1873,10 @@
             <div style="padding:12px 14px; border-radius:12px; background:rgba(46,204,113,0.12);">🏡 <strong>ชาวบ้านชนะ</strong> เมื่อกำจัดหมาป่าจนหมด</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(192,57,43,0.16);">🐺 <strong>หมาป่าชนะ</strong> เมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่เหลือ</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(52,152,219,0.12);">💡 เช็กบทของตัวเอง อ่านประกาศในแชท และกดเลือกเฉพาะตอนที่ถึงตาของคุณ</div>
+            <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">
+              <div style="font-weight:700; color:#fde68a; margin-bottom:10px;">บทที่เปิดในห้องนี้</div>
+              <div class="room-role-summary">${buildRoomRoleSummaryHtml()}</div>
+            </div>
           </div>
         `,
         width: 760,
@@ -1765,6 +1978,7 @@
       const isSelf = data.playerName === myPlayerName;
       const messageType = classifyMessageType(data);
       const chatGroup = classifyChatGroup(data);
+      const channelBadge = getChatChannelBadge(messageType);
       const wrapperClass = isSystem ? 'system' : (isSelf ? 'self' : 'other');
       const decoratedName = isSystem ? '📣 System' : safeName;
       const replyBlock = data.replyTo
@@ -1777,12 +1991,13 @@
       const nameColor = !isSystem && data.color ? data.color : '#f4f6fb';
 
       $area.append(`
-        <div class="chat-message-wrapper ${wrapperClass}" data-message-id="${escapeHtml(data.messageId || '')}" data-player-name="${safeName}" data-message-text="${safeMsg}" data-chat-group="${chatGroup}">
+        <div class="chat-message-wrapper ${wrapperClass} chat-group-${chatGroup}" data-message-id="${escapeHtml(data.messageId || '')}" data-player-name="${safeName}" data-message-text="${safeMsg}" data-chat-group="${chatGroup}">
           ${swipeIndicator}
           <div class="chat-message-row">
             ${avatarMarkup}
             <div class="chat-message-bubble message-${escapeHtml(messageType)}">
               ${replyBlock}
+              <div class="chat-channel-badge ${escapeHtml(channelBadge.className)}">${escapeHtml(channelBadge.label)}</div>
               <div class="chat-message-name" style="color:${escapeHtml(nameColor)};">${decoratedName}</div>
               <div class="chat-message-body">${safeMsg}</div>
             </div>
@@ -1815,6 +2030,7 @@
         appendChatMessage(entry, { silent: true });
       });
 
+      syncWolfChatFilterVisibility(currentState);
       applyChatFilter();
     }
 
@@ -1924,12 +2140,18 @@
       const actionType = handlerArg || action.type || 'day-vote';
       const theme = getActionTheme(actionType);
       const voteTallies = action.voteTallies || {};
+      const voteSummary = action.dayVoteSummary || null;
+      const voteSummaryMap = new Map(((voteSummary && voteSummary.targets) || []).map(function(target) {
+        return [target.playerId, target];
+      }));
 
       const cards = action.targets.map(function(target) {
         const roomPlayer = getPlayerById(target.playerId) || {};
         const isSelected = action.selectedTargetId && action.selectedTargetId === target.playerId;
         const isDisabled = Boolean(action.locked && !isSelected);
-        const voteCount = Number(voteTallies[target.playerId] || roomPlayer.voteCount || 0);
+        const targetSummary = voteSummaryMap.get(target.playerId) || null;
+        const voteCount = Number(targetSummary?.count || voteTallies[target.playerId] || roomPlayer.voteCount || 0);
+        const voterEntries = Array.isArray(targetSummary?.voters) ? targetSummary.voters : [];
         const selectionIcon = getActionSelectionIcon(actionType, isSelected);
         const selectionLabel = getActionSelectionLabel(actionType, isSelected, action.locked);
         const badges = [];
@@ -1949,6 +2171,13 @@
 
         const statusClass = isSelected ? 'status-selected' : (action.locked ? 'status-locked' : 'status-ready');
         const statusIcon = isSelected ? selectionIcon : (action.locked ? '🔒' : actionEmoji(actionType));
+        const votersHtml = voterEntries.length
+          ? voterEntries.map(function(voter) {
+              const weightedClass = voter.weight > 1 ? 'weighted' : '';
+              const suffix = voter.weight > 1 ? ` x${voter.weight}` : '';
+              return `<span class="target-card-voter-pill ${weightedClass}">${escapeHtml(voter.name)}${escapeHtml(suffix)}</span>`;
+            }).join('')
+          : '<span class="target-card-voter-pill empty">ยังไม่มีคนลงให้</span>';
         return `
           <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : ''} ${isDisabled ? 'target-disabled' : ''} ${isDisabled ? '' : 'target-card-actionable'}" data-action-type="${escapeHtml(actionType)}" data-target-player-id="${escapeHtml(target.playerId)}" ${isDisabled ? '' : `onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '${target.playerId}'` : `'${target.playerId}'`})"`}>
             <div class="target-card-particle-layer" aria-hidden="true"></div>
@@ -1967,6 +2196,7 @@
             </div>
             <div class="target-card-body">
               ${badges.length ? `<div class="target-card-meta">${badges.join('')}</div>` : ''}
+              ${actionType === 'day-vote' ? `<div class="target-card-voters">${votersHtml}</div>` : ''}
               <div class="target-card-foot">
                 <div class="target-card-tap">${selectionIcon} ${escapeHtml(selectionLabel)}</div>
                 ${action.locked && !isSelected ? '<span class="target-card-tag">รอรอบถัดไป</span>' : ''}
@@ -1980,6 +2210,13 @@
         const isSkipSelected = action.selectedTargetId === '__skip__';
         const isSkipDisabled = Boolean(action.locked && !isSkipSelected);
         const skipCount = Number(action.skipVoteWeight || 0);
+        const skipVoters = (voteSummary && Array.isArray(voteSummary.skipVoters)) ? voteSummary.skipVoters : [];
+        const skipVotersHtml = skipVoters.length
+          ? skipVoters.map(function(voter) {
+              const suffix = voter.weight > 1 ? ` x${voter.weight}` : '';
+              return `<span class="target-card-voter-pill ${voter.weight > 1 ? 'weighted' : ''}">${escapeHtml(voter.name)}${escapeHtml(suffix)}</span>`;
+            }).join('')
+          : '<span class="target-card-voter-pill empty">ยังไม่มีคนข้าม</span>';
         cards.push(`
           <div class="target-card target-theme-skip ${isSkipSelected ? 'target-selected' : ''} ${isSkipDisabled ? 'target-disabled' : ''} ${isSkipDisabled ? '' : 'target-card-actionable'}" data-action-type="action-skip" data-target-player-id="__skip__" ${isSkipDisabled ? '' : `onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '__skip__'` : `'__skip__'`})"`}>
             <div class="target-card-particle-layer" aria-hidden="true"></div>
@@ -1997,6 +2234,7 @@
               <div class="target-card-status ${isSkipSelected ? 'status-selected' : (action.locked ? 'status-locked' : 'status-ready')}">${isSkipSelected ? '😌' : (action.locked ? '🔒' : '⏭️')} ${isSkipSelected ? 'เลือกข้ามแล้ว' : (action.locked ? 'ล็อกแล้ว' : 'พร้อมข้าม')}</div>
             </div>
             <div class="target-card-body">
+              ${actionType === 'day-vote' ? `<div class="target-card-voters">${skipVotersHtml}</div>` : ''}
               <div class="target-card-hint">เหมาะตอนยังข้อมูลไม่พอ หรืออยากดันเกมไปเฟสถัดไปโดยไม่เทคะแนนให้ใคร</div>
             </div>
           </div>
@@ -2107,6 +2345,7 @@
 
       if (phase === 'day-vote') {
         const dayActions = actionState?.dayActions || {};
+        const voteBoardHtml = buildVoteProgressBoardHtml(dayActions.dayVoteSummary);
         const skipVoteText = Number(dayActions.skipVoteWeight || 0) > 0
           ? ` | ข้ามโหวต ${dayActions.skipVoteWeight}/${dayActions.totalVoteWeight || 0} เสียง`
           : '';
@@ -2121,7 +2360,8 @@
             <div class="history-row" style="display:block;">
               <div class="action-title"><span>🗳️</span><strong>สิทธิ์โหวตกลางวันของทุกคน</strong></div>
               <div class="subtle">เลือก 1 คนเพื่อขับออกจากหมู่บ้าน ตอนนี้มีคนลงคะแนนแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน ถ้าทุกคนลงครบระบบจะสรุปทันที</div>
-              <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote, voteTallies: dayActions.voteTallies, skipVoteWeight: dayActions.skipVoteWeight }, 'selectVoteTarget', '', 'day-vote')}</div>
+              ${voteBoardHtml}
+              <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote, voteTallies: dayActions.voteTallies, dayVoteSummary: dayActions.dayVoteSummary, skipVoteWeight: dayActions.skipVoteWeight }, 'selectVoteTarget', '', 'day-vote')}</div>
             </div>
           `);
         } else {
@@ -2344,8 +2584,10 @@
       renderPlayers(currentState.players || []);
       syncHistoryToChat(currentState.history || []);
       renderNotes(currentState.personalNotes || {});
+      renderRoomRoleSummary();
       renderActionPanels(currentState.actionState || {}, currentState.phase, currentState.winner);
       syncChatComposerState(currentState);
+      syncWolfChatFilterVisibility(currentState);
       syncAmbientForState(currentState);
       syncMobileHeaderState();
       syncMobileGamePanel();

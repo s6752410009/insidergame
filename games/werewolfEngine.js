@@ -354,6 +354,96 @@ function getDayVoteTallies(room) {
     return tallies;
 }
 
+function buildDayVoteSummary(room) {
+    const alivePlayers = getAlivePlayers(room);
+    const targetSummaries = alivePlayers.map(player => ({
+        playerId: player.playerId,
+        name: player.name,
+        count: 0,
+        voters: []
+    }));
+    const summaryMap = new Map(targetSummaries.map(target => [target.playerId, target]));
+    const voterChoices = [];
+    let skipVoteWeight = 0;
+    const skipVoters = [];
+
+    Object.entries(room.gameState.dayVotes || {}).forEach(([actorId, targetId]) => {
+        const actor = getPlayer(room, actorId);
+        if (!actor || actor.alive === false) {
+            return;
+        }
+
+        const weight = getCurrentVoteWeight(actor);
+        const weightLabel = weight > 1 ? ` x${weight}` : '';
+
+        if (!targetId || targetId === SKIP_TARGET_ID) {
+            skipVoteWeight += weight;
+            skipVoters.push({
+                playerId: actor.playerId,
+                name: actor.name,
+                weight,
+                weightLabel
+            });
+            voterChoices.push({
+                voterId: actor.playerId,
+                voterName: actor.name,
+                targetId: SKIP_TARGET_ID,
+                targetName: 'ข้ามรอบนี้',
+                weight,
+                weightLabel,
+                isSkip: true
+            });
+            return;
+        }
+
+        const target = getPlayer(room, targetId);
+        if (!target || target.alive === false) {
+            return;
+        }
+
+        const summary = summaryMap.get(target.playerId);
+        if (summary) {
+            summary.count += weight;
+            summary.voters.push({
+                playerId: actor.playerId,
+                name: actor.name,
+                weight,
+                weightLabel
+            });
+        }
+
+        voterChoices.push({
+            voterId: actor.playerId,
+            voterName: actor.name,
+            targetId: target.playerId,
+            targetName: target.name,
+            weight,
+            weightLabel,
+            isSkip: false
+        });
+    });
+
+    const completedActors = getCompletedDayActorIds(room);
+    const pendingActors = alivePlayers
+        .filter(player => !completedActors.has(player.playerId))
+        .map(player => ({
+            playerId: player.playerId,
+            name: player.name
+        }));
+
+    return {
+        targets: targetSummaries,
+        voterChoices,
+        skipVoteWeight,
+        skipVoters,
+        completedActors: Array.from(completedActors),
+        pendingActors,
+        totalAlive: alivePlayers.length,
+        totalSubmittedVotes: voterChoices.length,
+        totalCompletedDecisions: completedActors.size
+    };
+}
+
 function getDaySkipVoteWeight(room) {
     let total = 0;
 
@@ -1439,6 +1529,7 @@ function getDayActionOptions(room, viewer) {
             canVote: false,
             selectedVoteTargetId: null,
             voteTargets: [],
+            dayVoteSummary: null,
             canReveal: false,
             revealUsed: !!viewer?.revealerUsed,
             revealTargets: []
@@ -1458,6 +1549,7 @@ function getDayActionOptions(room, viewer) {
         allowSkipVote: true,
         voteTargets: targets,
         voteTallies: getDayVoteTallies(room),
+        dayVoteSummary: buildDayVoteSummary(room),
         skipVoteWeight: getDaySkipVoteWeight(room),
         totalVoteWeight: getTotalDayVoteWeight(room),
         completedVotes: Object.keys(room.gameState.dayVotes || {}).length,

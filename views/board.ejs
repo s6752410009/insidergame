@@ -153,6 +153,15 @@
             <span style="font-size: 1.3em; font-weight: 700; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);">🔴🔴 โหมด 2 ผู้ทรยศ - เลือก 2 คน!</span>
         </div>
         <h4 id="vote2Title" style="color: #ffd700; font-size: 1.3em; font-weight: 600; text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); margin: 10px 0 20px 0; text-align: center;">คิดว่าใครคือผู้ทรยศ?</h4>
+        <div id="vote2LiveBoard" class="vote2-live-board">
+            <div class="vote2-live-summary">
+                <span class="vote2-live-label">ทุกคนเห็นสดว่าใครโหวตใคร</span>
+                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีคนโหวต</span>
+            </div>
+            <div id="vote2LiveFeedList" class="vote2-live-feed">
+                <span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>
+            </div>
+        </div>
         <div class="vote2-choices"></div>
         <div id="vote2SelectedInfo" class="vote2-selection-info">
             <div class="selection-counter">
@@ -812,6 +821,68 @@
         z-index: 1;
     }
 
+    .vote2-live-board {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 6px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        position: relative;
+        z-index: 1;
+    }
+
+    .vote2-live-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .vote2-live-label {
+        font-size: 0.95em;
+        font-weight: 700;
+        color: #fde68a;
+    }
+
+    .vote2-progress-status {
+        font-size: 0.92em;
+        color: #dbeafe;
+    }
+
+    .vote2-live-feed {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .vote2-live-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(231, 76, 60, 0.14);
+        border: 1px solid rgba(231, 76, 60, 0.22);
+        color: #fff5f5;
+        font-size: 0.88em;
+        font-weight: 700;
+    }
+
+    .vote2-live-pill.empty {
+        background: rgba(148, 163, 184, 0.14);
+        border-color: rgba(148, 163, 184, 0.18);
+        color: #cbd5e1;
+    }
+
+    .vote2-live-arrow {
+        color: #fca5a5;
+    }
+
     .btn-vote2-player.vote2-player-card {
         width: 100%;
         min-height: 138px;
@@ -988,18 +1059,81 @@
 
     .vote2-player-foot {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        align-items: flex-start;
         gap: 10px;
         margin-top: 14px;
-        flex-wrap: wrap;
         color: #dbeafe;
+    }
+
+    .vote2-player-tally {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .vote2-player-count {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #fff;
+        font-size: 0.9em;
+        font-weight: 700;
+    }
+
+    .vote2-player-count-number {
+        font-size: 1.15em;
+        color: #fde68a;
     }
 
     .vote2-player-hint {
         font-size: 0.9em;
         color: #cbd5e1;
         line-height: 1.4;
+    }
+
+    .vote2-player-voters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .vote2-voter-pill,
+    .vote2-voter-empty {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 0.82em;
+        font-weight: 700;
+    }
+
+    .vote2-voter-pill {
+        background: color-mix(in srgb, var(--vote2-accent, #3498db) 24%, rgba(255,255,255,0.08));
+        border: 1px solid color-mix(in srgb, var(--vote2-accent, #3498db) 28%, rgba(255,255,255,0.12));
+        color: #eff6ff;
+    }
+
+    .vote2-voter-empty {
+        background: rgba(148, 163, 184, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        color: #cbd5e1;
+    }
+
+    .btn-vote2-player.vote2-player-card:disabled {
+        cursor: default !important;
+    }
+
+    .vote2-locked .btn-vote2-player.vote2-player-card:not(.selected) {
+        opacity: 0.78;
     }
 
     .vote2-player-particles {
@@ -1152,6 +1286,11 @@
     }
 
     @media (max-width: 720px) {
+        .vote2-live-summary,
+        .vote2-player-tally {
+            align-items: flex-start;
+        }
+
         .vote2-choices {
             grid-template-columns: 1fr;
         }
@@ -2588,8 +2727,8 @@ $(function() {
         const isGhost = $button.hasClass('ghost');
         const maxSelectable = currentNumTraitors === 2 ? 'เลือกได้สูงสุด 2 คน' : 'แตะแล้วระบบจะส่งโหวตทันที';
         $button.attr('aria-pressed', selected ? 'true' : 'false');
-        $button.find('.vote2-player-state-text').text(selected ? 'เลือกแล้ว' : 'พร้อมโหวต');
-        $button.find('.vote2-player-hint').text(selected ? 'กดอีกครั้งเพื่อยกเลิก' : (isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : maxSelectable));
+        $button.find('.vote2-player-state-text').text(selected ? (hasSubmittedVote2 ? 'ลงคะแนนแล้ว' : 'เลือกแล้ว') : 'พร้อมโหวต');
+        $button.find('.vote2-player-hint').text(selected ? (hasSubmittedVote2 ? 'ส่งโหวตแล้ว รอผู้เล่นคนอื่นอยู่' : 'กดอีกครั้งเพื่อยกเลิก') : (isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : maxSelectable));
     }
 
     function addPlayerVote(player, checked) {
@@ -2626,7 +2765,11 @@ $(function() {
                 </span>
                 <span class="vote2-player-meta">${tags.join('')}</span>
                 <span class="vote2-player-foot">
-                    <span class="vote2-player-hint">${player.isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : (currentNumTraitors === 2 ? 'แตะเพื่อเพิ่มในลิสต์ผู้ต้องสงสัย' : 'แตะเพื่อโหวตคนนี้ทันที')}</span>
+                    <span class="vote2-player-tally">
+                        <span class="vote2-player-count"><strong class="vote2-player-count-number">0</strong> คนโหวต</span>
+                        <span class="vote2-player-hint">${player.isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : (currentNumTraitors === 2 ? 'แตะเพื่อเพิ่มในลิสต์ผู้ต้องสงสัย' : 'แตะเพื่อโหวตคนนี้ทันที')}</span>
+                    </span>
+                    <span class="vote2-player-voters"><span class="vote2-voter-empty">ยังไม่มีคนโหวต</span></span>
                 </span>
             </button>`;
         $('#vote2 .vote2-choices').append(btn);
@@ -2636,6 +2779,82 @@ $(function() {
     // ตัวแปรสำหรับโหมด 2 ผู้ทรยศ
     let currentNumTraitors = 1;
     let selectedVotes = [];
+    let hasSubmittedVote2 = false;
+
+    function setVote2InteractionLocked(isLocked) {
+        hasSubmittedVote2 = isLocked;
+        $('#vote2').toggleClass('vote2-locked', isLocked);
+        $('#vote2 .btn-vote2-player').prop('disabled', isLocked);
+        $('#confirmVote2Btn').prop('disabled', isLocked);
+    }
+
+    function renderVote2Progress(progress) {
+        const safeProgress = progress || {};
+        const targetMap = new Map((safeProgress.targets || []).map(target => [target.playerId || target.name, target]));
+        const liveChoices = safeProgress.voterChoices || [];
+        const pendingVoters = safeProgress.pendingVoters || [];
+        const totalEligibleVoters = safeProgress.totalEligibleVoters || 0;
+        const totalSubmittedVoters = safeProgress.totalSubmittedVoters || 0;
+
+        $('#vote2 .btn-vote2-player').each(function() {
+            const $button = $(this);
+            const voteValue = decodeURIComponent($button.attr('data-player-vote') || '');
+            const target = targetMap.get(voteValue) || { count: 0, voters: [] };
+            const voters = target.voters || [];
+            $button.find('.vote2-player-count-number').text(target.count || 0);
+            $button.find('.vote2-player-voters').html(voters.length
+                ? voters.map(name => `<span class="vote2-voter-pill">${escapeHtml(name)}</span>`).join('')
+                : '<span class="vote2-voter-empty">ยังไม่มีคนโหวต</span>');
+        });
+
+        $('#vote2LiveFeedList').html(liveChoices.length
+            ? liveChoices.map(choice => `<span class="vote2-live-pill">${escapeHtml(choice.voterName)} <span class="vote2-live-arrow">→</span> ${choice.targets.map(targetName => escapeHtml(targetName)).join(', ')}</span>`).join('')
+            : '<span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>');
+
+        if (hasSubmittedVote2) {
+            $('#vote2ProgressStatus').text(`คุณส่งโหวตแล้ว กำลังรออีก ${Math.max(totalEligibleVoters - totalSubmittedVoters, 0)} คน`);
+            return;
+        }
+
+        if (!totalEligibleVoters) {
+            $('#vote2ProgressStatus').text('ยังไม่มีคนโหวต');
+            return;
+        }
+
+        let statusText = `โหวตแล้ว ${totalSubmittedVoters}/${totalEligibleVoters} คน`;
+        if (pendingVoters.length) {
+            statusText += ` • รอ ${pendingVoters.join(', ')}`;
+        } else {
+            statusText += ' • ครบทุกคนแล้ว';
+        }
+        $('#vote2ProgressStatus').text(statusText);
+    }
+
+    function syncSubmittedVote2FromProgress(progress) {
+        const myVote = ((progress && progress.voterChoices) || []).find(choice => choice.voterId === playerId || choice.voterName === playerName);
+        if (!myVote) {
+            setVote2InteractionLocked(false);
+            return;
+        }
+
+        const submittedValues = myVote.voteValues || [];
+        selectedVotes = [];
+
+        $('#vote2 .btn-vote2-player').each(function() {
+            const $button = $(this);
+            const voteValue = decodeURIComponent($button.attr('data-player-vote') || '');
+            const displayName = decodeURIComponent($button.attr('data-player-name') || '');
+            const selected = submittedValues.includes(voteValue);
+            $button.toggleClass('selected', selected);
+            if (selected) {
+                selectedVotes.push({ value: voteValue, name: displayName });
+            }
+            syncVote2CardState($button);
+        });
+
+        setVote2InteractionLocked(true);
+        updateVoteSelection();
+    }
     
     function updateVoteSelection() {
         $('#selectedCount').text(selectedVotes.length);
@@ -2646,7 +2865,7 @@ $(function() {
         
         if (currentNumTraitors === 2) {
             $('#vote2SelectedInfo').css('display', 'flex');
-            if (selectedVotes.length === 2) {
+            if (!hasSubmittedVote2 && selectedVotes.length === 2) {
                 $('#confirmVote2Btn').css('display', 'inline-block');
             } else {
                 $('#confirmVote2Btn').hide();
@@ -2966,10 +3185,11 @@ $(function() {
         } else {
             // โหมดปกติ - โหวตทันที
             soundNotify('ding');
+            $btn.addClass('selected');
+            syncVote2CardState($btn);
             socket.emit('vote2', {player: '<%= player.name %>', vote: votedValue});
-            $('#vote2').fadeOut();
-            $('#status p').html('กำลังรอผู้เล่นคนอื่นโหวต...');
-            $('#status').removeClass('hidden').fadeIn();
+            setVote2InteractionLocked(true);
+            $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
         }
     });
     
@@ -2983,9 +3203,8 @@ $(function() {
         
         // ส่งโหวต 2 คน
         socket.emit('vote2', {player: '<%= player.name %>', votes: selectedVotes.map(choice => choice.value)});
-        $('#vote2').fadeOut();
-        $('#status p').html('กำลังรอผู้เล่นคนอื่นโหวต...');
-        $('#status').removeClass('hidden').fadeIn();
+        setVote2InteractionLocked(true);
+        $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
     });
 
     $("#reveal button").click(function(){
@@ -3009,6 +3228,7 @@ $(function() {
 
     // Initialize player and room context
     const playerId = '<%= player.playerId || "" %>';
+    const playerName = '<%= player.name %>';
     const roomId = '<%= room.roomId %>';
     let isInitialized = false; // ป้องกันการ init ซ้ำ
 
@@ -3251,6 +3471,7 @@ $(function() {
         // เก็บค่าสำหรับการเลือก
         currentNumTraitors = numTraitors;
         selectedVotes = [];
+        setVote2InteractionLocked(false);
         
         console.log('[displayVote2] Received - เริ่มโหวตหาผู้ทรยศ, จำนวน:', numTraitors);
         hideAllGameElements();
@@ -3272,6 +3493,8 @@ $(function() {
         }
         
         updateVoteSelection();
+        renderVote2Progress(data.progress);
+        syncSubmittedVote2FromProgress(data.progress);
         $('#vote2').removeClass('hidden').fadeIn();
         soundNotify('popup');
         
@@ -3280,6 +3503,11 @@ $(function() {
         } else {
             showNotification('🎯 หยุดเวลา! โหวตหาผู้ทรยศ', 'warning', 3000);
         }
+    });
+
+    socket.on('vote2Progress', function(progress) {
+        renderVote2Progress(progress);
+        syncSubmittedVote2FromProgress(progress);
     });
     
     socket.on('vote2Ended', function(result) {
