@@ -914,17 +914,12 @@ function syncWerewolfPhaseTimer(room) {
 
     clearWerewolfPhaseTimer(room.roomId, false);
 
-    const NIGHT_DURATION_MS = 60000;
-    const roundDurationMs = Math.max(15000, (Number(room.settings.roundTime) || 300) * 1000);
-    const minVoteDurationMs = 7000;
-    const discussionDurationMs = Math.min(
-        Math.max(8000, Math.round(roundDurationMs * 0.55)),
-        Math.max(8000, roundDurationMs - minVoteDurationMs)
-    );
-    const voteDurationMs = Math.max(minVoteDurationMs, roundDurationMs - discussionDurationMs);
+    const NIGHT_DURATION_MS = 60000;      // 1 นาที
+    const DISCUSSION_DURATION_MS = 180000; // 3 นาที
+    const VOTE_DURATION_MS = 60000;        // 1 นาที
     const durationMs = phase === 'night'
         ? NIGHT_DURATION_MS
-        : (phase === 'day-discussion' ? discussionDurationMs : voteDurationMs);
+        : (phase === 'day-discussion' ? DISCUSSION_DURATION_MS : VOTE_DURATION_MS);
     room.gameState.phaseEndsAt = Date.now() + durationMs;
 
     const timeoutId = setTimeout(() => {

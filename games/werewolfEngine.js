@@ -180,6 +180,25 @@ function getConfigurableRoles() {
 function getRolePlan(playerCount, settings = {}) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = ROLE_PLANS[normalizedCount] || ROLE_PLANS[3];
+
+    // Wolf count mode: pick N wolves, fill rest from base plan specials + villagers
+    if (settings.wolfCount) {
+        const wolfCount = Math.min(Math.max(1, Number(settings.wolfCount) || 1), 3);
+        const maxAllowedWolves = Math.max(1, Math.floor(normalizedCount / 3));
+        const actualWolfCount = Math.min(wolfCount, maxAllowedWolves);
+
+        const wolves = actualWolfCount === 1
+            ? ['werewolf']
+            : actualWolfCount === 2
+                ? ['alphaWolf', 'werewolf']
+                : ['alphaWolf', 'werewolf', 'werewolf'];
+
+        const specials = basePlan.filter(id => !isWerewolfRole(id) && id !== 'villager');
+        const plan = [...wolves, ...specials];
+        while (plan.length < normalizedCount) plan.push('villager');
+        return plan.slice(0, normalizedCount).map(id => ROLE_DEFINITIONS[id] || ROLE_DEFINITIONS.villager);
+    }
+
     const enabledRoleIds = getConfiguredRoleIds(settings);
 
     if (enabledRoleIds.length > 0 && enabledRoleIds.length <= normalizedCount) {
@@ -843,7 +862,7 @@ function resolveNight(room) {
     } else if (attackedPlayer && attackedPlayer.alive !== false && !protectedTargets.has(attackedPlayerId)) {
         markPlayerDead(attackedPlayer, 'ถูกหมาป่าโจมตีในตอนกลางคืน');
         eliminatedPlayers.push(attackedPlayer);
-        pushHistory(room, `${attackedPlayer.name} ถูกกำจัดในตอนกลางคืน และเผยตัวว่าเป็น ${attackedPlayer.revealedRole}`, 'night');
+        pushHistory(room, `${attackedPlayer.name} ถูกกำจัดในตอนกลางคืน`, 'night');
     } else if (attackedPlayer) {
         Object.entries(room.gameState.nightActions.bodyguardProtects).forEach(([guardId, protectedId]) => {
             if (protectedId === attackedPlayerId) {
@@ -863,7 +882,7 @@ function resolveNight(room) {
 
         markPlayerDead(target, 'ถูกแม่มดวางยาพิษในตอนกลางคืน');
         eliminatedPlayers.push(target);
-        pushHistory(room, `${target.name} ถูกแม่มดวางยาพิษในตอนกลางคืน และเผยตัวว่าเป็น ${target.revealedRole}`, 'night');
+        pushHistory(room, `${target.name} ถูกแม่มดวางยาพิษในตอนกลางคืน`, 'night');
     });
 
     Object.entries(room.gameState.nightActions.seerChecks).forEach(([seerId, targetId]) => {
@@ -968,7 +987,7 @@ function resolveDayVote(room) {
 
     if (eliminatedPlayer && eliminatedPlayer.alive !== false) {
         markPlayerDead(eliminatedPlayer, 'ถูกโหวตออกในเวลากลางวัน');
-        pushHistory(room, `${eliminatedPlayer.name} ถูกโหวตออก และเผยตัวว่าเป็น ${eliminatedPlayer.revealedRole}`, 'day');
+        pushHistory(room, `${eliminatedPlayer.name} ถูกโหวตออกจากหมู่บ้าน`, 'day');
 
         if (eliminatedPlayer.role === 'fool') {
             room.gameState.phase = 'finished';
@@ -1674,7 +1693,7 @@ function buildMorningAnnouncement(room) {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'death',
             lead: `เมื่อคืน ${eliminatedPlayer.name} ไม่รอด`,
-            detail: `${eliminatedPlayer.name} เผยตัวว่าเป็น ${eliminatedPlayer.revealedRole || eliminatedPlayer.roleInfo?.thaiName || eliminatedPlayer.role}`
+            detail: `${eliminatedPlayer.name} ไม่รอดในคืนนี้`
         };
     }
 
@@ -1683,7 +1702,7 @@ function buildMorningAnnouncement(room) {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'multiple-deaths',
             lead: `เมื่อคืนมีผู้เล่น ${eliminatedPlayers.length} คนไม่รอด`,
-            detail: eliminatedPlayers.map(player => `${player.name} (${player.revealedRole || player.roleInfo?.thaiName || player.role})`).join(', ')
+            detail: eliminatedPlayers.map(player => player.name).join(', ')
         };
     }
 
@@ -1736,7 +1755,7 @@ function buildDayResolutionAnnouncement(room) {
             title: `🌙 คืน ${dayNumber + 1}`,
             outcomeType: 'eliminated',
             lead: `${eliminatedPlayer.name} ถูกขับออกจากหมู่บ้าน`,
-            detail: `${eliminatedPlayer.name} เผยตัวว่าเป็น ${eliminatedPlayer.revealedRole || eliminatedPlayer.roleInfo?.thaiName || eliminatedPlayer.role}`
+            detail: `บทบาทของ ${eliminatedPlayer.name} จะเฉลยเมื่อเกมจบ`
         };
     }
 
@@ -1862,7 +1881,7 @@ function buildClientState(room, viewerPlayerId) {
             avatar: player.avatar,
             alive: player.alive !== false,
             isSelf: player.playerId === viewerPlayerId,
-            revealedRole: player.revealedRole || null,
+            revealedRole: room.gameState.phase === 'finished' ? (player.revealedRole || null) : null,
             voteWeight: getCurrentVoteWeight(player),
             voteCount: dayVoteTallies[player.playerId] || 0
         })),

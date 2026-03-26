@@ -1925,9 +1925,7 @@
         const currentRoundTime = Number(roomSettings.roundTime || <%= room.roundTime %>);
         const currentLocked = !!roomSettings.locked;
         const currentPassword = String(roomSettings.password || '');
-        const activeWerewolfRoles = Array.isArray(roomSettings.werewolfRoles) && roomSettings.werewolfRoles.length
-          ? roomSettings.werewolfRoles
-          : currentWerewolfRoles;
+        const currentWolfCount = Number(roomSettings.wolfCount) || 2;
         const currentPlayerCount = parseInt($('#lobbyPlayerCount').text()) || <%= room.playerCount %>;
         
         Swal.fire({
@@ -1956,10 +1954,7 @@
                 </div>
               </div>
               
-              <div class="room-form-group">
-                <label class="room-form-label">
-                  <span class="icon">⏱️</span> ${activeModeMeta.roundLabel || 'เวลาเล่นต่อรอบ:'}
-                </label>
+              <div class="room-form-group" id="editRoundTimeGroup" style="display: ${activeMode === 'werewolf' ? 'none' : 'block'};">
                 <div class="room-slider-container">
                   <span class="room-slider-value" id="editRoundTimeValue">${currentRoundTime} นาที</span>
                   <input type="range" id="editRoundTime" class="room-slider" min="1" max="10" value="${currentRoundTime}">
@@ -1968,10 +1963,15 @@
 
               <div class="room-form-group" id="editWerewolfRolesGroup" style="display: ${activeMode === 'werewolf' ? 'block' : 'none'};">
                 <label class="room-form-label">
-                  <span class="icon">🐺</span> บทบาทที่เปิดในห้อง:
+                  <span class="icon">🐺</span> จำนวนหมาป่า:
                 </label>
-                <div id="editWerewolfRolesSelector"></div>
-                <div style="margin-top:8px; color:#aaa; font-size:0.9em;">ถ้าเลือกบทมาไม่เกินจำนวนผู้เล่น ระบบจะใช้บทที่เลือกจริงก่อน ถ้าไม่เลือกหมาป่าเลย ระบบจะเติมหมาป่าปกติให้อัตโนมัติ</div>
+                <div id="editWolfCountSelector" style="display:flex; gap:8px; margin-top:4px;">
+                  ${[1,2,3].map(n => {
+                    const isActive = (currentWolfCount || 2) === n;
+                    return `<button type="button" data-wolf-count="${n}" class="wolf-count-btn${isActive ? ' active' : ''}" style="flex:1; padding:10px 0; border-radius:10px; border:2px solid ${isActive ? '#e74c3c' : 'rgba(255,255,255,0.12)'}; background:${isActive ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)'}; color:#fff; font-size:1.1em; cursor:pointer; font-family:Rajdhani,sans-serif; font-weight:700;">🐺 ${n} ตัว</button>`;
+                  }).join('')}
+                </div>
+                <div style="margin-top:8px; color:#aaa; font-size:0.82em;">บทบาทคนดีเติมอัตโนมัติ — 3-4 คน: หมาป่าสูงสุด 1 ตัว, 5-9 คน: สูงสุด 2 ตัว, 10 คน: สูงสุด 3 ตัว</div>
               </div>
               
               <div class="room-form-group">
@@ -2004,7 +2004,7 @@
             const maxPlayersValue = document.getElementById('editMaxPlayersValue');
             const roundTimeSlider = document.getElementById('editRoundTime');
             const roundTimeValue = document.getElementById('editRoundTimeValue');
-            const werewolfRolesSelector = document.getElementById('editWerewolfRolesSelector');
+            const wolfCountSelector = document.getElementById('editWolfCountSelector');
             
             maxPlayersSlider.addEventListener('input', function() {
               maxPlayersValue.textContent = this.value;
@@ -2035,32 +2035,18 @@
             updateSliderBackground(maxPlayersSlider);
             updateSliderBackground(roundTimeSlider);
 
-            if (werewolfRolesSelector) {
-              werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(activeWerewolfRoles.length ? activeWerewolfRoles : werewolfRoleOptions.filter(role => role.defaultEnabled).map(role => role.id));
-              syncWerewolfRolePicker(werewolfRolesSelector);
-              werewolfRolesSelector.addEventListener('click', function(event) {
-                const presetButton = event.target.closest('.werewolf-role-preset');
-                if (presetButton) {
-                  applyWerewolfRolePreset(werewolfRolesSelector, presetButton.dataset.presetId);
-                  const minPlayers = Number(presetButton.dataset.minPlayers || 0);
-                  if (minPlayers && Number(maxPlayersSlider.value) < minPlayers) {
-                    maxPlayersSlider.value = String(minPlayers);
-                    maxPlayersValue.textContent = maxPlayersSlider.value;
-                    updateSliderBackground(maxPlayersSlider);
-                  }
-                  syncWerewolfRolePicker(werewolfRolesSelector);
-                  return;
-                }
-
-                const option = event.target.closest('.werewolf-role-option');
-                if (!option) {
-                  return;
-                }
-
-                const checkbox = option.querySelector('input');
-                checkbox.checked = !checkbox.checked;
-                option.classList.toggle('checked', checkbox.checked);
-                syncWerewolfRolePicker(werewolfRolesSelector);
+            // Wolf count selector handler
+            const wolfCountSelector = document.getElementById('editWolfCountSelector');
+            if (wolfCountSelector) {
+              wolfCountSelector.addEventListener('click', function(event) {
+                const btn = event.target.closest('.wolf-count-btn');
+                if (!btn) return;
+                wolfCountSelector.querySelectorAll('.wolf-count-btn').forEach(b => {
+                  const active = b === btn;
+                  b.classList.toggle('active', active);
+                  b.style.borderColor = active ? '#e74c3c' : 'rgba(255,255,255,0.12)';
+                  b.style.background = active ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)';
+                });
               });
             }
             
@@ -2095,9 +2081,8 @@
             const roundTime = parseInt(document.getElementById('editRoundTime').value, 10);
             const locked = document.getElementById('editLocked').checked;
             const password = document.getElementById('editPassword').value.trim();
-            const werewolfRoles = activeMode === 'werewolf'
-              ? collectWerewolfRoleSelection(document.getElementById('editWerewolfRolesSelector'))
-              : undefined;
+            const activeWolfBtn = document.querySelector('#editWolfCountSelector .wolf-count-btn.active');
+            const wolfCount = activeWolfBtn ? parseInt(activeWolfBtn.dataset.wolfCount, 10) : null;
             
             if (!name) {
               Swal.showValidationMessage('กรุณากรอกชื่อห้อง');
@@ -2113,7 +2098,7 @@
               name,
               maxPlayers,
               roundTime,
-              werewolfRoles,
+              wolfCount,
               locked,
               password: locked ? password : ''
             };

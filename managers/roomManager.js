@@ -397,6 +397,11 @@ function updateRoom(roomId, adminPlayerId, updates) {
         }
     }
 
+    if (room.settings.gameMode === 'werewolf' && updates.wolfCount !== undefined) {
+        const wc = Number(updates.wolfCount) || 0;
+        room.settings.wolfCount = (wc >= 1 && wc <= 3) ? wc : null;
+    }
+
     if (room.settings.gameMode === 'werewolf') {
         const gameEngine = getGameEngine(room.settings.gameMode);
         if (typeof gameEngine.getRolePlan === 'function') {

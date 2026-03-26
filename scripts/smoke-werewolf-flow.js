@@ -602,8 +602,10 @@ async function main() {
         await skipDiscussionForAlive(clients, roomId);
         const dayThreeStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 3, 30000);
         const dayThreeState = dayThreeStates[0];
-        const deadWolves = (dayThreeState.players || []).filter(player => !player.alive && (player.revealedRole === 'หมาป่า' || player.revealedRole === 'อัลฟ่าหมาป่า'));
-        assert(deadWolves.length >= 1, 'Night 3 should leave at least one revealed dead wolf from Witch poison');
+        const deadWolves = (dayThreeState.players || []).filter(player => !player.alive && player.revealedRole === null);
+        // During game, revealedRole is hidden (null) for dead players — we just check someone died
+        const deadPlayers = (dayThreeState.players || []).filter(player => !player.alive);
+        assert(deadPlayers.length >= 1, 'Night 3 should have eliminated at least one player (from Witch poison)');
 
         console.log('11. Day 3: vote out Fool and confirm solo win');
         const finalAliveClients = clients.filter(client => {
