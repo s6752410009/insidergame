@@ -1,0 +1,25 @@
+#!/bin/sh
+
+set -eu
+
+blocked_paths='^data/(playerStats|players)\.json$'
+
+while read -r local_ref local_sha remote_ref remote_sha
+do
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        continue
+    fi
+
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        range="$local_sha"
+    else
+        range="$remote_sha..$local_sha"
+    fi
+
+    if git diff --name-only "$range" | grep -Eq "$blocked_paths"; then
+        echo "Push blocked: data/playerStats.json and data/players.json are local-only files and must not be pushed." >&2
+        exit 1
+    fi
+done
+
+exit 0

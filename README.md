@@ -30,6 +30,25 @@ npm run smoke:werewolf:5
 npm run smoke:werewolf:6
 ```
 
+## Local Data Files
+
+The app can fall back to local JSON files under `data/` when `MONGO_URL` is not provided.
+
+Do not push these local data files to the remote repository:
+
+- `data/playerStats.json`
+- `data/players.json`
+
+These files are treated as local runtime and smoke-test artifacts only.
+If they change during local testing, leave them out of commits and pushes.
+
+Enable the repository pre-push hook locally so Git blocks these files automatically:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push
+```
+
 If `MONGO_URL` is not provided, the app falls back to local JSON files in `data/`.
 
 App is responding by default on port `8080`.
