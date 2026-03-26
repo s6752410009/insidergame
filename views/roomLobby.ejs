@@ -1609,6 +1609,17 @@
       socket.emit('requestRoomUpdate', { roomId: roomId });
     });
 
+    socket.on('connect', function() {
+      console.log('[roomLobby] Socket connected');
+      socket.emit('initPlayer', playerId);
+      socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+      socket.emit('requestRoomUpdate', { roomId: roomId });
+    });
+
+    socket.on('connect_error', function(err) {
+      console.error('[roomLobby] Socket connect error:', err.message);
+    });
+
     // ถูกเตะออกจากห้อง
     socket.on('kickedFromRoom', function(data) {
       allowNavigation = true; // ไม่ต้องถามยืนยัน

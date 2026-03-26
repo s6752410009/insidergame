@@ -193,6 +193,55 @@
   .ww-chat-wrap { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; overflow: hidden; }
   .ww-chat-head { display: none; }
 
+  /* ===== FLOATING CHAT (mobile) ===== */
+  .chat-fab { display: none; }
+  @media (max-width: 960px) {
+    .chat-fab { display: flex; position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: 16px; z-index: 900; width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, #c0392b, #7f1d1d); color: #fff; font-size: 1.5rem; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(0,0,0,0.4); cursor: pointer; transition: transform 0.2s; }
+    .chat-fab:active { transform: scale(0.9); }
+    .chat-fab .chat-fab-badge { position: absolute; top: -2px; right: -2px; min-width: 20px; height: 20px; border-radius: 999px; background: #2563eb; color: #fff; font-size: 0.7rem; font-weight: 700; display: none; align-items: center; justify-content: center; padding: 0 5px; }
+    .chat-fab .chat-fab-badge.active { display: flex; }
+
+    .ww-chat-overlay { position: fixed; inset: 0; z-index: 950; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; opacity: 0; transition: opacity 0.25s ease; }
+    .ww-chat-overlay.open { opacity: 1; pointer-events: auto; }
+    .ww-chat-overlay-bg { position: absolute; inset: 0; background: rgba(5,8,15,0.6); }
+    .ww-chat-overlay-panel { position: relative; display: flex; flex-direction: column; height: 65vh; max-height: 65vh; background: #0b1220; border-top-left-radius: 20px; border-top-right-radius: 20px; border: 1px solid rgba(255,255,255,0.08); border-bottom: none; box-shadow: 0 -12px 40px rgba(0,0,0,0.5); transform: translateY(100%); transition: transform 0.3s ease; overflow: hidden; }
+    .ww-chat-overlay.open .ww-chat-overlay-panel { transform: translateY(0); }
+    .ww-chat-overlay-handle { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .ww-chat-overlay-handle-bar { width: 40px; height: 4px; border-radius: 999px; background: rgba(255,255,255,0.2); margin: 0 auto; }
+    .ww-chat-overlay-close { border: none; background: rgba(255,255,255,0.08); color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* Hide inline chat on mobile — moved to overlay */
+    .ww-desktop-layout { display: none !important; }
+    /* Make page scrollable since chat is removed from flow */
+    .ww-page { overflow-y: auto !important; height: auto !important; min-height: var(--ww-app-height, 100dvh) !important; }
+    /* Hide FAB when chat overlay is open */
+    .ww-chat-overlay.open ~ .chat-fab { display: none !important; }
+  }
+
+  /* ===== WIN SCREEN OVERLAY ===== */
+  .win-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(5,8,15,0.88); opacity: 0; pointer-events: none; transition: opacity 0.4s ease; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .win-overlay.open { opacity: 1; pointer-events: auto; }
+  .win-overlay-card { width: min(95vw, 520px); max-height: 90vh; overflow-y: auto; padding: 24px 20px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.14); background: linear-gradient(160deg, rgba(18,24,44,0.98), rgba(28,37,68,0.98)); box-shadow: 0 24px 64px rgba(0,0,0,0.6); transform: translateY(18px) scale(0.96); transition: transform 0.4s ease; }
+  .win-overlay.open .win-overlay-card { transform: translateY(0) scale(1); }
+  .win-title { font-family: 'Orbitron', sans-serif; font-size: clamp(1.3rem, 4vw, 1.8rem); font-weight: 700; text-align: center; margin-bottom: 6px; }
+  .win-subtitle { text-align: center; color: #cbd5e1; font-size: 0.92rem; margin-bottom: 16px; }
+  .win-players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .win-player-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); text-align: center; }
+  .win-player-card.team-village { border-color: rgba(134,239,172,0.25); background: linear-gradient(145deg, rgba(34,197,94,0.1), rgba(255,255,255,0.03)); }
+  .win-player-card.team-werewolf { border-color: rgba(248,113,113,0.25); background: linear-gradient(145deg, rgba(127,29,29,0.18), rgba(255,255,255,0.03)); }
+  .win-player-card.team-solo { border-color: rgba(216,180,254,0.25); background: linear-gradient(145deg, rgba(168,85,247,0.12), rgba(255,255,255,0.03)); }
+  .win-player-card.dead-player { opacity: 0.55; }
+  .win-player-avatar { font-size: 1.6rem; }
+  .win-player-name { font-size: 0.82rem; font-weight: 700; color: #f8fafc; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .win-player-role { font-size: 0.76rem; font-weight: 600; color: #fde68a; }
+  .win-player-status { font-size: 0.68rem; font-weight: 600; }
+  .win-player-status.alive { color: #86efac; }
+  .win-player-status.dead { color: #ef4444; }
+  .win-summary { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
+  .win-summary-title { font-weight: 700; font-size: 0.86rem; color: #dbeafe; margin-bottom: 6px; }
+  .win-summary-body { color: #e2e8f0; font-size: 0.88rem; line-height: 1.5; }
+  .win-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
   /* ===== CHAT MESSAGE BUBBLES ===== */
   .chat-message-wrapper { position: relative; display: flex; flex-direction: column; gap: 2px; transition: transform 0.18s ease; }
   .chat-message-wrapper.self { align-items: flex-end; }
@@ -756,6 +805,57 @@
         <div id="roleStrip" class="role-strip"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ===== FLOATING CHAT OVERLAY (mobile) ===== -->
+<div id="chatOverlay" class="ww-chat-overlay">
+  <div class="ww-chat-overlay-bg" id="chatOverlayBg"></div>
+  <div class="ww-chat-overlay-panel">
+    <div class="ww-chat-overlay-handle">
+      <div style="font-weight:700; font-size:0.92rem;">💬 แชท</div>
+      <button id="chatOverlayClose" class="ww-chat-overlay-close" type="button">✕</button>
+    </div>
+    <div id="overlayChatFilters" class="ww-filters">
+      <button class="chat-tab active" type="button" data-chat-filter="all">ทั้งหมด</button>
+      <button class="chat-tab" type="button" data-chat-filter="player">วงหลัก</button>
+      <button class="chat-tab" type="button" data-chat-filter="wolf">หมาป่า</button>
+      <button class="chat-tab" type="button" data-chat-filter="system">ระบบ</button>
+    </div>
+    <div id="overlayChatMessages" class="ww-chat-scroll"></div>
+    <div class="ww-composer">
+      <div id="overlayReplyPreview" class="ww-reply-bar" style="display:none;">
+        <div class="ww-reply-bar-main">
+          <div id="overlayReplyTitle" class="ww-reply-bar-title"></div>
+          <div id="overlayReplyText" class="ww-reply-bar-text"></div>
+        </div>
+        <button id="overlayCancelReply" class="ww-reply-cancel" type="button">×</button>
+      </div>
+      <div class="ww-input-row">
+        <textarea id="overlayChatInput" rows="1" placeholder="พิมพ์ข้อความ..."></textarea>
+        <button id="overlaySendChat" class="ww-send-btn">ส่ง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CHAT FAB (mobile) ===== -->
+<button id="chatFab" class="chat-fab" type="button">
+  💬
+  <span id="chatFabBadge" class="chat-fab-badge">0</span>
+</button>
+
+<!-- ===== WIN SCREEN OVERLAY ===== -->
+<div id="winOverlay" class="win-overlay">
+  <div class="win-overlay-card">
+    <div id="winTitle" class="win-title"></div>
+    <div id="winSubtitle" class="win-subtitle"></div>
+    <div id="winPlayersGrid" class="win-players-grid"></div>
+    <div id="winSummary" class="win-summary" style="display:none;">
+      <div class="win-summary-title">📜 สรุปเกม</div>
+      <div id="winSummaryBody" class="win-summary-body"></div>
+    </div>
+    <div id="winActions" class="win-actions"></div>
   </div>
 </div>
 
@@ -2809,14 +2909,19 @@
       });
     }
 
+    function applyChatFilterTo($container) {
+      $container.find('.chat-message-wrapper').each(function() {
+        var group = $(this).data('chat-group') || 'system';
+        var shouldShow = currentChatFilter === 'all' || group === currentChatFilter;
+        $(this).toggle(shouldShow);
+      });
+    }
+
     function applyChatFilter() {
       const shouldStickToBottom = isChatNearBottom();
 
-      $('#werewolfChatMessages .chat-message-wrapper').each(function() {
-        const group = $(this).data('chat-group') || 'system';
-        const shouldShow = currentChatFilter === 'all' || group === currentChatFilter;
-        $(this).toggle(shouldShow);
-      });
+      applyChatFilterTo($('#werewolfChatMessages'));
+      applyChatFilterTo($('#overlayChatMessages'));
 
       $('.chat-tab').removeClass('active');
       $('.chat-tab[data-chat-filter="' + currentChatFilter + '"]').addClass('active');
@@ -2827,20 +2932,19 @@
     }
 
     function scrollChatToBottom() {
-      const area = $('#werewolfChatMessages')[0];
-      if (!area) {
-        return;
-      }
-
-      area.scrollTop = area.scrollHeight;
+      var area = $('#werewolfChatMessages')[0];
+      if (area) area.scrollTop = area.scrollHeight;
+      var overlay = $('#overlayChatMessages')[0];
+      if (overlay) overlay.scrollTop = overlay.scrollHeight;
     }
 
     function isChatNearBottom() {
-      const area = $('#werewolfChatMessages')[0];
-      if (!area) {
-        return true;
+      var area = $('#werewolfChatMessages')[0];
+      var overlay = $('#overlayChatMessages')[0];
+      if (overlay && $('#chatOverlay').hasClass('open')) {
+        return overlay.scrollHeight - overlay.scrollTop - overlay.clientHeight < 72;
       }
-
+      if (!area) return true;
       return area.scrollHeight - area.scrollTop - area.clientHeight < 72;
     }
 
@@ -3178,6 +3282,20 @@
         </div>
       `);
 
+      // Mirror to overlay chat
+      var $overlayArea = $('#overlayChatMessages');
+      if ($overlayArea.length) {
+        $overlayArea.append($area.children().last().clone());
+        applyChatFilterTo($overlayArea);
+      }
+
+      // Increment unread badge if overlay is closed
+      if (!settings.silent && !isSelf && !$('#chatOverlay').hasClass('open')) {
+        var badge = $('#chatFabBadge');
+        var count = parseInt(badge.text()) || 0;
+        badge.text(count + 1).addClass('active');
+      }
+
       applyChatFilter();
 
       if (shouldStickToBottom) {
@@ -3191,6 +3309,7 @@
 
     function renderInitialChatHistory() {
       $('#werewolfChatMessages').empty();
+      $('#overlayChatMessages').empty();
       renderedMessageIds.clear();
       (initialChatHistory || []).forEach(function(entry) {
         const entryType = classifyMessageType(entry);
@@ -3584,6 +3703,8 @@
       const $banner = $('#winnerBanner');
       if (!winner) {
         $banner.hide();
+        winScreenShown = false;
+        hideWinScreen();
         return;
       }
 
@@ -3593,6 +3714,9 @@
         : '<div class="winner-actions"><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>';
       $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : '🤪 ')) + winnerText + '</div>' + actionHtml);
       $banner.show();
+
+      // Show rich win screen overlay
+      showWinScreen(currentState);
     }
 
     function buildPhaseTransitionCopy(state) {
@@ -3605,7 +3729,7 @@
           title: `🌙 คืนที่ ${state.dayNumber || 1}`,
           subtitle: state.dayNumber === 1
             ? 'คืนแรก! หมาป่ายังฆ่าใครไม่ได้'
-            : 'เข้ากลางคืน คนมีบทกดสกิลได้เลย'
+            : 'เข้ากลางคืน คนมีสกิลใช้ได้เลย ระวังตัวดี ๆ นะ'
         };
       }
 
@@ -3619,14 +3743,14 @@
       if (state.phase === 'day-vote') {
         return {
           title: `🗳️ โหวตวันที่ ${state.dayNumber || 1}`,
-          subtitle: 'ประชุมจบ! โหวตแบบเปิดได้เลย'
+          subtitle: 'โหวตขับคนที่สงสัยออกไปจากเกมกันเลย!'
         };
       }
 
       if (state.phase === 'finished' && state.winner) {
         return {
           title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : '🐺 หมาป่าชนะ!',
-          subtitle: 'จบรอบ! เล่นต่อหรือกลับไปจัดห้องใหม่ก็ได้'
+          subtitle: ''
         };
       }
 
@@ -4287,5 +4411,144 @@
         selectRevealTarget(playerId);
       }
     });
+
+    // ===== FLOATING CHAT OVERLAY (mobile) =====
+    function openChatOverlay() {
+      $('#chatOverlay').addClass('open');
+      $('#chatFab').hide();
+      $('#chatFabBadge').text('0').removeClass('active');
+      scrollChatToBottom();
+      setTimeout(function() { $('#overlayChatInput').focus(); }, 350);
+    }
+
+    function closeChatOverlay() {
+      $('#chatOverlay').removeClass('open');
+      setTimeout(function() { $('#chatFab').show(); }, 300);
+    }
+
+    $('#chatFab').on('click', openChatOverlay);
+    $('#chatOverlayClose').on('click', closeChatOverlay);
+    $('#chatOverlayBg').on('click', closeChatOverlay);
+
+    // Overlay chat send
+    $('#overlaySendChat').on('click', function() {
+      var msg = $('#overlayChatInput').val().trim();
+      if (!msg) return;
+      socket.emit('sendMessage', { message: msg, playerName: myPlayerName, replyTo: replyingTo });
+      $('#overlayChatInput').val('');
+      replyingTo = null;
+      $('#overlayReplyPreview').hide();
+    });
+
+    $('#overlayChatInput').on('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        $('#overlaySendChat').click();
+      }
+    });
+
+    // Overlay chat filter tabs
+    $(document).on('click', '#overlayChatFilters .chat-tab', function() {
+      currentChatFilter = $(this).data('chat-filter');
+      applyChatFilter();
+    });
+
+    // Cancel reply in overlay
+    $('#overlayCancelReply').on('click', function() {
+      replyingTo = null;
+      $('#overlayReplyPreview').hide();
+    });
+
+    // ===== WIN SCREEN OVERLAY =====
+    var winScreenShown = false;
+
+    function showWinScreen(state) {
+      if (!state || !state.winner) return;
+      if (winScreenShown) return;
+      winScreenShown = true;
+
+      var winner = state.winner;
+      var players = state.players || [];
+      var history = state.history || [];
+
+      // Title
+      var titleEmoji = winner === 'village' ? '🏡' : (winner === 'werewolf' ? '🐺' : '🤪');
+      var titleText = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
+      $('#winTitle').html(titleEmoji + ' ' + titleText);
+
+      // Subtitle
+      var aliveCount = players.filter(function(p) { return p.alive; }).length;
+      var deadCount = players.length - aliveCount;
+      $('#winSubtitle').text('จบเกมแล้ว · รอดชีวิต ' + aliveCount + ' คน · เสียชีวิต ' + deadCount + ' คน');
+
+      // Player grid
+      var gridHtml = '';
+      players.forEach(function(p) {
+        var teamClass = '';
+        var roleTeam = p.roleTeam || '';
+        if (roleTeam === 'werewolf') teamClass = 'team-werewolf';
+        else if (roleTeam === 'village') teamClass = 'team-village';
+        else if (roleTeam === 'solo') teamClass = 'team-solo';
+
+        var deadClass = p.alive ? '' : 'dead-player';
+        var statusHtml = p.alive
+          ? '<div class="win-player-status alive">รอดชีวิต</div>'
+          : '<div class="win-player-status dead">☠ เสียชีวิต</div>';
+
+        var roleName = p.roleThaiName || p.revealedRole || '?';
+        var roleIcon = roleEmoji(p.roleId || '');
+
+        gridHtml += '<div class="win-player-card ' + teamClass + ' ' + deadClass + '">';
+        gridHtml += '<div class="win-player-avatar">' + (p.avatar || '👤') + '</div>';
+        gridHtml += '<div class="win-player-name" style="color:' + escapeHtml(p.color || '#fff') + ';">' + escapeHtml(p.name) + '</div>';
+        gridHtml += '<div class="win-player-role">' + roleIcon + ' ' + escapeHtml(roleName) + '</div>';
+        gridHtml += statusHtml;
+        gridHtml += '</div>';
+      });
+      $('#winPlayersGrid').html(gridHtml);
+
+      // Game summary from history
+      var summaryLines = [];
+      history.forEach(function(h) {
+        if (h.type === 'night' || h.type === 'day' || h.type === 'result') {
+          summaryLines.push(h.message);
+        }
+      });
+      if (summaryLines.length > 0) {
+        var maxLines = Math.min(summaryLines.length, 8);
+        $('#winSummaryBody').html(summaryLines.slice(-maxLines).map(function(l) { return '<div>• ' + escapeHtml(l) + '</div>'; }).join(''));
+        $('#winSummary').show();
+      }
+
+      // Action buttons
+      var actionsHtml = '';
+      if (isRoomAdmin) {
+        actionsHtml += '<button id="winRestartGame" class="werewolf-btn">🎲 เล่นอีก!</button>';
+      }
+      actionsHtml += '<button id="winBackToLobby" class="ghost-btn">🏠 กลับห้อง</button>';
+      actionsHtml += '<button id="winDismiss" class="ghost-btn">✕ ปิด</button>';
+      $('#winActions').html(actionsHtml);
+
+      $('#winOverlay').addClass('open');
+    }
+
+    function hideWinScreen() {
+      $('#winOverlay').removeClass('open');
+    }
+
+    $(document).on('click', '#winDismiss', hideWinScreen);
+    $(document).on('click', '#winRestartGame', function() {
+      socket.emit('werewolf_restartGame', { roomId: roomId }, function(response) {
+        if (!response || !response.success) {
+          Swal.fire({ icon: 'error', title: 'เริ่มรอบใหม่ไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+      hideWinScreen();
+    });
+    $(document).on('click', '#winBackToLobby', function() {
+      allowNavigation = true;
+      window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+    });
+
   });
 </script>

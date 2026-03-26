@@ -1882,6 +1882,9 @@ function buildClientState(room, viewerPlayerId) {
             alive: player.alive !== false,
             isSelf: player.playerId === viewerPlayerId,
             revealedRole: room.gameState.phase === 'finished' ? (player.revealedRole || null) : null,
+            roleId: room.gameState.phase === 'finished' ? (player.role || null) : null,
+            roleTeam: room.gameState.phase === 'finished' ? (player.roleInfo?.team || null) : null,
+            roleThaiName: room.gameState.phase === 'finished' ? (player.roleInfo?.thaiName || null) : null,
             voteWeight: getCurrentVoteWeight(player),
             voteCount: dayVoteTallies[player.playerId] || 0
         })),
