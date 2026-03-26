@@ -143,21 +143,21 @@ function submitRemainingNightSkips(room, excludedPlayerIds = []) {
             return;
         }
 
-        if (player.alive === false || excluded.has(player.playerId)) {
+        if (player.alive === false) {
             return;
         }
 
-        if (!['werewolf', 'alphaWolf', 'seer', 'doctor', 'bodyguard', 'witch'].includes(player.role)) {
+        if (!room.gameState.nightSkips[player.playerId]) {
             werewolfEngine.submitNightSkip(room, player.playerId);
         }
     });
 }
 
 function testNightSkipMajorityRules() {
-    const room = createRoom(['werewolf', 'mayor', 'fool'], 3);
+    const room = createRoom(['werewolf', 'mayor', 'seer'], 3);
     const werewolf = getSingleRole(room, 'werewolf');
     const mayor = getSingleRole(room, 'mayor');
-    const fool = getSingleRole(room, 'fool');
+    const seer = getSingleRole(room, 'seer');
 
     resetNightPhase(room, 2);
     const wolfSkip = werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
@@ -166,15 +166,18 @@ function testNightSkipMajorityRules() {
     assert(room.gameState.phase === 'night', 'night should stay active after one skip');
 
     const mayorSkip = werewolfEngine.submitNightSkip(room, mayor.playerId);
-    assert(mayorSkip.resolved, 'night should resolve when night skip reaches majority');
+    assert(!mayorSkip.resolved, 'night should not resolve until explicit skip votes reach majority');
+
+    const seerSkip = werewolfEngine.submitNightSkip(room, seer.playerId);
+    assert(seerSkip.resolved, 'night should resolve when explicit night skip reaches majority');
     assert(room.gameState.phase === 'day-discussion', 'night skip majority should move room to day discussion');
     assert(
         (room.gameState.history || []).some(entry => /เสียงพร้อมข้ามกลางคืนเกินครึ่ง/.test(entry.message)),
         'history should record night skip majority resolution'
     );
 
-    const foolState = werewolfEngine.buildClientState(room, fool.playerId);
-    assert(!foolState.actionState.nightStatus?.canSkip, 'night skip controls should disappear after phase changes');
+    const seerState = werewolfEngine.buildClientState(room, seer.playerId);
+    assert(!seerState.actionState.nightStatus?.canSkip, 'night skip controls should disappear after phase changes');
 
     return {
         nightSkipMajority: true,
@@ -382,6 +385,64 @@ function testWitchPoisonFinishAnnouncement() {
     };
 }
 
+function testThreePlayerFoolIsFilteredOut() {
+    const room = createRoom(['werewolf', 'fool', 'seer'], 3);
+    const assignedRoles = room.gameState.players.map(player => player.role);
+    const plannedRoles = (room.gameState.rolePlan || []).map(role => role.id);
+
+    assert(!assignedRoles.includes('fool'), '3-player games should not assign Fool anymore');
+    assert(!plannedRoles.includes('fool'), '3-player role plan should filter Fool out');
+    assert(assignedRoles.includes('werewolf'), '3-player filtered setup should still contain a werewolf');
+    assert(assignedRoles.includes('seer'), '3-player filtered setup should preserve valid configured roles');
+    assert(assignedRoles.length === 3, '3-player filtered setup should still fill all seats');
+
+    return {
+        threePlayerFoolFilteredOut: true
+    };
+}
+
+function testNightActionsDoNotAutoResolve() {
+    const room = createRoom(['werewolf', 'doctor', 'seer'], 3);
+    const werewolf = getSingleRole(room, 'werewolf');
+    const doctor = getSingleRole(room, 'doctor');
+    const seer = getSingleRole(room, 'seer');
+
+    resetNightPhase(room, 2);
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+    werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
+    werewolfEngine.submitNightAction(room, seer.playerId, doctor.playerId);
+
+    assert(room.gameState.phase === 'night', 'night should stay active after all role actions are submitted');
+
+    const timeoutResolution = werewolfEngine.autoResolvePhase(room);
+    assert(timeoutResolution.autoResolved, 'night timeout should still auto resolve the phase');
+    assert(room.gameState.phase === 'day-discussion', 'night timeout should advance to day discussion');
+
+    return {
+        nightActionsDoNotAutoResolve: true
+    };
+}
+
+function testRoleActionSkipDoesNotCountAsNightSkip() {
+    const room = createRoom(['werewolf', 'doctor', 'seer'], 3);
+    const werewolf = getSingleRole(room, 'werewolf');
+    const doctor = getSingleRole(room, 'doctor');
+    const seer = getSingleRole(room, 'seer');
+
+    resetNightPhase(room, 2);
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+    werewolfEngine.submitNightAction(room, doctor.playerId, werewolfEngine.SKIP_TARGET_ID);
+    werewolfEngine.submitNightAction(room, seer.playerId, werewolfEngine.SKIP_TARGET_ID);
+
+    const werewolfState = werewolfEngine.buildClientState(room, werewolf.playerId);
+    assert(werewolfState.actionState.nightStatus.skipCount === 0, 'role action skips should not increase global night skip count');
+    assert(room.gameState.phase === 'night', 'skill-level skips alone should not end the night');
+
+    return {
+        roleActionSkipDoesNotCountAsNightSkip: true
+    };
+}
+
 function testRevealerDayVoteAccess() {
     const room = createRoom(['werewolf', 'revealer', 'doctor'], 3);
     const werewolf = getSingleRole(room, 'werewolf');
@@ -408,8 +469,16 @@ function testRevealerDayVoteAccess() {
     assert(dayVoteState.actionState.dayActions.canReveal, 'revealer should still be able to use reveal during day vote');
 
     const resolution = werewolfEngine.useRevealAction(room, revealer.playerId, werewolf.playerId);
-    assert(resolution.resolved, 'revealer action should resolve when it kills the last werewolf');
-    assert(room.gameState.phase === 'finished', 'revealer kill on the last werewolf should finish the game');
+    assert(!resolution.resolved && resolution.queued, 'revealer action should queue until day resolution');
+    assert(room.gameState.phase === 'day-vote', 'reveal should not resolve the phase immediately');
+
+    const queuedState = werewolfEngine.buildClientState(room, revealer.playerId);
+    assert(queuedState.actionState.dayActions.pendingRevealTargetId === werewolf.playerId, 'queued reveal target should be visible in day action state');
+    assert(!queuedState.actionState.dayActions.canReveal, 'revealer should not be able to queue a second reveal');
+
+    const timeoutResolution = werewolfEngine.autoResolvePhase(room);
+    assert(timeoutResolution.resolved, 'revealer action should resolve when the day vote times out');
+    assert(room.gameState.phase === 'finished', 'revealer kill on the last werewolf should finish the game after resolution');
 
     const finishedState = werewolfEngine.buildClientState(room, revealer.playerId);
     assert(finishedState.dayResolutionAnnouncement, 'finished state should still expose the last day resolution announcement');
@@ -428,6 +497,9 @@ function main() {
         ...testBodyguardRules(),
         ...testSeerReadingRules(),
         ...testWitchPoisonFinishAnnouncement(),
+        ...testThreePlayerFoolIsFilteredOut(),
+        ...testNightActionsDoNotAutoResolve(),
+        ...testRoleActionSkipDoesNotCountAsNightSkip(),
         ...testRevealerDayVoteAccess()
     };
 

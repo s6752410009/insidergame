@@ -4,70 +4,80 @@ const ROLE_DEFINITIONS = {
         name: 'Villager',
         thaiName: 'ชาวบ้าน',
         team: 'village',
-        description: 'ไม่มีสกิลพิเศษ ใช้การคุยและการโหวตช่วยทีมชาวบ้านชนะ'
+        description: 'ไม่มีสกิลพิเศษ ใช้การคุยและการโหวตช่วยทีมชาวบ้านชนะ',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     },
     werewolf: {
         id: 'werewolf',
         name: 'Werewolf',
         thaiName: 'หมาป่า',
         team: 'werewolf',
-        description: 'ร่วมกับฝั่งหมาป่าเลือกเหยื่อในตอนกลางคืน (คืนแรกยังล่าไม่ได้) ชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าฝั่งอื่นทั้งหมด'
+        description: 'ร่วมกับฝั่งหมาป่าเลือกเหยื่อในตอนกลางคืน (คืนแรกยังล่าไม่ได้) ชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าฝั่งอื่นทั้งหมด',
+        winCondition: 'ชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นฝั่งอื่นที่ยังมีชีวิตรวมกัน'
     },
     alphaWolf: {
         id: 'alphaWolf',
         name: 'Alpha Wolf',
         thaiName: 'อัลฟ่าหมาป่า',
         team: 'werewolf',
-        description: 'หัวหน้าฝั่งหมาป่า โหวตล่าเหยื่อตอนกลางคืนด้วยน้ำหนัก 2 เสียง (คืนแรกยังล่าไม่ได้) Seer ตรวจจะขึ้นว่า ไม่ทราบ'
+        description: 'หัวหน้าฝั่งหมาป่า โหวตล่าเหยื่อตอนกลางคืนด้วยน้ำหนัก 2 เสียง (คืนแรกยังล่าไม่ได้) Seer ตรวจจะขึ้นว่า ไม่ทราบ',
+        winCondition: 'ชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นฝั่งอื่นที่ยังมีชีวิตรวมกัน'
     },
     mayor: {
         id: 'mayor',
         name: 'Mayor',
         thaiName: 'นายก',
         team: 'village',
-        description: 'ไม่มีสกิลกลางคืน แต่สามารถเปิดเผยตัวตอนเช้าเพื่อให้เสียงโหวตของตัวเองเพิ่มเป็น 2 ได้'
+        description: 'ไม่มีสกิลกลางคืน แต่สามารถเปิดเผยตัวตอนเช้าเพื่อให้เสียงโหวตของตัวเองเพิ่มเป็น 2 ได้',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     },
     bodyguard: {
         id: 'bodyguard',
         name: 'Bodyguard',
         thaiName: 'บอดี้การ์ด',
         team: 'village',
-        description: 'ปกป้องตัวเองหรือผู้เล่น 1 คนในตอนกลางคืน ห้ามปกป้องคนเดิมสองคืนติดกัน และถ้ากันการโจมตีสำเร็จเกราะจะพังทันที'
+        description: 'ปกป้องตัวเองหรือผู้เล่น 1 คนในตอนกลางคืน ห้ามปกป้องคนเดิมสองคืนติดกัน และถ้ากันการโจมตีสำเร็จเกราะจะพังทันที',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     },
     seer: {
         id: 'seer',
         name: 'Seer',
         thaiName: 'Seer',
         team: 'village',
-        description: 'ตรวจออร่าผู้เล่น 1 คนในตอนกลางคืน (ดูตัวเองไม่ได้) ผลจะเห็นแค่ ดี/ไม่ดี/ไม่ทราบ เลือกแล้วเปลี่ยนไม่ได้ หมาป่าธรรมดา=ไม่ดี อัลฟ่าและคนบ้า=ไม่ทราบ'
+        description: 'ตรวจออร่าผู้เล่น 1 คนในตอนกลางคืน (ดูตัวเองไม่ได้) ผลจะเห็นแค่ ดี/ไม่ดี/ไม่ทราบ เลือกแล้วเปลี่ยนไม่ได้ หมาป่าธรรมดา=ไม่ดี อัลฟ่าและคนบ้า=ไม่ทราบ',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     },
     doctor: {
         id: 'doctor',
         name: 'Doctor',
         thaiName: 'หมอ',
         team: 'village',
-        description: 'ช่วยตัวเองหรือผู้เล่น 1 คนในตอนกลางคืน แต่ใช้สิทธิ์ช่วยได้รวม 2 ครั้งต่อเกมเท่านั้น'
+        description: 'ช่วยตัวเองหรือผู้เล่น 1 คนในตอนกลางคืน แต่ใช้สิทธิ์ช่วยได้รวม 2 ครั้งต่อเกมเท่านั้น',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     },
     witch: {
         id: 'witch',
         name: 'Witch',
         thaiName: 'แม่มด',
         team: 'village',
-        description: 'มียาช่วยชีวิต 1 ครั้งและยาพิษ 1 ครั้งตลอดเกม แต่ละคืนเลือกใช้ได้เพียง 1 สกิล ยาช่วยชีวิตใช้กันตายได้ในคืนนั้น และยาพิษฆ่าได้ทุกคนรวมถึงคนบ้า'
+        description: 'มียาช่วยชีวิต 1 ครั้งและยาพิษ 1 ครั้งตลอดเกม แต่ละคืนเลือกใช้ได้เพียง 1 สกิล ยาช่วยชีวิตใช้กันตายได้ในคืนนั้น และยาพิษฆ่าได้ทุกคนรวมถึงคนบ้า',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     },
     fool: {
         id: 'fool',
         name: 'Fool',
         thaiName: 'คนบ้า',
         team: 'solo',
-        description: 'หมาป่าโจมตีคุณไม่ได้ (แต่แม่มดวางยาพิษได้) ถ้าถูกโหวตออกตอนกลางวันจะชนะคนเดียวทันที Seer ตรวจจะขึ้นว่า ไม่ทราบ'
+        description: 'หมาป่าโจมตีคุณไม่ได้ (แต่แม่มดวางยาพิษได้) ถ้าถูกโหวตออกตอนกลางวันจะชนะคนเดียวทันที Seer ตรวจจะขึ้นว่า ไม่ทราบ',
+        winCondition: 'ชนะคนเดียวทันทีเมื่อคุณถูกโหวตออกตอนกลางวัน'
     },
     revealer: {
         id: 'revealer',
         name: 'Revealer',
         thaiName: 'จอมเปิดโปง',
         team: 'village',
-        description: 'ใช้ได้ครั้งเดียวในตอนกลางวัน ถ้าเปิดโปงหมาป่าถูก หมาป่าตายทันที แต่ถ้าพลาดตัวเองตาย'
+        description: 'ใช้ได้ครั้งเดียวในตอนกลางวัน ถ้าเปิดโปงหมาป่าถูก หมาป่าตายทันที แต่ถ้าพลาดตัวเองตาย',
+        winCondition: 'ชนะเมื่อหมาป่าถูกกำจัดจนหมด'
     }
 };
 
@@ -83,7 +93,7 @@ const ROLE_PLANS = {
 };
 
 const THREE_PLAYER_WOLF_ROLE_IDS = ['werewolf', 'alphaWolf'];
-const THREE_PLAYER_SPECIAL_ROLE_IDS = ['seer', 'doctor', 'bodyguard', 'witch', 'fool', 'mayor', 'revealer'];
+const THREE_PLAYER_SPECIAL_ROLE_IDS = ['seer', 'doctor', 'bodyguard', 'witch', 'mayor', 'revealer'];
 
 function buildRoleCombinations(roleIds, targetSize, startIndex = 0, prefix = [], results = []) {
     if (prefix.length === targetSize) {
@@ -250,6 +260,18 @@ function sanitizeRoleSelection(roleIds) {
     return sanitized;
 }
 
+function filterRoleSelectionForPlayerCount(roleIds, playerCount) {
+    const sanitized = sanitizeRoleSelection(roleIds);
+
+    if (Number(playerCount) === 3) {
+        return sanitized.filter(function(roleId) {
+            return roleId !== 'fool';
+        });
+    }
+
+    return sanitized;
+}
+
 function getConfiguredRoleIds(settings = {}) {
     return sanitizeRoleSelection(settings.werewolfRoles);
 }
@@ -313,7 +335,7 @@ function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
         return fillRolePlanWithoutVillager(plan, normalizedCount, basePlan).map(id => ROLE_DEFINITIONS[id] || ROLE_DEFINITIONS.werewolf);
     }
 
-    const enabledRoleIds = getConfiguredRoleIds(settings);
+    const enabledRoleIds = filterRoleSelectionForPlayerCount(settings.werewolfRoles, normalizedCount);
 
     if (enabledRoleIds.length > 0 && enabledRoleIds.length <= normalizedCount) {
         const exactRoleIds = fillRolePlanWithoutVillager(enabledRoleIds, normalizedCount, basePlan);
@@ -401,6 +423,7 @@ function createInitialState() {
         dayVotes: {},
         discussionSkips: {},
         dayActionUsedBy: {},
+        pendingRevealActions: {},
         lastProtectedByBodyguard: {},
         lastResolvedNight: null,
         lastResolvedDay: null
@@ -680,6 +703,7 @@ function resetDayState(room) {
     room.gameState.dayVotes = {};
     room.gameState.discussionSkips = {};
     room.gameState.dayActionUsedBy = {};
+    room.gameState.pendingRevealActions = {};
     room.gameState.lastResolvedDay = null;
 }
 
@@ -705,6 +729,7 @@ function startDiscussionPhase(room) {
     room.gameState.dayVotes = {};
     room.gameState.discussionSkips = {};
     room.gameState.dayActionUsedBy = {};
+    room.gameState.pendingRevealActions = {};
     room.gameState.lastResolvedDay = null;
     room.gameState.lastAction = Date.now();
     syncAlivePlayerIds(room);
@@ -717,7 +742,6 @@ function startDayPhase(room, trigger = 'discussion-ended') {
     room.gameState.status = 'werewolf_day_vote';
     room.gameState.dayVotes = {};
     room.gameState.discussionSkips = {};
-    room.gameState.dayActionUsedBy = {};
     room.gameState.lastResolvedDay = null;
     room.gameState.lastAction = Date.now();
     syncAlivePlayerIds(room);
@@ -959,18 +983,6 @@ function canSkipNight(room) {
     return getNightSkipCount(room) > Math.floor(aliveCount / 2);
 }
 
-function canResolveNight(room) {
-    if (!getRequiredNightActors(room).every(player => hasNightActionSubmitted(room, player))) {
-        return false;
-    }
-
-    if (hasAnyNightActionSelected(room)) {
-        return true;
-    }
-
-    return canSkipNight(room);
-}
-
 function fillMissingNightActionsAsSkip(room) {
     getRequiredNightActors(room).forEach(actor => {
         if (hasNightActionSubmitted(room, actor)) {
@@ -1028,6 +1040,83 @@ function getWeightedTarget(votes, room, weightedRoles = {}) {
     }
 
     return ranked[0][0];
+}
+
+function buildDayPublicEvent(type, payload = {}) {
+    if (type === 'reveal-hit') {
+        return {
+            type,
+            lead: `${payload.actorName || 'จอมเปิดโปง'} เปิดโปง ${payload.targetName || 'เป้าหมาย'} สำเร็จ`,
+            detail: `${payload.targetName || 'เป้าหมาย'} ตายตอนหมดเวลา เพราะถูกเปิดโปงว่าเป็นหมาป่า`
+        };
+    }
+
+    if (type === 'reveal-miss') {
+        return {
+            type,
+            lead: `${payload.actorName || 'จอมเปิดโปง'} เปิดโปงผิดเป้า`,
+            detail: `${payload.actorName || 'จอมเปิดโปง'} ตายแทนและสู้กับหมาป่าผิดตัว เพราะเลือก ${payload.targetName || 'เป้าหมาย'} ผิดคน`
+        };
+    }
+
+    if (type === 'vote-elimination') {
+        return {
+            type,
+            lead: `${payload.targetName || 'เป้าหมาย'} ถูกโหวตออกจากหมู่บ้าน`,
+            detail: `เสียงโหวตถึงเกณฑ์และขับ ${payload.targetName || 'เป้าหมาย'} ออกจากเกม`
+        };
+    }
+
+    if (type === 'vote-no-elimination') {
+        return {
+            type,
+            lead: 'การโหวตจบลงแบบไม่มีใครถูกกำจัด',
+            detail: payload.reason || 'คะแนนไม่ถึงเกณฑ์หรือเสมอกัน ทำให้ไม่มีใครออกจากเกม'
+        };
+    }
+
+    if (type === 'skip-majority') {
+        return {
+            type,
+            lead: 'เสียงข้ามโหวตเกินครึ่ง หมู่บ้านจบวันทันที',
+            detail: 'ไม่มีใครถูกกำจัด และเกมเข้าสู่กลางคืนต่อทันที'
+        };
+    }
+
+    return null;
+}
+
+function resolvePendingRevealActions(room) {
+    const events = [];
+
+    Object.entries(room.gameState.pendingRevealActions || {}).forEach(([actorId, targetPlayerId]) => {
+        const actor = getPlayer(room, actorId);
+        const target = getPlayer(room, targetPlayerId);
+
+        if (!actor || actor.alive === false || !target || target.alive === false) {
+            return;
+        }
+
+        if (isWerewolfRole(target.role)) {
+            markPlayerDead(target, 'ถูกจอมเปิดโปงจับได้ว่าเป็นหมาป่า');
+            events.push(buildDayPublicEvent('reveal-hit', {
+                actorName: actor.name,
+                targetName: target.name
+            }));
+            pushHistory(room, `${actor.name} เปิดโปง ${target.name} สำเร็จ หมาป่าตายตอนหมดเวลา`, 'day');
+            return;
+        }
+
+        markPlayerDead(actor, 'เปิดโปงผิดเป้าและตายแทน');
+        events.push(buildDayPublicEvent('reveal-miss', {
+            actorName: actor.name,
+            targetName: target.name
+        }));
+        pushHistory(room, `${actor.name} เปิดโปงผิดเป้าและตายตอนหมดเวลา`, 'day');
+    });
+
+    room.gameState.pendingRevealActions = {};
+    return events.filter(Boolean);
 }
 
 function resolveNight(room) {
@@ -1165,12 +1254,25 @@ function canResolveDay(room) {
 }
 
 function resolveDayVote(room) {
+    const publicEvents = resolvePendingRevealActions(room);
+    syncAlivePlayerIds(room);
+
+    if (checkWinCondition(room)) {
+        room.gameState.lastResolvedDay = {
+            eliminatedPlayerId: null,
+            resolutionType: publicEvents[0]?.type || null,
+            publicEvents
+        };
+        return { resolved: true, winner: room.gameState.winner };
+    }
+
     if (canSkipDayVote(room)) {
         room.gameState.lastResolvedDay = {
             eliminatedPlayerId: null,
             resolutionType: 'skip-majority',
             skippedByMajority: true,
-            skipVoteWeight: getDaySkipVoteWeight(room)
+            skipVoteWeight: getDaySkipVoteWeight(room),
+            publicEvents: [...publicEvents, buildDayPublicEvent('skip-majority')].filter(Boolean)
         };
         pushHistory(room, 'เสียงข้ามโหวตเกินครึ่ง วันจึงถูกข้ามทันทีและเกมเข้าสู่กลางคืน', 'day');
         startNightPhase(room);
@@ -1188,6 +1290,9 @@ function resolveDayVote(room) {
 
     if (eliminatedPlayer && eliminatedPlayer.alive !== false) {
         markPlayerDead(eliminatedPlayer, 'ถูกโหวตออกในเวลากลางวัน');
+        publicEvents.push(buildDayPublicEvent('vote-elimination', {
+            targetName: eliminatedPlayer.name
+        }));
         pushHistory(room, `${eliminatedPlayer.name} ถูกโหวตออกจากหมู่บ้าน`, 'day');
 
         if (eliminatedPlayer.role === 'fool') {
@@ -1200,17 +1305,27 @@ function resolveDayVote(room) {
             });
             room.gameState.lastResolvedDay = {
                 eliminatedPlayerId: eliminatedPlayer.playerId,
-                resolutionType: 'vote-elimination'
+                resolutionType: 'vote-elimination',
+                publicEvents,
             };
             syncAlivePlayerIds(room);
             pushHistory(room, `${eliminatedPlayer.name} คือคนบ้า และชนะคนเดียวทันทีหลังถูกโหวตออก`, 'result');
             return { resolved: true, winner: room.gameState.winner };
         }
     } else if (rankedTargets.length > 0 && rankedTargets[0][1] < voteThreshold) {
+        publicEvents.push(buildDayPublicEvent('vote-no-elimination', {
+            reason: `คะแนนโหวตไม่ถึงเกณฑ์ ${voteThreshold} เสียง`
+        }));
         pushHistory(room, `การโหวตวันนี้ไม่ถึงเกณฑ์ ${voteThreshold} เสียง ไม่มีใครถูกกำจัด`, 'day');
     } else if (rankedTargets.length > 1 && rankedTargets[0][1] === rankedTargets[1][1]) {
+        publicEvents.push(buildDayPublicEvent('vote-no-elimination', {
+            reason: 'คะแนนโหวตเสมอกัน ทำให้ไม่มีใครถูกกำจัด'
+        }));
         pushHistory(room, 'การโหวตวันนี้เสมอกัน ไม่มีใครถูกกำจัด', 'day');
     } else {
+        publicEvents.push(buildDayPublicEvent('vote-no-elimination', {
+            reason: 'ไม่มีใครถูกเลือกในการโหวตวันนี้'
+        }));
         pushHistory(room, 'การโหวตวันนี้ไม่มีใครถูกเลือก', 'day');
     }
 
@@ -1218,7 +1333,8 @@ function resolveDayVote(room) {
         eliminatedPlayerId: eliminatedPlayer?.playerId || null,
         resolutionType: eliminatedPlayer ? 'vote-elimination' : 'vote-no-elimination',
         skippedByMajority: false,
-        skipVoteWeight: getDaySkipVoteWeight(room)
+        skipVoteWeight: getDaySkipVoteWeight(room),
+        publicEvents
     };
 
     syncAlivePlayerIds(room);
@@ -1263,14 +1379,12 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (isSkip) {
                 room.gameState.nightActions.werewolfVotes[actorId] = SKIP_TARGET_ID;
-                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             if (isWerewolfRole(target.role)) {
                 throw new Error('หมาป่าเลือกโจมตีหมาป่าด้วยกันเองไม่ได้');
             }
             room.gameState.nightActions.werewolfVotes[actorId] = targetPlayerId;
-            delete room.gameState.nightSkips[actorId];
             break;
         case 'seer':
             if (room.gameState.nightActions.seerChecks[actorId]) {
@@ -1278,14 +1392,12 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (isSkip) {
                 room.gameState.nightActions.seerChecks[actorId] = SKIP_TARGET_ID;
-                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             if (actorId === targetPlayerId) {
                 throw new Error('Seer ตรวจตัวเองไม่ได้');
             }
             room.gameState.nightActions.seerChecks[actorId] = targetPlayerId;
-            delete room.gameState.nightSkips[actorId];
             seerResult = applySeerVision(room, actorId, targetPlayerId);
             break;
         case 'doctor':
@@ -1300,11 +1412,9 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (isSkip) {
                 room.gameState.nightActions.doctorSaves[actorId] = SKIP_TARGET_ID;
-                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             room.gameState.nightActions.doctorSaves[actorId] = targetPlayerId;
-            delete room.gameState.nightSkips[actorId];
             break;
         case 'bodyguard': {
             if (actor.bodyguardArmorBroken) {
@@ -1318,7 +1428,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (isSkip) {
                 room.gameState.nightActions.bodyguardProtects[actorId] = SKIP_TARGET_ID;
-                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             const previousTarget = room.gameState.lastProtectedByBodyguard[actorId];
@@ -1326,7 +1435,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 throw new Error('บอดี้การ์ดห้ามปกป้องคนเดิมสองคืนติดกัน');
             }
             room.gameState.nightActions.bodyguardProtects[actorId] = targetPlayerId;
-            delete room.gameState.nightSkips[actorId];
             break;
         }
         case 'witch':
@@ -1356,11 +1464,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                     throw new Error('คุณใช้ยาช่วยชีวิตไปแล้ว');
                 }
                 room.gameState.nightActions.witchHeals[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
-                if (isSkip) {
-                    room.gameState.nightSkips[actorId] = true;
-                } else {
-                    delete room.gameState.nightSkips[actorId];
-                }
                 break;
             }
 
@@ -1372,11 +1475,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                     throw new Error('แม่มดวางยาพิษตัวเองไม่ได้');
                 }
                 room.gameState.nightActions.witchPoisons[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
-                if (isSkip) {
-                    room.gameState.nightSkips[actorId] = true;
-                } else {
-                    delete room.gameState.nightSkips[actorId];
-                }
                 break;
             }
 
@@ -1386,13 +1484,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
     }
 
     room.gameState.lastAction = Date.now();
-
-    if (canResolveNight(room)) {
-        return {
-            ...resolveNight(room),
-            seerResult
-        };
-    }
 
     return {
         resolved: false,
@@ -1545,40 +1636,16 @@ function useRevealAction(room, actorId, targetPlayerId) {
 
     actor.revealerUsed = true;
     room.gameState.dayActionUsedBy[actorId] = true;
+    room.gameState.pendingRevealActions[actorId] = targetPlayerId;
     delete room.gameState.dayVotes[actorId];
-
-    if (isWerewolfRole(target.role)) {
-        markPlayerDead(target, 'ถูกจอมเปิดโปงจับได้ว่าเป็นหมาป่า');
-        room.gameState.lastResolvedDay = {
-            eliminatedPlayerId: target.playerId,
-            resolutionType: 'reveal-hit',
-            revealActorId: actor.playerId,
-            revealTargetId: target.playerId
-        };
-        pushHistory(room, `${actor.name} เปิดโปง ${target.name} สำเร็จ หมาป่าตายทันที`, 'day');
-    } else {
-        markPlayerDead(actor, 'เปิดโปงผิดเป้าและตายแทน');
-        room.gameState.lastResolvedDay = {
-            eliminatedPlayerId: actor.playerId,
-            resolutionType: 'reveal-miss',
-            revealActorId: actor.playerId,
-            revealTargetId: target.playerId
-        };
-        pushHistory(room, `${actor.name} เปิดโปงผิดเป้าและตายทันที`, 'day');
-    }
-
-    syncAlivePlayerIds(room);
     room.gameState.lastAction = Date.now();
 
-    if (checkWinCondition(room)) {
-        return { resolved: true, winner: room.gameState.winner };
-    }
-
-    if (room.gameState.phase === 'day-vote' && (canSkipDayVote(room) || canResolveDay(room))) {
-        return resolveDayVote(room);
-    }
-
-    return { resolved: false };
+    return {
+        resolved: false,
+        queued: true,
+        revealTargetId: target.playerId,
+        revealTargetName: target.name
+    };
 }
 
 function fillMissingNightActions(room) {
@@ -1665,9 +1732,7 @@ function autoResolvePhase(room) {
 
     if (room.gameState.phase === 'night') {
         fillMissingNightActions(room);
-        if (canResolveNight(room)) {
-            return { ...resolveNight(room), autoResolved: true };
-        }
+        return { ...resolveNight(room), autoResolved: true };
     }
 
     if (room.gameState.phase === 'day-discussion') {
@@ -1896,6 +1961,8 @@ function getNightActionState(room, viewer) {
 function getDayActionOptions(room, viewer) {
     if (!viewer || viewer.alive === false || room.gameState.phase !== 'day-vote') {
         const aliveCount = getAlivePlayers(room).length;
+        const pendingRevealTargetId = viewer ? room.gameState.pendingRevealActions?.[viewer.playerId] || null : null;
+        const pendingRevealTarget = pendingRevealTargetId ? getPlayer(room, pendingRevealTargetId) : null;
         return {
             canVote: false,
             selectedVoteTargetId: null,
@@ -1909,7 +1976,9 @@ function getDayActionOptions(room, viewer) {
             voteThreshold: Math.floor(getTotalDayVoteWeight(room) / 2) + 1,
             canReveal: false,
             revealUsed: !!viewer?.revealerUsed,
-            revealTargets: []
+            revealTargets: [],
+            pendingRevealTargetId,
+            pendingRevealTargetName: pendingRevealTarget?.name || null
         };
     }
 
@@ -1922,6 +1991,8 @@ function getDayActionOptions(room, viewer) {
 
     const aliveCount = getAlivePlayers(room).length;
     const totalVoteWeight = getTotalDayVoteWeight(room);
+    const pendingRevealTargetId = room.gameState.pendingRevealActions?.[viewer.playerId] || null;
+    const pendingRevealTarget = pendingRevealTargetId ? getPlayer(room, pendingRevealTargetId) : null;
     return {
         canVote: !room.gameState.dayActionUsedBy[viewer.playerId],
         selectedVoteTargetId: room.gameState.dayVotes[viewer.playerId] || null,
@@ -1937,9 +2008,11 @@ function getDayActionOptions(room, viewer) {
         canRevealMayor: viewer.role === 'mayor' && !viewer.mayorRevealed,
         mayorRevealed: !!viewer.mayorRevealed,
         currentVoteWeight: getCurrentVoteWeight(viewer),
-        canReveal: viewer.role === 'revealer' && !viewer.revealerUsed,
+        canReveal: viewer.role === 'revealer' && !viewer.revealerUsed && !pendingRevealTargetId,
         revealUsed: !!viewer.revealerUsed,
-        revealTargets: viewer.role === 'revealer' && !viewer.revealerUsed ? targets : []
+        revealTargets: viewer.role === 'revealer' && !viewer.revealerUsed && !pendingRevealTargetId ? targets : [],
+        pendingRevealTargetId,
+        pendingRevealTargetName: pendingRevealTarget?.name || null
     };
 }
 
@@ -1948,6 +2021,8 @@ function getDiscussionActionState(room, viewer) {
     const skipCount = getDiscussionSkipCount(room);
     const skipNeeded = Math.floor(totalAlive / 2) + 1;
     const hasSkipped = !!room.gameState.discussionSkips?.[viewer?.playerId];
+    const pendingRevealTargetId = viewer ? room.gameState.pendingRevealActions?.[viewer.playerId] || null : null;
+    const pendingRevealTarget = pendingRevealTargetId ? getPlayer(room, pendingRevealTargetId) : null;
 
     if (!viewer || viewer.alive === false || room.gameState.phase !== 'day-discussion') {
         return {
@@ -1955,7 +2030,9 @@ function getDiscussionActionState(room, viewer) {
             hasSkipped: false,
             skipCount,
             totalAlive,
-            skipNeeded
+            skipNeeded,
+            pendingRevealTargetId,
+            pendingRevealTargetName: pendingRevealTarget?.name || null
         };
     }
 
@@ -1968,16 +2045,18 @@ function getDiscussionActionState(room, viewer) {
         canRevealMayor: viewer.role === 'mayor' && !viewer.mayorRevealed,
         mayorRevealed: !!viewer.mayorRevealed,
         currentVoteWeight: getCurrentVoteWeight(viewer),
-        canReveal: viewer.role === 'revealer' && !viewer.revealerUsed,
+        canReveal: viewer.role === 'revealer' && !viewer.revealerUsed && !pendingRevealTargetId,
         revealUsed: !!viewer.revealerUsed,
-        revealTargets: viewer.role === 'revealer' && !viewer.revealerUsed
+        revealTargets: viewer.role === 'revealer' && !viewer.revealerUsed && !pendingRevealTargetId
             ? getAlivePlayers(room)
                 .filter(player => player.playerId !== viewer.playerId)
                 .map(player => ({
                     playerId: player.playerId,
                     name: player.name
                 }))
-            : []
+            : [],
+        pendingRevealTargetId,
+        pendingRevealTargetName: pendingRevealTarget?.name || null
     };
 }
 
@@ -2062,6 +2141,16 @@ function buildDayResolutionAnnouncement(room) {
     const eliminatedPlayer = summary.eliminatedPlayerId ? getPlayer(room, summary.eliminatedPlayerId) : null;
     const revealActor = summary.revealActorId ? getPlayer(room, summary.revealActorId) : null;
     const revealTarget = summary.revealTargetId ? getPlayer(room, summary.revealTargetId) : null;
+    const publicEvents = Array.isArray(summary.publicEvents) ? summary.publicEvents.filter(Boolean) : [];
+
+    if (publicEvents.length > 0) {
+        return {
+            title: `🌙 คืน ${dayNumber + 1}`,
+            outcomeType: summary.resolutionType || publicEvents[0]?.type || 'day-resolution',
+            lead: publicEvents.map(event => event.lead).filter(Boolean).join(' • ') || 'เหตุการณ์ช่วงกลางวันสิ้นสุดลงแล้ว',
+            detail: publicEvents.map(event => event.detail).filter(Boolean).join(' • ') || 'ระบบสรุปผลช่วงกลางวันไว้ให้แล้ว'
+        };
+    }
 
     if (summary.skippedByMajority) {
         return {
@@ -2181,6 +2270,10 @@ function buildRoleNotes(room, viewer) {
             break;
     }
 
+    if (viewer.roleInfo?.winCondition) {
+        notes.push(`🏁 เงื่อนไขชนะ: ${viewer.roleInfo.winCondition}`);
+    }
+
     return notes;
 }
 
@@ -2206,7 +2299,8 @@ function buildClientState(room, viewerPlayerId) {
             name: viewer.roleInfo?.name || '',
             thaiName: viewer.roleInfo?.thaiName || '',
             team: viewer.roleInfo?.team || '',
-            description: viewer.roleInfo?.description || ''
+            description: viewer.roleInfo?.description || '',
+            winCondition: viewer.roleInfo?.winCondition || ''
         } : null,
         personalNotes: {
             roleNotes: buildRoleNotes(room, viewer),
@@ -2232,13 +2326,15 @@ function buildClientState(room, viewerPlayerId) {
             id: role.id,
             thaiName: role.thaiName,
             team: role.team,
-            description: role.description
+            description: role.description,
+            winCondition: role.winCondition || ''
         })),
         roleCatalog: Object.values(ROLE_DEFINITIONS).filter(role => role.id !== 'villager').map(role => ({
             id: role.id,
             thaiName: role.thaiName,
             team: role.team,
             description: role.description,
+            winCondition: role.winCondition || '',
             enabledInRoom: enabledRoleIds.has(role.id)
         })),
         history: room.gameState.history || [],

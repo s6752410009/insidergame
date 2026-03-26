@@ -187,10 +187,14 @@
   .hint-pill.tone-fool { background: rgba(168,85,247,0.22); border-color: rgba(216,180,254,0.24); color: #d8b4fe; }
   /* -- player grid: tap-to-target -- */
   .player-row.seat-target { cursor: pointer; border-color: rgba(250,204,21,0.4) !important; box-shadow: 0 0 10px rgba(250,204,21,0.15); transition: all 0.2s; }
+  .player-row.seat-target.reveal-target { border-color: rgba(248,113,113,0.45) !important; box-shadow: 0 0 12px rgba(248,113,113,0.16); }
   .player-row.seat-target:active { transform: scale(0.93); }
   .player-row.seat-target.target-selected { border-color: rgba(34,197,94,0.5) !important; box-shadow: 0 0 14px rgba(34,197,94,0.2); background: linear-gradient(145deg, rgba(34,197,94,0.14), rgba(34,197,94,0.04)) !important; }
+  .player-row.seat-target.reveal-target.target-selected { border-color: rgba(244,63,94,0.7) !important; box-shadow: 0 0 18px rgba(244,63,94,0.24); background: linear-gradient(145deg, rgba(244,63,94,0.18), rgba(127,29,29,0.06)) !important; }
   .player-row.seat-target .player-avatar-stage::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px dashed rgba(250,204,21,0.35); animation: targetPulse 1.5s ease-in-out infinite; pointer-events: none; }
+  .player-row.seat-target.reveal-target .player-avatar-stage::after { border-color: rgba(248,113,113,0.42); }
   .player-row.seat-target.target-selected .player-avatar-stage::after { border-color: rgba(34,197,94,0.5); animation: none; }
+  .player-row.seat-target.reveal-target.target-selected .player-avatar-stage::after { border-color: rgba(251,113,133,0.62); }
   .player-row .player-avatar-stage { position: relative; }
   @keyframes targetPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
@@ -1100,6 +1104,7 @@
               <div class="room-role-count">${escapeHtml(countLabel)}</div>
             </div>
             <div class="room-role-card-body">${escapeHtml(role.description || 'ไม่มีคำอธิบาย')}</div>
+            <div class="room-role-card-body">🏁 ${escapeHtml(role.winCondition || 'ชนะตามเงื่อนไขของทีมตัวเอง')}</div>
             <div class="room-role-card-team">${teamEmoji(role.team)} ${escapeHtml(teamLabel(role.team))}</div>
           </div>
         `;
@@ -1174,7 +1179,7 @@
         doctor: 'กลางคืนคุณเลือกช่วยผู้เล่นได้ 1 คน เพื่อกันการถูกกำจัด',
         witch: 'กลางคืนคุณมียาช่วยชีวิต 1 ครั้งไว้กันตายคืนนี้ และยาพิษ 1 ครั้ง ใช้ได้คืนละ 1 อย่างเท่านั้น',
         fool: 'คุณเป็นบทเดี่ยว หมาป่าฆ่าคุณไม่ได้ และถ้าถูกโหวตออกตอนกลางวันคุณจะชนะทันที',
-        revealer: 'ตอนกลางวันคุณมีสกิลเปิดโปง 1 ครั้ง ใช้ได้ทั้งช่วงประชุมและช่วงโหวต ถ้าเลือกหมาป่าถูกมันจะตายทันที แต่ถ้าพลาดคุณจะตายเอง'
+        revealer: 'ตอนกลางวันคุณมีสกิลเปิดโปง 1 ครั้ง ใช้ได้ทั้งช่วงประชุมและช่วงโหวต เมื่อล็อกเป้าแล้วระบบจะรอจนหมดเวลาแล้วค่อยเฉลยว่าคุณเปิดโปงถูกหรือผิด ถ้าพลาดคุณจะตายเองทันที'
       };
 
       return hints[role.id] || 'ดูคำอธิบายบทของคุณ แล้วลงมือเมื่อถึงช่วงที่ระบบเปิดให้ใช้ความสามารถ';
@@ -1663,6 +1668,25 @@
             tone: 'tone-heavy'
           });
         }
+        if (state?.playerRole?.id === 'revealer' && dayActions.pendingRevealTargetId) {
+          const targetName = describeTarget(dayActions.pendingRevealTargetId, dayActions.pendingRevealTargetName || 'เป้าหมาย');
+          items.push({
+            icon: '🎯',
+            title: `คุณล็อกเป้าเปิดโปง ${targetName} แล้ว`,
+            caption: 'ระบบจะเก็บเป้านี้ไว้และเฉลยผลตอนหมดเวลาช่วงกลางวัน',
+            tone: 'tone-lock'
+          });
+        }
+      }
+
+      if (phase === 'day-discussion' && state?.playerRole?.id === 'revealer' && discussion.pendingRevealTargetId) {
+        const targetName = describeTarget(discussion.pendingRevealTargetId, discussion.pendingRevealTargetName || 'เป้าหมาย');
+        items.push({
+          icon: '🎯',
+          title: `คุณล็อกเป้าเปิดโปง ${targetName} แล้ว`,
+          caption: 'ระบบจะรอหมดเวลาหรือเข้าสรุปช่วงกลางวันก่อนเฉลยผล',
+          tone: 'tone-lock'
+        });
       }
 
       return items;
@@ -1783,7 +1807,7 @@
       if (actionType === 'bodyguard-protect') return 'แตะเพื่อคุ้มกัน';
       if (actionType === 'witch-heal') return 'แตะเพื่อกันตายคนนี้คืนนี้';
       if (actionType === 'witch-poison') return 'แตะเพื่อวางยาคนนี้';
-      if (actionType === 'reveal-action') return 'แตะเพื่อเปิดโปง';
+      if (actionType === 'reveal-action') return 'แตะเพื่อล็อกเป้าเปิดโปง';
       if (actionType === 'day-vote') return 'แตะเพื่อเทคะแนนให้คนนี้';
       return 'แตะเพื่อเลือก';
     }
@@ -2023,8 +2047,12 @@
       } else if (phase === 'day-discussion') {
         if (discussion.canReveal) {
           headline = 'ประชุมอยู่ แต่เปิดโปงได้แล้ว';
-          detail = 'เลือกเป้าหมายได้ตั้งแต่ช่วงประชุม และยังใช้ต่อได้ถึงช่วงโหวต ถ้าพลาดคุณจะตายทันที';
+          detail = 'เลือกเป้าหมายได้ตั้งแต่ช่วงประชุม ล็อกไว้ก่อน แล้วระบบจะเฉลยผลตอนหมดเวลา';
           primaryLabel = '💥 เปิดโปง';
+        } else if (discussion.pendingRevealTargetId) {
+          headline = 'ล็อกเป้าเปิดโปงไว้แล้ว';
+          detail = 'รอหมดเวลาแล้วระบบจะเฉลยผลให้อัตโนมัติ';
+          primaryLabel = '🎯 ดูเป้า';
         } else if (discussion.canSkip || discussion.canRevealMayor) {
           headline = 'คุย จับพิรุธ กดข้ามเมื่อพร้อม';
           detail = discussion.canRevealMayor
@@ -2052,8 +2080,12 @@
           primaryLabel = '🗳️ โหวต';
         } else if (dayActions.canReveal) {
           headline = 'ยังเปิดโปงได้ แม้อยู่ช่วงโหวต';
-          detail = 'สลับเป็นโหมดเปิดโปงแล้วแตะที่นั่งเป้าหมายได้เลย';
+          detail = 'สลับเป็นโหมดเปิดโปงแล้วแตะที่นั่งเป้าหมายเพื่อ ล็อกเป้า รอเฉลยตอนหมดเวลา';
           primaryLabel = '💥 เปิดโปง';
+        } else if (dayActions.pendingRevealTargetId) {
+          headline = 'ล็อกเป้าเปิดโปงไว้แล้ว';
+          detail = 'ตอนนี้รอเพียงหมดเวลาเพื่อเฉลยผลว่าคุณเลือกถูกหรือผิด';
+          primaryLabel = '🎯 ดูเป้า';
         } else {
           tone = 'tone-lock';
           kicker = 'ล็อกแล้ว';
@@ -2735,9 +2767,10 @@
         // Target-on-grid: check if this player is a valid target
         const isTarget = currentMobileTargetAction && currentMobileTargetAction.targetIds.has(player.playerId);
         const isTargetSelected = isTarget && currentMobileTargetAction.selectedId === player.playerId;
+        const isRevealTarget = isTarget && currentMobileTargetAction && currentMobileTargetAction.actionType === 'reveal-action';
 
         $root.append(`
-          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''} ${isTarget ? 'seat-target' : ''} ${isTargetSelected ? 'target-selected' : ''}" data-player-id="${escapeHtml(player.playerId)}">
+          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''} ${isTarget ? 'seat-target' : ''} ${isRevealTarget ? 'reveal-target' : ''} ${isTargetSelected ? 'target-selected' : ''}" data-player-id="${escapeHtml(player.playerId)}">
             <div class="player-seat-number">${seatNumber}</div>
             <div class="player-avatar-stage" style="background:${escapeHtml(avatarBg)};">${avatarEmoji}</div>
             <div class="player-name">${escapeHtml(player.name)}</div>
@@ -2784,13 +2817,24 @@
         var dayActions = actionState.dayActions || {};
         var voteTargets = dayActions.voteTargets || [];
         var revealTargetsVote = dayActions.revealTargets || [];
+        var pendingRevealTargetIdVote = dayActions.pendingRevealTargetId || null;
         if (preferredDayTargetMode === 'reveal' && dayActions.canReveal && revealTargetsVote.length > 0) {
           var revealTargetIdsVote = new Set(revealTargetsVote.map(function(t) { return t.playerId; }));
           currentMobileTargetAction = {
             handlerName: 'selectRevealTarget',
             actionType: 'reveal-action',
             targetIds: revealTargetIdsVote,
-            selectedId: null,
+            selectedId: pendingRevealTargetIdVote,
+            allowSkip: false
+          };
+          return;
+        }
+        if (pendingRevealTargetIdVote) {
+          currentMobileTargetAction = {
+            handlerName: 'selectRevealTarget',
+            actionType: 'reveal-action',
+            targetIds: new Set([pendingRevealTargetIdVote]),
+            selectedId: pendingRevealTargetIdVote,
             allowSkip: false
           };
           return;
@@ -2811,13 +2855,24 @@
       if (phase === 'day-discussion') {
         var discussion = actionState.discussionActions || {};
         var revealTargets = discussion.revealTargets || [];
+        var pendingRevealTargetId = discussion.pendingRevealTargetId || null;
+        if (pendingRevealTargetId) {
+          currentMobileTargetAction = {
+            handlerName: 'selectRevealTarget',
+            actionType: 'reveal-action',
+            targetIds: new Set([pendingRevealTargetId]),
+            selectedId: pendingRevealTargetId,
+            allowSkip: false
+          };
+          return;
+        }
         if (discussion.canReveal && revealTargets.length > 0) {
           var rTargetIds = new Set(revealTargets.map(function(t) { return t.playerId; }));
           currentMobileTargetAction = {
             handlerName: 'selectRevealTarget',
             actionType: 'reveal-action',
             targetIds: rTargetIds,
-            selectedId: null,
+            selectedId: pendingRevealTargetId,
             allowSkip: false
           };
         }
@@ -2940,6 +2995,8 @@
         }
         if (disc.canReveal) {
           btnsHtml += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เลือกเป้าเปิดโปง</button>';
+        } else if (disc.pendingRevealTargetId) {
+          btnsHtml += '<span class="hint-text" style="color:#fda4af;">🎯 ล็อกเป้า ' + escapeHtml(disc.pendingRevealTargetName || 'ไว้แล้ว') + '</span>';
         } else if (disc.revealUsed) {
           btnsHtml += '<span class="hint-text" style="color:#fda4af;">💥 ใช้สกิลแล้ว</span>';
         }
@@ -2981,6 +3038,8 @@
           vBtns += preferredDayTargetMode === 'reveal'
             ? '<span class="hint-text" style="color:#fda4af;">💥 กำลังเลือกเป้าเปิดโปง</span>'
             : '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 ใช้สกิลเปิดโปง</button>';
+        } else if (dayActions.pendingRevealTargetId) {
+          vBtns += '<span class="hint-text" style="color:#fda4af;">🎯 ล็อกเป้า ' + escapeHtml(dayActions.pendingRevealTargetName || 'ไว้แล้ว') + '</span>';
         }
         var focusClass3 = dayActions.canVote ? ' hint-focus' : '';
         $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง</span>' + vBtns + seerTagVote + pillsHtml + '</div>');
@@ -3920,9 +3979,9 @@
       Swal.fire({
         icon: 'warning',
         title: 'ยืนยันใช้สกิลเปิดโปง',
-        text: 'ถ้าเปิดโปงผิด ตัวคุณจะตายทันที',
+        text: 'เมื่อยืนยันแล้ว ระบบจะล็อกเป้านี้ไว้ก่อน และเฉลยตอนหมดเวลาว่าคุณเปิดโปงถูกหรือผิด',
         showCancelButton: true,
-        confirmButtonText: 'ใช้สกิล',
+        confirmButtonText: 'ล็อกเป้า',
         cancelButtonText: 'ยกเลิก',
         background: '#1e1e1e',
         color: '#fff'
@@ -4041,8 +4100,10 @@
             ? '<button class="action-btn selected" disabled>✅ กดพร้อมแล้ว</button>'
             : '<button class="action-btn" disabled>⏳ รอช่วงประชุม</button>');
         const revealerHtml = discussion.canReveal
-          ? `<div style="margin-top:12px;"><div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div><div class="subtle">ใช้ได้ทั้งช่วงประชุมและช่วงโหวต ถ้าเปิดโปงหมาป่าถูกมันจะตายทันที ถ้าพลาดคุณจะตายเอง</div><div class="target-grid">${buildTargetCards({ targets: discussion.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div></div>`
-          : (discussion.revealUsed ? '<div class="history-row">💥 ใช้สกิลเปิดโปงไปแล้ว</div>' : '');
+          ? `<div style="margin-top:12px;"><div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div><div class="subtle">เลือกเป้าหมายเพื่อล็อกไว้ก่อน จากนั้นระบบจะรอจนหมดเวลาแล้วค่อยเฉลยว่าคุณเปิดโปงถูกหรือผิด</div><div class="target-grid">${buildTargetCards({ targets: discussion.revealTargets, selectedTargetId: discussion.pendingRevealTargetId }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div></div>`
+          : (discussion.pendingRevealTargetId
+            ? `<div class="history-row">🎯 ล็อกเป้าเปิดโปง ${escapeHtml(discussion.pendingRevealTargetName || 'ไว้แล้ว')} รอหมดเวลาเฉลย</div>`
+            : (discussion.revealUsed ? '<div class="history-row">💥 ใช้สกิลเปิดโปงไปแล้ว</div>' : ''));
 
         $root.append(`
           <div class="history-row ${discussion.canSkip || discussion.canRevealMayor || discussion.canReveal ? 'turn-focus' : ''}" style="display:block;">
@@ -4087,10 +4148,12 @@
           $root.append(`
             <div class="history-row turn-focus" style="display:block;">
               <div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div>
-              <div class="subtle">ใช้ได้แม้อยู่ช่วงโหวต ถ้าเลือกหมาป่าถูก → มันตาย | ถ้าพลาด → คุณตาย</div>
-              <div class="target-grid">${buildTargetCards({ targets: dayActions.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div>
+              <div class="subtle">ใช้ได้แม้อยู่ช่วงโหวต เลือกแล้วจะเป็นการล็อกเป้าไว้ และเฉลยผลตอนหมดเวลา</div>
+              <div class="target-grid">${buildTargetCards({ targets: dayActions.revealTargets, selectedTargetId: dayActions.pendingRevealTargetId }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div>
             </div>
           `);
+        } else if (dayActions.pendingRevealTargetId) {
+          $root.append('<div class="history-row">🎯 ล็อกเป้าเปิดโปง ' + escapeHtml(dayActions.pendingRevealTargetName || 'ไว้แล้ว') + ' รอหมดเวลาเฉลย</div>');
         } else if (dayActions.revealUsed) {
           $root.append('<div class="history-row">💥 ใช้สกิลเปิดโปงไปแล้ว</div>');
         }
