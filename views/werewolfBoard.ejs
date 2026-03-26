@@ -558,6 +558,7 @@
 </div>
 
 <div id="werewolfShell" class="ww-page">
+  <div id="connectionStatus" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999; text-align:center; padding:8px 16px; font-size:0.85rem; font-weight:700; color:#fff; background:rgba(231,76,60,0.92); backdrop-filter:blur(4px);"></div>
   <!-- ===== MOBILE TOP BAR ===== -->
   <div class="ww-topbar">
     <div class="ww-topbar-info">
@@ -775,6 +776,7 @@
     let lastWarningKey = null;
     let activePhaseDeadline = currentState.phaseEndsAt || null;
     let wasHidden = false;
+    let hasInitiallyConnected = false;
     let phaseTransitionTimeouts = [];
     let roleAnnouncementTimeout = null;
     let lastRoleAnnouncementKey = null;
@@ -3909,7 +3911,25 @@
     });
 
     socket.on('reconnect', function() {
+      console.log('[WW] Reconnected to server');
+      $('#connectionStatus').text('เชื่อมต่อใหม่สำเร็จ').show();
+      setTimeout(function() { $('#connectionStatus').fadeOut(); }, 2000);
       bindRoom();
+    });
+
+    socket.on('disconnect', function(reason) {
+      console.log('[WW] Disconnected:', reason);
+      if (reason !== 'io server disconnect') {
+        $('#connectionStatus').text('กำลังเชื่อมต่อใหม่...').show();
+      }
+    });
+
+    socket.on('connect', function() {
+      if (hasInitiallyConnected) {
+        console.log('[WW] Socket reconnected via connect event');
+        bindRoom();
+      }
+      hasInitiallyConnected = true;
     });
 
     window.addEventListener('beforeunload', function(e) {
@@ -3942,8 +3962,10 @@
       }
 
       wasHidden = false;
-      socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
-      socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
+      // Full rebind on return from background to re-establish socket room membership
+      if (socket.connected) {
+        bindRoom();
+      }
     });
 
     socket.on('werewolfState', function(state) {
