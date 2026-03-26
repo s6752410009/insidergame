@@ -3415,6 +3415,11 @@
     };
 
     window.selectRevealTarget = function(targetPlayerId) {
+      if (targetPlayerId === '__show__') {
+        var el = document.getElementById('actionPanels');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
       Swal.fire({
         icon: 'warning',
         title: 'ยืนยันใช้สกิลเปิดโปง',

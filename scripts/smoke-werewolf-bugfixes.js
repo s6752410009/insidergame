@@ -358,17 +358,26 @@ function testSeerToggle() {
     werewolfEngine.submitNightAction(room, seer.playerId, villager.playerId);
     assert(room.gameState.nightActions.seerChecks[seer.playerId] === villager.playerId, 'seer check should be recorded');
 
-    // Seer clicks same → cancel
-    const result = werewolfEngine.submitNightAction(room, seer.playerId, villager.playerId);
-    assert(result.unvoted === true, 'seer should return unvoted flag');
-    assert(!room.gameState.nightActions.seerChecks[seer.playerId], 'seer check should be removed');
+    // Seer tries same target again → should throw (locked, no toggle)
+    let threw = false;
+    try {
+        werewolfEngine.submitNightAction(room, seer.playerId, villager.playerId);
+    } catch (e) {
+        threw = true;
+    }
+    assert(threw, 'seer should NOT be able to toggle off (locked after check)');
 
-    // Seer can now check a different person
-    werewolfEngine.submitNightAction(room, seer.playerId, wolf.playerId);
-    assert(room.gameState.nightActions.seerChecks[seer.playerId] === wolf.playerId, 'seer should be able to check different target');
+    // Seer tries different target → should also throw (already checked)
+    threw = false;
+    try {
+        werewolfEngine.submitNightAction(room, seer.playerId, wolf.playerId);
+    } catch (e) {
+        threw = true;
+    }
+    assert(threw, 'seer should NOT be able to check a second target');
 
     tested.seerToggle = true;
-    console.log('  ✅ Seer toggle (cancel check to recheck)');
+    console.log('  ✅ Seer locked after check (no toggle exploit)');
 }
 
 // ─── Test 11: Poison respects protection ────────────────────────────────
@@ -428,6 +437,38 @@ function testDeadPlayerVoteSummary() {
     console.log('  ✅ Dead player sees vote summary');
 }
 
+// ─── Test 13: Revealer auto-resolve day after kill ──────────────────────
+function testRevealerAutoResolve() {
+    const room = createRoom(['werewolf', 'seer', 'doctor', 'bodyguard', 'revealer'], 6);
+    const wolf = getSingleRole(room, 'werewolf');
+    const revealer = getSingleRole(room, 'revealer');
+    const seer = getSingleRole(room, 'seer');
+    const doctor = getSingleRole(room, 'doctor');
+    const bodyguard = getSingleRole(room, 'bodyguard');
+    const villager = getAliveVillager(room);
+
+    // Jump to day-vote
+    room.gameState.phase = 'day-vote';
+    room.gameState.dayVotes = {};
+    room.gameState.dayActionUsedBy = {};
+
+    // All non-revealer alive players vote (5 total alive, 4 others vote)
+    room.gameState.dayVotes[seer.playerId] = wolf.playerId;
+    room.gameState.dayVotes[doctor.playerId] = villager.playerId;
+    room.gameState.dayVotes[bodyguard.playerId] = villager.playerId;
+    room.gameState.dayVotes[wolf.playerId] = seer.playerId;
+
+    // Revealer uses reveal on wolf (the last action) → should auto-resolve
+    const result = werewolfEngine.useRevealAction(room, revealer.playerId, wolf.playerId);
+    assert(result.resolved === true, 'reveal should auto-resolve day when it is the last action');
+
+    tested.revealerAutoResolve = true;
+    console.log('  ✅ Revealer auto-resolves day after kill');
+}
+
+// ─── Test 14: Revealer hint bar __show__ guard ──────────────────────────
+// (Client-side only, no engine test needed)
+
 // ─── Run all tests ──────────────────────────────────────────────────────
 console.log('Werewolf bugfix smoke tests:');
 testVoteCancellation();
@@ -442,5 +483,6 @@ testSeerDoesNotSkipOthers();
 testSeerToggle();
 testPoisonProtection();
 testDeadPlayerVoteSummary();
+testRevealerAutoResolve();
 
 console.log(`\nSMOKE_RESULT ${JSON.stringify({ tested })}`);

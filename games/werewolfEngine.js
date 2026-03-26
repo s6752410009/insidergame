@@ -1043,11 +1043,6 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             room.gameState.nightActions.werewolfVotes[actorId] = targetPlayerId;
             break;
         case 'seer':
-            if (room.gameState.nightActions.seerChecks[actorId] === targetPlayerId) {
-                delete room.gameState.nightActions.seerChecks[actorId];
-                room.gameState.lastAction = Date.now();
-                return { resolved: false, unvoted: true };
-            }
             if (room.gameState.nightActions.seerChecks[actorId]) {
                 throw new Error('Seer ดูได้แค่ 1 คนต่อคืน');
             }
@@ -1275,6 +1270,10 @@ function useRevealAction(room, actorId, targetPlayerId) {
 
     if (checkWinCondition(room)) {
         return { resolved: true, winner: room.gameState.winner };
+    }
+
+    if (canSkipDayVote(room) || canResolveDay(room)) {
+        return resolveDayVote(room);
     }
 
     return { resolved: false };
