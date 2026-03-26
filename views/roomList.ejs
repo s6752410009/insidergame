@@ -576,23 +576,29 @@
         font-weight: 600;
     }
 
-    .room-footer {
-        position: relative;
-        z-index: 1;
-        padding: 0 22px 22px;
+    .page-footer-actionbar {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 12px;
     }
 
-    .room-footer a {
+    .page-footer-actionbar a {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
-        padding: 12px 18px;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.12);
+        min-height: 40px;
+        min-width: min(320px, calc(100vw - 32px));
+        padding: 8px 20px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.18);
         background: rgba(255,255,255,0.08);
         color: var(--room-text);
         text-decoration: none;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        font-weight: 700;
     }
 
     @media (max-width: 900px) {
@@ -620,11 +626,19 @@
             padding: 14px;
         }
 
-        .room-panel,
-        .room-footer {
+        .room-panel {
             margin: 14px;
             padding-left: 14px;
             padding-right: 14px;
+        }
+
+        .page-footer-actionbar {
+            padding: 0 max(12px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(12px, env(safe-area-inset-left));
+        }
+
+        .page-footer-actionbar a {
+            width: 100%;
+            min-width: 0;
         }
 
         #searchRoomInput {
@@ -710,15 +724,13 @@
                 <p>กด "สร้างห้อง" เพื่อเปิดวงใหม่แล้วรอคนเข้ามาเล่น</p>
             </div>
         </div>
-
-        <div class="room-footer">
-            <a href="/">← กลับหน้าหลัก</a>
-        </div>
     </div>
 </div>
 
 <%- contentFor('footer') %>
-<div></div>
+<div class="page-footer-actionbar">
+    <a href="/">← กลับหน้าหลัก</a>
+</div>
 
 <%- contentFor('script') %>
 <script src="/socket.io/socket.io.js"></script>
