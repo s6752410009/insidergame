@@ -1149,7 +1149,7 @@
           </div>
           <details style="padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
             <summary style="cursor:pointer; color:#8fd3ff; font-weight:700;">ปรับบทเองทีละบท</summary>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:8px; margin-top:12px;">
+            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:12px;">
               ${werewolfRoleOptions.map(role => {
                 const visual = werewolfRoleVisuals[role.id] || { emoji: '🎭', teamLabel: 'พิเศษ' };
                 return `
