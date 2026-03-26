@@ -53,9 +53,14 @@ function createRoom(roomData, creatorPlayerId) {
         throw new Error('Creator player not found');
     }
 
-    const werewolfRoles = gameMode === 'werewolf' && typeof gameEngine.sanitizeRoleSelection === 'function'
-        ? gameEngine.sanitizeRoleSelection(roomData.werewolfRoles)
-        : undefined;
+    const werewolfRoles = gameMode === 'werewolf'
+        ? []
+        : (typeof gameEngine.sanitizeRoleSelection === 'function'
+            ? gameEngine.sanitizeRoleSelection(roomData.werewolfRoles)
+            : undefined);
+    const wolfCount = gameMode === 'werewolf'
+        ? Math.min(Math.max(1, Number(roomData.wolfCount) || 2), 3)
+        : null;
 
     const room = {
         roomId,
@@ -65,10 +70,11 @@ function createRoom(roomData, creatorPlayerId) {
         settings: {
             gameMode,
             maxPlayers: clampMaxPlayers(gameEngine, roomData.maxPlayers, 1),
-            roundTime: (roomData.roundTime || 5) * 60, // แปลงนาทีเป็นวินาที
+            roundTime: gameMode === 'werewolf' ? 5 * 60 : (roomData.roundTime || 5) * 60, // Werewolf ใช้ค่า fixed
             traitorOptional: roomData.traitorOptional !== undefined ? roomData.traitorOptional : true,
             dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ (ต้องมี 5+ คน)
             werewolfRoles,
+            wolfCount,
             locked: roomData.locked || false,
             password: roomData.password || null
         },
@@ -367,7 +373,7 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.maxPlayers = clampMaxPlayers(gameEngine, updates.maxPlayers, room.players.length);
     }
 
-    if (updates.roundTime !== undefined) {
+    if (updates.roundTime !== undefined && room.settings.gameMode !== 'werewolf') {
         room.settings.roundTime = updates.roundTime * 60; // แปลงนาทีเป็นวินาที
     }
 
@@ -390,11 +396,8 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.password = updates.password || null;
     }
 
-    if (room.settings.gameMode === 'werewolf' && updates.werewolfRoles !== undefined) {
-        const gameEngine = getGameEngine(room.settings.gameMode);
-        if (typeof gameEngine.sanitizeRoleSelection === 'function') {
-            room.settings.werewolfRoles = gameEngine.sanitizeRoleSelection(updates.werewolfRoles);
-        }
+    if (room.settings.gameMode === 'werewolf') {
+        room.settings.werewolfRoles = [];
     }
 
     if (room.settings.gameMode === 'werewolf' && updates.wolfCount !== undefined) {

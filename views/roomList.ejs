@@ -730,7 +730,7 @@ $(function() {
     const defaultGameModes = [
         { id: 'insider', label: 'Insider', description: 'เกมจับผู้ทรยศและอ่านโต๊ะ', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
-        { id: 'werewolf', label: 'Werewolf', description: 'คืนล่า กลางวันโหวต พร้อมบทพิเศษ', minPlayers: 6, maxPlayers: 10 }
+        { id: 'werewolf', label: 'Werewolf', description: 'กลางคืน 1 นาที / ประชุม 3 นาที / โหวต 1 นาที เลือกได้แค่จำนวนหมาป่า', minPlayers: 3, maxPlayers: 10 }
     ];
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
         const serverModes = <%- JSON.stringify(typeof gameModes !== 'undefined' ? gameModes : []) %>;
@@ -911,10 +911,10 @@ $(function() {
             werewolf: {
                 tone: 'linear-gradient(135deg, rgba(52,73,94,0.26), rgba(17,24,39,0.9))',
                 border: 'rgba(143,211,255,0.22)',
-                badge: '🐺 บทเยอะ',
+                badge: '🐺 fixed timer',
                 title: 'Werewolf',
-                summary: 'เหมาะกับวงใหญ่ที่อยากเล่นกลางวัน-กลางคืนและบทบาทพิเศษหลายชั้น',
-                bullets: ['6-10 คน', 'มี role presets', 'เน้น discussion และ vote']
+                summary: 'กลางคืน 1 นาที ประชุม 3 นาที โหวต 1 นาที และกำหนดได้แค่จำนวนหมาป่าเพื่อกัน logic พังตอนตั้งห้อง',
+                bullets: ['3-10 คน', 'เลือกได้แค่จำนวนหมาป่า', 'role อื่นเติมอัตโนมัติ']
             }
         };
 
@@ -1181,12 +1181,17 @@ $(function() {
                         <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
-                    <div class="room-form-group" id="werewolfRolesGroup" style="display:none;">
+                    <div class="room-form-group" id="werewolfWolfCountGroup" style="display:none;">
                         <label class="room-form-label">
-                            <span class="icon">🐺</span> บทบาทที่เปิดในห้อง:
+                            <span class="icon">🐺</span> จำนวนหมาป่า:
                         </label>
-                        <div id="werewolfRolesSelector"></div>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">ถ้าเลือกบทมาไม่เกินจำนวนผู้เล่น ระบบจะใช้บทที่เลือกจริงก่อน ถ้าไม่เลือกหมาป่าเลย ระบบจะเติมหมาป่าปกติให้อัตโนมัติ</div>
+                        <div id="createWolfCountSelector" style="display:flex; gap:8px; margin-top:4px;">
+                            ${[1,2,3].map(function(n, index) {
+                                const active = n === 2;
+                                return `<button type="button" data-wolf-count="${n}" class="wolf-count-btn${active ? ' active' : ''}" style="flex:1; padding:10px 0; border-radius:10px; border:2px solid ${active ? '#e74c3c' : 'rgba(255,255,255,0.12)'}; background:${active ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)'}; color:#fff; font-size:1.1em; cursor:pointer; font-family:Rajdhani,sans-serif; font-weight:700;">🐺 ${n} ตัว</button>`;
+                            }).join('')}
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด และระบบจะปรับจำนวนหมาป่าสูงสุดตามจำนวนผู้เล่นให้เองถ้าตั้งเกิน</div>
                     </div>
 
                     <div class="room-form-group">
@@ -1199,7 +1204,7 @@ $(function() {
                         </div>
                     </div>
                     
-                    <div class="room-form-group">
+                    <div class="room-form-group" id="createRoundTimeGroup">
                         <label class="room-form-label">
                             <span class="icon" id="roundTimeLabelIcon">⏱️</span> <span id="roundTimeLabelText">เวลาเล่นต่อรอบ:</span>
                         </label>
@@ -1240,14 +1245,14 @@ $(function() {
                 const roundTimeSlider = document.getElementById('roundTime');
                 const roundTimeValue = document.getElementById('roundTimeValue');
                 const roundTimeLabelText = document.getElementById('roundTimeLabelText');
+                const createRoundTimeGroup = document.getElementById('createRoundTimeGroup');
                 const roomNameInput = document.getElementById('roomName');
                 const gameModeSelect = document.getElementById('gameMode');
                 const selectedGameModeInput = document.getElementById('selectedGameMode');
                 const modeQuickPickGrid = document.getElementById('modeQuickPickGrid');
                 const modeSpotlight = document.getElementById('modeSpotlight');
-                const werewolfRolesGroup = document.getElementById('werewolfRolesGroup');
-                const werewolfRolesSelector = document.getElementById('werewolfRolesSelector');
-                const defaultWerewolfRoles = werewolfRoleOptions.filter(role => role.defaultEnabled).map(role => role.id);
+                const werewolfWolfCountGroup = document.getElementById('werewolfWolfCountGroup');
+                const createWolfCountSelector = document.getElementById('createWolfCountSelector');
                 const modeConfigById = gameModes.reduce((result, mode) => {
                     result[mode.id] = mode;
                     return result;
@@ -1273,9 +1278,6 @@ $(function() {
                 
                 updateSliderBackground(maxPlayersSlider);
                 updateSliderBackground(roundTimeSlider);
-
-                werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(defaultWerewolfRoles);
-                syncWerewolfRolePicker(werewolfRolesSelector);
 
                 function syncModeQuickPick() {
                     modeSpotlight.innerHTML = buildModeSpotlightHtml(selectedGameMode, gameModes);
@@ -1303,9 +1305,11 @@ $(function() {
                     maxPlayersValue.textContent = maxPlayersSlider.value;
                     updateSliderBackground(maxPlayersSlider);
 
-                    roundTimeSlider.value = String(preset.roundTime);
-                    roundTimeValue.textContent = `${roundTimeSlider.value} นาที`;
-                    updateSliderBackground(roundTimeSlider);
+                    if (modeId !== 'werewolf') {
+                        roundTimeSlider.value = String(preset.roundTime);
+                        roundTimeValue.textContent = `${roundTimeSlider.value} นาที`;
+                        updateSliderBackground(roundTimeSlider);
+                    }
                 }
 
                 roomNameInput.addEventListener('input', function() {
@@ -1319,12 +1323,13 @@ $(function() {
                     selectedGameMode = selectedMode;
                     const modeConfig = modeConfigById[selectedMode] || { minPlayers: 3, maxPlayers: 10 };
                     const isWerewolfMode = selectedMode === 'werewolf';
-                    werewolfRolesGroup.style.display = isWerewolfMode ? 'block' : 'none';
+                    werewolfWolfCountGroup.style.display = isWerewolfMode ? 'block' : 'none';
+                    createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:');
 
-                    const sliderMin = selectedMode === 'werewolf' ? 6 : Number(modeConfig.minPlayers || 3);
+                    const sliderMin = Number(modeConfig.minPlayers || 3);
                     const sliderMax = Number(modeConfig.maxPlayers || 10);
                     maxPlayersSlider.min = String(sliderMin);
                     maxPlayersSlider.max = String(sliderMax);
@@ -1367,29 +1372,18 @@ $(function() {
                     applyModeAutofill(card.dataset.modeId);
                 });
 
-                werewolfRolesSelector.addEventListener('click', function(event) {
-                    const presetButton = event.target.closest('.werewolf-role-preset');
-                    if (presetButton) {
-                        applyWerewolfRolePreset(werewolfRolesSelector, presetButton.dataset.presetId);
-                        const minPlayers = Number(presetButton.dataset.minPlayers || 0);
-                        if (minPlayers && Number(maxPlayersSlider.value) < minPlayers) {
-                            maxPlayersSlider.value = String(minPlayers);
-                            maxPlayersValue.textContent = maxPlayersSlider.value;
-                            updateSliderBackground(maxPlayersSlider);
-                        }
-                        syncWerewolfRolePicker(werewolfRolesSelector);
+                createWolfCountSelector.addEventListener('click', function(event) {
+                    const btn = event.target.closest('.wolf-count-btn');
+                    if (!btn) {
                         return;
                     }
 
-                    const option = event.target.closest('.werewolf-role-option');
-                    if (!option) {
-                        return;
-                    }
-
-                    const checkbox = option.querySelector('input');
-                    checkbox.checked = !checkbox.checked;
-                    option.classList.toggle('checked', checkbox.checked);
-                    syncWerewolfRolePicker(werewolfRolesSelector);
+                    createWolfCountSelector.querySelectorAll('.wolf-count-btn').forEach(function(item) {
+                        const active = item === btn;
+                        item.classList.toggle('active', active);
+                        item.style.borderColor = active ? '#e74c3c' : 'rgba(255,255,255,0.12)';
+                        item.style.background = active ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)';
+                    });
                 });
                 
                 // Lock checkbox handler
@@ -1413,8 +1407,9 @@ $(function() {
                 const roundTime = parseInt(document.getElementById('roundTime').value);
                 const locked = document.getElementById('locked').checked;
                 const password = document.getElementById('password').value.trim();
-                const werewolfRoles = gameMode === 'werewolf'
-                    ? collectWerewolfRoleSelection(document.getElementById('werewolfRolesSelector'))
+                const activeWolfBtn = document.querySelector('#createWolfCountSelector .wolf-count-btn.active');
+                const wolfCount = gameMode === 'werewolf' && activeWolfBtn
+                    ? parseInt(activeWolfBtn.dataset.wolfCount, 10)
                     : undefined;
                 
                 if (!roomName) {
@@ -1431,8 +1426,8 @@ $(function() {
                     name: roomName,
                     gameMode: gameMode,
                     maxPlayers: maxPlayers,
-                    roundTime: roundTime,
-                    werewolfRoles: werewolfRoles,
+                    roundTime: gameMode === 'werewolf' ? undefined : roundTime,
+                    wolfCount: wolfCount,
                     locked: locked,
                     password: locked ? password : null
                 };
