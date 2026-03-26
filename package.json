@@ -16,6 +16,7 @@
   "scripts": {
     "start": "node app.js",
     "check:db": "node scripts/uploadStats.js",
+    "plan:werewolf:3": "node scripts/werewolf-role-rotation.js",
     "smoke:rooms": "node scripts/smoke-room-flow.js",
     "smoke:blackmarket": "node scripts/smoke-blackmarket-flow.js",
     "smoke:blackmarket:lobby:browser": "node scripts/browser-blackmarket-lobby.js",

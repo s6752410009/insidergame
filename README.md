@@ -30,6 +30,14 @@ npm run smoke:werewolf:5
 npm run smoke:werewolf:6
 ```
 
+Print the recommended 3-player Werewolf role rotation for solo manual testing:
+
+```bash
+npm run plan:werewolf:3
+```
+
+This prints a sequence of exact 3-role room setups that lets one person cycle through every active Werewolf role across multiple 3-player rounds.
+
 ## Local Data Files
 
 The app can fall back to local JSON files under `data/` when `MONGO_URL` is not provided.

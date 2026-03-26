@@ -82,13 +82,74 @@ const ROLE_PLANS = {
     10: ['alphaWolf', 'werewolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer']
 };
 
+const THREE_PLAYER_WOLF_ROLE_IDS = ['werewolf', 'alphaWolf'];
+const THREE_PLAYER_SPECIAL_ROLE_IDS = ['seer', 'doctor', 'bodyguard', 'witch', 'fool', 'mayor', 'revealer'];
+
+function buildRoleCombinations(roleIds, targetSize, startIndex = 0, prefix = [], results = []) {
+    if (prefix.length === targetSize) {
+        results.push([...prefix]);
+        return results;
+    }
+
+    for (let index = startIndex; index < roleIds.length; index += 1) {
+        prefix.push(roleIds[index]);
+        buildRoleCombinations(roleIds, targetSize, index + 1, prefix, results);
+        prefix.pop();
+    }
+
+    return results;
+}
+
+function buildThreePlayerRolePlanVariants() {
+    const variants = [];
+
+    THREE_PLAYER_WOLF_ROLE_IDS.forEach(wolfRoleId => {
+        for (let leftIndex = 0; leftIndex < THREE_PLAYER_SPECIAL_ROLE_IDS.length; leftIndex += 1) {
+            for (let rightIndex = leftIndex + 1; rightIndex < THREE_PLAYER_SPECIAL_ROLE_IDS.length; rightIndex += 1) {
+                variants.push([
+                    wolfRoleId,
+                    THREE_PLAYER_SPECIAL_ROLE_IDS[leftIndex],
+                    THREE_PLAYER_SPECIAL_ROLE_IDS[rightIndex]
+                ]);
+            }
+        }
+    });
+
+    return variants;
+}
+
+function buildRolePlanVariantsForCount(playerCount) {
+    if (playerCount === 3) {
+        return buildThreePlayerRolePlanVariants();
+    }
+
+    const basePlan = ROLE_PLANS[playerCount] || ROLE_PLANS[3];
+    const wolfRoleIds = basePlan.filter(isWerewolfRole);
+    const specialRoleSlots = Math.max(0, basePlan.length - wolfRoleIds.length);
+
+    if (specialRoleSlots <= 0) {
+        return [basePlan];
+    }
+
+    const specialRoleCombos = buildRoleCombinations(THREE_PLAYER_SPECIAL_ROLE_IDS, Math.min(specialRoleSlots, THREE_PLAYER_SPECIAL_ROLE_IDS.length));
+    if (!specialRoleCombos.length) {
+        return [basePlan];
+    }
+
+    return specialRoleCombos.map(function(combo) {
+        return [...wolfRoleIds, ...combo];
+    });
+}
+
 const ROLE_PLAN_VARIANTS = {
-    3: [
-        ['werewolf', 'seer', 'doctor'],
-        ['werewolf', 'seer', 'fool'],
-        ['werewolf', 'doctor', 'bodyguard'],
-        ['werewolf', 'seer', 'bodyguard']
-    ]
+    3: buildRolePlanVariantsForCount(3),
+    4: buildRolePlanVariantsForCount(4),
+    5: buildRolePlanVariantsForCount(5),
+    6: buildRolePlanVariantsForCount(6),
+    7: buildRolePlanVariantsForCount(7),
+    8: buildRolePlanVariantsForCount(8),
+    9: buildRolePlanVariantsForCount(9),
+    10: buildRolePlanVariantsForCount(10)
 };
 
 const CONFIGURABLE_ROLE_IDS = ['werewolf', 'alphaWolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer'];
