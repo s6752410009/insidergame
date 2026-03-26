@@ -84,6 +84,7 @@ function resetNightPhase(room, dayNumber) {
         witchHeals: {},
         witchPoisons: {}
     };
+    room.gameState.nightSkips = {};
     room.gameState.dayVotes = {};
     room.gameState.discussionSkips = {};
     room.gameState.dayActionUsedBy = {};
@@ -136,6 +137,49 @@ function submitRemainingNightSkips(room, excludedPlayerIds = []) {
                 break;
         }
     });
+
+    room.gameState.players.forEach(player => {
+        if (room.gameState.phase !== 'night') {
+            return;
+        }
+
+        if (player.alive === false || excluded.has(player.playerId)) {
+            return;
+        }
+
+        if (!['werewolf', 'alphaWolf', 'seer', 'doctor', 'bodyguard', 'witch'].includes(player.role)) {
+            werewolfEngine.submitNightSkip(room, player.playerId);
+        }
+    });
+}
+
+function testNightSkipMajorityRules() {
+    const room = createRoom(['werewolf', 'mayor', 'fool'], 3);
+    const werewolf = getSingleRole(room, 'werewolf');
+    const mayor = getSingleRole(room, 'mayor');
+    const fool = getSingleRole(room, 'fool');
+
+    resetNightPhase(room, 2);
+    const wolfSkip = werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+
+    assert(!wolfSkip.resolved, 'night should not resolve from a single werewolf skip');
+    assert(room.gameState.phase === 'night', 'night should stay active after one skip');
+
+    const mayorSkip = werewolfEngine.submitNightSkip(room, mayor.playerId);
+    assert(mayorSkip.resolved, 'night should resolve when night skip reaches majority');
+    assert(room.gameState.phase === 'day-discussion', 'night skip majority should move room to day discussion');
+    assert(
+        (room.gameState.history || []).some(entry => /เสียงพร้อมข้ามกลางคืนเกินครึ่ง/.test(entry.message)),
+        'history should record night skip majority resolution'
+    );
+
+    const foolState = werewolfEngine.buildClientState(room, fool.playerId);
+    assert(!foolState.actionState.nightStatus?.canSkip, 'night skip controls should disappear after phase changes');
+
+    return {
+        nightSkipMajority: true,
+        passiveNightSkipButton: true
+    };
 }
 
 function testMayorRules() {
@@ -311,6 +355,7 @@ function testSeerReadingRules() {
 
 function main() {
     const tested = {
+        ...testNightSkipMajorityRules(),
         ...testMayorRules(),
         ...testDoctorRules(),
         ...testBodyguardRules(),

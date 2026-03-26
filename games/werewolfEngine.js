@@ -397,6 +397,7 @@ function createInitialState() {
             witchHeals: {},
             witchPoisons: {}
         },
+        nightSkips: {},
         dayVotes: {},
         discussionSkips: {},
         dayActionUsedBy: {},
@@ -652,6 +653,7 @@ function resetNightActions(room) {
         witchHeals: {},
         witchPoisons: {}
     };
+    room.gameState.nightSkips = {};
 }
 
 function resetDayState(room) {
@@ -914,8 +916,72 @@ function hasNightActionSubmitted(room, player) {
     }
 }
 
+function hasAnyNightActionSelected(room) {
+    return [
+        room.gameState.nightActions.werewolfVotes,
+        room.gameState.nightActions.seerChecks,
+        room.gameState.nightActions.doctorSaves,
+        room.gameState.nightActions.bodyguardProtects,
+        room.gameState.nightActions.witchHeals,
+        room.gameState.nightActions.witchPoisons
+    ].some(actions => Object.values(actions || {}).some(targetId => !!targetId && targetId !== SKIP_TARGET_ID));
+}
+
+function getNightSkipCount(room) {
+    return Object.keys(room.gameState.nightSkips || {}).filter(playerId => {
+        const player = getPlayer(room, playerId);
+        return !!player && player.alive !== false;
+    }).length;
+}
+
+function canSkipNight(room) {
+    const aliveCount = getAlivePlayers(room).length;
+    return getNightSkipCount(room) > Math.floor(aliveCount / 2);
+}
+
 function canResolveNight(room) {
-    return getRequiredNightActors(room).every(player => hasNightActionSubmitted(room, player));
+    if (!getRequiredNightActors(room).every(player => hasNightActionSubmitted(room, player))) {
+        return false;
+    }
+
+    if (hasAnyNightActionSelected(room)) {
+        return true;
+    }
+
+    return canSkipNight(room);
+}
+
+function fillMissingNightActionsAsSkip(room) {
+    getRequiredNightActors(room).forEach(actor => {
+        if (hasNightActionSubmitted(room, actor)) {
+            return;
+        }
+
+        switch (actor.role) {
+            case 'werewolf':
+            case 'alphaWolf':
+                room.gameState.nightActions.werewolfVotes[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'seer':
+                room.gameState.nightActions.seerChecks[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'doctor':
+                room.gameState.nightActions.doctorSaves[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'bodyguard':
+                room.gameState.nightActions.bodyguardProtects[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'witch':
+                if (!actor.witchHealUsed && !room.gameState.nightActions.witchHeals[actor.playerId] && !room.gameState.nightActions.witchPoisons[actor.playerId]) {
+                    room.gameState.nightActions.witchHeals[actor.playerId] = SKIP_TARGET_ID;
+                } else if (!actor.witchPoisonUsed && !room.gameState.nightActions.witchHeals[actor.playerId] && !room.gameState.nightActions.witchPoisons[actor.playerId]) {
+                    room.gameState.nightActions.witchPoisons[actor.playerId] = SKIP_TARGET_ID;
+                }
+                break;
+            default:
+                break;
+        }
+    });
 }
 
 function getWeightedTarget(votes, room, weightedRoles = {}) {
@@ -1159,22 +1225,25 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
     switch (actor.role) {
         case 'werewolf':
         case 'alphaWolf':
-            if (isFirstNight(room)) {
+            if (isFirstNight(room) && !isSkip) {
                 throw new Error('คืนแรกหมาป่ายังออกล่าไม่ได้');
             }
             if (room.gameState.nightActions.werewolfVotes[actorId] === targetPlayerId) {
                 delete room.gameState.nightActions.werewolfVotes[actorId];
+                delete room.gameState.nightSkips[actorId];
                 room.gameState.lastAction = Date.now();
                 return { resolved: false, unvoted: true };
             }
             if (isSkip) {
                 room.gameState.nightActions.werewolfVotes[actorId] = SKIP_TARGET_ID;
+                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             if (isWerewolfRole(target.role)) {
                 throw new Error('หมาป่าเลือกโจมตีหมาป่าด้วยกันเองไม่ได้');
             }
             room.gameState.nightActions.werewolfVotes[actorId] = targetPlayerId;
+            delete room.gameState.nightSkips[actorId];
             break;
         case 'seer':
             if (room.gameState.nightActions.seerChecks[actorId]) {
@@ -1182,12 +1251,14 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (isSkip) {
                 room.gameState.nightActions.seerChecks[actorId] = SKIP_TARGET_ID;
+                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             if (actorId === targetPlayerId) {
                 throw new Error('Seer ตรวจตัวเองไม่ได้');
             }
             room.gameState.nightActions.seerChecks[actorId] = targetPlayerId;
+            delete room.gameState.nightSkips[actorId];
             seerResult = applySeerVision(room, actorId, targetPlayerId);
             break;
         case 'doctor':
@@ -1196,14 +1267,17 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (room.gameState.nightActions.doctorSaves[actorId] === targetPlayerId) {
                 delete room.gameState.nightActions.doctorSaves[actorId];
+                delete room.gameState.nightSkips[actorId];
                 room.gameState.lastAction = Date.now();
                 return { resolved: false, unvoted: true };
             }
             if (isSkip) {
                 room.gameState.nightActions.doctorSaves[actorId] = SKIP_TARGET_ID;
+                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             room.gameState.nightActions.doctorSaves[actorId] = targetPlayerId;
+            delete room.gameState.nightSkips[actorId];
             break;
         case 'bodyguard': {
             if (actor.bodyguardArmorBroken) {
@@ -1211,11 +1285,13 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             if (room.gameState.nightActions.bodyguardProtects[actorId] === targetPlayerId) {
                 delete room.gameState.nightActions.bodyguardProtects[actorId];
+                delete room.gameState.nightSkips[actorId];
                 room.gameState.lastAction = Date.now();
                 return { resolved: false, unvoted: true };
             }
             if (isSkip) {
                 room.gameState.nightActions.bodyguardProtects[actorId] = SKIP_TARGET_ID;
+                room.gameState.nightSkips[actorId] = true;
                 break;
             }
             const previousTarget = room.gameState.lastProtectedByBodyguard[actorId];
@@ -1223,16 +1299,19 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 throw new Error('บอดี้การ์ดห้ามปกป้องคนเดิมสองคืนติดกัน');
             }
             room.gameState.nightActions.bodyguardProtects[actorId] = targetPlayerId;
+            delete room.gameState.nightSkips[actorId];
             break;
         }
         case 'witch':
             if (actionType === 'witch-heal' && room.gameState.nightActions.witchHeals[actorId] === targetPlayerId) {
                 delete room.gameState.nightActions.witchHeals[actorId];
+                delete room.gameState.nightSkips[actorId];
                 room.gameState.lastAction = Date.now();
                 return { resolved: false, unvoted: true };
             }
             if (actionType === 'witch-poison' && room.gameState.nightActions.witchPoisons[actorId] === targetPlayerId) {
                 delete room.gameState.nightActions.witchPoisons[actorId];
+                delete room.gameState.nightSkips[actorId];
                 room.gameState.lastAction = Date.now();
                 return { resolved: false, unvoted: true };
             }
@@ -1250,6 +1329,11 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                     throw new Error('คุณใช้ยาฟื้นไปแล้ว');
                 }
                 room.gameState.nightActions.witchHeals[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
+                if (isSkip) {
+                    room.gameState.nightSkips[actorId] = true;
+                } else {
+                    delete room.gameState.nightSkips[actorId];
+                }
                 break;
             }
 
@@ -1261,6 +1345,11 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                     throw new Error('แม่มดวางยาพิษตัวเองไม่ได้');
                 }
                 room.gameState.nightActions.witchPoisons[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
+                if (isSkip) {
+                    room.gameState.nightSkips[actorId] = true;
+                } else {
+                    delete room.gameState.nightSkips[actorId];
+                }
                 break;
             }
 
@@ -1281,6 +1370,40 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
     return {
         resolved: false,
         seerResult
+    };
+}
+
+function submitNightSkip(room, actorId) {
+    if (room.gameState.phase !== 'night') {
+        throw new Error('ยังไม่ใช่ช่วงกลางคืน');
+    }
+
+    const actor = getPlayer(room, actorId);
+    if (!actor || actor.alive === false) {
+        throw new Error('ผู้เล่นนี้ไม่สามารถกดข้ามได้');
+    }
+
+    room.gameState.nightSkips[actorId] = true;
+    room.gameState.lastAction = Date.now();
+
+    if (canSkipNight(room)) {
+        fillMissingNightActionsAsSkip(room);
+        pushHistory(room, 'เสียงพร้อมข้ามกลางคืนเกินครึ่ง คืนจึงจบทันทีและเข้าสู่ตอนเช้า', 'night');
+        return {
+            ...resolveNight(room),
+            skippedToMorning: true,
+            skipCount: getNightSkipCount(room),
+            totalAlive: getAlivePlayers(room).length,
+            skipNeeded: Math.floor(getAlivePlayers(room).length / 2) + 1
+        };
+    }
+
+    return {
+        resolved: false,
+        skippedToMorning: false,
+        skipCount: getNightSkipCount(room),
+        totalAlive: getAlivePlayers(room).length,
+        skipNeeded: Math.floor(getAlivePlayers(room).length / 2) + 1
     };
 }
 
@@ -1706,6 +1829,31 @@ function getNightActionOptions(room, viewer) {
     }
 }
 
+function getNightActionState(room, viewer) {
+    const totalAlive = getAlivePlayers(room).length;
+    const skipCount = getNightSkipCount(room);
+    const skipNeeded = Math.floor(totalAlive / 2) + 1;
+    const hasSkipped = !!room.gameState.nightSkips?.[viewer?.playerId];
+
+    if (!viewer || viewer.alive === false || room.gameState.phase !== 'night') {
+        return {
+            canSkip: false,
+            hasSkipped: false,
+            skipCount,
+            totalAlive,
+            skipNeeded
+        };
+    }
+
+    return {
+        canSkip: !hasSkipped,
+        hasSkipped,
+        skipCount,
+        totalAlive,
+        skipNeeded
+    };
+}
+
 function getDayActionOptions(room, viewer) {
     if (!viewer || viewer.alive === false || room.gameState.phase !== 'day-vote') {
         const aliveCount = getAlivePlayers(room).length;
@@ -2037,6 +2185,7 @@ function buildClientState(room, viewerPlayerId) {
             completedDayDecisions: Array.from(getCompletedDayActorIds(room)).length,
             requiredDayDecisions: getAlivePlayers(room).length,
             nightActions: getNightActionOptions(room, viewer),
+            nightStatus: getNightActionState(room, viewer),
             discussionActions: getDiscussionActionState(room, viewer),
             dayActions: getDayActionOptions(room, viewer)
         }
@@ -2058,6 +2207,7 @@ module.exports = {
     resetRoomGame,
     startGame,
     submitNightAction,
+    submitNightSkip,
     submitMayorReveal,
     submitDiscussionSkip,
     submitDayVote,

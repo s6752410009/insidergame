@@ -3182,6 +3182,34 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    socket.on('werewolf_skipNight', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'werewolf') {
+                throw new Error('ไม่พบห้อง Werewolf');
+            }
+
+            if (!playerId) {
+                throw new Error('ข้อมูลการกดข้ามไม่ครบ');
+            }
+
+            const werewolfEngine = getGameEngine('werewolf');
+            const result = werewolfEngine.submitNightSkip(room, playerId);
+            emitWerewolfRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
     socket.on('werewolf_useRevealAction', function(data, callback) {
         try {
             const roomId = socket.roomId || data?.roomId;

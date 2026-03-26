@@ -1278,9 +1278,10 @@
       }
 
       if (state.phase === 'night') {
+        const nightStatus = state?.actionState?.nightStatus || {};
         return getActiveNightActions(state).some(function(action) {
           return Array.isArray(action.targets) && (action.targets.length > 0 || action.allowSkip);
-        });
+        }) || Boolean(nightStatus.canSkip);
       }
 
       if (state.phase === 'day-discussion') {
@@ -1306,6 +1307,7 @@
       const dayActions = state?.actionState?.dayActions || {};
       const daySummary = dayActions.dayVoteSummary || null;
       const discussion = state?.actionState?.discussionActions || {};
+      const nightStatus = state?.actionState?.nightStatus || {};
       const morning = state?.morningAnnouncement || null;
       const dayResolution = state?.dayResolutionAnnouncement || null;
 
@@ -1321,6 +1323,7 @@
         const canAct = nightActions.some(function(action) {
           return Array.isArray(action.targets) && (action.targets.length > 0 || action.allowSkip);
         });
+        const canSkipNight = Boolean(nightStatus.canSkip || nightStatus.hasSkipped);
         model.sections = [
           {
             label: 'เมื่อกี้',
@@ -1332,7 +1335,9 @@
               ? 'ตายแล้ว ดูได้อย่างเดียว'
               : (canAct
                 ? 'ถึงตาแล้ว! กดใช้สกิลเลย'
-                : 'คืนนี้ไม่มีสกิล นั่งรอเช้า')
+                : (canSkipNight
+                  ? 'คืนนี้ไม่มีสกิล กดพร้อมข้ามได้'
+                  : 'คืนนี้ไม่มีสกิล นั่งรอเช้า'))
           },
           {
             label: 'เป้าหมาย',
@@ -1340,7 +1345,9 @@
               ? 'จับข้อมูลไว้อ่านเกมตอนเช้า'
               : (canAct
                 ? 'ล็อกเป้าหมายให้เรียบร้อยก่อนหมดเวลา'
-                : 'รอทุกคนเล่นจบคืน แล้วเช็กผลตอนเช้า')
+                : (Number(nightStatus.skipNeeded || 0) > 0
+                  ? `พร้อมข้าม ${Number(nightStatus.skipCount || 0)}/${Number(nightStatus.skipNeeded || 0)} คน`
+                  : 'รอทุกคนเล่นจบคืน แล้วเช็กผลตอนเช้า'))
           }
         ];
         return model;
@@ -1480,6 +1487,7 @@
     function buildDecisionReceiptItems(state) {
       const phase = state?.phase || 'lobby';
       const items = [];
+      const nightStatus = state?.actionState?.nightStatus || {};
       const dayActions = state?.actionState?.dayActions || {};
       const discussion = state?.actionState?.discussionActions || {};
 
@@ -1505,6 +1513,14 @@
             tone: decisionReceiptTone(action.type, action.locked)
           });
         });
+        if (nightStatus.hasSkipped) {
+          items.push({
+            icon: '⏭️',
+            title: 'คุณกดพร้อมข้ามกลางคืนแล้ว',
+            caption: `ระบบนับคุณในฝั่งคนที่พร้อมจบกลางคืนทันที (${Number(nightStatus.skipCount || 0)}/${Number(nightStatus.skipNeeded || 0)})`,
+            tone: decisionReceiptTone('discussion-skip', true)
+          });
+        }
       }
 
       if (phase === 'day-discussion') {
@@ -1819,10 +1835,13 @@
       const dayActions = state?.actionState?.dayActions || {};
       const daySummary = dayActions.dayVoteSummary || null;
       const discussion = state?.actionState?.discussionActions || {};
+      const nightStatus = state?.actionState?.nightStatus || {};
       const canAct = hasLiveTurnFocus(state);
       let metaText = dayNumber > 0 ? `วันที่ ${dayNumber}` : 'ก่อนเริ่มเกม';
 
-      if (phase === 'day-vote' && daySummary) {
+      if (phase === 'night' && Number(nightStatus.totalAlive || 0) > 0) {
+        metaText += ` • พร้อมข้าม ${nightStatus.skipCount || 0}/${nightStatus.skipNeeded || 0}`;
+      } else if (phase === 'day-vote' && daySummary) {
         metaText += ` • คะแนนนำ ${daySummary.leadingVoteWeight || 0}/${dayActions.voteThreshold || 0}`;
       } else if (phase === 'day-discussion' && Number(discussion.totalAlive || 0) > 0) {
         metaText += ` • พร้อมข้าม ${discussion.skipCount || 0}/${discussion.totalAlive || 0}`;
@@ -1857,6 +1876,7 @@
       const discussion = state?.actionState?.discussionActions || {};
       const dayActions = state?.actionState?.dayActions || {};
       const daySummary = dayActions.dayVoteSummary || null;
+      const nightStatus = state?.actionState?.nightStatus || {};
       const nightActions = getActiveNightActions(state);
       const actionableNightActions = nightActions.filter(function(action) {
         return Array.isArray(action.targets) && (action.targets.length > 0 || action.allowSkip);
@@ -1894,6 +1914,10 @@
           headline = 'เลือกเป้าหมายกลางคืน!';
           detail = `ล็อก ${firstNightAction.label} ก่อนหมดเวลา`;
           primaryLabel = `🎯 ${firstNightAction.label}`;
+        } else if (nightStatus.canSkip || nightStatus.hasSkipped) {
+          headline = 'คืนนี้ไม่มีสกิล กดพร้อมข้ามได้';
+          detail = `พร้อมข้าม ${Number(nightStatus.skipCount || 0)}/${Number(nightStatus.skipNeeded || 0)} คน`;
+          primaryLabel = nightStatus.hasSkipped ? '✅ พร้อมแล้ว' : '⏭️ พร้อมข้าม';
         } else {
           kicker = 'ไม่มีสกิลคืนนี้';
           headline = 'ดูที่นั่ง เตรียมข้อมูลไว้สำหรับเช้า';
@@ -1956,6 +1980,9 @@
 
       if (phase === 'night') {
         chips.push(`<div class="phase-status-chip">🌙 <strong>${actionableNightActions.length > 0 ? `${actionableNightActions.length} สกิล` : 'รอเช้า'}</strong></div>`);
+        if (Number(nightStatus.skipNeeded || 0) > 0) {
+          chips.push(`<div class="phase-status-chip">⏭️ พร้อม <strong>${Number(nightStatus.skipCount || 0)}/${Number(nightStatus.skipNeeded || 0)}</strong></div>`);
+        }
       } else if (phase === 'day-discussion') {
         chips.push(`<div class="phase-status-chip">💬 ข้าม <strong>${Number(discussion.skipCount || 0)}/${Number(discussion.totalAlive || 0)}</strong></div>`);
       } else if (phase === 'day-vote') {
@@ -2719,13 +2746,26 @@
 
       if (phase === 'night') {
         var actions = actionState.nightActions || [];
+        var nightState = actionState.nightStatus || {};
+        var nightSkipCount = Number(nightState.skipCount || 0);
+        var nightSkipNeeded = Number(nightState.skipNeeded || nightState.totalAlive || 0);
+        var nightSkipHtml = '';
+        if (nightState.canSkip) {
+          nightSkipHtml = '<button class="hint-btn btn-skip" onclick="skipNightPhase()">⏭️ พร้อมข้าม</button>';
+        } else if (nightState.hasSkipped) {
+          nightSkipHtml = '<span class="hint-btn btn-done" style="cursor:default;">✅ พร้อมแล้ว</span>';
+        }
         if (actions.length === 0) {
           var seerTagHtml = '';
           if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
             var lastSeer = notes.seerHistory[0];
             seerTagHtml = buildSeerResultBadge(lastSeer, { compact: true });
           }
-          $hint.html('<div class="hint-bar hint-night">' + rolePill + '<span class="hint-text">😴 รอเช้า...</span>' + seerTagHtml + pillsHtml + '</div>');
+          var nightWaitText = nightSkipNeeded > 0
+            ? '😴 พร้อมข้าม ' + nightSkipCount + '/' + nightSkipNeeded
+            : '😴 รอเช้า...';
+          var focusClassIdle = nightState.canSkip ? ' hint-focus' : '';
+          $hint.html('<div class="hint-bar hint-night' + focusClassIdle + '">' + rolePill + '<span class="hint-text">' + nightWaitText + '</span>' + nightSkipHtml + seerTagHtml + pillsHtml + '</div>');
           return;
         }
         var action = actions[0];
@@ -2735,13 +2775,15 @@
         if (action.allowSkip && !action.locked) {
           nightBtns = '<button class="hint-btn btn-skip" onclick="selectNightTarget(\'' + escapeHtml(action.type) + '\', \'__skip__\')">⏭️ ข้าม</button>';
         }
+        nightBtns += nightSkipHtml;
         var seerTagHtml2 = '';
         if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
           var lastSeer2 = notes.seerHistory[0];
           seerTagHtml2 = buildSeerResultBadge(lastSeer2, { compact: true });
         }
-        var focusClass = action.locked ? '' : ' hint-focus';
-        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + nightBtns + seerTagHtml2 + pillsHtml + '</div>');
+        var focusClass = (action.locked && !nightState.canSkip) ? '' : ' hint-focus';
+        var nightMetaHtml = nightSkipNeeded > 0 ? '<span class="hint-sep">·</span><span class="hint-text">⏭️ ' + nightSkipCount + '/' + nightSkipNeeded + '</span>' : '';
+        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + nightMetaHtml + nightBtns + seerTagHtml2 + pillsHtml + '</div>');
         return;
       }
 
@@ -3519,6 +3561,25 @@
       });
     }
 
+    function submitNightSkip() {
+      if (currentState.phase !== 'night') {
+        socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
+        return;
+      }
+      if (pendingActionSubmission) {
+        return;
+      }
+      setActionButtonsPending(true);
+      socket.emit('werewolf_skipNight', { roomId: roomId, playerId: playerId }, function(response) {
+        if (!response || !response.success) {
+          setActionButtonsPending(false);
+          Swal.fire({ icon: 'error', title: 'กดข้ามไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          return;
+        }
+        playActionSelectionSound('discussion-skip', '__skip__');
+      });
+    }
+
     function submitRevealAction(targetPlayerId) {
       if (currentState.phase !== 'day-discussion' && currentState.phase !== 'day-vote') {
         socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
@@ -3682,6 +3743,10 @@
       submitDiscussionSkip();
     };
 
+    window.skipNightPhase = function() {
+      submitNightSkip();
+    };
+
     window.revealMayorRole = function() {
       submitMayorReveal();
     };
@@ -3740,8 +3805,9 @@
 
       if (phase === 'night') {
         const actions = actionState?.nightActions || [];
+        const nightStatus = actionState?.nightStatus || {};
         if (actions.length === 0) {
-          $root.append('<div class="history-row">😴 คืนนี้ไม่มีสกิล นั่งรอเช้า</div>');
+          $root.append('<div class="history-row">😴 คืนนี้ไม่มีสกิล แต่ยังช่วยกดพร้อมข้ามได้</div>');
         } else {
           actions.forEach(function(action) {
             const targetCards = buildTargetCards(action, 'selectNightTarget', '', action.type);
@@ -3756,6 +3822,24 @@
             `);
           });
         }
+        const nightSkipCount = Number(nightStatus.skipCount || 0);
+        const nightSkipNeeded = Number(nightStatus.skipNeeded || nightStatus.totalAlive || 0);
+        const nightStatusText = nightSkipNeeded > 0
+          ? `พร้อมข้าม ${nightSkipCount}/${nightSkipNeeded} คน ครบ = ตัดเข้าตอนเช้าทันที`
+          : 'รอสถานะผู้เล่น';
+        const nightButtonHtml = nightStatus.canSkip
+          ? '<button class="action-btn" onclick="skipNightPhase()">⏭️ พร้อม ข้ามกลางคืน!</button>'
+          : (nightStatus.hasSkipped
+            ? '<button class="action-btn selected" disabled>✅ กดพร้อมแล้ว</button>'
+            : '<button class="action-btn" disabled>⏳ รอสถานะกลางคืน</button>');
+        $root.append(`
+          <div class="history-row ${nightStatus.canSkip ? 'turn-focus' : ''}" style="display:block;">
+            <div class="action-title"><span>🌙</span><strong>ข้ามกลางคืน</strong></div>
+            <div class="subtle">ใช้เมื่อคุณไม่มีอะไรทำแล้ว หรืออยากยืนยันว่าพร้อมตัดเข้าตอนเช้า</div>
+            <div class="highlight" style="margin-top:8px;">${escapeHtml(nightStatusText)}</div>
+            <div style="margin-top:12px;">${nightButtonHtml}</div>
+          </div>
+        `);
         syncMobileGamePanel();
         return;
       }
