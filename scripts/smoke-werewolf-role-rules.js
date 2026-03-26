@@ -60,10 +60,15 @@ function getSingleRole(room, roleId) {
     return rolePlayer;
 }
 
-function getAliveVillager(room) {
-    const villager = room.gameState.players.find(player => player.role === 'villager' && player.alive !== false);
-    assert(villager, 'missing alive villager');
-    return villager;
+function getAliveVillagePlayer(room, excludedRoleIds = []) {
+    const excluded = new Set(excludedRoleIds);
+    const villagePlayer = room.gameState.players.find(player => (
+        player.alive !== false
+        && player.roleInfo?.team === 'village'
+        && !excluded.has(player.role)
+    ));
+    assert(villagePlayer, 'missing alive village player');
+    return villagePlayer;
 }
 
 function resetNightPhase(room, dayNumber) {
@@ -88,15 +93,61 @@ function resetNightPhase(room, dayNumber) {
     room.gameState.lastAction = Date.now();
 }
 
+function submitRemainingNightSkips(room, excludedPlayerIds = []) {
+    const excluded = new Set(excludedPlayerIds);
+
+    room.gameState.players.forEach(player => {
+        if (room.gameState.phase !== 'night') {
+            return;
+        }
+
+        if (player.alive === false || excluded.has(player.playerId)) {
+            return;
+        }
+
+        switch (player.role) {
+            case 'werewolf':
+            case 'alphaWolf':
+                if (!room.gameState.nightActions.werewolfVotes[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID);
+                }
+                break;
+            case 'seer':
+                if (!room.gameState.nightActions.seerChecks[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID);
+                }
+                break;
+            case 'doctor':
+                if (!room.gameState.nightActions.doctorSaves[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID);
+                }
+                break;
+            case 'bodyguard':
+                if (!room.gameState.nightActions.bodyguardProtects[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID);
+                }
+                break;
+            case 'witch':
+                if (!room.gameState.nightActions.witchHeals[player.playerId] && !room.gameState.nightActions.witchPoisons[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID, 'witch-heal');
+                }
+                break;
+            default:
+                break;
+        }
+    });
+}
+
 function testMayorRules() {
-    const room = createRoom(['werewolf', 'mayor', 'doctor', 'bodyguard'], 5);
+    const room = createRoom(['werewolf', 'mayor', 'doctor', 'bodyguard'], 4);
     const mayor = getSingleRole(room, 'mayor');
     const doctor = getSingleRole(room, 'doctor');
     const bodyguard = getSingleRole(room, 'bodyguard');
-    const villager = getAliveVillager(room);
+    const villagePlayer = bodyguard;
 
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
+    submitRemainingNightSkips(room, [doctor.playerId, bodyguard.playerId]);
 
     assert(room.gameState.phase === 'day-discussion', 'night 1 should move to day discussion');
 
@@ -121,8 +172,7 @@ function testMayorRules() {
     assert(room.gameState.phase === 'day-vote', 'discussion skip should move to day vote');
 
     werewolfEngine.submitDayVote(room, mayor.playerId, werewolfEngine.SKIP_TARGET_ID);
-    werewolfEngine.submitDayVote(room, doctor.playerId, werewolfEngine.SKIP_TARGET_ID);
-    const resolution = werewolfEngine.submitDayVote(room, villager.playerId, werewolfEngine.SKIP_TARGET_ID);
+    const resolution = werewolfEngine.submitDayVote(room, doctor.playerId, werewolfEngine.SKIP_TARGET_ID);
 
     assert(resolution && resolution.resolved, 'skip majority should resolve immediately');
     assert(room.gameState.phase === 'night', 'skip majority should move room to night');
@@ -138,24 +188,27 @@ function testMayorRules() {
 }
 
 function testDoctorRules() {
-    const room = createRoom(['werewolf', 'doctor'], 4);
+    const room = createRoom(['werewolf', 'doctor', 'seer'], 3);
     const doctor = getSingleRole(room, 'doctor');
     const werewolf = getSingleRole(room, 'werewolf');
-    const villager = getAliveVillager(room);
+    const villagePlayer = getSingleRole(room, 'seer');
 
     resetNightPhase(room, 2);
     werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
+    submitRemainingNightSkips(room, [werewolf.playerId, doctor.playerId]);
     assert(doctor.doctorSaveUses === 1, 'doctor self-save should consume first total use');
 
     resetNightPhase(room, 3);
     werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
-    werewolfEngine.submitNightAction(room, doctor.playerId, villager.playerId);
+    werewolfEngine.submitNightAction(room, doctor.playerId, villagePlayer.playerId);
+    submitRemainingNightSkips(room, [werewolf.playerId, doctor.playerId]);
     assert(doctor.doctorSaveUses === 2, 'doctor protecting another player should consume second total use');
 
     resetNightPhase(room, 4);
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
     expectThrows(
-        () => werewolfEngine.submitNightAction(room, doctor.playerId, villager.playerId),
+        () => werewolfEngine.submitNightAction(room, doctor.playerId, villagePlayer.playerId),
         /หมอปกป้องได้รวม 2 ครั้งต่อเกมเท่านั้น/,
         'doctor should not be able to use a third save'
     );
@@ -168,34 +221,36 @@ function testDoctorRules() {
 }
 
 function testBodyguardRules() {
-    const room = createRoom(['werewolf', 'bodyguard'], 4);
+    const room = createRoom(['werewolf', 'bodyguard', 'seer'], 3);
     const bodyguard = getSingleRole(room, 'bodyguard');
     const werewolf = getSingleRole(room, 'werewolf');
-    const villager = getAliveVillager(room);
+    const villagePlayer = getSingleRole(room, 'seer');
 
     resetNightPhase(room, 2);
     werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
-    werewolfEngine.submitNightAction(room, bodyguard.playerId, villager.playerId);
+    werewolfEngine.submitNightAction(room, bodyguard.playerId, villagePlayer.playerId);
+    submitRemainingNightSkips(room, [werewolf.playerId, bodyguard.playerId]);
 
-    assert(room.gameState.lastProtectedByBodyguard[bodyguard.playerId] === villager.playerId, 'bodyguard should be able to protect another player');
+    assert(room.gameState.lastProtectedByBodyguard[bodyguard.playerId] === villagePlayer.playerId, 'bodyguard should be able to protect another player');
     assert(bodyguard.bodyguardArmorBroken === false, 'bodyguard armor should remain intact if no attack is blocked');
 
     resetNightPhase(room, 3);
     expectThrows(
-        () => werewolfEngine.submitNightAction(room, bodyguard.playerId, villager.playerId),
+        () => werewolfEngine.submitNightAction(room, bodyguard.playerId, villagePlayer.playerId),
         /บอดี้การ์ดห้ามปกป้องคนเดิมสองคืนติดกัน/,
         'bodyguard should not protect the same target on consecutive nights'
     );
 
     werewolfEngine.submitNightAction(room, werewolf.playerId, bodyguard.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
+    submitRemainingNightSkips(room, [werewolf.playerId, bodyguard.playerId]);
 
     assert(bodyguard.alive !== false, 'bodyguard should survive when self-protecting against an attack');
     assert(bodyguard.bodyguardArmorBroken, 'bodyguard armor should break after a successful block');
 
     resetNightPhase(room, 4);
     expectThrows(
-        () => werewolfEngine.submitNightAction(room, bodyguard.playerId, villager.playerId),
+        () => werewolfEngine.submitNightAction(room, bodyguard.playerId, villagePlayer.playerId),
         /เกราะของบอดี้การ์ดแตกแล้ว/,
         'bodyguard should not act again after armor breaks'
     );
@@ -209,18 +264,19 @@ function testBodyguardRules() {
 }
 
 function testSeerReadingRules() {
-    const room = createRoom(['alphaWolf', 'werewolf', 'seer', 'fool'], 5);
+    const room = createRoom(['alphaWolf', 'werewolf', 'seer', 'fool', 'doctor'], 5);
     const seer = getSingleRole(room, 'seer');
     const alphaWolf = getSingleRole(room, 'alphaWolf');
     const werewolf = getSingleRole(room, 'werewolf');
     const fool = getSingleRole(room, 'fool');
-    const villager = getAliveVillager(room);
+    const doctor = getSingleRole(room, 'doctor');
 
     function inspectTarget(targetPlayer, dayNumber) {
         resetNightPhase(room, dayNumber);
         werewolfEngine.submitNightAction(room, alphaWolf.playerId, werewolfEngine.SKIP_TARGET_ID);
         werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
         werewolfEngine.submitNightAction(room, seer.playerId, targetPlayer.playerId);
+        submitRemainingNightSkips(room, [alphaWolf.playerId, werewolf.playerId, seer.playerId]);
 
         const state = werewolfEngine.buildClientState(room, seer.playerId);
         return {
@@ -241,15 +297,15 @@ function testSeerReadingRules() {
     assert(/ไม่ดี/.test(wolfReading.lastSeenRole), 'seer should read normal werewolf as bad');
     assert(wolfReading.latestHistory?.resultCode === 'bad', 'seer history should mark normal werewolf as bad');
 
-    const villagerReading = inspectTarget(villager, 5);
-    assert(/ดี/.test(villagerReading.lastSeenRole), 'seer should read villager as good');
-    assert(villagerReading.latestHistory?.resultCode === 'good', 'seer history should mark villager as good');
+    const villageReading = inspectTarget(doctor, 5);
+    assert(/ดี/.test(villageReading.lastSeenRole), 'seer should read village team as good');
+    assert(villageReading.latestHistory?.resultCode === 'good', 'seer history should mark village team as good');
 
     return {
         seerAlphaUnknown: true,
         seerFoolUnknown: true,
         seerWerewolfBad: true,
-        seerVillagerGood: true
+        seerVillageGood: true
     };
 }
 

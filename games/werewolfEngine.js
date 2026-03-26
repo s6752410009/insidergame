@@ -72,13 +72,13 @@ const ROLE_DEFINITIONS = {
 };
 
 const ROLE_PLANS = {
-    3: ['werewolf', 'seer', 'villager'],
-    4: ['werewolf', 'seer', 'doctor', 'villager'],
-    5: ['werewolf', 'seer', 'doctor', 'bodyguard', 'villager'],
-    6: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'villager'],
-    7: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'villager'],
-    8: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'villager'],
-    9: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'villager'],
+    3: ['werewolf', 'seer', 'doctor'],
+    4: ['werewolf', 'seer', 'doctor', 'bodyguard'],
+    5: ['werewolf', 'seer', 'doctor', 'bodyguard', 'witch'],
+    6: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool'],
+    7: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard'],
+    8: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor'],
+    9: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer'],
     10: ['alphaWolf', 'werewolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer']
 };
 
@@ -177,6 +177,33 @@ function getConfigurableRoles() {
     }));
 }
 
+function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = []) {
+    const filled = [...roleIds];
+    const seen = new Set(filled);
+    const primaryFill = [
+        ...preferredIds.filter(roleId => roleId && roleId !== 'villager'),
+        ...DEFAULT_ROLE_SELECTION
+    ];
+
+    primaryFill.forEach(roleId => {
+        if (filled.length >= targetCount || seen.has(roleId)) {
+            return;
+        }
+
+        filled.push(roleId);
+        seen.add(roleId);
+    });
+
+    const duplicateFallback = ['werewolf', 'seer', 'doctor', 'bodyguard', 'witch', 'fool', 'mayor', 'revealer'];
+    let fallbackIndex = 0;
+    while (filled.length < targetCount) {
+        filled.push(duplicateFallback[fallbackIndex % duplicateFallback.length]);
+        fallbackIndex += 1;
+    }
+
+    return filled.slice(0, targetCount);
+}
+
 function getRolePlan(playerCount, settings = {}) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = ROLE_PLANS[normalizedCount] || ROLE_PLANS[3];
@@ -193,20 +220,15 @@ function getRolePlan(playerCount, settings = {}) {
                 ? ['alphaWolf', 'werewolf']
                 : ['alphaWolf', 'werewolf', 'werewolf'];
 
-        const specials = basePlan.filter(id => !isWerewolfRole(id) && id !== 'villager');
+        const specials = basePlan.filter(id => !isWerewolfRole(id));
         const plan = [...wolves, ...specials];
-        while (plan.length < normalizedCount) plan.push('villager');
-        return plan.slice(0, normalizedCount).map(id => ROLE_DEFINITIONS[id] || ROLE_DEFINITIONS.villager);
+        return fillRolePlanWithoutVillager(plan, normalizedCount, basePlan).map(id => ROLE_DEFINITIONS[id] || ROLE_DEFINITIONS.werewolf);
     }
 
     const enabledRoleIds = getConfiguredRoleIds(settings);
 
     if (enabledRoleIds.length > 0 && enabledRoleIds.length <= normalizedCount) {
-        const exactRoleIds = [...enabledRoleIds];
-
-        while (exactRoleIds.length < normalizedCount) {
-            exactRoleIds.push('villager');
-        }
+        const exactRoleIds = fillRolePlanWithoutVillager(enabledRoleIds, normalizedCount, basePlan);
 
         return exactRoleIds.slice(0, normalizedCount).map(roleId => ROLE_DEFINITIONS[roleId]);
     }
@@ -238,11 +260,6 @@ function getRolePlan(playerCount, settings = {}) {
             return;
         }
 
-        if (roleId === 'villager') {
-            plannedRoleIds.push('villager');
-            return;
-        }
-
         if (enabledRoleIds.includes(roleId)) {
             plannedRoleIds.push(roleId);
             selectedSpecialIds.push(roleId);
@@ -266,11 +283,9 @@ function getRolePlan(playerCount, settings = {}) {
         plannedRoleIds.push(...fallbackSpecialIds.slice(0, missingSpecialSlots));
     }
 
-    while (plannedRoleIds.length < normalizedCount) {
-        plannedRoleIds.push('villager');
-    }
+    const completedRoleIds = fillRolePlanWithoutVillager(plannedRoleIds, normalizedCount, basePlan);
 
-    return plannedRoleIds.map(roleId => ROLE_DEFINITIONS[roleId]);
+    return completedRoleIds.map(roleId => ROLE_DEFINITIONS[roleId]);
 }
 
 function createInitialState() {
@@ -508,11 +523,11 @@ function applySeerVision(room, seerId, targetPlayerId) {
     const seer = getPlayer(room, seerId);
     const target = getPlayer(room, targetPlayerId);
     if (!seer || !target) {
-        return;
+        return null;
     }
 
     const reading = getSeerAlignment(target.role);
-    const seenRole = `${target.name} มีออร่า ${reading.label}`;
+    const seenRole = `${target.name} · ${reading.label}`;
     const seenEntry = {
         dayNumber: room.gameState.dayNumber || 1,
         targetPlayerId: target.playerId,
@@ -527,6 +542,8 @@ function applySeerVision(room, seerId, targetPlayerId) {
         seenEntry,
         ...(Array.isArray(seer.seerHistory) ? seer.seerHistory : []).filter(entry => Number(entry?.dayNumber) !== Number(seenEntry.dayNumber))
     ].slice(0, 8);
+
+    return seenEntry;
 }
 
 function clearPlayerTransientState(room) {
@@ -1044,6 +1061,8 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
         throw new Error('เป้าหมายไม่ถูกต้อง');
     }
 
+    let seerResult = null;
+
     switch (actor.role) {
         case 'werewolf':
         case 'alphaWolf':
@@ -1076,7 +1095,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 throw new Error('Seer ตรวจตัวเองไม่ได้');
             }
             room.gameState.nightActions.seerChecks[actorId] = targetPlayerId;
-            applySeerVision(room, actorId, targetPlayerId);
+            seerResult = applySeerVision(room, actorId, targetPlayerId);
             break;
         case 'doctor':
             if (actor.doctorSaveUses >= 2) {
@@ -1160,10 +1179,16 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
     room.gameState.lastAction = Date.now();
 
     if (canResolveNight(room)) {
-        return resolveNight(room);
+        return {
+            ...resolveNight(room),
+            seerResult
+        };
     }
 
-    return { resolved: false };
+    return {
+        resolved: false,
+        seerResult
+    };
 }
 
 function submitDayVote(room, actorId, targetPlayerId) {
@@ -1441,7 +1466,7 @@ function getNightActionOptions(room, viewer) {
                 return [{
                     type: 'seer-check',
                     label: 'ตรวจสอบบทบาทแล้วคืนนี้',
-                    description: 'คืนนี้คุณใช้สิทธิ์ตรวจไปแล้ว รอฟังผลต่อในเช้าวันถัดไป',
+                    description: 'คืนนี้คุณเห็นผลตรวจแล้ว รอให้คนอื่นเล่นจบก่อนเช้า',
                     selectedTargetId: room.gameState.nightActions.seerChecks[viewer.playerId],
                     allowSkip: false,
                     locked: true,
@@ -1453,8 +1478,8 @@ function getNightActionOptions(room, viewer) {
             }
             return [{
                 type: 'seer-check',
-                label: 'ตรวจสอบบทบาท',
-                description: 'ดูบทบาทจริงของผู้เล่น 1 คน',
+                label: 'ตรวจออร่า',
+                description: 'เลือก 1 คนเพื่อดูว่า ดี, ไม่ดี หรือ ไม่ทราบ',
                 selectedTargetId: room.gameState.nightActions.seerChecks[viewer.playerId] || null,
                 allowSkip: true,
                 targets: alivePlayers.filter(player => player.playerId !== viewer.playerId).map(player => ({
@@ -1847,7 +1872,7 @@ function buildRoleNotes(room, viewer) {
 function buildClientState(room, viewerPlayerId) {
     const viewer = getPlayer(room, viewerPlayerId);
     const rolePlan = room.gameState.rolePlan?.length ? room.gameState.rolePlan : getRolePlan(room.players.length, room.settings);
-    const enabledRoleIds = new Set(['villager', ...getConfiguredRoleIds(room.settings)]);
+    const enabledRoleIds = new Set(getConfiguredRoleIds(room.settings));
     const dayVoteTallies = getDayVoteTallies(room);
 
     return {
@@ -1894,7 +1919,7 @@ function buildClientState(room, viewerPlayerId) {
             team: role.team,
             description: role.description
         })),
-        roleCatalog: Object.values(ROLE_DEFINITIONS).map(role => ({
+        roleCatalog: Object.values(ROLE_DEFINITIONS).filter(role => role.id !== 'villager').map(role => ({
             id: role.id,
             thaiName: role.thaiName,
             team: role.team,

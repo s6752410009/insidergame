@@ -53,13 +53,18 @@ function createRoom(roomData, creatorPlayerId) {
         throw new Error('Creator player not found');
     }
 
+    const hasExplicitWerewolfRoles = gameMode === 'werewolf'
+        && Array.isArray(roomData.werewolfRoles)
+        && roomData.werewolfRoles.length > 0;
     const werewolfRoles = gameMode === 'werewolf'
-        ? []
-        : (typeof gameEngine.sanitizeRoleSelection === 'function'
+        ? (hasExplicitWerewolfRoles && typeof gameEngine.sanitizeRoleSelection === 'function'
             ? gameEngine.sanitizeRoleSelection(roomData.werewolfRoles)
-            : undefined);
+            : [])
+        : undefined;
     const wolfCount = gameMode === 'werewolf'
-        ? Math.min(Math.max(1, Number(roomData.wolfCount) || 2), 3)
+        ? (hasExplicitWerewolfRoles
+            ? null
+            : Math.min(Math.max(1, Number(roomData.wolfCount) || 2), 3))
         : null;
 
     const room = {
@@ -397,12 +402,21 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
 
     if (room.settings.gameMode === 'werewolf') {
-        room.settings.werewolfRoles = [];
-    }
+        const gameEngine = getGameEngine(room.settings.gameMode);
+        const hasExplicitWerewolfRoles = Array.isArray(updates.werewolfRoles) && updates.werewolfRoles.length > 0;
 
-    if (room.settings.gameMode === 'werewolf' && updates.wolfCount !== undefined) {
-        const wc = Number(updates.wolfCount) || 0;
-        room.settings.wolfCount = (wc >= 1 && wc <= 3) ? wc : null;
+        if (hasExplicitWerewolfRoles) {
+            room.settings.werewolfRoles = typeof gameEngine.sanitizeRoleSelection === 'function'
+                ? gameEngine.sanitizeRoleSelection(updates.werewolfRoles)
+                : updates.werewolfRoles;
+            room.settings.wolfCount = null;
+        } else {
+            room.settings.werewolfRoles = [];
+            if (updates.wolfCount !== undefined) {
+                const wc = Number(updates.wolfCount) || 0;
+                room.settings.wolfCount = (wc >= 1 && wc <= 3) ? wc : null;
+            }
+        }
     }
 
     if (room.settings.gameMode === 'werewolf') {

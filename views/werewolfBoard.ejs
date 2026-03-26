@@ -162,7 +162,15 @@
   .hint-role { font-size: 0.82rem; font-weight: 700; color: #fde68a; white-space: nowrap; }
   .hint-text { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
   .hint-sep { color: rgba(255,255,255,0.2); font-size: 0.7rem; }
-  .hint-seer-tag { display: inline-block; background: linear-gradient(135deg, rgba(139,92,246,0.35), rgba(99,102,241,0.25)); color: #c4b5fd; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(139,92,246,0.3); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .hint-seer-tag { display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 12px; font-size: 0.76rem; font-weight: 700; margin-left: 6px; border: 1px solid rgba(148,163,184,0.22); color: #f8fafc; max-width: min(100%, 280px); overflow: hidden; }
+  .hint-seer-tag strong { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seer-result-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.01em; border: 1px solid transparent; white-space: nowrap; }
+  .seer-result-badge.result-good { background: linear-gradient(135deg, rgba(34,197,94,0.28), rgba(22,163,74,0.18)); color: #dcfce7; border-color: rgba(134,239,172,0.24); }
+  .seer-result-badge.result-bad { background: linear-gradient(135deg, rgba(239,68,68,0.28), rgba(185,28,28,0.2)); color: #fee2e2; border-color: rgba(252,165,165,0.24); }
+  .seer-result-badge.result-unknown { background: linear-gradient(135deg, rgba(100,116,139,0.26), rgba(71,85,105,0.18)); color: #e2e8f0; border-color: rgba(203,213,225,0.18); }
+  .seer-result-inline { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+  .seer-result-inline .seer-result-day { color: #cbd5e1; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+  .seer-result-inline .seer-result-target { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hint-btn { flex-shrink: 0; border: 0; border-radius: 8px; padding: 5px 12px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; color: #fff; background: linear-gradient(135deg, #2563eb, #1d4ed8); }
   .hint-btn.btn-skip { background: rgba(255,255,255,0.1); }
   .hint-btn.btn-done { background: rgba(34,197,94,0.3); border: 1px solid rgba(34,197,94,0.4); }
@@ -238,8 +246,9 @@
   .win-player-status.alive { color: #86efac; }
   .win-player-status.dead { color: #ef4444; }
   .win-summary { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
-  .win-summary-title { font-weight: 700; font-size: 0.86rem; color: #dbeafe; margin-bottom: 6px; }
-  .win-summary-body { color: #e2e8f0; font-size: 0.88rem; line-height: 1.5; }
+  .win-summary-title { font-weight: 700; font-size: 0.86rem; color: #dbeafe; margin-bottom: 8px; }
+  .win-summary-body { display: grid; gap: 8px; color: #e2e8f0; font-size: 0.88rem; line-height: 1.5; }
+  .win-summary-item { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
   .win-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
   /* ===== CHAT MESSAGE BUBBLES ===== */
@@ -251,7 +260,7 @@
   .chat-message-wrapper.self .chat-message-row { flex-direction: row-reverse; }
   .chat-message-wrapper.system .chat-message-row { max-width: min(80%, 460px); justify-content: center; }
   .chat-avatar { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,0.08); flex-shrink: 0; font-size: 0.9rem; }
-  .chat-message-bubble { min-width: 80px; max-width: 100%; padding: 8px 12px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+  .chat-message-bubble { min-width: 80px; max-width: 100%; padding: 8px 12px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #f8fafc; }
   .chat-message-wrapper.self .chat-message-bubble { background: linear-gradient(135deg, rgba(37,99,235,0.3), rgba(29,78,216,0.22)); border-color: rgba(96,165,250,0.2); }
   .chat-message-wrapper.other .chat-message-bubble { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); }
   .chat-message-wrapper.system .chat-message-bubble { min-width: 0; text-align: center; border-radius: 12px; padding: 4px 10px; }
@@ -274,7 +283,7 @@
   .chat-channel-badge.channel-public { background: rgba(59,130,246,0.16); color: #dbeafe; border: 1px solid rgba(96,165,250,0.16); }
   .chat-channel-badge.channel-wolf { background: rgba(127,29,29,0.36); color: #fee2e2; border: 1px solid rgba(248,113,113,0.18); }
   .chat-channel-badge.channel-system { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.08); }
-  .chat-message-body { white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; }
+  .chat-message-body { white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; color: #f8fafc; }
   .chat-message-meta { font-size: 0.72rem; color: #97a4bf; padding: 0 4px; }
   .chat-message-wrapper.self .chat-message-meta { text-align: right; }
   .chat-message-wrapper.system .chat-message-meta { text-align: center; }
@@ -852,7 +861,7 @@
     <div id="winSubtitle" class="win-subtitle"></div>
     <div id="winPlayersGrid" class="win-players-grid"></div>
     <div id="winSummary" class="win-summary" style="display:none;">
-      <div class="win-summary-title">📜 สรุปเกม</div>
+      <div class="win-summary-title">📌 ไฮไลต์รอบนี้</div>
       <div id="winSummaryBody" class="win-summary-body"></div>
     </div>
     <div id="winActions" class="win-actions"></div>
@@ -989,6 +998,39 @@
       };
 
       return labels[team] || (team || '-');
+    }
+
+    function getSeerResultBadgeLabel(resultCode) {
+      if (resultCode === 'good') return 'ออร่าดี';
+      if (resultCode === 'bad') return 'ออร่าไม่ดี';
+      return 'ออร่าไม่ทราบ';
+    }
+
+    function getSeerResultBadgeClass(resultCode) {
+      if (resultCode === 'good') return 'result-good';
+      if (resultCode === 'bad') return 'result-bad';
+      return 'result-unknown';
+    }
+
+    function buildSeerResultBadge(entry, options) {
+      if (!entry) {
+        return '';
+      }
+
+      var config = options || {};
+      var resultCode = entry.resultCode || 'unknown';
+      var badgeClass = getSeerResultBadgeClass(resultCode);
+      var badgeLabel = getSeerResultBadgeLabel(resultCode);
+      var dayLabel = entry.dayNumber ? 'คืน ' + entry.dayNumber : 'ผลล่าสุด';
+      var targetName = escapeHtml(entry.targetName || 'เป้าหมาย');
+      var badgeHtml = '<span class="seer-result-badge ' + badgeClass + '">' + escapeHtml(badgeLabel) + '</span>';
+      var textHtml = '<span class="seer-result-inline"><span class="seer-result-day">' + escapeHtml(dayLabel) + '</span><strong class="seer-result-target">' + targetName + '</strong></span>';
+
+      if (config.compact) {
+        return '<span class="hint-seer-tag">' + badgeHtml + textHtml + '</span>';
+      }
+
+      return '<div class="seer-result-inline">' + badgeHtml + textHtml + '</div>';
     }
 
     function getRoomRoleSummaryItems() {
@@ -2625,9 +2667,9 @@
         var actions = actionState.nightActions || [];
         if (actions.length === 0) {
           var seerTagHtml = '';
-          if (personalNotes && Array.isArray(personalNotes.seerHistory) && personalNotes.seerHistory.length > 0) {
-            var lastSeer = personalNotes.seerHistory[0];
-            seerTagHtml = '<span class="hint-seer-tag">🔮 ' + escapeHtml(lastSeer.summary || '') + '</span>';
+          if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
+            var lastSeer = notes.seerHistory[0];
+            seerTagHtml = buildSeerResultBadge(lastSeer, { compact: true });
           }
           $hint.html('<div class="hint-bar hint-night">' + rolePill + '<span class="hint-text">😴 รอเช้า...</span>' + seerTagHtml + pillsHtml + '</div>');
           return;
@@ -2636,9 +2678,9 @@
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
         var status = action.locked ? '✅ เลือกแล้ว' : '👆 แตะที่ผู้เล่น';
         var seerTagHtml2 = '';
-        if (personalNotes && Array.isArray(personalNotes.seerHistory) && personalNotes.seerHistory.length > 0) {
-          var lastSeer2 = personalNotes.seerHistory[0];
-          seerTagHtml2 = '<span class="hint-seer-tag">🔮 ' + escapeHtml(lastSeer2.summary || '') + '</span>';
+        if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
+          var lastSeer2 = notes.seerHistory[0];
+          seerTagHtml2 = buildSeerResultBadge(lastSeer2, { compact: true });
         }
         var focusClass = action.locked ? '' : ' hint-focus';
         $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + seerTagHtml2 + pillsHtml + '</div>');
@@ -2671,9 +2713,9 @@
         var total = dayActions.totalVoters || 0;
         var voteThreshold = dayActions.voteThreshold || 0;
         var seerTagVote = '';
-        if (personalNotes && Array.isArray(personalNotes.seerHistory) && personalNotes.seerHistory.length > 0) {
-          var lastSeerVote = personalNotes.seerHistory[0];
-          seerTagVote = '<span class="hint-seer-tag">🔮 ' + escapeHtml(lastSeerVote.summary || '') + '</span>';
+        if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
+          var lastSeerVote = notes.seerHistory[0];
+          seerTagVote = buildSeerResultBadge(lastSeerVote, { compact: true });
         }
         var vBtns = '';
         if (dayActions.canVote) {
@@ -3009,13 +3051,16 @@
 
       if (Array.isArray(notes?.seerHistory) && notes.seerHistory.length > 0) {
         notes.seerHistory.forEach(function(entry, index) {
-          const dayText = entry?.dayNumber ? 'คืน ' + entry.dayNumber + ': ' : '';
           items.push({
             priority: index === 0 ? 95 : (80 - index),
             tone: 'seer',
             icon: '🔮',
             label: index === 0 ? 'ผลตรวจล่าสุด' : 'ประวัติผลตรวจ',
-            body: dayText + (entry?.summary || '-')
+            body: entry?.summary || '-',
+            kind: 'seer-result',
+            dayNumber: entry?.dayNumber || null,
+            targetName: entry?.targetName || '-',
+            resultCode: entry?.resultCode || 'unknown'
           });
         });
       } else if (notes && notes.lastSeenRole) {
@@ -3051,16 +3096,40 @@
       }
 
       return items.map(function(item) {
+        var bodyHtml = escapeHtml(item.body || '-');
+        if (item.kind === 'seer-result') {
+          bodyHtml = buildSeerResultBadge({
+            dayNumber: item.dayNumber,
+            targetName: item.targetName,
+            resultCode: item.resultCode
+          });
+        }
+
         return `
           <div class="note-row note-${escapeHtml(item.tone || 'info')}">
             <div class="note-head">
               <span class="note-icon">${escapeHtml(item.icon || 'ℹ️')}</span>
               <span class="note-label">${escapeHtml(item.label || 'ข้อมูล')}</span>
             </div>
-            <div class="note-body">${escapeHtml(item.body || '-')}</div>
+            <div class="note-body">${bodyHtml}</div>
           </div>
         `;
       }).join('');
+    }
+
+    function showSeerVisionResult(entry) {
+      if (!entry) {
+        return;
+      }
+
+      Swal.fire({
+        title: '🔮 ผลตรวจมาแล้ว',
+        html: '<div style="display:grid; gap:12px; text-align:left; font-family: Rajdhani, sans-serif;"><div style="padding:14px; border-radius:16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">' + buildSeerResultBadge(entry) + '</div><div style="color:#cbd5e1;">คุณตรวจ <strong style="color:#fff;">' + escapeHtml(entry.targetName || '-') + '</strong> และเห็นผลทันทีแล้ว ไม่ต้องรอประกาศตอนเช้า</div></div>',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonText: 'รับทราบ',
+        confirmButtonColor: '#4f46e5'
+      });
     }
 
     function buildMemoryRailHtml(items) {
@@ -3338,6 +3407,9 @@
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'สั่ง action ไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
           return;
+        }
+        if (actionType === 'seer-check' && targetPlayerId !== '__skip__' && response.seerResult) {
+          showSeerVisionResult(response.seerResult);
         }
         playActionSelectionSound(actionType, targetPlayerId);
       });
@@ -3736,7 +3808,7 @@
       if (state.phase === 'day-discussion') {
         return {
           title: `☀️ เช้าวันที่ ${state.dayNumber || 1}`,
-          subtitle: 'เปิดประชุม! คุยจับพิรุธ กดข้ามได้ถ้าพร้อม'
+          subtitle: 'เริ่มประชุมวันใหม่แล้ว! คุยกันว่าคนไหนน่าสงสัยที่สุด แล้วเตรียมตัวโหวตได้เลย'
         };
       }
 
@@ -3749,8 +3821,8 @@
 
       if (state.phase === 'finished' && state.winner) {
         return {
-          title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : '🐺 หมาป่าชนะ!',
-          subtitle: ''
+          title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : (state.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : '🤪 คนบ้าชนะ!'),
+          subtitle: 'จบรอบแล้ว! ' + (isRoomAdmin ? 'กดเริ่มรอบใหม่ได้เลย' : 'รอหัวหน้าห้องเริ่มใหม่')
         };
       }
 
@@ -3778,7 +3850,7 @@
 
         const steps = [
           {
-            title: '🌘 คืนจบลงแล้ว',
+            title: '🌘 กลางคืนจบลงแล้ว',
             subtitle: 'หมู่บ้านกำลังรอฟังว่าเมื่อคืนเกิดอะไรขึ้น',
             duration: 2200,
             sound: morningSound
@@ -3787,14 +3859,14 @@
             title: state.morningAnnouncement.lead,
             subtitle: state.morningAnnouncement.outcomeType === 'death'
               ? 'นี่คือข่าวแรกที่ทั้งโต๊ะได้รับพร้อมกัน'
-              : 'ข่าวเช้านี้เริ่มค่อย ๆ เปิดออกทีละชั้น',
+              : 'เช้านี้ไม่มีการตายตรง ๆ ทุกคนเตรียมคุยและจับพิรุธกันต่อได้',
             duration: 2800
           }
         ];
 
         if (state.morningAnnouncement.detail && state.morningAnnouncement.detail !== state.morningAnnouncement.lead) {
           steps.push({
-            title: '📜 ผลที่ถูกเปิดเผย',
+            title: '📜 รายละเอียดเพิ่มเติม',
             subtitle: state.morningAnnouncement.detail,
             duration: 3000
           });
@@ -4515,8 +4587,10 @@
         }
       });
       if (summaryLines.length > 0) {
-        var maxLines = Math.min(summaryLines.length, 8);
-        $('#winSummaryBody').html(summaryLines.slice(-maxLines).map(function(l) { return '<div>• ' + escapeHtml(l) + '</div>'; }).join(''));
+        var maxLines = Math.min(summaryLines.length, 3);
+        $('#winSummaryBody').html(summaryLines.slice(-maxLines).map(function(line) {
+          return '<div class="win-summary-item">' + escapeHtml(line) + '</div>';
+        }).join(''));
         $('#winSummary').show();
       }
 
