@@ -1285,7 +1285,7 @@
 
       if (state.phase === 'day-discussion') {
         const discussion = state?.actionState?.discussionActions || {};
-        return Boolean(discussion.canSkip || discussion.canRevealMayor);
+        return Boolean(discussion.canSkip || discussion.canRevealMayor || discussion.canReveal);
       }
 
       if (state.phase === 'day-vote') {
@@ -1371,8 +1371,9 @@
       }
 
       if (phase === 'day-vote') {
-        const completed = Number(daySummary?.totalCompletedDecisions || dayActions.completedVotes || 0);
-        const total = Number(daySummary?.totalAlive || dayActions.totalVoters || 0);
+        const submittedWeight = Number(daySummary?.totalSubmittedVoteWeight || 0);
+        const totalWeight = Number(daySummary?.totalVoteWeight || dayActions.totalVoteWeight || 0);
+        const threshold = Number(dayActions.voteThreshold || 0);
         model.sections = [
           {
             label: 'เมื่อกี้',
@@ -1388,8 +1389,8 @@
           },
           {
             label: 'เป้าหมาย',
-            body: total > 0
-              ? `โหวตแล้ว ${completed}/${total} คน`
+            body: totalWeight > 0
+              ? `ลงคะแนนแล้ว ${submittedWeight}/${totalWeight} เสียง • เกณฑ์ไล่ออก ${threshold}`
               : 'ตัดสินใจว่าจะไล่ใครออกจากหมู่บ้าน'
           }
         ];
@@ -1822,7 +1823,7 @@
       let metaText = dayNumber > 0 ? `วันที่ ${dayNumber}` : 'ก่อนเริ่มเกม';
 
       if (phase === 'day-vote' && daySummary) {
-        metaText += ` • ตัดสินใจแล้ว ${daySummary.totalCompletedDecisions || 0}/${daySummary.totalAlive || 0}`;
+        metaText += ` • คะแนนนำ ${daySummary.leadingVoteWeight || 0}/${dayActions.voteThreshold || 0}`;
       } else if (phase === 'day-discussion' && Number(discussion.totalAlive || 0) > 0) {
         metaText += ` • พร้อมข้าม ${discussion.skipCount || 0}/${discussion.totalAlive || 0}`;
       } else if (canAct) {
@@ -1903,9 +1904,11 @@
           secondaryTarget = 'actions';
         }
       } else if (phase === 'day-discussion') {
-        const skipCount = Number(discussion.skipCount || 0);
-        const totalAlive = Number(discussion.totalAlive || 0);
-        if (discussion.canSkip || discussion.canRevealMayor) {
+        if (discussion.canReveal) {
+          headline = 'ประชุมอยู่ แต่เปิดโปงได้แล้ว';
+          detail = 'เลือกเป้าหมายได้ตั้งแต่ช่วงประชุม ถ้าพลาดคุณจะตายทันที';
+          primaryLabel = '💥 เปิดโปง';
+        } else if (discussion.canSkip || discussion.canRevealMayor) {
           headline = 'คุย จับพิรุธ กดข้ามเมื่อพร้อม';
           detail = discussion.canRevealMayor
             ? 'เปิดบทนายกหรือกดข้ามไปโหวตเมื่อทุกคนพร้อม'
@@ -1922,6 +1925,8 @@
       } else if (phase === 'day-vote') {
         const completedVotes = Number(daySummary?.totalCompletedDecisions || dayActions.completedVotes || 0);
         const totalVoters = Number(daySummary?.totalAlive || dayActions.totalVoters || 0);
+        const leadingVoteWeight = Number(daySummary?.leadingVoteWeight || 0);
+        const voteThreshold = Number(dayActions.voteThreshold || 0);
         if (dayActions.canVote) {
           headline = 'เลือกคนจากที่นั่ง แล้วลงคะแนน!';
           detail = dayActions.selectedVoteTargetId
@@ -1935,8 +1940,8 @@
         } else {
           tone = 'tone-lock';
           kicker = 'ล็อกแล้ว';
-          headline = `รอโต๊ะลงครบ ${totalVoters > 0 ? `(${completedVotes}/${totalVoters})` : ''}`.trim();
-          detail = 'เปลี่ยนใจได้จนกว่าหมดเวลา';
+          headline = `คะแนนนำ ${leadingVoteWeight}/${voteThreshold}`;
+          detail = totalVoters > 0 ? `ตัดสินใจแล้ว ${completedVotes}/${totalVoters} คน และยังเปลี่ยนใจได้` : 'เปลี่ยนใจได้จนกว่าหมดเวลา';
           primaryLabel = '👥 ดูที่นั่ง';
           primaryTarget = 'players';
           secondaryLabel = '🎯 ดูสถานะ';
@@ -1954,7 +1959,7 @@
       } else if (phase === 'day-discussion') {
         chips.push(`<div class="phase-status-chip">💬 ข้าม <strong>${Number(discussion.skipCount || 0)}/${Number(discussion.totalAlive || 0)}</strong></div>`);
       } else if (phase === 'day-vote') {
-        chips.push(`<div class="phase-status-chip">🗳️ <strong>${Number(daySummary?.totalCompletedDecisions || dayActions.completedVotes || 0)}/${Number(daySummary?.totalAlive || dayActions.totalVoters || 0)}</strong> โหวตแล้ว</div>`);
+        chips.push(`<div class="phase-status-chip">🗳️ คะแนนนำ <strong>${Number(daySummary?.leadingVoteWeight || 0)}/${Number(dayActions.voteThreshold || 0)}</strong></div>`);
       } else if (state?.winner) {
         chips.push(`<div class="phase-status-chip">🏁 <strong>จบ</strong></div>`);
       }
@@ -2664,6 +2669,22 @@
         }
         return;
       }
+
+      if (phase === 'day-discussion') {
+        var discussion = actionState.discussionActions || {};
+        var revealTargets = discussion.revealTargets || [];
+        if (discussion.canReveal && revealTargets.length > 0) {
+          var rTargetIds = new Set(revealTargets.map(function(t) { return t.playerId; }));
+          currentMobileTargetAction = {
+            handlerName: 'selectRevealTarget',
+            actionType: 'reveal-action',
+            targetIds: rTargetIds,
+            selectedId: null,
+            allowSkip: false
+          };
+        }
+        return;
+      }
     }
 
     // ===== RENDER MOBILE HINT BAR (unified: role + action + notes) =====
@@ -2739,7 +2760,12 @@
         } else if (disc.mayorRevealed) {
           btnsHtml += '<span class="hint-text" style="color:#fbbf24;">🎖️ โหวต ×' + (disc.currentVoteWeight || 2) + '</span>';
         }
-        var focusClass2 = (disc.canSkip || disc.canRevealMayor) ? ' hint-focus' : '';
+        if (disc.canReveal) {
+          btnsHtml += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เปิดโปง</button>';
+        } else if (disc.revealUsed) {
+          btnsHtml += '<span class="hint-text" style="color:#fda4af;">💥 ใช้สกิลแล้ว</span>';
+        }
+        var focusClass2 = (disc.canSkip || disc.canRevealMayor || disc.canReveal) ? ' hint-focus' : '';
         $hint.html('<div class="hint-bar hint-discussion' + focusClass2 + '">' + rolePill + '<span class="hint-text">💬 ข้าม ' + skipCount + '/' + skipNeeded + '</span>' + btnsHtml + pillsHtml + '</div>');
         return;
       }
@@ -2749,6 +2775,9 @@
         var completed = dayActions.completedVotes || 0;
         var total = dayActions.totalVoters || 0;
         var voteThreshold = dayActions.voteThreshold || 0;
+        var leadingVoteWeight = Number(dayActions.dayVoteSummary?.leadingVoteWeight || 0);
+        var submittedVoteWeight = Number(dayActions.dayVoteSummary?.totalSubmittedVoteWeight || 0);
+        var totalVoteWeight = Number(dayActions.dayVoteSummary?.totalVoteWeight || dayActions.totalVoteWeight || 0);
         var seerTagVote = '';
         if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
           var lastSeerVote = notes.seerHistory[0];
@@ -2772,7 +2801,7 @@
           vBtns += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เปิดโปง</button>';
         }
         var focusClass3 = dayActions.canVote ? ' hint-focus' : '';
-        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ ' + completed + '/' + total + ' (ต้องการ ' + voteThreshold + ')</span>' + vBtns + seerTagVote + pillsHtml + '</div>');
+        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง</span>' + vBtns + seerTagVote + pillsHtml + '</div>');
         return;
       }
 
@@ -3491,7 +3520,7 @@
     }
 
     function submitRevealAction(targetPlayerId) {
-      if (currentState.phase !== 'day-vote') {
+      if (currentState.phase !== 'day-discussion' && currentState.phase !== 'day-vote') {
         socket.emit('werewolf_requestState', { roomId: roomId, playerId: playerId });
         return;
       }
@@ -3748,14 +3777,18 @@
           : (discussion.hasSkipped
             ? '<button class="action-btn selected" disabled>✅ กดพร้อมแล้ว</button>'
             : '<button class="action-btn" disabled>⏳ รอช่วงประชุม</button>');
+        const revealerHtml = discussion.canReveal
+          ? `<div style="margin-top:12px;"><div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div><div class="subtle">ใช้ได้ตั้งแต่ประชุม ถ้าเปิดโปงหมาป่าถูกมันจะตายทันที ถ้าพลาดคุณจะตายเอง</div><div class="target-grid">${buildTargetCards({ targets: discussion.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div></div>`
+          : (discussion.revealUsed ? '<div class="history-row">💥 ใช้สกิลเปิดโปงไปแล้ว</div>' : '');
 
         $root.append(`
-          <div class="history-row ${discussion.canSkip || discussion.canRevealMayor ? 'turn-focus' : ''}" style="display:block;">
+          <div class="history-row ${discussion.canSkip || discussion.canRevealMayor || discussion.canReveal ? 'turn-focus' : ''}" style="display:block;">
             <div class="action-title"><span>💬</span><strong>ประชุม</strong></div>
             <div class="subtle">คุย จับพิรุธ กดข้ามได้ถ้าพร้อม</div>
             <div class="highlight" style="margin-top:8px;">${escapeHtml(statusText)}</div>
             <div style="margin-top:12px;">${buttonHtml}</div>
             ${mayorHtml ? `<div style="margin-top:12px;">${mayorHtml}</div>` : ''}
+            ${revealerHtml}
           </div>
         `);
         syncMobileGamePanel();
@@ -3778,7 +3811,7 @@
           $root.append(`
             <div class="history-row turn-focus" style="display:block;">
               <div class="action-title"><span>🗳️</span><strong>โหวตขับออก</strong></div>
-              <div class="subtle">เลือก 1 คน โหวตแล้ว ${dayActions.completedVotes || 0}/${dayActions.totalVoters || 0} คน</div>
+              <div class="subtle">เลือก 1 คน คะแนนนำ ${dayActions.dayVoteSummary?.leadingVoteWeight || 0}/${dayActions.voteThreshold || 0} • ลงแล้ว ${dayActions.dayVoteSummary?.totalSubmittedVoteWeight || 0}/${dayActions.totalVoteWeight || 0} เสียง</div>
               ${voteBoardHtml}
               <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote, voteTallies: dayActions.voteTallies, dayVoteSummary: dayActions.dayVoteSummary, skipVoteWeight: dayActions.skipVoteWeight }, 'selectVoteTarget', '', 'day-vote')}</div>
             </div>

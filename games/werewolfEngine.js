@@ -558,9 +558,12 @@ function buildDayVoteSummary(room) {
         voterChoices,
         skipVoteWeight,
         skipVoters,
+        totalSubmittedVoteWeight: voterChoices.reduce((total, entry) => total + Number(entry.weight || 0), 0),
+        leadingVoteWeight: targetSummaries.reduce((highest, target) => Math.max(highest, Number(target.count || 0)), 0),
         completedActors: Array.from(completedActors),
         pendingActors,
         totalAlive: alivePlayers.length,
+        totalVoteWeight: getTotalDayVoteWeight(room),
         totalSubmittedVotes: voterChoices.length,
         totalCompletedDecisions: completedActors.size
     };
@@ -1083,8 +1086,7 @@ function resolveDayVote(room) {
         return { resolved: true, winner: null };
     }
 
-    const aliveCount = getAlivePlayers(room).length;
-    const voteThreshold = Math.floor(aliveCount / 2) + 1;
+    const voteThreshold = Math.floor(getTotalDayVoteWeight(room) / 2) + 1;
     const dayVoteTallies = getDayVoteTallies(room);
     const rankedTargets = Object.entries(dayVoteTallies).sort((a, b) => b[1] - a[1]);
     const hasValidTarget = rankedTargets.length > 0
@@ -1372,7 +1374,7 @@ function submitDiscussionSkip(room, actorId) {
 }
 
 function useRevealAction(room, actorId, targetPlayerId) {
-    if (room.gameState.phase !== 'day-vote') {
+    if (room.gameState.phase !== 'day-discussion' && room.gameState.phase !== 'day-vote') {
         throw new Error('สกิลเปิดโปงใช้ได้เฉพาะตอนกลางวัน');
     }
 
@@ -1410,7 +1412,7 @@ function useRevealAction(room, actorId, targetPlayerId) {
         return { resolved: true, winner: room.gameState.winner };
     }
 
-    if (canSkipDayVote(room) || canResolveDay(room)) {
+    if (room.gameState.phase === 'day-vote' && (canSkipDayVote(room) || canResolveDay(room))) {
         return resolveDayVote(room);
     }
 
@@ -1717,7 +1719,7 @@ function getDayActionOptions(room, viewer) {
             totalVoteWeight: getTotalDayVoteWeight(room),
             completedVotes: Object.keys(room.gameState.dayVotes || {}).length,
             totalVoters: aliveCount,
-            voteThreshold: Math.floor(aliveCount / 2) + 1,
+            voteThreshold: Math.floor(getTotalDayVoteWeight(room) / 2) + 1,
             canReveal: false,
             revealUsed: !!viewer?.revealerUsed,
             revealTargets: []
@@ -1732,6 +1734,7 @@ function getDayActionOptions(room, viewer) {
         }));
 
     const aliveCount = getAlivePlayers(room).length;
+    const totalVoteWeight = getTotalDayVoteWeight(room);
     return {
         canVote: !room.gameState.dayActionUsedBy[viewer.playerId],
         selectedVoteTargetId: room.gameState.dayVotes[viewer.playerId] || null,
@@ -1740,10 +1743,10 @@ function getDayActionOptions(room, viewer) {
         voteTallies: getDayVoteTallies(room),
         dayVoteSummary: buildDayVoteSummary(room),
         skipVoteWeight: getDaySkipVoteWeight(room),
-        totalVoteWeight: getTotalDayVoteWeight(room),
+        totalVoteWeight,
         completedVotes: Object.keys(room.gameState.dayVotes || {}).length,
         totalVoters: aliveCount,
-        voteThreshold: Math.floor(aliveCount / 2) + 1,
+        voteThreshold: Math.floor(totalVoteWeight / 2) + 1,
         canRevealMayor: viewer.role === 'mayor' && !viewer.mayorRevealed,
         mayorRevealed: !!viewer.mayorRevealed,
         currentVoteWeight: getCurrentVoteWeight(viewer),
@@ -1777,7 +1780,17 @@ function getDiscussionActionState(room, viewer) {
         skipNeeded,
         canRevealMayor: viewer.role === 'mayor' && !viewer.mayorRevealed,
         mayorRevealed: !!viewer.mayorRevealed,
-        currentVoteWeight: getCurrentVoteWeight(viewer)
+        currentVoteWeight: getCurrentVoteWeight(viewer),
+        canReveal: viewer.role === 'revealer' && !viewer.revealerUsed,
+        revealUsed: !!viewer.revealerUsed,
+        revealTargets: viewer.role === 'revealer' && !viewer.revealerUsed
+            ? getAlivePlayers(room)
+                .filter(player => player.playerId !== viewer.playerId)
+                .map(player => ({
+                    playerId: player.playerId,
+                    name: player.name
+                }))
+            : []
     };
 }
 
