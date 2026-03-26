@@ -153,15 +153,6 @@
             <span style="font-size: 1.3em; font-weight: 700; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);">🔴🔴 โหมด 2 ผู้ทรยศ - เลือก 2 คน!</span>
         </div>
         <h4 id="vote2Title" style="color: #ffd700; font-size: 1.3em; font-weight: 600; text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); margin: 10px 0 20px 0; text-align: center;">คิดว่าใครคือผู้ทรยศ?</h4>
-        <div id="vote2LiveBoard" class="vote2-live-board">
-            <div class="vote2-live-summary">
-                <span class="vote2-live-label">ทุกคนเห็นสดว่าใครโหวตใคร</span>
-                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีคนโหวต</span>
-            </div>
-            <div id="vote2LiveFeedList" class="vote2-live-feed">
-                <span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>
-            </div>
-        </div>
         <div class="vote2-choices"></div>
         <div id="vote2SelectedInfo" class="vote2-selection-info">
             <div class="selection-counter">
@@ -170,6 +161,15 @@
             </div>
             <div id="vote2SelectedNames" class="vote2-selected-names"></div>
             <button id="confirmVote2Btn" class="confirm-vote-btn">✅ ยืนยันโหวต</button>
+        </div>
+        <div id="vote2LiveBoard" class="vote2-live-board">
+            <div class="vote2-live-summary">
+                <span class="vote2-live-label">ทุกคนเห็นทันทีว่าใครโหวตใคร</span>
+                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีคนโหวต</span>
+            </div>
+            <div id="vote2LiveFeedList" class="vote2-live-feed">
+                <span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>
+            </div>
         </div>
     </div>
     <div id="vote2Result" class="hidden">
@@ -855,8 +855,7 @@
     }
 
     .vote2-live-feed {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
         gap: 8px;
     }
 
@@ -871,6 +870,11 @@
         color: #fff5f5;
         font-size: 0.88em;
         font-weight: 700;
+        max-width: 100%;
+        white-space: normal;
+        line-height: 1.35;
+        text-align: left;
+        justify-content: flex-start;
     }
 
     .vote2-live-pill.empty {
@@ -1237,6 +1241,9 @@
         color: #fff;
         border: 1px solid rgba(255,255,255,0.1);
         font-weight: 700;
+        max-width: 100%;
+        white-space: normal;
+        text-align: left;
     }
     
     .selection-counter {
@@ -1286,6 +1293,12 @@
     }
 
     @media (max-width: 720px) {
+        .vote2-container {
+            padding: 18px 16px !important;
+            margin: 16px 10px !important;
+            border-radius: 20px !important;
+        }
+
         .vote2-live-summary,
         .vote2-player-tally {
             align-items: flex-start;
@@ -1293,10 +1306,21 @@
 
         .vote2-choices {
             grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 14px 0;
         }
 
         .btn-vote2-player.vote2-player-card {
             min-height: 126px;
+            padding: 16px !important;
+        }
+
+        .vote2-live-pill {
+            border-radius: 16px;
+        }
+
+        .vote2-selected-names {
+            width: 100%;
         }
     }
 

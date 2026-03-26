@@ -82,6 +82,15 @@ const ROLE_PLANS = {
     10: ['alphaWolf', 'werewolf', 'werewolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer']
 };
 
+const ROLE_PLAN_VARIANTS = {
+    3: [
+        ['werewolf', 'seer', 'doctor'],
+        ['werewolf', 'seer', 'fool'],
+        ['werewolf', 'doctor', 'bodyguard'],
+        ['werewolf', 'seer', 'bodyguard']
+    ]
+};
+
 const CONFIGURABLE_ROLE_IDS = ['werewolf', 'alphaWolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer'];
 const DEFAULT_ROLE_SELECTION = [...CONFIGURABLE_ROLE_IDS];
 const SKIP_TARGET_ID = '__skip__';
@@ -105,6 +114,24 @@ function chooseRandom(array) {
     }
 
     return array[Math.floor(Math.random() * array.length)];
+}
+
+function serializeRolePlan(roleIds) {
+    return [...(Array.isArray(roleIds) ? roleIds : [])].sort().join('|');
+}
+
+function getBaseRolePlan(playerCount, previousPlanRoleIds = []) {
+    const planVariants = ROLE_PLAN_VARIANTS[playerCount];
+    if (!Array.isArray(planVariants) || planVariants.length === 0) {
+        return [...(ROLE_PLANS[playerCount] || ROLE_PLANS[3])];
+    }
+
+    const previousSignature = serializeRolePlan(previousPlanRoleIds);
+    const candidateVariants = planVariants.filter(function(plan) {
+        return serializeRolePlan(plan) !== previousSignature;
+    });
+    const selectedPlan = chooseRandom(candidateVariants.length ? candidateVariants : planVariants) || ROLE_PLANS[playerCount] || ROLE_PLANS[3];
+    return [...selectedPlan];
 }
 
 function isWerewolfRole(roleId) {
@@ -204,9 +231,9 @@ function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = []) {
     return filled.slice(0, targetCount);
 }
 
-function getRolePlan(playerCount, settings = {}) {
+function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
-    const basePlan = ROLE_PLANS[normalizedCount] || ROLE_PLANS[3];
+    const basePlan = getBaseRolePlan(normalizedCount, previousPlanRoleIds);
 
     // Wolf count mode: pick N wolves, fill rest from base plan specials + villagers
     if (settings.wolfCount) {
@@ -631,7 +658,7 @@ function resetRoomGame(room) {
             isAdmin: player.permission === 'admin'
         })),
         alivePlayerIds: room.players.map(player => player.playerId),
-        rolePlan: getRolePlan(room.players.length, room.settings)
+        rolePlan: getRolePlan(room.players.length, room.settings, room.lastWerewolfPlanRoleIds || [])
     };
 }
 
@@ -747,6 +774,9 @@ function startGame(room) {
     });
 
     assignRoles(room);
+    room.lastWerewolfPlanRoleIds = room.gameState.rolePlan.map(function(role) {
+        return role.id;
+    });
     room.lastWerewolfRolesByPlayerId = room.gameState.players.reduce((result, playerState) => {
         result[playerState.playerId] = playerState.role;
         return result;
@@ -1443,9 +1473,9 @@ function getNightActionOptions(room, viewer) {
                 return [{
                     type: 'night-kill',
                     label: 'คืนแรกของหมาป่า',
-                    description: 'คืนนี้หมาป่ายังไม่ออกล่า ใช้เวลาจำหน้า อ่านจังหวะ และเตรียมเรื่องที่จะคุยตอนเช้า',
-                    selectedTargetId: null,
-                    allowSkip: false,
+                    description: 'คืนนี้หมาป่ายังไม่ออกล่า กดข้ามเพื่อผ่านคืนแรก แล้วไปอ่านเกมต่อในตอนเช้า',
+                    selectedTargetId: room.gameState.nightActions.werewolfVotes[viewer.playerId] || null,
+                    allowSkip: true,
                     emptyStateText: 'คืนนี้ยังไม่มีเหยื่อให้เลือก คืนแรกจะผ่านไปแบบไม่มีคนตายจากหมาป่า',
                     targets: []
                 }];

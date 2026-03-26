@@ -418,13 +418,14 @@
   .player-main, .player-topline, .player-role-line, .player-chip-row, .player-chip, .player-status-badge { display: none; }
 
   /* -- Role strip (compact role summary under player grid) -- */
-  .role-strip { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 8px 4px; }
-  .role-strip-item { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); font-size: 0.76rem; font-weight: 700; color: #e2e8f0; white-space: nowrap; }
-  .role-strip-item .rs-emoji { font-size: 0.9rem; }
-  .role-strip-item .rs-count { color: #fde68a; font-size: 0.72rem; }
-  .role-strip-item.team-werewolf { border-color: rgba(248,113,113,0.2); background: rgba(127,29,29,0.15); }
-  .role-strip-item.team-village { border-color: rgba(134,239,172,0.18); background: rgba(34,197,94,0.08); }
-  .role-strip-item.team-solo { border-color: rgba(216,180,254,0.18); background: rgba(168,85,247,0.1); }
+  .role-strip { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 8px 4px; }
+  .role-strip-item { width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #94a3b8; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease, opacity 0.18s ease; }
+  .role-strip-item .rs-emoji { font-size: 1.2rem; line-height: 1; filter: grayscale(0.15); }
+  .role-strip-item.is-active { color: #f8fafc; opacity: 1; }
+  .role-strip-item.is-inactive { color: #64748b; opacity: 0.52; filter: saturate(0.35); }
+  .role-strip-item.is-active.team-werewolf { border-color: rgba(248,113,113,0.28); background: linear-gradient(145deg, rgba(127,29,29,0.32), rgba(69,10,10,0.22)); }
+  .role-strip-item.is-active.team-village { border-color: rgba(134,239,172,0.24); background: linear-gradient(145deg, rgba(21,128,61,0.22), rgba(22,101,52,0.14)); }
+  .role-strip-item.is-active.team-solo { border-color: rgba(216,180,254,0.26); background: linear-gradient(145deg, rgba(126,34,206,0.24), rgba(91,33,182,0.14)); }
 
   /* -- Night indicator on player grid (no dimming!) -- */
   .player-grid.night-phase { border: 1px solid rgba(96,165,250,0.15); border-radius: 14px; padding: 4px; background: rgba(15,23,42,0.3); }
@@ -1111,17 +1112,49 @@
     }
 
     function renderRoleStrip() {
-      const items = getRoomRoleSummaryItems();
+      const roleCatalog = Array.isArray(currentState.roleCatalog) ? currentState.roleCatalog : [];
+      const activeCounts = new Map();
+      const orderedRoleIds = ['werewolf', 'alphaWolf', 'seer', 'doctor', 'bodyguard', 'witch', 'fool', 'mayor', 'revealer'];
+
+      (Array.isArray(currentState.rolePlan) ? currentState.rolePlan : []).forEach(function(role) {
+        if (!role || !role.id) {
+          return;
+        }
+
+        activeCounts.set(role.id, (activeCounts.get(role.id) || 0) + 1);
+      });
+
+      const roleById = new Map(roleCatalog.map(function(role) {
+        return [role.id, role];
+      }));
+      const orderedCatalog = orderedRoleIds.map(function(roleId) {
+        return roleById.get(roleId);
+      }).filter(Boolean);
+
+      const items = orderedCatalog.map(function(role) {
+        return {
+          id: role.id,
+          thaiName: role.thaiName,
+          team: role.team,
+          count: activeCounts.get(role.id) || 0,
+          active: activeCounts.has(role.id)
+        };
+      });
+
       if (!items.length) {
         $('#roleStrip').empty();
+        $('#mobileInlineRoleStrip').empty();
         return;
       }
+
       var html = items.map(function(role) {
         var teamClass = role.team === 'werewolf' ? 'team-werewolf' : (role.team === 'solo' ? 'team-solo' : 'team-village');
-        var countLabel = role.count > 1 ? ' ×' + role.count : '';
-        return '<div class="role-strip-item ' + teamClass + '"><span class="rs-emoji">' + roleEmoji(role.id) + '</span>' + escapeHtml(role.thaiName || role.id) + (countLabel ? '<span class="rs-count">' + escapeHtml(countLabel) + '</span>' : '') + '</div>';
+        var stateClass = role.active ? 'is-active' : 'is-inactive';
+        var statusLabel = role.active ? 'มีบทนี้ในเกม' : 'ไม่มีบทนี้ในเกม';
+        return '<div class="role-strip-item ' + teamClass + ' ' + stateClass + '" title="' + escapeHtml((role.thaiName || role.id) + ' - ' + statusLabel) + '"><span class="rs-emoji">' + roleEmoji(role.id) + '</span></div>';
       }).join('');
       $('#roleStrip').html(html);
+      $('#mobileInlineRoleStrip').html(html);
     }
 
     function roleActionHint(role) {
@@ -2610,7 +2643,7 @@
             actionType: firstAction.type,
             targetIds: targetIds,
             selectedId: firstAction.selectedTargetId || null,
-            allowSkip: false
+            allowSkip: Boolean(firstAction.allowSkip)
           };
         }
         return;
@@ -2677,13 +2710,17 @@
         var action = actions[0];
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
         var status = action.locked ? '✅ เลือกแล้ว' : '👆 แตะที่ผู้เล่น';
+        var nightBtns = '';
+        if (action.allowSkip && !action.locked) {
+          nightBtns = '<button class="hint-btn btn-skip" onclick="selectNightTarget(\'' + escapeHtml(action.type) + '\', \'__skip__\')">⏭️ ข้าม</button>';
+        }
         var seerTagHtml2 = '';
         if (notes && Array.isArray(notes.seerHistory) && notes.seerHistory.length > 0) {
           var lastSeer2 = notes.seerHistory[0];
           seerTagHtml2 = buildSeerResultBadge(lastSeer2, { compact: true });
         }
         var focusClass = action.locked ? '' : ' hint-focus';
-        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + seerTagHtml2 + pillsHtml + '</div>');
+        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + nightBtns + seerTagHtml2 + pillsHtml + '</div>');
         return;
       }
 
@@ -3124,7 +3161,7 @@
 
       Swal.fire({
         title: '🔮 ผลตรวจมาแล้ว',
-        html: '<div style="display:grid; gap:12px; text-align:left; font-family: Rajdhani, sans-serif;"><div style="padding:14px; border-radius:16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">' + buildSeerResultBadge(entry) + '</div><div style="color:#cbd5e1;">คุณตรวจ <strong style="color:#fff;">' + escapeHtml(entry.targetName || '-') + '</strong> และเห็นผลทันทีแล้ว ไม่ต้องรอประกาศตอนเช้า</div></div>',
+        html: '<div style="display:grid; gap:12px; text-align:left; font-family: Rajdhani, sans-serif;"><div style="padding:14px; border-radius:16px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">' + buildSeerResultBadge(entry) + '</div><div style="color:#cbd5e1;">คุณตรวจ <strong style="color:#fff;">' + escapeHtml(entry.targetName || '-') + '</strong></div></div>',
         background: '#111827',
         color: '#fff',
         confirmButtonText: 'รับทราบ',
@@ -3492,11 +3529,9 @@
     }
 
     function buildTargetCards(action, handlerName, buttonClass, handlerArg) {
-      if (!action.targets || action.targets.length === 0) {
-        if (!action.allowSkip) {
-          return '<div class="target-card subtle">ไม่มีเป้าหมายให้เลือก</div>';
-        }
-        return '';
+      const targets = Array.isArray(action.targets) ? action.targets : [];
+      if (targets.length === 0 && !action.allowSkip) {
+        return '<div class="target-card subtle">ไม่มีเป้าหมายให้เลือก</div>';
       }
 
       const actionType = handlerArg || action.type || 'day-vote';
@@ -3507,7 +3542,7 @@
         return [target.playerId, target];
       }));
 
-      const cards = action.targets.map(function(target) {
+      const cards = targets.map(function(target) {
         const roomPlayer = getPlayerById(target.playerId) || {};
         const isSelected = action.selectedTargetId && action.selectedTargetId === target.playerId;
         const isDisabled = Boolean(action.locked && !isSelected);
@@ -4459,9 +4494,26 @@
     });
 
     $('#leaveWerewolfRoom').on('click', function() {
-      allowNavigation = true;
-      socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, function() {
-        window.location.href = '/rooms?playerId=' + playerId;
+      Swal.fire({
+        icon: 'question',
+        title: 'ออกจากห้อง?',
+        text: 'ต้องการออกจากห้อง Werewolf นี้หรือไม่?',
+        background: '#111827',
+        color: '#fff',
+        showCancelButton: true,
+        confirmButtonText: 'ออกจากห้อง',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#475569'
+      }).then(function(result) {
+        if (!result.isConfirmed) {
+          return;
+        }
+
+        allowNavigation = true;
+        socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, function() {
+          window.location.href = '/rooms?playerId=' + playerId;
+        });
       });
     });
 
