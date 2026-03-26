@@ -1046,16 +1046,16 @@ function buildDayPublicEvent(type, payload = {}) {
     if (type === 'reveal-hit') {
         return {
             type,
-            lead: `${payload.actorName || 'จอมเปิดโปง'} เปิดโปง ${payload.targetName || 'เป้าหมาย'} สำเร็จ`,
-            detail: `${payload.targetName || 'เป้าหมาย'} ตายตอนหมดเวลา เพราะถูกเปิดโปงว่าเป็นหมาป่า`
+            lead: `${payload.actorName || 'จอมเปิดโปง'} ชี้หน้า ${payload.targetName || 'เป้าหมาย'} ได้ตรงตัว`,
+            detail: `พอเสียงนับถอยหลังจบ ${payload.targetName || 'เป้าหมาย'} ก็ล้มลงทันที เพราะถูกเปิดโปงว่าเป็นหมาป่า`
         };
     }
 
     if (type === 'reveal-miss') {
         return {
             type,
-            lead: `${payload.actorName || 'จอมเปิดโปง'} เปิดโปงผิดเป้า`,
-            detail: `${payload.actorName || 'จอมเปิดโปง'} ตายแทนและสู้กับหมาป่าผิดตัว เพราะเลือก ${payload.targetName || 'เป้าหมาย'} ผิดคน`
+            lead: `${payload.actorName || 'จอมเปิดโปง'} ฝากชีวิตไว้กับการเปิดโปง แต่พลาด`,
+            detail: `เมื่อหมดเวลา ${payload.actorName || 'จอมเปิดโปง'} กลับล้มลงแทน เพราะชี้ ${payload.targetName || 'เป้าหมาย'} ผิดคน`
         };
     }
 

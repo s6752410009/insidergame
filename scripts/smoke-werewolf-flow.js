@@ -267,6 +267,17 @@ async function submitDayVote(client, roomId, targetPlayerId) {
     return response;
 }
 
+async function submitRevealAction(client, roomId, targetPlayerId) {
+    const response = await emitAck(client.socket, 'werewolf_useRevealAction', {
+        roomId,
+        playerId: client.playerId,
+        targetPlayerId
+    }, EVENT_TIMEOUT_MS);
+
+    assert(response && response.success, `${client.label} reveal action failed: ${response?.error || 'unknown error'}`);
+    return response;
+}
+
 async function submitDiscussionSkip(client, roomId) {
     const response = await emitAck(client.socket, 'werewolf_skipDiscussion', {
         roomId,
@@ -278,6 +289,20 @@ async function submitDiscussionSkip(client, roomId) {
         return response;
     }
     assert(response && response.success, `${client.label} discussion skip failed: ${response?.error || 'unknown error'}`);
+    return response;
+}
+
+async function submitNightSkip(client, roomId) {
+    const response = await emitAck(client.socket, 'werewolf_skipNight', {
+        roomId,
+        playerId: client.playerId
+    }, EVENT_TIMEOUT_MS);
+
+    if (response && !response.success && /ยังไม่ใช่ช่วงกลางคืน/.test(response.error || '')) {
+        return response;
+    }
+
+    assert(response && response.success, `${client.label} night skip failed: ${response?.error || 'unknown error'}`);
     return response;
 }
 
@@ -296,6 +321,17 @@ async function skipDiscussionForAlive(clients, roomId) {
         }
 
         await submitDiscussionSkip(client, roomId);
+    }
+}
+
+async function skipNightForAlive(clients, roomId) {
+    for (const client of clients) {
+        const player = getPlayerView(client.lastState, client.playerId);
+        if (!player || !player.alive) {
+            continue;
+        }
+
+        await submitNightSkip(client, roomId);
     }
 }
 
@@ -348,7 +384,7 @@ async function main() {
             gameMode: 'werewolf',
             maxPlayers: ROOM_SIZE,
             roundTime: ROUND_TIME_MINUTES,
-            werewolfRoles: ['werewolf', 'alphaWolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer']
+            werewolfRoles: ['werewolf', 'alphaWolf', 'seer', 'witch', 'bodyguard', 'mayor', 'revealer']
         });
         assert(createResponse && createResponse.success && createResponse.roomId, 'createRoom failed');
         roomId = createResponse.roomId;
@@ -379,11 +415,11 @@ async function main() {
         });
 
         assert(findClientByRole(roleAssignments, 'witch'), '7-player flow did not assign a Witch');
-        assert(findClientByRole(roleAssignments, 'fool'), '7-player flow did not assign a Fool');
-        assert(findClientByRole(roleAssignments, 'villager'), '7-player flow should include a Villager after rebalance');
+        assert(findClientByRole(roleAssignments, 'revealer'), '7-player flow did not assign a Revealer');
+        assert(findClientByRole(roleAssignments, 'mayor'), '7-player flow did not assign a Mayor');
 
         const witchClient = findClientByRole(roleAssignments, 'witch');
-        const foolClient = findClientByRole(roleAssignments, 'fool');
+        const revealerClient = findClientByRole(roleAssignments, 'revealer');
         const seerClient = findClientByRole(roleAssignments, 'seer');
         const wolfClients = ['alphaWolf', 'werewolf'].map(roleId => roleAssignments[roleId]).filter(Boolean);
         assert(wolfClients.length === 2, '7-player plan should include 2 wolves');
@@ -404,7 +440,7 @@ async function main() {
                 }
 
                 const targetId = action.type === 'seer-check'
-                    ? foolClient.playerId
+                    ? wolfClients[0].playerId
                     : '__skip__';
                 await submitNightChoice(client, roomId, action.type, targetId);
 
@@ -415,7 +451,7 @@ async function main() {
         }
 
         const seerTargets = seerClient?.lastState?.actionState?.nightActions?.find(action => action.type === 'seer-check')?.targets || [];
-        const secondSeerTarget = seerTargets.find(target => target.playerId !== foolClient.playerId);
+        const secondSeerTarget = seerTargets.find(target => target.playerId !== wolfClients[0].playerId);
         if (seerClient && secondSeerTarget) {
             const secondSeerAttempt = await emitAck(seerClient.socket, 'werewolf_submitNightAction', {
                 roomId,
@@ -426,6 +462,8 @@ async function main() {
             assert(secondSeerAttempt && !secondSeerAttempt.success && /1 คนต่อคืน/.test(secondSeerAttempt.error || ''), 'Seer should be limited to one inspection per night');
         }
 
+        await skipNightForAlive(clients, roomId);
+
         await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, null, 30000);
 
         console.log('6. Discussion 1: everyone skips to open voting early');
@@ -433,11 +471,11 @@ async function main() {
         await skipDiscussionForAlive(clients, roomId);
         await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 1, 30000);
 
-        console.log('7. Day 1: vote out a regular villager to keep Witch and Fool alive');
-        const dayOneTargetClient = pickDayOneElimination(roleAssignments);
+        console.log('7. Day 1: vote out a non-critical village role to keep Witch and Revealer alive');
+        const dayOneTargetClient = pickClientByRoleOrder(roleAssignments, ['bodyguard', 'mayor']);
         assert(dayOneTargetClient, 'Could not find a safe Day 1 elimination target');
         assert(dayOneTargetClient.playerId !== witchClient.playerId, 'Day 1 target should not be Witch');
-        assert(dayOneTargetClient.playerId !== foolClient.playerId, 'Day 1 target should not be Fool');
+        assert(dayOneTargetClient.playerId !== revealerClient.playerId, 'Day 1 target should not be Revealer');
 
         checkpoint = createStateCheckpoint(clients);
         await submitConsensusVote(clients, roomId, dayOneTargetClient.playerId);
@@ -452,31 +490,31 @@ async function main() {
 
         await waitForPhaseAfter(clients, roomId, 'night', checkpoint, payload => payload.dayNumber === 2, 30000);
 
-        console.log('8. Night 2: wolves target Fool and Witch spends heal');
-        const foolInWolfTargets = wolfClients.some(client => {
+        console.log('8. Night 2: wolves target Seer and Witch spends heal');
+        const seerInWolfTargets = wolfClients.some(client => {
             const actions = client.lastState?.actionState?.nightActions || [];
             const killAction = actions.find(action => action.type === 'night-kill');
-            return !!killAction && killAction.targets.some(target => target.playerId === foolClient.playerId);
+            return !!killAction && killAction.targets.some(target => target.playerId === seerClient.playerId);
         });
-        assert(foolInWolfTargets, 'Fool should remain a targetable bluff target for wolves');
+        assert(seerInWolfTargets, 'Seer should remain a valid wolf target');
 
         checkpoint = createStateCheckpoint(clients);
         const firstWolfResponse = await emitAck(wolfClients[0].socket, 'werewolf_submitNightAction', {
             roomId,
             playerId: wolfClients[0].playerId,
-            targetPlayerId: foolClient.playerId,
+            targetPlayerId: seerClient.playerId,
             actionType: null
         }, EVENT_TIMEOUT_MS);
-        assert(firstWolfResponse && firstWolfResponse.success, 'Wolf attack on Fool should be accepted and resolved by immunity, not rejected');
+        assert(firstWolfResponse && firstWolfResponse.success, 'Wolf attack on Seer should be accepted');
 
         if (wolfClients[1]) {
             const secondWolfResponse = await emitAck(wolfClients[1].socket, 'werewolf_submitNightAction', {
                 roomId,
                 playerId: wolfClients[1].playerId,
-                targetPlayerId: foolClient.playerId,
+                targetPlayerId: seerClient.playerId,
                 actionType: null
             }, EVENT_TIMEOUT_MS);
-            assert(secondWolfResponse && secondWolfResponse.success, 'Second wolf failed to confirm Fool attack');
+            assert(secondWolfResponse && secondWolfResponse.success, 'Second wolf failed to confirm Seer attack');
         }
 
         for (const client of clients) {
@@ -495,7 +533,7 @@ async function main() {
                 let targetId = '__skip__';
 
                 if (client.playerId === witchClient.playerId && action.type === 'witch-heal') {
-                    targetId = foolClient.playerId;
+                    targetId = seerClient.playerId;
                 }
 
                 await submitNightChoice(client, roomId, action.type, targetId);
@@ -521,24 +559,25 @@ async function main() {
             }
         }
 
+        await skipNightForAlive(clients, roomId);
+
         const dayTwoDiscussionStates = await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, payload => payload.dayNumber === 2, 30000);
         const dayTwoDiscussionState = dayTwoDiscussionStates[0];
         const discussionActions = dayTwoDiscussionState.actionState?.discussionActions || {};
         assert(discussionActions.skipCount === 0, 'Discussion skip count should reset at the start of a new morning');
         assert(discussionActions.totalAlive >= 1, 'Discussion state should report alive players');
-        assert(dayTwoDiscussionState.morningAnnouncement && dayTwoDiscussionState.morningAnnouncement.outcomeType === 'immune', 'Night 2 should announce Fool immunity');
-        assert(/ไม่สำเร็จ|ไม่รู้ว่าเพราะอะไร/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should keep Fool immunity generic');
+        assert(dayTwoDiscussionState.morningAnnouncement && dayTwoDiscussionState.morningAnnouncement.outcomeType === 'saved', 'Night 2 should announce that the wolf attack was saved');
+        assert(/รอดมาได้|ต้องสืบต่อ/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should keep the rescue source hidden');
         checkpoint = createStateCheckpoint(clients);
         await skipDiscussionForAlive(clients, roomId);
         const dayTwoStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 2, 30000);
-        const dayTwoState = dayTwoStates[0];
         const witchDayTwoState = dayTwoStates.find(state => state.playerRole && state.playerRole.id === 'witch');
-        assert(witchDayTwoState && Array.isArray(witchDayTwoState.personalNotes?.roleNotes) && witchDayTwoState.personalNotes.roleNotes.some(note => /ใช้ยาฟื้นไปแล้ว/.test(note)), 'Witch heal usage should be reflected in personal notes');
+        assert(witchDayTwoState && Array.isArray(witchDayTwoState.personalNotes?.roleNotes) && witchDayTwoState.personalNotes.roleNotes.some(note => /ใช้ยาช่วยชีวิตไปแล้ว/.test(note)), 'Witch heal usage should be reflected in personal notes');
 
-        console.log('9. Day 2: vote out Doctor to keep Fool for final solo-win test');
-        const dayTwoTargetClient = pickClientByRoleOrder(roleAssignments, ['doctor', 'seer', 'bodyguard', 'mayor', 'revealer']);
+        console.log('9. Day 2: vote out Mayor to keep Revealer for the final reveal-finish test');
+        const dayTwoTargetClient = pickClientByRoleOrder(roleAssignments, ['mayor', 'bodyguard', 'seer']);
         assert(dayTwoTargetClient, 'Could not find a safe Day 2 elimination target');
-        assert(dayTwoTargetClient.playerId !== foolClient.playerId, 'Day 2 target should not be Fool yet');
+        assert(dayTwoTargetClient.playerId !== revealerClient.playerId, 'Day 2 target should not be Revealer yet');
 
         const aliveClients = clients.filter(client => {
             const player = getPlayerView(client.lastState, client.playerId);
@@ -551,7 +590,7 @@ async function main() {
         await waitForPhaseAfter(clients, roomId, 'night', checkpoint, payload => payload.dayNumber === 3, 30000);
 
         console.log('10. Night 3: wolves kill Seer, Witch poisons one wolf');
-        const nightThreeTargetClient = pickClientByRoleOrder(roleAssignments, ['seer', 'doctor', 'bodyguard', 'mayor', 'revealer']);
+        const nightThreeTargetClient = pickClientByRoleOrder(roleAssignments, ['seer', 'bodyguard', 'mayor']);
         assert(nightThreeTargetClient && getPlayerView(creator.lastState, nightThreeTargetClient.playerId)?.alive, 'Need a living Night 3 target for wolves');
         const poisonWolfClient = wolfClients.find(client => client.playerId !== wolfClients[0].playerId) || wolfClients[0];
 
@@ -597,38 +636,54 @@ async function main() {
             }
         }
 
+        await skipNightForAlive(clients, roomId);
+
         const dayThreeDiscussionStates = await waitForPhaseAfter(clients, roomId, 'day-discussion', checkpoint, payload => payload.dayNumber === 3, 30000);
         checkpoint = createStateCheckpoint(clients);
         await skipDiscussionForAlive(clients, roomId);
         const dayThreeStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 3, 30000);
         const dayThreeState = dayThreeStates[0];
-        const deadWolves = (dayThreeState.players || []).filter(player => !player.alive && player.revealedRole === null);
-        // During game, revealedRole is hidden (null) for dead players — we just check someone died
         const deadPlayers = (dayThreeState.players || []).filter(player => !player.alive);
         assert(deadPlayers.length >= 1, 'Night 3 should have eliminated at least one player (from Witch poison)');
+        const revealerDayThreeState = dayThreeStates.find(state => state.playerRole && state.playerRole.id === 'revealer');
+        assert(revealerDayThreeState && revealerDayThreeState.actionState?.dayActions?.canReveal, 'Revealer should still have reveal available on Day 3');
 
-        console.log('11. Day 3: vote out Fool and confirm solo win');
+        console.log('11. Day 3: Revealer locks the last wolf and confirms village win');
         const finalAliveClients = clients.filter(client => {
             const player = getPlayerView(client.lastState, client.playerId);
             return player && player.alive;
         });
 
+        const survivingWolfClient = wolfClients.find(client => {
+            const player = getPlayerView(creator.lastState, client.playerId);
+            return player && player.alive;
+        });
+        assert(survivingWolfClient, 'Need one living wolf for the final reveal test');
+
         checkpoint = createStateCheckpoint(clients);
-        await submitConsensusVote(finalAliveClients, roomId, foolClient.playerId);
+        const revealResponse = await submitRevealAction(revealerClient, roomId, survivingWolfClient.playerId);
+        assert(revealResponse && revealResponse.queued, 'Reveal should queue until day resolution');
+
+        const witchFinalClient = finalAliveClients.find(client => client.playerId === witchClient.playerId);
+        assert(witchFinalClient, 'Witch should still be alive for the final reveal test');
+        await submitDayVote(witchFinalClient, roomId, survivingWolfClient.playerId);
+        await submitDayVote(survivingWolfClient, roomId, witchClient.playerId);
 
         const finishedStates = await waitForPhaseAfter(clients, roomId, 'finished', checkpoint, null, 30000);
-        assert(finishedStates.some(state => state.winner === 'fool'), 'Game should end with Fool solo victory');
+        assert(finishedStates.some(state => state.winner === 'village'), 'Game should end with village victory after the final reveal');
+        assert(finishedStates.some(state => state.dayResolutionAnnouncement?.outcomeType === 'reveal-hit'), 'Final announcement should report a reveal-hit');
 
         const summary = {
             roomId,
-            winner: 'fool',
+            winner: 'village',
             tested: {
                 witch: true,
                 discussionPhase: true,
                 unanimousDiscussionSkip: true,
                 seerNightLimit: true,
-                foolImmunity: true,
-                foolSoloWin: true,
+                witchHealSave: true,
+                witchPoison: true,
+                revealerFinish: true,
                 liveVoteTallies: true,
                 sevenPlayerRolePlan: true
             }
