@@ -22,9 +22,10 @@
     "smoke:blackmarket:lobby:browser": "node scripts/browser-blackmarket-lobby.js",
     "smoke:blackmarket:board:browser": "node scripts/browser-blackmarket-board.js",
     "smoke:blackmarket:stats": "node scripts/integration-blackmarket-stats.js",
-    "smoke:werewolf": "node scripts/smoke-werewolf-flow.js",
+    "smoke:werewolf": "node scripts/smoke-werewolf-flow.js && node scripts/smoke-werewolf-reveal-miss.js",
     "smoke:werewolf:selection": "node scripts/smoke-werewolf-selection.js",
     "smoke:werewolf:roles": "node scripts/smoke-werewolf-role-rules.js",
+    "smoke:werewolf:reveal-miss": "node scripts/smoke-werewolf-reveal-miss.js",
     "smoke:werewolf:5": "SMOKE_WEREWOLF_CASE=5 node scripts/smoke-werewolf-balance.js",
     "smoke:werewolf:6": "SMOKE_WEREWOLF_CASE=6 node scripts/smoke-werewolf-balance.js"
   },

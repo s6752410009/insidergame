@@ -1062,24 +1062,24 @@ function buildDayPublicEvent(type, payload = {}) {
     if (type === 'vote-elimination') {
         return {
             type,
-            lead: `${payload.targetName || 'เป้าหมาย'} ถูกโหวตออกจากหมู่บ้าน`,
-            detail: `เสียงโหวตถึงเกณฑ์และขับ ${payload.targetName || 'เป้าหมาย'} ออกจากเกม`
+            lead: `${payload.targetName || 'เป้าหมาย'} ถูกยกให้เป็นแพะของทั้งหมู่บ้าน`,
+            detail: `เสียงโหวตเทไปทางเดียวกัน และ ${payload.targetName || 'เป้าหมาย'} ถูกลากออกจากวงประชุม`
         };
     }
 
     if (type === 'vote-no-elimination') {
         return {
             type,
-            lead: 'การโหวตจบลงแบบไม่มีใครถูกกำจัด',
-            detail: payload.reason || 'คะแนนไม่ถึงเกณฑ์หรือเสมอกัน ทำให้ไม่มีใครออกจากเกม'
+            lead: 'วงโหวตปิดลง แต่ยังไม่มีใครถูกชี้เป็นคนผิด',
+            detail: payload.reason || 'คะแนนยังไม่ขาดหรือเสมอกัน ทำให้วันนี้ไม่มีใครถูกลากออกจากเกม'
         };
     }
 
     if (type === 'skip-majority') {
         return {
             type,
-            lead: 'เสียงข้ามโหวตเกินครึ่ง หมู่บ้านจบวันทันที',
-            detail: 'ไม่มีใครถูกกำจัด และเกมเข้าสู่กลางคืนต่อทันที'
+            lead: 'เสียงส่วนใหญ่ขอปิดวันไว้แค่นี้',
+            detail: 'ไม่มีใครถูกกำจัด และทั้งหมู่บ้านต้องกลับไปรอฟังเสียงจากความมืดอีกครั้ง'
         };
     }
 
@@ -2078,8 +2078,8 @@ function buildMorningAnnouncement(room) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'peaceful-first-night',
-            lead: 'หมู่บ้านตื่นขึ้นมาพร้อมความเงียบผิดปกติ',
-            detail: 'คืนแรกผ่านไปโดยไม่มีใครตาย และหมาป่ายังไม่ได้ออกล่า'
+            lead: 'รุ่งเช้าแรกของหมู่บ้านยังเงียบผิดปกติ',
+            detail: 'คืนแรกผ่านไปโดยไม่มีศพ และหมาป่ายังไม่ได้ออกล่าในเงามืด'
         };
     }
 
@@ -2089,7 +2089,7 @@ function buildMorningAnnouncement(room) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'death',
-            lead: `เมื่อคืน ${eliminatedPlayer.name} ไม่รอด`,
+            lead: `รุ่งเช้า ${eliminatedPlayer.name} ไม่กลับมาที่ลานหมู่บ้าน`,
             detail: publicEvent?.detail || `${eliminatedPlayer.name} ไม่รอดในคืนนี้`
         };
     }
@@ -2098,7 +2098,7 @@ function buildMorningAnnouncement(room) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'multiple-deaths',
-            lead: `เมื่อคืนมีผู้เล่น ${eliminatedPlayers.length} คนไม่รอด`,
+            lead: `รุ่งเช้ามีคนหายไปถึง ${eliminatedPlayers.length} คน`,
             detail: publicEvents.length > 0
                 ? publicEvents.map(event => event.detail).join(' • ')
                 : eliminatedPlayers.map(player => player.name).join(', ')
@@ -2109,8 +2109,8 @@ function buildMorningAnnouncement(room) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'immune',
-            lead: 'เมื่อคืนหมาป่าพยายามลงมือ แต่ไม่มีใครตาย',
-            detail: 'การสังหารเมื่อคืนไม่สำเร็จ แต่หมู่บ้านยังไม่รู้ว่าเพราะอะไร'
+            lead: 'กลางคืนมีรอยล่า แต่เช้านี้ไม่มีใครล้มลง',
+            detail: 'การลงมือเมื่อคืนพลาดเป้า และทั้งหมู่บ้านยังไม่รู้ว่าใครรอดมาเพราะอะไร'
         };
     }
 
@@ -2118,16 +2118,16 @@ function buildMorningAnnouncement(room) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'saved',
-            lead: 'เมื่อคืนมีเสียงเคลื่อนไหว แต่ไม่มีใครตาย',
-            detail: `${attackedPlayer.name} รอดมาได้ และหมู่บ้านยังต้องสืบต่อว่าเกิดอะไรขึ้น`
+            lead: 'กลางคืนเต็มไปด้วยเสียงเคลื่อนไหว แต่ไม่มีศพให้เห็น',
+            detail: `${attackedPlayer.name} รอดข้ามคืนมาได้ และหมู่บ้านยังต้องสาวต่อว่าใครช่วยไว้`
         };
     }
 
     return {
         title: `☀️ เช้าวันที่ ${dayNumber}`,
         outcomeType: 'peaceful',
-        lead: 'คืนนี้ผ่านไปโดยไม่มีใครตาย',
-        detail: 'หมู่บ้านยังไม่มีคำตอบว่าหมาป่าลงมือหรือไม่'
+        lead: 'คืนที่ผ่านมาเงียบกว่าที่คิด ไม่มีใครตาย',
+        detail: 'แต่ความเงียบนี้ยังไม่ใช่คำตอบว่าหมาป่าหยุดล่าจริงหรือไม่'
     };
 }
 

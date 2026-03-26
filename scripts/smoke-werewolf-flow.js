@@ -567,7 +567,8 @@ async function main() {
         assert(discussionActions.skipCount === 0, 'Discussion skip count should reset at the start of a new morning');
         assert(discussionActions.totalAlive >= 1, 'Discussion state should report alive players');
         assert(dayTwoDiscussionState.morningAnnouncement && dayTwoDiscussionState.morningAnnouncement.outcomeType === 'saved', 'Night 2 should announce that the wolf attack was saved');
-        assert(/รอดมาได้|ต้องสืบต่อ/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should keep the rescue source hidden');
+        assert(/รอด|สาวต่อ|ช่วยไว้/.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should keep the rescue source hidden without naming the role');
+        assert(!/แม่มด|witch/i.test(dayTwoDiscussionState.morningAnnouncement.detail || ''), 'Morning announcement should not directly reveal that the Witch caused the save');
         checkpoint = createStateCheckpoint(clients);
         await skipDiscussionForAlive(clients, roomId);
         const dayTwoStates = await waitForPhaseAfter(clients, roomId, 'day-vote', checkpoint, payload => payload.dayNumber === 2, 30000);
