@@ -929,13 +929,12 @@
   <div class="room-lobby-shell">
     <div class="room-lobby-header">
       <div class="room-lobby-hero">
-        <div class="room-kicker">🎩 ห้องเตรียมเกม</div>
+        <div id="roomModeKicker" class="room-kicker">🎩 ห้องเตรียมเกม</div>
         <div class="room-title">🎮 ห้อง: <span id="roomTitleText"><%= room.name %></span></div>
-        <div class="room-subtitle">คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วค่อยเปิดเกมเมื่อทุกคนพร้อม ถ้าเป็นตลาดมืดก็จะพาเข้าหน้าโต๊ะทันที</div>
-        <div class="lobby-spotlight">
+        <div id="roomSubtitle" class="room-subtitle">คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วค่อยเปิดเกมเมื่อทุกคนพร้อม</div>
+        <div id="lobbySpotlight" class="lobby-spotlight">
           <div class="lobby-spotlight-pill">💬 แชทคุยกันก่อนเริ่ม</div>
           <div class="lobby-spotlight-pill">👑 หัวหน้าห้องคุมการเปิดเกม</div>
-          <div class="lobby-spotlight-pill">🎩 Black Market พร้อมเปิดตลาดทันทีเมื่อครบคน</div>
         </div>
         <div class="room-meta">
           <span>🆔 ID: <strong><%= room.roomId %></strong></span>
@@ -1217,6 +1216,42 @@
       };
     }
 
+    function getLobbyHeroCopy(mode) {
+      const normalizedMode = normalizeLobbyGameMode(mode);
+      if (normalizedMode === 'werewolf') {
+        return {
+          kicker: '🐺 ห้องเตรียมล่าหมาป่า',
+          subtitle: 'คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วเริ่มคืนแรกได้ทันทีเมื่อทุกคนพร้อม ระบบตั้งเวลาไว้ให้แล้ว',
+          pills: [
+            '💬 แชทคุยกันก่อนเริ่ม',
+            '👑 หัวหน้าห้องคุมการเปิดเกม',
+            '🐺 เลือกแค่จำนวนหมาป่าก็พอ'
+          ]
+        };
+      }
+      if (normalizedMode === 'blackmarket') {
+        return {
+          kicker: '🎩 ห้องเตรียมเปิดตลาด',
+          subtitle: 'คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วเปิดตลาดได้ทันทีเมื่อครบคน',
+          pills: [
+            '💬 แชทคุยกันก่อนเริ่ม',
+            '👑 หัวหน้าห้องคุมการเปิดเกม',
+            '🎩 ครบคนแล้วพาเข้าตลาดทันที'
+          ]
+        };
+      }
+
+      return {
+        kicker: '🎯 ห้องเตรียมเกม',
+        subtitle: 'คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วค่อยเริ่มเกมเมื่อทุกคนพร้อม',
+        pills: [
+          '💬 แชทคุยกันก่อนเริ่ม',
+          '👑 หัวหน้าห้องคุมการเปิดเกม',
+          '🎯 พร้อมแล้วค่อยเริ่มรอบถามคำ'
+        ]
+      };
+    }
+
     function resolveGameModeFromPayload(payload) {
       return normalizeLobbyGameMode(
         (payload && payload.settings && payload.settings.gameMode)
@@ -1231,7 +1266,11 @@
       const badge = document.getElementById('roomGameModeBadge');
       const maxPlayersLabel = document.getElementById('lobbyMaxPlayers');
       const roomTitle = document.getElementById('roomTitleText');
+      const roomModeKicker = document.getElementById('roomModeKicker');
+      const roomSubtitle = document.getElementById('roomSubtitle');
+      const lobbySpotlight = document.getElementById('lobbySpotlight');
       const badgeStyle = getModeBadgeStyle(resolvedMode);
+      const heroCopy = getLobbyHeroCopy(resolvedMode);
 
       currentGameMode = resolvedMode;
 
@@ -1252,6 +1291,20 @@
 
       if (roomTitle && payload && payload.roomName) {
         roomTitle.textContent = payload.roomName;
+      }
+
+      if (roomModeKicker) {
+        roomModeKicker.textContent = heroCopy.kicker;
+      }
+
+      if (roomSubtitle) {
+        roomSubtitle.textContent = heroCopy.subtitle;
+      }
+
+      if (lobbySpotlight) {
+        lobbySpotlight.innerHTML = heroCopy.pills.map(function(pill) {
+          return `<div class="lobby-spotlight-pill">${pill}</div>`;
+        }).join('');
       }
     }
 
@@ -1966,7 +2019,8 @@
                 <label class="room-form-label">
                   <span class="icon">📝</span> ชื่อห้อง:
                 </label>
-                <input id="editRoomName" class="room-form-input" value="<%= room.name %>" placeholder="กรอกชื่อห้อง..." maxlength="20">
+                <input id="editRoomName" class="room-form-input" value="<%= room.name %>" placeholder="ไม่กรอกก็ใช้ชื่อเดิม" maxlength="20">
+                <div style="margin-top:8px; color:#aaa; font-size:0.9em;">ถ้าไม่เปลี่ยนชื่อ ปล่อยไว้ได้เลย</div>
               </div>
               
               <div class="room-form-group">
@@ -2085,17 +2139,12 @@
             });
           },
           preConfirm: () => {
-            const name = document.getElementById('editRoomName').value.trim();
+            const name = document.getElementById('editRoomName').value.trim() || '<%= room.name %>';
             const maxPlayers = parseInt(document.getElementById('editMaxPlayers').value, 10);
             const locked = document.getElementById('editLocked').checked;
             const password = document.getElementById('editPassword').value.trim();
             const activeWolfBtn = document.querySelector('#editWolfCountSelector .wolf-count-btn.active');
             const wolfCount = activeWolfBtn ? parseInt(activeWolfBtn.dataset.wolfCount, 10) : null;
-            
-            if (!name) {
-              Swal.showValidationMessage('กรุณากรอกชื่อห้อง');
-              return false;
-            }
             
             if (locked && (!password || !/^\d{4}$/.test(password))) {
               Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');

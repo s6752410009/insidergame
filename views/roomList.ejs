@@ -943,6 +943,10 @@ $(function() {
         return presets[modeId] || presets.insider;
     }
 
+    function getAutofilledRoomName(modeId) {
+        return getModeAutofillPreset(modeId).roomName;
+    }
+
     function buildModeQuickPickHtml(modeItems) {
         return (Array.isArray(modeItems) ? modeItems : []).map(function(mode) {
             const spotlight = getModeSpotlightMeta(mode.id);
@@ -1168,16 +1172,8 @@ $(function() {
                         <label class="room-form-label">
                             <span class="icon">📝</span> ชื่อห้อง:
                         </label>
-                        <input id="roomName" class="room-form-input" placeholder="กรอกชื่อห้อง..." maxlength="20">
-                    </div>
-                    
-                    <div class="room-form-group">
-                        <label class="room-form-label">
-                            <span class="icon">🎲</span> โหมดเกม:
-                        </label>
-                        <select id="gameMode" class="room-form-input">
-                            ${buildGameModeOptionsHtml(gameModes)}
-                        </select>
+                        <input id="roomName" class="room-form-input" placeholder="ไม่กรอกได้ ระบบจะตั้งชื่อให้" maxlength="20">
+                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">เลือกโหมดจากการ์ดด้านบนพอแล้ว ชื่อห้องปล่อยว่างได้</div>
                         <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
@@ -1247,7 +1243,6 @@ $(function() {
                 const roundTimeLabelText = document.getElementById('roundTimeLabelText');
                 const createRoundTimeGroup = document.getElementById('createRoundTimeGroup');
                 const roomNameInput = document.getElementById('roomName');
-                const gameModeSelect = document.getElementById('gameMode');
                 const selectedGameModeInput = document.getElementById('selectedGameMode');
                 const modeQuickPickGrid = document.getElementById('modeQuickPickGrid');
                 const modeSpotlight = document.getElementById('modeSpotlight');
@@ -1257,7 +1252,7 @@ $(function() {
                     result[mode.id] = mode;
                     return result;
                 }, {});
-                let selectedGameMode = gameModeSelect.value || 'insider';
+                let selectedGameMode = selectedGameModeInput.value || 'insider';
                 selectedGameModeInput.value = selectedGameMode;
                 modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
                 
@@ -1287,8 +1282,6 @@ $(function() {
                         card.style.boxShadow = active ? '0 12px 28px rgba(0,0,0,0.24)' : 'none';
                         card.style.outline = active ? '2px solid rgba(245,200,107,0.55)' : 'none';
                     });
-                    gameModeSelect.value = selectedGameMode;
-                    gameModeSelect.dataset.selectedMode = selectedGameMode;
                     selectedGameModeInput.value = selectedGameMode;
                     modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
                 }
@@ -1319,7 +1312,7 @@ $(function() {
                 });
 
                 function updateWerewolfRoleVisibility() {
-                    const selectedMode = gameModeSelect.value || selectedGameMode || 'insider';
+                    const selectedMode = selectedGameModeInput.value || selectedGameMode || modeQuickPickGrid.dataset.selectedMode || 'insider';
                     selectedGameMode = selectedMode;
                     const modeConfig = modeConfigById[selectedMode] || { minPlayers: 3, maxPlayers: 10 };
                     const isWerewolfMode = selectedMode === 'werewolf';
@@ -1356,7 +1349,6 @@ $(function() {
                     syncModeQuickPick();
                 }
 
-                gameModeSelect.addEventListener('change', updateWerewolfRoleVisibility);
                 updateWerewolfRoleVisibility();
 
                 modeQuickPickGrid.addEventListener('click', function(event) {
@@ -1365,7 +1357,6 @@ $(function() {
                         return;
                     }
 
-                    gameModeSelect.value = card.dataset.modeId;
                     selectedGameModeInput.value = card.dataset.modeId;
                     modeQuickPickGrid.dataset.selectedMode = card.dataset.modeId;
                     updateWerewolfRoleVisibility();
@@ -1401,8 +1392,9 @@ $(function() {
                 });
             },
             preConfirm: () => {
-                const roomName = document.getElementById('roomName').value.trim();
-                const gameMode = document.getElementById('selectedGameMode').value || document.getElementById('modeQuickPickGrid').dataset.selectedMode || document.getElementById('roomName').dataset.autofilledMode || document.getElementById('gameMode').value || document.getElementById('gameMode').dataset.selectedMode || 'insider';
+                const rawRoomName = document.getElementById('roomName').value.trim();
+                const gameMode = document.getElementById('selectedGameMode').value || document.getElementById('modeQuickPickGrid').dataset.selectedMode || document.getElementById('roomName').dataset.autofilledMode || 'insider';
+                const roomName = rawRoomName || getAutofilledRoomName(gameMode);
                 const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
                 const roundTime = parseInt(document.getElementById('roundTime').value);
                 const locked = document.getElementById('locked').checked;
@@ -1411,11 +1403,6 @@ $(function() {
                 const wolfCount = gameMode === 'werewolf' && activeWolfBtn
                     ? parseInt(activeWolfBtn.dataset.wolfCount, 10)
                     : undefined;
-                
-                if (!roomName) {
-                    Swal.showValidationMessage('กรุณากรอกชื่อห้อง');
-                    return false;
-                }
                 
                 if (locked && (!password || !/^\d{4}$/.test(password))) {
                     Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');
