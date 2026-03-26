@@ -902,6 +902,7 @@
     let touchStartY = 0;
     let swipingWrapper = null;
     let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
+    let selectedWitchNightActionType = null;
     const seenHistoryKeys = new Set();
     const renderedMessageIds = new Set();
 
@@ -961,7 +962,7 @@
         bodyguard: '🛡️',
         seer: '🔮',
         doctor: '💉',
-        witch: '🧪',
+        witch: '🧙‍♀️',
         fool: '🤪',
         revealer: '💥'
       };
@@ -1263,6 +1264,96 @@
             return action && Object.prototype.hasOwnProperty.call(action, 'targets');
           })
         : [];
+    }
+
+    function isWitchNightActionType(actionType) {
+      return actionType === 'witch-heal' || actionType === 'witch-poison';
+    }
+
+    function isWitchChoiceNight(actions) {
+      return Array.isArray(actions)
+        && actions.length > 1
+        && actions.every(function(action) { return isWitchNightActionType(action?.type); });
+    }
+
+    function getPreferredNightAction(actions) {
+      if (!Array.isArray(actions) || actions.length === 0) {
+        return null;
+      }
+
+      if (!isWitchChoiceNight(actions)) {
+        return actions[0];
+      }
+
+      const selectedAction = actions.find(function(action) {
+        return action?.type === selectedWitchNightActionType;
+      });
+      if (selectedAction) {
+        return selectedAction;
+      }
+
+      const preLockedAction = actions.find(function(action) {
+        return !!action?.selectedTargetId;
+      });
+      return preLockedAction || null;
+    }
+
+    function syncSelectedWitchNightAction(state) {
+      const actions = getActiveNightActions(state);
+      if (!isWitchChoiceNight(actions)) {
+        selectedWitchNightActionType = null;
+        return;
+      }
+
+      const alreadySelected = actions.find(function(action) {
+        return !!action?.selectedTargetId;
+      });
+      if (alreadySelected) {
+        selectedWitchNightActionType = alreadySelected.type;
+        return;
+      }
+
+      const stillValid = actions.some(function(action) {
+        return action?.type === selectedWitchNightActionType;
+      });
+      if (!stillValid) {
+        selectedWitchNightActionType = null;
+      }
+    }
+
+    function buildWitchPotionSelector(actions) {
+      if (!isWitchChoiceNight(actions)) {
+        return '';
+      }
+
+      return `
+        <div class="target-grid">
+          ${actions.map(function(action) {
+            const isSelected = action.type === selectedWitchNightActionType;
+            const icon = action.type === 'witch-heal' ? '🧪' : '☠️';
+            const badge = action.type === 'witch-heal' ? 'ยาฟื้น' : 'ยาพิษ';
+            const theme = getActionTheme(action.type);
+            return `
+              <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : 'target-card-actionable'}" onclick="selectWitchPotion('${action.type}')">
+                <div class="target-card-particle-layer" aria-hidden="true"></div>
+                <div class="target-card-head">
+                  <div class="target-card-title">
+                    <div class="target-card-avatar" style="background:rgba(255,255,255,0.08);">${icon}</div>
+                    <div class="target-card-text">
+                      <div class="target-card-name"><strong>${icon} ${escapeHtml(action.label || badge)}</strong></div>
+                      <div class="target-card-meta"><span class="target-card-tag">เลือกยาก่อน แล้วค่อยเลือกคน</span></div>
+                    </div>
+                  </div>
+                  <div class="target-card-status ${isSelected ? 'status-selected' : 'status-ready'}">${isSelected ? '✅ เลือกแล้ว' : '👆 เลือกยา'}</div>
+                </div>
+                <div class="target-card-body">
+                  <div class="target-card-hint">${escapeHtml(action.description || '')}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
     }
 
     function hasLiveTurnFocus(state) {
@@ -2668,15 +2759,17 @@
       if (phase === 'night') {
         var actions = actionState.nightActions || [];
         if (actions.length > 0) {
-          var firstAction = actions[0];
-          var targetIds = new Set((firstAction.targets || []).map(function(t) { return t.playerId; }));
-          currentMobileTargetAction = {
-            handlerName: 'selectNightTarget',
-            actionType: firstAction.type,
-            targetIds: targetIds,
-            selectedId: firstAction.selectedTargetId || null,
-            allowSkip: Boolean(firstAction.allowSkip)
-          };
+          var firstAction = getPreferredNightAction(actions);
+          if (firstAction) {
+            var targetIds = new Set((firstAction.targets || []).map(function(t) { return t.playerId; }));
+            currentMobileTargetAction = {
+              handlerName: 'selectNightTarget',
+              actionType: firstAction.type,
+              targetIds: targetIds,
+              selectedId: firstAction.selectedTargetId || null,
+              allowSkip: Boolean(firstAction.allowSkip)
+            };
+          }
         }
         return;
       }
@@ -2769,11 +2862,36 @@
           return;
         }
         var action = actions[0];
+        if (isWitchChoiceNight(actions)) {
+          action = getPreferredNightAction(actions);
+        }
+        if (!action) {
+          var potionBtnsOnly = actions.map(function(option) {
+            var iconOnly = option.type === 'witch-heal' ? '🧪' : '☠️';
+            var shortLabelOnly = option.type === 'witch-heal' ? 'ยาฟื้น' : 'ยาพิษ';
+            return '<button class="hint-btn" onclick="selectWitchPotion(\'' + escapeHtml(option.type) + '\')">' + iconOnly + ' ' + shortLabelOnly + '</button>';
+          }).join('');
+          var focusClassPotion = ' hint-focus';
+          $hint.html('<div class="hint-bar hint-night' + focusClassPotion + '">' + rolePill + '<span class="hint-text">🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน</span>' + potionBtnsOnly + nightSkipHtml + pillsHtml + '</div>');
+          return;
+        }
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
         var status = action.locked ? '✅ เลือกแล้ว' : '👆 แตะที่ผู้เล่น';
+        if (isWitchChoiceNight(actions) && !action.selectedTargetId) {
+          status = '🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน';
+        }
         var nightBtns = '';
         if (action.allowSkip && !action.locked) {
           nightBtns = '<button class="hint-btn btn-skip" onclick="selectNightTarget(\'' + escapeHtml(action.type) + '\', \'__skip__\')">⏭️ ข้าม</button>';
+        }
+        if (isWitchChoiceNight(actions)) {
+          var potionBtns = actions.map(function(option) {
+            var selectedClass = option.type === selectedWitchNightActionType ? ' btn-done' : '';
+            var icon = option.type === 'witch-heal' ? '🧪' : '☠️';
+            var shortLabel = option.type === 'witch-heal' ? 'ยาฟื้น' : 'ยาพิษ';
+            return '<button class="hint-btn' + selectedClass + '" onclick="selectWitchPotion(\'' + escapeHtml(option.type) + '\')">' + icon + ' ' + shortLabel + '</button>';
+          }).join('');
+          nightBtns = potionBtns + nightBtns;
         }
         nightBtns += nightSkipHtml;
         var seerTagHtml2 = '';
@@ -3735,6 +3853,13 @@
       submitNightAction(actionType, targetPlayerId);
     };
 
+    window.selectWitchPotion = function(actionType) {
+      selectedWitchNightActionType = actionType;
+      updateMobileTargetAction();
+      renderActionPanels(currentState.actionState || {}, currentState.phase, currentState.winner);
+      syncMobileGamePanel();
+    };
+
     window.selectVoteTarget = function(targetPlayerId) {
       submitDayVote(targetPlayerId);
     };
@@ -3809,18 +3934,37 @@
         if (actions.length === 0) {
           $root.append('<div class="history-row">😴 คืนนี้ไม่มีสกิล แต่ยังช่วยกดพร้อมข้ามได้</div>');
         } else {
-          actions.forEach(function(action) {
-            const targetCards = buildTargetCards(action, 'selectNightTarget', '', action.type);
-            const extraState = targetCards ? `<div class="target-grid">${targetCards}</div>` : `<div class="subtle" style="margin-top:10px;">${escapeHtml(action.emptyStateText || 'รอคืนดำเนินต่อ')}</div>`;
-            const focusClass = targetCards ? 'turn-focus' : '';
+          if (isWitchChoiceNight(actions)) {
+            const selectedAction = getPreferredNightAction(actions);
+            const potionSelectorHtml = buildWitchPotionSelector(actions);
+            const targetCards = selectedAction ? buildTargetCards(selectedAction, 'selectNightTarget', '', selectedAction.type) : '';
+            const extraState = selectedAction
+              ? (targetCards ? `<div class="target-grid">${targetCards}</div>` : `<div class="subtle" style="margin-top:10px;">${escapeHtml(selectedAction.emptyStateText || 'รอคืนดำเนินต่อ')}</div>`)
+              : '<div class="subtle" style="margin-top:12px;">แตะเลือกยาก่อน แล้วรายชื่อเป้าหมายของยานั้นจะขึ้นให้เลือก</div>';
             $root.append(`
-              <div class="history-row ${focusClass}" style="display:block;">
-                <div class="action-title"><span>${actionEmoji(action.type)}</span><strong>${escapeHtml(action.label)}</strong></div>
-                <div class="subtle">${escapeHtml(action.description)}</div>
+              <div class="history-row turn-focus" style="display:block;">
+                <div class="action-title"><span>🧙‍♀️</span><strong>แม่มดเลือกยา</strong></div>
+                <div class="subtle">เลือกก่อนว่าจะใช้ยาไหน แล้วค่อยเลือกเป้าหมาย</div>
+                ${potionSelectorHtml}
+                ${selectedAction ? `<div class="action-title" style="margin-top:14px;"><span>${actionEmoji(selectedAction.type)}</span><strong>${escapeHtml(selectedAction.label)}</strong></div>` : ''}
+                ${selectedAction ? `<div class="subtle">${escapeHtml(selectedAction.description)}</div>` : ''}
                 ${extraState}
               </div>
             `);
-          });
+          } else {
+            actions.forEach(function(action) {
+              const targetCards = buildTargetCards(action, 'selectNightTarget', '', action.type);
+              const extraState = targetCards ? `<div class="target-grid">${targetCards}</div>` : `<div class="subtle" style="margin-top:10px;">${escapeHtml(action.emptyStateText || 'รอคืนดำเนินต่อ')}</div>`;
+              const focusClass = targetCards ? 'turn-focus' : '';
+              $root.append(`
+                <div class="history-row ${focusClass}" style="display:block;">
+                  <div class="action-title"><span>${actionEmoji(action.type)}</span><strong>${escapeHtml(action.label)}</strong></div>
+                  <div class="subtle">${escapeHtml(action.description)}</div>
+                  ${extraState}
+                </div>
+              `);
+            });
+          }
         }
         const nightSkipCount = Number(nightStatus.skipCount || 0);
         const nightSkipNeeded = Number(nightStatus.skipNeeded || nightStatus.totalAlive || 0);
@@ -4150,6 +4294,7 @@
     function renderState(state) {
       const previousPhase = currentState.phase;
       currentState = state || {};
+      syncSelectedWitchNightAction(currentState);
       setActionButtonsPending(false);
       $('#phaseLabel').text(phaseLabel(currentState.phase));
       $('#phaseLabelSide').text(phaseLabel(currentState.phase));
