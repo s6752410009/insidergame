@@ -33,6 +33,13 @@ function isRoomGameActive(room) {
     return !!(room.gameState.status && room.gameState.status !== '' && room.gameState.status !== 'waiting');
 }
 
+function clampMaxPlayers(gameEngine, requestedMaxPlayers, currentPlayers = 0) {
+    const minPlayers = Number(gameEngine?.minPlayers || 3);
+    const maxPlayers = Number(gameEngine?.maxPlayers || 10);
+    const normalizedRequested = Number(requestedMaxPlayers) || Math.max(minPlayers, currentPlayers, 5);
+    return Math.max(Math.max(minPlayers, currentPlayers), Math.min(maxPlayers, normalizedRequested));
+}
+
 /**
  * สร้างห้องใหม่
  */
@@ -57,7 +64,7 @@ function createRoom(roomData, creatorPlayerId) {
         admin: creatorPlayerId, // playerId ของ admin
         settings: {
             gameMode,
-            maxPlayers: roomData.maxPlayers || 5,
+            maxPlayers: clampMaxPlayers(gameEngine, roomData.maxPlayers, 1),
             roundTime: (roomData.roundTime || 5) * 60, // แปลงนาทีเป็นวินาที
             traitorOptional: roomData.traitorOptional !== undefined ? roomData.traitorOptional : true,
             dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ (ต้องมี 5+ คน)
@@ -356,7 +363,8 @@ function updateRoom(roomId, adminPlayerId, updates) {
 
     // อัปเดต settings
     if (updates.maxPlayers !== undefined) {
-        room.settings.maxPlayers = updates.maxPlayers;
+        const gameEngine = getGameEngine(room.settings.gameMode);
+        room.settings.maxPlayers = clampMaxPlayers(gameEngine, updates.maxPlayers, room.players.length);
     }
 
     if (updates.roundTime !== undefined) {

@@ -21,6 +21,7 @@ try {
 const STATS_FILE = path.join(__dirname, '../data/playerStats.json');
 const MAX_GAME_HISTORY = 20;
 const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'witch', 'fool', 'revealer'];
+const BLACKMARKET_ROLE_IDS = ['boss', 'broker', 'smuggler', 'fixer', 'hitman', 'mole', 'doubleAgent'];
 const WEREWOLF_ROLE_LABELS = {
     villager: 'ชาวบ้าน',
     werewolf: 'หมาป่า',
@@ -32,6 +33,15 @@ const WEREWOLF_ROLE_LABELS = {
     witch: 'แม่มด',
     fool: 'คนบ้า',
     revealer: 'จอมเปิดโปง'
+};
+const BLACKMARKET_ROLE_LABELS = {
+    boss: 'เจ้าพ่อ',
+    broker: 'นายหน้า',
+    smuggler: 'คนส่งของ',
+    fixer: 'คนเคลียร์ทาง',
+    hitman: 'มือเก็บงาน',
+    mole: 'สายข่าว',
+    doubleAgent: 'สองหน้า'
 };
 
 // เก็บสถิติใน memory (key: playerId)
@@ -52,12 +62,25 @@ function createDefaultWerewolfRoleStats() {
     };
 }
 
+function createDefaultBlackMarketRoleStats() {
+    return {
+        boss: 0,
+        broker: 0,
+        smuggler: 0,
+        fixer: 0,
+        hitman: 0,
+        mole: 0,
+        doubleAgent: 0
+    };
+}
+
 function createDefaultRoleStats() {
     return {
         gameMasterCount: 0,
         traitorCount: 0,
         citizenCount: 0,
-        werewolf: createDefaultWerewolfRoleStats()
+        werewolf: createDefaultWerewolfRoleStats(),
+        blackmarket: createDefaultBlackMarketRoleStats()
     };
 }
 
@@ -65,14 +88,16 @@ function createDefaultWinByRole() {
     return {
         winAsTraitor: 0,
         winAsCitizen: 0,
-        werewolf: createDefaultWerewolfRoleStats()
+        werewolf: createDefaultWerewolfRoleStats(),
+        blackmarket: createDefaultBlackMarketRoleStats()
     };
 }
 
 function createDefaultModeStats() {
     return {
         insider: { games: 0, wins: 0, losses: 0 },
-        werewolf: { games: 0, wins: 0, losses: 0 }
+        werewolf: { games: 0, wins: 0, losses: 0 },
+        blackmarket: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -108,7 +133,7 @@ function normalizeGameHistoryEntry(entry) {
         return null;
     }
 
-    const mode = entry.mode === 'werewolf' ? 'werewolf' : 'insider';
+    const mode = ['insider', 'werewolf', 'blackmarket'].includes(entry.mode) ? entry.mode : 'insider';
     return {
         ...entry,
         mode,
@@ -139,6 +164,11 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
         stat.roleStats.werewolf[roleId] = normalizeCounter(rawWerewolfRoleStats[roleId]);
     });
 
+    const rawBlackMarketRoleStats = rawRoleStats.blackmarket || rawRoleStats.blackMarket || {};
+    BLACKMARKET_ROLE_IDS.forEach(roleId => {
+        stat.roleStats.blackmarket[roleId] = normalizeCounter(rawBlackMarketRoleStats[roleId]);
+    });
+
     const rawWinByRole = rawStat.winByRole || {};
     stat.winByRole.winAsTraitor = normalizeCounter(rawWinByRole.winAsTraitor);
     stat.winByRole.winAsCitizen = normalizeCounter(rawWinByRole.winAsCitizen);
@@ -148,8 +178,13 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
         stat.winByRole.werewolf[roleId] = normalizeCounter(rawWerewolfWins[roleId]);
     });
 
+    const rawBlackMarketWins = rawWinByRole.blackmarket || rawWinByRole.blackMarket || {};
+    BLACKMARKET_ROLE_IDS.forEach(roleId => {
+        stat.winByRole.blackmarket[roleId] = normalizeCounter(rawBlackMarketWins[roleId]);
+    });
+
     const rawModeStats = rawStat.modeStats || {};
-    ['insider', 'werewolf'].forEach(mode => {
+    ['insider', 'werewolf', 'blackmarket'].forEach(mode => {
         const modeStat = rawModeStats[mode] || {};
         stat.modeStats[mode] = {
             games: normalizeCounter(modeStat.games),
@@ -158,7 +193,7 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
         };
     });
 
-    if (stat.modeStats.insider.games === 0 && stat.modeStats.werewolf.games === 0 && stat.totalGames > 0) {
+    if (stat.modeStats.insider.games === 0 && stat.modeStats.werewolf.games === 0 && stat.modeStats.blackmarket.games === 0 && stat.totalGames > 0) {
         stat.modeStats.insider.games = stat.totalGames;
         stat.modeStats.insider.wins = stat.wins;
         stat.modeStats.insider.losses = stat.losses;
@@ -310,6 +345,10 @@ function initializeStats(playerId, playerName) {
 function recordGameEnd(roomId, gameResult) {
     if (gameResult?.mode === 'werewolf') {
         return recordWerewolfGameEnd(roomId, gameResult);
+    }
+
+    if (gameResult?.mode === 'blackmarket') {
+        return recordBlackMarketGameEnd(roomId, gameResult);
     }
 
     return recordInsiderGameEnd(roomId, gameResult);
@@ -472,6 +511,71 @@ function recordWerewolfGameEnd(roomId, gameResult) {
     saveStats();
 }
 
+function recordBlackMarketGameEnd(roomId, gameResult) {
+    const { winner, players, roomName, roundNumber, maxRounds, reason } = gameResult;
+
+    if (!winner || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid black market game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const winnerId = winner.playerId;
+    const winnerLabel = winner.name || 'ไม่ทราบ';
+
+    players.forEach(player => {
+        if (!player.playerId || !player.role) {
+            return;
+        }
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        const roleId = player.role;
+        const roleLabel = player.roleInfo?.title || player.revealedRole || BLACKMARKET_ROLE_LABELS[roleId] || roleId;
+        const playerWon = player.playerId === winnerId;
+
+        stat.totalGames += 1;
+        stat.modeStats.blackmarket.games += 1;
+        stat.roleStats.blackmarket[roleId] = normalizeCounter(stat.roleStats.blackmarket[roleId]) + 1;
+
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.blackmarket.wins += 1;
+            stat.winByRole.blackmarket[roleId] = normalizeCounter(stat.winByRole.blackmarket[roleId]) + 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.blackmarket.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'blackmarket',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            roleId,
+            role: roleLabel,
+            won: playerWon,
+            winner: winnerId,
+            winnerLabel,
+            winnerRole: winner.roleTitle || BLACKMARKET_ROLE_LABELS[winner.roleId] || '-',
+            playerCount: players.length,
+            roundNumber: normalizeCounter(roundNumber),
+            maxRounds: normalizeCounter(maxRounds),
+            survived: player.alive !== false,
+            cash: normalizeCounter(player.cash),
+            influence: normalizeCounter(player.influence),
+            heat: normalizeCounter(player.heat),
+            resultText: playerWon ? 'คุมเมืองสำเร็จ' : (reason || 'พลาดโต๊ะนี้')
+        });
+
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
 /**
  * ดึงสถิติผู้เล่น
  */
@@ -589,10 +693,18 @@ async function editPlayerStats(playerId, newData) {
                 }
             });
         }
+
+        if (newData.roleStats.blackmarket && typeof newData.roleStats.blackmarket === 'object') {
+            BLACKMARKET_ROLE_IDS.forEach(roleId => {
+                if (newData.roleStats.blackmarket[roleId] !== undefined) {
+                    stat.roleStats.blackmarket[roleId] = normalizeCounter(newData.roleStats.blackmarket[roleId]);
+                }
+            });
+        }
     }
 
     if (newData.modeStats && typeof newData.modeStats === 'object') {
-        ['insider', 'werewolf'].forEach(mode => {
+        ['insider', 'werewolf', 'blackmarket'].forEach(mode => {
             if (!newData.modeStats[mode]) {
                 return;
             }

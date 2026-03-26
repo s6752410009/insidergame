@@ -585,6 +585,10 @@
         color: #ffb4a8;
     }
 
+    .profile-history-mode.blackmarket {
+        color: #f6d365;
+    }
+
     .profile-history-mode.insider {
         color: #8fd3ff;
     }
@@ -928,6 +932,16 @@ $(function() {
     
     // Show player profile modal
     function showPlayerProfile(targetPlayerId) {
+        const blackMarketRoleMeta = [
+            { id: 'boss', icon: '🎩', label: 'เจ้าพ่อ' },
+            { id: 'broker', icon: '🕴️', label: 'นายหน้า' },
+            { id: 'smuggler', icon: '🚚', label: 'คนส่งของ' },
+            { id: 'fixer', icon: '🧹', label: 'คนเคลียร์ทาง' },
+            { id: 'hitman', icon: '🔫', label: 'มือเก็บงาน' },
+            { id: 'mole', icon: '🕶️', label: 'สายข่าว' },
+            { id: 'doubleAgent', icon: '🃏', label: 'สองหน้า' }
+        ];
+
         $.get('/api/player/' + targetPlayerId + '/profile', function(data) {
             const frameStyle = frameStyles[data.avatarFrame] || 'none';
             const joinedDate = new Date(data.createdAt).toLocaleDateString('th-TH');
@@ -942,21 +956,40 @@ $(function() {
                 winByRole: { winAsTraitor: 0, winAsCitizen: 0 },
                 modeStats: {
                     insider: { games: 0, wins: 0, losses: 0 },
-                    werewolf: { games: 0, wins: 0, losses: 0 }
+                    werewolf: { games: 0, wins: 0, losses: 0 },
+                    blackmarket: { games: 0, wins: 0, losses: 0 }
                 }
             };
+            const blackMarketRoleStats = blackMarketRoleMeta.filter(function(role) {
+                return Number(stats.roleStats?.blackmarket?.[role.id] || 0) > 0;
+            });
+            const blackMarketRoleHtml = blackMarketRoleStats.length
+                ? blackMarketRoleStats.map(function(role) {
+                    return `
+                        <div class="profile-role-row">
+                            <span>${role.icon} ${role.label}</span>
+                            <span>${stats.roleStats.blackmarket[role.id] || 0} ครั้ง (ชนะ ${stats.winByRole?.blackmarket?.[role.id] || 0})</span>
+                        </div>
+                    `;
+                }).join('')
+                : '<div class="profile-role-row"><span>🎩 บทตลาดมืด</span><span>ยังไม่มีสถิติ</span></div>';
             
             const history = Array.isArray(stats.gameHistory) ? stats.gameHistory.slice(0, 5) : [];
             const historyHtml = history.length > 0
                 ? history.map(function(game) {
                     const isWerewolf = game.mode === 'werewolf';
-                    const modeLabel = isWerewolf ? '🐺 Werewolf' : '🎯 Insider';
+                    const isBlackMarket = game.mode === 'blackmarket';
+                    const modeLabel = isWerewolf ? '🐺 Werewolf' : (isBlackMarket ? '🎩 Black Market' : '🎯 Insider');
                     const detailPrimary = isWerewolf
                         ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
-                        : 'ผู้ทรยศ: ' + escapeHtml(game.traitor || 'ไม่ทราบ');
+                        : (isBlackMarket
+                            ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
+                            : 'ผู้ทรยศ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'));
                     const detailSecondary = isWerewolf
                         ? (game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ')
-                        : escapeHtml(game.word || 'ไม่ทราบคำ');
+                        : (isBlackMarket
+                            ? `👑 ${Number(game.influence || 0)} • 💵 ${Number(game.cash || 0)} • 🔥 ${Number(game.heat || 0)}`
+                            : escapeHtml(game.word || 'ไม่ทราบคำ'));
                     const gameDate = game.date
                         ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : '-';
@@ -965,7 +998,7 @@ $(function() {
                         <div class="profile-history-item ${game.won ? 'won' : 'lost'}">
                             <div class="profile-history-top">
                                 <span>${game.won ? '🏆 ชนะ' : '💔 แพ้'} · ${escapeHtml(game.role || 'ไม่ทราบบท')}</span>
-                                <span class="profile-history-mode ${isWerewolf ? 'werewolf' : 'insider'}">${modeLabel}</span>
+                                <span class="profile-history-mode ${isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : 'insider')}">${modeLabel}</span>
                             </div>
                             <div class="profile-history-meta">
                                 <span>🏠 ${escapeHtml(game.roomName || 'ไม่ทราบห้อง')}</span>
@@ -1037,6 +1070,11 @@ $(function() {
                             <span>🐺 Werewolf</span>
                             <span>${stats.modeStats?.werewolf?.games || 0} เกม</span>
                         </div>
+                        <div class="profile-role-row">
+                            <span>🎩 Black Market</span>
+                            <span>${stats.modeStats?.blackmarket?.games || 0} เกม</span>
+                        </div>
+                        ${blackMarketRoleHtml}
                     </div>
 
                     <div class="profile-history">
@@ -1054,7 +1092,7 @@ $(function() {
                 showConfirmButton: true,
                 confirmButtonText: 'ปิด',
                 confirmButtonColor: '#e74c3c',
-                width: 520
+                width: 620
             });
         }).fail(function() {
             Swal.fire({

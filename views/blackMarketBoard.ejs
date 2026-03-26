@@ -1,0 +1,3065 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bm-bg: #09090b;
+    --bm-panel: rgba(18, 18, 20, 0.86);
+    --bm-panel-soft: rgba(255, 255, 255, 0.05);
+    --bm-line: rgba(255, 255, 255, 0.09);
+    --bm-line-strong: rgba(245, 200, 107, 0.18);
+    --bm-gold: #f5c86b;
+    --bm-gold-deep: #b7791f;
+    --bm-red: #d94b42;
+    --bm-red-deep: #7f1d1d;
+    --bm-blue: #74b9ff;
+    --bm-violet: #d6bcfa;
+    --bm-text: #f5efe3;
+    --bm-muted: #b8ada0;
+    --bm-green: #6ee7b7;
+    --bm-shadow: 0 32px 100px rgba(0, 0, 0, 0.52);
+  }
+
+  body.content {
+    background:
+      radial-gradient(circle at 10% 5%, rgba(127, 29, 29, 0.45), transparent 22%),
+      radial-gradient(circle at 92% 0%, rgba(180, 83, 9, 0.22), transparent 18%),
+      radial-gradient(circle at 50% 100%, rgba(91, 33, 182, 0.08), transparent 24%),
+      linear-gradient(180deg, #09090b 0%, #110d0c 45%, #17110f 100%);
+  }
+
+  .bm-page {
+    position: relative;
+    max-width: 1440px;
+    margin: 20px auto 36px;
+    padding: 20px;
+    color: var(--bm-text);
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  .bm-page::before,
+  .bm-page::after {
+    content: '';
+    position: fixed;
+    width: 40vw;
+    height: 40vw;
+    border-radius: 999px;
+    pointer-events: none;
+    filter: blur(90px);
+    opacity: 0.16;
+    z-index: 0;
+  }
+
+  .bm-page::before {
+    top: -14vw;
+    left: -10vw;
+    background: radial-gradient(circle, rgba(127, 29, 29, 0.9), transparent 68%);
+  }
+
+  .bm-page::after {
+    right: -12vw;
+    bottom: -18vw;
+    background: radial-gradient(circle, rgba(180, 83, 9, 0.85), transparent 72%);
+  }
+
+  .bm-shell {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid rgba(245, 200, 107, 0.16);
+    border-radius: 34px;
+    background:
+      linear-gradient(145deg, rgba(12, 12, 14, 0.98), rgba(26, 17, 15, 0.94)),
+      var(--bm-bg);
+    box-shadow: var(--bm-shadow);
+  }
+
+  .bm-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 0.7px, transparent 0.7px);
+    background-size: 16px 16px;
+    opacity: 0.2;
+    pointer-events: none;
+  }
+
+  .bm-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(115deg, rgba(245, 200, 107, 0.06), transparent 18%, transparent 70%, rgba(116, 185, 255, 0.04)),
+      radial-gradient(circle at top center, rgba(245, 200, 107, 0.08), transparent 32%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bm-topbar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding: 24px 26px 22px;
+    border-bottom: 1px solid var(--bm-line);
+    background:
+      radial-gradient(circle at top left, rgba(127, 29, 29, 0.32), transparent 34%),
+      linear-gradient(135deg, rgba(127, 29, 29, 0.22), rgba(17, 17, 17, 0.72));
+  }
+
+  .bm-topbar::after {
+    content: '';
+    position: absolute;
+    left: 26px;
+    right: 26px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(245, 200, 107, 0.24), transparent 32%, transparent 68%, rgba(245, 200, 107, 0.2));
+  }
+
+  .bm-brand {
+    display: grid;
+    gap: 6px;
+    max-width: 720px;
+  }
+
+  .bm-kicker {
+    color: var(--bm-gold);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .bm-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.7rem, 4vw, 2.8rem);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(245, 200, 107, 0.12);
+  }
+
+  .bm-subtitle {
+    color: var(--bm-muted);
+    font-size: 1rem;
+    max-width: 62ch;
+  }
+
+  .bm-top-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: 420px;
+  }
+
+  .bm-announcer {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 14px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--bm-line);
+    background:
+      linear-gradient(135deg, rgba(180, 83, 9, 0.08), rgba(17, 17, 17, 0.68)),
+      radial-gradient(circle at top left, rgba(245, 200, 107, 0.12), transparent 38%);
+  }
+
+  .bm-announcer-copy {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+  }
+
+  .bm-announcer-kicker {
+    color: var(--bm-gold);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .bm-announcer-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.22rem);
+    line-height: 1.3;
+  }
+
+  .bm-announcer-text {
+    color: var(--bm-muted);
+    line-height: 1.45;
+  }
+
+  .bm-announcer-rails {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .bm-announcer-note {
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .bm-announcer-note strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .bm-announcer-note span {
+    color: var(--bm-muted);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .bm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 13px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    font-weight: 700;
+    color: var(--bm-text);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .bm-chip.phase-market { border-color: rgba(245, 200, 107, 0.26); color: #fde68a; }
+  .bm-chip.phase-action { border-color: rgba(248, 113, 113, 0.26); color: #fecaca; }
+  .bm-chip.phase-finished { border-color: rgba(110, 231, 183, 0.24); color: #d1fae5; }
+
+  .bm-audio-chip {
+    border: 1px solid rgba(245, 200, 107, 0.18);
+    font-family: 'Rajdhani', sans-serif;
+    cursor: pointer;
+  }
+
+  .bm-audio-chip.live {
+    color: #d1fae5;
+    border-color: rgba(110, 231, 183, 0.26);
+    background: rgba(4, 120, 87, 0.18);
+  }
+
+  .bm-ceremony {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at center, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.72));
+    transition: opacity 0.3s ease;
+  }
+
+  .bm-ceremony.active {
+    opacity: 1;
+  }
+
+  .bm-tour-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    background: rgba(5, 5, 6, 0.72);
+  }
+
+  .bm-tour-overlay.active {
+    display: block;
+  }
+
+  .bm-tour-focus {
+    position: relative;
+    z-index: 33;
+    border-color: rgba(245, 200, 107, 0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 0 2px rgba(245, 200, 107, 0.72),
+      0 0 0 8px rgba(245, 200, 107, 0.12),
+      0 24px 54px rgba(0, 0, 0, 0.34);
+    transform: translateY(-2px);
+  }
+
+  .bm-tour-card {
+    position: fixed;
+    z-index: 32;
+    width: min(360px, calc(100vw - 24px));
+    padding: 18px 18px 16px;
+    border-radius: 24px;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background:
+      radial-gradient(circle at top left, rgba(127, 29, 29, 0.28), transparent 36%),
+      linear-gradient(145deg, rgba(12, 12, 14, 0.96), rgba(26, 17, 15, 0.94));
+    box-shadow: 0 22px 64px rgba(0, 0, 0, 0.44);
+    outline: none;
+  }
+
+  .bm-tour-kicker {
+    color: var(--bm-gold);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .bm-tour-title {
+    margin-top: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.05rem;
+    line-height: 1.35;
+  }
+
+  .bm-tour-copy {
+    margin-top: 8px;
+    color: var(--bm-muted);
+    line-height: 1.5;
+  }
+
+  .bm-tour-progress {
+    margin-top: 12px;
+    display: flex;
+    gap: 6px;
+  }
+
+  .bm-tour-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .bm-tour-dot.active {
+    background: var(--bm-gold);
+    box-shadow: 0 0 12px rgba(245, 200, 107, 0.48);
+  }
+
+  .bm-tour-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .bm-tour-actions .bm-btn {
+    min-width: 92px;
+    flex: 1 1 0;
+  }
+
+  .bm-tour-ghost {
+    background: rgba(255,255,255,0.08);
+  }
+
+  .bm-manual-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: none;
+    padding: 18px;
+    overflow-y: auto;
+    background: rgba(5, 5, 6, 0.82);
+  }
+
+  .bm-manual-overlay.active {
+    display: block;
+  }
+
+  .bm-manual-card {
+    position: relative;
+    width: min(1160px, 100%);
+    margin: 0 auto;
+    border-radius: 32px;
+    border: 1px solid rgba(245, 200, 107, 0.24);
+    background:
+      radial-gradient(circle at top left, rgba(127, 29, 29, 0.26), transparent 24%),
+      linear-gradient(145deg, rgba(12, 12, 14, 0.98), rgba(26, 17, 15, 0.96));
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+    padding: 24px;
+    outline: none;
+  }
+
+  .bm-manual-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .bm-manual-kicker {
+    color: var(--bm-gold);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .bm-manual-title {
+    margin-top: 6px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.45rem, 3vw, 2.2rem);
+    line-height: 1.08;
+  }
+
+  .bm-manual-copy {
+    margin-top: 8px;
+    color: var(--bm-muted);
+    max-width: 70ch;
+    line-height: 1.5;
+  }
+
+  .bm-manual-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .bm-manual-column {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+  }
+
+  .bm-manual-section {
+    min-width: 0;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.09);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.028));
+    padding: 18px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .bm-manual-section h3 {
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+  }
+
+  .bm-manual-section p {
+    margin: 10px 0 0;
+    color: var(--bm-muted);
+    line-height: 1.5;
+  }
+
+  .bm-manual-list {
+    margin: 12px 0 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .bm-manual-line {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    align-items: start;
+    color: var(--bm-text);
+  }
+
+  .bm-manual-bullet {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 200, 107, 0.24);
+    background: rgba(245, 200, 107, 0.08);
+    color: var(--bm-gold);
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+
+  .bm-manual-line strong,
+  .bm-manual-action strong {
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .bm-manual-line > div:last-child,
+  .bm-manual-action,
+  .bm-manual-section p {
+    min-width: 0;
+  }
+
+  .bm-manual-line span,
+  .bm-manual-action span {
+    overflow-wrap: anywhere;
+    color: var(--bm-muted);
+    line-height: 1.45;
+  }
+
+  .bm-manual-actions-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .bm-manual-action {
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
+  }
+
+  .bm-manual-state-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+  }
+
+  .bm-manual-state-card {
+    min-width: 0;
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
+    display: grid;
+    gap: 8px;
+  }
+
+  .bm-manual-state-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .bm-manual-state-label {
+    color: var(--bm-text);
+    font-weight: 700;
+  }
+
+  .bm-manual-state-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(245, 200, 107, 0.08);
+    border: 1px solid rgba(245, 200, 107, 0.18);
+    color: var(--bm-gold);
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .bm-manual-state-copy {
+    color: var(--bm-muted);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .bm-manual-role-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .bm-manual-role-icon {
+    width: 68px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    font-size: 2rem;
+    border: 1px solid rgba(245, 200, 107, 0.24);
+    background: linear-gradient(145deg, rgba(245, 200, 107, 0.14), rgba(127, 29, 29, 0.14));
+  }
+
+  .bm-manual-role-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .bm-manual-role-chip {
+    margin-top: 4px;
+    display: inline-flex;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.07);
+    color: var(--bm-gold);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .bm-ceremony-card {
+    width: min(540px, 100%);
+    padding: 24px 24px 22px;
+    border-radius: 28px;
+    border: 1px solid rgba(245, 200, 107, 0.24);
+    background: linear-gradient(145deg, rgba(12, 12, 14, 0.94), rgba(68, 33, 12, 0.86));
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+    text-align: center;
+    transform: translateY(18px) scale(0.96);
+    transition: transform 0.35s ease;
+  }
+
+  .bm-ceremony.active .bm-ceremony-card {
+    transform: translateY(0) scale(1);
+  }
+
+  .bm-ceremony-card.bm-ceremony-red {
+    border-color: rgba(248, 113, 113, 0.28);
+    background: linear-gradient(145deg, rgba(12, 12, 14, 0.94), rgba(90, 20, 20, 0.88));
+  }
+
+  .bm-ceremony-kicker {
+    color: var(--bm-gold);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .bm-ceremony-title {
+    margin-top: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.3rem);
+    line-height: 1.15;
+  }
+
+  .bm-ceremony-copy {
+    margin-top: 10px;
+    color: var(--bm-muted);
+    font-size: 0.96rem;
+  }
+
+  .bm-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+    gap: 20px;
+    padding: 22px;
+  }
+
+  .bm-col {
+    display: grid;
+    gap: 20px;
+    min-width: 0;
+  }
+
+  .bm-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--bm-line);
+    border-radius: 28px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel);
+    backdrop-filter: blur(16px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 18px 42px rgba(0, 0, 0, 0.24);
+    padding: 20px;
+    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+  }
+
+  .bm-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245, 200, 107, 0.2), transparent);
+    opacity: 0.75;
+  }
+
+  .bm-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(245, 200, 107, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 24px 54px rgba(0, 0, 0, 0.28);
+  }
+
+  .bm-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .bm-card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .bm-card-note {
+    color: var(--bm-muted);
+    font-size: 0.88rem;
+  }
+
+  .bm-role-wrap {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+
+  .bm-role-icon {
+    width: 90px;
+    height: 90px;
+    display: grid;
+    place-items: center;
+    border-radius: 26px;
+    border: 1px solid rgba(245, 200, 107, 0.24);
+    background:
+      radial-gradient(circle at 30% 30%, rgba(245, 200, 107, 0.16), transparent 58%),
+      linear-gradient(145deg, rgba(245, 200, 107, 0.12), rgba(127, 29, 29, 0.16));
+    box-shadow: inset 0 0 32px rgba(245, 200, 107, 0.08), 0 18px 32px rgba(0,0,0,0.22);
+    font-size: 2.45rem;
+  }
+
+  .bm-role-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .bm-role-name {
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+
+  .bm-role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    color: var(--bm-gold);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .bm-role-copy {
+    color: var(--bm-muted);
+    line-height: 1.5;
+  }
+
+  .bm-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .bm-stat {
+    position: relative;
+    padding: 13px 14px;
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+      var(--bm-panel-soft);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .bm-stat-label {
+    color: var(--bm-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .bm-stat-value {
+    margin-top: 4px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .bm-inventory {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .bm-item {
+    padding: 13px 14px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.025));
+    border: 1px solid rgba(255,255,255,0.1);
+    display: grid;
+    gap: 6px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .bm-item-name {
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bm-item-copy {
+    color: var(--bm-muted);
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+
+  .bm-market-grid,
+  .bm-action-grid,
+  .bm-players-grid,
+  .bm-feed {
+    display: grid;
+    gap: 12px;
+  }
+
+  .bm-action-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .bm-guide-grid {
+    display: grid;
+    gap: 10px;
+    counter-reset: guide-step;
+  }
+
+  .bm-guide-step {
+    position: relative;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
+    padding: 14px 14px 14px 52px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .bm-guide-step::before {
+    counter-increment: guide-step;
+    content: counter(guide-step);
+    position: absolute;
+    left: 14px;
+    top: 14px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(245, 200, 107, 0.2), rgba(127, 29, 29, 0.3));
+    border: 1px solid rgba(245, 200, 107, 0.24);
+    color: var(--bm-gold);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+  }
+
+  .bm-guide-step strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .bm-market-grid,
+  .bm-players-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .bm-offer,
+  .bm-player,
+  .bm-feed-item,
+  .bm-intel-item,
+  .bm-winner-card {
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.03));
+    padding: 16px;
+  }
+
+  .bm-offer {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at top right, rgba(245, 200, 107, 0.12), transparent 38%),
+      linear-gradient(145deg, rgba(251,191,36,0.08), rgba(127,29,29,0.08));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 32px rgba(0,0,0,0.16);
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .bm-offer::after {
+    content: '';
+    position: absolute;
+    inset: -30% auto auto -40%;
+    width: 60%;
+    height: 180%;
+    transform: rotate(18deg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent);
+    opacity: 0.22;
+    pointer-events: none;
+  }
+
+  .bm-offer:hover {
+    transform: translateY(-3px);
+    border-color: rgba(245, 200, 107, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 22px 36px rgba(0,0,0,0.2);
+  }
+
+  .bm-offer-head,
+  .bm-player-head,
+  .bm-intel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .bm-offer-title,
+  .bm-player-name {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bm-price,
+  .bm-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.26);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--bm-gold);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .bm-offer-copy,
+  .bm-player-copy,
+  .bm-feed-copy,
+  .bm-empty {
+    color: var(--bm-muted);
+    line-height: 1.45;
+  }
+
+  .bm-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .bm-btn {
+    border: 0;
+    border-radius: 16px;
+    padding: 11px 15px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--bm-text);
+    background: linear-gradient(135deg, #9a3412, #7f1d1d);
+    transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .bm-btn.alt { background: rgba(255,255,255,0.1); }
+  .bm-btn.gold { background: linear-gradient(135deg, #d97706, #92400e); }
+  .bm-btn.green { background: linear-gradient(135deg, #047857, #065f46); }
+  .bm-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .bm-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,0.24); }
+
+  .bm-action-block {
+    position: relative;
+    padding: 15px;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background:
+      radial-gradient(circle at top left, rgba(245, 200, 107, 0.06), transparent 34%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.028));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .bm-action-block:hover {
+    transform: translateY(-2px);
+    border-color: rgba(245, 200, 107, 0.18);
+  }
+
+  .bm-action-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .bm-action-copy {
+    color: var(--bm-muted);
+    margin-bottom: 12px;
+  }
+
+  .bm-target-list,
+  .bm-mini-grid,
+  .bm-intel-grid,
+  .bm-finished-actions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .bm-target-list {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .bm-target-btn {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    padding: 11px 13px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.03));
+    color: var(--bm-text);
+    text-align: left;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+
+  .bm-target-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(245, 200, 107, 0.18);
+    background: linear-gradient(180deg, rgba(245, 200, 107, 0.08), rgba(255,255,255,0.03));
+  }
+
+  .bm-target-btn small {
+    display: block;
+    color: var(--bm-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .bm-player {
+    display: grid;
+    gap: 10px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .bm-player:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.14);
+  }
+
+  .bm-deal-item.win {
+    border-color: rgba(245, 200, 107, 0.22);
+    background: linear-gradient(145deg, rgba(217, 119, 6, 0.12), rgba(255, 255, 255, 0.04));
+  }
+
+  .bm-deal-item.betray {
+    border-color: rgba(248, 113, 113, 0.22);
+    background: linear-gradient(145deg, rgba(127, 29, 29, 0.2), rgba(255, 255, 255, 0.03));
+  }
+
+  .bm-player-self {
+    border-color: rgba(245, 200, 107, 0.28);
+    box-shadow: 0 0 0 1px rgba(245, 200, 107, 0.08);
+  }
+
+  .bm-player-dead {
+    opacity: 0.55;
+    filter: grayscale(0.18);
+  }
+
+  .bm-player-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .bm-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .bm-pill.dead { color: #fecaca; border-color: rgba(248,113,113,0.2); }
+  .bm-pill.good { color: #d1fae5; border-color: rgba(110,231,183,0.2); }
+  .bm-pill.warn { color: #fde68a; border-color: rgba(245,200,107,0.2); }
+
+  .bm-feed-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: start;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .bm-feed-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.08);
+    font-size: 1.1rem;
+  }
+
+  .bm-feed-tone-red .bm-feed-icon { background: rgba(127,29,29,0.45); }
+  .bm-feed-tone-gold .bm-feed-icon { background: rgba(180,83,9,0.34); }
+  .bm-feed-tone-blue .bm-feed-icon { background: rgba(30,64,175,0.34); }
+
+  .bm-winner-card {
+    background: linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(180, 83, 9, 0.14));
+    border-color: rgba(110, 231, 183, 0.25);
+    box-shadow: 0 26px 44px rgba(0,0,0,0.22);
+  }
+
+  .bm-winner-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.18rem;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  .bm-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 980px) {
+    .bm-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .bm-topbar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .bm-top-meta {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .bm-top-meta .bm-chip {
+      flex: 1 1 180px;
+      justify-content: center;
+    }
+
+    .bm-manual-header {
+      flex-direction: column;
+    }
+
+    .bm-manual-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .bm-announcer {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .bm-page { padding: 8px; margin-top: 8px; }
+    .bm-shell { border-radius: 24px; }
+    .bm-topbar,
+    .bm-grid,
+    .bm-card { padding: 14px; }
+    .bm-announcer { padding: 14px; }
+    .bm-role-wrap { grid-template-columns: 1fr; }
+    .bm-role-icon { width: 68px; height: 68px; border-radius: 18px; }
+    .bm-topbar::after { left: 14px; right: 14px; }
+    .bm-top-meta { gap: 6px; }
+    .bm-top-meta .bm-chip { flex: 1 1 calc(50% - 6px); min-width: 0; padding-inline: 10px; }
+    .bm-announcer-rails { grid-template-columns: 1fr; }
+    .bm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .bm-action-grid { grid-template-columns: 1fr; }
+    .bm-market-grid,
+    .bm-players-grid,
+    .bm-inventory,
+    .bm-manual-actions-grid,
+    .bm-manual-state-grid { grid-template-columns: 1fr; }
+    .bm-offer,
+    .bm-player,
+    .bm-feed-item,
+    .bm-intel-item,
+    .bm-winner-card,
+    .bm-manual-section,
+    .bm-manual-action,
+    .bm-manual-state-card { border-radius: 18px; }
+    .bm-player-head,
+    .bm-manual-role-head,
+    .bm-manual-state-head { align-items: flex-start; }
+    .bm-manual-header { margin-bottom: 14px; }
+    .bm-guide-step { padding-left: 14px; }
+    .bm-guide-step { padding-left: 14px; }
+    .bm-guide-step::before { display: none; }
+    .bm-tour-card {
+      left: 12px !important;
+      right: 12px !important;
+      width: auto;
+    }
+    .bm-manual-overlay { padding: 10px; }
+    .bm-manual-card { padding: 16px; border-radius: 24px; }
+    .bm-manual-role-icon { width: 56px; height: 56px; font-size: 1.55rem; border-radius: 18px; }
+    .bm-manual-role-name { font-size: 1.02rem; }
+    .bm-manual-section { padding: 14px; }
+    .bm-manual-section h3 { font-size: 0.92rem; }
+    .bm-manual-copy { max-width: none; }
+  }
+
+  @media (max-width: 420px) {
+    .bm-page { padding: 6px; }
+    .bm-topbar,
+    .bm-grid,
+    .bm-card,
+    .bm-manual-card { padding: 12px; }
+    .bm-announcer { padding: 12px; }
+    .bm-top-meta .bm-chip,
+    .bm-tour-actions .bm-btn,
+    .bm-btn-row .bm-btn { flex: 1 1 100%; width: 100%; }
+    .bm-stats { grid-template-columns: 1fr; }
+    .bm-pill { max-width: 100%; }
+  }
+</style>
+
+<div class="bm-page">
+  <div class="bm-shell">
+    <div id="bmCeremonyOverlay" class="bm-ceremony" aria-live="polite">
+      <div id="bmCeremonyCard" class="bm-ceremony-card bm-ceremony-gold">
+        <div id="bmCeremonyKicker" class="bm-ceremony-kicker">🎩 เปิดโต๊ะ</div>
+        <div id="bmCeremonyTitle" class="bm-ceremony-title">ยกใหม่กำลังเริ่ม</div>
+        <div id="bmCeremonyCopy" class="bm-ceremony-copy">ล็อตใหม่กำลังขึ้นโต๊ะ</div>
+      </div>
+    </div>
+
+    <div class="bm-topbar">
+      <div class="bm-brand">
+        <div class="bm-kicker">🎩 โต๊ะตลาดมืด</div>
+        <div class="bm-title"><%= room.name %></div>
+        <div class="bm-subtitle">คืนนี้มีแต่ของเถื่อน ข่าววงใน และคนพร้อมพลิกดีล</div>
+      </div>
+      <div class="bm-top-meta">
+        <div class="bm-chip">🆔 <span><%= room.roomId %></span></div>
+        <div class="bm-chip">👥 <span><%= room.playerCount %>/<%= room.maxPlayers %></span></div>
+        <div id="phaseChip" class="bm-chip phase-market">🛒 เปิดตลาด</div>
+        <div id="roundChip" class="bm-chip">🌒 ยก 1 / 5</div>
+        <button id="bmHowToOpen" type="button" class="bm-chip">📖 วิธีเล่น</button>
+        <button id="bmTourReplay" type="button" class="bm-chip">✨ พาทัวร์โต๊ะ</button>
+        <button id="bmAudioToggle" type="button" class="bm-chip bm-audio-chip">🔇 เปิดเสียงพิธี</button>
+      </div>
+    </div>
+
+    <div id="bmAnnouncerBar" class="bm-announcer" aria-live="polite"></div>
+
+    <div class="bm-grid">
+      <div class="bm-col">
+        <div class="bm-card bm-card-role" data-tour-id="role">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">🎭 บทของคุณ</div>
+              <div class="bm-card-note">ใช้สายของตัวเองหา 👑 ให้ถึงก่อนทุกคน</div>
+            </div>
+            <div id="selfStateChip" class="bm-tag">🫀 ยังอยู่</div>
+          </div>
+          <div id="rolePanel"></div>
+        </div>
+
+        <div class="bm-card bm-card-guide" data-tour-id="guide">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">🎓 พาเล่นโต๊ะนี้</div>
+              <div class="bm-card-note">สรุปว่ากดยังไง ใช้อะไร แล้วผลของแต่ละแอ็กชันคืออะไร</div>
+            </div>
+          </div>
+          <div id="guidePanel"></div>
+        </div>
+
+        <div class="bm-card bm-card-stage" data-tour-id="stage">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">🛒 ตลาดกับแผนลงมือ</div>
+              <div class="bm-card-note">ล็อกของก่อน แล้วค่อยตัดสินใจว่าจะส่งของ ปล้น สืบ หรือสั่งเก็บ</div>
+            </div>
+          </div>
+          <div id="mainStage"></div>
+        </div>
+
+        <div class="bm-card bm-card-history">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">📢 ข่าวใต้ดิน</div>
+              <div class="bm-card-note">โต๊ะนี้จำทุกจังหวะที่เกิดขึ้นในตลาดมืด</div>
+            </div>
+          </div>
+          <div id="historyFeed" class="bm-feed"></div>
+        </div>
+      </div>
+
+      <div class="bm-col">
+        <div class="bm-card bm-card-roster" data-tour-id="players">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">👥 คนบนโต๊ะ</div>
+              <div class="bm-card-note">ใครทุนหนา ใครค่าหัวขึ้น ใครเริ่มน่ากลัว</div>
+            </div>
+          </div>
+          <div id="playersPanel" class="bm-players-grid"></div>
+        </div>
+
+        <div class="bm-card bm-card-deals" data-tour-id="deals">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">🤝 ดีลบนโต๊ะ</div>
+              <div class="bm-card-note">ใครปิดดีลสำเร็จ ใครโดนหักหลัง จะขึ้นตรงนี้</div>
+            </div>
+          </div>
+          <div id="dealPanel" class="bm-intel-grid"></div>
+        </div>
+
+        <div class="bm-card bm-card-intel">
+          <div class="bm-card-header">
+            <div>
+              <div class="bm-card-title">🕶️ ข่าวที่คีบมาได้</div>
+              <div class="bm-card-note">เฉพาะข่าวลับที่สายของคุณขุดกลับมา</div>
+            </div>
+          </div>
+          <div id="intelPanel" class="bm-intel-grid"></div>
+        </div>
+
+        <div id="winnerPanel" class="bm-card" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bmTourOverlay" class="bm-tour-overlay" aria-hidden="true">
+    <div id="bmTourCard" class="bm-tour-card" role="dialog" aria-modal="true" aria-live="polite" aria-label="Black Market onboarding" tabindex="-1">
+      <div id="bmTourKicker" class="bm-tour-kicker">Spotlight</div>
+      <div id="bmTourTitle" class="bm-tour-title"></div>
+      <div id="bmTourCopy" class="bm-tour-copy"></div>
+      <div id="bmTourProgress" class="bm-tour-progress"></div>
+      <div class="bm-tour-actions">
+        <button id="bmTourPrev" type="button" class="bm-btn bm-tour-ghost">ย้อนกลับ</button>
+        <button id="bmTourSkip" type="button" class="bm-btn bm-tour-ghost">ข้าม</button>
+        <button id="bmTourNext" type="button" class="bm-btn gold">ถัดไป</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bmHowToOverlay" class="bm-manual-overlay" aria-hidden="true">
+    <div id="bmHowToCard" class="bm-manual-card" role="dialog" aria-modal="true" aria-labelledby="bmHowToTitle" tabindex="-1">
+      <div class="bm-manual-header">
+        <div>
+          <div class="bm-manual-kicker">📖 คู่มือโต๊ะตลาดมืด</div>
+          <div id="bmHowToTitle" class="bm-manual-title">วิธีเดินเกมคืนนี้</div>
+          <div class="bm-manual-copy">อ่านภาพรวมของโต๊ะก่อน แล้วค่อยดูหัวข้อเฉพาะบทของคุณ จะช่วยให้ตัดสินใจได้ไวขึ้นเวลาโต๊ะเริ่มร้อน</div>
+        </div>
+        <button id="bmHowToClose" type="button" class="bm-btn alt">ปิดคู่มือ</button>
+      </div>
+      <div class="bm-manual-grid">
+        <div id="bmHowToOverview" class="bm-manual-column"></div>
+        <div id="bmHowToRole" class="bm-manual-column"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  $(function() {
+    const socket = io();
+    const roomId = '<%= room.roomId %>';
+    const playerId = '<%= player.playerId %>';
+    const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+    let currentState = <%- JSON.stringify(typeof blackMarketState !== 'undefined' ? blackMarketState : {}) %>;
+    let allowNavigation = false;
+    let hasRenderedOnce = false;
+    let ceremonyTimer = null;
+    let audioContext = null;
+    let audioEnabled = false;
+    let spotlightActive = false;
+    let spotlightStepIndex = 0;
+    let spotlightStarted = false;
+    let spotlightRestoreFocus = null;
+    let howToActive = false;
+    let howToRestoreFocus = null;
+
+    const spotlightKey = `blackmarket-tour-v2:${playerId}`;
+    const rolePlaybooks = {
+      boss: {
+        opening: [
+          'ถ้าเปิดตลาดแล้วเห็นของแต้มดี รีบกวาดไว้ก่อน เพราะบทนี้กินอิทธิพลจากการส่งของได้แรงกว่าคนอื่น',
+          'ต้นเกมยังไม่ต้องเปิดศึกทุกยก เก็บของให้พร้อมก่อนแล้วค่อยเร่งแต้มตอนโต๊ะเริ่มหันไปไล่กันเอง'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะอย่ารีบเปิดหน้า ให้สะสมของที่แปลงเป็น 👑 ได้ง่ายก่อน โดยเฉพาะของส่งแต้มสูง',
+          'ถ้ายกแรก ๆ ตลาดคุ้ม ให้เน้นตั้งต้นทุนและอ่านว่าใครเป็นสายบวก ใครเป็นสายปั่นแต้ม'
+        ],
+        tempo: [
+          'จังหวะทองของเจ้าพ่อคือยกที่คนอื่นใช้แรงกันเอง คุณส่งของเก็บ 👑 แบบเนียน ๆ ได้คุ้มสุด',
+          'ถ้ามีของมูลค่าสูงในมือ พยายามหาช่วงที่ค่าหัวคุณยังไม่โดด แล้วกดส่งติดกันเพื่อฉีกแต้ม'
+        ],
+        midGame: [
+          'กลางโต๊ะคือช่วงเร่งแต้มของเจ้าพ่อ ถ้าคนอื่นเริ่มผลาญของใส่กัน ให้คุณกดส่งของทันทีที่เส้นทางโล่ง',
+          'ถ้าโดนจับตาแล้ว อย่าฝืนส่งทุกยก สลับข่าวหรือหมอบเพื่อรีเซ็ตภาพลักษณ์ก่อนค่อยเร่งใหม่'
+        ],
+        endGame: [
+          'ปิดโต๊ะให้นับแต้มกับค่าหัวพร้อมกัน ถ้านำอยู่แล้ว อย่าเปิดศึกเกินจำเป็น แค่รักษาของและแต้มให้ถึงจบ',
+          'ถ้าตามอยู่ ให้หา 1 ยกที่ส่งของก้อนใหญ่หรือปิดดีลแต้มคุ้มเพื่อพลิกอันดับรวดเดียว'
+        ],
+        partnerRoles: [
+          'นายหน้า เข้าคู่กับเจ้าพ่อดี เพราะช่วยให้ของดีขึ้นมือโต๊ะเร็วและปั้นยกส่งของก้อนใหญ่ได้ไว',
+          'สายข่าว ก็จับมือดี เพราะข่าวที่แม่นช่วยให้คุณรู้ว่าช่วงไหนควรเร่งส่ง ช่วงไหนควรซ่อนแต้ม'
+        ],
+        specialThreats: [
+          'มือเก็บงาน คือคู่ปรับตรงของเจ้าพ่อ เพราะคุณมักถือของเยอะและเป็นเป้าชัดเมื่อเริ่มนำ',
+          'สองหน้า ก็น่ากลัว เพราะชอบเล่นกับคนที่กำลังโกยแต้ม หากคุณเปิดทรงส่งของชัดจะโดนเสียบง่าย'
+        ],
+        danger: [
+          'อย่าถือของค้างหลายยกจนคนทั้งโต๊ะอ่านออกว่าคุณกำลังเร่งแต้ม',
+          'ค่าหัวที่พุ่งสูงจะทำให้แต้มและเงินรั่วตอนจบยก จังหวะหมอบต่ำยังสำคัญแม้จะเป็นเจ้าพ่อ'
+        ]
+      },
+      broker: {
+        opening: [
+          'นายหน้ากินกำไรตั้งแต่ตอนเปิดตลาด ของชิ้นแรกแต่ละยกถูกกว่าคนอื่น ให้ใช้สิทธิ์นี้ทุกครั้งที่ของบนโต๊ะคุ้ม',
+          'ต้นเกมควรเร่งสะสมของดีเข้ามือก่อน เพื่อเปิดทางให้กลางเกมคุณมีจังหวะส่งของหรือปล้นได้หลายแบบ'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะใช้ส่วนลดทุกยกถ้าของคุ้ม เพราะความได้เปรียบของนายหน้าเริ่มจากเงินที่เหลือมากกว่าคนอื่น',
+          'ถ้าตลาดออกของกลาง ๆ ให้เลือกชิ้นที่ต่อยอดได้หลายแผน มากกว่าซื้อเพราะแค่ถูก'
+        ],
+        tempo: [
+          'ถ้าตลาดออกของไม่แรง ให้ซื้อของราคาต่ำเก็บทุนไว้ แล้วค่อยพลิกไปเล่นดีลหรือสืบข่าวเพื่อคุมจังหวะโต๊ะ',
+          'บทนี้ไม่จำเป็นต้องบวกทุกยก แต่ได้เปรียบเรื่องทุน จงใช้เงินกดดันคนที่เริ่มจนหรือเริ่มร้อน'
+        ],
+        midGame: [
+          'กลางโต๊ะให้นำทุนไปเปลี่ยนเป็นอำนาจ ไม่ว่าจะซื้อของส่งแต้ม เก็บปืน หรือเปิดปล้นคนที่เริ่มเป๋',
+          'ถ้าเงินยังนำอยู่ คุณสามารถบังคับจังหวะโต๊ะได้ เพราะคนอื่นจะเริ่มขยับลำบากกว่าคุณ'
+        ],
+        endGame: [
+          'ปิดโต๊ะอย่าปล่อยให้เงินนอนเปล่า ถ้าแต้มยังไม่พอ ให้แปลงทุนสุดท้ายเป็นของส่งแต้ม หรือแผนตัดกำลังคนที่นำอยู่',
+          'ถ้านำอยู่แล้ว ให้เล่นแบบไม่เสี่ยง เปิดทางที่แน่กว่าแทนการเล่นแรงหวังทีเดียวจบ'
+        ],
+        partnerRoles: [
+          'เจ้าพ่อ และ คนส่งของ คือคู่ดีลธรรมชาติของนายหน้า เพราะคุณปั้นของและทุนให้เขาเปลี่ยนเป็นแต้มได้ง่าย',
+          'สองหน้า ก็เข้ากันได้ถ้าคุมระยะดี เพราะคุณมีทุนช่วยเปิดทาง ส่วนอีกฝ่ายคอยกดคนที่เริ่มอ่อนแรง'
+        ],
+        specialThreats: [
+          'สองหน้า กับ มือเก็บงาน ชอบล่าคนทุนหนา เพราะคุณมักมีเงินพอให้ปล้นหรือพอให้โดนเปิดงานแล้วคุ้ม',
+          'สายข่าว ก็อันตราย เพราะถ้าเขารู้ว่าคุณถือของอะไรอยู่ ความยืดหยุ่นของคุณจะลดลงทันที'
+        ],
+        danger: [
+          'อย่าเผลอซื้อของตามใจจนมือแน่นแต่ไม่มีแผนส่งของ',
+          'ถ้าโต๊ะรู้ว่าคุณทุนหนากว่าคนอื่น จะโดนทั้งปล้นและหักหลังง่ายขึ้น'
+        ]
+      },
+      smuggler: {
+        opening: [
+          'คนส่งของต้องมองหาสินค้าเถื่อนต่อเนื่อง เพราะเวลา 📦 ส่งของ บทนี้ลากของติดมือไปได้มากกว่าคนอื่น',
+          'ถ้าตลาดเปิดของส่งแต้มดีหลายชิ้น ให้รีบเตรียมมือไว้สำหรับยกที่คุณจะกดส่งแบบคุ้มสุด'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะให้สะสมของส่งแต้มอย่างมีจังหวะ อย่าเพิ่งรีบปล่อยของชิ้นเล็กถ้ายังต่อยอดเป็นยกใหญ่ได้',
+          'ถ้ามีโอกาสได้ของหลายชิ้นติดกัน ให้คิดถึงยกถัดไปตั้งแต่ตอนซื้อว่าคุณจะส่งแบบไหน'
+        ],
+        tempo: [
+          'กลางเกมคือเวลาของคุณ ถ้าถือของอยู่หลายชิ้น ให้หายกที่โต๊ะวุ่นแล้วกดส่งเพื่อตักแต้มก้อนใหญ่',
+          'ยิ่งคนอื่นเสียเวลาไปกับการบวกกันเอง คุณยิ่งมีพื้นที่ทำแต้มแบบไม่ต้องเสี่ยงเปิดหน้า'
+        ],
+        midGame: [
+          'กลางโต๊ะต้องอ่านว่าใครยังมีแรงมายุ่งกับคุณ ถ้าตัวบวกของโต๊ะกำลังติดศึก คุณควรรีบเร่งส่งทันที',
+          'ถ้าคนเริ่มหันมามองคุณ ให้แบ่งจังหวะระหว่างส่งกับพรางตัว ไม่อย่างนั้นจะกลายเป็นเหยื่อก่อนแต้มขึ้นจริง'
+        ],
+        endGame: [
+          'ปิดโต๊ะให้คำนวณว่าของในมือพอเปลี่ยนเป็นอันดับหนึ่งไหม ถ้าพอให้กดส่ง อย่าโลภถือข้ามยกสุดท้าย',
+          'ถ้าแต้มยังตาม ให้ใช้ของในมือเป็นจุดขู่ต่อรองหรือบีบให้คนอื่นเสียยกกับคุณ'
+        ],
+        partnerRoles: [
+          'นายหน้า เข้ากับคนส่งของที่สุด เพราะช่วยให้คุณเก็บของเร็วและเหลือทุนพอถือจังหวะใหญ่',
+          'สายข่าว ก็ช่วยมาก เพราะยิ่งรู้ว่าใครกำลังวุ่นหรือใครไม่มีแรงตัดเกม คุณยิ่งหาช่องส่งของฟรีได้ง่าย'
+        ],
+        specialThreats: [
+          'มือเก็บงาน และ สองหน้า เป็นภัยกับคนส่งของมาก เพราะบทคุณชอบถือของแน่นแล้วรอจังหวะปล่อย',
+          'สายข่าว ก็ทำให้คุณลำบาก เพราะถ้าอีกฝ่ายรู้ว่ามือคุณเต็มของ เขาจะตั้งรับหรือชิงตัดเกมคุณก่อน'
+        ],
+        danger: [
+          'อย่ากองของไว้จนโดนปล้นหรือโดนสั่งเก็บก่อนทันส่ง',
+          'ถ้าโต๊ะเริ่มจับตาว่าคุณกำลังจะระเบิดแต้ม ให้สืบข่าวหรือหมอบต่ำสลับไว้บ้าง'
+        ]
+      },
+      fixer: {
+        opening: [
+          'คนเคลียร์ทางไม่ได้ชนะด้วยความรีบ แต่ชนะด้วยการอยู่ยาวกว่าใคร ใช้ต้นเกมเก็บข่าวและคุมค่าหัวให้นิ่ง',
+          'ถ้าตลาดไม่มีของคุ้ม อย่าฝืน ถือเงินไว้แล้วรอจังหวะที่คนอื่นเริ่มเสียทรงก่อน'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะให้ตั้งหลักด้วยเงินและค่าหัวที่นิ่งก่อน บทนี้ไม่จำเป็นต้องนำเร็ว แต่ต้องไม่หลุดจากเกมง่าย',
+          'ถ้าโต๊ะยังไม่ชัดว่าใครอันตราย ให้สืบหรือผ่านอย่างมีเหตุผล ดีกว่าเปิดศึกโดยไม่จำเป็น'
+        ],
+        tempo: [
+          'บทนี้เก่งตอนโต๊ะเริ่มไล่กันเอง เพราะคุณมีทางหนีจากการสั่งเก็บและลดค่าหัวได้แรงกว่า',
+          'ใช้ความอึดซื้อเวลาให้คู่แข่งผลาญของกันเอง แล้วค่อยเลือกเหยื่อที่เริ่มร้อนหรือเริ่มหมดแรง'
+        ],
+        midGame: [
+          'กลางโต๊ะคือช่วงที่คนเคลียร์ทางเริ่มมีค่า ยิ่งโต๊ะวุ่น คุณยิ่งยืนได้ยาวและเลือกสวนคนที่เปลืองของไปแล้ว',
+          'ถ้ามีคนเริ่มเปิดปืนหรือไล่ปล้นหนัก คุณควรเล่นให้เขาเสียแรงฟรี แล้วรอจังหวะสวนตอนอีกฝ่ายหมดมือ'
+        ],
+        endGame: [
+          'ปิดโต๊ะบทนี้ชนะจากการยังยืนอยู่พร้อมแต้มไม่รั่ว ถ้านำไม่ขาด ให้คิดก่อนว่าค่าหัวจบยกจะกินอะไรไปบ้าง',
+          'ถ้ายังตาม ให้หาเป้าหมายที่ใกล้ล้มแล้วตัดกำลังเขา แทนการชนกับคนที่ยังสด'
+        ],
+        partnerRoles: [
+          'สายข่าว เหมาะกับคนเคลียร์ทาง เพราะข่าวช่วยให้คุณเลือกสวนเป้าถูกคนและไม่เปลืองจังหวะหนีฟรี',
+          'เจ้าพ่อ ก็จับมือได้ดีในโต๊ะยื้อ เพราะคุณคอยซื้อเวลาให้เขาเก็บแต้ม ขณะเดียวกันเขาก็ช่วยเร่งแรงกดบนโต๊ะ'
+        ],
+        specialThreats: [
+          'เจ้าพ่อ และ คนส่งของ เป็นคู่ปรับที่ต้องจับตา เพราะถ้าปล่อยให้เขาส่งของฟรีนานเกินไป คุณจะยื้อไม่ทันแต้ม',
+          'สายข่าว ก็อันตราย เพราะเขาจะค่อย ๆ เปิดแผนหนีและสภาพมือของคุณให้โต๊ะอ่านตามได้'
+        ],
+        danger: [
+          'อย่าใช้จังหวะหนีตายทิ้งเปล่า ถ้ายังไม่คุ้ม ให้เก็บไว้ยกที่คนจะเปิดปืนใส่คุณจริง ๆ',
+          'แม้จะหนีเก่ง แต่ถ้าเงินหมดและแต้มตาม บทนี้จะกลับเกมยาก'
+        ]
+      },
+      hitman: {
+        opening: [
+          'มือเก็บงานต้องหาปืนและเงินให้พร้อม เพราะเมื่อเปิดงานได้ บทนี้ปิดคนคุ้มกว่าคนอื่น',
+          'ต้นเกมอย่ารีบยิงมั่ว ให้ดูว่าใครมีแต้มขึ้นไวหรือถือของแน่นมือก่อนแล้วค่อยเลือกเหยื่อ'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะให้หาปืนและอ่านว่าใครคือเหยื่อที่ยิงแล้วคุ้มที่สุด อย่ารีบเปิดงานแค่เพราะมีอาวุธพร้อม',
+          'ถ้ายังไม่มีเป้าชัด ให้สะสมเงินกับข่าวก่อน เพราะมือเก็บงานเสียยกง่ายถ้ากดยิงแบบไม่มีข้อมูล'
+        ],
+        tempo: [
+          'ยกที่โต๊ะเริ่มแหวกและอีกฝ่ายไม่มีเกราะ คือเวลาที่คุณกดสั่งเก็บแล้วฉีกเกมได้ทันที',
+          'ถ้าปิดงานสำเร็จ คุณยังชิงของเพิ่มได้ จังหวะนี้ทำให้คู่แข่งเสียทั้งคนทั้งทรัพย์พร้อมกัน'
+        ],
+        midGame: [
+          'กลางโต๊ะคือช่วงที่คุณสร้างแรงกระแทกได้แรงสุด เพราะแต้มเริ่มห่างและคนเริ่มหมดตัวป้องกัน',
+          'ถ้ารู้ว่าใครนำและใครกันตัวไม่ทัน ให้เปิดงานเพื่อดึงทั้งแต้ม ทรัพย์ และโมเมนตัมกลับเข้ามือคุณ'
+        ],
+        endGame: [
+          'ปิดโต๊ะอย่ายิงเพราะแค้น ให้ยิงเฉพาะคนที่ล้มแล้วทำให้อันดับพลิกจริง',
+          'ถ้าคุณยังไม่นำ การปิดคนสำคัญหนึ่งตัวอาจคุ้มกว่าการส่งของหรือปล้นเล็ก ๆ มาก'
+        ],
+        partnerRoles: [
+          'สายข่าว คือคู่ดีลที่มือเก็บงานชอบที่สุด เพราะข่าวทำให้คุณไม่ต้องเสียปืนกับเป้าผิดคน',
+          'สองหน้า ก็เข้ากันได้ในโต๊ะวุ่น เพราะอีกฝ่ายทำคนเปิดหน้า ส่วนคุณคอยปิดงานตอนเหยื่อไม่มีแรงกัน'
+        ],
+        specialThreats: [
+          'คนเคลียร์ทาง คือคู่แก้ทางตรง เพราะมีทางหนีสั่งเก็บและทำให้ปืนคุณเสียยกฟรีได้',
+          'สายข่าว ก็ต้องระวัง เพราะถ้าโต๊ะรู้ว่าคุณมีปืน ทุกคนจะเริ่มกันตัวและเล่นรอบคุณทันที'
+        ],
+        danger: [
+          'ยิงผิดคนหรือยิงตอนโต๊ะยังไม่ร้อนพอ จะทำให้คุณเสียเงินและเปิดตัวเองเร็วเกินไป',
+          'ถ้าคนทั้งโต๊ะรู้ว่าคุณมีปืนอยู่ คุณจะกลายเป็นเป้าก่อนลั่นไก'
+        ]
+      },
+      mole: {
+        opening: [
+          'สายข่าวต้องอ่านโต๊ะให้ขาด ยิ่งรู้ทั้งบทและของในมืออีกฝ่ายเร็วเท่าไร ยิ่งขายจังหวะได้ไวเท่านั้น',
+          'ต้นเกมควรสืบคนที่ดูจะขึ้นนำหรือคนที่เก็บของเงียบ ๆ เพื่อหาเป้าจริงของโต๊ะ'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะให้ปูข่าวก่อนแต้ม ข่าวที่ดีในสองยกแรกจะทำให้ทั้งเกมของคุณเดินง่ายกว่าคนอื่น',
+          'เลือกสืบคนที่กำลังจะกลายเป็นตัวปัญหา ไม่ใช่คนที่ยังไม่มีทรง เพราะข่าวต้องเอาไปใช้ต่อได้จริง'
+        ],
+        tempo: [
+          'เมื่อคุณรู้ข้อมูลมากกว่าคนอื่น ให้ใช้ข่าวนั้นตัดสินใจว่าจะดีล ปล้น หรือหลบใครในยกถัดไป',
+          'บทนี้เด่นที่การไม่เล่นมืดบอด ยิ่งโต๊ะซับซ้อน คุณยิ่งได้เปรียบกว่าคนที่เดาสุ่ม'
+        ],
+        midGame: [
+          'กลางโต๊ะให้เปลี่ยนข่าวเป็นการคุมจังหวะ จะเปิดดีลกับคนไหน จะหลบคนไหน หรือจะชี้เป้าใครให้โดนไล่ ต้องมาจากข่าวที่คุณมี',
+          'ถ้าคุณรู้ว่าใครถือของแรงหรือปืนอยู่ คุณสามารถบังคับเส้นทางของโต๊ะได้โดยไม่ต้องเปิดหน้าแรงเอง'
+        ],
+        endGame: [
+          'ปิดโต๊ะข่าวต้องคมกว่าเดิม เพราะหนึ่งยกสุดท้ายมีค่าน้ำหนักมากกว่าต้นเกมหลายเท่า',
+          'อย่าเก็บข่าวไว้เฉย ๆ ถ้ายกสุดท้ายมาถึงแล้ว ให้เปลี่ยนข้อมูลเป็นแต้ม ความรอด หรือการตัดคู่แข่งทันที'
+        ],
+        partnerRoles: [
+          'มือเก็บงาน เป็นคู่ที่สายข่าวหนุนได้แรง เพราะข่าวดีหนึ่งชุดเปลี่ยนเป็นการเปิดงานคุ้มได้ทันที',
+          'สองหน้า ก็เข้ากัน เพราะข้อมูลทำให้การเสียบหรือหักหลังของอีกฝ่ายเฉียบกว่าเดิมมาก'
+        ],
+        specialThreats: [
+          'สองหน้า คือภัยเงียบของสายข่าว เพราะบทนี้ชอบใช้ข้อมูลเท็จจากโต๊ะที่ชุลมุนมาซ้อนแผนคุณ',
+          'นายหน้า ก็น่าระวัง เพราะถ้าปล่อยให้เขาโตจากทุนโดยไม่สืบ คุณจะรู้ช้าเกินไปตอนเขาพร้อมปิดเกม'
+        ],
+        danger: [
+          'อย่าเสียยกไปกับการสืบคนที่ไม่มีผลต่อเกมอีกต่อไป',
+          'ข้อมูลดีแค่ไหนก็ไม่มีค่า ถ้าคุณไม่รีบเปลี่ยนข่าวให้เป็นแต้ม เงิน หรือความได้เปรียบบนโต๊ะ'
+        ]
+      },
+      doubleAgent: {
+        opening: [
+          'สองหน้ากินเกมจากการเล่นสกปรก หักหลังกับปล้นคุ้มกว่าคนอื่น แต่ค่าหัวขึ้นง่าย ต้องชั่งให้ดีทุกยก',
+          'ต้นเกมควรดูว่าใครชอบเปิดดีล ใครเงินหนา แล้ววางใจเย็น ๆ รอจังหวะเสียบมากกว่าบวกซึ่งหน้า'
+        ],
+        earlyGame: [
+          'ต้นโต๊ะให้หาว่าใครใจถึง ใครเปิดดีลง่าย และใครเก็บเงินหนา เพราะทั้งหมดคือเหยื่อชั้นดีของสองหน้า',
+          'อย่ารีบโชว์พิษตั้งแต่ยกแรก เก็บภาพเป็นคนเล่นนิ่งไว้ก่อนแล้วค่อยปักมีดตอนคนเผลอ'
+        ],
+        tempo: [
+          'ยกที่โต๊ะเริ่มไว้ใจกัน คือช่วงที่คุณทำแผลลึกได้สุดจากการหักหลังหรือปล้นคนที่เปิดหน้าแล้ว',
+          'ถ้าอีกฝ่ายเริ่มอ่อนแรง การลงมือของคุณจะคุ้มทั้งเงิน ทั้งแต้ม และทำให้โต๊ะหันมาฆ่ากันเอง'
+        ],
+        midGame: [
+          'กลางโต๊ะคือช่วงหาเลือด คุณควรเลือกจังหวะที่อีกฝ่ายคิดว่าปลอดภัย แล้วหักหลังหรือปล้นให้เจ็บกว่าที่คาด',
+          'การลงมือของสองหน้าควรทำให้ได้มากกว่าหนึ่งอย่างเสมอ เช่น ได้เงินพร้อมโยนไฟไปใส่อีกคน'
+        ],
+        endGame: [
+          'ปิดโต๊ะอย่าปล่อยให้ค่าหัวลากคุณตายเอง ถ้ายังต้องเล่นแรง ให้แน่ใจว่าผลตอบแทนพอชดเชยความร้อนที่ขึ้น',
+          'ถ้าคนที่นำกำลังเปิดหน้า ยกสุดท้ายของสองหน้าคือจังหวะชิงเกมด้วยมีดเดียวให้สุด'
+        ],
+        partnerRoles: [
+          'สายข่าว คือคู่ดีลเนียนที่สุดของสองหน้า เพราะข้อมูลช่วยให้คุณเสียบคนถูกจังหวะและเลือกเหยื่อคุ้มสุด',
+          'นายหน้า ก็เข้ากันดีเมื่อโต๊ะเริ่มจน เพราะทุนของเขาช่วยเปิดช่องให้คุณเล่นแรงได้ต่อเนื่อง'
+        ],
+        specialThreats: [
+          'สายข่าว คือคู่จับทางของสองหน้า เพราะถ้าเขาอ่านบทและมือคุณออก การเสียบของคุณจะไม่คมเหมือนเดิม',
+          'คนเคลียร์ทาง ก็ทำให้คุณเหนื่อย เพราะบทนี้ยื้อเก่งและทำให้แผนเล่นแรงของคุณคุ้มไม่เต็มที่'
+        ],
+        danger: [
+          'ทุกครั้งที่เล่นแรง ค่าหัวจะเด้งไวกว่าเพื่อน ถ้าไม่สลับพักมือ คุณจะโดนริบแต้มเอง',
+          'บทนี้เก่งตอนคนอื่นเผลอ ไม่เก่งตอนเปิดชนทั้งโต๊ะพร้อมกัน'
+        ]
+      }
+    };
+
+    const spotlightSteps = [
+      {
+        target: '[data-tour-id="role"]',
+        kicker: 'Step 1',
+        title: 'เริ่มจากบทและทุนของคุณ',
+        copy: 'มุมนี้บอกว่าคุณเล่นสายไหน มีเงินดำ อิทธิพล และค่าหัวเท่าไร ต้องอ่านตรงนี้ก่อนกดทุกยก'
+      },
+      {
+        target: '[data-tour-id="guide"]',
+        kicker: 'Step 2',
+        title: 'ถ้างง ให้ดูไกด์ตรงนี้ก่อนเสมอ',
+        copy: 'ระบบสรุปให้ว่าตอนนี้ควรทำอะไร ปุ่มแต่ละอันใช้เมื่อไร และผลจะออกทางไหน'
+      },
+      {
+        target: '[data-tour-id="stage"]',
+        kicker: 'Step 3',
+        title: 'นี่คือพื้นที่กดเล่นจริงของแต่ละยก',
+        copy: 'ช่วงเปิดตลาดให้ล็อกของ ช่วงลงมือให้เลือกแอ็กชัน เมื่อกดแล้วระบบจะล็อกแผนจนทุกคนส่งคำสั่งครบ'
+      },
+      {
+        target: '[data-tour-id="players"]',
+        kicker: 'Step 4',
+        title: 'เช็กโต๊ะว่าตอนนี้ใครนำ ใครเริ่มอันตราย',
+        copy: 'ดูอิทธิพล เงิน ค่าหัว และจำนวนของของทุกคนจากฝั่งนี้ จะช่วยตัดสินใจว่าใครควรดีลหรือควรจัดการ'
+      },
+      {
+        target: '[data-tour-id="deals"]',
+        kicker: 'Step 5',
+        title: 'ดีลและการหักหลังจะทิ้งร่องรอยไว้ตรงนี้',
+        copy: 'ใช้ดูว่าใครเพิ่งจับมือ ใครเพิ่งแทงหลัง และโต๊ะกำลังไหลไปทางไหน ก่อนเริ่มยกต่อไป'
+      }
+    ];
+
+    function ensureAudioContext() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) {
+        return null;
+      }
+      if (!audioContext) {
+        audioContext = new AudioCtor();
+      }
+      return audioContext;
+    }
+
+    function updateAudioToggle() {
+      $('#bmAudioToggle')
+        .toggleClass('live', audioEnabled)
+        .text(audioEnabled ? '🔊 เสียงพิธีพร้อม' : '🔇 เปิดเสียงพิธี');
+    }
+
+    async function unlockAudio() {
+      const context = ensureAudioContext();
+      if (!context) {
+        return false;
+      }
+
+      if (context.state === 'suspended') {
+        await context.resume();
+      }
+
+      audioEnabled = context.state === 'running';
+      updateAudioToggle();
+      return audioEnabled;
+    }
+
+    function playTone(context, frequency, startAt, duration, type, gainValue) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(gainValue, startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + duration + 0.03);
+    }
+
+    function playCeremony(kind) {
+      if (!audioEnabled) {
+        return;
+      }
+
+      const context = ensureAudioContext();
+      if (!context) {
+        return;
+      }
+
+      const baseTime = context.currentTime + 0.02;
+      if (kind === 'close') {
+        [[392, 0, 0.16], [523.25, 0.12, 0.2], [659.25, 0.24, 0.24], [783.99, 0.38, 0.32]].forEach(function(step) {
+          playTone(context, step[0], baseTime + step[1], step[2], 'sawtooth', 0.08);
+        });
+        return;
+      }
+
+      [[523.25, 0, 0.14], [659.25, 0.1, 0.16], [783.99, 0.22, 0.24]].forEach(function(step) {
+        playTone(context, step[0], baseTime + step[1], step[2], 'triangle', 0.06);
+      });
+    }
+
+    function showCeremony(options) {
+      clearTimeout(ceremonyTimer);
+      const tone = options?.tone === 'red' ? 'red' : 'gold';
+      $('#bmCeremonyCard')
+        .removeClass('bm-ceremony-gold bm-ceremony-red')
+        .addClass(tone === 'red' ? 'bm-ceremony-red' : 'bm-ceremony-gold');
+      $('#bmCeremonyKicker').text(options?.kicker || '🎩 เปิดโต๊ะ');
+      $('#bmCeremonyTitle').text(options?.title || 'ยกใหม่กำลังเริ่ม');
+      $('#bmCeremonyCopy').text(options?.copy || 'ล็อตใหม่กำลังขึ้นโต๊ะ');
+      $('#bmCeremonyOverlay').addClass('active');
+      playCeremony(options?.sound || 'open');
+      ceremonyTimer = window.setTimeout(function() {
+        $('#bmCeremonyOverlay').removeClass('active');
+      }, Number(options?.duration || 2200));
+    }
+
+    function handleCeremony(previousState, nextState) {
+      if (!nextState) {
+        return;
+      }
+
+      if (!hasRenderedOnce) {
+        hasRenderedOnce = true;
+        if (nextState.phase === 'finished' && nextState.winner) {
+          showCeremony({
+            kicker: '👑 ปิดโต๊ะ',
+            title: `${nextState.winner.avatar || '🎩'} ${nextState.winner.name || 'มีคนคุมเมืองแล้ว'}`,
+            copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
+            tone: 'red',
+            sound: 'close',
+            duration: 3200
+          });
+        } else if (nextState.phase === 'market' && Number(nextState.roundNumber || 0) > 0) {
+          showCeremony({
+            kicker: `🌒 เปิดยก ${Number(nextState.roundNumber || 0)}`,
+            title: 'ล็อตใหม่ขึ้นโต๊ะแล้ว',
+            copy: 'เลือกของให้ไว ก่อนดีลและมีดจะเริ่มเดิน',
+            tone: 'gold',
+            sound: 'open'
+          });
+        }
+        return;
+      }
+
+      const previousRound = Number(previousState?.roundNumber || 0);
+      const nextRound = Number(nextState.roundNumber || 0);
+      if (nextState.phase === 'market' && nextRound > previousRound) {
+        showCeremony({
+          kicker: `🌒 เปิดยก ${nextRound}`,
+          title: 'ของใหม่ลงโต๊ะแล้ว',
+          copy: 'ยกนี้จะเปิดดีลหรือจะชักมีด ก็ล็อกให้ทันก่อนตลาดปิด',
+          tone: 'gold',
+          sound: 'open'
+        });
+      }
+
+      if (previousState?.phase !== 'finished' && nextState.phase === 'finished' && nextState.winner) {
+        showCeremony({
+          kicker: '👑 ปิดโต๊ะ',
+          title: `${nextState.winner.avatar || '🎩'} ${nextState.winner.name || 'มีคนคุมเมืองแล้ว'}`,
+          copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
+          tone: 'red',
+          sound: 'close',
+          duration: 3200
+        });
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function phaseMeta(phase) {
+      if (phase === 'market') {
+        return { label: '🛒 เปิดตลาด', className: 'phase-market' };
+      }
+      if (phase === 'action') {
+        return { label: '🎯 ลงมือ', className: 'phase-action' };
+      }
+      if (phase === 'finished') {
+        return { label: '👑 ปิดโต๊ะ', className: 'phase-finished' };
+      }
+      return { label: '🎩 รอตั้งโต๊ะ', className: 'phase-market' };
+    }
+
+    function getSelf() {
+      return currentState.self || {};
+    }
+
+    function getAliveTargets() {
+      return (currentState.players || []).filter(player => player.alive && !player.isSelf);
+    }
+
+    function getActionMeta(actionType) {
+      return (currentState.actionCatalog || []).find(action => action.id === actionType) || null;
+    }
+
+    function hasSeenSpotlight() {
+      try {
+        return window.localStorage.getItem(spotlightKey) === 'done';
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function markSpotlightSeen() {
+      try {
+        window.localStorage.setItem(spotlightKey, 'done');
+      } catch (error) {
+        return undefined;
+      }
+    }
+
+    function renderSpotlightProgress() {
+      $('#bmTourProgress').attr('aria-label', `ขั้น ${spotlightStepIndex + 1} จาก ${spotlightSteps.length}`);
+      $('#bmTourProgress').html(spotlightSteps.map(function(step, index) {
+        return `<div class="bm-tour-dot ${index === spotlightStepIndex ? 'active' : ''}"></div>`;
+      }).join(''));
+    }
+
+    function buildManualLines(lines) {
+      return (lines || []).map(function(line, index) {
+        return `
+          <div class="bm-manual-line">
+            <div class="bm-manual-bullet">${index + 1}</div>
+            <div><span>${escapeHtml(line)}</span></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getRolePlaybook() {
+      const role = currentState.playerRole || {};
+      return rolePlaybooks[role.id] || {
+        opening: ['อ่านบทของตัวเองก่อนทุกยก แล้วเลือกทางที่ทำให้คุณได้ทั้งแต้มและทางหนี'],
+        earlyGame: ['ต้นโต๊ะให้ดูว่าใครสะสมทุน ใครสะสมของ และใครเริ่มเปิดหน้าเร็วเกินไป แล้ววางตัวเองให้ได้เปรียบ'],
+        tempo: ['ถ้ายังอ่านโต๊ะไม่ออก ให้เริ่มจากสืบข่าวหรือเก็บทุนก่อน อย่ารีบเปิดหน้า'],
+        midGame: ['กลางโต๊ะให้เลือกจังหวะที่อีกฝ่ายเริ่มเปิดไพ่ แล้วเปลี่ยนจุดเด่นของบทคุณเป็นแต้มหรือความได้เปรียบทันที'],
+        endGame: ['ปิดโต๊ะให้คิดทั้งแต้ม เงิน ค่าหัว และคนที่ยังยืนอยู่ ไม่ใช่มองแค่ยกตรงหน้า'],
+        partnerRoles: ['จับมือกับคนที่ทำให้จุดเด่นของบทคุณทำงานง่ายขึ้น แล้วแตกออกทันทีเมื่อโต๊ะเริ่มจับทางได้'],
+        specialThreats: ['ระวังบทที่ตัดจุดเด่นของคุณโดยตรง และคนที่กำลังนำ เพราะทั้งสองแบบจะบังคับจังหวะคุณได้ก่อน'],
+        danger: ['อย่ากดแผนเพราะใจร้อน จังหวะผิดยกเดียวอาจทำให้ทั้งเงิน แต้ม และชีวิตบนโต๊ะหายพร้อมกัน']
+      };
+    }
+
+    function getSelfStatusSnapshot() {
+      const self = getSelf();
+      const inventory = self.inventory || [];
+      const actionHelp = currentState.actionHelp || {};
+      const alivePlayers = (currentState.players || []).filter(function(player) {
+        return player.alive;
+      });
+      const aliveOpponents = getAliveTargets();
+      const sortedOpponents = aliveOpponents.slice().sort(function(left, right) {
+        return Number(right.influence || 0) - Number(left.influence || 0);
+      });
+      const sortedAlive = alivePlayers.slice().sort(function(left, right) {
+        if (Number(right.influence || 0) !== Number(left.influence || 0)) {
+          return Number(right.influence || 0) - Number(left.influence || 0);
+        }
+        return Number(right.cash || 0) - Number(left.cash || 0);
+      });
+      const hottestPlayer = alivePlayers.slice().sort(function(left, right) {
+        if (Number(right.heat || 0) !== Number(left.heat || 0)) {
+          return Number(right.heat || 0) - Number(left.heat || 0);
+        }
+        return Number(left.cash || 0) - Number(right.cash || 0);
+      })[0] || null;
+      const fragilePlayer = alivePlayers.slice().sort(function(left, right) {
+        const leftRisk = (Number(left.heat || 0) * 10) - Number(left.cash || 0);
+        const rightRisk = (Number(right.heat || 0) * 10) - Number(right.cash || 0);
+        return rightRisk - leftRisk;
+      })[0] || null;
+      const topThreat = sortedOpponents[0] || null;
+      const tableLeader = sortedAlive[0] || null;
+      const gunCount = inventory.filter(function(item) {
+        const value = `${item.id || ''} ${item.name || ''} ${item.summary || ''}`.toLowerCase();
+        return value.includes('gun') || value.includes('ปืน');
+      }).length;
+      const cargoCount = (actionHelp.cargoItems || []).length;
+      const cash = Number(self.cash || 0);
+      const heat = Number(self.heat || 0);
+      const influence = Number(self.influence || 0);
+      const topThreatInfluence = Number(topThreat?.influence || 0);
+      return {
+        cash,
+        heat,
+        influence,
+        inventory,
+        gunCount,
+        cargoCount,
+        hasPassport: Boolean(actionHelp.hasPassport),
+        canHit: Boolean(actionHelp.canHit),
+        pendingAction: self.pendingAction || null,
+        pendingMarketChoice: self.pendingMarketChoice || null,
+        phase: currentState.phase || 'market',
+        topThreat,
+        tableLeader,
+        hottestPlayer,
+        fragilePlayer,
+        trailingLeader: Boolean(topThreat && topThreatInfluence > influence),
+        lowCash: cash <= 2,
+        flushCash: cash >= 6,
+        highHeat: heat >= 4,
+        criticalHeat: heat >= 6,
+        holdingGun: gunCount > 0,
+        holdingCargo: cargoCount > 0,
+        inventoryHeavy: inventory.length >= 3,
+        roundNumber: Number(currentState.roundNumber || 0)
+      };
+    }
+
+    function getLatestTableEvent() {
+      const report = currentState.lastRoundReport || [];
+      if (report.length) {
+        return report[0];
+      }
+
+      const history = currentState.history || [];
+      return history[0] || null;
+    }
+
+    function getSelfDisplayName() {
+      const selfPlayer = (currentState.players || []).find(function(player) {
+        return player.isSelf;
+      });
+      return selfPlayer?.name || 'คุณ';
+    }
+
+    function buildNarratorState(rolePlaybook) {
+      const status = getSelfStatusSnapshot();
+      const self = getSelf();
+      const latestEvent = getLatestTableEvent();
+      const selfName = getSelfDisplayName();
+      const notes = [];
+      let title = 'ผู้ดำเนินเกมกำลังจัดโต๊ะ';
+      let summary = 'โต๊ะนี้จะคอยบอกว่าตอนนี้เกมเดินถึงไหน และแรงกดกำลังไหลไปทางใคร';
+
+      if (status.phase === 'market') {
+        title = `ผู้ดำเนินเกมประกาศ: ยก ${Math.max(status.roundNumber, 1)} เปิดตลาดแล้ว`;
+        summary = status.pendingMarketChoice
+          ? 'คุณล็อกของสำหรับยกนี้แล้ว รอระบบปิดตลาดและเฉลยว่าใครหยิบอะไรเข้ากระเป๋า'
+          : 'ตอนนี้เป็นช่วงเลือกของ ระบบจะพาคุณอ่านว่าควรกวาดของหรือผ่านตลาดเพื่อเก็บแรงไว้ยกถัดไป';
+      } else if (status.phase === 'action') {
+        title = `ผู้ดำเนินเกมประกาศ: ยก ${Math.max(status.roundNumber, 1)} เข้าช่วงลงมือ`;
+        summary = status.pendingAction
+          ? `คุณล็อก ${status.pendingAction.summaryText || status.pendingAction.label || 'แผนยกนี้'} แล้ว ตอนนี้รอระบบเฉลยผลพร้อมกันทั้งโต๊ะ`
+          : 'ตลาดปิดแล้ว ตอนนี้เป็นช่วงเลือกแอ็กชันเดียวของยกนี้ ระบบจะเฉลยพร้อมกันหลังทุกคนปิดมือ';
+      } else if (status.phase === 'finished') {
+        title = 'ผู้ดำเนินเกมประกาศ: โต๊ะนี้ปิดแล้ว';
+        summary = currentState.winner?.reason || 'ระบบสรุปคนคุมเมืองคืนนี้ไว้ให้แล้ว ดูผลแล้วเลือกว่าจะเปิดเมืองใหม่หรือกลับห้อง';
+      }
+
+      if (latestEvent?.text) {
+        notes.push({
+          title: 'เหตุการณ์ล่าสุด',
+          copy: latestEvent.text
+        });
+      }
+
+      if (status.tableLeader && status.tableLeader.playerId !== self.playerId) {
+        notes.push({
+          title: 'คนที่นำโต๊ะ',
+          copy: `${status.tableLeader.avatar || ''} ${status.tableLeader.name || 'คนที่นำอยู่'} ถือ 👑 ${Number(status.tableLeader.influence || 0)} ตอนนี้ ถ้าจะเปิดเกมควรคิดก่อนว่ากดเขาลงได้จริงไหม`
+        });
+      }
+
+      if (status.hottestPlayer && Number(status.hottestPlayer.heat || 0) > 0) {
+        notes.push({
+          title: 'คนที่โต๊ะกำลังเพ่ง',
+          copy: `${status.hottestPlayer.avatar || ''} ${status.hottestPlayer.name || 'ใครบางคน'} มี 🔥 ${Number(status.hottestPlayer.heat || 0)} สูงสุดบนโต๊ะ ตอนนี้ทุกสายตากำลังมองเขาอยู่`
+        });
+      }
+
+      if (status.fragilePlayer && (Number(status.fragilePlayer.heat || 0) >= 5 || Number(status.fragilePlayer.cash || 0) <= 1)) {
+        notes.push({
+          title: 'คนที่เริ่มเสียทรง',
+          copy: `${status.fragilePlayer.avatar || ''} ${status.fragilePlayer.name || 'ใครบางคน'} เริ่มเปราะจากเงินหรือค่าหัว ถ้าบทคุณเก็บงานหรือกดโต๊ะเก่ง นี่คือชื่อที่ต้องจับตา`
+        });
+      }
+
+      if (status.pendingAction && ['deal', 'betray'].includes(status.pendingAction.actionType)) {
+        notes.push({
+          title: 'ดีลของคุณตอนนี้',
+          copy: status.pendingAction.actionType === 'betray'
+            ? 'คุณวางมีดรอรับดีลอยู่ ถ้าอีกฝ่ายเปิดเข้ามาจริง ระบบจะตัดสินตอนปิดยกทันที'
+            : 'คุณเปิดดีลของยกนี้ไปแล้ว ถ้าอีกฝ่ายรับกลับ ระบบจะปิดดีลให้พร้อมคิดกำไรทันที'
+        });
+      }
+
+      if (!notes.length) {
+        notes.push({
+          title: 'จังหวะของบทคุณ',
+          copy: rolePlaybook.tempo?.[0] || `${selfName} ยังมีพื้นที่อ่านโต๊ะอยู่ ใช้ยกนี้หาจังหวะที่จุดเด่นของบทคุณทำงานเต็มที่สุด`
+        });
+      }
+
+      return {
+        title,
+        summary,
+        notes: notes.slice(0, 4)
+      };
+    }
+
+    function buildLiveAdviceCards(rolePlaybook) {
+      const self = getSelf();
+      const status = getSelfStatusSnapshot();
+      const latestEvent = getLatestTableEvent();
+      const cards = [];
+
+      if (status.lowCash) {
+        cards.push({
+          label: 'เงินดำเริ่มฝืด',
+          chip: `💵 ${status.cash}`,
+          copy: 'ตอนนี้อย่าเผาเงินเพราะใจร้อน ถ้าตลาดไม่คุ้มให้ผ่านหรือเล่นดีลที่คืนทุนไวก่อน แล้วค่อยกลับมาเร่งบทของคุณ',
+          emphasis: 'เอาตัวรอดก่อน'
+        });
+      } else if (status.flushCash) {
+        cards.push({
+          label: 'ทุนยังหนา',
+          chip: `💵 ${status.cash}`,
+          copy: 'คุณมีแรงกดโต๊ะมากกว่าคนอื่น ใช้เงินเปิดของสำคัญหรือบังคับจังหวะดีลให้คนที่เริ่มจนต้องเล่นตาม',
+          emphasis: 'ใช้ทุนกดโต๊ะ'
+        });
+      }
+
+      if (status.criticalHeat) {
+        cards.push({
+          label: 'ค่าหัวเดือดมาก',
+          chip: `🔥 ${status.heat}`,
+          copy: 'ตอนนี้ทุกแผนแรงต้องคุ้มจริง ไม่อย่างนั้นแต้มจะรั่วเอง คิดถึงหมอบต่ำ ตั้งการ์ด หรือพักจังหวะหนึ่งยกก่อน',
+          emphasis: 'หยุดร้อนก่อน'
+        });
+      } else if (status.highHeat) {
+        cards.push({
+          label: 'เริ่มถูกจับตา',
+          chip: `🔥 ${status.heat}`,
+          copy: 'โต๊ะเริ่มเห็นทรงคุณแล้ว ถ้าจะเปิดหน้า ต้องมั่นใจว่าปิดกำไรได้จริง ไม่เช่นนั้นควรซ่อนมือหนึ่งยก',
+          emphasis: 'อย่าเปิดฟรี'
+        });
+      }
+
+      if (status.holdingGun && status.canHit) {
+        cards.push({
+          label: 'ถือปืนพร้อมเปิดงาน',
+          chip: `🔫 ${status.gunCount}`,
+          copy: status.topThreat
+            ? `ปืนคุณมีน้ำหนักแล้ว เป้าตรงหน้าที่น่าคิดที่สุดคือ ${status.topThreat.avatar || ''} ${status.topThreat.name || 'คนที่นำอยู่'} ถ้ายิงแล้วอันดับไม่พลิก อย่าเพิ่งลั่นไก`
+            : 'ปืนพร้อมใช้ แต่ยังไม่มีเป้าชัดพอจะคุ้มการเปิดงาน เก็บแรงไว้ก่อนถ้าโต๊ะยังไม่เผยตัว',
+          emphasis: 'เลือกเหยื่อให้คุ้ม'
+        });
+      } else if (status.holdingGun) {
+        cards.push({
+          label: 'มีปืนแต่ยังเปิดงานไม่คุ้ม',
+          chip: `🔫 ${status.gunCount}`,
+          copy: 'มีอาวุธแล้วแต่เงื่อนไขยังไม่พร้อม ใช้มันเป็นแรงขู่เชิงจิตวิทยาไปก่อน แล้วหาทุนหรือข่าวเพิ่มให้การยิงครั้งถัดไปคุ้มจริง',
+          emphasis: 'อย่ารีบยิง'
+        });
+      }
+
+      if (status.holdingCargo) {
+        cards.push({
+          label: 'มีของพร้อมเปลี่ยนเป็นแต้ม',
+          chip: `📦 ${status.cargoCount}`,
+          copy: status.phase === 'action'
+            ? 'จังหวะนี้คุณมีของส่งแต้มได้ทันที ชั่งระหว่างกดส่งเลยกับเก็บไว้ยกปิดโต๊ะตามแรงกดของคู่แข่ง'
+            : 'ตอนนี้ของในมือคือแต้มล่วงหน้า อย่าซื้อเพิ่มจนแน่นมือถ้ายังไม่มีช่องปล่อยของในยกถัดไป',
+          emphasis: 'ดูช่องปล่อยของ'
+        });
+      }
+
+      if (status.inventoryHeavy && !status.holdingCargo) {
+        cards.push({
+          label: 'ของแน่นมือ',
+          chip: `🎒 ${status.inventory.length}`,
+          copy: 'ถือของหลายชิ้นแปลว่าคุณเริ่มเป็นเป้า อย่าปล่อยให้ทั้งโต๊ะอ่านออกว่าของไหนคือของทำแต้มหลักของคุณ',
+          emphasis: 'พรางมือไว้'
+        });
+      }
+
+      if (status.hasPassport) {
+        cards.push({
+          label: 'มีทางหนีติดตัว',
+          chip: '🛂 พร้อมใช้',
+          copy: 'หนังสือทางหนีช่วยให้คุณพักเกมได้คุ้มขึ้น ถ้าค่าหัวกำลังสูง นี่คือจังหวะรีเซ็ตภาพลักษณ์ที่ควรจำไว้',
+          emphasis: 'ใช้หนีให้มีค่า'
+        });
+      }
+
+      if (status.phase === 'market') {
+        cards.push({
+          label: 'ตอนนี้อยู่ช่วงเปิดตลาด',
+          chip: `🌒 ยก ${Math.max(status.roundNumber, 1)}`,
+          copy: status.lowCash
+            ? 'ตลาดยกนี้ต้องซื้อแบบคัดจริง เลือกเฉพาะของที่ต่อยอดเป็นแต้มหรือช่วยหนีตายในยกถัดไป'
+            : 'ก่อนกดซื้อให้ถามตัวเองว่าของชิ้นนี้จะทำเงิน ทำแต้ม หรือกันตายให้บทของคุณอย่างไร ถ้าตอบไม่ได้ อย่าหยิบ',
+          emphasis: 'ซื้อให้มีแผน'
+        });
+      } else if (status.phase === 'action') {
+        cards.push({
+          label: 'ตอนนี้อยู่ช่วงลงมือ',
+          chip: status.pendingAction ? '🔒 ล็อกแผนแล้ว' : '🎯 ยังเลือกได้',
+          copy: status.pendingAction
+            ? `คุณล็อก ${status.pendingAction.summaryText || status.pendingAction.label || 'แผนยกนี้'} ไปแล้ว ใช้เวลานี้ดูว่าใครน่าจะโดนผลแผนมากที่สุดในตอนปิดยก`
+            : `ถ้าจะเล่นตามบท ${self.roleTitle || ''} ให้เทียบแผนตรงหน้าเข้ากับ ${rolePlaybook.tempo?.[0] || 'จังหวะทองของบทคุณ'} ก่อนกด`,
+          emphasis: 'คิดก่อนล็อกมือ'
+        });
+      }
+
+      if (status.trailingLeader && status.topThreat) {
+        cards.push({
+          label: 'คนที่กำลังคุมโต๊ะ',
+          chip: `👑 ${Number(status.topThreat.influence || 0)}`,
+          copy: `${status.topThreat.avatar || ''} ${status.topThreat.name || 'เป้าหมายหลัก'} นำอยู่ตอนนี้ ถ้ายกนี้คุณจะลงมือ ควรคิดก่อนว่าแผนนั้นกดเขาได้จริงหรือแค่เสียแรงไปฟรี`,
+          emphasis: 'เลือกเป้าถูกคน'
+        });
+      }
+
+      if (status.hottestPlayer && Number(status.hottestPlayer.heat || 0) >= 4) {
+        cards.push({
+          label: 'คนค่าหัวสูงสุดตอนนี้',
+          chip: `🔥 ${Number(status.hottestPlayer.heat || 0)}`,
+          copy: `${status.hottestPlayer.avatar || ''} ${status.hottestPlayer.name || 'ใครบางคน'} ร้อนสุดบนโต๊ะ ถ้าคุณไม่ใช่คนนั้น นี่คือม่านควันที่ใช้เดินเกมได้ แต่ถ้าคุณใช่ ต้องรีบลดไฟก่อนโต๊ะหันมาซ้ำ`,
+          emphasis: 'อ่านไฟของโต๊ะ'
+        });
+      }
+
+      if (status.fragilePlayer && (Number(status.fragilePlayer.heat || 0) >= 5 || Number(status.fragilePlayer.cash || 0) <= 1)) {
+        cards.push({
+          label: 'มีคนใกล้เสียทรง',
+          chip: `${status.fragilePlayer.avatar || '🎭'} ${status.fragilePlayer.name || 'เป้าเปราะ'}`,
+          copy: `${status.fragilePlayer.name || 'เป้าหมายนี้'} กำลังเปราะจากเงินต่ำหรือค่าหัวสูง ถ้าบทคุณถนัดเก็บกำไรจากคนอ่อนแรง นี่คือชื่อที่ควรเอาเข้ากระจกมอง`,
+          emphasis: 'เหยื่อเริ่มชัด'
+        });
+      }
+
+      if (latestEvent?.text) {
+        const eventTone = String(latestEvent.text || '');
+        if (/เปิดดีล|ปิดดีล|หักหลัง/.test(eventTone)) {
+          cards.push({
+            label: 'โต๊ะเพิ่งมีเรื่องบนเส้นดีล',
+            chip: escapeHtml(latestEvent.icon || '🤝'),
+            copy: `${eventTone} เหตุการณ์พวกนี้เปลี่ยนว่าใครน่าไว้ใจและใครกำลังล่อมีด อย่าเดินยกนี้เหมือนไม่มีอะไรเกิดขึ้น`,
+            emphasis: 'อ่านดีลก่อนลงมือ'
+          });
+        } else if (/สั่งเก็บ|เปิดงาน|รอดจากคำสั่งเก็บ/.test(eventTone)) {
+          cards.push({
+            label: 'โต๊ะเพิ่งมีงานเลือด',
+            chip: escapeHtml(latestEvent.icon || '🔫'),
+            copy: `${eventTone} หลังงานเลือด โต๊ะมักหันไปกันตัวหรือรีบเอาคืน ยกนี้จึงมีค่าเรื่องจังหวะหนีและจังหวะสวนมากกว่าปกติ`,
+            emphasis: 'เกมจะร้อนเร็ว'
+          });
+        }
+      }
+
+      if (!cards.length) {
+        cards.push({
+          label: 'โต๊ะยังไม่บีบคุณมาก',
+          chip: rolePlaybook.tempo?.[0] ? '🎯 อ่านจังหวะ' : '🎯 ตั้งหลัก',
+          copy: 'สถานะตอนนี้ยังไม่กดให้คุณต้องรีบเสี่ยง เปิดยกนี้ด้วยแผนที่หนุนบทของคุณที่สุด แล้วเก็บแรงไว้ตอนโต๊ะเริ่มเผยหน้า',
+          emphasis: 'อย่ารีบเปิดหน้า'
+        });
+      }
+
+      if (cards.length < 2) {
+        cards.push({
+          label: 'จังหวะของบทคุณตอนนี้',
+          chip: status.phase === 'market' ? '🛒 ช่วงเลือกของ' : '🎯 ช่วงลงมือ',
+          copy: status.phase === 'market'
+            ? 'ให้เลือกเฉพาะของที่ทำให้บทของคุณเดินต่อได้จริง ถ้าของไม่หนุนเกมคุณ การผ่านยกยังดีกว่าซื้อมั่ว'
+            : `ถ้าจะกดแผนในยกนี้ ให้เริ่มจากสิ่งที่บท ${self.roleTitle || 'ของคุณ'} ได้เปรียบที่สุดก่อน แล้วค่อยคิดไม้เสริม`,
+          emphasis: 'เดินตามบทก่อน'
+        });
+      }
+
+      return cards.slice(0, 6);
+    }
+
+    function renderAnnouncer(rolePlaybook) {
+      const narrator = buildNarratorState(rolePlaybook);
+      $('#bmAnnouncerBar').html(`
+        <div class="bm-announcer-copy">
+          <div class="bm-announcer-kicker">🎙️ ผู้ดำเนินเกม</div>
+          <div class="bm-announcer-title">${escapeHtml(narrator.title)}</div>
+          <div class="bm-announcer-text">${escapeHtml(narrator.summary)}</div>
+        </div>
+        <div class="bm-announcer-rails">
+          ${narrator.notes.map(function(note) {
+            return `
+              <div class="bm-announcer-note">
+                <strong>${escapeHtml(note.title)}</strong>
+                <span>${escapeHtml(note.copy)}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `);
+    }
+
+    function focusHowToCard() {
+      const card = document.getElementById('bmHowToCard');
+      if (card) {
+        card.focus({ preventScroll: true });
+      }
+    }
+
+    function renderHowToPlay() {
+      const tutorial = currentState.tutorial || {};
+      const actionCatalog = currentState.actionCatalog || [];
+      const role = currentState.playerRole || {};
+      const rolePlaybook = getRolePlaybook();
+      const liveAdviceCards = buildLiveAdviceCards(rolePlaybook);
+
+      $('#bmHowToOverview').html(`
+        <div class="bm-manual-section">
+          <h3>ภาพรวมทั้งโต๊ะ</h3>
+          <p>${escapeHtml(tutorial.goal || 'ยืนให้ถึงท้ายเกม แล้วโกยอิทธิพลให้มากกว่าทั้งโต๊ะ')}</p>
+        </div>
+        <div class="bm-manual-section">
+          <h3>คืนนี้หนึ่งยกเดินยังไง</h3>
+          <div class="bm-manual-list">${buildManualLines(tutorial.roundFlow || [])}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>อ่านโต๊ะจากตรงไหน</h3>
+          <div class="bm-manual-list">
+            ${buildManualLines([
+              'เริ่มจาก บทของคุณ เพื่อดูเงินดำ อิทธิพล ค่าหัว และของที่ถืออยู่',
+              'ดู ตลาดกับแผนลงมือ เพื่อรู้ว่าตอนนี้ยกนี้คุณซื้ออะไรหรือกดแผนไหนได้บ้าง',
+              'ดู คนบนโต๊ะ เพื่อชั่งว่าใครนำ ใครร้อน ใครน่ากลัว และใครกำลังเปราะ',
+              'ดู ดีลบนโต๊ะ กับ ข่าวใต้ดิน เพื่อจับว่าคืนนี้ใครจับมือ ใครแทงหลัง และใครเพิ่งพลาด'
+            ])}
+          </div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>ไม้ที่ใช้กันบนโต๊ะ</h3>
+          <div class="bm-manual-actions-grid">
+            ${actionCatalog.map(function(action) {
+              return `
+                <div class="bm-manual-action">
+                  <strong>${escapeHtml(action.icon)} ${escapeHtml(action.label)}</strong>
+                  <span>${escapeHtml(action.description || '')}</span>
+                  <span>จังหวะนี้ให้ผลแบบนี้: ${escapeHtml(action.effectText || '')}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>กฎที่ต้องจำให้ขึ้นใจ</h3>
+          <div class="bm-manual-list">${buildManualLines(tutorial.reminders || [])}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>สถานะตอนนี้บอกอะไร</h3>
+          <div class="bm-manual-state-grid">
+            ${liveAdviceCards.map(function(card) {
+              return `
+                <div class="bm-manual-state-card">
+                  <div class="bm-manual-state-head">
+                    <div class="bm-manual-state-label">${escapeHtml(card.label)}</div>
+                    <div class="bm-manual-state-chip">${escapeHtml(card.chip)}</div>
+                  </div>
+                  <div class="bm-manual-state-copy">${escapeHtml(card.copy)}</div>
+                  <div class="bm-manual-state-chip">${escapeHtml(card.emphasis)}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `);
+
+      $('#bmHowToRole').html(`
+        <div class="bm-manual-section">
+          <div class="bm-manual-role-head">
+            <div class="bm-manual-role-icon">${escapeHtml(role.icon || '🎭')}</div>
+            <div>
+              <div class="bm-manual-role-name">วิธีเล่นของบท ${escapeHtml(role.title || 'ของคุณ')}</div>
+              <div class="bm-manual-role-chip">${escapeHtml(role.summary || 'อ่านจังหวะแล้วเดินให้เข้ากับโต๊ะ')}</div>
+            </div>
+          </div>
+          <p>${escapeHtml(role.ability || 'ดูบทของตัวเองก่อน แล้ววางแผนให้คุ้มทุกยก')}</p>
+        </div>
+        <div class="bm-manual-section">
+          <h3>เปิดเกมแบบคนบทนี้</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.opening)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>ต้นโต๊ะควรเดินยังไง</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.earlyGame)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>จังหวะที่บทนี้กินเกม</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.tempo)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>กลางโต๊ะควรเดินยังไง</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.midGame)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>ปิดโต๊ะต้องคิดอะไร</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.endGame)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>บทนี้ชอบจับมือกับใคร</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.partnerRoles)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>ใครควรระวังเป็นพิเศษ</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.specialThreats)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>สิ่งที่บทนี้ต้องระวัง</h3>
+          <div class="bm-manual-list">${buildManualLines(rolePlaybook.danger)}</div>
+        </div>
+        <div class="bm-manual-section">
+          <h3>ตอนนี้ควรเล่นแบบไหน</h3>
+          <p>${escapeHtml(tutorial.phaseTip || 'อ่านโต๊ะก่อน แล้วค่อยล็อกมือให้เข้าจังหวะ')}</p>
+        </div>
+      `);
+    }
+
+    function closeHowTo() {
+      howToActive = false;
+      $('#bmHowToOverlay').removeClass('active').attr('aria-hidden', 'true');
+      if (howToRestoreFocus && typeof howToRestoreFocus.focus === 'function') {
+        howToRestoreFocus.focus({ preventScroll: true });
+      }
+      howToRestoreFocus = null;
+    }
+
+    function openHowTo() {
+      howToRestoreFocus = document.activeElement;
+      howToActive = true;
+      renderHowToPlay();
+      $('#bmHowToOverlay').addClass('active').attr('aria-hidden', 'false');
+      focusHowToCard();
+    }
+
+    function focusSpotlightCard() {
+      const card = document.getElementById('bmTourCard');
+      if (card) {
+        card.focus({ preventScroll: true });
+      }
+    }
+
+    function ensureSpotlightTargetVisible(target) {
+      if (!target) {
+        return;
+      }
+
+      const rect = target.getBoundingClientRect();
+      const padding = 24;
+      const needsScroll = rect.top < padding || rect.bottom > window.innerHeight - padding;
+      if (needsScroll) {
+        target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+      }
+    }
+
+    function closeSpotlight(markSeen) {
+      spotlightActive = false;
+      document.querySelectorAll('.bm-tour-focus').forEach(function(node) {
+        node.classList.remove('bm-tour-focus');
+      });
+      $('#bmTourOverlay').removeClass('active').attr('aria-hidden', 'true');
+      if (spotlightRestoreFocus && typeof spotlightRestoreFocus.focus === 'function') {
+        spotlightRestoreFocus.focus({ preventScroll: true });
+      }
+      spotlightRestoreFocus = null;
+      if (markSeen) {
+        markSpotlightSeen();
+      }
+    }
+
+    function positionSpotlight() {
+      if (!spotlightActive) {
+        return;
+      }
+
+      const step = spotlightSteps[spotlightStepIndex];
+      const target = document.querySelector(step.target);
+      if (!target) {
+        closeSpotlight(true);
+        return;
+      }
+
+      document.querySelectorAll('.bm-tour-focus').forEach(function(node) {
+        if (node !== target) {
+          node.classList.remove('bm-tour-focus');
+        }
+      });
+      target.classList.add('bm-tour-focus');
+
+      const rect = target.getBoundingClientRect();
+      const cardWidth = Math.min(360, window.innerWidth - 24);
+      const preferBelow = rect.bottom + 18 + 220 < window.innerHeight;
+      const cardTop = preferBelow
+        ? Math.min(window.innerHeight - 220, rect.bottom + 18)
+        : Math.max(12, rect.top - 210);
+      const cardLeft = Math.min(
+        Math.max(12, rect.left),
+        Math.max(12, window.innerWidth - cardWidth - 12)
+      );
+
+      $('#bmTourCard').css({
+        top: `${cardTop}px`,
+        left: `${cardLeft}px`
+      });
+    }
+
+    function renderSpotlightStep() {
+      const step = spotlightSteps[spotlightStepIndex];
+      const target = document.querySelector(step.target);
+      ensureSpotlightTargetVisible(target);
+      $('#bmTourKicker').text(`${step.kicker} • พาเล่นตลาดมืด`);
+      $('#bmTourTitle').text(step.title);
+      $('#bmTourCopy').text(step.copy);
+      $('#bmTourPrev').prop('disabled', spotlightStepIndex === 0);
+      $('#bmTourNext').text(spotlightStepIndex === spotlightSteps.length - 1 ? 'เริ่มเล่น' : 'ถัดไป');
+      renderSpotlightProgress();
+      window.setTimeout(function() {
+        positionSpotlight();
+        focusSpotlightCard();
+      }, target ? 160 : 0);
+    }
+
+    function openSpotlight(forceOpen) {
+      if (!forceOpen && hasSeenSpotlight()) {
+        return;
+      }
+
+      spotlightRestoreFocus = document.activeElement;
+      spotlightActive = true;
+      spotlightStepIndex = 0;
+      $('#bmTourOverlay').addClass('active').attr('aria-hidden', 'false');
+      renderSpotlightStep();
+    }
+
+    function maybeStartSpotlight() {
+      if (spotlightStarted || !currentState || !currentState.playerRole || !currentState.playerRole.id) {
+        return;
+      }
+      spotlightStarted = true;
+      window.setTimeout(function() {
+        openSpotlight(false);
+      }, 500);
+    }
+
+    function renderRolePanel() {
+      const role = currentState.playerRole || {};
+      const self = getSelf();
+      $('#selfStateChip').html(self.alive ? '🫀 ยังอยู่' : '💀 หลุดโต๊ะแล้ว');
+      $('#rolePanel').html(`
+        <div class="bm-role-wrap">
+          <div class="bm-role-icon">${escapeHtml(role.icon || '🎭')}</div>
+          <div>
+            <div class="bm-role-title">
+              <div class="bm-role-name">${escapeHtml(role.title || 'ยังไม่เปิดบท')}</div>
+              <div class="bm-role-chip">🃏 ${escapeHtml(role.summary || 'รอสัญญาณจากโต๊ะ')}</div>
+            </div>
+            <div class="bm-role-copy">${escapeHtml(role.ability || 'เมื่อเมืองเปิด บทของคุณจะถูกวางลงตรงนี้')}</div>
+          </div>
+        </div>
+        <div class="bm-stats">
+          <div class="bm-stat">
+            <div class="bm-stat-label">💵 เงินดำ</div>
+            <div class="bm-stat-value">${Number(self.cash || 0)}</div>
+          </div>
+          <div class="bm-stat">
+            <div class="bm-stat-label">👑 อิทธิพล</div>
+            <div class="bm-stat-value">${Number(self.influence || 0)}</div>
+          </div>
+          <div class="bm-stat">
+            <div class="bm-stat-label">🔥 ค่าหัว</div>
+            <div class="bm-stat-value">${Number(self.heat || 0)}</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="bm-card-note" style="margin-bottom:10px;">🎒 ของในกระเป๋า</div>
+          <div class="bm-inventory">
+            ${(self.inventory || []).length ? (self.inventory || []).map(item => `
+              <div class="bm-item">
+                <div class="bm-item-name">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</div>
+                <div class="bm-item-copy">${escapeHtml(item.summary || '')}</div>
+              </div>
+            `).join('') : '<div class="bm-empty">มือเปล่า โต๊ะนี้ไม่รอคนช้า</div>'}
+          </div>
+        </div>
+      `);
+    }
+
+    function buildMarketStage() {
+      const self = getSelf();
+      const lockedChoice = self.pendingMarketChoice;
+      const offers = currentState.marketOffers || [];
+      if (!self.alive) {
+        return '<div class="bm-empty">💀 คนที่หลุดโต๊ะแล้วแตะตลาดไม่ได้</div>';
+      }
+
+      return `
+        <div class="bm-market-grid">
+          ${offers.map(item => `
+            <div class="bm-offer">
+              <div class="bm-offer-head">
+                <div class="bm-offer-title">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</div>
+                <div class="bm-price">💵 ${Number(item.priceForPlayer || item.price || 0)}</div>
+              </div>
+              <div class="bm-offer-copy">${escapeHtml(item.summary || '')}</div>
+              <div class="bm-btn-row">
+                <button class="bm-btn gold offer-buy" data-item-id="${escapeHtml(item.id)}" ${lockedChoice || !item.affordable ? 'disabled' : ''}>
+                  ${lockedChoice === item.id ? '✅ ล็อกแล้ว' : (item.affordable ? '🛒 คว้าชิ้นนี้' : '🚫 เงินไม่พอ')}
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="bm-btn-row">
+          <button class="bm-btn alt offer-buy" data-item-id="${escapeHtml(currentState.passChoice || '__pass__')}" ${lockedChoice ? 'disabled' : ''}>🤐 ผ่านตลาด</button>
+        </div>
+        ${lockedChoice ? `<div class="bm-card-note" style="margin-top:10px;">🔒 คุณล็อกตลาดของยกนี้แล้ว รอคนอื่นปิดมือ</div>` : ''}
+      `;
+    }
+
+    function buildActionStage() {
+      const self = getSelf();
+      const actionHelp = currentState.actionHelp || {};
+      const targets = getAliveTargets();
+      const pendingAction = self.pendingAction;
+      const canAct = self.alive && !currentState.winner;
+
+      if (!canAct) {
+        return '<div class="bm-empty">คืนนี้มือคุณไม่อยู่บนโต๊ะแล้ว</div>';
+      }
+
+      const cargoItems = actionHelp.cargoItems || [];
+
+      return `
+        <div class="bm-action-grid">
+          <div class="bm-action-block">
+            <div class="bm-action-title">📦 ส่งของ</div>
+            <div class="bm-action-copy">แปลงของเถื่อนให้เป็น 👑 อิทธิพล</div>
+            <div class="bm-mini-grid">
+              ${cargoItems.length ? cargoItems.map(item => `
+                <button class="bm-target-btn action-submit" data-action-type="deliver" data-item-id="${escapeHtml(item.id)}" ${pendingAction ? 'disabled' : ''}>
+                  ${escapeHtml(item.icon)} ${escapeHtml(item.name)}
+                  <small>รับอิทธิพลจากของชิ้นนี้</small>
+                </button>
+              `).join('') : '<div class="bm-empty">ยังไม่มีของเถื่อนให้ส่ง</div>'}
+            </div>
+          </div>
+
+          <div class="bm-action-block">
+            <div class="bm-action-title">👁️ สืบข่าว</div>
+            <div class="bm-action-copy">คีบข่าววงในจากคู่แข่งบนโต๊ะ</div>
+            <div class="bm-target-list">
+              ${targets.map(player => `
+                <button class="bm-target-btn action-submit" data-action-type="intel" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                  <small>ดูเงิน ไฟ และของที่โผล่</small>
+                </button>
+              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้สืบ</div>'}
+            </div>
+          </div>
+
+          <div class="bm-action-block">
+            <div class="bm-action-title">🤝 เข้าดีล</div>
+            <div class="bm-action-copy">ดีลจะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาในยกเดียวกัน</div>
+            <div class="bm-target-list">
+              ${targets.map(player => `
+                <button class="bm-target-btn action-submit" data-action-type="deal" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                  <small>ปิดดีลแล้วทั้งคู่ได้ 👑 และ 💵</small>
+                </button>
+              `).join('') || '<div class="bm-empty">ไม่มีคนเหลือให้ต่อดีล</div>'}
+            </div>
+          </div>
+
+          <div class="bm-action-block">
+            <div class="bm-action-title">🗡️ หักหลัง</div>
+            <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ</div>
+            <div class="bm-target-list">
+              ${targets.map(player => `
+                <button class="bm-target-btn action-submit" data-action-type="betray" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                  <small>สำเร็จเมื่ออีกฝ่ายเปิดดีลใส่คุณ</small>
+                </button>
+              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้แทงหลัง</div>'}
+            </div>
+          </div>
+
+          <div class="bm-action-block">
+            <div class="bm-action-title">💣 ปล้น</div>
+            <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป</div>
+            <div class="bm-target-list">
+              ${targets.map(player => `
+                <button class="bm-target-btn action-submit" data-action-type="raid" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                  <small>ชิงเงินหรือของจากกระเป๋า</small>
+                </button>
+              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้ปล้น</div>'}
+            </div>
+          </div>
+
+          <div class="bm-action-block">
+            <div class="bm-action-title">🔫 สั่งเก็บ</div>
+            <div class="bm-action-copy">ต้องมีปืนในมือ และทุนพอเปิดงาน</div>
+            <div class="bm-target-list">
+              ${targets.map(player => `
+                <button class="bm-target-btn action-submit" data-action-type="hit" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction || !actionHelp.canHit ? 'disabled' : ''}>
+                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                  <small>${actionHelp.canHit ? 'เปิดงานในยกนี้' : 'ยังไม่มีของเปิดงาน'}</small>
+                </button>
+              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้เปิดงาน</div>'}
+            </div>
+          </div>
+
+          <div class="bm-action-block">
+            <div class="bm-action-title">🦺 ตั้งการ์ด / 🫥 หมอบต่ำ</div>
+            <div class="bm-action-copy">เล่นเนียน ลดค่าหัว แล้วรอจังหวะยกถัดไป</div>
+            <div class="bm-btn-row">
+              <button class="bm-btn alt action-submit" data-action-type="guard" ${pendingAction ? 'disabled' : ''}>🦺 ตั้งการ์ด</button>
+              <button class="bm-btn green action-submit" data-action-type="laylow" ${pendingAction ? 'disabled' : ''}>🫥 หมอบต่ำ${actionHelp.hasPassport ? ' + 🛂' : ''}</button>
+              <button class="bm-btn alt action-submit" data-action-type="pass" ${pendingAction ? 'disabled' : ''}>🤐 ผ่านยกนี้</button>
+            </div>
+          </div>
+        </div>
+        ${pendingAction ? `<div class="bm-card-note" style="margin-top:10px;">🔒 คุณล็อกแผน ${escapeHtml(pendingAction.summaryText || pendingAction.label || 'ยกนี้')} แล้ว รอคนอื่นลงมือ</div><div class="bm-card-note" style="margin-top:6px;">${escapeHtml(pendingAction.effectText || '')}</div>` : ''}
+      `;
+    }
+
+    function renderGuide() {
+      const tutorial = currentState.tutorial || {};
+      const actionCatalog = currentState.actionCatalog || [];
+      const rolePlaybook = getRolePlaybook();
+      const narrator = buildNarratorState(rolePlaybook);
+      $('#guidePanel').html(`
+        <div class="bm-guide-grid">
+          <div class="bm-guide-step">
+            <strong>ประกาศจากผู้ดำเนินเกม</strong>
+            <div class="bm-card-note">${escapeHtml(narrator.title)}</div>
+            <div class="bm-card-note">${escapeHtml(narrator.summary)}</div>
+            <div class="bm-intel-grid">
+              ${narrator.notes.map(function(note) {
+                return `<div class="bm-card-note">• ${escapeHtml(note.title)}: ${escapeHtml(note.copy)}</div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="bm-guide-step">
+            <strong>เป้าหมายของโต๊ะ</strong>
+            <div class="bm-card-note">${escapeHtml(tutorial.goal || '')}</div>
+          </div>
+          <div class="bm-guide-step">
+            <strong>ตอนนี้ควรทำอะไร</strong>
+            <div class="bm-card-note">${escapeHtml(tutorial.phaseTip || '')}</div>
+          </div>
+          <div class="bm-guide-step">
+            <strong>บทของคุณเล่นยังไง</strong>
+            <div class="bm-card-note">${escapeHtml(tutorial.roleTip || 'ดูบทด้านบน แล้วเลือกปุ่มให้ตรงจังหวะ')}</div>
+          </div>
+          <div class="bm-guide-step">
+            <strong>ลำดับการเล่นต่อยก</strong>
+            <div class="bm-intel-grid">
+              ${(tutorial.roundFlow || []).map(step => `<div class="bm-card-note">${escapeHtml(step)}</div>`).join('')}
+            </div>
+          </div>
+          <div class="bm-guide-step">
+            <strong>สรุปปุ่มทั้งหมด</strong>
+            <div class="bm-intel-grid">
+              ${actionCatalog.map(action => `
+                <div class="bm-item">
+                  <div class="bm-item-name">${escapeHtml(action.icon)} ${escapeHtml(action.label)}</div>
+                  <div class="bm-item-copy">${escapeHtml(action.description || '')}</div>
+                  <div class="bm-card-note">ผล: ${escapeHtml(action.effectText || '')}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="bm-guide-step">
+            <strong>ข้อควรจำ</strong>
+            <div class="bm-intel-grid">
+              ${(tutorial.reminders || []).map(line => `<div class="bm-card-note">• ${escapeHtml(line)}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    function renderMainStage() {
+      if (currentState.phase === 'market') {
+        $('#mainStage').html(buildMarketStage());
+        return;
+      }
+
+      if (currentState.phase === 'action') {
+        $('#mainStage').html(buildActionStage());
+        return;
+      }
+
+      if (currentState.phase === 'finished') {
+        $('#mainStage').html('<div class="bm-empty">👑 โต๊ะปิดแล้ว ดูผลด้านขวาแล้วตัดสินใจว่าจะเปิดเมืองใหม่หรือกลับห้อง</div>');
+        return;
+      }
+
+      $('#mainStage').html('<div class="bm-empty">รอสัญญาณจากโต๊ะ</div>');
+    }
+
+    function renderPlayers() {
+      const html = (currentState.players || []).map(player => `
+        <div class="bm-player ${player.isSelf ? 'bm-player-self' : ''} ${player.alive ? '' : 'bm-player-dead'}">
+          <div class="bm-player-head">
+            <div class="bm-player-name">${escapeHtml(player.avatar)} ${escapeHtml(player.name)}</div>
+            <div class="bm-tag">${escapeHtml(player.roleIcon)} ${escapeHtml(player.roleTitle)}</div>
+          </div>
+          <div class="bm-player-copy">${player.alive ? 'ยังอยู่ในเกม' : 'หลุดจากโต๊ะแล้ว'}${player.isSelf ? ' • นี่คือตัวคุณ' : ''}</div>
+          <div class="bm-player-stats">
+            <div class="bm-pill good">👑 ${Number(player.influence || 0)}</div>
+            <div class="bm-pill">💵 ${Number(player.cash || 0)}</div>
+            <div class="bm-pill warn">🔥 ${Number(player.heat || 0)}</div>
+            <div class="bm-pill ${player.alive ? '' : 'dead'}">🎒 ${Number(player.inventoryCount || 0)}</div>
+          </div>
+        </div>
+      `).join('');
+      $('#playersPanel').html(html || '<div class="bm-empty">โต๊ะยังว่าง</div>');
+    }
+
+    function renderIntel() {
+      const notes = getSelf().intelNotes || [];
+      $('#intelPanel').html(notes.length ? notes.map(note => `
+        <div class="bm-intel-item">
+          <div class="bm-intel-head">
+            <div class="bm-player-name">🕶️ ข่าวยก ${Number(note.roundNumber || 0)}</div>
+          </div>
+          <div class="bm-player-copy">${escapeHtml(note.text || '')}</div>
+        </div>
+      `).join('') : '<div class="bm-empty">ยังไม่มีข่าวลับเข้ามือ</div>');
+    }
+
+    function renderDeals() {
+      const pendingAction = getSelf().pendingAction;
+      const notes = currentState.dealLedger || [];
+      const pendingHtml = pendingAction && ['deal', 'betray'].includes(pendingAction.actionType)
+        ? `<div class="bm-intel-item ${pendingAction.actionType === 'betray' ? 'bm-deal-item betray' : 'bm-deal-item win'}">
+            <div class="bm-intel-head">
+              <div class="bm-player-name">${pendingAction.actionType === 'betray' ? '🗡️ มีดคุณถูกล็อกแล้ว' : '🤝 คุณเปิดดีลไว้แล้ว'}</div>
+            </div>
+            <div class="bm-player-copy">${pendingAction.actionType === 'betray'
+              ? 'ถ้าอีกฝ่ายกดเข้าดีลกลับมา การหักหลังจะทำงานทันทีตอนปิดยก'
+              : 'ดีลนี้จะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาหาคุณในยกเดียวกัน'}</div>
+          </div>`
+        : '';
+
+      const ledgerHtml = notes.length ? notes.map(note => `
+        <div class="bm-intel-item bm-deal-item ${note.tone === 'red' ? 'betray' : 'win'}">
+          <div class="bm-intel-head">
+            <div class="bm-player-name">${escapeHtml(note.icon || '🤝')} ดีลยก ${Number(note.roundNumber || 0)}</div>
+          </div>
+          <div class="bm-player-copy">${escapeHtml(note.text || '')}</div>
+        </div>
+      `).join('') : '<div class="bm-empty">ยังไม่มีดีลแตกหรือหักหลังสำเร็จ</div>';
+
+      $('#dealPanel').html(pendingHtml + ledgerHtml);
+    }
+
+    function renderHistory() {
+      const history = currentState.history || [];
+      $('#historyFeed').html(history.length ? history.map(entry => `
+        <div class="bm-feed-item bm-feed-tone-${escapeHtml(entry.tone || 'neutral')}">
+          <div class="bm-feed-icon">${escapeHtml(entry.icon || '📢')}</div>
+          <div class="bm-feed-copy">${escapeHtml(entry.text || '')}</div>
+        </div>
+      `).join('') : '<div class="bm-empty">ข่าวยังไม่เดิน</div>');
+    }
+
+    function renderWinner() {
+      const winner = currentState.winner;
+      if (!winner) {
+        $('#winnerPanel').hide().empty();
+        return;
+      }
+
+      $('#winnerPanel').show().html(`
+        <div class="bm-winner-card">
+          <div class="bm-winner-title">👑 คนที่คุมเมืองคืนนี้</div>
+          <div class="bm-player-name">${escapeHtml(winner.avatar || '🎩')} ${escapeHtml(winner.name || '-')}</div>
+          <div class="bm-player-copy" style="margin-top:8px;">${escapeHtml(winner.roleTitle || '-') } • ${escapeHtml(winner.reason || '')}</div>
+          <div class="bm-player-stats" style="margin-top:10px;">
+            <div class="bm-pill good">👑 ${Number(winner.influence || 0)}</div>
+            <div class="bm-pill">💵 ${Number(winner.cash || 0)}</div>
+            <div class="bm-pill warn">🔥 ${Number(winner.heat || 0)}</div>
+          </div>
+          <div class="bm-footer-actions">
+            ${isRoomAdmin ? '<button id="restartBlackMarket" class="bm-btn gold">🎩 เปิดเมืองใหม่</button>' : ''}
+            <button id="backToBlackMarketLobby" class="bm-btn alt">🚪 กลับห้อง</button>
+          </div>
+        </div>
+      `);
+    }
+
+    function renderState(state) {
+      const previousState = currentState || {};
+      currentState = state || {};
+      const meta = phaseMeta(currentState.phase);
+      const rolePlaybook = getRolePlaybook();
+      $('#phaseChip').attr('class', `bm-chip ${meta.className}`).text(meta.label);
+      $('#roundChip').text(`🌒 ยก ${Number(currentState.roundNumber || 0)} / ${Number(currentState.maxRounds || 5)}`);
+      renderAnnouncer(rolePlaybook);
+      renderRolePanel();
+      renderGuide();
+      renderMainStage();
+      renderPlayers();
+      renderDeals();
+      renderIntel();
+      renderHistory();
+      renderWinner();
+      if (howToActive) {
+        renderHowToPlay();
+      }
+      handleCeremony(previousState, currentState);
+      if (spotlightActive) {
+        positionSpotlight();
+      }
+      maybeStartSpotlight();
+    }
+
+    function requestState() {
+      socket.emit('blackmarket_requestState', { roomId, playerId });
+    }
+
+    function submitMarketChoice(itemId) {
+      socket.emit('blackmarket_buyOffer', { roomId, playerId, itemId }, function(response) {
+        if (!response || !response.success) {
+          Swal.fire({ icon: 'error', title: 'โต๊ะไม่ยอม', text: response?.error || 'ของชิ้นนี้ยังไม่ผ่าน', background: '#111', color: '#fff' });
+        }
+      });
+    }
+
+    function submitAction(actionType, targetPlayerId, itemId) {
+      socket.emit('blackmarket_submitAction', { roomId, playerId, actionType, targetPlayerId, itemId }, function(response) {
+        if (!response || !response.success) {
+          Swal.fire({ icon: 'error', title: 'งานยังไม่ผ่าน', text: response?.error || 'แผนนี้ยังล็อกไม่ได้', background: '#111', color: '#fff' });
+        }
+      });
+    }
+
+    updateAudioToggle();
+    renderState(currentState);
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId, playerId });
+    requestState();
+
+    socket.on('reconnect', function() {
+      socket.emit('initPlayer', playerId);
+      socket.emit('setRoom', { roomId, playerId });
+      requestState();
+    });
+
+    socket.on('blackmarketState', function(state) {
+      renderState(state);
+    });
+
+    socket.on('restartGame', function() {
+      allowNavigation = true;
+      window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+    });
+
+    socket.on('kickedFromRoom', function(data) {
+      allowNavigation = true;
+      Swal.fire({ icon: 'error', title: 'โดนเคลียร์ออกจากห้อง', text: data?.message || data?.reason || 'คืนนี้โต๊ะนี้ไม่รับคุณแล้ว', background: '#111', color: '#fff' })
+        .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+    });
+
+    socket.on('roomClosed', function(data) {
+      allowNavigation = true;
+      Swal.fire({ icon: 'warning', title: 'โต๊ะถูกปิด', text: data?.message || 'ห้องนี้ถูกพับเก็บไปแล้ว', background: '#111', color: '#fff' })
+        .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+    });
+
+    $(document).on('click', '.offer-buy', function() {
+      submitMarketChoice($(this).attr('data-item-id'));
+    });
+
+    $(document).on('click', '.action-submit', function() {
+      submitAction(
+        $(this).attr('data-action-type'),
+        $(this).attr('data-target-player-id') || null,
+        $(this).attr('data-item-id') || null
+      );
+    });
+
+    $(document).on('click', '#restartBlackMarket', function() {
+      socket.emit('blackmarket_restartGame', { roomId }, function(response) {
+        if (!response || !response.success) {
+          Swal.fire({ icon: 'error', title: 'ยังเปิดโต๊ะใหม่ไม่ได้', text: response?.error || 'ลองอีกครั้ง', background: '#111', color: '#fff' });
+        }
+      });
+    });
+
+    $(document).on('click', '#bmAudioToggle', function() {
+      unlockAudio();
+    });
+
+    $(document).on('click', '#bmHowToOpen', function() {
+      openHowTo();
+    });
+
+    $(document).on('click', '#bmHowToClose', function() {
+      closeHowTo();
+    });
+
+    $(document).on('click', '#bmHowToOverlay', function(event) {
+      if (event.target.id === 'bmHowToOverlay') {
+        closeHowTo();
+      }
+    });
+
+    $(document).on('click', '#bmTourReplay', function() {
+      openSpotlight(true);
+    });
+
+    $(document).on('click', '#bmTourSkip', function() {
+      closeSpotlight(true);
+    });
+
+    $(document).on('click', '#bmTourPrev', function() {
+      if (spotlightStepIndex <= 0) {
+        return;
+      }
+      spotlightStepIndex -= 1;
+      renderSpotlightStep();
+    });
+
+    $(document).on('click', '#bmTourNext', function() {
+      if (spotlightStepIndex >= spotlightSteps.length - 1) {
+        closeSpotlight(true);
+        return;
+      }
+      spotlightStepIndex += 1;
+      renderSpotlightStep();
+    });
+
+    $(document).on('click', '#backToBlackMarketLobby', function() {
+      allowNavigation = true;
+      window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+    });
+
+    $(window).on('resize', function() {
+      positionSpotlight();
+    });
+
+    $(window).on('scroll', function() {
+      positionSpotlight();
+    });
+
+    $(document).on('keydown', function(event) {
+      if (howToActive && event.key === 'Escape') {
+        event.preventDefault();
+        closeHowTo();
+        return;
+      }
+
+      if (!spotlightActive) {
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSpotlight(true);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        if (spotlightStepIndex > 0) {
+          spotlightStepIndex -= 1;
+          renderSpotlightStep();
+        }
+        return;
+      }
+
+      if (['ArrowRight', 'Enter', ' '].includes(event.key)) {
+        event.preventDefault();
+        if (spotlightStepIndex >= spotlightSteps.length - 1) {
+          closeSpotlight(true);
+          return;
+        }
+        spotlightStepIndex += 1;
+        renderSpotlightStep();
+      }
+    });
+
+    document.addEventListener('pointerdown', function() {
+      if (!audioEnabled) {
+        unlockAudio().catch(function() {});
+      }
+    }, { once: true });
+
+    window.addEventListener('beforeunload', function(e) {
+      if (allowNavigation) {
+        return undefined;
+      }
+      e.preventDefault();
+      e.returnValue = 'จะทิ้งโต๊ะนี้ไว้จริงหรือ?';
+      return e.returnValue;
+    });
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') {
+        requestState();
+      }
+    });
+  });
+</script>

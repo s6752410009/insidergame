@@ -1,6 +1,23 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --lobby-bg: #09090b;
+    --lobby-panel: rgba(18, 18, 20, 0.86);
+    --lobby-line: rgba(255, 255, 255, 0.1);
+    --lobby-gold: #f5c86b;
+    --lobby-text: #f5efe3;
+    --lobby-muted: #b8ada0;
+    --lobby-shadow: 0 32px 100px rgba(0, 0, 0, 0.52);
+  }
+
+  body.content {
+    background:
+      radial-gradient(circle at 10% 5%, rgba(127, 29, 29, 0.45), transparent 22%),
+      radial-gradient(circle at 92% 0%, rgba(180, 83, 9, 0.22), transparent 18%),
+      linear-gradient(180deg, #09090b 0%, #110d0c 45%, #17110f 100%);
+  }
+
   /* Popup แก้ไขห้อง - Modern Style */
   .room-popup {
       max-width: 480px !important;
@@ -234,65 +251,175 @@
   }
 
   .room-lobby-container {
-    max-width: 1400px;
-    margin: 20px auto 40px;
-    padding: 10px 20px 30px;
+    position: relative;
+    max-width: 1440px;
+    margin: 20px auto 36px;
+    padding: 20px;
     font-family: 'Rajdhani', sans-serif;
-    color: #fff;
+    color: var(--lobby-text);
     overflow-x: hidden;
   }
 
+  .room-lobby-shell {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid rgba(245, 200, 107, 0.16);
+    border-radius: 34px;
+    background:
+      linear-gradient(145deg, rgba(12, 12, 14, 0.98), rgba(26, 17, 15, 0.94)),
+      var(--lobby-bg);
+    box-shadow: var(--lobby-shadow);
+  }
+
+  .room-lobby-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 0.7px, transparent 0.7px);
+    background-size: 16px 16px;
+    opacity: 0.18;
+    pointer-events: none;
+  }
+
+  .room-lobby-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(115deg, rgba(245, 200, 107, 0.06), transparent 18%, transparent 70%, rgba(116, 185, 255, 0.04)),
+      radial-gradient(circle at top center, rgba(245, 200, 107, 0.08), transparent 32%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
   .room-lobby-header {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 24px 26px 22px;
+    margin-bottom: 0;
     flex-wrap: wrap;
-    gap: 10px;
+    border-bottom: 1px solid var(--lobby-line);
+    background:
+      radial-gradient(circle at top left, rgba(127, 29, 29, 0.32), transparent 34%),
+      linear-gradient(135deg, rgba(127, 29, 29, 0.22), rgba(17, 17, 17, 0.72));
+  }
+
+  .room-lobby-header::after {
+    content: '';
+    position: absolute;
+    left: 26px;
+    right: 26px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(245, 200, 107, 0.24), transparent 32%, transparent 68%, rgba(245, 200, 107, 0.2));
+  }
+
+  .room-lobby-hero {
+    display: grid;
+    gap: 8px;
+    max-width: 760px;
+  }
+
+  .room-kicker {
+    color: var(--lobby-gold);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
 
   .room-title {
     font-family: 'Orbitron', sans-serif;
-    font-size: 1.6em;
-    font-weight: 800;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(245, 200, 107, 0.12);
+    letter-spacing: 0.06em;
   }
 
   .room-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     font-size: 0.95em;
-    color: #ddd;
+    color: var(--lobby-text);
   }
 
   .room-meta span {
-    margin-right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 13px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    font-weight: 700;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .room-subtitle {
+    color: var(--lobby-muted);
+    font-size: 1rem;
+    max-width: 64ch;
+  }
+
+  .room-header-actions {
+    position: relative;
+    z-index: 1;
+  }
+
+  .room-header-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.08);
+    color: var(--lobby-text);
+    text-decoration: none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
 
   .room-main-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+    gap: 20px;
+    padding: 22px;
   }
 
   .room-chat-area {
-    flex: 1;
-    min-width: 280px;
+    min-width: 0;
   }
 
   .lobby-player-list {
-    flex: 0 0 280px;
-    max-width: 300px;
+    max-width: none;
   }
 
   .room-card-dark {
-    background: linear-gradient(135deg, #151515 0%, #222 100%);
-    border-radius: 16px;
-    border: 2px solid #444;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--lobby-panel);
+    border-radius: 28px;
+    border: 1px solid var(--lobby-line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 18px 42px rgba(0,0,0,0.24);
     padding: 18px 20px 16px;
   }
 
+  .room-card-dark:hover {
+    border-color: rgba(245, 200, 107, 0.16);
+  }
+
   .room-chat-area.room-card-dark {
-    height: 380px;
+    min-height: 460px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -301,7 +428,7 @@
   /* Mobile responsive for room lobby */
   @media (max-width: 768px) {
     .room-main-panel {
-      flex-direction: column;
+      grid-template-columns: 1fr;
     }
     
     .room-chat-area {
@@ -337,11 +464,11 @@
 
   #lobbyChatInput {
     flex: 1;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid #444;
-    background: #111;
-    color: #fff;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: var(--lobby-text);
     resize: none;
     min-height: 34px;
     max-height: 90px;
@@ -349,14 +476,14 @@
 
   #lobbyChatInput:focus {
     outline: none;
-    border-color: #e74c3c;
+    border-color: rgba(245, 200, 107, 0.34);
   }
 
   .btn-send-chat {
-    padding: 8px 16px;
-    border-radius: 10px;
+    padding: 10px 16px;
+    border-radius: 14px;
     border: none;
-    background: #e74c3c;
+    background: linear-gradient(135deg, #9a3412, #7f1d1d);
     color: #fff;
     font-weight: 700;
     cursor: pointer;
@@ -377,8 +504,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 0;
-    border-bottom: 1px dashed #333;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.12);
     font-size: 0.95em;
   }
 
@@ -441,8 +569,8 @@
 
   .lobby-admin-controls {
     margin-top: 12px;
-    border-top: 1px solid #333;
-    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding-top: 12px;
   }
 
   .lobby-admin-controls h4 {
@@ -453,11 +581,12 @@
   .btn-admin-small {
     width: 100%;
     margin-bottom: 6px;
-    padding: 6px 10px;
-    border-radius: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
     border: none;
     font-size: 0.9em;
     cursor: pointer;
+    font-weight: 700;
   }
 
   .btn-kick {
@@ -483,16 +612,19 @@
     gap: 12px;
     flex-shrink: 0; /* ป้องกันไม่ให้ถูกบีบ */
     min-height: 50px;
+    flex-wrap: wrap;
   }
 
   .start-game-bar span {
     font-size: 0.95em;
     color: #ddd;
+    flex: 1 1 220px;
+    min-width: 0;
   }
 
   #btnStartGameLobby {
-    padding: 10px 18px;
-    border-radius: 10px;
+    padding: 12px 18px;
+    border-radius: 14px;
     border: none;
     font-family: 'Rajdhani', sans-serif;
     font-weight: 700;
@@ -500,6 +632,10 @@
     cursor: pointer;
     background: #2ecc71;
     color: #111;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 156px;
+    white-space: nowrap;
   }
 
   #btnStartGameLobby:disabled {
@@ -570,7 +706,7 @@
   }
 
   .chat-msg.other-msg .chat-msg-bubble {
-    background: #3a3a3a;
+    background: rgba(255,255,255,0.08);
     border-bottom-left-radius: 4px;
   }
 
@@ -724,6 +860,42 @@
   .profile-role-row:last-child {
     border-bottom: none;
   }
+
+  .lobby-spotlight {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .lobby-spotlight-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    color: var(--lobby-text);
+    font-size: 0.82em;
+    font-weight: 700;
+  }
+
+  @media (max-width: 640px) {
+    .room-lobby-container {
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .room-lobby-shell {
+      border-radius: 24px;
+    }
+
+    .room-lobby-header,
+    .room-main-panel,
+    .room-card-dark {
+      padding: 14px;
+    }
+  }
   
   /* Toggle Switch Style */
   .toggle-switch input:checked + .toggle-slider {
@@ -748,23 +920,31 @@
 </style>
 
 <div class="room-lobby-container">
-  <div class="room-lobby-header">
-    <div>
-      <div class="room-title">🎮 ห้อง: <%= room.name %></div>
-      <div class="room-meta">
-        <span>ID: <strong><%= room.roomId %></strong></span>
-        <span>ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<%= room.maxPlayers %></span>
-        <span style="background: <%= room.gameMode === 'werewolf' ? 'linear-gradient(135deg, #34495e, #111827)' : 'linear-gradient(135deg, #e67e22, #d35400)' %>; padding: 2px 8px; border-radius: 10px; font-size: 0.85em;"><%= room.gameModeLabel %></span>
-        <span>สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
-        <span id="dualTraitorBadge" style="display: <%= room.gameMode === 'insider' && room.dualTraitorMode ? 'inline' : 'none' %>; background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 2px 8px; border-radius: 10px; font-size: 0.85em;">🔴🔴 2 ผู้ทรยศ</span>
+  <div class="room-lobby-shell">
+    <div class="room-lobby-header">
+      <div class="room-lobby-hero">
+        <div class="room-kicker">🎩 ห้องเตรียมเกม</div>
+        <div class="room-title">🎮 ห้อง: <span id="roomTitleText"><%= room.name %></span></div>
+        <div class="room-subtitle">คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วค่อยเปิดเกมเมื่อทุกคนพร้อม ถ้าเป็นตลาดมืดก็จะพาเข้าหน้าโต๊ะทันที</div>
+        <div class="lobby-spotlight">
+          <div class="lobby-spotlight-pill">💬 แชทคุยกันก่อนเริ่ม</div>
+          <div class="lobby-spotlight-pill">👑 หัวหน้าห้องคุมการเปิดเกม</div>
+          <div class="lobby-spotlight-pill">🎩 Black Market พร้อมเปิดตลาดทันทีเมื่อครบคน</div>
+        </div>
+        <div class="room-meta">
+          <span>🆔 ID: <strong><%= room.roomId %></strong></span>
+          <span>👥 ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<span id="lobbyMaxPlayers"><%= room.maxPlayers %></span></span>
+          <span id="roomGameModeBadge" data-game-mode="<%= room.gameMode %>" style="background: <%= room.gameMode === 'werewolf' ? 'linear-gradient(135deg, #34495e, #111827)' : (room.gameMode === 'blackmarket' ? 'linear-gradient(135deg, #7f1d1d, #111111)' : 'linear-gradient(135deg, #e67e22, #d35400)') %>; color:<%= room.gameMode === 'blackmarket' ? '#fde68a' : '#fff' %>;"><%= room.gameModeLabel %></span>
+          <span>🚪 สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
+          <span id="dualTraitorBadge" style="display: <%= room.gameMode === 'insider' && room.dualTraitorMode ? 'inline-flex' : 'none' %>; background: linear-gradient(135deg, #e74c3c, #c0392b);">🔴🔴 2 ผู้ทรยศ</span>
+        </div>
+      </div>
+      <div class="room-header-actions">
+        <button id="btnLeaveRoom" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif;">← กลับรายชื่อห้อง</button>
       </div>
     </div>
-    <div>
-      <button id="btnLeaveRoom" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif;">← กลับ Room List</button>
-    </div>
-  </div>
 
-  <div class="room-main-panel">
+    <div class="room-main-panel">
     <!-- Chat / status -->
     <div class="room-card-dark room-chat-area">
       <div style="margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
@@ -778,9 +958,9 @@
       </div>
       <div class="start-game-bar">
         <span id="lobbyStatusText">
-          รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม
+          รอผู้เล่นครบก่อนเปิดเกม
         </span>
-        <button id="btnStartGameLobby" disabled style="display: <%= room.isAdmin ? 'inline-block' : 'none' %>;">เริ่มเกม</button>
+        <button id="btnStartGameLobby" disabled style="display: <%= room.isAdmin ? 'inline-block' : 'none' %>;">เปิดเกม</button>
       </div>
     </div>
 
@@ -790,7 +970,7 @@
       <div id="lobbyPlayers"></div>
 
       <div id="adminControlsSection" class="lobby-admin-controls" style="display: <%= room.isAdmin ? 'block' : 'none' %>;">
-        <h4>👑 Admin Controls</h4>
+        <h4>👑 คำสั่งหัวหน้าห้อง</h4>
         
         <!-- Quick Toggle: Dual Traitor Mode -->
         <div id="dualTraitorQuickToggle" style="display: <%= room.gameMode === 'insider' ? 'none' : 'none' %>; margin-bottom: 15px; padding: 12px 15px; background: linear-gradient(135deg, rgba(231,76,60,0.15), rgba(192,57,43,0.1)); border: 2px solid rgba(231,76,60,0.4); border-radius: 12px;">
@@ -806,6 +986,7 @@
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
       </div>
     </div>
+    </div>
   </div>
 </div>
 <%- contentFor('footer') %>
@@ -820,11 +1001,37 @@
     const roomId = '<%= room.roomId %>';
     const playerId = '<%= player.playerId %>';
     const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
-    const currentGameMode = '<%= room.gameMode %>';
-    const currentWerewolfRoles = <%- JSON.stringify(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
+    let currentGameMode = '<%= room.gameMode %>';
+    let currentWerewolfRoles = <%- JSON.stringify(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
     const initialRoomPayload = <%- JSON.stringify(typeof initialRoomPayload !== 'undefined' ? initialRoomPayload : null) %>;
     let latestRoomPayload = initialRoomPayload ? { ...initialRoomPayload } : null;
     let isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
+    const currentModeMeta = {
+      insider: {
+        minPlayers: 3,
+        label: 'Insider',
+        startLabel: '🎮 เริ่มเกม',
+        readyText: 'พร้อมแล้ว! กดเริ่มเกมได้เลยเมื่อทุกคนพร้อม',
+        waitingText: 'รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม',
+        roundLabel: 'เวลาเล่นต่อรอบ:'
+      },
+      werewolf: {
+        minPlayers: 6,
+        label: 'Werewolf',
+        startLabel: '🌙 เปิดคืนแรก',
+        readyText: 'พร้อมแล้ว! เปิดคืนแรกได้ทันที',
+        waitingText: 'รอผู้เล่นครบอย่างน้อย 6 คนก่อนเริ่มเกม',
+        roundLabel: 'เวลาต่อช่วงกลางวัน/กลางคืน:'
+      },
+      blackmarket: {
+        minPlayers: 4,
+        label: 'Black Market',
+        startLabel: '🎩 เปิดตลาดมืด',
+        readyText: 'โต๊ะพร้อมแล้ว เปิดตลาดมืดได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเปิดตลาด',
+        roundLabel: 'เวลาเดินเกมต่อยก:'
+      }
+    };
     const werewolfRoleVisuals = {
       werewolf: { emoji: '🐺', teamLabel: 'ฝั่งหมาป่า' },
       alphaWolf: { emoji: '👑', teamLabel: 'หมาป่านำทีม' },
@@ -968,6 +1175,81 @@
         .filter(option => option.querySelector('input')?.checked)
         .map(option => option.dataset.roleId);
     }
+
+    function normalizeLobbyGameMode(mode) {
+      const compactMode = String(mode || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+      if (compactMode === 'blackmarket' || compactMode === 'blackmkt' || compactMode === 'blackmarketmode') {
+        return 'blackmarket';
+      }
+      if (compactMode === 'werewolf') {
+        return 'werewolf';
+      }
+      return 'insider';
+    }
+
+    function getModeMeta(mode) {
+      return currentModeMeta[normalizeLobbyGameMode(mode)] || currentModeMeta.insider;
+    }
+
+    function getModeBadgeStyle(mode) {
+      const normalizedMode = normalizeLobbyGameMode(mode);
+      if (normalizedMode === 'werewolf') {
+        return {
+          background: 'linear-gradient(135deg, #34495e, #111827)',
+          color: '#fff'
+        };
+      }
+      if (normalizedMode === 'blackmarket') {
+        return {
+          background: 'linear-gradient(135deg, #7f1d1d, #111111)',
+          color: '#fde68a'
+        };
+      }
+      return {
+        background: 'linear-gradient(135deg, #e67e22, #d35400)',
+        color: '#fff'
+      };
+    }
+
+    function resolveGameModeFromPayload(payload) {
+      return normalizeLobbyGameMode(
+        (payload && payload.settings && payload.settings.gameMode)
+        || (payload && payload.gameMode)
+        || currentGameMode
+      );
+    }
+
+    function updateLobbyModeUI(payload) {
+      const resolvedMode = resolveGameModeFromPayload(payload);
+      const settings = payload && payload.settings ? payload.settings : null;
+      const badge = document.getElementById('roomGameModeBadge');
+      const maxPlayersLabel = document.getElementById('lobbyMaxPlayers');
+      const roomTitle = document.getElementById('roomTitleText');
+      const badgeStyle = getModeBadgeStyle(resolvedMode);
+
+      currentGameMode = resolvedMode;
+
+      if (settings && Array.isArray(settings.werewolfRoles)) {
+        currentWerewolfRoles = settings.werewolfRoles;
+      }
+
+      if (badge) {
+        badge.textContent = (payload && payload.gameModeLabel) || getModeMeta(resolvedMode).label;
+        badge.dataset.gameMode = resolvedMode;
+        badge.style.background = badgeStyle.background;
+        badge.style.color = badgeStyle.color;
+      }
+
+      if (maxPlayersLabel && settings && settings.maxPlayers) {
+        maxPlayersLabel.textContent = String(settings.maxPlayers);
+      }
+
+      if (roomTitle && payload && payload.roomName) {
+        roomTitle.textContent = payload.roomName;
+      }
+    }
+
+    currentGameMode = normalizeLobbyGameMode(currentGameMode);
     
     // ===== โหลดการตั้งค่าจาก localStorage =====
     function getGameSettings() {
@@ -1135,21 +1417,23 @@
     function updateStartButtonState(players) {
       const btn = $('#btnStartGameLobby');
       if (!btn.length) return;
+      const modeMeta = getModeMeta(currentGameMode);
+      btn.text(modeMeta.startLabel);
       const count = (players || []).filter(function(player) {
         return player.online !== false;
       }).length;
-      if (count >= 3) {
+      if (count >= modeMeta.minPlayers) {
         btn.prop('disabled', false);
-        $('#lobbyStatusText').text('พร้อมแล้ว! กดเริ่มเกมได้เลยเมื่อทุกคนพร้อม');
+        $('#lobbyStatusText').text(modeMeta.readyText);
       } else {
         btn.prop('disabled', true);
-        $('#lobbyStatusText').text('รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม');
+        $('#lobbyStatusText').text(modeMeta.waitingText);
       }
     }
     
     // ฟังก์ชันแสดง/ซ่อน dual traitor toggle
     function updateDualTraitorToggleVisibility(playerCount) {
-      if (currentGameMode !== 'insider') {
+      if (normalizeLobbyGameMode(currentGameMode) !== 'insider') {
         const toggle = document.getElementById('dualTraitorQuickToggle');
         if (toggle) {
           toggle.style.display = 'none';
@@ -1176,7 +1460,7 @@
     
     // Event handler สำหรับ quick toggle
     $(document).on('change', '#quickDualTraitorToggle', function() {
-      if (currentGameMode !== 'insider') {
+      if (normalizeLobbyGameMode(currentGameMode) !== 'insider') {
         this.checked = false;
         return;
       }
@@ -1269,6 +1553,7 @@
       if (!payload) return;
       console.log('[roomUpdate]', payload);
       latestRoomPayload = payload;
+      updateLobbyModeUI(payload);
       
       // อัปเดตสถานะ admin ถ้า payload มีข้อมูล admin
       if (payload.admin) {
@@ -1308,6 +1593,7 @@
 
     if (initialRoomPayload) {
       latestRoomPayload = initialRoomPayload;
+      updateLobbyModeUI(initialRoomPayload);
       renderPlayers(initialRoomPayload);
     }
 
@@ -1625,11 +1911,23 @@
       });
 
       $('#btnEditRoom').on('click', function () {
-        const currentMaxPlayers = <%= room.maxPlayers %>;
-        const currentRoundTime = <%= room.roundTime %>;
-        const currentLocked = <%= room.locked ? 'true' : 'false' %>;
-        const currentPassword = '<%= room.password %>';
-        const currentDualTraitor = <%= room.dualTraitorMode ? 'true' : 'false' %>;
+        const roomSettings = latestRoomPayload && latestRoomPayload.settings ? latestRoomPayload.settings : {
+          maxPlayers: <%= room.maxPlayers %>,
+          roundTime: <%= room.roundTime %>,
+          locked: <%= room.locked ? 'true' : 'false' %>,
+          password: '<%= room.password %>',
+          dualTraitorMode: <%= room.dualTraitorMode ? 'true' : 'false' %>,
+          werewolfRoles: currentWerewolfRoles
+        };
+        const activeMode = normalizeLobbyGameMode(roomSettings.gameMode || currentGameMode);
+        const activeModeMeta = getModeMeta(activeMode);
+        const currentMaxPlayers = Number(roomSettings.maxPlayers || <%= room.maxPlayers %>);
+        const currentRoundTime = Number(roomSettings.roundTime || <%= room.roundTime %>);
+        const currentLocked = !!roomSettings.locked;
+        const currentPassword = String(roomSettings.password || '');
+        const activeWerewolfRoles = Array.isArray(roomSettings.werewolfRoles) && roomSettings.werewolfRoles.length
+          ? roomSettings.werewolfRoles
+          : currentWerewolfRoles;
         const currentPlayerCount = parseInt($('#lobbyPlayerCount').text()) || <%= room.playerCount %>;
         
         Swal.fire({
@@ -1654,13 +1952,13 @@
                 </label>
                 <div class="room-slider-container">
                   <span class="room-slider-value" id="editMaxPlayersValue">${currentMaxPlayers}</span>
-                  <input type="range" id="editMaxPlayers" class="room-slider" min="3" max="10" value="${currentMaxPlayers}">
+                  <input type="range" id="editMaxPlayers" class="room-slider" min="${activeModeMeta.minPlayers}" max="${activeMode === 'blackmarket' ? '7' : '10'}" value="${currentMaxPlayers}">
                 </div>
               </div>
               
               <div class="room-form-group">
                 <label class="room-form-label">
-                  <span class="icon">⏱️</span> ${currentGameMode === 'werewolf' ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:'}
+                  <span class="icon">⏱️</span> ${activeModeMeta.roundLabel || 'เวลาเล่นต่อรอบ:'}
                 </label>
                 <div class="room-slider-container">
                   <span class="room-slider-value" id="editRoundTimeValue">${currentRoundTime} นาที</span>
@@ -1668,7 +1966,7 @@
                 </div>
               </div>
 
-              <div class="room-form-group" id="editWerewolfRolesGroup" style="display: ${currentGameMode === 'werewolf' ? 'block' : 'none'};">
+              <div class="room-form-group" id="editWerewolfRolesGroup" style="display: ${activeMode === 'werewolf' ? 'block' : 'none'};">
                 <label class="room-form-label">
                   <span class="icon">🐺</span> บทบาทที่เปิดในห้อง:
                 </label>
@@ -1722,12 +2020,23 @@
               const percent = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
               slider.style.background = `linear-gradient(90deg, #e74c3c 0%, #e74c3c ${percent}%, #333 ${percent}%, #333 100%)`;
             }
+
+            const modeMeta = getModeMeta(activeMode);
+            maxPlayersSlider.min = String(modeMeta.minPlayers);
+            maxPlayersSlider.max = String(activeMode === 'blackmarket' ? 7 : 10);
+            if (Number(maxPlayersSlider.value) < modeMeta.minPlayers) {
+              maxPlayersSlider.value = String(modeMeta.minPlayers);
+            }
+            if (activeMode === 'blackmarket' && Number(maxPlayersSlider.value) > 7) {
+              maxPlayersSlider.value = '7';
+            }
+            maxPlayersValue.textContent = maxPlayersSlider.value;
             
             updateSliderBackground(maxPlayersSlider);
             updateSliderBackground(roundTimeSlider);
 
             if (werewolfRolesSelector) {
-              werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(currentWerewolfRoles.length ? currentWerewolfRoles : werewolfRoleOptions.filter(role => role.defaultEnabled).map(role => role.id));
+              werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(activeWerewolfRoles.length ? activeWerewolfRoles : werewolfRoleOptions.filter(role => role.defaultEnabled).map(role => role.id));
               syncWerewolfRolePicker(werewolfRolesSelector);
               werewolfRolesSelector.addEventListener('click', function(event) {
                 const presetButton = event.target.closest('.werewolf-role-preset');
@@ -1786,7 +2095,7 @@
             const roundTime = parseInt(document.getElementById('editRoundTime').value, 10);
             const locked = document.getElementById('editLocked').checked;
             const password = document.getElementById('editPassword').value.trim();
-            const werewolfRoles = currentGameMode === 'werewolf'
+            const werewolfRoles = activeMode === 'werewolf'
               ? collectWerewolfRoleSelection(document.getElementById('editWerewolfRolesSelector'))
               : undefined;
             
@@ -1845,7 +2154,7 @@
         socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
           btn.data('loading', false);
           if (!res || !res.success) {
-            btn.text('🎮 เริ่มเกม');
+            btn.text(getModeMeta(currentGameMode).startLabel);
             Swal.fire({
               icon: 'error',
               title: 'เริ่มเกมไม่สำเร็จ',

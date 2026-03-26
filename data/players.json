@@ -222,7 +222,7 @@
     "avatar": "👤",
     "avatarFrame": "none",
     "createdAt": "2026-03-20T07:31:17.419Z",
-    "lastSeen": "2026-03-20T12:04:41.749Z"
+    "lastSeen": "2026-03-22T15:22:02.301Z"
   },
   "18d80792-8c94-42fa-9722-f6c2e74fef7e": {
     "playerId": "18d80792-8c94-42fa-9722-f6c2e74fef7e",
@@ -231,7 +231,7 @@
     "avatar": "👤",
     "avatarFrame": "none",
     "createdAt": "2026-03-20T07:32:31.991Z",
-    "lastSeen": "2026-03-20T12:04:41.711Z"
+    "lastSeen": "2026-03-21T10:13:08.804Z"
   },
   "4a17d0ae-0db5-4e80-8e00-2101bd1bac31": {
     "playerId": "4a17d0ae-0db5-4e80-8e00-2101bd1bac31",
@@ -240,7 +240,7 @@
     "avatar": "👤",
     "avatarFrame": "none",
     "createdAt": "2026-03-20T07:32:36.156Z",
-    "lastSeen": "2026-03-20T12:04:41.732Z"
+    "lastSeen": "2026-03-21T10:13:08.782Z"
   },
   "d939907b-239e-48f0-b399-520d7f2d83e3": {
     "playerId": "d939907b-239e-48f0-b399-520d7f2d83e3",
@@ -403,5 +403,617 @@
     "avatarFrame": "none",
     "createdAt": "2026-03-20T10:04:43.538Z",
     "lastSeen": "2026-03-20T10:04:47.554Z"
+  },
+  "b036c161-18e2-410b-aef5-c75b004b0af5": {
+    "playerId": "b036c161-18e2-410b-aef5-c75b004b0af5",
+    "playerName": "guest326399",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T06:55:31.886Z",
+    "lastSeen": "2026-03-21T07:56:28.748Z"
+  },
+  "85462db7-8e25-4df5-ae87-94fc94e6fe1d": {
+    "playerId": "85462db7-8e25-4df5-ae87-94fc94e6fe1d",
+    "playerName": "guest451790",
+    "color": "#e74c3c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T07:54:45.469Z",
+    "lastSeen": "2026-03-21T07:54:45.469Z"
+  },
+  "8a3bdc67-cb0c-42c2-8b43-906e9d5c8283": {
+    "playerId": "8a3bdc67-cb0c-42c2-8b43-906e9d5c8283",
+    "playerName": "guest448244",
+    "color": "#ffeb3b",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T07:54:45.472Z",
+    "lastSeen": "2026-03-21T07:54:45.472Z"
+  },
+  "67b2605f-242a-45f0-9d05-841d6c254d65": {
+    "playerId": "67b2605f-242a-45f0-9d05-841d6c254d65",
+    "playerName": "guest882518",
+    "color": "#e74c3c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T07:54:45.473Z",
+    "lastSeen": "2026-03-21T07:54:45.473Z"
+  },
+  "b2df2793-8bda-4c5e-b09a-2208b6a9a1ca": {
+    "playerId": "b2df2793-8bda-4c5e-b09a-2208b6a9a1ca",
+    "playerName": "guest711631",
+    "color": "#e91e63",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T07:54:45.474Z",
+    "lastSeen": "2026-03-21T07:54:45.474Z"
+  },
+  "5894a5b7-a742-42f2-b3d4-5fcd866c83bf": {
+    "playerId": "5894a5b7-a742-42f2-b3d4-5fcd866c83bf",
+    "playerName": "guest760834",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:03:38.035Z",
+    "lastSeen": "2026-03-21T08:03:38.035Z"
+  },
+  "ede83c9b-bfe8-4004-8b5c-d835bed67479": {
+    "playerId": "ede83c9b-bfe8-4004-8b5c-d835bed67479",
+    "playerName": "guest945828",
+    "color": "#3498db",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:03:38.038Z",
+    "lastSeen": "2026-03-21T08:03:38.038Z"
+  },
+  "93ef41f8-ee3c-463d-8805-19974a541480": {
+    "playerId": "93ef41f8-ee3c-463d-8805-19974a541480",
+    "playerName": "guest595839",
+    "color": "#f39c12",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:03:38.039Z",
+    "lastSeen": "2026-03-21T08:03:38.039Z"
+  },
+  "87137525-9dcd-4c07-8fbf-36014f11dd7b": {
+    "playerId": "87137525-9dcd-4c07-8fbf-36014f11dd7b",
+    "playerName": "guest606167",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:03:38.039Z",
+    "lastSeen": "2026-03-21T08:03:38.039Z"
+  },
+  "dbedc100-080a-4ae0-b742-b3bc610127c7": {
+    "playerId": "dbedc100-080a-4ae0-b742-b3bc610127c7",
+    "playerName": "guest512630",
+    "color": "#e74c3c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:26:22.620Z",
+    "lastSeen": "2026-03-21T08:26:22.620Z"
+  },
+  "dde734ac-92f9-40f0-8f1e-1ce876bacf31": {
+    "playerId": "dde734ac-92f9-40f0-8f1e-1ce876bacf31",
+    "playerName": "guest086029",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:26:22.622Z",
+    "lastSeen": "2026-03-21T08:26:22.622Z"
+  },
+  "a369448e-3ec1-4fc7-bc5d-b356fcaeb329": {
+    "playerId": "a369448e-3ec1-4fc7-bc5d-b356fcaeb329",
+    "playerName": "guest585539",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:26:22.623Z",
+    "lastSeen": "2026-03-21T08:26:22.623Z"
+  },
+  "ce1fdc37-f0d2-4439-ba92-63995fe4f5c3": {
+    "playerId": "ce1fdc37-f0d2-4439-ba92-63995fe4f5c3",
+    "playerName": "guest672972",
+    "color": "#3498db",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:26:22.623Z",
+    "lastSeen": "2026-03-21T08:26:22.623Z"
+  },
+  "ce1d9137-2932-4204-96a0-bde6e9846374": {
+    "playerId": "ce1d9137-2932-4204-96a0-bde6e9846374",
+    "playerName": "guest000418",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-21T08:35:00.549Z",
+    "lastSeen": "2026-03-21T10:13:08.821Z"
+  },
+  "514a3087-97ef-4e39-a25f-4d48516a723f": {
+    "playerId": "514a3087-97ef-4e39-a25f-4d48516a723f",
+    "playerName": "guest416230",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.042Z",
+    "lastSeen": "2026-03-26T05:43:17.042Z"
+  },
+  "e8952a5c-3d43-4c24-9a39-80a6519cce58": {
+    "playerId": "e8952a5c-3d43-4c24-9a39-80a6519cce58",
+    "playerName": "guest846867",
+    "color": "#f39c12",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.044Z",
+    "lastSeen": "2026-03-26T05:43:17.044Z"
+  },
+  "1bb2b0a5-c1b8-4a34-ad19-59001cd8eb22": {
+    "playerId": "1bb2b0a5-c1b8-4a34-ad19-59001cd8eb22",
+    "playerName": "guest931047",
+    "color": "#f39c12",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.046Z",
+    "lastSeen": "2026-03-26T05:43:17.046Z"
+  },
+  "22c57a63-8bf8-42d2-98bc-ddc7a0998a80": {
+    "playerId": "22c57a63-8bf8-42d2-98bc-ddc7a0998a80",
+    "playerName": "guest955653",
+    "color": "#00bcd4",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.047Z",
+    "lastSeen": "2026-03-26T05:43:17.047Z"
+  },
+  "5200e756-6940-4c6b-9e3f-cfa22aec9715": {
+    "playerId": "5200e756-6940-4c6b-9e3f-cfa22aec9715",
+    "playerName": "guest713356",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.049Z",
+    "lastSeen": "2026-03-26T05:43:17.049Z"
+  },
+  "4ebe9d3b-4232-4712-80ce-63b3cbd1e374": {
+    "playerId": "4ebe9d3b-4232-4712-80ce-63b3cbd1e374",
+    "playerName": "guest455470",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.049Z",
+    "lastSeen": "2026-03-26T05:43:17.049Z"
+  },
+  "dbab608f-25a7-4916-8bd9-e51c9a616b4a": {
+    "playerId": "dbab608f-25a7-4916-8bd9-e51c9a616b4a",
+    "playerName": "guest174151",
+    "color": "#e91e63",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:43:17.050Z",
+    "lastSeen": "2026-03-26T05:43:17.050Z"
+  },
+  "283a6a85-c16b-4175-8880-83a06e65c9e2": {
+    "playerId": "283a6a85-c16b-4175-8880-83a06e65c9e2",
+    "playerName": "guest563300",
+    "color": "#ffeb3b",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:45:36.758Z",
+    "lastSeen": "2026-03-26T05:45:36.758Z"
+  },
+  "a28290c1-095a-45d8-921c-0bdcef6e67ac": {
+    "playerId": "a28290c1-095a-45d8-921c-0bdcef6e67ac",
+    "playerName": "guest114985",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:45:36.760Z",
+    "lastSeen": "2026-03-26T05:45:36.760Z"
+  },
+  "7b401836-9337-49b5-b845-29d5e4920043": {
+    "playerId": "7b401836-9337-49b5-b845-29d5e4920043",
+    "playerName": "guest113565",
+    "color": "#00bcd4",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:45:36.761Z",
+    "lastSeen": "2026-03-26T05:45:36.761Z"
+  },
+  "17780ff3-6e27-4d20-9d3d-4769c86e40b5": {
+    "playerId": "17780ff3-6e27-4d20-9d3d-4769c86e40b5",
+    "playerName": "guest585985",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:45:36.762Z",
+    "lastSeen": "2026-03-26T05:45:36.762Z"
+  },
+  "0155fe5b-d451-4f7e-8049-2404aaba4cb5": {
+    "playerId": "0155fe5b-d451-4f7e-8049-2404aaba4cb5",
+    "playerName": "guest031997",
+    "color": "#1abc9c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:45:36.762Z",
+    "lastSeen": "2026-03-26T05:45:36.762Z"
+  },
+  "1540176a-1787-4fe8-8d92-47b794b7f4af": {
+    "playerId": "1540176a-1787-4fe8-8d92-47b794b7f4af",
+    "playerName": "guest115771",
+    "color": "#e91e63",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:46:38.138Z",
+    "lastSeen": "2026-03-26T05:46:38.138Z"
+  },
+  "b9adca97-a511-4de4-a902-4b091c510ec9": {
+    "playerId": "b9adca97-a511-4de4-a902-4b091c510ec9",
+    "playerName": "guest271795",
+    "color": "#e91e63",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:46:38.141Z",
+    "lastSeen": "2026-03-26T05:46:38.141Z"
+  },
+  "e3a48679-7725-4083-8049-c6b93a4b9f83": {
+    "playerId": "e3a48679-7725-4083-8049-c6b93a4b9f83",
+    "playerName": "guest592678",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:46:38.141Z",
+    "lastSeen": "2026-03-26T05:46:38.141Z"
+  },
+  "11056332-4aa3-4a01-a474-b50fecdc39f2": {
+    "playerId": "11056332-4aa3-4a01-a474-b50fecdc39f2",
+    "playerName": "guest348534",
+    "color": "#e67e22",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:46:44.189Z",
+    "lastSeen": "2026-03-26T05:46:44.189Z"
+  },
+  "ab700042-376e-4138-8bc6-a722713eb845": {
+    "playerId": "ab700042-376e-4138-8bc6-a722713eb845",
+    "playerName": "guest326339",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:46:44.190Z",
+    "lastSeen": "2026-03-26T05:46:44.190Z"
+  },
+  "48d433e2-2c03-416a-9d4b-8df6bf285654": {
+    "playerId": "48d433e2-2c03-416a-9d4b-8df6bf285654",
+    "playerName": "guest004860",
+    "color": "#3498db",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:46:44.191Z",
+    "lastSeen": "2026-03-26T05:46:44.191Z"
+  },
+  "e5d22cc0-13fc-4ac6-bc77-84daed077b65": {
+    "playerId": "e5d22cc0-13fc-4ac6-bc77-84daed077b65",
+    "playerName": "guest698149",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.094Z",
+    "lastSeen": "2026-03-26T05:50:29.094Z"
+  },
+  "1cbff0eb-11af-43a5-a8c3-1e2fb3c997aa": {
+    "playerId": "1cbff0eb-11af-43a5-a8c3-1e2fb3c997aa",
+    "playerName": "guest892073",
+    "color": "#1abc9c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.102Z",
+    "lastSeen": "2026-03-26T05:50:29.102Z"
+  },
+  "21c69945-0f95-42cc-836e-910db34383a9": {
+    "playerId": "21c69945-0f95-42cc-836e-910db34383a9",
+    "playerName": "guest278140",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.103Z",
+    "lastSeen": "2026-03-26T05:50:29.103Z"
+  },
+  "12f913e9-1233-4757-978c-0bad02670fe9": {
+    "playerId": "12f913e9-1233-4757-978c-0bad02670fe9",
+    "playerName": "guest552827",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.107Z",
+    "lastSeen": "2026-03-26T05:50:29.107Z"
+  },
+  "6beee2ce-41ff-4446-9b32-775226afcd2a": {
+    "playerId": "6beee2ce-41ff-4446-9b32-775226afcd2a",
+    "playerName": "guest123768",
+    "color": "#3498db",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.108Z",
+    "lastSeen": "2026-03-26T05:50:29.108Z"
+  },
+  "30755745-3995-49cf-84d0-7f955cfe56cf": {
+    "playerId": "30755745-3995-49cf-84d0-7f955cfe56cf",
+    "playerName": "guest164044",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.110Z",
+    "lastSeen": "2026-03-26T05:50:29.110Z"
+  },
+  "af3f0868-2b35-4694-9cbf-2f90e27a7ed6": {
+    "playerId": "af3f0868-2b35-4694-9cbf-2f90e27a7ed6",
+    "playerName": "guest920929",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:29.111Z",
+    "lastSeen": "2026-03-26T05:50:29.111Z"
+  },
+  "8f954d0e-5a6a-4f1d-8b2f-58b09e4ca079": {
+    "playerId": "8f954d0e-5a6a-4f1d-8b2f-58b09e4ca079",
+    "playerName": "guest781190",
+    "color": "#e74c3c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:33.673Z",
+    "lastSeen": "2026-03-26T05:50:33.673Z"
+  },
+  "dd8a17bb-f760-44c2-9379-3534ee837d24": {
+    "playerId": "dd8a17bb-f760-44c2-9379-3534ee837d24",
+    "playerName": "guest011698",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:33.675Z",
+    "lastSeen": "2026-03-26T05:50:33.675Z"
+  },
+  "48ed1d02-4fc2-4018-ace8-daeab91143fe": {
+    "playerId": "48ed1d02-4fc2-4018-ace8-daeab91143fe",
+    "playerName": "guest229791",
+    "color": "#f39c12",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:33.676Z",
+    "lastSeen": "2026-03-26T05:50:33.676Z"
+  },
+  "312653e4-6a5e-4d83-b5b7-af9fbf086a39": {
+    "playerId": "312653e4-6a5e-4d83-b5b7-af9fbf086a39",
+    "playerName": "guest006220",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:33.677Z",
+    "lastSeen": "2026-03-26T05:50:33.677Z"
+  },
+  "f37693a3-ba43-47c5-90dd-67bc11031caa": {
+    "playerId": "f37693a3-ba43-47c5-90dd-67bc11031caa",
+    "playerName": "guest028825",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:33.677Z",
+    "lastSeen": "2026-03-26T05:50:33.677Z"
+  },
+  "c3b03d43-189b-4125-815e-79e264cfbbcc": {
+    "playerId": "c3b03d43-189b-4125-815e-79e264cfbbcc",
+    "playerName": "guest240727",
+    "color": "#e91e63",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:37.140Z",
+    "lastSeen": "2026-03-26T05:50:37.140Z"
+  },
+  "1a6940ec-6084-49e2-bd53-9a0fcb3435c3": {
+    "playerId": "1a6940ec-6084-49e2-bd53-9a0fcb3435c3",
+    "playerName": "guest833797",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:37.142Z",
+    "lastSeen": "2026-03-26T05:50:37.142Z"
+  },
+  "c8b64adb-df0a-4313-92e7-2c09943c2fbe": {
+    "playerId": "c8b64adb-df0a-4313-92e7-2c09943c2fbe",
+    "playerName": "guest162671",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:37.143Z",
+    "lastSeen": "2026-03-26T05:50:37.143Z"
+  },
+  "56879b8c-965a-4622-b119-7c287473921d": {
+    "playerId": "56879b8c-965a-4622-b119-7c287473921d",
+    "playerName": "guest331117",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:43.189Z",
+    "lastSeen": "2026-03-26T05:50:43.189Z"
+  },
+  "cbfeaba5-d0ef-4638-9e4c-ea9ff4fc9760": {
+    "playerId": "cbfeaba5-d0ef-4638-9e4c-ea9ff4fc9760",
+    "playerName": "guest294414",
+    "color": "#e67e22",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:43.191Z",
+    "lastSeen": "2026-03-26T05:50:43.191Z"
+  },
+  "e3505e07-202c-4351-81a7-66a5a0f6507c": {
+    "playerId": "e3505e07-202c-4351-81a7-66a5a0f6507c",
+    "playerName": "guest473843",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:50:43.192Z",
+    "lastSeen": "2026-03-26T05:50:43.192Z"
+  },
+  "dd0a6f2c-baec-40bf-9da3-b9ebfd7f5ed9": {
+    "playerId": "dd0a6f2c-baec-40bf-9da3-b9ebfd7f5ed9",
+    "playerName": "guest326674",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.915Z",
+    "lastSeen": "2026-03-26T05:58:06.915Z"
+  },
+  "eb0ec55e-06ef-4124-8d04-def14c53f71e": {
+    "playerId": "eb0ec55e-06ef-4124-8d04-def14c53f71e",
+    "playerName": "guest105512",
+    "color": "#ffeb3b",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.918Z",
+    "lastSeen": "2026-03-26T05:58:06.918Z"
+  },
+  "5d4fdc02-01c6-4a7e-93c2-759da9a6198d": {
+    "playerId": "5d4fdc02-01c6-4a7e-93c2-759da9a6198d",
+    "playerName": "guest933348",
+    "color": "#3498db",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.919Z",
+    "lastSeen": "2026-03-26T05:58:06.919Z"
+  },
+  "3fb686f7-e844-4865-8b46-5cf561e04a57": {
+    "playerId": "3fb686f7-e844-4865-8b46-5cf561e04a57",
+    "playerName": "guest999914",
+    "color": "#e74c3c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.920Z",
+    "lastSeen": "2026-03-26T05:58:06.920Z"
+  },
+  "168ead23-f46f-47ac-80af-245c8856e4e2": {
+    "playerId": "168ead23-f46f-47ac-80af-245c8856e4e2",
+    "playerName": "guest628611",
+    "color": "#f39c12",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.921Z",
+    "lastSeen": "2026-03-26T05:58:06.921Z"
+  },
+  "6b777e5a-c1d1-42ad-913b-9d906e8a1512": {
+    "playerId": "6b777e5a-c1d1-42ad-913b-9d906e8a1512",
+    "playerName": "guest911080",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.922Z",
+    "lastSeen": "2026-03-26T05:58:06.922Z"
+  },
+  "12f648a5-1da9-49cb-8fec-174ac7dcb9c0": {
+    "playerId": "12f648a5-1da9-49cb-8fec-174ac7dcb9c0",
+    "playerName": "guest743278",
+    "color": "#ff5722",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:06.923Z",
+    "lastSeen": "2026-03-26T05:58:06.923Z"
+  },
+  "fdfef7f4-f04c-49f4-a5e1-fad71758f6ef": {
+    "playerId": "fdfef7f4-f04c-49f4-a5e1-fad71758f6ef",
+    "playerName": "guest385936",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:10.221Z",
+    "lastSeen": "2026-03-26T05:58:10.221Z"
+  },
+  "ba2889b5-dd54-4040-a107-766931163d7b": {
+    "playerId": "ba2889b5-dd54-4040-a107-766931163d7b",
+    "playerName": "guest889576",
+    "color": "#9b59b6",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:10.224Z",
+    "lastSeen": "2026-03-26T05:58:10.224Z"
+  },
+  "eb273ff8-fc02-4654-86dc-68e2a101b0d2": {
+    "playerId": "eb273ff8-fc02-4654-86dc-68e2a101b0d2",
+    "playerName": "guest202784",
+    "color": "#ffeb3b",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:10.225Z",
+    "lastSeen": "2026-03-26T05:58:10.225Z"
+  },
+  "2d162b5a-91cd-416f-82de-ccc26599b008": {
+    "playerId": "2d162b5a-91cd-416f-82de-ccc26599b008",
+    "playerName": "guest896568",
+    "color": "#3498db",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:10.225Z",
+    "lastSeen": "2026-03-26T05:58:10.225Z"
+  },
+  "454e9d39-e9dc-464e-8817-5e9499d32711": {
+    "playerId": "454e9d39-e9dc-464e-8817-5e9499d32711",
+    "playerName": "guest244206",
+    "color": "#e67e22",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:10.227Z",
+    "lastSeen": "2026-03-26T05:58:10.227Z"
+  },
+  "1ea5bc37-b3f1-4415-b7c1-cd10ab6d4428": {
+    "playerId": "1ea5bc37-b3f1-4415-b7c1-cd10ab6d4428",
+    "playerName": "guest768965",
+    "color": "#1abc9c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:13.438Z",
+    "lastSeen": "2026-03-26T05:58:13.438Z"
+  },
+  "0fe2d8a9-6ce4-4783-875d-cba2c27f9200": {
+    "playerId": "0fe2d8a9-6ce4-4783-875d-cba2c27f9200",
+    "playerName": "guest809918",
+    "color": "#e74c3c",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:13.440Z",
+    "lastSeen": "2026-03-26T05:58:13.440Z"
+  },
+  "7452fac6-265c-4ea7-8d65-05dde898879f": {
+    "playerId": "7452fac6-265c-4ea7-8d65-05dde898879f",
+    "playerName": "guest376367",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:13.441Z",
+    "lastSeen": "2026-03-26T05:58:13.441Z"
+  },
+  "d0b71fd7-e650-4a18-b937-cf7aed5a26c6": {
+    "playerId": "d0b71fd7-e650-4a18-b937-cf7aed5a26c6",
+    "playerName": "guest968499",
+    "color": "#f39c12",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:19.478Z",
+    "lastSeen": "2026-03-26T05:58:19.478Z"
+  },
+  "48b5bc11-f348-459d-a63a-10ff9918f234": {
+    "playerId": "48b5bc11-f348-459d-a63a-10ff9918f234",
+    "playerName": "guest677291",
+    "color": "#8e44ad",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:19.479Z",
+    "lastSeen": "2026-03-26T05:58:19.479Z"
+  },
+  "a995a08e-8b1c-4c99-aaf7-25cec2a69e88": {
+    "playerId": "a995a08e-8b1c-4c99-aaf7-25cec2a69e88",
+    "playerName": "guest224257",
+    "color": "#2ecc71",
+    "avatar": "👤",
+    "avatarFrame": "none",
+    "createdAt": "2026-03-26T05:58:19.479Z",
+    "lastSeen": "2026-03-26T05:58:19.479Z"
   }
 }

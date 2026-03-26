@@ -1,29 +1,120 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+    :root {
+        --room-bg: #09090b;
+        --room-panel: rgba(18, 18, 20, 0.86);
+        --room-panel-soft: rgba(255, 255, 255, 0.05);
+        --room-line: rgba(255, 255, 255, 0.1);
+        --room-gold: #f5c86b;
+        --room-gold-soft: rgba(245, 200, 107, 0.2);
+        --room-red: #b91c1c;
+        --room-text: #f5efe3;
+        --room-muted: #b8ada0;
+        --room-shadow: 0 32px 100px rgba(0, 0, 0, 0.52);
+    }
+
+    body.content {
+        background:
+            radial-gradient(circle at 8% 10%, rgba(127, 29, 29, 0.42), transparent 18%),
+            radial-gradient(circle at 92% 0%, rgba(180, 83, 9, 0.18), transparent 16%),
+            linear-gradient(180deg, #09090b 0%, #110d0c 45%, #17110f 100%);
+    }
+
     .room-list-container {
-        max-width: 1400px;
-        margin: 30px auto;
+        position: relative;
+        max-width: 1440px;
+        margin: 20px auto 36px;
         padding: 20px;
         font-family: 'Rajdhani', sans-serif;
+        color: var(--room-text);
+    }
+
+    .room-list-shell {
+        position: relative;
+        overflow: hidden;
+        border-radius: 34px;
+        border: 1px solid rgba(245, 200, 107, 0.16);
+        background:
+            linear-gradient(145deg, rgba(12, 12, 14, 0.98), rgba(26, 17, 15, 0.94)),
+            var(--room-bg);
+        box-shadow: var(--room-shadow);
+        isolation: isolate;
+    }
+
+    .room-list-shell::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255,255,255,0.05) 0.7px, transparent 0.7px);
+        background-size: 16px 16px;
+        opacity: 0.18;
+        pointer-events: none;
+    }
+
+    .room-list-shell::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(115deg, rgba(245, 200, 107, 0.06), transparent 18%, transparent 70%, rgba(116, 185, 255, 0.04)),
+            radial-gradient(circle at top center, rgba(245, 200, 107, 0.08), transparent 32%);
+        pointer-events: none;
+        z-index: 0;
     }
     
     .room-list-header {
+        position: relative;
+        z-index: 1;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 40px;
+        gap: 18px;
+        padding: 24px 26px 22px;
+        margin-bottom: 0;
         flex-wrap: wrap;
-        gap: 15px;
+        border-bottom: 1px solid var(--room-line);
+        background:
+            radial-gradient(circle at top left, rgba(127, 29, 29, 0.32), transparent 34%),
+            linear-gradient(135deg, rgba(127, 29, 29, 0.22), rgba(17, 17, 17, 0.72));
+    }
+
+    .room-list-header::after {
+        content: '';
+        position: absolute;
+        left: 26px;
+        right: 26px;
+        bottom: 0;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(245, 200, 107, 0.24), transparent 32%, transparent 68%, rgba(245, 200, 107, 0.2));
+    }
+
+    .room-hero {
+        display: grid;
+        gap: 6px;
+        max-width: 680px;
+    }
+
+    .room-kicker {
+        color: var(--room-gold);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
     }
     
     /* กล่องดำหลักสำหรับลิสต์ห้อง (เหมือนกรอบโปรไฟล์ในรูปที่ 2) */
     .room-panel {
-        background: linear-gradient(135deg, #151515 0%, #222 100%);
-        border: 3px solid #444;
-        border-radius: 18px;
-        padding: 24px 24px 32px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        position: relative;
+        z-index: 1;
+        margin: 22px;
+        padding: 22px;
+        border-radius: 28px;
+        border: 1px solid var(--room-line);
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+            var(--room-panel);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 18px 42px rgba(0,0,0,0.24);
         min-height: 260px;
     }
 
@@ -254,77 +345,114 @@
     
     .room-list-header h1 {
         margin: 0;
-        color: #fff;
+        color: var(--room-text);
         font-family: 'Orbitron', sans-serif;
         font-weight: 900;
-        font-size: 2.5em;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        letter-spacing: 2px;
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        line-height: 1;
+        text-shadow: 0 0 20px rgba(245, 200, 107, 0.12);
+        letter-spacing: 0.06em;
+    }
+
+    .room-hero-copy {
+        color: var(--room-muted);
+        font-size: 1rem;
+        max-width: 62ch;
+    }
+
+    .room-feature-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .room-feature-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 13px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        font-weight: 700;
+        color: var(--room-text);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .room-feature-pill.highlight {
+        border-color: rgba(245, 200, 107, 0.28);
+        color: #fde68a;
     }
     
     .room-controls {
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        max-width: 480px;
     }
     
     #searchRoomInput {
         padding: 12px 16px;
-        border: 2px solid #444;
-        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 16px;
         width: 280px;
-        background: #1a1a1a;
-        color: #fff;
+        background: rgba(255,255,255,0.06);
+        color: var(--room-text);
         font-family: 'Rajdhani', sans-serif;
         font-size: 1em;
         transition: all 0.3s;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     
     #searchRoomInput:focus {
         outline: none;
-        border-color: #ff6b6b;
-        box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        border-color: rgba(245, 200, 107, 0.34);
+        box-shadow: 0 0 0 3px rgba(245, 200, 107, 0.14);
     }
     
     #searchRoomInput::placeholder {
-        color: #888;
+        color: #8f8377;
     }
     
     .btn-room {
-        padding: 12px 24px;
-        border: 2px solid;
-        border-radius: 8px;
+        padding: 12px 20px;
+        border: 1px solid transparent;
+        border-radius: 16px;
         font-family: 'Rajdhani', sans-serif;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 1em;
         cursor: pointer;
         transition: all 0.3s;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.06em;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     
     #refreshBtn {
-        background: #2c3e50;
-        border-color: #34495e;
-        color: #fff;
+        background: rgba(255,255,255,0.08);
+        border-color: rgba(255,255,255,0.12);
+        color: var(--room-text);
     }
     
     #refreshBtn:hover {
-        background: #34495e;
+        background: rgba(255,255,255,0.12);
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.24);
     }
     
     #createRoomBtn {
-        background: #e74c3c;
-        border-color: #c0392b;
+        background: linear-gradient(135deg, #9a3412, #7f1d1d);
+        border-color: rgba(245, 200, 107, 0.16);
         color: #fff;
     }
     
     #createRoomBtn:hover {
-        background: #c0392b;
+        background: linear-gradient(135deg, #b45309, #991b1b);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.28);
     }
     
     #roomList {
@@ -334,13 +462,15 @@
     }
     
     .room-card {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-        border: 3px solid #444;
-        border-radius: 12px;
+        background:
+            radial-gradient(circle at top right, rgba(245, 200, 107, 0.12), transparent 38%),
+            linear-gradient(145deg, rgba(251,191,36,0.08), rgba(127,29,29,0.08));
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 24px;
         padding: 25px;
         cursor: pointer;
         transition: all 0.3s;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 32px rgba(0,0,0,0.16);
         position: relative;
         overflow: hidden;
     }
@@ -351,16 +481,16 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #e74c3c, #c0392b);
+        height: 1px;
+        background: linear-gradient(90deg, rgba(245, 200, 107, 0.2), transparent);
         transform: scaleX(0);
         transition: transform 0.3s;
     }
     
     .room-card:hover {
         transform: translateY(-5px);
-        border-color: #e74c3c;
-        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+        border-color: rgba(245, 200, 107, 0.22);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 22px 36px rgba(0,0,0,0.2);
     }
     
     .room-card:hover::before {
@@ -380,22 +510,21 @@
     
     .room-card-title h3 {
         margin: 0 0 8px 0;
-        color: #fff;
+        color: var(--room-text);
         font-family: 'Orbitron', sans-serif;
         font-weight: 700;
-        font-size: 1.4em;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        font-size: 1.3em;
     }
     
     .room-card-id {
         margin: 0;
-        color: #aaa;
+        color: var(--room-muted);
         font-size: 0.9em;
         font-family: 'Rajdhani', sans-serif;
     }
     
     .room-card-id strong {
-        color: #ff6b6b;
+        color: var(--room-gold);
         font-weight: 600;
     }
     
@@ -414,7 +543,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        color: #ddd;
+        color: var(--room-text);
         font-family: 'Rajdhani', sans-serif;
         font-size: 1.1em;
     }
@@ -431,7 +560,7 @@
     #noRooms {
         text-align: center;
         padding: 60px 40px;
-        color: #aaa;
+        color: var(--room-muted);
         display: none;
     }
     
@@ -443,8 +572,64 @@
     
     #noRooms p:first-child {
         font-size: 1.6em;
-        color: #fff;
+        color: var(--room-text);
         font-weight: 600;
+    }
+
+    .room-footer {
+        position: relative;
+        z-index: 1;
+        padding: 0 22px 22px;
+    }
+
+    .room-footer a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.08);
+        color: var(--room-text);
+        text-decoration: none;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    @media (max-width: 900px) {
+        .room-list-header {
+            align-items: flex-start;
+        }
+
+        .room-controls {
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .room-list-container {
+            padding: 8px;
+            margin-top: 8px;
+        }
+
+        .room-list-shell {
+            border-radius: 24px;
+        }
+
+        .room-list-header,
+        .room-panel {
+            padding: 14px;
+        }
+
+        .room-panel,
+        .room-footer {
+            margin: 14px;
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+
+        #searchRoomInput {
+            width: 100%;
+        }
     }
     
     /* SweetAlert2 Dark Theme */
@@ -501,32 +686,39 @@
 </style>
 
 <div class="room-list-container">
-    <div class="room-list-header">
-        <h1>🎮 ห้องเกม</h1>
-        <div class="room-controls">
-            <input type="text" id="searchRoomInput" placeholder="🔍 ค้นหาห้องด้วยเลข Room ID">
-            <button id="refreshBtn" class="btn-room">🔄 Refresh</button>
-            <button id="createRoomBtn" class="btn-room">➕ สร้างห้อง</button>
+    <div class="room-list-shell">
+        <div class="room-list-header">
+            <div class="room-hero">
+                <div class="room-kicker">🎲 รายชื่อห้อง</div>
+                <h1>🎮 ห้องเกม</h1>
+                <div class="room-hero-copy">เลือกห้องที่เปิดอยู่ หรือกดสร้างห้องใหม่แล้วรอคนเข้ามาครบโต๊ะ</div>
+            </div>
+            <div class="room-controls">
+                <input type="text" id="searchRoomInput" placeholder="🔍 ค้นหาห้องด้วยเลข Room ID">
+                <button id="refreshBtn" class="btn-room">🔄 รีเฟรช</button>
+                <button id="createRoomBtn" class="btn-room">➕ สร้างห้อง</button>
+            </div>
         </div>
-    </div>
 
-    <!-- กรอบดำหลักสำหรับรายชื่อห้อง / ข้อความไม่มีห้อง -->
-    <div class="room-panel">
-        <div id="roomList">
-            <!-- Rooms will be populated by JavaScript -->
+        <div class="room-panel">
+            <div id="roomList">
+                <!-- Rooms will be populated by JavaScript -->
+            </div>
+
+            <div id="noRooms">
+                <p>ยังไม่มีโต๊ะเปิดอยู่ตอนนี้</p>
+                <p>กด "สร้างห้อง" เพื่อเปิดวงใหม่แล้วรอคนเข้ามาเล่น</p>
+            </div>
         </div>
 
-        <div id="noRooms">
-            <p>ไม่มีห้องเกมในขณะนี้</p>
-            <p>กดปุ่ม "สร้างห้อง" เพื่อสร้างห้องใหม่</p>
+        <div class="room-footer">
+            <a href="/">← กลับหน้าหลัก</a>
         </div>
     </div>
 </div>
 
 <%- contentFor('footer') %>
-<div class="container">
-    <a href="/" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif; font-weight: 600;">← กลับไป Lobby</a>
-</div>
+<div></div>
 
 <%- contentFor('script') %>
 <script src="/socket.io/socket.io.js"></script>
@@ -535,6 +727,17 @@
 $(function() {
     const socket = io();
     const playerId = '<%= player.playerId %>';
+    const defaultGameModes = [
+        { id: 'insider', label: 'Insider', description: 'เกมจับผู้ทรยศและอ่านโต๊ะ', minPlayers: 3, maxPlayers: 10 },
+        { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
+        { id: 'werewolf', label: 'Werewolf', description: 'คืนล่า กลางวันโหวต พร้อมบทพิเศษ', minPlayers: 6, maxPlayers: 10 }
+    ];
+    const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
+        const serverModes = <%- JSON.stringify(typeof gameModes !== 'undefined' ? gameModes : []) %>;
+        const matchedMode = serverModes.find(function(mode) { return mode.id === fallbackMode.id; });
+        result.push(Object.assign({}, fallbackMode, matchedMode || {}));
+        return result;
+    }, []);
     const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
     const werewolfRoleVisuals = {
         werewolf: { emoji: '🐺', teamLabel: 'ฝั่งหมาป่า' },
@@ -680,6 +883,101 @@ $(function() {
             .filter(option => option.querySelector('input')?.checked)
             .map(option => option.dataset.roleId);
     }
+
+    function buildGameModeOptionsHtml(modeItems) {
+        return (Array.isArray(modeItems) ? modeItems : []).map(function(mode) {
+            return `<option value="${escapeHtml(mode.id)}" data-min-players="${Number(mode.minPlayers || 3)}" data-max-players="${Number(mode.maxPlayers || 10)}">${escapeHtml(mode.label)} - ${escapeHtml(mode.description || '')}</option>`;
+        }).join('');
+    }
+
+    function getModeSpotlightMeta(modeId) {
+        const metaById = {
+            insider: {
+                tone: 'linear-gradient(135deg, rgba(230,126,34,0.22), rgba(192,57,43,0.12))',
+                border: 'rgba(230,126,34,0.32)',
+                badge: '🎯 เล่นไว อ่านโต๊ะ',
+                title: 'Insider',
+                summary: 'เหมาะกับวงที่ชอบจับสังเกตและหาผู้ทรยศแบบคลาสสิก',
+                bullets: ['3-10 คน', 'จบไว', 'เน้นอ่านสีหน้าและคำพูด']
+            },
+            blackmarket: {
+                tone: 'linear-gradient(135deg, rgba(127,29,29,0.4), rgba(17,17,17,0.9))',
+                border: 'rgba(245,200,107,0.34)',
+                badge: '🎩 แนะนำตอนนี้',
+                title: 'Black Market',
+                summary: 'ตลาดมืดสำหรับวงที่อยากกวาดของเถื่อน เปิดดีล แล้วพลิกเกมใส่กันจริง',
+                bullets: ['4-7 คน', 'เปิดดีล / หักหลัง / สั่งเก็บ', 'เหมาะกับวง 6-7 คนที่สุด']
+            },
+            werewolf: {
+                tone: 'linear-gradient(135deg, rgba(52,73,94,0.26), rgba(17,24,39,0.9))',
+                border: 'rgba(143,211,255,0.22)',
+                badge: '🐺 บทเยอะ',
+                title: 'Werewolf',
+                summary: 'เหมาะกับวงใหญ่ที่อยากเล่นกลางวัน-กลางคืนและบทบาทพิเศษหลายชั้น',
+                bullets: ['6-10 คน', 'มี role presets', 'เน้น discussion และ vote']
+            }
+        };
+
+        return metaById[modeId] || metaById.insider;
+    }
+
+    function getModeAutofillPreset(modeId) {
+        const presets = {
+            insider: {
+                roomName: 'วงจับผู้ทรยศ',
+                maxPlayers: 5,
+                roundTime: 5
+            },
+            blackmarket: {
+                roomName: 'ตลาดมืดคืนนี้',
+                maxPlayers: 6,
+                roundTime: 3
+            },
+            werewolf: {
+                roomName: 'คืนล่าหมาป่า',
+                maxPlayers: 8,
+                roundTime: 5
+            }
+        };
+
+        return presets[modeId] || presets.insider;
+    }
+
+    function buildModeQuickPickHtml(modeItems) {
+        return (Array.isArray(modeItems) ? modeItems : []).map(function(mode) {
+            const spotlight = getModeSpotlightMeta(mode.id);
+            return `
+                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; cursor:pointer; font-family:Rajdhani, sans-serif; display:grid; gap:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <strong style="font-size:1rem; letter-spacing:0.02em;">${escapeHtml(spotlight.title)}</strong>
+                        <span style="padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.1); font-size:0.75em; font-weight:700; color:${mode.id === 'blackmarket' ? '#fde68a' : '#fff'};">${escapeHtml(spotlight.badge)}</span>
+                    </div>
+                    <div style="color:${mode.id === 'blackmarket' ? '#f8d189' : '#dbe7ff'}; font-size:0.88em; line-height:1.35;">${escapeHtml(mode.description || spotlight.summary)}</div>
+                    <div style="color:#aab3c5; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function buildModeSpotlightHtml(modeId, modeItems) {
+        const mode = (modeItems || []).find(function(item) { return item.id === modeId; }) || (modeItems || [])[0] || defaultGameModes[0];
+        const spotlight = getModeSpotlightMeta(mode?.id);
+        return `
+            <div style="border:1px solid ${spotlight.border}; border-radius:18px; padding:16px; background:${spotlight.tone}; display:grid; gap:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div>
+                        <div style="color:${mode?.id === 'blackmarket' ? '#fde68a' : '#8fd3ff'}; font-size:0.8em; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">${escapeHtml(spotlight.badge)}</div>
+                        <div style="color:#fff; font-family:Orbitron, sans-serif; font-size:1.15rem; margin-top:4px;">${escapeHtml(spotlight.title)}</div>
+                    </div>
+                    <div style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-weight:700;">👥 ${Number(mode?.minPlayers || 3)}-${Number(mode?.maxPlayers || 10)} คน</div>
+                </div>
+                <div style="color:#ddd; line-height:1.45;">${escapeHtml(spotlight.summary)}</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">${spotlight.bullets.map(function(line) {
+                    return `<span style="padding:5px 9px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-size:0.82em;">${escapeHtml(line)}</span>`;
+                }).join('')}</div>
+            </div>
+        `;
+    }
     const playerName = '<%= player.playerName %>';
 
     // Init player เพื่อให้ socket รับ events ได้
@@ -739,10 +1037,12 @@ $(function() {
             const playerPercentage = (onlineCount / room.maxPlayers) * 100;
             const statusText = isPlaying ? 'กำลังดำเนินเกม' : 'กำลังรอผู้เล่น';
             const statusColor = isPlaying ? '#e67e22' : '#2ecc71';
-            const gameModeLabel = room.gameModeLabel || (room.gameMode === 'werewolf' ? 'Werewolf' : 'Insider');
+            const gameModeLabel = room.gameModeLabel || (room.gameMode === 'werewolf' ? 'Werewolf' : (room.gameMode === 'blackmarket' ? 'Black Market' : 'Insider'));
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
-                : 'background: linear-gradient(135deg, #e67e22, #d35400);';
+                : (room.gameMode === 'blackmarket'
+                    ? 'background: linear-gradient(135deg, #7f1d1d, #111111); color:#fde68a; border:1px solid rgba(251,191,36,0.35);'
+                    : 'background: linear-gradient(135deg, #e67e22, #d35400);');
             const roomCard = `
                 <div class="room-card" data-room-id="${room.roomId}">
                     <div class="room-card-header">
@@ -856,6 +1156,16 @@ $(function() {
                 <div style="font-family: 'Rajdhani', sans-serif;">
                     <div class="room-form-group">
                         <label class="room-form-label">
+                            <span class="icon">🌙</span> เลือกแนวห้องเร็ว ๆ:
+                        </label>
+                        <div id="modeQuickPickGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px;">
+                            ${buildModeQuickPickHtml(gameModes)}
+                        </div>
+                        <div id="modeSpotlight"></div>
+                    </div>
+
+                    <div class="room-form-group">
+                        <label class="room-form-label">
                             <span class="icon">📝</span> ชื่อห้อง:
                         </label>
                         <input id="roomName" class="room-form-input" placeholder="กรอกชื่อห้อง..." maxlength="20">
@@ -866,10 +1176,9 @@ $(function() {
                             <span class="icon">🎲</span> โหมดเกม:
                         </label>
                         <select id="gameMode" class="room-form-input">
-                            <% (gameModes || []).forEach(function(mode) { %>
-                                <option value="<%= mode.id %>"><%= mode.label %> - <%= mode.description %></option>
-                            <% }) %>
+                            ${buildGameModeOptionsHtml(gameModes)}
                         </select>
+                        <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
                     <div class="room-form-group" id="werewolfRolesGroup" style="display:none;">
@@ -931,10 +1240,21 @@ $(function() {
                 const roundTimeSlider = document.getElementById('roundTime');
                 const roundTimeValue = document.getElementById('roundTimeValue');
                 const roundTimeLabelText = document.getElementById('roundTimeLabelText');
+                const roomNameInput = document.getElementById('roomName');
                 const gameModeSelect = document.getElementById('gameMode');
+                const selectedGameModeInput = document.getElementById('selectedGameMode');
+                const modeQuickPickGrid = document.getElementById('modeQuickPickGrid');
+                const modeSpotlight = document.getElementById('modeSpotlight');
                 const werewolfRolesGroup = document.getElementById('werewolfRolesGroup');
                 const werewolfRolesSelector = document.getElementById('werewolfRolesSelector');
                 const defaultWerewolfRoles = werewolfRoleOptions.filter(role => role.defaultEnabled).map(role => role.id);
+                const modeConfigById = gameModes.reduce((result, mode) => {
+                    result[mode.id] = mode;
+                    return result;
+                }, {});
+                let selectedGameMode = gameModeSelect.value || 'insider';
+                selectedGameModeInput.value = selectedGameMode;
+                modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
                 
                 maxPlayersSlider.addEventListener('input', function() {
                     maxPlayersValue.textContent = this.value;
@@ -957,20 +1277,95 @@ $(function() {
                 werewolfRolesSelector.innerHTML = buildWerewolfRoleSelectionHtml(defaultWerewolfRoles);
                 syncWerewolfRolePicker(werewolfRolesSelector);
 
-                function updateWerewolfRoleVisibility() {
-                    const isWerewolfMode = gameModeSelect.value === 'werewolf';
-                    werewolfRolesGroup.style.display = isWerewolfMode ? 'block' : 'none';
-                    roundTimeLabelText.textContent = isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:';
+                function syncModeQuickPick() {
+                    modeSpotlight.innerHTML = buildModeSpotlightHtml(selectedGameMode, gameModes);
+                    modeQuickPickGrid.querySelectorAll('.mode-quick-card').forEach(function(card) {
+                        const active = card.dataset.modeId === selectedGameMode;
+                        card.style.transform = active ? 'translateY(-1px)' : 'translateY(0)';
+                        card.style.boxShadow = active ? '0 12px 28px rgba(0,0,0,0.24)' : 'none';
+                        card.style.outline = active ? '2px solid rgba(245,200,107,0.55)' : 'none';
+                    });
+                    gameModeSelect.value = selectedGameMode;
+                    gameModeSelect.dataset.selectedMode = selectedGameMode;
+                    selectedGameModeInput.value = selectedGameMode;
+                    modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
+                }
 
-                    if (isWerewolfMode && Number(maxPlayersSlider.value) < 6) {
+                function applyModeAutofill(modeId) {
+                    const preset = getModeAutofillPreset(modeId);
+                    const modeConfig = modeConfigById[modeId] || { minPlayers: 3, maxPlayers: 10 };
+                    const clampedPlayers = Math.min(Number(modeConfig.maxPlayers || 10), Math.max(Number(modeConfig.minPlayers || 3), Number(preset.maxPlayers || 5)));
+
+                    roomNameInput.value = preset.roomName;
+                    roomNameInput.dataset.autofilledMode = modeId;
+
+                    maxPlayersSlider.value = String(clampedPlayers);
+                    maxPlayersValue.textContent = maxPlayersSlider.value;
+                    updateSliderBackground(maxPlayersSlider);
+
+                    roundTimeSlider.value = String(preset.roundTime);
+                    roundTimeValue.textContent = `${roundTimeSlider.value} นาที`;
+                    updateSliderBackground(roundTimeSlider);
+                }
+
+                roomNameInput.addEventListener('input', function() {
+                    if (roomNameInput.dataset.autofilledMode) {
+                        delete roomNameInput.dataset.autofilledMode;
+                    }
+                });
+
+                function updateWerewolfRoleVisibility() {
+                    const selectedMode = gameModeSelect.value || selectedGameMode || 'insider';
+                    selectedGameMode = selectedMode;
+                    const modeConfig = modeConfigById[selectedMode] || { minPlayers: 3, maxPlayers: 10 };
+                    const isWerewolfMode = selectedMode === 'werewolf';
+                    werewolfRolesGroup.style.display = isWerewolfMode ? 'block' : 'none';
+                    roundTimeLabelText.textContent = selectedMode === 'blackmarket'
+                        ? 'เวลาเดินเกมต่อยก:'
+                        : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:');
+
+                    const sliderMin = selectedMode === 'werewolf' ? 6 : Number(modeConfig.minPlayers || 3);
+                    const sliderMax = Number(modeConfig.maxPlayers || 10);
+                    maxPlayersSlider.min = String(sliderMin);
+                    maxPlayersSlider.max = String(sliderMax);
+
+                    if (selectedMode === 'blackmarket' && !['4', '5', '6', '7'].includes(maxPlayersSlider.value)) {
+                        maxPlayersSlider.value = '6';
+                    }
+
+                    if (Number(maxPlayersSlider.value) < sliderMin) {
+                        maxPlayersSlider.value = String(sliderMin);
+                    }
+                    if (Number(maxPlayersSlider.value) > sliderMax) {
+                        maxPlayersSlider.value = String(sliderMax);
+                    }
+
+                    if (selectedMode === 'blackmarket' && Number(maxPlayersSlider.value) < 6) {
                         maxPlayersSlider.value = '6';
                         maxPlayersValue.textContent = maxPlayersSlider.value;
                         updateSliderBackground(maxPlayersSlider);
                     }
+
+                    maxPlayersValue.textContent = maxPlayersSlider.value;
+                    updateSliderBackground(maxPlayersSlider);
+                    syncModeQuickPick();
                 }
 
                 gameModeSelect.addEventListener('change', updateWerewolfRoleVisibility);
                 updateWerewolfRoleVisibility();
+
+                modeQuickPickGrid.addEventListener('click', function(event) {
+                    const card = event.target.closest('.mode-quick-card');
+                    if (!card) {
+                        return;
+                    }
+
+                    gameModeSelect.value = card.dataset.modeId;
+                    selectedGameModeInput.value = card.dataset.modeId;
+                    modeQuickPickGrid.dataset.selectedMode = card.dataset.modeId;
+                    updateWerewolfRoleVisibility();
+                    applyModeAutofill(card.dataset.modeId);
+                });
 
                 werewolfRolesSelector.addEventListener('click', function(event) {
                     const presetButton = event.target.closest('.werewolf-role-preset');
@@ -1013,7 +1408,7 @@ $(function() {
             },
             preConfirm: () => {
                 const roomName = document.getElementById('roomName').value.trim();
-                const gameMode = document.getElementById('gameMode').value;
+                const gameMode = document.getElementById('selectedGameMode').value || document.getElementById('modeQuickPickGrid').dataset.selectedMode || document.getElementById('roomName').dataset.autofilledMode || document.getElementById('gameMode').value || document.getElementById('gameMode').dataset.selectedMode || 'insider';
                 const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
                 const roundTime = parseInt(document.getElementById('roundTime').value);
                 const locked = document.getElementById('locked').checked;

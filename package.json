@@ -17,6 +17,10 @@
     "start": "node app.js",
     "check:db": "node scripts/uploadStats.js",
     "smoke:rooms": "node scripts/smoke-room-flow.js",
+    "smoke:blackmarket": "node scripts/smoke-blackmarket-flow.js",
+    "smoke:blackmarket:lobby:browser": "node scripts/browser-blackmarket-lobby.js",
+    "smoke:blackmarket:board:browser": "node scripts/browser-blackmarket-board.js",
+    "smoke:blackmarket:stats": "node scripts/integration-blackmarket-stats.js",
     "smoke:werewolf": "node scripts/smoke-werewolf-flow.js",
     "smoke:werewolf:selection": "node scripts/smoke-werewolf-selection.js",
     "smoke:werewolf:roles": "node scripts/smoke-werewolf-role-rules.js",
@@ -25,6 +29,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
+    "playwright": "^1.58.2",
     "socket.io-client": "^4.8.3"
   }
 }

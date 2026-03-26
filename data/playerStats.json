@@ -20,6 +20,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -36,6 +45,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -45,6 +63,11 @@
         "losses": 4
       },
       "werewolf": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
@@ -183,6 +206,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -199,6 +231,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -208,6 +249,11 @@
         "losses": 5
       },
       "werewolf": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
@@ -346,6 +392,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -362,6 +417,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -371,6 +435,11 @@
         "losses": 5
       },
       "werewolf": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
@@ -509,6 +578,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -525,6 +603,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -534,6 +621,11 @@
         "losses": 5
       },
       "werewolf": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
@@ -672,6 +764,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -688,6 +789,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -697,6 +807,11 @@
         "losses": 7
       },
       "werewolf": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
@@ -835,6 +950,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -851,6 +975,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -860,6 +993,11 @@
         "losses": 0
       },
       "werewolf": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
@@ -889,6 +1027,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -905,6 +1052,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -917,6 +1073,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:12:52.628Z",
@@ -959,6 +1120,15 @@
         "witch": 0,
         "fool": 1,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -975,6 +1145,15 @@
         "witch": 0,
         "fool": 1,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -986,6 +1165,11 @@
       "werewolf": {
         "games": 1,
         "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
         "losses": 0
       }
     },
@@ -1029,6 +1213,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1045,6 +1238,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1057,6 +1259,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:12:52.628Z",
@@ -1099,6 +1306,15 @@
         "witch": 1,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1115,6 +1331,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1127,6 +1352,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:12:52.628Z",
@@ -1169,6 +1399,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1185,6 +1424,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1197,6 +1445,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:12:52.628Z",
@@ -1239,6 +1492,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1255,6 +1517,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1267,6 +1538,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:12:52.628Z",
@@ -1309,6 +1585,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1325,6 +1610,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1337,6 +1631,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:12:52.628Z",
@@ -1361,24 +1660,33 @@
   "413ede2c-5dbd-4b0f-b918-ef7bd021afdf": {
     "playerId": "413ede2c-5dbd-4b0f-b918-ef7bd021afdf",
     "playerName": "guest152338",
-    "totalGames": 4,
-    "wins": 3,
-    "losses": 1,
+    "totalGames": 10,
+    "wins": 5,
+    "losses": 5,
     "roleStats": {
-      "gameMasterCount": 0,
+      "gameMasterCount": 1,
       "traitorCount": 0,
-      "citizenCount": 0,
+      "citizenCount": 1,
       "werewolf": {
         "villager": 0,
-        "werewolf": 2,
+        "werewolf": 4,
         "alphaWolf": 1,
-        "mayor": 0,
+        "mayor": 1,
         "bodyguard": 0,
-        "seer": 1,
+        "seer": 2,
         "doctor": 0,
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1386,7 +1694,7 @@
       "winAsCitizen": 0,
       "werewolf": {
         "villager": 0,
-        "werewolf": 2,
+        "werewolf": 4,
         "alphaWolf": 1,
         "mayor": 0,
         "bodyguard": 0,
@@ -1395,22 +1703,120 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
       "insider": {
+        "games": 2,
+        "wins": 0,
+        "losses": 2
+      },
+      "werewolf": {
+        "games": 8,
+        "wins": 5,
+        "losses": 3
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
-      },
-      "werewolf": {
-        "games": 4,
-        "wins": 3,
-        "losses": 1
       }
     },
-    "lastPlayedAt": "2026-03-20T11:40:11.343Z",
+    "lastPlayedAt": "2026-03-21T06:57:29.505Z",
     "gameHistory": [
+      {
+        "mode": "insider",
+        "date": "2026-03-21T06:57:29.505Z",
+        "roomId": "f840a5ed",
+        "roomName": "ตลาดมืดคืนนี้",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "ไพ่",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
+      },
+      {
+        "mode": "insider",
+        "date": "2026-03-21T06:56:10.256Z",
+        "roomId": "0eb500f9",
+        "roomName": "1",
+        "role": "ผู้ดำเนินเกม",
+        "won": false,
+        "word": "d",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T13:16:38.688Z",
+        "roomId": "5f942334",
+        "roomName": "1",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": false
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T13:12:27.341Z",
+        "roomId": "5f942334",
+        "roomName": "1",
+        "roleId": "werewolf",
+        "role": "หมาป่า",
+        "team": "werewolf",
+        "won": true,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:51:21.062Z",
+        "roomId": "efbc61f5",
+        "roomName": "ๅ",
+        "roleId": "mayor",
+        "role": "นายก",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:19:41.697Z",
+        "roomId": "7bbf3799",
+        "roomName": "1",
+        "roleId": "werewolf",
+        "role": "หมาป่า",
+        "team": "werewolf",
+        "won": true,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
       {
         "mode": "werewolf",
         "date": "2026-03-20T11:40:11.343Z",
@@ -1476,24 +1882,33 @@
   "18d80792-8c94-42fa-9722-f6c2e74fef7e": {
     "playerId": "18d80792-8c94-42fa-9722-f6c2e74fef7e",
     "playerName": "guest800522",
-    "totalGames": 4,
-    "wins": 1,
-    "losses": 3,
+    "totalGames": 10,
+    "wins": 2,
+    "losses": 8,
     "roleStats": {
       "gameMasterCount": 0,
       "traitorCount": 0,
-      "citizenCount": 0,
+      "citizenCount": 2,
       "werewolf": {
-        "villager": 3,
-        "werewolf": 0,
+        "villager": 5,
+        "werewolf": 1,
         "alphaWolf": 1,
         "mayor": 0,
         "bodyguard": 0,
-        "seer": 0,
+        "seer": 1,
         "doctor": 0,
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1501,7 +1916,7 @@
       "winAsCitizen": 0,
       "werewolf": {
         "villager": 0,
-        "werewolf": 0,
+        "werewolf": 1,
         "alphaWolf": 1,
         "mayor": 0,
         "bodyguard": 0,
@@ -1510,22 +1925,120 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
       "insider": {
+        "games": 2,
+        "wins": 0,
+        "losses": 2
+      },
+      "werewolf": {
+        "games": 8,
+        "wins": 2,
+        "losses": 6
+      },
+      "blackmarket": {
         "games": 0,
         "wins": 0,
         "losses": 0
-      },
-      "werewolf": {
-        "games": 4,
-        "wins": 1,
-        "losses": 3
       }
     },
-    "lastPlayedAt": "2026-03-20T11:40:11.343Z",
+    "lastPlayedAt": "2026-03-21T06:57:29.505Z",
     "gameHistory": [
+      {
+        "mode": "insider",
+        "date": "2026-03-21T06:57:29.505Z",
+        "roomId": "f840a5ed",
+        "roomName": "ตลาดมืดคืนนี้",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "ไพ่",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
+      },
+      {
+        "mode": "insider",
+        "date": "2026-03-21T06:56:10.256Z",
+        "roomId": "0eb500f9",
+        "roomName": "1",
+        "role": "พลเมือง",
+        "won": false,
+        "word": "d",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T13:16:38.688Z",
+        "roomId": "5f942334",
+        "roomName": "1",
+        "roleId": "villager",
+        "role": "ชาวบ้าน",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T13:12:27.341Z",
+        "roomId": "5f942334",
+        "roomName": "1",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": false
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:51:21.062Z",
+        "roomId": "efbc61f5",
+        "roomName": "ๅ",
+        "roleId": "werewolf",
+        "role": "หมาป่า",
+        "team": "werewolf",
+        "won": true,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:19:41.697Z",
+        "roomId": "7bbf3799",
+        "roomName": "1",
+        "roleId": "villager",
+        "role": "ชาวบ้าน",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
       {
         "mode": "werewolf",
         "date": "2026-03-20T11:40:11.343Z",
@@ -1591,32 +2104,41 @@
   "4a17d0ae-0db5-4e80-8e00-2101bd1bac31": {
     "playerId": "4a17d0ae-0db5-4e80-8e00-2101bd1bac31",
     "playerName": "guest568115",
-    "totalGames": 4,
-    "wins": 0,
-    "losses": 4,
+    "totalGames": 10,
+    "wins": 3,
+    "losses": 7,
     "roleStats": {
       "gameMasterCount": 0,
-      "traitorCount": 0,
+      "traitorCount": 2,
       "citizenCount": 0,
       "werewolf": {
-        "villager": 1,
-        "werewolf": 0,
+        "villager": 2,
+        "werewolf": 1,
         "alphaWolf": 0,
         "mayor": 0,
         "bodyguard": 0,
-        "seer": 3,
+        "seer": 5,
         "doctor": 0,
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
-      "winAsTraitor": 0,
+      "winAsTraitor": 2,
       "winAsCitizen": 0,
       "werewolf": {
         "villager": 0,
-        "werewolf": 0,
+        "werewolf": 1,
         "alphaWolf": 0,
         "mayor": 0,
         "bodyguard": 0,
@@ -1625,22 +2147,120 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
       "insider": {
-        "games": 0,
-        "wins": 0,
+        "games": 2,
+        "wins": 2,
         "losses": 0
       },
       "werewolf": {
-        "games": 4,
+        "games": 8,
+        "wins": 1,
+        "losses": 7
+      },
+      "blackmarket": {
+        "games": 0,
         "wins": 0,
-        "losses": 4
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:40:11.343Z",
+    "lastPlayedAt": "2026-03-21T06:57:29.505Z",
     "gameHistory": [
+      {
+        "mode": "insider",
+        "date": "2026-03-21T06:57:29.505Z",
+        "roomId": "f840a5ed",
+        "roomName": "ตลาดมืดคืนนี้",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "ไพ่",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
+      },
+      {
+        "mode": "insider",
+        "date": "2026-03-21T06:56:10.256Z",
+        "roomId": "0eb500f9",
+        "roomName": "1",
+        "role": "ผู้ทรยศ",
+        "won": true,
+        "word": "d",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T13:16:38.688Z",
+        "roomId": "5f942334",
+        "roomName": "1",
+        "roleId": "werewolf",
+        "role": "หมาป่า",
+        "team": "werewolf",
+        "won": true,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T13:12:27.341Z",
+        "roomId": "5f942334",
+        "roomName": "1",
+        "roleId": "villager",
+        "role": "ชาวบ้าน",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": true
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:51:21.062Z",
+        "roomId": "efbc61f5",
+        "roomName": "ๅ",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": false
+      },
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:19:41.697Z",
+        "roomId": "7bbf3799",
+        "roomName": "1",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "werewolf",
+        "winnerLabel": "หมาป่า",
+        "playerCount": 3,
+        "dayNumber": 2,
+        "survived": false
+      },
       {
         "mode": "werewolf",
         "date": "2026-03-20T11:40:11.343Z",
@@ -1724,6 +2344,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1740,6 +2369,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1752,6 +2390,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:46:37.741Z",
@@ -1794,6 +2437,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1810,6 +2462,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1821,6 +2482,11 @@
       "werewolf": {
         "games": 1,
         "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
         "losses": 0
       }
     },
@@ -1864,6 +2530,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1880,6 +2555,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1892,6 +2576,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T07:46:37.741Z",
@@ -1934,6 +2623,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -1950,6 +2648,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -1962,6 +2669,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T08:26:24.396Z",
@@ -2004,6 +2716,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2020,6 +2741,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2032,6 +2762,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T08:26:24.396Z",
@@ -2074,6 +2809,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2090,6 +2834,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2101,6 +2854,11 @@
       "werewolf": {
         "games": 1,
         "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
         "losses": 0
       }
     },
@@ -2144,6 +2902,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2160,6 +2927,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2171,6 +2947,11 @@
       "werewolf": {
         "games": 1,
         "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
         "losses": 0
       }
     },
@@ -2214,6 +2995,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2230,6 +3020,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2242,6 +3041,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T10:07:47.070Z",
@@ -2284,6 +3088,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2300,6 +3113,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2312,6 +3134,11 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
     "lastPlayedAt": "2026-03-20T10:07:47.070Z",
@@ -2333,9 +3160,567 @@
       }
     ]
   },
-  "c18f3f40-0c7e-418a-920b-a744c417ee04": {
-    "playerId": "c18f3f40-0c7e-418a-920b-a744c417ee04",
-    "playerName": "guest528782",
+  "d663f924-b6ed-4fc4-9ef4-57478ba7bc7b": {
+    "playerId": "d663f924-b6ed-4fc4-9ef4-57478ba7bc7b",
+    "playerName": "guest218021",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 1,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
+        "roleId": "witch",
+        "role": "แม่มด",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": true
+      }
+    ]
+  },
+  "f24d84ae-7084-40ff-90fa-a9db5b2d93e8": {
+    "playerId": "f24d84ae-7084-40ff-90fa-a9db5b2d93e8",
+    "playerName": "guest791617",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 1,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "b06a3875-e5b4-4ed3-9227-26654b758d0d": {
+    "playerId": "b06a3875-e5b4-4ed3-9227-26654b758d0d",
+    "playerName": "guest472075",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 1,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
+        "roleId": "alphaWolf",
+        "role": "อัลฟ่าหมาป่า",
+        "team": "werewolf",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": true
+      }
+    ]
+  },
+  "e75b2438-182c-40bb-8362-f9f5d5c3c2e5": {
+    "playerId": "e75b2438-182c-40bb-8362-f9f5d5c3c2e5",
+    "playerName": "guest742387",
+    "totalGames": 1,
+    "wins": 1,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
+        "roleId": "fool",
+        "role": "คนบ้า",
+        "team": "solo",
+        "won": true,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "8ddf74ed-7f85-4380-ac01-5ef38947a878": {
+    "playerId": "8ddf74ed-7f85-4380-ac01-5ef38947a878",
+    "playerName": "guest072393",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 1,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
+        "roleId": "werewolf",
+        "role": "หมาป่า",
+        "team": "werewolf",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "41f64c28-f0eb-4aa8-bac9-ce124d2c1983": {
+    "playerId": "41f64c28-f0eb-4aa8-bac9-ce124d2c1983",
+    "playerName": "guest985289",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 1,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
+        "roleId": "villager",
+        "role": "ชาวบ้าน",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "e9093e89-476c-416c-8068-d46a910230c3": {
+    "playerId": "e9093e89-476c-416c-8068-d46a910230c3",
+    "playerName": "guest996742",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -2354,6 +3739,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2370,6 +3764,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2382,15 +3785,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
+    "lastPlayedAt": "2026-03-20T12:52:18.819Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
+        "date": "2026-03-20T12:52:18.819Z",
+        "roomId": "1c405311",
+        "roomName": "Werewolf Smoke 1774011135735",
         "roleId": "doctor",
         "role": "หมอ",
         "team": "village",
@@ -2403,16 +3811,16 @@
       }
     ]
   },
-  "713888f3-eda7-44c0-a2d1-b351b5934182": {
-    "playerId": "713888f3-eda7-44c0-a2d1-b351b5934182",
-    "playerName": "guest748253",
-    "totalGames": 1,
+  "b036c161-18e2-410b-aef5-c75b004b0af5": {
+    "playerId": "b036c161-18e2-410b-aef5-c75b004b0af5",
+    "playerName": "guest326399",
+    "totalGames": 2,
     "wins": 0,
-    "losses": 1,
+    "losses": 2,
     "roleStats": {
-      "gameMasterCount": 0,
+      "gameMasterCount": 1,
       "traitorCount": 0,
-      "citizenCount": 0,
+      "citizenCount": 1,
       "werewolf": {
         "villager": 0,
         "werewolf": 0,
@@ -2421,9 +3829,18 @@
         "bodyguard": 0,
         "seer": 0,
         "doctor": 0,
-        "witch": 1,
+        "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2440,322 +3857,65 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
       "insider": {
+        "games": 2,
+        "wins": 0,
+        "losses": 2
+      },
+      "werewolf": {
         "games": 0,
         "wins": 0,
         "losses": 0
       },
-      "werewolf": {
-        "games": 1,
+      "blackmarket": {
+        "games": 0,
         "wins": 0,
-        "losses": 1
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
+    "lastPlayedAt": "2026-03-21T06:57:29.505Z",
     "gameHistory": [
       {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
-        "roleId": "witch",
-        "role": "แม่มด",
-        "team": "village",
+        "mode": "insider",
+        "date": "2026-03-21T06:57:29.505Z",
+        "roomId": "f840a5ed",
+        "roomName": "ตลาดมืดคืนนี้",
+        "role": "ผู้ดำเนินเกม",
         "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": true
-      }
-    ]
-  },
-  "8a28d3c7-2b53-4f5f-96d6-32905c3b38cd": {
-    "playerId": "8a28d3c7-2b53-4f5f-96d6-32905c3b38cd",
-    "playerName": "guest005323",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 1,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
+        "word": "ไพ่",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
       },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
-    "gameHistory": [
       {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
-        "roleId": "seer",
-        "role": "Seer",
-        "team": "village",
+        "mode": "insider",
+        "date": "2026-03-21T06:56:10.256Z",
+        "roomId": "0eb500f9",
+        "roomName": "1",
+        "role": "พลเมือง",
         "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
+        "word": "d",
+        "traitor": "guest568115",
+        "citizensWon": false,
+        "playerCount": 4
       }
     ]
   },
-  "f0af7623-70f3-4801-9944-7eee343df062": {
-    "playerId": "f0af7623-70f3-4801-9944-7eee343df062",
-    "playerName": "guest972544",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 1,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
-        "roleId": "alphaWolf",
-        "role": "อัลฟ่าหมาป่า",
-        "team": "werewolf",
-        "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": true
-      }
-    ]
-  },
-  "e12f675e-e6f1-4b6a-bb06-2ff5dfda5c55": {
-    "playerId": "e12f675e-e6f1-4b6a-bb06-2ff5dfda5c55",
-    "playerName": "guest223484",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 1,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
-        "roleId": "werewolf",
-        "role": "หมาป่า",
-        "team": "werewolf",
-        "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "53cd1a8b-3bfc-4697-9420-d3a880d78c9e": {
-    "playerId": "53cd1a8b-3bfc-4697-9420-d3a880d78c9e",
-    "playerName": "guest093574",
-    "totalGames": 1,
-    "wins": 1,
-    "losses": 0,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 1,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 1,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 1,
-        "losses": 0
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
-        "roleId": "fool",
-        "role": "คนบ้า",
-        "team": "solo",
-        "won": true,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "a5a589cb-cb38-422b-a862-d8e72a9e667a": {
-    "playerId": "a5a589cb-cb38-422b-a862-d8e72a9e667a",
-    "playerName": "guest116728",
+  "514a3087-97ef-4e39-a25f-4d48516a723f": {
+    "playerId": "514a3087-97ef-4e39-a25f-4d48516a723f",
+    "playerName": "guest416230",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -2774,6 +3934,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -2790,6 +3959,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -2802,15 +3980,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:44:35.829Z",
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T11:44:35.829Z",
-        "roomId": "14959c44",
-        "roomName": "Werewolf Smoke 1774007072752",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
         "roleId": "villager",
         "role": "ชาวบ้าน",
         "team": "village",
@@ -2823,149 +4006,9 @@
       }
     ]
   },
-  "6d5dae29-1e1a-49b7-8957-c3e9409de39d": {
-    "playerId": "6d5dae29-1e1a-49b7-8957-c3e9409de39d",
-    "playerName": "guest985325",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 1,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
-        "roleId": "witch",
-        "role": "แม่มด",
-        "team": "village",
-        "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": true
-      }
-    ]
-  },
-  "178c5ecb-a5b5-4a41-922c-779b294b9327": {
-    "playerId": "178c5ecb-a5b5-4a41-922c-779b294b9327",
-    "playerName": "guest379192",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 1,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
-        "roleId": "seer",
-        "role": "Seer",
-        "team": "village",
-        "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "1c265668-1e2d-45a3-9676-2a3caf96f9ee": {
-    "playerId": "1c265668-1e2d-45a3-9676-2a3caf96f9ee",
-    "playerName": "guest263330",
+  "e8952a5c-3d43-4c24-9a39-80a6519cce58": {
+    "playerId": "e8952a5c-3d43-4c24-9a39-80a6519cce58",
+    "playerName": "guest846867",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -2984,6 +4027,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3000,6 +4052,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3012,15 +4073,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
         "roleId": "werewolf",
         "role": "หมาป่า",
         "team": "werewolf",
@@ -3033,9 +4099,9 @@
       }
     ]
   },
-  "779b914a-c924-4e87-8983-f5fe205d681a": {
-    "playerId": "779b914a-c924-4e87-8983-f5fe205d681a",
-    "playerName": "guest701247",
+  "1bb2b0a5-c1b8-4a34-ad19-59001cd8eb22": {
+    "playerId": "1bb2b0a5-c1b8-4a34-ad19-59001cd8eb22",
+    "playerName": "guest931047",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3046,14 +4112,23 @@
       "werewolf": {
         "villager": 0,
         "werewolf": 0,
-        "alphaWolf": 1,
+        "alphaWolf": 0,
         "mayor": 0,
         "bodyguard": 0,
         "seer": 0,
         "doctor": 0,
-        "witch": 0,
+        "witch": 1,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3070,6 +4145,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3082,18 +4166,23 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
-        "roleId": "alphaWolf",
-        "role": "อัลฟ่าหมาป่า",
-        "team": "werewolf",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
+        "roleId": "witch",
+        "role": "แม่มด",
+        "team": "village",
         "won": false,
         "winner": "fool",
         "winnerLabel": "คนบ้า",
@@ -3103,9 +4192,102 @@
       }
     ]
   },
-  "2e1a31d9-4b30-461d-8de5-31db25649484": {
-    "playerId": "2e1a31d9-4b30-461d-8de5-31db25649484",
-    "playerName": "guest474982",
+  "22c57a63-8bf8-42d2-98bc-ddc7a0998a80": {
+    "playerId": "22c57a63-8bf8-42d2-98bc-ddc7a0998a80",
+    "playerName": "guest955653",
+    "totalGames": 1,
+    "wins": 1,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
+        "roleId": "fool",
+        "role": "คนบ้า",
+        "team": "solo",
+        "won": true,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "5200e756-6940-4c6b-9e3f-cfa22aec9715": {
+    "playerId": "5200e756-6940-4c6b-9e3f-cfa22aec9715",
+    "playerName": "guest713356",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3124,6 +4306,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3140,6 +4331,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3152,15 +4352,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
         "roleId": "doctor",
         "role": "หมอ",
         "team": "village",
@@ -3173,219 +4378,9 @@
       }
     ]
   },
-  "e837800d-9bd6-4bec-a786-37a223756b69": {
-    "playerId": "e837800d-9bd6-4bec-a786-37a223756b69",
-    "playerName": "guest970561",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 1,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
-        "roleId": "villager",
-        "role": "ชาวบ้าน",
-        "team": "village",
-        "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "1aadb0e5-66a8-4df8-bcc4-34434bf71072": {
-    "playerId": "1aadb0e5-66a8-4df8-bcc4-34434bf71072",
-    "playerName": "guest381237",
-    "totalGames": 1,
-    "wins": 1,
-    "losses": 0,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 1,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 1,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 1,
-        "losses": 0
-      }
-    },
-    "lastPlayedAt": "2026-03-20T11:50:27.005Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T11:50:27.005Z",
-        "roomId": "33a08f0b",
-        "roomName": "Werewolf Smoke 1774007423925",
-        "roleId": "fool",
-        "role": "คนบ้า",
-        "team": "solo",
-        "won": true,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "a7d92407-3aad-461b-bfb1-f2330a36f5e0": {
-    "playerId": "a7d92407-3aad-461b-bfb1-f2330a36f5e0",
-    "playerName": "guest421797",
-    "totalGames": 1,
-    "wins": 0,
-    "losses": 1,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 1,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 0,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 0,
-        "losses": 1
-      }
-    },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
-        "roleId": "seer",
-        "role": "Seer",
-        "team": "village",
-        "won": false,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "6ffd46a2-ada4-4641-9fe8-4cd1b4bb0228": {
-    "playerId": "6ffd46a2-ada4-4641-9fe8-4cd1b4bb0228",
-    "playerName": "guest520140",
+  "4ebe9d3b-4232-4712-80ce-63b3cbd1e374": {
+    "playerId": "4ebe9d3b-4232-4712-80ce-63b3cbd1e374",
+    "playerName": "guest455470",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3404,6 +4399,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3420,6 +4424,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3432,15 +4445,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
         "roleId": "alphaWolf",
         "role": "อัลฟ่าหมาป่า",
         "team": "werewolf",
@@ -3453,9 +4471,9 @@
       }
     ]
   },
-  "a972ff3a-d756-425f-aaf0-dbd44488b222": {
-    "playerId": "a972ff3a-d756-425f-aaf0-dbd44488b222",
-    "playerName": "guest537388",
+  "dbab608f-25a7-4916-8bd9-e51c9a616b4a": {
+    "playerId": "dbab608f-25a7-4916-8bd9-e51c9a616b4a",
+    "playerName": "guest174151",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3464,16 +4482,25 @@
       "traitorCount": 0,
       "citizenCount": 0,
       "werewolf": {
-        "villager": 1,
+        "villager": 0,
         "werewolf": 0,
         "alphaWolf": 0,
         "mayor": 0,
         "bodyguard": 0,
-        "seer": 0,
+        "seer": 1,
         "doctor": 0,
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3490,6 +4517,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3502,17 +4538,22 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
+    "lastPlayedAt": "2026-03-26T05:43:20.126Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
-        "roleId": "villager",
-        "role": "ชาวบ้าน",
+        "date": "2026-03-26T05:43:20.126Z",
+        "roomId": "60baf9e9",
+        "roomName": "Werewolf Smoke 1774503797041",
+        "roleId": "seer",
+        "role": "Seer",
         "team": "village",
         "won": false,
         "winner": "fool",
@@ -3523,9 +4564,102 @@
       }
     ]
   },
-  "610e0840-618e-4191-a316-0dbf1c7d52bd": {
-    "playerId": "610e0840-618e-4191-a316-0dbf1c7d52bd",
-    "playerName": "guest363006",
+  "e5d22cc0-13fc-4ac6-bc77-84daed077b65": {
+    "playerId": "e5d22cc0-13fc-4ac6-bc77-84daed077b65",
+    "playerName": "guest698149",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 1,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "1cbff0eb-11af-43a5-a8c3-1e2fb3c997aa": {
+    "playerId": "1cbff0eb-11af-43a5-a8c3-1e2fb3c997aa",
+    "playerName": "guest892073",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3544,6 +4678,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3560,6 +4703,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3572,15 +4724,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
         "roleId": "werewolf",
         "role": "หมาป่า",
         "team": "werewolf",
@@ -3593,9 +4750,9 @@
       }
     ]
   },
-  "16ee5aa4-5bd8-4318-9889-fa4e3a246fff": {
-    "playerId": "16ee5aa4-5bd8-4318-9889-fa4e3a246fff",
-    "playerName": "guest064087",
+  "21c69945-0f95-42cc-836e-910db34383a9": {
+    "playerId": "21c69945-0f95-42cc-836e-910db34383a9",
+    "playerName": "guest278140",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3614,6 +4771,15 @@
         "witch": 1,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3630,6 +4796,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3642,15 +4817,20 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
         "roleId": "witch",
         "role": "แม่มด",
         "team": "village",
@@ -3663,79 +4843,9 @@
       }
     ]
   },
-  "da5795e9-902b-412a-af56-8cd9e3b59843": {
-    "playerId": "da5795e9-902b-412a-af56-8cd9e3b59843",
-    "playerName": "guest921351",
-    "totalGames": 1,
-    "wins": 1,
-    "losses": 0,
-    "roleStats": {
-      "gameMasterCount": 0,
-      "traitorCount": 0,
-      "citizenCount": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 1,
-        "revealer": 0
-      }
-    },
-    "winByRole": {
-      "winAsTraitor": 0,
-      "winAsCitizen": 0,
-      "werewolf": {
-        "villager": 0,
-        "werewolf": 0,
-        "alphaWolf": 0,
-        "mayor": 0,
-        "bodyguard": 0,
-        "seer": 0,
-        "doctor": 0,
-        "witch": 0,
-        "fool": 1,
-        "revealer": 0
-      }
-    },
-    "modeStats": {
-      "insider": {
-        "games": 0,
-        "wins": 0,
-        "losses": 0
-      },
-      "werewolf": {
-        "games": 1,
-        "wins": 1,
-        "losses": 0
-      }
-    },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
-    "gameHistory": [
-      {
-        "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
-        "roleId": "fool",
-        "role": "คนบ้า",
-        "team": "solo",
-        "won": true,
-        "winner": "fool",
-        "winnerLabel": "คนบ้า",
-        "playerCount": 7,
-        "dayNumber": 3,
-        "survived": false
-      }
-    ]
-  },
-  "fec03092-2997-4bcc-9387-e02f36ba30ba": {
-    "playerId": "fec03092-2997-4bcc-9387-e02f36ba30ba",
-    "playerName": "guest851147",
+  "12f913e9-1233-4757-978c-0bad02670fe9": {
+    "playerId": "12f913e9-1233-4757-978c-0bad02670fe9",
+    "playerName": "guest552827",
     "totalGames": 1,
     "wins": 0,
     "losses": 1,
@@ -3754,6 +4864,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "winByRole": {
@@ -3770,6 +4889,15 @@
         "witch": 0,
         "fool": 0,
         "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
       }
     },
     "modeStats": {
@@ -3782,15 +4910,950 @@
         "games": 1,
         "wins": 0,
         "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
       }
     },
-    "lastPlayedAt": "2026-03-20T12:03:44.218Z",
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
     "gameHistory": [
       {
         "mode": "werewolf",
-        "date": "2026-03-20T12:03:44.218Z",
-        "roomId": "46791ecf",
-        "roomName": "Werewolf Smoke 1774008221148",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
+        "roleId": "doctor",
+        "role": "หมอ",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "6beee2ce-41ff-4446-9b32-775226afcd2a": {
+    "playerId": "6beee2ce-41ff-4446-9b32-775226afcd2a",
+    "playerName": "guest123768",
+    "totalGames": 1,
+    "wins": 1,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
+        "roleId": "fool",
+        "role": "คนบ้า",
+        "team": "solo",
+        "won": true,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "30755745-3995-49cf-84d0-7f955cfe56cf": {
+    "playerId": "30755745-3995-49cf-84d0-7f955cfe56cf",
+    "playerName": "guest164044",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 1,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
+        "roleId": "alphaWolf",
+        "role": "อัลฟ่าหมาป่า",
+        "team": "werewolf",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": true
+      }
+    ]
+  },
+  "af3f0868-2b35-4694-9cbf-2f90e27a7ed6": {
+    "playerId": "af3f0868-2b35-4694-9cbf-2f90e27a7ed6",
+    "playerName": "guest920929",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 1,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:50:32.458Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:50:32.458Z",
+        "roomId": "fb2358d2",
+        "roomName": "Werewolf Smoke 1774504229093",
+        "roleId": "villager",
+        "role": "ชาวบ้าน",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "dd0a6f2c-baec-40bf-9da3-b9ebfd7f5ed9": {
+    "playerId": "dd0a6f2c-baec-40bf-9da3-b9ebfd7f5ed9",
+    "playerName": "guest326674",
+    "totalGames": 1,
+    "wins": 1,
+    "losses": 0,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 1,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 1,
+        "losses": 0
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
+        "roleId": "fool",
+        "role": "คนบ้า",
+        "team": "solo",
+        "won": true,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "eb0ec55e-06ef-4124-8d04-def14c53f71e": {
+    "playerId": "eb0ec55e-06ef-4124-8d04-def14c53f71e",
+    "playerName": "guest105512",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 1,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
+        "roleId": "seer",
+        "role": "Seer",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "5d4fdc02-01c6-4a7e-93c2-759da9a6198d": {
+    "playerId": "5d4fdc02-01c6-4a7e-93c2-759da9a6198d",
+    "playerName": "guest933348",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 1,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
+        "roleId": "witch",
+        "role": "แม่มด",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": true
+      }
+    ]
+  },
+  "3fb686f7-e844-4865-8b46-5cf561e04a57": {
+    "playerId": "3fb686f7-e844-4865-8b46-5cf561e04a57",
+    "playerName": "guest999914",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 1,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
+        "roleId": "villager",
+        "role": "ชาวบ้าน",
+        "team": "village",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "168ead23-f46f-47ac-80af-245c8856e4e2": {
+    "playerId": "168ead23-f46f-47ac-80af-245c8856e4e2",
+    "playerName": "guest628611",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 1,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
+        "roleId": "alphaWolf",
+        "role": "อัลฟ่าหมาป่า",
+        "team": "werewolf",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": true
+      }
+    ]
+  },
+  "6b777e5a-c1d1-42ad-913b-9d906e8a1512": {
+    "playerId": "6b777e5a-c1d1-42ad-913b-9d906e8a1512",
+    "playerName": "guest911080",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 1,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
+        "roleId": "werewolf",
+        "role": "หมาป่า",
+        "team": "werewolf",
+        "won": false,
+        "winner": "fool",
+        "winnerLabel": "คนบ้า",
+        "playerCount": 7,
+        "dayNumber": 3,
+        "survived": false
+      }
+    ]
+  },
+  "12f648a5-1da9-49cb-8fec-174ac7dcb9c0": {
+    "playerId": "12f648a5-1da9-49cb-8fec-174ac7dcb9c0",
+    "playerName": "guest743278",
+    "totalGames": 1,
+    "wins": 0,
+    "losses": 1,
+    "roleStats": {
+      "gameMasterCount": 0,
+      "traitorCount": 0,
+      "citizenCount": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 1,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "winByRole": {
+      "winAsTraitor": 0,
+      "winAsCitizen": 0,
+      "werewolf": {
+        "villager": 0,
+        "werewolf": 0,
+        "alphaWolf": 0,
+        "mayor": 0,
+        "bodyguard": 0,
+        "seer": 0,
+        "doctor": 0,
+        "witch": 0,
+        "fool": 0,
+        "revealer": 0
+      },
+      "blackmarket": {
+        "boss": 0,
+        "broker": 0,
+        "smuggler": 0,
+        "fixer": 0,
+        "hitman": 0,
+        "mole": 0,
+        "doubleAgent": 0
+      }
+    },
+    "modeStats": {
+      "insider": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "werewolf": {
+        "games": 1,
+        "wins": 0,
+        "losses": 1
+      },
+      "blackmarket": {
+        "games": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "lastPlayedAt": "2026-03-26T05:58:09.994Z",
+    "gameHistory": [
+      {
+        "mode": "werewolf",
+        "date": "2026-03-26T05:58:09.994Z",
+        "roomId": "834a58c4",
+        "roomName": "Werewolf Smoke 1774504686915",
         "roleId": "doctor",
         "role": "หมอ",
         "team": "village",

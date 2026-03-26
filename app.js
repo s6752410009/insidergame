@@ -590,6 +590,7 @@ function buildRoomUpdatePayload(room) {
 
     return {
         roomId: room.roomId,
+        roomName: room.name,
         players: room.players.map(player => ({
             playerId: player.playerId,
             playerName: player.playerName,
@@ -618,6 +619,16 @@ function buildWerewolfStatePayload(room, playerId) {
 
     finalizeWerewolfGameIfNeeded(room);
     const engine = getGameEngine('werewolf');
+    return engine.buildClientState(room, playerId);
+}
+
+function buildBlackMarketStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'blackmarket') {
+        return null;
+    }
+
+    finalizeBlackMarketGameIfNeeded(room);
+    const engine = getGameEngine('blackmarket');
     return engine.buildClientState(room, playerId);
 }
 
@@ -741,6 +752,27 @@ function finalizeWerewolfGameIfNeeded(room) {
     room.gameState.statsRecordedAt = new Date().toISOString();
 }
 
+function finalizeBlackMarketGameIfNeeded(room) {
+    if (!room || room.settings.gameMode !== 'blackmarket' || !room.gameState) {
+        return;
+    }
+
+    if (room.gameState.status !== 'blackmarket_finished' || !room.gameState.winner || room.gameState.statsRecordedAt) {
+        return;
+    }
+
+    statsManager.recordGameEnd(room.roomId, {
+        mode: 'blackmarket',
+        winner: room.gameState.winner,
+        players: room.gameState.players,
+        roomName: room.name,
+        roundNumber: room.gameState.roundNumber,
+        maxRounds: room.gameState.maxRounds,
+        reason: room.gameState.winner.reason
+    });
+    room.gameState.statsRecordedAt = new Date().toISOString();
+}
+
 function emitWerewolfState(room, targetSocketId = null, playerId = null) {
     if (!room || room.settings.gameMode !== 'werewolf') {
         return;
@@ -779,6 +811,23 @@ function emitWerewolfRoomState(room) {
     syncWerewolfPhaseTimer(room);
     emitWerewolfState(room);
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+function emitBlackMarketState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'blackmarket') {
+        return;
+    }
+
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('blackmarketState', buildBlackMarketStatePayload(room, playerId));
+        return;
+    }
+
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('blackmarketState', buildBlackMarketStatePayload(room, player.playerId));
+        }
+    });
 }
 
 function scheduleWerewolfStateBroadcast(room, delayMs = WEREWOLF_PHASE_TRANSITION_DELAY_MS) {
@@ -865,6 +914,7 @@ function syncWerewolfPhaseTimer(room) {
 
     clearWerewolfPhaseTimer(room.roomId, false);
 
+    const NIGHT_DURATION_MS = 60000;
     const roundDurationMs = Math.max(15000, (Number(room.settings.roundTime) || 300) * 1000);
     const minVoteDurationMs = 7000;
     const discussionDurationMs = Math.min(
@@ -873,7 +923,7 @@ function syncWerewolfPhaseTimer(room) {
     );
     const voteDurationMs = Math.max(minVoteDurationMs, roundDurationMs - discussionDurationMs);
     const durationMs = phase === 'night'
-        ? roundDurationMs
+        ? NIGHT_DURATION_MS
         : (phase === 'day-discussion' ? discussionDurationMs : voteDurationMs);
     room.gameState.phaseEndsAt = Date.now() + durationMs;
 
@@ -1361,6 +1411,23 @@ app.get('/game/:roomId', async function(req, res) {
             },
             werewolfState: buildWerewolfStatePayload(room, playerId),
             chatHistory: buildWerewolfChatHistory(room, playerId)
+        });
+    }
+
+    if (room.settings.gameMode === 'blackmarket') {
+        return res.render('blackMarketBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                settings: room.settings
+            },
+            blackMarketState: buildBlackMarketStatePayload(room, playerId)
         });
     }
 
@@ -2929,6 +2996,8 @@ io.sockets.on('connection', function(socket) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
                     emitWerewolfChatHistory(room, socket.id, playerId);
+                } else if (room.settings.gameMode === 'blackmarket') {
+                    emitBlackMarketState(room, socket.id, playerId);
                 } else {
                     io.to(socket.id).emit('newRole', {
                         players: room.gameState.players,
@@ -2960,6 +3029,17 @@ io.sockets.on('connection', function(socket) {
 
         syncWerewolfPhaseTimer(room);
         emitWerewolfState(room, socket.id, playerId);
+    });
+
+    socket.on('blackmarket_requestState', function(data) {
+        const roomId = data?.roomId || socket.roomId;
+        const playerId = data?.playerId || socket.playerId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || room.settings.gameMode !== 'blackmarket' || !playerId) {
+            return;
+        }
+
+        emitBlackMarketState(room, socket.id, playerId);
     });
 
     socket.on('werewolf_admin_request_roles', function(data, callback) {
@@ -3167,6 +3247,96 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    socket.on('blackmarket_buyOffer', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const itemId = data?.itemId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'blackmarket') {
+                throw new Error('ไม่พบตลาดนี้');
+            }
+
+            const blackMarketEngine = getGameEngine('blackmarket');
+            const result = blackMarketEngine.submitMarketPurchase(room, playerId, itemId);
+            emitBlackMarketState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('blackmarket_submitAction', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'blackmarket') {
+                throw new Error('ไม่พบโต๊ะนี้');
+            }
+
+            const blackMarketEngine = getGameEngine('blackmarket');
+            const result = blackMarketEngine.submitAction(
+                room,
+                playerId,
+                data?.actionType,
+                data?.targetPlayerId || null,
+                data?.itemId || null
+            );
+            emitBlackMarketState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('blackmarket_restartGame', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'blackmarket') {
+                throw new Error('ไม่พบโต๊ะนี้');
+            }
+
+            if (!isAdminSocket(room, socket)) {
+                throw new Error('มีแค่หัวหน้าห้องที่สั่งเปิดเมืองใหม่ได้');
+            }
+
+            roomManager.resetRoomGame(roomId);
+
+            const refreshedRoom = roomManager.getRoom(roomId);
+            if (!refreshedRoom) {
+                throw new Error('ไม่พบโต๊ะนี้');
+            }
+
+            sendChatMessageToRoom(io, roomId, 'System', 'คืนนี้ปิดโต๊ะก่อน กลับไปตั้งเกมใหม่ในห้อง', '#9b59b6');
+            io.to(roomId).emit('restartGame');
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+
+            if (typeof callback === 'function') {
+                callback({ success: true });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
     // Start game from lobby (redirect all players to game board)
     socket.on('startGameFromLobby', function(data, callback) {
         try {
@@ -3188,10 +3358,12 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
 
-            // ตรวจสอบจำนวนผู้เล่น (ต้องมีอย่างน้อย 3 คน)
+            // ตรวจสอบจำนวนผู้เล่นตามโหมดเกม
             const onlinePlayers = room.players.filter(p => p.socketId);
-            if (onlinePlayers.length < 3) {
-                if (typeof callback === 'function') callback({ success: false, error: 'ต้องมีผู้เล่นออนไลน์อย่างน้อย 3 คน' });
+            const currentEngine = getGameEngine(room.settings.gameMode);
+            const requiredPlayers = Number(currentEngine?.minPlayers || 3);
+            if (onlinePlayers.length < requiredPlayers) {
+                if (typeof callback === 'function') callback({ success: false, error: `ต้องมีผู้เล่นออนไลน์อย่างน้อย ${requiredPlayers} คน` });
                 return;
             }
 
@@ -3220,8 +3392,8 @@ io.sockets.on('connection', function(socket) {
                 }
 
                 const currentOnlinePlayers = currentRoom.players.filter(p => p.socketId);
-                if (currentOnlinePlayers.length < 3) {
-                    io.to(roomId).emit('gameStartCancelled', { error: 'ผู้เล่นไม่ครบ 3 คน' });
+                if (currentOnlinePlayers.length < requiredPlayers) {
+                    io.to(roomId).emit('gameStartCancelled', { error: `ผู้เล่นไม่ครบ ${requiredPlayers} คน` });
                     room.gameStarting = false;
                     return;
                 }
@@ -3242,6 +3414,24 @@ io.sockets.on('connection', function(socket) {
 
                     sendChatMessageToRoom(io, roomId, 'System', 'เกม Werewolf เริ่มแล้ว คืนแรกกำลังเริ่ม ทุกคนเช็กบทของตัวเองได้เลย', '#2ecc71');
                     emitWerewolfRoomState(currentRoom);
+                    room.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'blackmarket') {
+                    const blackMarketEngine = getGameEngine('blackmarket');
+                    blackMarketEngine.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    sendChatMessageToRoom(io, roomId, 'System', 'ตลาดมืดเปิดแล้ว รีบล็อกของก่อนคู่แข่งจะคว้าไป', '#f39c12');
+                    emitBlackMarketState(currentRoom);
                     room.gameStarting = false;
                     return;
                 }

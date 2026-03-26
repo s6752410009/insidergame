@@ -1,8 +1,10 @@
 const insiderEngine = require('./insiderEngine');
+const blackMarketEngine = require('./blackMarketEngine');
 const werewolfEngine = require('./werewolfEngine');
 
 const ENGINES = {
     insider: insiderEngine,
+    blackmarket: blackMarketEngine,
     werewolf: werewolfEngine
 };
 
@@ -12,7 +14,18 @@ function normalizeGameMode(gameMode) {
     }
 
     const normalizedMode = gameMode.trim().toLowerCase();
-    return ENGINES[normalizedMode] ? normalizedMode : 'insider';
+    if (ENGINES[normalizedMode]) {
+        return normalizedMode;
+    }
+
+    const compactMode = normalizedMode.replace(/[\s_-]+/g, '');
+    const aliases = {
+        blackmarket: 'blackmarket',
+        blackmkt: 'blackmarket',
+        blackmarketmode: 'blackmarket'
+    };
+
+    return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';
 }
 
 function getGameEngine(gameMode) {
@@ -23,7 +36,9 @@ function getAvailableGameModes() {
     return Object.values(ENGINES).map(engine => ({
         id: engine.id,
         label: engine.label,
-        description: engine.description
+        description: engine.description,
+        minPlayers: Number(engine.minPlayers || 3),
+        maxPlayers: Number(engine.maxPlayers || 10)
     }));
 }
 
