@@ -402,6 +402,37 @@
     padding: 22px;
   }
 
+  .room-lobby-footer-nav {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-start;
+    padding: 0 22px 22px;
+  }
+
+  .room-lobby-footer-nav .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 14px 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--lobby-text);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    text-decoration: none;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .room-lobby-footer-nav .btn:hover {
+    border-color: rgba(245, 200, 107, 0.26);
+    background: rgba(255, 255, 255, 0.11);
+  }
+
   .room-chat-area {
     min-width: 0;
   }
@@ -888,7 +919,7 @@
 
   @media (max-width: 640px) {
     .room-lobby-container {
-      padding: 8px;
+      padding: 8px 8px 92px;
       margin-top: 8px;
     }
 
@@ -900,6 +931,26 @@
     .room-main-panel,
     .room-card-dark {
       padding: 14px;
+    }
+
+    .room-header-actions {
+      display: none;
+    }
+
+    .room-lobby-footer-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 12px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      background: linear-gradient(180deg, rgba(9, 9, 11, 0), rgba(9, 9, 11, 0.92) 30%, rgba(9, 9, 11, 0.98) 100%);
+      backdrop-filter: blur(14px);
+    }
+
+    .room-lobby-footer-nav .btn {
+      width: 100%;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.06));
     }
   }
   
@@ -943,9 +994,6 @@
           <span>🚪 สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
           <span id="dualTraitorBadge" class="<%= room.gameMode === 'insider' && room.dualTraitorMode ? '' : 'is-hidden' %>" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">🔴🔴 2 ผู้ทรยศ</span>
         </div>
-      </div>
-      <div class="room-header-actions">
-        <button id="btnLeaveRoom" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif;">← กลับรายชื่อห้อง</button>
       </div>
     </div>
 
@@ -991,6 +1039,10 @@
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
       </div>
     </div>
+    </div>
+
+    <div class="room-lobby-footer-nav">
+      <button id="btnLeaveRoom" class="btn btn-dark">← กลับรายชื่อห้อง</button>
     </div>
   </div>
 </div>
