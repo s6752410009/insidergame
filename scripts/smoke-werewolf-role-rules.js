@@ -353,13 +353,82 @@ function testSeerReadingRules() {
     };
 }
 
+function testWitchPoisonFinishAnnouncement() {
+    const room = createRoom(['werewolf', 'witch', 'seer'], 3);
+    const witch = getSingleRole(room, 'witch');
+    const werewolf = getSingleRole(room, 'werewolf');
+    const seer = getSingleRole(room, 'seer');
+
+    resetNightPhase(room, 2);
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+    const result = werewolfEngine.submitNightAction(room, witch.playerId, werewolf.playerId, 'witch-poison');
+    if (!result.resolved) {
+        submitRemainingNightSkips(room, [werewolf.playerId, witch.playerId]);
+    }
+
+    assert(room.gameState.phase === 'finished', 'poisoning the last werewolf should finish the game immediately');
+    assert(room.gameState.winner === 'village', 'village should win when witch poisons the last werewolf');
+
+    const witchState = werewolfEngine.buildClientState(room, witch.playerId);
+    assert(witchState.morningAnnouncement, 'finished state should still expose the last morning announcement');
+    assert(/แม่มดวางยาพิษ/.test(witchState.morningAnnouncement.detail || ''), 'morning announcement should explain poison as the cause of death');
+    assert(/ไม่รอด/.test(witchState.morningAnnouncement.lead || ''), 'morning announcement should still identify the victim');
+
+    const seerState = werewolfEngine.buildClientState(room, seer.playerId);
+    assert(seerState.morningAnnouncement, 'all players should receive the final morning announcement in finished state');
+
+    return {
+        witchPoisonFinishAnnouncement: true
+    };
+}
+
+function testRevealerDayVoteAccess() {
+    const room = createRoom(['werewolf', 'revealer', 'doctor'], 3);
+    const werewolf = getSingleRole(room, 'werewolf');
+    const revealer = getSingleRole(room, 'revealer');
+    const doctor = getSingleRole(room, 'doctor');
+
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+    werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
+    submitRemainingNightSkips(room, [werewolf.playerId, doctor.playerId]);
+
+    assert(room.gameState.phase === 'day-discussion', 'night should move to discussion before testing revealer vote access');
+
+    room.gameState.players
+        .filter(player => player.alive !== false)
+        .forEach(player => {
+            if (room.gameState.phase === 'day-discussion') {
+                werewolfEngine.submitDiscussionSkip(room, player.playerId);
+            }
+        });
+
+    assert(room.gameState.phase === 'day-vote', 'discussion should advance to day vote');
+
+    const dayVoteState = werewolfEngine.buildClientState(room, revealer.playerId);
+    assert(dayVoteState.actionState.dayActions.canReveal, 'revealer should still be able to use reveal during day vote');
+
+    const resolution = werewolfEngine.useRevealAction(room, revealer.playerId, werewolf.playerId);
+    assert(resolution.resolved, 'revealer action should resolve when it kills the last werewolf');
+    assert(room.gameState.phase === 'finished', 'revealer kill on the last werewolf should finish the game');
+
+    const finishedState = werewolfEngine.buildClientState(room, revealer.playerId);
+    assert(finishedState.dayResolutionAnnouncement, 'finished state should still expose the last day resolution announcement');
+    assert(finishedState.dayResolutionAnnouncement.outcomeType === 'reveal-hit', 'day resolution should mark reveal-hit outcomes explicitly');
+
+    return {
+        revealerDayVoteAccess: true
+    };
+}
+
 function main() {
     const tested = {
         ...testNightSkipMajorityRules(),
         ...testMayorRules(),
         ...testDoctorRules(),
         ...testBodyguardRules(),
-        ...testSeerReadingRules()
+        ...testSeerReadingRules(),
+        ...testWitchPoisonFinishAnnouncement(),
+        ...testRevealerDayVoteAccess()
     };
 
     console.log(`SMOKE_RESULT ${JSON.stringify({ tested })}`);

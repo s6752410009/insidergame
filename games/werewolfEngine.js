@@ -53,7 +53,7 @@ const ROLE_DEFINITIONS = {
         name: 'Witch',
         thaiName: 'แม่มด',
         team: 'village',
-        description: 'มียาฟื้น 1 ครั้งและยาพิษ 1 ครั้งตลอดเกม แต่ละคืนเลือกใช้ได้เพียง 1 สกิล ยาพิษสามารถฆ่าได้ทุกคนรวมถึงคนบ้า'
+        description: 'มียาช่วยชีวิต 1 ครั้งและยาพิษ 1 ครั้งตลอดเกม แต่ละคืนเลือกใช้ได้เพียง 1 สกิล ยาช่วยชีวิตใช้กันตายได้ในคืนนั้น และยาพิษฆ่าได้ทุกคนรวมถึงคนบ้า'
     },
     fool: {
         id: 'fool',
@@ -611,6 +611,26 @@ function markPlayerDead(player, reason) {
     player.lastNightResult = reason || null;
 }
 
+function buildNightPublicEvent(player, cause) {
+    if (!player) {
+        return null;
+    }
+
+    let detail = `${player.name} ไม่รอดในคืนนี้`;
+    if (cause === 'wolf-attack') {
+        detail = `${player.name} ถูกหมาป่าฆ่าในตอนกลางคืน`;
+    } else if (cause === 'witch-poison') {
+        detail = `${player.name} ถูกแม่มดวางยาพิษในตอนกลางคืน`;
+    }
+
+    return {
+        playerId: player.playerId,
+        playerName: player.name,
+        cause,
+        detail
+    };
+}
+
 function applySeerVision(room, seerId, targetPlayerId) {
     const seer = getPlayer(room, seerId);
     const target = getPlayer(room, targetPlayerId);
@@ -1029,6 +1049,7 @@ function resolveNight(room) {
 
     const attackedPlayer = attackedPlayerId ? getPlayer(room, attackedPlayerId) : null;
     const eliminatedPlayers = [];
+    const publicEvents = [];
     let immuneTargetId = null;
 
     if (isFirstNight(room)) {
@@ -1039,6 +1060,7 @@ function resolveNight(room) {
     } else if (attackedPlayer && attackedPlayer.alive !== false && !protectedTargets.has(attackedPlayerId)) {
         markPlayerDead(attackedPlayer, 'ถูกหมาป่าโจมตีในตอนกลางคืน');
         eliminatedPlayers.push(attackedPlayer);
+        publicEvents.push(buildNightPublicEvent(attackedPlayer, 'wolf-attack'));
         pushHistory(room, `${attackedPlayer.name} ถูกกำจัดในตอนกลางคืน`, 'night');
     } else if (attackedPlayer) {
         Object.entries(room.gameState.nightActions.bodyguardProtects).forEach(([guardId, protectedId]) => {
@@ -1059,6 +1081,7 @@ function resolveNight(room) {
 
         markPlayerDead(target, 'ถูกแม่มดวางยาพิษในตอนกลางคืน');
         eliminatedPlayers.push(target);
+        publicEvents.push(buildNightPublicEvent(target, 'witch-poison'));
         pushHistory(room, `${target.name} ถูกแม่มดวางยาพิษในตอนกลางคืน`, 'night');
     });
 
@@ -1103,6 +1126,7 @@ function resolveNight(room) {
     room.gameState.lastResolvedNight = {
         attackedPlayerId,
         eliminatedPlayerIds: eliminatedPlayers.map(player => player.playerId),
+        publicEvents: publicEvents.filter(Boolean),
         protectedTargets: Array.from(protectedTargets),
         poisonedTargetIds,
         immuneTargetId
@@ -1144,6 +1168,7 @@ function resolveDayVote(room) {
     if (canSkipDayVote(room)) {
         room.gameState.lastResolvedDay = {
             eliminatedPlayerId: null,
+            resolutionType: 'skip-majority',
             skippedByMajority: true,
             skipVoteWeight: getDaySkipVoteWeight(room)
         };
@@ -1174,7 +1199,8 @@ function resolveDayVote(room) {
                 player.revealedRole = player.roleInfo?.thaiName || player.role;
             });
             room.gameState.lastResolvedDay = {
-                eliminatedPlayerId: eliminatedPlayer.playerId
+                eliminatedPlayerId: eliminatedPlayer.playerId,
+                resolutionType: 'vote-elimination'
             };
             syncAlivePlayerIds(room);
             pushHistory(room, `${eliminatedPlayer.name} คือคนบ้า และชนะคนเดียวทันทีหลังถูกโหวตออก`, 'result');
@@ -1190,6 +1216,7 @@ function resolveDayVote(room) {
 
     room.gameState.lastResolvedDay = {
         eliminatedPlayerId: eliminatedPlayer?.playerId || null,
+        resolutionType: eliminatedPlayer ? 'vote-elimination' : 'vote-no-elimination',
         skippedByMajority: false,
         skipVoteWeight: getDaySkipVoteWeight(room)
     };
@@ -1326,7 +1353,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
 
             if (actionType === 'witch-heal') {
                 if (actor.witchHealUsed) {
-                    throw new Error('คุณใช้ยาฟื้นไปแล้ว');
+                    throw new Error('คุณใช้ยาช่วยชีวิตไปแล้ว');
                 }
                 room.gameState.nightActions.witchHeals[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
                 if (isSkip) {
@@ -1353,7 +1380,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 break;
             }
 
-            throw new Error('แม่มดต้องเลือกว่าจะใช้ยาฟื้นหรือยาพิษ');
+            throw new Error('แม่มดต้องเลือกว่าจะใช้ยาช่วยชีวิตหรือยาพิษ');
         default:
             throw new Error('บทบาทนี้ไม่มีสกิลกลางคืน');
     }
@@ -1522,9 +1549,21 @@ function useRevealAction(room, actorId, targetPlayerId) {
 
     if (isWerewolfRole(target.role)) {
         markPlayerDead(target, 'ถูกจอมเปิดโปงจับได้ว่าเป็นหมาป่า');
+        room.gameState.lastResolvedDay = {
+            eliminatedPlayerId: target.playerId,
+            resolutionType: 'reveal-hit',
+            revealActorId: actor.playerId,
+            revealTargetId: target.playerId
+        };
         pushHistory(room, `${actor.name} เปิดโปง ${target.name} สำเร็จ หมาป่าตายทันที`, 'day');
     } else {
         markPlayerDead(actor, 'เปิดโปงผิดเป้าและตายแทน');
+        room.gameState.lastResolvedDay = {
+            eliminatedPlayerId: actor.playerId,
+            resolutionType: 'reveal-miss',
+            revealActorId: actor.playerId,
+            revealTargetId: target.playerId
+        };
         pushHistory(room, `${actor.name} เปิดโปงผิดเป้าและตายทันที`, 'day');
     }
 
@@ -1766,7 +1805,7 @@ function getNightActionOptions(room, viewer) {
                 const selectedTargetId = selectedPoisonTargetId || selectedHealTargetId;
                 return [{
                     type: selectedType,
-                    label: selectedType === 'witch-poison' ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'คืนนี้คุณเลือกใช้ยาฟื้นแล้ว',
+                    label: selectedType === 'witch-poison' ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'คืนนี้คุณเลือกใช้ยาช่วยชีวิตแล้ว',
                     description: 'แม่มดใช้ได้เพียง 1 สกิลต่อคืน ถ้าจะเปลี่ยนใจให้เลือกเป้าหมายใหม่ในสกิลเดิมเท่านั้น',
                     selectedTargetId,
                     allowSkip: true,
@@ -1783,8 +1822,8 @@ function getNightActionOptions(room, viewer) {
             if (!viewer.witchHealUsed) {
                 actions.push({
                     type: 'witch-heal',
-                    label: 'ยาฟื้นของแม่มด',
-                    description: 'เลือก 1 คนเพื่อปกป้องคืนนี้ ใช้ได้ 1 ครั้งตลอดเกม และคืนนี้จะใช้สกิลอื่นเพิ่มไม่ได้',
+                    label: 'ยาช่วยชีวิตของแม่มด',
+                    description: 'เลือก 1 คนเพื่อกันตายในคืนนี้ ใช้ได้ 1 ครั้งตลอดเกม และคืนนี้จะใช้สกิลอื่นเพิ่มไม่ได้',
                     selectedTargetId: room.gameState.nightActions.witchHeals[viewer.playerId] || null,
                     allowSkip: true,
                     targets: alivePlayers.map(player => ({
@@ -1814,7 +1853,7 @@ function getNightActionOptions(room, viewer) {
                 return [{
                     type: 'witch-rest',
                     label: 'พลังของแม่มดหมดแล้ว',
-                    description: 'คุณใช้ทั้งยาฟื้นและยาพิษไปครบแล้ว คืนนี้จึงไม่มีสกิลให้กดใช้',
+                    description: 'คุณใช้ทั้งยาช่วยชีวิตและยาพิษไปครบแล้ว คืนนี้จึงไม่มีสกิลให้กดใช้',
                     selectedTargetId: null,
                     allowSkip: false,
                     emptyStateText: 'แม่มดใช้ยาครบแล้ว รอดูสถานการณ์อย่างเดียวในคืนนี้',
@@ -1952,6 +1991,7 @@ function buildMorningAnnouncement(room) {
     const eliminatedPlayers = Array.isArray(summary.eliminatedPlayerIds)
         ? summary.eliminatedPlayerIds.map(playerId => getPlayer(room, playerId)).filter(Boolean)
         : [];
+    const publicEvents = Array.isArray(summary.publicEvents) ? summary.publicEvents : [];
     const attackedPlayer = summary.attackedPlayerId ? getPlayer(room, summary.attackedPlayerId) : null;
     const immunePlayer = summary.immuneTargetId ? getPlayer(room, summary.immuneTargetId) : null;
 
@@ -1966,11 +2006,12 @@ function buildMorningAnnouncement(room) {
 
     if (eliminatedPlayers.length === 1) {
         const eliminatedPlayer = eliminatedPlayers[0];
+        const publicEvent = publicEvents[0] || null;
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'death',
             lead: `เมื่อคืน ${eliminatedPlayer.name} ไม่รอด`,
-            detail: `${eliminatedPlayer.name} ไม่รอดในคืนนี้`
+            detail: publicEvent?.detail || `${eliminatedPlayer.name} ไม่รอดในคืนนี้`
         };
     }
 
@@ -1979,7 +2020,9 @@ function buildMorningAnnouncement(room) {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'multiple-deaths',
             lead: `เมื่อคืนมีผู้เล่น ${eliminatedPlayers.length} คนไม่รอด`,
-            detail: eliminatedPlayers.map(player => player.name).join(', ')
+            detail: publicEvents.length > 0
+                ? publicEvents.map(event => event.detail).join(' • ')
+                : eliminatedPlayers.map(player => player.name).join(', ')
         };
     }
 
@@ -2017,6 +2060,8 @@ function buildDayResolutionAnnouncement(room) {
 
     const dayNumber = room.gameState.dayNumber || 1;
     const eliminatedPlayer = summary.eliminatedPlayerId ? getPlayer(room, summary.eliminatedPlayerId) : null;
+    const revealActor = summary.revealActorId ? getPlayer(room, summary.revealActorId) : null;
+    const revealTarget = summary.revealTargetId ? getPlayer(room, summary.revealTargetId) : null;
 
     if (summary.skippedByMajority) {
         return {
@@ -2024,6 +2069,24 @@ function buildDayResolutionAnnouncement(room) {
             outcomeType: 'skipped',
             lead: 'เสียงข้ามโหวตเกินครึ่ง หมู่บ้านจบวันทันที',
             detail: 'ไม่มีใครถูกกำจัด และเกมเข้าสู่กลางคืนต่อทันที'
+        };
+    }
+
+    if (summary.resolutionType === 'reveal-hit' && eliminatedPlayer) {
+        return {
+            title: `🌙 คืน ${dayNumber + 1}`,
+            outcomeType: 'reveal-hit',
+            lead: `${revealActor?.name || 'จอมเปิดโปง'} เปิดโปง ${eliminatedPlayer.name} สำเร็จ`,
+            detail: `${eliminatedPlayer.name} ตายทันทีเพราะถูกเปิดโปงว่าเป็นหมาป่า`
+        };
+    }
+
+    if (summary.resolutionType === 'reveal-miss' && eliminatedPlayer) {
+        return {
+            title: `🌙 คืน ${dayNumber + 1}`,
+            outcomeType: 'reveal-miss',
+            lead: `${revealActor?.name || 'จอมเปิดโปง'} เปิดโปงผิดเป้า`,
+            detail: `${eliminatedPlayer.name} ตายแทนทันทีหลังใช้สกิลกับ ${revealTarget?.name || 'เป้าหมาย'} ผิดคน`
         };
     }
 
@@ -2078,7 +2141,7 @@ function buildRoleNotes(room, viewer) {
             notes.push(`💉 คุณช่วยตัวเองหรือคนอื่นได้ แต่ใช้ได้รวม ${Math.max(0, 2 - Number(viewer.doctorSaveUses || 0))} ครั้งที่เหลือตลอดเกม`);
             break;
         case 'witch':
-            notes.push(viewer.witchHealUsed ? '🧪 คุณใช้ยาฟื้นไปแล้ว' : '🧪 คุณยังมียาฟื้น 1 ครั้ง ใช้ปกป้องใครก็ได้ในตอนกลางคืน');
+            notes.push(viewer.witchHealUsed ? '🧪 คุณใช้ยาช่วยชีวิตไปแล้ว' : '🧪 คุณยังมียาช่วยชีวิต 1 ครั้ง ใช้กันตายให้ผู้เล่น 1 คนในคืนนี้');
             notes.push(viewer.witchPoisonUsed ? '☠️ คุณใช้ยาพิษไปแล้ว' : '☠️ คุณยังมียาพิษ 1 ครั้ง ใช้กำจัดผู้เล่น 1 คนในตอนกลางคืน');
             notes.push('🌙 แต่ละคืนแม่มดเลือกใช้ได้เพียง 1 สกิลเท่านั้น');
             break;
@@ -2136,8 +2199,8 @@ function buildClientState(room, viewerPlayerId) {
         status: room.gameState.status || '',
         dayNumber: room.gameState.dayNumber || 0,
         winner: room.gameState.winner || null,
-        morningAnnouncement: room.gameState.phase === 'day-discussion' ? buildMorningAnnouncement(room) : null,
-        dayResolutionAnnouncement: room.gameState.phase === 'night' ? buildDayResolutionAnnouncement(room) : null,
+        morningAnnouncement: ['day-discussion', 'finished'].includes(room.gameState.phase) ? buildMorningAnnouncement(room) : null,
+        dayResolutionAnnouncement: ['night', 'finished'].includes(room.gameState.phase) ? buildDayResolutionAnnouncement(room) : null,
         playerRole: viewer ? {
             id: viewer.role,
             name: viewer.roleInfo?.name || '',

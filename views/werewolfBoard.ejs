@@ -903,6 +903,7 @@
     let swipingWrapper = null;
     let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
     let selectedWitchNightActionType = null;
+    let preferredDayTargetMode = null;
     const seenHistoryKeys = new Set();
     const renderedMessageIds = new Set();
 
@@ -1171,9 +1172,9 @@
         bodyguard: 'กลางคืนคุณเลือกคุ้มกันผู้เล่นได้ 1 คน เลือกคนสำคัญที่ไม่อยากให้ถูกเก็บ',
         seer: 'กลางคืนคุณเลือกตรวจผู้เล่นได้ 1 คน แต่ผลจะเห็นแค่ ดี, ไม่ดี หรือ ไม่ทราบ',
         doctor: 'กลางคืนคุณเลือกช่วยผู้เล่นได้ 1 คน เพื่อกันการถูกกำจัด',
-        witch: 'กลางคืนคุณมียาฟื้น 1 ครั้งและยาพิษ 1 ครั้ง เลือกใช้ให้คุ้มเพราะหมดแล้วหมดเลย',
+        witch: 'กลางคืนคุณมียาช่วยชีวิต 1 ครั้งไว้กันตายคืนนี้ และยาพิษ 1 ครั้ง ใช้ได้คืนละ 1 อย่างเท่านั้น',
         fool: 'คุณเป็นบทเดี่ยว หมาป่าฆ่าคุณไม่ได้ และถ้าถูกโหวตออกตอนกลางวันคุณจะชนะทันที',
-        revealer: 'ตอนกลางวันคุณมีสกิลเปิดโปง หากเลือกหมาป่าถูกมันจะตายทันที แต่ถ้าพลาดคุณจะตายเอง'
+        revealer: 'ตอนกลางวันคุณมีสกิลเปิดโปง 1 ครั้ง ใช้ได้ทั้งช่วงประชุมและช่วงโหวต ถ้าเลือกหมาป่าถูกมันจะตายทันที แต่ถ้าพลาดคุณจะตายเอง'
       };
 
       return hints[role.id] || 'ดูคำอธิบายบทของคุณ แล้วลงมือเมื่อถึงช่วงที่ระบบเปิดให้ใช้ความสามารถ';
@@ -1331,7 +1332,7 @@
           ${actions.map(function(action) {
             const isSelected = action.type === selectedWitchNightActionType;
             const icon = action.type === 'witch-heal' ? '🧪' : '☠️';
-            const badge = action.type === 'witch-heal' ? 'ยาฟื้น' : 'ยาพิษ';
+            const badge = action.type === 'witch-heal' ? 'ยาช่วยชีวิต' : 'ยาพิษ';
             const theme = getActionTheme(action.type);
             return `
               <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : 'target-card-actionable'}" onclick="selectWitchPotion('${action.type}')">
@@ -1401,6 +1402,7 @@
       const nightStatus = state?.actionState?.nightStatus || {};
       const morning = state?.morningAnnouncement || null;
       const dayResolution = state?.dayResolutionAnnouncement || null;
+      const finalAnnouncement = morning || dayResolution || null;
 
       const model = {
         title: phase === 'finished' ? 'สรุปรอบ' : 'สถานะเกม',
@@ -1505,12 +1507,12 @@
             body: winnerText
           },
           {
-            label: 'ทำอะไรได้',
-            body: isRoomAdmin ? 'กดเริ่มรอบใหม่ได้เลย' : 'รอหัวหน้าห้องเริ่มรอบใหม่'
+            label: 'ช็อตตัดสิน',
+            body: finalAnnouncement ? (finalAnnouncement.detail || finalAnnouncement.lead) : 'เกมจบตามเงื่อนไขชัยชนะของฝั่งที่เหลืออยู่'
           },
           {
-            label: 'เป้าหมาย',
-            body: 'ดูบทที่เปิด แล้วเล่นรอบต่อไป!'
+            label: 'ทำอะไรต่อ',
+            body: isRoomAdmin ? 'กดเริ่มรอบใหม่ได้เลย' : 'รอหัวหน้าห้องเริ่มรอบใหม่'
           }
         ];
         return model;
@@ -1594,7 +1596,7 @@
             'seer-check': `คุณเลือกตรวจ ${targetName} แล้ว`,
             'doctor-save': `คุณเลือกช่วย ${targetName} แล้ว`,
             'bodyguard-protect': `คุณเลือกคุ้มกัน ${targetName} แล้ว`,
-            'witch-heal': action.selectedTargetId === '__skip__' ? 'คุณเลือกเก็บยาฟื้นไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาฟื้นกับ ${targetName} แล้ว`,
+            'witch-heal': action.selectedTargetId === '__skip__' ? 'คุณเลือกเก็บยาช่วยชีวิตไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาช่วยชีวิตกัน ${targetName} คืนนี้แล้ว`,
             'witch-poison': action.selectedTargetId === '__skip__' ? 'คุณเลือกเก็บยาพิษไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาพิษกับ ${targetName} แล้ว`
           };
           items.push({
@@ -1768,7 +1770,7 @@
         if (actionType === 'seer-check') return 'คืนนี้จะตรวจคนนี้';
         if (actionType === 'doctor-save') return 'คืนนี้จะช่วยคนนี้';
         if (actionType === 'bodyguard-protect') return 'คืนนี้จะคุ้มกันคนนี้';
-        if (actionType === 'witch-heal') return 'ใช้ยาฟื้นกับคนนี้';
+        if (actionType === 'witch-heal') return 'ใช้ยาช่วยชีวิตกับคนนี้';
         if (actionType === 'witch-poison') return 'ใช้ยาพิษใส่คนนี้';
         if (actionType === 'reveal-action') return 'ล็อกเป้าเปิดโปงคนนี้';
         if (actionType === 'day-vote') return 'คุณโหวตคนนี้อยู่';
@@ -1779,7 +1781,7 @@
       if (actionType === 'seer-check') return 'แตะเพื่อตรวจออร่า';
       if (actionType === 'doctor-save') return 'แตะเพื่อช่วยชีวิต';
       if (actionType === 'bodyguard-protect') return 'แตะเพื่อคุ้มกัน';
-      if (actionType === 'witch-heal') return 'แตะเพื่อฟื้นคนนี้';
+      if (actionType === 'witch-heal') return 'แตะเพื่อกันตายคนนี้คืนนี้';
       if (actionType === 'witch-poison') return 'แตะเพื่อวางยาคนนี้';
       if (actionType === 'reveal-action') return 'แตะเพื่อเปิดโปง';
       if (actionType === 'day-vote') return 'แตะเพื่อเทคะแนนให้คนนี้';
@@ -2021,7 +2023,7 @@
       } else if (phase === 'day-discussion') {
         if (discussion.canReveal) {
           headline = 'ประชุมอยู่ แต่เปิดโปงได้แล้ว';
-          detail = 'เลือกเป้าหมายได้ตั้งแต่ช่วงประชุม ถ้าพลาดคุณจะตายทันที';
+          detail = 'เลือกเป้าหมายได้ตั้งแต่ช่วงประชุม และยังใช้ต่อได้ถึงช่วงโหวต ถ้าพลาดคุณจะตายทันที';
           primaryLabel = '💥 เปิดโปง';
         } else if (discussion.canSkip || discussion.canRevealMayor) {
           headline = 'คุย จับพิรุธ กดข้ามเมื่อพร้อม';
@@ -2049,8 +2051,8 @@
             : 'ดูที่นั่งแล้วแตะคนที่สงสัย';
           primaryLabel = '🗳️ โหวต';
         } else if (dayActions.canReveal) {
-          headline = 'โหวตแล้ว ถ้าจะเปิดโปงกดต่อ';
-          detail = 'ดูที่นั่งก่อนใช้สกิลเปิดโปง';
+          headline = 'ยังเปิดโปงได้ แม้อยู่ช่วงโหวต';
+          detail = 'สลับเป็นโหมดเปิดโปงแล้วแตะที่นั่งเป้าหมายได้เลย';
           primaryLabel = '💥 เปิดโปง';
         } else {
           tone = 'tone-lock';
@@ -2756,6 +2758,10 @@
 
       if (winner) return;
 
+      if (phase !== 'day-vote') {
+        preferredDayTargetMode = null;
+      }
+
       if (phase === 'night') {
         var actions = actionState.nightActions || [];
         if (actions.length > 0) {
@@ -2777,6 +2783,18 @@
       if (phase === 'day-vote') {
         var dayActions = actionState.dayActions || {};
         var voteTargets = dayActions.voteTargets || [];
+        var revealTargetsVote = dayActions.revealTargets || [];
+        if (preferredDayTargetMode === 'reveal' && dayActions.canReveal && revealTargetsVote.length > 0) {
+          var revealTargetIdsVote = new Set(revealTargetsVote.map(function(t) { return t.playerId; }));
+          currentMobileTargetAction = {
+            handlerName: 'selectRevealTarget',
+            actionType: 'reveal-action',
+            targetIds: revealTargetIdsVote,
+            selectedId: null,
+            allowSkip: false
+          };
+          return;
+        }
         if (voteTargets.length > 0) {
           var vTargetIds = new Set(voteTargets.map(function(t) { return t.playerId; }));
           currentMobileTargetAction = {
@@ -2868,7 +2886,7 @@
         if (!action) {
           var potionBtnsOnly = actions.map(function(option) {
             var iconOnly = option.type === 'witch-heal' ? '🧪' : '☠️';
-            var shortLabelOnly = option.type === 'witch-heal' ? 'ยาฟื้น' : 'ยาพิษ';
+            var shortLabelOnly = option.type === 'witch-heal' ? 'ยาช่วยชีวิต' : 'ยาพิษ';
             return '<button class="hint-btn" onclick="selectWitchPotion(\'' + escapeHtml(option.type) + '\')">' + iconOnly + ' ' + shortLabelOnly + '</button>';
           }).join('');
           var focusClassPotion = ' hint-focus';
@@ -2888,7 +2906,7 @@
           var potionBtns = actions.map(function(option) {
             var selectedClass = option.type === selectedWitchNightActionType ? ' btn-done' : '';
             var icon = option.type === 'witch-heal' ? '🧪' : '☠️';
-            var shortLabel = option.type === 'witch-heal' ? 'ยาฟื้น' : 'ยาพิษ';
+            var shortLabel = option.type === 'witch-heal' ? 'ยาช่วยชีวิต' : 'ยาพิษ';
             return '<button class="hint-btn' + selectedClass + '" onclick="selectWitchPotion(\'' + escapeHtml(option.type) + '\')">' + icon + ' ' + shortLabel + '</button>';
           }).join('');
           nightBtns = potionBtns + nightBtns;
@@ -2921,7 +2939,7 @@
           btnsHtml += '<span class="hint-text" style="color:#fbbf24;">🎖️ โหวต ×' + (disc.currentVoteWeight || 2) + '</span>';
         }
         if (disc.canReveal) {
-          btnsHtml += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เปิดโปง</button>';
+          btnsHtml += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เลือกเป้าเปิดโปง</button>';
         } else if (disc.revealUsed) {
           btnsHtml += '<span class="hint-text" style="color:#fda4af;">💥 ใช้สกิลแล้ว</span>';
         }
@@ -2945,7 +2963,9 @@
         }
         var vBtns = '';
         if (dayActions.canVote) {
-          vBtns += '<span class="hint-text" style="color:#97a4bf;">👆 แตะ</span>';
+          vBtns += preferredDayTargetMode === 'reveal'
+            ? '<button class="hint-btn" onclick="selectVoteTarget(\'__show__\')">🗳️ กลับไปโหวต</button>'
+            : '<span class="hint-text" style="color:#97a4bf;">👆 แตะเพื่อโหวต</span>';
         } else {
           vBtns += '<span class="hint-text" style="color:#6ee7b7;">✅ โหวตแล้ว</span>';
         }
@@ -2958,7 +2978,9 @@
           vBtns += '<span class="hint-text" style="color:#fbbf24;">🎖️ ×' + (dayActions.currentVoteWeight || 2) + '</span>';
         }
         if (dayActions.canReveal) {
-          vBtns += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เปิดโปง</button>';
+          vBtns += preferredDayTargetMode === 'reveal'
+            ? '<span class="hint-text" style="color:#fda4af;">💥 กำลังเลือกเป้าเปิดโปง</span>'
+            : '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 ใช้สกิลเปิดโปง</button>';
         }
         var focusClass3 = dayActions.canVote ? ' hint-focus' : '';
         $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง</span>' + vBtns + seerTagVote + pillsHtml + '</div>');
@@ -3707,8 +3729,10 @@
         return;
       }
       setActionButtonsPending(true);
+      preferredDayTargetMode = null;
       socket.emit('werewolf_useRevealAction', { roomId: roomId, targetPlayerId: targetPlayerId }, function(response) {
         if (!response || !response.success) {
+          preferredDayTargetMode = 'reveal';
           setActionButtonsPending(false);
           Swal.fire({ icon: 'error', title: 'เปิดโปงไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
           return;
@@ -3861,6 +3885,13 @@
     };
 
     window.selectVoteTarget = function(targetPlayerId) {
+      if (targetPlayerId === '__show__') {
+        preferredDayTargetMode = 'vote';
+        updateMobileTargetAction();
+        renderActionPanels(currentState.actionState || {}, currentState.phase, currentState.winner);
+        syncMobileGamePanel();
+        return;
+      }
       submitDayVote(targetPlayerId);
     };
 
@@ -3878,8 +3909,12 @@
 
     window.selectRevealTarget = function(targetPlayerId) {
       if (targetPlayerId === '__show__') {
-        var el = document.getElementById('actionPanels');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        preferredDayTargetMode = 'reveal';
+        updateMobileTargetAction();
+        renderActionPanels(currentState.actionState || {}, currentState.phase, currentState.winner);
+        syncMobileGamePanel();
+        var el = isMobileLayout() ? document.getElementById('mobileInlinePlayerGrid') : document.getElementById('actionPanels');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
       Swal.fire({
@@ -4006,7 +4041,7 @@
             ? '<button class="action-btn selected" disabled>✅ กดพร้อมแล้ว</button>'
             : '<button class="action-btn" disabled>⏳ รอช่วงประชุม</button>');
         const revealerHtml = discussion.canReveal
-          ? `<div style="margin-top:12px;"><div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div><div class="subtle">ใช้ได้ตั้งแต่ประชุม ถ้าเปิดโปงหมาป่าถูกมันจะตายทันที ถ้าพลาดคุณจะตายเอง</div><div class="target-grid">${buildTargetCards({ targets: discussion.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div></div>`
+          ? `<div style="margin-top:12px;"><div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div><div class="subtle">ใช้ได้ทั้งช่วงประชุมและช่วงโหวต ถ้าเปิดโปงหมาป่าถูกมันจะตายทันที ถ้าพลาดคุณจะตายเอง</div><div class="target-grid">${buildTargetCards({ targets: discussion.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div></div>`
           : (discussion.revealUsed ? '<div class="history-row">💥 ใช้สกิลเปิดโปงไปแล้ว</div>' : '');
 
         $root.append(`
@@ -4052,7 +4087,7 @@
           $root.append(`
             <div class="history-row turn-focus" style="display:block;">
               <div class="action-title"><span>💥</span><strong>สกิลเปิดโปง</strong></div>
-              <div class="subtle">ถ้าเลือกหมาป่าถูก → มันตาย | ถ้าพลาด → คุณตาย</div>
+              <div class="subtle">ใช้ได้แม้อยู่ช่วงโหวต ถ้าเลือกหมาป่าถูก → มันตาย | ถ้าพลาด → คุณตาย</div>
               <div class="target-grid">${buildTargetCards({ targets: dayActions.revealTargets }, 'selectRevealTarget', 'reveal', 'reveal-action')}</div>
             </div>
           `);
@@ -4209,6 +4244,60 @@
             sound: 'nightfall'
           }
         ];
+      }
+
+      if (state.phase === 'finished' && state.winner) {
+        if (state.morningAnnouncement) {
+          const finishMorningSound = state.morningAnnouncement.outcomeType === 'death'
+            ? 'morning-death'
+            : (state.morningAnnouncement.outcomeType === 'saved' ? 'morning-saved' : 'morning-peaceful');
+          const finishedSteps = [
+            {
+              title: '🌘 กลางคืนจบลงแล้ว',
+              subtitle: 'ก่อนตัดสินผล เกมจะบอกว่าคืนนี้เกิดอะไรขึ้น',
+              duration: 2200,
+              sound: finishMorningSound
+            },
+            {
+              title: state.morningAnnouncement.lead,
+              subtitle: state.morningAnnouncement.detail || 'นี่คือเหตุการณ์สุดท้ายก่อนเกมจบ',
+              duration: 3400
+            }
+          ];
+
+          finishedSteps.push({
+            title: phaseCopy.title,
+            subtitle: phaseCopy.subtitle,
+            duration: 3200
+          });
+
+          return finishedSteps;
+        }
+
+        if (state.dayResolutionAnnouncement) {
+          const finishDaySound = state.dayResolutionAnnouncement.outcomeType === 'eliminated' || state.dayResolutionAnnouncement.outcomeType === 'reveal-hit'
+            ? 'vote-summary-eliminated'
+            : 'vote-summary-tie';
+
+          return [
+            {
+              title: '📢 สรุปเหตุการณ์ช่วงกลางวัน',
+              subtitle: 'ก่อนจบเกม มาดูว่าช็อตไหนเป็นตัวตัดสิน',
+              duration: 2200,
+              sound: finishDaySound
+            },
+            {
+              title: state.dayResolutionAnnouncement.lead,
+              subtitle: state.dayResolutionAnnouncement.detail,
+              duration: 3400
+            },
+            {
+              title: phaseCopy.title,
+              subtitle: phaseCopy.subtitle,
+              duration: 3200
+            }
+          ];
+        }
       }
 
       return [{
