@@ -65,10 +65,12 @@ function testVoteCancellation() {
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
     assert(room.gameState.phase === 'day-discussion', 'should be day-discussion after night 1');
 
-    // Skip discussion
-    room.gameState.players.filter(p => p.alive !== false).forEach(p => {
-        werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    });
+    // Skip discussion (majority needed, not all)
+    var alivePlayers = room.gameState.players.filter(p => p.alive !== false);
+    var skipNeeded = Math.floor(alivePlayers.length / 2) + 1;
+    for (var i = 0; i < alivePlayers.length && room.gameState.phase === 'day-discussion'; i++) {
+        werewolfEngine.submitDiscussionSkip(room, alivePlayers[i].playerId);
+    }
     assert(room.gameState.phase === 'day-vote', 'should be day-vote after skip');
 
     // Player votes for villager
@@ -171,25 +173,26 @@ function testMinimumVoteThreshold() {
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
 
-    // Skip discussion
-    room.gameState.players.filter(p => p.alive !== false).forEach(p => {
-        werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    });
+    // Skip discussion (majority)
+    for (var i = 0; i < room.gameState.players.length && room.gameState.phase === 'day-discussion'; i++) {
+        var p = room.gameState.players[i];
+        if (p.alive !== false) werewolfEngine.submitDiscussionSkip(room, p.playerId);
+    }
     assert(room.gameState.phase === 'day-vote', 'should be day-vote');
 
-    // Everyone votes for different targets (1 vote each, no skip majority)
-    // → nobody reaches min threshold of 2
+    // 5 alive players → threshold = floor(5/2)+1 = 3
+    // Everyone votes for different targets (1 vote each)
+    // → nobody reaches threshold of 3
     const alivePlayers = room.gameState.players.filter(p => p.alive !== false);
     alivePlayers.forEach((voter, i) => {
         const targetIndex = (i + 1) % alivePlayers.length;
         werewolfEngine.submitDayVote(room, voter.playerId, alivePlayers[targetIndex].playerId);
     });
 
-    // With 1 vote per target, nobody should be eliminated (min threshold = 2)
-    assert(room.gameState.players.every(p => p.alive !== false), 'nobody should be eliminated with 1 vote each');
+    assert(room.gameState.players.every(p => p.alive !== false), 'nobody should be eliminated with 1 vote each (threshold=3)');
 
     tested.minimumVoteThreshold = true;
-    console.log('  ✅ Minimum vote threshold (1 vote = no elimination)');
+    console.log('  ✅ Minimum vote threshold (1 vote = no elimination, need 3)');
 }
 
 // ─── Test 5: 2+ votes DO eliminate ──────────────────────────────────────
@@ -206,23 +209,25 @@ function testVoteThresholdMet() {
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
 
-    // Skip discussion
-    room.gameState.players.filter(p => p.alive !== false).forEach(p => {
-        werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    });
+    // Skip discussion (majority)
+    for (var i = 0; i < room.gameState.players.length && room.gameState.phase === 'day-discussion'; i++) {
+        var p = room.gameState.players[i];
+        if (p.alive !== false) werewolfEngine.submitDiscussionSkip(room, p.playerId);
+    }
 
-    // 3 votes for villager (meets threshold, clear majority), rest spread out
+    // 5 alive → threshold = 3
+    // 3 votes for villager (meets threshold)
     werewolfEngine.submitDayVote(room, seer.playerId, villager.playerId);
     werewolfEngine.submitDayVote(room, doctor.playerId, villager.playerId);
     werewolfEngine.submitDayVote(room, bodyguard.playerId, villager.playerId);
     werewolfEngine.submitDayVote(room, wolf.playerId, seer.playerId);
     werewolfEngine.submitDayVote(room, villager.playerId, wolf.playerId);
 
-    // With 3 votes for villager (clear majority), they SHOULD be eliminated
-    assert(villager.alive === false, 'villager should be eliminated with 3 votes');
+    // With 3 votes for villager (meets majority threshold), they SHOULD be eliminated
+    assert(villager.alive === false, 'villager should be eliminated with 3 votes (threshold=3)');
 
     tested.voteThresholdMet = true;
-    console.log('  ✅ Vote threshold met (2 votes = elimination)');
+    console.log('  ✅ Vote threshold met (3 votes = elimination)');
 }
 
 // ─── Test 6: Witch included in night 1 required actors ──────────────────
@@ -295,27 +300,28 @@ function testMayorVoteWeight() {
 
     // Skip discussion and reveal mayor
     werewolfEngine.submitMayorReveal(room, mayor.playerId);
-    room.gameState.players.filter(p => p.alive !== false).forEach(p => {
-        werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    });
+    for (var i = 0; i < room.gameState.players.length && room.gameState.phase === 'day-discussion'; i++) {
+        var p = room.gameState.players[i];
+        if (p.alive !== false) werewolfEngine.submitDiscussionSkip(room, p.playerId);
+    }
     assert(room.gameState.phase === 'day-vote', 'should be day-vote');
 
-    // Mayor (weight 2) votes for wolf, seer votes for villager, rest vote for different targets
-    // Mayor: 2 weighted votes for wolf → wolf should be eliminated (meets threshold)
-    // Seer: 1 vote for villager → not enough to eliminate villager
+    // 6 alive → threshold = 4
+    // Mayor (weight 2) + seer + doctor vote for wolf = 2+1+1 = 4 weighted votes (meets threshold)
+    // Others vote for different targets
     werewolfEngine.submitDayVote(room, mayor.playerId, wolf.playerId);
-    werewolfEngine.submitDayVote(room, seer.playerId, villager.playerId);
-    werewolfEngine.submitDayVote(room, doctor.playerId, mayor.playerId);
+    werewolfEngine.submitDayVote(room, seer.playerId, wolf.playerId);
+    werewolfEngine.submitDayVote(room, doctor.playerId, wolf.playerId);
     werewolfEngine.submitDayVote(room, bodyguard.playerId, seer.playerId);
     werewolfEngine.submitDayVote(room, wolf.playerId, doctor.playerId);
     werewolfEngine.submitDayVote(room, villager.playerId, bodyguard.playerId);
 
-    // Mayor's 2 weighted votes should eliminate the wolf
-    assert(wolf.alive === false, 'wolf should be eliminated by mayor 2x vote');
-    assert(villager.alive !== false, 'villager should survive (only 1 vote, below threshold)');
+    // Mayor's 2 weighted votes + 2 regular = 4, wolf eliminated
+    assert(wolf.alive === false, 'wolf should be eliminated by mayor 2x + 2 votes = 4 (threshold=4)');
+    assert(villager.alive !== false, 'villager should survive (0 votes)');
 
     tested.mayorVoteWeight = true;
-    console.log('  ✅ Mayor vote weight applied in elimination');
+    console.log('  ✅ Mayor vote weight applied in elimination (threshold=4)');
 }
 
 // ─── Test 9: Seer does NOT skip other roles on night 1 ──────────────────

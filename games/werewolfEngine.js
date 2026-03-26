@@ -11,14 +11,14 @@ const ROLE_DEFINITIONS = {
         name: 'Werewolf',
         thaiName: 'หมาป่า',
         team: 'werewolf',
-        description: 'ร่วมกับฝั่งหมาป่าเลือกเหยื่อในตอนกลางคืน และชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นทั้งหมด'
+        description: 'ร่วมกับฝั่งหมาป่าเลือกเหยื่อในตอนกลางคืน (คืนแรกยังล่าไม่ได้) ชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าฝั่งอื่นทั้งหมด'
     },
     alphaWolf: {
         id: 'alphaWolf',
         name: 'Alpha Wolf',
         thaiName: 'อัลฟ่าหมาป่า',
         team: 'werewolf',
-        description: 'หัวหน้าฝั่งหมาป่า โหวตล่าเหยื่อตอนกลางคืนด้วยน้ำหนัก 2 เสียง และถ้า Seer ตรวจจะขึ้นว่าไม่ทราบ'
+        description: 'หัวหน้าฝั่งหมาป่า โหวตล่าเหยื่อตอนกลางคืนด้วยน้ำหนัก 2 เสียง (คืนแรกยังล่าไม่ได้) Seer ตรวจจะขึ้นว่า ไม่ทราบ'
     },
     mayor: {
         id: 'mayor',
@@ -39,7 +39,7 @@ const ROLE_DEFINITIONS = {
         name: 'Seer',
         thaiName: 'Seer',
         team: 'village',
-        description: 'ตรวจออร่าผู้เล่น 1 คนในตอนกลางคืน และจะเห็นผลแค่ ดี, ไม่ดี หรือ ไม่ทราบ โดยดูได้เพียงครั้งเดียวต่อคืน'
+        description: 'ตรวจออร่าผู้เล่น 1 คนในตอนกลางคืน (ดูตัวเองไม่ได้) ผลจะเห็นแค่ ดี/ไม่ดี/ไม่ทราบ เลือกแล้วเปลี่ยนไม่ได้ หมาป่าธรรมดา=ไม่ดี อัลฟ่าและคนบ้า=ไม่ทราบ'
     },
     doctor: {
         id: 'doctor',
@@ -53,14 +53,14 @@ const ROLE_DEFINITIONS = {
         name: 'Witch',
         thaiName: 'แม่มด',
         team: 'village',
-        description: 'มียาฟื้น 1 ครั้งและยาพิษ 1 ครั้งต่อเกม แต่ในแต่ละคืนเลือกใช้ได้เพียง 1 สกิลเท่านั้น'
+        description: 'มียาฟื้น 1 ครั้งและยาพิษ 1 ครั้งตลอดเกม แต่ละคืนเลือกใช้ได้เพียง 1 สกิล ยาพิษสามารถฆ่าได้ทุกคนรวมถึงคนบ้า'
     },
     fool: {
         id: 'fool',
         name: 'Fool',
         thaiName: 'คนบ้า',
         team: 'solo',
-        description: 'หมาป่าฆ่าคุณไม่ได้ ถ้าคุณถูกโหวตออกตอนกลางวันคุณจะชนะคนเดียวทันที และถ้า Seer ตรวจจะขึ้นว่าไม่ทราบ'
+        description: 'หมาป่าโจมตีคุณไม่ได้ (แต่แม่มดวางยาพิษได้) ถ้าถูกโหวตออกตอนกลางวันจะชนะคนเดียวทันที Seer ตรวจจะขึ้นว่า ไม่ทราบ'
     },
     revealer: {
         id: 'revealer',
@@ -573,10 +573,11 @@ function startDayPhase(room, trigger = 'discussion-ended') {
     room.gameState.lastAction = Date.now();
     syncAlivePlayerIds(room);
 
+    const voteThreshold = Math.floor(getAlivePlayers(room).length / 2) + 1;
     if (trigger === 'consensus-skip') {
-        pushHistory(room, `ทุกคนพร้อมใจกันข้ามช่วงคุยของวันที่ ${room.gameState.dayNumber} และเข้าสู่การโหวตทันที`, 'day');
+        pushHistory(room, `เสียงข้ามเกินครึ่ง ข้ามช่วงคุยของวันที่ ${room.gameState.dayNumber} เข้าสู่การโหวตทันที (ต้องการ ${voteThreshold} เสียงถึงจะไล่ออกได้)`, 'day');
     } else {
-        pushHistory(room, `ช่วงคุยของวันที่ ${room.gameState.dayNumber} จบแล้ว ทุกคนเตรียมโหวต`, 'day');
+        pushHistory(room, `ช่วงคุยของวันที่ ${room.gameState.dayNumber} จบแล้ว เริ่มโหวต (ต้องการ ${voteThreshold} เสียงถึงจะไล่ออกได้)`, 'day');
     }
 }
 
@@ -928,7 +929,8 @@ function getDiscussionSkipCount(room) {
 }
 
 function canSkipDiscussion(room) {
-    return getDiscussionSkipCount(room) >= getAlivePlayers(room).length;
+    const aliveCount = getAlivePlayers(room).length;
+    return getDiscussionSkipCount(room) > Math.floor(aliveCount / 2);
 }
 
 function getCompletedDayActorIds(room) {
@@ -954,11 +956,12 @@ function resolveDayVote(room) {
         return { resolved: true, winner: null };
     }
 
-    const MIN_VOTES_TO_ELIMINATE = 2;
+    const aliveCount = getAlivePlayers(room).length;
+    const voteThreshold = Math.floor(aliveCount / 2) + 1;
     const dayVoteTallies = getDayVoteTallies(room);
     const rankedTargets = Object.entries(dayVoteTallies).sort((a, b) => b[1] - a[1]);
     const hasValidTarget = rankedTargets.length > 0
-        && rankedTargets[0][1] >= MIN_VOTES_TO_ELIMINATE
+        && rankedTargets[0][1] >= voteThreshold
         && (rankedTargets.length === 1 || rankedTargets[0][1] > rankedTargets[1][1]);
     const eliminatedPlayerId = hasValidTarget ? rankedTargets[0][0] : null;
     const eliminatedPlayer = eliminatedPlayerId ? getPlayer(room, eliminatedPlayerId) : null;
@@ -982,8 +985,8 @@ function resolveDayVote(room) {
             pushHistory(room, `${eliminatedPlayer.name} คือคนบ้า และชนะคนเดียวทันทีหลังถูกโหวตออก`, 'result');
             return { resolved: true, winner: room.gameState.winner };
         }
-    } else if (rankedTargets.length > 0 && rankedTargets[0][1] < MIN_VOTES_TO_ELIMINATE) {
-        pushHistory(room, `การโหวตวันนี้ไม่ถึงขั้นต่ำ ${MIN_VOTES_TO_ELIMINATE} เสียง ไม่มีใครถูกกำจัด`, 'day');
+    } else if (rankedTargets.length > 0 && rankedTargets[0][1] < voteThreshold) {
+        pushHistory(room, `การโหวตวันนี้ไม่ถึงเกณฑ์ ${voteThreshold} เสียง ไม่มีใครถูกกำจัด`, 'day');
     } else if (rankedTargets.length > 1 && rankedTargets[0][1] === rankedTargets[1][1]) {
         pushHistory(room, 'การโหวตวันนี้เสมอกัน ไม่มีใครถูกกำจัด', 'day');
     } else {
@@ -1568,6 +1571,7 @@ function getNightActionOptions(room, viewer) {
 
 function getDayActionOptions(room, viewer) {
     if (!viewer || viewer.alive === false || room.gameState.phase !== 'day-vote') {
+        const aliveCount = getAlivePlayers(room).length;
         return {
             canVote: false,
             selectedVoteTargetId: null,
@@ -1577,7 +1581,8 @@ function getDayActionOptions(room, viewer) {
             skipVoteWeight: getDaySkipVoteWeight(room),
             totalVoteWeight: getTotalDayVoteWeight(room),
             completedVotes: Object.keys(room.gameState.dayVotes || {}).length,
-            totalVoters: getAlivePlayers(room).length,
+            totalVoters: aliveCount,
+            voteThreshold: Math.floor(aliveCount / 2) + 1,
             canReveal: false,
             revealUsed: !!viewer?.revealerUsed,
             revealTargets: []
@@ -1591,6 +1596,7 @@ function getDayActionOptions(room, viewer) {
             name: player.name
         }));
 
+    const aliveCount = getAlivePlayers(room).length;
     return {
         canVote: !room.gameState.dayActionUsedBy[viewer.playerId],
         selectedVoteTargetId: room.gameState.dayVotes[viewer.playerId] || null,
@@ -1601,7 +1607,8 @@ function getDayActionOptions(room, viewer) {
         skipVoteWeight: getDaySkipVoteWeight(room),
         totalVoteWeight: getTotalDayVoteWeight(room),
         completedVotes: Object.keys(room.gameState.dayVotes || {}).length,
-        totalVoters: getAlivePlayers(room).length,
+        totalVoters: aliveCount,
+        voteThreshold: Math.floor(aliveCount / 2) + 1,
         canRevealMayor: viewer.role === 'mayor' && !viewer.mayorRevealed,
         mayorRevealed: !!viewer.mayorRevealed,
         currentVoteWeight: getCurrentVoteWeight(viewer),
@@ -1614,6 +1621,7 @@ function getDayActionOptions(room, viewer) {
 function getDiscussionActionState(room, viewer) {
     const totalAlive = getAlivePlayers(room).length;
     const skipCount = getDiscussionSkipCount(room);
+    const skipNeeded = Math.floor(totalAlive / 2) + 1;
     const hasSkipped = !!room.gameState.discussionSkips?.[viewer?.playerId];
 
     if (!viewer || viewer.alive === false || room.gameState.phase !== 'day-discussion') {
@@ -1621,7 +1629,8 @@ function getDiscussionActionState(room, viewer) {
             canSkip: false,
             hasSkipped: false,
             skipCount,
-            totalAlive
+            totalAlive,
+            skipNeeded
         };
     }
 
@@ -1630,6 +1639,7 @@ function getDiscussionActionState(room, viewer) {
         hasSkipped,
         skipCount,
         totalAlive,
+        skipNeeded,
         canRevealMayor: viewer.role === 'mayor' && !viewer.mayorRevealed,
         mayorRevealed: !!viewer.mayorRevealed,
         currentVoteWeight: getCurrentVoteWeight(viewer)

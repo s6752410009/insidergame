@@ -1465,8 +1465,14 @@ app.get('/room/:roomId', async function(req, res) {
         return res.redirect('/');
     }
 
+    // ถ้าเกมกำลังเล่นอยู่ → ส่งผู้เล่นที่อยู่ในห้องไปหน้าเกมเลย
+    const playerInRoomAlready = room.players.find(p => p.playerId === playerId);
+    if (playerInRoomAlready && room.gameState.status !== '' && room.gameState.status !== 'waiting') {
+        return res.redirect('/game/' + roomId + '?playerId=' + playerId);
+    }
+
     // ตรวจสอบว่าผู้เล่นอยู่ในห้องนี้หรือไม่
-    let playerInRoom = room.players.find(p => p.playerId === playerId);
+    let playerInRoom = playerInRoomAlready;
     
     // ถ้าผู้เล่นยังไม่อยู่ในห้อง → พยายาม join ห้องให้อัตโนมัติ
     if (!playerInRoom) {

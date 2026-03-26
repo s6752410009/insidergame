@@ -162,6 +162,7 @@
   .hint-role { font-size: 0.82rem; font-weight: 700; color: #fde68a; white-space: nowrap; }
   .hint-text { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
   .hint-sep { color: rgba(255,255,255,0.2); font-size: 0.7rem; }
+  .hint-seer-tag { display: inline-block; background: linear-gradient(135deg, rgba(139,92,246,0.35), rgba(99,102,241,0.25)); color: #c4b5fd; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(139,92,246,0.3); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
   .hint-btn { flex-shrink: 0; border: 0; border-radius: 8px; padding: 5px 12px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; color: #fff; background: linear-gradient(135deg, #2563eb, #1d4ed8); }
   .hint-btn.btn-skip { background: rgba(255,255,255,0.1); }
   .hint-btn.btn-done { background: rgba(34,197,94,0.3); border: 1px solid rgba(34,197,94,0.4); }
@@ -2523,21 +2524,31 @@
       if (phase === 'night') {
         var actions = actionState.nightActions || [];
         if (actions.length === 0) {
-          $hint.html('<div class="hint-bar hint-night">' + rolePill + '<span class="hint-text">😴 รอเช้า...</span>' + pillsHtml + '</div>');
+          var seerTagHtml = '';
+          if (personalNotes && Array.isArray(personalNotes.seerHistory) && personalNotes.seerHistory.length > 0) {
+            var lastSeer = personalNotes.seerHistory[0];
+            seerTagHtml = '<span class="hint-seer-tag">🔮 ' + escapeHtml(lastSeer.summary || '') + '</span>';
+          }
+          $hint.html('<div class="hint-bar hint-night">' + rolePill + '<span class="hint-text">😴 รอเช้า...</span>' + seerTagHtml + pillsHtml + '</div>');
           return;
         }
         var action = actions[0];
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
         var status = action.locked ? '✅ เลือกแล้ว' : '👆 แตะที่ผู้เล่น';
+        var seerTagHtml2 = '';
+        if (personalNotes && Array.isArray(personalNotes.seerHistory) && personalNotes.seerHistory.length > 0) {
+          var lastSeer2 = personalNotes.seerHistory[0];
+          seerTagHtml2 = '<span class="hint-seer-tag">🔮 ' + escapeHtml(lastSeer2.summary || '') + '</span>';
+        }
         var focusClass = action.locked ? '' : ' hint-focus';
-        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + pillsHtml + '</div>');
+        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + seerTagHtml2 + pillsHtml + '</div>');
         return;
       }
 
       if (phase === 'day-discussion') {
         var disc = actionState.discussionActions || {};
         var skipCount = Number(disc.skipCount || 0);
-        var totalAlive = Number(disc.totalAlive || 0);
+        var skipNeeded = Number(disc.skipNeeded || disc.totalAlive || 0);
         var btnsHtml = '';
         if (disc.canSkip) {
           btnsHtml += '<button class="hint-btn" onclick="skipDiscussionPhase()">⏩ ข้าม</button>';
@@ -2550,7 +2561,7 @@
           btnsHtml += '<span class="hint-text" style="color:#fbbf24;">🎖️ โหวต ×' + (disc.currentVoteWeight || 2) + '</span>';
         }
         var focusClass2 = (disc.canSkip || disc.canRevealMayor) ? ' hint-focus' : '';
-        $hint.html('<div class="hint-bar hint-discussion' + focusClass2 + '">' + rolePill + '<span class="hint-text">💬 ข้าม ' + skipCount + '/' + totalAlive + '</span>' + btnsHtml + pillsHtml + '</div>');
+        $hint.html('<div class="hint-bar hint-discussion' + focusClass2 + '">' + rolePill + '<span class="hint-text">💬 ข้าม ' + skipCount + '/' + skipNeeded + '</span>' + btnsHtml + pillsHtml + '</div>');
         return;
       }
 
@@ -2558,6 +2569,12 @@
         var dayActions = actionState.dayActions || {};
         var completed = dayActions.completedVotes || 0;
         var total = dayActions.totalVoters || 0;
+        var voteThreshold = dayActions.voteThreshold || 0;
+        var seerTagVote = '';
+        if (personalNotes && Array.isArray(personalNotes.seerHistory) && personalNotes.seerHistory.length > 0) {
+          var lastSeerVote = personalNotes.seerHistory[0];
+          seerTagVote = '<span class="hint-seer-tag">🔮 ' + escapeHtml(lastSeerVote.summary || '') + '</span>';
+        }
         var vBtns = '';
         if (dayActions.canVote) {
           vBtns += '<span class="hint-text" style="color:#97a4bf;">👆 แตะ</span>';
@@ -2576,7 +2593,7 @@
           vBtns += '<button class="hint-btn btn-reveal" onclick="selectRevealTarget(\'__show__\')">💥 เปิดโปง</button>';
         }
         var focusClass3 = dayActions.canVote ? ' hint-focus' : '';
-        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ ' + completed + '/' + total + '</span>' + vBtns + pillsHtml + '</div>');
+        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ ' + completed + '/' + total + ' (ต้องการ ' + voteThreshold + ')</span>' + vBtns + seerTagVote + pillsHtml + '</div>');
         return;
       }
 

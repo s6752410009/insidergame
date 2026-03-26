@@ -273,6 +273,10 @@ async function submitDiscussionSkip(client, roomId) {
         playerId: client.playerId
     }, EVENT_TIMEOUT_MS);
 
+    // With majority-based skip, phase may have already transitioned
+    if (response && !response.success && /ยังไม่ใช่ช่วงพูดคุย/.test(response.error)) {
+        return response;
+    }
     assert(response && response.success, `${client.label} discussion skip failed: ${response?.error || 'unknown error'}`);
     return response;
 }

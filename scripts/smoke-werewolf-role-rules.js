@@ -112,8 +112,10 @@ function testMayorRules() {
 
     room.gameState.players
         .filter(player => player.alive !== false)
-        .forEach(player => {
+        .some(player => {
+            if (room.gameState.phase !== 'day-discussion') return true;
             werewolfEngine.submitDiscussionSkip(room, player.playerId);
+            return false;
         });
 
     assert(room.gameState.phase === 'day-vote', 'discussion skip should move to day vote');
