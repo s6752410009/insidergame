@@ -142,33 +142,36 @@
     <% if (player.permission == 'admin') { %>
         <button id="displayVote2" class="btn btn-warning cta hidden">โหวต</button>
     <% } %>
-    <div id="vote2" class="hidden vote2-container" style="background: linear-gradient(145deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 50, 0.99)); border: 2px solid rgba(231, 76, 60, 0.5); border-radius: 24px; padding: 30px; margin: 20px auto; max-width: 700px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(231, 76, 60, 0.2);">
-        <div class="vote2-header" style="text-align: center; margin-bottom: 20px;">
-            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #e74c3c, #c0392b); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; box-shadow: 0 8px 30px rgba(231, 76, 60, 0.5);">
-                <i class="fas fa-user-secret" style="font-size: 2em; color: #fff;"></i>
+    <div id="vote2" class="hidden vote2-container" style="background: linear-gradient(145deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 50, 0.99)); border: 2px solid rgba(231, 76, 60, 0.5); border-radius: 24px; padding: 24px 18px; margin: 20px auto; max-width: 700px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(231, 76, 60, 0.2);">
+        <div class="vote2-header" style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+            <div style="width:54px; height:54px; background:linear-gradient(135deg,#e74c3c,#c0392b); border-radius:16px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(231,76,60,0.35); flex-shrink:0;">
+                <i class="fas fa-user-secret" style="font-size:1.6em; color:#fff;"></i>
             </div>
-            <h4 style="color: #fff; font-size: 1.8em; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); margin: 10px 0;">โหวต ผู้ทรยศ</h4>
+            <div>
+                <h4 style="color:#fff; font-size:1.4em; font-weight:700; margin:0 0 2px;">โหวตผู้ทรยศ</h4>
+                <p id="vote2Subtitle" style="color:#cbd5e1; font-size:0.92em; margin:0;">แตะการ์ดเพื่อเลือก</p>
+            </div>
         </div>
-        <div id="dualTraitorModeIndicator" style="display: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 50%, #a93226 100%); padding: 15px 25px; border-radius: 16px; margin-bottom: 20px; text-align: center; box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);">
-            <span style="font-size: 1.3em; font-weight: 700; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);">🔴🔴 โหมด 2 ผู้ทรยศ - เลือก 2 คน!</span>
+        <div id="dualTraitorModeIndicator" style="display:none; background:linear-gradient(135deg,#e74c3c,#a93226); padding:10px 16px; border-radius:14px; margin-bottom:14px; text-align:center;">
+            <span style="font-size:1em; font-weight:700; color:#fff;">🔴🔴 เลือก 2 คน</span>
         </div>
-        <h4 id="vote2Title" style="color: #ffd700; font-size: 1.3em; font-weight: 600; text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); margin: 10px 0 20px 0; text-align: center;">คิดว่าใครคือผู้ทรยศ?</h4>
+        <h4 id="vote2Title" style="color:#ffd700; font-size:1.05em; font-weight:600; margin:0 0 10px; text-align:left;">เลือกผู้ต้องสงสัย</h4>
         <div class="vote2-choices"></div>
         <div id="vote2SelectedInfo" class="vote2-selection-info">
             <div class="selection-counter">
-                <span style="color: #fff; font-size: 1.1em;">เลือกแล้ว</span>
-                <span style="font-size: 1.5em; color: #2ecc71; font-weight: 700;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
+                <span style="color:#fff; font-size:0.95em;">เลือกแล้ว</span>
+                <span style="font-size:1.2em; color:#2ecc71; font-weight:700;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
             </div>
             <div id="vote2SelectedNames" class="vote2-selected-names"></div>
-            <button id="confirmVote2Btn" class="confirm-vote-btn">✅ ยืนยันโหวต</button>
+            <button id="confirmVote2Btn" class="confirm-vote-btn" type="button">ยืนยัน</button>
         </div>
         <div id="vote2LiveBoard" class="vote2-live-board">
             <div class="vote2-live-summary">
-                <span class="vote2-live-label">ทุกคนเห็นทันทีว่าใครโหวตใคร</span>
-                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีคนโหวต</span>
+                <span class="vote2-live-label">สถานะ</span>
+                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีโหวต</span>
             </div>
             <div id="vote2LiveFeedList" class="vote2-live-feed">
-                <span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>
+                <span class="vote2-live-pill empty">ยังไม่มีโหวต</span>
             </div>
         </div>
     </div>
@@ -815,8 +818,8 @@
     .vote2-choices {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 15px;
-        padding: 20px 10px;
+        gap: 10px;
+        padding: 10px 0;
         position: relative;
         z-index: 1;
     }
@@ -888,12 +891,14 @@
     }
 
     .btn-vote2-player.vote2-player-card {
+        -webkit-appearance: none;
+        appearance: none;
         width: 100%;
-        min-height: 138px;
-        padding: 18px !important;
-        border-radius: 18px !important;
-        border: 2px solid rgba(52, 152, 219, 0.45) !important;
-        background: linear-gradient(145deg, rgba(23, 34, 47, 0.98), rgba(12, 20, 30, 0.98)) !important;
+        min-height: 0;
+        padding: 14px !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(96, 165, 250, 0.28) !important;
+        background: linear-gradient(145deg, rgba(37, 99, 235, 0.16), rgba(15, 23, 42, 0.88)) !important;
         color: #fff !important;
         cursor: pointer !important;
         position: relative !important;
@@ -990,13 +995,13 @@
     }
 
     .vote2-player-avatar {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.6em;
+        font-size: 1.3em;
         border: 1px solid rgba(255,255,255,0.18);
         background: color-mix(in srgb, var(--vote2-accent, #3498db) 38%, rgba(255,255,255,0.06));
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
@@ -1012,9 +1017,9 @@
     .vote2-player-name {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
-        font-size: 1.08em;
+        font-size: 0.95em;
         font-weight: 700;
         color: #fff;
     }
@@ -1022,9 +1027,9 @@
     .vote2-player-meta {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
-        margin-top: 12px;
+        margin-top: 6px;
     }
 
     .vote2-player-tag,
@@ -1063,51 +1068,46 @@
 
     .vote2-player-foot {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        margin-top: 14px;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
         color: #dbeafe;
+        flex-wrap: wrap;
     }
 
     .vote2-player-tally {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        width: 100%;
+        gap: 8px;
         flex-wrap: wrap;
     }
 
     .vote2-player-count {
         display: inline-flex;
         align-items: baseline;
-        gap: 6px;
-        padding: 6px 10px;
+        gap: 5px;
+        padding: 4px 9px;
         border-radius: 999px;
         background: rgba(255,255,255,0.08);
         border: 1px solid rgba(255,255,255,0.1);
         color: #fff;
-        font-size: 0.9em;
+        font-size: 0.82em;
         font-weight: 700;
     }
 
     .vote2-player-count-number {
-        font-size: 1.15em;
+        font-size: 1em;
         color: #fde68a;
     }
 
     .vote2-player-hint {
-        font-size: 0.9em;
-        color: #cbd5e1;
-        line-height: 1.4;
+        display: none;
     }
 
     .vote2-player-voters {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        width: 100%;
+        gap: 4px;
     }
 
     .vote2-voter-pill,
@@ -1211,17 +1211,17 @@
     /* Selection Info */
     .vote2-selection-info {
         display: none;
-        margin-top: 25px;
-        padding: 20px;
+        margin-top: 12px;
+        padding: 14px;
         background: linear-gradient(145deg, rgba(46, 204, 113, 0.15), rgba(39, 174, 96, 0.1));
         border: 2px solid rgba(46, 204, 113, 0.4);
-        border-radius: 16px;
+        border-radius: 14px;
         text-align: center;
         position: relative;
         z-index: 1;
         flex-direction: column;
         align-items: center;
-        gap: 15px;
+        gap: 10px;
     }
 
     .vote2-selected-names {
@@ -1267,19 +1267,17 @@
     
     .confirm-vote-btn {
         display: none;
-        padding: 15px 40px;
-        font-size: 1.2em;
+        padding: 10px 22px;
+        font-size: 0.95em;
         font-weight: 700;
         font-family: 'Rajdhani', sans-serif;
         background: linear-gradient(135deg, #2ecc71, #27ae60);
         border: none;
-        border-radius: 12px;
+        border-radius: 10px;
         color: #fff;
         cursor: pointer;
         transition: all 0.3s;
-        box-shadow: 0 8px 25px rgba(46, 204, 113, 0.4);
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        box-shadow: 0 6px 18px rgba(46, 204, 113, 0.35);
     }
     
     .confirm-vote-btn:hover {
@@ -1305,14 +1303,24 @@
         }
 
         .vote2-choices {
-            grid-template-columns: 1fr;
-            gap: 12px;
-            padding: 14px 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            padding: 8px 0;
         }
 
         .btn-vote2-player.vote2-player-card {
-            min-height: 126px;
-            padding: 16px !important;
+            min-height: 0;
+            padding: 12px !important;
+        }
+
+        .vote2-player-avatar {
+            width: 36px;
+            height: 36px;
+            font-size: 1.1em;
+        }
+
+        .vote2-player-name {
+            font-size: 0.88em;
         }
 
         .vote2-live-pill {
@@ -2768,7 +2776,7 @@ $(function() {
         const tags = [];
 
         if (player.isGhost) {
-            tags.push('<span class="vote2-player-tag ghost-tag">👻 Ghost Player</span>');
+            tags.push('<span class="vote2-player-tag ghost-tag">👻 Ghost</span>');
         }
         if (isSelf) {
             tags.push('<span class="vote2-player-tag self-tag">🫵 คุณ</span>');
@@ -2783,17 +2791,16 @@ $(function() {
                         <span class="vote2-player-avatar">${escapeHtml(avatar)}</span>
                         <span class="vote2-player-text">
                             <span class="vote2-player-name">${escapeHtml(displayName)}</span>
-                            <span class="vote2-player-state"><span>${player.isGhost ? '🫥' : '🎯'}</span><span class="vote2-player-state-text">${checked ? 'เลือกแล้ว' : 'พร้อมโหวต'}</span></span>
+                            <span class="vote2-player-state"><span>${player.isGhost ? '🫥' : '🎯'}</span><span class="vote2-player-state-text">${checked ? 'เลือกแล้ว' : 'แตะเลือก'}</span></span>
                         </span>
                     </span>
                 </span>
                 <span class="vote2-player-meta">${tags.join('')}</span>
                 <span class="vote2-player-foot">
                     <span class="vote2-player-tally">
-                        <span class="vote2-player-count"><strong class="vote2-player-count-number">0</strong> คนโหวต</span>
-                        <span class="vote2-player-hint">${player.isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : (currentNumTraitors === 2 ? 'แตะเพื่อเพิ่มในลิสต์ผู้ต้องสงสัย' : 'แตะเพื่อโหวตคนนี้ทันที')}</span>
+                        <span class="vote2-player-count"><strong class="vote2-player-count-number">0</strong> เสียง</span>
                     </span>
-                    <span class="vote2-player-voters"><span class="vote2-voter-empty">ยังไม่มีคนโหวต</span></span>
+                    <span class="vote2-player-voters"><span class="vote2-voter-empty">-</span></span>
                 </span>
             </button>`;
         $('#vote2 .vote2-choices').append(btn);
