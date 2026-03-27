@@ -1,51 +1,18 @@
 <%- contentFor('content') %>
-<div class="insider-page">
-    <div class="insider-ambient insider-ambient-a"></div>
-    <div class="insider-ambient insider-ambient-b"></div>
-
-    <div class="insider-shell">
-        <section class="insider-hero-card">
-            <div class="insider-hero-copy">
-                <div class="insider-hero-kicker">Insider Board</div>
-                <div class="player insider-player-banner">
-                    <div class="playerStatus"></div>
-                    <span>เริ่มเกมแล้ว <strong class="player-name-accent" data-player-color="<%= playerInfo.color %>"><%= player.name %></strong></span>
-                </div>
-                <div class="insider-room-pillbar">
-                    <div class="insider-room-pill">
-                        <span class="insider-room-pill-label">ห้อง</span>
-                        <span class="insider-room-pill-value"><%= room.name %> (ID: <%= room.roomId %>)</span>
-                    </div>
-                    <div class="insider-room-pill">
-                        <span class="insider-room-pill-label">ผู้เล่น</span>
-                        <span class="insider-room-pill-value"><%= room.playerCount %>/<%= room.maxPlayers %></span>
-                    </div>
-                    <% if (room.admin) { %>
-                        <div class="insider-room-pill admin-pill">
-                            <span class="insider-room-pill-label">สิทธิ์</span>
-                            <span class="insider-room-pill-value">Admin</span>
-                        </div>
-                    <% } %>
-                </div>
-            </div>
-            <div class="insider-hero-guide">
-                <div class="insider-guide-chip">ฟังคำ</div>
-                <div class="insider-guide-chip">จับพิรุธ</div>
-                <div class="insider-guide-chip danger">โหวตให้คม</div>
-            </div>
-        </section>
-
-        <div class="insider-board-grid">
-            <main class="insider-main-column">
-                <section class="insider-stage-card">
-                    <div class="insider-stage-head">
-                        <div>
-                            <div class="insider-stage-kicker">Game Flow</div>
-                            <h2 class="insider-stage-title">กระดานหลัก</h2>
-                        </div>
-                        <div class="insider-stage-badge">INSIDER</div>
-                    </div>
-                    <div class="insider-stage-body">
+<div class="player">
+    <div class="playerStatus"></div>
+    เริ่มเกมแล้ว <strong class="player-name-accent" data-player-color="<%= playerInfo.color %>"><%= player.name %></strong> !
+</div>
+<!-- Room Info - แยกบรรทัด -->
+<div style="text-align: center; margin-top: 5px; margin-bottom: 10px;">
+    <div style="padding: 12px 20px; background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border: 2px solid #444; border-radius: 10px; display: inline-block; color: #fff; font-family: 'Rajdhani', sans-serif;">
+        <strong style="color: #f39c12;">🎮 ห้อง:</strong> <%= room.name %> (ID: <%= room.roomId %>) | 
+        <strong style="color: #3498db;">👥 ผู้เล่น:</strong> <%= room.playerCount %>/<%= room.maxPlayers %>
+        <% if (room.admin) { %>
+            | <span style="color: #e74c3c;">👑 Admin</span>
+        <% } %>
+    </div>
+</div>
 <!-- Connection Status Indicator -->
 <div id="connectionStatus" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #f39c12; color: #000; padding: 8px 16px; border-radius: 20px; display: none; z-index: 10001; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">กำลัง reconnect...</div>
 
@@ -175,36 +142,33 @@
     <% if (player.permission == 'admin') { %>
         <button id="displayVote2" class="btn btn-warning cta hidden">โหวต</button>
     <% } %>
-    <div id="vote2" class="hidden vote2-container">
-        <div class="vote2-header">
-            <div class="vote2-header-icon">
-                <i class="fas fa-user-secret" aria-hidden="true"></i>
+    <div id="vote2" class="hidden vote2-container" style="background: linear-gradient(145deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 50, 0.99)); border: 2px solid rgba(231, 76, 60, 0.5); border-radius: 24px; padding: 30px; margin: 20px auto; max-width: 700px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(231, 76, 60, 0.2);">
+        <div class="vote2-header" style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #e74c3c, #c0392b); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; box-shadow: 0 8px 30px rgba(231, 76, 60, 0.5);">
+                <i class="fas fa-user-secret" style="font-size: 2em; color: #fff;"></i>
             </div>
-            <div class="vote2-header-copy">
-                <h4>โหวตผู้ทรยศ</h4>
-                <p id="vote2Subtitle" class="vote2-subtitle">แตะการ์ดเพื่อเลือก</p>
-            </div>
+            <h4 style="color: #fff; font-size: 1.8em; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); margin: 10px 0;">โหวต ผู้ทรยศ</h4>
         </div>
-        <div id="dualTraitorModeIndicator" class="dual-traitor-banner" style="display: none;">
-            <span class="dual-badge-text">🔴🔴 เลือก 2 คน</span>
+        <div id="dualTraitorModeIndicator" style="display: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 50%, #a93226 100%); padding: 15px 25px; border-radius: 16px; margin-bottom: 20px; text-align: center; box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);">
+            <span style="font-size: 1.3em; font-weight: 700; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);">🔴🔴 โหมด 2 ผู้ทรยศ - เลือก 2 คน!</span>
         </div>
-        <h4 id="vote2Title" class="vote2-title">เลือกผู้ต้องสงสัย</h4>
+        <h4 id="vote2Title" style="color: #ffd700; font-size: 1.3em; font-weight: 600; text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); margin: 10px 0 20px 0; text-align: center;">คิดว่าใครคือผู้ทรยศ?</h4>
         <div class="vote2-choices"></div>
         <div id="vote2SelectedInfo" class="vote2-selection-info">
             <div class="selection-counter">
-                <span class="selection-label">เลือกแล้ว</span>
-                <span class="selection-count"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
+                <span style="color: #fff; font-size: 1.1em;">เลือกแล้ว</span>
+                <span style="font-size: 1.5em; color: #2ecc71; font-weight: 700;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
             </div>
             <div id="vote2SelectedNames" class="vote2-selected-names"></div>
-            <button id="confirmVote2Btn" class="confirm-vote-btn" type="button">ยืนยัน</button>
+            <button id="confirmVote2Btn" class="confirm-vote-btn">✅ ยืนยันโหวต</button>
         </div>
         <div id="vote2LiveBoard" class="vote2-live-board">
             <div class="vote2-live-summary">
-                <span class="vote2-live-label">สถานะโหวต</span>
-                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีโหวต</span>
+                <span class="vote2-live-label">ทุกคนเห็นทันทีว่าใครโหวตใคร</span>
+                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีคนโหวต</span>
             </div>
             <div id="vote2LiveFeedList" class="vote2-live-feed">
-                <span class="vote2-live-pill empty">ยังไม่มีโหวต</span>
+                <span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>
             </div>
         </div>
     </div>
@@ -217,13 +181,6 @@
 
 <div id="status" class="hidden">
     <p>กำลังรอ <strong>ผู้ดำเนินเกม</strong> หรือ <strong> แอดมิน </strong> ...</p>
-</div>
-
-                    </div>
-                </section>
-            </main>
-        </div>
-    </div>
 </div>
 
 
@@ -295,342 +252,6 @@
 <%- contentFor('style') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-    .insider-page {
-        position: relative;
-        min-height: 100vh;
-        padding: 24px 16px 96px;
-        background:
-            radial-gradient(circle at top left, rgba(231, 76, 60, 0.12), transparent 30%),
-            radial-gradient(circle at top right, rgba(52, 152, 219, 0.16), transparent 34%),
-            linear-gradient(180deg, #08101c 0%, #0f1728 48%, #10192e 100%);
-        color: #f8fafc;
-        overflow-x: clip;
-    }
-
-    .insider-ambient {
-        position: fixed;
-        inset: auto;
-        border-radius: 999px;
-        filter: blur(60px);
-        pointer-events: none;
-        opacity: 0.5;
-        z-index: 0;
-    }
-
-    .insider-ambient-a {
-        width: 220px;
-        height: 220px;
-        top: 90px;
-        left: -40px;
-        background: rgba(239, 68, 68, 0.22);
-    }
-
-    .insider-ambient-b {
-        width: 260px;
-        height: 260px;
-        right: -70px;
-        top: 180px;
-        background: rgba(59, 130, 246, 0.18);
-    }
-
-    .insider-shell {
-        position: relative;
-        z-index: 1;
-        max-width: 1120px;
-        margin: 0 auto;
-        display: grid;
-        gap: 18px;
-    }
-
-    .insider-hero-card,
-    .insider-stage-card {
-        position: relative;
-        overflow: hidden;
-        border-radius: 24px;
-        border: 1px solid rgba(255,255,255,0.1);
-        background: linear-gradient(145deg, rgba(20, 28, 44, 0.94), rgba(13, 19, 31, 0.96));
-        box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
-    }
-
-    .insider-hero-card {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 18px;
-        padding: 24px 26px;
-        background:
-            radial-gradient(circle at top right, rgba(59,130,246,0.18), transparent 28%),
-            radial-gradient(circle at left center, rgba(239,68,68,0.16), transparent 24%),
-            linear-gradient(145deg, rgba(20, 28, 44, 0.97), rgba(13, 19, 31, 0.98));
-    }
-
-    .insider-hero-kicker,
-    .insider-stage-kicker {
-        font-family: 'Orbitron', sans-serif;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: #fbbf24;
-        margin-bottom: 8px;
-    }
-
-    .insider-player-banner {
-        display: inline-flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 0;
-        font-size: clamp(1.15rem, 2vw, 1.45rem);
-        font-weight: 700;
-        color: #fff;
-        text-shadow: 0 6px 20px rgba(0,0,0,0.35);
-    }
-
-    .insider-room-pillbar,
-    .insider-hero-guide {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 14px;
-    }
-
-    .insider-room-pill,
-    .insider-guide-chip,
-    .insider-stage-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        font-weight: 700;
-        font-size: 0.88rem;
-        border: 1px solid rgba(255,255,255,0.1);
-        background: rgba(255,255,255,0.06);
-        color: #e2e8f0;
-        backdrop-filter: blur(8px);
-    }
-
-    .insider-room-pill-label {
-        color: #94a3b8;
-        font-size: 0.76rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-    }
-
-    .insider-room-pill-value {
-        color: #f8fafc;
-    }
-
-    .insider-room-pill.admin-pill {
-        background: rgba(239, 68, 68, 0.12);
-        border-color: rgba(248, 113, 113, 0.18);
-    }
-
-    .insider-guide-chip.danger {
-        background: rgba(239, 68, 68, 0.12);
-        border-color: rgba(248, 113, 113, 0.18);
-        color: #fecaca;
-    }
-
-    .insider-board-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .insider-stage-card {
-        padding: 22px 24px 24px;
-    }
-
-    .insider-stage-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-
-    .insider-stage-title {
-        margin: 0;
-        font-family: 'Orbitron', sans-serif;
-        font-size: clamp(1.2rem, 2.4vw, 1.6rem);
-        color: #fff;
-    }
-
-    .insider-stage-badge {
-        color: #fde68a;
-        background: linear-gradient(135deg, rgba(217,119,6,0.18), rgba(180,83,9,0.12));
-        border-color: rgba(251,191,36,0.18);
-        letter-spacing: 0.1em;
-    }
-
-    .insider-stage-body {
-        display: grid;
-        gap: 14px;
-    }
-
-    #voteForm {
-        display: grid;
-        gap: 14px;
-    }
-
-    #waiting,
-    #chooseWord,
-    #word,
-    #startGame,
-    #countdown,
-    #vote2Result,
-    #status,
-    #reset .role {
-        width: min(100%, 860px);
-        margin: 0 auto;
-        padding: 20px 22px;
-        border-radius: 20px;
-        border: 1px solid rgba(255,255,255,0.08);
-        background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-        text-align: center;
-    }
-
-    #waiting p,
-    #status p,
-    #word,
-    #vote2Result,
-    #reset .role {
-        margin: 0;
-        color: #e2e8f0;
-        font-size: 1.05rem;
-        line-height: 1.5;
-    }
-
-    #reset .role strong,
-    #word strong,
-    #vote2Result h4,
-    #vote1Result h4 {
-        color: #fff;
-    }
-
-    #chooseWord .form-group {
-        display: grid;
-        gap: 12px;
-        justify-items: center;
-        margin: 0;
-    }
-
-    #wordInput {
-        width: min(100%, 520px) !important;
-        display: block !important;
-        padding: 14px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(6, 11, 20, 0.92);
-        color: #fff;
-        font-size: 1rem;
-    }
-
-    #chooseWord button,
-    #displayVote1,
-    #displayVote2,
-    #reveal button,
-    #vote1 button,
-    .stop-timer-btn,
-    .confirm-vote-btn,
-    #leaveRoomBtn,
-    #closeSidebarBtn,
-    #updateRoomBtn,
-    #transferAdminBtn,
-    #kickPlayerBtn {
-        font-family: 'Rajdhani', sans-serif;
-        font-weight: 700;
-    }
-
-    #vote2Result ul {
-        list-style: none;
-        padding: 0;
-        margin: 14px 0 0;
-        display: grid;
-        gap: 8px;
-    }
-
-    #vote2Result ul li {
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
-        color: #f8fafc;
-        font-weight: 700;
-    }
-
-    #finalResult {
-        margin-top: 16px;
-        color: #e2e8f0;
-        line-height: 1.6;
-        overflow-wrap: anywhere;
-    }
-
-    .playerStatus {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .playerStatus .fa-circle {
-        font-size: 0.58rem;
-        opacity: 0.9;
-        filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
-    }
-
-    @media (max-width: 900px) {
-        .insider-page {
-            padding: 16px 12px 88px;
-        }
-
-        .insider-hero-card,
-        .insider-stage-card {
-            padding: 18px;
-            border-radius: 20px;
-        }
-
-        .insider-hero-card,
-        .insider-stage-head {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        #waiting,
-        #chooseWord,
-        #word,
-        #startGame,
-        #countdown,
-        #vote2Result,
-        #status,
-        #reset .role {
-            padding: 16px;
-            border-radius: 18px;
-        }
-    }
-
-    @media (max-width: 560px) {
-        .insider-page {
-            padding-inline: 10px;
-        }
-
-        .insider-player-banner {
-            font-size: 1.02rem;
-        }
-
-        .insider-room-pill,
-        .insider-guide-chip,
-        .insider-stage-badge {
-            font-size: 0.8rem;
-            padding: 7px 10px;
-        }
-
-        .insider-stage-title {
-            font-size: 1.08rem;
-        }
-    }
-
     /* ==================== AUTO TIMER STYLES ==================== */
     /* Word Timer for GM */
     .word-timer-container {
@@ -1065,8 +686,6 @@
         padding: 30px;
         margin: 20px auto;
         max-width: 700px;
-        width: min(100%, 700px);
-        box-sizing: border-box;
         box-shadow: 
             0 20px 60px rgba(0, 0, 0, 0.6),
             0 0 40px rgba(231, 76, 60, 0.15),
@@ -1184,114 +803,30 @@
     }
     
     .dual-badge-text {
-        font-size: 1.05rem;
+        font-size: 1.3em;
         font-weight: 700;
         color: #fff;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
         position: relative;
         z-index: 1;
     }
-
-    .vote2-container {
-        max-width: 860px;
-        margin: 20px auto;
-        padding: 22px;
-        border-radius: 24px;
-        border: 1px solid rgba(248, 113, 113, 0.34);
-        background: linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96));
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255,255,255,0.04) inset;
-        overflow: hidden;
-    }
-
-    .vote2-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-bottom: 18px;
-    }
-
-    .vote2-header-icon {
-        width: 68px;
-        height: 68px;
-        border-radius: 20px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        background: linear-gradient(135deg, #ef4444, #b91c1c);
-        box-shadow: 0 14px 30px rgba(239, 68, 68, 0.28);
-        color: #fff;
-        font-size: 1.9rem;
-    }
-
-    .vote2-header-copy {
-        min-width: 0;
-    }
-
-    .vote2-header-copy h4,
-    .vote2-title,
-    .vote2-subtitle,
-    .vote2-selection-info,
-    .vote2-selection-info span,
-    .vote2-live-board,
-    .vote2-live-board span,
-    .vote2-live-board strong,
-    .vote2-choices,
-    .vote2-choices * {
-        color: #fff;
-    }
-
-    .vote2-header-copy h4 {
-        margin: 0 0 4px;
-        font-size: 1.55rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        text-transform: none;
-        text-shadow: none;
-    }
-
-    .vote2-subtitle {
-        margin: 0;
-        color: #cbd5e1;
-        font-size: 0.96rem;
-        line-height: 1.45;
-    }
-
-    .vote2-title {
-        margin: 0 0 16px;
-        color: #fef08a;
-        font-size: 1rem;
-        font-weight: 700;
-        text-align: left;
-        text-shadow: none;
-    }
-
-    .dual-traitor-banner {
-        margin-bottom: 16px;
-        padding: 10px 14px;
-        border-radius: 16px;
-        border: 1px solid rgba(248, 113, 113, 0.28);
-        background: linear-gradient(135deg, rgba(185, 28, 28, 0.88), rgba(127, 29, 29, 0.82));
-        text-align: center;
-    }
     
     /* Vote Choices */
     .vote2-choices {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-        padding: 12px 0 14px;
+        gap: 15px;
+        padding: 20px 10px;
         position: relative;
         z-index: 1;
-        min-width: 0;
     }
 
     .vote2-live-board {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         margin-bottom: 6px;
-        padding: 12px 14px;
+        padding: 16px 18px;
         border-radius: 18px;
         background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1309,40 +844,37 @@
     }
 
     .vote2-live-label {
-        font-size: 0.9em;
+        font-size: 0.95em;
         font-weight: 700;
         color: #fde68a;
     }
 
     .vote2-progress-status {
-        font-size: 0.88em;
+        font-size: 0.92em;
         color: #dbeafe;
-        overflow-wrap: anywhere;
     }
 
     .vote2-live-feed {
         display: grid;
-        gap: 6px;
-        min-width: 0;
+        gap: 8px;
     }
 
     .vote2-live-pill {
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        padding: 7px 10px;
+        padding: 8px 12px;
         border-radius: 999px;
         background: rgba(231, 76, 60, 0.14);
         border: 1px solid rgba(231, 76, 60, 0.22);
         color: #fff5f5;
-        font-size: 0.82em;
+        font-size: 0.88em;
         font-weight: 700;
         max-width: 100%;
         white-space: normal;
-        line-height: 1.3;
+        line-height: 1.35;
         text-align: left;
         justify-content: flex-start;
-        overflow-wrap: anywhere;
     }
 
     .vote2-live-pill.empty {
@@ -1356,14 +888,12 @@
     }
 
     .btn-vote2-player.vote2-player-card {
-        -webkit-appearance: none;
-        appearance: none;
         width: 100%;
-        min-height: 0;
-        padding: 14px !important;
+        min-height: 138px;
+        padding: 18px !important;
         border-radius: 18px !important;
-        border: 1px solid rgba(96, 165, 250, 0.24) !important;
-        background: linear-gradient(145deg, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.88)) !important;
+        border: 2px solid rgba(52, 152, 219, 0.45) !important;
+        background: linear-gradient(145deg, rgba(23, 34, 47, 0.98), rgba(12, 20, 30, 0.98)) !important;
         color: #fff !important;
         cursor: pointer !important;
         position: relative !important;
@@ -1371,15 +901,11 @@
         text-align: left !important;
         font-family: 'Rajdhani', sans-serif !important;
         box-shadow:
-            0 14px 28px rgba(0, 0, 0, 0.3),
+            0 12px 28px rgba(0, 0, 0, 0.45),
             0 0 0 1px rgba(255,255,255,0.04),
             0 0 22px color-mix(in srgb, var(--vote2-accent, #3498db) 28%, transparent) !important;
         transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease !important;
         isolation: isolate;
-        display: grid !important;
-        align-content: start;
-        gap: 10px;
-        min-width: 0;
     }
 
     .btn-vote2-player.vote2-player-card::before {
@@ -1401,7 +927,7 @@
         transform: translateY(-4px) !important;
         border-color: rgba(125, 211, 252, 0.8) !important;
         box-shadow:
-            0 18px 36px rgba(0, 0, 0, 0.34),
+            0 18px 36px rgba(0, 0, 0, 0.55),
             0 0 28px color-mix(in srgb, var(--vote2-accent, #3498db) 40%, transparent) !important;
     }
 
@@ -1410,7 +936,7 @@
             transform: none !important;
             border-color: rgba(52, 152, 219, 0.45) !important;
             box-shadow:
-                0 12px 24px rgba(0, 0, 0, 0.28),
+                0 12px 28px rgba(0, 0, 0, 0.45),
                 0 0 0 1px rgba(255,255,255,0.04),
                 0 0 22px color-mix(in srgb, var(--vote2-accent, #3498db) 28%, transparent) !important;
         }
@@ -1423,22 +949,22 @@
     .btn-vote2-player.vote2-player-card.ghost {
         opacity: 0.62 !important;
         border-color: rgba(148, 163, 184, 0.42) !important;
-        background: linear-gradient(145deg, rgba(71, 85, 105, 0.64), rgba(30, 41, 59, 0.9)) !important;
+        background: linear-gradient(145deg, rgba(71, 85, 105, 0.9), rgba(30, 41, 59, 0.94)) !important;
     }
 
     .btn-vote2-player.vote2-player-card.selected {
         border-color: rgba(46, 204, 113, 0.88) !important;
-        background: linear-gradient(145deg, rgba(22, 163, 74, 0.26), rgba(15, 23, 42, 0.96)) !important;
+        background: linear-gradient(145deg, rgba(231, 76, 60, 0.38), rgba(52, 73, 94, 0.96)) !important;
         box-shadow:
             0 0 0 1px rgba(46, 204, 113, 0.24),
-            0 18px 42px rgba(0,0,0,0.42),
-            0 0 34px rgba(22, 163, 74, 0.22) !important;
+            0 18px 42px rgba(0,0,0,0.55),
+            0 0 34px rgba(231, 76, 60, 0.36) !important;
         animation: selectedGlow 1.5s ease-in-out infinite !important;
     }
     
     @keyframes selectedGlow {
-        0%, 100% { box-shadow: 0 0 18px rgba(22, 163, 74, 0.28), 0 0 38px rgba(22, 163, 74, 0.12); }
-        50% { box-shadow: 0 0 26px rgba(22, 163, 74, 0.36), 0 0 48px rgba(22, 163, 74, 0.18); }
+        0%, 100% { box-shadow: 0 0 30px rgba(231, 76, 60, 0.6), 0 0 60px rgba(231, 76, 60, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(231, 76, 60, 0.8), 0 0 80px rgba(231, 76, 60, 0.4); }
     }
     
     .vote2-player-head,
@@ -1446,8 +972,6 @@
     .vote2-player-foot {
         position: relative;
         z-index: 1;
-        min-width: 0;
-        background: transparent !important;
     }
 
     .vote2-player-head {
@@ -1466,13 +990,13 @@
     }
 
     .vote2-player-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.35rem;
+        font-size: 1.6em;
         border: 1px solid rgba(255,255,255,0.18);
         background: color-mix(in srgb, var(--vote2-accent, #3498db) 38%, rgba(255,255,255,0.06));
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
@@ -1482,7 +1006,7 @@
     .vote2-player-text {
         min-width: 0;
         display: grid;
-        gap: 4px;
+        gap: 5px;
     }
 
     .vote2-player-name {
@@ -1490,10 +1014,9 @@
         align-items: center;
         gap: 8px;
         flex-wrap: wrap;
-        font-size: 1rem;
+        font-size: 1.08em;
         font-weight: 700;
         color: #fff;
-        overflow-wrap: anywhere;
     }
 
     .vote2-player-meta {
@@ -1501,7 +1024,7 @@
         align-items: center;
         gap: 8px;
         flex-wrap: wrap;
-        margin-top: 0;
+        margin-top: 12px;
     }
 
     .vote2-player-tag,
@@ -1509,9 +1032,9 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 5px 9px;
+        padding: 6px 10px;
         border-radius: 999px;
-        font-size: 0.76rem;
+        font-size: 0.82em;
         font-weight: 700;
         background: rgba(255,255,255,0.08);
         border: 1px solid rgba(255,255,255,0.08);
@@ -1540,19 +1063,19 @@
 
     .vote2-player-foot {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column;
+        align-items: flex-start;
         gap: 10px;
-        margin-top: 2px;
+        margin-top: 14px;
         color: #dbeafe;
-        flex-wrap: wrap;
     }
 
     .vote2-player-tally {
         display: flex;
         align-items: center;
-        justify-content: flex-start;
+        justify-content: space-between;
         gap: 10px;
+        width: 100%;
         flex-wrap: wrap;
     }
 
@@ -1565,20 +1088,26 @@
         background: rgba(255,255,255,0.08);
         border: 1px solid rgba(255,255,255,0.1);
         color: #fff;
-        font-size: 0.82rem;
+        font-size: 0.9em;
         font-weight: 700;
     }
 
     .vote2-player-count-number {
-        font-size: 1rem;
+        font-size: 1.15em;
         color: #fde68a;
+    }
+
+    .vote2-player-hint {
+        font-size: 0.9em;
+        color: #cbd5e1;
+        line-height: 1.4;
     }
 
     .vote2-player-voters {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-        min-width: 0;
+        width: 100%;
     }
 
     .vote2-voter-pill,
@@ -1587,7 +1116,7 @@
         align-items: center;
         padding: 6px 10px;
         border-radius: 999px;
-        font-size: 0.76rem;
+        font-size: 0.82em;
         font-weight: 700;
     }
 
@@ -1682,8 +1211,8 @@
     /* Selection Info */
     .vote2-selection-info {
         display: none;
-        margin-top: 10px;
-        padding: 14px;
+        margin-top: 25px;
+        padding: 20px;
         background: linear-gradient(145deg, rgba(46, 204, 113, 0.15), rgba(39, 174, 96, 0.1));
         border: 2px solid rgba(46, 204, 113, 0.4);
         border-radius: 16px;
@@ -1700,14 +1229,13 @@
         justify-content: center;
         flex-wrap: wrap;
         gap: 8px;
-        min-width: 0;
     }
 
     .vote2-selected-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 10px;
+        padding: 7px 12px;
         border-radius: 999px;
         background: rgba(255,255,255,0.08);
         color: #fff;
@@ -1716,7 +1244,6 @@
         max-width: 100%;
         white-space: normal;
         text-align: left;
-        overflow-wrap: anywhere;
     }
     
     .selection-counter {
@@ -1724,25 +1251,24 @@
         align-items: center;
         justify-content: center;
         gap: 10px;
-        margin-bottom: 0;
+        margin-bottom: 10px;
     }
     
     .selection-label {
-        color: #dcfce7;
-        font-size: 0.95rem;
-        font-weight: 700;
+        color: #aaa;
+        font-size: 1em;
     }
     
     .selection-count {
-        font-size: 1.2rem;
+        font-size: 1.5em;
         color: #2ecc71;
         font-weight: 700;
     }
     
     .confirm-vote-btn {
         display: none;
-        padding: 11px 18px;
-        font-size: 0.95rem;
+        padding: 15px 40px;
+        font-size: 1.2em;
         font-weight: 700;
         font-family: 'Rajdhani', sans-serif;
         background: linear-gradient(135deg, #2ecc71, #27ae60);
@@ -1752,8 +1278,8 @@
         cursor: pointer;
         transition: all 0.3s;
         box-shadow: 0 8px 25px rgba(46, 204, 113, 0.4);
-        text-transform: none;
-        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
     
     .confirm-vote-btn:hover {
@@ -1768,24 +1294,9 @@
 
     @media (max-width: 720px) {
         .vote2-container {
-            padding: 16px 14px !important;
-            margin: 16px auto !important;
+            padding: 18px 16px !important;
+            margin: 16px 10px !important;
             border-radius: 20px !important;
-        }
-
-        .vote2-header {
-            align-items: flex-start;
-        }
-
-        .vote2-header-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            font-size: 1.45rem;
-        }
-
-        .vote2-header-copy h4 {
-            font-size: 1.28rem;
         }
 
         .vote2-live-summary,
@@ -1793,24 +1304,15 @@
             align-items: flex-start;
         }
 
-        .vote2-live-summary {
-            flex-direction: column;
-        }
-
         .vote2-choices {
             grid-template-columns: 1fr;
-            gap: 10px;
-            padding: 10px 0 12px;
+            gap: 12px;
+            padding: 14px 0;
         }
 
         .btn-vote2-player.vote2-player-card {
-            min-height: 0;
-            padding: 13px !important;
-        }
-
-        .vote2-player-foot {
-            align-items: flex-start;
-            justify-content: flex-start;
+            min-height: 126px;
+            padding: 16px !important;
         }
 
         .vote2-live-pill {
@@ -3247,9 +2749,10 @@ $(function() {
     function syncVote2CardState($button) {
         const selected = $button.hasClass('selected');
         const isGhost = $button.hasClass('ghost');
+        const maxSelectable = currentNumTraitors === 2 ? 'เลือกได้สูงสุด 2 คน' : 'แตะแล้วระบบจะส่งโหวตทันที';
         $button.attr('aria-pressed', selected ? 'true' : 'false');
-        $button.find('.vote2-player-state-text').text(selected ? (hasSubmittedVote2 ? 'ส่งแล้ว' : 'เลือกแล้ว') : 'แตะเลือก');
-        $button.find('.vote2-player-count-label').text(isGhost ? 'ghost' : 'เสียง');
+        $button.find('.vote2-player-state-text').text(selected ? (hasSubmittedVote2 ? 'ลงคะแนนแล้ว' : 'เลือกแล้ว') : 'พร้อมโหวต');
+        $button.find('.vote2-player-hint').text(selected ? (hasSubmittedVote2 ? 'ส่งโหวตแล้ว รอผู้เล่นคนอื่นอยู่' : 'กดอีกครั้งเพื่อยกเลิก') : (isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : maxSelectable));
     }
 
     function addPlayerVote(player, checked) {
@@ -3265,14 +2768,14 @@ $(function() {
         const tags = [];
 
         if (player.isGhost) {
-            tags.push('<span class="vote2-player-tag ghost-tag">👻 Ghost</span>');
+            tags.push('<span class="vote2-player-tag ghost-tag">👻 Ghost Player</span>');
         }
         if (isSelf) {
             tags.push('<span class="vote2-player-tag self-tag">🫵 คุณ</span>');
         }
 
         const btn = `
-            <button type="button" class="btn-vote2-player vote2-player-card ${ghostClass} ${selectedClass}" data-player-name="${encodedName}" data-player-vote="${encodedVoteValue}" style="--vote2-accent: ${accentColor};">
+            <button type="button" class="btn btn-vote2-player vote2-player-card ${ghostClass} ${selectedClass}" data-player-name="${encodedName}" data-player-vote="${encodedVoteValue}" style="--vote2-accent: ${accentColor};">
                 <span class="vote2-player-particles" aria-hidden="true"></span>
                 <span class="checkmark">✓</span>
                 <span class="vote2-player-head">
@@ -3280,16 +2783,17 @@ $(function() {
                         <span class="vote2-player-avatar">${escapeHtml(avatar)}</span>
                         <span class="vote2-player-text">
                             <span class="vote2-player-name">${escapeHtml(displayName)}</span>
-                            <span class="vote2-player-state"><span>${player.isGhost ? '🫥' : '🎯'}</span><span class="vote2-player-state-text">${checked ? 'เลือกแล้ว' : 'แตะเลือก'}</span></span>
+                            <span class="vote2-player-state"><span>${player.isGhost ? '🫥' : '🎯'}</span><span class="vote2-player-state-text">${checked ? 'เลือกแล้ว' : 'พร้อมโหวต'}</span></span>
                         </span>
                     </span>
                 </span>
                 <span class="vote2-player-meta">${tags.join('')}</span>
                 <span class="vote2-player-foot">
                     <span class="vote2-player-tally">
-                        <span class="vote2-player-count"><strong class="vote2-player-count-number">0</strong> <span class="vote2-player-count-label">เสียง</span></span>
+                        <span class="vote2-player-count"><strong class="vote2-player-count-number">0</strong> คนโหวต</span>
+                        <span class="vote2-player-hint">${player.isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : (currentNumTraitors === 2 ? 'แตะเพื่อเพิ่มในลิสต์ผู้ต้องสงสัย' : 'แตะเพื่อโหวตคนนี้ทันที')}</span>
                     </span>
-                    <span class="vote2-player-voters"><span class="vote2-voter-empty">ยังไม่มี</span></span>
+                    <span class="vote2-player-voters"><span class="vote2-voter-empty">ยังไม่มีคนโหวต</span></span>
                 </span>
             </button>`;
         $('#vote2 .vote2-choices').append(btn);
@@ -3324,25 +2828,29 @@ $(function() {
             $button.find('.vote2-player-count-number').text(target.count || 0);
             $button.find('.vote2-player-voters').html(voters.length
                 ? voters.map(name => `<span class="vote2-voter-pill">${escapeHtml(name)}</span>`).join('')
-                : '<span class="vote2-voter-empty">ยังไม่มี</span>');
+                : '<span class="vote2-voter-empty">ยังไม่มีคนโหวต</span>');
         });
 
         $('#vote2LiveFeedList').html(liveChoices.length
             ? liveChoices.map(choice => `<span class="vote2-live-pill">${escapeHtml(choice.voterName)} <span class="vote2-live-arrow">→</span> ${choice.targets.map(targetName => escapeHtml(targetName)).join(', ')}</span>`).join('')
-            : '<span class="vote2-live-pill empty">ยังไม่มีโหวต</span>');
+            : '<span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>');
 
         if (hasSubmittedVote2) {
-            $('#vote2ProgressStatus').text(`ส่งแล้ว · รอ ${Math.max(totalEligibleVoters - totalSubmittedVoters, 0)} คน`);
+            $('#vote2ProgressStatus').text(`คุณส่งโหวตแล้ว กำลังรออีก ${Math.max(totalEligibleVoters - totalSubmittedVoters, 0)} คน`);
             return;
         }
 
         if (!totalEligibleVoters) {
-            $('#vote2ProgressStatus').text('ยังไม่มีโหวต');
+            $('#vote2ProgressStatus').text('ยังไม่มีคนโหวต');
             return;
         }
 
-        let statusText = `${totalSubmittedVoters}/${totalEligibleVoters} คน`;
-        statusText += pendingVoters.length ? ` · รอ ${pendingVoters.length}` : ' · ครบแล้ว';
+        let statusText = `โหวตแล้ว ${totalSubmittedVoters}/${totalEligibleVoters} คน`;
+        if (pendingVoters.length) {
+            statusText += ` • รอ ${pendingVoters.join(', ')}`;
+        } else {
+            statusText += ' • ครบทุกคนแล้ว';
+        }
         $('#vote2ProgressStatus').text(statusText);
     }
 
@@ -3377,7 +2885,7 @@ $(function() {
         $('#maxSelect').text(currentNumTraitors);
         $('#vote2SelectedNames').html(selectedVotes.length
             ? selectedVotes.map(choice => `<span class="vote2-selected-pill">🎯 ${escapeHtml(choice.name)}</span>`).join('')
-            : '<span class="vote2-selected-pill">ยังไม่เลือก</span>');
+            : '<span class="vote2-selected-pill">ยังไม่ได้เลือกใคร</span>');
         
         if (currentNumTraitors === 2) {
             $('#vote2SelectedInfo').css('display', 'flex');
@@ -3693,7 +3201,7 @@ $(function() {
                 selectedVotes.push({ value: votedValue, name: votedPlayer });
                 soundNotify('ding');
             } else {
-                showNotification('เลือกได้แค่ 2 คน', 'warning', 1800);
+                showNotification('⚠️ เลือกได้แค่ 2 คน! กดที่คนที่เลือกไว้เพื่อยกเลิก', 'warning', 2000);
                 soundNotify('popup');
             }
             syncVote2CardState($btn);
@@ -3705,7 +3213,7 @@ $(function() {
             syncVote2CardState($btn);
             socket.emit('vote2', {player: '<%= player.name %>', vote: votedValue});
             setVote2InteractionLocked(true);
-            $('#vote2ProgressStatus').text('ส่งแล้ว · รอคนอื่น');
+            $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
         }
     });
     
@@ -3713,14 +3221,14 @@ $(function() {
     $(document).on('click', '#confirmVote2Btn', function(e) {
         e.preventDefault();
         if (selectedVotes.length !== 2) {
-            showNotification('เลือก 2 คนก่อน', 'warning', 1800);
+            showNotification('⚠️ กรุณาเลือก 2 คน!', 'warning', 2000);
             return;
         }
         
         // ส่งโหวต 2 คน
         socket.emit('vote2', {player: '<%= player.name %>', votes: selectedVotes.map(choice => choice.value)});
         setVote2InteractionLocked(true);
-        $('#vote2ProgressStatus').text('ส่งแล้ว · รอคนอื่น');
+        $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
     });
 
     $("#reveal button").click(function(){
@@ -3999,14 +3507,12 @@ $(function() {
         // อัปเดต UI ตามจำนวนผู้ทรยศ
         if (numTraitors === 2) {
             $('#dualTraitorModeIndicator').show();
-            $('#vote2Title').text('เลือกผู้ต้องสงสัย 2 คน');
-            $('#vote2Subtitle').text('แตะให้ครบ 2 การ์ด แล้วกดยืนยัน');
+            $('#vote2Title').text('เลือกผู้ทรยศ 2 คน!');
             $('#vote2SelectedInfo').css('display', 'flex');
             $('#maxSelect').text('2');
         } else {
             $('#dualTraitorModeIndicator').hide();
-            $('#vote2Title').text('เลือกผู้ต้องสงสัย');
-            $('#vote2Subtitle').text('แตะการ์ดเพื่อโหวตทันที');
+            $('#vote2Title').text('คิดว่าใครคือผู้ทรยศ?');
             $('#vote2SelectedInfo').hide();
         }
         
@@ -4017,9 +3523,9 @@ $(function() {
         soundNotify('popup');
         
         if (numTraitors === 2) {
-            showNotification('โหมด 2 ผู้ทรยศ: เลือก 2 คน', 'warning', 2600);
+            showNotification('🎯 โหมด 2 ผู้ทรยศ! เลือก 2 คนที่คิดว่าเป็นผู้ทรยศ', 'warning', 5000);
         } else {
-            showNotification('เริ่มโหวตผู้ทรยศ', 'warning', 2200);
+            showNotification('🎯 หยุดเวลา! โหวตหาผู้ทรยศ', 'warning', 3000);
         }
     });
 
