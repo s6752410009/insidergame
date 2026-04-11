@@ -1637,7 +1637,9 @@ app.get('/api/avatars', function(req, res) {
 
 // Get leaderboard
 app.get('/api/leaderboard', function(req, res) {
-    const limit = parseInt(req.query.limit) || 10;
+    const rawLimit = typeof req.query.limit === 'string' ? req.query.limit.trim() : '';
+    const parsedLimit = rawLimit ? parseInt(rawLimit, 10) : NaN;
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
     const leaderboard = statsManager.getLeaderboard(limit);
     
     // เพิ่มข้อมูล avatar จาก playerManager

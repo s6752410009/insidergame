@@ -322,6 +322,13 @@
         font-size: 1.4em;
         color: #ffd700;
     }
+
+    .leaderboard-meta {
+        color: #8ea6d9;
+        font-size: 0.9em;
+        font-weight: 600;
+        text-align: right;
+    }
     
     .leaderboard-list {
         display: flex;
@@ -419,6 +426,80 @@
         text-align: center;
         padding: 30px;
         color: #666;
+    }
+
+    .leaderboard-pagination {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 18px;
+    }
+
+    .leaderboard-page {
+        min-width: 96px;
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.05);
+        color: #cdd8f6;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.9em;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .leaderboard-page:hover {
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
+    .leaderboard-page:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .leaderboard-page-indicator {
+        min-width: 78px;
+        text-align: center;
+        color: #ffd98b;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.9em;
+        font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+        .leaderboard-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .leaderboard-meta {
+            text-align: left;
+        }
+
+        .leaderboard-item {
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .leaderboard-page {
+            min-width: 88px;
+            height: 36px;
+            padding: 0 10px;
+        }
+
+        .leaderboard-page-indicator {
+            min-width: 68px;
+            font-size: 0.82em;
+        }
     }
     
     /* Profile Modal */
@@ -668,10 +749,12 @@
     <div class="leaderboard-card">
         <div class="leaderboard-header">
             <h3>🏆 Leaderboard</h3>
+            <div class="leaderboard-meta" id="leaderboardMeta">กำลังโหลด...</div>
         </div>
         <div class="leaderboard-list" id="leaderboardList">
             <div class="leaderboard-empty">กำลังโหลด...</div>
         </div>
+        <div class="leaderboard-pagination" id="leaderboardPagination"></div>
     </div>
     
     <!-- Bottom Links (Admin link hidden - access via /admin/login) -->
@@ -868,55 +951,113 @@ $(function() {
         'rainbow': 'linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)',
         'neon': 'linear-gradient(135deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%)'
     };
+
+    const LEADERBOARD_PAGE_SIZE = 5;
+    var leaderboardState = {
+        entries: [],
+        currentPage: 1
+    };
+
+    function renderLeaderboardEmpty(message) {
+        $('#leaderboardList').html('<div class="leaderboard-empty">' + message + '</div>');
+        $('#leaderboardMeta').text(message);
+        $('#leaderboardPagination').empty();
+    }
+
+    function buildLeaderboardItem(entry) {
+        const rankClass = entry.rank <= 3 ? 'rank-' + entry.rank : 'rank-other';
+        const frameStyle = frameStyles[entry.avatarFrame] || 'none';
+
+        return `
+            <div class="leaderboard-item" data-player-id="${entry.playerId}">
+                <div class="leaderboard-rank ${rankClass}">${entry.rank}</div>
+                <div class="leaderboard-avatar">
+                    <div class="leaderboard-avatar-inner" style="background: ${entry.color}20; border-color: ${entry.color};">
+                        ${entry.avatar}
+                    </div>
+                    ${frameStyle !== 'none' ? '<div class="leaderboard-avatar-frame" style="background: ' + frameStyle + ';"></div>' : ''}
+                </div>
+                <div class="leaderboard-info">
+                    <div class="leaderboard-name" style="color: ${entry.color};">${escapeHtml(entry.playerName)}</div>
+                    <div class="leaderboard-stats-mini">${entry.totalGames} เกม · ${entry.winRate}% win</div>
+                </div>
+                <div class="leaderboard-wins">${entry.wins} 🏆</div>
+            </div>
+        `;
+    }
+
+    function renderLeaderboardPagination(totalPages) {
+        var $pagination = $('#leaderboardPagination');
+        var previousPage = leaderboardState.currentPage - 1;
+        var nextPage = leaderboardState.currentPage + 1;
+        $pagination.empty();
+
+        if (totalPages <= 1) {
+            return;
+        }
+
+        $pagination.append(
+            '<button type="button" class="leaderboard-page" data-page="' + previousPage + '"' +
+            (leaderboardState.currentPage === 1 ? ' disabled' : '') +
+            '>ก่อนหน้า</button>'
+        );
+
+        $pagination.append(
+            '<span class="leaderboard-page-indicator">' + leaderboardState.currentPage + ' / ' + totalPages + '</span>'
+        );
+
+        $pagination.append(
+            '<button type="button" class="leaderboard-page" data-page="' + nextPage + '"' +
+            (leaderboardState.currentPage === totalPages ? ' disabled' : '') +
+            '>ถัดไป</button>'
+        );
+    }
+
+    function renderLeaderboardPage(page) {
+        var totalEntries = leaderboardState.entries.length;
+
+        if (totalEntries === 0) {
+            renderLeaderboardEmpty('ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!');
+            return;
+        }
+
+        var totalPages = Math.ceil(totalEntries / LEADERBOARD_PAGE_SIZE);
+        var safePage = Math.min(Math.max(page, 1), totalPages);
+        var startIndex = (safePage - 1) * LEADERBOARD_PAGE_SIZE;
+        var visibleEntries = leaderboardState.entries.slice(startIndex, startIndex + LEADERBOARD_PAGE_SIZE);
+        var $list = $('#leaderboardList');
+
+        leaderboardState.currentPage = safePage;
+        $list.empty();
+
+        for (var i = 0; i < visibleEntries.length; i++) {
+            $list.append(buildLeaderboardItem(visibleEntries[i]));
+        }
+
+        $('#leaderboardMeta').text(
+            'อันดับ ' + (startIndex + 1) + '-' + (startIndex + visibleEntries.length) +
+            ' จาก ' + totalEntries + ' คน'
+        );
+
+        renderLeaderboardPagination(totalPages);
+    }
     
     // Load Leaderboard
     function loadLeaderboard() {
         console.log('Loading leaderboard...');
         $.ajax({
-            url: '/api/leaderboard?limit=5',
+            url: '/api/leaderboard',
             method: 'GET',
             dataType: 'json',
             success: function(data) {
                 console.log('Leaderboard data:', data);
-                var $list = $('#leaderboardList');
-                $list.empty();
-                
-                // ตรวจสอบว่า data เป็น array
-                var leaderboardData = Array.isArray(data) ? data : [];
-                
-                if (leaderboardData.length === 0) {
-                    $list.html('<div class="leaderboard-empty">ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!</div>');
-                    return;
-                }
-                
-                for (var i = 0; i < leaderboardData.length; i++) {
-                    var entry = leaderboardData[i];
-                    const rankClass = entry.rank <= 3 ? 'rank-' + entry.rank : 'rank-other';
-                    const frameStyle = frameStyles[entry.avatarFrame] || 'none';
-                const frameBorder = frameStyle !== 'none' ? 'border-image: ' + frameStyle + ' 1;' : '';
-                
-                const html = `
-                    <div class="leaderboard-item" data-player-id="${entry.playerId}">
-                        <div class="leaderboard-rank ${rankClass}">${entry.rank}</div>
-                        <div class="leaderboard-avatar">
-                            <div class="leaderboard-avatar-inner" style="background: ${entry.color}20; border-color: ${entry.color};">
-                                ${entry.avatar}
-                            </div>
-                            ${frameStyle !== 'none' ? '<div class="leaderboard-avatar-frame" style="background: ' + frameStyle + ';"></div>' : ''}
-                        </div>
-                        <div class="leaderboard-info">
-                            <div class="leaderboard-name" style="color: ${entry.color};">${escapeHtml(entry.playerName)}</div>
-                            <div class="leaderboard-stats-mini">${entry.totalGames} เกม · ${entry.winRate}% win</div>
-                        </div>
-                        <div class="leaderboard-wins">${entry.wins} 🏆</div>
-                    </div>
-                `;
-                    $list.append(html);
-                }
+                leaderboardState.entries = Array.isArray(data) ? data : [];
+                leaderboardState.currentPage = 1;
+                renderLeaderboardPage(1);
             },
             error: function(xhr, status, error) {
                 console.error('Leaderboard error:', error);
-                $('#leaderboardList').html('<div class="leaderboard-empty">ไม่สามารถโหลดข้อมูลได้</div>');
+                renderLeaderboardEmpty('ไม่สามารถโหลดข้อมูลได้');
             }
         });
     }
@@ -928,6 +1069,14 @@ $(function() {
     $(document).on('click', '.leaderboard-item', function() {
         const targetPlayerId = $(this).data('player-id');
         showPlayerProfile(targetPlayerId);
+    });
+
+    $(document).on('click', '.leaderboard-page', function() {
+        var page = parseInt($(this).data('page'), 10);
+
+        if (!Number.isNaN(page)) {
+            renderLeaderboardPage(page);
+        }
     });
     
     // Show player profile modal

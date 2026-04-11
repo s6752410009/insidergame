@@ -806,24 +806,19 @@ async function bulkDeleteStats(playerIds) {
 }
 
 /**
- * ดึง Leaderboard (top players by wins)
- * @param {number} limit - จำนวนที่ต้องการ (default 10)
+ * ดึง Leaderboard (เรียงตาม wins)
+ * @param {number | undefined} limit - จำนวนที่ต้องการ ถ้าไม่ส่งจะคืนทั้งหมด
  */
-function getLeaderboard(limit = 10) {
-    const allStats = Array.from(stats.values());
-    
-    // กรองเฉพาะคนที่เล่นแล้ว และเรียงตาม wins
-    return allStats
+function getLeaderboard(limit) {
+    const rankedPlayers = Array.from(stats.values())
         .filter(s => s.totalGames > 0)
         .sort((a, b) => {
-            // เรียงตาม wins ก่อน
             if (b.wins !== a.wins) return b.wins - a.wins;
-            // ถ้า wins เท่ากัน ดู win rate
+
             const aRate = a.totalGames > 0 ? a.wins / a.totalGames : 0;
             const bRate = b.totalGames > 0 ? b.wins / b.totalGames : 0;
             return bRate - aRate;
         })
-        .slice(0, limit)
         .map((s, index) => ({
             rank: index + 1,
             playerId: s.playerId,
@@ -833,6 +828,12 @@ function getLeaderboard(limit = 10) {
             losses: s.losses,
             winRate: s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0
         }));
+
+    if (Number.isFinite(limit) && limit > 0) {
+        return rankedPlayers.slice(0, limit);
+    }
+
+    return rankedPlayers;
 }
 
 // โหลดสถิติเมื่อเริ่มต้น (สำหรับ backward compatibility)
