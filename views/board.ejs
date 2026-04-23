@@ -121,64 +121,69 @@
     <% if (player.permission == 'admin') { %>
         <button id="displayVote1" class="btn btn-warning cta hidden">โหวต</button>
     <% } %>
-    <div id="vote1" class="hidden">
-        <h4>คุณคิดว่าคนที่ทายคำได้คือผู้ทรยศหรือไม่?</h4>
-        <button data-vote="1" class="btn btn-warning"><i class="fas fa-thumbs-up"></i></button>
-        <button data-vote="0" class="btn btn-warning"><i class="fas fa-thumbs-down"></i></button>
+    <div id="vote1" class="hidden vote1-container" style="background: linear-gradient(145deg, #1e2029, #15161c); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; padding: 18px; margin: 15px auto; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); text-align: center;">
+        <h4 style="color:#fff; font-size:1.1rem; font-weight:700; margin: 0 0 16px 0; line-height: 1.4;">คนที่ทายถูก คือ <span style="color:#e74c3c;">จอมบงการ</span>?</h4>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button data-vote="1" class="btn-vote1 btn-yes" style="flex: 1; padding: 14px 10px; font-size: 1.05rem; background: linear-gradient(135deg, #2ecc71, #27ae60); border: none; border-radius: 12px; color: #fff; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: bold; white-space: nowrap; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.25);">
+                <i class="fas fa-thumbs-up" style="margin-right:4px;"></i> ใช่
+            </button>
+            <button data-vote="0" class="btn-vote1 btn-no" style="flex: 1; padding: 14px 10px; font-size: 1.05rem; background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; border-radius: 12px; color: #fff; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: bold; white-space: nowrap; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.25);">
+                <i class="fas fa-thumbs-down" style="margin-right:4px;"></i> ไม่ใช่
+            </button>
+        </div>
     </div>
-    <div id="vote1Result" class="hidden">
-        <h4>ผลการโหวต</h4>
-        <span class="resultUp">
-            <strong>
-                <% if(resultVote1 !== null) {%><%= resultVote1.up %><% } %>
-            </strong> <i class="fas fa-thumbs-up"></i>
-        </span>
-        <span class="resultDown">
-            <strong>
-                <% if(resultVote1 !== null) {%><%= resultVote1.down %><% } %>
-            </strong> <i class="fas fa-thumbs-down"></i>
-        </span>
+    <div id="vote1Result" class="hidden vote1-container" style="background: linear-gradient(145deg, #1e2029, #15161c); border: 1px solid rgba(241, 196, 15, 0.3); border-radius: 18px; padding: 18px; margin: 15px auto; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); text-align: center;">
+        <h4 style="color:#f1c40f; font-size:1.1rem; font-weight:700; margin: 0 0 16px 0;">ผลโหวต</h4>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <div style="flex: 1; padding: 12px; border-radius: 12px; background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3);">
+                <div style="color: #2ecc71; font-size: 0.95rem; margin-bottom: 6px;"><i class="fas fa-thumbs-up"></i> ใช่</div>
+                <div style="font-size: 2rem; font-weight: 700; color: #fff;" class="resultUp"><% if(resultVote1 !== null) {%><%= resultVote1.up %><% } %></div>
+            </div>
+            <div style="flex: 1; padding: 12px; border-radius: 12px; background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.3);">
+                <div style="color: #e74c3c; font-size: 0.95rem; margin-bottom: 6px;"><i class="fas fa-thumbs-down"></i> ไม่ใช่</div>
+                <div style="font-size: 2rem; font-weight: 700; color: #fff;" class="resultDown"><% if(resultVote1 !== null) {%><%= resultVote1.down %><% } %></div>
+            </div>
+        </div>
     </div>
     <% if (player.permission == 'admin') { %>
         <button id="displayVote2" class="btn btn-warning cta hidden">โหวต</button>
     <% } %>
-    <div id="vote2" class="hidden vote2-container" style="background: linear-gradient(145deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 50, 0.99)); border: 2px solid rgba(231, 76, 60, 0.5); border-radius: 24px; padding: 24px 18px; margin: 20px auto; max-width: 700px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(231, 76, 60, 0.2);">
-        <div class="vote2-header" style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
-            <div style="width:54px; height:54px; background:linear-gradient(135deg,#e74c3c,#c0392b); border-radius:16px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(231,76,60,0.35); flex-shrink:0;">
-                <i class="fas fa-user-secret" style="font-size:1.6em; color:#fff;"></i>
+    <div id="vote2" class="hidden vote2-container" style="background: linear-gradient(145deg, #1e2029, #15161c); border: 1px solid rgba(231, 76, 60, 0.4); border-radius: 20px; padding: 20px 15px; margin: 15px auto; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); text-align: center;">
+        <div class="vote2-header" style="display:flex; align-items:center; gap:12px; margin-bottom:15px; justify-content:center;">
+            <div style="width:48px; height:48px; background:linear-gradient(135deg,#e74c3c,#c0392b); border-radius:14px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(231,76,60,0.35); flex-shrink:0;">
+                <i class="fas fa-user-secret" style="font-size:1.4em; color:#fff;"></i>
             </div>
-            <div>
-                <h4 style="color:#fff; font-size:1.4em; font-weight:700; margin:0 0 2px;">โหวตผู้ทรยศ</h4>
-                <p id="vote2Subtitle" style="color:#cbd5e1; font-size:0.92em; margin:0;">แตะการ์ดเพื่อเลือก</p>
+            <div style="text-align:left;">
+                <h4 style="color:#fff; font-size:1.2rem; font-weight:700; margin:0 0 2px;">โหวตจอมบงการ</h4>
+                <p id="vote2Subtitle" style="color:#aaa; font-size:0.85rem; margin:0;">แตะการ์ดเพื่อเลือก</p>
             </div>
         </div>
-        <div id="dualTraitorModeIndicator" style="display:none; background:linear-gradient(135deg,#e74c3c,#a93226); padding:10px 16px; border-radius:14px; margin-bottom:14px; text-align:center;">
-            <span style="font-size:1em; font-weight:700; color:#fff;">🔴🔴 เลือก 2 คน</span>
+        <div id="dualTraitorModeIndicator" style="display:none; background:linear-gradient(135deg,#e74c3c,#a93226); padding:8px 12px; border-radius:12px; margin-bottom:12px; text-align:center;">
+            <span style="font-size:0.9rem; font-weight:700; color:#fff;">🔴🔴 เลือก 2 คน</span>
         </div>
-        <h4 id="vote2Title" style="color:#ffd700; font-size:1.05em; font-weight:600; margin:0 0 10px; text-align:left;">เลือกผู้ต้องสงสัย</h4>
-        <div class="vote2-choices"></div>
-        <div id="vote2SelectedInfo" class="vote2-selection-info">
-            <div class="selection-counter">
-                <span style="color:#fff; font-size:0.95em;">เลือกแล้ว</span>
-                <span style="font-size:1.2em; color:#2ecc71; font-weight:700;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
+        <div class="vote2-choices" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;"></div>
+        <div id="vote2SelectedInfo" class="vote2-selection-info" style="margin-top:10px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+            <div class="selection-counter" style="margin-bottom:8px;">
+                <span style="color:#ccc; font-size:0.9rem;">เลือกแล้ว</span>
+                <span style="font-size:1.1rem; color:#2ecc71; font-weight:700; margin-left:6px;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
             </div>
-            <div id="vote2SelectedNames" class="vote2-selected-names"></div>
-            <button id="confirmVote2Btn" class="confirm-vote-btn" type="button">ยืนยัน</button>
+            <div id="vote2SelectedNames" class="vote2-selected-names" style="color:#fff; font-weight:600; font-size:0.9rem; min-height:20px; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></div>
+            <button id="confirmVote2Btn" class="confirm-vote-btn" type="button" style="margin-top:10px; width:100%; padding:12px; border-radius:10px; background:linear-gradient(135deg,#3498db,#2980b9); color:#fff; font-weight:bold; font-size:1rem; border:none; cursor:pointer;" disabled>ยืนยัน</button>
         </div>
-        <div id="vote2LiveBoard" class="vote2-live-board">
-            <div class="vote2-live-summary">
-                <span class="vote2-live-label">สถานะ</span>
-                <span id="vote2ProgressStatus" class="vote2-progress-status">ยังไม่มีโหวต</span>
+        <div id="vote2LiveBoard" class="vote2-live-board" style="margin-top:10px; font-size:0.85rem; padding:12px; background:rgba(0,0,0,0.2); border-radius:12px; display:flex; flex-direction:column; gap:6px;">
+            <div class="vote2-live-summary" style="display:flex; justify-content:space-between; color:#bbb;">
+                <span class="vote2-live-label">สถานะภาพรวม</span>
+                <span id="vote2ProgressStatus" class="vote2-progress-status" style="color:#f1c40f;">รอโหวต...</span>
             </div>
-            <div id="vote2LiveFeedList" class="vote2-live-feed">
-                <span class="vote2-live-pill empty">ยังไม่มีโหวต</span>
+            <div id="vote2LiveFeedList" class="vote2-live-feed" style="text-align:left; color:#ddd; font-style:italic; max-height:100px; overflow-y:auto; padding-top:6px; border-top:1px dashed #444;">
+                <span class="vote2-live-pill empty">ยังไม่มีใครลงคะแนน</span>
             </div>
         </div>
     </div>
-    <div id="vote2Result" class="hidden">
-        <h4>ผลการโหวต</h4>
-        <ul id="playerList"></ul>
-        <p id="finalResult"></p>
+    <div id="vote2Result" class="hidden" style="background: linear-gradient(145deg, #1a1b2e, #16213e); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; margin: 15px auto; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
+        <h4 style="color: #f1c40f; font-size: 1.3rem; font-weight: 700; margin: 0 0 15px; letter-spacing: 0.02em;">📊 ผลการโหวต</h4>
+        <ul id="playerList" style="list-style: none; padding: 0; margin: 0 0 15px; display: flex; flex-direction: column; gap: 8px;"></ul>
+        <div id="finalResult" style="margin-top: 10px;"></div>
     </div>
 </div>
 
@@ -896,28 +901,27 @@
         width: 100%;
         min-height: 0;
         padding: 14px !important;
-        border-radius: 16px !important;
-        border: 1px solid rgba(96, 165, 250, 0.28) !important;
-        background: linear-gradient(145deg, rgba(37, 99, 235, 0.16), rgba(15, 23, 42, 0.88)) !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        background: rgba(30, 35, 50, 0.95) !important;
         color: #fff !important;
         cursor: pointer !important;
         position: relative !important;
         overflow: hidden !important;
         text-align: left !important;
         font-family: 'Rajdhani', sans-serif !important;
-        box-shadow:
-            0 12px 28px rgba(0, 0, 0, 0.45),
-            0 0 0 1px rgba(255,255,255,0.04),
-            0 0 22px color-mix(in srgb, var(--vote2-accent, #3498db) 28%, transparent) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
         transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease !important;
         isolation: isolate;
+        display: flex !important;
+        align-items: center !important;
     }
 
     .btn-vote2-player.vote2-player-card::before {
         content: '' !important;
         position: absolute !important;
         inset: -24% !important;
-        background: radial-gradient(circle at center, color-mix(in srgb, var(--vote2-accent, #3498db) 70%, white 10%), transparent 60%) !important;
+        background: radial-gradient(circle at center, rgba(52,152,219,0.3), transparent 60%) !important;
         opacity: 0 !important;
         transform: scale(0.45) !important;
         pointer-events: none !important;
@@ -929,21 +933,16 @@
     }
 
     .btn-vote2-player.vote2-player-card:hover {
-        transform: translateY(-4px) !important;
-        border-color: rgba(125, 211, 252, 0.8) !important;
-        box-shadow:
-            0 18px 36px rgba(0, 0, 0, 0.55),
-            0 0 28px color-mix(in srgb, var(--vote2-accent, #3498db) 40%, transparent) !important;
+        transform: translateY(-2px) !important;
+        border-color: rgba(125, 211, 252, 0.5) !important;
+        background: rgba(40, 48, 70, 0.98) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
     }
 
     @media (hover: none) {
         .btn-vote2-player.vote2-player-card:hover {
             transform: none !important;
-            border-color: rgba(52, 152, 219, 0.45) !important;
-            box-shadow:
-                0 12px 28px rgba(0, 0, 0, 0.45),
-                0 0 0 1px rgba(255,255,255,0.04),
-                0 0 22px color-mix(in srgb, var(--vote2-accent, #3498db) 28%, transparent) !important;
+            border-color: rgba(255, 255, 255, 0.12) !important;
         }
     }
 
@@ -953,23 +952,22 @@
 
     .btn-vote2-player.vote2-player-card.ghost {
         opacity: 0.62 !important;
-        border-color: rgba(148, 163, 184, 0.42) !important;
-        background: linear-gradient(145deg, rgba(71, 85, 105, 0.9), rgba(30, 41, 59, 0.94)) !important;
+        border-color: rgba(148, 163, 184, 0.3) !important;
+        background: rgba(30, 35, 50, 0.7) !important;
     }
 
     .btn-vote2-player.vote2-player-card.selected {
-        border-color: rgba(46, 204, 113, 0.88) !important;
-        background: linear-gradient(145deg, rgba(231, 76, 60, 0.38), rgba(52, 73, 94, 0.96)) !important;
+        border-color: rgba(46, 204, 113, 0.8) !important;
+        background: rgba(46, 204, 113, 0.12) !important;
         box-shadow:
-            0 0 0 1px rgba(46, 204, 113, 0.24),
-            0 18px 42px rgba(0,0,0,0.55),
-            0 0 34px rgba(231, 76, 60, 0.36) !important;
+            0 0 0 2px rgba(46, 204, 113, 0.3),
+            0 8px 24px rgba(0,0,0,0.5) !important;
         animation: selectedGlow 1.5s ease-in-out infinite !important;
     }
     
     @keyframes selectedGlow {
-        0%, 100% { box-shadow: 0 0 30px rgba(231, 76, 60, 0.6), 0 0 60px rgba(231, 76, 60, 0.3); }
-        50% { box-shadow: 0 0 40px rgba(231, 76, 60, 0.8), 0 0 80px rgba(231, 76, 60, 0.4); }
+        0%, 100% { box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.4), 0 0 20px rgba(46, 204, 113, 0.2); }
+        50% { box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.7), 0 0 30px rgba(46, 204, 113, 0.35); }
     }
     
     .vote2-player-head,
@@ -2756,11 +2754,7 @@ $(function() {
 
     function syncVote2CardState($button) {
         const selected = $button.hasClass('selected');
-        const isGhost = $button.hasClass('ghost');
-        const maxSelectable = currentNumTraitors === 2 ? 'เลือกได้สูงสุด 2 คน' : 'แตะแล้วระบบจะส่งโหวตทันที';
         $button.attr('aria-pressed', selected ? 'true' : 'false');
-        $button.find('.vote2-player-state-text').text(selected ? (hasSubmittedVote2 ? 'ลงคะแนนแล้ว' : 'เลือกแล้ว') : 'พร้อมโหวต');
-        $button.find('.vote2-player-hint').text(selected ? (hasSubmittedVote2 ? 'ส่งโหวตแล้ว รอผู้เล่นคนอื่นอยู่' : 'กดอีกครั้งเพื่อยกเลิก') : (isGhost ? 'คนนี้อาจเป็น Ghost Player ได้เช่นกัน' : maxSelectable));
     }
 
     function addPlayerVote(player, checked) {
@@ -2783,31 +2777,26 @@ $(function() {
         }
 
         const btn = `
-            <button type="button" class="btn btn-vote2-player vote2-player-card ${ghostClass} ${selectedClass}" data-player-name="${encodedName}" data-player-vote="${encodedVoteValue}" style="--vote2-accent: ${accentColor};">
+            <button type="button" class="btn btn-vote2-player vote2-player-card ${ghostClass} ${selectedClass}" data-player-name="${encodedName}" data-player-vote="${encodedVoteValue}">
                 <span class="vote2-player-particles" aria-hidden="true"></span>
                 <span class="checkmark">✓</span>
-                <span class="vote2-player-head">
-                    <span class="vote2-player-ident">
-                        <span class="vote2-player-avatar">${escapeHtml(avatar)}</span>
-                        <span class="vote2-player-text">
-                            <span class="vote2-player-name">${escapeHtml(displayName)}</span>
-                            <span class="vote2-player-state"><span>${player.isGhost ? '🫥' : '🎯'}</span><span class="vote2-player-state-text">${checked ? 'เลือกแล้ว' : 'แตะเลือก'}</span></span>
-                        </span>
-                    </span>
-                </span>
-                <span class="vote2-player-meta">${tags.join('')}</span>
-                <span class="vote2-player-foot">
-                    <span class="vote2-player-tally">
-                        <span class="vote2-player-count"><strong class="vote2-player-count-number">0</strong> เสียง</span>
-                    </span>
-                    <span class="vote2-player-voters"><span class="vote2-voter-empty">-</span></span>
-                </span>
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.5rem; background:rgba(255,255,255,0.1); padding:5px; border-radius:10px;">${escapeHtml(avatar)}</span>
+                        <span style="font-size:1rem; font-weight:600; color:#fff;">${escapeHtml(displayName)}</span>
+                        ${player.isGhost ? '<span style="font-size:0.75rem; padding:2px 6px; background:#e67e22; color:#fff; border-radius:8px;">Ghost</span>' : ''}
+                        ${isSelf ? '<span style="font-size:0.75rem; padding:2px 6px; background:#3498db; color:#fff; border-radius:8px;">คุณ</span>' : ''}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="vote2-player-count-number" style="font-size:1.1rem; font-weight:bold; color:#f1c40f;">0</span><span style="font-size:0.8rem; color:#aaa;"> โหวต</span>
+                    </div>
+                </div>
             </button>`;
         $('#vote2 .vote2-choices').append(btn);
         syncVote2CardState($('#vote2 .vote2-choices .btn-vote2-player').last());
     }
     
-    // ตัวแปรสำหรับโหมด 2 ผู้ทรยศ
+    // ตัวแปรสำหรับโหมด 2 จอมบงการ
     let currentNumTraitors = 1;
     let selectedVotes = [];
     let hasSubmittedVote2 = false;
@@ -2830,12 +2819,8 @@ $(function() {
         $('#vote2 .btn-vote2-player').each(function() {
             const $button = $(this);
             const voteValue = decodeURIComponent($button.attr('data-player-vote') || '');
-            const target = targetMap.get(voteValue) || { count: 0, voters: [] };
-            const voters = target.voters || [];
+            const target = targetMap.get(voteValue) || { count: 0 };
             $button.find('.vote2-player-count-number').text(target.count || 0);
-            $button.find('.vote2-player-voters').html(voters.length
-                ? voters.map(name => `<span class="vote2-voter-pill">${escapeHtml(name)}</span>`).join('')
-                : '<span class="vote2-voter-empty">ยังไม่มีคนโหวต</span>');
         });
 
         $('#vote2LiveFeedList').html(liveChoices.length
@@ -2920,33 +2905,35 @@ $(function() {
     }
 
     function getResultIssue(result) {
-        let message = '';
         const numTraitors = result.numTraitors || 1;
-        
+        let isWin = result.hasWon;
+        let emoji = isWin ? '🎉' : '💀';
+        let bgColor = isWin ? 'rgba(46,204,113,0.12)' : 'rgba(231,76,60,0.12)';
+        let borderColor = isWin ? 'rgba(46,204,113,0.4)' : 'rgba(231,76,60,0.4)';
+        let titleColor = isWin ? '#2ecc71' : '#e74c3c';
+        let title = isWin ? 'พลเมืองชนะแล้ว! 🏆' : 'จอมบงการชนะ!';
+        let body = '';
+
         if (result.hasTraitor) {
-            // กรณีมีผู้ทรยศในเกม
-            if (result.hasWon) {
-                if (numTraitors === 2) {
-                    message = `🎉 เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>จับผู้ทรยศได้ทั้ง 2 คน: ${result.finalTraitorName}`;
-                } else {
-                    message = `🎉 เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
-                }
+            if (isWin) {
+                body = numTraitors === 2
+                    ? `จับจอมบงการได้ทั้ง 2 คน: <strong style="color:#fff;">${result.finalTraitorName}</strong>`
+                    : `จอมบงการคือ: <strong style="color:#fff;">${result.finalTraitorName}</strong>`;
             } else {
-                if (numTraitors === 2) {
-                    message = `💀 ผู้ทรยศชนะ! พลเมืองโหวตพลาด <br/>${result.finalTraitorName}`;
-                } else {
-                    message = `💀 ผู้ทรยศชนะ! พลเมืองโหวตพลาด <br/>ผู้ทรยศคือ: ${result.finalTraitorName}`;
-                }
+                body = numTraitors === 2
+                    ? `พลเมืองโหวตพลาด — ${result.finalTraitorName}`
+                    : `จอมบงการคือ: <strong style="color:#fff;">${result.finalTraitorName}</strong>`;
             }
         } else {
-            // กรณีไม่มีผู้ทรยศในเกม
-            if (result.hasWon) {
-                message = `🎉 เยี่ยมมาก! พลเมืองชนะแล้ว! <br/>ไม่มีผู้ทรยศในเกมนี้ (เจอ Ghost Player)`;
-            } else {
-                message = `💀 พลเมืองโหวตพลาด! ไม่มีผู้ทรยศในเกมนี้ แต่คุณก็ยังโหวตพลาด`;
-            }
+            title = isWin ? 'พลเมืองชนะแล้ว! 🏆' : 'พลเมืองโหวตพลาด!';
+            body = isWin ? 'ไม่มีจอมบงการในเกมนี้ (Ghost Player)' : 'ไม่มีจอมบงการในเกมนี้ แต่คุณก็ยังโหวตพลาด';
         }
-        return message;
+
+        return `<div style="background:${bgColor}; border:1px solid ${borderColor}; border-radius:14px; padding:14px 16px; margin-bottom:10px; text-align:center;">
+            <div style="font-size:1.5rem; margin-bottom:6px;">${emoji}</div>
+            <div style="color:${titleColor}; font-size:1rem; font-weight:700; margin-bottom:4px;">${title}</div>
+            <div style="color:#ccc; font-size:0.85rem;">${body}</div>
+        </div>`;
     }
 
     $('.appear').fadeIn().delay(3000).fadeOut();
@@ -3185,7 +3172,7 @@ $(function() {
 
     // Vote1 ถูกตัดออก - ไม่ต้องใช้ displayVote1 และ vote1 handlers
 
-    // Vote2 - รองรับทั้งโหมด 1 และ 2 ผู้ทรยศ
+    // Vote2 - รองรับทั้งโหมด 1 และ 2 จอมบงการ
     $(document).on('click', '.btn-vote2-player', function(e) {
         e.preventDefault();
         const $btn = $(this);
@@ -3196,7 +3183,7 @@ $(function() {
         triggerVote2CardFeedback($btn[0], accentColor);
         
         if (currentNumTraitors === 2) {
-            // โหมด 2 ผู้ทรยศ - เลือกได้ 2 คน
+            // โหมด 2 จอมบงการ - เลือกได้ 2 คน
             if ($btn.hasClass('selected')) {
                 // ยกเลิกการเลือก
                 $btn.removeClass('selected');
@@ -3224,7 +3211,7 @@ $(function() {
         }
     });
     
-    // ปุ่มยืนยันโหวต (สำหรับโหมด 2 ผู้ทรยศ)
+    // ปุ่มยืนยันโหวต (สำหรับโหมด 2 จอมบงการ)
     $(document).on('click', '#confirmVote2Btn', function(e) {
         e.preventDefault();
         if (selectedVotes.length !== 2) {
@@ -3418,7 +3405,7 @@ $(function() {
         $('#vote2 .vote2-choices').html('');
         $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
         
-        // เก็บข้อมูลโหมด 2 ผู้ทรยศ
+        // เก็บข้อมูลโหมด 2 จอมบงการ
         currentNumTraitors = data.numTraitors || 1;
 
         // วนหาบทบาทของตัวเอง (ใช้ playerId หรือ name)
@@ -3435,9 +3422,9 @@ $(function() {
             $('.role strong').html(myPlayer.role);
             $('#reset .role').css('display', 'block');
             
-            // แสดง notification โหมด 2 ผู้ทรยศ
+            // แสดง notification โหมด 2 จอมบงการ
             if (data.dualTraitorMode && data.numTraitors === 2) {
-                showNotification('🔴🔴 โหมด 2 ผู้ทรยศ! มีผู้ทรยศ 2 คนในเกมนี้', 'warning', 6000);
+                showNotification('🔴🔴 โหมด 2 จอมบงการ! มีจอมบงการ 2 คนในเกมนี้', 'warning', 6000);
             }
             
             // ซ่อนหลัง 5 วิ แล้วแสดงขั้นต่อไป
@@ -3474,10 +3461,10 @@ $(function() {
         });
 
         if(myPlayer) {
-            if(myPlayer.role == 'ผู้ดำเนินเกม' || myPlayer.role == 'ผู้ทรยศ') {
+            if(myPlayer.role == 'ผู้ดำเนินเกม' || myPlayer.role == 'จอมบงการ') {
                 $('#word').html("<span>คำที่ต้องทายคือ <strong>"+data.word+"</strong></span>");
             } else {
-                $('#word').html("<span>ผู้ดำเนินเกมและผู้ทรยศ <br />จะเห็นคำนี้</span>");
+                $('#word').html("<span>ผู้ดำเนินเกมและจอมบงการ <br />จะเห็นคำนี้</span>");
             }
         }
 
@@ -3504,22 +3491,22 @@ $(function() {
         selectedVotes = [];
         setVote2InteractionLocked(false);
         
-        console.log('[displayVote2] Received - เริ่มโหวตหาผู้ทรยศ, จำนวน:', numTraitors);
+        console.log('[displayVote2] Received - เริ่มโหวตหาจอมบงการ, จำนวน:', numTraitors);
         hideAllGameElements();
         $('#vote2 .vote2-choices').html('');
         players.forEach(function(votePlayer, index) {
             addPlayerVote(votePlayer, false);
         });
         
-        // อัปเดต UI ตามจำนวนผู้ทรยศ
+        // อัปเดต UI ตามจำนวนจอมบงการ
         if (numTraitors === 2) {
             $('#dualTraitorModeIndicator').show();
-            $('#vote2Title').text('เลือกผู้ทรยศ 2 คน!');
+            $('#vote2Title').text('เลือกจอมบงการ 2 คน!');
             $('#vote2SelectedInfo').css('display', 'flex');
             $('#maxSelect').text('2');
         } else {
             $('#dualTraitorModeIndicator').hide();
-            $('#vote2Title').text('คิดว่าใครคือผู้ทรยศ?');
+            $('#vote2Title').text('คิดว่าใครคือจอมบงการ?');
             $('#vote2SelectedInfo').hide();
         }
         
@@ -3530,9 +3517,9 @@ $(function() {
         soundNotify('popup');
         
         if (numTraitors === 2) {
-            showNotification('🎯 โหมด 2 ผู้ทรยศ! เลือก 2 คนที่คิดว่าเป็นผู้ทรยศ', 'warning', 5000);
+            showNotification('🎯 โหมด 2 จอมบงการ! เลือก 2 คนที่คิดว่าเป็นจอมบงการ', 'warning', 5000);
         } else {
-            showNotification('🎯 หยุดเวลา! โหวตหาผู้ทรยศ', 'warning', 3000);
+            showNotification('🎯 หยุดเวลา! โหวตหาจอมบงการ', 'warning', 3000);
         }
     });
 
@@ -3545,29 +3532,41 @@ $(function() {
         console.log('[vote2Ended] Received:', result);
         hideAllGameElements();
         
-        // แสดงผลการโหวต
-        $('#vote2Result ul').html('');
-        result.voteDetail.forEach(function(votePlayer, index) {
-            $('#vote2Result ul').append('<li>'+votePlayer.name+' ('+votePlayer.nbVote2+' โหวต)</li>');
+        // แสดงผลการโหวต (rank list)
+        const $ul = $('#vote2Result ul');
+        $ul.html('');
+        const sortedVotes = [...result.voteDetail].sort((a, b) => b.nbVote2 - a.nbVote2);
+        sortedVotes.forEach(function(votePlayer, index) {
+            const isTop = index === 0 && votePlayer.nbVote2 > 0;
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+            $ul.append(`<li style="background:${isTop ? 'rgba(241,196,15,0.1)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${isTop ? 'rgba(241,196,15,0.3)' : 'rgba(255,255,255,0.07)'}; border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#fff; font-size:0.95rem; font-weight:600;">${medal} ${escapeHtml(votePlayer.name)}</span>
+                <span style="background:rgba(241,196,15,0.15); color:#f1c40f; font-weight:700; font-size:0.85rem; padding:3px 10px; border-radius:20px;">${votePlayer.nbVote2} โหวต</span>
+            </li>`);
         });
         
-        // สร้างข้อความผลเกม + เฉลยผู้ทรยศ
+        // สร้างข้อความผลเกม + เฉลยจอมบงการ
         finalResult = getResultIssue(result);
         
-        // เพิ่มเฉลยบทบาททุกคน
-        let rolesReveal = '<div class="roles-reveal" style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">';
-        rolesReveal += '<h5 style="color: #f6e05e; margin-bottom: 10px;">🎭 เฉลยบทบาท</h5>';
+        // เพิ่มเฉลยบทบาท - ออกแบบใหม่
+        let rolesReveal = '<div style="margin-top:15px; padding:14px; background:rgba(0,0,0,0.3); border-radius:14px; border:1px solid rgba(255,255,255,0.07);">';
+        rolesReveal += '<div style="color:#f6e05e; font-size:1rem; font-weight:700; margin-bottom:12px; text-align:center;">🎭 เฉลยบทบาท</div>';
+        rolesReveal += '<div style="display:flex; flex-direction:column; gap:8px;">';
         if (result.allRoles && result.allRoles.length > 0) {
             result.allRoles.forEach(function(p) {
-                let roleIcon = '👤';
-                let roleColor = '#fff';
-                if (p.role === 'ผู้ทรยศ') { roleIcon = '🔴'; roleColor = '#ff6b6b'; }
-                else if (p.role === 'ผู้ดำเนินเกม') { roleIcon = '🟢'; roleColor = '#51cf66'; }
-                else if (p.role === 'พลเมือง') { roleIcon = '🔵'; roleColor = '#74c0fc'; }
-                rolesReveal += '<div style="color: ' + roleColor + ';">' + roleIcon + ' <strong>' + p.name + '</strong>: ' + p.role + '</div>';
+                let roleIcon = '🔵'; let roleColor = '#74c0fc'; let roleBg = 'rgba(116,192,252,0.08)'; let roleBorder = 'rgba(116,192,252,0.2)';
+                if (p.role === 'จอมบงการ') { roleIcon = '🔴'; roleColor = '#ff6b6b'; roleBg = 'rgba(255,107,107,0.1)'; roleBorder = 'rgba(255,107,107,0.3)'; }
+                else if (p.role === 'ผู้ดำเนินเกม') { roleIcon = '🟢'; roleColor = '#51cf66'; roleBg = 'rgba(81,207,102,0.08)'; roleBorder = 'rgba(81,207,102,0.2)'; }
+                rolesReveal += `<div style="background:${roleBg}; border:1px solid ${roleBorder}; border-radius:10px; padding:8px 12px; display:flex; align-items:center; gap:10px; text-align:left;">
+                    <span style="font-size:1.1rem; flex-shrink:0;">${roleIcon}</span>
+                    <div>
+                        <div style="color:#ffffff; font-weight:600; font-size:0.9rem;">${escapeHtml(p.name)}</div>
+                        <div style="color:${roleColor}; font-size:0.8rem; font-weight:500;">${escapeHtml(p.role)}</div>
+                    </div>
+                </div>`;
             });
         }
-        rolesReveal += '</div>';
+        rolesReveal += '</div></div>';
         
         $('#vote2Result #finalResult').html(finalResult + rolesReveal);
         $('#vote2Result').removeClass('hidden').fadeIn();
@@ -3575,9 +3574,9 @@ $(function() {
         
         // Show game result notification
         if (result.hasWon) {
-            showNotification('🎉 พลเมืองชนะ! ผู้ทรยศคือ: ' + (result.finalTraitorName || 'ไม่มี'), 'success', 5000);
+            showNotification('🎉 พลเมืองชนะ! จอมบงการคือ: ' + (result.finalTraitorName || 'ไม่มี'), 'success', 5000);
         } else {
-            showNotification('💀 ผู้ทรยศชนะ! ผู้ทรยศคือ: ' + (result.finalTraitorName || '???'), 'error', 5000);
+            showNotification('💀 จอมบงการชนะ! จอมบงการคือ: ' + (result.finalTraitorName || '???'), 'error', 5000);
         }
         
         // ADDED: เปิดใช้งานปุ่มทั้งหมดเมื่อเกมจบลง

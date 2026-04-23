@@ -362,7 +362,7 @@ function recordInsiderGameEnd(roomId, gameResult) {
         return;
     }
 
-    const hasWon = resultVote2.hasWon; // true = พลเมืองชนะ, false = ผู้ทรยศชนะ
+    const hasWon = resultVote2.hasWon; // true = พลเมืองชนะ, false = จอมบงการชนะ
     const gameTimestamp = new Date().toISOString();
     const traitorName = resultVote2.finalTraitorName || 'ไม่ทราบ';
 
@@ -383,8 +383,8 @@ function recordInsiderGameEnd(roomId, gameResult) {
         let playerWon = false;
         
         // ตรวจสอบว่าเป็นผู้ชนะหรือไม่ (ตาม role)
-        if (role === 'ผู้ทรยศ') {
-            // ผู้ทรยศชนะ = พลเมืองแพ้
+        if (role === 'จอมบงการ') {
+            // จอมบงการชนะ = พลเมืองแพ้
             if (!hasWon) {
                 stat.wins += 1;
                 stat.modeStats.insider.wins += 1;

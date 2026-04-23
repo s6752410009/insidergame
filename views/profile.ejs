@@ -806,7 +806,7 @@
             <div class="role-stat-card traitor">
                 <div class="role-stat-icon">😈</div>
                 <div class="role-stat-value" style="color: #e74c3c;"><%= displayStats.roleStats.traitorCount %></div>
-                <div class="role-stat-label">ผู้ทรยศ</div>
+                <div class="role-stat-label">จอมบงการ</div>
             </div>
             
             <div class="role-stat-card citizen">
@@ -832,7 +832,7 @@
             <div class="role-stat-card traitor">
                 <div class="role-stat-icon">😈</div>
                 <div class="role-stat-value" style="color: #e74c3c;"><%= displayStats.winByRole.winAsTraitor %></div>
-                <div class="role-stat-label">ชนะเป็นผู้ทรยศ</div>
+                <div class="role-stat-label">ชนะเป็นจอมบงการ</div>
             </div>
             
             <div class="role-stat-card citizen">
@@ -871,7 +871,7 @@
                 <% if (displayStats.gameHistory && displayStats.gameHistory.length > 0) { %>
                     <% displayStats.gameHistory.forEach(function(game) { %>
                         <% const gameMode = game.mode === 'werewolf' ? 'werewolf' : 'insider'; %>
-                        <% const winnerText = gameMode === 'werewolf' ? (game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน')) : (game.citizensWon ? 'พลเมือง' : 'ผู้ทรยศ'); %>
+                        <% const winnerText = gameMode === 'werewolf' ? (game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน')) : (game.citizensWon ? 'พลเมือง' : 'จอมบงการ'); %>
                         <div class="game-history-item <%= game.won ? 'won' : 'lost' %>">
                             <div class="game-history-header">
                                 <div class="game-history-topline">
@@ -923,7 +923,7 @@
                                 </div>
                                 <div class="game-history-detail">
                                     <span class="game-history-detail-icon">🔴</span>
-                                    <span>ผู้ทรยศ: <%= game.traitor %></span>
+                                    <span>จอมบงการ: <%= game.traitor %></span>
                                 </div>
                                 <% } %>
                                 <div class="game-history-detail">

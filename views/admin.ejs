@@ -519,12 +519,12 @@
                     <thead>
                         <tr>
                             <th style="width: 40px;"><input type="checkbox" id="selectAllPlayers" onclick="toggleSelectAllPlayers(this)"></th>
-                            <th>ผู้เล่น</th>
-                            <th>ประเภท</th>
-                            <th>Player ID</th>
-                            <th>สถานะ</th>
-                            <th>เกม</th>
-                            <th>ออนไลน์ล่าสุด</th>
+                            <th class="sortable" data-sort="name" style="cursor:pointer;" onclick="setSort('name')">ผู้เล่น <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="category" style="cursor:pointer;" onclick="setSort('category')">ประเภท <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="id" style="cursor:pointer;" onclick="setSort('id')">Player ID <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="status" style="cursor:pointer;" onclick="setSort('status')">สถานะ <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="games" style="cursor:pointer;" onclick="setSort('games')">เกม <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="lastSeen" style="cursor:pointer;" onclick="setSort('lastSeen')">ออนไลน์ล่าสุด <span class="sort-icon"></span></th>
                             <th>จัดการ</th>
                         </tr>
                     </thead>
@@ -896,6 +896,26 @@ $(function() {
         filterPlayersTable();
     });
     
+    // Sort logic
+    window.currentSortCol = 'lastSeen';
+    window.currentSortDir = 'desc';
+
+    window.setSort = function(col) {
+        if (window.currentSortCol === col) {
+            window.currentSortDir = window.currentSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            window.currentSortCol = col;
+            window.currentSortDir = 'desc';
+        }
+        
+        $('.sortable .sort-icon').html('');
+        $(`.sortable[data-sort="${col}"] .sort-icon`).html(window.currentSortDir === 'asc' ? '↑' : '↓');
+        
+        if (allData && allData.players) {
+            updatePlayersTable(allData.players, allData.bannedPlayers);
+        }
+    };
+    
     // Load data from server
     window.loadData = function() {
         if (!isAuthenticated) {
@@ -951,7 +971,42 @@ $(function() {
         }
         
         const bannedIds = (bannedPlayers || []).map(b => b.playerId);
-        players.sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+        
+        players.sort((a, b) => {
+            let valA, valB;
+            switch(window.currentSortCol) {
+                case 'name':
+                    valA = (a.playerName || '').toLowerCase();
+                    valB = (b.playerName || '').toLowerCase();
+                    break;
+                case 'category':
+                    valA = a.category || '';
+                    valB = b.category || '';
+                    break;
+                case 'id':
+                    valA = a.playerId || '';
+                    valB = b.playerId || '';
+                    break;
+                case 'status':
+                    const getStatusScore = p => bannedIds.includes(p.playerId) ? 0 : (p.lastSeen && (Date.now() - new Date(p.lastSeen) < 300000) ? 2 : 1);
+                    valA = getStatusScore(a);
+                    valB = getStatusScore(b);
+                    break;
+                case 'games':
+                    valA = a.totalGames || 0;
+                    valB = b.totalGames || 0;
+                    break;
+                case 'lastSeen':
+                default:
+                    valA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+                    valB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+                    break;
+            }
+            
+            if (valA < valB) return window.currentSortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return window.currentSortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
         
         players.forEach(function(player) {
             const lastSeen = player.lastSeen ? new Date(player.lastSeen).toLocaleString('th-TH') : '-';

@@ -988,7 +988,7 @@
           <span>👥 ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<span id="lobbyMaxPlayers"><%= room.maxPlayers %></span></span>
           <span id="roomGameModeBadge" data-game-mode="<%= room.gameMode %>"><%= room.gameModeLabel %></span>
           <span>🚪 สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
-          <span id="dualTraitorBadge" class="<%= room.gameMode === 'insider' && room.dualTraitorMode ? '' : 'is-hidden' %>" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">🔴🔴 2 ผู้ทรยศ</span>
+          <span id="dualTraitorBadge" class="<%= room.gameMode === 'insider' && room.dualTraitorMode ? '' : 'is-hidden' %>" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">🔴🔴 2 จอมบงการ</span>
         </div>
       </div>
     </div>
@@ -1024,7 +1024,7 @@
         <!-- Quick Toggle: Dual Traitor Mode -->
         <div id="dualTraitorQuickToggle" class="is-hidden" style="margin-bottom: 15px; padding: 12px 15px; background: linear-gradient(135deg, rgba(231,76,60,0.15), rgba(192,57,43,0.1)); border: 2px solid rgba(231,76,60,0.4); border-radius: 12px;">
           <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
-            <div style="font-weight: 700; color: #e74c3c; font-size: 1em;">🔴🔴 โหมด 2 ผู้ทรยศ <span style="font-size: 0.8em; color: #aaa; font-weight: 400;">(5+ คน)</span></div>
+            <div style="font-weight: 700; color: #e74c3c; font-size: 1em;">🔴🔴 โหมด 2 จอมบงการ <span style="font-size: 0.8em; color: #aaa; font-weight: 400;">(5+ คน)</span></div>
             <label class="toggle-switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
               <input type="checkbox" id="quickDualTraitorToggle" <%= room.dualTraitorMode ? 'checked' : '' %> style="opacity: 0; width: 0; height: 0;">
               <span class="toggle-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s; border-radius: 30px;"></span>
@@ -1593,7 +1593,7 @@
         Swal.fire({
           icon: 'warning',
           title: 'ไม่สามารถเปิดได้',
-          text: 'ต้องมีผู้เล่นอย่างน้อย 5 คนจึงจะเปิดโหมด 2 ผู้ทรยศได้',
+          text: 'ต้องมีผู้เล่นอย่างน้อย 5 คนจึงจะเปิดโหมด 2 จอมบงการได้',
           background: '#1e1e1e',
           color: '#fff'
         });
@@ -1612,8 +1612,8 @@
       if (enabled) {
         Swal.fire({
           icon: 'success',
-          title: '🔴🔴 เปิดโหมด 2 ผู้ทรยศ!',
-          text: 'เกมนี้จะมีผู้ทรยศ 2 คน',
+          title: '🔴🔴 เปิดโหมด 2 จอมบงการ!',
+          text: 'เกมนี้จะมีจอมบงการ 2 คน',
           background: '#1e1e1e',
           color: '#fff',
           timer: 2000,
@@ -2425,7 +2425,7 @@
                 <span>${stats.roleStats.gameMasterCount} ครั้ง</span>
               </div>
               <div class="profile-role-row">
-                <span>🔴 ผู้ทรยศ</span>
+                <span>🔴 จอมบงการ</span>
                 <span>${stats.roleStats.traitorCount} ครั้ง (ชนะ ${stats.winByRole.winAsTraitor})</span>
               </div>
               <div class="profile-role-row">

@@ -184,16 +184,33 @@ footer.footer {
 /* Vote 2 Custom Styles */
 #vote2 {
     background: transparent !important;
-    padding: 20px 0;
+    padding: 0;
 }
 
 .vote2-choices {
     display: flex !important;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    justify-content: stretch !important;
     background: transparent !important;
-    padding: 15px;
+    padding: 0 !important;
+    margin-bottom: 12px !important;
+}
+
+/* Force dark background on vote2 player cards - overrides Bootstrap .btn */
+.btn.btn-vote2-player.vote2-player-card,
+button.btn-vote2-player.vote2-player-card {
+    background-color: rgba(30, 35, 50, 0.95) !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+button.btn-vote2-player.vote2-player-card.selected {
+    background-color: rgba(46, 204, 113, 0.15) !important;
+    background-image: none !important;
+    border-color: rgba(46, 204, 113, 0.8) !important;
 }
 
 #vote1 button, #vote1Result {

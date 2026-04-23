@@ -1133,7 +1133,7 @@ $(function() {
                         ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
                         : (isBlackMarket
                             ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
-                            : 'ผู้ทรยศ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'));
+                            : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'));
                     const detailSecondary = isWerewolf
                         ? (game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ')
                         : (isBlackMarket
@@ -1200,7 +1200,7 @@ $(function() {
                             <span>${stats.roleStats.gameMasterCount} ครั้ง</span>
                         </div>
                         <div class="profile-role-row">
-                            <span>🔴 ผู้ทรยศ</span>
+                            <span>🔴 จอมบงการ</span>
                             <span>${stats.roleStats.traitorCount} ครั้ง (ชนะ ${stats.winByRole.winAsTraitor})</span>
                         </div>
                         <div class="profile-role-row">
@@ -1279,14 +1279,14 @@ $(function() {
                         <div class="guide-tab-panel" data-guide-panel="insider" style="display:grid; gap:12px;">
                             <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 15px; border-radius: 12px;">
                                 <h3 style="margin: 0 0 10px 0; color: #fff;">🎯 เป้าหมายของ Insider</h3>
-                                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">ทายคำให้ถูก และจับให้ได้ว่าใครคือผู้ทรยศ</p>
+                                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">ทายคำให้ถูก และจับให้ได้ว่าใครคือจอมบงการ</p>
                             </div>
 
                             <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #f39c12;">
                                 <h4 style="margin:0 0 10px 0; color:#f39c12;">👥 บทบาทหลัก</h4>
                                 <div style="display:grid; gap:10px; color:#ccc; font-size:0.95em;">
                                     <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#e74c3c;">🎭 ผู้ดำเนินเกม</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำตอบ และตอบได้แค่ ใช่ / ไม่ใช่ / อาจจะ</p></div>
-                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#9b59b6;">🕵️ ผู้ทรยศ</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำ แต่ต้องซ่อนตัวและเนียนไปกับวง</p></div>
+                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#9b59b6;">🕵️ จอมบงการ</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำ แต่ต้องซ่อนตัวและเนียนไปกับวง</p></div>
                                     <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#3498db;">👤 พลเมือง</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">ช่วยกันถาม ช่วยกันทาย และช่วยกันจับคนเนียน</p></div>
                                 </div>
                             </div>
@@ -1297,8 +1297,8 @@ $(function() {
                                     <li style="margin-bottom:8px;">ระบบแจกบทบาทให้ทุกคน</li>
                                     <li style="margin-bottom:8px;">ผู้ดำเนินเกมเลือกคำ</li>
                                     <li style="margin-bottom:8px;">ทุกคนถามคำถาม แล้วไล่ทายคำ</li>
-                                    <li style="margin-bottom:8px;">ถ้าทายถูก เกมจะเข้าสู่ช่วงโหวตหาผู้ทรยศ</li>
-                                    <li>ถ้าจับถูก พลเมืองชนะ ถ้าจับพลาด ผู้ทรยศชนะ</li>
+                                    <li style="margin-bottom:8px;">ถ้าทายถูก เกมจะเข้าสู่ช่วงโหวตหาจอมบงการ</li>
+                                    <li>ถ้าจับถูก พลเมืองชนะ ถ้าจับพลาด จอมบงการชนะ</li>
                                 </ol>
                             </div>
 
@@ -1306,7 +1306,7 @@ $(function() {
                                 <h4 style="margin:0 0 10px 0; color:#2ecc71;">💡 ทริกสำคัญ</h4>
                                 <div style="display:grid; gap:8px; font-size:0.95em;">
                                     <div>คนที่รีบนำเกินไปอาจกำลังปั่นวง แต่คนเงียบผิดปกติก็อาจซ่อนอยู่เหมือนกัน</div>
-                                    <div>ถ้าเปิดโหมด 2 ผู้ทรยศ ตอนโหวตต้องเดาให้ครบ 2 คนถึงจะชนะ</div>
+                                    <div>ถ้าเปิดโหมด 2 จอมบงการ ตอนโหวตต้องเดาให้ครบ 2 คนถึงจะชนะ</div>
                                     <div>เจ้าของห้องมีสิทธิ์เริ่มเกม, จับเวลา, เริ่มโหวต, เตะคน, โอนห้อง และแก้ไขห้อง</div>
                                 </div>
                             </div>

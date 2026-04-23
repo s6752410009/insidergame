@@ -14,7 +14,7 @@ const rooms = new Map();
 
 // Game Master Role constant
 const gameMasterRole = 'ผู้ดำเนินเกม';
-const traitorRole = 'ผู้ทรยศ';
+const traitorRole = 'จอมบงการ';
 const defaultRole = 'พลเมือง';
 
 function nowIso() {
@@ -77,7 +77,7 @@ function createRoom(roomData, creatorPlayerId) {
             maxPlayers: clampMaxPlayers(gameEngine, roomData.maxPlayers, 1),
             roundTime: gameMode === 'werewolf' ? 5 * 60 : (roomData.roundTime || 5) * 60, // Werewolf ใช้ค่า fixed
             traitorOptional: roomData.traitorOptional !== undefined ? roomData.traitorOptional : true,
-            dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 ผู้ทรยศ (ต้องมี 5+ คน)
+            dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 จอมบงการ (ต้องมี 5+ คน)
             werewolfRoles,
             wolfCount,
             locked: roomData.locked || false,
@@ -386,7 +386,7 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.traitorOptional = updates.traitorOptional;
     }
     
-    // อัปเดตโหมด 2 ผู้ทรยศ (ต้องมีผู้เล่น 5+ คนถึงจะเปิดได้)
+    // อัปเดตโหมด 2 จอมบงการ (ต้องมีผู้เล่น 5+ คนถึงจะเปิดได้)
     if (updates.dualTraitorMode !== undefined) {
         if (updates.dualTraitorMode && room.players.length < 5) {
             // ไม่อนุญาตให้เปิดถ้าผู้เล่นไม่ถึง 5 คน
