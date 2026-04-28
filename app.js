@@ -3612,6 +3612,36 @@ io.sockets.on('connection', function(socket) {
         addServerLog(io, 'game', roomId, `📝 คำเปิดเผย: ${room.gameState.word}`, 'info');
     });
 
+    // Get 5 random word suggestions for GM to choose from
+    socket.on('getWordSuggestions', function(data, callback) {
+        const roomId = socket.roomId;
+        if (!roomId) {
+            if (typeof callback === 'function') callback({ ok: false, error: 'not_in_room' });
+            return;
+        }
+        const room = roomManager.getRoom(roomId);
+        if (!room) {
+            if (typeof callback === 'function') callback({ ok: false, error: 'room_not_found' });
+            return;
+        }
+        const playerId = socket.playerId;
+        const me = room.gameState.players.find(p => p.playerId === playerId);
+        if (!me || me.role !== gameMasterRole) {
+            if (typeof callback === 'function') callback({ ok: false, error: 'not_game_master' });
+            return;
+        }
+
+        // สุ่ม 5 คำโดยไม่ซ้ำกัน
+        const pool = [...wordFamille];
+        const suggestions = [];
+        while (suggestions.length < 5 && pool.length > 0) {
+            const idx = Math.floor(Math.random() * pool.length);
+            suggestions.push(pool.splice(idx, 1)[0]);
+        }
+
+        if (typeof callback === 'function') callback({ ok: true, words: suggestions });
+    });
+
     // Set word
     socket.on('setWord', function(data, callback) {
         const roomId = socket.roomId;

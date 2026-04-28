@@ -978,11 +978,7 @@
       <div class="room-lobby-hero">
         <div id="roomModeKicker" class="room-kicker">🎩 ห้องเตรียมเกม</div>
         <div class="room-title">🎮 ห้อง: <span id="roomTitleText"><%= room.name %></span></div>
-        <div id="roomSubtitle" class="room-subtitle">คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วค่อยเปิดเกมเมื่อทุกคนพร้อม</div>
-        <div id="lobbySpotlight" class="lobby-spotlight">
-          <div class="lobby-spotlight-pill">💬 แชทคุยกันก่อนเริ่ม</div>
-          <div class="lobby-spotlight-pill">👑 หัวหน้าห้องคุมการเปิดเกม</div>
-        </div>
+        <div id="lobbySpotlight" class="lobby-spotlight" style="display:none;"></div>
         <div class="room-meta">
           <span>🆔 ID: <strong><%= room.roomId %></strong></span>
           <span>👥 ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<span id="lobbyMaxPlayers"><%= room.maxPlayers %></span></span>
@@ -1267,34 +1263,19 @@
       if (normalizedMode === 'werewolf') {
         return {
           kicker: '🐺 ห้องเตรียมล่าหมาป่า',
-          subtitle: 'คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วเริ่มคืนแรกได้ทันทีเมื่อทุกคนพร้อม ระบบตั้งเวลาไว้ให้แล้ว',
-          pills: [
-            '💬 แชทคุยกันก่อนเริ่ม',
-            '👑 หัวหน้าห้องคุมการเปิดเกม',
-            '🐺 เลือกแค่จำนวนหมาป่าก็พอ'
-          ]
+          pills: []
         };
       }
       if (normalizedMode === 'blackmarket') {
         return {
           kicker: '🎩 ห้องเตรียมเปิดตลาด',
-          subtitle: 'คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วเปิดตลาดได้ทันทีเมื่อครบคน',
-          pills: [
-            '💬 แชทคุยกันก่อนเริ่ม',
-            '👑 หัวหน้าห้องคุมการเปิดเกม',
-            '🎩 ครบคนแล้วพาเข้าตลาดทันที'
-          ]
+          pills: []
         };
       }
 
       return {
         kicker: '🎯 ห้องเตรียมเกม',
-        subtitle: 'คุยกับคนในห้อง เช็กจำนวนผู้เล่น แล้วค่อยเริ่มเกมเมื่อทุกคนพร้อม',
-        pills: [
-          '💬 แชทคุยกันก่อนเริ่ม',
-          '👑 หัวหน้าห้องคุมการเปิดเกม',
-          '🎯 พร้อมแล้วค่อยเริ่มรอบถามคำ'
-        ]
+        pills: []
       };
     }
 
@@ -1341,16 +1322,6 @@
 
       if (roomModeKicker) {
         roomModeKicker.textContent = heroCopy.kicker;
-      }
-
-      if (roomSubtitle) {
-        roomSubtitle.textContent = heroCopy.subtitle;
-      }
-
-      if (lobbySpotlight) {
-        lobbySpotlight.innerHTML = heroCopy.pills.map(function(pill) {
-          return `<div class="lobby-spotlight-pill">${pill}</div>`;
-        }).join('');
       }
     }
 

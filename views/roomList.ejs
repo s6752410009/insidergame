@@ -909,24 +909,24 @@ $(function() {
                 border: 'rgba(230,126,34,0.32)',
                 badge: '🎯 เล่นไว อ่านโต๊ะ',
                 title: 'Insider',
-                summary: 'เหมาะกับวงที่ชอบจับสังเกตและหาจอมบงการแบบคลาสสิก',
-                bullets: ['3-10 คน', 'จบไว', 'เน้นอ่านสีหน้าและคำพูด']
+                summary: '',
+                bullets: ['3-10 คน']
             },
             blackmarket: {
                 tone: 'linear-gradient(135deg, rgba(127,29,29,0.4), rgba(17,17,17,0.9))',
                 border: 'rgba(245,200,107,0.34)',
                 badge: '🎩 แนะนำตอนนี้',
                 title: 'Black Market',
-                summary: 'ตลาดมืดสำหรับวงที่อยากกวาดของเถื่อน เปิดดีล แล้วพลิกเกมใส่กันจริง',
-                bullets: ['4-7 คน', 'เปิดดีล / หักหลัง / สั่งเก็บ', 'เหมาะกับวง 6-7 คนที่สุด']
+                summary: '',
+                bullets: ['4-7 คน']
             },
             werewolf: {
                 tone: 'linear-gradient(135deg, rgba(52,73,94,0.26), rgba(17,24,39,0.9))',
                 border: 'rgba(143,211,255,0.22)',
                 badge: '🐺 fixed timer',
                 title: 'Werewolf',
-                summary: 'กลางคืน 1 นาที ประชุม 3 นาที โหวต 1 นาที และกำหนดได้แค่จำนวนหมาป่าเพื่อกัน logic พังตอนตั้งห้อง',
-                bullets: ['3-10 คน', 'เลือกได้แค่จำนวนหมาป่า', 'role อื่นเติมอัตโนมัติ']
+                summary: '',
+                bullets: ['3-10 คน']
             }
         };
 
@@ -968,12 +968,11 @@ $(function() {
             const badgeColor = isBlackMarket ? '#ff4d4d' : (mode.id === 'werewolf' ? '#fff' : '#fde68a');
 
             return `
-                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="${disabledStyle} border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; font-family:Rajdhani, sans-serif; display:grid; gap:6px;">
+                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="${disabledStyle} border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; font-family:Rajdhani, sans-serif; display:grid; gap:4px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                         <strong style="font-size:1rem; letter-spacing:0.02em;">${escapeHtml(spotlight.title)}</strong>
                         <span style="padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.1); font-size:0.75em; font-weight:700; color:${badgeColor};">${badgeLabel}</span>
                     </div>
-                    <div style="color:${isBlackMarket ? '#aaa' : (mode.id === 'werewolf' ? '#dbe7ff' : '#f8d189')}; font-size:0.88em; line-height:1.35;">${escapeHtml(mode.description || spotlight.summary)}</div>
                     <div style="color:#aab3c5; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
                 </button>
             `;
@@ -984,7 +983,7 @@ $(function() {
         const mode = (modeItems || []).find(function(item) { return item.id === modeId; }) || (modeItems || [])[0] || defaultGameModes[0];
         const spotlight = getModeSpotlightMeta(mode?.id);
         return `
-            <div style="border:1px solid ${spotlight.border}; border-radius:18px; padding:16px; background:${spotlight.tone}; display:grid; gap:10px;">
+            <div style="border:1px solid ${spotlight.border}; border-radius:18px; padding:16px; background:${spotlight.tone}; display:grid; gap:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                     <div>
                         <div style="color:${mode?.id === 'blackmarket' ? '#fde68a' : '#8fd3ff'}; font-size:0.8em; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">${escapeHtml(spotlight.badge)}</div>
@@ -992,10 +991,6 @@ $(function() {
                     </div>
                     <div style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-weight:700;">👥 ${Number(mode?.minPlayers || 3)}-${Number(mode?.maxPlayers || 10)} คน</div>
                 </div>
-                <div style="color:#ddd; line-height:1.45;">${escapeHtml(spotlight.summary)}</div>
-                <div style="display:flex; flex-wrap:wrap; gap:8px;">${spotlight.bullets.map(function(line) {
-                    return `<span style="padding:5px 9px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-size:0.82em;">${escapeHtml(line)}</span>`;
-                }).join('')}</div>
             </div>
         `;
     }
