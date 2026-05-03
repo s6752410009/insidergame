@@ -739,6 +739,7 @@
 $(function() {
     const socket = io();
     const playerId = '<%= player.playerId %>';
+    const isSiteAdminViewer = <%= player.isSiteAdmin ? 'true' : 'false' %>;
     const defaultGameModes = [
         { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านโต๊ะ', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
@@ -1095,7 +1096,7 @@ $(function() {
             const roomId = $(this).data('room-id');
             const room = rooms.find(r => r.roomId === roomId);
             
-            if (room && room.locked) {
+            if (room && room.locked && !isSiteAdminViewer) {
                 // Prompt for password
                 Swal.fire({
                     title: '🔒 ห้องนี้ถูกล็อค',

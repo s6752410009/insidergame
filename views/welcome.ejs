@@ -1,182 +1,693 @@
 <%- contentFor('content') %>
-<h2>คุณคือใคร?</h2>
-<span class="homelink">แก้ไขรายชื่อผู้เล่น, <a href="/adminPlayer">คลิกที่นี่</a> !</span>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --welcome-bg: #f5efe1;
+    --welcome-paper: rgba(255, 250, 241, 0.95);
+    --welcome-ink: #261a14;
+    --welcome-muted: #6d5849;
+    --welcome-accent: #bc4b34;
+    --welcome-accent-dark: #8e311f;
+    --welcome-gold: #d19c2f;
+    --welcome-line: rgba(70, 39, 26, 0.14);
+    --welcome-shadow: 0 24px 60px rgba(58, 25, 12, 0.16);
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-<form class="inline-block" id="playerChoiceForm" method="post" name="playerForm" action="game">
-    <% if (players.length === 0) { %>
-        <p>ไม่มีผู้เล่นให้เลือก กรุณาสร้างผู้เล่นใหม่ในหน้า <a href="/adminPlayer">Admin Player</a></p>
-    <% } else { %>
-        <% players.forEach(function(player, index) { %>
-            <div class="form__group">
-                <div class="form__radio-group">
-                    <input <% if(index == 0) { %>checked<% } %> type="radio" class="form__radio-input" id="<%= player.name %>" name="player" value="<%= player.name %>" />
-                    <label for="<%= player.name %>" class="form__radio-label">
-                        <%= player.name %>
-                    </label>
-                </div>
+  @keyframes welcomeRise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 24px, 0) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes welcomeFloat {
+    0%, 100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -8px, 0);
+    }
+  }
+
+  @keyframes welcomeSpark {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+      opacity: 0.28;
+    }
+    50% {
+      transform: translate3d(0, -10px, 0) scale(1.08);
+      opacity: 0.52;
+    }
+  }
+
+  @keyframes welcomeGlowSweep {
+    0% {
+      transform: translate3d(-140%, 0, 0) rotate(8deg);
+    }
+    100% {
+      transform: translate3d(140%, 0, 0) rotate(8deg);
+    }
+  }
+
+  .welcome-shell {
+    max-width: 1120px;
+    margin: 28px auto 36px;
+    padding: 0 18px 24px;
+    color: var(--welcome-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+    transition: opacity 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
+  }
+
+  .welcome-shell.is-ready {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .motion-enter {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  .welcome-shell.is-ready .motion-enter {
+    animation: welcomeRise 0.72s var(--ease-out-expo) forwards;
+    animation-delay: calc(var(--enter-delay, 0) * 1ms);
+  }
+
+  .welcome-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 30px;
+    border: 1px solid var(--welcome-line);
+    border-radius: 32px;
+    background:
+      radial-gradient(circle at top right, rgba(209, 156, 47, 0.22), transparent 32%),
+      linear-gradient(145deg, rgba(255, 248, 236, 0.96), rgba(245, 235, 220, 0.94));
+    box-shadow: var(--welcome-shadow);
+  }
+
+  .welcome-hero::before {
+    content: '';
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    top: -92px;
+    right: -70px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(188, 75, 52, 0.18), rgba(188, 75, 52, 0));
+    animation: welcomeSpark 7.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .welcome-hero::after {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border: 1px dashed rgba(126, 78, 55, 0.18);
+    border-radius: 24px;
+    pointer-events: none;
+  }
+
+  .welcome-hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+    gap: 22px;
+    align-items: stretch;
+  }
+
+  .welcome-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(188, 75, 52, 0.1);
+    color: var(--welcome-accent-dark);
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .welcome-title {
+    max-width: 11ch;
+    margin: 0;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4.8rem);
+    line-height: 0.94;
+    letter-spacing: -0.03em;
+    color: #2a120d;
+  }
+
+  .welcome-copy {
+    max-width: 58ch;
+    margin: 16px 0 0;
+    color: var(--welcome-muted);
+    font-size: 1.05rem;
+    line-height: 1.72;
+  }
+
+  .welcome-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .welcome-chip {
+    padding: 9px 14px;
+    border: 1px solid rgba(70, 39, 26, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.55);
+    color: #4f362d;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: transform 0.28s var(--ease-out-quart), background 0.28s var(--ease-out-quart), box-shadow 0.28s var(--ease-out-quart);
+  }
+
+  .welcome-chip:hover {
+    transform: translate3d(0, -2px, 0);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 12px 24px rgba(64, 31, 19, 0.08);
+  }
+
+  .welcome-sidecard {
+    display: grid;
+    align-content: space-between;
+    gap: 18px;
+    padding: 22px;
+    border: 1px solid rgba(70, 39, 26, 0.12);
+    border-radius: 24px;
+    background: rgba(56, 28, 17, 0.93);
+    color: #f9f0e3;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    animation: welcomeFloat 5.8s ease-in-out infinite;
+  }
+
+  .welcome-sidecard h3 {
+    margin: 0 0 10px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.25rem;
+  }
+
+  .welcome-sidecard p {
+    margin: 0;
+    color: rgba(249, 240, 227, 0.76);
+    line-height: 1.65;
+  }
+
+  .welcome-side-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .welcome-side-item {
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.06);
+    font-size: 0.95rem;
+  }
+
+  .welcome-panels {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .welcome-card {
+    padding: 22px;
+    border-radius: 28px;
+    border: 1px solid var(--welcome-line);
+    background: var(--welcome-paper);
+    box-shadow: var(--welcome-shadow);
+    transition: transform 0.3s var(--ease-out-quart), box-shadow 0.3s var(--ease-out-quart);
+  }
+
+  .welcome-card:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: 0 30px 62px rgba(58, 25, 12, 0.18);
+  }
+
+  .welcome-card h2,
+  .welcome-card h3 {
+    margin: 0;
+    font-family: 'Chakra Petch', sans-serif;
+    color: #2b1610;
+  }
+
+  .welcome-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .welcome-card-head p {
+    margin: 8px 0 0;
+    color: var(--welcome-muted);
+    line-height: 1.6;
+  }
+
+  .welcome-admin-link {
+    color: var(--welcome-accent-dark);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .welcome-admin-link:hover {
+    color: var(--welcome-accent);
+    text-decoration: none;
+  }
+
+  .player-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .player-choice {
+    position: relative;
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+    transition: opacity 0.4s var(--ease-out-expo), transform 0.4s var(--ease-out-expo);
+  }
+
+  .welcome-shell.is-ready .player-choice {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition-delay: calc(90ms + (var(--stagger, 0) * 48ms));
+  }
+
+  .player-choice input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .player-choice label {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    min-height: 92px;
+    padding: 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(70, 39, 26, 0.14);
+    background: rgba(255,255,255,0.72);
+    cursor: pointer;
+    transition: transform 0.22s var(--ease-out-quart), border-color 0.22s var(--ease-out-quart), box-shadow 0.22s var(--ease-out-quart), background 0.22s var(--ease-out-quart);
+  }
+
+  .player-choice label::after {
+    content: '';
+    position: absolute;
+    inset: -20% auto -20% -35%;
+    width: 42%;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.5), rgba(255,255,255,0));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .player-choice label:hover {
+    transform: translate3d(0, -3px, 0) scale(1.01);
+    border-color: rgba(188, 75, 52, 0.45);
+    box-shadow: 0 18px 30px rgba(64, 31, 19, 0.08);
+  }
+
+  .player-choice label:hover::after {
+    opacity: 1;
+    animation: welcomeGlowSweep 0.9s var(--ease-out-quart);
+  }
+
+  .player-choice input:checked + label {
+    border-color: rgba(188, 75, 52, 0.8);
+    background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(255, 235, 224, 0.98));
+    box-shadow: 0 20px 34px rgba(117, 49, 31, 0.14);
+    transform: translate3d(0, -2px, 0);
+  }
+
+  .player-choice input:focus-visible + label {
+    box-shadow: 0 0 0 4px rgba(188, 75, 52, 0.16), 0 18px 30px rgba(64, 31, 19, 0.08);
+  }
+
+  .player-choice-name {
+    display: block;
+    margin-bottom: 8px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: #2b1610;
+  }
+
+  .player-choice-meta {
+    display: block;
+    color: var(--welcome-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .welcome-empty {
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(188, 75, 52, 0.08);
+    color: #6c4337;
+    line-height: 1.7;
+  }
+
+  .welcome-empty a {
+    color: var(--welcome-accent-dark);
+    font-weight: 700;
+  }
+
+  .welcome-action-area {
+    display: grid;
+    gap: 16px;
+  }
+
+  .welcome-primary {
+    width: 100%;
+    min-height: 58px;
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(145deg, var(--welcome-accent), var(--welcome-accent-dark));
+    color: #fff7f2;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 18px 28px rgba(141, 49, 31, 0.22);
+    transition: transform 0.14s var(--ease-out-quart), box-shadow 0.22s var(--ease-out-quart), filter 0.22s var(--ease-out-quart);
+  }
+
+  .welcome-primary::after {
+    content: '';
+    position: absolute;
+    inset: -30% auto -30% -20%;
+    width: 34%;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.34), rgba(255,255,255,0));
+    transform: translate3d(-160%, 0, 0) rotate(10deg);
+    pointer-events: none;
+  }
+
+  .welcome-primary:hover:not(:disabled) {
+    transform: translate3d(0, -2px, 0);
+    filter: saturate(1.05);
+  }
+
+  .welcome-primary:hover:not(:disabled)::after {
+    animation: welcomeGlowSweep 0.95s var(--ease-out-quart);
+  }
+
+  .welcome-primary:active:not(:disabled) {
+    transform: translate3d(0, 1px, 0) scale(0.985);
+  }
+
+  .welcome-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    box-shadow: none;
+  }
+
+  .welcome-helper {
+    display: grid;
+    gap: 10px;
+  }
+
+  .welcome-helper-item {
+    padding: 13px 14px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.74);
+    border: 1px solid rgba(70, 39, 26, 0.1);
+    color: #5f4b3d;
+    line-height: 1.55;
+  }
+
+  .welcome-helper-item strong {
+    color: #2a1711;
+  }
+
+  .floating-donate-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 78px;
+    width: 64px;
+    height: 64px;
+    border: 0;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #3f1f13, #b35138);
+    color: #fff4ed;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 18px 30px rgba(61, 27, 15, 0.26);
+    transition: transform 0.2s var(--ease-out-quart), box-shadow 0.2s var(--ease-out-quart);
+    z-index: 9999;
+    animation: welcomeFloat 4.6s ease-in-out infinite;
+  }
+
+  .floating-donate-btn:hover {
+    transform: translate3d(0, -3px, 0) scale(1.04);
+    box-shadow: 0 22px 34px rgba(61, 27, 15, 0.32);
+  }
+
+  .donate-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(19, 12, 8, 0.62);
+    backdrop-filter: blur(6px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .donate-modal.show {
+    display: flex !important;
+  }
+
+  .donate-modal-content {
+    width: min(420px, 100%);
+    padding: 28px;
+    border-radius: 28px;
+    background: #fffaf1;
+    color: #2b1710;
+    box-shadow: 0 28px 60px rgba(0,0,0,0.28);
+    position: relative;
+    text-align: center;
+    transform: translate3d(0, 18px, 0) scale(0.96);
+    opacity: 0;
+    transition: transform 0.28s var(--ease-out-expo), opacity 0.28s var(--ease-out-expo);
+  }
+
+  .donate-modal.show .donate-modal-content {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+
+  .donate-modal-content h2 {
+    margin: 0 0 10px;
+    font-family: 'Chakra Petch', sans-serif;
+  }
+
+  .donate-modal-content p {
+    color: #715748;
+    line-height: 1.6;
+  }
+
+  .donate-qr-code {
+    max-width: 280px;
+    margin: 18px auto;
+    padding: 10px;
+    border-radius: 22px;
+    background: #fff;
+    border: 1px solid rgba(70, 39, 26, 0.12);
+  }
+
+  .donate-modal-content img {
+    width: 100%;
+    display: block;
+    border-radius: 16px;
+  }
+
+  .donate-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(37, 18, 12, 0.08);
+    color: #6b4b3d;
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+
+  @media (max-width: 900px) {
+    .welcome-hero-grid,
+    .welcome-panels {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .welcome-shell {
+      padding: 0 12px 20px;
+    }
+
+    .welcome-hero,
+    .welcome-card {
+      padding: 18px;
+      border-radius: 24px;
+    }
+
+    .welcome-title {
+      max-width: none;
+      font-size: 2.4rem;
+    }
+
+    .player-picker-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .floating-donate-btn {
+      right: 14px;
+      bottom: 72px;
+      width: 58px;
+      height: 58px;
+      font-size: 0.74rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    .welcome-shell,
+    .motion-enter,
+    .player-choice,
+    .donate-modal-content {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style>
+
+<div class="welcome-shell">
+  <section class="welcome-hero motion-enter" style="--enter-delay: 60;">
+    <div class="welcome-hero-grid">
+      <div class="motion-enter" style="--enter-delay: 140;">
+        <div class="welcome-kicker">INSIDER PARTY ROOM</div>
+        <h1 class="welcome-title">เลือกตัวตน แล้วเริ่มวงได้เลย</h1>
+        <p class="welcome-copy">เกมนี้ออกแบบมาสำหรับการเล่นกับเพื่อนตอนเจอหน้ากันจริง สุ่มคำไว เข้าห้องไว และใช้การคุยกันสดๆ เป็นหลัก เลือกชื่อของคุณด้านล่าง แล้วเริ่มห้องใหม่ได้ทันที</p>
+        <div class="welcome-chip-row">
+          <span class="welcome-chip">เล่นสดหน้าเดียวกัน</span>
+          <span class="welcome-chip">ใช้เวลาตั้งโต๊ะน้อย</span>
+          <span class="welcome-chip">สุ่มคำอัตโนมัติ</span>
+        </div>
+      </div>
+      <aside class="welcome-sidecard motion-enter" style="--enter-delay: 240;">
+        <div>
+          <h3>วงที่ลื่นควรเริ่มแบบนี้</h3>
+          <p>เลือกชื่อให้ตรงคนเล่นจริงก่อนสร้างห้อง เพื่อให้สลับกันเป็น GM หรือจอมบงการได้ง่ายและอ่านหน้าจอได้ทันที</p>
+        </div>
+        <div class="welcome-side-list">
+          <div class="welcome-side-item">1. แตะเลือกชื่อของคุณ</div>
+          <div class="welcome-side-item">2. กดเริ่มเกมเพื่อไปที่ lobby</div>
+          <div class="welcome-side-item">3. สร้างห้องแล้วชวนเพื่อนเข้าวง</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="welcome-panels">
+    <section class="welcome-card motion-enter" style="--enter-delay: 320;">
+      <div class="welcome-card-head">
+        <div>
+          <h2>คุณคือใคร?</h2>
+          <p>แตะเลือกตัวตนที่ใช้เล่นรอบนี้ ถ้ายังไม่มีชื่อที่ต้องการ ให้เพิ่มก่อนแล้วค่อยกลับมาเริ่มวง</p>
+        </div>
+        <a href="/adminPlayer" class="welcome-admin-link">จัดการรายชื่อผู้เล่น</a>
+      </div>
+      <form id="playerChoiceForm" method="post" name="playerForm" action="game" class="player-picker-grid">
+        <% if (players.length === 0) { %>
+          <div class="welcome-empty">
+            ยังไม่มีผู้เล่นให้เลือก กรุณาสร้างชื่อใหม่ในหน้า <a href="/adminPlayer">Admin Player</a>
+          </div>
+        <% } else { %>
+          <% players.forEach(function(player, index) { %>
+            <div class="player-choice" style="--stagger: <%= index %>;">
+              <input <% if(index == 0) { %>checked<% } %> type="radio" id="player-choice-<%= index %>" name="player" value="<%= player.name %>" />
+              <label for="player-choice-<%= index %>">
+                <span class="player-choice-name"><%= player.name %></span>
+                <span class="player-choice-meta">พร้อมใช้สำหรับเข้าห้องและเริ่มเกมกับเพื่อนทันที</span>
+              </label>
             </div>
-        <% }); %>
-    <% } %>
-</form>
+          <% }); %>
+        <% } %>
+      </form>
+    </section>
 
-<%- contentFor('footer') %> 
-<div class="container">
-  <button class="btn btn-dark cta" id="newGame" <% if (players.length === 0) { %>disabled<% } %>>เริ่มเกม</button>
+    <aside class="welcome-card welcome-action-area motion-enter" style="--enter-delay: 420;">
+      <div class="welcome-card-head" style="margin-bottom: 0;">
+        <div>
+          <h3>พร้อมเริ่มรอบใหม่</h3>
+          <p>เมื่อเลือกชื่อแล้ว ระบบจะพาไปหน้า lobby เพื่อสร้างห้องหรือเข้าห้องต่อได้เลย</p>
+        </div>
+      </div>
+      <button id="newGame" class="welcome-primary" <% if (players.length === 0) { %>disabled<% } %>>เริ่มเกม</button>
+      <div class="welcome-helper">
+        <div class="welcome-helper-item"><strong>เน้นคุยมากกว่าพิมพ์</strong> เกมนี้เหมาะกับการเล่นตอนอยู่ด้วยกันมากที่สุด</div>
+        <div class="welcome-helper-item"><strong>อยากเปลี่ยนชื่อหรือภาพลักษณ์?</strong> เข้าโปรไฟล์จาก lobby เพื่อแก้ชื่อ avatar และกรอบทีหลังได้</div>
+      </div>
+    </aside>
+  </div>
 </div>
 
-<!-- Floating Donate Button -->
-<button class="floating-donate-btn" id="donateBtn" title="Buy me a coffee!">
-    <div>☕<br/>Donate</div>
+<%- contentFor('footer') %>
+
+<button class="floating-donate-btn" id="donateBtn" title="Support the game">
+  ☕
 </button>
 
-<!-- Donate Modal -->
 <div id="donateModal" class="donate-modal">
-    <div class="donate-modal-content">
-        <button class="donate-close-btn" id="closeDonate">&times;</button>
-        <h2>☕ Buy Me a Coffee</h2>
-        <p>ช่วยสนับสนุนพัฒนาเกมให้ดีขึ้น</p>
-        <div class="donate-qr-code">
-            <img src="/static/image/qr.png" alt="Donate QR Code">
-        </div>
-        <p class="donate-footer-text">สแกน QR code เพื่อทำการโดเนท</p>
+  <div class="donate-modal-content">
+    <button class="donate-close-btn" id="closeDonate" type="button">&times;</button>
+    <h2>ช่วยซัพพอร์ตเกมนี้ต่อได้</h2>
+    <p>ถ้าคุณชอบที่เกมเปิดวงได้เร็วและอยากให้มีการอัปเดตต่อ การโดเนทจะช่วยให้พัฒนาต่อได้ง่ายขึ้นครับ</p>
+    <div class="donate-qr-code">
+      <img src="/static/image/qr.png" alt="Donate QR Code">
     </div>
+    <p class="donate-footer-text">สแกน QR code เพื่อสนับสนุนการพัฒนา</p>
+  </div>
 </div>
 
 <%- contentFor('script') %>
-<style>
-/* Floating Donate Button */
-.floating-donate-btn {
-    position: fixed;
-    bottom: 80px;
-    right: 30px;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-    border: 3px solid #fff;
-    color: white;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    z-index: 9999;
-    transition: all 0.3s ease;
-    animation: float 3s ease-in-out infinite;
-}
-
-.floating-donate-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
-    animation: none;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
-
-/* Donate Modal */
-.donate-modal {
-    display: none;
-    position: fixed;
-    z-index: 10000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.7);
-    align-items: center;
-    justify-content: center;
-}
-
-.donate-modal.show {
-    display: flex !important;
-}
-
-.donate-modal-content {
-    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-    padding: 40px;
-    border-radius: 16px;
-    border: 2px solid #444;
-    text-align: center;
-    max-width: 400px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-    position: relative;
-}
-
-.donate-modal-content h2 {
-    color: #fff;
-    font-size: 1.8em;
-    margin-bottom: 20px;
-}
-
-.donate-modal-content p {
-    color: #ccc;
-    margin-bottom: 20px;
-    font-size: 1.1em;
-}
-
-.donate-qr-code {
-    width: 100%;
-    max-width: 300px;
-    margin: 20px auto;
-    border: 3px solid #444;
-    border-radius: 8px;
-    background: white;
-    padding: 10px;
-}
-
-.donate-modal-content img {
-    max-width: 100%;
-}
-
-.donate-close-btn {
-    position: absolute;
-    right: 20px;
-    top: 15px;
-    font-size: 28px;
-    font-weight: bold;
-    color: #888;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0;
-    line-height: 1;
-}
-
-.donate-close-btn:hover {
-    color: #fff;
-}
-
-.donate-footer-text {
-    color: #888;
-    font-size: 0.9em;
-    margin-top: 15px;
-}
-
-@media (max-width: 768px) {
-    .floating-donate-btn {
-        width: 60px;
-        height: 60px;
-        bottom: 75px;
-        right: 20px;
-        font-size: 12px;
-    }
-    
-    .donate-modal-content {
-        margin: 20px;
-        padding: 30px;
-    }
-}
-</style>
-
 <script>
 $(function() {
-    // หากมี socket อยู่แล้ว ให้ใช้ตัวนั้น ถ้ายังไม่มี ให้สร้างใหม่
     var socketForWelcome;
     try {
         socketForWelcome = io();
@@ -190,19 +701,21 @@ $(function() {
         $form.empty();
 
         if (!list || list.length === 0) {
-            $form.append('<p>ไม่มีผู้เล่นให้เลือก กรุณาสร้างผู้เล่นใหม่ในหน้า <a href="/adminPlayer">Admin Player</a></p>');
+            $form.append('<div class="welcome-empty">ยังไม่มีผู้เล่นให้เลือก กรุณาสร้างชื่อใหม่ในหน้า <a href="/adminPlayer">Admin Player</a></div>');
             $('#newGame').attr('disabled', true);
             return;
         }
 
-        // สร้าง radio inputs
         list.forEach(function(player, index) {
             var checked = index === 0 ? 'checked' : '';
-            var html = '<div class="form__group">'
-                     + '<div class="form__radio-group">'
-                     + '<input ' + checked + ' type="radio" class="form__radio-input" id="' + escapeHtml(player.name) + '" name="player" value="' + escapeHtml(player.name) + '" />'
-                     + '<label for="' + escapeHtml(player.name) + '" class="form__radio-label">' + escapeHtml(player.name) + '</label>'
-                     + '</div></div>';
+            var id = 'player-choice-' + index;
+            var html = '<div class="player-choice" style="--stagger: ' + index + ';">'
+                     + '<input ' + checked + ' type="radio" id="' + id + '" name="player" value="' + escapeHtml(player.name) + '" />'
+                     + '<label for="' + id + '">'
+                     + '<span class="player-choice-name">' + escapeHtml(player.name) + '</span>'
+                     + '<span class="player-choice-meta">พร้อมใช้สำหรับเข้าห้องและเริ่มเกมกับเพื่อนทันที</span>'
+                     + '</label>'
+                     + '</div>';
             $form.append(html);
         });
 
@@ -217,25 +730,19 @@ $(function() {
         });
     }
 
-    // ถ้าสร้าง socket สำเร็จ ให้ฟัง event
     if (socketForWelcome) {
         socketForWelcome.on('availablePlayersUpdate', function(availablePlayers) {
-            // availablePlayers: [{ name: 'ผู้เล่น 1', permission: ... }, ...]
             renderAvailablePlayers(availablePlayers);
         });
 
-        // ขอรายการเริ่มต้น (ถ้าระบบเซิฟเวอร์ส่งให้เฉพาะเมื่อมีการเปลี่ยนแปลง)
-        socketForWelcome.emit('requestAvailablePlayers'); // *ถ้าเซิฟเวอร์ไม่ได้รองรับ event นี้ มันจะไม่มีผล ไม่เป็นไร*
+        socketForWelcome.emit('requestAvailablePlayers');
     }
 
-    // keep existing start-button behavior
-    $("#newGame").off('click').on('click', function(){
-        // ถ้าไม่มี input ให้เลือกจะไม่ submit
+    $('#newGame').off('click').on('click', function() {
         if ($('#playerChoiceForm input[name="player"]').length === 0) return;
-        $('.content form').submit();
+        $('#playerChoiceForm').trigger('submit');
     });
 
-    // Donate Button Handler
     $('#donateBtn').on('click', function() {
         $('#donateModal').addClass('show');
     });
@@ -249,5 +756,15 @@ $(function() {
             $(this).removeClass('show');
         }
     });
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        window.requestAnimationFrame(function() {
+            window.requestAnimationFrame(function() {
+                $('.welcome-shell').addClass('is-ready');
+            });
+        });
+    } else {
+        $('.welcome-shell').addClass('is-ready');
+    }
 });
 </script>

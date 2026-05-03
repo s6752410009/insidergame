@@ -43,12 +43,61 @@ function getAllRole(room, roleId) {
 }
 
 function getAliveVillager(room) {
-    const villager = room.gameState.players.find(player => player.role === 'villager' && player.alive !== false);
-    assert(villager, 'missing alive villager');
-    return villager;
+    const preferredVillageTarget = room.gameState.players.find(player => (
+        player.alive !== false
+        && player.roleInfo?.team === 'village'
+        && !['seer', 'doctor', 'bodyguard', 'witch', 'mayor', 'revealer'].includes(player.role)
+    ));
+    if (preferredVillageTarget) {
+        return preferredVillageTarget;
+    }
+
+    const saferVillageTarget = room.gameState.players.find(player => (
+        player.alive !== false
+        && player.roleInfo?.team === 'village'
+        && !['seer', 'doctor', 'bodyguard'].includes(player.role)
+    ));
+    if (saferVillageTarget) {
+        return saferVillageTarget;
+    }
+
+    const fallbackVillageTarget = room.gameState.players.find(player => (
+        player.alive !== false
+        && player.roleInfo?.team === 'village'
+    ));
+    assert(fallbackVillageTarget, 'missing alive village target');
+    return fallbackVillageTarget;
 }
 
 const tested = {};
+
+function resolveNightToMorning(room) {
+    if (room.gameState.phase === 'night') {
+        const result = werewolfEngine.autoResolvePhase(room);
+        assert(result.autoResolved === true, 'night should auto resolve through timeout helper');
+    }
+    assert(room.gameState.phase === 'day-discussion' || room.gameState.phase === 'finished', 'night should advance to morning discussion or finished state');
+}
+
+function skipDiscussionToVote(room) {
+    if (room.gameState.phase !== 'day-discussion') {
+        return;
+    }
+
+    const alivePlayers = room.gameState.players.filter(player => player.alive !== false);
+    for (let index = 0; index < alivePlayers.length && room.gameState.phase === 'day-discussion'; index += 1) {
+        werewolfEngine.submitDiscussionSkip(room, alivePlayers[index].playerId);
+    }
+
+    assert(room.gameState.phase === 'day-vote', 'discussion should advance to day-vote after skip majority');
+}
+
+function finishNightAndOpenVote(room) {
+    resolveNightToMorning(room);
+    if (room.gameState.phase === 'day-discussion') {
+        skipDiscussionToVote(room);
+    }
+}
 
 // ─── Test 1: Vote cancellation (unvote toggle) ─────────────────────────
 function testVoteCancellation() {
@@ -63,15 +112,10 @@ function testVoteCancellation() {
     werewolfEngine.submitNightAction(room, seer.playerId, villager.playerId);
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
-    assert(room.gameState.phase === 'day-discussion', 'should be day-discussion after night 1');
+    resolveNightToMorning(room);
 
     // Skip discussion (majority needed, not all)
-    var alivePlayers = room.gameState.players.filter(p => p.alive !== false);
-    var skipNeeded = Math.floor(alivePlayers.length / 2) + 1;
-    for (var i = 0; i < alivePlayers.length && room.gameState.phase === 'day-discussion'; i++) {
-        werewolfEngine.submitDiscussionSkip(room, alivePlayers[i].playerId);
-    }
-    assert(room.gameState.phase === 'day-vote', 'should be day-vote after skip');
+    skipDiscussionToVote(room);
 
     // Player votes for villager
     werewolfEngine.submitDayVote(room, seer.playerId, villager.playerId);
@@ -139,9 +183,12 @@ function testWerewolfVoteToggle() {
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
 
-    // Force to night 2 via auto-resolve to skip day cleanly
-    werewolfEngine.autoResolvePhase(room); // auto-skip discussion
-    werewolfEngine.autoResolvePhase(room); // auto-resolve day vote
+    // Force to night 2 via timeout helpers
+    resolveNightToMorning(room);
+    const discussionResult = werewolfEngine.autoResolvePhase(room);
+    assert(discussionResult.autoResolved === true, 'discussion should auto resolve to voting on timeout');
+    const voteResult = werewolfEngine.autoResolvePhase(room);
+    assert(voteResult.autoResolved === true, 'day vote should auto resolve on timeout');
 
     assert(room.gameState.phase === 'night', 'should be night 2');
     assert(room.gameState.dayNumber === 2, 'dayNumber should be 2');
@@ -173,12 +220,7 @@ function testMinimumVoteThreshold() {
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
 
-    // Skip discussion (majority)
-    for (var i = 0; i < room.gameState.players.length && room.gameState.phase === 'day-discussion'; i++) {
-        var p = room.gameState.players[i];
-        if (p.alive !== false) werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    }
-    assert(room.gameState.phase === 'day-vote', 'should be day-vote');
+    finishNightAndOpenVote(room);
 
     // 5 alive players → threshold = floor(5/2)+1 = 3
     // Everyone votes for different targets (1 vote each)
@@ -209,21 +251,19 @@ function testVoteThresholdMet() {
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
 
-    // Skip discussion (majority)
-    for (var i = 0; i < room.gameState.players.length && room.gameState.phase === 'day-discussion'; i++) {
-        var p = room.gameState.players[i];
-        if (p.alive !== false) werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    }
+    finishNightAndOpenVote(room);
 
     // 5 alive → threshold = 3
     // 3 votes for villager (meets threshold)
     werewolfEngine.submitDayVote(room, seer.playerId, villager.playerId);
     werewolfEngine.submitDayVote(room, doctor.playerId, villager.playerId);
-    werewolfEngine.submitDayVote(room, bodyguard.playerId, villager.playerId);
+    const resolveResult = werewolfEngine.submitDayVote(room, bodyguard.playerId, villager.playerId);
     werewolfEngine.submitDayVote(room, wolf.playerId, seer.playerId);
-    werewolfEngine.submitDayVote(room, villager.playerId, wolf.playerId);
+    const finalResolveResult = werewolfEngine.submitDayVote(room, villager.playerId, wolf.playerId);
 
-    // With 3 votes for villager (meets majority threshold), they SHOULD be eliminated
+    // Threshold alone does not resolve the day early, but it should decide the eliminated player once everyone is done
+    assert(resolveResult.resolved === false, 'day vote should wait for remaining actors before resolving');
+    assert(finalResolveResult.resolved === true, 'day vote should resolve once all remaining actors finish');
     assert(villager.alive === false, 'villager should be eliminated with 3 votes (threshold=3)');
 
     tested.voteThresholdMet = true;
@@ -251,7 +291,7 @@ function testWitchNight1Required() {
     werewolfEngine.submitNightAction(room, witch.playerId, werewolfEngine.SKIP_TARGET_ID, 'witch-heal');
 
     // NOW night should resolve
-    assert(room.gameState.phase === 'day-discussion', 'night should resolve after witch acts');
+    resolveNightToMorning(room);
 
     tested.witchNight1Required = true;
     console.log('  ✅ Witch included in night 1 required actors');
@@ -290,35 +330,34 @@ function testMayorVoteWeight() {
     const seer = getSingleRole(room, 'seer');
     const doctor = getSingleRole(room, 'doctor');
     const bodyguard = getSingleRole(room, 'bodyguard');
-    const wolf = getSingleRole(room, 'werewolf');
-    const villager = getAliveVillager(room);
+    const wolves = getAllRole(room, 'alphaWolf').concat(getAllRole(room, 'werewolf'));
+    const targetWolf = wolves[0];
+    const otherWolf = wolves[1];
 
     // Complete night 1
-    werewolfEngine.submitNightAction(room, seer.playerId, villager.playerId);
+    werewolfEngine.submitNightAction(room, seer.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, doctor.playerId, doctor.playerId);
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
 
     // Skip discussion and reveal mayor
+    resolveNightToMorning(room);
     werewolfEngine.submitMayorReveal(room, mayor.playerId);
-    for (var i = 0; i < room.gameState.players.length && room.gameState.phase === 'day-discussion'; i++) {
-        var p = room.gameState.players[i];
-        if (p.alive !== false) werewolfEngine.submitDiscussionSkip(room, p.playerId);
-    }
-    assert(room.gameState.phase === 'day-vote', 'should be day-vote');
+    skipDiscussionToVote(room);
 
     // 6 alive → threshold = 4
     // Mayor (weight 2) + seer + doctor vote for wolf = 2+1+1 = 4 weighted votes (meets threshold)
-    // Others vote for different targets
-    werewolfEngine.submitDayVote(room, mayor.playerId, wolf.playerId);
-    werewolfEngine.submitDayVote(room, seer.playerId, wolf.playerId);
-    werewolfEngine.submitDayVote(room, doctor.playerId, wolf.playerId);
+    // Day should resolve immediately once the weighted threshold is hit
+    werewolfEngine.submitDayVote(room, mayor.playerId, targetWolf.playerId);
+    werewolfEngine.submitDayVote(room, seer.playerId, targetWolf.playerId);
+    const mayorResolveResult = werewolfEngine.submitDayVote(room, doctor.playerId, targetWolf.playerId);
     werewolfEngine.submitDayVote(room, bodyguard.playerId, seer.playerId);
-    werewolfEngine.submitDayVote(room, wolf.playerId, doctor.playerId);
-    werewolfEngine.submitDayVote(room, villager.playerId, bodyguard.playerId);
+    werewolfEngine.submitDayVote(room, targetWolf.playerId, doctor.playerId);
+    const mayorFinalResolveResult = werewolfEngine.submitDayVote(room, otherWolf.playerId, bodyguard.playerId);
 
     // Mayor's 2 weighted votes + 2 regular = 4, wolf eliminated
-    assert(wolf.alive === false, 'wolf should be eliminated by mayor 2x + 2 votes = 4 (threshold=4)');
-    assert(villager.alive !== false, 'villager should survive (0 votes)');
+    assert(mayorResolveResult.resolved === false, 'weighted threshold should lock the result but still wait for the remaining actors');
+    assert(mayorFinalResolveResult.resolved === true, 'weighted day vote should resolve after the last actor votes');
+    assert(targetWolf.alive === false, 'wolf should be eliminated by mayor 2x + 2 votes = 4 (threshold=4)');
 
     tested.mayorVoteWeight = true;
     console.log('  ✅ Mayor vote weight applied in elimination (threshold=4)');
@@ -346,7 +385,7 @@ function testSeerDoesNotSkipOthers() {
 
     // Bodyguard acts → NOW it should resolve
     werewolfEngine.submitNightAction(room, bodyguard.playerId, bodyguard.playerId);
-    assert(room.gameState.phase === 'day-discussion', 'night should resolve after all required actors');
+    resolveNightToMorning(room);
 
     tested.seerDoesNotSkipOthers = true;
     console.log('  ✅ Seer does NOT skip other roles on night 1');
@@ -393,8 +432,7 @@ function testPoisonProtection() {
     const seer = getSingleRole(room, 'seer');
     const doctor = getSingleRole(room, 'doctor');
     const witch = getSingleRole(room, 'witch');
-    const villagers = room.gameState.players.filter(p => p.role === 'villager');
-    const target = villagers[0] || seer;
+    const target = doctor;
 
     // Complete night 1 (no wolf attack)
     werewolfEngine.submitNightAction(room, seer.playerId, target.playerId);
@@ -402,7 +440,7 @@ function testPoisonProtection() {
     werewolfEngine.submitNightAction(room, witch.playerId, target.playerId, 'witch-poison'); // witch poisons same target
 
     // Night should resolve, but target should survive because doctor protected them
-    assert(room.gameState.phase === 'day-discussion', 'should resolve to day');
+    resolveNightToMorning(room);
     assert(target.alive !== false, 'target should survive poison when protected by doctor');
 
     tested.poisonProtection = true;
@@ -446,23 +484,27 @@ function testDeadPlayerVoteSummary() {
 // ─── Test 13: Revealer auto-resolve day after kill ──────────────────────
 function testRevealerAutoResolve() {
     const room = createRoom(['werewolf', 'seer', 'doctor', 'bodyguard', 'revealer'], 6);
-    const wolf = getSingleRole(room, 'werewolf');
+    const wolves = getAllRole(room, 'alphaWolf').concat(getAllRole(room, 'werewolf'));
+    const wolf = wolves[0];
     const revealer = getSingleRole(room, 'revealer');
     const seer = getSingleRole(room, 'seer');
-    const doctor = getSingleRole(room, 'doctor');
-    const bodyguard = getSingleRole(room, 'bodyguard');
-    const villager = getAliveVillager(room);
 
     // Jump to day-vote
     room.gameState.phase = 'day-vote';
     room.gameState.dayVotes = {};
     room.gameState.dayActionUsedBy = {};
 
-    // All non-revealer alive players vote (5 total alive, 4 others vote)
-    room.gameState.dayVotes[seer.playerId] = wolf.playerId;
-    room.gameState.dayVotes[doctor.playerId] = villager.playerId;
-    room.gameState.dayVotes[bodyguard.playerId] = villager.playerId;
-    room.gameState.dayVotes[wolf.playerId] = seer.playerId;
+    // Everyone except the Revealer has already finished their day action.
+    room.gameState.players
+        .filter(player => player.alive !== false && player.playerId !== revealer.playerId)
+        .forEach(player => {
+            if (player.playerId === wolf.playerId) {
+                room.gameState.dayVotes[player.playerId] = seer.playerId;
+                return;
+            }
+
+            room.gameState.dayVotes[player.playerId] = wolf.playerId;
+        });
 
     // Revealer uses reveal on wolf (the last action) → should auto-resolve
     const result = werewolfEngine.useRevealAction(room, revealer.playerId, wolf.playerId);

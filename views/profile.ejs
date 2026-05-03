@@ -1,5 +1,5 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
     .profile-container {
         max-width: 1200px;
@@ -606,74 +606,596 @@
         color: #888;
         font-size: 0.9em;
     }
+
+    :root {
+        --identity-bg: #f4efe6;
+        --identity-surface: rgba(255, 250, 242, 0.94);
+        --identity-card: rgba(255,255,255,0.78);
+        --identity-ink: #261912;
+        --identity-muted: #6f584c;
+        --identity-line: rgba(73, 41, 28, 0.12);
+        --identity-accent: #b44f35;
+        --identity-accent-deep: #7c301e;
+        --identity-highlight: #d7a53d;
+        --identity-shadow: 0 28px 64px rgba(61, 29, 18, 0.14);
+        --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes profileRise {
+        from {
+            opacity: 0;
+            transform: translate3d(0, 28px, 0) scale(0.985);
+        }
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+        }
+    }
+
+    @keyframes profileFloat {
+        0%, 100% {
+            transform: translate3d(0, 0, 0);
+        }
+        50% {
+            transform: translate3d(0, -8px, 0);
+        }
+    }
+
+    @keyframes profileAuraPulse {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(215, 165, 61, 0.12);
+        }
+        50% {
+            box-shadow: 0 0 0 12px rgba(215, 165, 61, 0);
+        }
+    }
+
+    @keyframes profileGlowSweep {
+        0% {
+            transform: translate3d(-140%, 0, 0) rotate(8deg);
+        }
+        100% {
+            transform: translate3d(140%, 0, 0) rotate(8deg);
+        }
+    }
+
+    .profile-container {
+        max-width: 1180px;
+        margin: 24px auto 40px;
+        padding: 0 18px 24px;
+        color: var(--identity-ink);
+        font-family: 'Bai Jamjuree', 'Rajdhani', sans-serif;
+        opacity: 0;
+        transform: translate3d(0, 18px, 0);
+        transition: opacity 0.48s var(--ease-out-expo), transform 0.48s var(--ease-out-expo);
+    }
+
+    .profile-container.is-ready {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+
+    .motion-enter {
+        opacity: 0;
+        transform: translate3d(0, 28px, 0);
+    }
+
+    .profile-container.is-ready .motion-enter {
+        animation: profileRise 0.72s var(--ease-out-expo) forwards;
+        animation-delay: calc(var(--enter-delay, 0) * 1ms);
+    }
+
+    .reveal-item {
+        opacity: 0;
+        transform: translate3d(0, 22px, 0);
+        transition: opacity 0.48s var(--ease-out-expo), transform 0.48s var(--ease-out-expo);
+        transition-delay: calc(var(--reveal-delay, 0) * 1ms);
+    }
+
+    .reveal-item.is-visible {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+
+    .profile-container h1 {
+        margin: 0 0 20px 0;
+        color: var(--identity-ink);
+        font-family: 'Chakra Petch', 'Orbitron', sans-serif;
+        text-align: left;
+        text-shadow: none;
+        letter-spacing: -0.03em;
+        font-size: clamp(2.4rem, 4vw, 4rem);
+    }
+
+    .profile-shell {
+        display: grid;
+        gap: 18px;
+    }
+
+    .identity-hero {
+        display: grid;
+        grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.08fr);
+        gap: 18px;
+    }
+
+    .profile-section {
+        background:
+            radial-gradient(circle at top right, rgba(215, 165, 61, 0.16), transparent 28%),
+            linear-gradient(145deg, rgba(255, 248, 239, 0.96), rgba(245, 237, 226, 0.93));
+        border: 1px solid var(--identity-line);
+        border-radius: 28px;
+        padding: 26px;
+        box-shadow: var(--identity-shadow);
+        color: var(--identity-ink);
+    }
+
+    .profile-section h2,
+    .stats-section-title,
+    .game-history-section h2 {
+        color: var(--identity-ink);
+        font-family: 'Chakra Petch', 'Orbitron', sans-serif;
+        text-shadow: none;
+        border-bottom: 1px solid var(--identity-line);
+        padding-bottom: 12px;
+        margin-bottom: 18px;
+    }
+
+    .identity-summary {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .identity-summary::after {
+        content: '';
+        position: absolute;
+        inset: 14px;
+        border: 1px dashed rgba(73, 41, 28, 0.14);
+        border-radius: 22px;
+        pointer-events: none;
+    }
+
+    .identity-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(180, 79, 53, 0.1);
+        color: var(--identity-accent-deep);
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .identity-summary-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 18px;
+        margin-top: 18px;
+    }
+
+    .identity-preview-card {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr);
+        gap: 18px;
+        align-items: center;
+        padding: 18px;
+        border-radius: 24px;
+        background: rgba(47, 25, 16, 0.92);
+        color: #fff5ef;
+        animation: profileFloat 6.2s ease-in-out infinite;
+    }
+
+    .avatar-preview-box {
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 0;
+        padding: 0;
+        background: transparent;
+        border: 0;
+    }
+
+    .avatar-preview {
+        width: 104px;
+        height: 104px;
+        filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.18));
+    }
+
+    .avatar-preview-inner {
+        border-width: 5px;
+        background: rgba(255,255,255,0.08);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+        transition: transform 0.22s var(--ease-out-quart), border-color 0.22s var(--ease-out-quart), box-shadow 0.22s var(--ease-out-quart);
+    }
+
+    .avatar-preview-frame {
+        top: -7px;
+        left: -7px;
+        right: -7px;
+        bottom: -7px;
+        animation: profileAuraPulse 2.8s ease-out infinite;
+    }
+
+    .identity-name {
+        margin: 0 0 8px;
+        font-family: 'Chakra Petch', 'Orbitron', sans-serif;
+        font-size: 1.9rem;
+        line-height: 1;
+    }
+
+    .identity-note {
+        margin: 0;
+        color: rgba(255,245,239,0.76);
+        line-height: 1.6;
+    }
+
+    .identity-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .identity-chip {
+        padding: 10px 12px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.72);
+        border: 1px solid rgba(73, 41, 28, 0.1);
+        color: var(--identity-muted);
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: transform 0.24s var(--ease-out-quart), box-shadow 0.24s var(--ease-out-quart), background 0.24s var(--ease-out-quart);
+    }
+
+    .identity-chip strong {
+        color: var(--identity-ink);
+    }
+
+    .identity-chip:hover {
+        transform: translate3d(0, -2px, 0);
+        background: rgba(255,255,255,0.92);
+        box-shadow: 0 14px 24px rgba(61, 29, 18, 0.08);
+    }
+
+    .identity-editor {
+        display: grid;
+        gap: 18px;
+        align-content: start;
+    }
+
+    .identity-copy {
+        margin: -4px 0 6px;
+        color: var(--identity-muted);
+        line-height: 1.7;
+        max-width: 56ch;
+    }
+
+    .identity-form-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    #playerNameInput {
+        flex: 1;
+        min-width: 220px;
+        padding: 14px 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(73, 41, 28, 0.14);
+        background: rgba(255,255,255,0.74);
+        color: var(--identity-ink);
+    }
+
+    #playerNameInput:focus {
+        border-color: rgba(180, 79, 53, 0.7);
+        box-shadow: 0 0 0 4px rgba(180, 79, 53, 0.12);
+    }
+
+    .btn-profile {
+        min-height: 54px;
+        padding: 0 24px;
+        position: relative;
+        overflow: hidden;
+        border: 0;
+        border-radius: 16px;
+        background: linear-gradient(145deg, var(--identity-accent), var(--identity-accent-deep));
+        box-shadow: 0 18px 28px rgba(136, 52, 28, 0.18);
+        font-family: 'Chakra Petch', 'Rajdhani', sans-serif;
+        text-transform: none;
+        transition: transform 0.14s var(--ease-out-quart), box-shadow 0.22s var(--ease-out-quart), filter 0.22s var(--ease-out-quart);
+    }
+
+    .btn-profile::after {
+        content: '';
+        position: absolute;
+        inset: -30% auto -30% -18%;
+        width: 34%;
+        background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.34), rgba(255,255,255,0));
+        transform: translate3d(-160%, 0, 0) rotate(10deg);
+        pointer-events: none;
+    }
+
+    .btn-profile:hover {
+        transform: translate3d(0, -2px, 0);
+        filter: saturate(1.04);
+        box-shadow: 0 24px 34px rgba(136, 52, 28, 0.24);
+    }
+
+    .btn-profile:hover::after {
+        animation: profileGlowSweep 0.9s var(--ease-out-quart);
+    }
+
+    .btn-profile:active {
+        transform: translate3d(0, 1px, 0) scale(0.985);
+    }
+
+    .identity-color-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .color-btn {
+        width: 52px;
+        height: 52px;
+        border: 4px solid rgba(255,255,255,0.68);
+        box-shadow: 0 10px 20px rgba(43, 23, 16, 0.1);
+        transition: transform 0.18s var(--ease-out-quart), box-shadow 0.18s var(--ease-out-quart), border-color 0.18s var(--ease-out-quart);
+    }
+
+    .color-btn:hover {
+        transform: translate3d(0, -3px, 0) scale(1.06);
+        box-shadow: 0 16px 26px rgba(43, 23, 16, 0.16);
+    }
+
+    .color-btn.active {
+        border-color: var(--identity-ink);
+        box-shadow: 0 0 0 4px rgba(180, 79, 53, 0.12);
+    }
+
+    .identity-current-name {
+        margin: 12px 0 0;
+        color: var(--identity-muted);
+    }
+
+    .player-id {
+        margin-top: 0;
+        padding: 18px;
+        background: rgba(255,255,255,0.72);
+        border: 1px solid rgba(73, 41, 28, 0.1);
+        border-radius: 20px;
+    }
+
+    .player-id p,
+    .last-played p {
+        color: var(--identity-muted);
+    }
+
+    .player-id code {
+        background: rgba(47, 25, 16, 0.07);
+        color: var(--identity-accent-deep);
+        border: 1px solid rgba(73, 41, 28, 0.08);
+    }
+
+    .avatar-studio-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 20px;
+    }
+
+    .avatar-selection,
+    .frame-selection {
+        gap: 12px;
+    }
+
+    .avatar-btn,
+    .frame-btn {
+        background: rgba(255,255,255,0.84);
+        border-color: rgba(73, 41, 28, 0.12);
+        box-shadow: 0 12px 22px rgba(61, 29, 18, 0.08);
+        transition: transform 0.2s var(--ease-out-quart), box-shadow 0.2s var(--ease-out-quart), border-color 0.2s var(--ease-out-quart), background 0.2s var(--ease-out-quart);
+    }
+
+    .avatar-btn:hover,
+    .frame-btn:hover {
+        transform: translate3d(0, -3px, 0) scale(1.04);
+        box-shadow: 0 18px 30px rgba(61, 29, 18, 0.14);
+    }
+
+    .avatar-btn.active,
+    .frame-btn.active {
+        border-color: var(--identity-accent-deep);
+        box-shadow: 0 0 0 4px rgba(180, 79, 53, 0.12);
+        background: #fffdf8;
+        transform: translate3d(0, -2px, 0);
+    }
+
+    .frame-btn .frame-name {
+        color: var(--identity-muted);
+        font-size: 0.72rem;
+    }
+
+    .stats-section {
+        display: grid;
+        gap: 18px;
+    }
+
+    .stats-grid .stat-card,
+    .role-stat-card,
+    .game-history-item,
+    .game-history-section,
+    .last-played {
+        background: rgba(255,255,255,0.78);
+        border: 1px solid rgba(73, 41, 28, 0.12) !important;
+        box-shadow: 0 18px 36px rgba(61, 29, 18, 0.08);
+        color: var(--identity-ink);
+    }
+
+    .stat-card::before {
+        background: linear-gradient(90deg, var(--identity-accent), var(--identity-highlight));
+    }
+
+    .stat-card:hover,
+    .role-stat-card:hover,
+    .game-history-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 22px 40px rgba(61, 29, 18, 0.12);
+    }
+
+    .role-stat-card {
+        border-left-width: 1px !important;
+    }
+
+    .stat-label,
+    .role-stat-label,
+    .game-history-date,
+    .game-history-empty,
+    .empty-stats,
+    .empty-stats p,
+    .game-history-details {
+        color: var(--identity-muted);
+    }
+
+    .game-history-section {
+        margin-top: 0;
+    }
+
+    @media (max-width: 900px) {
+        .identity-hero,
+        .avatar-studio-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .identity-preview-card {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: center;
+        }
+
+        .profile-container h1 {
+            text-align: center;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .profile-container {
+            padding: 0 12px 20px;
+        }
+
+        .profile-section {
+            padding: 18px;
+            border-radius: 22px;
+        }
+
+        .identity-form-row {
+            flex-direction: column;
+        }
+
+        #playerNameInput,
+        .btn-profile {
+            width: 100%;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+
+        .profile-container,
+        .motion-enter,
+        .reveal-item {
+            opacity: 1 !important;
+            transform: none !important;
+        }
+    }
 </style>
 
 <div class="profile-container">
-    <h1>👤 โปรไฟล์</h1>
-    
-    <div class="profile-section">
-        <h2>📋 ข้อมูลผู้เล่น</h2>
-        
-        <div class="form-group">
-            <label>✏️ ชื่อผู้เล่น:</label>
-            <div style="display: flex; gap: 12px;">
-                <input type="text" id="playerNameInput" value="<%= player.playerName %>">
-                <button id="updateNameBtn" class="btn-profile">💾 บันทึก</button>
+    <div class="profile-shell">
+    <h1 class="motion-enter" style="--enter-delay: 40;">Identity Studio</h1>
+
+    <div class="identity-hero">
+        <div class="profile-section identity-summary motion-enter" style="--enter-delay: 120;">
+            <span class="identity-kicker">Player Identity</span>
+            <div class="identity-summary-grid">
+                <div class="identity-preview-card">
+                    <div class="avatar-preview-box">
+                        <div class="avatar-preview">
+                            <div class="avatar-preview-inner" id="avatarPreviewInner" style="border-color: <%= player.color %>;">
+                                <%= player.avatar || '👤' %>
+                            </div>
+                            <div class="avatar-preview-frame" id="avatarPreviewFrame"></div>
+                        </div>
+                    </div>
+                    <div class="avatar-preview-info">
+                        <h3 class="identity-name" style="color: <%= player.color %>;"><%= player.playerName %></h3>
+                        <p class="identity-note">ภาพลักษณ์นี้จะตามคุณไปทั้งใน lobby, leaderboard และตอนเพื่อนเปิดดูโปรไฟล์</p>
+                    </div>
+                </div>
+                <div class="identity-chip-row">
+                    <span class="identity-chip"><strong>Avatar</strong> ปรับได้ทันที</span>
+                    <span class="identity-chip"><strong>กรอบ</strong> ใช้แยกคนได้ง่าย</span>
+                    <span class="identity-chip"><strong>สีชื่อ</strong> เห็นเด่นเวลานั่งล้อมวง</span>
+                </div>
+                <div class="player-id">
+                    <p style="margin-bottom: 5px;"><strong>🆔 Player ID</strong></p>
+                    <p><code style="display: block; word-break: break-all; font-size: 0.95em;"><%= player.playerId %></code></p>
+                </div>
             </div>
         </div>
 
-        <div class="form-group">
-            <label>🎨 สีชื่อ:</label>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <% availableColors.forEach(function(color) { %>
-                    <button class="color-btn <%= color === player.color ? 'active' : '' %>" 
-                            data-color="<%= color %>"
-                            style="background: <%= color %>;">
-                    </button>
-                <% }); %>
+        <div class="profile-section identity-editor motion-enter" style="--enter-delay: 220;">
+            <div>
+                <h2>ตั้งชื่อและโทนของคุณ</h2>
+                <p class="identity-copy">หน้านี้ทำไว้ให้เปลี่ยนชื่อ สี และลุคได้เร็วขึ้นก่อนเข้าวงจริง เลือกให้เพื่อนมองแวบเดียวก็รู้ว่าเป็นคุณ</p>
             </div>
-            <p style="margin-top: 15px; color: #aaa; font-size: 1em;">สีปัจจุบัน: <strong style="color: <%= player.color %>; font-size: 1.1em;"><%= player.playerName %></strong></p>
-        </div>
 
-        <div class="player-id">
-            <p style="margin-bottom: 5px;">
-                <strong>🆔 Player ID:</strong>
-            </p>
-            <p>
-                <code style="display: block; word-break: break-all; font-size: 0.95em;"><%= player.playerId %></code>
-            </p>
+            <div class="form-group">
+                <label>✏️ ชื่อผู้เล่น</label>
+                <div class="identity-form-row">
+                    <input type="text" id="playerNameInput" value="<%= player.playerName %>">
+                    <button id="updateNameBtn" class="btn-profile">บันทึกชื่อ</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>🎨 สีชื่อ</label>
+                <div class="identity-color-row">
+                    <% availableColors.forEach(function(color) { %>
+                        <button class="color-btn <%= color === player.color ? 'active' : '' %>"
+                                data-color="<%= color %>"
+                                style="background: <%= color %>;">
+                        </button>
+                    <% }); %>
+                </div>
+                <p class="identity-current-name">สีปัจจุบัน: <strong style="color: <%= player.color %>; font-size: 1.1em;"><%= player.playerName %></strong></p>
+            </div>
         </div>
     </div>
-    
-    <!-- Avatar Customization Section -->
-    <div class="profile-section">
-        <h2>🎭 ตกแต่งโปรไฟล์</h2>
-        
-        <!-- Preview -->
-        <div class="avatar-preview-box">
-            <div class="avatar-preview">
-                <div class="avatar-preview-inner" id="avatarPreviewInner" style="border-color: <%= player.color %>;">
-                    <%= player.avatar || '👤' %>
+
+    <div class="profile-section motion-enter" style="--enter-delay: 320;">
+        <h2>ปรับ Avatar และกรอบ</h2>
+        <div class="avatar-studio-grid">
+            <div class="form-group">
+                <label>😀 เลือก Avatar</label>
+                <div class="avatar-selection" id="avatarSelection">
+                    <!-- Loaded by JS -->
                 </div>
-                <div class="avatar-preview-frame" id="avatarPreviewFrame"></div>
             </div>
-            <div class="avatar-preview-info">
-                <h3 style="color: <%= player.color %>;"><%= player.playerName %></h3>
-                <p>ตัวอย่างโปรไฟล์</p>
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label>😀 เลือก Avatar:</label>
-            <div class="avatar-selection" id="avatarSelection">
-                <!-- Loaded by JS -->
-            </div>
-        </div>
-        
-        <div class="form-group" style="margin-top: 30px;">
-            <label>✨ เลือกกรอบ:</label>
-            <div class="frame-selection" id="frameSelection">
-                <!-- Loaded by JS -->
+
+            <div class="form-group" style="margin-top: 0;">
+                <label>✨ เลือกกรอบ</label>
+                <div class="frame-selection" id="frameSelection">
+                    <!-- Loaded by JS -->
+                </div>
             </div>
         </div>
     </div>
@@ -943,6 +1465,7 @@
         </div>
     </div>
 </div>
+</div>
 
 <%- contentFor('footer') %>
 <div class="container">
@@ -1061,6 +1584,7 @@ $(function() {
     let currentAvatar = '<%= player.avatar || "👤" %>';
     let currentFrame = '<%= player.avatarFrame || "none" %>';
     const playerColor = '<%= player.color %>';
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
     // Frame styles
     const frameStyles = {
@@ -1132,7 +1656,41 @@ $(function() {
         } else {
             $('#avatarPreviewFrame').hide();
         }
-        $('#avatarPreviewInner').text(currentAvatar);
+        const $avatarPreviewInner = $('#avatarPreviewInner');
+        $avatarPreviewInner.text(currentAvatar);
+        if (!reducedMotion) {
+            $avatarPreviewInner.stop(true, true).css('transform', 'scale(0.88)').animate({ opacity: 0.72 }, 90, function() {
+                $avatarPreviewInner.css('transform', 'scale(1)');
+                $avatarPreviewInner.animate({ opacity: 1 }, 140);
+            });
+        }
+    }
+
+    function activateProfileMotion() {
+        $('.profile-container').addClass('is-ready');
+
+        if (reducedMotion) {
+            $('.stats-grid .stat-card, .role-stats-grid .role-stat-card, .game-history-item, .last-played, .game-history-section').addClass('is-visible');
+            return;
+        }
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -24px 0px'
+        });
+
+        $('.stats-grid .stat-card, .role-stats-grid .role-stat-card, .game-history-item, .last-played, .game-history-section').each(function(index) {
+            this.classList.add('reveal-item');
+            this.style.setProperty('--reveal-delay', String(Math.min(index * 36, 220)));
+            observer.observe(this);
+        });
     }
     
     // Avatar click
@@ -1159,7 +1717,26 @@ $(function() {
                         background: '#1e1e1e',
                         color: '#fff'
                     });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '❌ เปลี่ยน Avatar ไม่สำเร็จ',
+                        text: response.error || 'เกิดข้อผิดพลาด',
+                        background: '#1e1e1e',
+                        color: '#fff',
+                        confirmButtonColor: '#e74c3c'
+                    });
                 }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: '❌ เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเปลี่ยน Avatar ได้',
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c'
+                });
             }
         });
     });
@@ -1188,9 +1765,36 @@ $(function() {
                         background: '#1e1e1e',
                         color: '#fff'
                     });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '❌ เปลี่ยนกรอบไม่สำเร็จ',
+                        text: response.error || 'เกิดข้อผิดพลาด',
+                        background: '#1e1e1e',
+                        color: '#fff',
+                        confirmButtonColor: '#e74c3c'
+                    });
                 }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: '❌ เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเปลี่ยนกรอบได้',
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c'
+                });
             }
         });
     });
+
+    if (!reducedMotion) {
+        window.requestAnimationFrame(function() {
+            window.requestAnimationFrame(activateProfileMotion);
+        });
+    } else {
+        activateProfileMotion();
+    }
 });
 </script>

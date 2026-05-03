@@ -1618,7 +1618,7 @@
         const isAdminPlayer = p.playerId === adminId;
         const isSelf = p.playerId === playerId;
         const color = p.color || '#fff';
-        const safeName = $('<div>').text(p.playerName).html();
+        const safeName = $('<div>').text(p.displayName || p.playerName).html();
         const onlineBadge = p.online === false
           ? '<span style="margin-left:6px; color:#e67e22; font-size:0.8em;">offline</span>'
           : '<span style="margin-left:6px; color:#2ecc71; font-size:0.8em;">online</span>';
@@ -1641,6 +1641,7 @@
               <span class="lobby-player-name" style="color:${color};">${safeName}</span>
               ${onlineBadge}
               ${isAdminPlayer ? '<span class="lobby-player-admin-badge" style="margin-left:6px;">👑</span>' : ''}
+              ${p.isSiteAdmin ? '<span class="status-badge status-banned" style="margin-left:6px;">[Admin]</span>' : ''}
             </div>
             ${actionIcons}
           </div>
@@ -1843,7 +1844,7 @@
     
     function appendChatMessage(data) {
       const $area = $('#lobbyChatMessages');
-      const safeName = $('<div>').text(data.playerName).html();
+      const safeName = $('<div>').text(data.displayName || data.playerName).html();
       const safeMsg = $('<div>').text(data.message).html();
       const timestamp = data.timestamp || '';
       const playerColor = data.color || '#fff';
@@ -1854,7 +1855,7 @@
       let msgClass = 'other-msg';
       if (data.playerName === 'System') {
         msgClass = 'system-msg';
-      } else if (data.playerName === myPlayerName) {
+      } else if ((data.playerId && data.playerId === playerId) || data.playerName === myPlayerName) {
         msgClass = 'my-msg';
       }
       
@@ -1910,7 +1911,7 @@
     socket.on('newMessage', function (data) {
       appendChatMessage(data);
       // Play notification sound if message is not from me
-      if (data.playerName !== myPlayerName) {
+      if ((!data.playerId || data.playerId !== playerId) && data.playerName !== myPlayerName) {
         soundNotify('popup');
       }
     });

@@ -288,8 +288,12 @@ async function runScenario(baseUrl, selectedRoles, expectedRoles, options = {}) 
         const roomId = await createRoomAndJoin(clients, selectedRoles);
         const roundOneStates = await startRound(clients, roomId);
         const assignedRoles = sortRoleIds(roundOneStates);
-        const expectedSorted = [...expectedRoles].sort();
-        assert(JSON.stringify(assignedRoles) === JSON.stringify(expectedSorted), `Expected roles ${expectedSorted.join(', ')} but got ${assignedRoles.join(', ')}`);
+        if (typeof options.validateRoles === 'function') {
+            options.validateRoles(assignedRoles);
+        } else {
+            const expectedSorted = [...expectedRoles].sort();
+            assert(JSON.stringify(assignedRoles) === JSON.stringify(expectedSorted), `Expected roles ${expectedSorted.join(', ')} but got ${assignedRoles.join(', ')}`);
+        }
 
         if (options.expectRoleChangeOnRestart) {
             const roundOneRolesByPlayerId = getRoleMapByPlayerId(roundOneStates, clients);
@@ -322,16 +326,24 @@ async function main() {
         console.log('1. Verify exact selected roles are used when they fit the room');
         const exactSelection = await runScenario(
             spawnedServer.baseUrl,
-            ['alphaWolf', 'fool', 'seer'],
-            ['alphaWolf', 'fool', 'seer'],
+            ['alphaWolf', 'seer', 'doctor'],
+            ['alphaWolf', 'seer', 'doctor'],
             { expectRoleChangeOnRestart: true }
         );
 
-        console.log('2. Verify missing wolf selection falls back to normal werewolf');
+        console.log('2. Verify 3-player invalid Fool selection is replaced by a valid support role');
         const fallbackSelection = await runScenario(
             spawnedServer.baseUrl,
             ['seer', 'fool'],
-            ['werewolf', 'seer', 'fool']
+            null,
+            {
+                validateRoles(assignedRoles) {
+                    assert(assignedRoles.includes('werewolf'), `Expected fallback roles to include werewolf but got ${assignedRoles.join(', ')}`);
+                    assert(assignedRoles.includes('seer'), `Expected fallback roles to include seer but got ${assignedRoles.join(', ')}`);
+                    assert(!assignedRoles.includes('fool'), `Expected 3-player fallback to filter Fool out but got ${assignedRoles.join(', ')}`);
+                    assert(assignedRoles.length === 3, `Expected exactly 3 roles but got ${assignedRoles.join(', ')}`);
+                }
+            }
         );
 
         console.log('SMOKE_RESULT ' + JSON.stringify({

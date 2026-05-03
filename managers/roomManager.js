@@ -100,14 +100,14 @@ function createRoom(roomData, creatorPlayerId) {
 /**
  * เข้าห้อง
  */
-function joinRoom(roomId, playerId, socketId = null, password = null) {
+function joinRoom(roomId, playerId, socketId = null, password = null, options = {}) {
     const room = rooms.get(roomId);
     if (!room) {
         throw new Error('Room not found');
     }
 
     // ตรวจสอบรหัสผ่าน
-    if (room.settings.locked && room.settings.password !== password) {
+    if (room.settings.locked && !options.bypassLock && room.settings.password !== password) {
         throw new Error('Invalid password');
     }
 

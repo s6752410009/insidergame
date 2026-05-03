@@ -883,6 +883,7 @@
     const playerId = '<%= player.playerId %>';
     const myPlayerName = '<%= player.name %>';
     const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+    let canUseAdminReveal = <%= (room.admin === true || room.isSiteAdmin) ? 'true' : 'false' %>;
     const initialChatHistory = <%- JSON.stringify(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
     let currentState = <%- JSON.stringify(typeof werewolfState !== 'undefined' ? werewolfState : {}) %>;
     let allowNavigation = false;
@@ -3203,7 +3204,7 @@
         phase,
         canWolfNightChat,
         chatLocked,
-        adminCommandOnly: Boolean(isRoomAdmin && chatLocked)
+        adminCommandOnly: Boolean(canUseAdminReveal && chatLocked)
       };
     }
 
@@ -3621,12 +3622,12 @@
       }
 
       const $area = $('#werewolfChatMessages');
-      const safeName = escapeHtml(data.playerName);
+      const safeName = escapeHtml(data.displayName || data.playerName);
       const safeMsg = escapeHtml(data.message);
       const timestamp = data.timestamp || '';
       const avatar = data.avatar || '👤';
       const isSystem = data.playerName === 'System';
-      const isSelf = data.playerName === myPlayerName;
+      const isSelf = (data.playerId && data.playerId === playerId) || data.playerName === myPlayerName;
       const messageType = classifyMessageType(data);
       const chatGroup = classifyChatGroup(data);
       const channelBadge = getChatChannelBadge(messageType);
@@ -4651,8 +4652,13 @@
         const roomPlayer = payload.players.find(function(candidate) {
           return candidate.playerId === player.playerId;
         });
-        return roomPlayer ? { ...player, name: roomPlayer.playerName } : player;
+        return roomPlayer ? { ...player, name: roomPlayer.displayName || roomPlayer.playerName } : player;
       });
+
+      const selfRoomPlayer = payload.players.find(function(player) {
+        return player.playerId === playerId;
+      });
+      canUseAdminReveal = Boolean((payload.admin && payload.admin === playerId) || (selfRoomPlayer && selfRoomPlayer.isSiteAdmin));
 
       renderState({ ...currentState, players: mergedPlayers });
     });
@@ -4760,7 +4766,7 @@
             Swal.fire({
               icon: 'warning',
               title: 'ใช้ /m ไม่ได้',
-              text: response?.error || 'คำสั่งนี้ใช้ได้เฉพาะหัวหน้าห้องเท่านั้น',
+              text: response?.error || 'คำสั่งนี้ใช้ได้เฉพาะ room admin หรือ site admin เท่านั้น',
               background: '#1e1e1e',
               color: '#fff'
             });

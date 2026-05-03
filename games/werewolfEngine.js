@@ -209,6 +209,10 @@ function isWerewolfRole(roleId) {
     return roleId === 'werewolf' || roleId === 'alphaWolf';
 }
 
+function countWerewolfRoles(roleIds = []) {
+    return roleIds.filter(isWerewolfRole).length;
+}
+
 function isFoolRole(roleId) {
     return roleId === 'fool';
 }
@@ -287,9 +291,10 @@ function getConfigurableRoles() {
     }));
 }
 
-function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = []) {
+function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = [], options = {}) {
     const filled = [...roleIds];
     const seen = new Set(filled);
+    const maxWolfCount = Number.isFinite(options.maxWolfCount) ? Number(options.maxWolfCount) : Infinity;
     const primaryFill = [
         ...preferredIds.filter(roleId => roleId && roleId !== 'villager'),
         ...DEFAULT_ROLE_SELECTION
@@ -300,6 +305,10 @@ function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = []) {
             return;
         }
 
+        if (isWerewolfRole(roleId) && countWerewolfRoles(filled) >= maxWolfCount) {
+            return;
+        }
+
         filled.push(roleId);
         seen.add(roleId);
     });
@@ -307,8 +316,13 @@ function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = []) {
     const duplicateFallback = ['werewolf', 'seer', 'doctor', 'bodyguard', 'witch', 'fool', 'mayor', 'revealer'];
     let fallbackIndex = 0;
     while (filled.length < targetCount) {
-        filled.push(duplicateFallback[fallbackIndex % duplicateFallback.length]);
+        const fallbackRoleId = duplicateFallback[fallbackIndex % duplicateFallback.length];
         fallbackIndex += 1;
+        if (isWerewolfRole(fallbackRoleId) && countWerewolfRoles(filled) >= maxWolfCount) {
+            continue;
+        }
+
+        filled.push(fallbackRoleId);
     }
 
     return filled.slice(0, targetCount);
@@ -317,6 +331,7 @@ function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = []) {
 function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = getBaseRolePlan(normalizedCount, previousPlanRoleIds);
+    const maxWolfCount = Math.max(1, basePlan.filter(isWerewolfRole).length);
 
     // Wolf count mode: pick N wolves, fill rest from base plan specials + villagers
     if (settings.wolfCount) {
@@ -332,13 +347,13 @@ function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
 
         const specials = basePlan.filter(id => !isWerewolfRole(id));
         const plan = [...wolves, ...specials];
-        return fillRolePlanWithoutVillager(plan, normalizedCount, basePlan).map(id => ROLE_DEFINITIONS[id] || ROLE_DEFINITIONS.werewolf);
+        return fillRolePlanWithoutVillager(plan, normalizedCount, basePlan, { maxWolfCount: actualWolfCount }).map(id => ROLE_DEFINITIONS[id] || ROLE_DEFINITIONS.werewolf);
     }
 
     const enabledRoleIds = filterRoleSelectionForPlayerCount(settings.werewolfRoles, normalizedCount);
 
     if (enabledRoleIds.length > 0 && enabledRoleIds.length <= normalizedCount) {
-        const exactRoleIds = fillRolePlanWithoutVillager(enabledRoleIds, normalizedCount, basePlan);
+        const exactRoleIds = fillRolePlanWithoutVillager(enabledRoleIds, normalizedCount, basePlan, { maxWolfCount });
 
         return exactRoleIds.slice(0, normalizedCount).map(roleId => ROLE_DEFINITIONS[roleId]);
     }
@@ -393,7 +408,7 @@ function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
         plannedRoleIds.push(...fallbackSpecialIds.slice(0, missingSpecialSlots));
     }
 
-    const completedRoleIds = fillRolePlanWithoutVillager(plannedRoleIds, normalizedCount, basePlan);
+    const completedRoleIds = fillRolePlanWithoutVillager(plannedRoleIds, normalizedCount, basePlan, { maxWolfCount });
 
     return completedRoleIds.map(roleId => ROLE_DEFINITIONS[roleId]);
 }
@@ -1640,6 +1655,15 @@ function useRevealAction(room, actorId, targetPlayerId) {
     delete room.gameState.dayVotes[actorId];
     room.gameState.lastAction = Date.now();
 
+    if (room.gameState.phase === 'day-vote' && canResolveDay(room)) {
+        return {
+            ...resolveDayVote(room),
+            queued: true,
+            revealTargetId: target.playerId,
+            revealTargetName: target.name
+        };
+    }
+
     return {
         resolved: false,
         queued: true,
@@ -2086,10 +2110,13 @@ function buildMorningAnnouncement(room) {
     if (eliminatedPlayers.length === 1) {
         const eliminatedPlayer = eliminatedPlayers[0];
         const publicEvent = publicEvents[0] || null;
+        const lead = publicEvent?.cause === 'witch-poison'
+            ? `รุ่งเช้า ${eliminatedPlayer.name} ไม่รอดหลังผ่านคืนแห่งยาพิษ`
+            : `รุ่งเช้า ${eliminatedPlayer.name} ไม่กลับมาที่ลานหมู่บ้าน`;
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'death',
-            lead: `รุ่งเช้า ${eliminatedPlayer.name} ไม่กลับมาที่ลานหมู่บ้าน`,
+            lead,
             detail: publicEvent?.detail || `${eliminatedPlayer.name} ไม่รอดในคืนนี้`
         };
     }

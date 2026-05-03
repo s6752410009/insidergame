@@ -420,6 +420,73 @@
         font-size: 0.9em;
         margin-top: 10px;
     }
+
+    .filters-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filters-row .search-box,
+    .filters-row select {
+        min-width: 160px;
+    }
+
+    .table-meta {
+        margin-bottom: 12px;
+        color: #777;
+        font-size: 0.9em;
+    }
+
+    .sortable.active {
+        color: #fff;
+    }
+
+    .table-container table {
+        min-width: 920px;
+    }
+
+    .compact-table table {
+        min-width: 1040px;
+    }
+
+    @media (max-width: 900px) {
+        .admin-container {
+            margin: 12px auto 24px;
+            padding: 12px;
+        }
+
+        .panel {
+            padding: 16px;
+            border-radius: 14px;
+        }
+
+        .admin-header h1 {
+            font-size: 1.8em;
+        }
+
+        .panel-actions,
+        .filters-row {
+            width: 100%;
+        }
+
+        .filters-row .search-box,
+        .filters-row select,
+        .panel-actions .search-box {
+            width: 100% !important;
+            min-width: 0;
+        }
+
+        .btn-admin {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="admin-container">
@@ -466,6 +533,7 @@
     <!-- Tabs -->
     <div class="tabs">
         <button class="tab-btn active" data-tab="players">👥 ผู้เล่น</button>
+        <button class="tab-btn" data-tab="admins">🛡️ Site Admin</button>
         <button class="tab-btn" data-tab="rooms">🏠 ห้อง</button>
         <button class="tab-btn" data-tab="banned">🚫 รายการแบน</button>
         <button class="tab-btn" data-tab="stats">📊 สถิติ</button>
@@ -480,14 +548,23 @@
             <div class="panel-header">
                 <h2>👥 จัดการผู้เล่น</h2>
                 <div class="panel-actions">
-                    <input type="text" class="search-box" id="searchPlayers" placeholder="🔍 ค้นหา...">
-                    <select id="playerTypeFilter" class="search-box" style="width: auto;">
-                        <option value="all">ทุกประเภท</option>
-                        <option value="real">ผู้เล่นจริง</option>
-                        <option value="guest-active">guest ที่เคยเล่น</option>
-                        <option value="guest-idle">guest อัตโนมัติ</option>
-                        <option value="ghost">ghost/cleanup</option>
-                    </select>
+                    <div class="filters-row">
+                        <input type="text" class="search-box" id="searchPlayers" placeholder="🔍 ค้นหาผู้เล่น / player id">
+                        <select id="playerTypeFilter" class="search-box" style="width: auto;">
+                            <option value="all">ทุกประเภท</option>
+                            <option value="real">ผู้เล่นจริง</option>
+                            <option value="guest-active">guest ที่เคยเล่น</option>
+                            <option value="guest-idle">guest อัตโนมัติ</option>
+                            <option value="ghost">ghost/cleanup</option>
+                        </select>
+                        <select id="playerStatusFilter" class="search-box" style="width: auto;">
+                            <option value="all">ทุกสถานะ</option>
+                            <option value="online">ออนไลน์</option>
+                            <option value="offline">ออฟไลน์</option>
+                            <option value="banned">ถูกแบน</option>
+                            <option value="cleanup">cleanup candidate</option>
+                        </select>
+                    </div>
                     <button class="btn-admin btn-warning" onclick="previewGhostCleanup()">🔎 พรีวิว cleanup</button>
                     <button class="btn-admin btn-danger" onclick="runGhostCleanup()">🧹 ล้าง ghost</button>
                     <button class="btn-admin btn-danger" onclick="deleteSelectedPlayers()" id="btnDeleteSelected" style="display: none;">🗑️ ลบที่เลือก (<span id="selectedPlayerCount">0</span>)</button>
@@ -514,6 +591,7 @@
                 </div>
             </div>
             <div class="cleanup-note" id="cleanupSummaryText">ระบบจะมอง ghost เป็น guest ชื่ออัตโนมัติที่ยังไม่เคยเล่น ไม่มีห้องค้าง และยังใช้โปรไฟล์ default</div>
+            <div class="table-meta" id="playersTableMeta">กำลังโหลดข้อมูลผู้เล่น...</div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -535,6 +613,36 @@
             </div>
         </div>
     </div>
+
+    <div class="tab-content" id="tab-admins">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>🛡️ Site Admin Access</h2>
+                <div class="panel-actions">
+                    <button class="btn-admin btn-success" onclick="addExistingSiteAdmin()">➕ เพิ่มจากผู้เล่นเดิม</button>
+                    <button class="btn-admin btn-primary" onclick="createSiteAdmin()">✨ สร้าง admin ใหม่</button>
+                    <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
+                </div>
+            </div>
+            <div class="table-meta" id="siteAdminsMeta">กำลังโหลดรายชื่อ site admin...</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ชื่อ</th>
+                            <th>Player ID</th>
+                            <th>ออนไลน์ล่าสุด</th>
+                            <th>ลิงก์เข้าเล่น</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="siteAdminsTable">
+                        <tr><td colspan="5" class="empty-message">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     
     <!-- Rooms Tab -->
     <div class="tab-content" id="tab-rooms">
@@ -542,21 +650,38 @@
             <div class="panel-header">
                 <h2>🏠 จัดการห้อง</h2>
                 <div class="panel-actions">
+                    <div class="filters-row">
+                        <input type="text" class="search-box" id="searchRooms" placeholder="🔍 ค้นหาชื่อห้อง / room id">
+                        <select id="roomModeFilter" class="search-box" style="width: auto;">
+                            <option value="all">ทุกโหมด</option>
+                            <option value="insider">Insider</option>
+                            <option value="werewolf">Werewolf</option>
+                            <option value="blackmarket">Black Market</option>
+                        </select>
+                        <select id="roomStatusFilter" class="search-box" style="width: auto;">
+                            <option value="all">ทุกสถานะ</option>
+                            <option value="playing">กำลังเล่น</option>
+                            <option value="waiting">รอผู้เล่น</option>
+                            <option value="locked">ล็อค</option>
+                            <option value="unlocked">ไม่ล็อค</option>
+                        </select>
+                    </div>
                     <button class="btn-admin btn-warning" onclick="clearEmptyRooms()">🧹 ล้างห้องว่าง</button>
                     <button class="btn-admin btn-danger" onclick="clearAllRooms()">💥 ล้างห้องทั้งหมด</button>
                     <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
                 </div>
             </div>
+            <div class="table-meta" id="roomsTableMeta">กำลังโหลดข้อมูลห้อง...</div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>ชื่อห้อง</th>
-                            <th>Room ID</th>
-                            <th>โหมด</th>
-                            <th>ผู้เล่น</th>
-                            <th>สถานะ</th>
-                            <th>ล็อค</th>
+                            <th class="sortable room-sortable" data-sort="name" style="cursor:pointer;" onclick="setRoomSort('name')">ชื่อห้อง <span class="sort-icon"></span></th>
+                            <th class="sortable room-sortable" data-sort="id" style="cursor:pointer;" onclick="setRoomSort('id')">Room ID <span class="sort-icon"></span></th>
+                            <th class="sortable room-sortable" data-sort="mode" style="cursor:pointer;" onclick="setRoomSort('mode')">โหมด <span class="sort-icon"></span></th>
+                            <th class="sortable room-sortable" data-sort="players" style="cursor:pointer;" onclick="setRoomSort('players')">ผู้เล่น <span class="sort-icon"></span></th>
+                            <th class="sortable room-sortable" data-sort="status" style="cursor:pointer;" onclick="setRoomSort('status')">สถานะ <span class="sort-icon"></span></th>
+                            <th class="sortable room-sortable" data-sort="locked" style="cursor:pointer;" onclick="setRoomSort('locked')">ล็อค <span class="sort-icon"></span></th>
                             <th>จัดการ</th>
                         </tr>
                     </thead>
@@ -604,22 +729,32 @@
             <div class="panel-header">
                 <h2>📊 สถิติผู้เล่น</h2>
                 <div class="panel-actions">
+                    <div class="filters-row">
+                        <input type="text" class="search-box" id="searchStats" placeholder="🔍 ค้นหาสถิติผู้เล่น">
+                        <select id="statsModeFilter" class="search-box" style="width: auto;">
+                            <option value="all">ทุกโหมด</option>
+                            <option value="has-insider">มี Insider</option>
+                            <option value="has-werewolf">มี Werewolf</option>
+                            <option value="has-blackmarket">มี Black Market</option>
+                        </select>
+                    </div>
                     <button class="btn-admin btn-danger" onclick="clearAllStats()" id="clearAllStatsBtn" style="display:none;">🗑️ ลบทั้งหมด</button>
                     <button class="btn-admin btn-warning" onclick="deleteSelectedStats()" id="deleteSelectedBtn" style="display:none;">🗑️ ลบที่เลือก (<span id="selectedStatsCount">0</span>)</button>
                     <button class="btn-admin btn-primary" onclick="exportStats()">📥 Export CSV</button>
                     <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
                 </div>
             </div>
-            <div class="table-container">
+            <div class="table-meta" id="statsTableMeta">กำลังโหลดข้อมูลสถิติ...</div>
+            <div class="table-container compact-table">
                 <table>
                     <thead>
                         <tr>
                             <th style="width:40px;"><input type="checkbox" id="selectAllStats" onchange="toggleSelectAllStats(this)"></th>
-                            <th>ผู้เล่น</th>
-                            <th>เกม</th>
-                            <th>ชนะ</th>
-                            <th>แพ้</th>
-                            <th>Win%</th>
+                            <th class="sortable stats-sortable" data-sort="name" style="cursor:pointer;" onclick="setStatsSort('name')">ผู้เล่น <span class="sort-icon"></span></th>
+                            <th class="sortable stats-sortable" data-sort="games" style="cursor:pointer;" onclick="setStatsSort('games')">เกม <span class="sort-icon"></span></th>
+                            <th class="sortable stats-sortable" data-sort="wins" style="cursor:pointer;" onclick="setStatsSort('wins')">ชนะ <span class="sort-icon"></span></th>
+                            <th class="sortable stats-sortable" data-sort="losses" style="cursor:pointer;" onclick="setStatsSort('losses')">แพ้ <span class="sort-icon"></span></th>
+                            <th class="sortable stats-sortable" data-sort="winRate" style="cursor:pointer;" onclick="setStatsSort('winRate')">Win% <span class="sort-icon"></span></th>
                             <th>แยกตามโหมด</th>
                             <th>Insider</th>
                             <th>Werewolf</th>
@@ -792,6 +927,30 @@ $(function() {
     const socket = io();
     let allData = {};
     let isAuthenticated = false;
+    const dashboardState = {
+        players: {
+            search: '',
+            typeFilter: 'all',
+            statusFilter: 'all',
+            sortCol: 'lastSeen',
+            sortDir: 'desc',
+            selectedIds: new Set()
+        },
+        rooms: {
+            search: '',
+            modeFilter: 'all',
+            statusFilter: 'all',
+            sortCol: 'players',
+            sortDir: 'desc'
+        },
+        stats: {
+            search: '',
+            modeFilter: 'all',
+            sortCol: 'games',
+            sortDir: 'desc',
+            selectedIds: new Set()
+        }
+    };
     const WEREWOLF_ROLE_META = [
         { id: 'villager', label: 'ชาวบ้าน', emoji: '🙂' },
         { id: 'werewolf', label: 'หมาป่า', emoji: '🐺' },
@@ -855,28 +1014,31 @@ $(function() {
         return `<div style="display:flex; flex-wrap:wrap; gap:6px; min-width:240px;">${nonZeroRoles.map(role => `<span class="status-badge status-banned">${role.emoji} ${role.label} ${roleStats.blackmarket[role.id] || 0} <small style="opacity:0.85;">W${winByRole?.blackmarket?.[role.id] || 0}</small></span>`).join('')}</div>`;
     }
     
-    // Admin token จาก server (ใช้ได้ครั้งเดียว หมดอายุใน 60 วินาที)
+    // Admin token จาก server (ใช้ re-authenticate ได้ภายใน 60 วินาที)
     const adminToken = '<%= adminToken %>';
-    
-    // Authenticate socket ก่อนใช้งาน
-    socket.emit('admin_authenticate', { token: adminToken }, function(response) {
-        if (response.success) {
-            console.log('[Admin] Socket authenticated successfully');
-            isAuthenticated = true;
-            loadData(); // โหลดข้อมูลหลัง authenticate สำเร็จ
-            loadLogs(); // โหลด logs ด้วย
-        } else {
-            console.error('[Admin] Authentication failed:', response.error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Authentication Failed',
-                text: response.error || 'กรุณา login ใหม่',
-                confirmButtonText: 'Login ใหม่'
-            }).then(() => {
-                window.location.href = '/admin/login';
-            });
-        }
-    });
+
+    function authenticateAdminSocket(options) {
+        const silent = Boolean(options?.silent);
+        socket.emit('admin_authenticate', { token: adminToken }, function(response) {
+            if (response.success) {
+                isAuthenticated = true;
+                loadData();
+                loadLogs();
+            } else if (!silent) {
+                console.error('[Admin] Authentication failed:', response.error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Authentication Failed',
+                    text: response.error || 'กรุณา login ใหม่',
+                    confirmButtonText: 'Login ใหม่'
+                }).then(() => {
+                    window.location.href = '/admin/login';
+                });
+            }
+        });
+    }
+
+    authenticateAdminSocket();
     
     // Tab switching
     $('.tab-btn').on('click', function() {
@@ -889,37 +1051,87 @@ $(function() {
     
     // Search players
     $('#searchPlayers').on('input', function() {
-        filterPlayersTable();
+        dashboardState.players.search = $(this).val() || '';
+        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
     });
 
     $('#playerTypeFilter').on('change', function() {
-        filterPlayersTable();
+        dashboardState.players.typeFilter = $(this).val() || 'all';
+        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
     });
-    
-    // Sort logic
-    window.currentSortCol = 'lastSeen';
-    window.currentSortDir = 'desc';
+
+    $('#playerStatusFilter').on('change', function() {
+        dashboardState.players.statusFilter = $(this).val() || 'all';
+        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
+    });
+
+    $('#searchRooms').on('input', function() {
+        dashboardState.rooms.search = $(this).val() || '';
+        updateRoomsTable(allData.rooms || []);
+    });
+
+    $('#roomModeFilter').on('change', function() {
+        dashboardState.rooms.modeFilter = $(this).val() || 'all';
+        updateRoomsTable(allData.rooms || []);
+    });
+
+    $('#roomStatusFilter').on('change', function() {
+        dashboardState.rooms.statusFilter = $(this).val() || 'all';
+        updateRoomsTable(allData.rooms || []);
+    });
+
+    $('#searchStats').on('input', function() {
+        dashboardState.stats.search = $(this).val() || '';
+        updateStatsTable(allData.playerStats || []);
+    });
+
+    $('#statsModeFilter').on('change', function() {
+        dashboardState.stats.modeFilter = $(this).val() || 'all';
+        updateStatsTable(allData.playerStats || []);
+    });
+
+    function updateSortIcons(selector, activeCol, dir) {
+        $(`${selector} .sort-icon`).html('');
+        $(selector).removeClass('active');
+        $(`${selector}[data-sort="${activeCol}"]`).addClass('active').find('.sort-icon').html(dir === 'asc' ? '↑' : '↓');
+    }
 
     window.setSort = function(col) {
-        if (window.currentSortCol === col) {
-            window.currentSortDir = window.currentSortDir === 'asc' ? 'desc' : 'asc';
+        if (dashboardState.players.sortCol === col) {
+            dashboardState.players.sortDir = dashboardState.players.sortDir === 'asc' ? 'desc' : 'asc';
         } else {
-            window.currentSortCol = col;
-            window.currentSortDir = 'desc';
+            dashboardState.players.sortCol = col;
+            dashboardState.players.sortDir = col === 'name' || col === 'category' || col === 'id' ? 'asc' : 'desc';
         }
-        
-        $('.sortable .sort-icon').html('');
-        $(`.sortable[data-sort="${col}"] .sort-icon`).html(window.currentSortDir === 'asc' ? '↑' : '↓');
-        
-        if (allData && allData.players) {
-            updatePlayersTable(allData.players, allData.bannedPlayers);
+        updateSortIcons('.sortable:not(.room-sortable):not(.stats-sortable)', dashboardState.players.sortCol, dashboardState.players.sortDir);
+        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
+    };
+
+    window.setRoomSort = function(col) {
+        if (dashboardState.rooms.sortCol === col) {
+            dashboardState.rooms.sortDir = dashboardState.rooms.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            dashboardState.rooms.sortCol = col;
+            dashboardState.rooms.sortDir = col === 'name' || col === 'id' || col === 'mode' ? 'asc' : 'desc';
         }
+        updateSortIcons('.room-sortable', dashboardState.rooms.sortCol, dashboardState.rooms.sortDir);
+        updateRoomsTable(allData.rooms || []);
+    };
+
+    window.setStatsSort = function(col) {
+        if (dashboardState.stats.sortCol === col) {
+            dashboardState.stats.sortDir = dashboardState.stats.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            dashboardState.stats.sortCol = col;
+            dashboardState.stats.sortDir = col === 'name' ? 'asc' : 'desc';
+        }
+        updateSortIcons('.stats-sortable', dashboardState.stats.sortCol, dashboardState.stats.sortDir);
+        updateStatsTable(allData.playerStats || []);
     };
     
     // Load data from server
     window.loadData = function() {
         if (!isAuthenticated) {
-            console.warn('[Admin] Not authenticated, skipping loadData');
             return;
         }
         socket.emit('admin_getData', function(response) {
@@ -927,6 +1139,7 @@ $(function() {
                 allData = response;
                 updateStats(response);
                 updatePlayersTable(response.players, response.bannedPlayers);
+                updateSiteAdminsTable(response.siteAdmins || []);
                 updateRoomsTable(response.rooms);
                 updateBannedTable(response.bannedPlayers);
                 updateStatsTable(response.playerStats);
@@ -958,23 +1171,53 @@ $(function() {
         $('#summaryGuestIdlePlayers').text(data.playerSummary?.guestIdlePlayers || 0);
         $('#summaryCleanupCandidates').text(data.playerSummary?.cleanupCandidates || 0);
         $('#cleanupSummaryText').text(`cleanup candidate = guest อัตโนมัติที่ไม่เคยเล่น, ไม่อยู่ในห้อง, ไม่ถูกแบน, และใช้โปรไฟล์ default อยู่ จำนวนล่าสุด ${data.cleanupCandidates ? data.cleanupCandidates.length : 0} คน`);
+        $('#siteAdminsMeta').text(`site admin ทั้งหมด ${data.siteAdmins ? data.siteAdmins.length : 0} คน`);
         $('#serverTime').text(new Date().toLocaleString('th-TH'));
     }
-    
+
+    function isPlayerRecent(player) {
+        return Boolean(player.lastSeen) && (Date.now() - new Date(player.lastSeen).getTime()) < 5 * 60 * 1000;
+    }
+
+    function getPlayerStatusKey(player, bannedIds) {
+        if (bannedIds.includes(player.playerId)) return 'banned';
+        if (player.isCleanupCandidate) return 'cleanup';
+        return isPlayerRecent(player) ? 'online' : 'offline';
+    }
+
+    function compareValues(valA, valB, dir) {
+        if (valA < valB) return dir === 'asc' ? -1 : 1;
+        if (valA > valB) return dir === 'asc' ? 1 : -1;
+        return 0;
+    }
+
+    function pruneSelection(selectedIds, validIds) {
+        Array.from(selectedIds).forEach(function(id) {
+            if (!validIds.has(id)) {
+                selectedIds.delete(id);
+            }
+        });
+    }
+
     function updatePlayersTable(players, bannedPlayers) {
         const $table = $('#playersTable');
         $table.empty();
-        
-        if (players.length === 0) {
+
+        const playerList = Array.isArray(players) ? [...players] : [];
+        pruneSelection(dashboardState.players.selectedIds, new Set(playerList.map(player => player.playerId)));
+        if (playerList.length === 0) {
             $table.html('<tr><td colspan="8" class="empty-message">ไม่มีผู้เล่น</td></tr>');
+            $('#playersTableMeta').text('ไม่มีผู้เล่น');
+            $('#selectAllPlayers').prop('checked', false);
+            updateSelectedPlayersCount();
             return;
         }
-        
+
         const bannedIds = (bannedPlayers || []).map(b => b.playerId);
-        
-        players.sort((a, b) => {
+
+        playerList.sort((a, b) => {
             let valA, valB;
-            switch(window.currentSortCol) {
+            switch(dashboardState.players.sortCol) {
                 case 'name':
                     valA = (a.playerName || '').toLowerCase();
                     valB = (b.playerName || '').toLowerCase();
@@ -988,7 +1231,13 @@ $(function() {
                     valB = b.playerId || '';
                     break;
                 case 'status':
-                    const getStatusScore = p => bannedIds.includes(p.playerId) ? 0 : (p.lastSeen && (Date.now() - new Date(p.lastSeen) < 300000) ? 2 : 1);
+                    const getStatusScore = p => {
+                        const key = getPlayerStatusKey(p, bannedIds);
+                        if (key === 'online') return 3;
+                        if (key === 'offline') return 2;
+                        if (key === 'cleanup') return 1;
+                        return 0;
+                    };
                     valA = getStatusScore(a);
                     valB = getStatusScore(b);
                     break;
@@ -1002,35 +1251,61 @@ $(function() {
                     valB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
                     break;
             }
-            
-            if (valA < valB) return window.currentSortDir === 'asc' ? -1 : 1;
-            if (valA > valB) return window.currentSortDir === 'asc' ? 1 : -1;
-            return 0;
+            return compareValues(valA, valB, dashboardState.players.sortDir)
+                || compareValues((a.playerName || '').toLowerCase(), (b.playerName || '').toLowerCase(), 'asc');
         });
-        
-        players.forEach(function(player) {
+
+        const filteredPlayers = playerList.filter(function(player) {
+            const search = dashboardState.players.search.trim().toLowerCase();
+            const typeFilter = dashboardState.players.typeFilter;
+            const statusFilter = dashboardState.players.statusFilter;
+            const text = `${player.playerName || ''} ${player.playerId || ''} ${player.category || ''}`.toLowerCase();
+            const statusKey = getPlayerStatusKey(player, bannedIds);
+            const matchesSearch = !search || text.includes(search);
+            const matchesType = typeFilter === 'all' || (player.category || 'unknown') === typeFilter;
+            const matchesStatus = statusFilter === 'all' || statusKey === statusFilter;
+            return matchesSearch && matchesType && matchesStatus;
+        });
+
+        if (filteredPlayers.length === 0) {
+            $table.html('<tr><td colspan="8" class="empty-message">ไม่พบผู้เล่นที่ตรงเงื่อนไข</td></tr>');
+            $('#playersTableMeta').text(`แสดง 0 จาก ${playerList.length} คน`);
+            $('#selectAllPlayers').prop('checked', false);
+            updateSelectedPlayersCount();
+            return;
+        }
+
+        filteredPlayers.forEach(function(player) {
             const lastSeen = player.lastSeen ? new Date(player.lastSeen).toLocaleString('th-TH') : '-';
-            const isRecent = player.lastSeen ? (Date.now() - new Date(player.lastSeen)) < 5 * 60 * 1000 : false;
             const isBanned = bannedIds.includes(player.playerId);
+            const isRecent = isPlayerRecent(player);
             const categoryClass = player.category === 'ghost'
                 ? 'status-ghost'
                 : (player.category === 'real' ? 'status-real' : 'status-guest');
             
             const statusBadge = isBanned 
                 ? '<span class="status-badge status-banned">แบน</span>'
-                : (isRecent ? '<span class="status-badge status-online">ออนไลน์</span>' : '<span class="status-badge status-offline">ออฟไลน์</span>');
+                : (player.isCleanupCandidate
+                    ? '<span class="status-badge status-ghost">cleanup</span>'
+                    : (isRecent ? '<span class="status-badge status-online">ออนไลน์</span>' : '<span class="status-badge status-offline">ออฟไลน์</span>'));
             const categoryBadge = `<span class="status-badge ${categoryClass}">${escapeHtml(player.categoryLabel || player.category || 'unknown')}</span>`;
             
             const actions = isBanned 
                 ? `<button class="action-btn unban" onclick="unbanPlayer('${player.playerId}')">ปลดแบน</button>`
                 : `<button class="action-btn ban" onclick="banPlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">แบน</button>`;
+            const displayName = escapeHtml(player.displayName || player.playerName);
+            const siteAdminBadge = player.isSiteAdmin ? '<span class="status-badge status-banned" style="margin-left:8px;">Site Admin</span>' : '';
+            const siteAdminAction = player.isSiteAdmin
+                ? `<button class="action-btn unlock" onclick="setSiteAdmin('${player.playerId}', false, '${escapeHtml(player.playerName)}')">ถอด admin</button>`
+                : `<button class="action-btn view" onclick="setSiteAdmin('${player.playerId}', true, '${escapeHtml(player.playerName)}')">ตั้ง admin</button>`;
             
             const row = `
                 <tr data-player-id="${player.playerId}" data-player-category="${escapeHtml(player.category || 'unknown')}">
-                    <td><input type="checkbox" class="player-checkbox" data-player-id="${player.playerId}" data-player-name="${escapeHtml(player.playerName)}" onclick="updateSelectedPlayersCount()"></td>
+                    <td><input type="checkbox" class="player-checkbox" data-player-id="${player.playerId}" data-player-name="${escapeHtml(player.playerName)}" ${dashboardState.players.selectedIds.has(player.playerId) ? 'checked' : ''}></td>
                     <td>
                         <span class="player-color" style="background: ${player.color}"></span>
-                        ${escapeHtml(player.playerName)}
+                        ${displayName}
+                        ${siteAdminBadge}
                         ${player.isCleanupCandidate ? '<div class="last-seen" style="color:#f39c12;">candidate for cleanup</div>' : ''}
                     </td>
                     <td>${categoryBadge}</td>
@@ -1040,6 +1315,7 @@ $(function() {
                     <td class="last-seen">${lastSeen}</td>
                     <td>
                         ${actions}
+                        ${siteAdminAction}
                         <button class="action-btn edit" onclick="editPlayerName('${player.playerId}', '${escapeHtml(player.playerName)}')">แก้ไข</button>
                         <button class="action-btn delete" onclick="deletePlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">ลบ</button>
                     </td>
@@ -1047,23 +1323,123 @@ $(function() {
             `;
             $table.append(row);
         });
-        
-        // Reset select all checkbox
-        $('#selectAllPlayers').prop('checked', false);
+
+        $('#playersTableMeta').text(`แสดง ${filteredPlayers.length} จาก ${playerList.length} คน`);
+        $('#playersTable .player-checkbox').on('change', function() {
+            const playerId = $(this).data('player-id');
+            if ($(this).is(':checked')) {
+                dashboardState.players.selectedIds.add(playerId);
+            } else {
+                dashboardState.players.selectedIds.delete(playerId);
+            }
+            updateSelectedPlayersCount();
+        });
         updateSelectedPlayersCount();
-        filterPlayersTable();
+        const visibleCheckboxes = $('#playersTable .player-checkbox');
+        $('#selectAllPlayers').prop('checked', visibleCheckboxes.length > 0 && visibleCheckboxes.filter(':checked').length === visibleCheckboxes.length);
     }
-    
+
+    function updateSiteAdminsTable(siteAdmins) {
+        const $table = $('#siteAdminsTable');
+        $table.empty();
+
+        const adminList = Array.isArray(siteAdmins) ? [...siteAdmins] : [];
+        adminList.sort(function(a, b) {
+            return compareValues((a.playerName || '').toLowerCase(), (b.playerName || '').toLowerCase(), 'asc');
+        });
+
+        if (!adminList.length) {
+            $table.html('<tr><td colspan="5" class="empty-message">ยังไม่มี site admin</td></tr>');
+            $('#siteAdminsMeta').text('ยังไม่มี site admin');
+            return;
+        }
+
+        adminList.forEach(function(player) {
+            const displayName = escapeHtml(player.displayName || player.playerName);
+            const lastSeen = player.lastSeen ? new Date(player.lastSeen).toLocaleString('th-TH') : '-';
+            $table.append(`
+                <tr>
+                    <td>
+                        <span class="player-color" style="background: ${player.color || '#444'}"></span>
+                        ${displayName}
+                    </td>
+                    <td><code style="font-size: 0.8em; color: #888;">${escapeHtml(player.playerId)}</code></td>
+                    <td class="last-seen">${lastSeen}</td>
+                    <td><button class="action-btn view" onclick="copySiteAdminLink('${escapeHtml(player.playerId)}')">คัดลอกลิงก์</button></td>
+                    <td><button class="action-btn ban" onclick="revokeSiteAdmin('${player.playerId}', '${escapeHtml(player.playerName)}')">ถอด admin</button></td>
+                </tr>
+            `);
+        });
+
+        $('#siteAdminsMeta').text(`site admin ${adminList.length} คน`);
+    }
+
     function updateRoomsTable(rooms) {
         const $table = $('#roomsTable');
         $table.empty();
-        
-        if (rooms.length === 0) {
+
+        const roomList = Array.isArray(rooms) ? [...rooms] : [];
+        if (roomList.length === 0) {
             $table.html('<tr><td colspan="7" class="empty-message">ไม่มีห้อง</td></tr>');
+            $('#roomsTableMeta').text('ไม่มีห้อง');
             return;
         }
-        
-        rooms.forEach(function(room) {
+
+        roomList.sort(function(a, b) {
+            let valA;
+            let valB;
+            switch (dashboardState.rooms.sortCol) {
+                case 'name':
+                    valA = (a.name || '').toLowerCase();
+                    valB = (b.name || '').toLowerCase();
+                    break;
+                case 'id':
+                    valA = (a.roomId || '').toLowerCase();
+                    valB = (b.roomId || '').toLowerCase();
+                    break;
+                case 'mode':
+                    valA = (a.gameMode || 'insider').toLowerCase();
+                    valB = (b.gameMode || 'insider').toLowerCase();
+                    break;
+                case 'status':
+                    valA = a.gameStatus === 'playing' ? 1 : 0;
+                    valB = b.gameStatus === 'playing' ? 1 : 0;
+                    break;
+                case 'locked':
+                    valA = a.locked ? 1 : 0;
+                    valB = b.locked ? 1 : 0;
+                    break;
+                case 'players':
+                default:
+                    valA = Number(a.playerCount || 0);
+                    valB = Number(b.playerCount || 0);
+                    break;
+            }
+            return compareValues(valA, valB, dashboardState.rooms.sortDir)
+                || compareValues((a.name || '').toLowerCase(), (b.name || '').toLowerCase(), 'asc');
+        });
+
+        const filteredRooms = roomList.filter(function(room) {
+            const search = dashboardState.rooms.search.trim().toLowerCase();
+            const modeFilter = dashboardState.rooms.modeFilter;
+            const statusFilter = dashboardState.rooms.statusFilter;
+            const mode = room.gameMode || 'insider';
+            const status = room.gameStatus === 'playing' ? 'playing' : 'waiting';
+            const lockStatus = room.locked ? 'locked' : 'unlocked';
+            const haystack = `${room.name || ''} ${room.roomId || ''} ${mode} ${(room.playerNames || []).join(' ')}`.toLowerCase();
+            const matchesSearch = !search || haystack.includes(search);
+            const matchesMode = modeFilter === 'all' || mode === modeFilter;
+            const matchesStatus = statusFilter === 'all' || status === statusFilter || lockStatus === statusFilter;
+            return matchesSearch && matchesMode && matchesStatus;
+        });
+
+        if (filteredRooms.length === 0) {
+            $table.html('<tr><td colspan="7" class="empty-message">ไม่พบห้องที่ตรงเงื่อนไข</td></tr>');
+            $('#roomsTableMeta').text(`แสดง 0 จาก ${roomList.length} ห้อง`);
+            return;
+        }
+
+        filteredRooms.forEach(function(room) {
             const statusClass = room.gameStatus === 'playing' ? 'status-playing' : 'status-waiting';
             const statusText = room.gameStatus === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
             const roomMode = room.gameMode || 'insider';
@@ -1091,8 +1467,10 @@ $(function() {
             `;
             $table.append(row);
         });
+
+        $('#roomsTableMeta').text(`แสดง ${filteredRooms.length} จาก ${roomList.length} ห้อง`);
     }
-    
+
     function updateBannedTable(bannedPlayers) {
         const $table = $('#bannedTable');
         $table.empty();
@@ -1148,28 +1526,84 @@ $(function() {
     function updateStatsTable(stats) {
         const $table = $('#statsTable');
         $table.empty();
-        
+
+        const statList = Array.isArray(stats) ? [...stats] : [];
+        pruneSelection(dashboardState.stats.selectedIds, new Set(statList.map(stat => stat.playerId)));
         // แสดง/ซ่อนปุ่ม Clear All
-        if (stats.length > 0) {
+        if (statList.length > 0) {
             $('#clearAllStatsBtn').show();
         } else {
             $('#clearAllStatsBtn').hide();
         }
-        $('#deleteSelectedBtn').hide();
-        $('#selectAllStats').prop('checked', false);
         
-        if (stats.length === 0) {
+        if (statList.length === 0) {
             $table.html('<tr><td colspan="11" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
+            $('#statsTableMeta').text('ไม่มีข้อมูลสถิติ');
+            $('#selectAllStats').prop('checked', false);
+            updateSelectedStatsCount();
             return;
         }
-        
-        stats.sort((a, b) => (b.totalGames || 0) - (a.totalGames || 0));
-        
-        stats.forEach(function(stat) {
+
+        statList.sort(function(a, b) {
+            const winRateA = a.totalGames > 0 ? Math.round((a.wins / a.totalGames) * 100) : 0;
+            const winRateB = b.totalGames > 0 ? Math.round((b.wins / b.totalGames) * 100) : 0;
+            let valA;
+            let valB;
+            switch (dashboardState.stats.sortCol) {
+                case 'name':
+                    valA = (a.playerName || '').toLowerCase();
+                    valB = (b.playerName || '').toLowerCase();
+                    break;
+                case 'wins':
+                    valA = Number(a.wins || 0);
+                    valB = Number(b.wins || 0);
+                    break;
+                case 'losses':
+                    valA = Number(a.losses || 0);
+                    valB = Number(b.losses || 0);
+                    break;
+                case 'winRate':
+                    valA = winRateA;
+                    valB = winRateB;
+                    break;
+                case 'games':
+                default:
+                    valA = Number(a.totalGames || 0);
+                    valB = Number(b.totalGames || 0);
+                    break;
+            }
+            return compareValues(valA, valB, dashboardState.stats.sortDir)
+                || compareValues((a.playerName || '').toLowerCase(), (b.playerName || '').toLowerCase(), 'asc');
+        });
+
+        const filteredStats = statList.filter(function(stat) {
+            const search = dashboardState.stats.search.trim().toLowerCase();
+            const modeFilter = dashboardState.stats.modeFilter;
+            const haystack = `${stat.playerName || ''} ${stat.playerId || ''}`.toLowerCase();
+            const hasInsider = Number(stat.modeStats?.insider?.games || 0) > 0;
+            const hasWerewolf = Number(stat.modeStats?.werewolf?.games || 0) > 0;
+            const hasBlackMarket = Number(stat.modeStats?.blackmarket?.games || 0) > 0;
+            const matchesSearch = !search || haystack.includes(search);
+            const matchesMode = modeFilter === 'all'
+                || (modeFilter === 'has-insider' && hasInsider)
+                || (modeFilter === 'has-werewolf' && hasWerewolf)
+                || (modeFilter === 'has-blackmarket' && hasBlackMarket);
+            return matchesSearch && matchesMode;
+        });
+
+        if (filteredStats.length === 0) {
+            $table.html('<tr><td colspan="11" class="empty-message">ไม่พบข้อมูลสถิติที่ตรงเงื่อนไข</td></tr>');
+            $('#statsTableMeta').text(`แสดง 0 จาก ${statList.length} รายการ`);
+            $('#selectAllStats').prop('checked', false);
+            updateSelectedStatsCount();
+            return;
+        }
+
+        filteredStats.forEach(function(stat) {
             const winRate = stat.totalGames > 0 ? Math.round((stat.wins / stat.totalGames) * 100) : 0;
             const row = `
                 <tr data-player-id="${stat.playerId}">
-                    <td><input type="checkbox" class="stat-checkbox" data-player-id="${stat.playerId}" data-player-name="${escapeHtml(stat.playerName || 'Unknown')}" onchange="updateSelectedStatsCount()"></td>
+                    <td><input type="checkbox" class="stat-checkbox" data-player-id="${stat.playerId}" data-player-name="${escapeHtml(stat.playerName || 'Unknown')}" ${dashboardState.stats.selectedIds.has(stat.playerId) ? 'checked' : ''}></td>
                     <td>${escapeHtml(stat.playerName || 'Unknown')}</td>
                     <td>${stat.totalGames || 0}</td>
                     <td style="color: #2ecc71;">${stat.wins || 0}</td>
@@ -1187,6 +1621,20 @@ $(function() {
             `;
             $table.append(row);
         });
+
+        $('#statsTableMeta').text(`แสดง ${filteredStats.length} จาก ${statList.length} รายการ`);
+        $('#statsTable .stat-checkbox').on('change', function() {
+            const playerId = $(this).data('player-id');
+            if ($(this).is(':checked')) {
+                dashboardState.stats.selectedIds.add(playerId);
+            } else {
+                dashboardState.stats.selectedIds.delete(playerId);
+            }
+            updateSelectedStatsCount();
+        });
+        updateSelectedStatsCount();
+        const visibleCheckboxes = $('#statsTable .stat-checkbox');
+        $('#selectAllStats').prop('checked', visibleCheckboxes.length > 0 && visibleCheckboxes.filter(':checked').length === visibleCheckboxes.length);
     }
     
     // ========== Admin Actions ==========
@@ -1310,7 +1758,126 @@ $(function() {
             }
         });
     };
-    
+
+    window.setSiteAdmin = function(playerId, nextValue, playerName) {
+        const actionLabel = nextValue ? 'ตั้งเป็น site admin' : 'ถอดสิทธิ์ site admin';
+        Swal.fire({
+            title: nextValue ? '🛡️ ตั้งสิทธิ์ Site Admin' : 'ถอนสิทธิ์ Site Admin',
+            html: `${actionLabel}ให้ <strong>${playerName}</strong> ใช่ไหม?`,
+            showCancelButton: true,
+            confirmButtonText: nextValue ? 'ตั้งสิทธิ์' : 'ถอนสิทธิ์',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: nextValue ? '#9b59b6' : '#e74c3c',
+            background: '#1e1e1e',
+            color: '#fff'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            socket.emit('admin_setSiteAdmin', { playerId, isSiteAdmin: nextValue }, function(res) {
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: nextValue ? 'ตั้งสิทธิ์สำเร็จ' : 'ถอนสิทธิ์สำเร็จ',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        background: '#1e1e1e',
+                        color: '#fff'
+                    });
+                    loadData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                }
+            });
+        });
+    };
+
+    window.revokeSiteAdmin = function(playerId, playerName) {
+        return window.setSiteAdmin(playerId, false, playerName);
+    };
+
+    window.createSiteAdmin = function() {
+        Swal.fire({
+            title: '✨ สร้าง Site Admin ใหม่',
+            input: 'text',
+            inputLabel: 'ชื่อผู้เล่นใหม่',
+            inputPlaceholder: 'เช่น adminMint',
+            showCancelButton: true,
+            confirmButtonText: 'สร้าง',
+            cancelButtonText: 'ยกเลิก',
+            background: '#1e1e1e',
+            color: '#fff',
+            inputValidator: function(value) {
+                if (!value || !value.trim()) {
+                    return 'กรุณากรอกชื่อผู้เล่น';
+                }
+                if (value.trim().length < 2) {
+                    return 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร';
+                }
+                return null;
+            }
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            socket.emit('admin_createSiteAdmin', { playerName: result.value.trim() }, function(res) {
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สร้าง site admin สำเร็จ',
+                        html: `ลิงก์เข้าเล่นพร้อมใช้แล้ว<br><code>${window.location.origin}/rooms?playerId=${res.player.playerId}</code>`,
+                        background: '#1e1e1e',
+                        color: '#fff'
+                    });
+                    loadData();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+                }
+            });
+        });
+    };
+
+    window.addExistingSiteAdmin = function() {
+        const candidates = (allData.players || []).filter(function(player) {
+            return !player.isSiteAdmin;
+        });
+
+        if (!candidates.length) {
+            Swal.fire({ icon: 'info', title: 'ไม่มีผู้เล่นให้เพิ่ม', text: 'ตอนนี้ผู้เล่นทั้งหมดเป็น site admin อยู่แล้ว', background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+
+        const options = candidates.map(function(player) {
+            const label = `${player.displayName || player.playerName} (${player.playerId.slice(0, 8)}...)`;
+            return `<option value="${escapeHtml(player.playerId)}">${escapeHtml(label)}</option>`;
+        }).join('');
+
+        Swal.fire({
+            title: '➕ เพิ่ม Site Admin',
+            html: `
+                <select id="existingSiteAdminSelect" class="swal2-input" style="width:85%; background:#111; color:#fff; border:1px solid #444;">
+                    <option value="">เลือกผู้เล่น...</option>
+                    ${options}
+                </select>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'เพิ่มสิทธิ์',
+            cancelButtonText: 'ยกเลิก',
+            background: '#1e1e1e',
+            color: '#fff',
+            preConfirm: function() {
+                const value = document.getElementById('existingSiteAdminSelect').value;
+                if (!value) {
+                    Swal.showValidationMessage('กรุณาเลือกผู้เล่น');
+                    return false;
+                }
+                return value;
+            }
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            const selectedPlayer = candidates.find(function(player) {
+                return player.playerId === result.value;
+            });
+            window.setSiteAdmin(result.value, true, selectedPlayer?.displayName || selectedPlayer?.playerName || 'ผู้เล่น');
+        });
+    };
+
     window.closeRoom = function(roomId, roomName) {
         Swal.fire({
             title: '❌ ปิดห้อง',
@@ -1580,13 +2147,21 @@ $(function() {
     
     // เลือก/ยกเลิกเลือกทั้งหมด
     window.toggleSelectAllStats = function(checkbox) {
-        $('.stat-checkbox').prop('checked', checkbox.checked);
+        $('#statsTable .stat-checkbox').each(function() {
+            const playerId = $(this).data('player-id');
+            $(this).prop('checked', checkbox.checked);
+            if (checkbox.checked) {
+                dashboardState.stats.selectedIds.add(playerId);
+            } else {
+                dashboardState.stats.selectedIds.delete(playerId);
+            }
+        });
         updateSelectedStatsCount();
     };
     
     // อัพเดทจำนวนที่เลือก
     window.updateSelectedStatsCount = function() {
-        const count = $('.stat-checkbox:checked').length;
+        const count = dashboardState.stats.selectedIds.size;
         $('#selectedStatsCount').text(count);
         if (count > 0) {
             $('#deleteSelectedBtn').show();
@@ -1714,16 +2289,51 @@ $(function() {
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
         return String(text).replace(/[&<>"']/g, m => map[m]);
     }
+
+    window.copySiteAdminLink = async function(playerId) {
+        const joinUrl = `${window.location.origin}/rooms?playerId=${encodeURIComponent(playerId)}`;
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(joinUrl);
+            } else {
+                const temp = document.createElement('textarea');
+                temp.value = joinUrl;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+            }
+            Swal.fire({
+                icon: 'success',
+                title: 'คัดลอกลิงก์แล้ว',
+                text: joinUrl,
+                timer: 1800,
+                showConfirmButton: false,
+                background: '#1e1e1e',
+                color: '#fff'
+            });
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'คัดลอกไม่สำเร็จ', text: joinUrl, background: '#1e1e1e', color: '#fff' });
+        }
+    };
     
     // ========== Bulk Selection Functions ==========
     
     window.toggleSelectAllPlayers = function(checkbox) {
-        $('.player-checkbox').prop('checked', checkbox.checked);
+        $('#playersTable .player-checkbox').each(function() {
+            const playerId = $(this).data('player-id');
+            $(this).prop('checked', checkbox.checked);
+            if (checkbox.checked) {
+                dashboardState.players.selectedIds.add(playerId);
+            } else {
+                dashboardState.players.selectedIds.delete(playerId);
+            }
+        });
         updateSelectedPlayersCount();
     };
     
     window.updateSelectedPlayersCount = function() {
-        const selectedCount = $('.player-checkbox:checked').length;
+        const selectedCount = dashboardState.players.selectedIds.size;
         $('#selectedPlayerCount').text(selectedCount);
         
         if (selectedCount > 0) {
@@ -1782,32 +2392,6 @@ $(function() {
             }
         });
     };
-
-    function filterPlayersTable() {
-        const search = ($('#searchPlayers').val() || '').toLowerCase();
-        const typeFilter = $('#playerTypeFilter').val() || 'all';
-        let visibleCount = 0;
-
-        $('#playersTable tr').each(function() {
-            const $row = $(this);
-            const text = $row.text().toLowerCase();
-            const category = $row.data('player-category');
-            const matchesSearch = text.includes(search);
-            const matchesType = typeFilter === 'all' || category === typeFilter;
-            const isVisible = matchesSearch && matchesType;
-
-            $row.toggle(isVisible);
-            if (isVisible) visibleCount++;
-        });
-
-        if (visibleCount === 0 && $('#playersTable tr').length > 0) {
-            if ($('#playersTable tr.filter-empty-row').length === 0) {
-                $('#playersTable').append('<tr class="filter-empty-row"><td colspan="8" class="empty-message">ไม่พบผู้เล่นที่ตรงเงื่อนไข</td></tr>');
-            }
-        } else {
-            $('#playersTable tr.filter-empty-row').remove();
-        }
-    }
 
     function askCleanupAgeHours(defaultValue) {
         return Swal.fire({
@@ -2107,7 +2691,7 @@ $(function() {
     // Load logs after authentication
     socket.on('connect', function() {
         if (isAuthenticated) {
-            loadLogs();
+            authenticateAdminSocket({ silent: true });
         }
     });
     
@@ -2174,14 +2758,30 @@ $(function() {
     
     // Listen for real-time events
     socket.on('admin_log', function(data) {
-        addLog(data.type, data.message);
+        serverLogs.unshift({
+            timestamp: new Date().toISOString(),
+            category: 'admin',
+            type: data.type || 'info',
+            message: data.message || ''
+        });
+        if (serverLogs.length > 500) serverLogs.length = 500;
+        renderLogs();
     });
-    
-    // Load initial data
-    loadData();
-    
-    // Auto refresh every 15 seconds
-    setInterval(loadData, 15000);
+
+    updateSortIcons('.sortable:not(.room-sortable):not(.stats-sortable)', dashboardState.players.sortCol, dashboardState.players.sortDir);
+    updateSortIcons('.room-sortable', dashboardState.rooms.sortCol, dashboardState.rooms.sortDir);
+    updateSortIcons('.stats-sortable', dashboardState.stats.sortCol, dashboardState.stats.sortDir);
+
+    function shouldPauseAutoRefresh() {
+        const activeTag = document.activeElement ? document.activeElement.tagName : '';
+        return Swal.isVisible() || activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+    }
+
+    setInterval(function() {
+        if (!shouldPauseAutoRefresh()) {
+            loadData();
+        }
+    }, 15000);
     
     // Update server time every second
     setInterval(() => {

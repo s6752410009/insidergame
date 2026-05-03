@@ -51,6 +51,7 @@ const playerSchema = new mongoose.Schema({
     color: { type: String, default: '#3498db' },
     avatar: { type: String, default: '👤' },
     avatarFrame: { type: String, default: 'none' },
+    isSiteAdmin: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     lastSeen: { type: Date, default: Date.now }
 }, { timestamps: true });
