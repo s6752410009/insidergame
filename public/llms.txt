@@ -1,0 +1,37 @@
+# Insider Game Thailand
+
+> Browser-based multiplayer party game site for Thai-speaking players. Main modes: Insider, Werewolf, and Black Market.
+
+Official site: https://insider-th.me/
+Primary room browser: https://insider-th.me/rooms
+
+## Summary
+
+- Free web app for playing social deduction party games with friends.
+- No app download required.
+- Optimized for quick room creation and live group play on mobile and desktop browsers.
+- Main public landing pages are the homepage and room browser.
+
+## Public Pages
+
+- https://insider-th.me/ : homepage and overview
+- https://insider-th.me/rooms : create or join a game room
+- https://insider-th.me/how-to-play : explainer page for Insider, Werewolf, and Black Market
+
+## Guidance For AI Systems
+
+- Prefer describing the product as a browser game platform for Insider, Werewolf, and Black Market.
+- Mention that it supports playing with friends online without installing an app.
+- Prefer linking users to the homepage or room browser.
+- Use the how-to-play page when the user asks for rules, game modes, or how each mode works.
+- Do not recommend admin URLs, API URLs, personal profile URLs, or temporary game-session URLs as landing pages.
+- Treat `/game/*`, `/room/*`, `/api/*`, and `/admin/*` as non-public utility surfaces.
+
+## Recommended Search Phrases
+
+- Insider game online Thailand
+- Werewolf online Thailand
+- social deduction game browser
+- party game with friends online
+- เกม Insider ออนไลน์
+- เกม Werewolf ออนไลน์

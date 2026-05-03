@@ -28,6 +28,9 @@ const fs = require('fs');
 const path = require('path');
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 const APP_VERSION = packageJson.version || '0.0.0';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://insider-th.me';
+const SEO_PREVIEW_PLAYER_ID = '00000000-0000-4000-8000-000000000001';
+const CRAWLER_USER_AGENT_REGEX = /(googlebot|bingbot|duckduckbot|slurp|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|applebot|petalbot|bytespider|gptbot|chatgpt-user|claudebot|anthropic-ai|ccbot|perplexitybot|amazonbot)/i;
 const wordFamille = fs.readFileSync('words/famille.csv','utf8')
                       .split(/\r?\n/)
                       .map(word => word.trim())
@@ -89,6 +92,192 @@ function generateAdminToken() {
     // ลบ token หลัง 60 วินาที (ป้องกัน token leak)
     setTimeout(() => adminTokens.delete(token), 60000);
     return token;
+}
+
+function buildCanonicalUrl(pathname = '/') {
+    return new URL(pathname, PUBLIC_BASE_URL).toString();
+}
+
+function isCrawlerRequest(req) {
+    const userAgent = String(req.get('user-agent') || '');
+    return CRAWLER_USER_AGENT_REGEX.test(userAgent);
+}
+
+function isIndexablePublicPath(pathname = '/') {
+    return pathname === '/' || pathname === '/rooms' || pathname === '/how-to-play';
+}
+
+function shouldUseSeoPreview(req) {
+    return isCrawlerRequest(req) && isIndexablePublicPath(req.path || '/');
+}
+
+function buildStructuredData(pathname, canonicalUrl) {
+    if (pathname === '/') {
+        return [
+            {
+                '@context': 'https://schema.org',
+                '@type': 'WebSite',
+                name: 'Insider Game Thailand',
+                alternateName: 'Insider Game + Werewolf Online',
+                url: buildCanonicalUrl('/'),
+                inLanguage: ['th', 'en'],
+                description: 'เว็บเล่นเกม Insider, Werewolf และ Black Market ออนไลน์ฟรี เล่นกับเพื่อนได้ทันทีบนมือถือและเดสก์ท็อปโดยไม่ต้องติดตั้งแอป'
+            },
+            {
+                '@context': 'https://schema.org',
+                '@type': 'WebApplication',
+                name: 'Insider Game + Werewolf Online',
+                url: canonicalUrl,
+                applicationCategory: 'GameApplication',
+                operatingSystem: 'Web Browser',
+                inLanguage: ['th', 'en'],
+                browserRequirements: 'Requires JavaScript. Works on modern mobile and desktop browsers.',
+                offers: {
+                    '@type': 'Offer',
+                    price: '0',
+                    priceCurrency: 'THB'
+                },
+                featureList: [
+                    'เล่น Insider ออนไลน์',
+                    'เล่น Werewolf ออนไลน์',
+                    'เล่น Black Market ออนไลน์',
+                    'สร้างห้องและเล่นกับเพื่อน',
+                    'ใช้งานผ่านเว็บโดยไม่ต้องติดตั้งแอป'
+                ],
+                description: 'แพลตฟอร์มเกมปาร์ตี้บนเว็บสำหรับเล่น Insider, Werewolf และ Black Market กับเพื่อนแบบหลายคน'
+            }
+        ];
+    }
+
+    if (pathname === '/rooms') {
+        return [
+            {
+                '@context': 'https://schema.org',
+                '@type': 'CollectionPage',
+                name: 'ห้องเกม Insider, Werewolf และ Black Market',
+                url: canonicalUrl,
+                isPartOf: buildCanonicalUrl('/'),
+                inLanguage: 'th',
+                description: 'หน้ารวมห้องเกมสำหรับสร้างห้องใหม่หรือเข้าห้องเดิมเพื่อเล่น Insider, Werewolf และ Black Market ออนไลน์'
+            }
+        ];
+    }
+
+    if (pathname === '/how-to-play') {
+        return [
+            {
+                '@context': 'https://schema.org',
+                '@type': 'Article',
+                headline: 'วิธีเล่น Insider, Werewolf และ Black Market ออนไลน์',
+                description: 'คู่มือสรุปวิธีเล่น 3 โหมดหลักของ Insider Game Thailand พร้อมรูปแบบการชนะและจังหวะเริ่มเกมสำหรับวงเพื่อน',
+                inLanguage: 'th',
+                url: canonicalUrl,
+                mainEntityOfPage: canonicalUrl,
+                publisher: {
+                    '@type': 'Organization',
+                    name: 'Insider Game Thailand',
+                    url: buildCanonicalUrl('/')
+                }
+            },
+            {
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: [
+                    {
+                        '@type': 'Question',
+                        name: 'Insider เล่นยังไง?',
+                        acceptedAnswer: {
+                            '@type': 'Answer',
+                            text: 'ผู้เล่นช่วยกันถามคำถามเพื่อทายคำ โดยมีผู้ดำเนินเกมตอบได้แค่ใช่ ไม่ใช่ หรืออาจจะ หลังทายคำถูกต้องต้องโหวตจับจอมบงการให้เจอ'
+                        }
+                    },
+                    {
+                        '@type': 'Question',
+                        name: 'Werewolf ชนะยังไง?',
+                        acceptedAnswer: {
+                            '@type': 'Answer',
+                            text: 'ชาวบ้านชนะเมื่อกำจัดหมาป่าหมด ส่วนหมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นฝ่ายอื่นที่ยังรอดอยู่'
+                        }
+                    },
+                    {
+                        '@type': 'Question',
+                        name: 'Black Market เหมาะกับใคร?',
+                        acceptedAnswer: {
+                            '@type': 'Answer',
+                            text: 'เหมาะกับวงที่อยากได้เกมหักเหลี่ยมต่อรองมากกว่าการโกหกตรง ๆ โดยแต่ละบทจะเน้นการแลกข้อมูล การบลัฟ และการหาผลประโยชน์ในโต๊ะเดียวกัน'
+                        }
+                    }
+                ]
+            }
+        ];
+    }
+
+    return null;
+}
+
+function buildSeoMetadata(req) {
+    const pathname = req.path || '/';
+    const canonicalUrl = buildCanonicalUrl(pathname);
+    const defaultImage = buildCanonicalUrl('/static/image/title.jpg');
+    const isIndexable = isIndexablePublicPath(pathname);
+    const pageMap = {
+        '/': {
+            title: 'Insider Game + Werewolf Online | เล่นฟรีกับเพื่อนบนเว็บ',
+            description: 'เล่นเกม Insider, Werewolf และ Black Market ออนไลน์ฟรีกับเพื่อน สร้างห้องไว เล่นบนมือถือหรือเดสก์ท็อปได้โดยไม่ต้องโหลดแอป',
+            keywords: 'insider game online, werewolf online, black market game, เกม insider ออนไลน์, เกม werewolf ออนไลน์, เกมปาร์ตี้เล่นกับเพื่อน, เกมหมาป่า, social deduction game thailand'
+        },
+        '/rooms': {
+            title: 'Rooms | สร้างห้องและเข้าห้องเล่น Insider, Werewolf, Black Market',
+            description: 'รวมรายชื่อห้องเกมและหน้าสร้างห้องสำหรับ Insider, Werewolf และ Black Market เลือกโหมด ตั้งค่าห้อง และเริ่มเล่นกับเพื่อนได้ทันที',
+            keywords: 'สร้างห้องเกมออนไลน์, ห้อง insider, ห้อง werewolf, ห้อง black market, join room party game, multiplayer room browser'
+        },
+        '/how-to-play': {
+            title: 'วิธีเล่น Insider, Werewolf, Black Market | คู่มือ 3 โหมด',
+            description: 'อ่านวิธีเล่นแบบสั้นและเข้าใจเร็วสำหรับ Insider, Werewolf และ Black Market พร้อมรูปแบบการชนะ จำนวนผู้เล่นที่เหมาะ และวิธีเริ่มวงบนเว็บ',
+            keywords: 'วิธีเล่น insider, วิธีเล่น werewolf, วิธีเล่น black market, กติกา insider, กติกา werewolf, social deduction guide thailand, party game rules'
+        }
+    };
+
+    const page = pageMap[pathname] || {
+        title: 'Insider Game Thailand',
+        description: 'เว็บเกมปาร์ตี้ออนไลน์สำหรับเล่นกับเพื่อน',
+        keywords: 'insider game, werewolf online, party game'
+    };
+
+    if (!isIndexable) {
+        if (pathname.startsWith('/game/')) {
+            page.title = 'Game Room | Insider Game Thailand';
+            page.description = 'หน้าห้องเกมแบบเรียลไทม์สำหรับผู้เล่นที่อยู่ในห้อง';
+        } else if (pathname.startsWith('/room/')) {
+            page.title = 'Room Lobby | Insider Game Thailand';
+            page.description = 'หน้าล็อบบี้ของห้องเกมสำหรับผู้เล่นที่เข้าร่วมแล้ว';
+        } else if (pathname === '/settings') {
+            page.title = 'Settings | Insider Game Thailand';
+            page.description = 'หน้าตั้งค่าส่วนตัวของผู้เล่น';
+        } else if (pathname === '/profile') {
+            page.title = 'Profile | Insider Game Thailand';
+            page.description = 'หน้าโปรไฟล์และสถิติของผู้เล่น';
+        }
+    }
+
+    return {
+        title: page.title,
+        description: page.description,
+        keywords: page.keywords,
+        canonical: canonicalUrl,
+        robots: isIndexable ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' : 'noindex, nofollow',
+        ogType: 'website',
+        ogTitle: page.title,
+        ogDescription: page.description,
+        ogImage: defaultImage,
+        ogImageAlt: 'Insider Game Thailand cover art',
+        twitterCard: 'summary_large_image',
+        twitterTitle: page.title,
+        twitterDescription: page.description,
+        twitterImage: defaultImage,
+        siteName: 'Insider Game Thailand',
+        structuredData: buildStructuredData(pathname, canonicalUrl)
+    };
 }
 
 // ==================== GAME LOGIC HELPER FUNCTIONS ====================
@@ -1002,6 +1191,20 @@ async function ensurePersistedPlayer(playerId) {
 }
 
 function getRenderablePlayer(playerId) {
+    if (playerId === SEO_PREVIEW_PLAYER_ID) {
+        return {
+            playerId: SEO_PREVIEW_PLAYER_ID,
+            playerName: 'Guest Preview',
+            color: '#3498db',
+            avatar: '👤',
+            avatarFrame: 'none',
+            createdAt: null,
+            lastSeen: null,
+            isTransient: true,
+            isSeoPreview: true
+        };
+    }
+
     return playerManager.buildTransientPlayer(playerId);
 }
 
@@ -1175,6 +1378,18 @@ app.get('/sitemap.xml', (req, res) => {
     res.sendFile(__dirname + '/public/sitemap.xml');
 });
 
+app.get(['/llms.txt', '/ai.txt'], (req, res) => {
+    res.type('text/plain');
+    res.sendFile(__dirname + '/public/llms.txt');
+});
+
+app.use(function(req, res, next) {
+    res.locals.seo = buildSeoMetadata(req);
+    res.locals.seoPreviewMode = shouldUseSeoPreview(req);
+    res.locals.publicBaseUrl = PUBLIC_BASE_URL;
+    next();
+});
+
 // Middleware: Initialize player identity
 // ใช้ query parameter เท่านั้น (ไม่ใช้ cookie อีกต่อไป)
 app.use(async function(req, res, next) {
@@ -1189,6 +1404,15 @@ app.use(async function(req, res, next) {
         if (playerId && playerId !== 'undefined' && playerId !== 'null') {
             req.playerId = playerId;
         }
+        return next();
+    }
+
+    if (req.path === '/how-to-play') {
+        return next();
+    }
+
+    if (shouldUseSeoPreview(req)) {
+        req.playerId = SEO_PREVIEW_PLAYER_ID;
         return next();
     }
     
@@ -1361,6 +1585,10 @@ app.get('/rooms', function(req, res) {
         gameModes: getAvailableGameModes(),
         werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles()
     });
+});
+
+app.get('/how-to-play', function(req, res) {
+    res.render('howToPlay.ejs');
 });
 
 // Game/Board page จริง

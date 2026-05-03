@@ -1,11 +1,34 @@
-# Robots.txt for Insider Game
 User-agent: *
 Allow: /
 
-# Sitemap
-Sitemap: https://insider-th.me/sitemap.xml
-
-# Block unnecessary paths
 Disallow: /socket.io/
 Disallow: /admin
 Disallow: /api/
+Disallow: /game/
+Disallow: /room/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /game/
+Disallow: /room/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+Disallow: /game/
+Disallow: /room/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /game/
+Disallow: /room/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /game/
+Disallow: /room/
+
+Sitemap: https://insider-th.me/sitemap.xml

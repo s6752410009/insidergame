@@ -1,57 +1,60 @@
 <!DOCTYPE html>
 <html id="app-root" lang="th">
     <head>
+        <%
+            const seoData = (typeof seo !== 'undefined' && seo) ? seo : {};
+            const pageTitle = seoData.title || 'Insider Game Thailand';
+            const pageDescription = seoData.description || 'เว็บเกมปาร์ตี้ออนไลน์สำหรับเล่นกับเพื่อน';
+            const pageKeywords = seoData.keywords || 'insider game, werewolf online, party game';
+            const pageCanonical = seoData.canonical || 'https://insider-th.me/';
+            const pageRobots = seoData.robots || 'index, follow';
+            const ogType = seoData.ogType || 'website';
+            const ogTitle = seoData.ogTitle || pageTitle;
+            const ogDescription = seoData.ogDescription || pageDescription;
+            const ogImage = seoData.ogImage || 'https://insider-th.me/static/image/title.jpg';
+            const ogImageAlt = seoData.ogImageAlt || 'Insider Game Thailand';
+            const siteName = seoData.siteName || 'Insider Game Thailand';
+            const twitterCard = seoData.twitterCard || 'summary_large_image';
+            const twitterTitle = seoData.twitterTitle || pageTitle;
+            const twitterDescription = seoData.twitterDescription || pageDescription;
+            const twitterImage = seoData.twitterImage || ogImage;
+            const structuredData = Array.isArray(seoData.structuredData) ? seoData.structuredData : [];
+        %>
         <meta charset="UTF-8">
-        <title>Insider Game + Werewolf Online | เล่นฟรี เกม Insider และ Werewolf</title>
+        <title><%= pageTitle %></title>
         
         <!-- SEO Meta Tags -->
-        <meta name="description" content="Insider Game + Werewolf Online - เล่นเกม Insider และ Werewolf ออนไลน์ฟรีกับเพื่อน ไม่ต้องโหลดแอป มีทั้งเกมหาจอมบงการ เกมหมาป่า และห้องเล่นหลายคนผ่านเว็บ">
-        <meta name="keywords" content="insider, insider game, insider game online, werewolf, werewolf online, เกม insider, insider ออนไลน์, เกมหาจอมบงการ, เกมหมาป่า, werewolf thailand, เกม werewolf ออนไลน์, board game online, เกมปาร์ตี้, เกมเล่นกับเพื่อน, multiplayer game, insider th, insider thailand">
+        <meta name="description" content="<%= pageDescription %>">
+        <meta name="keywords" content="<%= pageKeywords %>">
         <meta name="author" content="Insider Game Thailand">
-        <meta name="robots" content="index, follow">
-        <link rel="canonical" href="https://insider-th.me/">
+        <meta name="robots" content="<%= pageRobots %>">
+        <meta name="googlebot" content="<%= pageRobots %>">
+        <meta name="referrer" content="strict-origin-when-cross-origin">
+        <link rel="canonical" href="<%= pageCanonical %>">
+        <link rel="alternate" hreflang="th-TH" href="<%= pageCanonical %>">
         
         <!-- Open Graph / Facebook -->
-        <meta property="og:type" content="website">
-        <meta property="og:url" content="https://insider-th.me/">
-        <meta property="og:title" content="Insider Game + Werewolf Online | เล่นฟรีทั้ง Insider และ Werewolf">
-        <meta property="og:description" content="เล่นเกม Insider และ Werewolf ออนไลน์ฟรีกับเพื่อน มีทั้งเกมหาจอมบงการและเกมหมาป่าบนเว็บเดียว">
-        <meta property="og:image" content="https://insider-th.me/static/image/title.jpg">
+        <meta property="og:type" content="<%= ogType %>">
+        <meta property="og:url" content="<%= pageCanonical %>">
+        <meta property="og:title" content="<%= ogTitle %>">
+        <meta property="og:description" content="<%= ogDescription %>">
+        <meta property="og:image" content="<%= ogImage %>">
+        <meta property="og:image:alt" content="<%= ogImageAlt %>">
         <meta property="og:locale" content="th_TH">
-        <meta property="og:site_name" content="Insider Game Thailand">
+        <meta property="og:site_name" content="<%= siteName %>">
         
         <!-- Twitter Card -->
-        <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:url" content="https://insider-th.me/">
-        <meta name="twitter:title" content="Insider Game + Werewolf Online | เล่นฟรีทั้ง Insider และ Werewolf">
-        <meta name="twitter:description" content="เล่นเกม Insider และ Werewolf ออนไลน์ฟรีกับเพื่อน มีทั้งเกมหาจอมบงการและเกมหมาป่าบนเว็บเดียว">
-        <meta name="twitter:image" content="https://insider-th.me/static/image/title.jpg">
+        <meta name="twitter:card" content="<%= twitterCard %>">
+        <meta name="twitter:url" content="<%= pageCanonical %>">
+        <meta name="twitter:title" content="<%= twitterTitle %>">
+        <meta name="twitter:description" content="<%= twitterDescription %>">
+        <meta name="twitter:image" content="<%= twitterImage %>">
+        <meta name="twitter:image:alt" content="<%= ogImageAlt %>">
         
         <!-- Structured Data / JSON-LD -->
-        <script type="application/ld+json">
-        {
-            "@context": "https://schema.org",
-            "@type": "WebApplication",
-            "name": "Insider Game + Werewolf Online",
-            "alternateName": ["Insider", "Insider Board Game", "เกม Insider", "Insider ออนไลน์", "Werewolf Online", "เกม Werewolf", "เกมหมาป่า"],
-            "description": "เล่นเกม Insider และ Werewolf ออนไลน์ฟรีบนเว็บเดียว มีทั้งเกมหาจอมบงการและเกมหมาป่าสำหรับเล่นกับเพื่อน",
-            "url": "https://insider-th.me",
-            "applicationCategory": "Game",
-            "operatingSystem": "Web Browser",
-            "inLanguage": ["th", "en"],
-            "keywords": "Insider, Insider Game, Insider Game Online, Werewolf, Werewolf Online, เกม Insider, เกม Werewolf, เกมหมาป่า, Board Game",
-            "offers": {
-                "@type": "Offer",
-                "price": "0",
-                "priceCurrency": "THB"
-            },
-            "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.8",
-                "ratingCount": "150"
-            }
-        }
-        </script>
+        <% if (structuredData.length > 0) { %>
+        <script type="application/ld+json"><%- JSON.stringify(structuredData, null, 2) %></script>
+        <% } %>
         
         <script>
             // Theme Initialization - Apply immediately before CSS loads

@@ -726,10 +726,10 @@
             <div class="menu-desc">เข้าร่วมห้องหรือสร้างห้องใหม่</div>
         </a>
         
-        <a href="#" class="menu-item howto" id="howToPlayBtn">
+        <a href="/how-to-play" class="menu-item howto">
             <span class="menu-icon">📖</span>
             <div class="menu-title">กฎการเล่น</div>
-            <div class="menu-desc">ดูวิธีเล่น Insider และ Werewolf</div>
+            <div class="menu-desc">ดูวิธีเล่นและความต่างของทั้ง 3 โหมด</div>
         </a>
         
         <a href="/profile?playerId=<%= player.playerId %>" class="menu-item profile">
@@ -1261,130 +1261,6 @@ $(function() {
         div.textContent = text;
         return div.innerHTML;
     }
-    
-    // กฎการเล่น Modal
-    $('#howToPlayBtn').on('click', function(e) {
-        e.preventDefault();
-        
-        Swal.fire({
-            title: '📖 กฎการเล่น',
-            html: `
-                <div style="font-family: 'Rajdhani', sans-serif; text-align:left;">
-                    <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:14px;">
-                        <button type="button" class="guide-tab-btn active" data-guide-tab="insider" style="border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 12px; background:linear-gradient(135deg, rgba(231,76,60,0.22), rgba(192,57,43,0.16)); color:#fff; font-weight:700;">🎯 Insider</button>
-                        <button type="button" class="guide-tab-btn" data-guide-tab="werewolf" style="border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 12px; background:rgba(255,255,255,0.04); color:#fff; font-weight:700;">🐺 Werewolf</button>
-                    </div>
-
-                    <div style="max-height:60vh; overflow-y:auto; padding-right:10px; display:grid; gap:12px;">
-                        <div class="guide-tab-panel" data-guide-panel="insider" style="display:grid; gap:12px;">
-                            <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 15px; border-radius: 12px;">
-                                <h3 style="margin: 0 0 10px 0; color: #fff;">🎯 เป้าหมายของ Insider</h3>
-                                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">ทายคำให้ถูก และจับให้ได้ว่าใครคือจอมบงการ</p>
-                            </div>
-
-                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #f39c12;">
-                                <h4 style="margin:0 0 10px 0; color:#f39c12;">👥 บทบาทหลัก</h4>
-                                <div style="display:grid; gap:10px; color:#ccc; font-size:0.95em;">
-                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#e74c3c;">🎭 ผู้ดำเนินเกม</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำตอบ และตอบได้แค่ ใช่ / ไม่ใช่ / อาจจะ</p></div>
-                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#9b59b6;">🕵️ จอมบงการ</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">รู้คำ แต่ต้องซ่อนตัวและเนียนไปกับวง</p></div>
-                                    <div style="background:#1a1a1a; padding:10px; border-radius:8px;"><strong style="color:#3498db;">👤 พลเมือง</strong><p style="margin:5px 0 0 0; color:#aaa; font-size:0.9em;">ช่วยกันถาม ช่วยกันทาย และช่วยกันจับคนเนียน</p></div>
-                                </div>
-                            </div>
-
-                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #3498db; color:#ccc;">
-                                <h4 style="margin:0 0 10px 0; color:#3498db;">📝 วิธีเล่นแบบสั้น</h4>
-                                <ol style="margin:0; padding-left:20px; font-size:0.95em;">
-                                    <li style="margin-bottom:8px;">ระบบแจกบทบาทให้ทุกคน</li>
-                                    <li style="margin-bottom:8px;">ผู้ดำเนินเกมเลือกคำ</li>
-                                    <li style="margin-bottom:8px;">ทุกคนถามคำถาม แล้วไล่ทายคำ</li>
-                                    <li style="margin-bottom:8px;">ถ้าทายถูก เกมจะเข้าสู่ช่วงโหวตหาจอมบงการ</li>
-                                    <li>ถ้าจับถูก พลเมืองชนะ ถ้าจับพลาด จอมบงการชนะ</li>
-                                </ol>
-                            </div>
-
-                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #2ecc71; color:#ccc;">
-                                <h4 style="margin:0 0 10px 0; color:#2ecc71;">💡 ทริกสำคัญ</h4>
-                                <div style="display:grid; gap:8px; font-size:0.95em;">
-                                    <div>คนที่รีบนำเกินไปอาจกำลังปั่นวง แต่คนเงียบผิดปกติก็อาจซ่อนอยู่เหมือนกัน</div>
-                                    <div>ถ้าเปิดโหมด 2 จอมบงการ ตอนโหวตต้องเดาให้ครบ 2 คนถึงจะชนะ</div>
-                                    <div>เจ้าของห้องมีสิทธิ์เริ่มเกม, จับเวลา, เริ่มโหวต, เตะคน, โอนห้อง และแก้ไขห้อง</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="guide-tab-panel" data-guide-panel="werewolf" style="display:none; gap:12px;">
-                            <div style="background: linear-gradient(135deg, #34495e 0%, #111827 100%); padding: 15px; border-radius: 12px;">
-                                <h3 style="margin: 0 0 10px 0; color: #fff;">🐺 เป้าหมายของ Werewolf</h3>
-                                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95em;">ชาวบ้านต้องจับหมาป่าให้หมด ส่วนหมาป่าต้องอยู่ให้จำนวนไม่น้อยกว่าคนอื่นที่เหลือ</p>
-                            </div>
-
-                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #8fd3ff; color:#ccc;">
-                                <h4 style="margin:0 0 10px 0; color:#8fd3ff;">🌙 กลางคืน / ☀️ กลางวัน</h4>
-                                <div style="display:grid; gap:8px; font-size:0.95em;">
-                                    <div><strong>คืนแรก</strong> หมาป่ายังฆ่าไม่ได้ ทุกคนใช้เวลาอ่านหน้ากันก่อน</div>
-                                    <div><strong>คืนถัดไป</strong> หมาป่าเลือกเหยื่อ ส่วนบทพิเศษใช้สกิลตามหน้าที่</div>
-                                    <div><strong>ตอนเช้า</strong> อ่านประกาศ, คุยกัน และโหวตคนต้องสงสัย</div>
-                                    <div><strong>ถ้าข้ามโหวตเกินครึ่ง</strong> หรือทุกคนโหวตครบ เกมจะตัดผลทันที</div>
-                                </div>
-                            </div>
-
-                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #f39c12; color:#ccc;">
-                                <h4 style="margin:0 0 10px 0; color:#f39c12;">🔮 กติกา Seer แบบใหม่</h4>
-                                <div style="display:grid; gap:8px; font-size:0.95em;">
-                                    <div>Seer ดูได้คืนละ 1 คน</div>
-                                    <div>ผลตรวจจะเห็นแค่ <strong style="color:#7ee2a8;">ดี</strong>, <strong style="color:#ff9aa2;">ไม่ดี</strong> หรือ <strong style="color:#f8d189;">ไม่ทราบ</strong></div>
-                                    <div><strong>อัลฟ่าหมาป่า</strong> และ <strong>คนบ้า</strong> จะขึ้นว่า <strong>ไม่ทราบ</strong></div>
-                                </div>
-                            </div>
-
-                            <div style="background:#2d2d2d; padding:15px; border-radius:12px; border-left:4px solid #2ecc71; color:#ccc;">
-                                <h4 style="margin:0 0 10px 0; color:#2ecc71;">🎭 บทเด่นที่เล่นแล้วมัน</h4>
-                                <div style="display:grid; gap:8px; font-size:0.95em;">
-                                    <div><strong>อัลฟ่าหมาป่า</strong> โหวตล่ากลางคืนหนัก 2 เสียง แต่ Seer อ่านไม่ออก</div>
-                                    <div><strong>นายก</strong> ต้องเปิดตัวเองก่อนถึงจะได้ 2 เสียงตอนโหวต</div>
-                                    <div><strong>บอดี้การ์ด</strong> กันสำเร็จแล้วเกราะแตก เล่นพลาดคือหมดแรงคุ้มกันทันที</div>
-                                    <div><strong>คนบ้า</strong> ถ้าถูกโหวตออกจะชนะคนเดียว และ Seer ก็ยังอ่านไม่ออก</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            width: 600,
-            background: '#1a1a2e',
-            color: '#fff',
-            showCloseButton: true,
-            showConfirmButton: false,
-            customClass: {
-                popup: 'howto-popup'
-            },
-            didOpen: () => {
-                const buttons = Array.from(document.querySelectorAll('.guide-tab-btn'));
-                const panels = Array.from(document.querySelectorAll('.guide-tab-panel'));
-
-                function activateTab(tabId) {
-                    buttons.forEach(button => {
-                        const active = button.dataset.guideTab === tabId;
-                        button.classList.toggle('active', active);
-                        button.style.background = active
-                            ? 'linear-gradient(135deg, rgba(231,76,60,0.22), rgba(192,57,43,0.16))'
-                            : 'rgba(255,255,255,0.04)';
-                        button.style.borderColor = active ? '#ff8a7a' : 'rgba(255,255,255,0.1)';
-                    });
-
-                    panels.forEach(panel => {
-                        panel.style.display = panel.dataset.guidePanel === tabId ? 'grid' : 'none';
-                    });
-                }
-
-                buttons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        activateTab(button.dataset.guideTab);
-                    });
-                });
-            }
-        });
-    });
     
     // Donate Button Handler
     $('#donateBtn').on('click', function() {

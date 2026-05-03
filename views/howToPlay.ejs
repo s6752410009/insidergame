@@ -1,0 +1,396 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --guide-bg: #f3ecdf;
+    --guide-surface: rgba(255, 250, 242, 0.95);
+    --guide-panel: rgba(255, 255, 255, 0.74);
+    --guide-ink: #281813;
+    --guide-muted: #70574b;
+    --guide-line: rgba(74, 43, 30, 0.14);
+    --guide-accent: #b54831;
+    --guide-deep: #792e1f;
+    --guide-gold: #d3a03a;
+    --guide-shadow: 0 26px 64px rgba(66, 30, 16, 0.14);
+  }
+
+  body.content {
+    background:
+      radial-gradient(circle at top left, rgba(181, 72, 49, 0.12), transparent 28%),
+      radial-gradient(circle at top right, rgba(211, 160, 58, 0.12), transparent 24%),
+      linear-gradient(180deg, #f8f1e6 0%, #f0e5d6 100%);
+  }
+
+  .guide-page {
+    max-width: 1180px;
+    margin: 24px auto 40px;
+    padding: 0 18px 24px;
+    color: var(--guide-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+  }
+
+  .guide-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 30px;
+    border: 1px solid var(--guide-line);
+    border-radius: 32px;
+    background:
+      radial-gradient(circle at top right, rgba(211, 160, 58, 0.22), transparent 34%),
+      linear-gradient(145deg, rgba(255, 248, 236, 0.98), rgba(246, 236, 222, 0.96));
+    box-shadow: var(--guide-shadow);
+  }
+
+  .guide-hero::after {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border: 1px dashed rgba(121, 46, 31, 0.16);
+    border-radius: 24px;
+    pointer-events: none;
+  }
+
+  .guide-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(181, 72, 49, 0.1);
+    color: var(--guide-deep);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .guide-hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 20px;
+    margin-top: 18px;
+    align-items: start;
+  }
+
+  .guide-title {
+    margin: 0;
+    max-width: 12ch;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4.6rem);
+    line-height: 0.94;
+    letter-spacing: -0.03em;
+  }
+
+  .guide-copy {
+    max-width: 62ch;
+    margin: 16px 0 0;
+    color: var(--guide-muted);
+    font-size: 1.03rem;
+    line-height: 1.72;
+  }
+
+  .guide-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .guide-chip {
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(74, 43, 30, 0.1);
+    background: rgba(255, 255, 255, 0.65);
+    color: #5a4238;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .guide-sidecard {
+    display: grid;
+    gap: 16px;
+    padding: 22px;
+    border-radius: 24px;
+    background: rgba(46, 24, 17, 0.94);
+    color: #fbf2ea;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .guide-sidecard h2 {
+    margin: 0;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.3rem;
+  }
+
+  .guide-sidecard p {
+    margin: 0;
+    color: rgba(251, 242, 234, 0.78);
+    line-height: 1.65;
+  }
+
+  .guide-side-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .guide-side-item {
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .guide-section-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .guide-card {
+    padding: 22px;
+    border-radius: 28px;
+    border: 1px solid var(--guide-line);
+    background: var(--guide-surface);
+    box-shadow: var(--guide-shadow);
+  }
+
+  .guide-card.mode-insider {
+    background: linear-gradient(180deg, rgba(255,245,242,0.98), rgba(255,237,231,0.98));
+  }
+
+  .guide-card.mode-werewolf {
+    background: linear-gradient(180deg, rgba(241,245,255,0.98), rgba(230,237,255,0.98));
+  }
+
+  .guide-card.mode-blackmarket {
+    background: linear-gradient(180deg, rgba(255,250,236,0.98), rgba(249,241,214,0.98));
+  }
+
+  .guide-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .guide-card.mode-insider .guide-mode-badge {
+    background: rgba(181, 72, 49, 0.12);
+    color: #8f3322;
+  }
+
+  .guide-card.mode-werewolf .guide-mode-badge {
+    background: rgba(53, 103, 181, 0.12);
+    color: #284a8b;
+  }
+
+  .guide-card.mode-blackmarket .guide-mode-badge {
+    background: rgba(173, 124, 23, 0.14);
+    color: #896116;
+  }
+
+  .guide-card h2,
+  .guide-card h3 {
+    margin: 0;
+    font-family: 'Chakra Petch', sans-serif;
+  }
+
+  .guide-card p {
+    color: var(--guide-muted);
+    line-height: 1.7;
+  }
+
+  .guide-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .guide-list-item {
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: var(--guide-panel);
+    border: 1px solid rgba(74, 43, 30, 0.08);
+    color: #503b31;
+    line-height: 1.6;
+  }
+
+  .guide-compare {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .guide-faq {
+    display: grid;
+    gap: 12px;
+  }
+
+  .guide-faq-item {
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(74, 43, 30, 0.08);
+  }
+
+  .guide-faq-item strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--guide-ink);
+  }
+
+  .guide-cta {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+
+  .guide-cta-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 0 22px;
+    border-radius: 18px;
+    background: linear-gradient(145deg, var(--guide-accent), var(--guide-deep));
+    color: #fff7f2;
+    text-decoration: none;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 700;
+    box-shadow: 0 18px 28px rgba(121, 46, 31, 0.18);
+  }
+
+  .guide-cta-button:hover {
+    color: #fff7f2;
+    text-decoration: none;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 980px) {
+    .guide-hero-grid,
+    .guide-section-grid,
+    .guide-compare {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .guide-page {
+      padding: 0 12px 20px;
+    }
+
+    .guide-hero,
+    .guide-card {
+      padding: 18px;
+      border-radius: 24px;
+    }
+
+    .guide-title {
+      max-width: none;
+      font-size: 2.4rem;
+    }
+  }
+</style>
+
+<div class="guide-page">
+  <section class="guide-hero">
+    <span class="guide-kicker">How To Play</span>
+    <div class="guide-hero-grid">
+      <div>
+        <h1 class="guide-title">วิธีเล่น 3 โหมดหลักให้เข้าใจในหน้าเดียว</h1>
+        <p class="guide-copy">หน้านี้สรุปวิธีเล่น Insider, Werewolf และ Black Market แบบอ่านเร็วแล้วเริ่มวงได้เลย เหมาะทั้งคนที่เพิ่งเคยเล่นครั้งแรกและคนที่ต้องอธิบายกติกาให้เพื่อนก่อนกดสร้างห้อง</p>
+        <div class="guide-chip-row">
+          <span class="guide-chip">อธิบายสั้นแต่ครบ</span>
+          <span class="guide-chip">มีจุดชนะของแต่ละโหมด</span>
+          <span class="guide-chip">ใช้ก่อนสร้างห้องได้ทันที</span>
+        </div>
+      </div>
+      <aside class="guide-sidecard">
+        <div>
+          <h2>เลือกโหมดไหนดี?</h2>
+          <p>ถ้าอยากเปิดวงไว เลือก Insider ถ้าอยากได้เกมหลอกลวงกับบทบาทลึกขึ้น เลือก Werewolf ถ้าอยากได้เกมต่อรองและอ่านใจเชิงผลประโยชน์ เลือก Black Market</p>
+        </div>
+        <div class="guide-side-list">
+          <div class="guide-side-item">🎯 Insider: เร็วที่สุด เหมาะกับคนเริ่มวง</div>
+          <div class="guide-side-item">🐺 Werewolf: มีบทบาทเยอะ คุยลึกกว่า</div>
+          <div class="guide-side-item">🎩 Black Market: เจรจา บลัฟ ต่อรอง</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="guide-section-grid">
+    <article class="guide-card mode-insider">
+      <div class="guide-mode-badge">🎯 Insider</div>
+      <h2>ทายคำ แล้วจับคนที่รู้คำ</h2>
+      <p>โหมดนี้เล่นง่ายที่สุด ผู้ดำเนินเกมรู้คำตอบ จอมบงการรู้คำเหมือนกัน แต่ต้องเนียนไปกับวงโดยไม่ให้คนอื่นจับได้</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> ทายคำให้ถูก แล้วโหวตจับจอมบงการให้เจอ</div>
+        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 4-8 คนที่อยากเริ่มเกมเร็วและอธิบายกติกาง่าย</div>
+        <div class="guide-list-item"><strong>จุดเด่น</strong> จบไว อ่านคนชัด และใช้การถามคำถามเป็นแกนหลัก</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-werewolf">
+      <div class="guide-mode-badge">🐺 Werewolf</div>
+      <h2>กลางคืนใช้สกิล กลางวันตัดสิน</h2>
+      <p>โหมดนี้เน้นบทบาทและข้อมูลที่ไม่เท่ากัน หมาป่าพยายามลดจำนวนชาวบ้าน ขณะที่ฝ่ายหมู่บ้านต้องใช้ข้อมูลสะสมและการคุยกันเพื่อหาตัวจริง</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> ชาวบ้านต้องกำจัดหมาป่าหมด หมาป่าต้องอยู่รอดจนจำนวนไม่น้อยกว่าฝ่ายตรงข้าม</div>
+        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 5-10 คนที่อยากเล่นหลายรอบและชอบบทบาทพิเศษ</div>
+        <div class="guide-list-item"><strong>จุดเด่น</strong> มี phase กลางคืนและกลางวัน ทำให้เกมพลิกได้จากสกิลกับการโหวต</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-blackmarket">
+      <div class="guide-mode-badge">🎩 Black Market</div>
+      <h2>ต่อรอง บลัฟ และหักเหลี่ยม</h2>
+      <p>Black Market เน้นความสัมพันธ์บนโต๊ะและการอ่านเจตนา ผู้เล่นแต่ละบทมองหาผลประโยชน์ของตัวเองผ่านการแลกข้อมูล การต่อรอง และการวางจังหวะ</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> ใช้บทบาทของตัวเองสร้างความได้เปรียบและผลักดันแผนให้สำเร็จ</div>
+        <div class="guide-list-item"><strong>เหมาะกับ</strong> วงที่อยากได้เกมเจรจามากขึ้นกว่าการโกหกตรง ๆ</div>
+        <div class="guide-list-item"><strong>จุดเด่น</strong> ทุกคำพูดมีราคา และ alliance เปลี่ยนได้ตลอดทั้งเกม</div>
+      </div>
+    </article>
+  </section>
+
+  <section class="guide-compare">
+    <div class="guide-card">
+      <h3>เริ่มเล่นแต่ละโหมดยังไง</h3>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>1. เลือกโหมด</strong> เลือกจากอารมณ์วง ถ้าเพิ่งรวมกลุ่ม ให้เริ่ม Insider ก่อน</div>
+        <div class="guide-list-item"><strong>2. สร้างห้อง</strong> ตั้งค่าจำนวนผู้เล่นและตัวเลือกเฉพาะของโหมดนั้น</div>
+        <div class="guide-list-item"><strong>3. อธิบายเป้าหมายชนะ</strong> บอกให้ทุกคนเข้าใจว่าใครชนะเมื่อไหร่ก่อนเริ่มรอบ</div>
+        <div class="guide-list-item"><strong>4. เล่นหนึ่งรอบทดลอง</strong> รอบแรกควรเน้นให้ทุกคนเข้า flow มากกว่าชนะ</div>
+      </div>
+    </div>
+
+    <div class="guide-card guide-cta">
+      <h3>คำถามที่เจอบ่อย</h3>
+      <div class="guide-faq">
+        <div class="guide-faq-item">
+          <strong>ถ้ามีผู้เล่นใหม่หลายคน ควรเริ่มโหมดไหน?</strong>
+          เริ่มจาก Insider เพราะอธิบายง่ายและทำให้ทุกคนเข้าใจการอ่านคนกับการคุยในวงก่อน
+        </div>
+        <div class="guide-faq-item">
+          <strong>Werewolf ใช้เวลานานกว่าไหม?</strong>
+          โดยทั่วไปนานกว่า Insider เพราะมีหลาย phase และแต่ละบทมีผลต่อการตัดสินใจของทั้งวง
+        </div>
+        <div class="guide-faq-item">
+          <strong>Black Market ต่างจากอีกสองโหมดยังไง?</strong>
+          มันไม่ได้เน้นหาคนโกหกอย่างเดียว แต่เน้นการต่อรอง บลัฟ และอ่านว่าใครกำลังได้ประโยชน์จากสถานการณ์
+        </div>
+      </div>
+      <a class="guide-cta-button" href="/rooms">ไปที่หน้า Rooms เพื่อเริ่มเล่น</a>
+    </div>
+  </section>
+</div>
