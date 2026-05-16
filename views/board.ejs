@@ -2947,6 +2947,8 @@ $(function() {
     // ==================== AUTO TIMER SYSTEM ====================
     var wordTimer = null;
     var wordTimeLeft = 30;
+    var isLoadingWordSuggestions = false;
+    var wordSuggestionsRequestId = 0;
     var revealTimer = null;
     var revealTimeLeft = 5;
     var startGameTimer = null;
@@ -2954,15 +2956,19 @@ $(function() {
     
     // Function to start word input timer (30 seconds)
     function startWordTimer() {
+        stopWordTimer();
         wordTimeLeft = 30;
         updateWordTimerUI();
-        
-        wordTimer = setInterval(function() {
+
+        var timerId = setInterval(function() {
             wordTimeLeft--;
             updateWordTimerUI();
-            
+
             if (wordTimeLeft <= 0) {
-                clearInterval(wordTimer);
+                clearInterval(timerId);
+                if (wordTimer === timerId) {
+                    wordTimer = null;
+                }
                 // Auto submit (will generate random word if empty)
                 if (!wordSubmitted) {
                     console.log('[WordTimer] Time up! Auto-submitting...');
@@ -2970,6 +2976,7 @@ $(function() {
                 }
             }
         }, 1000);
+        wordTimer = timerId;
     }
     
     // Update word timer UI
@@ -3076,6 +3083,7 @@ $(function() {
 
         // ถ้าไม่มีคำ → แสดงตัวเลือก 5 คำให้เลือกก่อน
         if (!wordVal) {
+            stopWordTimer();
             loadWordSuggestions();
             return;
         }
@@ -3144,13 +3152,24 @@ $(function() {
     }
 
     // โหลดตัวเลือก 5 คำจาก server
-    function loadWordSuggestions() {
+    function loadWordSuggestions(forceReload) {
+        if (isLoadingWordSuggestions && !forceReload) {
+            return;
+        }
+
         var $panel = $('#wordSuggestionPanel');
         var $list = $('#wordSuggestionList');
+        var requestId = ++wordSuggestionsRequestId;
+        isLoadingWordSuggestions = true;
         $list.html('<div style="color:#aaa; text-align:center; padding:10px;">⏳ กำลังโหลด...</div>');
         $panel.show();
 
         socket.emit('getWordSuggestions', {}, function(res) {
+            if (requestId !== wordSuggestionsRequestId) {
+                return;
+            }
+            isLoadingWordSuggestions = false;
+
             if (!res || !res.ok || !res.words) {
                 $list.html('<div style="color:#e74c3c;">เกิดข้อผิดพลาด ลองใหม่</div>');
                 return;
@@ -3189,15 +3208,9 @@ $(function() {
 
     // ปุ่มสุ่มคำใหม่
     $('#rerollSuggestionsBtn').on('click', function() {
-        loadWordSuggestions();
+        loadWordSuggestions(true);
     });
     $("#wordForm").submit(function(e) {
-        e.preventDefault();
-        submitWord();
-    });
-    
-    // Also handle direct button click
-    $('#wordForm button').on('click', function(e) {
         e.preventDefault();
         submitWord();
     });
@@ -3463,6 +3476,11 @@ $(function() {
     socket.on('newRole', function(data) {
         console.log('[newRole] Received:', data);
         wordSubmitted = false;
+        isLoadingWordSuggestions = false;
+        wordSuggestionsRequestId++;
+        $('#wordSuggestionPanel').hide();
+        $('#wordSuggestionList').html('');
+        stopWordTimer();
         $('.hidden').hide();
         $('#word').html('');
         $('#vote2 .vote2-choices').html('');
