@@ -70,6 +70,10 @@ const werewolfTransitionTimeouts = new Map();
 // เก็บ timeout สำหรับ phase อัตโนมัติของ Black Market
 const blackMarketPhaseTimeouts = new Map();
 
+// เก็บ timeout สำหรับ phase อัตโนมัติของ Spyfall
+const spyfallPhaseTimeouts = new Map();
+const spyfallReturnTimeouts = new Map();
+
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
 const disconnectTimeouts = new Map();
 
@@ -751,8 +755,132 @@ function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo =
  * @param {string} haptic - Optional haptic feedback type
  */
 function sendGameLog(io, roomId, message, type = 'info', icon = null, haptic = null) {
-    // Store log for admin dashboard
-    addServerLog(io, 'game', roomId, message, type);
+    const room = roomId ? roomManager.getRoom(roomId) : null;
+    addServerLog(io, 'game', roomId, message, type, {
+        gameMode: room?.settings?.gameMode || null
+    });
+}
+
+const GAME_MODE_LOG_STYLES = {
+    insider: { label: 'Insider', emoji: '🎯', badgeBg: 'rgba(52,152,219,0.18)', badgeColor: '#d6ebff' },
+    werewolf: { label: 'Werewolf', emoji: '🐺', badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
+    blackmarket: { label: 'Black Market', emoji: '🎩', badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
+    spyfall: { label: 'Spyfall', emoji: '🕵️', badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' }
+};
+
+function getGameModeLogStyle(gameMode) {
+    const engine = getGameEngine(gameMode);
+    const modeId = engine?.id || gameMode || 'insider';
+    return GAME_MODE_LOG_STYLES[modeId] || {
+        label: engine?.label || modeId,
+        emoji: '🎮',
+        badgeBg: 'rgba(255,255,255,0.1)',
+        badgeColor: '#fff'
+    };
+}
+
+function buildGameEndNotification(room) {
+    if (!room?.gameState) {
+        return null;
+    }
+
+    const mode = room.settings.gameMode;
+    const gameState = room.gameState;
+    const playerCount = Array.isArray(gameState.players)
+        ? gameState.players.length
+        : (room.players?.length || 0);
+
+    if (mode === 'werewolf') {
+        const winner = gameState.winner;
+        const winnerLabel = winner === 'werewolf'
+            ? 'หมาป่า'
+            : (winner === 'village' ? 'ชาวบ้าน' : (winner === 'fool' ? 'คนบ้า' : String(winner || 'ไม่ทราบ')));
+        return {
+            chatMessage: `เกมจบ! ${winnerLabel} ชนะ (วันที่ ${gameState.dayNumber || 0})`,
+            chatColor: winner === 'werewolf' ? '#e74c3c' : '#2ecc71',
+            logMessage: `🐺 Werewolf จบ — ${winnerLabel} ชนะ · วัน ${gameState.dayNumber || 0} · ${playerCount} คน`,
+            logType: winner === 'werewolf' ? 'error' : 'success',
+            meta: { winner: winnerLabel, dayNumber: gameState.dayNumber || 0, playerCount }
+        };
+    }
+
+    if (mode === 'blackmarket') {
+        const winner = gameState.winner || {};
+        const winnerName = winner.name || 'ไม่ทราบ';
+        const winnerRole = winner.roleTitle || winner.roleId || '-';
+        const reason = winner.reason || gameState.winner?.reason || '';
+        return {
+            chatMessage: `เกมจบ! ${winnerName} คุมโต๊ะ (${winnerRole})`,
+            chatColor: '#f39c12',
+            logMessage: `🎩 Black Market จบ — ${winnerName} ชนะ [${winnerRole}]${reason ? ` · ${reason}` : ''} · ${playerCount} คน`,
+            logType: 'success',
+            meta: { winnerName, winnerRole, reason, playerCount, roundNumber: gameState.roundNumber || 0 }
+        };
+    }
+
+    if (mode === 'spyfall') {
+        const winner = gameState.winner || {};
+        const resultMsg = winner.team === 'citizens' ? 'พลเมืองจับสายลับได้!' : 'สายลับหลบรอด!';
+        return {
+            chatMessage: `เกมจบ! ${resultMsg} สถานที่: ${winner.locationName || gameState.locationName || '-'}`,
+            chatColor: '#1abc9c',
+            logMessage: `🕵️ Spyfall จบ — ${resultMsg} · ${winner.locationName || gameState.locationName || '-'} · ${playerCount} คน`,
+            logType: winner.team === 'citizens' ? 'success' : 'warning',
+            meta: {
+                team: winner.team,
+                location: winner.locationName || gameState.locationName,
+                spyName: winner.spyName,
+                playerCount
+            }
+        };
+    }
+
+    if (mode === 'insider' && gameState.resultVote2) {
+        const result = gameState.resultVote2;
+        const traitorName = result.finalTraitorName || 'ไม่ทราบ';
+        const citizensWon = !!result.hasWon;
+        return {
+            chatMessage: `เกมจบ! ${citizensWon ? 'พลเมืองชนะ!' : 'จอมบงการชนะ!'}`,
+            chatColor: '#9b59b6',
+            logMessage: citizensWon
+                ? `🎯 Insider จบ — พลเมืองชนะ! (จอมบงการ: ${traitorName}) · ${playerCount} คน`
+                : `🎯 Insider จบ — จอมบงการชนะ! (จอมบงการ: ${traitorName}) · ${playerCount} คน`,
+            logType: citizensWon ? 'success' : 'error',
+            meta: { citizensWon, traitor: traitorName, playerCount, word: gameState.word || null }
+        };
+    }
+
+    return null;
+}
+
+function notifyGameEndAfterRecord(room) {
+    const notification = buildGameEndNotification(room);
+    if (!notification) {
+        return;
+    }
+
+    sendChatMessageToRoom(io, room.roomId, 'System', notification.chatMessage, notification.chatColor);
+    addServerLog(io, 'game', room.roomId, notification.logMessage, notification.logType, {
+        gameMode: room.settings.gameMode,
+        meta: notification.meta
+    });
+}
+
+function logGameStartFromRoom(room, extra = '') {
+    if (!room?.roomId) {
+        return;
+    }
+
+    const style = getGameModeLogStyle(room.settings.gameMode);
+    const playerCount = room.players.filter(player => player.socketId).length;
+    addServerLog(
+        io,
+        'game',
+        room.roomId,
+        `${style.emoji} ${style.label} เริ่มเกม (${playerCount} คน)${extra}`,
+        'success',
+        { gameMode: room.settings.gameMode, meta: { playerCount, event: 'game_start' } }
+    );
 }
 
 /**
@@ -762,11 +890,13 @@ function sendGameLog(io, roomId, message, type = 'info', icon = null, haptic = n
  * @param {string} roomId - Room ID (optional)
  * @param {string} message - Log message
  * @param {string} type - Log type: 'info', 'success', 'warning', 'error'
+ * @param {Object} [options] - Optional: { gameMode, meta }
  */
-function addServerLog(io, category, roomId, message, type = 'info') {
+function addServerLog(io, category, roomId, message, type = 'info', options = {}) {
     const room = roomId ? roomManager.getRoom(roomId) : null;
     const roomName = room ? room.name : roomId || 'ระบบ';
-    const gameMode = room?.settings?.gameMode || null;
+    const gameMode = options.gameMode || room?.settings?.gameMode || null;
+    const modeStyle = gameMode ? getGameModeLogStyle(gameMode) : null;
     
     const logEntry = {
         id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
@@ -775,8 +905,10 @@ function addServerLog(io, category, roomId, message, type = 'info') {
         roomId: roomId || null,
         roomName: roomName,
         gameMode,
+        gameModeLabel: modeStyle ? `${modeStyle.emoji} ${modeStyle.label}` : null,
         message: message,
-        type: type
+        type: type,
+        meta: options.meta && typeof options.meta === 'object' ? options.meta : null
     };
     
     // Add to beginning of array (newest first)
@@ -840,6 +972,16 @@ function buildBlackMarketStatePayload(room, playerId) {
 
     finalizeBlackMarketGameIfNeeded(room);
     const engine = getGameEngine('blackmarket');
+    return engine.buildClientState(room, playerId);
+}
+
+function buildSpyfallStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'spyfall') {
+        return null;
+    }
+
+    finalizeSpyfallGameIfNeeded(room);
+    const engine = getGameEngine('spyfall');
     return engine.buildClientState(room, playerId);
 }
 
@@ -964,6 +1106,7 @@ function finalizeWerewolfGameIfNeeded(room) {
         dayNumber: room.gameState.dayNumber
     });
     room.gameState.statsRecordedAt = new Date().toISOString();
+    notifyGameEndAfterRecord(room);
 }
 
 function finalizeBlackMarketGameIfNeeded(room) {
@@ -985,6 +1128,27 @@ function finalizeBlackMarketGameIfNeeded(room) {
         reason: room.gameState.winner.reason
     });
     room.gameState.statsRecordedAt = new Date().toISOString();
+    notifyGameEndAfterRecord(room);
+}
+
+function finalizeSpyfallGameIfNeeded(room) {
+    if (!room || room.settings.gameMode !== 'spyfall' || !room.gameState) {
+        return;
+    }
+
+    if (room.gameState.status !== 'spyfall_finished' || !room.gameState.winner || room.gameState.statsRecordedAt) {
+        return;
+    }
+
+    statsManager.recordGameEnd(room.roomId, {
+        mode: 'spyfall',
+        winner: room.gameState.winner,
+        players: room.gameState.players,
+        roomName: room.name,
+        locationName: room.gameState.locationName
+    });
+    room.gameState.statsRecordedAt = new Date().toISOString();
+    notifyGameEndAfterRecord(room);
 }
 
 function emitWerewolfState(room, targetSocketId = null, playerId = null) {
@@ -1199,6 +1363,194 @@ function emitBlackMarketState(room, targetSocketId = null, playerId = null) {
             io.to(player.socketId).emit('blackmarketState', buildBlackMarketStatePayload(room, player.playerId));
         }
     });
+}
+
+function clearSpyfallPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = spyfallPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        spyfallPhaseTimeouts.delete(roomId);
+    }
+
+    if (!resetPhaseEndsAt) {
+        return;
+    }
+
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState) {
+        room.gameState.phaseEndsAt = null;
+    }
+}
+
+function clearSpyfallReturnTimer(roomId) {
+    const timers = spyfallReturnTimeouts.get(roomId);
+    if (!timers) {
+        return;
+    }
+
+    if (timers.returnTimeoutId) {
+        clearTimeout(timers.returnTimeoutId);
+    }
+    if (timers.redirectTimeoutId) {
+        clearTimeout(timers.redirectTimeoutId);
+    }
+    spyfallReturnTimeouts.delete(roomId);
+}
+
+function scheduleSpyfallReturnToLobby(room) {
+    if (!room || spyfallReturnTimeouts.has(room.roomId)) {
+        return;
+    }
+
+    const roomId = room.roomId;
+    const returnTimeoutId = setTimeout(() => {
+        io.to(roomId).emit('returnToLobby', { countdown: 5, roomId });
+
+        const redirectTimeoutId = setTimeout(() => {
+            roomManager.resetRoomGame(roomId);
+            const refreshedRoom = roomManager.getRoom(roomId);
+            if (refreshedRoom) {
+                io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            }
+            io.to(roomId).emit('redirectToLobby', { roomId });
+            spyfallReturnTimeouts.delete(roomId);
+        }, 5000);
+
+        const entry = spyfallReturnTimeouts.get(roomId) || {};
+        entry.redirectTimeoutId = redirectTimeoutId;
+        spyfallReturnTimeouts.set(roomId, entry);
+    }, 3000);
+
+    spyfallReturnTimeouts.set(roomId, { returnTimeoutId });
+}
+
+function handleSpyfallGameEnd(room) {
+    if (!room || room.settings.gameMode !== 'spyfall') {
+        return;
+    }
+
+    finalizeSpyfallGameIfNeeded(room);
+    scheduleSpyfallReturnToLobby(room);
+}
+
+function syncSpyfallPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'spyfall') {
+        return;
+    }
+
+    const phase = room.gameState.phase;
+    const activePhase = phase === 'reveal' || phase === 'discussion' || phase === 'vote';
+    if (!activePhase || room.gameState.winner) {
+        clearSpyfallPhaseTimer(room.roomId);
+        if (room.gameState.phase === 'finished') {
+            handleSpyfallGameEnd(room);
+        }
+        return;
+    }
+
+    const spyfallEngine = getGameEngine('spyfall');
+    const now = Date.now();
+    const existingTimer = spyfallPhaseTimeouts.get(room.roomId);
+    if (existingTimer && existingTimer.phase === phase && room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > now) {
+        return;
+    }
+
+    if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= now) {
+        clearSpyfallPhaseTimer(room.roomId, false);
+        try {
+            const resolution = spyfallEngine.autoResolvePhase(room);
+            if (resolution?.phase === 'finished' || room.gameState.phase === 'finished') {
+                emitSpyfallRoomState(roomManager.getRoom(room.roomId) || room);
+                return;
+            }
+            emitSpyfallState(roomManager.getRoom(room.roomId) || room);
+            syncSpyfallPhaseTimer(roomManager.getRoom(room.roomId) || room);
+        } catch (error) {
+            console.error('[spyfall] overdue auto resolve failed:', {
+                roomId: room.roomId,
+                phase,
+                error: error?.message || error
+            });
+        }
+        return;
+    }
+
+    clearSpyfallPhaseTimer(room.roomId, false);
+
+    const defaultDurationMs = phase === 'reveal'
+        ? spyfallEngine.REVEAL_PHASE_MS
+        : (phase === 'discussion' ? spyfallEngine.getDiscussionMs(room) : spyfallEngine.VOTE_PHASE_MS);
+    const targetEndsAt = room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > now
+        ? room.gameState.phaseEndsAt
+        : now + defaultDurationMs;
+    const delayMs = Math.max(0, targetEndsAt - now);
+    room.gameState.phaseEndsAt = targetEndsAt;
+
+    const timeoutId = setTimeout(() => {
+        spyfallPhaseTimeouts.delete(room.roomId);
+
+        const currentRoom = roomManager.getRoom(room.roomId);
+        if (!currentRoom || currentRoom.settings.gameMode !== 'spyfall') {
+            return;
+        }
+
+        if (currentRoom.gameState.phase !== phase || currentRoom.gameState.winner) {
+            return;
+        }
+
+        try {
+            const resolution = spyfallEngine.autoResolvePhase(currentRoom);
+            if (phase === 'discussion') {
+                sendChatMessageToRoom(io, currentRoom.roomId, 'System', 'หมดเวลาคุยแล้ว — เริ่มโหวตจับสายลับ', '#95a5a6');
+            } else if (phase === 'vote') {
+                sendChatMessageToRoom(io, currentRoom.roomId, 'System', 'หมดเวลาโหวต — ระบบสรุปผล', '#95a5a6');
+            }
+
+            if (resolution?.phase === 'finished' || currentRoom.gameState.phase === 'finished') {
+                emitSpyfallRoomState(roomManager.getRoom(currentRoom.roomId) || currentRoom);
+                return;
+            }
+
+            emitSpyfallState(roomManager.getRoom(currentRoom.roomId) || currentRoom);
+            syncSpyfallPhaseTimer(roomManager.getRoom(currentRoom.roomId) || currentRoom);
+        } catch (error) {
+            console.error('[spyfall] auto resolve failed:', {
+                roomId: room.roomId,
+                phase,
+                error: error?.message || error
+            });
+        }
+    }, delayMs);
+
+    spyfallPhaseTimeouts.set(room.roomId, { phase, timeoutId });
+}
+
+function emitSpyfallState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'spyfall') {
+        return;
+    }
+
+    syncSpyfallPhaseTimer(room);
+
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('spyfallState', buildSpyfallStatePayload(room, playerId));
+        return;
+    }
+
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('spyfallState', buildSpyfallStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function emitSpyfallRoomState(room) {
+    if (!room || room.settings.gameMode !== 'spyfall') {
+        return;
+    }
+
+    emitSpyfallState(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
 }
 
 function scheduleWerewolfStateBroadcast(room, delayMs = WEREWOLF_PHASE_TRANSITION_DELAY_MS) {
@@ -1462,6 +1814,15 @@ function recoverGamePhaseTimers() {
                 forceResolveStuckBlackMarketRoom(room);
             }
             syncBlackMarketPhaseTimer(room);
+            return;
+        }
+
+        if (room.settings.gameMode === 'spyfall') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                const spyfallEngine = getGameEngine('spyfall');
+                spyfallEngine.autoResolvePhase(room);
+            }
+            syncSpyfallPhaseTimer(room);
         }
     });
 }
@@ -1494,10 +1855,17 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'blackmarket' && roomManager.isRoomGameInProgress(room)) {
             forceResolveStuckBlackMarketRoom(room);
         }
+        if (room.settings.gameMode === 'spyfall' && roomManager.isRoomGameInProgress(room)) {
+            const spyfallEngine = getGameEngine('spyfall');
+            spyfallEngine.autoResolvePhase(room);
+            emitSpyfallRoomState(room);
+        }
 
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
+        clearSpyfallPhaseTimer(candidate.roomId);
+        clearSpyfallReturnTimer(candidate.roomId);
         if (roomCountdowns.has(candidate.roomId)) {
             clearInterval(roomCountdowns.get(candidate.roomId));
             roomCountdowns.delete(candidate.roomId);
@@ -1511,7 +1879,8 @@ function runRoomCleanupSweep() {
             'system',
             candidate.roomId,
             `[Cleanup] ปิดเกมค้าง "${candidate.roomName}" (ไม่มีคนออนไลน์) ลบ offline ${removedPlayers.length} คน`,
-            'warning'
+            'warning',
+            { gameMode: candidate.gameMode || room.settings.gameMode }
         );
 
         if (refreshedRoom) {
@@ -2053,6 +2422,24 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'spyfall') {
+        return res.render('spyfallBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            spyfallState: buildSpyfallStatePayload(room, playerId)
+        });
+    }
+
     res.render('board.ejs', {
         player: gameStatePlayer,
         playerInfo: playerInRoom,
@@ -2500,6 +2887,8 @@ io.sockets.on('connection', function(socket) {
             syncWerewolfPhaseTimer(refreshedRoom);
         } else if (refreshedRoom?.settings?.gameMode === 'blackmarket') {
             emitBlackMarketState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'spyfall') {
+            emitSpyfallState(refreshedRoom, socket.id, playerId);
         }
     });
 
@@ -2520,6 +2909,8 @@ io.sockets.on('connection', function(socket) {
             clearWerewolfPhaseTimer(roomId);
             clearWerewolfTransitionTimer(roomId);
             clearBlackMarketPhaseTimer(roomId);
+            clearSpyfallPhaseTimer(roomId);
+            clearSpyfallReturnTimer(roomId);
             if (roomCountdowns.has(roomId)) {
                 clearInterval(roomCountdowns.get(roomId));
                 roomCountdowns.delete(roomId);
@@ -2551,6 +2942,8 @@ io.sockets.on('connection', function(socket) {
                 emitWerewolfRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'blackmarket') {
                 emitBlackMarketState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'spyfall') {
+                emitSpyfallRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -2916,12 +3309,16 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
             
-            const { filter, limit } = data || {};
+            const { filter, gameMode: modeFilter, limit } = data || {};
             let logs = [...serverLogs]; // Clone array
             
             // Filter by category if specified
             if (filter && filter !== 'all') {
                 logs = logs.filter(log => log.category === filter);
+            }
+
+            if (modeFilter && modeFilter !== 'all') {
+                logs = logs.filter(log => log.gameMode === modeFilter);
             }
             
             // Limit results
@@ -3750,6 +4147,8 @@ io.sockets.on('connection', function(socket) {
                     emitWerewolfChatHistory(room, socket.id, playerId);
                 } else if (room.settings.gameMode === 'blackmarket') {
                     emitBlackMarketState(room, socket.id, playerId);
+                } else if (room.settings.gameMode === 'spyfall') {
+                    emitSpyfallState(room, socket.id, playerId);
                 } else {
                     io.to(socket.id).emit('newRole', {
                         players: room.gameState.players,
@@ -3781,6 +4180,18 @@ io.sockets.on('connection', function(socket) {
 
         syncWerewolfPhaseTimer(room);
         emitWerewolfState(room, socket.id, playerId);
+    });
+
+    socket.on('spyfall_requestState', function(data) {
+        const roomId = data?.roomId || socket.roomId;
+        const playerId = data?.playerId || socket.playerId;
+        const room = roomManager.getRoom(roomId);
+        if (!room || room.settings.gameMode !== 'spyfall' || !playerId) {
+            return;
+        }
+
+        syncSpyfallPhaseTimer(room);
+        emitSpyfallState(room, socket.id, playerId);
     });
 
     socket.on('blackmarket_requestState', function(data) {
@@ -4146,6 +4557,100 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    socket.on('spyfall_endDiscussion', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'spyfall') {
+                throw new Error('ไม่พบเกมนี้');
+            }
+
+            if (!isAdminSocket(room, socket)) {
+                throw new Error('มีแค่หัวหน้าห้องที่จบช่วงคุยได้');
+            }
+
+            const spyfallEngine = getGameEngine('spyfall');
+            const result = spyfallEngine.endDiscussionEarly(room);
+            emitSpyfallRoomState(room);
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('spyfall_vote', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const targetPlayerId = data?.targetPlayerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'spyfall') {
+                throw new Error('ไม่พบเกมนี้');
+            }
+
+            const spyfallEngine = getGameEngine('spyfall');
+            const result = spyfallEngine.submitVote(room, playerId, targetPlayerId);
+
+            if (result.resolved && room.gameState.phase === 'finished') {
+                emitSpyfallRoomState(room);
+            } else {
+                emitSpyfallState(room);
+            }
+
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('spyfall_restartGame', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room || room.settings.gameMode !== 'spyfall') {
+                throw new Error('ไม่พบเกมนี้');
+            }
+
+            if (!isAdminSocket(room, socket)) {
+                throw new Error('มีแค่หัวหน้าห้องที่จบเกมได้');
+            }
+
+            clearSpyfallPhaseTimer(roomId);
+            clearSpyfallReturnTimer(roomId);
+            roomManager.resetRoomGame(roomId);
+
+            const refreshedRoom = roomManager.getRoom(roomId);
+            if (!refreshedRoom) {
+                throw new Error('ไม่พบเกมนี้');
+            }
+
+            sendChatMessageToRoom(io, roomId, 'System', 'รอบ Spyfall จบแล้ว กลับไปตั้งเกมใหม่ในห้อง', '#1abc9c');
+            io.to(roomId).emit('restartGame');
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+
+            if (typeof callback === 'function') {
+                callback({ success: true });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
     // Start game from lobby (redirect all players to game board)
     socket.on('startGameFromLobby', function(data, callback) {
         try {
@@ -4222,6 +4727,7 @@ io.sockets.on('connection', function(socket) {
                     });
 
                     sendChatMessageToRoom(io, roomId, 'System', 'เกม Werewolf เริ่มแล้ว คืนแรกกำลังเริ่ม ทุกคนเช็กบทของตัวเองได้เลย', '#2ecc71');
+                    logGameStartFromRoom(currentRoom);
                     emitWerewolfRoomState(currentRoom);
                     room.gameStarting = false;
                     return;
@@ -4240,8 +4746,30 @@ io.sockets.on('connection', function(socket) {
                     });
 
                     sendChatMessageToRoom(io, roomId, 'System', 'ตลาดมืดเปิดแล้ว รีบล็อกของก่อนคู่แข่งจะคว้าไป', '#f39c12');
+                    logGameStartFromRoom(currentRoom);
                     emitBlackMarketState(currentRoom);
                     room.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'spyfall') {
+                    const spyfallEngine = getGameEngine('spyfall');
+                    clearSpyfallPhaseTimer(roomId);
+                    clearSpyfallReturnTimer(roomId);
+                    spyfallEngine.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    sendChatMessageToRoom(io, roomId, 'System', 'เกมสายลับเริ่มแล้ว — จำสถานที่หรือเล่นให้เนียน', '#1abc9c');
+                    logGameStartFromRoom(currentRoom);
+                    emitSpyfallRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
                     return;
                 }
 
@@ -4283,6 +4811,10 @@ io.sockets.on('connection', function(socket) {
                         io.to(p.socketId).emit('gameStarting', { roomId: roomId });
                     }
                 });
+
+                const insiderModeMsg = currentRoom.settings.dualTraitorMode ? ' · โหมด 2 จอมบงการ' : '';
+                sendChatMessageToRoom(io, roomId, 'System', `เกม Insider เริ่มแล้ว${insiderModeMsg}`, '#9b59b6');
+                logGameStartFromRoom(currentRoom, insiderModeMsg);
 
                 room.gameStarting = false;
             }, 3000); // รอ 3 วินาที
@@ -4351,7 +4883,7 @@ io.sockets.on('connection', function(socket) {
         // Send chat notification
         const modeMsg = numTraitors === 2 ? ' (โหมด 2 จอมบงการ!)' : '';
         sendChatMessageToRoom(io, roomId, 'System', `เริ่มเกมใหม่! บทบาทถูกสุ่มแล้ว${modeMsg}`, '#9b59b6');
-        addServerLog(io, 'game', roomId, `🎮 เกมเริ่มแล้ว! สุ่มบทบาท${modeMsg}`, 'success');
+        logGameStartFromRoom(room, modeMsg);
     });
 
     // Reveal word (only GM can do this, and only after word is set)
@@ -4387,7 +4919,10 @@ io.sockets.on('connection', function(socket) {
         
         // Send chat notification
         sendChatMessageToRoom(io, roomId, 'System', 'คำได้ถูกเปิดเผยแล้ว', '#3498db');
-        addServerLog(io, 'game', roomId, `📝 คำเปิดเผย: ${room.gameState.word}`, 'info');
+        addServerLog(io, 'game', roomId, `📝 คำเปิดเผย: ${room.gameState.word}`, 'info', {
+            gameMode: room.settings.gameMode,
+            meta: { word: room.gameState.word, event: 'word_revealed' }
+        });
     });
 
     // Get 5 random word suggestions for GM to choose from
@@ -4597,17 +5132,7 @@ io.sockets.on('connection', function(socket) {
                 roomName: room.name || roomId
             });
 
-            // Send chat notification
-            const resultMsg = room.gameState.resultVote2.hasWon ? 'พลเมืองชนะ!' : 'จอมบงการชนะ!';
-            sendChatMessageToRoom(io, roomId, 'System', `เกมจบ! ${resultMsg}`, '#f39c12');
-            
-            // Game log for end
-            const traitorName = room.gameState.resultVote2.finalTraitorName || 'ไม่ทราบ';
-            if (room.gameState.resultVote2.hasWon) {
-                addServerLog(io, 'game', roomId, `🎉 พลเมืองชนะ! (จอมบงการ: ${traitorName})`, 'success');
-            } else {
-                addServerLog(io, 'game', roomId, `💀 จอมบงการชนะ! (จอมบงการ: ${traitorName})`, 'error');
-            }
+            notifyGameEndAfterRecord(room);
 
             // Auto return to lobby after 5 seconds
             setTimeout(() => {
@@ -4903,8 +5428,11 @@ async function startServer() {
             category: 'system',
             roomId: null,
             roomName: 'ระบบ',
+            gameMode: null,
+            gameModeLabel: null,
             message: '🚀 Server เริ่มทำงานแล้ว',
-            type: 'success'
+            type: 'success',
+            meta: null
         });
 
         recoverGamePhaseTimers();

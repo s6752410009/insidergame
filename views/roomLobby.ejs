@@ -701,6 +701,25 @@
     border-color: rgba(245, 200, 107, 0.55);
   }
 
+  #btnSpyfallHowTo {
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(94, 234, 212, 0.35);
+    background: rgba(20, 184, 166, 0.12);
+    color: #99f6e4;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #btnSpyfallHowTo:hover {
+    background: rgba(20, 184, 166, 0.2);
+    border-color: rgba(94, 234, 212, 0.55);
+  }
+
   .chat-msg {
     margin-bottom: 12px;
     display: flex;
@@ -1147,6 +1166,7 @@
           รอผู้เล่นครบก่อนเปิดเกม
         </span>
         <button type="button" id="btnBlackMarketHowTo" class="<%= room.gameMode === 'blackmarket' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
     </div>
@@ -1222,6 +1242,14 @@
         readyText: 'พร้อมแล้ว เปิดตลาดมืดได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเปิดตลาด',
         roundLabel: 'เวลาเดินเกมต่อยก:'
+      },
+      spyfall: {
+        minPlayers: 4,
+        label: 'Spyfall',
+        startLabel: '🕶️ เริ่มเกมสายลับ',
+        readyText: 'พร้อมแล้ว เริ่มเกมสายลับได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเริ่ม',
+        roundLabel: 'เวลาช่วงคุย:'
       }
     };
     const werewolfRoleVisuals = {
@@ -1377,6 +1405,9 @@
       if (compactMode === 'werewolf') {
         return 'werewolf';
       }
+      if (compactMode === 'spyfall' || compactMode === 'spy' || compactMode === 'secretplace') {
+        return 'spyfall';
+      }
       return 'insider';
     }
 
@@ -1398,6 +1429,12 @@
           color: '#fde68a'
         };
       }
+      if (normalizedMode === 'spyfall') {
+        return {
+          background: 'linear-gradient(135deg, #0f766e, #134e4a)',
+          color: '#ccfbf1'
+        };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -1415,6 +1452,12 @@
       if (normalizedMode === 'blackmarket') {
         return {
           kicker: '🎩 ห้องเตรียมเปิดตลาด',
+          pills: []
+        };
+      }
+      if (normalizedMode === 'spyfall') {
+        return {
+          kicker: '🕶️ ห้องเตรียมสายลับ',
           pills: []
         };
       }
@@ -1480,6 +1523,72 @@
       }
 
       setElementHidden('#btnBlackMarketHowTo', resolvedMode !== 'blackmarket');
+      setElementHidden('#btnSpyfallHowTo', resolvedMode !== 'spyfall');
+
+      if (lobbySpotlight) {
+        if (resolvedMode === 'spyfall') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(15,118,110,0.25); color:#99f6e4;">🕶️ Spyfall · 4–8 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ทุกคนรู้<strong>สถานที่</strong>ยกเว้นสายลับ 1 คน — ถาม–ตอบให้เนียนแล้วโหวตจับ',
+            ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
+            '</p>'
+          ].join('');
+        } else if (resolvedMode === 'blackmarket') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(127,29,29,0.35); color:#fde68a;">🎩 Black Market · 4–7 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'กวาดของเถื่อน เปิดดีล หักหลัง — กด <strong>📖 วิธีเล่น</strong> ด้านล่าง',
+            '</p>'
+          ].join('');
+        } else {
+          lobbySpotlight.style.display = 'none';
+          lobbySpotlight.innerHTML = '';
+        }
+      }
+
+      const startBtn = document.getElementById('btnStartGameLobby');
+      if (startBtn) {
+        startBtn.textContent = getModeMeta(resolvedMode).startLabel;
+      }
+    }
+
+    function buildSpyfallLobbyGuideHtml() {
+      return [
+        '<div class="bm-guide-inner">',
+        '<p class="bm-guide-lead">🕶️ ทุกคนรู้สถานที่ยกเว้น <strong>สายลับ 1 คน</strong> · เล่น 4–8 คน</p>',
+        '<div class="bm-guide-section"><h4>บทบาท</h4><ul>',
+        '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ ถาม–ตอบเพื่อจับสายลับ</li>',
+        '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่ ต้องเดาจากคำถาม</li>',
+        '</ul></div>',
+        '<div class="bm-guide-section"><h4>3 ช่วง</h4><ol>',
+        '<li><b>เปิดบท</b> — จำสถานที่ (สายลับจำรายการที่เป็นไปได้)</li>',
+        '<li><b>คุย</b> — ถามคำถามที่ตอบได้หลายทาง หัวหน้าห้องกดจบคุยได้เมื่อพร้อมโหวต</li>',
+        '<li><b>โหวต</b> — เลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)</li>',
+        '</ol></div>',
+        '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
+        '<li><b>พลเมือง</b> — โหวตโดนสายลับ</li>',
+        '<li><b>สายลับ</b> — โหวตพลาดหรือเสมอ</li>',
+        '</ul></div>',
+        '</div>'
+      ].join('');
+    }
+
+    function showSpyfallLobbyGuide() {
+      Swal.fire({
+        title: '🕶️ วิธีเล่น Spyfall',
+        html: buildSpyfallLobbyGuideHtml(),
+        background: '#0f172a',
+        color: '#fff',
+        confirmButtonText: 'เข้าใจแล้ว',
+        confirmButtonColor: '#0f766e',
+        customClass: {
+          popup: 'bm-guide-popup',
+          htmlContainer: 'bm-guide-popup-body'
+        }
+      });
     }
 
     const BLACK_MARKET_LOBBY_ROLES = [
@@ -2277,7 +2386,7 @@
                 </label>
                 <div class="room-slider-container">
                   <span class="room-slider-value" id="editMaxPlayersValue">${currentMaxPlayers}</span>
-                  <input type="range" id="editMaxPlayers" class="room-slider" min="${activeModeMeta.minPlayers}" max="${activeMode === 'blackmarket' ? '7' : '10'}" value="${currentMaxPlayers}">
+                  <input type="range" id="editMaxPlayers" class="room-slider" min="${activeModeMeta.minPlayers}" max="${activeMode === 'blackmarket' ? '7' : (activeMode === 'spyfall' ? '8' : '10')}" value="${currentMaxPlayers}">
                 </div>
               </div>
               
@@ -2336,7 +2445,7 @@
 
             const modeMeta = getModeMeta(activeMode);
             maxPlayersSlider.min = String(modeMeta.minPlayers);
-            maxPlayersSlider.max = String(activeMode === 'blackmarket' ? 7 : 10);
+            maxPlayersSlider.max = String(activeMode === 'blackmarket' ? 7 : (activeMode === 'spyfall' ? 8 : 10));
             if (Number(maxPlayersSlider.value) < modeMeta.minPlayers) {
               maxPlayersSlider.value = String(modeMeta.minPlayers);
             }
@@ -2437,6 +2546,10 @@
 
       $('#btnBlackMarketHowTo').on('click', function() {
         showBlackMarketLobbyGuide();
+      });
+
+      $('#btnSpyfallHowTo').on('click', function() {
+        showSpyfallLobbyGuide();
       });
 
       $('#btnStartGameLobby').on('click', function () {

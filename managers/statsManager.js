@@ -97,7 +97,8 @@ function createDefaultModeStats() {
     return {
         insider: { games: 0, wins: 0, losses: 0 },
         werewolf: { games: 0, wins: 0, losses: 0 },
-        blackmarket: { games: 0, wins: 0, losses: 0 }
+        blackmarket: { games: 0, wins: 0, losses: 0 },
+        spyfall: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -133,7 +134,7 @@ function normalizeGameHistoryEntry(entry) {
         return null;
     }
 
-    const mode = ['insider', 'werewolf', 'blackmarket'].includes(entry.mode) ? entry.mode : 'insider';
+    const mode = ['insider', 'werewolf', 'blackmarket', 'spyfall'].includes(entry.mode) ? entry.mode : 'insider';
     return {
         ...entry,
         mode,
@@ -184,7 +185,7 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
     });
 
     const rawModeStats = rawStat.modeStats || {};
-    ['insider', 'werewolf', 'blackmarket'].forEach(mode => {
+    ['insider', 'werewolf', 'blackmarket', 'spyfall'].forEach(mode => {
         const modeStat = rawModeStats[mode] || {};
         stat.modeStats[mode] = {
             games: normalizeCounter(modeStat.games),
@@ -193,7 +194,7 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
         };
     });
 
-    if (stat.modeStats.insider.games === 0 && stat.modeStats.werewolf.games === 0 && stat.modeStats.blackmarket.games === 0 && stat.totalGames > 0) {
+    if (stat.modeStats.insider.games === 0 && stat.modeStats.werewolf.games === 0 && stat.modeStats.blackmarket.games === 0 && stat.modeStats.spyfall.games === 0 && stat.totalGames > 0) {
         stat.modeStats.insider.games = stat.totalGames;
         stat.modeStats.insider.wins = stat.wins;
         stat.modeStats.insider.losses = stat.losses;
@@ -351,7 +352,76 @@ function recordGameEnd(roomId, gameResult) {
         return recordBlackMarketGameEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'spyfall') {
+        return recordSpyfallGameEnd(roomId, gameResult);
+    }
+
     return recordInsiderGameEnd(roomId, gameResult);
+}
+
+function recordSpyfallGameEnd(roomId, gameResult) {
+    const { winner, players, roomName, locationName } = gameResult;
+
+    if (!winner || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid spyfall game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const citizensWin = winner.team === 'citizens';
+    const spyPlayerId = winner.spyPlayerId;
+
+    players.forEach(player => {
+        if (!player.playerId || !player.role) {
+            return;
+        }
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        const isSpy = player.role === 'spy';
+        const playerWon = citizensWin ? !isSpy : isSpy;
+
+        stat.totalGames += 1;
+        stat.modeStats.spyfall.games += 1;
+
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.spyfall.wins += 1;
+            if (isSpy) {
+                stat.winByRole.winAsTraitor += 1;
+            } else {
+                stat.winByRole.winAsCitizen += 1;
+            }
+        } else {
+            stat.losses += 1;
+            stat.modeStats.spyfall.losses += 1;
+        }
+
+        if (isSpy) {
+            stat.roleStats.traitorCount += 1;
+        } else {
+            stat.roleStats.citizenCount += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'spyfall',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            role: isSpy ? 'สายลับ' : 'พลเมือง',
+            won: playerWon,
+            location: locationName || winner.locationName || 'ไม่ทราบ',
+            spyName: winner.spyName || 'ไม่ทราบ',
+            citizensWon: citizensWin,
+            playerCount: players.length
+        });
+
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
 }
 
 function recordInsiderGameEnd(roomId, gameResult) {
@@ -704,7 +774,7 @@ async function editPlayerStats(playerId, newData) {
     }
 
     if (newData.modeStats && typeof newData.modeStats === 'object') {
-        ['insider', 'werewolf', 'blackmarket'].forEach(mode => {
+        ['insider', 'werewolf', 'blackmarket', 'spyfall'].forEach(mode => {
             if (!newData.modeStats[mode]) {
                 return;
             }

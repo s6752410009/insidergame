@@ -24,9 +24,34 @@ function nowIso() {
 const FINISHED_GAME_STATUSES = new Set([
     'werewolf_finished',
     'blackmarket_finished',
+    'spyfall_finished',
     'end',
     'finished'
 ]);
+
+const ROOM_NAME_MODE_HINTS = {
+    'วงจับจอมบงการ': 'insider',
+    'ตลาดมืดคืนนี้': 'blackmarket',
+    'คืนล่าหมาป่า': 'werewolf',
+    'วงสายลับสถานที่': 'spyfall'
+};
+
+function inferGameModeFromRoomData(roomData) {
+    const requestedMode = normalizeGameMode(roomData?.gameMode || 'insider');
+    const roomName = String(roomData?.name || '').trim();
+    const hintedMode = ROOM_NAME_MODE_HINTS[roomName];
+
+    if (!hintedMode) {
+        return requestedMode;
+    }
+
+    const normalizedHint = normalizeGameMode(hintedMode);
+    if (requestedMode === 'insider' && normalizedHint !== 'insider') {
+        return normalizedHint;
+    }
+
+    return requestedMode;
+}
 
 const WAITING_GAME_STATUSES = new Set(['', 'waiting']);
 
@@ -159,7 +184,7 @@ function clampMaxPlayers(gameEngine, requestedMaxPlayers, currentPlayers = 0) {
 function createRoom(roomData, creatorPlayerId) {
     const roomId = uuidv4().substring(0, 8); // ใช้ 8 ตัวแรกของ UUID เป็น roomId
     const creator = playerManager.getPlayer(creatorPlayerId);
-    const gameMode = normalizeGameMode(roomData.gameMode);
+    const gameMode = inferGameModeFromRoomData(roomData);
     const gameEngine = getGameEngine(gameMode);
     
     if (!creator) {

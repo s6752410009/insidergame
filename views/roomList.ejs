@@ -744,7 +744,8 @@ $(function() {
     const defaultGameModes = [
         { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
-        { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 }
+        { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
+        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4-8 คน ถามตอบแล้วโหวตจับสายลับ', minPlayers: 4, maxPlayers: 8 }
     ];
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
         const serverModes = <%- JSON.stringify(typeof gameModes !== 'undefined' ? gameModes : []) %>;
@@ -930,6 +931,14 @@ $(function() {
                 title: 'Werewolf',
                 summary: 'เกมบทบาทซ่อนตัวสไตล์ปาร์ตี้ เล่นกลางวันคุย กลางคืนใช้สกิล',
                 bullets: ['3-10 คน', 'มีสกิลกลางคืน', 'ชนะตามฝั่ง']
+            },
+            spyfall: {
+                tone: 'linear-gradient(135deg, rgba(20,184,166,0.2), rgba(7,19,24,0.92))',
+                border: 'rgba(94,234,212,0.28)',
+                badge: '🕶️ สายลับ สถานที่',
+                title: 'Spyfall',
+                summary: 'ทุกคนรู้สถานที่ยกเว้นสายลับ — คุยแล้วโหวตจับ',
+                bullets: ['4-8 คน', 'รอบเดียวจบ', 'ไม่มี GM']
             }
         };
 
@@ -952,6 +961,11 @@ $(function() {
                 roomName: 'คืนล่าหมาป่า',
                 maxPlayers: 8,
                 roundTime: 5
+            },
+            spyfall: {
+                roomName: 'วงสายลับสถานที่',
+                maxPlayers: 6,
+                roundTime: 5
             }
         };
 
@@ -960,6 +974,25 @@ $(function() {
 
     function getAutofilledRoomName(modeId) {
         return getModeAutofillPreset(modeId).roomName;
+    }
+
+    function resolveCreateGameMode() {
+        const selectedInput = document.getElementById('selectedGameMode');
+        const modeQuickPickGrid = document.getElementById('modeQuickPickGrid');
+        const roomNameInput = document.getElementById('roomName');
+        const fromInput = selectedInput && selectedInput.value;
+        const fromGrid = modeQuickPickGrid && modeQuickPickGrid.dataset.selectedMode;
+        const fromAutofill = roomNameInput && roomNameInput.dataset.autofilledMode;
+        const rawRoomName = roomNameInput && roomNameInput.value.trim();
+        let resolved = fromInput || fromGrid || fromAutofill || 'insider';
+
+        gameModes.forEach(function(mode) {
+            if (getModeAutofillPreset(mode.id).roomName === rawRoomName) {
+                resolved = mode.id;
+            }
+        });
+
+        return resolved;
     }
 
     function buildModeQuickPickHtml(modeItems) {
@@ -1060,12 +1093,18 @@ $(function() {
                 ? 'ไม่มีคนออนไลน์ (อาจค้าง)'
                 : (isPlaying ? 'กำลังดำเนินเกม' : (isFinished ? 'จบแล้ว / รอเริ่มใหม่' : 'กำลังรอผู้เล่น'));
             const statusColor = isStuck ? '#e74c3c' : (isPlaying ? '#e67e22' : (isFinished ? '#95a5a6' : '#2ecc71'));
-            const gameModeLabel = room.gameModeLabel || (room.gameMode === 'werewolf' ? 'Werewolf' : (room.gameMode === 'blackmarket' ? 'Black Market' : 'Insider'));
+            const gameModeLabel = room.gameModeLabel || (
+                room.gameMode === 'werewolf' ? 'Werewolf'
+                    : (room.gameMode === 'blackmarket' ? 'Black Market'
+                        : (room.gameMode === 'spyfall' ? 'Spyfall' : 'Insider'))
+            );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
                 : (room.gameMode === 'blackmarket'
                     ? 'background: linear-gradient(135deg, #7f1d1d, #111111); color:#fde68a; border:1px solid rgba(251,191,36,0.35);'
-                    : 'background: linear-gradient(135deg, #e67e22, #d35400);');
+                    : (room.gameMode === 'spyfall'
+                        ? 'background: linear-gradient(135deg, #0f766e, #134e4a); color:#ccfbf1; border:1px solid rgba(94,234,212,0.35);'
+                        : 'background: linear-gradient(135deg, #e67e22, #d35400);'));
             const roomCard = `
                 <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
@@ -1338,6 +1377,9 @@ $(function() {
                 }
 
                 function applyModeAutofill(modeId) {
+                    selectedGameMode = modeId;
+                    selectedGameModeInput.value = modeId;
+                    modeQuickPickGrid.dataset.selectedMode = modeId;
                     const preset = getModeAutofillPreset(modeId);
                     const modeConfig = modeConfigById[modeId] || { minPlayers: 3, maxPlayers: 10 };
                     const clampedPlayers = Math.min(Number(modeConfig.maxPlayers || 10), Math.max(Number(modeConfig.minPlayers || 3), Number(preset.maxPlayers || 5)));
@@ -1382,6 +1424,10 @@ $(function() {
                         maxPlayersSlider.value = '6';
                     }
 
+                    if (selectedMode === 'spyfall' && !['4', '5', '6', '7', '8'].includes(maxPlayersSlider.value)) {
+                        maxPlayersSlider.value = '6';
+                    }
+
                     if (Number(maxPlayersSlider.value) < sliderMin) {
                         maxPlayersSlider.value = String(sliderMin);
                     }
@@ -1395,12 +1441,27 @@ $(function() {
                         updateSliderBackground(maxPlayersSlider);
                     }
 
+                    if (selectedMode === 'spyfall' && Number(maxPlayersSlider.value) < 4) {
+                        maxPlayersSlider.value = '4';
+                        maxPlayersValue.textContent = maxPlayersSlider.value;
+                        updateSliderBackground(maxPlayersSlider);
+                    }
+
                     maxPlayersValue.textContent = maxPlayersSlider.value;
                     updateSliderBackground(maxPlayersSlider);
                     syncModeQuickPick();
                 }
 
-                updateWerewolfRoleVisibility();
+                const urlMode = new URLSearchParams(window.location.search).get('mode');
+                if (urlMode && modeConfigById[urlMode]) {
+                    selectedGameMode = urlMode;
+                    selectedGameModeInput.value = urlMode;
+                    modeQuickPickGrid.dataset.selectedMode = urlMode;
+                    updateWerewolfRoleVisibility();
+                    applyModeAutofill(urlMode);
+                } else {
+                    updateWerewolfRoleVisibility();
+                }
 
                 modeQuickPickGrid.addEventListener('click', function(event) {
                     const card = event.target.closest('.mode-quick-card');
@@ -1408,6 +1469,7 @@ $(function() {
                         return;
                     }
 
+                    selectedGameMode = card.dataset.modeId;
                     selectedGameModeInput.value = card.dataset.modeId;
                     modeQuickPickGrid.dataset.selectedMode = card.dataset.modeId;
                     updateWerewolfRoleVisibility();
@@ -1444,7 +1506,7 @@ $(function() {
             },
             preConfirm: () => {
                 const rawRoomName = document.getElementById('roomName').value.trim();
-                const gameMode = document.getElementById('selectedGameMode').value || document.getElementById('modeQuickPickGrid').dataset.selectedMode || document.getElementById('roomName').dataset.autofilledMode || 'insider';
+                const gameMode = resolveCreateGameMode();
                 const roomName = rawRoomName || getAutofilledRoomName(gameMode);
                 const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
                 const roundTime = parseInt(document.getElementById('roundTime').value);

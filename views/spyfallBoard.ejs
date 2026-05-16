@@ -1,0 +1,949 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+
+  html.sf-active,
+  html.sf-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #071318 !important;
+  }
+
+  html.sf-active header,
+  html.sf-active .footer {
+    display: none !important;
+  }
+
+  html.sf-active .container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  html.sf-active .container-fluid > .row {
+    margin: 0 !important;
+  }
+
+  html.sf-active .col-lg-12 {
+    padding: 0 !important;
+  }
+
+  html.sf-active #music-controls {
+    display: none !important;
+  }
+
+  :root {
+    --sf-bg: #071318;
+    --sf-panel: rgba(12, 28, 34, 0.92);
+    --sf-line: rgba(94, 234, 212, 0.14);
+    --sf-teal: #5eead4;
+    --sf-amber: #fbbf24;
+    --sf-red: #f87171;
+    --sf-text: #ecfdf5;
+    --sf-muted: #94a3b8;
+  }
+
+  body.content {
+    background:
+      radial-gradient(circle at 12% 8%, rgba(20, 184, 166, 0.18), transparent 24%),
+      radial-gradient(circle at 88% 0%, rgba(251, 191, 36, 0.1), transparent 20%),
+      linear-gradient(180deg, #071318 0%, #0b1f24 100%);
+  }
+
+  .sf-connection {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--sf-amber);
+    color: #111;
+    font-weight: 700;
+  }
+
+  .sf-page {
+    max-width: 920px;
+    margin: 16px auto 32px;
+    padding: 12px;
+    color: var(--sf-text);
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  .sf-shell {
+    border: 1px solid var(--sf-line);
+    border-radius: 28px;
+    background: var(--sf-panel);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+  }
+
+  .sf-topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 20px 22px;
+    border-bottom: 1px solid var(--sf-line);
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(7, 19, 24, 0.9));
+  }
+
+  .sf-kicker {
+    color: var(--sf-teal);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .sf-title {
+    margin: 4px 0 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: var(--sf-text);
+  }
+
+  .sf-subtitle { color: var(--sf-muted); margin: 6px 0 0; }
+
+  .sf-top-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+
+  .sf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--sf-line);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sf-text);
+  }
+
+  .sf-chip-btn {
+    cursor: pointer;
+    color: var(--sf-text);
+    font-family: inherit;
+  }
+
+  .sf-chip-danger { border-color: rgba(248, 113, 113, 0.35); color: #fecaca; }
+  .sf-phase { color: var(--sf-teal); }
+
+  .sf-now-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--sf-line);
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .sf-now-label {
+    color: var(--sf-teal);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .sf-now-copy { color: var(--sf-text); font-size: 1rem; }
+  .sf-grid { padding: 18px 22px 24px; }
+
+  .sf-card {
+    border: 1px solid var(--sf-line);
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.18);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .sf-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .sf-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--sf-teal);
+  }
+
+  .sf-timer {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    color: var(--sf-amber);
+  }
+
+  .sf-role-card {
+    text-align: center;
+    padding: 18px 12px;
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgba(20, 184, 166, 0.12), rgba(0, 0, 0, 0.2));
+    border: 1px solid var(--sf-line);
+  }
+
+  .sf-role-card.spy {
+    background: linear-gradient(145deg, rgba(248, 113, 113, 0.12), rgba(0, 0, 0, 0.2));
+    border-color: rgba(248, 113, 113, 0.28);
+  }
+
+  .sf-role-icon { font-size: 2.4rem; margin-bottom: 8px; }
+  .sf-role-name { font-size: 1.35rem; font-weight: 700; color: var(--sf-text); }
+  .sf-role-summary { color: var(--sf-muted); margin-top: 8px; line-height: 1.45; }
+
+  .sf-location-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem;
+    margin: 10px 0 6px;
+    color: var(--sf-amber);
+  }
+
+  .sf-location-hint { color: #cbd5e1; }
+
+  .sf-location-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+
+  .sf-location-pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 0.82rem;
+    color: #cbd5e1;
+  }
+
+  .sf-stage-empty {
+    text-align: center;
+    color: var(--sf-muted);
+    padding: 24px 12px;
+  }
+
+  .sf-vote-grid { display: grid; gap: 10px; }
+
+  .sf-vote-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--sf-line);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--sf-text);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  .sf-vote-btn:hover:not(:disabled) {
+    border-color: rgba(94, 234, 212, 0.4);
+    background: rgba(94, 234, 212, 0.08);
+  }
+
+  .sf-vote-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .sf-vote-btn.selected {
+    border-color: rgba(94, 234, 212, 0.55);
+    background: rgba(94, 234, 212, 0.14);
+  }
+
+  .sf-vote-btn.voted-flag::after {
+    content: '✓ โหวตแล้ว';
+    margin-left: auto;
+    font-size: 0.82rem;
+    color: var(--sf-teal);
+  }
+
+  .sf-result { text-align: center; padding: 12px 0; }
+  .sf-result h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    margin: 0 0 10px;
+  }
+  .sf-result.win-citizens h3 { color: #6ee7b7; }
+  .sf-result.win-spy h3 { color: #fca5a5; }
+
+  .sf-feed {
+    display: grid;
+    gap: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .sf-feed-item {
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.92rem;
+    color: #cbd5e1;
+  }
+
+  .sf-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .sf-btn-primary { background: linear-gradient(135deg, #14b8a6, #0f766e); color: #fff; }
+  .sf-btn-alt { background: rgba(255, 255, 255, 0.08); color: #fff; }
+  .sf-btn-outline {
+    background: transparent;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    color: #fecaca;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .sf-sidebar {
+    position: fixed;
+    top: 0;
+    right: -320px;
+    width: min(320px, 88vw);
+    height: 100vh;
+    background: #0f172a;
+    color: #fff;
+    z-index: 9000;
+    transition: right 0.25s ease;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .sf-sidebar.open { right: 0; }
+
+  .sf-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 8999;
+  }
+
+  #onlinePlayerList { list-style: none; padding: 0; margin: 0 0 16px; }
+  #onlinePlayerList li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+
+  .sf-chat {
+    position: fixed;
+    right: 16px;
+    bottom: 72px;
+    width: min(360px, calc(100vw - 32px));
+    max-height: 52vh;
+    background: #0f172a;
+    border: 1px solid var(--sf-line);
+    border-radius: 18px;
+    z-index: 8000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sf-chat-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .sf-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    min-height: 180px;
+    max-height: 280px;
+  }
+
+  .sf-chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  #chatInput {
+    flex: 1;
+    resize: none;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.25);
+    color: #fff;
+    padding: 8px 10px;
+    font-family: inherit;
+  }
+
+  .sf-chat-toggle {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 7999;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(20, 184, 166, 0.35);
+  }
+
+  .sf-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sf-modal-card {
+    background: #111827;
+    color: #fff;
+    padding: 28px 36px;
+    border-radius: 16px;
+    text-align: center;
+  }
+
+  .sf-countdown { font-size: 2rem; color: var(--sf-amber); font-weight: 700; }
+
+  .sf-manual-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .sf-manual-card {
+    width: min(520px, 100%);
+    max-height: 85vh;
+    overflow-y: auto;
+    background: #0f172a;
+    border: 1px solid var(--sf-line);
+    border-radius: 20px;
+    padding: 20px;
+    color: #e2e8f0;
+  }
+
+  .sf-manual-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .sf-manual-body ol { padding-left: 20px; line-height: 1.55; }
+  .sf-manual-body p { line-height: 1.5; color: #cbd5e1; }
+
+  .chat-message-wrapper { margin-bottom: 10px; }
+  .chat-message-bubble {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+    color: #e2e8f0;
+    max-width: 90%;
+  }
+
+  @media (max-width: 640px) {
+    .sf-topbar, .sf-grid { padding-left: 14px; padding-right: 14px; }
+    .sf-top-meta .sf-chip { font-size: 0.82rem; }
+  }
+</style>
+
+<div id="connectionStatus" class="sf-connection">กำลัง reconnect...</div>
+
+<div class="sf-page">
+  <div class="sf-shell">
+    <header class="sf-topbar">
+      <div class="sf-brand">
+        <div class="sf-kicker">🕶️ สายลับในสถานที่</div>
+        <h1 class="sf-title"><%= room.name %></h1>
+        <p class="sf-subtitle">ถาม–ตอบให้เนียน แล้วโหวตจับสายลับ</p>
+      </div>
+      <div class="sf-top-meta">
+        <span class="sf-chip">🆔 <%= room.roomId %></span>
+        <span class="sf-chip">👥 <%= room.playerCount %>/<%= room.maxPlayers %></span>
+        <span id="phaseChip" class="sf-chip sf-phase">🎭 รอเริ่ม</span>
+        <button type="button" id="sfHowToOpen" class="sf-chip sf-chip-btn">📖 วิธีเล่น</button>
+        <button type="button" id="toggleSidebarBtn" class="sf-chip sf-chip-btn"><i class="fas fa-users"></i> ผู้เล่น</button>
+        <% if (room.admin) { %>
+        <button type="button" id="sfEndGameBtn" class="sf-chip sf-chip-btn sf-chip-danger">⏹ จบเกม</button>
+        <% } %>
+      </div>
+    </header>
+
+    <div id="sfNowBar" class="sf-now-bar" aria-live="polite">
+      <span class="sf-now-label">ตอนนี้</span>
+      <span id="sfNowCopy" class="sf-now-copy">กำลังโหลดเกม...</span>
+    </div>
+
+    <div class="sf-grid">
+      <main class="sf-main">
+        <section class="sf-card sf-card-role">
+          <div class="sf-card-header">
+            <div class="sf-card-title">🎭 บทของคุณ</div>
+          </div>
+          <div id="rolePanel" class="sf-role-panel"></div>
+        </section>
+
+        <section class="sf-card sf-card-stage">
+          <div class="sf-card-header">
+            <div class="sf-card-title">⏱️ เวลาเหลือ</div>
+            <div id="timerDisplay" class="sf-timer">--:--</div>
+          </div>
+          <div id="mainStage" class="sf-stage"></div>
+        </section>
+
+        <section class="sf-card sf-card-history">
+          <div class="sf-card-title">📢 บันทึกเกม</div>
+          <div id="historyFeed" class="sf-feed"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div id="playerSidebar" class="sf-sidebar">
+  <div id="onlinePlayers">
+    <h4>ผู้เล่นในห้อง</h4>
+    <ul id="onlinePlayerList"></ul>
+    <% if (room.admin) { %>
+    <div class="sf-admin-block">
+      <h5>คำสั่งหัวหน้าห้อง</h5>
+      <button id="leaveRoomBtn" type="button" class="sf-btn sf-btn-outline">🚪 ออกจากห้อง</button>
+    </div>
+    <% } else { %>
+    <button id="leaveRoomBtn" type="button" class="sf-btn sf-btn-outline">🚪 ออกจากห้อง</button>
+    <% } %>
+    <button id="closeSidebarBtn" type="button" class="sf-btn sf-btn-alt">ปิด</button>
+  </div>
+</div>
+<div id="sidebarOverlay" class="sf-sidebar-overlay"></div>
+
+<div id="chatBox" class="sf-chat" style="display:none;">
+  <div class="sf-chat-header">
+    <span>💬 แชท</span>
+    <button type="button" id="closeChat" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="chatMessages" class="sf-chat-messages" role="log"></div>
+  <div class="sf-chat-input-row">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..."></textarea>
+    <button type="button" id="sendChat" class="sf-btn sf-btn-primary">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="sf-chat-toggle">CHAT</button>
+
+<div id="returnToLobbyModal" class="sf-modal" style="display:none;">
+  <div class="sf-modal-card">
+    <h3>🎮 จบเกมแล้ว!</h3>
+    <p>กำลังพากลับห้องรอ...</p>
+    <p id="returnCountdown" class="sf-countdown">5</p>
+  </div>
+</div>
+
+<div id="sfHowToOverlay" class="sf-manual-overlay" style="display:none;">
+  <div class="sf-manual-card">
+    <div class="sf-manual-header">
+      <div>
+        <div class="sf-kicker">📖 วิธีเล่น</div>
+        <h2>สายลับในสถานที่</h2>
+      </div>
+      <button type="button" id="sfHowToClose" class="sf-btn sf-btn-alt">ปิด</button>
+    </div>
+    <div class="sf-manual-body">
+      <p><strong>เป้าหมาย:</strong> พลเมืองจับสายลับให้ได้ · สายลับหลบรอด</p>
+      <ol>
+        <li><strong>เปิดบท</strong> — พลเมืองเห็นสถานที่ · สายลับไม่เห็น</li>
+        <li><strong>คุย</strong> — ถามคำถามที่ตอบได้หลายทาง อย่าเปิดเผยสถานที่ตรงๆ (หัวหน้าห้องกดจบคุยได้เมื่อพร้อมโหวต)</li>
+        <li><strong>โหวต</strong> — เลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)</li>
+      </ol>
+      <p><strong>ชนะ:</strong> โหวตโดนใจสายลับ = พลเมืองชนะ · โหวตพลาดหรือเสมอ = สายลับชนะ</p>
+    </div>
+  </div>
+</div>
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('sf-active');
+
+  const socket = io({
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    transports: ['websocket', 'polling']
+  });
+
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = '<%= player.name %>';
+  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  let currentState = <%- JSON.stringify(typeof spyfallState !== 'undefined' ? spyfallState : {}) %>;
+  let allowNavigation = false;
+  let timerInterval = null;
+
+  function escapeHtml(text) {
+    return String(text || '').replace(/[&<>"']/g, function(char) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+    });
+  }
+
+  function formatTimer(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function phaseLabel(phase) {
+    const map = {
+      reveal: '🎭 เปิดบท',
+      discussion: '💬 ช่วงคุย',
+      vote: '🗳️ โหวตจับสายลับ',
+      finished: '🏁 จบเกม',
+      lobby: '⏳ รอเริ่ม'
+    };
+    return map[phase] || '⏳ รอเริ่ม';
+  }
+
+  function updateTimer() {
+    if (!currentState?.phaseEndsAt || currentState.phase === 'finished') {
+      $('#timerDisplay').text('--:--');
+      return;
+    }
+    const remaining = currentState.phaseEndsAt - Date.now();
+    $('#timerDisplay').text(formatTimer(remaining));
+  }
+
+  function renderRolePanel(state) {
+    const self = state.self || {};
+    const roleInfo = self.roleInfo || {};
+    const isSpy = !!self.isSpy;
+    const location = state.location;
+    const pool = state.locationPool || [];
+
+    let body = '';
+    if (state.phase === 'finished' && state.winner) {
+      body = '<div class="sf-role-card ' + (isSpy ? 'spy' : '') + '">' +
+        '<div class="sf-role-icon">' + escapeHtml(isSpy ? '🕶️' : '🕵️') + '</div>' +
+        '<div class="sf-role-name">' + escapeHtml(roleInfo.title || '-') + '</div>' +
+        '<p class="sf-role-summary">สถานที่คือ <strong>' + escapeHtml(state.winner.locationName || '-') + '</strong></p>' +
+      '</div>';
+    } else if (isSpy) {
+      body = '<div class="sf-role-card spy">' +
+        '<div class="sf-role-icon">🕶️</div>' +
+        '<div class="sf-role-name">สายลับ</div>' +
+        '<p class="sf-role-summary">คุณไม่รู้สถานที่ — ฟังคำถามให้ดีแล้วเดาให้เนียน</p>' +
+        (pool.length ? '<div class="sf-location-pool">' + pool.map(function(loc) {
+          return '<span class="sf-location-pill">' + escapeHtml(loc.icon) + ' ' + escapeHtml(loc.name) + '</span>';
+        }).join('') + '</div>' : '') +
+      '</div>';
+    } else if (location) {
+      body = '<div class="sf-role-card">' +
+        '<div class="sf-role-icon">' + escapeHtml(location.icon || '📍') + '</div>' +
+        '<div class="sf-role-name">พลเมือง</div>' +
+        '<div class="sf-location-name">' + escapeHtml(location.name) + '</div>' +
+        '<p class="sf-location-hint">' + escapeHtml(location.hint) + '</p>' +
+        '<p class="sf-role-summary">อย่าเปิดเผยสถานที่ตรงๆ — ถามคนอื่นให้หลุดรูด</p>' +
+      '</div>';
+    } else {
+      body = '<div class="sf-stage-empty">รอเกมเริ่ม...</div>';
+    }
+
+    $('#rolePanel').html(body);
+  }
+
+  function renderStage(state) {
+    const $stage = $('#mainStage');
+    const tip = (state.phaseTips && state.phaseTips[state.phase]) || '';
+
+    if (state.phase === 'vote') {
+      const players = (state.players || []).filter(function(p) { return !p.isSelf; });
+      const selfVoted = !!(state.self && state.self.hasVoted);
+      let html = '<h3 style="text-align:center;margin:0 0 8px;font-size:1.15rem;color:var(--sf-amber);">🗳️ โหวตจับสายลับ</h3>';
+      html += '<p class="sf-role-summary" style="text-align:center;margin-bottom:12px;">' + escapeHtml(tip) + '</p>';
+      html += '<div class="sf-vote-grid">';
+      players.forEach(function(player) {
+        html += '<button type="button" class="sf-vote-btn' + (player.hasVoted ? ' voted-flag' : '') + '" data-target-id="' + escapeHtml(player.playerId) + '" ' + (selfVoted ? 'disabled' : '') + '>' +
+          '<span style="font-size:1.4rem;">' + escapeHtml(player.avatar || '👤') + '</span>' +
+          '<span><strong style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</strong></span>' +
+        '</button>';
+      });
+      html += '</div>';
+      if (selfVoted) {
+        html += '<p style="text-align:center;color:var(--sf-teal);margin-top:12px;">ส่งโหวตแล้ว รอคนอื่น...</p>';
+      }
+      $stage.html(html);
+      return;
+    }
+
+    if (state.phase === 'finished' && state.winner) {
+      const w = state.winner;
+      const citizensWin = w.team === 'citizens';
+      $stage.html(
+        '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + '">' +
+          '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
+          '<p>สายลับ: <strong>' + escapeHtml(w.spyName) + '</strong></p>' +
+          '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>' +
+          '<p>สถานที่: <strong>' + escapeHtml(w.locationIcon || '') + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
+        '</div>'
+      );
+      return;
+    }
+
+    if (state.phase === 'reveal' || state.phase === 'discussion') {
+      let html = '<div class="sf-stage-empty">' + escapeHtml(tip) + '<br><span style="color:var(--sf-muted);font-size:0.92rem;">ใช้แชทมุมล่างถาม–ตอบได้เลย</span>';
+      if (state.phase === 'discussion' && isRoomAdmin) {
+        html += '<div style="margin-top:16px;text-align:center;"><button type="button" id="sfEndDiscussionBtn" class="sf-btn sf-btn-primary">⏭️ จบคุย → ไปโหวต</button></div>';
+      }
+      html += '</div>';
+      $stage.html(html);
+      return;
+    }
+
+    $stage.html('<div class="sf-stage-empty">รอเกมเริ่ม...</div>');
+  }
+
+  function renderHistory(state) {
+    const items = state.history || [];
+    if (!items.length) {
+      $('#historyFeed').html('<div class="sf-feed-item">ยังไม่มีเหตุการณ์</div>');
+      return;
+    }
+    $('#historyFeed').html(items.map(function(item) {
+      return '<div class="sf-feed-item">' + escapeHtml(item.icon) + ' ' + escapeHtml(item.text) + '</div>';
+    }).join(''));
+  }
+
+  function renderState(state) {
+    if (!state) return;
+    currentState = state;
+
+    $('#phaseChip').text(phaseLabel(state.phase));
+    $('#sfNowCopy').text((state.phaseTips && state.phaseTips[state.phase]) || 'เล่นต่อได้เลย');
+
+    renderRolePanel(state);
+    renderStage(state);
+    renderHistory(state);
+    updateTimer();
+  }
+
+  function startTimerTick() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer, 250);
+  }
+
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('spyfall_requestState', { roomId: roomId, playerId: playerId });
+  });
+
+  socket.on('disconnect', function() {
+    $('#connectionStatus').show();
+  });
+
+  socket.on('reconnect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('spyfall_requestState', { roomId: roomId, playerId: playerId });
+  });
+
+  socket.on('spyfallState', function(state) {
+    renderState(state);
+  });
+
+  socket.on('gameStarting', function() {
+    allowNavigation = true;
+    window.location.href = '/game/' + roomId + '?playerId=' + playerId;
+  });
+
+  socket.on('returnToLobby', function(data) {
+    $('#returnToLobbyModal').css('display', 'flex');
+    let countdown = data.countdown || 5;
+    $('#returnCountdown').text(countdown);
+    const interval = setInterval(function() {
+      countdown -= 1;
+      $('#returnCountdown').text(countdown);
+      if (countdown <= 0) clearInterval(interval);
+    }, 1000);
+  });
+
+  socket.on('redirectToLobby', function() {
+    allowNavigation = true;
+    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+  });
+
+  socket.on('restartGame', function() {
+    allowNavigation = true;
+    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+  });
+
+  socket.on('roomUpdate', function(data) {
+    if (data && data.players) {
+      $('#onlinePlayerList').empty();
+      data.players.forEach(function(player) {
+        $('#onlinePlayerList').append(
+          '<li><span style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.displayName || player.playerName) + '</span></li>'
+        );
+      });
+    }
+  });
+
+  socket.on('newMessage', function(data) {
+    const color = data.color || '#fff';
+    const html = '<div class="chat-message-wrapper"><div class="chat-message-bubble">' +
+      '<strong style="color:' + escapeHtml(color) + '">' + escapeHtml(data.playerName) + '</strong>: ' +
+      escapeHtml(data.message) + '</div></div>';
+    $('#chatMessages').append(html).scrollTop($('#chatMessages')[0].scrollHeight);
+  });
+
+  $(document).on('click', '#sfEndDiscussionBtn', function() {
+    Swal.fire({
+      icon: 'question',
+      title: 'จบช่วงคุยและไปโหวตเลย?',
+      text: 'ใช้เมื่อทุกคนพร้อมโหวตจับสายลับแล้ว (เช่น เดาสถานที่ถูกก่อนหมดเวลา)',
+      showCancelButton: true,
+      confirmButtonText: 'ไปโหวต',
+      cancelButtonText: 'ยกเลิก',
+      background: '#111',
+      color: '#fff'
+    }).then(function(result) {
+      if (!result.isConfirmed) return;
+      socket.emit('spyfall_endDiscussion', {}, function(res) {
+        if (res && !res.success) {
+          Swal.fire({ icon: 'warning', title: res.error || 'ไม่สำเร็จ', background: '#111', color: '#fff' });
+        }
+      });
+    });
+  });
+
+  $(document).on('click', '.sf-vote-btn', function() {
+    const targetId = $(this).data('target-id');
+    if (!targetId || currentState.self?.hasVoted) return;
+
+    socket.emit('spyfall_vote', { targetPlayerId: targetId }, function(res) {
+      if (res && !res.success) {
+        Swal.fire({ icon: 'warning', title: res.error || 'โหวตไม่สำเร็จ', background: '#111', color: '#fff' });
+      }
+    });
+  });
+
+  $('#sfHowToOpen, #sfHowToClose').on('click', function() {
+    const open = $('#sfHowToOverlay').is(':hidden');
+    $('#sfHowToOverlay').toggle(open);
+  });
+
+  $('#sfHowToOverlay').on('click', function(e) {
+    if (e.target === this) $(this).hide();
+  });
+
+  function toggleSidebar() {
+    $('#playerSidebar').toggleClass('open');
+    $('#sidebarOverlay').toggle();
+  }
+
+  $('#toggleSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+
+  $('#toggleChat').on('click', function() {
+    const visible = $('#chatBox').is(':visible');
+    $('#chatBox').toggle(!visible);
+    if (!visible) $('#chatInput').focus();
+  });
+
+  $('#closeChat').on('click', function() { $('#chatBox').hide(); });
+
+  $('#sendChat').on('click', function() {
+    const message = $('#chatInput').val().trim();
+    if (!message) return;
+    socket.emit('sendMessage', { message: message, playerName: playerName });
+    $('#chatInput').val('');
+  });
+
+  $('#chatInput').on('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      $('#sendChat').click();
+    }
+  });
+
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({
+      icon: 'question',
+      title: 'ออกจากห้อง?',
+      showCancelButton: true,
+      confirmButtonText: 'ออก',
+      cancelButtonText: 'ยกเลิก',
+      background: '#111',
+      color: '#fff'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() {
+          window.location.href = '/rooms?playerId=' + playerId;
+        });
+      }
+    });
+  });
+
+  $('#sfEndGameBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning',
+      title: 'จบเกมและกลับห้องรอ?',
+      showCancelButton: true,
+      confirmButtonText: 'จบเกม',
+      cancelButtonText: 'ยกเลิก',
+      background: '#111',
+      color: '#fff'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        socket.emit('spyfall_restartGame', {}, function(res) {
+          if (res && !res.success) {
+            Swal.fire({ icon: 'error', title: res.error || 'ไม่สำเร็จ', background: '#111', color: '#fff' });
+          }
+        });
+      }
+    });
+  });
+
+  window.addEventListener('beforeunload', function(e) {
+    if (!allowNavigation) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  socket.emit('initPlayer', playerId);
+  socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+  renderState(currentState);
+  startTimerTick();
+  socket.emit('spyfall_requestState', { roomId: roomId, playerId: playerId });
+});
+</script>

@@ -769,6 +769,7 @@
                             <option value="insider">Insider</option>
                             <option value="werewolf">Werewolf</option>
                             <option value="blackmarket">Black Market</option>
+                            <option value="spyfall">Spyfall</option>
                         </select>
                         <select id="roomStatusFilter" class="search-box" style="width: auto;">
                             <option value="all">ทุกสถานะ</option>
@@ -850,6 +851,7 @@
                             <option value="has-insider">มี Insider</option>
                             <option value="has-werewolf">มี Werewolf</option>
                             <option value="has-blackmarket">มี Black Market</option>
+                            <option value="has-spyfall">มี Spyfall</option>
                         </select>
                     </div>
                     <button class="btn-admin btn-danger" onclick="clearAllStats()" id="clearAllStatsBtn" style="display:none;">🗑️ ลบทั้งหมด</button>
@@ -899,6 +901,13 @@
                         <option value="admin">Admin</option>
                         <option value="system">ระบบ</option>
                         <option value="error">Error</option>
+                    </select>
+                    <select id="logModeFilter" class="search-box" style="width: auto;">
+                        <option value="all">ทุกโหมด</option>
+                        <option value="insider">Insider</option>
+                        <option value="werewolf">Werewolf</option>
+                        <option value="blackmarket">Black Market</option>
+                        <option value="spyfall">Spyfall</option>
                     </select>
                     <button class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง Logs</button>
                     <button class="btn-admin btn-success" onclick="exportLogs()">📥 Export</button>
@@ -1092,11 +1101,13 @@ $(function() {
         const insider = modeStats?.insider || {};
         const werewolf = modeStats?.werewolf || {};
         const blackmarket = modeStats?.blackmarket || {};
+        const spyfall = modeStats?.spyfall || {};
         return `
             <div style="display:grid; gap:6px; min-width:170px;">
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🎯 Insider ${insider.games || 0} เกม</span><span class="status-badge status-online">🏆 ${insider.wins || 0}W</span><span class="status-badge status-offline">💀 ${insider.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">🐺 Werewolf ${werewolf.games || 0} เกม</span><span class="status-badge status-online">🏆 ${werewolf.wins || 0}W</span><span class="status-badge status-offline">💀 ${werewolf.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">🎩 Black Market ${blackmarket.games || 0} เกม</span><span class="status-badge status-online">🏆 ${blackmarket.wins || 0}W</span><span class="status-badge status-offline">💀 ${blackmarket.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🕵️ Spyfall ${spyfall.games || 0} เกม</span><span class="status-badge status-online">🏆 ${spyfall.wins || 0}W</span><span class="status-badge status-offline">💀 ${spyfall.losses || 0}L</span></div>
             </div>
         `;
     }
@@ -1558,11 +1569,7 @@ $(function() {
             const statusClass = room.gameStatus === 'playing' ? 'status-playing' : 'status-waiting';
             const statusText = room.gameStatus === 'playing' ? 'กำลังเล่น' : 'รอผู้เล่น';
             const roomMode = room.gameMode || 'insider';
-            const modeBadge = roomMode === 'werewolf'
-                ? '<span class="status-badge status-banned">🐺 Werewolf</span>'
-                : (roomMode === 'blackmarket'
-                    ? '<span class="status-badge status-playing">🎩 Black Market</span>'
-                    : '<span class="status-badge status-online">🎯 Insider</span>');
+            const modeBadge = formatRoomModeBadgeHtml(roomMode);
             
             const row = `
                 <tr>
@@ -1698,11 +1705,13 @@ $(function() {
             const hasInsider = Number(stat.modeStats?.insider?.games || 0) > 0;
             const hasWerewolf = Number(stat.modeStats?.werewolf?.games || 0) > 0;
             const hasBlackMarket = Number(stat.modeStats?.blackmarket?.games || 0) > 0;
+            const hasSpyfall = Number(stat.modeStats?.spyfall?.games || 0) > 0;
             const matchesSearch = !search || haystack.includes(search);
             const matchesMode = modeFilter === 'all'
                 || (modeFilter === 'has-insider' && hasInsider)
                 || (modeFilter === 'has-werewolf' && hasWerewolf)
-                || (modeFilter === 'has-blackmarket' && hasBlackMarket);
+                || (modeFilter === 'has-blackmarket' && hasBlackMarket)
+                || (modeFilter === 'has-spyfall' && hasSpyfall);
             return matchesSearch && matchesMode;
         });
 
@@ -2076,6 +2085,7 @@ $(function() {
         const insiderMode = stat.modeStats?.insider || {};
         const werewolfMode = stat.modeStats?.werewolf || {};
         const blackMarketMode = stat.modeStats?.blackmarket || {};
+        const spyfallMode = stat.modeStats?.spyfall || {};
         const werewolfInputs = WEREWOLF_ROLE_META.map(role => `
             <div>
                 <label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">${role.emoji} ${role.label}</label>
@@ -2138,6 +2148,14 @@ $(function() {
                             ${blackMarketInputs}
                         </div>
                     </div>
+                    <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(26,188,156,0.12); border:1px solid rgba(123,237,214,0.18);">
+                        <div style="font-weight:700; color:#7bedd6; margin-bottom:10px;">🕵️ โหมด Spyfall</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModeSpyfallGames" class="swal2-input" value="${spyfallMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModeSpyfallWins" class="swal2-input" value="${spyfallMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeSpyfallLosses" class="swal2-input" value="${spyfallMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                    </div>
                 </div>
             `,
             showCancelButton: true,
@@ -2183,6 +2201,11 @@ $(function() {
                             games: parseInt(document.getElementById('editModeBlackMarketGames').value, 10) || 0,
                             wins: parseInt(document.getElementById('editModeBlackMarketWins').value, 10) || 0,
                             losses: parseInt(document.getElementById('editModeBlackMarketLosses').value, 10) || 0
+                        },
+                        spyfall: {
+                            games: parseInt(document.getElementById('editModeSpyfallGames').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModeSpyfallWins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModeSpyfallLosses').value, 10) || 0
                         }
                     }
                 };
@@ -2369,12 +2392,12 @@ $(function() {
         
         const roleHeaders = WEREWOLF_ROLE_META.map(role => `${role.label} Count`).join(',');
         const blackMarketRoleHeaders = BLACKMARKET_ROLE_META.map(role => `${role.label} Count`).join(',');
-        let csv = `Player Name,Total Games,Wins,Losses,Win Rate,Insider Games,Insider Wins,Insider Losses,Werewolf Games,Werewolf Wins,Werewolf Losses,Black Market Games,Black Market Wins,Black Market Losses,GM Count,Traitor Count,Citizen Count,${roleHeaders},${blackMarketRoleHeaders}\n`;
+        let csv = `Player Name,Total Games,Wins,Losses,Win Rate,Insider Games,Insider Wins,Insider Losses,Werewolf Games,Werewolf Wins,Werewolf Losses,Black Market Games,Black Market Wins,Black Market Losses,Spyfall Games,Spyfall Wins,Spyfall Losses,GM Count,Traitor Count,Citizen Count,${roleHeaders},${blackMarketRoleHeaders}\n`;
         allData.playerStats.forEach(s => {
             const winRate = s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0;
             const werewolfCounts = WEREWOLF_ROLE_META.map(role => s.roleStats?.werewolf?.[role.id] || 0).join(',');
             const blackMarketCounts = BLACKMARKET_ROLE_META.map(role => s.roleStats?.blackmarket?.[role.id] || 0).join(',');
-            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.modeStats?.insider?.games || 0},${s.modeStats?.insider?.wins || 0},${s.modeStats?.insider?.losses || 0},${s.modeStats?.werewolf?.games || 0},${s.modeStats?.werewolf?.wins || 0},${s.modeStats?.werewolf?.losses || 0},${s.modeStats?.blackmarket?.games || 0},${s.modeStats?.blackmarket?.wins || 0},${s.modeStats?.blackmarket?.losses || 0},${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0},${werewolfCounts},${blackMarketCounts}\n`;
+            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.modeStats?.insider?.games || 0},${s.modeStats?.insider?.wins || 0},${s.modeStats?.insider?.losses || 0},${s.modeStats?.werewolf?.games || 0},${s.modeStats?.werewolf?.wins || 0},${s.modeStats?.werewolf?.losses || 0},${s.modeStats?.blackmarket?.games || 0},${s.modeStats?.blackmarket?.wins || 0},${s.modeStats?.blackmarket?.losses || 0},${s.modeStats?.spyfall?.games || 0},${s.modeStats?.spyfall?.wins || 0},${s.modeStats?.spyfall?.losses || 0},${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0},${werewolfCounts},${blackMarketCounts}\n`;
         });
         
         downloadCSV(csv, 'player_stats.csv');
@@ -2648,7 +2671,7 @@ $(function() {
                     html: `
                         <div style="text-align: left; color: #ddd;">
                             <p><strong>Room ID:</strong> <code>${roomId}</code></p>
-                            <p><strong>โหมด:</strong> ${(room.gameMode || room.settings?.gameMode) === 'werewolf' ? '🐺 Werewolf' : '🎯 Insider'}</p>
+                            <p><strong>โหมด:</strong> ${formatRoomModeLabel(room.gameMode || room.settings?.gameMode)}</p>
                             <p><strong>สถานะ:</strong> ${room.gameStatus === 'playing' ? '🎮 กำลังเล่น' : '⏳ รอผู้เล่น'}</p>
                             <p><strong>Phase:</strong> ${room.gamePhase || '-'}</p>
                             <p><strong>ล็อค:</strong> ${room.locked ? '🔒 ล็อค' : '🔓 ไม่ล็อค'}</p>
@@ -2687,11 +2710,69 @@ $(function() {
     
     // ========== Logs Functions ==========
     let serverLogs = [];
+    const LOG_MODE_BADGE_STYLES = {
+        insider: { badgeBg: 'rgba(52,152,219,0.18)', badgeColor: '#d6ebff' },
+        werewolf: { badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
+        blackmarket: { badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
+        spyfall: { badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' }
+    };
+    const ROOM_MODE_LABELS = {
+        insider: '🎯 Insider',
+        werewolf: '🐺 Werewolf',
+        blackmarket: '🎩 Black Market',
+        spyfall: '🕵️ Spyfall'
+    };
+    const ROOM_MODE_STATUS_CLASS = {
+        insider: 'status-online',
+        werewolf: 'status-banned',
+        blackmarket: 'status-playing',
+        spyfall: 'status-online'
+    };
+
+    function formatRoomModeLabel(gameMode) {
+        return ROOM_MODE_LABELS[gameMode] || gameMode || ROOM_MODE_LABELS.insider;
+    }
+
+    function formatRoomModeBadgeHtml(gameMode) {
+        const mode = gameMode || 'insider';
+        const statusClass = ROOM_MODE_STATUS_CLASS[mode] || 'status-online';
+        return `<span class="status-badge ${statusClass}">${formatRoomModeLabel(mode)}</span>`;
+    }
+
+    function formatLogModeBadge(log) {
+        if (!log.gameMode) {
+            return '';
+        }
+        const style = LOG_MODE_BADGE_STYLES[log.gameMode] || { badgeBg: 'rgba(255,255,255,0.1)', badgeColor: '#fff' };
+        const label = log.gameModeLabel || log.gameMode;
+        return `<span style="display:inline-flex; align-items:center; gap:4px; margin-right:6px; padding:1px 7px; border-radius:999px; background:${style.badgeBg}; color:${style.badgeColor}; font-size:0.75em; font-weight:700;">${escapeHtml(label)}</span>`;
+    }
+
+    function formatLogMeta(log) {
+        if (!log.meta || typeof log.meta !== 'object') {
+            return '';
+        }
+        const parts = Object.entries(log.meta)
+            .filter(([, value]) => value !== null && value !== undefined && value !== '')
+            .map(([key, value]) => `${key}=${value}`);
+        return parts.length ? `<span style="color:#777; font-size:0.78em;"> (${parts.join(' · ')})</span>` : '';
+    }
     
     // Load existing logs from server
+    function getFilteredLogs() {
+        const filter = $('#logFilter').val();
+        const modeFilter = $('#logModeFilter').val();
+        return serverLogs.filter(function(log) {
+            const matchesCategory = filter === 'all' || log.category === filter;
+            const matchesMode = modeFilter === 'all' || log.gameMode === modeFilter;
+            return matchesCategory && matchesMode;
+        });
+    }
+
     function loadLogs() {
         const filter = $('#logFilter').val();
-        socket.emit('admin_getLogs', { filter: filter, limit: 200 }, function(response) {
+        const modeFilter = $('#logModeFilter').val();
+        socket.emit('admin_getLogs', { filter: filter, gameMode: modeFilter, limit: 200 }, function(response) {
             if (response.success) {
                 serverLogs = response.logs || [];
                 renderLogs();
@@ -2707,8 +2788,7 @@ $(function() {
     });
     
     function renderLogs() {
-        const filter = $('#logFilter').val();
-        const filtered = filter === 'all' ? serverLogs : serverLogs.filter(l => l.category === filter);
+        const filtered = getFilteredLogs();
         
         const $container = $('#logsContainer');
         if (filtered.length === 0) {
@@ -2745,12 +2825,11 @@ $(function() {
             const time = new Date(log.timestamp).toLocaleTimeString('th-TH');
             const color = typeColors[log.type] || colors[log.category] || '#fff';
             const icon = icons[log.category] || '•';
-            const roomInfo = log.roomName ? `<span style="color: #888;">[${log.roomName}]</span> ` : '';
-            const modeBadge = log.gameMode
-                ? `<span style="display:inline-flex; align-items:center; gap:4px; margin-right:6px; padding:1px 7px; border-radius:999px; background:${log.gameMode === 'werewolf' ? 'rgba(192,57,43,0.2)' : 'rgba(52,152,219,0.18)'}; color:${log.gameMode === 'werewolf' ? '#ffd5d0' : '#d6ebff'}; font-size:0.75em; font-weight:700;">${log.gameMode === 'werewolf' ? '🐺 Werewolf' : '🎯 Insider'}</span>`
-                : '';
+            const roomInfo = log.roomName ? `<span style="color: #888;">[${escapeHtml(log.roomName)}]</span> ` : '';
+            const modeBadge = formatLogModeBadge(log);
+            const metaInfo = formatLogMeta(log);
             return `<div style="margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid ${color}; background: rgba(255,255,255,0.03);">
-                <span style="color: #666;">[${time}]</span> ${icon} ${modeBadge}${roomInfo}<span style="color: ${color};">${log.message}</span>
+                <span style="color: #666;">[${time}]</span> ${icon} ${modeBadge}${roomInfo}<span style="color: ${color};">${escapeHtml(log.message)}</span>${metaInfo}
             </div>`;
         }).join(''));
         
@@ -2758,8 +2837,8 @@ $(function() {
         $container.scrollTop(0);
     }
     
-    $('#logFilter').on('change', function() {
-        loadLogs();
+    $('#logFilter, #logModeFilter').on('change', function() {
+        renderLogs();
     });
     
     window.clearLogs = function() {
@@ -2786,14 +2865,16 @@ $(function() {
     };
     
     window.exportLogs = function() {
-        if (serverLogs.length === 0) {
+        const filtered = getFilteredLogs();
+        if (filtered.length === 0) {
             Swal.fire({ icon: 'warning', title: 'ไม่มี Logs', background: '#1e1e1e', color: '#fff' });
             return;
         }
-        const logsText = serverLogs.map(l => {
+        const logsText = filtered.map(l => {
             const time = new Date(l.timestamp).toLocaleString('th-TH');
-            const modeLabel = l.gameMode ? `[${l.gameMode.toUpperCase()}] ` : '';
-            return `[${time}] [${l.category.toUpperCase()}] ${modeLabel}${l.roomName ? '[' + l.roomName + '] ' : ''}${l.message}`;
+            const modeLabel = l.gameModeLabel ? `[${l.gameModeLabel}] ` : (l.gameMode ? `[${l.gameMode}] ` : '');
+            const metaLabel = l.meta ? ` ${JSON.stringify(l.meta)}` : '';
+            return `[${time}] [${l.category.toUpperCase()}] ${modeLabel}${l.roomName ? '[' + l.roomName + '] ' : ''}${l.message}${metaLabel}`;
         }).join('\n');
         const blob = new Blob([logsText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);

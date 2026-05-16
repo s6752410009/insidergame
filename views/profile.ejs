@@ -257,6 +257,18 @@
     .role-stat-card.mode-werewolf {
         border-left-color: #c0392b;
     }
+
+    .role-stat-card.mode-blackmarket {
+        border-left-color: #f6d365;
+    }
+
+    .role-stat-card.mode-spyfall {
+        border-left-color: #1abc9c;
+    }
+
+    .role-stat-card.blackmarket-role {
+        border-left-color: #f6d365;
+    }
     
     .role-stat-icon {
         font-size: 1.35em;
@@ -421,6 +433,16 @@
     .game-mode-badge.werewolf {
         background: rgba(192, 57, 43, 0.2);
         color: #ffb4a8;
+    }
+
+    .game-mode-badge.blackmarket {
+        background: rgba(246, 211, 101, 0.18);
+        color: #fde68a;
+    }
+
+    .game-mode-badge.spyfall {
+        background: rgba(26, 188, 156, 0.18);
+        color: #7bedd6;
     }
     
     .game-history-details {
@@ -1270,7 +1292,9 @@
                 },
                 modeStats: {
                     insider: { games: 0, wins: 0, losses: 0 },
-                    werewolf: { games: 0, wins: 0, losses: 0 }
+                    werewolf: { games: 0, wins: 0, losses: 0 },
+                    blackmarket: { games: 0, wins: 0, losses: 0 },
+                    spyfall: { games: 0, wins: 0, losses: 0 }
                 },
                 lastPlayedAt: null,
                 gameHistory: []
@@ -1286,13 +1310,37 @@
                 displayStats.winByRole.werewolf = { villager: 0, werewolf: 0, alphaWolf: 0, mayor: 0, bodyguard: 0, seer: 0, doctor: 0, revealer: 0 };
             }
             if (!displayStats.modeStats) {
-                displayStats.modeStats = { insider: { games: 0, wins: 0, losses: 0 }, werewolf: { games: 0, wins: 0, losses: 0 } };
+                displayStats.modeStats = {
+                    insider: { games: 0, wins: 0, losses: 0 },
+                    werewolf: { games: 0, wins: 0, losses: 0 },
+                    blackmarket: { games: 0, wins: 0, losses: 0 },
+                    spyfall: { games: 0, wins: 0, losses: 0 }
+                };
+            }
+            if (!displayStats.roleStats.blackmarket) {
+                displayStats.roleStats.blackmarket = { boss: 0, broker: 0, smuggler: 0, fixer: 0, hitman: 0, mole: 0, doubleAgent: 0 };
+            }
+            if (!displayStats.winByRole.blackmarket) {
+                displayStats.winByRole.blackmarket = { boss: 0, broker: 0, smuggler: 0, fixer: 0, hitman: 0, mole: 0, doubleAgent: 0 };
             }
             const winRate = displayStats.totalGames > 0 ? Math.round((displayStats.wins / displayStats.totalGames) * 100) : 0;
             const insiderStats = displayStats.modeStats.insider || { games: 0, wins: 0, losses: 0 };
             const werewolfStats = displayStats.modeStats.werewolf || { games: 0, wins: 0, losses: 0 };
+            const blackMarketStats = displayStats.modeStats.blackmarket || { games: 0, wins: 0, losses: 0 };
+            const spyfallStats = displayStats.modeStats.spyfall || { games: 0, wins: 0, losses: 0 };
             const insiderWinRate = insiderStats.games > 0 ? Math.round((insiderStats.wins / insiderStats.games) * 100) : 0;
             const werewolfWinRate = werewolfStats.games > 0 ? Math.round((werewolfStats.wins / werewolfStats.games) * 100) : 0;
+            const blackMarketWinRate = blackMarketStats.games > 0 ? Math.round((blackMarketStats.wins / blackMarketStats.games) * 100) : 0;
+            const spyfallWinRate = spyfallStats.games > 0 ? Math.round((spyfallStats.wins / spyfallStats.games) * 100) : 0;
+            const blackMarketRoleCards = [
+                { id: 'boss', icon: '🎩', label: 'เจ้าพ่อ', className: 'blackmarket-role' },
+                { id: 'broker', icon: '🕴️', label: 'นายหน้า', className: 'blackmarket-role' },
+                { id: 'smuggler', icon: '🚚', label: 'คนส่งของ', className: 'blackmarket-role' },
+                { id: 'fixer', icon: '🧹', label: 'คนเคลียร์ทาง', className: 'blackmarket-role' },
+                { id: 'hitman', icon: '🔫', label: 'มือเก็บงาน', className: 'blackmarket-role' },
+                { id: 'mole', icon: '🕶️', label: 'สายข่าว', className: 'blackmarket-role' },
+                { id: 'doubleAgent', icon: '🃏', label: 'สองหน้า', className: 'blackmarket-role' }
+            ];
             const werewolfRoleCards = [
                 { id: 'villager', icon: '🙂', label: 'ชาวบ้าน', className: 'village-role' },
                 { id: 'werewolf', icon: '🐺', label: 'หมาป่า', className: 'werewolf-role' },
@@ -1344,6 +1392,16 @@
                 <div class="role-stat-icon">🐺</div>
                 <div class="role-stat-value" style="color: #ff8f7b;"><%= werewolfStats.games %></div>
                 <div class="role-stat-label">Werewolf · ชนะ <%= werewolfStats.wins %> · แพ้ <%= werewolfStats.losses %> · <%= werewolfWinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-blackmarket">
+                <div class="role-stat-icon">🎩</div>
+                <div class="role-stat-value" style="color: #f6d365;"><%= blackMarketStats.games %></div>
+                <div class="role-stat-label">Black Market · ชนะ <%= blackMarketStats.wins %> · แพ้ <%= blackMarketStats.losses %> · <%= blackMarketWinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-spyfall">
+                <div class="role-stat-icon">🕵️</div>
+                <div class="role-stat-value" style="color: #1abc9c;"><%= spyfallStats.games %></div>
+                <div class="role-stat-label">Spyfall · ชนะ <%= spyfallStats.wins %> · แพ้ <%= spyfallStats.losses %> · <%= spyfallWinRate %>%</div>
             </div>
         </div>
 
@@ -1405,6 +1463,42 @@
             <% }); %>
         </div>
 
+
+        <h3 class="stats-section-title">🎩 Black Market: บทบาทที่เคยได้รับ</h3>
+        <div class="role-stats-grid">
+            <% blackMarketRoleCards.forEach(function(role) { %>
+                <% if ((displayStats.roleStats.blackmarket[role.id] || 0) > 0) { %>
+                <div class="role-stat-card <%= role.className %>">
+                    <div class="role-stat-icon"><%= role.icon %></div>
+                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.roleStats.blackmarket[role.id] || 0 %></div>
+                    <div class="role-stat-label"><%= role.label %></div>
+                </div>
+                <% } %>
+            <% }); %>
+        </div>
+
+        <h3 class="stats-section-title">🎩 Black Market: ชนะตามบทบาท</h3>
+        <div class="role-stats-grid">
+            <% blackMarketRoleCards.forEach(function(role) { %>
+                <% if ((displayStats.winByRole.blackmarket[role.id] || 0) > 0) { %>
+                <div class="role-stat-card <%= role.className %>">
+                    <div class="role-stat-icon"><%= role.icon %></div>
+                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.winByRole.blackmarket[role.id] || 0 %></div>
+                    <div class="role-stat-label">ชนะเป็น <%= role.label %></div>
+                </div>
+                <% } %>
+            <% }); %>
+        </div>
+
+        <h3 class="stats-section-title">🕵️ Spyfall: สรุปบทบาท</h3>
+        <div class="role-stats-grid">
+            <div class="role-stat-card traitor">
+                <div class="role-stat-icon">🕶️</div>
+                <div class="role-stat-value" style="color: #1abc9c;"><%= spyfallStats.games > 0 ? spyfallStats.games : 0 %></div>
+                <div class="role-stat-label">เกม Spyfall ทั้งหมด (ดูบทบาทแต่ละเกมในประวัติ)</div>
+            </div>
+        </div>
+
         <div class="last-played">
             <p>
                 <strong>🕐 เล่นครั้งล่าสุด:</strong> 
@@ -1422,15 +1516,16 @@
             <div class="game-history-list">
                 <% if (displayStats.gameHistory && displayStats.gameHistory.length > 0) { %>
                     <% displayStats.gameHistory.forEach(function(game) { %>
-                        <% const gameMode = game.mode === 'werewolf' ? 'werewolf' : 'insider'; %>
-                        <% const winnerText = gameMode === 'werewolf' ? (game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน')) : (game.citizensWon ? 'พลเมือง' : 'จอมบงการ'); %>
+                        <% const gameMode = game.mode || 'insider'; %>
+                        <% const modeLabels = { insider: '🎯 Insider', werewolf: '🐺 Werewolf', blackmarket: '🎩 Black Market', spyfall: '🕵️ Spyfall' }; %>
+                        <% const modeBadgeClass = ['insider', 'werewolf', 'blackmarket', 'spyfall'].includes(gameMode) ? gameMode : 'insider'; %>
                         <div class="game-history-item <%= game.won ? 'won' : 'lost' %>">
                             <div class="game-history-header">
                                 <div class="game-history-topline">
                                     <span class="game-history-result <%= game.won ? 'won' : 'lost' %>">
                                         <%= game.won ? '🏆 ชนะ' : '💔 แพ้' %>
                                     </span>
-                                    <span class="game-mode-badge <%= gameMode %>"><%= gameMode === 'werewolf' ? '🐺 Werewolf' : '🎯 Insider' %></span>
+                                    <span class="game-mode-badge <%= modeBadgeClass %>"><%= modeLabels[modeBadgeClass] || modeLabels.insider %></span>
                                 </div>
                                 <span class="game-history-date">
                                     <%= new Date(game.date).toLocaleString('th-TH', { 
@@ -1458,7 +1553,7 @@
                                     </div>
                                     <div class="game-history-detail">
                                         <span class="game-history-detail-icon">🏁</span>
-                                        <span>ทีมชนะ: <%= winnerText %></span>
+                                        <span>ทีมชนะ: <%= game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน') %></span>
                                     </div>
                                     <div class="game-history-detail">
                                         <span class="game-history-detail-icon">🌅</span>
@@ -1468,15 +1563,45 @@
                                         <span class="game-history-detail-icon"><%= game.survived ? '✨' : '💀' %></span>
                                         <span><%= game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ' %></span>
                                     </div>
+                                <% } else if (gameMode === 'blackmarket') { %>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">👑</span>
+                                        <span>เจ้าโต๊ะ: <%= game.winnerLabel || 'ไม่ทราบ' %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🎩</span>
+                                        <span><%= game.winnerRole || '-' %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">📊</span>
+                                        <span>👑 <%= game.influence || 0 %> · 💵 <%= game.cash || 0 %> · 🔥 <%= game.heat || 0 %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🎯</span>
+                                        <span><%= game.resultText || (game.won ? 'คุมเมืองสำเร็จ' : 'พลาดโต๊ะนี้') %></span>
+                                    </div>
+                                <% } else if (gameMode === 'spyfall') { %>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">📍</span>
+                                        <span>สถานที่: <%= game.location || 'ไม่ทราบ' %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🕶️</span>
+                                        <span>สายลับ: <%= game.spyName || 'ไม่ทราบ' %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🏁</span>
+                                        <span><%= game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด' %></span>
+                                    </div>
                                 <% } else { %>
-                                <div class="game-history-detail">
-                                    <span class="game-history-detail-icon">📝</span>
-                                    <span><%= game.word %></span>
-                                </div>
-                                <div class="game-history-detail">
-                                    <span class="game-history-detail-icon">🔴</span>
-                                    <span>จอมบงการ: <%= game.traitor %></span>
-                                </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">📝</span>
+                                        <span><%= game.word %></span>
+                                    </div>
+                                    <div class="game-history-detail">
+                                        <span class="game-history-detail-icon">🔴</span>
+                                        <span>จอมบงการ: <%= game.traitor %></span>
+                                    </div>
                                 <% } %>
                                 <div class="game-history-detail">
                                     <span class="game-history-detail-icon">👥</span>

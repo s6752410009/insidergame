@@ -773,6 +773,10 @@
         color: #f6d365;
     }
 
+    .profile-history-mode.spyfall {
+        color: #7bedd6;
+    }
+
     .profile-history-mode.insider {
         color: #8fd3ff;
     }
@@ -1304,7 +1308,8 @@ $(function() {
                 modeStats: {
                     insider: { games: 0, wins: 0, losses: 0 },
                     werewolf: { games: 0, wins: 0, losses: 0 },
-                    blackmarket: { games: 0, wins: 0, losses: 0 }
+                    blackmarket: { games: 0, wins: 0, losses: 0 },
+                    spyfall: { games: 0, wins: 0, losses: 0 }
                 }
             };
             const blackMarketRoleStats = blackMarketRoleMeta.filter(function(role) {
@@ -1324,19 +1329,28 @@ $(function() {
             const history = Array.isArray(stats.gameHistory) ? stats.gameHistory.slice(0, 5) : [];
             const historyHtml = history.length > 0
                 ? history.map(function(game) {
-                    const isWerewolf = game.mode === 'werewolf';
-                    const isBlackMarket = game.mode === 'blackmarket';
-                    const modeLabel = isWerewolf ? '🐺 Werewolf' : (isBlackMarket ? '🎩 Black Market' : '🎯 Insider');
+                    const mode = game.mode || 'insider';
+                    const isWerewolf = mode === 'werewolf';
+                    const isBlackMarket = mode === 'blackmarket';
+                    const isSpyfall = mode === 'spyfall';
+                    const modeLabel = isWerewolf ? '🐺 Werewolf'
+                        : (isBlackMarket ? '🎩 Black Market'
+                            : (isSpyfall ? '🕵️ Spyfall' : '🎯 Insider'));
+                    const modeClass = isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : (isSpyfall ? 'spyfall' : 'insider'));
                     const detailPrimary = isWerewolf
                         ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
                         : (isBlackMarket
                             ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
-                            : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'));
+                            : (isSpyfall
+                                ? 'สถานที่: ' + escapeHtml(game.location || 'ไม่ทราบ')
+                                : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ')));
                     const detailSecondary = isWerewolf
                         ? (game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ')
                         : (isBlackMarket
                             ? `👑 ${Number(game.influence || 0)} • 💵 ${Number(game.cash || 0)} • 🔥 ${Number(game.heat || 0)}`
-                            : escapeHtml(game.word || 'ไม่ทราบคำ'));
+                            : (isSpyfall
+                                ? `สายลับ: ${escapeHtml(game.spyName || 'ไม่ทราบ')} • ${game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด'}`
+                                : escapeHtml(game.word || 'ไม่ทราบคำ')));
                     const gameDate = game.date
                         ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : '-';
@@ -1345,7 +1359,7 @@ $(function() {
                         <div class="profile-history-item ${game.won ? 'won' : 'lost'}">
                             <div class="profile-history-top">
                                 <span>${game.won ? '🏆 ชนะ' : '💔 แพ้'} · ${escapeHtml(game.role || 'ไม่ทราบบท')}</span>
-                                <span class="profile-history-mode ${isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : 'insider')}">${modeLabel}</span>
+                                <span class="profile-history-mode ${modeClass}">${modeLabel}</span>
                             </div>
                             <div class="profile-history-meta">
                                 <span>🏠 ${escapeHtml(game.roomName || 'ไม่ทราบห้อง')}</span>
@@ -1419,7 +1433,11 @@ $(function() {
                         </div>
                         <div class="profile-role-row">
                             <span>🎩 Black Market</span>
-                            <span>${stats.modeStats?.blackmarket?.games || 0} เกม</span>
+                            <span>${stats.modeStats?.blackmarket?.games || 0} เกม · ชนะ ${stats.modeStats?.blackmarket?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🕵️ Spyfall</span>
+                            <span>${stats.modeStats?.spyfall?.games || 0} เกม · ชนะ ${stats.modeStats?.spyfall?.wins || 0}</span>
                         </div>
                         ${blackMarketRoleHtml}
                     </div>

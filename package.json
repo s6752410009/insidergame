@@ -22,6 +22,7 @@
     "smoke:blackmarket:lobby:browser": "node scripts/browser-blackmarket-lobby.js",
     "smoke:blackmarket:board:browser": "node scripts/browser-blackmarket-board.js",
     "smoke:blackmarket:stats": "node scripts/integration-blackmarket-stats.js",
+    "smoke:spyfall": "node scripts/smoke-spyfall.js",
     "smoke:werewolf": "node scripts/smoke-werewolf-flow.js && node scripts/smoke-werewolf-reveal-miss.js",
     "smoke:werewolf:selection": "node scripts/smoke-werewolf-selection.js",
     "smoke:werewolf:roles": "node scripts/smoke-werewolf-role-rules.js",
