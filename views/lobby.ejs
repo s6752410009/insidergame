@@ -452,6 +452,29 @@
         transition: all 0.2s ease;
     }
 
+    .leaderboard-page-num {
+        min-width: 40px;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 10px;
+        font-size: 0.85em;
+    }
+
+    .leaderboard-page-num.is-active {
+        background: linear-gradient(135deg, #ffd98b 0%, #ff9f43 100%);
+        border-color: transparent;
+        color: #1a1205;
+        cursor: default;
+        box-shadow: 0 4px 14px rgba(255, 159, 67, 0.35);
+    }
+
+    .leaderboard-page-num.is-active:hover {
+        transform: none;
+        background: linear-gradient(135deg, #ffd98b 0%, #ff9f43 100%);
+        color: #1a1205;
+    }
+
     .leaderboard-page:hover {
         background: rgba(255,255,255,0.12);
         color: #fff;
@@ -465,13 +488,76 @@
         box-shadow: none;
     }
 
-    .leaderboard-page-indicator {
-        min-width: 78px;
+    .leaderboard-page-ellipsis {
+        min-width: 28px;
         text-align: center;
-        color: #ffd98b;
+        color: #8a96b8;
         font-family: 'Orbitron', sans-serif;
         font-size: 0.9em;
         font-weight: 700;
+        user-select: none;
+    }
+
+    .leaderboard-page-jump {
+        flex: 0 0 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+    }
+
+    .leaderboard-page-jump-label {
+        color: #8a96b8;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.95em;
+        font-weight: 600;
+    }
+
+    .leaderboard-page-jump-input {
+        width: 72px;
+        height: 40px;
+        padding: 0 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(0,0,0,0.35);
+        color: #fff;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.9em;
+        font-weight: 700;
+        text-align: center;
+        -moz-appearance: textfield;
+    }
+
+    .leaderboard-page-jump-input::-webkit-outer-spin-button,
+    .leaderboard-page-jump-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .leaderboard-page-jump-input:focus {
+        outline: none;
+        border-color: rgba(255, 217, 139, 0.65);
+        box-shadow: 0 0 0 2px rgba(255, 217, 139, 0.15);
+    }
+
+    .leaderboard-page-jump-input.is-invalid {
+        border-color: #e74c3c;
+        box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+    }
+
+    .leaderboard-page-jump-of {
+        color: #ffd98b;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.85em;
+        font-weight: 700;
+    }
+
+    .leaderboard-page-jump-btn {
+        min-width: 56px;
+        height: 40px;
+        padding: 0 14px;
     }
 
     @media (max-width: 768px) {
@@ -491,13 +577,30 @@
         }
 
         .leaderboard-page {
-            min-width: 88px;
+            min-width: 72px;
             height: 36px;
             padding: 0 10px;
+            font-size: 0.82em;
         }
 
-        .leaderboard-page-indicator {
-            min-width: 68px;
+        .leaderboard-page-num {
+            min-width: 34px;
+            width: 34px;
+            height: 34px;
+            font-size: 0.78em;
+        }
+
+        .leaderboard-pagination {
+            gap: 6px;
+        }
+
+        .leaderboard-page-jump-input,
+        .leaderboard-page-jump-btn {
+            height: 36px;
+        }
+
+        .leaderboard-page-jump-input {
+            width: 64px;
             font-size: 0.82em;
         }
     }
@@ -955,7 +1058,8 @@ $(function() {
     const LEADERBOARD_PAGE_SIZE = 5;
     var leaderboardState = {
         entries: [],
-        currentPage: 1
+        currentPage: 1,
+        totalPages: 1
     };
 
     function renderLeaderboardEmpty(message) {
@@ -986,10 +1090,48 @@ $(function() {
         `;
     }
 
+    function buildLeaderboardPageList(currentPage, totalPages) {
+        if (totalPages <= 7) {
+            var allPages = [];
+            for (var i = 1; i <= totalPages; i++) {
+                allPages.push(i);
+            }
+            return allPages;
+        }
+
+        var pages = [];
+        var lastAdded = 0;
+        var pageIndex;
+
+        for (pageIndex = 1; pageIndex <= totalPages; pageIndex++) {
+            if (
+                pageIndex === 1 ||
+                pageIndex === totalPages ||
+                (pageIndex >= currentPage - 1 && pageIndex <= currentPage + 1)
+            ) {
+                if (lastAdded && pageIndex - lastAdded === 2) {
+                    pages.push(lastAdded + 1);
+                } else if (lastAdded && pageIndex - lastAdded > 2) {
+                    pages.push('ellipsis');
+                }
+                pages.push(pageIndex);
+                lastAdded = pageIndex;
+            }
+        }
+
+        return pages;
+    }
+
     function renderLeaderboardPagination(totalPages) {
         var $pagination = $('#leaderboardPagination');
-        var previousPage = leaderboardState.currentPage - 1;
-        var nextPage = leaderboardState.currentPage + 1;
+        var currentPage = leaderboardState.currentPage;
+        var previousPage = currentPage - 1;
+        var nextPage = currentPage + 1;
+        var pageList;
+        var pageToken;
+        var pageNumber;
+        var i;
+
         $pagination.empty();
 
         if (totalPages <= 1) {
@@ -998,19 +1140,65 @@ $(function() {
 
         $pagination.append(
             '<button type="button" class="leaderboard-page" data-page="' + previousPage + '"' +
-            (leaderboardState.currentPage === 1 ? ' disabled' : '') +
+            (currentPage === 1 ? ' disabled' : '') +
             '>ก่อนหน้า</button>'
         );
 
-        $pagination.append(
-            '<span class="leaderboard-page-indicator">' + leaderboardState.currentPage + ' / ' + totalPages + '</span>'
-        );
+        pageList = buildLeaderboardPageList(currentPage, totalPages);
+        for (i = 0; i < pageList.length; i++) {
+            pageToken = pageList[i];
+
+            if (pageToken === 'ellipsis') {
+                $pagination.append('<span class="leaderboard-page-ellipsis" aria-hidden="true">…</span>');
+                continue;
+            }
+
+            pageNumber = pageToken;
+            if (pageNumber === currentPage) {
+                $pagination.append(
+                    '<button type="button" class="leaderboard-page leaderboard-page-num is-active" data-page="' +
+                    pageNumber + '" disabled aria-current="page">' + pageNumber + '</button>'
+                );
+                continue;
+            }
+
+            $pagination.append(
+                '<button type="button" class="leaderboard-page leaderboard-page-num" data-page="' +
+                pageNumber + '" aria-label="หน้า ' + pageNumber + '">' + pageNumber + '</button>'
+            );
+        }
 
         $pagination.append(
             '<button type="button" class="leaderboard-page" data-page="' + nextPage + '"' +
-            (leaderboardState.currentPage === totalPages ? ' disabled' : '') +
+            (currentPage === totalPages ? ' disabled' : '') +
             '>ถัดไป</button>'
         );
+
+        $pagination.append(
+            '<form class="leaderboard-page-jump" id="leaderboardPageJumpForm">' +
+            '<label class="leaderboard-page-jump-label" for="leaderboardPageJumpInput">ไปหน้า</label>' +
+            '<input id="leaderboardPageJumpInput" class="leaderboard-page-jump-input" type="number" min="1" max="' +
+            totalPages + '" inputmode="numeric" placeholder="' + currentPage + '" aria-label="หมายเลขหน้า" />' +
+            '<span class="leaderboard-page-jump-of">/ ' + totalPages + '</span>' +
+            '<button type="submit" class="leaderboard-page leaderboard-page-jump-btn">ไป</button>' +
+            '</form>'
+        );
+    }
+
+    function jumpToLeaderboardPageFromInput() {
+        var $input = $('#leaderboardPageJumpInput');
+        var totalPages = leaderboardState.totalPages || 1;
+        var raw = String($input.val() || '').trim();
+        var page = parseInt(raw, 10);
+
+        if (!raw || Number.isNaN(page)) {
+            $input.addClass('is-invalid').focus();
+            return;
+        }
+
+        page = Math.min(Math.max(page, 1), totalPages);
+        $input.removeClass('is-invalid').val('');
+        renderLeaderboardPage(page);
     }
 
     function renderLeaderboardPage(page) {
@@ -1022,6 +1210,7 @@ $(function() {
         }
 
         var totalPages = Math.ceil(totalEntries / LEADERBOARD_PAGE_SIZE);
+        leaderboardState.totalPages = totalPages;
         var safePage = Math.min(Math.max(page, 1), totalPages);
         var startIndex = (safePage - 1) * LEADERBOARD_PAGE_SIZE;
         var visibleEntries = leaderboardState.entries.slice(startIndex, startIndex + LEADERBOARD_PAGE_SIZE);
@@ -1071,12 +1260,21 @@ $(function() {
         showPlayerProfile(targetPlayerId);
     });
 
-    $(document).on('click', '.leaderboard-page', function() {
+    $(document).on('click', '.leaderboard-page:not(:disabled)', function() {
         var page = parseInt($(this).data('page'), 10);
 
         if (!Number.isNaN(page)) {
             renderLeaderboardPage(page);
         }
+    });
+
+    $(document).on('submit', '#leaderboardPageJumpForm', function(event) {
+        event.preventDefault();
+        jumpToLeaderboardPageFromInput();
+    });
+
+    $(document).on('input', '#leaderboardPageJumpInput', function() {
+        $(this).removeClass('is-invalid');
     });
     
     // Show player profile modal
