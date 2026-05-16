@@ -79,10 +79,15 @@ function resetNightPhase(room, dayNumber) {
     room.gameState.nightActions = {
         werewolfVotes: {},
         seerChecks: {},
+        oracleReads: {},
         doctorSaves: {},
         bodyguardProtects: {},
         witchHeals: {},
-        witchPoisons: {}
+        witchPoisons: {},
+        trackerScans: {},
+        vigilanteShots: {},
+        hunterShots: {},
+        clericBlesses: {}
     };
     room.gameState.nightSkips = {};
     room.gameState.dayVotes = {};
@@ -131,6 +136,16 @@ function submitRemainingNightSkips(room, excludedPlayerIds = []) {
             case 'witch':
                 if (!room.gameState.nightActions.witchHeals[player.playerId] && !room.gameState.nightActions.witchPoisons[player.playerId]) {
                     werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID, 'witch-heal');
+                }
+                break;
+            case 'tracker':
+                if (!room.gameState.nightActions.trackerScans[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID);
+                }
+                break;
+            case 'oracle':
+                if (!room.gameState.nightActions.oracleReads[player.playerId]) {
+                    werewolfEngine.submitNightAction(room, player.playerId, werewolfEngine.SKIP_TARGET_ID);
                 }
                 break;
             default:
@@ -443,6 +458,59 @@ function testRoleActionSkipDoesNotCountAsNightSkip() {
     };
 }
 
+function testTrackerOnlyReportsTargetNightSkill() {
+    const room = createRoom(['tracker', 'cleric', 'werewolf', 'seer', 'villager']);
+    const roles = getRoleMap(room);
+    const tracker = roles.tracker[0];
+    const cleric = roles.cleric[0];
+    const seer = roles.seer[0];
+    const werewolf = roles.werewolf[0];
+
+    resetNightPhase(room, 2);
+
+    werewolfEngine.submitNightAction(room, tracker.playerId, cleric.playerId);
+    assert(tracker.trackerLastResult?.acted === false, 'cleric should not count as using a night skill when tracker selects them');
+
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+    werewolfEngine.submitNightAction(room, seer.playerId, cleric.playerId);
+
+    assert(
+        tracker.trackerLastResult?.acted === false,
+        'cleric scan should stay false even after other players use night skills'
+    );
+
+    submitRemainingNightSkips(room, [tracker.playerId, cleric.playerId, werewolf.playerId, seer.playerId]);
+    assert(room.gameState.phase === 'day-discussion', 'night should resolve after remaining skips');
+
+    assert(
+        tracker.trackerLastResult?.acted === false,
+        'cleric should still read as inactive after the night resolves'
+    );
+
+    resetNightPhase(room, 3);
+    werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
+    werewolfEngine.submitNightAction(room, seer.playerId, cleric.playerId);
+    werewolfEngine.submitNightAction(room, tracker.playerId, seer.playerId);
+
+    assert(
+        tracker.trackerLastResult?.acted === true,
+        'seer should read as active once they submit a night check'
+    );
+
+    submitRemainingNightSkips(room, [tracker.playerId, cleric.playerId, werewolf.playerId, seer.playerId]);
+    assert(room.gameState.phase === 'day-discussion', 'second night should resolve');
+
+    assert(
+        tracker.trackerLastResult?.acted === true,
+        'seer should remain active after the night resolves'
+    );
+
+    return {
+        trackerClericNoNightSkillMisread: true,
+        trackerSeerShowsNightSkillUsed: true
+    };
+}
+
 function testRevealerDayVoteAccess() {
     const room = createRoom(['werewolf', 'revealer', 'doctor'], 3);
     const werewolf = getSingleRole(room, 'werewolf');
@@ -500,7 +568,8 @@ function main() {
         ...testThreePlayerFoolIsFilteredOut(),
         ...testNightActionsDoNotAutoResolve(),
         ...testRoleActionSkipDoesNotCountAsNightSkip(),
-        ...testRevealerDayVoteAccess()
+        ...testRevealerDayVoteAccess(),
+        ...testTrackerOnlyReportsTargetNightSkill()
     };
 
     console.log(`SMOKE_RESULT ${JSON.stringify({ tested })}`);

@@ -1210,6 +1210,7 @@
                       <strong>${visual.emoji} ${role.thaiName}</strong>
                       <span style="color:#8fd3ff; font-size:0.8em;">${visual.teamLabel}</span>
                       <span style="color:#aaa; font-size:0.85em; line-height:1.35;">${role.description}</span>
+                      ${role.winCondition ? `<span style="color:#a5b4fc; font-size:0.78em; line-height:1.35;">🏁 ${role.winCondition}</span>` : ''}
                     </span>
                   </div>
                 `;
@@ -2300,14 +2301,29 @@
 
     // ปุ่มดูบทบาท Werewolf
     $('#btnViewRolesLobby').on('click', function() {
+      const teamOrder = { werewolf: 0, village: 1, solo: 2 };
+      const teamHeader = { werewolf: '🐺 ฝั่งหมาป่า', village: '🏡 ฝั่งชาวบ้าน', solo: '🎭 บทเดี่ยว' };
+      const sorted = [...werewolfRoleOptions].sort((a, b) => {
+        const oa = teamOrder[a.team] ?? 9;
+        const ob = teamOrder[b.team] ?? 9;
+        if (oa !== ob) return oa - ob;
+        return String(a.thaiName || '').localeCompare(String(b.thaiName || ''), 'th');
+      });
       let html = '<div style="text-align:left; max-height:65vh; overflow-y:auto; padding-right:8px; display:grid; gap:12px;">';
-      werewolfRoleOptions.forEach(role => {
+      let lastTeam = null;
+      sorted.forEach(role => {
+        if (role.team !== lastTeam) {
+          lastTeam = role.team;
+          html += `<div style="font-weight:800; margin:4px 0 0; color:#fde68a; font-size:0.95em;">${teamHeader[role.team] || role.team}</div>`;
+        }
         const visual = werewolfRoleVisuals[role.id] || { emoji: '🎭', teamLabel: 'พิเศษ' };
         let teamColor = '#f39c12';
         if (role.team === 'werewolf') teamColor = '#e74c3c';
         else if (role.team === 'village') teamColor = '#3498db';
         else if (role.team === 'solo') teamColor = '#9b59b6';
-        
+        const winHtml = role.winCondition
+          ? `<div style="font-size:0.82em; color:#a5b4fc; line-height:1.35; margin-top:6px;">🏁 ${role.winCondition}</div>`
+          : '';
         html += `
           <div style="background:rgba(255,255,255,0.05); border-left: 4px solid ${teamColor}; border-radius:8px; padding:12px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
@@ -2316,6 +2332,7 @@
               <span style="font-size:0.8em; color:#aaa; margin-left:auto;">${visual.teamLabel}</span>
             </div>
             <div style="font-size:0.9em; color:#ddd; line-height:1.4;">${role.description}</div>
+            ${winHtml}
           </div>
         `;
       });
