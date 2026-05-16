@@ -965,13 +965,11 @@ $(function() {
     function buildModeQuickPickHtml(modeItems) {
         return (Array.isArray(modeItems) ? modeItems : []).map(function(mode) {
             const spotlight = getModeSpotlightMeta(mode.id);
-            const isBlackMarket = mode.id === 'blackmarket';
-            const disabledStyle = isBlackMarket ? 'filter: grayscale(1); opacity: 0.6; cursor: not-allowed; pointer-events: none;' : 'cursor:pointer;';
-            const badgeLabel = isBlackMarket ? '🔴 Coming Soon' : escapeHtml(spotlight.badge);
-            const badgeColor = isBlackMarket ? '#ff4d4d' : (mode.id === 'werewolf' ? '#fff' : '#fde68a');
+            const badgeLabel = escapeHtml(spotlight.badge);
+            const badgeColor = mode.id === 'werewolf' ? '#fff' : '#fde68a';
 
             return `
-                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="${disabledStyle} border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; font-family:Rajdhani, sans-serif; display:grid; gap:4px;">
+                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="cursor:pointer; border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; font-family:Rajdhani, sans-serif; display:grid; gap:4px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                         <strong style="font-size:1rem; letter-spacing:0.02em;">${escapeHtml(spotlight.title)}</strong>
                         <span style="padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.1); font-size:0.75em; font-weight:700; color:${badgeColor};">${badgeLabel}</span>

@@ -238,6 +238,184 @@
   .bm-chip.phase-action { border-color: rgba(248, 113, 113, 0.26); color: #fecaca; }
   .bm-chip.phase-finished { border-color: rgba(110, 231, 183, 0.24); color: #d1fae5; }
 
+  .bm-now-bar {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--bm-line-strong);
+    background: linear-gradient(90deg, rgba(245, 200, 107, 0.14), rgba(17, 17, 17, 0.5));
+  }
+
+  .bm-now-bar-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bm-gold);
+    margin-bottom: 6px;
+  }
+
+  .bm-now-bar-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+    line-height: 1.35;
+    color: #fff;
+  }
+
+  .bm-now-bar-sub {
+    margin-top: 6px;
+    color: var(--bm-muted);
+    font-size: 0.95rem;
+  }
+
+  .bm-now-bar.locked .bm-now-bar-text {
+    color: #d1fae5;
+  }
+
+  .bm-announcer.bm-announcer-collapsed {
+    grid-template-columns: 1fr;
+    padding: 10px 22px;
+    gap: 0;
+  }
+
+  .bm-announcer-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: var(--bm-muted);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .bm-announcer-toggle:hover {
+    border-color: rgba(245, 200, 107, 0.2);
+    color: var(--bm-text);
+  }
+
+  .bm-announcer-body {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 14px;
+  }
+
+  .bm-card-note.bm-hide { display: none; }
+
+  .bm-simple-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .bm-simple-btn {
+    min-height: 88px;
+    padding: 14px 10px;
+    border-radius: 18px;
+    border: 2px solid rgba(255,255,255,0.12);
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    color: var(--bm-text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 6px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+
+  .bm-simple-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: rgba(245, 200, 107, 0.35);
+  }
+
+  .bm-simple-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .bm-simple-btn .bm-outcome {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--bm-gold);
+  }
+
+  .bm-simple-pick {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px dashed rgba(245, 200, 107, 0.28);
+    background: rgba(0,0,0,0.2);
+  }
+
+  .bm-simple-pick-title {
+    margin-bottom: 10px;
+    font-weight: 700;
+    color: var(--bm-gold);
+  }
+
+  .bm-simple-pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+
+  .bm-toggle-advanced {
+    width: 100%;
+    margin: 4px 0 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: var(--bm-muted);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .bm-toggle-advanced:hover {
+    color: var(--bm-text);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  .bm-advanced-stage {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--bm-line);
+  }
+
+  .bm-offer-outcome {
+    font-size: 0.85rem;
+    color: var(--bm-gold);
+    margin-bottom: 8px;
+  }
+
+  .bm-inventory-compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .bm-inventory-compact .bm-item-compact {
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    font-weight: 700;
+  }
+
   .bm-audio-chip {
     border: 1px solid rgba(245, 200, 107, 0.18);
     font-family: 'Rajdhani', sans-serif;
@@ -1192,6 +1370,7 @@
     .bm-announcer-rails { grid-template-columns: 1fr; }
     .bm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .bm-action-grid { grid-template-columns: 1fr; }
+    .bm-simple-actions { grid-template-columns: 1fr; }
     .bm-market-grid,
     .bm-players-grid,
     .bm-inventory,
@@ -1255,7 +1434,7 @@
       <div class="bm-brand">
         <div class="bm-kicker">🎩 โต๊ะตลาดมืด</div>
         <div class="bm-title"><%= room.name %></div>
-        <div class="bm-subtitle">คืนนี้มีแต่ของเถื่อน ข่าววงใน และคนพร้อมพลิกดีล</div>
+        <div class="bm-subtitle">สะสม 👑 ให้มากสุดใน 5 ยก</div>
       </div>
       <div class="bm-top-meta">
         <div class="bm-chip">🆔 <span><%= room.roomId %></span></div>
@@ -1271,7 +1450,9 @@
       </div>
     </div>
 
-    <div id="bmAnnouncerBar" class="bm-announcer" aria-live="polite"></div>
+    <div id="bmNowBar" class="bm-now-bar" aria-live="polite"></div>
+
+    <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div>
 
     <div class="bm-grid">
       <div class="bm-col">
@@ -1279,28 +1460,20 @@
           <div class="bm-card-header">
             <div>
               <div class="bm-card-title">🎭 บทของคุณ</div>
-              <div class="bm-card-note">ใช้สายของตัวเองหา 👑 ให้ถึงก่อนทุกคน</div>
             </div>
             <div id="selfStateChip" class="bm-tag">🫀 ยังอยู่</div>
           </div>
           <div id="rolePanel"></div>
         </div>
 
-        <div class="bm-card bm-card-guide" data-tour-id="guide">
-          <div class="bm-card-header">
-            <div>
-              <div class="bm-card-title">🎓 พาเล่นโต๊ะนี้</div>
-              <div class="bm-card-note">สรุปว่ากดยังไง ใช้อะไร แล้วผลของแต่ละแอ็กชันคืออะไร</div>
-            </div>
-          </div>
+        <div class="bm-card bm-card-guide bm-hide" data-tour-id="guide">
           <div id="guidePanel"></div>
         </div>
 
         <div class="bm-card bm-card-stage" data-tour-id="stage">
           <div class="bm-card-header">
             <div>
-              <div class="bm-card-title">🛒 ตลาดกับแผนลงมือ</div>
-              <div class="bm-card-note">ล็อกของก่อน แล้วค่อยตัดสินใจว่าจะส่งของ ปล้น สืบ หรือสั่งเก็บ</div>
+              <div class="bm-card-title">🎯 กดเล่นที่นี่</div>
             </div>
           </div>
           <div id="mainStage"></div>
@@ -1310,8 +1483,7 @@
           <div class="bm-card-header">
             <div>
               <div class="bm-card-title">📢 ข่าวใต้ดิน</div>
-              <div class="bm-card-note">โต๊ะนี้จำทุกจังหวะที่เกิดขึ้นในตลาดมืด</div>
-            </div>
+                          </div>
           </div>
           <div id="historyFeed" class="bm-feed"></div>
         </div>
@@ -1322,8 +1494,7 @@
           <div class="bm-card-header">
             <div>
               <div class="bm-card-title">👥 คนบนโต๊ะ</div>
-              <div class="bm-card-note">ใครทุนหนา ใครค่าหัวขึ้น ใครเริ่มน่ากลัว</div>
-            </div>
+                          </div>
           </div>
           <div id="playersPanel" class="bm-players-grid"></div>
         </div>
@@ -1332,8 +1503,7 @@
           <div class="bm-card-header">
             <div>
               <div class="bm-card-title">🤝 ดีลบนโต๊ะ</div>
-              <div class="bm-card-note">ใครปิดดีลสำเร็จ ใครโดนหักหลัง จะขึ้นตรงนี้</div>
-            </div>
+                          </div>
           </div>
           <div id="dealPanel" class="bm-intel-grid"></div>
         </div>
@@ -1342,8 +1512,7 @@
           <div class="bm-card-header">
             <div>
               <div class="bm-card-title">🕶️ ข่าวที่คีบมาได้</div>
-              <div class="bm-card-note">เฉพาะข่าวลับที่สายของคุณขุดกลับมา</div>
-            </div>
+                          </div>
           </div>
           <div id="intelPanel" class="bm-intel-grid"></div>
         </div>
@@ -1406,6 +1575,10 @@
     let spotlightRestoreFocus = null;
     let howToActive = false;
     let howToRestoreFocus = null;
+    let showAdvancedActions = false;
+    let announcerExpanded = false;
+    let simplePickMode = null;
+
 
     const spotlightKey = `blackmarket-tour-v2:${playerId}`;
     const rolePlaybooks = {
@@ -2234,25 +2407,86 @@
       return cards.slice(0, 6);
     }
 
+
+    function getAnnouncerOneLiner() {
+      const status = getSelfStatusSnapshot();
+      if (currentState.phase === 'market') {
+        return status.pendingMarketChoice ? 'ล็อกตลาดแล้ว รอคนอื่น' : ('ยก ' + (currentState.roundNumber || 1) + ' · เลือกซื้อของหรือผ่าน');
+      }
+      if (currentState.phase === 'action') {
+        return status.pendingAction ? ('ล็อกแล้ว: ' + (status.pendingAction.label || 'รอเฉลย')) : ('ยก ' + (currentState.roundNumber || 1) + ' · เลือกแผนด้านล่าง');
+      }
+      if (currentState.phase === 'finished') {
+        return 'เกมจบแล้ว';
+      }
+      return 'รอเริ่มเกม';
+    }
+
+    function renderNowBar() {
+      const self = getSelf();
+      const status = getSelfStatusSnapshot();
+      const phase = currentState.phase;
+      let main = 'รอเริ่มเกม';
+      let sub = 'เป้าหมาย: สะสม 👑 มากสุดใน 5 ยก';
+      let locked = false;
+
+      if (!self.alive) {
+        main = 'คุณออกจากเกมแล้ว — ดูผลอย่างเดียว';
+        sub = '';
+      } else if (phase === 'market') {
+        if (status.pendingMarketChoice) {
+          main = 'ล็อกแล้ว — รอคนอื่นเลือกตลาด';
+          sub = 'แก้ไม่ได้จนกว่าจะปิดยก';
+          locked = true;
+        } else {
+          main = 'ตอนนี้: เลือกซื้อของ 1 ชิ้น หรือกดผ่านตลาด';
+          sub = 'กดปุ่มด้านล่าง';
+        }
+      } else if (phase === 'action') {
+        if (status.pendingAction) {
+          main = 'ล็อกแล้ว — รอคนอื่นลงมือ';
+          sub = status.pendingAction.summaryText || status.pendingAction.label || '';
+          locked = true;
+        } else {
+          main = 'ตอนนี้: เลือกทำอย่างเดียวด้านล่าง';
+          sub = 'ส่งของ / สืบข่าว / ผ่าน · ดีล·ปล้น·เก็บ อยู่ใน「แผนขั้นสูง」';
+        }
+      } else if (phase === 'finished') {
+        main = 'เกมจบแล้ว';
+        sub = currentState.winner ? ('ชนะ: ' + (currentState.winner.name || '')) : '';
+      }
+
+      $('#bmNowBar')
+        .toggleClass('locked', locked)
+        .html(
+          '<div class="bm-now-bar-label">ทำอะไรตอนนี้</div>' +
+          '<div class="bm-now-bar-text">' + escapeHtml(main) + '</div>' +
+          (sub ? '<div class="bm-now-bar-sub">' + escapeHtml(sub) + '</div>' : '')
+        );
+    }
+
     function renderAnnouncer(rolePlaybook) {
       const narrator = buildNarratorState(rolePlaybook);
-      $('#bmAnnouncerBar').html(`
-        <div class="bm-announcer-copy">
-          <div class="bm-announcer-kicker">🎙️ ผู้ดำเนินเกม</div>
-          <div class="bm-announcer-title">${escapeHtml(narrator.title)}</div>
-          <div class="bm-announcer-text">${escapeHtml(narrator.summary)}</div>
-        </div>
-        <div class="bm-announcer-rails">
-          ${narrator.notes.map(function(note) {
-            return `
-              <div class="bm-announcer-note">
-                <strong>${escapeHtml(note.title)}</strong>
-                <span>${escapeHtml(note.copy)}</span>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `);
+      const oneLine = getAnnouncerOneLiner();
+      const expanded = announcerExpanded;
+      $('#bmAnnouncerBar').html(
+        '<button type="button" id="bmAnnouncerToggle" class="bm-announcer-toggle" aria-expanded="' + expanded + '">' +
+          '<span>📢 ' + escapeHtml(oneLine) + '</span>' +
+          '<span aria-hidden="true">' + (expanded ? '▲' : '▼') + '</span>' +
+        '</button>' +
+        (expanded
+          ? '<div class="bm-announcer-body">' +
+              '<div class="bm-announcer-copy">' +
+                '<div class="bm-announcer-text">' + escapeHtml(narrator.summary) + '</div>' +
+              '</div>' +
+              '<div class="bm-announcer-rails">' +
+                narrator.notes.slice(0, 2).map(function(note) {
+                  return '<div class="bm-announcer-note"><strong>' + escapeHtml(note.title) + '</strong><span>' + escapeHtml(note.copy) + '</span></div>';
+                }).join('') +
+              '</div>' +
+            '</div>'
+          : '')
+      );
     }
 
     function focusHowToCard() {
@@ -2512,9 +2746,8 @@
           <div>
             <div class="bm-role-title">
               <div class="bm-role-name">${escapeHtml(role.title || 'ยังไม่เปิดบท')}</div>
-              <div class="bm-role-chip">🃏 ${escapeHtml(role.summary || 'รอสัญญาณจากโต๊ะ')}</div>
             </div>
-            <div class="bm-role-copy">${escapeHtml(role.ability || 'เมื่อเมืองเปิด บทของคุณจะถูกวางลงตรงนี้')}</div>
+            ${role.ability ? `<div class="bm-role-copy" style="margin-top:8px;color:var(--bm-gold);">${escapeHtml(role.ability)}</div>` : ''}
           </div>
         </div>
         <div class="bm-stats">
@@ -2531,15 +2764,12 @@
             <div class="bm-stat-value">${Number(self.heat || 0)}</div>
           </div>
         </div>
-        <div style="margin-top:16px;">
-          <div class="bm-card-note" style="margin-bottom:10px;">🎒 ของในกระเป๋า</div>
-          <div class="bm-inventory">
+        <div style="margin-top:12px;">
+          <div class="bm-card-note" style="margin-bottom:8px;">🎒 ของในมือ</div>
+          <div class="bm-inventory-compact">
             ${(self.inventory || []).length ? (self.inventory || []).map(item => `
-              <div class="bm-item">
-                <div class="bm-item-name">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</div>
-                <div class="bm-item-copy">${escapeHtml(item.summary || '')}</div>
-              </div>
-            `).join('') : '<div class="bm-empty">มือเปล่า โต๊ะนี้ไม่รอคนช้า</div>'}
+              <span class="bm-item-compact">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</span>
+            `).join('') : '<span class="bm-muted">มือเปล่า</span>'}
           </div>
         </div>
       `);
@@ -2550,34 +2780,117 @@
       const lockedChoice = self.pendingMarketChoice;
       const offers = currentState.marketOffers || [];
       if (!self.alive) {
-        return '<div class="bm-empty">💀 คนที่หลุดโต๊ะแล้วแตะตลาดไม่ได้</div>';
+        return '<div class="bm-empty">คุณออกจากเกมแล้ว</div>';
       }
 
       return `
         <div class="bm-market-grid">
-          ${offers.map(item => `
+          ${offers.map(item => {
+            const isCargo = item.type === 'cargo';
+            const outcome = isCargo ? '→ ใช้ส่งของได้' : (item.id === 'gun' ? '→ ใช้สั่งเก็บ' : (item.id === 'armor' ? '→ กันถูกเก็บ' : '→ ของพิเศษ'));
+            return `
             <div class="bm-offer">
               <div class="bm-offer-head">
                 <div class="bm-offer-title">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</div>
                 <div class="bm-price">💵 ${Number(item.priceForPlayer || item.price || 0)}</div>
               </div>
-              <div class="bm-offer-copy">${escapeHtml(item.summary || '')}</div>
+              <div class="bm-offer-outcome">${escapeHtml(outcome)}</div>
               <div class="bm-btn-row">
-                <button class="bm-btn gold offer-buy" data-item-id="${escapeHtml(item.id)}" ${lockedChoice || !item.affordable ? 'disabled' : ''}>
-                  ${lockedChoice === item.id ? '✅ ล็อกแล้ว' : (item.affordable ? '🛒 คว้าชิ้นนี้' : '🚫 เงินไม่พอ')}
+                <button type="button" class="bm-btn gold offer-buy" data-item-id="${escapeHtml(item.id)}" ${lockedChoice || !item.affordable ? 'disabled' : ''}>
+                  ${lockedChoice === item.id ? '✅ เลือกแล้ว' : (item.affordable ? 'ซื้อ' : 'เงินไม่พอ')}
                 </button>
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
         <div class="bm-btn-row">
-          <button class="bm-btn alt offer-buy" data-item-id="${escapeHtml(currentState.passChoice || '__pass__')}" ${lockedChoice ? 'disabled' : ''}>🤐 ผ่านตลาด</button>
+          <button type="button" class="bm-btn alt offer-buy" data-item-id="${escapeHtml(currentState.passChoice || '__pass__')}" ${lockedChoice ? 'disabled' : ''}>ผ่าน — ไม่ซื้อ</button>
         </div>
-        ${lockedChoice ? `<div class="bm-card-note" style="margin-top:10px;">🔒 คุณล็อกตลาดของยกนี้แล้ว รอคนอื่นปิดมือ</div>` : ''}
+        ${lockedChoice ? '<motion.div class="bm-card-note" style="margin-top:10px;">🔒 รอคนอื่นเลือกตลาด</div>' : ''}
       `;
     }
 
+
+
+    function buildSimplePickPanel() {
+      const self = getSelf();
+      const actionHelp = currentState.actionHelp || {};
+      const targets = getAliveTargets();
+      const cargoItems = actionHelp.cargoItems || [];
+
+      if (simplePickMode === 'deliver') {
+        return `
+          <div class="bm-simple-pick">
+            <div class="bm-simple-pick-title">เลือกของที่จะส่ง</div>
+            <div class="bm-simple-pick-grid">
+              ${cargoItems.map(item => `
+                <button type="button" class="bm-target-btn bm-simple-pick-btn" data-pick-action="deliver" data-item-id="${escapeHtml(item.id)}">
+                  ${escapeHtml(item.icon)} ${escapeHtml(item.name)} <span class="bm-outcome">→ +👑</span>
+                </button>
+              `).join('')}
+            </div>
+            <button type="button" class="bm-toggle-advanced bm-simple-cancel" data-simple-cancel="1">ยกเลิก</button>
+          </div>`;
+      }
+
+      if (simplePickMode === 'intel') {
+        return `
+          <div class="bm-simple-pick">
+            <div class="bm-simple-pick-title">สืบใคร?</div>
+            <div class="bm-simple-pick-grid">
+              ${targets.map(player => `
+                <button type="button" class="bm-target-btn bm-simple-pick-btn" data-pick-action="intel" data-target-player-id="${escapeHtml(player.playerId)}">
+                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)} <span class="bm-outcome">→ ดูข่าว</span>
+                </button>
+              `).join('')}
+            </div>
+            <button type="button" class="bm-toggle-advanced bm-simple-cancel" data-simple-cancel="1">ยกเลิก</button>
+          </div>`;
+      }
+
+      return '';
+    }
+
     function buildActionStage() {
+      const self = getSelf();
+      const actionHelp = currentState.actionHelp || {};
+      const pendingAction = self.pendingAction;
+      const cargoItems = actionHelp.cargoItems || [];
+      const locked = !!pendingAction;
+
+      if (!self.alive || currentState.winner) {
+        return '<motion.div class="bm-empty">คุณออกจากเกมแล้ว</div>';
+      }
+
+      if (locked) {
+        return '<motion.div class="bm-card-note" style="margin:0;">🔒 ' + escapeHtml(pendingAction.summaryText || pendingAction.label || 'ล็อกแล้ว') + ' — รอคนอื่น</div>';
+      }
+
+      const pickPanel = buildSimplePickPanel();
+      const advancedLabel = showAdvancedActions ? '▲ ซ่อนแผนขั้นสูง' : '▼ แผนขั้นสูง (ดีล · ปล้น · เก็บ…)';
+
+      return `
+        ${pickPanel}
+        <motion.div class="bm-simple-actions">
+          <button type="button" class="bm-simple-btn" data-simple="deliver" ${cargoItems.length ? '' : 'disabled'}>
+            📦 ส่งของ
+            <span class="bm-outcome">${cargoItems.length ? '→ +👑' : 'ไม่มีของ'}</span>
+          </button>
+          <button type="button" class="bm-simple-btn" data-simple="intel" ${getAliveTargets().length ? '' : 'disabled'}>
+            👁️ สืบข่าว
+            <span class="bm-outcome">→ ดูเป้า</span>
+          </button>
+          <button type="button" class="bm-simple-btn" data-simple="pass">
+            🤐 ผ่าน
+            <span class="bm-outcome">→ ไม่ทำ</span>
+          </button>
+        </div>
+        <button type="button" id="bmToggleAdvanced" class="bm-toggle-advanced">${advancedLabel}</button>
+        ${showAdvancedActions ? '<motion.div class="bm-advanced-stage">' + buildActionStageAdvanced() + '</div>' : ''}
+      `;
+    }
+
+    function buildActionStageAdvanced() {
       const self = getSelf();
       const actionHelp = currentState.actionHelp || {};
       const targets = getAliveTargets();
@@ -2684,62 +2997,7 @@
       `;
     }
 
-    function renderGuide() {
-      const tutorial = currentState.tutorial || {};
-      const actionCatalog = currentState.actionCatalog || [];
-      const rolePlaybook = getRolePlaybook();
-      const narrator = buildNarratorState(rolePlaybook);
-      $('#guidePanel').html(`
-        <div class="bm-guide-grid">
-          <div class="bm-guide-step">
-            <strong>ประกาศจากผู้ดำเนินเกม</strong>
-            <div class="bm-card-note">${escapeHtml(narrator.title)}</div>
-            <div class="bm-card-note">${escapeHtml(narrator.summary)}</div>
-            <div class="bm-intel-grid">
-              ${narrator.notes.map(function(note) {
-                return `<div class="bm-card-note">• ${escapeHtml(note.title)}: ${escapeHtml(note.copy)}</div>`;
-              }).join('')}
-            </div>
-          </div>
-          <div class="bm-guide-step">
-            <strong>เป้าหมายของโต๊ะ</strong>
-            <div class="bm-card-note">${escapeHtml(tutorial.goal || '')}</div>
-          </div>
-          <div class="bm-guide-step">
-            <strong>ตอนนี้ควรทำอะไร</strong>
-            <div class="bm-card-note">${escapeHtml(tutorial.phaseTip || '')}</div>
-          </div>
-          <div class="bm-guide-step">
-            <strong>บทของคุณเล่นยังไง</strong>
-            <div class="bm-card-note">${escapeHtml(tutorial.roleTip || 'ดูบทด้านบน แล้วเลือกปุ่มให้ตรงจังหวะ')}</div>
-          </div>
-          <div class="bm-guide-step">
-            <strong>ลำดับการเล่นต่อยก</strong>
-            <div class="bm-intel-grid">
-              ${(tutorial.roundFlow || []).map(step => `<div class="bm-card-note">${escapeHtml(step)}</div>`).join('')}
-            </div>
-          </div>
-          <div class="bm-guide-step">
-            <strong>สรุปปุ่มทั้งหมด</strong>
-            <div class="bm-intel-grid">
-              ${actionCatalog.map(action => `
-                <div class="bm-item">
-                  <div class="bm-item-name">${escapeHtml(action.icon)} ${escapeHtml(action.label)}</div>
-                  <div class="bm-item-copy">${escapeHtml(action.description || '')}</div>
-                  <div class="bm-card-note">ผล: ${escapeHtml(action.effectText || '')}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div class="bm-guide-step">
-            <strong>ข้อควรจำ</strong>
-            <div class="bm-intel-grid">
-              ${(tutorial.reminders || []).map(line => `<div class="bm-card-note">• ${escapeHtml(line)}</div>`).join('')}
-            </div>
-          </div>
-        </div>
-      `);
-    }
+    function renderGuide() {}
 
     function renderMainStage() {
       if (currentState.phase === 'market') {
@@ -2859,6 +3117,13 @@
       const rolePlaybook = getRolePlaybook();
       $('#phaseChip').attr('class', `bm-chip ${meta.className}`).text(meta.label);
       $('#roundChip').text(`🌒 ยก ${Number(currentState.roundNumber || 0)} / ${Number(currentState.maxRounds || 5)}`);
+      if (previousState.phase !== currentState.phase) {
+        simplePickMode = null;
+        if (currentState.phase === 'action') {
+          showAdvancedActions = false;
+        }
+      }
+      renderNowBar();
       renderAnnouncer(rolePlaybook);
       renderRolePanel();
       renderGuide();
@@ -2977,6 +3242,63 @@
       allowNavigation = true;
       Swal.fire({ icon: 'warning', title: 'โต๊ะถูกปิด', text: data?.message || 'ห้องนี้ถูกพับเก็บไปแล้ว', background: '#111', color: '#fff' })
         .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+    });
+
+
+    $(document).on('click', '#bmAnnouncerToggle', function() {
+      announcerExpanded = !announcerExpanded;
+      renderAnnouncer(getRolePlaybook());
+    });
+
+    $(document).on('click', '#bmToggleAdvanced', function() {
+      showAdvancedActions = !showAdvancedActions;
+      renderMainStage();
+    });
+
+    $(document).on('click', '.bm-simple-btn[data-simple]', function() {
+      const mode = $(this).attr('data-simple');
+      const self = getSelf();
+      if (self.pendingAction) {
+        return;
+      }
+      const cargoItems = (currentState.actionHelp || {}).cargoItems || [];
+      if (mode === 'pass') {
+        submitAction('pass', null, null);
+        return;
+      }
+      if (mode === 'deliver') {
+        if (!cargoItems.length) {
+          return;
+        }
+        if (cargoItems.length === 1) {
+          submitAction('deliver', null, cargoItems[0].id);
+          simplePickMode = null;
+          return;
+        }
+        simplePickMode = 'deliver';
+        renderMainStage();
+        return;
+      }
+      if (mode === 'intel') {
+        if (!getAliveTargets().length) {
+          return;
+        }
+        simplePickMode = 'intel';
+        renderMainStage();
+      }
+    });
+
+    $(document).on('click', '.bm-simple-pick-btn', function() {
+      const action = $(this).attr('data-pick-action');
+      const targetId = $(this).attr('data-target-player-id') || null;
+      const itemId = $(this).attr('data-item-id') || null;
+      simplePickMode = null;
+      submitAction(action, targetId, itemId);
+    });
+
+    $(document).on('click', '[data-simple-cancel]', function() {
+      simplePickMode = null;
+      renderMainStage();
     });
 
     $(document).on('click', '.offer-buy', function() {

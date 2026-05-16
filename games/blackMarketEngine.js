@@ -641,6 +641,13 @@ function buildIntelNote(actor, target) {
         return `${target.name} ถือบท ${target.roleInfo?.title || '-'} • 🔥 ค่าหัว ${target.heat} • 💵 ${target.cash} • ของ ${visibleItems || 'มือเปล่า'}`;
     }
 
+    if (hasItem(actor, 'wiretap')) {
+        const itemDetail = target.inventory.length
+            ? target.inventory.map(itemId => ITEM_DEFINITIONS[itemId]?.name || itemId).join(', ')
+            : 'มือเปล่า';
+        return `${target.name} • 💵 ${target.cash} • 🔥 ${target.heat} • ของ: ${itemDetail}`;
+    }
+
     const firstItem = target.inventory[0] ? ITEM_DEFINITIONS[target.inventory[0]] : null;
     return `${target.name} มี 💵 ${target.cash} • 🔥 ค่าหัว ${target.heat}${firstItem ? ` • โผล่ ${firstItem.icon} ${firstItem.name}` : ' • ไม่เห็นของชัด'}`;
 }
