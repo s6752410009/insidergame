@@ -98,6 +98,33 @@ body {
         background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
         min-height: 100vh !important;
     }
+
+    html.theme-dark body {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%) !important;
+    }
+
+    html.theme-red body {
+        background: linear-gradient(135deg, #4a0000 0%, #8b0000 50%, #4a0000 100%) !important;
+    }
+
+    html.theme-white body {
+        background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #f5f5f5 100%) !important;
+    }
+
+    html.theme-dark footer.footer {
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%) !important;
+        border-top-color: #444 !important;
+    }
+
+    html.theme-red footer.footer {
+        background: linear-gradient(135deg, #8b0000 0%, #4a0000 100%) !important;
+        border-top-color: #ff4444 !important;
+    }
+
+    html.theme-white footer.footer {
+        background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%) !important;
+        border-top-color: #ccc !important;
+    }
     
     .container-fluid {
         min-height: calc(100vh - 60px) !important;

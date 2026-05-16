@@ -594,6 +594,13 @@ $(function() {
         return audio && typeof audio.play === 'function' ? audio : null;
     }
 
+    let selectedTheme = Storage.get('gameSettings', {}).theme || 'default';
+
+    function normalizeTheme(theme) {
+        const allowed = ['default', 'dark', 'red', 'white'];
+        return allowed.includes(theme) ? theme : 'default';
+    }
+
     // Load settings from localStorage
     function loadSettings() {
         const settings = Storage.get('gameSettings', {});
@@ -607,7 +614,7 @@ $(function() {
         $('#confirmLeaveToggle').prop('checked', settings.confirmLeave !== false);
         
         // Theme
-        selectedTheme = settings.theme || 'default';
+        selectedTheme = normalizeTheme(settings.theme || 'default');
         updateThemeUI();
         applyTheme(selectedTheme);
         
@@ -621,14 +628,11 @@ $(function() {
     
     // Theme selection click handler
     $('.theme-option').on('click', function() {
-        selectedTheme = $(this).data('theme');
+        selectedTheme = normalizeTheme($(this).data('theme'));
         updateThemeUI();
-        // Preview theme immediately
         applyTheme(selectedTheme);
+        saveSettings(false);
     });
-    
-    // Current selected theme (not saved until save button clicked)
-    let selectedTheme = Storage.get('gameSettings', {}).theme || 'default';
     
     // Save settings to localStorage
     function saveSettings(showNotification = false) {
@@ -667,11 +671,16 @@ $(function() {
     
     // Apply theme to page (use documentElement for html tag)
     function applyTheme(theme) {
+        const normalized = normalizeTheme(theme);
         document.documentElement.classList.remove('theme-default', 'theme-dark', 'theme-red', 'theme-white');
-        if (theme && theme !== 'default') {
-            document.documentElement.classList.add('theme-' + theme);
+        if (normalized !== 'default') {
+            document.documentElement.classList.add('theme-' + normalized);
         }
-        Storage.set('currentTheme', theme);
+        try {
+            localStorage.setItem('currentTheme', normalized);
+        } catch (e) {
+            console.warn('currentTheme write error:', e);
+        }
     }
     
     // Update theme selection UI

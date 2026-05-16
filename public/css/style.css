@@ -509,3 +509,46 @@ html.theme-white #startGame a {
     color: #e67e22 !important;
 }
 
+/* body / page-level overrides (lobby, profile, room list, etc.) */
+html.theme-dark body,
+html.theme-dark body.content {
+    background: linear-gradient(180deg, #111 0%, #1a1a1a 45%, #222 100%) !important;
+}
+
+html.theme-red body,
+html.theme-red body.content {
+    background:
+        radial-gradient(circle at 8% 10%, rgba(127, 29, 29, 0.5), transparent 18%),
+        linear-gradient(180deg, #2a0000 0%, #4a0000 45%, #1a0000 100%) !important;
+}
+
+html.theme-white body,
+html.theme-white body.content {
+    background: linear-gradient(180deg, #f5f5f5 0%, #e8e8e8 45%, #f0f0f0 100%) !important;
+}
+
+html.theme-dark header {
+    background-color: #222 !important;
+}
+
+html.theme-red header {
+    background-color: #6b0000 !important;
+}
+
+html.theme-white header {
+    background-color: #ddd !important;
+}
+
+html.theme-white .settings-header h1,
+html.theme-white .settings-section h2,
+html.theme-white .theme-name,
+html.theme-white .setting-info h3 {
+    color: #333 !important;
+}
+
+html.theme-white .settings-header p,
+html.theme-white .setting-info p,
+html.theme-white .version-info p {
+    color: #666 !important;
+}
+

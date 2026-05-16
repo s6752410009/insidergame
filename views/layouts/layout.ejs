@@ -60,10 +60,16 @@
             // Theme Initialization - Apply immediately before CSS loads
             (function() {
                 try {
-                    var savedTheme = localStorage.getItem('currentTheme');
-                    if (!savedTheme) {
+                    var savedTheme = 'default';
+                    var rawTheme = localStorage.getItem('currentTheme');
+                    if (rawTheme) {
+                        savedTheme = rawTheme.charAt(0) === '"' ? JSON.parse(rawTheme) : rawTheme;
+                    } else {
                         var settings = localStorage.getItem('gameSettings');
-                        if (settings) { savedTheme = JSON.parse(settings).theme; }
+                        if (settings) {
+                            var parsed = JSON.parse(settings);
+                            if (parsed && parsed.theme) savedTheme = parsed.theme;
+                        }
                     }
                     if (savedTheme && savedTheme !== 'default') {
                         document.documentElement.classList.add('theme-' + savedTheme);
