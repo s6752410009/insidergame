@@ -21,16 +21,129 @@ function nowIso() {
     return new Date().toISOString();
 }
 
+const FINISHED_GAME_STATUSES = new Set([
+    'werewolf_finished',
+    'blackmarket_finished',
+    'end',
+    'finished'
+]);
+
+const WAITING_GAME_STATUSES = new Set(['', 'waiting']);
+
 function getOnlinePlayerCount(room) {
     return room.players.filter(player => !!player.socketId).length;
 }
 
-function isRoomGameActive(room) {
-    if (!room || !room.gameState) {
+function isPlayerOnlineInRoom(room, playerId) {
+    const player = room?.players?.find(entry => entry.playerId === playerId);
+    return !!(player && player.socketId);
+}
+
+function isRoomGameFinished(room) {
+    if (!room?.gameState) {
         return false;
     }
 
-    return !!(room.gameState.status && room.gameState.status !== '' && room.gameState.status !== 'waiting');
+    const status = room.gameState.status || '';
+    return FINISHED_GAME_STATUSES.has(status) || !!room.gameState.winner;
+}
+
+function isRoomGameInProgress(room) {
+    if (!room?.gameState) {
+        return false;
+    }
+
+    const status = room.gameState.status || '';
+    if (!status || WAITING_GAME_STATUSES.has(status)) {
+        return false;
+    }
+
+    return !isRoomGameFinished(room);
+}
+
+/** @deprecated use isRoomGameInProgress */
+function isRoomGameActive(room) {
+    return isRoomGameInProgress(room);
+}
+
+function getRoomGameStatusLabel(room) {
+    if (isRoomGameInProgress(room)) {
+        return 'playing';
+    }
+    if (isRoomGameFinished(room)) {
+        return 'finished';
+    }
+    return 'waiting';
+}
+
+function normalizeTableMode(tableMode) {
+    return tableMode === 'remote' ? 'remote' : 'inPerson';
+}
+
+function applySmokeFastMs(ms) {
+    if (process.env.SMOKE_FAST_CLEANUP === '1') {
+        return Math.min(ms, 2500);
+    }
+    return ms;
+}
+
+function getOfflineGraceMs(room) {
+    const base = normalizeTableMode(room?.settings?.tableMode) === 'remote'
+        ? 10 * 60 * 1000
+        : 2 * 60 * 1000;
+    return applySmokeFastMs(base);
+}
+
+function getAbandonGraceMs(room) {
+    const base = normalizeTableMode(room?.settings?.tableMode) === 'remote'
+        ? 5 * 60 * 1000
+        : 3 * 60 * 1000;
+    return applySmokeFastMs(base);
+}
+
+function getDisconnectRemoveMs(room) {
+    const base = normalizeTableMode(room?.settings?.tableMode) === 'remote'
+        ? 5 * 60 * 1000
+        : 90 * 1000;
+    return applySmokeFastMs(base);
+}
+
+function syncZeroOnlineTracker(room) {
+    if (!room) {
+        return;
+    }
+
+    if (getOnlinePlayerCount(room) > 0) {
+        room.zeroOnlineSince = null;
+        return;
+    }
+
+    const shouldTrack = isRoomGameInProgress(room) || isRoomGameFinished(room);
+    if (!shouldTrack) {
+        room.zeroOnlineSince = null;
+        return;
+    }
+
+    if (!room.zeroOnlineSince) {
+        room.zeroOnlineSince = nowIso();
+    }
+}
+
+function isRoomJoinable(room, options = {}) {
+    if (!room) {
+        return false;
+    }
+
+    const existingPlayerIndex = room.players.findIndex(player => player.playerId === options.playerId);
+    if (existingPlayerIndex >= 0) {
+        return true;
+    }
+
+    if (room.players.length >= room.settings.maxPlayers) {
+        return false;
+    }
+
+    return !isRoomGameInProgress(room);
 }
 
 function clampMaxPlayers(gameEngine, requestedMaxPlayers, currentPlayers = 0) {
@@ -81,7 +194,8 @@ function createRoom(roomData, creatorPlayerId) {
             werewolfRoles,
             wolfCount,
             locked: roomData.locked || false,
-            password: roomData.password || null
+            password: roomData.password || null,
+            tableMode: normalizeTableMode(roomData.tableMode)
         },
         gameState: gameEngine.createInitialState(),
         chatHistory: [],
@@ -127,6 +241,10 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
         if (currentPlayerCount >= room.settings.maxPlayers) {
             throw new Error('Room is full');
         }
+
+        if (isRoomGameInProgress(room)) {
+            throw new Error('เกมกำลังดำเนินอยู่ ไม่สามารถเข้าร่วมได้');
+        }
     }
     if (existingPlayerIndex >= 0) {
         // อัปเดต socketId ถ้ามี
@@ -135,6 +253,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
             room.players[existingPlayerIndex].lastActiveAt = nowIso();
             room.players[existingPlayerIndex].disconnectedAt = null;
         }
+        syncZeroOnlineTracker(room);
         return room;
     }
 
@@ -180,6 +299,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
         room.gameState.alivePlayerIds = room.players.map(existingPlayer => existingPlayer.playerId);
     }
 
+    syncZeroOnlineTracker(room);
     return room;
 }
 
@@ -209,6 +329,7 @@ function disconnectPlayer(roomId, playerId) {
         gameStatePlayer.socketId = null;
     }
 
+    syncZeroOnlineTracker(room);
     return room;
 }
 
@@ -278,6 +399,7 @@ function leaveRoom(roomId, playerId) {
         return null;
     }
 
+    syncZeroOnlineTracker(room);
     return room;
 }
 
@@ -401,6 +523,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.password = updates.password || null;
     }
 
+    if (updates.tableMode !== undefined) {
+        room.settings.tableMode = normalizeTableMode(updates.tableMode);
+    }
+
     if (room.settings.gameMode === 'werewolf') {
         const gameEngine = getGameEngine(room.settings.gameMode);
         const hasExplicitWerewolfRoles = Array.isArray(updates.werewolfRoles) && updates.werewolfRoles.length > 0;
@@ -442,22 +568,28 @@ function getRoom(roomId) {
 function getAllRooms() {
     return Array.from(rooms.values()).map(room => {
         const gameEngine = getGameEngine(room.settings.gameMode);
-        const isInGame = !!(room.gameState.status && room.gameState.status !== 'waiting');
-        
+        const onlineCount = getOnlinePlayerCount(room);
+        const gameStatus = getRoomGameStatusLabel(room);
+        const isStuck = gameStatus === 'playing' && onlineCount === 0;
+
         return {
             roomId: room.roomId,
             name: room.name,
-            playerCount: room.players.length, // นับผู้เล่นทั้งหมด ไม่ว่าจะมี socketId หรือไม่
-            onlineCount: getOnlinePlayerCount(room),
+            playerCount: room.players.length,
+            onlineCount,
+            totalPlayerCount: room.players.length,
             maxPlayers: room.settings.maxPlayers,
             locked: room.settings.locked,
             admin: room.admin,
             gameMode: room.settings.gameMode,
             gameModeLabel: gameEngine.label,
-            gameStatus: isInGame ? 'playing' : 'waiting', // เพิ่มสถานะเกม
+            gameStatus,
+            isJoinable: isRoomJoinable(room),
+            isStuck,
             settings: {
                 gameMode: room.settings.gameMode,
-                dualTraitorMode: room.settings.dualTraitorMode || false
+                dualTraitorMode: room.settings.dualTraitorMode || false,
+                tableMode: normalizeTableMode(room.settings.tableMode)
             }
         };
     });
@@ -487,6 +619,7 @@ function updatePlayerSocketId(roomId, playerId, socketId) {
         gameStatePlayer.socketId = socketId;
     }
 
+    syncZeroOnlineTracker(room);
     return room;
 }
 
@@ -540,11 +673,12 @@ function getPlayerIdBySocket(roomId, socketId) {
     return player ? player.playerId : null;
 }
 
-function purgeDisconnectedPlayers(maxOfflineMs = 10 * 60 * 1000) {
+function purgeDisconnectedPlayers(defaultMaxOfflineMs = 10 * 60 * 1000) {
     const now = Date.now();
     const removedPlayers = [];
 
     for (const [roomId, room] of rooms.entries()) {
+        const maxOfflineMs = getOfflineGraceMs(room) || defaultMaxOfflineMs;
         const stalePlayers = room.players.filter(player => {
             if (player.socketId) return false;
 
@@ -570,11 +704,12 @@ function purgeDisconnectedPlayers(maxOfflineMs = 10 * 60 * 1000) {
     return removedPlayers;
 }
 
-function reconcileSocketState(activeSocketIds, staleSocketMs = 10 * 60 * 1000) {
+function reconcileSocketState(activeSocketIds, defaultStaleSocketMs = 10 * 60 * 1000) {
     const now = Date.now();
     const affectedPlayers = [];
 
     for (const [roomId, room] of rooms.entries()) {
+        const staleSocketMs = getOfflineGraceMs(room) || defaultStaleSocketMs;
         const snapshot = [...room.players];
 
         snapshot.forEach(player => {
@@ -609,6 +744,104 @@ function reconcileSocketState(activeSocketIds, staleSocketMs = 10 * 60 * 1000) {
     }
 
     return affectedPlayers;
+}
+
+function collectAbandonCandidates() {
+    const now = Date.now();
+    const candidates = [];
+
+    for (const [roomId, room] of rooms.entries()) {
+        syncZeroOnlineTracker(room);
+
+        if (getOnlinePlayerCount(room) > 0 || !room.zeroOnlineSince) {
+            continue;
+        }
+
+        const graceMs = isRoomGameInProgress(room)
+            ? getAbandonGraceMs(room)
+            : 60 * 1000;
+
+        if ((now - new Date(room.zeroOnlineSince).getTime()) < graceMs) {
+            continue;
+        }
+
+        candidates.push({ roomId, roomName: room.name, gameMode: room.settings.gameMode });
+    }
+
+    return candidates;
+}
+
+function removeOfflinePlayers(roomId) {
+    const removed = [];
+    const room = rooms.get(roomId);
+    if (!room) {
+        return removed;
+    }
+
+    const offlineIds = room.players.filter(player => !player.socketId).map(player => player.playerId);
+    offlineIds.forEach(playerId => {
+        const player = room.players.find(entry => entry.playerId === playerId);
+        leaveRoom(roomId, playerId);
+        if (player) {
+            removed.push(player);
+        }
+    });
+
+    return removed;
+}
+
+function finalizeAbandonedRoom(roomId) {
+    const room = rooms.get(roomId);
+    if (!room) {
+        return { room: null, removedPlayers: [] };
+    }
+
+    if (isRoomGameInProgress(room) || isRoomGameFinished(room)) {
+        resetRoomGame(roomId);
+    }
+
+    const removedPlayers = removeOfflinePlayers(roomId);
+    const refreshedRoom = rooms.get(roomId);
+    if (refreshedRoom) {
+        refreshedRoom.zeroOnlineSince = null;
+        refreshedRoom.lastAbandonedAt = nowIso();
+        syncZeroOnlineTracker(refreshedRoom);
+    }
+
+    return {
+        room: refreshedRoom || null,
+        removedPlayers
+    };
+}
+
+function endTableSession(roomId, adminPlayerId) {
+    const room = rooms.get(roomId);
+    if (!room) {
+        throw new Error('Room not found');
+    }
+
+    if (room.admin !== adminPlayerId) {
+        throw new Error('Only room admin can end the game session');
+    }
+
+    if (isRoomGameInProgress(room) || isRoomGameFinished(room)) {
+        resetRoomGame(roomId);
+    }
+
+    const removedPlayers = removeOfflinePlayers(roomId);
+    const refreshedRoom = rooms.get(roomId);
+    if (refreshedRoom) {
+        refreshedRoom.zeroOnlineSince = null;
+    }
+
+    return {
+        room: refreshedRoom,
+        removedPlayers
+    };
+}
+
+function forEachRoom(callback) {
+    rooms.forEach((room, roomId) => callback(room, roomId));
 }
 
 // ========== ADMIN FUNCTIONS ==========
@@ -691,7 +924,14 @@ function lockRoom(roomId, password) {
 function clearEmptyRooms() {
     let clearedCount = 0;
     for (const [roomId, room] of rooms.entries()) {
-        if (room.players.length === 0) {
+        const hasNoPlayers = room.players.length === 0;
+        const hasNoOnlineWhileIdle = getOnlinePlayerCount(room) === 0
+            && !isRoomGameInProgress(room)
+            && room.players.length > 0
+            && room.zeroOnlineSince
+            && ((Date.now() - new Date(room.zeroOnlineSince).getTime()) >= 30 * 60 * 1000);
+
+        if (hasNoPlayers || hasNoOnlineWhileIdle) {
             rooms.delete(roomId);
             clearedCount++;
         }
@@ -729,7 +969,8 @@ function resetRoomGame(roomId) {
     const gameEngine = getGameEngine(room.settings.gameMode);
     room.gameState = gameEngine.resetRoomGame(room);
     room.rejoinableGamePlayers = new Map();
-    
+    room.zeroOnlineSince = null;
+
     return { success: true };
 }
 
@@ -761,12 +1002,25 @@ module.exports = {
     getRoom,
     getAllRooms,
     getOnlinePlayerCount,
+    isPlayerOnlineInRoom,
+    isRoomGameInProgress,
+    isRoomGameFinished,
+    getRoomGameStatusLabel,
+    isRoomJoinable,
+    getOfflineGraceMs,
+    getAbandonGraceMs,
+    getDisconnectRemoveMs,
     updatePlayerSocketId,
     markPlayerActive,
     syncPlayerProfile,
     getPlayerIdBySocket,
     purgeDisconnectedPlayers,
     reconcileSocketState,
+    collectAbandonCandidates,
+    finalizeAbandonedRoom,
+    endTableSession,
+    removeOfflinePlayers,
+    forEachRoom,
     gameMasterRole,
     traitorRole,
     defaultRole,

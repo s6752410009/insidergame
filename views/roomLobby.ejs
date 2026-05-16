@@ -986,6 +986,10 @@
           <span>🚪 สถานะ: <strong id="lobbyRoomLock"><%= room.locked ? '🔒 ล็อค' : '🔓 เปิด' %></strong></span>
           <span id="dualTraitorBadge" class="<%= room.gameMode === 'insider' && room.dualTraitorMode ? '' : 'is-hidden' %>" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">🔴🔴 2 จอมบงการ</span>
         </div>
+        <p style="margin:10px 0 0; font-size:0.82em; color:#9aa3b2; line-height:1.45;">
+          ปิดจอชั่วคราวได้ — กลับมาเปิดแอปภายใน ~2 นาที (โหมดเจอหน้า) ยังอยู่ห้องและบทบาทเดิม
+          <% if (room.isAdmin) { %> · หัวหน้าห้องกดจบเกมได้จากหน้าเล่น<% } %>
+        </p>
       </div>
     </div>
 
@@ -1077,7 +1081,7 @@
         minPlayers: 4,
         label: 'Black Market',
         startLabel: '🎩 เปิดตลาดมืด',
-        readyText: 'โต๊ะพร้อมแล้ว เปิดตลาดมืดได้เลย',
+        readyText: 'พร้อมแล้ว เปิดตลาดมืดได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเปิดตลาด',
         roundLabel: 'เวลาเดินเกมต่อยก:'
       }

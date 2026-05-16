@@ -1264,6 +1264,9 @@
         <div id="roundChip" class="bm-chip">🌒 ยก 1 / 5</div>
         <button id="bmHowToOpen" type="button" class="bm-chip">📖 วิธีเล่น</button>
         <button id="bmTourReplay" type="button" class="bm-chip">✨ พาทัวร์โต๊ะ</button>
+        <% if (room.admin === true) { %>
+        <button id="bmEndGameBtn" type="button" class="bm-chip" title="รีเซ็ตเกมและลบผู้เล่นที่หลุด">⏹ จบเกม</button>
+        <% } %>
         <button id="bmAudioToggle" type="button" class="bm-chip bm-audio-chip">🔇 เปิดเสียงพิธี</button>
       </div>
     </div>
@@ -2906,6 +2909,54 @@
       socket.emit('setRoom', { roomId, playerId });
       requestState();
     });
+
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible' && socket.connected) {
+        socket.emit('checkRoomStatus', { roomId, playerId });
+        requestState();
+      }
+    });
+
+    socket.on('tableAbandoned', function(payload) {
+      allowNavigation = true;
+      Swal.fire({
+        icon: 'info',
+        title: 'เกมถูกรีเซ็ต',
+        text: (payload && payload.message) || 'ไม่มีผู้เล่นออนไลน์นานเกินไป',
+        background: '#111',
+        color: '#fff'
+      }).then(function() {
+        window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+      });
+    });
+
+    const bmEndGameBtn = document.getElementById('bmEndGameBtn');
+    if (bmEndGameBtn) {
+      bmEndGameBtn.addEventListener('click', function() {
+        Swal.fire({
+          title: '⏹ จบเกม?',
+          text: 'รีเซ็ตเกมและลบผู้เล่นที่หลุดออกจากห้อง',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'จบเกม',
+          cancelButtonText: 'ยกเลิก',
+          background: '#111',
+          color: '#fff'
+        }).then(function(result) {
+          if (!result.isConfirmed) return;
+          socket.emit('endTableSession', { roomId, playerId }, function(response) {
+            if (response && response.success) {
+              allowNavigation = true;
+              window.location.href = response.roomClosed
+                ? '/rooms?playerId=' + playerId
+                : '/room/' + roomId + '?playerId=' + playerId;
+              return;
+            }
+            Swal.fire({ icon: 'error', title: 'จบเกมไม่สำเร็จ', text: response?.error || 'ลองอีกครั้ง', background: '#111', color: '#fff' });
+          });
+        });
+      });
+    }
 
     socket.on('blackmarketState', function(state) {
       renderState(state);

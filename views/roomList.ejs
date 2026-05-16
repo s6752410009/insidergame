@@ -706,7 +706,7 @@
             <div class="room-hero">
                 <div class="room-kicker">🎲 รายชื่อห้อง</div>
                 <h1>🎮 ห้องเกม</h1>
-                <div class="room-hero-copy">เลือกห้องที่เปิดอยู่ หรือกดสร้างห้องใหม่แล้วรอคนเข้ามาครบโต๊ะ</div>
+                <div class="room-hero-copy">เลือกห้องที่เปิดอยู่ หรือกดสร้างห้องใหม่แล้วรอคนเข้ามาครบ</div>
             </div>
             <div class="room-controls">
                 <input type="text" id="searchRoomInput" placeholder="🔍 ค้นหาห้องด้วยเลข Room ID">
@@ -721,7 +721,7 @@
             </div>
 
             <div id="noRooms">
-                <p>ยังไม่มีโต๊ะเปิดอยู่ตอนนี้</p>
+                <p>ยังไม่มีห้องเปิดอยู่ตอนนี้</p>
                 <p>กด "สร้างห้อง" เพื่อเปิดวงใหม่แล้วรอคนเข้ามาเล่น</p>
             </div>
         </div>
@@ -742,7 +742,7 @@ $(function() {
     const playerId = '<%= player.playerId %>';
     const isSiteAdminViewer = <%= player.isSiteAdmin ? 'true' : 'false' %>;
     const defaultGameModes = [
-        { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านโต๊ะ', minPlayers: 3, maxPlayers: 10 },
+        { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 }
     ];
@@ -1051,11 +1051,17 @@ $(function() {
         rooms.forEach(function(room) {
             const isLocked = room.locked;
             const isPlaying = room.gameStatus === 'playing';
+            const isFinished = room.gameStatus === 'finished';
+            const isStuck = room.isStuck || (isPlaying && (room.onlineCount || 0) === 0);
+            const isJoinable = room.isJoinable !== false && !isPlaying && !isStuck;
             const isDualTraitor = room.settings && room.settings.dualTraitorMode && room.gameMode === 'insider';
             const onlineCount = room.onlineCount || 0;
+            const totalInRoom = room.totalPlayerCount != null ? room.totalPlayerCount : (room.playerCount || 0);
             const playerPercentage = (onlineCount / room.maxPlayers) * 100;
-            const statusText = isPlaying ? 'กำลังดำเนินเกม' : 'กำลังรอผู้เล่น';
-            const statusColor = isPlaying ? '#e67e22' : '#2ecc71';
+            const statusText = isStuck
+                ? 'ไม่มีคนออนไลน์ (อาจค้าง)'
+                : (isPlaying ? 'กำลังดำเนินเกม' : (isFinished ? 'จบแล้ว / รอเริ่มใหม่' : 'กำลังรอผู้เล่น'));
+            const statusColor = isStuck ? '#e74c3c' : (isPlaying ? '#e67e22' : (isFinished ? '#95a5a6' : '#2ecc71'));
             const gameModeLabel = room.gameModeLabel || (room.gameMode === 'werewolf' ? 'Werewolf' : (room.gameMode === 'blackmarket' ? 'Black Market' : 'Insider'));
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1063,7 +1069,7 @@ $(function() {
                     ? 'background: linear-gradient(135deg, #7f1d1d, #111111); color:#fde68a; border:1px solid rgba(251,191,36,0.35);'
                     : 'background: linear-gradient(135deg, #e67e22, #d35400);');
             const roomCard = `
-                <div class="room-card" data-room-id="${room.roomId}">
+                <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
                         <div class="room-card-title">
                             <h3>${escapeHtml(room.name)}</h3>
@@ -1078,10 +1084,10 @@ $(function() {
                     <div class="room-card-info">
                         <div class="room-info-item">
                             <span class="room-info-icon">👥</span>
-                            <span><strong>ออนไลน์:</strong> ${onlineCount} / ${room.maxPlayers}</span>
+                            <span><strong>ออนไลน์:</strong> ${onlineCount} / ${room.maxPlayers} <span style="color:#888;">(ในห้อง ${totalInRoom})</span></span>
                         </div>
                         <div class="room-info-item">
-                            <span class="room-info-icon">${isPlaying ? '🎮' : '⏳'}</span>
+                            <span class="room-info-icon">${isStuck ? '⚠️' : (isPlaying ? '🎮' : '⏳')}</span>
                             <span><strong>สถานะ:</strong> <span style="color: ${statusColor}">${statusText}</span></span>
                         </div>
                         <div style="margin-top: 10px; height: 6px; background: #333; border-radius: 3px; overflow: hidden;">
@@ -1096,7 +1102,22 @@ $(function() {
         // Click handler for room cards
         $('.room-card').on('click', function() {
             const roomId = $(this).data('room-id');
+            const joinable = $(this).data('joinable') === 1 || $(this).data('joinable') === '1';
             const room = rooms.find(r => r.roomId === roomId);
+
+            if (!joinable) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'เข้าห้องนี้ไม่ได้',
+                    text: room && room.gameStatus === 'playing'
+                        ? 'เกมกำลังดำเนินอยู่ หรือไม่มีใครออนไลน์ — รอหัวหน้าห้องจบเกม/รีเซ็ต'
+                        : 'ห้องนี้ยังไม่พร้อมรับผู้เล่นใหม่',
+                    background: '#1e1e1e',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c'
+                });
+                return;
+            }
             
             if (room && room.locked && !isSiteAdminViewer) {
                 // Prompt for password
@@ -1234,6 +1255,23 @@ $(function() {
                             <div class="room-checkbox-custom">✓</div>
                             <span class="room-checkbox-text">🔒 ล็อคห้อง (ต้องใช้รหัสผ่าน)</span>
                         </div>
+                    </div>
+
+                    <div class="room-form-group">
+                        <label class="room-form-label">
+                            <span class="icon">🎮</span> รูปแบบการเล่น:
+                        </label>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(245,200,107,0.45); background:rgba(245,200,107,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="tableMode" value="inPerson" checked style="accent-color:#f5c86b;">
+                                <span>🪑 เจอหน้า (ปิดจอได้)</span>
+                            </label>
+                            <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="radio" name="tableMode" value="remote" style="accent-color:#3498db;">
+                                <span>📱 เล่นผ่านมือถือ</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">โหมดเจอหน้า: ปิดจอชั่วคราวได้ กลับมาภายใน ~2 นาทียังอยู่ที่เดิม ระบบล้างห้องค้างเร็วขึ้น</div>
                     </div>
                     
                     <div class="room-form-group" id="passwordGroup" style="display: none;">
@@ -1418,6 +1456,8 @@ $(function() {
                 const wolfCount = gameMode === 'werewolf' && activeWolfBtn
                     ? parseInt(activeWolfBtn.dataset.wolfCount, 10)
                     : undefined;
+                const tableModeInput = document.querySelector('input[name="tableMode"]:checked');
+                const tableMode = tableModeInput ? tableModeInput.value : 'inPerson';
                 
                 if (locked && (!password || !/^\d{4}$/.test(password))) {
                     Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');
@@ -1431,7 +1471,8 @@ $(function() {
                     roundTime: gameMode === 'werewolf' ? undefined : roundTime,
                     wolfCount: wolfCount,
                     locked: locked,
-                    password: locked ? password : null
+                    password: locked ? password : null,
+                    tableMode: tableMode
                 };
             }
             }).then((result) => {

@@ -1589,8 +1589,21 @@ function getCompletedDayActorIds(room) {
     ]);
 }
 
+function isPlayerOnlineInRoom(room, playerId) {
+    const roomPlayer = room?.players?.find(player => player.playerId === playerId);
+    if (roomPlayer) {
+        return !!roomPlayer.socketId;
+    }
+
+    const gameStatePlayer = getPlayer(room, playerId);
+    return !!gameStatePlayer?.socketId;
+}
+
 function canResolveDay(room) {
-    return getCompletedDayActorIds(room).size >= getAlivePlayers(room).length;
+    const completedActors = getCompletedDayActorIds(room);
+    return getAlivePlayers(room).every(player => {
+        return completedActors.has(player.playerId) || !isPlayerOnlineInRoom(room, player.playerId);
+    });
 }
 
 function didPlayerUseNightSkill(room, playerId) {

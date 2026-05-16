@@ -67,6 +67,9 @@ const werewolfPhaseTimeouts = new Map();
 // เก็บ timeout ช่วงคั่นก่อน broadcast phase ถัดไปของ Werewolf
 const werewolfTransitionTimeouts = new Map();
 
+// เก็บ timeout สำหรับ phase อัตโนมัติของ Black Market
+const blackMarketPhaseTimeouts = new Map();
+
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
 const disconnectTimeouts = new Map();
 
@@ -792,7 +795,7 @@ function addServerLog(io, category, roomId, message, type = 'info') {
 
 function buildRoomUpdatePayload(room) {
     const gameEngine = getGameEngine(room.settings.gameMode);
-    const isInGame = !!(room.gameState.status && room.gameState.status !== 'waiting' && room.gameState.status !== '');
+    const gameStatus = roomManager.getRoomGameStatusLabel(room);
 
     return {
         roomId: room.roomId,
@@ -815,7 +818,7 @@ function buildRoomUpdatePayload(room) {
         locked: room.settings.locked,
         gameMode: room.settings.gameMode,
         gameModeLabel: gameEngine.label,
-        gameStatus: isInGame ? 'playing' : 'waiting',
+        gameStatus,
         settings: room.settings
     };
 }
@@ -1033,10 +1036,158 @@ function emitWerewolfRoomState(room) {
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
 }
 
+function clearBlackMarketPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = blackMarketPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        blackMarketPhaseTimeouts.delete(roomId);
+    }
+
+    if (!resetPhaseEndsAt) {
+        return;
+    }
+
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState) {
+        room.gameState.phaseEndsAt = null;
+    }
+}
+
+function syncBlackMarketPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'blackmarket') {
+        return;
+    }
+
+    const phase = room.gameState.phase;
+    const activePhase = phase === 'market' || phase === 'action';
+    if (!activePhase || room.gameState.winner) {
+        clearBlackMarketPhaseTimer(room.roomId);
+        return;
+    }
+
+    const blackMarketEngine = getGameEngine('blackmarket');
+    const now = Date.now();
+    const existingTimer = blackMarketPhaseTimeouts.get(room.roomId);
+    if (existingTimer && existingTimer.phase === phase && room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > now) {
+        return;
+    }
+
+    if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= now) {
+        clearBlackMarketPhaseTimer(room.roomId, false);
+        try {
+            const resolution = blackMarketEngine.autoResolvePhase(room);
+            if (resolution && resolution.resolved === false) {
+                console.warn('[blackmarket][timer] auto resolve incomplete', {
+                    roomId: room.roomId,
+                    phase,
+                    resolution
+                });
+            }
+            emitBlackMarketState(room);
+            syncBlackMarketPhaseTimer(roomManager.getRoom(room.roomId) || room);
+        } catch (error) {
+            console.error('[blackmarket] overdue auto resolve failed:', {
+                roomId: room.roomId,
+                phase,
+                error: error?.message || error
+            });
+        }
+        return;
+    }
+
+    clearBlackMarketPhaseTimer(room.roomId, false);
+
+    const defaultDurationMs = phase === 'market'
+        ? blackMarketEngine.MARKET_PHASE_MS
+        : blackMarketEngine.ACTION_PHASE_MS;
+    const targetEndsAt = room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > now
+        ? room.gameState.phaseEndsAt
+        : now + defaultDurationMs;
+    const delayMs = Math.max(0, targetEndsAt - now);
+    room.gameState.phaseEndsAt = targetEndsAt;
+
+    const timeoutId = setTimeout(() => {
+        blackMarketPhaseTimeouts.delete(room.roomId);
+
+        const currentRoom = roomManager.getRoom(room.roomId);
+        if (!currentRoom || currentRoom.settings.gameMode !== 'blackmarket') {
+            return;
+        }
+
+        if (currentRoom.gameState.phase !== phase || currentRoom.gameState.winner) {
+            return;
+        }
+
+        try {
+            const resolution = blackMarketEngine.autoResolvePhase(currentRoom);
+            if (resolution && resolution.resolved === false) {
+                console.warn('[blackmarket][timer] auto resolve incomplete', {
+                    roomId: currentRoom.roomId,
+                    phase,
+                    resolution
+                });
+            }
+            sendChatMessageToRoom(
+                io,
+                currentRoom.roomId,
+                'System',
+                phase === 'market'
+                    ? 'หมดเวลาตลาดแล้ว ระบบพาเข้าช่วงลงมือ'
+                    : 'หมดเวลาลงมือแล้ว ระบบสรุปผลยกนี้',
+                '#95a5a6'
+            );
+            emitBlackMarketState(currentRoom);
+            syncBlackMarketPhaseTimer(roomManager.getRoom(currentRoom.roomId) || currentRoom);
+        } catch (error) {
+            console.error('[blackmarket] auto resolve failed:', {
+                roomId: room.roomId,
+                phase,
+                error: error?.message || error
+            });
+        }
+    }, delayMs);
+
+    blackMarketPhaseTimeouts.set(room.roomId, { phase, timeoutId });
+}
+
+function forceResolveStuckBlackMarketRoom(room) {
+    if (!room || room.settings.gameMode !== 'blackmarket' || !roomManager.isRoomGameInProgress(room)) {
+        return;
+    }
+
+    const blackMarketEngine = getGameEngine('blackmarket');
+    const activePhases = new Set(['market', 'action']);
+    let safety = 0;
+
+    while (safety < 12 && roomManager.isRoomGameInProgress(room) && activePhases.has(room.gameState.phase)) {
+        try {
+            const resolution = blackMarketEngine.autoResolvePhase(room);
+            if (resolution && resolution.resolved === false) {
+                console.warn('[blackmarket] force resolve incomplete', {
+                    roomId: room.roomId,
+                    phase: room.gameState.phase,
+                    resolution
+                });
+                break;
+            }
+        } catch (error) {
+            console.error('[blackmarket] force resolve failed:', {
+                roomId: room.roomId,
+                phase: room.gameState.phase,
+                error: error?.message || error
+            });
+            break;
+        }
+        safety += 1;
+    }
+}
+
 function emitBlackMarketState(room, targetSocketId = null, playerId = null) {
     if (!room || room.settings.gameMode !== 'blackmarket') {
         return;
     }
+
+    syncBlackMarketPhaseTimer(room);
 
     if (targetSocketId && playerId) {
         io.to(targetSocketId).emit('blackmarketState', buildBlackMarketStatePayload(room, playerId));
@@ -1230,6 +1381,14 @@ function syncWerewolfPhaseTimer(room) {
                 dayNumber: currentRoom.gameState.dayNumber
             });
             const resolution = werewolfEngine.autoResolvePhase(currentRoom);
+            if (resolution && resolution.resolved === false) {
+                console.warn('[werewolf][timer] auto resolve incomplete', {
+                    roomId: currentRoom.roomId,
+                    phase,
+                    resolution,
+                    nextPhase: currentRoom.gameState.phase
+                });
+            }
             console.debug('[werewolf][timer] auto resolve done', {
                 roomId: currentRoom.roomId,
                 phase,
@@ -1260,6 +1419,53 @@ function syncWerewolfPhaseTimer(room) {
     werewolfPhaseTimeouts.set(room.roomId, { phase, timeoutId });
 }
 
+function forceResolveStuckWerewolfRoom(room) {
+    if (!room || room.settings.gameMode !== 'werewolf' || !roomManager.isRoomGameInProgress(room)) {
+        return;
+    }
+
+    const werewolfEngine = getGameEngine('werewolf');
+    const timedPhases = new Set(['night', 'day-discussion', 'day-vote']);
+    let safety = 0;
+
+    while (safety < 20 && roomManager.isRoomGameInProgress(room) && timedPhases.has(room.gameState.phase)) {
+        try {
+            werewolfEngine.autoResolvePhase(room);
+        } catch (error) {
+            console.error('[werewolf] force resolve failed:', {
+                roomId: room.roomId,
+                phase: room.gameState.phase,
+                error: error?.message || error
+            });
+            break;
+        }
+        safety += 1;
+    }
+}
+
+function recoverGamePhaseTimers() {
+    roomManager.forEachRoom((room) => {
+        if (roomManager.getOnlinePlayerCount(room) === 0) {
+            return;
+        }
+
+        if (room.settings.gameMode === 'werewolf') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                forceResolveStuckWerewolfRoom(room);
+            }
+            syncWerewolfPhaseTimer(room);
+            return;
+        }
+
+        if (room.settings.gameMode === 'blackmarket') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                forceResolveStuckBlackMarketRoom(room);
+            }
+            syncBlackMarketPhaseTimer(room);
+        }
+    });
+}
+
 function runRoomCleanupSweep() {
     const activeSocketIds = new Set(Array.from(io.sockets.sockets.keys()));
     const staleSocketPlayers = roomManager.reconcileSocketState(activeSocketIds, ROOM_OFFLINE_GRACE_MS);
@@ -1275,6 +1481,62 @@ function runRoomCleanupSweep() {
         affectedRoomIds.add(entry.roomId);
         addServerLog(io, 'system', entry.roomId, `[Cleanup] ลบ ${entry.playerName} ออกจากห้องเพราะ offline นานเกินกำหนด`, 'warning');
     });
+
+    roomManager.collectAbandonCandidates().forEach(candidate => {
+        const room = roomManager.getRoom(candidate.roomId);
+        if (!room) {
+            return;
+        }
+
+        if (room.settings.gameMode === 'werewolf' && roomManager.isRoomGameInProgress(room)) {
+            forceResolveStuckWerewolfRoom(room);
+        }
+        if (room.settings.gameMode === 'blackmarket' && roomManager.isRoomGameInProgress(room)) {
+            forceResolveStuckBlackMarketRoom(room);
+        }
+
+        clearWerewolfPhaseTimer(candidate.roomId);
+        clearWerewolfTransitionTimer(candidate.roomId);
+        clearBlackMarketPhaseTimer(candidate.roomId);
+        if (roomCountdowns.has(candidate.roomId)) {
+            clearInterval(roomCountdowns.get(candidate.roomId));
+            roomCountdowns.delete(candidate.roomId);
+        }
+
+        const { room: refreshedRoom, removedPlayers } = roomManager.finalizeAbandonedRoom(candidate.roomId);
+        affectedRoomIds.add(candidate.roomId);
+
+        addServerLog(
+            io,
+            'system',
+            candidate.roomId,
+            `[Cleanup] ปิดเกมค้าง "${candidate.roomName}" (ไม่มีคนออนไลน์) ลบ offline ${removedPlayers.length} คน`,
+            'warning'
+        );
+
+        if (refreshedRoom) {
+            sendChatMessageToRoom(
+                io,
+                candidate.roomId,
+                'System',
+                'ไม่มีผู้เล่นออนไลน์นานเกินกำหนด — รีเซ็ตเกมและลบผู้เล่นที่หลุดออกแล้ว',
+                '#e74c3c'
+            );
+            io.to(candidate.roomId).emit('tableAbandoned', {
+                message: 'เกมถูกรีเซ็ตเพราะไม่มีใครออนไลน์'
+            });
+            io.to(candidate.roomId).emit('restartGame');
+            io.to(candidate.roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            if (refreshedRoom.settings.gameMode === 'werewolf') {
+                emitWerewolfRoomState(refreshedRoom);
+            }
+        } else {
+            clearWerewolfPhaseTimer(candidate.roomId);
+            clearWerewolfTransitionTimer(candidate.roomId);
+        }
+    });
+
+    recoverGamePhaseTimers();
 
     affectedRoomIds.forEach(roomId => {
         const room = roomManager.getRoom(roomId);
@@ -2230,8 +2492,75 @@ io.sockets.on('connection', function(socket) {
         socket.roomId = roomId;
         socket.playerId = playerId;
         
-        // ส่งข้อมูลห้องกลับ
-        io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+        const refreshedRoom = roomManager.getRoom(roomId);
+        io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom || room));
+
+        if (refreshedRoom?.settings?.gameMode === 'werewolf') {
+            emitWerewolfState(refreshedRoom, socket.id, playerId);
+            syncWerewolfPhaseTimer(refreshedRoom);
+        } else if (refreshedRoom?.settings?.gameMode === 'blackmarket') {
+            emitBlackMarketState(refreshedRoom, socket.id, playerId);
+        }
+    });
+
+    socket.on('endTableSession', function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const playerId = socket.playerId || data?.playerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room) {
+                throw new Error('ไม่พบห้อง');
+            }
+
+            if (!playerId || room.admin !== playerId) {
+                throw new Error('มีแค่หัวหน้าห้องที่จบเกมได้');
+            }
+
+            clearWerewolfPhaseTimer(roomId);
+            clearWerewolfTransitionTimer(roomId);
+            clearBlackMarketPhaseTimer(roomId);
+            if (roomCountdowns.has(roomId)) {
+                clearInterval(roomCountdowns.get(roomId));
+                roomCountdowns.delete(roomId);
+            }
+
+            const { room: refreshedRoom, removedPlayers } = roomManager.endTableSession(roomId, playerId);
+
+            if (!refreshedRoom) {
+                io.emit('roomListUpdate', roomManager.getAllRooms());
+                if (typeof callback === 'function') {
+                    callback({ success: true, roomClosed: true });
+                }
+                return;
+            }
+
+            const offlineCount = removedPlayers.length;
+            sendChatMessageToRoom(
+                io,
+                roomId,
+                'System',
+                `หัวหน้าห้องจบเกมแล้ว${offlineCount > 0 ? ` (ลบผู้เล่นที่หลุด ${offlineCount} คน)` : ''}`,
+                '#e67e22'
+            );
+            io.to(roomId).emit('restartGame');
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+
+            if (refreshedRoom.settings.gameMode === 'werewolf') {
+                emitWerewolfRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'blackmarket') {
+                emitBlackMarketState(refreshedRoom);
+            }
+
+            if (typeof callback === 'function') {
+                callback({ success: true, removedCount: offlineCount });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
     });
 
     // Leave room
@@ -3802,7 +4131,7 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('ไม่พบโต๊ะนี้');
             }
 
-            sendChatMessageToRoom(io, roomId, 'System', 'คืนนี้ปิดโต๊ะก่อน กลับไปตั้งเกมใหม่ในห้อง', '#9b59b6');
+            sendChatMessageToRoom(io, roomId, 'System', 'รอบนี้จบแล้ว กลับไปตั้งเกมใหม่ในห้อง', '#9b59b6');
             io.to(roomId).emit('restartGame');
             io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
             io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -4494,23 +4823,24 @@ io.sockets.on('connection', function(socket) {
                                 // ส่งข้อความแจ้งว่าหลุดการเชื่อมต่อ
                                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} หลุดการเชื่อมต่อ`, '#95a5a6');
                                 
-                                // ลบผู้เล่นออกจากห้องหลังจาก 5 นาที (300000ms)
+                                const removeDelayMs = roomManager.getDisconnectRemoveMs(currentRoom);
                                 const removeTimeout = setTimeout(() => {
                                     const roomCheck = roomManager.getRoom(roomId);
                                     if (roomCheck) {
                                         const stillDisconnected = roomCheck.players.find(p => p.playerId === playerId && !p.socketId);
                                         if (stillDisconnected) {
-                                            // ลบผู้เล่นออกจากห้อง
                                             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
                                             if (updatedRoom) {
                                                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง (Timeout)`, '#e74c3c');
                                                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
                                                 io.emit('roomListUpdate', roomManager.getAllRooms());
+                                            } else {
+                                                io.emit('roomListUpdate', roomManager.getAllRooms());
                                             }
                                             console.log(`[Timeout] Removed player ${player.playerName} from room ${roomId}`);
                                         }
                                     }
-                                }, 300000); // 5 นาที
+                                }, removeDelayMs);
                             }
                         }
                         disconnectTimeouts.delete(playerId);
@@ -4576,6 +4906,8 @@ async function startServer() {
             message: '🚀 Server เริ่มทำงานแล้ว',
             type: 'success'
         });
+
+        recoverGamePhaseTimers();
     });
 }
 

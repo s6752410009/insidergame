@@ -794,6 +794,9 @@
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       <button class="ghost-btn" onclick="document.getElementById('openModeGuide').click()">วิธีเล่น 1 นาที</button>
       <button id="openRoleCatalog" class="ghost-btn">คู่มือบทบาท</button>
+      <% if (room.admin === true) { %>
+      <button id="endTableSessionBtn" class="ghost-btn" type="button" title="รีเซ็ตเกมและลบผู้เล่นที่หลุดออก">⏹ จบเกม</button>
+      <% } %>
       <button class="werewolf-btn" onclick="document.getElementById('leaveWerewolfRoom').click()">← ออกจากห้อง</button>
     </div>
   </div>
@@ -958,7 +961,16 @@
     let touchStartX = 0;
     let touchStartY = 0;
     let swipingWrapper = null;
-    let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
+
+
+
+
+
+
+
+
+ไำ_
+ภฃฃภไ๒"๑๓๒๑"๐๐๒๒๑    let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
     let selectedWitchNightActionType = null;
     let preferredDayTargetMode = null;
     const seenHistoryKeys = new Set();
@@ -5010,11 +5022,66 @@
       }
 
       wasHidden = false;
-      // Full rebind on return from background to re-establish socket room membership
       if (socket.connected) {
+        socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
         bindRoom();
       }
     });
+
+    socket.on('tableAbandoned', function(payload) {
+      Swal.fire({
+        icon: 'info',
+        title: 'เกมถูกรีเซ็ต',
+        text: (payload && payload.message) || 'ไม่มีผู้เล่นออนไลน์นานเกินไป ระบบรีเซ็ตเกมแล้ว',
+        background: '#1e1e1e',
+        color: '#fff',
+        confirmButtonColor: '#e74c3c'
+      }).then(function() {
+        allowNavigation = true;
+        window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+      });
+    });
+
+    const endTableBtn = document.getElementById('endTableSessionBtn');
+    if (endTableBtn) {
+      endTableBtn.addEventListener('click', function() {
+        Swal.fire({
+          title: '⏹ จบเกม?',
+          text: 'รีเซ็ตเกมและลบผู้เล่นที่หลุดออกจากห้อง (คนที่ยังเปิดจออยู่จะอยู่ต่อ)',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'จบเกม',
+          cancelButtonText: 'ยกเลิก',
+          background: '#1e1e1e',
+          color: '#fff',
+          confirmButtonColor: '#e67e22'
+        }).then(function(result) {
+          if (!result.isConfirmed) {
+            return;
+          }
+
+          socket.emit('endTableSession', { roomId: roomId, playerId: playerId }, function(response) {
+            if (response && response.success) {
+              allowNavigation = true;
+              if (response.roomClosed) {
+                window.location.href = '/rooms?playerId=' + playerId;
+                return;
+              }
+              window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+              return;
+            }
+
+            Swal.fire({
+              icon: 'error',
+              title: 'จบเกมไม่สำเร็จ',
+              text: (response && response.error) || 'เกิดข้อผิดพลาด',
+              background: '#1e1e1e',
+              color: '#fff'
+            });
+          });
+        });
+      });
+    }
 
     socket.on('werewolfState', function(state) {
       setActionButtonsPending(false);

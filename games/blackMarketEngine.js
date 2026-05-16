@@ -221,9 +221,27 @@ function createInitialState() {
         lastRoundReport: [],
         winner: null,
         lastAction: 0,
+        phaseEndsAt: null,
         statsRecordedAt: null
     };
 }
+
+function isPlayerOnline(room, playerId) {
+    const roomPlayer = room.players?.find(player => player.playerId === playerId);
+    if (roomPlayer) {
+        return !!roomPlayer.socketId;
+    }
+
+    const gameStatePlayer = getPlayer(room, playerId);
+    return !!gameStatePlayer?.socketId;
+}
+
+function setPhaseDeadline(room, durationMs) {
+    room.gameState.phaseEndsAt = Date.now() + durationMs;
+}
+
+const MARKET_PHASE_MS = 90 * 1000;
+const ACTION_PHASE_MS = 120 * 1000;
 
 function createPlayerState(player, context = {}) {
     return {
@@ -458,12 +476,39 @@ function startGame(room) {
     room.gameState.winner = null;
     room.gameState.lastAction = Date.now();
     room.gameState.statsRecordedAt = null;
+    setPhaseDeadline(room, MARKET_PHASE_MS);
     pushHistory(room, '🎩', 'ตลาดมืดเปิดแล้ว ยก 1 เริ่มกวาดของเถื่อน', 'gold');
     return room.gameState;
 }
 
 function everyoneCommitted(room, bucket) {
-    return getAlivePlayers(room).every(player => bucket[player.playerId]);
+    return getAlivePlayers(room).every(player => {
+        if (bucket[player.playerId]) {
+            return true;
+        }
+
+        return !isPlayerOnline(room, player.playerId);
+    });
+}
+
+function fillMissingMarketChoices(room) {
+    getAlivePlayers(room).forEach(player => {
+        if (!room.gameState.marketChoices[player.playerId]) {
+            room.gameState.marketChoices[player.playerId] = PASS_CHOICE;
+        }
+    });
+}
+
+function fillMissingActionChoices(room) {
+    getAlivePlayers(room).forEach(player => {
+        if (!room.gameState.actionChoices[player.playerId]) {
+            room.gameState.actionChoices[player.playerId] = {
+                actionType: 'pass',
+                targetPlayerId: null,
+                itemId: null
+            };
+        }
+    });
 }
 
 function moveToActionPhase(room, report = []) {
@@ -473,6 +518,7 @@ function moveToActionPhase(room, report = []) {
     room.gameState.marketChoices = {};
     room.gameState.lastRoundReport = report;
     room.gameState.lastAction = Date.now();
+    setPhaseDeadline(room, ACTION_PHASE_MS);
     pushHistory(room, '🛒', `ตลาดยก ${room.gameState.roundNumber} ปิดแล้ว ถึงเวลาลงมือ`, 'amber');
 }
 
@@ -511,6 +557,7 @@ function finalizeWinner(room, reasonIcon, reasonText) {
     const winner = players[0] || null;
     room.gameState.phase = 'finished';
     room.gameState.status = 'blackmarket_finished';
+    room.gameState.phaseEndsAt = null;
     room.gameState.winner = winner ? {
         playerId: winner.playerId,
         name: winner.name,
@@ -557,7 +604,8 @@ function startNextRound(room, report = []) {
     room.gameState.marketChoices = {};
     room.gameState.actionChoices = {};
     room.gameState.lastAction = Date.now();
-    pushHistory(room, '🌒', `ยก ${room.gameState.roundNumber} เปิดฉาก ล็อตใหม่ถูกวางขึ้นโต๊ะ`, 'neutral');
+    setPhaseDeadline(room, MARKET_PHASE_MS);
+    pushHistory(room, '🌒', `ยก ${room.gameState.roundNumber} เปิดฉาก ล็อตใหม่พร้อมแล้ว`, 'neutral');
 }
 
 function resolveMarketPhase(room) {
@@ -954,6 +1002,7 @@ function buildClientState(room, playerId) {
         phase: room.gameState.phase,
         roundNumber: room.gameState.roundNumber,
         maxRounds: room.gameState.maxRounds,
+        phaseEndsAt: room.gameState.phaseEndsAt || null,
         winner: room.gameState.winner,
         playerRole: {
             id: self.role,
@@ -1043,9 +1092,33 @@ function submitMarketPurchase(room, playerId, itemId) {
     return { resolved: false, phase: room.gameState.phase };
 }
 
+function autoResolvePhase(room) {
+    if (!room?.gameState || room.gameState.phase === 'finished' || room.gameState.winner) {
+        return { resolved: true, autoResolved: true, phase: room?.gameState?.phase || 'finished' };
+    }
+
+    if (room.gameState.phase === 'market') {
+        fillMissingMarketChoices(room);
+        if (everyoneCommitted(room, room.gameState.marketChoices)) {
+            resolveMarketPhase(room);
+            return { resolved: true, phase: room.gameState.phase, autoResolved: true };
+        }
+    }
+
+    if (room.gameState.phase === 'action') {
+        fillMissingActionChoices(room);
+        if (everyoneCommitted(room, room.gameState.actionChoices)) {
+            resolveActionPhase(room);
+            return { resolved: true, phase: room.gameState.phase, autoResolved: true };
+        }
+    }
+
+    return { resolved: false, autoResolved: true, phase: room.gameState.phase };
+}
+
 function submitAction(room, playerId, actionType, targetPlayerId = null, itemId = null) {
     if (!room || room.settings.gameMode !== 'blackmarket') {
-        throw new Error('ไม่พบโต๊ะนี้');
+        throw new Error('ไม่พบเกมนี้');
     }
 
     if (room.gameState.phase !== 'action') {
@@ -1111,5 +1184,8 @@ module.exports = {
     startGame,
     buildClientState,
     submitMarketPurchase,
-    submitAction
+    submitAction,
+    autoResolvePhase,
+    MARKET_PHASE_MS,
+    ACTION_PHASE_MS
 };
