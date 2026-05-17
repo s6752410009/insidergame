@@ -8,6 +8,7 @@
 const { v4: uuidv4 } = require('uuid');
 const playerManager = require('./playerManager');
 const { normalizeGameMode, getGameEngine } = require('../games/engineRegistry');
+const gameSettingsManager = require('./gameSettingsManager');
 
 // เก็บห้องทั้งหมด (key: roomId, value: room object)
 const rooms = new Map();
@@ -182,9 +183,10 @@ function clampMaxPlayers(gameEngine, requestedMaxPlayers, currentPlayers = 0) {
  * สร้างห้องใหม่
  */
 function createRoom(roomData, creatorPlayerId) {
+    const normalizedRoomData = gameSettingsManager.applyCreateRoomDefaults(roomData || {});
     const roomId = uuidv4().substring(0, 8); // ใช้ 8 ตัวแรกของ UUID เป็น roomId
     const creator = playerManager.getPlayer(creatorPlayerId);
-    const gameMode = inferGameModeFromRoomData(roomData);
+    const gameMode = inferGameModeFromRoomData(normalizedRoomData);
     const gameEngine = getGameEngine(gameMode);
     
     if (!creator) {
@@ -192,35 +194,39 @@ function createRoom(roomData, creatorPlayerId) {
     }
 
     const hasExplicitWerewolfRoles = gameMode === 'werewolf'
-        && Array.isArray(roomData.werewolfRoles)
-        && roomData.werewolfRoles.length > 0;
+        && Array.isArray(normalizedRoomData.werewolfRoles)
+        && normalizedRoomData.werewolfRoles.length > 0;
     const werewolfRoles = gameMode === 'werewolf'
         ? (hasExplicitWerewolfRoles && typeof gameEngine.sanitizeRoleSelection === 'function'
-            ? gameEngine.sanitizeRoleSelection(roomData.werewolfRoles)
+            ? gameEngine.sanitizeRoleSelection(normalizedRoomData.werewolfRoles)
             : [])
         : undefined;
     const wolfCount = gameMode === 'werewolf'
         ? (hasExplicitWerewolfRoles
             ? null
-            : Math.min(Math.max(1, Number(roomData.wolfCount) || 2), 3))
+            : Math.min(Math.max(1, Number(normalizedRoomData.wolfCount) || 2), 3))
+        : null;
+    const spyfallVoteMinutes = gameMode === 'spyfall'
+        ? Math.min(10, Math.max(0.5, Number(normalizedRoomData.spyfallVoteMinutes) || 1.5))
         : null;
 
     const room = {
         roomId,
-        name: roomData.name || `ห้อง ${roomId}`,
+        name: normalizedRoomData.name || `ห้อง ${roomId}`,
         players: [], // Array of { playerId, playerName, color, socketId, permission }
         admin: creatorPlayerId, // playerId ของ admin
         settings: {
             gameMode,
-            maxPlayers: clampMaxPlayers(gameEngine, roomData.maxPlayers, 1),
-            roundTime: gameMode === 'werewolf' ? 5 * 60 : (roomData.roundTime || 5) * 60, // Werewolf ใช้ค่า fixed
-            traitorOptional: roomData.traitorOptional !== undefined ? roomData.traitorOptional : true,
-            dualTraitorMode: roomData.dualTraitorMode || false, // โหมด 2 จอมบงการ (ต้องมี 5+ คน)
+            maxPlayers: clampMaxPlayers(gameEngine, normalizedRoomData.maxPlayers, 1),
+            roundTime: gameMode === 'werewolf' ? 5 * 60 : (Number(normalizedRoomData.roundTime) || 5) * 60,
+            traitorOptional: normalizedRoomData.traitorOptional !== undefined ? normalizedRoomData.traitorOptional : true,
+            dualTraitorMode: normalizedRoomData.dualTraitorMode || false,
+            spyfallVoteSeconds: spyfallVoteMinutes != null ? Math.round(spyfallVoteMinutes * 60) : 90,
             werewolfRoles,
             wolfCount,
-            locked: roomData.locked || false,
-            password: roomData.password || null,
-            tableMode: normalizeTableMode(roomData.tableMode)
+            locked: normalizedRoomData.locked || false,
+            password: normalizedRoomData.password || null,
+            tableMode: normalizeTableMode(normalizedRoomData.tableMode)
         },
         gameState: gameEngine.createInitialState(),
         chatHistory: [],
@@ -231,7 +237,7 @@ function createRoom(roomData, creatorPlayerId) {
     rooms.set(roomId, room);
     
     // เพิ่มผู้สร้างเป็นผู้เล่นคนแรก
-    joinRoom(roomId, creatorPlayerId, null, roomData.password);
+    joinRoom(roomId, creatorPlayerId, null, normalizedRoomData.password);
     
     return room;
 }

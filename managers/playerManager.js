@@ -253,7 +253,7 @@ function buildTransientPlayer(playerId) {
 }
 
 // ============ Player Functions ============
-async function createOrGetPlayer(playerId = null) {
+async function createOrGetPlayer(playerId = null, options = {}) {
     if (playerId && !isValidPlayerId(playerId)) {
         throw new Error('Invalid player ID');
     }
@@ -278,6 +278,7 @@ async function createOrGetPlayer(playerId = null) {
         avatar: '👤',
         avatarFrame: 'none',
         isSiteAdmin: false,
+        approved: options.approved !== false,
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString()
     };
@@ -596,6 +597,20 @@ function getAllBannedPlayers() {
     return Array.from(bannedPlayers.values());
 }
 
+async function setPlayerApproved(playerId, approved = true) {
+    if (!players.has(playerId)) {
+        throw new Error('Player not found');
+    }
+    const player = players.get(playerId);
+    player.approved = !!approved;
+    if (useDatabase && Player) {
+        await Player.updateOne({ playerId }, { approved: player.approved });
+    } else {
+        savePlayers();
+    }
+    return player;
+}
+
 async function adminUpdatePlayerName(playerId, newName) {
     if (!players.has(playerId)) throw new Error('Player not found');
     const player = players.get(playerId);
@@ -645,5 +660,6 @@ module.exports = {
     isPlayerBanned,
     getBanInfo,
     getAllBannedPlayers,
-    adminUpdatePlayerName
+    adminUpdatePlayerName,
+    setPlayerApproved
 };

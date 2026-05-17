@@ -128,10 +128,26 @@ function setPhaseDeadline(room, durationMs) {
 }
 
 function getDiscussionMs(room) {
-    // room.settings.roundTime is stored in seconds (same as Insider lobby)
     const seconds = Number(room?.settings?.roundTime || 300);
     const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 300;
     return safeSeconds * 1000;
+}
+
+function getVoteMs(room) {
+    const seconds = Number(room?.settings?.spyfallVoteSeconds || 90);
+    const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 90;
+    return safeSeconds * 1000;
+}
+
+function getAllLocations() {
+    let extra = [];
+    try {
+        const gameSettingsManager = require('../managers/gameSettingsManager');
+        extra = gameSettingsManager.getSpyfallExtraLocations();
+    } catch (error) {
+        extra = [];
+    }
+    return [...LOCATIONS, ...extra];
 }
 
 function pushHistory(room, icon, text, tone = 'neutral') {
@@ -166,7 +182,7 @@ function startGame(room) {
 
     room.gameState = resetRoomGame(room);
     const activePlayers = getActivePlayers(room);
-    const location = pickRandom(LOCATIONS);
+    const location = pickRandom(getAllLocations());
     const spyPlayer = pickRandom(activePlayers);
 
     room.gameState.locationId = location.id;
@@ -212,7 +228,7 @@ function moveToVotePhase(room) {
         player.hasVoted = false;
         player.voteTargetId = null;
     });
-    setPhaseDeadline(room, VOTE_PHASE_MS);
+    setPhaseDeadline(room, getVoteMs(room));
     pushHistory(room, '🗳️', 'หมดเวลาคุย — โหวตจับสายลับ', 'amber');
 }
 
@@ -432,7 +448,7 @@ function buildClientState(room, playerId) {
             hint: room.gameState.locationHint
         } : null,
         locationPool: isSpy && !isFinished
-            ? LOCATIONS.map(location => ({ id: location.id, icon: location.icon, name: location.name }))
+            ? getAllLocations().map(location => ({ id: location.id, icon: location.icon, name: location.name }))
             : null,
         self: {
             playerId: self.playerId,
@@ -501,5 +517,7 @@ module.exports = {
     submitVote,
     resolveVotes,
     buildClientState,
-    getDiscussionMs
+    getDiscussionMs,
+    getVoteMs,
+    getAllLocations
 };

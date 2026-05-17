@@ -747,10 +747,12 @@ $(function() {
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4-8 คน ถามตอบแล้วโหวตจับสายลับ', minPlayers: 4, maxPlayers: 8 }
     ];
+    const serverModeDefaults = <%- JSON.stringify(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
         const serverModes = <%- JSON.stringify(typeof gameModes !== 'undefined' ? gameModes : []) %>;
         const matchedMode = serverModes.find(function(mode) { return mode.id === fallbackMode.id; });
-        result.push(Object.assign({}, fallbackMode, matchedMode || {}));
+        const adminDefaults = serverModeDefaults.find(function(mode) { return mode.id === fallbackMode.id; }) || {};
+        result.push(Object.assign({}, fallbackMode, matchedMode || {}, adminDefaults));
         return result;
     }, []);
     const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
@@ -946,30 +948,18 @@ $(function() {
     }
 
     function getModeAutofillPreset(modeId) {
-        const presets = {
-            insider: {
-                roomName: 'วงจับจอมบงการ',
-                maxPlayers: 5,
-                roundTime: 5
-            },
-            blackmarket: {
-                roomName: 'ตลาดมืดคืนนี้',
-                maxPlayers: 6,
-                roundTime: 3
-            },
-            werewolf: {
-                roomName: 'คืนล่าหมาป่า',
-                maxPlayers: 8,
-                roundTime: 5
-            },
-            spyfall: {
-                roomName: 'วงสายลับสถานที่',
-                maxPlayers: 6,
-                roundTime: 5
-            }
+        const modeConfig = gameModes.find(function(mode) { return mode.id === modeId; }) || {};
+        const roomNames = {
+            insider: 'วงจับจอมบงการ',
+            blackmarket: 'ตลาดมืดคืนนี้',
+            werewolf: 'คืนล่าหมาป่า',
+            spyfall: 'วงสายลับสถานที่'
         };
-
-        return presets[modeId] || presets.insider;
+        return {
+            roomName: roomNames[modeId] || roomNames.insider,
+            maxPlayers: Number(modeConfig.defaultMaxPlayers || modeConfig.maxPlayers || 6),
+            roundTime: Number(modeConfig.defaultRoundTimeMinutes || 5)
+        };
     }
 
     function getAutofilledRoomName(modeId) {

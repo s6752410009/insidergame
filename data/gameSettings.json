@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "modes": {
+    "insider": {
+      "defaultMaxPlayers": 8,
+      "defaultRoundTimeMinutes": 5,
+      "traitorOptional": true,
+      "dualTraitorDefault": false
+    },
+    "werewolf": {
+      "defaultMaxPlayers": 10
+    },
+    "blackmarket": {
+      "defaultMaxPlayers": 7,
+      "defaultRoundTimeMinutes": 5
+    },
+    "spyfall": {
+      "defaultMaxPlayers": 8,
+      "defaultRoundTimeMinutes": 8,
+      "defaultVoteTimeMinutes": 1.5
+    }
+  },
+  "insider": {
+    "wordFile": "famille"
+  },
+  "spyfall": {
+    "extraLocations": []
+  },
+  "security": {
+    "banSystemEnabled": true,
+    "profanityFilterEnabled": false,
+    "requireNewPlayerApproval": false,
+    "profanityWords": [
+      "fuck",
+      "shit",
+      "bitch",
+      "asshole",
+      "ควย",
+      "เหี้ย",
+      "สัส",
+      "แม่ง",
+      "ไอสัส",
+      "ระยำ",
+      "ห่า",
+      "เย็ด"
+    ]
+  }
+}

@@ -921,64 +921,49 @@
     
     <!-- Game Settings Tab -->
     <div class="tab-content" id="tab-settings">
-        <div class="panel">
-            <div class="panel-header">
-                <h2>🔧 ตั้งค่าเกมเริ่มต้น</h2>
+        <div class="panel" style="border: 1px solid rgba(46, 204, 113, 0.25);">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h2>⚙️ ตั้งค่าเกม (ทุกโหมด)</h2>
+                    <p style="color: #888; margin: 6px 0 0; font-size: 0.9em;">ค่าเริ่มต้นเมื่อสร้างห้องใหม่ — แต่ละห้องยังปรับใน Lobby ได้</p>
+                </div>
+                <button class="btn-admin btn-success" onclick="saveGameSettings()">💾 บันทึกทั้งหมด</button>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <div class="setting-group">
-                    <label style="color: #888; display: block; margin-bottom: 8px;">⏱️ เวลาเริ่มต้น (นาที)</label>
-                    <input type="number" id="defaultTimer" class="search-box" style="width: 100%;" value="5" min="1" max="30">
-                </div>
-                <div class="setting-group">
-                    <label style="color: #888; display: block; margin-bottom: 8px;">👥 จำนวนผู้เล่นขั้นต่ำ</label>
-                    <input type="number" id="minPlayers" class="search-box" style="width: 100%;" value="4" min="3" max="10">
-                </div>
-                <div class="setting-group">
-                    <label style="color: #888; display: block; margin-bottom: 8px;">👥 จำนวนผู้เล่นสูงสุด</label>
-                    <input type="number" id="maxPlayers" class="search-box" style="width: 100%;" value="8" min="4" max="20">
-                </div>
-                <div class="setting-group">
-                    <label style="color: #888; display: block; margin-bottom: 8px;">📂 ประเภทคำ</label>
-                    <select id="wordCategory" class="search-box" style="width: 100%;">
-                        <option value="famille">ครอบครัว (famille.csv)</option>
-                        <option value="random">สุ่ม</option>
-                    </select>
-                </div>
-            </div>
-            <button class="btn-admin btn-success" onclick="saveGameSettings()" style="width: 100%; margin-top: 20px; padding: 15px;">💾 บันทึกการตั้งค่า</button>
+            <div id="gameSettingsModeCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;"></div>
         </div>
         
-        <div class="panel">
-            <div class="panel-header">
-                <h2>📝 จัดการคำในเกม</h2>
+                <div class="panel">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+                <h2>🎯 Insider — คำในเกม</h2>
+                <span id="insiderWordCountBadge" style="color:#8fd3ff; font-size:0.9em;">กำลังโหลด...</span>
             </div>
-            <div style="margin-bottom: 15px;">
-                <label style="color: #888; display: block; margin-bottom: 8px;">เพิ่มคำใหม่ (คั่นด้วยจุลภาค)</label>
-                <textarea id="newWords" class="broadcast-input" placeholder="คำที่ 1, คำที่ 2, คำที่ 3..."></textarea>
+            <p style="color:#888; font-size:0.88em; margin:0 0 12px;">ใช้กับ Insider เท่านั้น — เพิ่มคำแล้วมีผลทันที</p>
+            <div style="margin-bottom:12px;">
+                <label style="color:#888; display:block; margin-bottom:6px;">ไฟล์คำ (.csv ใน words/)</label>
+                <select id="insiderWordFile" class="search-box" style="width:100%; max-width:320px;"></select>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <label style="color:#888; display:block; margin-bottom:8px;">เพิ่มคำ (คั่นด้วยจุลภาค)</label>
+            <textarea id="newWords" class="broadcast-input" placeholder="แอปเปิ้ล, กล้วย, รถไฟ..."></textarea>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
                 <button class="btn-admin btn-success" onclick="addWords()">➕ เพิ่มคำ</button>
                 <button class="btn-admin btn-primary" onclick="viewWords()">👁️ ดูคำทั้งหมด</button>
             </div>
         </div>
         
         <div class="panel">
-            <div class="panel-header">
-                <h2>🛡️ ตั้งค่าความปลอดภัย</h2>
-            </div>
-            <div style="display: grid; gap: 15px;">
-                <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" id="enableBanSystem" checked style="width: 20px; height: 20px;">
-                    🚫 เปิดใช้งานระบบแบน
+            <div class="panel-header"><h2>🛡️ ความปลอดภัย</h2></div>
+            <div style="display:grid; gap:14px;">
+                <label style="color:#fff; display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="enableBanSystem" style="width:20px; height:20px; margin-top:2px;">
+                    <span><strong>ระบบแบน</strong><br><small style="color:#888;">ปิด = ผู้เล่นที่เคยถูกแบนยังเข้าเล่นได้</small></span>
                 </label>
-                <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" id="enableProfanityFilter" style="width: 20px; height: 20px;">
-                    🤬 กรองคำหยาบอัตโนมัติ
+                <label style="color:#fff; display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="enableProfanityFilter" style="width:20px; height:20px; margin-top:2px;">
+                    <span><strong>กรองคำหยาบในแชท</strong><br><small style="color:#888;">แทนที่คำต้องห้ามด้วย ***</small></span>
                 </label>
-                <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" id="requireApproval" style="width: 20px; height: 20px;">
-                    ✅ ผู้เล่นใหม่ต้องได้รับอนุมัติ
+                <label style="color:#fff; display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="requireApproval" style="width:20px; height:20px; margin-top:2px;">
+                    <span><strong>ผู้เล่นใหม่ต้องอนุมัติ</strong><br><small style="color:#888;">อนุมัติได้จากแท็บผู้เล่น</small></span>
                 </label>
             </div>
         </div>
@@ -1032,11 +1017,9 @@
             <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #444;">
                 <h4 style="color: #f39c12; margin-bottom: 10px;">🆕 What's New in v<%= appVersion %></h4>
                 <ul style="color: #888; line-height: 1.8; padding-left: 20px;">
-                    <li>นายกต้องเปิดตัวเองก่อน ถึงจะได้ 2 เสียง</li>
-                    <li>ข้ามโหวตเกินครึ่งหรือโหวตครบทุกคน เกมจะตัดผลทันที</li>
-                    <li>หมอช่วยได้รวม 2 ครั้ง ส่วนบอดี้การ์ดเกราะแตกหลังกันสำเร็จ</li>
-                    <li>Seer กับแม่มดถูกล็อกตามรอบ และตอนเช้าจะไม่เฉลยว่าใครคือ Fool</li>
-                    <li>หน้าแอดมินกับหน้าตั้งค่าแสดงเลขเวอร์ชันตรงกับแพทปัจจุบันแล้ว</li>
+                    <li>โหมด Spyfall ใหม่ — 4–8 คน ถาม–ตอบ โหวตจับสายลับ</li>
+                    <li>18+ สถานที่ สถิติ Spyfall ในโปรไฟล์</li>
+                    <li>หัวหน้าห้องจบช่วงคุยได้ ตั้งเวลาคุย/โหวตตอนสร้างห้อง</li>
                 </ul>
             </div>
         </div>
@@ -1150,6 +1133,7 @@ $(function() {
                 isAuthenticated = true;
                 loadData();
                 loadLogs();
+                loadGameSettingsTab();
             } else if (!silent) {
                 console.error('[Admin] Authentication failed:', response.error);
                 Swal.fire({
@@ -1173,6 +1157,9 @@ $(function() {
         $(this).addClass('active');
         $('.tab-content').removeClass('active');
         $('#tab-' + tab).addClass('active');
+        if (tab === 'settings') {
+            loadGameSettingsTab();
+        }
     });
     
     // Search players
@@ -1411,14 +1398,21 @@ $(function() {
             
             const statusBadge = isBanned 
                 ? '<span class="status-badge status-banned">แบน</span>'
-                : (player.isCleanupCandidate
+                : (player.isPendingApproval
+                    ? '<span class="status-badge status-playing">รออนุมัติ</span>'
+                    : (player.isCleanupCandidate
                     ? '<span class="status-badge status-ghost">cleanup</span>'
-                    : (isRecent ? '<span class="status-badge status-online">ออนไลน์</span>' : '<span class="status-badge status-offline">ออฟไลน์</span>'));
+                    : (isRecent ? '<span class="status-badge status-online">ออนไลน์</span>' : '<span class="status-badge status-offline">ออฟไลน์</span>')));
             const categoryBadge = `<span class="status-badge ${categoryClass}">${escapeHtml(player.categoryLabel || player.category || 'unknown')}</span>`;
             
             const actions = isBanned 
                 ? `<button class="action-btn unban" onclick="unbanPlayer('${player.playerId}')">ปลดแบน</button>`
                 : `<button class="action-btn ban" onclick="banPlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">แบน</button>`;
+            const approvalAction = player.isPendingApproval
+                ? `<button class="action-btn success" onclick="setPlayerApproval('${player.playerId}', true, '${escapeHtml(player.playerName)}')">อนุมัติ</button>`
+                : (player.approved === false
+                    ? `<button class="action-btn success" onclick="setPlayerApproval('${player.playerId}', true, '${escapeHtml(player.playerName)}')">อนุมัติ</button>`
+                    : '');
             const displayName = escapeHtml(player.displayName || player.playerName);
             const siteAdminBadge = player.isSiteAdmin ? '<span class="status-badge status-banned" style="margin-left:8px;">Site Admin</span>' : '';
             const siteAdminAction = player.isSiteAdmin
@@ -1441,6 +1435,7 @@ $(function() {
                     <td class="last-seen">${lastSeen}</td>
                     <td>
                         ${actions}
+                        ${approvalAction}
                         ${siteAdminAction}
                         <button class="action-btn edit" onclick="editPlayerName('${player.playerId}', '${escapeHtml(player.playerName)}')">แก้ไข</button>
                         <button class="action-btn delete" onclick="deletePlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">ลบ</button>
@@ -1763,6 +1758,17 @@ $(function() {
     
     // ========== Admin Actions ==========
     
+    window.setPlayerApproval = function(playerId, approved, playerName) {
+        socket.emit('admin_setPlayerApproval', { playerId, approved }, function(res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: approved ? `อนุมัติ ${playerName} แล้ว` : `ยกเลิกอนุมัติ ${playerName}`, timer: 1200, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                loadData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
+            }
+        });
+    };
+
     window.banPlayer = function(playerId, playerName) {
         Swal.fire({
             title: '🚫 แบนผู้เล่น',
@@ -2892,16 +2898,132 @@ $(function() {
     });
     
     // ========== Settings Functions ==========
-    window.saveGameSettings = function() {
-        const settings = {
-            defaultTimer: parseInt($('#defaultTimer').val()),
-            minPlayers: parseInt($('#minPlayers').val()),
-            maxPlayers: parseInt($('#maxPlayers').val()),
-            wordCategory: $('#wordCategory').val()
+    let adminGameSettingsPayload = null;
+    const MODE_SETTING_META = {
+        insider: { emoji: '🎯', title: 'Insider', accent: '#3498db' },
+        werewolf: { emoji: '🐺', title: 'Werewolf', accent: '#e74c3c' },
+        blackmarket: { emoji: '🎩', title: 'Black Market', accent: '#f39c12' },
+        spyfall: { emoji: '🕵️', title: 'Spyfall', accent: '#1abc9c' }
+    };
+
+    function renderGameSettingsModeCards() {
+        const $container = $('#gameSettingsModeCards');
+        if (!$container.length || !adminGameSettingsPayload) {
+            return;
+        }
+        const stored = adminGameSettingsPayload.settings?.modes || {};
+        const cards = (adminGameSettingsPayload.modeDefaults || []).map(function(mode) {
+            const meta = MODE_SETTING_META[mode.id] || { emoji: '🎮', title: mode.label, accent: '#888' };
+            const modeStored = stored[mode.id] || {};
+            const maxVal = mode.defaultMaxPlayers != null ? mode.defaultMaxPlayers : mode.maxPlayers;
+            let extraFields = '';
+            if (mode.id !== 'werewolf') {
+                const roundVal = modeStored.defaultRoundTimeMinutes != null
+                    ? modeStored.defaultRoundTimeMinutes
+                    : mode.defaultRoundTimeMinutes;
+                const roundLabel = mode.id === 'spyfall' ? 'เวลาคุย (นาที)' : 'เวลารอบ (นาที)';
+                extraFields += `
+                    <label style="color:#888; font-size:0.85em; display:block; margin-bottom:4px;">${roundLabel}</label>
+                    <input type="number" class="search-box mode-round-time" data-mode="${mode.id}" style="width:100%; margin-bottom:10px;" min="1" max="60" step="${mode.id === 'spyfall' ? '1' : '1'}" value="${roundVal}">
+                `;
+            }
+            if (mode.id === 'spyfall') {
+                const voteVal = modeStored.defaultVoteTimeMinutes != null
+                    ? modeStored.defaultVoteTimeMinutes
+                    : mode.defaultVoteTimeMinutes;
+                extraFields += `
+                    <label style="color:#888; font-size:0.85em; display:block; margin-bottom:4px;">เวลาโหวต (นาที)</label>
+                    <input type="number" class="search-box mode-vote-time" data-mode="${mode.id}" style="width:100%; margin-bottom:10px;" min="0.5" max="10" step="0.5" value="${voteVal}">
+                `;
+            }
+            if (mode.id === 'insider') {
+                extraFields += `
+                    <label style="display:flex; align-items:center; gap:8px; color:#ddd; font-size:0.9em; margin-bottom:8px; cursor:pointer;">
+                        <input type="checkbox" class="mode-traitor-optional" data-mode="insider" ${modeStored.traitorOptional !== false ? 'checked' : ''}>
+                        จอมบงการไม่บังคับ
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; color:#ddd; font-size:0.9em; cursor:pointer;">
+                        <input type="checkbox" class="mode-dual-traitor" data-mode="insider" ${modeStored.dualTraitorDefault ? 'checked' : ''}>
+                        เปิด 2 จอมบงการเป็นค่าเริ่มต้น
+                    </label>
+                `;
+            }
+            if (mode.id === 'werewolf') {
+                extraFields += `<p style="color:#777; font-size:0.82em; margin:0;">Werewolf ใช้เวลาเฟสใน engine คงที่ — ปรับได้แค่จำนวนคนสูงสุด</p>`;
+            }
+            return `
+                <div style="background:rgba(255,255,255,0.04); border:1px solid ${meta.accent}33; border-radius:12px; padding:14px;">
+                    <div style="font-weight:700; color:${meta.accent}; margin-bottom:10px;">${meta.emoji} ${meta.title}</div>
+                    <p style="color:#777; font-size:0.8em; margin:0 0 10px;">เล่นได้ ${mode.minPlayers}–${mode.maxPlayers} คน</p>
+                    <label style="color:#888; font-size:0.85em; display:block; margin-bottom:4px;">ผู้เล่นสูงสุด (ค่าเริ่มต้น)</label>
+                    <input type="number" class="search-box mode-max-players" data-mode="${mode.id}" style="width:100%; margin-bottom:10px;" min="${mode.minPlayers}" max="${mode.maxPlayers}" value="${maxVal}">
+                    ${extraFields}
+                </div>
+            `;
+        });
+        $container.html(cards.join(''));
+    }
+
+    function collectGameSettingsForm() {
+        const modes = {};
+        $('.mode-max-players').each(function() {
+            const modeId = $(this).data('mode');
+            modes[modeId] = modes[modeId] || {};
+            modes[modeId].defaultMaxPlayers = parseInt($(this).val(), 10);
+        });
+        $('.mode-round-time').each(function() {
+            const modeId = $(this).data('mode');
+            modes[modeId] = modes[modeId] || {};
+            modes[modeId].defaultRoundTimeMinutes = parseFloat($(this).val());
+        });
+        $('.mode-vote-time').each(function() {
+            const modeId = $(this).data('mode');
+            modes[modeId] = modes[modeId] || {};
+            modes[modeId].defaultVoteTimeMinutes = parseFloat($(this).val());
+        });
+        modes.insider = modes.insider || {};
+        modes.insider.traitorOptional = $('.mode-traitor-optional').is(':checked');
+        modes.insider.dualTraitorDefault = $('.mode-dual-traitor').is(':checked');
+        return {
+            modes: modes,
+            insider: { wordFile: $('#insiderWordFile').val() },
+            security: {
+                banSystemEnabled: $('#enableBanSystem').is(':checked'),
+                profanityFilterEnabled: $('#enableProfanityFilter').is(':checked'),
+                requireNewPlayerApproval: $('#requireApproval').is(':checked')
+            }
         };
-        
+    }
+
+    function applyGameSettingsPayload(payload) {
+        adminGameSettingsPayload = payload;
+        const security = payload.settings?.security || {};
+        $('#enableBanSystem').prop('checked', security.banSystemEnabled !== false);
+        $('#enableProfanityFilter').prop('checked', !!security.profanityFilterEnabled);
+        $('#requireApproval').prop('checked', !!security.requireNewPlayerApproval);
+        const $wordSelect = $('#insiderWordFile');
+        $wordSelect.empty();
+        (payload.wordFiles || []).forEach(function(file) {
+            $wordSelect.append(`<option value="${escapeHtml(file.id)}">${escapeHtml(file.filename)}</option>`);
+        });
+        $wordSelect.val(payload.settings?.insider?.wordFile || 'famille');
+        $('#insiderWordCountBadge').text(`📚 ${payload.insiderWordCount || 0} คำในไฟล์ที่เลือก`);
+        renderGameSettingsModeCards();
+    }
+
+    function loadGameSettingsTab() {
+        socket.emit('admin_getGameSettings', {}, function(res) {
+            if (res.success) {
+                applyGameSettingsPayload(res);
+            }
+        });
+    }
+
+    window.saveGameSettings = function() {
+        const settings = collectGameSettingsForm();
         socket.emit('admin_saveSettings', settings, function(res) {
             if (res.success) {
+                applyGameSettingsPayload(res);
                 Swal.fire({ icon: 'success', title: 'บันทึกการตั้งค่าสำเร็จ', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
             } else {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
@@ -2917,10 +3039,11 @@ $(function() {
         }
         
         const words = wordsText.split(',').map(w => w.trim()).filter(w => w);
-        socket.emit('admin_addWords', { words }, function(res) {
+        socket.emit('admin_addWords', { words, wordFile: $('#insiderWordFile').val() }, function(res) {
             if (res.success) {
-                Swal.fire({ icon: 'success', title: `เพิ่ม ${res.addedCount} คำสำเร็จ`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                Swal.fire({ icon: 'success', title: `เพิ่ม ${res.addedCount} คำสำเร็จ (รวม ${res.total})`, timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
                 $('#newWords').val('');
+                $('#insiderWordCountBadge').text(`📚 ${res.total} คำในไฟล์ที่เลือก`);
             } else {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
             }
@@ -2928,7 +3051,7 @@ $(function() {
     };
     
     window.viewWords = function() {
-        socket.emit('admin_getWords', {}, function(res) {
+        socket.emit('admin_getWords', { wordFile: $('#insiderWordFile').val() }, function(res) {
             if (res.success) {
                 Swal.fire({
                     title: '📝 คำในเกมทั้งหมด',

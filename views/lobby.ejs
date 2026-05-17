@@ -1509,24 +1509,24 @@ $(function() {
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        รอบนี้เราเก็บบัคจุกจิก เพิ่มของเล็ก ๆ ที่ช่วยให้เล่นง่ายขึ้น และทำให้โหมด Werewolf ลื่นกับนิ่งกว่าเดิม
+                        รอบใหญ่ครั้งนี้เพิ่มโหมด <strong>Spyfall</strong> เล่นได้ครบในห้อง — สายลับไม่รู้สถานที่ คนอื่นรู้ คุยแล้วโหวตจับ
                     </p>
                     
-                    <div style="background: rgba(192, 57, 43, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #c0392b; margin-bottom: 15px;">
-                        <h4 style="color: #ffb4a8; margin: 0 0 10px 0;">🐺 ไฮไลต์ v<%= appVersion %></h4>
+                    <div style="background: rgba(26, 188, 156, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #1abc9c; margin-bottom: 15px;">
+                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🕵️ ไฮไลต์ v<%= appVersion %></h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>Werewolf เสถียรกว่าเดิม</strong> จังหวะกลางคืน กลางวัน และการตัดสินผลนิ่งขึ้น เล่นต่อเนื่องได้ลื่นกว่าเดิม</li>
-                            <li><strong>แก้บัคจุกจิกหลายจุด</strong> ลดอาการที่เกมค้างหรือจังหวะบางอย่างดูแปลกตอนเล่นหลายรอบติด</li>
-                            <li><strong>เพิ่มของเล็ก ๆ ให้ใช้ง่ายขึ้น</strong> หน้าต่าง ๆ อ่านง่ายขึ้นและดูอัปเดตล่าสุดได้ชัดกว่าเดิม</li>
+                            <li><strong>โหมด Spyfall ใหม่</strong> 4–8 คน แจกบท → ถาม–ตอบ → โหวตจับสายลับ รอบเดียวจบ</li>
+                            <li><strong>18+ สถานที่</strong> สุ่มทุกรอบ สายลับเห็นรายการสถานที่เพื่อเดา (ไม่เห็นคำตอบจริง)</li>
+                            <li><strong>หัวหน้าห้องจบช่วงคุยได้</strong> ตั้งเวลาคุย/โหวตตอนสร้างห้อง โหวตครบหรือหมดเวลาระบบสรุปผลเอง</li>
                         </ul>
                     </div>
 
                     <div style="background: rgba(52, 152, 219, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 รอบนี้ได้อะไรเพิ่มบ้าง</h4>
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 เล่นยังไง (สั้น ๆ)</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>หน้า <strong>Settings</strong> อ่านอัปเดตของเกมได้ง่ายขึ้น</li>
-                            <li>หน้าเล่นและหน้าห้องเกลางานให้อ่านสถานะได้ไวขึ้นเล็กน้อย</li>
-                            <li>โดยรวมเน้นให้เข้าเกมไว เล่นต่อไว และไม่สะดุดระหว่างรอบ</li>
+                            <li><strong>พลเมือง</strong> รู้สถานที่ — ถาม–ตอบให้จับสายลับโดยไม่เปิดเผยที่ตรง ๆ</li>
+                            <li><strong>สายลับ</strong> ไม่รู้สถานที่ — ฟังแล้วเดาให้เนียน รอดถ้าโหวตไม่จับได้หรือเสมอ</li>
+                            <li>สร้างห้องเลือกโหมด <strong>Spyfall</strong> หรือใช้ชื่อห้อง <strong>วงสายลับสถานที่</strong> แล้วเริ่มเกมได้เลย</li>
                         </ul>
                     </div>
                     
@@ -1535,6 +1535,11 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #ffb4a8; margin: 10px 0 8px 0;">v4.1.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>Werewolf เสถียรกว่าเดิม จังหวะกลางคืน/กลางวันนิ่งขึ้น</li>
+                                <li>แก้บัคจุกจิกและเกลา UI ให้อ่านสถานะง่ายขึ้น</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 10px 0;">✨ แพทก่อนหน้ายังมีอะไรอยู่บ้าง</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>Werewolf เล่นได้เต็มระบบแล้ว ทั้งกลางคืน กลางวัน บทบาท และเงื่อนไขชนะ</li>

@@ -67,6 +67,23 @@ function run() {
     assert.strictEqual(room.gameState.phase, 'finished');
     assert.strictEqual(room.gameState.winner.team, 'citizens');
 
+    const tieRoom = createMockRoom(4);
+    spyfallEngine.startGame(tieRoom);
+    spyfallEngine.advancePhase(tieRoom);
+    spyfallEngine.endDiscussionEarly(tieRoom);
+    const tieSpyId = tieRoom.gameState.spyPlayerId;
+    const tieCitizens = tieRoom.gameState.players.filter(p => p.playerId !== tieSpyId);
+    const tieTargetA = tieCitizens[0].playerId;
+    const tieTargetB = tieCitizens[1].playerId;
+    const tieSpy = tieRoom.gameState.players.find(p => p.playerId === tieSpyId);
+    spyfallEngine.submitVote(tieRoom, tieSpy.playerId, tieTargetA);
+    spyfallEngine.submitVote(tieRoom, tieCitizens[0].playerId, tieTargetB);
+    spyfallEngine.submitVote(tieRoom, tieCitizens[1].playerId, tieTargetA);
+    spyfallEngine.submitVote(tieRoom, tieCitizens[2].playerId, tieTargetB);
+    assert.strictEqual(tieRoom.gameState.phase, 'finished');
+    assert.strictEqual(tieRoom.gameState.winner.team, 'spy');
+    assert.strictEqual(tieRoom.gameState.winner.wasTie, true);
+
     console.log('smoke-spyfall: OK');
 }
 
