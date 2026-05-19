@@ -48,6 +48,15 @@ function run() {
     assert.strictEqual(citizenView.self.isSpy, false);
     assert.strictEqual(spyView.location, null);
     assert.ok(citizenView.location && citizenView.location.name);
+    assert.ok(citizenView.self.locationRoleTitle, 'citizen should have a location role');
+    assert.strictEqual(spyView.self.locationRoleTitle, null);
+
+    const allJobs = new Set(
+        room.gameState.players
+            .filter(p => p.playerId !== spyId)
+            .map(p => p.locationRoleTitle)
+    );
+    assert.strictEqual(allJobs.size, room.gameState.players.length - 1, 'each citizen should get a distinct location role');
 
     spyfallEngine.advancePhase(room);
     assert.strictEqual(room.gameState.phase, 'discussion');

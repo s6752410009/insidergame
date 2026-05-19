@@ -9,7 +9,7 @@ const ROLE_DEFINITIONS = {
         id: ROLE_CITIZEN,
         icon: '🕵️',
         title: 'พลเมือง',
-        summary: 'คุณรู้ว่าอยู่ที่ไหน — ถาม–ตอบให้จับสายลับโดยไม่เปิดเผยสถานที่'
+        summary: 'คุณรู้สถานที่และบทในที่นั้น — ถาม–ตอบให้จับสายลับโดยไม่เปิดเผยตรงๆ'
     },
     [ROLE_SPY]: {
         id: ROLE_SPY,
@@ -38,6 +38,32 @@ const LOCATIONS = [
     { id: 'supermarket', icon: '🛒', name: 'ซูเปอร์มาร์เก็ต', hint: 'รถเข็น ชั้นวาง แคชเชียร์ โปรโมชัน' },
     { id: 'zoo', icon: '🦁', name: 'สวนสัตว์', hint: 'กรง ไกด์ สัตว์ป่า ตั๋วเข้าชม' },
     { id: 'wedding', icon: '💒', name: 'งานแต่งงาน', hint: 'เจ้าบ่าว เจ้าสาว ช่อดอกไม้ แขก' }
+];
+
+/** บทในสถานที่ (คนละบท) — สายลับไม่ได้รับบทนี้ */
+const LOCATION_ROLES_BY_ID = {
+    school: ['ครูผู้สอน', 'นักเรียน', 'ครูใหญ่', 'ภารโรง', 'พยาบาลโรงเรียน', 'บรรณารักษ์', 'โค้ชกีฬา', 'นักเรียนใหม่'],
+    hospital: ['แพทย์', 'พยาบาล', 'ผู้ป่วยในเตียง', 'เจ้าหน้าที่เวร', 'รังสีแพทย์', 'เภสัชกร', 'คนไข้ฉุกเฉิน', 'ญาติผู้ป่วย'],
+    submarine: ['กัปตัน', 'ลูกเรือห้องเครื่อง', 'พ่อครัว', 'มัคคุเทศก์', 'ลูกเรือเฝ้า', 'ช่างซ่อม', 'นักวิทยาศร์', 'ลูกเรือใหม่'],
+    sushi: ['เชฟมือหลัก', 'ผู้ช่วยเชฟ', 'พนักงานเสิร์ฟ', 'ลูกค้าประจำ', 'คนทำความสะอาด', 'พนักงานแคชเชียร์', 'นักวิจารณ์อาหาร', 'เด็กเสิร์ฟ'],
+    space: ['ผู้บัญชาการ', 'นักบินอวกาศ', 'วิศวกรระบบ', 'แพทย์อวกาศ', 'นักวิทยาศร์', 'ช่างซ่อม', 'ผู้เชี่ยวชาญการสื่อสาร', 'นักบินฝึกหัด'],
+    bank: ['พนักงานเคาน์เตอร์', 'ผู้จัดการสาขา', 'รปภ.', 'ลูกค้า', 'พนักงานนิรภัย', 'ที่ปรึกษาการเงิน', 'คนทำความสะอาด', 'ผู้มาเยี่ยม'],
+    circus: ['ตัวตลก', 'นักเล่นกล', 'คนฝึกสัตว์', 'พนักงานขายตั๋ว', 'ช่างแสง', 'นักแสดงไฟ', 'คนดูแลม้า', 'แขก VIP'],
+    police: ['สารวัตร', 'ตำรวจสายสืบ', 'ตำรวจเวร', 'ผู้ต้องหา', 'พยาน', 'ทนาย', 'ช่างถ่ายรูปหลักฐาน', 'เจ้าหน้าที่รับแจ้ง'],
+    beach: ['ไลฟ์การ์ด', 'พ่อค้าเช่าร่ม', 'นักท่องคลื่น', 'ครอบครัวมาเที่ยว', 'ช่างภาพ', 'พนักงานบาร์ริมหาด', 'คนขายของฝาก', 'นักดำน้ำตื้น'],
+    casino: ['เจ้ามือ', 'เจ้าหน้าที่รปภ.', 'นักพนัน', 'พนักงานบาร์', 'ผู้จัดการพื้น', 'เคาน์เตอร์แลกชิป', 'นักเล่นไพ่', 'คนดูแลเครื่องดื่ม'],
+    theater: ['นักแสดงนำ', 'ผู้กำกับ', 'ช่างแสง', 'ช่างเสียง', 'พนักงานขายตั๋ว', 'ตัวประกอบ', 'ช่างเวที', 'ผู้ชมแถวหน้า'],
+    airport: ['พนักงานเช็กอิน', 'เจ้าหน้าที่ความปลอดภัย', 'นักเดินทาง', 'พนักงานต้อนรับ', 'ช่างซ่อมเครื่องบิน', 'พนักงานขนส่ง', 'ไกด์ทัวร์', 'ผู้โดยสารรอต่อ'],
+    library: ['บรรณารักษ์', 'นักอ่านประจำ', 'นักศึกษา', 'เด็กนักเรียนมาค้นความ', 'อาสาสมัคร', 'คนดูแลห้องอ่าน', 'นักวิจัย', 'ผู้มาใช้คอม'],
+    factory: ['หัวหน้ากะ', 'พนักงานสายพาน', 'ช่างซ่อม', 'ควบคุมคุณภาพ', 'คนขับรถโฟล์คลิฟต์', 'พนักงานคลัง', 'วิศวกรโรงงาน', 'ฝึกงาน'],
+    temple: ['พระ', 'เณร', 'ผู้ดูแลวัด', 'ผู้มาทำบุญ', 'พ่อค้าเครื่องบูชา', 'ช่างภาพงานบุญ', 'เจ้าหน้าที่จอดรถ', 'แขกร่วมพิธี'],
+    supermarket: ['แคชเชียร์', 'พนักงานเติมของ', 'ผู้จัดการแผนก', 'ลูกค้าประจำ', 'พนักงานรักษาความปลอดภัย', 'คนขับรถส่งของ', 'พนักงานโปรโมชัน', 'ช็อปปิ้งด่วน'],
+    zoo: ['ไกด์นำชม', 'สัตวแพทย์', 'พนักงานดูแลกรง', 'นักเรียนทัศนศึกษา', 'ช่างภาพ', 'พ่อค้าของที่ระลึก', 'ผู้เยี่ยมชม', 'พนักงานขายตั๋ว'],
+    wedding: ['เจ้าบ่าว', 'เจ้าสาว', 'เพื่อนเจ้าสาว', 'เพื่อนเจ้าบ่าว', 'MC', 'ช่างภาพ', 'แขกโต๊ะ VIP', 'พ่อครัวงานเลี้ยง']
+};
+
+const GENERIC_LOCATION_ROLES = [
+    'ผู้จัดการ', 'พนักงานหน้า', 'ลูกค้า', 'ผู้เยี่ยมชม', 'รปภ.', 'ช่าง', 'คนส่งของ', 'ผู้มาใหม่'
 ];
 
 function shuffle(items) {
@@ -86,6 +112,7 @@ function createPlayerState(player, context = {}) {
         permission: context.isAdmin ? 'admin' : null,
         role: '',
         roleInfo: null,
+        locationRoleTitle: null,
         hasVoted: false,
         voteTargetId: null
     };
@@ -150,6 +177,48 @@ function getAllLocations() {
     return [...LOCATIONS, ...extra];
 }
 
+function getLocationRolePool(location) {
+    if (location?.roles && Array.isArray(location.roles) && location.roles.length > 0) {
+        return location.roles.map(r => String(r).trim()).filter(Boolean);
+    }
+    const preset = LOCATION_ROLES_BY_ID[location?.id];
+    if (preset && preset.length > 0) {
+        return [...preset];
+    }
+    const fromHint = String(location?.hint || '')
+        .split(/[\s,，、]+/)
+        .map(s => s.trim())
+        .filter(s => s.length >= 2);
+    if (fromHint.length >= 4) {
+        return fromHint.slice(0, 8);
+    }
+    return [...GENERIC_LOCATION_ROLES];
+}
+
+function assignLocationRoles(room, location, spyPlayerId) {
+    const citizens = shuffle(getActivePlayers(room).filter(p => p.playerId !== spyPlayerId));
+    const pool = shuffle(getLocationRolePool(location));
+    const n = citizens.length;
+    if (pool.length >= n) {
+        const picked = shuffle(pool).slice(0, n);
+        citizens.forEach((player, index) => {
+            player.locationRoleTitle = picked[index];
+        });
+    } else {
+        const extended = [];
+        while (extended.length < n) {
+            extended.push(...shuffle(pool));
+        }
+        citizens.forEach((player, index) => {
+            player.locationRoleTitle = extended[index];
+        });
+    }
+    const spy = getPlayer(room, spyPlayerId);
+    if (spy) {
+        spy.locationRoleTitle = null;
+    }
+}
+
 function pushHistory(room, icon, text, tone = 'neutral') {
     room.gameState.history.unshift({
         icon,
@@ -160,7 +229,7 @@ function pushHistory(room, icon, text, tone = 'neutral') {
     room.gameState.history = room.gameState.history.slice(0, 24);
 }
 
-function assignRoles(room, spyPlayerId) {
+function assignRoles(room, spyPlayerId, location) {
     room.gameState.players.forEach(player => {
         if (player.playerId === spyPlayerId) {
             player.role = ROLE_SPY;
@@ -169,9 +238,11 @@ function assignRoles(room, spyPlayerId) {
             player.role = ROLE_CITIZEN;
             player.roleInfo = ROLE_DEFINITIONS[ROLE_CITIZEN];
         }
+        player.locationRoleTitle = null;
         player.hasVoted = false;
         player.voteTargetId = null;
     });
+    assignLocationRoles(room, location, spyPlayerId);
 }
 
 function startGame(room) {
@@ -196,7 +267,7 @@ function startGame(room) {
     room.gameState.statsRecordedAt = null;
     room.gameState.lastAction = Date.now();
 
-    assignRoles(room, spyPlayer.playerId);
+    assignRoles(room, spyPlayer.playerId, location);
     moveToRevealPhase(room);
     return room.gameState;
 }
@@ -205,7 +276,7 @@ function moveToRevealPhase(room) {
     room.gameState.phase = 'reveal';
     room.gameState.status = 'spyfall_reveal';
     setPhaseDeadline(room, REVEAL_PHASE_MS);
-    pushHistory(room, '🎭', 'แจกบทแล้ว — จำสถานที่หรือเล่นให้เนียน', 'gold');
+    pushHistory(room, '🎭', 'แจกสถานที่และบทในที่นั้นแล้ว — จำให้แม่น หรือเล่นให้เนียน', 'gold');
 }
 
 function moveToDiscussionPhase(room) {
@@ -458,6 +529,7 @@ function buildClientState(room, playerId) {
             role: self.role,
             roleInfo: self.roleInfo,
             isSpy,
+            locationRoleTitle: !isSpy ? (self.locationRoleTitle || null) : null,
             hasVoted: self.hasVoted,
             voteTargetId: self.voteTargetId
         },
@@ -470,10 +542,12 @@ function buildClientState(room, playerId) {
             hasVoted: room.gameState.phase === 'vote' ? !!room.gameState.votes[player.playerId] : false,
             voteCount: room.gameState.voteCounts?.[player.playerId] || 0,
             roleTitle: isFinished
-                ? (player.role === ROLE_SPY ? ROLE_DEFINITIONS[ROLE_SPY].title : ROLE_DEFINITIONS[ROLE_CITIZEN].title)
+                ? (player.role === ROLE_SPY
+                    ? ROLE_DEFINITIONS[ROLE_SPY].title
+                    : (player.locationRoleTitle || ROLE_DEFINITIONS[ROLE_CITIZEN].title))
                 : null,
             roleIcon: isFinished
-                ? (player.role === ROLE_SPY ? ROLE_DEFINITIONS[ROLE_SPY].icon : ROLE_DEFINITIONS[ROLE_CITIZEN].icon)
+                ? (player.role === ROLE_SPY ? ROLE_DEFINITIONS[ROLE_SPY].icon : '🎭')
                 : null,
             isSpy: isFinished ? player.role === ROLE_SPY : null
         })),
@@ -487,8 +561,8 @@ function buildClientState(room, playerId) {
         accusedPlayerId: isFinished ? room.gameState.accusedPlayerId : null,
         history: room.gameState.history || [],
         phaseTips: {
-            reveal: 'จำบทและสถานที่ — อีกไม่กี่วิจะเริ่มคุย',
-            discussion: 'ถามคำถามที่ตอบได้หลายทาง — อย่าเปิดเผยสถานที่ตรงๆ',
+            reveal: 'จำสถานที่และบทของคุณ — อีกไม่กี่วิจะเริ่มคุย',
+            discussion: 'ถาม–ตอบให้จับสายลับ — อย่าเปิดเผยสถานที่หรือบทตัวเองตรงๆ',
             vote: 'โหวตเลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)',
             finished: 'เกมจบแล้ว — กำลังกลับห้องรอ'
         }
@@ -498,7 +572,7 @@ function buildClientState(room, playerId) {
 module.exports = {
     id: 'spyfall',
     label: 'Spyfall',
-    description: 'สายลับในสถานที่ — ทุกคนรู้ที่ยกเว้นสายลับ คุยแล้วโหวตจับ',
+    description: 'สายลับในสถานที่ — พลเมืองรู้ที่และบทในที่นั้น สายลับไม่รู้ คุยแล้วโหวตจับ',
     minPlayers: 4,
     maxPlayers: 8,
     ROLE_SPY,
@@ -519,5 +593,6 @@ module.exports = {
     buildClientState,
     getDiscussionMs,
     getVoteMs,
-    getAllLocations
+    getAllLocations,
+    getLocationRolePool
 };

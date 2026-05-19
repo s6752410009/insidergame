@@ -745,7 +745,7 @@ $(function() {
         { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
-        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4-8 คน ถามตอบแล้วโหวตจับสายลับ', minPlayers: 4, maxPlayers: 8 }
+        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 }
     ];
     const serverModeDefaults = <%- JSON.stringify(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -939,8 +939,8 @@ $(function() {
                 border: 'rgba(94,234,212,0.28)',
                 badge: '🕶️ สายลับ สถานที่',
                 title: 'Spyfall',
-                summary: 'ทุกคนรู้สถานที่ยกเว้นสายลับ — คุยแล้วโหวตจับ',
-                bullets: ['4-8 คน', 'รอบเดียวจบ', 'ไม่มี GM']
+                summary: 'ทุกคนรู้สถานที่และบทในที่นั้นยกเว้นสายลับ — คุยแล้วโหวตจับ',
+                bullets: ['4-8 คน', 'บทในสถานที่คนละบท', 'รอบเดียวจบ', 'ไม่มี GM']
             }
         };
 

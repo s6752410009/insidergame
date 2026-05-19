@@ -649,10 +649,15 @@ $(function() {
 
     let body = '';
     if (state.phase === 'finished' && state.winner) {
+      const job = self.locationRoleTitle;
       body = '<div class="sf-role-card ' + (isSpy ? 'spy' : '') + '">' +
-        '<div class="sf-role-icon">' + escapeHtml(isSpy ? '🕶️' : '🕵️') + '</div>' +
-        '<div class="sf-role-name">' + escapeHtml(roleInfo.title || '-') + '</div>' +
-        '<p class="sf-role-summary">สถานที่คือ <strong>' + escapeHtml(state.winner.locationName || '-') + '</strong></p>' +
+        '<div class="sf-role-icon">' + escapeHtml(isSpy ? '🕶️' : '🎭') + '</div>' +
+        '<div class="sf-role-name">' + escapeHtml(isSpy ? (roleInfo.title || 'สายลับ') : (job || roleInfo.title || 'พลเมือง')) + '</div>' +
+        '<p class="sf-role-summary">' +
+          (isSpy
+            ? 'สถานที่คือ <strong>' + escapeHtml(state.winner.locationName || '-') + '</strong>'
+            : 'สถานที่ <strong>' + escapeHtml(state.winner.locationName || '-') + '</strong> · บทของคุณ <strong>' + escapeHtml(job || '-') + '</strong>') +
+        '</p>' +
       '</div>';
     } else if (isSpy) {
       body = '<div class="sf-role-card spy">' +
@@ -664,12 +669,14 @@ $(function() {
         }).join('') + '</div>' : '') +
       '</div>';
     } else if (location) {
+      const job = self.locationRoleTitle || '';
       body = '<div class="sf-role-card">' +
         '<div class="sf-role-icon">' + escapeHtml(location.icon || '📍') + '</div>' +
-        '<div class="sf-role-name">พลเมือง</div>' +
+        '<div class="sf-role-name">' + escapeHtml(job || 'พลเมือง') + '</div>' +
         '<div class="sf-location-name">' + escapeHtml(location.name) + '</div>' +
         '<p class="sf-location-hint">' + escapeHtml(location.hint) + '</p>' +
-        '<p class="sf-role-summary">อย่าเปิดเผยสถานที่ตรงๆ — ถามคนอื่นให้หลุดรูด</p>' +
+        '<p class="sf-role-summary">' + (job ? 'บทของคุณคือ <strong>' + escapeHtml(job) + '</strong> — ' : '') +
+        'อย่าเปิดเผยสถานที่หรือบทตัวเองตรงๆ — ถามคนอื่นให้หลุดรูด</p>' +
       '</div>';
     } else {
       body = '<div class="sf-stage-empty">รอเกมเริ่ม...</div>';

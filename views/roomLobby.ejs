@@ -1560,11 +1560,11 @@
         '<div class="bm-guide-inner">',
         '<p class="bm-guide-lead">🕶️ ทุกคนรู้สถานที่ยกเว้น <strong>สายลับ 1 คน</strong> · เล่น 4–8 คน</p>',
         '<div class="bm-guide-section"><h4>บทบาท</h4><ul>',
-        '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ ถาม–ตอบเพื่อจับสายลับ</li>',
-        '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่ ต้องเดาจากคำถาม</li>',
+        '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ + <strong>บทในที่นั้น</strong> (คนละบท) ถาม–ตอบเพื่อจับสายลับ</li>',
+        '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่และบท ต้องเดาจากคำถาม</li>',
         '</ul></div>',
         '<div class="bm-guide-section"><h4>3 ช่วง</h4><ol>',
-        '<li><b>เปิดบท</b> — จำสถานที่ (สายลับจำรายการที่เป็นไปได้)</li>',
+        '<li><b>เปิดบท</b> — จำสถานที่และบทของคุณ (สายลับเห็นแค่รายการสถานที่เพื่อเดา)</li>',
         '<li><b>คุย</b> — ถามคำถามที่ตอบได้หลายทาง หัวหน้าห้องกดจบคุยได้เมื่อพร้อมโหวต</li>',
         '<li><b>โหวต</b> — เลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)</li>',
         '</ol></div>',
@@ -2277,6 +2277,15 @@
       });
     });
 
+    // วิธีเล่น — ทุกคนในห้องกดได้ (ไม่จำกัดแค่ admin)
+    $('#btnBlackMarketHowTo').on('click', function() {
+      showBlackMarketLobbyGuide();
+    });
+
+    $('#btnSpyfallHowTo').on('click', function() {
+      showSpyfallLobbyGuide();
+    });
+
     // ===== Admin actions =====
     if (isAdmin) {
       // Kick player via icon
@@ -2542,14 +2551,6 @@
             });
           }
         });
-      });
-
-      $('#btnBlackMarketHowTo').on('click', function() {
-        showBlackMarketLobbyGuide();
-      });
-
-      $('#btnSpyfallHowTo').on('click', function() {
-        showSpyfallLobbyGuide();
       });
 
       $('#btnStartGameLobby').on('click', function () {
