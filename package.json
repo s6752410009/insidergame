@@ -1,6 +1,6 @@
 {
   "name": "concept-boardgame",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "dependencies": {
     "body-parser": "^1.20.4",
     "cookie-parser": "^1.4.7",

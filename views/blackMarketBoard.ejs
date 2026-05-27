@@ -1473,7 +1473,7 @@
         <div class="bm-card bm-card-stage" data-tour-id="stage">
           <div class="bm-card-header">
             <div>
-              <div class="bm-card-title">🎯 กดเล่นที่นี่</div>
+              <div class="bm-card-title">🎯 ตลาดกับแผนลงมือ</div>
             </div>
           </div>
           <div id="mainStage"></div>
@@ -1546,9 +1546,93 @@
         </div>
         <button id="bmHowToClose" type="button" class="bm-btn alt">ปิดคู่มือ</button>
       </div>
-      <div class="bm-manual-grid">
-        <div id="bmHowToOverview" class="bm-manual-column"></div>
-        <div id="bmHowToRole" class="bm-manual-column"></div>
+      <!-- Tabs Selector -->
+      <div class="bm-manual-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+        <button type="button" class="bm-manual-tab-btn active" data-tab="guide" style="background: rgba(255,255,255,0.1); border: none; padding: 10px 16px; border-radius: 12px; color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.05em; cursor: pointer; transition: all 0.2s ease;">📖 กติกา & บทบาทของคุณ</button>
+        <button type="button" class="bm-manual-tab-btn" data-tab="example" style="background: transparent; border: none; padding: 10px 16px; border-radius: 12px; color: #aaa; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.05em; cursor: pointer; transition: all 0.2s ease;">✨ ตัวอย่างการเล่น (Walkthrough)</button>
+      </div>
+
+      <!-- Tab Content 1: Rules & Roles -->
+      <div id="bmManualTabGuide">
+        <div class="bm-manual-grid">
+          <div id="bmHowToOverview" class="bm-manual-column"></div>
+          <div id="bmHowToRole" class="bm-manual-column"></div>
+        </div>
+      </div>
+
+      <!-- Tab Content 2: Simulated Playthrough Walkthrough -->
+      <div id="bmManualTabExample" style="display: none; text-align: left;">
+        <div style="padding: 10px; display: grid; gap: 20px;">
+          <div class="bm-manual-section">
+            <h3>✨ ตัวอย่างการจำลองการเล่น 1 ยก (ผู้เล่น 4 คน)</h3>
+            <p>เพื่อให้เข้าใจลำดับขั้นตอนเมื่อเฉลยการลงมือ และวิธีการใช้สกิลของแต่ละตำแหน่งในสถานการณ์จริง</p>
+          </div>
+          
+          <div class="bm-manual-section" style="background: rgba(0,0,0,0.25); border-radius: 16px; padding: 16px;">
+            <h3>👤 ผู้เล่นสมมติและบทบาท</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; font-size: 0.9em; margin-top: 8px;">
+              <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                <strong>กิตติ (บทเจ้าพ่อ 🎩)</strong><br>
+                💵 เงินเริ่ม: 5 | 👑 แต้ม: 0<br>
+                เป้าหมาย: เร่งแต้ม 👑 จากของเถื่อน
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                <strong>นิด (บทมือเก็บงาน 🔫)</strong><br>
+                💵 เงินเริ่ม: 5 | มีปืน 🔫 1 กระบอก<br>
+                เป้าหมาย: คอยเปิดงานยิงกวาดแต้ม
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                <strong>บอย (บทนายหน้า 🕴️)</strong><br>
+                💵 เงินเริ่ม: 5 | 👑 แต้ม: 0<br>
+                เป้าหมาย: ซื้อของถูก เจรจาทำดีล
+              </div>
+              <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                <strong>แอน (บทสายข่าว 🕶️)</strong><br>
+                💵 เงินเริ่ม: 5 | 👑 แต้ม: 0<br>
+                เป้าหมาย: สืบหาเป้าหมายและดีลร่วม
+              </div>
+            </div>
+          </div>
+
+          <div class="bm-manual-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="bm-manual-section">
+              <h3 style="color: #efd07a;">🛒 ช่วงที่ 1: ตลาดมืด (ซื้อของ)</h3>
+              <p>ในตลาดมีของ 3 ชิ้น: ลังสินค้า 📦 (ราคา 2), เกราะ 🦺 (ราคา 3), พาสปอร์ต 🛂 (ราคา 2)</p>
+              <div class="bm-manual-list">
+                <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: ซื้อ 📦 ลังสินค้า จ่าย 💵 2 (เงินเหลือ 3)</div>
+                <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: เลือก ผ่าน 🤐 (เงินเหลือ 5) เก็บปืนและทุนไว้พร้อมรบ</div>
+                <div class="bm-manual-line">• <b>บอย (นายหน้า)</b>: ซื้อ 🛂 พาสปอร์ต จ่าย 💵 1 (ราคาลด 1 จากสกิลนายหน้า 🕴️, เงินเหลือ 4)</div>
+                <div class="bm-manual-line">• <b>แอน (สายข่าว)</b>: เลือก ผ่าน 🤐 (เงินเหลือ 5)</div>
+              </div>
+            </div>
+
+            <div class="bm-manual-section">
+              <h3 style="color: #38bdf8;">🎯 ช่วงที่ 2: ลงมือ (ล็อกแผน)</h3>
+              <p>ทุกคนทำการล็อกเลือกแผนการลับของยกนี้แบบปิดข้อมูล:</p>
+              <div class="bm-manual-list">
+                <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: เลือก 📦 <b>ส่งของ</b> (ส่งลังสินค้าเถื่อน 📦 ในตัว)</div>
+                <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: เลือก 🔫 <b>สั่งเก็บ</b> (เป้าหมาย: กิตติ) จ่าย 💵 2 และใช้ปืน 🔫</div>
+                <div class="bm-manual-line">• <b>บอย (นายหน้า)</b>: เลือก 🤝 <b>เข้าดีล</b> (เป้าหมาย: แอน)</div>
+                <div class="bm-manual-line">• <b>แอน (สายข่าว)</b>: เลือก 🤝 <b>เข้าดีล</b> (เป้าหมาย: บอย)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bm-manual-section">
+            <h3 style="color: #f87171;">📢 ลำดับการเฉลยผลการเล่นเมื่อจบยก:</h3>
+            <div style="display: grid; gap: 12px; font-size: 0.92em; line-height: 1.6;">
+              <div style="background: rgba(46,204,113,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #2ecc71;">
+                <strong>1. ดีลสำเร็จทำงานก่อน:</strong> บอย 🤝 แอน ต่างฝ่ายต่างเข้าดีลใส่กันตรง ๆ -> ดีลสำเร็จ! ทั้งคู่ได้ 👑 +1 และ 💵 +1 คืนกระเป๋า (และพิเศษ! บอยมีสกิลนายหน้า 🕴️ จึงได้รับเงินเพิ่ม 💵 +2 รวมเป็นได้รับ 2!)
+              </div>
+              <div style="background: rgba(231,76,60,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #e74c3c;">
+                <strong>2. สั่งเก็บทำงานต่อมา:</strong> นิด 🔫 สั่งเก็บ กิตติ -> จ่ายเงิน 2 + ปืนเงียบลั่นไก -> กิตติไม่มีเกราะ 🦺 ป้องกันตัว และไม่ใช่ฟิกเซอร์ -> กิตติ <b>💀 ล้มทันที! (กระเป๋าฉีกเสียเงินครึ่งหนึ่ง และเปิดเผยบทบาทเจ้าพ่อ)</b> นิดได้ 🔥 ค่าหัวสะสม 2
+              </div>
+              <div style="background: rgba(148,163,184,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #94a3b8;">
+                <strong>3. แผนการส่งของคนล้ม:</strong> แผนส่งของของกิตติ ทำงานเป็นอันดับสุดท้าย -> เนื่องจากกิตติ <b>💀 ล้มลงไปแล้ว</b> ในยกนี้ -> แผนส่งของจึง <b>🚫 ล้มเหลวทันที</b> ลังสินค้าในตัวกิตติสูญหายไปฟรี ๆ และไม่ได้รับแต้ม 👑
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1576,7 +1660,7 @@
     let howToActive = false;
     let howToRestoreFocus = null;
     let showAdvancedActions = false;
-    let announcerExpanded = false;
+    let announcerExpanded = true;
     let simplePickMode = null;
 
 
@@ -2471,7 +2555,7 @@
       const expanded = announcerExpanded;
       $('#bmAnnouncerBar').html(
         '<button type="button" id="bmAnnouncerToggle" class="bm-announcer-toggle" aria-expanded="' + expanded + '">' +
-          '<span>📢 ' + escapeHtml(oneLine) + '</span>' +
+          '<span class="bm-announcer-title">📢 ผู้ดำเนินเกมประกาศ: ' + escapeHtml(oneLine) + '</span>' +
           '<span aria-hidden="true">' + (expanded ? '▲' : '▼') + '</span>' +
         '</button>' +
         (expanded
@@ -2997,7 +3081,139 @@
       `;
     }
 
-    function renderGuide() {}
+    function renderGuide() {
+      const playbook = getRolePlaybook();
+      const phase = currentState.phase;
+      
+      const steps = [];
+      
+      // Step 1: Opening
+      if (playbook.opening && playbook.opening.length > 0) {
+        steps.push({
+          title: '📖 การเปิดหมากของคุณ',
+          copy: playbook.opening[0]
+        });
+      } else {
+        steps.push({ title: '📖 การเปิดหมากของคุณ', copy: 'อ่านบทของตัวเองก่อนทุกยก แล้วเลือกทางที่ทำให้คุณได้ทั้งแต้มและทางหนี' });
+      }
+      
+      // Step 2: Early game
+      if (playbook.earlyGame && playbook.earlyGame.length > 0) {
+        steps.push({
+          title: '⏳ การเดินเกมต้นกระดาน',
+          copy: playbook.earlyGame[0]
+        });
+      } else {
+        steps.push({ title: '⏳ การเดินเกมต้นกระดาน', copy: 'ต้นโต๊ะให้ดูว่าใครสะสมทุน ใครสะสมของ และใครเริ่มเปิดหน้าเร็วเกินไป' });
+      }
+      
+      // Step 3: Tempo
+      if (playbook.tempo && playbook.tempo.length > 0) {
+        steps.push({
+          title: '⚡ จังหวะการเล่นหลัก',
+          copy: playbook.tempo[0]
+        });
+      } else {
+        steps.push({ title: '⚡ จังหวะการเล่นหลัก', copy: 'ถ้ายังอ่านโต๊ะไม่ออก ให้เริ่มจากสืบข่าวหรือเก็บทุนก่อน อย่ารีบเปิดหน้า' });
+      }
+      
+      // Step 4: Mid game
+      if (playbook.midGame && playbook.midGame.length > 0) {
+        steps.push({
+          title: '🔥 การขยายผลกลางกระดาน',
+          copy: playbook.midGame[0]
+        });
+      } else {
+        steps.push({ title: '🔥 การขยายผลกลางกระดาน', copy: 'กลางโต๊ะให้เลือกจังหวะที่อีกฝ่ายเริ่มเปิดไพ่ แล้วเปลี่ยนจุดเด่นเป็นแต้มทันที' });
+      }
+      
+      // Step 5: End game
+      if (playbook.endGame && playbook.endGame.length > 0) {
+        steps.push({
+          title: '👑 การปิดเกมช่วงท้ายยก',
+          copy: playbook.endGame[0]
+        });
+      } else {
+        steps.push({ title: '👑 การปิดเกมช่วงท้ายยก', copy: 'ปิดโต๊ะให้คิดทั้งแต้ม เงิน ค่าหัว และคนที่ยังยืนอยู่ ไม่ใช่มองแค่ยกตรงหน้า' });
+      }
+      
+      // Step 6: Partners
+      if (playbook.partnerRoles && playbook.partnerRoles.length > 0) {
+        steps.push({
+          title: '🤝 พันธมิตรที่เอื้อประโยชน์',
+          copy: playbook.partnerRoles[0]
+        });
+      } else {
+        steps.push({ title: '🤝 พันธมิตรที่เอื้อประโยชน์', copy: 'จับมือกับคนที่ทำให้จุดเด่นของบทคุณทำงานง่ายขึ้น แล้วแตกออกทันทีเมื่อโต๊ะเริ่มรู้ทัน' });
+      }
+      
+      // Step 7: Threats
+      if (playbook.specialThreats && playbook.specialThreats.length > 0) {
+        steps.push({
+          title: '⚠️ ภัยคุกคามที่ต้องระวัง',
+          copy: playbook.specialThreats[0]
+        });
+      } else {
+        steps.push({ title: '⚠️ ภัยคุกคามที่ต้องระวัง', copy: 'ระวังบทที่ตัดจุดเด่นของคุณโดยตรง และคนที่กำลังนำ' });
+      }
+      
+      // Step 8: Danger
+      if (playbook.danger && playbook.danger.length > 0) {
+        steps.push({
+          title: '🚫 จุดตายที่ห้ามทำเด็ดขาด',
+          copy: playbook.danger[0]
+        });
+      } else {
+        steps.push({ title: '🚫 จุดตายที่ห้ามทำเด็ดขาด', copy: 'อย่ากดแผนเพราะใจร้อน จังหวะผิดยกเดียวอาจทำให้ทั้งเงิน แต้ม และชีวิตหายพร้อมกัน' });
+      }
+
+      // Step 9: Phase specific guide
+      if (phase === 'market') {
+        steps.push({
+          title: '🛒 ช่วงตลาดมืด (Market)',
+          copy: 'เลือกซื้อสินค้าที่จำเป็นต่อสกิลของคุณ โดยใช้เงินดำระมัดระวังเพื่อไม่ให้ตังค์หมดก่อนช่วงลงมือ'
+        });
+      } else if (phase === 'action') {
+        steps.push({
+          title: '🎯 ช่วงลงมือเลือกแผน (Action)',
+          copy: 'เลือกกระทำการที่ส่งเสริมบทของคุณ หรือจะเลือกดีลกับคนอื่นเพื่อสะสมแต้มและเงินปันผล'
+        });
+      } else {
+        steps.push({
+          title: '🏁 รอสรุปผลยกถัดไป',
+          copy: 'รอให้ทุกคนล็อกแผนการให้ครบ เพื่อให้ระบบประมวลผลตามลำดับดีล -> สั่งเก็บ -> ส่งของ'
+        });
+      }
+      
+      // Step 10: Cash Management
+      steps.push({
+        title: '💵 การจัดการเงินดำ',
+        copy: 'ควรมีเงินสำรองติดตัวเสมอเพื่อจ่ายเป็นค่าลงแผนงาน (เช่น ดีล/สังหาร)'
+      });
+
+      // Step 11: Heat / Danger Alert
+      steps.push({
+        title: '🔥 การคุมค่าหัว',
+        copy: 'ค่าหัวที่สูงเกินไปจะทำให้เป็นเป้าหมายของมือเก็บงานได้ง่าย'
+      });
+
+      const html = `
+        <div class="bm-card-header">
+          <div>
+            <div class="bm-card-title">📖 พาเล่นโต๊ะนี้ (ไกด์สำหรับบทคุณ)</div>
+          </div>
+        </div>
+        <div class="bm-guide-grid">
+          ${steps.map(step => `
+            <div class="bm-guide-step">
+              <strong>${escapeHtml(step.title)}</strong>
+              <span>${escapeHtml(step.copy)}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      $('#guidePanel').html(html);
+    }
 
     function renderMainStage() {
       if (currentState.phase === 'market') {
@@ -3336,6 +3552,19 @@
     $(document).on('click', '#bmHowToOverlay', function(event) {
       if (event.target.id === 'bmHowToOverlay') {
         closeHowTo();
+      }
+    });
+
+    $(document).on('click', '.bm-manual-tab-btn', function() {
+      const tab = $(this).data('tab');
+      $('.bm-manual-tab-btn').removeClass('active').css({ 'background': 'transparent', 'color': '#aaa' });
+      $(this).addClass('active').css({ 'background': 'rgba(255,255,255,0.1)', 'color': '#fff' });
+      if (tab === 'guide') {
+        $('#bmManualTabGuide').show();
+        $('#bmManualTabExample').hide();
+      } else {
+        $('#bmManualTabGuide').hide();
+        $('#bmManualTabExample').show();
       }
     });
 

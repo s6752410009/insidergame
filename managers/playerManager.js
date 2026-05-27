@@ -200,7 +200,12 @@ function getRandomColor() {
 }
 
 function isValidPlayerId(playerId) {
-    return typeof playerId === 'string' && PLAYER_ID_REGEX.test(playerId.trim());
+    if (typeof playerId !== 'string') return false;
+    const cleanId = playerId.trim();
+    if (cleanId.startsWith('bot_')) {
+        return PLAYER_ID_REGEX.test(cleanId.substring(4));
+    }
+    return PLAYER_ID_REGEX.test(cleanId);
 }
 
 function hashPlayerId(playerId) {

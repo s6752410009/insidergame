@@ -701,6 +701,26 @@
     border-color: rgba(245, 200, 107, 0.55);
   }
 
+  #btnBlackMarketAddBots {
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.12);
+    color: #a7f3d0;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+
+  #btnBlackMarketAddBots:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.55);
+  }
+
   #btnSpyfallHowTo {
     padding: 10px 14px;
     border-radius: 14px;
@@ -1167,6 +1187,7 @@
         </span>
         <button type="button" id="btnBlackMarketHowTo" class="<%= room.gameMode === 'blackmarket' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnBlackMarketAddBots" class="<%= (room.gameMode === 'blackmarket' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เติมบอทเพื่อทดสอบ</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
     </div>
@@ -1524,6 +1545,7 @@
 
       setElementHidden('#btnBlackMarketHowTo', resolvedMode !== 'blackmarket');
       setElementHidden('#btnSpyfallHowTo', resolvedMode !== 'spyfall');
+      setElementHidden('#btnBlackMarketAddBots', !(resolvedMode === 'blackmarket' && isAdmin));
 
       if (lobbySpotlight) {
         if (resolvedMode === 'spyfall') {
@@ -1622,15 +1644,15 @@
         return '<div class="bm-guide-action"><b>' + action.icon + ' ' + action.label + '</b><span>' + action.effect + '</span></div>';
       }).join('');
 
-      return [
-        '<div class="bm-guide-inner">',
+      const rulesContent = [
+        '<div id="bm-lobby-tab-rules-content">',
         '<p class="bm-guide-lead">🎯 เป้าหมาย: สะสม 👑 มากสุดใน 5 ยก · เล่น 4–7 คน · บทสุ่มไม่ซ้ำกัน</p>',
         '<div class="bm-guide-section"><h4>หนึ่งยกมี 2 ช่วง</h4><ol>',
         '<li><b>ตลาด</b> — เลือกซื้อของ 1 ชิ้น หรือกดผ่าน (มีเวลาจำกัด)</li>',
         '<li><b>ลงมือ</b> — เลือกทำอย่างเดียวต่อยก แล้วล็อกจนกว่าทุกคนเลือกครบ</li>',
         '</ol><p class="bm-guide-muted">💵 เงินซื้อของ · 🔥 ค่าหัวสูงโดนเก็บง่าย · 👑 อิทธิพล = คะแนนชนะ</p></div>',
         '<div class="bm-guide-section"><h4>ปุ่มลงมือ (เลือกอย่างเดียวต่อยก)</h4>',
-        '<p class="bm-guide-muted">มือใหม่ใช้ 3 ปุ่มใหญ่: ส่งของ / สืบ / ผ่าน — แผนอื่นอยู่ใน「แผนขั้นสูง」</p>',
+        '<p class="bm-guide-muted">มือใหม่ใช้ 3 ปุ่มใหญ่: ส่งของ / สืบ / ผ่าน — แฝงความลึกในปุ่มอื่นๆ</p>',
         '<div class="bm-guide-actions">', actionsHtml, '</div></div>',
         '<div class="bm-guide-section"><h4>บทบาท 7 แบบ (อ่านของตัวเองตอนเริ่มเกม)</h4>',
         '<p class="bm-guide-muted">แต่ละคนได้บทไม่ซ้ำ — สกิลทำงานตลอดเกม ไม่ต้องกดเปิด</p>',
@@ -1645,6 +1667,57 @@
         '<li>ดีลต้อง <b>สองฝ่ายเลือกกัน</b> ถึงจะสำเร็จ</li>',
         '<li>หักหลังใช้ได้เมื่อเป้า <b>เปิดดีลกับคุณ</b></li>',
         '</ul></div>',
+        '</div>'
+      ].join('');
+
+      const exampleContent = [
+        '<div id="bm-lobby-tab-example-content" style="display: none; text-align: left; font-family: \'Bai Jamjuree\', sans-serif;">',
+        '<p style="color: #cbd5e1; font-size: 0.9em; line-height: 1.5; margin-bottom: 16px;">',
+        'นี่คือสถานการณ์จำลอง 1 ยกเต็ม เพื่อให้เข้าใจลำดับการแสดงผลและการวางแผนของแต่ละบทบาท:',
+        '</p>',
+        '<div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; margin-bottom: 16px;">',
+        '<h5 style="margin: 0 0 8px; color: #fff; font-size: 1em;">👤 ตัวละครสมมติ:</h5>',
+        '<div style="display: grid; gap: 8px; font-size: 0.85em; color: #bbb;">',
+        '<div><strong>กิตติ (บทเจ้าพ่อ 🎩)</strong>: มีเงิน 💵 5 · เน้นเร่งแต้ม 👑</div>',
+        '<div><strong>นิด (บทมือเก็บงาน 🔫)</strong>: มีปืนเงียบ 🔫 1 กระบอก · รอเปิดงาน</div>',
+        '<div><strong>บอย (บทนายหน้า 🕴️)</strong>: ซื้อของถูก · ชอบเจรจาดีล</div>',
+        '<div><strong>แอน (บทสายข่าว 🕶️)</strong>: รู้ข้อมูลลึก · หาคู่ดีล</div>',
+        '</div></div>',
+        '<div class="bm-guide-section" style="margin-bottom: 16px;">',
+        '<h4 style="color: #efd07a; border-left: 3px solid #efd07a; padding-left: 8px; margin: 0 0 8px;">🛒 ช่วงที่ 1: ตลาดมืด (ซื้อของ)</h4>',
+        '<p style="font-size: 0.85em; color: #aaa; margin: 0 0 8px;">ในตลาดมีสินค้า: ลังสินค้าเถื่อน 📦 (ราคา 2), เสื้อเกราะ 🦺 (ราคา 3), พาสปลอม 🛂 (ราคา 2)</p>',
+        '<ul style="font-size: 0.85em; color: #ddd; padding-left: 20px; margin: 0; line-height: 1.6;">',
+        '<li><b>กิตติ (เจ้าพ่อ)</b>: ซื้อ ลังสินค้า 📦 จ่าย 💵 2 (เหลือ 💵 3) เตรียมส่งของทำแต้ม</li>',
+        '<li><b>นิด (มือเก็บงาน)</b>: กด ผ่าน 🤐 เพื่อประหยัดเงินไว้ใช้แผนในอนาคต</li>',
+        '<li><b>บอย (นายหน้า)</b>: ซื้อ พาสปลอม 🛂 จ่าย 💵 1 (ราคาลด 1 จากสกิลนายหน้า, เหลือ 💵 4)</li>',
+        '<li><b>แอน (สายข่าว)</b>: กด ผ่าน 🤐 เพื่อรักษากลุ่มทุนไว้สืบข้อมูล (เหลือ 💵 5)</li>',
+        '</ul></div>',
+        '<div class="bm-guide-section" style="margin-bottom: 16px;">',
+        '<h4 style="color: #38bdf8; border-left: 3px solid #38bdf8; padding-left: 8px; margin: 0 0 8px;">🎯 ช่วงที่ 2: ลงมือ (เลือกแผนลับ)</h4>',
+        '<p style="font-size: 0.85em; color: #aaa; margin: 0 0 8px;">ทุกคนล็อกเลือกแผนลับของตัวเอง:</p>',
+        '<ul style="font-size: 0.85em; color: #ddd; padding-left: 20px; margin: 0; line-height: 1.6;">',
+        '<li><b>กิตติ (เจ้าพ่อ)</b>: เลือก 📦 ส่งของ (ส่งลังสินค้าเถื่อน 📦)</li>',
+        '<li><b>นิด (มือเก็บงาน)</b>: เลือก 🔫 สั่งเก็บ (เป้าหมาย: กิตติ) โดยจ่าย 💵 2 และใช้ปืน 🔫</li>',
+        '<li><b>บอย (นายหน้า)</b>: เลือก 🤝 เข้าดีล (เป้าหมาย: แอน)</li>',
+        '<li><b>แอน (สายข่าว)</b>: เลือก 🤝 เข้าดีล (เป้าหมาย: บอย) เพราะอ่านหน้าบอยออก</li>',
+        '</ul></div>',
+        '<div class="bm-guide-section">',
+        '<h4 style="color: #f87171; border-left: 3px solid #f87171; padding-left: 8px; margin: 0 0 8px;">📢 ลำดับการแสดงผลเมื่อเฉลยแผน:</h4>',
+        '<div style="font-size: 0.85em; line-height: 1.6; color: #ddd; display: grid; gap: 8px;">',
+        '<div><b style="color: #2ecc71;">1. ดีลสำเร็จ:</b> บอย 🤝 แอน ดีลชนกันพอดี -> ทั้งคู่รับ 👑 +1 และ 💵 +1 (พิเศษ! บอยเป็นนายหน้า ได้รับ 💵 +2 รวมเป็น 2 ก้อน)</div>',
+        '<div><b style="color: #e74c3c;">2. สั่งเก็บทำงาน:</b> นิด 🔫 ลั่นไกใส่ กิตติ -> กิตติไม่มีเกราะและฟิกเซอร์หนีไม่พ้น -> กิตติ <b>💀 ล้ม (กระเป๋าฉีกเสียเงินกึ่งหนึ่ง และเผยบทบาทเจ้าพ่อ)</b> นิดได้ 🔥 ค่าหัวเพิ่ม 2</div>',
+        '<div><b style="color: #94a3b8;">3. แผนส่งของของคนล้ม:</b> กิตติที่ล้มไปแล้วไม่สามารถทำงานได้ -> แผนส่งลังสินค้า 📦 ของกิตติ <b>🚫 ล้มเหลวและเสียของฟรี!</b></div>',
+        '</div></div></div>'
+      ].join('');
+
+      return [
+        '<div class="bm-guide-inner">',
+        '<div class="bm-lobby-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">',
+        '  <button type="button" class="bm-lobby-tab-btn active" data-tab="rules" style="background: rgba(255,255,255,0.1); border: none; padding: 8px 12px; border-radius: 8px; color: #fff; cursor: pointer; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 0.9em;">📖 กติกา & บทบาท</button>',
+        '  <button type="button" class="bm-lobby-tab-btn" data-tab="example" style="background: transparent; border: none; padding: 8px 12px; border-radius: 8px; color: #aaa; cursor: pointer; font-family: Rajdhani, sans-serif; font-weight: 700; font-size: 0.9em;">✨ ตัวอย่างการเล่น (1 ยก)</button>',
+        '</div>',
+        rulesContent,
+        exampleContent,
         '</div>'
       ].join('');
     }
@@ -1843,6 +1916,7 @@
     function updateAdminUI() {
       setElementHidden('#btnStartGameLobby', !isAdmin);
       setElementHidden('#adminControlsSection', !isAdmin);
+      setElementHidden('#btnBlackMarketAddBots', !(currentGameMode === 'blackmarket' && isAdmin));
       // Re-render player list เพื่อแสดง/ซ่อน action icons ให้ถูกต้อง
       socket.emit('requestRoomUpdate', { roomId: roomId });
     }
@@ -2284,6 +2358,39 @@
 
     $('#btnSpyfallHowTo').on('click', function() {
       showSpyfallLobbyGuide();
+    });
+
+    $('#btnBlackMarketAddBots').on('click', function() {
+      const btn = $(this);
+      if (btn.data('loading')) return;
+      btn.data('loading', true);
+      btn.text('🤖 กำลังเพิ่มบอท...');
+      socket.emit('blackmarket_addBots', { roomId: roomId }, function(res) {
+        btn.data('loading', false);
+        btn.text('🤖 เติมบอทเพื่อทดสอบ');
+        if (!res || !res.success) {
+          Swal.fire({
+            icon: 'error',
+            title: 'เพิ่มบอทไม่สำเร็จ',
+            text: res && res.error ? res.error : 'เกิดข้อผิดพลาด',
+            background: '#1e1e1e',
+            color: '#fff'
+          });
+        }
+      });
+    });
+
+    $(document).on('click', '.bm-lobby-tab-btn', function() {
+      const tab = $(this).data('tab');
+      $('.bm-lobby-tab-btn').removeClass('active').css({ 'background': 'transparent', 'color': '#aaa' });
+      $(this).addClass('active').css({ 'background': 'rgba(255,255,255,0.1)', 'color': '#fff' });
+      if (tab === 'rules') {
+        $('#bm-lobby-tab-rules-content').show();
+        $('#bm-lobby-tab-example-content').hide();
+      } else {
+        $('#bm-lobby-tab-rules-content').hide();
+        $('#bm-lobby-tab-example-content').show();
+      }
     });
 
     // ===== Admin actions =====

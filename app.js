@@ -26,6 +26,7 @@ const io = new Server(server, {
 
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 const APP_VERSION = packageJson.version || '0.0.0';
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://insider-th.me';
@@ -1387,6 +1388,145 @@ function emitBlackMarketState(room, targetSocketId = null, playerId = null) {
             io.to(player.socketId).emit('blackmarketState', buildBlackMarketStatePayload(room, player.playerId));
         }
     });
+}
+
+async function runBotsForRoom(room) {
+    if (!room || room.settings.gameMode !== 'blackmarket') return;
+    if (room.gameState.phase === 'finished') return;
+
+    // Find all bots in the room
+    const bots = room.gameState.players.filter(player => player.playerId.startsWith('bot_') && player.alive !== false);
+    if (bots.length === 0) return;
+
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const blackMarketEngine = getGameEngine('blackmarket');
+
+    // Run bots turns
+    if (room.gameState.phase === 'market') {
+        let hasResolved = false;
+        for (const bot of bots) {
+            // Check if already made a choice
+            if (room.gameState.marketChoices[bot.playerId]) continue;
+
+            // Wait a small randomized delay
+            await delay(300 + Math.random() * 400);
+
+            // Fetch current client state to check affordability
+            const clientState = blackMarketEngine.buildClientState(room, bot.playerId);
+            if (!clientState) continue;
+            
+            const affordableOffers = (clientState.marketOffers || []).filter(item => item.affordable);
+
+            let chosenItemId = blackMarketEngine.PASS_CHOICE;
+            if (affordableOffers.length > 0 && Math.random() > 0.15) {
+                // Pick a random affordable item, with preference for cargo items
+                const cargoOffers = affordableOffers.filter(item => item.type === 'cargo');
+                if (cargoOffers.length > 0 && Math.random() > 0.4) {
+                    chosenItemId = cargoOffers[Math.floor(Math.random() * cargoOffers.length)].id;
+                } else {
+                    chosenItemId = affordableOffers[Math.floor(Math.random() * affordableOffers.length)].id;
+                }
+            }
+
+            try {
+                const result = blackMarketEngine.submitMarketPurchase(room, bot.playerId, chosenItemId);
+                if (result.resolved) {
+                    hasResolved = true;
+                    emitBlackMarketState(room);
+                    // If the phase resolved, run bots for the next phase after a short delay
+                    setTimeout(() => {
+                        const r = roomManager.getRoom(room.roomId);
+                        if (r) runBotsForRoom(r).catch(console.error);
+                    }, 1000);
+                    break;
+                }
+            } catch (err) {
+                console.error(`Bot ${bot.name} failed market purchase:`, err.message);
+            }
+        }
+        
+        if (!hasResolved) {
+            emitBlackMarketState(room);
+        }
+    } else if (room.gameState.phase === 'action') {
+        let hasResolved = false;
+        for (const bot of bots) {
+            // Check if already made a choice
+            if (room.gameState.actionChoices[bot.playerId]) continue;
+
+            // Wait a small randomized delay
+            await delay(300 + Math.random() * 400);
+
+            const clientState = blackMarketEngine.buildClientState(room, bot.playerId);
+            if (!clientState) continue;
+
+            const targets = (clientState.players || []).filter(player => player.alive && player.playerId !== bot.playerId);
+            const cargoItems = clientState.actionHelp?.cargoItems || [];
+
+            let actionType = 'pass';
+            let targetPlayerId = null;
+            let itemId = null;
+
+            if (cargoItems.length > 0) {
+                // If has cargo, 75% chance to deliver
+                if (Math.random() > 0.25) {
+                    actionType = 'deliver';
+                    itemId = cargoItems[0].id;
+                }
+            }
+
+            if (actionType === 'pass' && clientState.actionHelp?.canHit && targets.length > 0) {
+                // If has gun and cash, 60% chance to hit a target
+                if (Math.random() > 0.4) {
+                    actionType = 'hit';
+                    targetPlayerId = targets[Math.floor(Math.random() * targets.length)].playerId;
+                }
+            }
+
+            if (actionType === 'pass' && targets.length > 0) {
+                // Choose between deal, betray, raid, intel, laylow, guard
+                const rand = Math.random();
+                const target = targets[Math.floor(Math.random() * targets.length)].playerId;
+                if (rand < 0.35) {
+                    actionType = 'deal';
+                    targetPlayerId = target;
+                } else if (rand < 0.55) {
+                    actionType = 'betray';
+                    targetPlayerId = target;
+                } else if (rand < 0.75) {
+                    actionType = 'raid';
+                    targetPlayerId = target;
+                } else if (rand < 0.85) {
+                    actionType = 'intel';
+                    targetPlayerId = target;
+                } else if (rand < 0.92) {
+                    actionType = 'laylow';
+                } else {
+                    actionType = 'guard';
+                }
+            }
+
+            try {
+                const result = blackMarketEngine.submitAction(room, bot.playerId, actionType, targetPlayerId, itemId);
+                if (result.resolved) {
+                    hasResolved = true;
+                    emitBlackMarketState(room);
+                    // If the phase resolved, run bots for the next phase
+                    setTimeout(() => {
+                        const r = roomManager.getRoom(room.roomId);
+                        if (r) runBotsForRoom(r).catch(console.error);
+                    }, 1000);
+                    break;
+                }
+            } catch (err) {
+                console.error(`Bot ${bot.name} failed action submission:`, err.message);
+            }
+        }
+        
+        if (!hasResolved) {
+            emitBlackMarketState(room);
+        }
+    }
 }
 
 function clearSpyfallPhaseTimer(roomId, resetPhaseEndsAt = true) {
@@ -4580,6 +4720,7 @@ io.sockets.on('connection', function(socket) {
             const blackMarketEngine = getGameEngine('blackmarket');
             const result = blackMarketEngine.submitMarketPurchase(room, playerId, itemId);
             emitBlackMarketState(room);
+            runBotsForRoom(room).catch(console.error);
 
             if (typeof callback === 'function') {
                 callback({ success: true, ...result });
@@ -4610,6 +4751,7 @@ io.sockets.on('connection', function(socket) {
                 data?.itemId || null
             );
             emitBlackMarketState(room);
+            runBotsForRoom(room).catch(console.error);
 
             if (typeof callback === 'function') {
                 callback({ success: true, ...result });
@@ -4650,6 +4792,66 @@ io.sockets.on('connection', function(socket) {
                 callback({ success: true });
             }
         } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    socket.on('blackmarket_addBots', async function(data, callback) {
+        try {
+            const roomId = socket.roomId || data?.roomId;
+            const adminPlayerId = socket.playerId;
+            const room = roomManager.getRoom(roomId);
+            
+            if (!room) {
+                throw new Error('ไม่พบห้อง');
+            }
+            if (room.admin !== adminPlayerId) {
+                throw new Error('เฉพาะหัวหน้าห้องเท่านั้นที่เพิ่มบอทได้');
+            }
+            if (room.settings.gameMode !== 'blackmarket') {
+                throw new Error('โหมดนี้ไม่รองรับบอท');
+            }
+            if (roomManager.isRoomGameInProgress(room)) {
+                throw new Error('เกมเริ่มไปแล้ว ไม่สามารถเพิ่มบอทได้');
+            }
+
+            const needed = Math.max(0, 4 - room.players.length);
+            if (needed === 0) {
+                throw new Error('ห้องมีผู้เล่นพอสำหรับเริ่มเกมแล้ว');
+            }
+
+            const botNames = ['บอทสมชาย 🤖', 'บอทสมหญิง 🤖', 'บอทสมศักดิ์ 🤖', 'บอทวิชัย 🤖', 'บอทปราณี 🤖'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽'];
+            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c'];
+
+            for (let i = 0; i < needed; i++) {
+                const botId = `bot_${uuidv4()}`;
+                const botName = botNames[i % botNames.length] + ' ' + botId.substring(botId.length - 4);
+                
+                // Create player
+                await playerManager.createOrGetPlayer(botId, { approved: true });
+                await playerManager.updatePlayerName(botId, botName);
+                await playerManager.updatePlayerColor(botId, botColors[i % botColors.length]);
+                await playerManager.updatePlayerAvatar(botId, botAvatars[i % botAvatars.length]);
+
+                // Join the bot to the room
+                const botSocketId = `bot_socket_${uuidv4()}`;
+                roomManager.joinRoom(roomId, botId, botSocketId, null, { bypassLock: true });
+            }
+
+            // Broadcast roomUpdate
+            io.to(roomId).emit('roomUpdate', {
+                ...buildRoomUpdatePayload(room)
+            });
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+
+            if (typeof callback === 'function') {
+                callback({ success: true });
+            }
+        } catch (error) {
+            console.error('Error adding bots:', error);
             if (typeof callback === 'function') {
                 callback({ success: false, error: error.message });
             }
@@ -4847,6 +5049,13 @@ io.sockets.on('connection', function(socket) {
                     sendChatMessageToRoom(io, roomId, 'System', 'ตลาดมืดเปิดแล้ว รีบล็อกของก่อนคู่แข่งจะคว้าไป', '#f39c12');
                     logGameStartFromRoom(currentRoom);
                     emitBlackMarketState(currentRoom);
+
+                    // Trigger bots after 5 seconds to let the human client redirect and load
+                    setTimeout(() => {
+                        const r = roomManager.getRoom(roomId);
+                        if (r) runBotsForRoom(r).catch(console.error);
+                    }, 5000);
+
                     room.gameStarting = false;
                     return;
                 }
