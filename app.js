@@ -82,7 +82,7 @@ const adminTokens = new Map();
 
 // เก็บ server activity logs (เก็บ 500 logs ล่าสุด)
 const serverLogs = [];
-const MAX_SERVER_LOGS = 500;
+const MAX_SERVER_LOGS = 2000;
 
 const ROOM_OFFLINE_GRACE_MS = 10 * 60 * 1000;
 const ROOM_SWEEP_INTERVAL_MS = 60 * 1000;
@@ -1430,8 +1430,18 @@ async function runBotsForRoom(room) {
 
             try {
                 const result = blackMarketEngine.submitMarketPurchase(room, bot.playerId, chosenItemId);
+                const roundNum = room.gameState?.roundNumber || 1;
+                addServerLog(io, 'game', room.roomId, `[🤖 บอท] ${bot.name} ซื้อของ: ${chosenItemId === '__pass__' ? 'ผ่าน (ไม่ซื้อ)' : chosenItemId} (ยกที่ ${roundNum})`, 'info', {
+                    gameMode: 'blackmarket',
+                    meta: { playerId: bot.playerId, itemId: chosenItemId, roundNumber: roundNum, isBot: true }
+                });
+
                 if (result.resolved) {
                     hasResolved = true;
+                    addServerLog(io, 'game', room.roomId, `[BlackMarket] ตลาดปิดแล้ว! เริ่มช่วงลงมือ (ยกที่ ${roundNum})`, 'success', {
+                        gameMode: 'blackmarket',
+                        meta: { roundNumber: roundNum }
+                    });
                     emitBlackMarketState(room);
                     // If the phase resolved, run bots for the next phase after a short delay
                     setTimeout(() => {
@@ -1508,8 +1518,29 @@ async function runBotsForRoom(room) {
 
             try {
                 const result = blackMarketEngine.submitAction(room, bot.playerId, actionType, targetPlayerId, itemId);
+                const roundNum = room.gameState?.roundNumber || 1;
+                const targetPlayer = targetPlayerId ? (room.players.find(p => p.id === targetPlayerId)?.name || targetPlayerId) : null;
+                const targetText = targetPlayer ? ` เล็งเป้า: ${targetPlayer}` : '';
+                const itemText = itemId ? ` ของ: ${itemId}` : '';
+                addServerLog(io, 'game', room.roomId, `[🤖 บอท] ${bot.name} ล็อกแผน: ${actionType}${targetText}${itemText} (ยกที่ ${roundNum})`, 'info', {
+                    gameMode: 'blackmarket',
+                    meta: { playerId: bot.playerId, actionType, targetPlayerId, itemId, roundNumber: roundNum, isBot: true }
+                });
+
                 if (result.resolved) {
                     hasResolved = true;
+                    addServerLog(io, 'game', room.roomId, `[BlackMarket] ล็อกแผนครบทุกคน! สรุปผลยกที่ ${roundNum}`, 'success', {
+                        gameMode: 'blackmarket',
+                        meta: { roundNumber: roundNum }
+                    });
+                    if (room.gameState.lastRoundReport && room.gameState.lastRoundReport.length) {
+                        room.gameState.lastRoundReport.forEach(reportItem => {
+                            addServerLog(io, 'game', room.roomId, `[BlackMarket] สรุปยก ${roundNum}: ${reportItem.text}`, 'info', {
+                                gameMode: 'blackmarket',
+                                meta: { roundNumber: roundNum, icon: reportItem.icon }
+                            });
+                        });
+                    }
                     emitBlackMarketState(room);
                     // If the phase resolved, run bots for the next phase
                     setTimeout(() => {
@@ -4719,6 +4750,23 @@ io.sockets.on('connection', function(socket) {
 
             const blackMarketEngine = getGameEngine('blackmarket');
             const result = blackMarketEngine.submitMarketPurchase(room, playerId, itemId);
+
+            // Server activity logs
+            const player = room.players.find(p => p.id === playerId);
+            const playerName = player ? player.name : playerId;
+            const roundNum = room.gameState?.roundNumber || 1;
+            addServerLog(io, 'game', roomId, `[BlackMarket] ${playerName} ซื้อของ: ${itemId === '__pass__' ? 'ผ่าน (ไม่ซื้อ)' : itemId} (ยกที่ ${roundNum})`, 'info', {
+                gameMode: 'blackmarket',
+                meta: { playerId, itemId, roundNumber: roundNum }
+            });
+
+            if (result.resolved) {
+                addServerLog(io, 'game', roomId, `[BlackMarket] ตลาดปิดแล้ว! เริ่มช่วงลงมือ (ยกที่ ${roundNum})`, 'success', {
+                    gameMode: 'blackmarket',
+                    meta: { roundNumber: roundNum }
+                });
+            }
+
             emitBlackMarketState(room);
             runBotsForRoom(room).catch(console.error);
 
@@ -4750,6 +4798,34 @@ io.sockets.on('connection', function(socket) {
                 data?.targetPlayerId || null,
                 data?.itemId || null
             );
+
+            // Server activity logs
+            const player = room.players.find(p => p.id === playerId);
+            const playerName = player ? player.name : playerId;
+            const roundNum = room.gameState?.roundNumber || 1;
+            const targetPlayer = data?.targetPlayerId ? (room.players.find(p => p.id === data.targetPlayerId)?.name || data.targetPlayerId) : null;
+            const targetText = targetPlayer ? ` เล็งเป้า: ${targetPlayer}` : '';
+            const itemText = data?.itemId ? ` ของ: ${data.itemId}` : '';
+            addServerLog(io, 'game', roomId, `[BlackMarket] ${playerName} ล็อกแผน: ${data?.actionType}${targetText}${itemText} (ยกที่ ${roundNum})`, 'info', {
+                gameMode: 'blackmarket',
+                meta: { playerId, actionType: data?.actionType, targetPlayerId: data?.targetPlayerId, itemId: data?.itemId, roundNumber: roundNum }
+            });
+
+            if (result.resolved) {
+                addServerLog(io, 'game', roomId, `[BlackMarket] ล็อกแผนครบทุกคน! สรุปผลยกที่ ${roundNum}`, 'success', {
+                    gameMode: 'blackmarket',
+                    meta: { roundNumber: roundNum }
+                });
+                if (room.gameState.lastRoundReport && room.gameState.lastRoundReport.length) {
+                    room.gameState.lastRoundReport.forEach(reportItem => {
+                        addServerLog(io, 'game', roomId, `[BlackMarket] สรุปยก ${roundNum}: ${reportItem.text}`, 'info', {
+                            gameMode: 'blackmarket',
+                            meta: { roundNumber: roundNum, icon: reportItem.icon }
+                        });
+                    });
+                }
+            }
+
             emitBlackMarketState(room);
             runBotsForRoom(room).catch(console.error);
 

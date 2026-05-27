@@ -2778,7 +2778,7 @@ $(function() {
     function loadLogs() {
         const filter = $('#logFilter').val();
         const modeFilter = $('#logModeFilter').val();
-        socket.emit('admin_getLogs', { filter: filter, gameMode: modeFilter, limit: 200 }, function(response) {
+        socket.emit('admin_getLogs', { filter: filter, gameMode: modeFilter, limit: 1000 }, function(response) {
             if (response.success) {
                 serverLogs = response.logs || [];
                 renderLogs();
@@ -2789,7 +2789,7 @@ $(function() {
     // Receive new log entries in real-time
     socket.on('adminLog', function(logEntry) {
         serverLogs.unshift(logEntry);
-        if (serverLogs.length > 500) serverLogs.length = 500;
+        if (serverLogs.length > 2000) serverLogs.length = 2000;
         renderLogs();
     });
     
@@ -2828,14 +2828,19 @@ $(function() {
         };
         
         $container.html(filtered.map(log => {
-            const time = new Date(log.timestamp).toLocaleTimeString('th-TH');
+            const dt = new Date(log.timestamp);
+            const pad = (n) => String(n).padStart(2, '0');
+            const dateStr = `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+            const timeStr = dt.toLocaleTimeString('th-TH', { hour12: false });
+            const time = `${dateStr} ${timeStr}`;
+            
             const color = typeColors[log.type] || colors[log.category] || '#fff';
             const icon = icons[log.category] || '•';
             const roomInfo = log.roomName ? `<span style="color: #888;">[${escapeHtml(log.roomName)}]</span> ` : '';
             const modeBadge = formatLogModeBadge(log);
             const metaInfo = formatLogMeta(log);
-            return `<div style="margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid ${color}; background: rgba(255,255,255,0.03);">
-                <span style="color: #666;">[${time}]</span> ${icon} ${modeBadge}${roomInfo}<span style="color: ${color};">${escapeHtml(log.message)}</span>${metaInfo}
+            return `<div style="margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid ${color}; background: rgba(255,255,255,0.03); font-size: 0.88rem; line-height: 1.4;">
+                <span style="color: #888; font-family: monospace; font-size: 0.82rem; margin-right: 6px;">[${time}]</span> ${icon} ${modeBadge}${roomInfo}<span style="color: ${color};">${escapeHtml(log.message)}</span>${metaInfo}
             </div>`;
         }).join(''));
         
@@ -3083,7 +3088,7 @@ $(function() {
             type: data.type || 'info',
             message: data.message || ''
         });
-        if (serverLogs.length > 500) serverLogs.length = 500;
+        if (serverLogs.length > 2000) serverLogs.length = 2000;
         renderLogs();
     });
 

@@ -309,7 +309,49 @@
     gap: 14px;
   }
 
-  .bm-card-note.bm-hide { display: none; }
+  .bm-hide { display: none !important; }
+
+  /* Mobile Tabs Switcher for Black Market */
+  .bm-mobile-tabs {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13, 17, 28, 0.88);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--bm-line);
+    padding: 10px 14px;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+
+  .bm-mobile-tab-btn {
+    flex: 1;
+    padding: 10px 6px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--bm-muted);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .bm-mobile-tab-btn.active {
+    background: linear-gradient(135deg, rgba(245, 200, 107, 0.25), rgba(245, 200, 107, 0.1));
+    border-color: rgba(245, 200, 107, 0.4);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(245, 200, 107, 0.15);
+  }
+
+  @media (max-width: 980px) {
+    .bm-mobile-tabs {
+      display: flex;
+    }
+  }
 
   .bm-simple-actions {
     display: grid;
@@ -1454,6 +1496,12 @@
 
     <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div>
 
+    <div class="bm-mobile-tabs">
+      <button class="bm-mobile-tab-btn active" type="button" data-tab="game">🎮 เล่นยกนี้</button>
+      <button class="bm-mobile-tab-btn" type="button" data-tab="players">👥 คนบนโต๊ะ</button>
+      <button class="bm-mobile-tab-btn" type="button" data-tab="history">📢 ข่าวใต้ดิน</button>
+    </div>
+
     <div class="bm-grid">
       <div class="bm-col">
         <div class="bm-card bm-card-role" data-tour-id="role">
@@ -1662,6 +1710,7 @@
     let showAdvancedActions = false;
     let announcerExpanded = true;
     let simplePickMode = null;
+    let guideExpanded = false;
 
 
     const spotlightKey = `blackmarket-tour-v2:${playerId}`;
@@ -2029,6 +2078,8 @@
         return;
       }
 
+      const nextRound = Number(nextState.roundNumber || 0);
+
       if (!hasRenderedOnce) {
         hasRenderedOnce = true;
         if (nextState.phase === 'finished' && nextState.winner) {
@@ -2040,11 +2091,19 @@
             sound: 'close',
             duration: 3200
           });
-        } else if (nextState.phase === 'market' && Number(nextState.roundNumber || 0) > 0) {
+        } else if (nextState.phase === 'market' && nextRound > 0) {
           showCeremony({
-            kicker: `🌒 เปิดยก ${Number(nextState.roundNumber || 0)}`,
+            kicker: `🛒 ตลาดมืดเปิดแล้ว (ยก ${nextRound})`,
             title: 'ล็อตใหม่ขึ้นโต๊ะแล้ว',
-            copy: 'เลือกของให้ไว ก่อนดีลและมีดจะเริ่มเดิน',
+            copy: 'เลือกซื้อสินค้าหรือไอเทมเถื่อนเพื่อเตรียมทำแผนการต่อไป',
+            tone: 'gold',
+            sound: 'open'
+          });
+        } else if (nextState.phase === 'action') {
+          showCeremony({
+            kicker: `🎯 ช่วงวางแผนลงมือ (ยก ${nextRound})`,
+            title: 'ถึงเวลาลงมือลับ',
+            copy: 'เลือกการลงมือ: ปล้น ฆ่า ดีล หรือส่งของ เพื่อชิงอิทธิพล',
             tone: 'gold',
             sound: 'open'
           });
@@ -2053,25 +2112,42 @@
       }
 
       const previousRound = Number(previousState?.roundNumber || 0);
-      const nextRound = Number(nextState.roundNumber || 0);
-      if (nextState.phase === 'market' && nextRound > previousRound) {
+
+      // Check for phase transitions first
+      if (previousState?.phase !== nextState.phase) {
+        if (nextState.phase === 'finished' && nextState.winner) {
+          showCeremony({
+            kicker: '👑 ปิดโต๊ะ',
+            title: `${nextState.winner.avatar || '🎩'} ${nextState.winner.name || 'มีคนคุมเมืองแล้ว'}`,
+            copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
+            tone: 'red',
+            sound: 'close',
+            duration: 3200
+          });
+        } else if (nextState.phase === 'market') {
+          showCeremony({
+            kicker: `🛒 ตลาดมืดเปิดแล้ว (ยก ${nextRound})`,
+            title: 'สินค้าล็อตใหม่ขึ้นโต๊ะ',
+            copy: 'เลือกลงทุนซื้อสินค้า เกราะป้องกัน หรือพาสปอร์ต ก่อนตลาดวาย',
+            tone: 'gold',
+            sound: 'open'
+          });
+        } else if (nextState.phase === 'action') {
+          showCeremony({
+            kicker: `🎯 ช่วงวางแผนลงมือ (ยก ${nextRound})`,
+            title: 'แผนการลับเริ่มทำงาน',
+            copy: 'เลือกเป้าหมายและแผนการของคุณ: ปล้น ฆ่า ทำดีล หรือหนีตำรวจ',
+            tone: 'gold',
+            sound: 'open'
+          });
+        }
+      } else if (nextState.phase === 'market' && nextRound > previousRound) {
         showCeremony({
-          kicker: `🌒 เปิดยก ${nextRound}`,
-          title: 'ของใหม่ลงโต๊ะแล้ว',
-          copy: 'ยกนี้จะเปิดดีลหรือจะชักมีด ก็ล็อกให้ทันก่อนตลาดปิด',
+          kicker: `🛒 ตลาดมืดเปิดแล้ว (ยก ${nextRound})`,
+          title: 'ล็อตใหม่ขึ้นโต๊ะแล้ว',
+          copy: 'เลือกของให้ไว ก่อนดีลและมีดจะเริ่มเดิน',
           tone: 'gold',
           sound: 'open'
-        });
-      }
-
-      if (previousState?.phase !== 'finished' && nextState.phase === 'finished' && nextState.winner) {
-        showCeremony({
-          kicker: '👑 ปิดโต๊ะ',
-          title: `${nextState.winner.avatar || '🎩'} ${nextState.winner.name || 'มีคนคุมเมืองแล้ว'}`,
-          copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
-          tone: 'red',
-          sound: 'close',
-          duration: 3200
         });
       }
     }
@@ -2784,6 +2860,26 @@
 
     function renderSpotlightStep() {
       const step = spotlightSteps[spotlightStepIndex];
+      
+      // Auto-switch mobile tabs during spotlight tour if visible
+      if ($('.bm-mobile-tabs').is(':visible')) {
+        if (step.target === '[data-tour-id="role"]' || step.target === '[data-tour-id="guide"]' || step.target === '[data-tour-id="stage"]') {
+          $('.bm-mobile-tab-btn[data-tab="game"]').addClass('active');
+          $('.bm-mobile-tab-btn[data-tab="players"], .bm-mobile-tab-btn[data-tab="history"]').removeClass('active');
+          applyMobileTabs();
+        } else if (step.target === '[data-tour-id="players"]' || step.target === '[data-tour-id="deals"]') {
+          $('.bm-mobile-tab-btn[data-tab="players"]').addClass('active');
+          $('.bm-mobile-tab-btn[data-tab="game"], .bm-mobile-tab-btn[data-tab="history"]').removeClass('active');
+          applyMobileTabs();
+        }
+      }
+
+      // Auto-expand guide panel if targeted during tour
+      if (step.target === '[data-tour-id="guide"]') {
+        guideExpanded = true;
+        renderGuide();
+      }
+
       const target = document.querySelector(step.target);
       ensureSpotlightTargetVisible(target);
       $('#bmTourKicker').text(`${step.kicker} • พาเล่นตลาดมืด`);
@@ -3198,12 +3294,12 @@
       });
 
       const html = `
-        <div class="bm-card-header">
+        <div class="bm-card-header" id="toggleGuideBtn" style="cursor: pointer; user-select: none;">
           <div>
-            <div class="bm-card-title">📖 พาเล่นโต๊ะนี้ (ไกด์สำหรับบทคุณ)</div>
+            <div class="bm-card-title">📖 พาเล่นโต๊ะนี้ (ไกด์สำหรับบทคุณ) <span id="guideToggleChevron">${guideExpanded ? '▲' : '▼'}</span></div>
           </div>
         </div>
-        <div class="bm-guide-grid">
+        <div class="bm-guide-grid" id="guideContent" style="${guideExpanded ? '' : 'display: none;'}">
           ${steps.map(step => `
             <div class="bm-guide-step">
               <strong>${escapeHtml(step.title)}</strong>
@@ -3353,6 +3449,7 @@
         renderHowToPlay();
       }
       handleCeremony(previousState, currentState);
+      applyMobileTabs();
       if (spotlightActive) {
         positionSpotlight();
       }
@@ -3600,7 +3697,68 @@
 
     $(window).on('resize', function() {
       positionSpotlight();
+      applyMobileTabs();
     });
+
+    $(document).on('click', '.bm-mobile-tab-btn', function() {
+      $('.bm-mobile-tab-btn').removeClass('active');
+      $(this).addClass('active');
+      applyMobileTabs();
+    });
+
+    $(document).on('click', '#toggleGuideBtn', function() {
+      guideExpanded = !guideExpanded;
+      if (guideExpanded) {
+        $('#guideContent').slideDown(200);
+        $('#guideToggleChevron').text('▲');
+      } else {
+        $('#guideContent').slideUp(200);
+        $('#guideToggleChevron').text('▼');
+      }
+    });
+
+    function applyMobileTabs() {
+      if ($('.bm-mobile-tabs').is(':visible')) {
+        const activeTab = $('.bm-mobile-tab-btn.active').attr('data-tab') || 'game';
+        if (activeTab === 'game') {
+          $('.bm-card-role').show();
+          $('.bm-card-guide').show();
+          $('.bm-card-stage').show();
+          $('.bm-card-roster').hide();
+          $('.bm-card-deals').hide();
+          $('.bm-card-intel').hide();
+          $('.bm-card-history').hide();
+          $('#winnerPanel').show();
+        } else if (activeTab === 'players') {
+          $('.bm-card-role').hide();
+          $('.bm-card-guide').hide();
+          $('.bm-card-stage').hide();
+          $('.bm-card-roster').show();
+          $('.bm-card-deals').show();
+          $('.bm-card-intel').show();
+          $('.bm-card-history').hide();
+          $('#winnerPanel').hide();
+        } else if (activeTab === 'history') {
+          $('.bm-card-role').hide();
+          $('.bm-card-guide').hide();
+          $('.bm-card-stage').hide();
+          $('.bm-card-roster').hide();
+          $('.bm-card-deals').hide();
+          $('.bm-card-intel').hide();
+          $('.bm-card-history').show();
+          $('#winnerPanel').hide();
+        }
+      } else {
+        $('.bm-card-role').show();
+        $('.bm-card-guide').show();
+        $('.bm-card-stage').show();
+        $('.bm-card-roster').show();
+        $('.bm-card-deals').show();
+        $('.bm-card-intel').show();
+        $('.bm-card-history').show();
+        $('#winnerPanel').show();
+      }
+    }
 
     $(window).on('scroll', function() {
       positionSpotlight();

@@ -260,7 +260,7 @@ async function main() {
         await page.click('#btnStartGameLobby');
         await page.waitForURL(/\/game\/[A-Za-z0-9-]+\?playerId=/, { timeout: BROWSER_TIMEOUT_MS });
         await page.waitForSelector('.bm-shell', { timeout: BROWSER_TIMEOUT_MS });
-        await page.waitForSelector('#guidePanel .bm-guide-step', { timeout: BROWSER_TIMEOUT_MS });
+        await page.waitForSelector('#guidePanel .bm-guide-step', { timeout: BROWSER_TIMEOUT_MS, state: 'attached' });
         await page.waitForSelector('#bmTourOverlay.active', { timeout: BROWSER_TIMEOUT_MS });
 
         assert(await page.locator('#bmTourHole').count() === 0, 'spotlight hole element should not render');
