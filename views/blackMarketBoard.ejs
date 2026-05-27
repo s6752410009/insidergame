@@ -907,6 +907,94 @@
       0 24px 54px rgba(0, 0, 0, 0.28);
   }
 
+  /* ─── Per-card colour themes ─── */
+  .bm-card-role {
+    border-color: rgba(168, 85, 247, 0.32) !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -20%, rgba(168, 85, 247, 0.1), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel) !important;
+  }
+  .bm-card-role::before {
+    background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.35), transparent) !important;
+  }
+  .bm-card-role:hover { border-color: rgba(168, 85, 247, 0.45) !important; }
+
+  .bm-card-stage {
+    border-color: rgba(245, 158, 11, 0.32) !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -20%, rgba(245, 158, 11, 0.1), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel) !important;
+  }
+  .bm-card-stage::before {
+    background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.35), transparent) !important;
+  }
+  .bm-card-stage:hover { border-color: rgba(245, 158, 11, 0.48) !important; }
+
+  .bm-card-roster {
+    border-color: rgba(6, 182, 212, 0.3) !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -20%, rgba(6, 182, 212, 0.09), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel) !important;
+  }
+  .bm-card-roster::before {
+    background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent) !important;
+  }
+  .bm-card-roster:hover { border-color: rgba(6, 182, 212, 0.44) !important; }
+
+  .bm-card-deals {
+    border-color: rgba(16, 185, 129, 0.3) !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -20%, rgba(16, 185, 129, 0.09), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel) !important;
+  }
+  .bm-card-deals::before {
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent) !important;
+  }
+  .bm-card-deals:hover { border-color: rgba(16, 185, 129, 0.44) !important; }
+
+  .bm-card-intel {
+    border-color: rgba(251, 146, 60, 0.3) !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -20%, rgba(251, 146, 60, 0.09), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel) !important;
+  }
+  .bm-card-intel::before {
+    background: linear-gradient(90deg, transparent, rgba(251, 146, 60, 0.3), transparent) !important;
+  }
+  .bm-card-intel:hover { border-color: rgba(251, 146, 60, 0.44) !important; }
+
+  .bm-card-history {
+    border-color: rgba(220, 38, 38, 0.28) !important;
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -20%, rgba(220, 38, 38, 0.08), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+      var(--bm-panel) !important;
+  }
+  .bm-card-history::before {
+    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.28), transparent) !important;
+  }
+  .bm-card-history:hover { border-color: rgba(220, 38, 38, 0.42) !important; }
+
+  /* ─── Mobile accordion base ─── */
+  .bm-action-body { overflow: hidden; }
+  .bm-action-title {
+    cursor: pointer;
+    user-select: none;
+  }
+  .bm-action-title .bm-accordion-chevron {
+    margin-left: auto;
+    font-size: 0.8em;
+    transition: transform 0.2s ease;
+  }
+  .bm-action-block.is-open .bm-accordion-chevron {
+    transform: rotate(180deg);
+  }
+
   .bm-card-header {
     display: flex;
     justify-content: space-between;
@@ -1443,8 +1531,30 @@
     .bm-manual-role-icon { width: 56px; height: 56px; font-size: 1.55rem; border-radius: 18px; }
     .bm-manual-role-name { font-size: 1.02rem; }
     .bm-manual-section { padding: 14px; }
-    .bm-manual-section h3 { font-size: 0.92rem; }
+    .bm-manual-section h3 {
+      font-size: 0.92rem;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bm-manual-section h3::after {
+      content: '▼';
+      font-size: 0.72em;
+      margin-left: auto;
+      opacity: 0.6;
+      transition: transform 0.2s ease;
+    }
+    .bm-manual-section.is-open h3::after { transform: rotate(180deg); }
+    .bm-manual-section-body { display: none; overflow: hidden; }
+    .bm-manual-section.is-open .bm-manual-section-body { display: block; }
     .bm-manual-copy { max-width: none; }
+
+    /* action accordion on mobile */
+    .bm-action-title { display: flex !important; align-items: center; }
+    .bm-action-body { display: none; }
+    .bm-action-block.is-open .bm-action-body { display: block; }
   }
 
   @media (max-width: 420px) {
@@ -2666,56 +2776,68 @@
       $('#bmHowToOverview').html(`
         <div class="bm-manual-section">
           <h3>ภาพรวมทั้งโต๊ะ</h3>
-          <p>${escapeHtml(tutorial.goal || 'ยืนให้ถึงท้ายเกม แล้วโกยอิทธิพลให้มากกว่าทั้งโต๊ะ')}</p>
+          <div class="bm-manual-section-body">
+            <p>${escapeHtml(tutorial.goal || 'ยืนให้ถึงท้ายเกม แล้วโกยอิทธิพลให้มากกว่าทั้งโต๊ะ')}</p>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>คืนนี้หนึ่งยกเดินยังไง</h3>
-          <div class="bm-manual-list">${buildManualLines(tutorial.roundFlow || [])}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(tutorial.roundFlow || [])}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>อ่านโต๊ะจากตรงไหน</h3>
-          <div class="bm-manual-list">
-            ${buildManualLines([
-              'เริ่มจาก บทของคุณ เพื่อดูเงินดำ อิทธิพล ค่าหัว และของที่ถืออยู่',
-              'ดู ตลาดกับแผนลงมือ เพื่อรู้ว่าตอนนี้ยกนี้คุณซื้ออะไรหรือกดแผนไหนได้บ้าง',
-              'ดู คนบนโต๊ะ เพื่อชั่งว่าใครนำ ใครร้อน ใครน่ากลัว และใครกำลังเปราะ',
-              'ดู ดีลบนโต๊ะ กับ ข่าวใต้ดิน เพื่อจับว่าคืนนี้ใครจับมือ ใครแทงหลัง และใครเพิ่งพลาด'
-            ])}
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">
+              ${buildManualLines([
+                'เริ่มจาก บทของคุณ เพื่อดูเงินดำ อิทธิพล ค่าหัว และของที่ถืออยู่',
+                'ดู ตลาดกับแผนลงมือ เพื่อรู้ว่าตอนนี้ยกนี้คุณซื้ออะไรหรือกดแผนไหนได้บ้าง',
+                'ดู คนบนโต๊ะ เพื่อชั่งว่าใครนำ ใครร้อน ใครน่ากลัว และใครกำลังเปราะ',
+                'ดู ดีลบนโต๊ะ กับ ข่าวใต้ดิน เพื่อจับว่าคืนนี้ใครจับมือ ใครแทงหลัง และใครเพิ่งพลาด'
+              ])}
+            </div>
           </div>
         </div>
         <div class="bm-manual-section">
           <h3>ไม้ที่ใช้กันบนโต๊ะ</h3>
-          <div class="bm-manual-actions-grid">
-            ${actionCatalog.map(function(action) {
-              return `
-                <div class="bm-manual-action">
-                  <strong>${escapeHtml(action.icon)} ${escapeHtml(action.label)}</strong>
-                  <span>${escapeHtml(action.description || '')}</span>
-                  <span>จังหวะนี้ให้ผลแบบนี้: ${escapeHtml(action.effectText || '')}</span>
-                </div>
-              `;
-            }).join('')}
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-actions-grid">
+              ${actionCatalog.map(function(action) {
+                return `
+                  <div class="bm-manual-action">
+                    <strong>${escapeHtml(action.icon)} ${escapeHtml(action.label)}</strong>
+                    <span>${escapeHtml(action.description || '')}</span>
+                    <span>จังหวะนี้ให้ผลแบบนี้: ${escapeHtml(action.effectText || '')}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
           </div>
         </div>
         <div class="bm-manual-section">
           <h3>กฎที่ต้องจำให้ขึ้นใจ</h3>
-          <div class="bm-manual-list">${buildManualLines(tutorial.reminders || [])}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(tutorial.reminders || [])}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>สถานะตอนนี้บอกอะไร</h3>
-          <div class="bm-manual-state-grid">
-            ${liveAdviceCards.map(function(card) {
-              return `
-                <div class="bm-manual-state-card">
-                  <div class="bm-manual-state-head">
-                    <div class="bm-manual-state-label">${escapeHtml(card.label)}</div>
-                    <div class="bm-manual-state-chip">${escapeHtml(card.chip)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-state-grid">
+              ${liveAdviceCards.map(function(card) {
+                return `
+                  <div class="bm-manual-state-card">
+                    <div class="bm-manual-state-head">
+                      <div class="bm-manual-state-label">${escapeHtml(card.label)}</div>
+                      <div class="bm-manual-state-chip">${escapeHtml(card.chip)}</div>
+                    </div>
+                    <div class="bm-manual-state-copy">${escapeHtml(card.copy)}</div>
+                    <div class="bm-manual-state-chip">${escapeHtml(card.emphasis)}</div>
                   </div>
-                  <div class="bm-manual-state-copy">${escapeHtml(card.copy)}</div>
-                  <div class="bm-manual-state-chip">${escapeHtml(card.emphasis)}</div>
-                </div>
-              `;
-            }).join('')}
+                `;
+              }).join('')}
+            </div>
           </div>
         </div>
       `);
@@ -2729,46 +2851,67 @@
               <div class="bm-manual-role-chip">${escapeHtml(role.summary || 'อ่านจังหวะแล้วเดินให้เข้ากับโต๊ะ')}</div>
             </div>
           </div>
-          <p>${escapeHtml(role.ability || 'ดูบทของตัวเองก่อน แล้ววางแผนให้คุ้มทุกยก')}</p>
+          <div class="bm-manual-section-body">
+            <p>${escapeHtml(role.ability || 'ดูบทของตัวเองก่อน แล้ววางแผนให้คุ้มทุกยก')}</p>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>เปิดเกมแบบคนบทนี้</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.opening)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.opening)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>ต้นโต๊ะควรเดินยังไง</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.earlyGame)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.earlyGame)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>จังหวะที่บทนี้กินเกม</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.tempo)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.tempo)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>กลางโต๊ะควรเดินยังไง</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.midGame)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.midGame)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>ปิดโต๊ะต้องคิดอะไร</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.endGame)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.endGame)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>บทนี้ชอบจับมือกับใคร</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.partnerRoles)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.partnerRoles)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>ใครควรระวังเป็นพิเศษ</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.specialThreats)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.specialThreats)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>สิ่งที่บทนี้ต้องระวัง</h3>
-          <div class="bm-manual-list">${buildManualLines(rolePlaybook.danger)}</div>
+          <div class="bm-manual-section-body">
+            <div class="bm-manual-list">${buildManualLines(rolePlaybook.danger)}</div>
+          </div>
         </div>
         <div class="bm-manual-section">
           <h3>ตอนนี้ควรเล่นแบบไหน</h3>
-          <p>${escapeHtml(tutorial.phaseTip || 'อ่านโต๊ะก่อน แล้วค่อยล็อกมือให้เข้าจังหวะ')}</p>
+          <div class="bm-manual-section-body">
+            <p>${escapeHtml(tutorial.phaseTip || 'อ่านโต๊ะก่อน แล้วค่อยล็อกมือให้เข้าจังหวะ')}</p>
+          </div>
         </div>
       `);
     }
+
 
     function closeHowTo() {
       howToActive = false;
@@ -3086,96 +3229,111 @@
       return `
         <div class="bm-action-grid">
           <div class="bm-action-block">
-            <div class="bm-action-title">📦 ส่งของ</div>
-            <div class="bm-action-copy">แปลงของเถื่อนให้เป็น 👑 อิทธิพล</div>
-            <div class="bm-mini-grid">
-              ${cargoItems.length ? cargoItems.map(item => `
-                <button class="bm-target-btn action-submit" data-action-type="deliver" data-item-id="${escapeHtml(item.id)}" ${pendingAction ? 'disabled' : ''}>
-                  ${escapeHtml(item.icon)} ${escapeHtml(item.name)}
-                  <small>รับอิทธิพลจากของชิ้นนี้</small>
-                </button>
-              `).join('') : '<div class="bm-empty">ยังไม่มีของเถื่อนให้ส่ง</div>'}
+            <div class="bm-action-title">📦 ส่งของ<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">แปลงของเถื่อนให้เป็น 👑 อิทธิพล</div>
+              <div class="bm-mini-grid">
+                ${cargoItems.length ? cargoItems.map(item => `
+                  <button class="bm-target-btn action-submit" data-action-type="deliver" data-item-id="${escapeHtml(item.id)}" ${pendingAction ? 'disabled' : ''}>
+                    ${escapeHtml(item.icon)} ${escapeHtml(item.name)}
+                    <small>รับอิทธิพลจากของชิ้นนี้</small>
+                  </button>
+                `).join('') : '<div class="bm-empty">ยังไม่มีของเถื่อนให้ส่ง</div>'}
+              </div>
             </div>
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">👁️ สืบข่าว</div>
-            <div class="bm-action-copy">คีบข่าววงในจากคู่แข่งบนโต๊ะ</div>
-            <div class="bm-target-list">
-              ${targets.map(player => `
-                <button class="bm-target-btn action-submit" data-action-type="intel" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
-                  <small>ดูเงิน ไฟ และของที่โผล่</small>
-                </button>
-              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้สืบ</div>'}
+            <div class="bm-action-title">👁️ สืบข่าว<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">คีบข่าววงในจากคู่แข่งบนโต๊ะ</div>
+              <div class="bm-target-list">
+                ${targets.map(player => `
+                  <button class="bm-target-btn action-submit" data-action-type="intel" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    <small>ดูเงิน ไฟ และของที่โผล่</small>
+                  </button>
+                `).join('') || '<div class="bm-empty">ไม่มีเป้าให้สืบ</div>'}
+              </div>
             </div>
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🤝 เข้าดีล</div>
-            <div class="bm-action-copy">ดีลจะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาในยกเดียวกัน</div>
-            <div class="bm-target-list">
-              ${targets.map(player => `
-                <button class="bm-target-btn action-submit" data-action-type="deal" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
-                  <small>ปิดดีลแล้วทั้งคู่ได้ 👑 และ 💵</small>
-                </button>
-              `).join('') || '<div class="bm-empty">ไม่มีคนเหลือให้ต่อดีล</div>'}
+            <div class="bm-action-title">🤝 เข้าดีล<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">ดีลจะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาในยกเดียวกัน</div>
+              <div class="bm-target-list">
+                ${targets.map(player => `
+                  <button class="bm-target-btn action-submit" data-action-type="deal" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    <small>ปิดดีลแล้วทั้งคู่ได้ 👑 และ 💵</small>
+                  </button>
+                `).join('') || '<div class="bm-empty">ไม่มีคนเหลือให้ต่อดีล</div>'}
+              </div>
             </div>
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🗡️ หักหลัง</div>
-            <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ</div>
-            <div class="bm-target-list">
-              ${targets.map(player => `
-                <button class="bm-target-btn action-submit" data-action-type="betray" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
-                  <small>สำเร็จเมื่ออีกฝ่ายเปิดดีลใส่คุณ</small>
-                </button>
-              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้แทงหลัง</div>'}
+            <div class="bm-action-title">🗡️ หักหลัง<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ</div>
+              <div class="bm-target-list">
+                ${targets.map(player => `
+                  <button class="bm-target-btn action-submit" data-action-type="betray" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    <small>สำเร็จเมื่ออีกฝ่ายเปิดดีลใส่คุณ</small>
+                  </button>
+                `).join('') || '<div class="bm-empty">ไม่มีเป้าให้แทงหลัง</div>'}
+              </div>
             </div>
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">💣 ปล้น</div>
-            <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป</div>
-            <div class="bm-target-list">
-              ${targets.map(player => `
-                <button class="bm-target-btn action-submit" data-action-type="raid" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
-                  <small>ชิงเงินหรือของจากกระเป๋า</small>
-                </button>
-              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้ปล้น</div>'}
+            <div class="bm-action-title">💣 ปล้น<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป</div>
+              <div class="bm-target-list">
+                ${targets.map(player => `
+                  <button class="bm-target-btn action-submit" data-action-type="raid" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
+                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    <small>ชิงเงินหรือของจากกระเป๋า</small>
+                  </button>
+                `).join('') || '<div class="bm-empty">ไม่มีเป้าให้ปล้น</div>'}
+              </div>
             </div>
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🔫 สั่งเก็บ</div>
-            <div class="bm-action-copy">ต้องมีปืนในมือ และทุนพอเปิดงาน</div>
-            <div class="bm-target-list">
-              ${targets.map(player => `
-                <button class="bm-target-btn action-submit" data-action-type="hit" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction || !actionHelp.canHit ? 'disabled' : ''}>
-                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
-                  <small>${actionHelp.canHit ? 'เปิดงานในยกนี้' : 'ยังไม่มีของเปิดงาน'}</small>
-                </button>
-              `).join('') || '<div class="bm-empty">ไม่มีเป้าให้เปิดงาน</div>'}
+            <div class="bm-action-title">🔫 สั่งเก็บ<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">ต้องมีปืนในมือ และทุนพอเปิดงาน</div>
+              <div class="bm-target-list">
+                ${targets.map(player => `
+                  <button class="bm-target-btn action-submit" data-action-type="hit" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction || !actionHelp.canHit ? 'disabled' : ''}>
+                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    <small>${actionHelp.canHit ? 'เปิดงานในยกนี้' : 'ยังไม่มีของเปิดงาน'}</small>
+                  </button>
+                `).join('') || '<div class="bm-empty">ไม่มีเป้าให้เปิดงาน</div>'}
+              </div>
             </div>
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🦺 ตั้งการ์ด / 🫥 หมอบต่ำ</div>
-            <div class="bm-action-copy">เล่นเนียน ลดค่าหัว แล้วรอจังหวะยกถัดไป</div>
-            <div class="bm-btn-row">
-              <button class="bm-btn alt action-submit" data-action-type="guard" ${pendingAction ? 'disabled' : ''}>🦺 ตั้งการ์ด</button>
-              <button class="bm-btn green action-submit" data-action-type="laylow" ${pendingAction ? 'disabled' : ''}>🫥 หมอบต่ำ${actionHelp.hasPassport ? ' + 🛂' : ''}</button>
-              <button class="bm-btn alt action-submit" data-action-type="pass" ${pendingAction ? 'disabled' : ''}>🤐 ผ่านยกนี้</button>
+            <div class="bm-action-title">🦺 ตั้งการ์ด / 🫥 หมอบต่ำ<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-body">
+              <div class="bm-action-copy">เล่นเนียน ลดค่าหัว แล้วรอจังหวะยกถัดไป</div>
+              <div class="bm-btn-row">
+                <button class="bm-btn alt action-submit" data-action-type="guard" ${pendingAction ? 'disabled' : ''}>🦺 ตั้งการ์ด</button>
+                <button class="bm-btn green action-submit" data-action-type="laylow" ${pendingAction ? 'disabled' : ''}>🫥 หมอบต่ำ${actionHelp.hasPassport ? ' + 🛂' : ''}</button>
+                <button class="bm-btn alt action-submit" data-action-type="pass" ${pendingAction ? 'disabled' : ''}>🤐 ผ่านยกนี้</button>
+              </div>
             </div>
           </div>
         </div>
         ${pendingAction ? `<div class="bm-card-note" style="margin-top:10px;">🔒 คุณล็อกแผน ${escapeHtml(pendingAction.summaryText || pendingAction.label || 'ยกนี้')} แล้ว รอคนอื่นลงมือ</div><div class="bm-card-note" style="margin-top:6px;">${escapeHtml(pendingAction.effectText || '')}</div>` : ''}
       `;
     }
+
 
     function renderGuide() {
       const playbook = getRolePlaybook();
@@ -3714,6 +3872,34 @@
       } else {
         $('#guideContent').slideUp(200);
         $('#guideToggleChevron').text('▼');
+      }
+    });
+
+    // Mobile accordion: manual sections (h3 header)
+    $(document).on('click', '#bmHowToCard .bm-manual-section h3', function() {
+      if (window.innerWidth > 640) return;
+      const section = $(this).closest('.bm-manual-section');
+      const body = section.find('.bm-manual-section-body');
+      const isOpen = section.hasClass('is-open');
+      section.toggleClass('is-open', !isOpen);
+      if (isOpen) {
+        body.slideUp(200);
+      } else {
+        body.slideDown(200);
+      }
+    });
+
+    // Mobile accordion: action blocks
+    $(document).on('click', '.bm-action-block .bm-action-title', function() {
+      if (window.innerWidth > 640) return;
+      const block = $(this).closest('.bm-action-block');
+      const body = block.find('.bm-action-body');
+      const isOpen = block.hasClass('is-open');
+      block.toggleClass('is-open', !isOpen);
+      if (isOpen) {
+        body.slideUp(200);
+      } else {
+        body.slideDown(200);
       }
     });
 

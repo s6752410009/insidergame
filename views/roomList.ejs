@@ -698,6 +698,75 @@
     .swal2-cancel:hover {
         background: #666 !important;
     }
+
+    #howToPlayBtn {
+        background: linear-gradient(135deg, #312e81, #1e1b4b);
+        border-color: rgba(129, 140, 248, 0.3);
+        color: #c7d2fe;
+    }
+    #howToPlayBtn:hover {
+        background: linear-gradient(135deg, #3730a3, #312e81);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 28px rgba(99, 102, 241, 0.28);
+        border-color: rgba(129, 140, 248, 0.5);
+        color: #e0e7ff;
+    }
+
+    /* ─── Guide popup styles ─── */
+    .bm-guide-popup {
+        max-width: min(520px, 96vw) !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background: #111 !important;
+        border: 1px solid rgba(129, 140, 248, 0.25) !important;
+        border-radius: 20px !important;
+    }
+    .bm-guide-popup .swal2-title {
+        background: linear-gradient(135deg, #312e81, #111) !important;
+        color: #c7d2fe !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 1.05em !important;
+        padding: 14px 16px !important;
+        margin: 0 !important;
+    }
+    .bm-guide-popup .swal2-html-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-height: min(72vh, 600px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .bm-guide-popup .swal2-actions { margin: 0 !important; padding: 12px 16px 16px !important; }
+    .bm-guide-inner { padding: 14px 16px 8px; color: #ddd; font-size: 0.92em; line-height: 1.5; text-align: left; }
+    .bm-guide-lead { margin: 0 0 12px; color: #fde68a; font-weight: 700; }
+    .bm-guide-section {
+        margin-bottom: 12px; padding: 12px 14px; border-radius: 12px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(129,140,248,0.18);
+    }
+    .bm-guide-section h4 { margin: 0 0 8px; color: #fff; font-size: 0.98em; font-weight: 700; }
+    .bm-guide-section ul, .bm-guide-section ol { margin: 6px 0 0; padding-left: 18px; }
+    .bm-guide-section li { margin-bottom: 4px; }
+    .bm-guide-muted { margin: 8px 0 0; color: #9aa3b2; font-size: 0.86em; }
+    .bm-guide-role-grid { display: grid; gap: 8px; margin-top: 8px; }
+    .bm-guide-role {
+        padding: 10px 12px; border-radius: 10px;
+        background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06);
+    }
+    .bm-guide-role strong { color: #fde68a; display: block; margin-bottom: 4px; }
+    .bm-guide-role span { color: #ccc; font-size: 0.9em; }
+    .bm-guide-actions { display: grid; gap: 6px; margin-top: 8px; }
+    .bm-guide-action { display: flex; gap: 8px; align-items: flex-start; font-size: 0.9em; }
+    .bm-guide-action b { color: #fff; min-width: 5.5em; flex-shrink: 0; }
+    .global-guide-tabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .global-guide-tab-btn {
+        border: none; padding: 8px 12px; border-radius: 8px 8px 0 0;
+        color: #aaa; cursor: pointer; font-family: 'Rajdhani', sans-serif;
+        font-weight: 700; font-size: 0.88em; background: transparent;
+        transition: all 0.2s;
+    }
+    .global-guide-tab-btn.active { background: rgba(255,255,255,0.1); color: #fff; }
+    .global-guide-pane { display: none; }
+    .global-guide-pane.active { display: block; }
 </style>
 
 <div class="room-list-container">
@@ -710,6 +779,7 @@
             </div>
             <div class="room-controls">
                 <input type="text" id="searchRoomInput" placeholder="🔍 ค้นหาห้องด้วยเลข Room ID">
+                <button id="howToPlayBtn" class="btn-room">📖 วิธีเล่น</button>
                 <button id="refreshBtn" class="btn-room">🔄 รีเฟรช</button>
                 <button id="createRoomBtn" class="btn-room">➕ สร้างห้อง</button>
             </div>
@@ -1644,5 +1714,162 @@ $(function() {
         };
         return text.replace(/[&<>"']/g, m => map[m]);
     }
+    // ─── How to Play global guide ───
+    const INSIDER_GUIDE_HTML = [
+        '<div class="bm-guide-inner">',
+        '<p class="bm-guide-lead">🎯 Insider: เกมทายคำ — จับจอมบงการให้เจอ</p>',
+        '<div class="bm-guide-section"><h4>บทบาท</h4><ul>',
+        '<li><b>🧑‍⚖️ Mr. White</b> — ผู้ดำเนินเกม รู้คำตอบ ต้องตอบคำถามให้วงทายได้</li>',
+        '<li><b>🕵️ Insider</b> — รู้คำตอบเหมือน Mr. White แต่ต้องเนียนไปกับวง</li>',
+        '<li><b>👥 Common</b> — ถามคำถามเพื่อทายคำ แล้วโหวตจับ Insider</li>',
+        '</ul></div>',
+        '<div class="bm-guide-section"><h4>3 ช่วง</h4><ol>',
+        '<li><b>ถามตอบ</b> — ถามใช่/ไม่ใช่ Mr. White ตอบ (Insider ช่วยแนะนำแบบเนียน)</li>',
+        '<li><b>ทาย</b> — วงทายคำให้ถูก ถ้าถูกไปโหวตจับ Insider</li>',
+        '<li><b>โหวต</b> — ถ้าทายถูก ทุกคนโหวตว่าใครคือ Insider</li>',
+        '</ol></div>',
+        '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
+        '<li><b>Common ชนะ</b> — ทายคำถูก และโหวตจับ Insider ได้</li>',
+        '<li><b>Insider ชนะ</b> — วงทายไม่ได้ภายในเวลา หรือโหวตพลาด</li>',
+        '</ul></div>',
+        '</div>'
+    ].join('');
+
+    const WEREWOLF_GUIDE_HTML = [
+        '<div class="bm-guide-inner">',
+        '<p class="bm-guide-lead">🐺 Werewolf: กลางคืนใช้สกิล กลางวันโหวตตัดสิน</p>',
+        '<div class="bm-guide-section"><h4>ฝ่าย</h4><ul>',
+        '<li><b>🐺 หมาป่า</b> — กลางคืนเลือกกิน 1 ชาวบ้าน</li>',
+        '<li><b>🔮 หมอดู</b> — กลางคืนเปิดตัวตน 1 คน</li>',
+        '<li><b>💉 หมอรักษา</b> — กลางคืนปกป้อง 1 คน</li>',
+        '<li><b>👥 ชาวบ้าน</b> — กลางวันโหวตแขวน</li>',
+        '</ul></div>',
+        '<div class="bm-guide-section"><h4>วนลูป</h4><ol>',
+        '<li><b>กลางคืน</b> — หมาป่าเลือกเหยื่อ บทพิเศษใช้สกิล</li>',
+        '<li><b>เช้า</b> — ประกาศคนที่ตายคืนนี้</li>',
+        '<li><b>กลางวัน</b> — ทุกคนคุยและโหวตแขวน 1 คน</li>',
+        '</ol></div>',
+        '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
+        '<li><b>ชาวบ้านชนะ</b> — หมาป่าตายหมด</li>',
+        '<li><b>หมาป่าชนะ</b> — จำนวนไม่น้อยกว่าชาวบ้าน</li>',
+        '</ul></div>',
+        '</div>'
+    ].join('');
+
+    const BM_LOBBY_ROLES = [
+        { icon: '🎩', title: 'เจ้าพ่อ', duty: 'ส่งของสำเร็จ ได้ 👑 เพิ่มอีก 1' },
+        { icon: '🕴️', title: 'นายหน้า', duty: 'ซื้อของในตลาดถูกกว่า 💵 1 · ดีลได้เงินเพิ่ม' },
+        { icon: '🚚', title: 'คนส่งของ', duty: 'ส่งของลากของเถื่อนในมือไปด้วยได้อีก 1 ชิ้น' },
+        { icon: '🧹', title: 'คนเคลียร์ทาง', duty: 'รอดการสั่งเก็บได้ 1 ครั้ง · หมอบต่ำลด 🔥 แรงขึ้น' },
+        { icon: '🔫', title: 'มือเก็บงาน', duty: 'สั่งเก็บใช้แค่ 💵 2 · เก็บสำเร็จชิงของเป้าได้' },
+        { icon: '🕶️', title: 'สายข่าว', duty: 'สืบข่าวเห็นบท + ของในมือเป้า' },
+        { icon: '🃏', title: 'สองหน้า', duty: 'หักหลัง/ปล้นคุ้ม แต่ทุกครั้งที่ทำ 🔥 +1' }
+    ];
+
+    const BM_LOBBY_ACTIONS = [
+        { icon: '📦', label: 'ส่งของ', effect: 'ใช้ของเถื่อน → +👑' },
+        { icon: '👁️', label: 'สืบข่าว', effect: 'ดูเงิน 🔥 ของของเป้า' },
+        { icon: '🤝', label: 'เข้าดีล', effect: 'ถ้าเขาก็เลือกดีล ทั้งคู่ได้ 👑+💵' },
+        { icon: '🗡️', label: 'หักหลัง', effect: 'ใช้เมื่อเป้าเปิดดีลกับคุณ แย่งโบนัส' },
+        { icon: '💣', label: 'ปล้น', effect: 'ชิง 💵 หรือของจากเป้า' },
+        { icon: '🔫', label: 'สั่งเก็บ', effect: 'ต้องมีปืน โจมตีเป้า' },
+        { icon: '🦺', label: 'ตั้งการ์ด', effect: 'กันแอ็กชันรุนแรงในยกนี้' },
+        { icon: '🫥', label: 'หมอบต่ำ', effect: 'ลด 🔥 ค่าหัว' },
+        { icon: '🤐', label: 'ผ่าน', effect: 'ไม่ทำอะไรยกนี้' }
+    ];
+
+    function buildBlackMarketGuideHtml() {
+        const rolesHtml = BM_LOBBY_ROLES.map(function(r) {
+            return '<div class="bm-guide-role"><strong>' + r.icon + ' ' + r.title + '</strong><span>' + r.duty + '</span></div>';
+        }).join('');
+        const actionsHtml = BM_LOBBY_ACTIONS.map(function(a) {
+            return '<div class="bm-guide-action"><b>' + a.icon + ' ' + a.label + '</b><span>' + a.effect + '</span></div>';
+        }).join('');
+        return [
+            '<div class="bm-guide-inner">',
+            '<p class="bm-guide-lead">🎩 Black Market: กวาดของเถื่อน เปิดดีล หักหลัง — 5 ยก ใครได้ 👑 มากสุดชนะ</p>',
+            '<div class="bm-guide-section"><h4>หนึ่งยกมี 2 ช่วง</h4><ol>',
+            '<li><b>ตลาด</b> — เลือกซื้อของ 1 ชิ้น หรือกดผ่าน</li>',
+            '<li><b>ลงมือ</b> — เลือกทำอย่างเดียว แล้วล็อกจนทุกคนพร้อม</li>',
+            '</ol><p class="bm-guide-muted">💵 ทุน · 🔥 ค่าหัว (สูง = โดนเก็บง่าย) · 👑 อิทธิพล = แต้ม</p></div>',
+            '<div class="bm-guide-section"><h4>ปุ่มลงมือ</h4><div class="bm-guide-actions">' + actionsHtml + '</div></div>',
+            '<div class="bm-guide-section"><h4>บทบาท 7 แบบ</h4><div class="bm-guide-role-grid">' + rolesHtml + '</div></div>',
+            '<div class="bm-guide-section"><h4>✨ ตัวอย่าง 1 ยก</h4>',
+            '<p style="font-size:0.85em;color:#aaa;margin:0 0 8px">กิตติ (เจ้าพ่อ 🎩) / นิด (มือเก็บ 🔫) / บอย (นายหน้า 🕴️) / แอน (สายข่าว 🕶️)</p>',
+            '<div style="font-size:0.85em;line-height:1.6;color:#ddd;display:grid;gap:6px">',
+            '<div><b style="color:#efd07a">ตลาด:</b> กิตติซื้อลัง📦 บอยซื้อพาสปลอม🛂ถูกกว่า 1 แอน/นิด ผ่าน</div>',
+            '<div><b style="color:#38bdf8">ลงมือ:</b> กิตติ→ส่งของ · นิด→สั่งเก็บกิตติ · บอย→ดีลแอน · แอน→ดีลบอย</div>',
+            '<div><b style="color:#2ecc71">ดีลสำเร็จ:</b> บอย🤝แอน ทั้งคู่รับ👑+💵</div>',
+            '<div><b style="color:#e74c3c">สั่งเก็บ:</b> นิดยิงกิตติ — กิตติล้ม💀 เสียของ แผนส่งของพัง</div>',
+            '</div></div>',
+            '</div>'
+        ].join('');
+    }
+
+    function buildSpyfallGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<p class="bm-guide-lead">🕶️ Spyfall: ทุกคนรู้สถานที่ ยกเว้นสายลับ 1 คน</p>',
+            '<div class="bm-guide-section"><h4>บทบาท</h4><ul>',
+            '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ + บทในที่นั้น ถาม–ตอบเพื่อจับสายลับ</li>',
+            '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่ ต้องเดาจากคำถาม</li>',
+            '</ul></div>',
+            '<div class="bm-guide-section"><h4>3 ช่วง</h4><ol>',
+            '<li><b>เปิดบท</b> — จำสถานที่และบทของคุณ</li>',
+            '<li><b>คุย</b> — ถามคำถามที่ตอบได้หลายทาง</li>',
+            '<li><b>โหวต</b> — เลือก 1 คนที่คิดว่าเป็นสายลับ</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
+            '<li><b>พลเมือง</b> — โหวตโดนสายลับ</li>',
+            '<li><b>สายลับ</b> — โหวตพลาดหรือเสมอ</li>',
+            '</ul></div>',
+            '</div>'
+        ].join('');
+    }
+
+    function showGlobalGameGuide() {
+        const guides = [
+            { id: 'insider',     label: '🎯 Insider',      html: INSIDER_GUIDE_HTML,           color: '#be123c' },
+            { id: 'werewolf',    label: '🐺 Werewolf',     html: WEREWOLF_GUIDE_HTML,          color: '#1d4ed8' },
+            { id: 'blackmarket', label: '🎩 Black Market', html: buildBlackMarketGuideHtml(),  color: '#b45309' },
+            { id: 'spyfall',     label: '🕶️ Spyfall',     html: buildSpyfallGuideHtml(),      color: '#0f766e' }
+        ];
+
+        const tabsHtml = '<div class="global-guide-tabs">' +
+            guides.map(function(g, i) {
+                return '<button type="button" class="global-guide-tab-btn' + (i === 0 ? ' active' : '') +
+                    '" data-guide-id="' + g.id + '">' + g.label + '</button>';
+            }).join('') + '</div>';
+
+        const panesHtml = guides.map(function(g, i) {
+            return '<div class="global-guide-pane' + (i === 0 ? ' active' : '') + '" id="guide-pane-' + g.id + '">' + g.html + '</div>';
+        }).join('');
+
+        Swal.fire({
+            title: '📖 วิธีเล่น',
+            html: tabsHtml + panesHtml,
+            background: '#111',
+            color: '#fff',
+            confirmButtonText: 'ปิด',
+            confirmButtonColor: '#374151',
+            customClass: {
+                popup: 'bm-guide-popup',
+                htmlContainer: 'bm-guide-popup-body'
+            }
+        });
+    }
+
+    $('#howToPlayBtn').on('click', function() {
+        showGlobalGameGuide();
+    });
+
+    $(document).on('click', '.global-guide-tab-btn', function() {
+        const id = $(this).data('guide-id');
+        $('.global-guide-tab-btn').removeClass('active');
+        $(this).addClass('active');
+        $('.global-guide-pane').removeClass('active');
+        $('#guide-pane-' + id).addClass('active');
+    });
+
 });
 </script>
