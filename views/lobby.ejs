@@ -1509,24 +1509,23 @@ $(function() {
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        รอบใหญ่ครั้งนี้เพิ่มโหมด <strong>Spyfall</strong> เล่นได้ครบในห้อง — สายลับไม่รู้สถานที่ คนอื่นรู้ คุยแล้วโหวตจับ
+                        อัปเดต v<%= appVersion %> ใหม่: เพิ่มโหมดฝึกซ้อมเล่นกับบอท (🤖 เติมบอทเพื่อทดสอบ) ในห้องตลาดมืด และระบบคู่มือจำลองการเล่นแบบจำลอง (Walkthrough) สลับแท็บได้ทั้งในล็อบบี้และบอร์ดเกมจริง!
                     </p>
                     
                     <div style="background: rgba(26, 188, 156, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #1abc9c; margin-bottom: 15px;">
                         <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🕵️ ไฮไลต์ v<%= appVersion %></h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>โหมด Spyfall ใหม่</strong> 4–8 คน แจกบท → ถาม–ตอบ → โหวตจับสายลับ รอบเดียวจบ</li>
-                            <li><strong>18+ สถานที่</strong> สุ่มทุกรอบ สายลับเห็นรายการสถานที่เพื่อเดา (ไม่เห็นคำตอบจริง)</li>
-                            <li><strong>หัวหน้าห้องจบช่วงคุยได้</strong> ตั้งเวลาคุย/โหวตตอนสร้างห้อง โหวตครบหรือหมดเวลาระบบสรุปผลเอง</li>
+                            <li><strong>โหมดซ้อมเล่นกับบอท (AI Bots):</strong> สามารถแอดบอทได้สูงสุด 3 ตัวเพื่อทดสอบระบบและเล่นแข่งกันจนจบเกมได้ทันทีในห้อง Black Market</li>
+                            <li><strong>คู่มือจำลองการเล่น (Walkthrough):</strong> เพิ่มแท็บแสดงตัวอย่างทีละขั้นตอนของ 4 ตัวละคร (เจ้าพ่อ, มือเก็บงาน, นายหน้า, สายข่าว) ให้ผู้เล่นใหม่เข้าใจจังหวะการแก้ไขการส่งของและยิงได้ทันที</li>
+                            <li><strong>ไกด์พาเล่นในบอร์ดจริง:</strong> ปรับปรุงแผงวิเคราะห์และไกด์ในบอร์ด โดยแสดงผลแบบไดนามิกตามบทบาทที่ได้รับและเฟสของเกม</li>
                         </ul>
                     </div>
 
                     <div style="background: rgba(52, 152, 219, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 เล่นยังไง (สั้น ๆ)</h4>
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 วิธีเล่นง่าย ๆ</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>พลเมือง</strong> รู้สถานที่ — ถาม–ตอบให้จับสายลับโดยไม่เปิดเผยที่ตรง ๆ</li>
-                            <li><strong>สายลับ</strong> ไม่รู้สถานที่ — ฟังแล้วเดาให้เนียน รอดถ้าโหวตไม่จับได้หรือเสมอ</li>
-                            <li>สร้างห้องเลือกโหมด <strong>Spyfall</strong> หรือใช้ชื่อห้อง <strong>วงสายลับสถานที่</strong> แล้วเริ่มเกมได้เลย</li>
+                            <li>สร้างห้องเลือกโหมด <strong>Black Market</strong> กดปุ่ม 🤖 <b>เติมบอทเพื่อทดสอบ</b> จากนั้นกดเปิดตลาดมืดได้เลย!</li>
+                            <li>หากไม่เข้าใจขั้นตอน ให้กดเปิด 📖 <b>คู่มือโต๊ะตลาดมืด</b> เพื่อสลับแท็บดูแบบอย่างการลงมือและสกิลได้ตลอดเวลา</li>
                         </ul>
                     </div>
                     
@@ -1535,17 +1534,15 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.0.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li><strong>โหมด Spyfall ใหม่</strong> 4–8 คน แจกบท → ถาม–ตอบ → โหวตจับสายลับ</li>
+                                <li><strong>18+ สถานที่</strong> สุ่มทุกรอบ สายลับเห็นรายการสถานที่เพื่อเดา</li>
+                                <li><strong>ตั้งเวลาคุย/โหวต</strong> โหวตครบหรือหมดเวลาระบบสรุปผลเอง</li>
+                            </ul>
                             <h4 style="color: #ffb4a8; margin: 10px 0 8px 0;">v4.1.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
-                                <li>Werewolf เสถียรกว่าเดิม จังหวะกลางคืน/กลางวันนิ่งขึ้น</li>
-                                <li>แก้บัคจุกจิกและเกลา UI ให้อ่านสถานะง่ายขึ้น</li>
-                            </ul>
-                            <h4 style="color: #2ecc71; margin: 10px 0 10px 0;">✨ แพทก่อนหน้ายังมีอะไรอยู่บ้าง</h4>
-                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
-                                <li>Werewolf เล่นได้เต็มระบบแล้ว ทั้งกลางคืน กลางวัน บทบาท และเงื่อนไขชนะ</li>
-                                <li>โปรไฟล์จำสถิติและประวัติการเล่นของ Insider กับ Werewolf ต่อเนื่อง</li>
-                                <li>รีเฟรชหรือหลุดแล้วกลับเข้าห้องได้ดีขึ้นกว่าเดิม</li>
-                                <li>ระบบแชทตอบกลับ, Auto-Timer และปุ่มสนับสนุนผู้พัฒนายังอยู่ครบ</li>
+                                <li>Werewolf เสถียรกว่าเดิม จังหวะกลางคืน/กลางวันนิ่งขึ้น และเกลา UI</li>
                             </ul>
                         </div>
                     </details>
