@@ -332,6 +332,40 @@
     color: #d1fae5;
   }
 
+  .bm-now-bar-go {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 11px 20px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f5c86b, #e0a52e);
+    color: #1a1205;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(245, 200, 107, 0.32);
+    animation: bmNowPulse 1.8s ease-in-out infinite;
+  }
+
+  .bm-now-bar-go:hover { filter: brightness(1.06); }
+
+  @keyframes bmNowPulse {
+    0%, 100% { transform: translateY(0); box-shadow: 0 6px 18px rgba(245, 200, 107, 0.32); }
+    50% { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(245, 200, 107, 0.5); }
+  }
+
+  .bm-stage-flash {
+    animation: bmStageFlash 1.2s ease-out;
+  }
+
+  @keyframes bmStageFlash {
+    0% { box-shadow: 0 0 0 3px rgba(245, 200, 107, 0.9); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 200, 107, 0); }
+  }
+
   .bm-announcer.bm-announcer-collapsed {
     grid-template-columns: 1fr;
     padding: 10px 22px;
@@ -1699,10 +1733,6 @@
           <div id="rolePanel"></div>
         </div>
 
-        <div class="bm-card bm-card-guide" data-tour-id="guide">
-          <div id="guidePanel"></div>
-        </div>
-
         <div class="bm-card bm-card-stage" data-tour-id="stage">
           <div class="bm-card-header">
             <div>
@@ -1710,6 +1740,10 @@
             </div>
           </div>
           <div id="mainStage"></div>
+        </div>
+
+        <div class="bm-card bm-card-guide" data-tour-id="guide">
+          <div id="guidePanel"></div>
         </div>
 
         <div class="bm-card bm-card-history">
@@ -1892,7 +1926,7 @@
     let spotlightRestoreFocus = null;
     let howToActive = false;
     let howToRestoreFocus = null;
-    let showAdvancedActions = true;
+    let showAdvancedActions = false;
     let announcerExpanded = true;
     let simplePickMode = null;
     let guideExpanded = false;
@@ -2774,6 +2808,10 @@
       let main = 'รอเริ่มเกม';
       let sub = 'เป้าหมาย: มี 👑 มากสุดใน 5 ยก หรือเหลือรอดคนสุดท้าย';
       let locked = false;
+      let cta = '';
+
+      const lp = currentState.lockProgress;
+      const lockText = (lp && lp.total) ? ('ล็อกแล้ว ' + lp.locked + '/' + lp.total + ' คน') : '';
 
       if (!self.alive) {
         main = 'คุณออกจากเกมแล้ว — ดูผลอย่างเดียว';
@@ -2781,20 +2819,22 @@
       } else if (phase === 'market') {
         if (status.pendingMarketChoice) {
           main = 'ล็อกแล้ว — รอคนอื่นเลือกตลาด';
-          sub = 'แก้ไม่ได้จนกว่าจะปิดยก';
+          sub = lockText || 'แก้ไม่ได้จนกว่าจะปิดยก';
           locked = true;
         } else {
-          main = 'ตอนนี้: เลือกซื้อของ 1 ชิ้น หรือกดผ่านตลาด';
-          sub = 'กดปุ่มด้านล่าง';
+          main = '🛒 ตาคุณ: เลือกซื้อของ 1 ชิ้น หรือกดผ่านตลาด';
+          sub = 'เลื่อนไปที่ "ตลาดมืด" แล้วกดปุ่มซื้อ หรือ ผ่าน' + (lockText ? ' · ' + lockText : '');
+          cta = '⬇️ ไปเลือกของเลย';
         }
       } else if (phase === 'action') {
         if (status.pendingAction) {
           main = 'ล็อกแล้ว — รอคนอื่นลงมือ';
-          sub = status.pendingAction.summaryText || status.pendingAction.label || '';
+          sub = lockText || status.pendingAction.summaryText || status.pendingAction.label || '';
           locked = true;
         } else {
-          main = 'ตอนนี้: เลือกทำ 1 อย่างด้านล่าง';
-          sub = 'ส่งของ · สืบข่าว · ดีล · หักหลัง · ปล้น · สั่งเก็บ — เลือกได้เลย';
+          main = '🎯 ตาคุณ: เลือกทำ 1 อย่าง';
+          sub = 'ปุ่มหลัก: ส่งของ · สืบข่าว · ผ่าน (กดดูแผนเต็มได้)' + (lockText ? ' · ' + lockText : '');
+          cta = '⬇️ ไปเลือกแผนเลย';
         }
       } else if (phase === 'finished') {
         main = 'เกมจบแล้ว';
@@ -2806,7 +2846,8 @@
         .html(
           '<div class="bm-now-bar-label">ทำอะไรตอนนี้</div>' +
           '<div class="bm-now-bar-text">' + escapeHtml(main) + '</div>' +
-          (sub ? '<div class="bm-now-bar-sub">' + escapeHtml(sub) + '</div>' : '')
+          (sub ? '<div class="bm-now-bar-sub">' + escapeHtml(sub) + '</div>' : '') +
+          (cta ? '<button type="button" id="bmNowBarGo" class="bm-now-bar-go">' + escapeHtml(cta) + '</button>' : '')
         );
     }
 
@@ -3145,7 +3186,9 @@
             <div class="bm-role-title">
               <div class="bm-role-name">${escapeHtml(role.title || 'ยังไม่เปิดบท')}</div>
             </div>
-            ${role.ability ? `<div class="bm-role-copy" style="margin-top:8px;color:var(--bm-gold);">${escapeHtml(role.ability)}</div>` : ''}
+            ${role.summary ? `<div class="bm-role-copy" style="margin-top:6px;font-weight:700;color:#fff;">⭐ จุดเด่นคุณ: ${escapeHtml(role.summary)}</div>` : ''}
+            ${role.ability ? `<div class="bm-role-copy" style="margin-top:4px;color:var(--bm-gold);font-size:0.9em;">${escapeHtml(role.ability)}</div>` : ''}
+            <div class="bm-role-copy" style="margin-top:6px;color:#9aa6c0;font-size:0.85em;">🎯 เป้าหมาย: สะสม 👑 ให้มากสุดใน 5 ยก</div>
           </div>
         </div>
         <div class="bm-stats">
@@ -3701,9 +3744,9 @@
       updatePhaseTimer();
       if (previousState.phase !== currentState.phase) {
         simplePickMode = null;
+        // เข้าช่วงลงมือใหม่: เริ่มที่ 3 ปุ่มหลักก่อน (ส่งของ/สืบข่าว/ผ่าน) กดดูแผนหลักเองได้
         if (currentState.phase === 'action') {
-          // โชว์แผนหลัก (ดีล/หักหลัง/ปล้น/เก็บ) ทุกครั้งที่เข้าช่วงลงมือ กันคนเล่นหาไม่เจอ
-          showAdvancedActions = true;
+          showAdvancedActions = false;
         }
       }
       renderNowBar();
@@ -3869,6 +3912,21 @@
     $(document).on('click', '#bmToggleAdvanced', function() {
       showAdvancedActions = !showAdvancedActions;
       renderMainStage();
+    });
+
+    $(document).on('click', '#bmNowBarGo', function() {
+      // มือถือ: สลับไปแท็บ "เล่นยกนี้" ก่อน แล้วค่อยเลื่อนไปการ์ดลงมือ
+      const $gameTab = $('.bm-mobile-tab-btn[data-tab="game"]');
+      if ($gameTab.length && !$gameTab.hasClass('active')) {
+        $gameTab.trigger('click');
+      }
+      const stage = document.getElementById('mainStage');
+      if (stage) {
+        const card = stage.closest('.bm-card') || stage;
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('bm-stage-flash');
+        setTimeout(function() { card.classList.remove('bm-stage-flash'); }, 1200);
+      }
     });
 
     $(document).on('click', '.bm-simple-btn[data-simple]', function() {

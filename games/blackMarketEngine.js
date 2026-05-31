@@ -1024,6 +1024,23 @@ function resolveActionPhase(room) {
     startNextRound(room, report);
 }
 
+function buildLockProgress(room) {
+    const phase = room.gameState.phase;
+    const alive = getAlivePlayers(room);
+    const total = alive.length;
+    let locked = 0;
+    if (phase === 'market') {
+        const choices = room.gameState.marketChoices || {};
+        locked = alive.filter(p => Object.prototype.hasOwnProperty.call(choices, p.playerId)).length;
+    } else if (phase === 'action') {
+        const choices = room.gameState.actionChoices || {};
+        locked = alive.filter(p => Object.prototype.hasOwnProperty.call(choices, p.playerId)).length;
+    } else {
+        return null;
+    }
+    return { locked, total };
+}
+
 function buildClientState(room, playerId) {
     const self = getPlayer(room, playerId);
     if (!self) {
@@ -1047,6 +1064,7 @@ function buildClientState(room, playerId) {
         roundNumber: room.gameState.roundNumber,
         maxRounds: room.gameState.maxRounds,
         phaseEndsAt: room.gameState.phaseEndsAt || null,
+        lockProgress: buildLockProgress(room),
         winner: room.gameState.winner,
         playerRole: {
             id: self.role,
