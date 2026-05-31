@@ -607,6 +607,29 @@ function processVote1Result(gameState) {
 }
 
 /**
+ * Advance an Insider game from discussion into the traitor vote (vote2).
+ * Shared by the admin "stop timer" action and the discussion timeout so the
+ * game never stalls if the admin is gone. Reuses the live displayVote2 flow.
+ */
+function advanceInsiderToVote2(io, room) {
+    if (!room || !room.gameState) return;
+    const roomId = room.roomId;
+    if (roomCountdowns.has(roomId)) {
+        clearInterval(roomCountdowns.get(roomId));
+        roomCountdowns.delete(roomId);
+    }
+    room.gameState.countdownEndsAt = null;
+    resetVote(room.gameState, 2);
+    const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
+    io.to(roomId).emit('displayVote2', {
+        players: room.gameState.players.filter(isNotGameMaster),
+        numTraitors: numTraitors,
+        progress: buildVote2Progress(room.gameState)
+    });
+    room.gameState.status = 'vote2';
+}
+
+/**
  * Process vote2 result - รองรับ 1 หรือ 2 จอมบงการ
  */
 function processVote2Result(gameState) {
@@ -680,6 +703,7 @@ function processVote2Result(gameState) {
         hasTraitor: hasTraitorInGame,
         numTraitors: numTraitors, // เพิ่มจำนวนจอมบงการ
         finalTraitorName: finalResultTraitorName,
+        word: gameState.word || null, // เฉลยคำลับตอนจบ
         // เพิ่มบทบาททุกคนสำหรับเฉลยตอนจบ
         allRoles: gameState.players.map(p => ({ name: p.name, role: p.role }))
     };
@@ -4434,17 +4458,36 @@ io.sockets.on('connection', function(socket) {
                 } else if (room.settings.gameMode === 'spyfall') {
                     emitSpyfallState(room, socket.id, playerId);
                 } else {
-                    io.to(socket.id).emit('newRole', {
-                        players: room.gameState.players,
-                        status: room.gameState.status
-                    });
-
-                    // ถ้าเกมอยู่ในช่วงที่มีคำแล้ว ให้ sync
-                    const shouldSyncWord = ['word', 'in_progress', 'vote1', 'vote2', 'end'].includes(room.gameState.status);
-                    if (shouldSyncWord && room.gameState.word) {
+                    // Insider: resync ให้ตรงเฟสจริง (ไม่ replay role/startGame ผิดเฟส)
+                    const gs = room.gameState;
+                    const insiderStatus = gs.status;
+                    if (insiderStatus === 'in_progress') {
+                        // ช่วงคุย — คืนค่า countdown ที่เหลือ
+                        let remaining = 0;
+                        if (gs.countdownEndsAt) {
+                            remaining = Math.max(0, Math.ceil((gs.countdownEndsAt - Date.now()) / 1000));
+                        }
+                        io.to(socket.id).emit('countdownUpdate', remaining);
+                    } else if (insiderStatus === 'vote2') {
+                        const numTraitors = gs.players.filter(p => p.role === traitorRole).length;
+                        io.to(socket.id).emit('displayVote2', {
+                            players: gs.players.filter(isNotGameMaster),
+                            numTraitors: numTraitors,
+                            progress: buildVote2Progress(gs)
+                        });
+                    } else if (insiderStatus === 'end' && gs.resultVote2) {
+                        io.to(socket.id).emit('vote2Ended', gs.resultVote2);
+                    } else if (insiderStatus === 'word' && gs.word) {
+                        // คำถูกเปิดแล้ว — โชว์คำ + ปุ่มเริ่มเกม (ไม่ replay role)
                         io.to(socket.id).emit('revealWord', {
-                            players: room.gameState.players,
-                            word: room.gameState.word
+                            players: gs.players,
+                            word: gs.word
+                        });
+                    } else {
+                        // ช่วงแจกบทบาท (role) — แสดงบทบาทตามปกติ
+                        io.to(socket.id).emit('newRole', {
+                            players: gs.players,
+                            status: gs.status
                         });
                     }
                 }
@@ -5406,20 +5449,8 @@ io.sockets.on('connection', function(socket) {
         // ต้องเป็น admin เท่านั้นที่จะกดหยุดเกมได้
         if (!isAdminSocket(room, socket)) return;
 
-        if (roomCountdowns.has(roomId)) {
-            clearInterval(roomCountdowns.get(roomId));
-            roomCountdowns.delete(roomId);
-        }
-
-        // ไปโหวต 2 เลย ไม่ต้องผ่านโหวต 1
-        resetVote(room.gameState, 2);
-        const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
-        io.to(roomId).emit('displayVote2', {
-            players: room.gameState.players.filter(isNotGameMaster),
-            numTraitors: numTraitors,
-            progress: buildVote2Progress(room.gameState)
-        });
-        room.gameState.status = 'vote2';
+        // ไปโหวต 2 เลย ไม่ต้องผ่านโหวต 1 (ใช้ helper เดียวกับ timeout)
+        advanceInsiderToVote2(io, room);
     });
 
     // Display vote2 (vote1 ถูกตัดออกแล้ว - ไปโหวต 2 เลยตอน wordFound)
@@ -5594,6 +5625,8 @@ io.sockets.on('connection', function(socket) {
         }
 
         let counter = room.settings.roundTime || 300;
+        // เก็บเวลาหมดไว้เพื่อ resync ตอน reconnect/reload
+        room.gameState.countdownEndsAt = Date.now() + counter * 1000;
         
         // Clear existing countdown
         if (roomCountdowns.has(roomId)) {
@@ -5610,7 +5643,13 @@ io.sockets.on('connection', function(socket) {
             if (counter <= 0) {
                 clearInterval(countdownInterval);
                 roomCountdowns.delete(roomId);
+                room.gameState.countdownEndsAt = null;
                 console.log('[startGame] Countdown finished for room:', roomId);
+                // หมดเวลาคุย → เข้าโหวตจับจอมบงการอัตโนมัติ (กันเกมค้างถ้าแอดมินไม่กดหยุด)
+                if (room.gameState.status === 'in_progress') {
+                    sendChatMessageToRoom(io, roomId, 'System', 'หมดเวลาคุย — เริ่มโหวตจับจอมบงการ', '#f39c12');
+                    advanceInsiderToVote2(io, room);
+                }
             }
         }, 1000);
 
