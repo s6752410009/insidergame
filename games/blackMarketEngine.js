@@ -240,8 +240,32 @@ function setPhaseDeadline(room, durationMs) {
     room.gameState.phaseEndsAt = Date.now() + durationMs;
 }
 
+// ค่า default ใช้เมื่อห้องไม่ได้ตั้ง roundTime (รวม 210 วิ/ยก)
 const MARKET_PHASE_MS = 90 * 1000;
 const ACTION_PHASE_MS = 120 * 1000;
+const DEFAULT_ROUND_BUDGET_MS = MARKET_PHASE_MS + ACTION_PHASE_MS;
+const MARKET_PHASE_MIN_MS = 20 * 1000;
+const ACTION_PHASE_MIN_MS = 30 * 1000;
+const MARKET_PHASE_SHARE = 0.42; // แบ่งเวลาต่อยกให้ช่วงตลาดประมาณ 42% ที่เหลือเป็นช่วงลงมือ
+
+// roundTime ในห้องเก็บเป็น "วินาที" (ล็อบบี้แปลงจากนาที) = งบเวลาต่อยก
+function getRoundBudgetMs(room) {
+    const seconds = Number(room?.settings?.roundTime);
+    if (Number.isFinite(seconds) && seconds > 0) {
+        return seconds * 1000;
+    }
+    return DEFAULT_ROUND_BUDGET_MS;
+}
+
+function getMarketPhaseMs(room) {
+    const budget = getRoundBudgetMs(room);
+    return Math.max(MARKET_PHASE_MIN_MS, Math.round(budget * MARKET_PHASE_SHARE));
+}
+
+function getActionPhaseMs(room) {
+    const budget = getRoundBudgetMs(room);
+    return Math.max(ACTION_PHASE_MIN_MS, Math.round(budget * (1 - MARKET_PHASE_SHARE)));
+}
 
 function createPlayerState(player, context = {}) {
     return {
@@ -476,7 +500,7 @@ function startGame(room) {
     room.gameState.winner = null;
     room.gameState.lastAction = Date.now();
     room.gameState.statsRecordedAt = null;
-    setPhaseDeadline(room, MARKET_PHASE_MS);
+    setPhaseDeadline(room, getMarketPhaseMs(room));
     pushHistory(room, '🎩', 'ตลาดมืดเปิดแล้ว ยก 1 เริ่มกวาดของเถื่อน', 'gold');
     return room.gameState;
 }
@@ -518,7 +542,7 @@ function moveToActionPhase(room, report = []) {
     room.gameState.marketChoices = {};
     room.gameState.lastRoundReport = report;
     room.gameState.lastAction = Date.now();
-    setPhaseDeadline(room, ACTION_PHASE_MS);
+    setPhaseDeadline(room, getActionPhaseMs(room));
     pushHistory(room, '🛒', `ตลาดยก ${room.gameState.roundNumber} ปิดแล้ว ถึงเวลาลงมือ`, 'amber');
 }
 
@@ -604,7 +628,7 @@ function startNextRound(room, report = []) {
     room.gameState.marketChoices = {};
     room.gameState.actionChoices = {};
     room.gameState.lastAction = Date.now();
-    setPhaseDeadline(room, MARKET_PHASE_MS);
+    setPhaseDeadline(room, getMarketPhaseMs(room));
     pushHistory(room, '🌒', `ยก ${room.gameState.roundNumber} เปิดฉาก ล็อตใหม่พร้อมแล้ว`, 'neutral');
 }
 
@@ -834,8 +858,21 @@ function resolveActionPhase(room) {
     const deadTargetIds = [...new Set(hitAttempts.map(attempt => attempt.targetId))];
     deadTargetIds.forEach(targetId => {
         const target = getPlayer(room, targetId);
-        const killerAttempt = hitAttempts.find(attempt => attempt.targetId === targetId);
+        const attemptsOnTarget = hitAttempts.filter(attempt => attempt.targetId === targetId);
+        const killerAttempt = attemptsOnTarget[0];
         const killer = killerAttempt ? getPlayer(room, killerAttempt.actorId) : null;
+
+        // คนที่สั่งเก็บเป้าเดียวกันแต่ไม่ใช่คนแรก = งานซ้ำ คืนปืน + เงินให้ ไม่ให้เสียฟรี
+        attemptsOnTarget.slice(1).forEach(extra => {
+            const extraActor = getPlayer(room, extra.actorId);
+            if (!extraActor) {
+                return;
+            }
+            extraActor.inventory.push('gun');
+            extraActor.cash += (extraActor.role === 'hitman' ? 2 : 3);
+            extraActor.lastMove = 'งานซ้ำ ได้ของคืน';
+            report.push({ icon: '↩️', text: `${extraActor.name} ไปถึงช้ากว่า มีคนเก็บ ${target ? target.name : 'เป้า'} ไปก่อน — คืนปืนและเงินให้`, tone: 'neutral' });
+        });
 
         if (!target || target.alive === false) {
             return;
@@ -1194,5 +1231,7 @@ module.exports = {
     submitAction,
     autoResolvePhase,
     MARKET_PHASE_MS,
-    ACTION_PHASE_MS
+    ACTION_PHASE_MS,
+    getMarketPhaseMs,
+    getActionPhaseMs
 };

@@ -28,9 +28,14 @@ const WEREWOLF_ROLE_LABELS = {
     alphaWolf: 'อัลฟ่าหมาป่า',
     mayor: 'นายก',
     bodyguard: 'บอดี้การ์ด',
-    seer: 'Seer',
+    seer: 'ผู้หยั่งรู้',
+    oracle: 'นักพยากรณ์',
     doctor: 'หมอ',
     witch: 'แม่มด',
+    tracker: 'นักสอดแนม',
+    vigilante: 'ศาลเตี้ย',
+    hunter: 'พราน',
+    cleric: 'นักบวช',
     fool: 'คนบ้า',
     revealer: 'จอมเปิดโปง'
 };

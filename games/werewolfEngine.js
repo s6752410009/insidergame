@@ -20,7 +20,7 @@ const ROLE_DEFINITIONS = {
         name: 'Alpha Wolf',
         thaiName: 'อัลฟ่าหมาป่า',
         team: 'werewolf',
-        description: 'หมาป่าหัวหน้า โหวตล่าแรงกว่า 1 เสียง และ Seer จะเห็นว่าไม่ทราบ',
+        description: 'หมาป่าหัวหน้า โหวตล่าแรงกว่า 1 เสียง และผู้หยั่งรู้จะเห็นว่าไม่ทราบ',
         winCondition: 'หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่ยังมีชีวิตอยู่รวมกัน'
     },
     mayor: {
@@ -42,7 +42,7 @@ const ROLE_DEFINITIONS = {
     seer: {
         id: 'seer',
         name: 'Seer',
-        thaiName: 'Seer',
+        thaiName: 'ผู้หยั่งรู้',
         team: 'village',
         description: 'ตรวจผู้เล่นได้ 1 คนต่อคืน ดูตัวเองไม่ได้ ผลเป็น ดี / ไม่ดี / ไม่ทราบ',
         winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
@@ -50,9 +50,9 @@ const ROLE_DEFINITIONS = {
     oracle: {
         id: 'oracle',
         name: 'Oracle',
-        thaiName: 'Seer',
+        thaiName: 'นักพยากรณ์',
         team: 'village',
-        description: 'ตรวจผู้เล่นได้ 1 คนต่อคืน ดูตัวเองไม่ได้ ระบบบอกบทบาทจริงของเป้าหมายและเก็บประวัติไว้ให้',
+        description: 'ตรวจผู้เล่นได้ 1 คนต่อคืน ดูตัวเองไม่ได้ ระบบบอกบทบาทจริงของเป้าหมาย (แม่นกว่าผู้หยั่งรู้) และเก็บประวัติไว้ให้',
         winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
     },
     doctor: {
@@ -84,7 +84,7 @@ const ROLE_DEFINITIONS = {
         name: 'Hunter',
         thaiName: 'พราน',
         team: 'village',
-        description: 'กลางคืนเลือกยิง 1 คนได้ 1 ครั้งตลอดเกม — ถ้าล็อกเป้าไว้ในคืนนั้นแล้วคุณตายในคืนเดียวกัน ลูกธนูยังออกตามที่เลือก',
+        description: 'กลางคืนเลือกยิง 1 คนได้ 1 ครั้งตลอดเกม เปลี่ยน/ยกเลิกเป้าได้จนกว่าจะปิดคืน — ถ้าล็อกเป้าไว้แล้วคุณตายในคืนเดียวกัน ลูกธนูยังออกตามที่เลือก',
         winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
     },
     cleric: {
@@ -100,7 +100,7 @@ const ROLE_DEFINITIONS = {
         name: 'Vigilante',
         thaiName: 'ศาลเตี้ย',
         team: 'village',
-        description: 'กลางคืนเลือกยิง 1 คนได้ 1 ครั้งทั้งเกม แต่ถ้ายิงพลาดอาจเสียจังหวะสำคัญ',
+        description: 'กลางคืนเลือกยิง 1 คนได้ 1 ครั้งทั้งเกม เปลี่ยน/ยกเลิกเป้าได้จนกว่าจะปิดคืน สิทธิ์จะถูกใช้ก็ต่อเมื่อคืนนั้นจบลง',
         winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
     },
     fool: {
@@ -733,6 +733,8 @@ function buildNightPublicEvent(player, cause) {
         detail = `${player.name} ถูกหมาป่าฆ่าในตอนกลางคืน`;
     } else if (cause === 'witch-poison') {
         detail = `${player.name} ถูกแม่มดวางยาพิษในตอนกลางคืน`;
+    } else if (cause === 'night-shot') {
+        detail = `${player.name} ถูกยิงเสียชีวิตในตอนกลางคืน`;
     }
 
     return {
@@ -1478,12 +1480,17 @@ function resolveNight(room) {
         }
         const shooter = getPlayer(room, shotId);
         const target = getPlayer(room, targetId);
-        if (!shooter || !target || target.alive === false) {
+        if (!shooter || !target) {
+            return;
+        }
+        // เผาสิทธิ์ตอน resolve (คนยิงคอมมิตเป้าจริงแล้ว) — เปลี่ยนเป้าได้เฉพาะก่อนปิดคืน
+        shooter.vigilanteShotUsed = true;
+        if (target.alive === false) {
             return;
         }
         markPlayerDead(target, 'ถูกศาลเตี้ยยิงตอนกลางคืน');
         eliminatedPlayers.push(target);
-        publicEvents.push(buildNightPublicEvent(target, 'wolf-attack'));
+        publicEvents.push(buildNightPublicEvent(target, 'night-shot'));
         shooter.vigilanteLastResult = { actorId: shotId, targetId, targetName: target.name };
     });
 
@@ -1493,12 +1500,17 @@ function resolveNight(room) {
         }
         const hunter = getPlayer(room, shotId);
         const target = getPlayer(room, targetId);
-        if (!hunter || !target || target.alive === false) {
+        if (!hunter || !target) {
             return;
         }
-        markPlayerDead(target, 'ถูกนักล่ายิงตอนกลางคืน');
+        // เผาสิทธิ์ตอน resolve (คนยิงคอมมิตเป้าจริงแล้ว) — เปลี่ยนเป้าได้เฉพาะก่อนปิดคืน
+        hunter.hunterShotUsed = true;
+        if (target.alive === false) {
+            return;
+        }
+        markPlayerDead(target, 'ถูกพรานยิงตอนกลางคืน');
         eliminatedPlayers.push(target);
-        publicEvents.push(buildNightPublicEvent(target, 'wolf-attack'));
+        publicEvents.push(buildNightPublicEvent(target, 'night-shot'));
         hunter.hunterLastResult = { actorId: shotId, targetId, targetName: target.name };
     });
 
@@ -1823,28 +1835,28 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             break;
         case 'seer':
             if (room.gameState.nightActions.seerChecks[actorId]) {
-                throw new Error('Seer ดูได้แค่ 1 คนต่อคืน');
+                throw new Error('ผู้หยั่งรู้ดูได้แค่ 1 คนต่อคืน');
             }
             if (isSkip) {
                 room.gameState.nightActions.seerChecks[actorId] = SKIP_TARGET_ID;
                 break;
             }
             if (actorId === targetPlayerId) {
-                throw new Error('Seer ตรวจตัวเองไม่ได้');
+                throw new Error('ผู้หยั่งรู้ตรวจตัวเองไม่ได้');
             }
             room.gameState.nightActions.seerChecks[actorId] = targetPlayerId;
             seerResult = applySeerVision(room, actorId, targetPlayerId);
             break;
         case 'oracle':
             if (room.gameState.nightActions.oracleReads[actorId]) {
-                throw new Error('Seer ดูได้แค่ 1 คนต่อคืน');
+                throw new Error('นักพยากรณ์ดูได้แค่ 1 คนต่อคืน');
             }
             if (isSkip) {
                 room.gameState.nightActions.oracleReads[actorId] = SKIP_TARGET_ID;
                 break;
             }
             if (actorId === targetPlayerId) {
-                throw new Error('Seer ตรวจตัวเองไม่ได้');
+                throw new Error('นักพยากรณ์ตรวจตัวเองไม่ได้');
             }
             room.gameState.nightActions.oracleReads[actorId] = targetPlayerId;
             oracleResult = applyOracleVision(room, actorId, targetPlayerId);
@@ -1938,36 +1950,51 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             room.gameState.nightActions.trackerScans[actorId] = targetPlayerId;
             actor.trackerUsed = true;
             actor.trackerLastTargetId = targetPlayerId;
-            actor.trackerLastResult = {
-                actorId,
-                targetId: targetPlayerId,
-                targetName: target.name,
-                acted: didPlayerUseNightSkill(room, targetPlayerId)
-            };
+            // ผล "เป้าหมายใช้สกิลคืนนี้ไหม" ต้องสรุปหลังทุกคนลงมือครบใน resolveNight
+            // ถ้าคำนวณตอน submit แล้ว tracker กดก่อนคนอื่น จะได้ค่าผิด (เห็นว่า "ไม่ได้ใช้")
+            actor.trackerLastResult = null;
             break;
         case 'vigilante':
             if (actor.vigilanteShotUsed) {
                 throw new Error('คุณใช้สิทธิ์ยิงไปแล้ว');
+            }
+            // เลือกเป้าเดิมซ้ำ = ยกเลิก (เปลี่ยน/ถอนเป้าได้ก่อนปิดคืน)
+            if (room.gameState.nightActions.vigilanteShots[actorId] === targetPlayerId) {
+                delete room.gameState.nightActions.vigilanteShots[actorId];
+                delete room.gameState.nightSkips[actorId];
+                actor.vigilanteLastTargetId = null;
+                actor.vigilanteLastResult = null;
+                room.gameState.lastAction = Date.now();
+                return { resolved: false, unvoted: true };
             }
             if (isSkip) {
                 room.gameState.nightActions.vigilanteShots[actorId] = SKIP_TARGET_ID;
                 break;
             }
             room.gameState.nightActions.vigilanteShots[actorId] = targetPlayerId;
-            actor.vigilanteShotUsed = true;
+            // ยังไม่ "เผาสิทธิ์" จนกว่าจะ resolve กลางคืน เพื่อกันเผลอคลิกแล้วเสียสิทธิ์ถาวร
             actor.vigilanteLastTargetId = targetPlayerId;
             actor.vigilanteLastResult = { actorId, targetId: targetPlayerId, targetName: target.name };
             break;
         case 'hunter':
             if (actor.hunterShotUsed) {
-                throw new Error('นักล่าใช้สิทธิ์ไปแล้ว');
+                throw new Error('พรานใช้สิทธิ์ยิงไปแล้ว');
+            }
+            // เลือกเป้าเดิมซ้ำ = ยกเลิก (เปลี่ยน/ถอนเป้าได้ก่อนปิดคืน)
+            if (room.gameState.nightActions.hunterShots[actorId] === targetPlayerId) {
+                delete room.gameState.nightActions.hunterShots[actorId];
+                delete room.gameState.nightSkips[actorId];
+                actor.hunterLastTargetId = null;
+                actor.hunterLastResult = null;
+                room.gameState.lastAction = Date.now();
+                return { resolved: false, unvoted: true };
             }
             if (isSkip) {
                 room.gameState.nightActions.hunterShots[actorId] = SKIP_TARGET_ID;
                 break;
             }
             room.gameState.nightActions.hunterShots[actorId] = targetPlayerId;
-            actor.hunterShotUsed = true;
+            // ยังไม่ "เผาสิทธิ์" จนกว่าจะ resolve กลางคืน
             actor.hunterLastTargetId = targetPlayerId;
             actor.hunterLastResult = { actorId, targetId: targetPlayerId, targetName: target.name };
             break;
@@ -2457,8 +2484,8 @@ function getNightActionOptions(room, viewer) {
             return [{
                 type: 'vigilante-shot',
                 label: 'ยิงเป้า',
-                description: 'เลือก 1 คนเพื่อยิง 1 ครั้งตลอดทั้งเกม ระวังให้ดี',
-                selectedTargetId: viewer.vigilanteLastTargetId || null,
+                description: 'เลือก 1 คนเพื่อยิง (1 ครั้งตลอดเกม) เปลี่ยน/ยกเลิกเป้าได้จนกว่าคืนจะจบ แตะเป้าเดิมซ้ำเพื่อยกเลิก',
+                selectedTargetId: nightActions.vigilanteShots?.[viewer.playerId] || viewer.vigilanteLastTargetId || null,
                 allowSkip: true,
                 targets: alivePlayers.filter(player => player.playerId !== viewer.playerId).map(player => ({
                     playerId: player.playerId,
@@ -2481,7 +2508,7 @@ function getNightActionOptions(room, viewer) {
             return [{
                 type: 'hunter-shot',
                 label: 'ล็อกเป้ายิง (พราน)',
-                description: 'เลือก 1 คนตอนกลางคืน (1 ครั้งตลอดเกม) — ถ้าล็อกเป้าไว้ในคืนนั้นแล้วคุณตายในคืนเดียวกัน ลูกธนูยังออกตามที่เลือก',
+                description: 'เลือก 1 คนตอนกลางคืน (1 ครั้งตลอดเกม) เปลี่ยน/ยกเลิกเป้าได้จนกว่าคืนจะจบ — ถ้าล็อกเป้าไว้แล้วคุณตายในคืนเดียวกัน ลูกธนูยังออกตามที่เลือก',
                 selectedTargetId: nightActions.hunterShots?.[viewer.playerId] || viewer.hunterLastTargetId || null,
                 allowSkip: true,
                 targets: alivePlayers.filter(player => player.playerId !== viewer.playerId).map(player => ({

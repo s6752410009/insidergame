@@ -238,6 +238,65 @@
   .bm-chip.phase-action { border-color: rgba(248, 113, 113, 0.26); color: #fecaca; }
   .bm-chip.phase-finished { border-color: rgba(110, 231, 183, 0.24); color: #d1fae5; }
 
+  .bm-timer-chip {
+    font-variant-numeric: tabular-nums;
+    min-width: 92px;
+    text-align: center;
+  }
+
+  .bm-round-summary {
+    margin: 0;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--bm-line-strong);
+    background: rgba(17, 17, 17, 0.45);
+  }
+
+  .bm-round-summary-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bm-muted);
+    margin-bottom: 8px;
+  }
+
+  .bm-round-summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bm-round-summary-item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .bm-round-summary-item .bm-rs-icon { flex: 0 0 auto; }
+  .bm-round-summary-item.tone-gold .bm-rs-copy { color: #ffce6b; }
+  .bm-round-summary-item.tone-red .bm-rs-copy { color: #ff8a7a; }
+  .bm-round-summary-item.tone-amber .bm-rs-copy { color: #f5c86b; }
+
+  .bm-timer-chip.bm-timer-warn {
+    color: #ffce6b;
+    border-color: rgba(245, 200, 107, 0.7);
+    background: rgba(245, 200, 107, 0.12);
+  }
+
+  .bm-timer-chip.bm-timer-danger {
+    color: #ff8a7a;
+    border-color: rgba(231, 76, 60, 0.8);
+    background: rgba(231, 76, 60, 0.16);
+    animation: bmTimerPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes bmTimerPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
   .bm-now-bar {
     position: relative;
     z-index: 2;
@@ -359,6 +418,19 @@
     gap: 10px;
     margin-bottom: 12px;
   }
+
+  .bm-action-hint {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background: rgba(245, 200, 107, 0.08);
+    color: var(--bm-text);
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .bm-action-hint b { color: #ffce6b; }
 
   .bm-simple-btn {
     min-height: 88px;
@@ -1593,6 +1665,7 @@
         <div class="bm-chip">👥 <span><%= room.playerCount %>/<%= room.maxPlayers %></span></div>
         <div id="phaseChip" class="bm-chip phase-market">🛒 เปิดตลาด</div>
         <div id="roundChip" class="bm-chip">🌒 ยก 1 / 5</div>
+        <div id="bmTimerChip" class="bm-chip bm-timer-chip" style="display:none;" title="เวลาที่เหลือในเฟสนี้ หมดเวลาแล้วระบบจะปิดยกให้อัตโนมัติ">⏳ --:--</div>
         <button id="bmHowToOpen" type="button" class="bm-chip">📖 วิธีเล่น</button>
         <button id="bmTourReplay" type="button" class="bm-chip">✨ พาทัวร์โต๊ะ</button>
         <% if (room.admin === true) { %>
@@ -1605,6 +1678,8 @@
     <div id="bmNowBar" class="bm-now-bar" aria-live="polite"></div>
 
     <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div>
+
+    <div id="bmRoundSummary" class="bm-round-summary" style="display:none;" aria-live="polite"></div>
 
     <div class="bm-mobile-tabs">
       <button class="bm-mobile-tab-btn active" type="button" data-tab="game">🎮 เล่นยกนี้</button>
@@ -1624,14 +1699,14 @@
           <div id="rolePanel"></div>
         </div>
 
-        <div class="bm-card bm-card-guide bm-hide" data-tour-id="guide">
+        <div class="bm-card bm-card-guide" data-tour-id="guide">
           <div id="guidePanel"></div>
         </div>
 
         <div class="bm-card bm-card-stage" data-tour-id="stage">
           <div class="bm-card-header">
             <div>
-              <div class="bm-card-title">🎯 ตลาดกับแผนลงมือ</div>
+              <div class="bm-card-title" id="stageCardTitle">🎯 ตลาดกับแผนลงมือ</div>
             </div>
           </div>
           <div id="mainStage"></div>
@@ -1817,7 +1892,7 @@
     let spotlightRestoreFocus = null;
     let howToActive = false;
     let howToRestoreFocus = null;
-    let showAdvancedActions = false;
+    let showAdvancedActions = true;
     let announcerExpanded = true;
     let simplePickMode = null;
     let guideExpanded = false;
@@ -2213,7 +2288,7 @@
           showCeremony({
             kicker: `🎯 ช่วงวางแผนลงมือ (ยก ${nextRound})`,
             title: 'ถึงเวลาลงมือลับ',
-            copy: 'เลือกการลงมือ: ปล้น ฆ่า ดีล หรือส่งของ เพื่อชิงอิทธิพล',
+            copy: 'เลือกการลงมือ: ปล้น สั่งเก็บ ดีล หรือส่งของ เพื่อชิงอิทธิพล',
             tone: 'gold',
             sound: 'open'
           });
@@ -2403,7 +2478,7 @@
         lowCash: cash <= 2,
         flushCash: cash >= 6,
         highHeat: heat >= 4,
-        criticalHeat: heat >= 6,
+        criticalHeat: heat >= 5,
         holdingGun: gunCount > 0,
         holdingCargo: cargoCount > 0,
         inventoryHeavy: inventory.length >= 3,
@@ -2697,7 +2772,7 @@
       const status = getSelfStatusSnapshot();
       const phase = currentState.phase;
       let main = 'รอเริ่มเกม';
-      let sub = 'เป้าหมาย: สะสม 👑 มากสุดใน 5 ยก';
+      let sub = 'เป้าหมาย: มี 👑 มากสุดใน 5 ยก หรือเหลือรอดคนสุดท้าย';
       let locked = false;
 
       if (!self.alive) {
@@ -2718,8 +2793,8 @@
           sub = status.pendingAction.summaryText || status.pendingAction.label || '';
           locked = true;
         } else {
-          main = 'ตอนนี้: เลือกทำอย่างเดียวด้านล่าง';
-          sub = 'ส่งของ / สืบข่าว / ผ่าน · ดีล·ปล้น·เก็บ อยู่ใน「แผนขั้นสูง」';
+          main = 'ตอนนี้: เลือกทำ 1 อย่างด้านล่าง';
+          sub = 'ส่งของ · สืบข่าว · ดีล · หักหลัง · ปล้น · สั่งเก็บ — เลือกได้เลย';
         }
       } else if (phase === 'finished') {
         main = 'เกมจบแล้ว';
@@ -3082,11 +3157,13 @@
             <div class="bm-stat-label">👑 อิทธิพล</div>
             <div class="bm-stat-value">${Number(self.influence || 0)}</div>
           </div>
-          <div class="bm-stat">
+          <div class="bm-stat" ${Number(self.heat || 0) >= 5 ? 'style="background:rgba(127,29,29,0.35);border-radius:8px;"' : ''}>
             <div class="bm-stat-label">🔥 ค่าหัว</div>
-            <div class="bm-stat-value">${Number(self.heat || 0)}</div>
+            <div class="bm-stat-value" ${Number(self.heat || 0) >= 5 ? 'style="color:#fca5a5;"' : ''}>${Number(self.heat || 0)}</div>
+            <div style="font-size:10px;color:${Number(self.heat || 0) >= 5 ? '#fca5a5' : '#94a3b8'};line-height:1.2;margin-top:2px;">${Number(self.heat || 0) >= 5 ? 'จบยกนี้ −💵1 −👑1' : 'ถึง 5 จะโดนปรับ'}</div>
           </div>
         </div>
+        <div class="bm-card-note" style="margin-top:8px;font-size:11.5px;">🏆 ชนะเมื่อมี 👑 มากสุดหลังครบ 5 ยก หรือเหลือรอดคนสุดท้าย</div>
         <div style="margin-top:12px;">
           <div class="bm-card-note" style="margin-bottom:8px;">🎒 ของในมือ</div>
           <div class="bm-inventory-compact">
@@ -3129,7 +3206,7 @@
         <div class="bm-btn-row">
           <button type="button" class="bm-btn alt offer-buy" data-item-id="${escapeHtml(currentState.passChoice || '__pass__')}" ${lockedChoice ? 'disabled' : ''}>ผ่าน — ไม่ซื้อ</button>
         </div>
-        ${lockedChoice ? '<motion.div class="bm-card-note" style="margin-top:10px;">🔒 รอคนอื่นเลือกตลาด</div>' : ''}
+        ${lockedChoice ? '<div class="bm-card-note" style="margin-top:10px;">🔒 รอคนอื่นเลือกตลาด</div>' : ''}
       `;
     }
 
@@ -3182,19 +3259,19 @@
       const locked = !!pendingAction;
 
       if (!self.alive || currentState.winner) {
-        return '<motion.div class="bm-empty">คุณออกจากเกมแล้ว</div>';
+        return '<div class="bm-empty">คุณออกจากเกมแล้ว</div>';
       }
 
       if (locked) {
-        return '<motion.div class="bm-card-note" style="margin:0;">🔒 ' + escapeHtml(pendingAction.summaryText || pendingAction.label || 'ล็อกแล้ว') + ' — รอคนอื่น</div>';
+        return '<div class="bm-card-note" style="margin:0;">🔒 ' + escapeHtml(pendingAction.summaryText || pendingAction.label || 'ล็อกแล้ว') + ' — รอคนอื่น</div>';
       }
 
       const pickPanel = buildSimplePickPanel();
-      const advancedLabel = showAdvancedActions ? '▲ ซ่อนแผนขั้นสูง' : '▼ แผนขั้นสูง (ดีล · ปล้น · เก็บ…)';
+      const advancedLabel = showAdvancedActions ? '▲ ย่อแผนหลัก' : '▼ ดูแผนหลักทั้งหมด (ดีล · หักหลัง · ปล้น · เก็บ)';
 
       return `
         ${pickPanel}
-        <motion.div class="bm-simple-actions">
+        <div class="bm-simple-actions">
           <button type="button" class="bm-simple-btn" data-simple="deliver" ${cargoItems.length ? '' : 'disabled'}>
             📦 ส่งของ
             <span class="bm-outcome">${cargoItems.length ? '→ +👑' : 'ไม่มีของ'}</span>
@@ -3208,8 +3285,9 @@
             <span class="bm-outcome">→ ไม่ทำ</span>
           </button>
         </div>
+        <div class="bm-action-hint">💡 ทางได้ 👑 หลัก ๆ คือ <b>ส่งของ</b> กับ <b>ดีล</b> — ดีลปิดได้เมื่อ <b>ทั้งคู่กดเข้าดีลใส่กันในยกเดียวกัน</b> ระวังโดน <b>หักหลัง</b></div>
         <button type="button" id="bmToggleAdvanced" class="bm-toggle-advanced">${advancedLabel}</button>
-        ${showAdvancedActions ? '<motion.div class="bm-advanced-stage">' + buildActionStageAdvanced() + '</div>' : ''}
+        ${showAdvancedActions ? '<div class="bm-advanced-stage">' + buildActionStageAdvanced() + '</div>' : ''}
       `;
     }
 
@@ -3225,10 +3303,16 @@
       }
 
       const cargoItems = actionHelp.cargoItems || [];
+      const selfCash = Number(self.cash || 0);
+      const selfHasGun = (self.inventory || []).some(function(item) {
+        const value = `${item.id || ''} ${item.name || ''} ${item.summary || ''}`.toLowerCase();
+        return value.includes('gun') || value.includes('ปืน');
+      });
+      const hitDisabledReason = selfHasGun ? 'ต้องมีเงินพอเปิดงาน 💵' : 'ต้องมีปืน 🔫 ก่อน';
 
       return `
         <div class="bm-action-grid">
-          <div class="bm-action-block">
+          <div class="bm-action-block is-open">
             <div class="bm-action-title">📦 ส่งของ<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
               <div class="bm-action-copy">แปลงของเถื่อนให้เป็น 👑 อิทธิพล</div>
@@ -3258,10 +3342,10 @@
             </div>
           </div>
 
-          <div class="bm-action-block">
+          <div class="bm-action-block is-open">
             <div class="bm-action-title">🤝 เข้าดีล<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
-              <div class="bm-action-copy">ดีลจะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาในยกเดียวกัน</div>
+              <div class="bm-action-copy">ดีลจะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาในยกเดียวกัน → ปิดได้ทั้งคู่ +👑 +💵 · ถ้าอีกฝ่ายหักหลังคุณเสียเปล่า</div>
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="deal" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
@@ -3276,7 +3360,7 @@
           <div class="bm-action-block">
             <div class="bm-action-title">🗡️ หักหลัง<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
-              <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ</div>
+              <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ → ได้เยอะแต่ 🔥 ค่าหัวขึ้น</div>
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="betray" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
@@ -3291,7 +3375,7 @@
           <div class="bm-action-block">
             <div class="bm-action-title">💣 ปล้น<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
-              <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป</div>
+              <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป → 🔥 ค่าหัวขึ้น</div>
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="raid" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
@@ -3306,12 +3390,12 @@
           <div class="bm-action-block">
             <div class="bm-action-title">🔫 สั่งเก็บ<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
-              <div class="bm-action-copy">ต้องมีปืนในมือ และทุนพอเปิดงาน</div>
+              <div class="bm-action-copy">เก็บคู่แข่งออกจากโต๊ะ → ใช้ปืน 🔫 + จ่าย 💵2-3 เปิดงาน · 🔥 ค่าหัวขึ้น</div>
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="hit" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction || !actionHelp.canHit ? 'disabled' : ''}>
                     ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
-                    <small>${actionHelp.canHit ? 'เปิดงานในยกนี้' : 'ยังไม่มีของเปิดงาน'}</small>
+                    <small>${actionHelp.canHit ? '🔫 ใช้ปืน + 💵 เปิดงาน' : hitDisabledReason}</small>
                   </button>
                 `).join('') || '<div class="bm-empty">ไม่มีเป้าให้เปิดงาน</div>'}
               </div>
@@ -3471,11 +3555,13 @@
 
     function renderMainStage() {
       if (currentState.phase === 'market') {
+        $('#stageCardTitle').text('🛒 ตลาดมืด — เลือกซื้อของ');
         $('#mainStage').html(buildMarketStage());
         return;
       }
 
       if (currentState.phase === 'action') {
+        $('#stageCardTitle').text('🎯 ลงมือ — เลือกแผน');
         $('#mainStage').html(buildActionStage());
         return;
       }
@@ -3545,6 +3631,31 @@
       $('#dealPanel').html(pendingHtml + ledgerHtml);
     }
 
+    function renderRoundSummary() {
+      const panel = document.getElementById('bmRoundSummary');
+      if (!panel) return;
+      const report = (currentState && currentState.lastRoundReport) || [];
+      const phase = currentState && currentState.phase;
+      if (!report.length || phase === 'finished') {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+        return;
+      }
+      const items = report.map(function(entry) {
+        const tone = escapeHtml(entry.tone || 'neutral');
+        return '<div class="bm-round-summary-item tone-' + tone + '">' +
+          '<span class="bm-rs-icon">' + escapeHtml(entry.icon || '•') + '</span>' +
+          '<span class="bm-rs-copy">' + escapeHtml(entry.text || '') + '</span>' +
+          '</div>';
+      }).join('');
+      var summaryTitle = phase === 'action'
+        ? '🧾 สรุปการซื้อของตลาดยกนี้'
+        : '🧾 สรุปผลการลงมือยกที่แล้ว';
+      panel.style.display = '';
+      panel.innerHTML = '<div class="bm-round-summary-title">' + summaryTitle + '</div>' +
+        '<div class="bm-round-summary-list">' + items + '</div>';
+    }
+
     function renderHistory() {
       const history = currentState.history || [];
       $('#historyFeed').html(history.length ? history.map(entry => `
@@ -3587,13 +3698,16 @@
       const rolePlaybook = getRolePlaybook();
       $('#phaseChip').attr('class', `bm-chip ${meta.className}`).text(meta.label);
       $('#roundChip').text(`🌒 ยก ${Number(currentState.roundNumber || 0)} / ${Number(currentState.maxRounds || 5)}`);
+      updatePhaseTimer();
       if (previousState.phase !== currentState.phase) {
         simplePickMode = null;
         if (currentState.phase === 'action') {
-          showAdvancedActions = false;
+          // โชว์แผนหลัก (ดีล/หักหลัง/ปล้น/เก็บ) ทุกครั้งที่เข้าช่วงลงมือ กันคนเล่นหาไม่เจอ
+          showAdvancedActions = true;
         }
       }
       renderNowBar();
+      renderRoundSummary();
       renderAnnouncer(rolePlaybook);
       renderRolePanel();
       renderGuide();
@@ -3612,6 +3726,37 @@
         positionSpotlight();
       }
       maybeStartSpotlight();
+    }
+
+    let phaseTimerInterval = null;
+    function updatePhaseTimer() {
+      const chip = document.getElementById('bmTimerChip');
+      if (!chip) return;
+      const phase = currentState && currentState.phase;
+      const endsAt = currentState && Number(currentState.phaseEndsAt);
+      const active = (phase === 'market' || phase === 'action') && Number.isFinite(endsAt) && endsAt > 0;
+      if (!active) {
+        chip.style.display = 'none';
+        if (phaseTimerInterval) { clearInterval(phaseTimerInterval); phaseTimerInterval = null; }
+        return;
+      }
+      chip.style.display = '';
+      const tick = function() {
+        const remainingMs = Math.max(0, endsAt - Date.now());
+        const totalSeconds = Math.ceil(remainingMs / 1000);
+        const mm = Math.floor(totalSeconds / 60);
+        const ss = totalSeconds % 60;
+        chip.textContent = '⏳ ' + mm + ':' + (ss < 10 ? '0' : '') + ss;
+        chip.classList.toggle('bm-timer-warn', totalSeconds <= 30 && totalSeconds > 10);
+        chip.classList.toggle('bm-timer-danger', totalSeconds <= 10);
+        if (remainingMs <= 0 && phaseTimerInterval) {
+          clearInterval(phaseTimerInterval);
+          phaseTimerInterval = null;
+        }
+      };
+      if (phaseTimerInterval) { clearInterval(phaseTimerInterval); }
+      tick();
+      phaseTimerInterval = setInterval(tick, 1000);
     }
 
     function requestState() {

@@ -82,7 +82,8 @@
   .phase-hud-title { font-family: 'Orbitron', sans-serif; font-size: 1rem; line-height: 1; color: #fff; white-space: nowrap; }
   .phase-hud-current { display: none; }
   .phase-hud-timer-box { display: flex; align-items: center; gap: 8px; padding: 0; border-radius: 0; background: none; border: 0; min-width: auto; text-align: right; }
-  .phase-hud-timer-label { display: none; }
+  .phase-hud-timer-label { display: block; font-size: 0.6rem; color: #94a3b8; letter-spacing: 0.02em; line-height: 1; margin-bottom: 2px; }
+  .ww-dead-banner { background: linear-gradient(90deg, rgba(127,29,29,0.95), rgba(76,5,25,0.95)); color: #fecaca; font-size: 12.5px; font-weight: 600; text-align: center; padding: 6px 10px; border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(248,113,113,0.4); }
   .phase-hud-timer { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; color: #fff4c2; line-height: 1; margin: 0; }
   .phase-hud-meta { color: #cbd5e1; font-size: 0.78rem; margin: 0; white-space: nowrap; }
   .phase-hud-rail { display: none; }
@@ -694,8 +695,8 @@
         <div id="phaseHudCurrent" class="phase-hud-current">รอระบบสรุปสถานะของเกม</div>
       </div>
       <div class="phase-hud-timer-box">
-        <div class="phase-hud-timer-label">เวลาที่เหลือ</div>
-        <div id="phaseHudTimer" class="phase-hud-timer">-</div>
+        <div class="phase-hud-timer-label">⏳ เวลาที่เหลือ</div>
+        <div id="phaseHudTimer" class="phase-hud-timer">–</div>
         <div id="phaseHudMeta" class="phase-hud-meta">วันที่ <%= werewolfState?.dayNumber || 0 %></div>
       </div>
     </div>
@@ -740,6 +741,7 @@
 
   <!-- ===== MOBILE HINT BAR (role + action + seer results) ===== -->
   <div class="ww-mobile-hint">
+    <div id="mobileDeadBanner" class="ww-dead-banner" style="display:none;"></div>
     <div id="mobileHint"></div>
   </div>
 
@@ -969,8 +971,7 @@
 
 
 
-ไำ_
-ภฃฃภไ๒"๑๓๒๑"๐๐๒๒๑    let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
+    let currentMobileTargetAction = null; // { handlerName, actionType, targetIds: Set, selectedId, allowSkip }
     let selectedWitchNightActionType = null;
     let preferredDayTargetMode = null;
     const seenHistoryKeys = new Set();
@@ -1034,6 +1035,8 @@
         'บอดี้การ์ด': 'bodyguard',
         'seer': 'seer',
         'Seer': 'seer',
+        'ผู้หยั่งรู้': 'seer',
+        'นักพยากรณ์': 'oracle',
         'ผู้พยากรณ์': 'oracle',
         'หมอ': 'doctor',
         'แม่มด': 'witch',
@@ -1041,6 +1044,7 @@
         'พราน': 'hunter',
         'นักบวช': 'cleric',
         'ศาลเตี้ย': 'vigilante',
+        'ตัวตลก': 'fool',
         'คนบ้า': 'fool',
         'จอมเปิดโปง': 'revealer'
       };
@@ -1295,7 +1299,7 @@
       const hints = {
         villager: 'ไม่มีสกิล ใช้คุย จับพิรุธ และช่วยโหวตตอนกลางวัน',
         werewolf: 'คุยกับทีมหมาป่าตอนกลางคืน แล้วเลือกเหยื่อเมื่อมีสิทธิ์ลงมือ',
-        alphaWolf: 'เป็นหัวหน้าหมาป่า โหวตล่าแรงกว่า 1 เสียง และ Seer จะอ่านว่าไม่ทราบ',
+        alphaWolf: 'เป็นหัวหน้าหมาป่า โหวตล่าแรงกว่า 1 เสียง และผู้หยั่งรู้จะอ่านว่าไม่ทราบ',
         mayor: 'กดเปิดตัวตอนเช้า เพื่อให้เสียงโหวตของคุณนับเป็น 2',
         bodyguard: 'เลือกคุ้มกัน 1 คนตอนกลางคืน และห้ามเลือกคนเดิมติดกัน',
         seer: 'เลือกตรวจ 1 คนตอนกลางคืน ดูตัวเองไม่ได้ และผลมีแค่ ดี / ไม่ดี / ไม่ทราบ',
@@ -3105,6 +3109,36 @@
       submitClericBless(targetPlayerId);
     };
 
+    // Tap role pill -> full role description + remaining uses (compact UI hides the sidebar)
+    window.showMyRoleInfo = function() {
+      var role = currentState.playerRole;
+      if (!role) return;
+      var notes = currentState.personalNotes || {};
+      var teamLabel = role.team === 'werewolf' ? '🐺 ทีมหมาป่า' : (role.team === 'village' ? '🏘️ ทีมชาวบ้าน' : (role.team ? escapeHtml(role.team) : ''));
+      var desc = role.description || 'ไม่มีคำอธิบายบทบาท';
+      var notesHtml = '';
+      if (Array.isArray(notes.roleNotes) && notes.roleNotes.length > 0) {
+        notesHtml = '<div style="margin-top:10px;text-align:left;">'
+          + '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">สถานะ/สิทธิ์ที่เหลือ</div>'
+          + notes.roleNotes.map(function(n) {
+            return '<div style="background:#1e293b;border-radius:8px;padding:6px 10px;margin-bottom:4px;font-size:13px;">• ' + escapeHtml(n) + '</div>';
+          }).join('')
+          + '</div>';
+      }
+      Swal.fire({
+        title: roleIcon(role.id) + ' ' + escapeHtml(role.thaiName || role.id),
+        html: '<div style="text-align:left;">'
+          + (teamLabel ? '<div style="font-size:13px;color:#fbbf24;margin-bottom:8px;">' + teamLabel + '</div>' : '')
+          + '<div style="font-size:14px;line-height:1.5;color:#e2e8f0;">' + escapeHtml(desc) + '</div>'
+          + notesHtml
+          + '</div>',
+        background: '#0f172a',
+        color: '#fff',
+        confirmButtonText: 'เข้าใจแล้ว',
+        confirmButtonColor: '#6366f1'
+      });
+    };
+
     // ===== RENDER MOBILE HINT BAR (unified: role + action + notes) =====
     function renderMobileHint() {
       var $hint = $('#mobileHint');
@@ -3114,9 +3148,19 @@
       var notes = currentState.personalNotes || {};
       var winner = currentState.winner;
 
-      // Role pill text
+      // Dead-player banner: make it explicit what a dead player can/can't do
+      var selfP = getSelfPlayer();
+      var amDead = selfP && selfP.alive === false;
+      var $deadBanner = $('#mobileDeadBanner');
+      if (amDead && !winner) {
+        $deadBanner.html('💀 คุณตายแล้ว — ดูเกม/แชทต่อได้ แต่โหวตและใช้สกิลไม่ได้').show();
+      } else {
+        $deadBanner.hide();
+      }
+
+      // Role pill text (tappable to open full role info + remaining uses)
       var rolePill = role
-        ? '<span class="hint-role">' + roleIcon(role.id) + ' ' + escapeHtml(role.thaiName || role.id) + '</span><span class="hint-sep">·</span>'
+        ? '<span class="hint-role" role="button" tabindex="0" style="cursor:pointer;" onclick="showMyRoleInfo()" title="ดูรายละเอียดบทของคุณ">' + roleIcon(role.id) + ' ' + escapeHtml(role.thaiName || role.id) + ' ℹ️</span><span class="hint-sep">·</span>'
         : '';
 
       // Skill results vs role guide in hint bar
@@ -3139,7 +3183,7 @@
         var nightSkipNeeded = Number(nightState.skipNeeded || nightState.totalAlive || 0);
         var nightSkipHtml = '';
         if (nightState.canSkip) {
-          nightSkipHtml = '<button class="hint-btn btn-skip" onclick="skipNightPhase()">🗳️ โหวตจบคืน</button>';
+          nightSkipHtml = '<button class="hint-btn btn-skip" onclick="skipNightPhase()">🌅 โหวตให้จบคืน</button>';
         } else if (nightState.hasSkipped) {
           nightSkipHtml = '<span class="hint-btn btn-done" style="cursor:default;">✅ โหวตจบคืนแล้ว</span>';
         }
@@ -3151,7 +3195,7 @@
             seerTagHtml = buildSeerResultBadge(lastSeer, { compact: true });
           }
           var nightWaitText = nightSkipNeeded > 0
-            ? '🗳️ โหวตจบคืน ' + nightSkipCount + '/' + nightSkipNeeded
+            ? '🌅 โหวตให้จบคืน ' + nightSkipCount + '/' + nightSkipNeeded
             : '😴 รอเช้า...';
           var focusClassIdle = nightState.canSkip ? ' hint-focus' : '';
           $hint.html('<div class="hint-bar hint-night' + focusClassIdle + '">' + rolePill + '<span class="hint-text">' + nightWaitText + '</span>' + nightSkipHtml + seerTagHtml + oracleTagHtml + notesHtml + '</div>');
@@ -3172,13 +3216,30 @@
           return;
         }
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
-        var status = action.locked ? '✅ เลือกแล้ว' : '👆 แตะที่ผู้เล่น';
+        var nightSelId = action.selectedTargetId || null;
+        var nightSelName = '';
+        if (nightSelId && nightSelId !== '__skip__') {
+          var nightSelT = (action.targets || []).find(function(t) { return t.playerId === nightSelId; });
+          nightSelName = nightSelT ? (nightSelT.name || '') : '';
+        }
+        var toggleCancelTypes = ['vigilante-shot', 'hunter-shot', 'doctor-save', 'witch-heal', 'witch-poison'];
+        var canToggleCancel = toggleCancelTypes.indexOf(action.type) !== -1;
+        var status;
+        if (action.locked) {
+          status = '✅ ล็อกแล้ว';
+        } else if (nightSelId === '__skip__') {
+          status = '🫥 ข้ามสกิลคืนนี้ — แตะคนเพื่อเปลี่ยนใจ';
+        } else if (nightSelName) {
+          status = '✅ เลือก ' + escapeHtml(nightSelName) + (canToggleCancel ? ' — แตะซ้ำเพื่อยกเลิก' : ' — แตะคนอื่นเพื่อเปลี่ยน');
+        } else {
+          status = '👆 แตะที่ผู้เล่นเพื่อเลือกเป้า';
+        }
         if (isWitchChoiceNight(actions) && !action.selectedTargetId) {
           status = '🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน';
         }
         var nightBtns = '';
         if (action.allowSkip && !action.locked) {
-          nightBtns = '<button class="hint-btn btn-skip" onclick="selectNightTarget(\'' + escapeHtml(action.type) + '\', \'__skip__\')">🫥 ไม่ใช้สกิล</button>';
+          nightBtns = '<button class="hint-btn btn-skip" onclick="selectNightTarget(\'' + escapeHtml(action.type) + '\', \'__skip__\')">🫥 ข้ามสกิลของฉัน</button>';
         }
         if (isWitchChoiceNight(actions)) {
           var potionBtns = actions.map(function(option) {
@@ -3208,9 +3269,9 @@
         var skipNeeded = Number(disc.skipNeeded || disc.totalAlive || 0);
         var btnsHtml = '';
         if (disc.canSkip) {
-          btnsHtml += '<button class="hint-btn" onclick="skipDiscussionPhase()">⏩ โหวตจบประชุม</button>';
+          btnsHtml += '<button class="hint-btn" onclick="skipDiscussionPhase()">⏩ พร้อมไปโหวต</button>';
         } else if (disc.hasSkipped) {
-          btnsHtml += '<span class="hint-btn btn-done" style="cursor:default;">✅ พร้อม</span>';
+          btnsHtml += '<span class="hint-btn btn-done" style="cursor:default;">✅ พร้อมแล้ว</span>';
         }
         if (disc.canRevealMayor) {
           btnsHtml += '<button class="hint-btn btn-reveal" onclick="revealMayorRole()">🎖️ เปิดนายก</button>';
@@ -3248,16 +3309,28 @@
           seerTagVote = buildSeerResultBadge(lastSeerVote, { compact: true });
         }
         var oracleTagVote = getOracleHistoryTagHtml(notes);
+        var myVoteId = dayActions.selectedVoteTargetId || null;
+        var myVoteName = '';
+        if (myVoteId && myVoteId !== '__skip__') {
+          var myVoteT = (dayActions.voteTargets || []).find(function(t) { return t.playerId === myVoteId; });
+          myVoteName = myVoteT ? (myVoteT.name || '') : '';
+        }
         var vBtns = '';
         if (dayActions.canVote) {
-          vBtns += preferredDayTargetMode === 'reveal'
-            ? '<button class="hint-btn" onclick="selectVoteTarget(\'__show__\')">🗳️ กลับไปโหวต</button>'
-            : '<span class="hint-text" style="color:#97a4bf;">👆 แตะเพื่อโหวต</span>';
+          if (preferredDayTargetMode === 'reveal') {
+            vBtns += '<button class="hint-btn" onclick="selectVoteTarget(\'__show__\')">🗳️ กลับไปโหวต</button>';
+          } else if (myVoteId === '__skip__') {
+            vBtns += '<span class="hint-text" style="color:#6ee7b7;">🙅 ข้ามโหวตอยู่ — แตะคนเพื่อเปลี่ยน</span>';
+          } else if (myVoteName) {
+            vBtns += '<span class="hint-text" style="color:#6ee7b7;">✅ โหวต ' + escapeHtml(myVoteName) + ' — แตะคนอื่นเพื่อเปลี่ยน</span>';
+          } else {
+            vBtns += '<span class="hint-text" style="color:#97a4bf;">👆 แตะที่ผู้เล่นเพื่อโหวตขับออก</span>';
+          }
         } else {
           vBtns += '<span class="hint-text" style="color:#6ee7b7;">✅ โหวตแล้ว</span>';
         }
-        if (dayActions.allowSkipVote && dayActions.canVote) {
-          vBtns += '<button class="hint-btn btn-skip" onclick="selectVoteTarget(\'__skip__\')">🗳️ ข้ามโหวต</button>';
+        if (dayActions.allowSkipVote && dayActions.canVote && myVoteId !== '__skip__') {
+          vBtns += '<button class="hint-btn btn-skip" onclick="selectVoteTarget(\'__skip__\')">🙅 ข้ามโหวต (ไม่ขับใคร)</button>';
         }
         if (dayActions.canRevealMayor) {
           vBtns += '<button class="hint-btn btn-reveal" onclick="revealMayorRole()">🎖️ เปิดนายก</button>';
@@ -3855,7 +3928,7 @@
             <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">1) แจกบท แล้วทุกคนอ่านบทตัวเองเงียบ ๆ</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">2) กลางคืน คนที่มีสกิลทำแอ็กชันของตัวเองทีละคน</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">3) ตอนเช้า ระบบสรุปผล แล้วทุกคนคุยกันในวงก่อนโหวต</div>
-            <div style="padding:12px 14px; border-radius:12px; background:rgba(79,70,229,0.16); border:1px solid rgba(129,140,248,0.2);">🔮 Seer ดูได้แค่ ดี / ไม่ดี / ไม่ทราบ</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(79,70,229,0.16); border:1px solid rgba(129,140,248,0.2);">🔮 ผู้หยั่งรู้ ดูได้แค่ ดี / ไม่ดี / ไม่ทราบ</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(249,115,22,0.16); border:1px solid rgba(251,191,36,0.2);">🎖️ นายกเปิดตัวแล้วโหวตแรงขึ้นเป็น 2</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(46,204,113,0.12); border:1px solid rgba(134,239,172,0.18);">🏡 ชาวบ้านชนะเมื่อหมาป่าหมด</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(192,57,43,0.16); border:1px solid rgba(248,113,113,0.18);">🐺 หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่ยังอยู่</div>
@@ -5392,6 +5465,8 @@
         selectVoteTarget(playerId);
       } else if (action.handlerName === 'selectRevealTarget') {
         selectRevealTarget(playerId);
+      } else if (action.handlerName === 'selectClericBlessTarget') {
+        selectClericBlessTarget(playerId);
       }
     });
 

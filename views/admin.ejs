@@ -599,6 +599,303 @@
     }
 </style>
 
+<!-- ===== Modern admin dashboard theme (override layer, keeps all existing classes/ids) ===== -->
+<style>
+    :root {
+        --ad-bg-0: #0a0c14;
+        --ad-bg-1: #0f1220;
+        --ad-surface: rgba(22, 26, 42, 0.72);
+        --ad-surface-2: rgba(30, 35, 56, 0.6);
+        --ad-border: rgba(255, 255, 255, 0.08);
+        --ad-border-strong: rgba(255, 255, 255, 0.14);
+        --ad-text: #e8ecf6;
+        --ad-text-dim: #9aa6c0;
+        --ad-text-mute: #6b7794;
+        --ad-blue: #4aa3ff;
+        --ad-green: #34d399;
+        --ad-orange: #fb923c;
+        --ad-red: #f87171;
+        --ad-purple: #a78bfa;
+        --ad-amber: #fbbf24;
+        --ad-radius: 16px;
+        --ad-radius-sm: 10px;
+        --ad-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+        --ad-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    body {
+        background:
+            radial-gradient(1100px 700px at 12% -8%, rgba(74, 163, 255, 0.12), transparent 55%),
+            radial-gradient(900px 600px at 100% 0%, rgba(167, 139, 250, 0.12), transparent 55%),
+            linear-gradient(160deg, var(--ad-bg-0), var(--ad-bg-1) 60%, #0a0c14);
+        background-attachment: fixed;
+        color: var(--ad-text);
+    }
+
+    .admin-container {
+        max-width: 1440px;
+        padding: 26px 22px 60px;
+    }
+
+    /* Header */
+    .admin-header {
+        margin-bottom: 26px;
+        padding: 20px 24px;
+        background: var(--ad-surface);
+        border: 1px solid var(--ad-border);
+        border-radius: var(--ad-radius);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: var(--ad-shadow-sm);
+    }
+
+    .admin-header h1 {
+        font-size: 2.1em;
+        letter-spacing: 0.5px;
+        background: linear-gradient(120deg, #fff 10%, #9ec5ff 55%, #c4b5fd 95%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: none;
+    }
+
+    /* Stat cards */
+    .stats-grid {
+        gap: 14px;
+        margin-bottom: 26px;
+    }
+
+    .stat-card {
+        position: relative;
+        background: var(--ad-surface);
+        border: 1px solid var(--ad-border);
+        border-radius: var(--ad-radius);
+        padding: 18px 18px 16px;
+        text-align: left;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 3px;
+        background: var(--ad-blue);
+        opacity: 0.9;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--ad-border-strong);
+        box-shadow: var(--ad-shadow);
+    }
+
+    .stat-card h3 {
+        color: var(--ad-text-dim);
+        font-size: 0.78em;
+        letter-spacing: 0.6px;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2.1em;
+        line-height: 1.1;
+    }
+
+    .stat-card.players::before { background: var(--ad-blue); }
+    .stat-card.rooms::before { background: var(--ad-green); }
+    .stat-card.playing::before { background: var(--ad-orange); }
+    .stat-card.banned::before { background: var(--ad-red); }
+    .stat-card.games::before { background: var(--ad-purple); }
+    .stat-card.real::before { background: var(--ad-green); }
+    .stat-card.ghost::before { background: var(--ad-amber); }
+    .stat-card.players .stat-value { color: var(--ad-blue); }
+    .stat-card.rooms .stat-value { color: var(--ad-green); }
+    .stat-card.playing .stat-value { color: var(--ad-orange); }
+    .stat-card.banned .stat-value { color: var(--ad-red); }
+    .stat-card.games .stat-value { color: var(--ad-purple); }
+    .stat-card.real .stat-value { color: var(--ad-green); }
+    .stat-card.ghost .stat-value { color: var(--ad-amber); }
+
+    /* Panels */
+    .panel {
+        background: var(--ad-surface);
+        border: 1px solid var(--ad-border);
+        border-radius: var(--ad-radius);
+        padding: 22px 24px;
+        box-shadow: var(--ad-shadow-sm);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+    }
+
+    .panel-header {
+        border-bottom: 1px solid var(--ad-border);
+        padding-bottom: 16px;
+    }
+
+    .panel-header h2 {
+        font-size: 1.25em;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Tabs */
+    .tabs {
+        gap: 8px;
+        padding: 8px;
+        background: var(--ad-surface-2);
+        border: 1px solid var(--ad-border);
+        border-radius: 14px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        color: var(--ad-text-dim);
+        padding: 9px 16px;
+    }
+
+    .tab-btn:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--ad-text);
+    }
+
+    .tab-btn.active {
+        background: linear-gradient(120deg, #4aa3ff, #7c5cff);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(74, 163, 255, 0.35);
+    }
+
+    /* Buttons */
+    .btn-admin {
+        border-radius: 10px;
+        border-width: 1px;
+        padding: 9px 15px;
+        background: rgba(255, 255, 255, 0.03);
+        transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+    }
+
+    .btn-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--ad-shadow-sm);
+    }
+
+    .btn-refresh { border-color: rgba(74, 163, 255, 0.6); color: var(--ad-blue); }
+    .btn-refresh:hover { background: var(--ad-blue); color: #07121f; }
+    .btn-danger { border-color: rgba(248, 113, 113, 0.6); color: var(--ad-red); }
+    .btn-danger:hover { background: var(--ad-red); color: #1a0606; }
+    .btn-warning { border-color: rgba(251, 146, 60, 0.6); color: var(--ad-orange); }
+    .btn-warning:hover { background: var(--ad-orange); color: #1c0e02; }
+    .btn-success { border-color: rgba(52, 211, 153, 0.6); color: var(--ad-green); }
+    .btn-success:hover { background: var(--ad-green); color: #05140d; }
+    .btn-primary { border-color: rgba(167, 139, 250, 0.6); color: var(--ad-purple); }
+    .btn-primary:hover { background: var(--ad-purple); color: #11061f; }
+
+    /* Tables */
+    .table-container {
+        border: 1px solid var(--ad-border);
+        border-radius: var(--ad-radius-sm);
+        overflow: auto;
+    }
+
+    th, td {
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--ad-border);
+    }
+
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: rgba(16, 19, 32, 0.96);
+        color: var(--ad-text-dim);
+        font-size: 0.74em;
+        letter-spacing: 0.7px;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+
+    td { color: var(--ad-text); }
+    tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.018); }
+    tr:hover td { background: rgba(74, 163, 255, 0.08); }
+    .sortable:hover { color: #fff; }
+
+    /* Inputs */
+    .search-box, .broadcast-input, select.search-box {
+        background: rgba(10, 13, 22, 0.85);
+        border: 1px solid var(--ad-border-strong);
+        border-radius: 10px;
+        color: var(--ad-text);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .search-box:focus, .broadcast-input:focus {
+        border-color: var(--ad-blue);
+        box-shadow: 0 0 0 3px rgba(74, 163, 255, 0.18);
+    }
+
+    /* Badges */
+    .status-badge {
+        padding: 4px 11px;
+        border-radius: 999px;
+        font-size: 0.76em;
+        letter-spacing: 0.3px;
+    }
+
+    /* Action buttons in tables */
+    .action-btn {
+        border-radius: 8px;
+        transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .action-btn:hover { transform: translateY(-1px); }
+
+    /* Quick actions */
+    .quick-action-btn {
+        background: var(--ad-surface-2);
+        border: 1px solid var(--ad-border);
+        border-radius: 14px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+    .quick-action-btn:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--ad-shadow);
+        border-color: var(--ad-border-strong);
+    }
+
+    /* Player summary cards */
+    .player-summary-card {
+        background: var(--ad-surface-2);
+        border: 1px solid var(--ad-border);
+        border-radius: 14px;
+        transition: transform 0.18s ease, border-color 0.18s ease;
+    }
+    .player-summary-card:hover { transform: translateY(-2px); border-color: var(--ad-border-strong); }
+    .player-summary-card h4 { color: var(--ad-text-dim); }
+
+    .table-meta { color: var(--ad-text-mute); }
+    .empty-message { color: var(--ad-text-mute); }
+    #logsContainer { border: 1px solid var(--ad-border); }
+
+    @media (max-width: 900px) {
+        .admin-container { padding: 12px 10px 36px; }
+        .admin-header { padding: 14px 16px; }
+        .admin-header h1 { font-size: 1.5em; }
+        .stat-card { padding: 12px 12px 10px; }
+        .stat-card h3 { font-size: 0.66em; }
+        .stat-card .stat-value { font-size: 1.5em; }
+        .panel { padding: 16px; }
+        .tabs { flex-wrap: nowrap; overflow-x: auto; }
+    }
+</style>
+
 <div class="admin-container">
     <div class="admin-header">
         <h1>🛠️ Admin Dashboard</h1>
@@ -1062,7 +1359,7 @@ $(function() {
         { id: 'villager', label: 'ชาวบ้าน', emoji: '🙂' },
         { id: 'werewolf', label: 'หมาป่า', emoji: '🐺' },
         { id: 'alphaWolf', label: 'อัลฟ่าหมาป่า', emoji: '👑' },
-        { id: 'seer', label: 'Seer', emoji: '🔮' },
+        { id: 'seer', label: 'ผู้หยั่งรู้', emoji: '🔮' },
         { id: 'doctor', label: 'หมอ', emoji: '💉' },
         { id: 'witch', label: 'แม่มด', emoji: '🧪' },
         { id: 'bodyguard', label: 'บอดี้การ์ด', emoji: '🛡️' },

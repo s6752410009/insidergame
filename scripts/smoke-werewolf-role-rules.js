@@ -24,6 +24,9 @@ function createPlayers(count) {
     return Array.from({ length: count }, (_, index) => ({
         playerId: `player-${index + 1}`,
         playerName: `Player ${index + 1}`,
+        // ผู้เล่นจริงต้องมี socketId เสมอ ไม่งั้น isPlayerOnlineInRoom จะมองเป็น offline
+        // แล้ว canResolveDay จะ resolve เร็วเกินจริง
+        socketId: `socket-${index + 1}`,
         color: ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'][index % 5],
         avatar: '👤',
         avatarFrame: 'none'
@@ -469,40 +472,34 @@ function testTrackerOnlyReportsTargetNightSkill() {
     resetNightPhase(room, 2);
 
     werewolfEngine.submitNightAction(room, tracker.playerId, cleric.playerId);
-    assert(tracker.trackerLastResult?.acted === false, 'cleric should not count as using a night skill when tracker selects them');
+    // ผลของ tracker ต้องสรุปหลังปิดคืน ไม่ใช่ตอน submit (กันบั๊กอ่านค่าก่อนทุกคนลงมือ)
+    assert(tracker.trackerLastResult === null, 'tracker result should be pending until the night resolves');
 
     werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
     werewolfEngine.submitNightAction(room, seer.playerId, cleric.playerId);
-
-    assert(
-        tracker.trackerLastResult?.acted === false,
-        'cleric scan should stay false even after other players use night skills'
-    );
 
     submitRemainingNightSkips(room, [tracker.playerId, cleric.playerId, werewolf.playerId, seer.playerId]);
     assert(room.gameState.phase === 'day-discussion', 'night should resolve after remaining skips');
 
     assert(
         tracker.trackerLastResult?.acted === false,
-        'cleric should still read as inactive after the night resolves'
+        'cleric should read as inactive after the night resolves (no night skill)'
     );
 
+    // คืนถัดไป: tracker ลงมือ "ก่อน" seer — ผลต้องบอกว่า seer ใช้สกิล (พิสูจน์ว่าแก้บั๊กลำดับแล้ว)
     resetNightPhase(room, 3);
+    werewolfEngine.submitNightAction(room, tracker.playerId, seer.playerId);
+    assert(tracker.trackerLastResult === null, 'tracker result should stay pending even if tracker acts first');
+
     werewolfEngine.submitNightAction(room, werewolf.playerId, werewolfEngine.SKIP_TARGET_ID);
     werewolfEngine.submitNightAction(room, seer.playerId, cleric.playerId);
-    werewolfEngine.submitNightAction(room, tracker.playerId, seer.playerId);
-
-    assert(
-        tracker.trackerLastResult?.acted === true,
-        'seer should read as active once they submit a night check'
-    );
 
     submitRemainingNightSkips(room, [tracker.playerId, cleric.playerId, werewolf.playerId, seer.playerId]);
     assert(room.gameState.phase === 'day-discussion', 'second night should resolve');
 
     assert(
         tracker.trackerLastResult?.acted === true,
-        'seer should remain active after the night resolves'
+        'seer should read as active after resolve even though tracker acted first'
     );
 
     return {

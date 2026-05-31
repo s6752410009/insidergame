@@ -1287,8 +1287,8 @@ function syncBlackMarketPhaseTimer(room) {
     clearBlackMarketPhaseTimer(room.roomId, false);
 
     const defaultDurationMs = phase === 'market'
-        ? blackMarketEngine.MARKET_PHASE_MS
-        : blackMarketEngine.ACTION_PHASE_MS;
+        ? blackMarketEngine.getMarketPhaseMs(room)
+        : blackMarketEngine.getActionPhaseMs(room);
     const targetEndsAt = room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > now
         ? room.gameState.phaseEndsAt
         : now + defaultDurationMs;
@@ -1746,6 +1746,20 @@ function emitSpyfallRoomState(room) {
 
     emitSpyfallState(room);
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+// Broadcast เกมตามโหมดของห้อง ใช้เวลา state เปลี่ยนนอก flow ปกติ (เช่น คนออก/หลุดกลางเกม)
+function broadcastGameStateForRoom(room) {
+    if (!room || !room.settings) {
+        return;
+    }
+    if (room.settings.gameMode === 'werewolf') {
+        emitWerewolfRoomState(room);
+    } else if (room.settings.gameMode === 'blackmarket') {
+        emitBlackMarketState(room);
+    } else if (room.settings.gameMode === 'spyfall') {
+        emitSpyfallRoomState(room);
+    }
 }
 
 function scheduleWerewolfStateBroadcast(room, delayMs = WEREWOLF_PHASE_TRANSITION_DELAY_MS) {
@@ -5744,6 +5758,8 @@ io.sockets.on('connection', function(socket) {
                                             if (updatedRoom) {
                                                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง (Timeout)`, '#e74c3c');
                                                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
+                                                // อัปเดต state เกมให้ client ไม่ค้างผู้เล่นที่ออกไปแล้วกลางเกม
+                                                broadcastGameStateForRoom(updatedRoom);
                                                 io.emit('roomListUpdate', roomManager.getAllRooms());
                                             } else {
                                                 io.emit('roomListUpdate', roomManager.getAllRooms());

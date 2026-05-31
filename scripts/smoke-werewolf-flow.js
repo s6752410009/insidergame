@@ -315,22 +315,37 @@ async function main() {
         if (vigilanteClient) await submitNightChoiceIfAlive(vigilanteClient, roomId, 'vigilante-shot', wolfClient.playerId);
         if (hunterClient) await submitNightChoiceIfAlive(hunterClient, roomId, 'hunter-shot', wolfClient.playerId);
         await skipNightForAlive(clients, roomId);
-        await waitForPhaseAfter(clients, roomId, 'day-discussion', night2Checkpoint, payload => payload.dayNumber === 2, 30000);
-
-        const discussion2Checkpoint = createStateCheckpoint(clients);
-        await submitClericBlessIfAlive(clericClient, clients, roomId);
-        if (mayorClient) await submitDiscussionSkip(mayorClient, roomId).catch(() => {});
-        const stForReveal = clients.find(c => c.lastState)?.lastState;
-        const revealTargetId = pickAliveWolfPlayerId(stForReveal, roleAssignments);
-        if (revealerClient && revealTargetId) await submitRevealAction(revealerClient, roomId, revealTargetId);
-        await skipDiscussionForAlive(clients, roomId);
-        const day2VoteStates = await waitForPhaseAfter(clients, roomId, 'day-vote', discussion2Checkpoint, payload => payload.dayNumber === 2, 30000);
-        if (mayorClient) {
-            const mayorDay2 = day2VoteStates.find(state => state.playerRole && state.playerRole.id === 'mayor');
-            assert(mayorDay2 && mayorDay2.actionState?.dayActions?.canRevealMayor, 'Mayor should be able to reveal on day 2');
-        }
+        // Vigilante/Hunter ยิง wolf ในคืนเดียวกัน อาจทำให้หมาป่าตัวสุดท้ายตาย -> village ชนะตั้งแต่ night2 ซึ่งถูกต้องตามกติกา
+        // จึงรอ day-discussion(day2) "หรือ" finished แล้วแตกสาขาตามผลจริง แทนที่จะ assert ว่าต้องเข้า day-discussion เสมอ
+        await Promise.all(clients.map(client => waitForStateAfter(
+            client,
+            night2Checkpoint.get(client.playerId) || 0,
+            payload => payload && payload.roomId === roomId && (
+                (payload.phase === 'day-discussion' && payload.dayNumber === 2) ||
+                (payload.phase === 'finished' && !!payload.winner)
+            ),
+            30000
+        )));
 
         let finishedWinner = null;
+        const night2Anchor = clients[0]?.lastState;
+        if (night2Anchor?.phase === 'finished' && night2Anchor?.winner) {
+            finishedWinner = night2Anchor.winner;
+        } else {
+            const discussion2Checkpoint = createStateCheckpoint(clients);
+            await submitClericBlessIfAlive(clericClient, clients, roomId);
+            if (mayorClient) await submitDiscussionSkip(mayorClient, roomId).catch(() => {});
+            const stForReveal = clients.find(c => c.lastState)?.lastState;
+            const revealTargetId = pickAliveWolfPlayerId(stForReveal, roleAssignments);
+            if (revealerClient && revealTargetId) await submitRevealAction(revealerClient, roomId, revealTargetId);
+            await skipDiscussionForAlive(clients, roomId);
+            const day2VoteStates = await waitForPhaseAfter(clients, roomId, 'day-vote', discussion2Checkpoint, payload => payload.dayNumber === 2, 30000);
+            if (mayorClient) {
+                const mayorDay2 = day2VoteStates.find(state => state.playerRole && state.playerRole.id === 'mayor');
+                assert(mayorDay2 && mayorDay2.actionState?.dayActions?.canRevealMayor, 'Mayor should be able to reveal on day 2');
+            }
+        }
+
         for (let round = 0; round < 12; round++) {
             let anchor = clients[0]?.lastState;
             if (anchor?.phase === 'finished' && anchor?.winner) {

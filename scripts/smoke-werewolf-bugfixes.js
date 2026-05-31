@@ -10,6 +10,8 @@ function createPlayers(count) {
     return Array.from({ length: count }, (_, index) => ({
         playerId: `player-${index + 1}`,
         playerName: `Player ${index + 1}`,
+        // ผู้เล่นจริงมี socketId เสมอ ไม่งั้น canResolveDay จะมองว่า offline แล้ว resolve เร็วเกินจริง
+        socketId: `socket-${index + 1}`,
         color: ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'][index % 5],
         avatar: '👤',
         avatarFrame: 'none'
@@ -332,7 +334,11 @@ function testMayorVoteWeight() {
     const bodyguard = getSingleRole(room, 'bodyguard');
     const wolves = getAllRole(room, 'alphaWolf').concat(getAllRole(room, 'werewolf'));
     const targetWolf = wolves[0];
-    const otherWolf = wolves[1];
+    // 6 ผู้เล่นตามแผนมาตรฐานมีหมาป่าตัวเดียว ผู้โหวตคนที่ 6 คือผู้เล่นที่เหลือ (role อะไรก็ได้)
+    // เลือกแบบ exclude id ที่ใช้ไปแล้ว กัน helper คืน mayor ซ้ำเมื่อ role filler สุ่มเปลี่ยน
+    const usedVoterIds = new Set([mayor, seer, doctor, bodyguard, targetWolf].map(player => player.playerId));
+    const sixthVoter = room.gameState.players.find(player => player.alive !== false && !usedVoterIds.has(player.playerId));
+    assert(sixthVoter, 'expected a sixth alive voter');
 
     // Complete night 1
     werewolfEngine.submitNightAction(room, seer.playerId, doctor.playerId);
@@ -352,7 +358,7 @@ function testMayorVoteWeight() {
     const mayorResolveResult = werewolfEngine.submitDayVote(room, doctor.playerId, targetWolf.playerId);
     werewolfEngine.submitDayVote(room, bodyguard.playerId, seer.playerId);
     werewolfEngine.submitDayVote(room, targetWolf.playerId, doctor.playerId);
-    const mayorFinalResolveResult = werewolfEngine.submitDayVote(room, otherWolf.playerId, bodyguard.playerId);
+    const mayorFinalResolveResult = werewolfEngine.submitDayVote(room, sixthVoter.playerId, bodyguard.playerId);
 
     // Mayor's 2 weighted votes + 2 regular = 4, wolf eliminated
     assert(mayorResolveResult.resolved === false, 'weighted threshold should lock the result but still wait for the remaining actors');
