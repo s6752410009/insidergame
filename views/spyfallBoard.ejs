@@ -692,13 +692,23 @@ $(function() {
     if (state.phase === 'vote') {
       const players = (state.players || []).filter(function(p) { return !p.isSelf; });
       const selfVoted = !!(state.self && state.self.hasVoted);
+      const selfTarget = state.self && state.self.voteTargetId;
+      const progress = state.voteProgress || {};
+      const submitted = Number(progress.submitted || 0);
+      const total = Number(progress.total || 0);
       let html = '<h3 style="text-align:center;margin:0 0 8px;font-size:1.15rem;color:var(--sf-amber);">🗳️ โหวตจับสายลับ</h3>';
-      html += '<p class="sf-role-summary" style="text-align:center;margin-bottom:12px;">' + escapeHtml(tip) + '</p>';
+      html += '<p class="sf-role-summary" style="text-align:center;margin-bottom:6px;">' + escapeHtml(tip) + '</p>';
+      if (total > 0) {
+        html += '<p style="text-align:center;margin:0 0 12px;color:var(--sf-teal);font-weight:600;">ลงคะแนนแล้ว ' + submitted + ' / ' + total + ' คน</p>';
+      }
       html += '<div class="sf-vote-grid">';
       players.forEach(function(player) {
-        html += '<button type="button" class="sf-vote-btn' + (player.hasVoted ? ' voted-flag' : '') + '" data-target-id="' + escapeHtml(player.playerId) + '" ' + (selfVoted ? 'disabled' : '') + '>' +
+        const isMyPick = selfTarget && player.playerId === selfTarget;
+        html += '<button type="button" class="sf-vote-btn' + (isMyPick ? ' selected' : '') + '" data-target-id="' + escapeHtml(player.playerId) + '" ' + (selfVoted ? 'disabled' : '') + '>' +
           '<span style="font-size:1.4rem;">' + escapeHtml(player.avatar || '👤') + '</span>' +
           '<span><strong style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</strong></span>' +
+          (isMyPick ? '<span style="margin-left:auto;font-size:0.82rem;color:var(--sf-teal);">✓ คุณโหวตคนนี้</span>'
+                    : (player.hasVoted ? '<span style="margin-left:auto;font-size:0.78rem;color:var(--sf-muted);">ลงคะแนนแล้ว</span>' : '')) +
         '</button>';
       });
       html += '</div>';
@@ -712,12 +722,34 @@ $(function() {
     if (state.phase === 'finished' && state.winner) {
       const w = state.winner;
       const citizensWin = w.team === 'citizens';
+      const counts = w.voteCounts || {};
+      const nameById = {};
+      (state.players || []).forEach(function(p) { nameById[p.playerId] = p; });
+      const tally = Object.keys(counts)
+        .map(function(id) { return { id: id, count: Number(counts[id] || 0), player: nameById[id] }; })
+        .filter(function(row) { return row.count > 0; })
+        .sort(function(a, b) { return b.count - a.count; });
+      let tallyHtml = '';
+      if (tally.length) {
+        tallyHtml = '<div style="margin-top:14px;text-align:left;max-width:280px;margin-left:auto;margin-right:auto;">' +
+          '<div style="font-size:0.8rem;color:var(--sf-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">ผลโหวต</div>' +
+          tally.map(function(row) {
+            const isSpy = w.spyPlayerId && row.id === w.spyPlayerId;
+            const label = row.player ? row.player.name : 'ไม่ทราบ';
+            return '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;">' +
+              '<span>' + (isSpy ? '🕶️ ' : '') + escapeHtml(label) + '</span>' +
+              '<strong style="color:' + (isSpy ? 'var(--sf-red)' : 'var(--sf-text)') + ';">' + row.count + ' เสียง</strong>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+      }
       $stage.html(
         '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + '">' +
           '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
           '<p>สายลับ: <strong>' + escapeHtml(w.spyName) + '</strong></p>' +
           '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>' +
           '<p>สถานที่: <strong>' + escapeHtml(w.locationIcon || '') + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
+          tallyHtml +
         '</div>'
       );
       return;
