@@ -2248,6 +2248,20 @@ function fillMissingNightActions(room) {
                 }
                 break;
             }
+            case 'oracle':
+                // บทข้อมูล: ถ้าไม่ทันเลือก ให้ข้าม (ไม่บังคับอ่านสุ่ม)
+                room.gameState.nightActions.oracleReads[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'tracker':
+                room.gameState.nightActions.trackerScans[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'vigilante':
+                // บทยิง: ไม่ยิงสุ่มเองเพื่อกันฆ่าพลาด ให้ข้ามถ้า AFK
+                room.gameState.nightActions.vigilanteShots[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'hunter':
+                room.gameState.nightActions.hunterShots[actor.playerId] = SKIP_TARGET_ID;
+                break;
             default:
                 break;
         }
@@ -2528,10 +2542,9 @@ function getNightActionOptions(room, viewer) {
                 return [{
                     type: selectedType,
                     label: selectedType === 'witch-poison' ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'คืนนี้คุณเลือกใช้ยาช่วยชีวิตแล้ว',
-                    description: 'แม่มดใช้ได้เพียง 1 สกิลต่อคืน ถ้าจะเปลี่ยนใจให้เลือกเป้าหมายใหม่ในสกิลเดิมเท่านั้น',
+                    description: 'แม่มดใช้ได้เพียง 1 สกิลต่อคืน ถ้าจะเปลี่ยนใจ เลือกเป้าหมายใหม่ในสกิลเดิม หรือกดเป้าเดิมซ้ำเพื่อยกเลิก',
                     selectedTargetId,
                     allowSkip: true,
-                    locked: true,
                     targets: alivePlayers
                         .filter(player => selectedType !== 'witch-poison' || player.playerId !== viewer.playerId)
                         .map(player => ({
@@ -2820,10 +2833,13 @@ function buildDayResolutionAnnouncement(room) {
     const revealActor = summary.revealActorId ? getPlayer(room, summary.revealActorId) : null;
     const revealTarget = summary.revealTargetId ? getPlayer(room, summary.revealTargetId) : null;
     const publicEvents = Array.isArray(summary.publicEvents) ? summary.publicEvents.filter(Boolean) : [];
+    // ถ้าเกมจบด้วยโหวตกลางวันแล้ว ห้ามขึ้น "คืนถัดไป" (ไม่มีคืนต่อ)
+    const gameEnded = !!room.gameState.winner || room.gameState.phase === 'finished';
+    const nextTitle = gameEnded ? '⚖️ ผลโหวตปิดเกม' : `🌙 เข้าสู่คืน ${dayNumber + 1}`;
 
     if (publicEvents.length > 0) {
         return {
-            title: `🌙 คืน ${dayNumber + 1}`,
+            title: nextTitle,
             outcomeType: summary.resolutionType || publicEvents[0]?.type || 'day-resolution',
             lead: publicEvents.map(event => event.lead).filter(Boolean).join(' • ') || 'เหตุการณ์ช่วงกลางวันสิ้นสุดลงแล้ว',
             detail: publicEvents.map(event => event.detail).filter(Boolean).join(' • ') || 'ระบบสรุปผลช่วงกลางวันไว้ให้แล้ว'
@@ -2832,7 +2848,7 @@ function buildDayResolutionAnnouncement(room) {
 
     if (summary.skippedByMajority) {
         return {
-            title: `🌙 คืน ${dayNumber + 1}`,
+            title: nextTitle,
             outcomeType: 'skipped',
             lead: 'เสียงข้ามโหวตเกินครึ่ง หมู่บ้านจบวันทันที',
             detail: 'ไม่มีใครถูกกำจัด และเกมเข้าสู่กลางคืนต่อทันที'
@@ -2841,7 +2857,7 @@ function buildDayResolutionAnnouncement(room) {
 
     if (summary.resolutionType === 'reveal-hit' && eliminatedPlayer) {
         return {
-            title: `🌙 คืน ${dayNumber + 1}`,
+            title: nextTitle,
             outcomeType: 'reveal-hit',
             lead: `${revealActor?.name || 'จอมเปิดโปง'} เปิดโปง ${eliminatedPlayer.name} สำเร็จ`,
             detail: `${eliminatedPlayer.name} ตายทันทีเพราะถูกเปิดโปงว่าเป็นหมาป่า`
@@ -2850,7 +2866,7 @@ function buildDayResolutionAnnouncement(room) {
 
     if (summary.resolutionType === 'reveal-miss' && eliminatedPlayer) {
         return {
-            title: `🌙 คืน ${dayNumber + 1}`,
+            title: nextTitle,
             outcomeType: 'reveal-miss',
             lead: `${revealActor?.name || 'จอมเปิดโปง'} เปิดโปงผิดเป้า`,
             detail: `${eliminatedPlayer.name} ตายแทนทันทีหลังใช้สกิลกับ ${revealTarget?.name || 'เป้าหมาย'} ผิดคน`
@@ -2859,7 +2875,7 @@ function buildDayResolutionAnnouncement(room) {
 
     if (eliminatedPlayer) {
         return {
-            title: `🌙 คืน ${dayNumber + 1}`,
+            title: nextTitle,
             outcomeType: 'eliminated',
             lead: `${eliminatedPlayer.name} ถูกขับออกจากหมู่บ้าน`,
             detail: `บทบาทของ ${eliminatedPlayer.name} จะเฉลยเมื่อเกมจบ`
@@ -2867,7 +2883,7 @@ function buildDayResolutionAnnouncement(room) {
     }
 
     return {
-        title: `🌙 คืน ${dayNumber + 1}`,
+        title: nextTitle,
         outcomeType: 'tie',
         lead: 'การโหวตจบลงแบบไม่มีใครถูกกำจัด',
         detail: 'คืนนี้หมู่บ้านต้องกลับไปฟังความเคลื่อนไหวในความมืดอีกครั้ง'

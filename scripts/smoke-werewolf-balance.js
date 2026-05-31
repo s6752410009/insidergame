@@ -9,9 +9,11 @@ const EVENT_TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 25000);
 const ROOM_SIZE = Number(process.env.SMOKE_WEREWOLF_CASE || 5);
 const ROUND_TIME_MINUTES = Number(process.env.SMOKE_ROUND_TIME_MINUTES || 0.25);
 
+// อ้างอิงจำนวนหมาป่าตาม base role plan ของ engine: 3-6 คน = 1 ตัว, 7+ = 2 ตัว
+// (assertion จะตรวจ "จำนวนหมาป่า" + "ทุกบทมาจาก pool" ไม่ใช่ set ตายตัว เพราะบทถูกสุ่ม)
 const EXPECTED_ROLES = {
     5: ['werewolf', 'seer', 'doctor', 'bodyguard', 'villager'],
-    6: ['alphaWolf', 'werewolf', 'seer', 'doctor', 'witch', 'villager']
+    6: ['werewolf', 'seer', 'doctor', 'bodyguard', 'mayor', 'villager']
 };
 
 function delay(ms) {
@@ -265,14 +267,24 @@ async function main() {
 
         const openingStates = await Promise.all(clients.map(client => waitForOpeningRole(client, roomId)));
         const assignedRoles = openingStates.map(state => state.playerRole.id).sort();
-        const expectedSorted = [...expectedRoles].sort();
 
-        assert(JSON.stringify(assignedRoles) === JSON.stringify(expectedSorted), `Expected roles ${expectedSorted.join(', ')} but got ${assignedRoles.join(', ')}`);
+        // บทบาทถูกสุ่มจาก pool ที่ตั้ง จึงไม่ตรวจ set ตายตัว แต่ตรวจ invariant ของบาลานซ์แทน:
+        const WOLF_ROLE_IDS = ['werewolf', 'alphaWolf'];
+        const configuredPool = ['werewolf', 'alphaWolf', 'seer', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer'];
+        const validRoleSet = new Set([...configuredPool, 'villager']);
+        const expectedWolfCount = expectedRoles.filter(role => WOLF_ROLE_IDS.includes(role)).length;
+        const actualWolfCount = assignedRoles.filter(role => WOLF_ROLE_IDS.includes(role)).length;
+
+        assert(assignedRoles.length === ROOM_SIZE, `Expected ${ROOM_SIZE} roles but got ${assignedRoles.length}`);
+        assert(actualWolfCount === expectedWolfCount, `Expected ${expectedWolfCount} werewolf-team role(s) but got ${actualWolfCount} (${assignedRoles.join(', ')})`);
+        const strayRole = assignedRoles.find(role => !validRoleSet.has(role));
+        assert(!strayRole, `Unexpected role outside configured pool: ${strayRole} (${assignedRoles.join(', ')})`);
 
         const summary = {
             roomId,
             case: ROOM_SIZE,
-            roles: assignedRoles
+            roles: assignedRoles,
+            wolves: actualWolfCount
         };
 
         console.log('SMOKE_RESULT ' + JSON.stringify(summary));

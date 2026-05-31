@@ -1127,7 +1127,12 @@
       var dayLabel = entry.dayNumber ? 'คืน ' + entry.dayNumber : 'ผลล่าสุด';
       var targetName = escapeHtml(entry.targetName || 'เป้าหมาย');
       var roleLabel = escapeHtml(entry.roleLabel || 'ไม่ทราบ');
-      var badgeHtml = '<span class="seer-result-badge result-unknown">' + roleLabel + '</span>';
+      var oracleRid = normalizeRoleId(entry.roleId);
+      var oracleBadgeClass = 'result-unknown';
+      if (oracleRid && oracleRid !== 'unknown') {
+        oracleBadgeClass = (oracleRid === 'werewolf' || oracleRid === 'alphaWolf') ? 'result-bad' : 'result-good';
+      }
+      var badgeHtml = '<span class="seer-result-badge ' + oracleBadgeClass + '">' + roleLabel + '</span>';
       var textHtml = '<span class="seer-result-inline"><span class="seer-result-day">' + escapeHtml(dayLabel) + '</span><strong class="seer-result-target">' + targetName + '</strong></span>';
 
       if (config.compact) {
@@ -1248,7 +1253,13 @@
     function renderRoleStrip() {
       const roleCatalog = Array.isArray(currentState.roleCatalog) ? currentState.roleCatalog : [];
       const activeCounts = new Map();
-      const orderedRoleIds = ['werewolf', 'alphaWolf', 'seer', 'doctor', 'bodyguard', 'witch', 'fool', 'mayor', 'revealer'];
+      const orderedRoleIds = ['werewolf', 'alphaWolf', 'seer', 'oracle', 'doctor', 'bodyguard', 'witch', 'tracker', 'vigilante', 'hunter', 'cleric', 'fool', 'mayor', 'revealer'];
+      // กันบทใหม่ตกหล่น: เติมบทใดๆ ใน catalog ที่ไม่อยู่ในลำดับด้านบนต่อท้าย
+      roleCatalog.forEach(function(role) {
+        if (role && role.id && orderedRoleIds.indexOf(role.id) === -1) {
+          orderedRoleIds.push(role.id);
+        }
+      });
 
       (Array.isArray(currentState.rolePlan) ? currentState.rolePlan : []).forEach(function(role) {
         if (!role || !role.id) {
@@ -1308,7 +1319,10 @@
         fool: 'หมาป่าฆ่าคุณไม่ได้ ถ้าถูกโหวตออกตอนกลางวันคุณชนะเดี่ยวทันที',
         revealer: 'ใช้ตอนกลางวัน 1 ครั้ง ล็อกเป้าแล้วรอเฉลยว่าถูกหรือผิด',
         oracle: 'เลือกตรวจ 1 คนตอนกลางคืน ระบบบอกบทบาทจริงทันทีและเก็บประวัติไว้',
-        cleric: 'ใช้พรตอนประชุมเช้า 1 ครั้งทั้งเกม เพื่อกันตายคืนถัดไป'
+        cleric: 'ใช้พรตอนประชุมเช้า 1 ครั้งทั้งเกม เพื่อกันตายคืนถัดไป',
+        tracker: 'เลือกสะกดรอย 1 คนตอนกลางคืน ดูว่าคืนนั้นเป้าใช้สกิลหรือไม่',
+        hunter: 'มีสิทธิ์ยิง 1 ครั้งตลอดเกมตอนกลางคืน ถ้าตายในคืนที่ล็อกเป้าไว้ ลูกธนูยังออก',
+        vigilante: 'มีสิทธิ์ยิง 1 ครั้งตลอดเกมตอนกลางคืน เลือกเป้าแล้วเปลี่ยน/ยกเลิกได้จนคืนจบ'
       };
 
       return hints[role.id] || 'ดูคำอธิบายบทของคุณ แล้วลงมือเมื่อถึงช่วงที่ระบบเปิดให้ใช้ความสามารถ';
@@ -4134,6 +4148,8 @@
           showOracleVisionResult(response.oracleResult);
         }
         playActionSelectionSound(actionType, targetPlayerId);
+        // ปลดล็อกทันทีหลัง ack สำเร็จ — ไม่ต้องรอ state broadcast (กันปุ่มค้าง)
+        setActionButtonsPending(false);
       });
     }
 

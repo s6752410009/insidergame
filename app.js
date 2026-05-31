@@ -1073,13 +1073,22 @@ function isWerewolfNightChatEligible(room, playerId) {
     return !!gamePlayer && gamePlayer.alive !== false && ['werewolf', 'alphaWolf'].includes(gamePlayer.role);
 }
 
+function isWerewolfTeamMember(room, playerId) {
+    if (!room || room.settings.gameMode !== 'werewolf' || !playerId) {
+        return false;
+    }
+    const gamePlayer = room.gameState?.players?.find(player => player.playerId === playerId);
+    return !!gamePlayer && ['werewolf', 'alphaWolf'].includes(gamePlayer.role);
+}
+
 function buildWerewolfChatHistory(room, playerId) {
     if (!room || room.settings.gameMode !== 'werewolf') {
         return room?.chatHistory || [];
     }
 
     const publicHistory = Array.isArray(room.chatHistory) ? room.chatHistory : [];
-    const wolfHistory = isWerewolfNightChatEligible(room, playerId) && Array.isArray(room.werewolfChatHistory)
+    // ประวัติแชทหมาป่า: ให้สมาชิกทีมหมาป่าเห็นได้ทุกเฟส (ไม่ผูกกับ night) — กัน reconnect กลางวันแล้วแชทหาย
+    const wolfHistory = isWerewolfTeamMember(room, playerId) && Array.isArray(room.werewolfChatHistory)
         ? room.werewolfChatHistory
         : [];
 
