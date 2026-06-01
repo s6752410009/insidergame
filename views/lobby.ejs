@@ -1509,23 +1509,24 @@ $(function() {
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        อัปเดต v<%= appVersion %> ใหม่: เพิ่มโหมดฝึกซ้อมเล่นกับบอท (🤖 เติมบอทเพื่อทดสอบ) ในห้องตลาดมืด และระบบคู่มือจำลองการเล่นแบบจำลอง (Walkthrough) สลับแท็บได้ทั้งในล็อบบี้และบอร์ดเกมจริง!
+                        อัปเดตใหญ่ v<%= appVersion %>: <strong>ยกเครื่องระบบการเล่นใหม่ และปรับ logic engine ใหม่ทุกเกม</strong> — Insider, Werewolf, Black Market และ Spyfall เล่นจบไม่ค้าง รีจอยน์กลางเกมก็ต่อได้ พร้อม UI ที่บอกชัดว่าตอนนี้ต้องทำอะไร
                     </p>
                     
                     <div style="background: rgba(26, 188, 156, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #1abc9c; margin-bottom: 15px;">
-                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🕵️ ไฮไลต์ v<%= appVersion %></h4>
+                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">⚙️ ไฮไลต์ v<%= appVersion %> — เครื่องยนต์เกมใหม่ทุกโหมด</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>โหมดซ้อมเล่นกับบอท (AI Bots):</strong> สามารถแอดบอทได้สูงสุด 3 ตัวเพื่อทดสอบระบบและเล่นแข่งกันจนจบเกมได้ทันทีในห้อง Black Market</li>
-                            <li><strong>คู่มือจำลองการเล่น (Walkthrough):</strong> เพิ่มแท็บแสดงตัวอย่างทีละขั้นตอนของ 4 ตัวละคร (เจ้าพ่อ, มือเก็บงาน, นายหน้า, สายข่าว) ให้ผู้เล่นใหม่เข้าใจจังหวะการแก้ไขการส่งของและยิงได้ทันที</li>
-                            <li><strong>ไกด์พาเล่นในบอร์ดจริง:</strong> ปรับปรุงแผงวิเคราะห์และไกด์ในบอร์ด โดยแสดงผลแบบไดนามิกตามบทบาทที่ได้รับและเฟสของเกม</li>
+                            <li><strong>🕵️ Insider:</strong> รีจอยน์/รีโหลดแล้วกลับเข้าเฟสเดิมถูกต้อง, หมดเวลาคุยเข้าสู่โหวตจับจอมบงการเองไม่ค้าง, เฉลยคำลับตอนจบเกม</li>
+                            <li><strong>🐺 Werewolf:</strong> กลางคืนหมดเวลาเติมตาให้ครบทุกบท, จบเกมไม่ขึ้น "คืนถัดไป" ผิด ๆ, แม่มดเปลี่ยนเป้าได้, แถบบทบาทครบทุกตัว และแชตหมาป่าไม่หายตอนรีจอยน์</li>
+                            <li><strong>💰 Black Market:</strong> ลดความรกของหน้าจอ, มีปุ่มพาไป "เลือกของ/ลงมือ", โชว์ว่าใครล็อกแล้วกี่คน และอธิบายบทบาทแบบเข้าใจง่าย</li>
+                            <li><strong>🔍 Spyfall:</strong> ตัวนับว่าโหวตแล้วกี่คน, ไฮไลต์คนที่เราโหวต และตารางสรุปผลโหวตตอนจบ</li>
                         </ul>
                     </div>
 
                     <div style="background: rgba(52, 152, 219, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 วิธีเล่นง่าย ๆ</h4>
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 เล่นได้เลย</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>สร้างห้องเลือกโหมด <strong>Black Market</strong> กดปุ่ม 🤖 <b>เติมบอทเพื่อทดสอบ</b> จากนั้นกดเปิดตลาดมืดได้เลย!</li>
-                            <li>หากไม่เข้าใจขั้นตอน ให้กดเปิด 📖 <b>คู่มือโต๊ะตลาดมืด</b> เพื่อสลับแท็บดูแบบอย่างการลงมือและสกิลได้ตลอดเวลา</li>
+                            <li>สร้างห้องเลือกโหมดที่อยากเล่น แล้วดูแถบ <strong>"ทำอะไรตอนนี้"</strong> ที่บอกขั้นตอนถัดไปให้ทุกเกม</li>
+                            <li>หลุดกลางเกมไม่ต้องกลัว — รีโหลดแล้วระบบพากลับเข้าเฟสเดิมให้อัตโนมัติ</li>
                         </ul>
                     </div>
                     
@@ -1534,6 +1535,11 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.0.1</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>โหมดซ้อมเล่นกับบอท (AI Bots) สูงสุด 3 ตัวในห้อง Black Market</li>
+                                <li>คู่มือจำลองการเล่น (Walkthrough) สลับแท็บได้ทั้งในล็อบบี้และบอร์ด</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.0.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li><strong>โหมด Spyfall ใหม่</strong> 4–8 คน แจกบท → ถาม–ตอบ → โหวตจับสายลับ</li>
