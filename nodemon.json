@@ -1,0 +1,21 @@
+{
+  "watch": [
+    "app.js",
+    "games",
+    "managers",
+    "views",
+    "public/js",
+    "scripts/dev-server.js"
+  ],
+  "ignore": [
+    "data/**",
+    "public/assets/**",
+    "screenshots/**",
+    ".cursor/**",
+    "node_modules/**",
+    "docs/**",
+    "*.log"
+  ],
+  "ext": "js,ejs,json",
+  "delay": 2000
+}

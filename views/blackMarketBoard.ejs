@@ -274,7 +274,16 @@
     line-height: 1.45;
   }
 
-  .bm-round-summary-item .bm-rs-icon { flex: 0 0 auto; }
+  .bm-round-summary-item .bm-rs-icon {
+    flex: 0 0 auto;
+    width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
   .bm-round-summary-item.tone-gold .bm-rs-copy { color: #ffce6b; }
   .bm-round-summary-item.tone-red .bm-rs-copy { color: #ff8a7a; }
   .bm-round-summary-item.tone-amber .bm-rs-copy { color: #f5c86b; }
@@ -1128,18 +1137,125 @@
     align-items: start;
   }
 
+  .game-icon {
+    width: 1.35em;
+    height: 1.35em;
+    display: inline-block;
+    vertical-align: middle;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .game-icon-fallback {
+    line-height: 1;
+    font-size: inherit;
+  }
+
+
+  .bm-manual-role-icon .game-icon,
+  .bm-manual-role-icon img.game-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .bm-feed-icon .game-icon,
+  .bm-feed-icon img.game-icon {
+    width: 22px;
+    height: 22px;
+    max-width: 22px;
+    max-height: 22px;
+  }
+
+  .bm-rs-icon .game-icon,
+  .bm-rs-icon img.game-icon,
+  .bm-rs-icon .game-icon-fallback {
+    width: 1.15rem;
+    height: 1.15rem;
+    max-width: 1.15rem;
+    max-height: 1.15rem;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .bm-offer-title .game-icon,
+  .bm-item-compact .game-icon {
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 4px;
+  }
+
   .bm-role-icon {
-    width: 90px;
-    height: 90px;
+    width: 112px;
+    height: 112px;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: block;
+    border-radius: 20px;
+    border: 2px solid rgba(245, 200, 107, 0.45);
+    background: #0f1419;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  .bm-role-icon .game-icon,
+  .bm-role-icon img.game-icon,
+  .bm-role-icon .game-icon-fallback {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    font-size: 2.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bm-flow-guide {
     display: grid;
-    place-items: center;
-    border-radius: 26px;
-    border: 1px solid rgba(245, 200, 107, 0.24);
-    background:
-      radial-gradient(circle at 30% 30%, rgba(245, 200, 107, 0.16), transparent 58%),
-      linear-gradient(145deg, rgba(245, 200, 107, 0.12), rgba(127, 29, 29, 0.16));
-    box-shadow: inset 0 0 32px rgba(245, 200, 107, 0.08), 0 18px 32px rgba(0,0,0,0.22);
-    font-size: 2.45rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 22px 12px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--bm-line);
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .bm-flow-step {
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: var(--bm-muted);
+    border: 1px solid transparent;
+  }
+
+  .bm-flow-step strong {
+    display: block;
+    color: #fff;
+    font-size: 0.82rem;
+    margin-bottom: 2px;
+  }
+
+  .bm-flow-step.is-active {
+    color: #fde68a;
+    border-color: rgba(245, 200, 107, 0.35);
+    background: rgba(245, 200, 107, 0.1);
+  }
+
+  .bm-flow-step.is-done {
+    opacity: 0.55;
+  }
+
+  @media (max-width: 640px) {
+    .bm-flow-guide {
+      grid-template-columns: 1fr;
+      margin: 0 14px 10px;
+    }
+    .bm-role-icon {
+      width: 96px;
+      height: 96px;
+    }
   }
 
   .bm-role-title {
@@ -1599,7 +1715,7 @@
     .bm-card { padding: 14px; }
     .bm-announcer { padding: 14px; }
     .bm-role-wrap { grid-template-columns: 1fr; }
-    .bm-role-icon { width: 68px; height: 68px; border-radius: 18px; }
+    .bm-role-icon { width: 88px; height: 88px; border-radius: 16px; }
     .bm-topbar::after { left: 14px; right: 14px; }
     .bm-top-meta { gap: 6px; }
     .bm-top-meta .bm-chip { flex: 1 1 calc(50% - 6px); min-width: 0; padding-inline: 10px; }
@@ -1710,6 +1826,8 @@
     </div>
 
     <div id="bmNowBar" class="bm-now-bar" aria-live="polite"></div>
+
+    <div id="bmFlowGuide" class="bm-flow-guide" aria-label="ลำดับการเล่นในหนึ่งยก"></div>
 
     <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div>
 
@@ -1908,6 +2026,7 @@
 <%- contentFor('script') %>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/gameIcon.js"></script>
 <script>
   $(function() {
     const socket = io();
@@ -2380,6 +2499,34 @@
         .replace(/'/g, '&#39;');
     }
 
+    function plainBmCopy(text) {
+      return String(text || '')
+        .replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function gameIcon(meta, className) {
+      if (typeof window.renderGameIcon === 'function') {
+        return window.renderGameIcon(meta || {}, className || 'game-icon');
+      }
+      return '<span class="' + escapeHtml(className || 'game-icon') + ' game-icon-fallback">' + escapeHtml((meta && meta.icon) || '🎴') + '</span>';
+    }
+
+    function feedIconMeta(entry, options) {
+      if (!entry) {
+        return { icon: '📢', alt: '', inline: true };
+      }
+      const inlineOnly = !!(options && options.inline);
+      return {
+        id: entry.iconId || entry.id || null,
+        image: inlineOnly ? null : (entry.image || null),
+        icon: entry.icon || '📢',
+        alt: entry.text || '',
+        inline: inlineOnly
+      };
+    }
+
     function phaseMeta(phase) {
       if (phase === 'market') {
         return { label: '🛒 เปิดตลาด', className: 'phase-market' };
@@ -2749,14 +2896,14 @@
         if (/เปิดดีล|ปิดดีล|หักหลัง/.test(eventTone)) {
           cards.push({
             label: 'โต๊ะเพิ่งมีเรื่องบนเส้นดีล',
-            chip: escapeHtml(latestEvent.icon || '🤝'),
+            chip: gameIcon(feedIconMeta(latestEvent, { inline: true })),
             copy: `${eventTone} เหตุการณ์พวกนี้เปลี่ยนว่าใครน่าไว้ใจและใครกำลังล่อมีด อย่าเดินยกนี้เหมือนไม่มีอะไรเกิดขึ้น`,
             emphasis: 'อ่านดีลก่อนลงมือ'
           });
         } else if (/สั่งเก็บ|เปิดงาน|รอดจากคำสั่งเก็บ/.test(eventTone)) {
           cards.push({
             label: 'โต๊ะเพิ่งมีงานเลือด',
-            chip: escapeHtml(latestEvent.icon || '🔫'),
+            chip: gameIcon(feedIconMeta(latestEvent, { inline: true })),
             copy: `${eventTone} หลังงานเลือด โต๊ะมักหันไปกันตัวหรือรีบเอาคืน ยกนี้จึงมีค่าเรื่องจังหวะหนีและจังหวะสวนมากกว่าปกติ`,
             emphasis: 'เกมจะร้อนเร็ว'
           });
@@ -2818,23 +2965,23 @@
         sub = '';
       } else if (phase === 'market') {
         if (status.pendingMarketChoice) {
-          main = 'ล็อกแล้ว — รอคนอื่นเลือกตลาด';
+          main = 'รอคนอื่นเลือกตลาด — คุณล็อกแล้ว';
           sub = lockText || 'แก้ไม่ได้จนกว่าจะปิดยก';
           locked = true;
         } else {
-          main = '🛒 ตาคุณ: เลือกซื้อของ 1 ชิ้น หรือกดผ่านตลาด';
-          sub = 'เลื่อนไปที่ "ตลาดมืด" แล้วกดปุ่มซื้อ หรือ ผ่าน' + (lockText ? ' · ' + lockText : '');
-          cta = '⬇️ ไปเลือกของเลย';
+          main = 'ขั้นที่ 1: เลือกของจากตลาด';
+          sub = 'ซื้อ 1 ชิ้น หรือกด「ผ่าน — ไม่ซื้อ」· ของที่ซื้อไว้ใช้ตอน「ลงมือ」' + (lockText ? ' · ' + lockText : '');
+          cta = 'ไปที่ตลาดมืด';
         }
       } else if (phase === 'action') {
         if (status.pendingAction) {
-          main = 'ล็อกแล้ว — รอคนอื่นลงมือ';
-          sub = lockText || status.pendingAction.summaryText || status.pendingAction.label || '';
+          main = 'รอคนอื่นลงมือ — คุณล็อกแล้ว';
+          sub = lockText || plainBmCopy(status.pendingAction.summaryText || status.pendingAction.label || '');
           locked = true;
         } else {
-          main = '🎯 ตาคุณ: เลือกทำ 1 อย่าง';
-          sub = 'ปุ่มหลัก: ส่งของ · สืบข่าว · ผ่าน (กดดูแผนเต็มได้)' + (lockText ? ' · ' + lockText : '');
-          cta = '⬇️ ไปเลือกแผนเลย';
+          main = 'ขั้นที่ 2: เลือกแผน 1 อย่าง';
+          sub = 'แนะนำ: ส่งของ (ได้อิทธิพล) · สืบข่าว (ดูเป้า) · ผ่าน (ไม่ทำ) · แผนลับกด「ดูแผนหลักทั้งหมด」' + (lockText ? ' · ' + lockText : '');
+          cta = 'ไปเลือกแผน';
         }
       } else if (phase === 'finished') {
         main = 'เกมจบแล้ว';
@@ -2849,6 +2996,43 @@
           (sub ? '<div class="bm-now-bar-sub">' + escapeHtml(sub) + '</div>' : '') +
           (cta ? '<button type="button" id="bmNowBarGo" class="bm-now-bar-go">' + escapeHtml(cta) + '</button>' : '')
         );
+    }
+
+    function renderFlowGuide() {
+      const phase = currentState.phase;
+      const round = Number(currentState.roundNumber || 0);
+      const maxRounds = Number(currentState.maxRounds || 5);
+      const steps = [
+        {
+          key: 'market',
+          title: '1) ตลาด',
+          copy: 'ซื้อของหรือผ่าน'
+        },
+        {
+          key: 'action',
+          title: '2) ลงมือ',
+          copy: 'ทำ 1 อย่างต่อยก'
+        },
+        {
+          key: 'score',
+          title: 'เป้าหมาย',
+          copy: 'สะสมอิทธิพลให้สูงสุดใน ' + maxRounds + ' ยก'
+        }
+      ];
+
+      const html = steps.map(function(step) {
+        let cls = 'bm-flow-step';
+        if (step.key === 'market') {
+          cls += phase === 'market' ? ' is-active' : (phase === 'action' || phase === 'finished' ? ' is-done' : '');
+        } else if (step.key === 'action') {
+          cls += phase === 'action' ? ' is-active' : (phase === 'finished' ? ' is-done' : '');
+        } else if (phase !== 'finished' && round > 0) {
+          cls += ' is-active';
+        }
+        return '<div class="' + cls + '"><strong>' + escapeHtml(step.title) + '</strong>' + escapeHtml(step.copy) + '</div>';
+      }).join('');
+
+      $('#bmFlowGuide').html(html);
     }
 
     function renderAnnouncer(rolePlaybook) {
@@ -2922,7 +3106,7 @@
               ${actionCatalog.map(function(action) {
                 return `
                   <div class="bm-manual-action">
-                    <strong>${escapeHtml(action.icon)} ${escapeHtml(action.label)}</strong>
+                    <strong>${gameIcon(action)} ${escapeHtml(action.label)}</strong>
                     <span>${escapeHtml(action.description || '')}</span>
                     <span>จังหวะนี้ให้ผลแบบนี้: ${escapeHtml(action.effectText || '')}</span>
                   </div>
@@ -2961,7 +3145,7 @@
       $('#bmHowToRole').html(`
         <div class="bm-manual-section">
           <div class="bm-manual-role-head">
-            <div class="bm-manual-role-icon">${escapeHtml(role.icon || '🎭')}</div>
+            <div class="bm-manual-role-icon">${gameIcon(role, 'game-icon bm-manual-role-icon-img')}</div>
             <div>
               <div class="bm-manual-role-name">วิธีเล่นของบท ${escapeHtml(role.title || 'ของคุณ')}</div>
               <div class="bm-manual-role-chip">${escapeHtml(role.summary || 'อ่านจังหวะแล้วเดินให้เข้ากับโต๊ะ')}</div>
@@ -3178,40 +3362,41 @@
     function renderRolePanel() {
       const role = currentState.playerRole || {};
       const self = getSelf();
-      $('#selfStateChip').html(self.alive ? '🫀 ยังอยู่' : '💀 หลุดโต๊ะแล้ว');
+      const maxRounds = Number(currentState.maxRounds || 5);
+      $('#selfStateChip').html(self.alive ? 'ยังอยู่' : 'ออกจากเกม');
       $('#rolePanel').html(`
         <div class="bm-role-wrap">
-          <div class="bm-role-icon">${escapeHtml(role.icon || '🎭')}</div>
+          <div class="bm-role-icon">${gameIcon(role, 'game-icon game-icon-hero')}</div>
           <div>
             <div class="bm-role-title">
               <div class="bm-role-name">${escapeHtml(role.title || 'ยังไม่เปิดบท')}</div>
             </div>
-            ${role.summary ? `<div class="bm-role-copy" style="margin-top:6px;font-weight:700;color:#fff;">⭐ จุดเด่นคุณ: ${escapeHtml(role.summary)}</div>` : ''}
-            ${role.ability ? `<div class="bm-role-copy" style="margin-top:4px;color:var(--bm-gold);font-size:0.9em;">${escapeHtml(role.ability)}</div>` : ''}
-            <div class="bm-role-copy" style="margin-top:6px;color:#9aa6c0;font-size:0.85em;">🎯 เป้าหมาย: สะสม 👑 ให้มากสุดใน 5 ยก</div>
+            ${role.summary ? `<div class="bm-role-copy" style="margin-top:6px;font-weight:700;color:#fff;">จุดเด่น: ${escapeHtml(plainBmCopy(role.summary))}</div>` : ''}
+            ${role.ability ? `<div class="bm-role-copy" style="margin-top:4px;color:var(--bm-gold);font-size:0.9em;">สกิล: ${escapeHtml(plainBmCopy(role.ability))}</div>` : ''}
+            <div class="bm-role-copy" style="margin-top:6px;color:#9aa6c0;font-size:0.85em;">เป้าหมาย: อิทธิพลสูงสุดใน ${maxRounds} ยก</div>
           </div>
         </div>
         <div class="bm-stats">
           <div class="bm-stat">
-            <div class="bm-stat-label">💵 เงินดำ</div>
+            <div class="bm-stat-label">เงินดำ</div>
             <div class="bm-stat-value">${Number(self.cash || 0)}</div>
           </div>
           <div class="bm-stat">
-            <div class="bm-stat-label">👑 อิทธิพล</div>
+            <div class="bm-stat-label">อิทธิพล</div>
             <div class="bm-stat-value">${Number(self.influence || 0)}</div>
           </div>
           <div class="bm-stat" ${Number(self.heat || 0) >= 5 ? 'style="background:rgba(127,29,29,0.35);border-radius:8px;"' : ''}>
-            <div class="bm-stat-label">🔥 ค่าหัว</div>
+            <div class="bm-stat-label">ค่าหัว</div>
             <div class="bm-stat-value" ${Number(self.heat || 0) >= 5 ? 'style="color:#fca5a5;"' : ''}>${Number(self.heat || 0)}</div>
-            <div style="font-size:10px;color:${Number(self.heat || 0) >= 5 ? '#fca5a5' : '#94a3b8'};line-height:1.2;margin-top:2px;">${Number(self.heat || 0) >= 5 ? 'จบยกนี้ −💵1 −👑1' : 'ถึง 5 จะโดนปรับ'}</div>
+            <div style="font-size:10px;color:${Number(self.heat || 0) >= 5 ? '#fca5a5' : '#94a3b8'};line-height:1.2;margin-top:2px;">${Number(self.heat || 0) >= 5 ? 'จบยกนี้ โดนปรับเงินและอิทธิพล' : 'ถึง 5 จะโดนปรับ'}</div>
           </div>
         </div>
-        <div class="bm-card-note" style="margin-top:8px;font-size:11.5px;">🏆 ชนะเมื่อมี 👑 มากสุดหลังครบ 5 ยก หรือเหลือรอดคนสุดท้าย</div>
+        <div class="bm-card-note" style="margin-top:8px;font-size:11.5px;">ชนะเมื่ออิทธิพลมากสุดหลังครบ ${maxRounds} ยก หรือเหลือรอดคนสุดท้าย</div>
         <div style="margin-top:12px;">
           <div class="bm-card-note" style="margin-bottom:8px;">🎒 ของในมือ</div>
           <div class="bm-inventory-compact">
             ${(self.inventory || []).length ? (self.inventory || []).map(item => `
-              <span class="bm-item-compact">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</span>
+              <span class="bm-item-compact">${gameIcon(item)} ${escapeHtml(item.name)}</span>
             `).join('') : '<span class="bm-muted">มือเปล่า</span>'}
           </div>
         </div>
@@ -3234,7 +3419,7 @@
             return `
             <div class="bm-offer">
               <div class="bm-offer-head">
-                <div class="bm-offer-title">${escapeHtml(item.icon)} ${escapeHtml(item.name)}</div>
+                <div class="bm-offer-title">${gameIcon(item)} ${escapeHtml(item.name)}</div>
                 <div class="bm-price">💵 ${Number(item.priceForPlayer || item.price || 0)}</div>
               </div>
               <div class="bm-offer-outcome">${escapeHtml(outcome)}</div>
@@ -3268,7 +3453,7 @@
             <div class="bm-simple-pick-grid">
               ${cargoItems.map(item => `
                 <button type="button" class="bm-target-btn bm-simple-pick-btn" data-pick-action="deliver" data-item-id="${escapeHtml(item.id)}">
-                  ${escapeHtml(item.icon)} ${escapeHtml(item.name)} <span class="bm-outcome">→ +👑</span>
+                  ${gameIcon(item)} ${escapeHtml(item.name)} <span class="bm-outcome">→ +👑</span>
                 </button>
               `).join('')}
             </div>
@@ -3362,7 +3547,7 @@
               <div class="bm-mini-grid">
                 ${cargoItems.length ? cargoItems.map(item => `
                   <button class="bm-target-btn action-submit" data-action-type="deliver" data-item-id="${escapeHtml(item.id)}" ${pendingAction ? 'disabled' : ''}>
-                    ${escapeHtml(item.icon)} ${escapeHtml(item.name)}
+                    ${gameIcon(item)} ${escapeHtml(item.name)}
                     <small>รับอิทธิพลจากของชิ้นนี้</small>
                   </button>
                 `).join('') : '<div class="bm-empty">ยังไม่มีของเถื่อนให้ส่ง</div>'}
@@ -3622,7 +3807,7 @@
         <div class="bm-player ${player.isSelf ? 'bm-player-self' : ''} ${player.alive ? '' : 'bm-player-dead'}">
           <div class="bm-player-head">
             <div class="bm-player-name">${escapeHtml(player.avatar)} ${escapeHtml(player.name)}</div>
-            <div class="bm-tag">${escapeHtml(player.roleIcon)} ${escapeHtml(player.roleTitle)}</div>
+            <div class="bm-tag">${gameIcon({ id: player.roleId, icon: player.roleIcon, alt: player.roleTitle, inline: true })} ${escapeHtml(player.roleTitle)}</div>
           </div>
           <div class="bm-player-copy">${player.alive ? 'ยังอยู่ในเกม' : 'หลุดจากโต๊ะแล้ว'}${player.isSelf ? ' • นี่คือตัวคุณ' : ''}</div>
           <div class="bm-player-stats">
@@ -3665,7 +3850,7 @@
       const ledgerHtml = notes.length ? notes.map(note => `
         <div class="bm-intel-item bm-deal-item ${note.tone === 'red' ? 'betray' : 'win'}">
           <div class="bm-intel-head">
-            <div class="bm-player-name">${escapeHtml(note.icon || '🤝')} ดีลยก ${Number(note.roundNumber || 0)}</div>
+            <div class="bm-player-name">${gameIcon(feedIconMeta(note, { inline: true }))} ดีลยก ${Number(note.roundNumber || 0)}</div>
           </div>
           <div class="bm-player-copy">${escapeHtml(note.text || '')}</div>
         </div>
@@ -3687,7 +3872,7 @@
       const items = report.map(function(entry) {
         const tone = escapeHtml(entry.tone || 'neutral');
         return '<div class="bm-round-summary-item tone-' + tone + '">' +
-          '<span class="bm-rs-icon">' + escapeHtml(entry.icon || '•') + '</span>' +
+          '<span class="bm-rs-icon">' + gameIcon(feedIconMeta(entry, { inline: true })) + '</span>' +
           '<span class="bm-rs-copy">' + escapeHtml(entry.text || '') + '</span>' +
           '</div>';
       }).join('');
@@ -3703,7 +3888,7 @@
       const history = currentState.history || [];
       $('#historyFeed').html(history.length ? history.map(entry => `
         <div class="bm-feed-item bm-feed-tone-${escapeHtml(entry.tone || 'neutral')}">
-          <div class="bm-feed-icon">${escapeHtml(entry.icon || '📢')}</div>
+          <div class="bm-feed-icon">${gameIcon(feedIconMeta(entry, { inline: true }))}</div>
           <div class="bm-feed-copy">${escapeHtml(entry.text || '')}</div>
         </div>
       `).join('') : '<div class="bm-empty">ข่าวยังไม่เดิน</div>');
@@ -3750,6 +3935,7 @@
         }
       }
       renderNowBar();
+      renderFlowGuide();
       renderRoundSummary();
       renderAnnouncer(rolePlaybook);
       renderRolePanel();

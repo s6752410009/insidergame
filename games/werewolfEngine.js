@@ -1,6 +1,31 @@
+const { gameAssetImage } = require('./gameAssets');
+
+function werewolfRoleImage(id) {
+    return gameAssetImage('werewolf', id);
+}
+
+function serializePublicRole(role) {
+    if (!role || !role.id) {
+        return null;
+    }
+
+    return {
+        id: role.id,
+        name: role.name || '',
+        thaiName: role.thaiName,
+        team: role.team,
+        description: role.description,
+        winCondition: role.winCondition || '',
+        image: role.image,
+        icon: role.icon
+    };
+}
+
 const ROLE_DEFINITIONS = {
     villager: {
         id: 'villager',
+        image: werewolfRoleImage('villager'),
+        icon: '👤',
         name: 'Villager',
         thaiName: 'ชาวบ้าน',
         team: 'village',
@@ -9,6 +34,8 @@ const ROLE_DEFINITIONS = {
     },
     werewolf: {
         id: 'werewolf',
+        image: werewolfRoleImage('werewolf'),
+        icon: '🐺',
         name: 'Werewolf',
         thaiName: 'หมาป่า',
         team: 'werewolf',
@@ -17,6 +44,8 @@ const ROLE_DEFINITIONS = {
     },
     alphaWolf: {
         id: 'alphaWolf',
+        image: werewolfRoleImage('alphaWolf'),
+        icon: '👑',
         name: 'Alpha Wolf',
         thaiName: 'อัลฟ่าหมาป่า',
         team: 'werewolf',
@@ -25,6 +54,8 @@ const ROLE_DEFINITIONS = {
     },
     mayor: {
         id: 'mayor',
+        image: werewolfRoleImage('mayor'),
+        icon: '🎖️',
         name: 'Mayor',
         thaiName: 'นายก',
         team: 'village',
@@ -33,6 +64,8 @@ const ROLE_DEFINITIONS = {
     },
     bodyguard: {
         id: 'bodyguard',
+        image: werewolfRoleImage('bodyguard'),
+        icon: '🛡️',
         name: 'Bodyguard',
         thaiName: 'บอดี้การ์ด',
         team: 'village',
@@ -41,6 +74,8 @@ const ROLE_DEFINITIONS = {
     },
     seer: {
         id: 'seer',
+        image: werewolfRoleImage('seer'),
+        icon: '🔮',
         name: 'Seer',
         thaiName: 'ผู้หยั่งรู้',
         team: 'village',
@@ -49,6 +84,8 @@ const ROLE_DEFINITIONS = {
     },
     oracle: {
         id: 'oracle',
+        image: werewolfRoleImage('oracle'),
+        icon: '✨',
         name: 'Oracle',
         thaiName: 'นักพยากรณ์',
         team: 'village',
@@ -57,6 +94,8 @@ const ROLE_DEFINITIONS = {
     },
     doctor: {
         id: 'doctor',
+        image: werewolfRoleImage('doctor'),
+        icon: '💉',
         name: 'Doctor',
         thaiName: 'หมอ',
         team: 'village',
@@ -65,6 +104,8 @@ const ROLE_DEFINITIONS = {
     },
     witch: {
         id: 'witch',
+        image: werewolfRoleImage('witch'),
+        icon: '🧪',
         name: 'Witch',
         thaiName: 'แม่มด',
         team: 'village',
@@ -73,6 +114,8 @@ const ROLE_DEFINITIONS = {
     },
     tracker: {
         id: 'tracker',
+        image: werewolfRoleImage('tracker'),
+        icon: '🧭',
         name: 'Tracker',
         thaiName: 'นักสอดแนม',
         team: 'village',
@@ -81,6 +124,8 @@ const ROLE_DEFINITIONS = {
     },
     hunter: {
         id: 'hunter',
+        image: werewolfRoleImage('hunter'),
+        icon: '🏹',
         name: 'Hunter',
         thaiName: 'พราน',
         team: 'village',
@@ -89,6 +134,8 @@ const ROLE_DEFINITIONS = {
     },
     cleric: {
         id: 'cleric',
+        image: werewolfRoleImage('cleric'),
+        icon: '⛪',
         name: 'Cleric',
         thaiName: 'นักบวช',
         team: 'village',
@@ -97,6 +144,8 @@ const ROLE_DEFINITIONS = {
     },
     vigilante: {
         id: 'vigilante',
+        image: werewolfRoleImage('vigilante'),
+        icon: '🎯',
         name: 'Vigilante',
         thaiName: 'ศาลเตี้ย',
         team: 'village',
@@ -105,6 +154,8 @@ const ROLE_DEFINITIONS = {
     },
     fool: {
         id: 'fool',
+        image: werewolfRoleImage('fool'),
+        icon: '🤪',
         name: 'Fool',
         thaiName: 'คนบ้า',
         team: 'solo',
@@ -113,6 +164,8 @@ const ROLE_DEFINITIONS = {
     },
     revealer: {
         id: 'revealer',
+        image: werewolfRoleImage('revealer'),
+        icon: '💥',
         name: 'Revealer',
         thaiName: 'จอมเปิดโปง',
         team: 'village',
@@ -338,6 +391,8 @@ function getConfigurableRoles() {
         team: ROLE_DEFINITIONS[roleId].team,
         description: ROLE_DEFINITIONS[roleId].description,
         winCondition: ROLE_DEFINITIONS[roleId].winCondition || '',
+        image: ROLE_DEFINITIONS[roleId].image,
+        icon: ROLE_DEFINITIONS[roleId].icon,
         defaultEnabled: DEFAULT_ROLE_SELECTION.includes(roleId)
     }));
 }
@@ -3010,14 +3065,7 @@ function buildClientState(room, viewerPlayerId) {
         winner: room.gameState.winner || null,
         morningAnnouncement: ['day-discussion', 'finished'].includes(room.gameState.phase) ? buildMorningAnnouncement(room) : null,
         dayResolutionAnnouncement: ['night', 'finished'].includes(room.gameState.phase) ? buildDayResolutionAnnouncement(room) : null,
-        playerRole: viewer ? {
-            id: viewer.role,
-            name: viewer.roleInfo?.name || '',
-            thaiName: viewer.roleInfo?.thaiName || '',
-            team: viewer.roleInfo?.team || '',
-            description: viewer.roleInfo?.description || '',
-            winCondition: viewer.roleInfo?.winCondition || ''
-        } : null,
+        playerRole: viewer ? serializePublicRole(viewer.roleInfo || ROLE_DEFINITIONS[viewer.role]) : null,
         personalNotes: {
             roleNotes: buildRoleNotes(room, viewer),
             lastSeenRole: viewer?.lastSeenRole || null,
@@ -3040,19 +3088,9 @@ function buildClientState(room, viewerPlayerId) {
             voteWeight: getCurrentVoteWeight(player),
             voteCount: dayVoteTallies[player.playerId] || 0
         })),
-        rolePlan: rolePlan.map(role => ({
-            id: role.id,
-            thaiName: role.thaiName,
-            team: role.team,
-            description: role.description,
-            winCondition: role.winCondition || ''
-        })),
+        rolePlan: rolePlan.map(serializePublicRole).filter(Boolean),
         roleCatalog: Object.values(ROLE_DEFINITIONS).filter(role => role.id !== 'villager').map(role => ({
-            id: role.id,
-            thaiName: role.thaiName,
-            team: role.team,
-            description: role.description,
-            winCondition: role.winCondition || '',
+            ...serializePublicRole(role),
             enabledInRoom: enabledRoleIds.has(role.id)
         })),
         history: room.gameState.history || [],

@@ -2373,6 +2373,8 @@ app.use(expressLayouts)
        cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 day for admin session
    }))
    .use('/static', express.static(__dirname + '/public'))
+   .use('/assets', express.static(path.join(__dirname, 'public', 'assets')))
+   .use('/js', express.static(path.join(__dirname, 'public', 'js')))
    .use(bodyParser.urlencoded({ extended: true }))
    .use(bodyParser.json())
    .set('view engine', 'ejs')
@@ -2392,6 +2394,16 @@ app.get('/sitemap.xml', (req, res) => {
 app.get(['/llms.txt', '/ai.txt'], (req, res) => {
     res.type('text/plain');
     res.sendFile(__dirname + '/public/llms.txt');
+});
+
+// In INSIDER_DEV_FAST mode the HTTP server accepts requests before the
+// player/stats managers finish loading — hold requests until they are ready,
+// otherwise approved players are validated against empty state.
+let resolveCoreManagersReady;
+const coreManagersReady = new Promise(resolve => { resolveCoreManagersReady = resolve; });
+
+app.use(function(req, res, next) {
+    coreManagersReady.then(() => next());
 });
 
 app.use(function(req, res, next) {
@@ -5849,44 +5861,61 @@ app.use(async function(req, res) {
 const PORT = process.env.PORT || 8080;
 
 // Initialize database and start server
+function onServerListening() {
+    console.log(`Server started on port ${PORT}`);
+    console.log('Multi-Room Insider Game is ready!');
+
+    serverLogs.unshift({
+        id: Date.now() + '-startup',
+        timestamp: new Date().toISOString(),
+        category: 'system',
+        roomId: null,
+        roomName: 'ระบบ',
+        gameMode: null,
+        gameModeLabel: null,
+        message: '🚀 Server เริ่มทำงานแล้ว',
+        type: 'success',
+        meta: null
+    });
+
+    recoverGamePhaseTimers();
+}
+
 async function startServer() {
+    const devFast = process.env.INSIDER_DEV_FAST === '1';
+    console.log(`[insider] initializing (port ${PORT}${devFast ? ', fast dev' : ''})...`);
+
+    if (devFast) {
+        server.listen(PORT, () => {
+            console.log(`[insider] HTTP ready on port ${PORT} — loading players/stats in background...`);
+        });
+    }
+
     try {
-        // Initialize player manager with MongoDB if available
         await playerManager.initPlayerManager();
         console.log('✅ Player Manager initialized');
-        
-        // Initialize stats manager with MongoDB if available
+
         await statsManager.initStatsManager();
         console.log('✅ Stats Manager initialized');
 
-        const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
-        if (repairedStatsNames.repairedCount > 0) {
-            console.log(`✅ Repaired ${repairedStatsNames.repairedCount} stats player names`);
+        if (!devFast) {
+            const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
+            if (repairedStatsNames.repairedCount > 0) {
+                console.log(`✅ Repaired ${repairedStatsNames.repairedCount} stats player names`);
+            }
         }
     } catch (e) {
         console.log('⚠️ Starting without MongoDB:', e.message);
+    } finally {
+        resolveCoreManagersReady();
     }
-    
-    server.listen(PORT, () => {
-        console.log(`Server started on port ${PORT}`);
-        console.log('Multi-Room Insider Game is ready!');
-        
-        // Add startup log
-        serverLogs.unshift({
-            id: Date.now() + '-startup',
-            timestamp: new Date().toISOString(),
-            category: 'system',
-            roomId: null,
-            roomName: 'ระบบ',
-            gameMode: null,
-            gameModeLabel: null,
-            message: '🚀 Server เริ่มทำงานแล้ว',
-            type: 'success',
-            meta: null
-        });
 
-        recoverGamePhaseTimers();
-    });
+    if (!devFast) {
+        server.listen(PORT, onServerListening);
+    } else {
+        console.log('[insider] background init done');
+        onServerListening();
+    }
 }
 
 startServer();

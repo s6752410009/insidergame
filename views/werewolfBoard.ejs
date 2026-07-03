@@ -486,7 +486,24 @@
   /* -- Role strip (compact role summary under player grid) -- */
   .role-strip { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 8px 4px; }
   .role-strip-item { width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #94a3b8; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease, opacity 0.18s ease; }
-  .role-strip-item .rs-emoji { font-size: 1.2rem; line-height: 1; filter: grayscale(0.15); }
+  .role-strip-item .rs-emoji { font-size: 1.2rem; line-height: 1; filter: grayscale(0.15); display: inline-flex; align-items: center; justify-content: center; }
+  /* role SVGs are full portraits — contain avoids cropping (overrides shared game-icons.css) */
+  .game-icon { object-fit: contain; }
+  .role-strip-item .game-icon,
+  .role-strip-item img.game-icon { width: 28px; height: 28px; }
+  .player-avatar-stage .game-icon,
+  .player-avatar-stage img.game-icon { width: 34px; height: 34px; }
+  .room-role-card-title .game-icon,
+  .room-role-card-title img.game-icon { width: 30px; height: 30px; vertical-align: middle; margin-right: 6px; }
+  .role-announce-name .game-icon,
+  .role-announce-name img.game-icon { width: 56px; height: 56px; display: block; margin: 0 auto 10px; }
+  .role-name .game-icon,
+  .role-name img.game-icon { width: 28px; height: 28px; margin-right: 6px; vertical-align: middle; }
+  .hint-role .game-icon,
+  .hint-role img.game-icon { width: 18px; height: 18px; margin-right: 4px; }
+  .win-player-role .game-icon,
+  .win-player-role img.game-icon { width: 22px; height: 22px; margin-right: 4px; vertical-align: middle; }
+  .role-label-inline { display: inline-flex; align-items: center; gap: 6px; }
   .role-strip-item.is-active { color: #f8fafc; opacity: 1; }
   .role-strip-item.is-inactive { color: #64748b; opacity: 0.52; filter: saturate(0.35); }
   .role-strip-item.is-active.team-werewolf { border-color: rgba(248,113,113,0.28); background: linear-gradient(145deg, rgba(127,29,29,0.32), rgba(69,10,10,0.22)); }
@@ -932,6 +949,7 @@
 <%- contentFor('script') %>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/gameIcon.js"></script>
 <script>
   $(function() {
     const socket = io();
@@ -1051,27 +1069,57 @@
       return byThai[raw] || raw;
     }
 
-    function roleIcon(roleId) {
-      const normalizedRoleId = normalizeRoleId(roleId);
-      const icons = {
-        villager: '👤',
-        werewolf: '🐺',
-        alphaWolf: '👑',
-        mayor: '🎖️',
-        bodyguard: '🛡️',
-        seer: '🔮',
-        oracle: '✨',
-        doctor: '💉',
-        witch: '🧪',
-        tracker: '🧭',
-        hunter: '🏹',
-        cleric: '⛪',
-        vigilante: '🎯',
-        fool: '🤪',
-        revealer: '💥'
-      };
+    const ROLE_ICON_FALLBACK = {
+      villager: '👤',
+      werewolf: '🐺',
+      alphaWolf: '👑',
+      mayor: '🎖️',
+      bodyguard: '🛡️',
+      seer: '🔮',
+      oracle: '✨',
+      doctor: '💉',
+      witch: '🧪',
+      tracker: '🧭',
+      hunter: '🏹',
+      cleric: '⛪',
+      vigilante: '🎯',
+      fool: '🤪',
+      revealer: '💥'
+    };
 
-      return icons[normalizedRoleId] || '🎭';
+    function resolveRoleMeta(roleIdOrRole) {
+      const roleObject = roleIdOrRole && typeof roleIdOrRole === 'object' ? roleIdOrRole : null;
+      const normalizedRoleId = normalizeRoleId(roleObject ? roleObject.id : roleIdOrRole);
+      const catalog = Array.isArray(currentState.roleCatalog) ? currentState.roleCatalog : [];
+      const plan = Array.isArray(currentState.rolePlan) ? currentState.rolePlan : [];
+      const found = roleObject
+        || catalog.find(function(role) { return role && role.id === normalizedRoleId; })
+        || plan.find(function(role) { return role && role.id === normalizedRoleId; })
+        || (currentState.playerRole && currentState.playerRole.id === normalizedRoleId ? currentState.playerRole : null);
+
+      // synthesize the asset path only for canonical role ids (villager is excluded
+      // from roleCatalog); unknown ids must fall back to emoji, not a 404 <img>
+      return {
+        id: normalizedRoleId,
+        image: found?.image || (ROLE_ICON_FALLBACK[normalizedRoleId] ? '/assets/games/werewolf/' + normalizedRoleId + '.svg' : null),
+        icon: found?.icon || ROLE_ICON_FALLBACK[normalizedRoleId] || '🎭',
+        alt: found?.thaiName || found?.name || normalizedRoleId
+      };
+    }
+
+    function roleIconEmoji(roleIdOrRole) {
+      return resolveRoleMeta(roleIdOrRole).icon;
+    }
+
+    function roleIcon(roleIdOrRole, className) {
+      return renderGameIcon(resolveRoleMeta(roleIdOrRole), className || 'game-icon');
+    }
+
+    function renderRoleLabel(roleIdOrRole, options) {
+      const config = options || {};
+      const meta = resolveRoleMeta(roleIdOrRole);
+      const label = config.name || meta.alt || meta.id || '';
+      return '<span class="role-label-inline">' + roleIcon(meta, config.iconClass || 'game-icon') + '<span>' + escapeHtml(label) + '</span></span>';
     }
 
     function phaseIcon(phase) {
@@ -1173,7 +1221,24 @@
     function getRoomRoleSummaryItems() {
       const rolePlan = Array.isArray(currentState.rolePlan) ? currentState.rolePlan : [];
       const roleCatalog = Array.isArray(currentState.roleCatalog) ? currentState.roleCatalog : [];
+      const catalogById = new Map(roleCatalog.map(function(role) {
+        return [role.id, role];
+      }));
       const roleMap = new Map();
+
+      function mergeRoleFields(role, count) {
+        const catalogRole = catalogById.get(role.id) || {};
+        return {
+          id: role.id,
+          thaiName: role.thaiName,
+          team: role.team,
+          description: role.description,
+          winCondition: role.winCondition || '',
+          image: role.image || catalogRole.image,
+          icon: role.icon || catalogRole.icon,
+          count: count
+        };
+      }
 
       rolePlan.forEach(function(role) {
         if (!role || !role.id) {
@@ -1186,28 +1251,14 @@
           return;
         }
 
-        roleMap.set(role.id, {
-          id: role.id,
-          thaiName: role.thaiName,
-          team: role.team,
-          description: role.description,
-          winCondition: role.winCondition || '',
-          count: 1
-        });
+        roleMap.set(role.id, mergeRoleFields(role, 1));
       });
 
       if (!roleMap.size) {
         roleCatalog.filter(function(role) {
           return role.enabledInRoom;
         }).forEach(function(role) {
-          roleMap.set(role.id, {
-            id: role.id,
-            thaiName: role.thaiName,
-            team: role.team,
-            description: role.description,
-            winCondition: role.winCondition || '',
-            count: 1
-          });
+          roleMap.set(role.id, mergeRoleFields(role, 1));
         });
       }
 
@@ -1232,7 +1283,7 @@
         return `
           <div class="room-role-card">
             <div class="room-role-card-head">
-              <div class="room-role-card-title">${roleIcon(role.id)} <span>${escapeHtml(role.thaiName || role.id)}</span></div>
+              <div class="room-role-card-title">${renderRoleLabel(role, { iconClass: 'game-icon game-icon-md' })}</div>
               <div class="room-role-count">${escapeHtml(countLabel)}</div>
             </div>
             <div class="room-role-card-body">${escapeHtml(role.description || 'ไม่มีคำอธิบาย')}</div>
@@ -1281,6 +1332,8 @@
           id: role.id,
           thaiName: role.thaiName,
           team: role.team,
+          image: role.image,
+          icon: role.icon,
           count: activeCounts.get(role.id) || 0,
           active: activeCounts.has(role.id)
         };
@@ -1296,7 +1349,7 @@
         var teamClass = role.team === 'werewolf' ? 'team-werewolf' : (role.team === 'solo' ? 'team-solo' : 'team-village');
         var stateClass = role.active ? 'is-active' : 'is-inactive';
         var statusLabel = role.active ? 'มีบทนี้ในเกม' : 'ไม่มีบทนี้ในเกม';
-        return '<div class="role-strip-item ' + teamClass + ' ' + stateClass + '" title="' + escapeHtml((role.thaiName || role.id) + ' - ' + statusLabel) + '"><span class="rs-emoji">' + roleIcon(role.id) + '</span></div>';
+        return '<div class="role-strip-item ' + teamClass + ' ' + stateClass + '" title="' + escapeHtml((role.thaiName || role.id) + ' - ' + statusLabel) + '"><span class="rs-emoji">' + roleIcon(role, 'game-icon') + '</span></div>';
       }).join('');
       $('#roleStrip').html(html);
       $('#mobileInlineRoleStrip').html(html);
@@ -1348,7 +1401,7 @@
 
       clearRoleAnnouncement();
       $('#werewolfShell').addClass('phase-lock');
-      $('#roleAnnouncementName').text(roleIcon(role.id) + ' ' + (role.thaiName || 'ยังไม่เปิดเผยบทบาท'));
+      $('#roleAnnouncementName').html(roleIcon(role, 'game-icon game-icon-lg') + '<div>' + escapeHtml(role.thaiName || 'ยังไม่เปิดเผยบทบาท') + '</div>');
       $('#roleAnnouncementTeam').text(teamIcon(role.team) + ' ' + (role.team || '-'));
       $('#roleAnnouncementDescription').text(role.description || 'บทของคุณถูกเปิดเผยแล้ว');
       $('#roleAnnouncementHint').text(roleActionHint(role));
@@ -2363,7 +2416,7 @@
       // Mirror action panels
       $('#mobileActionPanels').html($('#actionPanels').html() || '<div class="history-row">🎬 กำลังรอให้รอบเริ่ม</div>');
       // Mirror role info
-      $('#mobileRoleName').text($('#myRoleName').text());
+      $('#mobileRoleName').html($('#myRoleName').html());
       $('#mobileRoleTeam').text($('#myRoleTeam').text());
       $('#mobileRoleDesc').text($('#myRoleDescription').text());
       $('#mobilePersonalNotes').html($('#personalNotes').html() || '<div class="note-row">ยังไม่มีข้อมูลลับเพิ่มเติม</div>');
@@ -2960,7 +3013,9 @@
       players.forEach(function(player, index) {
         const seatNumber = index + 1;
         const revealedRoleId = player.roleId || player.role || player.revealedRole;
-        const avatarEmoji = player.revealedRole ? roleIcon(revealedRoleId) : (player.avatar || '👤');
+        const avatarEmoji = player.revealedRole
+          ? roleIcon(revealedRoleId, 'game-icon')
+          : (player.avatar || '👤');
         const avatarBg = player.color || '#2563eb';
         const isPending = isVote && player.alive && pendingIds.has(player.playerId);
         const isCompleted = isVote && player.alive && completedIds.has(player.playerId);
@@ -3140,8 +3195,8 @@
           + '</div>';
       }
       Swal.fire({
-        title: roleIcon(role.id) + ' ' + escapeHtml(role.thaiName || role.id),
-        html: '<div style="text-align:left;">'
+        title: escapeHtml(role.thaiName || role.id),
+        html: '<div style="text-align:center; margin-bottom:12px;">' + roleIcon(role, 'game-icon game-icon-lg') + '</div><div style="text-align:left;">'
           + (teamLabel ? '<div style="font-size:13px;color:#fbbf24;margin-bottom:8px;">' + teamLabel + '</div>' : '')
           + '<div style="font-size:14px;line-height:1.5;color:#e2e8f0;">' + escapeHtml(desc) + '</div>'
           + notesHtml
@@ -3174,7 +3229,7 @@
 
       // Role pill text (tappable to open full role info + remaining uses)
       var rolePill = role
-        ? '<span class="hint-role" role="button" tabindex="0" style="cursor:pointer;" onclick="showMyRoleInfo()" title="ดูรายละเอียดบทของคุณ">' + roleIcon(role.id) + ' ' + escapeHtml(role.thaiName || role.id) + ' ℹ️</span><span class="hint-sep">·</span>'
+        ? '<span class="hint-role" role="button" tabindex="0" style="cursor:pointer;" onclick="showMyRoleInfo()" title="ดูรายละเอียดบทของคุณ">' + renderRoleLabel(role, { iconClass: 'game-icon' }) + ' ℹ️</span><span class="hint-sep">·</span>'
         : '';
 
       // Skill results vs role guide in hint bar
@@ -3741,7 +3796,7 @@
             priority: 60 - index,
             category: 'role-guide',
             tone: roleTone,
-            icon: roleIcon(roleId),
+            icon: roleIconEmoji(roleId),
             label: 'คำแนะนำบทบาท',
             body: item
           });
@@ -3888,7 +3943,7 @@
         return `
                   <div style="padding:12px 14px; border-radius:12px; background:${role.enabledInRoom ? 'rgba(46,204,113,0.12)' : 'rgba(255,255,255,0.05)'}; border:1px solid rgba(255,255,255,0.08);">
                     <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
-                      <strong>${roleIcon(role.id)} ${escapeHtml(role.thaiName)}</strong>
+                      <strong>${renderRoleLabel(role, { iconClass: 'game-icon game-icon-sm' })}</strong>
                       <span style="color:${role.enabledInRoom ? '#7ee2a8' : '#97a4bf'}; font-size:0.88em;">${role.enabledInRoom ? 'เปิดในห้องนี้' : 'ปิดในห้องนี้'}</span>
                     </div>
                     <div style="margin-top:6px; color:#97a4bf; font-size:0.88em;">${teamIcon(role.team)} ${escapeHtml(teamLabel(role.team))}</div>
@@ -3974,7 +4029,7 @@
       return `
         <div style="display:grid; gap:10px; text-align:left; font-family: Rajdhani, sans-serif;">
           <div style="padding:14px 16px; border-radius:14px; background:linear-gradient(135deg, rgba(192,57,43,0.15), rgba(52,73,94,0.22)); border:1px solid rgba(255,255,255,0.08);">
-            <div style="font-size:1.5rem; font-weight:700; margin-bottom:6px;">${roleIcon(role.id)} ${escapeHtml(role.thaiName || 'ยังไม่เปิดเผยบทบาท')}</div>
+            <div style="font-size:1.5rem; font-weight:700; margin-bottom:6px;">${renderRoleLabel(role, { iconClass: 'game-icon game-icon-md' })}</div>
             <div style="display:inline-flex; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,0.08); margin-bottom:8px;">${teamIcon(role.team)} ${escapeHtml(role.team || '-')}</div>
             <div style="color:#d5def0; margin-bottom:10px;">${escapeHtml(role.description || 'เมื่อเริ่มเกมแล้ว บทบาทของคุณจะปรากฏที่นี่')}</div>
             ${winHint}
@@ -4927,7 +4982,9 @@
       $('#phaseLabelSide').text(phaseLabel(currentState.phase));
       $('#mobilePhaseLabel').text(phaseLabel(currentState.phase));
       $('#dayNumber').text(currentState.dayNumber || 0);
-      $('#myRoleName').text((currentState.playerRole ? roleIcon(currentState.playerRole.id) + ' ' : '') + (currentState.playerRole?.thaiName || 'ยังไม่เปิดเผยบทบาท'));
+      $('#myRoleName').html(currentState.playerRole
+        ? renderRoleLabel(currentState.playerRole, { iconClass: 'game-icon' })
+        : escapeHtml('ยังไม่เปิดเผยบทบาท'));
       $('#myRoleTeam').text((currentState.playerRole ? teamIcon(currentState.playerRole.team) + ' ' : '') + (currentState.playerRole?.team || '-'));
       $('#myRoleDescription').text(currentState.playerRole?.description || 'เมื่อเริ่มเกมแล้ว บทบาทของคุณจะปรากฏที่นี่');
       startPhaseCountdown(currentState.phaseEndsAt || null);
@@ -5570,12 +5627,12 @@
           : '<div class="win-player-status dead">☠ เสียชีวิต</div>';
 
         var roleName = p.roleThaiName || p.revealedRole || '?';
-        var roleMark = roleIcon(p.roleId || p.role || roleName);
+        var roleMeta = resolveRoleMeta(p.roleId || p.role || roleName);
 
         gridHtml += '<div class="win-player-card ' + teamClass + ' ' + deadClass + '">';
         gridHtml += '<div class="win-player-avatar">' + (p.avatar || '👤') + '</div>';
         gridHtml += '<div class="win-player-name" style="color:' + escapeHtml(p.color || '#fff') + ';">' + escapeHtml(p.name) + '</div>';
-        gridHtml += '<div class="win-player-role">' + roleMark + ' ' + escapeHtml(roleName) + '</div>';
+        gridHtml += '<div class="win-player-role">' + renderRoleLabel(roleMeta, { name: roleName, iconClass: 'game-icon game-icon-sm' }) + '</div>';
         gridHtml += statusHtml;
         gridHtml += '</div>';
       });

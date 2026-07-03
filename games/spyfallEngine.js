@@ -4,40 +4,46 @@ const ROLE_CITIZEN = 'citizen';
 const REVEAL_PHASE_MS = 5000;
 const VOTE_PHASE_MS = 90 * 1000;
 
+const { gameAssetImage } = require('./gameAssets');
+
+const SPYFALL_IMAGE = (id) => gameAssetImage('spyfall', id);
+
 const ROLE_DEFINITIONS = {
     [ROLE_CITIZEN]: {
         id: ROLE_CITIZEN,
         icon: '🕵️',
+        image: SPYFALL_IMAGE('citizen'),
         title: 'พลเมือง',
         summary: 'คุณรู้สถานที่และบทในที่นั้น — ถาม–ตอบให้จับสายลับโดยไม่เปิดเผยตรงๆ'
     },
     [ROLE_SPY]: {
         id: ROLE_SPY,
         icon: '🕶️',
+        image: SPYFALL_IMAGE('spy'),
         title: 'สายลับ',
         summary: 'คุณไม่รู้สถานที่ — ฟังให้ดีแล้วเดาว่าอยู่ที่ไหนก่อนโดนจับ'
     }
 };
 
 const LOCATIONS = [
-    { id: 'school', icon: '🏫', name: 'โรงเรียน', hint: 'ครู นักเรียน กระดาน ห้องเรียน' },
-    { id: 'hospital', icon: '🏥', name: 'โรงพยาบาล', hint: 'หมอ พยาบาล ผู้ป่วย เครื่องมือแพทย์' },
-    { id: 'submarine', icon: '🛳️', name: 'เรือดำน้ำ', hint: 'ตู่ หลอดออกซิเจน ลูกเรือ มืด' },
-    { id: 'sushi', icon: '🍣', name: 'ร้านซูชิ', hint: 'เชฟ ปลาดิบ โต๊ะบาร์ สายพาน' },
-    { id: 'space', icon: '🚀', name: 'สถานีอวกาศ', hint: 'นักบิน แรงโน้มถ่วง ห้องควบคุม ชุดอวกาศ' },
-    { id: 'bank', icon: '🏦', name: 'ธนาคาร', hint: 'ตู้เอทีเอ็ม พนักงาน เงินสด ห้องนิรภัย' },
-    { id: 'circus', icon: '🎪', name: 'ละครสัตว์', hint: 'ม้า ช้าง โดม ตัวตลก' },
-    { id: 'police', icon: '🚓', name: 'สถานีตำรวจ', hint: 'เครื่องแบบ กุญแจมือ คดี ห้องสอบสวน' },
-    { id: 'beach', icon: '🏖️', name: 'ชายหาด', hint: 'ทราย คลื่น ร่ม กันแดด' },
-    { id: 'casino', icon: '🎰', name: 'คาสิโน', hint: 'ไพ่ ชิป โต๊ะเดิมพัน แสงไฟ' },
-    { id: 'theater', icon: '🎭', name: 'โรงละคร', hint: 'เวที ม่าน ตั๋ว ไฟสปอตไลท์' },
-    { id: 'airport', icon: '✈️', name: 'สนามบิน', hint: 'เคาน์เตอร์เช็กอิน สายพาน ประกาศเที่ยวบิน' },
-    { id: 'library', icon: '📚', name: 'ห้องสมุด', hint: 'หนังสือ ความเงียบ ชั้นวาง บัตรสมาชิก' },
-    { id: 'factory', icon: '🏭', name: 'โรงงาน', hint: 'สายพาน หมวกนิรภัย เครื่องจักร กะทำงาน' },
-    { id: 'temple', icon: '🛕', name: 'วัด', hint: 'ระฆัง ธูป ศาลา ผู้มาทำบุญ' },
-    { id: 'supermarket', icon: '🛒', name: 'ซูเปอร์มาร์เก็ต', hint: 'รถเข็น ชั้นวาง แคชเชียร์ โปรโมชัน' },
-    { id: 'zoo', icon: '🦁', name: 'สวนสัตว์', hint: 'กรง ไกด์ สัตว์ป่า ตั๋วเข้าชม' },
-    { id: 'wedding', icon: '💒', name: 'งานแต่งงาน', hint: 'เจ้าบ่าว เจ้าสาว ช่อดอกไม้ แขก' }
+    { id: 'school', icon: '🏫', image: SPYFALL_IMAGE('school'), name: 'โรงเรียน', hint: 'ครู นักเรียน กระดาน ห้องเรียน' },
+    { id: 'hospital', icon: '🏥', image: SPYFALL_IMAGE('hospital'), name: 'โรงพยาบาล', hint: 'หมอ พยาบาล ผู้ป่วย เครื่องมือแพทย์' },
+    { id: 'submarine', icon: '🛳️', image: SPYFALL_IMAGE('submarine'), name: 'เรือดำน้ำ', hint: 'ตู่ หลอดออกซิเจน ลูกเรือ มืด' },
+    { id: 'sushi', icon: '🍣', image: SPYFALL_IMAGE('sushi'), name: 'ร้านซูชิ', hint: 'เชฟ ปลาดิบ โต๊ะบาร์ สายพาน' },
+    { id: 'space', icon: '🚀', image: SPYFALL_IMAGE('space'), name: 'สถานีอวกาศ', hint: 'นักบิน แรงโน้มถ่วง ห้องควบคุม ชุดอวกาศ' },
+    { id: 'bank', icon: '🏦', image: SPYFALL_IMAGE('bank'), name: 'ธนาคาร', hint: 'ตู้เอทีเอ็ม พนักงาน เงินสด ห้องนิรภัย' },
+    { id: 'circus', icon: '🎪', image: SPYFALL_IMAGE('circus'), name: 'ละครสัตว์', hint: 'ม้า ช้าง โดม ตัวตลก' },
+    { id: 'police', icon: '🚓', image: SPYFALL_IMAGE('police'), name: 'สถานีตำรวจ', hint: 'เครื่องแบบ กุญแจมือ คดี ห้องสอบสวน' },
+    { id: 'beach', icon: '🏖️', image: SPYFALL_IMAGE('beach'), name: 'ชายหาด', hint: 'ทราย คลื่น ร่ม กันแดด' },
+    { id: 'casino', icon: '🎰', image: SPYFALL_IMAGE('casino'), name: 'คาสิโน', hint: 'ไพ่ ชิป โต๊ะเดิมพัน แสงไฟ' },
+    { id: 'theater', icon: '🎭', image: SPYFALL_IMAGE('theater'), name: 'โรงละคร', hint: 'เวที ม่าน ตั๋ว ไฟสปอตไลท์' },
+    { id: 'airport', icon: '✈️', image: SPYFALL_IMAGE('airport'), name: 'สนามบิน', hint: 'เคาน์เตอร์เช็กอิน สายพาน ประกาศเที่ยวบิน' },
+    { id: 'library', icon: '📚', image: SPYFALL_IMAGE('library'), name: 'ห้องสมุด', hint: 'หนังสือ ความเงียบ ชั้นวาง บัตรสมาชิก' },
+    { id: 'factory', icon: '🏭', image: SPYFALL_IMAGE('factory'), name: 'โรงงาน', hint: 'สายพาน หมวกนิรภัย เครื่องจักร กะทำงาน' },
+    { id: 'temple', icon: '🛕', image: SPYFALL_IMAGE('temple'), name: 'วัด', hint: 'ระฆัง ธูป ศาลา ผู้มาทำบุญ' },
+    { id: 'supermarket', icon: '🛒', image: SPYFALL_IMAGE('supermarket'), name: 'ซูเปอร์มาร์เก็ต', hint: 'รถเข็น ชั้นวาง แคชเชียร์ โปรโมชัน' },
+    { id: 'zoo', icon: '🦁', image: SPYFALL_IMAGE('zoo'), name: 'สวนสัตว์', hint: 'กรง ไกด์ สัตว์ป่า ตั๋วเข้าชม' },
+    { id: 'wedding', icon: '💒', image: SPYFALL_IMAGE('wedding'), name: 'งานแต่งงาน', hint: 'เจ้าบ่าว เจ้าสาว ช่อดอกไม้ แขก' }
 ];
 
 /** บทในสถานที่ (คนละบท) — สายลับไม่ได้รับบทนี้ */
@@ -87,6 +93,7 @@ function createInitialState() {
         locationId: null,
         locationName: null,
         locationIcon: null,
+        locationImage: null,
         locationHint: null,
         spyPlayerId: null,
         players: [],
@@ -259,6 +266,7 @@ function startGame(room) {
     room.gameState.locationId = location.id;
     room.gameState.locationName = location.name;
     room.gameState.locationIcon = location.icon;
+    room.gameState.locationImage = location.image || (location.id ? SPYFALL_IMAGE(location.id) : null);
     room.gameState.locationHint = location.hint;
     room.gameState.spyPlayerId = spyPlayer.playerId;
     room.gameState.votes = {};
@@ -389,6 +397,7 @@ function resolveVotes(room) {
         locationId: room.gameState.locationId,
         locationName: room.gameState.locationName,
         locationIcon: room.gameState.locationIcon,
+        locationImage: room.gameState.locationImage,
         voteCounts,
         topVotes,
         wasTie: tiedIds.length > 1
@@ -515,11 +524,17 @@ function buildClientState(room, playerId) {
         location: showLocation ? {
             id: room.gameState.locationId,
             icon: room.gameState.locationIcon,
+            image: room.gameState.locationImage,
             name: room.gameState.locationName,
             hint: room.gameState.locationHint
         } : null,
         locationPool: isSpy && !isFinished
-            ? getAllLocations().map(location => ({ id: location.id, icon: location.icon, name: location.name }))
+            ? getAllLocations().map(location => ({
+                id: location.id,
+                icon: location.icon,
+                image: location.image || (location.id ? SPYFALL_IMAGE(location.id) : null),
+                name: location.name
+            }))
             : null,
         self: {
             playerId: self.playerId,

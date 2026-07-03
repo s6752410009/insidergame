@@ -4,9 +4,16 @@ const DEAL_BONUS_CASH = 1;
 const DEAL_BONUS_INFLUENCE = 1;
 const BETRAY_STEAL_CASH = 2;
 
+const { gameAssetImage } = require('./gameAssets');
+
+function blackMarketImage(id) {
+    return gameAssetImage('blackmarket', id);
+}
+
 const ROLE_DEFINITIONS = {
     boss: {
         id: 'boss',
+        image: blackMarketImage('boss'),
         icon: '🎩',
         title: 'เจ้าพ่อ',
         summary: 'ปิดงานส่งของแล้วได้อิทธิพลเพิ่ม',
@@ -14,6 +21,7 @@ const ROLE_DEFINITIONS = {
     },
     broker: {
         id: 'broker',
+        image: blackMarketImage('broker'),
         icon: '🕴️',
         title: 'นายหน้า',
         summary: 'ของชิ้นแรกในตลาดถูกกว่าคนอื่น',
@@ -21,6 +29,7 @@ const ROLE_DEFINITIONS = {
     },
     smuggler: {
         id: 'smuggler',
+        image: blackMarketImage('smuggler'),
         icon: '🚚',
         title: 'คนส่งของ',
         summary: 'ส่งของได้หนักกว่าคนอื่น',
@@ -28,6 +37,7 @@ const ROLE_DEFINITIONS = {
     },
     fixer: {
         id: 'fixer',
+        image: blackMarketImage('fixer'),
         icon: '🧹',
         title: 'คนเคลียร์ทาง',
         summary: 'เอาตัวรอดเก่งและกดค่าหัวลงไว',
@@ -35,6 +45,7 @@ const ROLE_DEFINITIONS = {
     },
     hitman: {
         id: 'hitman',
+        image: blackMarketImage('hitman'),
         icon: '🔫',
         title: 'มือเก็บงาน',
         summary: 'สั่งเก็บคุ้มและปล้นซ้ำได้',
@@ -42,6 +53,7 @@ const ROLE_DEFINITIONS = {
     },
     mole: {
         id: 'mole',
+        image: blackMarketImage('mole'),
         icon: '🕶️',
         title: 'สายข่าว',
         summary: 'เห็นลึกกว่าคนอื่นเวลาแอบดู',
@@ -49,6 +61,7 @@ const ROLE_DEFINITIONS = {
     },
     doubleAgent: {
         id: 'doubleAgent',
+        image: blackMarketImage('doubleAgent'),
         icon: '🃏',
         title: 'สองหน้า',
         summary: 'หักหลังและปล้นคุ้ม แต่ค่าหัวขึ้นง่าย',
@@ -59,6 +72,7 @@ const ROLE_DEFINITIONS = {
 const ITEM_DEFINITIONS = {
     gun: {
         id: 'gun',
+        image: blackMarketImage('gun'),
         icon: '🔫',
         name: 'ปืนเงียบ',
         type: 'weapon',
@@ -67,6 +81,7 @@ const ITEM_DEFINITIONS = {
     },
     armor: {
         id: 'armor',
+        image: blackMarketImage('armor'),
         icon: '🦺',
         name: 'เสื้อเกราะ',
         type: 'defense',
@@ -75,6 +90,7 @@ const ITEM_DEFINITIONS = {
     },
     wiretap: {
         id: 'wiretap',
+        image: blackMarketImage('wiretap'),
         icon: '🎧',
         name: 'เครื่องดักฟัง',
         type: 'intel',
@@ -83,6 +99,7 @@ const ITEM_DEFINITIONS = {
     },
     passport: {
         id: 'passport',
+        image: blackMarketImage('passport'),
         icon: '🛂',
         name: 'พาสปลอม',
         type: 'utility',
@@ -91,6 +108,7 @@ const ITEM_DEFINITIONS = {
     },
     ledger: {
         id: 'ledger',
+        image: blackMarketImage('ledger'),
         icon: '📒',
         name: 'สมุดบัญชีดำ',
         type: 'cargo',
@@ -100,6 +118,7 @@ const ITEM_DEFINITIONS = {
     },
     crate: {
         id: 'crate',
+        image: blackMarketImage('crate'),
         icon: '📦',
         name: 'ลังสินค้าเถื่อน',
         type: 'cargo',
@@ -109,6 +128,7 @@ const ITEM_DEFINITIONS = {
     },
     cashbag: {
         id: 'cashbag',
+        image: blackMarketImage('cashbag'),
         icon: '💼',
         name: 'กระเป๋าเงินดำ',
         type: 'cargo',
@@ -121,6 +141,7 @@ const ITEM_DEFINITIONS = {
 const ACTION_DEFINITIONS = {
     deliver: {
         id: 'deliver',
+        image: blackMarketImage('deliver'),
         icon: '📦',
         label: 'ส่งของ',
         shortLabel: 'ส่งของ',
@@ -129,6 +150,7 @@ const ACTION_DEFINITIONS = {
     },
     intel: {
         id: 'intel',
+        image: blackMarketImage('intel'),
         icon: '👁️',
         label: 'สืบข่าว',
         shortLabel: 'สืบข่าว',
@@ -137,6 +159,7 @@ const ACTION_DEFINITIONS = {
     },
     deal: {
         id: 'deal',
+        image: blackMarketImage('deal'),
         icon: '🤝',
         label: 'เข้าดีล',
         shortLabel: 'เข้าดีล',
@@ -145,6 +168,7 @@ const ACTION_DEFINITIONS = {
     },
     betray: {
         id: 'betray',
+        image: blackMarketImage('betray'),
         icon: '🗡️',
         label: 'หักหลัง',
         shortLabel: 'หักหลัง',
@@ -153,6 +177,7 @@ const ACTION_DEFINITIONS = {
     },
     raid: {
         id: 'raid',
+        image: blackMarketImage('raid'),
         icon: '💣',
         label: 'ปล้น',
         shortLabel: 'ปล้น',
@@ -161,6 +186,7 @@ const ACTION_DEFINITIONS = {
     },
     guard: {
         id: 'guard',
+        image: blackMarketImage('guard'),
         icon: '🦺',
         label: 'ตั้งการ์ด',
         shortLabel: 'ตั้งการ์ด',
@@ -169,6 +195,7 @@ const ACTION_DEFINITIONS = {
     },
     laylow: {
         id: 'laylow',
+        image: blackMarketImage('laylow'),
         icon: '🫥',
         label: 'หมอบต่ำ',
         shortLabel: 'หมอบต่ำ',
@@ -177,6 +204,7 @@ const ACTION_DEFINITIONS = {
     },
     hit: {
         id: 'hit',
+        image: blackMarketImage('hit'),
         icon: '🔫',
         label: 'สั่งเก็บ',
         shortLabel: 'สั่งเก็บ',
@@ -185,6 +213,7 @@ const ACTION_DEFINITIONS = {
     },
     pass: {
         id: 'pass',
+        image: blackMarketImage('pass'),
         icon: '🤐',
         label: 'ผ่านยกนี้',
         shortLabel: 'ผ่าน',
@@ -195,6 +224,43 @@ const ACTION_DEFINITIONS = {
 
 const ROLE_ORDER = Object.keys(ROLE_DEFINITIONS);
 const MARKET_POOL = Object.keys(ITEM_DEFINITIONS);
+
+function buildFeedIconLookup() {
+    const lookup = {};
+    [ROLE_DEFINITIONS, ITEM_DEFINITIONS, ACTION_DEFINITIONS].forEach(catalog => {
+        Object.values(catalog).forEach(entry => {
+            if (!entry?.icon) {
+                return;
+            }
+            lookup[entry.icon] = {
+                iconId: entry.id,
+                icon: entry.icon
+            };
+        });
+    });
+    return lookup;
+}
+
+const FEED_ICON_LOOKUP = buildFeedIconLookup();
+
+function resolveFeedIcon(icon) {
+    return FEED_ICON_LOOKUP[icon] || { icon, iconId: null };
+}
+
+// feed entries render inline next to text, so image is always null; the field
+// stays in the payload because the client icon helper reads it
+function enrichFeedEntry(entry) {
+    if (!entry || typeof entry !== 'object') {
+        return entry;
+    }
+    const resolved = resolveFeedIcon(entry.icon);
+    return {
+        ...entry,
+        icon: resolved.icon || entry.icon,
+        iconId: entry.iconId || resolved.iconId || null,
+        image: null
+    };
+}
 
 function shuffle(items) {
     const clone = [...items];
@@ -307,8 +373,10 @@ function resetRoomGame(room) {
 }
 
 function pushHistory(room, icon, text, tone = 'neutral') {
+    const resolved = resolveFeedIcon(icon);
     room.gameState.history.unshift({
-        icon,
+        icon: resolved.icon || icon,
+        iconId: resolved.iconId || null,
         text,
         tone,
         at: new Date().toISOString()
@@ -382,6 +450,8 @@ function describeActionChoice(room, actor, choice) {
     const item = choice.itemId ? ITEM_DEFINITIONS[choice.itemId] : null;
     return {
         actionType: choice.actionType,
+        id: meta.id,
+        image: meta.image,
         icon: meta.icon,
         label: meta.label,
         shortLabel: meta.shortLabel,
@@ -401,6 +471,7 @@ function describeActionChoice(room, actor, choice) {
 function buildActionCatalog(actor) {
     return Object.values(ACTION_DEFINITIONS).map(meta => ({
         id: meta.id,
+        image: meta.image,
         icon: meta.icon,
         label: meta.label,
         shortLabel: meta.shortLabel,
@@ -547,8 +618,10 @@ function moveToActionPhase(room, report = []) {
 }
 
 function rememberDeal(room, icon, text, tone = 'neutral') {
+    const resolved = resolveFeedIcon(icon);
     room.gameState.dealLedger.unshift({
-        icon,
+        icon: resolved.icon || icon,
+        iconId: resolved.iconId || null,
         text,
         tone,
         roundNumber: room.gameState.roundNumber,
@@ -1083,7 +1156,11 @@ function buildClientState(room, playerId) {
             fixerEscapeAvailable: self.fixerEscapeAvailable,
             lastMove: self.lastMove || null
         },
-        players: room.gameState.players.map(player => ({
+        players: room.gameState.players.map(player => {
+            const roleVisible = player.playerId === self.playerId
+                || player.alive === false
+                || room.gameState.phase === 'finished';
+            return {
             playerId: player.playerId,
             name: player.name,
             avatar: player.avatar,
@@ -1093,19 +1170,22 @@ function buildClientState(room, playerId) {
             cash: player.cash,
             heat: player.heat,
             inventoryCount: player.inventory.length,
-            roleTitle: player.playerId === self.playerId || player.alive === false || room.gameState.phase === 'finished'
+            roleId: roleVisible ? player.role : null,
+            roleTitle: roleVisible
                 ? (player.roleInfo?.title || player.role || '-')
                 : '???',
-            roleIcon: player.playerId === self.playerId || player.alive === false || room.gameState.phase === 'finished'
+            roleIcon: roleVisible
                 ? (player.roleInfo?.icon || '🎭')
                 : '❓',
+            roleImage: roleVisible ? (player.roleInfo?.image || null) : null,
             isSelf: player.playerId === self.playerId,
             lastMove: room.gameState.phase === 'finished' ? player.lastMove || null : null
-        })),
+        };
+        }),
         marketOffers,
-        dealLedger: room.gameState.dealLedger || [],
-        history: room.gameState.history || [],
-        lastRoundReport: room.gameState.lastRoundReport || [],
+        dealLedger: (room.gameState.dealLedger || []).map(enrichFeedEntry),
+        history: (room.gameState.history || []).map(enrichFeedEntry),
+        lastRoundReport: (room.gameState.lastRoundReport || []).map(enrichFeedEntry),
         actionCatalog: buildActionCatalog(self),
         tutorial: buildTutorialState(room, self),
         actionHelp: {

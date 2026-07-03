@@ -200,7 +200,12 @@
     border-color: rgba(248, 113, 113, 0.28);
   }
 
-  .sf-role-icon { font-size: 2.4rem; margin-bottom: 8px; }
+  .sf-role-icon { font-size: 2.4rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+  .sf-role-icon .game-icon { width: 56px; height: 56px; object-fit: contain; }
+  .sf-role-icon .game-icon-emoji { line-height: 1; }
+  .sf-location-pill .game-icon { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; margin-right: 4px; }
+  .sf-location-pill .game-icon-emoji { font-size: 0.9rem; margin-right: 2px; }
+  .sf-location-pill { display: inline-flex; align-items: center; gap: 4px; }
   .sf-role-name { font-size: 1.35rem; font-weight: 700; color: var(--sf-text); }
   .sf-role-summary { color: var(--sf-muted); margin-top: 8px; line-height: 1.45; }
 
@@ -589,6 +594,7 @@
 <%- contentFor('script') %>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/gameIcon.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('sf-active');
@@ -611,6 +617,14 @@ $(function() {
     return String(text || '').replace(/[&<>"']/g, function(char) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
     });
+  }
+
+  function gameIconHtml(meta, options) {
+    if (typeof window.renderGameIcon === 'function') {
+      return window.renderGameIcon(meta || {}, options || {});
+    }
+    const icon = (meta && meta.icon) || '🃏';
+    return '<span class="game-icon-emoji">' + escapeHtml(icon) + '</span>';
   }
 
   function formatTimer(ms) {
@@ -646,33 +660,37 @@ $(function() {
     const isSpy = !!self.isSpy;
     const location = state.location;
     const pool = state.locationPool || [];
+    const winner = state.winner;
 
     let body = '';
-    if (state.phase === 'finished' && state.winner) {
+    if (state.phase === 'finished' && winner) {
       const job = self.locationRoleTitle;
+      const finishedIcon = isSpy
+        ? { id: 'spy', image: roleInfo.image, icon: roleInfo.icon || '🕶️', alt: 'สายลับ' }
+        : { id: 'citizen', image: roleInfo.image, icon: roleInfo.icon || '🎭', alt: 'พลเมือง' };
       body = '<div class="sf-role-card ' + (isSpy ? 'spy' : '') + '">' +
-        '<div class="sf-role-icon">' + escapeHtml(isSpy ? '🕶️' : '🎭') + '</div>' +
+        '<div class="sf-role-icon">' + gameIconHtml(finishedIcon, { className: 'game-icon' }) + '</div>' +
         '<div class="sf-role-name">' + escapeHtml(isSpy ? (roleInfo.title || 'สายลับ') : (job || roleInfo.title || 'พลเมือง')) + '</div>' +
         '<p class="sf-role-summary">' +
           (isSpy
-            ? 'สถานที่คือ <strong>' + escapeHtml(state.winner.locationName || '-') + '</strong>'
-            : 'สถานที่ <strong>' + escapeHtml(state.winner.locationName || '-') + '</strong> · บทของคุณ <strong>' + escapeHtml(job || '-') + '</strong>') +
+            ? 'สถานที่คือ <strong>' + escapeHtml(winner.locationName || '-') + '</strong>'
+            : 'สถานที่ <strong>' + escapeHtml(winner.locationName || '-') + '</strong> · บทของคุณ <strong>' + escapeHtml(job || '-') + '</strong>') +
         '</p>' +
       '</div>';
     } else if (isSpy) {
       body = '<div class="sf-role-card spy">' +
-        '<div class="sf-role-icon">🕶️</div>' +
-        '<div class="sf-role-name">สายลับ</div>' +
-        '<p class="sf-role-summary">คุณไม่รู้สถานที่ — ฟังคำถามให้ดีแล้วเดาให้เนียน</p>' +
+        '<div class="sf-role-icon">' + gameIconHtml({ id: 'spy', image: roleInfo.image, icon: roleInfo.icon || '🕶️', alt: 'สายลับ' }, { className: 'game-icon' }) + '</div>' +
+        '<div class="sf-role-name">' + escapeHtml(roleInfo.title || 'สายลับ') + '</div>' +
+        '<p class="sf-role-summary">' + escapeHtml(roleInfo.summary || 'คุณไม่รู้สถานที่ — ฟังคำถามให้ดีแล้วเดาให้เนียน') + '</p>' +
         (pool.length ? '<div class="sf-location-pool">' + pool.map(function(loc) {
-          return '<span class="sf-location-pill">' + escapeHtml(loc.icon) + ' ' + escapeHtml(loc.name) + '</span>';
+          return '<span class="sf-location-pill">' + gameIconHtml({ id: loc.id, image: loc.image, icon: loc.icon, alt: loc.name }, { className: 'game-icon' }) + escapeHtml(loc.name) + '</span>';
         }).join('') + '</div>' : '') +
       '</div>';
     } else if (location) {
       const job = self.locationRoleTitle || '';
       body = '<div class="sf-role-card">' +
-        '<div class="sf-role-icon">' + escapeHtml(location.icon || '📍') + '</div>' +
-        '<div class="sf-role-name">' + escapeHtml(job || 'พลเมือง') + '</div>' +
+        '<div class="sf-role-icon">' + gameIconHtml({ id: location.id, image: location.image, icon: location.icon || '📍', alt: location.name }, { className: 'game-icon' }) + '</div>' +
+        '<div class="sf-role-name">' + escapeHtml(job || roleInfo.title || 'พลเมือง') + '</div>' +
         '<div class="sf-location-name">' + escapeHtml(location.name) + '</div>' +
         '<p class="sf-location-hint">' + escapeHtml(location.hint) + '</p>' +
         '<p class="sf-role-summary">' + (job ? 'บทของคุณคือ <strong>' + escapeHtml(job) + '</strong> — ' : '') +
@@ -748,7 +766,7 @@ $(function() {
           '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
           '<p>สายลับ: <strong>' + escapeHtml(w.spyName) + '</strong></p>' +
           '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>' +
-          '<p>สถานที่: <strong>' + escapeHtml(w.locationIcon || '') + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
+          '<p>สถานที่: <strong>' + gameIconHtml({ id: w.locationId, image: w.locationImage, icon: w.locationIcon, alt: w.locationName }, { className: 'game-icon', px: 22 }) + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
           tallyHtml +
         '</div>'
       );

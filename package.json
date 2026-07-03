@@ -14,6 +14,11 @@
     "uuid": "^8.3.2"
   },
   "scripts": {
+    "dev": "nodemon scripts/dev-server.js",
+    "dev:simple": "node scripts/dev-server.js",
+    "dev:fast": "bash scripts/dev-from-tmp.sh",
+    "assets:fetch": "node scripts/fetch-game-assets.js",
+    "assets:icons": "node scripts/fetch-game-icons.js",
     "start": "node app.js",
     "check:db": "node scripts/uploadStats.js",
     "plan:werewolf:3": "node scripts/werewolf-role-rotation.js",
