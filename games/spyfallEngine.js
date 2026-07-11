@@ -21,7 +21,7 @@ const ROLE_DEFINITIONS = {
         icon: '🕶️',
         image: SPYFALL_IMAGE('spy'),
         title: 'สายลับ',
-        summary: 'คุณไม่รู้สถานที่ — ฟังให้ดีแล้วเดาว่าอยู่ที่ไหนก่อนโดนจับ'
+        summary: 'คุณไม่รู้สถานที่ — เนียนตอบให้รอด ถ้าโหวตแล้วจับคุณไม่ได้ คุณชนะ'
     }
 };
 
@@ -269,6 +269,7 @@ function startGame(room) {
     room.gameState.locationImage = location.image || (location.id ? SPYFALL_IMAGE(location.id) : null);
     room.gameState.locationHint = location.hint;
     room.gameState.spyPlayerId = spyPlayer.playerId;
+    room.gameState.spyName = spyPlayer.name || null;
     room.gameState.votes = {};
     room.gameState.voteCounts = {};
     room.gameState.winner = null;
@@ -320,29 +321,12 @@ function everyoneVoted(room) {
     });
 }
 
-function fillMissingVotes(room) {
-    const candidates = getActivePlayers(room).map(player => player.playerId);
-    getActivePlayers(room).forEach(player => {
-        if (!isPlayerOnline(room, player.playerId)) {
-            return;
-        }
-        if (!room.gameState.votes[player.playerId]) {
-            const others = candidates.filter(id => id !== player.playerId);
-            const randomTarget = others.length ? pickRandom(others) : player.playerId;
-            room.gameState.votes[player.playerId] = randomTarget;
-            player.hasVoted = true;
-            player.voteTargetId = randomTarget;
-        }
-    });
-}
-
 function resolveVotes(room) {
     if (room.gameState.phase === 'finished') {
         return room.gameState;
     }
 
-    fillMissingVotes(room);
-
+    // ไม่เติมโหวตสุ่มให้คนที่ไม่ได้โหวต — โหวตที่นับต้องเป็นเจตนาจริงเท่านั้น
     const voteCounts = {};
     getActivePlayers(room).forEach(player => {
         voteCounts[player.playerId] = 0;
@@ -378,20 +362,26 @@ function resolveVotes(room) {
     room.gameState.accusedPlayerId = accusedPlayerId;
 
     const spyPlayer = getPlayer(room, room.gameState.spyPlayerId);
+    // สายลับออกจากห้องไปแล้ว → พลเมืองชนะทันที (ไม่งั้นรอบนี้จับสายลับไม่ได้เลย)
+    const spyLeft = !spyPlayer;
     const accusedIsSpy = accusedPlayerId === room.gameState.spyPlayerId;
-    const citizensWin = accusedIsSpy && topVotes > 0;
+    const citizensWin = spyLeft || (accusedIsSpy && topVotes > 0);
 
     const winnerTeam = citizensWin ? 'citizens' : 'spy';
     const accusedPlayer = accusedPlayerId ? getPlayer(room, accusedPlayerId) : null;
+    const spyDisplayName = spyPlayer?.name || room.gameState.spyName || 'ไม่ทราบ';
 
     room.gameState.phase = 'finished';
     room.gameState.status = 'spyfall_finished';
     room.gameState.phaseEndsAt = null;
     room.gameState.winner = {
         team: winnerTeam,
-        teamLabel: citizensWin ? 'พลเมืองชนะ' : 'สายลับรอด',
+        teamLabel: citizensWin
+            ? (spyLeft ? 'สายลับหนีออกจากเกม — พลเมืองชนะ' : 'พลเมืองชนะ')
+            : 'สายลับรอด',
         spyPlayerId: room.gameState.spyPlayerId,
-        spyName: spyPlayer?.name || 'ไม่ทราบ',
+        spyName: spyDisplayName,
+        spyLeft,
         accusedPlayerId,
         accusedName: accusedPlayer?.name || (tiedIds.length > 1 ? 'เสมอ — สายลับรอด' : 'ไม่มีใครโดนโหวตสูงสุด'),
         locationId: room.gameState.locationId,
@@ -406,13 +396,31 @@ function resolveVotes(room) {
     pushHistory(
         room,
         citizensWin ? '🎉' : '🕶️',
-        citizensWin
-            ? `จับสายลับ ${spyPlayer?.name || '-'} ได้! สถานที่คือ ${room.gameState.locationName}`
-            : `สายลับ ${spyPlayer?.name || '-'} รอด — สถานที่คือ ${room.gameState.locationName}`,
+        spyLeft
+            ? `สายลับ ${spyDisplayName} หนีออกจากเกม — พลเมืองชนะ! สถานที่คือ ${room.gameState.locationName}`
+            : citizensWin
+                ? `จับสายลับ ${spyDisplayName} ได้! สถานที่คือ ${room.gameState.locationName}`
+                : `สายลับ ${spyDisplayName} รอด — สถานที่คือ ${room.gameState.locationName}`,
         citizensWin ? 'green' : 'red'
     );
 
     return room.gameState;
+}
+
+// เรียกหลังผู้เล่นถูกเอาออกจาก gameState แล้ว — ถ้าคนที่ออกคือสายลับ ให้จบเกมทันที
+function handlePlayerLeft(room, playerId) {
+    if (!room?.gameState) {
+        return null;
+    }
+    const phase = room.gameState.phase;
+    if (!phase || phase === 'finished') {
+        return null;
+    }
+    if (playerId !== room.gameState.spyPlayerId) {
+        return null;
+    }
+    pushHistory(room, '🚪', 'สายลับออกจากเกม — จบเกมทันที', 'amber');
+    return resolveVotes(room);
 }
 
 function endDiscussionEarly(room) {
@@ -605,6 +613,7 @@ module.exports = {
     autoResolvePhase,
     submitVote,
     resolveVotes,
+    handlePlayerLeft,
     buildClientState,
     getDiscussionMs,
     getVoteMs,

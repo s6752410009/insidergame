@@ -25,7 +25,7 @@ const ROLE_DEFINITIONS = {
         icon: '🕴️',
         title: 'นายหน้า',
         summary: 'ของชิ้นแรกในตลาดถูกกว่าคนอื่น',
-        ability: 'ซื้อของในตลาดแต่ละยกราคาถูกลง 💵 1'
+        ability: 'ซื้อของในตลาดแต่ละยกราคาถูกลง 💵 1 (ต่ำสุด 1)'
     },
     smuggler: {
         id: 'smuggler',
@@ -496,7 +496,7 @@ function buildTutorialState(room, actor) {
             'แต่ละยกทำได้ 1 แอ็กชันเท่านั้น',
             'สินค้าเถื่อนใช้กับปุ่ม ส่งของ',
             'ปิดดีลต้องกดเข้าดีลใส่กันทั้งสองฝ่ายในยกเดียวกัน',
-            'ค่าหัวถึง 5 เมื่อไร จะโดนริบเงินและอิทธิพลอย่างละ 1 ตอนจบยก'
+            'ค่าหัวถึง 5 เมื่อไร จะโดนริบเงินและอิทธิพลอย่างละ 1 ทุกจบยก จนกว่าจะหมอบต่ำลดค่าหัวลง'
         ],
         roundFlow: [
             '1. ช่วงตลาด: เลือกของหรือกดผ่าน',
@@ -675,8 +675,13 @@ function finalizeWinner(room, reasonIcon, reasonText) {
 function maybeFinishGame(room) {
     const alivePlayers = getAlivePlayers(room);
 
-    if (alivePlayers.length === 1) {
-        finalizeWinner(room, '💀', `${alivePlayers[0].name} ยืนเป็นคนสุดท้ายบนโต๊ะและกวาดวงนี้ไปทั้งแถบ`);
+    // <= 1 ไม่ใช่ === 1: ถ้าสองคนสุดท้ายสั่งเก็บกันเองตายพร้อมกัน เกมต้องจบ ไม่ใช่เดินยกเปล่าต่อ
+    if (alivePlayers.length <= 1) {
+        if (alivePlayers.length === 1) {
+            finalizeWinner(room, '💀', `${alivePlayers[0].name} ยืนเป็นคนสุดท้ายบนโต๊ะและกวาดวงนี้ไปทั้งแถบ`);
+        } else {
+            finalizeWinner(room, '💀', 'ไม่มีใครรอดถึงเช้า — ตัดสินผู้ชนะจากอิทธิพลที่สะสมไว้');
+        }
         return true;
     }
 
@@ -898,7 +903,8 @@ function resolveActionPhase(room) {
 
         const target = getPlayer(room, action.targetPlayerId);
         const hitCost = actor.role === 'hitman' ? 2 : 3;
-        if (!target || target.playerId === actor.playerId || !hasItem(actor, 'gun') || actor.cash < hitCost) {
+        // target.alive === false ต้องพลาดแบบไม่เสียปืน/เงิน — ไม่งั้นยิงศพแล้วเสียของฟรี
+        if (!target || target.alive === false || target.playerId === actor.playerId || !hasItem(actor, 'gun') || actor.cash < hitCost) {
             actor.lastMove = 'สั่งเก็บพลาด';
             report.push({ icon: '🚫', text: `${actor.name} เปิดงานสั่งเก็บไม่สำเร็จ`, tone: 'red' });
             return;
@@ -1067,7 +1073,9 @@ function resolveActionPhase(room) {
 
         if (action.actionType === 'laylow') {
             let heatDrop = actor.role === 'fixer' ? 2 : 1;
-            if (consumeItem(actor, 'passport')) {
+            // พาสปลอมเป็นของติดตัวเหมือนเครื่องดักฟัง — ไม่ถูกเผาทิ้งตอนใช้
+            // (ข้อความไอเทม/actionHelp ทุกจุดสื่อว่าเป็นบัฟถาวร ไม่ใช่ของใช้แล้วหมด)
+            if (hasItem(actor, 'passport')) {
                 heatDrop += 2;
             }
             actor.heat = Math.max(0, actor.heat - heatDrop);
@@ -1290,6 +1298,10 @@ function submitAction(room, playerId, actionType, targetPlayerId = null, itemId 
     if (['intel', 'raid', 'hit', 'deal', 'betray'].includes(actionType)) {
         if (!targetPlayerId || targetPlayerId === playerId) {
             throw new Error('ต้องล็อกเป้าหมายก่อน');
+        }
+        const targetPlayer = getPlayer(room, targetPlayerId);
+        if (!targetPlayer || targetPlayer.alive === false) {
+            throw new Error('เป้าหมายนี้ไม่อยู่บนโต๊ะแล้ว — เลือกเป้าใหม่');
         }
     }
 

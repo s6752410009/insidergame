@@ -869,7 +869,7 @@ function applyOracleVision(room, oracleId, targetPlayerId) {
     };
     oracle.oracleHistory = [
         seenEntry,
-        ...(Array.isArray(oracle.oracleHistory) ? oracle.oracleHistory : [])
+        ...(Array.isArray(oracle.oracleHistory) ? oracle.oracleHistory : []).filter(entry => Number(entry?.dayNumber) !== Number(seenEntry.dayNumber))
     ].slice(0, 12);
 
     return seenEntry;
@@ -1003,7 +1003,8 @@ function startDayPhase(room, trigger = 'discussion-ended') {
     room.gameState.lastAction = Date.now();
     syncAlivePlayerIds(room);
 
-    const voteThreshold = Math.floor(getAlivePlayers(room).length / 2) + 1;
+    // ใช้น้ำหนักโหวตจริง (นายกเทศมนตรีเปิดตัว = 2 เสียง) ให้ตรงกับเกณฑ์ตอน resolveDayVote
+    const voteThreshold = Math.floor(getTotalDayVoteWeight(room) / 2) + 1;
     if (trigger === 'consensus-skip') {
         pushHistory(room, `เสียงข้ามเกินครึ่ง ข้ามช่วงคุยของวันที่ ${room.gameState.dayNumber} เข้าสู่การโหวตทันที (ต้องการ ${voteThreshold} เสียงถึงจะไล่ออกได้)`, 'day');
     } else {
@@ -1188,7 +1189,10 @@ function checkWinCondition(room) {
         return 'village';
     }
 
-    if (aliveWerewolves.length >= aliveNonWerewolves.filter(player => player.role !== 'fool').length) {
+    // ตัวตลกนับเป็น "ตัวโหวต" ฝั่งหมู่บ้านด้วย — ไม่งั้นหมาป่าชนะก่อนเวลาทั้งที่หมู่บ้านยังโหวตชนะได้
+    // แต่ถ้าเหลือแค่ตัวตลก (หมาป่าฆ่าตัวตลกไม่ได้) ต้องจบเกมกันเกมค้างไม่มีวันจบ
+    const aliveVillagersExcludingFool = aliveNonWerewolves.filter(player => player.role !== 'fool');
+    if (aliveWerewolves.length >= aliveNonWerewolves.length || aliveVillagersExcludingFool.length === 0) {
         room.gameState.phase = 'finished';
         room.gameState.phaseEndsAt = null;
         room.gameState.status = 'werewolf_finished';
@@ -1196,7 +1200,13 @@ function checkWinCondition(room) {
         room.gameState.players.forEach(player => {
             player.revealedRole = player.roleInfo?.thaiName || player.role;
         });
-        pushHistory(room, 'หมาป่าชนะแล้ว จำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่เหลือ', 'result');
+        pushHistory(
+            room,
+            aliveWerewolves.length >= aliveNonWerewolves.length
+                ? 'หมาป่าชนะแล้ว จำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่เหลือ'
+                : 'หมาป่าชนะแล้ว ฝั่งหมู่บ้านไม่เหลือกำลังพอจะต้านหมาป่าได้',
+            'result'
+        );
         return 'werewolf';
     }
 
@@ -1445,7 +1455,8 @@ function resolveNight(room) {
         ...Object.values(room.gameState.nightActions.doctorSaves || {}),
         ...Object.values(room.gameState.nightActions.bodyguardProtects || {}),
         ...Object.values(room.gameState.nightActions.witchHeals || {}),
-        ...getAlivePlayers(room)
+        // พรนักบวชถูกใช้ไปแล้วตอนกลางวัน — ต้องคุ้มครองแม้นักบวชตายก่อนถึงคืนนั้น
+        ...room.gameState.players
             .filter(player => player.role === 'cleric' && player.clericBlessTargetId)
             .map(player => player.clericBlessTargetId)
     ].filter(targetId => targetId && targetId !== SKIP_TARGET_ID));
@@ -1543,6 +1554,11 @@ function resolveNight(room) {
         if (target.alive === false) {
             return;
         }
+        if (protectedTargets.has(targetId)) {
+            shooter.vigilanteLastResult = { actorId: shotId, targetId, targetName: target.name, blocked: true };
+            pushHistory(room, 'เมื่อคืนมีเสียงปืนดังขึ้น แต่เป้าหมายถูกปกป้องไว้ ไม่มีใครตายจากกระสุนนัดนี้', 'night');
+            return;
+        }
         markPlayerDead(target, 'ถูกศาลเตี้ยยิงตอนกลางคืน');
         eliminatedPlayers.push(target);
         publicEvents.push(buildNightPublicEvent(target, 'night-shot'));
@@ -1563,13 +1579,18 @@ function resolveNight(room) {
         if (target.alive === false) {
             return;
         }
+        if (protectedTargets.has(targetId)) {
+            hunter.hunterLastResult = { actorId: shotId, targetId, targetName: target.name, blocked: true };
+            pushHistory(room, 'เมื่อคืนมีเสียงปืนดังขึ้น แต่เป้าหมายถูกปกป้องไว้ ไม่มีใครตายจากกระสุนนัดนี้', 'night');
+            return;
+        }
         markPlayerDead(target, 'ถูกพรานยิงตอนกลางคืน');
         eliminatedPlayers.push(target);
         publicEvents.push(buildNightPublicEvent(target, 'night-shot'));
         hunter.hunterLastResult = { actorId: shotId, targetId, targetName: target.name };
     });
 
-    getAlivePlayers(room)
+    room.gameState.players
         .filter(player => player.role === 'cleric' && player.clericBlessTargetId)
         .forEach(cleric => {
             const target = getPlayer(room, cleric.clericBlessTargetId);
@@ -1688,27 +1709,29 @@ function hasNightRoleAction(room, roleId, actorId) {
     }
 
     const nightActions = room.gameState.nightActions;
+    // การกดข้าม (SKIP) ไม่นับว่า "ใช้สกิล" — ไม่งั้นนักสอดแนมได้ข่าวกรองผิด
+    const isRealChoice = value => !!value && value !== SKIP_TARGET_ID;
 
     switch (roleId) {
         case 'werewolf':
         case 'alphaWolf':
-            return !!nightActions.werewolfVotes?.[actorId];
+            return isRealChoice(nightActions.werewolfVotes?.[actorId]);
         case 'seer':
-            return !!nightActions.seerChecks?.[actorId];
+            return isRealChoice(nightActions.seerChecks?.[actorId]);
         case 'oracle':
-            return !!nightActions.oracleReads?.[actorId];
+            return isRealChoice(nightActions.oracleReads?.[actorId]);
         case 'doctor':
-            return !!nightActions.doctorSaves?.[actorId];
+            return isRealChoice(nightActions.doctorSaves?.[actorId]);
         case 'bodyguard':
-            return !!nightActions.bodyguardProtects?.[actorId];
+            return isRealChoice(nightActions.bodyguardProtects?.[actorId]);
         case 'witch':
-            return !!nightActions.witchHeals?.[actorId] || !!nightActions.witchPoisons?.[actorId];
+            return isRealChoice(nightActions.witchHeals?.[actorId]) || isRealChoice(nightActions.witchPoisons?.[actorId]);
         case 'tracker':
-            return !!nightActions.trackerScans?.[actorId];
+            return isRealChoice(nightActions.trackerScans?.[actorId]);
         case 'vigilante':
-            return !!nightActions.vigilanteShots?.[actorId];
+            return isRealChoice(nightActions.vigilanteShots?.[actorId]);
         case 'hunter':
-            return !!nightActions.hunterShots?.[actorId];
+            return isRealChoice(nightActions.hunterShots?.[actorId]);
         case 'cleric':
             return false;
         default:
@@ -2026,6 +2049,9 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 room.gameState.nightActions.vigilanteShots[actorId] = SKIP_TARGET_ID;
                 break;
             }
+            if (actorId === targetPlayerId) {
+                throw new Error('ศาลเตี้ยยิงตัวเองไม่ได้');
+            }
             room.gameState.nightActions.vigilanteShots[actorId] = targetPlayerId;
             // ยังไม่ "เผาสิทธิ์" จนกว่าจะ resolve กลางคืน เพื่อกันเผลอคลิกแล้วเสียสิทธิ์ถาวร
             actor.vigilanteLastTargetId = targetPlayerId;
@@ -2047,6 +2073,9 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             if (isSkip) {
                 room.gameState.nightActions.hunterShots[actorId] = SKIP_TARGET_ID;
                 break;
+            }
+            if (actorId === targetPlayerId) {
+                throw new Error('พรานยิงตัวเองไม่ได้');
             }
             room.gameState.nightActions.hunterShots[actorId] = targetPlayerId;
             // ยังไม่ "เผาสิทธิ์" จนกว่าจะ resolve กลางคืน
@@ -2890,7 +2919,8 @@ function buildDayResolutionAnnouncement(room) {
     const publicEvents = Array.isArray(summary.publicEvents) ? summary.publicEvents.filter(Boolean) : [];
     // ถ้าเกมจบด้วยโหวตกลางวันแล้ว ห้ามขึ้น "คืนถัดไป" (ไม่มีคืนต่อ)
     const gameEnded = !!room.gameState.winner || room.gameState.phase === 'finished';
-    const nextTitle = gameEnded ? '⚖️ ผลโหวตปิดเกม' : `🌙 เข้าสู่คืน ${dayNumber + 1}`;
+    // ตอนนี้ phase เป็น night แล้ว — startNightPhase เพิ่ม dayNumber ให้แล้ว ห้าม +1 ซ้ำ
+    const nextTitle = gameEnded ? '⚖️ ผลโหวตปิดเกม' : `🌙 เข้าสู่คืน ${dayNumber}`;
 
     if (publicEvents.length > 0) {
         return {

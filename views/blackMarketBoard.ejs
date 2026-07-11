@@ -3588,7 +3588,7 @@
           <div class="bm-action-block">
             <div class="bm-action-title">🗡️ หักหลัง<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
-              <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ → ได้เยอะแต่ 🔥 ค่าหัวขึ้น</div>
+              <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ → ได้เยอะ แต่ถ้าเดาผิด 🔥 ค่าหัวขึ้นฟรี</div>
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="betray" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
@@ -3603,7 +3603,7 @@
           <div class="bm-action-block">
             <div class="bm-action-title">💣 ปล้น<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
-              <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป → 🔥 ค่าหัวขึ้น</div>
+              <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป → โดนการ์ดกันทางได้</div>
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="raid" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
@@ -3992,8 +3992,14 @@
       socket.emit('blackmarket_requestState', { roomId, playerId });
     }
 
+    // กันกดรัวก่อน state ใหม่จะกลับมา — คลิกที่สองเคยเด้ง error ทั้งที่คลิกแรกล็อกสำเร็จไปแล้ว
+    let submitInFlight = false;
+
     function submitMarketChoice(itemId) {
+      if (submitInFlight) return;
+      submitInFlight = true;
       socket.emit('blackmarket_buyOffer', { roomId, playerId, itemId }, function(response) {
+        submitInFlight = false;
         if (!response || !response.success) {
           Swal.fire({ icon: 'error', title: 'โต๊ะไม่ยอม', text: response?.error || 'ของชิ้นนี้ยังไม่ผ่าน', background: '#111', color: '#fff' });
         }
@@ -4001,7 +4007,10 @@
     }
 
     function submitAction(actionType, targetPlayerId, itemId) {
+      if (submitInFlight) return;
+      submitInFlight = true;
       socket.emit('blackmarket_submitAction', { roomId, playerId, actionType, targetPlayerId, itemId }, function(response) {
+        submitInFlight = false;
         if (!response || !response.success) {
           Swal.fire({ icon: 'error', title: 'งานยังไม่ผ่าน', text: response?.error || 'แผนนี้ยังล็อกไม่ได้', background: '#111', color: '#fff' });
         }

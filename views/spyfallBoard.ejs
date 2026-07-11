@@ -682,7 +682,8 @@ $(function() {
         '<div class="sf-role-icon">' + gameIconHtml({ id: 'spy', image: roleInfo.image, icon: roleInfo.icon || '🕶️', alt: 'สายลับ' }, { className: 'game-icon' }) + '</div>' +
         '<div class="sf-role-name">' + escapeHtml(roleInfo.title || 'สายลับ') + '</div>' +
         '<p class="sf-role-summary">' + escapeHtml(roleInfo.summary || 'คุณไม่รู้สถานที่ — ฟังคำถามให้ดีแล้วเดาให้เนียน') + '</p>' +
-        (pool.length ? '<div class="sf-location-pool">' + pool.map(function(loc) {
+        (pool.length ? '<div class="sf-location-pool-label" style="font-size:0.72rem;color:#94a3b8;margin-top:8px;">📋 สถานที่ที่เป็นไปได้ — ไว้ช่วยเดาจากบทสนทนา (ไม่ต้องกดเลือก)</div>' +
+          '<div class="sf-location-pool">' + pool.map(function(loc) {
           return '<span class="sf-location-pill">' + gameIconHtml({ id: loc.id, image: loc.image, icon: loc.icon, alt: loc.name }, { className: 'game-icon' }) + escapeHtml(loc.name) + '</span>';
         }).join('') + '</div>' : '') +
       '</div>';
@@ -902,11 +903,16 @@ $(function() {
     });
   });
 
+  // กันกดโหวตซ้ำก่อน state ใหม่จะกลับมา — คลิกที่สองเคยเด้ง "คุณโหวตไปแล้ว" ทั้งที่โหวตแรกสำเร็จ
+  let voteInFlight = false;
+
   $(document).on('click', '.sf-vote-btn', function() {
     const targetId = $(this).data('target-id');
-    if (!targetId || currentState.self?.hasVoted) return;
+    if (!targetId || voteInFlight || currentState.self?.hasVoted) return;
 
+    voteInFlight = true;
     socket.emit('spyfall_vote', { targetPlayerId: targetId }, function(res) {
+      voteInFlight = false;
       if (res && !res.success) {
         Swal.fire({ icon: 'warning', title: res.error || 'โหวตไม่สำเร็จ', background: '#111', color: '#fff' });
       }

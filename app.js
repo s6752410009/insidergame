@@ -1372,7 +1372,8 @@ function syncBlackMarketPhaseTimer(room) {
     blackMarketPhaseTimeouts.set(room.roomId, { phase, timeoutId });
 }
 
-function forceResolveStuckBlackMarketRoom(room) {
+// onlyOverdue: หยุดทันทีที่ deadline ของ phase ใหม่ยังไม่ถึง — ใช้ตอนกู้หลัง restart
+function forceResolveStuckBlackMarketRoom(room, { onlyOverdue = false } = {}) {
     if (!room || room.settings.gameMode !== 'blackmarket' || !roomManager.isRoomGameInProgress(room)) {
         return;
     }
@@ -1381,7 +1382,8 @@ function forceResolveStuckBlackMarketRoom(room) {
     const activePhases = new Set(['market', 'action']);
     let safety = 0;
 
-    while (safety < 12 && roomManager.isRoomGameInProgress(room) && activePhases.has(room.gameState.phase)) {
+    while (safety < 12 && roomManager.isRoomGameInProgress(room) && activePhases.has(room.gameState.phase)
+        && (!onlyOverdue || (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()))) {
         try {
             const resolution = blackMarketEngine.autoResolvePhase(room);
             if (resolution && resolution.resolved === false) {
@@ -1795,6 +1797,28 @@ function broadcastGameStateForRoom(room) {
     }
 }
 
+// เรียกหลังผู้เล่นถูกเอาออกจากห้องกลางเกม (ออกเอง/ถูกเตะ/แบน/ถูกลบ) —
+// ให้ engine รับรู้ (เช่น สายลับหนี → จบเกม) แล้วดัน state ใหม่ให้ทุกคน
+// ไม่งั้นบอร์ดของคนที่เหลือยังโชว์คนที่ออกไปแล้วเป็นเป้าโหวต/เป้าแอคชันอยู่
+function handleMidGamePlayerRemoval(room, playerId) {
+    // helper เสริม — ห้าม throw ออกไปทำ flow ออกห้อง/เตะ/แบนพัง (callback จะไม่ถูกส่ง client ค้าง)
+    try {
+        if (!room || !roomManager.isRoomGameInProgress(room)) {
+            return;
+        }
+        if (room.settings.gameMode === 'spyfall') {
+            try {
+                getGameEngine('spyfall').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[spyfall] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        broadcastGameStateForRoom(room);
+    } catch (error) {
+        console.error('[game] mid-game removal resync failed:', error?.message || error);
+    }
+}
+
 function scheduleWerewolfStateBroadcast(room, delayMs = WEREWOLF_PHASE_TRANSITION_DELAY_MS) {
     if (!room || room.settings.gameMode !== 'werewolf') {
         return;
@@ -2013,7 +2037,9 @@ function syncWerewolfPhaseTimer(room) {
     werewolfPhaseTimeouts.set(room.roomId, { phase, timeoutId });
 }
 
-function forceResolveStuckWerewolfRoom(room) {
+// onlyOverdue: หยุดทันทีที่ deadline ของ phase ใหม่ยังไม่ถึง — ใช้ตอนกู้หลัง restart
+// (ไม่ใส่แล้วจะไล่ resolve หลาย phase รวด โหวต/สกิลถูกเติมอัตโนมัติทั้งที่ผู้เล่นยังออนไลน์)
+function forceResolveStuckWerewolfRoom(room, { onlyOverdue = false } = {}) {
     if (!room || room.settings.gameMode !== 'werewolf' || !roomManager.isRoomGameInProgress(room)) {
         return;
     }
@@ -2022,7 +2048,8 @@ function forceResolveStuckWerewolfRoom(room) {
     const timedPhases = new Set(['night', 'day-discussion', 'day-vote']);
     let safety = 0;
 
-    while (safety < 20 && roomManager.isRoomGameInProgress(room) && timedPhases.has(room.gameState.phase)) {
+    while (safety < 20 && roomManager.isRoomGameInProgress(room) && timedPhases.has(room.gameState.phase)
+        && (!onlyOverdue || (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()))) {
         try {
             werewolfEngine.autoResolvePhase(room);
         } catch (error) {
@@ -2045,7 +2072,7 @@ function recoverGamePhaseTimers() {
 
         if (room.settings.gameMode === 'werewolf') {
             if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
-                forceResolveStuckWerewolfRoom(room);
+                forceResolveStuckWerewolfRoom(room, { onlyOverdue: true });
             }
             syncWerewolfPhaseTimer(room);
             return;
@@ -2053,7 +2080,7 @@ function recoverGamePhaseTimers() {
 
         if (room.settings.gameMode === 'blackmarket') {
             if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
-                forceResolveStuckBlackMarketRoom(room);
+                forceResolveStuckBlackMarketRoom(room, { onlyOverdue: true });
             }
             syncBlackMarketPhaseTimer(room);
             return;
@@ -2321,7 +2348,10 @@ async function removePlayerCompletely(playerId, options = {}) {
     });
 
     roomManager.getAllRooms().forEach(roomInfo => {
-        roomManager.leaveRoom(roomInfo.roomId, playerId);
+        const updatedRoom = roomManager.leaveRoom(roomInfo.roomId, playerId);
+        if (updatedRoom) {
+            handleMidGamePlayerRemoval(updatedRoom, playerId);
+        }
     });
 
     const deletedPlayer = await playerManager.deletePlayer(playerId);
@@ -2592,6 +2622,7 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
         if (roomId && playerId) {
             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
             if (updatedRoom) {
+                handleMidGamePlayerRemoval(updatedRoom, playerId);
                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
                 io.emit('roomListUpdate', roomManager.getAllRooms());
                 const player = playerManager.getPlayer(playerId);
@@ -3268,6 +3299,8 @@ io.sockets.on('connection', function(socket) {
         socket.roomId = null;
 
         if (room) {
+            handleMidGamePlayerRemoval(room, playerId);
+
             // Emit to remaining players
             io.to(roomId).emit('roomUpdate', {
                 ...buildRoomUpdatePayload(room)
@@ -3350,6 +3383,8 @@ io.sockets.on('connection', function(socket) {
             // Update remaining players
             const updatedRoom = roomManager.getRoom(roomId);
             if (updatedRoom) {
+                handleMidGamePlayerRemoval(updatedRoom, targetPlayerId);
+
                 io.to(roomId).emit('roomUpdate', {
                     ...buildRoomUpdatePayload(updatedRoom)
                 });
@@ -3691,10 +3726,13 @@ io.sockets.on('connection', function(socket) {
                             message: banMessage
                         });
                     }
-                    roomManager.leaveRoom(roomInfo.roomId, playerId);
+                    const bannedRoom = roomManager.leaveRoom(roomInfo.roomId, playerId);
+                    if (bannedRoom) {
+                        handleMidGamePlayerRemoval(bannedRoom, playerId);
+                    }
                 }
             });
-            
+
             callback({ success: true });
         } catch (error) {
             console.error('Error banning player:', error);
@@ -4254,9 +4292,10 @@ io.sockets.on('connection', function(socket) {
             
             // Remove from room
             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
-            
+
             // Update room for others
             if (updatedRoom) {
+                handleMidGamePlayerRemoval(updatedRoom, playerId);
                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
             }
             io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -5153,6 +5192,7 @@ io.sockets.on('connection', function(socket) {
 
             // รอ 3 วินาทีให้ผู้เล่นทุกคน sync ก่อนเริ่มเกมจริง
             setTimeout(() => {
+                try {
                 // ตรวจสอบอีกครั้งหลังรอ
                 const currentRoom = roomManager.getRoom(roomId);
                 if (!currentRoom) {
@@ -5279,6 +5319,13 @@ io.sockets.on('connection', function(socket) {
                 logGameStartFromRoom(currentRoom, insiderModeMsg);
 
                 room.gameStarting = false;
+                } catch (deferredError) {
+                    // ถ้า startGame ล้มกลางคัน ต้องปลดธง gameStarting เสมอ
+                    // ไม่งั้นห้องนี้กดเริ่มเกมไม่ได้อีกเลย (ติด "เกมกำลังเริ่มอยู่แล้ว" ถาวร)
+                    console.error('Error in deferred game start:', deferredError);
+                    room.gameStarting = false;
+                    io.to(roomId).emit('gameStartCancelled', { error: deferredError.message || 'เริ่มเกมไม่สำเร็จ ลองใหม่อีกครั้ง' });
+                }
             }, 3000); // รอ 3 วินาที
             
             if (typeof callback === 'function') callback({ success: true, message: 'เกมจะเริ่มใน 3 วินาที...' });
