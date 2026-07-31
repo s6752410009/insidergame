@@ -37,6 +37,7 @@ const playerManager = require('./managers/playerManager');
 const roomManager = require('./managers/roomManager');
 const statsManager = require('./managers/statsManager');
 const gameSettingsManager = require('./managers/gameSettingsManager');
+const seasonManager = require('./managers/seasonManager');
 const { getGameEngine, getAvailableGameModes } = require('./games/engineRegistry');
 
 app.locals.appVersion = APP_VERSION;
@@ -2610,7 +2611,18 @@ app.get('/ping', function(req, res) {
 app.get('/', function(req, res) {
     const player = getRenderablePlayer(req.playerId);
     const stats = statsManager.getStats(req.playerId);
-    res.render('lobby.ejs', { player: player, stats: stats });
+    // season ที่เพิ่งปิดไป + แชมป์ 3 อันดับแรก ใช้ประกาศรีแรงค์ในหน้าแรก
+    const lastSeasonSummary = seasonManager.listArchivedSeasons()[0] || null;
+    const lastSeasonFull = lastSeasonSummary ? seasonManager.getArchivedSeason(lastSeasonSummary.number) : null;
+
+    res.render('lobby.ejs', {
+        player: player,
+        stats: stats,
+        currentSeason: seasonManager.getCurrentSeason(),
+        lastSeason: lastSeasonFull
+            ? { ...lastSeasonSummary, topThree: lastSeasonFull.entries.slice(0, 3) }
+            : null
+    });
 });
 
 // API: Leave room (สำหรับ sendBeacon เมื่อปิดหน้า)
@@ -2967,9 +2979,14 @@ app.get('/api/leaderboard', function(req, res) {
     const parsedLimit = rawLimit ? parseInt(rawLimit, 10) : NaN;
     const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
     const leaderboard = statsManager.getLeaderboard(limit);
-    
+
     // เพิ่มข้อมูล avatar จาก playerManager
-    const enrichedLeaderboard = leaderboard.map(entry => {
+    res.json(enrichLeaderboardEntries(leaderboard));
+});
+
+// เติม avatar/สีให้ตารางอันดับ (ใช้ร่วมกันระหว่าง season ปัจจุบันกับประวัติ)
+function enrichLeaderboardEntries(entries) {
+    return entries.map(entry => {
         const player = playerManager.getPlayer(entry.playerId);
         return {
             ...entry,
@@ -2979,8 +2996,34 @@ app.get('/api/leaderboard', function(req, res) {
             color: player?.color || '#3498db'
         };
     });
-    
-    res.json(enrichedLeaderboard);
+}
+
+// รายชื่อ season: ปัจจุบัน + ที่ปิดไปแล้ว (ไว้ทำแท็บใน leaderboard)
+app.get('/api/seasons', function(req, res) {
+    res.json({
+        current: seasonManager.getCurrentSeason(),
+        archived: seasonManager.listArchivedSeasons()
+    });
+});
+
+// ตารางอันดับของ season ที่ปิดไปแล้ว
+app.get('/api/seasons/:number/leaderboard', function(req, res) {
+    const seasonNumber = parseInt(req.params.number, 10);
+    const season = Number.isFinite(seasonNumber) ? seasonManager.getArchivedSeason(seasonNumber) : null;
+
+    if (!season) {
+        return res.status(404).json({ error: 'Season not found' });
+    }
+
+    res.json({
+        number: season.number,
+        name: season.name,
+        startedAt: season.startedAt,
+        endedAt: season.endedAt,
+        totalPlayers: season.totalPlayers,
+        totalGames: season.totalGames,
+        entries: enrichLeaderboardEntries(season.entries)
+    });
 });
 
 // Get player profile (for viewing other players)

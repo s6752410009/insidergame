@@ -329,7 +329,50 @@
         font-weight: 600;
         text-align: right;
     }
-    
+
+    .leaderboard-seasons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .leaderboard-season-tab {
+        padding: 7px 16px;
+        border: 2px solid #333;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.03);
+        color: #8ea6d9;
+        font-family: inherit;
+        font-size: 0.85em;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .leaderboard-season-tab:hover {
+        border-color: #ffd700;
+        color: #ffd700;
+    }
+
+    .leaderboard-season-tab.is-active {
+        background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+        border-color: #ffd700;
+        color: #1a1a2e;
+        cursor: default;
+    }
+
+    .leaderboard-season-note {
+        color: #6f83ad;
+        font-size: 0.82em;
+        margin-bottom: 12px;
+        line-height: 1.5;
+    }
+
+    .leaderboard-season-note:empty {
+        display: none;
+    }
+
     .leaderboard-list {
         display: flex;
         flex-direction: column;
@@ -852,12 +895,37 @@
         </a>
     </div>
     
+    <% if (lastSeason) { %>
+    <!-- ประกาศรีแรงค์ (ซ่อนไว้ ใช้เป็นเนื้อหาของ patch notes popup) -->
+    <div id="seasonResetNotice" hidden>
+        <div style="background: linear-gradient(135deg, rgba(255,215,0,0.18) 0%, rgba(255,140,0,0.12) 100%); padding: 14px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
+            <h4 style="color: #ffd700; margin: 0 0 8px 0;">🔄 <%= lastSeason.name %> จบแล้ว — อันดับรีเซ็ตใหม่หมด</h4>
+            <p style="margin: 0 0 10px 0; font-size: 0.9em; color: #ddd;">
+                สถิติ <strong>เกม / ชนะ / แพ้</strong> ของทุกคนถูกล้างเป็น 0 เพื่อเริ่ม <strong style="color: #ffd700;"><%= currentSeason.name %></strong> — ทุกคนออกสตาร์ทพร้อมกันจากศูนย์ ชนะเกมแรกก็ขึ้นอันดับ 1 ได้เลย
+            </p>
+            <% if (lastSeason.topThree && lastSeason.topThree.length) { %>
+            <p style="margin: 0 0 6px 0; font-size: 0.85em; color: #aaa;">🏅 แชมป์ <%= lastSeason.name %>:</p>
+            <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
+                <% lastSeason.topThree.forEach(function(entry, index) { %>
+                <li><%= ['🥇', '🥈', '🥉'][index] %> <strong><%= entry.playerName %></strong> — <%= entry.wins %> ชนะ จาก <%= entry.totalGames %> เกม (<%= entry.winRate %>%)</li>
+                <% }); %>
+            </ul>
+            <% } %>
+            <p style="margin: 0; font-size: 0.85em; color: #aaa;">
+                📚 อันดับเก่าไม่หายไปไหน — กดแท็บ <strong style="color: #ffd700;"><%= lastSeason.name %></strong> ในตาราง Leaderboard ด้านล่างเพื่อดูย้อนหลัง
+            </p>
+        </div>
+    </div>
+    <% } %>
+
     <!-- Leaderboard -->
     <div class="leaderboard-card">
         <div class="leaderboard-header">
             <h3>🏆 Leaderboard</h3>
             <div class="leaderboard-meta" id="leaderboardMeta">กำลังโหลด...</div>
         </div>
+        <div class="leaderboard-seasons" id="leaderboardSeasons"></div>
+        <div class="leaderboard-season-note" id="leaderboardSeasonNote"></div>
         <div class="leaderboard-list" id="leaderboardList">
             <div class="leaderboard-empty">กำลังโหลด...</div>
         </div>
@@ -1060,10 +1128,14 @@ $(function() {
     };
 
     const LEADERBOARD_PAGE_SIZE = 5;
+    const CURRENT_SEASON_KEY = 'current';
     var leaderboardState = {
         entries: [],
         currentPage: 1,
-        totalPages: 1
+        totalPages: 1,
+        activeSeason: CURRENT_SEASON_KEY,   // 'current' หรือเลข season ที่ปิดไปแล้ว
+        currentSeasonName: 'ปัจจุบัน',
+        seasonCache: {}                     // key → { entries, note }
     };
 
     function renderLeaderboardEmpty(message) {
@@ -1209,7 +1281,11 @@ $(function() {
         var totalEntries = leaderboardState.entries.length;
 
         if (totalEntries === 0) {
-            renderLeaderboardEmpty('ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!');
+            renderLeaderboardEmpty(
+                leaderboardState.activeSeason === CURRENT_SEASON_KEY
+                    ? 'ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!'
+                    : 'season นี้ไม่มีใครติดอันดับ'
+            );
             return;
         }
 
@@ -1235,18 +1311,99 @@ $(function() {
         renderLeaderboardPagination(totalPages);
     }
     
-    // Load Leaderboard
-    function loadLeaderboard() {
-        console.log('Loading leaderboard...');
+    function formatSeasonDate(isoDate) {
+        if (!isoDate) return null;
+
+        var date = new Date(isoDate);
+        if (Number.isNaN(date.getTime())) return null;
+
+        return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function buildSeasonNote(season) {
+        var from = formatSeasonDate(season.startedAt);
+        var to = formatSeasonDate(season.endedAt);
+        var parts = [];
+
+        if (from && to) {
+            parts.push(from + ' – ' + to);
+        } else if (to) {
+            parts.push('ปิดเมื่อ ' + to);
+        }
+
+        parts.push(season.totalPlayers + ' คนติดอันดับ');
+
+        return '📚 อันดับสุดท้ายของ ' + season.name + ' · ' + parts.join(' · ');
+    }
+
+    function renderSeasonTabs(seasons) {
+        var $tabs = $('#leaderboardSeasons');
+
+        // มีแค่ season ปัจจุบัน = ยังไม่เคยรีแรงค์ ไม่ต้องโชว์แท็บ
+        if (!seasons.archived.length) {
+            $tabs.empty();
+            return;
+        }
+
+        $tabs.empty();
+        $tabs.append(buildSeasonTab(CURRENT_SEASON_KEY, leaderboardState.currentSeasonName));
+
+        for (var i = 0; i < seasons.archived.length; i++) {
+            $tabs.append(buildSeasonTab(seasons.archived[i].number, seasons.archived[i].name));
+        }
+    }
+
+    function buildSeasonTab(key, label) {
+        var isActive = String(leaderboardState.activeSeason) === String(key);
+
+        return $('<button type="button" class="leaderboard-season-tab"></button>')
+            .toggleClass('is-active', isActive)
+            .attr('data-season', key)
+            .attr('aria-pressed', isActive ? 'true' : 'false')
+            .prop('disabled', isActive)
+            .text(label);
+    }
+
+    function showSeasonEntries(key, entries, note) {
+        leaderboardState.activeSeason = key;
+        leaderboardState.entries = Array.isArray(entries) ? entries : [];
+        leaderboardState.currentPage = 1;
+        leaderboardState.seasonCache[key] = { entries: leaderboardState.entries, note: note || '' };
+
+        $('#leaderboardSeasonNote').text(note || '');
+        $('#leaderboardSeasons .leaderboard-season-tab').each(function() {
+            var isActive = String($(this).data('season')) === String(key);
+            $(this).toggleClass('is-active', isActive)
+                .attr('aria-pressed', isActive ? 'true' : 'false')
+                .prop('disabled', isActive);
+        });
+
+        renderLeaderboardPage(1);
+    }
+
+    // โหลดตารางอันดับของ season ที่เลือก ('current' = อันดับสด)
+    function loadLeaderboard(key) {
+        var seasonKey = key === undefined ? CURRENT_SEASON_KEY : key;
+        var cached = leaderboardState.seasonCache[seasonKey];
+
+        if (cached) {
+            showSeasonEntries(seasonKey, cached.entries, cached.note);
+            return;
+        }
+
+        var isCurrent = seasonKey === CURRENT_SEASON_KEY;
+
         $.ajax({
-            url: '/api/leaderboard',
+            url: isCurrent ? '/api/leaderboard' : '/api/seasons/' + seasonKey + '/leaderboard',
             method: 'GET',
             dataType: 'json',
             success: function(data) {
-                console.log('Leaderboard data:', data);
-                leaderboardState.entries = Array.isArray(data) ? data : [];
-                leaderboardState.currentPage = 1;
-                renderLeaderboardPage(1);
+                if (isCurrent) {
+                    showSeasonEntries(seasonKey, Array.isArray(data) ? data : [], '');
+                    return;
+                }
+
+                showSeasonEntries(seasonKey, data && data.entries, buildSeasonNote(data || {}));
             },
             error: function(xhr, status, error) {
                 console.error('Leaderboard error:', error);
@@ -1254,10 +1411,38 @@ $(function() {
             }
         });
     }
-    
+
+    // โหลดรายชื่อ season เพื่อสร้างแท็บประวัติ
+    function loadSeasonTabs() {
+        $.ajax({
+            url: '/api/seasons',
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                var current = (data && data.current) || {};
+                var archived = (data && Array.isArray(data.archived)) ? data.archived : [];
+
+                leaderboardState.currentSeasonName = current.name
+                    ? current.name + ' (ตอนนี้)'
+                    : 'ปัจจุบัน';
+
+                renderSeasonTabs({ current: current, archived: archived });
+            },
+            error: function(xhr, status, error) {
+                console.error('Seasons error:', error);
+            }
+        });
+    }
+
     // Load leaderboard on page load
     loadLeaderboard();
-    
+    loadSeasonTabs();
+
+    $(document).on('click', '.leaderboard-season-tab:not(:disabled)', function() {
+        var key = $(this).data('season');
+        loadLeaderboard(key === CURRENT_SEASON_KEY ? CURRENT_SEASON_KEY : key);
+    });
+
     // Click on leaderboard item to view profile
     $(document).on('click', '.leaderboard-item', function() {
         const targetPlayerId = $(this).data('player-id');
@@ -1495,7 +1680,11 @@ $(function() {
     
     // ==================== PATCH NOTES POPUP ====================
     const patchVersion = '<%= appVersion %>';
-    const patchSeenKey = `hide_patch_${patchVersion}_${playerId}`;
+    // ผูก key กับเลข season ด้วย — พอรีแรงค์ใหม่ ทุกคนจะได้เห็นประกาศอีกครั้งแม้เคยกด "ไม่แสดงอีก 7 วัน"
+    const patchSeenKey = `hide_patch_${patchVersion}_s<%= currentSeason.number %>_${playerId}`;
+    // ประกาศรีแรงค์เรนเดอร์เป็น HTML ไว้แล้ว (ชื่อผู้เล่นผ่าน escape ของ EJS) ค่อยหยิบมาใส่ popup
+    const seasonResetNoticeEl = document.getElementById('seasonResetNotice');
+    const seasonResetNoticeHtml = seasonResetNoticeEl ? seasonResetNoticeEl.innerHTML : '';
     const hideUntil = localStorage.getItem(patchSeenKey);
     const now = Date.now();
     
@@ -1505,20 +1694,22 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🚀 อัปเดต Version <%= appVersion %>!',
+            title: '<% if (lastSeason) { %>🏆 รีแรงค์! เริ่ม <%= currentSeason.name %><% } else { %>🚀 อัปเดต Version <%= appVersion %>!<% } %>',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
+                    ${seasonResetNoticeHtml}
                     <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        อัปเดตใหญ่ v<%= appVersion %>: <strong>ยกเครื่องระบบการเล่นใหม่ และปรับ logic engine ใหม่ทุกเกม</strong> — Insider, Werewolf, Black Market และ Spyfall เล่นจบไม่ค้าง รีจอยน์กลางเกมก็ต่อได้ พร้อม UI ที่บอกชัดว่าตอนนี้ต้องทำอะไร
+                        อัปเดต v<%= appVersion %>: <strong>ไอคอนภาพใหม่ทุกเกม + แก้บัคกติกาครั้งใหญ่</strong> — ตรวจสอบระบบทั้ง Spyfall, Werewolf และ Black Market แล้วแก้ให้ผลเกมแม่นยำ ยุติธรรม ไม่มีเกมค้างหรือคนหายกลางเกมทำวงพังอีก
                     </p>
-                    
+
                     <div style="background: rgba(26, 188, 156, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #1abc9c; margin-bottom: 15px;">
-                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">⚙️ ไฮไลต์ v<%= appVersion %> — เครื่องยนต์เกมใหม่ทุกโหมด</h4>
+                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🛠️ ไฮไลต์ v<%= appVersion %> — เกมแฟร์ขึ้น ภาพสวยขึ้น</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>🕵️ Insider:</strong> รีจอยน์/รีโหลดแล้วกลับเข้าเฟสเดิมถูกต้อง, หมดเวลาคุยเข้าสู่โหวตจับจอมบงการเองไม่ค้าง, เฉลยคำลับตอนจบเกม</li>
-                            <li><strong>🐺 Werewolf:</strong> กลางคืนหมดเวลาเติมตาให้ครบทุกบท, จบเกมไม่ขึ้น "คืนถัดไป" ผิด ๆ, แม่มดเปลี่ยนเป้าได้, แถบบทบาทครบทุกตัว และแชตหมาป่าไม่หายตอนรีจอยน์</li>
-                            <li><strong>💰 Black Market:</strong> ลดความรกของหน้าจอ, มีปุ่มพาไป "เลือกของ/ลงมือ", โชว์ว่าใครล็อกแล้วกี่คน และอธิบายบทบาทแบบเข้าใจง่าย</li>
-                            <li><strong>🔍 Spyfall:</strong> ตัวนับว่าโหวตแล้วกี่คน, ไฮไลต์คนที่เราโหวต และตารางสรุปผลโหวตตอนจบ</li>
+                            <li><strong>🖼️ ไอคอนใหม่:</strong> บทบาท ไอเทม และสถานที่ มีภาพประจำตัวครบทั้ง 3 เกม</li>
+                            <li><strong>🔍 Spyfall:</strong> สายลับหนีออกกลางเกม = พลเมืองชนะทันที และนับเฉพาะโหวตจริง ไม่มีสุ่มโหวตให้คนบริสุทธิ์โดนจับมั่ว</li>
+                            <li><strong>🐺 Werewolf:</strong> ศาลเตี้ย/พรานยิงทะลุการป้องกันหมอไม่ได้แล้ว, เกณฑ์โหวตที่ประกาศตรงกับจริง, ตัวตลกนับเป็นตัวโหวต ไม่โดนตัดจบเกมก่อนเวลา และพรนักบวชคุ้มครองตามสัญญา</li>
+                            <li><strong>💰 Black Market:</strong> ยิงเป้าที่ตายแล้วไม่เสียปืน/เงินฟรี, พาสปลอมเป็นของติดตัวถาวร และตายหมู่ยกสุดท้ายเกมจบทันที</li>
+                            <li><strong>🛡️ เสถียรขึ้น:</strong> คนออก/โดนเตะกลางเกมบอร์ดอัปเดตทันที, restart server ไม่ทำเกมโดนสรุปผลรวด และกดปุ่มรัวไม่เด้ง error หลอก</li>
                         </ul>
                     </div>
 
@@ -1529,12 +1720,17 @@ $(function() {
                             <li>หลุดกลางเกมไม่ต้องกลัว — รีโหลดแล้วระบบพากลับเข้าเฟสเดิมให้อัตโนมัติ</li>
                         </ul>
                     </div>
-                    
+
                     <details style="margin-bottom: 15px;">
                         <summary style="color: #3498db; cursor: pointer; font-weight: bold; padding: 8px 0;">
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.1.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>ยกเครื่อง logic engine ใหม่ทุกเกม เล่นจบไม่ค้าง รีจอยน์กลางเกมได้</li>
+                                <li>UI ทุกโหมดบอกชัดว่า "ทำอะไรตอนนี้" + ความคืบหน้าการล็อก/โหวต</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.0.1</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>โหมดซ้อมเล่นกับบอท (AI Bots) สูงสุด 3 ตัวในห้อง Black Market</li>

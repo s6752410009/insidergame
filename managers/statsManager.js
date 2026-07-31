@@ -740,6 +740,27 @@ async function resetPlayerStats(playerId) {
 }
 
 /**
+ * รีเซ็ตสถิติทุกคนเพื่อเริ่ม season ใหม่
+ * - เก็บ playerId/playerName ไว้ แต่ล้างตัวเลขทั้งหมดกลับเป็น 0 (รวม gameHistory)
+ * - ผู้เล่นจะหายจาก leaderboard จนกว่าจะเล่นเกมแรกของ season ใหม่ (getLeaderboard กรอง totalGames > 0)
+ * @returns {number} จำนวนผู้เล่นที่ถูกรีเซ็ต
+ */
+async function resetAllStatsForNewSeason() {
+    let resetCount = 0;
+
+    for (const [playerId, stat] of stats.entries()) {
+        stats.set(playerId, createDefaultStatsRecord(playerId, stat.playerName));
+        resetCount++;
+    }
+
+    if (resetCount > 0) {
+        await saveStats();
+    }
+
+    return resetCount;
+}
+
+/**
  * แก้ไขสถิติผู้เล่น (สำหรับ Admin เทพ!)
  */
 async function editPlayerStats(playerId, newData) {
@@ -924,6 +945,7 @@ module.exports = {
     repairStatsPlayerNames,
     getAllStats,
     resetPlayerStats,
+    resetAllStatsForNewSeason,
     editPlayerStats,
     deletePlayerStats,
     clearAllStats,

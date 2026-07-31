@@ -2,7 +2,7 @@
 
 set -eu
 
-blocked_paths='^data/(playerStats|players)\.json$'
+blocked_paths='^data/(playerStats|players|seasons)\.json$'
 
 while read -r local_ref local_sha remote_ref remote_sha
 do
@@ -17,7 +17,7 @@ do
     fi
 
     if git diff --name-only "$range" | grep -Eq "$blocked_paths"; then
-        echo "Push blocked: data/playerStats.json and data/players.json are local-only files and must not be pushed." >&2
+        echo "Push blocked: data/playerStats.json, data/players.json and data/seasons.json are local-only files and must not be pushed." >&2
         exit 1
     fi
 done
