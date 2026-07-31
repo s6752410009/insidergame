@@ -9,6 +9,7 @@
 - leaderboard ในหน้า lobby มีแท็บ season แล้ว สลับดูอันดับสด (Season 2) กับอันดับสุดท้ายของ Season 1 ได้ พร้อมช่วงวันที่และจำนวนคนติดอันดับ
 - `managers/seasonManager.js` เก็บประวัติอันดับไว้ที่ `data/seasons.json` แยกจากสถิติสด — ไม่แตะ `playerStats.json` (เป็นไฟล์ local ของแต่ละ environment เหมือน `playerStats.json`/`players.json` ไม่ push ขึ้น repo — ต้องสั่งรีแรงค์บนเครื่อง production แยกต่างหาก)
 - API ใหม่ `GET /api/seasons` (รายชื่อ season) และ `GET /api/seasons/:number/leaderboard` (ตารางอันดับย้อนหลัง)
+- ปุ่ม **"🏆 ปิด Season / รีแรงค์"** ในแท็บสถิติของหน้า admin — กดปิด season ได้จากเว็บโดยตรง ไม่ต้องเข้า console ของเซิร์ฟเวอร์ มีหน้ายืนยันบอกจำนวนคนที่จะถูก archive/รีเซ็ต พร้อมแชมป์ 3 อันดับแรก และต้องพิมพ์ชื่อ season ให้ตรงก่อนถึงจะกดได้ (ตรวจซ้ำฝั่ง server ด้วย)
 - `npm run season:reset` ปิด season ปัจจุบันแล้วเริ่ม season ถัดไป — รันเปล่าเป็น dry run, ใส่ `-- --confirm` ถึงทำจริง และสำรอง `playerStats.json` ดิบไว้ที่ `data/backups/playerStats-season-<n>.json` ก่อนรีเซ็ตเสมอ
 
 ## 5.2.0 — 2026-07-11

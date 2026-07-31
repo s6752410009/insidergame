@@ -4112,6 +4112,69 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // Admin: สรุปสถานะ season ปัจจุบัน (ใช้ยืนยันก่อนกดรีแรงค์)
+    socket.on('admin_seasonPreview', function(callback) {
+        if (typeof callback !== 'function') {
+            return;
+        }
+
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                return;
+            }
+
+            const preview = seasonManager.getSeasonResetPreview();
+            const topThree = statsManager.getLeaderboard(3);
+            callback({ success: true, ...preview, topThree });
+        } catch (error) {
+            console.error('Error building season preview:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
+    // Admin: ปิด season ปัจจุบัน เก็บอันดับเป็นประวัติ แล้วรีเซ็ตสถิติทุกคน
+    socket.on('admin_resetSeason', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : (typeof data === 'function' ? data : function() {});
+        const payload = typeof data === 'object' && data !== null ? data : {};
+
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                done({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                return;
+            }
+
+            // กันกดพลาด: ต้องพิมพ์ชื่อ season ที่กำลังจะปิดให้ตรง
+            const currentSeason = seasonManager.getCurrentSeason();
+            const typedName = typeof payload.confirmName === 'string' ? payload.confirmName.trim() : '';
+            if (typedName.toLowerCase() !== currentSeason.name.toLowerCase()) {
+                done({ success: false, error: `ต้องพิมพ์ "${currentSeason.name}" ให้ตรงเพื่อยืนยัน` });
+                return;
+            }
+
+            const result = await seasonManager.runSeasonReset();
+            addServerLog(
+                io,
+                'admin',
+                null,
+                `Admin ปิด ${result.archived.name} (เก็บอันดับ ${result.archived.entries.length} คน) และรีเซ็ตสถิติ ${result.resetCount} คน เริ่ม ${result.current.name}`,
+                'warning'
+            );
+
+            done({
+                success: true,
+                archivedName: result.archived.name,
+                archivedCount: result.archived.entries.length,
+                currentName: result.current.name,
+                resetCount: result.resetCount,
+                backupFile: result.backupFile
+            });
+        } catch (error) {
+            console.error('Error resetting season:', error);
+            done({ success: false, error: error.message });
+        }
+    });
+
     // Admin: Bulk delete player stats
     socket.on('admin_bulkDeleteStats', async function(data, callback) {
         try {

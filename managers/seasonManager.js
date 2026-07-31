@@ -8,7 +8,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const SEASONS_FILE = path.join(__dirname, '../data/seasons.json');
+const DATA_DIR = path.join(__dirname, '../data');
+const SEASONS_FILE = path.join(DATA_DIR, 'seasons.json');
+const STATS_FILE = path.join(DATA_DIR, 'playerStats.json');
+const PLAYERS_FILE = path.join(DATA_DIR, 'players.json');
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
 // { current: { number, name, startedAt }, archived: [ { number, name, ... , entries: [] } ] }
 let seasonData = null;
@@ -194,6 +198,101 @@ function archiveCurrentSeason(options = {}) {
     return { archived: archivedSeason, current: { ...data.current } };
 }
 
+/**
+ * เดาเวลาเริ่ม season ย้อนหลัง ถ้ายังไม่เคยบันทึกไว้ (ใช้ createdAt ที่เก่าที่สุดใน players.json)
+ */
+function guessSeasonStartedAt() {
+    if (!fs.existsSync(PLAYERS_FILE)) {
+        return null;
+    }
+
+    try {
+        const players = JSON.parse(fs.readFileSync(PLAYERS_FILE, 'utf8'));
+        let earliest = null;
+
+        for (const player of Object.values(players || {})) {
+            const createdAt = player && player.createdAt ? new Date(player.createdAt) : null;
+            if (createdAt && !Number.isNaN(createdAt.getTime())) {
+                if (!earliest || createdAt < earliest) {
+                    earliest = createdAt;
+                }
+            }
+        }
+
+        return earliest ? earliest.toISOString() : null;
+    } catch (error) {
+        console.warn('อ่าน players.json ไม่ได้:', error.message);
+        return null;
+    }
+}
+
+/**
+ * สำรอง playerStats.json ดิบก่อนรีเซ็ต (เฉพาะกรณีใช้ JSON fallback — ถ้าใช้ Mongo จะไม่มีไฟล์นี้)
+ * @returns {string | null} path แบบ relative หรือ null ถ้าไม่มีไฟล์ให้สำรอง
+ */
+function backupStatsFile(seasonNumber) {
+    if (!fs.existsSync(STATS_FILE)) {
+        return null;
+    }
+
+    try {
+        if (!fs.existsSync(BACKUP_DIR)) {
+            fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        }
+
+        const backupPath = path.join(BACKUP_DIR, `playerStats-season-${seasonNumber}.json`);
+        fs.copyFileSync(STATS_FILE, backupPath);
+        return path.relative(path.join(__dirname, '..'), backupPath);
+    } catch (error) {
+        console.error('สำรอง playerStats.json ไม่สำเร็จ:', error.message);
+        return null;
+    }
+}
+
+/**
+ * สรุปสถานะ season ปัจจุบันก่อนรีเซ็ต (ไว้ให้หน้า admin ยืนยันก่อนกด)
+ */
+function getSeasonResetPreview() {
+    const statsManager = require('./statsManager');
+    const allStats = statsManager.getAllStats();
+
+    return {
+        season: getCurrentSeason(),
+        rankedCount: statsManager.getLeaderboard().length,
+        totalPlayers: allStats.length,
+        totalGames: allStats.reduce((sum, stat) => sum + (Number(stat.totalGames) || 0), 0)
+    };
+}
+
+/**
+ * ปิด season ปัจจุบันแบบครบวงจร: สำรองไฟล์ → เก็บอันดับเป็นประวัติ → รีเซ็ตสถิติทุกคน
+ * ใช้ร่วมกันระหว่าง CLI (scripts/reset-season.js) กับปุ่มในหน้า admin
+ * @returns {Promise<{ archived: Object, current: Object, resetCount: number, backupFile: string|null }>}
+ */
+async function runSeasonReset() {
+    const statsManager = require('./statsManager');
+    const preview = getSeasonResetPreview();
+    const entries = statsManager.getLeaderboard();
+
+    if (entries.length === 0) {
+        throw new Error('ยังไม่มีใครติดอันดับใน season นี้ — ไม่มีอะไรให้เก็บเป็นประวัติ');
+    }
+
+    const backupFile = backupStatsFile(preview.season.number);
+
+    const { archived, current } = archiveCurrentSeason({
+        entries,
+        totalGames: preview.totalGames,
+        backupFile,
+        startedAt: guessSeasonStartedAt(),
+        endedAt: new Date().toISOString()
+    });
+
+    const resetCount = await statsManager.resetAllStatsForNewSeason();
+
+    return { archived, current, resetCount, backupFile };
+}
+
 loadSeasons();
 
 module.exports = {
@@ -203,5 +302,7 @@ module.exports = {
     getCurrentSeason,
     listArchivedSeasons,
     getArchivedSeason,
-    archiveCurrentSeason
+    archiveCurrentSeason,
+    getSeasonResetPreview,
+    runSeasonReset
 };

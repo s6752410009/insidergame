@@ -1151,6 +1151,7 @@
                             <option value="has-spyfall">มี Spyfall</option>
                         </select>
                     </div>
+                    <button class="btn-admin btn-warning" onclick="resetSeason()" id="resetSeasonBtn" style="display:none;">🏆 ปิด Season / รีแรงค์</button>
                     <button class="btn-admin btn-danger" onclick="clearAllStats()" id="clearAllStatsBtn" style="display:none;">🗑️ ลบทั้งหมด</button>
                     <button class="btn-admin btn-warning" onclick="deleteSelectedStats()" id="deleteSelectedBtn" style="display:none;">🗑️ ลบที่เลือก (<span id="selectedStatsCount">0</span>)</button>
                     <button class="btn-admin btn-primary" onclick="exportStats()">📥 Export CSV</button>
@@ -1945,11 +1946,13 @@ $(function() {
 
         const statList = Array.isArray(stats) ? [...stats] : [];
         pruneSelection(dashboardState.stats.selectedIds, new Set(statList.map(stat => stat.playerId)));
-        // แสดง/ซ่อนปุ่ม Clear All
+        // แสดง/ซ่อนปุ่ม Clear All และปุ่มปิด Season
         if (statList.length > 0) {
             $('#clearAllStatsBtn').show();
+            $('#resetSeasonBtn').show();
         } else {
             $('#clearAllStatsBtn').hide();
+            $('#resetSeasonBtn').hide();
         }
         
         if (statList.length === 0) {
@@ -2563,6 +2566,79 @@ $(function() {
         });
     };
     
+    // ปิด season ปัจจุบัน: เก็บอันดับเป็นประวัติ แล้วรีเซ็ตสถิติทุกคน
+    window.resetSeason = function() {
+        socket.emit('admin_seasonPreview', function(info) {
+            if (!info || !info.success) {
+                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: (info && info.error) || 'ดึงข้อมูล season ไม่ได้', background: '#1e1e1e', color: '#fff' });
+                return;
+            }
+
+            if (!info.rankedCount) {
+                Swal.fire({ icon: 'info', title: 'ยังไม่มีใครติดอันดับ', text: 'ต้องมีคนเล่นอย่างน้อย 1 เกมก่อนถึงจะปิด season ได้', background: '#1e1e1e', color: '#fff' });
+                return;
+            }
+
+            const seasonName = info.season.name;
+            const topThree = Array.isArray(info.topThree) ? info.topThree : [];
+            const medals = ['🥇', '🥈', '🥉'];
+            const topList = topThree.length
+                ? '<ul style="text-align:left; margin:8px 0 12px 0; padding-left:22px; color:#ddd; font-size:0.9em;">' +
+                  topThree.map((entry, index) =>
+                      `<li>${medals[index]} <strong>${escapeHtml(entry.playerName)}</strong> — ${entry.wins} ชนะ / ${entry.totalGames} เกม</li>`
+                  ).join('') + '</ul>'
+                : '';
+
+            Swal.fire({
+                title: '🏆 ปิด ' + escapeHtml(seasonName),
+                html:
+                    '<div style="text-align:left; color:#ccc; font-size:0.92em;">' +
+                    `<p style="margin:0 0 10px 0;">จะเก็บอันดับ <strong style="color:#ffd700;">${info.rankedCount} คน</strong> ไว้เป็นประวัติ ` +
+                    `แล้ว<strong style="color:#e74c3c;">ล้างสถิติของทุกคน (${info.totalPlayers} คน) เป็น 0</strong> เพื่อเริ่ม season ถัดไป</p>` +
+                    (topList ? `<p style="margin:0 0 4px 0; color:#aaa;">แชมป์ที่จะถูกบันทึก:</p>${topList}` : '') +
+                    '<p style="margin:0 0 10px 0; color:#888; font-size:0.9em;">ผู้เล่นจะเห็นประกาศรีแรงค์ในหน้าแรก และดูอันดับเก่าได้จากแท็บ season บน leaderboard</p>' +
+                    `<p style="margin:0; color:#e74c3c;">พิมพ์ <strong>${escapeHtml(seasonName)}</strong> เพื่อยืนยัน</p>` +
+                    '</div>',
+                input: 'text',
+                inputPlaceholder: seasonName,
+                inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+                showCancelButton: true,
+                confirmButtonText: 'ปิด season และรีแรงค์',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#e67e22',
+                background: '#1e1e1e',
+                color: '#fff',
+                preConfirm: (typed) => {
+                    if (String(typed || '').trim().toLowerCase() !== seasonName.toLowerCase()) {
+                        Swal.showValidationMessage(`ต้องพิมพ์ "${seasonName}" ให้ตรง`);
+                        return false;
+                    }
+                    return String(typed).trim();
+                }
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                socket.emit('admin_resetSeason', { confirmName: result.value }, function(res) {
+                    if (res && res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: `เริ่ม ${res.currentName} แล้ว`,
+                            html:
+                                `เก็บอันดับ ${res.archivedCount} คนไว้เป็น "${escapeHtml(res.archivedName)}"<br>` +
+                                `รีเซ็ตสถิติ ${res.resetCount} คน` +
+                                (res.backupFile ? `<br><span style="color:#888; font-size:0.85em;">สำรองไว้ที่ ${escapeHtml(res.backupFile)}</span>` : ''),
+                            background: '#1e1e1e',
+                            color: '#fff'
+                        });
+                        loadData();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: (res && res.error) || 'รีแรงค์ไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            });
+        });
+    };
+
     // ลบสถิติทั้งหมด
     window.clearAllStats = function() {
         Swal.fire({
