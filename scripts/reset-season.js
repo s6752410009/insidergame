@@ -47,12 +47,15 @@ async function main() {
         return;
     }
 
-    const result = await seasonManager.runSeasonReset();
+    const result = await seasonManager.runSeasonReset({
+        // --force = ยอมรีเซ็ตแม้เขียนไฟล์สำรองไม่ได้
+        allowWithoutBackup: process.argv.includes('--force')
+    });
 
     if (result.backupFile) {
         console.log(`\n💾 สำรองสถิติดิบไว้ที่ ${result.backupFile}`);
     } else {
-        console.log('\n⚠️  ไม่พบ data/playerStats.json จึงไม่ได้สำรองไฟล์ดิบ (ใช้ MongoDB อยู่?)');
+        console.log('\n⚠️  ไม่ได้สำรองไฟล์ดิบ (ข้ามด้วย --force) — roleStats/gameHistory กู้ไม่ได้');
     }
 
     console.log(`📚 เก็บอันดับ ${result.archived.entries.length} คนไว้เป็น "${result.archived.name}"`);

@@ -10,7 +10,6 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const SEASONS_FILE = path.join(DATA_DIR, 'seasons.json');
-const STATS_FILE = path.join(DATA_DIR, 'playerStats.json');
 const PLAYERS_FILE = path.join(DATA_DIR, 'players.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
@@ -227,11 +226,16 @@ function guessSeasonStartedAt() {
 }
 
 /**
- * สำรอง playerStats.json ดิบก่อนรีเซ็ต (เฉพาะกรณีใช้ JSON fallback — ถ้าใช้ Mongo จะไม่มีไฟล์นี้)
- * @returns {string | null} path แบบ relative หรือ null ถ้าไม่มีไฟล์ให้สำรอง
+ * สำรองสถิติดิบทั้งหมดก่อนรีเซ็ต
+ * ดึงจาก statsManager แทนการ copy ไฟล์ เพื่อให้ได้ backup ครบทั้งตอนใช้ JSON และ MongoDB
+ * (snapshot ใน seasons.json เก็บแค่ตารางอันดับ — roleStats/winByRole/modeStats/gameHistory
+ * อยู่ในไฟล์นี้ที่เดียว ถ้าไม่สำรองไว้จะกู้ไม่ได้)
+ * @param {number} seasonNumber
+ * @param {Array} allStats - ผลจาก statsManager.getAllStats()
+ * @returns {string | null} path แบบ relative หรือ null ถ้าสำรองไม่สำเร็จ
  */
-function backupStatsFile(seasonNumber) {
-    if (!fs.existsSync(STATS_FILE)) {
+function backupStatsFile(seasonNumber, allStats) {
+    if (!Array.isArray(allStats) || allStats.length === 0) {
         return null;
     }
 
@@ -240,11 +244,19 @@ function backupStatsFile(seasonNumber) {
             fs.mkdirSync(BACKUP_DIR, { recursive: true });
         }
 
+        // เก็บรูปแบบเดียวกับ playerStats.json (object keyed by playerId) เพื่อให้กู้กลับได้ตรงๆ
+        const snapshot = {};
+        for (const stat of allStats) {
+            if (stat && stat.playerId) {
+                snapshot[stat.playerId] = stat;
+            }
+        }
+
         const backupPath = path.join(BACKUP_DIR, `playerStats-season-${seasonNumber}.json`);
-        fs.copyFileSync(STATS_FILE, backupPath);
+        fs.writeFileSync(backupPath, JSON.stringify(snapshot, null, 2), 'utf8');
         return path.relative(path.join(__dirname, '..'), backupPath);
     } catch (error) {
-        console.error('สำรอง playerStats.json ไม่สำเร็จ:', error.message);
+        console.error('สำรองสถิติดิบไม่สำเร็จ:', error.message);
         return null;
     }
 }
@@ -265,11 +277,13 @@ function getSeasonResetPreview() {
 }
 
 /**
- * ปิด season ปัจจุบันแบบครบวงจร: สำรองไฟล์ → เก็บอันดับเป็นประวัติ → รีเซ็ตสถิติทุกคน
+ * ปิด season ปัจจุบันแบบครบวงจร: สำรองสถิติดิบ → เก็บอันดับเป็นประวัติ → รีเซ็ตสถิติทุกคน
  * ใช้ร่วมกันระหว่าง CLI (scripts/reset-season.js) กับปุ่มในหน้า admin
+ * @param {Object} [options]
+ * @param {boolean} [options.allowWithoutBackup=false] - ยอมรีเซ็ตแม้สำรองไฟล์ไม่สำเร็จ
  * @returns {Promise<{ archived: Object, current: Object, resetCount: number, backupFile: string|null }>}
  */
-async function runSeasonReset() {
+async function runSeasonReset(options = {}) {
     const statsManager = require('./statsManager');
     const preview = getSeasonResetPreview();
     const entries = statsManager.getLeaderboard();
@@ -278,7 +292,12 @@ async function runSeasonReset() {
         throw new Error('ยังไม่มีใครติดอันดับใน season นี้ — ไม่มีอะไรให้เก็บเป็นประวัติ');
     }
 
-    const backupFile = backupStatsFile(preview.season.number);
+    const backupFile = backupStatsFile(preview.season.number, statsManager.getAllStats());
+
+    // ไม่มี backup = roleStats/gameHistory กู้ไม่ได้ ต้องยืนยันชัดเจนก่อนถึงจะยอมเดินต่อ
+    if (!backupFile && !options.allowWithoutBackup) {
+        throw new Error('สำรองสถิติดิบไม่สำเร็จ (เขียน data/backups/ ไม่ได้?) — ยกเลิกการรีเซ็ตเพื่อกันข้อมูลหาย');
+    }
 
     const { archived, current } = archiveCurrentSeason({
         entries,
