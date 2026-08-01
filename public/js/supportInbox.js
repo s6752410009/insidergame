@@ -35,11 +35,9 @@
         threadElement.appendChild(empty);
         if (isError) {
             const retry = document.createElement('a');
-            retry.className = 'support-back';
+            retry.className = 'support-retry-link';
             retry.href = '/support?playerId=' + encodeURIComponent(playerId || '');
             retry.textContent = 'เปิดหน้าติดต่อแอดมินใหม่อีกครั้ง';
-            retry.style.display = 'inline-block';
-            retry.style.marginTop = '12px';
             threadElement.appendChild(retry);
         }
     }

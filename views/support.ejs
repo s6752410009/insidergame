@@ -5,7 +5,6 @@
             <h1>✉️ ข้อความถึง Site Admin</h1>
             <p>ส่งปัญหาหรือคำถามไว้ได้เลย แอดมินจะเห็นเมื่อกลับมาออนไลน์ และคุณกลับมาเช็กสถานะว่าอ่านแล้วหรือยังได้ที่หน้านี้</p>
         </div>
-        <a class="support-back" href="/?playerId=<%= player.playerId %>">กลับหน้าหลัก</a>
     </div>
 
     <section aria-label="บทสนทนากับ Site Admin">
@@ -20,6 +19,11 @@
         <p class="support-feedback" id="support-feedback" role="status"></p>
     </section>
 </main>
+
+<%- contentFor('footer') %>
+<div class="support-footer">
+    <a class="support-home-btn" href="/?playerId=<%= player.playerId %>">← กลับหน้าหลัก</a>
+</div>
 
 <%- contentFor('script') %>
 <script src="/static/js/supportInbox.js"></script>

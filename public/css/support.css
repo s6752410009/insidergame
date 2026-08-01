@@ -44,10 +44,7 @@ body:has(.support-fab:not([hidden])) .floating-donate-btn {
 }
 
 .support-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
+    display: block;
     padding: 20px 0;
 }
 
@@ -64,11 +61,45 @@ body:has(.support-fab:not([hidden])) .floating-donate-btn {
     line-height: 1.55;
 }
 
-.support-back {
-    flex: 0 0 auto;
+.support-retry-link {
+    display: inline-block;
+    margin-top: 12px;
     color: #f3c969;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.support-footer {
+    display: flex;
+    justify-content: center;
+    padding: 8px 16px 24px;
+}
+
+.support-home-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 12px 28px;
+    border: 2px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: linear-gradient(180deg, #3a3358 0%, #2a2444 100%);
+    color: #fff8df;
+    font-weight: 700;
+    font-size: 1rem;
     text-decoration: none;
-    padding: 8px 0;
+    box-shadow: 0 10px 24px rgba(11, 7, 20, 0.28);
+    transition: transform 160ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out;
+}
+
+.support-home-btn:hover,
+.support-home-btn:focus-visible {
+    color: #20170b;
+    background: linear-gradient(180deg, #ffe09a 0%, #f3c969 100%);
+    border-color: #f3c969;
+    text-decoration: none;
+    transform: translateY(-2px);
 }
 
 .support-thread {
