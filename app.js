@@ -26,10 +26,12 @@ const io = new Server(server, {
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
 const APP_VERSION = packageJson.version || '0.0.0';
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://insider-th.me';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'session-insider-secret';
 const SEO_PREVIEW_PLAYER_ID = '00000000-0000-4000-8000-000000000001';
 const CRAWLER_USER_AGENT_REGEX = /(googlebot|bingbot|duckduckbot|slurp|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|applebot|petalbot|bytespider|gptbot|chatgpt-user|claudebot|anthropic-ai|ccbot|perplexitybot|amazonbot)/i;
 // Import managers
@@ -151,8 +153,57 @@ function requireAdminSession(req, res, next) {
 }
 
 function getSupportSessionPlayerId(req) {
-    const playerId = String(req.session?.supportPlayerId || '');
-    return playerManager.isValidPlayerId(playerId) ? playerId : null;
+    const supportId = String(req.session?.supportPlayerId || '');
+    if (playerManager.isValidPlayerId(supportId)) return supportId;
+    const sessionId = String(req.session?.playerId || '');
+    return playerManager.isValidPlayerId(sessionId) ? sessionId : null;
+}
+
+function createSupportToken(playerId) {
+    const expiresAt = Date.now() + (24 * 60 * 60 * 1000);
+    const payload = `${playerId}.${expiresAt}`;
+    const signature = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+    return `${payload}.${signature}`;
+}
+
+function verifySupportToken(token, playerId) {
+    const raw = String(token || '');
+    const parts = raw.split('.');
+    if (parts.length !== 3) return false;
+    const [tokenPlayerId, expiresAt, signature] = parts;
+    if (!playerManager.isValidPlayerId(tokenPlayerId) || tokenPlayerId !== String(playerId || '')) {
+        return false;
+    }
+    const expiresMs = Number(expiresAt);
+    if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) {
+        return false;
+    }
+    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(`${tokenPlayerId}.${expiresAt}`).digest('hex');
+    try {
+        const left = Buffer.from(signature, 'utf8');
+        const right = Buffer.from(expected, 'utf8');
+        return left.length === right.length && crypto.timingSafeEqual(left, right);
+    } catch (error) {
+        return false;
+    }
+}
+
+function resolveSupportPlayerId(req) {
+    const requestedId = String(req.query?.playerId || req.body?.playerId || '');
+    const sessionId = getSupportSessionPlayerId(req);
+    const token = req.get('x-support-token') || req.body?.supportToken || req.query?.supportToken || '';
+
+    if (sessionId && (!requestedId || requestedId === sessionId)) {
+        return sessionId;
+    }
+    if (requestedId && verifySupportToken(token, requestedId)) {
+        if (req.session) {
+            req.session.supportPlayerId = requestedId;
+            req.session.playerId = requestedId;
+        }
+        return requestedId;
+    }
+    return null;
 }
 
 function buildCanonicalUrl(pathname = '/') {
@@ -2603,8 +2654,10 @@ async function cleanupGhostPlayers(options = {}) {
 
 // ==================== EXPRESS MIDDLEWARE & ROUTES ====================
 
+app.set('trust proxy', 1);
+
 const sessionMiddleware = session({
-    secret: process.env.SESSION_SECRET || 'session-insider-secret',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -3107,13 +3160,16 @@ app.get('/profile', function(req, res) {
 app.get('/support', function(req, res) {
     const player = getRenderablePlayer(req.playerId);
     req.session.supportPlayerId = player.playerId;
-    res.render('support.ejs', { player });
+    res.render('support.ejs', {
+        player,
+        supportToken: createSupportToken(player.playerId)
+    });
 });
 
 app.get('/api/admin-messages/thread', async function(req, res) {
     try {
-        const playerId = getSupportSessionPlayerId(req);
-        if (!playerId || (req.query.playerId && String(req.query.playerId) !== playerId)) {
+        const playerId = resolveSupportPlayerId(req);
+        if (!playerId) {
             return res.status(403).json({ success: false, error: 'เปิดหน้าติดต่อแอดมินใหม่อีกครั้ง' });
         }
         const thread = await adminMessageManager.markRead(playerId, 'user');
@@ -3126,9 +3182,9 @@ app.get('/api/admin-messages/thread', async function(req, res) {
 
 app.post('/api/admin-messages', async function(req, res) {
     try {
-        const playerId = getSupportSessionPlayerId(req);
+        const playerId = resolveSupportPlayerId(req);
         const body = normalizeSupportBody(req.body?.message);
-        if (!playerId || String(req.body?.playerId || '') !== playerId) {
+        if (!playerId) {
             return res.status(403).json({ success: false, error: 'เปิดหน้าติดต่อแอดมินใหม่อีกครั้ง' });
         }
         if (!body || body.length > 2000) {

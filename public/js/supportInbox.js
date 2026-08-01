@@ -5,12 +5,20 @@
     if (!root) return;
 
     const playerId = root.dataset.playerId;
+    const supportToken = root.dataset.supportToken || '';
     const threadElement = document.getElementById('support-thread');
     const form = document.getElementById('support-form');
     const input = document.getElementById('support-message-input');
     const submitButton = document.getElementById('support-send');
     const feedback = document.getElementById('support-feedback');
     let requestInFlight = false;
+
+    function supportHeaders(extra) {
+        return Object.assign({
+            Accept: 'application/json',
+            'X-Support-Token': supportToken
+        }, extra || {});
+    }
 
     function formatTime(value) {
         return new Intl.DateTimeFormat('th-TH', {
@@ -19,14 +27,28 @@
         }).format(new Date(value));
     }
 
+    function showThreadMessage(text, isError) {
+        threadElement.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'support-empty';
+        empty.textContent = text;
+        threadElement.appendChild(empty);
+        if (isError) {
+            const retry = document.createElement('a');
+            retry.className = 'support-back';
+            retry.href = '/support?playerId=' + encodeURIComponent(playerId || '');
+            retry.textContent = 'เปิดหน้าติดต่อแอดมินใหม่อีกครั้ง';
+            retry.style.display = 'inline-block';
+            retry.style.marginTop = '12px';
+            threadElement.appendChild(retry);
+        }
+    }
+
     function renderThread(thread) {
         threadElement.replaceChildren();
         const messages = Array.isArray(thread?.messages) ? thread.messages : [];
         if (!messages.length) {
-            const empty = document.createElement('div');
-            empty.className = 'support-empty';
-            empty.textContent = 'ยังไม่มีข้อความ\nพิมพ์หาแอดมินได้เลย ข้อความจะถูกเก็บไว้แม้แอดมินออฟไลน์';
-            threadElement.appendChild(empty);
+            showThreadMessage('ยังไม่มีข้อความ\nพิมพ์หาแอดมินได้เลย ข้อความจะถูกเก็บไว้แม้แอดมินออฟไลน์');
             return;
         }
 
@@ -56,17 +78,22 @@
         requestInFlight = true;
         try {
             const response = await fetch(`/api/admin-messages/thread?playerId=${encodeURIComponent(playerId)}`, {
-                headers: { Accept: 'application/json' },
-                cache: 'no-store'
+                headers: supportHeaders(),
+                cache: 'no-store',
+                credentials: 'same-origin'
             });
             const data = await response.json();
             if (!response.ok || !data.success) throw new Error(data.error || 'โหลดข้อความไม่สำเร็จ');
             renderThread(data.thread);
-            if (!silent) feedback.textContent = '';
+            if (!silent) {
+                feedback.textContent = '';
+                feedback.classList.remove('is-error');
+            }
         } catch (error) {
             if (!silent) {
                 feedback.textContent = error.message;
                 feedback.classList.add('is-error');
+                showThreadMessage('โหลดข้อความไม่สำเร็จ', true);
             }
         } finally {
             requestInFlight = false;
@@ -84,8 +111,9 @@
         try {
             const response = await fetch('/api/admin-messages', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-                body: JSON.stringify({ playerId, message })
+                headers: supportHeaders({ 'Content-Type': 'application/json' }),
+                credentials: 'same-origin',
+                body: JSON.stringify({ playerId, message, supportToken })
             });
             const data = await response.json();
             if (!response.ok || !data.success) throw new Error(data.error || 'ส่งข้อความไม่สำเร็จ');
