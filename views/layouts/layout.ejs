@@ -81,13 +81,15 @@
         <link rel="stylesheet" href="/static/css/form.css">
         <link rel="stylesheet" href="/static/css/mobile.css">
         <link rel="stylesheet" href="/static/css/game-icons.css">
+        <link rel="stylesheet" href="/static/css/playerAvatar.css">
+        <link rel="stylesheet" href="/static/css/support.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <link rel="stylesheet" href=
 "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.css">
         <link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
         <link rel="icon" type="image/png" sizes="96x96" href="/static/image/favicon-96x96.png">
         <link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         
         <!-- PWA Support -->
         <link rel="manifest" href="/static/manifest.json">
@@ -102,7 +104,7 @@
         
         <div class="container-fluid">
             <header>
-                <img src="/static/image/title.jpg" />
+                <img src="/static/image/title.jpg" alt="Insider Game" />
             </header>
             <div class="row">
                 <div class="col-lg-12">
@@ -121,12 +123,30 @@
             <img id="music-toggle-btn" src="/static/image/song.png" alt="Music Toggle" style="width: 30px; height: 30px; cursor: pointer; display: block;">
         </div>
 
+        <a id="support-fab" class="support-fab" href="/support" aria-label="ส่งข้อความถึง Site Admin">
+            <span aria-hidden="true">✉️</span><span>ติดต่อแอดมิน</span>
+        </a>
+
         <!-- Javascript -->
         <script src="//code.jquery.com/jquery-1.10.2.js"></script>
         <script src="/socket.io/socket.io.js"></script>
         <script src="/static/js/timer.js"></script>
         <!-- Player Identity System - ต้องโหลดก่อน scripts อื่น -->
         <script src="/static/js/playerIdentity.js"></script>
+        <!-- ตัว render รูปผู้เล่น + กรอบ ใช้ร่วมกันทุกหน้า -->
+        <script src="/static/js/playerAvatar.js"></script>
+        <script>
+            (function() {
+                var button = document.getElementById('support-fab');
+                if (!button) return;
+                if (location.pathname.startsWith('/admin') || location.pathname === '/support' || location.pathname === '/banned') {
+                    button.hidden = true;
+                    return;
+                }
+                var playerId = localStorage.getItem('insiderGamePlayerId');
+                if (playerId) button.href = '/support?playerId=' + encodeURIComponent(playerId);
+            })();
+        </script>
         <!-- เพิ่ม SweetAlert2 CDN ที่นี่ -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -158,10 +178,16 @@
                 // Global socket listener สำหรับ playerDeleted event
                 // จะทำงานเมื่อ socket เชื่อมต่อแล้ว
                 if (typeof io !== 'undefined') {
-                    var globalSocket = io();
-                    globalSocket.on('playerDeleted', function(data) {
+                    window.appSocket = window.appSocket || io({
+                        reconnection: true,
+                        reconnectionAttempts: Infinity,
+                        reconnectionDelay: 500,
+                        reconnectionDelayMax: 5000,
+                        transports: ['websocket', 'polling']
+                    });
+                    window.appSocket.on('playerDeleted', function(data) {
                         // ล้าง localStorage และ redirect ไปหน้าหลัก
-                        localStorage.removeItem('playerId');
+                        localStorage.removeItem('insiderGamePlayerId');
                         alert(data.message || 'บัญชีของคุณถูกลบ กรุณาสร้างบัญชีใหม่');
                         window.location.href = '/';
                     });

@@ -300,7 +300,7 @@ async function main() {
         assert(boardMetrics.guideSteps >= 5, `expected guide steps to render, received ${boardMetrics.guideSteps}`);
         assert(/บทของคุณ/.test(boardMetrics.roleTitle), `missing role panel title: ${boardMetrics.roleTitle}`);
         assert(/พาเล่นโต๊ะนี้/.test(boardMetrics.guideTitle), `missing guide panel title: ${boardMetrics.guideTitle}`);
-        assert(/ตลาดกับแผนลงมือ/.test(boardMetrics.stageTitle), `missing stage panel title: ${boardMetrics.stageTitle}`);
+        assert(/ตลาดมืด|ลงมือ/.test(boardMetrics.stageTitle), `missing phase-specific stage title: ${boardMetrics.stageTitle}`);
         assert(/คนบนโต๊ะ/.test(boardMetrics.playersTitle), `missing players panel title: ${boardMetrics.playersTitle}`);
         assert(/ผู้ดำเนินเกมประกาศ/.test(boardMetrics.announcerTitle), `missing announcer title: ${boardMetrics.announcerTitle}`);
         assert(boardMetrics.announcerNoteCount >= 1, `expected announcer notes, received ${boardMetrics.announcerNoteCount}`);

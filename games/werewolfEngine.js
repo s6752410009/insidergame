@@ -1288,6 +1288,12 @@ function canSkipNight(room) {
     return skipCount >= required;
 }
 
+function haveAllRequiredNightActorsDecided(room) {
+    return getRequiredNightActors(room).every(actor =>
+        hasNightActionSubmitted(room, actor) || room.gameState.nightSkips?.[actor.playerId]
+    );
+}
+
 function fillMissingNightActionsAsSkip(room) {
     if (!room?.gameState?.nightActions) {
         return;
@@ -2112,9 +2118,8 @@ function submitNightSkip(room, actorId) {
     room.gameState.nightSkips[actorId] = true;
     room.gameState.lastAction = Date.now();
 
-    if (canSkipNight(room)) {
-        fillMissingNightActionsAsSkip(room);
-        pushHistory(room, 'เสียงพร้อมข้ามกลางคืนเกินครึ่ง คืนจึงจบทันทีและเข้าสู่ตอนเช้า', 'night');
+    if (canSkipNight(room) && haveAllRequiredNightActorsDecided(room)) {
+        pushHistory(room, 'เสียงพร้อมข้ามกลางคืนเกินครึ่ง และทุกบทบาทที่ต้องลงมือตัดสินใจแล้ว จึงเข้าสู่ตอนเช้า', 'night');
         return {
             ...resolveNight(room),
             skippedToMorning: true,
@@ -2127,6 +2132,7 @@ function submitNightSkip(room, actorId) {
     return {
         resolved: false,
         skippedToMorning: false,
+        waitingForRequiredRoles: canSkipNight(room) && !haveAllRequiredNightActorsDecided(room),
         skipCount: getNightSkipCount(room),
         totalAlive: getAlivePlayers(room).length,
         skipNeeded: Math.floor(getAlivePlayers(room).length / 2) + 1
@@ -3109,6 +3115,7 @@ function buildClientState(room, viewerPlayerId) {
             name: player.name,
             color: player.color,
             avatar: player.avatar,
+            avatarFrame: player.avatarFrame || 'none',
             alive: player.alive !== false,
             isSelf: player.playerId === viewerPlayerId,
             revealedRole: room.gameState.phase === 'finished' ? (player.revealedRole || null) : null,
@@ -3125,8 +3132,6 @@ function buildClientState(room, viewerPlayerId) {
         })),
         history: room.gameState.history || [],
         actionState: {
-            aliveWerewolves: getAliveWerewolves(room).length,
-            aliveVillagers: getAliveNonWerewolves(room).length,
             completedDayDecisions: Array.from(getCompletedDayActorIds(room)).length,
             requiredDayDecisions: getAlivePlayers(room).length,
             nightActions: getNightActionOptions(room, viewer),

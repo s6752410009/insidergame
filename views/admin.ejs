@@ -896,10 +896,211 @@
     }
 </style>
 
+<style>
+    .admin-inbox-bell {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        border: 1px solid rgba(251, 191, 36, 0.58);
+        border-radius: 12px;
+        background: rgba(251, 191, 36, 0.08);
+        color: #fbbf24;
+        cursor: pointer;
+        font-size: 1.15rem;
+    }
+
+    .admin-inbox-badge,
+    .admin-tab-badge {
+        display: none;
+        min-width: 20px;
+        height: 20px;
+        align-items: center;
+        justify-content: center;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: #f87171;
+        color: #190707;
+        font: 800 0.72rem/1 'Rajdhani', sans-serif;
+    }
+
+    .admin-inbox-badge {
+        position: absolute;
+        top: -7px;
+        right: -7px;
+    }
+
+    .admin-tab-badge {
+        margin-left: 5px;
+        vertical-align: middle;
+    }
+
+    .admin-inbox-badge.has-unread,
+    .admin-tab-badge.has-unread {
+        display: inline-flex;
+    }
+
+    .admin-inbox-layout {
+        display: grid;
+        grid-template-columns: minmax(250px, 0.78fr) minmax(360px, 1.55fr);
+        min-height: 520px;
+        border: 1px solid var(--ad-border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(10, 13, 22, 0.55);
+    }
+
+    .admin-thread-list {
+        overflow-y: auto;
+        border-right: 1px solid var(--ad-border);
+        background: rgba(15, 18, 32, 0.74);
+    }
+
+    .admin-thread-item {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 12px;
+        padding: 14px 16px;
+        border: 0;
+        border-bottom: 1px solid var(--ad-border);
+        background: transparent;
+        color: var(--ad-text);
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .admin-thread-item:hover,
+    .admin-thread-item.is-active {
+        background: rgba(74, 163, 255, 0.11);
+    }
+
+    .admin-thread-item strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .admin-thread-preview {
+        grid-column: 1 / -1;
+        overflow: hidden;
+        color: var(--ad-text-dim);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.86rem;
+    }
+
+    .admin-thread-unread {
+        min-width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #fbbf24;
+        color: #1c1202;
+        font-weight: 800;
+    }
+
+    .admin-conversation {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        min-width: 0;
+    }
+
+    .admin-conversation-head {
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--ad-border);
+        color: var(--ad-text-dim);
+    }
+
+    .admin-conversation-head strong {
+        display: block;
+        color: var(--ad-text);
+        font-size: 1.05rem;
+    }
+
+    .admin-conversation-body {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-y: auto;
+        max-height: 470px;
+        padding: 18px;
+    }
+
+    .admin-inbox-message {
+        align-self: flex-start;
+        max-width: 82%;
+    }
+
+    .admin-inbox-message.is-admin {
+        align-self: flex-end;
+        text-align: right;
+    }
+
+    .admin-inbox-message p {
+        margin: 0;
+        padding: 10px 13px;
+        border: 1px solid var(--ad-border);
+        border-radius: 14px 14px 14px 4px;
+        background: #242a43;
+        color: var(--ad-text);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .admin-inbox-message.is-admin p {
+        border-radius: 14px 14px 4px 14px;
+        background: #275e7c;
+    }
+
+    .admin-inbox-message small {
+        display: block;
+        margin-top: 4px;
+        color: var(--ad-text-mute);
+    }
+
+    .admin-reply-form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 14px;
+        border-top: 1px solid var(--ad-border);
+    }
+
+    .admin-reply-form textarea {
+        min-height: 46px;
+        max-height: 140px;
+        resize: vertical;
+    }
+
+    @media (max-width: 760px) {
+        .admin-inbox-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .admin-thread-list {
+            max-height: 220px;
+            border-right: 0;
+            border-bottom: 1px solid var(--ad-border);
+        }
+
+        .admin-reply-form {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
 <div class="admin-container">
     <div class="admin-header">
         <h1>🛠️ Admin Dashboard</h1>
         <div class="admin-header-actions">
+            <button type="button" class="admin-inbox-bell" id="adminInboxBell" aria-label="เปิดกล่องข้อความ">
+                🔔<span class="admin-inbox-badge" id="adminInboxBadge">0</span>
+            </button>
             <a href="/" class="btn-admin btn-refresh" style="text-decoration: none;">← กลับหน้าแรก</a>
             <a href="/admin/logout" class="btn-admin btn-danger" style="text-decoration: none; margin-left: 10px;">🚪 ออกจากระบบ</a>
         </div>
@@ -939,6 +1140,7 @@
     
     <!-- Tabs -->
     <div class="tabs">
+        <button class="tab-btn" data-tab="messages">✉️ ข้อความ <span class="admin-tab-badge" id="adminInboxTabBadge">0</span></button>
         <button class="tab-btn active" data-tab="players">👥 ผู้เล่น</button>
         <button class="tab-btn" data-tab="admins">🛡️ Site Admin</button>
         <button class="tab-btn" data-tab="rooms">🏠 ห้อง</button>
@@ -947,6 +1149,30 @@
         <button class="tab-btn" data-tab="logs">📋 Logs</button>
         <button class="tab-btn" data-tab="settings">🔧 ตั้งค่าเกม</button>
         <button class="tab-btn" data-tab="system">⚙️ ระบบ</button>
+    </div>
+
+    <div class="tab-content" id="tab-messages">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>✉️ กล่องข้อความจากผู้เล่น</h2>
+                <button class="btn-admin btn-refresh" type="button" onclick="loadAdminInbox()">🔄 รีเฟรช</button>
+            </div>
+            <div class="admin-inbox-layout">
+                <div class="admin-thread-list" id="adminThreadList">
+                    <div class="empty-message">กำลังโหลดข้อความ…</div>
+                </div>
+                <section class="admin-conversation" aria-label="บทสนทนาที่เลือก">
+                    <div class="admin-conversation-head" id="adminConversationHead">เลือกผู้เล่นเพื่อเปิดบทสนทนา</div>
+                    <div class="admin-conversation-body" id="adminConversationBody">
+                        <div class="empty-message">ยังไม่ได้เลือกบทสนทนา</div>
+                    </div>
+                    <form class="admin-reply-form" id="adminReplyForm">
+                        <textarea class="broadcast-input" id="adminReplyInput" maxlength="2000" disabled placeholder="เลือกบทสนทนาก่อนตอบ"></textarea>
+                        <button class="btn-admin btn-success" id="adminReplyButton" type="submit" disabled>ส่งคำตอบ</button>
+                    </form>
+                </section>
+            </div>
+        </div>
     </div>
     
     <!-- Players Tab -->
@@ -1327,13 +1553,13 @@
 </div>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(function() {
-    const socket = io();
+    const socket = window.appSocket || io();
     let allData = {};
     let isAuthenticated = false;
+    let selectedInboxPlayerId = null;
+    let adminInboxThreads = [];
     const dashboardState = {
         players: {
             search: '',
@@ -1434,6 +1660,7 @@ $(function() {
                 loadData();
                 loadLogs();
                 loadGameSettingsTab();
+                loadAdminInbox();
             } else if (!silent) {
                 console.error('[Admin] Authentication failed:', response.error);
                 Swal.fire({
@@ -1460,6 +1687,14 @@ $(function() {
         if (tab === 'settings') {
             loadGameSettingsTab();
         }
+        if (tab === 'messages') {
+            loadAdminInbox();
+        }
+    });
+
+    $('#adminInboxBell').on('click', function() {
+        $('.tab-btn[data-tab="messages"]').trigger('click');
+        document.querySelector('.tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     
     // Search players
@@ -3028,11 +3263,116 @@ $(function() {
         });
     };
     
+    // ========== Room Chat (admin spectator) ==========
+    // Holds the transcript of the room whose details modal is currently open,
+    // so live `adminRoomChat` events can be appended without a refetch.
+    const openRoomChat = { roomId: null, messages: [], filter: 'all' };
+    const CHAT_TYPE_STYLES = {
+        'player':    { color: '#e8e8e8', badge: null },
+        'wolf-team': { color: '#ffb3ab', badge: '🐺 หมาป่า' },
+        'presence':  { color: '#7f8c8d', badge: null },
+        'admin':     { color: '#bb8fce', badge: '👑' },
+        'phase':     { color: '#5dade2', badge: null },
+        'system':    { color: '#95a5a6', badge: null }
+    };
+
+    function isChatFromPlayer(entry) {
+        return entry.messageType === 'player' || entry.messageType === 'wolf-team';
+    }
+
+    // Player messages are HTML-escaped server-side before storage. Decode once so
+    // the admin reads the original text; escapeHtml() re-escapes it at render time.
+    function decodeChatMessage(raw) {
+        return String(raw || '')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#0?39;/g, "'")
+            .replace(/&amp;/g, '&');
+    }
+
+    function getFilteredRoomChat() {
+        if (openRoomChat.filter === 'players') {
+            return openRoomChat.messages.filter(isChatFromPlayer);
+        }
+        if (openRoomChat.filter === 'system') {
+            return openRoomChat.messages.filter(entry => !isChatFromPlayer(entry));
+        }
+        return openRoomChat.messages;
+    }
+
+    function formatRoomChatEntry(entry) {
+        const style = CHAT_TYPE_STYLES[entry.messageType] || CHAT_TYPE_STYLES.system;
+        const isWolfChannel = entry.channel === 'werewolf';
+        const name = escapeHtml(entry.displayName || entry.playerName || '?');
+        const nameColor = isChatFromPlayer(entry) ? (entry.color || '#e8e8e8') : style.color;
+        const badge = style.badge
+            ? `<span style="margin-left:6px; padding:0 6px; border-radius:999px; font-size:0.72em; background:rgba(231,76,60,0.18); color:#ffb3ab;">${style.badge}</span>`
+            : '';
+        const replyTo = entry.replyTo
+            ? `<div style="border-left:2px solid #555; padding-left:6px; margin:2px 0 3px; color:#888; font-size:0.78em;">↩ ${escapeHtml(entry.replyTo.playerName || '')}: ${escapeHtml(decodeChatMessage(entry.replyTo.message))}</div>`
+            : '';
+
+        return `
+            <div style="padding:6px 8px; border-radius:6px; margin-bottom:4px; background:${isWolfChannel ? 'rgba(192,57,43,0.12)' : '#222'};">
+                <div style="display:flex; align-items:center; gap:6px; font-size:0.8em; color:#888;">
+                    <span>${escapeHtml(entry.avatar || '👤')}</span>
+                    <strong style="color:${nameColor};">${name}</strong>
+                    ${entry.isSiteAdmin ? '<span title="Site Admin">👑</span>' : ''}
+                    ${badge}
+                    <span style="margin-left:auto;">${escapeHtml(entry.timestamp || '')}</span>
+                </div>
+                ${replyTo}
+                <div style="color:${style.color}; font-size:0.92em; word-break:break-word; white-space:pre-wrap;">${escapeHtml(decodeChatMessage(entry.message))}</div>
+            </div>
+        `;
+    }
+
+    function renderRoomChat(keepScroll = false) {
+        const container = document.getElementById('adminRoomChatBody');
+        if (!container) return;
+
+        const wasNearBottom = !keepScroll
+            || (container.scrollHeight - container.scrollTop - container.clientHeight) < 60;
+        const filtered = getFilteredRoomChat();
+
+        container.innerHTML = filtered.length
+            ? filtered.map(formatRoomChatEntry).join('')
+            : '<div style="color:#888; text-align:center; padding:12px;">ยังไม่มีข้อความในห้องนี้</div>';
+
+        if (wasNearBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
+
+        const counter = document.getElementById('adminRoomChatCount');
+        if (counter) counter.textContent = `${filtered.length} ข้อความ`;
+    }
+
+    window.setRoomChatFilter = function(filter, btn) {
+        openRoomChat.filter = filter;
+        document.querySelectorAll('.room-chat-filter').forEach(el => {
+            el.style.background = el === btn ? '#8e7cff' : '#333';
+            el.style.color = el === btn ? '#fff' : '#bbb';
+        });
+        renderRoomChat();
+    };
+
+    // Live feed: append messages for the room whose modal is open
+    socket.on('adminRoomChat', function(entry) {
+        if (!entry || entry.roomId !== openRoomChat.roomId) return;
+        openRoomChat.messages.push(entry);
+        if (openRoomChat.messages.length > 300) openRoomChat.messages.shift();
+        renderRoomChat(true);
+    });
+
     // ========== Room Details ==========
     window.viewRoomDetails = function(roomId, roomName) {
         socket.emit('admin_getRoomDetails', { roomId }, function(res) {
             if (res.success) {
                 const room = res.room;
+                openRoomChat.roomId = roomId;
+                openRoomChat.messages = Array.isArray(room.chatHistory) ? room.chatHistory.slice() : [];
+                openRoomChat.filter = 'all';
                 const playersHtml = room.players.length > 0 
                     ? room.players.map(p => `
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #222; border-radius: 6px; margin-bottom: 5px;">
@@ -3062,13 +3402,30 @@ $(function() {
                             <div style="max-height: 200px; overflow-y: auto;">
                                 ${playersHtml}
                             </div>
+                            <hr style="border-color: #444; margin: 15px 0;">
+                            <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                                <strong>💬 บทสนทนาในห้อง</strong>
+                                <span style="color:#2ecc71; font-size:0.78em;">● สด</span>
+                                <span id="adminRoomChatCount" style="margin-left:auto; color:#888; font-size:0.78em;"></span>
+                            </div>
+                            <div style="display:flex; gap:6px; margin-bottom:8px;">
+                                <button class="room-chat-filter" style="flex:1; padding:4px 8px; border:0; border-radius:6px; cursor:pointer; background:#8e7cff; color:#fff; font-size:0.8em;" onclick="setRoomChatFilter('all', this)">ทั้งหมด</button>
+                                <button class="room-chat-filter" style="flex:1; padding:4px 8px; border:0; border-radius:6px; cursor:pointer; background:#333; color:#bbb; font-size:0.8em;" onclick="setRoomChatFilter('players', this)">ผู้เล่น</button>
+                                <button class="room-chat-filter" style="flex:1; padding:4px 8px; border:0; border-radius:6px; cursor:pointer; background:#333; color:#bbb; font-size:0.8em;" onclick="setRoomChatFilter('system', this)">ระบบ</button>
+                            </div>
+                            <div id="adminRoomChatBody" style="max-height: 260px; overflow-y: auto; background:#181818; border:1px solid #333; border-radius:8px; padding:8px;"></div>
                         </div>
                     `,
-                    width: 500,
+                    width: 560,
                     background: '#1e1e1e',
                     color: '#fff',
                     showConfirmButton: true,
-                    confirmButtonText: 'ปิด'
+                    confirmButtonText: 'ปิด',
+                    didOpen: () => renderRoomChat(),
+                    willClose: () => {
+                        openRoomChat.roomId = null;
+                        openRoomChat.messages = [];
+                    }
                 });
             } else {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.error, background: '#1e1e1e', color: '#fff' });
@@ -3455,6 +3812,147 @@ $(function() {
         });
     };
     
+    function setAdminInboxBadge(count) {
+        const safeCount = Math.max(0, Number(count) || 0);
+        ['#adminInboxBadge', '#adminInboxTabBadge'].forEach(selector => {
+            const badge = $(selector);
+            badge.text(safeCount > 99 ? '99+' : safeCount);
+            badge.toggleClass('has-unread', safeCount > 0);
+        });
+        $('#adminInboxBell').attr('aria-label', safeCount > 0
+            ? `เปิดกล่องข้อความ มี ${safeCount} ข้อความที่ยังไม่ได้อ่าน`
+            : 'เปิดกล่องข้อความ');
+    }
+
+    function formatInboxTime(value) {
+        if (!value) return '';
+        return new Intl.DateTimeFormat('th-TH', {
+            dateStyle: 'short',
+            timeStyle: 'short'
+        }).format(new Date(value));
+    }
+
+    function renderAdminThreadList() {
+        const list = $('#adminThreadList');
+        if (!adminInboxThreads.length) {
+            list.html('<div class="empty-message">ยังไม่มีข้อความจากผู้เล่น</div>');
+            return;
+        }
+
+        list.html(adminInboxThreads.map(thread => {
+            const unread = Number(thread.unreadForAdmin) || 0;
+            const preview = thread.lastMessage?.body || '';
+            return `
+                <button type="button" class="admin-thread-item${thread.playerId === selectedInboxPlayerId ? ' is-active' : ''}" data-player-id="${escapeHtml(thread.playerId)}">
+                    <strong>${escapeHtml(thread.playerName || 'Unknown')}</strong>
+                    ${unread ? `<span class="admin-thread-unread">${unread > 99 ? '99+' : unread}</span>` : `<small>${escapeHtml(formatInboxTime(thread.lastMessageAt))}</small>`}
+                    <span class="admin-thread-preview">${thread.lastMessage?.sender === 'admin' ? 'คุณ: ' : ''}${escapeHtml(preview)}</span>
+                </button>
+            `;
+        }).join(''));
+
+        list.find('.admin-thread-item').on('click', function() {
+            openAdminThread($(this).data('player-id'));
+        });
+    }
+
+    window.loadAdminInbox = async function() {
+        if (!isAuthenticated) return;
+        try {
+            const response = await fetch('/admin/api/messages', {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store'
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'โหลดกล่องข้อความไม่สำเร็จ');
+            adminInboxThreads = Array.isArray(data.threads) ? data.threads : [];
+            setAdminInboxBadge(data.unreadCount);
+            renderAdminThreadList();
+        } catch (error) {
+            console.error('[AdminInbox]', error);
+            $('#adminThreadList').html(`<div class="empty-message">${escapeHtml(error.message)}</div>`);
+        }
+    };
+
+    function renderAdminConversation(thread) {
+        const messages = Array.isArray(thread.messages) ? thread.messages : [];
+        $('#adminConversationHead').html(`
+            <strong>${escapeHtml(thread.playerName || 'Unknown')}</strong>
+            <span>${escapeHtml(thread.playerId)}</span>
+        `);
+
+        const body = $('#adminConversationBody');
+        if (!messages.length) {
+            body.html('<div class="empty-message">ยังไม่มีข้อความ</div>');
+        } else {
+            body.html(messages.map(message => {
+                const isAdmin = message.sender === 'admin';
+                let state = 'ผู้เล่นส่งมา';
+                if (isAdmin) state = message.readAt ? 'ผู้เล่นอ่านแล้ว' : 'ส่งแล้ว ยังไม่ได้อ่าน';
+                return `
+                    <article class="admin-inbox-message${isAdmin ? ' is-admin' : ''}">
+                        <p>${escapeHtml(message.body)}</p>
+                        <small>${escapeHtml(formatInboxTime(message.createdAt))} · ${state}</small>
+                    </article>
+                `;
+            }).join(''));
+            body.scrollTop(body[0].scrollHeight);
+        }
+
+        $('#adminReplyInput').prop('disabled', false).attr('placeholder', 'ตอบผู้เล่นคนนี้…');
+        $('#adminReplyButton').prop('disabled', false);
+    }
+
+    async function openAdminThread(playerId) {
+        selectedInboxPlayerId = String(playerId || '');
+        renderAdminThreadList();
+        try {
+            const response = await fetch(`/admin/api/messages/${encodeURIComponent(selectedInboxPlayerId)}`, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store'
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'เปิดบทสนทนาไม่สำเร็จ');
+            renderAdminConversation(data.thread);
+            setAdminInboxBadge(data.unreadCount);
+            loadAdminInbox();
+        } catch (error) {
+            $('#adminConversationBody').html(`<div class="empty-message">${escapeHtml(error.message)}</div>`);
+        }
+    }
+
+    $('#adminReplyForm').on('submit', async function(event) {
+        event.preventDefault();
+        const message = $('#adminReplyInput').val().trim();
+        if (!selectedInboxPlayerId || !message) return;
+
+        $('#adminReplyButton').prop('disabled', true).text('กำลังส่ง…');
+        try {
+            const response = await fetch(`/admin/api/messages/${encodeURIComponent(selectedInboxPlayerId)}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'ตอบข้อความไม่สำเร็จ');
+            $('#adminReplyInput').val('');
+            renderAdminConversation(data.thread);
+            loadAdminInbox();
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'ส่งไม่สำเร็จ', text: error.message, background: '#1e1e1e', color: '#fff' });
+        } finally {
+            $('#adminReplyButton').prop('disabled', false).text('ส่งคำตอบ');
+        }
+    });
+
+    socket.on('adminInboxUpdate', function(update) {
+        setAdminInboxBadge(update?.unreadCount);
+        loadAdminInbox();
+        if (selectedInboxPlayerId && update?.playerId === selectedInboxPlayerId && $('#tab-messages').hasClass('active')) {
+            openAdminThread(selectedInboxPlayerId);
+        }
+    });
+
     // Listen for real-time events
     socket.on('admin_log', function(data) {
         serverLogs.unshift({
@@ -3479,6 +3977,7 @@ $(function() {
     setInterval(function() {
         if (!shouldPauseAutoRefresh()) {
             loadData();
+            loadAdminInbox();
         }
     }, 15000);
     

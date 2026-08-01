@@ -9,6 +9,12 @@
     background: #1a2332;
 }
 
+/* ภาพถ่าย (AI portrait) เต็มกรอบได้ แต่ไอคอนเวกเตอร์ต้องไม่ถูก crop
+   ไม่งั้นพอขยายเป็นรูปใหญ่แล้วตัวไอคอนจะโดนตัดขอบ */
+img.game-icon[src$=".svg"] {
+    object-fit: contain;
+}
+
 .game-icon-fallback {
     font-size: inherit;
     line-height: 1;

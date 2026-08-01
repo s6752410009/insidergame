@@ -766,18 +766,15 @@
     flex-direction: column;
   }
   
+  /* วง + เส้นขอบย้ายไปอยู่ใน .player-avatar (playerAvatar.css) แล้ว
+     ตรงนี้เหลือแค่กล่องที่กดได้ เพื่อให้กรอบผู้เล่นแสดงได้ครบ */
   .chat-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2em;
     flex-shrink: 0;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
-    border: 2px solid;
   }
   
   .chat-avatar:hover {
@@ -1226,17 +1223,15 @@
 </div>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   $(function () {
-    const socket = io();
+    const socket = window.appSocket || io();
     const roomId = '<%= room.roomId %>';
     const playerId = '<%= player.playerId %>';
-    const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
+    const werewolfRoleOptions = <%- safeJson(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
     let currentGameMode = '<%= room.gameMode %>';
-    let currentWerewolfRoles = <%- JSON.stringify(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
-    const initialRoomPayload = <%- JSON.stringify(typeof initialRoomPayload !== 'undefined' ? initialRoomPayload : null) %>;
+    let currentWerewolfRoles = <%- safeJson(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
+    const initialRoomPayload = <%- safeJson(typeof initialRoomPayload !== 'undefined' ? initialRoomPayload : null) %>;
     let latestRoomPayload = initialRoomPayload ? { ...initialRoomPayload } : null;
     let isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
     const currentModeMeta = {
@@ -2038,7 +2033,7 @@
         const $row = $(`
           <div class="lobby-player-item">
             <div class="lobby-player-main">
-              <span class="lobby-player-avatar clickable-avatar" data-player-id="${p.playerId}" style="cursor:pointer; font-size:1.2em; margin-right:4px;" title="ดูโปรไฟล์">${p.avatar || '👤'}</span>
+              <span class="lobby-player-avatar clickable-avatar" data-player-id="${p.playerId}" style="cursor:pointer; margin-right:6px;" title="ดูโปรไฟล์">${window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: color, playerName: p.playerName }, { size: 30 })}</span>
               <span class="lobby-player-name" style="color:${color};">${safeName}</span>
               ${onlineBadge}
               ${isAdminPlayer ? '<span class="lobby-player-admin-badge" style="margin-left:6px;">👑</span>' : ''}
@@ -2275,7 +2270,7 @@
         // Player message - with avatar
         $msg = $(`
           <div class="chat-msg ${msgClass}">
-            <div class="chat-avatar clickable-avatar" data-player-id="${targetPlayerId}" style="background: ${playerColor}20; border-color: ${playerColor};" title="ดูโปรไฟล์ ${safeName}">${avatar}</div>
+            <div class="chat-avatar clickable-avatar" data-player-id="${targetPlayerId}" title="ดูโปรไฟล์ ${safeName}">${window.renderPlayerAvatar({ avatar: avatar, avatarFrame: data.avatarFrame, color: playerColor, playerName: safeName }, { size: 34 })}</div>
             <div class="chat-content">
               <div class="chat-msg-bubble" style="border-left: 3px solid ${playerColor};">
                 <div class="chat-msg-name clickable-avatar" data-player-id="${targetPlayerId}" style="color:${playerColor};">${safeName}</div>
@@ -2841,17 +2836,8 @@
       window.location.href = '/game/' + roomId + '?playerId=' + playerId;
     });
     
-    // Frame styles lookup
-    const frameStyles = {
-      'none': 'none',
-      'bronze': 'linear-gradient(135deg, #cd7f32 0%, #8b4513 100%)',
-      'silver': 'linear-gradient(135deg, #c0c0c0 0%, #808080 100%)',
-      'gold': 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
-      'diamond': 'linear-gradient(135deg, #b9f2ff 0%, #00bfff 100%)',
-      'fire': 'linear-gradient(135deg, #ff4500 0%, #ff0000 100%)',
-      'rainbow': 'linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)',
-      'neon': 'linear-gradient(135deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%)'
-    };
+    // กรอบมาจาก /static/js/playerAvatar.js แหล่งเดียว จะได้ไม่หลุดกันระหว่างหน้า
+    const frameStyles = window.PlayerAvatar.FRAME_STYLES;
     
     // Click on avatar to view profile
     $(document).on('click', '.clickable-avatar', function() {

@@ -2086,20 +2086,9 @@
     }
 }
 </style>
-<script src="/socket.io/socket.io.js"></script>
 <script>
 $(function() {
-    var socket = io({
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 500,
-        reconnectionDelayMax: 5000,
-        randomizationFactor: 0.5,
-        timeout: 30000,
-        transports: ['websocket', 'polling'],
-        upgrade: true,
-        forceNew: false
-    });
+    var socket = window.appSocket || io();
 
     // Socket.IO connection monitoring
     socket.on('connect', function() {
@@ -3471,18 +3460,20 @@ $(function() {
         // เก็บข้อมูลโหมด 2 จอมบงการ
         currentNumTraitors = data.numTraitors || 1;
 
-        // วนหาบทบาทของตัวเอง (ใช้ playerId หรือ name)
-        var myPlayer = null;
-        $.each(data.players, function(i, obj) {
-            if(obj.playerId == '<%= player.playerId %>' || obj.name == '<%= player.name %>') {
-                myPlayer = obj;
-                return false;
-            }
-        });
+        // Server ส่งเฉพาะบทของผู้เล่นคนนี้; fallback รองรับ payload เก่าระหว่าง deploy
+        var myPlayer = data.role ? { role: data.role, isGhost: !!data.isGhost } : null;
+        if (!myPlayer && Array.isArray(data.players)) {
+            $.each(data.players, function(i, obj) {
+                if(obj.playerId == '<%= player.playerId %>' || obj.name == '<%= player.name %>') {
+                    myPlayer = obj;
+                    return false;
+                }
+            });
+        }
         
         if(myPlayer) {
             console.log('[newRole] My role:', myPlayer.role);
-            $('.role strong').html(myPlayer.role);
+            $('.role strong').text(myPlayer.role);
             $('#reset .role').css('display', 'block');
             
             // แสดง notification โหมด 2 จอมบงการ
@@ -3514,20 +3505,23 @@ $(function() {
     socket.on('revealWord', function(data) {
         console.log('[revealWord] Received:', data);
         
-        // วนหาบทบาทของตัวเอง (ใช้ playerId หรือ name)
-        var myPlayer = null;
-        $.each(data.players, function(i, obj) {
-            if(obj.playerId == '<%= player.playerId %>' || obj.name == '<%= player.name %>') {
-                myPlayer = obj;
-                return false;
-            }
-        });
+        var myPlayer = data.role ? { role: data.role } : null;
+        if (!myPlayer && Array.isArray(data.players)) {
+            $.each(data.players, function(i, obj) {
+                if(obj.playerId == '<%= player.playerId %>' || obj.name == '<%= player.name %>') {
+                    myPlayer = obj;
+                    return false;
+                }
+            });
+        }
 
         if(myPlayer) {
             if(myPlayer.role == 'ผู้ดำเนินเกม' || myPlayer.role == 'จอมบงการ') {
-                $('#word').html("<span>คำที่ต้องทายคือ <strong>"+data.word+"</strong></span>");
+                const message = $('<span>').text('คำที่ต้องทายคือ ');
+                message.append($('<strong>').text(data.word || ''));
+                $('#word').empty().append(message);
             } else {
-                $('#word').html("<span>ผู้ดำเนินเกมและจอมบงการ <br />จะเห็นคำนี้</span>");
+                $('#word').empty().append($('<span>').text('ผู้ดำเนินเกมและจอมบงการจะเห็นคำนี้'));
             }
         }
 

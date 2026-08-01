@@ -1,4 +1,5 @@
 <%- contentFor('content') %>
+<link rel="stylesheet" href="/static/css/chatPanel.css">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -462,6 +463,31 @@
     margin-bottom: 12px;
   }
 
+  .bm-simple-btn-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background: #0f1419;
+  }
+
+  .bm-simple-btn-icon .game-icon,
+  .bm-simple-btn-icon img.game-icon,
+  .bm-simple-btn-icon .game-icon-fallback {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    border-radius: 0;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+
   .bm-action-hint {
     margin: 0 0 12px;
     padding: 10px 14px;
@@ -476,8 +502,8 @@
   .bm-action-hint b { color: #ffce6b; }
 
   .bm-simple-btn {
-    min-height: 88px;
-    padding: 14px 10px;
+    min-height: 120px;
+    padding: 12px 8px;
     border-radius: 18px;
     border: 2px solid rgba(255,255,255,0.12);
     background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
@@ -554,9 +580,50 @@
   }
 
   .bm-offer-outcome {
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     color: var(--bm-gold);
-    margin-bottom: 8px;
+    text-align: center;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .bm-offer-visual {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background: #0f1419;
+    margin-bottom: 10px;
+  }
+
+  .bm-offer-visual .game-icon,
+  .bm-offer-visual img.game-icon,
+  .bm-offer-visual .game-icon-fallback {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    border-radius: 0;
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bm-offer-name {
+    font-weight: 800;
+    font-size: 1.15rem;
+    text-align: center;
+    letter-spacing: 0.02em;
+    margin-bottom: 4px;
+  }
+
+  .bm-offer-meta {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
   }
 
   .bm-inventory-compact {
@@ -566,11 +633,40 @@
   }
 
   .bm-inventory-compact .bm-item-compact {
-    padding: 8px 12px;
-    border-radius: 12px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    width: 76px;
+    border-radius: 14px;
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.05);
     font-weight: 700;
+    font-size: 0.78rem;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .bm-item-compact-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background: #0f1419;
+  }
+
+  .bm-item-compact-thumb .game-icon,
+  .bm-item-compact-thumb img.game-icon,
+  .bm-item-compact-thumb .game-icon-fallback {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
   }
 
   .bm-audio-chip {
@@ -839,15 +935,40 @@
   .bm-manual-actions-grid {
     margin-top: 12px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
   }
 
   .bm-manual-action {
-    padding: 14px;
+    padding: 12px;
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.08);
     background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025));
+    text-align: center;
+    display: grid;
+    gap: 6px;
+  }
+
+  .bm-manual-action-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 4px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background: #0f1419;
+  }
+
+  .bm-manual-action-icon .game-icon,
+  .bm-manual-action-icon img.game-icon,
+  .bm-manual-action-icon .game-icon-fallback {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
   }
 
   .bm-manual-state-grid {
@@ -1177,8 +1298,7 @@
     line-height: 1;
   }
 
-  .bm-offer-title .game-icon,
-  .bm-item-compact .game-icon {
+  .bm-offer-title .game-icon {
     width: 1.5em;
     height: 1.5em;
     margin-right: 4px;
@@ -1399,7 +1519,10 @@
     margin-bottom: 4px;
   }
 
-  .bm-market-grid,
+  .bm-market-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
   .bm-players-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
@@ -1418,6 +1541,9 @@
   .bm-offer {
     position: relative;
     overflow: hidden;
+    display: grid;
+    gap: 0;
+    padding: 12px;
     background:
       radial-gradient(circle at top right, rgba(245, 200, 107, 0.12), transparent 38%),
       linear-gradient(145deg, rgba(251,191,36,0.08), rgba(127,29,29,0.08));
@@ -1425,22 +1551,19 @@
     transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
   }
 
-  .bm-offer::after {
-    content: '';
-    position: absolute;
-    inset: -30% auto auto -40%;
-    width: 60%;
-    height: 180%;
-    transform: rotate(18deg);
-    background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent);
-    opacity: 0.22;
-    pointer-events: none;
-  }
-
   .bm-offer:hover {
     transform: translateY(-3px);
     border-color: rgba(245, 200, 107, 0.22);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 22px 36px rgba(0,0,0,0.2);
+  }
+
+  .bm-offer .bm-btn-row {
+    margin-top: 12px;
+    justify-content: center;
+  }
+
+  .bm-offer .bm-btn {
+    width: 100%;
   }
 
   .bm-offer-head,
@@ -1530,10 +1653,36 @@
   .bm-action-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-size: 1rem;
     font-weight: 700;
     margin-bottom: 6px;
+  }
+
+  .bm-action-title-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(245, 200, 107, 0.28);
+    background: #0f1419;
+    flex-shrink: 0;
+  }
+
+  .bm-action-title-icon .game-icon,
+  .bm-action-title-icon img.game-icon,
+  .bm-action-title-icon .game-icon-fallback {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .bm-action-copy {
@@ -1907,6 +2056,23 @@
     </div>
   </div>
 
+  <div id="chatBox" class="chat-box" aria-hidden="true" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-title">💬 แชทโต๊ะ</div>
+      <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+    </div>
+    <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+      <div class="reply-content"><span class="reply-indicator">ตอบกลับ</span> <span class="reply-player-name"></span>: <span class="reply-message-content"></span></div>
+      <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+    </div>
+    <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+    <div class="chat-input-wrap">
+      <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+      <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่งข้อความ">ส่ง</button>
+    </div>
+  </div>
+  <button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span></button>
+
   <div id="bmTourOverlay" class="bm-tour-overlay" aria-hidden="true">
     <div id="bmTourCard" class="bm-tour-card" role="dialog" aria-modal="true" aria-live="polite" aria-label="Black Market onboarding" tabindex="-1">
       <div id="bmTourKicker" class="bm-tour-kicker">Spotlight</div>
@@ -1963,8 +2129,8 @@
               </div>
               <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
                 <strong>นิด (บทมือเก็บงาน 🔫)</strong><br>
-                💵 เงินเริ่ม: 5 | มีปืน 🔫 1 กระบอก<br>
-                เป้าหมาย: คอยเปิดงานยิงกวาดแต้ม
+                💵 เงินเริ่ม: 5 | ยังไม่มีปืน<br>
+                เป้าหมาย: หาปืนจากตลาด แล้วค่อยเลือกจังหวะเปิดงาน
               </div>
               <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
                 <strong>บอย (บทนายหน้า 🕴️)</strong><br>
@@ -1985,7 +2151,7 @@
               <p>ในตลาดมีของ 3 ชิ้น: ลังสินค้า 📦 (ราคา 2), เกราะ 🦺 (ราคา 3), พาสปอร์ต 🛂 (ราคา 2)</p>
               <div class="bm-manual-list">
                 <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: ซื้อ 📦 ลังสินค้า จ่าย 💵 2 (เงินเหลือ 3)</div>
-                <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: เลือก ผ่าน 🤐 (เงินเหลือ 5) เก็บปืนและทุนไว้พร้อมรบ</div>
+                <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: ซื้อปืน 🔫 จากตลาดก่อน จึงจะใช้คำสั่งเก็บในช่วงลงมือได้</div>
                 <div class="bm-manual-line">• <b>บอย (นายหน้า)</b>: ซื้อ 🛂 พาสปอร์ต จ่าย 💵 1 (ราคาลด 1 จากสกิลนายหน้า 🕴️, เงินเหลือ 4)</div>
                 <div class="bm-manual-line">• <b>แอน (สายข่าว)</b>: เลือก ผ่าน 🤐 (เงินเหลือ 5)</div>
               </div>
@@ -2013,7 +2179,7 @@
                 <strong>2. สั่งเก็บทำงานต่อมา:</strong> นิด 🔫 สั่งเก็บ กิตติ -> จ่ายเงิน 2 + ปืนเงียบลั่นไก -> กิตติไม่มีเกราะ 🦺 ป้องกันตัว และไม่ใช่ฟิกเซอร์ -> กิตติ <b>💀 ล้มทันที! (กระเป๋าฉีกเสียเงินครึ่งหนึ่ง และเปิดเผยบทบาทเจ้าพ่อ)</b> นิดได้ 🔥 ค่าหัวสะสม 2
               </div>
               <div style="background: rgba(148,163,184,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #94a3b8;">
-                <strong>3. แผนการส่งของคนล้ม:</strong> แผนส่งของของกิตติ ทำงานเป็นอันดับสุดท้าย -> เนื่องจากกิตติ <b>💀 ล้มลงไปแล้ว</b> ในยกนี้ -> แผนส่งของจึง <b>🚫 ล้มเหลวทันที</b> ลังสินค้าในตัวกิตติสูญหายไปฟรี ๆ และไม่ได้รับแต้ม 👑
+                <strong>3. แผนการส่งของคนล้ม:</strong> เนื่องจากกิตติ <b>💀 ล้มลงไปแล้ว</b> ก่อนถึงลำดับส่งของ แผนจึง <b>🚫 ล้มเหลว</b> แต่สินค้าไม่ได้ถูกใช้และยังอยู่ในกระเป๋า
               </div>
             </div>
           </div>
@@ -2024,16 +2190,17 @@
 </div>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="/js/gameIcon.js"></script>
+<script src="/js/chatPanel.js"></script>
 <script>
   $(function() {
-    const socket = io();
+    const socket = window.appSocket || io();
     const roomId = '<%= room.roomId %>';
     const playerId = '<%= player.playerId %>';
+    const playerName = '<%= player.name %>';
     const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
-    let currentState = <%- JSON.stringify(typeof blackMarketState !== 'undefined' ? blackMarketState : {}) %>;
+    let currentState = <%- safeJson(typeof blackMarketState !== 'undefined' ? blackMarketState : {}) %>;
+    const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
     let allowNavigation = false;
     let hasRenderedOnce = false;
     let ceremonyTimer = null;
@@ -3103,12 +3270,12 @@
           <h3>ไม้ที่ใช้กันบนโต๊ะ</h3>
           <div class="bm-manual-section-body">
             <div class="bm-manual-actions-grid">
-              ${actionCatalog.map(function(action) {
+              ${actionCatalog.filter(function(action) { return action.id !== 'pass'; }).map(function(action) {
                 return `
                   <div class="bm-manual-action">
-                    <strong>${gameIcon(action)} ${escapeHtml(action.label)}</strong>
+                    <div class="bm-manual-action-icon">${gameIcon(action, 'game-icon')}</div>
+                    <strong>${escapeHtml(action.shortLabel || action.label)}</strong>
                     <span>${escapeHtml(action.description || '')}</span>
-                    <span>จังหวะนี้ให้ผลแบบนี้: ${escapeHtml(action.effectText || '')}</span>
                   </div>
                 `;
               }).join('')}
@@ -3396,7 +3563,10 @@
           <div class="bm-card-note" style="margin-bottom:8px;">🎒 ของในมือ</div>
           <div class="bm-inventory-compact">
             ${(self.inventory || []).length ? (self.inventory || []).map(item => `
-              <span class="bm-item-compact">${gameIcon(item)} ${escapeHtml(item.name)}</span>
+              <span class="bm-item-compact">
+                <span class="bm-item-compact-thumb">${gameIcon(item, 'game-icon')}</span>
+                <span>${escapeHtml(item.name)}</span>
+              </span>
             `).join('') : '<span class="bm-muted">มือเปล่า</span>'}
           </div>
         </div>
@@ -3414,15 +3584,14 @@
       return `
         <div class="bm-market-grid">
           ${offers.map(item => {
-            const isCargo = item.type === 'cargo';
-            const outcome = isCargo ? '→ ใช้ส่งของได้' : (item.id === 'gun' ? '→ ใช้สั่งเก็บ' : (item.id === 'armor' ? '→ กันถูกเก็บ' : '→ ของพิเศษ'));
+            const useText = item.summary || 'ใช้ในเกม';
+            const price = Number(item.priceForPlayer || item.price || 0);
             return `
             <div class="bm-offer">
-              <div class="bm-offer-head">
-                <div class="bm-offer-title">${gameIcon(item)} ${escapeHtml(item.name)}</div>
-                <div class="bm-price">💵 ${Number(item.priceForPlayer || item.price || 0)}</div>
-              </div>
-              <div class="bm-offer-outcome">${escapeHtml(outcome)}</div>
+              <div class="bm-offer-visual">${gameIcon(item, 'game-icon')}</div>
+              <div class="bm-offer-name">${escapeHtml(item.name)}</div>
+              <div class="bm-offer-outcome">${escapeHtml(useText)}</div>
+              <div class="bm-offer-meta"><div class="bm-price">💵 ${price}</div></div>
               <div class="bm-btn-row">
                 <button type="button" class="bm-btn gold offer-buy" data-item-id="${escapeHtml(item.id)}" ${lockedChoice || !item.affordable ? 'disabled' : ''}>
                   ${lockedChoice === item.id ? '✅ เลือกแล้ว' : (item.affordable ? 'ซื้อ' : 'เงินไม่พอ')}
@@ -3485,6 +3654,10 @@
       const pendingAction = self.pendingAction;
       const cargoItems = actionHelp.cargoItems || [];
       const locked = !!pendingAction;
+      const catalog = currentState.actionCatalog || [];
+      const actionById = function(id) {
+        return catalog.find(function(a) { return a.id === id; }) || { id: id, icon: '🎴', label: id };
+      };
 
       if (!self.alive || currentState.winner) {
         return '<div class="bm-empty">คุณออกจากเกมแล้ว</div>';
@@ -3496,20 +3669,26 @@
 
       const pickPanel = buildSimplePickPanel();
       const advancedLabel = showAdvancedActions ? '▲ ย่อแผนหลัก' : '▼ ดูแผนหลักทั้งหมด (ดีล · หักหลัง · ปล้น · เก็บ)';
+      const deliverMeta = actionById('deliver');
+      const intelMeta = actionById('intel');
+      const passMeta = actionById('pass');
 
       return `
         ${pickPanel}
         <div class="bm-simple-actions">
           <button type="button" class="bm-simple-btn" data-simple="deliver" ${cargoItems.length ? '' : 'disabled'}>
-            📦 ส่งของ
-            <span class="bm-outcome">${cargoItems.length ? '→ +👑' : 'ไม่มีของ'}</span>
+            <span class="bm-simple-btn-icon">${gameIcon(deliverMeta, 'game-icon')}</span>
+            ${escapeHtml(deliverMeta.shortLabel || 'ส่งของ')}
+            <span class="bm-outcome">${cargoItems.length ? '→ ได้แต้ม' : 'ไม่มีของ'}</span>
           </button>
           <button type="button" class="bm-simple-btn" data-simple="intel" ${getAliveTargets().length ? '' : 'disabled'}>
-            👁️ สืบข่าว
+            <span class="bm-simple-btn-icon">${gameIcon(intelMeta, 'game-icon')}</span>
+            ${escapeHtml(intelMeta.shortLabel || 'สืบข่าว')}
             <span class="bm-outcome">→ ดูเป้า</span>
           </button>
           <button type="button" class="bm-simple-btn" data-simple="pass">
-            🤐 ผ่าน
+            <span class="bm-simple-btn-icon">${gameIcon(passMeta, 'game-icon')}</span>
+            ${escapeHtml(passMeta.shortLabel || 'ผ่าน')}
             <span class="bm-outcome">→ ไม่ทำ</span>
           </button>
         </div>
@@ -3537,11 +3716,19 @@
         return value.includes('gun') || value.includes('ปืน');
       });
       const hitDisabledReason = selfHasGun ? 'ต้องมีเงินพอเปิดงาน 💵' : 'ต้องมีปืน 🔫 ก่อน';
+      const catalog = currentState.actionCatalog || [];
+      const actionById = function(id) {
+        return catalog.find(function(a) { return a.id === id; }) || { id: id, icon: '🎴', label: id };
+      };
+      const actionTitle = function(id, label) {
+        const meta = actionById(id);
+        return `<span class="bm-action-title-icon">${gameIcon(meta, 'game-icon')}</span>${escapeHtml(label || meta.shortLabel || meta.label)}<span class="bm-accordion-chevron">▼</span>`;
+      };
 
       return `
         <div class="bm-action-grid">
           <div class="bm-action-block is-open">
-            <div class="bm-action-title">📦 ส่งของ<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title">${actionTitle('deliver', 'ส่งของ')}</div>
             <div class="bm-action-body">
               <div class="bm-action-copy">แปลงของเถื่อนให้เป็น 👑 อิทธิพล</div>
               <div class="bm-mini-grid">
@@ -3556,7 +3743,7 @@
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">👁️ สืบข่าว<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title">${actionTitle('intel', 'สืบข่าว')}</div>
             <div class="bm-action-body">
               <div class="bm-action-copy">คีบข่าววงในจากคู่แข่งบนโต๊ะ</div>
               <div class="bm-target-list">
@@ -3571,7 +3758,7 @@
           </div>
 
           <div class="bm-action-block is-open">
-            <div class="bm-action-title">🤝 เข้าดีล<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title">${actionTitle('deal', 'เข้าดีล')}</div>
             <div class="bm-action-body">
               <div class="bm-action-copy">ดีลจะปิดเมื่ออีกฝ่ายกดเข้าดีลกลับมาในยกเดียวกัน → ปิดได้ทั้งคู่ +👑 +💵 · ถ้าอีกฝ่ายหักหลังคุณเสียเปล่า</div>
               <div class="bm-target-list">
@@ -3586,7 +3773,7 @@
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🗡️ หักหลัง<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title">${actionTitle('betray', 'หักหลัง')}</div>
             <div class="bm-action-body">
               <div class="bm-action-copy">ฉวยดีลที่อีกฝ่ายเปิดมา แล้วพลิกโต๊ะใส่กลับ → ได้เยอะ แต่ถ้าเดาผิด 🔥 ค่าหัวขึ้นฟรี</div>
               <div class="bm-target-list">
@@ -3601,7 +3788,7 @@
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">💣 ปล้น<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title">${actionTitle('raid', 'ปล้น')}</div>
             <div class="bm-action-body">
               <div class="bm-action-copy">กวาดเงินหรือของจากคนที่ถือแน่นเกินไป → โดนการ์ดกันทางได้</div>
               <div class="bm-target-list">
@@ -3616,7 +3803,7 @@
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🔫 สั่งเก็บ<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title">${actionTitle('hit', 'สั่งเก็บ')}</div>
             <div class="bm-action-body">
               <div class="bm-action-copy">เก็บคู่แข่งออกจากโต๊ะ → ใช้ปืน 🔫 + จ่าย 💵2-3 เปิดงาน · 🔥 ค่าหัวขึ้น</div>
               <div class="bm-target-list">
@@ -3631,7 +3818,7 @@
           </div>
 
           <div class="bm-action-block">
-            <div class="bm-action-title">🦺 ตั้งการ์ด / 🫥 หมอบต่ำ<span class="bm-accordion-chevron">▼</span></div>
+            <div class="bm-action-title"><span class="bm-action-title-icon">${gameIcon(actionById('guard'), 'game-icon')}</span>ตั้งการ์ด / หมอบต่ำ<span class="bm-accordion-chevron">▼</span></div>
             <div class="bm-action-body">
               <div class="bm-action-copy">เล่นเนียน ลดค่าหัว แล้วรอจังหวะยกถัดไป</div>
               <div class="bm-btn-row">
@@ -4023,7 +4210,12 @@
     socket.emit('setRoom', { roomId, playerId });
     requestState();
 
-    socket.on('reconnect', function() {
+    const blackMarketChat = window.initChatPanel({ socket, playerId, playerName });
+    (initialChatHistory || []).forEach(function(entry) {
+      blackMarketChat?.appendMessage(entry, { silent: true });
+    });
+
+    socket.on('connect', function() {
       socket.emit('initPlayer', playerId);
       socket.emit('setRoom', { roomId, playerId });
       requestState();

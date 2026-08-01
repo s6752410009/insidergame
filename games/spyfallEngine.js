@@ -1,7 +1,7 @@
 const ROLE_SPY = 'spy';
 const ROLE_CITIZEN = 'citizen';
 
-const REVEAL_PHASE_MS = 5000;
+const REVEAL_PHASE_MS = Math.max(1000, Number(process.env.SPYFALL_REVEAL_PHASE_MS) || 5000);
 const VOTE_PHASE_MS = 90 * 1000;
 
 const { gameAssetImage } = require('./gameAssets');
@@ -549,6 +549,7 @@ function buildClientState(room, playerId) {
             name: self.name,
             color: self.color,
             avatar: self.avatar,
+            avatarFrame: self.avatarFrame || 'none',
             role: self.role,
             roleInfo: self.roleInfo,
             isSpy,
@@ -560,6 +561,7 @@ function buildClientState(room, playerId) {
             playerId: player.playerId,
             name: player.name,
             avatar: player.avatar,
+            avatarFrame: player.avatarFrame || 'none',
             color: player.color,
             isSelf: player.playerId === self.playerId,
             hasVoted: room.gameState.phase === 'vote' ? !!room.gameState.votes[player.playerId] : false,

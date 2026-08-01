@@ -1,0 +1,25 @@
+<%- contentFor('content') %>
+<main class="support-shell" id="support-app" data-player-id="<%= player.playerId %>">
+    <div class="support-heading">
+        <div>
+            <h1>✉️ ข้อความถึง Site Admin</h1>
+            <p>ส่งปัญหาหรือคำถามไว้ได้เลย แอดมินจะเห็นเมื่อกลับมาออนไลน์ และคุณกลับมาเช็กสถานะว่าอ่านแล้วหรือยังได้ที่หน้านี้</p>
+        </div>
+        <a class="support-back" href="/?playerId=<%= player.playerId %>">กลับหน้าหลัก</a>
+    </div>
+
+    <section aria-label="บทสนทนากับ Site Admin">
+        <div class="support-thread" id="support-thread" aria-live="polite">
+            <div class="support-empty">กำลังโหลดข้อความ…</div>
+        </div>
+        <form class="support-compose" id="support-form">
+            <label class="sr-only" for="support-message-input">ข้อความถึง Site Admin</label>
+            <textarea id="support-message-input" maxlength="2000" required placeholder="เล่าปัญหาให้แอดมินฟัง…"></textarea>
+            <button class="support-send" id="support-send" type="submit">ส่งข้อความ</button>
+        </form>
+        <p class="support-feedback" id="support-feedback" role="status"></p>
+    </section>
+</main>
+
+<%- contentFor('script') %>
+<script src="/static/js/supportInbox.js"></script>

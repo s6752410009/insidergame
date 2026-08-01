@@ -804,11 +804,9 @@
 </div>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(function() {
-    const socket = io();
+    const socket = window.appSocket || io();
     const playerId = '<%= player.playerId %>';
     const isSiteAdminViewer = <%= player.isSiteAdmin ? 'true' : 'false' %>;
     const defaultGameModes = [
@@ -817,15 +815,15 @@ $(function() {
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 }
     ];
-    const serverModeDefaults = <%- JSON.stringify(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
+    const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
-        const serverModes = <%- JSON.stringify(typeof gameModes !== 'undefined' ? gameModes : []) %>;
+        const serverModes = <%- safeJson(typeof gameModes !== 'undefined' ? gameModes : []) %>;
         const matchedMode = serverModes.find(function(mode) { return mode.id === fallbackMode.id; });
         const adminDefaults = serverModeDefaults.find(function(mode) { return mode.id === fallbackMode.id; }) || {};
         result.push(Object.assign({}, fallbackMode, matchedMode || {}, adminDefaults));
         return result;
     }, []);
-    const werewolfRoleOptions = <%- JSON.stringify(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
+    const werewolfRoleOptions = <%- safeJson(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
     const werewolfRoleVisuals = {
         werewolf: { emoji: 'W', teamLabel: 'ฝั่งหมาป่า' },
         alphaWolf: { emoji: '👑', teamLabel: 'หมาป่านำทีม' },

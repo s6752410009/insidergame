@@ -186,7 +186,7 @@ async function main() {
         const rejoinClient = createClient('player-c-rejoin', third.playerId);
         await connectClient(rejoinClient);
         const rejoinResponse = await emitAck(rejoinClient.socket, 'joinRoom', { roomId, playerId: third.playerId });
-        assert(rejoinResponse && rejoinResponse.success, 'joinRoom failed for player-c rejoin');
+        assert(rejoinResponse && rejoinResponse.success, `joinRoom failed for player-c rejoin: ${rejoinResponse?.error || 'no response'}`);
         bindRoom(rejoinClient, roomId);
 
         let rejoinStateError = null;

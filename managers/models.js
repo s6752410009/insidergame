@@ -82,12 +82,31 @@ const bannedPlayerSchema = new mongoose.Schema({
     durationHours: { type: Number }
 }, { timestamps: true });
 
+// Persistent conversation between one player and the site-admin team.
+// A single thread per player keeps reads and offline replies straightforward.
+const adminMessageSchema = new mongoose.Schema({
+    messageId: { type: String, required: true },
+    sender: { type: String, enum: ['user', 'admin'], required: true },
+    body: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    readAt: { type: Date, default: null }
+}, { _id: false });
+
+const adminMessageThreadSchema = new mongoose.Schema({
+    playerId: { type: String, required: true, unique: true, index: true },
+    playerName: { type: String, default: 'Unknown' },
+    messages: { type: [adminMessageSchema], default: [] },
+    lastMessageAt: { type: Date, default: Date.now, index: true }
+}, { timestamps: true });
+
 const Player = mongoose.model('Player', playerSchema);
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
 const BannedPlayer = mongoose.model('BannedPlayer', bannedPlayerSchema);
+const AdminMessageThread = mongoose.model('AdminMessageThread', adminMessageThreadSchema);
 
 module.exports = {
     Player,
     PlayerStats,
-    BannedPlayer
+    BannedPlayer,
+    AdminMessageThread
 };

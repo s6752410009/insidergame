@@ -5,7 +5,6 @@
  * - แยก game state ต่อห้อง
  */
 
-const { v4: uuidv4 } = require('uuid');
 const playerManager = require('./playerManager');
 const { normalizeGameMode, getGameEngine } = require('../games/engineRegistry');
 const gameSettingsManager = require('./gameSettingsManager');
@@ -134,6 +133,15 @@ function getDisconnectRemoveMs(room) {
     return applySmokeFastMs(base);
 }
 
+// เวลาที่ห้อง "ว่าง" (ไม่มีใครออนไลน์) แล้วยังไม่ได้เริ่มเกม ก่อนจะถูกเก็บกวาด
+// เผื่อเวลาให้ reload หน้า / เดินทางจาก lobby ไปกระดานเกมได้ทัน
+function getEmptyRoomGraceMs(room) {
+    const base = normalizeTableMode(room?.settings?.tableMode) === 'remote'
+        ? 3 * 60 * 1000
+        : 90 * 1000;
+    return applySmokeFastMs(base);
+}
+
 function syncZeroOnlineTracker(room) {
     if (!room) {
         return;
@@ -144,12 +152,9 @@ function syncZeroOnlineTracker(room) {
         return;
     }
 
-    const shouldTrack = isRoomGameInProgress(room) || isRoomGameFinished(room);
-    if (!shouldTrack) {
-        room.zeroOnlineSince = null;
-        return;
-    }
-
+    // ติดตามทุกห้องที่ไม่มีคนออนไลน์ ไม่ใช่เฉพาะห้องที่กำลังเล่น/จบเกม —
+    // เดิมห้องที่ยังรอเริ่มเกมถูกล้าง zeroOnlineSince ทุกรอบ ทำให้ไม่เคยเข้าเงื่อนไข
+    // abandon เลย ห้องร้างจึงค้างอยู่จนกว่าผู้เล่นออฟไลน์จะหมดอายุทีละคน
     if (!room.zeroOnlineSince) {
         room.zeroOnlineSince = nowIso();
     }
@@ -180,11 +185,23 @@ function clampMaxPlayers(gameEngine, requestedMaxPlayers, currentPlayers = 0) {
 }
 
 /**
+ * สุ่ม Room ID เป็นตัวเลข 6 หลัก (อ่าน/พิมพ์/บอกต่อง่ายกว่า hex เดิม)
+ * วนสุ่มจนกว่าจะไม่ชนกับห้องที่มีอยู่ — พื้นที่ 900,000 เลข ชนกันยากมาก
+ */
+function generateRoomId() {
+    let roomId;
+    do {
+        roomId = String(Math.floor(100000 + Math.random() * 900000));
+    } while (rooms.has(roomId));
+    return roomId;
+}
+
+/**
  * สร้างห้องใหม่
  */
 function createRoom(roomData, creatorPlayerId) {
     const normalizedRoomData = gameSettingsManager.applyCreateRoomDefaults(roomData || {});
-    const roomId = uuidv4().substring(0, 8); // ใช้ 8 ตัวแรกของ UUID เป็น roomId
+    const roomId = generateRoomId();
     const creator = playerManager.getPlayer(creatorPlayerId);
     const gameMode = inferGameModeFromRoomData(normalizedRoomData);
     const gameEngine = getGameEngine(gameMode);
@@ -265,6 +282,9 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
     // ตรวจสอบว่าผู้เล่นอยู่ในห้องนี้แล้วหรือยัง (reconnect)
     const existingPlayerIndex = room.players.findIndex(p => p.playerId === playerId);
     const isReconnecting = existingPlayerIndex >= 0;
+    const rejoinableGamePlayer = room.rejoinableGamePlayers instanceof Map
+        ? room.rejoinableGamePlayers.get(playerId)
+        : null;
     
     // ตรวจสอบว่าห้องเต็มหรือยัง (ยกเว้นกรณี reconnect)
     if (!isReconnecting) {
@@ -273,7 +293,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
             throw new Error('Room is full');
         }
 
-        if (isRoomGameInProgress(room)) {
+        if (isRoomGameInProgress(room) && !rejoinableGamePlayer) {
             throw new Error('เกมกำลังดำเนินอยู่ ไม่สามารถเข้าร่วมได้');
         }
     }
@@ -301,10 +321,6 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
         lastActiveAt: nowIso(),
         disconnectedAt: socketId ? null : nowIso()
     });
-
-    const rejoinableGamePlayer = room.rejoinableGamePlayers instanceof Map
-        ? room.rejoinableGamePlayers.get(playerId)
-        : null;
 
     // เพิ่มใน gameState.players ด้วย (สำหรับเกม)
     // Bug #5 Fix: เพิ่ม socketId เพื่อใช้เช็คว่า online หรือไม่
@@ -389,13 +405,17 @@ function leaveRoom(roomId, playerId) {
     // ลบออกจาก gameState.players ด้วย
     const gameStatePlayerIndex = room.gameState.players.findIndex(p => p.playerId === playerId);
     if (gameStatePlayerIndex >= 0) {
-        if (wasGameActive) {
+        // ช่วง transition หลัง start อาจยังไม่ถูกนับเป็น in-progress ทั้งที่แจก role แล้ว
+        // เก็บ snapshot เมื่อมี role ด้วย เพื่อให้ explicit leave/rejoin ไม่ทำ role หายจาก race นี้
+        const gameStatePlayer = room.gameState.players[gameStatePlayerIndex];
+        const hasAssignedGameRole = !!(gameStatePlayer.role || gameStatePlayer.roleInfo);
+        if (wasGameActive || hasAssignedGameRole) {
             if (!(room.rejoinableGamePlayers instanceof Map)) {
                 room.rejoinableGamePlayers = new Map();
             }
 
             room.rejoinableGamePlayers.set(playerId, {
-                ...room.gameState.players[gameStatePlayerIndex],
+                ...gameStatePlayer,
                 socketId: null,
                 permission: wasAdmin ? null : room.gameState.players[gameStatePlayerIndex].permission,
                 leftAt: nowIso(),
@@ -788,9 +808,9 @@ function collectAbandonCandidates() {
             continue;
         }
 
-        const graceMs = isRoomGameInProgress(room)
+        const graceMs = (isRoomGameInProgress(room) || isRoomGameFinished(room))
             ? getAbandonGraceMs(room)
-            : 60 * 1000;
+            : getEmptyRoomGraceMs(room);
 
         if ((now - new Date(room.zeroOnlineSince).getTime()) < graceMs) {
             continue;

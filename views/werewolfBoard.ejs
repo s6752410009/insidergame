@@ -495,8 +495,55 @@
   .player-avatar-stage img.game-icon { width: 34px; height: 34px; }
   .room-role-card-title .game-icon,
   .room-role-card-title img.game-icon { width: 30px; height: 30px; vertical-align: middle; margin-right: 6px; }
-  .role-announce-name .game-icon,
-  .role-announce-name img.game-icon { width: 56px; height: 56px; display: block; margin: 0 auto 10px; }
+  /* จังหวะเปิดบทคือไฮไลต์ของเกม — ให้ภาพบทเต็มการ์ด แล้ววางชื่อทับบนภาพ */
+  .role-announce-art {
+    position: relative;
+    margin: -28px -24px 16px;
+    aspect-ratio: 1 / 1;
+    max-height: 300px;
+    overflow: hidden;
+    border-radius: 28px 28px 0 0;
+    background: #0b1020;
+  }
+
+  .role-announce-art .game-icon,
+  .role-announce-art img.game-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0;
+    display: block;
+    margin: 0;
+  }
+
+  .role-announce-art img.game-icon[src$=".svg"] { padding: 26px 26px 92px; }
+
+  .role-announce-art .game-icon-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: clamp(4rem, 20vw, 7rem);
+  }
+
+  .role-announce-art .role-announce-kicker {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    margin: 0;
+    background: rgba(6, 10, 18, 0.72);
+    backdrop-filter: blur(6px);
+  }
+
+  .role-announce-art .role-announce-name {
+    position: absolute;
+    inset: auto 0 0 0;
+    margin: 0;
+    padding: 40px 18px 16px;
+    text-align: center;
+    background: linear-gradient(180deg, transparent, rgba(6, 10, 18, 0.94));
+  }
   .role-name .game-icon,
   .role-name img.game-icon { width: 28px; height: 28px; margin-right: 6px; vertical-align: middle; }
   .hint-role .game-icon,
@@ -681,8 +728,10 @@
 
 <div id="roleAnnouncementBanner" class="role-announce-banner" aria-live="polite">
   <div class="role-announce-card">
-    <div class="role-announce-kicker">🎭 บทบาทของคุณ</div>
-    <div id="roleAnnouncementName" class="role-announce-name">ยังไม่เปิดเผยบทบาท</div>
+    <div id="roleAnnouncementArt" class="role-announce-art">
+      <div class="role-announce-kicker">🎭 บทบาทของคุณ</div>
+      <div id="roleAnnouncementName" class="role-announce-name">ยังไม่เปิดเผยบทบาท</div>
+    </div>
     <div id="roleAnnouncementTeam" class="role-announce-team">-</div>
     <div id="roleAnnouncementDescription" class="role-announce-desc">รอสักครู่ ระบบกำลังแจกบทบาท</div>
     <div id="roleAnnouncementHint" class="role-announce-hint">อ่านบทของคุณให้ครบ แล้วเตรียมตัดสินใจเมื่อถึงตา</div>
@@ -947,25 +996,22 @@
 </div>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="/js/gameIcon.js"></script>
 <script>
   $(function() {
-    const socket = io();
+    const socket = window.appSocket || io();
     const roomId = '<%= room.roomId %>';
     const playerId = '<%= player.playerId %>';
     const myPlayerName = '<%= player.name %>';
     const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
     let canUseAdminReveal = <%= (room.admin === true || room.isSiteAdmin) ? 'true' : 'false' %>;
-    const initialChatHistory = <%- JSON.stringify(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
-    let currentState = <%- JSON.stringify(typeof werewolfState !== 'undefined' ? werewolfState : {}) %>;
+    const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
+    let currentState = <%- safeJson(typeof werewolfState !== 'undefined' ? werewolfState : {}) %>;
     let allowNavigation = false;
     let phaseCountdownInterval = null;
     let lastRenderedPhase = currentState.phase || null;
     let lastWarningKey = null;
     let activePhaseDeadline = currentState.phaseEndsAt || null;
-    let phaseCountdownPausedRemainingMs = null;
     let wasHidden = false;
     let hasInitiallyConnected = false;
     let phaseTransitionTimeouts = [];
@@ -1101,7 +1147,7 @@
       // from roleCatalog); unknown ids must fall back to emoji, not a 404 <img>
       return {
         id: normalizedRoleId,
-        image: found?.image || (ROLE_ICON_FALLBACK[normalizedRoleId] ? '/assets/games/werewolf/' + normalizedRoleId + '.svg' : null),
+        image: found?.image || (ROLE_ICON_FALLBACK[normalizedRoleId] ? '/assets/games/werewolf/' + normalizedRoleId + '.jpg' : null),
         icon: found?.icon || ROLE_ICON_FALLBACK[normalizedRoleId] || '🎭',
         alt: found?.thaiName || found?.name || normalizedRoleId
       };
@@ -1401,7 +1447,12 @@
 
       clearRoleAnnouncement();
       $('#werewolfShell').addClass('phase-lock');
-      $('#roleAnnouncementName').html(roleIcon(role, 'game-icon game-icon-lg') + '<div>' + escapeHtml(role.thaiName || 'ยังไม่เปิดเผยบทบาท') + '</div>');
+      // รูปบทเป็นพื้นหลังการ์ด ส่วนชื่อบทวางทับด้านล่างของรูป
+      $('#roleAnnouncementArt').html(
+        roleIcon(role, 'game-icon') +
+        '<div class="role-announce-kicker">🎭 บทบาทของคุณ</div>' +
+        '<div id="roleAnnouncementName" class="role-announce-name">' + escapeHtml(role.thaiName || 'ยังไม่เปิดเผยบทบาท') + '</div>'
+      );
       $('#roleAnnouncementTeam').text(teamIcon(role.team) + ' ' + (role.team || '-'));
       $('#roleAnnouncementDescription').text(role.description || 'บทของคุณถูกเปิดเผยแล้ว');
       $('#roleAnnouncementHint').text(roleActionHint(role));
@@ -1548,7 +1599,7 @@
             const badge = action.type === 'witch-heal' ? 'ยาช่วยชีวิต' : 'ยาพิษ';
             const theme = getActionTheme(action.type);
             return `
-              <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : 'target-card-actionable'}" onclick="selectWitchPotion('${action.type}')">
+              <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : 'target-card-actionable'}" role="button" tabindex="0" onclick="selectWitchPotion('${action.type}')">
                 <div class="target-card-particle-layer" aria-hidden="true"></div>
                 <div class="target-card-head">
                   <div class="target-card-title">
@@ -2485,26 +2536,7 @@
       return $('#phaseTransitionBanner').hasClass('visible');
     }
 
-    function pausePhaseCountdownForTransition() {
-      if (!activePhaseDeadline || phaseCountdownPausedRemainingMs != null) {
-        return;
-      }
-      phaseCountdownPausedRemainingMs = Math.max(0, activePhaseDeadline - Date.now());
-    }
-
-    function resumePhaseCountdownAfterTransition() {
-      if (phaseCountdownPausedRemainingMs == null) {
-        return;
-      }
-      activePhaseDeadline = Date.now() + phaseCountdownPausedRemainingMs;
-      phaseCountdownPausedRemainingMs = null;
-      startPhaseCountdown(activePhaseDeadline);
-    }
-
     function getActiveCountdownDeadline() {
-      if (phaseCountdownPausedRemainingMs != null) {
-        return Date.now() + phaseCountdownPausedRemainingMs;
-      }
       return activePhaseDeadline;
     }
 
@@ -2536,15 +2568,6 @@
       }
 
       phaseCountdownInterval = setInterval(function() {
-        if (isPhaseTransitionVisible()) {
-          pausePhaseCountdownForTransition();
-          const frozenDeadline = getActiveCountdownDeadline();
-          $('#phaseCountdown').text(formatCountdown(frozenDeadline));
-          $('#mobilePhaseCountdown').text(formatCountdown(frozenDeadline));
-          $('#phaseHudTimer').text(formatCountdown(frozenDeadline));
-          return;
-        }
-
         const countdownDeadline = getActiveCountdownDeadline();
         const secondsLeft = Math.max(0, Math.ceil((countdownDeadline - Date.now()) / 1000));
         $('#phaseCountdown').text(formatCountdown(countdownDeadline));
@@ -3053,7 +3076,7 @@
         const isRevealTarget = isTarget && currentMobileTargetAction && currentMobileTargetAction.actionType === 'reveal-action';
 
         $root.append(`
-          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''} ${isTarget ? 'seat-target' : ''} ${isRevealTarget ? 'reveal-target' : ''} ${isTargetSelected ? 'target-selected' : ''}" data-player-id="${escapeHtml(player.playerId)}">
+          <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''} ${isTarget ? 'seat-target' : ''} ${isRevealTarget ? 'reveal-target' : ''} ${isTargetSelected ? 'target-selected' : ''}" data-player-id="${escapeHtml(player.playerId)}" ${isTarget ? 'role="button" tabindex="0"' : ''}>
             <div class="player-seat-number">${seatNumber}</div>
             <div class="player-avatar-stage" style="background:${escapeHtml(avatarBg)};">${avatarEmoji}</div>
             <div class="player-name">${escapeHtml(player.name)}</div>
@@ -4382,7 +4405,7 @@
             }).join('')
           : '<span class="target-card-voter-pill empty">ยังไม่มีคนลงให้</span>';
         return `
-          <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : ''} ${isDisabled ? 'target-disabled' : ''} ${isDisabled ? '' : 'target-card-actionable'}" data-action-type="${escapeHtml(actionType)}" data-target-player-id="${escapeHtml(target.playerId)}" ${isDisabled ? '' : `onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '${target.playerId}'` : `'${target.playerId}'`})"`}>
+          <div class="target-card target-theme-${theme} ${isSelected ? 'target-selected' : ''} ${isDisabled ? 'target-disabled' : ''} ${isDisabled ? '' : 'target-card-actionable'}" data-action-type="${escapeHtml(actionType)}" data-target-player-id="${escapeHtml(target.playerId)}" ${isDisabled ? '' : `role="button" tabindex="0" onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '${target.playerId}'` : `'${target.playerId}'`})"`}>
             <div class="target-card-particle-layer" aria-hidden="true"></div>
             <div class="target-card-head">
               <div class="target-card-title">
@@ -4431,7 +4454,7 @@
             }).join('')
           : '<span class="target-card-voter-pill empty">ยังไม่มีคนข้าม</span>';
         cards.push(`
-          <div class="target-card target-theme-skip ${isSkipSelected ? 'target-selected' : ''} ${isSkipDisabled ? 'target-disabled' : ''} ${isSkipDisabled ? '' : 'target-card-actionable'}" data-action-type="action-skip" data-target-player-id="__skip__" ${isSkipDisabled ? '' : `onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '__skip__'` : `'__skip__'`})"`}>
+          <div class="target-card target-theme-skip ${isSkipSelected ? 'target-selected' : ''} ${isSkipDisabled ? 'target-disabled' : ''} ${isSkipDisabled ? '' : 'target-card-actionable'}" data-action-type="action-skip" data-target-player-id="__skip__" ${isSkipDisabled ? '' : `role="button" tabindex="0" onclick="${handlerName}(${handlerName === 'selectNightTarget' ? `'${actionType}', '__skip__'` : `'__skip__'`})"`}>
             <div class="target-card-particle-layer" aria-hidden="true"></div>
             <div class="target-card-head">
               <div class="target-card-title">
@@ -4911,7 +4934,6 @@
       }
 
       clearPhaseTransitionSequence();
-      pausePhaseCountdownForTransition();
 
       $('#werewolfShell').addClass('phase-lock');
       $('#phaseTransitionBanner').addClass('visible');
@@ -4921,7 +4943,7 @@
         if (!step) {
           $('#phaseTransitionBanner').removeClass('visible');
           $('#werewolfShell').removeClass('phase-lock');
-          resumePhaseCountdownAfterTransition();
+          startPhaseCountdown(activePhaseDeadline);
           return;
         }
 
@@ -5101,6 +5123,13 @@
     $(document).on('click', '#mobileActionPanels #backToRoomLobby, #mobileWinnerBanner #backToRoomLobby, #mobileInlineActions #backToRoomLobby', function() {
       allowNavigation = true;
       window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+    });
+
+    $(document).on('keydown', '.target-card-actionable[role="button"], .seat-target[role="button"]', function(event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        $(this).trigger('click');
+      }
     });
 
     // Mobile winner bar buttons (use class-based delegation)

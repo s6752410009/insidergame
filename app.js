@@ -38,6 +38,7 @@ const roomManager = require('./managers/roomManager');
 const statsManager = require('./managers/statsManager');
 const gameSettingsManager = require('./managers/gameSettingsManager');
 const seasonManager = require('./managers/seasonManager');
+const adminMessageManager = require('./managers/adminMessageManager');
 const { getGameEngine, getAvailableGameModes } = require('./games/engineRegistry');
 
 app.locals.appVersion = APP_VERSION;
@@ -45,6 +46,7 @@ app.locals.appVersion = APP_VERSION;
 // Load settings (including admin password)
 const settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'));
 const ADMIN_PASSWORD = settings.adminPassword || 'admin123';
+const ALLOW_LEGACY_SOCKET_IDENTITY = process.env.ALLOW_LEGACY_SOCKET_IDENTITY === '1';
 
 // Constants from roomManager
 const gameMasterRole = roomManager.gameMasterRole;
@@ -81,6 +83,9 @@ const adminSockets = new Set();
 // เก็บ admin tokens ชั่วคราวสำหรับหน้า dashboard
 const adminTokens = new Map();
 
+// Lightweight anti-spam window for the public support inbox.
+const supportMessageRateLimits = new Map();
+
 // เก็บ server activity logs (เก็บ 500 logs ล่าสุด)
 const serverLogs = [];
 const MAX_SERVER_LOGS = 2000;
@@ -98,6 +103,56 @@ function generateAdminToken() {
     // ลบ token หลัง 60 วินาที (ป้องกัน token leak)
     setTimeout(() => adminTokens.delete(token), 60000);
     return token;
+}
+
+function emitAdminInboxUpdate(payload = {}) {
+    const update = {
+        ...payload,
+        unreadCount: adminMessageManager.getUnreadAdminCount()
+    };
+    adminSockets.forEach(socketId => io.to(socketId).emit('adminInboxUpdate', update));
+}
+
+function canSendSupportMessage(rateKey, limit = 8) {
+    const now = Date.now();
+    if (supportMessageRateLimits.size > 1000) {
+        supportMessageRateLimits.forEach((timestamps, key) => {
+            if (!timestamps.some(timestamp => now - timestamp < 60 * 1000)) supportMessageRateLimits.delete(key);
+        });
+    }
+    const recent = (supportMessageRateLimits.get(rateKey) || []).filter(timestamp => now - timestamp < 60 * 1000);
+    if (recent.length >= limit) {
+        supportMessageRateLimits.set(rateKey, recent);
+        return false;
+    }
+    recent.push(now);
+    supportMessageRateLimits.set(rateKey, recent);
+    return true;
+}
+
+function normalizeSupportBody(value) {
+    return String(value || '').replace(/\r\n/g, '\n').trim();
+}
+
+function safeJsonForScript(value) {
+    return JSON.stringify(value)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+}
+
+function requireAdminSession(req, res, next) {
+    if (!req.session?.isAdmin) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    next();
+}
+
+function getSupportSessionPlayerId(req) {
+    const playerId = String(req.session?.supportPlayerId || '');
+    return playerManager.isValidPlayerId(playerId) ? playerId : null;
 }
 
 function buildCanonicalUrl(pathname = '/') {
@@ -481,8 +536,60 @@ function resetVote(gameState, voteNumber) {
             player.vote1 = null;
         } else {
             player.vote2 = null;
+            player.nbVote2 = 0;
         }
     });
+}
+
+function buildInsiderVoteCandidates(gameState) {
+    return gameState.players
+        .filter(player => player.role !== gameMasterRole && !player.isGhost)
+        .map(player => ({
+            playerId: player.playerId,
+            name: player.name,
+            color: player.color,
+            avatar: player.avatar || '👤',
+            avatarFrame: player.avatarFrame || 'none'
+        }));
+}
+
+function emitInsiderRoleState(room, targetSocketId = null, targetPlayerId = null) {
+    const numTraitors = room.gameState.players.filter(player => player.role === traitorRole).length;
+    const send = (socketId, playerId) => {
+        const player = room.gameState.players.find(candidate => candidate.playerId === playerId);
+        if (!socketId || !player) return;
+        io.to(socketId).emit('newRole', {
+            role: player.role,
+            isGhost: !!player.isGhost,
+            status: room.gameState.status,
+            dualTraitorMode: !!room.settings.dualTraitorMode,
+            numTraitors
+        });
+    };
+
+    if (targetSocketId && targetPlayerId) {
+        send(targetSocketId, targetPlayerId);
+        return;
+    }
+    room.players.forEach(player => send(player.socketId, player.playerId));
+}
+
+function emitInsiderWordState(room, targetSocketId = null, targetPlayerId = null) {
+    const send = (socketId, playerId) => {
+        const player = room.gameState.players.find(candidate => candidate.playerId === playerId);
+        if (!socketId || !player) return;
+        const canSeeWord = player.role === gameMasterRole || player.role === traitorRole;
+        io.to(socketId).emit('revealWord', {
+            role: player.role,
+            word: canSeeWord ? room.gameState.word : null
+        });
+    };
+
+    if (targetSocketId && targetPlayerId) {
+        send(targetSocketId, targetPlayerId);
+        return;
+    }
+    room.players.forEach(player => send(player.socketId, player.playerId));
 }
 
 /**
@@ -623,7 +730,7 @@ function advanceInsiderToVote2(io, room) {
     resetVote(room.gameState, 2);
     const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
     io.to(roomId).emit('displayVote2', {
-        players: room.gameState.players.filter(isNotGameMaster),
+        players: buildInsiderVoteCandidates(room.gameState),
         numTraitors: numTraitors,
         progress: buildVote2Progress(room.gameState)
     });
@@ -718,6 +825,53 @@ function isAdminSocket(room, socket) {
     return room.admin === socket.playerId;
 }
 
+function getSessionPlayerId(socket) {
+    const playerId = socket?.request?.session?.playerId;
+    return playerManager.isValidPlayerId(playerId) ? playerId : null;
+}
+
+function bindSocketPlayer(socket, requestedPlayerId = null) {
+    const sessionPlayerId = getSessionPlayerId(socket);
+    const requested = playerManager.isValidPlayerId(requestedPlayerId) ? requestedPlayerId : null;
+    const playerId = sessionPlayerId || (ALLOW_LEGACY_SOCKET_IDENTITY ? requested : null);
+
+    if (!playerId || (sessionPlayerId && requested && requested !== sessionPlayerId)) {
+        return null;
+    }
+    if (socket.playerId && socket.playerId !== playerId) {
+        return null;
+    }
+
+    socket.playerId = playerId;
+    return playerId;
+}
+
+function getSocketRoom(socket, expectedMode = null) {
+    const roomId = socket?.roomId;
+    const playerId = socket?.playerId;
+    if (!roomId || !playerId) return null;
+    const room = roomManager.getRoom(roomId);
+    if (!room || (expectedMode && room.settings.gameMode !== expectedMode)) return null;
+    if (!room.players.some(player => player.playerId === playerId)) return null;
+    return room;
+}
+
+function detachPlayerFromOtherRooms(socket, playerId, keepRoomId) {
+    roomManager.getAllRooms().forEach(roomInfo => {
+        if (roomInfo.roomId === keepRoomId) return;
+        const oldRoom = roomManager.getRoom(roomInfo.roomId);
+        if (!oldRoom || !oldRoom.players.some(player => player.playerId === playerId)) return;
+
+        const updatedRoom = roomManager.leaveRoom(roomInfo.roomId, playerId);
+        socket.leave(roomInfo.roomId);
+        if (updatedRoom) {
+            handleMidGamePlayerRemoval(updatedRoom, playerId);
+            io.to(updatedRoom.roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
+            broadcastGameStateForRoom(updatedRoom);
+        }
+    });
+}
+
 function isSiteAdminPlayer(playerId) {
     return !!playerId && playerManager.isSiteAdmin(playerId);
 }
@@ -743,9 +897,36 @@ function actionAllowedCooldown(gameState, seconds) {
 }
 
 /**
+ * Mirror a chat message to every logged-in admin socket so the admin dashboard
+ * can watch a room's conversation live.
+ * @param {Object} io - Socket.io instance
+ * @param {string} roomId - Room ID the message belongs to
+ * @param {Object} payload - The chat payload emitted to players
+ * @param {string} channel - 'public' or 'werewolf' (hidden night chat)
+ */
+function broadcastChatToAdmins(io, roomId, payload, channel = 'public') {
+    if (!adminSockets.size) {
+        return;
+    }
+
+    const room = roomManager.getRoom(roomId);
+    const entry = {
+        ...payload,
+        roomId,
+        roomName: room ? room.name : roomId,
+        gameMode: room?.settings?.gameMode || null,
+        channel
+    };
+
+    adminSockets.forEach(socketId => {
+        io.to(socketId).emit('adminRoomChat', entry);
+    });
+}
+
+/**
  * Send chat message to room
  */
-function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo = null, playerId = null, avatar = '👤') {
+function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo = null, playerId = null, avatar = '👤', avatarFrame = 'none') {
     const messageId = `msg-${nextMessageId++}`;
     let messageType = 'player';
     const displayName = playerName === 'System' ? playerName : buildDisplayPlayerName(playerId, playerName);
@@ -771,6 +952,7 @@ function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo =
         color: color,
         playerId: playerId,
         avatar: avatar,
+        avatarFrame: avatarFrame || 'none',
         isSiteAdmin: isSiteAdmin,
         messageType: messageType,
         timestamp: new Date().toLocaleTimeString('th-TH', { 
@@ -793,6 +975,7 @@ function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo =
     }
 
     io.to(roomId).emit('newMessage', payload);
+    broadcastChatToAdmins(io, roomId, payload, 'public');
 }
 
 /**
@@ -1100,6 +1283,27 @@ function buildWerewolfChatHistory(room, playerId) {
     });
 }
 
+/**
+ * Full room transcript for the admin dashboard: public chat plus the hidden
+ * werewolf night chat, merged in send order and tagged by channel.
+ */
+function buildAdminChatHistory(room) {
+    if (!room) {
+        return [];
+    }
+
+    const publicHistory = (Array.isArray(room.chatHistory) ? room.chatHistory : [])
+        .map(entry => ({ ...entry, channel: 'public' }));
+    const wolfHistory = (Array.isArray(room.werewolfChatHistory) ? room.werewolfChatHistory : [])
+        .map(entry => ({ ...entry, channel: 'werewolf' }));
+
+    return [...publicHistory, ...wolfHistory].sort((left, right) => {
+        const leftOrder = Number(String(left?.messageId || '').replace(/[^0-9]/g, '')) || 0;
+        const rightOrder = Number(String(right?.messageId || '').replace(/[^0-9]/g, '')) || 0;
+        return leftOrder - rightOrder;
+    });
+}
+
 function emitWerewolfChatHistory(room, targetSocketId, playerId) {
     if (!room || room.settings.gameMode !== 'werewolf' || !targetSocketId) {
         return;
@@ -1123,6 +1327,7 @@ function sendWerewolfNightTeamMessage(io, room, player, message, replyTo = null)
         color: player.color,
         playerId: player.playerId,
         avatar: player.avatar || '👤',
+        avatarFrame: player.avatarFrame || 'none',
         isSiteAdmin: isSiteAdminPlayer(player.playerId),
         messageType: 'wolf-team',
         timestamp: new Date().toLocaleTimeString('th-TH', {
@@ -1146,6 +1351,8 @@ function sendWerewolfNightTeamMessage(io, room, player, message, replyTo = null)
             io.to(roomPlayer.socketId).emit('newMessage', payload);
         }
     });
+
+    broadcastChatToAdmins(io, room.roomId, payload, 'werewolf');
 }
 
 function finalizeWerewolfGameIfNeeded(room) {
@@ -2396,13 +2603,21 @@ async function cleanupGhostPlayers(options = {}) {
 
 // ==================== EXPRESS MIDDLEWARE & ROUTES ====================
 
+const sessionMiddleware = session({
+    secret: process.env.SESSION_SECRET || 'session-insider-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+    }
+});
+io.engine.use(sessionMiddleware);
+
 app.use(expressLayouts)
-   .use(session({
-       secret: process.env.SESSION_SECRET || 'session-insider-secret',
-       resave: false,
-       saveUninitialized: false,
-       cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 day for admin session
-   }))
+   .use(sessionMiddleware)
    .use('/static', express.static(__dirname + '/public'))
    .use('/assets', express.static(path.join(__dirname, 'public', 'assets')))
    .use('/js', express.static(path.join(__dirname, 'public', 'js')))
@@ -2441,6 +2656,7 @@ app.use(function(req, res, next) {
     res.locals.seo = buildSeoMetadata(req);
     res.locals.seoPreviewMode = shouldUseSeoPreview(req);
     res.locals.publicBaseUrl = PUBLIC_BASE_URL;
+    res.locals.safeJson = safeJsonForScript;
     next();
 });
 
@@ -2472,6 +2688,12 @@ app.use(async function(req, res, next) {
     
     // ดึง playerId จาก query parameter
     let playerId = req.query.playerId;
+    const boundPlayerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
+
+    // Once a browser session owns a player identity, query strings cannot switch it.
+    if (boundPlayerId) {
+        playerId = boundPlayerId;
+    }
     
     // ป้องกัน "undefined" หรือ "null" string
     if (!playerId || playerId === 'undefined' || playerId === 'null' || playerId === '' || !playerManager.isValidPlayerId(playerId)) {
@@ -2484,6 +2706,7 @@ app.use(async function(req, res, next) {
             await playerManager.updateLastSeen(playerId);
         }
         req.playerId = playerId;
+        req.session.playerId = playerId;
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
         // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
@@ -2534,7 +2757,7 @@ app.use(function(req, res, next) {
 });
 
 app.use(function(req, res, next) {
-    const skipPaths = ['/banned', '/static', '/admin', '/socket.io', '/settings', '/profile', '/how-to-play'];
+    const skipPaths = ['/banned', '/static', '/admin', '/socket.io', '/settings', '/profile', '/support', '/how-to-play'];
     if (skipPaths.some(p => req.path.startsWith(p)) || !req.playerId) {
         return next();
     }
@@ -2556,7 +2779,7 @@ app.use(function(req, res, next) {
 // Middleware: ดึงผู้เล่นกลับห้องเกมถ้าเกมกำลังดำเนินอยู่
 app.use(function(req, res, next) {
     // ไม่ต้องเช็คหน้าเหล่านี้
-    const skipPaths = ['/banned', '/static', '/admin', '/socket.io', '/game/', '/room/'];
+    const skipPaths = ['/banned', '/static', '/admin', '/socket.io', '/support', '/game/', '/room/'];
     if (skipPaths.some(p => req.path.startsWith(p)) || req.path.includes('/game/') || req.path.includes('/room/')) {
         return next();
     }
@@ -2629,7 +2852,11 @@ app.get('/', function(req, res) {
 app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
     try {
         const data = JSON.parse(req.body);
-        const { roomId, playerId } = data;
+        const { roomId } = data;
+        const playerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
+        if (!playerId || (data.playerId && data.playerId !== playerId)) {
+            return res.status(403).send('เปิดหน้าห้องใหม่แล้วลองอีกครั้ง');
+        }
         
         if (roomId && playerId) {
             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
@@ -2739,7 +2966,8 @@ app.get('/game/:roomId', async function(req, res) {
                 isSiteAdmin: isSiteAdminPlayer(req.playerId),
                 settings: room.settings
             },
-            blackMarketState: buildBlackMarketStatePayload(room, playerId)
+            blackMarketState: buildBlackMarketStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
         });
     }
 
@@ -2757,7 +2985,8 @@ app.get('/game/:roomId', async function(req, res) {
                 isSiteAdmin: isSiteAdminPlayer(req.playerId),
                 settings: room.settings
             },
-            spyfallState: buildSpyfallStatePayload(room, playerId)
+            spyfallState: buildSpyfallStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
         });
     }
 
@@ -2874,6 +3103,55 @@ app.get('/profile', function(req, res) {
     res.render('profile.ejs', { player: player, stats: stats, availableColors: playerManager.AVAILABLE_COLORS });
 });
 
+// Player support inbox. Messages remain available when admins are offline.
+app.get('/support', function(req, res) {
+    const player = getRenderablePlayer(req.playerId);
+    req.session.supportPlayerId = player.playerId;
+    res.render('support.ejs', { player });
+});
+
+app.get('/api/admin-messages/thread', async function(req, res) {
+    try {
+        const playerId = getSupportSessionPlayerId(req);
+        if (!playerId || (req.query.playerId && String(req.query.playerId) !== playerId)) {
+            return res.status(403).json({ success: false, error: 'เปิดหน้าติดต่อแอดมินใหม่อีกครั้ง' });
+        }
+        const thread = await adminMessageManager.markRead(playerId, 'user');
+        return res.json({ success: true, thread });
+    } catch (error) {
+        console.error('[AdminMessages] Could not load player thread:', error);
+        return res.status(500).json({ success: false, error: 'โหลดข้อความไม่สำเร็จ' });
+    }
+});
+
+app.post('/api/admin-messages', async function(req, res) {
+    try {
+        const playerId = getSupportSessionPlayerId(req);
+        const body = normalizeSupportBody(req.body?.message);
+        if (!playerId || String(req.body?.playerId || '') !== playerId) {
+            return res.status(403).json({ success: false, error: 'เปิดหน้าติดต่อแอดมินใหม่อีกครั้ง' });
+        }
+        if (!body || body.length > 2000) {
+            return res.status(400).json({ success: false, error: 'ข้อความต้องมี 1–2,000 ตัวอักษร' });
+        }
+        if (!canSendSupportMessage(`player:${playerId}`, 8) || !canSendSupportMessage(`ip:${req.ip}`, 30)) {
+            return res.status(429).json({ success: false, error: 'ส่งถี่เกินไป กรุณารอสักครู่' });
+        }
+
+        const player = playerManager.getPlayer(playerId) || playerManager.buildTransientPlayer(playerId);
+        if (!player) {
+            return res.status(400).json({ success: false, error: 'Invalid player ID' });
+        }
+        const result = await adminMessageManager.appendMessage(playerId, player.playerName, 'user', body);
+        emitAdminInboxUpdate({ playerId, thread: result.thread });
+        addServerLog(io, 'admin', null, `มีข้อความใหม่จาก ${player.playerName}`, 'info', { meta: { playerId } });
+        return res.status(201).json({ success: true, message: result.message, thread: result.thread });
+    } catch (error) {
+        console.error('[AdminMessages] Could not send player message:', error);
+        return res.status(500).json({ success: false, error: 'ส่งข้อความไม่สำเร็จ' });
+    }
+});
+
 // Admin Login page
 app.get('/admin/login', function(req, res) {
     if (req.session.isAdmin) {
@@ -2907,6 +3185,49 @@ app.get('/admin', function(req, res) {
     // สร้าง token ชั่วคราวสำหรับ authenticate socket
     const adminToken = generateAdminToken();
     res.render('admin.ejs', { adminToken: adminToken });
+});
+
+app.get('/admin/api/messages', requireAdminSession, function(req, res) {
+    res.json({
+        success: true,
+        threads: adminMessageManager.listThreads(),
+        unreadCount: adminMessageManager.getUnreadAdminCount()
+    });
+});
+
+app.get('/admin/api/messages/:playerId', requireAdminSession, async function(req, res) {
+    try {
+        const playerId = String(req.params.playerId || '');
+        if (!playerManager.isValidPlayerId(playerId)) {
+            return res.status(400).json({ success: false, error: 'Invalid player ID' });
+        }
+        const thread = await adminMessageManager.markRead(playerId, 'admin');
+        return res.json({ success: true, thread, unreadCount: adminMessageManager.getUnreadAdminCount() });
+    } catch (error) {
+        console.error('[AdminMessages] Could not open admin thread:', error);
+        return res.status(500).json({ success: false, error: 'เปิดบทสนทนาไม่สำเร็จ' });
+    }
+});
+
+app.post('/admin/api/messages/:playerId/reply', requireAdminSession, async function(req, res) {
+    try {
+        const playerId = String(req.params.playerId || '');
+        const body = normalizeSupportBody(req.body?.message);
+        if (!playerManager.isValidPlayerId(playerId)) {
+            return res.status(400).json({ success: false, error: 'Invalid player ID' });
+        }
+        if (!body || body.length > 2000) {
+            return res.status(400).json({ success: false, error: 'ข้อความต้องมี 1–2,000 ตัวอักษร' });
+        }
+
+        const player = playerManager.getPlayer(playerId);
+        const result = await adminMessageManager.appendMessage(playerId, player?.playerName, 'admin', body);
+        emitAdminInboxUpdate({ playerId, thread: result.thread });
+        return res.status(201).json({ success: true, message: result.message, thread: result.thread });
+    } catch (error) {
+        console.error('[AdminMessages] Could not send admin reply:', error);
+        return res.status(500).json({ success: false, error: 'ตอบข้อความไม่สำเร็จ' });
+    }
 });
 
 // Update player name
@@ -3071,6 +3392,8 @@ app.get('/adminPlayer', function(req, res) {
 
 io.sockets.on('connection', function(socket) {
     console.log('Socket connected:', socket.id);
+    const sessionPlayerId = getSessionPlayerId(socket);
+    if (sessionPlayerId) socket.playerId = sessionPlayerId;
 
     // ========== ROOM MANAGEMENT EVENTS ==========
 
@@ -3079,7 +3402,7 @@ io.sockets.on('connection', function(socket) {
         (async function() {
         try {
             // รับ playerId จาก client (ถ้ามี) หรือจาก socket เก่า
-            const playerId = roomData.playerId || socket.playerId;
+            const playerId = bindSocketPlayer(socket, roomData?.playerId || socket.playerId);
             if (!playerId) {
                 if (typeof callback === 'function') callback({ success: false, error: 'Not authenticated' });
                 return;
@@ -3095,6 +3418,7 @@ io.sockets.on('connection', function(socket) {
             }
 
             const room = roomManager.createRoom(roomData, playerId);
+            detachPlayerFromOtherRooms(socket, playerId, room.roomId);
             socketRoomMap.set(socket.id, room.roomId);
             socket.join(room.roomId);
             
@@ -3127,9 +3451,8 @@ io.sockets.on('connection', function(socket) {
     socket.on('joinRoom', function(data, callback) {
         (async function() {
         try {
-            const { roomId, password, playerId: clientPlayerId } = data;
-            // Use playerId from client or socket, prefer client
-            const playerId = clientPlayerId || socket.playerId;
+            const { roomId, password, playerId: clientPlayerId } = data || {};
+            const playerId = bindSocketPlayer(socket, clientPlayerId || socket.playerId);
             
             if (!playerId) {
                 if (typeof callback === 'function') callback({ success: false, error: 'Not authenticated' });
@@ -3155,6 +3478,7 @@ io.sockets.on('connection', function(socket) {
                 password,
                 { bypassLock: isSiteAdminPlayer(playerId) }
             );
+            detachPlayerFromOtherRooms(socket, playerId, roomId);
             roomManager.markPlayerActive(roomId, playerId);
             socketRoomMap.set(socket.id, roomId);
             socket.join(roomId);
@@ -3207,11 +3531,8 @@ io.sockets.on('connection', function(socket) {
 
     // Request room update (for re-rendering after admin change)
     socket.on('requestRoomUpdate', function(data) {
-        const roomId = data?.roomId || socket.roomId;
-        if (!roomId) return;
-        
-        const room = roomManager.getRoom(roomId);
-        if (!room) return;
+        const room = getSocketRoom(socket);
+        if (!room || (data?.roomId && data.roomId !== room.roomId)) return;
         
         // Send room update to requesting socket
         io.to(socket.id).emit('roomUpdate', {
@@ -3221,7 +3542,12 @@ io.sockets.on('connection', function(socket) {
 
     // Check room status (เมื่อ user กลับมาจาก background)
     socket.on('checkRoomStatus', function(data) {
-        const { roomId, playerId } = data;
+        const roomId = data?.roomId || socket.roomId;
+        const playerId = socket.playerId || getSessionPlayerId(socket);
+        if (!roomId || !playerId || (data?.playerId && data.playerId !== playerId)) {
+            socket.emit('kickedFromRoom', { message: 'เซสชันผู้เล่นไม่ตรงกัน กรุณาเปิดห้องใหม่' });
+            return;
+        }
         const room = roomManager.getRoom(roomId);
         
         if (!room) {
@@ -3260,8 +3586,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('endTableSession', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const room = roomManager.getRoom(roomId);
 
             if (!room) {
@@ -3533,7 +3859,7 @@ io.sockets.on('connection', function(socket) {
     // Quick toggle dual traitor mode
     socket.on('toggleDualTraitorMode', function(data) {
         try {
-            const roomId = socket.roomId || data.roomId;
+            const roomId = socket.roomId;
             const adminPlayerId = socket.playerId;
             const enabled = data.enabled;
             
@@ -4347,18 +4673,20 @@ io.sockets.on('connection', function(socket) {
                 isAdmin: p.playerId === room.admin,
                 role: isPlaying ? (room.gameState.players.find(gp => gp.playerId === p.playerId)?.role || null) : null
             }));
-            
+
             callback({
                 success: true,
                 room: {
                     roomId: room.roomId,
                     name: room.name,
+                    gameMode: room.settings?.gameMode || null,
                     gameStatus: isPlaying ? 'playing' : 'waiting',
                     gamePhase: room.gameState.status || null,
                     locked: room.settings?.locked || false,
                     maxPlayers: room.settings?.maxPlayers,
                     currentWord: isPlaying ? room.gameState.word : null,
-                    players
+                    players,
+                    chatHistory: buildAdminChatHistory(room)
                 }
             });
         } catch (error) {
@@ -4543,8 +4871,12 @@ io.sockets.on('connection', function(socket) {
 
     // Initialize player (when joining board page)
     socket.on('initPlayer', function(playerId) {
-        socket.playerId = playerId;
-        const player = playerManager.getPlayer(playerId);
+        const boundPlayerId = bindSocketPlayer(socket, playerId);
+        if (!boundPlayerId) {
+            socket.emit('identityError', { message: 'เซสชันผู้เล่นไม่ตรงกัน กรุณารีเฟรชหน้า' });
+            return;
+        }
+        const player = playerManager.getPlayer(boundPlayerId);
         if (player) {
             socket.playerName = player.playerName;
             socket.playerColor = player.color;
@@ -4553,8 +4885,9 @@ io.sockets.on('connection', function(socket) {
 
     // Set room context (when joining board page)
     socket.on('setRoom', function(data) {
-        const roomId = typeof data === 'string' ? data : data.roomId;
-        const playerId = (typeof data === 'object' && data.playerId) ? data.playerId : socket.playerId;
+        const roomId = typeof data === 'string' ? data : data?.roomId;
+        const requestedPlayerId = typeof data === 'object' ? data?.playerId : null;
+        const playerId = bindSocketPlayer(socket, requestedPlayerId || socket.playerId);
         
         if (!playerId) {
             console.error('setRoom called without playerId');
@@ -4644,17 +4977,9 @@ io.sockets.on('connection', function(socket) {
                     } else if (insiderStatus === 'end' && gs.resultVote2) {
                         io.to(socket.id).emit('vote2Ended', gs.resultVote2);
                     } else if (insiderStatus === 'word' && gs.word) {
-                        // คำถูกเปิดแล้ว — โชว์คำ + ปุ่มเริ่มเกม (ไม่ replay role)
-                        io.to(socket.id).emit('revealWord', {
-                            players: gs.players,
-                            word: gs.word
-                        });
+                        emitInsiderWordState(room, socket.id, playerId);
                     } else {
-                        // ช่วงแจกบทบาท (role) — แสดงบทบาทตามปกติ
-                        io.to(socket.id).emit('newRole', {
-                            players: gs.players,
-                            status: gs.status
-                        });
+                        emitInsiderRoleState(room, socket.id, playerId);
                     }
                 }
             }
@@ -4664,10 +4989,9 @@ io.sockets.on('connection', function(socket) {
     });
 
     socket.on('werewolf_requestState', function(data) {
-        const roomId = data?.roomId || socket.roomId;
-        const playerId = data?.playerId || socket.playerId;
-        const room = roomManager.getRoom(roomId);
-        if (!room || room.settings.gameMode !== 'werewolf' || !playerId) {
+        const room = getSocketRoom(socket, 'werewolf');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
             return;
         }
 
@@ -4676,10 +5000,9 @@ io.sockets.on('connection', function(socket) {
     });
 
     socket.on('spyfall_requestState', function(data) {
-        const roomId = data?.roomId || socket.roomId;
-        const playerId = data?.playerId || socket.playerId;
-        const room = roomManager.getRoom(roomId);
-        if (!room || room.settings.gameMode !== 'spyfall' || !playerId) {
+        const room = getSocketRoom(socket, 'spyfall');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
             return;
         }
 
@@ -4688,10 +5011,9 @@ io.sockets.on('connection', function(socket) {
     });
 
     socket.on('blackmarket_requestState', function(data) {
-        const roomId = data?.roomId || socket.roomId;
-        const playerId = data?.playerId || socket.playerId;
-        const room = roomManager.getRoom(roomId);
-        if (!room || room.settings.gameMode !== 'blackmarket' || !playerId) {
+        const room = getSocketRoom(socket, 'blackmarket');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
             return;
         }
 
@@ -4709,9 +5031,11 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
-        if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) {
+        const isSiteAdmin = isSiteAdminPlayer(socket.playerId);
+        const canRevealFinishedRoom = room.gameState?.phase === 'finished' && isAdminSocket(room, socket);
+        if (!isSiteAdmin && !canRevealFinishedRoom) {
             if (typeof callback === 'function') {
-                callback({ success: false, error: 'คำสั่งนี้ใช้ได้เฉพาะหัวหน้าห้องหรือ site admin เท่านั้น' });
+                callback({ success: false, error: 'เปิดดูบทบาทได้หลังจบเกมเท่านั้น (site admin ตรวจสอบได้ตลอด)' });
             }
             return;
         }
@@ -4724,8 +5048,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_submitNightAction', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const targetPlayerId = data?.targetPlayerId;
             const actionType = data?.actionType || null;
             const room = roomManager.getRoom(roomId);
@@ -4754,8 +5078,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_submitDayVote', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const targetPlayerId = data?.targetPlayerId;
             const room = roomManager.getRoom(roomId);
 
@@ -4783,8 +5107,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_revealMayor', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'werewolf') {
@@ -4811,8 +5135,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_clericBless', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const targetPlayerId = data?.targetPlayerId;
             const room = roomManager.getRoom(roomId);
 
@@ -4840,8 +5164,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_skipDiscussion', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'werewolf') {
@@ -4868,8 +5192,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_skipNight', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'werewolf') {
@@ -4896,8 +5220,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_useRevealAction', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const targetPlayerId = data?.targetPlayerId;
             const room = roomManager.getRoom(roomId);
 
@@ -4925,7 +5249,7 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('werewolf_restartGame', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
+            const roomId = socket.roomId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'werewolf') {
@@ -4962,8 +5286,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('blackmarket_buyOffer', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const itemId = data?.itemId;
             const room = roomManager.getRoom(roomId);
 
@@ -4975,8 +5299,8 @@ io.sockets.on('connection', function(socket) {
             const result = blackMarketEngine.submitMarketPurchase(room, playerId, itemId);
 
             // Server activity logs
-            const player = room.players.find(p => p.id === playerId);
-            const playerName = player ? player.name : playerId;
+            const player = room.players.find(p => p.playerId === playerId);
+            const playerName = player ? player.playerName : playerId;
             const roundNum = room.gameState?.roundNumber || 1;
             addServerLog(io, 'game', roomId, `[BlackMarket] ${playerName} ซื้อของ: ${itemId === '__pass__' ? 'ผ่าน (ไม่ซื้อ)' : itemId} (ยกที่ ${roundNum})`, 'info', {
                 gameMode: 'blackmarket',
@@ -5005,8 +5329,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('blackmarket_submitAction', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'blackmarket') {
@@ -5023,10 +5347,10 @@ io.sockets.on('connection', function(socket) {
             );
 
             // Server activity logs
-            const player = room.players.find(p => p.id === playerId);
-            const playerName = player ? player.name : playerId;
+            const player = room.players.find(p => p.playerId === playerId);
+            const playerName = player ? player.playerName : playerId;
             const roundNum = room.gameState?.roundNumber || 1;
-            const targetPlayer = data?.targetPlayerId ? (room.players.find(p => p.id === data.targetPlayerId)?.name || data.targetPlayerId) : null;
+            const targetPlayer = data?.targetPlayerId ? (room.players.find(p => p.playerId === data.targetPlayerId)?.playerName || data.targetPlayerId) : null;
             const targetText = targetPlayer ? ` เล็งเป้า: ${targetPlayer}` : '';
             const itemText = data?.itemId ? ` ของ: ${data.itemId}` : '';
             addServerLog(io, 'game', roomId, `[BlackMarket] ${playerName} ล็อกแผน: ${data?.actionType}${targetText}${itemText} (ยกที่ ${roundNum})`, 'info', {
@@ -5064,7 +5388,7 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('blackmarket_restartGame', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
+            const roomId = socket.roomId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'blackmarket') {
@@ -5099,7 +5423,7 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('blackmarket_addBots', async function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
+            const roomId = socket.roomId;
             const adminPlayerId = socket.playerId;
             const room = roomManager.getRoom(roomId);
             
@@ -5159,7 +5483,7 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('spyfall_endDiscussion', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
+            const roomId = socket.roomId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'spyfall') {
@@ -5186,8 +5510,8 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('spyfall_vote', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
-            const playerId = socket.playerId || data?.playerId;
+            const roomId = socket.roomId;
+            const playerId = socket.playerId;
             const targetPlayerId = data?.targetPlayerId;
             const room = roomManager.getRoom(roomId);
 
@@ -5216,7 +5540,7 @@ io.sockets.on('connection', function(socket) {
 
     socket.on('spyfall_restartGame', function(data, callback) {
         try {
-            const roomId = socket.roomId || data?.roomId;
+            const roomId = socket.roomId;
             const room = roomManager.getRoom(roomId);
 
             if (!room || room.settings.gameMode !== 'spyfall') {
@@ -5254,7 +5578,7 @@ io.sockets.on('connection', function(socket) {
     // Start game from lobby (redirect all players to game board)
     socket.on('startGameFromLobby', function(data, callback) {
         try {
-            const roomId = socket.roomId || (data && data.roomId);
+            const roomId = socket.roomId;
             if (!roomId) {
                 if (typeof callback === 'function') callback({ success: false, error: 'ไม่พบห้อง' });
                 return;
@@ -5395,10 +5719,12 @@ io.sockets.on('connection', function(socket) {
                         const gamePlayer = currentRoom.gameState.players.find(gp => gp.playerId === p.playerId);
                         if (gamePlayer) {
                             console.log(`[startGameFromLobby] Sending role to ${p.playerName} (${p.socketId}): ${gamePlayer.role}`);
-                            io.to(p.socketId).emit('newRole', { 
+                            io.to(p.socketId).emit('newRole', {
                                 role: gamePlayer.role,
-                                isGhost: gamePlayer.isGhost,
-                                status: currentRoom.gameState.status
+                                isGhost: !!gamePlayer.isGhost,
+                                status: currentRoom.gameState.status,
+                                dualTraitorMode: !!currentRoom.settings.dualTraitorMode,
+                                numTraitors: currentRoom.gameState.players.filter(candidate => candidate.role === traitorRole).length
                             });
                         } else {
                             console.log(`[startGameFromLobby] WARNING: No gamePlayer found for ${p.playerName}`);
@@ -5487,13 +5813,7 @@ io.sockets.on('connection', function(socket) {
         // นับจำนวนจอมบงการในเกมนี้
         const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
 
-        // Broadcast newRole แบบเดิม + เพิ่มข้อมูล dual traitor mode
-        io.to(roomId).emit('newRole', { 
-            players: room.gameState.players,
-            status: room.gameState.status,
-            dualTraitorMode: room.settings.dualTraitorMode,
-            numTraitors: numTraitors
-        });
+        emitInsiderRoleState(room);
         
         // Send chat notification
         const modeMsg = numTraitors === 2 ? ' (โหมด 2 จอมบงการ!)' : '';
@@ -5524,13 +5844,8 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
-        // Broadcast revealWord แบบเดิม (ส่ง players + word ไปทั้งหมด ให้ client กรองเอง)
-        io.to(roomId).emit('revealWord', { 
-            players: room.gameState.players,
-            word: room.gameState.word 
-        });
-        
         room.gameState.status = 'word';
+        emitInsiderWordState(room);
         
         // Send chat notification
         sendChatMessageToRoom(io, roomId, 'System', 'คำได้ถูกเปิดเผยแล้ว', '#3498db');
@@ -5597,8 +5912,12 @@ io.sockets.on('connection', function(socket) {
         }
 
         let wordToSet = '';
-        if (data && data.word && data.word.trim() !== '') {
+        if (data && typeof data.word === 'string' && data.word.trim() !== '') {
             wordToSet = data.word.trim();
+            if (wordToSet.length > 100) {
+                if (typeof callback === 'function') callback({ ok: false, error: 'คำต้องไม่เกิน 100 ตัวอักษร' });
+                return;
+            }
         } else {
             wordToSet = getWord(getInsiderWordPool());
             if (!wordToSet) {
@@ -5641,7 +5960,7 @@ io.sockets.on('connection', function(socket) {
         resetVote(room.gameState, 2);
         const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
         io.to(roomId).emit('displayVote2', {
-            players: room.gameState.players.filter(isNotGameMaster),
+            players: buildInsiderVoteCandidates(room.gameState),
             numTraitors: numTraitors
         });
         room.gameState.status = 'vote2';
@@ -5658,6 +5977,7 @@ io.sockets.on('connection', function(socket) {
         const playerId = socket.playerId;
         if (!playerId) return;
 
+        if (!object || typeof object !== 'object') return;
         const player = room.gameState.players.find(p => p.playerId === playerId);
         if (!player || object.player !== player.name) return;
 
@@ -5695,8 +6015,13 @@ io.sockets.on('connection', function(socket) {
         const playerId = socket.playerId;
         if (!playerId) return;
 
+        if (!object || typeof object !== 'object' || Array.isArray(object)) {
+            io.to(socket.id).emit('voteError', { message: 'รูปแบบคะแนนไม่ถูกต้อง กรุณาเลือกใหม่' });
+            return;
+        }
+
         const player = room.gameState.players.find(p => p.playerId === playerId);
-        if (!player || object.player !== player.name) return;
+        if (!player || player.role === gameMasterRole || player.isGhost || object.player !== player.name) return;
 
         // ตรวจสอบสถานะเกม
         if (room.gameState.status !== 'vote2') {
@@ -5709,15 +6034,26 @@ io.sockets.on('connection', function(socket) {
             console.log(`[vote2] Player ${player.name} already voted or voting in progress`);
             return;
         }
-        player._votingInProgress2 = true;
+        const expectedChoices = room.gameState.players.filter(candidate => candidate.role === traitorRole).length;
+        const rawChoices = Array.isArray(object.votes) ? object.votes : [object.vote];
+        const candidates = buildInsiderVoteCandidates(room.gameState);
+        const candidateByKey = new Map();
+        candidates.forEach(candidate => {
+            candidateByKey.set(candidate.playerId, candidate.playerId);
+            candidateByKey.set(candidate.name, candidate.playerId);
+        });
+        const normalizedChoices = rawChoices.map(choice => candidateByKey.get(choice)).filter(Boolean);
+        const uniqueChoices = Array.from(new Set(normalizedChoices));
 
-        // รองรับทั้ง vote (1 คน) และ votes (2 คน)
-        if (object.votes && Array.isArray(object.votes)) {
-            // โหมด 2 จอมบงการ - votes เป็น array
-            player.vote2 = object.votes; // เก็บเป็น array
-        } else {
-            player.vote2 = object.vote; // เก็บเป็น string (โหมดปกติ)
+        if (uniqueChoices.length !== expectedChoices || rawChoices.length !== expectedChoices) {
+            io.to(socket.id).emit('voteError', {
+                message: expectedChoices === 2 ? 'เลือกผู้ต้องสงสัย 2 คนและห้ามเลือกซ้ำ' : 'เลือกผู้ต้องสงสัย 1 คน'
+            });
+            return;
         }
+
+        player._votingInProgress2 = true;
+        player.vote2 = expectedChoices === 1 ? uniqueChoices[0] : uniqueChoices;
         player._votingInProgress2 = false;
 
         io.to(roomId).emit('vote2Progress', buildVote2Progress(room.gameState));
@@ -5749,6 +6085,10 @@ io.sockets.on('connection', function(socket) {
                         name: p.name,
                         room: p.room,
                         permission: p.permission, // เก็บ permission ไว้!
+                        color: p.color,
+                        avatar: p.avatar || '👤',
+                        avatarFrame: p.avatarFrame || 'none',
+                        isGhost: !!p.isGhost,
                         role: null,
                         vote1: null,
                         vote2: null,
@@ -5890,7 +6230,7 @@ io.sockets.on('connection', function(socket) {
             }
         }
 
-        sendChatMessageToRoom(io, roomId, player.playerName, safeMessage, player.color, data.replyTo, playerId, player.avatar || '👤');
+        sendChatMessageToRoom(io, roomId, player.playerName, safeMessage, player.color, data.replyTo, playerId, player.avatar || '👤', player.avatarFrame || 'none');
     });
 
     // GM Quick Reaction (ผู้ดำเนินเกมตอบด่วน)
@@ -5969,6 +6309,7 @@ io.sockets.on('connection', function(socket) {
                                         if (stillDisconnected) {
                                             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
                                             if (updatedRoom) {
+                                                handleMidGamePlayerRemoval(updatedRoom, playerId);
                                                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง (Timeout)`, '#e74c3c');
                                                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
                                                 // อัปเดต state เกมให้ client ไม่ค้างผู้เล่นที่ออกไปแล้วกลางเกม
@@ -6050,6 +6391,9 @@ async function startServer() {
 
         await statsManager.initStatsManager();
         console.log('✅ Stats Manager initialized');
+
+        await adminMessageManager.initAdminMessageManager();
+        console.log('✅ Admin Message Manager initialized');
 
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());

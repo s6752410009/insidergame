@@ -1,5 +1,6 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
 <style>
   * { box-sizing: border-box; }
 
@@ -201,11 +202,25 @@
   }
 
   .sf-role-icon { font-size: 2.4rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
-  .sf-role-icon .game-icon { width: 56px; height: 56px; object-fit: contain; }
+  .sf-role-icon .game-icon { width: 96px; height: 96px; object-fit: cover; border-radius: 18px; border: 1px solid rgba(245, 200, 107, 0.35); }
   .sf-role-icon .game-icon-emoji { line-height: 1; }
-  .sf-location-pill .game-icon { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; margin-right: 4px; }
-  .sf-location-pill .game-icon-emoji { font-size: 0.9rem; margin-right: 2px; }
-  .sf-location-pill { display: inline-flex; align-items: center; gap: 4px; }
+  .sf-location-pill .game-icon { width: 44px; height: 44px; object-fit: cover; border-radius: 10px; margin: 0; }
+  .sf-location-pill .game-icon-emoji { font-size: 1.2rem; margin: 0; }
+  .sf-location-pill {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 84px;
+    padding: 8px 6px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    text-align: center;
+    line-height: 1.25;
+  }
   .sf-role-name { font-size: 1.35rem; font-weight: 700; color: var(--sf-text); }
   .sf-role-summary { color: var(--sf-muted); margin-top: 8px; line-height: 1.45; }
 
@@ -221,17 +236,9 @@
   .sf-location-pool {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     justify-content: center;
     margin-top: 12px;
-  }
-
-  .sf-location-pill {
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    font-size: 0.82rem;
-    color: #cbd5e1;
   }
 
   .sf-stage-empty {
@@ -346,69 +353,26 @@
   #onlinePlayerList { list-style: none; padding: 0; margin: 0 0 16px; }
   #onlinePlayerList li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
 
-  .sf-chat {
-    position: fixed;
-    right: 16px;
-    bottom: 72px;
-    width: min(360px, calc(100vw - 32px));
-    max-height: 52vh;
-    background: #0f172a;
-    border: 1px solid var(--sf-line);
-    border-radius: 18px;
-    z-index: 8000;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  /* แชทกลาง (chatPanel.css) แต่งสีให้เข้ากับธีม Spyfall */
+  .chat-box {
+    --chat-accent: #14b8a6;
+    --chat-accent-dark: #0f766e;
+    --chat-surface: linear-gradient(135deg, #0f172a 0%, #0b1f24 100%);
+    --chat-border: rgba(94, 234, 212, 0.22);
+    --chat-bubble: #1e293b;
+    font-family: 'Rajdhani', sans-serif;
   }
 
-  .sf-chat-header {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    color: #fff;
-    font-weight: 700;
-  }
-
-  .sf-chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    min-height: 180px;
-    max-height: 280px;
-  }
-
-  .sf-chat-input-row {
-    display: flex;
-    gap: 8px;
-    padding: 10px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-  }
-
-  #chatInput {
-    flex: 1;
-    resize: none;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(0,0,0,0.25);
-    color: #fff;
-    padding: 8px 10px;
-    font-family: inherit;
-  }
-
-  .sf-chat-toggle {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 7999;
-    border: none;
+  .chat-toggle {
+    --chat-toggle-bg: linear-gradient(135deg, #14b8a6, #0f766e);
     border-radius: 999px;
     padding: 12px 18px;
-    background: linear-gradient(135deg, #14b8a6, #0f766e);
-    color: #fff;
-    font-weight: 700;
-    cursor: pointer;
     box-shadow: 0 8px 24px rgba(20, 184, 166, 0.35);
+  }
+
+  .btn-chat-send {
+    --chat-send-bg: linear-gradient(135deg, #14b8a6, #0f766e);
+    --chat-send-color: #fff;
   }
 
   .sf-modal {
@@ -462,16 +426,6 @@
 
   .sf-manual-body ol { padding-left: 20px; line-height: 1.55; }
   .sf-manual-body p { line-height: 1.5; color: #cbd5e1; }
-
-  .chat-message-wrapper { margin-bottom: 10px; }
-  .chat-message-bubble {
-    display: inline-block;
-    padding: 8px 12px;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.08);
-    color: #e2e8f0;
-    max-width: 90%;
-  }
 
   @media (max-width: 640px) {
     .sf-topbar, .sf-grid { padding-left: 14px; padding-right: 14px; }
@@ -549,18 +503,28 @@
 </div>
 <div id="sidebarOverlay" class="sf-sidebar-overlay"></div>
 
-<div id="chatBox" class="sf-chat" style="display:none;">
-  <div class="sf-chat-header">
-    <span>💬 แชท</span>
-    <button type="button" id="closeChat" aria-label="ปิดแชท">✕</button>
+<div id="chatBox" class="chat-box" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title">💬 แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
   </div>
-  <div id="chatMessages" class="sf-chat-messages" role="log"></div>
-  <div class="sf-chat-input-row">
-    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..."></textarea>
-    <button type="button" id="sendChat" class="sf-btn sf-btn-primary">ส่ง</button>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="sf-chat-toggle">CHAT</button>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
 
 <div id="returnToLobbyModal" class="sf-modal" style="display:none;">
   <div class="sf-modal-card">
@@ -592,24 +556,20 @@
 </div>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="/js/gameIcon.js"></script>
+<script src="/js/chatPanel.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('sf-active');
 
-  const socket = io({
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    transports: ['websocket', 'polling']
-  });
+  const socket = window.appSocket || io();
 
   const roomId = '<%= room.roomId %>';
   const playerId = '<%= player.playerId %>';
   const playerName = '<%= player.name %>';
   const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
-  let currentState = <%- JSON.stringify(typeof spyfallState !== 'undefined' ? spyfallState : {}) %>;
+  let currentState = <%- safeJson(typeof spyfallState !== 'undefined' ? spyfallState : {}) %>;
+  const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
   let allowNavigation = false;
   let timerInterval = null;
 
@@ -625,6 +585,20 @@ $(function() {
     }
     const icon = (meta && meta.icon) || '🃏';
     return '<span class="game-icon-emoji">' + escapeHtml(icon) + '</span>';
+  }
+
+  // รูปผู้เล่น + กรอบ ใช้ตัว render กลาง (playerAvatar.js) ให้ตรงกับหน้าอื่น
+  function playerAvatarHtml(player, size) {
+    const meta = {
+      avatar: (player && player.avatar) || '👤',
+      avatarFrame: player && player.avatarFrame,
+      color: (player && player.color) || '#5eead4',
+      playerName: player && (player.displayName || player.name || player.playerName)
+    };
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar(meta, { size: size || 32 });
+    }
+    return '<span style="font-size:1.4rem;">' + escapeHtml(meta.avatar) + '</span>';
   }
 
   function formatTimer(ms) {
@@ -724,7 +698,7 @@ $(function() {
       players.forEach(function(player) {
         const isMyPick = selfTarget && player.playerId === selfTarget;
         html += '<button type="button" class="sf-vote-btn' + (isMyPick ? ' selected' : '') + '" data-target-id="' + escapeHtml(player.playerId) + '" ' + (selfVoted ? 'disabled' : '') + '>' +
-          '<span style="font-size:1.4rem;">' + escapeHtml(player.avatar || '👤') + '</span>' +
+          playerAvatarHtml(player, 38) +
           '<span><strong style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</strong></span>' +
           (isMyPick ? '<span style="margin-left:auto;font-size:0.82rem;color:var(--sf-teal);">✓ คุณโหวตคนนี้</span>'
                     : (player.hasVoted ? '<span style="margin-left:auto;font-size:0.78rem;color:var(--sf-muted);">ลงคะแนนแล้ว</span>' : '')) +
@@ -813,7 +787,7 @@ $(function() {
 
   function startTimerTick() {
     if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(updateTimer, 250);
+    timerInterval = setInterval(updateTimer, 1000);
   }
 
   socket.on('connect', function() {
@@ -825,13 +799,6 @@ $(function() {
 
   socket.on('disconnect', function() {
     $('#connectionStatus').show();
-  });
-
-  socket.on('reconnect', function() {
-    $('#connectionStatus').hide();
-    socket.emit('initPlayer', playerId);
-    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
-    socket.emit('spyfall_requestState', { roomId: roomId, playerId: playerId });
   });
 
   socket.on('spyfallState', function(state) {
@@ -869,18 +836,24 @@ $(function() {
       $('#onlinePlayerList').empty();
       data.players.forEach(function(player) {
         $('#onlinePlayerList').append(
-          '<li><span style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.displayName || player.playerName) + '</span></li>'
+          '<li style="display:flex;align-items:center;gap:8px;">' +
+            playerAvatarHtml(player, 28) +
+            '<span style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.displayName || player.playerName) + '</span>' +
+            (player.online === false ? '<span style="margin-left:auto;font-size:0.75rem;color:var(--sf-muted);">ออฟไลน์</span>' : '') +
+          '</li>'
         );
       });
     }
   });
 
-  socket.on('newMessage', function(data) {
-    const color = data.color || '#fff';
-    const html = '<div class="chat-message-wrapper"><div class="chat-message-bubble">' +
-      '<strong style="color:' + escapeHtml(color) + '">' + escapeHtml(data.playerName) + '</strong>: ' +
-      escapeHtml(data.message) + '</div></div>';
-    $('#chatMessages').append(html).scrollTop($('#chatMessages')[0].scrollHeight);
+  // แชทกลางแบบเดียวกับ Insider (ตอบกลับ / ปัดเพื่อตอบ / จุดแจ้งข้อความใหม่ / รูป+กรอบผู้เล่น)
+  const spyfallChat = window.initChatPanel({
+    socket: socket,
+    playerId: playerId,
+    playerName: playerName
+  });
+  (initialChatHistory || []).forEach(function(entry) {
+    spyfallChat?.appendMessage(entry, { silent: true });
   });
 
   $(document).on('click', '#sfEndDiscussionBtn', function() {
@@ -934,28 +907,6 @@ $(function() {
   }
 
   $('#toggleSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
-
-  $('#toggleChat').on('click', function() {
-    const visible = $('#chatBox').is(':visible');
-    $('#chatBox').toggle(!visible);
-    if (!visible) $('#chatInput').focus();
-  });
-
-  $('#closeChat').on('click', function() { $('#chatBox').hide(); });
-
-  $('#sendChat').on('click', function() {
-    const message = $('#chatInput').val().trim();
-    if (!message) return;
-    socket.emit('sendMessage', { message: message, playerName: playerName });
-    $('#chatInput').val('');
-  });
-
-  $('#chatInput').on('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      $('#sendChat').click();
-    }
-  });
 
   $('#leaveRoomBtn').on('click', function() {
     Swal.fire({

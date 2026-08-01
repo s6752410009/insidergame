@@ -354,15 +354,15 @@ async function main() {
             }
 
             if (anchor?.phase === 'night') {
-                await skipNightForAlive(clients, roomId);
                 const sk1 = createStateCheckpoint(clients);
+                await skipNightForAlive(clients, roomId);
                 await waitForPhaseAfter(clients, roomId, 'day-discussion', sk1, null, PHASE_TIMEOUT_MS);
-                await skipDiscussionForAlive(clients, roomId);
                 const sk2 = createStateCheckpoint(clients);
+                await skipDiscussionForAlive(clients, roomId);
                 await waitForPhaseAfter(clients, roomId, 'day-vote', sk2, null, PHASE_TIMEOUT_MS);
             } else if (anchor?.phase === 'day-discussion') {
-                await skipDiscussionForAlive(clients, roomId);
                 const sk = createStateCheckpoint(clients);
+                await skipDiscussionForAlive(clients, roomId);
                 await waitForPhaseAfter(clients, roomId, 'day-vote', sk, null, PHASE_TIMEOUT_MS);
             }
 
@@ -379,7 +379,8 @@ async function main() {
 
             for (const client of aliveClients) {
                 const player = getPlayerView(client.lastState, client.playerId);
-                if (revealerClient && player?.playerId === revealerClient.playerId) continue;
+                const dayActions = client.lastState?.actionState?.dayActions;
+                if (dayActions && dayActions.canVote === false) continue;
                 await submitDayVote(client, roomId, client.playerId === finishVoteTargetId ? '__skip__' : finishVoteTargetId);
             }
 

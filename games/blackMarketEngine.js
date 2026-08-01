@@ -74,28 +74,28 @@ const ITEM_DEFINITIONS = {
         id: 'gun',
         image: blackMarketImage('gun'),
         icon: '🔫',
-        name: 'ปืนเงียบ',
+        name: 'ปืน',
         type: 'weapon',
         price: 3,
-        summary: 'ใช้สั่งเก็บได้ 1 ครั้ง'
+        summary: 'สั่งเก็บคนได้ 1 ครั้ง'
     },
     armor: {
         id: 'armor',
         image: blackMarketImage('armor'),
         icon: '🦺',
-        name: 'เสื้อเกราะ',
+        name: 'เกราะ',
         type: 'defense',
         price: 3,
-        summary: 'กันการสั่งเก็บได้ 1 ครั้ง'
+        summary: 'กันถูกเก็บ 1 ครั้ง'
     },
     wiretap: {
         id: 'wiretap',
         image: blackMarketImage('wiretap'),
         icon: '🎧',
-        name: 'เครื่องดักฟัง',
+        name: 'ดักฟัง',
         type: 'intel',
         price: 2,
-        summary: 'ทำให้ข่าวที่สืบมาแน่นขึ้น'
+        summary: 'สืบเห็นของในมือละเอียดขึ้น'
     },
     passport: {
         id: 'passport',
@@ -104,37 +104,37 @@ const ITEM_DEFINITIONS = {
         name: 'พาสปลอม',
         type: 'utility',
         price: 2,
-        summary: 'ตอนหมอบจะลดค่าหัวได้แรงขึ้น'
+        summary: 'หมอบแล้วลดค่าหัวแรงขึ้น'
     },
     ledger: {
         id: 'ledger',
         image: blackMarketImage('ledger'),
         icon: '📒',
-        name: 'สมุดบัญชีดำ',
+        name: 'สมุดบัญชี',
         type: 'cargo',
         price: 2,
         influence: 2,
-        summary: 'ของเถื่อนมูลค่าสูง ส่งแล้วได้ 👑 ดี'
+        summary: 'ส่งแล้วได้แต้มสูง'
     },
     crate: {
         id: 'crate',
         image: blackMarketImage('crate'),
         icon: '📦',
-        name: 'ลังสินค้าเถื่อน',
+        name: 'ลังของ',
         type: 'cargo',
         price: 2,
         influence: 2,
-        summary: 'ส่งง่าย ได้ 👑 ชัวร์'
+        summary: 'ส่งแล้วได้แต้ม'
     },
     cashbag: {
         id: 'cashbag',
         image: blackMarketImage('cashbag'),
         icon: '💼',
-        name: 'กระเป๋าเงินดำ',
+        name: 'กระเป๋าเงิน',
         type: 'cargo',
         price: 1,
         influence: 1,
-        summary: 'ของเบาแต่ปั่นแต้มเร็ว'
+        summary: 'ส่งแล้วได้แต้มเบา'
     }
 };
 
@@ -1172,6 +1172,7 @@ function buildClientState(room, playerId) {
             playerId: player.playerId,
             name: player.name,
             avatar: player.avatar,
+            avatarFrame: player.avatarFrame || 'none',
             color: player.color,
             alive: player.alive !== false,
             influence: player.influence,

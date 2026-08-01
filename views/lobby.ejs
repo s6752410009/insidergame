@@ -1092,8 +1092,6 @@
 <!-- No footer needed -->
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(function() {
     // เก็บ playerId ใน sessionStorage สำหรับ tab นี้
@@ -1101,7 +1099,7 @@ $(function() {
     sessionStorage.setItem('playerId', playerId);
     
     // Connect to socket for broadcast messages
-    const socket = io();
+    const socket = window.appSocket || io();
     
     // Listen for system broadcasts
     socket.on('systemBroadcast', function(data) {
@@ -1116,16 +1114,8 @@ $(function() {
     });
     
     // Frame styles lookup
-    const frameStyles = {
-        'none': 'none',
-        'bronze': 'linear-gradient(135deg, #cd7f32 0%, #8b4513 100%)',
-        'silver': 'linear-gradient(135deg, #c0c0c0 0%, #808080 100%)',
-        'gold': 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
-        'diamond': 'linear-gradient(135deg, #b9f2ff 0%, #00bfff 100%)',
-        'fire': 'linear-gradient(135deg, #ff4500 0%, #ff0000 100%)',
-        'rainbow': 'linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)',
-        'neon': 'linear-gradient(135deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%)'
-    };
+    // กรอบมาจาก /static/js/playerAvatar.js แหล่งเดียว จะได้ไม่หลุดกันระหว่างหน้า
+    const frameStyles = window.PlayerAvatar.FRAME_STYLES;
 
     const LEADERBOARD_PAGE_SIZE = 5;
     const CURRENT_SEASON_KEY = 'current';
@@ -1694,30 +1684,29 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '<% if (lastSeason) { %>🏆 รีแรงค์! เริ่ม <%= currentSeason.name %><% } else { %>🚀 อัปเดต Version <%= appVersion %>!<% } %>',
+            title: '<% if (lastSeason) { %>🏆 <%= currentSeason.name %> + เกมใหม่<% } else { %>🎮 เกมใหม่มาแล้ว — v<%= appVersion %><% } %>',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     ${seasonResetNoticeHtml}
-                    <p style="color: #f39c12; font-size: 0.9em; margin-bottom: 15px;">
-                        อัปเดต v<%= appVersion %>: <strong>ไอคอนภาพใหม่ทุกเกม + แก้บัคกติกาครั้งใหญ่</strong> — ตรวจสอบระบบทั้ง Spyfall, Werewolf และ Black Market แล้วแก้ให้ผลเกมแม่นยำ ยุติธรรม ไม่มีเกมค้างหรือคนหายกลางเกมทำวงพังอีก
+                    <p style="color: #f6c453; font-size: 0.95em; line-height: 1.65; margin-bottom: 15px;">
+                        <strong>v<%= appVersion %> เปิดโต๊ะใหม่ครบ 3 แบบ:</strong> Werewolf, Black Market และ Spyfall พร้อมภาพประจำบท/ไอเทม/สถานที่ และ flow ที่บอกชัดว่าตอนนี้ต้องทำอะไร
                     </p>
 
-                    <div style="background: rgba(26, 188, 156, 0.16); padding: 12px; border-radius: 8px; border-left: 4px solid #1abc9c; margin-bottom: 15px;">
-                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🛠️ ไฮไลต์ v<%= appVersion %> — เกมแฟร์ขึ้น ภาพสวยขึ้น</h4>
+                    <div style="background: rgba(26, 188, 156, 0.16); padding: 14px; border: 1px solid rgba(123, 237, 214, 0.28); border-radius: 12px; margin-bottom: 15px;">
+                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🎲 เลือกเกมใหม่ที่เข้ากับวง</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>🖼️ ไอคอนใหม่:</strong> บทบาท ไอเทม และสถานที่ มีภาพประจำตัวครบทั้ง 3 เกม</li>
-                            <li><strong>🔍 Spyfall:</strong> สายลับหนีออกกลางเกม = พลเมืองชนะทันที และนับเฉพาะโหวตจริง ไม่มีสุ่มโหวตให้คนบริสุทธิ์โดนจับมั่ว</li>
-                            <li><strong>🐺 Werewolf:</strong> ศาลเตี้ย/พรานยิงทะลุการป้องกันหมอไม่ได้แล้ว, เกณฑ์โหวตที่ประกาศตรงกับจริง, ตัวตลกนับเป็นตัวโหวต ไม่โดนตัดจบเกมก่อนเวลา และพรนักบวชคุ้มครองตามสัญญา</li>
-                            <li><strong>💰 Black Market:</strong> ยิงเป้าที่ตายแล้วไม่เสียปืน/เงินฟรี, พาสปลอมเป็นของติดตัวถาวร และตายหมู่ยกสุดท้ายเกมจบทันที</li>
-                            <li><strong>🛡️ เสถียรขึ้น:</strong> คนออก/โดนเตะกลางเกมบอร์ดอัปเดตทันที, restart server ไม่ทำเกมโดนสรุปผลรวด และกดปุ่มรัวไม่เด้ง error หลอก</li>
+                            <li><strong>🐺 Werewolf:</strong> เกมบทบาทหลายสกิล กลางคืน–ประชุม–โหวต พร้อมสถานะส่วนตัวของแต่ละ role</li>
+                            <li><strong>🎩 Black Market:</strong> ซื้อของ เปิดดีล หักหลัง และชิงอิทธิพล เล่นกับเพื่อนหรือเติม bot ได้</li>
+                            <li><strong>🕵️ Spyfall:</strong> ถาม–ตอบเพื่อจับสายลับจากสถานที่ลับ จบรอบไว เหมาะกับวงที่อยากเริ่มทันที</li>
                         </ul>
                     </div>
 
-                    <div style="background: rgba(52, 152, 219, 0.12); padding: 12px; border-radius: 8px; border-left: 4px solid #3498db; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🎯 เล่นได้เลย</h4>
+                    <div style="background: rgba(52, 152, 219, 0.12); padding: 14px; border: 1px solid rgba(143, 211, 255, 0.24); border-radius: 12px; margin-bottom: 15px;">
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🛠️ รอบนี้นิ่งขึ้นตรงไหน</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>สร้างห้องเลือกโหมดที่อยากเล่น แล้วดูแถบ <strong>"ทำอะไรตอนนี้"</strong> ที่บอกขั้นตอนถัดไปให้ทุกเกม</li>
-                            <li>หลุดกลางเกมไม่ต้องกลัว — รีโหลดแล้วระบบพากลับเข้าเฟสเดิมให้อัตโนมัติ</li>
+                            <li>สกิลและการโหวตยึด state จาก server ไม่ข้ามเฟสหรือทับ action ของ role อื่น</li>
+                            <li>หลุดหรือรีโหลดกลางเกมกลับเข้า role และเฟสเดิมได้ พร้อมแชทที่ไม่หาย</li>
+                            <li>ติดต่อ Site Admin ได้แม้ admin offline และเช็กสถานะอ่าน/ตอบกลับได้</li>
                         </ul>
                     </div>
 
@@ -1726,6 +1715,10 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.2.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>เพิ่มภาพเกมชุดใหม่และแก้กติกาหลักของทุกโหมด</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.1.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>ยกเครื่อง logic engine ใหม่ทุกเกม เล่นจบไม่ค้าง รีจอยน์กลางเกมได้</li>
