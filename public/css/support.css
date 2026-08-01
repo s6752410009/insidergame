@@ -1,7 +1,7 @@
 .support-fab {
     position: fixed;
     right: max(16px, env(safe-area-inset-right));
-    bottom: calc(76px + env(safe-area-inset-bottom));
+    bottom: calc(20px + env(safe-area-inset-bottom));
     z-index: 1050;
     display: inline-flex;
     align-items: center;
@@ -16,6 +16,12 @@
     text-decoration: none;
     box-shadow: 0 10px 24px rgba(11, 7, 20, 0.34);
     transition: transform 180ms ease-out, background-color 180ms ease-out;
+}
+
+/* Keep Donate above the contact FAB so they never overlap */
+body:has(.support-fab:not([hidden])) .floating-donate-btn {
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
 }
 
 .support-fab:hover,
