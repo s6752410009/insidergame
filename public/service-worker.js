@@ -1,5 +1,5 @@
 // Service Worker สำหรับ Insider Game PWA
-const CACHE_NAME = 'insider-game-v1';
+const CACHE_NAME = 'insider-game-v2';
 
 // ไฟล์ที่จะ cache เก็บไว้ (เล่นได้แม้เน็ตช้า)
 const STATIC_ASSETS = [
@@ -56,8 +56,24 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/socket.io')) {
     return;
   }
+
+  // JS ต้อง network-first ไม่งั้น logic เก่าค้างใน cache แล้วบัคห้องไม่หาย
+  if (url.pathname.startsWith('/static/js/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
   
-  // สำหรับไฟล์ static - ใช้ cache ก่อน
+  // สำหรับไฟล์ static อื่น - ใช้ cache ก่อน
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(event.request)
@@ -75,8 +91,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // สำหรับหน้าเว็บ - ใช้ network ก่อน
+  // สำหรับหน้าเว็บ - ใช้ network ก่อน ห้าม cache redirect อย่าง room_not_found
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request)
   );
 });

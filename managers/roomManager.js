@@ -16,6 +16,14 @@ const rooms = new Map();
 const ROOMS_FILE = process.env.ROOMS_FILE || path.join(__dirname, '../data/rooms.json');
 let persistTimer = null;
 let persistQueued = false;
+let useDatabase = false;
+let RoomSnapshot = null;
+
+try {
+    ({ RoomSnapshot } = require('./models'));
+} catch (error) {
+    RoomSnapshot = null;
+}
 
 // Game Master Role constant
 const gameMasterRole = 'ผู้ดำเนินเกม';
@@ -33,11 +41,9 @@ function schedulePersistRooms() {
         persistTimer = null;
         if (!persistQueued) return;
         persistQueued = false;
-        try {
-            persistRoomsSync();
-        } catch (error) {
+        persistRooms().catch(error => {
             console.error('[RoomManager] Failed to persist rooms:', error.message);
-        }
+        });
     }, 250);
 }
 
@@ -47,11 +53,9 @@ function flushPersistRooms() {
         persistTimer = null;
     }
     persistQueued = false;
-    try {
-        persistRoomsSync();
-    } catch (error) {
+    return persistRooms().catch(error => {
         console.error('[RoomManager] Failed to persist rooms:', error.message);
-    }
+    });
 }
 
 function serializeRoom(room) {
@@ -93,39 +97,99 @@ function hydrateRoom(raw) {
     return room;
 }
 
-function persistRoomsSync() {
+function persistRoomsToFileSync(payload) {
     const directory = path.dirname(ROOMS_FILE);
     fs.mkdirSync(directory, { recursive: true });
-    const payload = Array.from(rooms.values()).map(serializeRoom);
     const temporaryFile = `${ROOMS_FILE}.${process.pid}.tmp`;
     fs.writeFileSync(temporaryFile, JSON.stringify(payload, null, 2), 'utf8');
     fs.renameSync(temporaryFile, ROOMS_FILE);
 }
 
-function loadPersistedRooms() {
-    rooms.clear();
-    if (!fs.existsSync(ROOMS_FILE)) {
-        console.log('📁 RoomManager: no rooms.json yet');
-        return 0;
-    }
-    try {
-        const raw = JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8'));
-        const stored = Array.isArray(raw) ? raw : Object.values(raw || {});
-        stored.forEach(entry => {
-            const room = hydrateRoom(entry);
-            if (room?.roomId) {
-                rooms.set(room.roomId, room);
+async function persistRooms() {
+    const payload = Array.from(rooms.values()).map(serializeRoom);
+
+    if (useDatabase && RoomSnapshot) {
+        const keepIds = payload.map(room => room.roomId);
+        const ops = payload.map(room => ({
+            updateOne: {
+                filter: { roomId: room.roomId },
+                update: {
+                    $set: {
+                        roomId: room.roomId,
+                        payload: room,
+                        updatedAt: new Date()
+                    }
+                },
+                upsert: true
             }
-        });
-        console.log(`📁 RoomManager restored ${rooms.size} room(s) from disk`);
-        return rooms.size;
-    } catch (error) {
-        console.error('[RoomManager] Could not read rooms.json:', error.message);
-        return 0;
+        }));
+
+        if (ops.length > 0) {
+            await RoomSnapshot.bulkWrite(ops, { ordered: false });
+        }
+        if (keepIds.length > 0) {
+            await RoomSnapshot.deleteMany({ roomId: { $nin: keepIds } });
+        } else {
+            await RoomSnapshot.deleteMany({});
+        }
+        return payload.length;
     }
+
+    persistRoomsToFileSync(payload);
+    return payload.length;
 }
 
-function initRoomManager() {
+function loadRoomsFromFile() {
+    if (!fs.existsSync(ROOMS_FILE)) {
+        return [];
+    }
+    const raw = JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8'));
+    return Array.isArray(raw) ? raw : Object.values(raw || {});
+}
+
+async function loadPersistedRooms() {
+    rooms.clear();
+    let stored = [];
+
+    if (useDatabase && RoomSnapshot) {
+        const docs = await RoomSnapshot.find({}).lean();
+        stored = docs.map(doc => doc.payload).filter(Boolean);
+        console.log(`📁 RoomManager restored ${stored.length} room(s) from MongoDB`);
+    } else {
+        try {
+            stored = loadRoomsFromFile();
+            console.log(stored.length
+                ? `📁 RoomManager restored ${stored.length} room(s) from disk`
+                : '📁 RoomManager: no rooms.json yet');
+        } catch (error) {
+            console.error('[RoomManager] Could not read rooms.json:', error.message);
+            stored = [];
+        }
+    }
+
+    stored.forEach(entry => {
+        const room = hydrateRoom(entry);
+        if (room?.roomId) {
+            rooms.set(room.roomId, room);
+        }
+    });
+    return rooms.size;
+}
+
+async function initRoomManager() {
+    try {
+        const { isDBConnected } = require('./database');
+        useDatabase = Boolean(RoomSnapshot && isDBConnected());
+    } catch (error) {
+        useDatabase = false;
+    }
+
+    if (useDatabase) {
+        console.log('✅ RoomManager using MongoDB');
+    } else {
+        console.log('📁 RoomManager using JSON file fallback');
+    }
+
     return loadPersistedRooms();
 }
 
@@ -575,9 +639,11 @@ function leaveRoom(roomId, playerId) {
         }
     }
 
-    // ถ้าไม่มีผู้เล่นแล้ว ให้ลบห้อง
+    // ถ้าไม่มีผู้เล่นแล้ว อย่าลบห้องทันที
+    // create → navigate / disconnect ช่วงสั้นๆ เคยทำให้ room_not_found
+    // เก็บเปล่าไว้ให้ grace แล้วให้ sweep ลบ
     if (room.players.length === 0) {
-        rooms.delete(roomId);
+        room.zeroOnlineSince = room.zeroOnlineSince || nowIso();
         schedulePersistRooms();
         return null;
     }
@@ -753,7 +819,9 @@ function getRoom(roomId) {
  * ดึงรายการห้องทั้งหมด (สำหรับ Room List)
  */
 function getAllRooms() {
-    return Array.from(rooms.values()).map(room => {
+    return Array.from(rooms.values())
+        .filter(room => Array.isArray(room.players) && room.players.length > 0)
+        .map(room => {
         const gameEngine = getGameEngine(room.settings.gameMode);
         const onlineCount = getOnlinePlayerCount(room);
         const gameStatus = getRoomGameStatusLabel(room);
@@ -940,6 +1008,16 @@ function collectAbandonCandidates() {
     for (const [roomId, room] of rooms.entries()) {
         syncZeroOnlineTracker(room);
 
+        // ห้องว่างเปล่า (ไม่มีผู้เล่นแล้ว) ก็เข้าเกณฑ์ลบหลัง grace
+        if (room.players.length === 0) {
+            const emptySinceMs = new Date(room.zeroOnlineSince || room.createdAt || 0).getTime();
+            const graceMs = getEmptyRoomGraceMs(room);
+            if (Number.isFinite(emptySinceMs) && (now - emptySinceMs) >= graceMs) {
+                candidates.push({ roomId, roomName: room.name, gameMode: room.settings?.gameMode });
+            }
+            continue;
+        }
+
         if (getOnlinePlayerCount(room) > 0 || !room.zeroOnlineSince) {
             continue;
         }
@@ -989,15 +1067,19 @@ function finalizeAbandonedRoom(roomId) {
 
     const removedPlayers = removeOfflinePlayers(roomId);
     const refreshedRoom = rooms.get(roomId);
-    if (refreshedRoom) {
-        refreshedRoom.zeroOnlineSince = null;
-        refreshedRoom.lastAbandonedAt = nowIso();
-        syncZeroOnlineTracker(refreshedRoom);
+    if (!refreshedRoom || refreshedRoom.players.length === 0) {
+        rooms.delete(roomId);
+        schedulePersistRooms();
+        return { room: null, removedPlayers };
     }
+
+    refreshedRoom.zeroOnlineSince = null;
+    refreshedRoom.lastAbandonedAt = nowIso();
+    syncZeroOnlineTracker(refreshedRoom);
     schedulePersistRooms();
 
     return {
-        room: refreshedRoom || null,
+        room: refreshedRoom,
         removedPlayers
     };
 }

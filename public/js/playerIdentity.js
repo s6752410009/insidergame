@@ -6,7 +6,8 @@
     'use strict';
     
     const PLAYER_ID_KEY = 'insiderGamePlayerId';
-    
+    const PLAYER_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
     /**
      * สร้าง UUID v4 สำหรับ playerId
      */
@@ -17,15 +18,32 @@
             return v.toString(16);
         });
     }
+
+    function getServerPlayerId() {
+        const meta = document.querySelector('meta[name="insider-player-id"]');
+        const value = meta && meta.getAttribute('content');
+        if (!value || !PLAYER_ID_REGEX.test(value)) {
+            return null;
+        }
+        return value;
+    }
     
     /**
      * ดึง playerId จาก localStorage หรือสร้างใหม่
+     * ถ้า server มี session identity แล้ว ให้ sync localStorage ตาม server
+     * เพื่อกัน create ด้วยคนละ id แล้วเจอ room_not_found
      */
     function getOrCreatePlayerId() {
+        const serverPlayerId = getServerPlayerId();
+        if (serverPlayerId) {
+            localStorage.setItem(PLAYER_ID_KEY, serverPlayerId);
+            return serverPlayerId;
+        }
+
         let playerId = localStorage.getItem(PLAYER_ID_KEY);
         
         // ตรวจสอบว่ามีค่าที่ถูกต้องหรือไม่
-        if (!playerId || playerId === 'undefined' || playerId === 'null' || playerId.length < 10) {
+        if (!playerId || playerId === 'undefined' || playerId === 'null' || !PLAYER_ID_REGEX.test(playerId)) {
             playerId = generatePlayerId();
             localStorage.setItem(PLAYER_ID_KEY, playerId);
             console.log('[PlayerIdentity] Created new playerId:', playerId);

@@ -1254,17 +1254,7 @@ $(function() {
     function joinRoom(roomId, password) {
         socket.emit('joinRoom', { roomId: roomId, password: password, playerId: playerId }, function(response) {
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '✅ เข้าห้องสำเร็จ!',
-                    text: 'กำลังพาคุณไปยังห้อง...',
-                    timer: 2000,
-                    showConfirmButton: false,
-                    background: '#1e1e1e',
-                    color: '#fff'
-                }).then(() => {
-                    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
-                });
+                window.location.href = '/room/' + roomId + '?playerId=' + playerId;
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -1596,19 +1586,45 @@ $(function() {
             }).then((result) => {
                 if (result.isConfirmed && result.value) {
                     const payload = Object.assign({}, result.value, { playerId: playerId });
-                    socket.emit('createRoom', payload, function(response) {
-                        if (response.success) {
+                    const payload = Object.assign({}, result.value, { playerId: playerId });
+                    fetch('/api/rooms', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(payload)
+                    }).then(function(res) {
+                        return res.json().catch(function() {
+                            return { success: false, error: 'สร้างห้องไม่สำเร็จ' };
+                        });
+                    }).then(function(response) {
+                        if (response && response.success && response.roomId) {
                             window.location.href = '/room/' + response.roomId + '?playerId=' + playerId;
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: '❌ สร้างห้องไม่สำเร็จ',
-                                text: response.error || 'เกิดข้อผิดพลาด',
-                                background: '#1e1e1e',
-                                color: '#fff',
-                                confirmButtonColor: '#e74c3c'
-                            });
+                            return;
                         }
+                        Swal.fire({
+                            icon: 'error',
+                            title: '❌ สร้างห้องไม่สำเร็จ',
+                            text: (response && response.error) || 'เกิดข้อผิดพลาด',
+                            background: '#1e1e1e',
+                            color: '#fff',
+                            confirmButtonColor: '#e74c3c'
+                        });
+                    }).catch(function() {
+                        // Fallback to socket if HTTP create is unavailable
+                        socket.emit('createRoom', payload, function(response) {
+                            if (response && response.success && response.roomId) {
+                                window.location.href = '/room/' + response.roomId + '?playerId=' + playerId;
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: '❌ สร้างห้องไม่สำเร็จ',
+                                    text: (response && response.error) || 'เกิดข้อผิดพลาด',
+                                    background: '#1e1e1e',
+                                    color: '#fff',
+                                    confirmButtonColor: '#e74c3c'
+                                });
+                            }
+                        });
                     });
                 }
             });

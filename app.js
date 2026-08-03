@@ -2728,8 +2728,14 @@ app.use(function(req, res, next) {
 // Middleware: Initialize player identity
 // ใช้ query parameter เท่านั้น (ไม่ใช้ cookie อีกต่อไป)
 app.use(async function(req, res, next) {
-    // Skip สำหรับ static files, admin, API และ socket.io
-    if (req.path.startsWith('/static') || req.path.startsWith('/admin') || req.path.startsWith('/socket.io') || req.path.startsWith('/api/')) {
+    // Skip สำหรับ static files, admin, API, health checks และ socket.io
+    if (
+        req.path === '/ping' ||
+        req.path.startsWith('/static') ||
+        req.path.startsWith('/admin') ||
+        req.path.startsWith('/socket.io') ||
+        req.path.startsWith('/api/')
+    ) {
         return next();
     }
     
@@ -2772,6 +2778,7 @@ app.use(async function(req, res, next) {
         }
         req.playerId = playerId;
         req.session.playerId = playerId;
+        res.locals.viewerPlayerId = playerId;
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
         // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
@@ -2944,6 +2951,38 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
         res.status(200).send('OK');
     } catch (e) {
         res.status(200).send('OK'); // ส่ง OK เสมอเพื่อไม่ให้ browser retry
+    }
+});
+
+// API: Create room over HTTP so create→lobby does not depend on socket session race
+app.post('/api/rooms', async function(req, res) {
+    try {
+        const body = req.body || {};
+        const sessionPlayerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
+        const requestedPlayerId = playerManager.isValidPlayerId(body.playerId) ? body.playerId : null;
+        const playerId = sessionPlayerId || requestedPlayerId;
+
+        if (!playerId) {
+            return res.status(401).json({ success: false, error: 'Not authenticated' });
+        }
+        if (sessionPlayerId && requestedPlayerId && sessionPlayerId !== requestedPlayerId) {
+            return res.status(403).json({ success: false, error: 'เปิดหน้าห้องใหม่แล้วลองอีกครั้ง' });
+        }
+
+        req.session.playerId = playerId;
+        await ensurePersistedPlayer(playerId);
+
+        if (!isPlayerApproved(playerId)) {
+            return res.status(403).json({ success: false, error: 'บัญชีของคุณยังไม่ได้รับอนุมัติจาก Admin' });
+        }
+
+        const room = roomManager.createRoom(body, playerId);
+        io.emit('roomListUpdate', roomManager.getAllRooms());
+
+        return res.json({ success: true, roomId: room.roomId });
+    } catch (error) {
+        console.error('[API] create room failed:', error);
+        return res.status(400).json({ success: false, error: error.message || 'สร้างห้องไม่สำเร็จ' });
     }
 });
 
@@ -6463,7 +6502,7 @@ async function startServer() {
         await adminMessageManager.initAdminMessageManager();
         console.log('✅ Admin Message Manager initialized');
 
-        const restoredRooms = roomManager.initRoomManager();
+        const restoredRooms = await roomManager.initRoomManager();
         console.log(`✅ Room Manager initialized (${restoredRooms} room(s) restored)`);
 
         if (!devFast) {

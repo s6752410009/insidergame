@@ -90,6 +90,7 @@
         <link rel="icon" type="image/png" sizes="96x96" href="/static/image/favicon-96x96.png">
         <link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="insider-player-id" content="<%= typeof viewerPlayerId !== 'undefined' && viewerPlayerId ? viewerPlayerId : (typeof player !== 'undefined' && player && player.playerId ? player.playerId : '') %>">
         
         <!-- PWA Support -->
         <link rel="manifest" href="/static/manifest.json">

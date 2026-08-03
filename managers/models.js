@@ -99,14 +99,23 @@ const adminMessageThreadSchema = new mongoose.Schema({
     lastMessageAt: { type: Date, default: Date.now, index: true }
 }, { timestamps: true });
 
+// Active game rooms. Render's disk is ephemeral, so rooms must live in Mongo.
+const roomSnapshotSchema = new mongoose.Schema({
+    roomId: { type: String, required: true, unique: true, index: true },
+    payload: { type: mongoose.Schema.Types.Mixed, required: true },
+    updatedAt: { type: Date, default: Date.now, index: true }
+}, { timestamps: true });
+
 const Player = mongoose.model('Player', playerSchema);
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
 const BannedPlayer = mongoose.model('BannedPlayer', bannedPlayerSchema);
 const AdminMessageThread = mongoose.model('AdminMessageThread', adminMessageThreadSchema);
+const RoomSnapshot = mongoose.model('RoomSnapshot', roomSnapshotSchema);
 
 module.exports = {
     Player,
     PlayerStats,
     BannedPlayer,
-    AdminMessageThread
+    AdminMessageThread,
+    RoomSnapshot
 };
