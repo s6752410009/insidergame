@@ -6,5 +6,6 @@ docker-compose.override.yml
 data/playerStats.json
 data/players.json
 data/bannedPlayers.json
+data/rooms.json
 data/backups/
 data/seasons.json

@@ -8,9 +8,14 @@
 const playerManager = require('./playerManager');
 const { normalizeGameMode, getGameEngine } = require('../games/engineRegistry');
 const gameSettingsManager = require('./gameSettingsManager');
+const fs = require('fs');
+const path = require('path');
 
 // เก็บห้องทั้งหมด (key: roomId, value: room object)
 const rooms = new Map();
+const ROOMS_FILE = process.env.ROOMS_FILE || path.join(__dirname, '../data/rooms.json');
+let persistTimer = null;
+let persistQueued = false;
 
 // Game Master Role constant
 const gameMasterRole = 'ผู้ดำเนินเกม';
@@ -19,6 +24,109 @@ const defaultRole = 'พลเมือง';
 
 function nowIso() {
     return new Date().toISOString();
+}
+
+function schedulePersistRooms() {
+    persistQueued = true;
+    if (persistTimer) return;
+    persistTimer = setTimeout(() => {
+        persistTimer = null;
+        if (!persistQueued) return;
+        persistQueued = false;
+        try {
+            persistRoomsSync();
+        } catch (error) {
+            console.error('[RoomManager] Failed to persist rooms:', error.message);
+        }
+    }, 250);
+}
+
+function flushPersistRooms() {
+    if (persistTimer) {
+        clearTimeout(persistTimer);
+        persistTimer = null;
+    }
+    persistQueued = false;
+    try {
+        persistRoomsSync();
+    } catch (error) {
+        console.error('[RoomManager] Failed to persist rooms:', error.message);
+    }
+}
+
+function serializeRoom(room) {
+    return {
+        roomId: room.roomId,
+        name: room.name,
+        players: (room.players || []).map(player => ({
+            ...player,
+            socketId: null,
+            disconnectedAt: player.disconnectedAt || nowIso()
+        })),
+        admin: room.admin,
+        settings: room.settings,
+        gameState: room.gameState,
+        chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory.slice(-80) : [],
+        rejoinableGamePlayers: room.rejoinableGamePlayers instanceof Map
+            ? Array.from(room.rejoinableGamePlayers.entries())
+            : [],
+        createdAt: room.createdAt || nowIso(),
+        zeroOnlineSince: room.zeroOnlineSince || nowIso(),
+        lastAbandonedAt: room.lastAbandonedAt || null
+    };
+}
+
+function hydrateRoom(raw) {
+    if (!raw || !raw.roomId) return null;
+    const room = {
+        ...raw,
+        roomId: String(raw.roomId),
+        players: Array.isArray(raw.players) ? raw.players.map(player => ({
+            ...player,
+            socketId: null
+        })) : [],
+        chatHistory: Array.isArray(raw.chatHistory) ? raw.chatHistory : [],
+        rejoinableGamePlayers: new Map(Array.isArray(raw.rejoinableGamePlayers) ? raw.rejoinableGamePlayers : []),
+        createdAt: raw.createdAt || nowIso(),
+        zeroOnlineSince: raw.zeroOnlineSince || nowIso()
+    };
+    return room;
+}
+
+function persistRoomsSync() {
+    const directory = path.dirname(ROOMS_FILE);
+    fs.mkdirSync(directory, { recursive: true });
+    const payload = Array.from(rooms.values()).map(serializeRoom);
+    const temporaryFile = `${ROOMS_FILE}.${process.pid}.tmp`;
+    fs.writeFileSync(temporaryFile, JSON.stringify(payload, null, 2), 'utf8');
+    fs.renameSync(temporaryFile, ROOMS_FILE);
+}
+
+function loadPersistedRooms() {
+    rooms.clear();
+    if (!fs.existsSync(ROOMS_FILE)) {
+        console.log('📁 RoomManager: no rooms.json yet');
+        return 0;
+    }
+    try {
+        const raw = JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8'));
+        const stored = Array.isArray(raw) ? raw : Object.values(raw || {});
+        stored.forEach(entry => {
+            const room = hydrateRoom(entry);
+            if (room?.roomId) {
+                rooms.set(room.roomId, room);
+            }
+        });
+        console.log(`📁 RoomManager restored ${rooms.size} room(s) from disk`);
+        return rooms.size;
+    } catch (error) {
+        console.error('[RoomManager] Could not read rooms.json:', error.message);
+        return 0;
+    }
+}
+
+function initRoomManager() {
+    return loadPersistedRooms();
 }
 
 const FINISHED_GAME_STATUSES = new Set([
@@ -129,17 +237,37 @@ function getAbandonGraceMs(room) {
 function getDisconnectRemoveMs(room) {
     const base = normalizeTableMode(room?.settings?.tableMode) === 'remote'
         ? 5 * 60 * 1000
-        : 90 * 1000;
-    return applySmokeFastMs(base);
+        : 3 * 60 * 1000;
+    let removeMs = applySmokeFastMs(base);
+    // ห้องเพิ่งสร้าง: อย่าลบผู้สร้างตอนกำลัง navigate /rooms → /room
+    const createdAtMs = new Date(room?.createdAt || 0).getTime();
+    if (Number.isFinite(createdAtMs) && createdAtMs > 0) {
+        const ageMs = Date.now() - createdAtMs;
+        const protectMs = applySmokeFastMs(2 * 60 * 1000);
+        if (ageMs < protectMs) {
+            removeMs = Math.max(removeMs, protectMs - ageMs);
+        }
+    }
+    return removeMs;
 }
 
 // เวลาที่ห้อง "ว่าง" (ไม่มีใครออนไลน์) แล้วยังไม่ได้เริ่มเกม ก่อนจะถูกเก็บกวาด
 // เผื่อเวลาให้ reload หน้า / เดินทางจาก lobby ไปกระดานเกมได้ทัน
 function getEmptyRoomGraceMs(room) {
     const base = normalizeTableMode(room?.settings?.tableMode) === 'remote'
-        ? 3 * 60 * 1000
-        : 90 * 1000;
-    return applySmokeFastMs(base);
+        ? 10 * 60 * 1000
+        : 5 * 60 * 1000;
+    const grace = applySmokeFastMs(base);
+    // ห้องเพิ่งสร้าง: อย่าเก็บกวาดตอนผู้สร้างกำลัง navigate จาก /rooms → /room
+    const createdAtMs = new Date(room?.createdAt || 0).getTime();
+    if (Number.isFinite(createdAtMs) && createdAtMs > 0) {
+        const ageMs = Date.now() - createdAtMs;
+        const protectMs = applySmokeFastMs(2 * 60 * 1000);
+        if (ageMs < protectMs) {
+            return Math.max(grace, protectMs - ageMs);
+        }
+    }
+    return grace;
 }
 
 function syncZeroOnlineTracker(room) {
@@ -255,6 +383,7 @@ function createRoom(roomData, creatorPlayerId) {
     
     // เพิ่มผู้สร้างเป็นผู้เล่นคนแรก
     joinRoom(roomId, creatorPlayerId, null, normalizedRoomData.password);
+    flushPersistRooms();
     
     return room;
 }
@@ -347,6 +476,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
     }
 
     syncZeroOnlineTracker(room);
+    schedulePersistRooms();
     return room;
 }
 
@@ -377,6 +507,7 @@ function disconnectPlayer(roomId, playerId) {
     }
 
     syncZeroOnlineTracker(room);
+    schedulePersistRooms();
     return room;
 }
 
@@ -447,10 +578,12 @@ function leaveRoom(roomId, playerId) {
     // ถ้าไม่มีผู้เล่นแล้ว ให้ลบห้อง
     if (room.players.length === 0) {
         rooms.delete(roomId);
+        schedulePersistRooms();
         return null;
     }
 
     syncZeroOnlineTracker(room);
+    schedulePersistRooms();
     return room;
 }
 
@@ -610,7 +743,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
  * ดึงข้อมูลห้อง
  */
 function getRoom(roomId) {
-    return rooms.get(roomId) || null;
+    if (roomId == null || roomId === '') {
+        return null;
+    }
+    return rooms.get(String(roomId).trim()) || null;
 }
 
 /**
@@ -858,6 +994,7 @@ function finalizeAbandonedRoom(roomId) {
         refreshedRoom.lastAbandonedAt = nowIso();
         syncZeroOnlineTracker(refreshedRoom);
     }
+    schedulePersistRooms();
 
     return {
         room: refreshedRoom || null,
@@ -904,6 +1041,7 @@ function forceCloseRoom(roomId) {
     if (rooms.has(roomId)) {
         const room = rooms.get(roomId);
         rooms.delete(roomId);
+        schedulePersistRooms();
         return { success: true, roomName: room.name, playerCount: room.players.length };
     }
     return { success: false, error: 'Room not found' };
@@ -987,6 +1125,9 @@ function clearEmptyRooms() {
             clearedCount++;
         }
     }
+    if (clearedCount > 0) {
+        schedulePersistRooms();
+    }
     return clearedCount;
 }
 
@@ -996,6 +1137,7 @@ function clearEmptyRooms() {
 function clearAllRooms() {
     const count = rooms.size;
     rooms.clear();
+    schedulePersistRooms();
     return count;
 }
 
@@ -1043,6 +1185,7 @@ function getActiveRooms() {
 }
 
 module.exports = {
+    initRoomManager,
     createRoom,
     joinRoom,
     leaveRoom,

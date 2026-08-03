@@ -1598,17 +1598,7 @@ $(function() {
                     const payload = Object.assign({}, result.value, { playerId: playerId });
                     socket.emit('createRoom', payload, function(response) {
                         if (response.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: '✅ สร้างห้องสำเร็จ!',
-                                text: 'กำลังพาคุณไปยังห้อง...',
-                                timer: 2000,
-                                showConfirmButton: false,
-                                background: '#1e1e1e',
-                                color: '#fff'
-                            }).then(() => {
-                                window.location.href = '/room/' + response.roomId + '?playerId=' + playerId;
-                            });
+                            window.location.href = '/room/' + response.roomId + '?playerId=' + playerId;
                         } else {
                             Swal.fire({
                                 icon: 'error',

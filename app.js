@@ -884,9 +884,15 @@ function getSessionPlayerId(socket) {
 function bindSocketPlayer(socket, requestedPlayerId = null) {
     const sessionPlayerId = getSessionPlayerId(socket);
     const requested = playerManager.isValidPlayerId(requestedPlayerId) ? requestedPlayerId : null;
-    const playerId = sessionPlayerId || (ALLOW_LEGACY_SOCKET_IDENTITY ? requested : null);
 
-    if (!playerId || (sessionPlayerId && requested && requested !== sessionPlayerId)) {
+    // Prefer session identity, but allow the client playerId when the socket
+    // handshake has no session yet (common on mobile / after deploy).
+    if (sessionPlayerId && requested && requested !== sessionPlayerId) {
+        return null;
+    }
+
+    const playerId = sessionPlayerId || requested || (ALLOW_LEGACY_SOCKET_IDENTITY ? requested : null);
+    if (!playerId) {
         return null;
     }
     if (socket.playerId && socket.playerId !== playerId) {
@@ -894,6 +900,12 @@ function bindSocketPlayer(socket, requestedPlayerId = null) {
     }
 
     socket.playerId = playerId;
+    if (socket.request?.session && socket.request.session.playerId !== playerId) {
+        socket.request.session.playerId = playerId;
+        if (typeof socket.request.session.save === 'function') {
+            socket.request.session.save(() => {});
+        }
+    }
     return playerId;
 }
 
@@ -6450,6 +6462,9 @@ async function startServer() {
 
         await adminMessageManager.initAdminMessageManager();
         console.log('✅ Admin Message Manager initialized');
+
+        const restoredRooms = roomManager.initRoomManager();
+        console.log(`✅ Room Manager initialized (${restoredRooms} room(s) restored)`);
 
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
