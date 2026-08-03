@@ -1586,7 +1586,6 @@ $(function() {
             }).then((result) => {
                 if (result.isConfirmed && result.value) {
                     const payload = Object.assign({}, result.value, { playerId: playerId });
-                    const payload = Object.assign({}, result.value, { playerId: playerId });
                     fetch('/api/rooms', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
