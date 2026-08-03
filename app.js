@@ -3585,14 +3585,16 @@ io.sockets.on('connection', function(socket) {
                 password,
                 { bypassLock: isSiteAdminPlayer(playerId) }
             );
-            detachPlayerFromOtherRooms(socket, playerId, roomId);
-            roomManager.markPlayerActive(roomId, playerId);
-            socketRoomMap.set(socket.id, roomId);
-            socket.join(roomId);
+            // Always use canonical string roomId — clients may send numeric 6-digit IDs
+            const joinedRoomId = room.roomId;
+            detachPlayerFromOtherRooms(socket, playerId, joinedRoomId);
+            roomManager.markPlayerActive(joinedRoomId, playerId);
+            socketRoomMap.set(socket.id, joinedRoomId);
+            socket.join(joinedRoomId);
             
             // Update socket info
             socket.playerId = playerId;
-            socket.roomId = roomId;
+            socket.roomId = joinedRoomId;
             
             // Send room data to client
             const playerInRoom = room.players.find(p => p.playerId === playerId);
@@ -3615,7 +3617,7 @@ io.sockets.on('connection', function(socket) {
             });
 
             // Emit to all in room
-            io.to(roomId).emit('roomUpdate', {
+            io.to(joinedRoomId).emit('roomUpdate', {
                 ...buildRoomUpdatePayload(room)
             });
 

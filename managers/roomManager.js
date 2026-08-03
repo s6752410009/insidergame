@@ -34,6 +34,24 @@ function nowIso() {
     return new Date().toISOString();
 }
 
+function normalizeRoomId(roomId) {
+    if (roomId == null) return null;
+    const normalized = String(roomId).trim();
+    return normalized || null;
+}
+
+function getMappedRoom(roomId) {
+    const id = normalizeRoomId(roomId);
+    if (!id) return null;
+    return rooms.get(id) || null;
+}
+
+function deleteMappedRoom(roomId) {
+    const id = normalizeRoomId(roomId);
+    if (!id) return false;
+    return rooms.delete(id);
+}
+
 function schedulePersistRooms() {
     persistQueued = true;
     if (persistTimer) return;
@@ -456,7 +474,8 @@ function createRoom(roomData, creatorPlayerId) {
  * เข้าห้อง
  */
 function joinRoom(roomId, playerId, socketId = null, password = null, options = {}) {
-    const room = rooms.get(roomId);
+    roomId = normalizeRoomId(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         throw new Error('Room not found');
     }
@@ -550,7 +569,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
  * Bug #5 Fix: อัปเดตทั้งใน room.players และ room.gameState.players
  */
 function disconnectPlayer(roomId, playerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return null;
     }
@@ -579,7 +598,7 @@ function disconnectPlayer(roomId, playerId) {
  * ออกจากห้อง (ลบผู้เล่นออกจริงๆ)
  */
 function leaveRoom(roomId, playerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return null;
     }
@@ -657,7 +676,7 @@ function leaveRoom(roomId, playerId) {
  * เตะผู้เล่น
  */
 function kickPlayer(roomId, adminPlayerId, targetPlayerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         throw new Error('Room not found');
     }
@@ -686,7 +705,7 @@ function kickPlayer(roomId, adminPlayerId, targetPlayerId) {
  * โอนสิทธิ admin
  */
 function transferAdmin(roomId, currentAdminId, newAdminPlayerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         throw new Error('Room not found');
     }
@@ -729,7 +748,7 @@ function transferAdmin(roomId, currentAdminId, newAdminPlayerId) {
  * อัปเดตการตั้งค่าห้อง
  */
 function updateRoom(roomId, adminPlayerId, updates) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         throw new Error('Room not found');
     }
@@ -809,10 +828,7 @@ function updateRoom(roomId, adminPlayerId, updates) {
  * ดึงข้อมูลห้อง
  */
 function getRoom(roomId) {
-    if (roomId == null || roomId === '') {
-        return null;
-    }
-    return rooms.get(String(roomId).trim()) || null;
+    return getMappedRoom(roomId);
 }
 
 /**
@@ -855,7 +871,7 @@ function getAllRooms() {
  * อัปเดตทั้งใน room.players และ room.gameState.players
  */
 function updatePlayerSocketId(roomId, playerId, socketId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return null;
     }
@@ -879,7 +895,7 @@ function updatePlayerSocketId(roomId, playerId, socketId) {
 }
 
 function markPlayerActive(roomId, playerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return null;
     }
@@ -919,7 +935,7 @@ function syncPlayerProfile(playerId, updates = {}) {
  * ดึง playerId จาก socketId ในห้อง
  */
 function getPlayerIdBySocket(roomId, socketId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return null;
     }
@@ -1038,7 +1054,7 @@ function collectAbandonCandidates() {
 
 function removeOfflinePlayers(roomId) {
     const removed = [];
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return removed;
     }
@@ -1056,7 +1072,7 @@ function removeOfflinePlayers(roomId) {
 }
 
 function finalizeAbandonedRoom(roomId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return { room: null, removedPlayers: [] };
     }
@@ -1066,9 +1082,9 @@ function finalizeAbandonedRoom(roomId) {
     }
 
     const removedPlayers = removeOfflinePlayers(roomId);
-    const refreshedRoom = rooms.get(roomId);
+    const refreshedRoom = getMappedRoom(roomId);
     if (!refreshedRoom || refreshedRoom.players.length === 0) {
-        rooms.delete(roomId);
+        deleteMappedRoom(roomId);
         schedulePersistRooms();
         return { room: null, removedPlayers };
     }
@@ -1085,7 +1101,7 @@ function finalizeAbandonedRoom(roomId) {
 }
 
 function endTableSession(roomId, adminPlayerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         throw new Error('Room not found');
     }
@@ -1099,7 +1115,7 @@ function endTableSession(roomId, adminPlayerId) {
     }
 
     const removedPlayers = removeOfflinePlayers(roomId);
-    const refreshedRoom = rooms.get(roomId);
+    const refreshedRoom = getMappedRoom(roomId);
     if (refreshedRoom) {
         refreshedRoom.zeroOnlineSince = null;
     }
@@ -1121,8 +1137,8 @@ function forEachRoom(callback) {
  */
 function forceCloseRoom(roomId) {
     if (rooms.has(roomId)) {
-        const room = rooms.get(roomId);
-        rooms.delete(roomId);
+        const room = getMappedRoom(roomId);
+        deleteMappedRoom(roomId);
         schedulePersistRooms();
         return { success: true, roomName: room.name, playerCount: room.players.length };
     }
@@ -1133,7 +1149,7 @@ function forceCloseRoom(roomId) {
  * เตะผู้เล่นออกจากห้อง (Admin)
  */
 function adminKickPlayer(roomId, playerId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return { success: false, error: 'Room not found' };
     }
@@ -1165,7 +1181,7 @@ function adminKickPlayer(roomId, playerId) {
  * ปลดล็อคห้อง (Admin)
  */
 function unlockRoom(roomId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return { success: false, error: 'Room not found' };
     }
@@ -1179,7 +1195,7 @@ function unlockRoom(roomId) {
  * ล็อคห้อง (Admin)
  */
 function lockRoom(roomId, password) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return { success: false, error: 'Room not found' };
     }
@@ -1203,7 +1219,7 @@ function clearEmptyRooms() {
             && ((Date.now() - new Date(room.zeroOnlineSince).getTime()) >= 30 * 60 * 1000);
 
         if (hasNoPlayers || hasNoOnlineWhileIdle) {
-            rooms.delete(roomId);
+            deleteMappedRoom(roomId);
             clearedCount++;
         }
     }
@@ -1227,7 +1243,7 @@ function clearAllRooms() {
  * รีเซ็ตเกมในห้อง (Admin)
  */
 function resetRoomGame(roomId) {
-    const room = rooms.get(roomId);
+    const room = getMappedRoom(roomId);
     if (!room) {
         return { success: false, error: 'Room not found' };
     }

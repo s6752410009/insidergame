@@ -1196,7 +1196,7 @@ $(function() {
 
         // Click handler for room cards
         $('.room-card').on('click', function() {
-            const roomId = $(this).data('room-id');
+            const roomId = String($(this).attr('data-room-id') || '');
             const joinable = $(this).data('joinable') === 1 || $(this).data('joinable') === '1';
             const room = rooms.find(r => r.roomId === roomId);
 
