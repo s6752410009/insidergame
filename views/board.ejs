@@ -3273,7 +3273,9 @@ $(function() {
     $("#reveal button").click(function(){
         const $btn = $(this);
         if ($btn.prop('disabled')) return; // ป้องกันการกดซ้ำ
-        
+
+        haptic('heavy'); // จังหวะเปิดบท — สั่นให้รู้สึกว่าเป็นโมเมนต์สำคัญ
+
         // Stop reveal timer
         stopRevealTimer();
         

@@ -1457,6 +1457,7 @@
       $('#roleAnnouncementDescription').text(role.description || 'บทของคุณถูกเปิดเผยแล้ว');
       $('#roleAnnouncementHint').text(roleActionHint(role));
       $('#roleAnnouncementBanner').addClass('visible');
+      window.gameHaptic([20, 60, 30]); // จังหวะเปิดบท
 
       roleAnnouncementTimeout = setTimeout(function() {
         $('#roleAnnouncementBanner').removeClass('visible');
@@ -2468,7 +2469,7 @@
       $('.target-card-actionable, .player-row.seat-target').filter(function() {
         return String($(this).attr('data-player-id') || $(this).attr('data-target-player-id') || '') === String(targetPlayerId);
       }).addClass('optimistic-pending');
-      if (navigator.vibrate) navigator.vibrate(15);
+      window.gameHaptic(15);
     }
 
     function hasOpenMobileActions() {
@@ -4750,6 +4751,10 @@
         ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นอีก!</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>'
         : '<div class="winner-actions"><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>';
       $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : '🤪 ')) + winnerText + '</div>' + actionHtml);
+      if (!$banner.is(':visible')) {
+        $banner.addClass('win-pop');
+        window.gameHaptic([15, 60, 25, 60, 40]);
+      }
       $banner.show();
 
       // Show rich win screen overlay

@@ -642,7 +642,7 @@ $(function() {
       const finishedIcon = isSpy
         ? { id: 'spy', image: roleInfo.image, icon: roleInfo.icon || '🕶️', alt: 'สายลับ' }
         : { id: 'citizen', image: roleInfo.image, icon: roleInfo.icon || '🎭', alt: 'พลเมือง' };
-      body = '<div class="sf-role-card ' + (isSpy ? 'spy' : '') + '">' +
+      body = '<div class="sf-role-card ' + (isSpy ? 'spy' : '') + (window.__sfRevealAnimate ? ' reveal-pop' : '') + '">' +
         '<div class="sf-role-icon">' + gameIconHtml(finishedIcon, { className: 'game-icon' }) + '</div>' +
         '<div class="sf-role-name">' + escapeHtml(isSpy ? (roleInfo.title || 'สายลับ') : (job || roleInfo.title || 'พลเมือง')) + '</div>' +
         '<p class="sf-role-summary">' +
@@ -652,7 +652,7 @@ $(function() {
         '</p>' +
       '</div>';
     } else if (isSpy) {
-      body = '<div class="sf-role-card spy">' +
+      body = '<div class="sf-role-card spy' + (window.__sfRevealAnimate ? ' reveal-pop' : '') + '">' +
         '<div class="sf-role-icon">' + gameIconHtml({ id: 'spy', image: roleInfo.image, icon: roleInfo.icon || '🕶️', alt: 'สายลับ' }, { className: 'game-icon' }) + '</div>' +
         '<div class="sf-role-name">' + escapeHtml(roleInfo.title || 'สายลับ') + '</div>' +
         '<p class="sf-role-summary">' + escapeHtml(roleInfo.summary || 'คุณไม่รู้สถานที่ — ฟังคำถามให้ดีแล้วเดาให้เนียน') + '</p>' +
@@ -663,7 +663,7 @@ $(function() {
       '</div>';
     } else if (location) {
       const job = self.locationRoleTitle || '';
-      body = '<div class="sf-role-card">' +
+      body = '<div class="sf-role-card' + (window.__sfRevealAnimate ? ' reveal-pop' : '') + '">' +
         '<div class="sf-role-icon">' + gameIconHtml({ id: location.id, image: location.image, icon: location.icon || '📍', alt: location.name }, { className: 'game-icon' }) + '</div>' +
         '<div class="sf-role-name">' + escapeHtml(job || roleInfo.title || 'พลเมือง') + '</div>' +
         '<div class="sf-location-name">' + escapeHtml(location.name) + '</div>' +
@@ -737,7 +737,7 @@ $(function() {
         '</div>';
       }
       $stage.html(
-        '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + '">' +
+        '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + (window.__sfRevealAnimate ? ' win-pop' : '') + '">' +
           '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
           '<p>สายลับ: <strong>' + escapeHtml(w.spyName) + '</strong></p>' +
           '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>' +
@@ -774,6 +774,14 @@ $(function() {
 
   function renderState(state) {
     if (!state) return;
+    // จังหวะพีค: เข้าเฟสเปิดบท/ประกาศผล "ครั้งแรก" เท่านั้น (กันเด้งซ้ำทุก broadcast)
+    const prevPhase = currentState && currentState.phase;
+    const enteredReveal = state.phase === 'reveal' && prevPhase !== 'reveal';
+    const enteredFinish = state.phase === 'finished' && prevPhase !== 'finished';
+    window.__sfRevealAnimate = enteredReveal || enteredFinish;
+    if (window.__sfRevealAnimate) {
+      window.gameHaptic(enteredFinish ? [15, 60, 25, 60, 40] : [20, 60, 30]);
+    }
     currentState = state;
 
     $('#phaseChip').text(phaseLabel(state.phase));
@@ -888,7 +896,7 @@ $(function() {
     const $chosen = $(this);
     $chosen.addClass('selected optimistic-pending');
     $('.sf-vote-btn').not($chosen).addClass('optimistic-wait');
-    if (navigator.vibrate) navigator.vibrate(15);
+    window.gameHaptic(15);
 
     socket.emit('spyfall_vote', { targetPlayerId: targetId }, function(res) {
       voteInFlight = false;

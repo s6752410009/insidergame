@@ -4259,7 +4259,7 @@
         if ($bmLastActionSource) {
           $bmLastActionSource.removeClass('optimistic-wait').addClass('optimistic-pending');
         }
-        if (navigator.vibrate) navigator.vibrate(15);
+        window.gameHaptic(15);
       } else {
         $(BM_ACTION_CONTROLS).removeClass('optimistic-wait');
         $('.optimistic-pending').removeClass('optimistic-pending');

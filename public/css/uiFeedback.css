@@ -81,8 +81,34 @@ button:active:not(:disabled),
     100% { background-position: -200% 0; }
 }
 
+/* ================= จังหวะพีคของเกม =================
+ * ใส่คลาสตอน "เปลี่ยนเฟส" เท่านั้น (ไม่ใช่ทุก re-render) ไม่งั้นเด้งรัวๆ
+ */
+
+/* เปิดบท: การ์ดเด้งเข้าอย่างมีน้ำหนัก */
+.reveal-pop {
+    animation: revealPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes revealPop {
+    0% { opacity: 0; transform: scale(0.88) translateY(14px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ประกาศผลแพ้ชนะ: เด้งแรงกว่า + ค้างความสนใจ */
+.win-pop {
+    animation: winPop 0.65s cubic-bezier(0.34, 1.7, 0.64, 1);
+}
+
+@keyframes winPop {
+    0% { opacity: 0; transform: scale(0.7); }
+    60% { transform: scale(1.06); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .optimistic-pending { animation: none; }
     button, .btn { transition: none; }
     .skeleton-line, .skeleton-circle { animation: none; }
+    .reveal-pop, .win-pop { animation: none; }
 }
