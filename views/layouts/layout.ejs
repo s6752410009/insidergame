@@ -78,11 +78,12 @@
             })();
         </script>
         <!-- เปิด connection ล่วงหน้าไปยัง CDN ที่ยังใช้อยู่ ลด latency handshake บนมือถือ -->
-        <link rel="preconnect" href="https://maxcdn.bootstrapcdn.com" crossorigin>
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <!-- bootstrap-lite ต้องมาก่อน css อื่นทั้งหมด (ทำหน้าที่ reboot เหมือน bootstrap เดิม) -->
+        <link rel="stylesheet" href="/static/css/bootstrap-lite.css">
         <link rel="stylesheet" href="/static/css/style.css">
         <link rel="stylesheet" href="/static/css/form.css">
         <link rel="stylesheet" href="/static/css/mobile.css">
@@ -90,7 +91,6 @@
         <link rel="stylesheet" href="/static/css/playerAvatar.css">
         <link rel="stylesheet" href="/static/css/uiFeedback.css">
         <link rel="stylesheet" href="/static/css/support.css">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <link rel="stylesheet" href=
 "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.css">
         <link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
