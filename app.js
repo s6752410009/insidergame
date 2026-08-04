@@ -1256,6 +1256,52 @@ function installCrashGuards() {
 
 installCrashGuards();
 
+/**
+ * ลงทะเบียน socket handler แบบกัน error ไม่ให้ลามออกนอกคนที่กด
+ *
+ * socket.io ไม่ห่อ handler ด้วย try/catch — throw ข้างในลอยไปถึง uncaughtException
+ * ถึงจะมี crash guard รับไว้แล้ว แต่ error ก็ยัง "หลุดกรอบ" ของคนที่กด
+ * และถ้า handler นั้นมี callback ฝั่ง client จะค้างรอ ack ที่ไม่มีวันมา
+ *
+ * safeOn ทำให้ error กลายเป็นเรื่องของคนกดคนเดียว:
+ *   - จดบันทึกพร้อมชื่อ event / playerId / roomId ให้ตามรอยได้
+ *   - ถ้ามี callback ตอบ { success:false } กลับไป ไม่ปล่อยให้ค้าง
+ *   - ผู้เล่นคนอื่นในห้อง (และห้องอื่น) ไม่รู้สึกอะไรเลย
+ */
+function safeOn(socket, eventName, handler) {
+    socket.on(eventName, function(...args) {
+        const done = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
+
+        const report = error => {
+            console.error(`[socket:${eventName}] player=${socket.playerId || '-'} room=${socket.roomId || '-'}`, error);
+            try {
+                addServerLog(io, 'error', socket.roomId || null,
+                    `event "${eventName}" ล้มเหลว: ${error.message}`, 'error',
+                    { meta: { playerId: socket.playerId || null } });
+            } catch (logError) {
+                console.error('[socket] จดบันทึก error ไม่ได้:', logError.message);
+            }
+            if (done) {
+                try {
+                    done({ success: false, error: 'เกิดข้อผิดพลาดในระบบ ลองใหม่อีกครั้ง' });
+                } catch (callbackError) {
+                    console.error('[socket] ตอบ callback ไม่ได้:', callbackError.message);
+                }
+            }
+        };
+
+        try {
+            const result = handler.apply(this, args);
+            // handler ที่เป็น async: จับ rejection ด้วย ไม่งั้นหลุดไป unhandledRejection
+            if (result && typeof result.catch === 'function') {
+                result.catch(report);
+            }
+        } catch (error) {
+            report(error);
+        }
+    });
+}
+
 function buildRoomUpdatePayload(room) {
     const gameEngine = getGameEngine(room.settings.gameMode);
     const gameStatus = roomManager.getRoomGameStatusLabel(room);
@@ -3707,7 +3753,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Request room update (for re-rendering after admin change)
-    socket.on('requestRoomUpdate', function(data) {
+    safeOn(socket, 'requestRoomUpdate', function(data) {
         const room = getSocketRoom(socket);
         if (!room || (data?.roomId && data.roomId !== room.roomId)) return;
         
@@ -3718,7 +3764,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Check room status (เมื่อ user กลับมาจาก background)
-    socket.on('checkRoomStatus', function(data) {
+    safeOn(socket, 'checkRoomStatus', function(data) {
         const roomId = data?.roomId || socket.roomId;
         const playerId = socket.playerId || getSessionPlayerId(socket);
         if (!roomId || !playerId || (data?.playerId && data.playerId !== playerId)) {
@@ -3826,7 +3872,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Leave room
-    socket.on('leaveRoom', function(data, callback) {
+    safeOn(socket, 'leaveRoom', function(data, callback) {
         const roomId = socket.roomId;
         const playerId = socket.playerId;
         
@@ -4073,7 +4119,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Get room list
-    socket.on('getRoomList', function(callback) {
+    safeOn(socket, 'getRoomList', function(callback) {
         const rooms = roomManager.getAllRooms();
         if (typeof callback === 'function') {
             callback({ success: true, rooms: rooms });
@@ -5084,7 +5130,7 @@ io.sockets.on('connection', function(socket) {
     // ========== GAME EVENTS (Modified to work with rooms) ==========
 
     // Initialize player (when joining board page)
-    socket.on('initPlayer', function(playerId) {
+    safeOn(socket, 'initPlayer', function(playerId) {
         const boundPlayerId = bindSocketPlayer(socket, playerId);
         if (!boundPlayerId) {
             socket.emit('identityError', { message: 'เซสชันผู้เล่นไม่ตรงกัน กรุณารีเฟรชหน้า' });
@@ -5098,7 +5144,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Set room context (when joining board page)
-    socket.on('setRoom', function(data) {
+    safeOn(socket, 'setRoom', function(data) {
         const roomId = typeof data === 'string' ? data : data?.roomId;
         const requestedPlayerId = typeof data === 'object' ? data?.playerId : null;
         const playerId = bindSocketPlayer(socket, requestedPlayerId || socket.playerId);
@@ -5202,7 +5248,7 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
-    socket.on('werewolf_requestState', function(data) {
+    safeOn(socket, 'werewolf_requestState', function(data) {
         const room = getSocketRoom(socket, 'werewolf');
         const playerId = socket.playerId;
         if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
@@ -5213,7 +5259,7 @@ io.sockets.on('connection', function(socket) {
         emitWerewolfState(room, socket.id, playerId);
     });
 
-    socket.on('spyfall_requestState', function(data) {
+    safeOn(socket, 'spyfall_requestState', function(data) {
         const room = getSocketRoom(socket, 'spyfall');
         const playerId = socket.playerId;
         if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
@@ -5224,7 +5270,7 @@ io.sockets.on('connection', function(socket) {
         emitSpyfallState(room, socket.id, playerId);
     });
 
-    socket.on('blackmarket_requestState', function(data) {
+    safeOn(socket, 'blackmarket_requestState', function(data) {
         const room = getSocketRoom(socket, 'blackmarket');
         const playerId = socket.playerId;
         if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
@@ -5234,7 +5280,7 @@ io.sockets.on('connection', function(socket) {
         emitBlackMarketState(room, socket.id, playerId);
     });
 
-    socket.on('werewolf_admin_request_roles', function(data, callback) {
+    safeOn(socket, 'werewolf_admin_request_roles', function(data, callback) {
         const roomId = data?.roomId || socket.roomId;
         const room = roomManager.getRoom(roomId);
 
@@ -5982,7 +6028,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Admin request word and roles
-    socket.on('admin_request_word_roles', function() {
+    safeOn(socket, 'admin_request_word_roles', function() {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -5998,7 +6044,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Reset game (start new round)
-    socket.on('resetGame', function() {
+    safeOn(socket, 'resetGame', function() {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6036,7 +6082,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Reveal word (only GM can do this, and only after word is set)
-    socket.on('revealWord', function() {
+    safeOn(socket, 'revealWord', function() {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6070,7 +6116,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Get 5 random word suggestions for GM to choose from
-    socket.on('getWordSuggestions', function(data, callback) {
+    safeOn(socket, 'getWordSuggestions', function(data, callback) {
         const roomId = socket.roomId;
         if (!roomId) {
             if (typeof callback === 'function') callback({ ok: false, error: 'not_in_room' });
@@ -6100,7 +6146,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Set word
-    socket.on('setWord', function(data, callback) {
+    safeOn(socket, 'setWord', function(data, callback) {
         const roomId = socket.roomId;
         if (!roomId) {
             if (typeof callback === 'function') callback({ ok: false, error: 'not_in_room' });
@@ -6146,7 +6192,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Word found - ไปโหวต 2 เลย (ตัดโหวต 1 ออก)
-    socket.on('wordFound', function() {
+    safeOn(socket, 'wordFound', function() {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6161,7 +6207,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Display vote2 (vote1 ถูกตัดออกแล้ว - ไปโหวต 2 เลยตอน wordFound)
-    socket.on('displayVote2', function() {
+    safeOn(socket, 'displayVote2', function() {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6181,7 +6227,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Vote1
-    socket.on('vote1', function(object) {
+    safeOn(socket, 'vote1', function(object) {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6219,7 +6265,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Vote2
-    socket.on('vote2', function(object) {
+    safeOn(socket, 'vote2', function(object) {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6323,7 +6369,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Start game
-    socket.on('startGame', function() {
+    safeOn(socket, 'startGame', function() {
         console.log('[startGame] Received from socket:', socket.id);
         console.log('[startGame] socket.roomId:', socket.roomId, 'socket.playerId:', socket.playerId);
         
@@ -6393,7 +6439,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // Send message
-    socket.on('sendMessage', function(data) {
+    safeOn(socket, 'sendMessage', function(data) {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -6448,7 +6494,7 @@ io.sockets.on('connection', function(socket) {
     });
 
     // GM Quick Reaction (ผู้ดำเนินเกมตอบด่วน)
-    socket.on('gmReaction', function(data) {
+    safeOn(socket, 'gmReaction', function(data) {
         const roomId = socket.roomId;
         if (!roomId) return;
 

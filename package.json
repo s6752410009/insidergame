@@ -48,7 +48,8 @@
     "smoke:identity": "node scripts/smoke-identity.js",
     "smoke:insider:reconnect": "node scripts/smoke-insider-reconnect.js",
     "smoke:playthrough": "node scripts/smoke-playthrough.js",
-    "smoke:crash": "node scripts/smoke-crash-guard.js"
+    "smoke:crash": "node scripts/smoke-crash-guard.js",
+    "smoke:isolation": "node scripts/smoke-error-isolation.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
