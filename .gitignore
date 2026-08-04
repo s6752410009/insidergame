@@ -10,3 +10,9 @@ data/rooms.json
 data/backups/
 data/seasons.json
 data/adminMessages.json
+# Editor-local
+.cursor/
+
+# ต้นฉบับ AI art (34MB) — เว็บใช้ .webp ที่ commit แล้ว, .jpg เป็น fallback
+# ต้นฉบับอยู่บนเครื่อง + iCloud ไม่ต้องถ่วง repo
+public/assets/games/*/*.png
