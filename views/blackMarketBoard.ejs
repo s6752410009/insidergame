@@ -4245,11 +4245,33 @@
     // กันกดรัวก่อน state ใหม่จะกลับมา — คลิกที่สองเคยเด้ง error ทั้งที่คลิกแรกล็อกสำเร็จไปแล้ว
     let submitInFlight = false;
 
+    // Optimistic: ปุ่มที่กดติดวงแหวนทันที ปุ่มอื่นหรี่ — เดิมกดแล้วนิ่งจนกว่า server ตอบ
+    const BM_ACTION_CONTROLS = '.bm-simple-btn, .bm-simple-pick-btn, .offer-buy, .action-submit';
+    let $bmLastActionSource = null;
+    $(document).on('pointerdown', BM_ACTION_CONTROLS, function() {
+      $bmLastActionSource = $(this);
+    });
+
+    function setBmSubmitPending(pending) {
+      submitInFlight = pending;
+      if (pending) {
+        $(BM_ACTION_CONTROLS).addClass('optimistic-wait');
+        if ($bmLastActionSource) {
+          $bmLastActionSource.removeClass('optimistic-wait').addClass('optimistic-pending');
+        }
+        if (navigator.vibrate) navigator.vibrate(15);
+      } else {
+        $(BM_ACTION_CONTROLS).removeClass('optimistic-wait');
+        $('.optimistic-pending').removeClass('optimistic-pending');
+        $bmLastActionSource = null;
+      }
+    }
+
     function submitMarketChoice(itemId) {
       if (submitInFlight) return;
-      submitInFlight = true;
+      setBmSubmitPending(true);
       socket.emit('blackmarket_buyOffer', { roomId, playerId, itemId }, function(response) {
-        submitInFlight = false;
+        setBmSubmitPending(false);
         if (!response || !response.success) {
           Swal.fire({ icon: 'error', title: 'โต๊ะไม่ยอม', text: response?.error || 'ของชิ้นนี้ยังไม่ผ่าน', background: '#111', color: '#fff' });
         }
@@ -4258,9 +4280,9 @@
 
     function submitAction(actionType, targetPlayerId, itemId) {
       if (submitInFlight) return;
-      submitInFlight = true;
+      setBmSubmitPending(true);
       socket.emit('blackmarket_submitAction', { roomId, playerId, actionType, targetPlayerId, itemId }, function(response) {
-        submitInFlight = false;
+        setBmSubmitPending(false);
         if (!response || !response.success) {
           Swal.fire({ icon: 'error', title: 'งานยังไม่ผ่าน', text: response?.error || 'แผนนี้ยังล็อกไม่ได้', background: '#111', color: '#fff' });
         }

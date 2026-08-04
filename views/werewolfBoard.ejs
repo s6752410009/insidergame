@@ -2455,7 +2455,20 @@
       pendingActionSubmission = Boolean(isPending);
       $('#werewolfShell').toggleClass('pending-actions', pendingActionSubmission);
       $('.action-btn').prop('disabled', pendingActionSubmission).toggleClass('pending-action', pendingActionSubmission);
+      if (!pendingActionSubmission) {
+        $('.optimistic-pending').removeClass('optimistic-pending');
+      }
       syncTurnSpotlight();
+    }
+
+    // Optimistic: วงแหวนรอบเป้าที่เพิ่งกดทันที ไม่ต้องรอ state broadcast
+    // (เดิมกดแล้วปุ่มแค่หรี่รวมๆ ไม่บอกว่าเลือกใคร ดูเหมือนกดไม่ติดครึ่งวิ)
+    function markOptimisticTarget(targetPlayerId) {
+      if (!targetPlayerId || targetPlayerId === '__skip__') return;
+      $('.target-card-actionable, .player-row.seat-target').filter(function() {
+        return String($(this).attr('data-player-id') || $(this).attr('data-target-player-id') || '') === String(targetPlayerId);
+      }).addClass('optimistic-pending');
+      if (navigator.vibrate) navigator.vibrate(15);
     }
 
     function hasOpenMobileActions() {
@@ -4213,6 +4226,7 @@
         return;
       }
       setActionButtonsPending(true);
+      markOptimisticTarget(targetPlayerId);
       socket.emit('werewolf_submitNightAction', { roomId: roomId, targetPlayerId: targetPlayerId, actionType: actionType }, function(response) {
         if (!response || !response.success) {
           setActionButtonsPending(false);
@@ -4240,6 +4254,7 @@
         return;
       }
       setActionButtonsPending(true);
+      markOptimisticTarget(targetPlayerId);
       socket.emit('werewolf_submitDayVote', { roomId: roomId, targetPlayerId: targetPlayerId }, function(response) {
         if (!response || !response.success) {
           setActionButtonsPending(false);

@@ -787,7 +787,10 @@
 
         <div class="room-panel">
             <div id="roomList">
-                <!-- Rooms will be populated by JavaScript -->
+                <!-- skeleton ระหว่างรอรายชื่อห้องจาก socket — กันหน้าโล่งเปล่าตอนเปิด -->
+                <div class="skeleton-card"><span class="skeleton-line w40"></span><span class="skeleton-line w70"></span></div>
+                <div class="skeleton-card"><span class="skeleton-line w55"></span><span class="skeleton-line w65"></span></div>
+                <div class="skeleton-card"><span class="skeleton-line w45"></span><span class="skeleton-line w75"></span></div>
             </div>
 
             <div id="noRooms">
@@ -1120,7 +1123,8 @@ $(function() {
         });
         
         // ลบ param ออกจาก URL (ไม่ให้ popup ซ้ำเวลา refresh)
-        window.history.replaceState({}, document.title, '/rooms?playerId=' + playerId);
+        // ไม่ใส่ playerId กลับเข้า URL — address bar ต้องสะอาดให้ก๊อปลิงก์แชร์ได้
+        window.history.replaceState({}, document.title, '/rooms');
     }
 
     // Render room list

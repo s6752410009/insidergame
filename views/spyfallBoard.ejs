@@ -883,10 +883,19 @@ $(function() {
     const targetId = $(this).data('target-id');
     if (!targetId || voteInFlight || currentState.self?.hasVoted) return;
 
+    // Optimistic: ไฮไลต์คนที่เลือกทันที ไม่รอ server — ถ้า server ปัด ค่อยถอยกลับ
     voteInFlight = true;
+    const $chosen = $(this);
+    $chosen.addClass('selected optimistic-pending');
+    $('.sf-vote-btn').not($chosen).addClass('optimistic-wait');
+    if (navigator.vibrate) navigator.vibrate(15);
+
     socket.emit('spyfall_vote', { targetPlayerId: targetId }, function(res) {
       voteInFlight = false;
+      $chosen.removeClass('optimistic-pending');
       if (res && !res.success) {
+        $chosen.removeClass('selected');
+        $('.sf-vote-btn').removeClass('optimistic-wait');
         Swal.fire({ icon: 'warning', title: res.error || 'โหวตไม่สำเร็จ', background: '#111', color: '#fff' });
       }
     });

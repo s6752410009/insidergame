@@ -1,0 +1,88 @@
+/* Optimistic UI feedback — ใช้ร่วมกันทุกกระดาน
+ *
+ * เป้าหมาย: กดปุ๊บเห็นผลปั๊บ ไม่ต้องรอ server round-trip
+ * - ทุกปุ่มยุบเล็กน้อยตอนกด (แทนความรู้สึก "กดไม่ติด")
+ * - .optimistic-pending  = ตัวเลือกที่เพิ่งกด กำลังรอ server ยืนยัน (วงแหวนเต้น)
+ * - .optimistic-wait     = ตัวเลือกอื่นระหว่างรอ (หรี่ + กดไม่ได้)
+ * คลาสถูกล้างเองเมื่อ state ใหม่ re-render หรือถูกถอดเมื่อ server ตอบ error
+ */
+
+button,
+.btn {
+    transition: transform 0.06s ease;
+}
+
+button:active:not(:disabled),
+.btn:active {
+    transform: scale(0.965);
+}
+
+.optimistic-pending {
+    box-shadow: 0 0 0 2px rgba(142, 124, 255, 0.9) !important;
+    animation: optimisticPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes optimisticPulse {
+    50% { box-shadow: 0 0 0 5px rgba(142, 124, 255, 0.35) !important; }
+}
+
+.optimistic-wait {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* ================= Skeleton loading =================
+ * โครงหน้าจอระหว่างรอข้อมูลจริง (รายชื่อห้อง, leaderboard)
+ * แทนหน้าโล่งเปล่า/ข้อความ "กำลังโหลด..." — สมองอ่านว่า "กำลังมา" ไม่ใช่ "พัง"
+ */
+
+.skeleton-card,
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 10px;
+}
+
+.skeleton-card { flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px 16px; }
+.skeleton-row { padding: 12px 14px; }
+
+.skeleton-line,
+.skeleton-circle {
+    background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.06) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.4s ease-in-out infinite;
+    border-radius: 6px;
+}
+
+.skeleton-line { height: 12px; }
+.skeleton-line.w15 { width: 15%; margin-left: auto; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-line.w45 { width: 45%; }
+.skeleton-line.w50 { width: 50%; }
+.skeleton-line.w55 { width: 55%; }
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w65 { width: 65%; }
+.skeleton-line.w70 { width: 70%; }
+.skeleton-line.w75 { width: 75%; }
+
+.skeleton-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .optimistic-pending { animation: none; }
+    button, .btn { transition: none; }
+    .skeleton-line, .skeleton-circle { animation: none; }
+}
