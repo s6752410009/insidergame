@@ -2091,9 +2091,16 @@ $(function() {
     var socket = window.appSocket || io();
 
     // Socket.IO connection monitoring
+    // socket.io v4: 'reconnect' ไม่ยิงบนตัว socket แล้ว (ย้ายไป socket.io.on)
+    // เดิม logic กู้เกมทั้งหมดอยู่ใน handler ที่ไม่มีวันทำงาน — เน็ตสะดุดครั้งเดียว
+    // แชทเงียบ เกมหยุดอัปเดต ต้อง refresh เอง
+    // 'connect' ยิงทุกครั้งรวมตอนต่อใหม่ จึงต้อง re-bind identity + ห้องที่นี่เสมอ
     socket.on('connect', function() {
         console.log('[Socket] Connected:', socket.id);
         $('#connectionStatus').hide();
+        socket.emit('initPlayer', playerId);
+        socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+        socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
     });
 
     socket.on('disconnect', function(reason) {
@@ -2103,20 +2110,11 @@ $(function() {
         }
     });
 
-    socket.on('reconnect', function(attemptNumber) {
-        console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
-        $('#connectionStatus').hide();
-        socket.emit('initPlayer', playerId);
-        socket.emit('setRoom', { roomId: roomId, playerId: playerId });
-        socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
-    });
-
-    socket.on('reconnect_attempt', function(attemptNumber) {
-        console.log('[Socket] Reconnect attempt:', attemptNumber);
-    });
-
-    socket.on('reconnect_error', function(error) {
-        console.log('[Socket] Reconnect error:', error.message);
+    // สลับแอป (LINE ฯลฯ) แล้วกลับมา — ขอสถานะห้องใหม่กันจอค้างของเก่า
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && socket.connected) {
+            socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
+        }
     });
 
     var replyingTo = null; // เพิ่มตัวแปรสำหรับเก็บข้อมูลข้อความที่กำลังจะตอบกลับ

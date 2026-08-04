@@ -5145,13 +5145,7 @@
       window.location.href = '/room/' + roomId + '?playerId=' + playerId;
     });
 
-    socket.on('reconnect', function() {
-      console.log('[WW] Reconnected to server');
-      $('#connectionStatus').text('เชื่อมต่อใหม่สำเร็จ').show();
-      setTimeout(function() { $('#connectionStatus').fadeOut(); }, 2000);
-      bindRoom();
-    });
-
+    // หมายเหตุ: socket.io v4 ไม่ยิง 'reconnect' บนตัว socket — re-bind ทำใน 'connect' ด้านล่างแล้ว
     socket.on('disconnect', function(reason) {
       console.log('[WW] Disconnected:', reason);
       if (reason !== 'io server disconnect') {

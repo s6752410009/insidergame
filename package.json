@@ -45,7 +45,8 @@
     "smoke:room:cleanup": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-room-cleanup.js",
     "smoke:rooms:persist": "node scripts/smoke-room-persist-mongo.js",
     "smoke:boards:console": "node scripts/smoke-boards-console.js",
-    "smoke:identity": "node scripts/smoke-identity.js"
+    "smoke:identity": "node scripts/smoke-identity.js",
+    "smoke:insider:reconnect": "node scripts/smoke-insider-reconnect.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

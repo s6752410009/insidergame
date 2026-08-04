@@ -2096,13 +2096,7 @@
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
     socket.emit('requestRoomUpdate', { roomId: roomId });
 
-    socket.on('reconnect', function() {
-      console.log('[roomLobby] Socket reconnected, rebinding room context');
-      socket.emit('initPlayer', playerId);
-      socket.emit('setRoom', { roomId: roomId, playerId: playerId });
-      socket.emit('requestRoomUpdate', { roomId: roomId });
-    });
-
+    // หมายเหตุ: socket.io v4 ไม่ยิง 'reconnect' บนตัว socket — ใช้ 'connect' ซึ่งยิงทุกครั้งแทน
     socket.on('connect', function() {
       console.log('[roomLobby] Socket connected');
       socket.emit('initPlayer', playerId);
