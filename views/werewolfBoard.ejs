@@ -1147,7 +1147,7 @@
       // from roleCatalog); unknown ids must fall back to emoji, not a 404 <img>
       return {
         id: normalizedRoleId,
-        image: found?.image || (ROLE_ICON_FALLBACK[normalizedRoleId] ? '/assets/games/werewolf/' + normalizedRoleId + '.jpg' : null),
+        image: found?.image || (ROLE_ICON_FALLBACK[normalizedRoleId] ? '/assets/games/werewolf/' + normalizedRoleId + '.webp' : null),
         icon: found?.icon || ROLE_ICON_FALLBACK[normalizedRoleId] || '🎭',
         alt: found?.thaiName || found?.name || normalizedRoleId
       };

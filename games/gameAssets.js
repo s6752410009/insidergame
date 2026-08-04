@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..', 'public', 'assets', 'games');
-const EXT_PRIORITY = ['.jpg', '.png', '.webp', '.svg'];
+// webp มาก่อน: ไฟล์เดียวกันเล็กกว่า jpg/png หลายเท่า (ทั้งชุด 38MB -> 2.9MB)
+// เบราว์เซอร์ที่เว็บนี้รองรับ (Safari 14+/Chrome/LINE in-app) อ่าน webp ได้หมดแล้ว
+const EXT_PRIORITY = ['.webp', '.jpg', '.png', '.svg'];
 const extCache = new Map();
 
 function resolveExt(game, id) {
@@ -24,7 +26,7 @@ function resolveExt(game, id) {
     return '.jpg';
 }
 
-// Prefer AI portrait JPG, then PNG/WebP, then SVG icon.
+// Prefer WebP, then original JPG/PNG, then SVG icon.
 function gameAssetImage(game, id) {
     return `/assets/games/${game}/${id}${resolveExt(game, id)}`;
 }
