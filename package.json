@@ -46,7 +46,9 @@
     "smoke:rooms:persist": "node scripts/smoke-room-persist-mongo.js",
     "smoke:boards:console": "node scripts/smoke-boards-console.js",
     "smoke:identity": "node scripts/smoke-identity.js",
-    "smoke:insider:reconnect": "node scripts/smoke-insider-reconnect.js"
+    "smoke:insider:reconnect": "node scripts/smoke-insider-reconnect.js",
+    "smoke:playthrough": "node scripts/smoke-playthrough.js",
+    "smoke:crash": "node scripts/smoke-crash-guard.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

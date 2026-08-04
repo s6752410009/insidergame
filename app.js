@@ -1222,6 +1222,40 @@ function addServerLog(io, category, roomId, message, type = 'info', options = {}
     });
 }
 
+/**
+ * ตาข่ายกันเซิร์ฟเวอร์ล้มทั้งตัว
+ *
+ * socket.io ไม่ได้ห่อ handler ด้วย try/catch — ถ้า handler ตัวไหน throw
+ * error จะลอยขึ้นไปเป็น uncaughtException แล้ว Node ปิดโปรเซสทิ้ง
+ * (ทดสอบแล้ว: throw ครั้งเดียวโปรเซสตายทันที)
+ * แปลว่าบัคจุดเดียวในห้องเดียว = ผู้เล่น "ทุกห้อง" หลุดพร้อมกัน แล้วรอ Render บูตใหม่
+ *
+ * ตรงนี้เลยเลือกจดบันทึกแล้วอยู่ต่อ ดีกว่าตัดทุกคนกลางเกม
+ * (พังจริงระดับ OOM ยังจบโปรเซสเองอยู่ดี Render จะรีสตาร์ตให้)
+ */
+function installCrashGuards() {
+    process.on('uncaughtException', error => {
+        console.error('[FATAL] uncaughtException — เซิร์ฟเวอร์ทำงานต่อ:', error);
+        try {
+            addServerLog(io, 'error', null, `เซิร์ฟเวอร์เจอ error ที่ไม่ถูกดัก: ${error.message}`, 'error');
+        } catch (logError) {
+            console.error('[FATAL] จดบันทึก error ไม่ได้:', logError.message);
+        }
+    });
+
+    process.on('unhandledRejection', reason => {
+        const error = reason instanceof Error ? reason : new Error(String(reason));
+        console.error('[FATAL] unhandledRejection — เซิร์ฟเวอร์ทำงานต่อ:', error);
+        try {
+            addServerLog(io, 'error', null, `Promise ที่ไม่ถูกดัก: ${error.message}`, 'error');
+        } catch (logError) {
+            console.error('[FATAL] จดบันทึก error ไม่ได้:', logError.message);
+        }
+    });
+}
+
+installCrashGuards();
+
 function buildRoomUpdatePayload(room) {
     const gameEngine = getGameEngine(room.settings.gameMode);
     const gameStatus = roomManager.getRoomGameStatusLabel(room);
