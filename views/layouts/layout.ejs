@@ -77,6 +77,12 @@
                 } catch(e) {}
             })();
         </script>
+        <!-- เปิด connection ล่วงหน้าไปยัง CDN ที่ยังใช้อยู่ ลด latency handshake บนมือถือ -->
+        <link rel="preconnect" href="https://maxcdn.bootstrapcdn.com" crossorigin>
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="stylesheet" href="/static/css/style.css">
         <link rel="stylesheet" href="/static/css/form.css">
         <link rel="stylesheet" href="/static/css/mobile.css">
@@ -119,7 +125,8 @@
         </footer>
 
         <!-- Audio Player และ Controls -->
-        <audio id="background-music" src="/static/sound/bgm.mp3" loop></audio>
+        <!-- preload=none: ไฟล์ 8.5MB ห้ามให้เบราว์เซอร์แตะจนกว่าผู้เล่นจะกดเปิดเพลงเอง -->
+        <audio id="background-music" src="/static/sound/bgm.mp3" loop preload="none"></audio>
         <div id="music-controls" style="position: fixed; top: 15px; left: 15px; z-index: 10001; background: rgba(255,255,255,0.7); border-radius: 5px; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
             <img id="music-toggle-btn" src="/static/image/song.png" alt="Music Toggle" style="width: 30px; height: 30px; cursor: pointer; display: block;">
         </div>
@@ -129,7 +136,9 @@
         </a>
 
         <!-- Javascript -->
-        <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+        <!-- self-host + minified: เดิมโหลดตัว unminified 273KB จาก CDN ภายนอกทุกหน้า
+             ตัวนี้เนื้อหาเวอร์ชันเดียวกันเป๊ะ (1.10.2) เหลือ ~33KB หลัง gzip และติด cache ของเรา -->
+        <script src="/static/vendor/jquery-1.10.2.min.js"></script>
         <script src="/socket.io/socket.io.js"></script>
         <script src="/static/js/timer.js"></script>
         <!-- Player Identity System - ต้องโหลดก่อน scripts อื่น -->

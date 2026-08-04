@@ -5,6 +5,7 @@
  */
 
 const express = require('express');
+const compression = require('compression');
 const app = express();
 
 var server = require('http').createServer(app),
@@ -2688,11 +2689,28 @@ const sessionMiddleware = session({
 });
 io.engine.use(sessionMiddleware);
 
-app.use(expressLayouts)
+// อายุ cache ของ static:
+// - รูป/เสียง (เปลี่ยนนานๆ ครั้ง) 7 วัน — รูปบทเกม 70-100KB/รูป เดิม max-age=0
+//   ทำให้โหลดใหม่ทุกหน้า กินเน็ตมือถือและหน่วงกระดานเกมชัดเจน
+// - css/js 1 ชม. (เผื่อ deploy บ่อย) + etag ให้ revalidate เป็น 304 ถูกๆ
+const STATIC_MEDIA_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const STATIC_CODE_MAX_AGE = 60 * 60 * 1000;
+const staticCacheOptions = {
+    etag: true,
+    setHeaders(res, filePath) {
+        const isMedia = /\.(jpe?g|png|webp|svg|gif|mp3|woff2?)$/i.test(filePath);
+        res.setHeader('Cache-Control', `public, max-age=${Math.floor((isMedia ? STATIC_MEDIA_MAX_AGE : STATIC_CODE_MAX_AGE) / 1000)}`);
+    }
+};
+
+app.disable('x-powered-by');
+
+app.use(compression()) // หน้า board ~250KB → เหลือราว 1 ใน 5 เดิมไม่เคยบีบอัดเลย
+   .use(expressLayouts)
    .use(sessionMiddleware)
-   .use('/static', express.static(__dirname + '/public'))
-   .use('/assets', express.static(path.join(__dirname, 'public', 'assets')))
-   .use('/js', express.static(path.join(__dirname, 'public', 'js')))
+   .use('/static', express.static(__dirname + '/public', staticCacheOptions))
+   .use('/assets', express.static(path.join(__dirname, 'public', 'assets'), staticCacheOptions))
+   .use('/js', express.static(path.join(__dirname, 'public', 'js'), staticCacheOptions))
    .use(bodyParser.urlencoded({ extended: true }))
    .use(bodyParser.json())
    .set('view engine', 'ejs')
@@ -2785,12 +2803,22 @@ app.use(async function(req, res, next) {
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
         // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
+        // หน้า bootstrap โผล่แค่แวบเดียวระหว่าง redirect — ต้องเป็นโทนเดียวกับเว็บ
+        // ไม่งั้นจอขาววาบทุกครั้งที่เข้าเว็บครั้งแรก ดูเหมือนหน้าพัง
         return res.send(`
             <!DOCTYPE html>
-            <html>
-            <head><title>Loading...</title></head>
+            <html style="background:#1a1a2e">
+            <head><title>Loading...</title><meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+                     background:linear-gradient(160deg,#1a1a2e,#16213e);color:#cbd5e1;
+                     font-family:system-ui,sans-serif;font-size:15px}
+                .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#8e7cff;
+                     margin-left:8px;animation:b 1s infinite alternate}
+                @keyframes b{to{opacity:.25;transform:translateY(-3px)}}
+            </style></head>
             <body>
-                <p>กำลังโหลด...</p>
+                <p>กำลังเข้าเกม<span class="dot"></span></p>
                 <script>
                     // ดึง playerId จาก localStorage หรือสร้างใหม่
                     let playerId = localStorage.getItem('insiderGamePlayerId');
