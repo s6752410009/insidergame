@@ -106,7 +106,16 @@ const roomSnapshotSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now, index: true }
 }, { timestamps: true });
 
+// ประวัติ season. เดิมเก็บแค่ data/seasons.json ซึ่งดิสก์ Render หายทุกครั้งที่ deploy
+// ทำให้ตารางอันดับ season เก่าหายเกลี้ยง ทั้งที่ผู้เล่น/สถิติอยู่ใน Mongo รอดมาตลอด
+const seasonArchiveSchema = new mongoose.Schema({
+    key: { type: String, required: true, unique: true, index: true },
+    payload: { type: mongoose.Schema.Types.Mixed, required: true },
+    updatedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
 const Player = mongoose.model('Player', playerSchema);
+const SeasonArchive = mongoose.model('SeasonArchive', seasonArchiveSchema);
 const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
 const BannedPlayer = mongoose.model('BannedPlayer', bannedPlayerSchema);
 const AdminMessageThread = mongoose.model('AdminMessageThread', adminMessageThreadSchema);
@@ -117,5 +126,6 @@ module.exports = {
     PlayerStats,
     BannedPlayer,
     AdminMessageThread,
-    RoomSnapshot
+    RoomSnapshot,
+    SeasonArchive
 };

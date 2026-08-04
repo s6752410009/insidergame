@@ -109,14 +109,110 @@ function getSeasonData() {
     return seasonData;
 }
 
-function saveSeasons() {
+const SEASON_DOC_KEY = 'seasons';
+let SeasonArchive = null;
+let useDatabase = false;
+
+try {
+    ({ SeasonArchive } = require('./models'));
+} catch (error) {
+    SeasonArchive = null;
+}
+
+/**
+ * โหลด season จาก Mongo ถ้าต่อได้ ไม่งั้นใช้ไฟล์
+ *
+ * ดิสก์ของ Render เป็น ephemeral — data/seasons.json หายทุกครั้งที่ deploy
+ * ประวัติ Season ที่ปิดไปแล้วเลยหายเกลี้ยง ทั้งที่ผู้เล่นกับสถิติอยู่ใน Mongo รอดมาตลอด
+ */
+async function initSeasonManager() {
     try {
-        fs.writeFileSync(SEASONS_FILE, JSON.stringify(getSeasonData(), null, 2), 'utf8');
-        return true;
+        const { isDBConnected } = require('./database');
+        useDatabase = Boolean(SeasonArchive && isDBConnected());
     } catch (error) {
-        console.error('Error saving seasons:', error.message);
+        useDatabase = false;
+    }
+
+    if (!useDatabase) {
+        loadSeasons();
+        console.log(`📁 SeasonManager using JSON file (season ${getSeasonData().current.number})`);
+        return getSeasonData();
+    }
+
+    try {
+        const doc = await SeasonArchive.findOne({ key: SEASON_DOC_KEY }).lean();
+        if (doc?.payload) {
+            seasonData = null;
+            applyLoadedSeasonPayload(doc.payload);
+            console.log(`✅ SeasonManager using MongoDB (season ${getSeasonData().current.number}, archived ${getSeasonData().archived.length})`);
+            return getSeasonData();
+        }
+
+        // ยังไม่มีใน Mongo — ย้ายของเดิมจากไฟล์ขึ้นไปครั้งเดียว
+        loadSeasons();
+        await persistSeasons();
+        console.log(`✅ SeasonManager migrated ${getSeasonData().archived.length} archived season(s) to MongoDB`);
+    } catch (error) {
+        console.error('[SeasonManager] Mongo load failed, falling back to file:', error.message);
+        useDatabase = false;
+        loadSeasons();
+    }
+
+    return getSeasonData();
+}
+
+function applyLoadedSeasonPayload(raw) {
+    seasonData = createDefaultSeasonData();
+    if (!raw || typeof raw !== 'object') {
+        return;
+    }
+
+    if (Array.isArray(raw.archived)) {
+        seasonData.archived = raw.archived
+            .map((season, index) => normalizeArchivedSeason(season, index + 1))
+            .filter(Boolean)
+            .sort((a, b) => b.number - a.number);
+    }
+
+    if (raw.current && typeof raw.current === 'object') {
+        const number = Number(raw.current.number) || (seasonData.archived.length + 1);
+        seasonData.current = {
+            number,
+            name: raw.current.name || `Season ${number}`,
+            startedAt: raw.current.startedAt || null
+        };
+    }
+}
+
+async function persistSeasons() {
+    if (!useDatabase || !SeasonArchive) {
         return false;
     }
+    await SeasonArchive.updateOne(
+        { key: SEASON_DOC_KEY },
+        { $set: { key: SEASON_DOC_KEY, payload: getSeasonData(), updatedAt: new Date() } },
+        { upsert: true }
+    );
+    return true;
+}
+
+function saveSeasons() {
+    // เขียนไฟล์ไว้เสมอเพื่อเป็น backup ในเครื่อง ส่วน Mongo คือตัวจริงตอนอยู่บนโปรดักชัน
+    let ok = true;
+    try {
+        fs.writeFileSync(SEASONS_FILE, JSON.stringify(getSeasonData(), null, 2), 'utf8');
+    } catch (error) {
+        console.error('Error saving seasons:', error.message);
+        ok = false;
+    }
+
+    if (useDatabase) {
+        persistSeasons().catch(error => {
+            console.error('[SeasonManager] Could not save seasons to MongoDB:', error.message);
+        });
+    }
+
+    return ok;
 }
 
 /**
@@ -312,6 +408,7 @@ async function runSeasonReset(options = {}) {
 loadSeasons();
 
 module.exports = {
+    initSeasonManager,
     SEASONS_FILE,
     loadSeasons,
     saveSeasons,

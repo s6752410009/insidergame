@@ -6512,6 +6512,10 @@ async function startServer() {
         const restoredRooms = await roomManager.initRoomManager();
         console.log(`✅ Room Manager initialized (${restoredRooms} room(s) restored)`);
 
+        // ต้องโหลดหลัง connectDB ไม่งั้นจะตกไปใช้ไฟล์ ซึ่งดิสก์ Render หายทุก deploy
+        await seasonManager.initSeasonManager();
+        console.log('✅ Season Manager initialized');
+
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
             if (repairedStatsNames.repairedCount > 0) {
