@@ -2678,7 +2678,9 @@ const sessionMiddleware = session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 24 * 60 * 60 * 1000,
+        // 30 วัน — เดิม 24 ชม. สั้นเกิน ผู้เล่นหายไปสองวันกลับมา session หมดอายุ
+        // แล้วลิงก์เก่าที่มี playerId คนอื่นจะยึด identity ได้ทันที
+        maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production'
@@ -2762,19 +2764,15 @@ app.use(async function(req, res, next) {
         return next();
     }
     
-    // ดึง playerId จาก query parameter
-    let playerId = req.query.playerId;
+    // ลำดับความเชื่อ identity:
+    //   1. playerId ใน URL — คือคำประกาศของเครื่องนั้น เพราะ playerIdentity.js ฝั่ง client
+    //      จะบังคับ URL ให้ตรงกับ localStorage ของเครื่องเสมอ → ต้องให้ชนะ session
+    //      (เดิม session ชนะ query แล้ว client ก็เอา meta จาก session ไปทับ localStorage
+    //       ผลคือคลิกลิงก์ที่มี playerId คนอื่นตอน session หมดอายุ = บัญชีเดิมหายถาวร)
+    //   2. session — ใช้เมื่อ URL ไม่มี playerId (หลังจาก client ลบออกจาก address bar)
+    const queryPlayerId = playerManager.isValidPlayerId(req.query.playerId) ? req.query.playerId : null;
     const boundPlayerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
-
-    // Once a browser session owns a player identity, query strings cannot switch it.
-    if (boundPlayerId) {
-        playerId = boundPlayerId;
-    }
-    
-    // ป้องกัน "undefined" หรือ "null" string
-    if (!playerId || playerId === 'undefined' || playerId === 'null' || playerId === '' || !playerManager.isValidPlayerId(playerId)) {
-        playerId = null;
-    }
+    let playerId = queryPlayerId || boundPlayerId || null;
     
     if (playerId) {
         const existingPlayer = playerManager.getPlayer(playerId);

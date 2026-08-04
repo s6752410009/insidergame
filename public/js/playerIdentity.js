@@ -29,28 +29,31 @@
     }
     
     /**
-     * ดึง playerId จาก localStorage หรือสร้างใหม่
-     * ถ้า server มี session identity แล้ว ให้ sync localStorage ตาม server
-     * เพื่อกัน create ด้วยคนละ id แล้วเจอ room_not_found
+     * ดึง playerId ของ "เครื่องนี้"
+     *
+     * localStorage คือเจ้าของตัวจริงเสมอ — meta จาก server ใช้ได้แค่ "เติม" ตอน
+     * localStorage ยังว่างเท่านั้น ห้ามเอามาทับของเดิมเด็ดขาด
+     * (เวอร์ชันก่อนให้ meta ชนะ ผลคือเปิดลิงก์ที่มี playerId คนอื่นหนึ่งครั้ง
+     *  ตอน session ฝั่ง server หมดอายุ = บัญชีเดิมบนเครื่องถูกเขียนทับหายถาวร)
      */
     function getOrCreatePlayerId() {
+        const stored = localStorage.getItem(PLAYER_ID_KEY);
+        if (stored && PLAYER_ID_REGEX.test(stored)) {
+            return stored;
+        }
+
+        // localStorage ว่าง/เพี้ยน → รับ identity จาก server session ได้
+        // (เคสตั้งใจ เช่น ลิงก์โอน site admin ไปเครื่องใหม่ หรือเบราว์เซอร์เพิ่งล้าง storage)
         const serverPlayerId = getServerPlayerId();
         if (serverPlayerId) {
             localStorage.setItem(PLAYER_ID_KEY, serverPlayerId);
+            console.log('[PlayerIdentity] Adopted server identity:', serverPlayerId);
             return serverPlayerId;
         }
 
-        let playerId = localStorage.getItem(PLAYER_ID_KEY);
-        
-        // ตรวจสอบว่ามีค่าที่ถูกต้องหรือไม่
-        if (!playerId || playerId === 'undefined' || playerId === 'null' || !PLAYER_ID_REGEX.test(playerId)) {
-            playerId = generatePlayerId();
-            localStorage.setItem(PLAYER_ID_KEY, playerId);
-            console.log('[PlayerIdentity] Created new playerId:', playerId);
-        } else {
-            console.log('[PlayerIdentity] Using existing playerId:', playerId);
-        }
-        
+        const playerId = generatePlayerId();
+        localStorage.setItem(PLAYER_ID_KEY, playerId);
+        console.log('[PlayerIdentity] Created new playerId:', playerId);
         return playerId;
     }
     
@@ -83,31 +86,48 @@
     }
     
     /**
-     * ตรวจสอบและ redirect ถ้าไม่มี playerId ใน URL
+     * ลบ playerId ออกจาก address bar (เก็บ query อื่นและ hash ไว้)
+     * เพื่อให้ URL ที่ผู้เล่นก๊อปไปแชร์ "ไม่พกกุญแจบัญชี" ติดไปด้วย —
+     * ลิงก์ห้องที่แชร์กันจะเป็น /room/xxx เฉยๆ เครื่องใหม่ที่เปิดจะได้บัญชีของตัวเอง
+     */
+    function stripPlayerIdFromAddressBar() {
+        try {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.has('playerId')) {
+                return;
+            }
+            url.searchParams.delete('playerId');
+            history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+        } catch (e) {
+            // แก้ address bar ไม่ได้ก็ไม่เป็นไร แค่เสียความสวยงาม
+        }
+    }
+
+    /**
+     * ทำให้ server กับเครื่องนี้เห็น identity ตรงกัน
+     * - server รู้จักเราถูกคนแล้ว (meta ตรง localStorage) → ลบ playerId ออกจาก URL แล้วใช้งานต่อ
+     * - server ยังไม่รู้จัก/รู้จักเป็นคนอื่น → บังคับ URL ให้ตรงกับ localStorage แล้ว reload
+     *   (ฝั่ง server ให้ query ชนะ session จึง rebind กลับมาเป็นเราเสมอ — จบใน 1 redirect)
      */
     function ensurePlayerIdInUrl() {
         const playerId = getOrCreatePlayerId();
         const urlPlayerId = getPlayerIdFromUrl();
-        
-        // ถ้าไม่มี playerId ใน URL ให้ใส่ของเราลงไป
-        if (!urlPlayerId || urlPlayerId === 'undefined' || urlPlayerId === 'null') {
-            const newUrl = addPlayerIdToUrl(window.location.pathname + window.location.search, playerId);
-            console.log('[PlayerIdentity] Redirecting to (no playerId in URL):', newUrl);
-            window.location.replace(newUrl);
-            return false; // ยังไม่พร้อม
+        const serverPlayerId = getServerPlayerId();
+
+        if (serverPlayerId === playerId) {
+            stripPlayerIdFromAddressBar();
+            return true;
         }
 
-        // ถ้า URL มี playerId แต่ไม่ตรงกับ localStorage
-        // ให้ถือว่า localStorage คือเจ้าของเครื่องจริง และบังคับ URL ให้ตรงกับมัน
-        // เพื่อป้องกันการแชร์ playerId ข้ามคน
         if (urlPlayerId !== playerId) {
             const fixedUrl = addPlayerIdToUrl(window.location.pathname + window.location.search, playerId);
-            console.log('[PlayerIdentity] Fixing mismatched playerId in URL ->', fixedUrl);
+            console.log('[PlayerIdentity] Syncing identity with server ->', fixedUrl);
             window.location.replace(fixedUrl);
-            return false;
+            return false; // กำลัง reload
         }
-        
-        return true; // พร้อมใช้งาน
+
+        // URL ตรงกับเราแล้วแต่หน้านี้ไม่ได้ render meta (เช่นหน้า static) → ใช้งานได้เลย
+        return true;
     }
     
     /**
