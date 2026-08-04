@@ -3161,8 +3161,11 @@ app.get('/room/:roomId', async function(req, res) {
     }
 
     // ถ้าเกมกำลังเล่นอยู่ → ส่งผู้เล่นที่อยู่ในห้องไปหน้าเกมเลย
+    // ต้องเช็คด้วย isRoomGameInProgress ไม่ใช่ status ดิบ — สถานะ "จบเกมแล้ว"
+    // (werewolf_finished ฯลฯ) ไม่ใช่ waiting แต่ก็ไม่ใช่กำลังเล่น
+    // เดิมเช็คดิบทำให้ปุ่ม "กลับห้อง" ตอนจบเกมเด้งกลับหน้าเกมทันที กดยังไงก็ไม่ไป
     const playerInRoomAlready = room.players.find(p => p.playerId === playerId);
-    if (playerInRoomAlready && room.gameState.status !== '' && room.gameState.status !== 'waiting') {
+    if (playerInRoomAlready && roomManager.isRoomGameInProgress(room)) {
         return res.redirect('/game/' + roomId + '?playerId=' + playerId);
     }
 
@@ -3182,8 +3185,8 @@ app.get('/room/:roomId', async function(req, res) {
             return res.redirect('/rooms?msg=room_locked');
         }
         
-        // เช็คว่าเกมเริ่มแล้วหรือยัง
-        if (room.gameState.status !== '' && room.gameState.status !== 'waiting') {
+        // เช็คว่าเกมเริ่มแล้วหรือยัง (เกมจบแล้วถือว่า join ได้ — รอเริ่มรอบใหม่)
+        if (roomManager.isRoomGameInProgress(room)) {
             return res.redirect('/rooms?msg=game_in_progress');
         }
         

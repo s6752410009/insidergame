@@ -2953,10 +2953,12 @@ $(function() {
         var $bar = $('#wordTimerBar');
         var $text = $('#wordTimerText');
         var percent = (wordTimeLeft / 30) * 100;
-        
-        $bar.css('--timer-width', percent + '%');
-        $bar.find('::after').css('width', percent + '%');
-        // Use a pseudo-element trick via CSS variable
+
+        // เดิมมี $bar.find('::after') อยู่ตรงนี้ — jQuery/Sizzle เลือก pseudo-element ไม่ได้
+        // มัน throw "Syntax error, unrecognized expression: ::after" ตั้งแต่บรรทัดแรกที่
+        // startWordTimer เรียก ทำให้ setInterval ข้างล่างไม่เคยถูกสร้าง
+        // ผลคือเวลาค้างที่ 30 ตลอด และ auto-submit ตอนหมดเวลาก็ไม่ทำงาน
+        // ความกว้างของแถบวาดด้วย CSS variable อยู่แล้ว ไม่ต้องแตะ pseudo-element เลย
         $bar.attr('style', '--timer-percent: ' + percent + '%;');
         $text.text(wordTimeLeft);
         
