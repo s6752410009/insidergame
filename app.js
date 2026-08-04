@@ -4602,6 +4602,43 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // Admin: ใส่ season ย้อนหลังด้วยมือ (กู้ Season 1 ที่ archive หายไปกับดิสก์ Render)
+    // entries: [{playerName, wins, totalGames}] — เลขซ้ำ = ทับของเดิม แก้ซ้ำได้
+    socket.on('admin_importSeason', function(data, callback) {
+        if (typeof callback !== 'function') {
+            return;
+        }
+
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+                return;
+            }
+
+            const payload = typeof data === 'object' && data !== null ? data : {};
+            const result = seasonManager.importArchivedSeason({
+                number: payload.number,
+                name: payload.name,
+                endedAt: payload.endedAt,
+                entries: payload.entries
+            }, {
+                setCurrentNumber: payload.setCurrentNumber
+            });
+
+            addServerLog(io, 'admin', null,
+                `Admin นำเข้า ${result.archived.name} ย้อนหลัง (${result.archived.entries.length} คน) — season ปัจจุบัน: ${result.current.name}`,
+                'warning');
+            callback({ success: true, archived: {
+                number: result.archived.number,
+                name: result.archived.name,
+                totalPlayers: result.archived.totalPlayers
+            }, current: result.current });
+        } catch (error) {
+            console.error('Error importing season:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+
     // Admin: ปิด season ปัจจุบัน เก็บอันดับเป็นประวัติ แล้วรีเซ็ตสถิติทุกคน
     socket.on('admin_resetSeason', async function(data, callback) {
         const done = typeof callback === 'function' ? callback : (typeof data === 'function' ? data : function() {});

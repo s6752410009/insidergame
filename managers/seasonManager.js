@@ -407,8 +407,68 @@ async function runSeasonReset(options = {}) {
 
 loadSeasons();
 
+/**
+ * ใส่/ทับ season ย้อนหลังด้วยมือ (เครื่องมือกู้ข้อมูล)
+ *
+ * ทำไว้เพราะ Season 1 ของจริงบน production ถูกลบตอน reset (31 ก.ค. 2026)
+ * โดย archive ตายไปกับดิสก์ ephemeral ของ Render — ตัวเลขต้นฉบับกู้ไม่ได้แล้ว
+ * ทางเดียวที่เหลือคือให้ admin รวบรวมจาก screenshot ของกลุ่มแล้ววางกลับเข้ามา
+ *
+ * @param {Object} payload { number, name?, endedAt?, entries: [{playerName, wins, totalGames}] }
+ * @param {Object} options { setCurrentNumber?: number } — เลื่อน season ปัจจุบันไปพร้อมกัน
+ */
+function importArchivedSeason(payload, options = {}) {
+    const number = Number(payload?.number);
+    if (!Number.isFinite(number) || number < 1) {
+        throw new Error('เลข season ไม่ถูกต้อง');
+    }
+
+    const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+    if (entries.length === 0) {
+        throw new Error('ไม่มีรายชื่อผู้เล่นให้บันทึก');
+    }
+
+    const normalized = normalizeArchivedSeason({
+        number,
+        name: payload.name || `Season ${number}`,
+        startedAt: payload.startedAt || null,
+        endedAt: payload.endedAt || new Date().toISOString(),
+        totalPlayers: entries.length,
+        totalGames: entries.reduce((sum, e) => sum + (Number(e.totalGames) || 0), 0),
+        entries: entries
+            .map(e => ({
+                playerName: String(e.playerName || '').trim(),
+                wins: Number(e.wins) || 0,
+                losses: Math.max(0, (Number(e.totalGames) || 0) - (Number(e.wins) || 0)),
+                totalGames: Number(e.totalGames) || 0,
+                playerId: e.playerId || null
+            }))
+            .filter(e => e.playerName)
+            .sort((a, b) => b.wins - a.wins)
+            .map((e, i) => ({ ...e, rank: i + 1 }))
+    }, number);
+
+    const data = getSeasonData();
+    // ทับของเดิมถ้าเลขซ้ำ (ให้แก้ไขซ้ำได้จนกว่าจะพอใจ)
+    data.archived = [normalized, ...data.archived.filter(s => s.number !== number)]
+        .sort((a, b) => b.number - a.number);
+
+    const setCurrent = Number(options.setCurrentNumber);
+    if (Number.isFinite(setCurrent) && setCurrent > number) {
+        data.current = {
+            number: setCurrent,
+            name: `Season ${setCurrent}`,
+            startedAt: data.current.startedAt || normalized.endedAt
+        };
+    }
+
+    saveSeasons();
+    return { archived: normalized, current: { ...data.current } };
+}
+
 module.exports = {
     initSeasonManager,
+    importArchivedSeason,
     SEASONS_FILE,
     loadSeasons,
     saveSeasons,

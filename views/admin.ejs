@@ -1378,6 +1378,7 @@
                         </select>
                     </div>
                     <button class="btn-admin btn-warning" onclick="resetSeason()" id="resetSeasonBtn" style="display:none;">🏆 ปิด Season / รีแรงค์</button>
+                    <button class="btn-admin btn-primary" onclick="openImportSeason()">🗂️ นำเข้า Season ย้อนหลัง</button>
                     <button class="btn-admin btn-danger" onclick="clearAllStats()" id="clearAllStatsBtn" style="display:none;">🗑️ ลบทั้งหมด</button>
                     <button class="btn-admin btn-warning" onclick="deleteSelectedStats()" id="deleteSelectedBtn" style="display:none;">🗑️ ลบที่เลือก (<span id="selectedStatsCount">0</span>)</button>
                     <button class="btn-admin btn-primary" onclick="exportStats()">📥 Export CSV</button>
@@ -2802,6 +2803,64 @@ $(function() {
     };
     
     // ปิด season ปัจจุบัน: เก็บอันดับเป็นประวัติ แล้วรีเซ็ตสถิติทุกคน
+    // กู้ season ที่ archive หายไปกับดิสก์ Render — admin รวบรวมจาก screenshot แล้ววางที่นี่
+    window.openImportSeason = function() {
+        Swal.fire({
+            title: '🗂️ นำเข้า Season ย้อนหลัง',
+            html:
+                '<div style="text-align:left; color:#ccc; font-size:0.9em;">' +
+                '<p style="margin:0 0 8px;">วางรายชื่อ <b>บรรทัดละคน</b> รูปแบบ: <code>ชื่อ, ชนะ, เกมทั้งหมด</code> (เกมไม่ใส่ก็ได้)</p>' +
+                '<div style="display:flex; gap:8px; margin-bottom:8px;">' +
+                '<input id="impSeasonNum" type="number" min="1" value="1" class="swal2-input" style="width:110px; margin:0;" placeholder="เลข season">' +
+                '<input id="impSetCurrent" type="number" min="2" value="2" class="swal2-input" style="width:150px; margin:0;" placeholder="season ปัจจุบัน">' +
+                '</div>' +
+                '<textarea id="impEntries" class="swal2-textarea" style="margin:0; width:100%; height:220px; font-family:monospace; font-size:0.85em;" placeholder="Mark, 2000, 3500\nกี้, 150, 300\n..."></textarea>' +
+                '<p style="margin:8px 0 0; color:#888; font-size:0.85em;">เลขซ้ำ = ทับของเดิม แก้ไขซ้ำได้จนกว่าจะพอใจ · ช่อง "season ปัจจุบัน" จะตั้งเลข season ที่กำลังเล่นให้ถูกต้อง (เว้นว่างถ้าไม่ต้องการ)</p>' +
+                '</div>',
+            width: 620,
+            background: '#1e1e1e', color: '#fff',
+            showCancelButton: true,
+            confirmButtonText: 'พรีวิว',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: function() {
+                const lines = ($('#impEntries').val() || '').split('\n').map(l => l.trim()).filter(Boolean);
+                const entries = [];
+                const bad = [];
+                lines.forEach(function(line, i) {
+                    const parts = line.split(/[,\t]/).map(x => x.trim());
+                    const wins = Number(parts[1]);
+                    if (!parts[0] || !Number.isFinite(wins)) { bad.push(i + 1); return; }
+                    entries.push({ playerName: parts[0], wins: wins, totalGames: Number(parts[2]) || 0 });
+                });
+                if (bad.length) { Swal.showValidationMessage('บรรทัดที่อ่านไม่ได้: ' + bad.join(', ')); return false; }
+                if (!entries.length) { Swal.showValidationMessage('ยังไม่มีข้อมูล'); return false; }
+                return { number: Number($('#impSeasonNum').val()) || 1, setCurrentNumber: Number($('#impSetCurrent').val()) || undefined, entries: entries };
+            }
+        }).then(function(result) {
+            if (!result.isConfirmed || !result.value) return;
+            const p = result.value;
+            const top = p.entries.slice().sort((a, b) => b.wins - a.wins).slice(0, 5)
+                .map((e, i) => `${i + 1}. ${escapeHtml(e.playerName)} — ${e.wins} ชนะ`).join('<br>');
+            Swal.fire({
+                title: `ยืนยันนำเข้า Season ${p.number}?`,
+                html: `<div style="text-align:left; color:#ccc;"><p>${p.entries.length} คน · top 5:</p><p style="font-family:monospace;">${top}</p>` +
+                      (p.setCurrentNumber ? `<p>และตั้ง season ปัจจุบัน = Season ${p.setCurrentNumber}</p>` : '') + '</div>',
+                background: '#1e1e1e', color: '#fff',
+                showCancelButton: true, confirmButtonText: 'นำเข้าเลย', cancelButtonText: 'กลับไปแก้'
+            }).then(function(confirm2) {
+                if (!confirm2.isConfirmed) return;
+                socket.emit('admin_importSeason', p, function(res) {
+                    if (res && res.success) {
+                        Swal.fire({ icon: 'success', title: `นำเข้า ${res.archived.name} แล้ว (${res.archived.totalPlayers} คน)`,
+                            text: 'season ปัจจุบัน: ' + res.current.name, background: '#1e1e1e', color: '#fff' });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'นำเข้าไม่สำเร็จ', text: (res && res.error) || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+                    }
+                });
+            });
+        });
+    };
+
     window.resetSeason = function() {
         socket.emit('admin_seasonPreview', function(info) {
             if (!info || !info.success) {
