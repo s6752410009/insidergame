@@ -1,3 +1,4 @@
+const { DATA_DIR: TEST_DATA_DIR } = require('./isolateTestData');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -7,8 +8,8 @@ const { chromium } = require('playwright');
 
 const SERVER_TIMEOUT_MS = Number(process.env.SMOKE_SERVER_TIMEOUT_MS || 30000);
 const BROWSER_TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 20000);
-const PLAYERS_FILE = path.join(__dirname, '..', 'data', 'players.json');
-const STATS_FILE = path.join(__dirname, '..', 'data', 'playerStats.json');
+const PLAYERS_FILE = path.join(TEST_DATA_DIR || path.join(__dirname, '..', 'data'), 'players.json');
+const STATS_FILE = path.join(TEST_DATA_DIR || path.join(__dirname, '..', 'data'), 'playerStats.json');
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

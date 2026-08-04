@@ -1034,6 +1034,13 @@ function assignRoles(room) {
     const roleIds = room.gameState.rolePlan.map(role => role.id);
     const players = room.gameState.players;
 
+    // getRolePlan cap ไว้ที่ 10 บท ถ้าห้องมีคนมากกว่านั้น backtrack จะหาบทไม่พอ
+    // แล้ว fallback แจก undefined ให้คนท้ายๆ แบบเงียบๆ (role/roleInfo เป็น undefined จน UI พัง)
+    // เติม villager ให้ครบจำนวนคนไว้ก่อน กันไว้เผื่อวันหลังขยับ maxPlayers
+    while (roleIds.length < players.length) {
+        roleIds.push('villager');
+    }
+
     function buildBestRoleAssignment(playerStates, availableRoleIds, previousRolesByPlayerId) {
         const roleCounts = availableRoleIds.reduce((counts, roleId) => {
             counts[roleId] = (counts[roleId] || 0) + 1;

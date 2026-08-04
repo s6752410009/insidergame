@@ -13,7 +13,7 @@ const path = require('path');
 
 // เก็บห้องทั้งหมด (key: roomId, value: room object)
 const rooms = new Map();
-const ROOMS_FILE = process.env.ROOMS_FILE || path.join(__dirname, '../data/rooms.json');
+const { ROOMS_FILE } = require('./dataPaths');
 let persistTimer = null;
 let persistQueued = false;
 let useDatabase = false;
@@ -46,10 +46,19 @@ function getMappedRoom(roomId) {
     return rooms.get(id) || null;
 }
 
+// ห้องที่ตั้งใจลบจริงๆ — ใช้สั่งลบใน Mongo แบบเจาะจง
+// ห้ามลบด้วย "อะไรที่ไม่อยู่ใน memory ฉัน" เพราะถ้าโหลดพลาดหรือมีหลาย instance
+// จะกวาดห้องของคนอื่นทิ้งหมด
+const pendingRoomDeletes = new Set();
+
 function deleteMappedRoom(roomId) {
     const id = normalizeRoomId(roomId);
     if (!id) return false;
-    return rooms.delete(id);
+    const removed = rooms.delete(id);
+    if (removed) {
+        pendingRoomDeletes.add(id);
+    }
+    return removed;
 }
 
 function schedulePersistRooms() {
@@ -127,7 +136,6 @@ async function persistRooms() {
     const payload = Array.from(rooms.values()).map(serializeRoom);
 
     if (useDatabase && RoomSnapshot) {
-        const keepIds = payload.map(room => room.roomId);
         const ops = payload.map(room => ({
             updateOne: {
                 filter: { roomId: room.roomId },
@@ -145,13 +153,25 @@ async function persistRooms() {
         if (ops.length > 0) {
             await RoomSnapshot.bulkWrite(ops, { ordered: false });
         }
-        if (keepIds.length > 0) {
-            await RoomSnapshot.deleteMany({ roomId: { $nin: keepIds } });
-        } else {
-            await RoomSnapshot.deleteMany({});
+
+        // ลบเฉพาะห้องที่เราสั่งลบเอง — เดิมใช้ $nin keepIds และ deleteMany({})
+        // ซึ่งจะกวาดห้องทั้งคอลเลกชันทิ้งถ้า loadPersistedRooms พังจน rooms ว่าง
+        // หรือกวาดห้องของอีก instance ทิ้งตอน rolling deploy
+        if (pendingRoomDeletes.size > 0) {
+            const idsToDelete = Array.from(pendingRoomDeletes);
+            pendingRoomDeletes.clear();
+            try {
+                await RoomSnapshot.deleteMany({ roomId: { $in: idsToDelete } });
+            } catch (error) {
+                // ลบไม่สำเร็จก็เอากลับเข้าคิว ไว้ลองใหม่รอบหน้า
+                idsToDelete.forEach(id => pendingRoomDeletes.add(id));
+                throw error;
+            }
         }
         return payload.length;
     }
+
+    pendingRoomDeletes.clear();
 
     persistRoomsToFileSync(payload);
     return payload.length;
@@ -167,6 +187,8 @@ function loadRoomsFromFile() {
 
 async function loadPersistedRooms() {
     rooms.clear();
+    // คิวลบค้างจากรอบก่อนต้องล้าง ไม่งั้นห้องที่เพิ่งกู้คืนมาอาจโดนลบตาม
+    pendingRoomDeletes.clear();
     let stored = [];
 
     if (useDatabase && RoomSnapshot) {
@@ -1234,6 +1256,8 @@ function clearEmptyRooms() {
  */
 function clearAllRooms() {
     const count = rooms.size;
+    // ต้องเข้าคิวลบทีละห้อง ไม่งั้นห้องจะหายจาก memory แต่ค้างอยู่ใน Mongo
+    Array.from(rooms.keys()).forEach(roomId => pendingRoomDeletes.add(roomId));
     rooms.clear();
     schedulePersistRooms();
     return count;
@@ -1284,6 +1308,7 @@ function getActiveRooms() {
 
 module.exports = {
     initRoomManager,
+    schedulePersistRooms,
     createRoom,
     joinRoom,
     leaveRoom,

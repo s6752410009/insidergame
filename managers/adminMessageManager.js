@@ -14,7 +14,7 @@ try {
     console.warn('[AdminMessages] Mongo model unavailable:', error.message);
 }
 
-const THREADS_FILE = process.env.ADMIN_MESSAGES_FILE || path.join(__dirname, '../data/adminMessages.json');
+const { ADMIN_MESSAGES_FILE: THREADS_FILE } = require('./dataPaths');
 const threads = new Map();
 const threadWriteQueues = new Map();
 let useDatabase = false;

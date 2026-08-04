@@ -41,7 +41,9 @@
     "smoke:admin:inbox": "node scripts/smoke-admin-inbox.js",
     "smoke:admin:inbox:browser": "node scripts/smoke-admin-inbox-browser.js",
     "smoke:avatar:frame": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-avatar-frame.js",
-    "smoke:room:cleanup": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-room-cleanup.js"
+    "smoke:room:cleanup": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-room-cleanup.js",
+    "smoke:rooms:persist": "node scripts/smoke-room-persist-mongo.js",
+    "smoke:boards:console": "node scripts/smoke-boards-console.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

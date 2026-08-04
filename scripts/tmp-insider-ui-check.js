@@ -1,3 +1,4 @@
+require('./isolateTestData');
 const http = require('http');
 const path = require('path');
 const net = require('net');

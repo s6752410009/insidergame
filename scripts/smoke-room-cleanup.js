@@ -40,6 +40,11 @@ async function main() {
 
     // 2. Everyone leaves (hard disconnect, no leaveRoom) -> room must be swept
     a.close();
+    // grace ของห้องว่างคือ 5 นาที (local) / 10 นาที (remote) + กันห้องเพิ่งสร้างอีก 2 นาที
+    // ต้องรันเซิร์ฟเวอร์ด้วย SMOKE_FAST_CLEANUP=1 ไม่งั้นเทสจะรอไม่ทัน
+    if (process.env.SMOKE_FAST_CLEANUP !== '1') {
+        console.warn('   ⚠️  ต้องสตาร์ท server ด้วย SMOKE_FAST_CLEANUP=1 ไม่งั้นจะ fail เพราะ grace ยาว');
+    }
     console.log('3. creator disconnected, waiting for cleanup sweep (up to 130s)...');
 
     const deadline = Date.now() + 130000;

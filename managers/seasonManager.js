@@ -8,10 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, '../data');
-const SEASONS_FILE = path.join(DATA_DIR, 'seasons.json');
-const PLAYERS_FILE = path.join(DATA_DIR, 'players.json');
-const BACKUP_DIR = path.join(DATA_DIR, 'backups');
+const { DATA_DIR, SEASONS_FILE, PLAYERS_FILE, BACKUP_DIR } = require('./dataPaths');
 
 // { current: { number, name, startedAt }, archived: [ { number, name, ... , entries: [] } ] }
 let seasonData = null;

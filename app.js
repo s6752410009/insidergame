@@ -2368,6 +2368,11 @@ function recoverGamePhaseTimers() {
 }
 
 function runRoomCleanupSweep() {
+    // เกม engine แก้ room.gameState ตรงๆ โดยไม่ผ่าน roomManager จึงไม่มีใครสั่งเซฟ
+    // ถ้าเซิร์ฟเวอร์รีสตาร์ตกลางเกม (Render รีบ่อย) ห้องจะถูกกู้คืนด้วย state เก่า
+    // ยิงเซฟตามรอบ sweep เพื่อจำกัดความเก่าไว้ไม่เกิน 1 รอบ
+    roomManager.schedulePersistRooms();
+
     const activeSocketIds = new Set(Array.from(io.sockets.sockets.keys()));
     const staleSocketPlayers = roomManager.reconcileSocketState(activeSocketIds, ROOM_OFFLINE_GRACE_MS);
     const removedOfflinePlayers = roomManager.purgeDisconnectedPlayers(ROOM_OFFLINE_GRACE_MS);

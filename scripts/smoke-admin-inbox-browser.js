@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+require('./isolateTestData');
 const fs = require('fs');
 const http = require('http');
 const net = require('net');

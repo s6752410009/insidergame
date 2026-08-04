@@ -1,3 +1,4 @@
+const { DATA_DIR: TEST_DATA_DIR } = require('./isolateTestData');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -7,8 +8,8 @@ const { io } = require('socket.io-client');
 
 const SERVER_TIMEOUT_MS = Number(process.env.SMOKE_SERVER_TIMEOUT_MS || 30000);
 const EVENT_TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 20000);
-const STATS_FILE = path.join(__dirname, '..', 'data', 'playerStats.json');
-const PLAYERS_FILE = path.join(__dirname, '..', 'data', 'players.json');
+const STATS_FILE = path.join(TEST_DATA_DIR || path.join(__dirname, '..', 'data'), 'playerStats.json');
+const PLAYERS_FILE = path.join(TEST_DATA_DIR || path.join(__dirname, '..', 'data'), 'players.json');
 const SETTINGS_FILE = path.join(__dirname, '..', 'settings.json');
 const ADMIN_PASSWORD = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')).adminPassword || 'admin123';
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./isolateTestData');
 'use strict';
 
 const http = require('http');

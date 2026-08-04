@@ -17,8 +17,7 @@ try {
     console.log('Models not loaded, will use JSON fallback');
 }
 
-const PLAYERS_FILE = path.join(__dirname, '../data/players.json');
-const BANNED_FILE = path.join(__dirname, '../data/bannedPlayers.json');
+const { PLAYERS_FILE, BANNED_FILE } = require('./dataPaths');
 
 // Memory cache
 const players = new Map();

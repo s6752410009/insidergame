@@ -18,7 +18,7 @@ try {
     console.log('PlayerStats model not loaded, will use JSON fallback');
 }
 
-const STATS_FILE = path.join(__dirname, '../data/playerStats.json');
+const { STATS_FILE } = require('./dataPaths');
 const MAX_GAME_HISTORY = 20;
 const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'witch', 'fool', 'revealer'];
 const BLACKMARKET_ROLE_IDS = ['boss', 'broker', 'smuggler', 'fixer', 'hitman', 'mole', 'doubleAgent'];
