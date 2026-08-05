@@ -259,5 +259,100 @@ const handOf = (room, id) => room.gameState.players.find(p => p.playerId === id)
     console.log('14. buildClientState ไม่รั่วการ์ดคว่ำของคนอื่น ✓');
 }
 
+
+// ---------- 15. กติกา "ใครก็ขอ Challenge ได้" — คนที่ 3 ท้าการขวางได้ ----------
+{
+    const room = makeRoom(3);
+    setHand(room, 'p0', ['assassin', 'duke']);
+    setHand(room, 'p1', ['captain', 'captain']);   // โกหกว่ามี contessa
+    setHand(room, 'p2', ['duke', 'duke']);
+    handOf(room, 'p0').coins = 5;
+
+    engine.submitAction(room, 'p0', 'assassinate', 'p1');
+    engine.submitResponse(room, 'p1', 'block', 'contessa');
+
+    // p2 ไม่ใช่ทั้งคนสั่งและคนขวาง แต่กติกาบอกว่าท้าได้
+    engine.submitResponse(room, 'p2', 'challenge');
+    assert(room.gameState.pendingLoss?.playerId === 'p1' || !handOf(room, 'p1').alive,
+        'คนที่ 3 ท้าการขวางแล้วคนขวางโกหก ต้องเสียการ์ด');
+    console.log('15. คนที่ 3 (ไม่ใช่คนสั่ง) ท้าการขวางได้ตามกติกา ✓');
+}
+
+// ---------- 16. ทุกคนปล่อยผ่านการขวาง → การขวางสำเร็จ ----------
+{
+    const room = makeRoom(3);
+    setHand(room, 'p0', ['assassin', 'duke']);
+    setHand(room, 'p1', ['contessa', 'captain']);
+    handOf(room, 'p0').coins = 5;
+    const before = handOf(room, 'p0').coins;
+
+    engine.submitAction(room, 'p0', 'assassinate', 'p1');
+    engine.submitResponse(room, 'p1', 'block', 'contessa');
+    engine.submitResponse(room, 'p0', 'pass');
+    assert(room.gameState.phase === 'block-respond', 'ยังต้องรอ p2 ตอบด้วย');
+    engine.submitResponse(room, 'p2', 'pass');
+
+    assert(handOf(room, 'p1').influence.length === 2, 'ขวางสำเร็จ เป้าหมายต้องไม่เสียการ์ด');
+    assert(handOf(room, 'p0').coins === before - 3, 'โดนขวางแล้วเหรียญไม่คืน');
+    console.log('16. ทุกคนปล่อยผ่าน → การขวางสำเร็จ, เหรียญไม่คืน ✓');
+}
+
+// ---------- 17. เล่นสุ่มยาวๆ — การ์ดต้องคงที่ 15 ใบ และไม่มีชนิดไหนเกิน 3 ใบ ----------
+{
+    // ตรวจ invariant ของสำรับระหว่างเล่นจริง ไม่ยัดค่าเข้าไปเอง
+    // (เดิม drawCard สร้างสำรับใหม่ทั้งชุดเมื่อกองหมด ทำให้การ์ดซ้ำกับใบที่อยู่ในมือ)
+    const room = makeRoom(6);
+    const census = () => {
+        const s = room.gameState;
+        const all = [...s.deck];
+        s.players.forEach(p => all.push(...p.influence, ...p.revealed));
+        if (s.pendingExchange) all.push(...s.pendingExchange.options);
+        return all;
+    };
+
+    const checkDeck = where => {
+        const all = census();
+        assert(all.length === 15, `${where}: การ์ดรวม ${all.length} ใบ (ต้อง 15)`);
+        Object.entries(all.reduce((acc, id) => { acc[id] = (acc[id] || 0) + 1; return acc; }, {}))
+            .forEach(([id, n]) => assert(n <= 3, `${where}: ${id} มี ${n} ใบ (ห้ามเกิน 3)`));
+    };
+
+    checkDeck('เริ่มเกม');
+
+    for (let step = 0; step < 400 && room.gameState.phase !== 'finished'; step += 1) {
+        const s = room.gameState;
+        try {
+            if (s.phase === 'lose-influence' && s.pendingLoss) {
+                const p = handOf(room, s.pendingLoss.playerId);
+                engine.submitInfluenceLoss(room, p.playerId, p.influence[0]);
+            } else if (s.phase === 'exchange' && s.pendingExchange) {
+                const ex = s.pendingExchange;
+                engine.submitExchange(room, ex.playerId, ex.options.slice(0, ex.keepCount));
+            } else if (s.phase === 'respond' || s.phase === 'block-respond') {
+                const waiting = s.players.find(p => p.alive && !s.responses[p.playerId]
+                    && p.playerId !== s.pendingAction?.actorId
+                    && p.playerId !== s.pendingBlock?.blockerId);
+                if (!waiting) break;
+                // สลับท้า/ผ่าน เพื่อให้เจอทั้งสองกิ่งของ challenge
+                engine.submitResponse(room, waiting.playerId, step % 3 === 0 ? 'challenge' : 'pass');
+            } else if (s.phase === 'action') {
+                const actor = handOf(room, s.currentPlayerId);
+                const actions = engine.getAvailableActions(room, actor.playerId);
+                const action = actions.find(a => a.id === 'exchange') || actions.find(a => a.id === 'coup') || actions[0];
+                const target = s.players.find(p => p.alive && p.playerId !== actor.playerId);
+                engine.submitAction(room, actor.playerId, action.id, action.needsTarget ? target?.playerId : null);
+            } else {
+                break;
+            }
+        } catch (error) {
+            break;   // ท่าที่กติกาไม่ให้ทำ — ข้ามไป ไม่ใช่ความผิดของสำรับ
+        }
+        checkDeck('ระหว่างเล่น step ' + step);
+    }
+
+    checkDeck('จบลูป');
+    console.log('17. เล่นสุ่มยาว — การ์ดคงที่ 15 ใบ ไม่มีชนิดไหนเกิน 3 ใบ ✓');
+}
+
 console.log(`\n✅ COUP ENGINE ผ่านทั้งหมด (${passed} assertions)`);
 process.exit(0);

@@ -1,6 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/chatPanel.css">
+<link rel="stylesheet" href="/static/css/coupGuide.css">
 <style>
   * { box-sizing: border-box; }
 
@@ -11,7 +12,9 @@
     padding: 0 !important;
     background: #12071a !important;
   }
-  html.cp-active header,
+  /* ซ่อนแบนเนอร์ของ layout เท่านั้น — ต้องเจาะจง .container-fluid > header
+     ไม่งั้นโดน <div class="cp-topbar"> ของกระดานเองด้วย (ปุ่มวิธีเล่น/ผู้เล่น/จบเกมหายทั้งแถบ) */
+  html.cp-active .container-fluid > header,
   html.cp-active .footer,
   html.cp-active #music-controls { display: none !important; }
   html.cp-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
@@ -67,7 +70,10 @@
   .cp-now.is-mine { background: linear-gradient(90deg, rgba(245,200,107,0.16), rgba(0,0,0,0.22)); }
   .cp-now-label { color: var(--cp-purple); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .cp-now-copy { font-size: 1.02rem; }
-  .cp-timer { margin-left: auto; font-family: 'Orbitron', sans-serif; font-size: 1.25rem; color: var(--cp-gold); }
+  .cp-timer-wrap { margin-left: auto; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  /* Orbitron ไม่มีสระ/วรรณยุกต์ไทย ต้องมี Rajdhani ต่อท้ายไม่งั้น "วิ" กลายเป็นกล่องเปล่า */
+  .cp-timer { font-family: 'Orbitron', 'Rajdhani', sans-serif; font-size: 1.25rem; color: var(--cp-gold); white-space: nowrap; }
+  .cp-timeout-hint { font-size: 0.74rem; color: var(--cp-muted); white-space: nowrap; }
 
   .cp-grid { padding: 16px 20px 22px; display: grid; gap: 14px; }
 
@@ -80,12 +86,12 @@
   /* ---- มือของเรา ---- */
   .cp-hand { display: flex; gap: 12px; flex-wrap: wrap; }
   .cp-influence {
-    position: relative; width: 116px; border-radius: 14px; overflow: hidden;
+    position: relative; width: 124px; border-radius: 14px; overflow: hidden;
     border: 1px solid rgba(245,200,107,0.35); background: #1c1030; text-align: center;
   }
   .cp-influence.is-revealed { opacity: 0.42; filter: grayscale(1); border-color: rgba(255,255,255,0.12); }
   .cp-influence img, .cp-influence .cp-emoji {
-    display: block; width: 100%; height: 108px; object-fit: cover;
+    display: block; width: 100%; height: 148px; object-fit: cover; object-position: top center;
   }
   .cp-influence .cp-emoji { display: flex; align-items: center; justify-content: center; font-size: 2.6rem; background: rgba(255,255,255,0.05); }
   .cp-influence-name { padding: 6px 4px; font-weight: 700; font-size: 0.86rem; }
@@ -165,13 +171,156 @@
     .cp-topbar, .cp-grid, .cp-now { padding-left: 14px; padding-right: 14px; }
     .cp-influence { width: calc(50% - 6px); }
   }
+
+  /* ==================== อนิเมชัน ====================
+     ทั้งหมดสั่งจาก renderState โดยเทียบ state เก่ากับใหม่
+     กฎ: อนิเมชันห้ามบังการกด — ตัวที่คลุมจอทั้งใบต้องมี pointer-events:none */
+
+  /* ---- การ์ดเข้ามือ ---- */
+  @keyframes cpDealIn {
+    from { opacity: 0; transform: translateY(26px) rotate(-6deg) scale(0.9); }
+    to   { opacity: 1; transform: none; }
+  }
+  .cp-influence.cp-anim-deal { animation: cpDealIn 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.3) backwards; }
+  .cp-influence.cp-anim-deal:nth-child(2) { animation-delay: 0.1s; }
+  .cp-influence.cp-anim-deal:nth-child(3) { animation-delay: 0.2s; }
+
+  /* ---- การ์ดโดนหงาย: พลิกครึ่งใบแล้วแดงวาบ ---- */
+  @keyframes cpFlipReveal {
+    0%   { transform: rotateY(0deg) scale(1); }
+    45%  { transform: rotateY(90deg) scale(1.06); }
+    55%  { transform: rotateY(90deg) scale(1.06); }
+    100% { transform: rotateY(0deg) scale(1); }
+  }
+  @keyframes cpRedFlash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    40%      { box-shadow: 0 0 26px 6px rgba(255, 71, 87, 0.85); }
+  }
+  .cp-influence.cp-anim-reveal {
+    animation: cpFlipReveal 0.62s ease-in-out, cpRedFlash 0.62s ease-out;
+  }
+
+  /* ---- ตกรอบ ---- */
+  @keyframes cpKnockOut {
+    0%   { transform: none; filter: none; }
+    25%  { transform: translateX(-6px) rotate(-2deg); }
+    50%  { transform: translateX(6px) rotate(2deg); }
+    100% { transform: none; filter: grayscale(1); }
+  }
+  .cp-player.cp-anim-out { animation: cpKnockOut 0.7s ease-out; }
+
+  /* ---- ถึงตาใหม่ ---- */
+  @keyframes cpTurnGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(245, 200, 107, 0.7); }
+    70%  { box-shadow: 0 0 0 12px rgba(245, 200, 107, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 200, 107, 0); }
+  }
+  .cp-player.cp-anim-turn { animation: cpTurnGlow 0.9s ease-out; }
+  /* ไฟวิ่งรอบกล่องคนที่ถึงตา บอกจังหวะแบบไม่ต้องอ่าน */
+  .cp-player.is-current { position: relative; overflow: hidden; }
+  .cp-player.is-current::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(105deg, transparent 40%, rgba(245,200,107,0.18) 50%, transparent 60%);
+    background-size: 260% 100%;
+    animation: cpSheen 2.6s linear infinite;
+  }
+  @keyframes cpSheen { from { background-position: 160% 0; } to { background-position: -60% 0; } }
+
+  /* ---- เหรียญ ---- */
+  @keyframes cpCoinPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.32); text-shadow: 0 0 18px rgba(245,200,107,0.9); }
+    100% { transform: scale(1); }
+  }
+  .cp-anim-coin { display: inline-block; animation: cpCoinPop 0.5s ease-out; }
+
+  @keyframes cpFloatUp {
+    0%   { opacity: 0; transform: translate(-50%, 4px); }
+    18%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -30px); }
+  }
+  .cp-coin-delta {
+    position: absolute; left: 50%; bottom: 100%;
+    font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 0.95rem;
+    pointer-events: none; white-space: nowrap; z-index: 5;
+    animation: cpFloatUp 1s ease-out forwards;
+  }
+  .cp-coin-delta.is-up { color: #6ee7b7; }
+  .cp-coin-delta.is-down { color: #ff6b81; }
+  .cp-coins, .cp-player-coins { position: relative; }
+
+  /* ---- ป้ายประกาศจังหวะสำคัญ ---- */
+  @keyframes cpSlam {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(2.4) rotate(-8deg); }
+    22%  { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+    75%  { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(-3deg); }
+  }
+  #cpFlash {
+    position: fixed; top: 42%; left: 50%; z-index: 9500;
+    pointer-events: none;  /* ห้ามบังปุ่มเด็ดขาด */
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(1.8rem, 7vw, 3.4rem); text-align: center;
+    padding: 16px 30px; border-radius: 18px;
+    background: rgba(10, 4, 18, 0.82); border: 2px solid currentColor;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.8);
+    display: none;
+  }
+  #cpFlash.is-on { display: block; animation: cpSlam 1.25s cubic-bezier(0.2, 0.8, 0.3, 1) forwards; }
+  #cpFlash .cp-flash-sub {
+    display: block; margin-top: 6px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 0.95rem; color: var(--cp-text); opacity: 0.85;
+  }
+
+  /* ---- บันทึกเกม: เฉพาะบรรทัดใหม่ ---- */
+  @keyframes cpFeedIn {
+    from { opacity: 0; transform: translateX(-14px); background: rgba(196,141,255,0.22); }
+    to   { opacity: 1; transform: none; }
+  }
+  .cp-feed-item.cp-anim-new { animation: cpFeedIn 0.45s ease-out; }
+
+  /* ---- นาฬิกาใกล้หมดเวลา ---- */
+  @keyframes cpTick {
+    0%, 100% { transform: scale(1); color: var(--cp-gold); }
+    50%      { transform: scale(1.16); color: #ff6b81; }
+  }
+  .cp-timer.is-urgent { display: inline-block; animation: cpTick 1s ease-in-out infinite; }
+
+  /* ---- ปุ่มกดแล้วรู้สึกว่ากดติด ---- */
+  .cp-action, .cp-btn { transition: transform 0.12s ease, box-shadow 0.16s ease, background 0.16s ease; }
+  .cp-action:hover:not(:disabled) { transform: translateY(-2px); }
+  .cp-action:active:not(:disabled), .cp-btn:active:not(:disabled) { transform: scale(0.96); }
+  .cp-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+  .cp-influence.is-pick { transition: transform 0.14s ease, box-shadow 0.16s ease, border-color 0.16s ease; }
+  .cp-influence.is-pick:hover { transform: translateY(-5px); }
+
+  /* ---- แถบ "ตอนนี้" เปลี่ยนข้อความ ---- */
+  @keyframes cpNowSwap {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .cp-now-copy.cp-anim-swap { display: inline-block; animation: cpNowSwap 0.32s ease-out; }
+
+  /* เคารพการตั้งค่าระบบของผู้ใช้ที่ขอให้ลดการเคลื่อนไหว */
+  @media (prefers-reduced-motion: reduce) {
+    .cp-influence.cp-anim-deal, .cp-influence.cp-anim-reveal, .cp-player.cp-anim-out,
+    .cp-player.cp-anim-turn, .cp-anim-coin, .cp-coin-delta, #cpFlash.is-on,
+    .cp-feed-item.cp-anim-new, .cp-timer.is-urgent, .cp-now-copy.cp-anim-swap,
+    .cp-player.is-current::after {
+      animation: none !important;
+    }
+    .cp-action, .cp-btn, .cp-influence.is-pick { transition: none !important; }
+    #cpFlash.is-on { display: none; }
+  }
 </style>
 
 <div id="connectionStatus" class="cp-chip cp-chip-danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+<div id="cpFlash" aria-hidden="true"></div>
 
 <div class="cp-page">
   <div class="cp-shell">
-    <header class="cp-topbar">
+    <div class="cp-topbar">
       <div>
         <div class="cp-kicker">👑 เกมโค่นอำนาจ</div>
         <h1 class="cp-title"><%= room.name %></h1>
@@ -180,17 +329,20 @@
         <span class="cp-chip">🆔 <%= room.roomId %></span>
         <span class="cp-chip">🃏 กองกลาง <span id="deckCount">-</span></span>
         <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn">📖 วิธีเล่น</button>
-        <button type="button" id="toggleSidebarBtn" class="cp-chip cp-chip-btn">👥 ผู้เล่น</button>
+        <button type="button" id="cpSidebarBtn" class="cp-chip cp-chip-btn">👥 ผู้เล่น</button>
         <% if (room.admin) { %>
         <button type="button" id="cpEndGameBtn" class="cp-chip cp-chip-btn cp-chip-danger">⏹ จบเกม</button>
         <% } %>
       </div>
-    </header>
+    </div>
 
     <div id="cpNowBar" class="cp-now">
       <span class="cp-now-label">ตอนนี้</span>
       <span id="cpNowCopy" class="cp-now-copy">กำลังโหลด...</span>
-      <span id="cpTimer" class="cp-timer">--</span>
+      <span class="cp-timer-wrap">
+        <span id="cpTimer" class="cp-timer">--</span>
+        <span id="cpTimeoutHint" class="cp-timeout-hint" style="display:none;"></span>
+      </span>
     </div>
 
     <div class="cp-grid">
@@ -200,7 +352,7 @@
       </section>
 
       <section class="cp-card">
-        <div class="cp-card-title">🎯 ตาของคุณ</div>
+        <div class="cp-card-title" id="actionAreaTitle">🎯 ตาของคุณ</div>
         <div id="actionArea"><div class="cp-empty">รอเกมเริ่ม...</div></div>
       </section>
 
@@ -253,6 +405,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="/js/gameIcon.js"></script>
 <script src="/js/chatPanel.js"></script>
+<script src="/js/coupGuide.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('cp-active');
@@ -310,9 +463,11 @@ $(function() {
         : { text: 'รอ ' + (state.pendingExchange?.waitingFor || 'ผู้เล่น') + ' แลกเปลี่ยนการ์ด', mine: false };
     }
     if (state.phase === 'block-respond' && state.pendingAction && state.pendingBlock) {
-      return state.pendingAction.actorId === playerId
-        ? { text: '🛡️ ' + state.pendingBlock.blockerName + ' อ้างว่ามี ' + state.pendingBlock.card.thaiName + ' — จะท้าไหม?', mine: true }
-        : { text: 'รอ ' + state.pendingAction.actorName + ' ตัดสินใจเรื่องการขวาง', mine: false };
+      // กติกา: ใครก็ท้าการขวางได้ ไม่ใช่แค่คนที่โดนขวาง
+      return state.availableResponses
+        ? { text: '🛡️ ' + state.pendingBlock.blockerName + ' อ้างว่ามี ' + state.pendingBlock.card.thaiName + ' — เชื่อไหม?', mine: true }
+        : { text: state.pendingBlock.blockerName + ' ขวางด้วย ' + state.pendingBlock.card.thaiName +
+              ' · รออีก ' + (state.pendingBlock.waitingFor?.length || 0) + ' คนตอบ', mine: false };
     }
     if (state.phase === 'respond' && state.pendingAction) {
       const p = state.pendingAction;
@@ -350,6 +505,16 @@ $(function() {
       '</div>').join('');
 
     $('#myHand').html(html || '<div class="cp-empty">ตกรอบแล้ว</div>');
+  }
+
+  // หัวข้อกล่องปุ่ม เปลี่ยนตามสิ่งที่กำลังขอให้ผู้เล่นทำ
+  function actionAreaTitle(state) {
+    if (state.phase === 'finished') return '🏆 ผลการแข่งขัน';
+    if (state.phase === 'lose-influence' && state.pendingLoss?.isMe) return '💥 เลือกการ์ดที่จะหงาย';
+    if (state.phase === 'exchange' && state.pendingExchange?.options) return '🔄 เลือกการ์ดที่จะเก็บ';
+    if (state.availableResponses) return '⚡ ตอบโต้';
+    if (state.phase === 'action' && state.isMyTurn) return '🎯 ตาของคุณ';
+    return '⏳ รอผู้เล่นคนอื่น';
   }
 
   // ---------- พื้นที่ปุ่มหลัก ----------
@@ -390,9 +555,13 @@ $(function() {
     const respond = state.availableResponses;
     if (respond) {
       const p = state.pendingAction;
+      const b = state.pendingBlock;
       let html = '<div style="margin-bottom:10px;">' +
-        escapeHtml(p.actorName) + ' อ้างว่ามี <b>' + escapeHtml(p.action.thaiLabel) + '</b>' +
-        (p.claim ? ' (ต้องมี ' + escapeHtml(p.claim) + ')' : '') + '</div><div class="cp-respond">';
+        (respond.challengingBlock && b
+          ? escapeHtml(b.blockerName) + ' ขวางโดยอ้างว่ามี <b>' + escapeHtml(b.card.thaiName) + '</b>'
+          : escapeHtml(p.actorName) + ' ประกาศ <b>' + escapeHtml(p.action.thaiLabel) + '</b>' +
+            (p.claimCard ? ' โดยอ้างว่ามี <b>' + escapeHtml(p.claimCard.icon + ' ' + p.claimCard.thaiName) + '</b>' : '')) +
+        '</div><div class="cp-respond">';
       html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">✋ ปล่อยผ่าน</button>';
       if (respond.canChallenge) {
         html += '<button type="button" class="cp-btn cp-btn-challenge" data-respond="challenge">🔥 ' +
@@ -426,7 +595,7 @@ $(function() {
             '<span class="cp-action-head">' + escapeHtml(action.icon + ' ' + action.thaiLabel) +
               (action.cost ? ' · จ่าย ' + action.cost : '') + '</span>' +
             '<span class="cp-action-detail">' + escapeHtml(action.detail) + '</span>' +
-            (action.claim ? '<span class="cp-action-claim">ต้องอ้างว่ามี ' + escapeHtml(action.claim) + '</span>' : '') +
+            (action.claimCard ? '<span class="cp-action-claim">อ้างว่ามี ' + escapeHtml(action.claimCard.icon + ' ' + action.claimCard.thaiName) + '</span>' : '') +
           '</button>').join('') + '</div>');
       return;
     }
@@ -436,12 +605,13 @@ $(function() {
 
   function renderPlayers(state) {
     $('#playerGrid').html((state.players || []).map(p =>
-      '<div class="cp-player' + (p.isCurrent ? ' is-current' : '') + (p.alive ? '' : ' is-out') + '">' +
+      '<div class="cp-player' + (p.isCurrent ? ' is-current' : '') + (p.alive ? '' : ' is-out') + '"' +
+        ' data-player-id="' + escapeHtml(p.playerId) + '">' +
         '<div class="cp-player-top">' + avatarHtml(p, 26) +
           '<span class="cp-player-name" style="color:' + escapeHtml(p.color || '#fff') + '">' +
           escapeHtml(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</span></div>' +
         '<div class="cp-player-stats">' +
-          '<span>💰 ' + p.coins + '</span>' +
+          '<span class="cp-player-coins">💰 ' + p.coins + '</span>' +
           '<span class="cp-backs">' + Array.from({ length: p.influenceCount }, () => '<span class="cp-back"></span>').join('') + '</span>' +
         '</div>' +
         (p.revealed.length
@@ -453,15 +623,175 @@ $(function() {
   function renderHistory(state) {
     const items = state.history || [];
     $('#historyFeed').html(items.length
-      ? items.map(item => '<div class="cp-feed-item">' + escapeHtml(item.icon + ' ' + item.text) + '</div>').join('')
+      ? items.map(item => '<div class="cp-feed-item" data-at="' + escapeHtml(item.at || '') + '">' +
+          escapeHtml(item.icon + ' ' + item.text) + '</div>').join('')
       : '<div class="cp-empty">ยังไม่มีเหตุการณ์</div>');
+  }
+
+  // หมดเวลาแล้ว server ทำต่อให้เอง (autoResolvePhase) — บอกล่วงหน้าว่าจะทำอะไร
+  // ไม่งั้นคนเล่นเห็นเลข 0 แล้วไม่รู้ว่าเกมค้างหรือเดินต่อ
+  function timeoutHint(state) {
+    switch (state.phase) {
+      case 'action':
+        return state.self && state.self.coins >= 10
+          ? 'หมดเวลา → ทำรัฐประหารให้อัตโนมัติ'
+          : 'หมดเวลา → รับรายได้ให้อัตโนมัติ';
+      case 'respond': return 'หมดเวลา → ถือว่าทุกคนปล่อยผ่าน';
+      case 'block-respond': return 'หมดเวลา → ยอมรับการขวาง';
+      case 'lose-influence': return 'หมดเวลา → หงายการ์ดใบซ้ายสุดให้';
+      case 'exchange': return 'หมดเวลา → เก็บการ์ดใบแรกให้';
+      default: return '';
+    }
   }
 
   function updateTimer() {
     const endsAt = currentState?.phaseEndsAt;
-    if (!endsAt || currentState.phase === 'finished') { $('#cpTimer').text('--'); return; }
+    const $timer = $('#cpTimer');
+    const $hint = $('#cpTimeoutHint');
+
+    if (!endsAt || currentState.phase === 'finished') {
+      $timer.text('--').removeClass('is-urgent');
+      $hint.text('').hide();
+      return;
+    }
+
     const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
-    $('#cpTimer').text(left + ' วิ');
+    $timer.text(left > 0 ? left + ' วิ' : 'หมดเวลา').toggleClass('is-urgent', left <= 5 && left > 0);
+
+    // โผล่ตอนเหลือ 10 วิ — ช่วงที่คนเริ่มลุ้นว่าไม่กดแล้วจะเป็นยังไง
+    const hint = left <= 10 ? timeoutHint(currentState) : '';
+    if (hint) $hint.text(hint).show();
+    else $hint.text('').hide();
+  }
+
+  /* ==================== อนิเมชัน ====================
+     renderState เขียน DOM ใหม่ทั้งก้อนทุกครั้ง เลยจำค่าที่สนใจไว้ก่อนหน้า
+     แล้วเทียบว่าอะไรเปลี่ยน จึงติดคลาสอนิเมชันให้เฉพาะจุดที่เปลี่ยนจริง */
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let motionPrev = null;
+
+  function motionSnapshot(state) {
+    const byId = {};
+    (state.players || []).forEach(p => {
+      byId[p.playerId] = { coins: p.coins, influence: p.influenceCount, alive: p.alive };
+    });
+    return {
+      byId,
+      selfCoins: state.self ? state.self.coins : null,
+      selfRevealed: state.self ? state.self.revealed.length : 0,
+      selfInfluence: state.self ? state.self.influence.length : 0,
+      currentId: state.currentPlayerId || null,
+      phase: state.phase,
+      newestAt: (state.history && state.history[0]) ? state.history[0].at : null,
+      nowCopy: null
+    };
+  }
+
+  function floatCoinDelta($holder, delta) {
+    if (!$holder.length || !delta) return;
+    const text = (delta > 0 ? '+' : '') + delta;
+    const $tag = $('<span class="cp-coin-delta ' + (delta > 0 ? 'is-up' : 'is-down') + '"></span>').text(text);
+    $holder.append($tag);
+    setTimeout(() => $tag.remove(), 1100);
+  }
+
+  const FLASH_STYLES = {
+    challenge:   { label: '⚔️ ท้า!',        color: '#ff6b81' },
+    block:       { label: '🛡️ ขวาง!',       color: '#c48dff' },
+    coup:        { label: '💥 รัฐประหาร!',  color: '#ff9f43' },
+    assassinate: { label: '🗡️ ลอบสังหาร!',  color: '#ff6b81' },
+    eliminated:  { label: '💀 ตกรอบ',       color: '#ff6b81' },
+    winner:      { label: '🏆 ชนะ!',        color: '#f5c86b' }
+  };
+
+  let flashTimer = null;
+  function showFlash(kind, subtitle) {
+    const style = FLASH_STYLES[kind];
+    if (!style || reduceMotion) return;
+    const $flash = $('#cpFlash');
+    $flash.removeClass('is-on');
+    // บังคับให้เบราว์เซอร์ล้าง animation เดิมก่อน ไม่งั้นสั่งซ้ำติดๆ กันแล้วไม่เล่นรอบใหม่
+    void $flash[0].offsetWidth;
+    $flash.css('color', style.color).html(
+      escapeHtml(style.label) +
+      (subtitle ? '<span class="cp-flash-sub">' + escapeHtml(subtitle) + '</span>' : '')
+    ).addClass('is-on');
+
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => $flash.removeClass('is-on'), 1300);
+
+    if (typeof window.gameHaptic === 'function') {
+      // จังหวะหนัก (ตกรอบ/รัฐประหาร) สั่นเป็นจังหวะ ส่วนอย่างอื่นสั่นสั้นครั้งเดียว
+      const heavy = kind === 'eliminated' || kind === 'coup';
+      window.gameHaptic(heavy ? [35, 60, 35] : 22);
+    }
+  }
+
+  function applyMotion(state) {
+    const next = motionSnapshot(state);
+    const prev = motionPrev;
+    motionPrev = next;
+
+    if (reduceMotion) return;
+
+    // แจกการ์ดรอบแรกที่เห็นมือตัวเอง
+    if (!prev || prev.selfInfluence === 0) {
+      if (next.selfInfluence > 0) $('#myHand .cp-influence').addClass('cp-anim-deal');
+    }
+    if (!prev) return;
+
+    // การ์ดของเราโดนหงายเพิ่ม
+    if (next.selfRevealed > prev.selfRevealed) {
+      $('#myHand .cp-influence.is-revealed').slice(-1).addClass('cp-anim-reveal');
+    }
+    // จั่วใบใหม่เข้ามือ (แลกเปลี่ยน / ท้าแล้วชนะได้ใบแทน)
+    if (next.selfInfluence > prev.selfInfluence) {
+      $('#myHand .cp-influence').not('.is-revealed').addClass('cp-anim-deal');
+    }
+
+    // เหรียญของเรา
+    if (prev.selfCoins !== null && next.selfCoins !== null && next.selfCoins !== prev.selfCoins) {
+      $('#myCoins').addClass('cp-anim-coin');
+      setTimeout(() => $('#myCoins').removeClass('cp-anim-coin'), 520);
+      floatCoinDelta($('#myCoins').closest('.cp-coins'), next.selfCoins - prev.selfCoins);
+    }
+
+    // ผู้เล่นแต่ละคน
+    Object.keys(next.byId).forEach(id => {
+      const before = prev.byId[id];
+      const after = next.byId[id];
+      if (!before) return;
+      const $row = $('#playerGrid .cp-player[data-player-id="' + id.replace(/"/g, '\\"') + '"]');
+      if (!$row.length) return;
+
+      if (after.coins !== before.coins) {
+        floatCoinDelta($row.find('.cp-player-coins'), after.coins - before.coins);
+      }
+      if (before.alive && !after.alive) $row.addClass('cp-anim-out');
+    });
+
+    // เปลี่ยนตา
+    if (next.currentId && next.currentId !== prev.currentId) {
+      $('#playerGrid .cp-player[data-player-id="' + String(next.currentId).replace(/"/g, '\\"') + '"]')
+        .addClass('cp-anim-turn');
+    }
+
+    // บรรทัดใหม่ในบันทึกเกม + ป้ายประกาศจังหวะสำคัญ
+    if (next.newestAt && next.newestAt !== prev.newestAt) {
+      const fresh = [];
+      for (const item of (state.history || [])) {
+        if (item.at === prev.newestAt) break;
+        fresh.push(item);
+      }
+      fresh.forEach(item => {
+        $('#historyFeed .cp-feed-item[data-at="' + String(item.at).replace(/"/g, '\\"') + '"]')
+          .addClass('cp-anim-new');
+      });
+      // เหตุการณ์เก่าสุดในชุดใหม่คือจังหวะที่เพิ่งเกิด ประกาศอันที่ดราม่าที่สุดอันเดียวพอ
+      const headline = fresh.reverse().find(item => FLASH_STYLES[item.kind]);
+      if (headline) showFlash(headline.kind, headline.text);
+    }
   }
 
   function renderState(state) {
@@ -471,7 +801,14 @@ $(function() {
     currentState = state;
 
     const now = describeNow(state);
-    $('#cpNowCopy').text(now.text);
+    $('#actionAreaTitle').text(actionAreaTitle(state));
+
+    const $nowCopy = $('#cpNowCopy');
+    if ($nowCopy.text() !== now.text) {
+      $nowCopy.removeClass('cp-anim-swap').text(now.text);
+      void $nowCopy[0].offsetWidth;
+      $nowCopy.addClass('cp-anim-swap');
+    }
     $('#cpNowBar').toggleClass('is-mine', now.mine);
     $('#deckCount').text(state.deckCount);
 
@@ -480,6 +817,7 @@ $(function() {
     renderPlayers(state);
     renderHistory(state);
     updateTimer();
+    applyMotion(state);
   }
 
   function sendCommand(event, payload) {
@@ -556,20 +894,9 @@ $(function() {
   });
 
   $('#cpHowToOpen').on('click', function() {
-    const cards = (currentState.cardCatalog || []);
-    Swal.fire({
-      title: '📖 วิธีเล่น Coup',
-      html: '<div style="text-align:left; color:#ddd; font-size:0.92em;">' +
-        '<p><b>เป้าหมาย:</b> เป็นคนสุดท้ายที่ยังเหลือการ์ดคว่ำ</p>' +
-        '<p><b>สำคัญ:</b> คุณ<b>โกหกได้</b> — ประกาศแอ็กชันของการ์ดที่ไม่มีก็ได้ แต่ถ้าโดนท้าแล้วไม่มีจริง จะเสียการ์ด 1 ใบ</p>' +
-        '<p><b>ทุกตาเลือก 1 อย่าง:</b> รับรายได้ (+1) · เงินช่วยเหลือ (+2) · รัฐประหาร (จ่าย 7 บังคับหงาย) หรือแอ็กชันของการ์ด</p>' +
-        '<p>มี 10 เหรียญขึ้นไป <b>ต้อง</b>ทำรัฐประหาร</p><hr style="border-color:#444;">' +
-        cards.map(c => '<p style="margin:6px 0;"><b>' + escapeHtml(c.icon + ' ' + c.thaiName) + '</b><br>' +
-          (c.power ? '⚡ ' + escapeHtml(c.power) + '<br>' : '') +
-          (c.counter ? '🛡️ ' + escapeHtml(c.counter) : '') + '</p>').join('') +
-        '</div>',
-      width: 560, background: '#1b0f2b', color: '#fff', confirmButtonText: 'เข้าใจแล้ว'
-    });
+    if (typeof window.showCoupGuide === 'function') {
+      window.showCoupGuide({ cards: currentState.cardCatalog || [] });
+    }
   });
 
   $('#cpEndGameBtn').on('click', function() {
@@ -585,7 +912,7 @@ $(function() {
     $('#playerSidebar').toggleClass('open');
     $('#sidebarOverlay').toggle();
   }
-  $('#toggleSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+  $('#cpSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
 
   $('#leaveRoomBtn').on('click', function() {
     Swal.fire({
@@ -628,7 +955,53 @@ $(function() {
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
   });
 
-  window.initChatPanel({ socket, playerId, playerName });
+  // /m — แอดมินขอเฉลยการ์ดทั้งโต๊ะ (สิทธิ์เช็คที่ server ฝั่งนี้แค่ยิงคำสั่ง)
+  window.initChatPanel({
+    socket, playerId, playerName,
+    onCommand: function(text) {
+      if (text.trim().toLowerCase() !== '/m') return false;
+      socket.emit('coup_admin_reveal');
+      return true;
+    }
+  });
+
+  socket.on('coup_admin_reveal_denied', function() {
+    Swal.fire({
+      icon: 'info', title: 'ใช้ไม่ได้',
+      text: 'คำสั่ง /m ใช้ได้เฉพาะหัวหน้าห้องหรือแอดมินเว็บเท่านั้น',
+      background: '#1b0f2b', color: '#fff', confirmButtonColor: '#7c3aed'
+    });
+  });
+
+  socket.on('coup_admin_reveal', function(data) {
+    const players = (data && data.players) || [];
+    const cardChips = list => (list.length
+      ? list.map(c => '<span class="cpr-chip">' + escapeHtml(c.icon + ' ' + c.name) + '</span>').join('')
+      : '<span class="cpr-empty">—</span>');
+
+    const rows = players.map(p => {
+      const isTurn = p.playerId === data.turnPlayerId;
+      return '<div class="cpr-row' + (p.alive ? '' : ' is-out') + '">' +
+        '<div class="cpr-head"><b>' + escapeHtml(p.name) + '</b>' +
+        (isTurn ? '<span class="cpr-turn">ถึงตา</span>' : '') +
+        (p.alive ? '' : '<span class="cpr-out">ตกรอบ</span>') +
+        '<span class="cpr-coins">🪙 ' + p.coins + '</span></div>' +
+        '<div class="cpr-cards"><span class="cpr-label">ในมือ</span>' + cardChips(p.influence) + '</div>' +
+        (p.revealed.length
+          ? '<div class="cpr-cards cpr-dim"><span class="cpr-label">หงายแล้ว</span>' + cardChips(p.revealed) + '</div>'
+          : '') +
+        '</div>';
+    }).join('');
+
+    Swal.fire({
+      title: '🔍 เฉลยทั้งโต๊ะ (แอดมิน)',
+      html: '<div class="cpr">' + (rows || '<p>ยังไม่มีผู้เล่น</p>') +
+        '<p class="cpr-foot">🂠 การ์ดในกอง ' + (data.deckCount || 0) + ' ใบ · เห็นคนเดียว ไม่ส่งเข้าแชท</p></div>',
+      width: 480, background: '#14091f', color: '#fff',
+      confirmButtonText: 'ปิด', confirmButtonColor: '#7c3aed',
+      customClass: { popup: 'coup-guide-popup' }
+    });
+  });
 
   window.addEventListener('beforeunload', function(e) {
     if (!allowNavigation) { e.preventDefault(); e.returnValue = ''; }

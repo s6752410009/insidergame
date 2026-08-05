@@ -1,0 +1,269 @@
+/* วิธีเล่น Coup — modal ที่หน้ารอห้องกับในเกมใช้ร่วมกัน
+ * คู่กับ /js/coupGuide.js (window.showCoupGuide)
+ */
+/* ===== วิธีเล่น Coup — สกินของตัวเอง (เดิมยืมของ Black Market สีชนกับธีมม่วง) ===== */
+.coup-guide-popup {
+  max-width: min(520px, 96vw) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 18px !important;
+  background: #14091f !important;
+  border: 1px solid rgba(167, 139, 250, 0.3) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+.coup-guide-popup .swal2-title {
+  background: linear-gradient(135deg, #4c1d95, #7c3aed 55%, #2e1065) !important;
+  color: #fff !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 1.15em !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.4px;
+  padding: 15px 18px !important;
+  margin: 0 !important;
+}
+
+.coup-guide-popup .swal2-html-container {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-height: min(66vh, 540px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167, 139, 250, 0.5) transparent;
+}
+
+.coup-guide-popup .swal2-html-container::-webkit-scrollbar { width: 8px; }
+.coup-guide-popup .swal2-html-container::-webkit-scrollbar-track { background: transparent; }
+.coup-guide-popup .swal2-html-container::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.45);
+  border-radius: 999px;
+}
+
+.coup-guide-popup .swal2-actions {
+  margin: 0 !important;
+  padding: 12px 18px 18px !important;
+}
+
+.coup-guide-popup .swal2-confirm {
+  border-radius: 12px !important;
+  padding: 11px 30px !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 1em !important;
+}
+
+.cpg {
+  padding: 16px 18px 6px;
+  text-align: left;
+  color: #e6e1f5;
+  font-size: 0.93em;
+  line-height: 1.55;
+}
+
+.cpg-goal {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(167, 139, 250, 0.28);
+}
+
+.cpg-goal .cpg-goal-icon { font-size: 1.5em; line-height: 1.2; align-self: flex-start; }
+.cpg-goal b { color: #ddd6fe; }
+
+/* กลไกหลักของเกม ต้องเด่นกว่าอย่างอื่น */
+.cpg-bluff {
+  margin: 0 0 14px;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(124, 58, 237, 0.1));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.cpg-bluff-title {
+  display: block;
+  margin-bottom: 5px;
+  color: #fcd34d;
+  font-weight: 800;
+  font-size: 1.02em;
+}
+
+.cpg-bluff span.hl { color: #fcd34d; font-weight: 700; }
+
+.cpg-h {
+  display: block;
+  margin: 0 0 8px;
+  color: #a78bfa;
+  font-weight: 800;
+  font-size: 0.98em;
+  letter-spacing: 0.3px;
+}
+
+.cpg-sec { margin-bottom: 14px; }
+
+.cpg-row {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 9px;
+  align-items: start;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  margin-bottom: 5px;
+}
+
+.cpg-row .cpg-ico { font-size: 1.15em; line-height: 1.35; text-align: center; }
+.cpg-row b { color: #f3f0ff; }
+.cpg .cpg-note { color: #a8a0c0; font-size: 0.92em; }
+.cpg-row .cpg-blk { color: #6ee7b7; font-size: 0.92em; }
+
+.cpg-warn {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .cpg { padding: 13px 13px 4px; font-size: 0.9em; }
+  .cpg-row { grid-template-columns: 22px 1fr; gap: 7px; padding: 6px 7px; }
+}
+
+/* ตารางการ์ด 5 ใบ — โชว์รูปจริงถ้ามี ไม่มีก็ใช้อิโมจิแทน */
+.cpg-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+  gap: 8px;
+}
+
+.cpg-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+}
+
+.cpg-card-art {
+  width: 46px;
+  height: 62px;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid rgba(196, 181, 253, 0.3);
+  background: rgba(76, 29, 149, 0.35);
+}
+
+.cpg-card-art-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6em;
+}
+
+.cpg-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* คำไทยยาวๆ ไม่มีช่องว่างให้ตัด ถ้าไม่บังคับมันจะล้นไปทับขอบการ์ด */
+.cpg-card-body > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cpg-card-body b { color: #f3f0ff; font-size: 0.97em; }
+.cpg-card-power { color: #d9d2ea; font-size: 0.87em; line-height: 1.35; }
+.cpg-card .cpg-blk { font-size: 0.87em; line-height: 1.35; }
+
+@media (max-width: 480px) {
+  .cpg-cards { grid-template-columns: 1fr; }
+  .cpg-card { grid-template-columns: 40px 1fr; gap: 8px; }
+  .cpg-card-art { width: 40px; height: 54px; }
+}
+
+/* ===== /m — เฉลยการ์ดทั้งโต๊ะให้แอดมินดู (ใช้กรอบ .coup-guide-popup ร่วมกัน) ===== */
+.cpr {
+  padding: 14px 16px 4px;
+  text-align: left;
+  color: #e6e1f5;
+  font-size: 0.93em;
+}
+
+.cpr-row {
+  padding: 9px 11px;
+  margin-bottom: 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+}
+
+.cpr-row.is-out { opacity: 0.5; }
+
+.cpr-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 5px;
+}
+
+.cpr-head b { color: #f3f0ff; }
+.cpr-coins { margin-left: auto; color: #fcd34d; font-weight: 700; white-space: nowrap; }
+
+.cpr-turn,
+.cpr-out {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.76em;
+  font-weight: 700;
+}
+
+.cpr-turn { background: rgba(124, 58, 237, 0.4); color: #ddd6fe; }
+.cpr-out { background: rgba(239, 68, 68, 0.25); color: #fecaca; }
+
+.cpr-cards {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.cpr-cards.cpr-dim { opacity: 0.6; }
+
+.cpr-label {
+  color: #a8a0c0;
+  font-size: 0.82em;
+  min-width: 52px;
+}
+
+.cpr-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.22);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  font-size: 0.87em;
+  white-space: nowrap;
+}
+
+.cpr-empty { color: #6b6482; }
+
+.cpr-foot {
+  margin: 10px 0 0;
+  color: #a8a0c0;
+  font-size: 0.84em;
+  text-align: center;
+}

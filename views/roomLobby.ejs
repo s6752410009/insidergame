@@ -1,5 +1,6 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/coupGuide.css">
 <style>
   :root {
     --lobby-bg: #09090b;
@@ -740,6 +741,25 @@
     border-color: rgba(94, 234, 212, 0.55);
   }
 
+  #btnCoupHowTo {
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(196, 181, 253, 0.35);
+    background: rgba(124, 58, 237, 0.16);
+    color: #ddd6fe;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #btnCoupHowTo:hover {
+    background: rgba(124, 58, 237, 0.28);
+    border-color: rgba(196, 181, 253, 0.6);
+  }
+
   .chat-msg {
     margin-bottom: 12px;
     display: flex;
@@ -1184,6 +1204,7 @@
         </span>
         <button type="button" id="btnBlackMarketHowTo" class="<%= room.gameMode === 'blackmarket' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnCoupHowTo" class="<%= room.gameMode === 'coup' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnBlackMarketAddBots" class="<%= (room.gameMode === 'blackmarket' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เติมบอทเพื่อทดสอบ</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1223,12 +1244,14 @@
 </div>
 
 <%- contentFor('script') %>
+<script src="/js/coupGuide.js"></script>
 <script>
   $(function () {
     const socket = window.appSocket || io();
     const roomId = '<%= room.roomId %>';
     const playerId = '<%= player.playerId %>';
     const werewolfRoleOptions = <%- safeJson(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
+    const coupCardCatalog = <%- safeJson(typeof coupCardCatalog !== 'undefined' ? coupCardCatalog : []) %>;
     let currentGameMode = '<%= room.gameMode %>';
     let currentWerewolfRoles = <%- safeJson(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
     const initialRoomPayload = <%- safeJson(typeof initialRoomPayload !== 'undefined' ? initialRoomPayload : null) %>;
@@ -1266,6 +1289,14 @@
         readyText: 'พร้อมแล้ว เริ่มเกมสายลับได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเริ่ม',
         roundLabel: 'เวลาช่วงคุย:'
+      },
+      coup: {
+        minPlayers: 2,
+        label: 'Coup',
+        startLabel: '👑 เริ่มเกม',
+        readyText: 'พร้อมแล้ว กดเริ่มได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 2 คนก่อนเริ่มเกม',
+        roundLabel: 'เวลาคิดต่อตา:'
       }
     };
     const werewolfRoleVisuals = {
@@ -1424,6 +1455,9 @@
       if (compactMode === 'spyfall' || compactMode === 'spy' || compactMode === 'secretplace') {
         return 'spyfall';
       }
+      if (compactMode === 'coup' || compactMode === 'coupgame') {
+        return 'coup';
+      }
       return 'insider';
     }
 
@@ -1540,6 +1574,7 @@
 
       setElementHidden('#btnBlackMarketHowTo', resolvedMode !== 'blackmarket');
       setElementHidden('#btnSpyfallHowTo', resolvedMode !== 'spyfall');
+      setElementHidden('#btnCoupHowTo', resolvedMode !== 'coup');
       setElementHidden('#btnBlackMarketAddBots', !(resolvedMode === 'blackmarket' && isAdmin));
 
       if (lobbySpotlight) {
@@ -1549,6 +1584,15 @@
             '<div class="lobby-spotlight-pill" style="background:rgba(15,118,110,0.25); color:#99f6e4;">🕶️ Spyfall · 4–8 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
             'ทุกคนรู้<strong>สถานที่</strong>ยกเว้นสายลับ 1 คน — ถาม–ตอบให้เนียนแล้วโหวตจับ',
+            ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
+            '</p>'
+          ].join('');
+        } else if (resolvedMode === 'coup') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(109,40,217,0.3); color:#e9d5ff;">👑 Coup · 2–6 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ทุกคนได้การ์ดคว่ำ 2 ใบ <strong>ประกาศพลังของการ์ดที่ไม่มีก็ได้</strong> ใครไม่เชื่อก็ท้าเปิดได้',
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
             '</p>'
           ].join('');
@@ -1606,6 +1650,12 @@
           htmlContainer: 'bm-guide-popup-body'
         }
       });
+    }
+
+    function showCoupLobbyGuide() {
+      if (typeof window.showCoupGuide === 'function') {
+        window.showCoupGuide({ cards: coupCardCatalog, confirmButtonText: 'เข้าใจแล้ว เริ่มเลย' });
+      }
     }
 
     const BLACK_MARKET_LOBBY_ROLES = [
@@ -2347,6 +2397,10 @@
 
     $('#btnSpyfallHowTo').on('click', function() {
       showSpyfallLobbyGuide();
+    });
+
+    $('#btnCoupHowTo').on('click', function() {
+      showCoupLobbyGuide();
     });
 
     $('#btnBlackMarketAddBots').on('click', function() {

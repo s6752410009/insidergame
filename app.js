@@ -282,8 +282,8 @@ function buildStructuredData(pathname, canonicalUrl) {
             {
                 '@context': 'https://schema.org',
                 '@type': 'Article',
-                headline: 'วิธีเล่น Insider, Werewolf และ Black Market ออนไลน์',
-                description: 'คู่มือสรุปวิธีเล่น 3 โหมดหลักของ Insider Game Thailand พร้อมรูปแบบการชนะและจังหวะเริ่มเกมสำหรับวงเพื่อน',
+                headline: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall และ Coup ออนไลน์',
+                description: 'คู่มือสรุปวิธีเล่นทั้ง 5 โหมดของ Insider Game Thailand พร้อมเงื่อนไขการชนะและวิธีเริ่มเกมกับเพื่อน',
                 inLanguage: 'th',
                 url: canonicalUrl,
                 mainEntityOfPage: canonicalUrl,
@@ -346,9 +346,9 @@ function buildSeoMetadata(req) {
             keywords: 'สร้างห้องเกมออนไลน์, ห้อง insider, ห้อง werewolf, ห้อง black market, join room party game, multiplayer room browser'
         },
         '/how-to-play': {
-            title: 'วิธีเล่น Insider, Werewolf, Black Market | คู่มือ 3 โหมด',
-            description: 'อ่านวิธีเล่นแบบสั้นและเข้าใจเร็วสำหรับ Insider, Werewolf และ Black Market พร้อมรูปแบบการชนะ จำนวนผู้เล่นที่เหมาะ และวิธีเริ่มวงบนเว็บ',
-            keywords: 'วิธีเล่น insider, วิธีเล่น werewolf, วิธีเล่น black market, กติกา insider, กติกา werewolf, social deduction guide thailand, party game rules'
+            title: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall, Coup | คู่มือครบทุกโหมด',
+            description: 'อ่านวิธีเล่นแบบสั้นเข้าใจเร็วครบทั้ง 5 โหมด Insider, Werewolf, Black Market, Spyfall และ Coup พร้อมเงื่อนไขการชนะ จำนวนผู้เล่นที่เหมาะ และวิธีเริ่มเล่นบนเว็บ',
+            keywords: 'วิธีเล่น insider, วิธีเล่น werewolf, วิธีเล่น black market, วิธีเล่น spyfall, วิธีเล่น coup, กติกา coup, เกมโค่นอำนาจ, social deduction guide thailand, party game rules'
         }
     };
 
@@ -3460,7 +3460,10 @@ app.get('/room/:roomId', async function(req, res) {
             isSiteAdmin: isSiteAdminPlayer(req.playerId)
         },
         status: room.gameState.status,
-        werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles()
+        werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles(),
+        // วิธีเล่น Coup ในหน้ารอห้องโชว์รูปการ์ดเหมือนในเกม เลยต้องมี catalog ตั้งแต่ตอนนี้
+        // (โหมดสลับได้จากฝั่ง client เลยส่งไปเสมอ ไม่ผูกกับ gameMode ปัจจุบัน)
+        coupCardCatalog: Object.values(getGameEngine('coup').CARD_DEFINITIONS)
     });
 });
 
@@ -5468,6 +5471,37 @@ io.sockets.on('connection', function(socket) {
     safeOn(socket, 'coup_exchange', function(data, callback) {
         handleCoupCommand(socket, callback, (room, playerId) =>
             getGameEngine('coup').submitExchange(room, playerId, data?.keepCardIds));
+    });
+
+    // /m — แอดมินห้อง/แอดมินเว็บขอดูการ์ดในมือทุกคน (เหมือน /m ของ Insider)
+    // ส่งกลับเฉพาะ socket ที่ขอ ไม่ broadcast เด็ดขาด
+    safeOn(socket, 'coup_admin_reveal', function() {
+        const room = getSocketRoom(socket, 'coup');
+        if (!room) return;
+        if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('coup_admin_reveal_denied');
+            return;
+        }
+
+        const cards = getGameEngine('coup').CARD_DEFINITIONS;
+        const describe = cardId => {
+            const card = cards[cardId];
+            return card ? { id: cardId, icon: card.icon, name: card.thaiName } : { id: cardId, icon: '❔', name: cardId };
+        };
+
+        const state = room.gameState;
+        io.to(socket.id).emit('coup_admin_reveal', {
+            turnPlayerId: state.currentPlayerId || null,
+            deckCount: Array.isArray(state.deck) ? state.deck.length : 0,
+            players: (state.players || []).map(p => ({
+                playerId: p.playerId,
+                name: buildDisplayPlayerName(p.playerId, p.name),
+                coins: p.coins,
+                alive: p.alive,
+                influence: (p.influence || []).map(describe),
+                revealed: (p.revealed || []).map(describe)
+            }))
+        });
     });
 
     safeOn(socket, 'blackmarket_requestState', function(data) {

@@ -188,6 +188,13 @@
       linear-gradient(180deg, #181612 0%, #121110 55%, #0e0d0b 100%);
   }
 
+  .guide-card.mode-coup {
+    border-color: rgba(196, 141, 255, 0.35);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(168, 85, 247, 0.12), transparent 55%),
+      linear-gradient(180deg, #18141f 0%, #121018 55%, #0e0c12 100%);
+  }
+
   .guide-mode-badge {
     display: inline-flex;
     align-items: center;
@@ -217,6 +224,63 @@
     background: rgba(240, 193, 77, 0.12);
     color: #efd07a;
     border: 1px solid rgba(240, 193, 77, 0.32);
+  }
+
+  .guide-card.mode-coup .guide-mode-badge {
+    background: rgba(196, 141, 255, 0.14);
+    color: #d4b3ff;
+    border: 1px solid rgba(196, 141, 255, 0.35);
+  }
+
+  .guide-coup-roles {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .guide-coup-role {
+    display: grid;
+    gap: 8px;
+    padding: 0 0 10px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(196, 141, 255, 0.18);
+    text-align: left;
+  }
+
+  .guide-coup-role img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    object-position: top center;
+    background: #1c1030;
+  }
+
+  .guide-coup-role strong,
+  .guide-coup-role span {
+    padding: 0 10px;
+  }
+
+  .guide-coup-role strong {
+    color: #f3f6fc;
+    font-size: 0.92rem;
+  }
+
+  .guide-coup-role span {
+    color: #c8d2e3;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  @media (max-width: 900px) {
+    .guide-coup-roles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 560px) {
+    .guide-coup-roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   .guide-card h2,
@@ -285,6 +349,16 @@
     align-content: start;
   }
 
+  .guide-footer {
+    display: flex;
+    justify-content: center;
+    padding: 8px 16px 24px;
+  }
+
+  .guide-footer .guide-cta-button {
+    width: min(420px, 100%);
+  }
+
   .guide-cta-button {
     display: inline-flex;
     align-items: center;
@@ -343,8 +417,8 @@
     <span class="guide-kicker">How To Play</span>
     <div class="guide-hero-grid">
       <div>
-        <h1 class="guide-title">วิธีเล่น 3 โหมดหลักให้เข้าใจในหน้าเดียว</h1>
-        <p class="guide-copy">หน้านี้สรุปวิธีเล่น Insider, Werewolf และ Black Market แบบอ่านเร็วแล้วเริ่มวงได้เลย เหมาะทั้งคนที่เพิ่งเคยเล่นครั้งแรกและคนที่ต้องอธิบายกติกาให้เพื่อนก่อนกดสร้างห้อง</p>
+        <h1 class="guide-title">วิธีเล่นทุกโหมด เข้าใจได้ในหน้าเดียว</h1>
+        <p class="guide-copy">หน้านี้สรุปวิธีเล่นทั้ง 5 โหมด — Insider, Werewolf, Black Market, Spyfall และ Coup — แบบอ่านเร็วแล้วเริ่มวงได้เลย เหมาะทั้งคนที่เพิ่งเคยเล่นครั้งแรกและคนที่ต้องอธิบายกติกาให้เพื่อนก่อนกดสร้างห้อง</p>
         <div class="guide-chip-row">
           <span class="guide-chip">อธิบายสั้นแต่ครบ</span>
           <span class="guide-chip">มีจุดชนะของแต่ละโหมด</span>
@@ -354,13 +428,14 @@
       <aside class="guide-sidecard">
         <div>
           <h2>เลือกโหมดไหนดี?</h2>
-          <p>ถ้าอยากเปิดวงไว เลือก Insider ถ้าอยากได้เกมหลอกลวงกับบทบาทลึกขึ้น เลือก Werewolf ถ้าอยากได้เกมต่อรองและอ่านใจเชิงผลประโยชน์ เลือก Black Market</p>
+          <p>คนน้อย (2-6) และอยากได้เกมสั้นๆ ลุ้นจับโกหก เลือก Coup · เปิดวงไวสุด เลือก Insider · อยากได้บทบาทเยอะและคุยยาว เลือก Werewolf · อยากได้เกมต่อรองผลประโยชน์ เลือก Black Market · อยากถามตอบจับสายลับ เลือก Spyfall</p>
         </div>
         <div class="guide-side-list">
           <div class="guide-side-item">🎯 Insider: เร็วที่สุด เหมาะกับคนเริ่มวง</div>
           <div class="guide-side-item">🐺 Werewolf: มีบทบาทเยอะ คุยลึกกว่า</div>
           <div class="guide-side-item">🎩 Black Market: เจรจา บลัฟ ต่อรอง</div>
           <div class="guide-side-item">🕶️ Spyfall: สถานที่ + จับสายลับ</div>
+          <div class="guide-side-item">👑 Coup: โกหกแล้วลุ้นว่าใครจับได้</div>
         </div>
       </aside>
     </div>
@@ -415,7 +490,47 @@
       <div class="guide-list">
         <div class="guide-list-item"><strong>เป้าหมาย</strong> พลเมืองโหวตจับสายลับ · สายลับหลบรอด</div>
         <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 4-8 คนที่อยากเล่นรอบเดียวจบใน 10-15 นาที</div>
-        <div class="guide-list-item"><strong>จุดเด่น</strong> ไม่มี GM เน้นถามตอบและอ่านคน</div>
+        <div class="guide-list-item"><strong>จุดเด่น</strong> ไม่ต้องมีคนคุมเกม ทุกคนเล่นพร้อมกัน เน้นถาม–ตอบและสังเกตคน</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-coup">
+      <div class="guide-mode-badge">👑 Coup</div>
+      <h2>โกหกได้ ท้าได้ ใครรอดคนสุดท้ายชนะ</h2>
+      <p>ทุกคนได้การ์ดตัวละครคว่ำไว้ 2 ใบ ในตาของตัวเองประกาศใช้พลังของตัวละครใดก็ได้ <strong>แม้ไม่มีการ์ดใบนั้นจริง</strong> ใครไม่เชื่อก็ท้าเปิดได้ ถ้าโกหกแล้วโดนจับ เสียการ์ด 1 ใบ ถ้าท้าผิด คนท้าเสียเอง</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> เป็นคนสุดท้ายที่ยังเหลือการ์ดคว่ำ</div>
+        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 2-6 คน จบใน 15 นาที เล่นแค่ 2 คนก็สนุก</div>
+        <div class="guide-list-item"><strong>ทุกตาเลือก 1 อย่าง</strong> รับรายได้ +1 · เงินช่วยเหลือ +2 · รัฐประหาร จ่าย 7 บังคับคู่แข่งเปิดการ์ด · หรือใช้พลังตัวละคร</div>
+        <div class="guide-list-item"><strong>ขวางได้ด้วย</strong> ท่านหญิงกันลอบสังหาร · กัปตัน/ทูตกันขโมย · ดยุคกันเงินช่วยเหลือ — และการขวางก็โดนท้าได้เหมือนกัน</div>
+        <div class="guide-list-item"><strong>ข้อควรรู้</strong> มีเหรียญครบ 10 ต้องทำรัฐประหารเท่านั้น และรัฐประหารขวางไม่ได้</div>
+      </div>
+      <div class="guide-coup-roles">
+        <article class="guide-coup-role">
+          <img src="/assets/games/coup/duke.webp" alt="ดยุค" width="160" height="214" loading="lazy">
+          <strong>👑 ดยุค</strong>
+          <span>เก็บภาษี +3 · ขวางเงินช่วยเหลือ</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/coup/assassin.webp" alt="นักฆ่า" width="160" height="214" loading="lazy">
+          <strong>🗡️ นักฆ่า</strong>
+          <span>จ่าย 3 สั่งเปิดการ์ด 1 ใบ</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/coup/captain.webp" alt="กัปตัน" width="160" height="214" loading="lazy">
+          <strong>⚓ กัปตัน</strong>
+          <span>ขโมย 2 เหรียญ · ขวางการขโมยได้</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/coup/ambassador.webp" alt="ทูต" width="160" height="214" loading="lazy">
+          <strong>🕊️ ทูต</strong>
+          <span>แลกการ์ดในมือ · ขวางการขโมยได้</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/coup/contessa.webp" alt="ท่านหญิง" width="160" height="214" loading="lazy">
+          <strong>🛡️ ท่านหญิง</strong>
+          <span>ขวางการลอบสังหารได้</span>
+        </article>
       </div>
     </article>
   </section>
@@ -427,7 +542,7 @@
         <div class="guide-list-item"><strong>1. เลือกโหมด</strong> เลือกจากอารมณ์วง ถ้าเพิ่งรวมกลุ่ม ให้เริ่ม Insider ก่อน</div>
         <div class="guide-list-item"><strong>2. สร้างห้อง</strong> ตั้งค่าจำนวนผู้เล่นและตัวเลือกเฉพาะของโหมดนั้น</div>
         <div class="guide-list-item"><strong>3. อธิบายเป้าหมายชนะ</strong> บอกให้ทุกคนเข้าใจว่าใครชนะเมื่อไหร่ก่อนเริ่มรอบ</div>
-        <div class="guide-list-item"><strong>4. เล่นหนึ่งรอบทดลอง</strong> รอบแรกควรเน้นให้ทุกคนเข้า flow มากกว่าชนะ</div>
+        <div class="guide-list-item"><strong>4. เล่นหนึ่งรอบทดลอง</strong> รอบแรกให้ทุกคนลองเล่นดูก่อน ยังไม่ต้องซีเรียสเรื่องแพ้ชนะ</div>
       </div>
     </div>
 
@@ -436,18 +551,30 @@
       <div class="guide-faq">
         <div class="guide-faq-item">
           <strong>ถ้ามีผู้เล่นใหม่หลายคน ควรเริ่มโหมดไหน?</strong>
-          เริ่มจาก Insider เพราะอธิบายง่ายและทำให้ทุกคนเข้าใจการอ่านคนกับการคุยในวงก่อน
+          เริ่มจาก Insider เพราะกติกาสั้นที่สุด อธิบายรอบเดียวเข้าใจ หรือถ้ามีกันไม่กี่คนลอง Coup ก็ได้
         </div>
         <div class="guide-faq-item">
           <strong>Werewolf ใช้เวลานานกว่าไหม?</strong>
-          โดยทั่วไปนานกว่า Insider เพราะมีหลาย phase และแต่ละบทมีผลต่อการตัดสินใจของทั้งวง
+          นานกว่า Insider เพราะเล่นหลายรอบ สลับกลางวันกับกลางคืน และแต่ละบทมีสกิลที่ต้องคิดก่อนใช้
         </div>
         <div class="guide-faq-item">
-          <strong>Black Market ต่างจากอีกสองโหมดยังไง?</strong>
-          มันไม่ได้เน้นหาคนโกหกอย่างเดียว แต่เน้นการต่อรอง บลัฟ และอ่านว่าใครกำลังได้ประโยชน์จากสถานการณ์
+          <strong>Black Market ต่างจากโหมดอื่นยังไง?</strong>
+          ไม่ได้เน้นจับคนโกหกอย่างเดียว แต่เน้นซื้อขาย ต่อรอง และดูว่าใครกำลังได้เปรียบอยู่
+        </div>
+        <div class="guide-faq-item">
+          <strong>คนน้อยเล่นอะไรได้บ้าง?</strong>
+          Coup เล่นได้ตั้งแต่ 2 คน จบไวใน 15 นาที ส่วนโหมดอื่นต้องมีอย่างน้อย 3-4 คนขึ้นไป
+        </div>
+        <div class="guide-faq-item">
+          <strong>Coup โกหกได้จริงเหรอ?</strong>
+          ได้จริง ประกาศใช้พลังของการ์ดที่ไม่มีก็ได้ ถ้าไม่มีใครท้าก็ผ่านไปเลย แต่ถ้าโดนท้าแล้วไม่มีจริง เสียการ์ด 1 ใบ
         </div>
       </div>
-      <a class="guide-cta-button" href="/rooms">ไปที่หน้า Rooms เพื่อเริ่มเล่น</a>
     </div>
   </section>
+</div>
+
+<%- contentFor('footer') %>
+<div class="guide-footer">
+  <a class="guide-cta-button" href="/rooms">🎮 ไปเลือกห้องเล่น</a>
 </div>

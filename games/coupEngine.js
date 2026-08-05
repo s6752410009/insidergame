@@ -44,7 +44,7 @@ const CARD_DEFINITIONS = {
     },
     contessa: {
         id: 'contessa', icon: '🛡️', image: COUP_IMAGE('contessa'),
-        name: 'Contessa', thaiName: 'เคาน์เตสส์',
+        name: 'Contessa', thaiName: 'ท่านหญิง',
         power: '',
         counter: 'ขวางการลอบสังหารได้'
     }
@@ -174,9 +174,13 @@ function getAlivePlayers(room) {
     return room.gameState.players.filter(p => p.alive);
 }
 
-function pushHistory(room, icon, text) {
+/**
+ * kind บอกชนิดของเหตุการณ์ให้หน้าเว็บรู้ว่าควรเล่นอนิเมชันแบบไหน
+ * (เดาจากข้อความไม่ได้ เพราะข้อความเปลี่ยนได้ตลอด)
+ */
+function pushHistory(room, icon, text, kind = null) {
     room.gameState.history = [
-        { icon, text, at: new Date().toISOString() },
+        { icon, text, kind, at: new Date().toISOString() },
         ...(room.gameState.history || [])
     ].slice(0, 40);
 }
@@ -186,11 +190,31 @@ function setPhase(room, phase, durationMs) {
     room.gameState.phaseEndsAt = durationMs ? Date.now() + durationMs : null;
 }
 
+/** การ์ดที่ไม่ได้อยู่ในมือใคร ไม่ได้หงาย และไม่ได้ค้างอยู่ในการแลกเปลี่ยน */
+function unaccountedCards(room) {
+    const state = room.gameState;
+    const inPlay = [];
+    state.players.forEach(player => inPlay.push(...player.influence, ...player.revealed));
+    if (state.pendingExchange) inPlay.push(...state.pendingExchange.options);
+
+    const remaining = [];
+    CARD_IDS.forEach(id => {
+        const used = inPlay.filter(card => card === id).length;
+        for (let i = 0; i < COPIES_PER_CARD - used; i += 1) remaining.push(id);
+    });
+    return remaining;
+}
+
+/**
+ * เดิมกองหมดแล้วสร้างสำรับใหม่ทั้ง 15 ใบ ทำให้เกิดการ์ดซ้ำกับใบที่อยู่ในมือคน
+ * (เทสวัดได้ว่าการ์ดในระบบพุ่งเป็น 25 ใบ) — ตอนนี้เติมจากใบที่ยังไม่มีใครถือเท่านั้น
+ */
 function drawCard(room) {
-    if (!room.gameState.deck.length) {
-        room.gameState.deck = buildDeck();
+    const state = room.gameState;
+    if (!state.deck.length) {
+        state.deck = shuffle(unaccountedCards(room));
     }
-    return room.gameState.deck.pop();
+    return state.deck.pop() || null;
 }
 
 function returnCardToDeck(room, cardId) {
@@ -228,7 +252,7 @@ function checkWinner(room) {
         room.gameState.phase = 'finished';
         room.gameState.status = 'coup_finished';
         room.gameState.phaseEndsAt = null;
-        pushHistory(room, '🏆', `${room.gameState.winner.name} เป็นผู้รอดคนสุดท้าย!`);
+        pushHistory(room, '🏆', `${room.gameState.winner.name} เป็นผู้รอดคนสุดท้าย!`, 'winner');
         return true;
     }
     return false;
@@ -268,7 +292,7 @@ function requireInfluenceLoss(room, playerId, reason, resumeAfter) {
         const [card] = player.influence.splice(0, 1);
         player.revealed.push(card);
         player.alive = false;
-        pushHistory(room, '💀', `${player.name} หงาย ${CARD_DEFINITIONS[card].thaiName} — ตกรอบแล้ว`);
+        pushHistory(room, '💀', `${player.name} หงาย ${CARD_DEFINITIONS[card].thaiName} — ตกรอบแล้ว`, 'eliminated');
         return finishLoss(room, resumeAfter);
     }
 
@@ -343,18 +367,22 @@ function resolvePendingAction(room) {
             break;
         }
         case 'coup':
-            pushHistory(room, '💥', `${actor.name} ทำรัฐประหารใส่ ${target?.name || '-'}`);
+            pushHistory(room, '💥', `${actor.name} ทำรัฐประหารใส่ ${target?.name || '-'}`, 'coup');
             return requireInfluenceLoss(room, pending.targetId, 'coup', 'end-turn');
         case 'assassinate':
-            pushHistory(room, '🗡️', `${actor.name} ลอบสังหาร ${target?.name || '-'}`);
+            pushHistory(room, '🗡️', `${actor.name} ลอบสังหาร ${target?.name || '-'}`, 'assassinate');
             return requireInfluenceLoss(room, pending.targetId, 'assassinate', 'end-turn');
         case 'exchange': {
-            const drawn = [drawCard(room), drawCard(room)];
+            const drawn = [drawCard(room), drawCard(room)].filter(Boolean);
+            // ย้ายการ์ดในมือเข้า options แล้วเคลียร์มือ — ไม่งั้นการ์ดถูกนับสองที่
+            // (อยู่ทั้ง influence และ options) ทำให้ unaccountedCards คำนวณผิด
+            // แล้วแจกใบซ้ำออกมาเมื่อกองใกล้หมด
             state.pendingExchange = {
                 playerId: actor.playerId,
                 options: [...actor.influence, ...drawn],
                 keepCount: actor.influence.length
             };
+            actor.influence = [];
             pushHistory(room, '🕊️', `${actor.name} แลกเปลี่ยนการ์ดกับกองกลาง`);
             setPhase(room, 'exchange', DECIDE_MS);
             return state;
@@ -470,7 +498,7 @@ function submitResponse(room, playerId, response, claimCard = null) {
         state.pendingBlock = { blockerId: playerId, claim: claimCard };
         state.responses = {};
         pushHistory(room, '🛡️',
-            `${responder.name} ขวางด้วย ${CARD_DEFINITIONS[claimCard].thaiName}`);
+            `${responder.name} ขวางด้วย ${CARD_DEFINITIONS[claimCard].thaiName}`, 'block');
         setPhase(room, 'block-respond', RESPOND_MS);
         return state;
     }
@@ -478,27 +506,48 @@ function submitResponse(room, playerId, response, claimCard = null) {
     throw new Error('คำสั่งตอบโต้ไม่ถูกต้อง');
 }
 
-/** คนที่โดนขวาง เลือกว่าจะ challenge การขวางนั้น หรือยอม */
+/**
+ * ตอบโต้ "การขวาง" — กติกาข้อ Challenges บอกว่า "ใครก็สามารถขอ Challenge ได้"
+ * ทั้งกับแอ็กชันและ Counteraction จึงเปิดให้ทุกคนที่ยังไม่ตกรอบ (ยกเว้นคนขวางเอง)
+ * ท้าได้ ไม่ใช่เฉพาะคนที่โดนขวาง
+ * ถ้าทุกคนปล่อยผ่านหมด = การขวางสำเร็จ แอ็กชันเป็นโมฆะ
+ */
 function submitBlockResponse(room, playerId, response) {
     const state = room.gameState;
     const pending = state.pendingAction;
     const block = state.pendingBlock;
     if (!pending || !block) throw new Error('ไม่มีการขวางให้ตอบ');
-    if (playerId !== pending.actorId) throw new Error('เฉพาะคนที่โดนขวางเท่านั้นที่ตอบได้');
+    if (playerId === block.blockerId) throw new Error('คนขวางท้าตัวเองไม่ได้');
 
-    if (response === 'pass') {
-        const blocker = getPlayer(room, block.blockerId);
-        pushHistory(room, '✋', `${getPlayer(room, pending.actorId)?.name} ยอมรับการขวางของ ${blocker?.name}`);
-        // ยอมโดนขวาง = แอ็กชันเป็นโมฆะ แต่เหรียญที่จ่ายไปแล้วไม่ได้คืน
-        advanceTurn(room);
-        return state;
-    }
+    const responder = getPlayer(room, playerId);
+    if (!responder || !responder.alive) throw new Error('คุณตกรอบไปแล้ว');
 
     if (response === 'challenge') {
         return resolveChallenge(room, playerId, block.blockerId, block.claim, 'block');
     }
 
+    if (response === 'pass') {
+        state.responses[playerId] = 'pass';
+        if (getPendingBlockResponders(room).length === 0) {
+            const blocker = getPlayer(room, block.blockerId);
+            pushHistory(room, '✋', `ไม่มีใครท้า — การขวางของ ${blocker?.name} สำเร็จ`);
+            // โดนขวางสำเร็จ = แอ็กชันโมฆะ แต่เหรียญที่จ่ายไปแล้วไม่ได้คืน (ตามกติกา)
+            advanceTurn(room);
+        }
+        return state;
+    }
+
     throw new Error('คำสั่งไม่ถูกต้อง');
+}
+
+/** ใครยังต้องตอบในเฟส block-respond (ทุกคนที่ยังอยู่ ยกเว้นคนขวาง) */
+function getPendingBlockResponders(room) {
+    const state = room.gameState;
+    const block = state.pendingBlock;
+    if (!block) return [];
+    return getAlivePlayers(room)
+        .filter(p => p.playerId !== block.blockerId && !state.responses[p.playerId])
+        .map(p => p.playerId);
 }
 
 /**
@@ -519,9 +568,12 @@ function resolveChallenge(room, challengerId, defenderId, claimCard, scope) {
         // มีจริง — คนท้าแพ้ ส่วนคนถูกท้าคืนการ์ดเข้ากองแล้วจั่วใหม่
         defender.influence.splice(cardIndex, 1);
         returnCardToDeck(room, claimCard);
-        defender.influence.push(drawCard(room));
+        const replacement = drawCard(room);
+        // กองไม่มีทางหมดจริงในเกมปกติ แต่ถ้าหมดก็ต้องไม่ยัด null เข้ามือ
+        if (replacement) defender.influence.push(replacement);
+        else defender.influence.push(claimCard);
         pushHistory(room, '✅',
-            `${challenger.name} ท้า ${defender.name} แล้วแพ้ — ${defender.name} มี ${cardName} จริง`);
+            `${challenger.name} ท้า ${defender.name} แล้วแพ้ — ${defender.name} มี ${cardName} จริง`, 'challenge');
 
         // คนท้าเสียการ์ด แล้วเดินเรื่องต่อตามผลของ challenge
         const resumeAfter = scope === 'action'
@@ -532,7 +584,7 @@ function resolveChallenge(room, challengerId, defenderId, claimCard, scope) {
 
     // ไม่มีจริง — คนถูกท้าแพ้
     pushHistory(room, '❌',
-        `${challenger.name} ท้า ${defender.name} แล้วชนะ — ไม่มี ${cardName} จริง`);
+        `${challenger.name} ท้า ${defender.name} แล้วชนะ — ไม่มี ${cardName} จริง`, 'challenge');
 
     if (scope === 'action') {
         // คนสั่งโกหก → แอ็กชันเป็นโมฆะ คืนเหรียญ
@@ -658,7 +710,15 @@ function handlePlayerLeft(room, playerId) {
 
     // ถ้าคนออกกำลังค้างคิวอยู่ ต้องปลดล็อกเกมให้เดินต่อ
     if (state.pendingLoss?.playerId === playerId) return finishLoss(room, state.pendingLoss.resumeAfter);
-    if (state.pendingExchange?.playerId === playerId) { state.pendingExchange = null; advanceTurn(room); return state; }
+    if (state.pendingExchange?.playerId === playerId) {
+        // การ์ดของเขาอยู่ใน options ทั้งหมด — หงายเท่าที่เคยถือ ที่เหลือคืนกอง
+        const { options, keepCount } = state.pendingExchange;
+        options.slice(0, keepCount).forEach(cardId => player.revealed.push(cardId));
+        options.slice(keepCount).forEach(cardId => returnCardToDeck(room, cardId));
+        state.pendingExchange = null;
+        advanceTurn(room);
+        return state;
+    }
     if (state.pendingAction?.actorId === playerId) { advanceTurn(room); return state; }
     if (state.currentPlayerId === playerId) { advanceTurn(room); return state; }
     if (state.phase === 'respond' && everyoneResponded(room)) return resolvePendingAction(room);
@@ -686,6 +746,7 @@ function getAvailableActions(room, playerId) {
             detail: action.detail,
             cost: action.cost,
             claim: action.claim,
+            claimCard: action.claim ? CARD_DEFINITIONS[action.claim] : null,
             needsTarget: action.needsTarget
         }));
 }
@@ -710,7 +771,9 @@ function getAvailableResponses(room, playerId) {
         };
     }
 
-    if (state.phase === 'block-respond' && playerId === pending.actorId) {
+    // กติกา: ใครก็ท้า Counteraction ได้ ไม่ใช่แค่คนที่โดนขวาง
+    if (state.phase === 'block-respond' && state.pendingBlock) {
+        if (playerId === state.pendingBlock.blockerId || state.responses[playerId]) return null;
         return { canPass: true, canChallenge: true, blockOptions: [], challengingBlock: true };
     }
 
@@ -764,6 +827,7 @@ function buildClientState(room, viewerPlayerId) {
         pendingAction: state.pendingAction ? {
             ...state.pendingAction,
             action: ACTIONS[state.pendingAction.actionId],
+            claimCard: state.pendingAction.claim ? CARD_DEFINITIONS[state.pendingAction.claim] : null,
             actorName: getPlayer(room, state.pendingAction.actorId)?.name || '',
             targetName: state.pendingAction.targetId ? getPlayer(room, state.pendingAction.targetId)?.name : null,
             waitingFor: getPendingResponders(room)
@@ -772,7 +836,8 @@ function buildClientState(room, viewerPlayerId) {
         pendingBlock: state.pendingBlock ? {
             ...state.pendingBlock,
             blockerName: getPlayer(room, state.pendingBlock.blockerId)?.name || '',
-            card: CARD_DEFINITIONS[state.pendingBlock.claim]
+            card: CARD_DEFINITIONS[state.pendingBlock.claim],
+            waitingFor: getPendingBlockResponders(room)
         } : null,
 
         pendingLoss: state.pendingLoss ? {

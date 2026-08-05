@@ -1,11 +1,13 @@
 /* Shared in-game chat panel behaviour — ported from the Insider board.
  * Requires jQuery, SweetAlert2 and the markup shipped in chatPanel.css.
  *
- * initChatPanel({ socket, playerId, playerName, onIncoming })
+ * initChatPanel({ socket, playerId, playerName, onIncoming, onCommand })
  *   socket      — connected socket.io client
  *   playerId    — this player's id (used to right-align own messages)
  *   playerName  — fallback match when the payload has no playerId
  *   onIncoming  — optional callback(data, isMyMessage) e.g. to play a sound
+ *   onCommand   — optional callback(text); return true to swallow the input
+ *                 instead of sending it (used for slash commands like /m)
  */
 (function attachChatPanel(global) {
     function initChatPanel(options) {
@@ -14,6 +16,7 @@
         const playerId = opts.playerId;
         const playerName = opts.playerName;
         const onIncoming = typeof opts.onIncoming === 'function' ? opts.onIncoming : null;
+        const onCommand = typeof opts.onCommand === 'function' ? opts.onCommand : null;
 
         if (!socket || typeof jQuery === 'undefined') {
             return null;
@@ -174,6 +177,12 @@
         function sendMessage() {
             const text = $('#chatInput').val().trim();
             if (!text) return;
+
+            // คำสั่ง /… ที่เกมจัดการเอง ต้องไม่หลุดไปเป็นข้อความในห้อง
+            if (onCommand && onCommand(text) === true) {
+                $('#chatInput').val('').focus();
+                return;
+            }
 
             const payload = { message: text, playerName: playerName };
             if (replyingTo) {

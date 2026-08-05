@@ -364,33 +364,6 @@
         <p>ปรับแต่งประสบการณ์การเล่นเกมของคุณ</p>
     </div>
     
-    <!-- Sound Settings -->
-    <div class="settings-section">
-        <h2><span class="icon">🔊</span> เสียง</h2>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>เพลงพื้นหลัง</h3>
-                <p>เปิด/ปิดเพลงประกอบในเกม</p>
-            </div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="bgmToggle" checked>
-                <span class="toggle-slider"></span>
-            </label>
-        </div>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>ระดับเสียงเพลง</h3>
-                <p>ปรับความดังของเพลงพื้นหลัง</p>
-            </div>
-            <div class="volume-control">
-                <input type="range" class="volume-slider" id="bgmVolume" min="0" max="100" value="50">
-                <span class="volume-value" id="bgmVolumeValue">50%</span>
-            </div>
-        </div>
-    </div>
-    
     <!-- Game Settings -->
     <div class="settings-section">
         <h2><span class="icon">🎮</span> การเล่นเกม</h2>
@@ -599,11 +572,6 @@ $(function() {
         }
     };
 
-    // Get audio element safely
-    function getAudio() {
-        const audio = document.getElementById('background-music');
-        return audio && typeof audio.play === 'function' ? audio : null;
-    }
 
     let selectedTheme = Storage.get('gameSettings', {}).theme || 'default';
 
@@ -616,11 +584,6 @@ $(function() {
     function loadSettings() {
         const settings = Storage.get('gameSettings', {});
         
-        // Sound
-        $('#bgmToggle').prop('checked', settings.bgmEnabled !== false);
-        $('#bgmVolume').val(settings.bgmVolume ?? 50);
-        $('#bgmVolumeValue').text((settings.bgmVolume ?? 50) + '%');
-        
         // Game
         $('#confirmLeaveToggle').prop('checked', settings.confirmLeave !== false);
         
@@ -628,13 +591,6 @@ $(function() {
         selectedTheme = normalizeTheme(settings.theme || 'default');
         updateThemeUI();
         applyTheme(selectedTheme);
-        
-        // Apply BGM setting
-        const audio = getAudio();
-        if (audio) {
-            audio.muted = !$('#bgmToggle').is(':checked');
-            audio.volume = Math.min(1, Math.max(0, $('#bgmVolume').val() / 100));
-        }
     }
     
     // Theme selection click handler
@@ -648,21 +604,11 @@ $(function() {
     // Save settings to localStorage
     function saveSettings(showNotification = false) {
         const settings = {
-            bgmEnabled: $('#bgmToggle').is(':checked'),
-            bgmVolume: Math.min(100, Math.max(0, parseInt($('#bgmVolume').val()) || 50)),
             confirmLeave: $('#confirmLeaveToggle').is(':checked'),
             theme: selectedTheme
         };
         
         Storage.set('gameSettings', settings);
-        
-        // Apply BGM settings immediately
-        const audio = getAudio();
-        if (audio) {
-            audio.muted = !settings.bgmEnabled;
-            audio.volume = settings.bgmVolume / 100;
-        }
-        Storage.set('isMusicMuted', !settings.bgmEnabled);
         
         // Apply theme
         applyTheme(settings.theme);
@@ -700,12 +646,6 @@ $(function() {
         $(`.theme-option[data-theme="${selectedTheme}"]`).addClass('active');
     }
     
-    // Volume sliders
-    $('#bgmVolume').on('input', function() {
-        $('#bgmVolumeValue').text($(this).val() + '%');
-        saveSettings();
-    });
-    
     // All toggles and selects (auto-save without notification)
     $('input[type="checkbox"], select').on('change', function() {
         saveSettings(false);
@@ -732,7 +672,6 @@ $(function() {
         }).then((result) => {
             if (result.isConfirmed) {
                 localStorage.removeItem('gameSettings');
-                localStorage.removeItem('isMusicMuted');
                 localStorage.removeItem('currentTheme');
                 selectedTheme = 'default';
                 loadSettings();

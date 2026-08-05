@@ -12,7 +12,8 @@
     background: #071318 !important;
   }
 
-  html.sf-active header,
+  /* เจาะจงแบนเนอร์ของ layout — เดิม selector กว้างไปจนกิน <div class="sf-topbar"> ของกระดานเอง */
+  html.sf-active .container-fluid > header,
   html.sf-active .footer {
     display: none !important;
   }
@@ -437,7 +438,7 @@
 
 <div class="sf-page">
   <div class="sf-shell">
-    <header class="sf-topbar">
+    <div class="sf-topbar">
       <div class="sf-brand">
         <div class="sf-kicker">🕶️ สายลับในสถานที่</div>
         <h1 class="sf-title"><%= room.name %></h1>
@@ -448,12 +449,12 @@
         <span class="sf-chip">👥 <%= room.playerCount %>/<%= room.maxPlayers %></span>
         <span id="phaseChip" class="sf-chip sf-phase">🎭 รอเริ่ม</span>
         <button type="button" id="sfHowToOpen" class="sf-chip sf-chip-btn">📖 วิธีเล่น</button>
-        <button type="button" id="toggleSidebarBtn" class="sf-chip sf-chip-btn"><i class="fas fa-users"></i> ผู้เล่น</button>
+        <button type="button" id="sfSidebarBtn" class="sf-chip sf-chip-btn"><i class="fas fa-users"></i> ผู้เล่น</button>
         <% if (room.admin) { %>
         <button type="button" id="sfEndGameBtn" class="sf-chip sf-chip-btn sf-chip-danger">⏹ จบเกม</button>
         <% } %>
       </div>
-    </header>
+    </div>
 
     <div id="sfNowBar" class="sf-now-bar" aria-live="polite">
       <span class="sf-now-label">ตอนนี้</span>
@@ -923,7 +924,7 @@ $(function() {
     $('#sidebarOverlay').toggle();
   }
 
-  $('#toggleSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+  $('#sfSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
 
   $('#leaveRoomBtn').on('click', function() {
     Swal.fire({

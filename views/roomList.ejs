@@ -985,18 +985,18 @@ $(function() {
             insider: {
                 tone: 'linear-gradient(135deg, rgba(230,126,34,0.22), rgba(192,57,43,0.12))',
                 border: 'rgba(230,126,34,0.32)',
-                badge: '🎯 เล่นไว อ่านโต๊ะ',
+                badge: '🎯 ทายคำ จับคนโกง',
                 title: 'Insider',
-                summary: '',
-                bullets: ['3-10 คน']
+                summary: 'ทุกคนช่วยกันทายคำจากคำใบ้ แต่มี 1 คนรู้คำอยู่แล้วและแอบชี้นำ — ทายได้แล้วต้องหาให้เจอว่าใคร',
+                bullets: ['3-10 คน', 'มีคนคุมเกม 1 คน', 'รอบละ 5 นาที', 'เหมาะกับมือใหม่']
             },
             blackmarket: {
                 tone: 'linear-gradient(135deg, rgba(127,29,29,0.4), rgba(17,17,17,0.9))',
                 border: 'rgba(245,200,107,0.34)',
-                badge: '🎩 แนะนำตอนนี้',
+                badge: '🎩 ซื้อขาย ต่อรอง',
                 title: 'Black Market',
-                summary: '',
-                bullets: ['4-7 คน']
+                summary: 'ซื้อของจากตลาดมืดมาสะสมแต้ม แต่ละคนมีบทลับและเป้าหมายต่างกัน ใครแต้มสูงสุดตอนจบชนะ',
+                bullets: ['4-7 คน', 'มีบทลับ', 'ซื้อขาย–ต่อรอง', 'เกมยาวสุด']
             },
             werewolf: {
                 tone: 'linear-gradient(135deg, rgba(52,73,94,0.26), rgba(17,24,39,0.9))',
@@ -1012,7 +1012,15 @@ $(function() {
                 badge: '🕶️ สายลับ สถานที่',
                 title: 'Spyfall',
                 summary: 'ทุกคนรู้สถานที่และบทในที่นั้นยกเว้นสายลับ — คุยแล้วโหวตจับ',
-                bullets: ['4-8 คน', 'บทในสถานที่คนละบท', 'รอบเดียวจบ', 'ไม่มี GM']
+                bullets: ['4-8 คน', 'บทในสถานที่คนละบท', 'รอบเดียวจบ', 'ไม่ต้องมีคนคุมเกม']
+            },
+            coup: {
+                tone: 'linear-gradient(135deg, rgba(168,85,247,0.24), rgba(18,7,26,0.92))',
+                border: 'rgba(196,141,255,0.32)',
+                badge: '👑 โกหก ท้า โค่น',
+                title: 'Coup',
+                summary: 'ประกาศพลังของการ์ดที่ไม่มีก็ได้ — ใครไม่เชื่อก็ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ',
+                bullets: ['2-6 คน', 'โกหกได้ ท้าได้', 'จบใน 15 นาที', 'เล่น 2 คนก็ได้']
             }
         };
 
@@ -1025,7 +1033,8 @@ $(function() {
             insider: 'เกมจับจอมบงการ',
             blackmarket: 'ตลาดมืดคืนนี้',
             werewolf: 'คืนล่าหมาป่า',
-            spyfall: 'วงสายลับสถานที่'
+            spyfall: 'วงสายลับสถานที่',
+            coup: 'วงโค่นอำนาจ'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1065,10 +1074,8 @@ $(function() {
 
             return `
                 <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="cursor:pointer; border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; font-family:Rajdhani, sans-serif; display:grid; gap:4px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                        <strong style="font-size:1rem; letter-spacing:0.02em;">${escapeHtml(spotlight.title)}</strong>
-                        <span style="padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.1); font-size:0.75em; font-weight:700; color:${badgeColor};">${badgeLabel}</span>
-                    </div>
+                    <strong style="font-size:1.02rem; letter-spacing:0.02em; white-space:nowrap;">${escapeHtml(spotlight.title)}</strong>
+                    <span style="justify-self:start; max-width:100%; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,0.1); font-size:0.74em; font-weight:700; line-height:1.5; color:${badgeColor};">${badgeLabel}</span>
                     <div style="color:#aab3c5; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
                 </button>
             `;
@@ -1291,7 +1298,7 @@ $(function() {
                         <label class="room-form-label">
                             <span class="icon">🌙</span> เลือกแนวห้องเร็ว ๆ:
                         </label>
-                        <div id="modeQuickPickGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px;">
+                        <div id="modeQuickPickGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(178px, 1fr)); gap:10px; margin-bottom:12px;">
                             ${buildModeQuickPickHtml(gameModes)}
                         </div>
                         <div id="modeSpotlight"></div>
@@ -1469,7 +1476,8 @@ $(function() {
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
-                        : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:');
+                        : (selectedMode === 'coup' ? 'เวลาคิดต่อตา:'
+                            : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:'));
 
                     const sliderMin = Number(modeConfig.minPlayers || 3);
                     const sliderMax = Number(modeConfig.maxPlayers || 10);
