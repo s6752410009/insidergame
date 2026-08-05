@@ -879,7 +879,7 @@
         <a href="/how-to-play" class="menu-item howto">
             <span class="menu-icon">📖</span>
             <div class="menu-title">กฎการเล่น</div>
-            <div class="menu-desc">ดูวิธีเล่นและความต่างของทั้ง 3 โหมด</div>
+            <div class="menu-desc">ดูวิธีเล่นและความต่างของทั้ง 5 โหมด</div>
         </a>
         
         <a href="/profile?playerId=<%= player.playerId %>" class="menu-item profile">
@@ -1673,6 +1673,9 @@ $(function() {
     });
     
     // ==================== PATCH NOTES POPUP ====================
+    // ⚠️ เนื้อหาข้างล่างเขียนมือ ไม่ได้ดึงจาก CHANGELOG.md
+    //    ตอนออกเวอร์ชันใหม่ต้องมาแก้ที่นี่ด้วย ไม่งั้นป้ายจะขึ้นเลขใหม่แต่เล่าเรื่องเก่า
+    //    (v5.4.0 เคยขึ้นว่า "เปิดโต๊ะใหม่ครบ 3 แบบ" ซึ่งเป็นข้อความค้างจากยุค Spyfall)
     const patchVersion = '<%= appVersion %>';
     // ผูก key กับเลข season ด้วย — พอรีแรงค์ใหม่ ทุกคนจะได้เห็นประกาศอีกครั้งแม้เคยกด "ไม่แสดงอีก 7 วัน"
     const patchSeenKey = `hide_patch_${patchVersion}_s<%= currentSeason.number %>_${playerId}`;
@@ -1688,29 +1691,33 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '<% if (lastSeason) { %>🏆 <%= currentSeason.name %> + เกมใหม่<% } else { %>🎮 เกมใหม่มาแล้ว — v<%= appVersion %><% } %>',
+            title: '<% if (lastSeason) { %>🏆 <%= currentSeason.name %> + เกมใหม่<% } else { %>👑 เกมใหม่: Coup — v<%= appVersion %><% } %>',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     ${seasonResetNoticeHtml}
                     <p style="color: #f6c453; font-size: 0.95em; line-height: 1.65; margin-bottom: 15px;">
-                        <strong>v<%= appVersion %> เปิดโต๊ะใหม่ครบ 3 แบบ:</strong> Werewolf, Black Market และ Spyfall พร้อมภาพประจำบท/ไอเทม/สถานที่ และ flow ที่บอกชัดว่าตอนนี้ต้องทำอะไร
+                        <strong>v<%= appVersion %> เพิ่มโหมดที่ 5: Coup — เกมโค่นอำนาจ</strong> เล่น 2–6 คน
+                        แก่นของเกมคือ <strong>โกหกได้</strong> — ประกาศใช้พลังของการ์ดที่ไม่มีในมือก็ได้ แล้วลุ้นว่าจะมีใครกล้าท้าไหม
                     </p>
 
-                    <div style="background: rgba(26, 188, 156, 0.16); padding: 14px; border: 1px solid rgba(123, 237, 214, 0.28); border-radius: 12px; margin-bottom: 15px;">
-                        <h4 style="color: #7bedd6; margin: 0 0 10px 0;">🎲 เลือกเกมใหม่ที่เข้ากับวง</h4>
+                    <div style="background: rgba(124, 58, 237, 0.16); padding: 14px; border: 1px solid rgba(196, 181, 253, 0.3); border-radius: 12px; margin-bottom: 15px;">
+                        <h4 style="color: #c4b5fd; margin: 0 0 10px 0;">👑 Coup เล่นยังไง</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>🐺 Werewolf:</strong> เกมบทบาทหลายสกิล กลางคืน–ประชุม–โหวต พร้อมสถานะส่วนตัวของแต่ละ role</li>
-                            <li><strong>🎩 Black Market:</strong> ซื้อของ เปิดดีล หักหลัง และชิงอิทธิพล เล่นกับเพื่อนหรือเติม bot ได้</li>
-                            <li><strong>🕵️ Spyfall:</strong> ถาม–ตอบเพื่อจับสายลับจากสถานที่ลับ จบรอบไว เหมาะกับวงที่อยากเริ่มทันที</li>
+                            <li>ทุกคนได้การ์ดคว่ำ 2 ใบ + 2 เหรียญ <strong>คนสุดท้ายที่ยังเหลือการ์ดคว่ำคือผู้ชนะ</strong></li>
+                            <li>โดนท้าแล้วไม่มีการ์ดจริง → เสียการ์ด 1 ใบ · ท้าผิดเอง → เสียการ์ดเองเหมือนกัน</li>
+                            <li>การ์ด 5 ใบ: ดยุค · นักฆ่า · กัปตัน · ทูต · ท่านหญิง</li>
+                            <li>เล่นได้แม้มีแค่ 2 คน — วงเล็กก็เริ่มได้ทันที</li>
                         </ul>
                     </div>
 
                     <div style="background: rgba(52, 152, 219, 0.12); padding: 14px; border: 1px solid rgba(143, 211, 255, 0.24); border-radius: 12px; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🛠️ รอบนี้นิ่งขึ้นตรงไหน</h4>
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🛠️ รอบนี้แก้อะไรบ้าง</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>สกิลและการโหวตยึด state จาก server ไม่ข้ามเฟสหรือทับ action ของ role อื่น</li>
-                            <li>หลุดหรือรีโหลดกลางเกมกลับเข้า role และเฟสเดิมได้ พร้อมแชทที่ไม่หาย</li>
-                            <li>ติดต่อ Site Admin ได้แม้ admin offline และเช็กสถานะอ่าน/ตอบกลับได้</li>
+                            <li><strong>แถบบนของกระดาน Coup และ Spyfall เคยหายไปทั้งแถว</strong> (เลขห้อง กองกลาง วิธีเล่น ผู้เล่น จบเกม) ตอนนี้กลับมาครบและกดได้จริง</li>
+                            <li>Coup มีอนิเมชันประจำจังหวะแล้ว — แจกการ์ด พลิกการ์ดตอนโดนหงาย ตัวเลขเหรียญลอย และป้ายประกาศตอนมีคนท้า</li>
+                            <li>วิธีเล่น Coup ทำใหม่ทั้งหน้า มีรูปการ์ดจริงครบ 5 ใบ กดดูได้ทั้งในห้องรอและระหว่างเล่น</li>
+                            <li>นาฬิกาบอกล่วงหน้าว่าถ้าปล่อยจนหมดเวลา ระบบจะทำอะไรให้</li>
+                            <li>เอาเพลงพื้นหลัง (BGM) ออกทั้งระบบ</li>
                         </ul>
                     </div>
 
@@ -1719,9 +1726,14 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.3.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>เปิดตัวโหมด Coup และระบบ Season (ปิด Season 1 เริ่ม Season 2 ดูอันดับย้อนหลังได้)</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.2.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>เพิ่มภาพเกมชุดใหม่และแก้กติกาหลักของทุกโหมด</li>
+                                <li>โต๊ะครบ 3 แบบ: Werewolf, Black Market และ Spyfall พร้อมภาพประจำบท/ไอเทม/สถานที่</li>
                             </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.1.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
