@@ -237,6 +237,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'werewolf_finished',
     'blackmarket_finished',
     'spyfall_finished',
+    'coup_finished',
     'end',
     'finished'
 ]);
@@ -245,6 +246,7 @@ const ROOM_NAME_MODE_HINTS = {
     'วงจับจอมบงการ': 'insider',
     'ตลาดมืดคืนนี้': 'blackmarket',
     'คืนล่าหมาป่า': 'werewolf',
+    'วงโค่นอำนาจ': 'coup',
     'วงสายลับสถานที่': 'spyfall'
 };
 

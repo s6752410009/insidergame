@@ -2,12 +2,14 @@ const insiderEngine = require('./insiderEngine');
 const blackMarketEngine = require('./blackMarketEngine');
 const werewolfEngine = require('./werewolfEngine');
 const spyfallEngine = require('./spyfallEngine');
+const coupEngine = require('./coupEngine');
 
 const ENGINES = {
     insider: insiderEngine,
     blackmarket: blackMarketEngine,
     werewolf: werewolfEngine,
-    spyfall: spyfallEngine
+    spyfall: spyfallEngine,
+    coup: coupEngine
 };
 
 function normalizeGameMode(gameMode) {
@@ -27,7 +29,9 @@ function normalizeGameMode(gameMode) {
         blackmarketmode: 'blackmarket',
         spyfall: 'spyfall',
         spy: 'spyfall',
-        secretplace: 'spyfall'
+        secretplace: 'spyfall',
+        coup: 'coup',
+        coupgame: 'coup'
     };
 
     return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';

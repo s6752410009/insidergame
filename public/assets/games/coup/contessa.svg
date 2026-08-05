@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Contessa">
+  <rect x="4" y="4" width="112" height="112" rx="16" fill="#3a1020"/>
+  <path d="M60 24 L92 38 V64 Q92 88 60 98 Q28 88 28 64 V38 Z" fill="#ff6b81" stroke="#c81e3a" stroke-width="2"/>
+  <path d="M60 40 L70 58 L60 76 L50 58 Z" fill="#fff" opacity="0.9"/>
+</svg>

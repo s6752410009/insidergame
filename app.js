@@ -75,6 +75,7 @@ const blackMarketPhaseTimeouts = new Map();
 
 // เก็บ timeout สำหรับ phase อัตโนมัติของ Spyfall
 const spyfallPhaseTimeouts = new Map();
+const coupPhaseTimeouts = new Map();
 const spyfallReturnTimeouts = new Map();
 
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
@@ -2154,6 +2155,96 @@ function emitSpyfallRoomState(room) {
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
 }
 
+// ==================== COUP ====================
+
+function clearCoupPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = coupPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        coupPhaseTimeouts.delete(roomId);
+    }
+    if (!resetPhaseEndsAt) return;
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState) room.gameState.phaseEndsAt = null;
+}
+
+/**
+ * ทุกเฟสของ Coup มีเวลาจำกัด ถ้าใครหายไปกลางคันเกมต้องเดินต่อเองได้
+ * (engine.autoResolvePhase ตัดสินใจแทนให้ เช่นถือว่าปล่อยผ่าน / รับรายได้)
+ */
+function syncCoupPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'coup') return;
+
+    const state = room.gameState;
+    if (!state || state.phase === 'finished' || state.phase === 'lobby' || !state.phaseEndsAt) {
+        clearCoupPhaseTimer(room.roomId);
+        return;
+    }
+
+    const existing = coupPhaseTimeouts.get(room.roomId);
+    if (existing && existing.endsAt === state.phaseEndsAt) return;
+
+    clearCoupPhaseTimer(room.roomId, false);
+    const delay = Math.max(250, state.phaseEndsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        coupPhaseTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'coup') return;
+        try {
+            getGameEngine('coup').autoResolvePhase(current);
+            emitCoupRoomState(current);
+        } catch (error) {
+            console.error('[coup] auto resolve failed:', error.message);
+        }
+    }, delay);
+    coupPhaseTimeouts.set(room.roomId, { timeoutId, endsAt: state.phaseEndsAt });
+}
+
+function buildCoupStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'coup') return null;
+    return getGameEngine('coup').buildClientState(room, playerId);
+}
+
+function emitCoupState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'coup') return;
+
+    syncCoupPhaseTimer(room);
+
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('coupState', buildCoupStatePayload(room, playerId));
+        return;
+    }
+
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('coupState', buildCoupStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function emitCoupRoomState(room) {
+    if (!room || room.settings.gameMode !== 'coup') return;
+    finalizeCoupGameIfNeeded(room);
+    emitCoupState(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+function finalizeCoupGameIfNeeded(room) {
+    const state = room?.gameState;
+    if (!state || state.phase !== 'finished' || !state.winner || state.statsRecordedAt) return;
+
+    statsManager.recordGameEnd(room.roomId, {
+        mode: 'coup',
+        winner: state.winner,
+        players: state.players,
+        roomName: room.name
+    });
+    state.statsRecordedAt = new Date().toISOString();
+    clearCoupPhaseTimer(room.roomId);
+    sendChatMessageToRoom(io, room.roomId, 'System',
+        `เกมจบ! ${state.winner.name} เป็นผู้รอดคนสุดท้าย`, '#f39c12');
+}
+
 // Broadcast เกมตามโหมดของห้อง ใช้เวลา state เปลี่ยนนอก flow ปกติ (เช่น คนออก/หลุดกลางเกม)
 function broadcastGameStateForRoom(room) {
     if (!room || !room.settings) {
@@ -2165,6 +2256,8 @@ function broadcastGameStateForRoom(room) {
         emitBlackMarketState(room);
     } else if (room.settings.gameMode === 'spyfall') {
         emitSpyfallRoomState(room);
+    } else if (room.settings.gameMode === 'coup') {
+        emitCoupRoomState(room);
     }
 }
 
@@ -2182,6 +2275,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 getGameEngine('spyfall').handlePlayerLeft(room, playerId);
             } catch (error) {
                 console.error('[spyfall] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'coup') {
+            try {
+                getGameEngine('coup').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[coup] handlePlayerLeft failed:', error?.message || error);
             }
         }
         broadcastGameStateForRoom(room);
@@ -2464,6 +2564,13 @@ function recoverGamePhaseTimers() {
             }
             syncSpyfallPhaseTimer(room);
         }
+
+        if (room.settings.gameMode === 'coup') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                getGameEngine('coup').autoResolvePhase(room);
+            }
+            syncCoupPhaseTimer(room);
+        }
     });
 }
 
@@ -2505,7 +2612,12 @@ function runRoomCleanupSweep() {
             spyfallEngine.autoResolvePhase(room);
             emitSpyfallRoomState(room);
         }
+        if (room.settings.gameMode === 'coup' && roomManager.isRoomGameInProgress(room)) {
+            getGameEngine('coup').autoResolvePhase(room);
+            emitCoupRoomState(room);
+        }
 
+        clearCoupPhaseTimer(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
@@ -3201,6 +3313,25 @@ app.get('/game/:roomId', async function(req, res) {
                 settings: room.settings
             },
             blackMarketState: buildBlackMarketStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
+    if (room.settings.gameMode === 'coup') {
+        return res.render('coupBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            coupState: buildCoupStatePayload(room, playerId),
             chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
         });
     }
@@ -5289,6 +5420,56 @@ io.sockets.on('connection', function(socket) {
         emitSpyfallState(room, socket.id, playerId);
     });
 
+    // ==================== COUP ====================
+
+    safeOn(socket, 'coup_requestState', function(data) {
+        const room = getSocketRoom(socket, 'coup');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        syncCoupPhaseTimer(room);
+        emitCoupState(room, socket.id, playerId);
+    });
+
+    // ทุก action ของ Coup ใช้ทางเดียวกัน: เรียก engine แล้ว broadcast state ใหม่
+    // engine โยน Error พร้อมข้อความไทยเมื่อทำผิดกติกา ส่งกลับให้คนกดเห็น
+    function handleCoupCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'coup');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบห้อง Coup' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            emitCoupRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    safeOn(socket, 'coup_submitAction', function(data, callback) {
+        handleCoupCommand(socket, callback, (room, playerId) =>
+            getGameEngine('coup').submitAction(room, playerId, data?.actionId, data?.targetPlayerId || null));
+    });
+
+    safeOn(socket, 'coup_respond', function(data, callback) {
+        handleCoupCommand(socket, callback, (room, playerId) =>
+            getGameEngine('coup').submitResponse(room, playerId, data?.response, data?.claimCard || null));
+    });
+
+    safeOn(socket, 'coup_loseInfluence', function(data, callback) {
+        handleCoupCommand(socket, callback, (room, playerId) =>
+            getGameEngine('coup').submitInfluenceLoss(room, playerId, data?.cardId));
+    });
+
+    safeOn(socket, 'coup_exchange', function(data, callback) {
+        handleCoupCommand(socket, callback, (room, playerId) =>
+            getGameEngine('coup').submitExchange(room, playerId, data?.keepCardIds));
+    });
+
     safeOn(socket, 'blackmarket_requestState', function(data) {
         const room = getSocketRoom(socket, 'blackmarket');
         const playerId = socket.playerId;
@@ -5960,6 +6141,26 @@ io.sockets.on('connection', function(socket) {
                     }, 5000);
 
                     room.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'coup') {
+                    clearCoupPhaseTimer(roomId);
+                    getGameEngine('coup').startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'เกมโค่นอำนาจเริ่มแล้ว — โกหกได้ ท้าได้ ใครรอดคนสุดท้ายชนะ', '#a855f7');
+                    logGameStartFromRoom(currentRoom);
+                    emitCoupRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
                     return;
                 }
 

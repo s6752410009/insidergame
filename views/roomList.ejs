@@ -816,7 +816,8 @@ $(function() {
         { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
-        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 }
+        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 },
+        { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1158,7 +1159,8 @@ $(function() {
             const gameModeLabel = room.gameModeLabel || (
                 room.gameMode === 'werewolf' ? 'Werewolf'
                     : (room.gameMode === 'blackmarket' ? 'Black Market'
-                        : (room.gameMode === 'spyfall' ? 'Spyfall' : 'Insider'))
+                        : (room.gameMode === 'spyfall' ? 'Spyfall'
+                            : (room.gameMode === 'coup' ? 'Coup' : 'Insider')))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1166,7 +1168,9 @@ $(function() {
                     ? 'background: linear-gradient(135deg, #7f1d1d, #111111); color:#fde68a; border:1px solid rgba(251,191,36,0.35);'
                     : (room.gameMode === 'spyfall'
                         ? 'background: linear-gradient(135deg, #0f766e, #134e4a); color:#ccfbf1; border:1px solid rgba(94,234,212,0.35);'
-                        : 'background: linear-gradient(135deg, #e67e22, #d35400);'));
+                        : (room.gameMode === 'coup'
+                            ? 'background: linear-gradient(135deg, #6d28d9, #3b0764); color:#f4ecff; border:1px solid rgba(196,141,255,0.35);'
+                            : 'background: linear-gradient(135deg, #e67e22, #d35400);')));
             const roomCard = `
                 <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
@@ -1478,6 +1482,10 @@ $(function() {
 
                     if (selectedMode === 'spyfall' && !['4', '5', '6', '7', '8'].includes(maxPlayersSlider.value)) {
                         maxPlayersSlider.value = '6';
+                    }
+
+                    if (selectedMode === 'coup' && !['2', '3', '4', '5', '6'].includes(maxPlayersSlider.value)) {
+                        maxPlayersSlider.value = '5';
                     }
 
                     if (Number(maxPlayersSlider.value) < sliderMin) {

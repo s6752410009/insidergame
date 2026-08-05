@@ -1,0 +1,643 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<style>
+  * { box-sizing: border-box; }
+
+  html.cp-active,
+  html.cp-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #12071a !important;
+  }
+  html.cp-active header,
+  html.cp-active .footer,
+  html.cp-active #music-controls { display: none !important; }
+  html.cp-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  html.cp-active .container-fluid > .row { margin: 0 !important; }
+  html.cp-active .col-lg-12 { padding: 0 !important; }
+
+  :root {
+    --cp-line: rgba(196, 141, 255, 0.16);
+    --cp-purple: #c48dff;
+    --cp-gold: #f5c86b;
+    --cp-red: #ff6b81;
+    --cp-text: #f4ecff;
+    --cp-muted: #9a8fb0;
+  }
+
+  body.content {
+    background:
+      radial-gradient(circle at 10% 5%, rgba(168, 85, 247, 0.20), transparent 26%),
+      radial-gradient(circle at 90% 0%, rgba(245, 200, 107, 0.10), transparent 22%),
+      linear-gradient(180deg, #12071a 0%, #1b0f2b 100%);
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  .cp-page { max-width: 960px; margin: 14px auto 32px; padding: 12px; color: var(--cp-text); }
+  .cp-shell {
+    border: 1px solid var(--cp-line); border-radius: 26px;
+    background: rgba(20, 10, 32, 0.92);
+    box-shadow: 0 28px 80px rgba(0,0,0,0.5); overflow: hidden;
+  }
+
+  .cp-topbar {
+    display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+    padding: 18px 20px; border-bottom: 1px solid var(--cp-line);
+    background: linear-gradient(135deg, rgba(168,85,247,0.14), rgba(18,7,26,0.9));
+  }
+  .cp-kicker { color: var(--cp-purple); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+  .cp-title { margin: 4px 0 0; font-family: 'Orbitron', sans-serif; font-size: clamp(1.3rem, 4vw, 1.9rem); }
+  .cp-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; justify-content: flex-end; }
+  .cp-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+    border: 1px solid var(--cp-line); background: rgba(255,255,255,0.04);
+    font-size: 0.88rem; font-weight: 600; color: var(--cp-text); cursor: default; font-family: inherit;
+  }
+  .cp-chip-btn { cursor: pointer; }
+  .cp-chip-danger { border-color: rgba(255,107,129,0.35); color: #ffc9d1; }
+
+  /* แถบบอกว่าตอนนี้ต้องทำอะไร — จุดสำคัญที่สุดของหน้านี้ */
+  .cp-now {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--cp-line);
+    background: rgba(0,0,0,0.22);
+  }
+  .cp-now.is-mine { background: linear-gradient(90deg, rgba(245,200,107,0.16), rgba(0,0,0,0.22)); }
+  .cp-now-label { color: var(--cp-purple); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .cp-now-copy { font-size: 1.02rem; }
+  .cp-timer { margin-left: auto; font-family: 'Orbitron', sans-serif; font-size: 1.25rem; color: var(--cp-gold); }
+
+  .cp-grid { padding: 16px 20px 22px; display: grid; gap: 14px; }
+
+  .cp-card {
+    border: 1px solid var(--cp-line); border-radius: 18px;
+    background: rgba(0,0,0,0.2); padding: 14px;
+  }
+  .cp-card-title { font-size: 1rem; font-weight: 700; color: var(--cp-purple); margin-bottom: 10px; }
+
+  /* ---- มือของเรา ---- */
+  .cp-hand { display: flex; gap: 12px; flex-wrap: wrap; }
+  .cp-influence {
+    position: relative; width: 116px; border-radius: 14px; overflow: hidden;
+    border: 1px solid rgba(245,200,107,0.35); background: #1c1030; text-align: center;
+  }
+  .cp-influence.is-revealed { opacity: 0.42; filter: grayscale(1); border-color: rgba(255,255,255,0.12); }
+  .cp-influence img, .cp-influence .cp-emoji {
+    display: block; width: 100%; height: 108px; object-fit: cover;
+  }
+  .cp-influence .cp-emoji { display: flex; align-items: center; justify-content: center; font-size: 2.6rem; background: rgba(255,255,255,0.05); }
+  .cp-influence-name { padding: 6px 4px; font-weight: 700; font-size: 0.86rem; }
+  .cp-influence-power { padding: 0 6px 8px; font-size: 0.72rem; color: var(--cp-muted); line-height: 1.3; }
+  .cp-influence.is-pick { cursor: pointer; }
+  .cp-influence.is-pick:hover, .cp-influence.is-selected { border-color: var(--cp-gold); box-shadow: 0 0 0 2px rgba(245,200,107,0.5); }
+
+  .cp-coins { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: var(--cp-gold); }
+
+  /* ---- ผู้เล่นคนอื่น ---- */
+  .cp-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .cp-player {
+    border: 1px solid var(--cp-line); border-radius: 14px; padding: 10px;
+    background: rgba(255,255,255,0.03);
+  }
+  .cp-player.is-current { border-color: var(--cp-gold); box-shadow: 0 0 0 1px rgba(245,200,107,0.35); }
+  .cp-player.is-out { opacity: 0.4; }
+  .cp-player-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .cp-player-name { font-weight: 700; font-size: 0.94rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cp-player-stats { display: flex; gap: 10px; font-size: 0.84rem; color: var(--cp-muted); }
+  .cp-backs { display: inline-flex; gap: 3px; }
+  .cp-back { width: 13px; height: 19px; border-radius: 3px; background: linear-gradient(160deg,#6d28d9,#3b0764); border: 1px solid rgba(255,255,255,0.18); }
+  .cp-dead-card { font-size: 0.72rem; color: #ff9aa8; }
+
+  /* ---- ปุ่มแอ็กชัน ---- */
+  .cp-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .cp-action {
+    display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+    padding: 12px; border-radius: 14px; cursor: pointer; text-align: left;
+    border: 1px solid var(--cp-line); background: rgba(255,255,255,0.04);
+    color: var(--cp-text); font-family: inherit; font-size: 0.95rem;
+  }
+  .cp-action:hover:not(:disabled) { border-color: rgba(196,141,255,0.5); background: rgba(196,141,255,0.1); }
+  .cp-action:disabled { opacity: 0.45; cursor: not-allowed; }
+  .cp-action-head { font-weight: 700; }
+  .cp-action-detail { font-size: 0.76rem; color: var(--cp-muted); line-height: 1.35; }
+  .cp-action-claim { font-size: 0.72rem; color: var(--cp-gold); }
+
+  .cp-respond { display: flex; gap: 10px; flex-wrap: wrap; }
+  .cp-btn {
+    padding: 11px 18px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 700; font-size: 0.95rem;
+  }
+  .cp-btn-pass { background: rgba(255,255,255,0.1); color: var(--cp-text); }
+  .cp-btn-challenge { background: linear-gradient(135deg, #ff6b81, #c81e3a); color: #fff; }
+  .cp-btn-block { background: linear-gradient(135deg, #a855f7, #6d28d9); color: #fff; }
+  .cp-btn-primary { background: linear-gradient(135deg, #f5c86b, #d99a24); color: #2a1a05; }
+  .cp-btn-outline { background: transparent; border: 1px solid var(--cp-line); color: var(--cp-text); }
+
+  .cp-feed { display: grid; gap: 6px; max-height: 190px; overflow-y: auto; }
+  .cp-feed-item { font-size: 0.88rem; color: #d8ccec; padding: 5px 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+
+  .cp-empty { text-align: center; color: var(--cp-muted); padding: 18px 10px; }
+
+  .cp-result { text-align: center; padding: 16px 8px; }
+  .cp-result h3 { font-family: 'Orbitron', sans-serif; font-size: 1.35rem; color: var(--cp-gold); margin: 0 0 8px; }
+
+  /* แชทกลาง แต่งสีให้เข้าธีมม่วง */
+  .chat-box {
+    --chat-accent: #a855f7; --chat-accent-dark: #6d28d9;
+    --chat-surface: linear-gradient(135deg, #1b0f2b 0%, #12071a 100%);
+    --chat-border: rgba(196,141,255,0.24); --chat-bubble: #2a1740;
+    font-family: 'Rajdhani', sans-serif;
+  }
+  .chat-toggle { --chat-toggle-bg: linear-gradient(135deg, #a855f7, #6d28d9); border-radius: 999px; padding: 12px 18px; }
+  .btn-chat-send { --chat-send-bg: linear-gradient(135deg, #f5c86b, #d99a24); --chat-send-color: #2a1a05; }
+
+  .cp-sidebar {
+    position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
+    background: #1b0f2b; border-left: 1px solid var(--cp-line);
+    padding: 18px; z-index: 9000; transition: right 0.25s ease; overflow-y: auto;
+  }
+  .cp-sidebar.open { right: 0; }
+  .cp-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 8999; }
+
+  @media (max-width: 640px) {
+    .cp-topbar, .cp-grid, .cp-now { padding-left: 14px; padding-right: 14px; }
+    .cp-influence { width: calc(50% - 6px); }
+  }
+</style>
+
+<div id="connectionStatus" class="cp-chip cp-chip-danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+
+<div class="cp-page">
+  <div class="cp-shell">
+    <header class="cp-topbar">
+      <div>
+        <div class="cp-kicker">👑 เกมโค่นอำนาจ</div>
+        <h1 class="cp-title"><%= room.name %></h1>
+      </div>
+      <div class="cp-meta">
+        <span class="cp-chip">🆔 <%= room.roomId %></span>
+        <span class="cp-chip">🃏 กองกลาง <span id="deckCount">-</span></span>
+        <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn">📖 วิธีเล่น</button>
+        <button type="button" id="toggleSidebarBtn" class="cp-chip cp-chip-btn">👥 ผู้เล่น</button>
+        <% if (room.admin) { %>
+        <button type="button" id="cpEndGameBtn" class="cp-chip cp-chip-btn cp-chip-danger">⏹ จบเกม</button>
+        <% } %>
+      </div>
+    </header>
+
+    <div id="cpNowBar" class="cp-now">
+      <span class="cp-now-label">ตอนนี้</span>
+      <span id="cpNowCopy" class="cp-now-copy">กำลังโหลด...</span>
+      <span id="cpTimer" class="cp-timer">--</span>
+    </div>
+
+    <div class="cp-grid">
+      <section class="cp-card">
+        <div class="cp-card-title">🎴 การ์ดของคุณ · <span class="cp-coins">💰 <span id="myCoins">0</span></span></div>
+        <div id="myHand" class="cp-hand"></div>
+      </section>
+
+      <section class="cp-card">
+        <div class="cp-card-title">🎯 ตาของคุณ</div>
+        <div id="actionArea"><div class="cp-empty">รอเกมเริ่ม...</div></div>
+      </section>
+
+      <section class="cp-card">
+        <div class="cp-card-title">👥 ผู้เล่น</div>
+        <div id="playerGrid" class="cp-players"></div>
+      </section>
+
+      <section class="cp-card">
+        <div class="cp-card-title">📜 บันทึกเกม</div>
+        <div id="historyFeed" class="cp-feed"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="playerSidebar" class="cp-sidebar">
+  <h4 style="margin-top:0;">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="leaveRoomBtn" type="button" class="cp-btn cp-btn-outline" style="width:100%; margin-bottom:8px;">🚪 ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="cp-btn cp-btn-pass" style="width:100%;">ปิด</button>
+</div>
+<div id="sidebarOverlay" class="cp-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title">💬 แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/gameIcon.js"></script>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('cp-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = '<%= player.name %>';
+  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+
+  let currentState = <%- JSON.stringify(typeof coupState !== 'undefined' ? coupState : {}) %>;
+  let allowNavigation = false;
+  let pendingTargetAction = null;   // แอ็กชันที่รอให้เลือกเป้าหมาย
+  let exchangeSelection = [];
+
+  function escapeHtml(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+  }
+
+  function cardArt(card, height) {
+    if (!card) return '';
+    if (card.image) {
+      return '<img src="' + escapeHtml(card.image) + '" alt="' + escapeHtml(card.thaiName) + '" loading="lazy">';
+    }
+    return '<div class="cp-emoji">' + escapeHtml(card.icon || '🃏') + '</div>';
+  }
+
+  function avatarHtml(player, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({
+        avatar: player.avatar, avatarFrame: player.avatarFrame,
+        color: player.color, playerName: player.name
+      }, { size: size || 26 });
+    }
+    return '<span>' + escapeHtml(player.avatar || '👤') + '</span>';
+  }
+
+  // ---------- แถบ "ตอนนี้ต้องทำอะไร" ----------
+  function describeNow(state) {
+    const me = state.self;
+    if (state.phase === 'finished') {
+      return { text: '🏆 ' + (state.winner ? state.winner.name + ' เป็นผู้รอดคนสุดท้าย' : 'จบเกม'), mine: false };
+    }
+    if (me && !me.alive) return { text: 'คุณตกรอบแล้ว — ดูเกมต่อได้', mine: false };
+
+    if (state.phase === 'lose-influence' && state.pendingLoss) {
+      return state.pendingLoss.isMe
+        ? { text: '💥 คุณต้องหงายการ์ด 1 ใบ', mine: true }
+        : { text: 'รอ ' + state.pendingLoss.playerName + ' เลือกหงายการ์ด', mine: false };
+    }
+    if (state.phase === 'exchange') {
+      return state.pendingExchange && state.pendingExchange.options
+        ? { text: '🔄 เลือกการ์ดที่จะเก็บไว้', mine: true }
+        : { text: 'รอ ' + (state.pendingExchange?.waitingFor || 'ผู้เล่น') + ' แลกเปลี่ยนการ์ด', mine: false };
+    }
+    if (state.phase === 'block-respond' && state.pendingAction && state.pendingBlock) {
+      return state.pendingAction.actorId === playerId
+        ? { text: '🛡️ ' + state.pendingBlock.blockerName + ' อ้างว่ามี ' + state.pendingBlock.card.thaiName + ' — จะท้าไหม?', mine: true }
+        : { text: 'รอ ' + state.pendingAction.actorName + ' ตัดสินใจเรื่องการขวาง', mine: false };
+    }
+    if (state.phase === 'respond' && state.pendingAction) {
+      const p = state.pendingAction;
+      const desc = p.actorName + ' ประกาศ ' + p.action.thaiLabel + (p.targetName ? ' ใส่ ' + p.targetName : '');
+      return state.availableResponses
+        ? { text: '⚡ ' + desc + ' — เชื่อหรือไม่?', mine: true }
+        : { text: desc + ' · รออีก ' + (p.waitingFor?.length || 0) + ' คนตอบ', mine: false };
+    }
+    if (state.phase === 'action') {
+      return state.isMyTurn
+        ? { text: '🎯 ตาคุณแล้ว — เลือก 1 แอ็กชัน', mine: true }
+        : { text: 'รอ ' + (state.players.find(p => p.isCurrent)?.name || '...') + ' เลือกแอ็กชัน', mine: false };
+    }
+    return { text: 'รอเกมเริ่ม...', mine: false };
+  }
+
+  // ---------- มือของเรา ----------
+  function renderHand(state) {
+    const me = state.self;
+    $('#myCoins').text(me ? me.coins : 0);
+    if (!me) { $('#myHand').html('<div class="cp-empty">คุณไม่ได้อยู่ในเกมนี้</div>'); return; }
+
+    const needPick = state.phase === 'lose-influence' && state.pendingLoss?.isMe;
+    let html = me.influence.map(card =>
+      '<div class="cp-influence' + (needPick ? ' is-pick' : '') + '" data-card-id="' + escapeHtml(card.id) + '">' +
+        cardArt(card) +
+        '<div class="cp-influence-name">' + escapeHtml(card.icon + ' ' + card.thaiName) + '</div>' +
+        '<div class="cp-influence-power">' + escapeHtml(card.power || card.counter || '') + '</div>' +
+      '</div>').join('');
+
+    html += me.revealed.map(card =>
+      '<div class="cp-influence is-revealed">' + cardArt(card) +
+        '<div class="cp-influence-name">' + escapeHtml(card.thaiName) + '</div>' +
+        '<div class="cp-influence-power">หงายแล้ว</div>' +
+      '</div>').join('');
+
+    $('#myHand').html(html || '<div class="cp-empty">ตกรอบแล้ว</div>');
+  }
+
+  // ---------- พื้นที่ปุ่มหลัก ----------
+  function renderActionArea(state) {
+    const $area = $('#actionArea');
+    const me = state.self;
+
+    if (state.phase === 'finished') {
+      $area.html('<div class="cp-result"><h3>🏆 ' + escapeHtml(state.winner?.name || '-') + ' ชนะ!</h3>' +
+        (isRoomAdmin ? '<button type="button" id="cpRestartBtn" class="cp-btn cp-btn-primary">🎲 เล่นอีกรอบ</button> ' : '') +
+        '<button type="button" id="cpBackLobbyBtn" class="cp-btn cp-btn-outline">🏠 กลับห้อง</button></div>');
+      return;
+    }
+
+    if (me && !me.alive) { $area.html('<div class="cp-empty">คุณตกรอบแล้ว — รอดูผลได้เลย</div>'); return; }
+
+    // เลือกการ์ดที่จะหงาย
+    if (state.phase === 'lose-influence' && state.pendingLoss?.isMe) {
+      $area.html('<div class="cp-empty">เลือกการ์ดที่จะหงายจากมือด้านบน ⬆️</div>');
+      return;
+    }
+
+    // Ambassador เลือกการ์ด
+    if (state.phase === 'exchange' && state.pendingExchange?.options) {
+      const keep = state.pendingExchange.keepCount;
+      $area.html(
+        '<div style="margin-bottom:10px;">เลือกเก็บ <b>' + keep + '</b> ใบ (เลือกแล้ว <span id="exchangeCount">' + exchangeSelection.length + '</span>/' + keep + ')</div>' +
+        '<div class="cp-hand">' + state.pendingExchange.options.map((card, index) =>
+          '<div class="cp-influence is-pick' + (exchangeSelection.includes(index) ? ' is-selected' : '') + '" data-exchange-index="' + index + '">' +
+            cardArt(card) + '<div class="cp-influence-name">' + escapeHtml(card.icon + ' ' + card.thaiName) + '</div>' +
+          '</div>').join('') + '</div>' +
+        '<button type="button" id="cpExchangeConfirm" class="cp-btn cp-btn-primary" style="margin-top:12px;"' +
+          (exchangeSelection.length === keep ? '' : ' disabled') + '>ยืนยัน</button>');
+      return;
+    }
+
+    // ตอบโต้ (challenge / block / ผ่าน)
+    const respond = state.availableResponses;
+    if (respond) {
+      const p = state.pendingAction;
+      let html = '<div style="margin-bottom:10px;">' +
+        escapeHtml(p.actorName) + ' อ้างว่ามี <b>' + escapeHtml(p.action.thaiLabel) + '</b>' +
+        (p.claim ? ' (ต้องมี ' + escapeHtml(p.claim) + ')' : '') + '</div><div class="cp-respond">';
+      html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">✋ ปล่อยผ่าน</button>';
+      if (respond.canChallenge) {
+        html += '<button type="button" class="cp-btn cp-btn-challenge" data-respond="challenge">🔥 ' +
+          (respond.challengingBlock ? 'ท้าการขวาง' : 'ท้า (ไม่เชื่อ)') + '</button>';
+      }
+      (respond.blockOptions || []).forEach(option => {
+        html += '<button type="button" class="cp-btn cp-btn-block" data-respond="block" data-claim="' +
+          escapeHtml(option.id) + '">' + escapeHtml(option.icon + ' ขวางด้วย ' + option.thaiName) + '</button>';
+      });
+      $area.html(html + '</div>');
+      return;
+    }
+
+    // ตาเรา — เลือกแอ็กชัน
+    if (state.phase === 'action' && state.isMyTurn) {
+      const actions = state.availableActions || [];
+      if (pendingTargetAction) {
+        const targets = state.players.filter(p => p.alive && p.playerId !== playerId);
+        $area.html('<div style="margin-bottom:10px;">เลือกเป้าหมายสำหรับ <b>' +
+            escapeHtml(pendingTargetAction.thaiLabel) + '</b></div><div class="cp-respond">' +
+          targets.map(t => '<button type="button" class="cp-btn cp-btn-block" data-target="' +
+            escapeHtml(t.playerId) + '">' + escapeHtml(t.name) + '</button>').join('') +
+          '<button type="button" class="cp-btn cp-btn-pass" data-cancel-target="1">ยกเลิก</button></div>');
+        return;
+      }
+      $area.html(
+        (state.self?.mustCoup ? '<div style="color:var(--cp-red); margin-bottom:8px;">⚠️ มี 10 เหรียญขึ้นไป ต้องทำรัฐประหารเท่านั้น</div>' : '') +
+        '<div class="cp-actions">' + actions.map(action =>
+          '<button type="button" class="cp-action" data-action="' + escapeHtml(action.id) +
+            '" data-needs-target="' + (action.needsTarget ? '1' : '') + '">' +
+            '<span class="cp-action-head">' + escapeHtml(action.icon + ' ' + action.thaiLabel) +
+              (action.cost ? ' · จ่าย ' + action.cost : '') + '</span>' +
+            '<span class="cp-action-detail">' + escapeHtml(action.detail) + '</span>' +
+            (action.claim ? '<span class="cp-action-claim">ต้องอ้างว่ามี ' + escapeHtml(action.claim) + '</span>' : '') +
+          '</button>').join('') + '</div>');
+      return;
+    }
+
+    $area.html('<div class="cp-empty">รอตาของผู้เล่นคนอื่น...</div>');
+  }
+
+  function renderPlayers(state) {
+    $('#playerGrid').html((state.players || []).map(p =>
+      '<div class="cp-player' + (p.isCurrent ? ' is-current' : '') + (p.alive ? '' : ' is-out') + '">' +
+        '<div class="cp-player-top">' + avatarHtml(p, 26) +
+          '<span class="cp-player-name" style="color:' + escapeHtml(p.color || '#fff') + '">' +
+          escapeHtml(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</span></div>' +
+        '<div class="cp-player-stats">' +
+          '<span>💰 ' + p.coins + '</span>' +
+          '<span class="cp-backs">' + Array.from({ length: p.influenceCount }, () => '<span class="cp-back"></span>').join('') + '</span>' +
+        '</div>' +
+        (p.revealed.length
+          ? '<div class="cp-dead-card">หงาย: ' + p.revealed.map(c => escapeHtml(c.thaiName)).join(', ') + '</div>'
+          : '') +
+      '</div>').join(''));
+  }
+
+  function renderHistory(state) {
+    const items = state.history || [];
+    $('#historyFeed').html(items.length
+      ? items.map(item => '<div class="cp-feed-item">' + escapeHtml(item.icon + ' ' + item.text) + '</div>').join('')
+      : '<div class="cp-empty">ยังไม่มีเหตุการณ์</div>');
+  }
+
+  function updateTimer() {
+    const endsAt = currentState?.phaseEndsAt;
+    if (!endsAt || currentState.phase === 'finished') { $('#cpTimer').text('--'); return; }
+    const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    $('#cpTimer').text(left + ' วิ');
+  }
+
+  function renderState(state) {
+    if (!state || !state.players) return;
+    // เปลี่ยนเฟสแล้วล้างตัวเลือกค้าง กันกดพลาดข้ามเฟส
+    if (state.phase !== currentState.phase) { pendingTargetAction = null; exchangeSelection = []; }
+    currentState = state;
+
+    const now = describeNow(state);
+    $('#cpNowCopy').text(now.text);
+    $('#cpNowBar').toggleClass('is-mine', now.mine);
+    $('#deckCount').text(state.deckCount);
+
+    renderHand(state);
+    renderActionArea(state);
+    renderPlayers(state);
+    renderHistory(state);
+    updateTimer();
+  }
+
+  function sendCommand(event, payload) {
+    socket.emit(event, payload, function(res) {
+      if (res && !res.success) {
+        Swal.fire({ icon: 'warning', title: res.error || 'ทำรายการไม่สำเร็จ', background: '#1b0f2b', color: '#fff' });
+        socket.emit('coup_requestState', { roomId, playerId });
+      }
+    });
+  }
+
+  // ---------- ปุ่มต่างๆ ----------
+  $(document).on('click', '.cp-action', function() {
+    const actionId = $(this).attr('data-action');
+    const needsTarget = $(this).attr('data-needs-target');
+    const action = (currentState.availableActions || []).find(a => a.id === actionId);
+    if (!action) return;
+    if (needsTarget) { pendingTargetAction = action; renderActionArea(currentState); return; }
+    sendCommand('coup_submitAction', { actionId });
+  });
+
+  $(document).on('click', '[data-target]', function() {
+    if (!pendingTargetAction) return;
+    const targetPlayerId = $(this).attr('data-target');
+    const actionId = pendingTargetAction.id;
+    pendingTargetAction = null;
+    sendCommand('coup_submitAction', { actionId, targetPlayerId });
+  });
+
+  $(document).on('click', '[data-cancel-target]', function() {
+    pendingTargetAction = null;
+    renderActionArea(currentState);
+  });
+
+  $(document).on('click', '[data-respond]', function() {
+    sendCommand('coup_respond', {
+      response: $(this).attr('data-respond'),
+      claimCard: $(this).attr('data-claim') || null
+    });
+  });
+
+  // เลือกการ์ดหงายตอนเสีย influence
+  $(document).on('click', '.cp-influence.is-pick[data-card-id]', function() {
+    sendCommand('coup_loseInfluence', { cardId: $(this).attr('data-card-id') });
+  });
+
+  // เลือกการ์ดตอนแลกเปลี่ยน
+  $(document).on('click', '.cp-influence[data-exchange-index]', function() {
+    const index = Number($(this).attr('data-exchange-index'));
+    const keepCount = currentState.pendingExchange?.keepCount || 0;
+    const at = exchangeSelection.indexOf(index);
+    if (at >= 0) exchangeSelection.splice(at, 1);
+    else if (exchangeSelection.length < keepCount) exchangeSelection.push(index);
+    renderActionArea(currentState);
+  });
+
+  $(document).on('click', '#cpExchangeConfirm', function() {
+    const options = currentState.pendingExchange?.options || [];
+    sendCommand('coup_exchange', { keepCardIds: exchangeSelection.map(i => options[i].id) });
+    exchangeSelection = [];
+  });
+
+  $(document).on('click', '#cpRestartBtn', function() {
+    socket.emit('startGameFromLobby', { roomId }, function(res) {
+      if (res && !res.success) {
+        Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#1b0f2b', color: '#fff' });
+      }
+    });
+  });
+
+  $(document).on('click', '#cpBackLobbyBtn', function() {
+    allowNavigation = true;
+    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+  });
+
+  $('#cpHowToOpen').on('click', function() {
+    const cards = (currentState.cardCatalog || []);
+    Swal.fire({
+      title: '📖 วิธีเล่น Coup',
+      html: '<div style="text-align:left; color:#ddd; font-size:0.92em;">' +
+        '<p><b>เป้าหมาย:</b> เป็นคนสุดท้ายที่ยังเหลือการ์ดคว่ำ</p>' +
+        '<p><b>สำคัญ:</b> คุณ<b>โกหกได้</b> — ประกาศแอ็กชันของการ์ดที่ไม่มีก็ได้ แต่ถ้าโดนท้าแล้วไม่มีจริง จะเสียการ์ด 1 ใบ</p>' +
+        '<p><b>ทุกตาเลือก 1 อย่าง:</b> รับรายได้ (+1) · เงินช่วยเหลือ (+2) · รัฐประหาร (จ่าย 7 บังคับหงาย) หรือแอ็กชันของการ์ด</p>' +
+        '<p>มี 10 เหรียญขึ้นไป <b>ต้อง</b>ทำรัฐประหาร</p><hr style="border-color:#444;">' +
+        cards.map(c => '<p style="margin:6px 0;"><b>' + escapeHtml(c.icon + ' ' + c.thaiName) + '</b><br>' +
+          (c.power ? '⚡ ' + escapeHtml(c.power) + '<br>' : '') +
+          (c.counter ? '🛡️ ' + escapeHtml(c.counter) : '') + '</p>').join('') +
+        '</div>',
+      width: 560, background: '#1b0f2b', color: '#fff', confirmButtonText: 'เข้าใจแล้ว'
+    });
+  });
+
+  $('#cpEndGameBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบเกมและกลับห้องรอ?', showCancelButton: true,
+      confirmButtonText: 'จบเกม', cancelButtonText: 'ยกเลิก', background: '#1b0f2b', color: '#fff'
+    }).then(result => {
+      if (result.isConfirmed) socket.emit('resetGame');
+    });
+  });
+
+  function toggleSidebar() {
+    $('#playerSidebar').toggleClass('open');
+    $('#sidebarOverlay').toggle();
+  }
+  $('#toggleSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({
+      icon: 'question', title: 'ออกจากห้อง?', showCancelButton: true,
+      confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#1b0f2b', color: '#fff'
+    }).then(result => {
+      if (result.isConfirmed) {
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+      }
+    });
+  });
+
+  // ---------- socket ----------
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId, playerId });
+    socket.emit('coup_requestState', { roomId, playerId });
+  });
+  socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  socket.on('coupState', renderState);
+
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(p =>
+      '<li style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">' +
+        avatarHtml({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 26) +
+        '<span style="color:' + escapeHtml(p.color || '#fff') + '">' + escapeHtml(p.displayName || p.playerName) + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:var(--cp-muted);">ออฟไลน์</span>' : '') +
+      '</li>').join(''));
+  });
+
+  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: data?.reason || '', background: '#1b0f2b', color: '#fff' })
+      .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+
+  window.initChatPanel({ socket, playerId, playerName });
+
+  window.addEventListener('beforeunload', function(e) {
+    if (!allowNavigation) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  socket.emit('initPlayer', playerId);
+  socket.emit('setRoom', { roomId, playerId });
+  renderState(currentState);
+  setInterval(updateTimer, 500);
+  socket.emit('coup_requestState', { roomId, playerId });
+});
+</script>

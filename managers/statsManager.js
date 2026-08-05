@@ -103,7 +103,8 @@ function createDefaultModeStats() {
         insider: { games: 0, wins: 0, losses: 0 },
         werewolf: { games: 0, wins: 0, losses: 0 },
         blackmarket: { games: 0, wins: 0, losses: 0 },
-        spyfall: { games: 0, wins: 0, losses: 0 }
+        spyfall: { games: 0, wins: 0, losses: 0 },
+        coup: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -139,7 +140,7 @@ function normalizeGameHistoryEntry(entry) {
         return null;
     }
 
-    const mode = ['insider', 'werewolf', 'blackmarket', 'spyfall'].includes(entry.mode) ? entry.mode : 'insider';
+    const mode = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'].includes(entry.mode) ? entry.mode : 'insider';
     return {
         ...entry,
         mode,
@@ -190,7 +191,7 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
     });
 
     const rawModeStats = rawStat.modeStats || {};
-    ['insider', 'werewolf', 'blackmarket', 'spyfall'].forEach(mode => {
+    ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'].forEach(mode => {
         const modeStat = rawModeStats[mode] || {};
         stat.modeStats[mode] = {
             games: normalizeCounter(modeStat.games),
@@ -361,7 +362,55 @@ function recordGameEnd(roomId, gameResult) {
         return recordSpyfallGameEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'coup') {
+        return recordCoupGameEnd(roomId, gameResult);
+    }
+
     return recordInsiderGameEnd(roomId, gameResult);
+}
+
+/** Coup: ผู้รอดคนสุดท้ายชนะคนเดียว ที่เหลือแพ้ทั้งหมด (ไม่มีทีม) */
+function recordCoupGameEnd(roomId, gameResult) {
+    const { winner, players, roomName } = gameResult;
+    if (!winner || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid coup game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+
+    players.forEach(player => {
+        if (!player.playerId) return;
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        const playerWon = player.playerId === winner.playerId;
+
+        stat.totalGames += 1;
+        stat.modeStats.coup.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.coup.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.coup.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'coup',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            winnerName: winner.name || 'ไม่ทราบ',
+            resultText: playerWon ? 'รอดเป็นคนสุดท้าย' : `${winner.name || 'คนอื่น'} รอดเป็นคนสุดท้าย`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
 }
 
 function recordSpyfallGameEnd(roomId, gameResult) {

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Assassin">
+  <rect x="4" y="4" width="112" height="112" rx="16" fill="#1c1030"/>
+  <path d="M40 84 L74 34 L82 40 L48 90 Z" fill="#dbe4ff" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M36 88 L46 94 L52 86 L42 80 Z" fill="#6d28d9"/>
+  <circle cx="76" cy="30" r="7" fill="#ff6b81" opacity="0.85"/>
+</svg>

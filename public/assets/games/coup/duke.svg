@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Duke">
+  <rect x="4" y="4" width="112" height="112" rx="16" fill="#2a1740"/>
+  <path d="M30 74 L26 40 L44 54 L60 32 L76 54 L94 40 L90 74 Z" fill="#f5c86b" stroke="#d99a24" stroke-width="2"/>
+  <rect x="30" y="76" width="60" height="10" rx="3" fill="#d99a24"/>
+  <circle cx="44" cy="48" r="4" fill="#ff6b81"/><circle cx="60" cy="40" r="4" fill="#ff6b81"/><circle cx="76" cy="48" r="4" fill="#ff6b81"/>
+</svg>

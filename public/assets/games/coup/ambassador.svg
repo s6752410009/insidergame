@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Ambassador">
+  <rect x="4" y="4" width="112" height="112" rx="16" fill="#12301f"/>
+  <path d="M60 26 L86 60 L60 94 L34 60 Z" fill="none" stroke="#86efac" stroke-width="5"/>
+  <path d="M60 40 L74 60 L60 80 L46 60 Z" fill="#4ade80" opacity="0.8"/>
+  <path d="M22 60 L34 52 L34 68 Z" fill="#86efac"/><path d="M98 60 L86 52 L86 68 Z" fill="#86efac"/>
+</svg>
