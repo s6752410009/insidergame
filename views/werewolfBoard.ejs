@@ -5272,9 +5272,23 @@
       });
     }
 
+    // server ส่ง roleCatalog/rolePlan (ข้อมูลนิ่ง ~10KB) มาเฉพาะครั้งแรกและตอนเปลี่ยนจริง
+    // broadcast ถัดๆ ไปจะไม่มีมาด้วย — เติมของที่จำไว้กลับเข้า state ก่อน render
+    let cachedRoleCatalog = null;
+    let cachedRolePlan = null;
+
+    function restoreStaticRoleData(state) {
+      if (!state) return state;
+      if (Array.isArray(state.roleCatalog)) cachedRoleCatalog = state.roleCatalog;
+      else if (cachedRoleCatalog) state.roleCatalog = cachedRoleCatalog;
+      if (Array.isArray(state.rolePlan)) cachedRolePlan = state.rolePlan;
+      else if (cachedRolePlan) state.rolePlan = cachedRolePlan;
+      return state;
+    }
+
     socket.on('werewolfState', function(state) {
       setActionButtonsPending(false);
-      renderState(state);
+      renderState(restoreStaticRoleData(state));
     });
 
     socket.on('roomUpdate', function(payload) {

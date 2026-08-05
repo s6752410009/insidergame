@@ -3091,10 +3091,17 @@ function buildRoleNotes(room, viewer) {
     return notes;
 }
 
-function buildClientState(room, viewerPlayerId) {
+/**
+ * @param {Object} options { includeStatic } — false = ตัด roleCatalog/rolePlan ออก
+ *   ใช้เมื่อ client เครื่องนั้นได้ staticVersion เดียวกันไปแล้ว (ประหยัดแบนด์วิดท์)
+ */
+function buildClientState(room, viewerPlayerId, options = {}) {
+    const includeStatic = options.includeStatic !== false;
     const viewer = getPlayer(room, viewerPlayerId);
     const rolePlan = room.gameState.rolePlan?.length ? room.gameState.rolePlan : getRolePlan(room.players.length, room.settings);
     const enabledRoleIds = new Set(getConfiguredRoleIds(room.settings));
+    // เปลี่ยนเมื่อแผนบทหรือรายการบทที่เปิดใช้เปลี่ยนเท่านั้น
+    const staticVersion = rolePlan.map(r => r?.id || '').join(',') + '|' + [...enabledRoleIds].sort().join(',');
     const dayVoteTallies = getDayVoteTallies(room);
 
     return {
@@ -3132,11 +3139,17 @@ function buildClientState(room, viewerPlayerId) {
             voteWeight: getCurrentVoteWeight(player),
             voteCount: dayVoteTallies[player.playerId] || 0
         })),
-        rolePlan: rolePlan.map(serializePublicRole).filter(Boolean),
-        roleCatalog: Object.values(ROLE_DEFINITIONS).filter(role => role.id !== 'villager').map(role => ({
-            ...serializePublicRole(role),
-            enabledInRoom: enabledRoleIds.has(role.id)
-        })),
+        // roleCatalog + rolePlan เป็นข้อมูลนิ่ง (คำอธิบายบท/รูป) ไม่เปลี่ยนระหว่างเล่น
+        // แต่เดิมถูกยัดมาทุก broadcast = 9.7 KB จาก 14.8 KB ของ payload
+        // ส่ง staticVersion ไปด้วย ให้ผู้เรียกตัดสินใจว่าจะส่งซ้ำไหม (client จำของเดิมไว้)
+        staticVersion,
+        ...(includeStatic ? {
+            rolePlan: rolePlan.map(serializePublicRole).filter(Boolean),
+            roleCatalog: Object.values(ROLE_DEFINITIONS).filter(role => role.id !== 'villager').map(role => ({
+                ...serializePublicRole(role),
+                enabledInRoom: enabledRoleIds.has(role.id)
+            }))
+        } : {}),
         history: room.gameState.history || [],
         actionState: {
             completedDayDecisions: Array.from(getCompletedDayActorIds(room)).length,

@@ -1332,14 +1332,14 @@ function buildRoomUpdatePayload(room) {
     };
 }
 
-function buildWerewolfStatePayload(room, playerId) {
+function buildWerewolfStatePayload(room, playerId, options = {}) {
     if (!room || room.settings.gameMode !== 'werewolf') {
         return null;
     }
 
     finalizeWerewolfGameIfNeeded(room);
     const engine = getGameEngine('werewolf');
-    return engine.buildClientState(room, playerId);
+    return engine.buildClientState(room, playerId, options);
 }
 
 function buildBlackMarketStatePayload(room, playerId) {
@@ -1561,20 +1561,39 @@ function finalizeSpyfallGameIfNeeded(room) {
     notifyGameEndAfterRecord(room);
 }
 
+// จำว่า socket ไหนได้ roleCatalog/rolePlan เวอร์ชันอะไรไปแล้ว
+// ข้อมูลนิ่งพวกนี้กิน 2 ใน 3 ของ payload ส่งซ้ำทุก broadcast ไม่คุ้ม
+const werewolfStaticSentBySocket = new Map();
+
+function emitWerewolfStateToSocket(room, socketId, playerId) {
+    const room_ = room;
+    const lastVersion = werewolfStaticSentBySocket.get(socketId);
+    // ลองสร้างแบบย่อก่อน ถ้าเวอร์ชันไม่ตรงค่อยส่งเต็ม
+    let payload = buildWerewolfStatePayload(room_, playerId, { includeStatic: false });
+    if (!payload) {
+        return;
+    }
+    if (payload.staticVersion !== lastVersion) {
+        payload = buildWerewolfStatePayload(room_, playerId, { includeStatic: true });
+        werewolfStaticSentBySocket.set(socketId, payload.staticVersion);
+    }
+    io.to(socketId).emit('werewolfState', payload);
+}
+
 function emitWerewolfState(room, targetSocketId = null, playerId = null) {
     if (!room || room.settings.gameMode !== 'werewolf') {
         return;
     }
 
     if (targetSocketId && playerId) {
-        io.to(targetSocketId).emit('werewolfState', buildWerewolfStatePayload(room, playerId));
+        emitWerewolfStateToSocket(room, targetSocketId, playerId);
         emitWerewolfChatHistory(room, targetSocketId, playerId);
         return;
     }
 
     room.players.forEach(player => {
         if (player.socketId) {
-            io.to(player.socketId).emit('werewolfState', buildWerewolfStatePayload(room, player.playerId));
+            emitWerewolfStateToSocket(room, player.socketId, player.playerId);
             emitWerewolfChatHistory(room, player.socketId, player.playerId);
         }
     });
@@ -6522,6 +6541,7 @@ io.sockets.on('connection', function(socket) {
     socket.on('disconnect', function() {
         // ลบออกจาก adminSockets ถ้าเป็น admin
         adminSockets.delete(socket.id);
+        werewolfStaticSentBySocket.delete(socket.id);
         
         const roomId = socket.roomId;
         const playerId = socket.playerId;
