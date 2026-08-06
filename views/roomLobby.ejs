@@ -2327,7 +2327,22 @@
       }
       
       $area.append($msg);
+      trimLobbyChat($area[0]);
       $area[0].scrollTop = $area[0].scrollHeight;
+    }
+
+    // แชทยาวๆ เคยสะสมใน DOM ไม่จำกัด (วัดได้ 1,000 ข้อความ = 9,000 element, scroll 90,000px)
+    // server เก็บย้อนหลังแค่ 100 ข้อความ เก็บบนจอ 200 จึงเกินพอ — ตรงกับ chatPanel.js ของกระดาน
+    const MAX_LOBBY_CHAT = 200;
+    function trimLobbyChat(area) {
+      if (!area || area.children.length <= MAX_LOBBY_CHAT) return;
+      const before = area.scrollHeight;
+      while (area.children.length > MAX_LOBBY_CHAT) {
+        area.removeChild(area.firstElementChild);
+      }
+      // ตัดจากด้านบนทำให้ความสูงหาย ถ้ามีคนกำลังอ่านย้อนอยู่ต้องเลื่อนชดเชยไม่ให้ข้อความกระโดด
+      const shrank = before - area.scrollHeight;
+      if (shrank > 0) area.scrollTop = Math.max(0, area.scrollTop - shrank);
     }
 
     $('#btnSendLobbyChat').on('click', function () {

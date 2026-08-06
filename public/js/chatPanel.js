@@ -29,6 +29,21 @@
             return $('<div>').text(value == null ? '' : value).html();
         }
 
+        // แชทยาวๆ เคยสะสมใน DOM ไปเรื่อยๆ (วัดได้ 1,000 ข้อความ = 9,000 element, scroll 90,000px)
+        // server เก็บย้อนหลังแค่ 100 ข้อความอยู่แล้ว เก็บบนจอ 200 จึงเกินพอ
+        const MAX_CHAT_MESSAGES = 200;
+        function trimOldMessages(area) {
+            if (!area || area.children.length <= MAX_CHAT_MESSAGES) return;
+            const before = area.scrollHeight;
+            while (area.children.length > MAX_CHAT_MESSAGES) {
+                area.removeChild(area.firstElementChild);
+            }
+            // ตัดจากด้านบนทำให้ความสูงหาย ถ้ามีคนกำลังอ่านย้อนอยู่ต้องเลื่อนชดเชย
+            // ไม่งั้นข้อความจะกระโดดหนีสายตา
+            const shrank = before - area.scrollHeight;
+            if (shrank > 0) area.scrollTop = Math.max(0, area.scrollTop - shrank);
+        }
+
         function isChatOpen() {
             return $('#chatBox').is(':visible');
         }
@@ -164,6 +179,7 @@
                 $info
             );
             $msgArea.append($wrapper);
+            trimOldMessages($msgArea[0]);
             $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
 
             if (!renderSettings.silent && !isChatOpen()) {
