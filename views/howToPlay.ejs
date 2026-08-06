@@ -283,6 +283,151 @@
     .guide-coup-roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
+  /* ===== สอน Coup แบบเห็นภาพ =====
+     กติกาแบบลิสต์อ่านแล้วยังเล่นไม่เป็น เพราะของยากคือ "ลำดับตอบโต้"
+     ส่วนนี้เลยเป็นลำดับขั้น + ตัวอย่างเล่นจริง แทนการเพิ่มบูลเล็ต */
+
+  .guide-sub {
+    margin: 26px 0 12px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.06rem;
+    font-weight: 700;
+    color: #d4b3ff;
+  }
+
+  .guide-steps {
+    display: grid;
+    gap: 10px;
+    counter-reset: coupstep;
+  }
+
+  .guide-step {
+    position: relative;
+    padding: 12px 14px 12px 46px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(196, 141, 255, 0.18);
+    line-height: 1.6;
+  }
+
+  .guide-step::before {
+    counter-increment: coupstep;
+    content: counter(coupstep);
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(124, 58, 237, 0.4);
+    border: 1px solid rgba(196, 141, 255, 0.45);
+    color: #e9ddff;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .guide-step strong { color: var(--guide-ink); }
+  .guide-step .guide-step-note { color: var(--guide-muted); font-size: 0.92em; }
+
+  /* ท้า กับ ขวาง สับสนกันบ่อยที่สุด วางคู่กันให้เทียบเห็นๆ */
+  .guide-versus {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .guide-versus-side {
+    padding: 14px;
+    border-radius: 14px;
+    line-height: 1.6;
+  }
+
+  .guide-versus-side h4 {
+    margin: 0 0 8px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1rem;
+  }
+
+  .guide-versus-side p { margin: 0 0 6px; font-size: 0.94rem; }
+  .guide-versus-side p:last-child { margin-bottom: 0; }
+
+  .guide-versus-side.is-challenge {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+  }
+  .guide-versus-side.is-challenge h4 { color: #ffa8b4; }
+
+  .guide-versus-side.is-block {
+    background: rgba(124, 58, 237, 0.12);
+    border: 1px solid rgba(196, 141, 255, 0.3);
+  }
+  .guide-versus-side.is-block h4 { color: #d4b3ff; }
+
+  /* ตัวอย่างเล่นจริง — ทำหน้าตาเหมือนบันทึกเกมในกระดาน */
+  .guide-replay {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(196, 141, 255, 0.2);
+    margin-bottom: 12px;
+  }
+
+  .guide-replay-title {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    color: #d4b3ff;
+    margin-bottom: 10px;
+  }
+
+  .guide-replay-line {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 7px 0;
+    line-height: 1.58;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .guide-replay-line:first-of-type { border-top: 0; }
+  .guide-replay-line .guide-replay-ico { font-size: 1.05em; text-align: center; }
+  .guide-replay-line b { color: var(--guide-ink); }
+
+  .guide-replay-out {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(110, 231, 183, 0.3);
+    color: #b8f5da;
+    font-weight: 600;
+    line-height: 1.55;
+  }
+  .guide-replay-out.is-bad {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.3);
+    color: #ffc7ce;
+  }
+
+  .guide-tips { display: grid; gap: 8px; }
+  .guide-tip {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(245, 200, 107, 0.09);
+    border: 1px solid rgba(245, 200, 107, 0.26);
+    color: #f0e2c4;
+    line-height: 1.6;
+  }
+  .guide-tip strong { color: #f5c86b; }
+
+  @media (max-width: 560px) {
+    .guide-versus { grid-template-columns: 1fr; }
+    .guide-step { padding-left: 42px; }
+  }
+
   .guide-card h2,
   .guide-card h3 {
     margin: 0;
@@ -494,7 +639,7 @@
       </div>
     </article>
 
-    <article class="guide-card mode-coup">
+    <article class="guide-card mode-coup" id="coup">
       <div class="guide-mode-badge">👑 Coup</div>
       <h2>โกหกได้ ท้าได้ ใครรอดคนสุดท้ายชนะ</h2>
       <p>ทุกคนได้การ์ดตัวละครคว่ำไว้ 2 ใบ ในตาของตัวเองประกาศใช้พลังของตัวละครใดก็ได้ <strong>แม้ไม่มีการ์ดใบนั้นจริง</strong> ใครไม่เชื่อก็ท้าเปิดได้ ถ้าโกหกแล้วโดนจับ เสียการ์ด 1 ใบ ถ้าท้าผิด คนท้าเสียเอง</p>
@@ -531,6 +676,77 @@
           <strong>🛡️ ท่านหญิง</strong>
           <span>ขวางการลอบสังหารได้</span>
         </article>
+      </div>
+
+      <h3 class="guide-sub">หนึ่งตาเล่นยังไง — เรียงตามลำดับ</h3>
+      <div class="guide-steps">
+        <div class="guide-step">
+          <strong>ถึงตาคุณ เลือกทำ 1 อย่าง</strong><br>
+          <span class="guide-step-note">จะเลือกท่าที่ต้องมีการ์ด (เก็บภาษี ลอบสังหาร ขโมย แลกเปลี่ยน) ทั้งที่ไม่มีการ์ดใบนั้นก็ได้ — นี่คือการโกหก และมันถูกกติกา</span>
+        </div>
+        <div class="guide-step">
+          <strong>คนอื่นเลือกได้ 3 ทาง: เชื่อ / ท้า / ขวาง</strong><br>
+          <span class="guide-step-note">ถ้าทุกคนกดผ่าน = ท่าของคุณสำเร็จทันที ไม่ต้องเปิดการ์ดให้ใครดูเลย</span>
+        </div>
+        <div class="guide-step">
+          <strong>ถ้ามีคนท้า ต้องพิสูจน์</strong><br>
+          <span class="guide-step-note">มีการ์ดจริง → เปิดโชว์ คนท้าเสียการ์ด 1 ใบ แล้วคุณเอาใบนั้นสับคืนกองจั่วใบใหม่<br>ไม่มีจริง → คุณเสียการ์ด 1 ใบ ท่านั้นเป็นโมฆะ</span>
+        </div>
+        <div class="guide-step">
+          <strong>ถ้ามีคนขวาง ท่าของคุณจะถูกยกเลิก</strong><br>
+          <span class="guide-step-note">แต่คนขวางก็อ้างการ์ดเหมือนกัน คุณเลยท้าเขากลับได้ — <strong>และคนอื่นในวงก็ท้าแทนได้ด้วย</strong></span>
+        </div>
+        <div class="guide-step">
+          <strong>จบตา ไปคนถัดไป</strong><br>
+          <span class="guide-step-note">ใครเสียการ์ดครบ 2 ใบคือตกรอบ เหลือคนสุดท้ายคือผู้ชนะ</span>
+        </div>
+      </div>
+
+      <h3 class="guide-sub">ท้า กับ ขวาง ไม่เหมือนกัน</h3>
+      <div class="guide-versus">
+        <div class="guide-versus-side is-challenge">
+          <h4>🔥 ท้า — "ฉันไม่เชื่อว่าแกมี"</h4>
+          <p>เดิมพันด้วยการ์ดของตัวเอง มีคนเสียการ์ดเสมอ ไม่คุณก็เขา</p>
+          <p>ใช้ได้กับทุกอย่างที่มีการอ้างการ์ด <strong>รวมถึงการขวางด้วย</strong></p>
+        </div>
+        <div class="guide-versus-side is-block">
+          <h4>🛡️ ขวาง — "การ์ดฉันกันท่านี้ได้"</h4>
+          <p>ไม่มีใครเสียการ์ด แค่ยกเลิกท่านั้น แต่คุณกำลังอ้างการ์ดอยู่</p>
+          <p>ขวางได้เฉพาะบางท่า และต้องมีการ์ดที่กันท่านั้นได้ (หรือแกล้งทำเป็นมี)</p>
+        </div>
+      </div>
+
+      <h3 class="guide-sub">ลองดูของจริง 3 สถานการณ์</h3>
+
+      <div class="guide-replay">
+        <div class="guide-replay-title">① โกหกแล้วรอด — ไม่มีใครกล้าท้า</div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">👑</span><span><b>เอ</b> ประกาศ "เก็บภาษี" เอา 3 เหรียญ (อ้างว่ามีดยุค — จริงๆ ในมือมีนักฆ่ากับกัปตัน)</span></div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">✋</span><span><b>บี</b> และ <b>ซี</b> กดผ่าน ไม่มีใครกล้าเสี่ยง</span></div>
+        <div class="guide-replay-out">เอได้ 3 เหรียญไปเต็มๆ และไม่มีใครรู้ว่าเอไม่มีดยุค — โกหกที่ไม่โดนท้าก็เหมือนพูดจริง</div>
+      </div>
+
+      <div class="guide-replay">
+        <div class="guide-replay-title">② โกหกแล้วโดนจับ</div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">👑</span><span><b>เอ</b> ประกาศ "เก็บภาษี" อีกรอบ</span></div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">🔥</span><span><b>บี</b> ไม่เชื่อแล้ว กด <b>ท้า</b></span></div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">🃏</span><span>เอต้องเปิดการ์ด — ไม่มีดยุคจริง</span></div>
+        <div class="guide-replay-out is-bad">เอเสียการ์ด 1 ใบ และไม่ได้เหรียญเลย · ถ้าเอ<b>มี</b>ดยุคจริง คนที่เสียการ์ดจะเป็นบีแทน</div>
+      </div>
+
+      <div class="guide-replay">
+        <div class="guide-replay-title">③ ขวางแล้วโดนท้าซ้อน — จุดที่คนใหม่งงที่สุด</div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">🗡️</span><span><b>เอ</b> จ่าย 3 เหรียญ ประกาศ "ลอบสังหาร" ใส่ <b>บี</b></span></div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">🛡️</span><span><b>บี</b> กด <b>ขวาง</b> อ้างว่ามีท่านหญิง (จริงๆ ไม่มี — บีแค่ไม่อยากเสียการ์ด)</span></div>
+        <div class="guide-replay-line"><span class="guide-replay-ico">🔥</span><span><b>ซี</b> ซึ่งไม่เกี่ยวอะไรด้วยเลย กด <b>ท้าการขวาง</b> ของบี</span></div>
+        <div class="guide-replay-out is-bad">บีไม่มีท่านหญิงจริง → บีเสียการ์ดจากการโกหก แล้ว<b>ยังโดนลอบสังหารต่อ</b> เสียอีกใบ = ตกรอบทันที<br>เหรียญ 3 ที่เอจ่ายไปแล้วไม่ได้คืนไม่ว่าผลจะออกทางไหน</div>
+      </div>
+
+      <h3 class="guide-sub">มือใหม่พลาดตรงไหนบ่อย</h3>
+      <div class="guide-tips">
+        <div class="guide-tip"><strong>รีบท้าตั้งแต่ตาแรก</strong> — ตอนทุกคนยังมี 2 ใบ ท้าผิดเจ็บพอๆ กับโดนจับโกหก รอให้เขาอ้างการ์ดใบเดิมซ้ำหลายรอบก่อนค่อยท้าจะคุ้มกว่า</div>
+        <div class="guide-tip"><strong>ลืมว่ารัฐประหารท้าไม่ได้ ขวางไม่ได้</strong> — มี 7 เหรียญเมื่อไหร่คือเก็บแต้มตายได้แน่นอน ไม่ต้องลุ้นอะไรเลย</div>
+        <div class="guide-tip"><strong>ปล่อยให้เหรียญถึง 10</strong> — พอครบ 10 จะถูกบังคับทำรัฐประหาร เลือกท่าอื่นไม่ได้อีก คนอื่นจะเดาตาคุณออกหมด</div>
+        <div class="guide-tip"><strong>อ้างการ์ดที่เพิ่งเห็นคนอื่นเปิด</strong> — การ์ดมีชนิดละ 3 ใบเท่านั้น ถ้าเปิดไปแล้ว 2 ใบ คนอื่นจะรู้ทันทีว่าโอกาสที่คุณมีเหลือน้อยมาก</div>
       </div>
     </article>
   </section>

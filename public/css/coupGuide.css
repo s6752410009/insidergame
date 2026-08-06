@@ -267,3 +267,23 @@
   font-size: 0.84em;
   text-align: center;
 }
+
+/* ทางไปหน้าสอนเล่นแบบเต็ม (มีตัวอย่างเล่นจริงทีละตา) */
+.cpg-more {
+  display: block;
+  margin: 10px 0 2px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(196, 181, 253, 0.32);
+  color: #ddd6fe;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cpg-more:hover {
+  background: rgba(124, 58, 237, 0.3);
+  border-color: rgba(196, 181, 253, 0.6);
+  color: #fff;
+}
