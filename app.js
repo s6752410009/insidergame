@@ -1063,7 +1063,8 @@ const GAME_MODE_LOG_STYLES = {
     insider: { label: 'Insider', emoji: '🎯', badgeBg: 'rgba(52,152,219,0.18)', badgeColor: '#d6ebff' },
     werewolf: { label: 'Werewolf', emoji: '🐺', badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
     blackmarket: { label: 'Black Market', emoji: '🎩', badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
-    spyfall: { label: 'Spyfall', emoji: '🕵️', badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' }
+    spyfall: { label: 'Spyfall', emoji: '🕵️', badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
+    coup: { label: 'Coup', emoji: '👑', badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' }
 };
 
 function getGameModeLogStyle(gameMode) {

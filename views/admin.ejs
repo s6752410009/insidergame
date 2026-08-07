@@ -1293,6 +1293,8 @@
                             <option value="werewolf">Werewolf</option>
                             <option value="blackmarket">Black Market</option>
                             <option value="spyfall">Spyfall</option>
+                        <option value="coup">Coup</option>
+                            <option value="coup">Coup</option>
                         </select>
                         <select id="roomStatusFilter" class="search-box" style="width: auto;">
                             <option value="all">ทุกสถานะ</option>
@@ -1375,6 +1377,7 @@
                             <option value="has-werewolf">มี Werewolf</option>
                             <option value="has-blackmarket">มี Black Market</option>
                             <option value="has-spyfall">มี Spyfall</option>
+                            <option value="has-coup">มี Coup</option>
                         </select>
                     </div>
                     <button class="btn-admin btn-warning" onclick="resetSeason()" id="resetSeasonBtn" style="display:none;">🏆 ปิด Season / รีแรงค์</button>
@@ -1433,6 +1436,7 @@
                         <option value="werewolf">Werewolf</option>
                         <option value="blackmarket">Black Market</option>
                         <option value="spyfall">Spyfall</option>
+                        <option value="coup">Coup</option>
                     </select>
                     <button class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง Logs</button>
                     <button class="btn-admin btn-success" onclick="exportLogs()">📥 Export</button>
@@ -1612,12 +1616,14 @@ $(function() {
         const werewolf = modeStats?.werewolf || {};
         const blackmarket = modeStats?.blackmarket || {};
         const spyfall = modeStats?.spyfall || {};
+        const coup = modeStats?.coup || {};
         return `
             <div style="display:grid; gap:6px; min-width:170px;">
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🎯 Insider ${insider.games || 0} เกม</span><span class="status-badge status-online">🏆 ${insider.wins || 0}W</span><span class="status-badge status-offline">💀 ${insider.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">🐺 Werewolf ${werewolf.games || 0} เกม</span><span class="status-badge status-online">🏆 ${werewolf.wins || 0}W</span><span class="status-badge status-offline">💀 ${werewolf.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">🎩 Black Market ${blackmarket.games || 0} เกม</span><span class="status-badge status-online">🏆 ${blackmarket.wins || 0}W</span><span class="status-badge status-offline">💀 ${blackmarket.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🕵️ Spyfall ${spyfall.games || 0} เกม</span><span class="status-badge status-online">🏆 ${spyfall.wins || 0}W</span><span class="status-badge status-offline">💀 ${spyfall.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">👑 Coup ${coup.games || 0} เกม</span><span class="status-badge status-online">🏆 ${coup.wins || 0}W</span><span class="status-badge status-offline">💀 ${coup.losses || 0}L</span></div>
             </div>
         `;
     }
@@ -2239,12 +2245,14 @@ $(function() {
             const hasWerewolf = Number(stat.modeStats?.werewolf?.games || 0) > 0;
             const hasBlackMarket = Number(stat.modeStats?.blackmarket?.games || 0) > 0;
             const hasSpyfall = Number(stat.modeStats?.spyfall?.games || 0) > 0;
+            const hasCoup = Number(stat.modeStats?.coup?.games || 0) > 0;
             const matchesSearch = !search || haystack.includes(search);
             const matchesMode = modeFilter === 'all'
                 || (modeFilter === 'has-insider' && hasInsider)
                 || (modeFilter === 'has-werewolf' && hasWerewolf)
                 || (modeFilter === 'has-blackmarket' && hasBlackMarket)
-                || (modeFilter === 'has-spyfall' && hasSpyfall);
+                || (modeFilter === 'has-spyfall' && hasSpyfall)
+                || (modeFilter === 'has-coup' && hasCoup);
             return matchesSearch && matchesMode;
         });
 
@@ -3511,19 +3519,22 @@ $(function() {
         insider: { badgeBg: 'rgba(52,152,219,0.18)', badgeColor: '#d6ebff' },
         werewolf: { badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
         blackmarket: { badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
-        spyfall: { badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' }
+        spyfall: { badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
+        coup: { badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' }
     };
     const ROOM_MODE_LABELS = {
         insider: '🎯 Insider',
         werewolf: '🐺 Werewolf',
         blackmarket: '🎩 Black Market',
-        spyfall: '🕵️ Spyfall'
+        spyfall: '🕵️ Spyfall',
+        coup: '👑 Coup'
     };
     const ROOM_MODE_STATUS_CLASS = {
         insider: 'status-online',
         werewolf: 'status-banned',
         blackmarket: 'status-playing',
-        spyfall: 'status-online'
+        spyfall: 'status-online',
+        coup: 'status-waiting'
     };
 
     function formatRoomModeLabel(gameMode) {
