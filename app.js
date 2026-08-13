@@ -1134,6 +1134,17 @@ function buildGameEndNotification(room) {
         };
     }
 
+    if (mode === 'coup') {
+        const winnerName = gameState.winner?.name || 'ไม่ทราบ';
+        return {
+            chatMessage: `เกมจบ! ${winnerName} เป็นผู้รอดคนสุดท้าย`,
+            chatColor: '#f39c12',
+            logMessage: `👑 Coup จบ — ${winnerName} ชนะ · ${playerCount} คน`,
+            logType: 'success',
+            meta: { winnerName, playerCount, turnNumber: gameState.turnNumber || 0 }
+        };
+    }
+
     if (mode === 'insider' && gameState.resultVote2) {
         const result = gameState.resultVote2;
         const traitorName = result.finalTraitorName || 'ไม่ทราบ';
@@ -2223,8 +2234,35 @@ function emitCoupState(room, targetSocketId = null, playerId = null) {
     });
 }
 
+function flushCoupHistoryToLogs(room) {
+    if (!room || room.settings?.gameMode !== 'coup') return;
+    const history = room.gameState?.history;
+    if (!Array.isArray(history) || !history.length) return;
+
+    const lastAt = Number(room.gameState.lastLoggedHistoryAt) || 0;
+    const fresh = history
+        .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
+        .sort((left, right) => new Date(left.at) - new Date(right.at));
+
+    fresh.forEach(item => {
+        addServerLog(
+            io,
+            'game',
+            room.roomId,
+            `👑 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
+            item.kind === 'winner' ? 'success' : 'info',
+            { gameMode: 'coup', meta: { kind: item.kind || null, event: 'coup_history' } }
+        );
+    });
+
+    if (fresh.length) {
+        room.gameState.lastLoggedHistoryAt = new Date(fresh[fresh.length - 1].at).getTime();
+    }
+}
+
 function emitCoupRoomState(room) {
     if (!room || room.settings.gameMode !== 'coup') return;
+    flushCoupHistoryToLogs(room);
     finalizeCoupGameIfNeeded(room);
     emitCoupState(room);
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
@@ -2242,8 +2280,7 @@ function finalizeCoupGameIfNeeded(room) {
     });
     state.statsRecordedAt = new Date().toISOString();
     clearCoupPhaseTimer(room.roomId);
-    sendChatMessageToRoom(io, room.roomId, 'System',
-        `เกมจบ! ${state.winner.name} เป็นผู้รอดคนสุดท้าย`, '#f39c12');
+    notifyGameEndAfterRecord(room);
 }
 
 // Broadcast เกมตามโหมดของห้อง ใช้เวลา state เปลี่ยนนอก flow ปกติ (เช่น คนออก/หลุดกลางเกม)
@@ -3958,6 +3995,8 @@ io.sockets.on('connection', function(socket) {
             emitBlackMarketState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'spyfall') {
             emitSpyfallState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'coup') {
+            emitCoupState(refreshedRoom, socket.id, playerId);
         }
     });
 
@@ -3980,6 +4019,7 @@ io.sockets.on('connection', function(socket) {
             clearBlackMarketPhaseTimer(roomId);
             clearSpyfallPhaseTimer(roomId);
             clearSpyfallReturnTimer(roomId);
+            clearCoupPhaseTimer(roomId);
             if (roomCountdowns.has(roomId)) {
                 clearInterval(roomCountdowns.get(roomId));
                 roomCountdowns.delete(roomId);
@@ -4013,6 +4053,8 @@ io.sockets.on('connection', function(socket) {
                 emitBlackMarketState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'spyfall') {
                 emitSpyfallRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'coup') {
+                emitCoupRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -5077,8 +5119,8 @@ io.sockets.on('connection', function(socket) {
                 return callback({ success: false, error: 'ไม่พบห้อง' });
             }
 
-            const inGameStatuses = ['role', 'word', 'vote1', 'vote2', 'in_progress'];
-            const isPlaying = inGameStatuses.includes(room.gameState.status);
+            const isPlaying = roomManager.isRoomGameInProgress(room);
+            const isCoup = room.settings?.gameMode === 'coup';
             
             const players = room.players.map(p => ({
                 id: p.playerId,
@@ -5094,13 +5136,14 @@ io.sockets.on('connection', function(socket) {
                     roomId: room.roomId,
                     name: room.name,
                     gameMode: room.settings?.gameMode || null,
-                    gameStatus: isPlaying ? 'playing' : 'waiting',
-                    gamePhase: room.gameState.status || null,
+                    gameStatus: isPlaying ? 'playing' : (roomManager.isRoomGameFinished(room) ? 'finished' : 'waiting'),
+                    gamePhase: room.gameState.phase || room.gameState.status || null,
                     locked: room.settings?.locked || false,
                     maxPlayers: room.settings?.maxPlayers,
                     currentWord: isPlaying ? room.gameState.word : null,
                     players,
-                    chatHistory: buildAdminChatHistory(room)
+                    chatHistory: buildAdminChatHistory(room),
+                    gameHistory: isCoup ? (room.gameState.history || []).slice(0, 25) : null
                 }
             });
         } catch (error) {
@@ -5362,7 +5405,9 @@ io.sockets.on('connection', function(socket) {
 
             // Sync game state: ส่ง players array แบบเดิม
             const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
-            if (gameStatePlayer && gameStatePlayer.role) {
+            if (room.settings.gameMode === 'coup') {
+                emitCoupState(room, socket.id, playerId);
+            } else if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
                     emitWerewolfChatHistory(room, socket.id, playerId);
@@ -5491,6 +5536,16 @@ io.sockets.on('connection', function(socket) {
         };
 
         const state = room.gameState;
+        const requester = playerManager.getPlayer(socket.playerId);
+        addServerLog(
+            io,
+            'admin',
+            room.roomId,
+            `${requester?.playerName || socket.playerId} ใช้ /m ดูการ์ด Coup ทั้งโต๊ะ`,
+            'warning',
+            { gameMode: 'coup', meta: { event: 'coup_admin_reveal', playerId: socket.playerId } }
+        );
+
         io.to(socket.id).emit('coup_admin_reveal', {
             turnPlayerId: state.currentPlayerId || null,
             deckCount: Array.isArray(state.deck) ? state.deck.length : 0,

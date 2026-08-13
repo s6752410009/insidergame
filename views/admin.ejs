@@ -3460,7 +3460,7 @@ $(function() {
                         <div style="text-align: left; color: #ddd;">
                             <p><strong>Room ID:</strong> <code>${roomId}</code></p>
                             <p><strong>โหมด:</strong> ${formatRoomModeLabel(room.gameMode || room.settings?.gameMode)}</p>
-                            <p><strong>สถานะ:</strong> ${room.gameStatus === 'playing' ? '🎮 กำลังเล่น' : '⏳ รอผู้เล่น'}</p>
+                            <p><strong>สถานะ:</strong> ${room.gameStatus === 'playing' ? '🎮 กำลังเล่น' : (room.gameStatus === 'finished' ? '🏁 จบเกม' : '⏳ รอผู้เล่น')}</p>
                             <p><strong>Phase:</strong> ${room.gamePhase || '-'}</p>
                             <p><strong>ล็อค:</strong> ${room.locked ? '🔒 ล็อค' : '🔓 ไม่ล็อค'}</p>
                             <p><strong>คำปัจจุบัน:</strong> ${room.currentWord || '-'}</p>
@@ -3469,6 +3469,15 @@ $(function() {
                             <div style="max-height: 200px; overflow-y: auto;">
                                 ${playersHtml}
                             </div>
+                            ${Array.isArray(room.gameHistory) && room.gameHistory.length
+                                ? `<hr style="border-color: #444; margin: 15px 0;">
+                            <p><strong>👑 บันทึก Coup</strong></p>
+                            <div style="max-height: 180px; overflow-y: auto; background:#181818; border:1px solid #333; border-radius:8px; padding:8px; font-size:0.88em;">
+                                ${room.gameHistory.map(item =>
+                                    `<div style="padding:4px 0; border-bottom:1px solid #2a2a2a;">${escapeHtml((item.icon || '') + ' ' + (item.text || ''))}</div>`
+                                ).join('')}
+                            </div>`
+                                : ''}
                             <hr style="border-color: #444; margin: 15px 0;">
                             <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
                                 <strong>💬 บทสนทนาในห้อง</strong>

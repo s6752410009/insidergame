@@ -287,3 +287,31 @@
   border-color: rgba(196, 181, 253, 0.6);
   color: #fff;
 }
+
+/* /m — เฉลยการ์ดทั้งโต๊ะ (แอดมิน) */
+.cpr { text-align: left; padding: 8px 4px 0; }
+.cpr-row {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(196,141,255,0.18);
+}
+.cpr-row.is-out { opacity: 0.45; }
+.cpr-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.cpr-turn, .cpr-out {
+  font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+}
+.cpr-turn { background: rgba(245,200,107,0.2); color: #f5c86b; }
+.cpr-out { background: rgba(255,107,129,0.18); color: #ff9aa8; }
+.cpr-coins { margin-left: auto; color: #f5c86b; font-weight: 700; }
+.cpr-cards { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.cpr-cards.cpr-dim { opacity: 0.7; }
+.cpr-label { font-size: 0.72rem; color: #9a8fb0; min-width: 52px; }
+.cpr-chip {
+  display: inline-block; padding: 3px 8px; border-radius: 999px;
+  background: rgba(124,58,237,0.22); border: 1px solid rgba(196,141,255,0.3);
+  font-size: 0.82rem;
+}
+.cpr-empty { color: #9a8fb0; font-size: 0.82rem; }
+.cpr-foot { margin: 12px 0 0; font-size: 0.78rem; color: #9a8fb0; }
