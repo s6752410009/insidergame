@@ -74,7 +74,7 @@
       radial-gradient(ellipse at 50% 48%, #2f9a52 0%, #1a6b38 46%, #0c3d24 100%);
     box-shadow: inset 0 0 0 6px rgba(12, 70, 36, 0.55), inset 0 18px 40px rgba(255,255,255,0.05);
   }
-  .pk-seats { position:absolute; inset:0; pointer-events:none; z-index:4; }
+  .pk-seats { position:absolute; inset:0; pointer-events:none; z-index:5; }
   .pk-seat {
     position:absolute; width:108px; transform:translate(-50%,-50%);
     text-align:center; padding:0; background:transparent; pointer-events:auto;
@@ -98,7 +98,7 @@
   }
   .pk-timer-svg {
     display:none; position:absolute; inset:-8px; width:calc(100% + 16px); height:calc(100% + 16px);
-    pointer-events:none; z-index:0; transform:rotate(-90deg);
+    pointer-events:none; z-index:3; transform:rotate(-90deg);
   }
   .pk-seat.is-turn.pk-acting .pk-timer-svg { display:block; }
   .pk-timer-arc { fill:none; stroke:#ffe08a; stroke-width:3.2; stroke-linecap:round; transition: stroke .2s linear; filter: drop-shadow(0 0 4px rgba(255,220,120,0.8)); }
@@ -166,8 +166,9 @@
   .pk-avatar-ring .player-avatar {
     width:100% !important; height:100% !important; font-size:1.4rem !important;
   }
-  .pk-seat.is-self { z-index:3; }
-  .pk-seat.is-self .pk-avatar-ring { width:66px; height:66px; }
+  .pk-seat.is-self { z-index:8; }
+  .pk-seat.is-self .pk-avatar-ring { width:66px; height:66px; z-index:3; }
+  .pk-seat.is-self .pk-plate { z-index:4; }
   .pk-seat.is-ready .pk-avatar-ring { border-color:#86efac; }
   .pk-seat.is-turn .pk-avatar-ring {
     border-color: #ffe08a;
@@ -398,9 +399,9 @@
     to { opacity:1; transform:translate(-50%,-50%) scale(1); }
   }
   .pk-center {
-    position:absolute; left:50%; top:58%; transform:translate(-50%,-50%);
+    position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
     min-height:0; display:flex; flex-direction:column; align-items:center; gap:4px;
-    z-index:6; pointer-events:none;
+    z-index:2; pointer-events:none; max-width:42%;
   }
   .pk-kicker { color: var(--pk-gold); font-size:0.7rem; font-weight:700; letter-spacing:0.08em; }
   .pk-title { margin:0; font-size:clamp(0.95rem,2.8vw,1.2rem); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -436,16 +437,29 @@
     background: linear-gradient(#3dcc66,#1d8a3a); color:#fff;
     box-shadow: 0 4px 0 #0f4d20, 0 6px 10px rgba(0,0,0,0.35);
   }
-  .pk-label { font-size:0.68rem; color:#d9f5d4; letter-spacing:0.12em; font-weight:700; text-shadow:0 1px 2px #000; }
+  .pk-label { font-size:0.62rem; color:#d9f5d4; letter-spacing:0.12em; font-weight:700; text-shadow:0 1px 2px #000; }
+  .pk-label:empty { display:none; }
   .pk-pot {
     font-size:1.7rem; color:#ffe08a; font-weight:900;
     text-shadow: 0 2px 0 #5a3c10, 0 0 14px rgba(255,220,120,0.45);
     padding:2px 16px 6px; border-radius:999px;
     background: rgba(8,20,12,0.45); border:1px solid rgba(240,199,94,0.35);
   }
-  .pk-discards { display:flex; justify-content:center; min-height:28px; }
-  .pk-discards .pk-playing { width:22px; height:32px; margin-left:-14px; border-radius:4px; }
-  .pk-discards .pk-playing:first-child { margin-left:0; }
+  .pk-muck-row {
+    display:flex; align-items:flex-end; justify-content:center; gap:6px; min-height:0;
+  }
+  .pk-discards {
+    position:relative; width:28px; height:36px; flex:0 0 auto;
+  }
+  .pk-discards:empty { display:none; }
+  .pk-discards .pk-playing {
+    position:absolute; left:0; top:0; width:20px; height:30px; margin:0; border-radius:3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.45);
+  }
+  .pk-discards .pk-playing:nth-child(1) { transform: translate(0,1px) rotate(-10deg); }
+  .pk-discards .pk-playing:nth-child(2) { transform: translate(4px,0) rotate(6deg); }
+  .pk-discards .pk-playing:nth-child(3) { transform: translate(7px,2px) rotate(-3deg); }
+  .pk-discards .pk-playing:nth-child(n+4) { display:none; }
   .pk-show { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
   .pk-slot {
     width:78px; height:110px; border-radius:10px;
@@ -645,8 +659,10 @@
       <div class="pk-label" id="pkBoardLabel">กองกลาง</div>
       <div id="pkPot" class="pk-pot">0</div>
       <div id="pkWinBanner" class="pk-win" hidden></div>
-      <div id="pkDeck" class="pk-deck"></div>
-      <div id="pkBoard" class="pk-discards"></div>
+      <div class="pk-muck-row">
+        <div id="pkDeck" class="pk-deck"></div>
+        <div id="pkBoard" class="pk-discards"></div>
+      </div>
       <div id="pkShow" class="pk-show"></div>
     </div>
   </div>
@@ -1422,11 +1438,11 @@ $(function() {
     const dump = Number(state.discardCount) || 0;
     const showdown = isShowdown(state);
     const showdownBoard = state.board && state.board.length && showdown;
-    $('#pkBoardLabel').text(dump || showdownBoard ? 'ทิ้งคืนกลาง' : 'กองกลาง');
+    $('#pkBoardLabel').text(dump || showdownBoard ? 'ทิ้ง' : '');
     if (showdownBoard) {
-      $('#pkBoard').html(state.board.slice(0, 8).map(function(card) { return cardHtml(card); }).join(''));
+      $('#pkBoard').html(state.board.slice(0, 3).map(function(card) { return cardHtml(card); }).join(''));
     } else if (dump) {
-      $('#pkBoard').html(Array.from({ length: Math.min(dump, 8) }, backHtml).join(''));
+      $('#pkBoard').html(Array.from({ length: Math.min(dump, 3) }, backHtml).join(''));
     } else {
       $('#pkBoard').empty();
     }
