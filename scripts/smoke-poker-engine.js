@@ -120,6 +120,11 @@ assert(five.gameState.phase === 'reveal' || five.gameState.phase === 'between', 
 assert(five.gameState.lastResult?.show?.length === 3, 'ต้องเปิดมือทุกคน');
 assert(five.gameState.lastResult.show.every(row => row.cards.length === 3), 'ห้าใบวัด 3 ใบ ไม่แจกเพิ่ม');
 assert(five.gameState.lastResult.show.every(row => row.cards[0].image), 'ไพ่ที่เปิดต้องมีรูป');
+const fiveWinnerId = five.gameState.lastResult.winners[0].playerId;
+const fiveKeptStack = five.gameState.players.find(p => p.playerId === fiveWinnerId).stack;
+assert(fiveKeptStack >= 10000, 'ชนะกองต้องเก็บยอด ไม่รีเซ็ตหมื่นก่อนมือใหม่');
+poker5.nextHand(five);
+assert(five.gameState.players.find(p => p.playerId === fiveWinnerId).stack === fiveKeptStack - 500, 'มือใหม่ชนะเก็บยอด หักกอง 500');
 
 const four = makeRoom(poker4, 2);
 assert(four.gameState.players.every(p => p.hand.length === 4), 'คนละ 4 ใบ');
@@ -167,6 +172,11 @@ assert(folder.folded, 'หมอบแล้ว');
 assert(!folder.upCard, 'คนหมอบไม่ได้ใบที่ 3');
 assert(survivor.kept.length === 2, 'คนหมอบชนะทันที ไม่ต้องแจกใบ 3');
 assert(foldRoom.gameState.lastResult.winners[0].playerId === survivor.playerId, 'คนไม่หมอบกินกอง');
+survivor.stack = 30000;
+folder.stack = 0;
+poker4.nextHand(foldRoom);
+assert(foldRoom.gameState.players.find(p => p.playerId === survivor.playerId).stack === 29500, 'ชนะเก็บยอด 30,000 หักกอง 500');
+assert(foldRoom.gameState.players.find(p => p.playerId === folder.playerId).stack === 9500, 'เงินไม่พอเล่นเติม 10,000 แล้ววางกอง 500');
 
 const afk = makeRoom(poker5, 2);
 const afkA = afk.gameState.players[0];
@@ -234,6 +244,57 @@ const hidden = poker5.buildClientState(botRoom, 'bot_smoke');
 assert(!hidden.players[0].peekHand, 'คนไม่มี peek ต้องไม่เห็นไพ่คนอื่น');
 assert(!hidden.players[0].peekCards, 'คนไม่มี /m ต้องไม่เห็นไพ่คนอื่น');
 assert(!hidden.players[0].peekRank, 'คนไม่มี /m ต้องไม่เห็นป้ายมือคนอื่น');
+
+function botBetRoom(hand, opts) {
+    const options = opts || {};
+    const room = makeRoom(poker5, options.seats || 10);
+    room.gameState.phase = 'bet';
+    room.gameState.currentBet = options.currentBet || 0;
+    room.gameState.raiseCount = options.raiseCount != null
+        ? options.raiseCount
+        : (options.currentBet ? 1 : 0);
+    room.gameState.pot = options.pot || 5000;
+    room.gameState.players.forEach(player => {
+        player.kept = ['KS', 'QH', '2D'];
+        player.hand = player.kept.slice();
+        player.ready = true;
+        player.folded = false;
+        player.allIn = false;
+        player.acted = false;
+        player.streetBet = 0;
+        player.stack = 9500;
+        player.committed = 500;
+    });
+    const bot = room.gameState.players[0];
+    bot.playerId = 'bot_ai_hard';
+    bot.kept = hand.slice();
+    bot.hand = hand.slice();
+    bot.streetBet = options.streetBet || 0;
+    room.gameState.toActPlayerId = bot.playerId;
+    return { room, bot };
+}
+
+const junkCall = botBetRoom(['KS', 'QH', '2D'], { currentBet: 2500, pot: 9000, raiseCount: 1 });
+poker5.playBotTurns(junkCall.room);
+assert(junkCall.bot.folded, 'มืออ่อนโต๊ะคนเยอะต้องหมอบเมื่อมีคนเกทับ');
+
+const tripsRaise = botBetRoom(['3S', '3H', '3D'], { currentBet: 500, pot: 5000, raiseCount: 1 });
+poker5.playBotTurns(tripsRaise.room);
+assert(!tripsRaise.bot.folded, 'ตองห้ามหมอบ');
+assert(tripsRaise.bot.streetBet > 500 || tripsRaise.bot.allIn, 'ตองต้องสู้หรือเกทับ');
+
+const nineCheap = botBetRoom(['AS', '8D', 'KC'], { currentBet: 500, pot: 5000, raiseCount: 1 });
+poker5.playBotTurns(nineCheap.room);
+assert(!nineCheap.bot.folded, 'แต้ม 9 ตามกองเล็กได้');
+
+const ninePriced = botBetRoom(['AS', '8D', 'KC'], { currentBet: 6500, pot: 18000, raiseCount: 3 });
+poker5.playBotTurns(ninePriced.room);
+assert(ninePriced.bot.folded, 'แต้ม 9 โต๊ะ 10 คนต้องหมอบเมื่อเกทับหนัก');
+
+const junkCheck = botBetRoom(['KS', 'QH', '2D'], { currentBet: 0, pot: 5000, raiseCount: 0 });
+poker5.playBotTurns(junkCheck.room);
+assert(!junkCheck.bot.folded, 'ยังไม่มีคนสู้ มืออ่อนผ่านได้');
+assert(junkCheck.bot.streetBet === 0, 'มืออ่อนโต๊ะคนเยอะไม่เปิดสู้');
 
 const view = poker5.buildClientState(five, five.gameState.players[0].playerId);
 assert(view.cardBack, 'ต้องมีหลังไพ่');

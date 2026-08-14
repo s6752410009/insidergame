@@ -1201,6 +1201,14 @@ $(function() {
 
     // Init player เพื่อให้ socket รับ events ได้
     socket.emit('initPlayer', playerId);
+    socket.emit('leaveRoom', { playerId: playerId }, function() {
+        socket.emit('getRoomList', function(response) {
+            if (response && response.success) {
+                rooms = response.rooms;
+                renderRoomList();
+            }
+        });
+    });
 
     let rooms = [];
 
@@ -1428,7 +1436,7 @@ $(function() {
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
                             <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(34,197,94,0.45); background:rgba(34,197,94,0.08); cursor:pointer; color:#fff;">
                                 <input type="radio" name="pokerTableType" value="fun" checked style="accent-color:#22c55e;">
-                                <span>เล่นสนุก — ได้ชิปมาเล่น ตาใหม่ชิปกลับมาเต็ม</span>
+                                <span>เล่นสนุก — ได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติมใหม่</span>
                             </label>
                             <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
                                 <input type="radio" name="pokerTableType" value="cash" style="accent-color:#f5c86b;">
@@ -1442,7 +1450,7 @@ $(function() {
                                 <input type="range" id="pokerAnte" class="room-slider" min="100" max="2000" step="100" value="500">
                             </div>
                         </div>
-                        <div id="pokerTableHint" style="margin-top:8px; color:#aaa; font-size:0.85em;">ทุกคนวางชิปลงกองกลางก่อนแจกไพ่ · เล่นสนุกได้ชิป 10,000 ตาใหม่กลับมาเต็ม · เล่นเก็บชิปใช้ชิปในบัญชี</div>
+                        <div id="pokerTableHint" style="margin-top:8px; color:#aaa; font-size:0.85em;">ทุกคนวางชิปลงกองกลางก่อนแจกไพ่ · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 · เล่นเก็บชิปใช้ชิปในบัญชี</div>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" style="display:none;">
@@ -1623,8 +1631,8 @@ $(function() {
                     }
                     if (pokerTableHint) {
                         pokerTableHint.textContent = isPoker4Mode
-                            ? 'ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู · หมอบแล้วไม่ได้ใบที่ 3 · เล่นสนุกได้ชิป 10,000'
-                            : 'ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ · ตาละวางกองก่อนแจก · เล่นสนุกได้ชิป 10,000';
+                            ? 'ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู · หมอบแล้วไม่ได้ใบที่ 3 · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด'
+                            : 'ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ · ตาละวางกองก่อนแจก · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด';
                     }
                     werewolfWolfCountGroup.style.display = isWerewolfMode ? 'block' : 'none';
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';

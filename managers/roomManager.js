@@ -336,6 +336,69 @@ function repairRoomGameMode(room) {
 
 const WAITING_GAME_STATUSES = new Set(['', 'waiting']);
 
+function isBotPlayerId(playerId) {
+    return String(playerId || '').startsWith('bot_');
+}
+
+function isHumanPlayer(player) {
+    return !!(player && !isBotPlayerId(player.playerId));
+}
+
+function getHumanPlayers(room) {
+    return (room?.players || []).filter(isHumanPlayer);
+}
+
+function getOnlineHumanCount(room) {
+    return getHumanPlayers(room).filter(player => !!player.socketId).length;
+}
+
+function stripBotPlayers(room) {
+    if (!room || !Array.isArray(room.players)) return 0;
+    const before = room.players.length;
+    room.players = room.players.filter(isHumanPlayer);
+    if (room.gameState && Array.isArray(room.gameState.players)) {
+        room.gameState.players = room.gameState.players.filter(player => !isBotPlayerId(player.playerId));
+    }
+    return before - room.players.length;
+}
+
+function findRoomIdsForPlayer(playerId) {
+    const ids = [];
+    if (!playerId) return ids;
+    for (const room of rooms.values()) {
+        if ((room.players || []).some(player => player.playerId === playerId)) {
+            ids.push(room.roomId);
+        }
+    }
+    return ids;
+}
+
+function findRoomIdForPlayer(playerId) {
+    return findRoomIdsForPlayer(playerId)[0] || null;
+}
+
+function leavePlayerFromOtherRooms(playerId, keepRoomId) {
+    const keep = keepRoomId ? normalizeRoomId(keepRoomId) : null;
+    const updated = [];
+    const closed = [];
+    findRoomIdsForPlayer(playerId).forEach(roomId => {
+        if (keep && normalizeRoomId(roomId) === keep) return;
+        const room = leaveRoom(roomId, playerId);
+        if (room) updated.push(room);
+        else closed.push(roomId);
+    });
+    return { updated, closed };
+}
+
+function closeBotOnlyRoom(room) {
+    if (!room || getHumanPlayers(room).length > 0) return false;
+    if (!room.players.length) return false;
+    stripBotPlayers(room);
+    deleteMappedRoom(room.roomId);
+    schedulePersistRooms();
+    return true;
+}
+
 function getOnlinePlayerCount(room) {
     return room.players.filter(player => !!player.socketId).length;
 }
@@ -455,7 +518,7 @@ function syncZeroOnlineTracker(room) {
         return;
     }
 
-    if (getOnlinePlayerCount(room) > 0) {
+    if (getOnlineHumanCount(room) > 0) {
         room.zeroOnlineSince = null;
         return;
     }
@@ -620,6 +683,9 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
             room.players[existingPlayerIndex].lastActiveAt = nowIso();
             room.players[existingPlayerIndex].disconnectedAt = null;
         }
+        if (!isBotPlayerId(playerId)) {
+            leavePlayerFromOtherRooms(playerId, room.roomId);
+        }
         syncZeroOnlineTracker(room);
         return room;
     }
@@ -683,6 +749,10 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
         room.gameState.alivePlayerIds = room.players.map(existingPlayer => existingPlayer.playerId);
     }
 
+    if (!isBotPlayerId(playerId)) {
+        leavePlayerFromOtherRooms(playerId, room.roomId);
+    }
+
     syncZeroOnlineTracker(room);
     schedulePersistRooms();
     return room;
@@ -730,6 +800,7 @@ function leaveRoom(roomId, playerId) {
 
     const playerIndex = room.players.findIndex(p => p.playerId === playerId);
     if (playerIndex < 0) {
+        if (closeBotOnlyRoom(room)) return null;
         return null;
     }
 
@@ -770,11 +841,22 @@ function leaveRoom(roomId, playerId) {
         room.gameState.players.splice(gameStatePlayerIndex, 1);
     }
 
-    // ถ้า admin ออก ให้โอนสิทธิให้ผู้เล่นคนแรก
+    // บอทมี socket ปลอม — คนสุดท้ายออกแล้วต้องลบห้องทันที ไม่งั้นค้างในลิสต์
+    if (closeBotOnlyRoom(room)) {
+        return null;
+    }
+    if (getHumanPlayers(room).length === 0) {
+        room.zeroOnlineSince = room.zeroOnlineSince || nowIso();
+        schedulePersistRooms();
+        return null;
+    }
+
+    // ถ้า admin ออก ให้โอนสิทธิให้คนจริงคนแรก ไม่โอนให้บอท
     if (wasAdmin && room.players.length > 0) {
-        const newAdmin = room.players[0].playerId;
+        const nextAdminPlayer = getHumanPlayers(room)[0] || room.players[0];
+        const newAdmin = nextAdminPlayer.playerId;
         room.admin = newAdmin;
-        room.players[0].permission = 'admin';
+        nextAdminPlayer.permission = 'admin';
         
         // อัปเดตใน gameState ด้วย
         const newAdminGameState = room.gameState.players.find(p => p.playerId === newAdmin);
@@ -968,7 +1050,10 @@ function getRoom(roomId) {
  */
 function getAllRooms() {
     let repaired = false;
-    const liveRooms = Array.from(rooms.values()).filter(room => Array.isArray(room.players) && room.players.length > 0);
+    Array.from(rooms.values()).forEach(room => {
+        if (closeBotOnlyRoom(room)) repaired = true;
+    });
+    const liveRooms = Array.from(rooms.values()).filter(room => getHumanPlayers(room).length > 0);
     liveRooms.forEach(room => {
         if (repairRoomGameMode(room)) repaired = true;
     });
@@ -1165,8 +1250,12 @@ function collectAbandonCandidates() {
     for (const [roomId, room] of rooms.entries()) {
         syncZeroOnlineTracker(room);
 
-        // ห้องว่างเปล่า (ไม่มีผู้เล่นแล้ว) ก็เข้าเกณฑ์ลบหลัง grace
-        if (room.players.length === 0) {
+        // ห้องว่างเปล่า หรือเหลือแต่บอท — เข้าเกณฑ์ลบ
+        if (room.players.length === 0 || getHumanPlayers(room).length === 0) {
+            if (getHumanPlayers(room).length === 0 && room.players.length > 0) {
+                candidates.push({ roomId, roomName: room.name, gameMode: room.settings?.gameMode });
+                continue;
+            }
             const emptySinceMs = new Date(room.zeroOnlineSince || room.createdAt || 0).getTime();
             const graceMs = getEmptyRoomGraceMs(room);
             if (Number.isFinite(emptySinceMs) && (now - emptySinceMs) >= graceMs) {
@@ -1175,7 +1264,7 @@ function collectAbandonCandidates() {
             continue;
         }
 
-        if (getOnlinePlayerCount(room) > 0 || !room.zeroOnlineSince) {
+        if (getOnlineHumanCount(room) > 0 || !room.zeroOnlineSince) {
             continue;
         }
 
@@ -1224,6 +1313,9 @@ function finalizeAbandonedRoom(roomId) {
 
     const removedPlayers = removeOfflinePlayers(roomId);
     const refreshedRoom = getMappedRoom(roomId);
+    if (refreshedRoom && getHumanPlayers(refreshedRoom).length === 0) {
+        stripBotPlayers(refreshedRoom);
+    }
     if (!refreshedRoom || refreshedRoom.players.length === 0) {
         deleteMappedRoom(roomId);
         schedulePersistRooms();
@@ -1353,13 +1445,14 @@ function clearEmptyRooms() {
     let clearedCount = 0;
     for (const [roomId, room] of rooms.entries()) {
         const hasNoPlayers = room.players.length === 0;
-        const hasNoOnlineWhileIdle = getOnlinePlayerCount(room) === 0
+        const botOnly = getHumanPlayers(room).length === 0 && room.players.length > 0;
+        const hasNoOnlineWhileIdle = getOnlineHumanCount(room) === 0
             && !isRoomGameInProgress(room)
             && room.players.length > 0
             && room.zeroOnlineSince
             && ((Date.now() - new Date(room.zeroOnlineSince).getTime()) >= 30 * 60 * 1000);
 
-        if (hasNoPlayers || hasNoOnlineWhileIdle) {
+        if (hasNoPlayers || botOnly || hasNoOnlineWhileIdle) {
             deleteMappedRoom(roomId);
             clearedCount++;
         }
@@ -1431,6 +1524,9 @@ module.exports = {
     createRoom,
     joinRoom,
     leaveRoom,
+    findRoomIdForPlayer,
+    findRoomIdsForPlayer,
+    leavePlayerFromOtherRooms,
     disconnectPlayer,
     kickPlayer,
     transferAdmin,

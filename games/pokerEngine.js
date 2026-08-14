@@ -72,6 +72,7 @@ function createInitialState(variantId = 'poker5') {
         board: [],
         pot: 0,
         currentBet: 0,
+        raiseCount: 0,
         toActPlayerId: null,
         dealerIndex: 0,
         handNumber: 0,
@@ -329,7 +330,9 @@ function collectAnte(room) {
     if (paying.length < 2) return false;
 
     if (state.tableType !== 'cash') {
-        paying.forEach(player => { player.stack = FUN_STACK; });
+        paying.forEach(player => {
+            if (Number(player.stack) < state.ante) player.stack = FUN_STACK;
+        });
     } else {
         paying.forEach(player => { player.stack = walletStack(player.playerId); });
     }
@@ -410,6 +413,7 @@ function startHand(room) {
     state.statsRecordedAt = null;
     state.board = [];
     state.currentBet = 0;
+    state.raiseCount = 0;
     state.toActPlayerId = null;
     dealHands(room);
     setPhase(room, 'select', SELECT_MS);
@@ -489,6 +493,7 @@ function playerIndex(room, playerId) {
 function beginBetStreet(room) {
     const state = room.gameState;
     state.currentBet = 0;
+    state.raiseCount = 0;
     state.toActPlayerId = null;
     seatedPlayers(room).forEach(player => {
         player.acted = false;
@@ -577,6 +582,7 @@ function submitBet(room, playerId, action, amount) {
         const taken = putStreetBet(room, player, betAmt);
         if (taken <= 0) throw new Error('ชิปไม่พอ');
         state.currentBet = player.streetBet;
+        state.raiseCount = (Number(state.raiseCount) || 0) + 1;
         reopenStreet(room, player);
         player.acted = true;
         pushSay(room, player, player.allIn ? 'allin' : 'bet', taken);
@@ -591,6 +597,7 @@ function submitBet(room, playerId, action, amount) {
         if (player.streetBet <= currentBet && !player.allIn) throw new Error('เกทับไม่ถึง');
         if (player.streetBet > currentBet) {
             state.currentBet = player.streetBet;
+            state.raiseCount = (Number(state.raiseCount) || 0) + 1;
             reopenStreet(room, player);
         }
         player.acted = true;
@@ -603,6 +610,7 @@ function submitBet(room, playerId, action, amount) {
         player.acted = true;
         if (player.streetBet > currentBet) {
             state.currentBet = player.streetBet;
+            state.raiseCount = (Number(state.raiseCount) || 0) + 1;
             reopenStreet(room, player);
         }
         pushSay(room, player, 'allin', taken);
@@ -794,27 +802,80 @@ function autoResolvePhase(room) {
     return state;
 }
 
-function botHeat(player) {
+function botStyle(playerId) {
+    let hash = 2166136261;
+    const text = String(playerId || '');
+    for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    const n = hash >>> 0;
+    return {
+        tight: 0.94 + (n % 19) / 90,
+        aggro: 0.78 + ((n >>> 8) % 23) / 55
+    };
+}
+
+function twoCardScore(cardIds) {
+    const cards = (cardIds || []).map(parseCardId);
+    if (cards.length < 2) return 4;
+    const left = cards[0];
+    const right = cards[1];
+    const suited = left.suit === right.suit;
+    const pair = left.rank === right.rank;
+    const gap = Math.abs(left.straight - right.straight);
+    const faces = (left.value >= 11 ? 1 : 0) + (right.value >= 11 ? 1 : 0);
+    const point = (left.point + right.point) % 10;
+    let score = 10 + point * 3;
+    if (pair) {
+        const tripsHigh = left.rank === '3' ? 14 : Math.max(left.point, 4);
+        score = Math.max(score, 56 + tripsHigh);
+    }
+    if (faces === 2) score = Math.max(score, suited ? 58 : 46);
+    if (suited && gap === 1) score = Math.max(score, 54);
+    if (suited && gap === 2) score = Math.max(score, 44);
+    if (suited) score = Math.max(score, 28 + Math.max(left.value, right.value) * 0.5);
+    if (point >= 8) score = Math.max(score, 36 + point * 2);
+    if (point === 9) score = Math.max(score, 52);
+    return Math.max(4, Math.min(90, Math.round(score)));
+}
+
+function threeCardScore(ev) {
+    if (!ev) return 4;
+    if (ev.category === CATEGORY.TRIPS) {
+        const rank = ev.parsed && ev.parsed[0] ? ev.parsed[0].rank : '';
+        return rank === '3' ? 100 : 94;
+    }
+    if (ev.category === CATEGORY.STRAIGHT_FLUSH) return 90;
+    if (ev.category === CATEGORY.SEAN) return 84;
+    if (ev.category === CATEGORY.STRAIGHT) return 74;
+    if (ev.category === CATEGORY.FLUSH) return 64;
+    const point = Math.max(0, Math.min(9, Number(ev.point) || 0));
+    return [4, 8, 12, 16, 20, 26, 34, 44, 52, 58][point];
+}
+
+function botHandScore(player) {
     const cards = (player.kept && player.kept.length) ? player.kept : (player.hand || []);
     if (cards.length >= 3) {
         const ev = cards.length === 3 ? evaluateHand(cards) : bestThreeFrom(cards);
-        if (ev.category >= CATEGORY.SEAN) return 3;
-        if (ev.category >= CATEGORY.FLUSH) return 2;
-        if ((ev.point || 0) >= 7) return 2;
-        if ((ev.point || 0) >= 5) return 1;
-        return 0;
+        return threeCardScore(ev);
     }
-    if (cards.length < 2) return 0;
-    const left = parseCardId(cards[0]);
-    const right = parseCardId(cards[1]);
-    if (left.rank === right.rank) return 3;
-    const suited = left.suit === right.suit;
-    const gap = Math.abs(left.straight - right.straight);
-    if (suited && gap === 1) return 2;
-    if (left.value >= 11 && right.value >= 11) return 2;
-    if (suited || left.rank === 'A' || right.rank === 'A') return 1;
-    if (left.point + right.point >= 7) return 1;
-    return 0;
+    if (cards.length >= 2) return twoCardScore(cards.slice(0, 2));
+    return 4;
+}
+
+function botEquity(score, liveCount) {
+    const raw = Math.max(0.02, Math.min(0.99, Number(score) / 100));
+    const others = Math.max(0, Number(liveCount) || 1) - 1;
+    return Math.max(0.015, raw / (1 + others * (1 - raw) * 0.62));
+}
+
+function botRaiseTo(state, player, score) {
+    const currentBet = Number(state.currentBet) || 0;
+    const minRaiseTo = currentBet + state.ante;
+    const cap = player.streetBet + player.stack;
+    const extra = score >= 88 ? state.ante * 4 : (score >= 74 ? state.ante * 2 : state.ante);
+    return Math.max(minRaiseTo, Math.min(cap, currentBet + extra));
 }
 
 function botBetAction(room, player) {
@@ -823,32 +884,45 @@ function botBetAction(room, player) {
     const minBet = state.ante;
     const minRaiseTo = (Number(state.currentBet) || 0) + minBet;
     const maxRaiseTo = player.streetBet + player.stack;
-    const heat = botHeat(player);
+    const live = livePlayers(room).length;
+    const raises = Number(state.raiseCount) || 0;
+    const style = botStyle(player.playerId);
+    const score = botHandScore(player);
+    const equity = botEquity(score, live) / style.tight;
+    const pot = Math.max(1, Number(state.pot) || minBet);
+    const required = toCall > 0 ? toCall / (pot + toCall) : 0;
+    const multiway = Math.max(0, live - 2);
+    const margin = 1.06 + multiway * 0.05 + raises * 0.16;
+    const canRaise = maxRaiseTo >= minRaiseTo && player.stack > toCall + minBet;
+    const monster = score >= 74;
+    const premium = score >= 84;
 
     if (toCall <= 0) {
-        if (heat >= 2 && player.stack >= minBet) {
-            const amount = heat >= 3
-                ? Math.min(player.stack, minBet * 2)
+        const openLine = 46 + multiway * 3.2 - style.aggro * 6;
+        if (score >= openLine && player.stack >= minBet) {
+            const amount = score >= 74
+                ? Math.min(player.stack, minBet * (premium ? 3 : 2))
                 : minBet;
             return { action: 'bet', amount };
         }
-        if (heat === 1 && player.stack >= minBet && Math.random() < 0.2) {
+        if (live <= 3 && score <= 18 && player.stack >= minBet && Math.random() < 0.07 * style.aggro) {
             return { action: 'bet', amount: minBet };
         }
         return { action: 'check' };
     }
+
+    if (equity < required * margin) {
+        return { action: 'fold' };
+    }
     if (toCall >= player.stack) {
-        return heat >= 2 ? { action: 'allin' } : { action: 'fold' };
+        return equity >= 0.34 || monster ? { action: 'allin' } : { action: 'fold' };
     }
-    if (heat === 0) {
-        return toCall <= minBet ? { action: 'call' } : { action: 'fold' };
-    }
-    if (heat === 1 && toCall > player.stack * 0.35) return { action: 'fold' };
-    if (heat >= 3 && maxRaiseTo >= minRaiseTo && player.stack > toCall + minBet) {
-        return { action: 'raise', amount: Math.min(maxRaiseTo, minRaiseTo + minBet) };
-    }
-    if (heat >= 2 && maxRaiseTo >= minRaiseTo && player.stack > toCall + minBet && Math.random() < 0.28) {
-        return { action: 'raise', amount: minRaiseTo };
+
+    const wantRaise = (premium && raises < 3)
+        || (monster && raises < 2 && live <= 6)
+        || (score >= 64 && raises === 0 && live <= 4 && style.aggro > 1 && Math.random() < 0.35);
+    if (wantRaise && canRaise) {
+        return { action: 'raise', amount: botRaiseTo(state, player, score) };
     }
     return { action: 'call' };
 }

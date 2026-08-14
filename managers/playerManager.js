@@ -23,6 +23,10 @@ const { PLAYERS_FILE, BANNED_FILE } = require('./dataPaths');
 const players = new Map();
 const bannedPlayers = new Map();
 
+function isBotPlayerId(playerId) {
+    return String(playerId || '').startsWith('bot_');
+}
+
 // สีที่ใช้ได้
 const AVAILABLE_COLORS = [
     '#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c',
@@ -88,6 +92,7 @@ async function loadPlayersFromDB() {
         const dbPlayers = await Player.find({});
         players.clear();
         dbPlayers.forEach(p => {
+            if (isBotPlayerId(p.playerId)) return;
             players.set(p.playerId, {
                 playerId: p.playerId,
                 playerName: p.playerName,
@@ -132,10 +137,19 @@ function loadPlayersFromFile() {
         try {
             const data = fs.readFileSync(PLAYERS_FILE, 'utf8');
             const playersData = JSON.parse(data);
+            let droppedBots = 0;
             for (const [playerId, player] of Object.entries(playersData)) {
+                if (isBotPlayerId(playerId)) {
+                    droppedBots += 1;
+                    continue;
+                }
                 players.set(playerId, player);
             }
             console.log(`Loaded ${players.size} players from file`);
+            if (droppedBots > 0) {
+                console.log(`Dropped ${droppedBots} bot accounts from player list`);
+                savePlayers();
+            }
         } catch (error) {
             console.error('Error loading players:', error);
         }
@@ -165,6 +179,7 @@ async function savePlayers() {
     try {
         const playersData = {};
         for (const [playerId, player] of players.entries()) {
+            if (isBotPlayerId(playerId)) continue;
             playersData[playerId] = player;
         }
         fs.writeFileSync(PLAYERS_FILE, JSON.stringify(playersData, null, 2), 'utf8');
@@ -265,6 +280,9 @@ async function createOrGetPlayer(playerId = null, options = {}) {
     if (playerId && players.has(playerId)) {
         const player = players.get(playerId);
         player.lastSeen = new Date().toISOString();
+        if (isBotPlayerId(playerId)) {
+            return player;
+        }
         
         if (useDatabase && Player) {
             await Player.updateOne({ playerId }, { lastSeen: new Date() });
@@ -283,11 +301,15 @@ async function createOrGetPlayer(playerId = null, options = {}) {
         avatarFrame: 'none',
         isSiteAdmin: false,
         approved: options.approved !== false,
+        isBot: isBotPlayerId(newPlayerId),
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString()
     };
 
     players.set(newPlayerId, newPlayer);
+    if (isBotPlayerId(newPlayerId)) {
+        return newPlayer;
+    }
     
     if (useDatabase && Player) {
         try {
@@ -322,6 +344,7 @@ async function updatePlayerName(playerId, newName) {
     const player = players.get(playerId);
     player.playerName = trimmedName;
     player.lastSeen = new Date().toISOString();
+    if (isBotPlayerId(playerId)) return player;
     
     if (useDatabase && Player) {
         await Player.updateOne({ playerId }, { playerName: trimmedName, lastSeen: new Date() });
@@ -339,6 +362,7 @@ async function updatePlayerColor(playerId, color) {
     const player = players.get(playerId);
     player.color = color;
     player.lastSeen = new Date().toISOString();
+    if (isBotPlayerId(playerId)) return player;
     
     if (useDatabase && Player) {
         await Player.updateOne({ playerId }, { color, lastSeen: new Date() });
@@ -356,6 +380,7 @@ async function updatePlayerAvatar(playerId, avatar) {
     const player = players.get(playerId);
     player.avatar = avatar;
     player.lastSeen = new Date().toISOString();
+    if (isBotPlayerId(playerId)) return player;
     
     if (useDatabase && Player) {
         await Player.updateOne({ playerId }, { avatar, lastSeen: new Date() });
@@ -374,6 +399,7 @@ async function updatePlayerAvatarFrame(playerId, frameId) {
     const player = players.get(playerId);
     player.avatarFrame = frameId;
     player.lastSeen = new Date().toISOString();
+    if (isBotPlayerId(playerId)) return player;
     
     if (useDatabase && Player) {
         await Player.updateOne({ playerId }, { avatarFrame: frameId, lastSeen: new Date() });
@@ -398,6 +424,7 @@ function getPlayerByName(playerName) {
 async function updateLastSeen(playerId) {
     if (players.has(playerId)) {
         players.get(playerId).lastSeen = new Date().toISOString();
+        if (isBotPlayerId(playerId)) return;
         if (useDatabase && Player) {
             await Player.updateOne({ playerId }, { lastSeen: new Date() });
         } else {
@@ -407,7 +434,7 @@ async function updateLastSeen(playerId) {
 }
 
 function getAllPlayers() {
-    return Array.from(players.values());
+    return Array.from(players.values()).filter(player => !isBotPlayerId(player.playerId));
 }
 
 async function deletePlayer(playerId) {
@@ -424,7 +451,7 @@ async function deletePlayer(playerId) {
 }
 
 function getPlayerCount() {
-    return players.size;
+    return getAllPlayers().length;
 }
 
 function isSiteAdmin(playerId) {
@@ -654,6 +681,7 @@ module.exports = {
     getAllSiteAdmins,
     isNameTaken,
     isValidPlayerId,
+    isBotPlayerId,
     isAutoGeneratedName,
     isDefaultProfile,
     AVAILABLE_COLORS,

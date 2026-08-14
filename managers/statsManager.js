@@ -20,6 +20,11 @@ try {
 
 const { STATS_FILE } = require('./dataPaths');
 const MAX_GAME_HISTORY = 20;
+
+function isBotPlayerId(playerId) {
+    return String(playerId || '').startsWith('bot_');
+}
+
 const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'witch', 'fool', 'revealer'];
 const BLACKMARKET_ROLE_IDS = ['boss', 'broker', 'smuggler', 'fixer', 'hitman', 'mole', 'doubleAgent'];
 const WEREWOLF_ROLE_LABELS = {
@@ -256,6 +261,7 @@ async function loadStatsFromDB() {
         const dbStats = await PlayerStats.find({});
         stats.clear();
         dbStats.forEach(s => {
+            if (isBotPlayerId(s.playerId)) return;
             stats.set(s.playerId, normalizeStatsShape(s.toObject ? s.toObject() : s, s.playerId, s.playerName));
         });
         console.log(`Loaded stats for ${stats.size} players from MongoDB`);
@@ -274,6 +280,7 @@ function loadStatsFromFile() {
             // โหลดเข้า Map
             if (statsData && typeof statsData === 'object') {
                 for (const [playerId, stat] of Object.entries(statsData)) {
+                    if (isBotPlayerId(playerId)) continue;
                     stats.set(playerId, normalizeStatsShape(stat, playerId, stat.playerName));
                 }
             }
@@ -299,6 +306,7 @@ async function saveStatsToDB() {
     try {
         const bulkOps = [];
         for (const [playerId, stat] of stats.entries()) {
+            if (isBotPlayerId(playerId)) continue;
             bulkOps.push({
                 updateOne: {
                     filter: { playerId },
@@ -321,6 +329,7 @@ function saveStatsToFile() {
     try {
         const statsData = {};
         for (const [playerId, stat] of stats.entries()) {
+            if (isBotPlayerId(playerId)) continue;
             statsData[playerId] = stat;
         }
         fs.writeFileSync(STATS_FILE, JSON.stringify(statsData, null, 2), 'utf8');
@@ -339,6 +348,7 @@ function isPlaceholderPlayerName(playerName) {
  * สร้างสถิติเริ่มต้นสำหรับผู้เล่น
  */
 function initializeStats(playerId, playerName) {
+    if (isBotPlayerId(playerId)) return null;
     if (!stats.has(playerId)) {
         stats.set(playerId, createDefaultStatsRecord(playerId, playerName));
     }
@@ -394,9 +404,10 @@ function recordCoupGameEnd(roomId, gameResult) {
     const gameTimestamp = new Date().toISOString();
 
     players.forEach(player => {
-        if (!player.playerId) return;
+        if (!player.playerId || isBotPlayerId(player.playerId)) return;
 
         const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
         const playerWon = player.playerId === winner.playerId;
 
         stat.totalGames += 1;
@@ -438,9 +449,10 @@ function recordLiarGameEnd(roomId, gameResult) {
     const gameTimestamp = new Date().toISOString();
 
     players.forEach(player => {
-        if (!player.playerId) return;
+        if (!player.playerId || isBotPlayerId(player.playerId)) return;
 
         const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
         const playerWon = player.playerId === winner.playerId;
 
         stat.totalGames += 1;
@@ -484,9 +496,10 @@ function recordPokerHandEnd(roomId, gameResult) {
 
     players.forEach(player => {
         if (!player.playerId || player.sittingOut) return;
-        if (String(player.playerId).startsWith('bot_')) return;
+        if (isBotPlayerId(player.playerId)) return;
 
         const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
         const winnerIds = new Set(
             (Array.isArray(gameResult.winners) ? gameResult.winners : [])
                 .map(row => row && row.playerId)
@@ -538,11 +551,12 @@ function recordSpyfallGameEnd(roomId, gameResult) {
     const spyPlayerId = winner.spyPlayerId;
 
     players.forEach(player => {
-        if (!player.playerId || !player.role) {
+        if (!player.playerId || !player.role || isBotPlayerId(player.playerId)) {
             return;
         }
 
         const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
         const isSpy = player.role === 'spy';
         const playerWon = citizensWin ? !isSpy : isSpy;
 
@@ -605,11 +619,12 @@ function recordInsiderGameEnd(roomId, gameResult) {
     // อัปเดตสถิติสำหรับทุกผู้เล่นในเกม
     players.forEach(player => {
         // player ต้องมี playerId และ role
-        if (!player.playerId || !player.role) return;
+        if (!player.playerId || !player.role || isBotPlayerId(player.playerId)) return;
 
         const playerId = player.playerId;
         const role = player.role;
         const stat = initializeStats(playerId, player.playerName || player.name);
+        if (!stat) return;
 
         // อัปเดต totalGames
         stat.totalGames += 1;
@@ -699,11 +714,12 @@ function recordWerewolfGameEnd(roomId, gameResult) {
     const winnerLabel = winner === 'village' ? 'ชาวบ้าน' : (winner === 'werewolf' ? 'หมาป่า' : 'คนบ้า');
 
     players.forEach(player => {
-        if (!player.playerId || !player.role) {
+        if (!player.playerId || !player.role || isBotPlayerId(player.playerId)) {
             return;
         }
 
         const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
         const roleId = player.role;
         const team = player.roleInfo?.team || (isWerewolfTeamRole(roleId) ? 'werewolf' : 'village');
         const playerWon = winner === roleId || team === winner;
@@ -760,11 +776,12 @@ function recordBlackMarketGameEnd(roomId, gameResult) {
     const winnerLabel = winner.name || 'ไม่ทราบ';
 
     players.forEach(player => {
-        if (!player.playerId || !player.role) {
+        if (!player.playerId || !player.role || isBotPlayerId(player.playerId)) {
             return;
         }
 
         const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
         const roleId = player.role;
         const roleLabel = player.roleInfo?.title || player.revealedRole || BLACKMARKET_ROLE_LABELS[roleId] || roleId;
         const playerWon = player.playerId === winnerId;
@@ -1091,7 +1108,7 @@ function getLeaderboard(limit, mode) {
                 losses: modeStat.losses
             };
         })
-        .filter(s => s.totalGames > 0)
+        .filter(s => s.totalGames > 0 && !isBotPlayerId(s.playerId))
         .sort((a, b) => {
             if (b.wins !== a.wins) return b.wins - a.wins;
 

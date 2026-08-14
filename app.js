@@ -1096,19 +1096,17 @@ function getSocketRoom(socket, expectedMode = null) {
 }
 
 function detachPlayerFromOtherRooms(socket, playerId, keepRoomId) {
-    roomManager.getAllRooms().forEach(roomInfo => {
-        if (roomInfo.roomId === keepRoomId) return;
-        const oldRoom = roomManager.getRoom(roomInfo.roomId);
-        if (!oldRoom || !oldRoom.players.some(player => player.playerId === playerId)) return;
-
-        const updatedRoom = roomManager.leaveRoom(roomInfo.roomId, playerId);
-        socket.leave(roomInfo.roomId);
-        if (updatedRoom) {
-            handleMidGamePlayerRemoval(updatedRoom, playerId);
-            io.to(updatedRoom.roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
-            broadcastGameStateForRoom(updatedRoom);
-        }
+    const result = roomManager.leavePlayerFromOtherRooms(playerId, keepRoomId);
+    (result.closed || []).forEach(roomId => {
+        if (socket) socket.leave(roomId);
     });
+    (result.updated || []).forEach(updatedRoom => {
+        if (socket) socket.leave(updatedRoom.roomId);
+        handleMidGamePlayerRemoval(updatedRoom, playerId);
+        io.to(updatedRoom.roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
+        broadcastGameStateForRoom(updatedRoom);
+    });
+    return result;
 }
 
 function isSiteAdminPlayer(playerId) {
@@ -3324,7 +3322,10 @@ function classifyPlayerForAdmin(player, stat, bannedPlayerIds = new Set()) {
     let category = 'real';
     let categoryLabel = 'ผู้เล่นจริง';
 
-    if (isCleanupCandidate) {
+    if (playerManager.isBotPlayerId(player.playerId)) {
+        category = 'bot';
+        categoryLabel = 'บอท';
+    } else if (isCleanupCandidate) {
         category = 'ghost';
         categoryLabel = 'ghost/cleanup';
     } else if (isAutoNamed) {
@@ -3357,7 +3358,9 @@ function getAdminPlayersData() {
     const statsByPlayerId = new Map(stats.map(stat => [stat.playerId, stat]));
     const bannedPlayerIds = new Set(playerManager.getAllBannedPlayers().map(ban => ban.playerId));
 
-    const annotatedPlayers = players.map(player => classifyPlayerForAdmin(player, statsByPlayerId.get(player.playerId), bannedPlayerIds));
+    const annotatedPlayers = players
+        .filter(player => !playerManager.isBotPlayerId(player.playerId))
+        .map(player => classifyPlayerForAdmin(player, statsByPlayerId.get(player.playerId), bannedPlayerIds));
     const cleanupCandidates = annotatedPlayers.filter(player => player.isCleanupCandidate);
     const siteAdmins = annotatedPlayers
         .filter(player => player.isSiteAdmin)
@@ -4331,7 +4334,11 @@ app.get('/api/seasons/:number/leaderboard', function(req, res) {
         endedAt: season.endedAt,
         totalPlayers: season.totalPlayers,
         totalGames: season.totalGames,
-        entries: enrichLeaderboardEntries(season.entries)
+        entries: enrichLeaderboardEntries(
+            (season.entries || [])
+                .filter(entry => !playerManager.isBotPlayerId(entry.playerId))
+                .map((entry, index) => Object.assign({}, entry, { rank: index + 1 }))
+        )
     });
 });
 
@@ -4678,64 +4685,34 @@ io.sockets.on('connection', function(socket) {
 
     // Leave room
     safeOn(socket, 'leaveRoom', function(data, callback) {
-        const roomId = socket.roomId;
-        const playerId = socket.playerId;
+        const playerId = bindSocketPlayer(socket, (data && data.playerId) || socket.playerId);
         
-        if (!roomId || !playerId) {
+        if (!playerId) {
             if (typeof callback === 'function') callback({ success: true });
             return;
         }
 
-        // ตรวจสอบว่าคนที่ออกเป็น Admin หรือเปล่า
-        const roomBefore = roomManager.getRoom(roomId);
-        const wasAdmin = roomBefore && roomBefore.admin === playerId;
-
-        const room = roomManager.leaveRoom(roomId, playerId);
-        socket.leave(roomId);
+        const hintedRoomId = (data && data.roomId) || socket.roomId;
+        const result = detachPlayerFromOtherRooms(socket, playerId, null);
         socketRoomMap.delete(socket.id);
         socket.roomId = null;
 
-        if (room) {
-            handleMidGamePlayerRemoval(room, playerId);
-
-            // Emit to remaining players
-            io.to(roomId).emit('roomUpdate', {
-                ...buildRoomUpdatePayload(room)
-            });
-
-            // Send chat notification
-            const player = playerManager.getPlayer(playerId);
+        const player = playerManager.getPlayer(playerId);
+        (result.updated || []).forEach(room => {
             if (player) {
-                sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง`, '#e74c3c');
-                addServerLog(io, 'leave', roomId, `${player.playerName} ออกจากห้อง`, 'warning');
+                sendChatMessageToRoom(io, room.roomId, 'System', `${player.playerName} ออกจากห้อง`, '#e74c3c');
+                addServerLog(io, 'leave', room.roomId, `${player.playerName} ออกจากห้อง`, 'warning');
             }
-            
-            // ถ้า Admin ออก → แจ้งเตือนว่า Admin ใหม่คือใคร
-            if (wasAdmin && room.admin) {
-                const newAdmin = playerManager.getPlayer(room.admin);
-                if (newAdmin) {
-                    sendChatMessageToRoom(io, roomId, 'System', `👑 ${newAdmin.playerName} ได้รับสิทธิ์ Admin แล้ว`, '#f39c12');
-                    
-                    // แจ้งเตือนทุกคนในห้อง
-                    io.to(roomId).emit('adminTransferred', { 
-                        message: `${newAdmin.playerName} เป็น Admin คนใหม่แล้ว`,
-                        newAdminId: room.admin,
-                        newAdminName: newAdmin.playerName,
-                        oldAdminId: playerId
-                    });
-                }
-            }
-        }
-
-        if (!room) {
+        });
+        const closedIds = new Set(result.closed || []);
+        if (hintedRoomId) closedIds.add(hintedRoomId);
+        closedIds.forEach(roomId => {
             clearWerewolfPhaseTimer(roomId);
             clearWerewolfTransitionTimer(roomId);
-        }
+        });
 
-        // Update room list
         io.emit('roomListUpdate', roomManager.getAllRooms());
         
-        // Send callback
         if (typeof callback === 'function') callback({ success: true });
     });
 

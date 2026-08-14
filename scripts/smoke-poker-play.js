@@ -173,6 +173,43 @@ async function playStreet(players, roomId, script) {
         console.log('3. โต๊ะเงิน บอทซื้อเข้าเท่าหัวห้อง ✓');
         cash.players.forEach(p => p.socket.close());
 
+        const waitingBots = await seatPlayers(base, 'poker4', 1);
+        assert((await ack(waitingBots.players[0].socket, 'poker_addBots', { roomId: waitingBots.roomId, count: 2 }))?.success, 'เพิ่มบอทห้องรอไม่ได้');
+        const leftWaiting = await ack(waitingBots.players[0].socket, 'leaveRoom', { roomId: waitingBots.roomId, playerId: waitingBots.players[0].id });
+        assert(leftWaiting?.success !== false && !leftWaiting?.__timeout, 'ออกจากห้องรอบอทไม่ได้: ' + JSON.stringify(leftWaiting));
+        waitingBots.players[0].socket.close();
+        const waitingProbe = await conn(base);
+        waitingProbe.emit('initPlayer', randomUUID());
+        await delay(300);
+        const waitingList = await ack(waitingProbe, 'getRoomList', {});
+        assert(!((waitingList && waitingList.rooms) || []).some(row => row.roomId === waitingBots.roomId), 'ออกจากห้องรอแล้วบอทต้องไม่ค้าง ยังเจอ ' + waitingBots.roomId);
+        waitingProbe.close();
+        console.log('3b. ออกจากห้องรอแล้วบอทไม่ค้างในลิสต์ ✓');
+
+        const leftover = await seatPlayers(base, 'poker4', 1);
+        assert((await ack(leftover.players[0].socket, 'poker_addBots', { roomId: leftover.roomId, count: 2 }))?.success, 'เพิ่มบอทห้องแรกไม่ได้');
+        leftover.players[0].socket.emit('setRoom', { roomId: leftover.roomId, playerId: leftover.players[0].id });
+        const secondRoom = await ack(leftover.players[0].socket, 'createRoom', {
+            playerId: leftover.players[0].id,
+            name: 'ไพ่ 5 ใบ',
+            gameMode: 'poker5',
+            maxPlayers: 10,
+            pokerAnte: 500,
+            pokerTableType: 'fun'
+        });
+        assert(secondRoom?.success && secondRoom.roomId, 'สร้างห้องที่สองไม่ได้: ' + JSON.stringify(secondRoom));
+        leftover.players[0].socket.emit('setRoom', { roomId: secondRoom.roomId, playerId: leftover.players[0].id });
+        assert((await ack(leftover.players[0].socket, 'poker_addBots', { roomId: secondRoom.roomId, count: 1 }))?.success, 'เพิ่มบอทห้องสองไม่ได้');
+        const leftoverProbe = await conn(base);
+        leftoverProbe.emit('initPlayer', randomUUID());
+        await delay(300);
+        const leftoverList = await ack(leftoverProbe, 'getRoomList', {});
+        const leftoverRooms = (leftoverList && leftoverList.rooms) || [];
+        assert(!leftoverRooms.some(row => row.roomId === leftover.roomId), 'สร้างห้องใหม่แล้วห้องเก่าบอทต้องหาย ยังเจอ ' + leftover.roomId);
+        leftoverProbe.close();
+        leftover.players.forEach(p => p.socket.close());
+        console.log('3c. สร้างห้องใหม่แล้วห้องเก่าบอทไม่ค้าง ✓');
+
         const bots = await seatPlayers(base, 'poker5', 1);
         assert((await ack(bots.players[0].socket, 'poker_addBots', { roomId: bots.roomId, count: 1 }))?.success, 'เพิ่มบอทไม่ได้');
         await startTable(bots.players, bots.roomId, 'เริ่มกับบอท');
@@ -192,7 +229,16 @@ async function playStreet(players, roomId, script) {
         }
         const botDone = latest(human);
         assert(botDone && botDone.lastResult, 'เล่นกับบอทต้องมีผลมือ');
-        console.log('4. คน + บอท เล่นจนเปิดเทียบ ✓');
+        const leftBots = await ack(human.socket, 'leaveRoom', { roomId: bots.roomId });
+        assert(leftBots?.success !== false && !leftBots?.__timeout, 'ออกจากห้องบอทไม่ได้: ' + JSON.stringify(leftBots));
+        const probe = await conn(base);
+        probe.emit('initPlayer', randomUUID());
+        await delay(300);
+        const listed = await ack(probe, 'getRoomList', {});
+        const rooms = (listed && listed.rooms) || [];
+        assert(!rooms.some(row => row.roomId === bots.roomId), 'ห้องที่เหลือแต่บอทต้องหายจากรายการ ยังเจอ ' + bots.roomId);
+        probe.close();
+        console.log('4. คน + บอท เล่นจนเปิดเทียบ และออกแล้วห้องบอทหาย ✓');
         bots.players.forEach(p => p.socket.close());
 
         const cycle = await seatPlayers(base, 'poker5', 2);
