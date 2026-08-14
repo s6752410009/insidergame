@@ -1823,33 +1823,50 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '<% if (lastSeason) { %>🏆 <%= currentSeason.name %> + เกมใหม่<% } else { %>👑 เกมใหม่: Coup — v<%= appVersion %><% } %>',
+            title: '🃏 3 โหมดใหม่ — v<%= appVersion %>',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     ${seasonResetNoticeHtml}
                     <p style="color: #f6c453; font-size: 0.95em; line-height: 1.65; margin-bottom: 15px;">
-                        <strong>v<%= appVersion %> เพิ่มโหมดที่ 5: Coup — เกมโค่นอำนาจ</strong> เล่น 2–6 คน
-                        แก่นของเกมคือ <strong>โกหกได้</strong> — ประกาศใช้พลังของการ์ดที่ไม่มีในมือก็ได้ แล้วลุ้นว่าจะมีใครกล้าท้าไหม
+                        <strong>v<%= appVersion %> เพิ่มเกมไพ่ใหม่พร้อมกัน 3 โหมด</strong>
+                        ทั้งเกมจับโกหกและเกมเก้าเก พร้อมโต๊ะจริง บอท เอฟเฟกต์เสียง และการเล่นผ่านมือถือ
                     </p>
 
-                    <div style="background: rgba(124, 58, 237, 0.16); padding: 14px; border: 1px solid rgba(196, 181, 253, 0.3); border-radius: 12px; margin-bottom: 15px;">
-                        <h4 style="color: #c4b5fd; margin: 0 0 10px 0;">👑 Coup เล่นยังไง</h4>
+                    <div style="background: rgba(127, 29, 29, 0.18); padding: 14px; border: 1px solid rgba(248, 113, 113, 0.28); border-radius: 12px; margin-bottom: 12px;">
+                        <h4 style="color: #fca5a5; margin: 0 0 8px 0;">🃏 ไพ่โกหก · 3–8 คน</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>ทุกคนได้การ์ดคว่ำ 2 ใบ + 2 เหรียญ <strong>คนสุดท้ายที่ยังเหลือการ์ดคว่ำคือผู้ชนะ</strong></li>
-                            <li>โดนท้าแล้วไม่มีการ์ดจริง → เสียการ์ด 1 ใบ · ท้าผิดเอง → เสียการ์ดเองเหมือนกัน</li>
-                            <li>การ์ด 5 ใบ: ดยุค · นักฆ่า · กัปตัน · ทูต · ท่านหญิง</li>
-                            <li>เล่นได้แม้มีแค่ 2 คน — วงเล็กก็เริ่มได้ทันที</li>
+                            <li>ลงไพ่คว่ำ 1–3 ใบ แล้วบอกว่าเป็นไพ่ตามหน้าที่กำหนด — <strong>โกหกได้</strong></li>
+                            <li>คนถัดไปเลือกลงต่อหรือท้า “โกหก!” คนพลาดเสียหัวใจ</li>
+                            <li>เหลือหัวใจเป็นคนสุดท้ายคือผู้ชนะ · มีโจ๊กเกอร์ใช้แทนไพ่ได้</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(22, 101, 52, 0.18); padding: 14px; border: 1px solid rgba(74, 222, 128, 0.28); border-radius: 12px; margin-bottom: 12px;">
+                        <h4 style="color: #86efac; margin: 0 0 8px 0;">♠ ไพ่ 5 ใบ · 2–10 คน</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
+                            <li>แจก 5 ใบ เลือกทิ้ง 2 ใบ แล้วลงชิปรอบเดียวก่อนเปิด 3 ใบวัดกัน</li>
+                            <li>เลือกผ่าน สู้ ตาม เกทับ หมอบ หรือหมดหน้าตักได้</li>
+                            <li>เล่นสนุกด้วยชิป 10,000 ต่อมือ หรือเล่นเก็บชิปจากกระเป๋าจริง</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(153, 27, 27, 0.18); padding: 14px; border: 1px solid rgba(251, 113, 133, 0.28); border-radius: 12px; margin-bottom: 15px;">
+                        <h4 style="color: #fda4af; margin: 0 0 8px 0;">♦ สี่ใบเก · 2–10 คน</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
+                            <li>แจก 4 ใบ ทิ้ง 2 ใบ แล้วลงชิปก่อนรับใบที่ 3 แบบหงายฟรี</li>
+                            <li>คนหมอบไม่ได้ใบที่ 3 · ไม่มีการแจกใบที่ 4</li>
+                            <li>ใช้แรงก์เก้าเก: ตอง › เรียงสี › เซียน › เรียง › สี › แต้ม</li>
                         </ul>
                     </div>
 
                     <div style="background: rgba(52, 152, 219, 0.12); padding: 14px; border: 1px solid rgba(143, 211, 255, 0.24); border-radius: 12px; margin-bottom: 15px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">🛠️ รอบนี้แก้อะไรบ้าง</h4>
+                        <h4 style="color: #8fd3ff; margin: 0 0 10px 0;">✨ อัปเดตพร้อมเวอร์ชันนี้</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li><strong>แถบบนของกระดาน Coup และ Spyfall เคยหายไปทั้งแถว</strong> (เลขห้อง กองกลาง วิธีเล่น ผู้เล่น จบเกม) ตอนนี้กลับมาครบและกดได้จริง</li>
-                            <li>Coup มีอนิเมชันประจำจังหวะแล้ว — แจกการ์ด พลิกการ์ดตอนโดนหงาย ตัวเลขเหรียญลอย และป้ายประกาศตอนมีคนท้า</li>
-                            <li>วิธีเล่น Coup ทำใหม่ทั้งหน้า มีรูปการ์ดจริงครบ 5 ใบ กดดูได้ทั้งในห้องรอและระหว่างเล่น</li>
-                            <li>นาฬิกาบอกล่วงหน้าว่าถ้าปล่อยจนหมดเวลา ระบบจะทำอะไรให้</li>
-                            <li>เอาเพลงพื้นหลัง (BGM) ออกทั้งระบบ</li>
+                            <li>เพิ่มบอทสำหรับทดสอบโต๊ะไพ่ พร้อมตัดสินใจจากความแข็งแรงของมือ</li>
+                            <li>เพิ่มอนิเมชันและเสียงแจกไพ่ ถึงตา ผ่าน สู้ ตาม เกทับ หมอบ และเปิดไพ่</li>
+                            <li>เพิ่มภาพพื้นหลังตามธีมให้การ์ดเลือกเกมทั้ง 8 โหมด</li>
+                            <li>แก้เข้า–ออกห้อง จบเกม กลับห้องรอ เริ่มเกมใหม่ และการเล่นหลายโต๊ะพร้อมกัน</li>
+                            <li>ตรวจด้วย poker engine 118 assertions และ socket E2E ครบทั้งสองโหมด</li>
                         </ul>
                     </div>
 
@@ -1858,6 +1875,10 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.4.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>ยกเครื่อง Coup: คู่มือครบ การ์ดจริง แอนิเมชัน แถบบน และระบบจบเกม</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.3.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>เปิดตัวโหมด Coup และระบบ Season (ปิด Season 1 เริ่ม Season 2 ดูอันดับย้อนหลังได้)</li>
