@@ -330,11 +330,42 @@
         text-align: right;
     }
 
+    .leaderboard-modes,
     .leaderboard-seasons {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         margin-bottom: 16px;
+    }
+
+    .leaderboard-mode-tab {
+        padding: 6px 14px;
+        border: 2px solid #333;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.03);
+        color: #8ea6d9;
+        font-family: inherit;
+        font-size: 0.82em;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .leaderboard-mode-tab:hover:not(:disabled) {
+        border-color: #38bdf8;
+        color: #38bdf8;
+    }
+
+    .leaderboard-mode-tab.is-active {
+        background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+        border-color: #38bdf8;
+        color: #0b1220;
+        cursor: default;
+    }
+
+    .leaderboard-mode-tab:disabled:not(.is-active) {
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 
     .leaderboard-season-tab {
@@ -924,6 +955,7 @@
             <h3>🏆 Leaderboard</h3>
             <div class="leaderboard-meta" id="leaderboardMeta">กำลังโหลด...</div>
         </div>
+        <div class="leaderboard-modes" id="leaderboardModes"></div>
         <div class="leaderboard-seasons" id="leaderboardSeasons"></div>
         <div class="leaderboard-season-note" id="leaderboardSeasonNote"></div>
         <div class="leaderboard-list" id="leaderboardList">
@@ -1123,14 +1155,32 @@ $(function() {
 
     const LEADERBOARD_PAGE_SIZE = 5;
     const CURRENT_SEASON_KEY = 'current';
+    const LEADERBOARD_MODES = [
+        { id: 'all', label: 'รวม' },
+        { id: 'insider', label: 'Insider' },
+        { id: 'werewolf', label: 'Werewolf' },
+        { id: 'spyfall', label: 'Spyfall' },
+        { id: 'coup', label: 'Coup' },
+        { id: 'blackmarket', label: 'Black Market' }
+    ];
     var leaderboardState = {
         entries: [],
         currentPage: 1,
         totalPages: 1,
         activeSeason: CURRENT_SEASON_KEY,   // 'current' หรือเลข season ที่ปิดไปแล้ว
+        activeMode: 'all',
         currentSeasonName: 'ปัจจุบัน',
-        seasonCache: {}                     // key → { entries, note }
+        seasonCache: {}                     // season:mode → { entries, note }
     };
+
+    function leaderboardCacheKey(seasonKey, mode) {
+        return String(seasonKey) + ':' + (mode || 'all');
+    }
+
+    function leaderboardModeLabel(mode) {
+        var found = LEADERBOARD_MODES.find(function(item) { return item.id === mode; });
+        return found ? found.label : 'รวม';
+    }
 
     function renderLeaderboardEmpty(message) {
         $('#leaderboardList').html('<div class="leaderboard-empty">' + message + '</div>');
@@ -1275,11 +1325,15 @@ $(function() {
         var totalEntries = leaderboardState.entries.length;
 
         if (totalEntries === 0) {
-            renderLeaderboardEmpty(
-                leaderboardState.activeSeason === CURRENT_SEASON_KEY
-                    ? 'ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!'
-                    : 'season นี้ไม่มีใครติดอันดับ'
-            );
+            var emptyMessage;
+            if (leaderboardState.activeSeason !== CURRENT_SEASON_KEY) {
+                emptyMessage = 'season นี้ไม่มีใครติดอันดับ';
+            } else if (leaderboardState.activeMode !== 'all') {
+                emptyMessage = 'ยังไม่มีใครเล่น ' + leaderboardModeLabel(leaderboardState.activeMode) + ' season นี้';
+            } else {
+                emptyMessage = 'ยังไม่มีข้อมูล เล่นเกมเพื่อติดอันดับ!';
+            }
+            renderLeaderboardEmpty(emptyMessage);
             return;
         }
 
@@ -1297,10 +1351,12 @@ $(function() {
             $list.append(buildLeaderboardItem(visibleEntries[i]));
         }
 
-        $('#leaderboardMeta').text(
-            'อันดับ ' + (startIndex + 1) + '-' + (startIndex + visibleEntries.length) +
-            ' จาก ' + totalEntries + ' คน'
-        );
+        var metaText = 'อันดับ ' + (startIndex + 1) + '-' + (startIndex + visibleEntries.length) +
+            ' จาก ' + totalEntries + ' คน';
+        if (leaderboardState.activeMode !== 'all') {
+            metaText += ' · ' + leaderboardModeLabel(leaderboardState.activeMode);
+        }
+        $('#leaderboardMeta').text(metaText);
 
         renderLeaderboardPagination(totalPages);
     }
@@ -1327,7 +1383,8 @@ $(function() {
 
         parts.push(season.totalPlayers + ' คนติดอันดับ');
 
-        return '📚 อันดับสุดท้ายของ ' + season.name + ' · ' + parts.join(' · ');
+        return '📚 อันดับสุดท้ายของ ' + season.name + ' · ' + parts.join(' · ') +
+            ' · season เก่าเก็บแค่รวมทุกโหมด';
     }
 
     function renderSeasonTabs(seasons) {
@@ -1358,11 +1415,35 @@ $(function() {
             .text(label);
     }
 
-    function showSeasonEntries(key, entries, note) {
+    function renderModeTabs() {
+        var $tabs = $('#leaderboardModes');
+        var isArchive = leaderboardState.activeSeason !== CURRENT_SEASON_KEY;
+
+        $tabs.empty();
+        LEADERBOARD_MODES.forEach(function(mode) {
+            var isActive = leaderboardState.activeMode === mode.id;
+            var disabled = isActive || (isArchive && mode.id !== 'all');
+
+            $tabs.append(
+                $('<button type="button" class="leaderboard-mode-tab"></button>')
+                    .toggleClass('is-active', isActive)
+                    .attr('data-mode', mode.id)
+                    .attr('aria-pressed', isActive ? 'true' : 'false')
+                    .prop('disabled', disabled)
+                    .text(mode.label)
+            );
+        });
+    }
+
+    function showSeasonEntries(key, entries, note, mode) {
         leaderboardState.activeSeason = key;
+        leaderboardState.activeMode = mode || 'all';
         leaderboardState.entries = Array.isArray(entries) ? entries : [];
         leaderboardState.currentPage = 1;
-        leaderboardState.seasonCache[key] = { entries: leaderboardState.entries, note: note || '' };
+        leaderboardState.seasonCache[leaderboardCacheKey(key, leaderboardState.activeMode)] = {
+            entries: leaderboardState.entries,
+            note: note || ''
+        };
 
         $('#leaderboardSeasonNote').text(note || '');
         $('#leaderboardSeasons .leaderboard-season-tab').each(function() {
@@ -1371,33 +1452,42 @@ $(function() {
                 .attr('aria-pressed', isActive ? 'true' : 'false')
                 .prop('disabled', isActive);
         });
-
+        renderModeTabs();
         renderLeaderboardPage(1);
     }
 
     // โหลดตารางอันดับของ season ที่เลือก ('current' = อันดับสด)
-    function loadLeaderboard(key) {
-        var seasonKey = key === undefined ? CURRENT_SEASON_KEY : key;
-        var cached = leaderboardState.seasonCache[seasonKey];
+    function loadLeaderboard(key, mode) {
+        var seasonKey = key === undefined ? leaderboardState.activeSeason : key;
+        var modeKey = mode === undefined ? leaderboardState.activeMode : mode;
+
+        if (seasonKey !== CURRENT_SEASON_KEY) {
+            modeKey = 'all';
+        }
+
+        var cached = leaderboardState.seasonCache[leaderboardCacheKey(seasonKey, modeKey)];
 
         if (cached) {
-            showSeasonEntries(seasonKey, cached.entries, cached.note);
+            showSeasonEntries(seasonKey, cached.entries, cached.note, modeKey);
             return;
         }
 
         var isCurrent = seasonKey === CURRENT_SEASON_KEY;
+        var url = isCurrent
+            ? (modeKey === 'all' ? '/api/leaderboard' : '/api/leaderboard?mode=' + encodeURIComponent(modeKey))
+            : '/api/seasons/' + seasonKey + '/leaderboard';
 
         $.ajax({
-            url: isCurrent ? '/api/leaderboard' : '/api/seasons/' + seasonKey + '/leaderboard',
+            url: url,
             method: 'GET',
             dataType: 'json',
             success: function(data) {
                 if (isCurrent) {
-                    showSeasonEntries(seasonKey, Array.isArray(data) ? data : [], '');
+                    showSeasonEntries(seasonKey, Array.isArray(data) ? data : [], '', modeKey);
                     return;
                 }
 
-                showSeasonEntries(seasonKey, data && data.entries, buildSeasonNote(data || {}));
+                showSeasonEntries(seasonKey, data && data.entries, buildSeasonNote(data || {}), 'all');
             },
             error: function(xhr, status, error) {
                 console.error('Leaderboard error:', error);
@@ -1429,8 +1519,13 @@ $(function() {
     }
 
     // Load leaderboard on page load
+    renderModeTabs();
     loadLeaderboard();
     loadSeasonTabs();
+
+    $(document).on('click', '.leaderboard-mode-tab:not(:disabled)', function() {
+        loadLeaderboard(CURRENT_SEASON_KEY, $(this).data('mode'));
+    });
 
     $(document).on('click', '.leaderboard-season-tab:not(:disabled)', function() {
         var key = $(this).data('season');

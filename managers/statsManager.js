@@ -98,6 +98,8 @@ function createDefaultWinByRole() {
     };
 }
 
+const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'];
+
 function createDefaultModeStats() {
     return {
         insider: { games: 0, wins: 0, losses: 0 },
@@ -140,7 +142,7 @@ function normalizeGameHistoryEntry(entry) {
         return null;
     }
 
-    const mode = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'].includes(entry.mode) ? entry.mode : 'insider';
+    const mode = GAME_MODES.includes(entry.mode) ? entry.mode : 'insider';
     return {
         ...entry,
         mode,
@@ -191,7 +193,7 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
     });
 
     const rawModeStats = rawStat.modeStats || {};
-    ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'].forEach(mode => {
+    GAME_MODES.forEach(mode => {
         const modeStat = rawModeStats[mode] || {};
         stat.modeStats[mode] = {
             games: normalizeCounter(modeStat.games),
@@ -200,7 +202,8 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
         };
     });
 
-    if (stat.modeStats.insider.games === 0 && stat.modeStats.werewolf.games === 0 && stat.modeStats.blackmarket.games === 0 && stat.modeStats.spyfall.games === 0 && stat.totalGames > 0) {
+    const hasAnyModeGames = GAME_MODES.some(mode => stat.modeStats[mode].games > 0);
+    if (!hasAnyModeGames && stat.totalGames > 0) {
         stat.modeStats.insider.games = stat.totalGames;
         stat.modeStats.insider.wins = stat.wins;
         stat.modeStats.insider.losses = stat.losses;
@@ -849,7 +852,7 @@ async function editPlayerStats(playerId, newData) {
     }
 
     if (newData.modeStats && typeof newData.modeStats === 'object') {
-        ['insider', 'werewolf', 'blackmarket', 'spyfall'].forEach(mode => {
+        ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'].forEach(mode => {
             if (!newData.modeStats[mode]) {
                 return;
             }
@@ -953,9 +956,32 @@ async function bulkDeleteStats(playerIds) {
 /**
  * ดึง Leaderboard (เรียงตาม wins)
  * @param {number | undefined} limit - จำนวนที่ต้องการ ถ้าไม่ส่งจะคืนทั้งหมด
+ * @param {string | undefined} mode - insider/werewolf/spyfall/coup/blackmarket หรือไม่ส่ง = รวมทุกโหมด
  */
-function getLeaderboard(limit) {
+function getLeaderboard(limit, mode) {
+    const rankedMode = GAME_MODES.includes(mode) ? mode : null;
+
     const rankedPlayers = Array.from(stats.values())
+        .map(stat => {
+            if (!rankedMode) {
+                return {
+                    playerId: stat.playerId,
+                    playerName: stat.playerName,
+                    totalGames: stat.totalGames,
+                    wins: stat.wins,
+                    losses: stat.losses
+                };
+            }
+
+            const modeStat = (stat.modeStats && stat.modeStats[rankedMode]) || { games: 0, wins: 0, losses: 0 };
+            return {
+                playerId: stat.playerId,
+                playerName: stat.playerName,
+                totalGames: modeStat.games,
+                wins: modeStat.wins,
+                losses: modeStat.losses
+            };
+        })
         .filter(s => s.totalGames > 0)
         .sort((a, b) => {
             if (b.wins !== a.wins) return b.wins - a.wins;
@@ -971,7 +997,8 @@ function getLeaderboard(limit) {
             totalGames: s.totalGames,
             wins: s.wins,
             losses: s.losses,
-            winRate: s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0
+            winRate: s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0,
+            mode: rankedMode || 'all'
         }));
 
     if (Number.isFinite(limit) && limit > 0) {
@@ -1000,5 +1027,6 @@ module.exports = {
     clearAllStats,
     bulkDeleteStats,
     getLeaderboard,
+    GAME_MODES,
     saveStats
 };

@@ -2371,6 +2371,15 @@
       }
     });
 
+    socket.on('chatHistory', function (entries) {
+      const $area = $('#lobbyChatMessages');
+      $area.empty();
+      (entries || []).forEach(function (entry) {
+        appendChatMessage(entry);
+      });
+    });
+    socket.emit('requestChatHistory', { roomId: roomId });
+
     // รับ broadcast จากระบบ (Admin)
     socket.on('systemBroadcast', function(data) {
       Swal.fire({

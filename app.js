@@ -3842,7 +3842,8 @@ app.get('/api/leaderboard', function(req, res) {
     const rawLimit = typeof req.query.limit === 'string' ? req.query.limit.trim() : '';
     const parsedLimit = rawLimit ? parseInt(rawLimit, 10) : NaN;
     const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
-    const leaderboard = statsManager.getLeaderboard(limit);
+    const mode = typeof req.query.mode === 'string' ? req.query.mode.trim().toLowerCase() : '';
+    const leaderboard = statsManager.getLeaderboard(limit, mode);
 
     // เพิ่มข้อมูล avatar จาก playerManager
     res.json(enrichLeaderboardEntries(leaderboard));
@@ -4014,6 +4015,8 @@ io.sockets.on('connection', function(socket) {
             // Set socket.playerId for future use
             socket.playerId = playerId;
 
+            const roomBeforeJoin = roomManager.getRoom(roomId);
+            const alreadyInRoom = !!(roomBeforeJoin && roomBeforeJoin.players.some(p => p.playerId === playerId));
             const room = roomManager.joinRoom(
                 roomId,
                 playerId,
@@ -4057,7 +4060,15 @@ io.sockets.on('connection', function(socket) {
                 ...buildRoomUpdatePayload(room)
             });
 
-            // ไม่ส่ง chat notification ที่นี่แล้ว - จะส่งใน setRoom แทน เพื่อให้ผู้เล่นเห็นตัวเองด้วย
+            // เข้าจากหน้ารายชื่อ: socket มี socketId แล้ว แล้ว redirect ไป /room
+            // setRoom รอบหน้าจะมองว่าออนไลน์อยู่แล้วเลยไม่ยิง "เข้าห้อง" — ต้องยิงตรงนี้ตอนเข้าใหม่จริง
+            if (!alreadyInRoom) {
+                const joinedPlayer = playerManager.getPlayer(playerId);
+                if (joinedPlayer) {
+                    sendChatMessageToRoom(io, joinedRoomId, 'System', `${joinedPlayer.playerName} เข้าห้อง`, '#3498db');
+                    addServerLog(io, 'join', joinedRoomId, `${joinedPlayer.playerName} เข้าห้อง`, 'info');
+                }
+            }
 
             // Update room list
             io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -4083,6 +4094,15 @@ io.sockets.on('connection', function(socket) {
         io.to(socket.id).emit('roomUpdate', {
             ...buildRoomUpdatePayload(room)
         });
+    });
+
+    safeOn(socket, 'requestChatHistory', function(data) {
+        const playerId = socket.playerId || getSessionPlayerId(socket);
+        const roomId = data?.roomId || socket.roomId;
+        if (!playerId || !roomId) return;
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.players.some(player => player.playerId === playerId)) return;
+        io.to(socket.id).emit('chatHistory', Array.isArray(room.chatHistory) ? room.chatHistory : []);
     });
 
     // Check room status (เมื่อ user กลับมาจาก background)
@@ -5535,6 +5555,8 @@ io.sockets.on('connection', function(socket) {
                     addServerLog(io, 'join', roomId, `${player.playerName} เข้าห้อง`, 'info');
                 }
             }
+
+            io.to(socket.id).emit('chatHistory', Array.isArray(room.chatHistory) ? room.chatHistory : []);
 
             // Sync game state: ส่ง players array แบบเดิม
             const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
