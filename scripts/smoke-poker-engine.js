@@ -190,7 +190,7 @@ assert(afkView.players.find(p => p.isSelf).handCount === 3, 'บนโต๊ะ�
 const sleeper = afk.gameState.players.find(p => p.playerId === afk.gameState.toActPlayerId);
 afk.gameState.phaseEndsAt = Date.now() - 1;
 poker5.autoResolvePhase(afk);
-assert(sleeper.folded, 'หมดเวลา 10 วิต้องหมอบ');
+assert(sleeper.folded, 'หมดเวลาต้องหมอบ');
 
 const raiseRoom = makeRoom(poker5, 2);
 const ra = raiseRoom.gameState.players[0];
@@ -217,7 +217,10 @@ assert(showView.fx.some(f => f.kind === 'chips'), 'ต้องมีแอน�
 assert(showView.fx.some(f => f.kind === 'reveal'), 'ต้องมีแอนิเมชันหงายไพ่');
 assert(showView.fx.some(f => f.kind === 'say'), 'ต้องมีฟองคำพูดแอ็กชัน');
 assert(showView.players.some(p => p.lastSay), 'แอ็กชันต้องติดฟองที่โปรไฟล์');
-assert(showView.betMs === 10000, 'ตาลงชิปมี 10 วิ');
+assert(showView.betMs === 16000, 'เล่นสนุกตาลงชิป 16 วิ');
+raiseRoom.gameState.tableType = 'cash';
+assert(poker5.buildClientState(raiseRoom, ra.playerId).betMs === 10000, 'เล่นเก็บชิปตาลงชิป 10 วิ');
+raiseRoom.gameState.tableType = 'fun';
 assert((raiseRoom.gameState.players[0].committed || 0) > 0, 'ต้องนับชิปที่ลงบนโต๊ะ');
 
 assert(poker5.maxPlayers === 10, 'สูงสุด 10 คน');

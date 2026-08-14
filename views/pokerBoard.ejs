@@ -5,7 +5,12 @@
 <style>
   * { box-sizing: border-box; }
   html.pk-active, html.pk-active body.content {
-    overflow-x: hidden; margin: 0 !important; padding: 0 !important; background: #120c08 !important;
+    overflow: hidden; margin: 0 !important; padding: 0 !important; background: #120c08 !important;
+    height: 100dvh; max-height: 100dvh;
+  }
+  html.pk-active .chat-toggle {
+    top: 56px; bottom: auto; right: 8px; left: auto;
+    padding: 8px 10px; font-size: 0.78rem; z-index: 241;
   }
   html.pk-active .container-fluid > header,
   html.pk-active .footer, html.pk-active #music-controls { display: none !important; }
@@ -13,9 +18,17 @@
   html.pk-active .container-fluid > .row { margin: 0 !important; }
   html.pk-active .col-lg-12 { padding: 0 !important; }
   :root {
-    --pk-gold: #f6d36a; --pk-text: #fff8e8; --pk-muted: #c9b896;
-    --pk-line: rgba(246,211,106,0.28); --pk-ease: cubic-bezier(0.22,1,0.36,1);
-    --pk-felt: #1f7a45; --pk-felt-deep: #0d3d24;
+    --pk-gold: #f6d36a;
+    --pk-gold-hi: #ffe08a;
+    --pk-gold-line: #f0c75e;
+    --pk-text: #fff8e8;
+    --pk-muted: #c9b896;
+    --pk-line: rgba(246,211,106,0.28);
+    --pk-ease: cubic-bezier(0.22,1,0.36,1);
+    --pk-felt: #1f7a45;
+    --pk-felt-deep: #0d3d24;
+    --pk-rail: #5a3818;
+    --pk-danger: #ff6b6b;
   }
   body.content {
     background:
@@ -24,8 +37,14 @@
       linear-gradient(180deg, #1a120c 0%, #0e1a12 48%, #0a140e 100%);
     font-family: 'Kanit', 'Sarabun', sans-serif; color: var(--pk-text);
   }
-  .pk-page { max-width: 1080px; margin: 0 auto; padding: 6px 10px 156px; }
-  .pk-hud { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 2px 6px; position:relative; z-index:240; }
+  .pk-page {
+    max-width: 1080px; margin: 0 auto;
+    min-height: 100dvh;
+    display:flex; flex-direction:column;
+    padding: 4px 10px 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pk-hud { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 2px 6px; position:relative; z-index:240; flex:0 0 auto; }
   .pk-hud-left, .pk-hud-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .pk-hud-mid { min-width:0; flex:1; text-align:center; }
   .pk-hud-ico {
@@ -50,18 +69,21 @@
       radial-gradient(circle at 35% 30%, #ffe08a, #c9922a 62%, #7a5410);
     box-shadow: 0 1px 0 #5a3c10, inset 0 0 0 3px #c9922a;
   }
-  .pk-stage { position:relative; margin-top:2px; }
+  .pk-stage {
+    position:relative; margin-top:2px; flex:1 1 auto; min-height:0;
+    display:flex; align-items:center; justify-content:center;
+  }
   .pk-table {
     position: relative;
-    margin: 8px auto 0;
+    margin: 0 auto;
     width: min(980px, 100%);
-    height: clamp(380px, 62vw, 560px);
+    height: min(520px, 56dvh, 100%);
     border-radius: 50% / 46%;
     overflow: visible;
     background: #0c2818;
     box-shadow:
-      0 0 0 10px #5a3818,
-      0 0 0 14px #f0c75e,
+      0 0 0 10px var(--pk-rail),
+      0 0 0 14px var(--pk-gold-line),
       0 0 0 18px #3d2410,
       0 28px 70px rgba(0,0,0,0.55),
       inset 0 0 80px rgba(0,0,0,0.28);
@@ -90,8 +112,8 @@
   .pk-seat-cards .pk-playing:first-child { margin-left:0; }
   .pk-avatar-ring {
     width:58px; height:58px; margin:0 auto; border-radius:50%;
-    display:grid; place-items:center; position:relative; z-index:1;
-    border:3px solid #f0c75e;
+    display:grid; place-items:center; position:relative; z-index:4;
+    border:3px solid var(--pk-gold-line);
     background:radial-gradient(circle at 50% 30%, #2a1c0c, #0c0804);
     overflow:visible;
     box-shadow: 0 0 0 2px #5a3818, 0 8px 16px rgba(0,0,0,0.45);
@@ -104,15 +126,15 @@
   .pk-timer-arc { fill:none; stroke:#ffe08a; stroke-width:3.2; stroke-linecap:round; transition: stroke .2s linear; filter: drop-shadow(0 0 4px rgba(255,220,120,0.8)); }
   .pk-timer-track { fill:none; stroke:rgba(255,255,255,0.18); stroke-width:3.2; }
   .pk-seat.pk-urgent .pk-timer-arc {
-    stroke:#ff6b6b;
+    stroke:var(--pk-danger);
     filter: drop-shadow(0 0 5px rgba(239,68,68,0.85));
   }
   .pk-seat.pk-urgent .pk-avatar-ring {
-    border-color:#ff6b6b;
+    border-color:var(--pk-danger);
     box-shadow: 0 0 0 4px rgba(248,113,113,0.38);
     animation: pkUrgentShake 0.42s ease-in-out infinite;
   }
-  .pk-timer.is-urgent { color:#ff6b6b; }
+  .pk-timer.is-urgent { color:var(--pk-danger); }
   .pk-say {
     position:absolute; left:50%; top:-4px; transform:translate(-50%,-100%);
     padding:6px 12px; border-radius:16px 16px 16px 4px;
@@ -121,16 +143,20 @@
     pointer-events:none; border:1px solid #f0c75e;
   }
   .pk-seat.is-north .pk-say {
-    top:auto; bottom:-8px; transform:translate(-50%,100%);
+    top:auto; bottom:-6px; transform:translate(-50%,100%);
     border-radius:4px 16px 16px 16px;
   }
   .pk-seat.is-west .pk-say {
-    left:calc(100% + 8px); top:10px; transform:none;
+    left:calc(100% + 6px); top:8px; transform:none;
     border-radius:4px 16px 16px 16px;
   }
   .pk-seat.is-east .pk-say {
-    left:auto; right:calc(100% + 8px); top:10px; transform:none;
+    left:auto; right:calc(100% + 6px); top:8px; transform:none;
     border-radius:16px 4px 16px 16px;
+  }
+  .pk-seat.is-south .pk-say,
+  .pk-seat.is-self .pk-say {
+    top:-2px; transform:translate(-50%,-100%);
   }
   .pk-say.is-pop { animation: pkSayIn 0.32s var(--pk-ease) both; }
   .pk-seat.is-north .pk-say.is-pop { animation: pkSayInDown 0.32s var(--pk-ease) both; }
@@ -148,11 +174,29 @@
     0% { opacity:0; transform:scale(0.72); }
     100% { opacity:1; transform:scale(1); }
   }
-  .pk-seat.is-north .pk-plate {
-    position:absolute; left:50%; bottom:calc(100% + 2px); transform:translateX(-50%);
-    margin:0; min-width:72px; z-index:4;
+  .pk-seat.is-north .pk-seat-cards {
+    position:absolute; left:50%; top:42px; margin:0;
+    transform:translate(-50%,0); height:32px; z-index:2;
   }
-  .pk-seat.is-north .pk-seat-cards { margin-bottom:2px; }
+  .pk-seat.is-west .pk-seat-cards {
+    position:absolute; left:100%; top:28px; margin:0;
+    transform:translate(-6px,-50%); height:40px; z-index:2;
+  }
+  .pk-seat.is-east .pk-seat-cards {
+    position:absolute; right:100%; left:auto; top:28px; margin:0;
+    transform:translate(6px,-50%); height:40px; z-index:2;
+  }
+  .pk-seat.is-south .pk-seat-cards,
+  .pk-seat.is-self .pk-seat-cards {
+    position:absolute; left:50%; top:auto; bottom:100%; margin:0;
+    transform:translate(-50%,8px); height:32px; z-index:2;
+  }
+  .pk-seat.is-self .pk-seat-cards { display:none; }
+  .pk-table.is-packed .pk-seat.is-north .pk-seat-cards { top:34px; }
+  .pk-table.is-full .pk-seat.is-north .pk-seat-cards { top:30px; }
+  .pk-seat.is-north .pk-peek-tag {
+    position:absolute; left:50%; top:100%; margin:0; transform:translate(-50%,2px);
+  }
   .pk-turn-token {
     position:absolute; top:0; left:0; width:26px; height:26px; margin:0;
     border-radius:50%; background:linear-gradient(#fff,#ffe08a); color:#16120c;
@@ -217,7 +261,7 @@
   .pk-table.is-packed .pk-plate { padding:2px 5px 3px; }
   .pk-table.is-packed .pk-seat-name { font-size:0.64rem; max-width:80px; }
   .pk-table.is-packed .pk-seat-stack { font-size:0.66rem; }
-  .pk-table.is-full { height: clamp(400px, 68vw, 580px); }
+  .pk-table.is-full { height: min(540px, 58dvh, 100%); }
   .pk-table.is-full .pk-seat { width:72px; }
   .pk-table.is-full .pk-avatar-ring { width:40px; height:40px; border-width:2px; }
   .pk-table.is-full .pk-seat.is-self { width:96px; }
@@ -225,6 +269,7 @@
   .pk-table.is-full .pk-seat-name { font-size:0.58rem; max-width:68px; }
   .pk-table.is-full .pk-seat-cards .pk-playing { width:18px; height:26px; margin-left:-10px; }
   .pk-table.is-full .pk-seat:not(.is-self):not(.is-show) .pk-seat-cards .pk-playing:nth-child(n+3) { display:none; }
+  .pk-table.is-packed .pk-seat:not(.is-self):not(.is-show) .pk-seat-cards .pk-playing:nth-child(n+3) { display:none; }
   .pk-table.is-full .pk-seat.is-show,
   .pk-table.is-full .pk-seat.is-peek { width:96px; }
   .pk-table.is-full .pk-seat.is-self .pk-seat-rank {
@@ -244,10 +289,10 @@
     font-size:0.7rem; font-weight:800; color:var(--pk-gold);
     white-space:nowrap;
   }
-  .pk-seat.is-show, .pk-seat.is-peek { width:128px; z-index:5; }
+  .pk-seat.is-show, .pk-seat.is-peek { width:108px; z-index:5; }
   .pk-seat.is-show .pk-seat-cards,
   .pk-seat.is-peek .pk-seat-cards {
-    height:70px; margin:0 0 2px; perspective: 420px;
+    height:48px; margin:0; perspective: 420px;
   }
   .pk-seat.is-show .pk-fan-slot,
   .pk-seat.is-peek .pk-fan-slot {
@@ -263,7 +308,7 @@
   .pk-seat.is-peek .pk-fan-slot:nth-child(3) { transform: rotate(16deg) translateY(8px); }
   .pk-seat.is-show .pk-seat-cards .pk-playing,
   .pk-seat.is-peek .pk-seat-cards .pk-playing {
-    width:42px; height:60px; margin-left:0; border-radius:6px;
+    width:32px; height:46px; margin-left:0; border-radius:5px;
   }
   .pk-peek-tag {
     position:relative; z-index:8; display:inline-block;
@@ -287,9 +332,9 @@
   .pk-seat.is-winner .pk-avatar-ring::before {
     content: '';
     position: absolute;
-    inset: -34px;
+    inset: -14px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,248,214,0.62) 0%, rgba(245,200,107,0.28) 40%, transparent 72%);
+    background: radial-gradient(circle, rgba(255,248,214,0.45) 0%, rgba(245,200,107,0.18) 42%, transparent 72%);
     z-index: -1;
     pointer-events: none;
     animation: pkSpotPulse 1.7s ease-in-out infinite;
@@ -328,17 +373,18 @@
   .pk-deck .pk-playing { width:30px; height:42px; }
   .pk-win {
     font-family:'Kanit',sans-serif; font-size:clamp(1.05rem,3.4vw,1.55rem);
-    font-weight:900; color:#ffe08a; letter-spacing:0.06em;
+    font-weight:900; color:var(--pk-gold-hi); letter-spacing:0.06em;
     -webkit-text-stroke: 1px #7f1d1d;
     text-shadow: 0 3px 0 #9a3412, 0 0 22px rgba(255,220,120,0.7);
     text-align:center; animation: pkWinIn 0.48s var(--pk-ease) both;
-    position:relative; z-index:7; max-width:min(280px,70vw);
+    position:absolute; left:50%; top:36%; transform:translate(-50%,-50%);
+    z-index:8; pointer-events:none; max-width:min(280px,70vw);
   }
   .pk-win[hidden] { display:none !important; animation:none; }
   @keyframes pkWinIn {
-    0% { opacity:0; transform: scale(0.55) translateY(10px); }
-    70% { opacity:1; transform: scale(1.08) translateY(0); }
-    100% { transform: scale(1); }
+    0% { opacity:0; transform:translate(-50%,-50%) scale(0.55); }
+    70% { opacity:1; transform:translate(-50%,-50%) scale(1.08); }
+    100% { transform:translate(-50%,-50%) scale(1); }
   }
   .pk-fx { position:fixed; inset:0; pointer-events:none; z-index:11000; }
   .pk-fly {
@@ -414,7 +460,7 @@
     margin: 0 auto 2px; width: fit-content; max-width: 94%;
     padding:5px 16px; border-radius:999px;
     background:rgba(8,12,8,0.72); border:1px solid rgba(240,199,94,0.35);
-    position:relative; z-index:230;
+    position:relative; z-index:230; flex:0 0 auto;
   }
   .pk-now.is-mine { background:rgba(245,200,107,0.2); border-color:#f0c75e; }
   .pk-now-copy { font-size:0.88rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -474,8 +520,8 @@
     box-shadow: 0 0 0 2px rgba(74,222,128,0.35), 0 12px 20px rgba(0,0,0,0.45);
   }
   .pk-hand-dock {
-    position:sticky; bottom:0; z-index:20; margin:4px -10px -8px;
-    padding:6px 8px 14px;
+    position:relative; z-index:20; flex:0 0 auto; margin:0 -10px 0;
+    padding:4px 8px calc(10px + env(safe-area-inset-bottom, 0px));
     background:linear-gradient(180deg,transparent 0%, rgba(10,12,8,0.55) 12%, rgba(10,12,8,0.94) 36%);
   }
   .pk-status-line {
@@ -485,7 +531,7 @@
   .pk-status-line .pk-hint,
   .pk-status-line .pk-feed { margin:0; min-height:0; }
   .pk-hint:empty, .pk-feed:empty { display:none; }
-  .pk-fan { display:flex; justify-content:center; align-items:flex-end; min-height:148px; position:relative; }
+  .pk-fan { display:flex; justify-content:center; align-items:flex-end; min-height:0; position:relative; padding-top:8px; }
   .pk-fan .pk-fan-slot { margin-left:-16px; transform-origin: 50% 100%; position:relative; }
   .pk-fan .pk-fan-slot:first-child { margin-left:0; }
   .pk-fan .pk-fan-slot:nth-child(1) { transform: rotate(-7deg) translateY(8px); z-index:1; }
@@ -533,22 +579,44 @@
   .pk-sidebar.open { transform:none; }
   .pk-sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:70; }
   @media (max-width: 640px) {
-    .pk-playing, .pk-slot { width:66px; height:94px; }
-    .pk-fan .pk-fan-slot { margin-left:-10px; }
-    .pk-seat.is-show .pk-fan-slot, .pk-seat.is-peek .pk-fan-slot { margin-left:-14px; }
-    .pk-table { height: clamp(320px, 78vw, 460px); }
-    .pk-seat { width:86px; }
-    .pk-avatar-ring { width:50px; height:50px; }
-    .pk-seat.is-self .pk-avatar-ring { width:56px; height:56px; }
-    .pk-seat-cards .pk-playing { width:22px; height:32px; margin-left:-10px; }
-    .pk-seat.is-show, .pk-seat.is-peek { width:108px; }
+    .pk-playing, .pk-slot { width:54px; height:76px; }
+    .pk-fan .pk-fan-slot { margin-left:-12px; }
+    .pk-seat.is-show .pk-fan-slot, .pk-seat.is-peek .pk-fan-slot { margin-left:-12px; }
+    .pk-table { height: min(340px, 44dvh, 100%); }
+    .pk-table.is-full { height: min(360px, 46dvh, 100%); }
+    .pk-seat { width:76px; }
+    .pk-avatar-ring { width:44px; height:44px; }
+    .pk-seat.is-self .pk-avatar-ring { width:52px; height:52px; }
+    .pk-seat-cards { height:36px; }
+    .pk-seat-cards .pk-playing { width:20px; height:28px; margin-left:-11px; }
+    .pk-seat.is-show, .pk-seat.is-peek { width:92px; }
     .pk-seat.is-show .pk-seat-cards .pk-playing,
-    .pk-seat.is-peek .pk-seat-cards .pk-playing { width:34px; height:48px; margin-left:-14px; }
+    .pk-seat.is-peek .pk-seat-cards .pk-playing { width:26px; height:36px; margin-left:0; }
     .pk-hud-mid { display:none; }
-    .pk-btn { min-width:72px; min-height:42px; padding:8px 12px; font-size:0.86rem; }
-    .pk-hand-dock { margin-top:2px; }
-    .pk-table.is-full { height: clamp(340px, 84vw, 500px); }
+    .pk-hud-ico { width:40px; height:40px; }
+    .pk-say { padding:3px 8px; font-size:0.68rem; }
+    .pk-pot { font-size:1.35rem; padding:1px 12px 4px; }
+    .pk-btn { min-width:72px; min-height:44px; padding:8px 12px; font-size:0.86rem; }
+    .pk-chip-step { width:44px; height:44px; }
+    .pk-hand-dock { margin-top:0; }
+    .pk-status-line .pk-feed { display:none; }
     .pk-table.is-full .pk-seat.is-self .pk-seat-rank { display:none; }
+    .pk-peek-tag { font-size:0.62rem; padding:2px 7px; margin:0; }
+    .pk-rank-tab { top: 26%; padding:10px 6px; font-size:0.78rem; }
+    .pk-chip-stack { width:44px; }
+    .pk-chip-disc { width:32px; height:10px; }
+    .pk-seat.is-north .pk-seat-cards { top:36px; }
+    .pk-seat.is-west .pk-seat-cards, .pk-seat.is-east .pk-seat-cards { top:24px; }
+    .pk-muck-row { transform:scale(0.9); }
+  }
+  @media (max-width: 640px) and (orientation: landscape) {
+    .pk-table { height: min(70dvh, 100%); }
+    .pk-table.is-full { height: min(72dvh, 100%); }
+    .pk-playing, .pk-slot { width:44px; height:62px; }
+    .pk-hud { padding:2px; }
+    .pk-hud-ico { width:36px; height:36px; }
+    .pk-now { padding:3px 12px; }
+    .pk-hand-dock { padding:2px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
   }
   @media (prefers-reduced-motion: reduce) {
     .pk-playing.is-deal, .pk-playing.is-flip, .pk-chip-stack.is-drop, .pk-banner.is-on, .pk-fly, .pk-say.is-pop, .pk-peek-tag.is-pop, .pk-turn-token,
@@ -585,11 +653,12 @@
     .pk-debug { left:12px; right:auto; top:auto; bottom:168px; min-width:196px; }
   }
   .pk-rank-tab {
-    position:fixed; left:0; top:42%; z-index:120; transform:translateY(-50%);
+    position:fixed; left:0; top:28%; z-index:120; transform:translateY(-50%);
     border:1px solid var(--pk-gold); border-left:0; border-radius:0 14px 14px 0;
     background:rgba(8,18,12,0.94); color:var(--pk-gold); font-weight:800; font-family:inherit;
     padding:14px 8px; writing-mode:vertical-rl; letter-spacing:0.12em; cursor:pointer;
   }
+  .pk-rank-tab.is-away { opacity:0; visibility:hidden; pointer-events:none; }
   .pk-rank-overlay {
     display:block; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:118;
     opacity:0; visibility:hidden; pointer-events:none; transition: opacity .18s var(--pk-ease);
@@ -642,7 +711,7 @@
       <button type="button" id="pkClaimBtn" class="pk-chip pk-chip-btn">รับรายวัน</button>
     </div>
   </div>
-  <div id="pkNowBar" class="pk-now">
+  <div id="pkNowBar" class="pk-now" role="status" aria-live="polite" aria-atomic="true">
     <span id="pkNowCopy" class="pk-now-copy">กำลังโหลด...</span>
     <div class="pk-timer-wrap">
       <span id="pkTimer" class="pk-timer">--</span>
@@ -658,13 +727,13 @@
     <div class="pk-center">
       <div class="pk-label" id="pkBoardLabel">กองกลาง</div>
       <div id="pkPot" class="pk-pot">0</div>
-      <div id="pkWinBanner" class="pk-win" hidden></div>
       <div class="pk-muck-row">
         <div id="pkDeck" class="pk-deck"></div>
         <div id="pkBoard" class="pk-discards"></div>
       </div>
       <div id="pkShow" class="pk-show"></div>
     </div>
+    <div id="pkWinBanner" class="pk-win" hidden></div>
   </div>
   </div>
   <div class="pk-hand-dock">
@@ -747,6 +816,10 @@ $(function() {
   let seenSaySeq = {};
   let seenPeekLabel = {};
   let lastTurnSoundKey = '';
+  let seatLayoutKey = '';
+  let lastRingId = '';
+  let lastActionSig = '';
+  let lastHandSig = '';
   let pkAudioCtx = null;
   let pkNoiseBuf = null;
 
@@ -895,10 +968,10 @@ $(function() {
     const src = card && card.image ? card.image : (currentState.cardBack || '/assets/games/poker/back.svg');
     const key = extra && extra.handKey ? ' data-hand-key="' + escapeHtml(extra.handKey) + '" data-card-id="' + escapeHtml(card.id) + '"' : '';
     const cls = 'pk-playing' + (extra && extra.pick ? ' is-pick' : '') + (extra && extra.selected ? ' is-selected' : '') + (extra && extra.best ? ' is-best' : '');
-    return '<div class="' + cls + '"' + key + '><img src="' + escapeHtml(src) + '" alt="' + escapeHtml((card && card.thaiName) || '') + '"></div>';
+    return '<div class="' + cls + '"' + key + '><img src="' + escapeHtml(src) + '" alt="' + escapeHtml((card && card.thaiName) || 'ไพ่') + '"></div>';
   }
   function backHtml() {
-    return '<div class="pk-playing"><img src="' + escapeHtml((currentState && currentState.cardBack) || '/assets/games/poker/back.svg') + '" alt=""></div>';
+    return '<div class="pk-playing"><img src="' + escapeHtml((currentState && currentState.cardBack) || '/assets/games/poker/back.svg') + '" alt="ไพ่คว่ำ"></div>';
   }
   function seatDeg(index, total) {
     if (index === 0) return 270;
@@ -927,8 +1000,8 @@ $(function() {
   function seatPos(index, total) {
     const deg = seatDeg(index, total);
     const rad = deg * Math.PI / 180;
-    const rx = total <= 4 ? 46 : (total >= 9 ? 46 : (total >= 7 ? 44 : 42));
-    const ry = total <= 4 ? 36 : (total >= 9 ? 36 : (total >= 7 ? 32 : 28));
+    const rx = total <= 4 ? 46 : (total >= 9 ? 48 : (total >= 7 ? 44 : 42));
+    const ry = total <= 4 ? 36 : (total >= 9 ? 38 : (total >= 7 ? 32 : 28));
     if (index === 0) {
       return { left: '50%', top: total >= 8 ? '84%' : '80%' };
     }
@@ -1152,14 +1225,178 @@ $(function() {
     }
     if (p.folded) return '';
     const n = holeSize(p, state);
-    return Array.from({ length: n }, function() { return wrapCard(backHtml()); }).join('');
+    const cap = (state.players || []).length >= 7 ? 2 : n;
+    return Array.from({ length: Math.min(n, cap) }, function() { return wrapCard(backHtml()); }).join('');
+  }
+  function seatView(p, index, state, seated) {
+    const showdown = isShowdown(state);
+    const peekCards = peekCardsOf(p, state);
+    const cards = seatCardsHtml(p, state);
+    const acting = state.phase === 'bet' && p.isTurn;
+    const showing = !!(p.revealed && p.revealed.length);
+    const peeking = !!(state.debugPeek && peekCards && peekCards.length);
+    const peekFan = !!(peeking && !p.isSelf && !showing && seated.length < 7);
+    const popSay = !!(p.lastSay && seenSaySeq[p.playerId] !== (Number(p.lastSaySeq) || 0));
+    let label = '';
+    if (p.folded) label = 'หมอบ';
+    else if (p.isSelf) label = pillText(p, state);
+    else if (showing) label = p.peekRank || peekRankText(p, state) || rankFromPeekCards(p.revealed);
+    else if (state.debugPeek) {
+      label = rankFromPeekCards(peekCards) || p.peekRank || peekOnlyRank(p) || p.peekCategory || p.peekTitle || '';
+    }
+    if (peeking && !p.isSelf && !label) label = rankFromPeekCards(peekCards);
+    const showPeekTag = !!(!p.isSelf && label && (peeking || showing || p.folded));
+    const peekPop = !!(showPeekTag && seenPeekLabel[p.playerId] !== label);
+    if (showPeekTag) seenPeekLabel[p.playerId] = label;
+    else delete seenPeekLabel[p.playerId];
+    const showChipRank = !!(label && !p.isSelf && ((showing || p.folded) && !showPeekTag));
+    const band = seatBand(index, seated.length);
+    const pos = seatPos(index, seated.length);
+    const cls = 'pk-seat' +
+      (p.isSelf ? ' is-self' : '') +
+      (band ? ' is-' + band : '') +
+      (p.ready ? ' is-ready' : '') +
+      (p.isTurn ? ' is-turn' : '') +
+      (acting ? ' pk-acting' : '') +
+      (p.folded ? ' is-fold' : '') +
+      (p.sittingOut ? ' is-out' : '') +
+      (showing ? ' is-show' : '') +
+      (peekFan ? ' is-peek' : '') +
+      (p.isWinner && showdown ? ' is-winner' : '');
+    return {
+      p: p, cards: cards, acting: acting, showing: showing, peekFan: peekFan,
+      popSay: popSay, label: label, showPeekTag: showPeekTag, peekPop: peekPop,
+      showChipRank: showChipRank, band: band, pos: pos, cls: cls, showdown: showdown,
+      z: (p.isTurn || showing || peekFan || p.lastSay) ? '6' : '',
+      cardsSig: (p.folded ? 'fold' : '') + '|' + (showing ? 'r:' + (p.revealed || []).map(function(c) { return c.id; }).join(',') : '') + '|' + ((p.upCard && p.upCard.id) || '') + '|' + (peekFan ? 'p' : 'b') + '|' + holeSize(p, state)
+    };
+  }
+  function seatHtml(view) {
+    const p = view.p;
+    return '<div class="' + view.cls +
+      '" data-seat-id="' + escapeHtml(p.playerId) +
+      '" style="left:' + view.pos.left + ';top:' + view.pos.top + ';' + (view.z ? 'z-index:' + view.z + ';' : '') + '">' +
+      (p.lastSay ? '<div class="pk-say' + (view.popSay ? ' is-pop' : '') + '">' + escapeHtml(p.lastSay) + '</div>' : '') +
+      (view.cards ? '<div class="pk-seat-cards" data-sig="' + escapeHtml(view.cardsSig) + '">' + view.cards + '</div>' : '') +
+      (view.showPeekTag ? '<div class="pk-peek-tag' + (view.peekPop ? ' is-pop' : '') + '">' + escapeHtml(view.label) + '</div>' : '') +
+      '<div class="pk-avatar-ring">' + timerSvg() + avatarHtml(p, p.isSelf ? 52 : 46) +
+        (p.isDealer ? '<span class="pk-dealer-btn">D</span>' : '') +
+        (/หมดหน้าตัก/.test(String(p.lastSay || '')) ? '<div class="pk-allin">ALL IN</div>' : '') +
+        (p.isWinner && view.showdown ? '<div class="pk-win-badge">ชนะ</div>' : '') +
+      '</div>' +
+      '<div class="pk-plate">' +
+        '<div class="pk-seat-name">' + escapeHtml(String(p.name || '').replace(/\s*🤖\s*/g, ' ').trim()) + '</div>' +
+        '<div class="pk-seat-stack">' + (p.stack || 0) + '</div>' +
+      '</div>' +
+      (view.showChipRank ? '<div class="pk-seat-rank">' + escapeHtml(view.label) + '</div>' : '') +
+    '</div>';
+  }
+  function setSeatBadge(ring, selector, html, on) {
+    let el = ring.querySelector(selector);
+    if (on && !el) ring.insertAdjacentHTML('beforeend', html);
+    if (!on && el) el.remove();
+  }
+  function patchSeat(node, view) {
+    const p = view.p;
+    node.className = view.cls;
+    node.style.left = view.pos.left;
+    node.style.top = view.pos.top;
+    node.style.zIndex = view.z || '';
+    let say = node.querySelector('.pk-say');
+    if (p.lastSay) {
+      if (!say) {
+        say = document.createElement('div');
+        node.insertBefore(say, node.firstChild);
+      }
+      if (say.textContent !== p.lastSay) say.textContent = p.lastSay;
+      if (view.popSay) {
+        say.className = 'pk-say';
+        void say.offsetWidth;
+        say.className = 'pk-say is-pop';
+      } else {
+        say.className = 'pk-say';
+      }
+    } else if (say) {
+      say.remove();
+    }
+    let cardsWrap = node.querySelector('.pk-seat-cards');
+    if (view.cards) {
+      if (!cardsWrap) {
+        cardsWrap = document.createElement('div');
+        cardsWrap.className = 'pk-seat-cards';
+        const ring = node.querySelector('.pk-avatar-ring');
+        node.insertBefore(cardsWrap, ring);
+      }
+      if (cardsWrap.getAttribute('data-sig') !== view.cardsSig) {
+        cardsWrap.innerHTML = view.cards;
+        cardsWrap.setAttribute('data-sig', view.cardsSig);
+      }
+    } else if (cardsWrap) {
+      cardsWrap.remove();
+    }
+    let peek = node.querySelector('.pk-peek-tag');
+    if (view.showPeekTag) {
+      if (!peek) {
+        peek = document.createElement('div');
+        const ring = node.querySelector('.pk-avatar-ring');
+        node.insertBefore(peek, ring);
+      }
+      if (peek.textContent !== view.label) peek.textContent = view.label;
+      peek.className = 'pk-peek-tag' + (view.peekPop ? ' is-pop' : '');
+    } else if (peek) {
+      peek.remove();
+    }
+    const ring = node.querySelector('.pk-avatar-ring');
+    if (ring) {
+      setSeatBadge(ring, '.pk-dealer-btn', '<span class="pk-dealer-btn">D</span>', !!p.isDealer);
+      setSeatBadge(ring, '.pk-allin', '<div class="pk-allin">ALL IN</div>', /หมดหน้าตัก/.test(String(p.lastSay || '')));
+      setSeatBadge(ring, '.pk-win-badge', '<div class="pk-win-badge">ชนะ</div>', !!(p.isWinner && view.showdown));
+    }
+    const stack = node.querySelector('.pk-seat-stack');
+    if (stack) stack.textContent = String(p.stack || 0);
+    let rank = node.querySelector('.pk-seat-rank');
+    if (view.showChipRank) {
+      if (!rank) {
+        rank = document.createElement('div');
+        rank.className = 'pk-seat-rank';
+        node.appendChild(rank);
+      }
+      rank.textContent = view.label;
+    } else if (rank) {
+      rank.remove();
+    }
+  }
+  function renderSeats(seated, state) {
+    const root = document.getElementById('pkSeats');
+    if (!root) return;
+    const views = seated.map(function(p, index) { return seatView(p, index, state, seated); });
+    const key = seated.map(function(p) { return p.playerId; }).join('|');
+    const nodes = root.querySelectorAll('.pk-seat');
+    let same = key === seatLayoutKey && nodes.length === views.length;
+    if (same) {
+      for (let i = 0; i < views.length; i += 1) {
+        if (nodes[i].getAttribute('data-seat-id') !== views[i].p.playerId) {
+          same = false;
+          break;
+        }
+      }
+    }
+    if (!same) {
+      seatLayoutKey = key;
+      lastRingId = '';
+      root.innerHTML = views.map(seatHtml).join('');
+      return;
+    }
+    for (let i = 0; i < views.length; i += 1) patchSeat(nodes[i], views[i]);
   }
   function chipPos(index, total) {
+    if (index === 0) return { left: '50%', top: total <= 4 ? '61%' : '63%' };
     const deg = seatDeg(index, total);
     const rad = deg * Math.PI / 180;
+    const rr = total <= 4 ? 18 : 16;
     return {
-      left: (50 + 22 * Math.cos(rad)).toFixed(2) + '%',
-      top: (50 - 18 * Math.sin(rad)).toFixed(2) + '%'
+      left: (50 + rr * Math.cos(rad)).toFixed(2) + '%',
+      top: (50 - (rr - 1) * Math.sin(rad)).toFixed(2) + '%'
     };
   }
   function chipStackHtml(amount, extraClass, style) {
@@ -1344,7 +1581,10 @@ $(function() {
   }
   function timerHint(state) {
     if (state.phase === 'select') return 'หมดเวลา = ทิ้งให้อัตโนมัติ';
-    if (state.phase === 'bet') return 'หมดเวลา 10 วิ = หมอบ';
+    if (state.phase === 'bet') {
+      const sec = Math.max(1, Math.round((Number(state.betMs) || 16000) / 1000));
+      return 'หมดเวลา ' + sec + ' วิ = หมอบ';
+    }
     if (state.phase === 'deal3') return 'กำลังหงายใบที่ 3';
     if (state.phase === 'between') return 'หมดเวลา = แจกมือใหม่';
     return '';
@@ -1403,9 +1643,15 @@ $(function() {
     lastTurnId = playerId;
   }
   function paintTurnRing(state) {
+    const id = state.phase === 'bet' ? (state.toActPlayerId || '') : '';
     const arc = document.querySelector('.pk-seat.pk-acting .pk-timer-arc');
-    if (!arc || !state.phaseEndsAt || state.phase !== 'bet') return;
-    const total = Number(state.betMs) || 10000;
+    if (!id || !arc || !state.phaseEndsAt) {
+      lastRingId = id;
+      return;
+    }
+    if (id === lastRingId) return;
+    lastRingId = id;
+    const total = Number(state.betMs) || 16000;
     const remain = Math.max(0, state.phaseEndsAt - Date.now());
     const start = 100 - Math.min(100, (remain / total) * 100);
     arc.style.transition = 'none';
@@ -1451,58 +1697,8 @@ $(function() {
     const seated = selfAt >= 0 ? all.slice(selfAt).concat(all.slice(0, selfAt)) : all;
     const packed = seated.length >= 7;
     $('.pk-table').toggleClass('is-packed', packed).toggleClass('is-full', seated.length >= 9);
-    $('#pkSeats').html(seated.map(function(p, index) {
-      const pos = seatPos(index, seated.length);
-      const peekCards = peekCardsOf(p, state);
-      const cards = seatCardsHtml(p, state);
-      const acting = state.phase === 'bet' && p.isTurn;
-      const showing = !!(p.revealed && p.revealed.length);
-      const peeking = !!(state.debugPeek && peekCards && peekCards.length);
-      const holes = holeSize(p, state);
-      const peekFan = !packed && !p.isSelf && !showing && holes >= 2 && holes <= 3;
-      const popSay = !!(p.lastSay && seenSaySeq[p.playerId] !== (Number(p.lastSaySeq) || 0));
-      let label = '';
-      if (p.folded) label = 'หมอบ';
-      else if (p.isSelf) label = pillText(p, state);
-      else if (showing) label = p.peekRank || peekRankText(p, state) || rankFromPeekCards(p.revealed);
-      else if (state.debugPeek) {
-        label = rankFromPeekCards(peekCards) || p.peekRank || peekOnlyRank(p) || p.peekCategory || p.peekTitle || '';
-      }
-      if (peeking && !p.isSelf && !label) label = rankFromPeekCards(peekCards);
-      const showPeekTag = !!(!p.isSelf && label && (peeking || showing || p.folded));
-      const peekPop = !!(showPeekTag && seenPeekLabel[p.playerId] !== label);
-      if (showPeekTag) seenPeekLabel[p.playerId] = label;
-      else delete seenPeekLabel[p.playerId];
-      const showChipRank = !!(label && !p.isSelf && ((showing || p.folded) && !showPeekTag));
-      const band = seatBand(index, seated.length);
-      return '<div class="pk-seat' +
-        (p.isSelf ? ' is-self' : '') +
-        (band !== 'south' ? ' is-' + band : '') +
-        (p.ready ? ' is-ready' : '') +
-        (p.isTurn ? ' is-turn' : '') +
-        (acting ? ' pk-acting' : '') +
-        (p.folded ? ' is-fold' : '') +
-        (p.sittingOut ? ' is-out' : '') +
-        (showing ? ' is-show' : '') +
-        (peekFan ? ' is-peek' : '') +
-        (p.isWinner && showdown ? ' is-winner' : '') +
-        '" data-seat-id="' + escapeHtml(p.playerId) +
-        '" style="left:' + pos.left + ';top:' + pos.top + ';' + (p.isTurn || showing || peekFan || p.lastSay ? 'z-index:6;' : '') + '">' +
-        (p.lastSay ? '<div class="pk-say' + (popSay ? ' is-pop' : '') + '">' + escapeHtml(p.lastSay) + '</div>' : '') +
-        (cards ? '<div class="pk-seat-cards">' + cards + '</div>' : '') +
-        (showPeekTag ? '<div class="pk-peek-tag' + (peekPop ? ' is-pop' : '') + '">' + escapeHtml(label) + '</div>' : '') +
-        '<div class="pk-avatar-ring">' + timerSvg() + avatarHtml(p, p.isSelf ? 52 : 46) +
-          (p.isDealer ? '<span class="pk-dealer-btn">D</span>' : '') +
-          (/หมดหน้าตัก/.test(String(p.lastSay || '')) ? '<div class="pk-allin">ALL IN</div>' : '') +
-          (p.isWinner && showdown ? '<div class="pk-win-badge">ชนะ</div>' : '') +
-        '</div>' +
-        '<div class="pk-plate">' +
-          '<div class="pk-seat-name">' + escapeHtml(String(p.name || '').replace(/\s*🤖\s*/g, ' ').trim()) + '</div>' +
-          '<div class="pk-seat-stack">' + (p.stack || 0) + '</div>' +
-        '</div>' +
-        (showChipRank ? '<div class="pk-seat-rank">' + escapeHtml(label) + '</div>' : '') +
-      '</div>';
-    }).join(''));
+    $('#pkRankTab').toggleClass('is-away', state.phase === 'bet' || seated.length >= 9);
+    renderSeats(seated, state);
     seated.forEach(function(p) {
       if (p.lastSay) seenSaySeq[p.playerId] = Number(p.lastSaySeq) || 0;
       else delete seenSaySeq[p.playerId];
@@ -1514,6 +1710,8 @@ $(function() {
         const pos = chipPos(index, seated.length);
         return chipStackHtml(amt, 'is-drop', 'left:' + pos.left + ';top:' + pos.top);
       }).join(''));
+    } else {
+      $('#pkBetChips').empty();
     }
     const winName = state.winner && state.winner.name;
     const selfWon = showdown && (state.players || []).some(function(p) { return p.isSelf && p.isWinner; });
@@ -1544,20 +1742,25 @@ $(function() {
       $('#pkHint').text('');
     }
     $('#myHand').toggleClass('is-showdown', !!(showdown || (state.self && state.self.ready && !actions.canSelect)));
-    if (!hand.length) {
-      $('#myHand').html('<div class="pk-empty">ไม่มีไพ่ในมือ</div>');
-    } else {
-      const showRibbon = rankLabel && (showdown || (state.self && state.self.ready));
-      $('#myHand').html(hand.map(function(card, index) {
-        const key = card.id + ':' + index;
-        const extra = {
-          pick: actions.canSelect && !showdown,
-          selected: !showdown && selectedIds.indexOf(key) >= 0,
-          best: !!(actions.canSelect && liveIds.indexOf(card.id) >= 0 && selectedIds.indexOf(key) < 0),
-          handKey: key
-        };
-        return wrapCard(cardHtml(card, extra), extra);
-      }).join('') + (showRibbon ? '<div class="pk-win-ribbon' + (selfWon ? '' : ' is-rank') + '">' + escapeHtml(selfWon ? (rankLabel || 'ชนะ') : rankLabel) + '</div>' : ''));
+    $('#myHand').toggleClass('is-picking', !!(actions.canSelect && !showdown));
+    const handSig = hand.map(function(card) { return card.id; }).join(',') + '|' + selectedIds.join(',') + '|' + (!!actions.canSelect) + '|' + (!!showdown) + '|' + (rankLabel || '') + '|' + (!!selfWon);
+    if (handSig !== lastHandSig) {
+      lastHandSig = handSig;
+      if (!hand.length) {
+        $('#myHand').html('<div class="pk-empty">ไม่มีไพ่ในมือ</div>');
+      } else {
+        const showRibbon = rankLabel && (showdown || (state.self && state.self.ready));
+        $('#myHand').html(hand.map(function(card, index) {
+          const key = card.id + ':' + index;
+          const extra = {
+            pick: actions.canSelect && !showdown,
+            selected: !showdown && selectedIds.indexOf(key) >= 0,
+            best: !!(actions.canSelect && liveIds.indexOf(card.id) >= 0 && selectedIds.indexOf(key) < 0),
+            handKey: key
+          };
+          return wrapCard(cardHtml(card, extra), extra);
+        }).join('') + (showRibbon ? '<div class="pk-win-ribbon' + (selfWon ? '' : ' is-rank') + '">' + escapeHtml(selfWon ? (rankLabel || 'ชนะ') : rankLabel) + '</div>' : ''));
+      }
     }
     let buttons = '';
     if (actions.canSelect) {
@@ -1586,7 +1789,11 @@ $(function() {
     }
     if (actions.canAllIn) buttons += '<button type="button" class="pk-btn pk-btn-allin" data-pk-bet="allin">หมดหน้าตัก</button>';
     if (actions.canNext && isRoomAdmin) buttons += '<button type="button" id="pkNextBtn" class="pk-btn pk-btn-play">มือถัดไป</button>';
-    $('#actionArea').html('<div class="pk-actions">' + buttons + '</div>');
+    const actionSig = [state.phase, !!actions.toAct, !!actions.canSelect, selectedIds.length, maxPick, !!actions.canFold, !!actions.canCheck, !!actions.canCall, actions.callAmount || 0, !!actions.canBet, !!actions.canRaise, !!actions.canAllIn, chipAmount, actions.minRaiseTo || 0, actions.minBet || 0].join('|');
+    if (actionSig !== lastActionSig) {
+      lastActionSig = actionSig;
+      $('#actionArea').html('<div class="pk-actions">' + buttons + '</div>');
+    }
     $('#historyFeed').html((state.history || []).slice(0, 1).map(function(item) {
       return escapeHtml((item.icon || '') + ' ' + (item.text || ''));
     }).join(''));

@@ -18,7 +18,8 @@ const {
 } = require('./pokerHands');
 
 const SELECT_MS = Number(process.env.POKER_SELECT_MS) || 30000;
-const BET_MS = Number(process.env.POKER_BET_MS) || 10000;
+const CASH_BET_MS = Number(process.env.POKER_BET_MS) || 10000;
+const FUN_BET_MS = Number(process.env.POKER_FUN_BET_MS) || 16000;
 const DEAL3_MS = Number(process.env.POKER_DEAL3_MS) || 1800;
 const REVEAL_MS = Number(process.env.POKER_REVEAL_MS) || 4000;
 const BETWEEN_MS = Number(process.env.POKER_BETWEEN_MS) || 8000;
@@ -115,6 +116,10 @@ function pushHistory(room, icon, text, kind = null) {
         { icon, text, kind, at: new Date().toISOString() },
         ...(room.gameState.history || [])
     ].slice(0, 40);
+}
+
+function betClock(room) {
+    return room.gameState.tableType === 'cash' ? CASH_BET_MS : FUN_BET_MS;
 }
 
 function setPhase(room, phase, durationMs) {
@@ -505,7 +510,7 @@ function beginBetStreet(room) {
         return afterBet(room);
     }
     state.toActPlayerId = first.playerId;
-    setPhase(room, 'bet', BET_MS);
+    setPhase(room, 'bet', betClock(room));
     pushHistory(room, '🪙', 'ลงชิปรอบนึง — สู้ ตาม เกทับ หมอบได้', 'bet');
     return state;
 }
@@ -635,7 +640,7 @@ function continueBet(room, lastActor) {
     const next = nextActorAfter(room, from);
     if (!next) return afterBet(room);
     state.toActPlayerId = next.playerId;
-    setPhase(room, 'bet', BET_MS);
+    setPhase(room, 'bet', betClock(room));
     return state;
 }
 
@@ -1103,7 +1108,7 @@ function buildClientState(room, viewerPlayerId) {
         ante: state.ante,
         pot: state.pot,
         displayPot: showing && state.lastResult ? state.lastResult.pot : state.pot,
-        betMs: BET_MS,
+        betMs: betClock({ gameState: state }),
         currentBet: state.currentBet,
         toActPlayerId: state.toActPlayerId,
         toActName,
