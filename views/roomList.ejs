@@ -1,5 +1,6 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/pokerHands.css">
 <style>
     :root {
         --room-bg: #09090b;
@@ -653,6 +654,65 @@
         color: #fff !important;
         font-family: 'Rajdhani', sans-serif !important;
     }
+
+    .mode-quick-card {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        min-height: 128px;
+        padding: 14px 14px 12px;
+        text-align: left;
+        font-family: Rajdhani, sans-serif;
+        color: #fff;
+        cursor: pointer;
+        display: grid;
+        gap: 6px;
+        align-content: end;
+        background-color: #111;
+        background-size: cover;
+        background-position: center;
+        border-radius: 16px;
+        border: 1px solid transparent;
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .mode-quick-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: linear-gradient(180deg, rgba(8,8,12,0.12) 0%, rgba(8,8,12,0.78) 68%);
+    }
+    .mode-quick-card > * { position: relative; z-index: 1; }
+    .mode-quick-card strong { text-shadow: 0 1px 8px rgba(0,0,0,0.7); }
+    .mode-quick-card.is-on {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 32px rgba(0,0,0,0.42);
+        outline: 2px solid rgba(245,200,107,0.72);
+        outline-offset: 1px;
+    }
+    .mode-spotlight {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        border-radius: 18px;
+        padding: 16px;
+        min-height: 92px;
+        display: grid;
+        gap: 8px;
+        background-color: #111;
+        background-size: cover;
+        background-position: center;
+    }
+    .mode-spotlight::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: linear-gradient(90deg, rgba(8,8,12,0.72) 0%, rgba(8,8,12,0.42) 100%);
+    }
+    .mode-spotlight > * { position: relative; z-index: 1; }
     
     .swal2-title {
         color: #fff !important;
@@ -807,6 +867,7 @@
 </div>
 
 <%- contentFor('script') %>
+<script src="/js/pokerRankChart.js?v=20260814b"></script>
 <script>
 $(function() {
     const socket = window.appSocket || io();
@@ -817,7 +878,10 @@ $(function() {
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 },
-        { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 }
+        { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
+        { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
+        { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -828,6 +892,7 @@ $(function() {
         return result;
     }, []);
     const werewolfRoleOptions = <%- safeJson(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
+    const pokerRankGuide = <%- safeJson(typeof pokerRankGuide !== 'undefined' ? pokerRankGuide : []) %>;
     const werewolfRoleVisuals = {
         werewolf: { emoji: 'W', teamLabel: 'ฝั่งหมาป่า' },
         alphaWolf: { emoji: '👑', teamLabel: 'หมาป่านำทีม' },
@@ -985,6 +1050,7 @@ $(function() {
             insider: {
                 tone: 'linear-gradient(135deg, rgba(230,126,34,0.22), rgba(192,57,43,0.12))',
                 border: 'rgba(230,126,34,0.32)',
+                cover: '/assets/games/insider/cover.jpg',
                 badge: '🎯 ทายคำ จับคนโกง',
                 title: 'Insider',
                 summary: 'ทุกคนช่วยกันทายคำจากคำใบ้ แต่มี 1 คนรู้คำอยู่แล้วและแอบชี้นำ — ทายได้แล้วต้องหาให้เจอว่าใคร',
@@ -993,6 +1059,7 @@ $(function() {
             blackmarket: {
                 tone: 'linear-gradient(135deg, rgba(127,29,29,0.4), rgba(17,17,17,0.9))',
                 border: 'rgba(245,200,107,0.34)',
+                cover: '/assets/games/blackmarket/cover.jpg',
                 badge: '🎩 ซื้อขาย ต่อรอง',
                 title: 'Black Market',
                 summary: 'ซื้อของจากตลาดมืดมาสะสมแต้ม แต่ละคนมีบทลับและเป้าหมายต่างกัน ใครแต้มสูงสุดตอนจบชนะ',
@@ -1001,6 +1068,7 @@ $(function() {
             werewolf: {
                 tone: 'linear-gradient(135deg, rgba(52,73,94,0.26), rgba(17,24,39,0.9))',
                 border: 'rgba(143,211,255,0.22)',
+                cover: '/assets/games/werewolf/cover.jpg',
                 badge: '🐺 ล่าหมาป่า',
                 title: 'Werewolf',
                 summary: 'เกมบทบาทซ่อนตัวสไตล์ปาร์ตี้ เล่นกลางวันคุย กลางคืนใช้สกิล',
@@ -1009,6 +1077,7 @@ $(function() {
             spyfall: {
                 tone: 'linear-gradient(135deg, rgba(20,184,166,0.2), rgba(7,19,24,0.92))',
                 border: 'rgba(94,234,212,0.28)',
+                cover: '/assets/games/spyfall/cover.jpg',
                 badge: '🕶️ สายลับ สถานที่',
                 title: 'Spyfall',
                 summary: 'ทุกคนรู้สถานที่และบทในที่นั้นยกเว้นสายลับ — คุยแล้วโหวตจับ',
@@ -1017,10 +1086,38 @@ $(function() {
             coup: {
                 tone: 'linear-gradient(135deg, rgba(168,85,247,0.24), rgba(18,7,26,0.92))',
                 border: 'rgba(196,141,255,0.32)',
+                cover: '/assets/games/coup/cover.jpg',
                 badge: '👑 โกหก ท้า โค่น',
                 title: 'Coup',
                 summary: 'ประกาศพลังของการ์ดที่ไม่มีก็ได้ — ใครไม่เชื่อก็ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ',
                 bullets: ['2-6 คน', 'โกหกได้ ท้าได้', 'จบใน 15 นาที', 'เล่น 2 คนก็ได้']
+            },
+            liar: {
+                tone: 'linear-gradient(135deg, rgba(220,38,38,0.22), rgba(20,8,8,0.92))',
+                border: 'rgba(248,113,113,0.32)',
+                cover: '/assets/games/liar/cover.jpg',
+                badge: '🃏 ลงไพ่ ท้า โกหก',
+                title: 'ไพ่โกหก',
+                summary: 'เหลือหัวใจคนสุดท้ายชนะ ไม่ใช่หมดมือ — ลงไพ่คว่ำ คนถัดไปท้าหรือลงต่อ',
+                bullets: ['3-8 คน', 'รอบละ 2-4 นาที', 'โจ๊กเกอร์ใช้โกหกได้', 'เหลือคนสุดท้ายชนะ']
+            },
+            poker5: {
+                tone: 'linear-gradient(135deg, rgba(22,101,52,0.28), rgba(8,20,12,0.92))',
+                border: 'rgba(74,222,128,0.32)',
+                cover: '/assets/games/poker/cover.jpg',
+                badge: '♠ ทิ้ง 2 วัด 3',
+                title: 'ไพ่ 5 ใบ',
+                summary: 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ',
+                bullets: ['2-10 คน', 'ตาละวางกอง 500', 'สู้ ตาม เกทับ หมอบ', 'ตอง 3 ใหญ่กว่าตองเอซ']
+            },
+            poker4: {
+                tone: 'linear-gradient(135deg, rgba(153,27,27,0.28), rgba(20,8,8,0.92))',
+                border: 'rgba(248,113,113,0.32)',
+                cover: '/assets/games/poker4/cover.jpg',
+                badge: '♦ ทิ้ง 2 ได้ใบ 3 หงาย',
+                title: 'สี่ใบเก',
+                summary: 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู',
+                bullets: ['2-10 คน', 'ตาละวางกอง 500', 'หมอบไม่ได้ใบที่ 3', 'เปิดเทียบเลยหลังได้ใบ 3']
             }
         };
 
@@ -1034,7 +1131,10 @@ $(function() {
             blackmarket: 'ตลาดมืดคืนนี้',
             werewolf: 'คืนล่าหมาป่า',
             spyfall: 'วงสายลับสถานที่',
-            coup: 'วงโค่นอำนาจ'
+            coup: 'วงโค่นอำนาจ',
+            liar: 'ไพ่โกหก',
+            poker5: 'ไพ่ 5 ใบ',
+            poker4: 'สี่ใบเก'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1073,10 +1173,10 @@ $(function() {
             const badgeColor = mode.id === 'werewolf' ? '#fff' : '#fde68a';
 
             return `
-                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="cursor:pointer; border:1px solid ${spotlight.border}; border-radius:16px; background:${spotlight.tone}; color:#fff; padding:14px 14px 12px; text-align:left; font-family:Rajdhani, sans-serif; display:grid; gap:4px;">
+                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="border-color:${spotlight.border}; background-image:url('${escapeHtml(spotlight.cover || '')}');">
                     <strong style="font-size:1.02rem; letter-spacing:0.02em; white-space:nowrap;">${escapeHtml(spotlight.title)}</strong>
-                    <span style="justify-self:start; max-width:100%; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,0.1); font-size:0.74em; font-weight:700; line-height:1.5; color:${badgeColor};">${badgeLabel}</span>
-                    <div style="color:#aab3c5; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
+                    <span style="justify-self:start; max-width:100%; padding:4px 9px; border-radius:999px; background:rgba(8,8,12,0.55); font-size:0.74em; font-weight:700; line-height:1.5; color:${badgeColor};">${badgeLabel}</span>
+                    <div style="color:#d7dde8; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
                 </button>
             `;
         }).join('');
@@ -1086,13 +1186,13 @@ $(function() {
         const mode = (modeItems || []).find(function(item) { return item.id === modeId; }) || (modeItems || [])[0] || defaultGameModes[0];
         const spotlight = getModeSpotlightMeta(mode?.id);
         return `
-            <div style="border:1px solid ${spotlight.border}; border-radius:18px; padding:16px; background:${spotlight.tone}; display:grid; gap:8px;">
+            <div class="mode-spotlight" style="border:1px solid ${spotlight.border}; background-image:url('${escapeHtml(spotlight.cover || '')}');">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                     <div>
                         <div style="color:${mode?.id === 'blackmarket' ? '#fde68a' : '#8fd3ff'}; font-size:0.8em; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">${escapeHtml(spotlight.badge)}</div>
-                        <div style="color:#fff; font-family:Orbitron, sans-serif; font-size:1.15rem; margin-top:4px;">${escapeHtml(spotlight.title)}</div>
+                        <div style="color:#fff; font-family:Orbitron, sans-serif; font-size:1.15rem; margin-top:4px; text-shadow:0 1px 10px rgba(0,0,0,0.7);">${escapeHtml(spotlight.title)}</div>
                     </div>
-                    <div style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-weight:700;">👥 ${Number(mode?.minPlayers || 3)}-${Number(mode?.maxPlayers || 10)} คน</div>
+                    <div style="padding:6px 10px; border-radius:999px; background:rgba(8,8,12,0.55); color:#fff; font-weight:700;">👥 ${Number(mode?.minPlayers || 3)}-${Number(mode?.maxPlayers || 10)} คน</div>
                 </div>
             </div>
         `;
@@ -1166,7 +1266,10 @@ $(function() {
                 room.gameMode === 'werewolf' ? 'Werewolf'
                     : (room.gameMode === 'blackmarket' ? 'Black Market'
                         : (room.gameMode === 'spyfall' ? 'Spyfall'
-                            : (room.gameMode === 'coup' ? 'Coup' : 'Insider')))
+                            : (room.gameMode === 'coup' ? 'Coup'
+                                : (room.gameMode === 'liar' ? 'ไพ่โกหก'
+                                    : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
+                                        : (room.gameMode === 'poker4' ? 'สี่ใบเก' : 'Insider'))))))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1176,7 +1279,13 @@ $(function() {
                         ? 'background: linear-gradient(135deg, #0f766e, #134e4a); color:#ccfbf1; border:1px solid rgba(94,234,212,0.35);'
                         : (room.gameMode === 'coup'
                             ? 'background: linear-gradient(135deg, #6d28d9, #3b0764); color:#f4ecff; border:1px solid rgba(196,141,255,0.35);'
-                            : 'background: linear-gradient(135deg, #e67e22, #d35400);')));
+                            : (room.gameMode === 'liar'
+                                ? 'background: linear-gradient(135deg, #991b1b, #450a0a); color:#fecaca; border:1px solid rgba(248,113,113,0.4);'
+                                : (room.gameMode === 'poker5'
+                                    ? 'background: linear-gradient(135deg, #166534, #052e16); color:#bbf7d0; border:1px solid rgba(74,222,128,0.4);'
+                                    : (room.gameMode === 'poker4'
+                                        ? 'background: linear-gradient(135deg, #991b1b, #1c1917); color:#fecaca; border:1px solid rgba(248,113,113,0.35);'
+                                        : 'background: linear-gradient(135deg, #e67e22, #d35400);'))))));
             const roomCard = `
                 <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
@@ -1312,6 +1421,30 @@ $(function() {
                         <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
+                    <div class="room-form-group" id="pokerTableGroup" style="display:none;">
+                        <label class="room-form-label" id="pokerTableLabel">
+                            <span class="icon">♠</span> แบบเล่น:
+                        </label>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(34,197,94,0.45); background:rgba(34,197,94,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="pokerTableType" value="fun" checked style="accent-color:#22c55e;">
+                                <span>เล่นสนุก — ได้ชิปมาเล่น ตาใหม่ชิปกลับมาเต็ม</span>
+                            </label>
+                            <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="radio" name="pokerTableType" value="cash" style="accent-color:#f5c86b;">
+                                <span>เล่นเก็บชิป — ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <label class="room-form-label"><span class="icon">🪙</span> วางกองก่อนแจก:</label>
+                            <div class="room-slider-container">
+                                <span class="room-slider-value" id="pokerAnteValue">500</span>
+                                <input type="range" id="pokerAnte" class="room-slider" min="100" max="2000" step="100" value="500">
+                            </div>
+                        </div>
+                        <div id="pokerTableHint" style="margin-top:8px; color:#aaa; font-size:0.85em;">ทุกคนวางชิปลงกองกลางก่อนแจกไพ่ · เล่นสนุกได้ชิป 10,000 ตาใหม่กลับมาเต็ม · เล่นเก็บชิปใช้ชิปในบัญชี</div>
+                    </div>
+
                     <div class="room-form-group" id="werewolfWolfCountGroup" style="display:none;">
                         <label class="room-form-label">
                             <span class="icon">🐺</span> จำนวนหมาป่า:
@@ -1398,6 +1531,11 @@ $(function() {
                 const selectedGameModeInput = document.getElementById('selectedGameMode');
                 const modeQuickPickGrid = document.getElementById('modeQuickPickGrid');
                 const modeSpotlight = document.getElementById('modeSpotlight');
+                const pokerTableGroup = document.getElementById('pokerTableGroup');
+                const pokerTableLabel = document.getElementById('pokerTableLabel');
+                const pokerTableHint = document.getElementById('pokerTableHint');
+                const pokerAnteSlider = document.getElementById('pokerAnte');
+                const pokerAnteValue = document.getElementById('pokerAnteValue');
                 const werewolfWolfCountGroup = document.getElementById('werewolfWolfCountGroup');
                 const createWolfCountSelector = document.getElementById('createWolfCountSelector');
                 const modeConfigById = gameModes.reduce((result, mode) => {
@@ -1425,14 +1563,18 @@ $(function() {
                 
                 updateSliderBackground(maxPlayersSlider);
                 updateSliderBackground(roundTimeSlider);
+                if (pokerAnteSlider && pokerAnteValue) {
+                    pokerAnteSlider.addEventListener('input', function() {
+                        pokerAnteValue.textContent = this.value;
+                        updateSliderBackground(this);
+                    });
+                    updateSliderBackground(pokerAnteSlider);
+                }
 
                 function syncModeQuickPick() {
                     modeSpotlight.innerHTML = buildModeSpotlightHtml(selectedGameMode, gameModes);
                     modeQuickPickGrid.querySelectorAll('.mode-quick-card').forEach(function(card) {
-                        const active = card.dataset.modeId === selectedGameMode;
-                        card.style.transform = active ? 'translateY(-1px)' : 'translateY(0)';
-                        card.style.boxShadow = active ? '0 12px 28px rgba(0,0,0,0.24)' : 'none';
-                        card.style.outline = active ? '2px solid rgba(245,200,107,0.55)' : 'none';
+                        card.classList.toggle('is-on', card.dataset.modeId === selectedGameMode);
                     });
                     selectedGameModeInput.value = selectedGameMode;
                     modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
@@ -1471,11 +1613,24 @@ $(function() {
                     selectedGameMode = selectedMode;
                     const modeConfig = modeConfigById[selectedMode] || { minPlayers: 3, maxPlayers: 10 };
                     const isWerewolfMode = selectedMode === 'werewolf';
+                    const isPokerMode = selectedMode === 'poker5' || selectedMode === 'poker4';
+                    const isPoker4Mode = selectedMode === 'poker4';
+                    if (pokerTableGroup) pokerTableGroup.style.display = isPokerMode ? 'block' : 'none';
+                    if (pokerTableLabel) {
+                        pokerTableLabel.innerHTML = isPoker4Mode
+                            ? '<span class="icon">♦</span> แบบเล่น:'
+                            : '<span class="icon">♠</span> แบบเล่น:';
+                    }
+                    if (pokerTableHint) {
+                        pokerTableHint.textContent = isPoker4Mode
+                            ? 'ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู · หมอบแล้วไม่ได้ใบที่ 3 · เล่นสนุกได้ชิป 10,000'
+                            : 'ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ · ตาละวางกองก่อนแจก · เล่นสนุกได้ชิป 10,000';
+                    }
                     werewolfWolfCountGroup.style.display = isWerewolfMode ? 'block' : 'none';
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
-                        : (selectedMode === 'coup' ? 'เวลาคิดต่อตา:'
+                        : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
                             : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:'));
 
                     const sliderMin = Number(modeConfig.minPlayers || 3);
@@ -1493,6 +1648,14 @@ $(function() {
 
                     if (selectedMode === 'coup' && !['2', '3', '4', '5', '6'].includes(maxPlayersSlider.value)) {
                         maxPlayersSlider.value = '5';
+                    }
+
+                    if (selectedMode === 'liar' && !['3', '4', '5', '6', '7', '8'].includes(maxPlayersSlider.value)) {
+                        maxPlayersSlider.value = '6';
+                    }
+
+                    if ((selectedMode === 'poker5' || selectedMode === 'poker4') && !['2', '3', '4', '5', '6', '7', '8', '9', '10'].includes(maxPlayersSlider.value)) {
+                        maxPlayersSlider.value = '4';
                     }
 
                     if (Number(maxPlayersSlider.value) < sliderMin) {
@@ -1599,7 +1762,13 @@ $(function() {
                     wolfCount: wolfCount,
                     locked: locked,
                     password: locked ? password : null,
-                    tableMode: tableMode
+                    tableMode: tableMode,
+                    pokerTableType: (gameMode === 'poker5' || gameMode === 'poker4')
+                        ? ((document.querySelector('input[name="pokerTableType"]:checked') || {}).value || 'fun')
+                        : 'fun',
+                    pokerAnte: (gameMode === 'poker5' || gameMode === 'poker4')
+                        ? (parseInt((document.getElementById('pokerAnte') || {}).value, 10) || 500)
+                        : 500
                 };
             }
             }).then((result) => {
@@ -1869,12 +2038,37 @@ $(function() {
         ].join('');
     }
 
+    function buildLiarGuideHtml() {
+        return [
+            '<div class="bm-guide">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>เหลือหัวใจคนสุดท้ายชนะ ไม่ใช่ทิ้งไพ่ให้หมดมือ เริ่มคนละ 5 ใบ หัวใจ 3</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>แต่ละรอบสุ่มชนิดไพ่ เช่น คิง</li>',
+            '<li>ถึงตาลง 1–3 ใบคว่ำ แล้วบอกว่าเป็นชนิดนั้น — โกหกได้</li>',
+            '<li>คนถัดไปกด <b>โกหก!</b> (หงายไพ่) หรือลงต่อ</li>',
+            '<li>ท้าแล้ว: ของปลอม = คนลงเสียหัวใจ · ของจริง = คนท้าเสีย → รอบใหม่</li>',
+            '<li>มือว่างยังไม่ชนะ ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว · ทุกคนหมดมือ = แจกใหม่</li>',
+            '<li>หมดเวลาลงไพ่ = ระบบลงใบแรกให้ · มือว่าง = ท้าให้</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>คน</h4><p>3–8 คน หัวใจหมด = ตกรอบ โจ๊กเกอร์ใช้แทนไพ่รอบนี้ได้</p></div>',
+            '</div>'
+        ].join('');
+    }
+
+    function buildPokerGuideHtml(variant) {
+        if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
+        return '';
+    }
+
     function showGlobalGameGuide() {
         const guides = [
             { id: 'insider',     label: '🎯 Insider',      html: INSIDER_GUIDE_HTML,           color: '#be123c' },
             { id: 'werewolf',    label: '🐺 Werewolf',     html: WEREWOLF_GUIDE_HTML,          color: '#1d4ed8' },
             { id: 'blackmarket', label: '🎩 Black Market', html: buildBlackMarketGuideHtml(),  color: '#b45309' },
-            { id: 'spyfall',     label: '🕶️ Spyfall',     html: buildSpyfallGuideHtml(),      color: '#0f766e' }
+            { id: 'spyfall',     label: '🕶️ Spyfall',     html: buildSpyfallGuideHtml(),      color: '#0f766e' },
+            { id: 'liar',        label: '🃏 ไพ่โกหก',      html: buildLiarGuideHtml(),         color: '#b91c1c' },
+            { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
+            { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' }
         ];
 
         const tabsHtml = '<div class="global-guide-tabs">' +

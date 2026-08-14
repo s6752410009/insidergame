@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getGameEngine, getAvailableGameModes } = require('../games/engineRegistry');
+const { getGameEngine, getAvailableGameModes, normalizeGameMode } = require('../games/engineRegistry');
 const spyfallEngine = require('../games/spyfallEngine');
 
 const SETTINGS_FILE = path.join(__dirname, '../data/gameSettings.json');
@@ -35,6 +35,15 @@ const DEFAULT_SETTINGS = {
             defaultMaxPlayers: 8,
             defaultRoundTimeMinutes: 8,
             defaultVoteTimeMinutes: 1.5
+        },
+        liar: {
+            defaultMaxPlayers: 6
+        },
+        poker5: {
+            defaultMaxPlayers: 4
+        },
+        poker4: {
+            defaultMaxPlayers: 4
         }
     },
     insider: {
@@ -226,9 +235,10 @@ function getModeDefaultsForClient() {
 }
 
 function applyCreateRoomDefaults(roomData) {
-    const mode = roomData?.gameMode || 'insider';
+    const merged = { ...(roomData || {}) };
+    merged.gameMode = normalizeGameMode(merged.gameMode || 'insider');
+    const mode = merged.gameMode;
     const defaults = getModeDefaults(mode);
-    const merged = { ...roomData };
 
     if (merged.maxPlayers == null || merged.maxPlayers === '') {
         merged.maxPlayers = defaults.defaultMaxPlayers;

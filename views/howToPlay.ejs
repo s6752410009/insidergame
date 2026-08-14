@@ -1,5 +1,6 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/pokerHands.css">
 <style>
   :root {
     --guide-bg: #07080c;
@@ -230,6 +231,96 @@
     background: rgba(196, 141, 255, 0.14);
     color: #d4b3ff;
     border: 1px solid rgba(196, 141, 255, 0.35);
+  }
+
+  .guide-card.mode-liar {
+    border-color: rgba(248, 113, 113, 0.35);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(220, 38, 38, 0.14), transparent 55%),
+      linear-gradient(180deg, #1c1212 0%, #141010 55%, #0e0c0c 100%);
+  }
+
+  .guide-card.mode-liar .guide-mode-badge {
+    background: rgba(220, 38, 38, 0.18);
+    color: #fecaca;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+  }
+
+  .guide-card.mode-poker {
+    border-color: rgba(74, 222, 128, 0.32);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(22, 101, 52, 0.18), transparent 55%),
+      linear-gradient(180deg, #101814 0%, #0e1410 55%, #0c100e 100%);
+  }
+
+  .guide-card.mode-poker .guide-mode-badge {
+    background: rgba(22, 101, 52, 0.2);
+    color: #bbf7d0;
+    border: 1px solid rgba(74, 222, 128, 0.35);
+  }
+
+  .guide-card.mode-poker4 {
+    border-color: rgba(248, 113, 113, 0.32);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(153, 27, 27, 0.2), transparent 55%),
+      linear-gradient(180deg, #181010 0%, #14100e 55%, #100c0c 100%);
+  }
+
+  .guide-card.mode-poker4 .guide-mode-badge {
+    background: rgba(153, 27, 27, 0.22);
+    color: #fecaca;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+  }
+
+  .guide-poker-ranks {
+    display: grid;
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .guide-poker-rank {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(74, 222, 128, 0.12);
+  }
+
+  .guide-poker-rank-n {
+    flex: 0 0 1.3em;
+    color: #f5c86b;
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .guide-poker-mini {
+    display: flex;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+
+  .guide-poker-mini img {
+    width: 34px;
+    height: 48px;
+    border-radius: 5px;
+    object-fit: cover;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+    background: #0b1a12;
+  }
+
+  .guide-poker-copy b {
+    display: block;
+    color: var(--guide-ink);
+    font-size: 0.95rem;
+  }
+
+  .guide-poker-copy small {
+    color: var(--guide-muted);
+    font-size: 0.78rem;
+    line-height: 1.35;
   }
 
   .guide-coup-roles {
@@ -563,7 +654,7 @@
     <div class="guide-hero-grid">
       <div>
         <h1 class="guide-title">วิธีเล่นทุกโหมด เข้าใจได้ในหน้าเดียว</h1>
-        <p class="guide-copy">หน้านี้สรุปวิธีเล่นทั้ง 5 โหมด — Insider, Werewolf, Black Market, Spyfall และ Coup — แบบอ่านเร็วแล้วเริ่มวงได้เลย เหมาะทั้งคนที่เพิ่งเคยเล่นครั้งแรกและคนที่ต้องอธิบายกติกาให้เพื่อนก่อนกดสร้างห้อง</p>
+        <p class="guide-copy">หน้านี้สรุปวิธีเล่นครบทุกโหมด — Insider, Werewolf, Black Market, Spyfall, Coup, ไพ่โกหก, ไพ่ 5 ใบ และสี่ใบเก — แบบอ่านเร็วแล้วเริ่มวงได้เลย</p>
         <div class="guide-chip-row">
           <span class="guide-chip">อธิบายสั้นแต่ครบ</span>
           <span class="guide-chip">มีจุดชนะของแต่ละโหมด</span>
@@ -573,7 +664,7 @@
       <aside class="guide-sidecard">
         <div>
           <h2>เลือกโหมดไหนดี?</h2>
-          <p>คนน้อย (2-6) และอยากได้เกมสั้นๆ ลุ้นจับโกหก เลือก Coup · เปิดวงไวสุด เลือก Insider · อยากได้บทบาทเยอะและคุยยาว เลือก Werewolf · อยากได้เกมต่อรองผลประโยชน์ เลือก Black Market · อยากถามตอบจับสายลับ เลือก Spyfall</p>
+          <p>คนน้อย (2-6) อยากจับโกหกแบบมีบท เลือก Coup · อยากลงไพ่ท้าเร็ว เลือกไพ่โกหก · อยากเปิดไพ่วัดมือ เลือกไพ่ 5 ใบหรือสี่ใบเก · เปิดวงไวสุด เลือก Insider · อยากได้บทบาทเยอะและคุยยาว เลือก Werewolf · อยากได้เกมต่อรองผลประโยชน์ เลือก Black Market · อยากถามตอบจับสายลับ เลือก Spyfall</p>
         </div>
         <div class="guide-side-list">
           <div class="guide-side-item">🎯 Insider: เร็วที่สุด เหมาะกับคนเริ่มวง</div>
@@ -581,6 +672,9 @@
           <div class="guide-side-item">🎩 Black Market: เจรจา บลัฟ ต่อรอง</div>
           <div class="guide-side-item">🕶️ Spyfall: สถานที่ + จับสายลับ</div>
           <div class="guide-side-item">👑 Coup: โกหกแล้วลุ้นว่าใครจับได้</div>
+          <div class="guide-side-item">🃏 ไพ่โกหก: ลงไพ่คว่ำ ท้าได้ จบในไม่กี่นาที</div>
+          <div class="guide-side-item">♠ ไพ่ 5 ใบ: ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ</div>
+          <div class="guide-side-item">♦ สี่ใบเก: ได้ 4 ทิ้ง 2 ลงชิปแล้วได้ใบที่ 3 หงายให้ดู</div>
         </div>
       </aside>
     </div>
@@ -747,6 +841,89 @@
         <div class="guide-tip"><strong>ลืมว่ารัฐประหารท้าไม่ได้ ขวางไม่ได้</strong> — มี 7 เหรียญเมื่อไหร่คือเก็บแต้มตายได้แน่นอน ไม่ต้องลุ้นอะไรเลย</div>
         <div class="guide-tip"><strong>ปล่อยให้เหรียญถึง 10</strong> — พอครบ 10 จะถูกบังคับทำรัฐประหาร เลือกท่าอื่นไม่ได้อีก คนอื่นจะเดาตาคุณออกหมด</div>
         <div class="guide-tip"><strong>อ้างการ์ดที่เพิ่งเห็นคนอื่นเปิด</strong> — การ์ดมีชนิดละ 3 ใบเท่านั้น ถ้าเปิดไปแล้ว 2 ใบ คนอื่นจะรู้ทันทีว่าโอกาสที่คุณมีเหลือน้อยมาก</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-liar" id="liar">
+      <div class="guide-mode-badge">🃏 ไพ่โกหก</div>
+      <h2>ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้</h2>
+      <p>ชนะเมื่อเหลือหัวใจคนสุดท้าย ไม่ใช่ทิ้งไพ่ให้หมดมือ เริ่มคนละ 5 ใบ หัวใจ 3 แต่ละรอบสุ่มชนิดไพ่ เช่น คิง ลง 1–3 ใบคว่ำแล้วบอกว่าเป็นคิง — โกหกได้ คนถัดไปท้าหรือลงต่อ</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> เป็นคนสุดท้ายที่ยังมีหัวใจ</div>
+        <div class="guide-list-item"><strong>กดโกหก!</strong> หงายไพ่ ของปลอม = คนลงเสียหัวใจ · ของจริง = คนท้าเสีย แล้วเริ่มรอบใหม่</div>
+        <div class="guide-list-item"><strong>มือว่าง</strong> ยังไม่ชนะ ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว · ทุกคนหมดมือ = แจกใหม่</div>
+        <div class="guide-list-item"><strong>หัวใจหมด</strong> ตกรอบ เหลือคนเดียวชนะ · โจ๊กเกอร์ใช้แทนไพ่รอบนี้ได้</div>
+        <div class="guide-list-item"><strong>หมดเวลา</strong> ระบบลงใบแรกให้อัตโนมัติ · มือว่างแล้วมีไพ่บนโต๊ะ = ท้าให้</div>
+      </div>
+    </article>
+
+    <%
+      const pokerGuideFallback = [
+        { name: 'ตอง', hint: 'สามใบเลขเดียวกัน · ตอง 3 ใหญ่สุด เพราะ 3+3+3 เป็น 9 แล้วค่อยเอซ คิง ควีน', example: [{ image: '/assets/games/poker/3h.svg' }, { image: '/assets/games/poker/3s.svg' }, { image: '/assets/games/poker/3d.svg' }] },
+        { name: 'เรียงสี', hint: 'เหมือนเรียง แต่ต้องดอกเดียวกัน เช่น 7♥ 8♥ 9♥', example: [{ image: '/assets/games/poker/7h.svg' }, { image: '/assets/games/poker/8h.svg' }, { image: '/assets/games/poker/9h.svg' }] },
+        { name: 'เซียน', hint: 'แจ็ค ควีน คิง ทั้งสามใบ ดอกปนได้', example: [{ image: '/assets/games/poker/jh.svg' }, { image: '/assets/games/poker/qs.svg' }, { image: '/assets/games/poker/kd.svg' }] },
+        { name: 'เรียง', hint: 'เลขต่อกัน เช่น 3 > 4 > 5 ไม่ต้องดอกเดียวกัน · เอซ-2-3 ไม่นับเรียง', example: [{ image: '/assets/games/poker/5s.svg' }, { image: '/assets/games/poker/6h.svg' }, { image: '/assets/games/poker/7d.svg' }] },
+        { name: 'สี', hint: 'ดอกเดียวกัน แต่เลขไม่ต่อกัน · ดูดอกก่อน ♠ ใหญ่กว่า ♥ ♦ ♣', example: [{ image: '/assets/games/poker/kh.svg' }, { image: '/assets/games/poker/9h.svg' }, { image: '/assets/games/poker/2h.svg' }] },
+        { name: 'แต้ม', hint: 'ไม่เข้ามือไหน เอซ=1, 2–9 ตามหน้า, 10 แจ็คควีนคิง=0 รวมแล้วเอาหลักหน่วย เก้าใหญ่สุด', example: [{ image: '/assets/games/poker/as.svg' }, { image: '/assets/games/poker/8d.svg' }, { image: '/assets/games/poker/kc.svg' }] }
+      ];
+      const pokerGuideRows = (typeof pokerRankGuide !== 'undefined' && Array.isArray(pokerRankGuide) && pokerRankGuide.length)
+        ? pokerRankGuide.map((row, index) => Object.assign({}, pokerGuideFallback[index] || {}, row))
+        : pokerGuideFallback;
+    %>
+
+    <article class="guide-card mode-poker" id="poker5">
+      <div class="guide-mode-badge">♠ ไพ่ 5 ใบ</div>
+      <h2>ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ</h2>
+      <p>ทุกคนวางกองก่อนแจก แล้วสู้ ตาม เกทับ หรือหมอบได้ มือใหญ่กินกอง เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เล่นสนุก</strong> ได้ชิป 10,000 ตาใหม่ชิปกลับมาเต็ม ไม่เก็บผล</div>
+        <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>
+        <div class="guide-list-item"><strong>วางกองก่อนแจก</strong> ตาละ 500 ทุกคนวางลงกองกลางก่อนได้ไพ่</div>
+      </div>
+      <p class="pk-rank-kicker">ใหญ่ → เล็ก</p>
+      <div class="pk-rank-list">
+        <% pokerGuideRows.forEach((row, index) => { %>
+          <div class="pk-rank-item">
+            <div class="pk-rank-n"><%= index + 1 %></div>
+            <div class="pk-rank-cards">
+              <% (row.example || []).forEach((card) => { %>
+                <img src="<%= card.image %>" alt="<%= row.name %>">
+              <% }) %>
+            </div>
+            <div class="pk-rank-copy">
+              <b><%= row.name %></b>
+              <small><%= row.hint %></small>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </article>
+
+    <article class="guide-card mode-poker4" id="poker4">
+      <div class="guide-mode-badge">♦ สี่ใบเก</div>
+      <h2>ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู</h2>
+      <p>ลงชิปเสร็จ เจ้ามือแจกใบที่ 3 หงายให้คนที่ยังไม่หมอบ แล้วเปิดเทียบเลย ไม่มีใบที่ 4 เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เล่นสนุก</strong> ได้ชิป 10,000 ตาใหม่ชิปกลับมาเต็ม ไม่เก็บผล</div>
+        <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>
+        <div class="guide-list-item"><strong>หมอบ</strong> ไม่ได้ใบที่ 3 กินกองไม่ได้</div>
+      </div>
+      <p class="pk-rank-kicker">ใหญ่ → เล็ก</p>
+      <div class="pk-rank-list">
+        <% pokerGuideRows.forEach((row, index) => { %>
+          <div class="pk-rank-item">
+            <div class="pk-rank-n"><%= index + 1 %></div>
+            <div class="pk-rank-cards">
+              <% (row.example || []).forEach((card) => { %>
+                <img src="<%= card.image %>" alt="<%= row.name %>">
+              <% }) %>
+            </div>
+            <div class="pk-rank-copy">
+              <b><%= row.name %></b>
+              <small><%= row.hint %></small>
+            </div>
+          </div>
+        <% }) %>
       </div>
     </article>
   </section>

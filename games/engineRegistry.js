@@ -3,14 +3,23 @@ const blackMarketEngine = require('./blackMarketEngine');
 const werewolfEngine = require('./werewolfEngine');
 const spyfallEngine = require('./spyfallEngine');
 const coupEngine = require('./coupEngine');
+const liarEngine = require('./liarEngine');
+const { poker5, poker4 } = require('./pokerEngine');
 
 const ENGINES = {
     insider: insiderEngine,
     blackmarket: blackMarketEngine,
     werewolf: werewolfEngine,
     spyfall: spyfallEngine,
-    coup: coupEngine
+    coup: coupEngine,
+    liar: liarEngine,
+    poker5,
+    poker4
 };
+
+function isPokerMode(gameMode) {
+    return gameMode === 'poker5' || gameMode === 'poker4';
+}
 
 function normalizeGameMode(gameMode) {
     if (typeof gameMode !== 'string') {
@@ -31,7 +40,23 @@ function normalizeGameMode(gameMode) {
         spy: 'spyfall',
         secretplace: 'spyfall',
         coup: 'coup',
-        coupgame: 'coup'
+        coupgame: 'coup',
+        liar: 'liar',
+        liarsbar: 'liar',
+        liarbar: 'liar',
+        cheat: 'liar',
+        โกหก: 'liar',
+        ไพ่โกหก: 'liar',
+        poker5: 'poker5',
+        poker4: 'poker4',
+        holdem: 'poker5',
+        texasholdem: 'poker5',
+        ห้าใบเลือกสาม: 'poker5',
+        โป๊กเกอร์5ใบ: 'poker5',
+        ไพ่5ใบ: 'poker5',
+        สี่ใบเก: 'poker4',
+        '4ใบเก': 'poker4',
+        fourcard: 'poker4'
     };
 
     return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';
@@ -54,5 +79,6 @@ function getAvailableGameModes() {
 module.exports = {
     normalizeGameMode,
     getGameEngine,
-    getAvailableGameModes
+    getAvailableGameModes,
+    isPokerMode
 };

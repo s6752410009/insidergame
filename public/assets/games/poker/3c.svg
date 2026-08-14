@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350" role="img" aria-label="3 ดอกจิก">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f4ead6"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="16" fill="#e8dcc4"/>
+  <rect x="6" y="6" width="238" height="338" rx="12" fill="url(#paper)" stroke="#d2c4aa" stroke-width="1.2"/>
+  <rect x="10" y="10" width="230" height="330" rx="9" fill="none" stroke="#111111" stroke-opacity="0.16" stroke-width="1"/>
+  <g transform="translate(26 16)" fill="#111111" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">3</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#111111"><circle cx="7.5" cy="3.9" r="3.3"/>
+      <circle cx="3.6" cy="7.8" r="3.3"/>
+      <circle cx="11.4" cy="7.8" r="3.3"/>
+      <path d="M6 9H9L10.2 16.2H4.8Z"/></g>
+    </g>
+  <g transform="translate(224 334) rotate(180)" fill="#111111" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">3</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#111111"><circle cx="7.5" cy="3.9" r="3.3"/>
+      <circle cx="3.6" cy="7.8" r="3.3"/>
+      <circle cx="11.4" cy="7.8" r="3.3"/>
+      <path d="M6 9H9L10.2 16.2H4.8Z"/></g>
+    </g>
+  <g transform="translate(125 82.5) translate(-20 -20)" fill="#111111"><circle cx="20" cy="10.4" r="8.8"/>
+      <circle cx="9.6" cy="20.8" r="8.8"/>
+      <circle cx="30.4" cy="20.8" r="8.8"/>
+      <path d="M16 24H24L27.2 43.2H12.8Z"/></g>
+    <g transform="translate(125 175) translate(-20 -20)" fill="#111111"><circle cx="20" cy="10.4" r="8.8"/>
+      <circle cx="9.6" cy="20.8" r="8.8"/>
+      <circle cx="30.4" cy="20.8" r="8.8"/>
+      <path d="M16 24H24L27.2 43.2H12.8Z"/></g>
+    <g transform="translate(125 267.5) rotate(180) translate(-20 -20)" fill="#111111"><circle cx="20" cy="10.4" r="8.8"/>
+      <circle cx="9.6" cy="20.8" r="8.8"/>
+      <circle cx="30.4" cy="20.8" r="8.8"/>
+      <path d="M16 24H24L27.2 43.2H12.8Z"/></g>
+</svg>

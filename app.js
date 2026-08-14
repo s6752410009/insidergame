@@ -42,7 +42,9 @@ const statsManager = require('./managers/statsManager');
 const gameSettingsManager = require('./managers/gameSettingsManager');
 const seasonManager = require('./managers/seasonManager');
 const adminMessageManager = require('./managers/adminMessageManager');
-const { getGameEngine, getAvailableGameModes } = require('./games/engineRegistry');
+const { getGameEngine, getAvailableGameModes, isPokerMode } = require('./games/engineRegistry');
+const { rankGuideForClient } = require('./games/pokerHands');
+const walletManager = require('./managers/walletManager');
 
 app.locals.appVersion = APP_VERSION;
 
@@ -76,11 +78,16 @@ const blackMarketPhaseTimeouts = new Map();
 // เก็บ timeout สำหรับ phase อัตโนมัติของ Spyfall
 const spyfallPhaseTimeouts = new Map();
 const coupPhaseTimeouts = new Map();
+const liarPhaseTimeouts = new Map();
+const pokerPhaseTimeouts = new Map();
+const pokerBotTimeouts = new Map();
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
+const finishedReturnTimeouts = new Map();
 const INSIDER_VOTE2_MS = 15000;
 const INSIDER_RETURN_MS = 5000;
+const FINISHED_RETURN_MS = 10000;
 
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
 const disconnectTimeouts = new Map();
@@ -286,8 +293,8 @@ function buildStructuredData(pathname, canonicalUrl) {
             {
                 '@context': 'https://schema.org',
                 '@type': 'Article',
-                headline: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall และ Coup ออนไลน์',
-                description: 'คู่มือสรุปวิธีเล่นทั้ง 5 โหมดของ Insider Game Thailand พร้อมเงื่อนไขการชนะและวิธีเริ่มเกมกับเพื่อน',
+                headline: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall, Coup และไพ่โกหก ออนไลน์',
+                description: 'คู่มือสรุปวิธีเล่นทุกโหมดของ Insider Game Thailand พร้อมเงื่อนไขการชนะและวิธีเริ่มเกมกับเพื่อน',
                 inLanguage: 'th',
                 url: canonicalUrl,
                 mainEntityOfPage: canonicalUrl,
@@ -350,9 +357,9 @@ function buildSeoMetadata(req) {
             keywords: 'สร้างห้องเกมออนไลน์, ห้อง insider, ห้อง werewolf, ห้อง black market, join room party game, multiplayer room browser'
         },
         '/how-to-play': {
-            title: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall, Coup | คู่มือครบทุกโหมด',
-            description: 'อ่านวิธีเล่นแบบสั้นเข้าใจเร็วครบทั้ง 5 โหมด Insider, Werewolf, Black Market, Spyfall และ Coup พร้อมเงื่อนไขการชนะ จำนวนผู้เล่นที่เหมาะ และวิธีเริ่มเล่นบนเว็บ',
-            keywords: 'วิธีเล่น insider, วิธีเล่น werewolf, วิธีเล่น black market, วิธีเล่น spyfall, วิธีเล่น coup, กติกา coup, เกมโค่นอำนาจ, social deduction guide thailand, party game rules'
+            title: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall, Coup, ไพ่โกหก | คู่มือครบทุกโหมด',
+            description: 'อ่านวิธีเล่นแบบสั้นเข้าใจเร็วครบทั้ง Insider, Werewolf, Black Market, Spyfall, Coup และไพ่โกหก พร้อมเงื่อนไขการชนะ จำนวนผู้เล่นที่เหมาะ และวิธีเริ่มเล่นบนเว็บ',
+            keywords: 'วิธีเล่น insider, วิธีเล่น werewolf, วิธีเล่น black market, วิธีเล่น spyfall, วิธีเล่น coup, วิธีเล่นไพ่โกหก, กติกา coup, เกมโค่นอำนาจ, social deduction guide thailand, party game rules'
         }
     };
 
@@ -793,6 +800,70 @@ function clearInsiderReturnTimer(roomId) {
     }
 }
 
+function isFinishedTableReturnMode(gameMode) {
+    return gameMode === 'liar' || gameMode === 'coup' || gameMode === 'poker5' || gameMode === 'poker4';
+}
+
+function clearFinishedReturnTimer(roomId) {
+    const timeoutId = finishedReturnTimeouts.get(roomId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        finishedReturnTimeouts.delete(roomId);
+    }
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState) {
+        room.gameState.returnLobbyEndsAt = null;
+    }
+}
+
+function returnFinishedGameToLobby(roomId) {
+    clearFinishedReturnTimer(roomId);
+    const room = roomManager.getRoom(roomId);
+    if (!room || !isFinishedTableReturnMode(room.settings?.gameMode)) {
+        return false;
+    }
+    if (!roomManager.isRoomGameFinished(room) && room.gameState?.phase !== 'finished') {
+        return false;
+    }
+
+    clearLiarPhaseTimer(roomId);
+    clearCoupPhaseTimer(roomId);
+    clearPokerPhaseTimer(roomId);
+    clearPokerBotTimer(roomId);
+    roomManager.resetRoomGame(roomId);
+    const refreshedRoom = roomManager.getRoom(roomId);
+    io.to(roomId).emit('redirectToLobby', { roomId });
+    if (refreshedRoom) {
+        io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+    }
+    io.emit('roomListUpdate', roomManager.getAllRooms());
+    return true;
+}
+
+function scheduleFinishedGameReturnToLobby(room) {
+    if (!room?.roomId || !isFinishedTableReturnMode(room.settings?.gameMode)) {
+        return;
+    }
+    if (finishedReturnTimeouts.has(room.roomId)) {
+        return;
+    }
+    const roomId = room.roomId;
+    const endsAt = Date.now() + FINISHED_RETURN_MS;
+    if (room.gameState) {
+        room.gameState.returnLobbyEndsAt = endsAt;
+    }
+    io.to(roomId).emit('returnToLobby', {
+        countdown: Math.round(FINISHED_RETURN_MS / 1000),
+        roomId,
+        endsAt
+    });
+    const timeoutId = setTimeout(() => {
+        finishedReturnTimeouts.delete(roomId);
+        returnFinishedGameToLobby(roomId);
+    }, FINISHED_RETURN_MS);
+    finishedReturnTimeouts.set(roomId, timeoutId);
+}
+
 function startInsiderVote2(room) {
     if (!room || !room.gameState) return;
     const roomId = room.roomId;
@@ -1167,7 +1238,10 @@ const GAME_MODE_LOG_STYLES = {
     werewolf: { label: 'Werewolf', emoji: '🐺', badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
     blackmarket: { label: 'Black Market', emoji: '🎩', badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
     spyfall: { label: 'Spyfall', emoji: '🕵️', badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
-    coup: { label: 'Coup', emoji: '👑', badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' }
+    coup: { label: 'Coup', emoji: '👑', badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' },
+    liar: { label: 'ไพ่โกหก', emoji: '🃏', badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
+    poker5: { label: 'ไพ่ 5 ใบ', emoji: '♠', badgeBg: 'rgba(22,101,52,0.25)', badgeColor: '#bbf7d0' },
+    poker4: { label: 'สี่ใบเก', emoji: '♦', badgeBg: 'rgba(153,27,27,0.25)', badgeColor: '#fecaca' }
 };
 
 function getGameModeLogStyle(gameMode) {
@@ -1245,6 +1319,29 @@ function buildGameEndNotification(room) {
             logMessage: `👑 Coup จบ — ${winnerName} ชนะ · ${playerCount} คน`,
             logType: 'success',
             meta: { winnerName, playerCount, turnNumber: gameState.turnNumber || 0 }
+        };
+    }
+
+    if (mode === 'liar') {
+        const winnerName = gameState.winner?.name || 'ไม่ทราบ';
+        return {
+            chatMessage: `เกมจบ! ${winnerName} เป็นผู้รอดคนสุดท้าย`,
+            chatColor: '#ef4444',
+            logMessage: `🃏 ไพ่โกหก จบ — ${winnerName} ชนะ · ${playerCount} คน`,
+            logType: 'success',
+            meta: { winnerName, playerCount, roundNumber: gameState.roundNumber || 0 }
+        };
+    }
+
+    if (isPokerMode(mode)) {
+        const winnerName = gameState.winner?.name || 'ไม่ทราบ';
+        const label = mode === 'poker4' ? 'สี่ใบเก' : 'ไพ่ 5 ใบ';
+        return {
+            chatMessage: `มือนี้ ${winnerName} ชนะกอง ${gameState.lastResult?.pot || 0}`,
+            chatColor: '#d4a017',
+            logMessage: `♠ ${label} — ${winnerName} ชนะมือที่ ${gameState.handNumber || 1}`,
+            logType: 'success',
+            meta: { winnerName, playerCount, handNumber: gameState.handNumber || 0 }
         };
     }
 
@@ -2384,6 +2481,267 @@ function finalizeCoupGameIfNeeded(room) {
     state.statsRecordedAt = new Date().toISOString();
     clearCoupPhaseTimer(room.roomId);
     notifyGameEndAfterRecord(room);
+    scheduleFinishedGameReturnToLobby(room);
+}
+
+// ==================== LIAR / โกหก ====================
+
+function clearLiarPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = liarPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        liarPhaseTimeouts.delete(roomId);
+    }
+    if (!resetPhaseEndsAt) return;
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState) room.gameState.phaseEndsAt = null;
+}
+
+function syncLiarPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'liar') return;
+
+    const state = room.gameState;
+    if (!state || state.phase === 'finished' || state.phase === 'lobby' || !state.phaseEndsAt) {
+        clearLiarPhaseTimer(room.roomId);
+        return;
+    }
+
+    const existing = liarPhaseTimeouts.get(room.roomId);
+    if (existing && existing.endsAt === state.phaseEndsAt) return;
+
+    clearLiarPhaseTimer(room.roomId, false);
+    const delay = Math.max(250, state.phaseEndsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        liarPhaseTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'liar') return;
+        try {
+            getGameEngine('liar').autoResolvePhase(current);
+            emitLiarRoomState(current);
+        } catch (error) {
+            console.error('[liar] auto resolve failed:', error.message);
+        }
+    }, delay);
+    liarPhaseTimeouts.set(room.roomId, { timeoutId, endsAt: state.phaseEndsAt });
+}
+
+function buildLiarStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'liar') return null;
+    return getGameEngine('liar').buildClientState(room, playerId);
+}
+
+function emitLiarState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'liar') return;
+
+    syncLiarPhaseTimer(room);
+
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('liarState', buildLiarStatePayload(room, playerId));
+        return;
+    }
+
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('liarState', buildLiarStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function flushLiarHistoryToLogs(room) {
+    if (!room || room.settings?.gameMode !== 'liar') return;
+    const history = room.gameState?.history;
+    if (!Array.isArray(history) || !history.length) return;
+
+    const lastAt = Number(room.gameState.lastLoggedHistoryAt) || 0;
+    const fresh = history
+        .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
+        .sort((left, right) => new Date(left.at) - new Date(right.at));
+
+    fresh.forEach(item => {
+        addServerLog(
+            io,
+            'game',
+            room.roomId,
+            `🃏 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
+            item.kind === 'winner' ? 'success' : 'info',
+            { gameMode: 'liar', meta: { kind: item.kind || null, event: 'liar_history' } }
+        );
+    });
+
+    if (fresh.length) {
+        room.gameState.lastLoggedHistoryAt = new Date(fresh[fresh.length - 1].at).getTime();
+    }
+}
+
+function emitLiarRoomState(room) {
+    if (!room || room.settings.gameMode !== 'liar') return;
+    flushLiarHistoryToLogs(room);
+    finalizeLiarGameIfNeeded(room);
+    emitLiarState(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+function finalizeLiarGameIfNeeded(room) {
+    const state = room?.gameState;
+    if (!state || state.phase !== 'finished' || !state.winner || state.statsRecordedAt) return;
+
+    statsManager.recordGameEnd(room.roomId, {
+        mode: 'liar',
+        winner: state.winner,
+        players: state.players,
+        roomName: room.name
+    });
+    state.statsRecordedAt = new Date().toISOString();
+    clearLiarPhaseTimer(room.roomId);
+    notifyGameEndAfterRecord(room);
+    scheduleFinishedGameReturnToLobby(room);
+}
+
+function getPokerRoom(socket) {
+    const room = getSocketRoom(socket);
+    if (!room || !isPokerMode(room.settings.gameMode)) return null;
+    return room;
+}
+
+function clearPokerPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = pokerPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        pokerPhaseTimeouts.delete(roomId);
+    }
+    if (!resetPhaseEndsAt) return;
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState) room.gameState.phaseEndsAt = null;
+}
+
+function clearPokerBotTimer(roomId) {
+    const timeoutId = pokerBotTimeouts.get(roomId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        pokerBotTimeouts.delete(roomId);
+    }
+}
+
+function canPokerDebug(room, playerId) {
+    return !!(room && playerId && (room.admin === playerId || isSiteAdminPlayer(playerId)));
+}
+
+function schedulePokerBots(room) {
+    if (!room || !isPokerMode(room.settings.gameMode)) return;
+    clearPokerBotTimer(room.roomId);
+    const state = room.gameState;
+    if (!state || state.status !== 'playing' || !['select', 'bet'].includes(state.phase)) {
+        return;
+    }
+    const needsBot = (state.players || []).some(player => {
+        if (!String(player.playerId || '').startsWith('bot_') || player.sittingOut) return false;
+        if (state.phase === 'select') return !player.ready;
+        return state.phase === 'bet' && state.toActPlayerId === player.playerId;
+    });
+    if (!needsBot) return;
+
+    const timeoutId = setTimeout(() => {
+        pokerBotTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || !isPokerMode(current.settings.gameMode)) return;
+        try {
+            const changed = getGameEngine(current.settings.gameMode).playBotTurns(current);
+            if (changed) emitPokerRoomState(current);
+        } catch (error) {
+            console.error('[poker] bots failed:', error.message);
+        }
+    }, 700 + Math.floor(Math.random() * 500));
+    pokerBotTimeouts.set(room.roomId, timeoutId);
+}
+
+function syncPokerPhaseTimer(room) {
+    if (!room || !isPokerMode(room.settings.gameMode)) return;
+    const state = room.gameState;
+    if (!state || state.phase === 'finished' || state.phase === 'lobby' || !state.phaseEndsAt) {
+        clearPokerPhaseTimer(room.roomId);
+        return;
+    }
+    const existing = pokerPhaseTimeouts.get(room.roomId);
+    if (existing && existing.endsAt === state.phaseEndsAt) return;
+    clearPokerPhaseTimer(room.roomId, false);
+    const delay = Math.max(250, state.phaseEndsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        pokerPhaseTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || !isPokerMode(current.settings.gameMode)) return;
+        try {
+            getGameEngine(current.settings.gameMode).autoResolvePhase(current);
+            emitPokerRoomState(current);
+        } catch (error) {
+            console.error('[poker] auto resolve failed:', error.message);
+        }
+    }, delay);
+    pokerPhaseTimeouts.set(room.roomId, { timeoutId, endsAt: state.phaseEndsAt });
+}
+
+function buildPokerStatePayload(room, playerId) {
+    if (!room || !isPokerMode(room.settings.gameMode)) return null;
+    const payload = getGameEngine(room.settings.gameMode).buildClientState(room, playerId);
+    if (!payload) return null;
+    payload.canDebug = canPokerDebug(room, playerId);
+    payload.debugPeek = payload.canDebug
+        && Array.isArray(room.gameState?.adminPeekIds)
+        && room.gameState.adminPeekIds.includes(playerId);
+    if (!payload.debugPeek && Array.isArray(payload.players)) {
+        payload.players.forEach(player => {
+            player.peekHand = null;
+            player.peekKept = null;
+            player.peekCards = null;
+            player.peekTitle = null;
+            player.peekCategory = null;
+            player.peekRank = null;
+        });
+    }
+    return payload;
+}
+
+function emitPokerState(room, targetSocketId = null, playerId = null) {
+    if (!room || !isPokerMode(room.settings.gameMode)) return;
+    syncPokerPhaseTimer(room);
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('pokerState', buildPokerStatePayload(room, playerId));
+        return;
+    }
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('pokerState', buildPokerStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function emitPokerRoomState(room) {
+    if (!room || !isPokerMode(room.settings.gameMode)) return;
+    finalizePokerHandIfNeeded(room);
+    emitPokerState(room);
+    schedulePokerBots(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+function finalizePokerHandIfNeeded(room) {
+    const state = room?.gameState;
+    if (!state) return;
+    if (state.lastResult && !state.statsRecordedAt
+        && (state.phase === 'reveal' || state.phase === 'between' || state.phase === 'finished')) {
+        statsManager.recordGameEnd(room.roomId, {
+            mode: room.settings.gameMode,
+            winner: state.winner,
+            winners: state.lastResult.winners,
+            players: state.players,
+            roomName: room.name,
+            handNumber: state.handNumber
+        });
+        state.statsRecordedAt = new Date().toISOString();
+    }
+    if (state.phase === 'finished') {
+        clearPokerPhaseTimer(room.roomId);
+        clearPokerBotTimer(room.roomId);
+        scheduleFinishedGameReturnToLobby(room);
+    }
 }
 
 // Broadcast เกมตามโหมดของห้อง ใช้เวลา state เปลี่ยนนอก flow ปกติ (เช่น คนออก/หลุดกลางเกม)
@@ -2399,6 +2757,10 @@ function broadcastGameStateForRoom(room) {
         emitSpyfallRoomState(room);
     } else if (room.settings.gameMode === 'coup') {
         emitCoupRoomState(room);
+    } else if (room.settings.gameMode === 'liar') {
+        emitLiarRoomState(room);
+    } else if (isPokerMode(room.settings.gameMode)) {
+        emitPokerRoomState(room);
     }
 }
 
@@ -2423,6 +2785,20 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 getGameEngine('coup').handlePlayerLeft(room, playerId);
             } catch (error) {
                 console.error('[coup] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'liar') {
+            try {
+                getGameEngine('liar').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[liar] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (isPokerMode(room.settings.gameMode)) {
+            try {
+                getGameEngine(room.settings.gameMode).handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[poker] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'werewolf') {
@@ -2727,6 +3103,20 @@ function recoverGamePhaseTimers() {
             syncCoupPhaseTimer(room);
         }
 
+        if (room.settings.gameMode === 'liar') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                getGameEngine('liar').autoResolvePhase(room);
+            }
+            syncLiarPhaseTimer(room);
+        }
+
+        if (isPokerMode(room.settings.gameMode)) {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                getGameEngine(room.settings.gameMode).autoResolvePhase(room);
+            }
+            syncPokerPhaseTimer(room);
+        }
+
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
             if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
                 finalizeInsiderVote2(room);
@@ -2779,6 +3169,14 @@ function runRoomCleanupSweep() {
             getGameEngine('coup').autoResolvePhase(room);
             emitCoupRoomState(room);
         }
+        if (room.settings.gameMode === 'liar' && roomManager.isRoomGameInProgress(room)) {
+            getGameEngine('liar').autoResolvePhase(room);
+            emitLiarRoomState(room);
+        }
+        if (isPokerMode(room.settings.gameMode) && roomManager.isRoomGameInProgress(room)) {
+            getGameEngine(room.settings.gameMode).autoResolvePhase(room);
+            emitPokerRoomState(room);
+        }
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
             && room.gameState.status === 'vote2'
             && room.gameState.vote2EndsAt
@@ -2787,11 +3185,15 @@ function runRoomCleanupSweep() {
         }
 
         clearCoupPhaseTimer(candidate.roomId);
+        clearLiarPhaseTimer(candidate.roomId);
+        clearPokerPhaseTimer(candidate.roomId);
+        clearPokerBotTimer(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
         clearSpyfallPhaseTimer(candidate.roomId);
         clearSpyfallReturnTimer(candidate.roomId);
+        clearFinishedReturnTimer(candidate.roomId);
         if (roomCountdowns.has(candidate.roomId)) {
             clearInterval(roomCountdowns.get(candidate.roomId));
             roomCountdowns.delete(candidate.roomId);
@@ -3412,12 +3814,15 @@ app.get('/rooms', function(req, res) {
         rooms: rooms,
         gameModes: getAvailableGameModes(),
         gameModeDefaults: gameSettingsManager.getModeDefaultsForClient(),
-        werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles()
+        werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles(),
+        pokerRankGuide: rankGuideForClient()
     });
 });
 
 app.get('/how-to-play', function(req, res) {
-    res.render('howToPlay.ejs');
+    res.render('howToPlay.ejs', {
+        pokerRankGuide: rankGuideForClient()
+    });
 });
 
 // Game/Board page จริง
@@ -3501,6 +3906,44 @@ app.get('/game/:roomId', async function(req, res) {
                 settings: room.settings
             },
             coupState: buildCoupStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
+    if (room.settings.gameMode === 'liar') {
+        return res.render('liarBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            liarState: buildLiarStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
+    if (isPokerMode(room.settings.gameMode)) {
+        return res.render('pokerBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            pokerState: buildPokerStatePayload(room, playerId),
             chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
         });
     }
@@ -3632,7 +4075,8 @@ app.get('/room/:roomId', async function(req, res) {
         werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles(),
         // วิธีเล่น Coup ในหน้ารอห้องโชว์รูปการ์ดเหมือนในเกม เลยต้องมี catalog ตั้งแต่ตอนนี้
         // (โหมดสลับได้จากฝั่ง client เลยส่งไปเสมอ ไม่ผูกกับ gameMode ปัจจุบัน)
-        coupCardCatalog: Object.values(getGameEngine('coup').CARD_DEFINITIONS)
+        coupCardCatalog: Object.values(getGameEngine('coup').CARD_DEFINITIONS),
+        pokerRankGuide: rankGuideForClient()
     });
 });
 
@@ -4148,6 +4592,10 @@ io.sockets.on('connection', function(socket) {
             emitSpyfallState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'coup') {
             emitCoupState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'liar') {
+            emitLiarState(refreshedRoom, socket.id, playerId);
+        } else if (isPokerMode(refreshedRoom?.settings?.gameMode)) {
+            emitPokerState(refreshedRoom, socket.id, playerId);
         }
     });
 
@@ -4171,8 +4619,12 @@ io.sockets.on('connection', function(socket) {
             clearSpyfallPhaseTimer(roomId);
             clearSpyfallReturnTimer(roomId);
             clearCoupPhaseTimer(roomId);
+            clearLiarPhaseTimer(roomId);
+            clearPokerPhaseTimer(roomId);
+            clearPokerBotTimer(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
+            clearFinishedReturnTimer(roomId);
             if (roomCountdowns.has(roomId)) {
                 clearInterval(roomCountdowns.get(roomId));
                 roomCountdowns.delete(roomId);
@@ -4208,6 +4660,10 @@ io.sockets.on('connection', function(socket) {
                 emitSpyfallRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'coup') {
                 emitCoupRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'liar') {
+                emitLiarRoomState(refreshedRoom);
+            } else if (isPokerMode(refreshedRoom.settings.gameMode)) {
+                emitPokerRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -5562,6 +6018,10 @@ io.sockets.on('connection', function(socket) {
             const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
             if (room.settings.gameMode === 'coup') {
                 emitCoupState(room, socket.id, playerId);
+            } else if (room.settings.gameMode === 'liar') {
+                emitLiarState(room, socket.id, playerId);
+            } else if (isPokerMode(room.settings.gameMode)) {
+                emitPokerState(room, socket.id, playerId);
             } else if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
@@ -5715,6 +6175,220 @@ io.sockets.on('connection', function(socket) {
                 revealed: (p.revealed || []).map(describe)
             }))
         });
+    });
+
+    // ==================== LIAR / โกหก ====================
+
+    safeOn(socket, 'liar_requestState', function(data) {
+        const room = getSocketRoom(socket, 'liar');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        syncLiarPhaseTimer(room);
+        emitLiarState(room, socket.id, playerId);
+    });
+
+    function handleLiarCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'liar');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบห้องไพ่โกหก' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            emitLiarRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    safeOn(socket, 'liar_play', function(data, callback) {
+        handleLiarCommand(socket, callback, (room, playerId) =>
+            getGameEngine('liar').submitPlay(room, playerId, data?.cardIds || []));
+    });
+
+    safeOn(socket, 'liar_challenge', function(data, callback) {
+        handleLiarCommand(socket, callback, (room, playerId) =>
+            getGameEngine('liar').submitChallenge(room, playerId));
+    });
+
+    safeOn(socket, 'returnFinishedToLobby', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket);
+        if (!room || (data?.roomId && data.roomId !== room.roomId)) {
+            done({ success: false, error: 'ไม่พบห้อง' });
+            return;
+        }
+        if (!isFinishedTableReturnMode(room.settings?.gameMode)) {
+            done({ success: false, error: 'โหมดนี้กลับห้องเองไม่ได้' });
+            return;
+        }
+        if (room.gameStarting) {
+            done({ success: false, error: 'กำลังเริ่มเกมใหม่' });
+            return;
+        }
+        if (!roomManager.isRoomGameFinished(room) && room.gameState?.phase !== 'finished') {
+            done({ success: false, error: 'เกมยังไม่จบ' });
+            return;
+        }
+        const ok = returnFinishedGameToLobby(room.roomId);
+        done({ success: ok });
+    });
+
+    safeOn(socket, 'liar_admin_reveal', function() {
+        const room = getSocketRoom(socket, 'liar');
+        if (!room) return;
+        if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('liar_admin_reveal_denied');
+            return;
+        }
+
+        const cards = getGameEngine('liar').CARD_DEFINITIONS;
+        const describe = cardId => {
+            const card = cards[cardId];
+            return card ? { id: cardId, icon: card.icon, name: card.thaiName } : { id: cardId, icon: '❔', name: cardId };
+        };
+
+        const state = room.gameState;
+        const requester = playerManager.getPlayer(socket.playerId);
+        addServerLog(
+            io,
+            'admin',
+            room.roomId,
+            `${requester?.playerName || socket.playerId} ใช้ /m ดูไพ่โกหกทั้งโต๊ะ`,
+            'warning',
+            { gameMode: 'liar', meta: { event: 'liar_admin_reveal', playerId: socket.playerId } }
+        );
+
+        io.to(socket.id).emit('liar_admin_reveal', {
+            turnPlayerId: state.currentPlayerId || null,
+            targetRank: state.targetRank || null,
+            deckCount: Array.isArray(state.deck) ? state.deck.length : 0,
+            lastPlay: state.lastPlay
+                ? { playerId: state.lastPlay.playerId, cards: (state.lastPlay.cards || []).map(describe) }
+                : null,
+            players: (state.players || []).map(p => ({
+                playerId: p.playerId,
+                name: buildDisplayPlayerName(p.playerId, p.name),
+                lives: p.lives,
+                alive: p.alive,
+                hand: (p.hand || []).map(describe)
+            }))
+        });
+    });
+
+    // ==================== POKER ====================
+
+    safeOn(socket, 'poker_requestState', function(data) {
+        const room = getPokerRoom(socket);
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        syncPokerPhaseTimer(room);
+        emitPokerState(room, socket.id, playerId);
+    });
+
+    function handlePokerCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getPokerRoom(socket);
+        if (!room) {
+            done({ success: false, error: 'ไม่พบห้องโป๊กเกอร์' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            emitPokerRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    safeOn(socket, 'poker_select', function(data, callback) {
+        handlePokerCommand(socket, callback, (room, playerId) =>
+            getGameEngine(room.settings.gameMode).submitSelect(room, playerId, data?.cardIds || []));
+    });
+
+    safeOn(socket, 'poker_bet', function(data, callback) {
+        handlePokerCommand(socket, callback, (room, playerId) =>
+            getGameEngine(room.settings.gameMode).submitBet(room, playerId, data?.action, data?.amount));
+    });
+
+    safeOn(socket, 'poker_nextHand', function(data, callback) {
+        handlePokerCommand(socket, callback, (room, playerId) => {
+            if (room.admin !== playerId && !isSiteAdminPlayer(playerId)) {
+                throw new Error('มีแค่หัวหน้าห้องที่เริ่มมือถัดไปได้');
+            }
+            getGameEngine(room.settings.gameMode).nextHand(room);
+        });
+    });
+
+    safeOn(socket, 'poker_debug_peek', function(data, callback) {
+        handlePokerCommand(socket, callback, (room, playerId) => {
+            if (!canPokerDebug(room, playerId)) {
+                throw new Error('โหมด /m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
+            }
+            if (!room.gameState.adminPeekIds) room.gameState.adminPeekIds = [];
+            const enabled = data?.enabled !== false;
+            room.gameState.adminPeekIds = enabled
+                ? [...new Set([...room.gameState.adminPeekIds, playerId])]
+                : room.gameState.adminPeekIds.filter(id => id !== playerId);
+            const requester = playerManager.getPlayer(playerId);
+            addServerLog(
+                io,
+                'admin',
+                room.roomId,
+                `${requester?.playerName || playerId} ${enabled ? 'เปิด' : 'ปิด'} ดูไพ่ทุกคน (/m)`,
+                'warning',
+                { gameMode: room.settings.gameMode, meta: { event: 'poker_debug_peek', playerId, enabled } }
+            );
+        });
+    });
+
+    safeOn(socket, 'poker_debug_credit', function(data, callback) {
+        handlePokerCommand(socket, callback, (room, playerId) => {
+            if (!canPokerDebug(room, playerId)) {
+                throw new Error('โหมด /m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
+            }
+            const amount = Math.min(100000, Math.max(1, Math.floor(Number(data?.amount) || 1000)));
+            walletManager.debugCredit(playerId, amount, 'poker-debug', { roomId: room.roomId });
+            const player = (room.gameState.players || []).find(p => p.playerId === playerId);
+            if (player) {
+                if (room.gameState.tableType === 'cash') {
+                    player.stack = walletManager.publicWallet(playerId).balance;
+                } else {
+                    player.stack += amount;
+                }
+            }
+            const requester = playerManager.getPlayer(playerId);
+            addServerLog(
+                io,
+                'admin',
+                room.roomId,
+                `${requester?.playerName || playerId} เติมชิป debug +${amount}`,
+                'warning',
+                { gameMode: room.settings.gameMode, meta: { event: 'poker_debug_credit', playerId, amount } }
+            );
+        });
+    });
+
+    safeOn(socket, 'wallet_claimDaily', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const playerId = socket.playerId;
+        if (!playerId) {
+            done({ success: false, error: 'ยังไม่ได้เข้าสู่ระบบ' });
+            return;
+        }
+        try {
+            const wallet = walletManager.claimDaily(playerId);
+            done({ success: true, wallet });
+        } catch (error) {
+            done({ success: false, error: error.message || 'รับชิปไม่ได้' });
+        }
     });
 
     safeOn(socket, 'blackmarket_requestState', function(data) {
@@ -6197,6 +6871,72 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    safeOn(socket, 'poker_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        try {
+            const roomId = data?.roomId || socket.roomId;
+            const adminPlayerId = socket.playerId;
+            const room = roomManager.getRoom(roomId);
+
+            if (!room) throw new Error('ไม่พบห้อง');
+            roomManager.repairRoomGameMode(room);
+            if (!isPokerMode(room.settings.gameMode)) {
+                const hinted = roomManager.inferGameModeFromRoomData({
+                    gameMode: room.settings.gameMode,
+                    name: room.name
+                });
+                if (isPokerMode(hinted)) room.settings.gameMode = hinted;
+            }
+            if (!isPokerMode(room.settings.gameMode)) throw new Error('โหมดนี้เพิ่มบอทไม่ได้');
+            if (room.admin !== adminPlayerId && !isSiteAdminPlayer(adminPlayerId)) {
+                throw new Error('เฉพาะหัวหน้าห้องหรือแอดมินที่เพิ่มบอทได้');
+            }
+            if (roomManager.isRoomGameInProgress(room)) {
+                throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
+            }
+
+            const seatCap = Math.min(
+                Number(getGameEngine(room.settings.gameMode)?.maxPlayers || 10),
+                Number(room.settings.maxPlayers || 10)
+            );
+            const remaining = Math.max(0, seatCap - room.players.length);
+            const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
+            if (!remaining) throw new Error('ห้องเต็มแล้ว');
+
+            const botNames = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทสายฝน'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄'];
+            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad'];
+
+            for (let i = 0; i < wanted; i += 1) {
+                const botId = `bot_${uuidv4()}`;
+                const botName = `${botNames[i % botNames.length]} ${botId.slice(-4)}`;
+                await playerManager.createOrGetPlayer(botId, { approved: true });
+                await playerManager.updatePlayerName(botId, botName);
+                await playerManager.updatePlayerColor(botId, botColors[i % botColors.length]);
+                await playerManager.updatePlayerAvatar(botId, botAvatars[i % botAvatars.length]);
+                const botSocketId = `bot_socket_${uuidv4()}`;
+                roomManager.joinRoom(roomId, botId, botSocketId, null, { bypassLock: true });
+                if (room.settings.pokerTableType === 'cash') {
+                    const hostBal = walletManager.publicWallet(adminPlayerId).balance;
+                    const botBal = walletManager.publicWallet(botId).balance;
+                    const target = Math.max(0, Number(hostBal) || 0);
+                    if (botBal < target) {
+                        walletManager.credit(botId, target - botBal, 'poker-bot-buyin', { roomId });
+                    } else if (botBal > target) {
+                        walletManager.debit(botId, botBal - target, 'poker-bot-buyin', { roomId });
+                    }
+                }
+            }
+
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+            done({ success: true, added: wanted });
+        } catch (error) {
+            console.error('Error adding poker bots:', error);
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
+    });
+
     socket.on('spyfall_endDiscussion', function(data, callback) {
         try {
             const roomId = socket.roomId;
@@ -6329,13 +7069,19 @@ io.sockets.on('connection', function(socket) {
 
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
+            clearFinishedReturnTimer(roomId);
 
             // ตรวจสอบจำนวนผู้เล่นตามโหมดเกม
             const onlinePlayers = room.players.filter(p => p.socketId);
             const currentEngine = getGameEngine(room.settings.gameMode);
             const requiredPlayers = Number(currentEngine?.minPlayers || 3);
+            const modeMaxPlayers = Number(currentEngine?.maxPlayers || 10);
             if (onlinePlayers.length < requiredPlayers) {
                 if (typeof callback === 'function') callback({ success: false, error: `ต้องมีผู้เล่นออนไลน์อย่างน้อย ${requiredPlayers} คน` });
+                return;
+            }
+            if (onlinePlayers.length > modeMaxPlayers) {
+                if (typeof callback === 'function') callback({ success: false, error: `โหมดนี้เล่นได้ไม่เกิน ${modeMaxPlayers} คน` });
                 return;
             }
 
@@ -6367,6 +7113,11 @@ io.sockets.on('connection', function(socket) {
                 const currentOnlinePlayers = currentRoom.players.filter(p => p.socketId);
                 if (currentOnlinePlayers.length < requiredPlayers) {
                     io.to(roomId).emit('gameStartCancelled', { error: `ผู้เล่นไม่ครบ ${requiredPlayers} คน` });
+                    room.gameStarting = false;
+                    return;
+                }
+                if (currentOnlinePlayers.length > modeMaxPlayers) {
+                    io.to(roomId).emit('gameStartCancelled', { error: `โหมดนี้เล่นได้ไม่เกิน ${modeMaxPlayers} คน` });
                     room.gameStarting = false;
                     return;
                 }
@@ -6434,6 +7185,47 @@ io.sockets.on('connection', function(socket) {
                         'เกมโค่นอำนาจเริ่มแล้ว — โกหกได้ ท้าได้ ใครรอดคนสุดท้ายชนะ', '#a855f7');
                     logGameStartFromRoom(currentRoom);
                     emitCoupRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'liar') {
+                    clearLiarPhaseTimer(roomId);
+                    getGameEngine('liar').startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'ไพ่โกหกเริ่มแล้ว — ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้', '#ef4444');
+                    logGameStartFromRoom(currentRoom);
+                    emitLiarRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (isPokerMode(currentRoom.settings.gameMode)) {
+                    clearPokerPhaseTimer(roomId);
+                    getGameEngine(currentRoom.settings.gameMode).startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    const pokerLabel = currentRoom.settings.gameMode === 'poker4' ? 'สี่ใบเก' : 'ไพ่ 5 ใบ';
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        pokerLabel + ' เริ่มแล้ว — แจกไพ่ ทิ้งคืนกลาง แล้ววัด 3 ใบที่ดีสุด', '#d4a017');
+                    logGameStartFromRoom(currentRoom);
+                    emitPokerRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

@@ -1,0 +1,1519 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<link rel="stylesheet" href="/static/css/pokerHands.css">
+<style>
+  * { box-sizing: border-box; }
+  html.pk-active, html.pk-active body.content {
+    overflow-x: hidden; margin: 0 !important; padding: 0 !important; background: #0b1a12 !important;
+  }
+  html.pk-active .container-fluid > header,
+  html.pk-active .footer, html.pk-active #music-controls { display: none !important; }
+  html.pk-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  html.pk-active .container-fluid > .row { margin: 0 !important; }
+  html.pk-active .col-lg-12 { padding: 0 !important; }
+  :root {
+    --pk-gold: #f5c86b; --pk-text: #f4efe4; --pk-muted: #b9c4b4;
+    --pk-line: rgba(232,197,107,0.18); --pk-ease: cubic-bezier(0.22,1,0.36,1);
+  }
+  body.content {
+    background: radial-gradient(ellipse at 50% 18%, rgba(46,120,72,0.35), transparent 42%), linear-gradient(180deg,#0b1a12,#163322);
+    font-family: 'Rajdhani', sans-serif; color: var(--pk-text);
+  }
+  .pk-page { max-width: 1080px; margin: 0 auto; padding: 8px 10px 148px; }
+  .pk-table {
+    position: relative;
+    margin: 12px auto 0;
+    width: min(980px, 100%);
+    height: clamp(360px, 58vw, 540px);
+    border-radius: 50% / 46%;
+    overflow: visible;
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(62,150,88,0.55), rgba(10,42,24,0.98) 58%),
+      #0c2818;
+    box-shadow:
+      inset 0 0 0 12px #163c28,
+      inset 0 0 0 16px rgba(245,200,107,0.22),
+      0 28px 64px rgba(0,0,0,0.45);
+  }
+  .pk-seats { position:absolute; inset:0; pointer-events:none; }
+  .pk-seat {
+    position:absolute; width:96px; transform:translate(-50%,-50%);
+    text-align:center; padding:0; background:transparent; pointer-events:auto;
+  }
+  .pk-seat-cards {
+    display:flex; justify-content:center; align-items:flex-end;
+    height:46px; margin:0 0 -10px; position:relative; overflow:visible; z-index:5;
+  }
+  .pk-seat-cards .pk-playing {
+    width:28px; height:40px; margin-left:-12px; border-radius:5px;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.4);
+  }
+  .pk-seat-cards .pk-playing:first-child { margin-left:0; }
+  .pk-avatar-ring {
+    width:54px; height:54px; margin:0 auto; border-radius:50%;
+    display:grid; place-items:center; position:relative; z-index:1;
+    border:3px solid rgba(255,255,255,0.16);
+    background:rgba(6,18,10,0.88);
+    overflow:visible;
+  }
+  .pk-timer-svg {
+    display:none; position:absolute; inset:-7px; width:calc(100% + 14px); height:calc(100% + 14px);
+    pointer-events:none; z-index:0; transform:rotate(-90deg);
+  }
+  .pk-seat.is-turn.pk-acting .pk-timer-svg { display:block; }
+  .pk-timer-arc { fill:none; stroke:var(--pk-gold); stroke-width:3; stroke-linecap:round; transition: stroke .2s linear; }
+  .pk-timer-track { fill:none; stroke:rgba(255,255,255,0.16); stroke-width:3; }
+  .pk-seat.pk-urgent .pk-timer-arc {
+    stroke:#f87171;
+    filter: drop-shadow(0 0 5px rgba(239,68,68,0.85));
+  }
+  .pk-seat.pk-urgent .pk-avatar-ring {
+    border-color:#f87171;
+    box-shadow: 0 0 0 4px rgba(248,113,113,0.38);
+    animation: pkUrgentShake 0.42s ease-in-out infinite;
+  }
+  .pk-timer.is-urgent { color:#f87171; }
+  .pk-say {
+    position:absolute; left:50%; top:-6px; transform:translate(-50%,-100%);
+    padding:5px 10px; border-radius:14px 14px 14px 4px;
+    background:#fff; color:#16120c; font-size:0.72rem; font-weight:800;
+    white-space:nowrap; z-index:16; box-shadow:0 8px 16px rgba(0,0,0,0.35);
+    pointer-events:none;
+  }
+  .pk-say.is-pop { animation: pkSayIn 0.32s var(--pk-ease) both; }
+  @keyframes pkSayIn {
+    0% { opacity:0; transform:translate(-50%,-70%) scale(0.72); }
+    100% { opacity:1; transform:translate(-50%,-100%) scale(1); }
+  }
+  .pk-turn-token {
+    position:absolute; top:0; left:0; width:26px; height:26px; margin:0;
+    border-radius:50%; background:#fff; color:#16120c;
+    font-size:0.78rem; font-weight:900; display:grid; place-items:center;
+    z-index:10; pointer-events:none;
+    box-shadow:0 4px 12px rgba(0,0,0,0.45);
+    transition: transform 0.38s var(--pk-ease);
+  }
+  .pk-turn-token[hidden] { display:none !important; }
+  .pk-fly .pk-playing { width:100%; height:100%; margin:0; }
+  .pk-avatar-ring .player-avatar {
+    width:100% !important; height:100% !important; font-size:1.4rem !important;
+  }
+  .pk-seat.is-self { z-index:3; }
+  .pk-seat.is-self .pk-avatar-ring { width:60px; height:60px; }
+  .pk-seat.is-ready .pk-avatar-ring { border-color:#86efac; }
+  .pk-seat.is-turn .pk-avatar-ring {
+    border-color: var(--pk-gold);
+    box-shadow: 0 0 0 4px rgba(245,200,107,0.28);
+  }
+  .pk-seat.is-fold, .pk-seat.is-out { opacity:0.42; }
+  .pk-dealer-btn {
+    position:absolute; right:-6px; bottom:-2px;
+    width:20px; height:20px; border-radius:50%;
+    background:#fff; color:#16120c; font-size:0.68rem; font-weight:900;
+    display:grid; place-items:center;
+  }
+  .pk-seat-name {
+    margin-top:4px; font-size:0.78rem; font-weight:700;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .pk-seat-stack { font-size:0.72rem; color:var(--pk-gold); font-weight:800; }
+  .pk-seat-rank {
+    display:block; margin-top:2px; font-size:0.78rem; font-weight:900;
+    color:#ffe08a; text-shadow:0 1px 3px #000; letter-spacing:0.02em;
+    white-space:nowrap;
+  }
+  .pk-seat-tag {
+    margin-top:2px; font-size:0.68rem; font-weight:800; color:#bbf7d0;
+    min-height:1em;
+  }
+  .pk-seat-bet {
+    position:absolute; left:50%; bottom:-18px; transform:translateX(-50%);
+    font-size:0.7rem; font-weight:800; color:var(--pk-gold);
+    white-space:nowrap;
+  }
+  .pk-seat.is-show, .pk-seat.is-peek { width:128px; z-index:5; }
+  .pk-seat.is-show .pk-seat-cards,
+  .pk-seat.is-peek .pk-seat-cards {
+    height:70px; margin:0 0 2px; perspective: 420px;
+  }
+  .pk-seat.is-show .pk-fan-slot,
+  .pk-seat.is-peek .pk-fan-slot {
+    margin-left:-16px; transform-origin: 50% 100%;
+  }
+  .pk-seat.is-show .pk-fan-slot:first-child,
+  .pk-seat.is-peek .pk-fan-slot:first-child { margin-left:0; }
+  .pk-seat.is-show .pk-fan-slot:nth-child(1),
+  .pk-seat.is-peek .pk-fan-slot:nth-child(1) { transform: rotate(-16deg) translateY(8px); }
+  .pk-seat.is-show .pk-fan-slot:nth-child(2),
+  .pk-seat.is-peek .pk-fan-slot:nth-child(2) { transform: rotate(0) translateY(0); z-index:2; }
+  .pk-seat.is-show .pk-fan-slot:nth-child(3),
+  .pk-seat.is-peek .pk-fan-slot:nth-child(3) { transform: rotate(16deg) translateY(8px); }
+  .pk-seat.is-show .pk-seat-cards .pk-playing,
+  .pk-seat.is-peek .pk-seat-cards .pk-playing {
+    width:42px; height:60px; margin-left:0; border-radius:6px;
+  }
+  .pk-peek-tag {
+    position:relative; z-index:8; display:inline-block;
+    margin:-12px auto 4px; padding:3px 10px; border-radius:999px;
+    background:rgba(8,24,40,0.96); border:1px solid var(--pk-gold);
+    color:#fde68a; font-size:0.72rem; font-weight:900; letter-spacing:0.04em;
+    white-space:nowrap; pointer-events:none;
+    box-shadow:0 4px 10px rgba(0,0,0,0.4);
+  }
+  .pk-peek-tag.is-pop { animation: pkPeekIn 0.38s var(--pk-ease) both; }
+  @keyframes pkPeekIn {
+    0% { opacity:0; transform:scale(0.72) translateY(8px); }
+    100% { opacity:1; transform:scale(1) translateY(0); }
+  }
+  .pk-seat.is-winner { z-index: 8; }
+  .pk-seat.is-winner .pk-avatar-ring {
+    border-color: var(--pk-gold);
+    background: radial-gradient(circle at 50% 28%, rgba(255,236,170,0.42), rgba(6,18,10,0.92) 72%);
+    box-shadow: 0 0 0 5px rgba(245,200,107,0.72), 0 0 36px 14px rgba(255, 224, 140, 0.88);
+  }
+  .pk-seat.is-winner .pk-avatar-ring::before {
+    content: '';
+    position: absolute;
+    inset: -34px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,248,214,0.62) 0%, rgba(245,200,107,0.28) 40%, transparent 72%);
+    z-index: -1;
+    pointer-events: none;
+    animation: pkSpotPulse 1.7s ease-in-out infinite;
+  }
+  .pk-win-badge {
+    position:absolute; left:50%; top:calc(100% - 6px); transform:translateX(-50%);
+    z-index:6; padding:2px 8px; border-radius:999px;
+    background:linear-gradient(#ffe08a,#d4a017); color:#7f1d1d;
+    font-size:0.62rem; font-weight:900; letter-spacing:0.08em;
+    box-shadow:0 4px 10px rgba(0,0,0,0.35);
+  }
+  .pk-hand-pill {
+    display:inline-block; margin-top:3px; padding:2px 8px; border-radius:999px;
+    background:rgba(8,24,40,0.78); border:1px solid rgba(245,200,107,0.28);
+    font-size:0.68rem; font-weight:800; color:#fde68a; white-space:nowrap;
+  }
+  .pk-seat.is-winner .pk-hand-pill { background:#b91c1c; border-color:#f5c86b; color:#fff; }
+  .pk-bet-chips { position:absolute; inset:0; pointer-events:none; z-index:3; }
+  .pk-chip-stack {
+    position:absolute; width:48px; transform:translate(-50%,-50%); text-align:center;
+  }
+  .pk-chip-disc {
+    display:block; width:34px; height:10px; margin:-6px auto 0; border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, #ffe08a, #c9922a 62%, #8a6414);
+    box-shadow: 0 2px 0 #6b4a10, 0 3px 6px rgba(0,0,0,0.35);
+  }
+  .pk-chip-stack b {
+    display:block; margin-top:4px; font-size:0.68rem; font-weight:800; color:#fff;
+    text-shadow:0 1px 2px #000;
+  }
+  .pk-deck {
+    width:28px; height:40px; margin:2px auto 0;
+  }
+  .pk-deck .pk-playing { width:28px; height:40px; }
+  .pk-win {
+    font-family:'Orbitron',sans-serif; font-size:clamp(1.15rem,3.6vw,1.8rem);
+    font-weight:900; color:var(--pk-gold); letter-spacing:0.08em;
+    text-shadow:0 0 18px rgba(245,200,107,0.55); text-align:center;
+  }
+  .pk-win[hidden] { display:none !important; }
+  .pk-fx { position:fixed; inset:0; pointer-events:none; z-index:11000; }
+  .pk-fly {
+    position:absolute; top:0; left:0; width:42px; height:60px;
+    transition: transform 0.42s var(--pk-ease), opacity 0.42s var(--pk-ease);
+  }
+  .pk-fly.is-chip { width:36px; height:22px; }
+  .pk-fly.is-win-fly { width:40px; height:26px; z-index:11002; }
+  .pk-playing.is-deal { animation: pkDealIn 0.4s var(--pk-ease) both; }
+  .pk-playing.is-flip { animation: pkFlipIn 0.48s var(--pk-ease) both; }
+  .pk-chip-stack.is-drop { animation: pkChipDrop 0.35s var(--pk-ease) both; }
+  .pk-fan.is-showdown .pk-fan-slot:nth-child(1) { transform: rotate(-12deg) translateY(10px); }
+  .pk-fan.is-showdown .pk-fan-slot:nth-child(2) { transform: rotate(0); z-index:2; }
+  .pk-fan.is-showdown .pk-fan-slot:nth-child(3) { transform: rotate(12deg) translateY(10px); }
+  .pk-win-ribbon {
+    position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+    padding:4px 14px; border-radius:999px;
+    background:#b91c1c; color:#fff; font-weight:900; letter-spacing:0.06em;
+    box-shadow:0 6px 14px rgba(0,0,0,0.35); white-space:nowrap; z-index:4;
+  }
+  .pk-win-ribbon.is-rank {
+    background:rgba(8,24,40,0.92); color:#fde68a; border:1px solid rgba(245,200,107,0.4);
+  }
+  @keyframes pkDealIn {
+    from { opacity:0; transform: translateY(-36px) scale(0.72); }
+    to { opacity:1; transform: none; }
+  }
+  @keyframes pkFlipIn {
+    0% { transform: rotateY(90deg) scale(0.92); }
+    100% { transform: rotateY(0) scale(1); }
+  }
+  @keyframes pkSpotIn {
+    from { opacity:0; transform:translateX(-50%) scaleY(0.4); }
+    to { opacity:1; transform:translateX(-50%) scaleY(1); }
+  }
+  @keyframes pkSpotPulse {
+    0%, 100% { opacity:0.55; }
+    50% { opacity:1; }
+  }
+  @keyframes pkUrgentShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px) rotate(-1.6deg); }
+    75% { transform: translateX(2px) rotate(1.6deg); }
+  }
+  @keyframes pkChipDrop {
+    from { opacity:0; transform:translate(-50%,-70%) scale(0.6); }
+    to { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  }
+  .pk-center {
+    position:absolute; left:50%; top:48%; transform:translate(-50%,-50%);
+    min-height:0; display:flex; flex-direction:column; align-items:center; gap:6px;
+    z-index:2; pointer-events:none;
+  }
+  .pk-topbar { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 4px 8px; position:relative; z-index:220; }
+  .pk-kicker { color: var(--pk-gold); font-size:0.74rem; font-weight:700; letter-spacing:0.14em; }
+  .pk-title { margin:2px 0 0; font-family:'Orbitron',sans-serif; font-size:clamp(1.05rem,3.4vw,1.45rem); }
+  .pk-meta { display:flex; flex-wrap:wrap; gap:6px; }
+  .pk-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px; border:1px solid var(--pk-line); background:rgba(8,22,14,0.72); font-size:0.84rem; font-weight:600; }
+  .pk-chip-btn { cursor:pointer; font-family:inherit; color:inherit; }
+  .pk-chip-danger { border-color:rgba(255,107,107,0.4); color:#ffc9c9; }
+  .pk-now { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; border-radius:16px; background:rgba(6,18,10,0.55); border:1px solid var(--pk-line); }
+  .pk-now.is-mine { background:rgba(245,200,107,0.14); }
+  .pk-now-copy { font-size:1.02rem; font-weight:700; }
+  .pk-timer-wrap { margin-left:auto; text-align:right; }
+  .pk-timer { font-family:'Orbitron',sans-serif; font-size:1.2rem; color:var(--pk-gold); }
+  .pk-timer-hint { display:block; font-size:0.68rem; color:var(--pk-muted); font-weight:600; }
+  .pk-btn-fold { background:#7f1d1d; color:#fecaca; }
+  .pk-btn-allin { background:#f5c86b; color:#16120c; }
+  .pk-btn-raise { background:#b45309; color:#fff; }
+  .pk-label { font-size:0.72rem; color:var(--pk-muted); letter-spacing:0.14em; font-weight:700; }
+  .pk-pot { font-family:'Orbitron',sans-serif; font-size:1.55rem; color:var(--pk-gold); }
+  .pk-discards { display:flex; justify-content:center; min-height:28px; }
+  .pk-discards .pk-playing { width:22px; height:32px; margin-left:-14px; border-radius:4px; }
+  .pk-discards .pk-playing:first-child { margin-left:0; }
+  .pk-show { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  .pk-slot {
+    width:78px; height:110px; border-radius:10px;
+    border:1px dashed rgba(245,200,107,0.22); background:rgba(0,0,0,0.16);
+  }
+  .pk-playing { width:78px; height:110px; border-radius:10px; box-shadow:0 10px 18px rgba(0,0,0,0.4); overflow:hidden; }
+  .pk-playing img { width:100%; height:100%; object-fit:cover; display:block; }
+  .pk-playing.is-pick { cursor:pointer; }
+  .pk-playing.is-selected { outline:3px solid var(--pk-gold); transform:translateY(-10px); }
+  .pk-playing.is-best {
+    outline:3px solid #4ade80;
+    box-shadow: 0 0 0 2px rgba(74,222,128,0.35), 0 10px 18px rgba(0,0,0,0.4);
+  }
+  .pk-hand-dock { position:sticky; bottom:0; z-index:20; margin:8px -10px -8px; padding:8px 8px 12px; background:linear-gradient(180deg,transparent,rgba(8,18,12,0.92) 28%); }
+  .pk-fan { display:flex; justify-content:center; align-items:flex-end; min-height:140px; position:relative; }
+  .pk-fan .pk-fan-slot { margin-left:-28px; transform-origin: 50% 100%; }
+  .pk-fan .pk-fan-slot:first-child { margin-left:0; }
+  .pk-fan .pk-playing { margin-left:0; }
+  .pk-actions { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; align-items:center; }
+  .pk-chip-row {
+    display:flex; align-items:center; gap:6px; padding:4px 6px 4px 10px;
+    border-radius:999px; border:1px solid var(--pk-line); background:rgba(8,22,14,0.72);
+  }
+  .pk-chip-step {
+    width:36px; height:36px; border:0; border-radius:999px; cursor:pointer;
+    background:#f5c86b; color:#16120c; font-weight:900; font-size:1.15rem; font-family:inherit;
+  }
+  .pk-chip-step[disabled] { opacity:0.35; cursor:not-allowed; }
+  .pk-chip-amt { min-width:64px; text-align:center; font-family:'Orbitron',sans-serif; font-weight:800; color:var(--pk-gold); }
+  .pk-btn { border:0; border-radius:999px; padding:10px 18px; font-weight:800; font-family:inherit; cursor:pointer; }
+  .pk-btn-play { background:#f5c86b; color:#16120c; }
+  .pk-btn-draw { background:#ef4444; color:#fff; }
+  .pk-btn-pass { background:rgba(255,255,255,0.12); color:#fff; }
+  .pk-btn[disabled] { opacity:0.45; cursor:not-allowed; }
+  .pk-hint, .pk-empty { text-align:center; color:var(--pk-muted); font-size:0.88rem; margin-top:6px; }
+  .pk-feed { margin-top:6px; font-size:0.78rem; color:#d7e3d4; text-align:center; min-height:1.2em; }
+  .pk-banner { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); padding:10px 18px; border-radius:999px; background:rgba(8,16,10,0.86); border:1px solid var(--pk-gold); font-weight:800; z-index:5; pointer-events:none; opacity:0; }
+  .pk-banner.is-on { animation: pkBanner 1.4s var(--pk-ease); }
+  @keyframes pkBanner { 0%{opacity:0; transform:translate(-50%,-40%)} 18%{opacity:1; transform:translate(-50%,-50%)} 100%{opacity:0} }
+  .pk-sidebar { position:fixed; top:0; right:0; width:min(320px,92vw); height:100%; background:#102016; z-index:80; padding:18px; transform:translateX(110%); transition:transform .2s; }
+  .pk-sidebar.open { transform:none; }
+  .pk-sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:70; }
+  @media (max-width: 640px) {
+    .pk-playing, .pk-slot { width:64px; height:90px; }
+    .pk-fan .pk-fan-slot { margin-left:-22px; }
+    .pk-seat.is-show .pk-fan-slot, .pk-seat.is-peek .pk-fan-slot { margin-left:-14px; }
+    .pk-table { height: clamp(300px, 72vw, 420px); }
+    .pk-seat { width:78px; }
+    .pk-avatar-ring { width:46px; height:46px; }
+    .pk-seat-cards .pk-playing { width:22px; height:32px; margin-left:-10px; }
+    .pk-seat.is-show, .pk-seat.is-peek { width:108px; }
+    .pk-seat.is-show .pk-seat-cards .pk-playing,
+    .pk-seat.is-peek .pk-seat-cards .pk-playing { width:34px; height:48px; margin-left:-14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pk-playing.is-deal, .pk-playing.is-flip, .pk-chip-stack.is-drop, .pk-banner.is-on, .pk-fly, .pk-say.is-pop, .pk-peek-tag.is-pop, .pk-turn-token,
+    .pk-seat.is-winner .pk-avatar-ring::before, .pk-seat.pk-urgent .pk-avatar-ring {
+      animation: none !important; transition: none !important;
+    }
+  }
+  .pk-debug {
+    position:fixed; left:12px; bottom:76px; z-index:200; min-width:230px;
+    padding:10px 12px; border-radius:14px; background:rgba(8,18,12,0.96);
+    border:1px solid var(--pk-gold); box-shadow:0 12px 28px rgba(0,0,0,0.35);
+  }
+  .pk-debug[hidden] { display:none !important; }
+  .pk-debug-head {
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    min-height:32px; cursor:grab; touch-action:none; user-select:none;
+  }
+  .pk-debug-head:active { cursor:grabbing; }
+  .pk-debug-title { color:var(--pk-gold); font-weight:800; font-size:0.82rem; letter-spacing:0.08em; }
+  .pk-debug-toggle {
+    flex:0 0 auto; width:32px; height:32px; border:0; border-radius:10px;
+    background:rgba(255,255,255,0.1); color:#fff; font-size:1.05rem; font-weight:800;
+    font-family:inherit; cursor:pointer; line-height:1;
+  }
+  .pk-debug-body { margin-top:6px; }
+  .pk-debug.is-min { min-width:0; padding:6px 8px 6px 12px; }
+  .pk-debug.is-min .pk-debug-body { display:none; }
+  .pk-debug-row { display:flex; align-items:center; gap:8px; margin-top:8px; font-size:0.88rem; }
+  .pk-debug input[type="number"] {
+    width:88px; border:1px solid var(--pk-line); border-radius:8px; background:#0c1a12; color:#fff; padding:6px 8px;
+  }
+  .pk-debug-body button { border:0; border-radius:999px; padding:6px 12px; font-weight:800; font-family:inherit; cursor:pointer; background:#f5c86b; color:#16120c; }
+  @media (max-width: 640px) {
+    .pk-debug { left:12px; right:auto; top:auto; bottom:168px; min-width:196px; }
+  }
+  .pk-rank-tab {
+    position:fixed; left:0; top:42%; z-index:120; transform:translateY(-50%);
+    border:1px solid var(--pk-gold); border-left:0; border-radius:0 14px 14px 0;
+    background:rgba(8,18,12,0.94); color:var(--pk-gold); font-weight:800; font-family:inherit;
+    padding:14px 8px; writing-mode:vertical-rl; letter-spacing:0.12em; cursor:pointer;
+  }
+  .pk-rank-overlay {
+    display:block; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:118;
+    opacity:0; visibility:hidden; pointer-events:none; transition: opacity .18s var(--pk-ease);
+  }
+  .pk-rank-overlay.open { opacity:1; visibility:visible; pointer-events:auto; }
+  .pk-rank-drawer {
+    position:fixed; left:0; top:0; height:100%; width:min(440px,94vw); z-index:119;
+    background:#102016; border-right:1px solid var(--pk-gold); padding:16px 14px 24px;
+    transform:translateX(-110%); transition:transform .22s var(--pk-ease); overflow-y:auto;
+    pointer-events:none; visibility:hidden;
+  }
+  .pk-rank-drawer.open { transform:none; pointer-events:auto; visibility:visible; }
+  .pk-rank-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
+  .pk-rank-head h3 { margin:0; font-size:1rem; color:var(--pk-gold); }
+  .pk-rank-close { border:0; background:transparent; color:#fff; font-size:1.2rem; cursor:pointer; }
+  .pk-rank-you {
+    padding:10px 12px; border-radius:12px; margin-bottom:12px;
+    background:rgba(245,200,107,0.12); border:1px solid var(--pk-gold); font-weight:800;
+  }
+  .pk-rank-you span { display:block; font-size:0.72rem; color:var(--pk-muted); font-weight:700; letter-spacing:0.08em; }
+  .pk-rank-row {
+    display:flex; gap:10px; align-items:center; padding:8px 8px; border-radius:12px;
+    border:1px solid transparent;
+  }
+  .pk-rank-row.is-you { border-color:var(--pk-gold); background:rgba(245,200,107,0.1); }
+  .pk-rank-mini { display:flex; gap:3px; flex:0 0 auto; }
+  .pk-rank-mini img { width:28px; height:40px; border-radius:4px; object-fit:cover; box-shadow:0 4px 8px rgba(0,0,0,0.35); }
+</style>
+
+<div id="connectionStatus" class="pk-chip pk-chip-danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+<div id="pkFxLayer" class="pk-fx"></div>
+<div id="pkBanner" class="pk-banner"></div>
+
+<div class="pk-page">
+  <div class="pk-topbar">
+    <div>
+      <div class="pk-kicker" id="pkKicker">♠ ไพ่ 5 ใบ</div>
+      <h1 class="pk-title"><%= room.name %></h1>
+    </div>
+    <div class="pk-meta">
+      <span class="pk-chip">🆔 <%= room.roomId %></span>
+      <span class="pk-chip" id="pkWallet">ชิป -</span>
+      <button type="button" id="pkClaimBtn" class="pk-chip pk-chip-btn">รับรายวัน</button>
+      <button type="button" id="pkHowToOpen" class="pk-chip pk-chip-btn">📖 วิธีเล่น</button>
+      <button type="button" id="pkSidebarBtn" class="pk-chip pk-chip-btn">👥 ผู้เล่น</button>
+      <% if (room.admin) { %>
+      <button type="button" id="pkEndGameBtn" class="pk-chip pk-chip-btn pk-chip-danger">⏹ กลับห้องรอ</button>
+      <% } %>
+      <button type="button" id="pkLeaveRoomBtn" class="pk-chip pk-chip-btn">🚪 ออกจากห้อง</button>
+    </div>
+  </div>
+  <div id="pkNowBar" class="pk-now">
+    <span id="pkNowCopy" class="pk-now-copy">กำลังโหลด...</span>
+    <div class="pk-timer-wrap">
+      <span id="pkTimer" class="pk-timer">--</span>
+      <span id="pkTimerHint" class="pk-timer-hint"></span>
+    </div>
+  </div>
+  <div class="pk-table">
+    <div id="pkSeats" class="pk-seats"></div>
+    <div id="pkTurnToken" class="pk-turn-token" hidden>D</div>
+    <div id="pkBetChips" class="pk-bet-chips"></div>
+    <div class="pk-center">
+      <div id="pkWinBanner" class="pk-win" hidden></div>
+      <div class="pk-label" id="pkBoardLabel">กอง</div>
+      <div id="pkPot" class="pk-pot">0</div>
+      <div id="pkDeck" class="pk-deck"></div>
+      <div id="pkBoard" class="pk-discards"></div>
+      <div id="pkShow" class="pk-show"></div>
+    </div>
+  </div>
+  <div id="historyFeed" class="pk-feed"></div>
+  <div class="pk-hand-dock">
+    <div id="pkHint" class="pk-hint"></div>
+    <div id="myHand" class="pk-fan"></div>
+    <div id="actionArea"></div>
+  </div>
+</div>
+
+<div id="playerSidebar" class="pk-sidebar">
+  <h4 style="margin-top:0;">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="leaveRoomBtn" type="button" class="pk-btn pk-btn-pass" style="width:100%; margin-bottom:8px;">🚪 ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="pk-btn pk-btn-pass" style="width:100%;">ปิด</button>
+</div>
+<div id="sidebarOverlay" class="pk-sidebar-overlay"></div>
+<div id="chatBox" class="chat-box" aria-hidden="true" style="display:none;">
+  <div class="chat-header"><div class="chat-title">💬 แชท</div><button type="button" id="closeChat" class="chat-close">✕</button></div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;"></div>
+  <div id="chatMessages" class="chat-messages" role="log"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..."></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle">💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span></button>
+<div id="pkDebug" class="pk-debug" hidden>
+  <div class="pk-debug-head" id="pkDebugHead">
+    <span class="pk-debug-title">/m DEBUG</span>
+    <button type="button" id="pkDebugToggle" class="pk-debug-toggle" aria-label="ย่อ">✕</button>
+  </div>
+  <div class="pk-debug-body">
+    <label class="pk-debug-row"><input type="checkbox" id="pkPeekAll"> แสดงไพ่ทุกคน</label>
+    <div class="pk-debug-row">
+      <input type="number" id="pkCheatAmt" value="1000" min="1" max="100000" step="100">
+      <button type="button" id="pkCheatBtn">เติมชิป</button>
+    </div>
+  </div>
+</div>
+<button type="button" id="pkRankTab" class="pk-rank-tab" aria-expanded="false" aria-controls="pkRankDrawer">แรงก์ไพ่</button>
+<div id="pkRankOverlay" class="pk-rank-overlay"></div>
+<aside id="pkRankDrawer" class="pk-rank-drawer" aria-hidden="true">
+  <div class="pk-rank-head">
+    <h3>มือไพ่</h3>
+    <button type="button" id="pkRankClose" class="pk-rank-close" aria-label="ปิด">✕</button>
+  </div>
+  <div id="pkRankYou" class="pk-rank-you">กำลังดูมือ...</div>
+  <div id="pkRankList"></div>
+</aside>
+
+<%- contentFor('script') %>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/pokerRankChart.js?v=20260814b"></script>
+<script src="/js/partyPlay.js"></script>
+<script src="/js/gameIcon.js"></script>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('pk-active');
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = '<%= player.name %>';
+  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  let currentState = <%- JSON.stringify(typeof pokerState !== 'undefined' ? pokerState : {}) %>;
+  if (window.partyPlay) window.partyPlay.startSession(currentState.mode || 'poker5', socket);
+  let allowNavigation = false;
+  let selectedIds = [];
+  let timerHandle = null;
+  let chipAmount = 0;
+  let chipPhaseKey = '';
+  let seenFxSeq = 0;
+  let skipSelfDiscardFx = false;
+  let lastTurnId = '';
+  let seenSaySeq = {};
+  let seenPeekLabel = {};
+  let lastTurnSoundKey = '';
+  let pkAudioCtx = null;
+  let pkNoiseBuf = null;
+
+  function escapeHtml(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c]));
+  }
+  function pkAudio() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!pkAudioCtx) pkAudioCtx = new Ctx();
+    if (pkAudioCtx.state === 'suspended') pkAudioCtx.resume().catch(function() {});
+    return pkAudioCtx;
+  }
+  function pkNoiseBuffer(ctx) {
+    if (pkNoiseBuf && pkNoiseBuf.sampleRate === ctx.sampleRate) return pkNoiseBuf;
+    const len = Math.floor(ctx.sampleRate * 0.22);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i += 1) data[i] = Math.random() * 2 - 1;
+    pkNoiseBuf = buf;
+    return buf;
+  }
+  function pkTone(ctx, freq, at, dur, vol, wave) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = wave || 'triangle';
+    osc.frequency.setValueAtTime(freq, at);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(vol || 0.06, at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + dur + 0.02);
+  }
+  function pkNoise(ctx, at, dur, vol, freq) {
+    const src = ctx.createBufferSource();
+    src.buffer = pkNoiseBuffer(ctx);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(freq || 1800, at);
+    filter.Q.value = 1.2;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(vol || 0.08, at + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(at);
+    src.stop(at + dur + 0.02);
+  }
+  function pkSfx(kind, delayMs) {
+    if (delayMs) {
+      setTimeout(function() { pkSfx(kind); }, delayMs);
+      return;
+    }
+    const ctx = pkAudio();
+    if (!ctx) return;
+    const t = ctx.currentTime + 0.01;
+    if (kind === 'dealTick') {
+      pkNoise(ctx, t, 0.045, 0.05, 2200);
+      pkTone(ctx, 1640, t, 0.05, 0.03, 'square');
+      return;
+    }
+    if (kind === 'discard') {
+      pkNoise(ctx, t, 0.12, 0.07, 900);
+      pkTone(ctx, 420, t, 0.1, 0.03, 'sine');
+      return;
+    }
+    if (kind === 'turn') {
+      pkTone(ctx, 523.25, t, 0.12, 0.07, 'triangle');
+      pkTone(ctx, 783.99, t + 0.12, 0.18, 0.08, 'triangle');
+      return;
+    }
+    if (kind === 'fold') {
+      pkTone(ctx, 196, t, 0.16, 0.06, 'sine');
+      pkTone(ctx, 130.81, t + 0.12, 0.22, 0.05, 'sine');
+      return;
+    }
+    if (kind === 'check') {
+      pkTone(ctx, 494, t, 0.08, 0.05, 'sine');
+      return;
+    }
+    if (kind === 'call' || kind === 'chips') {
+      pkNoise(ctx, t, 0.07, 0.09, 1400);
+      pkTone(ctx, 620, t, 0.06, 0.04, 'square');
+      pkNoise(ctx, t + 0.05, 0.05, 0.05, 900);
+      return;
+    }
+    if (kind === 'bet') {
+      pkNoise(ctx, t, 0.08, 0.1, 1500);
+      pkTone(ctx, 392, t, 0.08, 0.05, 'triangle');
+      pkTone(ctx, 523, t + 0.07, 0.1, 0.05, 'triangle');
+      return;
+    }
+    if (kind === 'raise') {
+      pkNoise(ctx, t, 0.08, 0.1, 1600);
+      pkTone(ctx, 523.25, t, 0.08, 0.055, 'triangle');
+      pkTone(ctx, 659.25, t + 0.08, 0.1, 0.06, 'triangle');
+      pkTone(ctx, 783.99, t + 0.16, 0.14, 0.07, 'triangle');
+      return;
+    }
+    if (kind === 'allin') {
+      pkNoise(ctx, t, 0.14, 0.11, 800);
+      pkTone(ctx, 196, t, 0.1, 0.055, 'sawtooth');
+      pkTone(ctx, 392, t + 0.1, 0.12, 0.07, 'triangle');
+      pkTone(ctx, 784, t + 0.22, 0.2, 0.08, 'triangle');
+      return;
+    }
+    if (kind === 'reveal') {
+      pkTone(ctx, 392, t, 0.1, 0.05, 'triangle');
+      pkTone(ctx, 523, t + 0.1, 0.1, 0.06, 'triangle');
+      pkTone(ctx, 659, t + 0.2, 0.16, 0.07, 'triangle');
+      return;
+    }
+    if (kind === 'win') {
+      pkTone(ctx, 523.25, t, 0.12, 0.06, 'triangle');
+      pkTone(ctx, 659.25, t + 0.1, 0.12, 0.07, 'triangle');
+      pkTone(ctx, 783.99, t + 0.2, 0.22, 0.08, 'triangle');
+      pkTone(ctx, 1046.5, t + 0.36, 0.18, 0.05, 'sine');
+    }
+  }
+  function pkSayKind(text) {
+    const s = String(text || '');
+    if (s.indexOf('หมอบ') === 0) return 'fold';
+    if (s.indexOf('ผ่าน') === 0) return 'check';
+    if (s.indexOf('หมดหน้าตัก') === 0) return 'allin';
+    if (s.indexOf('เกทับ') === 0) return 'raise';
+    if (s.indexOf('สู้') === 0) return 'bet';
+    if (s.indexOf('ตาม') === 0) return 'call';
+    return 'chips';
+  }
+  (function bindPkAudio() {
+    const unlock = function() { pkAudio(); };
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
+  })();
+  function avatarHtml(player, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: player.avatar, avatarFrame: player.avatarFrame, color: player.color, playerName: player.name }, { size: size || 26 });
+    }
+    return '<span>' + escapeHtml(player.avatar || '👤') + '</span>';
+  }
+  function cardHtml(card, extra) {
+    const src = card && card.image ? card.image : (currentState.cardBack || '/assets/games/poker/back.svg');
+    const key = extra && extra.handKey ? ' data-hand-key="' + escapeHtml(extra.handKey) + '" data-card-id="' + escapeHtml(card.id) + '"' : '';
+    const cls = 'pk-playing' + (extra && extra.pick ? ' is-pick' : '') + (extra && extra.selected ? ' is-selected' : '') + (extra && extra.best ? ' is-best' : '');
+    return '<div class="' + cls + '"' + key + '><img src="' + escapeHtml(src) + '" alt="' + escapeHtml((card && card.thaiName) || '') + '"></div>';
+  }
+  function backHtml() {
+    return '<div class="pk-playing"><img src="' + escapeHtml((currentState && currentState.cardBack) || '/assets/games/poker/back.svg') + '" alt=""></div>';
+  }
+  function seatPos(index, total) {
+    const deg = 270 - (index * (360 / Math.max(total, 1)));
+    const rad = deg * Math.PI / 180;
+    const top = index === 0 ? 80 : (50 - 28 * Math.sin(rad));
+    return {
+      left: (50 + 42 * Math.cos(rad)).toFixed(2) + '%',
+      top: top.toFixed(2) + '%'
+    };
+  }
+  function peekCardsOf(p, state) {
+    if (!state || !state.debugPeek) return null;
+    const max = holeSize(p, state) || 3;
+    if (p.peekCards && p.peekCards.length) return p.peekCards.slice(0, max);
+    if (p.ready && p.peekKept && p.peekKept.length) return p.peekKept.slice(0, max);
+    if (p.peekHand && p.peekHand.length && !p.ready && state.phase === 'select') {
+      return p.peekHand.slice(0, state.dealCount || p.peekHand.length);
+    }
+    return null;
+  }
+  function holeSize(p, state) {
+    if (p.folded) return 0;
+    const afterPick = !!(p.ready || ['bet', 'deal3', 'reveal', 'between'].indexOf(state.phase) >= 0);
+    if (!afterPick) return Math.min(p.handCount || state.dealCount || 5, state.dealCount || 5);
+    if (state.phase === 'bet' && state.mode === 'poker4') return Math.min(p.handCount || 2, 2);
+    return Math.min(p.handCount || 3, 3);
+  }
+  function peekCardMeta(card) {
+    if (typeof card === 'string') {
+      return { rank: card.slice(0, -1), suit: card.slice(-1) };
+    }
+    if (card && card.rank && card.suit) return { rank: card.rank, suit: card.suit };
+    const id = String((card && card.id) || '');
+    if (id.length >= 2) return { rank: id.slice(0, -1), suit: id.slice(-1) };
+    return null;
+  }
+  function peekCardPoint(rank) {
+    if (rank === 'A') return 1;
+    if (rank === '10' || rank === 'J' || rank === 'Q' || rank === 'K') return 0;
+    const n = Number(rank);
+    return n >= 2 && n <= 9 ? n : 0;
+  }
+  function peekCardStraight(rank) {
+    const map = { A: 13, K: 12, Q: 11, J: 10, '10': 9, '9': 8, '8': 7, '7': 6, '6': 5, '5': 4, '4': 3, '3': 2, '2': 1 };
+    return map[rank] || 0;
+  }
+  function evalThreePeek(cards) {
+    const ranks = cards.map(function(c) { return c.rank; });
+    const suits = cards.map(function(c) { return c.suit; });
+    const trips = ranks[0] === ranks[1] && ranks[1] === ranks[2];
+    const flush = suits[0] === suits[1] && suits[1] === suits[2];
+    const vals = cards.map(function(c) { return peekCardStraight(c.rank); }).sort(function(a, b) { return a - b; });
+    const straight = new Set(vals).size === 3 && vals[1] === vals[0] + 1 && vals[2] === vals[1] + 1;
+    const sean = ranks.every(function(r) { return r === 'J' || r === 'Q' || r === 'K'; });
+    if (trips) return 'ตอง';
+    if (straight && flush) return 'เรียงสี';
+    if (sean) return 'เซียน';
+    if (straight) return 'เรียง';
+    if (flush) return 'สี';
+    const pts = cards.reduce(function(sum, c) { return sum + peekCardPoint(c.rank); }, 0) % 10;
+    return pts + ' แต้ม';
+  }
+  function peekThreeScore(label) {
+    if (label === 'ตอง') return 600;
+    if (label === 'เรียงสี') return 500;
+    if (label === 'เซียน') return 400;
+    if (label === 'เรียง') return 300;
+    if (label === 'สี') return 200;
+    const m = String(label).match(/(\d+)/);
+    return 100 + (m ? Number(m[1]) : 0);
+  }
+  function rankFromPeekCards(cards) {
+    if (!cards || !cards.length) return '';
+    const parsed = cards.map(peekCardMeta).filter(Boolean);
+    if (parsed.length < 2) return '';
+    if (parsed.length === 2) {
+      const pts = parsed.reduce(function(sum, c) { return sum + peekCardPoint(c.rank); }, 0) % 10;
+      return pts + ' แต้ม';
+    }
+    if (parsed.length === 3) return evalThreePeek(parsed);
+    let best = '';
+    let bestScore = -1;
+    for (let i = 0; i < parsed.length; i += 1) {
+      for (let j = i + 1; j < parsed.length; j += 1) {
+        for (let k = j + 1; k < parsed.length; k += 1) {
+          const label = evalThreePeek([parsed[i], parsed[j], parsed[k]]);
+          const score = peekThreeScore(label);
+          if (score > bestScore) {
+            bestScore = score;
+            best = label;
+          }
+        }
+      }
+    }
+    return best;
+  }
+  function peekOnlyRank(p) {
+    if (p.folded) return 'หมอบ';
+    const cat = p.peekCategory || '';
+    if (cat === 'ตอง' || cat === 'เรียงสี' || cat === 'เซียน' || cat === 'เรียง' || cat === 'สี') return cat;
+    const title = String(p.peekTitle || '');
+    if (title.indexOf('เรียงสี') === 0) return 'เรียงสี';
+    if (title.indexOf('เซียน') === 0) return 'เซียน';
+    if (title.indexOf('ตอง') === 0) return 'ตอง';
+    if (title.indexOf('เรียง') === 0) return 'เรียง';
+    if (/^สี/.test(title) && title.indexOf('เรียงสี') !== 0) return 'สี';
+    if (p.peekTitle || p.peekCategory) {
+      const text = formatHandLabel(p.peekTitle, p.peekCategory);
+      if (/แต้ม/.test(text)) {
+        const m = String(text).match(/(\d+)/);
+        return m ? m[1] + ' แต้ม' : 'แต้ม';
+      }
+      return text;
+    }
+    return '';
+  }
+  function isShowdown(state) {
+    return state.phase === 'reveal' || state.phase === 'between';
+  }
+  function formatHandLabel(title, categoryName) {
+    const cat = categoryName || '';
+    const text = String(title || '');
+    if (cat === 'ไม่มีไพ่') return '';
+    if (cat === 'รอใบที่ 3' || /รอใบที่ 3/.test(text)) {
+      const m = text.match(/(\d+)/);
+      return m ? m[1] + ' แต้ม · รอใบ 3' : 'รอใบที่ 3';
+    }
+    if (cat === 'แต้ม' || /^แต้ม/.test(text)) {
+      const m = text.match(/(\d+)/);
+      return m ? m[1] + ' แต้ม' : (text || 'แต้ม');
+    }
+    if (cat === 'สี' || (/^สี/.test(text) && text.indexOf('เรียงสี') !== 0)) return 'ไพ่สี';
+    if (cat === 'เรียงสี' || text.indexOf('เรียงสี') === 0) return text.indexOf('เรียงสี') === 0 ? text : 'เรียงสี';
+    if (cat === 'เซียน' || text.indexOf('เซียน') === 0) return text.indexOf('เซียน') === 0 ? text : 'เซียน';
+    if (cat === 'ตอง' || text.indexOf('ตอง') === 0) return text.indexOf('ตอง') === 0 ? text : 'ตอง';
+    if (cat === 'เรียง' || text.indexOf('เรียง') === 0) return text.indexOf('เรียง') === 0 ? text : 'เรียง';
+    return text;
+  }
+  function peekRankText(p, state) {
+    if (p.folded) return 'หมอบ';
+    const cat = p.peekCategory || p.showCategory || '';
+    if (cat === 'ตอง' || cat === 'เรียงสี' || cat === 'เซียน' || cat === 'เรียง' || cat === 'สี') return cat;
+    const title = p.peekTitle || p.showTitle || (p.isSelf && state.liveHand && state.liveHand.title) || '';
+    if (String(title).indexOf('เรียงสี') === 0) return 'เรียงสี';
+    if (String(title).indexOf('เซียน') === 0) return 'เซียน';
+    if (String(title).indexOf('ตอง') === 0) return 'ตอง';
+    if (String(title).indexOf('เรียง') === 0) return 'เรียง';
+    if (/^สี/.test(title) && String(title).indexOf('เรียงสี') !== 0) return 'สี';
+    if (p.peekTitle || p.peekCategory) return formatHandLabel(p.peekTitle, p.peekCategory);
+    if (p.showTitle || p.showCategory) return formatHandLabel(p.showTitle, p.showCategory);
+    if (p.isSelf && state.liveHand) {
+      const liveCat = state.liveHand.categoryName || '';
+      if (liveCat === 'ตอง' || liveCat === 'เรียงสี' || liveCat === 'เซียน' || liveCat === 'เรียง' || liveCat === 'สี') return liveCat;
+      return formatHandLabel(state.liveHand.title, liveCat);
+    }
+    return '';
+  }
+  function pillText(p, state) {
+    if (p.folded) return 'หมอบ';
+    if (state.debugPeek) return peekRankText(p, state);
+    if (p.showTitle || p.showCategory) return formatHandLabel(p.showTitle, p.showCategory);
+    if (p.bestName) return formatHandLabel(p.bestName, p.showCategory);
+    if (p.isSelf && state.liveHand) {
+      return formatHandLabel(state.liveHand.title, state.liveHand.categoryName);
+    }
+    return '';
+  }
+  function wrapCard(html) {
+    return '<div class="pk-fan-slot">' + html + '</div>';
+  }
+  function seatCardsHtml(p, state) {
+    if (p.isSelf) return '';
+    if (p.revealed && p.revealed.length) {
+      return p.revealed.slice(0, 3).map(function(c) { return wrapCard(cardHtml(c)); }).join('');
+    }
+    const peekCards = peekCardsOf(p, state);
+    if (peekCards && peekCards.length) {
+      const shown = peekCards.slice(0, holeSize(p, state) || peekCards.length);
+      return shown.map(function(c) { return wrapCard(cardHtml(c)); }).join('');
+    }
+    if (p.upCard && state.phase === 'deal3') {
+      return wrapCard(backHtml()) + wrapCard(backHtml()) + wrapCard(cardHtml(p.upCard));
+    }
+    if (p.folded) return '';
+    const n = holeSize(p, state);
+    return Array.from({ length: n }, function() { return wrapCard(backHtml()); }).join('');
+  }
+  function chipPos(index, total) {
+    const deg = 270 - (index * (360 / Math.max(total, 1)));
+    const rad = deg * Math.PI / 180;
+    return {
+      left: (50 + 22 * Math.cos(rad)).toFixed(2) + '%',
+      top: (50 - 18 * Math.sin(rad)).toFixed(2) + '%'
+    };
+  }
+  function chipStackHtml(amount, extraClass, style) {
+    const n = Math.max(1, Math.min(4, Math.round(Number(amount) / 500) || 1));
+    let discs = '';
+    for (let i = 0; i < n; i += 1) discs += '<span class="pk-chip-disc"></span>';
+    return '<div class="pk-chip-stack' + (extraClass ? ' ' + extraClass : '') + '"' +
+      (style ? ' style="' + style + '"' : '') + '>' + discs + '<b>' + escapeHtml(amount) + '</b></div>';
+  }
+  function flyTo(fromRect, toRect, html, extraClass, delay, duration) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const layer = document.getElementById('pkFxLayer');
+    if (!layer || !fromRect || !toRect) return;
+    delay = delay || 0;
+    duration = duration || 420;
+    setTimeout(function() {
+      const ghost = document.createElement('div');
+      ghost.className = 'pk-fly' + (extraClass ? ' ' + extraClass : '');
+      ghost.innerHTML = html;
+      ghost.style.transition = 'transform ' + duration + 'ms cubic-bezier(0.22,1,0.36,1), opacity ' + duration + 'ms cubic-bezier(0.22,1,0.36,1)';
+      ghost.style.transform = 'translate(' + fromRect.left + 'px,' + fromRect.top + 'px)';
+      layer.appendChild(ghost);
+      requestAnimationFrame(function() {
+        ghost.style.transform = 'translate(' + toRect.left + 'px,' + toRect.top + 'px) scale(' + (extraClass && extraClass.indexOf('is-win-fly') >= 0 ? '0.85' : '0.45') + ')';
+        ghost.style.opacity = extraClass && extraClass.indexOf('is-win-fly') >= 0 ? '0.2' : '0.15';
+      });
+      setTimeout(function() { ghost.remove(); }, duration + 40);
+    }, delay);
+  }
+  function chipFlyHtml() {
+    return '<span class="pk-chip-disc"></span><span class="pk-chip-disc"></span>';
+  }
+  function playWinChips(state, event) {
+    const potNode = document.getElementById('pkPot') || document.querySelector('.pk-center');
+    const center = potNode ? potNode.getBoundingClientRect() : null;
+    if (!center) return;
+    const stacks = document.querySelectorAll('.pk-chip-stack');
+    if (stacks.length) {
+      stacks.forEach(function(node, i) {
+        flyTo(node.getBoundingClientRect(), center, node.innerHTML, 'is-chip is-pot-fly', i * 70, 480);
+      });
+    } else {
+      (state.players || []).forEach(function(p, i) {
+        if (!(Number(p.committed) || Number(p.streetBet))) return;
+        flyTo(seatRect(p.playerId) || center, center, chipFlyHtml(), 'is-chip is-pot-fly', i * 70, 480);
+      });
+    }
+    $('#pkBetChips').empty();
+    const winnerIds = event.winnerIds && event.winnerIds.length
+      ? event.winnerIds
+      : (state.players || []).filter(function(p) { return p.isWinner; }).map(function(p) { return p.playerId; });
+    const gatherMs = 520 + Math.max(0, stacks.length - 1) * 70;
+    winnerIds.forEach(function(id, wi) {
+      const destNode = document.querySelector('[data-seat-id="' + id + '"] .pk-avatar-ring') || document.querySelector('[data-seat-id="' + id + '"]');
+      const dest = destNode ? destNode.getBoundingClientRect() : null;
+      for (let n = 0; n < 4; n += 1) {
+        flyTo(center, dest || center, chipFlyHtml(), 'is-chip is-win-fly', gatherMs + wi * 80 + n * 65, 560);
+      }
+    });
+  }
+  function deckRect() {
+    const node = document.getElementById('pkDeck') || document.getElementById('pkPot');
+    return node ? node.getBoundingClientRect() : null;
+  }
+  function seatRect(playerId) {
+    const node = document.querySelector('[data-seat-id="' + playerId + '"]');
+    return node ? node.getBoundingClientRect() : null;
+  }
+  function playFx(state) {
+    const events = (state.fx || []).filter(function(item) { return item && item.seq > seenFxSeq; });
+    if (!events.length) return;
+    seenFxSeq = events[events.length - 1].seq;
+    const from = deckRect();
+    const hasSay = events.some(function(item) { return item.kind === 'say'; });
+    events.forEach(function(event) {
+      if (event.kind === 'deal') {
+        const count = event.count || 5;
+        (state.players || []).forEach(function(p, si) {
+          const dest = seatRect(p.playerId) || from;
+          for (let i = 0; i < count; i += 1) {
+            setTimeout(function() { flyTo(from, dest, backHtml()); }, si * 80 + i * 50);
+          }
+        });
+        const ticks = Math.min(((state.players || []).length) * count, 12);
+        for (let n = 0; n < ticks; n += 1) pkSfx('dealTick', n * 55);
+        $('#myHand .pk-playing').addClass('is-deal');
+        $('#myHand .pk-playing').each(function(i) { this.style.animationDelay = (i * 70) + 'ms'; });
+        $('.pk-seat-cards .pk-playing').addClass('is-deal');
+      }
+      if (event.kind === 'discard') {
+        const pile = document.getElementById('pkBoard');
+        const to = pile ? pile.getBoundingClientRect() : from;
+        const ids = event.fromIds || (state.players || []).map(function(p) { return p.playerId; });
+        ids.forEach(function(id, si) {
+          const p = (state.players || []).find(function(row) { return row.playerId === id; }) || { playerId: id };
+          if (p.isSelf && skipSelfDiscardFx) return;
+          const destFrom = p.isSelf
+            ? (document.querySelector('#myHand .pk-playing') && document.querySelector('#myHand .pk-playing').getBoundingClientRect())
+            : seatRect(p.playerId);
+          setTimeout(function() { flyTo(destFrom || from, to, backHtml()); }, si * 70);
+          setTimeout(function() { flyTo(destFrom || from, to, backHtml()); }, si * 70 + 50);
+        });
+        skipSelfDiscardFx = false;
+        pkSfx('discard');
+      }
+      if (event.kind === 'deal3') {
+        const ups = event.ups || [];
+        (event.playerIds || (state.players || []).map(function(p) { return p.playerId; })).forEach(function(id, i) {
+          const row = ups.find(function(item) { return item.playerId === id; });
+          const html = row && row.card ? cardHtml(row.card) : backHtml();
+          const mine = id === playerId;
+          const dest = mine
+            ? (document.querySelector('#myHand .pk-playing:last-child') && document.querySelector('#myHand .pk-playing:last-child').getBoundingClientRect())
+            : (seatRect(id) || from);
+          setTimeout(function() {
+            flyTo(from, dest || from, html);
+            if (mine) {
+              const last = document.querySelector('#myHand .pk-playing:last-child');
+              if (last) last.classList.add('is-deal', 'is-flip');
+            } else {
+              const last = document.querySelector('[data-seat-id="' + id + '"] .pk-seat-cards .pk-playing:last-child');
+              if (last) last.classList.add('is-deal', 'is-flip');
+            }
+          }, i * 90);
+          pkSfx('dealTick', i * 90);
+        });
+      }
+      if (event.kind === 'chips') {
+        const origin = event.fromId ? seatRect(event.fromId) : from;
+        const pot = document.getElementById('pkPot');
+        flyTo(origin || from, pot ? pot.getBoundingClientRect() : from, '<span class="pk-chip-disc"></span>', 'is-chip');
+        if (!hasSay) pkSfx('chips');
+      }
+      if (event.kind === 'say') {
+        if (event.fromId !== playerId) pkSfx(pkSayKind(event.text));
+      }
+      if (event.kind === 'reveal') {
+        $('.pk-seat.is-show .pk-playing, #myHand.is-showdown .pk-playing').addClass('is-flip');
+        $('#myHand .pk-playing').each(function(i) { this.style.animationDelay = (i * 90) + 'ms'; });
+        pkSfx('reveal');
+        pkSfx('win', 280);
+        playWinChips(state, event);
+      }
+    });
+  }
+  function nowText(state) {
+    if (state.phase === 'select') {
+      const need = state.availableActions && state.availableActions.selectCount;
+      return 'เลือก ' + need + ' ใบทิ้งคืนกลาง';
+    }
+    if (state.phase === 'bet') {
+      const mine = state.availableActions && state.availableActions.toAct;
+      return mine ? 'ตาคุณลงชิป' : ((state.toActName || 'รอคนอื่น') + ' กำลังลงชิป');
+    }
+    if (state.phase === 'deal3') return 'ใบที่ 3 หงายแล้ว — เปิดเทียบเลย';
+    if (state.phase === 'reveal') return 'เปิดไพ่แล้ว';
+    if (state.phase === 'finished') return 'จบโต๊ะแล้ว — กำลังกลับห้องรอ';
+    if (state.phase === 'between') return (state.winner && state.winner.name ? state.winner.name + ' ชนะมือนี้' : 'จบมือ') + ' — แจกมือถัดไป';
+    return 'รอเริ่มมือ';
+  }
+  function timerHint(state) {
+    if (state.phase === 'select') return 'หมดเวลา = ทิ้งให้อัตโนมัติ';
+    if (state.phase === 'bet') return 'หมดเวลา 10 วิ = หมอบ';
+    if (state.phase === 'deal3') return 'กำลังหงายใบที่ 3';
+    if (state.phase === 'between') return 'หมดเวลา = แจกมือใหม่';
+    return '';
+  }
+  function flash(text) {
+    const node = document.getElementById('pkBanner');
+    node.textContent = text;
+    node.classList.remove('is-on');
+    void node.offsetWidth;
+    node.classList.add('is-on');
+  }
+  function tickTimer(state) {
+    if (timerHandle) clearInterval(timerHandle);
+    $('#pkTimerHint').text(timerHint(state));
+    function paint() {
+      if (!state.phaseEndsAt) {
+        $('#pkTimer').text('--').removeClass('is-urgent');
+        $('.pk-seat.pk-urgent').removeClass('pk-urgent');
+        return;
+      }
+      const remainMs = Math.max(0, state.phaseEndsAt - Date.now());
+      const remain = Math.max(0, Math.ceil(remainMs / 1000));
+      $('#pkTimer').text(String(Math.floor(remain / 60)).padStart(2,'0') + ':' + String(remain % 60).padStart(2,'0'));
+      const urgent = state.phase === 'bet' && remainMs > 0 && remainMs <= 5000;
+      $('#pkTimer').toggleClass('is-urgent', urgent);
+      $('.pk-seat.pk-acting').toggleClass('pk-urgent', urgent);
+      if (!urgent) $('.pk-seat.pk-urgent').not('.pk-acting').removeClass('pk-urgent');
+    }
+    paint();
+    timerHandle = setInterval(paint, 250);
+  }
+  function timerSvg() {
+    return '<svg class="pk-timer-svg" viewBox="0 0 36 36" aria-hidden="true">' +
+      '<circle class="pk-timer-track" cx="18" cy="18" r="15.5"></circle>' +
+      '<circle class="pk-timer-arc" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"></circle>' +
+      '</svg>';
+  }
+  function moveTurnToken(playerId) {
+    const token = document.getElementById('pkTurnToken');
+    const table = document.querySelector('.pk-table');
+    const ring = playerId ? document.querySelector('[data-seat-id="' + playerId + '"] .pk-avatar-ring') : null;
+    if (!token || !table) return;
+    if (!ring) {
+      token.hidden = true;
+      lastTurnId = '';
+      return;
+    }
+    const tr = table.getBoundingClientRect();
+    const sr = ring.getBoundingClientRect();
+    const x = sr.left - tr.left - 8;
+    const y = sr.top - tr.top + sr.height / 2 - 13;
+    token.hidden = false;
+    if (lastTurnId && lastTurnId !== playerId) token.style.transition = 'transform 0.38s cubic-bezier(0.22,1,0.36,1)';
+    else if (!lastTurnId) token.style.transition = 'none';
+    token.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    lastTurnId = playerId;
+  }
+  function paintTurnRing(state) {
+    const arc = document.querySelector('.pk-seat.pk-acting .pk-timer-arc');
+    if (!arc || !state.phaseEndsAt || state.phase !== 'bet') return;
+    const total = Number(state.betMs) || 10000;
+    const remain = Math.max(0, state.phaseEndsAt - Date.now());
+    const start = 100 - Math.min(100, (remain / total) * 100);
+    arc.style.transition = 'none';
+    arc.style.strokeDashoffset = String(start);
+    requestAnimationFrame(function() {
+      arc.style.transition = 'stroke-dashoffset ' + remain + 'ms linear';
+      arc.style.strokeDashoffset = '100';
+    });
+  }
+  function visibleHand(state, showdown) {
+    const self = state.self;
+    if (!self) return [];
+    if (self.folded) return [];
+    if ((showdown || self.ready) && self.kept && self.kept.length) return self.kept;
+    return self.hand || [];
+  }
+  function renderState(state) {
+    if (!state) return;
+    currentState = state;
+    const actions = state.availableActions || {};
+    if (state.phase !== 'select') selectedIds = [];
+    $('#pkKicker').text((state.mode === 'poker4' ? '♦ ' : '♠ ') + (state.label || 'ไพ่ 5 ใบ') + (state.tableType === 'cash' ? ' · เล่นเก็บชิป' : ' · เล่นสนุก'));
+    $('#pkNowCopy').text(nowText(state));
+    $('#pkNowBar').toggleClass('is-mine', !!(actions.canSelect || actions.toAct));
+    $('#pkPot').text(state.displayPot != null ? state.displayPot : (state.pot || 0));
+    $('#pkWallet').text('ชิป ' + (state.chipDisplay != null ? state.chipDisplay : ((state.self && state.self.stack) || 0)));
+    $('#pkClaimBtn').toggle(state.tableType === 'cash' && !!(state.wallet && state.wallet.canClaimDaily));
+    $('#pkDeck').html(backHtml());
+    const dump = Number(state.discardCount) || 0;
+    const showdown = isShowdown(state);
+    const showdownBoard = state.board && state.board.length && showdown;
+    $('#pkBoardLabel').text(dump || showdownBoard ? 'ทิ้งคืนกลาง' : 'กองกลาง');
+    if (showdownBoard) {
+      $('#pkBoard').html(state.board.slice(0, 8).map(function(card) { return cardHtml(card); }).join(''));
+    } else if (dump) {
+      $('#pkBoard').html(Array.from({ length: Math.min(dump, 8) }, backHtml).join(''));
+    } else {
+      $('#pkBoard').empty();
+    }
+    const all = state.players || [];
+    const selfAt = all.findIndex(function(p) { return p.isSelf; });
+    const seated = selfAt >= 0 ? all.slice(selfAt).concat(all.slice(0, selfAt)) : all;
+    $('#pkSeats').html(seated.map(function(p, index) {
+      const pos = seatPos(index, seated.length);
+      const peekCards = peekCardsOf(p, state);
+      const cards = seatCardsHtml(p, state);
+      const acting = state.phase === 'bet' && p.isTurn;
+      const showing = !!(p.revealed && p.revealed.length);
+      const peeking = !!(state.debugPeek && peekCards && peekCards.length);
+      const holes = holeSize(p, state);
+      const peekFan = !p.isSelf && !showing && holes >= 2 && holes <= 3;
+      const popSay = !!(p.lastSay && seenSaySeq[p.playerId] !== (Number(p.lastSaySeq) || 0));
+      let label = '';
+      if (p.folded) label = 'หมอบ';
+      else if (p.isSelf) label = pillText(p, state);
+      else if (showing) label = p.peekRank || peekRankText(p, state) || rankFromPeekCards(p.revealed);
+      else if (state.debugPeek) {
+        label = rankFromPeekCards(peekCards) || p.peekRank || peekOnlyRank(p) || p.peekCategory || p.peekTitle || '';
+      }
+      if (peeking && !p.isSelf && !label) label = rankFromPeekCards(peekCards);
+      const showPeekTag = !!(!p.isSelf && label && (peeking || showing || p.folded));
+      const peekPop = !!(showPeekTag && seenPeekLabel[p.playerId] !== label);
+      if (showPeekTag) seenPeekLabel[p.playerId] = label;
+      else delete seenPeekLabel[p.playerId];
+      const showChipRank = !!(label && (p.isSelf || ((showing || p.folded) && !showPeekTag)));
+      return '<div class="pk-seat' +
+        (p.isSelf ? ' is-self' : '') +
+        (p.ready ? ' is-ready' : '') +
+        (p.isTurn ? ' is-turn' : '') +
+        (acting ? ' pk-acting' : '') +
+        (p.folded ? ' is-fold' : '') +
+        (p.sittingOut ? ' is-out' : '') +
+        (showing ? ' is-show' : '') +
+        (peekFan ? ' is-peek' : '') +
+        (p.isWinner && showdown ? ' is-winner' : '') +
+        '" data-seat-id="' + escapeHtml(p.playerId) +
+        '" style="left:' + pos.left + ';top:' + pos.top + ';' + (p.isTurn || showing || peekFan || p.lastSay ? 'z-index:6;' : '') + '">' +
+        (p.lastSay ? '<div class="pk-say' + (popSay ? ' is-pop' : '') + '">' + escapeHtml(p.lastSay) + '</div>' : '') +
+        (cards ? '<div class="pk-seat-cards">' + cards + '</div>' : '') +
+        (showPeekTag ? '<div class="pk-peek-tag' + (peekPop ? ' is-pop' : '') + '">' + escapeHtml(label) + '</div>' : '') +
+        '<div class="pk-avatar-ring">' + timerSvg() + avatarHtml(p, p.isSelf ? 52 : 46) +
+          (p.isDealer ? '<span class="pk-dealer-btn">D</span>' : '') +
+          (p.isWinner && showdown ? '<div class="pk-win-badge">ชนะ</div>' : '') +
+        '</div>' +
+        '<div class="pk-seat-name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="pk-seat-stack">' + (p.stack || 0) + '</div>' +
+        (showChipRank ? '<div class="pk-seat-rank">' + escapeHtml(label) + '</div>' : '') +
+      '</div>';
+    }).join(''));
+    seated.forEach(function(p) {
+      if (p.lastSay) seenSaySeq[p.playerId] = Number(p.lastSaySeq) || 0;
+      else delete seenSaySeq[p.playerId];
+    });
+    if (!showdown) {
+      $('#pkBetChips').html(seated.map(function(p, index) {
+        const amt = Number(p.committed) || Number(p.streetBet) || 0;
+        if (!amt) return '';
+        const pos = chipPos(index, seated.length);
+        return chipStackHtml(amt, 'is-drop', 'left:' + pos.left + ';top:' + pos.top);
+      }).join(''));
+    }
+    const winName = state.winner && state.winner.name;
+    const selfWon = showdown && (state.players || []).some(function(p) { return p.isSelf && p.isWinner; });
+    const me = (state.players || []).find(function(p) { return p.isSelf; }) || { isSelf: true, folded: !!(state.self && state.self.folded) };
+    const selfPill = pillText(me, state);
+    if (showdown && winName) {
+      $('#pkWinBanner').text(selfWon ? 'คุณชนะ' : winName + ' ชนะ').prop('hidden', false);
+    } else {
+      $('#pkWinBanner').prop('hidden', true).text('');
+    }
+    $('#pkShow').empty();
+    const hand = visibleHand(state, showdown);
+    const maxPick = actions.selectCount || 2;
+    const liveIds = (state.liveHand && state.liveHand.cards || []).map(function(card) { return card.id; });
+    const liveTitle = state.liveHand && (state.liveHand.title || state.liveHand.categoryName);
+    const rankLabel = selfPill || formatHandLabel(liveTitle, state.liveHand && state.liveHand.categoryName);
+    if (showdown && state.self && state.self.folded) {
+      $('#pkHint').text('คุณหมอบแล้ว');
+    } else if (showdown) {
+      $('#pkHint').text(selfWon ? 'ชนะมือนี้' : (selfPill || liveTitle || 'เปิดไพ่แล้ว'));
+    } else if (state.self && state.self.folded) {
+      $('#pkHint').text('คุณหมอบแล้ว รอเปิดเทียบ');
+    } else if (state.self && state.self.ready) {
+      $('#pkHint').text(rankLabel ? ('เลือกแล้ว · ' + rankLabel) : 'เลือกแล้ว รอคนอื่น');
+    } else if (rankLabel) {
+      $('#pkHint').text('มือคุณ: ' + rankLabel + (actions.canSelect ? ' — ทิ้ง 2 ใบคืนกลาง' : ''));
+    } else {
+      $('#pkHint').text('');
+    }
+    $('#myHand').toggleClass('is-showdown', !!(showdown || (state.self && state.self.ready && !actions.canSelect)));
+    if (!hand.length) {
+      $('#myHand').html('<div class="pk-empty">ไม่มีไพ่ในมือ</div>');
+    } else {
+      const showRibbon = rankLabel && (showdown || (state.self && state.self.ready));
+      $('#myHand').html(hand.map(function(card, index) {
+        const key = card.id + ':' + index;
+        return wrapCard(cardHtml(card, {
+          pick: actions.canSelect && !showdown,
+          selected: !showdown && selectedIds.indexOf(key) >= 0,
+          best: !!(actions.canSelect && liveIds.indexOf(card.id) >= 0 && selectedIds.indexOf(key) < 0),
+          handKey: key
+        }));
+      }).join('') + (showRibbon ? '<div class="pk-win-ribbon' + (selfWon ? '' : ' is-rank') + '">' + escapeHtml(selfWon ? (rankLabel || 'ชนะ') : rankLabel) + '</div>' : ''));
+    }
+    let buttons = '';
+    if (actions.canSelect) {
+      buttons += '<button type="button" id="pkSelectBtn" class="pk-btn pk-btn-play"' + (selectedIds.length === maxPick ? '' : ' disabled') + '>' +
+        (actions.selectMode === 'discard' ? 'ทิ้งคืนกลาง' : 'ลงมือนี้') + (selectedIds.length ? ' ×' + selectedIds.length : '') + '</button>';
+    }
+    if (actions.canCheck) buttons += '<button type="button" class="pk-btn pk-btn-pass" data-pk-bet="check">ผ่าน</button>';
+    if (actions.canBet || actions.canRaise) {
+      const isRaise = !!actions.canRaise;
+      const minAmt = isRaise ? (actions.minRaiseTo || 0) : (actions.minBet || 500);
+      const maxAmt = isRaise ? (actions.maxRaiseTo || minAmt) : (actions.maxBet || minAmt);
+      const key = (state.handNumber || 0) + '-' + state.phase + '-' + (isRaise ? 'raise' : 'bet');
+      if (key !== chipPhaseKey) {
+        chipPhaseKey = key;
+        chipAmount = minAmt;
+      }
+      chipAmount = Math.max(minAmt, Math.min(maxAmt, chipAmount || minAmt));
+      buttons += '<div class="pk-chip-row">' +
+        '<button type="button" class="pk-chip-step" id="pkChipMinus"' + (chipAmount <= minAmt ? ' disabled' : '') + '>−</button>' +
+        '<span class="pk-chip-amt" id="pkChipAmt">' + chipAmount + '</span>' +
+        '<button type="button" class="pk-chip-step" id="pkChipPlus"' + (chipAmount >= maxAmt ? ' disabled' : '') + '>+</button>' +
+        '<button type="button" class="pk-btn ' + (isRaise ? 'pk-btn-raise' : 'pk-btn-play') + '" data-pk-bet="' + (isRaise ? 'raise' : 'bet') + '" data-pk-amt="' + chipAmount + '">' +
+        (isRaise ? 'เกทับ ' : 'สู้ ') + chipAmount + '</button></div>';
+    }
+    if (actions.canCall) buttons += '<button type="button" class="pk-btn pk-btn-play" data-pk-bet="call">ตาม ' + (actions.callAmount || 0) + '</button>';
+    if (actions.canAllIn) buttons += '<button type="button" class="pk-btn pk-btn-allin" data-pk-bet="allin">หมดหน้าตัก</button>';
+    if (actions.canFold) buttons += '<button type="button" class="pk-btn pk-btn-fold" data-pk-bet="fold">หมอบ</button>';
+    if (actions.canNext && isRoomAdmin) buttons += '<button type="button" id="pkNextBtn" class="pk-btn pk-btn-play">มือถัดไป</button>';
+    $('#actionArea').html('<div class="pk-actions">' + buttons + '</div>');
+    $('#historyFeed').html((state.history || []).slice(0, 2).map(function(item) {
+      return '<div>' + escapeHtml((item.icon || '') + ' ' + (item.text || '')) + '</div>';
+    }).join(''));
+    tickTimer(state);
+    if (window.partyPlay && (actions.toAct || actions.canSelect)) {
+      window.partyPlay.pingTurn({
+        key: (state.handNumber || 0) + '-' + state.phase + '-' + (state.toActPlayerId || playerId),
+        title: actions.toAct ? 'ตาคุณลงชิป' : 'เลือกไพ่ที่จะทิ้ง',
+        sub: actions.toAct ? 'สู้ ตาม เกทับ หมอบได้' : 'ทิ้ง 2 ใบคืนกลาง'
+      });
+    }
+    if (state.phase === 'reveal' && state.lastResult) flash((state.lastResult.handTitle || state.lastResult.handName || 'เปิดไพ่') + ' · ' + ((state.winner && state.winner.name) || ''));
+    const peekBox = document.getElementById('pkPeekAll');
+    if (peekBox && peekBox.checked !== !!state.debugPeek) peekBox.checked = !!state.debugPeek;
+    if (!state.canDebug) document.getElementById('pkDebug').hidden = true;
+    renderRankGuide(state);
+    moveTurnToken(state.phase === 'bet' ? state.toActPlayerId : '');
+    paintTurnRing(state);
+    playFx(state);
+    const mineTurn = !!(actions.toAct && state.phase === 'bet');
+    const turnKey = mineTurn ? ((state.handNumber || 0) + '-' + (state.toActPlayerId || '') + '-' + state.phase) : '';
+    if (mineTurn && turnKey && turnKey !== lastTurnSoundKey) pkSfx('turn');
+    lastTurnSoundKey = turnKey;
+  }
+
+  function renderRankGuide(state) {
+    const live = state.liveHand || {};
+    const liveTitle = live.title || live.categoryName;
+    $('#pkRankYou').html(liveTitle
+      ? '<span>มือคุณตอนนี้</span>' + escapeHtml(liveTitle)
+      : '<span>มือคุณตอนนี้</span>ยังไม่มีไพ่');
+    $('#pkRankList').html(window.pokerRankChart
+      ? window.pokerRankChart.chartHtml(state.rankGuide, true)
+      : '');
+  }
+
+  function setRankOpen(open) {
+    $('#pkRankDrawer').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#pkRankOverlay').toggleClass('open', open);
+    $('#pkRankTab').attr('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function send(eventName, payload) {
+    socket.emit(eventName, Object.assign({ roomId: roomId, playerId: playerId }, payload || {}), function(res) {
+      if (res && !res.success) Swal.fire({ icon: 'error', title: res.error || 'ไม่สำเร็จ', background: '#102016', color: '#fff' });
+    });
+  }
+
+  $(document).on('click', '#myHand .pk-playing.is-pick', function() {
+    const key = this.getAttribute('data-hand-key');
+    const maxPick = (currentState.availableActions && currentState.availableActions.selectCount) || 2;
+    const at = selectedIds.indexOf(key);
+    if (at >= 0) selectedIds.splice(at, 1);
+    else if (selectedIds.length < maxPick) selectedIds.push(key);
+    renderState(currentState);
+  });
+  $(document).on('click', '#pkSelectBtn', function() {
+    const pile = document.getElementById('pkBoard') || document.getElementById('pkPot');
+    const to = pile ? pile.getBoundingClientRect() : null;
+    skipSelfDiscardFx = true;
+    pkSfx('discard');
+    selectedIds.forEach(function(key, i) {
+      const node = document.querySelector('#myHand [data-hand-key="' + key + '"]');
+      if (node && to) {
+        setTimeout(function() { flyTo(node.getBoundingClientRect(), to, node.outerHTML); }, i * 60);
+      }
+    });
+    send('poker_select', { cardIds: selectedIds.map(function(key) { return key.split(':')[0]; }) });
+  });
+  $(document).on('click', '[data-pk-bet]', function() {
+    const action = this.getAttribute('data-pk-bet');
+    const sayMap = { fold: 'หมอบ', check: 'ผ่าน', call: 'ตาม', bet: 'สู้', raise: 'เกทับ', allin: 'หมดหน้าตัก' };
+    pkSfx(pkSayKind(sayMap[action] || ''));
+    send('poker_bet', { action: action, amount: Number(this.getAttribute('data-pk-amt')) || 0 });
+  });
+  $(document).on('click', '#pkChipMinus, #pkChipPlus', function() {
+    const actions = (currentState && currentState.availableActions) || {};
+    const isRaise = !!actions.canRaise;
+    const minAmt = isRaise ? (actions.minRaiseTo || 0) : (actions.minBet || 500);
+    const maxAmt = isRaise ? (actions.maxRaiseTo || minAmt) : (actions.maxBet || minAmt);
+    const step = actions.minBet || 500;
+    if (this.id === 'pkChipMinus') chipAmount = Math.max(minAmt, (chipAmount || minAmt) - step);
+    else chipAmount = Math.min(maxAmt, (chipAmount || minAmt) + step);
+    renderState(currentState);
+  });
+  $(document).on('click', '#pkNextBtn', function() { send('poker_nextHand'); });
+  $('#pkClaimBtn').on('click', function() {
+    socket.emit('wallet_claimDaily', {}, function(res) {
+      if (!res || !res.success) {
+        Swal.fire({ icon: 'error', title: (res && res.error) || 'รับไม่ได้', background: '#102016', color: '#fff' });
+        return;
+      }
+      $('#pkWallet').text('ชิป ' + res.wallet.balance);
+      $('#pkClaimBtn').hide();
+    });
+  });
+  $('#pkHowToOpen').on('click', function() {
+    const poker4 = currentState.mode === 'poker4';
+    const html = window.pokerRankChart
+      ? window.pokerRankChart.guideHtml(currentState.mode, currentState.rankGuide)
+      : '';
+    Swal.fire({
+      title: poker4 ? '♦ สี่ใบเก' : '♠ ไพ่ 5 ใบ',
+      html: html,
+      background: '#102016',
+      color: '#fff',
+      confirmButtonColor: '#d4a017',
+      confirmButtonText: 'เข้าใจแล้ว',
+      width: 'min(640px, 96vw)',
+      customClass: { popup: 'pk-rank-popup' }
+    });
+  });
+  $(document).on('click', '#pkRankTab', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setRankOpen(!$('#pkRankDrawer').hasClass('open'));
+  });
+  $(document).on('click', '#pkRankClose, #pkRankOverlay', function() { setRankOpen(false); });
+  function goToWaitingRoom() {
+    allowNavigation = true;
+    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+  }
+  function goToRoomList() {
+    allowNavigation = true;
+    window.location.href = '/rooms?playerId=' + playerId;
+  }
+  $('#pkEndGameBtn').on('click', function() {
+    Swal.fire({ icon: 'warning', title: 'จบเกมและกลับห้องรอ?', text: 'ทุกคนจะถูกส่งกลับห้องรอ', showCancelButton: true, confirmButtonText: 'กลับห้องรอ', cancelButtonText: 'ยกเลิก', background: '#102016', color: '#fff' })
+      .then(function(result) {
+        if (!result.isConfirmed) return;
+        socket.emit('endTableSession', { roomId: roomId, playerId: playerId }, function(res) {
+          if (res && res.success === false) {
+            Swal.fire({ icon: 'error', title: res.error || 'จบเกมไม่สำเร็จ', background: '#102016', color: '#fff' });
+            return;
+          }
+          goToWaitingRoom();
+        });
+      });
+  });
+  function toggleSidebar() { $('#playerSidebar').toggleClass('open'); $('#sidebarOverlay').toggle(); }
+  $('#pkSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+  $('#pkLeaveRoomBtn, #leaveRoomBtn').on('click', function() {
+    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: 'ออกจากห้องนี้ ไม่ใช่แค่กลับห้องรอ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#102016', color: '#fff' })
+      .then(function(result) {
+        if (result.isConfirmed) { allowNavigation = true; socket.emit('leaveRoom', {}, function() { goToRoomList(); }); }
+      });
+  });
+  window.addEventListener('beforeunload', function(event) { if (!allowNavigation) event.preventDefault(); });
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('poker_requestState', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  socket.on('pokerState', renderState);
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(function(p) {
+      return '<li style="display:flex;align-items:center;gap:8px;padding:6px 0;">' + avatarHtml({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 26) +
+        '<span style="color:' + escapeHtml(p.color || '#fff') + '">' + escapeHtml(p.displayName || p.playerName) + '</span></li>';
+    }).join(''));
+  });
+  socket.on('redirectToLobby', goToWaitingRoom);
+  socket.on('restartGame', goToWaitingRoom);
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: data && data.reason || '', background: '#102016', color: '#fff' })
+      .then(function() { goToRoomList(); });
+  });
+  window.initChatPanel({
+    socket: socket,
+    playerId: playerId,
+    playerName: playerName,
+    onCommand: function(text) {
+      if (text.trim().toLowerCase() !== '/m') return false;
+      if (!currentState || !currentState.canDebug) {
+        Swal.fire({ icon: 'error', title: '/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง', background: '#102016', color: '#fff' });
+        return true;
+      }
+      const panel = document.getElementById('pkDebug');
+      const toggle = document.getElementById('pkDebugToggle');
+      if (panel) {
+        panel.hidden = false;
+        panel.classList.remove('is-min');
+      }
+      if (toggle) {
+        toggle.textContent = '✕';
+        toggle.setAttribute('aria-label', 'ย่อ');
+      }
+      return true;
+    }
+  });
+  (function bindDebugPanel() {
+    const panel = document.getElementById('pkDebug');
+    const head = document.getElementById('pkDebugHead');
+    const toggle = document.getElementById('pkDebugToggle');
+    if (!panel || !head || !toggle) return;
+    let drag = null;
+    function setMin(min) {
+      panel.classList.toggle('is-min', min);
+      toggle.textContent = min ? '+' : '✕';
+      toggle.setAttribute('aria-label', min ? 'ขยาย' : 'ย่อ');
+    }
+    head.addEventListener('pointerdown', function(ev) {
+      if (ev.target.closest('button')) return;
+      const rect = panel.getBoundingClientRect();
+      drag = { x: ev.clientX, y: ev.clientY, left: rect.left, top: rect.top, moved: false };
+      head.setPointerCapture(ev.pointerId);
+    });
+    head.addEventListener('pointermove', function(ev) {
+      if (!drag) return;
+      const dx = ev.clientX - drag.x;
+      const dy = ev.clientY - drag.y;
+      if (!drag.moved && (dx * dx + dy * dy) < 36) return;
+      drag.moved = true;
+      const left = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, drag.left + dx));
+      const top = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, drag.top + dy));
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+    });
+    head.addEventListener('pointerup', function() {
+      if (drag && !drag.moved && panel.classList.contains('is-min')) setMin(false);
+      drag = null;
+    });
+    toggle.addEventListener('click', function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setMin(!panel.classList.contains('is-min'));
+    });
+  })();
+  $('#pkPeekAll').on('change', function() {
+    send('poker_debug_peek', { enabled: this.checked });
+  });
+  $('#pkCheatBtn').on('click', function() {
+    send('poker_debug_credit', { amount: Number(document.getElementById('pkCheatAmt').value) || 1000 });
+  });
+  if (currentState && currentState.phase) renderState(currentState);
+});
+</script>

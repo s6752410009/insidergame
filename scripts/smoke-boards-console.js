@@ -90,7 +90,7 @@ async function startGameRoom(baseUrl, gameMode, playerCount) {
         playerId: players[0].playerId,
         name: `ConsoleCheck-${gameMode}-${Date.now()}`,
         gameMode,
-        maxPlayers: 10,
+        maxPlayers: gameMode === 'liar' ? 8 : (gameMode === 'coup' ? 6 : (gameMode === 'blackmarket' ? 7 : 10)),
         roundTime: 5
     });
     assert(created?.success, `createRoom ${gameMode} failed: ${JSON.stringify(created)}`);
@@ -162,7 +162,7 @@ async function main() {
         results.push(await inspectPage(browser, `${server.baseUrl}/profile?playerId=${guestId}`, 'profile'));
         results.push(await inspectPage(browser, `${server.baseUrl}/support?playerId=${guestId}`, 'support'));
 
-        for (const [mode, count] of [['insider', 4], ['spyfall', 4], ['werewolf', 5], ['blackmarket', 5]]) {
+        for (const [mode, count] of [['insider', 4], ['spyfall', 4], ['werewolf', 5], ['blackmarket', 5], ['coup', 3], ['liar', 3], ['poker5', 3], ['poker4', 3]]) {
             const room = await startGameRoom(server.baseUrl, mode, count);
             room.players.forEach(p => openSockets.push(p.socket));
             results.push(await inspectPage(

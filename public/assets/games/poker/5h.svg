@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350" role="img" aria-label="5 โพแดง">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f4ead6"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="16" fill="#e8dcc4"/>
+  <rect x="6" y="6" width="238" height="338" rx="12" fill="url(#paper)" stroke="#d2c4aa" stroke-width="1.2"/>
+  <rect x="10" y="10" width="230" height="330" rx="9" fill="none" stroke="#c41e3a" stroke-opacity="0.16" stroke-width="1"/>
+  <g transform="translate(26 16)" fill="#c41e3a" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">5</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#c41e3a"><path d="M7.5 14.4C7.5 14.4 0.6 8.7 0.6 4.8C0.6 2.1 2.55 0.45 4.95 0.45C6.45 0.45 7.5 1.8 7.5 3C7.5 1.8 8.55 0.45 10.05 0.45C12.45 0.45 14.4 2.1 14.4 4.8C14.4 8.7 7.5 14.4 7.5 14.4Z"/></g>
+    </g>
+  <g transform="translate(224 334) rotate(180)" fill="#c41e3a" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">5</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#c41e3a"><path d="M7.5 14.4C7.5 14.4 0.6 8.7 0.6 4.8C0.6 2.1 2.55 0.45 4.95 0.45C6.45 0.45 7.5 1.8 7.5 3C7.5 1.8 8.55 0.45 10.05 0.45C12.45 0.45 14.4 2.1 14.4 4.8C14.4 8.7 7.5 14.4 7.5 14.4Z"/></g>
+    </g>
+  <g transform="translate(91.12 82.5) translate(-20 -20)" fill="#c41e3a"><path d="M20 38.4C20 38.4 1.6 23.2 1.6 12.8C1.6 5.6 6.8 1.2 13.2 1.2C17.2 1.2 20 4.8 20 8C20 4.8 22.8 1.2 26.8 1.2C33.2 1.2 38.4 5.6 38.4 12.8C38.4 23.2 20 38.4 20 38.4Z"/></g>
+    <g transform="translate(158.88 82.5) translate(-20 -20)" fill="#c41e3a"><path d="M20 38.4C20 38.4 1.6 23.2 1.6 12.8C1.6 5.6 6.8 1.2 13.2 1.2C17.2 1.2 20 4.8 20 8C20 4.8 22.8 1.2 26.8 1.2C33.2 1.2 38.4 5.6 38.4 12.8C38.4 23.2 20 38.4 20 38.4Z"/></g>
+    <g transform="translate(125 175) translate(-20 -20)" fill="#c41e3a"><path d="M20 38.4C20 38.4 1.6 23.2 1.6 12.8C1.6 5.6 6.8 1.2 13.2 1.2C17.2 1.2 20 4.8 20 8C20 4.8 22.8 1.2 26.8 1.2C33.2 1.2 38.4 5.6 38.4 12.8C38.4 23.2 20 38.4 20 38.4Z"/></g>
+    <g transform="translate(91.12 267.5) rotate(180) translate(-20 -20)" fill="#c41e3a"><path d="M20 38.4C20 38.4 1.6 23.2 1.6 12.8C1.6 5.6 6.8 1.2 13.2 1.2C17.2 1.2 20 4.8 20 8C20 4.8 22.8 1.2 26.8 1.2C33.2 1.2 38.4 5.6 38.4 12.8C38.4 23.2 20 38.4 20 38.4Z"/></g>
+    <g transform="translate(158.88 267.5) rotate(180) translate(-20 -20)" fill="#c41e3a"><path d="M20 38.4C20 38.4 1.6 23.2 1.6 12.8C1.6 5.6 6.8 1.2 13.2 1.2C17.2 1.2 20 4.8 20 8C20 4.8 22.8 1.2 26.8 1.2C33.2 1.2 38.4 5.6 38.4 12.8C38.4 23.2 20 38.4 20 38.4Z"/></g>
+</svg>

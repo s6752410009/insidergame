@@ -266,6 +266,14 @@
         border-left-color: #1abc9c;
     }
 
+    .role-stat-card.mode-coup {
+        border-left-color: #7c3aed;
+    }
+
+    .role-stat-card.mode-liar {
+        border-left-color: #ef4444;
+    }
+
     .role-stat-card.blackmarket-role {
         border-left-color: #f6d365;
     }
@@ -1294,7 +1302,9 @@
                     insider: { games: 0, wins: 0, losses: 0 },
                     werewolf: { games: 0, wins: 0, losses: 0 },
                     blackmarket: { games: 0, wins: 0, losses: 0 },
-                    spyfall: { games: 0, wins: 0, losses: 0 }
+                    spyfall: { games: 0, wins: 0, losses: 0 },
+                    coup: { games: 0, wins: 0, losses: 0 },
+                    liar: { games: 0, wins: 0, losses: 0 }
                 },
                 lastPlayedAt: null,
                 gameHistory: []
@@ -1314,7 +1324,9 @@
                     insider: { games: 0, wins: 0, losses: 0 },
                     werewolf: { games: 0, wins: 0, losses: 0 },
                     blackmarket: { games: 0, wins: 0, losses: 0 },
-                    spyfall: { games: 0, wins: 0, losses: 0 }
+                    spyfall: { games: 0, wins: 0, losses: 0 },
+                    coup: { games: 0, wins: 0, losses: 0 },
+                    liar: { games: 0, wins: 0, losses: 0 }
                 };
             }
             if (!displayStats.roleStats.blackmarket) {
@@ -1328,10 +1340,18 @@
             const werewolfStats = displayStats.modeStats.werewolf || { games: 0, wins: 0, losses: 0 };
             const blackMarketStats = displayStats.modeStats.blackmarket || { games: 0, wins: 0, losses: 0 };
             const spyfallStats = displayStats.modeStats.spyfall || { games: 0, wins: 0, losses: 0 };
+            const coupStats = displayStats.modeStats.coup || { games: 0, wins: 0, losses: 0 };
+            const liarStats = displayStats.modeStats.liar || { games: 0, wins: 0, losses: 0 };
+            const poker5Stats = displayStats.modeStats.poker5 || { games: 0, wins: 0, losses: 0 };
+            const poker4Stats = displayStats.modeStats.poker4 || { games: 0, wins: 0, losses: 0 };
             const insiderWinRate = insiderStats.games > 0 ? Math.round((insiderStats.wins / insiderStats.games) * 100) : 0;
             const werewolfWinRate = werewolfStats.games > 0 ? Math.round((werewolfStats.wins / werewolfStats.games) * 100) : 0;
             const blackMarketWinRate = blackMarketStats.games > 0 ? Math.round((blackMarketStats.wins / blackMarketStats.games) * 100) : 0;
             const spyfallWinRate = spyfallStats.games > 0 ? Math.round((spyfallStats.wins / spyfallStats.games) * 100) : 0;
+            const coupWinRate = coupStats.games > 0 ? Math.round((coupStats.wins / coupStats.games) * 100) : 0;
+            const liarWinRate = liarStats.games > 0 ? Math.round((liarStats.wins / liarStats.games) * 100) : 0;
+            const poker5WinRate = poker5Stats.games > 0 ? Math.round((poker5Stats.wins / poker5Stats.games) * 100) : 0;
+            const poker4WinRate = poker4Stats.games > 0 ? Math.round((poker4Stats.wins / poker4Stats.games) * 100) : 0;
             const blackMarketRoleCards = [
                 { id: 'boss', icon: '🎩', label: 'เจ้าพ่อ', className: 'blackmarket-role' },
                 { id: 'broker', icon: '🕴️', label: 'นายหน้า', className: 'blackmarket-role' },
@@ -1402,6 +1422,26 @@
                 <div class="role-stat-icon">🕵️</div>
                 <div class="role-stat-value" style="color: #1abc9c;"><%= spyfallStats.games %></div>
                 <div class="role-stat-label">Spyfall · ชนะ <%= spyfallStats.wins %> · แพ้ <%= spyfallStats.losses %> · <%= spyfallWinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-coup">
+                <div class="role-stat-icon">👑</div>
+                <div class="role-stat-value" style="color: #c4b5fd;"><%= coupStats.games %></div>
+                <div class="role-stat-label">Coup · ชนะ <%= coupStats.wins %> · แพ้ <%= coupStats.losses %> · <%= coupWinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-liar">
+                <div class="role-stat-icon">🃏</div>
+                <div class="role-stat-value" style="color: #ef4444;"><%= liarStats.games %></div>
+                <div class="role-stat-label">ไพ่โกหก · ชนะ <%= liarStats.wins %> · แพ้ <%= liarStats.losses %> · <%= liarWinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-coup">
+                <div class="role-stat-icon">♠</div>
+                <div class="role-stat-value" style="color: #86efac;"><%= poker5Stats.games %></div>
+                <div class="role-stat-label">ไพ่ 5 ใบ · ชนะ <%= poker5Stats.wins %> · แพ้ <%= poker5Stats.losses %> · <%= poker5WinRate %>%</div>
+            </div>
+            <div class="role-stat-card mode-coup">
+                <div class="role-stat-icon">♦</div>
+                <div class="role-stat-value" style="color: #fecaca;"><%= poker4Stats.games %></div>
+                <div class="role-stat-label">สี่ใบเก · ชนะ <%= poker4Stats.wins %> · แพ้ <%= poker4Stats.losses %> · <%= poker4WinRate %>%</div>
             </div>
         </div>
 
@@ -1517,8 +1557,8 @@
                 <% if (displayStats.gameHistory && displayStats.gameHistory.length > 0) { %>
                     <% displayStats.gameHistory.forEach(function(game) { %>
                         <% const gameMode = game.mode || 'insider'; %>
-                        <% const modeLabels = { insider: '🎯 Insider', werewolf: '🐺 Werewolf', blackmarket: '🎩 Black Market', spyfall: '🕵️ Spyfall' }; %>
-                        <% const modeBadgeClass = ['insider', 'werewolf', 'blackmarket', 'spyfall'].includes(gameMode) ? gameMode : 'insider'; %>
+                        <% const modeLabels = { insider: '🎯 Insider', werewolf: '🐺 Werewolf', blackmarket: '🎩 Black Market', spyfall: '🕵️ Spyfall', coup: '👑 Coup', liar: '🃏 ไพ่โกหก', poker5: '♠ ไพ่ 5 ใบ', poker4: '♦ สี่ใบเก' }; %>
+                        <% const modeBadgeClass = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'liar'].includes(gameMode) ? gameMode : 'insider'; %>
                         <div class="game-history-item <%= game.won ? 'won' : 'lost' %>">
                             <div class="game-history-header">
                                 <div class="game-history-topline">

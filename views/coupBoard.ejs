@@ -527,7 +527,8 @@ $(function() {
       $area.html('<div class="cp-result"><h3>🏆 ' + escapeHtml(state.winner?.name || '-') + ' ชนะ!</h3>' +
         (isRoomAdmin ? '<button type="button" id="cpRestartBtn" class="cp-btn cp-btn-primary">🎲 เล่นอีกรอบ</button> ' : '') +
         '<button type="button" id="cpShareBtn" class="cp-btn cp-btn-outline">📸 เซฟผล</button> ' +
-        '<button type="button" id="cpBackLobbyBtn" class="cp-btn cp-btn-outline">🏠 กลับห้อง</button></div>');
+        '<button type="button" id="cpBackLobbyBtn" class="cp-btn cp-btn-outline">🏠 กลับห้อง</button>' +
+        '<p class="cp-empty" id="cpBackRemain" style="margin-top:10px;">ทุกคนกลับพร้อมกัน</p></div>');
       return;
     }
 
@@ -651,7 +652,19 @@ $(function() {
     const $timer = $('#cpTimer');
     const $hint = $('#cpTimeoutHint');
 
-    if (!endsAt || currentState.phase === 'finished') {
+    if (currentState.phase === 'finished') {
+      const remain = currentState.returnLobbyEndsAt
+        ? Math.max(0, Math.ceil((Number(currentState.returnLobbyEndsAt) - Date.now()) / 1000))
+        : 0;
+      $timer.text(remain > 0 ? remain + ' วิ' : '--').removeClass('is-urgent');
+      $hint.text(remain > 0 ? 'แล้วกลับห้องรอพร้อมกัน' : 'กำลังกลับห้องรอ...').show();
+      $('#cpBackRemain').text(remain > 0
+        ? 'กดกลับห้องแล้วทุกคนไปด้วย · ระบบดึงกลับใน ' + remain + ' วิ'
+        : 'กำลังพากลับห้องรอ...');
+      return;
+    }
+
+    if (!endsAt) {
       $timer.text('--').removeClass('is-urgent');
       $hint.text('').hide();
       return;
@@ -944,8 +957,7 @@ $(function() {
   });
 
   $(document).on('click', '#cpBackLobbyBtn', function() {
-    allowNavigation = true;
-    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+    socket.emit('returnFinishedToLobby', { roomId: roomId });
   });
 
   $('#cpHowToOpen').on('click', function() {
@@ -1002,6 +1014,11 @@ $(function() {
   });
 
   socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('returnToLobby', function(data) {
+    if (!currentState) return;
+    currentState.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    updateTimer();
+  });
   socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {

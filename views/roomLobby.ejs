@@ -1,6 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/coupGuide.css">
+<link rel="stylesheet" href="/static/css/pokerHands.css">
 <style>
   :root {
     --lobby-bg: #09090b;
@@ -617,6 +618,10 @@
     margin-bottom: 6px;
   }
 
+  .lobby-admin-controls .btn-admin-small {
+    margin-top: 8px;
+  }
+
   .btn-admin-small {
     width: 100%;
     margin-bottom: 6px;
@@ -758,6 +763,61 @@
   #btnCoupHowTo:hover {
     background: rgba(124, 58, 237, 0.28);
     border-color: rgba(196, 181, 253, 0.6);
+  }
+
+  #btnLiarHowTo {
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    background: rgba(185, 28, 28, 0.18);
+    color: #fecaca;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #btnLiarHowTo:hover {
+    background: rgba(185, 28, 28, 0.3);
+    border-color: rgba(248, 113, 113, 0.65);
+  }
+
+  #btnPokerHowTo {
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    background: rgba(22, 101, 52, 0.22);
+    color: #bbf7d0;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #btnPokerHowTo:hover {
+    background: rgba(22, 101, 52, 0.35);
+    border-color: rgba(74, 222, 128, 0.65);
+  }
+
+  #btnPokerHowTo.is-four {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(153, 27, 27, 0.22);
+    color: #fecaca;
+  }
+
+  #btnPokerHowTo.is-four:hover {
+    background: rgba(153, 27, 27, 0.35);
+    border-color: rgba(248, 113, 113, 0.65);
+  }
+
+  .btn-add-bots {
+    background: #059669;
+    color: #ecfdf5;
+    margin-left: 8px;
   }
 
   .chat-msg {
@@ -993,6 +1053,104 @@
     font-weight: 700;
   }
 
+  .pk-lobby-ranks {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(8, 32, 18, 0.72);
+    border: 1px solid rgba(187, 247, 208, 0.18);
+  }
+
+  .pk-lobby-ranks.is-four {
+    background: rgba(32, 10, 10, 0.72);
+    border-color: rgba(254, 202, 202, 0.18);
+  }
+
+  .pk-lobby-ranks-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin-bottom: 8px;
+  }
+
+  .pk-lobby-ranks-head strong {
+    color: #bbf7d0;
+    font-size: 0.92em;
+  }
+
+  .pk-lobby-ranks-head span {
+    color: #9ca89a;
+    font-size: 0.78em;
+  }
+
+  .pk-lobby-ranks.is-four .pk-lobby-ranks-head strong {
+    color: #fecaca;
+  }
+
+  .pk-lobby-ranks.is-four .pk-lobby-ranks-head span {
+    color: #c4b5b5;
+  }
+
+  .pk-lobby-rank {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 12px;
+  }
+
+  .pk-lobby-rank:nth-child(odd) {
+    background: rgba(255,255,255,0.04);
+  }
+
+  .pk-lobby-rank-n {
+    flex: 0 0 1.4em;
+    font-family: 'Orbitron', sans-serif;
+    color: #f5c86b;
+    font-size: 0.78em;
+    font-weight: 700;
+  }
+
+  .pk-lobby-rank-mini {
+    display: flex;
+    gap: 3px;
+    flex: 0 0 auto;
+  }
+
+  .pk-lobby-rank-mini img {
+    width: 28px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.35);
+    background: #0b1a12;
+  }
+
+  .pk-lobby-ranks.is-four .pk-lobby-rank-mini img {
+    background: #1a0b0b;
+  }
+
+  .pk-lobby-rank-copy b {
+    display: block;
+    font-size: 0.92em;
+    color: var(--lobby-text);
+  }
+
+  .pk-lobby-rank-copy small {
+    color: #9ca89a;
+    font-size: 0.74em;
+    line-height: 1.35;
+  }
+
+  @media (max-width: 640px) {
+    .pk-lobby-rank-mini img {
+      width: 24px;
+      height: 34px;
+    }
+  }
+
   .bm-guide-popup {
     max-width: min(460px, 96vw) !important;
     padding: 0 !important;
@@ -1165,6 +1323,13 @@
   }
 </style>
 
+<%
+  const lobbyNameCompact = String(room.name || '').replace(/[\s_-]+/g, '');
+  const isPoker4Lobby = room.gameMode === 'poker4' || lobbyNameCompact === 'สี่ใบเก' || lobbyNameCompact === '4ใบเก';
+  const isPoker5Lobby = room.gameMode === 'poker5' || lobbyNameCompact === 'ห้าใบเลือกสาม' || lobbyNameCompact === 'ไพ่5ใบ' || lobbyNameCompact === 'โป๊กเกอร์5ใบ';
+  const isPokerLobbyRoom = isPoker4Lobby || isPoker5Lobby;
+%>
+
 <div class="room-lobby-container">
   <div class="room-lobby-shell">
     <div class="room-lobby-header">
@@ -1172,6 +1337,7 @@
         <div id="roomModeKicker" class="room-kicker">🎩 ห้องเตรียมเกม</div>
         <div class="room-title">🎮 ห้อง: <span id="roomTitleText"><%= room.name %></span></div>
         <div id="lobbySpotlight" class="lobby-spotlight" style="display:none;"></div>
+        <div id="pokerRankPanel" class="is-hidden" hidden></div>
         <div class="room-meta">
           <span>🆔 ID: <strong><%= room.roomId %></strong></span>
           <span>👥 ผู้เล่น: <strong id="lobbyPlayerCount"><%= room.playerCount %></strong>/<span id="lobbyMaxPlayers"><%= room.maxPlayers %></span></span>
@@ -1205,7 +1371,8 @@
         <button type="button" id="btnBlackMarketHowTo" class="<%= room.gameMode === 'blackmarket' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnCoupHowTo" class="<%= room.gameMode === 'coup' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
-        <button type="button" id="btnBlackMarketAddBots" class="<%= (room.gameMode === 'blackmarket' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เติมบอทเพื่อทดสอบ</button>
+        <button type="button" id="btnLiarHowTo" class="<%= room.gameMode === 'liar' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
     </div>
@@ -1233,6 +1400,7 @@
         </div>
         
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
+        <button type="button" id="btnBlackMarketAddBots" class="btn-admin-small btn-add-bots <%= ((room.gameMode === 'blackmarket' || isPokerLobbyRoom) && room.isAdmin) ? '' : 'is-hidden' %>"><%= isPokerLobbyRoom ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ' %></button>
       </div>
     </div>
     </div>
@@ -1244,6 +1412,7 @@
 </div>
 
 <%- contentFor('script') %>
+<script src="/js/pokerRankChart.js?v=20260814b"></script>
 <script src="/js/coupGuide.js"></script>
 <script>
   $(function () {
@@ -1252,6 +1421,7 @@
     const playerId = '<%= player.playerId %>';
     const werewolfRoleOptions = <%- safeJson(typeof werewolfRoleOptions !== 'undefined' ? werewolfRoleOptions : []) %>;
     const coupCardCatalog = <%- safeJson(typeof coupCardCatalog !== 'undefined' ? coupCardCatalog : []) %>;
+    const pokerRankGuide = <%- safeJson(typeof pokerRankGuide !== 'undefined' ? pokerRankGuide : []) %>;
     let currentGameMode = '<%= room.gameMode %>';
     let currentWerewolfRoles = <%- safeJson(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
     const initialRoomPayload = <%- safeJson(typeof initialRoomPayload !== 'undefined' ? initialRoomPayload : null) %>;
@@ -1260,6 +1430,7 @@
     const currentModeMeta = {
       insider: {
         minPlayers: 3,
+        maxPlayers: 10,
         label: 'Insider',
         startLabel: '🎮 เริ่มเกม',
         readyText: 'พร้อมแล้ว! กดเริ่มเกมได้เลยเมื่อทุกคนพร้อม',
@@ -1268,6 +1439,7 @@
       },
       werewolf: {
         minPlayers: 3,
+        maxPlayers: 10,
         label: 'Werewolf',
         startLabel: '🌙 เปิดคืนแรก',
         readyText: 'พร้อมแล้ว! เปิดคืนแรกได้ทันที',
@@ -1276,6 +1448,7 @@
       },
       blackmarket: {
         minPlayers: 4,
+        maxPlayers: 7,
         label: 'Black Market',
         startLabel: '🎩 เปิดตลาดมืด',
         readyText: 'พร้อมแล้ว เปิดตลาดมืดได้เลย',
@@ -1284,6 +1457,7 @@
       },
       spyfall: {
         minPlayers: 4,
+        maxPlayers: 8,
         label: 'Spyfall',
         startLabel: '🕶️ เริ่มเกมสายลับ',
         readyText: 'พร้อมแล้ว เริ่มเกมสายลับได้เลย',
@@ -1292,11 +1466,39 @@
       },
       coup: {
         minPlayers: 2,
+        maxPlayers: 6,
         label: 'Coup',
         startLabel: '👑 เริ่มเกม',
         readyText: 'พร้อมแล้ว กดเริ่มได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คนก่อนเริ่มเกม',
         roundLabel: 'เวลาคิดต่อตา:'
+      },
+      liar: {
+        minPlayers: 3,
+        maxPlayers: 8,
+        label: 'ไพ่โกหก',
+        startLabel: '🃏 เริ่มเกม',
+        readyText: 'พร้อมแล้ว กดเริ่มได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 3 คนก่อนเริ่มเกม',
+        roundLabel: 'เวลาคิดต่อตา:'
+      },
+      poker5: {
+        minPlayers: 2,
+        maxPlayers: 10,
+        label: 'ไพ่ 5 ใบ',
+        startLabel: '♠ แจกไพ่',
+        readyText: 'พร้อมแล้ว แจกไพ่ได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 2 คนก่อนเริ่ม',
+        roundLabel: 'เวลาเลือกไพ่:'
+      },
+      poker4: {
+        minPlayers: 2,
+        maxPlayers: 10,
+        label: 'สี่ใบเก',
+        startLabel: '♦ แจกไพ่',
+        readyText: 'พร้อมแล้ว แจกไพ่ได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 2 คนก่อนเริ่ม',
+        roundLabel: 'เวลาเลือกไพ่:'
       }
     };
     const werewolfRoleVisuals = {
@@ -1458,7 +1660,27 @@
       if (compactMode === 'coup' || compactMode === 'coupgame') {
         return 'coup';
       }
+      if (compactMode === 'liar' || compactMode === 'liarsbar' || compactMode === 'liarbar' || compactMode === 'cheat' || compactMode === 'โกหก' || compactMode === 'ไพ่โกหก') {
+        return 'liar';
+      }
+      if (compactMode === 'poker5' || compactMode === 'ห้าใบเลือกสาม' || compactMode === 'โป๊กเกอร์5ใบ' || compactMode === 'ไพ่5ใบ') {
+        return 'poker5';
+      }
+      if (compactMode === 'poker4' || compactMode === 'สี่ใบเก' || compactMode === '4ใบเก' || compactMode === 'fourcard') {
+        return 'poker4';
+      }
       return 'insider';
+    }
+
+    function inferLobbyModeFromName(name) {
+      const compact = String(name || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+      if (compact === 'ห้าใบเลือกสาม' || compact === 'ไพ่5ใบ' || compact === 'โป๊กเกอร์5ใบ' || compact === 'poker5') {
+        return 'poker5';
+      }
+      if (compact === 'สี่ใบเก' || compact === '4ใบเก' || compact === 'poker4' || compact === 'fourcard') {
+        return 'poker4';
+      }
+      return null;
     }
 
     function getModeMeta(mode) {
@@ -1484,6 +1706,24 @@
           background: 'linear-gradient(135deg, #0f766e, #134e4a)',
           color: '#ccfbf1'
         };
+      }
+      if (normalizedMode === 'coup') {
+        return {
+          background: 'linear-gradient(135deg, #6d28d9, #3b0764)',
+          color: '#f4ecff'
+        };
+      }
+      if (normalizedMode === 'liar') {
+        return {
+          background: 'linear-gradient(135deg, #991b1b, #450a0a)',
+          color: '#fecaca'
+        };
+      }
+      if (normalizedMode === 'poker5') {
+        return { background: 'linear-gradient(135deg, #166534, #052e16)', color: '#bbf7d0' };
+      }
+      if (normalizedMode === 'poker4') {
+        return { background: 'linear-gradient(135deg, #991b1b, #1c1917)', color: '#fecaca' };
       }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
@@ -1511,6 +1751,24 @@
           pills: []
         };
       }
+      if (normalizedMode === 'coup') {
+        return {
+          kicker: '👑 ห้องเตรียมโค่นอำนาจ',
+          pills: []
+        };
+      }
+      if (normalizedMode === 'liar') {
+        return {
+          kicker: '🃏 ห้องเตรียมไพ่โกหก',
+          pills: []
+        };
+      }
+      if (normalizedMode === 'poker5') {
+        return { kicker: '♠ ห้องไพ่ 5 ใบ', pills: [] };
+      }
+      if (normalizedMode === 'poker4') {
+        return { kicker: '♦ ห้องสี่ใบเก', pills: [] };
+      }
 
       return {
         kicker: '🎯 ห้องเตรียมเกม',
@@ -1519,11 +1777,27 @@
     }
 
     function resolveGameModeFromPayload(payload) {
-      return normalizeLobbyGameMode(
+      const fromData = normalizeLobbyGameMode(
         (payload && payload.settings && payload.settings.gameMode)
         || (payload && payload.gameMode)
         || currentGameMode
       );
+      if (fromData !== 'insider') return fromData;
+      const title = (payload && (payload.roomName || payload.name))
+        || (document.getElementById('roomTitleText') && document.getElementById('roomTitleText').textContent)
+        || '';
+      return inferLobbyModeFromName(title) || fromData;
+    }
+
+    function refreshAddBotsButton(mode) {
+      const resolvedMode = mode || normalizeLobbyGameMode(currentGameMode);
+      const isPoker = resolvedMode === 'poker5' || resolvedMode === 'poker4';
+      const show = isAdmin && (resolvedMode === 'blackmarket' || isPoker);
+      setElementHidden('#btnBlackMarketAddBots', !show);
+      const btn = document.getElementById('btnBlackMarketAddBots');
+      if (btn && !$(btn).data('loading')) {
+        btn.textContent = isPoker ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ';
+      }
     }
 
     function updateLobbyModeUI(payload) {
@@ -1545,7 +1819,7 @@
       }
 
       if (badge) {
-        badge.textContent = (payload && payload.gameModeLabel) || getModeMeta(resolvedMode).label;
+        badge.textContent = getModeMeta(resolvedMode).label;
         badge.dataset.gameMode = resolvedMode;
         badge.style.background = badgeStyle.background;
         badge.style.color = badgeStyle.color;
@@ -1575,7 +1849,12 @@
       setElementHidden('#btnBlackMarketHowTo', resolvedMode !== 'blackmarket');
       setElementHidden('#btnSpyfallHowTo', resolvedMode !== 'spyfall');
       setElementHidden('#btnCoupHowTo', resolvedMode !== 'coup');
-      setElementHidden('#btnBlackMarketAddBots', !(resolvedMode === 'blackmarket' && isAdmin));
+      setElementHidden('#btnLiarHowTo', resolvedMode !== 'liar');
+      setElementHidden('#btnPokerHowTo', resolvedMode !== 'poker5' && resolvedMode !== 'poker4');
+      const pokerHowToBtn = document.getElementById('btnPokerHowTo');
+      if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
+      fillPokerRankPanel(resolvedMode);
+      refreshAddBotsButton(resolvedMode);
 
       if (lobbySpotlight) {
         if (resolvedMode === 'spyfall') {
@@ -1594,6 +1873,26 @@
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
             'ทุกคนได้การ์ดคว่ำ 2 ใบ <strong>ประกาศพลังของการ์ดที่ไม่มีก็ได้</strong> ใครไม่เชื่อก็ท้าเปิดได้',
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
+            '</p>'
+          ].join('');
+        } else if (resolvedMode === 'liar') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(185,28,28,0.3); color:#fecaca;">🃏 ไพ่โกหก · 3–8 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'เหลือหัวใจคนสุดท้ายชนะ · ลงไพ่คว่ำแล้วบอกว่าเป็นไพ่รอบนี้ คนถัดไปท้าหรือลงต่อ',
+            ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกา',
+            '</p>'
+          ].join('');
+        } else if (resolvedMode === 'poker5' || resolvedMode === 'poker4') {
+          const isFour = resolvedMode === 'poker4';
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:' + (isFour ? 'rgba(153,27,27,0.35); color:#fecaca;">♦ สี่ใบเก' : 'rgba(22,101,52,0.3); color:#bbf7d0;">♠ ไพ่ 5 ใบ') + ' · 2–10 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            isFour
+              ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง คนที่ยังไม่หมอบได้ใบที่ 3 หงายให้ดู แล้วเปิดเทียบเลย'
+              : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย',
             '</p>'
           ].join('');
         } else if (resolvedMode === 'blackmarket') {
@@ -1656,6 +1955,62 @@
       if (typeof window.showCoupGuide === 'function') {
         window.showCoupGuide({ cards: coupCardCatalog, confirmButtonText: 'เข้าใจแล้ว เริ่มเลย' });
       }
+    }
+
+    function fillPokerRankPanel(mode) {
+      const panel = document.getElementById('pokerRankPanel');
+      if (panel) setElementHidden(panel, true);
+      void mode;
+    }
+
+    function showPokerLobbyGuide(mode) {
+      const isFour = mode === 'poker4';
+      let html = '';
+      try {
+        if (window.pokerRankChart && typeof window.pokerRankChart.guideHtml === 'function') {
+          html = window.pokerRankChart.guideHtml(mode, pokerRankGuide);
+        } else if (window.pokerRankChart && typeof window.pokerRankChart.rankListHtml === 'function') {
+          html = window.pokerRankChart.rankListHtml(pokerRankGuide);
+        }
+      } catch (err) {
+        console.error('[poker lobby guide]', err);
+      }
+      if (!html) {
+        html = '<div class="pk-howto-copy"><p>' +
+          (isFour
+            ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง คนที่ยังไม่หมอบได้ใบที่ 3 หงายให้ดู แล้วเปิดเทียบเลย'
+            : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย') +
+          '</p><p>ใหญ่ → เล็ก: ตอง · เรียงสี · เซียน · เรียง · สี · แต้ม</p>' +
+          '<p>เรียง = เลขต่อกัน เช่น 3 > 4 > 5 ไม่ต้องดอกเดียวกัน · เรียงสี = เรียงและดอกเดียวกัน</p></div>';
+      }
+      Swal.fire({
+        title: isFour ? '♦ สี่ใบเก' : '♠ ไพ่ 5 ใบ',
+        html: html,
+        background: isFour ? '#1c1010' : '#102016',
+        color: '#fff',
+        confirmButtonColor: '#d4a017',
+        confirmButtonText: 'เข้าใจแล้ว',
+        width: 'min(640px, 96vw)',
+        customClass: { popup: 'pk-rank-popup' }
+      });
+    }
+
+    function showLiarLobbyGuide() {
+      Swal.fire({
+        title: '🃏 ไพ่โกหก เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p><strong>ชนะ = เหลือหัวใจคนสุดท้าย</strong> ไม่ใช่ทิ้งไพ่ให้หมดมือ · เริ่มคนละ 5 ใบ หัวใจ 3</p>' +
+          '<p>รอบนี้สุ่มชนิดไพ่ เช่น คิง ลง 1–3 ใบคว่ำ แล้วบอกว่าเป็นคิง — โกหกได้</p>' +
+          '<p>คนถัดไปกด <strong>โกหก!</strong> (หงายไพ่) หรือลงต่อ</p>' +
+          '<p>ท้าแล้ว: ของปลอม = คนลงเสียหัวใจ · ของจริง = คนท้าเสีย → รอบใหม่</p>' +
+          '<p>มือว่างยังอยู่ในเกม ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว · ทุกคนหมดมือ = แจกใหม่</p>' +
+          '<p>หมดเวลาลงไพ่ = ระบบลงใบแรกให้ · มือว่าง = ท้าให้</p>' +
+          '<p>หัวใจหมด = ตกรอบ · เล่น 3–8 คน</p></div>',
+        background: '#1c1010',
+        color: '#fff',
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'เข้าใจแล้ว เริ่มเลย'
+      });
     }
 
     const BLACK_MARKET_LOBBY_ROLES = [
@@ -1804,7 +2159,9 @@
     applyLobbySelfNameColor();
     updateLobbyModeUI({
       gameMode: currentGameMode,
-      gameModeLabel: '<%= room.gameModeLabel %>'
+      gameModeLabel: '<%= room.gameModeLabel %>',
+      roomName: '<%= room.name %>',
+      settings: { gameMode: currentGameMode }
     });
     
     // ===== โหลดการตั้งค่าจาก localStorage =====
@@ -1961,7 +2318,7 @@
     function updateAdminUI() {
       setElementHidden('#btnStartGameLobby', !isAdmin);
       setElementHidden('#adminControlsSection', !isAdmin);
-      setElementHidden('#btnBlackMarketAddBots', !(currentGameMode === 'blackmarket' && isAdmin));
+      refreshAddBotsButton();
       // Re-render player list เพื่อแสดง/ซ่อน action icons ให้ถูกต้อง
       socket.emit('requestRoomUpdate', { roomId: roomId });
     }
@@ -2133,6 +2490,11 @@
       updateDualTraitorToggleVisibility(playerCount);
       
       renderPlayers(payload);
+      const addBotsBtn = document.getElementById('btnBlackMarketAddBots');
+      if (addBotsBtn && $(addBotsBtn).data('loading') && (payload.players || []).length > 1) {
+        $(addBotsBtn).data('loading', false);
+        refreshAddBotsButton(resolveGameModeFromPayload(payload));
+      }
     });
 
     if (initialRoomPayload) {
@@ -2427,23 +2789,48 @@
       showCoupLobbyGuide();
     });
 
-    $('#btnBlackMarketAddBots').on('click', function() {
+    $('#btnLiarHowTo').on('click', function() {
+      showLiarLobbyGuide();
+    });
+
+    $(document).on('click', '#btnPokerHowTo', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const mode = resolveGameModeFromPayload(latestRoomPayload) || normalizeLobbyGameMode(currentGameMode);
+      showPokerLobbyGuide(mode);
+    });
+
+    $(document).on('click', '#btnBlackMarketAddBots', function() {
       const btn = $(this);
       if (btn.data('loading')) return;
+      const mode = resolveGameModeFromPayload(latestRoomPayload) || normalizeLobbyGameMode(currentGameMode);
+      const isPoker = mode === 'poker5' || mode === 'poker4'
+        || !!(document.getElementById('btnPokerHowTo') && !document.getElementById('btnPokerHowTo').classList.contains('is-hidden'));
+      const eventName = isPoker ? 'poker_addBots' : 'blackmarket_addBots';
+      const idleLabel = isPoker ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ';
+      let settled = false;
+      function finish(res) {
+        if (settled) return;
+        settled = true;
+        btn.data('loading', false);
+        btn.text(idleLabel);
+        if (res && res.success) return;
+        Swal.fire({
+          icon: 'error',
+          title: 'เพิ่มบอทไม่สำเร็จ',
+          text: res && res.error ? res.error : 'เกิดข้อผิดพลาด',
+          background: '#1e1e1e',
+          color: '#fff'
+        });
+      }
       btn.data('loading', true);
       btn.text('🤖 กำลังเพิ่มบอท...');
-      socket.emit('blackmarket_addBots', { roomId: roomId }, function(res) {
-        btn.data('loading', false);
-        btn.text('🤖 เติมบอทเพื่อทดสอบ');
-        if (!res || !res.success) {
-          Swal.fire({
-            icon: 'error',
-            title: 'เพิ่มบอทไม่สำเร็จ',
-            text: res && res.error ? res.error : 'เกิดข้อผิดพลาด',
-            background: '#1e1e1e',
-            color: '#fff'
-          });
-        }
+      const timer = setTimeout(function() {
+        finish({ success: false, error: 'เซิร์ฟเวอร์ไม่ตอบ ลองรีเฟรชหน้าแล้วกดใหม่' });
+      }, 8000);
+      socket.emit(eventName, { roomId: roomId, count: 1 }, function(res) {
+        clearTimeout(timer);
+        finish(res);
       });
     });
 
@@ -2537,14 +2924,23 @@
           password: '<%= room.password %>',
           dualTraitorMode: <%= room.dualTraitorMode ? 'true' : 'false' %>,
           werewolfRoles: currentWerewolfRoles,
-          wolfCount: 2
+          wolfCount: 2,
+          gameMode: currentGameMode
         };
-        const activeMode = normalizeLobbyGameMode(roomSettings.gameMode || currentGameMode);
+        const activeMode = resolveGameModeFromPayload({
+          settings: roomSettings,
+          gameMode: roomSettings.gameMode || currentGameMode,
+          roomName: (document.getElementById('roomTitleText') || {}).textContent || '<%= room.name %>'
+        });
         const activeModeMeta = getModeMeta(activeMode);
         const currentMaxPlayers = Number(roomSettings.maxPlayers || <%= room.maxPlayers %>);
         const currentLocked = !!roomSettings.locked;
         const currentPassword = String(roomSettings.password || '');
         const currentWolfCount = Number(roomSettings.wolfCount) || 2;
+        const isPokerLobby = activeMode === 'poker5' || activeMode === 'poker4';
+        const isPoker4LobbyEdit = activeMode === 'poker4';
+        const currentPokerTableType = roomSettings.pokerTableType === 'cash' ? 'cash' : 'fun';
+        const currentPokerAnte = Math.max(100, Number(roomSettings.pokerAnte) || 500);
         
         Swal.fire({
           title: '⚙️ แก้ไขห้อง',
@@ -2569,7 +2965,7 @@
                 </label>
                 <div class="room-slider-container">
                   <span class="room-slider-value" id="editMaxPlayersValue">${currentMaxPlayers}</span>
-                  <input type="range" id="editMaxPlayers" class="room-slider" min="${activeModeMeta.minPlayers}" max="${activeMode === 'blackmarket' ? '7' : (activeMode === 'spyfall' ? '8' : '10')}" value="${currentMaxPlayers}">
+                  <input type="range" id="editMaxPlayers" class="room-slider" min="${activeModeMeta.minPlayers}" max="${activeModeMeta.maxPlayers || 10}" value="${Math.min(Number(activeModeMeta.maxPlayers || 10), Number(currentMaxPlayers))}">
                 </div>
               </div>
               
@@ -2584,6 +2980,30 @@
                   }).join('')}
                 </div>
                 <div style="margin-top:8px; color:#aaa; font-size:0.82em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด และเวลาในเกมถูกล็อกเป็น กลางคืน 1 นาที / ประชุม 3 นาที / โหวต 1 นาที</div>
+              </div>
+              
+              <div class="room-form-group" id="editPokerTableGroup" style="display: ${isPokerLobby ? 'block' : 'none'};">
+                <label class="room-form-label">
+                  <span class="icon">${isPoker4LobbyEdit ? '♦' : '♠'}</span> แบบเล่น:
+                </label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid ${currentPokerTableType === 'fun' ? 'rgba(34,197,94,0.45)' : 'rgba(255,255,255,0.12)'}; background:${currentPokerTableType === 'fun' ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)'}; cursor:pointer; color:#fff;">
+                    <input type="radio" name="editPokerTableType" value="fun" ${currentPokerTableType === 'fun' ? 'checked' : ''} style="accent-color:#22c55e;">
+                    <span>เล่นสนุก — ตาใหม่ชิปกลับมาเต็ม</span>
+                  </label>
+                  <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid ${currentPokerTableType === 'cash' ? 'rgba(245,200,107,0.45)' : 'rgba(255,255,255,0.12)'}; background:${currentPokerTableType === 'cash' ? 'rgba(245,200,107,0.08)' : 'rgba(255,255,255,0.04)'}; cursor:pointer; color:#ddd;">
+                    <input type="radio" name="editPokerTableType" value="cash" ${currentPokerTableType === 'cash' ? 'checked' : ''} style="accent-color:#f5c86b;">
+                    <span>เล่นเก็บชิป — ใช้ชิปในบัญชี</span>
+                  </label>
+                </div>
+                <div style="margin-top:10px;">
+                  <label class="room-form-label"><span class="icon">🪙</span> วางกองก่อนแจก:</label>
+                  <div class="room-slider-container">
+                    <span class="room-slider-value" id="editPokerAnteValue">${currentPokerAnte}</span>
+                    <input type="range" id="editPokerAnte" class="room-slider" min="100" max="2000" step="100" value="${currentPokerAnte}">
+                  </div>
+                </div>
+                <div style="margin-top:10px; color:#9ca89a; font-size:0.85em; line-height:1.4;">${isPoker4LobbyEdit ? 'ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู · หมอบไม่ได้ใบที่ 3 · ' : 'ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ · '}อยากมีคนเล่นเพิ่ม กด <strong style="color:#a7f3d0;">🤖 เพิ่มบอท</strong> ข้างปุ่มแก้ไขห้อง</div>
               </div>
               
               <div class="room-form-group">
@@ -2615,6 +3035,8 @@
             const maxPlayersSlider = document.getElementById('editMaxPlayers');
             const maxPlayersValue = document.getElementById('editMaxPlayersValue');
             const wolfCountSelector = document.getElementById('editWolfCountSelector');
+            const editPokerAnte = document.getElementById('editPokerAnte');
+            const editPokerAnteValue = document.getElementById('editPokerAnteValue');
             
             maxPlayersSlider.addEventListener('input', function() {
               maxPlayersValue.textContent = this.value;
@@ -2627,17 +3049,25 @@
             }
 
             const modeMeta = getModeMeta(activeMode);
+            const modeMaxPlayers = Number(modeMeta.maxPlayers || 10);
             maxPlayersSlider.min = String(modeMeta.minPlayers);
-            maxPlayersSlider.max = String(activeMode === 'blackmarket' ? 7 : (activeMode === 'spyfall' ? 8 : 10));
+            maxPlayersSlider.max = String(modeMaxPlayers);
             if (Number(maxPlayersSlider.value) < modeMeta.minPlayers) {
               maxPlayersSlider.value = String(modeMeta.minPlayers);
             }
-            if (activeMode === 'blackmarket' && Number(maxPlayersSlider.value) > 7) {
-              maxPlayersSlider.value = '7';
+            if (Number(maxPlayersSlider.value) > modeMaxPlayers) {
+              maxPlayersSlider.value = String(modeMaxPlayers);
             }
             maxPlayersValue.textContent = maxPlayersSlider.value;
             
             updateSliderBackground(maxPlayersSlider);
+            if (editPokerAnte && editPokerAnteValue) {
+              editPokerAnte.addEventListener('input', function() {
+                editPokerAnteValue.textContent = this.value;
+                updateSliderBackground(this);
+              });
+              updateSliderBackground(editPokerAnte);
+            }
 
             // Wolf count selector handler
             if (wolfCountSelector) {
@@ -2685,6 +3115,8 @@
             const password = document.getElementById('editPassword').value.trim();
             const activeWolfBtn = document.querySelector('#editWolfCountSelector .wolf-count-btn.active');
             const wolfCount = activeWolfBtn ? parseInt(activeWolfBtn.dataset.wolfCount, 10) : null;
+            const pokerTableType = (document.querySelector('input[name="editPokerTableType"]:checked') || {}).value || 'fun';
+            const pokerAnte = parseInt((document.getElementById('editPokerAnte') || {}).value, 10) || 500;
             
             if (locked && (!password || !/^\d{4}$/.test(password))) {
               Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');
@@ -2696,7 +3128,9 @@
               maxPlayers,
               wolfCount,
               locked,
-              password: locked ? password : ''
+              password: locked ? password : '',
+              pokerTableType: isPokerLobby ? pokerTableType : undefined,
+              pokerAnte: isPokerLobby ? pokerAnte : undefined
             };
           }
         }).then(result => {

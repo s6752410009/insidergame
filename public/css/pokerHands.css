@@ -1,0 +1,127 @@
+.pk-howto-copy {
+  margin: 0 0 12px;
+  line-height: 1.6;
+  font-size: 0.98em;
+  text-align: left;
+}
+
+.pk-howto-copy p {
+  margin: 0 0 8px;
+}
+
+.pk-howto-copy p:last-child {
+  margin-bottom: 0;
+}
+
+.pk-howto-foot {
+  margin: 14px 0 0;
+  color: #b8c0b4;
+  font-size: 0.88em;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.pk-rank-kicker {
+  margin: 4px 0 10px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f5c86b;
+}
+
+.pk-rank-list {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.pk-rank-item {
+  display: grid;
+  grid-template-columns: 28px auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(245, 200, 107, 0.12);
+}
+
+.pk-rank-n {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #16120c;
+  background: #f5c86b;
+}
+
+.pk-rank-cards {
+  display: flex;
+  gap: 6px;
+}
+
+.pk-rank-cards img {
+  width: 58px;
+  height: 82px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f4f4f4;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+  display: block;
+}
+
+.pk-rank-copy {
+  min-width: 0;
+}
+
+.pk-rank-copy b {
+  display: block;
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+}
+
+.pk-rank-copy small {
+  display: block;
+  color: #c5c0b4;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.swal2-popup.pk-rank-popup {
+  width: min(640px, 96vw) !important;
+  padding: 18px 16px 16px !important;
+}
+
+.swal2-popup.pk-rank-popup .swal2-html-container {
+  margin: 8px 0 0 !important;
+  overflow: auto !important;
+  max-height: min(70vh, 640px);
+}
+
+.swal2-popup.pk-rank-popup .pk-rank-cards img {
+  width: 64px;
+  height: 90px;
+}
+
+@media (max-width: 560px) {
+  .pk-rank-item {
+    grid-template-columns: 24px 1fr;
+    grid-template-areas:
+      "num cards"
+      "copy copy";
+  }
+
+  .pk-rank-n { grid-area: num; }
+  .pk-rank-cards { grid-area: cards; }
+  .pk-rank-copy { grid-area: copy; }
+
+  .pk-rank-cards img {
+    width: 52px;
+    height: 74px;
+  }
+}

@@ -1293,8 +1293,10 @@
                             <option value="werewolf">Werewolf</option>
                             <option value="blackmarket">Black Market</option>
                             <option value="spyfall">Spyfall</option>
-                        <option value="coup">Coup</option>
                             <option value="coup">Coup</option>
+                            <option value="liar">ไพ่โกหก</option>
+                            <option value="poker5">ไพ่ 5 ใบ</option>
+                            <option value="poker4">สี่ใบเก</option>
                         </select>
                         <select id="roomStatusFilter" class="search-box" style="width: auto;">
                             <option value="all">ทุกสถานะ</option>
@@ -1378,6 +1380,9 @@
                             <option value="has-blackmarket">มี Black Market</option>
                             <option value="has-spyfall">มี Spyfall</option>
                             <option value="has-coup">มี Coup</option>
+                            <option value="has-liar">มีไพ่โกหก</option>
+                            <option value="has-poker5">มีไพ่ 5 ใบ</option>
+                            <option value="has-poker4">มีสี่ใบเก</option>
                         </select>
                     </div>
                     <button class="btn-admin btn-warning" onclick="resetSeason()" id="resetSeasonBtn" style="display:none;">🏆 ปิด Season / รีแรงค์</button>
@@ -1437,6 +1442,7 @@
                         <option value="blackmarket">Black Market</option>
                         <option value="spyfall">Spyfall</option>
                         <option value="coup">Coup</option>
+                        <option value="liar">ไพ่โกหก</option>
                     </select>
                     <button class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง Logs</button>
                     <button class="btn-admin btn-success" onclick="exportLogs()">📥 Export</button>
@@ -1617,6 +1623,9 @@ $(function() {
         const blackmarket = modeStats?.blackmarket || {};
         const spyfall = modeStats?.spyfall || {};
         const coup = modeStats?.coup || {};
+        const liar = modeStats?.liar || {};
+        const poker5 = modeStats?.poker5 || {};
+        const poker4 = modeStats?.poker4 || {};
         return `
             <div style="display:grid; gap:6px; min-width:170px;">
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🎯 Insider ${insider.games || 0} เกม</span><span class="status-badge status-online">🏆 ${insider.wins || 0}W</span><span class="status-badge status-offline">💀 ${insider.losses || 0}L</span></div>
@@ -1624,6 +1633,9 @@ $(function() {
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">🎩 Black Market ${blackmarket.games || 0} เกม</span><span class="status-badge status-online">🏆 ${blackmarket.wins || 0}W</span><span class="status-badge status-offline">💀 ${blackmarket.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🕵️ Spyfall ${spyfall.games || 0} เกม</span><span class="status-badge status-online">🏆 ${spyfall.wins || 0}W</span><span class="status-badge status-offline">💀 ${spyfall.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">👑 Coup ${coup.games || 0} เกม</span><span class="status-badge status-online">🏆 ${coup.wins || 0}W</span><span class="status-badge status-offline">💀 ${coup.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">🃏 ไพ่โกหก ${liar.games || 0} เกม</span><span class="status-badge status-online">🏆 ${liar.wins || 0}W</span><span class="status-badge status-offline">💀 ${liar.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">♠ ไพ่ 5 ใบ ${poker5.games || 0} เกม</span><span class="status-badge status-online">🏆 ${poker5.wins || 0}W</span><span class="status-badge status-offline">💀 ${poker5.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">♦ สี่ใบเก ${poker4.games || 0} เกม</span><span class="status-badge status-online">🏆 ${poker4.wins || 0}W</span><span class="status-badge status-offline">💀 ${poker4.losses || 0}L</span></div>
             </div>
         `;
     }
@@ -2246,13 +2258,19 @@ $(function() {
             const hasBlackMarket = Number(stat.modeStats?.blackmarket?.games || 0) > 0;
             const hasSpyfall = Number(stat.modeStats?.spyfall?.games || 0) > 0;
             const hasCoup = Number(stat.modeStats?.coup?.games || 0) > 0;
+            const hasLiar = Number(stat.modeStats?.liar?.games || 0) > 0;
+            const hasPoker5 = Number(stat.modeStats?.poker5?.games || 0) > 0;
+            const hasPoker4 = Number(stat.modeStats?.poker4?.games || 0) > 0;
             const matchesSearch = !search || haystack.includes(search);
             const matchesMode = modeFilter === 'all'
                 || (modeFilter === 'has-insider' && hasInsider)
                 || (modeFilter === 'has-werewolf' && hasWerewolf)
                 || (modeFilter === 'has-blackmarket' && hasBlackMarket)
                 || (modeFilter === 'has-spyfall' && hasSpyfall)
-                || (modeFilter === 'has-coup' && hasCoup);
+                || (modeFilter === 'has-coup' && hasCoup)
+                || (modeFilter === 'has-liar' && hasLiar)
+                || (modeFilter === 'has-poker5' && hasPoker5)
+                || (modeFilter === 'has-poker4' && hasPoker4);
             return matchesSearch && matchesMode;
         });
 
@@ -2638,6 +2656,10 @@ $(function() {
         const werewolfMode = stat.modeStats?.werewolf || {};
         const blackMarketMode = stat.modeStats?.blackmarket || {};
         const spyfallMode = stat.modeStats?.spyfall || {};
+        const coupMode = stat.modeStats?.coup || {};
+        const liarMode = stat.modeStats?.liar || {};
+        const poker5Mode = stat.modeStats?.poker5 || {};
+        const poker4Mode = stat.modeStats?.poker4 || {};
         const werewolfInputs = WEREWOLF_ROLE_META.map(role => `
             <div>
                 <label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">${role.emoji} ${role.label}</label>
@@ -2708,6 +2730,38 @@ $(function() {
                             <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeSpyfallLosses" class="swal2-input" value="${spyfallMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
                         </div>
                     </div>
+                    <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(124,58,237,0.12); border:1px solid rgba(196,141,255,0.18);">
+                        <div style="font-weight:700; color:#ddd6fe; margin-bottom:10px;">👑 โหมด Coup</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModeCoupGames" class="swal2-input" value="${coupMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModeCoupWins" class="swal2-input" value="${coupMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeCoupLosses" class="swal2-input" value="${coupMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(220,38,38,0.12); border:1px solid rgba(254,202,202,0.18);">
+                        <div style="font-weight:700; color:#fecaca; margin-bottom:10px;">🃏 โหมดไพ่โกหก</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModeLiarGames" class="swal2-input" value="${liarMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModeLiarWins" class="swal2-input" value="${liarMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeLiarLosses" class="swal2-input" value="${liarMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(22,101,52,0.12); border:1px solid rgba(187,247,208,0.18);">
+                        <div style="font-weight:700; color:#bbf7d0; margin-bottom:10px;">♠ ไพ่ 5 ใบ</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModePoker5Games" class="swal2-input" value="${poker5Mode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModePoker5Wins" class="swal2-input" value="${poker5Mode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModePoker5Losses" class="swal2-input" value="${poker5Mode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                    </div>
+                    <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(153,27,27,0.12); border:1px solid rgba(254,202,202,0.18);">
+                        <div style="font-weight:700; color:#fecaca; margin-bottom:10px;">♦ สี่ใบเก</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModePoker4Games" class="swal2-input" value="${poker4Mode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModePoker4Wins" class="swal2-input" value="${poker4Mode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModePoker4Losses" class="swal2-input" value="${poker4Mode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                    </div>
                 </div>
             `,
             showCancelButton: true,
@@ -2758,6 +2812,26 @@ $(function() {
                             games: parseInt(document.getElementById('editModeSpyfallGames').value, 10) || 0,
                             wins: parseInt(document.getElementById('editModeSpyfallWins').value, 10) || 0,
                             losses: parseInt(document.getElementById('editModeSpyfallLosses').value, 10) || 0
+                        },
+                        coup: {
+                            games: parseInt(document.getElementById('editModeCoupGames').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModeCoupWins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModeCoupLosses').value, 10) || 0
+                        },
+                        liar: {
+                            games: parseInt(document.getElementById('editModeLiarGames').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModeLiarWins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModeLiarLosses').value, 10) || 0
+                        },
+                        poker5: {
+                            games: parseInt(document.getElementById('editModePoker5Games').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModePoker5Wins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModePoker5Losses').value, 10) || 0
+                        },
+                        poker4: {
+                            games: parseInt(document.getElementById('editModePoker4Games').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModePoker4Wins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModePoker4Losses').value, 10) || 0
                         }
                     }
                 };
@@ -3075,12 +3149,12 @@ $(function() {
         
         const roleHeaders = WEREWOLF_ROLE_META.map(role => `${role.label} Count`).join(',');
         const blackMarketRoleHeaders = BLACKMARKET_ROLE_META.map(role => `${role.label} Count`).join(',');
-        let csv = `Player Name,Total Games,Wins,Losses,Win Rate,Insider Games,Insider Wins,Insider Losses,Werewolf Games,Werewolf Wins,Werewolf Losses,Black Market Games,Black Market Wins,Black Market Losses,Spyfall Games,Spyfall Wins,Spyfall Losses,GM Count,Traitor Count,Citizen Count,${roleHeaders},${blackMarketRoleHeaders}\n`;
+        let csv = `Player Name,Total Games,Wins,Losses,Win Rate,Insider Games,Insider Wins,Insider Losses,Werewolf Games,Werewolf Wins,Werewolf Losses,Black Market Games,Black Market Wins,Black Market Losses,Spyfall Games,Spyfall Wins,Spyfall Losses,Coup Games,Coup Wins,Coup Losses,Liar Games,Liar Wins,Liar Losses,Poker5 Games,Poker5 Wins,Poker5 Losses,Poker4 Games,Poker4 Wins,Poker4 Losses,GM Count,Traitor Count,Citizen Count,${roleHeaders},${blackMarketRoleHeaders}\n`;
         allData.playerStats.forEach(s => {
             const winRate = s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0;
             const werewolfCounts = WEREWOLF_ROLE_META.map(role => s.roleStats?.werewolf?.[role.id] || 0).join(',');
             const blackMarketCounts = BLACKMARKET_ROLE_META.map(role => s.roleStats?.blackmarket?.[role.id] || 0).join(',');
-            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.modeStats?.insider?.games || 0},${s.modeStats?.insider?.wins || 0},${s.modeStats?.insider?.losses || 0},${s.modeStats?.werewolf?.games || 0},${s.modeStats?.werewolf?.wins || 0},${s.modeStats?.werewolf?.losses || 0},${s.modeStats?.blackmarket?.games || 0},${s.modeStats?.blackmarket?.wins || 0},${s.modeStats?.blackmarket?.losses || 0},${s.modeStats?.spyfall?.games || 0},${s.modeStats?.spyfall?.wins || 0},${s.modeStats?.spyfall?.losses || 0},${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0},${werewolfCounts},${blackMarketCounts}\n`;
+            csv += `"${s.playerName}",${s.totalGames || 0},${s.wins || 0},${s.losses || 0},${winRate}%,${s.modeStats?.insider?.games || 0},${s.modeStats?.insider?.wins || 0},${s.modeStats?.insider?.losses || 0},${s.modeStats?.werewolf?.games || 0},${s.modeStats?.werewolf?.wins || 0},${s.modeStats?.werewolf?.losses || 0},${s.modeStats?.blackmarket?.games || 0},${s.modeStats?.blackmarket?.wins || 0},${s.modeStats?.blackmarket?.losses || 0},${s.modeStats?.spyfall?.games || 0},${s.modeStats?.spyfall?.wins || 0},${s.modeStats?.spyfall?.losses || 0},${s.modeStats?.coup?.games || 0},${s.modeStats?.coup?.wins || 0},${s.modeStats?.coup?.losses || 0},${s.modeStats?.liar?.games || 0},${s.modeStats?.liar?.wins || 0},${s.modeStats?.liar?.losses || 0},${s.modeStats?.poker5?.games || 0},${s.modeStats?.poker5?.wins || 0},${s.modeStats?.poker5?.losses || 0},${s.modeStats?.poker4?.games || 0},${s.modeStats?.poker4?.wins || 0},${s.modeStats?.poker4?.losses || 0},${s.roleStats?.gameMasterCount || 0},${s.roleStats?.traitorCount || 0},${s.roleStats?.citizenCount || 0},${werewolfCounts},${blackMarketCounts}\n`;
         });
         
         downloadCSV(csv, 'player_stats.csv');
@@ -3529,21 +3603,30 @@ $(function() {
         werewolf: { badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
         blackmarket: { badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
         spyfall: { badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
-        coup: { badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' }
+        coup: { badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' },
+        liar: { badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
+        poker5: { badgeBg: 'rgba(22,101,52,0.2)', badgeColor: '#bbf7d0' },
+        poker4: { badgeBg: 'rgba(153,27,27,0.2)', badgeColor: '#fecaca' }
     };
     const ROOM_MODE_LABELS = {
         insider: '🎯 Insider',
         werewolf: '🐺 Werewolf',
         blackmarket: '🎩 Black Market',
         spyfall: '🕵️ Spyfall',
-        coup: '👑 Coup'
+        coup: '👑 Coup',
+        liar: '🃏 ไพ่โกหก',
+        poker5: '♠ ไพ่ 5 ใบ',
+        poker4: '♦ สี่ใบเก'
     };
     const ROOM_MODE_STATUS_CLASS = {
         insider: 'status-online',
         werewolf: 'status-banned',
         blackmarket: 'status-playing',
         spyfall: 'status-online',
-        coup: 'status-waiting'
+        coup: 'status-waiting',
+        liar: 'status-banned',
+        poker5: 'status-playing',
+        poker4: 'status-banned'
     };
 
     function formatRoomModeLabel(gameMode) {

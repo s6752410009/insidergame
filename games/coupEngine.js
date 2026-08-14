@@ -798,6 +798,7 @@ function buildClientState(room, viewerPlayerId) {
         deckCount: state.deck.length,
         winner: state.winner,
         history: state.history || [],
+        returnLobbyEndsAt: state.returnLobbyEndsAt || null,
 
         // ข้อมูลของตัวเองเท่านั้นที่เห็นการ์ดคว่ำ
         self: viewer ? {

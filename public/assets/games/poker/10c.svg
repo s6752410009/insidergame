@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350" role="img" aria-label="10 ดอกจิก">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f4ead6"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="16" fill="#e8dcc4"/>
+  <rect x="6" y="6" width="238" height="338" rx="12" fill="url(#paper)" stroke="#d2c4aa" stroke-width="1.2"/>
+  <rect x="10" y="10" width="230" height="330" rx="9" fill="none" stroke="#111111" stroke-opacity="0.16" stroke-width="1"/>
+  <g transform="translate(26 16)" fill="#111111" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="24" font-size="24" text-anchor="middle">10</text>
+      <g transform="translate(0 40) translate(-7.5 -7.5)" fill="#111111"><circle cx="7.5" cy="3.9" r="3.3"/>
+      <circle cx="3.6" cy="7.8" r="3.3"/>
+      <circle cx="11.4" cy="7.8" r="3.3"/>
+      <path d="M6 9H9L10.2 16.2H4.8Z"/></g>
+    </g>
+  <g transform="translate(224 334) rotate(180)" fill="#111111" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="24" font-size="24" text-anchor="middle">10</text>
+      <g transform="translate(0 40) translate(-7.5 -7.5)" fill="#111111"><circle cx="7.5" cy="3.9" r="3.3"/>
+      <circle cx="3.6" cy="7.8" r="3.3"/>
+      <circle cx="11.4" cy="7.8" r="3.3"/>
+      <path d="M6 9H9L10.2 16.2H4.8Z"/></g>
+    </g>
+  <g transform="translate(91.12 82.5) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(158.88 82.5) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(125 111.25) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(91.12 140) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(158.88 140) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(91.12 210) rotate(180) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(158.88 210) rotate(180) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(125 238.75) rotate(180) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(91.12 267.5) rotate(180) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+    <g transform="translate(158.88 267.5) rotate(180) translate(-16 -16)" fill="#111111"><circle cx="16" cy="8.32" r="7.04"/>
+      <circle cx="7.68" cy="16.64" r="7.04"/>
+      <circle cx="24.32" cy="16.64" r="7.04"/>
+      <path d="M12.8 19.2H19.2L21.76 34.56H10.24Z"/></g>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350" role="img" aria-label="7 ข้าวหลามตัด">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f4ead6"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="16" fill="#e8dcc4"/>
+  <rect x="6" y="6" width="238" height="338" rx="12" fill="url(#paper)" stroke="#d2c4aa" stroke-width="1.2"/>
+  <rect x="10" y="10" width="230" height="330" rx="9" fill="none" stroke="#c41e3a" stroke-opacity="0.16" stroke-width="1"/>
+  <g transform="translate(26 16)" fill="#c41e3a" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">7</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#c41e3a"><path d="M7.5 0.3L14.1 7.5L7.5 14.7L0.9 7.5Z"/></g>
+    </g>
+  <g transform="translate(224 334) rotate(180)" fill="#c41e3a" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">7</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#c41e3a"><path d="M7.5 0.3L14.1 7.5L7.5 14.7L0.9 7.5Z"/></g>
+    </g>
+  <g transform="translate(91.12 82.5) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+    <g transform="translate(158.88 82.5) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+    <g transform="translate(125 111.25) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+    <g transform="translate(91.12 175) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+    <g transform="translate(158.88 175) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+    <g transform="translate(91.12 267.5) rotate(180) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+    <g transform="translate(158.88 267.5) rotate(180) translate(-20 -20)" fill="#c41e3a"><path d="M20 0.8L37.6 20L20 39.2L2.4 20Z"/></g>
+</svg>

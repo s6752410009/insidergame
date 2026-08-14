@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336" role="img" aria-label="Ace of Spades">
+  <rect width="240" height="336" rx="18" fill="#f4efe4"/>
+  <rect x="8" y="8" width="224" height="320" rx="12" fill="#fbf7ee" stroke="#d8cbb6" stroke-width="1.5"/>
+  <g fill="#16120c">
+    <text x="22" y="42" font-family="Georgia, serif" font-size="32" font-weight="700">A</text>
+    <path d="M32 56 L40 74 L24 74 Z" />
+    <g transform="translate(218 318) rotate(180)">
+      <text x="0" y="24" font-family="Georgia, serif" font-size="32" font-weight="700">A</text>
+      <path d="M10 38 L18 56 L2 56 Z" />
+    </g>
+  </g>
+  <path d="M120 78 C92 118 58 148 58 188 C58 216 80 236 104 236 C110 236 116 234 120 230 C124 234 130 236 136 236 C160 236 182 216 182 188 C182 148 148 118 120 78 Z" fill="#16120c"/>
+  <rect x="112" y="226" width="16" height="28" rx="2" fill="#16120c"/>
+  <circle cx="120" cy="168" r="10" fill="#f5d78a"/>
+</svg>

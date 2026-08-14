@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="350" viewBox="0 0 250 350" role="img" aria-label="เอซ โพดำ">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f4ead6"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="16" fill="#e8dcc4"/>
+  <rect x="6" y="6" width="238" height="338" rx="12" fill="url(#paper)" stroke="#d2c4aa" stroke-width="1.2"/>
+  <rect x="10" y="10" width="230" height="330" rx="9" fill="none" stroke="#111111" stroke-opacity="0.16" stroke-width="1"/>
+  <g transform="translate(26 16)" fill="#111111" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">A</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#111111"><path d="M7.5 0.3C3.3 5.4 0.3 7.5 0.3 10.2C0.3 12.9 2.7 15 5.4 15C6.45 15 7.05 14.4 7.5 13.5C7.95 14.4 8.55 15 9.6 15C12.3 15 14.7 12.9 14.7 10.2C14.7 7.5 11.7 5.4 7.5 0.3Z"/>
+      <path d="M6 11.7H9L10.2 16.8H4.8Z"/></g>
+    </g>
+  <g transform="translate(224 334) rotate(180)" fill="#111111" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-weight="700">
+      <text x="0" y="30" font-size="30" text-anchor="middle">A</text>
+      <g transform="translate(0 46) translate(-7.5 -7.5)" fill="#111111"><path d="M7.5 0.3C3.3 5.4 0.3 7.5 0.3 10.2C0.3 12.9 2.7 15 5.4 15C6.45 15 7.05 14.4 7.5 13.5C7.95 14.4 8.55 15 9.6 15C12.3 15 14.7 12.9 14.7 10.2C14.7 7.5 11.7 5.4 7.5 0.3Z"/>
+      <path d="M6 11.7H9L10.2 16.8H4.8Z"/></g>
+    </g>
+  
+    <g transform="translate(125 176) translate(-59 -59)" fill="#111111"><path d="M59 2.36C25.96 42.48 2.36 59 2.36 80.24C2.36 101.48 21.24 118 42.48 118C50.74 118 55.46 113.28 59 106.2C62.54 113.28 67.26 118 75.52 118C96.76 118 115.64 101.48 115.64 80.24C115.64 59 92.04 42.48 59 2.36Z"/>
+      <path d="M47.2 92.04H70.8L80.24 132.16H37.76Z"/></g>
+    <path d="M70 176 C78 150 98 142 112 150" fill="none" stroke="#c9a227" stroke-width="1.6"/>
+    <path d="M180 176 C172 150 152 142 138 150" fill="none" stroke="#c9a227" stroke-width="1.6"/>
+    <path d="M74 176 C82 202 98 208 112 200" fill="none" stroke="#c9a227" stroke-width="1.6"/>
+    <path d="M176 176 C168 202 152 208 138 200" fill="none" stroke="#c9a227" stroke-width="1.6"/>
+    <circle cx="70" cy="176" r="2.4" fill="#c9a227"/>
+    <circle cx="180" cy="176" r="2.4" fill="#c9a227"/>
+    <path d="M104 232 H146" stroke="#c9a227" stroke-width="1.2"/>
+    <path d="M110 238 H140" stroke="#c9a227" stroke-width="0.8"/>
+</svg>

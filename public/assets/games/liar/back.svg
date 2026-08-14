@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336" role="img" aria-label="Card back">
+  <rect width="240" height="336" rx="18" fill="#3a1010"/>
+  <rect x="10" y="10" width="220" height="316" rx="12" fill="#7f1d1d"/>
+  <rect x="22" y="22" width="196" height="292" rx="8" fill="#5b1414" stroke="#e8c56b" stroke-width="3"/>
+  <path d="M120 58 L168 120 L120 182 L72 120 Z" fill="none" stroke="#f3d27a" stroke-width="3"/>
+  <path d="M120 88 L148 120 L120 152 L92 120 Z" fill="#c9a227"/>
+  <text x="120" y="230" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#f8e7b0">โกหก</text>
+</svg>

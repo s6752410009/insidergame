@@ -98,7 +98,7 @@ function createDefaultWinByRole() {
     };
 }
 
-const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'];
+const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'liar', 'poker5', 'poker4'];
 
 function createDefaultModeStats() {
     return {
@@ -106,7 +106,10 @@ function createDefaultModeStats() {
         werewolf: { games: 0, wins: 0, losses: 0 },
         blackmarket: { games: 0, wins: 0, losses: 0 },
         spyfall: { games: 0, wins: 0, losses: 0 },
-        coup: { games: 0, wins: 0, losses: 0 }
+        coup: { games: 0, wins: 0, losses: 0 },
+        liar: { games: 0, wins: 0, losses: 0 },
+        poker5: { games: 0, wins: 0, losses: 0 },
+        poker4: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -369,6 +372,14 @@ function recordGameEnd(roomId, gameResult) {
         return recordCoupGameEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'liar') {
+        return recordLiarGameEnd(roomId, gameResult);
+    }
+
+    if (gameResult?.mode === 'poker5' || gameResult?.mode === 'poker4') {
+        return recordPokerHandEnd(roomId, gameResult);
+    }
+
     return recordInsiderGameEnd(roomId, gameResult);
 }
 
@@ -407,6 +418,104 @@ function recordCoupGameEnd(roomId, gameResult) {
             won: playerWon,
             winnerName: winner.name || 'ไม่ทราบ',
             resultText: playerWon ? 'รอดเป็นคนสุดท้าย' : `${winner.name || 'คนอื่น'} รอดเป็นคนสุดท้าย`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+/** โกหก: ผู้รอดคนสุดท้ายชนะคนเดียว ที่เหลือแพ้ */
+function recordLiarGameEnd(roomId, gameResult) {
+    const { winner, players, roomName } = gameResult;
+    if (!winner || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid liar game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+
+    players.forEach(player => {
+        if (!player.playerId) return;
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        const playerWon = player.playerId === winner.playerId;
+
+        stat.totalGames += 1;
+        stat.modeStats.liar.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.liar.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.liar.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'liar',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            winnerName: winner.name || 'ไม่ทราบ',
+            resultText: playerWon ? 'รอดเป็นคนสุดท้าย' : `${winner.name || 'คนอื่น'} รอดเป็นคนสุดท้าย`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+function recordPokerHandEnd(roomId, gameResult) {
+    const mode = gameResult.mode === 'poker4' ? 'poker4' : 'poker5';
+    const { winner, players, roomName, handNumber } = gameResult;
+    if (!Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid poker hand result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const label = mode === 'poker4' ? 'สี่ใบเก' : 'ไพ่ 5 ใบ';
+
+    players.forEach(player => {
+        if (!player.playerId || player.sittingOut) return;
+        if (String(player.playerId).startsWith('bot_')) return;
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        const winnerIds = new Set(
+            (Array.isArray(gameResult.winners) ? gameResult.winners : [])
+                .map(row => row && row.playerId)
+                .filter(Boolean)
+        );
+        if (winner?.playerId) winnerIds.add(winner.playerId);
+        const playerWon = winnerIds.has(player.playerId);
+
+        stat.totalGames += 1;
+        stat.modeStats[mode].games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats[mode].wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats[mode].losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode,
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            winnerName: winner?.name || 'ไม่ทราบ',
+            resultText: playerWon
+                ? `${winnerIds.size > 1 ? 'เสมอมือที่' : 'ชนะมือที่'} ${handNumber || 1} (${label})`
+                : `${winner?.name || 'คนอื่น'} ชนะมือที่ ${handNumber || 1}`
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {
             stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
@@ -852,7 +961,7 @@ async function editPlayerStats(playerId, newData) {
     }
 
     if (newData.modeStats && typeof newData.modeStats === 'object') {
-        ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup'].forEach(mode => {
+        GAME_MODES.forEach(mode => {
             if (!newData.modeStats[mode]) {
                 return;
             }
@@ -956,7 +1065,7 @@ async function bulkDeleteStats(playerIds) {
 /**
  * ดึง Leaderboard (เรียงตาม wins)
  * @param {number | undefined} limit - จำนวนที่ต้องการ ถ้าไม่ส่งจะคืนทั้งหมด
- * @param {string | undefined} mode - insider/werewolf/spyfall/coup/blackmarket หรือไม่ส่ง = รวมทุกโหมด
+ * @param {string | undefined} mode - insider/werewolf/spyfall/coup/blackmarket/liar หรือไม่ส่ง = รวมทุกโหมด
  */
 function getLeaderboard(limit, mode) {
     const rankedMode = GAME_MODES.includes(mode) ? mode : null;

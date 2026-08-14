@@ -855,6 +855,14 @@
         color: #8fd3ff;
     }
 
+    .profile-history-mode.coup {
+        color: #c4b5fd;
+    }
+
+    .profile-history-mode.liar {
+        color: #fecaca;
+    }
+
     .profile-history-meta {
         color: #aaa;
         font-size: 0.82em;
@@ -1161,6 +1169,9 @@ $(function() {
         { id: 'werewolf', label: 'Werewolf' },
         { id: 'spyfall', label: 'Spyfall' },
         { id: 'coup', label: 'Coup' },
+        { id: 'liar', label: 'ไพ่โกหก' },
+        { id: 'poker5', label: 'ไพ่ 5 ใบ' },
+        { id: 'poker4', label: 'สี่ใบเก' },
         { id: 'blackmarket', label: 'Black Market' }
     ];
     var leaderboardState = {
@@ -1607,24 +1618,34 @@ $(function() {
                     const isWerewolf = mode === 'werewolf';
                     const isBlackMarket = mode === 'blackmarket';
                     const isSpyfall = mode === 'spyfall';
+                    const isCoup = mode === 'coup';
+                    const isLiar = mode === 'liar';
+                    const isPoker5 = mode === 'poker5';
+                    const isPoker4 = mode === 'poker4';
                     const modeLabel = isWerewolf ? '🐺 Werewolf'
                         : (isBlackMarket ? '🎩 Black Market'
-                            : (isSpyfall ? '🕵️ Spyfall' : '🎯 Insider'));
-                    const modeClass = isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : (isSpyfall ? 'spyfall' : 'insider'));
+                            : (isSpyfall ? '🕵️ Spyfall'
+                                : (isCoup ? '👑 Coup'
+                                    : (isLiar ? '🃏 ไพ่โกหก'
+                                        : (isPoker5 ? '♠ ไพ่ 5 ใบ'
+                                            : (isPoker4 ? '♦ สี่ใบเก' : '🎯 Insider'))))));
+                    const modeClass = isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : (isSpyfall ? 'spyfall' : (isCoup ? 'coup' : (isLiar ? 'liar' : (isPoker5 || isPoker4 ? 'coup' : 'insider')))));
                     const detailPrimary = isWerewolf
                         ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
                         : (isBlackMarket
                             ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
                             : (isSpyfall
                                 ? 'สถานที่: ' + escapeHtml(game.location || 'ไม่ทราบ')
-                                : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ')));
+                                : (isCoup || isLiar
+                                    ? escapeHtml(game.resultText || ((game.winnerName || 'คนอื่น') + ' รอดเป็นคนสุดท้าย'))
+                                    : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'))));
                     const detailSecondary = isWerewolf
                         ? (game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ')
                         : (isBlackMarket
                             ? `👑 ${Number(game.influence || 0)} • 💵 ${Number(game.cash || 0)} • 🔥 ${Number(game.heat || 0)}`
                             : (isSpyfall
                                 ? `สายลับ: ${escapeHtml(game.spyName || 'ไม่ทราบ')} • ${game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด'}`
-                                : escapeHtml(game.word || 'ไม่ทราบคำ')));
+                                : (isCoup || isLiar ? '' : escapeHtml(game.word || 'ไม่ทราบคำ'))));
                     const gameDate = game.date
                         ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : '-';
@@ -1712,6 +1733,22 @@ $(function() {
                         <div class="profile-role-row">
                             <span>🕵️ Spyfall</span>
                             <span>${stats.modeStats?.spyfall?.games || 0} เกม · ชนะ ${stats.modeStats?.spyfall?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>👑 Coup</span>
+                            <span>${stats.modeStats?.coup?.games || 0} เกม · ชนะ ${stats.modeStats?.coup?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🃏 ไพ่โกหก</span>
+                            <span>${stats.modeStats?.liar?.games || 0} เกม · ชนะ ${stats.modeStats?.liar?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>♠ ไพ่ 5 ใบ</span>
+                            <span>${stats.modeStats?.poker5?.games || 0} เกม · ชนะ ${stats.modeStats?.poker5?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>♦ สี่ใบเก</span>
+                            <span>${stats.modeStats?.poker4?.games || 0} เกม · ชนะ ${stats.modeStats?.poker4?.wins || 0}</span>
                         </div>
                         ${blackMarketRoleHtml}
                     </div>
