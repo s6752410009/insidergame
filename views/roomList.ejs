@@ -1157,7 +1157,6 @@ $(function() {
             const isJoinable = room.isJoinable !== false && !isPlaying && !isStuck;
             const isDualTraitor = room.settings && room.settings.dualTraitorMode && room.gameMode === 'insider';
             const onlineCount = room.onlineCount || 0;
-            const totalInRoom = room.totalPlayerCount != null ? room.totalPlayerCount : (room.playerCount || 0);
             const playerPercentage = (onlineCount / room.maxPlayers) * 100;
             const statusText = isStuck
                 ? 'ไม่มีคนออนไลน์ (อาจค้าง)'
@@ -1194,7 +1193,7 @@ $(function() {
                     <div class="room-card-info">
                         <div class="room-info-item">
                             <span class="room-info-icon">👥</span>
-                            <span><strong>ออนไลน์:</strong> ${onlineCount} / ${room.maxPlayers} <span style="color:#888;">(ในห้อง ${totalInRoom})</span></span>
+                            <span><strong>ผู้เล่น:</strong> ${onlineCount} / ${room.maxPlayers}</span>
                         </div>
                         <div class="room-info-item">
                             <span class="room-info-icon">${isStuck ? '⚠️' : (isPlaying ? '🎮' : '⏳')}</span>

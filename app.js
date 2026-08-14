@@ -77,6 +77,10 @@ const blackMarketPhaseTimeouts = new Map();
 const spyfallPhaseTimeouts = new Map();
 const coupPhaseTimeouts = new Map();
 const spyfallReturnTimeouts = new Map();
+const insiderVoteTimeouts = new Map();
+const insiderReturnTimeouts = new Map();
+const INSIDER_VOTE2_MS = 15000;
+const INSIDER_RETURN_MS = 5000;
 
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
 const disconnectTimeouts = new Map();
@@ -663,6 +667,7 @@ function isGhostPlayer(player) {
  * Add vote count for vote2 - รองรับทั้ง string (1 คน) และ array (2 คน)
  */
 function addPlayerVote2(gameState, playerVote) {
+    if (playerVote == null || playerVote === '') return;
     // รองรับทั้ง string และ array
     const votes = Array.isArray(playerVote) ? playerVote : [playerVote];
     
@@ -772,7 +777,23 @@ function processVote1Result(gameState) {
  * Shared by the admin "stop timer" action and the discussion timeout so the
  * game never stalls if the admin is gone. Reuses the live displayVote2 flow.
  */
-function advanceInsiderToVote2(io, room) {
+function clearInsiderVoteTimer(roomId) {
+    const timeoutId = insiderVoteTimeouts.get(roomId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        insiderVoteTimeouts.delete(roomId);
+    }
+}
+
+function clearInsiderReturnTimer(roomId) {
+    const timeoutId = insiderReturnTimeouts.get(roomId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        insiderReturnTimeouts.delete(roomId);
+    }
+}
+
+function startInsiderVote2(room) {
     if (!room || !room.gameState) return;
     const roomId = room.roomId;
     if (roomCountdowns.has(roomId)) {
@@ -781,13 +802,95 @@ function advanceInsiderToVote2(io, room) {
     }
     room.gameState.countdownEndsAt = null;
     resetVote(room.gameState, 2);
+    room.gameState.status = 'vote2';
+    room.gameState.vote2EndsAt = Date.now() + INSIDER_VOTE2_MS;
     const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
     io.to(roomId).emit('displayVote2', {
         players: buildInsiderVoteCandidates(room.gameState),
         numTraitors: numTraitors,
-        progress: buildVote2Progress(room.gameState)
+        progress: buildVote2Progress(room.gameState),
+        vote2EndsAt: room.gameState.vote2EndsAt
     });
-    room.gameState.status = 'vote2';
+    scheduleInsiderVote2Timer(room);
+}
+
+function scheduleInsiderVote2Timer(room) {
+    if (!room?.roomId || room.gameState.status !== 'vote2') return;
+    clearInsiderVoteTimer(room.roomId);
+    const endsAt = Number(room.gameState.vote2EndsAt) || 0;
+    if (!endsAt) return;
+    const delay = Math.max(250, endsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        insiderVoteTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.gameState.status !== 'vote2') return;
+        sendChatMessageToRoom(io, current.roomId, 'System', 'หมดเวลาโหวต — สรุปผลจากคนที่โหวตแล้ว', '#f39c12');
+        finalizeInsiderVote2(current);
+    }, delay);
+    insiderVoteTimeouts.set(room.roomId, timeoutId);
+}
+
+function resetInsiderRoomAfterGame(room) {
+    room.gameState = {
+        players: room.gameState.players.map(p => ({
+            playerId: p.playerId,
+            socketId: p.socketId,
+            name: p.name,
+            room: p.room,
+            permission: p.permission,
+            color: p.color,
+            avatar: p.avatar || '👤',
+            avatarFrame: p.avatarFrame || 'none',
+            isGhost: !!p.isGhost,
+            role: null,
+            vote1: null,
+            vote2: null,
+            nbVote2: 0
+        })),
+        word: null,
+        status: '',
+        resultVote1: null,
+        resultVote2: null,
+        vote2EndsAt: null
+    };
+}
+
+function scheduleInsiderReturnToLobby(room) {
+    if (!room?.roomId) return;
+    clearInsiderReturnTimer(room.roomId);
+    const roomId = room.roomId;
+    io.to(roomId).emit('returnToLobby', { countdown: Math.round(INSIDER_RETURN_MS / 1000), roomId });
+    const timeoutId = setTimeout(() => {
+        insiderReturnTimeouts.delete(roomId);
+        const current = roomManager.getRoom(roomId);
+        if (!current) return;
+        resetInsiderRoomAfterGame(current);
+        io.to(roomId).emit('redirectToLobby', { roomId });
+        io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(current));
+        io.emit('roomListUpdate', roomManager.getAllRooms());
+    }, INSIDER_RETURN_MS);
+    insiderReturnTimeouts.set(roomId, timeoutId);
+}
+
+function finalizeInsiderVote2(room) {
+    if (!room?.gameState || room.gameState.status !== 'vote2') return;
+    clearInsiderVoteTimer(room.roomId);
+    processVote2Result(room.gameState);
+    room.gameState.status = 'end';
+    room.gameState.vote2EndsAt = null;
+    io.to(room.roomId).emit('vote2Ended', room.gameState.resultVote2);
+    statsManager.recordGameEnd(room.roomId, {
+        resultVote2: room.gameState.resultVote2,
+        players: room.gameState.players,
+        word: room.gameState.word,
+        roomName: room.name || room.roomId
+    });
+    notifyGameEndAfterRecord(room);
+    scheduleInsiderReturnToLobby(room);
+}
+
+function advanceInsiderToVote2(io, room) {
+    startInsiderVote2(room);
 }
 
 /**
@@ -2322,6 +2425,20 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 console.error('[coup] handlePlayerLeft failed:', error?.message || error);
             }
         }
+        if (room.settings.gameMode === 'werewolf') {
+            try {
+                getGameEngine('werewolf').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[werewolf] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'blackmarket') {
+            try {
+                getGameEngine('blackmarket').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[blackmarket] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
         broadcastGameStateForRoom(room);
     } catch (error) {
         console.error('[game] mid-game removal resync failed:', error?.message || error);
@@ -2609,6 +2726,14 @@ function recoverGamePhaseTimers() {
             }
             syncCoupPhaseTimer(room);
         }
+
+        if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
+            if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
+                finalizeInsiderVote2(room);
+            } else {
+                scheduleInsiderVote2Timer(room);
+            }
+        }
     });
 }
 
@@ -2653,6 +2778,12 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'coup' && roomManager.isRoomGameInProgress(room)) {
             getGameEngine('coup').autoResolvePhase(room);
             emitCoupRoomState(room);
+        }
+        if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
+            && room.gameState.status === 'vote2'
+            && room.gameState.vote2EndsAt
+            && room.gameState.vote2EndsAt <= Date.now()) {
+            finalizeInsiderVote2(room);
         }
 
         clearCoupPhaseTimer(candidate.roomId);
@@ -4020,6 +4151,8 @@ io.sockets.on('connection', function(socket) {
             clearSpyfallPhaseTimer(roomId);
             clearSpyfallReturnTimer(roomId);
             clearCoupPhaseTimer(roomId);
+            clearInsiderVoteTimer(roomId);
+            clearInsiderReturnTimer(roomId);
             if (roomCountdowns.has(roomId)) {
                 clearInterval(roomCountdowns.get(roomId));
                 roomCountdowns.delete(roomId);
@@ -5429,10 +5562,12 @@ io.sockets.on('connection', function(socket) {
                     } else if (insiderStatus === 'vote2') {
                         const numTraitors = gs.players.filter(p => p.role === traitorRole).length;
                         io.to(socket.id).emit('displayVote2', {
-                            players: gs.players.filter(isNotGameMaster),
+                            players: buildInsiderVoteCandidates(gs),
                             numTraitors: numTraitors,
-                            progress: buildVote2Progress(gs)
+                            progress: buildVote2Progress(gs),
+                            vote2EndsAt: gs.vote2EndsAt || null
                         });
+                        scheduleInsiderVote2Timer(room);
                     } else if (insiderStatus === 'end' && gs.resultVote2) {
                         io.to(socket.id).emit('vote2Ended', gs.resultVote2);
                     } else if (insiderStatus === 'word' && gs.word) {
@@ -5810,18 +5945,21 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('ต้องเป็นหัวหน้าห้องเท่านั้น');
             }
 
-            clearWerewolfPhaseTimer(roomId);
-            clearWerewolfTransitionTimer(roomId);
-            roomManager.resetRoomGame(roomId);
-
-            const refreshedRoom = roomManager.getRoom(roomId);
-            if (!refreshedRoom) {
-                throw new Error('ไม่พบห้อง Werewolf');
+            const onlinePlayers = room.players.filter(p => p.socketId);
+            if (onlinePlayers.length < 3) {
+                throw new Error('ต้องมีผู้เล่นออนไลน์อย่างน้อย 3 คน');
             }
 
-            sendChatMessageToRoom(io, roomId, 'System', 'เริ่มรอบใหม่ กลับไปที่ห้องเพื่อพร้อมเล่นอีกครั้ง', '#9b59b6');
-            io.to(roomId).emit('restartGame');
-            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            clearWerewolfPhaseTimer(roomId);
+            clearWerewolfTransitionTimer(roomId);
+            getGameEngine('werewolf').startGame(room);
+            room.chatHistory = (room.chatHistory || []).filter(entry => entry.playerName !== 'System');
+            room.werewolfChatHistory = [];
+
+            sendChatMessageToRoom(io, roomId, 'System', 'เล่นอีกรอบแล้ว คืนแรกกำลังเริ่ม', '#2ecc71');
+            logGameStartFromRoom(room);
+            emitWerewolfRoomState(room);
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
             io.emit('roomListUpdate', roomManager.getAllRooms());
 
             if (typeof callback === 'function') {
@@ -5949,17 +6087,23 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('มีแค่หัวหน้าห้องที่สั่งเปิดเมืองใหม่ได้');
             }
 
-            roomManager.resetRoomGame(roomId);
-
-            const refreshedRoom = roomManager.getRoom(roomId);
-            if (!refreshedRoom) {
-                throw new Error('ไม่พบโต๊ะนี้');
+            const onlinePlayers = room.players.filter(p => p.socketId);
+            if (onlinePlayers.length < 4) {
+                throw new Error('ต้องมีผู้เล่นออนไลน์อย่างน้อย 4 คน');
             }
 
-            sendChatMessageToRoom(io, roomId, 'System', 'รอบนี้จบแล้ว กลับไปตั้งเกมใหม่ในห้อง', '#9b59b6');
-            io.to(roomId).emit('restartGame');
-            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+            getGameEngine('blackmarket').startGame(room);
+            room.chatHistory = (room.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+            sendChatMessageToRoom(io, roomId, 'System', 'เปิดเมืองใหม่แล้ว รีบล็อกของก่อนคู่แข่ง', '#f39c12');
+            logGameStartFromRoom(room);
+            emitBlackMarketState(room);
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
             io.emit('roomListUpdate', roomManager.getAllRooms());
+            setTimeout(() => {
+                const r = roomManager.getRoom(roomId);
+                if (r) runBotsForRoom(r).catch(console.error);
+            }, 1200);
 
             if (typeof callback === 'function') {
                 callback({ success: true });
@@ -6103,6 +6247,21 @@ io.sockets.on('connection', function(socket) {
 
             clearSpyfallPhaseTimer(roomId);
             clearSpyfallReturnTimer(roomId);
+
+            if (data?.rematch) {
+                getGameEngine('spyfall').startGame(room);
+                room.chatHistory = (room.chatHistory || []).filter(entry => entry.playerName !== 'System');
+                sendChatMessageToRoom(io, roomId, 'System', 'เล่นอีกรอบแล้ว — จำสถานที่หรือเล่นให้เนียน', '#1abc9c');
+                logGameStartFromRoom(room);
+                emitSpyfallRoomState(room);
+                io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+                io.emit('roomListUpdate', roomManager.getAllRooms());
+                if (typeof callback === 'function') {
+                    callback({ success: true });
+                }
+                return;
+            }
+
             roomManager.resetRoomGame(roomId);
 
             const refreshedRoom = roomManager.getRoom(roomId);
@@ -6145,6 +6304,9 @@ io.sockets.on('connection', function(socket) {
                 if (typeof callback === 'function') callback({ success: false, error: 'ต้องเป็น admin เท่านั้น' });
                 return;
             }
+
+            clearInsiderVoteTimer(roomId);
+            clearInsiderReturnTimer(roomId);
 
             // ตรวจสอบจำนวนผู้เล่นตามโหมดเกม
             const onlinePlayers = room.players.filter(p => p.socketId);
@@ -6375,6 +6537,8 @@ io.sockets.on('connection', function(socket) {
             clearInterval(roomCountdowns.get(roomId));
             roomCountdowns.delete(roomId);
         }
+        clearInsiderVoteTimer(roomId);
+        clearInsiderReturnTimer(roomId);
 
         randomRoles(room.gameState, room.settings);
         room.gameState.word = getWord(getInsiderWordPool());
@@ -6527,13 +6691,7 @@ io.sockets.on('connection', function(socket) {
         // ต้องเป็น admin เท่านั้น
         if (!isAdminSocket(room, socket)) return;
 
-        resetVote(room.gameState, 2);
-        const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
-        io.to(roomId).emit('displayVote2', {
-            players: buildInsiderVoteCandidates(room.gameState),
-            numTraitors: numTraitors
-        });
-        room.gameState.status = 'vote2';
+        startInsiderVote2(room);
     });
 
     // Vote1
@@ -6628,53 +6786,8 @@ io.sockets.on('connection', function(socket) {
 
         io.to(roomId).emit('vote2Progress', buildVote2Progress(room.gameState));
 
-        if(everybodyHasVoted(room.gameState, 2)) {
-            processVote2Result(room.gameState);
-            io.to(roomId).emit('vote2Ended', room.gameState.resultVote2);
-            room.gameState.status = 'end';
-
-            // Record statistics (including game history)
-            statsManager.recordGameEnd(roomId, {
-                resultVote2: room.gameState.resultVote2,
-                players: room.gameState.players,
-                word: room.gameState.word,
-                roomName: room.name || roomId
-            });
-
-            notifyGameEndAfterRecord(room);
-
-            // Auto return to lobby after 5 seconds
-            setTimeout(() => {
-                io.to(roomId).emit('returnToLobby', { countdown: 5, roomId: roomId });
-                
-                // Reset game state for this room so it can be played again
-                room.gameState = {
-                    players: room.gameState.players.map(p => ({
-                        playerId: p.playerId,
-                        socketId: p.socketId,
-                        name: p.name,
-                        room: p.room,
-                        permission: p.permission, // เก็บ permission ไว้!
-                        color: p.color,
-                        avatar: p.avatar || '👤',
-                        avatarFrame: p.avatarFrame || 'none',
-                        isGhost: !!p.isGhost,
-                        role: null,
-                        vote1: null,
-                        vote2: null,
-                        nbVote2: 0
-                    })),
-                    word: null,
-                    status: '',
-                    resultVote1: null,
-                    resultVote2: null
-                };
-                
-                // Redirect all players to lobby after 5 more seconds
-                setTimeout(() => {
-                    io.to(roomId).emit('redirectToLobby', { roomId: roomId });
-                }, 5000);
-            }, 3000);
+        if (everybodyHasVoted(room.gameState, 2)) {
+            finalizeInsiderVote2(room);
         }
     });
 

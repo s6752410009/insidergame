@@ -569,6 +569,7 @@ $(function() {
   const playerId = '<%= player.playerId %>';
   const playerName = '<%= player.name %>';
   const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  if (window.partyPlay) window.partyPlay.startSession('spyfall', socket);
   let currentState = <%- safeJson(typeof spyfallState !== 'undefined' ? spyfallState : {}) %>;
   const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
   let allowNavigation = false;
@@ -744,6 +745,10 @@ $(function() {
           '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>' +
           '<p>สถานที่: <strong>' + gameIconHtml({ id: w.locationId, image: w.locationImage, icon: w.locationIcon, alt: w.locationName }, { className: 'game-icon', px: 22 }) + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
           tallyHtml +
+          '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
+            (isRoomAdmin ? '<button type="button" id="sfRematchBtn" class="sf-btn sf-btn-primary">🎲 เล่นอีกรอบ</button>' : '') +
+            '<button type="button" id="sfShareBtn" class="sf-btn">📸 เซฟผล</button>' +
+          '</div>' +
         '</div>'
       );
       return;
@@ -925,6 +930,29 @@ $(function() {
   }
 
   $('#sfSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+
+  $(document).on('click', '#sfRematchBtn', function() {
+    socket.emit('spyfall_restartGame', { rematch: true }, function(res) {
+      if (res && !res.success) {
+        Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#111', color: '#fff' });
+      }
+    });
+  });
+
+  $(document).on('click', '#sfShareBtn', function() {
+    if (!window.partyPlay || !currentState || !currentState.winner) return;
+    const w = currentState.winner;
+    window.partyPlay.shareResult({
+      mode: 'Spyfall',
+      headline: w.teamLabel || (w.team === 'citizens' ? 'พลเมืองชนะ' : 'สายลับชนะ'),
+      sub: 'สายลับ: ' + (w.spyName || '-') + ' · สถานที่: ' + (w.locationName || '-'),
+      lines: (currentState.players || []).map(function(p) {
+        return (p.name || '-') + (p.playerId === w.spyPlayerId ? ' · สายลับ' : '');
+      }),
+      accent: '#14b8a6',
+      fileName: 'spyfall-result'
+    });
+  });
 
   $('#leaveRoomBtn').on('click', function() {
     Swal.fire({

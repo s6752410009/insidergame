@@ -1004,6 +1004,7 @@
     const playerId = '<%= player.playerId %>';
     const myPlayerName = '<%= player.name %>';
     const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+    if (window.partyPlay) window.partyPlay.startSession('werewolf', socket);
     let canUseAdminReveal = <%= (room.admin === true || room.isSiteAdmin) ? 'true' : 'false' %>;
     const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
     let currentState = <%- safeJson(typeof werewolfState !== 'undefined' ? werewolfState : {}) %>;
@@ -1530,6 +1531,41 @@
             return action && Object.prototype.hasOwnProperty.call(action, 'targets');
           })
         : [];
+    }
+
+    function pingWerewolfNight(state) {
+      if (!window.partyPlay || !state || state.phase !== 'night') {
+        return;
+      }
+      var selfPlayer = (state.players || []).find(function(p) { return p.isSelf; });
+      if (selfPlayer && selfPlayer.alive === false) return;
+      var nightActions = getActiveNightActions(state);
+      var canAct = nightActions.some(function(a) {
+        return Array.isArray(a.targets) && (a.targets.length > 0 || a.allowSkip);
+      });
+      if (!canAct) return;
+      window.partyPlay.pingTurn({
+        key: 'ww-night-' + (state.dayNumber || 0),
+        title: 'ถึงตาคุณแล้ว',
+        subtitle: 'คืนนี้เลือกสกิลหรือข้ามได้'
+      });
+    }
+
+    function shareWerewolfResult() {
+      if (!window.partyPlay || !currentState) return;
+      var winner = currentState.winner;
+      var headline = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
+      var lines = (currentState.players || []).map(function(p) {
+        return (p.name || '-') + ' · ' + (p.roleThaiName || p.revealedRole || '?');
+      });
+      window.partyPlay.shareResult({
+        mode: 'Werewolf',
+        headline: headline,
+        sub: 'วันที่ ' + (currentState.dayNumber || 1),
+        lines: lines,
+        accent: '#8b5cf6',
+        fileName: 'werewolf-result'
+      });
     }
 
     function isWitchNightActionType(actionType) {
@@ -4748,8 +4784,8 @@
 
       const winnerText = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
       const actionHtml = isRoomAdmin
-        ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นอีก!</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>'
-        : '<div class="winner-actions"><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>';
+        ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นอีกรอบ</button><button id="shareWerewolfResult" class="ghost-btn">📸 เซฟผล</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>'
+        : '<div class="winner-actions"><button id="shareWerewolfResult" class="ghost-btn">📸 เซฟผล</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>';
       $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : '🤪 ')) + winnerText + '</div>' + actionHtml);
       if (!$banner.is(':visible')) {
         $banner.addClass('win-pop');
@@ -5012,6 +5048,9 @@
     function renderState(state) {
       const previousPhase = currentState.phase;
       currentState = state || {};
+      if (previousPhase === 'finished' && currentState.phase !== 'finished' && window.partyPlay) {
+        window.partyPlay.resetPing();
+      }
       if (currentState.phase === 'day-discussion' && currentState.morningAnnouncement) {
         console.debug('[werewolf][ui] morning announcement received', currentState.morningAnnouncement);
       }
@@ -5059,6 +5098,7 @@
         });
         if (gmMsg) showGmToast(gmMsg);
       }
+      pingWerewolfNight(currentState);
       const shouldShowRoleAnnouncement = currentState.phase === 'night'
         && Number(currentState.dayNumber || 1) === 1
         && currentState.playerRole?.id;
@@ -5713,8 +5753,9 @@
       // Action buttons
       var actionsHtml = '';
       if (isRoomAdmin) {
-        actionsHtml += '<button id="winRestartGame" class="werewolf-btn">🎲 เล่นอีก!</button>';
+        actionsHtml += '<button id="winRestartGame" class="werewolf-btn">🎲 เล่นอีกรอบ</button>';
       }
+      actionsHtml += '<button id="winShareResult" class="ghost-btn">📸 เซฟผล</button>';
       actionsHtml += '<button id="winBackToLobby" class="ghost-btn">🏠 กลับห้อง</button>';
       actionsHtml += '<button id="winDismiss" class="ghost-btn">✕ ปิด</button>';
       $('#winActions').html(actionsHtml);
@@ -5727,6 +5768,7 @@
     }
 
     $(document).on('click', '#winDismiss', hideWinScreen);
+    $(document).on('click', '#shareWerewolfResult, #winShareResult', shareWerewolfResult);
     $(document).on('click', '#winRestartGame', function() {
       socket.emit('werewolf_restartGame', { roomId: roomId }, function(response) {
         if (!response || !response.success) {

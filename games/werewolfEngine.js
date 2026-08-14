@@ -3091,6 +3091,54 @@ function buildRoleNotes(room, viewer) {
     return notes;
 }
 
+function handlePlayerLeft(room, playerId) {
+    if (!room?.gameState) {
+        return null;
+    }
+    if (room.gameState.phase === 'finished' || room.gameState.winner) {
+        return room.gameState;
+    }
+
+    const player = getPlayer(room, playerId);
+    if (!player || player.alive === false) {
+        return room.gameState;
+    }
+
+    ensureActionMaps(room);
+    markPlayerDead(player, 'ออกจากเกม');
+    syncAlivePlayerIds(room);
+    pushHistory(room, `${player.name} ออกจากเกม`, 'system');
+
+    const nightActions = room.gameState.nightActions || {};
+    Object.keys(nightActions).forEach(key => {
+        if (nightActions[key] && typeof nightActions[key] === 'object') {
+            delete nightActions[key][playerId];
+        }
+    });
+    if (room.gameState.nightSkips) delete room.gameState.nightSkips[playerId];
+    if (room.gameState.dayVotes) delete room.gameState.dayVotes[playerId];
+    if (room.gameState.discussionSkips) delete room.gameState.discussionSkips[playerId];
+    if (room.gameState.dayActionUsedBy) delete room.gameState.dayActionUsedBy[playerId];
+
+    if (checkWinCondition(room)) {
+        return room.gameState;
+    }
+
+    const phase = room.gameState.phase;
+    if (phase === 'night' && getRequiredNightActors(room).length === 0) {
+        return resolveNight(room);
+    }
+    if (phase === 'day-discussion' && canSkipDiscussion(room)) {
+        startDayPhase(room, 'player-left');
+        return room.gameState;
+    }
+    if (phase === 'day-vote' && canResolveDay(room)) {
+        return resolveDayVote(room);
+    }
+
+    return room.gameState;
+}
+
 /**
  * @param {Object} options { includeStatic } — false = ตัด roleCatalog/rolePlan ออก
  *   ใช้เมื่อ client เครื่องนั้นได้ staticVersion เดียวกันไปแล้ว (ประหยัดแบนด์วิดท์)
@@ -3184,5 +3232,6 @@ module.exports = {
     submitDayVote,
     useRevealAction,
     autoResolvePhase,
+    handlePlayerLeft,
     buildClientState
 };

@@ -2263,6 +2263,7 @@
     const playerId = '<%= player.playerId %>';
     const playerName = '<%= player.name %>';
     const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+    if (window.partyPlay) window.partyPlay.startSession('blackmarket', socket);
     let currentState = <%- safeJson(typeof blackMarketState !== 'undefined' ? blackMarketState : {}) %>;
     const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
     let allowNavigation = false;
@@ -4163,7 +4164,8 @@
             <div class="bm-pill warn">🔥 ${Number(winner.heat || 0)}</div>
           </div>
           <div class="bm-footer-actions">
-            ${isRoomAdmin ? '<button id="restartBlackMarket" class="bm-btn gold">🎩 เปิดเมืองใหม่</button>' : ''}
+            ${isRoomAdmin ? '<button id="restartBlackMarket" class="bm-btn gold">🎩 เล่นอีกรอบ</button>' : ''}
+            <button id="shareBlackMarketResult" class="bm-btn alt">📸 เซฟผล</button>
             <button id="backToBlackMarketLobby" class="bm-btn alt">🚪 กลับห้อง</button>
           </div>
         </div>
@@ -4458,6 +4460,23 @@
         $(this).attr('data-target-player-id') || null,
         $(this).attr('data-item-id') || null
       );
+    });
+
+    $(document).on('click', '#shareBlackMarketResult', function() {
+      if (!window.partyPlay || !currentState || !currentState.winner) return;
+      const winner = currentState.winner;
+      window.partyPlay.shareResult({
+        mode: 'Black Market',
+        headline: (winner.name || '-') + ' คุมเมือง',
+        sub: (winner.roleTitle || '') + ' · ' + (winner.reason || ''),
+        lines: [
+          'อิทธิพล ' + Number(winner.influence || 0),
+          'เงิน ' + Number(winner.cash || 0),
+          'ค่าหัว ' + Number(winner.heat || 0)
+        ],
+        accent: '#f39c12',
+        fileName: 'blackmarket-result'
+      });
     });
 
     $(document).on('click', '#restartBlackMarket', function() {

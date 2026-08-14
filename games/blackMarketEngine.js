@@ -1324,6 +1324,36 @@ function submitAction(room, playerId, actionType, targetPlayerId = null, itemId 
     return { resolved: false, phase: room.gameState.phase };
 }
 
+function handlePlayerLeft(room, playerId) {
+    if (!room?.gameState) {
+        return null;
+    }
+    if (room.gameState.phase === 'finished' || room.gameState.winner) {
+        return room.gameState;
+    }
+
+    const player = getPlayer(room, playerId);
+    if (!player || player.alive === false) {
+        return room.gameState;
+    }
+
+    player.alive = false;
+    player.revealedRole = player.roleInfo?.title || player.role;
+    pushHistory(room, '🚪', `${player.name} ออกจากโต๊ะ`, 'amber');
+
+    if (maybeFinishGame(room)) {
+        return room.gameState;
+    }
+
+    if (room.gameState.phase === 'market' && everyoneCommitted(room, room.gameState.marketChoices || {})) {
+        resolveMarketPhase(room);
+    } else if (room.gameState.phase === 'action' && everyoneCommitted(room, room.gameState.actionChoices || {})) {
+        resolveActionPhase(room);
+    }
+
+    return room.gameState;
+}
+
 module.exports = {
     id: 'blackmarket',
     label: 'Black Market',
@@ -1341,6 +1371,7 @@ module.exports = {
     submitMarketPurchase,
     submitAction,
     autoResolvePhase,
+    handlePlayerLeft,
     MARKET_PHASE_MS,
     ACTION_PHASE_MS,
     getMarketPhaseMs,

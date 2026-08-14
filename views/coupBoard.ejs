@@ -415,6 +415,7 @@ $(function() {
   const playerId = '<%= player.playerId %>';
   const playerName = '<%= player.name %>';
   const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  if (window.partyPlay) window.partyPlay.startSession('coup', socket);
 
   let currentState = <%- JSON.stringify(typeof coupState !== 'undefined' ? coupState : {}) %>;
   let allowNavigation = false;
@@ -525,6 +526,7 @@ $(function() {
     if (state.phase === 'finished') {
       $area.html('<div class="cp-result"><h3>🏆 ' + escapeHtml(state.winner?.name || '-') + ' ชนะ!</h3>' +
         (isRoomAdmin ? '<button type="button" id="cpRestartBtn" class="cp-btn cp-btn-primary">🎲 เล่นอีกรอบ</button> ' : '') +
+        '<button type="button" id="cpShareBtn" class="cp-btn cp-btn-outline">📸 เซฟผล</button> ' +
         '<button type="button" id="cpBackLobbyBtn" class="cp-btn cp-btn-outline">🏠 กลับห้อง</button></div>');
       return;
     }
@@ -775,6 +777,13 @@ $(function() {
     if (next.currentId && next.currentId !== prev.currentId) {
       $('#playerGrid .cp-player[data-player-id="' + String(next.currentId).replace(/"/g, '\\"') + '"]')
         .addClass('cp-anim-turn');
+      if (state.isMyTurn && window.partyPlay) {
+        window.partyPlay.pingTurn({
+          key: 'coup-turn-' + next.currentId + '-' + (state.turnNumber || 0),
+          title: 'ถึงตาคุณแล้ว',
+          subtitle: 'เลือก 1 แอ็กชัน'
+        });
+      }
     }
 
     // บรรทัดใหม่ในบันทึกเกม + ป้ายประกาศจังหวะสำคัญ
@@ -798,6 +807,9 @@ $(function() {
     if (!state || !state.players) return;
     // เปลี่ยนเฟสแล้วล้างตัวเลือกค้าง กันกดพลาดข้ามเฟส
     if (state.phase !== currentState.phase) { pendingTargetAction = null; exchangeSelection = []; }
+    if (currentState.phase === 'finished' && state.phase !== 'finished' && window.partyPlay) {
+      window.partyPlay.resetPing();
+    }
     currentState = state;
 
     const now = describeNow(state);
@@ -818,6 +830,35 @@ $(function() {
     renderHistory(state);
     updateTimer();
     applyMotion(state);
+    pingCoupNeed(state);
+  }
+
+  function pingCoupNeed(state) {
+    if (!window.partyPlay || !state || state.phase === 'finished') return;
+    if (state.self && state.self.alive === false) return;
+    if (state.phase === 'lose-influence' && state.pendingLoss?.isMe) {
+      window.partyPlay.pingTurn({ key: 'coup-loss-' + (state.pendingLoss.playerId || 'me'), title: 'เลือกการ์ดที่จะหงาย', subtitle: 'แตะการ์ดในมือ' });
+      return;
+    }
+    if (state.phase === 'exchange' && state.pendingExchange?.options) {
+      window.partyPlay.pingTurn({ key: 'coup-ex-' + (state.turnNumber || 0), title: 'เลือกการ์ดที่จะเก็บ', subtitle: 'แลกไพ่แล้ว' });
+      return;
+    }
+    if (state.availableResponses) {
+      window.partyPlay.pingTurn({
+        key: 'coup-respond-' + (state.pendingAction?.actorId || '') + '-' + (state.pendingAction?.actionId || state.phase),
+        title: 'ถึงตาคุณตอบโต้',
+        subtitle: state.availableResponses.challengingBlock ? 'ท้าการขวาง หรือปล่อยผ่าน' : 'ท้า ขวาง หรือปล่อยผ่าน'
+      });
+      return;
+    }
+    if (state.phase === 'action' && state.isMyTurn) {
+      window.partyPlay.pingTurn({
+        key: 'coup-turn-' + (state.currentPlayerId || '') + '-' + (state.turnNumber || 0),
+        title: 'ถึงตาคุณแล้ว',
+        subtitle: 'เลือก 1 แอ็กชัน'
+      });
+    }
   }
 
   function sendCommand(event, payload) {
@@ -878,6 +919,20 @@ $(function() {
     const options = currentState.pendingExchange?.options || [];
     sendCommand('coup_exchange', { keepCardIds: exchangeSelection.map(i => options[i].id) });
     exchangeSelection = [];
+  });
+
+  $(document).on('click', '#cpShareBtn', function() {
+    if (!window.partyPlay || !currentState) return;
+    const alive = (currentState.players || []).filter(p => p.alive).map(p => p.name);
+    const dead = (currentState.players || []).filter(p => !p.alive).map(p => p.name);
+    window.partyPlay.shareResult({
+      mode: 'Coup',
+      headline: (currentState.winner?.name || '-') + ' ชนะ!',
+      sub: 'รอด: ' + (alive.join(', ') || '-'),
+      lines: dead.length ? ['ตกรอบ: ' + dead.join(', ')] : ['ไม่มีใครตกรอบก่อนจบ'],
+      accent: '#c48dff',
+      fileName: 'coup-result'
+    });
   });
 
   $(document).on('click', '#cpRestartBtn', function() {

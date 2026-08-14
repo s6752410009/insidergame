@@ -143,7 +143,7 @@
             </div>
             <div style="text-align:left;">
                 <h4 id="vote2Title" style="color:#fff; font-size:1.2rem; font-weight:700; margin:0 0 2px;">โหวตจอมบงการ</h4>
-                <p id="vote2Subtitle" style="color:#aaa; font-size:0.85rem; margin:0;">แตะการ์ดเพื่อเลือก</p>
+                <p id="vote2Subtitle" style="color:#aaa; font-size:0.85rem; margin:0;">แตะการ์ดเพื่อเลือก · เหลือ <span id="vote2Timer" style="color:#f39c12; font-weight:700;">15</span> วิ</p>
             </div>
         </div>
         <div id="dualTraitorModeIndicator" style="display:none; background:linear-gradient(135deg,#e74c3c,#a93226); padding:8px 12px; border-radius:12px; margin-bottom:12px; text-align:center;">
@@ -172,6 +172,13 @@
         <h4 style="color: #f1c40f; font-size: 1.3rem; font-weight: 700; margin: 0 0 15px; letter-spacing: 0.02em;">📊 ผลการโหวต</h4>
         <ul id="playerList" style="list-style: none; padding: 0; margin: 0 0 15px; display: flex; flex-direction: column; gap: 8px;"></ul>
         <div id="finalResult" style="margin-top: 10px;"></div>
+        <div id="vote2EndActions" style="margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <% if (room.admin) { %>
+            <button type="button" id="insiderRematchBtn" style="border:0;border-radius:12px;padding:10px 14px;font-weight:700;background:#f1c40f;color:#1a1204;cursor:pointer;">🎲 เล่นอีกรอบ</button>
+            <% } %>
+            <button type="button" id="insiderShareBtn" style="border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:10px 14px;font-weight:700;background:transparent;color:#fff;cursor:pointer;">📸 เซฟผล</button>
+        </div>
+        <p id="vote2ReturnHint" style="margin:16px 0 0; color:#f39c12; font-weight:700;">กลับห้องใน <span id="vote2ReturnCount">5</span> วิ</p>
     </div>
 </div>
 
@@ -2089,6 +2096,7 @@
 <script>
 $(function() {
     var socket = window.appSocket || io();
+    if (window.partyPlay) window.partyPlay.startSession('insider', socket);
 
     // Socket.IO connection monitoring
     // socket.io v4: 'reconnect' ไม่ยิงบนตัว socket แล้ว (ย้ายไป socket.io.on)
@@ -2298,11 +2306,13 @@ $(function() {
                 });
                 
                 socket.emit('leaveRoom', {}, function(response) {
+                    allowNavigation = true;
                     window.location.href = '/rooms?playerId=' + playerId;
                 });
                 
                 // Fallback
                 setTimeout(function() {
+                    allowNavigation = true;
                     window.location.href = '/rooms?playerId=' + playerId;
                 }, 2000);
             }
@@ -2775,6 +2785,42 @@ $(function() {
     let currentNumTraitors = 1;
     let selectedVotes = [];
     let hasSubmittedVote2 = false;
+    let lastVote2Result = null;
+    let vote2TimerInterval = null;
+    let vote2ReturnInterval = null;
+
+    function stopVote2Countdown() {
+        if (vote2TimerInterval) {
+            clearInterval(vote2TimerInterval);
+            vote2TimerInterval = null;
+        }
+    }
+
+    function startVote2Countdown(endsAt) {
+        stopVote2Countdown();
+        const deadline = Number(endsAt) || (Date.now() + 15000);
+        function tick() {
+            const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+            $('#vote2Timer').text(left);
+            $('#vote2Timer').css('color', left <= 5 ? '#e74c3c' : '#f39c12');
+            if (left <= 0) stopVote2Countdown();
+        }
+        tick();
+        vote2TimerInterval = setInterval(tick, 250);
+    }
+
+    function startVote2ReturnCountdown(seconds) {
+        if (vote2ReturnInterval) clearInterval(vote2ReturnInterval);
+        let left = Number(seconds) || 5;
+        $('#vote2ReturnCount').text(left);
+        $('#returnCountdown').text(left);
+        vote2ReturnInterval = setInterval(function() {
+            left -= 1;
+            $('#vote2ReturnCount').text(Math.max(0, left));
+            $('#returnCountdown').text(Math.max(0, left));
+            if (left <= 0) clearInterval(vote2ReturnInterval);
+        }, 1000);
+    }
 
     function setVote2InteractionLocked(isLocked) {
         hasSubmittedVote2 = isLocked;
@@ -3195,6 +3241,29 @@ $(function() {
         setTimeout(function(){ $btn.data('disabled', false); }, 2000);
     });
 
+    $('#insiderRematchBtn').on('click', function() {
+        $('#returnToLobbyModal').hide();
+        if (vote2ReturnInterval) clearInterval(vote2ReturnInterval);
+        socket.emit('resetGame');
+    });
+
+    $('#insiderShareBtn').on('click', function() {
+        if (!window.partyPlay || !lastVote2Result) return;
+        var result = lastVote2Result;
+        var headline = result.hasWon ? 'พลเมืองชนะ!' : 'จอมบงการชนะ!';
+        if (result.hasTraitor === false) headline = result.hasWon ? 'พลเมืองชนะ!' : 'โหวตพลาด!';
+        window.partyPlay.shareResult({
+            mode: 'Insider',
+            headline: headline,
+            sub: result.word ? ('คำลับ: ' + result.word) : '',
+            lines: (result.allRoles || []).map(function(p) {
+                return (p.name || '-') + ' · ' + (p.role || '-');
+            }),
+            accent: '#f1c40f',
+            fileName: 'insider-result'
+        });
+    });
+
     // startGame anchor: short client-side debounce to avoid instant double-clicks
     $("#startGame a").click(function(e){
         var $a = $(this);
@@ -3448,6 +3517,8 @@ $(function() {
 
     socket.on('newRole', function(data) {
         console.log('[newRole] Received:', data);
+        $('#returnToLobbyModal').hide();
+        $('#vote2Result').hide();
         wordSubmitted = false;
         isLoadingWordSuggestions = false;
         wordSuggestionsRequestId++;
@@ -3573,6 +3644,7 @@ $(function() {
         renderVote2Progress(data.progress);
         syncSubmittedVote2FromProgress(data.progress);
         $('#vote2').removeClass('hidden').fadeIn();
+        startVote2Countdown(data.vote2EndsAt);
         soundNotify('popup');
         
         if (numTraitors === 2) {
@@ -3587,8 +3659,10 @@ $(function() {
         syncSubmittedVote2FromProgress(progress);
     });
     
-    socket.on('vote2Ended', function(result) {
+        socket.on('vote2Ended', function(result) {
         console.log('[vote2Ended] Received:', result);
+        lastVote2Result = result;
+        stopVote2Countdown();
         hideAllGameElements();
         
         // แสดงผลการโหวต (rank list)
@@ -3638,6 +3712,7 @@ $(function() {
         $('#vote2Result #finalResult').html(finalResult + rolesReveal);
         $('#vote2Result').removeClass('hidden').fadeIn();
         soundNotify('tada');
+        startVote2ReturnCountdown(5);
         
         // Show game result notification (เคารพเคสไม่มีจอมบงการ — ghost round)
         if (result.hasTraitor === false) {
@@ -3660,15 +3735,7 @@ $(function() {
     socket.on('returnToLobby', function(data) {
         var countdown = data.countdown || 5;
         $('#returnToLobbyModal').css('display', 'flex');
-        $('#returnCountdown').text(countdown);
-        
-        var countdownInterval = setInterval(function() {
-            countdown--;
-            $('#returnCountdown').text(countdown);
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-            }
-        }, 1000);
+        startVote2ReturnCountdown(countdown);
     });
 
     socket.on('redirectToLobby', function(data) {
