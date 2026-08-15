@@ -217,9 +217,9 @@ assert(showView.fx.some(f => f.kind === 'chips'), 'ต้องมีแอน�
 assert(showView.fx.some(f => f.kind === 'reveal'), 'ต้องมีแอนิเมชันหงายไพ่');
 assert(showView.fx.some(f => f.kind === 'say'), 'ต้องมีฟองคำพูดแอ็กชัน');
 assert(showView.players.some(p => p.lastSay), 'แอ็กชันต้องติดฟองที่โปรไฟล์');
-assert(showView.betMs === 16000, 'เล่นสนุกตาลงชิป 16 วิ');
+assert(showView.betMs === 20000, 'เล่นสนุกตาลงชิป 20 วิ');
 raiseRoom.gameState.tableType = 'cash';
-assert(poker5.buildClientState(raiseRoom, ra.playerId).betMs === 10000, 'เล่นเก็บชิปตาลงชิป 10 วิ');
+assert(poker5.buildClientState(raiseRoom, ra.playerId).betMs === 20000, 'เล่นเก็บชิปตาลงชิป 20 วิ');
 raiseRoom.gameState.tableType = 'fun';
 assert((raiseRoom.gameState.players[0].committed || 0) > 0, 'ต้องนับชิปที่ลงบนโต๊ะ');
 

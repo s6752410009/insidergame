@@ -18,10 +18,10 @@ const {
 } = require('./pokerHands');
 
 const SELECT_MS = Number(process.env.POKER_SELECT_MS) || 30000;
-const CASH_BET_MS = Number(process.env.POKER_BET_MS) || 10000;
-const FUN_BET_MS = Number(process.env.POKER_FUN_BET_MS) || 16000;
-const DEAL3_MS = Number(process.env.POKER_DEAL3_MS) || 1800;
-const REVEAL_MS = Number(process.env.POKER_REVEAL_MS) || 4000;
+const CASH_BET_MS = Number(process.env.POKER_BET_MS) || 20000;
+const FUN_BET_MS = Number(process.env.POKER_FUN_BET_MS) || 20000;
+const DEAL3_MS = Number(process.env.POKER_DEAL3_MS) || 2800;
+const REVEAL_MS = Number(process.env.POKER_REVEAL_MS) || 7500;
 const BETWEEN_MS = Number(process.env.POKER_BETWEEN_MS) || 8000;
 const FUN_STACK = 10000;
 const DEFAULT_ANTE = 500;

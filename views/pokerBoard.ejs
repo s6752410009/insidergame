@@ -417,7 +417,9 @@
     100% { opacity:0; transform: translate(var(--sx), var(--sy)) scale(0.2); }
   }
   .pk-playing.is-deal { animation: pkDealIn 0.4s var(--pk-ease) both; }
-  .pk-playing.is-flip { animation: pkFlipIn 0.48s var(--pk-ease) both; }
+  .pk-seat.is-show .pk-playing:not(.is-flip),
+  .pk-fan.is-showdown .pk-playing:not(.is-flip) { transform: rotateY(90deg); }
+  .pk-playing.is-flip { animation: pkFlipIn 0.9s var(--pk-ease) both; }
   .pk-chip-stack.is-drop { animation: pkChipDrop 0.35s var(--pk-ease) both; }
   .pk-fan.is-showdown .pk-fan-slot:nth-child(1) { transform: rotate(-12deg) translateY(10px); }
   .pk-fan.is-showdown .pk-fan-slot:nth-child(2) { transform: rotate(0); z-index:2; }
@@ -543,7 +545,7 @@
   .pk-status-line .pk-hint,
   .pk-status-line .pk-feed { margin:0; min-height:0; }
   .pk-hint:empty, .pk-feed:empty { display:none; }
-  .pk-fan { display:flex; justify-content:center; align-items:flex-end; min-height:0; position:relative; padding-top:8px; }
+  .pk-fan { display:flex; justify-content:center; align-items:flex-end; min-height:0; position:relative; padding-top:8px; perspective:420px; }
   .pk-fan .pk-fan-slot { margin-left:-16px; transform-origin: 50% 100%; position:relative; }
   .pk-fan .pk-fan-slot:first-child { margin-left:0; }
   .pk-fan .pk-fan-slot:nth-child(1) { transform: rotate(-7deg) translateY(8px); z-index:1; }
@@ -1248,7 +1250,8 @@ $(function() {
     const showing = !!(p.revealed && p.revealed.length);
     const peeking = !!(state.debugPeek && peekCards && peekCards.length);
     const peekFan = !!(peeking && !p.isSelf && !showing && seated.length < 7);
-    const popSay = !!(p.lastSay && seenSaySeq[p.playerId] !== (Number(p.lastSaySeq) || 0));
+    const showSay = !!(p.lastSay && !showdown);
+    const popSay = !!(showSay && seenSaySeq[p.playerId] !== (Number(p.lastSaySeq) || 0));
     let label = '';
     if (p.folded) label = 'หมอบ';
     else if (p.isSelf) label = pillText(p, state);
@@ -1257,7 +1260,7 @@ $(function() {
       label = rankFromPeekCards(peekCards) || p.peekRank || peekOnlyRank(p) || p.peekCategory || p.peekTitle || '';
     }
     if (peeking && !p.isSelf && !label) label = rankFromPeekCards(peekCards);
-    const showPeekTag = !!(!p.isSelf && label && (peeking || showing || p.folded));
+    const showPeekTag = !!(!p.isSelf && label && (peeking || showing || (p.folded && !showdown)));
     const peekPop = !!(showPeekTag && seenPeekLabel[p.playerId] !== label);
     if (showPeekTag) seenPeekLabel[p.playerId] = label;
     else delete seenPeekLabel[p.playerId];
@@ -1277,9 +1280,9 @@ $(function() {
       (p.isWinner && showdown ? ' is-winner' : '');
     return {
       p: p, cards: cards, acting: acting, showing: showing, peekFan: peekFan,
-      popSay: popSay, label: label, showPeekTag: showPeekTag, peekPop: peekPop,
+      popSay: popSay, showSay: showSay, label: label, showPeekTag: showPeekTag, peekPop: peekPop,
       showChipRank: showChipRank, band: band, pos: pos, cls: cls, showdown: showdown,
-      z: (p.isTurn || showing || peekFan || p.lastSay) ? '6' : '',
+      z: (p.isTurn || showing || peekFan || showSay) ? '6' : '',
       cardsSig: (p.folded ? 'fold' : '') + '|' + (showing ? 'r:' + (p.revealed || []).map(function(c) { return c.id; }).join(',') : '') + '|' + ((p.upCard && p.upCard.id) || '') + '|' + (peekFan ? 'p' : 'b') + '|' + holeSize(p, state)
     };
   }
@@ -1288,12 +1291,12 @@ $(function() {
     return '<div class="' + view.cls +
       '" data-seat-id="' + escapeHtml(p.playerId) +
       '" style="left:' + view.pos.left + ';top:' + view.pos.top + ';' + (view.z ? 'z-index:' + view.z + ';' : '') + '">' +
-      (p.lastSay ? '<div class="pk-say' + (view.popSay ? ' is-pop' : '') + '">' + escapeHtml(p.lastSay) + '</div>' : '') +
+      (view.showSay ? '<div class="pk-say' + (view.popSay ? ' is-pop' : '') + '">' + escapeHtml(p.lastSay) + '</div>' : '') +
       (view.cards ? '<div class="pk-seat-cards" data-sig="' + escapeHtml(view.cardsSig) + '">' + view.cards + '</div>' : '') +
       (view.showPeekTag ? '<div class="pk-peek-tag' + (view.peekPop ? ' is-pop' : '') + '">' + escapeHtml(view.label) + '</div>' : '') +
       '<div class="pk-avatar-ring">' + timerSvg() + avatarHtml(p, p.isSelf ? 52 : 46) +
         (p.isDealer ? '<span class="pk-dealer-btn">D</span>' : '') +
-        (/หมดหน้าตัก/.test(String(p.lastSay || '')) ? '<div class="pk-allin">ALL IN</div>' : '') +
+        (!view.showdown && /หมดหน้าตัก/.test(String(p.lastSay || '')) ? '<div class="pk-allin">ALL IN</div>' : '') +
         (p.isWinner && view.showdown ? '<div class="pk-win-badge">ชนะ</div>' : '') +
       '</div>' +
       '<div class="pk-plate">' +
@@ -1315,7 +1318,7 @@ $(function() {
     node.style.top = view.pos.top;
     node.style.zIndex = view.z || '';
     let say = node.querySelector('.pk-say');
-    if (p.lastSay) {
+    if (view.showSay) {
       if (!say) {
         say = document.createElement('div');
         node.insertBefore(say, node.firstChild);
@@ -1361,7 +1364,7 @@ $(function() {
     const ring = node.querySelector('.pk-avatar-ring');
     if (ring) {
       setSeatBadge(ring, '.pk-dealer-btn', '<span class="pk-dealer-btn">D</span>', !!p.isDealer);
-      setSeatBadge(ring, '.pk-allin', '<div class="pk-allin">ALL IN</div>', /หมดหน้าตัก/.test(String(p.lastSay || '')));
+      setSeatBadge(ring, '.pk-allin', '<div class="pk-allin">ALL IN</div>', !view.showdown && /หมดหน้าตัก/.test(String(p.lastSay || '')));
       setSeatBadge(ring, '.pk-win-badge', '<div class="pk-win-badge">ชนะ</div>', !!(p.isWinner && view.showdown));
     }
     const stack = node.querySelector('.pk-seat-stack');
@@ -1501,8 +1504,7 @@ $(function() {
   }
   function playFx(state) {
     const events = (state.fx || []).filter(function(item) { return item && item.seq > seenFxSeq; });
-    if (!events.length) return;
-    seenFxSeq = events[events.length - 1].seq;
+    if (events.length) seenFxSeq = events[events.length - 1].seq;
     const from = deckRect();
     const hasSay = events.some(function(item) { return item.kind === 'say'; });
     events.forEach(function(event) {
@@ -1554,8 +1556,8 @@ $(function() {
               const last = document.querySelector('[data-seat-id="' + id + '"] .pk-seat-cards .pk-playing:last-child');
               if (last) last.classList.add('is-deal', 'is-flip');
             }
-          }, i * 90);
-          pkSfx('dealTick', i * 90);
+          }, i * 220);
+          pkSfx('dealTick', i * 220);
         });
       }
       if (event.kind === 'chips') {
@@ -1568,13 +1570,25 @@ $(function() {
         if (event.fromId !== playerId) pkSfx(pkSayKind(event.text));
       }
       if (event.kind === 'reveal') {
-        $('.pk-seat.is-show .pk-playing, #myHand.is-showdown .pk-playing').addClass('is-flip');
-        $('#myHand .pk-playing').each(function(i) { this.style.animationDelay = (i * 90) + 'ms'; });
+        const seats = document.querySelectorAll('.pk-seat.is-show');
+        seats.forEach(function(seat, si) {
+          $(seat).find('.pk-playing').each(function(i) {
+            const node = this;
+            setTimeout(function() { node.classList.add('is-flip'); }, si * 480 + i * 200);
+          });
+        });
+        $('#myHand.is-showdown .pk-playing').each(function(i) {
+          const node = this;
+          setTimeout(function() { node.classList.add('is-flip'); }, i * 200);
+        });
         pkSfx('reveal');
-        pkSfx('win', 280);
+        pkSfx('win', 400 + seats.length * 480);
         playWinChips(state, event);
       }
     });
+    if (isShowdown(state) && !events.some(function(item) { return item.kind === 'reveal'; })) {
+      $('.pk-seat.is-show .pk-playing, #myHand.is-showdown .pk-playing').addClass('is-flip');
+    }
   }
   function nowText(state) {
     if (state.phase === 'select') {
@@ -1585,8 +1599,8 @@ $(function() {
       const mine = state.availableActions && state.availableActions.toAct;
       return mine ? 'ตาคุณลงชิป' : ((state.toActName || 'รอคนอื่น') + ' กำลังลงชิป');
     }
-    if (state.phase === 'deal3') return 'ใบที่ 3 หงายแล้ว — เปิดเทียบเลย';
-    if (state.phase === 'reveal') return 'เปิดไพ่แล้ว';
+    if (state.phase === 'deal3') return 'กำลังหงายใบที่ 3';
+    if (state.phase === 'reveal') return (state.winner && state.winner.name ? state.winner.name + ' ชนะ' : 'เปิดไพ่แล้ว');
     if (state.phase === 'finished') return 'จบโต๊ะแล้ว — กำลังกลับห้องรอ';
     if (state.phase === 'between') return (state.winner && state.winner.name ? state.winner.name + ' ชนะมือนี้' : 'จบมือ') + ' — แจกมือถัดไป';
     return 'รอเริ่มมือ';
@@ -1594,7 +1608,7 @@ $(function() {
   function timerHint(state) {
     if (state.phase === 'select') return 'หมดเวลา = ทิ้งให้อัตโนมัติ';
     if (state.phase === 'bet') {
-      const sec = Math.max(1, Math.round((Number(state.betMs) || 16000) / 1000));
+      const sec = Math.max(1, Math.round((Number(state.betMs) || 20000) / 1000));
       return 'หมดเวลา ' + sec + ' วิ = หมอบ';
     }
     if (state.phase === 'deal3') return 'กำลังหงายใบที่ 3';
@@ -1663,7 +1677,7 @@ $(function() {
     }
     if (id === lastRingId) return;
     lastRingId = id;
-    const total = Number(state.betMs) || 16000;
+    const total = Number(state.betMs) || 20000;
     const remain = Math.max(0, state.phaseEndsAt - Date.now());
     const start = 100 - Math.min(100, (remain / total) * 100);
     arc.style.transition = 'none';
@@ -1695,10 +1709,10 @@ $(function() {
     $('#pkDeck').html(backHtml());
     const dump = Number(state.discardCount) || 0;
     const showdown = isShowdown(state);
-    const showdownBoard = state.board && state.board.length && showdown;
-    $('#pkBoardLabel').text(dump || showdownBoard ? 'ทิ้ง' : '');
-    if (showdownBoard) {
-      $('#pkBoard').html(state.board.slice(0, 3).map(function(card) { return cardHtml(card); }).join(''));
+    $('.pk-muck-row').toggle(!showdown);
+    $('#pkBoardLabel').text(!showdown && dump ? 'ทิ้ง' : '');
+    if (showdown) {
+      $('#pkBoard').empty();
     } else if (dump) {
       $('#pkBoard').html(Array.from({ length: Math.min(dump, 3) }, backHtml).join(''));
     } else {
@@ -1724,15 +1738,10 @@ $(function() {
     } else {
       $('#pkBetChips').empty();
     }
-    const winName = state.winner && state.winner.name;
     const selfWon = showdown && (state.players || []).some(function(p) { return p.isSelf && p.isWinner; });
     const me = (state.players || []).find(function(p) { return p.isSelf; }) || { isSelf: true, folded: !!(state.self && state.self.folded) };
     const selfPill = pillText(me, state);
-    if (showdown && winName) {
-      $('#pkWinBanner').text(selfWon ? 'คุณชนะ' : winName + ' ชนะ').prop('hidden', false);
-    } else {
-      $('#pkWinBanner').prop('hidden', true).text('');
-    }
+    $('#pkWinBanner').prop('hidden', true).text('');
     $('#pkShow').empty();
     const hand = visibleHand(state, showdown);
     const maxPick = actions.selectCount || 2;
@@ -1816,7 +1825,6 @@ $(function() {
         sub: actions.toAct ? 'สู้ ตาม เกทับ หมอบได้' : 'ทิ้ง 2 ใบคืนกลาง'
       });
     }
-    if (state.phase === 'reveal' && state.lastResult) flash((state.lastResult.handTitle || state.lastResult.handName || 'เปิดไพ่') + ' · ' + ((state.winner && state.winner.name) || ''));
     const peekBox = document.getElementById('pkPeekAll');
     if (peekBox && peekBox.checked !== !!state.debugPeek) peekBox.checked = !!state.debugPeek;
     if (!state.canDebug) document.getElementById('pkDebug').hidden = true;
