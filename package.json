@@ -56,6 +56,7 @@
     "smoke:liar:play": "node scripts/smoke-liar-play.js",
     "smoke:poker": "node scripts/smoke-poker-engine.js",
     "smoke:poker:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js",
+    "smoke:poker:layout": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-poker-layout.js",
     "smoke:poker:audit": "node scripts/smoke-poker-engine.js && ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js"
   },
   "devDependencies": {

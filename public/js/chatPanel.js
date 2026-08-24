@@ -111,8 +111,8 @@
 
             const $menu = $(
                 '<div class="chat-context-menu" style="left:' + x + 'px; top:' + y + 'px;">' +
-                    '<button class="chat-context-menu-item" data-action="reply"><span class="menu-icon">↩️</span> ตอบกลับ</button>' +
-                    '<button class="chat-context-menu-item" data-action="copy"><span class="menu-icon">📋</span> คัดลอก</button>' +
+                    '<button type="button" class="chat-context-menu-item" data-action="reply"><span class="menu-icon">↩️</span> ตอบกลับ</button>' +
+                    '<button type="button" class="chat-context-menu-item" data-action="copy"><span class="menu-icon">📋</span> คัดลอก</button>' +
                 '</div>'
             );
             $('body').append($menu);
@@ -175,7 +175,7 @@
             $wrapper.append(
                 '<div class="swipe-reply-indicator">↩️</div>',
                 $row,
-                '<div class="chat-message-actions"><button class="chat-action-btn" title="ตัวเลือก">⋮</button></div>',
+                '<div class="chat-message-actions"><button type="button" class="chat-action-btn" title="ตัวเลือก" aria-label="ตัวเลือกข้อความ">⋮</button></div>',
                 $info
             );
             $msgArea.append($wrapper);
@@ -215,7 +215,7 @@
 
         $('#toggleChat').on('click', function() {
             const open = !isChatOpen();
-            $('#chatBox').toggle(open);
+            $('#chatBox').toggle(open).attr('aria-hidden', open ? 'false' : 'true');
             $(this).attr('aria-expanded', open ? 'true' : 'false');
             if (open) {
                 $('#chatUnreadDot').hide();
@@ -224,8 +224,32 @@
         });
 
         $(document).on('click', '#closeChat', function() {
-            $('#chatBox').hide();
+            $('#chatBox').hide().attr('aria-hidden', 'true');
             $('#toggleChat').attr('aria-expanded', 'false');
+            $('#toggleChat').focus();
+        });
+
+        $(document).on('keydown', function(event) {
+            if (!isChatOpen()) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                $('#closeChat').trigger('click');
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const panel = document.getElementById('chatBox');
+            const focusable = Array.from(panel.querySelectorAll('button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'))
+                .filter(node => node.offsetParent !== null);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         });
 
         $('#sendChat').on('click', sendMessage);

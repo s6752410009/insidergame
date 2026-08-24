@@ -808,15 +808,15 @@
         padding: 10px 12px;
         border-radius: 10px;
         background: rgba(255,255,255,0.04);
-        border-left: 3px solid rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.12);
     }
 
     .profile-history-item.won {
-        border-left-color: #2ecc71;
+        border-color: #2ecc71;
     }
 
     .profile-history-item.lost {
-        border-left-color: #e74c3c;
+        border-color: #e74c3c;
     }
 
     .profile-history-top {
@@ -937,7 +937,7 @@
     <% if (lastSeason) { %>
     <!-- ประกาศรีแรงค์ (ซ่อนไว้ ใช้เป็นเนื้อหาของ patch notes popup) -->
     <div id="seasonResetNotice" hidden>
-        <div style="background: linear-gradient(135deg, rgba(255,215,0,0.18) 0%, rgba(255,140,0,0.12) 100%); padding: 14px; border-radius: 10px; border-left: 4px solid #ffd700; margin-bottom: 15px;">
+        <div style="background: linear-gradient(135deg, rgba(255,215,0,0.18) 0%, rgba(255,140,0,0.12) 100%); padding: 14px; border-radius: 10px; border: 1px solid #ffd700; margin-bottom: 15px;">
             <h4 style="color: #ffd700; margin: 0 0 8px 0;">🔄 <%= lastSeason.name %> จบแล้ว — อันดับรีเซ็ตใหม่หมด</h4>
             <p style="margin: 0 0 10px 0; font-size: 0.9em; color: #ddd;">
                 สถิติ <strong>เกม / ชนะ / แพ้</strong> ของทุกคนถูกล้างเป็น 0 เพื่อเริ่ม <strong style="color: #ffd700;"><%= currentSeason.name %></strong> — ทุกคนออกสตาร์ทพร้อมกันจากศูนย์ ชนะเกมแรกก็ขึ้นอันดับ 1 ได้เลย
@@ -1977,7 +1977,7 @@ $(function() {
                         </ol>
                     </div>
                     
-                    <div style="background: #2a2a3e; padding: 12px 16px; border-radius: 10px; border-left: 4px solid #f39c12;">
+                    <div style="background: #2a2a3e; padding: 12px 16px; border-radius: 10px; border: 1px solid #f39c12;">
                         <p style="color: #f39c12; margin: 0; font-size: 0.9em;">
                             💡 <b>แนะนำ:</b> ใช้ Chrome สำหรับ Android และ Safari สำหรับ iOS เพื่อประสบการณ์ที่ดีที่สุด
                         </p>

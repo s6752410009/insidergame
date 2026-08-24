@@ -5,6 +5,7 @@
  */
 require('./isolateTestData');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
 const { io } = require('socket.io-client');
@@ -32,12 +33,19 @@ function bootServer(port) {
 }
 function ack(s, e, p) { return new Promise(r => { const t = setTimeout(() => r({ __timeout: true }), 15000); s.emit(e, p, x => { clearTimeout(t); r(x); }); }); }
 function conn(base) { return new Promise(r => { const s = io(base, { transports: ['websocket'], forceNew: true }); s.once('connect', () => r(s)); }); }
+function browserLaunchOptions() {
+    const configured = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+    const systemChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    if (configured) return { executablePath: configured };
+    if (fs.existsSync(systemChrome)) return { executablePath: systemChrome };
+    return {};
+}
 
 (async () => {
     const port = await getFreePort();
     const server = await bootServer(port);
     const base = `http://127.0.0.1:${port}`;
-    const browser = await chromium.launch();
+    const browser = await chromium.launch(browserLaunchOptions());
 
     try {
         const players = [];
@@ -67,7 +75,7 @@ function conn(base) { return new Promise(r => { const s = io(base, { transports:
         console.log('1. ตั้งห้องโกหก 3 คน เริ่มเกมแล้ว ✓');
 
         players[0].socket.close();
-        const page = await (await browser.newContext({ viewport: { width: 1100, height: 950 } })).newPage();
+        const page = await (await browser.newContext({ viewport: { width: 375, height: 667 }, reducedMotion: 'reduce' })).newPage();
         const errors = [];
         page.on('pageerror', e => errors.push('pageerror: ' + e.message));
         page.on('console', m => { if (m.type() === 'error' && !/mp3|favicon|autoplay|vibrate/i.test(m.text())) errors.push('console: ' + m.text().slice(0, 120)); });
@@ -82,6 +90,15 @@ function conn(base) { return new Promise(r => { const s = io(base, { transports:
         assert(playBtn, 'ต้องมีปุ่มลงไพ่');
         const disabled = await playBtn.getAttribute('disabled');
         assert(!disabled, 'ปุ่มลงไพ่ต้องกดได้ทันที (เลือกไพ่ใบแรกให้อัตโนมัติ)');
+        const mobileGeometry = await page.evaluate(() => ({
+            width: innerWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+            felt: (() => { const r = document.querySelector('.lr-felt').getBoundingClientRect(); return { left: r.left, right: r.right }; })(),
+            dock: (() => { const r = document.querySelector('.lr-hand-dock').getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom }; })()
+        }));
+        assert(mobileGeometry.scrollWidth <= mobileGeometry.width + 1, 'จอมือถือห้ามเลื่อนแนวนอน: ' + JSON.stringify(mobileGeometry));
+        assert(mobileGeometry.felt.left >= -1 && mobileGeometry.felt.right <= mobileGeometry.width + 1, 'โต๊ะไพ่หลุดจอมือถือ');
+        assert(mobileGeometry.dock.left >= -1 && mobileGeometry.dock.right <= mobileGeometry.width + 1, 'ไพ่ในมือหลุดจอมือถือ');
         console.log('2. เห็นไพ่ 5 ใบ และปุ่มลงไพ่พร้อมกด ✓');
 
         await page.click('#lrPlayBtn');

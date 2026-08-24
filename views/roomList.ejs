@@ -691,6 +691,21 @@
         outline: 2px solid rgba(245,200,107,0.72);
         outline-offset: 1px;
     }
+    .mode-featured-grid, .mode-all-grid {
+        display:grid; grid-template-columns:repeat(auto-fit, minmax(178px, 1fr)); gap:10px;
+    }
+    .mode-all-details, .room-advanced-details {
+        margin-top:10px; border:1px solid rgba(255,255,255,0.12); border-radius:14px;
+        background:rgba(255,255,255,0.035);
+    }
+    .mode-all-details > summary, .room-advanced-details > summary {
+        padding:11px 13px; cursor:pointer; color:#f5c86b; font-weight:700; text-align:left;
+    }
+    .mode-all-grid, .room-advanced-body { padding:0 10px 10px; }
+    .mode-quick-card:focus-visible, .mode-all-details > summary:focus-visible,
+    .room-advanced-details > summary:focus-visible {
+        outline:3px solid #fff; outline-offset:3px;
+    }
     .mode-spotlight {
         position: relative;
         isolation: isolate;
@@ -1173,7 +1188,7 @@ $(function() {
             const badgeColor = mode.id === 'werewolf' ? '#fff' : '#fde68a';
 
             return `
-                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" style="border-color:${spotlight.border}; background-image:url('${escapeHtml(spotlight.cover || '')}');">
+                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" aria-pressed="false" style="border-color:${spotlight.border}; background-image:url('${escapeHtml(spotlight.cover || '')}');">
                     <strong style="font-size:1.02rem; letter-spacing:0.02em; white-space:nowrap;">${escapeHtml(spotlight.title)}</strong>
                     <span style="justify-self:start; max-width:100%; padding:4px 9px; border-radius:999px; background:rgba(8,8,12,0.55); font-size:0.74em; font-weight:700; line-height:1.5; color:${badgeColor};">${badgeLabel}</span>
                     <div style="color:#d7dde8; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
@@ -1390,7 +1405,7 @@ $(function() {
                 Swal.fire({
                     icon: 'error',
                     title: '❌ เข้าห้องไม่สำเร็จ',
-                    text: response.error || 'เกิดข้อผิดพลาด',
+                    text: response.error || 'ลองอีกครั้ง หรือตรวจการเชื่อมต่ออินเทอร์เน็ต',
                     background: '#1e1e1e',
                     color: '#fff',
                     confirmButtonColor: '#e74c3c'
@@ -1411,17 +1426,25 @@ $(function() {
             html: `
                 <div style="font-family: 'Rajdhani', sans-serif;">
                     <div class="room-form-group">
-                        <label class="room-form-label">
+                        <div class="room-form-label" id="modeQuickPickLabel">
                             <span class="icon">🌙</span> เลือกแนวห้องเร็ว ๆ:
-                        </label>
-                        <div id="modeQuickPickGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(178px, 1fr)); gap:10px; margin-bottom:12px;">
-                            ${buildModeQuickPickHtml(gameModes)}
+                        </div>
+                        <div id="modeQuickPickGrid" role="group" aria-labelledby="modeQuickPickLabel" style="margin-bottom:12px;">
+                            <div class="mode-featured-grid">
+                                ${buildModeQuickPickHtml(gameModes.filter(function(mode) { return ['insider', 'liar', 'poker5', 'poker4'].includes(mode.id); }))}
+                            </div>
+                            <details class="mode-all-details">
+                                <summary>ดูเกมทั้งหมด</summary>
+                                <div class="mode-all-grid">
+                                    ${buildModeQuickPickHtml(gameModes.filter(function(mode) { return !['insider', 'liar', 'poker5', 'poker4'].includes(mode.id); }))}
+                                </div>
+                            </details>
                         </div>
                         <div id="modeSpotlight"></div>
                     </div>
 
                     <div class="room-form-group">
-                        <label class="room-form-label">
+                        <label class="room-form-label" for="roomName">
                             <span class="icon">📝</span> ชื่อห้อง:
                         </label>
                         <input id="roomName" class="room-form-input" placeholder="ไม่กรอกได้ ระบบจะตั้งชื่อให้" maxlength="20">
@@ -1429,7 +1452,7 @@ $(function() {
                         <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
-                    <div class="room-form-group" id="pokerTableGroup" style="display:none;">
+                    <div class="room-form-group" id="pokerTableGroup" role="group" aria-labelledby="pokerTableLabel" style="display:none;">
                         <label class="room-form-label" id="pokerTableLabel">
                             <span class="icon">♠</span> แบบเล่น:
                         </label>
@@ -1444,7 +1467,7 @@ $(function() {
                             </label>
                         </div>
                         <div style="margin-top:10px;">
-                            <label class="room-form-label"><span class="icon">🪙</span> วางกองก่อนแจก:</label>
+                            <label class="room-form-label" for="pokerAnte"><span class="icon">🪙</span> วางกองก่อนแจก:</label>
                             <div class="room-slider-container">
                                 <span class="room-slider-value" id="pokerAnteValue">500</span>
                                 <input type="range" id="pokerAnte" class="room-slider" min="100" max="2000" step="100" value="500">
@@ -1453,10 +1476,10 @@ $(function() {
                         <div id="pokerTableHint" style="margin-top:8px; color:#aaa; font-size:0.85em;">ทุกคนวางชิปลงกองกลางก่อนแจกไพ่ · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 · เล่นเก็บชิปใช้ชิปในบัญชี</div>
                     </div>
 
-                    <div class="room-form-group" id="werewolfWolfCountGroup" style="display:none;">
-                        <label class="room-form-label">
+                    <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
+                        <div class="room-form-label" id="wolfCountLabel">
                             <span class="icon">🐺</span> จำนวนหมาป่า:
-                        </label>
+                        </div>
                         <div id="createWolfCountSelector" style="display:flex; gap:8px; margin-top:4px;">
                             ${[1,2,3].map(function(n, index) {
                                 const active = n === 2;
@@ -1466,8 +1489,11 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.9em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด และระบบจะปรับจำนวนหมาป่าสูงสุดตามจำนวนผู้เล่นให้เองถ้าตั้งเกิน</div>
                     </div>
 
+                    <details class="room-advanced-details">
+                    <summary>ปรับห้องเพิ่มเติม</summary>
+                    <div class="room-advanced-body">
                     <div class="room-form-group">
-                        <label class="room-form-label">
+                        <label class="room-form-label" for="maxPlayers">
                             <span class="icon">👥</span> จำนวนผู้เล่นสูงสุด:
                         </label>
                         <div class="room-slider-container">
@@ -1477,7 +1503,7 @@ $(function() {
                     </div>
                     
                     <div class="room-form-group" id="createRoundTimeGroup">
-                        <label class="room-form-label">
+                        <label class="room-form-label" for="roundTime">
                             <span class="icon" id="roundTimeLabelIcon">⏱️</span> <span id="roundTimeLabelText">เวลาเล่นต่อรอบ:</span>
                         </label>
                         <div class="room-slider-container">
@@ -1491,16 +1517,16 @@ $(function() {
                             <span class="icon">🔐</span> ความปลอดภัย:
                         </label>
                         <div class="room-checkbox-container" id="lockedContainer">
-                            <input type="checkbox" id="locked" class="room-checkbox">
+                            <input type="checkbox" id="locked" class="room-checkbox" aria-label="ล็อคห้องและใช้รหัสผ่าน">
                             <div class="room-checkbox-custom">✓</div>
                             <span class="room-checkbox-text">🔒 ล็อคห้อง (ต้องใช้รหัสผ่าน)</span>
                         </div>
                     </div>
 
-                    <div class="room-form-group">
-                        <label class="room-form-label">
+                    <div class="room-form-group" role="group" aria-labelledby="tableModeLabel">
+                        <div class="room-form-label" id="tableModeLabel">
                             <span class="icon">🎮</span> รูปแบบการเล่น:
-                        </label>
+                        </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
                             <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:2px solid rgba(245,200,107,0.45); background:rgba(245,200,107,0.08); cursor:pointer; color:#fff;">
                                 <input type="radio" name="tableMode" value="inPerson" checked style="accent-color:#f5c86b;">
@@ -1515,11 +1541,13 @@ $(function() {
                     </div>
                     
                     <div class="room-form-group" id="passwordGroup" style="display: none;">
-                        <label class="room-form-label">
+                        <label class="room-form-label" for="password">
                             <span class="icon">🔑</span> รหัสผ่าน:
                         </label>
                         <input id="password" class="room-form-input" placeholder="รหัสผ่าน 4 หลัก" maxlength="4" pattern="[0-9]*" inputmode="numeric">
                     </div>
+                    </div>
+                    </details>
                 </div>
             `,
             background: 'transparent',
@@ -1582,7 +1610,9 @@ $(function() {
                 function syncModeQuickPick() {
                     modeSpotlight.innerHTML = buildModeSpotlightHtml(selectedGameMode, gameModes);
                     modeQuickPickGrid.querySelectorAll('.mode-quick-card').forEach(function(card) {
-                        card.classList.toggle('is-on', card.dataset.modeId === selectedGameMode);
+                        const selected = card.dataset.modeId === selectedGameMode;
+                        card.classList.toggle('is-on', selected);
+                        card.setAttribute('aria-pressed', selected ? 'true' : 'false');
                     });
                     selectedGameModeInput.value = selectedGameMode;
                     modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
@@ -1733,8 +1763,8 @@ $(function() {
                 const lockedCheckbox = document.getElementById('locked');
                 const passwordGroup = document.getElementById('passwordGroup');
                 
-                lockedContainer.addEventListener('click', function() {
-                    lockedCheckbox.checked = !lockedCheckbox.checked;
+                lockedContainer.addEventListener('click', function(event) {
+                    if (event.target !== lockedCheckbox) lockedCheckbox.checked = !lockedCheckbox.checked;
                     this.classList.toggle('checked', lockedCheckbox.checked);
                     passwordGroup.style.display = lockedCheckbox.checked ? 'block' : 'none';
                     if (!lockedCheckbox.checked) {
@@ -1799,7 +1829,7 @@ $(function() {
                         Swal.fire({
                             icon: 'error',
                             title: '❌ สร้างห้องไม่สำเร็จ',
-                            text: (response && response.error) || 'เกิดข้อผิดพลาด',
+                            text: (response && response.error) || 'ลองอีกครั้ง หรือตรวจการเชื่อมต่ออินเทอร์เน็ต',
                             background: '#1e1e1e',
                             color: '#fff',
                             confirmButtonColor: '#e74c3c'
@@ -1813,7 +1843,7 @@ $(function() {
                                 Swal.fire({
                                     icon: 'error',
                                     title: '❌ สร้างห้องไม่สำเร็จ',
-                                    text: (response && response.error) || 'เกิดข้อผิดพลาด',
+                                    text: (response && response.error) || 'ลองอีกครั้ง หรือตรวจการเชื่อมต่ออินเทอร์เน็ต',
                                     background: '#1e1e1e',
                                     color: '#fff',
                                     confirmButtonColor: '#e74c3c'

@@ -36,7 +36,7 @@
     color: var(--lr-text);
   }
 
-  .lr-page { max-width: 980px; margin: 0 auto; padding: 8px 10px 132px; }
+  .lr-page { max-width: 980px; margin: 0 auto; padding: 8px 10px calc(132px + env(safe-area-inset-bottom, 0px)); }
   .lr-topbar {
     display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
     padding: 10px 4px 8px;
@@ -49,7 +49,7 @@
     border: 1px solid var(--lr-line); background: rgba(8, 22, 14, 0.72);
     font-size: 0.84rem; font-weight: 600; color: var(--lr-text); font-family: inherit;
   }
-  .lr-chip-btn { cursor: pointer; }
+  .lr-chip-btn { min-height:44px; cursor: pointer; }
   .lr-chip-danger { border-color: rgba(255,107,107,0.4); color: #ffc9c9; }
 
   .lr-now {
@@ -125,7 +125,7 @@
   .lr-banner.is-on { animation: lrBanner 1.4s var(--lr-ease); }
 
   .lr-playing {
-    width: 86px; height: 122px; border-radius: 10px; position: relative;
+    width: 86px; height: 122px; padding:0; border:0; background:transparent; border-radius: 10px; position: relative;
     flex: 0 0 auto; transform-origin: bottom center;
     box-shadow: 0 10px 18px rgba(0,0,0,0.4);
   }
@@ -145,7 +145,7 @@
   .lr-hand-dock {
     position: sticky; bottom: 0; z-index: 20;
     margin: 8px -10px -8px;
-    padding: 8px 8px 12px;
+    padding: 8px 8px calc(12px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(180deg, transparent, rgba(8, 18, 12, 0.92) 28%);
   }
   .lr-fan {
@@ -172,6 +172,10 @@
   .lr-btn-pass { background: rgba(255,255,255,0.1); color: var(--lr-text); }
   .lr-btn-outline { background: transparent; border: 1px solid var(--lr-line); color: var(--lr-text); }
   .lr-btn-primary { background: #f5c86b; color: #2a1a05; }
+  .lr-chip-btn:focus-visible, .lr-btn:focus-visible, .lr-playing.is-pick:focus-visible,
+  .chat-toggle:focus-visible, .chat-close:focus-visible, .btn-chat-send:focus-visible {
+    outline: 3px solid #fff; outline-offset: 3px;
+  }
   .lr-hint { text-align: center; color: var(--lr-muted); font-size: 0.84rem; margin-top: 6px; }
   .lr-result { text-align: center; padding: 18px 8px; }
   .lr-result h3 { font-family: 'Orbitron', sans-serif; font-size: 1.35rem; color: var(--lr-gold); margin: 0 0 8px; }
@@ -227,7 +231,21 @@
     .lr-playing { width: 72px; height: 102px; }
     .lr-fan .lr-playing { margin-left: -26px; }
     .lr-seat { width: 76px; }
-    .lr-page { padding-bottom: 148px; }
+    .lr-page { padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)); }
+  }
+  @media (max-width: 480px) {
+    .lr-table { min-height:390px; padding-inline:8px; }
+    .lr-felt {
+      grid-template-columns:1fr 1fr;
+      grid-template-areas:"deck target" "pile pile";
+      gap:8px; min-height:250px;
+    }
+    .lr-deck-wrap { grid-area:deck; }
+    .lr-target-wrap { grid-area:target; }
+    .lr-center { grid-area:pile; min-height:125px; width:100%; }
+    .lr-pile { width:100%; min-height:104px; gap:0; overflow:visible; }
+    .lr-pile .lr-playing { margin-left:-30px; }
+    .lr-pile .lr-playing:first-child { margin-left:0; }
   }
   @media (prefers-reduced-motion: reduce) {
     .lr-playing.is-deal, .lr-rank-chip.is-pulse, .lr-banner.is-on, .lr-fly, .lr-flip-inner {
@@ -251,7 +269,7 @@
       <span class="lr-chip">🆔 <%= room.roomId %></span>
       <span class="lr-chip">กอง <span id="deckCount">-</span></span>
       <button type="button" id="lrHowToOpen" class="lr-chip lr-chip-btn">📖 วิธีเล่น</button>
-      <button type="button" id="lrSidebarBtn" class="lr-chip lr-chip-btn">👥 ผู้เล่น</button>
+      <button type="button" id="lrSidebarBtn" class="lr-chip lr-chip-btn" aria-expanded="false" aria-controls="playerSidebar">👥 ผู้เล่น</button>
       <% if (room.admin) { %>
       <button type="button" id="lrEndGameBtn" class="lr-chip lr-chip-btn lr-chip-danger">⏹ จบเกม</button>
       <% } %>
@@ -260,8 +278,8 @@
 
   <div id="lrNowBar" class="lr-now">
     <span class="lr-now-label">ตอนนี้</span>
-    <span id="lrNowCopy" class="lr-now-copy">กำลังโหลด...</span>
-    <div class="lr-timer-wrap">
+    <span id="lrNowCopy" class="lr-now-copy" role="status" aria-live="polite" aria-atomic="true">กำลังโหลด...</span>
+    <div class="lr-timer-wrap" aria-hidden="true">
       <span id="lrTimer" class="lr-timer">--</span>
       <span id="lrTimerHint" class="lr-timer-hint"></span>
     </div>
@@ -294,17 +312,17 @@
   </div>
 </div>
 
-<div id="playerSidebar" class="lr-sidebar">
-  <h4 style="margin-top:0;">ผู้เล่นในห้อง</h4>
+<aside id="playerSidebar" class="lr-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="lrPlayerTitle">
+  <h4 id="lrPlayerTitle" style="margin-top:0;">ผู้เล่นในห้อง</h4>
   <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
   <button id="leaveRoomBtn" type="button" class="lr-btn lr-btn-outline" style="width:100%; margin-bottom:8px;">🚪 ออกจากห้อง</button>
   <button id="closeSidebarBtn" type="button" class="lr-btn lr-btn-pass" style="width:100%;">ปิด</button>
-</div>
+</aside>
 <div id="sidebarOverlay" class="lr-sidebar-overlay"></div>
 
-<div id="chatBox" class="chat-box" aria-hidden="true" style="display:none;">
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="lrChatTitle" aria-hidden="true" style="display:none;">
   <div class="chat-header">
-    <div class="chat-title">💬 แชท</div>
+    <div class="chat-title" id="lrChatTitle">💬 แชท</div>
     <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
   </div>
   <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
@@ -326,8 +344,6 @@
 </button>
 
 <%- contentFor('script') %>
-<script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="/js/gameIcon.js"></script>
 <script src="/js/chatPanel.js"></script>
 <script>
@@ -376,11 +392,16 @@ $(function() {
     const extra = opts.extraClass ? ' ' + opts.extraClass : '';
     const fan = opts.fan != null ? ' style="--fan:' + opts.fan + 'deg"' : '';
     const key = opts.handKey ? ' data-hand-key="' + escapeHtml(opts.handKey) + '" data-card-id="' + escapeHtml(card.id) + '"' : '';
-    return '<div class="lr-playing lr-flip' + (faceUp ? ' is-face' : '') + extra + '"' + fan + key + '>' +
+    const selectable = !!opts.handKey;
+    const tag = selectable ? 'button' : 'div';
+    const attrs = selectable
+      ? ' type="button" aria-label="เลือก ' + escapeHtml((card && card.thaiName) || 'ไพ่') + '" aria-pressed="' + (opts.selected ? 'true' : 'false') + '"'
+      : '';
+    return '<' + tag + attrs + ' class="lr-playing lr-flip' + (faceUp ? ' is-face' : '') + extra + '"' + fan + key + '>' +
       '<div class="lr-flip-inner">' +
         '<div class="lr-backface"><img src="' + escapeHtml(back) + '" alt=""></div>' +
-        '<div class="lr-face">' + (face ? '<img src="' + escapeHtml(face) + '" alt="' + escapeHtml((card && card.thaiName) || '') + '">' : '') + '</div>' +
-      '</div></div>';
+        '<div class="lr-face">' + (face ? '<img src="' + escapeHtml(face) + '" alt="' + (selectable ? '' : escapeHtml((card && card.thaiName) || '')) + '">' : '') + '</div>' +
+      '</div></' + tag + '>';
   }
 
   function hearts(lives) {
@@ -480,6 +501,7 @@ $(function() {
         faceUp: true,
         extraClass: 'is-pick' + (selected ? ' is-selected' : ''),
         handKey: key,
+        selected: selected,
         fan: fan
       });
     }).join(''));
@@ -745,11 +767,32 @@ $(function() {
     });
   });
 
-  function toggleSidebar() {
-    $('#playerSidebar').toggleClass('open');
-    $('#sidebarOverlay').toggle();
+  function setSidebarOpen(open) {
+    if (open && $('#chatBox').is(':visible')) $('#closeChat').trigger('click');
+    $('#playerSidebar').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#sidebarOverlay').toggle(open);
+    $('#lrSidebarBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('closeSidebarBtn').focus();
+    else if (document.activeElement && document.getElementById('playerSidebar').contains(document.activeElement)) document.getElementById('lrSidebarBtn').focus();
   }
-  $('#lrSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
+  $('#lrSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
+  $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
+  $(document).on('keydown', function(event) {
+    if (!$('#playerSidebar').hasClass('open')) return;
+    if (event.key === 'Escape') {
+      setSidebarOpen(false);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const sidebar = document.getElementById('playerSidebar');
+    const focusable = Array.from(sidebar.querySelectorAll('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'))
+      .filter(function(node) { return node.offsetParent !== null; });
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
 
   $('#leaveRoomBtn').on('click', function() {
     Swal.fire({
