@@ -251,10 +251,24 @@ function beginTurn(room, playerId) {
     return state;
 }
 
+/**
+ * กติกามาตรฐาน: ทุกรอบเก็บไพ่ทั้งหมดกลับกอง สับ แล้วแจกใหม่ให้ทุกคนที่ยังรอด
+ * (เดิมเติมไพ่เฉพาะตอนทุกคนมือว่างพร้อมกัน — คนที่ไพ่หมดก่อนติดอยู่กับการท้าอย่างเดียวหลายรอบ)
+ * buildDeck มีไพ่ ≥ HAND_SIZE × จำนวนที่นั่ง จึงพอแจกครบทุกคนเสมอ
+ */
+function redealForRound(room) {
+    const state = room.gameState;
+    state.deck = collectLooseCards(room);
+    dealHands(room);
+}
+
 function startRound(room, starterId) {
     const state = room.gameState;
-    state.roundNumber += 1;
+    if (state.lastPlay?.cards?.length) discardCards(room, state.lastPlay.cards);
     state.lastPlay = null;
+    redealForRound(room);
+    state.roundNumber += 1;
+    if (state.roundNumber > 1) pushFx(room, { kind: 'draw' });
     state.targetRank = pickTargetRank(state.targetRank);
     const rank = describeCard(state.targetRank);
     pushHistory(room, rank.icon, `รอบที่ ${state.roundNumber} — ต้องบอกว่าเป็น${rank.thaiName}`, 'round');
@@ -304,7 +318,7 @@ function startGame(room) {
     state.status = 'playing';
     state.deck = buildDeck(state.players.length);
     room.gameState = state;
-    dealHands(room);
+    // startRound แจกไพ่ให้เอง
 
     pushHistory(room, '🎬', `เริ่มเกม — คนละ ${HAND_SIZE} ใบ ชีวิต ${STARTING_LIVES}`);
     pushFx(room, { kind: 'deal' });

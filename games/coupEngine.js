@@ -134,6 +134,7 @@ function createInitialState() {
         history: [],
         winner: null,
         phaseEndsAt: null,
+        step: 0,               // เพิ่มทุกครั้งที่เปลี่ยนเฟส — client ส่งกลับมาเพื่อกันคำตอบค้างข้ามเฟส
         statsRecordedAt: null
     };
 }
@@ -186,6 +187,7 @@ function pushHistory(room, icon, text, kind = null) {
 }
 
 function setPhase(room, phase, durationMs) {
+    room.gameState.step = (Number(room.gameState.step) || 0) + 1;
     room.gameState.phase = phase;
     room.gameState.phaseEndsAt = durationMs ? Date.now() + durationMs : null;
 }
@@ -306,6 +308,7 @@ function finishLoss(room, resumeAfter) {
     if (checkWinner(room)) return room.gameState;
 
     if (resumeAfter === 'resolve-action') return resolvePendingAction(room);
+    if (resumeAfter === 'block-window') return openBlockWindow(room);
     if (resumeAfter === 'cancel-action') {
         refundPendingAction(room);
         advanceTurn(room);
@@ -313,6 +316,40 @@ function finishLoss(room, resumeAfter) {
     }
     advanceTurn(room);
     return room.gameState;
+}
+
+/** ใครขวางแอ็กชันที่ค้างอยู่ได้บ้าง (แอ็กชันมีเป้าหมาย = เฉพาะเป้าหมาย) */
+function getEligibleBlockers(room) {
+    const pending = room.gameState.pendingAction;
+    if (!pending) return [];
+    const action = ACTIONS[pending.actionId];
+    if (!action || !action.blockedBy.length) return [];
+    return getAlivePlayers(room)
+        .filter(p => p.playerId !== pending.actorId)
+        .filter(p => !pending.targetId || p.playerId === pending.targetId)
+        .map(p => p.playerId);
+}
+
+/**
+ * คนสั่งชนะ challenge (มีการ์ดจริง) — แอ็กชันยังขวางได้อยู่ตามกติกา
+ * เปิดช่วงตอบโต้รอบใหม่ที่ "ขวางได้อย่างเดียว" ให้คนที่มีสิทธิ์ขวาง
+ * (เดิม resolve ทันที ทำให้เป้าหมายขโมย/ลอบสังหารหมดสิทธิ์ขวาง)
+ */
+function openBlockWindow(room) {
+    const state = room.gameState;
+    const pending = state.pendingAction;
+    const actor = pending ? getPlayer(room, pending.actorId) : null;
+    if (!pending || !actor || !actor.alive) {
+        advanceTurn(room);
+        return state;
+    }
+    if (!getEligibleBlockers(room).length) return resolvePendingAction(room);
+
+    pending.blockOnly = true;
+    state.pendingBlock = null;
+    state.responses = {};
+    setPhase(room, 'respond', RESPOND_MS);
+    return state;
 }
 
 function refundPendingAction(room) {
@@ -450,7 +487,9 @@ function getPendingResponders(room) {
     const pending = state.pendingAction;
     if (!pending) return [];
 
-    const action = ACTIONS[pending.actionId];
+    if (pending.blockOnly) {
+        return getEligibleBlockers(room).filter(id => !state.responses[id]);
+    }
     return getAlivePlayers(room)
         .filter(p => p.playerId !== pending.actorId)
         // foreign_aid ใครขวางก็ได้ ส่วนแอ็กชันมีเป้าหมาย เฉพาะเป้าหมายที่ block ได้
@@ -463,9 +502,28 @@ function everyoneResponded(room) {
     return getPendingResponders(room).length === 0;
 }
 
-function submitResponse(room, playerId, response, claimCard = null) {
+/**
+ * คำตอบที่ส่งมาตอนเฟสก่อนหน้า (เช่นกด "ท้า" แอ็กชัน แต่มาถึงหลังมีคนขวางแล้ว)
+ * ต้องไม่ถูกเอาไปใช้กับเฟสใหม่ — client แนบ step/phase/turnNumber ที่เห็นตอนกดมาด้วย
+ */
+function assertResponseContext(state, context) {
+    if (!context) return;
+    const stale = new Error('สถานการณ์เปลี่ยนไปแล้ว — คำตอบนี้ไม่ถูกนับ ลองดูหน้าจออีกครั้ง');
+    if (context.step !== undefined && context.step !== null && Number(context.step) !== Number(state.step)) throw stale;
+    if (context.phase && context.phase !== state.phase) throw stale;
+    if (context.turnNumber !== undefined && context.turnNumber !== null
+        && Number(context.turnNumber) !== Number(state.turnNumber)) throw stale;
+}
+
+function submitResponse(room, playerId, response, claimCard = null, context = null) {
     const state = room.gameState;
     const pending = state.pendingAction;
+
+    assertResponseContext(state, context);
+    // ตอบไปแล้วในเฟสนี้ (เช่นปล่อยผ่าน) — จะกลับมาขวาง/ท้าทีหลังไม่ได้
+    if ((state.phase === 'respond' || state.phase === 'block-respond') && state.responses?.[playerId]) {
+        throw new Error('คุณตอบไปแล้วในรอบนี้');
+    }
 
     if (state.phase === 'block-respond') return submitBlockResponse(room, playerId, response);
     if (state.phase !== 'respond') throw new Error('ตอนนี้ยังไม่ถึงช่วงตอบโต้');
@@ -483,7 +541,12 @@ function submitResponse(room, playerId, response, claimCard = null) {
         return state;
     }
 
+    if (pending.blockOnly && !getEligibleBlockers(room).includes(playerId)) {
+        throw new Error('ตอนนี้เป็นช่วงให้เป้าหมายตัดสินใจขวางเท่านั้น');
+    }
+
     if (response === 'challenge') {
+        if (pending.blockOnly) throw new Error('แอ็กชันนี้ถูกท้าไปแล้ว — เหลือแค่ขวางหรือปล่อยผ่าน');
         if (!action.claim) throw new Error('แอ็กชันนี้ challenge ไม่ได้');
         return resolveChallenge(room, playerId, pending.actorId, action.claim, 'action');
     }
@@ -576,8 +639,10 @@ function resolveChallenge(room, challengerId, defenderId, claimCard, scope) {
             `${challenger.name} ท้า ${defender.name} แล้วแพ้ — ${defender.name} มี ${cardName} จริง`, 'challenge');
 
         // คนท้าเสียการ์ด แล้วเดินเรื่องต่อตามผลของ challenge
+        // คนสั่งพูดจริง → แอ็กชันเดินต่อ แต่ถ้าแอ็กชันขวางได้ ต้องเปิดโอกาสให้ขวางก่อน
+        const actionBlockable = ACTIONS[state.pendingAction?.actionId]?.blockedBy?.length > 0;
         const resumeAfter = scope === 'action'
-            ? 'resolve-action'   // คนสั่งพูดจริง → แอ็กชันเดินต่อ
+            ? (actionBlockable ? 'block-window' : 'resolve-action')
             : 'end-turn';        // คนขวางพูดจริง → แอ็กชันถูกขวางสำเร็จ จบตา
         return requireInfluenceLoss(room, challengerId, 'challenge-lost', resumeAfter);
     }
@@ -657,13 +722,17 @@ function autoResolvePhase(room) {
         case 'action': {
             const actor = getPlayer(room, state.currentPlayerId);
             if (!actor || !actor.alive) { advanceTurn(room); return state; }
-            pushHistory(room, '⏰', `${actor.name} หมดเวลา — รับรายได้อัตโนมัติ`);
+            const forcedCoup = actor.coins >= FORCED_COUP_AT;
+            const coupTarget = forcedCoup
+                ? getAlivePlayers(room).find(p => p.playerId !== actor.playerId)
+                : null;
+            pushHistory(room, '⏰', forcedCoup
+                ? `${actor.name} หมดเวลา — มี ${actor.coins} เหรียญ จึงทำรัฐประหารใส่ ${coupTarget?.name || '-'} อัตโนมัติ`
+                : `${actor.name} หมดเวลา — รับรายได้อัตโนมัติ`);
             try {
                 return submitAction(room, state.currentPlayerId,
-                    actor.coins >= FORCED_COUP_AT ? 'coup' : 'income',
-                    actor.coins >= FORCED_COUP_AT
-                        ? getAlivePlayers(room).find(p => p.playerId !== actor.playerId)?.playerId
-                        : null);
+                    forcedCoup ? 'coup' : 'income',
+                    coupTarget ? coupTarget.playerId : null);
             } catch (error) {
                 advanceTurn(room);
                 return state;
@@ -710,6 +779,9 @@ function handlePlayerLeft(room, playerId) {
 
     // ถ้าคนออกกำลังค้างคิวอยู่ ต้องปลดล็อกเกมให้เดินต่อ
     if (state.pendingLoss?.playerId === playerId) return finishLoss(room, state.pendingLoss.resumeAfter);
+    // คนอื่นยังติดหนี้ต้องหงายการ์ดอยู่ (เช่นโดนรัฐประหาร/ลอบสังหารที่จ่ายเงินไปแล้ว)
+    // ห้าม advanceTurn ล้าง pendingLoss ทิ้ง — ปล่อยให้ finishLoss เดินเรื่องต่อเอง
+    if (state.phase === 'lose-influence' && state.pendingLoss) return state;
     if (state.pendingExchange?.playerId === playerId) {
         // การ์ดของเขาอยู่ใน options ทั้งหมด — หงายเท่าที่เคยถือ ที่เหลือคืนกอง
         const { options, keepCount } = state.pendingExchange;
@@ -762,9 +834,11 @@ function getAvailableResponses(room, playerId) {
         const action = ACTIONS[pending.actionId];
         const canBlock = action.blockedBy.length > 0
             && (!pending.targetId || pending.targetId === playerId);
+        if (pending.blockOnly && !canBlock) return null;
         return {
             canPass: true,
-            canChallenge: !!action.claim,
+            canChallenge: !!action.claim && !pending.blockOnly,
+            blockOnly: !!pending.blockOnly,
             blockOptions: canBlock
                 ? action.blockedBy.map(id => ({ id, thaiName: CARD_DEFINITIONS[id].thaiName, icon: CARD_DEFINITIONS[id].icon }))
                 : []
@@ -792,6 +866,7 @@ function buildClientState(room, viewerPlayerId) {
         phase: state.phase,
         status: state.status,
         turnNumber: state.turnNumber,
+        step: Number(state.step) || 0,
         currentPlayerId: state.currentPlayerId,
         isMyTurn: state.currentPlayerId === viewerPlayerId,
         phaseEndsAt: state.phaseEndsAt,
