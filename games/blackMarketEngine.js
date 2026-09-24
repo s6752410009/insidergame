@@ -227,7 +227,8 @@ const MARKET_POOL = Object.keys(ITEM_DEFINITIONS);
 
 function buildFeedIconLookup() {
     const lookup = {};
-    [ROLE_DEFINITIONS, ITEM_DEFINITIONS, ACTION_DEFINITIONS].forEach(catalog => {
+    // ไม่รวมไอคอนบท: ฟีดเป็นข้อมูลสาธารณะ ถ้าไอคอนไปแมปเป็นรูปบทจะเผยบทลับ
+    [ITEM_DEFINITIONS, ACTION_DEFINITIONS].forEach(catalog => {
         Object.values(catalog).forEach(entry => {
             if (!entry?.icon) {
                 return;
@@ -352,14 +353,21 @@ function createPlayerState(player, context = {}) {
         inventory: [],
         intelNotes: [],
         fixerEscapeAvailable: true,
-        lastMove: null
+        lastMove: null,
+        privateReport: []
     };
 }
 
+const MAX_TABLE_PLAYERS = 7;
+
+// แจกเฉพาะคนที่ต่อสายอยู่ (บอทมี socketId ปลอม นับว่าออนไลน์) และไม่เกินจำนวนบท
 function resetRoomGame(room) {
+    const seated = (room.players || [])
+        .filter(player => !!player.socketId)
+        .slice(0, MAX_TABLE_PLAYERS);
     return {
         ...createInitialState(),
-        players: room.players.map(player => createPlayerState({
+        players: seated.map(player => createPlayerState({
             playerId: player.playerId,
             playerName: player.playerName,
             color: player.color,
@@ -382,6 +390,23 @@ function pushHistory(room, icon, text, tone = 'neutral') {
         at: new Date().toISOString()
     });
     room.gameState.history = room.gameState.history.slice(0, 32);
+}
+
+// บันทึกผลเฉพาะตัว (เห็นแค่เจ้าตัว) — รายละเอียดที่ผูกกับบท/เงิน/ของในมือห้ามลง report สาธารณะ
+function notePrivate(player, icon, text, tone = 'neutral') {
+    if (!player) {
+        return;
+    }
+    if (!Array.isArray(player.privateReport)) {
+        player.privateReport = [];
+    }
+    player.privateReport.push({ icon, text, tone });
+}
+
+function clearPrivateReports(room) {
+    (room.gameState.players || []).forEach(player => {
+        player.privateReport = [];
+    });
 }
 
 function getPlayer(room, playerId) {
@@ -542,7 +567,8 @@ function getPurchasePrice(player, itemId) {
 function assignRoles(room) {
     const selectedRoles = shuffle(ROLE_ORDER).slice(0, room.gameState.players.length);
     room.gameState.players.forEach((player, index) => {
-        const roleId = selectedRoles[index];
+        // กันพลาด: ถ้าคนเกินจำนวนบท วนบทซ้ำแทนการได้ undefined
+        const roleId = selectedRoles[index] || ROLE_ORDER[index % ROLE_ORDER.length];
         player.role = roleId;
         player.roleInfo = ROLE_DEFINITIONS[roleId];
         player.revealedRole = null;
@@ -554,6 +580,7 @@ function assignRoles(room) {
         player.intelNotes = [];
         player.fixerEscapeAvailable = true;
         player.lastMove = null;
+        player.privateReport = [];
     });
 }
 
@@ -634,24 +661,34 @@ function createPairKey(leftPlayerId, rightPlayerId) {
     return [leftPlayerId, rightPlayerId].sort().join(':');
 }
 
+function compareStanding(left, right) {
+    if ((left.alive !== false) !== (right.alive !== false)) {
+        return left.alive === false ? 1 : -1;
+    }
+    if (right.influence !== left.influence) {
+        return right.influence - left.influence;
+    }
+    if (right.cash !== left.cash) {
+        return right.cash - left.cash;
+    }
+    if (left.heat !== right.heat) {
+        return left.heat - right.heat;
+    }
+    return 0;
+}
+
 function finalizeWinner(room, reasonIcon, reasonText) {
-    const players = [...room.gameState.players].sort((left, right) => {
-        if ((left.alive !== false) !== (right.alive !== false)) {
-            return left.alive === false ? 1 : -1;
-        }
-        if (right.influence !== left.influence) {
-            return right.influence - left.influence;
-        }
-        if (right.cash !== left.cash) {
-            return right.cash - left.cash;
-        }
-        if (left.heat !== right.heat) {
-            return left.heat - right.heat;
-        }
-        return left.name.localeCompare(right.name, 'th');
-    });
+    const players = [...room.gameState.players].sort((left, right) => (
+        compareStanding(left, right) || left.name.localeCompare(right.name, 'th')
+    ));
 
     const winner = players[0] || null;
+    // เสมอทุกเกณฑ์ (รอด/อิทธิพล/เงิน/ค่าหัว) = ชนะร่วม ไม่ตัดสินด้วยชื่อ
+    const coWinners = winner ? players.filter(player => compareStanding(player, winner) === 0) : [];
+    const sharedWin = coWinners.length > 1;
+    const finalReason = sharedWin
+        ? `${reasonText} — เสมอกันทุกเกณฑ์ ${coWinners.map(player => player.name).join(', ')} ชนะร่วม`
+        : reasonText;
     room.gameState.phase = 'finished';
     room.gameState.status = 'blackmarket_finished';
     room.gameState.phaseEndsAt = null;
@@ -664,12 +701,21 @@ function finalizeWinner(room, reasonIcon, reasonText) {
         influence: winner.influence,
         cash: winner.cash,
         heat: winner.heat,
-        reason: reasonText
+        reason: finalReason,
+        shared: sharedWin,
+        playerIds: coWinners.map(player => player.playerId),
+        coWinners: coWinners.map(player => ({
+            playerId: player.playerId,
+            name: player.name,
+            avatar: player.avatar,
+            roleId: player.role,
+            roleTitle: player.roleInfo?.title || player.role
+        }))
     } : null;
     room.gameState.players.forEach(player => {
         player.revealedRole = player.roleInfo?.title || player.role;
     });
-    pushHistory(room, reasonIcon, reasonText, 'red');
+    pushHistory(room, reasonIcon, finalReason, 'red');
 }
 
 function maybeFinishGame(room) {
@@ -712,6 +758,7 @@ function startNextRound(room, report = []) {
 
 function resolveMarketPhase(room) {
     const report = [];
+    clearPrivateReports(room);
     getAlivePlayers(room).forEach(player => {
         const itemId = room.gameState.marketChoices[player.playerId];
         if (!itemId || itemId === PASS_CHOICE) {
@@ -724,14 +771,17 @@ function resolveMarketPhase(room) {
         const price = getPurchasePrice(player, itemId);
         if (!item || player.cash < price) {
             player.lastMove = 'เงินไม่พอ';
-            report.push({ icon: '🚫', text: `${player.name} เอื้อมไม่ถึง ${item?.name || 'ของชิ้นนั้น'}`, tone: 'red' });
+            report.push({ icon: '🤐', text: `${player.name} กลับจากตลาดมือเปล่า`, tone: 'neutral' });
+            notePrivate(player, '🚫', `เงินไม่พอซื้อ ${item?.name || 'ของชิ้นนั้น'}`, 'red');
             return;
         }
 
         player.cash -= price;
         player.inventory.push(itemId);
         player.lastMove = `ซื้อ ${item.name}`;
-        report.push({ icon: item.icon, text: `${player.name} รับ ${item.name} เข้ากระเป๋า`, tone: 'gold' });
+        // สาธารณะบอกแค่ว่าซื้อของ ไม่บอกว่าชิ้นไหน (ของในมือเป็นความลับ)
+        report.push({ icon: '🛒', text: `${player.name} ซื้อของเถื่อนไป 1 ชิ้น`, tone: 'gold' });
+        notePrivate(player, item.icon, `คุณได้ ${item.name} เข้ากระเป๋า (จ่าย 💵 ${price})`, 'gold');
     });
 
     moveToActionPhase(room, report);
@@ -756,6 +806,7 @@ function buildIntelNote(actor, target) {
 
 function resolveActionPhase(room) {
     const report = [];
+    clearPrivateReports(room);
     const actions = room.gameState.actionChoices || {};
     const aliveAtStart = getAlivePlayers(room).map(player => player.playerId);
     const settledDealPairs = new Set();
@@ -781,7 +832,8 @@ function resolveActionPhase(room) {
                 ...actor.intelNotes.filter(note => Number(note.roundNumber) !== Number(room.gameState.roundNumber))
             ].slice(0, 5);
             actor.lastMove = `สืบ ${target.name}`;
-            report.push({ icon: actor.role === 'mole' ? '🕶️' : '👁️', text: `${actor.name} ได้ข่าววงในของ ${target.name}`, tone: 'blue' });
+            report.push({ icon: '👁️', text: `${actor.name} ได้ข่าววงในของ ${target.name}`, tone: 'blue' });
+            notePrivate(actor, '👁️', `ข่าวลับ: ${intel}`, 'blue');
         }
     });
 
@@ -839,9 +891,11 @@ function resolveActionPhase(room) {
             actor.lastMove = `หักหลัง ${target.name}`;
             target.lastMove = `โดน ${actor.name} หักหลัง`;
 
-            const betrayalText = `${actor.name} รับดีลจาก ${target.name} ก่อนพลิกโต๊ะ ชิง 💵 ${stolenCash}${actor.role === 'doubleAgent' ? ' + โบนัสสองหน้า 1' : ''}`;
+            const betrayalText = `${actor.name} รับดีลจาก ${target.name} ก่อนพลิกโต๊ะ ชิงเงินไป`;
             rememberDeal(room, '🗡️', betrayalText, 'red');
             report.push({ icon: '🗡️', text: betrayalText, tone: 'red' });
+            notePrivate(actor, '🗡️', `หักหลัง ${target.name} ได้ 💵 ${stolenCash}${actor.role === 'doubleAgent' ? ' + โบนัสสองหน้า 💵 1 👑 1 (🔥 +1)' : ''}`, 'gold');
+            notePrivate(target, '🗡️', `โดน ${actor.name} หักหลัง เสีย 💵 ${stolenCash} และ 🔥 +1`, 'red');
             return;
         }
 
@@ -855,9 +909,11 @@ function resolveActionPhase(room) {
             actor.lastMove = `โดน ${target.name} หักหลัง`;
             target.lastMove = `หักหลัง ${actor.name}`;
 
-            const betrayalText = `${target.name} รับดีลจาก ${actor.name} ก่อนพลิกโต๊ะ ชิง 💵 ${stolenCash}${target.role === 'doubleAgent' ? ' + โบนัสสองหน้า 1' : ''}`;
+            const betrayalText = `${target.name} รับดีลจาก ${actor.name} ก่อนพลิกโต๊ะ ชิงเงินไป`;
             rememberDeal(room, '🗡️', betrayalText, 'red');
             report.push({ icon: '🗡️', text: betrayalText, tone: 'red' });
+            notePrivate(target, '🗡️', `หักหลัง ${actor.name} ได้ 💵 ${stolenCash}${target.role === 'doubleAgent' ? ' + โบนัสสองหน้า 💵 1 👑 1 (🔥 +1)' : ''}`, 'gold');
+            notePrivate(actor, '🗡️', `โดน ${target.name} หักหลัง เสีย 💵 ${stolenCash} และ 🔥 +1`, 'red');
             return;
         }
 
@@ -913,21 +969,26 @@ function resolveActionPhase(room) {
         actor.cash -= hitCost;
         consumeItem(actor, 'gun');
 
+        // เหตุผลที่รอด: การ์ดเป็นแอ็กชันที่ทุกคนเห็นอยู่แล้ว ส่วนเกราะ/บทคนเคลียร์ทางเป็นความลับ
         let blockedReason = null;
+        let publicReason = '';
         if (guardSet.has(target.playerId)) {
-            blockedReason = 'มีคนคุ้มกันอยู่';
+            blockedReason = 'ตั้งการ์ดรับไว้';
+            publicReason = ' เพราะตั้งการ์ดไว้';
         } else if (consumeItem(target, 'armor')) {
-            blockedReason = 'เสื้อเกราะรับไว้';
+            blockedReason = 'เสื้อเกราะรับไว้ (เกราะแตกไป 1 ชิ้น)';
         } else if (target.role === 'fixer' && target.fixerEscapeAvailable) {
             target.fixerEscapeAvailable = false;
             target.heat += 1;
-            blockedReason = 'สายเคลียร์พาหนีทัน';
+            blockedReason = 'ใช้สิทธิ์หนีของคนเคลียร์ทาง (🔥 +1)';
         }
 
         if (blockedReason) {
             actor.heat += 1;
             actor.lastMove = 'สั่งเก็บโดนกัน';
-            report.push({ icon: '🛡️', text: `${target.name} รอดจากคำสั่งเก็บ เพราะ${blockedReason}`, tone: 'amber' });
+            report.push({ icon: '🛡️', text: `${target.name} รอดจากคำสั่งเก็บ${publicReason}`, tone: 'amber' });
+            notePrivate(target, '🛡️', `คุณรอดจากคำสั่งเก็บของ ${actor.name}: ${blockedReason}`, 'blue');
+            notePrivate(actor, '🛡️', `สั่งเก็บ ${target.name} ไม่เข้า เสียปืนและเงิน 🔥 +1`, 'amber');
             return;
         }
 
@@ -970,9 +1031,11 @@ function resolveActionPhase(room) {
                 const lootedItem = removeRandomItem(target);
                 if (lootedItem) {
                     killer.inventory.push(lootedItem);
+                    notePrivate(killer, '🎒', `ชิง ${ITEM_DEFINITIONS[lootedItem]?.name || 'ของเถื่อน'} จากศพ ${target.name}`, 'gold');
                 } else if (target.cash > 0) {
                     killer.cash += 1;
                     target.cash = Math.max(0, target.cash - 1);
+                    notePrivate(killer, '💵', `ล้วงเงิน 1 จากศพ ${target.name}`, 'gold');
                 }
             }
         }
@@ -1009,7 +1072,10 @@ function resolveActionPhase(room) {
                     actor.influence += 1;
                 }
                 actor.lastMove = `ปล้น ${target.name}`;
-                report.push({ icon: '💣', text: `${actor.name} ล้วงเงินจาก ${target.name} ไป ${transferred} ก้อน`, tone: 'amber' });
+                // จำนวนเงินบอกบท (สองหน้าได้ 3) และเงินในมือเป้า — เก็บไว้ในโน้ตส่วนตัว
+                report.push({ icon: '💣', text: `${actor.name} ล้วงเงินจาก ${target.name}`, tone: 'amber' });
+                notePrivate(actor, '💣', `ปล้น ${target.name} ได้ 💵 ${transferred}${actor.role === 'doubleAgent' ? ' + 👑 1 (🔥 +1)' : ''}`, 'gold');
+                notePrivate(target, '💣', `โดน ${actor.name} ล้วงไป 💵 ${transferred}`, 'red');
                 return;
             }
 
@@ -1021,7 +1087,10 @@ function resolveActionPhase(room) {
                     actor.influence += 1;
                 }
                 actor.lastMove = `ปล้นของจาก ${target.name}`;
-                report.push({ icon: '🎒', text: `${actor.name} ชิง ${ITEM_DEFINITIONS[lootedItem]?.name || 'ของเถื่อน'} จาก ${target.name}`, tone: 'amber' });
+                const lootedName = ITEM_DEFINITIONS[lootedItem]?.name || 'ของเถื่อน';
+                report.push({ icon: '🎒', text: `${actor.name} ชิงของจาก ${target.name} ไป 1 ชิ้น`, tone: 'amber' });
+                notePrivate(actor, '🎒', `ปล้นได้ ${lootedName} จาก ${target.name}${actor.role === 'doubleAgent' ? ' + 👑 1 (🔥 +1)' : ''}`, 'gold');
+                notePrivate(target, '🎒', `โดน ${actor.name} ชิง ${lootedName} ไป`, 'red');
                 return;
             }
 
@@ -1039,7 +1108,11 @@ function resolveActionPhase(room) {
 
         if (action.actionType === 'deliver' && action.itemId) {
             const item = ITEM_DEFINITIONS[action.itemId];
+            // ปล้น/เก็บงานคิดผลก่อนส่งของ ถ้าของถูกชิงไปในยกเดียวกัน การส่งต้องล้มแบบมีรายงาน ไม่ใช่เงียบหาย
             if (!item || item.type !== 'cargo' || !consumeItem(actor, action.itemId)) {
+                actor.lastMove = 'ส่งของไม่สำเร็จ';
+                report.push({ icon: '📦', text: `${actor.name} ส่งของไม่สำเร็จ ของหายระหว่างทาง`, tone: 'amber' });
+                notePrivate(actor, '🚫', `ส่ง ${item?.name || 'ของ'} ไม่สำเร็จ — ของถูกชิงไปก่อนถึงคิวส่งในยกนี้`, 'red');
                 return;
             }
 
@@ -1060,7 +1133,9 @@ function resolveActionPhase(room) {
 
             actor.influence += influenceGain;
             actor.lastMove = `ส่ง ${item.name}`;
-            report.push({ icon: '📦', text: `${actor.name} ส่ง ${item.name}${extraDeliveryText} รับ 👑 ${influenceGain}`, tone: 'gold' });
+            // ไม่บอกชื่อของ/ของพ่วง/โบนัส ในที่สาธารณะ — เผยบทเจ้าพ่อ/คนส่งของ
+            report.push({ icon: '📦', text: `${actor.name} ส่งของเถื่อนถึงมือลูกค้า`, tone: 'gold' });
+            notePrivate(actor, '📦', `ส่ง ${item.name}${extraDeliveryText} รับ 👑 ${influenceGain}${actor.role === 'boss' ? ' (รวมโบนัสเจ้าพ่อ 1)' : ''}`, 'gold');
         }
     });
 
@@ -1080,7 +1155,8 @@ function resolveActionPhase(room) {
             }
             actor.heat = Math.max(0, actor.heat - heatDrop);
             actor.lastMove = 'หมอบต่ำ';
-            report.push({ icon: '🫥', text: `${actor.name} หมอบต่ำ ล้าง 🔥 ได้ ${heatDrop}`, tone: 'blue' });
+            report.push({ icon: '🫥', text: `${actor.name} หมอบต่ำ`, tone: 'blue' });
+            notePrivate(actor, '🫥', `หมอบต่ำ ล้าง 🔥 ได้ ${heatDrop}`, 'blue');
         }
 
         if (action.actionType === 'guard') {
@@ -1168,6 +1244,8 @@ function buildClientState(room, playerId) {
             const roleVisible = player.playerId === self.playerId
                 || player.alive === false
                 || room.gameState.phase === 'finished';
+            // อิทธิพลเป็นกระดานคะแนน (เงื่อนไขชนะ) จึงเปิด; เงิน/ค่าหัว/ของ เป็นความลับ ต้องสืบเอา
+            const statsVisible = roleVisible;
             return {
             playerId: player.playerId,
             name: player.name,
@@ -1176,9 +1254,10 @@ function buildClientState(room, playerId) {
             color: player.color,
             alive: player.alive !== false,
             influence: player.influence,
-            cash: player.cash,
-            heat: player.heat,
-            inventoryCount: player.inventory.length,
+            statsVisible,
+            cash: statsVisible ? player.cash : null,
+            heat: statsVisible ? player.heat : null,
+            inventoryCount: statsVisible ? player.inventory.length : null,
             roleId: roleVisible ? player.role : null,
             roleTitle: roleVisible
                 ? (player.roleInfo?.title || player.role || '-')
@@ -1194,7 +1273,10 @@ function buildClientState(room, playerId) {
         marketOffers,
         dealLedger: (room.gameState.dealLedger || []).map(enrichFeedEntry),
         history: (room.gameState.history || []).map(enrichFeedEntry),
-        lastRoundReport: (room.gameState.lastRoundReport || []).map(enrichFeedEntry),
+        lastRoundReport: [
+            ...(self.privateReport || []).map(entry => ({ ...entry, private: true })),
+            ...(room.gameState.lastRoundReport || [])
+        ].map(enrichFeedEntry),
         actionCatalog: buildActionCatalog(self),
         tutorial: buildTutorialState(room, self),
         actionHelp: {
@@ -1324,6 +1406,27 @@ function submitAction(room, playerId, actionType, targetPlayerId = null, itemId 
     return { resolved: false, phase: room.gameState.phase };
 }
 
+// ใช้หลังมีคนหลุดสาย (ยังไม่ถูกลบจากโต๊ะ): ถ้าทุกคนที่ยังออนไลน์ล็อกครบแล้ว ให้ปิด phase เลย ไม่ต้องรอเวลา
+// ต้องมีคนออนไลน์เหลืออย่างน้อย 1 คน ไม่งั้นโต๊ะร้างจะไหลข้ามยกเอง
+function resolveIfAllCommitted(room) {
+    if (!room?.gameState || room.gameState.phase === 'finished' || room.gameState.winner) {
+        return { resolved: false, phase: room?.gameState?.phase || null };
+    }
+    const anyoneOnline = getAlivePlayers(room).some(player => isPlayerOnline(room, player.playerId));
+    if (!anyoneOnline) {
+        return { resolved: false, phase: room.gameState.phase };
+    }
+    if (room.gameState.phase === 'market' && everyoneCommitted(room, room.gameState.marketChoices || {})) {
+        resolveMarketPhase(room);
+        return { resolved: true, phase: room.gameState.phase };
+    }
+    if (room.gameState.phase === 'action' && everyoneCommitted(room, room.gameState.actionChoices || {})) {
+        resolveActionPhase(room);
+        return { resolved: true, phase: room.gameState.phase };
+    }
+    return { resolved: false, phase: room.gameState.phase };
+}
+
 function handlePlayerLeft(room, playerId) {
     if (!room?.gameState) {
         return null;
@@ -1363,6 +1466,7 @@ module.exports = {
     PASS_CHOICE,
     ROLE_DEFINITIONS,
     ITEM_DEFINITIONS,
+    MAX_TABLE_PLAYERS,
     createInitialState,
     createPlayerState,
     resetRoomGame,
@@ -1371,6 +1475,7 @@ module.exports = {
     submitMarketPurchase,
     submitAction,
     autoResolvePhase,
+    resolveIfAllCommitted,
     handlePlayerLeft,
     MARKET_PHASE_MS,
     ACTION_PHASE_MS,

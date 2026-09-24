@@ -60,7 +60,7 @@ async function waitForHttpReady(baseUrl, timeoutMs) {
 }
 
 async function spawnServer() {
-    const port = await getFreePort();
+    const port = Number(process.env.SMOKE_PORT) || await getFreePort();
     const appPath = path.join(__dirname, '..', 'app.js');
     const child = spawn(process.execPath, [appPath], {
         cwd: path.join(__dirname, '..'),
@@ -295,6 +295,19 @@ async function main() {
             25000
         )));
 
+        // bug 4: restart mid-game must be refused
+        const restartMidGame = await emitAck(creator.socket, 'blackmarket_restartGame', { roomId });
+        assert(restartMidGame && restartMidGame.success === false, 'restart during an active game must be refused');
+
+        // bug 2: other players' cash/heat/inventory are hidden
+        {
+            const view = creator.lastState;
+            const others = (view.players || []).filter(player => !player.isSelf);
+            assert(others.length === 3 && others.every(player => player.cash === null && player.heat === null && player.inventoryCount === null),
+                'opponent cash/heat/inventory must be hidden in client state');
+            assert(typeof view.self.cash === 'number', 'self cash visible');
+        }
+
         const marketCheckpoint = checkpointStates(clients);
         for (const client of clients) {
             const state = client.lastState;
@@ -310,8 +323,11 @@ async function main() {
         const actionStates = await waitForPhase(clients, roomId, 'action', marketCheckpoint);
         assert(actionStates.every(state => state.phase === 'action'), 'room did not advance to action phase');
 
+        // bug 6: the last player disconnects instead of acting — the rest must not wait for the timer
+        const stayers = clients.slice(0, -1);
+        const leaver = clients[clients.length - 1];
         const actionCheckpoint = checkpointStates(clients);
-        for (const client of clients) {
+        for (const client of stayers) {
             const state = client.lastState;
             const actionPayload = chooseActionPayload(state);
             const response = await emitAck(client.socket, 'blackmarket_submitAction', {
@@ -321,12 +337,13 @@ async function main() {
             });
             assert(response && response.success, `action submit failed for ${client.label}`);
         }
+        leaver.socket.disconnect();
 
-        const nextStates = await Promise.all(clients.map(client => waitForStateAfter(
+        const nextStates = await Promise.all(stayers.map(client => waitForStateAfter(
             client,
             actionCheckpoint.get(client.playerId) || 0,
             payload => payload && payload.roomId === roomId && ['market', 'finished'].includes(payload.phase),
-            25000
+            8000
         )));
 
         assert(nextStates.every(state => ['market', 'finished'].includes(state.phase)), 'room did not resolve the first action round');

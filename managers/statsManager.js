@@ -774,6 +774,10 @@ function recordBlackMarketGameEnd(roomId, gameResult) {
     const gameTimestamp = new Date().toISOString();
     const winnerId = winner.playerId;
     const winnerLabel = winner.name || 'ไม่ทราบ';
+    // เสมอกันทุกเกณฑ์ = ชนะร่วม ทุกคนในกลุ่มผู้นำได้นับชนะ
+    const blackMarketWinnerIds = new Set(
+        Array.isArray(winner.playerIds) && winner.playerIds.length ? winner.playerIds : [winnerId]
+    );
 
     players.forEach(player => {
         if (!player.playerId || !player.role || isBotPlayerId(player.playerId)) {
@@ -784,7 +788,7 @@ function recordBlackMarketGameEnd(roomId, gameResult) {
         if (!stat) return;
         const roleId = player.role;
         const roleLabel = player.roleInfo?.title || player.revealedRole || BLACKMARKET_ROLE_LABELS[roleId] || roleId;
-        const playerWon = player.playerId === winnerId;
+        const playerWon = blackMarketWinnerIds.has(player.playerId);
 
         stat.totalGames += 1;
         stat.modeStats.blackmarket.games += 1;
