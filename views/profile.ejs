@@ -109,8 +109,6 @@
         text-align: left;
     }
     .pf *, .pf *::before, .pf *::after { box-sizing: border-box; }
-    /* หน้านี้มีปุ่มกลับด้านบนแล้ว — แถบ footer ที่ตรึงล่างจอจะว่างและบังเนื้อหา */
-    body:has(.pf) footer.footer { display: none; }
     .pf button { font-family: inherit; }
 
     /* ---------- top bar ---------- */
@@ -462,7 +460,8 @@
     .pf-toast {
         position: fixed;
         left: 50%;
-        bottom: max(24px, env(safe-area-inset-bottom));
+        /* อยู่เหนือ footer นำทางที่ตรึงล่างจอ */
+        bottom: calc(88px + env(safe-area-inset-bottom));
         z-index: 9000;
         max-width: calc(100vw - 32px);
         padding: var(--space-md) var(--space-xl);
@@ -508,10 +507,7 @@
 </style>
 
 <main class="pf" style="--me: <%= player.color %>;">
-    <nav class="pf-top">
-        <a href="/" class="pf-back"><span aria-hidden="true">←</span> กลับ Lobby</a>
-        <span class="pf-top-title">Player Pass</span>
-    </nav>
+    <p class="pf-top"><span class="pf-top-title">Player Pass</span></p>
 
     <div class="pf-layout">
         <aside class="pf-side">
@@ -735,6 +731,9 @@
     </div>
 </main>
 <div class="pf-toast" id="pfToast" role="status" aria-live="polite"></div>
+
+<%- contentFor('footer') %>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
 
 <%- contentFor('script') %>
 <script>

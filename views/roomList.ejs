@@ -877,9 +877,7 @@
 </div>
 
 <%- contentFor('footer') %>
-<div class="page-footer-actionbar">
-    <a href="/">← กลับหน้าหลัก</a>
-</div>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
 
 <%- contentFor('script') %>
 <script src="/js/pokerRankChart.js?v=20260814b"></script>

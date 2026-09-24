@@ -968,6 +968,4 @@
 </div>
 
 <%- contentFor('footer') %>
-<div class="guide-footer">
-  <a class="guide-cta-button" href="/rooms">🎮 ไปเลือกห้องเล่น</a>
-</div>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' }, action: { href: '/rooms', label: '🎮 เลือกห้องเล่น' } }) %>

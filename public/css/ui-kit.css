@@ -1,0 +1,108 @@
+/* ชุด UI กลางของทั้งเว็บ — ปุ่ม, footer นำทาง, กันข้อความล้น
+ *
+ * ก่อนหน้านี้แต่ละหน้าเขียนปุ่มเองคนละขนาด (ปุ่มกลับ 167×52, 346×42, บางหน้าไม่มี)
+ * หน้าใหม่ให้ใช้คลาสในไฟล์นี้แทน:
+ *   .ui-btn            ปุ่มขนาดกลาง (สูง 48px) — ค่าหลักของทั้งเว็บ
+ *   .ui-btn--sm/--lg   เล็ก 40px / ใหญ่ 56px
+ *   .ui-btn--primary   ปุ่มหลักของหน้า (มีได้ปุ่มเดียว)
+ *   .ui-btn--ghost     ปุ่มรอง ไม่มีพื้น
+ *   footer นำทาง       views/partials/footerNav.ejs
+ */
+
+:root {
+    --ui-ink: #f1f0fa;
+    --ui-muted: #b9b6d3;
+    --ui-surface: #25223f;
+    --ui-surface-2: #312d52;
+    --ui-line: rgba(255, 255, 255, 0.14);
+    --ui-accent: #e2493b;
+    --ui-accent-ink: #fff7f5;
+    --ui-radius: 12px;
+    --ui-btn-h-sm: 40px;
+    --ui-btn-h: 48px;
+    --ui-btn-h-lg: 56px;
+    --ui-back-w: 176px;
+    --ui-font: 'Bai Jamjuree', 'Kanit', system-ui, sans-serif;
+}
+
+/* ---------- ปุ่ม ---------- */
+.ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    height: var(--ui-btn-h);
+    min-width: 0;
+    max-width: 100%;
+    padding: 0 20px;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-radius);
+    background: var(--ui-surface-2);
+    color: var(--ui-ink);
+    font-family: var(--ui-font);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background-color 0.18s ease-out, transform 0.08s ease-out;
+    -webkit-tap-highlight-color: transparent;
+}
+.ui-btn:hover { background: #3c3763; color: var(--ui-ink); text-decoration: none; }
+.ui-btn:active { transform: scale(0.97); }
+.ui-btn:focus-visible { outline: 2px solid #f3c969; outline-offset: 2px; }
+.ui-btn:disabled, .ui-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+
+.ui-btn--sm { height: var(--ui-btn-h-sm); padding: 0 14px; font-size: 0.92rem; }
+.ui-btn--lg { height: var(--ui-btn-h-lg); padding: 0 24px; font-size: 1.08rem; }
+.ui-btn--block { width: 100%; }
+.ui-btn--primary { background: var(--ui-accent); border-color: transparent; color: var(--ui-accent-ink); }
+.ui-btn--primary:hover { background: #ef5a4c; color: var(--ui-accent-ink); }
+.ui-btn--ghost { background: transparent; border-color: transparent; color: var(--ui-muted); }
+.ui-btn--ghost:hover { background: rgba(255, 255, 255, 0.06); color: var(--ui-ink); }
+
+/* ---------- footer นำทาง (ขนาดเท่ากันทุกหน้า) ---------- */
+/* !important เพราะ mobile.css ล็อก footer ไว้ที่ max-height 60px ด้วย !important (ปุ่มโดนบีบ) */
+footer.footer:has(.ui-footer-bar) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) !important;
+    background: rgba(18, 15, 40, 0.94) !important;
+    border-top: 1px solid var(--ui-line) !important;
+}
+/* หน้าที่ไม่มีอะไรใน footer (เช่นหน้าแรก) — ไม่ต้องมีแถบว่างตรึงบังเนื้อหา */
+footer.footer:not(:has(*)) {
+    display: none !important;
+}
+body:has(.ui-footer-bar) {
+    /* เว้นที่ให้ footer ที่ตรึงล่างจอ — เนื้อหาท้ายหน้าจะไม่ถูกบัง */
+    padding-bottom: calc(var(--ui-btn-h) + 40px + env(safe-area-inset-bottom));
+}
+.ui-footer-bar {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    width: min(100%, 560px);
+    margin: 0 auto;
+}
+.ui-footer-bar .ui-back { flex: 0 0 var(--ui-back-w); width: var(--ui-back-w); }
+.ui-footer-bar .ui-footer-action { flex: 1 1 0; }
+.ui-footer-bar:has(.ui-footer-action) { justify-content: stretch; }
+
+/* ---------- กันข้อความล้นกรอบ (ชื่อยาว / คำไทยติดกันยาว) ---------- */
+.container-fluid h1, .container-fluid h2, .container-fluid h3,
+.container-fluid h4, .container-fluid p, .container-fluid li,
+.container-fluid label, .container-fluid td {
+    overflow-wrap: anywhere;
+}
+.container-fluid img, .container-fluid video { max-width: 100%; height: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-btn { transition: none; }
+    .ui-btn:active { transform: none; }
+}

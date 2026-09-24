@@ -536,9 +536,7 @@
 </div>
 
 <%- contentFor('footer') %>
-<div class="container" style="text-align: center; padding: 20px;">
-    <a href="/?playerId=<%= encodeURIComponent(player.playerId) %>" class="btn-back">← กลับไป Lobby</a>
-</div>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
 
 <%- contentFor('script') %>
 <script>

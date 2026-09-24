@@ -92,6 +92,8 @@
         <link rel="stylesheet" href="/static/css/uiFeedback.css">
         <link rel="stylesheet" href="/static/css/support.css">
         <link rel="stylesheet" href="/static/css/promoPopup.css">
+        <!-- ต้องอยู่ท้ายสุด: ปุ่ม/footer มาตรฐานของทั้งเว็บ -->
+        <link rel="stylesheet" href="/static/css/ui-kit.css">
         <link rel="stylesheet" href=
 "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.css">
         <link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
@@ -130,10 +132,6 @@
             <%-defineContent('footer')%>
         </footer>
 
-        <a id="support-fab" class="support-fab" href="/support" aria-label="ส่งข้อความถึง Site Admin">
-            <span aria-hidden="true">✉️</span><span>ติดต่อแอดมิน</span>
-        </a>
-
         <!-- Javascript -->
         <!-- self-host + minified: เดิมโหลดตัว unminified 273KB จาก CDN ภายนอกทุกหน้า
              ตัวนี้เนื้อหาเวอร์ชันเดียวกันเป๊ะ (1.10.2) เหลือ ~33KB หลัง gzip และติด cache ของเรา -->
@@ -148,19 +146,6 @@
         <script src="/static/js/partyPlay.js"></script>
         <script src="/static/js/promoPopup.js"></script>
         <script src="/static/js/googleSignIn.js"></script>
-        <script>
-            (function() {
-                var button = document.getElementById('support-fab');
-                if (!button) return;
-                // Show contact shortcut on the home page only.
-                if (location.pathname !== '/') {
-                    button.hidden = true;
-                    return;
-                }
-                var playerId = localStorage.getItem('insiderGamePlayerId');
-                if (playerId) button.href = '/support?playerId=' + encodeURIComponent(playerId);
-            })();
-        </script>
         <!-- เพิ่ม SweetAlert2 CDN ที่นี่ -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

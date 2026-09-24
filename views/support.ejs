@@ -21,9 +21,7 @@
 </main>
 
 <%- contentFor('footer') %>
-<div class="support-footer">
-    <a class="support-home-btn" href="/?playerId=<%= player.playerId %>">← กลับหน้าหลัก</a>
-</div>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
 
 <%- contentFor('script') %>
 <script src="/static/js/supportInbox.js"></script>

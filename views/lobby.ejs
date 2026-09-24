@@ -14,6 +14,14 @@
     .account-signin [data-google-signin] { display: flex; justify-content: center; }
     .account-signin-hint { font-size: 0.85em; color: rgba(255,255,255,0.7) !important; margin: 0 0 8px; }
 
+    .home-extras {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        margin: 8px 0 24px;
+    }
+
     .player-card {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         border: 3px solid #444;
@@ -892,7 +900,6 @@
             </div>
             <div class="player-details">
                 <h2 style="color: <%= player.color %>;"><%= player.playerName %></h2>
-                <p>Player ID: <code><%= player.playerId.substring(0, 8) %>...</code></p>
                 <% if (typeof googleClientId !== 'undefined' && googleClientId) { %>
                     <% if (typeof viewerGoogleLinked !== 'undefined' && viewerGoogleLinked) { %>
                         <p class="account-linked"><i class="fab fa-google" aria-hidden="true"></i> บัญชีปลอดภัย ผูกกับ Google แล้ว</p>
@@ -991,16 +998,19 @@
         <div class="leaderboard-pagination" id="leaderboardPagination"></div>
     </div>
     
+    <!-- ลิงก์เสริม — เดิมเป็นปุ่มลอย 3 ตัวที่ทับเมนูและทับกันเอง -->
+    <div class="home-extras">
+        <button type="button" class="ui-btn ui-btn--sm" onclick="showInstallGuide()">📲 ติดตั้งแอป</button>
+        <a class="ui-btn ui-btn--sm" href="/support">✉️ ติดต่อแอดมิน</a>
+        <button type="button" class="ui-btn ui-btn--sm" id="donateBtn">☕ Donate</button>
+    </div>
+
     <!-- Bottom Links (Admin link hidden - access via /admin/login) -->
     <!-- <div class="bottom-links">
         <a href="/admin" class="bottom-link admin">🛠️ Admin Dashboard</a>
     </div> -->
 </div>
 
-<!-- Floating Donate Button -->
-<button class="floating-donate-btn" id="donateBtn" title="Buy me a coffee!">
-    <div>☕<br/>Donate</div>
-</button>
 
 <!-- Donate Modal -->
 <div id="donateModal" class="donate-modal">
@@ -2010,10 +2020,6 @@ $(function() {
 });
 </script>
 
-<!-- ปุ่ม ? ลอยมุมล่างซ้าย -->
-<button onclick="showInstallGuide()" class="floating-help-btn" title="วิธีติดตั้งแอป">
-    ?
-</button>
 
 <style>
     .floating-help-btn {

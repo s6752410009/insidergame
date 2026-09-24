@@ -1,0 +1,15 @@
+<%#
+  footer นำทางมาตรฐาน — ปุ่มกลับขนาดเท่ากันทุกหน้า (+ ปุ่มหลักได้อีก 1 ปุ่ม)
+  ใช้: include('partials/footerNav', { back: { href, label, id?, asButton? }, action?: { href, label } })
+%>
+<% const nav = typeof back !== 'undefined' && back ? back : { href: '/', label: 'กลับหน้าหลัก' }; %>
+<nav class="ui-footer-bar" aria-label="นำทาง">
+    <% if (nav.asButton) { %>
+        <button type="button" class="ui-btn ui-back"<% if (nav.id) { %> id="<%= nav.id %>"<% } %>>← <%= nav.label %></button>
+    <% } else { %>
+        <a class="ui-btn ui-back" href="<%= nav.href %>"<% if (nav.id) { %> id="<%= nav.id %>"<% } %>>← <%= nav.label %></a>
+    <% } %>
+    <% if (typeof action !== 'undefined' && action) { %>
+        <a class="ui-btn ui-btn--primary ui-footer-action" href="<%= action.href %>"><%= action.label %></a>
+    <% } %>
+</nav>
