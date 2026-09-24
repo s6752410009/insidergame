@@ -11,6 +11,7 @@ const app = express();
 var server = require('http').createServer(app),
     ent = require('ent'),
     session = require('express-session'),
+    cookieParser = require('cookie-parser'),
     bodyParser = require('body-parser'),
     expressLayouts = require('express-ejs-layouts');
 
@@ -33,6 +34,10 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.jso
 const APP_VERSION = packageJson.version || '0.0.0';
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://insider-th.me';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'session-insider-secret';
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
+    // secret นี้ใช้เซ็น cookie ยืนยันตัวตน — ถ้าเป็นค่า default ใครก็ปลอม cookie เป็นคนอื่นได้
+    console.error('⚠️  SESSION_SECRET is not set — identity cookies can be forged. Set a long random SESSION_SECRET.');
+}
 const SEO_PREVIEW_PLAYER_ID = '00000000-0000-4000-8000-000000000001';
 const CRAWLER_USER_AGENT_REGEX = /(googlebot|bingbot|duckduckbot|slurp|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|applebot|petalbot|bytespider|gptbot|chatgpt-user|claudebot|anthropic-ai|ccbot|perplexitybot|amazonbot)/i;
 // Import managers
@@ -81,6 +86,7 @@ const coupPhaseTimeouts = new Map();
 const liarPhaseTimeouts = new Map();
 const pokerPhaseTimeouts = new Map();
 const pokerBotTimeouts = new Map();
+const pokerBotAddInFlight = new Set();
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
@@ -168,8 +174,7 @@ function requireAdminSession(req, res, next) {
 function getSupportSessionPlayerId(req) {
     const supportId = String(req.session?.supportPlayerId || '');
     if (playerManager.isValidPlayerId(supportId)) return supportId;
-    const sessionId = String(req.session?.playerId || '');
-    return playerManager.isValidPlayerId(sessionId) ? sessionId : null;
+    return getTrustedPlayerId(req);
 }
 
 function createSupportToken(playerId) {
@@ -1052,22 +1057,153 @@ function isAdminSocket(room, socket) {
     return room.admin === socket.playerId;
 }
 
+// ==================== PLAYER IDENTITY ====================
+// playerId ถูกส่งให้ทุกคนในห้องเห็น (roomUpdate) จึงใช้เป็น "กุญแจ" ไม่ได้
+// ตัวยืนยันจริงคือ signed cookie ที่ server ออกให้ (อายุ ~1 ปี ต่ออายุทุกครั้งที่เข้า)
+// - รอด Safari ล้าง localStorage หลังไม่เข้า 7 วัน
+// - รอด deploy (session เก็บใน memory หายทุกครั้ง แต่ cookie อยู่ฝั่งเบราว์เซอร์)
+const IDENTITY_COOKIE = 'insider_pid';
+const IDENTITY_COOKIE_MAX_AGE = 400 * 24 * 60 * 60 * 1000; // เพดานที่ Chrome ยอม
+
+function readIdentityCookie(req) {
+    const value = req?.signedCookies?.[IDENTITY_COOKIE];
+    return playerManager.isValidPlayerId(value) && !playerManager.isBotPlayerId(value) ? value : null;
+}
+
+function issueIdentityCookie(res, playerId) {
+    res.cookie(IDENTITY_COOKIE, playerId, {
+        signed: true,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: IDENTITY_COOKIE_MAX_AGE
+    });
+}
+
+// identity ที่ server เชื่อได้ของ request นี้ (cookie ก่อน แล้วค่อย session)
+function getTrustedPlayerId(req) {
+    const cookieId = readIdentityCookie(req);
+    if (cookieId) return cookieId;
+    const sessionId = req?.session?.playerId;
+    return playerManager.isValidPlayerId(sessionId) ? sessionId : null;
+}
+
+// เครื่องที่ยังไม่มี cookie อ้าง playerId ได้เฉพาะ
+// - id ใหม่ที่ยังไม่มีเจ้าของ (client เพิ่งสุ่มมา)
+// - บัญชีเก่าก่อนมีระบบนี้ที่ยังไม่เคยถูกจอง (ครั้งแรกหลัง deploy) — ยกเว้น site admin
+//   ซึ่งต้องใช้รหัสกู้บัญชี/ลิงก์จากหน้า admin เท่านั้น
+function canClaimPlayerId(playerId) {
+    const player = playerManager.getPlayer(playerId);
+    if (!player) return true;
+    if (player.isSiteAdmin) return false;
+    return !playerManager.hasRecoveryCode(playerId);
+}
+
+// กันเดารหัสกู้บัญชีรัวๆ (รหัส 12 ตัว เดาไม่ได้อยู่แล้ว แต่ไม่ควรปล่อยให้ยิงไม่จำกัด)
+const recoveryAttempts = new Map();
+function allowRecoveryAttempt(ip) {
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000;
+    const recent = (recoveryAttempts.get(ip) || []).filter(at => now - at < windowMs);
+    if (recent.length >= 10) {
+        recoveryAttempts.set(ip, recent);
+        return false;
+    }
+    recent.push(now);
+    recoveryAttempts.set(ip, recent);
+    if (recoveryAttempts.size > 5000) recoveryAttempts.clear();
+    return true;
+}
+
+// ผูกเครื่องนี้เข้ากับบัญชีจากรหัสกู้บัญชี — คืน player หรือ null
+function restoreIdentityFromCode(req, res, code) {
+    const player = playerManager.findPlayerByRecoveryCode(code);
+    if (!player) return null;
+    req.session.playerId = player.playerId;
+    issueIdentityCookie(res, player.playerId);
+    return player;
+}
+
+// หน้าคั่นตอนเครื่องนี้อ้าง playerId ที่มีเจ้าของแล้ว (ไม่มี cookie ของบัญชีนั้น)
+// ลำดับ: ใช้รหัสกู้บัญชีที่เครื่องจำไว้ → ใช้บัญชีที่ cookie ผูกไว้ → ให้ผู้เล่นกรอกรหัสเอง/เริ่มใหม่
+function renderIdentityCheckPage(trustedPlayerId) {
+    return `<!DOCTYPE html>
+<html lang="th" style="background:#1a1a2e">
+<head><meta charset="UTF-8"><title>กู้บัญชี</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;
+         background:linear-gradient(160deg,#1a1a2e,#16213e);color:#e2e8f0;font-family:system-ui,sans-serif;font-size:15px}
+    .box{max-width:360px;width:100%;background:#24243e;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:24px;text-align:center}
+    h1{font-size:20px;margin:0 0 8px;color:#ffc107} p{margin:0 0 16px;line-height:1.55;color:#cbd5e1}
+    input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #555;background:#111;color:#fff;
+          font-size:18px;text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+    button{width:100%;min-height:46px;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px}
+    .main{background:#e74c3c;color:#fff} .ghost{background:transparent;color:#94a3b8}
+    .err{color:#ff8a80;min-height:20px;margin:0 0 6px;font-size:14px} [hidden]{display:none}
+</style></head>
+<body>
+<div class="box" id="loading"><p>กำลังตรวจสอบบัญชี…</p></div>
+<div class="box" id="form" hidden>
+    <h1>🔑 กู้บัญชีเดิม</h1>
+    <p>บัญชีนี้ผูกกับเครื่องอื่นอยู่ ใส่ <b>รหัสกู้บัญชี</b> (ดูได้ที่หน้าโปรไฟล์ในเครื่องเดิม) เพื่อเล่นต่อพร้อมถ้วยและสถิติเดิม</p>
+    <input id="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off" maxlength="14">
+    <div class="err" id="err"></div>
+    <button class="main" id="restore">กู้บัญชี</button>
+    <button class="ghost" id="fresh">เริ่มบัญชีใหม่</button>
+</div>
+<script>
+(function(){
+    var ID_KEY = 'insiderGamePlayerId', CODE_KEY = 'insiderGameRecoveryCode';
+    var trusted = ${safeJsonForScript(trustedPlayerId || null)};
+    function cleanUrl(){ var u = new URL(location.href); u.searchParams.delete('playerId'); return u.pathname + u.search + u.hash; }
+    function store(k, v){ try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch(e){} }
+    function read(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+    function restore(code){
+        return fetch('/api/identity/restore', { method:'POST', credentials:'same-origin',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code: code }) })
+            .then(function(r){ return r.json(); });
+    }
+    function done(playerId, code){ store(ID_KEY, playerId); store(CODE_KEY, code); location.replace(cleanUrl()); }
+    function showForm(){ document.getElementById('loading').hidden = true; document.getElementById('form').hidden = false; }
+
+    var saved = read(CODE_KEY);
+    (saved ? restore(saved) : Promise.resolve(null)).then(function(r){
+        if (r && r.success) return done(r.playerId, r.recoveryCode);
+        if (trusted) return done(trusted, null);
+        showForm();
+    }).catch(showForm);
+
+    document.getElementById('restore').onclick = function(){
+        var err = document.getElementById('err');
+        err.textContent = '';
+        restore(document.getElementById('code').value).then(function(r){
+            if (r && r.success) return done(r.playerId, r.recoveryCode);
+            err.textContent = (r && r.error) || 'รหัสไม่ถูกต้อง';
+        }).catch(function(){ err.textContent = 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'; });
+    };
+    document.getElementById('fresh').onclick = function(){
+        store(ID_KEY, null); store(CODE_KEY, null); location.replace(cleanUrl());
+    };
+})();
+</script>
+</body></html>`;
+}
+
 function getSessionPlayerId(socket) {
-    const playerId = socket?.request?.session?.playerId;
-    return playerManager.isValidPlayerId(playerId) ? playerId : null;
+    return getTrustedPlayerId(socket?.request);
 }
 
 function bindSocketPlayer(socket, requestedPlayerId = null) {
     const sessionPlayerId = getSessionPlayerId(socket);
     const requested = playerManager.isValidPlayerId(requestedPlayerId) ? requestedPlayerId : null;
 
-    // Prefer session identity, but allow the client playerId when the socket
-    // handshake has no session yet (common on mobile / after deploy).
     if (sessionPlayerId && requested && requested !== sessionPlayerId) {
         return null;
     }
 
-    const playerId = sessionPlayerId || requested || (ALLOW_LEGACY_SOCKET_IDENTITY ? requested : null);
+    // ห้ามเชื่อ playerId ที่ client ส่งมาเอง — ใครก็เห็น id คนอื่นในห้องได้
+    // (ยกเว้นโหมดทดสอบ smoke test ที่ไม่มี cookie)
+    const playerId = sessionPlayerId || (ALLOW_LEGACY_SOCKET_IDENTITY ? requested : null);
     if (!playerId) {
         return null;
     }
@@ -1095,10 +1231,29 @@ function getSocketRoom(socket, expectedMode = null) {
     return room;
 }
 
+// ห้องถูกปิดแล้ว — เคลียร์ timer ทุกโหมด ไม่งั้น timer ค้างยิงใส่ห้องที่ไม่มีอยู่
+// ห้ามเรียกกับห้องที่ยังมีคนเล่นอยู่ (นาฬิกาของทั้งห้องจะหยุด)
+function clearAllRoomTimers(roomId) {
+    if (roomManager.getRoom(roomId)) return;
+    clearWerewolfPhaseTimer(roomId);
+    clearWerewolfTransitionTimer(roomId);
+    clearBlackMarketPhaseTimer(roomId);
+    clearSpyfallPhaseTimer(roomId);
+    clearSpyfallReturnTimer(roomId);
+    clearCoupPhaseTimer(roomId);
+    clearLiarPhaseTimer(roomId);
+    clearPokerPhaseTimer(roomId);
+    clearPokerBotTimer(roomId);
+    clearInsiderVoteTimer(roomId);
+    clearInsiderReturnTimer(roomId);
+    clearFinishedReturnTimer(roomId);
+}
+
 function detachPlayerFromOtherRooms(socket, playerId, keepRoomId) {
     const result = roomManager.leavePlayerFromOtherRooms(playerId, keepRoomId);
     (result.closed || []).forEach(roomId => {
         if (socket) socket.leave(roomId);
+        clearAllRoomTimers(roomId);
     });
     (result.updated || []).forEach(updatedRoom => {
         if (socket) socket.leave(updatedRoom.roomId);
@@ -2620,8 +2775,16 @@ function clearPokerBotTimer(roomId) {
     }
 }
 
+// หัวห้องใช้ /m ได้เฉพาะโต๊ะเล่นสนุก — โต๊ะเงินจริงต้องเป็น site admin
+// (ใครก็สร้างห้องเป็นหัวห้องได้ ถ้าปล่อยจะเสกชิป/ส่องไพ่คนอื่นบนโต๊ะเงินจริงได้)
 function canPokerDebug(room, playerId) {
-    return !!(room && playerId && (room.admin === playerId || isSiteAdminPlayer(playerId)));
+    if (!room || !playerId) return false;
+    if (isSiteAdminPlayer(playerId)) return true;
+    return room.admin === playerId && !isPokerCashRoom(room);
+}
+
+function isPokerCashRoom(room) {
+    return room?.gameState?.tableType === 'cash' || room?.settings?.pokerTableType === 'cash';
 }
 
 function schedulePokerBots(room) {
@@ -3238,8 +3401,7 @@ function runRoomCleanupSweep() {
         if (room) {
             io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
         } else {
-            clearWerewolfPhaseTimer(roomId);
-            clearWerewolfTransitionTimer(roomId);
+            clearAllRoomTimers(roomId);
         }
     });
 
@@ -3472,6 +3634,8 @@ const sessionMiddleware = session({
         secure: process.env.NODE_ENV === 'production'
     }
 });
+const identityCookieParser = cookieParser(SESSION_SECRET);
+io.engine.use(identityCookieParser);
 io.engine.use(sessionMiddleware);
 
 // อายุ cache ของ static:
@@ -3492,6 +3656,7 @@ app.disable('x-powered-by');
 
 app.use(compression()) // หน้า board ~250KB → เหลือราว 1 ใน 5 เดิมไม่เคยบีบอัดเลย
    .use(expressLayouts)
+   .use(identityCookieParser)
    .use(sessionMiddleware)
    .use('/static', express.static(__dirname + '/public', staticCacheOptions))
    .use('/assets', express.static(path.join(__dirname, 'public', 'assets'), staticCacheOptions))
@@ -3541,6 +3706,7 @@ app.use(async function(req, res, next) {
     // Skip สำหรับ static files, admin, API, health checks และ socket.io
     if (
         req.path === '/ping' ||
+        req.path === '/restore' ||
         req.path.startsWith('/static') ||
         req.path.startsWith('/admin') ||
         req.path.startsWith('/socket.io') ||
@@ -3568,23 +3734,37 @@ app.use(async function(req, res, next) {
     }
     
     // ลำดับความเชื่อ identity:
-    //   1. playerId ใน URL — คือคำประกาศของเครื่องนั้น เพราะ playerIdentity.js ฝั่ง client
-    //      จะบังคับ URL ให้ตรงกับ localStorage ของเครื่องเสมอ → ต้องให้ชนะ session
-    //      (เดิม session ชนะ query แล้ว client ก็เอา meta จาก session ไปทับ localStorage
-    //       ผลคือคลิกลิงก์ที่มี playerId คนอื่นตอน session หมดอายุ = บัญชีเดิมหายถาวร)
-    //   2. session — ใช้เมื่อ URL ไม่มี playerId (หลังจาก client ลบออกจาก address bar)
-    const queryPlayerId = playerManager.isValidPlayerId(req.query.playerId) ? req.query.playerId : null;
-    const boundPlayerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
-    let playerId = queryPlayerId || boundPlayerId || null;
-    
+    //   1. signed cookie / session — server ออกให้เอง ปลอมไม่ได้
+    //   2. playerId ใน URL — รับเฉพาะ id ที่ยังไม่มีเจ้าของ (ดู canClaimPlayerId)
+    //      ถ้าเป็นบัญชีที่มีเจ้าของแล้ว ต้องกู้ด้วยรหัสกู้บัญชีเท่านั้น
+    //      (ลิงก์ที่มี playerId คนอื่นติดมา จึงยึดบัญชีใครไม่ได้อีก)
+    const queryPlayerId = playerManager.isValidPlayerId(req.query.playerId) && !playerManager.isBotPlayerId(req.query.playerId)
+        ? req.query.playerId
+        : null;
+    const trustedPlayerId = getTrustedPlayerId(req);
+    let playerId = trustedPlayerId;
+
+    if (queryPlayerId && queryPlayerId !== trustedPlayerId) {
+        if (canClaimPlayerId(queryPlayerId)) {
+            playerId = queryPlayerId;
+        } else {
+            // เครื่องนี้อ้างบัญชีที่มีเจ้าของแล้ว → ให้หน้าเว็บลองกู้ด้วยรหัสที่เก็บไว้ในเครื่อง
+            return res.send(renderIdentityCheckPage(trustedPlayerId));
+        }
+    }
+
     if (playerId) {
         const existingPlayer = playerManager.getPlayer(playerId);
         if (existingPlayer) {
             await playerManager.updateLastSeen(playerId);
+            // จองบัญชีเก่า (ก่อนมีระบบรหัส) ให้เครื่องนี้ตั้งแต่ครั้งแรกที่เข้า
+            await playerManager.ensureRecoveryCode(playerId);
         }
         req.playerId = playerId;
         req.session.playerId = playerId;
+        issueIdentityCookie(res, playerId);
         res.locals.viewerPlayerId = playerId;
+        res.locals.viewerRecoveryCode = playerManager.getRecoveryCode(playerId);
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
         // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
@@ -3710,6 +3890,50 @@ app.get('/banned', function(req, res) {
 });
 
 // Keep-alive endpoint for UptimeRobot (Glitch)
+// กู้บัญชีด้วยรหัส (หน้า identity check / หน้าโปรไฟล์)
+app.post('/api/identity/restore', function(req, res) {
+    if (!allowRecoveryAttempt(req.ip)) {
+        return res.status(429).json({ success: false, error: 'ลองบ่อยเกินไป รอ 15 นาทีแล้วลองใหม่' });
+    }
+    const player = restoreIdentityFromCode(req, res, req.body?.code);
+    if (!player) {
+        return res.status(400).json({ success: false, error: 'รหัสกู้บัญชีไม่ถูกต้อง' });
+    }
+    return res.json({
+        success: true,
+        playerId: player.playerId,
+        recoveryCode: playerManager.getRecoveryCode(player.playerId)
+    });
+});
+
+// ข้อมูลบัญชีของเครื่องนี้ — client เก็บรหัสไว้ใน localStorage เผื่อ cookie หาย
+app.get('/api/identity/me', function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    const playerId = getTrustedPlayerId(req);
+    if (!playerId || !playerManager.getPlayer(playerId)) {
+        return res.json({ success: false });
+    }
+    return res.json({ success: true, playerId, recoveryCode: playerManager.getRecoveryCode(playerId) });
+});
+
+// ลิงก์กู้บัญชีจากหน้า admin (เช่น ย้าย site admin ไปเครื่องใหม่)
+app.get('/restore', function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    if (!allowRecoveryAttempt(req.ip)) {
+        return res.status(429).send('ลองบ่อยเกินไป รอ 15 นาทีแล้วลองใหม่');
+    }
+    const player = restoreIdentityFromCode(req, res, req.query.code);
+    if (!player) {
+        return res.status(400).send(renderIdentityCheckPage(getTrustedPlayerId(req)));
+    }
+    const code = playerManager.getRecoveryCode(player.playerId);
+    return res.send(`<!DOCTYPE html><html style="background:#1a1a2e"><head><meta charset="UTF-8"></head><body><script>
+        try { localStorage.setItem('insiderGamePlayerId', ${safeJsonForScript(player.playerId)});
+              localStorage.setItem('insiderGameRecoveryCode', ${safeJsonForScript(code)}); } catch (e) {}
+        location.replace('/rooms');
+    </script></body></html>`);
+});
+
 app.get('/ping', function(req, res) {
     res.status(200).json({ 
         status: 'alive', 
@@ -3741,7 +3965,7 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
     try {
         const data = JSON.parse(req.body);
         const { roomId } = data;
-        const playerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
+        const playerId = getTrustedPlayerId(req);
         if (!playerId || (data.playerId && data.playerId !== playerId)) {
             return res.status(403).send('เปิดหน้าห้องใหม่แล้วลองอีกครั้ง');
         }
@@ -3758,8 +3982,8 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
                 }
                 console.log(`[API] Player ${playerId} left room ${roomId} via sendBeacon`);
             } else {
-                clearWerewolfPhaseTimer(roomId);
-                clearWerewolfTransitionTimer(roomId);
+                // null = ห้องปิด หรือคนนี้ไม่ได้อยู่ในห้อง — clearAllRoomTimers เช็คเองว่าห้องหายจริง
+                clearAllRoomTimers(roomId);
                 io.emit('roomListUpdate', roomManager.getAllRooms());
                 console.log(`[API] Player ${playerId} left room ${roomId} via sendBeacon`);
             }
@@ -3774,9 +3998,10 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
 app.post('/api/rooms', async function(req, res) {
     try {
         const body = req.body || {};
-        const sessionPlayerId = playerManager.isValidPlayerId(req.session?.playerId) ? req.session.playerId : null;
+        const sessionPlayerId = getTrustedPlayerId(req);
         const requestedPlayerId = playerManager.isValidPlayerId(body.playerId) ? body.playerId : null;
-        const playerId = sessionPlayerId || requestedPlayerId;
+        // ไม่เชื่อ playerId จาก body ถ้าไม่มี cookie/session (ยกเว้นโหมด smoke test)
+        const playerId = sessionPlayerId || (ALLOW_LEGACY_SOCKET_IDENTITY ? requestedPlayerId : null);
 
         if (!playerId) {
             return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -4704,12 +4929,9 @@ io.sockets.on('connection', function(socket) {
                 addServerLog(io, 'leave', room.roomId, `${player.playerName} ออกจากห้อง`, 'warning');
             }
         });
-        const closedIds = new Set(result.closed || []);
-        if (hintedRoomId) closedIds.add(hintedRoomId);
-        closedIds.forEach(roomId => {
-            clearWerewolfPhaseTimer(roomId);
-            clearWerewolfTransitionTimer(roomId);
-        });
+        // timer ของห้องที่ปิดถูกเคลียร์ใน detachPlayerFromOtherRooms แล้ว
+        // (เดิมเคลียร์ hintedRoomId ด้วยแม้ห้องยังเล่นอยู่ → คนหนึ่งออก นาฬิกาทั้งห้องหยุด)
+        if (hintedRoomId) clearAllRoomTimers(hintedRoomId);
 
         io.emit('roomListUpdate', roomManager.getAllRooms());
         
@@ -5176,6 +5398,19 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // Admin: รหัสกู้บัญชีของผู้เล่น (ช่วยผู้เล่นที่ล้างเครื่อง / ย้ายเครื่อง site admin)
+    socket.on('admin_getRecoveryCode', async function(data, callback) {
+        if (typeof callback !== 'function') return;
+        if (!isAdminAuthenticated(socket.id)) {
+            return callback({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
+        }
+        const playerId = String(data?.playerId || '');
+        if (!playerManager.getPlayer(playerId)) {
+            return callback({ success: false, error: 'ไม่พบผู้เล่น' });
+        }
+        callback({ success: true, recoveryCode: await playerManager.ensureRecoveryCode(playerId) });
+    });
+
     socket.on('admin_createSiteAdmin', async function(data, callback) {
         try {
             if (!isAdminAuthenticated(socket.id)) {
@@ -5188,7 +5423,11 @@ io.sockets.on('connection', function(socket) {
             const { playerName } = data || {};
             const createdPlayer = await playerManager.createSiteAdmin(playerName);
             io.emit('roomListUpdate', roomManager.getAllRooms());
-            callback({ success: true, player: createdPlayer });
+            callback({
+                success: true,
+                player: createdPlayer,
+                recoveryCode: await playerManager.ensureRecoveryCode(createdPlayer.playerId)
+            });
         } catch (error) {
             console.error('Error creating site admin:', error);
             callback({ success: false, error: error.message });
@@ -6332,14 +6571,14 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('โหมด /m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
             }
             const amount = Math.min(100000, Math.max(1, Math.floor(Number(data?.amount) || 1000)));
-            walletManager.debugCredit(playerId, amount, 'poker-debug', { roomId: room.roomId });
             const player = (room.gameState.players || []).find(p => p.playerId === playerId);
-            if (player) {
-                if (room.gameState.tableType === 'cash') {
-                    player.stack = walletManager.publicWallet(playerId).balance;
-                } else {
-                    player.stack += amount;
-                }
+            if (isPokerCashRoom(room)) {
+                // โต๊ะเงินจริง (site admin เท่านั้น ผ่าน canPokerDebug) — เติมเข้ากระเป๋าจริง
+                walletManager.debugCredit(playerId, amount, 'poker-debug', { roomId: room.roomId });
+                if (player) player.stack = walletManager.publicWallet(playerId).balance;
+            } else if (player) {
+                // โต๊ะเล่นสนุก — เติมแค่ชิปบนโต๊ะ ไม่แตะกระเป๋า
+                player.stack += amount;
             }
             const requester = playerManager.getPlayer(playerId);
             addServerLog(
@@ -6871,6 +7110,12 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) {
                 throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             }
+            if (room.settings.pokerTableType === 'cash') {
+                throw new Error('โต๊ะเงินจริงใส่บอทไม่ได้ เปลี่ยนเป็นโต๊ะเล่นสนุกก่อน');
+            }
+            if (pokerBotAddInFlight.has(room.roomId)) {
+                throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
+            }
 
             const seatCap = Math.min(
                 Number(getGameEngine(room.settings.gameMode)?.maxPlayers || 10),
@@ -6884,30 +7129,35 @@ io.sockets.on('connection', function(socket) {
             const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄'];
             const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad'];
 
-            for (let i = 0; i < wanted; i += 1) {
-                const botId = `bot_${uuidv4()}`;
-                const botName = `${botNames[i % botNames.length]} ${botId.slice(-4)}`;
-                await playerManager.createOrGetPlayer(botId, { approved: true });
-                await playerManager.updatePlayerName(botId, botName);
-                await playerManager.updatePlayerColor(botId, botColors[i % botColors.length]);
-                await playerManager.updatePlayerAvatar(botId, botAvatars[i % botAvatars.length]);
-                const botSocketId = `bot_socket_${uuidv4()}`;
-                roomManager.joinRoom(roomId, botId, botSocketId, null, { bypassLock: true });
-                if (room.settings.pokerTableType === 'cash') {
-                    const hostBal = walletManager.publicWallet(adminPlayerId).balance;
-                    const botBal = walletManager.publicWallet(botId).balance;
-                    const target = Math.max(0, Number(hostBal) || 0);
-                    if (botBal < target) {
-                        walletManager.credit(botId, target - botBal, 'poker-bot-buyin', { roomId });
-                    } else if (botBal > target) {
-                        walletManager.debit(botId, botBal - target, 'poker-bot-buyin', { roomId });
-                    }
+            // กันกดรัว: ระหว่าง await ด้านล่าง อีก request อาจเข้ามาเพิ่มซ้อนจนเกินที่นั่ง
+            pokerBotAddInFlight.add(room.roomId);
+            let added = 0;
+            try {
+                for (let i = 0; i < wanted; i += 1) {
+                    // เช็คใหม่ทุกรอบ — ระหว่าง await อาจมีคนเข้าห้อง/กดเริ่มเกม/สลับเป็นโต๊ะเงินจริง
+                    if (roomManager.getRoom(roomId) !== room) break;
+                    if (roomManager.isRoomGameInProgress(room)) break;
+                    if (room.settings.pokerTableType === 'cash') break;
+                    if (room.players.length >= seatCap) break;
+
+                    const botId = `bot_${uuidv4()}`;
+                    const botName = `${botNames[i % botNames.length]} ${botId.slice(-4)}`;
+                    await playerManager.createOrGetPlayer(botId, { approved: true });
+                    await playerManager.updatePlayerName(botId, botName);
+                    await playerManager.updatePlayerColor(botId, botColors[i % botColors.length]);
+                    await playerManager.updatePlayerAvatar(botId, botAvatars[i % botAvatars.length]);
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    const botSocketId = `bot_socket_${uuidv4()}`;
+                    roomManager.joinRoom(roomId, botId, botSocketId, null, { bypassLock: true });
+                    added += 1;
                 }
+            } finally {
+                pokerBotAddInFlight.delete(room.roomId);
             }
 
             io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
             io.emit('roomListUpdate', roomManager.getAllRooms());
-            done({ success: true, added: wanted });
+            done({ success: true, added });
         } catch (error) {
             console.error('Error adding poker bots:', error);
             done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
@@ -7850,6 +8100,25 @@ function onServerListening() {
     recoverGamePhaseTimers();
 }
 
+// Render ส่ง SIGTERM ก่อนปิดเครื่องตอน deploy — เซฟกระเป๋าชิปที่ยังค้างคิวก่อนออก
+let shuttingDown = false;
+async function flushAndExit(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[insider] ${signal} received — flushing wallets`);
+    try {
+        await Promise.race([
+            walletManager.persistNow(),
+            new Promise(resolve => setTimeout(resolve, 5000))
+        ]);
+    } catch (error) {
+        console.error('[insider] flush on shutdown failed:', error.message);
+    }
+    process.exit(0);
+}
+process.on('SIGTERM', () => flushAndExit('SIGTERM'));
+process.on('SIGINT', () => flushAndExit('SIGINT'));
+
 async function startServer() {
     const devFast = process.env.INSIDER_DEV_FAST === '1';
     console.log(`[insider] initializing (port ${PORT}${devFast ? ', fast dev' : ''})...`);
@@ -7876,6 +8145,9 @@ async function startServer() {
         // ต้องโหลดหลัง connectDB ไม่งั้นจะตกไปใช้ไฟล์ ซึ่งดิสก์ Render หายทุก deploy
         await seasonManager.initSeasonManager();
         console.log('✅ Season Manager initialized');
+
+        // ต้องโหลดหลัง connectDB เหมือนกัน — ไฟล์ wallets.json หายทุก deploy บน Render
+        await walletManager.initWalletManager();
 
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());

@@ -965,6 +965,12 @@ function updateRoom(roomId, adminPlayerId, updates) {
         throw new Error('Only admin can update room');
     }
 
+    // บอทบนโต๊ะเงินจริง = ชิปงอกจากอากาศ แล้วไหลเข้ากระเป๋าคนที่ชนะบอท
+    // เช็คก่อนแก้อะไรทั้งนั้น จะได้ไม่เหลือการตั้งค่าครึ่งๆ กลางๆ
+    if (updates.pokerTableType === 'cash' && room.players.some(p => String(p.playerId || '').startsWith('bot_'))) {
+        throw new Error('โต๊ะเงินจริงใส่บอทไม่ได้ — เอาบอทออกก่อน');
+    }
+
     // อัปเดตชื่อห้อง
     if (updates.name !== undefined) {
         room.name = updates.name;

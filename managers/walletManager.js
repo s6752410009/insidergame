@@ -16,7 +16,16 @@ const DAILY_HALF_AT = 10000;
 const LEDGER_LIMIT = 40;
 
 const wallets = new Map();
+const dirtyIds = new Set();
 let saveTimer = null;
+let useDatabase = false;
+let Wallet = null;
+// โหลดไฟล์ไม่สำเร็จ = ห้ามเซฟทับเด็ดขาด ไม่งั้น map ว่างจะเขียนทับยอดของทุกคนหายหมด
+let persistBlocked = false;
+
+function isBotId(playerId) {
+    return String(playerId || '').startsWith('bot_');
+}
 
 function bangkokDate(now = new Date()) {
     return new Intl.DateTimeFormat('en-CA', {
@@ -32,36 +41,126 @@ function ensureDir() {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function loadWallets() {
+function readWalletFile(file) {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const rows = new Map();
+    Object.entries(data || {}).forEach(([playerId, row]) => {
+        if (isBotId(playerId)) return;
+        rows.set(playerId, normalizeWallet(playerId, row));
+    });
+    return rows;
+}
+
+function loadWalletsFromFile() {
     wallets.clear();
+    persistBlocked = false;
     if (!fs.existsSync(WALLETS_FILE)) return;
     try {
-        const data = JSON.parse(fs.readFileSync(WALLETS_FILE, 'utf8'));
-        Object.entries(data || {}).forEach(([playerId, row]) => {
-            wallets.set(playerId, normalizeWallet(playerId, row));
-        });
+        readWalletFile(WALLETS_FILE).forEach((row, id) => wallets.set(id, row));
+        return;
     } catch (error) {
         console.error('[wallet] load failed:', error.message);
     }
+    // ไฟล์หลักพัง → ลองไฟล์สำรองรอบก่อน
+    try {
+        readWalletFile(`${WALLETS_FILE}.bak`).forEach((row, id) => wallets.set(id, row));
+        console.error('[wallet] restored from backup file');
+    } catch (error) {
+        persistBlocked = true;
+        console.error('[wallet] backup load failed too — saving disabled to protect the file:', error.message);
+    }
 }
 
-function persistNow() {
+function persistFileNow() {
+    if (persistBlocked) return;
     try {
         ensureDir();
         const data = {};
-        wallets.forEach((row, playerId) => { data[playerId] = row; });
-        fs.writeFileSync(WALLETS_FILE, JSON.stringify(data, null, 2));
+        wallets.forEach((row, playerId) => {
+            if (!isBotId(playerId)) data[playerId] = row;
+        });
+        // เขียนไฟล์ชั่วคราวแล้ว rename — ไฟล์จริงไม่มีวันถูกเขียนค้างครึ่งไฟล์
+        const tmp = `${WALLETS_FILE}.${process.pid}.tmp`;
+        fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+        if (fs.existsSync(WALLETS_FILE)) fs.copyFileSync(WALLETS_FILE, `${WALLETS_FILE}.bak`);
+        fs.renameSync(tmp, WALLETS_FILE);
     } catch (error) {
         console.error('[wallet] save failed:', error.message);
     }
 }
 
-function scheduleSave() {
+async function persistDbNow() {
+    const ids = Array.from(dirtyIds);
+    dirtyIds.clear();
+    const ops = ids
+        .filter(id => wallets.has(id) && !isBotId(id))
+        .map(id => {
+            const row = wallets.get(id);
+            return {
+                updateOne: {
+                    filter: { playerId: id },
+                    update: { $set: { balance: row.balance, lastDailyClaim: row.lastDailyClaim, ledger: row.ledger } },
+                    upsert: true
+                }
+            };
+        });
+    if (!ops.length) return;
+    try {
+        await Wallet.bulkWrite(ops, { ordered: false });
+    } catch (error) {
+        // เขียนไม่ผ่าน → ใส่กลับเข้าคิว รอบหน้าลองใหม่
+        ids.forEach(id => dirtyIds.add(id));
+        console.error('[wallet] db save failed:', error.message);
+    }
+}
+
+function persistNow() {
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+    if (useDatabase) return persistDbNow();
+    persistFileNow();
+    return Promise.resolve();
+}
+
+function markDirty(playerId) {
+    if (isBotId(playerId)) return;
+    dirtyIds.add(playerId);
     if (saveTimer) return;
     saveTimer = setTimeout(() => {
         saveTimer = null;
         persistNow();
     }, 250);
+}
+
+// เรียกหลัง connectDB — ถ้ามี Mongo ใช้ Mongo เป็นหลัก (รอด deploy)
+async function initWalletManager() {
+    try {
+        const { isDBConnected } = require('./database');
+        Wallet = require('./models').Wallet;
+        useDatabase = Boolean(Wallet && isDBConnected());
+    } catch (error) {
+        useDatabase = false;
+    }
+    if (!useDatabase) {
+        console.log('📁 WalletManager using JSON file');
+        return;
+    }
+
+    const docs = await Wallet.find({}).lean();
+    if (docs.length === 0 && wallets.size > 0) {
+        // ย้ายยอดจากไฟล์เดิมขึ้น Mongo ครั้งแรก
+        wallets.forEach((row, id) => dirtyIds.add(id));
+        await persistDbNow();
+        console.log(`✅ WalletManager migrated ${wallets.size} wallet(s) from file to MongoDB`);
+        return;
+    }
+    wallets.clear();
+    docs.forEach(doc => {
+        if (!isBotId(doc.playerId)) wallets.set(doc.playerId, normalizeWallet(doc.playerId, doc));
+    });
+    console.log(`✅ WalletManager using MongoDB (${wallets.size} wallet(s))`);
 }
 
 function normalizeWallet(playerId, row = {}) {
@@ -79,7 +178,7 @@ function getOrCreate(playerId) {
     if (!playerId) throw new Error('ไม่มี playerId');
     if (!wallets.has(playerId)) {
         wallets.set(playerId, normalizeWallet(playerId, { balance: STARTING_CHIPS }));
-        scheduleSave();
+        markDirty(playerId);
     }
     return wallets.get(playerId);
 }
@@ -106,11 +205,13 @@ function applyDelta(playerId, delta, reason, meta = {}) {
     const next = row.balance + Number(delta);
     if (next < 0) throw new Error('ชิปไม่พอ');
     const cap = meta.bypassCap ? DEBUG_BALANCE_CAP : WALLET_CAP;
-    const capped = Math.min(cap, next);
+    // เพดานมีไว้หยุด "การได้เพิ่ม" เท่านั้น — ยอดที่เกินเพดานอยู่แล้ว (เช่นชนะกองใหญ่)
+    // ต้องไม่ถูกตัดลงตอนได้ชิปเพิ่ม เช่น กดรับรายวัน
+    const capped = delta > 0 ? Math.max(row.balance, Math.min(cap, next)) : next;
     const applied = capped - row.balance;
     row.balance = capped;
     pushLedger(row, { delta: applied, reason, roomId: meta.roomId || null });
-    scheduleSave();
+    markDirty(playerId);
     return publicWallet(playerId);
 }
 
@@ -138,7 +239,7 @@ function debugCredit(playerId, amount, reason, meta = {}) {
     const applied = next - row.balance;
     row.balance = next;
     pushLedger(row, { delta: applied, reason: reason || 'debug-credit', roomId: meta.roomId || null });
-    scheduleSave();
+    markDirty(playerId);
     return publicWallet(playerId);
 }
 
@@ -154,9 +255,10 @@ function claimDaily(playerId) {
     return publicWallet(playerId);
 }
 
-loadWallets();
+loadWalletsFromFile();
 
 module.exports = {
+    initWalletManager,
     STARTING_CHIPS,
     DAILY_CHIPS,
     WALLET_CAP,

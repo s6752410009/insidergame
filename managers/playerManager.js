@@ -4,6 +4,7 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -22,6 +23,8 @@ const { PLAYERS_FILE, BANNED_FILE } = require('./dataPaths');
 // Memory cache
 const players = new Map();
 const bannedPlayers = new Map();
+// playerId -> รหัสกู้บัญชี (ห้ามใส่ใน object ผู้เล่น เพราะ object นั้นถูกส่งให้ client)
+const recoveryCodes = new Map();
 
 function isBotPlayerId(playerId) {
     return String(playerId || '').startsWith('bot_');
@@ -91,8 +94,10 @@ async function loadPlayersFromDB() {
     try {
         const dbPlayers = await Player.find({});
         players.clear();
+        recoveryCodes.clear();
         dbPlayers.forEach(p => {
             if (isBotPlayerId(p.playerId)) return;
+            if (p.recoveryCode) recoveryCodes.set(p.playerId, p.recoveryCode);
             players.set(p.playerId, {
                 playerId: p.playerId,
                 playerName: p.playerName,
@@ -143,7 +148,10 @@ function loadPlayersFromFile() {
                     droppedBots += 1;
                     continue;
                 }
-                players.set(playerId, player);
+                // รหัสกู้บัญชีเก็บแยกจาก object ผู้เล่น — object นี้ถูกส่งออกไปหน้าเว็บหลายที่
+                const { recoveryCode, ...publicFields } = player || {};
+                if (recoveryCode) recoveryCodes.set(playerId, recoveryCode);
+                players.set(playerId, publicFields);
             }
             console.log(`Loaded ${players.size} players from file`);
             if (droppedBots > 0) {
@@ -180,7 +188,8 @@ async function savePlayers() {
         const playersData = {};
         for (const [playerId, player] of players.entries()) {
             if (isBotPlayerId(playerId)) continue;
-            playersData[playerId] = player;
+            const recoveryCode = recoveryCodes.get(playerId);
+            playersData[playerId] = recoveryCode ? { ...player, recoveryCode } : player;
         }
         fs.writeFileSync(PLAYERS_FILE, JSON.stringify(playersData, null, 2), 'utf8');
     } catch (error) {
@@ -271,6 +280,62 @@ function buildTransientPlayer(playerId) {
     };
 }
 
+// ============ Recovery Code ============
+// ตัดตัวที่อ่านสับสนออก (0/O, 1/I/L) — ผู้เล่นต้องพิมพ์เองจากมือถืออีกเครื่อง
+const RECOVERY_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function generateRecoveryCode() {
+    const bytes = crypto.randomBytes(12);
+    let raw = '';
+    for (let i = 0; i < 12; i++) raw += RECOVERY_ALPHABET[bytes[i] % RECOVERY_ALPHABET.length];
+    return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
+}
+
+function normalizeRecoveryCode(code) {
+    const raw = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (raw.length !== 12) return null;
+    return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
+}
+
+function generateUniqueRecoveryCode() {
+    for (;;) {
+        const code = generateRecoveryCode();
+        if (!findPlayerByRecoveryCode(code)) return code;
+    }
+}
+
+function findPlayerByRecoveryCode(code) {
+    const normalized = normalizeRecoveryCode(code);
+    if (!normalized) return null;
+    for (const [playerId, stored] of recoveryCodes.entries()) {
+        if (stored === normalized) return players.get(playerId) || null;
+    }
+    return null;
+}
+
+function getRecoveryCode(playerId) {
+    return recoveryCodes.get(playerId) || null;
+}
+
+// บัญชีที่ยังไม่มีรหัส = บัญชีเก่าก่อนมีระบบนี้ ยังไม่เคยถูก "จอง" เข้ากับเครื่องไหน
+function hasRecoveryCode(playerId) {
+    return recoveryCodes.has(playerId);
+}
+
+async function ensureRecoveryCode(playerId) {
+    const player = players.get(playerId);
+    if (!player || isBotPlayerId(playerId)) return null;
+    if (recoveryCodes.has(playerId)) return recoveryCodes.get(playerId);
+    const code = generateUniqueRecoveryCode();
+    recoveryCodes.set(playerId, code);
+    if (useDatabase && Player) {
+        await Player.updateOne({ playerId }, { recoveryCode: code });
+    } else {
+        savePlayers();
+    }
+    return code;
+}
+
 // ============ Player Functions ============
 async function createOrGetPlayer(playerId = null, options = {}) {
     if (playerId && !isValidPlayerId(playerId)) {
@@ -310,10 +375,11 @@ async function createOrGetPlayer(playerId = null, options = {}) {
     if (isBotPlayerId(newPlayerId)) {
         return newPlayer;
     }
-    
+    recoveryCodes.set(newPlayerId, generateUniqueRecoveryCode());
+
     if (useDatabase && Player) {
         try {
-            await Player.create(newPlayer);
+            await Player.create({ ...newPlayer, recoveryCode: recoveryCodes.get(newPlayerId) });
         } catch (e) {
             if (e.code !== 11000) console.error('Error creating player in DB:', e.message);
         }
@@ -440,6 +506,7 @@ function getAllPlayers() {
 async function deletePlayer(playerId) {
     if (players.has(playerId)) {
         players.delete(playerId);
+        recoveryCodes.delete(playerId);
         if (useDatabase && Player) {
             await Player.deleteOne({ playerId });
         } else {
@@ -693,5 +760,10 @@ module.exports = {
     getBanInfo,
     getAllBannedPlayers,
     adminUpdatePlayerName,
-    setPlayerApproved
+    setPlayerApproved,
+    normalizeRecoveryCode,
+    findPlayerByRecoveryCode,
+    hasRecoveryCode,
+    ensureRecoveryCode,
+    getRecoveryCode
 };

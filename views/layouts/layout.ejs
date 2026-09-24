@@ -91,6 +91,7 @@
         <link rel="stylesheet" href="/static/css/playerAvatar.css">
         <link rel="stylesheet" href="/static/css/uiFeedback.css">
         <link rel="stylesheet" href="/static/css/support.css">
+        <link rel="stylesheet" href="/static/css/promoPopup.css">
         <link rel="stylesheet" href=
 "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.css">
         <link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
@@ -141,6 +142,7 @@
         <script src="/static/js/playerAvatar.js"></script>
         <script src="/static/js/haptics.js"></script>
         <script src="/static/js/partyPlay.js"></script>
+        <script src="/static/js/promoPopup.js"></script>
         <script>
             (function() {
                 var button = document.getElementById('support-fab');
@@ -195,6 +197,7 @@
                     window.appSocket.on('playerDeleted', function(data) {
                         // ล้าง localStorage และ redirect ไปหน้าหลัก
                         localStorage.removeItem('insiderGamePlayerId');
+                        localStorage.removeItem('insiderGameRecoveryCode');
                         alert(data.message || 'บัญชีของคุณถูกลบ กรุณาสร้างบัญชีใหม่');
                         window.location.href = '/';
                     });

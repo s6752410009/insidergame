@@ -1992,6 +1992,7 @@ $(function() {
                         ${approvalAction}
                         ${siteAdminAction}
                         <button class="action-btn edit" onclick="editPlayerName('${player.playerId}', '${escapeHtml(player.playerName)}')">แก้ไข</button>
+                        <button class="action-btn view" onclick="copySiteAdminLink('${player.playerId}')" title="ลิงก์กู้บัญชี — ส่งให้เจ้าของบัญชีเท่านั้น">🔑 กู้บัญชี</button>
                         <button class="action-btn delete" onclick="deletePlayer('${player.playerId}', '${escapeHtml(player.playerName)}')">ลบ</button>
                     </td>
                 </tr>
@@ -2515,7 +2516,7 @@ $(function() {
                     Swal.fire({
                         icon: 'success',
                         title: 'สร้าง site admin สำเร็จ',
-                        html: `ลิงก์เข้าเล่นพร้อมใช้แล้ว<br><code>${window.location.origin}/rooms?playerId=${res.player.playerId}</code>`,
+                        html: `ลิงก์เข้าเล่นพร้อมใช้แล้ว (เปิดบนเครื่องที่จะใช้ อย่าแชร์ต่อ)<br><code>${window.location.origin}/restore?code=${encodeURIComponent(res.recoveryCode || '')}</code>`,
                         background: '#1e1e1e',
                         color: '#fff'
                     });
@@ -3185,9 +3186,20 @@ $(function() {
         return String(text).replace(/[&<>"']/g, m => map[m]);
     }
 
+    // ลิงก์เข้าเล่นใช้รหัสกู้บัญชี (playerId อย่างเดียวยึดบัญชีไม่ได้แล้ว)
+    function fetchRecoveryLink(playerId) {
+        return new Promise(function(resolve, reject) {
+            socket.emit('admin_getRecoveryCode', { playerId: playerId }, function(res) {
+                if (res && res.success) resolve(`${window.location.origin}/restore?code=${encodeURIComponent(res.recoveryCode)}`);
+                else reject(new Error((res && res.error) || 'ไม่พบรหัสกู้บัญชี'));
+            });
+        });
+    }
+
     window.copySiteAdminLink = async function(playerId) {
-        const joinUrl = `${window.location.origin}/rooms?playerId=${encodeURIComponent(playerId)}`;
+        let joinUrl = '';
         try {
+            joinUrl = await fetchRecoveryLink(playerId);
             if (navigator.clipboard?.writeText) {
                 await navigator.clipboard.writeText(joinUrl);
             } else {

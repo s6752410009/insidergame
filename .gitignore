@@ -10,6 +10,9 @@ data/rooms.json
 data/backups/
 data/seasons.json
 data/adminMessages.json
+data/wallets.json
+data/wallets.json.bak
+data/*.tmp
 # Editor-local
 .cursor/
 

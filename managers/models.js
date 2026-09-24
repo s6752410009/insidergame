@@ -52,6 +52,8 @@ const playerSchema = new mongoose.Schema({
     avatar: { type: String, default: '👤' },
     avatarFrame: { type: String, default: 'none' },
     isSiteAdmin: { type: Boolean, default: false },
+    // รหัสกู้บัญชี — ใช้ย้ายเครื่อง/กู้คืนหลังล้างเบราว์เซอร์ ต้องไม่ส่งให้คนอื่นเห็น
+    recoveryCode: { type: String, index: true, sparse: true },
     createdAt: { type: Date, default: Date.now },
     lastSeen: { type: Date, default: Date.now }
 }, { timestamps: true });
@@ -106,6 +108,14 @@ const roomSnapshotSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now, index: true }
 }, { timestamps: true });
 
+// กระเป๋าชิป — เดิมเก็บแค่ data/wallets.json ซึ่งดิสก์ Render หายทุกครั้งที่ deploy
+const walletSchema = new mongoose.Schema({
+    playerId: { type: String, required: true, unique: true, index: true },
+    balance: { type: Number, default: 0 },
+    lastDailyClaim: { type: String, default: null },
+    ledger: { type: Array, default: [] }
+}, { timestamps: true });
+
 // ประวัติ season. เดิมเก็บแค่ data/seasons.json ซึ่งดิสก์ Render หายทุกครั้งที่ deploy
 // ทำให้ตารางอันดับ season เก่าหายเกลี้ยง ทั้งที่ผู้เล่น/สถิติอยู่ใน Mongo รอดมาตลอด
 const seasonArchiveSchema = new mongoose.Schema({
@@ -120,6 +130,7 @@ const PlayerStats = mongoose.model('PlayerStats', playerStatsSchema);
 const BannedPlayer = mongoose.model('BannedPlayer', bannedPlayerSchema);
 const AdminMessageThread = mongoose.model('AdminMessageThread', adminMessageThreadSchema);
 const RoomSnapshot = mongoose.model('RoomSnapshot', roomSnapshotSchema);
+const Wallet = mongoose.model('Wallet', walletSchema);
 
 module.exports = {
     Player,
@@ -127,5 +138,6 @@ module.exports = {
     BannedPlayer,
     AdminMessageThread,
     RoomSnapshot,
-    SeasonArchive
+    SeasonArchive,
+    Wallet
 };

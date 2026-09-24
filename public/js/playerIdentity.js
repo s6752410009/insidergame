@@ -6,6 +6,8 @@
     'use strict';
     
     const PLAYER_ID_KEY = 'insiderGamePlayerId';
+    const RECOVERY_CODE_KEY = 'insiderGameRecoveryCode';
+    const RECOVERY_SYNC_KEY = 'insiderRecoverySynced';
     const PLAYER_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     /**
@@ -47,6 +49,7 @@
         const serverPlayerId = getServerPlayerId();
         if (serverPlayerId) {
             localStorage.setItem(PLAYER_ID_KEY, serverPlayerId);
+            localStorage.removeItem(RECOVERY_CODE_KEY);
             console.log('[PlayerIdentity] Adopted server identity:', serverPlayerId);
             return serverPlayerId;
         }
@@ -131,6 +134,26 @@
     }
     
     /**
+     * เก็บรหัสกู้บัญชีไว้ในเครื่องด้วย (สำรองเผื่อ cookie หาย) — เช็คครั้งเดียวต่อ session
+     */
+    function syncRecoveryCode() {
+        try {
+            if (sessionStorage.getItem(RECOVERY_SYNC_KEY)) return;
+        } catch (e) {
+            return;
+        }
+        fetch('/api/identity/me', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data || !data.success) return;
+                if (data.playerId !== localStorage.getItem(PLAYER_ID_KEY)) return;
+                if (data.recoveryCode) localStorage.setItem(RECOVERY_CODE_KEY, data.recoveryCode);
+                sessionStorage.setItem(RECOVERY_SYNC_KEY, '1');
+            })
+            .catch(function() {});
+    }
+
+    /**
      * อัพเดททุก link ในหน้าให้มี playerId
      */
     function updateAllLinks() {
@@ -178,5 +201,8 @@
         if (ensurePlayerIdInUrl()) {
             updateAllLinks();
         }
+    }
+    if (getServerPlayerId()) {
+        syncRecoveryCode();
     }
 })();

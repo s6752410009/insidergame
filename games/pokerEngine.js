@@ -23,6 +23,9 @@ const FUN_BET_MS = Number(process.env.POKER_FUN_BET_MS) || 20000;
 const DEAL3_MS = Number(process.env.POKER_DEAL3_MS) || 2800;
 const REVEAL_MS = Number(process.env.POKER_REVEAL_MS) || 7500;
 const BETWEEN_MS = Number(process.env.POKER_BETWEEN_MS) || 8000;
+const OFFLINE_GRACE_MS = Number.isFinite(Number(process.env.POKER_OFFLINE_GRACE_MS))
+    ? Number(process.env.POKER_OFFLINE_GRACE_MS)
+    : 10000;
 const FUN_STACK = 10000;
 const DEFAULT_ANTE = 500;
 
@@ -72,6 +75,9 @@ function createInitialState(variantId = 'poker5') {
         deck: [],
         board: [],
         pot: 0,
+        pots: [],
+        deadMoney: [],
+        pendingRefunds: {},
         currentBet: 0,
         raiseCount: 0,
         toActPlayerId: null,
@@ -175,12 +181,30 @@ function liveRoomIds(room) {
 function pruneAbsentPlayers(room) {
     const state = room.gameState;
     const liveIds = liveRoomIds(room);
-    state.players = (state.players || []).filter(player => liveIds.has(player.playerId));
+    const handOpen = (Number(state.pot) || 0) > 0;
+    state.players = (state.players || []).filter(player => {
+        if (liveIds.has(player.playerId)) return true;
+        // คนออกกลางมือ: ชิปที่ลงไว้ยังอยู่ในกอง (เงินตาย)
+        if (handOpen && Number(player.committed) > 0) {
+            state.deadMoney = [...(state.deadMoney || []), Number(player.committed)];
+        }
+        return false;
+    });
     if (state.players.length) {
         state.dealerIndex = ((state.dealerIndex % state.players.length) + state.players.length) % state.players.length;
     } else {
         state.dealerIndex = 0;
     }
+}
+
+// คนหลุด (ไม่มี socket และหลุดเกินช่วงผ่อนผัน) ไม่ต้องจ่ายค่าวางกอง/ไม่ได้ไพ่มือนั้น — กลับมาเล่นเองมือถัดไปเมื่อต่อใหม่
+function isOfflineSeat(room, playerId) {
+    if (isBotId(playerId)) return false;
+    const roomPlayer = (room.players || []).find(player => player.playerId === playerId);
+    if (!roomPlayer || roomPlayer.socketId || !roomPlayer.disconnectedAt) return false;
+    const since = new Date(roomPlayer.disconnectedAt).getTime();
+    if (!Number.isFinite(since)) return true;
+    return Date.now() - since >= OFFLINE_GRACE_MS;
 }
 
 function syncSeats(room) {
@@ -198,7 +222,7 @@ function finishTable(room, reason) {
     const state = room.gameState;
     const leftover = livePlayers(room);
     if (state.pot && leftover.length) {
-        payPot(room, leftover);
+        settlePots(room, null);
     } else {
         state.pot = 0;
     }
@@ -352,24 +376,131 @@ function collectAnte(room) {
     return paying.length >= 2;
 }
 
-function payPot(room, winners) {
+function giveChips(room, player, amount, reason) {
+    const value = Math.max(0, Math.floor(Number(amount) || 0));
+    if (!value || !player) return 0;
+    if (room.gameState.tableType === 'cash') {
+        walletManager.credit(player.playerId, value, reason, { roomId: room.roomId, bypassCap: true });
+        player.stack = walletStack(player.playerId);
+    } else {
+        player.stack += value;
+    }
+    return value;
+}
+
+// ทุกยอดที่ลงกองมือนี้ (รวมคนหมอบ/คนออกไปแล้ว) — คนหมอบยังนับเงินแต่ไม่มีสิทธิ์กินกอง
+function potContributions(room) {
     const state = room.gameState;
-    if (!winners.length || !state.pot) return 0;
-    const share = Math.floor(state.pot / winners.length);
-    const leftover = state.pot - (share * winners.length);
-    const leftoverIndex = leftover ? ((Number(state.handNumber) || 1) - 1) % winners.length : -1;
-    winners.forEach((player, index) => {
-        const amount = share + (index === leftoverIndex ? leftover : 0);
-        if (state.tableType === 'cash') {
-            walletManager.credit(player.playerId, amount, 'poker-pot', { roomId: room.roomId, bypassCap: true });
-            player.stack = walletStack(player.playerId);
-        } else {
-            player.stack += amount;
-        }
+    const rows = (state.players || [])
+        .map(player => ({
+            player,
+            amount: Math.max(0, Number(player.committed) || 0),
+            eligible: !player.folded && !player.sittingOut
+        }))
+        .filter(row => row.amount > 0 || row.eligible);
+    (state.deadMoney || []).forEach(amount => {
+        const value = Math.max(0, Number(amount) || 0);
+        if (value) rows.push({ player: null, amount: value, eligible: false });
     });
-    const paid = state.pot;
+    return rows;
+}
+
+// คืนส่วนที่ไม่มีใครตามได้ (ยอดของคนลงสูงสุดที่เกินคนที่สองลงสูงสุด) ให้เจ้าของก่อนวัด/ก่อนกินกองหมอบ
+function returnUncalled(room) {
+    const state = room.gameState;
+    const rows = potContributions(room).filter(row => row.amount > 0);
+    if (!rows.length) return null;
+    const sorted = rows.slice().sort((a, b) => b.amount - a.amount);
+    const top = sorted[0];
+    const second = sorted[1] ? sorted[1].amount : 0;
+    const excess = top.amount - second;
+    if (excess <= 0 || !top.player || !top.eligible) return null;
+    const player = top.player;
+    player.committed -= excess;
+    player.streetBet = Math.max(0, (Number(player.streetBet) || 0) - excess);
+    state.pot = Math.max(0, (Number(state.pot) || 0) - excess);
+    giveChips(room, player, excess, 'poker-refund');
+    if (player.stack > 0) player.allIn = false;
+    const refunds = { ...(state.pendingRefunds || {}) };
+    refunds[player.playerId] = (refunds[player.playerId] || 0) + excess;
+    state.pendingRefunds = refunds;
+    pushHistory(room, '↩️', `คืน ${excess} ให้ ${player.name} (ไม่มีใครตาม)`);
+    return { playerId: player.playerId, amount: excess };
+}
+
+// แบ่งกองหลัก/กองข้างตามยอดที่แต่ละคนลงรวมทั้งมือ
+function buildPots(room) {
+    const state = room.gameState;
+    const rows = potContributions(room);
+    const levels = [...new Set(rows.filter(row => row.eligible && row.amount > 0).map(row => row.amount))]
+        .sort((a, b) => a - b);
+    const pots = [];
+    let prev = 0;
+    levels.forEach(level => {
+        const amount = rows.reduce((sum, row) => sum + Math.max(0, Math.min(row.amount, level) - prev), 0);
+        const eligible = rows.filter(row => row.eligible && row.amount >= level).map(row => row.player);
+        if (amount > 0) pots.push({ amount, eligible });
+        prev = level;
+    });
+    // ยอดเกินระดับสูงสุดของคนที่ยังอยู่ (เงินตายจากคนหมอบ) + ส่วนต่างเก่า ให้เข้ากองสุดท้าย
+    const counted = pots.reduce((sum, pot) => sum + pot.amount, 0);
+    const diff = (Number(state.pot) || 0) - counted;
+    if (diff > 0) {
+        if (pots.length) {
+            pots[pots.length - 1].amount += diff;
+        } else {
+            const eligible = rows.filter(row => row.eligible).map(row => row.player);
+            if (eligible.length) pots.push({ amount: diff, eligible });
+        }
+    }
+    return pots;
+}
+
+function seatOrderFromButton(room, players) {
+    const state = room.gameState;
+    const n = state.players.length || 1;
+    const dealer = Number(state.dealerIndex) || 0;
+    const distance = player => {
+        const index = state.players.indexOf(player);
+        return index < 0 ? n : ((index - dealer - 1 + n) % n);
+    };
+    return players.slice().sort((a, b) => distance(a) - distance(b));
+}
+
+// จ่ายทุกกอง: scoreOf(player) → คะแนน (สูงชนะ) ; เสมอแบ่งเท่า เศษให้คนแรกนับตามเข็มจากคนแจก
+function settlePots(room, scoreOf) {
+    const state = room.gameState;
+    returnUncalled(room);
+    const pots = buildPots(room);
+    const payouts = {};
+    const potRows = pots.map((pot, index) => {
+        const scored = pot.eligible.map(player => ({ player, score: scoreOf ? scoreOf(player) : 0 }));
+        const best = Math.max(...scored.map(row => row.score));
+        const winners = seatOrderFromButton(room, scored.filter(row => row.score === best).map(row => row.player));
+        const share = Math.floor(pot.amount / winners.length);
+        const odd = pot.amount - share * winners.length;
+        const shares = winners.map((player, i) => {
+            const amount = share + (i < odd ? 1 : 0);
+            payouts[player.playerId] = (payouts[player.playerId] || 0) + amount;
+            return { playerId: player.playerId, name: player.name, amount };
+        });
+        return {
+            kind: index === 0 ? 'main' : 'side',
+            amount: pot.amount,
+            eligibleIds: pot.eligible.map(player => player.playerId),
+            winnerIds: winners.map(player => player.playerId),
+            shares
+        };
+    });
+    Object.keys(payouts).forEach(playerId => {
+        giveChips(room, getPlayer(room, playerId), payouts[playerId], 'poker-pot');
+    });
+    const paid = potRows.reduce((sum, pot) => sum + pot.amount, 0);
+    const refunds = state.pendingRefunds || {};
+    state.pendingRefunds = {};
     state.pot = 0;
-    return paid;
+    state.pots = potRows;
+    return { paid, pots: potRows, payouts, refunds };
 }
 
 function resetHandFlags(player) {
@@ -394,7 +525,12 @@ function dealHands(room) {
     state.deck = shuffle(buildDeck());
     state.board = [];
     seatedPlayers(room).forEach(player => {
+        // ค่าวางกองถูกเก็บก่อนแจก — อย่าล้างยอดที่ลงไว้/สถานะหมดหน้าตัก ไม่งั้นกองข้างคิดผิด
+        const committed = Number(player.committed) || 0;
+        const allIn = !!player.allIn;
         resetHandFlags(player);
+        player.committed = committed;
+        player.allIn = allIn;
         for (let i = 0; i < meta.dealCount; i += 1) {
             player.hand.push(state.deck.pop());
         }
@@ -406,9 +542,12 @@ function startHand(room) {
     const state = room.gameState;
     syncSeats(room);
     state.players.forEach(player => {
-        player.sittingOut = false;
+        player.sittingOut = isOfflineSeat(room, player.playerId);
         resetHandFlags(player);
     });
+    state.deadMoney = [];
+    state.pendingRefunds = {};
+    state.pots = [];
     if (state.players.length < 2 || !collectAnte(room)) {
         return finishTable(room, 'เหลือผู้เล่นหรือชิปไม่พอเริ่มมือนี้ — จบโต๊ะ');
     }
@@ -647,11 +786,15 @@ function continueBet(room, lastActor) {
 function awardFoldWin(room, winner) {
     const state = room.gameState;
     if (!winner) return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบโต๊ะ');
-    const pot = payPot(room, [winner]);
+    const settled = settlePots(room, null);
+    const pot = settled.paid;
     winner.bestName = 'คนอื่นหมอบ';
     state.lastResult = {
-        winners: [{ playerId: winner.playerId, name: winner.name }],
+        winners: [{ playerId: winner.playerId, name: winner.name, amount: settled.payouts[winner.playerId] || 0 }],
         pot,
+        pots: settled.pots,
+        payouts: settled.payouts,
+        refunds: settled.refunds,
         handName: 'คนอื่นหมอบ',
         handTitle: 'คนอื่นหมอบ',
         show: []
@@ -693,6 +836,8 @@ function afterBet(room) {
     if (live.length <= 1) {
         return awardFoldWin(room, live[0]);
     }
+    // จบรอบเดิมพันแล้ว คืนส่วนที่ไม่มีใครตามก่อนเปิดไพ่
+    returnUncalled(room);
     if (meta.hasThird) {
         dealThirdFaceUp(room);
         setPhase(room, 'deal3', DEAL3_MS);
@@ -729,14 +874,27 @@ function revealHands(room) {
         return { player, evaluated };
     });
     const best = Math.max(...results.map(row => row.evaluated.score));
-    const winners = results.filter(row => row.evaluated.score === best).map(row => row.player);
-    const pot = payPot(room, winners);
+    const scoreById = new Map(results.map(row => [row.player.playerId, row.evaluated.score]));
+    const settled = settlePots(room, player => scoreById.has(player.playerId) ? scoreById.get(player.playerId) : -Infinity);
+    const pot = settled.paid;
+    // ผู้ชนะ = ใครก็ตามที่ได้เงินจากกองใดกองหนึ่ง (กองหลักหรือกองข้าง) เรียงตามยอดที่ได้
+    const winners = results
+        .map(row => row.player)
+        .filter(player => (settled.payouts[player.playerId] || 0) > 0)
+        .sort((a, b) => (settled.payouts[b.playerId] || 0) - (settled.payouts[a.playerId] || 0));
+    if (!winners.length) {
+        results.filter(row => row.evaluated.score === best).forEach(row => winners.push(row.player));
+    }
     const names = winners.map(p => p.name).join(', ');
-    const top = results.find(row => row.evaluated.score === best);
+    const topWinner = winners[0];
+    const top = results.find(row => row.player === topWinner) || results.find(row => row.evaluated.score === best);
     const handName = top?.evaluated.title || top?.evaluated.categoryName;
     state.lastResult = {
-        winners: winners.map(p => ({ playerId: p.playerId, name: p.name })),
+        winners: winners.map(p => ({ playerId: p.playerId, name: p.name, amount: settled.payouts[p.playerId] || 0 })),
         pot,
+        pots: settled.pots,
+        payouts: settled.payouts,
+        refunds: settled.refunds,
         handName,
         handTitle: top?.evaluated.title || handName,
         show: results.map(row => ({
@@ -747,7 +905,8 @@ function revealHands(room) {
             categoryName: row.evaluated.categoryName,
             title: row.evaluated.title || row.evaluated.categoryName,
             score: row.evaluated.score,
-            won: row.evaluated.score === best
+            won: (settled.payouts[row.player.playerId] || 0) > 0,
+            amount: settled.payouts[row.player.playerId] || 0
         }))
     };
     state.winner = winners.length === 1
@@ -1107,6 +1266,7 @@ function buildClientState(room, viewerPlayerId) {
         tableType: state.tableType,
         ante: state.ante,
         pot: state.pot,
+        pots: state.pots || [],
         displayPot: showing && state.lastResult ? state.lastResult.pot : state.pot,
         betMs: betClock({ gameState: state }),
         currentBet: state.currentBet,

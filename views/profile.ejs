@@ -19,6 +19,19 @@
         text-align: center;
     }
     
+    .recovery-hint { color: rgba(255,255,255,0.72); font-size: 0.95em; line-height: 1.55; margin: 0 0 14px; }
+    .recovery-code-row, .recovery-restore-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .recovery-code {
+        font-size: 1.35em; letter-spacing: 2px; padding: 8px 14px; border-radius: 10px;
+        background: rgba(0,0,0,0.35); color: #ffc107; border: 1px solid rgba(255,193,7,0.3);
+    }
+    .recovery-restore { margin-top: 16px; }
+    .recovery-restore summary { cursor: pointer; color: #5eead4; margin-bottom: 10px; }
+    .recovery-restore input {
+        flex: 1 1 180px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid #555;
+        background: #111; color: #fff; letter-spacing: 2px; text-transform: uppercase;
+    }
+
     .profile-section {
         background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
         border: 3px solid #444;
@@ -1260,6 +1273,29 @@
         </div>
     </div>
 
+    <% const recoveryCode = typeof viewerRecoveryCode !== 'undefined' ? viewerRecoveryCode : null; %>
+    <div class="profile-section motion-enter recovery-section" style="--enter-delay: 360;">
+        <h2>🔑 รหัสกู้บัญชี</h2>
+        <p class="recovery-hint">จดหรือแคปเก็บไว้ ถ้าล้างเบราว์เซอร์ เปลี่ยนมือถือ หรือเข้าจากเครื่องอื่น ใช้รหัสนี้เอาบัญชี ถ้วย และสถิติเดิมกลับมาได้ <b>อย่าให้คนอื่นดู</b></p>
+        <% if (recoveryCode) { %>
+            <div class="recovery-code-row">
+                <code class="recovery-code" id="recoveryCode" data-code="<%= recoveryCode %>">••••-••••-••••</code>
+                <button type="button" class="btn btn-dark btn-sm" id="recoveryReveal">แสดง</button>
+                <button type="button" class="btn btn-dark btn-sm" id="recoveryCopy">คัดลอก</button>
+            </div>
+        <% } else { %>
+            <p class="recovery-hint">รหัสจะพร้อมหลังเล่นเกมแรก</p>
+        <% } %>
+        <details class="recovery-restore">
+            <summary>มีรหัสจากเครื่องอื่น? กู้บัญชีเดิมมาที่เครื่องนี้</summary>
+            <div class="recovery-restore-row">
+                <input type="text" id="recoveryInput" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocomplete="off">
+                <button type="button" class="btn btn-danger btn-sm" id="recoveryRestore">กู้บัญชี</button>
+            </div>
+            <p class="recovery-hint" style="margin-top:8px;">บัญชีปัจจุบันบนเครื่องนี้จะถูกสลับออก (ข้อมูลไม่หาย ถ้ามีรหัสของมัน)</p>
+        </details>
+    </div>
+
     <div class="stats-section">
         <h2>📊 สถิติการเล่น</h2>
         
@@ -1670,6 +1706,44 @@
 <%- contentFor('script') %>
 <script>
 $(function() {
+    (function initRecoveryCode() {
+        var codeEl = document.getElementById('recoveryCode');
+        if (codeEl) {
+            var code = codeEl.getAttribute('data-code');
+            document.getElementById('recoveryReveal').addEventListener('click', function() {
+                var hidden = codeEl.textContent !== code;
+                codeEl.textContent = hidden ? code : '••••-••••-••••';
+                this.textContent = hidden ? 'ซ่อน' : 'แสดง';
+            });
+            document.getElementById('recoveryCopy').addEventListener('click', function() {
+                var btn = this;
+                navigator.clipboard && navigator.clipboard.writeText(code).then(function() {
+                    btn.textContent = 'คัดลอกแล้ว ✓';
+                });
+            });
+            try { localStorage.setItem('insiderGameRecoveryCode', code); } catch (e) {}
+        }
+        document.getElementById('recoveryRestore').addEventListener('click', function() {
+            var value = document.getElementById('recoveryInput').value;
+            fetch('/api/identity/restore', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: value })
+            }).then(function(r) { return r.json(); }).then(function(res) {
+                if (!res.success) {
+                    Swal.fire({ icon: 'error', title: 'กู้บัญชีไม่สำเร็จ', text: res.error || 'รหัสไม่ถูกต้อง' });
+                    return;
+                }
+                localStorage.setItem('insiderGamePlayerId', res.playerId);
+                localStorage.setItem('insiderGameRecoveryCode', res.recoveryCode);
+                window.location.replace('/profile');
+            }).catch(function() {
+                Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่ได้', text: 'ลองใหม่อีกครั้ง' });
+            });
+        });
+    })();
+
     const playerId = '<%= player.playerId %>';
     
     // Update name

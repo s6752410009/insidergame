@@ -161,16 +161,19 @@ async function playStreet(players, roomId, script) {
         console.log('2. สี่ใบเก ทั้งตา ใบ 3 หงายฟรี ไม่มีใบ 4 ✓');
         four.players.forEach(p => p.socket.close());
 
-        const cash = await seatPlayers(base, 'poker5', 1, { pokerTableType: 'cash' });
+        // บอทบนโต๊ะเงินจริง = ชิปงอกจากอากาศ → ต้องถูกปฏิเสธ
+        const cash = await seatPlayers(base, 'poker5', 2, { pokerTableType: 'cash' });
         const added = await ack(cash.players[0].socket, 'poker_addBots', { roomId: cash.roomId, count: 1 });
-        assert(added?.success && added.added === 1, 'เพิ่มบอทโต๊ะเงินไม่ได้: ' + JSON.stringify(added));
+        assert(added && !added.success, 'โต๊ะเงินต้องเพิ่มบอทไม่ได้: ' + JSON.stringify(added));
+        const credited = await ack(cash.players[0].socket, 'poker_debug_credit', { roomId: cash.roomId, amount: 100000 });
+        assert(credited && !credited.success, 'หัวห้องโต๊ะเงินต้องเติมชิป debug ไม่ได้: ' + JSON.stringify(credited));
         assert((await ack(cash.players[0].socket, 'startGameFromLobby', { roomId: cash.roomId }))?.success, 'เริ่มโต๊ะเงินไม่ได้');
         cash.players.forEach(player => player.socket.emit('poker_requestState', { roomId: cash.roomId }));
         const cashState = await waitFor(cash.players, s => s.phase === 'select' && s.players && s.players.length === 2);
         const stacks = cashState.players.map(p => p.stack);
-        assert(stacks[0] === stacks[1], 'ชิปบอทต้องเท่าคน หลังวางกอง ได้ ' + stacks.join(','));
+        assert(stacks[0] === stacks[1], 'ชิปสองคนต้องเท่ากันหลังวางกอง ได้ ' + stacks.join(','));
         assert(stacks[0] === 500, 'หลังวางกอง 500 ต้องเหลือ 500 ได้ ' + stacks[0]);
-        console.log('3. โต๊ะเงิน บอทซื้อเข้าเท่าหัวห้อง ✓');
+        console.log('3. โต๊ะเงิน ห้ามบอท/ห้ามเสกชิป, คนจริงวางกองจากกระเป๋า ✓');
         cash.players.forEach(p => p.socket.close());
 
         const waitingBots = await seatPlayers(base, 'poker4', 1);
