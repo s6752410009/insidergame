@@ -431,6 +431,8 @@ function resetGame(gameState) {
     gameState.resultVote1 = null;
     gameState.resultVote2 = null;
     gameState.status = '';
+    gameState.statsRecorded = false;
+    gameState.rosterSnapshot = null;
 }
 
 /**
@@ -501,13 +503,16 @@ function randomRoles(gameState, settings) {
     
     let players = [...gameState.players]; // Copy array
     players = shuffle(players);
+
+    // แจกบทสำคัญ (GM/จอมบงการ) เฉพาะคนที่ออนไลน์ — คนหลุด (grace reconnect) เป็นพลเมืองธรรมดา
+    let online = players.filter(player => !!player.socketId);
+    if (online.length < 2) online = players;
     
     // สุ่มผู้ดำเนินเกม
-    const gmIndex = Math.floor(Math.random() * players.length);
-    players[gmIndex].role = gameMasterRole;
+    online[Math.floor(Math.random() * online.length)].role = gameMasterRole;
 
     // คำนวณจำนวนจอมบงการ
-    const actualPlayersCount = players.length - 1; // ลบ GM ออก
+    const actualPlayersCount = online.length - 1; // ลบ GM ออก
     let numTraitors = 1;
 
     // ใช้ setting dualTraitorMode แทนการคำนวณอัตโนมัติ
@@ -524,7 +529,7 @@ function randomRoles(gameState, settings) {
 
     if (hasTraitorInThisRound) {
         for (let i = 0; i < numTraitors; i++) {
-            setRole(players, traitorRole);
+            setRole(online, traitorRole);
         }
     } else {
         addGhostPlayerToGame(players);
@@ -535,6 +540,13 @@ function randomRoles(gameState, settings) {
     
     // Update gameState
     gameState.players = players;
+    // roster ตอนแจกบท — ใช้คิดสถิติคนที่ออกกลางเกม (จอมบงการหนี = แพ้)
+    gameState.rosterSnapshot = players.map(player => ({
+        playerId: player.playerId,
+        name: player.name,
+        role: player.role,
+        isGhost: !!player.isGhost
+    }));
     return players;
 }
 
@@ -872,6 +884,8 @@ function scheduleFinishedGameReturnToLobby(room) {
 
 function startInsiderVote2(room) {
     if (!room || !room.gameState) return;
+    // เปิดโหวตได้จากช่วงคุยเท่านั้น — กัน replay หลังจบ (ล้างโหวต/บันทึกสถิติซ้ำ)
+    if (room.gameState.status !== 'in_progress') return;
     const roomId = room.roomId;
     if (roomCountdowns.has(roomId)) {
         clearInterval(roomCountdowns.get(roomId));
@@ -941,6 +955,8 @@ function scheduleInsiderReturnToLobby(room) {
         insiderReturnTimeouts.delete(roomId);
         const current = roomManager.getRoom(roomId);
         if (!current) return;
+        // timer ค้างจากเกมก่อน ห้ามรีเซ็ตห้องที่เริ่มรอบใหม่ไปแล้ว
+        if (current.gameState?.status !== 'end') return;
         resetInsiderRoomAfterGame(current);
         io.to(roomId).emit('redirectToLobby', { roomId });
         io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(current));
@@ -956,13 +972,57 @@ function finalizeInsiderVote2(room) {
     room.gameState.status = 'end';
     room.gameState.vote2EndsAt = null;
     io.to(room.roomId).emit('vote2Ended', room.gameState.resultVote2);
+    recordInsiderStatsOnce(room);
+    scheduleInsiderReturnToLobby(room);
+}
+
+// ผู้เล่นที่ต้องนับสถิติ = คนที่อยู่ตอนนี้ + คนที่ออกกลางเกม (จาก roster ตอนแจกบท)
+function getInsiderScoringPlayers(gameState) {
+    const current = Array.isArray(gameState?.players) ? gameState.players : [];
+    const roster = Array.isArray(gameState?.rosterSnapshot) ? gameState.rosterSnapshot : [];
+    const presentIds = new Set(current.map(p => p.playerId));
+    return current.concat(roster.filter(p => p.playerId && !presentIds.has(p.playerId)));
+}
+
+function recordInsiderStatsOnce(room) {
+    if (!room?.gameState || room.gameState.statsRecorded) return;
+    room.gameState.statsRecorded = true;
     statsManager.recordGameEnd(room.roomId, {
         resultVote2: room.gameState.resultVote2,
-        players: room.gameState.players,
+        players: getInsiderScoringPlayers(room.gameState),
         word: room.gameState.word,
         roomName: room.name || room.roomId
     });
     notifyGameEndAfterRecord(room);
+}
+
+// หมดเวลาคุยแต่ยังไม่มีใครทายคำถูก → ทุกคนแพ้ (รวม GM และจอมบงการ)
+function endInsiderGameOnTimeout(room) {
+    if (!room?.gameState || room.gameState.status !== 'in_progress') return;
+    const roomId = room.roomId;
+    if (roomCountdowns.has(roomId)) {
+        clearInterval(roomCountdowns.get(roomId));
+        roomCountdowns.delete(roomId);
+    }
+    clearInsiderVoteTimer(roomId);
+    const gameState = room.gameState;
+    const traitors = getInsiderScoringPlayers(gameState).filter(p => p.role === traitorRole);
+    gameState.countdownEndsAt = null;
+    gameState.vote2EndsAt = null;
+    gameState.status = 'end';
+    gameState.resultVote2 = {
+        hasWon: false,
+        everyoneLoses: true,
+        timedOut: true,
+        voteDetail: [],
+        hasTraitor: traitors.length > 0,
+        numTraitors: traitors.length,
+        finalTraitorName: traitors.length ? traitors.map(t => t.name).join(' และ ') : 'ไม่มีจอมบงการ',
+        word: gameState.word || null,
+        allRoles: getInsiderScoringPlayers(gameState).map(p => ({ name: p.name, role: p.role }))
+    };
+    io.to(roomId).emit('vote2Ended', gameState.resultVote2);
+    recordInsiderStatsOnce(room);
     scheduleInsiderReturnToLobby(room);
 }
 
@@ -981,10 +1041,12 @@ function processVote2Result(gameState) {
     const votePlayers = gameState.players.filter(isNotGameMaster);
     votePlayers.sort(compareVote);
 
-    // หาจอมบงการทั้งหมด (อาจมี 1 หรือ 2 คน)
-    const allTraitors = gameState.players.filter(p => p.role === traitorRole);
+    // หาจอมบงการทั้งหมด (อาจมี 1 หรือ 2 คน) — รวมคนที่ออกกลางเกมจาก roster
+    const allTraitors = getInsiderScoringPlayers(gameState).filter(p => p.role === traitorRole);
     const numTraitors = allTraitors.length;
     let hasTraitorInGame = numTraitors > 0;
+    const presentIds = new Set(gameState.players.map(p => p.playerId));
+    const leftTraitors = allTraitors.filter(p => !presentIds.has(p.playerId));
 
     let hasWon;
     let finalResultTraitorName = '';
@@ -993,7 +1055,11 @@ function processVote2Result(gameState) {
     const topVotedPlayer = votePlayers[0];
     const secondVotedPlayer = votePlayers[1];
 
-    if (hasTraitorInGame) {
+    if (leftTraitors.length > 0) {
+        // จอมบงการหนีออกจากเกม → พลเมืองชนะ (คนหนีบันทึกเป็นแพ้)
+        hasWon = true;
+        finalResultTraitorName = allTraitors.map(t => t.name).join(' และ ') + ' (ออกจากเกม)';
+    } else if (hasTraitorInGame) {
         if (numTraitors === 1) {
             // กรณีจอมบงการ 1 คน - logic เดิม
             if (topVotedPlayer && topVotedPlayer.role === traitorRole && (secondVotedPlayer ? topVotedPlayer.nbVote2 > secondVotedPlayer.nbVote2 : true)) {
@@ -1046,7 +1112,7 @@ function processVote2Result(gameState) {
         finalTraitorName: finalResultTraitorName,
         word: gameState.word || null, // เฉลยคำลับตอนจบ
         // เพิ่มบทบาททุกคนสำหรับเฉลยตอนจบ
-        allRoles: gameState.players.map(p => ({ name: p.name, role: p.role }))
+        allRoles: getInsiderScoringPlayers(gameState).map(p => ({ name: p.name, role: p.role }))
     };
 }
 
@@ -1507,6 +1573,15 @@ function buildGameEndNotification(room) {
         const result = gameState.resultVote2;
         const traitorName = result.finalTraitorName || 'ไม่ทราบ';
         const citizensWon = !!result.hasWon;
+        if (result.everyoneLoses) {
+            return {
+                chatMessage: 'เกมจบ! หมดเวลา — ทุกคนแพ้',
+                chatColor: '#9b59b6',
+                logMessage: `🎯 Insider จบ — หมดเวลา ทายคำไม่ได้ ทุกคนแพ้ (จอมบงการ: ${traitorName}) · ${playerCount} คน`,
+                logType: 'error',
+                meta: { citizensWon: false, everyoneLoses: true, traitor: traitorName, playerCount, word: gameState.word || null }
+            };
+        }
         return {
             chatMessage: `เกมจบ! ${citizensWon ? 'พลเมืองชนะ!' : 'จอมบงการชนะ!'}`,
             chatColor: '#9b59b6',
@@ -1924,7 +1999,8 @@ function finalizeSpyfallGameIfNeeded(room) {
     statsManager.recordGameEnd(room.roomId, {
         mode: 'spyfall',
         winner: room.gameState.winner,
-        players: room.gameState.players,
+        // รวมคนที่ออกกลางเกม (สายลับหนี = แพ้)
+        players: getGameEngine('spyfall').getScoringPlayers(room),
         roomName: room.name,
         locationName: room.gameState.locationName
     });
@@ -7305,6 +7381,26 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // สายลับทายสถานที่: ถูก = สายลับชนะทันที, ผิด = แพ้ทันที (ทายได้ครั้งเดียว)
+    socket.on('spyfall_guessLocation', function(data, callback) {
+        try {
+            const room = roomManager.getRoom(socket.roomId);
+            if (!room || room.settings.gameMode !== 'spyfall') {
+                throw new Error('ไม่พบเกมนี้');
+            }
+            const result = getGameEngine('spyfall').guessLocation(room, socket.playerId, data?.locationId);
+            clearSpyfallPhaseTimer(room.roomId);
+            emitSpyfallRoomState(room);
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
     socket.on('spyfall_restartGame', function(data, callback) {
         try {
             const roomId = socket.roomId;
@@ -7632,7 +7728,12 @@ io.sockets.on('connection', function(socket) {
         const room = roomManager.getRoom(roomId);
         if (!room) return;
 
-        if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) return;
+        // ส่องคำลับ/บทบาท = สิทธิ์ site admin เท่านั้น (หัวห้องเป็นผู้เล่นด้วย ห้ามเห็น) และเฉพาะ Insider
+        const insiderMode = !room.settings?.gameMode || room.settings.gameMode === 'insider';
+        if (!isSiteAdminPlayer(socket.playerId) || !insiderMode) {
+            io.to(socket.id).emit('admin_word_roles_denied', { message: 'คำสั่งนี้ใช้ได้เฉพาะแอดมินเว็บในเกม Insider เท่านั้น' });
+            return;
+        }
 
         io.to(socket.id).emit('admin_word_roles', {
             word: room.gameState.word,
@@ -7696,6 +7797,11 @@ io.sockets.on('connection', function(socket) {
             return;
         }
         
+        // เปิดคำได้เฉพาะช่วงแจกบท (กันเปิดซ้ำกลางช่วงคุย/โหวต แล้วสถานะถอยหลัง)
+        if (room.gameState.status !== 'role' && room.gameState.status !== 'word') {
+            return;
+        }
+
         // เช็คว่ามี word แล้วหรือยัง
         if (!room.gameState.word) {
             console.log('[revealWord] No word set yet');
@@ -7770,6 +7876,12 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
+        // ตั้งคำได้เฉพาะก่อนเปิดคำ
+        if (room.gameState.status !== 'role') {
+            if (typeof callback === 'function') callback({ ok: false, error: 'wrong_phase' });
+            return;
+        }
+
         let wordToSet = '';
         if (data && typeof data.word === 'string' && data.word.trim() !== '') {
             wordToSet = data.word.trim();
@@ -7800,6 +7912,8 @@ io.sockets.on('connection', function(socket) {
 
         // ต้องเป็น admin เท่านั้นที่จะกดหยุดเกมได้
         if (!isAdminSocket(room, socket)) return;
+        // เฉพาะช่วงคุยเท่านั้น — กันเปิดโหวตก่อนเปิดคำ หรือ replay หลังจบเกม
+        if (room.gameState.status !== 'in_progress') return;
 
         // ไปโหวต 2 เลย ไม่ต้องผ่านโหวต 1 (ใช้ helper เดียวกับ timeout)
         advanceInsiderToVote2(io, room);
@@ -7815,6 +7929,7 @@ io.sockets.on('connection', function(socket) {
 
         // ต้องเป็น admin เท่านั้น
         if (!isAdminSocket(room, socket)) return;
+        if (room.gameState.status !== 'in_progress') return;
 
         startInsiderVote2(room);
     });
@@ -7887,7 +8002,8 @@ io.sockets.on('connection', function(socket) {
             console.log(`[vote2] Player ${player.name} already voted or voting in progress`);
             return;
         }
-        const expectedChoices = room.gameState.players.filter(candidate => candidate.role === traitorRole).length;
+        // รอบไม่มีจอมบงการ (ผี) ก็โหวต 1 คนเหมือนปกติ — ห้ามให้ UI ต่างจนรู้ตัว และ client ส่ง 1 เสมอ
+        const expectedChoices = Math.max(1, room.gameState.players.filter(candidate => candidate.role === traitorRole).length);
         const rawChoices = Array.isArray(object.votes) ? object.votes : [object.vote];
         const candidates = buildInsiderVoteCandidates(room.gameState);
         const candidateByKey = new Map();
@@ -7941,6 +8057,12 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
+        // เริ่มนับเวลาคุยได้เฉพาะหลังเปิดคำแล้ว (กันเริ่มซ้ำ/รีสตาร์ทกลางโหวต)
+        if (room.gameState.status !== 'word') {
+            console.log('[startGame] Wrong status, ignoring:', room.gameState.status);
+            return;
+        }
+
         if (!actionAllowedCooldown(room.gameState, 2)) {
             console.log('[startGame] Cooldown active, ignoring');
             return;
@@ -7967,10 +8089,9 @@ io.sockets.on('connection', function(socket) {
                 roomCountdowns.delete(roomId);
                 room.gameState.countdownEndsAt = null;
                 console.log('[startGame] Countdown finished for room:', roomId);
-                // หมดเวลาคุย → เข้าโหวตจับจอมบงการอัตโนมัติ (กันเกมค้างถ้าแอดมินไม่กดหยุด)
+                // หมดเวลาคุยโดยยังทายคำไม่ได้ → ทุกคนแพ้ (กติกาจริงของ Insider)
                 if (room.gameState.status === 'in_progress') {
-                    sendChatMessageToRoom(io, roomId, 'System', 'หมดเวลาคุย — เริ่มโหวตจับจอมบงการ', '#f39c12');
-                    advanceInsiderToVote2(io, room);
+                    endInsiderGameOnTimeout(room);
                 }
             }
         }, 1000);

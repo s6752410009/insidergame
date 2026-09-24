@@ -551,7 +551,7 @@
         <li><strong>คุย</strong> — ถามคำถามที่ตอบได้หลายทาง อย่าเปิดเผยสถานที่ตรงๆ (หัวหน้าห้องกดจบคุยได้เมื่อพร้อมโหวต)</li>
         <li><strong>โหวต</strong> — เลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)</li>
       </ol>
-      <p><strong>ชนะ:</strong> โหวตโดนใจสายลับ = พลเมืองชนะ · โหวตพลาดหรือเสมอ = สายลับชนะ</p>
+      <p><strong>ชนะ:</strong> โหวตโดนใจสายลับ = พลเมืองชนะ · โหวตพลาดหรือเสมอ = สายลับชนะ · สายลับกด "ทายสถานที่" ได้ครั้งเดียวช่วงคุย/โหวต: ถูก = สายลับชนะทันที, ผิด = แพ้ทันที</p>
     </div>
   </div>
 </div>
@@ -662,6 +662,10 @@ $(function() {
           '<div class="sf-location-pool">' + pool.map(function(loc) {
           return '<span class="sf-location-pill">' + gameIconHtml({ id: loc.id, image: loc.image, icon: loc.icon, alt: loc.name }, { className: 'game-icon' }) + escapeHtml(loc.name) + '</span>';
         }).join('') + '</div>' : '') +
+        (state.canGuessLocation && pool.length
+          ? '<div style="margin-top:12px;text-align:center;"><button type="button" id="sfGuessLocationBtn" class="sf-btn sf-btn-primary">🎯 ทายสถานที่</button>' +
+            '<div style="font-size:0.72rem;color:#94a3b8;margin-top:6px;">ทายได้ครั้งเดียว — ถูกชนะทันที ผิดแพ้ทันที</div></div>'
+          : '') +
       '</div>';
     } else if (location) {
       const job = self.locationRoleTitle || '';
@@ -742,7 +746,9 @@ $(function() {
         '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + (window.__sfRevealAnimate ? ' win-pop' : '') + '">' +
           '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
           '<p>สายลับ: <strong>' + escapeHtml(w.spyName) + '</strong></p>' +
-          '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>' +
+          (w.spyGuess
+            ? '<p>สายลับทายว่า: <strong>' + escapeHtml(w.spyGuess.locationName || '-') + '</strong> ' + (w.spyGuess.correct ? '✅ ถูก' : '❌ ผิด') + '</p>'
+            : '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>') +
           '<p>สถานที่: <strong>' + gameIconHtml({ id: w.locationId, image: w.locationImage, icon: w.locationIcon, alt: w.locationName }, { className: 'game-icon', px: 22 }) + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
           tallyHtml +
           '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
@@ -886,6 +892,51 @@ $(function() {
         if (res && !res.success) {
           Swal.fire({ icon: 'warning', title: res.error || 'ไม่สำเร็จ', background: '#111', color: '#fff' });
         }
+      });
+    });
+  });
+
+  // สายลับทายสถานที่ — เลือกจากรายการ แล้วยืนยันอีกชั้น (ทายได้ครั้งเดียว)
+  let guessInFlight = false;
+  $(document).on('click', '#sfGuessLocationBtn', function() {
+    if (guessInFlight || !currentState || !currentState.canGuessLocation) return;
+    const pool = currentState.locationPool || [];
+    const options = {};
+    pool.forEach(function(loc) { options[loc.id] = (loc.icon ? loc.icon + ' ' : '') + loc.name; });
+    Swal.fire({
+      title: '🎯 ทายสถานที่',
+      text: 'ถ้าทายถูก สายลับชนะทันที — ถ้าผิด แพ้ทันที',
+      input: 'select',
+      inputOptions: options,
+      inputPlaceholder: 'เลือกสถานที่',
+      showCancelButton: true,
+      confirmButtonText: 'ต่อไป',
+      cancelButtonText: 'ยกเลิก',
+      background: '#111',
+      color: '#fff',
+      inputValidator: function(value) { return value ? null : 'เลือกสถานที่ก่อน'; }
+    }).then(function(pick) {
+      if (!pick.isConfirmed || !pick.value) return;
+      const locationId = pick.value;
+      const name = options[locationId] || locationId;
+      return Swal.fire({
+        icon: 'warning',
+        title: 'ยืนยันทาย "' + name + '"?',
+        text: 'ทายได้ครั้งเดียว ยกเลิกไม่ได้',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันทายสถานที่',
+        cancelButtonText: 'ยกเลิก',
+        background: '#111',
+        color: '#fff'
+      }).then(function(confirm) {
+        if (!confirm.isConfirmed) return;
+        guessInFlight = true;
+        socket.emit('spyfall_guessLocation', { locationId: locationId }, function(res) {
+          guessInFlight = false;
+          if (res && !res.success) {
+            Swal.fire({ icon: 'warning', title: res.error || 'ทายไม่สำเร็จ', background: '#111', color: '#fff' });
+          }
+        });
       });
     });
   });

@@ -240,7 +240,7 @@
     </div>
 </div>
 
-<% if (player.permission == 'admin' || room.isSiteAdmin) { %>
+<% if (room.isSiteAdmin) { %>
 <div id="adminRevealModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center;">
     <div style="background:#fff; padding:24px; border-radius:8px; min-width:300px; max-width:90vw; margin:40px auto;">
         <h4>คำที่ต้องทาย: <span id="modalWord"></span></h4>
@@ -2511,18 +2511,24 @@ $(function() {
         });
     <% } %>
 
-    // ปุ่มแอดมินดูคำและบทบาท (footer)
+    // ปุ่มแอดมินดูคำและบทบาท (footer) — site admin เท่านั้น
     $(document).on('click', '#showWordAndRoles', function() {
+        <% if (room.isSiteAdmin) { %>
         socket.emit('admin_request_word_roles');
+        <% } %>
+    });
+    socket.on('admin_word_roles_denied', function(data) {
+        showNotification('⛔ ' + ((data && data.message) || 'ไม่มีสิทธิ์ใช้คำสั่งนี้'), 'error', 3000);
     });
     $(document).on('click', '#closeAdminReveal', function() {
         $('#adminRevealModal').hide();
     });
     socket.on('admin_word_roles', function(data) {
-        $('#modalWord').text(data.word);
+        if (!$('#adminRevealModal').length) return;
+        $('#modalWord').text(data.word || '');
         $('#modalRoles').empty();
-        data.players.forEach(function(p) {
-            $('#modalRoles').append('<li>' + p.name + ' : ' + p.role + '</li>');
+        (data.players || []).forEach(function(p) {
+            $('#modalRoles').append($('<li>').text((p.name || '-') + ' : ' + (p.role || '-')));
         });
         $('#adminRevealModal').show();
     });
@@ -2935,7 +2941,12 @@ $(function() {
         let title = isWin ? 'พลเมืองชนะแล้ว! 🏆' : 'จอมบงการชนะ!';
         let body = '';
 
-        if (result.hasTraitor) {
+        if (result.everyoneLoses) {
+            emoji = '⌛';
+            title = 'หมดเวลา — ทุกคนแพ้!';
+            body = 'ไม่มีใครทายคำลับถูกทันเวลา ทั้งพลเมือง ผู้ดำเนินเกม และจอมบงการแพ้หมด' +
+                (result.finalTraitorName ? `<br>จอมบงการคือ: <strong style="color:#fff;">${escapeHtml(result.finalTraitorName)}</strong>` : '');
+        } else if (result.hasTraitor) {
             if (isWin) {
                 body = numTraitors === 2
                     ? `จับจอมบงการได้ทั้ง 2 คน: <strong style="color:#fff;">${result.finalTraitorName}</strong>`
@@ -3252,6 +3263,7 @@ $(function() {
         var result = lastVote2Result;
         var headline = result.hasWon ? 'พลเมืองชนะ!' : 'จอมบงการชนะ!';
         if (result.hasTraitor === false) headline = result.hasWon ? 'พลเมืองชนะ!' : 'โหวตพลาด!';
+        if (result.everyoneLoses) headline = 'หมดเวลา — ทุกคนแพ้!';
         window.partyPlay.shareResult({
             mode: 'Insider',
             headline: headline,
@@ -3668,7 +3680,7 @@ $(function() {
         // แสดงผลการโหวต (rank list)
         const $ul = $('#vote2Result ul');
         $ul.html('');
-        const sortedVotes = [...result.voteDetail].sort((a, b) => b.nbVote2 - a.nbVote2);
+        const sortedVotes = [...(result.voteDetail || [])].sort((a, b) => b.nbVote2 - a.nbVote2);
         sortedVotes.forEach(function(votePlayer, index) {
             const isTop = index === 0 && votePlayer.nbVote2 > 0;
             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
@@ -3715,7 +3727,9 @@ $(function() {
         startVote2ReturnCountdown(5);
         
         // Show game result notification (เคารพเคสไม่มีจอมบงการ — ghost round)
-        if (result.hasTraitor === false) {
+        if (result.everyoneLoses) {
+            showNotification('⌛ หมดเวลา! ไม่มีใครทายคำลับถูก — ทุกคนแพ้', 'error', 5000);
+        } else if (result.hasTraitor === false) {
             if (result.hasWon) {
                 showNotification('🎉 พลเมืองชนะ! (ไม่มีจอมบงการในเกมนี้)', 'success', 5000);
             } else {
@@ -3811,12 +3825,12 @@ $(function() {
         if (msg) {
             // ตรวจจับคำสั่ง /m สำหรับ admin ดูคำและบทบาท
             if (msg === '/m') {
-                <% if (player.permission == 'admin' || room.isSiteAdmin) { %>
+                <% if (room.isSiteAdmin) { %>
                     socket.emit('admin_request_word_roles');
                 <% } else { %>
-                    // ไม่ใช่ admin แสดงข้อความแจ้งเตือน
+                    // ไม่ใช่ site admin แสดงข้อความแจ้งเตือน (หัวห้องก็ส่องคำไม่ได้)
                     var $msgArea = $('#chatMessages');
-                    $msgArea.append('<div class="chat-message-wrapper other"><div class="chat-message-bubble" style="background:#ffcccc;"><span class="chat-message-name" style="color:#c00;">System:</span> คำสั่งนี้ใช้ได้เฉพาะ room admin หรือ site admin เท่านั้น</div></div>');
+                    $msgArea.append('<div class="chat-message-wrapper other"><div class="chat-message-bubble" style="background:#ffcccc;"><span class="chat-message-name" style="color:#c00;">System:</span> คำสั่งนี้ใช้ได้เฉพาะแอดมินเว็บเท่านั้น</div></div>');
                     $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
                 <% } %>
                 $('#chatInput').val('');
