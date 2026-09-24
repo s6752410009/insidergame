@@ -3730,7 +3730,7 @@ app.use(async function(req, res, next) {
         return next();
     }
 
-    if (req.path === '/how-to-play') {
+    if (req.path === '/how-to-play' || req.path === '/privacy' || req.path === '/terms') {
         return next();
     }
 
@@ -4106,6 +4106,15 @@ app.get('/rooms', function(req, res) {
         werewolfRoleOptions: getGameEngine('werewolf').getConfigurableRoles(),
         pokerRankGuide: rankGuideForClient()
     });
+});
+
+// หน้านโยบาย — Google OAuth และ app store บังคับให้มี ต้องเปิดได้โดยไม่ต้องมีบัญชี
+app.get('/privacy', function(req, res) {
+    res.render('legal.ejs', { doc: 'privacy' });
+});
+
+app.get('/terms', function(req, res) {
+    res.render('legal.ejs', { doc: 'terms' });
 });
 
 app.get('/how-to-play', function(req, res) {
