@@ -128,6 +128,20 @@ console.log('bug 1: public report is role-neutral');
     check(!feedIcons.some(id => roleIds.includes(id)), 'feed icons never map to role images');
     const bossView = engine.buildClientState(room, 'p3');
     check(bossView.lastRoundReport.some(e => e.private && e.text.includes('โบนัสเจ้าพ่อ')), 'boss sees own bonus privately');
+    // role bonus points must not show up on the public scoreboard (score jumps would reveal the role)
+    const bossTrue = players[3].influence;
+    const smugglerTrue = players[4].influence;
+    const otherView = engine.buildClientState(room, 'p2');
+    const bossSeen = otherView.players.find(p => p.playerId === 'p3').influence;
+    const smugglerSeen = otherView.players.find(p => p.playerId === 'p4').influence;
+    const plainCrate = engine.ITEM_DEFINITIONS ? (engine.ITEM_DEFINITIONS.crate?.influence || 0) : null;
+    check(bossSeen < bossTrue, `boss bonus hidden from others (seen ${bossSeen}, true ${bossTrue})`);
+    if (plainCrate !== null) check(bossSeen === plainCrate, 'others see only the plain crate value for the boss');
+    check(smugglerSeen < smugglerTrue, `smuggler extra cargo hidden from others (seen ${smugglerSeen}, true ${smugglerTrue})`);
+    check(bossView.self.influence === bossTrue, 'boss sees own true influence');
+    room.gameState.phase = 'finished';
+    const endView = engine.buildClientState(room, 'p2');
+    check(endView.players.find(p => p.playerId === 'p3').influence === bossTrue, 'true influence revealed at game end');
 }
 {
     // fixer escape + doubleAgent raid

@@ -239,7 +239,52 @@ async function testSpyfallGuess(correctGuess) {
     const stats = readStats();
     const spyStat = stats[spy.playerId]?.modeStats?.spyfall;
     assert(spyStat && spyStat.games === 1 && spyStat.wins === (correctGuess ? 1 : 0), 'spy stats wrong');
-    console.log(`${correctGuess ? 7 : 8}. spyfall spy ${correctGuess ? 'correct' : 'wrong'} guess → ${final.winner.team} win ✓`);
+    console.log(`${correctGuess ? 9 : 10}. spyfall spy ${correctGuess ? 'correct' : 'wrong'} guess → ${final.winner.team} win ✓`);
+    clients.forEach(c => c.socket.close());
+}
+
+async function testResetBlockedDuringVote() {
+    const clients = [await makeClient(), await makeClient(), await makeClient(), await makeClient()];
+    const [host] = clients;
+    await setupRoom(clients, { name: `RulesResetVote ${Date.now()}`, gameMode: 'insider', roundTime: 5 });
+    const roles = await insiderRoles(clients);
+    const gmClient = clients.find(c => roles.get(c.playerId).role === GM);
+    gmClient.socket.emit('revealWord');
+    await waitFor(host, 'revealWord');
+    host.socket.emit('startGame');
+    await waitFor(host, 'startGame');
+    let mark = Date.now();
+    host.socket.emit('wordFound');
+    await waitFor(host, 'displayVote2', null, 5000, mark);
+    await delay(2200); // พ้น cooldown ของ resetGame
+    mark = Date.now();
+    host.socket.emit('resetGame');
+    await waitFor(host, 'notAuthorized', null, 5000, mark);
+    await delay(800);
+    assert(!seen(host, 'newRole', mark), 'host must not reshuffle roles in the middle of the vote');
+    console.log('7. host cannot reset the round during the vote ✓');
+    clients.forEach(c => c.socket.close());
+}
+
+async function testMasterLeavesCancelsRound() {
+    const clients = [await makeClient(), await makeClient(), await makeClient(), await makeClient()];
+    const roomId = await setupRoom(clients, { name: `RulesGmLeaves ${Date.now()}`, gameMode: 'insider', roundTime: 5 });
+    const roles = await insiderRoles(clients);
+    const gmClient = clients.find(c => roles.get(c.playerId).role === GM);
+    const watcher = clients.find(c => c !== gmClient);
+    const before = readStats();
+    const mark = Date.now();
+    await emitAck(gmClient.socket, 'leaveRoom', { roomId, playerId: gmClient.playerId });
+    const redirect = await waitFor(watcher, 'redirectToLobby', null, 5000, mark);
+    assert(redirect.reason === 'master-left', 'round should be cancelled when the game master leaves: ' + JSON.stringify(redirect));
+    await delay(500);
+    const after = readStats();
+    clients.forEach(c => {
+        const b = before[c.playerId]?.modeStats?.insider?.games || 0;
+        const a = after[c.playerId]?.modeStats?.insider?.games || 0;
+        assert(a === b, 'a cancelled round must not be recorded in stats');
+    });
+    console.log('8. game master leaving cancels the round without stats ✓');
     clients.forEach(c => c.socket.close());
 }
 
@@ -251,6 +296,8 @@ async function main() {
     try {
         await testInsiderFlow(adminId);
         await testInsiderTimeout();
+        await testResetBlockedDuringVote();
+        await testMasterLeavesCancelsRound();
         await testSpyfallGuess(true);
         await testSpyfallGuess(false);
         console.log('\n✅ INSIDER/SPYFALL RULE CHECKS PASSED');

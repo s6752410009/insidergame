@@ -350,6 +350,7 @@ function createPlayerState(player, context = {}) {
         cash: 5,
         heat: 0,
         influence: 0,
+        secretInfluence: 0,
         inventory: [],
         intelNotes: [],
         fixerEscapeAvailable: true,
@@ -393,6 +394,13 @@ function pushHistory(room, icon, text, tone = 'neutral') {
 }
 
 // บันทึกผลเฉพาะตัว (เห็นแค่เจ้าตัว) — รายละเอียดที่ผูกกับบท/เงิน/ของในมือห้ามลง report สาธารณะ
+function addSecretInfluence(player, amount) {
+    const value = Math.max(0, Number(amount) || 0);
+    if (!value) return;
+    player.influence += value;
+    player.secretInfluence = (player.secretInfluence || 0) + value;
+}
+
 function notePrivate(player, icon, text, tone = 'neutral') {
     if (!player) {
         return;
@@ -576,6 +584,7 @@ function assignRoles(room) {
         player.cash = 5;
         player.heat = 0;
         player.influence = 0;
+        player.secretInfluence = 0;
         player.inventory = [];
         player.intelNotes = [];
         player.fixerEscapeAvailable = true;
@@ -885,7 +894,8 @@ function resolveActionPhase(room) {
             const stolenCash = Math.min(BETRAY_STEAL_CASH, target.cash);
             target.cash -= stolenCash;
             actor.cash += stolenCash + (actor.role === 'doubleAgent' ? 1 : 0);
-            actor.influence += actor.role === 'doubleAgent' ? 2 : 1;
+            actor.influence += 1;
+            if (actor.role === 'doubleAgent') addSecretInfluence(actor, 1);
             actor.heat += actor.role === 'doubleAgent' ? 1 : 0;
             target.heat += 1;
             actor.lastMove = `หักหลัง ${target.name}`;
@@ -903,7 +913,8 @@ function resolveActionPhase(room) {
             const stolenCash = Math.min(BETRAY_STEAL_CASH, actor.cash);
             actor.cash -= stolenCash;
             target.cash += stolenCash + (target.role === 'doubleAgent' ? 1 : 0);
-            target.influence += target.role === 'doubleAgent' ? 2 : 1;
+            target.influence += 1;
+            if (target.role === 'doubleAgent') addSecretInfluence(target, 1);
             target.heat += target.role === 'doubleAgent' ? 1 : 0;
             actor.heat += 1;
             actor.lastMove = `โดน ${target.name} หักหลัง`;
@@ -1069,7 +1080,7 @@ function resolveActionPhase(room) {
                 actor.cash += transferred;
                 if (actor.role === 'doubleAgent') {
                     actor.heat += 1;
-                    actor.influence += 1;
+                    addSecretInfluence(actor, 1);
                 }
                 actor.lastMove = `ปล้น ${target.name}`;
                 // จำนวนเงินบอกบท (สองหน้าได้ 3) และเงินในมือเป้า — เก็บไว้ในโน้ตส่วนตัว
@@ -1084,7 +1095,7 @@ function resolveActionPhase(room) {
                 actor.inventory.push(lootedItem);
                 if (actor.role === 'doubleAgent') {
                     actor.heat += 1;
-                    actor.influence += 1;
+                    addSecretInfluence(actor, 1);
                 }
                 actor.lastMove = `ปล้นของจาก ${target.name}`;
                 const lootedName = ITEM_DEFINITIONS[lootedItem]?.name || 'ของเถื่อน';
@@ -1117,9 +1128,12 @@ function resolveActionPhase(room) {
             }
 
             let influenceGain = item.influence || 0;
+            // โบนัสของบทบาท (เจ้าพ่อ +1, ของพ่วงของคนส่งของ) เป็นแต้มลับ — คนอื่นเห็นตอนจบเกม
+            let secretGain = 0;
             let extraDeliveryText = '';
             if (actor.role === 'boss') {
                 influenceGain += 1;
+                secretGain += 1;
             }
 
             if (actor.role === 'smuggler') {
@@ -1127,11 +1141,13 @@ function resolveActionPhase(room) {
                 if (extraItemId) {
                     consumeItem(actor, extraItemId);
                     influenceGain += ITEM_DEFINITIONS[extraItemId].influence || 0;
+                    secretGain += ITEM_DEFINITIONS[extraItemId].influence || 0;
                     extraDeliveryText = ` พร้อมพ่วง ${ITEM_DEFINITIONS[extraItemId].name}`;
                 }
             }
 
-            actor.influence += influenceGain;
+            actor.influence += influenceGain - secretGain;
+            addSecretInfluence(actor, secretGain);
             actor.lastMove = `ส่ง ${item.name}`;
             // ไม่บอกชื่อของ/ของพ่วง/โบนัส ในที่สาธารณะ — เผยบทเจ้าพ่อ/คนส่งของ
             report.push({ icon: '📦', text: `${actor.name} ส่งของเถื่อนถึงมือลูกค้า`, tone: 'gold' });
@@ -1169,6 +1185,7 @@ function resolveActionPhase(room) {
         if (player.heat >= 5) {
             player.cash = Math.max(0, player.cash - 1);
             player.influence = Math.max(0, player.influence - 1);
+            player.secretInfluence = Math.min(player.secretInfluence || 0, player.influence);
             report.push({ icon: '🔥', text: `${player.name} ค่าหัวสูงเกินไป โดนริบแต้มและเงินอย่างละ 1`, tone: 'red' });
         }
     });
@@ -1253,7 +1270,8 @@ function buildClientState(room, playerId) {
             avatarFrame: player.avatarFrame || 'none',
             color: player.color,
             alive: player.alive !== false,
-            influence: player.influence,
+            // คนอื่นเห็นแต้มที่ไม่รวมโบนัสลับของบทบาท (ไม่งั้นแต้มที่เด้งบอกบทได้) — เปิดหมดตอนตาย/จบเกม
+            influence: statsVisible ? player.influence : Math.max(0, player.influence - (player.secretInfluence || 0)),
             statsVisible,
             cash: statsVisible ? player.cash : null,
             heat: statsVisible ? player.heat : null,

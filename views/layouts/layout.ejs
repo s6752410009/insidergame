@@ -101,6 +101,7 @@
         <% if (typeof googleClientId !== 'undefined' && googleClientId) { %>
         <meta name="google-client-id" content="<%= googleClientId %>">
         <% } %>
+        <meta name="build-id" content="<%= typeof buildId !== 'undefined' ? buildId : '' %>">
         <meta name="insider-player-id" content="<%= typeof viewerPlayerId !== 'undefined' && viewerPlayerId ? viewerPlayerId : (typeof player !== 'undefined' && player && player.playerId ? player.playerId : '') %>">
         
         <!-- PWA Support -->
@@ -197,6 +198,24 @@
                         reconnectionDelay: 500,
                         reconnectionDelayMax: 5000,
                         transports: ['websocket', 'polling']
+                    });
+                    // เว็บ deploy ใหม่ระหว่างที่หน้านี้เปิดค้าง → โค้ดหน้าเก่าไม่ตรงกับเซิร์ฟเวอร์
+                    // รีโหลดเองครั้งเดียว (เกมที่เล่นอยู่ไม่หาย ระบบดึงกลับห้องเดิมให้)
+                    window.appSocket.on('buildId', function(serverVersion) {
+                        var meta = document.querySelector('meta[name="build-id"]');
+                        var pageVersion = meta && meta.getAttribute('content');
+                        if (!serverVersion || !pageVersion || serverVersion === pageVersion) return;
+                        var guardKey = 'insiderReloadedFor:' + serverVersion;
+                        try {
+                            if (sessionStorage.getItem(guardKey)) return;
+                            sessionStorage.setItem(guardKey, '1');
+                        } catch (e) { return; }
+                        var bar = document.createElement('div');
+                        bar.className = 'app-update-bar';
+                        bar.setAttribute('role', 'status');
+                        bar.textContent = '🔄 มีอัปเดตใหม่ กำลังโหลดหน้าใหม่…';
+                        document.body.appendChild(bar);
+                        setTimeout(function() { window.location.reload(); }, 1200);
                     });
                     window.appSocket.on('playerDeleted', function(data) {
                         // ล้าง localStorage และ redirect ไปหน้าหลัก

@@ -2346,15 +2346,10 @@ function fillMissingNightActions(room) {
                 room.gameState.nightActions.werewolfVotes[actor.playerId] = followId || SKIP_TARGET_ID;
                 break;
             }
-            case 'seer': {
-                const targets = getAlivePlayers(room).filter(player => player.playerId !== actor.playerId);
-                const target = chooseRandom(targets);
-                if (target) {
-                    room.gameState.nightActions.seerChecks[actor.playerId] = target.playerId;
-                    applySeerVision(room, actor.playerId, target.playerId);
-                }
+            case 'seer':
+                // ไม่กดเลือก = ข้ามคืนนี้ (เหมือนบทบาทอื่น) ไม่สุ่มส่องให้ฟรี
+                room.gameState.nightActions.seerChecks[actor.playerId] = SKIP_TARGET_ID;
                 break;
-            }
             case 'doctor':
                 // Don't burn a limited save on a random target when the doctor is AFK.
                 room.gameState.nightActions.doctorSaves[actor.playerId] = SKIP_TARGET_ID;

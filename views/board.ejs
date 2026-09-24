@@ -3754,7 +3754,33 @@ $(function() {
 
     socket.on('redirectToLobby', function(data) {
         allowNavigation = true;
-        window.location.href = '/room/' + data.roomId + '?playerId=' + playerId;
+        var target = '/room/' + data.roomId + '?playerId=' + playerId;
+        if (data && data.reason === 'master-left' && window.Swal) {
+            // บอกเหตุผลก่อนพากลับ ไม่งั้นผู้เล่นงงว่าทำไมเกมหาย
+            Swal.fire({
+                icon: 'info',
+                title: 'ผู้ดำเนินเกมออกจากห้อง',
+                text: 'รอบนี้ยกเลิก ไม่นับสถิติ กำลังกลับห้องรอ…',
+                timer: 2200,
+                showConfirmButton: false,
+                background: '#1e1e2e',
+                color: '#fff'
+            }).then(function() { window.location.href = target; });
+            return;
+        }
+        window.location.href = target;
+    });
+
+    socket.on('notAuthorized', function(data) {
+        if (!window.Swal) return;
+        Swal.fire({
+            toast: true,
+            position: 'top',
+            icon: 'warning',
+            title: (data && data.message) || 'ทำรายการนี้ไม่ได้',
+            timer: 2600,
+            showConfirmButton: false
+        });
     });
 
     // Bug #1 Fix: รับ event restartGame จาก admin dashboard

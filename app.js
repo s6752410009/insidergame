@@ -52,6 +52,10 @@ const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
 
+// เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
+// (Render ตั้ง RENDER_GIT_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
+const BUILD_ID = String(process.env.RENDER_GIT_COMMIT || Date.now()).slice(0, 12);
+
 app.locals.appVersion = APP_VERSION;
 
 // Load settings (including admin password)
@@ -3037,11 +3041,40 @@ function broadcastGameStateForRoom(room) {
 // เรียกหลังผู้เล่นถูกเอาออกจากห้องกลางเกม (ออกเอง/ถูกเตะ/แบน/ถูกลบ) —
 // ให้ engine รับรู้ (เช่น สายลับหนี → จบเกม) แล้วดัน state ใหม่ให้ทุกคน
 // ไม่งั้นบอร์ดของคนที่เหลือยังโชว์คนที่ออกไปแล้วเป็นเป้าโหวต/เป้าแอคชันอยู่
+// Insider: ผู้ดำเนินเกมออกกลางรอบ = ไม่มีใครเปิดคำ/คุมเวลาได้ ห้องค้าง
+// ยกเลิกรอบนี้แบบไม่นับสถิติ แล้วพาทุกคนกลับห้องรอ
+function cancelInsiderRoundWithoutMaster(room) {
+    const status = room?.gameState?.status;
+    if (!['role', 'word', 'in_progress'].includes(status)) return false;
+    if ((room.gameState.players || []).some(p => p.role === gameMasterRole)) return false;
+
+    const roomId = room.roomId;
+    if (roomCountdowns.has(roomId)) {
+        clearInterval(roomCountdowns.get(roomId));
+        roomCountdowns.delete(roomId);
+    }
+    clearInsiderVoteTimer(roomId);
+    clearInsiderReturnTimer(roomId);
+    resetInsiderRoomAfterGame(room);
+    sendChatMessageToRoom(io, roomId, 'System', 'ผู้ดำเนินเกมออกจากห้อง รอบนี้ยกเลิก (ไม่นับสถิติ) เริ่มรอบใหม่ได้เลย', '#f39c12');
+    io.to(roomId).emit('redirectToLobby', { roomId, reason: 'master-left' });
+    io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+    io.emit('roomListUpdate', roomManager.getAllRooms());
+    return true;
+}
+
 function handleMidGamePlayerRemoval(room, playerId) {
     // helper เสริม — ห้าม throw ออกไปทำ flow ออกห้อง/เตะ/แบนพัง (callback จะไม่ถูกส่ง client ค้าง)
     try {
         if (!room || !roomManager.isRoomGameInProgress(room)) {
             return;
+        }
+        if (!room.settings.gameMode || room.settings.gameMode === 'insider') {
+            try {
+                cancelInsiderRoundWithoutMaster(room);
+            } catch (error) {
+                console.error('[insider] cancel without master failed:', error?.message || error);
+            }
         }
         if (room.settings.gameMode === 'spyfall') {
             try {
@@ -3814,6 +3847,7 @@ app.use(function(req, res, next) {
     res.locals.publicBaseUrl = PUBLIC_BASE_URL;
     res.locals.safeJson = safeJsonForScript;
     res.locals.googleClientId = googleAuth.GOOGLE_CLIENT_ID || null;
+    res.locals.buildId = BUILD_ID;
     next();
 });
 
@@ -4806,6 +4840,7 @@ app.get('/adminPlayer', function(req, res) {
 // ==================== SOCKET.IO HANDLERS ====================
 
 io.sockets.on('connection', function(socket) {
+    socket.emit('buildId', BUILD_ID);
     console.log('Socket connected:', socket.id);
     const sessionPlayerId = getSessionPlayerId(socket);
     if (sessionPlayerId) socket.playerId = sessionPlayerId;
@@ -7802,6 +7837,12 @@ io.sockets.on('connection', function(socket) {
 
         if (!isAdminSocket(room, socket)) {
             io.to(socket.id).emit('notAuthorized', { message: 'ต้องเป็นแอดมินเท่านั้น' });
+            return;
+        }
+
+        // กำลังโหวตหาจอมบงการอยู่ — หัวห้องสุ่มรอบใหม่ทับไม่ได้ ผลโหวตจะหาย (แอดมินเว็บยังทำได้เผื่อห้องค้าง)
+        if (room.gameState.status === 'vote2' && !isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('notAuthorized', { message: 'กำลังโหวตอยู่ รอผลโหวตก่อนค่อยเริ่มรอบใหม่' });
             return;
         }
 

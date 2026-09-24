@@ -4082,7 +4082,7 @@
           </div>
           <div class="bm-player-copy">${player.alive ? 'ยังอยู่ในเกม' : 'หลุดจากโต๊ะแล้ว'}${player.isSelf ? ' • นี่คือตัวคุณ' : ''}</div>
           <div class="bm-player-stats">
-            <div class="bm-pill good">👑 ${Number(player.influence || 0)}</div>
+            <div class="bm-pill good"${!player.isSelf && !player.statsVisible ? ' title="แต้มที่เห็นยังไม่รวมโบนัสลับของบทบาท เห็นครบตอนจบเกม"' : ''}>👑 ${Number(player.influence || 0)}</div>
             <div class="bm-pill">💵 ${secretStat(player.cash)}</div>
             <div class="bm-pill warn">🔥 ${secretStat(player.heat)}</div>
             <div class="bm-pill ${player.alive ? '' : 'dead'}">🎒 ${secretStat(player.inventoryCount)}</div>

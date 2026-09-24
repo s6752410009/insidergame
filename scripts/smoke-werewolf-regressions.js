@@ -104,6 +104,18 @@ function testAfkProtectorsSkip() {
     return { afkDoctorSkips: true, afkBodyguardSkips: true };
 }
 
+// AFK seer skips instead of getting a free random reading.
+function testAfkSeerSkips() {
+    for (let i = 0; i < ITERATIONS; i += 1) {
+        const room = createRoom(PACK_ROLES, 7);
+        const seer = role(room, 'seer');
+        resetNightPhase(room, 2);
+        werewolfEngine.autoResolvePhase(room);
+        assert(!(seer.seerHistory || []).length, 'AFK seer must not receive a random reading');
+    }
+    return { afkSeerSkips: true };
+}
+
 // Bug 3: host-picked lists can't give 2 wolves to 3-4 player games.
 function testWolfCap() {
     [3, 4, 5].forEach(count => {
@@ -194,6 +206,7 @@ function main() {
     const tested = {
         ...testAfkWolfFollowsPack(),
         ...testAfkProtectorsSkip(),
+        ...testAfkSeerSkips(),
         ...testWolfCap(),
         ...testFoolLooksLikeSave(),
         ...testSkipDoesNotBlock(),
