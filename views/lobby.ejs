@@ -9,6 +9,11 @@
     }
     
     /* Player Card */
+    .account-linked { color: #5eead4 !important; font-size: 0.9em; margin-top: 6px; }
+    .account-signin { margin-top: 10px; }
+    .account-signin [data-google-signin] { display: flex; justify-content: center; }
+    .account-signin-hint { font-size: 0.85em; color: rgba(255,255,255,0.7) !important; margin: 0 0 8px; }
+
     .player-card {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         border: 3px solid #444;
@@ -888,6 +893,16 @@
             <div class="player-details">
                 <h2 style="color: <%= player.color %>;"><%= player.playerName %></h2>
                 <p>Player ID: <code><%= player.playerId.substring(0, 8) %>...</code></p>
+                <% if (typeof googleClientId !== 'undefined' && googleClientId) { %>
+                    <% if (typeof viewerGoogleLinked !== 'undefined' && viewerGoogleLinked) { %>
+                        <p class="account-linked"><i class="fab fa-google" aria-hidden="true"></i> บัญชีปลอดภัย ผูกกับ Google แล้ว</p>
+                    <% } else { %>
+                        <div class="account-signin">
+                            <p class="account-signin-hint">ล็อกอินด้วย Gmail เก็บถ้วยและสถิติไว้ ไม่หายแม้เปลี่ยนเครื่อง (ไม่บังคับ)</p>
+                            <div data-google-signin></div>
+                        </div>
+                    <% } %>
+                <% } %>
             </div>
         </div>
         

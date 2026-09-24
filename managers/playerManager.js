@@ -25,6 +25,8 @@ const players = new Map();
 const bannedPlayers = new Map();
 // playerId -> รหัสกู้บัญชี (ห้ามใส่ใน object ผู้เล่น เพราะ object นั้นถูกส่งให้ client)
 const recoveryCodes = new Map();
+// playerId -> { sub, email } บัญชี Google ที่ผูกไว้ (เก็บแยกด้วยเหตุผลเดียวกัน)
+const googleLinks = new Map();
 
 function isBotPlayerId(playerId) {
     return String(playerId || '').startsWith('bot_');
@@ -95,9 +97,11 @@ async function loadPlayersFromDB() {
         const dbPlayers = await Player.find({});
         players.clear();
         recoveryCodes.clear();
+        googleLinks.clear();
         dbPlayers.forEach(p => {
             if (isBotPlayerId(p.playerId)) return;
             if (p.recoveryCode) recoveryCodes.set(p.playerId, p.recoveryCode);
+            if (p.googleSub) googleLinks.set(p.playerId, { sub: p.googleSub, email: p.googleEmail || null });
             players.set(p.playerId, {
                 playerId: p.playerId,
                 playerName: p.playerName,
@@ -149,8 +153,9 @@ function loadPlayersFromFile() {
                     continue;
                 }
                 // รหัสกู้บัญชีเก็บแยกจาก object ผู้เล่น — object นี้ถูกส่งออกไปหน้าเว็บหลายที่
-                const { recoveryCode, ...publicFields } = player || {};
+                const { recoveryCode, googleSub, googleEmail, ...publicFields } = player || {};
                 if (recoveryCode) recoveryCodes.set(playerId, recoveryCode);
+                if (googleSub) googleLinks.set(playerId, { sub: googleSub, email: googleEmail || null });
                 players.set(playerId, publicFields);
             }
             console.log(`Loaded ${players.size} players from file`);
@@ -189,7 +194,12 @@ async function savePlayers() {
         for (const [playerId, player] of players.entries()) {
             if (isBotPlayerId(playerId)) continue;
             const recoveryCode = recoveryCodes.get(playerId);
-            playersData[playerId] = recoveryCode ? { ...player, recoveryCode } : player;
+            const google = googleLinks.get(playerId);
+            playersData[playerId] = {
+                ...player,
+                ...(recoveryCode ? { recoveryCode } : {}),
+                ...(google ? { googleSub: google.sub, googleEmail: google.email } : {})
+            };
         }
         fs.writeFileSync(PLAYERS_FILE, JSON.stringify(playersData, null, 2), 'utf8');
     } catch (error) {
@@ -334,6 +344,41 @@ async function ensureRecoveryCode(playerId) {
         savePlayers();
     }
     return code;
+}
+
+// ============ Google Link ============
+function findPlayerByGoogleSub(sub) {
+    if (!sub) return null;
+    for (const [playerId, link] of googleLinks.entries()) {
+        if (link.sub === sub) return players.get(playerId) || null;
+    }
+    return null;
+}
+
+function getGoogleLink(playerId) {
+    return googleLinks.get(playerId) || null;
+}
+
+async function linkGoogleAccount(playerId, sub, email) {
+    if (!players.has(playerId) || isBotPlayerId(playerId)) throw new Error('Player not found');
+    const owner = findPlayerByGoogleSub(sub);
+    if (owner && owner.playerId !== playerId) throw new Error('บัญชี Google นี้ผูกกับผู้เล่นอื่นอยู่แล้ว');
+    googleLinks.set(playerId, { sub, email: email || null });
+    if (useDatabase && Player) {
+        await Player.updateOne({ playerId }, { googleSub: sub, googleEmail: email || null });
+    } else {
+        savePlayers();
+    }
+}
+
+async function unlinkGoogleAccount(playerId) {
+    if (!googleLinks.has(playerId)) return;
+    googleLinks.delete(playerId);
+    if (useDatabase && Player) {
+        await Player.updateOne({ playerId }, { $unset: { googleSub: 1, googleEmail: 1 } });
+    } else {
+        savePlayers();
+    }
 }
 
 // ============ Player Functions ============
@@ -507,6 +552,7 @@ async function deletePlayer(playerId) {
     if (players.has(playerId)) {
         players.delete(playerId);
         recoveryCodes.delete(playerId);
+        googleLinks.delete(playerId);
         if (useDatabase && Player) {
             await Player.deleteOne({ playerId });
         } else {
@@ -765,5 +811,9 @@ module.exports = {
     findPlayerByRecoveryCode,
     hasRecoveryCode,
     ensureRecoveryCode,
-    getRecoveryCode
+    getRecoveryCode,
+    findPlayerByGoogleSub,
+    getGoogleLink,
+    linkGoogleAccount,
+    unlinkGoogleAccount
 };

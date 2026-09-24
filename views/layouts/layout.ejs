@@ -98,6 +98,9 @@
         <link rel="icon" type="image/png" sizes="96x96" href="/static/image/favicon-96x96.png">
         <link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <% if (typeof googleClientId !== 'undefined' && googleClientId) { %>
+        <meta name="google-client-id" content="<%= googleClientId %>">
+        <% } %>
         <meta name="insider-player-id" content="<%= typeof viewerPlayerId !== 'undefined' && viewerPlayerId ? viewerPlayerId : (typeof player !== 'undefined' && player && player.playerId ? player.playerId : '') %>">
         
         <!-- PWA Support -->
@@ -143,6 +146,7 @@
         <script src="/static/js/haptics.js"></script>
         <script src="/static/js/partyPlay.js"></script>
         <script src="/static/js/promoPopup.js"></script>
+        <script src="/static/js/googleSignIn.js"></script>
         <script>
             (function() {
                 var button = document.getElementById('support-fab');

@@ -50,6 +50,7 @@ const adminMessageManager = require('./managers/adminMessageManager');
 const { getGameEngine, getAvailableGameModes, isPokerMode } = require('./games/engineRegistry');
 const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
+const googleAuth = require('./managers/googleAuth');
 
 app.locals.appVersion = APP_VERSION;
 
@@ -1130,6 +1131,7 @@ function renderIdentityCheckPage(trustedPlayerId) {
     return `<!DOCTYPE html>
 <html lang="th" style="background:#1a1a2e">
 <head><meta charset="UTF-8"><title>กู้บัญชี</title><meta name="viewport" content="width=device-width, initial-scale=1">
+${googleAuth.isEnabled() ? `<meta name="google-client-id" content="${googleAuth.GOOGLE_CLIENT_ID}">` : ''}
 <style>
     body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;
          background:linear-gradient(160deg,#1a1a2e,#16213e);color:#e2e8f0;font-family:system-ui,sans-serif;font-size:15px}
@@ -1145,7 +1147,9 @@ function renderIdentityCheckPage(trustedPlayerId) {
 <div class="box" id="loading"><p>กำลังตรวจสอบบัญชี…</p></div>
 <div class="box" id="form" hidden>
     <h1>🔑 กู้บัญชีเดิม</h1>
-    <p>บัญชีนี้ผูกกับเครื่องอื่นอยู่ ใส่ <b>รหัสกู้บัญชี</b> (ดูได้ที่หน้าโปรไฟล์ในเครื่องเดิม) เพื่อเล่นต่อพร้อมถ้วยและสถิติเดิม</p>
+    <p>บัญชีนี้ผูกกับเครื่องอื่นอยู่ ล็อกอินด้วย Google ที่เคยผูกไว้ หรือใส่ <b>รหัสกู้บัญชี</b> (ดูได้ที่หน้าโปรไฟล์ในเครื่องเดิม) เพื่อเล่นต่อพร้อมถ้วยและสถิติเดิม</p>
+    ${googleAuth.isEnabled() ? `<div data-google-signin style="display:flex;justify-content:center;margin-bottom:12px"></div>
+    <p style="margin:0 0 10px;font-size:13px;color:#94a3b8">หรือใส่รหัสกู้บัญชี</p>` : ''}
     <input id="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off" maxlength="14">
     <div class="err" id="err"></div>
     <button class="main" id="restore">กู้บัญชี</button>
@@ -1186,6 +1190,7 @@ function renderIdentityCheckPage(trustedPlayerId) {
     };
 })();
 </script>
+${googleAuth.isEnabled() ? '<script src="/static/js/googleSignIn.js"></script>' : ''}
 </body></html>`;
 }
 
@@ -3697,6 +3702,7 @@ app.use(function(req, res, next) {
     res.locals.seoPreviewMode = shouldUseSeoPreview(req);
     res.locals.publicBaseUrl = PUBLIC_BASE_URL;
     res.locals.safeJson = safeJsonForScript;
+    res.locals.googleClientId = googleAuth.GOOGLE_CLIENT_ID || null;
     next();
 });
 
@@ -3765,6 +3771,8 @@ app.use(async function(req, res, next) {
         issueIdentityCookie(res, playerId);
         res.locals.viewerPlayerId = playerId;
         res.locals.viewerRecoveryCode = playerManager.getRecoveryCode(playerId);
+        res.locals.viewerGoogleEmail = playerManager.getGoogleLink(playerId)?.email || null;
+        res.locals.viewerGoogleLinked = Boolean(playerManager.getGoogleLink(playerId));
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
         // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
@@ -3904,6 +3912,59 @@ app.post('/api/identity/restore', function(req, res) {
         playerId: player.playerId,
         recoveryCode: playerManager.getRecoveryCode(player.playerId)
     });
+});
+
+// ล็อกอินด้วย Google (ไม่บังคับ)
+// - Google นี้ผูกกับบัญชีไหนอยู่แล้ว → สลับเครื่องนี้ไปใช้บัญชีนั้น (เครื่องใหม่/ล้างเบราว์เซอร์)
+// - ยังไม่เคยผูก → ผูกกับบัญชีที่เล่นอยู่บนเครื่องนี้ (หรือสร้างบัญชีใหม่ถ้ายังไม่มี)
+app.post('/api/auth/google', async function(req, res) {
+    try {
+        if (!allowRecoveryAttempt(`google:${req.ip}`)) {
+            return res.status(429).json({ success: false, error: 'ลองบ่อยเกินไป รอ 15 นาทีแล้วลองใหม่' });
+        }
+        const google = await googleAuth.verifyGoogleIdToken(req.body?.credential);
+
+        const linkedPlayer = playerManager.findPlayerByGoogleSub(google.sub);
+        let playerId;
+        let action;
+        if (linkedPlayer) {
+            playerId = linkedPlayer.playerId;
+            action = 'login';
+        } else {
+            const currentId = getTrustedPlayerId(req);
+            if (currentId && playerManager.getGoogleLink(currentId)) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'บัญชีเกมนี้ผูกกับ Google อีกอันอยู่แล้ว ใช้ Gmail อันเดิม หรือยกเลิกการผูกในหน้าโปรไฟล์ก่อน'
+                });
+            }
+            playerId = currentId || uuidv4();
+            await ensurePersistedPlayer(playerId);
+            await playerManager.ensureRecoveryCode(playerId);
+            await playerManager.linkGoogleAccount(playerId, google.sub, google.email);
+            action = 'linked';
+        }
+
+        req.session.playerId = playerId;
+        issueIdentityCookie(res, playerId);
+        return res.json({
+            success: true,
+            action,
+            playerId,
+            email: google.email,
+            recoveryCode: playerManager.getRecoveryCode(playerId)
+        });
+    } catch (error) {
+        console.error('[auth] google sign-in failed:', error.message);
+        return res.status(400).json({ success: false, error: error.message || 'ล็อกอินไม่สำเร็จ' });
+    }
+});
+
+app.post('/api/auth/google/unlink', async function(req, res) {
+    const playerId = getTrustedPlayerId(req);
+    if (!playerId) return res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
+    await playerManager.unlinkGoogleAccount(playerId);
+    return res.json({ success: true });
 });
 
 // ข้อมูลบัญชีของเครื่องนี้ — client เก็บรหัสไว้ใน localStorage เผื่อ cookie หาย

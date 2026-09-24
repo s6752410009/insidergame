@@ -26,6 +26,8 @@
         background: rgba(0,0,0,0.35); color: #ffc107; border: 1px solid rgba(255,193,7,0.3);
     }
     .recovery-restore { margin-top: 16px; }
+    .google-account { margin-bottom: 18px; }
+    .recovery-subtitle { font-size: 1em; color: rgba(255,255,255,0.85); margin: 0 0 8px; }
     .recovery-restore summary { cursor: pointer; color: #5eead4; margin-bottom: 10px; }
     .recovery-restore input {
         flex: 1 1 180px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid #555;
@@ -1275,7 +1277,19 @@
 
     <% const recoveryCode = typeof viewerRecoveryCode !== 'undefined' ? viewerRecoveryCode : null; %>
     <div class="profile-section motion-enter recovery-section" style="--enter-delay: 360;">
-        <h2>🔑 รหัสกู้บัญชี</h2>
+        <h2>🔑 บัญชีและการกู้คืน</h2>
+        <% if (typeof googleClientId !== 'undefined' && googleClientId) { %>
+            <div class="google-account">
+                <% if (typeof viewerGoogleEmail !== 'undefined' && (viewerGoogleEmail || viewerGoogleLinked)) { %>
+                    <p class="recovery-hint"><i class="fab fa-google" aria-hidden="true"></i> ผูกกับ Google แล้ว<% if (viewerGoogleEmail) { %>: <b><%= viewerGoogleEmail %></b><% } %> — เปลี่ยนเครื่องก็กดล็อกอินด้วย Gmail นี้ได้เลย</p>
+                    <button type="button" class="btn btn-dark btn-sm" id="googleUnlink">ยกเลิกการผูก Google</button>
+                <% } else { %>
+                    <p class="recovery-hint">ง่ายที่สุด: ผูกกับ Gmail แล้วเปลี่ยนเครื่องเมื่อไหร่ก็ล็อกอินกลับมาได้ ไม่ต้องจำรหัส</p>
+                    <div data-google-signin data-google-text="continue_with"></div>
+                <% } %>
+            </div>
+            <h3 class="recovery-subtitle">หรือใช้รหัสกู้บัญชี</h3>
+        <% } %>
         <p class="recovery-hint">จดหรือแคปเก็บไว้ ถ้าล้างเบราว์เซอร์ เปลี่ยนมือถือ หรือเข้าจากเครื่องอื่น ใช้รหัสนี้เอาบัญชี ถ้วย และสถิติเดิมกลับมาได้ <b>อย่าให้คนอื่นดู</b></p>
         <% if (recoveryCode) { %>
             <div class="recovery-code-row">
@@ -1723,6 +1737,24 @@ $(function() {
             });
             try { localStorage.setItem('insiderGameRecoveryCode', code); } catch (e) {}
         }
+        var unlinkBtn = document.getElementById('googleUnlink');
+        if (unlinkBtn) {
+            unlinkBtn.addEventListener('click', function() {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ยกเลิกการผูก Google?',
+                    text: 'ถ้าล้างเบราว์เซอร์หลังจากนี้ จะต้องใช้รหัสกู้บัญชีแทน',
+                    showCancelButton: true,
+                    confirmButtonText: 'ยกเลิกการผูก',
+                    cancelButtonText: 'ไม่ใช่'
+                }).then(function(result) {
+                    if (!result.isConfirmed) return;
+                    fetch('/api/auth/google/unlink', { method: 'POST', credentials: 'same-origin' })
+                        .then(function() { window.location.reload(); });
+                });
+            });
+        }
+
         document.getElementById('recoveryRestore').addEventListener('click', function() {
             var value = document.getElementById('recoveryInput').value;
             fetch('/api/identity/restore', {

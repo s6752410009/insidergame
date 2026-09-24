@@ -54,6 +54,9 @@ const playerSchema = new mongoose.Schema({
     isSiteAdmin: { type: Boolean, default: false },
     // รหัสกู้บัญชี — ใช้ย้ายเครื่อง/กู้คืนหลังล้างเบราว์เซอร์ ต้องไม่ส่งให้คนอื่นเห็น
     recoveryCode: { type: String, index: true, sparse: true },
+    // ผูกบัญชี Google (ไม่บังคับ) — sub คือ id ถาวรของบัญชี Google
+    googleSub: { type: String, index: true, sparse: true },
+    googleEmail: { type: String },
     createdAt: { type: Date, default: Date.now },
     lastSeen: { type: Date, default: Date.now }
 }, { timestamps: true });
