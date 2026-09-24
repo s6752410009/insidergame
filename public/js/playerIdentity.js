@@ -123,7 +123,8 @@
         }
 
         if (urlPlayerId !== playerId) {
-            const fixedUrl = addPlayerIdToUrl(window.location.pathname + window.location.search, playerId);
+            // ต้องพก #hash ไปด้วย ไม่งั้นลิงก์อย่าง /how-to-play#werewolf จะหลุดไปบนสุดหลัง reload
+            const fixedUrl = addPlayerIdToUrl(window.location.pathname + window.location.search, playerId) + window.location.hash;
             console.log('[PlayerIdentity] Syncing identity with server ->', fixedUrl);
             window.location.replace(fixedUrl);
             return false; // กำลัง reload

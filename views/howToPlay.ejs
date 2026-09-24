@@ -646,15 +646,310 @@
       font-size: 2.4rem;
     }
   }
+
+  /* ---------- สารบัญ + แถบกระโดดไปเกม ---------- */
+  :root { --guide-jump-h: 64px; }
+
+  /* style.css ตั้ง scroll-behavior: smooth ไว้ทั้งเว็บ — คนที่ปิด motion ให้กระโดดทันที */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto !important; }
+  }
+
+  .guide-card[id],
+  .guide-compare [id] {
+    scroll-margin-top: calc(var(--guide-jump-h) + 16px);
+  }
+
+  .guide-toc {
+    margin-top: 22px;
+  }
+
+  .guide-toc-label {
+    margin: 0 0 10px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--guide-gold);
+  }
+
+  .guide-toc-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .guide-jump-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 0 15px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 176, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--guide-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .guide-jump-chip:hover,
+  .guide-jump-chip:focus-visible {
+    color: #fff;
+    text-decoration: none;
+    background: rgba(91, 192, 255, 0.14);
+    border-color: rgba(91, 192, 255, 0.45);
+  }
+
+  .guide-jump-chip:focus-visible,
+  .guide-jump-top:focus-visible {
+    outline: 2px solid var(--guide-accent-2);
+    outline-offset: 2px;
+  }
+
+  .guide-jump-chip .guide-jump-ico {
+    font-size: 1.05em;
+  }
+
+  .guide-jump-chip.is-active {
+    color: #07080c;
+    background: var(--guide-accent-2);
+    border-color: var(--guide-accent-2);
+  }
+
+  .guide-jumpbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 900;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: rgba(9, 10, 16, 0.92);
+    border-bottom: 1px solid var(--guide-line);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transform: translateY(-110%);
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+  }
+
+  .guide-jumpbar.is-visible {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.22s ease, visibility 0s;
+  }
+
+  .guide-jumpbar-inner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 1180px;
+    height: var(--guide-jump-h);
+    margin: 0 auto;
+    padding: 0 8px 0 12px;
+  }
+
+  .guide-jumpbar-scroll {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 0 4px;
+    list-style: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .guide-jumpbar-scroll::-webkit-scrollbar { display: none; }
+
+  .guide-jumpbar .guide-jump-chip {
+    padding: 0 13px;
+    font-size: 0.9rem;
+  }
+
+  .guide-jump-top {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: 1px solid rgba(240, 193, 77, 0.35);
+    background: rgba(240, 193, 77, 0.1);
+    color: var(--guide-gold);
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .guide-jump-top:hover { background: rgba(240, 193, 77, 0.18); }
+
+  /* ---------- ส่วนที่พับได้ (รายละเอียดเสริม) ---------- */
+  .guide-fold {
+    margin-top: 26px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .guide-fold > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    padding: 10px 16px;
+    cursor: pointer;
+    list-style: none;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--guide-ink);
+    border-radius: 18px;
+  }
+
+  .guide-fold > summary::-webkit-details-marker { display: none; }
+
+  .guide-fold > summary::after {
+    content: '+';
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--guide-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .guide-fold[open] > summary::after { content: '−'; }
+
+  .guide-fold > summary:focus-visible {
+    outline: 2px solid var(--guide-accent-2);
+    outline-offset: 2px;
+  }
+
+  .guide-fold-hint {
+    display: block;
+    margin-top: 2px;
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--guide-muted);
+  }
+
+  .guide-fold-body {
+    padding: 2px 14px 14px;
+  }
+
+  .guide-fold-body > .guide-replay:first-child,
+  .guide-fold-body > .pk-rank-list:first-child { margin-top: 0; }
+
+  .guide-faq-item.guide-fold {
+    margin-top: 0;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .guide-faq-item.guide-fold > summary {
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .guide-faq-item .guide-fold-body {
+    padding: 0 18px 16px;
+    line-height: 1.65;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guide-jumpbar,
+    .guide-jumpbar.is-visible,
+    .guide-jump-chip { transition: none; }
+  }
 </style>
 
+<%
+  const guideJumpLinks = [
+    { id: 'insider', ico: '🎯', label: 'Insider' },
+    { id: 'werewolf', ico: '🐺', label: 'Werewolf' },
+    { id: 'blackmarket', ico: '🎩', label: 'Black Market' },
+    { id: 'spyfall', ico: '🕶️', label: 'Spyfall' },
+    { id: 'coup', ico: '👑', label: 'Coup' },
+    { id: 'liar', ico: '🃏', label: 'ไพ่โกหก' },
+    { id: 'poker5', ico: '♠', label: 'ไพ่ 5 ใบ' },
+    { id: 'poker4', ico: '♦', label: 'สี่ใบเก' },
+    { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
+  ];
+%>
+
+<script>
+  // ลิงก์ตรงแบบ /how-to-play#werewolf — playerIdentity.js reload หน้านี้ครั้งหนึ่งเพื่อผูก playerId
+  // แล้ว #hash หลุดไป จึงจำไว้ก่อน reload แล้วคืนให้หลังโหลดใหม่ (มีอายุ 15 วิ กันค้างไปรอบหน้า)
+  (function () {
+    var KEY = 'guideJumpHash';
+    try {
+      if (/^#[a-z0-9-]+$/i.test(location.hash)) {
+        sessionStorage.setItem(KEY, JSON.stringify({ hash: location.hash, at: Date.now() }));
+        return;
+      }
+      var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+      sessionStorage.removeItem(KEY);
+      if (saved && /^#[a-z0-9-]+$/i.test(saved.hash) && Date.now() - saved.at < 15000 && history.replaceState) {
+        history.replaceState(history.state, '', location.pathname + location.search + saved.hash);
+        window.__guideRestoreHash = saved.hash.slice(1);
+      }
+    } catch (e) { /* storage ใช้ไม่ได้ก็แค่ไม่ข้ามให้ */ }
+  })();
+</script>
+
+<nav class="guide-jumpbar" id="guide-jumpbar" aria-label="ข้ามไปเกม">
+  <div class="guide-jumpbar-inner">
+    <ul class="guide-jumpbar-scroll" id="guide-jumpbar-scroll">
+      <% guideJumpLinks.forEach((link) => { %>
+        <li><a class="guide-jump-chip" href="#<%= link.id %>" data-jump="<%= link.id %>"><span class="guide-jump-ico" aria-hidden="true"><%= link.ico %></span><%= link.label %></a></li>
+      <% }) %>
+    </ul>
+    <button type="button" class="guide-jump-top" id="guide-jump-top" aria-label="กลับด้านบน" title="กลับด้านบน">↑</button>
+  </div>
+</nav>
+
 <div class="guide-page">
-  <section class="guide-hero">
+  <section class="guide-hero" id="top">
     <span class="guide-kicker">How To Play</span>
     <div class="guide-hero-grid">
       <div>
         <h1 class="guide-title">วิธีเล่นทุกโหมด เข้าใจได้ในหน้าเดียว</h1>
         <p class="guide-copy">หน้านี้สรุปวิธีเล่นครบทุกโหมด — Insider, Werewolf, Black Market, Spyfall, Coup, ไพ่โกหก, ไพ่ 5 ใบ และสี่ใบเก — แบบอ่านเร็วแล้วเริ่มวงได้เลย</p>
+        <nav class="guide-toc" id="guide-toc" aria-labelledby="guide-toc-label">
+          <p class="guide-toc-label" id="guide-toc-label">กำลังจะเล่นเกมไหน? แตะเพื่อข้ามไปเลย</p>
+          <ul class="guide-toc-list">
+            <% guideJumpLinks.forEach((link) => { %>
+              <li><a class="guide-jump-chip" href="#<%= link.id %>"><span class="guide-jump-ico" aria-hidden="true"><%= link.ico %></span><%= link.label %></a></li>
+            <% }) %>
+          </ul>
+        </nav>
         <div class="guide-chip-row">
           <span class="guide-chip">อธิบายสั้นแต่ครบ</span>
           <span class="guide-chip">มีจุดชนะของแต่ละโหมด</span>
@@ -681,7 +976,7 @@
   </section>
 
   <section class="guide-section-grid">
-    <article class="guide-card mode-insider">
+    <article class="guide-card mode-insider" id="insider">
       <div class="guide-mode-badge">🎯 Insider</div>
       <h2>ทายคำ แล้วจับคนที่รู้คำ</h2>
       <p>โหมดนี้เล่นง่ายที่สุด ผู้ดำเนินเกมรู้คำตอบ จอมบงการรู้คำเหมือนกัน แต่ต้องเนียนไปกับวงโดยไม่ให้คนอื่นจับได้</p>
@@ -692,7 +987,7 @@
       </div>
     </article>
 
-    <article class="guide-card mode-werewolf">
+    <article class="guide-card mode-werewolf" id="werewolf">
       <div class="guide-mode-badge">🐺 Werewolf</div>
       <h2>กลางคืนใช้สกิล กลางวันตัดสิน</h2>
       <p>โหมดนี้เน้นบทบาทและข้อมูลที่ไม่เท่ากัน หมาป่าพยายามลดจำนวนชาวบ้าน ขณะที่ฝ่ายหมู่บ้านต้องใช้ข้อมูลสะสมและการคุยกันเพื่อหาตัวจริง</p>
@@ -706,7 +1001,7 @@
       </div>
     </article>
 
-    <article class="guide-card mode-blackmarket">
+    <article class="guide-card mode-blackmarket" id="blackmarket">
       <div class="guide-mode-badge">🎩 Black Market</div>
       <h2>ต่อรอง บลัฟ และหักเหลี่ยม</h2>
       <p>Black Market เน้นความสัมพันธ์บนโต๊ะและการอ่านเจตนา ผู้เล่นแต่ละบทมองหาผลประโยชน์ของตัวเองผ่านการแลกข้อมูล การต่อรอง และการวางจังหวะ</p>
@@ -722,7 +1017,7 @@
       </div>
     </article>
 
-    <article class="guide-card mode-spyfall">
+    <article class="guide-card mode-spyfall" id="spyfall">
       <div class="guide-mode-badge">🕶️ Spyfall</div>
       <h2>รู้สถานที่ จับสายลับ</h2>
       <p>ทุกคนได้สถานที่เดียวกัน ยกเว้นสายลับ 1 คนที่ต้องเดาจากคำถาม–คำตอบโดยไม่เปิดเผยตัว</p>
@@ -810,8 +1105,9 @@
         </div>
       </div>
 
-      <h3 class="guide-sub">ลองดูของจริง 3 สถานการณ์</h3>
-
+      <details class="guide-fold">
+        <summary><span>ลองดูของจริง 3 สถานการณ์<span class="guide-fold-hint">โกหกแล้วรอด · โดนจับ · ขวางแล้วโดนท้าซ้อน</span></span></summary>
+        <div class="guide-fold-body">
       <div class="guide-replay">
         <div class="guide-replay-title">① โกหกแล้วรอด — ไม่มีใครกล้าท้า</div>
         <div class="guide-replay-line"><span class="guide-replay-ico">👑</span><span><b>เอ</b> ประกาศ "เก็บภาษี" เอา 3 เหรียญ (อ้างว่ามีดยุค — จริงๆ ในมือมีนักฆ่ากับกัปตัน)</span></div>
@@ -835,13 +1131,20 @@
         <div class="guide-replay-out is-bad">บีไม่มีท่านหญิงจริง → บีเสียการ์ดจากการโกหก แล้ว<b>ยังโดนลอบสังหารต่อ</b> เสียอีกใบ = ตกรอบทันที<br>เหรียญ 3 ที่เอจ่ายไปแล้วไม่ได้คืนไม่ว่าผลจะออกทางไหน</div>
       </div>
 
-      <h3 class="guide-sub">มือใหม่พลาดตรงไหนบ่อย</h3>
+        </div>
+      </details>
+
+      <details class="guide-fold">
+        <summary><span>มือใหม่พลาดตรงไหนบ่อย<span class="guide-fold-hint">4 จุดที่ทำให้เสียการ์ดฟรี</span></span></summary>
+        <div class="guide-fold-body">
       <div class="guide-tips">
         <div class="guide-tip"><strong>รีบท้าตั้งแต่ตาแรก</strong> — ตอนทุกคนยังมี 2 ใบ ท้าผิดเจ็บพอๆ กับโดนจับโกหก รอให้เขาอ้างการ์ดใบเดิมซ้ำหลายรอบก่อนค่อยท้าจะคุ้มกว่า</div>
         <div class="guide-tip"><strong>ลืมว่ารัฐประหารท้าไม่ได้ ขวางไม่ได้</strong> — มี 7 เหรียญเมื่อไหร่คือเก็บแต้มตายได้แน่นอน ไม่ต้องลุ้นอะไรเลย</div>
         <div class="guide-tip"><strong>ปล่อยให้เหรียญถึง 10</strong> — พอครบ 10 จะถูกบังคับทำรัฐประหาร เลือกท่าอื่นไม่ได้อีก คนอื่นจะเดาตาคุณออกหมด</div>
         <div class="guide-tip"><strong>อ้างการ์ดที่เพิ่งเห็นคนอื่นเปิด</strong> — การ์ดมีชนิดละ 3 ใบเท่านั้น ถ้าเปิดไปแล้ว 2 ใบ คนอื่นจะรู้ทันทีว่าโอกาสที่คุณมีเหลือน้อยมาก</div>
       </div>
+        </div>
+      </details>
     </article>
 
     <article class="guide-card mode-liar" id="liar">
@@ -908,6 +1211,9 @@
         <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>
         <div class="guide-list-item"><strong>หมอบ</strong> ไม่ได้ใบที่ 3 กินกองไม่ได้</div>
       </div>
+      <details class="guide-fold">
+        <summary><span>ลำดับไพ่ ใหญ่ → เล็ก<span class="guide-fold-hint">ลำดับเดียวกับไพ่ 5 ใบ · ตอง เรียงสี เซียน เรียง สี แต้ม</span></span></summary>
+        <div class="guide-fold-body">
       <p class="pk-rank-kicker">ใหญ่ → เล็ก</p>
       <div class="pk-rank-list">
         <% pokerGuideRows.forEach((row, index) => { %>
@@ -925,11 +1231,13 @@
           </div>
         <% }) %>
       </div>
+        </div>
+      </details>
     </article>
   </section>
 
   <section class="guide-compare">
-    <div class="guide-card">
+    <div class="guide-card" id="getting-started">
       <h3>เริ่มเล่นแต่ละโหมดยังไง</h3>
       <div class="guide-list">
         <div class="guide-list-item"><strong>1. เลือกโหมด</strong> เลือกจากอารมณ์วง ถ้าเพิ่งรวมกลุ่ม ให้เริ่ม Insider ก่อน</div>
@@ -939,33 +1247,132 @@
       </div>
     </div>
 
-    <div class="guide-card guide-cta">
+    <div class="guide-card guide-cta" id="faq">
       <h3>คำถามที่เจอบ่อย</h3>
       <div class="guide-faq">
-        <div class="guide-faq-item">
-          <strong>ถ้ามีผู้เล่นใหม่หลายคน ควรเริ่มโหมดไหน?</strong>
-          เริ่มจาก Insider เพราะกติกาสั้นที่สุด อธิบายรอบเดียวเข้าใจ หรือถ้ามีกันไม่กี่คนลอง Coup ก็ได้
-        </div>
-        <div class="guide-faq-item">
-          <strong>Werewolf ใช้เวลานานกว่าไหม?</strong>
-          นานกว่า Insider เพราะเล่นหลายรอบ สลับกลางวันกับกลางคืน และแต่ละบทมีสกิลที่ต้องคิดก่อนใช้
-        </div>
-        <div class="guide-faq-item">
-          <strong>Black Market ต่างจากโหมดอื่นยังไง?</strong>
-          ไม่ได้เน้นจับคนโกหกอย่างเดียว แต่เน้นซื้อขาย ต่อรอง และดูว่าใครกำลังได้เปรียบอยู่
-        </div>
-        <div class="guide-faq-item">
-          <strong>คนน้อยเล่นอะไรได้บ้าง?</strong>
-          Coup เล่นได้ตั้งแต่ 2 คน จบไวใน 15 นาที ส่วนโหมดอื่นต้องมีอย่างน้อย 3-4 คนขึ้นไป
-        </div>
-        <div class="guide-faq-item">
-          <strong>Coup โกหกได้จริงเหรอ?</strong>
-          ได้จริง ประกาศใช้พลังของการ์ดที่ไม่มีก็ได้ ถ้าไม่มีใครท้าก็ผ่านไปเลย แต่ถ้าโดนท้าแล้วไม่มีจริง เสียการ์ด 1 ใบ
-        </div>
+        <details class="guide-faq-item guide-fold">
+          <summary>ถ้ามีผู้เล่นใหม่หลายคน ควรเริ่มโหมดไหน?</summary>
+          <div class="guide-fold-body">เริ่มจาก Insider เพราะกติกาสั้นที่สุด อธิบายรอบเดียวเข้าใจ หรือถ้ามีกันไม่กี่คนลอง Coup ก็ได้</div>
+        </details>
+        <details class="guide-faq-item guide-fold">
+          <summary>Werewolf ใช้เวลานานกว่าไหม?</summary>
+          <div class="guide-fold-body">นานกว่า Insider เพราะเล่นหลายรอบ สลับกลางวันกับกลางคืน และแต่ละบทมีสกิลที่ต้องคิดก่อนใช้</div>
+        </details>
+        <details class="guide-faq-item guide-fold">
+          <summary>Black Market ต่างจากโหมดอื่นยังไง?</summary>
+          <div class="guide-fold-body">ไม่ได้เน้นจับคนโกหกอย่างเดียว แต่เน้นซื้อขาย ต่อรอง และดูว่าใครกำลังได้เปรียบอยู่</div>
+        </details>
+        <details class="guide-faq-item guide-fold">
+          <summary>คนน้อยเล่นอะไรได้บ้าง?</summary>
+          <div class="guide-fold-body">Coup เล่นได้ตั้งแต่ 2 คน จบไวใน 15 นาที ส่วนโหมดอื่นต้องมีอย่างน้อย 3-4 คนขึ้นไป</div>
+        </details>
+        <details class="guide-faq-item guide-fold">
+          <summary>Coup โกหกได้จริงเหรอ?</summary>
+          <div class="guide-fold-body">ได้จริง ประกาศใช้พลังของการ์ดที่ไม่มีก็ได้ ถ้าไม่มีใครท้าก็ผ่านไปเลย แต่ถ้าโดนท้าแล้วไม่มีจริง เสียการ์ด 1 ใบ</div>
+        </details>
       </div>
     </div>
   </section>
+  <div id="guide-page-end" aria-hidden="true"></div>
 </div>
+
+<script>
+  (function () {
+    var bar = document.getElementById('guide-jumpbar');
+    var toc = document.getElementById('guide-toc');
+    var scroller = document.getElementById('guide-jumpbar-scroll');
+    var topBtn = document.getElementById('guide-jump-top');
+    if (!bar || !toc || !scroller || !('IntersectionObserver' in window)) return;
+
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    function motion() { return reduceMotion && reduceMotion.matches ? 'auto' : 'smooth'; }
+
+    var chips = {};
+    Array.prototype.forEach.call(scroller.querySelectorAll('[data-jump]'), function (chip) {
+      chips[chip.getAttribute('data-jump')] = chip;
+    });
+    var sections = Object.keys(chips)
+      .map(function (id) { return document.getElementById(id); })
+      .filter(Boolean);
+
+    // แถบบนโผล่เมื่อเลื่อนผ่านสารบัญด้านบนไปแล้วเท่านั้น
+    function setBarVisible(visible) {
+      bar.classList.toggle('is-visible', visible);
+      bar.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+    setBarVisible(false);
+    new IntersectionObserver(function (entries) {
+      var entry = entries[0];
+      setBarVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    }).observe(toc);
+
+    // ไฮไลต์เกมที่กำลังอ่านอยู่ — ใช้ "แถบอ่าน" ใต้แถบบน ถึงราว 40% ของจอ
+    var activeId = null;
+    function setActive(id) {
+      if (id === activeId) return;
+      if (activeId && chips[activeId]) {
+        chips[activeId].classList.remove('is-active');
+        chips[activeId].removeAttribute('aria-current');
+      }
+      activeId = id;
+      var chip = id && chips[id];
+      if (!chip) return;
+      chip.classList.add('is-active');
+      chip.setAttribute('aria-current', 'location');
+      var target = chip.offsetLeft - (scroller.clientWidth - chip.offsetWidth) / 2;
+      scroller.scrollTo({ left: Math.max(0, target), behavior: bar.classList.contains('is-visible') ? motion() : 'auto' });
+    }
+    var barH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--guide-jump-h'), 10) || 64;
+    // เกมที่ "กำลังอ่าน" = การ์ดล่าสุดที่หัวการ์ดเลื่อนขึ้นมาถึงเส้น 40% ของจอแล้ว
+    // (การ์ดแถวเดียวกันบนจอกว้าง ให้ตัวซ้ายสุดชนะ) · เลื่อนจนสุดหน้า = การ์ดสุดท้ายที่เห็น
+    function pickActive() {
+      var line = window.innerHeight * 0.4;
+      var atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      var hashId = location.hash.slice(1);
+      var best = null;
+      var bestTop = -Infinity;
+      sections.forEach(function (section) {
+        var top = Math.round(section.getBoundingClientRect().top);
+        var limit = atEnd ? window.innerHeight - 80 : line;
+        if (top > limit) return;
+        var sameRow = Math.abs(top - bestTop) <= 2;
+        // แถวเดียวกัน: ถ้าเพิ่งกดชิปของการ์ดนี้ (ตรงกับ #hash) ให้ตัวนั้นชนะ
+        if ((!sameRow && top > bestTop) || (sameRow && section.id === hashId)) {
+          best = section;
+          bestTop = top;
+        }
+      });
+      setActive(best ? best.id : sections[0].id);
+    }
+    // IntersectionObserver เป็นตัวบอกว่าเมื่อไหร่ควรคำนวณใหม่ (หัวการ์ดข้ามแถบอ่าน / ถึงท้ายหน้า)
+    var sectionObserver = new IntersectionObserver(pickActive, {
+      rootMargin: '-' + (barH + 12) + 'px 0px -60% 0px'
+    });
+    sections.forEach(function (section) { sectionObserver.observe(section); });
+    var pageEnd = document.getElementById('guide-page-end');
+    if (pageEnd) new IntersectionObserver(pickActive).observe(pageEnd);
+    window.addEventListener('hashchange', pickActive);
+
+    // คืนตำแหน่ง #hash ที่หลุดไปตอน reload (ดูสคริปต์ด้านบนสุด)
+    var restoreId = window.__guideRestoreHash;
+    var restoreEl = restoreId && document.getElementById(restoreId);
+    if (restoreEl) {
+      var jump = function () { restoreEl.scrollIntoView({ block: 'start', behavior: 'instant' }); };
+      jump();
+      var landedY = window.scrollY;
+      window.addEventListener('load', function () {
+        if (Math.abs(window.scrollY - landedY) < 4) jump();
+      }, { once: true });
+    }
+
+    topBtn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: motion() });
+      if (history.replaceState) history.replaceState(null, '', location.pathname + location.search);
+      var firstChip = toc.querySelector('a');
+      if (firstChip) firstChip.focus({ preventScroll: true });
+    });
+  })();
+</script>
 
 <%- contentFor('footer') %>
 <%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' }, action: { href: '/rooms', label: '🎮 เลือกห้องเล่น' } }) %>

@@ -1,539 +1,357 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-    .settings-container {
-        max-width: 800px;
-        margin: 30px auto;
-        padding: 20px;
-        font-family: 'Rajdhani', sans-serif;
+    .st {
+        --st-surface: oklch(0.22 0.035 285);
+        --st-surface-2: oklch(0.27 0.04 285);
+        --st-sunken: oklch(0.17 0.03 285);
+        --st-line: oklch(0.42 0.04 285 / 0.55);
+        --st-ink: oklch(0.96 0.01 285);
+        --st-soft: oklch(0.8 0.025 285);
+        --st-muted: oklch(0.68 0.03 285);
+        --st-accent: oklch(0.66 0.2 28);
+        --st-accent-ink: oklch(0.98 0.01 28);
+        --st-gold: oklch(0.84 0.14 85);
+        --st-good: oklch(0.72 0.15 160);
+        --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+        --space-xl: 24px; --space-2xl: 32px;
+        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+
+        max-width: 560px;
+        margin: 0 auto var(--space-2xl);
+        padding: var(--space-lg) var(--space-lg) 0;
+        color: var(--st-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        font-size: 1rem;
+        line-height: 1.5;
+        text-align: left;
     }
-    
-    .settings-header {
-        text-align: center;
-        margin-bottom: 40px;
-    }
-    
-    .settings-header h1 {
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 900;
-        font-size: 2.5em;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        margin-bottom: 10px;
-    }
-    
-    .settings-header p {
-        color: #888;
-        font-size: 1.1em;
-    }
-    
-    .settings-section {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-        border: 3px solid #444;
-        border-radius: 16px;
-        padding: 25px;
-        margin-bottom: 25px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-    }
-    
-    .settings-section h2 {
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
+    .st *, .st *::before, .st *::after { box-sizing: border-box; }
+    .st button { font-family: inherit; }
+    .st :focus-visible { outline: 2px solid var(--st-gold); outline-offset: 2px; }
+
+    .st-title {
+        margin: 0 0 var(--space-xl);
+        font-family: var(--display);
+        font-size: 1.6rem;
         font-weight: 700;
-        font-size: 1.3em;
-        margin-bottom: 20px;
-        padding-bottom: 12px;
-        border-bottom: 2px solid #444;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        line-height: 1.2;
+        color: var(--st-ink);
     }
-    
-    .settings-section h2 .icon {
-        font-size: 1.2em;
-    }
-    
-    .setting-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 0;
-        border-bottom: 1px solid #333;
-    }
-    
-    .setting-item:last-child {
-        border-bottom: none;
-    }
-    
-    .setting-info h3 {
-        color: #fff;
-        font-size: 1.1em;
+
+    .st-group { margin: 0 0 var(--space-xl); }
+    /* style.css / mobile.css ตั้ง .content h2 แบบ !important — ต้องทับด้วย !important */
+    .st h2.st-label {
+        margin: 0 0 var(--space-sm) var(--space-xs) !important;
+        font-family: var(--display);
+        font-size: 0.95rem !important;
         font-weight: 600;
-        margin: 0 0 5px 0;
+        line-height: 1.3;
+        color: var(--st-soft);
     }
-    
-    .setting-info p {
-        color: #888;
-        font-size: 0.9em;
-        margin: 0;
+    .st-card {
+        border-radius: 14px;
+        background: var(--st-surface);
+        border: 1px solid var(--st-line);
+        overflow: hidden;
     }
-    
-    /* Toggle Switch */
-    .toggle-switch {
+
+    /* ---------- toggle row ---------- */
+    .st-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-lg);
+        min-height: 64px;
+        padding: var(--space-md) var(--space-lg);
+        cursor: pointer;
+    }
+    .st-row + .st-row { border-top: 1px solid var(--st-line); }
+    .st-row-text { min-width: 0; }
+    .st-row-name { display: block; font-weight: 600; color: var(--st-ink); }
+    .st-row-hint { display: block; font-size: 0.88rem; color: var(--st-muted); }
+
+    .st-switch {
         position: relative;
-        width: 60px;
+        flex: 0 0 auto;
+        width: 52px;
         height: 32px;
     }
-    
-    .toggle-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-    
-    .toggle-slider {
+    .st-switch input {
         position: absolute;
+        inset: -6px;
+        width: calc(100% + 12px) !important;
+        height: calc(100% + 12px);
+        margin: 0;
+        -webkit-appearance: none;
+        appearance: none;
+        opacity: 0;
         cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: #444;
-        border-radius: 32px;
-        transition: all 0.3s;
+        z-index: 1;
     }
-    
-    .toggle-slider::before {
+    .st-switch-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: var(--st-sunken);
+        border: 1px solid var(--st-line);
+        transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+    }
+    .st-switch-track::before {
         content: '';
         position: absolute;
-        height: 24px;
+        top: 3px;
+        left: 3px;
         width: 24px;
-        left: 4px;
-        bottom: 4px;
-        background: #fff;
+        height: 24px;
         border-radius: 50%;
-        transition: all 0.3s;
+        background: var(--st-soft);
+        transition: transform 0.2s var(--ease-out), background 0.2s var(--ease-out);
     }
-    
-    .toggle-switch input:checked + .toggle-slider {
-        background: #2ecc71;
-    }
-    
-    .toggle-switch input:checked + .toggle-slider::before {
-        transform: translateX(28px);
-    }
-    
-    /* Volume Slider */
-    .volume-control {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    
-    .volume-slider {
-        -webkit-appearance: none;
-        width: 150px;
-        height: 8px;
-        border-radius: 4px;
-        background: #444;
-        outline: none;
-    }
-    
-    .volume-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #e74c3c;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .volume-slider::-webkit-slider-thumb:hover {
-        transform: scale(1.1);
-        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
-    }
-    
-    .volume-value {
-        color: #fff;
-        font-weight: 600;
-        min-width: 45px;
-        text-align: center;
-    }
-    
-    /* Select Dropdown */
-    .setting-select {
-        padding: 10px 15px;
-        background: #333;
-        border: 2px solid #444;
-        border-radius: 8px;
-        color: #fff;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1em;
-        cursor: pointer;
-        min-width: 150px;
-    }
-    
-    .setting-select:focus {
-        outline: none;
-        border-color: #e74c3c;
-    }
-    
-    /* Buttons */
-    .settings-actions {
-        display: flex;
-        gap: 15px;
-        justify-content: center;
-        margin-top: 30px;
-    }
-    
-    .btn-settings {
-        padding: 12px 30px;
-        border: 2px solid;
-        border-radius: 8px;
-        font-family: 'Rajdhani', sans-serif;
-        font-weight: 600;
-        font-size: 1.1em;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .btn-save {
-        background: #2ecc71;
-        border-color: #27ae60;
-        color: #fff;
-    }
-    
-    .btn-save:hover {
-        background: #27ae60;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
-    }
-    
-    .btn-reset {
-        background: transparent;
-        border-color: #888;
-        color: #888;
-    }
-    
-    .btn-reset:hover {
-        border-color: #e74c3c;
-        color: #e74c3c;
-    }
-    
-    .btn-back {
-        display: inline-block;
-        padding: 12px 24px;
-        background: #333;
-        border: 2px solid #444;
-        border-radius: 8px;
-        color: #fff;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s;
-    }
-    
-    .btn-back:hover {
-        background: #444;
-        color: #fff;
-    }
-    
-    /* Info Box */
-    .info-box {
-        background: rgba(52, 152, 219, 0.1);
-        border: 2px solid #3498db;
-        border-radius: 10px;
-        padding: 15px 20px;
-        margin-top: 20px;
-    }
-    
-    .info-box p {
-        color: #3498db;
-        margin: 0;
-        font-size: 0.95em;
-    }
-    
-    .info-box .icon {
-        margin-right: 8px;
-    }
-    
-    /* Theme Grid */
-    .theme-grid {
+    .st-switch input:checked + .st-switch-track { background: var(--st-good); border-color: transparent; }
+    .st-switch input:checked + .st-switch-track::before { transform: translateX(20px); background: #fff; }
+    .st-switch input:focus-visible + .st-switch-track { outline: 2px solid var(--st-gold); outline-offset: 2px; }
+
+    /* ---------- themes ---------- */
+    .st-themes {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 15px;
-        margin-top: 15px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-sm);
+        padding: var(--space-md);
+        margin: 0;
+        border: 0;
     }
-    
+    .st-themes legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .theme-option {
         position: relative;
-        padding: 15px;
-        border: 3px solid #444;
+        display: grid;
+        gap: var(--space-xs);
+        justify-items: center;
+        min-height: 44px;
+        padding: var(--space-sm) var(--space-xs);
         border-radius: 12px;
+        border: 2px solid transparent;
         cursor: pointer;
-        transition: all 0.3s ease;
-        text-align: center;
+        transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
     }
-    
-    .theme-option:hover {
-        border-color: #666;
-        transform: translateY(-2px);
-    }
-    
-    .theme-option.active {
-        border-color: #2ecc71;
-        box-shadow: 0 0 15px rgba(46, 204, 113, 0.3);
-    }
-    
-    .theme-preview {
+    .theme-option:hover { background: var(--st-surface-2); }
+    .theme-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .theme-option.active { border-color: var(--st-accent); background: var(--st-surface-2); }
+    .theme-option:has(input:focus-visible) { outline: 2px solid var(--st-gold); outline-offset: 2px; }
+    .theme-swatch {
+        position: relative;
         width: 100%;
-        height: 60px;
+        height: 40px;
         border-radius: 8px;
-        margin-bottom: 10px;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid oklch(1 0 0 / 0.14);
     }
-    
-    .theme-name {
-        display: block;
-        color: #fff;
-        font-weight: 600;
-        font-size: 1em;
-    }
-    
     .theme-check {
         position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        background: #2ecc71;
+        top: 50%;
+        left: 50%;
+        width: 22px;
+        height: 22px;
+        margin: -11px 0 0 -11px;
         border-radius: 50%;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        color: #fff;
-    }
-    
-    .theme-option.active .theme-check {
-        display: flex;
-    }
-    
-    /* Save Button */
-    .btn-save {
-        background: #2ecc71;
-        border-color: #27ae60;
-        color: #fff;
-    }
-    
-    .btn-save:hover {
-        background: #27ae60;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
-    }
-    
-    /* Version Info */
-    .version-info {
+        background: var(--st-accent);
+        color: var(--st-accent-ink);
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 22px;
         text-align: center;
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #333;
+        opacity: 0;
+        transform: scale(0.6);
+        transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
     }
-    
-    .version-info p {
-        color: #666;
-        font-size: 0.9em;
-        margin: 5px 0;
+    .theme-option.active .theme-check { opacity: 1; transform: scale(1); }
+    .st-theme-name { font-size: 0.85rem; font-weight: 600; color: var(--st-soft); white-space: nowrap; }
+    .theme-option.active .st-theme-name { color: var(--st-ink); }
+
+    /* ---------- about ---------- */
+    .st-about { padding: var(--space-md) var(--space-lg); }
+    .st-links { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+    .st-links .ui-btn { flex: 1 1 auto; min-width: 0; }
+    .st-links .ui-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .st-news { border-top: 1px solid var(--st-line); }
+    .st-news summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md);
+        min-height: 56px;
+        padding: var(--space-sm) var(--space-lg);
+        cursor: pointer;
+        list-style: none;
+        font-weight: 600;
     }
-    
-    .version-info .version {
-        color: #888;
-        font-family: 'Orbitron', sans-serif;
+    .st-news summary::-webkit-details-marker { display: none; }
+    .st-news summary::after {
+        content: '';
+        flex: 0 0 auto;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid var(--st-muted);
+        border-bottom: 2px solid var(--st-muted);
+        transform: rotate(45deg) translateY(-2px);
+        transition: transform 0.2s var(--ease-out);
     }
-    
-    @media (max-width: 480px) {
-        .theme-grid {
-            grid-template-columns: 1fr;
-        }
+    .st-news[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+    .st-ver { font-family: var(--display); color: var(--st-muted); font-weight: 600; font-size: 0.9rem; margin-left: auto; }
+    .st-news-body {
+        padding: 0 var(--space-lg) var(--space-lg);
+        color: var(--st-soft);
+        font-size: 0.93rem;
+    }
+    .st-news-body ul { margin: 0; padding-left: 1.2em; display: grid; gap: var(--space-xs); }
+    .st-news-body b { color: var(--st-ink); }
+    .st-news-head { margin: var(--space-md) 0 var(--space-sm); font-weight: 700; color: var(--st-ink); }
+    .st-news-head:first-child { margin-top: 0; }
+    .st-news-date { color: var(--st-muted); font-weight: 500; font-size: 0.85rem; }
+    .st-old { list-style: none; padding: 0 !important; }
+    .st-old li { padding: var(--space-sm) var(--space-md); border-radius: 10px; background: var(--st-sunken); }
+    .st-old strong { display: block; color: var(--st-gold); font-family: var(--display); font-size: 0.88rem; }
+
+    .st-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md);
+        margin-top: var(--space-sm);
+        color: var(--st-muted);
+        font-size: 0.85rem;
+    }
+    .st-foot .ui-btn { flex: 0 0 auto; }
+
+    /* ---------- toast ---------- */
+    .st-toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        z-index: 9000;
+        max-width: calc(100vw - 32px);
+        padding: 10px 24px;
+        border-radius: 999px;
+        background: oklch(0.96 0.01 285);
+        color: oklch(0.2 0.03 285);
+        font-family: 'Bai Jamjuree', sans-serif;
+        font-weight: 600;
+        box-shadow: 0 10px 30px oklch(0.1 0.02 285 / 0.5);
+        transform: translate(-50%, 150%);
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .st-toast.is-on { transform: translate(-50%, 0); opacity: 1; }
+
+    /* ธีม Light: พื้นหน้าเป็นสีอ่อน ให้ข้อความนอกการ์ดเป็นสีเข้ม (การ์ดยังเข้มเหมือนเดิม) */
+    html.theme-white .st-title { color: oklch(0.25 0.03 285); }
+    html.theme-white .st-label,
+    html.theme-white .st-foot,
+    html.theme-white .st-foot .ui-btn--ghost { color: oklch(0.38 0.03 285); }
+
+    @media (min-width: 720px) {
+        .st { padding-top: var(--space-2xl); }
+        .st-title { font-size: 2rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .st *, .st-toast { transition: none !important; }
     }
 </style>
 
-<div class="settings-container">
-    <div class="settings-header">
-        <h1>⚙️ ตั้งค่า</h1>
-        <p>ปรับแต่งประสบการณ์การเล่นเกมของคุณ</p>
-    </div>
-    
-    <!-- Game Settings -->
-    <div class="settings-section">
-        <h2><span class="icon">🎮</span> การเล่นเกม</h2>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>ยืนยันก่อนออกห้อง</h3>
-                <p>ถามก่อนออกจากห้องเกม</p>
-            </div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="confirmLeaveToggle" checked>
-                <span class="toggle-slider"></span>
+<main class="st">
+    <h1 class="st-title">ตั้งค่า</h1>
+
+    <section class="st-group" aria-labelledby="st-play">
+        <h2 class="st-label" id="st-play">การเล่น</h2>
+        <div class="st-card">
+            <label class="st-row" for="confirmLeaveToggle">
+                <span class="st-row-text">
+                    <span class="st-row-name">ถามก่อนออกห้อง</span>
+                    <span class="st-row-hint">กันกดออกจากห้องเกมโดยไม่ตั้งใจ</span>
+                </span>
+                <span class="st-switch">
+                    <input type="checkbox" role="switch" id="confirmLeaveToggle" checked>
+                    <span class="st-switch-track" aria-hidden="true"></span>
+                </span>
             </label>
         </div>
-        
-    </div>
-    
-    <!-- Theme Settings -->
-    <div class="settings-section">
-        <h2><span class="icon">🎨</span> ธีมสี</h2>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>เลือกธีม</h3>
-                <p>เปลี่ยนสีพื้นหลังและตัวอักษรของเกม</p>
-            </div>
-        </div>
-        
-        <div class="theme-grid">
-            <div class="theme-option" data-theme="default">
-                <div class="theme-preview" style="background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"></div>
-                <span class="theme-name">🌌 Default</span>
-                <span class="theme-check">✓</span>
-            </div>
-            <div class="theme-option" data-theme="dark">
-                <div class="theme-preview" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);"></div>
-                <span class="theme-name">🌙 Dark</span>
-                <span class="theme-check">✓</span>
-            </div>
-            <div class="theme-option" data-theme="red">
-                <div class="theme-preview" style="background: linear-gradient(135deg, #4a0000 0%, #8b0000 50%, #4a0000 100%);"></div>
-                <span class="theme-name">🔴 Red</span>
-                <span class="theme-check">✓</span>
-            </div>
-            <div class="theme-option" data-theme="white">
-                <div class="theme-preview" style="background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #f5f5f5 100%);"></div>
-                <span class="theme-name">☀️ Light</span>
-                <span class="theme-check">✓</span>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Info Box -->
-    <div class="info-box">
-        <p><span class="icon">💡</span> กดปุ่ม "บันทึกการตั้งค่า" เพื่อบันทึกการเปลี่ยนแปลง</p>
-    </div>
-    
-    <!-- Support & Contact Section -->
-    <div class="settings-section">
-        <h2><span class="icon">💬</span> ติดต่อและสนับสนุน</h2>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>📧 ติดต่อทางอีเมล</h3>
-                <p><strong>markrock342@gmail.com</strong></p>
-                <p style="color: #666; font-size: 0.8em;">ส่งข้อเสนอแนะหรือรายงานปัญหาไปที่อีเมลนี้</p>
-            </div>
-        </div>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>💬 Line ID</h3>
-                <p><strong>marc342</strong></p>
-                <p style="color: #666; font-size: 0.8em;">ติดต่อผ่าน Line สำหรับการสอบถามอื่น ๆ</p>
-            </div>
-        </div>
-        
-        <div class="setting-item">
-            <div class="setting-info">
-                <h3>⭐ ให้คะแนนและรีวิว</h3>
-                <p>ช่วยให้ฉันปรับปรุงเกมโดยแชร์ข้อมูลเสริมความรู้และรีวิวของคุณ</p>
-            </div>
-            <button class="btn-settings" id="feedbackBtn" style="background: #3498db; border-color: #2980b9; width: auto; padding: 12px 20px; white-space: nowrap;">📝 ให้รีวิว</button>
-        </div>
-    </div>
+    </section>
 
-    <!-- Changelog / Patch Notes -->
-    <div class="settings-section" style="border-color: #9b59b6;">
-        <h2><span class="icon">📋</span> ประวัติการอัปเดต (Changelog)</h2>
-        
-        <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #e74c3c;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #e74c3c; font-family: 'Orbitron', sans-serif;">🚀 Version <%= appVersion %></h3>
-                <span style="background: #e74c3c; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.8em;">ล่าสุด</span>
-            </div>
-            <p style="color: #888; font-size: 0.85em; margin-bottom: 15px;">1 มิถุนายน 2569</p>
-            
-            <div style="color: #ccc; font-size: 0.95em;">
-                <h4 style="color: #2ecc71; margin: 10px 0;">✨ รอบนี้มีอะไรบ้าง — ยกเครื่อง logic engine ใหม่ทุกเกม</h4>
-                <ul style="margin: 0 0 15px 0; padding-left: 20px;">
-                    <li>🕵️ <strong>Insider</strong>: รีจอยน์/รีโหลดกลับเข้าเฟสเดิมถูกต้อง, หมดเวลาคุยเข้าสู่โหวตจับจอมบงการเองไม่ค้าง, เฉลยคำลับตอนจบ</li>
-                    <li>🐺 <strong>Werewolf</strong>: กลางคืนหมดเวลาเติมตาให้ครบทุกบท, จบเกมไม่ขึ้น "คืนถัดไป" ผิด, แม่มดเปลี่ยน/ยกเลิกเป้าได้, แถบบทบาทครบทุกตัว, badge/ฮินต์/แชตหมาป่า reconnect</li>
-                    <li>💰 <strong>Black Market</strong>: ลดความรกของหน้าจอ, ปุ่มพาไป "เลือกของ/ลงมือ", โชว์ว่าใครล็อกแล้วกี่คน, อธิบายบทบาทเข้าใจง่าย</li>
-                    <li>🔍 <strong>Spyfall</strong>: ตัวนับโหวต (X/Y), ไฮไลต์คนที่เราโหวต และตารางสรุปผลโหวตตอนจบ</li>
-                </ul>
-                
-                <h4 style="color: #3498db; margin: 10px 0;">🔧 เล่นยังไง</h4>
-                <ul style="margin: 0 0 15px 0; padding-left: 20px;">
-                    <li>🏠 สร้างห้องเลือกโหมดที่อยากเล่น แล้วดูแถบ <strong>"ทำอะไรตอนนี้"</strong> ที่บอกขั้นตอนถัดไปให้ทุกเกม</li>
-                    <li>🔄 หลุดกลางเกมไม่ต้องกลัว — รีโหลดแล้วระบบพากลับเข้าเฟสเดิมให้อัตโนมัติ</li>
-                </ul>
-                
-                <h4 style="color: #f39c12; margin: 10px 0;">💬 สรุปสั้น ๆ</h4>
-                <p style="margin: 0; background: rgba(243, 156, 18, 0.1); padding: 10px; border-radius: 8px;">
-                    v5.1.0 คืออัปเดตใหญ่ที่ปรับ logic engine ของทั้ง 4 เกมให้เสถียร เล่นจบไม่ค้าง รีจอยน์กลางเกมได้ และ UI บอกชัดว่าตอนนี้ต้องทำอะไร
-                </p>
-            </div>
+    <section class="st-group" aria-labelledby="st-theme">
+        <h2 class="st-label" id="st-theme">ธีมสี</h2>
+        <div class="st-card">
+            <fieldset class="st-themes">
+                <legend>เลือกธีมสี</legend>
+                <label class="theme-option" data-theme="default">
+                    <input type="radio" name="theme" value="default">
+                    <span class="theme-swatch" style="background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);"><span class="theme-check" aria-hidden="true">✓</span></span>
+                    <span class="st-theme-name">ม่วง</span>
+                </label>
+                <label class="theme-option" data-theme="dark">
+                    <input type="radio" name="theme" value="dark">
+                    <span class="theme-swatch" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);"><span class="theme-check" aria-hidden="true">✓</span></span>
+                    <span class="st-theme-name">ดำ</span>
+                </label>
+                <label class="theme-option" data-theme="red">
+                    <input type="radio" name="theme" value="red">
+                    <span class="theme-swatch" style="background: linear-gradient(135deg, #4a0000 0%, #8b0000 50%, #4a0000 100%);"><span class="theme-check" aria-hidden="true">✓</span></span>
+                    <span class="st-theme-name">แดง</span>
+                </label>
+                <label class="theme-option" data-theme="white">
+                    <input type="radio" name="theme" value="white">
+                    <span class="theme-swatch" style="background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 50%, #f5f5f5 100%);"><span class="theme-check" aria-hidden="true">✓</span></span>
+                    <span class="st-theme-name">สว่าง</span>
+                </label>
+            </fieldset>
         </div>
-        
-        <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; border-left: 4px solid #666;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #888; font-family: 'Orbitron', sans-serif;">📦 แพทก่อนหน้า</h3>
-            </div>
-            <div style="color: #aaa; font-size: 0.92em; line-height: 1.8;">
-                <div style="margin-bottom: 14px; padding: 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid #2f2f2f;">
-                    <div style="color: #ffb4a8; font-weight: 700; margin-bottom: 6px;">Version 5.0.1 (27 พฤษภาคม 2569)</div>
-                    <div>โหมดซ้อมเล่นกับบอท (AI Bots) สูงสุด 3 ตัวในห้อง Black Market และคู่มือจำลองการเล่น (Walkthrough) สลับแท็บได้</div>
-                </div>
-                <div style="margin-bottom: 14px; padding: 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid #2f2f2f;">
-                    <div style="color: #ffb4a8; font-weight: 700; margin-bottom: 6px;">Version 5.0.0 (17 พฤษภาคม 2569)</div>
-                    <div>โหมด Spyfall ใหม่ (4-8 คน), ระบบสุ่ม 18+ สถานที่ และระบบตั้งเวลาสนทนากับการโหวตอัตโนมัติ</div>
-                </div>
-                <div style="margin-bottom: 14px; padding: 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid #2f2f2f;">
-                    <div style="color: #ffb4a8; font-weight: 700; margin-bottom: 6px;">Version 4.1.0</div>
-                    <div>Werewolf เสถียรกว่าเดิม แก้บัคจุกจิก และเกลา UI ให้อ่านสถานะง่ายขึ้น</div>
-                </div>
-                <div style="margin-bottom: 14px; padding: 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid #2f2f2f;">
-                    <div style="color: #8fd3ff; font-weight: 700; margin-bottom: 6px;">Version 3.1.0</div>
-                    <div>Werewolf มีการขยับบาลานซ์และจังหวะของเกมให้เล่นคล่องขึ้น พร้อมกับเกลาหน้าต่าง ๆ ให้ดูง่ายกว่าเดิม</div>
-                </div>
-                <div style="margin-bottom: 14px; padding: 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid #2f2f2f;">
-                    <div style="color: #8fd3ff; font-weight: 700; margin-bottom: 6px;">Version 3.0.0</div>
-                    <div>Werewolf เปิดเล่นเต็มระบบแล้ว มีทั้งกลางคืน กลางวัน บทบาทเฉพาะทาง โปรไฟล์ สถิติ และประวัติการเล่น</div>
-                </div>
-                <div style="padding: 14px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid #2f2f2f;">
-                    <div style="color: #f0c674; font-weight: 700; margin-bottom: 6px;">Version 2.0.0</div>
-                    <div>เพิ่มระบบแชทตอบกลับ, Auto-Timer, ข้อมูลติดต่อผู้พัฒนา, ปุ่มรีวิว และปรับเสถียรภาพของระบบหลัก</div>
+    </section>
+
+    <section class="st-group" aria-labelledby="st-about">
+        <h2 class="st-label" id="st-about">ติดต่อและอัปเดต</h2>
+        <div class="st-card">
+            <div class="st-about">
+                <div class="st-links">
+                    <a class="ui-btn ui-btn--sm" href="mailto:markrock342@gmail.com?subject=%E0%B8%A3%E0%B8%B5%E0%B8%A7%E0%B8%B4%E0%B8%A7%20Insider%20Game" title="markrock342@gmail.com"><span>📧 อีเมล / รีวิว</span></a>
+                    <button type="button" class="ui-btn ui-btn--sm" id="copyLineBtn" data-line="marc342"><span>💬 Line: marc342</span></button>
                 </div>
             </div>
+            <details class="st-news" id="changelog">
+                <summary>
+                    <span>มีอะไรใหม่</span>
+                    <span class="st-ver">v<%= appVersion %></span>
+                </summary>
+                <div class="st-news-body">
+                    <p class="st-news-head">🚀 v<%= appVersion %> <span class="st-news-date">· 1 มิ.ย. 2569</span></p>
+                    <ul>
+                        <li>🕵️ <b>Insider</b>: รีจอยน์/รีโหลดกลับเข้าเฟสเดิมถูกต้อง, หมดเวลาคุยเข้าสู่โหวตจับจอมบงการเองไม่ค้าง, เฉลยคำลับตอนจบ</li>
+                        <li>🐺 <b>Werewolf</b>: กลางคืนหมดเวลาเติมตาให้ครบทุกบท, จบเกมไม่ขึ้น "คืนถัดไป" ผิด, แม่มดเปลี่ยน/ยกเลิกเป้าได้, แถบบทบาทครบทุกตัว, badge/ฮินต์/แชตหมาป่า reconnect</li>
+                        <li>💰 <b>Black Market</b>: ลดความรกของหน้าจอ, ปุ่มพาไป "เลือกของ/ลงมือ", โชว์ว่าใครล็อกแล้วกี่คน, อธิบายบทบาทเข้าใจง่าย</li>
+                        <li>🔍 <b>Spyfall</b>: ตัวนับโหวต (X/Y), ไฮไลต์คนที่เราโหวต และตารางสรุปผลโหวตตอนจบ</li>
+                        <li>🔄 หลุดกลางเกมไม่ต้องกลัว — รีโหลดแล้วระบบพากลับเข้าเฟสเดิมให้อัตโนมัติ</li>
+                    </ul>
+                    <p class="st-news-head">📦 ก่อนหน้านี้</p>
+                    <ul class="st-old">
+                        <li><strong>5.0.1 · 27 พ.ค. 2569</strong>ซ้อมเล่นกับบอท (AI Bots) สูงสุด 3 ตัวใน Black Market และคู่มือจำลองการเล่นแบบสลับแท็บ</li>
+                        <li><strong>5.0.0 · 17 พ.ค. 2569</strong>โหมด Spyfall ใหม่ (4-8 คน), สุ่ม 18+ สถานที่ และตั้งเวลาสนทนากับโหวตอัตโนมัติ</li>
+                        <li><strong>4.1.0</strong>Werewolf เสถียรกว่าเดิม แก้บัคจุกจิก และอ่านสถานะง่ายขึ้น</li>
+                        <li><strong>3.1.0</strong>Werewolf ปรับบาลานซ์และจังหวะเกมให้เล่นคล่องขึ้น</li>
+                        <li><strong>3.0.0</strong>Werewolf เปิดเต็มระบบ: กลางคืน กลางวัน บทบาทเฉพาะ โปรไฟล์ สถิติ และประวัติการเล่น</li>
+                        <li><strong>2.0.0</strong>แชทตอบกลับ, Auto-Timer, ข้อมูลติดต่อผู้พัฒนา, ปุ่มรีวิว และปรับเสถียรภาพระบบ</li>
+                    </ul>
+                </div>
+            </details>
         </div>
-    </div>
+    </section>
 
-    <!-- Info Box -->
-    <div class="info-box">
-        <p><span class="icon">💡</span> กดปุ่ม "บันทึกการตั้งค่า" เพื่อบันทึกการเปลี่ยนแปลง</p>
+    <div class="st-foot">
+        <span>เปลี่ยนแล้วบันทึกให้ทันที</span>
+        <button type="button" class="ui-btn ui-btn--sm ui-btn--ghost" id="resetSettings">รีเซ็ตค่าเริ่มต้น</button>
     </div>
-    
-    <!-- Actions -->
-    <div class="settings-actions">
-        <button class="btn-settings btn-save" id="saveSettings">💾 บันทึกการตั้งค่า</button>
-        <button class="btn-settings btn-reset" id="resetSettings">🔄 รีเซ็ตค่าเริ่มต้น</button>
-    </div>
-    
-    <!-- Version Info -->
-    <div class="version-info">
-        <p>Insider · Werewolf · Spyfall · Black Market · Coup</p>
-        <p class="version">Version <%= appVersion %></p>
-    </div>
+</main>
 
-</div>
+<div class="st-toast" id="stToast" role="status" aria-live="polite"></div>
 
 <%- contentFor('footer') %>
 <%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
@@ -560,16 +378,17 @@ $(function() {
                 console.warn('localStorage write error:', e);
                 return false;
             }
-        },
-        remove(key) {
-            try {
-                localStorage.removeItem(key);
-            } catch (e) {
-                console.warn('localStorage remove error:', e);
-            }
         }
     };
 
+    const toastEl = document.getElementById('stToast');
+    let toastTimer = null;
+    function toast(text) {
+        toastEl.textContent = text;
+        toastEl.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function() { toastEl.classList.remove('is-on'); }, 1600);
+    }
 
     let selectedTheme = Storage.get('gameSettings', {}).theme || 'default';
 
@@ -581,49 +400,22 @@ $(function() {
     // Load settings from localStorage
     function loadSettings() {
         const settings = Storage.get('gameSettings', {});
-        
-        // Game
         $('#confirmLeaveToggle').prop('checked', settings.confirmLeave !== false);
-        
-        // Theme
         selectedTheme = normalizeTheme(settings.theme || 'default');
         updateThemeUI();
         applyTheme(selectedTheme);
     }
-    
-    // Theme selection click handler
-    $('.theme-option').on('click', function() {
-        selectedTheme = normalizeTheme($(this).data('theme'));
-        updateThemeUI();
-        applyTheme(selectedTheme);
-        saveSettings(false);
-    });
-    
-    // Save settings to localStorage
-    function saveSettings(showNotification = false) {
-        const settings = {
+
+    // Save settings to localStorage (same shape as before: { confirmLeave, theme })
+    function saveSettings() {
+        const ok = Storage.set('gameSettings', {
             confirmLeave: $('#confirmLeaveToggle').is(':checked'),
             theme: selectedTheme
-        };
-        
-        Storage.set('gameSettings', settings);
-        
-        // Apply theme
-        applyTheme(settings.theme);
-        
-        if (showNotification) {
-            Swal.fire({
-                icon: 'success',
-                title: '✅ บันทึกสำเร็จ',
-                text: 'การตั้งค่าถูกบันทึกเรียบร้อยแล้ว',
-                timer: 1500,
-                showConfirmButton: false,
-                background: '#1e1e1e',
-                color: '#fff'
-            });
-        }
+        });
+        applyTheme(selectedTheme);
+        toast(ok ? '✓ บันทึกแล้ว' : 'บันทึกไม่ได้ (เบราว์เซอร์บล็อกที่เก็บข้อมูล)');
     }
-    
+
     // Apply theme to page (use documentElement for html tag)
     function applyTheme(theme) {
         const normalized = normalizeTheme(theme);
@@ -637,31 +429,30 @@ $(function() {
             console.warn('currentTheme write error:', e);
         }
     }
-    
-    // Update theme selection UI
+
     function updateThemeUI() {
-        $('.theme-option').removeClass('active');
-        $(`.theme-option[data-theme="${selectedTheme}"]`).addClass('active');
+        $('.theme-option').each(function() {
+            const on = $(this).data('theme') === selectedTheme;
+            $(this).toggleClass('active', on).find('input').prop('checked', on);
+        });
     }
-    
-    // All toggles and selects (auto-save without notification)
-    $('input[type="checkbox"], select').on('change', function() {
-        saveSettings(false);
+
+    $('.theme-option input').on('change', function() {
+        selectedTheme = normalizeTheme(this.value);
+        updateThemeUI();
+        saveSettings();
     });
-    
-    // Save button click
-    $('#saveSettings').on('click', function() {
-        saveSettings(true);
-    });
-    
+
+    $('#confirmLeaveToggle').on('change', saveSettings);
+
     // Reset settings
     $('#resetSettings').on('click', function() {
         Swal.fire({
-            title: '🔄 รีเซ็ตการตั้งค่า?',
-            text: 'ต้องการคืนค่าการตั้งค่าทั้งหมดเป็นค่าเริ่มต้น?',
+            title: 'รีเซ็ตการตั้งค่า?',
+            text: 'คืนค่าทุกอย่างเป็นค่าเริ่มต้น',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#e74c3c',
+            confirmButtonColor: '#e2493b',
             cancelButtonColor: '#666',
             confirmButtonText: 'รีเซ็ต',
             cancelButtonText: 'ยกเลิก',
@@ -669,57 +460,35 @@ $(function() {
             color: '#fff'
         }).then((result) => {
             if (result.isConfirmed) {
-                localStorage.removeItem('gameSettings');
-                localStorage.removeItem('currentTheme');
+                try {
+                    localStorage.removeItem('gameSettings');
+                    localStorage.removeItem('currentTheme');
+                } catch (e) {}
                 selectedTheme = 'default';
                 loadSettings();
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: '✅ รีเซ็ตสำเร็จ',
-                    text: 'การตั้งค่าถูกคืนค่าเริ่มต้นแล้ว',
-                    timer: 1500,
-                    showConfirmButton: false,
-                    background: '#1e1e1e',
-                    color: '#fff'
-                });
+                toast('✓ คืนค่าเริ่มต้นแล้ว');
             }
         });
     });
-    
+
+    // Copy Line ID
+    $('#copyLineBtn').on('click', function() {
+        const id = this.getAttribute('data-line');
+        const done = function() { toast('คัดลอก Line ID: ' + id + ' แล้ว'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(id).then(done, function() { toast('Line ID: ' + id); });
+        } else {
+            toast('Line ID: ' + id);
+        }
+    });
+
     // Sync settings across tabs
     $(window).on('storage', function(e) {
         if (e.originalEvent.key === 'gameSettings') {
             loadSettings();
         }
     });
-    
-    // Load settings on page load
+
     loadSettings();
-    
-    // Feedback Button Handler
-    $('#feedbackBtn').on('click', function() {
-        Swal.fire({
-            title: '📝 ให้รีวิวและข้อเสนอแนะ',
-            html: '<div style="text-align: left; color: #ccc;">' +
-                  '<p><strong>คุณสามารถติดต่อเราได้ผ่าน:</strong></p>' +
-                  '<p><strong style="color: #fff;">📧 อีเมล:</strong> markrock342@gmail.com</p>' +
-                  '<p><strong style="color: #fff;">💬 Line ID:</strong> marc342</p>' +
-                  '<p style="margin-top: 20px; font-size: 0.9em;">' +
-                  'กรุณาแชร์ข้อมูลเสริมความรู้ เช่น:' +
-                  '<ul style="text-align: left; margin: 10px 0;">' +
-                  '<li>ปัญหาที่เกิดขึ้น</li>' +
-                  '<li>ฟีเจอร์ที่ต้องการ</li>' +
-                  '<li>ข้อเสนอแนะเพื่อปรับปรุง</li>' +
-                  '</ul>' +
-                  '</p>' +
-                  '</div>',
-            icon: 'info',
-            confirmButtonColor: '#2ecc71',
-            confirmButtonText: 'ปิด',
-            background: '#1e1e1e',
-            color: '#fff'
-        });
-    });
 });
 </script>
