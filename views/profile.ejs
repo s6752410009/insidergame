@@ -1,2100 +1,1000 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<%
+    const S = stats || {};
+    const roleStats = S.roleStats || {};
+    const winByRole = S.winByRole || {};
+    const modeStats = S.modeStats || {};
+    const history = Array.isArray(S.gameHistory) ? S.gameHistory : [];
+    const totalGames = S.totalGames || 0;
+    const totalWins = S.wins || 0;
+    const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+
+    const MODES = [
+        { id: 'werewolf', icon: '🐺', label: 'Werewolf' },
+        { id: 'insider', icon: '🎯', label: 'Insider' },
+        { id: 'blackmarket', icon: '🎩', label: 'Black Market' },
+        { id: 'spyfall', icon: '🕵️', label: 'Spyfall' },
+        { id: 'coup', icon: '👑', label: 'Coup' },
+        { id: 'liar', icon: '🃏', label: 'ไพ่โกหก' },
+        { id: 'poker5', icon: '♠\uFE0E', label: 'ไพ่ 5 ใบ' },
+        { id: 'poker4', icon: '♦\uFE0E', label: 'สี่ใบเก', tone: 'red' }
+    ];
+    const modeById = {};
+    MODES.forEach(m => { modeById[m.id] = m; });
+
+    const modeRows = MODES.map(m => {
+        const row = modeStats[m.id] || {};
+        const games = row.games || 0;
+        const wins = row.wins || 0;
+        return { ...m, games, wins, losses: row.losses || Math.max(0, games - wins), rate: games > 0 ? Math.round((wins / games) * 100) : 0 };
+    });
+    const playedModes = modeRows.filter(m => m.games > 0).sort((a, b) => b.games - a.games);
+    const untriedModes = modeRows.filter(m => m.games === 0);
+    const favorite = playedModes[0] || null;
+
+    const insiderRoles = [
+        { icon: '👑', label: 'ผู้ดำเนินเกม', times: roleStats.gameMasterCount || 0, wins: null },
+        { icon: '😈', label: 'จอมบงการ', times: roleStats.traitorCount || 0, wins: winByRole.winAsTraitor || 0 },
+        { icon: '👤', label: 'พลเมือง', times: roleStats.citizenCount || 0, wins: winByRole.winAsCitizen || 0 }
+    ].filter(r => r.times > 0);
+    const wolfRoleStats = roleStats.werewolf || {};
+    const wolfWinStats = winByRole.werewolf || {};
+    const werewolfRoleRows = (typeof werewolfRoles !== 'undefined' ? werewolfRoles : [])
+        .map(r => ({ icon: r.icon, label: r.label, times: wolfRoleStats[r.id] || 0, wins: wolfWinStats[r.id] || 0 }))
+        .filter(r => r.times > 0)
+        .sort((a, b) => b.times - a.times);
+    const bmRoleStats = roleStats.blackmarket || {};
+    const bmWinStats = winByRole.blackmarket || {};
+    const blackMarketRoleRows = [
+        { id: 'boss', icon: '🎩', label: 'เจ้าพ่อ' },
+        { id: 'broker', icon: '🕴️', label: 'นายหน้า' },
+        { id: 'smuggler', icon: '🚚', label: 'คนส่งของ' },
+        { id: 'fixer', icon: '🧹', label: 'คนเคลียร์ทาง' },
+        { id: 'hitman', icon: '🔫', label: 'มือเก็บงาน' },
+        { id: 'mole', icon: '🕶️', label: 'สายข่าว' },
+        { id: 'doubleAgent', icon: '🃏', label: 'สองหน้า' }
+    ].map(r => ({ ...r, times: bmRoleStats[r.id] || 0, wins: bmWinStats[r.id] || 0 }))
+     .filter(r => r.times > 0)
+     .sort((a, b) => b.times - a.times);
+    const roleGroups = [
+        { mode: modeById.werewolf, rows: werewolfRoleRows },
+        { mode: modeById.insider, rows: insiderRoles },
+        { mode: modeById.blackmarket, rows: blackMarketRoleRows }
+    ].filter(g => g.rows.length > 0);
+
+    function ago(value) {
+        if (!value) return null;
+        const seconds = (Date.now() - new Date(value).getTime()) / 1000;
+        if (!Number.isFinite(seconds)) return null;
+        if (seconds < 60) return 'เมื่อกี้';
+        if (seconds < 3600) return Math.floor(seconds / 60) + ' นาทีที่แล้ว';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + ' ชม.ที่แล้ว';
+        if (seconds < 86400 * 30) return Math.floor(seconds / 86400) + ' วันที่แล้ว';
+        return new Date(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+    }
+    const lastPlayed = ago(S.lastPlayedAt);
+    const recoveryCode = typeof viewerRecoveryCode !== 'undefined' ? viewerRecoveryCode : null;
+    const googleOn = typeof googleClientId !== 'undefined' && googleClientId;
+    const googleLinked = typeof viewerGoogleLinked !== 'undefined' && viewerGoogleLinked;
+    const googleEmail = typeof viewerGoogleEmail !== 'undefined' ? viewerGoogleEmail : null;
+    const chipBalance = typeof chips === 'number' ? chips : null;
+%>
 <style>
-    .profile-container {
-        max-width: 1200px;
-        margin: 30px auto;
-        padding: 20px;
-        font-family: 'Rajdhani', sans-serif;
-    }
-    
-    .profile-container h1 {
-        margin-bottom: 40px;
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 900;
-        font-size: 2.8em;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        letter-spacing: 2px;
-        text-align: center;
-    }
-    
-    .recovery-hint { color: rgba(255,255,255,0.72); font-size: 0.95em; line-height: 1.55; margin: 0 0 14px; }
-    .recovery-code-row, .recovery-restore-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .recovery-code {
-        font-size: 1.35em; letter-spacing: 2px; padding: 8px 14px; border-radius: 10px;
-        background: rgba(0,0,0,0.35); color: #ffc107; border: 1px solid rgba(255,193,7,0.3);
-    }
-    .recovery-restore { margin-top: 16px; }
-    .google-account { margin-bottom: 18px; }
-    .recovery-subtitle { font-size: 1em; color: rgba(255,255,255,0.85); margin: 0 0 8px; }
-    .recovery-restore summary { cursor: pointer; color: #5eead4; margin-bottom: 10px; }
-    .recovery-restore input {
-        flex: 1 1 180px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid #555;
-        background: #111; color: #fff; letter-spacing: 2px; text-transform: uppercase;
-    }
+    .pf {
+        --pf-surface: oklch(0.22 0.035 285);
+        --pf-surface-2: oklch(0.27 0.04 285);
+        --pf-sunken: oklch(0.17 0.03 285);
+        --pf-line: oklch(0.42 0.04 285 / 0.55);
+        --pf-ink: oklch(0.96 0.01 285);
+        --pf-soft: oklch(0.8 0.025 285);
+        --pf-muted: oklch(0.68 0.03 285);
+        --pf-accent: oklch(0.66 0.2 28);
+        --pf-accent-ink: oklch(0.98 0.01 28);
+        --pf-gold: oklch(0.84 0.14 85);
+        --pf-loss: oklch(0.7 0.09 20);
+        --pf-good: oklch(0.82 0.13 165);
+        --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px;
+        --space-xl: 24px; --space-2xl: 32px; --space-3xl: 48px;
+        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
 
-    .profile-section {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
-        border: 3px solid #444;
-        border-radius: 15px;
-        padding: 35px;
-        margin-bottom: 30px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-    }
-    
-    .profile-section h2 {
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 700;
-        font-size: 1.8em;
-        margin-bottom: 25px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        border-bottom: 2px solid #e74c3c;
-        padding-bottom: 10px;
-    }
-    
-    .form-group {
-        margin-bottom: 25px;
-    }
-    
-    .form-group label {
-        display: block;
-        margin-bottom: 10px;
-        font-weight: 600;
-        color: #fff;
-        font-size: 1.1em;
-        font-family: 'Rajdhani', sans-serif;
-    }
-    
-    #playerNameInput {
-        flex: 1;
-        padding: 12px 16px;
-        border: 2px solid #444;
-        border-radius: 8px;
-        background: #1a1a1a;
-        color: #fff;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1em;
-    }
-    
-    #playerNameInput:focus {
-        outline: none;
-        border-color: #e74c3c;
-        box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
-    }
-    
-    .btn-profile {
-        padding: 12px 24px;
-        border: 2px solid #e74c3c;
-        border-radius: 8px;
-        background: #e74c3c;
-        color: #fff;
-        font-family: 'Rajdhani', sans-serif;
-        font-weight: 600;
-        font-size: 1em;
-        cursor: pointer;
-        transition: all 0.3s;
-        text-transform: uppercase;
-    }
-    
-    .btn-profile:hover {
-        background: #c0392b;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
-    }
-    
-    .color-btn {
-        width: 55px;
-        height: 55px;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: all 0.3s;
-        border: 3px solid transparent;
-    }
-    
-    .color-btn:hover {
-        transform: scale(1.15);
-        box-shadow: 0 4px 12px rgba(255,255,255,0.3);
-    }
-    
-    .color-btn.active {
-        border-color: #fff;
-        box-shadow: 0 0 15px rgba(255,255,255,0.5);
-    }
-    
-    .player-id {
-        margin-top: 25px;
-        padding: 20px;
-        background: #1a1a1a;
-        border: 2px solid #444;
-        border-radius: 8px;
-    }
-    
-    .player-id p {
-        margin: 0;
-        color: #aaa;
-        font-size: 0.95em;
-        font-family: 'Rajdhani', sans-serif;
-    }
-    
-    .player-id code {
-        background: #2d2d2d;
-        padding: 4px 10px;
-        border-radius: 5px;
-        color: #ff6b6b;
-        font-family: 'Courier New', monospace;
-        border: 1px solid #444;
-    }
-    
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 22px;
-    }
-    
-    .stat-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        border: 2px solid #444;
-        border-radius: 12px;
-        padding: 10px 8px;
-        text-align: center;
-        transition: all 0.3s;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #e74c3c, #c0392b);
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-2px);
-        border-color: #e74c3c;
-        box-shadow: 0 8px 20px rgba(231, 76, 60, 0.28);
-    }
-    
-    .stat-icon {
-        font-size: 1.35em;
-        margin-bottom: 4px;
-        display: block;
-        line-height: 1;
-    }
-    
-    .stat-value {
-        font-size: 1.25em;
-        font-weight: 900;
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        margin: 2px 0;
-        line-height: 1.1;
-        text-shadow: none;
-    }
-    
-    .stat-label {
-        color: #aaa;
-        font-size: 0.68rem;
-        font-family: 'Rajdhani', sans-serif;
-        font-weight: 600;
-        margin-top: 4px;
-        line-height: 1.25;
-    }
-    
-    .stats-section-title {
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 700;
-        font-size: 1.1em;
-        margin-top: 20px;
-        margin-bottom: 12px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        border-bottom: 2px solid #444;
-        padding-bottom: 10px;
-    }
-    
-    .role-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 22px;
-    }
-    
-    .role-stat-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        border: 3px solid #444;
-        border-left: 5px solid;
-        border-radius: 12px;
-        padding: 10px 8px;
-        text-align: center;
-        transition: all 0.3s;
-    }
-    
-    .role-stat-card:hover {
-        transform: translateX(5px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-    }
-    
-    .role-stat-card.citizen {
-        border-left-color: #3498db;
-    }
-    
-    .role-stat-card.traitor {
-        border-left-color: #e74c3c;
-    }
-    
-    .role-stat-card.gamemaster {
-        border-left-color: #f39c12;
-    }
-
-    .role-stat-card.werewolf-role {
-        border-left-color: #c0392b;
-    }
-
-    .role-stat-card.village-role {
-        border-left-color: #3498db;
-    }
-
-    .role-stat-card.support-role {
-        border-left-color: #16a085;
-    }
-
-    .role-stat-card.mode-insider {
-        border-left-color: #8e44ad;
-    }
-
-    .role-stat-card.mode-werewolf {
-        border-left-color: #c0392b;
-    }
-
-    .role-stat-card.mode-blackmarket {
-        border-left-color: #f6d365;
-    }
-
-    .role-stat-card.mode-spyfall {
-        border-left-color: #1abc9c;
-    }
-
-    .role-stat-card.mode-coup {
-        border-left-color: #7c3aed;
-    }
-
-    .role-stat-card.mode-liar {
-        border-left-color: #ef4444;
-    }
-
-    .role-stat-card.blackmarket-role {
-        border-left-color: #f6d365;
-    }
-    
-    .role-stat-icon {
-        font-size: 1.35em;
-        margin-bottom: 4px;
-        line-height: 1;
-    }
-    
-    .role-stat-value {
-        font-size: 1.25em;
-        font-weight: 900;
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        margin: 2px 0;
-        line-height: 1.1;
-    }
-    
-    .role-stat-label {
-        color: #aaa;
-        font-size: 0.68rem;
-        font-family: 'Rajdhani', sans-serif;
-        font-weight: 600;
-        line-height: 1.25;
-    }
-    
-    .empty-stats {
-        text-align: center;
-        padding: 60px 40px;
-        color: #aaa;
-    }
-    
-    .empty-stats p {
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1.3em;
-        margin: 10px 0;
-    }
-    
-    .empty-stats p:first-child {
-        font-size: 1.6em;
-        color: #fff;
-        font-weight: 600;
-    }
-    
-    .last-played {
-        margin-top: 30px;
-        padding: 20px;
-        background: #1a1a1a;
-        border: 2px solid #444;
-        border-radius: 8px;
-    }
-    
-    .last-played p {
-        margin: 0;
-        color: #aaa;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1em;
-    }
-    
-    .last-played strong {
-        color: #fff;
-    }
-    
-    /* Game History Styles */
-    .game-history-section {
-        background: linear-gradient(135deg, #1e3a5f 0%, #0d1f3c 100%);
-        border: 3px solid #2c5282;
-        border-radius: 15px;
-        padding: 30px;
-        margin-top: 30px;
-    }
-    
-    .game-history-section h2 {
-        color: #fff;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 700;
-        font-size: 1.6em;
-        margin-bottom: 20px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        border-bottom: 2px solid #4299e1;
-        padding-bottom: 10px;
-    }
-    
-    .game-history-list {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-    
-    .game-history-item {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-left: 4px solid #4299e1;
-        border-radius: 10px;
-        padding: 15px 20px;
-        margin-bottom: 12px;
-        transition: all 0.2s;
-    }
-    
-    .game-history-item:hover {
-        transform: translateX(5px);
-        background: rgba(255,255,255,0.08);
-    }
-    
-    .game-history-item.won {
-        border-left-color: #48bb78;
-    }
-    
-    .game-history-item.lost {
-        border-left-color: #fc8181;
-    }
-    
-    .game-history-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .game-history-topline {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    
-    .game-history-result {
-        font-weight: 700;
-        font-size: 1.1em;
-        font-family: 'Rajdhani', sans-serif;
-    }
-    
-    .game-history-result.won {
-        color: #48bb78;
-    }
-    
-    .game-history-result.lost {
-        color: #fc8181;
-    }
-    
-    .game-history-date {
-        color: #a0aec0;
-        font-size: 0.85em;
-    }
-
-    .game-mode-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-size: 0.85em;
-        font-weight: 700;
-        color: #fff;
-        background: rgba(255,255,255,0.1);
-    }
-
-    .game-mode-badge.insider {
-        background: rgba(52, 152, 219, 0.2);
-        color: #8fd3ff;
-    }
-
-    .game-mode-badge.werewolf {
-        background: rgba(192, 57, 43, 0.2);
-        color: #ffb4a8;
-    }
-
-    .game-mode-badge.blackmarket {
-        background: rgba(246, 211, 101, 0.18);
-        color: #fde68a;
-    }
-
-    .game-mode-badge.spyfall {
-        background: rgba(26, 188, 156, 0.18);
-        color: #7bedd6;
-    }
-    
-    .game-history-details {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 8px;
-        font-size: 0.9em;
-        color: #e2e8f0;
-    }
-    
-    .game-history-detail {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    
-    .game-history-detail-icon {
-        font-size: 0.9em;
-    }
-    
-    .game-history-empty {
-        text-align: center;
-        padding: 40px;
-        color: #a0aec0;
-    }
-    
-    .game-history-empty p {
-        font-size: 1.1em;
-        margin: 10px 0;
-    }
-    
-    /* SweetAlert2 Dark Theme */
-    .swal2-popup {
-        background: #1e1e1e !important;
-        color: #fff !important;
-        font-family: 'Rajdhani', sans-serif !important;
-    }
-    
-    .swal2-title {
-        color: #fff !important;
-        font-family: 'Orbitron', sans-serif !important;
-        font-weight: 700 !important;
-    }
-    
-    .swal2-content {
-        color: #ddd !important;
-    }
-    
-    .swal2-confirm {
-        background: #e74c3c !important;
-        border-color: #c0392b !important;
-        font-family: 'Rajdhani', sans-serif !important;
-        font-weight: 600 !important;
-    }
-    
-    .swal2-confirm:hover {
-        background: #c0392b !important;
-    }
-    
-    /* Avatar Selection */
-    .avatar-selection {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px;
-        justify-items: center;
-    }
-    
-    .avatar-btn {
-        width: 100%;
-        max-width: 52px;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background: #1a1a1a;
-        border: 2px solid #444;
-        font-size: 1.35em;
-        cursor: pointer;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-    }
-    
-    .avatar-btn:hover {
-        transform: scale(1.15);
-        border-color: #e74c3c;
-    }
-    
-    .avatar-btn.active {
-        border-color: #fff;
-        box-shadow: 0 0 15px rgba(255,255,255,0.5);
-        background: #333;
-    }
-    
-    /* Frame Selection */
-    .frame-selection {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px;
-        justify-items: center;
-    }
-    
-    .frame-btn {
-        width: 100%;
-        max-width: 56px;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background: #1a1a1a;
-        border: 3px solid #444;
-        cursor: pointer;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        padding: 0;
-    }
-    
-    .frame-btn:hover {
-        transform: scale(1.1);
-    }
-    
-    .frame-btn.active {
-        border-color: #fff;
-        box-shadow: 0 0 20px rgba(255,255,255,0.5);
-    }
-    
-    .frame-btn .frame-preview {
-        width: 72%;
-        height: 72%;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1em;
-    }
-    
-    .frame-btn .frame-name {
-        display: none;
-    }
-    
-    .avatar-preview-box {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 25px;
-        padding: 20px;
-        background: #1a1a1a;
-        border-radius: 12px;
-        border: 2px solid #444;
-    }
-    
-    .avatar-preview {
-        position: relative;
-        width: 90px;
-        height: 90px;
-    }
-    
-    .avatar-preview-inner {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5em;
-        border: 4px solid;
-        background: rgba(255,255,255,0.05);
-        position: relative;
-        z-index: 2;
-    }
-    
-    .avatar-preview-frame {
-        position: absolute;
-        top: -5px;
-        left: -5px;
-        right: -5px;
-        bottom: -5px;
-        border-radius: 50%;
-        z-index: 1;
-    }
-    
-    .avatar-preview-info h3 {
-        margin: 0 0 5px 0;
-        font-family: 'Orbitron', sans-serif;
-    }
-    
-    .avatar-preview-info p {
-        margin: 0;
-        color: #888;
-        font-size: 0.9em;
-    }
-
-    :root {
-        --identity-bg: #09090b;
-        --identity-surface: rgba(18, 18, 20, 0.86);
-        --identity-card: rgba(26, 26, 46, 0.72);
-        --identity-ink: #f5efe3;
-        --identity-muted: #b8ada0;
-        --identity-line: rgba(255, 255, 255, 0.1);
-        --identity-accent: #e74c3c;
-        --identity-accent-deep: #c0392b;
-        --identity-highlight: #f5c86b;
-        --identity-shadow: 0 32px 100px rgba(0, 0, 0, 0.52);
-        --identity-panel: linear-gradient(145deg, rgba(12, 12, 14, 0.98), rgba(26, 17, 15, 0.94));
-        --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    body.content {
-        background:
-            radial-gradient(circle at 8% 10%, rgba(127, 29, 29, 0.42), transparent 18%),
-            radial-gradient(circle at 92% 0%, rgba(180, 83, 9, 0.18), transparent 16%),
-            linear-gradient(180deg, #09090b 0%, #110d0c 45%, #17110f 100%);
-    }
-
-    @keyframes profileRise {
-        from {
-            opacity: 0;
-            transform: translate3d(0, 28px, 0) scale(0.985);
-        }
-        to {
-            opacity: 1;
-            transform: translate3d(0, 0, 0) scale(1);
-        }
-    }
-
-    @keyframes profileFloat {
-        0%, 100% {
-            transform: translate3d(0, 0, 0);
-        }
-        50% {
-            transform: translate3d(0, -8px, 0);
-        }
-    }
-
-    @keyframes profileAuraPulse {
-        0%, 100% {
-            box-shadow: 0 0 0 0 rgba(245, 200, 107, 0.16);
-        }
-        50% {
-            box-shadow: 0 0 0 12px rgba(245, 200, 107, 0);
-        }
-    }
-
-    @keyframes profileGlowSweep {
-        0% {
-            transform: translate3d(-140%, 0, 0) rotate(8deg);
-        }
-        100% {
-            transform: translate3d(140%, 0, 0) rotate(8deg);
-        }
-    }
-
-    .profile-container {
-        max-width: 1180px;
-        margin: 24px auto 40px;
-        padding: 0 18px 24px;
-        color: var(--identity-ink);
-        font-family: 'Bai Jamjuree', 'Rajdhani', sans-serif;
-        opacity: 0;
-        transform: translate3d(0, 18px, 0);
-        transition: opacity 0.48s var(--ease-out-expo), transform 0.48s var(--ease-out-expo);
-    }
-
-    .profile-container.is-ready {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-
-    .motion-enter {
-        opacity: 0;
-        transform: translate3d(0, 28px, 0);
-    }
-
-    .profile-container.is-ready .motion-enter {
-        animation: profileRise 0.72s var(--ease-out-expo) forwards;
-        animation-delay: calc(var(--enter-delay, 0) * 1ms);
-    }
-
-    .reveal-item {
-        opacity: 0;
-        transform: translate3d(0, 22px, 0);
-        transition: opacity 0.48s var(--ease-out-expo), transform 0.48s var(--ease-out-expo);
-        transition-delay: calc(var(--reveal-delay, 0) * 1ms);
-    }
-
-    .reveal-item.is-visible {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-
-    .profile-container h1 {
-        margin: 0 0 20px 0;
-        color: var(--identity-ink);
-        font-family: 'Chakra Petch', 'Orbitron', sans-serif;
+        max-width: 980px;
+        margin: 0 auto var(--space-3xl);
+        padding: 0 var(--space-lg);
+        color: var(--pf-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
         text-align: left;
-        text-shadow: none;
-        letter-spacing: -0.03em;
-        font-size: clamp(2.4rem, 4vw, 4rem);
     }
+    .pf *, .pf *::before, .pf *::after { box-sizing: border-box; }
+    /* หน้านี้มีปุ่มกลับด้านบนแล้ว — แถบ footer ที่ตรึงล่างจอจะว่างและบังเนื้อหา */
+    body:has(.pf) footer.footer { display: none; }
+    .pf button { font-family: inherit; }
 
-    .profile-shell {
-        display: grid;
-        gap: 18px;
+    /* ---------- top bar ---------- */
+    .pf-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-md) 0 var(--space-lg);
     }
-
-    .identity-hero {
-        display: grid;
-        grid-template-columns: minmax(300px, 0.92fr) minmax(0, 1.08fr);
-        gap: 18px;
-    }
-
-    .profile-section {
-        background:
-            radial-gradient(circle at top right, rgba(245, 200, 107, 0.1), transparent 28%),
-            radial-gradient(circle at bottom left, rgba(231, 76, 60, 0.08), transparent 24%),
-            var(--identity-panel);
-        border: 1px solid rgba(245, 200, 107, 0.14);
-        border-radius: 28px;
-        padding: 26px;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), var(--identity-shadow);
-        color: var(--identity-ink);
-    }
-
-    .profile-section h2,
-    .stats-section-title,
-    .game-history-section h2 {
-        color: var(--identity-ink);
-        font-family: 'Chakra Petch', 'Orbitron', sans-serif;
-        text-shadow: none;
-        border-bottom: 1px solid var(--identity-line);
-        padding-bottom: 12px;
-        margin-bottom: 18px;
-    }
-
-    .identity-summary {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .identity-summary::after {
-        content: '';
-        position: absolute;
-        inset: 14px;
-        border: 1px dashed rgba(245, 200, 107, 0.14);
-        border-radius: 22px;
-        pointer-events: none;
-    }
-
-    .identity-kicker {
+    .pf-back {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
+        gap: var(--space-sm);
+        min-height: 44px;
+        padding: 0 var(--space-lg) 0 var(--space-md);
         border-radius: 999px;
-        background: rgba(231, 76, 60, 0.14);
-        color: #ffb4a8;
+        background: var(--pf-surface);
+        border: 1px solid var(--pf-line);
+        color: var(--pf-soft);
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .pf-back:hover { color: var(--pf-ink); text-decoration: none; background: var(--pf-surface-2); }
+    .pf-top-title { font-family: var(--display); font-weight: 600; letter-spacing: 0.08em; color: var(--pf-muted); font-size: 0.8rem; text-transform: uppercase; }
+
+    /* ---------- player pass ---------- */
+    .pf-layout { display: grid; gap: var(--space-xl); }
+    .pf-pass {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: var(--space-lg) var(--space-xl);
+        align-items: center;
+        padding: var(--space-2xl) var(--space-xl) var(--space-xl);
+        background:
+            repeating-linear-gradient(-45deg, color-mix(in oklch, var(--me) 30%, transparent) 0 6px, transparent 6px 14px) top / 100% 10px no-repeat,
+            radial-gradient(120% 90% at 0% 0%, color-mix(in oklch, var(--me) 22%, transparent), transparent 60%),
+            var(--pf-surface);
+        border: 1px solid var(--pf-line);
+        /* มุมบากแบบบัตรผ่าน */
+        clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 28px 100%, 0 calc(100% - 28px));
+        animation: pfRise 0.6s var(--ease-out) both;
+    }
+    .pf-pass-avatar { position: relative; }
+    .pf-pass-avatar .player-avatar { transition: transform 0.25s var(--ease-out); }
+    .pf-pass-avatar.is-bumped .player-avatar { transform: scale(0.9); }
+    .pf-kicker {
+        margin: 0 0 var(--space-xs);
+        font-family: var(--display);
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--pf-muted);
+    }
+    .pf-name {
+        margin: 0;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.6rem);
+        line-height: 1.1;
+        color: var(--me);
+        overflow-wrap: anywhere;
+    }
+    .pf-tags { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-md); }
+    .pf-tag {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: var(--pf-sunken);
+        color: var(--pf-soft);
+    }
+    .pf-tag.is-safe { color: var(--pf-good); }
+    .pf-tag.is-warn { color: var(--pf-gold); background: color-mix(in oklch, var(--pf-gold) 14%, var(--pf-sunken)); border: 0; cursor: pointer; }
+
+    .pf-tally {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        margin: var(--space-sm) 0 0;
+        padding-top: var(--space-lg);
+        border-top: 1px dashed var(--pf-line);
+    }
+    .pf-tally > div { padding: 0 var(--space-sm); }
+    .pf-tally > div + div { border-left: 1px solid var(--pf-line); }
+    .pf-tally dt { font-size: 0.8rem; color: var(--pf-muted); font-weight: 500; }
+    .pf-tally dd { margin: 0; font-family: var(--display); font-size: 1.5rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .pf-tally .is-win { color: var(--pf-gold); }
+    .pf-fav { grid-column: 1 / -1; margin: 0; color: var(--pf-soft); font-size: 0.95rem; }
+    .pf-fav b { color: var(--pf-ink); }
+
+    /* ---------- tabs ---------- */
+    .pf-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-xs);
+        padding: var(--space-xs);
+        border-radius: 14px;
+        background: color-mix(in oklch, var(--pf-sunken) 92%, transparent);
+        border: 1px solid var(--pf-line);
+        backdrop-filter: blur(8px);
+    }
+    .pf-tab {
+        min-height: 44px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--pf-muted);
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+    }
+    .pf-tab:hover { color: var(--pf-ink); }
+    .pf-tab[aria-selected="true"] { background: var(--pf-accent); color: var(--pf-accent-ink); }
+    .pf-tab:focus-visible, .pf button:focus-visible, .pf a:focus-visible, .pf input:focus-visible, .pf summary:focus-visible {
+        outline: 2px solid var(--pf-gold);
+        outline-offset: 2px;
+    }
+
+    .pf-panel { display: grid; gap: var(--space-2xl); padding-top: var(--space-xl); animation: pfFade 0.35s var(--ease-out) both; }
+    .pf-panel[hidden] { display: none; }
+    .pf-block { display: grid; gap: var(--space-md); }
+    .pf-h {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--pf-ink);
+    }
+    .pf-sub { margin: -4px 0 0; color: var(--pf-muted); font-size: 0.92rem; max-width: 60ch; }
+
+    /* ---------- stats ---------- */
+    .pf-modes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-sm); }
+    .pf-mode {
+        display: grid;
+        grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-xs) var(--space-md);
+        padding: var(--space-md) var(--space-lg);
+        border-radius: 12px;
+        background: var(--pf-surface);
+    }
+    .pf-mode-icon { font-size: 1.5rem; line-height: 1; text-align: center; color: var(--pf-ink); }
+    .pf-mode-icon.is-red, .pf-game-icon.is-red { color: oklch(0.68 0.2 25); }
+    .pf-mode-name { font-weight: 600; }
+    .pf-mode-count { color: var(--pf-muted); font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+    .pf-mode-rate { font-family: var(--display); font-weight: 700; font-size: 1.2rem; font-variant-numeric: tabular-nums; text-align: right; }
+    .pf-meter {
+        grid-column: 2 / -1;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--pf-sunken);
+        overflow: hidden;
+    }
+    .pf-meter > span {
+        display: block;
+        height: 100%;
+        width: var(--rate);
+        border-radius: inherit;
+        background: var(--pf-gold);
+        transform-origin: left;
+        animation: pfGrow 0.8s var(--ease-out) both;
+    }
+    .pf-untried { margin: 0; color: var(--pf-muted); font-size: 0.92rem; }
+
+    .pf-roles { display: grid; gap: var(--space-sm); }
+    .pf-rolegroup { border-radius: 12px; background: var(--pf-surface); }
+    .pf-rolegroup > summary {
+        display: flex; align-items: center; gap: var(--space-sm);
+        min-height: 48px;
+        padding: 0 var(--space-lg);
+        font-weight: 600;
+        cursor: pointer;
+        list-style: none;
+    }
+    .pf-rolegroup > summary::-webkit-details-marker { display: none; }
+    .pf-rolegroup > summary::after { content: '▾'; margin-left: auto; color: var(--pf-muted); transition: transform 0.2s var(--ease-out); }
+    .pf-rolegroup[open] > summary::after { transform: rotate(180deg); }
+    .pf-rolelist {
+        list-style: none;
+        margin: 0;
+        padding: 0 var(--space-lg) var(--space-lg);
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: var(--space-sm);
+    }
+    .pf-role {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
+        column-gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
+        border-radius: 10px;
+        background: var(--pf-sunken);
+    }
+    .pf-role-icon { grid-row: span 2; font-size: 1.4rem; align-self: center; }
+    .pf-role-label { font-weight: 600; font-size: 0.92rem; }
+    .pf-role-meta { font-size: 0.8rem; color: var(--pf-muted); font-variant-numeric: tabular-nums; }
+    .pf-role-meta b { color: var(--pf-gold); font-weight: 600; }
+
+    .pf-empty {
+        display: grid;
+        justify-items: start;
+        gap: var(--space-md);
+        padding: var(--space-xl);
+        border-radius: 14px;
+        border: 1px dashed var(--pf-line);
+        color: var(--pf-soft);
+    }
+    .pf-empty p { margin: 0; max-width: 46ch; }
+
+    /* ---------- buttons ---------- */
+    .pf-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
+        min-height: 44px;
+        padding: 0 var(--space-lg);
+        border-radius: 10px;
+        border: 1px solid var(--pf-line);
+        background: var(--pf-surface-2);
+        color: var(--pf-ink);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s var(--ease-out), transform 0.1s;
+    }
+    .pf-btn:hover { background: color-mix(in oklch, var(--pf-surface-2) 70%, var(--pf-ink) 10%); color: var(--pf-ink); text-decoration: none; }
+    .pf-btn.is-primary { background: var(--pf-accent); border-color: transparent; color: var(--pf-accent-ink); }
+    .pf-btn.is-primary:hover { background: color-mix(in oklch, var(--pf-accent) 88%, white); }
+    .pf-btn.is-quiet { background: transparent; border-color: transparent; color: var(--pf-muted); padding: 0 var(--space-sm); }
+    .pf-btn.is-quiet:hover { color: var(--pf-ink); background: transparent; }
+    .pf-btn:disabled { opacity: 0.55; cursor: progress; }
+
+    /* ---------- style editor ---------- */
+    .pf-field { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+    .pf-input {
+        flex: 1 1 200px;
+        min-width: 0;
+        min-height: 44px;
+        padding: 0 var(--space-md);
+        border-radius: 10px;
+        border: 1px solid var(--pf-line);
+        background: var(--pf-sunken);
+        color: var(--pf-ink);
+        font: inherit;
+        font-size: 1rem;
+    }
+    .pf-input:focus { border-color: var(--pf-gold); outline: none; }
+    .pf-hint { margin: 0; font-size: 0.85rem; color: var(--pf-muted); }
+    .pf-swatches, .pf-avatars, .pf-frames { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+    .pf-swatch {
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        background: var(--c);
+        box-shadow: inset 0 0 0 2px oklch(0.15 0.02 285 / 0.4);
+        cursor: pointer;
+        transition: transform 0.2s var(--ease-out);
+    }
+    .pf-swatch:hover { transform: scale(1.08); }
+    .pf-swatch[aria-pressed="true"] { border-color: var(--pf-ink); transform: scale(1.08); }
+    .pf-pick {
+        display: grid; place-items: center;
+        width: 52px; height: 52px;
+        border-radius: 12px;
+        border: 2px solid transparent;
+        background: var(--pf-surface);
+        font-size: 1.6rem;
+        cursor: pointer;
+        transition: transform 0.2s var(--ease-out), background 0.2s;
+    }
+    .pf-pick:hover { background: var(--pf-surface-2); transform: translateY(-2px); }
+    .pf-pick[aria-pressed="true"] { border-color: var(--pf-gold); background: var(--pf-surface-2); }
+    .pf-frames .pf-pick { width: 64px; height: 64px; }
+
+    /* ---------- history ---------- */
+    .pf-games { display: grid; gap: var(--space-sm); }
+    .pf-game { border-radius: 12px; background: var(--pf-surface); }
+    .pf-game > summary {
+        display: grid;
+        grid-template-columns: auto 1.75rem minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-md);
+        min-height: 56px;
+        padding: var(--space-sm) var(--space-lg);
+        cursor: pointer;
+        list-style: none;
+    }
+    .pf-game > summary::-webkit-details-marker { display: none; }
+    .pf-result {
+        min-width: 3.4rem;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-family: var(--display);
         font-size: 0.85rem;
         font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        text-align: center;
     }
-
-    .identity-summary-grid {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        gap: 18px;
-        margin-top: 18px;
-    }
-
-    .identity-preview-card {
-        display: grid;
-        grid-template-columns: 112px minmax(0, 1fr);
-        gap: 18px;
-        align-items: center;
-        padding: 18px;
-        border-radius: 24px;
-        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(245, 200, 107, 0.18);
-        color: var(--identity-ink);
-        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
-        animation: profileFloat 6.2s ease-in-out infinite;
-    }
-
-    .avatar-preview-box {
-        align-items: center;
-        gap: 18px;
-        margin-bottom: 0;
-        padding: 0;
-        background: transparent;
-        border: 0;
-    }
-
-    .avatar-preview {
-        width: 104px;
-        height: 104px;
-        filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.18));
-    }
-
-    .avatar-preview-inner {
-        border-width: 5px;
-        background: rgba(255,255,255,0.08);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-        transition: transform 0.22s var(--ease-out-quart), border-color 0.22s var(--ease-out-quart), box-shadow 0.22s var(--ease-out-quart);
-    }
-
-    .avatar-preview-frame {
-        top: -7px;
-        left: -7px;
-        right: -7px;
-        bottom: -7px;
-        animation: profileAuraPulse 2.8s ease-out infinite;
-    }
-
-    .identity-name {
-        margin: 0 0 8px;
-        font-family: 'Chakra Petch', 'Orbitron', sans-serif;
-        font-size: 1.9rem;
-        line-height: 1;
-    }
-
-    .identity-note {
+    .pf-result.is-win { background: color-mix(in oklch, var(--pf-gold) 22%, transparent); color: var(--pf-gold); }
+    .pf-result.is-loss { background: var(--pf-sunken); color: var(--pf-loss); }
+    .pf-game-icon { font-size: 1.3rem; text-align: center; color: var(--pf-ink); }
+    .pf-game-main { min-width: 0; }
+    .pf-game-title { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pf-game-role { display: block; font-size: 0.85rem; color: var(--pf-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pf-game-when { font-size: 0.8rem; color: var(--pf-muted); white-space: nowrap; }
+    .pf-game-body {
+        display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-lg);
         margin: 0;
-        color: var(--identity-muted);
-        line-height: 1.6;
+        padding: 0 var(--space-lg) var(--space-lg) calc(var(--space-lg) + 3.4rem + var(--space-md));
+        font-size: 0.9rem;
+        color: var(--pf-soft);
     }
 
-    .identity-editor {
+    /* ---------- account ---------- */
+    .pf-account { display: grid; gap: var(--space-xl); }
+    .pf-option {
         display: grid;
-        gap: 18px;
-        align-content: start;
+        gap: var(--space-md);
+        padding: var(--space-xl);
+        border-radius: 14px;
+        background: var(--pf-surface);
     }
-
-    .identity-copy {
-        margin: -4px 0 6px;
-        color: var(--identity-muted);
-        line-height: 1.7;
-        max-width: 56ch;
+    .pf-option.is-recommended { background: color-mix(in oklch, var(--pf-good) 8%, var(--pf-surface)); }
+    .pf-option-head { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+    .pf-option-head .pf-h { font-size: 1.05rem; }
+    .pf-pill { padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: color-mix(in oklch, var(--pf-good) 20%, transparent); color: var(--pf-good); }
+    .pf-code-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+    .pf-code {
+        font-family: var(--display);
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        padding: var(--space-sm) var(--space-lg);
+        border-radius: 10px;
+        background: var(--pf-sunken);
+        color: var(--pf-gold);
+        font-variant-numeric: tabular-nums;
     }
+    .pf-restore > summary { cursor: pointer; color: var(--pf-soft); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+    .pf-restore[open] > summary { margin-bottom: var(--space-sm); }
+    .pf-restore .pf-input { letter-spacing: 0.12em; text-transform: uppercase; }
 
-    .identity-form-row {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    #playerNameInput {
-        flex: 1;
-        min-width: 220px;
-        padding: 14px 18px;
-        border-radius: 16px;
-        border: 2px solid #333;
-        background: #0d0d1a;
-        color: #fff;
-    }
-
-    #playerNameInput:focus {
-        border-color: var(--identity-accent);
-        box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.18);
-    }
-
-    .btn-profile {
-        min-height: 54px;
-        padding: 0 24px;
-        position: relative;
-        overflow: hidden;
-        border: 0;
-        border-radius: 16px;
-        background: linear-gradient(135deg, var(--identity-accent), var(--identity-accent-deep));
-        box-shadow: 0 18px 28px rgba(231, 76, 60, 0.22);
-        font-family: 'Chakra Petch', 'Rajdhani', sans-serif;
-        text-transform: none;
-        transition: transform 0.14s var(--ease-out-quart), box-shadow 0.22s var(--ease-out-quart), filter 0.22s var(--ease-out-quart);
-    }
-
-    .btn-profile::after {
-        content: '';
-        position: absolute;
-        inset: -30% auto -30% -18%;
-        width: 34%;
-        background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.34), rgba(255,255,255,0));
-        transform: translate3d(-160%, 0, 0) rotate(10deg);
+    /* ---------- toast ---------- */
+    .pf-toast {
+        position: fixed;
+        left: 50%;
+        bottom: max(24px, env(safe-area-inset-bottom));
+        z-index: 9000;
+        max-width: calc(100vw - 32px);
+        padding: var(--space-md) var(--space-xl);
+        border-radius: 999px;
+        background: oklch(0.96 0.01 285);
+        color: oklch(0.2 0.03 285);
+        font-family: 'Bai Jamjuree', sans-serif;
+        font-weight: 600;
+        box-shadow: 0 10px 30px oklch(0.1 0.02 285 / 0.5);
+        transform: translate(-50%, 150%);
+        opacity: 0;
+        transition: transform 0.35s var(--ease-out), opacity 0.35s var(--ease-out);
         pointer-events: none;
     }
+    .pf-toast.is-on { transform: translate(-50%, 0); opacity: 1; }
+    .pf-toast.is-error { background: oklch(0.66 0.2 28); color: oklch(0.98 0.01 28); }
 
-    .btn-profile:hover {
-        transform: translate3d(0, -2px, 0);
-        filter: saturate(1.04);
-        box-shadow: 0 24px 34px rgba(231, 76, 60, 0.3);
+    @keyframes pfRise { from { opacity: 0; transform: translateY(14px); } }
+    @keyframes pfFade { from { opacity: 0; transform: translateY(6px); } }
+    @keyframes pfGrow { from { transform: scaleX(0); } }
+
+    /* ---------- desktop: pass sticks on the left ---------- */
+    @media (min-width: 900px) {
+        .pf-layout { grid-template-columns: 330px minmax(0, 1fr); align-items: start; }
+        .pf-side { position: sticky; top: var(--space-lg); }
+        .pf-pass { grid-template-columns: 1fr; justify-items: start; }
+        .pf-tally, .pf-fav { justify-self: stretch; }
+        .pf-tally { grid-template-columns: repeat(2, 1fr); row-gap: var(--space-md); }
+        .pf-tally > div:nth-child(3) { border-left: 0; }
     }
-
-    .btn-profile:hover::after {
-        animation: profileGlowSweep 0.9s var(--ease-out-quart);
+    @media (max-width: 420px) {
+        .pf-pass { padding: var(--space-xl) var(--space-lg) var(--space-lg); column-gap: var(--space-lg); }
+        .pf-tally dd { font-size: 1.25rem; }
+        .pf-tab { font-size: 0.88rem; }
+        .pf-game > summary { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .pf-game-icon { display: none; }
+        .pf-game-body { padding-left: var(--space-lg); }
     }
-
-    .btn-profile:active {
-        transform: translate3d(0, 1px, 0) scale(0.985);
-    }
-
-    .identity-color-row {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .color-btn {
-        width: 52px;
-        height: 52px;
-        border: 4px solid rgba(255,255,255,0.22);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.28);
-        transition: transform 0.18s var(--ease-out-quart), box-shadow 0.18s var(--ease-out-quart), border-color 0.18s var(--ease-out-quart);
-    }
-
-    .color-btn:hover {
-        transform: translate3d(0, -3px, 0) scale(1.06);
-        box-shadow: 0 16px 26px rgba(0, 0, 0, 0.36);
-    }
-
-    .color-btn.active {
-        border-color: var(--identity-highlight);
-        box-shadow: 0 0 0 4px rgba(245, 200, 107, 0.2);
-    }
-
-    .identity-current-name {
-        margin: 12px 0 0;
-        color: var(--identity-muted);
-    }
-
-    .player-id {
-        margin-top: 0;
-        padding: 18px;
-        background: rgba(0, 0, 0, 0.28);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-    }
-
-    .player-id p,
-    .last-played p {
-        color: var(--identity-muted);
-    }
-
-    .player-id code {
-        background: rgba(255, 255, 255, 0.06);
-        color: var(--identity-highlight);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .avatar-studio-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .avatar-selection,
-    .frame-selection {
-        gap: 8px;
-    }
-
-    .avatar-btn,
-    .frame-btn {
-        background: rgba(255,255,255,0.05);
-        border-color: rgba(255,255,255,0.12);
-        box-shadow: 0 12px 22px rgba(0, 0, 0, 0.22);
-        transition: transform 0.2s var(--ease-out-quart), box-shadow 0.2s var(--ease-out-quart), border-color 0.2s var(--ease-out-quart), background 0.2s var(--ease-out-quart);
-    }
-
-    .avatar-btn:hover,
-    .frame-btn:hover {
-        transform: translate3d(0, -3px, 0) scale(1.04);
-        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.32);
-        background: rgba(255,255,255,0.09);
-    }
-
-    .avatar-btn.active,
-    .frame-btn.active {
-        border-color: var(--identity-accent);
-        box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.18);
-        background: rgba(231, 76, 60, 0.12);
-        transform: translate3d(0, -2px, 0);
-    }
-
-    .stats-section {
-        display: grid;
-        gap: 14px;
-    }
-
-    .stats-section > h2 {
-        margin: 0 0 4px;
-        font-size: 1.25em;
-        padding-bottom: 8px;
-    }
-
-    .stats-grid .stat-card,
-    .role-stat-card,
-    .game-history-item,
-    .last-played {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
-        color: var(--identity-ink);
-    }
-
-    .game-history-section {
-        background: linear-gradient(145deg, rgba(30, 58, 95, 0.42) 0%, rgba(13, 31, 60, 0.62) 100%) !important;
-        border: 1px solid rgba(66, 153, 225, 0.28) !important;
-        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
-        color: var(--identity-ink);
-    }
-
-    .game-history-section h2 {
-        border-bottom-color: rgba(66, 153, 225, 0.35);
-    }
-
-    .stat-card::before {
-        background: linear-gradient(90deg, var(--identity-accent), var(--identity-highlight));
-    }
-
-    .stat-card:hover,
-    .role-stat-card:hover,
-    .game-history-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 22px 40px rgba(0, 0, 0, 0.32);
-        border-color: rgba(245, 200, 107, 0.22) !important;
-    }
-
-    .profile-container .form-group label {
-        color: var(--identity-muted);
-    }
-
-    .role-stat-card {
-        border-left-width: 1px !important;
-    }
-
-    .stat-label,
-    .role-stat-label,
-    .game-history-date,
-    .game-history-empty,
-    .empty-stats,
-    .empty-stats p,
-    .game-history-details {
-        color: var(--identity-muted);
-    }
-
-    .game-history-section {
-        margin-top: 0;
-    }
-
-    @media (max-width: 900px) {
-        .identity-hero {
-            grid-template-columns: 1fr;
-        }
-
-        .identity-preview-card {
-            grid-template-columns: 1fr;
-            justify-items: center;
-            text-align: center;
-        }
-
-        .profile-container h1 {
-            text-align: center;
-        }
-    }
-
-    @media (max-width: 640px) {
-        .profile-container {
-            padding: 0 12px 20px;
-        }
-
-        .profile-section {
-            padding: 18px;
-            border-radius: 22px;
-        }
-
-        .identity-form-row {
-            flex-direction: column;
-        }
-
-        #playerNameInput,
-        .btn-profile {
-            width: 100%;
-        }
-
-        .stats-grid,
-        .role-stats-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .stat-card,
-        .role-stat-card {
-            padding: 8px 6px;
-        }
-
-        .stat-icon {
-            font-size: 1.2em;
-        }
-
-        .stat-value {
-            font-size: 1.1em;
-        }
-
-        .avatar-btn {
-            max-width: 46px;
-            font-size: 1.2em;
-        }
-
-        .frame-btn {
-            max-width: 50px;
-        }
-    }
-
     @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-            scroll-behavior: auto !important;
-        }
-
-        .profile-container,
-        .motion-enter,
-        .reveal-item {
-            opacity: 1 !important;
-            transform: none !important;
-        }
+        .pf-pass, .pf-panel, .pf-meter > span { animation: none; }
+        .pf-toast { transition: opacity 0.2s; }
     }
 </style>
 
-<div class="profile-container">
-    <div class="profile-shell">
-    <h1 class="motion-enter" style="--enter-delay: 40;">Identity Studio</h1>
+<main class="pf" style="--me: <%= player.color %>;">
+    <nav class="pf-top">
+        <a href="/" class="pf-back"><span aria-hidden="true">←</span> กลับ Lobby</a>
+        <span class="pf-top-title">Player Pass</span>
+    </nav>
 
-    <div class="identity-hero">
-        <div class="profile-section identity-summary motion-enter" style="--enter-delay: 120;">
-            <span class="identity-kicker">Player Identity</span>
-            <div class="identity-summary-grid">
-                <div class="identity-preview-card">
-                    <div class="avatar-preview-box">
-                        <div class="avatar-preview">
-                            <div class="avatar-preview-inner" id="avatarPreviewInner" style="border-color: <%= player.color %>;">
-                                <%= player.avatar || '👤' %>
-                            </div>
-                            <div class="avatar-preview-frame" id="avatarPreviewFrame"></div>
-                        </div>
+    <div class="pf-layout">
+        <aside class="pf-side">
+            <section class="pf-pass" aria-label="บัตรนักเล่น">
+                <div class="pf-pass-avatar" id="pfAvatar"
+                     data-avatar="<%= player.avatar || '👤' %>"
+                     data-frame="<%= player.avatarFrame || 'none' %>"></div>
+                <div>
+                    <p class="pf-kicker"><%= lastPlayed ? 'เล่นล่าสุด ' + lastPlayed : 'ยังไม่เคยเล่น' %></p>
+                    <h1 class="pf-name" id="pfName"><%= player.playerName %></h1>
+                    <div class="pf-tags">
+                        <% if (googleLinked) { %>
+                            <span class="pf-tag is-safe"><i class="fab fa-google" aria-hidden="true"></i> บัญชีปลอดภัย</span>
+                        <% } else { %>
+                            <button type="button" class="pf-tag is-warn" data-goto="account">⚠️ ยังไม่ได้เก็บบัญชี</button>
+                        <% } %>
                     </div>
-                    <div class="avatar-preview-info">
-                        <h3 class="identity-name" style="color: <%= player.color %>;"><%= player.playerName %></h3>
-                        <p class="identity-note">ภาพลักษณ์นี้จะตามคุณไปทั้งใน lobby, leaderboard และตอนเพื่อนเปิดดูโปรไฟล์</p>
+                </div>
+                <dl class="pf-tally">
+                    <div><dt>เกม</dt><dd><%= totalGames.toLocaleString('th-TH') %></dd></div>
+                    <div><dt>ชนะ</dt><dd class="is-win"><%= totalWins.toLocaleString('th-TH') %></dd></div>
+                    <div><dt>อัตราชนะ</dt><dd><%= winRate %>%</dd></div>
+                    <div><dt>ชิป</dt><dd><%= chipBalance !== null ? chipBalance.toLocaleString('th-TH') : '–' %></dd></div>
+                </dl>
+                <% if (favorite) { %>
+                    <p class="pf-fav">ถนัดสุด <b><%= favorite.icon %> <%= favorite.label %></b> · เล่น <%= favorite.games %> เกม ชนะ <%= favorite.rate %>%</p>
+                <% } %>
+            </section>
+        </aside>
+
+        <div class="pf-main">
+            <div class="pf-tabs" role="tablist" aria-label="ส่วนของโปรไฟล์">
+                <button type="button" class="pf-tab" role="tab" id="tab-stats" aria-controls="panel-stats" data-tab="stats">สถิติ</button>
+                <button type="button" class="pf-tab" role="tab" id="tab-style" aria-controls="panel-style" data-tab="style">แต่งตัว</button>
+                <button type="button" class="pf-tab" role="tab" id="tab-history" aria-controls="panel-history" data-tab="history">ประวัติ</button>
+                <button type="button" class="pf-tab" role="tab" id="tab-account" aria-controls="panel-account" data-tab="account">บัญชี</button>
+            </div>
+
+            <!-- ============ สถิติ ============ -->
+            <section class="pf-panel" role="tabpanel" id="panel-stats" aria-labelledby="tab-stats">
+                <% if (playedModes.length === 0) { %>
+                    <div class="pf-empty">
+                        <p>ยังไม่มีสถิติ เล่นเกมแรกเลย แล้วตัวเลขทั้งหมดจะมาโผล่ตรงนี้</p>
+                        <a href="/rooms" class="pf-btn is-primary">🎮 หาห้องเล่น</a>
                     </div>
-                </div>
-                <div class="player-id">
-                    <p style="margin-bottom: 5px;"><strong>🆔 Player ID</strong></p>
-                    <p><code style="display: block; word-break: break-all; font-size: 0.95em;"><%= player.playerId %></code></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="profile-section identity-editor motion-enter" style="--enter-delay: 220;">
-            <div>
-                <h2>ตั้งชื่อและโทนของคุณ</h2>
-                <p class="identity-copy">หน้านี้ทำไว้ให้เปลี่ยนชื่อ สี และลุคได้เร็วขึ้นก่อนเข้าวงจริง เลือกให้เพื่อนมองแวบเดียวก็รู้ว่าเป็นคุณ</p>
-            </div>
-
-            <div class="form-group">
-                <label>✏️ ชื่อผู้เล่น</label>
-                <div class="identity-form-row">
-                    <input type="text" id="playerNameInput" value="<%= player.playerName %>">
-                    <button id="updateNameBtn" class="btn-profile">บันทึกชื่อ</button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>🎨 สีชื่อ</label>
-                <div class="identity-color-row">
-                    <% availableColors.forEach(function(color) { %>
-                        <button class="color-btn <%= color === player.color ? 'active' : '' %>"
-                                data-color="<%= color %>"
-                                style="background: <%= color %>;">
-                        </button>
-                    <% }); %>
-                </div>
-                <p class="identity-current-name">สีปัจจุบัน: <strong style="color: <%= player.color %>; font-size: 1.1em;"><%= player.playerName %></strong></p>
-            </div>
-        </div>
-    </div>
-
-    <div class="profile-section motion-enter" style="--enter-delay: 320;">
-        <h2>ปรับ Avatar และกรอบ</h2>
-        <div class="avatar-studio-grid">
-            <div class="form-group">
-                <label>😀 เลือก Avatar</label>
-                <div class="avatar-selection" id="avatarSelection">
-                    <!-- Loaded by JS -->
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-top: 0;">
-                <label>✨ เลือกกรอบ</label>
-                <div class="frame-selection" id="frameSelection">
-                    <!-- Loaded by JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <% const recoveryCode = typeof viewerRecoveryCode !== 'undefined' ? viewerRecoveryCode : null; %>
-    <div class="profile-section motion-enter recovery-section" style="--enter-delay: 360;">
-        <h2>🔑 บัญชีและการกู้คืน</h2>
-        <% if (typeof googleClientId !== 'undefined' && googleClientId) { %>
-            <div class="google-account">
-                <% if (typeof viewerGoogleEmail !== 'undefined' && (viewerGoogleEmail || viewerGoogleLinked)) { %>
-                    <p class="recovery-hint"><i class="fab fa-google" aria-hidden="true"></i> ผูกกับ Google แล้ว<% if (viewerGoogleEmail) { %>: <b><%= viewerGoogleEmail %></b><% } %> — เปลี่ยนเครื่องก็กดล็อกอินด้วย Gmail นี้ได้เลย</p>
-                    <button type="button" class="btn btn-dark btn-sm" id="googleUnlink">ยกเลิกการผูก Google</button>
                 <% } else { %>
-                    <p class="recovery-hint">ง่ายที่สุด: ผูกกับ Gmail แล้วเปลี่ยนเครื่องเมื่อไหร่ก็ล็อกอินกลับมาได้ ไม่ต้องจำรหัส</p>
-                    <div data-google-signin data-google-text="continue_with"></div>
-                <% } %>
-            </div>
-            <h3 class="recovery-subtitle">หรือใช้รหัสกู้บัญชี</h3>
-        <% } %>
-        <p class="recovery-hint">จดหรือแคปเก็บไว้ ถ้าล้างเบราว์เซอร์ เปลี่ยนมือถือ หรือเข้าจากเครื่องอื่น ใช้รหัสนี้เอาบัญชี ถ้วย และสถิติเดิมกลับมาได้ <b>อย่าให้คนอื่นดู</b></p>
-        <% if (recoveryCode) { %>
-            <div class="recovery-code-row">
-                <code class="recovery-code" id="recoveryCode" data-code="<%= recoveryCode %>">••••-••••-••••</code>
-                <button type="button" class="btn btn-dark btn-sm" id="recoveryReveal">แสดง</button>
-                <button type="button" class="btn btn-dark btn-sm" id="recoveryCopy">คัดลอก</button>
-            </div>
-        <% } else { %>
-            <p class="recovery-hint">รหัสจะพร้อมหลังเล่นเกมแรก</p>
-        <% } %>
-        <details class="recovery-restore">
-            <summary>มีรหัสจากเครื่องอื่น? กู้บัญชีเดิมมาที่เครื่องนี้</summary>
-            <div class="recovery-restore-row">
-                <input type="text" id="recoveryInput" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocomplete="off">
-                <button type="button" class="btn btn-danger btn-sm" id="recoveryRestore">กู้บัญชี</button>
-            </div>
-            <p class="recovery-hint" style="margin-top:8px;">บัญชีปัจจุบันบนเครื่องนี้จะถูกสลับออก (ข้อมูลไม่หาย ถ้ามีรหัสของมัน)</p>
-        </details>
-    </div>
-
-    <div class="stats-section">
-        <h2>📊 สถิติการเล่น</h2>
-        
-        <%
-            // ใช้ค่า default ถ้ายังไม่มีสถิติ - แสดงเป็น 0 ทุกอัน
-            const displayStats = stats || {
-                totalGames: 0,
-                wins: 0,
-                losses: 0,
-                roleStats: {
-                    gameMasterCount: 0,
-                    traitorCount: 0,
-                    citizenCount: 0,
-                    werewolf: {
-                        villager: 0,
-                        werewolf: 0,
-                        alphaWolf: 0,
-                        mayor: 0,
-                        bodyguard: 0,
-                        seer: 0,
-                        doctor: 0,
-                        revealer: 0
-                    }
-                },
-                winByRole: {
-                    winAsTraitor: 0,
-                    winAsCitizen: 0,
-                    werewolf: {
-                        villager: 0,
-                        werewolf: 0,
-                        alphaWolf: 0,
-                        mayor: 0,
-                        bodyguard: 0,
-                        seer: 0,
-                        doctor: 0,
-                        revealer: 0
-                    }
-                },
-                modeStats: {
-                    insider: { games: 0, wins: 0, losses: 0 },
-                    werewolf: { games: 0, wins: 0, losses: 0 },
-                    blackmarket: { games: 0, wins: 0, losses: 0 },
-                    spyfall: { games: 0, wins: 0, losses: 0 },
-                    coup: { games: 0, wins: 0, losses: 0 },
-                    liar: { games: 0, wins: 0, losses: 0 }
-                },
-                lastPlayedAt: null,
-                gameHistory: []
-            };
-            // Ensure gameHistory exists for old stats
-            if (!displayStats.gameHistory) {
-                displayStats.gameHistory = [];
-            }
-            if (!displayStats.roleStats.werewolf) {
-                displayStats.roleStats.werewolf = { villager: 0, werewolf: 0, alphaWolf: 0, mayor: 0, bodyguard: 0, seer: 0, doctor: 0, revealer: 0 };
-            }
-            if (!displayStats.winByRole.werewolf) {
-                displayStats.winByRole.werewolf = { villager: 0, werewolf: 0, alphaWolf: 0, mayor: 0, bodyguard: 0, seer: 0, doctor: 0, revealer: 0 };
-            }
-            if (!displayStats.modeStats) {
-                displayStats.modeStats = {
-                    insider: { games: 0, wins: 0, losses: 0 },
-                    werewolf: { games: 0, wins: 0, losses: 0 },
-                    blackmarket: { games: 0, wins: 0, losses: 0 },
-                    spyfall: { games: 0, wins: 0, losses: 0 },
-                    coup: { games: 0, wins: 0, losses: 0 },
-                    liar: { games: 0, wins: 0, losses: 0 }
-                };
-            }
-            if (!displayStats.roleStats.blackmarket) {
-                displayStats.roleStats.blackmarket = { boss: 0, broker: 0, smuggler: 0, fixer: 0, hitman: 0, mole: 0, doubleAgent: 0 };
-            }
-            if (!displayStats.winByRole.blackmarket) {
-                displayStats.winByRole.blackmarket = { boss: 0, broker: 0, smuggler: 0, fixer: 0, hitman: 0, mole: 0, doubleAgent: 0 };
-            }
-            const winRate = displayStats.totalGames > 0 ? Math.round((displayStats.wins / displayStats.totalGames) * 100) : 0;
-            const insiderStats = displayStats.modeStats.insider || { games: 0, wins: 0, losses: 0 };
-            const werewolfStats = displayStats.modeStats.werewolf || { games: 0, wins: 0, losses: 0 };
-            const blackMarketStats = displayStats.modeStats.blackmarket || { games: 0, wins: 0, losses: 0 };
-            const spyfallStats = displayStats.modeStats.spyfall || { games: 0, wins: 0, losses: 0 };
-            const coupStats = displayStats.modeStats.coup || { games: 0, wins: 0, losses: 0 };
-            const liarStats = displayStats.modeStats.liar || { games: 0, wins: 0, losses: 0 };
-            const poker5Stats = displayStats.modeStats.poker5 || { games: 0, wins: 0, losses: 0 };
-            const poker4Stats = displayStats.modeStats.poker4 || { games: 0, wins: 0, losses: 0 };
-            const insiderWinRate = insiderStats.games > 0 ? Math.round((insiderStats.wins / insiderStats.games) * 100) : 0;
-            const werewolfWinRate = werewolfStats.games > 0 ? Math.round((werewolfStats.wins / werewolfStats.games) * 100) : 0;
-            const blackMarketWinRate = blackMarketStats.games > 0 ? Math.round((blackMarketStats.wins / blackMarketStats.games) * 100) : 0;
-            const spyfallWinRate = spyfallStats.games > 0 ? Math.round((spyfallStats.wins / spyfallStats.games) * 100) : 0;
-            const coupWinRate = coupStats.games > 0 ? Math.round((coupStats.wins / coupStats.games) * 100) : 0;
-            const liarWinRate = liarStats.games > 0 ? Math.round((liarStats.wins / liarStats.games) * 100) : 0;
-            const poker5WinRate = poker5Stats.games > 0 ? Math.round((poker5Stats.wins / poker5Stats.games) * 100) : 0;
-            const poker4WinRate = poker4Stats.games > 0 ? Math.round((poker4Stats.wins / poker4Stats.games) * 100) : 0;
-            const blackMarketRoleCards = [
-                { id: 'boss', icon: '🎩', label: 'เจ้าพ่อ', className: 'blackmarket-role' },
-                { id: 'broker', icon: '🕴️', label: 'นายหน้า', className: 'blackmarket-role' },
-                { id: 'smuggler', icon: '🚚', label: 'คนส่งของ', className: 'blackmarket-role' },
-                { id: 'fixer', icon: '🧹', label: 'คนเคลียร์ทาง', className: 'blackmarket-role' },
-                { id: 'hitman', icon: '🔫', label: 'มือเก็บงาน', className: 'blackmarket-role' },
-                { id: 'mole', icon: '🕶️', label: 'สายข่าว', className: 'blackmarket-role' },
-                { id: 'doubleAgent', icon: '🃏', label: 'สองหน้า', className: 'blackmarket-role' }
-            ];
-            const werewolfRoleCards = [
-                { id: 'villager', icon: '🙂', label: 'ชาวบ้าน', className: 'village-role' },
-                { id: 'werewolf', icon: '🐺', label: 'หมาป่า', className: 'werewolf-role' },
-                { id: 'alphaWolf', icon: '👑', label: 'อัลฟ่าหมาป่า', className: 'werewolf-role' },
-                { id: 'mayor', icon: '🎖️', label: 'นายก', className: 'village-role' },
-                { id: 'bodyguard', icon: '🛡️', label: 'บอดี้การ์ด', className: 'support-role' },
-                { id: 'seer', icon: '🔮', label: 'ผู้หยั่งรู้', className: 'support-role' },
-                { id: 'doctor', icon: '💉', label: 'หมอ', className: 'support-role' },
-                { id: 'revealer', icon: '💥', label: 'จอมเปิดโปง', className: 'support-role' }
-            ];
-        %>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <span class="stat-icon">🎮</span>
-                <div class="stat-value" style="color: #3498db;"><%= displayStats.totalGames %></div>
-                <div class="stat-label">เกมทั้งหมด</div>
-            </div>
-            
-            <div class="stat-card">
-                <span class="stat-icon">🏆</span>
-                <div class="stat-value" style="color: #27ae60;"><%= displayStats.wins %></div>
-                <div class="stat-label">ชนะ</div>
-            </div>
-            
-            <div class="stat-card">
-                <span class="stat-icon">💔</span>
-                <div class="stat-value" style="color: #e74c3c;"><%= displayStats.losses %></div>
-                <div class="stat-label">แพ้</div>
-            </div>
-            
-            <div class="stat-card">
-                <span class="stat-icon">📈</span>
-                <div class="stat-value" style="color: #f39c12;">
-                    <%= winRate %>%
-                </div>
-                <div class="stat-label">อัตราชนะ</div>
-            </div>
-        </div>
-
-        <h3 class="stats-section-title">🧭 สรุปตามโหมด</h3>
-        <div class="role-stats-grid">
-            <div class="role-stat-card mode-insider">
-                <div class="role-stat-icon">🎯</div>
-                <div class="role-stat-value" style="color: #9b59b6;"><%= insiderStats.games %></div>
-                <div class="role-stat-label">Insider · ชนะ <%= insiderStats.wins %> · แพ้ <%= insiderStats.losses %> · <%= insiderWinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-werewolf">
-                <div class="role-stat-icon">🐺</div>
-                <div class="role-stat-value" style="color: #ff8f7b;"><%= werewolfStats.games %></div>
-                <div class="role-stat-label">Werewolf · ชนะ <%= werewolfStats.wins %> · แพ้ <%= werewolfStats.losses %> · <%= werewolfWinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-blackmarket">
-                <div class="role-stat-icon">🎩</div>
-                <div class="role-stat-value" style="color: #f6d365;"><%= blackMarketStats.games %></div>
-                <div class="role-stat-label">Black Market · ชนะ <%= blackMarketStats.wins %> · แพ้ <%= blackMarketStats.losses %> · <%= blackMarketWinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-spyfall">
-                <div class="role-stat-icon">🕵️</div>
-                <div class="role-stat-value" style="color: #1abc9c;"><%= spyfallStats.games %></div>
-                <div class="role-stat-label">Spyfall · ชนะ <%= spyfallStats.wins %> · แพ้ <%= spyfallStats.losses %> · <%= spyfallWinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-coup">
-                <div class="role-stat-icon">👑</div>
-                <div class="role-stat-value" style="color: #c4b5fd;"><%= coupStats.games %></div>
-                <div class="role-stat-label">Coup · ชนะ <%= coupStats.wins %> · แพ้ <%= coupStats.losses %> · <%= coupWinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-liar">
-                <div class="role-stat-icon">🃏</div>
-                <div class="role-stat-value" style="color: #ef4444;"><%= liarStats.games %></div>
-                <div class="role-stat-label">ไพ่โกหก · ชนะ <%= liarStats.wins %> · แพ้ <%= liarStats.losses %> · <%= liarWinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-coup">
-                <div class="role-stat-icon">♠</div>
-                <div class="role-stat-value" style="color: #86efac;"><%= poker5Stats.games %></div>
-                <div class="role-stat-label">ไพ่ 5 ใบ · ชนะ <%= poker5Stats.wins %> · แพ้ <%= poker5Stats.losses %> · <%= poker5WinRate %>%</div>
-            </div>
-            <div class="role-stat-card mode-coup">
-                <div class="role-stat-icon">♦</div>
-                <div class="role-stat-value" style="color: #fecaca;"><%= poker4Stats.games %></div>
-                <div class="role-stat-label">สี่ใบเก · ชนะ <%= poker4Stats.wins %> · แพ้ <%= poker4Stats.losses %> · <%= poker4WinRate %>%</div>
-            </div>
-        </div>
-
-        <h3 class="stats-section-title">🎭 Insider: สถิติตามบทบาท</h3>
-        <div class="role-stats-grid">
-            <div class="role-stat-card gamemaster">
-                <div class="role-stat-icon">👑</div>
-                <div class="role-stat-value" style="color: #f39c12;"><%= displayStats.roleStats.gameMasterCount %></div>
-                <div class="role-stat-label">ผู้ดำเนินเกม</div>
-            </div>
-            
-            <div class="role-stat-card traitor">
-                <div class="role-stat-icon">😈</div>
-                <div class="role-stat-value" style="color: #e74c3c;"><%= displayStats.roleStats.traitorCount %></div>
-                <div class="role-stat-label">จอมบงการ</div>
-            </div>
-            
-            <div class="role-stat-card citizen">
-                <div class="role-stat-icon">👤</div>
-                <div class="role-stat-value" style="color: #3498db;"><%= displayStats.roleStats.citizenCount %></div>
-                <div class="role-stat-label">พลเมือง</div>
-            </div>
-        </div>
-
-        <h3 class="stats-section-title">🐺 Werewolf: บทบาทที่เคยได้รับ</h3>
-        <div class="role-stats-grid">
-            <% werewolfRoleCards.forEach(function(role) { %>
-                <div class="role-stat-card <%= role.className %>">
-                    <div class="role-stat-icon"><%= role.icon %></div>
-                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.roleStats.werewolf[role.id] || 0 %></div>
-                    <div class="role-stat-label"><%= role.label %></div>
-                </div>
-            <% }); %>
-        </div>
-
-        <h3 class="stats-section-title">🎯 Insider: ชนะตามบทบาท</h3>
-        <div class="role-stats-grid">
-            <div class="role-stat-card traitor">
-                <div class="role-stat-icon">😈</div>
-                <div class="role-stat-value" style="color: #e74c3c;"><%= displayStats.winByRole.winAsTraitor %></div>
-                <div class="role-stat-label">ชนะเป็นจอมบงการ</div>
-            </div>
-            
-            <div class="role-stat-card citizen">
-                <div class="role-stat-icon">👤</div>
-                <div class="role-stat-value" style="color: #3498db;"><%= displayStats.winByRole.winAsCitizen %></div>
-                <div class="role-stat-label">ชนะเป็นพลเมือง</div>
-            </div>
-        </div>
-
-        <h3 class="stats-section-title">🏁 Werewolf: ชนะตามบทบาท</h3>
-        <div class="role-stats-grid">
-            <% werewolfRoleCards.forEach(function(role) { %>
-                <div class="role-stat-card <%= role.className %>">
-                    <div class="role-stat-icon"><%= role.icon %></div>
-                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.winByRole.werewolf[role.id] || 0 %></div>
-                    <div class="role-stat-label">ชนะเป็น <%= role.label %></div>
-                </div>
-            <% }); %>
-        </div>
-
-
-        <h3 class="stats-section-title">🎩 Black Market: บทบาทที่เคยได้รับ</h3>
-        <div class="role-stats-grid">
-            <% blackMarketRoleCards.forEach(function(role) { %>
-                <% if ((displayStats.roleStats.blackmarket[role.id] || 0) > 0) { %>
-                <div class="role-stat-card <%= role.className %>">
-                    <div class="role-stat-icon"><%= role.icon %></div>
-                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.roleStats.blackmarket[role.id] || 0 %></div>
-                    <div class="role-stat-label"><%= role.label %></div>
-                </div>
-                <% } %>
-            <% }); %>
-        </div>
-
-        <h3 class="stats-section-title">🎩 Black Market: ชนะตามบทบาท</h3>
-        <div class="role-stats-grid">
-            <% blackMarketRoleCards.forEach(function(role) { %>
-                <% if ((displayStats.winByRole.blackmarket[role.id] || 0) > 0) { %>
-                <div class="role-stat-card <%= role.className %>">
-                    <div class="role-stat-icon"><%= role.icon %></div>
-                    <div class="role-stat-value" style="color: #fff;"><%= displayStats.winByRole.blackmarket[role.id] || 0 %></div>
-                    <div class="role-stat-label">ชนะเป็น <%= role.label %></div>
-                </div>
-                <% } %>
-            <% }); %>
-        </div>
-
-        <h3 class="stats-section-title">🕵️ Spyfall: สรุปบทบาท</h3>
-        <div class="role-stats-grid">
-            <div class="role-stat-card traitor">
-                <div class="role-stat-icon">🕶️</div>
-                <div class="role-stat-value" style="color: #1abc9c;"><%= spyfallStats.games > 0 ? spyfallStats.games : 0 %></div>
-                <div class="role-stat-label">เกม Spyfall ทั้งหมด (ดูบทบาทแต่ละเกมในประวัติ)</div>
-            </div>
-        </div>
-
-        <div class="last-played">
-            <p>
-                <strong>🕐 เล่นครั้งล่าสุด:</strong> 
-                <% if (displayStats.lastPlayedAt) { %>
-                    <%= new Date(displayStats.lastPlayedAt).toLocaleString('th-TH') %>
-                <% } else { %>
-                    <span style="color: #888;">ยังไม่เคยเล่น</span>
-                <% } %>
-            </p>
-        </div>
-        
-        <!-- Game History Section -->
-        <div class="game-history-section">
-            <h2>📜 ประวัติเกมล่าสุด</h2>
-            <div class="game-history-list">
-                <% if (displayStats.gameHistory && displayStats.gameHistory.length > 0) { %>
-                    <% displayStats.gameHistory.forEach(function(game) { %>
-                        <% const gameMode = game.mode || 'insider'; %>
-                        <% const modeLabels = { insider: '🎯 Insider', werewolf: '🐺 Werewolf', blackmarket: '🎩 Black Market', spyfall: '🕵️ Spyfall', coup: '👑 Coup', liar: '🃏 ไพ่โกหก', poker5: '♠ ไพ่ 5 ใบ', poker4: '♦ สี่ใบเก' }; %>
-                        <% const modeBadgeClass = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'liar'].includes(gameMode) ? gameMode : 'insider'; %>
-                        <div class="game-history-item <%= game.won ? 'won' : 'lost' %>">
-                            <div class="game-history-header">
-                                <div class="game-history-topline">
-                                    <span class="game-history-result <%= game.won ? 'won' : 'lost' %>">
-                                        <%= game.won ? '🏆 ชนะ' : '💔 แพ้' %>
+                    <div class="pf-block">
+                        <h2 class="pf-h">แต่ละเกม</h2>
+                        <ul class="pf-modes">
+                            <% playedModes.forEach(function(m) { %>
+                                <li class="pf-mode">
+                                    <span class="pf-mode-icon<%= m.tone === 'red' ? ' is-red' : '' %>" aria-hidden="true"><%= m.icon %></span>
+                                    <span>
+                                        <span class="pf-mode-name"><%= m.label %></span>
+                                        <span class="pf-mode-count"> · <%= m.games %> เกม · ชนะ <%= m.wins %> แพ้ <%= m.losses %></span>
                                     </span>
-                                    <span class="game-mode-badge <%= modeBadgeClass %>"><%= modeLabels[modeBadgeClass] || modeLabels.insider %></span>
-                                </div>
-                                <span class="game-history-date">
-                                    <%= new Date(game.date).toLocaleString('th-TH', { 
-                                        year: 'numeric', 
-                                        month: 'short', 
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    }) %>
-                                </span>
-                            </div>
-                            <div class="game-history-details">
-                                <div class="game-history-detail">
-                                    <span class="game-history-detail-icon">🎭</span>
-                                    <span><%= game.role %></span>
-                                </div>
-                                <div class="game-history-detail">
-                                    <span class="game-history-detail-icon">🏠</span>
-                                    <span><%= game.roomName || 'ไม่ทราบห้อง' %></span>
-                                </div>
-                                <% if (gameMode === 'werewolf') { %>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon"><%= game.team === 'werewolf' ? '🐾' : '🏡' %></span>
-                                        <span>ทีม: <%= game.team === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน' %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🏁</span>
-                                        <span>ทีมชนะ: <%= game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน') %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🌅</span>
-                                        <span>ถึงวันที่ <%= game.dayNumber || 0 %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon"><%= game.survived ? '✨' : '💀' %></span>
-                                        <span><%= game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ' %></span>
-                                    </div>
-                                <% } else if (gameMode === 'blackmarket') { %>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">👑</span>
-                                        <span>เจ้าโต๊ะ: <%= game.winnerLabel || 'ไม่ทราบ' %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🎩</span>
-                                        <span><%= game.winnerRole || '-' %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">📊</span>
-                                        <span>👑 <%= game.influence || 0 %> · 💵 <%= game.cash || 0 %> · 🔥 <%= game.heat || 0 %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🎯</span>
-                                        <span><%= game.resultText || (game.won ? 'คุมเมืองสำเร็จ' : 'พลาดโต๊ะนี้') %></span>
-                                    </div>
-                                <% } else if (gameMode === 'spyfall') { %>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">📍</span>
-                                        <span>สถานที่: <%= game.location || 'ไม่ทราบ' %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🕶️</span>
-                                        <span>สายลับ: <%= game.spyName || 'ไม่ทราบ' %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🏁</span>
-                                        <span><%= game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด' %></span>
-                                    </div>
-                                <% } else { %>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">📝</span>
-                                        <span><%= game.word %></span>
-                                    </div>
-                                    <div class="game-history-detail">
-                                        <span class="game-history-detail-icon">🔴</span>
-                                        <span>จอมบงการ: <%= game.traitor %></span>
-                                    </div>
-                                <% } %>
-                                <div class="game-history-detail">
-                                    <span class="game-history-detail-icon">👥</span>
-                                    <span><%= game.playerCount %> คน</span>
-                                </div>
+                                    <span class="pf-mode-rate"><%= m.rate %>%</span>
+                                    <span class="pf-meter" role="img" aria-label="อัตราชนะ <%= m.rate %>%"><span style="--rate: <%= m.rate %>%;"></span></span>
+                                </li>
+                            <% }); %>
+                        </ul>
+                        <% if (untriedModes.length) { %>
+                            <p class="pf-untried">ยังไม่เคยลอง: <%= untriedModes.map(m => m.icon + ' ' + m.label).join(' · ') %></p>
+                        <% } %>
+                    </div>
+
+                    <% if (roleGroups.length) { %>
+                        <div class="pf-block">
+                            <h2 class="pf-h">บทบาทที่ได้</h2>
+                            <div class="pf-roles">
+                                <% roleGroups.forEach(function(group, index) { %>
+                                    <details class="pf-rolegroup" <%= index === 0 ? 'open' : '' %>>
+                                        <summary><span aria-hidden="true"><%= group.mode.icon %></span> <%= group.mode.label %></summary>
+                                        <ul class="pf-rolelist">
+                                            <% group.rows.forEach(function(role) { %>
+                                                <li class="pf-role">
+                                                    <span class="pf-role-icon" aria-hidden="true"><%= role.icon %></span>
+                                                    <span class="pf-role-label"><%= role.label %></span>
+                                                    <span class="pf-role-meta"><%= role.times %> ครั้ง<% if (role.wins !== null) { %> · ชนะ <b><%= role.wins %></b><% } %></span>
+                                                </li>
+                                            <% }); %>
+                                        </ul>
+                                    </details>
+                                <% }); %>
                             </div>
                         </div>
-                    <% }); %>
+                    <% } %>
+                <% } %>
+            </section>
+
+            <!-- ============ แต่งตัว ============ -->
+            <section class="pf-panel" role="tabpanel" id="panel-style" aria-labelledby="tab-style" hidden>
+                <div class="pf-block">
+                    <h2 class="pf-h">ชื่อ</h2>
+                    <form class="pf-field" id="pfNameForm">
+                        <input class="pf-input" type="text" id="playerNameInput" value="<%= player.playerName %>" maxlength="20" autocomplete="off" aria-label="ชื่อผู้เล่น">
+                        <button type="submit" class="pf-btn is-primary" id="updateNameBtn">บันทึกชื่อ</button>
+                    </form>
+                    <p class="pf-hint">2–20 ตัวอักษร ห้ามซ้ำกับคนอื่น</p>
+                </div>
+
+                <div class="pf-block">
+                    <h2 class="pf-h">สีประจำตัว</h2>
+                    <div class="pf-swatches" role="group" aria-label="สีชื่อ">
+                        <% availableColors.forEach(function(color) { %>
+                            <button type="button" class="pf-swatch" data-color="<%= color %>" style="--c: <%= color %>;"
+                                    aria-pressed="<%= color === player.color ? 'true' : 'false' %>" aria-label="สี <%= color %>"></button>
+                        <% }); %>
+                    </div>
+                </div>
+
+                <div class="pf-block">
+                    <h2 class="pf-h">หน้าตา</h2>
+                    <div class="pf-avatars" id="avatarSelection" role="group" aria-label="อวาตาร์"><p class="pf-hint">กำลังโหลด…</p></div>
+                </div>
+
+                <div class="pf-block">
+                    <h2 class="pf-h">กรอบ</h2>
+                    <div class="pf-frames" id="frameSelection" role="group" aria-label="กรอบอวาตาร์"><p class="pf-hint">กำลังโหลด…</p></div>
+                </div>
+            </section>
+
+            <!-- ============ ประวัติ ============ -->
+            <section class="pf-panel" role="tabpanel" id="panel-history" aria-labelledby="tab-history" hidden>
+                <% if (history.length === 0) { %>
+                    <div class="pf-empty">
+                        <p>ยังไม่มีเกมที่จบ ทุกเกมที่เล่นจนจบจะถูกเก็บไว้ตรงนี้ ทั้งบทบาท ทีมที่ชนะ และคำที่ได้</p>
+                        <a href="/rooms" class="pf-btn is-primary">🎮 หาห้องเล่น</a>
+                    </div>
                 <% } else { %>
-                    <div class="game-history-empty">
-                        <p>📭 ยังไม่มีประวัติเกม</p>
-                        <p style="font-size: 0.9em;">เริ่มเล่นเพื่อบันทึกประวัติ!</p>
+                    <div class="pf-games">
+                        <% history.forEach(function(game) {
+                            const mode = modeById[game.mode] || modeById.insider;
+                            const when = ago(game.date);
+                            const role = game.role && game.role !== 'ไม่ทราบ' ? game.role : null;
+                            const room = game.roomName && game.roomName !== mode.label ? game.roomName : null;
+                            const subline = [role, room].filter(Boolean).join(' · ');
+                        %>
+                            <details class="pf-game">
+                                <summary>
+                                    <span class="pf-result <%= game.won ? 'is-win' : 'is-loss' %>"><%= game.won ? 'ชนะ' : 'แพ้' %></span>
+                                    <span class="pf-game-icon<%= mode.tone === 'red' ? ' is-red' : '' %>" aria-hidden="true"><%= mode.icon %></span>
+                                    <span class="pf-game-main">
+                                        <span class="pf-game-title"><%= mode.label %></span>
+                                        <% if (subline) { %><span class="pf-game-role"><%= subline %></span><% } %>
+                                    </span>
+                                    <span class="pf-game-when"><%= when || '' %></span>
+                                </summary>
+                                <p class="pf-game-body">
+                                    <% if (game.mode === 'werewolf') { %>
+                                        <span>ทีม <%= game.team === 'werewolf' ? 'หมาป่า 🐾' : 'ชาวบ้าน 🏡' %></span>
+                                        <span>ทีมชนะ <%= game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน') %></span>
+                                        <span>จบวันที่ <%= game.dayNumber || 0 %></span>
+                                        <span><%= game.survived ? '✨ รอดจนจบ' : '💀 ไม่รอด' %></span>
+                                    <% } else if (game.mode === 'blackmarket') { %>
+                                        <span>เจ้าโต๊ะ <%= game.winnerLabel || '—' %></span>
+                                        <span>👑 <%= game.influence || 0 %> · 💵 <%= game.cash || 0 %> · 🔥 <%= game.heat || 0 %></span>
+                                        <% if (game.resultText) { %><span><%= game.resultText %></span><% } %>
+                                    <% } else if (game.mode === 'spyfall') { %>
+                                        <span>📍 <%= game.location || 'ไม่ทราบสถานที่' %></span>
+                                        <span>สายลับ <%= game.spyName || '—' %></span>
+                                        <span><%= game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด' %></span>
+                                    <% } else if (!game.mode || game.mode === 'insider') { %>
+                                        <% if (game.word) { %><span>คำ “<%= game.word %>”</span><% } %>
+                                        <% if (game.traitor) { %><span>จอมบงการ <%= game.traitor %></span><% } %>
+                                    <% } else if (game.resultText) { %>
+                                        <span><%= game.resultText %></span>
+                                    <% } %>
+                                    <% if (game.playerCount) { %><span>👥 <%= game.playerCount %> คน</span><% } %>
+                                    <% if (game.date) { %><span><%= new Date(game.date).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }) %></span><% } %>
+                                </p>
+                            </details>
+                        <% }); %>
                     </div>
                 <% } %>
-            </div>
+            </section>
+
+            <!-- ============ บัญชี ============ -->
+            <section class="pf-panel" role="tabpanel" id="panel-account" aria-labelledby="tab-account" hidden>
+                <div class="pf-account">
+                    <% if (googleOn) { %>
+                        <div class="pf-option is-recommended">
+                            <div class="pf-option-head">
+                                <h2 class="pf-h"><i class="fab fa-google" aria-hidden="true"></i> บัญชี Google</h2>
+                                <% if (!googleLinked) { %><span class="pf-pill">แนะนำ</span><% } %>
+                            </div>
+                            <% if (googleLinked) { %>
+                                <p class="pf-sub">ผูกแล้ว<% if (googleEmail) { %> กับ <b><%= googleEmail %></b><% } %> เปลี่ยนเครื่องหรือล้างเบราว์เซอร์ กดล็อกอินด้วย Gmail นี้ก็ได้บัญชีคืน</p>
+                                <div><button type="button" class="pf-btn is-quiet" id="googleUnlink">ยกเลิกการผูก</button></div>
+                            <% } else { %>
+                                <p class="pf-sub">ผูกกับ Gmail ครั้งเดียว เปลี่ยนมือถือเมื่อไหร่ก็ล็อกอินกลับมา ถ้วยและสถิติอยู่ครบ ไม่ต้องจำรหัส</p>
+                                <div data-google-signin data-google-text="continue_with"></div>
+                            <% } %>
+                        </div>
+                    <% } %>
+
+                    <div class="pf-option">
+                        <h2 class="pf-h">🔑 รหัสกู้บัญชี</h2>
+                        <p class="pf-sub"><%= googleOn ? 'ใช้แทน Google ได้ ' : '' %>แคปเก็บไว้ ถ้าล้างเบราว์เซอร์หรือเปลี่ยนเครื่อง ใช้รหัสนี้เอาบัญชีคืน ใครมีรหัสนี้เข้าบัญชีคุณได้ อย่าให้คนอื่นดู</p>
+                        <% if (recoveryCode) { %>
+                            <div class="pf-code-row">
+                                <code class="pf-code" id="recoveryCode" data-code="<%= recoveryCode %>">••••-••••-••••</code>
+                                <button type="button" class="pf-btn" id="recoveryReveal">แสดง</button>
+                                <button type="button" class="pf-btn" id="recoveryCopy">คัดลอก</button>
+                            </div>
+                        <% } else { %>
+                            <p class="pf-hint">รหัสจะพร้อมหลังเล่นเกมแรก</p>
+                        <% } %>
+                        <details class="pf-restore">
+                            <summary>มีรหัสจากเครื่องอื่น? เอาบัญชีนั้นมาที่เครื่องนี้</summary>
+                            <form class="pf-field" id="pfRestoreForm">
+                                <input class="pf-input" type="text" id="recoveryInput" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocomplete="off" aria-label="รหัสกู้บัญชี">
+                                <button type="submit" class="pf-btn is-primary" id="recoveryRestore">กู้บัญชี</button>
+                            </form>
+                            <p class="pf-hint" style="margin-top: 8px;">บัญชีที่ใช้อยู่บนเครื่องนี้จะถูกสลับออก</p>
+                        </details>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
-</div>
-</div>
-
-<%- contentFor('footer') %>
-<div class="container">
-    <a href="/?playerId=<%= player.playerId %>" class="btn btn-dark" style="font-family: 'Rajdhani', sans-serif; font-weight: 600;">← กลับไป Lobby</a>
-</div>
+</main>
+<div class="pf-toast" id="pfToast" role="status" aria-live="polite"></div>
 
 <%- contentFor('script') %>
 <script>
-$(function() {
-    (function initRecoveryCode() {
-        var codeEl = document.getElementById('recoveryCode');
-        if (codeEl) {
-            var code = codeEl.getAttribute('data-code');
-            document.getElementById('recoveryReveal').addEventListener('click', function() {
-                var hidden = codeEl.textContent !== code;
-                codeEl.textContent = hidden ? code : '••••-••••-••••';
-                this.textContent = hidden ? 'ซ่อน' : 'แสดง';
-            });
-            document.getElementById('recoveryCopy').addEventListener('click', function() {
-                var btn = this;
-                navigator.clipboard && navigator.clipboard.writeText(code).then(function() {
-                    btn.textContent = 'คัดลอกแล้ว ✓';
-                });
-            });
-            try { localStorage.setItem('insiderGameRecoveryCode', code); } catch (e) {}
+(function() {
+    var root = document.querySelector('.pf');
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var state = {
+        avatar: document.getElementById('pfAvatar').getAttribute('data-avatar') || '👤',
+        frame: document.getElementById('pfAvatar').getAttribute('data-frame') || 'none',
+        color: '<%= player.color %>',
+        name: document.getElementById('pfName').textContent
+    };
+
+    /* ---------- toast แทน popup — ไม่ขวางการกดต่อ ---------- */
+    var toastEl = document.getElementById('pfToast');
+    var toastTimer = null;
+    function toast(text, isError) {
+        toastEl.textContent = text;
+        toastEl.classList.toggle('is-error', !!isError);
+        toastEl.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function() { toastEl.classList.remove('is-on'); }, isError ? 3200 : 1800);
+    }
+
+    function postJson(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {})
+        }).then(function(r) { return r.json(); });
+    }
+
+    /* ---------- บัตรนักเล่น ---------- */
+    function renderPass(bump) {
+        var box = document.getElementById('pfAvatar');
+        var size = window.innerWidth < 420 ? 84 : 104;
+        box.innerHTML = window.PlayerAvatar
+            ? PlayerAvatar.render({ avatar: state.avatar, avatarFrame: state.frame, color: state.color, playerName: state.name }, { size: size })
+            : '<span style="font-size:48px">' + state.avatar + '</span>';
+        if (bump && !reducedMotion) {
+            box.classList.add('is-bumped');
+            requestAnimationFrame(function() { requestAnimationFrame(function() { box.classList.remove('is-bumped'); }); });
         }
-        var unlinkBtn = document.getElementById('googleUnlink');
-        if (unlinkBtn) {
-            unlinkBtn.addEventListener('click', function() {
-                Swal.fire({
+    }
+    renderPass(false);
+
+    /* ---------- แท็บ (จำแท็บไว้ใน URL #) ---------- */
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.pf-tab'));
+    function selectTab(name, focus) {
+        var found = tabs.some(function(t) { return t.getAttribute('data-tab') === name; });
+        if (!found) name = 'stats';
+        tabs.forEach(function(tab) {
+            var on = tab.getAttribute('data-tab') === name;
+            tab.setAttribute('aria-selected', on ? 'true' : 'false');
+            tab.tabIndex = on ? 0 : -1;
+            document.getElementById(tab.getAttribute('aria-controls')).hidden = !on;
+            if (on && focus) tab.focus();
+        });
+        if (history.replaceState) history.replaceState(null, '', '#' + name);
+        if (name === 'style') loadWardrobe();
+    }
+    tabs.forEach(function(tab, i) {
+        tab.addEventListener('click', function() { selectTab(tab.getAttribute('data-tab')); });
+        tab.addEventListener('keydown', function(e) {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+            selectTab(next.getAttribute('data-tab'), true);
+        });
+    });
+    document.querySelectorAll('[data-goto]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            selectTab(btn.getAttribute('data-goto'));
+            document.querySelector('.pf-tabs').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        });
+    });
+    selectTab((location.hash || '#stats').slice(1));
+
+    /* ---------- ชื่อ ---------- */
+    document.getElementById('pfNameForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var input = document.getElementById('playerNameInput');
+        var btn = document.getElementById('updateNameBtn');
+        var newName = input.value.trim();
+        if (!newName) { toast('ใส่ชื่อก่อนนะ', true); input.focus(); return; }
+        if (newName === state.name) { toast('ชื่อนี้ใช้อยู่แล้ว'); return; }
+        btn.disabled = true;
+        postJson('/profile/updateName', { name: newName }).then(function(res) {
+            if (!res.success) throw new Error(res.error || 'บันทึกชื่อไม่สำเร็จ');
+            state.name = newName;
+            document.getElementById('pfName').textContent = newName;
+            toast('เปลี่ยนชื่อแล้ว ✓');
+        }).catch(function(err) {
+            toast(err.message || 'บันทึกชื่อไม่สำเร็จ', true);
+        }).then(function() { btn.disabled = false; });
+    });
+
+    /* ---------- สี (เปลี่ยนทันที ถ้าพังค่อยย้อน) ---------- */
+    document.querySelectorAll('.pf-swatch').forEach(function(sw) {
+        sw.addEventListener('click', function() {
+            var color = sw.getAttribute('data-color');
+            if (color === state.color) return;
+            var previous = state.color;
+            applyColor(color);
+            postJson('/profile/updateColor', { color: color }).then(function(res) {
+                if (!res.success) throw new Error(res.error || 'เปลี่ยนสีไม่สำเร็จ');
+                toast('เปลี่ยนสีแล้ว ✓');
+            }).catch(function(err) {
+                applyColor(previous);
+                toast(err.message || 'เปลี่ยนสีไม่สำเร็จ', true);
+            });
+        });
+    });
+    function applyColor(color) {
+        state.color = color;
+        root.style.setProperty('--me', color);
+        document.querySelectorAll('.pf-swatch').forEach(function(sw) {
+            sw.setAttribute('aria-pressed', sw.getAttribute('data-color') === color ? 'true' : 'false');
+        });
+        renderPass(false);
+    }
+
+    /* ---------- อวาตาร์ + กรอบ (โหลดเมื่อเปิดแท็บแต่งตัว) ---------- */
+    var wardrobeLoaded = false;
+    function loadWardrobe() {
+        if (wardrobeLoaded) return;
+        wardrobeLoaded = true;
+        fetch('/api/avatars', { credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(data) {
+            var avatars = Array.isArray(data && data.avatars) ? data.avatars : [];
+            var frames = Array.isArray(data && data.frames) ? data.frames : [];
+            var avatarBox = document.getElementById('avatarSelection');
+            avatarBox.innerHTML = '';
+            avatars.forEach(function(avatar) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'pf-pick';
+                b.textContent = avatar;
+                b.setAttribute('data-avatar', avatar);
+                b.setAttribute('aria-pressed', avatar === state.avatar ? 'true' : 'false');
+                b.setAttribute('aria-label', 'อวาตาร์ ' + avatar);
+                avatarBox.appendChild(b);
+            });
+            var frameBox = document.getElementById('frameSelection');
+            frameBox.innerHTML = '';
+            frames.forEach(function(frame) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'pf-pick';
+                b.title = frame.name;
+                b.setAttribute('aria-label', 'กรอบ ' + frame.name);
+                b.setAttribute('data-frame', frame.id);
+                b.setAttribute('aria-pressed', frame.id === state.frame ? 'true' : 'false');
+                b.innerHTML = window.PlayerAvatar
+                    ? PlayerAvatar.render({ avatar: state.avatar, avatarFrame: frame.id, color: state.color }, { size: 44 })
+                    : frame.name;
+                frameBox.appendChild(b);
+            });
+            if (!avatars.length) avatarBox.innerHTML = '<p class="pf-hint">ไม่พบอวาตาร์</p>';
+            if (!frames.length) frameBox.innerHTML = '<p class="pf-hint">ไม่พบกรอบ</p>';
+        }).catch(function() {
+            wardrobeLoaded = false;
+            document.getElementById('avatarSelection').innerHTML = '<p class="pf-hint">โหลดไม่สำเร็จ ลองเปิดแท็บนี้ใหม่</p>';
+            document.getElementById('frameSelection').innerHTML = '';
+        });
+    }
+
+    function refreshFramePreviews() {
+        document.querySelectorAll('#frameSelection .pf-pick').forEach(function(b) {
+            if (!window.PlayerAvatar) return;
+            b.innerHTML = PlayerAvatar.render({ avatar: state.avatar, avatarFrame: b.getAttribute('data-frame'), color: state.color }, { size: 44 });
+        });
+    }
+
+    function pickHandler(kind) {
+        return function(e) {
+            var b = e.target.closest('.pf-pick');
+            if (!b) return;
+            var value = b.getAttribute(kind === 'avatar' ? 'data-avatar' : 'data-frame');
+            var previous = state[kind];
+            if (value === previous) return;
+            setPick(kind, value);
+            var req = kind === 'avatar'
+                ? postJson('/profile/updateAvatar', { avatar: value })
+                : postJson('/profile/updateAvatarFrame', { frameId: value });
+            req.then(function(res) {
+                if (!res.success) throw new Error(res.error || 'บันทึกไม่สำเร็จ');
+                toast(kind === 'avatar' ? 'เปลี่ยนหน้าตาแล้ว ✓' : 'ใส่กรอบแล้ว ✓');
+            }).catch(function(err) {
+                setPick(kind, previous);
+                toast(err.message || 'บันทึกไม่สำเร็จ', true);
+            });
+        };
+    }
+    function setPick(kind, value) {
+        state[kind] = value;
+        var attr = kind === 'avatar' ? 'data-avatar' : 'data-frame';
+        var box = document.getElementById(kind === 'avatar' ? 'avatarSelection' : 'frameSelection');
+        box.querySelectorAll('.pf-pick').forEach(function(b) {
+            b.setAttribute('aria-pressed', b.getAttribute(attr) === value ? 'true' : 'false');
+        });
+        if (kind === 'avatar') refreshFramePreviews();
+        renderPass(true);
+    }
+    document.getElementById('avatarSelection').addEventListener('click', pickHandler('avatar'));
+    document.getElementById('frameSelection').addEventListener('click', pickHandler('frame'));
+
+    /* ---------- บัญชี ---------- */
+    var codeEl = document.getElementById('recoveryCode');
+    if (codeEl) {
+        var code = codeEl.getAttribute('data-code');
+        try { localStorage.setItem('insiderGameRecoveryCode', code); } catch (e) {}
+        document.getElementById('recoveryReveal').addEventListener('click', function() {
+            var show = codeEl.textContent !== code;
+            codeEl.textContent = show ? code : '••••-••••-••••';
+            this.textContent = show ? 'ซ่อน' : 'แสดง';
+        });
+        document.getElementById('recoveryCopy').addEventListener('click', function() {
+            if (!navigator.clipboard) { toast('คัดลอกไม่ได้ กด "แสดง" แล้วจดไว้แทน', true); return; }
+            navigator.clipboard.writeText(code).then(function() { toast('คัดลอกรหัสแล้ว ✓'); }, function() {
+                toast('คัดลอกไม่ได้ กด "แสดง" แล้วจดไว้แทน', true);
+            });
+        });
+    }
+
+    var unlinkBtn = document.getElementById('googleUnlink');
+    if (unlinkBtn) {
+        unlinkBtn.addEventListener('click', function() {
+            var ask = window.Swal
+                ? Swal.fire({
                     icon: 'warning',
                     title: 'ยกเลิกการผูก Google?',
                     text: 'ถ้าล้างเบราว์เซอร์หลังจากนี้ จะต้องใช้รหัสกู้บัญชีแทน',
                     showCancelButton: true,
                     confirmButtonText: 'ยกเลิกการผูก',
-                    cancelButtonText: 'ไม่ใช่'
-                }).then(function(result) {
-                    if (!result.isConfirmed) return;
-                    fetch('/api/auth/google/unlink', { method: 'POST', credentials: 'same-origin' })
-                        .then(function() { window.location.reload(); });
-                });
-            });
-        }
-
-        document.getElementById('recoveryRestore').addEventListener('click', function() {
-            var value = document.getElementById('recoveryInput').value;
-            fetch('/api/identity/restore', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: value })
-            }).then(function(r) { return r.json(); }).then(function(res) {
-                if (!res.success) {
-                    Swal.fire({ icon: 'error', title: 'กู้บัญชีไม่สำเร็จ', text: res.error || 'รหัสไม่ถูกต้อง' });
-                    return;
-                }
-                localStorage.setItem('insiderGamePlayerId', res.playerId);
-                localStorage.setItem('insiderGameRecoveryCode', res.recoveryCode);
-                window.location.replace('/profile');
-            }).catch(function() {
-                Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่ได้', text: 'ลองใหม่อีกครั้ง' });
+                    cancelButtonText: 'ไม่ใช่',
+                    background: '#1e1e2e',
+                    color: '#fff'
+                }).then(function(r) { return r.isConfirmed; })
+                : Promise.resolve(confirm('ยกเลิกการผูก Google?'));
+            ask.then(function(ok) {
+                if (!ok) return;
+                fetch('/api/auth/google/unlink', { method: 'POST', credentials: 'same-origin' })
+                    .then(function() { location.reload(); });
             });
         });
-    })();
-
-    const playerId = '<%= player.playerId %>';
-    
-    // Update name
-    $('#updateNameBtn').on('click', function() {
-        const newName = $('#playerNameInput').val().trim();
-        if (!newName) {
-            Swal.fire({
-                icon: 'warning',
-                title: '⚠️ กรุณากรอกชื่อ',
-                text: 'ชื่อไม่สามารถว่างได้',
-                background: '#1e1e1e',
-                color: '#fff',
-                confirmButtonColor: '#f39c12'
-            });
-            return;
-        }
-
-        $.ajax({
-            url: '/profile/updateName?playerId=' + playerId,
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ name: newName }),
-            success: function(response) {
-                if (response.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '✅ บันทึกสำเร็จ',
-                        text: 'ชื่อถูกอัปเดตแล้ว',
-                        timer: 2000,
-                        showConfirmButton: false,
-                        background: '#1e1e1e',
-                        color: '#fff'
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: '❌ บันทึกไม่สำเร็จ',
-                        text: response.error || 'เกิดข้อผิดพลาด',
-                        background: '#1e1e1e',
-                        color: '#fff',
-                        confirmButtonColor: '#e74c3c'
-                    });
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: '❌ เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถอัปเดตชื่อได้',
-                    background: '#1e1e1e',
-                    color: '#fff',
-                    confirmButtonColor: '#e74c3c'
-                });
-            }
-        });
-    });
-
-    // Update color
-    $('.color-btn').on('click', function() {
-        const color = $(this).data('color');
-        
-        $.ajax({
-            url: '/profile/updateColor?playerId=' + playerId,
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ color: color }),
-            success: function(response) {
-                if (response.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '✅ เปลี่ยนสีสำเร็จ',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        background: '#1e1e1e',
-                        color: '#fff'
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: '❌ เปลี่ยนสีไม่สำเร็จ',
-                        text: response.error || 'เกิดข้อผิดพลาด',
-                        background: '#1e1e1e',
-                        color: '#fff',
-                        confirmButtonColor: '#e74c3c'
-                    });
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: '❌ เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถเปลี่ยนสีได้',
-                    background: '#1e1e1e',
-                    color: '#fff',
-                    confirmButtonColor: '#e74c3c'
-                });
-            }
-        });
-    });
-    
-    // Current values
-    let currentAvatar = '<%= player.avatar || "👤" %>';
-    let currentFrame = '<%= player.avatarFrame || "none" %>';
-    const playerColor = '<%= player.color %>';
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    // Frame styles
-    const frameStyles = {
-        'none': 'none',
-        'bronze': 'linear-gradient(135deg, #cd7f32 0%, #8b4513 100%)',
-        'silver': 'linear-gradient(135deg, #c0c0c0 0%, #808080 100%)',
-        'gold': 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
-        'diamond': 'linear-gradient(135deg, #b9f2ff 0%, #00bfff 100%)',
-        'fire': 'linear-gradient(135deg, #ff4500 0%, #ff0000 100%)',
-        'rainbow': 'linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)',
-        'neon': 'linear-gradient(135deg, #00ff00 0%, #00ffff 50%, #ff00ff 100%)'
-    };
-    
-    // Load avatars and frames
-    console.log('Loading avatars...');
-    $.ajax({
-        url: '/api/avatars',
-        method: 'GET',
-        dataType: 'json',
-        success: function(data) {
-            console.log('Avatars API response:', data);
-            
-            // ตรวจสอบว่า data มีโครงสร้างถูกต้อง
-            var avatars = (data && Array.isArray(data.avatars)) ? data.avatars : [];
-            var frames = (data && Array.isArray(data.frames)) ? data.frames : [];
-            
-            // Render avatars
-            var $avatarContainer = $('#avatarSelection');
-            $avatarContainer.empty();
-            if (avatars.length > 0) {
-                for (var i = 0; i < avatars.length; i++) {
-                    var avatar = avatars[i];
-                    var isActive = avatar === currentAvatar ? 'active' : '';
-                    $avatarContainer.append('<button class="avatar-btn ' + isActive + '" data-avatar="' + avatar + '">' + avatar + '</button>');
-                }
-            } else {
-                $avatarContainer.html('<p style="color:#aaa;">ไม่พบ Avatar</p>');
-            }
-            
-            // Render frames
-            var $frameContainer = $('#frameSelection');
-            $frameContainer.empty();
-            if (frames.length > 0) {
-                for (var j = 0; j < frames.length; j++) {
-                    var frame = frames[j];
-                    var frameActive = frame.id === currentFrame ? 'active' : '';
-                    var bgStyle = frame.style !== 'none' ? 'background: ' + frame.style + ';' : 'background: #333;';
-                    $frameContainer.append('<button type="button" class="frame-btn ' + frameActive + '" data-frame="' + frame.id + '" title="' + frame.name + '"><div class="frame-preview" style="' + bgStyle + '">👤</div></button>');
-                }
-            } else {
-                $frameContainer.html('<p style="color:#aaa;">ไม่พบกรอบ Avatar</p>');
-            }
-            
-            // Update preview frame
-            updateFramePreview();
-        },
-        error: function(xhr, status, error) {
-            console.error('Failed to load avatars:', error);
-            $('#avatarSelection').html('<p style="color:#f00;">โหลดไม่สำเร็จ: ' + error + '</p>');
-            $('#frameSelection').html('<p style="color:#f00;">โหลดไม่สำเร็จ</p>');
-        }
-    });
-    
-    // Update preview
-    function updateFramePreview() {
-        const frameStyle = frameStyles[currentFrame];
-        if (frameStyle && frameStyle !== 'none') {
-            $('#avatarPreviewFrame').css('background', frameStyle).show();
-        } else {
-            $('#avatarPreviewFrame').hide();
-        }
-        const $avatarPreviewInner = $('#avatarPreviewInner');
-        $avatarPreviewInner.text(currentAvatar);
-        if (!reducedMotion) {
-            $avatarPreviewInner.stop(true, true).css('transform', 'scale(0.88)').animate({ opacity: 0.72 }, 90, function() {
-                $avatarPreviewInner.css('transform', 'scale(1)');
-                $avatarPreviewInner.animate({ opacity: 1 }, 140);
-            });
-        }
     }
 
-    function activateProfileMotion() {
-        $('.profile-container').addClass('is-ready');
-
-        if (reducedMotion) {
-            $('.stats-grid .stat-card, .role-stats-grid .role-stat-card, .game-history-item, .last-played, .game-history-section').addClass('is-visible');
-            return;
-        }
-
-        const observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, {
-            threshold: 0.12,
-            rootMargin: '0px 0px -24px 0px'
-        });
-
-        $('.stats-grid .stat-card, .role-stats-grid .role-stat-card, .game-history-item, .last-played, .game-history-section').each(function(index) {
-            this.classList.add('reveal-item');
-            this.style.setProperty('--reveal-delay', String(Math.min(index * 36, 220)));
-            observer.observe(this);
-        });
-    }
-    
-    // Avatar click
-    $(document).on('click', '.avatar-btn', function() {
-        const avatar = $(this).data('avatar');
-        
-        $.ajax({
-            url: '/profile/updateAvatar?playerId=' + playerId,
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ avatar: avatar }),
-            success: function(response) {
-                if (response.success) {
-                    currentAvatar = avatar;
-                    $('.avatar-btn').removeClass('active');
-                    $(`.avatar-btn[data-avatar="${avatar}"]`).addClass('active');
-                    updateFramePreview();
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: '✅ เปลี่ยน Avatar สำเร็จ',
-                        timer: 1200,
-                        showConfirmButton: false,
-                        background: '#1e1e1e',
-                        color: '#fff'
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: '❌ เปลี่ยน Avatar ไม่สำเร็จ',
-                        text: response.error || 'เกิดข้อผิดพลาด',
-                        background: '#1e1e1e',
-                        color: '#fff',
-                        confirmButtonColor: '#e74c3c'
-                    });
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: '❌ เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถเปลี่ยน Avatar ได้',
-                    background: '#1e1e1e',
-                    color: '#fff',
-                    confirmButtonColor: '#e74c3c'
-                });
-            }
+    document.getElementById('pfRestoreForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('recoveryRestore');
+        btn.disabled = true;
+        postJson('/api/identity/restore', { code: document.getElementById('recoveryInput').value }).then(function(res) {
+            if (!res.success) throw new Error(res.error || 'รหัสไม่ถูกต้อง');
+            localStorage.setItem('insiderGamePlayerId', res.playerId);
+            localStorage.setItem('insiderGameRecoveryCode', res.recoveryCode);
+            location.replace('/profile');
+        }).catch(function(err) {
+            toast(err.message || 'กู้บัญชีไม่สำเร็จ', true);
+            btn.disabled = false;
         });
     });
-    
-    // Frame click
-    $(document).on('click', '.frame-btn', function() {
-        const frameId = $(this).data('frame');
-        
-        $.ajax({
-            url: '/profile/updateAvatarFrame?playerId=' + playerId,
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ frameId: frameId }),
-            success: function(response) {
-                if (response.success) {
-                    currentFrame = frameId;
-                    $('.frame-btn').removeClass('active');
-                    $(`.frame-btn[data-frame="${frameId}"]`).addClass('active');
-                    updateFramePreview();
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: '✅ เปลี่ยนกรอบสำเร็จ',
-                        timer: 1200,
-                        showConfirmButton: false,
-                        background: '#1e1e1e',
-                        color: '#fff'
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: '❌ เปลี่ยนกรอบไม่สำเร็จ',
-                        text: response.error || 'เกิดข้อผิดพลาด',
-                        background: '#1e1e1e',
-                        color: '#fff',
-                        confirmButtonColor: '#e74c3c'
-                    });
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: '❌ เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถเปลี่ยนกรอบได้',
-                    background: '#1e1e1e',
-                    color: '#fff',
-                    confirmButtonColor: '#e74c3c'
-                });
-            }
-        });
-    });
-
-    if (!reducedMotion) {
-        window.requestAnimationFrame(function() {
-            window.requestAnimationFrame(activateProfileMotion);
-        });
-    } else {
-        activateProfileMotion();
-    }
-});
+})();
 </script>

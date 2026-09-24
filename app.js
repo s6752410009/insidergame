@@ -1147,7 +1147,7 @@ ${googleAuth.isEnabled() ? `<meta name="google-client-id" content="${googleAuth.
 <div class="box" id="loading"><p>กำลังตรวจสอบบัญชี…</p></div>
 <div class="box" id="form" hidden>
     <h1>🔑 กู้บัญชีเดิม</h1>
-    <p>บัญชีนี้ผูกกับเครื่องอื่นอยู่ ล็อกอินด้วย Google ที่เคยผูกไว้ หรือใส่ <b>รหัสกู้บัญชี</b> (ดูได้ที่หน้าโปรไฟล์ในเครื่องเดิม) เพื่อเล่นต่อพร้อมถ้วยและสถิติเดิม</p>
+    <p>บัญชีนี้ผูกกับเครื่องอื่นอยู่ ${googleAuth.isEnabled() ? 'ล็อกอินด้วย Google ที่เคยผูกไว้ หรือใส่' : 'ใส่'} <b>รหัสกู้บัญชี</b> (ดูได้ที่หน้าโปรไฟล์ในเครื่องเดิม) เพื่อเล่นต่อพร้อมถ้วยและสถิติเดิม</p>
     ${googleAuth.isEnabled() ? `<div data-google-signin style="display:flex;justify-content:center;margin-bottom:12px"></div>
     <p style="margin:0 0 10px;font-size:13px;color:#94a3b8">หรือใส่รหัสกู้บัญชี</p>` : ''}
     <input id="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off" maxlength="14">
@@ -4382,7 +4382,21 @@ app.get('/room/:roomId', async function(req, res) {
 app.get('/profile', function(req, res) {
     const player = getRenderablePlayer(req.playerId);
     const stats = statsManager.getStats(req.playerId);
-    res.render('profile.ejs', { player: player, stats: stats, availableColors: playerManager.AVAILABLE_COLORS });
+    const werewolfRoles = Object.values(getGameEngine('werewolf').ROLE_DEFINITIONS || {})
+        .map(role => ({ id: role.id, icon: role.icon, label: role.thaiName || role.name }));
+    let chips = null;
+    try {
+        chips = playerManager.isValidPlayerId(req.playerId) ? walletManager.publicWallet(req.playerId).balance : null;
+    } catch (error) {
+        chips = null;
+    }
+    res.render('profile.ejs', {
+        player: player,
+        stats: stats,
+        availableColors: playerManager.AVAILABLE_COLORS,
+        werewolfRoles,
+        chips
+    });
 });
 
 // Player support inbox. Messages remain available when admins are offline.
