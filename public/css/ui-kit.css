@@ -79,6 +79,22 @@ footer.footer:has(.ui-footer-bar) {
 footer.footer:not(:has(*)) {
     display: none !important;
 }
+/* footer ที่มีแค่ป๊อปอัปซ่อนอยู่ (กระดานเกม) — ไม่ต้องโชว์แถบทึบว่างๆ ล่างจอ
+   ป๊อปอัปข้างในเป็น position:fixed จึงยังเด้งขึ้นมาได้ตามปกติ */
+footer.footer:has(*):not(:has(.ui-footer-bar)) {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    overflow: visible !important;
+}
+/* mobile.css เว้นท้าย .container-fluid ไว้ 70px สำหรับ footer แบบเก่า — หน้าที่ใช้ footer ใหม่เว้นที่ด้วย body แล้ว */
+body:has(.ui-footer-bar) .container-fluid {
+    padding-bottom: 10px !important;
+    margin-bottom: 0 !important;
+    min-height: 0 !important;
+}
 body:has(.ui-footer-bar) {
     /* เว้นที่ให้ footer ที่ตรึงล่างจอ — เนื้อหาท้ายหน้าจะไม่ถูกบัง */
     padding-bottom: calc(var(--ui-btn-h) + 40px + env(safe-area-inset-bottom));

@@ -226,6 +226,8 @@ async function main() {
 
         await page.click('#createRoomBtn');
         await page.waitForSelector('.swal2-popup #modeQuickPickGrid', { timeout: BROWSER_TIMEOUT_MS });
+        // Black Market อยู่ในส่วน "ดูเกมทั้งหมด" ที่พับไว้ — เปิดก่อนค่อยกด
+        await page.click('.swal2-popup .mode-all-details > summary');
         await page.click('.swal2-popup .mode-quick-card[data-mode-id="blackmarket"]');
 
         await page.waitForFunction(() => {

@@ -1164,6 +1164,9 @@ function getTrustedPlayerId(req) {
 // - บัญชีเก่าก่อนมีระบบนี้ที่ยังไม่เคยถูกจอง (ครั้งแรกหลัง deploy) — ยกเว้น site admin
 //   ซึ่งต้องใช้รหัสกู้บัญชี/ลิงก์จากหน้า admin เท่านั้น
 function canClaimPlayerId(playerId) {
+    // โหมดทดสอบ (smoke/browser tests) — เปิดหน้าเกมด้วย ?playerId ของ client ที่สร้างผ่าน socket
+    // เว็บจริงไม่เคยตั้งค่านี้ (อยู่แค่ใน npm scripts ของเทส)
+    if (ALLOW_LEGACY_SOCKET_IDENTITY) return true;
     const player = playerManager.getPlayer(playerId);
     if (!player) return true;
     if (player.isSiteAdmin) return false;

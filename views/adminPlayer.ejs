@@ -47,9 +47,7 @@
 </form>
 
 <%- contentFor('footer') %>
-<div class="container">
-    <a href='/' class="btn btn-dark cta" id="newGame">กลับไปที่เกม</a>
-</div>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก', id: 'newGame' } }) %>
 
 <%- contentFor('script') %>
 <script>
