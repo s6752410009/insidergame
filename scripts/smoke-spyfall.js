@@ -93,6 +93,56 @@ function run() {
     assert.strictEqual(tieRoom.gameState.winner.team, 'spy');
     assert.strictEqual(tieRoom.gameState.winner.wasTie, true);
 
+    // สายลับต้องเป็นคนออนไลน์เท่านั้น (คนหลุดช่วง grace ห้ามได้บทสายลับ)
+    for (let i = 0; i < 40; i += 1) {
+        const offlineRoom = createMockRoom(5);
+        offlineRoom.players[1].socketId = null;
+        offlineRoom.players[3].socketId = null;
+        spyfallEngine.startGame(offlineRoom);
+        assert.ok(!['p2', 'p4'].includes(offlineRoom.gameState.spyPlayerId), 'offline player must never be the spy');
+    }
+
+    // สายลับทายสถานที่ถูก → สายลับชนะทันที
+    const guessRoom = createMockRoom(4);
+    spyfallEngine.startGame(guessRoom);
+    const guessSpy = guessRoom.gameState.spyPlayerId;
+    const guessCitizen = guessRoom.gameState.players.find(p => p.playerId !== guessSpy).playerId;
+    assert.throws(() => spyfallEngine.guessLocation(guessRoom, guessSpy, guessRoom.gameState.locationId), /ช่วงคุย/, 'no guessing during reveal');
+    spyfallEngine.advancePhase(guessRoom);
+    assert.strictEqual(spyfallEngine.buildClientState(guessRoom, guessSpy).canGuessLocation, true);
+    assert.strictEqual(spyfallEngine.buildClientState(guessRoom, guessCitizen).canGuessLocation, false);
+    assert.throws(() => spyfallEngine.guessLocation(guessRoom, guessCitizen, guessRoom.gameState.locationId), /สายลับ/, 'citizen cannot guess');
+    assert.throws(() => spyfallEngine.guessLocation(guessRoom, guessSpy, 'not-a-place'), /ไม่ถูกต้อง/);
+    const correct = spyfallEngine.guessLocation(guessRoom, guessSpy, guessRoom.gameState.locationId);
+    assert.strictEqual(correct.correct, true);
+    assert.strictEqual(guessRoom.gameState.phase, 'finished');
+    assert.strictEqual(guessRoom.gameState.winner.team, 'spy');
+    assert.strictEqual(guessRoom.gameState.winner.spyGuess.correct, true);
+    assert.throws(() => spyfallEngine.guessLocation(guessRoom, guessSpy, guessRoom.gameState.locationId), /ช่วงคุย|แล้ว/, 'guess only once');
+
+    // ทายผิด (ช่วงโหวต) → สายลับแพ้ทันที
+    const wrongRoom = createMockRoom(4);
+    spyfallEngine.startGame(wrongRoom);
+    spyfallEngine.advancePhase(wrongRoom);
+    spyfallEngine.endDiscussionEarly(wrongRoom);
+    const wrongSpy = wrongRoom.gameState.spyPlayerId;
+    const wrongLocation = spyfallEngine.getAllLocations().find(loc => loc.id !== wrongRoom.gameState.locationId);
+    const wrong = spyfallEngine.guessLocation(wrongRoom, wrongSpy, wrongLocation.id);
+    assert.strictEqual(wrong.correct, false);
+    assert.strictEqual(wrongRoom.gameState.winner.team, 'citizens');
+
+    // สายลับออกกลางเกม → ยังถูกนับใน scoring roster (แพ้)
+    const leaveRoom = createMockRoom(4);
+    spyfallEngine.startGame(leaveRoom);
+    spyfallEngine.advancePhase(leaveRoom);
+    const leaverId = leaveRoom.gameState.spyPlayerId;
+    leaveRoom.gameState.players = leaveRoom.gameState.players.filter(p => p.playerId !== leaverId);
+    spyfallEngine.handlePlayerLeft(leaveRoom, leaverId);
+    assert.strictEqual(leaveRoom.gameState.winner.team, 'citizens');
+    const scoring = spyfallEngine.getScoringPlayers(leaveRoom);
+    assert.strictEqual(scoring.length, 4, 'leaver stays in scoring roster');
+    assert.strictEqual(scoring.find(p => p.playerId === leaverId).role, 'spy');
+
     console.log('smoke-spyfall: OK');
 }
 

@@ -613,6 +613,8 @@ function recordInsiderGameEnd(roomId, gameResult) {
     }
 
     const hasWon = resultVote2.hasWon; // true = พลเมืองชนะ, false = จอมบงการชนะ
+    // หมดเวลาโดยยังทายคำไม่ได้ → ทุกคนแพ้ (รวมจอมบงการและ GM)
+    const everyoneLoses = !!resultVote2.everyoneLoses;
     const gameTimestamp = new Date().toISOString();
     const traitorName = resultVote2.finalTraitorName || 'ไม่ทราบ';
 
@@ -634,7 +636,13 @@ function recordInsiderGameEnd(roomId, gameResult) {
         let playerWon = false;
         
         // ตรวจสอบว่าเป็นผู้ชนะหรือไม่ (ตาม role)
-        if (role === 'จอมบงการ') {
+        if (everyoneLoses) {
+            stat.losses += 1;
+            stat.modeStats.insider.losses += 1;
+            if (role === 'จอมบงการ') stat.roleStats.traitorCount += 1;
+            else if (role === 'ผู้ดำเนินเกม') stat.roleStats.gameMasterCount += 1;
+            else stat.roleStats.citizenCount += 1;
+        } else if (role === 'จอมบงการ') {
             // จอมบงการชนะ = พลเมืองแพ้
             if (!hasWon) {
                 stat.wins += 1;
@@ -686,6 +694,7 @@ function recordInsiderGameEnd(roomId, gameResult) {
             word: word || 'ไม่ทราบ',
             traitor: traitorName,
             citizensWon: hasWon,
+            everyoneLost: everyoneLoses,
             playerCount: players.length
         };
         

@@ -21,7 +21,7 @@ const ROLE_DEFINITIONS = {
         icon: '🕶️',
         image: SPYFALL_IMAGE('spy'),
         title: 'สายลับ',
-        summary: 'คุณไม่รู้สถานที่ — เนียนตอบให้รอด ถ้าโหวตแล้วจับคุณไม่ได้ คุณชนะ'
+        summary: 'คุณไม่รู้สถานที่ — เนียนตอบให้รอด ถ้าโหวตแล้วจับคุณไม่ได้ หรือทายสถานที่ถูก คุณชนะ (ทายผิดแพ้ทันที)'
     }
 };
 
@@ -261,7 +261,9 @@ function startGame(room) {
     room.gameState = resetRoomGame(room);
     const activePlayers = getActivePlayers(room);
     const location = pickRandom(getAllLocations());
-    const spyPlayer = pickRandom(activePlayers);
+    // สายลับต้องเป็นคนที่ออนไลน์ตอนเริ่ม — ไม่งั้นเกมไม่มีสายลับเล่นจริง
+    const onlinePlayers = activePlayers.filter(player => isPlayerOnline(room, player.playerId));
+    const spyPlayer = pickRandom(onlinePlayers.length ? onlinePlayers : activePlayers);
 
     room.gameState.locationId = location.id;
     room.gameState.locationName = location.name;
@@ -274,9 +276,16 @@ function startGame(room) {
     room.gameState.voteCounts = {};
     room.gameState.winner = null;
     room.gameState.statsRecordedAt = null;
+    room.gameState.spyGuess = null;
     room.gameState.lastAction = Date.now();
 
     assignRoles(room, spyPlayer.playerId, location);
+    // roster ตอนแจกบท — คนออกกลางเกม (โดยเฉพาะสายลับ) ยังต้องถูกนับสถิติ
+    room.gameState.rosterSnapshot = room.gameState.players.map(player => ({
+        playerId: player.playerId,
+        name: player.name,
+        role: player.role
+    }));
     moveToRevealPhase(room);
     return room.gameState;
 }
@@ -423,6 +432,72 @@ function handlePlayerLeft(room, playerId) {
     return resolveVotes(room);
 }
 
+// ผู้เล่นที่ต้องนับสถิติ = คนที่อยู่ตอนนี้ + คนที่ออกกลางเกม (จาก roster ตอนเริ่ม)
+function getScoringPlayers(room) {
+    const current = Array.isArray(room?.gameState?.players) ? room.gameState.players : [];
+    const roster = Array.isArray(room?.gameState?.rosterSnapshot) ? room.gameState.rosterSnapshot : [];
+    const presentIds = new Set(current.map(player => player.playerId));
+    return current.concat(roster.filter(player => player.playerId && !presentIds.has(player.playerId)));
+}
+
+// สายลับทายสถานที่ (ได้ครั้งเดียว ช่วงคุยหรือโหวต): ถูก = สายลับชนะทันที, ผิด = สายลับแพ้ทันที
+function guessLocation(room, playerId, locationId) {
+    if (!room?.gameState || room.settings?.gameMode !== 'spyfall') {
+        throw new Error('ไม่พบเกมนี้');
+    }
+    const phase = room.gameState.phase;
+    if (phase !== 'discussion' && phase !== 'vote') {
+        throw new Error('ทายสถานที่ได้เฉพาะช่วงคุยหรือช่วงโหวต');
+    }
+    if (!playerId || playerId !== room.gameState.spyPlayerId || !getPlayer(room, playerId)) {
+        throw new Error('เฉพาะสายลับเท่านั้นที่ทายสถานที่ได้');
+    }
+    if (room.gameState.spyGuess) {
+        throw new Error('ทายสถานที่ไปแล้ว');
+    }
+    const guessed = getAllLocations().find(location => location.id === locationId);
+    if (!guessed) {
+        throw new Error('เลือกสถานที่ไม่ถูกต้อง');
+    }
+
+    const correct = guessed.id === room.gameState.locationId;
+    const spyPlayer = getPlayer(room, playerId);
+    const spyDisplayName = spyPlayer?.name || room.gameState.spyName || 'ไม่ทราบ';
+    room.gameState.spyGuess = { locationId: guessed.id, locationName: guessed.name, correct };
+
+    room.gameState.phase = 'finished';
+    room.gameState.status = 'spyfall_finished';
+    room.gameState.phaseEndsAt = null;
+    room.gameState.accusedPlayerId = null;
+    room.gameState.winner = {
+        team: correct ? 'spy' : 'citizens',
+        teamLabel: correct ? 'สายลับทายสถานที่ถูก — สายลับชนะ' : 'สายลับทายสถานที่ผิด — พลเมืองชนะ',
+        spyPlayerId: room.gameState.spyPlayerId,
+        spyName: spyDisplayName,
+        spyLeft: false,
+        spyGuess: { locationId: guessed.id, locationName: guessed.name, correct },
+        accusedPlayerId: null,
+        accusedName: '— (สายลับทายสถานที่)',
+        locationId: room.gameState.locationId,
+        locationName: room.gameState.locationName,
+        locationIcon: room.gameState.locationIcon,
+        locationImage: room.gameState.locationImage,
+        voteCounts: {},
+        topVotes: 0,
+        wasTie: false
+    };
+    room.gameState.lastAction = Date.now();
+    pushHistory(
+        room,
+        correct ? '🕶️' : '🎉',
+        correct
+            ? `สายลับ ${spyDisplayName} ทายถูกว่าเป็น ${guessed.name} — สายลับชนะ!`
+            : `สายลับ ${spyDisplayName} ทาย ${guessed.name} ผิด (ที่จริงคือ ${room.gameState.locationName}) — พลเมืองชนะ!`,
+        correct ? 'red' : 'green'
+    );
+    return { resolved: true, correct, phase: room.gameState.phase };
+}
+
 function endDiscussionEarly(room) {
     if (!room?.gameState) {
         throw new Error('ไม่พบเกมนี้');
@@ -544,6 +619,8 @@ function buildClientState(room, playerId) {
                 name: location.name
             }))
             : null,
+        canGuessLocation: isSpy && !room.gameState.spyGuess
+            && (room.gameState.phase === 'discussion' || room.gameState.phase === 'vote'),
         self: {
             playerId: self.playerId,
             name: self.name,
@@ -616,6 +693,8 @@ module.exports = {
     submitVote,
     resolveVotes,
     handlePlayerLeft,
+    guessLocation,
+    getScoringPlayers,
     buildClientState,
     getDiscussionMs,
     getVoteMs,
