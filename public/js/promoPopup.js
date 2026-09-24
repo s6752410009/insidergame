@@ -10,7 +10,6 @@
         youtube: '',  // เช่น 'https://www.youtube.com/@yourchannel'
         review: ''    // เช่น ลิงก์ Google Form / Facebook Page รีวิว
     };
-    var SHARE_URL = 'https://insider-th.me/';
     var SEEN_KEY = 'insiderPromoSeen';
     var SKIP_PREFIXES = ['/game', '/admin', '/banned', '/support'];
 
@@ -40,11 +39,11 @@
         overlay.innerHTML =
             '<div class="promo-card" role="dialog" aria-modal="true" aria-labelledby="promo-title">' +
                 '<button type="button" class="promo-close" aria-label="ปิด">&times;</button>' +
-                '<div class="promo-emoji" aria-hidden="true">🎉</div>' +
-                '<h2 id="promo-title">ขอบคุณที่มาเล่นนะ!</h2>' +
-                '<p>ถ้าสนุก ฝากช่วยกันหน่อย 🙏<br>รีวิว · ชวนเพื่อน · อัดคลิปลง TikTok / YouTube</p>' +
+                '<div class="promo-emoji" aria-hidden="true">🥺</div>' +
+                '<h2 id="promo-title">ขอประชาสัมพันธ์หน่อยครับ 🙏</h2>' +
+                '<p>เกมนี้ทำโดยนักพัฒนาตัวเล็ก ๆ คนหนึ่ง<br>ถ้าเล่นแล้วสนุก ช่วย<b>ชวนเพื่อน</b> <b>รีวิว</b><br>หรืออัดคลิปลง TikTok / YouTube ให้หน่อยนะครับ</p>' +
+                '<p class="promo-thanks">ทุกการแชร์คือกำลังใจให้ทำเกมต่อ ขอบคุณมากครับ ❤️</p>' +
                 '<div class="promo-actions">' +
-                    '<button type="button" class="promo-btn promo-share"><i class="fas fa-user-friends" aria-hidden="true"></i><span>ชวนเพื่อนมาเล่น</span></button>' +
                     linkButton(PROMO_LINKS.review, 'promo-review', 'fas fa-star', 'เขียนรีวิว') +
                     linkButton(PROMO_LINKS.tiktok, 'promo-tiktok', 'fab fa-tiktok', 'TikTok') +
                     linkButton(PROMO_LINKS.youtube, 'promo-youtube', 'fab fa-youtube', 'YouTube') +
@@ -65,19 +64,6 @@
         overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
         overlay.querySelector('.promo-close').addEventListener('click', close);
         overlay.querySelector('.promo-later').addEventListener('click', close);
-        overlay.querySelector('.promo-share').addEventListener('click', function() {
-            var btnLabel = this.querySelector('span');
-            var shareData = { title: 'Insider Game Thailand', text: 'มาเล่นเกมปาร์ตี้ด้วยกัน!', url: SHARE_URL };
-            if (navigator.share) {
-                navigator.share(shareData).catch(function() {});
-                return;
-            }
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(SHARE_URL).then(function() {
-                    btnLabel.textContent = 'คัดลอกลิงก์แล้ว ✓';
-                }).catch(function() {});
-            }
-        });
         document.addEventListener('keydown', onKey);
 
         requestAnimationFrame(function() {
