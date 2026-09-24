@@ -59,7 +59,7 @@ async function waitForHttpReady(baseUrl, timeoutMs) {
 }
 
 async function spawnServer() {
-    const port = await getFreePort();
+    const port = Number(process.env.SMOKE_PORT) || await getFreePort();
     const appPath = path.join(__dirname, '..', 'app.js');
     const child = spawn(process.execPath, [appPath], {
         cwd: path.join(__dirname, '..'),
@@ -273,8 +273,22 @@ async function main() {
         );
         console.log(`Entered Market Phase (Round ${state.roundNumber})`);
 
+        // bug 3: round 1 market ปล่อยให้หมดเวลาเอง แล้วบอทต้องเดินต่อในช่วงลงมือเอง
+        let timerDrivenRound = 0;
+
         // Play the game until finished
         while (state && state.phase !== 'finished') {
+            if (state.phase === 'market' && !timerDrivenRound) {
+                timerDrivenRound = Number(state.roundNumber || 1);
+                console.log(`[Round ${state.roundNumber}] Human skips market; waiting for the timer to resolve it...`);
+                state = await onceWithTimeout(
+                    human.socket,
+                    'blackmarketState',
+                    payload => payload && payload.roomId === roomId && payload.phase === 'action',
+                    60000
+                );
+                continue;
+            }
             if (state.phase === 'market') {
                 console.log(`[Round ${state.roundNumber}] Playing Market Phase...`);
                 // Make a choice for human player
@@ -309,11 +323,13 @@ async function main() {
                 assert(response && response.success, 'Action submit failed');
 
                 // Wait for phase transition to next market or finished
+                // หลังตลาดหมดเวลา บอทต้องล็อกแผนเองแล้ว — มนุษย์กดครบคนสุดท้ายต้องปิดยกทันที ไม่ต้องรอ timer 30 วิ
+                const isTimerRound = Number(state.roundNumber || 0) === timerDrivenRound;
                 state = await onceWithTimeout(
                     human.socket,
                     'blackmarketState',
                     payload => payload && payload.roomId === roomId && payload.phase !== 'action',
-                    25000
+                    isTimerRound ? 12000 : 25000
                 );
             } else {
                 console.log(`Unknown phase: ${state.phase}`);

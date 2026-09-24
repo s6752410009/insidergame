@@ -2655,7 +2655,7 @@
         if (nextState.phase === 'finished' && nextState.winner) {
           showCeremony({
             kicker: '👑 ปิดโต๊ะ',
-            title: `${nextState.winner.avatar || '🎩'} ${nextState.winner.name || 'มีคนคุมเมืองแล้ว'}`,
+            title: winnerHeadline(nextState.winner),
             copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
             tone: 'red',
             sound: 'close',
@@ -2688,7 +2688,7 @@
         if (nextState.phase === 'finished' && nextState.winner) {
           showCeremony({
             kicker: '👑 ปิดโต๊ะ',
-            title: `${nextState.winner.avatar || '🎩'} ${nextState.winner.name || 'มีคนคุมเมืองแล้ว'}`,
+            title: winnerHeadline(nextState.winner),
             copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
             tone: 'red',
             sound: 'close',
@@ -2743,6 +2743,21 @@
         return window.renderGameIcon(meta || {}, className || 'game-icon');
       }
       return '<span class="' + escapeHtml(className || 'game-icon') + ' game-icon-fallback">' + escapeHtml((meta && meta.icon) || '🎴') + '</span>';
+    }
+
+    // ชนะร่วม (เสมอทุกเกณฑ์) แสดงทุกชื่อ
+    function winnerHeadline(winner) {
+      if (!winner) return 'มีคนคุมเมืองแล้ว';
+      const list = Array.isArray(winner.coWinners) && winner.coWinners.length > 1 ? winner.coWinners : null;
+      if (list) {
+        return '🤝 ชนะร่วม: ' + list.map(function(w) { return (w.avatar || '') + ' ' + (w.name || '-'); }).join(', ');
+      }
+      return (winner.avatar || '🎩') + ' ' + (winner.name || 'มีคนคุมเมืองแล้ว');
+    }
+
+    // เงิน/ค่าหัว/ของ ของคนอื่นเป็นความลับ (server ส่ง null) — แสดง ? แทน
+    function secretStat(value) {
+      return value === null || value === undefined ? '?' : Number(value || 0);
     }
 
     function feedIconMeta(entry, options) {
@@ -2849,13 +2864,17 @@
         }
         return Number(right.cash || 0) - Number(left.cash || 0);
       });
-      const hottestPlayer = alivePlayers.slice().sort(function(left, right) {
+      // คำนวณจากคนที่เห็นค่าจริงเท่านั้น (ค่าของคู่แข่งถูกซ่อนระหว่างเกม)
+      const knownOpponents = aliveOpponents.filter(function(player) {
+        return player.statsVisible && player.heat !== null && player.heat !== undefined;
+      });
+      const hottestPlayer = knownOpponents.slice().sort(function(left, right) {
         if (Number(right.heat || 0) !== Number(left.heat || 0)) {
           return Number(right.heat || 0) - Number(left.heat || 0);
         }
         return Number(left.cash || 0) - Number(right.cash || 0);
       })[0] || null;
-      const fragilePlayer = alivePlayers.slice().sort(function(left, right) {
+      const fragilePlayer = knownOpponents.slice().sort(function(left, right) {
         const leftRisk = (Number(left.heat || 0) * 10) - Number(left.cash || 0);
         const rightRisk = (Number(right.heat || 0) * 10) - Number(right.cash || 0);
         return rightRisk - leftRisk;
@@ -4064,9 +4083,9 @@
           <div class="bm-player-copy">${player.alive ? 'ยังอยู่ในเกม' : 'หลุดจากโต๊ะแล้ว'}${player.isSelf ? ' • นี่คือตัวคุณ' : ''}</div>
           <div class="bm-player-stats">
             <div class="bm-pill good">👑 ${Number(player.influence || 0)}</div>
-            <div class="bm-pill">💵 ${Number(player.cash || 0)}</div>
-            <div class="bm-pill warn">🔥 ${Number(player.heat || 0)}</div>
-            <div class="bm-pill ${player.alive ? '' : 'dead'}">🎒 ${Number(player.inventoryCount || 0)}</div>
+            <div class="bm-pill">💵 ${secretStat(player.cash)}</div>
+            <div class="bm-pill warn">🔥 ${secretStat(player.heat)}</div>
+            <div class="bm-pill ${player.alive ? '' : 'dead'}">🎒 ${secretStat(player.inventoryCount)}</div>
           </div>
         </div>
       `).join('');
@@ -4125,7 +4144,7 @@
         const tone = escapeHtml(entry.tone || 'neutral');
         return '<div class="bm-round-summary-item tone-' + tone + '">' +
           '<span class="bm-rs-icon">' + gameIcon(feedIconMeta(entry, { inline: true })) + '</span>' +
-          '<span class="bm-rs-copy">' + escapeHtml(entry.text || '') + '</span>' +
+          '<span class="bm-rs-copy">' + (entry.private ? '<strong>🔒 เฉพาะคุณ:</strong> ' : '') + escapeHtml(entry.text || '') + '</span>' +
           '</div>';
       }).join('');
       var summaryTitle = phase === 'action'
@@ -4155,9 +4174,9 @@
 
       $('#winnerPanel').show().html(`
         <div class="bm-winner-card">
-          <div class="bm-winner-title">👑 คนที่คุมเมืองคืนนี้</div>
-          <div class="bm-player-name">${escapeHtml(winner.avatar || '🎩')} ${escapeHtml(winner.name || '-')}</div>
-          <div class="bm-player-copy" style="margin-top:8px;">${escapeHtml(winner.roleTitle || '-') } • ${escapeHtml(winner.reason || '')}</div>
+          <div class="bm-winner-title">${winner.shared ? '👑 ชนะร่วม — เสมอกันทุกเกณฑ์' : '👑 คนที่คุมเมืองคืนนี้'}</div>
+          <div class="bm-player-name">${escapeHtml(winnerHeadline(winner))}</div>
+          <div class="bm-player-copy" style="margin-top:8px;">${escapeHtml(winner.shared && Array.isArray(winner.coWinners) ? winner.coWinners.map(function(w) { return (w.name || '-') + ' (' + (w.roleTitle || '-') + ')'; }).join(', ') : (winner.roleTitle || '-')) } • ${escapeHtml(winner.reason || '')}</div>
           <div class="bm-player-stats" style="margin-top:10px;">
             <div class="bm-pill good">👑 ${Number(winner.influence || 0)}</div>
             <div class="bm-pill">💵 ${Number(winner.cash || 0)}</div>
@@ -4358,6 +4377,7 @@
     }
 
     socket.on('blackmarketState', function(state) {
+      if (!state) return;
       renderState(state);
     });
 
@@ -4467,7 +4487,7 @@
       const winner = currentState.winner;
       window.partyPlay.shareResult({
         mode: 'Black Market',
-        headline: (winner.name || '-') + ' คุมเมือง',
+        headline: winnerHeadline(winner) + ' คุมเมือง',
         sub: (winner.roleTitle || '') + ' · ' + (winner.reason || ''),
         lines: [
           'อิทธิพล ' + Number(winner.influence || 0),

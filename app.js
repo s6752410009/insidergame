@@ -2049,6 +2049,7 @@ function syncBlackMarketPhaseTimer(room) {
             }
             emitBlackMarketState(room);
             syncBlackMarketPhaseTimer(roomManager.getRoom(room.roomId) || room);
+            scheduleBlackMarketBots(room.roomId);
         } catch (error) {
             console.error('[blackmarket] overdue auto resolve failed:', {
                 roomId: room.roomId,
@@ -2102,6 +2103,7 @@ function syncBlackMarketPhaseTimer(room) {
             );
             emitBlackMarketState(currentRoom);
             syncBlackMarketPhaseTimer(roomManager.getRoom(currentRoom.roomId) || currentRoom);
+            scheduleBlackMarketBots(currentRoom.roomId);
         } catch (error) {
             console.error('[blackmarket] auto resolve failed:', {
                 roomId: room.roomId,
@@ -2167,6 +2169,30 @@ function emitBlackMarketState(room, targetSocketId = null, playerId = null) {
     });
 }
 
+// คนหลุดสายไม่ถูกนับว่าต้องรอ (everyoneCommitted ข้ามคนออฟไลน์) — ถ้าที่เหลือล็อกครบแล้วให้ปิด phase ทันที
+function advanceBlackMarketAfterDisconnect(room) {
+    if (!room || room.settings.gameMode !== 'blackmarket' || !roomManager.isRoomGameInProgress(room)) {
+        return;
+    }
+    try {
+        const result = getGameEngine('blackmarket').resolveIfAllCommitted(room);
+        if (result?.resolved) {
+            emitBlackMarketState(room);
+            scheduleBlackMarketBots(room.roomId);
+        }
+    } catch (error) {
+        console.error('[blackmarket] resolve after disconnect failed:', error?.message || error);
+    }
+}
+
+// ให้บอทเดินต่อหลังทุกการเปลี่ยน phase ที่ไม่ได้มาจากบอทเอง (หมดเวลา/คนออก/คนหลุด)
+function scheduleBlackMarketBots(roomId, delayMs = 800) {
+    setTimeout(() => {
+        const r = roomManager.getRoom(roomId);
+        if (r && r.settings.gameMode === 'blackmarket') runBotsForRoom(r).catch(console.error);
+    }, delayMs);
+}
+
 async function runBotsForRoom(room) {
     if (!room || room.settings.gameMode !== 'blackmarket') return;
     if (room.gameState.phase === 'finished') return;
@@ -2187,6 +2213,7 @@ async function runBotsForRoom(room) {
 
             // Wait a small randomized delay
             await delay(300 + Math.random() * 400);
+            if (room.gameState.phase !== 'market' || room.gameState.marketChoices[bot.playerId]) continue;
 
             // Fetch current client state to check affordability
             const clientState = blackMarketEngine.buildClientState(room, bot.playerId);
@@ -2243,6 +2270,7 @@ async function runBotsForRoom(room) {
 
             // Wait a small randomized delay
             await delay(300 + Math.random() * 400);
+            if (room.gameState.phase !== 'action' || room.gameState.actionChoices[bot.playerId]) continue;
 
             const clientState = blackMarketEngine.buildClientState(room, bot.playerId);
             if (!clientState) continue;
@@ -2980,6 +3008,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             } catch (error) {
                 console.error('[blackmarket] handlePlayerLeft failed:', error?.message || error);
             }
+            scheduleBlackMarketBots(room.roomId);
         }
         broadcastGameStateForRoom(room);
     } catch (error) {
@@ -7083,11 +7112,18 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('มีแค่หัวหน้าห้องที่สั่งเปิดเมืองใหม่ได้');
             }
 
+            // เปิดใหม่ได้เฉพาะตอนโต๊ะปิดแล้ว — กันล้างเกมกลางคันโดยไม่บันทึกสถิติ
+            if (room.gameState?.phase !== 'finished') {
+                throw new Error('เปิดเมืองใหม่ได้หลังโต๊ะนี้ปิดแล้วเท่านั้น');
+            }
+
             const onlinePlayers = room.players.filter(p => p.socketId);
             if (onlinePlayers.length < 4) {
                 throw new Error('ต้องมีผู้เล่นออนไลน์อย่างน้อย 4 คน');
             }
 
+            finalizeBlackMarketGameIfNeeded(room);
+            clearBlackMarketPhaseTimer(roomId);
             getGameEngine('blackmarket').startGame(room);
             room.chatHistory = (room.chatHistory || []).filter(entry => entry.playerName !== 'System');
 
@@ -8092,6 +8128,7 @@ io.sockets.on('connection', function(socket) {
             if (updatedRoom) {
                 // ส่ง roomUpdate ทันที (เพื่ออัปเดต online status)
                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
+                advanceBlackMarketAfterDisconnect(updatedRoom);
 
                 // ตั้ง timeout ก่อนส่งข้อความ "หลุดการเชื่อมต่อ" และลบผู้เล่นออกจากห้อง
                 const player = playerManager.getPlayer(playerId);

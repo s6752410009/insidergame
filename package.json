@@ -29,6 +29,8 @@
     "smoke:blackmarket:lobby:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-blackmarket-lobby.js",
     "smoke:blackmarket:board:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-blackmarket-board.js",
     "smoke:blackmarket:stats": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/integration-blackmarket-stats.js",
+    "smoke:blackmarket:engine": "node scripts/test-blackmarket-engine.js",
+    "smoke:blackmarket:bots": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-blackmarket-bots.js",
     "smoke:spyfall": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-spyfall.js",
     "smoke:spyfall:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-spyfall-mobile.js",
     "smoke:werewolf": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-werewolf-flow.js && ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-werewolf-reveal-miss.js",
