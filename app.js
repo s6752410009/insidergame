@@ -6941,6 +6941,12 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('ต้องเป็นหัวหน้าห้องเท่านั้น');
             }
 
+            // No mid-game restarts: only allowed once the current game has finished.
+            const wwState = room.gameState;
+            if (wwState && wwState.phase && !['lobby', 'finished'].includes(wwState.phase) && !wwState.winner) {
+                throw new Error('เกมยังไม่จบ เริ่มใหม่ได้หลังจบเกมเท่านั้น');
+            }
+
             const onlinePlayers = room.players.filter(p => p.socketId);
             if (onlinePlayers.length < 3) {
                 throw new Error('ต้องมีผู้เล่นออนไลน์อย่างน้อย 3 คน');

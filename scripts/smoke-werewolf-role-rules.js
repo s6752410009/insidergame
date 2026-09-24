@@ -329,7 +329,7 @@ function testBodyguardRules() {
 }
 
 function testSeerReadingRules() {
-    const room = createRoom(['alphaWolf', 'werewolf', 'seer', 'fool', 'doctor'], 5);
+    const room = createRoom(['alphaWolf', 'werewolf', 'seer', 'fool', 'doctor', 'mayor'], 6); // 2 wolves need >= 6 players (wolf cap floor(n/3))
     const seer = getSingleRole(room, 'seer');
     const alphaWolf = getSingleRole(room, 'alphaWolf');
     const werewolf = getSingleRole(room, 'werewolf');
