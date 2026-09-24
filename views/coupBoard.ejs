@@ -563,8 +563,12 @@ $(function() {
         (respond.challengingBlock && b
           ? escapeHtml(b.blockerName) + ' ขวางโดยอ้างว่ามี <b>' + escapeHtml(b.card.thaiName) + '</b>'
           : escapeHtml(p.actorName) + ' ประกาศ <b>' + escapeHtml(p.action.thaiLabel) + '</b>' +
-            (p.claimCard ? ' โดยอ้างว่ามี <b>' + escapeHtml(p.claimCard.icon + ' ' + p.claimCard.thaiName) + '</b>' : '')) +
-        '</div><div class="cp-respond">';
+            (p.claimCard ? ' โดยอ้างว่ามี <b>' + escapeHtml(p.claimCard.icon + ' ' + p.claimCard.thaiName) + '</b>' : '') +
+            (respond.blockOnly ? '<br><small>ท้าไม่สำเร็จ — แต่ยังขวางได้</small>' : '')) +
+        // ผูกปุ่มกับ "ขั้น" ที่ render — server ปัดตกคำตอบที่ช้ามาถึงหลังเฟสเปลี่ยนแล้ว
+        '</div><div class="cp-respond" data-step="' + escapeHtml(String(state.step ?? '')) +
+        '" data-phase="' + escapeHtml(String(state.phase || '')) +
+        '" data-turn="' + escapeHtml(String(state.turnNumber ?? '')) + '">';
       html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">✋ ปล่อยผ่าน</button>';
       if (respond.canChallenge) {
         html += '<button type="button" class="cp-btn cp-btn-challenge" data-respond="challenge">🔥 ' +
@@ -907,9 +911,16 @@ $(function() {
   });
 
   $(document).on('click', '[data-respond]', function() {
+    const $box = $(this).closest('.cp-respond');
+    const toNum = raw => (raw === undefined || raw === '' ? NaN : Number(raw));
+    const step = toNum($box.attr('data-step'));
+    const turnNumber = toNum($box.attr('data-turn'));
     sendCommand('coup_respond', {
       response: $(this).attr('data-respond'),
-      claimCard: $(this).attr('data-claim') || null
+      claimCard: $(this).attr('data-claim') || null,
+      step: Number.isFinite(step) ? step : null,
+      phase: $box.attr('data-phase') || null,
+      turnNumber: Number.isFinite(turnNumber) ? turnNumber : null
     });
   });
 
@@ -1027,7 +1038,7 @@ $(function() {
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
   });
 
-  // /m — แอดมินขอเฉลยการ์ดทั้งโต๊ะ (สิทธิ์เช็คที่ server ฝั่งนี้แค่ยิงคำสั่ง)
+  // /m — แอดมินเว็บ (เท่านั้น) ขอเฉลยการ์ดทั้งโต๊ะ (สิทธิ์เช็คที่ server ฝั่งนี้แค่ยิงคำสั่ง)
   window.initChatPanel({
     socket, playerId, playerName,
     onCommand: function(text) {
@@ -1040,7 +1051,7 @@ $(function() {
   socket.on('coup_admin_reveal_denied', function() {
     Swal.fire({
       icon: 'info', title: 'ใช้ไม่ได้',
-      text: 'คำสั่ง /m ใช้ได้เฉพาะหัวหน้าห้องหรือแอดมินเว็บเท่านั้น',
+      text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บเท่านั้น',
       background: '#1b0f2b', color: '#fff', confirmButtonColor: '#7c3aed'
     });
   });

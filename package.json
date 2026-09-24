@@ -54,6 +54,7 @@
     "smoke:coup:play": "node scripts/smoke-coup-play.js",
     "smoke:liar": "node scripts/smoke-liar-engine.js",
     "smoke:liar:play": "node scripts/smoke-liar-play.js",
+    "smoke:coup-liar:regressions": "node scripts/smoke-coup-liar-regressions.js",
     "smoke:poker": "node scripts/smoke-poker-engine.js",
     "smoke:poker:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js",
     "smoke:poker:layout": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-poker-layout.js",

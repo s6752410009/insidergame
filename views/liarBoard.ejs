@@ -858,7 +858,7 @@ $(function() {
     Swal.fire({ title: '/m ไพ่ทั้งโต๊ะ', html: rows, background: '#102016', color: '#fff' });
   });
   socket.on('liar_admin_reveal_denied', function() {
-    Swal.fire({ icon: 'error', title: 'ดูไพ่ไม่ได้', text: 'ต้องเป็นแอดมินห้องหรือแอดมินเว็บ', background: '#102016', color: '#fff' });
+    Swal.fire({ icon: 'error', title: 'ดูไพ่ไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บเท่านั้น', background: '#102016', color: '#fff' });
   });
 
   if (currentState && currentState.phase) renderState(currentState);

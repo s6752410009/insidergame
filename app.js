@@ -3265,6 +3265,9 @@ function recoverGamePhaseTimers() {
         if (room.settings.gameMode === 'coup') {
             if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
                 getGameEngine('coup').autoResolvePhase(room);
+                // resolve อาจจบเกม — ต้อง finalize (บันทึกสถิติ/นับถอยหลังกลับห้อง) + ตั้ง timer ใหม่
+                emitCoupRoomState(room);
+                return;
             }
             syncCoupPhaseTimer(room);
         }
@@ -3272,6 +3275,9 @@ function recoverGamePhaseTimers() {
         if (room.settings.gameMode === 'liar') {
             if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
                 getGameEngine('liar').autoResolvePhase(room);
+                // resolve อาจจบเกม — ต้อง finalize (บันทึกสถิติ/นับถอยหลังกลับห้อง) + ตั้ง timer ใหม่
+                emitLiarRoomState(room);
+                return;
             }
             syncLiarPhaseTimer(room);
         }
@@ -6423,7 +6429,8 @@ io.sockets.on('connection', function(socket) {
 
     safeOn(socket, 'coup_respond', function(data, callback) {
         handleCoupCommand(socket, callback, (room, playerId) =>
-            getGameEngine('coup').submitResponse(room, playerId, data?.response, data?.claimCard || null));
+            getGameEngine('coup').submitResponse(room, playerId, data?.response, data?.claimCard || null,
+                { step: data?.step, phase: data?.phase, turnNumber: data?.turnNumber }));
     });
 
     safeOn(socket, 'coup_loseInfluence', function(data, callback) {
@@ -6436,12 +6443,13 @@ io.sockets.on('connection', function(socket) {
             getGameEngine('coup').submitExchange(room, playerId, data?.keepCardIds));
     });
 
-    // /m — แอดมินห้อง/แอดมินเว็บขอดูการ์ดในมือทุกคน (เหมือน /m ของ Insider)
+    // /m — แอดมินเว็บ (เท่านั้น) ขอดูการ์ดในมือทุกคน (เหมือน /m ของ Insider)
     // ส่งกลับเฉพาะ socket ที่ขอ ไม่ broadcast เด็ดขาด
     safeOn(socket, 'coup_admin_reveal', function() {
         const room = getSocketRoom(socket, 'coup');
         if (!room) return;
-        if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) {
+        // ส่องไพ่ได้เฉพาะแอดมินเว็บ — หัวห้องเป็นผู้เล่นด้วย ปล่อยให้ส่องคือโกงได้
+        if (!isSiteAdminPlayer(socket.playerId)) {
             io.to(socket.id).emit('coup_admin_reveal_denied');
             return;
         }
@@ -6541,7 +6549,8 @@ io.sockets.on('connection', function(socket) {
     safeOn(socket, 'liar_admin_reveal', function() {
         const room = getSocketRoom(socket, 'liar');
         if (!room) return;
-        if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) {
+        // ส่องไพ่ได้เฉพาะแอดมินเว็บ — หัวห้องเป็นผู้เล่นด้วย ปล่อยให้ส่องคือโกงได้
+        if (!isSiteAdminPlayer(socket.playerId)) {
             io.to(socket.id).emit('liar_admin_reveal_denied');
             return;
         }
