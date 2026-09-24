@@ -434,6 +434,20 @@ function fillRolePlanWithoutVillager(roleIds, targetCount, preferredIds = [], op
     return filled.slice(0, targetCount);
 }
 
+// Host-picked role lists must never give wolves more than floor(n/3) seats
+// (e.g. 2 wolves in a 3–4 player game = instant wolf win after night 1).
+function capWolvesInPlan(roleIds, playerCount) {
+    const maxWolves = Math.max(1, Math.floor(Number(playerCount) / 3));
+    let wolfSeen = 0;
+    return roleIds.map(roleId => {
+        if (!isWerewolfRole(roleId)) {
+            return roleId;
+        }
+        wolfSeen += 1;
+        return wolfSeen > maxWolves ? 'villager' : roleId;
+    });
+}
+
 function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = getBaseRolePlan(normalizedCount, previousPlanRoleIds);
@@ -459,7 +473,10 @@ function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
     const enabledRoleIds = filterRoleSelectionForPlayerCount(settings.werewolfRoles, normalizedCount);
 
     if (enabledRoleIds.length > 0 && enabledRoleIds.length <= normalizedCount) {
-        const exactRoleIds = fillRolePlanWithoutVillager(enabledRoleIds, normalizedCount, basePlan, { maxWolfCount });
+        const exactRoleIds = capWolvesInPlan(
+            fillRolePlanWithoutVillager(enabledRoleIds, normalizedCount, basePlan, { maxWolfCount }),
+            normalizedCount
+        );
 
         return exactRoleIds.slice(0, normalizedCount).map(roleId => ROLE_DEFINITIONS[roleId]);
     }
@@ -514,7 +531,10 @@ function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
         plannedRoleIds.push(...fallbackSpecialIds.slice(0, missingSpecialSlots));
     }
 
-    const completedRoleIds = fillRolePlanWithoutVillager(plannedRoleIds, normalizedCount, basePlan, { maxWolfCount });
+    const completedRoleIds = capWolvesInPlan(
+        fillRolePlanWithoutVillager(plannedRoleIds, normalizedCount, basePlan, { maxWolfCount }),
+        normalizedCount
+    );
 
     return completedRoleIds.map(roleId => ROLE_DEFINITIONS[roleId]);
 }
@@ -1013,9 +1033,13 @@ function startDayPhase(room, trigger = 'discussion-ended') {
 }
 
 function resetRoomGame(room) {
+    // Deal roles only to connected players (same rule as the app.js start check);
+    // players still in reconnect grace (no socketId) would otherwise inflate vote majorities.
+    const connectedPlayers = room.players.filter(player => player.socketId);
+    const dealtPlayers = connectedPlayers.length > 0 ? connectedPlayers : room.players;
     return {
         ...createInitialState(),
-        players: room.players.map(player => createPlayerState({
+        players: dealtPlayers.map(player => createPlayerState({
             playerId: player.playerId,
             playerName: player.playerName,
             color: player.color,
@@ -1025,8 +1049,8 @@ function resetRoomGame(room) {
             socketId: player.socketId,
             isAdmin: player.permission === 'admin'
         })),
-        alivePlayerIds: room.players.map(player => player.playerId),
-        rolePlan: getRolePlan(room.players.length, room.settings, room.lastWerewolfPlanRoleIds || [])
+        alivePlayerIds: dealtPlayers.map(player => player.playerId),
+        rolePlan: getRolePlan(dealtPlayers.length, room.settings, room.lastWerewolfPlanRoleIds || [])
     };
 }
 
@@ -1488,18 +1512,29 @@ function resolveNight(room) {
         pushHistory(room, 'คืนแรกผ่านไปแบบเงียบผิดปกติ หมาป่ายังออกล่าไม่ได้ คืนนี้จึงไม่มีใครตาย', 'night');
     } else if (attackedPlayer && attackedPlayer.role === 'fool') {
         immuneTargetId = attackedPlayerId;
-        pushHistory(room, 'เมื่อคืนหมาป่าพยายามลงมือ แต่การสังหารไม่สำเร็จ', 'night');
+        // Public text must match a normal protected save so wolves can't identify the Fool.
+        pushHistory(room, `คืนที่ ${room.gameState.dayNumber} ไม่มีใครตาย เพราะมีคนปกป้องสำเร็จ`, 'night');
     } else if (attackedPlayer && attackedPlayer.alive !== false && !protectedTargets.has(attackedPlayerId)) {
         markPlayerDead(attackedPlayer, 'ถูกหมาป่าโจมตีในตอนกลางคืน');
         eliminatedPlayers.push(attackedPlayer);
         publicEvents.push(buildNightPublicEvent(attackedPlayer, 'wolf-attack'));
         pushHistory(room, `${attackedPlayer.name} ถูกกำจัดในตอนกลางคืน`, 'night');
     } else if (attackedPlayer) {
-        Object.entries(room.gameState.nightActions.bodyguardProtects || {}).forEach(([guardId, protectedId]) => {
-            if (protectedId === attackedPlayerId) {
-                bodyguardBreakIds.add(guardId);
-            }
-        });
+        // Armour only breaks when the bodyguard(s) were the sole protection on the target.
+        const otherProtections = [
+            ...Object.values(room.gameState.nightActions.doctorSaves || {}),
+            ...Object.values(room.gameState.nightActions.witchHeals || {}),
+            ...room.gameState.players
+                .filter(player => player.role === 'cleric' && player.clericBlessTargetId)
+                .map(player => player.clericBlessTargetId)
+        ];
+        if (!otherProtections.includes(attackedPlayerId)) {
+            Object.entries(room.gameState.nightActions.bodyguardProtects || {}).forEach(([guardId, protectedId]) => {
+                if (protectedId === attackedPlayerId) {
+                    bodyguardBreakIds.add(guardId);
+                }
+            });
+        }
         pushHistory(room, `คืนที่ ${room.gameState.dayNumber} ไม่มีใครตาย เพราะมีคนปกป้องสำเร็จ`, 'night');
     } else {
         pushHistory(room, `คืนที่ ${room.gameState.dayNumber} หมาป่าลังเลจนไม่มีใครตาย`, 'night');
@@ -1925,7 +1960,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             room.gameState.nightActions.werewolfVotes[actorId] = targetPlayerId;
             break;
         case 'seer':
-            if (room.gameState.nightActions.seerChecks[actorId]) {
+            if (room.gameState.nightActions.seerChecks[actorId] && room.gameState.nightActions.seerChecks[actorId] !== SKIP_TARGET_ID) {
                 throw new Error('ผู้หยั่งรู้ดูได้แค่ 1 คนต่อคืน');
             }
             if (isSkip) {
@@ -1939,7 +1974,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             seerResult = applySeerVision(room, actorId, targetPlayerId);
             break;
         case 'oracle':
-            if (room.gameState.nightActions.oracleReads[actorId]) {
+            if (room.gameState.nightActions.oracleReads[actorId] && room.gameState.nightActions.oracleReads[actorId] !== SKIP_TARGET_ID) {
                 throw new Error('นักพยากรณ์ดูได้แค่ 1 คนต่อคืน');
             }
             if (isSkip) {
@@ -1996,7 +2031,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 if (actor.witchHealUsed) {
                     throw new Error('คุณใช้ยาช่วยชีวิตไปแล้ว');
                 }
-                if (room.gameState.nightActions.witchPoisons[actorId]) {
+                if (room.gameState.nightActions.witchPoisons[actorId] && room.gameState.nightActions.witchPoisons[actorId] !== SKIP_TARGET_ID) {
                     throw new Error('คืนนี้แม่มดใช้ได้แค่ 1 สกิลต่อคืน');
                 }
                 if (room.gameState.nightActions.witchHeals[actorId] === targetPlayerId) {
@@ -2013,7 +2048,7 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
                 if (actor.witchPoisonUsed) {
                     throw new Error('คุณใช้ยาพิษไปแล้ว');
                 }
-                if (room.gameState.nightActions.witchHeals[actorId]) {
+                if (room.gameState.nightActions.witchHeals[actorId] && room.gameState.nightActions.witchHeals[actorId] !== SKIP_TARGET_ID) {
                     throw new Error('คืนนี้แม่มดใช้ได้แค่ 1 สกิลต่อคืน');
                 }
                 if (!isSkip && actorId === targetPlayerId) {
@@ -2296,11 +2331,19 @@ function fillMissingNightActions(room) {
                 if (isFirstNight(room)) {
                     break;
                 }
-                const targets = getAlivePlayers(room).filter(player => !isWerewolfRole(player.role));
-                const target = chooseRandom(targets);
-                if (target) {
-                    room.gameState.nightActions.werewolfVotes[actor.playerId] = target.playerId;
-                }
+                // Follow the pack: copy a pick another living wolf already made; never random.
+                const votes = room.gameState.nightActions.werewolfVotes || {};
+                const packPick = Object.entries(votes)
+                    .filter(([voterId, targetId]) => voterId !== actor.playerId && targetId && targetId !== SKIP_TARGET_ID)
+                    .map(([voterId, targetId]) => ({ voter: getPlayer(room, voterId), target: getPlayer(room, targetId) }))
+                    .filter(({ voter, target }) => voter && voter.alive !== false && isWerewolfRole(voter.role) && target && target.alive !== false)
+                    .map(({ target }) => target.playerId);
+                const followId = getWeightedTarget(
+                    Object.fromEntries(Object.entries(votes).filter(([voterId, targetId]) => voterId !== actor.playerId && packPick.includes(targetId))),
+                    room,
+                    { alphaWolf: 2 }
+                ); // tie between other wolves → stay neutral (skip)
+                room.gameState.nightActions.werewolfVotes[actor.playerId] = followId || SKIP_TARGET_ID;
                 break;
             }
             case 'seer': {
@@ -2312,31 +2355,14 @@ function fillMissingNightActions(room) {
                 }
                 break;
             }
-            case 'doctor': {
-                if (actor.doctorSaveUses >= 2) {
-                    break;
-                }
-                const target = chooseRandom(getAlivePlayers(room));
-                if (target) {
-                    room.gameState.nightActions.doctorSaves[actor.playerId] = target.playerId;
-                }
+            case 'doctor':
+                // Don't burn a limited save on a random target when the doctor is AFK.
+                room.gameState.nightActions.doctorSaves[actor.playerId] = SKIP_TARGET_ID;
                 break;
-            }
-            case 'bodyguard': {
-                if (actor.bodyguardArmorBroken) {
-                    break;
-                }
-                const previousTarget = room.gameState.lastProtectedByBodyguard[actor.playerId] || null;
-                let targets = getAlivePlayers(room).filter(player => player.playerId !== previousTarget);
-                if (targets.length === 0) {
-                    targets = getAlivePlayers(room);
-                }
-                const target = chooseRandom(targets);
-                if (target) {
-                    room.gameState.nightActions.bodyguardProtects[actor.playerId] = target.playerId;
-                }
+            case 'bodyguard':
+                // Don't risk the bodyguard's armour on a random target when AFK.
+                room.gameState.nightActions.bodyguardProtects[actor.playerId] = SKIP_TARGET_ID;
                 break;
-            }
             case 'witch': {
                 if (!actor.witchHealUsed) {
                     room.gameState.nightActions.witchHeals[actor.playerId] = SKIP_TARGET_ID;
@@ -2893,16 +2919,8 @@ function buildMorningAnnouncement(room) {
         };
     }
 
-    if (immunePlayer) {
-        return {
-            title: `☀️ เช้าวันที่ ${dayNumber}`,
-            outcomeType: 'immune',
-            lead: 'กลางคืนมีรอยล่า แต่เช้านี้ไม่มีใครล้มลง',
-            detail: 'การลงมือเมื่อคืนพลาดเป้า และทั้งหมู่บ้านยังไม่รู้ว่าใครรอดมาเพราะอะไร'
-        };
-    }
-
-    if (attackedPlayer) {
+    // Fool immunity is announced exactly like a protected save (no distinct outcome).
+    if (attackedPlayer || immunePlayer) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'saved',
