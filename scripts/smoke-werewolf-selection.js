@@ -274,8 +274,9 @@ async function startRound(clients, roomId) {
 
 async function restartToLobby(clients, roomId) {
     const restartWaiters = clients.map(client => onceWithTimeout(client.socket, 'restartGame', null, 10000));
-    const response = await emitAck(clients[0].socket, 'werewolf_restartGame', { roomId }, 10000);
-    assert(response && response.success, `werewolf_restartGame failed: ${response?.error || 'unknown error'}`);
+    // สุ่มบทใหม่กลางเกมถูกปิดแล้ว (กันคนที่กำลังแพ้กดหนี) — หัวห้องต้องกด "จบเกม" พากลับห้องรอก่อน
+    const response = await emitAck(clients[0].socket, 'endTableSession', { roomId }, 10000);
+    assert(response && response.success, `endTableSession failed: ${response?.error || 'unknown error'}`);
     await Promise.all(restartWaiters);
 }
 

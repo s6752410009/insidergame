@@ -53,6 +53,7 @@ async function main() {
     const playerId = randomUUID();
     const socket = io(BASE_URL, { transports: ['websocket'], forceNew: true });
     let roomId = null;
+    const extraSockets = [];
 
     try {
         await once(socket, 'connect');
@@ -70,24 +71,39 @@ async function main() {
         roomId = createResponse.roomId;
 
         socket.emit('setRoom', { roomId, playerId });
+        // Werewolf ต้องมีผู้เล่นออนไลน์อย่างน้อย 3 คนถึงจะเริ่มได้
+        for (let i = 0; i < 2; i += 1) {
+            const extraId = randomUUID();
+            const extra = io(BASE_URL, { transports: ['websocket'], forceNew: true });
+            await once(extra, 'connect');
+            extra.emit('initPlayer', extraId);
+            const joined = await emitAck(extra, 'joinRoom', { roomId, playerId: extraId });
+            assert(joined?.success, 'joinRoom failed: ' + JSON.stringify(joined));
+            extra.emit('setRoom', { roomId, playerId: extraId });
+            extraSockets.push(extra);
+        }
+        await delay(500);
         const startResponse = await emitAck(socket, 'startGameFromLobby', { roomId });
         assert(startResponse?.success, 'startGameFromLobby failed');
         await once(socket, 'werewolfState', payload => payload?.roomId === roomId && payload.phase === 'night', 20000);
 
-        console.log('Disconnecting sole player…');
+        console.log('Disconnecting every player…');
         socket.disconnect();
+        extraSockets.forEach(extra => extra.disconnect());
         await delay(SWEEP_WAIT_MS);
 
+        // ห้องที่ทุกคนหลุดกลางเกม ต้องถูกคืนเป็นห้องรอ/ลบออก หลังรอบกวาดห้อง (ทุก 60 วิ)
         const probe = io(BASE_URL, { transports: ['websocket'], forceNew: true });
         await once(probe, 'connect');
-        const listPayload = await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error('roomListUpdate timeout')), TIMEOUT_MS);
-            probe.on('roomListUpdate', rooms => {
-                clearTimeout(timer);
-                resolve(rooms);
-            });
-            probe.emit('initPlayer', randomUUID());
-        });
+        const listRooms = () => new Promise(resolve => probe.emit('getRoomList', r => resolve((r && r.rooms) || [])));
+        let listPayload = await listRooms();
+        const deadline = Date.now() + Number(process.env.SMOKE_ABANDON_DEADLINE_MS || 90000);
+        while (Date.now() < deadline) {
+            const current = listPayload.find(room => room.roomId === roomId);
+            if (!current || current.gameStatus === 'waiting') break;
+            await delay(5000);
+            listPayload = await listRooms();
+        }
 
         const entry = Array.isArray(listPayload) ? listPayload.find(room => room.roomId === roomId) : null;
         const ok = !entry || entry.gameStatus === 'waiting' || entry.isJoinable !== false;
@@ -99,6 +115,7 @@ async function main() {
         if (socket.connected) {
             socket.disconnect();
         }
+        extraSockets.forEach(extra => extra.connected && extra.disconnect());
     }
 }
 

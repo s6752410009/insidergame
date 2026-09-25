@@ -182,9 +182,13 @@ function watchPage(page, label, errors) {
                 endGameHitsItself: (() => {
                     const btn = document.querySelector('#cpEndGameBtn');
                     if (!btn) return true; // ไม่ใช่แอดมินก็ไม่มีปุ่ม ถือว่าผ่าน
+                    // popup "วิธีเล่นแบบสั้น" ตอนเข้าเกมครั้งแรกตั้งใจคลุมทั้งจอ — จำลองว่าผู้เล่นกดข้ามแล้ว
+                    const firstPlay = document.getElementById('ppFirstPlay');
+                    if (firstPlay) firstPlay.remove();
                     const r = btn.getBoundingClientRect();
                     const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-                    return btn.contains(top);
+                    window.__coverInfo = top ? (top.tagName + '#' + top.id + '.' + String(top.className).slice(0,60) + ' in ' + (top.closest('[id]')||{}).id) : 'none';
+                    return btn.contains(top) ? true : window.__coverInfo;
                 })()
             };
         });
@@ -195,7 +199,7 @@ function watchPage(page, label, errors) {
             'ปุ่มบนแถบหลุดเป็น fixed/absolute: ' + floating.map(c => `${c.label}(${c.position})`).join(', '));
         const escaped = chipHealth.chips.filter(c => c.escaped);
         assert(escaped.length === 0, 'ปุ่มบนแถบหลุดออกนอกกรอบ: ' + escaped.map(c => c.label).join(', '));
-        assert(chipHealth.endGameHitsItself, 'ปุ่มจบเกมมีอย่างอื่นทับอยู่ กดไม่โดน');
+        assert(chipHealth.endGameHitsItself === true, 'ปุ่มจบเกมมีอย่างอื่นทับอยู่ กดไม่โดน: ' + chipHealth.endGameHitsItself);
         console.log(`5. ปุ่มบนแถบอยู่ในกรอบครบ ${chipHealth.chips.length} ปุ่ม · ปุ่มจบเกมกดโดน ✓`);
 
         // ---------- 4. modal ในเกมใช้สกินเดียวกัน ----------
@@ -222,23 +226,12 @@ function watchPage(page, label, errors) {
         await delay(300);
         await adminPage.fill('#chatInput', '/m');
         await adminPage.click('#sendChat');
-        await adminPage.waitForSelector('.cpr', { timeout: 5000 });
-
-        const reveal = await adminPage.evaluate(() => ({
-            rows: document.querySelectorAll('.cpr-row').length,
-            chips: document.querySelectorAll('.cpr-chip').length,
-            turnBadges: document.querySelectorAll('.cpr-turn').length,
-            hasCoins: document.querySelectorAll('.cpr-coins').length,
-            foot: (document.querySelector('.cpr-foot') || {}).textContent || ''
-        }));
-        assert(reveal.rows === 3, `/m ควรโชว์ 3 คน ได้ ${reveal.rows}`);
-        assert(reveal.chips === 6, `เริ่มเกมทุกคนถือ 2 ใบ = 6 chip ได้ ${reveal.chips}`);
-        assert(reveal.turnBadges === 1, `ควรมีป้าย "ถึงตา" 1 อัน ได้ ${reveal.turnBadges}`);
-        assert(reveal.hasCoins === 3, 'ไม่ได้โชว์เหรียญครบทุกคน');
-        assert(/การ์ดในกอง/.test(reveal.foot), 'ไม่ได้บอกจำนวนการ์ดในกอง');
-        console.log(`7. /m หัวหน้าห้องเห็นการ์ดครบ 3 คน 6 ใบ ✓  (${reveal.foot.trim()})`);
-
-        await adminPage.click('.coup-guide-popup .swal2-confirm');
+        // หัวห้องธรรมดาต้องไม่เห็นการ์ดคนอื่น (/m ใช้ได้เฉพาะ site admin — กันหัวห้องแอบดูไพ่ตอนเล่น)
+        await delay(2000);
+        const hostSees = await adminPage.evaluate(() => document.querySelectorAll('.cpr-row').length);
+        assert(hostSees === 0, `หัวห้องธรรมดาไม่ควรเห็นการ์ดคนอื่น แต่เห็น ${hostSees} แถว`);
+        console.log('7. /m ของหัวห้องธรรมดาไม่เปิดการ์ดคนอื่น ✓');
+        await adminPage.evaluate(() => { const b = document.querySelector('.swal2-confirm'); if (b) b.click(); });
         await delay(300);
 
         // /m ต้องไม่หลุดเป็นข้อความในแชท

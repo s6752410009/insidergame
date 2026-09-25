@@ -3899,7 +3899,10 @@ app.use(async function(req, res, next) {
     let playerId = trustedPlayerId;
 
     if (queryPlayerId && queryPlayerId !== trustedPlayerId) {
-        if (canClaimPlayerId(queryPlayerId)) {
+        // เครื่องที่มีบัญชีผูกอยู่แล้ว ห้ามลิงก์พาไปบัญชีอื่น (แม้เป็นไอดีใหม่ที่ยังไม่มีเจ้าของ)
+        // ไม่งั้นกดลิงก์แปลกๆ ทีเดียว = โดนสลับไปบัญชีว่าง ถ้วย/สถิติเหมือนหายหมด
+        // ย้ายบัญชีได้ทางรหัสกู้บัญชี/Google เท่านั้น
+        if ((!trustedPlayerId || ALLOW_LEGACY_SOCKET_IDENTITY) && canClaimPlayerId(queryPlayerId)) {
             playerId = queryPlayerId;
         } else {
             // เครื่องนี้อ้างบัญชีที่มีเจ้าของแล้ว → ให้หน้าเว็บลองกู้ด้วยรหัสที่เก็บไว้ในเครื่อง

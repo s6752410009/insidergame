@@ -155,15 +155,27 @@ async function main() {
             `เพื่อนเปิดลิงก์ที่แชร์แล้วกลายเป็นบัญชีเรา! (${friendId})`);
         console.log('5. เครื่องใหม่เปิดลิงก์ที่แชร์ → ได้บัญชีของตัวเอง ✓');
 
-        // ================= เครื่องว่างเปล่า + ลิงก์โอน identity (ตั้งใจ) =================
-        // ฟีเจอร์ copySiteAdminLink พึ่งพฤติกรรมนี้: เครื่องที่ "ไม่มี" บัญชีเดิม
-        // เปิดลิงก์ที่มี playerId → รับ identity นั้นมาใช้
+        // ================= เครื่องว่างเปล่า + ลิงก์ที่มีแค่ playerId =================
+        // playerId ใครๆ ก็เห็นได้ในห้อง จึงห้ามใช้ยึดบัญชี — เครื่องเปล่าต้องไม่ได้บัญชีนี้ไป
         const blankDevice = await browser.newContext();
         const blankPage = await blankDevice.newPage();
         await blankPage.goto(`${base}/rooms?playerId=${myId}`, { waitUntil: 'networkidle' });
         await delay(1500);
-        assert((await readIdentity(blankPage)) === myId, 'ลิงก์โอน identity ไปเครื่องว่างไม่ทำงาน');
-        console.log('6. เครื่องว่าง + ลิงก์โอน identity → รับมาใช้ได้ (ฟีเจอร์ admin) ✓');
+        const blankId = await blankPage.evaluate(() => localStorage.getItem('insiderGamePlayerId'));
+        assert(blankId !== myId || (await blankPage.locator('#form').isVisible().catch(() => false)),
+            'ลิงก์ที่มีแค่ playerId ยึดบัญชีคนอื่นได้!');
+        console.log('6. เครื่องว่าง + ลิงก์ที่มีแค่ playerId → ไม่ได้บัญชีคนอื่น ✓');
+
+        // ย้ายบัญชีไปเครื่องใหม่แบบตั้งใจ = ลิงก์กู้บัญชี (/restore?code=) — ฟีเจอร์ admin ใช้ทางนี้
+        const code = await page.evaluate(() => fetch('/api/identity/me', { credentials: 'same-origin' })
+            .then(r => r.json()).then(d => d.recoveryCode));
+        assert(code, 'ไม่มีรหัสกู้บัญชี');
+        const moveDevice = await browser.newContext();
+        const movePage = await moveDevice.newPage();
+        await movePage.goto(`${base}/restore?code=${encodeURIComponent(code)}`, { waitUntil: 'networkidle' });
+        await delay(1500);
+        assert((await readIdentity(movePage)) === myId, 'ลิงก์กู้บัญชีย้ายบัญชีไปเครื่องใหม่ไม่ได้');
+        console.log('7. เครื่องใหม่ + ลิงก์กู้บัญชี → ได้บัญชีเดิม ✓');
 
         console.log('\n✅ IDENTITY CHECKS PASSED');
     } finally {
