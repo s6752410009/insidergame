@@ -845,38 +845,38 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🎉 v<%= appVersion %> — บัญชีไม่หายแล้ว + หน้าตาใหม่',
+            title: '🎲 v<%= appVersion %> — 3 เกมใหม่!',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     ${seasonResetNoticeHtml}
                     <p style="color: #f6c453; font-size: 0.95em; line-height: 1.65; margin-bottom: 15px;">
-                        <strong>อัปเดตใหญ่ v<%= appVersion %></strong> เก็บบัญชีให้อยู่ถาวร ทำหน้าเว็บใหม่ และเกลากติกาทุกเกมให้แฟร์ขึ้น
+                        <strong>เพิ่ม 3 เกมใหม่</strong> ให้วงเพื่อนเลือกเล่น — สร้างห้องแล้วกด <strong>“ดูเกมทั้งหมด”</strong>
                     </p>
 
+                    <div style="background: rgba(245, 200, 107, 0.1); padding: 14px; border: 1px solid rgba(245, 200, 107, 0.3); border-radius: 12px; margin-bottom: 12px;">
+                        <h4 style="color: #fde68a; margin: 0 0 8px 0;">🫥 คำใครไม่เหมือน · 4–10 คน</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
+                            <li>ทุกคนได้คำคล้ายกัน มีสายแฝง 1–2 คนได้คำต่าง</li>
+                            <li>ใบ้คนละคำ แล้วโหวตหาคนที่คำไม่เหมือน</li>
+                            <li>เปิด Mr. White ได้ (ไม่มีคำเลย ต้องเนียนสุด ๆ)</li>
+                        </ul>
+                    </div>
+
                     <div style="background: rgba(22, 101, 52, 0.18); padding: 14px; border: 1px solid rgba(74, 222, 128, 0.28); border-radius: 12px; margin-bottom: 12px;">
-                        <h4 style="color: #86efac; margin: 0 0 8px 0;">🔐 บัญชีไม่หายแล้ว</h4>
+                        <h4 style="color: #86efac; margin: 0 0 8px 0;">🎴 ป๊อกเด้ง · 2–10 คน</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>ไม่ได้เข้านานแค่ไหน กลับมาก็ยังเป็นบัญชีเดิม ถ้วยและสถิติอยู่ครบ</li>
-                            <li>ล็อกอินด้วย Gmail ได้ (ไม่บังคับ) เปลี่ยนมือถือก็ได้บัญชีคืน</li>
-                            <li>มีรหัสกู้บัญชีในหน้าโปรไฟล์ สำรองไว้อีกทาง</li>
+                            <li>ป๊อก 8/9, สองเด้ง สามเด้ง, ตอง เรียง เซียน ครบ</li>
+                            <li>หัวห้องเป็นเจ้ามือ หรือหมุนเจ้ามือทุกตา · มีบอทมานั่งด้วยได้</li>
+                            <li>ชิปใช้ในโต๊ะเท่านั้น ไม่มีมูลค่าจริง</li>
                         </ul>
                     </div>
 
-                    <div style="background: rgba(52, 152, 219, 0.12); padding: 14px; border: 1px solid rgba(143, 211, 255, 0.24); border-radius: 12px; margin-bottom: 12px;">
-                        <h4 style="color: #8fd3ff; margin: 0 0 8px 0;">🎨 หน้าตาใหม่</h4>
+                    <div style="background: rgba(29, 78, 216, 0.16); padding: 14px; border: 1px solid rgba(110, 163, 245, 0.3); border-radius: 12px; margin-bottom: 15px;">
+                        <h4 style="color: #a9c8ff; margin: 0 0 8px 0;">🏰 อวาลอน · 5–10 คน</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>หน้าแรก โปรไฟล์ ตั้งค่า ทำใหม่หมด ปุ่มขนาดเดียวกันทุกหน้า</li>
-                            <li>กฎการเล่นมีสารบัญ แตะข้ามไปเกมที่จะเล่นได้เลย</li>
-                        </ul>
-                    </div>
-
-                    <div style="background: rgba(127, 29, 29, 0.18); padding: 14px; border: 1px solid rgba(248, 113, 113, 0.28); border-radius: 12px; margin-bottom: 15px;">
-                        <h4 style="color: #fca5a5; margin: 0 0 8px 0;">🎲 เกมแฟร์ขึ้น</h4>
-                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9em; color: #ddd;">
-                            <li>🕵️ Spyfall: สายลับกดทายสถานที่ได้แล้ว ทายถูกชนะทันที</li>
-                            <li>🐺 Werewolf: ไม่กดเลือกตอนกลางคืน ระบบไม่สุ่มให้มั่วอีก</li>
-                            <li>🎯 Insider: หมดเวลาแล้วยังทายไม่ได้ ทุกคนแพ้ตามกติกาจริง</li>
-                            <li>🎩 👑 🃏 ♠ แก้บัคกติกาเกือบทุกเกม หัวห้องแอบดูไพ่ไม่ได้แล้ว</li>
+                            <li>ฝ่ายดีต้องทำภารกิจสำเร็จ 3 ใน 5 · ฝ่ายร้ายแฝงตัวทำให้ล้ม</li>
+                            <li>ไม่มีใครตายกลางเกม ทุกคนได้เล่นจนจบ</li>
+                            <li>เมอร์ลินรู้ว่าใครชั่ว แต่ถ้าโดนมือสังหารจับได้ ฝ่ายร้ายชนะ</li>
                         </ul>
                     </div>
 
@@ -885,6 +885,10 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v6.0.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>บัญชีไม่หาย + ล็อกอิน Gmail, หน้าตาใหม่ทั้งเว็บ, แก้บัคกติกาเกือบทุกเกม</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v5.5.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>เกมไพ่ใหม่ 3 โหมด: ไพ่โกหก, ไพ่ 5 ใบ และสี่ใบเก พร้อมบอทและเสียงแจกไพ่</li>
