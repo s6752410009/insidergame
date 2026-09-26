@@ -92,6 +92,7 @@ const liarPhaseTimeouts = new Map();
 const pokerPhaseTimeouts = new Map();
 const pokerBotTimeouts = new Map();
 const pokerBotAddInFlight = new Set();
+const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
@@ -823,6 +824,7 @@ function clearInsiderReturnTimer(roomId) {
 }
 
 function isFinishedTableReturnMode(gameMode) {
+    if (gameMode === 'pokdeng') return true;
     return gameMode === 'liar' || gameMode === 'coup' || gameMode === 'poker5' || gameMode === 'poker4';
 }
 
@@ -852,6 +854,7 @@ function returnFinishedGameToLobby(roomId) {
     clearCoupPhaseTimer(roomId);
     clearPokerPhaseTimer(roomId);
     clearPokerBotTimer(roomId);
+    pokdengRuntime.clearTimers(roomId);
     roomManager.resetRoomGame(roomId);
     const refreshedRoom = roomManager.getRoom(roomId);
     io.to(roomId).emit('redirectToLobby', { roomId });
@@ -1322,6 +1325,7 @@ function clearAllRoomTimers(roomId) {
     clearLiarPhaseTimer(roomId);
     clearPokerPhaseTimer(roomId);
     clearPokerBotTimer(roomId);
+    pokdengRuntime.clearTimers(roomId);
     clearInsiderVoteTimer(roomId);
     clearInsiderReturnTimer(roomId);
     clearFinishedReturnTimer(roomId);
@@ -1472,7 +1476,8 @@ const GAME_MODE_LOG_STYLES = {
     coup: { label: 'Coup', emoji: '👑', badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' },
     liar: { label: 'ไพ่โกหก', emoji: '🃏', badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
     poker5: { label: 'ไพ่ 5 ใบ', emoji: '♠', badgeBg: 'rgba(22,101,52,0.25)', badgeColor: '#bbf7d0' },
-    poker4: { label: 'สี่ใบเก', emoji: '♦', badgeBg: 'rgba(153,27,27,0.25)', badgeColor: '#fecaca' }
+    poker4: { label: 'สี่ใบเก', emoji: '♦', badgeBg: 'rgba(153,27,27,0.25)', badgeColor: '#fecaca' },
+    pokdeng: { label: 'ป๊อกเด้ง', emoji: '🎴', badgeBg: 'rgba(245,200,107,0.2)', badgeColor: '#fde68a' }
 };
 
 function getGameModeLogStyle(gameMode) {
@@ -1574,6 +1579,10 @@ function buildGameEndNotification(room) {
             logType: 'success',
             meta: { winnerName, playerCount, handNumber: gameState.handNumber || 0 }
         };
+    }
+
+    if (mode === 'pokdeng') {
+        return pokdengRuntime.gameEndNotification(room);
     }
 
     if (mode === 'insider' && gameState.resultVote2) {
@@ -3038,6 +3047,8 @@ function broadcastGameStateForRoom(room) {
         emitLiarRoomState(room);
     } else if (isPokerMode(room.settings.gameMode)) {
         emitPokerRoomState(room);
+    } else if (room.settings.gameMode === 'pokdeng') {
+        pokdengRuntime.emitRoomState(room);
     }
 }
 
@@ -3105,6 +3116,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 getGameEngine(room.settings.gameMode).handlePlayerLeft(room, playerId);
             } catch (error) {
                 console.error('[poker] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'pokdeng') {
+            try {
+                pokdengRuntime.handleLeft(room, playerId);
+            } catch (error) {
+                console.error('[pokdeng] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'werewolf') {
@@ -3430,6 +3448,10 @@ function recoverGamePhaseTimers() {
             syncPokerPhaseTimer(room);
         }
 
+        if (room.settings.gameMode === 'pokdeng') {
+            pokdengRuntime.recover(room);
+        }
+
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
             if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
                 finalizeInsiderVote2(room);
@@ -3490,6 +3512,9 @@ function runRoomCleanupSweep() {
             getGameEngine(room.settings.gameMode).autoResolvePhase(room);
             emitPokerRoomState(room);
         }
+        if (room.settings.gameMode === 'pokdeng' && roomManager.isRoomGameInProgress(room)) {
+            pokdengRuntime.forceResolve(room);
+        }
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
             && room.gameState.status === 'vote2'
             && room.gameState.vote2EndsAt
@@ -3501,6 +3526,7 @@ function runRoomCleanupSweep() {
         clearLiarPhaseTimer(candidate.roomId);
         clearPokerPhaseTimer(candidate.roomId);
         clearPokerBotTimer(candidate.roomId);
+        pokdengRuntime.clearTimers(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
@@ -4397,6 +4423,25 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'pokdeng') {
+        return res.render('pokdengBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            pokdengState: pokdengRuntime.buildPayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
     if (room.settings.gameMode === 'spyfall') {
         return res.render('spyfallBoard.ejs', {
             player: gameStatePlayer,
@@ -5064,6 +5109,8 @@ io.sockets.on('connection', function(socket) {
             emitLiarState(refreshedRoom, socket.id, playerId);
         } else if (isPokerMode(refreshedRoom?.settings?.gameMode)) {
             emitPokerState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'pokdeng') {
+            pokdengRuntime.emitState(refreshedRoom, socket.id, playerId);
         }
     });
 
@@ -5090,6 +5137,7 @@ io.sockets.on('connection', function(socket) {
             clearLiarPhaseTimer(roomId);
             clearPokerPhaseTimer(roomId);
             clearPokerBotTimer(roomId);
+            pokdengRuntime.clearTimers(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
             clearFinishedReturnTimer(roomId);
@@ -5132,6 +5180,8 @@ io.sockets.on('connection', function(socket) {
                 emitLiarRoomState(refreshedRoom);
             } else if (isPokerMode(refreshedRoom.settings.gameMode)) {
                 emitPokerRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'pokdeng') {
+                pokdengRuntime.emitRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -6474,6 +6524,8 @@ io.sockets.on('connection', function(socket) {
                 emitLiarState(room, socket.id, playerId);
             } else if (isPokerMode(room.settings.gameMode)) {
                 emitPokerState(room, socket.id, playerId);
+            } else if (room.settings.gameMode === 'pokdeng') {
+                pokdengRuntime.emitState(room, socket.id, playerId);
             } else if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
@@ -7416,6 +7468,143 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // ==================== POK DENG ====================
+
+    safeOn(socket, 'pokdeng_requestState', function(data) {
+        const room = getSocketRoom(socket, 'pokdeng');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        pokdengRuntime.emitState(room, socket.id, playerId);
+        pokdengRuntime.scheduleBots(room);
+    });
+
+    function handlePokDengCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'pokdeng');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบโต๊ะป๊อกเด้ง' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            pokdengRuntime.emitRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    function pokdengContext(data) {
+        return { step: data?.step, phase: data?.phase || null, handNumber: data?.handNumber };
+    }
+
+    safeOn(socket, 'pokdeng_bet', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitBet(room, playerId, data?.amount, pokdengContext(data)));
+    });
+
+    safeOn(socket, 'pokdeng_skip', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitSkip(room, playerId, pokdengContext(data)));
+    });
+
+    safeOn(socket, 'pokdeng_rebuy', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitRebuy(room, playerId));
+    });
+
+    safeOn(socket, 'pokdeng_draw', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitDraw(room, playerId, data?.draw === true, pokdengContext(data)));
+    });
+
+    safeOn(socket, 'pokdeng_dealer', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitDealerDecision(room, playerId, data?.draw === true, pokdengContext(data)));
+    });
+
+    safeOn(socket, 'pokdeng_next', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.nextHand(room, playerId));
+    });
+
+    safeOn(socket, 'pokdeng_end', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.endTable(room, playerId));
+    });
+
+    safeOn(socket, 'pokdeng_rotate', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.setRotateDealer(room, playerId, data?.enabled === true));
+    });
+
+    safeOn(socket, 'pokdeng_admin_reveal', function() {
+        const room = getSocketRoom(socket, 'pokdeng');
+        if (!room) return;
+        // ส่องไพ่ได้เฉพาะแอดมินเว็บ — หัวห้องเป็นเจ้ามือ/ผู้เล่นด้วย ปล่อยให้ส่องคือโกง
+        if (!isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('pokdeng_admin_reveal_denied');
+            return;
+        }
+        const requester = playerManager.getPlayer(socket.playerId);
+        addServerLog(io, 'admin', room.roomId, `${requester?.playerName || socket.playerId} ใช้ /m ดูไพ่ป๊อกเด้งทั้งโต๊ะ`, 'warning',
+            { gameMode: 'pokdeng', meta: { event: 'pokdeng_admin_reveal', playerId: socket.playerId } });
+        io.to(socket.id).emit('pokdeng_admin_reveal', pokdengRuntime.adminRevealPayload(room));
+    });
+
+    safeOn(socket, 'pokdeng_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const inFlight = pokdengRuntime.botAddInFlight;
+        try {
+            const roomId = data?.roomId || socket.roomId;
+            const adminPlayerId = socket.playerId;
+            const room = roomManager.getRoom(roomId);
+            if (!room) throw new Error('ไม่พบห้อง');
+            if (room.settings.gameMode !== 'pokdeng') throw new Error('โหมดนี้เพิ่มบอทไม่ได้');
+            if (room.admin !== adminPlayerId && !isSiteAdminPlayer(adminPlayerId)) {
+                throw new Error('เฉพาะหัวหน้าห้องหรือแอดมินที่เพิ่มบอทได้');
+            }
+            if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
+            if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
+
+            const seatCap = Math.min(10, Number(room.settings.maxPlayers || 10));
+            const remaining = Math.max(0, seatCap - room.players.length);
+            if (!remaining) throw new Error('ห้องเต็มแล้ว');
+            const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
+            const botNames = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทสายฝน'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄'];
+            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad'];
+
+            inFlight.add(room.roomId);
+            let added = 0;
+            try {
+                for (let i = 0; i < wanted; i += 1) {
+                    if (roomManager.getRoom(roomId) !== room) break;
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    const botId = `bot_${uuidv4()}`;
+                    const slot = room.players.length % botNames.length;
+                    await playerManager.createOrGetPlayer(botId, { approved: true });
+                    await playerManager.updatePlayerName(botId, `${botNames[slot]} ${botId.slice(-4)}`);
+                    await playerManager.updatePlayerColor(botId, botColors[slot]);
+                    await playerManager.updatePlayerAvatar(botId, botAvatars[slot]);
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    roomManager.joinRoom(roomId, botId, `bot_socket_${uuidv4()}`, null, { bypassLock: true });
+                    added += 1;
+                }
+            } finally {
+                inFlight.delete(room.roomId);
+            }
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+            done({ success: true, added });
+        } catch (error) {
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
+    });
+    // ==================== END POK DENG ====================
+
     socket.on('spyfall_endDiscussion', function(data, callback) {
         try {
             const roomId = socket.roomId;
@@ -7725,6 +7914,21 @@ io.sockets.on('connection', function(socket) {
                         pokerLabel + ' เริ่มแล้ว — แจกไพ่ ทิ้งคืนกลาง แล้ววัด 3 ใบที่ดีสุด', '#d4a017');
                     logGameStartFromRoom(currentRoom);
                     emitPokerRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'pokdeng') {
+                    pokdengRuntime.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                    });
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'ป๊อกเด้งเปิดโต๊ะแล้ว — ลงเดิมพัน แจก 2 ใบ ป๊อกเปิดเลย (ชิปในโต๊ะ ไม่มีมูลค่าจริง)', '#f5c86b');
+                    logGameStartFromRoom(currentRoom);
+                    pokdengRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

@@ -257,6 +257,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'coup_finished',
     'liar_finished',
     'poker_finished',
+    'pokdeng_finished',
     'end',
     'finished'
 ]);
@@ -275,7 +276,9 @@ const ROOM_NAME_MODE_HINTS = {
     'โป๊กเกอร์5ใบ': 'poker5',
     'สี่ใบเก': 'poker4',
     '4 ใบเก': 'poker4',
-    '4ใบเก': 'poker4'
+    '4ใบเก': 'poker4',
+    'ป๊อกเด้ง': 'pokdeng',
+    'วงป๊อกเด้ง': 'pokdeng'
 };
 
 function inferGameModeFromRoomName(roomName) {
@@ -618,6 +621,7 @@ function createRoom(roomData, creatorPlayerId) {
             wolfCount,
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
+            pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1005,6 +1009,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.pokerAnte !== undefined) {
         room.settings.pokerAnte = Math.max(10, Number(updates.pokerAnte) || 500);
+    }
+    if (updates.pokdengRotateDealer !== undefined) {
+        room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;
     }
 
     if (updates.locked !== undefined) {

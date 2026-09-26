@@ -103,7 +103,7 @@ function createDefaultWinByRole() {
     };
 }
 
-const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'liar', 'poker5', 'poker4'];
+const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'liar', 'poker5', 'poker4', 'pokdeng'];
 
 function createDefaultModeStats() {
     return {
@@ -114,7 +114,8 @@ function createDefaultModeStats() {
         coup: { games: 0, wins: 0, losses: 0 },
         liar: { games: 0, wins: 0, losses: 0 },
         poker5: { games: 0, wins: 0, losses: 0 },
-        poker4: { games: 0, wins: 0, losses: 0 }
+        poker4: { games: 0, wins: 0, losses: 0 },
+        pokdeng: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -390,6 +391,10 @@ function recordGameEnd(roomId, gameResult) {
         return recordPokerHandEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'pokdeng') {
+        return recordPokDengGameEnd(roomId, gameResult);
+    }
+
     return recordInsiderGameEnd(roomId, gameResult);
 }
 
@@ -529,6 +534,50 @@ function recordPokerHandEnd(roomId, gameResult) {
             resultText: playerWon
                 ? `${winnerIds.size > 1 ? 'เสมอมือที่' : 'ชนะมือที่'} ${handNumber || 1} (${label})`
                 : `${winner?.name || 'คนอื่น'} ชนะมือที่ ${handNumber || 1}`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+/** ป๊อกเด้ง: จบโต๊ะแล้วชิปมากกว่าที่ลงทุน (รวมขอชิปใหม่) = ชนะ ไม่งั้นแพ้ — นับเจ้ามือด้วย */
+function recordPokDengGameEnd(roomId, gameResult) {
+    const { standings, roomName, handNumber } = gameResult;
+    if (!Array.isArray(standings) || standings.length === 0) {
+        console.warn('Invalid pokdeng game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    standings.forEach(row => {
+        if (!row || !row.playerId || isBotPlayerId(row.playerId)) return;
+        const stat = initializeStats(row.playerId, row.name);
+        if (!stat) return;
+        const playerWon = Number(row.net) > 0;
+
+        stat.totalGames += 1;
+        stat.modeStats.pokdeng.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.pokdeng.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.pokdeng.losses += 1;
+        }
+
+        const net = Number(row.net) || 0;
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'pokdeng',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            winnerName: standings[0]?.name || 'ไม่ทราบ',
+            resultText: `${net > 0 ? 'กำไร +' : (net < 0 ? 'ขาดทุน ' : 'เสมอตัว ')}${net === 0 ? '' : net} ชิปโต๊ะ · ${handNumber || 0} มือ`
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {
             stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);

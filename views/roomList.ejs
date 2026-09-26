@@ -894,7 +894,8 @@ $(function() {
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
         { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
-        { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
+        { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1131,6 +1132,15 @@ $(function() {
                 title: 'สี่ใบเก',
                 summary: 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู',
                 bullets: ['2-10 คน', 'ตาละวางกอง 500', 'หมอบไม่ได้ใบที่ 3', 'เปิดเทียบเลยหลังได้ใบ 3']
+            },
+            pokdeng: {
+                tone: 'linear-gradient(135deg, rgba(179,38,46,0.3), rgba(24,8,10,0.92))',
+                border: 'rgba(245,200,107,0.34)',
+                cover: '/assets/games/pokdeng/cover.jpg',
+                badge: '🎴 ป๊อก 8/9 · เด้ง',
+                title: 'ป๊อกเด้ง',
+                summary: 'แจก 2 ใบ ป๊อกเปิดเลย ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ — ชิปในโต๊ะ ไม่มีมูลค่าจริง',
+                bullets: ['2-10 คน', 'มือละไม่ถึงนาที', 'ดอกเดียวกัน/คู่ = 2 เด้ง', 'ใส่บอทได้']
             }
         };
 
@@ -1147,7 +1157,8 @@ $(function() {
             coup: 'วงโค่นอำนาจ',
             liar: 'ไพ่โกหก',
             poker5: 'ไพ่ 5 ใบ',
-            poker4: 'สี่ใบเก'
+            poker4: 'สี่ใบเก',
+            pokdeng: 'ป๊อกเด้ง'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1290,7 +1301,8 @@ $(function() {
                             : (room.gameMode === 'coup' ? 'Coup'
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
                                     : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
-                                        : (room.gameMode === 'poker4' ? 'สี่ใบเก' : 'Insider'))))))
+                                        : (room.gameMode === 'poker4' ? 'สี่ใบเก'
+                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : 'Insider')))))))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1306,7 +1318,9 @@ $(function() {
                                     ? 'background: linear-gradient(135deg, #166534, #052e16); color:#bbf7d0; border:1px solid rgba(74,222,128,0.4);'
                                     : (room.gameMode === 'poker4'
                                         ? 'background: linear-gradient(135deg, #991b1b, #1c1917); color:#fecaca; border:1px solid rgba(248,113,113,0.35);'
-                                        : 'background: linear-gradient(135deg, #e67e22, #d35400);'))))));
+                                        : (room.gameMode === 'pokdeng'
+                                            ? 'background: #5c1419; color:#fde68a; border:1px solid rgba(245,200,107,0.4);'
+                                            : 'background: linear-gradient(135deg, #e67e22, #d35400);')))))));
             const roomCard = `
                 <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
@@ -1472,6 +1486,21 @@ $(function() {
                             </div>
                         </div>
                         <div id="pokerTableHint" style="margin-top:8px; color:#aaa; font-size:0.85em;">ทุกคนวางชิปลงกองกลางก่อนแจกไพ่ · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 · เล่นเก็บชิปใช้ชิปในบัญชี</div>
+                    </div>
+
+                    <div class="room-form-group" id="pokdengTableGroup" role="group" aria-labelledby="pokdengTableLabel" style="display:none;">
+                        <div class="room-form-label" id="pokdengTableLabel"><span class="icon">🎴</span> เจ้ามือ:</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,200,107,0.4); background:rgba(245,200,107,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="pokdengDealer" value="fixed" checked style="accent-color:#f5c86b;">
+                                <span>หัวห้องเป็นเจ้ามือ (ถือ 5,000)</span>
+                            </label>
+                            <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="radio" name="pokdengDealer" value="rotate" style="accent-color:#f5c86b;">
+                                <span>หมุนเจ้ามือทุกตา (ทุกคนเริ่ม 1,000)</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · ไม่เกี่ยวกับกระเป๋าชิป · ลงได้ 10–500 ต่อมือ · เปลี่ยนแบบเจ้ามือในเกมได้</div>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
@@ -1664,6 +1693,8 @@ $(function() {
                     }
                     werewolfWolfCountGroup.style.display = isWerewolfMode ? 'block' : 'none';
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
+                    if (selectedMode === 'pokdeng') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('pokdengTableGroup')) document.getElementById('pokdengTableGroup').style.display = selectedMode === 'pokdeng' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
@@ -1804,7 +1835,9 @@ $(function() {
                         : 'fun',
                     pokerAnte: (gameMode === 'poker5' || gameMode === 'poker4')
                         ? (parseInt((document.getElementById('pokerAnte') || {}).value, 10) || 500)
-                        : 500
+                        : 500,
+                    pokdengRotateDealer: gameMode === 'pokdeng'
+                        && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate')
                 };
             }
             }).then((result) => {
@@ -2091,6 +2124,21 @@ $(function() {
         ].join('');
     }
 
+    function buildPokDengGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ชนะเจ้ามือให้ได้มากที่สุด · ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง (เริ่มคนละ 1,000)</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>ขาไพ่ลงเดิมพัน 10–500 (เจ้ามือไม่ต้องลง)</li>',
+            '<li>แจกคนละ 2 ใบ · แต้ม = หลักหน่วยของผลรวม (A = 1, 10/J/Q/K = 0)</li>',
+            '<li>ได้ 8/9 = <b>ป๊อก</b> เปิดเลย · เจ้ามือป๊อก = เปิดวัดทุกคนทันที</li>',
+            '<li>ที่เหลือจั่วเพิ่มได้ 1 ใบ แล้วเจ้ามือจั่ว/อยู่ แล้ววัดทุกขาพร้อมกัน</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>อันดับ + เด้ง</h4><p>ป๊อก &gt; ตอง (5 เด้ง) &gt; เรียง (3 เด้ง) &gt; เซียน J/Q/K (3 เด้ง) &gt; แต้ม · 2 ใบดอกเดียวกัน/คู่ = 2 เด้ง · 3 ใบดอกเดียวกัน = 3 เด้ง · ชนะได้ เดิมพัน × เด้งของคนชนะ</p></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildPokerGuideHtml(variant) {
         if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
         return '';
@@ -2104,7 +2152,8 @@ $(function() {
             { id: 'spyfall',     label: '🕶️ Spyfall',     html: buildSpyfallGuideHtml(),      color: '#0f766e' },
             { id: 'liar',        label: '🃏 ไพ่โกหก',      html: buildLiarGuideHtml(),         color: '#b91c1c' },
             { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
-            { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' }
+            { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' },
+            { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' }
         ];
 
         const tabsHtml = '<div class="global-guide-tabs">' +

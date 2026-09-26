@@ -171,6 +171,7 @@ $(function() {
         { id: 'liar', label: 'ไพ่โกหก' },
         { id: 'poker5', label: 'ไพ่ 5 ใบ' },
         { id: 'poker4', label: 'สี่ใบเก' },
+        { id: 'pokdeng', label: 'ป๊อกเด้ง' },
         { id: 'blackmarket', label: 'Black Market' }
     ];
     var leaderboardState = {
@@ -631,7 +632,7 @@ $(function() {
                                 : (isCoup ? '👑 Coup'
                                     : (isLiar ? '🃏 ไพ่โกหก'
                                         : (isPoker5 ? '♠ ไพ่ 5 ใบ'
-                                            : (isPoker4 ? '♦ สี่ใบเก' : '🎯 Insider'))))));
+                                            : (isPoker4 ? '♦ สี่ใบเก' : (mode === 'pokdeng' ? '🎴 ป๊อกเด้ง' : '🎯 Insider')))))));
                     const modeClass = isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : (isSpyfall ? 'spyfall' : (isCoup ? 'coup' : (isLiar ? 'liar' : (isPoker5 || isPoker4 ? 'coup' : 'insider')))));
                     const detailPrimary = isWerewolf
                         ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
@@ -639,7 +640,7 @@ $(function() {
                             ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
                             : (isSpyfall
                                 ? 'สถานที่: ' + escapeHtml(game.location || 'ไม่ทราบ')
-                                : (isCoup || isLiar
+                                : (isCoup || isLiar || mode === 'pokdeng'
                                     ? escapeHtml(game.resultText || ((game.winnerName || 'คนอื่น') + ' รอดเป็นคนสุดท้าย'))
                                     : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'))));
                     const detailSecondary = isWerewolf
@@ -648,7 +649,7 @@ $(function() {
                             ? `👑 ${Number(game.influence || 0)} • 💵 ${Number(game.cash || 0)} • 🔥 ${Number(game.heat || 0)}`
                             : (isSpyfall
                                 ? `สายลับ: ${escapeHtml(game.spyName || 'ไม่ทราบ')} • ${game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด'}`
-                                : (isCoup || isLiar ? '' : escapeHtml(game.word || 'ไม่ทราบคำ'))));
+                                : (isCoup || isLiar || mode === 'pokdeng' ? '' : escapeHtml(game.word || 'ไม่ทราบคำ'))));
                     const gameDate = game.date
                         ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : '-';
@@ -751,6 +752,10 @@ $(function() {
                         <div class="profile-role-row">
                             <span>♦ สี่ใบเก</span>
                             <span>${stats.modeStats?.poker4?.games || 0} เกม · ชนะ ${stats.modeStats?.poker4?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🎴 ป๊อกเด้ง</span>
+                            <span>${stats.modeStats?.pokdeng?.games || 0} เกม · ชนะ ${stats.modeStats?.pokdeng?.wins || 0}</span>
                         </div>
                         ${blackMarketRoleHtml}
                     </div>

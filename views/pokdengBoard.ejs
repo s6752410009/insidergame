@@ -1,0 +1,1170 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<style>
+  html.pd-active,
+  html.pd-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: oklch(0.15 0.03 20) !important;
+  }
+  html.pd-active .container-fluid > header,
+  html.pd-active .footer,
+  html.pd-active #music-controls { display: none !important; }
+  html.pd-active, html.pd-active .container-fluid, html.pd-active .container-fluid > .row { background: oklch(0.15 0.03 20) !important; background-image: none !important; }
+  html.pd-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  html.pd-active .container-fluid > .row { margin: 0 !important; }
+  html.pd-active .col-lg-12 { padding: 0 !important; }
+
+  .pd {
+    --pd-bg: oklch(0.15 0.03 20);
+    --pd-surface: oklch(0.2 0.035 22);
+    --pd-surface-2: oklch(0.25 0.04 22);
+    --pd-line: oklch(0.84 0.13 85 / 0.2);
+    --pd-line-soft: oklch(1 0 0 / 0.1);
+    --pd-felt: oklch(0.36 0.12 22);
+    --pd-felt-deep: oklch(0.22 0.08 20);
+    --pd-rail: oklch(0.17 0.035 35);
+    --pd-gold: oklch(0.84 0.13 85);
+    --pd-gold-deep: oklch(0.7 0.13 75);
+    --pd-ink: oklch(0.97 0.012 80);
+    --pd-soft: oklch(0.86 0.025 70);
+    --pd-muted: oklch(0.74 0.03 50);
+    --pd-win: oklch(0.82 0.16 150);
+    --pd-win-bg: oklch(0.42 0.1 150 / 0.55);
+    --pd-lose: oklch(0.74 0.16 25);
+    --pd-lose-bg: oklch(0.36 0.12 25 / 0.6);
+    --pd-push-bg: oklch(0.4 0.02 60 / 0.6);
+    --pd-accent: oklch(0.84 0.13 85);
+    --pd-accent-ink: oklch(0.2 0.05 60);
+    --pd-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --pd-display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    --card-w: 84px;
+    --card-h: 118px;
+    --seat-card-w: 34px;
+    --seat-card-h: 48px;
+    --dealer-card-w: 52px;
+    --dealer-card-h: 73px;
+
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 8px 16px calc(var(--pd-dock-h, 200px) + 20px);
+    color: var(--pd-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    text-align: left;
+  }
+  body.content { background: var(--pd-bg, oklch(0.15 0.03 20)); }
+  .pd *, .pd *::before, .pd *::after { box-sizing: border-box; }
+  .pd button { font-family: inherit; }
+  .pd h1, .pd h2, .pd h3 { overflow-wrap: anywhere; }
+
+  /* ---------- top ---------- */
+  .pd-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding: 6px 0 10px; }
+  .pd-kicker { color: var(--pd-gold); font-family: var(--pd-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; }
+  .pd-title { margin: 0; font-family: var(--pd-display); font-weight: 700; font-size: clamp(1.1rem, 4.4vw, 1.5rem); line-height: 1.2; }
+  .pd-fun { display: inline-block; margin-top: 2px; font-size: 0.74rem; color: var(--pd-muted); }
+  .pd-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pd-pill {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px;
+    border-radius: 999px; border: 1px solid var(--pd-line); background: var(--pd-surface);
+    color: var(--pd-ink); font-size: 0.86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .pd-pill:hover { background: var(--pd-surface-2); }
+  .pd-pill[aria-pressed="true"] { border-color: var(--pd-gold); color: var(--pd-gold); }
+  .pd-pill.is-static { cursor: default; }
+  .pd-pill--danger { color: oklch(0.85 0.08 25); border-color: oklch(0.7 0.14 25 / 0.45); }
+  .pd-pill:focus-visible, .pd-btn:focus-visible, .pd-chipbtn:focus-visible { outline: 2px solid var(--pd-gold); outline-offset: 2px; }
+
+  /* ---------- now bar ---------- */
+  .pd-now {
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px;
+    padding: 10px 14px 12px; border-radius: 16px; background: var(--pd-surface); border: 1px solid var(--pd-line-soft);
+  }
+  .pd-now.is-mine { background: oklch(0.32 0.07 80 / 0.55); border-color: var(--pd-gold); }
+  .pd-now-phase { font-family: var(--pd-display); font-size: 0.76rem; font-weight: 600; letter-spacing: 0.1em; color: var(--pd-gold); }
+  .pd-now-copy { grid-column: 1; font-size: 1.04rem; font-weight: 700; line-height: 1.3; }
+  .pd-now-timer { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
+  .pd-now-sec { font-family: var(--pd-display); font-size: 1.5rem; font-weight: 700; color: var(--pd-gold); font-variant-numeric: tabular-nums; line-height: 1; }
+  .pd-now-hint { display: block; font-size: 0.7rem; color: var(--pd-muted); margin-top: 3px; max-width: 132px; }
+  .pd-now-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--pd-gold); transform-origin: left center; transform: scaleX(0); }
+  .pd-now.is-urgent .pd-now-bar { background: var(--pd-lose); }
+  .pd-now.is-urgent .pd-now-sec { color: var(--pd-lose); }
+
+  /* ---------- table ---------- */
+  .pd-table {
+    position: relative; margin-top: 10px; padding: 14px 10px 16px; border-radius: 34px;
+    background:
+      url('/assets/games/pokdeng/emblem.svg') center 52% / 210px no-repeat,
+      url('/assets/games/pokdeng/felt.svg') 0 0 / 64px repeat,
+      radial-gradient(ellipse at 50% 42%, var(--pd-felt), var(--pd-felt-deep) 78%);
+    box-shadow: inset 0 0 0 9px var(--pd-rail), inset 0 0 0 11px oklch(0.84 0.13 85 / 0.45), inset 0 18px 40px oklch(0 0 0 / 0.35), 0 20px 50px oklch(0 0 0 / 0.45);
+    min-height: 330px;
+  }
+  .pd-dealer { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 4px; }
+  .pd-dealer-head { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+  .pd-dealer-name { font-weight: 700; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-dealer-chips { font-size: 0.82rem; color: var(--pd-soft); font-variant-numeric: tabular-nums; }
+  .pd-badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+    background: var(--pd-gold); color: var(--pd-accent-ink); font-family: var(--pd-display); font-weight: 700; font-size: 0.72rem; white-space: nowrap;
+  }
+  .pd-badge--soft { background: oklch(0 0 0 / 0.35); color: var(--pd-gold); border: 1px solid var(--pd-line); }
+  .pd-dealer-cards { display: flex; gap: 6px; min-height: var(--dealer-card-h); align-items: center; justify-content: center; }
+  .pd-dealer-cards .pd-card { width: var(--dealer-card-w); height: var(--dealer-card-h); }
+  .pd-dealer-self { font-size: 0.86rem; color: var(--pd-soft); }
+
+  .pd-center { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 6px 0 10px; }
+  .pd-deck { position: relative; width: 40px; height: 56px; }
+  .pd-deck img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 5px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.4); }
+  .pd-deck img:nth-child(2) { transform: translate(-2px, -2px); }
+  .pd-deck img:nth-child(3) { transform: translate(-4px, -4px); }
+  .pd-pot { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: oklch(0 0 0 / 0.32); border: 1px solid var(--pd-line); }
+  .pd-pot img { width: 30px; height: 30px; }
+  .pd-pot-label { font-size: 0.7rem; color: var(--pd-muted); line-height: 1.1; }
+  .pd-pot-amount { font-family: var(--pd-display); font-weight: 700; font-size: 1.05rem; color: var(--pd-gold); font-variant-numeric: tabular-nums; line-height: 1.1; }
+
+  .pd-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .pd-seat {
+    position: relative; min-width: 0; padding: 8px 6px 8px; border-radius: 16px; text-align: center;
+    background: oklch(0 0 0 / 0.26); border: 1px solid oklch(1 0 0 / 0.06);
+    transition: box-shadow 0.2s var(--pd-ease), background-color 0.2s var(--pd-ease);
+  }
+  .pd-seat.is-turn { box-shadow: 0 0 0 2px var(--pd-gold), 0 0 22px oklch(0.84 0.13 85 / 0.35); background: oklch(0.3 0.06 70 / 0.45); }
+  .pd-seat.is-out { opacity: 0.45; }
+  .pd-seat-head { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; }
+  .pd-seat-name { font-size: 0.8rem; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-seat-chips { font-size: 0.74rem; color: var(--pd-soft); font-variant-numeric: tabular-nums; }
+  .pd-seat-cards { display: flex; justify-content: center; gap: 3px; min-height: var(--seat-card-h); margin: 5px 0 4px; }
+  .pd-seat-cards:empty { min-height: 0; margin: 2px 0; }
+  .pd-dealer-cards:empty { min-height: 0; }
+  .pd-seat-cards .pd-card { width: var(--seat-card-w); height: var(--seat-card-h); border-radius: 4px; }
+  .pd-seat-cards .pd-card img { border-radius: 4px; }
+  .pd-seat-status { font-size: 0.72rem; color: var(--pd-muted); min-height: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-seat-status.is-hot { color: var(--pd-gold); font-weight: 700; }
+  .pd-bet { display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; font-size: 0.74rem; font-weight: 700; color: var(--pd-gold); font-variant-numeric: tabular-nums; }
+  .pd-bet img { width: 16px; height: 16px; }
+  .pd-empty-seats { grid-column: 1 / -1; text-align: center; color: var(--pd-muted); font-size: 0.86rem; padding: 12px 0; }
+
+  .pd-outcome {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; padding: 2px 8px; border-radius: 999px;
+    font-size: 0.74rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pd-outcome.is-win { background: var(--pd-win-bg); color: var(--pd-win); }
+  .pd-outcome.is-lose { background: var(--pd-lose-bg); color: var(--pd-lose); }
+  .pd-outcome.is-push { background: var(--pd-push-bg); color: var(--pd-soft); }
+  .pd-outcome.is-pop { animation: pdPop 0.42s var(--pd-ease) both; animation-delay: var(--pop-delay, 0ms); }
+  .pd-handlabel { display: block; font-size: 0.74rem; font-weight: 700; color: var(--pd-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-handlabel.is-special { color: var(--pd-gold); }
+
+  .pd-pokburst {
+    position: absolute; left: 50%; top: 38%; z-index: 4; pointer-events: none;
+    padding: 4px 10px; border-radius: 999px; background: var(--pd-gold); color: var(--pd-accent-ink);
+    font-family: var(--pd-display); font-weight: 700; font-size: 0.9rem; white-space: nowrap;
+    transform: translate(-50%, -50%); animation: pdBurst 1.6s var(--pd-ease) both;
+  }
+
+  /* ---------- cards ---------- */
+  .pd-card { position: relative; flex: 0 0 auto; width: var(--card-w); height: var(--card-h); perspective: 800px; }
+  .pd-card-inner {
+    position: absolute; inset: 0; transform-style: preserve-3d;
+    transition: transform 0.5s var(--pd-ease); transition-delay: var(--flip-delay, 0ms);
+  }
+  .pd-card.is-face .pd-card-inner { transform: rotateY(180deg); }
+  .pd-card-back, .pd-card-face {
+    position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 8px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    box-shadow: 0 4px 10px oklch(0 0 0 / 0.38);
+  }
+  .pd-card-face { transform: rotateY(180deg); }
+  .pd-card.no-anim .pd-card-inner { transition: none; }
+  .pd-card.is-dealing { animation: pdDeal 0.46s var(--pd-ease) both; animation-delay: var(--deal-delay, 0ms); }
+  .pd-card.is-drawn .pd-card-face, .pd-card.is-drawn .pd-card-back { box-shadow: 0 0 0 2px var(--pd-gold), 0 4px 10px oklch(0 0 0 / 0.38); }
+
+  /* ---------- result list ---------- */
+  .pd-results { margin-top: 12px; padding: 12px; border-radius: 18px; background: var(--pd-surface); border: 1px solid var(--pd-line-soft); }
+  .pd-results h2 { margin: 0 0 8px; font-family: var(--pd-display); font-size: 1rem; color: var(--pd-gold); }
+  .pd-results-note { font-size: 0.78rem; color: var(--pd-muted); margin: 0 0 8px; }
+  .pd-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--pd-line-soft); }
+  .pd-row:first-of-type { border-top: 0; }
+  .pd-row-name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-row-hand { grid-column: 1; font-size: 0.8rem; color: var(--pd-soft); min-width: 0; }
+  .pd-row-cards { display: inline-flex; gap: 2px; vertical-align: middle; margin-right: 6px; }
+  .pd-row-cards img { width: 22px; height: 31px; border-radius: 3px; }
+  .pd-row .pd-outcome { grid-column: 2; grid-row: 1 / span 2; font-size: 0.86rem; padding: 4px 10px; }
+
+  /* ---------- dock ---------- */
+  .pd-dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 10px max(16px, calc((100vw - 948px) / 2)) calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--pd-bg); border-top: 1px solid var(--pd-line);
+    box-shadow: 0 -12px 30px oklch(0 0 0 / 0.45);
+    max-height: 72vh; overflow-y: auto;
+  }
+  .pd-dock.is-static { position: static; max-height: none; margin: 12px 0 0; padding: 14px; border: 1px solid var(--pd-line); border-radius: 18px; box-shadow: none; }
+  .pd.is-finished { padding-bottom: 24px; }
+  .pd-me { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+  .pd-me-cards { display: flex; gap: 6px; flex: 0 0 auto; min-height: var(--card-h); align-items: center; }
+  .pd-me-cards:empty { display: none; }
+  .pd-me-info { min-width: 0; flex: 1 1 auto; }
+  .pd-me-label { font-family: var(--pd-display); font-weight: 700; font-size: 1.3rem; line-height: 1.15; }
+  .pd-me-label.is-special { color: var(--pd-gold); }
+  .pd-me-sub { font-size: 0.84rem; color: var(--pd-soft); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .pd-me-sub strong { color: var(--pd-ink); }
+  .pd-me .pd-outcome { font-size: 0.95rem; padding: 4px 12px; margin-top: 6px; }
+  .pd-actions { margin-top: 10px; display: grid; gap: 8px; }
+  .pd-actions-row { display: flex; gap: 8px; }
+  .pd-actions-row > * { flex: 1 1 0; min-width: 0; }
+  .pd-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 16px;
+    border-radius: 14px; border: 1px solid var(--pd-line); background: var(--pd-surface-2); color: var(--pd-ink);
+    font-weight: 700; font-size: 1.02rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: transform 0.08s ease-out, background-color 0.18s ease-out;
+  }
+  .pd-btn:active { transform: scale(0.97); }
+  .pd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pd-btn--primary { background: var(--pd-accent); color: var(--pd-accent-ink); border-color: transparent; font-family: var(--pd-display); font-size: 1.1rem; }
+  .pd-btn--primary:hover { background: oklch(0.88 0.12 85); }
+  .pd-btn--ghost { background: transparent; color: var(--pd-soft); }
+  .pd-btn--big { min-height: 60px; font-size: 1.2rem; }
+  .pd-hint { font-size: 0.8rem; color: var(--pd-muted); text-align: center; }
+  .pd-wait { text-align: center; color: var(--pd-soft); padding: 6px 0; font-weight: 600; }
+
+  .pd-bet-panel { display: grid; gap: 10px; }
+  .pd-bet-panel { gap: 6px; }
+  .pd-bet-top { display: flex; align-items: center; gap: 8px; }
+  .pd-bet-amount { flex: 0 0 auto; min-width: 76px; display: grid; }
+  .pd-bet-amount strong { font-family: var(--pd-display); font-size: 1.8rem; color: var(--pd-gold); font-variant-numeric: tabular-nums; line-height: 1; }
+  .pd-bet-amount span { font-size: 0.72rem; color: var(--pd-muted); white-space: nowrap; }
+  .pd-chips { flex: 1 1 auto; display: flex; justify-content: flex-end; gap: 2px; min-width: 0; }
+  .pd-chipbtn {
+    flex: 0 1 56px; min-width: 44px; display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0;
+    border: 0; background: transparent; cursor: pointer; border-radius: 50%;
+  }
+  .pd-chipbtn img { width: 46px; height: 46px; transition: transform 0.12s var(--pd-ease); }
+  .pd-chipbtn:active img { transform: translateY(-4px) scale(1.06); }
+  .pd-chipbtn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .pd-range { width: 100%; accent-color: oklch(0.84 0.13 85); height: 44px; margin: 0; }
+  .pd-quick { display: flex; gap: 6px; }
+  .pd-quick .pd-btn { min-height: 44px; font-size: 0.86rem; padding: 0 8px; flex: 1 1 0; }
+
+  .pd-standings { display: grid; gap: 0; margin: 4px 0 8px; }
+  .pd-standings .pd-row { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .pd-rank { font-family: var(--pd-display); font-weight: 700; color: var(--pd-gold); text-align: center; }
+  .pd-standings .pd-row-hand { grid-column: 2; }
+  .pd-standings .pd-outcome { grid-column: 3; }
+  .pd-final-title { font-family: var(--pd-display); font-size: 1.3rem; font-weight: 700; margin: 0 0 4px; text-align: center; }
+
+  /* ---------- history ---------- */
+  .pd-history { margin-top: 12px; }
+  .pd-history summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--pd-soft); font-weight: 600; font-size: 0.88rem; }
+  .pd-feed { display: grid; gap: 4px; }
+  .pd-feed-item { font-size: 0.82rem; color: var(--pd-soft); padding: 5px 10px; background: var(--pd-surface); border-radius: 10px; }
+
+  /* ---------- fx ---------- */
+  .pd-fx { position: fixed; inset: 0; pointer-events: none; z-index: 11000; }
+  .pd-fly { position: absolute; left: 0; top: 0; width: 26px; height: 26px; transition: transform 0.55s var(--pd-ease), opacity 0.55s ease-in; will-change: transform; }
+  .pd-banner {
+    position: fixed; left: 50%; top: 42%; z-index: 11001; pointer-events: none; max-width: calc(100vw - 32px);
+    padding: 12px 22px; border-radius: 999px; background: oklch(0.16 0.03 20 / 0.94); border: 1px solid var(--pd-gold);
+    font-family: var(--pd-display); font-weight: 700; font-size: 1.2rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    opacity: 0; transform: translate(-50%, -50%);
+  }
+  .pd-banner.is-on { animation: pdBanner 1.7s var(--pd-ease) both; }
+  .pd-banner.is-win { color: var(--pd-win); border-color: var(--pd-win); }
+  .pd-banner.is-lose { color: var(--pd-lose); border-color: var(--pd-lose); }
+
+  /* ---------- sidebar / guide ---------- */
+  .pd-sidebar { position: fixed; top: 0; right: -320px; width: 300px; max-width: 86vw; height: 100%; background: var(--pd-surface); border-left: 1px solid var(--pd-line); padding: 18px; z-index: 9000; transition: right 0.25s ease; overflow-y: auto; color: var(--pd-ink); font-family: 'Bai Jamjuree', sans-serif; }
+  .pd-sidebar.open { right: 0; }
+  .pd-sidebar h4 { margin: 0 0 10px; font-family: var(--pd-display); }
+  .pd-sidebar-overlay { display: none; position: fixed; inset: 0; background: oklch(0 0 0 / 0.55); z-index: 8999; }
+  .pd-guide { text-align: left; font-family: 'Bai Jamjuree', sans-serif; line-height: 1.5; font-size: 0.94rem; }
+  .pd-guide h4 { margin: 12px 0 6px; font-family: 'Chakra Petch', sans-serif; color: oklch(0.84 0.13 85); font-size: 0.98rem; }
+  .pd-guide p { margin: 0 0 6px; }
+  .pd-rankrow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid oklch(1 0 0 / 0.08); }
+  .pd-rankrow:first-child { border-top: 0; }
+  .pd-rankno { font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: oklch(0.84 0.13 85); text-align: center; }
+  .pd-rankname { font-weight: 700; }
+  .pd-rankdesc { display: block; font-size: 0.78rem; color: oklch(0.78 0.03 50); font-weight: 500; }
+  .pd-rankcards { display: flex; gap: 2px; }
+  .pd-rankcards img { width: 24px; height: 34px; border-radius: 3px; }
+  .pd-deng { font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: oklch(0.2 0.05 60); background: oklch(0.84 0.13 85); border-radius: 999px; padding: 1px 7px; font-size: 0.74rem; white-space: nowrap; }
+
+  .chat-box {
+    --chat-accent: oklch(0.7 0.16 30); --chat-accent-dark: oklch(0.45 0.13 25);
+    --chat-surface: oklch(0.19 0.035 22); --chat-border: oklch(0.84 0.13 85 / 0.24); --chat-bubble: oklch(0.26 0.05 22);
+    font-family: 'Bai Jamjuree', sans-serif;
+  }
+  .chat-toggle { --chat-toggle-bg: oklch(0.45 0.13 25); border-radius: 999px; padding: 12px 18px; bottom: calc(var(--pd-dock-h, 180px) + 12px + env(safe-area-inset-bottom, 0px)) !important; }
+  .btn-chat-send { --chat-send-bg: oklch(0.84 0.13 85); --chat-send-color: oklch(0.2 0.05 60); }
+
+  @keyframes pdDeal {
+    0% { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, -80px)) rotate(-24deg) scale(0.5); }
+    18% { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes pdPop {
+    0% { opacity: 0; transform: scale(0.6); }
+    60% { opacity: 1; transform: scale(1.12); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pdBurst {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    30% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(0.96); }
+  }
+  @keyframes pdBanner {
+    0% { opacity: 0; transform: translate(-50%, -38%) scale(0.92); }
+    16% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -62%) scale(0.98); }
+  }
+
+  @media (min-width: 720px) {
+    .pd { --card-w: 100px; --card-h: 140px; --seat-card-w: 44px; --seat-card-h: 62px; --dealer-card-w: 64px; --dealer-card-h: 90px; }
+    .pd-seats { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .pd-table { padding: 18px 18px 20px; min-height: 380px; }
+  }
+  @media (max-width: 360px) {
+    .pd { --card-w: 72px; --card-h: 101px; --seat-card-w: 30px; --seat-card-h: 42px; }
+    .pd-chipbtn img { width: 40px; height: 40px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-card.is-dealing, .pd-outcome.is-pop, .pd-pokburst, .pd-banner.is-on { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+    .pd-card-inner, .pd-fly, .pd-seat, .pd-btn, .pd-chipbtn img { transition: none !important; }
+    .pd-banner.is-on { animation: none !important; opacity: 1; }
+  }
+</style>
+
+<div id="connectionStatus" class="pd-pill pd-pill--danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+<div id="pdFx" class="pd-fx" aria-hidden="true"></div>
+<div id="pdBanner" class="pd-banner" aria-hidden="true"></div>
+
+<div class="pd" id="pdRoot">
+  <div class="pd-top">
+    <div style="min-width:0;">
+      <div class="pd-kicker">ป๊อกเด้ง · <span id="pdHandNo">มือที่ -</span></div>
+      <h1 class="pd-title"><%= room.name %></h1>
+      <span class="pd-fun">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</span>
+    </div>
+    <div class="pd-tools">
+      <button type="button" id="pdRankBtn" class="pd-pill">อันดับไพ่</button>
+      <button type="button" id="pdHowBtn" class="pd-pill">วิธีเล่น</button>
+      <button type="button" id="pdRotateBtn" class="pd-pill <%= room.admin ? '' : 'is-static' %>" aria-pressed="false">เจ้ามือคงที่</button>
+      <button type="button" id="pdSidebarBtn" class="pd-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
+      <% if (room.admin) { %>
+      <button type="button" id="pdEndBtn" class="pd-pill pd-pill--danger">จบโต๊ะ</button>
+      <% } %>
+    </div>
+  </div>
+
+  <div id="pdNow" class="pd-now">
+    <span id="pdNowPhase" class="pd-now-phase">กำลังโหลด</span>
+    <span id="pdNowCopy" class="pd-now-copy" role="status" aria-live="polite" aria-atomic="true">กำลังโหลด...</span>
+    <div class="pd-now-timer" aria-hidden="true">
+      <div id="pdNowSec" class="pd-now-sec">--</div>
+      <span id="pdNowHint" class="pd-now-hint"></span>
+    </div>
+    <div id="pdNowBar" class="pd-now-bar"></div>
+  </div>
+
+  <section class="pd-table" aria-label="โต๊ะป๊อกเด้ง">
+    <div id="pdDealer" class="pd-dealer"></div>
+    <div class="pd-center">
+      <div class="pd-deck" id="pdDeck" aria-hidden="true">
+        <img src="/assets/games/poker/back.svg" alt=""><img src="/assets/games/poker/back.svg" alt=""><img src="/assets/games/poker/back.svg" alt="">
+      </div>
+      <div class="pd-pot" id="pdPot">
+        <img src="/assets/games/pokdeng/chip-100.svg" alt="">
+        <div><div class="pd-pot-label">เดิมพันบนโต๊ะ</div><div class="pd-pot-amount" id="pdPotAmount">0</div></div>
+      </div>
+    </div>
+    <div id="pdSeats" class="pd-seats"></div>
+  </section>
+
+  <section id="pdResults" class="pd-results" hidden></section>
+
+  <details class="pd-history">
+    <summary>บันทึกโต๊ะ</summary>
+    <div id="pdFeed" class="pd-feed"></div>
+  </details>
+
+  <div id="pdDock" class="pd-dock">
+    <div class="pd-me">
+      <div id="pdMeCards" class="pd-me-cards"></div>
+      <div class="pd-me-info" id="pdMeInfo"></div>
+    </div>
+    <div id="pdActions" class="pd-actions"></div>
+  </div>
+</div>
+
+<aside id="playerSidebar" class="pd-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pdPlayerTitle">
+  <h4 id="pdPlayerTitle">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="leaveRoomBtn" type="button" class="pd-btn" style="width:100%; margin-bottom:8px;">ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="pd-btn pd-btn--ghost" style="width:100%;">ปิด</button>
+</aside>
+<div id="sidebarOverlay" class="pd-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="pdChatTitle" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title" id="pdChatTitle">แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('pd-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = '<%= player.name %>';
+  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  if (window.partyPlay) window.partyPlay.startSession('pokdeng', socket);
+
+  let S = <%- JSON.stringify(typeof pokdengState !== 'undefined' && pokdengState ? pokdengState : {}) %>;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CARD_BACK = '/assets/games/poker/back.svg';
+  const CHIP = v => '/assets/games/pokdeng/chip-' + v + '.svg';
+  const CHIP_VALUES = [10, 50, 100, 500];
+  const PHASE_LABEL = { bet: 'ลงเดิมพัน', deal: 'แจกไพ่', draw: 'จั่วไพ่', dealer: 'ตาเจ้ามือ', result: 'สรุปผล', finished: 'จบโต๊ะ', lobby: 'รอเริ่ม' };
+
+  let allowNavigation = false;
+  let firstRender = true;
+  let seenFx = 0;
+  let betAmount = null;
+  let betHand = -1;
+  let betTouched = false;
+  let pending = false;
+  let timerHandle = null;
+  const cardMemo = new Map(); // key → 'back' | 'face'
+  let dealPlan = null; // { handNumber, order: [...ids] }
+
+  // ---------- helpers ----------
+  function esc(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+  }
+  function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+  function signed(n) { n = Number(n) || 0; return (n > 0 ? '+' : (n < 0 ? '−' : '')) + fmt(Math.abs(n)); }
+  function avatarHtml(p, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 26 });
+    }
+    return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
+  }
+  function dengWord(d) { return d >= 5 ? 'ห้าเด้ง' : (d === 3 ? 'สามเด้ง' : (d === 2 ? 'สองเด้ง' : '')); }
+  function selfSeat() { return (S.players || []).find(p => p.playerId === playerId) || null; }
+  function seatById(id) { return (S.players || []).find(p => p.playerId === id) || null; }
+  function resultRow(id) {
+    if (!S.lastResult) return null;
+    if (S.lastResult.dealer && S.lastResult.dealer.playerId === id) return Object.assign({ isDealer: true }, S.lastResult.dealer);
+    return (S.lastResult.rows || []).find(r => r.playerId === id) || null;
+  }
+
+  /**
+   * การ์ด 1 ใบ: key ใช้จำว่าเคยแจก/เคยหงายแล้วหรือยัง
+   * mode: 'new' (บินจากกอง) · 'flip' (คว่ำ → หงาย) · 'static'
+   */
+  function cardHtml(key, card, opts) {
+    opts = opts || {};
+    const face = !!(card && card.image);
+    const prev = cardMemo.get(key);
+    let mode = 'static';
+    if (!firstRender && !reduceMotion) {
+      if (!prev) mode = 'new';
+      else if (prev === 'back' && face) mode = 'flip';
+    }
+    cardMemo.set(key, face ? 'face' : 'back');
+    const startFace = face && mode === 'static';
+    const cls = ['pd-card'];
+    if (startFace) cls.push('is-face', 'no-anim');
+    if (opts.drawn) cls.push('is-drawn');
+    const data = ' data-key="' + esc(key) + '" data-mode="' + mode + '" data-face="' + (face ? '1' : '0') + '"' +
+      (opts.dealIndex != null ? ' data-deal="' + opts.dealIndex + '"' : '');
+    const alt = face ? esc(card.thaiName || '') : 'ไพ่คว่ำ';
+    return '<div class="' + cls.join(' ') + '"' + data + ' role="img" aria-label="' + alt + '">' +
+      '<div class="pd-card-inner">' +
+        '<img class="pd-card-back" src="' + CARD_BACK + '" alt="" draggable="false">' +
+        (face ? '<img class="pd-card-face" src="' + esc(card.image) + '" alt="" draggable="false">' : '') +
+      '</div></div>';
+  }
+
+  function seatCards(p, prefix) {
+    const n = Number(p.cardCount || 0);
+    if (!n) return '';
+    const cards = p.cards || [];
+    const order = dealPlan && dealPlan.handNumber === S.handNumber ? dealPlan.order : [];
+    const at = order.indexOf(p.playerId);
+    let html = '';
+    for (let i = 0; i < n; i += 1) {
+      const dealIndex = i < 2 && at >= 0 ? i * order.length + at : null;
+      html += cardHtml(prefix + S.handNumber + ':' + p.playerId + ':' + i, cards[i] || null, { dealIndex, drawn: i === 2 });
+    }
+    return html;
+  }
+
+  // ---------- render ----------
+  function describeNow() {
+    const self = S.self;
+    const phase = S.phase;
+    const dealerName = S.dealerName || 'เจ้ามือ';
+    const acts = S.availableActions || {};
+    if (phase === 'finished') return { text: 'จบโต๊ะแล้ว — ดูสรุปชิปด้านล่าง', mine: false };
+    if (!self) return { text: 'กำลังดูโต๊ะ', mine: false };
+    if (phase === 'bet') {
+      if (self.isDealer) return { text: 'คุณเป็นเจ้ามือ — รอขาไพ่ลงเดิมพัน', mine: false };
+      if (acts.canBet) return { text: 'เลือกยอดแล้วกดลงเดิมพัน', mine: true };
+      if (acts.canRebuy) return { text: 'ชิปหมด — กดขอชิปใหม่เพื่อเล่นต่อ', mine: true };
+      if (self.skipped) return { text: 'คุณข้ามมือนี้ — รอมือหน้า', mine: false };
+      if (self.decided) return { text: 'ลงแล้ว ' + fmt(self.bet) + ' — รอคนอื่น', mine: false };
+      return { text: 'ชิปไม่พอเล่นต่อ — ดูเพื่อนเล่นได้', mine: false };
+    }
+    if (phase === 'deal') return { text: 'แจกไพ่คนละ 2 ใบ — ใครป๊อกเปิดเลย', mine: false };
+    if (phase === 'draw') {
+      if (acts.canDraw) return { text: 'ตาคุณ — จั่วเพิ่ม 1 ใบ หรืออยู่', mine: true };
+      return { text: 'รอ ' + (S.toActName || 'คนถัดไป') + ' จั่วหรืออยู่', mine: false };
+    }
+    if (phase === 'dealer') {
+      if (acts.canDealerDecide) return { text: 'ตาคุณ (เจ้ามือ) — จั่วหรืออยู่ แล้วเปิดวัดทุกคน', mine: true };
+      return { text: 'รอเจ้ามือ ' + dealerName + ' จั่วหรืออยู่', mine: false };
+    }
+    if (phase === 'result') {
+      const mine = resultRow(playerId);
+      if (mine && !mine.isDealer) {
+        if (mine.outcome === 'win') return { text: 'คุณชนะ ' + signed(mine.delta) + ' ชิป', mine: true };
+        if (mine.outcome === 'lose') return { text: 'คุณแพ้ ' + signed(mine.delta) + ' ชิป', mine: false };
+        return { text: 'เสมอ — ได้เดิมพันคืน', mine: false };
+      }
+      if (mine && mine.isDealer) return { text: 'เจ้ามือมือนี้ ' + signed(mine.delta) + ' ชิป', mine: mine.delta > 0 };
+      return { text: 'สรุปผลมือนี้', mine: false };
+    }
+    return { text: 'รอเริ่มโต๊ะ', mine: false };
+  }
+
+  function timerHint() {
+    switch (S.phase) {
+      case 'bet': return 'หมดเวลา = ลงขั้นต่ำ ' + ((S.limits && S.limits.minBet) || 10);
+      case 'deal': return 'กำลังเปิดไพ่';
+      case 'draw': return 'หมดเวลา = อยู่';
+      case 'dealer': return 'หมดเวลา = จั่วถ้า 0–3 แต้ม';
+      case 'result': return 'มือต่อไปอัตโนมัติ';
+      default: return '';
+    }
+  }
+
+  function renderTop() {
+    $('#pdHandNo').text(S.handNumber ? 'มือที่ ' + S.handNumber : 'เตรียมโต๊ะ');
+    const rotate = !!S.rotateDealer;
+    $('#pdRotateBtn').text(rotate ? 'หมุนเจ้ามือทุกตา' : 'เจ้ามือคงที่').attr('aria-pressed', rotate ? 'true' : 'false');
+    const now = describeNow();
+    $('#pdNowPhase').text((PHASE_LABEL[S.phase] || '') + (S.handNumber ? ' · มือที่ ' + S.handNumber : ''));
+    $('#pdNowCopy').text(now.text);
+    $('#pdNow').toggleClass('is-mine', !!now.mine);
+    $('#pdNowHint').text(timerHint());
+  }
+
+  function renderDealer() {
+    const d = seatById(S.dealerId);
+    if (!d) { $('#pdDealer').html('<div class="pd-dealer-self">รอเลือกเจ้ามือ</div>'); return; }
+    const res = S.phase === 'result' || S.phase === 'finished' ? resultRow(d.playerId) : null;
+    let body = '';
+    if (d.isSelf) {
+      body = '<div class="pd-dealer-self">คุณคือเจ้ามือ · ไพ่ของคุณอยู่ด้านล่าง</div>';
+    } else {
+      body = '<div class="pd-dealer-cards">' + seatCards(d, 'd') + '</div>';
+    }
+    let label = '';
+    if (!d.isSelf && d.eval && d.revealed) {
+      label = '<span class="pd-handlabel' + (d.eval.special || d.eval.pok ? ' is-special' : '') + '">' + esc(d.eval.label) + '</span>';
+    }
+    const outcome = res ? '<span class="pd-outcome is-pop ' + (res.delta > 0 ? 'is-win' : (res.delta < 0 ? 'is-lose' : 'is-push')) + '" style="--pop-delay:700ms">เจ้ามือ ' + signed(res.delta) + '</span>' : '';
+    const turn = S.phase === 'dealer' ? ' <span class="pd-badge pd-badge--soft">กำลังตัดสินใจ</span>' : '';
+    $('#pdDealer').html(
+      '<div class="pd-dealer-head" data-seat-id="' + esc(d.playerId) + '">' + avatarHtml(d, 30) +
+        '<span class="pd-dealer-name" style="color:' + esc(d.color || '#fff') + '">' + esc(d.isSelf ? 'คุณ' : d.name) + '</span>' +
+        '<span class="pd-badge">เจ้ามือ</span>' + turn +
+      '</div>' +
+      '<div class="pd-dealer-chips">กองเจ้ามือ ' + fmt(d.chips) + ' ชิป</div>' +
+      body + label + outcome
+    );
+  }
+
+  function seatStatus(p) {
+    if (p.left) return { text: 'ออกแล้ว', hot: false };
+    if (!p.online && !p.isBot) return { text: 'หลุด', hot: false };
+    if (S.phase === 'bet') {
+      if (p.skipped) return { text: 'ข้ามมือนี้', hot: false };
+      if (p.decided) return { text: 'ลงแล้ว', hot: false };
+      if (p.chips < 10) return { text: p.rebuyUsed ? 'ชิปหมด' : 'ชิปหมด · ขอใหม่ได้', hot: false };
+      return { text: 'กำลังเลือกยอด…', hot: true };
+    }
+    if (!p.inHand) return { text: p.skipped ? 'ข้ามมือนี้' : 'ไม่ได้ลง', hot: false };
+    if (p.revealed && p.eval && p.eval.pok && S.phase !== 'result') return { text: 'ป๊อก ' + p.eval.points + '!', hot: true };
+    if (p.isTurn) return { text: 'กำลังคิด…', hot: true };
+    if (S.phase === 'draw' || S.phase === 'dealer' || S.phase === 'deal') {
+      if (p.done) return { text: p.drew ? 'จั่วแล้ว' : 'อยู่', hot: false };
+      return { text: 'รอตา', hot: false };
+    }
+    return { text: '', hot: false };
+  }
+
+  function renderSeats() {
+    const others = (S.players || []).filter(p => !p.isSelf && !p.isDealer && !(p.left && !p.inHand));
+    if (!others.length) {
+      $('#pdSeats').html('<div class="pd-empty-seats">ยังไม่มีขาไพ่คนอื่น</div>');
+      return;
+    }
+    const showdown = S.phase === 'result' || S.phase === 'finished';
+    $('#pdSeats').html(others.map(function(p, index) {
+      const st = seatStatus(p);
+      const res = showdown ? resultRow(p.playerId) : null;
+      const out = !p.inHand && S.phase !== 'bet';
+      let bottom = '';
+      if (res) {
+        const cls = res.outcome === 'win' ? 'is-win' : (res.outcome === 'lose' ? 'is-lose' : 'is-push');
+        const txt = res.outcome === 'push' ? 'เสมอ' : signed(res.delta);
+        bottom = '<span class="pd-handlabel' + (res.special || res.pok ? ' is-special' : '') + '">' + esc(res.label) + '</span>' +
+          '<span class="pd-outcome is-pop ' + cls + '" style="--pop-delay:' + (700 + index * 90) + 'ms">' + txt + '</span>';
+      } else {
+        bottom = '<div class="pd-seat-status' + (st.hot ? ' is-hot' : '') + '">' + esc(st.text) + '</div>' +
+          (p.bet > 0 ? '<span class="pd-bet"><img src="' + CHIP(100) + '" alt="">' + fmt(p.bet) + '</span>' : '');
+      }
+      return '<div class="pd-seat' + (p.isTurn ? ' is-turn' : '') + (out || p.left ? ' is-out' : '') + '" data-seat-id="' + esc(p.playerId) + '">' +
+        '<div class="pd-seat-head">' + avatarHtml(p, 22) +
+          '<span class="pd-seat-name" style="color:' + esc(p.color || '#fff') + '">' + esc(p.name) + '</span></div>' +
+        '<div class="pd-seat-chips">' + fmt(p.chips) + ' ชิป</div>' +
+        '<div class="pd-seat-cards">' + seatCards(p, 's') + '</div>' +
+        bottom + '</div>';
+    }).join(''));
+  }
+
+  function renderPot() {
+    const total = (S.players || []).reduce((sum, p) => sum + (Number(p.bet) || 0), 0);
+    $('#pdPotAmount').text(fmt(total));
+  }
+
+  function renderMe() {
+    const self = S.self;
+    const seat = selfSeat();
+    if (!self || !seat) {
+      $('#pdMeCards').html('');
+      $('#pdMeInfo').html('<div class="pd-me-sub">คุณกำลังดูโต๊ะนี้</div>');
+      return;
+    }
+    const meSeat = Object.assign({}, seat, { cards: self.cards, cardCount: (self.cards || []).length });
+    $('#pdMeCards').html(seatCards(meSeat, 'm'));
+    const ev = self.eval;
+    const res = (S.phase === 'result') ? resultRow(playerId) : null;
+    let label = '';
+    if (ev) label = '<div class="pd-me-label' + (ev.special || ev.pok ? ' is-special' : '') + '">' + esc(ev.label) + '</div>';
+    else if (self.isDealer) label = '<div class="pd-me-label">เจ้ามือ</div>';
+    else if (S.phase === 'bet' && self.decided && !self.skipped) label = '<div class="pd-me-label">ลง ' + fmt(self.bet) + '</div>';
+    const netNow = (self.chips + (self.bet || 0)) - self.buyIn;
+    let sub = '<div class="pd-me-sub">ชิป <strong>' + fmt(self.chips) + '</strong>' +
+      (self.bet > 0 ? ' · เดิมพัน <strong>' + fmt(self.bet) + '</strong>' : '') +
+      ' · ' + (netNow >= 0 ? 'กำไร ' : 'ขาดทุน ') + signed(netNow) + '</div>';
+    let out = '';
+    if (res) {
+      const cls = res.isDealer ? (res.delta > 0 ? 'is-win' : (res.delta < 0 ? 'is-lose' : 'is-push'))
+        : (res.outcome === 'win' ? 'is-win' : (res.outcome === 'lose' ? 'is-lose' : 'is-push'));
+      const txt = res.isDealer ? 'เจ้ามือ ' + signed(res.delta)
+        : (res.outcome === 'win' ? 'ชนะ ' + signed(res.delta) + (res.multiplier > 1 ? ' (' + res.multiplier + ' เด้ง)' : '')
+          : (res.outcome === 'lose' ? 'แพ้ ' + signed(res.delta) + (res.multiplier > 1 ? ' (' + res.multiplier + ' เด้ง)' : '') : 'เสมอ คืนเดิมพัน'));
+      out = '<span class="pd-outcome is-pop ' + cls + '" style="--pop-delay:650ms">' + txt + '</span>';
+    }
+    $('#pdMeInfo').html(label + sub + out);
+  }
+
+  function clampBet(v) {
+    const a = S.availableActions || {};
+    const min = a.minBet || 10;
+    const max = Math.max(min, a.maxBet || min);
+    v = Math.round(Number(v) || min);
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function renderActions() {
+    const a = S.availableActions || {};
+    const self = S.self;
+    let html = '';
+    if (S.phase === 'finished') {
+      html = renderFinished();
+    } else if (a.canBet) {
+      if (betHand !== S.handNumber || betAmount == null) {
+        betHand = S.handNumber;
+        betTouched = false;
+        betAmount = clampBet(a.defaultBet || a.minBet);
+      }
+      betAmount = clampBet(betAmount);
+      html = '<div class="pd-bet-panel">' +
+        '<div class="pd-bet-top"><div class="pd-bet-amount"><strong id="pdBetValue">' + fmt(betAmount) + '</strong><span>ลงได้ ' + fmt(a.minBet) + '–' + fmt(a.maxBet) + '</span></div>' +
+        '<div class="pd-chips">' + CHIP_VALUES.map(v =>
+          '<button type="button" class="pd-chipbtn" data-chip="' + v + '"' + (v > a.maxBet ? ' disabled' : '') + ' aria-label="เพิ่ม ' + v + '">' +
+          '<img src="' + CHIP(v) + '" alt=""></button>').join('') + '</div></div>' +
+        '<input type="range" class="pd-range" id="pdBetRange" min="' + a.minBet + '" max="' + a.maxBet + '" step="10" value="' + betAmount + '" aria-label="ยอดเดิมพัน">' +
+        '<div class="pd-actions-row">' +
+          '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามมือ</button>' +
+          '<button type="button" id="pdBetBtn" class="pd-btn pd-btn--primary pd-btn--big">ลงเดิมพัน ' + fmt(betAmount) + '</button>' +
+        '</div></div>';
+    } else if (a.canDraw || a.canDealerDecide) {
+      const ev = self && self.eval;
+      const tip = ev ? (ev.points <= 3 ? 'แต้มน้อย ส่วนใหญ่จั่ว' : (ev.points >= 6 ? 'แต้มดี ส่วนใหญ่อยู่' : 'ครึ่งๆ ลองเสี่ยงดู')) : '';
+      html = '<div class="pd-actions-row">' +
+        '<button type="button" id="pdStayBtn" class="pd-btn pd-btn--big">อยู่</button>' +
+        '<button type="button" id="pdDrawBtn" class="pd-btn pd-btn--primary pd-btn--big">จั่วไพ่</button>' +
+        '</div>' + (tip ? '<div class="pd-hint">' + esc(tip) + (a.canDealerDecide ? ' · แล้วเปิดวัดทุกขาพร้อมกัน' : '') + '</div>' : '');
+    } else if (S.phase === 'result') {
+      html = a.canNext
+        ? '<button type="button" id="pdNextBtn" class="pd-btn pd-btn--primary pd-btn--big">มือต่อไป</button>'
+        : '<div class="pd-wait">รอมือต่อไป…</div>';
+    } else if (self && self.isDealer && S.phase === 'bet') {
+      html = '<div class="pd-wait">รอขาไพ่ลงเดิมพัน แล้วแจกอัตโนมัติ</div>';
+    } else if (S.phase === 'draw' || S.phase === 'dealer' || S.phase === 'deal') {
+      html = '<div class="pd-wait">' + (self && self.inHand && self.done && S.phase === 'draw' ? 'ตัดสินใจแล้ว — รอคนอื่น' : 'รอตาคนอื่น…') + '</div>';
+    } else if (self && self.decided && S.phase === 'bet') {
+      html = '<div class="pd-wait">' + (self.skipped ? 'ข้ามมือนี้แล้ว' : 'ลงแล้ว ' + fmt(self.bet) + ' — รอแจกไพ่') + '</div>';
+    }
+    if (a.canRebuy && S.phase !== 'finished') {
+      html += '<button type="button" id="pdRebuyBtn" class="pd-btn">ขอชิปใหม่ +' + fmt((S.limits && S.limits.rebuy) || 1000) + ' (ได้ครั้งเดียว)</button>';
+    }
+    $('#pdActions').html(html);
+    const finished = S.phase === 'finished';
+    $('#pdDock').toggleClass('is-static', finished);
+    $('#pdRoot').toggleClass('is-finished', finished);
+    if (finished && !$('#pdNow').next().is('#pdDock')) $('#pdDock').insertAfter('#pdNow');
+    syncDockHeight();
+  }
+
+  function renderFinished() {
+    const rows = S.standings || [];
+    const title = S.winner && S.winner.playerId ? esc(S.winner.name) + ' กำไรสูงสุด' : 'จบโต๊ะ — ไม่มีใครได้กำไร';
+    return '<p class="pd-final-title">' + title + '</p>' +
+      '<div class="pd-standings">' + rows.map(function(r, i) {
+        const cls = r.net > 0 ? 'is-win' : (r.net < 0 ? 'is-lose' : 'is-push');
+        return '<div class="pd-row"><span class="pd-rank">' + (i + 1) + '</span>' +
+          '<span class="pd-row-name">' + esc(r.name) + (r.playerId === playerId ? ' (คุณ)' : '') + (r.left ? ' · ออกแล้ว' : '') + '</span>' +
+          '<span class="pd-outcome ' + cls + '">' + signed(r.net) + '</span>' +
+          '<span class="pd-row-hand">เหลือ ' + fmt(r.chips) + ' จากทุน ' + fmt(r.buyIn) + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="pd-actions-row">' +
+        '<button type="button" id="pdShareBtn" class="pd-btn">แชร์ผล</button>' +
+        '<button type="button" id="pdBackBtn" class="pd-btn pd-btn--primary">กลับห้องรอ</button>' +
+      '</div><div class="pd-hint" id="pdBackRemain">ทุกคนกลับห้องรอพร้อมกัน</div>';
+  }
+
+  function renderResults() {
+    const r = S.lastResult;
+    if (S.phase !== 'result' || !r || r.empty) {
+      $('#pdResults').prop('hidden', true).empty();
+      return;
+    }
+    const mini = cards => '<span class="pd-row-cards">' + (cards || []).map(c => '<img src="' + esc(c.image) + '" alt="' + esc(c.thaiName) + '">').join('') + '</span>';
+    const rows = (r.rows || []).map(function(row) {
+      const cls = row.outcome === 'win' ? 'is-win' : (row.outcome === 'lose' ? 'is-lose' : 'is-push');
+      const txt = row.outcome === 'push' ? 'เสมอ' : signed(row.delta);
+      const how = row.outcome === 'push' ? 'คืนเดิมพัน ' + fmt(row.bet)
+        : ('เดิมพัน ' + fmt(row.bet) + ' × ' + row.multiplier + (row.short ? ' (จ่ายได้ไม่ครบ)' : ''));
+      return '<div class="pd-row"><span class="pd-row-name">' + esc(row.name) + (row.playerId === playerId ? ' (คุณ)' : '') + '</span>' +
+        '<span class="pd-outcome ' + cls + '">' + txt + '</span>' +
+        '<span class="pd-row-hand">' + mini(row.cards) + esc(row.label) + ' · ' + esc(how) + '</span></div>';
+    }).join('');
+    const d = r.dealer;
+    $('#pdResults').prop('hidden', false).html(
+      '<h2>ผลมือที่ ' + r.handNumber + '</h2>' +
+      (d ? '<p class="pd-results-note">เจ้ามือ ' + esc(d.name) + ': ' + mini(d.cards) + esc(d.label) + ' · ' + signed(d.delta) + ' ชิป</p>' : '') +
+      (r.shortfall ? '<p class="pd-results-note">เจ้ามือชิปไม่พอจ่าย — แบ่งจ่ายตามสัดส่วน</p>' : '') +
+      rows
+    );
+  }
+
+  function renderFeed() {
+    $('#pdFeed').html((S.history || []).slice(0, 12).map(item =>
+      '<div class="pd-feed-item">' + esc((item.icon || '') + ' ' + (item.text || '')) + '</div>').join(''));
+  }
+
+  function syncDockHeight() {
+    const dock = document.getElementById('pdDock');
+    const h = dock && !dock.classList.contains('is-static') ? Math.round(dock.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--pd-dock-h', h + 'px');
+  }
+  if (window.ResizeObserver) new ResizeObserver(syncDockHeight).observe(document.getElementById('pdDock'));
+
+  // ---------- motion ----------
+  function applyCardMotion() {
+    const deck = document.getElementById('pdDeck');
+    const deckRect = deck ? deck.getBoundingClientRect() : null;
+    let flipIndex = 0;
+    document.querySelectorAll('.pd-card[data-mode="new"]').forEach(function(el) {
+      if (!deckRect) return;
+      const r = el.getBoundingClientRect();
+      const dx = (deckRect.left + deckRect.width / 2) - (r.left + r.width / 2);
+      const dy = (deckRect.top + deckRect.height / 2) - (r.top + r.height / 2);
+      const idx = el.dataset.deal != null ? Number(el.dataset.deal) : 0;
+      const delay = idx * 85;
+      el.style.setProperty('--dx', dx.toFixed(0) + 'px');
+      el.style.setProperty('--dy', dy.toFixed(0) + 'px');
+      el.style.setProperty('--deal-delay', delay + 'ms');
+      el.classList.add('is-dealing');
+      if (el.dataset.face === '1') {
+        setTimeout(function() { el.classList.add('is-face'); }, delay + 480);
+      }
+    });
+    document.querySelectorAll('.pd-card[data-mode="flip"]').forEach(function(el) {
+      el.style.setProperty('--flip-delay', (flipIndex * 110) + 'ms');
+      flipIndex += 1;
+      requestAnimationFrame(function() { requestAnimationFrame(function() { el.classList.add('is-face'); }); });
+    });
+  }
+
+  function banner(text, tone) {
+    const node = document.getElementById('pdBanner');
+    node.textContent = text;
+    node.className = 'pd-banner' + (tone ? ' is-' + tone : '');
+    void node.offsetWidth;
+    node.classList.add('is-on');
+  }
+
+  function flyChip(fromEl, toEl, value) {
+    if (reduceMotion || !fromEl || !toEl) return;
+    const a = fromEl.getBoundingClientRect();
+    const b = toEl.getBoundingClientRect();
+    const img = document.createElement('img');
+    img.className = 'pd-fly';
+    img.src = CHIP(value >= 500 ? 500 : (value >= 100 ? 100 : (value >= 50 ? 50 : 10)));
+    img.alt = '';
+    img.style.transform = 'translate(' + (a.left + a.width / 2 - 13) + 'px,' + (a.top + a.height / 2 - 13) + 'px)';
+    document.getElementById('pdFx').appendChild(img);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        img.style.transform = 'translate(' + (b.left + b.width / 2 - 13) + 'px,' + (b.top + b.height / 2 - 13) + 'px) rotate(200deg)';
+        img.style.opacity = '0.2';
+      });
+    });
+    setTimeout(function() { img.remove(); }, 620);
+  }
+
+  function seatEl(id) {
+    if (id === playerId) return document.getElementById('pdMeInfo');
+    return document.querySelector('[data-seat-id="' + id + '"]');
+  }
+
+  function pokBurst(id, text) {
+    const target = id === playerId ? document.getElementById('pdMeCards') : document.querySelector('.pd-seat[data-seat-id="' + id + '"]') || document.getElementById('pdDealer');
+    if (!target) return;
+    const host = target.classList.contains('pd-seat') ? target : target.parentElement;
+    if (!host) return;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    const node = document.createElement('span');
+    node.className = 'pd-pokburst';
+    node.textContent = text;
+    host.appendChild(node);
+    setTimeout(function() { node.remove(); }, 1700);
+  }
+
+  function consumeFx(initial) {
+    const events = (S.fx || []).filter(e => e && e.seq > seenFx);
+    if (!events.length) return;
+    seenFx = events[events.length - 1].seq;
+    if (initial) return;
+    events.forEach(function(e) {
+      if (e.kind === 'chips') {
+        flyChip(seatEl(e.playerId), document.getElementById('pdPot'), e.amount);
+      } else if (e.kind === 'pok') {
+        const who = seatById(e.playerId);
+        const text = 'ป๊อก ' + e.points + '!';
+        setTimeout(function() { pokBurst(e.playerId, text); }, e.dealer ? 900 : 1000);
+        if (e.dealer) banner('เจ้ามือป๊อก ' + e.points + '! เปิดวัดทันที', 'lose');
+        else if (e.playerId === playerId) banner('คุณป๊อก ' + e.points + '!', 'win');
+        void who;
+      } else if (e.kind === 'dealer') {
+        const who = seatById(e.playerId);
+        banner((e.playerId === playerId ? 'คุณ' : (who ? who.name : '')) + ' เป็นเจ้ามือ');
+      } else if (e.kind === 'reveal') {
+        const mine = resultRow(playerId);
+        if (mine && !mine.isDealer) {
+          setTimeout(function() {
+            if (mine.outcome === 'win') banner('ชนะ ' + signed(mine.delta) + (mine.multiplier > 1 ? ' · ' + dengWord(mine.multiplier) : ''), 'win');
+            else if (mine.outcome === 'lose') banner('แพ้ ' + signed(mine.delta), 'lose');
+            else banner('เสมอ');
+          }, 700);
+        }
+        if (window.gameHaptic) window.gameHaptic([16, 30, 16]);
+      } else if (e.kind === 'finished') {
+        banner('จบโต๊ะ');
+      }
+    });
+  }
+
+  function pingNeed() {
+    if (!window.partyPlay) return;
+    const a = S.availableActions || {};
+    if (a.canDraw) window.partyPlay.pingTurn({ key: 'pd-draw-' + S.handNumber + '-' + S.step, title: 'ตาคุณ', subtitle: 'จั่วเพิ่ม 1 ใบ หรืออยู่' });
+    else if (a.canDealerDecide) window.partyPlay.pingTurn({ key: 'pd-dealer-' + S.handNumber, title: 'ตาเจ้ามือ', subtitle: 'จั่วหรืออยู่ แล้วเปิดวัด' });
+  }
+
+  function tickTimer() {
+    if (timerHandle) clearInterval(timerHandle);
+    const total = S.timers ? ({ bet: S.timers.bet, draw: S.timers.draw, dealer: S.timers.dealer, result: S.timers.result })[S.phase] : 0;
+    function paint() {
+      if (S.phase === 'finished') {
+        const endsAt = Number(S.returnLobbyEndsAt) || 0;
+        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+        $('#pdNowSec').text(remain > 0 ? remain : '--');
+        $('#pdNowHint').text(remain > 0 ? 'วิ แล้วกลับห้องรอ' : '');
+        $('#pdBackRemain').text(remain > 0 ? 'กลับห้องรอพร้อมกันใน ' + remain + ' วิ' : 'ทุกคนกลับห้องรอพร้อมกัน');
+        $('#pdNowBar').css('transform', 'scaleX(0)');
+        return;
+      }
+      if (!S.phaseEndsAt) {
+        $('#pdNowSec').text('--');
+        $('#pdNowBar').css('transform', 'scaleX(0)');
+        return;
+      }
+      const ms = Math.max(0, S.phaseEndsAt - Date.now());
+      const remain = Math.ceil(ms / 1000);
+      $('#pdNowSec').text(remain);
+      $('#pdNow').toggleClass('is-urgent', remain <= 5 && ['bet', 'draw', 'dealer'].includes(S.phase) && !!(describeNow().mine));
+      const frac = total ? Math.max(0, Math.min(1, ms / total)) : 0;
+      $('#pdNowBar').css('transform', 'scaleX(' + frac.toFixed(3) + ')');
+    }
+    paint();
+    timerHandle = setInterval(paint, 250);
+  }
+
+  function pruneMemo() {
+    const keep = ':' + S.handNumber + ':';
+    Array.from(cardMemo.keys()).forEach(k => { if (k.indexOf(keep) < 0) cardMemo.delete(k); });
+  }
+
+  function render(state) {
+    if (!state || !state.mode) return;
+    const prevHand = S && S.handNumber;
+    S = state;
+    if (S.handNumber !== prevHand) pruneMemo();
+    // แผนแจก: เอาลำดับจาก fx deal ล่าสุดของมือนี้
+    const dealFx = (S.fx || []).filter(e => e.kind === 'deal' && e.handNumber === S.handNumber).pop();
+    if (dealFx) dealPlan = { handNumber: S.handNumber, order: dealFx.order || [] };
+    renderTop();
+    renderDealer();
+    renderPot();
+    renderSeats();
+    renderMe();
+    renderActions();
+    renderResults();
+    renderFeed();
+    applyCardMotion();
+    consumeFx(firstRender);
+    tickTimer();
+    pingNeed();
+    firstRender = false;
+  }
+
+  // ---------- commands ----------
+  function toastError(msg) {
+    Swal.fire({ toast: true, position: 'top', icon: 'error', title: msg || 'ทำรายการไม่สำเร็จ', showConfirmButton: false, timer: 2200, background: '#2a1416', color: '#fff' });
+  }
+  function send(eventName, payload) {
+    if (pending) return;
+    pending = true;
+    $('#pdActions button').prop('disabled', true);
+    const ctx = { roomId: roomId, step: S.step, phase: S.phase, handNumber: S.handNumber };
+    socket.emit(eventName, Object.assign(ctx, payload || {}), function(res) {
+      pending = false;
+      if (res && !res.success) {
+        toastError(res.error);
+        socket.emit('pokdeng_requestState', { roomId: roomId, playerId: playerId });
+      }
+      $('#pdActions button').prop('disabled', false);
+      renderActions();
+    });
+    setTimeout(function() { pending = false; }, 6000);
+  }
+
+  function setBet(v) {
+    betAmount = clampBet(v);
+    $('#pdBetValue').text(fmt(betAmount));
+    $('#pdBetRange').val(betAmount);
+    $('#pdBetBtn').text('ลงเดิมพัน ' + fmt(betAmount));
+  }
+  $(document).on('click', '.pd-chipbtn', function() {
+    const add = Number($(this).data('chip')) || 0;
+    setBet((betTouched ? betAmount : 0) + add);
+    betTouched = true;
+    if (window.gameHaptic) window.gameHaptic(8);
+  });
+  $(document).on('input', '#pdBetRange', function() { setBet(Number(this.value)); });
+  $(document).on('click', '[data-set]', function() {
+    const a = S.availableActions || {};
+    const kind = $(this).data('set');
+    betTouched = true;
+    if (kind === 'min') setBet(a.minBet);
+    else if (kind === 'max') setBet(a.maxBet);
+    else if (kind === 'last' && S.self) setBet(S.self.lastBet);
+  });
+  $(document).on('click', '#pdBetBtn', function() { send('pokdeng_bet', { amount: clampBet(betAmount) }); });
+  $(document).on('click', '#pdSkipBtn', function() { send('pokdeng_skip'); });
+  $(document).on('click', '#pdDrawBtn', function() { send(S.availableActions.canDealerDecide ? 'pokdeng_dealer' : 'pokdeng_draw', { draw: true }); });
+  $(document).on('click', '#pdStayBtn', function() { send(S.availableActions.canDealerDecide ? 'pokdeng_dealer' : 'pokdeng_draw', { draw: false }); });
+  $(document).on('click', '#pdNextBtn', function() { send('pokdeng_next'); });
+  $(document).on('click', '#pdRebuyBtn', function() { send('pokdeng_rebuy'); });
+  $(document).on('click', '#pdBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  $(document).on('click', '#pdShareBtn', function() {
+    if (!window.partyPlay || !S.standings) return;
+    window.partyPlay.shareResult({
+      mode: 'ป๊อกเด้ง',
+      headline: S.winner && S.winner.playerId ? S.winner.name + ' กำไรสูงสุด' : 'จบโต๊ะป๊อกเด้ง',
+      sub: S.handNumber + ' มือ · ชิปในโต๊ะ ไม่มีมูลค่าจริง',
+      lines: S.standings.slice(0, 6).map((r, i) => (i + 1) + '. ' + r.name + ' ' + signed(r.net)),
+      accent: '#f5c86b',
+      fileName: 'pokdeng-result'
+    });
+  });
+  $('#pdRotateBtn').on('click', function() {
+    if (!isRoomAdmin || S.phase === 'finished') return;
+    send('pokdeng_rotate', { enabled: !S.rotateDealer });
+  });
+  $('#pdEndBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบโต๊ะเลยไหม?', text: 'สรุปชิปทุกคนแล้วกลับห้องรอ (มือที่ค้างอยู่คืนเดิมพัน)',
+      showCancelButton: true, confirmButtonText: 'จบโต๊ะ', cancelButtonText: 'เล่นต่อ', background: '#1f1214', color: '#fff', confirmButtonColor: '#b3262e'
+    }).then(r => { if (r.isConfirmed) send('pokdeng_end'); });
+  });
+
+  // ---------- guides ----------
+  function miniCards(ids) {
+    return '<span class="pd-rankcards">' + ids.map(id => '<img src="/assets/games/poker/' + id + '.svg" alt="">').join('') + '</span>';
+  }
+  function rankGuideHtml() {
+    const rows = [
+      ['ป๊อก 9', 'ไพ่ 2 ใบรวมได้ 9 — เปิดทันที ไม่ต้องจั่ว', ['9s', 'kh'], 'ชนะทุกอย่าง'],
+      ['ป๊อก 8', 'ไพ่ 2 ใบรวมได้ 8 · แพ้ป๊อก 9 อย่างเดียว', ['5d', '3c'], ''],
+      ['ตอง', 'สามใบหน้าเดียวกัน', ['7s', '7h', '7d'], '5 เด้ง'],
+      ['เรียง', 'สามใบเรียงกัน A-2-3 ถึง Q-K-A (ไม่วน)', ['4c', '5h', '6s'], '3 เด้ง'],
+      ['เซียน', 'J Q K ล้วน (สามเหลือง)', ['js', 'qd', 'jh'], '3 เด้ง'],
+      ['แต้ม 9 → 0', 'แต้มมากชนะ · 0 แต้ม = บอด · เท่ากัน = เสมอ', ['2d', '6d', 'as'], '']
+    ];
+    return '<div class="pd-guide">' +
+      rows.map((r, i) => '<div class="pd-rankrow"><span class="pd-rankno">' + (i + 1) + '</span>' +
+        '<span><span class="pd-rankname">' + r[0] + '</span> ' + (r[3] ? '<span class="pd-deng">' + r[3] + '</span>' : '') +
+        '<span class="pd-rankdesc">' + r[1] + '</span></span>' + miniCards(r[2]) + '</div>').join('') +
+      '<h4>เด้ง = ตัวคูณของคนชนะ</h4>' +
+      '<div class="pd-rankrow"><span class="pd-rankno">×2</span><span><span class="pd-rankname">สองเด้ง</span><span class="pd-rankdesc">2 ใบดอกเดียวกัน หรือคู่</span></span>' + miniCards(['8h', 'kh']) + '</div>' +
+      '<div class="pd-rankrow"><span class="pd-rankno">×3</span><span><span class="pd-rankname">สามเด้ง</span><span class="pd-rankdesc">3 ใบดอกเดียวกัน</span></span>' + miniCards(['2c', '5c', 'qc']) + '</div>' +
+      '<p style="margin-top:8px; color:oklch(0.78 0.03 50); font-size:0.84rem;">แต้ม = หลักหน่วยของผลรวม · A = 1 · 10/J/Q/K = 0 · ชนะได้ เดิมพัน × เด้งของมือที่ชนะ</p>' +
+      '</div>';
+  }
+  function howToHtml() {
+    return '<div class="pd-guide">' +
+      '<h4>1. ลงเดิมพัน</h4><p>ทุกขา (ยกเว้นเจ้ามือ) ลง 10–500 ภายใน 20 วิ · ไม่เลือก = ลงขั้นต่ำให้</p>' +
+      '<h4>2. แจก 2 ใบ</h4><p>ได้ 8 หรือ 9 = <b>ป๊อก</b> เปิดเลย ไม่ต้องจั่ว · ถ้าเจ้ามือป๊อก เปิดวัดทุกคนทันที</p>' +
+      '<h4>3. จั่วหรืออยู่</h4><p>ไล่ทีละคน จั่วเพิ่มได้ 1 ใบ (15 วิ ไม่เลือก = อยู่) แล้วเจ้ามือจั่ว/อยู่</p>' +
+      '<h4>4. วัดกับเจ้ามือ</h4><p>ชนะได้ เดิมพัน × เด้ง · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ · แต้มเท่ากัน = เสมอ</p>' +
+      '<h4>ชิป</h4><p>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · เริ่มคนละ 1,000 · หมดตัวขอชิปใหม่ได้ 1 ครั้ง · จบโต๊ะแล้วชิปเกินทุน = ชนะ</p>' +
+      '<h4>เจ้ามือ</h4><p>หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือเลือก <b>หมุนเจ้ามือทุกตา</b> · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</p>' +
+      '</div>';
+  }
+  function guidePopup(title, html) {
+    Swal.fire({ title: title, html: html, background: '#1f1214', color: '#fff', confirmButtonText: 'เข้าใจแล้ว', confirmButtonColor: '#b3262e', width: 'min(520px, 94vw)' });
+  }
+  $('#pdRankBtn').on('click', function() { guidePopup('อันดับไพ่ป๊อกเด้ง', rankGuideHtml()); });
+  $('#pdHowBtn').on('click', function() { guidePopup('ป๊อกเด้ง เล่นยังไง', howToHtml()); });
+
+  // ---------- sidebar ----------
+  function setSidebarOpen(open) {
+    if (open && $('#chatBox').is(':visible')) $('#closeChat').trigger('click');
+    $('#playerSidebar').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#sidebarOverlay').toggle(open);
+    $('#pdSidebarBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('closeSidebarBtn').focus();
+  }
+  $('#pdSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
+  $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
+  $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#playerSidebar').hasClass('open')) setSidebarOpen(false); });
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({ icon: 'question', title: 'ออกจากโต๊ะ?', text: 'ชิปในโต๊ะนี้จะหายไปพร้อมกับคุณ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1f1214', color: '#fff' })
+      .then(r => {
+        if (!r.isConfirmed) return;
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+      });
+  });
+  window.addEventListener('beforeunload', function(e) { if (!allowNavigation) e.preventDefault(); });
+
+  // ---------- socket ----------
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('pokdeng_requestState', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  socket.on('pokdengState', render);
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(p =>
+      '<li style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid oklch(1 0 0 / 0.08);">' +
+        avatarHtml({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 26) +
+        '<span style="color:' + esc(p.color || '#fff') + '">' + esc(p.displayName || p.playerName) + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:oklch(0.74 0.03 50);">หลุด</span>' : '') +
+      '</li>').join(''));
+  });
+  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('returnToLobby', function(data) {
+    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    tickTimer();
+  });
+  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && data.reason) || '', background: '#1f1214', color: '#fff' })
+      .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+
+  window.initChatPanel({
+    socket: socket, playerId: playerId, playerName: playerName,
+    onCommand: function(text) {
+      if (text.trim().toLowerCase() !== '/m') return false;
+      socket.emit('pokdeng_admin_reveal');
+      return true;
+    }
+  });
+  socket.on('pokdeng_admin_reveal', function(data) {
+    const rows = (data.players || []).map(p => '<div style="margin:6px 0; text-align:left;"><strong>' + esc(p.name) + '</strong>' +
+      (p.isDealer ? ' (เจ้ามือ)' : '') + ' · ' + fmt(p.chips) + ' ชิป' + (p.bet ? ' · ลง ' + fmt(p.bet) : '') +
+      '<br>' + esc((p.cards || []).join(' ') || '—') + (p.label ? ' · ' + esc(p.label) : '') + '</div>').join('');
+    Swal.fire({ title: '/m ไพ่ทั้งโต๊ะ', html: rows, background: '#1f1214', color: '#fff' });
+  });
+  socket.on('pokdeng_admin_reveal_denied', function() {
+    Swal.fire({ icon: 'error', title: 'ดูไพ่ไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บ', background: '#1f1214', color: '#fff' });
+  });
+
+  if (S && S.mode) render(S);
+});
+</script>

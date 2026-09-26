@@ -272,6 +272,22 @@
     border: 1px solid rgba(248, 113, 113, 0.4);
   }
 
+  .guide-card.mode-pokdeng {
+    border-color: rgba(245, 200, 107, 0.3);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(179, 38, 46, 0.22), transparent 55%),
+      linear-gradient(180deg, #1a0f10 0%, #150d0e 55%, #110b0c 100%);
+  }
+
+  .guide-card.mode-pokdeng .guide-mode-badge {
+    background: rgba(179, 38, 46, 0.25);
+    color: #fde68a;
+    border: 1px solid rgba(245, 200, 107, 0.4);
+  }
+
+  .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+  .pd-howto-cards img { width: 26px; height: 36px; border-radius: 3px; }
+
   .guide-poker-ranks {
     display: grid;
     gap: 6px;
@@ -900,6 +916,7 @@
     { id: 'liar', ico: '🃏', label: 'ไพ่โกหก' },
     { id: 'poker5', ico: '♠', label: 'ไพ่ 5 ใบ' },
     { id: 'poker4', ico: '♦', label: 'สี่ใบเก' },
+    { id: 'pokdeng', ico: '🎴', label: 'ป๊อกเด้ง' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1231,6 +1248,30 @@
           </div>
         <% }) %>
       </div>
+        </div>
+      </details>
+    </article>
+
+    <article class="guide-card mode-pokdeng" id="pokdeng">
+      <div class="guide-mode-badge">🎴 ป๊อกเด้ง</div>
+      <h2>แจก 2 ใบ ป๊อกเปิดเลย จั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ</h2>
+      <p>ขาไพ่ลงเดิมพัน 10–500 แล้วได้ไพ่คนละ 2 ใบ แต้ม = หลักหน่วยของผลรวม (A = 1, 10/J/Q/K = 0) ได้ 8 หรือ 9 = ป๊อก เปิดทันทีไม่ต้องจั่ว ถ้าเจ้ามือป๊อก เปิดวัดทุกคนเลย ที่เหลือไล่จั่วเพิ่มได้ 1 ใบ แล้วเจ้ามือจั่ว/อยู่ แล้ววัดทุกขาพร้อมกัน เล่น 2–10 คน (รวมเจ้ามือ) ใส่บอทได้</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> ทุกคนเริ่ม 1,000 ไม่เกี่ยวกับกระเป๋าชิป หมดตัวขอชิปใหม่ได้ 1 ครั้ง</div>
+        <div class="guide-list-item"><strong>เจ้ามือ</strong> หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือหมุนเจ้ามือทุกตา · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</div>
+        <div class="guide-list-item"><strong>เด้ง</strong> ชนะได้ เดิมพัน × เด้งของมือที่ชนะ · 2 ใบดอกเดียวกันหรือคู่ = 2 เด้ง · 3 ใบดอกเดียวกัน = 3 เด้ง</div>
+        <div class="guide-list-item"><strong>ชนะโต๊ะ</strong> จบโต๊ะแล้วชิปมากกว่าทุน (รวมที่ขอใหม่) = ชนะ นับเจ้ามือด้วย</div>
+      </div>
+      <details class="guide-fold">
+        <summary><span>อันดับไพ่ ใหญ่ → เล็ก<span class="guide-fold-hint">ป๊อก ตอง เรียง เซียน แต้ม</span></span></summary>
+        <div class="guide-fold-body">
+          <div class="guide-list">
+            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/9s.svg" alt=""><img src="/assets/games/poker/kh.svg" alt=""></span><strong>ป๊อก 9 / ป๊อก 8</strong> ชนะทุกอย่าง (ป๊อก 9 &gt; ป๊อก 8)</div>
+            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/7s.svg" alt=""><img src="/assets/games/poker/7h.svg" alt=""><img src="/assets/games/poker/7d.svg" alt=""></span><strong>ตอง</strong> สามใบหน้าเดียวกัน · 5 เด้ง</div>
+            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/4c.svg" alt=""><img src="/assets/games/poker/5h.svg" alt=""><img src="/assets/games/poker/6s.svg" alt=""></span><strong>เรียง</strong> A-2-3 ถึง Q-K-A (ไม่วน) · 3 เด้ง</div>
+            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/js.svg" alt=""><img src="/assets/games/poker/qd.svg" alt=""><img src="/assets/games/poker/jh.svg" alt=""></span><strong>เซียน</strong> J Q K ล้วน · 3 เด้ง</div>
+            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/2d.svg" alt=""><img src="/assets/games/poker/6d.svg" alt=""></span><strong>แต้ม 9 → 0</strong> แต้มมากชนะ · เท่ากัน = เสมอ คืนเดิมพัน</div>
+          </div>
         </div>
       </details>
     </article>
