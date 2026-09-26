@@ -1,0 +1,1077 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<style>
+  html.av-active,
+  html.av-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: oklch(0.16 0.03 260) !important;
+  }
+  html.av-active .container-fluid > header,
+  html.av-active .footer,
+  html.av-active #music-controls { display: none !important; }
+  html.av-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; background: oklch(0.16 0.03 260) !important; min-height: 100vh; }
+  html.av-active body, html.av-active body.content { background: oklch(0.16 0.03 260) !important; }
+  html.av-active .container-fluid > .row { margin: 0 !important; }
+  html.av-active .col-lg-12 { padding: 0 !important; }
+
+  :root {
+    --av-bg: oklch(0.16 0.03 260);
+    --av-surface: oklch(0.21 0.035 260);
+    --av-surface-2: oklch(0.26 0.04 260);
+    --av-sunken: oklch(0.13 0.025 260);
+    --av-line: oklch(0.45 0.04 260 / 0.5);
+    --av-ink: oklch(0.96 0.01 260);
+    --av-soft: oklch(0.84 0.02 260);
+    --av-muted: oklch(0.7 0.03 260);
+    --av-gold: oklch(0.85 0.12 85);
+    --av-gold-ink: oklch(0.2 0.04 70);
+    --av-good: oklch(0.7 0.13 255);
+    --av-good-bg: oklch(0.36 0.1 258);
+    --av-evil: oklch(0.68 0.18 25);
+    --av-evil-bg: oklch(0.34 0.11 22);
+    --av-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  }
+  .av {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--sp-2) var(--sp-4) calc(96px + env(safe-area-inset-bottom, 0px));
+    color: var(--av-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    line-height: 1.5;
+    text-align: left;
+  }
+  body.content { background: var(--av-bg, oklch(0.16 0.03 260)); }
+  .av *, .av *::before, .av *::after { box-sizing: border-box; }
+  .av button { font-family: inherit; }
+  #avOverlay .ui-btn, .av-sidebar .ui-btn { font-family: 'Bai Jamjuree', sans-serif; }
+  .av .ui-btn--primary { background: var(--av-gold); color: var(--av-gold-ink); }
+  .av .ui-btn--primary:hover { background: oklch(0.89 0.11 85); color: var(--av-gold-ink); }
+  .av .ui-btn:focus-visible, .av-seat:focus-visible, .av-chip:focus-visible, .av-choice:focus-visible, .av-rolecard:focus-visible {
+    outline: 3px solid var(--av-gold); outline-offset: 2px;
+  }
+
+  /* ---------- top bar ---------- */
+  .av-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0 var(--sp-3); }
+  .av-brand { min-width: 0; }
+  .av-kicker { color: var(--av-gold); font-family: var(--display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; }
+  .av-title { margin: 0; font-family: var(--display); font-size: 1.15rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .av-top-actions { display: flex; gap: var(--sp-2); flex: 0 0 auto; }
+  .av-chip {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 44px; height: 44px; padding: 0 12px; border-radius: 12px;
+    border: 1px solid var(--av-line); background: var(--av-surface); color: var(--av-ink);
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .av-chip--danger { color: oklch(0.82 0.1 25); border-color: oklch(0.55 0.15 25 / 0.6); }
+  .av-chip-label { display: none; }
+  @media (min-width: 560px) { .av-chip-label { display: inline; } }
+
+  /* ---------- status ---------- */
+  .av-status {
+    display: grid; grid-template-columns: 1fr auto; gap: var(--sp-1) var(--sp-3); align-items: center;
+    padding: var(--sp-3) var(--sp-4); border-radius: 16px;
+    background: var(--av-surface); border: 1px solid var(--av-line);
+  }
+  .av-status.is-mine { background: oklch(0.3 0.06 80); border-color: oklch(0.8 0.12 85 / 0.7); }
+  .av-phase {
+    display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 700;
+    font-size: 0.78rem; letter-spacing: 0.08em; color: var(--av-gold);
+  }
+  .av-now { grid-column: 1 / 2; font-size: 1.08rem; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+  .av-timer { grid-row: 1 / 3; grid-column: 2; text-align: right; }
+  .av-timer-num { font-family: var(--display); font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--av-ink); }
+  .av-timer-num.is-low { color: oklch(0.78 0.16 40); }
+  .av-timer-hint { grid-column: 1 / 3; font-size: 0.78rem; color: var(--av-muted); }
+
+  /* ---------- quest track ---------- */
+  .av-board { margin-top: var(--sp-3); padding: var(--sp-4) var(--sp-3) var(--sp-3); border-radius: 20px; background: var(--av-sunken); border: 1px solid var(--av-line); }
+  .av-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--sp-2); justify-items: center; }
+  .av-quest { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+  .av-quest-token {
+    position: relative; width: min(58px, 100%); aspect-ratio: 1; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--av-surface-2); border: 2px solid oklch(0.6 0.08 85 / 0.55);
+    font-family: var(--display); color: var(--av-ink);
+    transition: transform 0.3s var(--av-ease);
+  }
+  .av-quest-token img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+  .av-quest-size { font-size: 1.35rem; font-weight: 700; line-height: 1; }
+  .av-quest.is-current .av-quest-token { border-color: var(--av-gold); box-shadow: 0 0 0 3px oklch(0.85 0.12 85 / 0.25); transform: scale(1.06); }
+  .av-quest.is-done .av-quest-size { display: none; }
+  .av-quest-label { font-size: 0.72rem; color: var(--av-muted); white-space: nowrap; }
+  .av-quest.is-current .av-quest-label { color: var(--av-gold); font-weight: 700; }
+  .av-two-fail {
+    position: absolute; top: -6px; right: -4px; padding: 1px 6px; border-radius: 999px;
+    background: var(--av-evil-bg); color: oklch(0.92 0.05 25); font-size: 0.66rem; font-weight: 700;
+    border: 1px solid oklch(0.68 0.18 25 / 0.6); white-space: nowrap;
+  }
+  .av-fail-count { position: absolute; bottom: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--av-evil); color: #fff; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; }
+  .av-rejects { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); margin-top: var(--sp-3); font-size: 0.8rem; color: var(--av-muted); flex-wrap: wrap; }
+  .av-pips { display: flex; gap: 6px; }
+  .av-pip { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid oklch(0.6 0.05 260); background: transparent; }
+  .av-pip.is-on { background: var(--av-evil); border-color: var(--av-evil); }
+  .av-pip.is-last { border-style: dashed; border-color: oklch(0.68 0.18 25 / 0.8); }
+  .av-lastline { margin-top: var(--sp-2); text-align: center; font-size: 0.8rem; color: var(--av-soft); }
+
+  /* ---------- seats ---------- */
+  .av-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: var(--sp-2); margin-top: var(--sp-4); }
+  .av-seat {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-height: 92px; padding: 10px 6px 8px; border-radius: 14px;
+    background: var(--av-surface); border: 1.5px solid transparent; color: var(--av-ink);
+    text-align: center; cursor: default; min-width: 0;
+    transition: transform 0.2s var(--av-ease), border-color 0.2s, background-color 0.2s;
+  }
+  button.av-seat { cursor: pointer; }
+  button.av-seat:active { transform: scale(0.97); }
+  .av-seat.is-self { background: var(--av-surface-2); }
+  .av-seat.is-leader { border-color: oklch(0.85 0.12 85 / 0.8); }
+  .av-seat.is-team { background: oklch(0.3 0.07 255); border-color: var(--av-good); }
+  .av-seat.is-picked { background: oklch(0.34 0.08 85); border-color: var(--av-gold); }
+  .av-seat.is-target { background: var(--av-evil-bg); border-color: var(--av-evil); }
+  .av-seat.is-disabled { opacity: 0.4; }
+  .av-seat.is-left { opacity: 0.35; }
+  .av-seat-name { max-width: 100%; font-size: 0.86rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .av-seat-tag { font-size: 0.7rem; color: var(--av-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .av-seat-crown { position: absolute; top: -9px; left: 50%; width: 28px; height: 28px; transform: translateX(-50%); filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.5)); }
+  .av-seat-badge { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; }
+  .av-seat-badge img { width: 100%; height: 100%; }
+  .av-seat-dot { position: absolute; top: 8px; left: 8px; width: 8px; height: 8px; border-radius: 50%; background: oklch(0.6 0.02 260); }
+  .av-seat-dot.is-on { background: oklch(0.78 0.15 150); }
+  .av-seat-check { position: absolute; top: 5px; right: 6px; font-size: 0.8rem; color: oklch(0.8 0.14 150); font-weight: 700; }
+  .av-seat-role { width: 52px; height: 73px; border-radius: 6px; box-shadow: 0 4px 10px rgb(0 0 0 / 0.4); }
+  .av-seat-win { font-size: 0.7rem; font-weight: 700; }
+  .av-seat-win.is-good { color: var(--av-good); }
+  .av-seat-win.is-evil { color: var(--av-evil); }
+
+  /* ---------- action panel ---------- */
+  .av-action { margin-top: var(--sp-4); padding: var(--sp-4); border-radius: 20px; background: var(--av-surface); border: 1px solid var(--av-line); }
+  .av-action h2 { margin: 0 0 var(--sp-2); font-family: var(--display); font-size: 1.1rem; font-weight: 700; }
+  .av-muted { color: var(--av-muted); font-size: 0.9rem; margin: 0; }
+  .av-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
+  .av-row--center { justify-content: center; }
+  .av-stack { display: grid; gap: var(--sp-3); }
+  .av-team-list { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--sp-2) 0 var(--sp-3); }
+  .av-name-pill { padding: 4px 10px; border-radius: 999px; background: oklch(0.3 0.07 255); border: 1px solid var(--av-good); font-size: 0.86rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .av-name-pill.is-evil { background: var(--av-evil-bg); border-color: var(--av-evil); }
+  .av-name-pill.is-merlin { background: oklch(0.32 0.06 85); border-color: var(--av-gold); }
+
+  .av-choices { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+  .av-choice {
+    display: flex; flex-direction: column; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-2); border-radius: 16px; min-height: 44px;
+    background: var(--av-surface-2); border: 2px solid transparent; color: var(--av-ink); cursor: pointer;
+    font-weight: 700; font-size: 1rem;
+    transition: transform 0.15s var(--av-ease), border-color 0.2s;
+  }
+  .av-choice:active { transform: scale(0.97); }
+  .av-choice img { display: block; }
+  .av-choice--token img { width: 84px; height: 84px; }
+  .av-choice--card img { width: min(128px, 36vw); height: auto; aspect-ratio: 240 / 336; border-radius: 10px; box-shadow: 0 10px 22px rgb(0 0 0 / 0.45); }
+  .av-choice.is-approve:hover, .av-choice.is-approve.is-chosen { border-color: var(--av-good); }
+  .av-choice.is-reject:hover, .av-choice.is-reject.is-chosen { border-color: var(--av-evil); }
+  .av-choice:disabled { cursor: not-allowed; opacity: 0.38; }
+  .av-choice-note { font-size: 0.74rem; font-weight: 500; color: var(--av-muted); }
+
+  .av-progress { height: 6px; border-radius: 999px; background: var(--av-sunken); overflow: hidden; margin-top: var(--sp-2); }
+  .av-progress > span { display: block; height: 100%; background: var(--av-gold); transition: width 0.3s var(--av-ease); }
+
+  /* ---------- role card ---------- */
+  .av-role { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-4); align-items: start; }
+  @media (max-width: 420px) { .av-role { grid-template-columns: 1fr; justify-items: center; text-align: center; } .av-role .av-team-list { justify-content: center; } }
+  .av-rolecard { position: relative; width: 150px; aspect-ratio: 240 / 336; padding: 0; border: 0; background: none; cursor: pointer; perspective: 900px; border-radius: 12px; }
+  .av-rolecard-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.6s var(--av-ease); }
+  .av-rolecard.is-open .av-rolecard-inner { transform: rotateY(180deg); }
+  .av-rolecard-face, .av-rolecard-back { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 12px; overflow: hidden; box-shadow: 0 14px 28px rgb(0 0 0 / 0.5); }
+  .av-rolecard-face { transform: rotateY(180deg); }
+  .av-rolecard img { width: 100%; height: 100%; display: block; }
+  .av-rolecard-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 4px 10px; border-radius: 999px; background: oklch(0.16 0.03 260 / 0.9); color: var(--av-gold); font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .av-role-name { font-family: var(--display); font-size: 1.3rem; font-weight: 700; margin: 0; }
+  .av-role-team { display: inline-block; margin: 4px 0 var(--sp-2); padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+  .av-role-team.is-good { background: var(--av-good-bg); color: oklch(0.9 0.05 255); }
+  .av-role-team.is-evil { background: var(--av-evil-bg); color: oklch(0.9 0.06 25); }
+  .av-role-blurb { margin: 0 0 var(--sp-3); color: var(--av-soft); font-size: 0.92rem; }
+  .av-know-title { font-size: 0.78rem; letter-spacing: 0.06em; color: var(--av-gold); font-weight: 700; margin: 0 0 6px; }
+  .av-secret-hidden { color: var(--av-muted); font-size: 0.9rem; }
+
+  /* ---------- finished ---------- */
+  .av-result { text-align: center; }
+  .av-result-team { font-family: var(--display); font-size: 1.8rem; font-weight: 700; margin: 0; }
+  .av-result-team.is-good { color: var(--av-good); }
+  .av-result-team.is-evil { color: var(--av-evil); }
+  .av-result-why { margin: 4px 0 var(--sp-4); color: var(--av-soft); }
+
+  /* ---------- log ---------- */
+  .av-log { margin-top: var(--sp-4); }
+  .av-log summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--av-soft); font-weight: 600; }
+  .av-log-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; max-height: 240px; overflow-y: auto; }
+  .av-log-list li { font-size: 0.86rem; padding: 6px 10px; border-radius: 10px; background: var(--av-surface); color: var(--av-soft); overflow-wrap: anywhere; }
+
+  /* ---------- overlays ---------- */
+  .av-overlay {
+    position: fixed; inset: 0; z-index: 11000; display: none; align-items: center; justify-content: center;
+    padding: var(--sp-4); background: oklch(0.1 0.02 260 / 0.88);
+  }
+  .av-overlay.is-on { display: flex; animation: avFade 0.2s ease-out; }
+  .av-sheet {
+    font-family: 'Bai Jamjuree', sans-serif; line-height: 1.5;
+    width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
+    padding: var(--sp-5) var(--sp-4); border-radius: 22px; background: var(--av-surface); border: 1px solid var(--av-line);
+    text-align: center; color: var(--av-ink);
+  }
+  .av-sheet h3 { margin: 0 0 4px; font-family: var(--display); font-size: 1.35rem; font-weight: 700; }
+  .av-sheet-sub { margin: 0 0 var(--sp-4); color: var(--av-muted); font-size: 0.9rem; }
+  .av-reveal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: var(--sp-3) var(--sp-2); }
+  .av-reveal-vote { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .av-reveal-vote span { max-width: 100%; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .av-coin { position: relative; width: 58px; height: 58px; perspective: 500px; }
+  .av-coin-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.5s var(--av-ease); }
+  .av-coin.is-flipped .av-coin-inner { transform: rotateY(180deg); }
+  .av-coin-back, .av-coin-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 50%; }
+  .av-coin-back { background: var(--av-surface-2); border: 3px solid oklch(0.6 0.08 85 / 0.6); }
+  .av-coin-face { transform: rotateY(180deg); }
+  .av-coin-face img { width: 100%; height: 100%; }
+  .av-cards-row { display: flex; justify-content: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .av-qcard { position: relative; width: min(96px, 18vw); aspect-ratio: 240 / 336; perspective: 700px; }
+  .av-qcard-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.55s var(--av-ease); }
+  .av-qcard.is-flipped .av-qcard-inner { transform: rotateY(180deg); }
+  .av-qcard img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 8px; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 8px 18px rgb(0 0 0 / 0.5); }
+  .av-qcard img.is-face { transform: rotateY(180deg); }
+  .av-verdict { margin: var(--sp-4) 0 0; font-family: var(--display); font-size: 1.5rem; font-weight: 700; opacity: 0; transform: translateY(6px); transition: opacity 0.3s, transform 0.3s var(--av-ease); }
+  .av-verdict.is-on { opacity: 1; transform: none; }
+  .av-verdict.is-good { color: var(--av-good); }
+  .av-verdict.is-evil { color: var(--av-evil); }
+  .av-sheet .ui-btn { margin-top: var(--sp-4); }
+
+  /* ---------- sidebar / chat ---------- */
+  .av-sidebar {
+    position: fixed; top: 0; right: 0; width: min(320px, 88vw); height: 100%;
+    transform: translateX(105%); background: var(--av-surface); border-left: 1px solid var(--av-line);
+    padding: var(--sp-5) var(--sp-4); z-index: 9000; transition: transform 0.25s var(--av-ease); overflow-y: auto; color: var(--av-ink);
+  }
+  .av-sidebar.open { transform: none; }
+  .av-sidebar h4 { font-family: var(--display); margin: 0 0 var(--sp-3); }
+  .av-sidebar ul { list-style: none; padding: 0; margin: 0 0 var(--sp-4); }
+  .av-sidebar li { display: flex; align-items: center; gap: var(--sp-2); padding: 8px 0; border-bottom: 1px solid var(--av-line); min-width: 0; }
+  .av-sidebar li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .av-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); z-index: 8999; }
+  .chat-box {
+    --chat-accent: oklch(0.55 0.12 258); --chat-accent-dark: oklch(0.4 0.1 258);
+    --chat-surface: oklch(0.2 0.035 260); --chat-border: oklch(0.45 0.04 260 / 0.6); --chat-bubble: oklch(0.28 0.04 260);
+    font-family: 'Bai Jamjuree', sans-serif;
+  }
+  .chat-toggle { --chat-toggle-bg: oklch(0.4 0.1 258); border-radius: 999px; padding: 12px 18px; min-height: 48px; }
+  .btn-chat-send { --chat-send-bg: oklch(0.85 0.12 85); --chat-send-color: oklch(0.2 0.04 70); }
+
+  @keyframes avFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes avDeal { from { opacity: 0; transform: translateY(-24px) scale(0.92); } to { opacity: 1; transform: none; } }
+  .av-rolecard.is-deal { animation: avDeal 0.5s var(--av-ease) both; }
+  @keyframes avPulse { 0%, 100% { box-shadow: 0 0 0 0 oklch(0.85 0.12 85 / 0.5); } 50% { box-shadow: 0 0 0 6px oklch(0.85 0.12 85 / 0); } }
+  button.av-seat.is-pickable { animation: avPulse 2s ease-in-out infinite; }
+
+  @media (min-width: 720px) {
+    .av { padding-top: var(--sp-4); }
+    .av-title { font-size: 1.4rem; }
+    .av-seats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .av-quest-token { width: 70px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .av-rolecard-inner, .av-coin-inner, .av-qcard-inner, .av-quest-token, .av-verdict, .av-progress > span, .av-sidebar { transition: none !important; }
+    .av-rolecard.is-deal, button.av-seat.is-pickable, .av-overlay.is-on { animation: none !important; }
+    .av-seat, .av-choice { transition: none !important; }
+  }
+</style>
+
+<div id="connectionStatus" class="av-chip av-chip--danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+
+<main class="av" id="avRoot">
+  <div class="av-top">
+    <div class="av-brand">
+      <div class="av-kicker">อวาลอน · อัศวินโต๊ะกลม</div>
+      <div class="av-title" role="heading" aria-level="1"><%= room.name %></div>
+    </div>
+    <div class="av-top-actions">
+      <button type="button" id="avRoleBtn" class="av-chip" aria-label="ดูบทของฉัน">บทของฉัน</button>
+      <button type="button" id="avHowBtn" class="av-chip" aria-label="วิธีเล่น">?<span class="av-chip-label">วิธีเล่น</span></button>
+      <button type="button" id="avPlayersBtn" class="av-chip" aria-label="ผู้เล่น" aria-expanded="false" aria-controls="playerSidebar">☰</button>
+    </div>
+  </div>
+
+  <section id="avStatus" class="av-status" aria-live="polite">
+    <div id="avPhase" class="av-phase">กำลังโหลด</div>
+    <div id="avNow" class="av-now">...</div>
+    <div class="av-timer" aria-hidden="true"><div id="avTimer" class="av-timer-num">--</div></div>
+    <div id="avTimerHint" class="av-timer-hint"></div>
+  </section>
+
+  <section class="av-board" aria-label="กระดานภารกิจ">
+    <div id="avTrack" class="av-track"></div>
+    <div class="av-rejects">
+      <span>คัดค้านติดกัน</span>
+      <span id="avPips" class="av-pips" aria-hidden="true"></span>
+      <span id="avRejectText"></span>
+    </div>
+    <div id="avLastLine" class="av-lastline"></div>
+    <div id="avSeats" class="av-seats"></div>
+  </section>
+
+  <section id="avAction" class="av-action"></section>
+
+  <details class="av-log">
+    <summary>บันทึกเกม</summary>
+    <ul id="avLog" class="av-log-list"></ul>
+  </details>
+</main>
+
+<div id="avOverlay" class="av-overlay" role="dialog" aria-modal="true" aria-labelledby="avOverlayTitle">
+  <div class="av-sheet" id="avSheet"></div>
+</div>
+
+<aside id="playerSidebar" class="av-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="avPlayerTitle">
+  <h4 id="avPlayerTitle">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList"></ul>
+  <div class="av-stack">
+    <% if (room.admin) { %>
+    <button type="button" id="avEndBtn" class="ui-btn ui-btn--block">⏹ จบเกม กลับห้องรอ</button>
+    <% } %>
+    <button id="leaveRoomBtn" type="button" class="ui-btn ui-btn--block">ออกจากห้อง</button>
+    <button id="closeSidebarBtn" type="button" class="ui-btn ui-btn--ghost ui-btn--block">ปิด</button>
+  </div>
+</aside>
+<div id="sidebarOverlay" class="av-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="avChatTitle" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title" id="avChatTitle">💬 แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('av-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = <%- JSON.stringify(player.name || '') %>;
+  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  if (window.partyPlay) window.partyPlay.startSession('avalon', socket);
+
+  let S = <%- JSON.stringify(typeof avalonState !== 'undefined' && avalonState ? avalonState : {}).replace(/</g, '\\u003c') %>;
+  let allowNavigation = false;
+  let picks = [];
+  let picksStep = -1;
+  let assassinPick = null;
+  let roleOpen = false;
+  let roleSeen = false;
+  let sending = false;
+  let timerHandle = null;
+  let overlayTimer = null;
+  let overlayKind = null;
+  let seenFx = Math.max(0, ...((S && S.fx) || []).map(function(e) { return e.seq || 0; }));
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ART = function(key) { return (S && S.art && S.art[key]) || ''; };
+
+  const PHASE_LABEL = {
+    night: '🌙 กลางคืน · ดูบท',
+    team: '👑 เลือกทีม',
+    vote: '🗳 โหวตทีม',
+    quest: '⚔️ ออกภารกิจ',
+    assassin: '🗡 ลอบสังหาร',
+    finished: '🏁 จบเกม'
+  };
+
+  function esc(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, function(c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c];
+    });
+  }
+  function avatarHtml(p, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 34 });
+    }
+    return '<span>' + esc(p.avatar || '👤') + '</span>';
+  }
+  function player(id) { return ((S && S.players) || []).find(function(p) { return p.playerId === id; }) || null; }
+  function nameOf(id) { const p = player(id); return p ? p.name : '-'; }
+  function me() { return S && S.self; }
+  function quest() { return S && S.currentQuest; }
+
+  /* ------------------------------------------------------------ status */
+  function describeNow() {
+    const self = me() || {};
+    const q = quest();
+    const leader = nameOf(S.leaderId);
+    switch (S.phase) {
+      case 'night':
+        return self.ready
+          ? { text: 'พร้อมแล้ว — รอคนอื่น (' + (S.readyCount || 0) + '/' + S.players.filter(function(p) { return !p.left; }).length + ')', mine: false }
+          : { text: 'แตะการ์ดดูบทของคุณเงียบ ๆ แล้วกดพร้อม', mine: true };
+      case 'team':
+        return self.canPickTeam
+          ? { text: 'คุณเป็นหัวหน้า — เลือก ' + q.size + ' คนออกภารกิจ ' + q.number, mine: true }
+          : { text: leader + ' กำลังเลือกทีม ' + q.size + ' คน — ช่วยกันเสนอได้', mine: false };
+      case 'vote':
+        return self.canVote
+          ? { text: 'โหวตทีมของ ' + nameOf(S.proposal && S.proposal.leaderId) + ' — เห็นด้วยหรือคัดค้าน', mine: true }
+          : { text: 'โหวตแล้ว — รออีก ' + Math.max(0, S.players.filter(function(p) { return !p.left; }).length - (S.votedCount || 0)) + ' คน', mine: false };
+      case 'quest':
+        if (self.canPlayQuest) return { text: 'คุณอยู่ในทีม — ลงการ์ดภารกิจแบบลับ', mine: true };
+        return { text: 'ทีมกำลังออกภารกิจ ' + q.number + ' (' + (S.questPlayedCount || 0) + '/' + q.size + ' ลงแล้ว)', mine: false };
+      case 'assassin':
+        if (self.canAssassinate) return { text: 'คุณคือมือสังหาร — แทงคนที่คิดว่าเป็นเมอร์ลิน', mine: true };
+        if (self.team === 'evil') return { text: 'ช่วย ' + nameOf(S.assassinId) + ' เดาว่าใครคือเมอร์ลิน', mine: false };
+        return { text: nameOf(S.assassinId) + ' (มือสังหาร) กำลังเล็ง — ทำหน้านิ่งไว้', mine: false };
+      case 'finished':
+        if (S.winner && S.winner.abandoned) return { text: 'เกมถูกยกเลิก — ผู้เล่นไม่พอ', mine: false };
+        return { text: (S.winner && S.winner.team === 'good' ? 'ฝ่ายดีชนะ!' : 'ฝ่ายร้ายชนะ!'), mine: false };
+      default:
+        return { text: 'กำลังโหลด...', mine: false };
+    }
+  }
+
+  function renderStatus() {
+    const now = describeNow();
+    $('#avPhase').text(PHASE_LABEL[S.phase] || '');
+    $('#avNow').text(now.text);
+    $('#avStatus').toggleClass('is-mine', !!now.mine);
+  }
+
+  function tickTimer() {
+    if (timerHandle) clearInterval(timerHandle);
+    function paint() {
+      if (S.phase === 'finished') {
+        const endsAt = Number(S.returnLobbyEndsAt) || 0;
+        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+        $('#avTimer').text(remain > 0 ? remain : '--').removeClass('is-low');
+        $('#avTimerHint').text(remain > 0 ? 'วินาทีแล้วกลับห้องรอพร้อมกัน' : '');
+        $('#avBackRemain').text(remain > 0 ? 'ระบบพากลับห้องรอใน ' + remain + ' วิ' : 'กำลังพากลับห้องรอ...');
+        return;
+      }
+      if (!S.phaseEndsAt) {
+        $('#avTimer').text('--');
+        $('#avTimerHint').text('');
+        return;
+      }
+      const remain = Math.max(0, Math.ceil((S.phaseEndsAt - Date.now()) / 1000));
+      const mm = Math.floor(remain / 60);
+      const ss = String(remain % 60).padStart(2, '0');
+      $('#avTimer').text(mm + ':' + ss).toggleClass('is-low', remain <= 10);
+      $('#avTimerHint').text(S.timeoutHint || '');
+    }
+    paint();
+    timerHandle = setInterval(paint, 250);
+  }
+
+  /* ------------------------------------------------------------ track */
+  function renderTrack() {
+    const quests = S.quests || [];
+    $('#avTrack').html(quests.map(function(q, i) {
+      const current = S.phase !== 'finished' && S.phase !== 'assassin' && i === S.questIndex && !q.result;
+      const cls = 'av-quest' + (current ? ' is-current' : '') + (q.result ? ' is-done' : '');
+      const img = q.result === 'success' ? '<img src="' + esc(ART('tokenSuccess')) + '" alt="">' : (q.result === 'fail' ? '<img src="' + esc(ART('tokenFail')) + '" alt="">' : '');
+      const label = q.result === 'success' ? 'สำเร็จ' : (q.result === 'fail' ? 'ล้มเหลว' : (current ? 'ตอนนี้' : 'ภารกิจ ' + q.number));
+      return '<div class="' + cls + '" aria-label="ภารกิจ ' + q.number + ' ใช้ ' + q.size + ' คน ' + (q.result ? label : '') + '">' +
+        '<div class="av-quest-token">' + img + '<span class="av-quest-size">' + q.size + '</span>' +
+        (q.failsNeeded > 1 && !q.result ? '<span class="av-two-fail" title="ต้องมีการ์ดล้ม 2 ใบถึงจะล้ม">ล้ม 2</span>' : '') +
+        (q.result === 'fail' && q.failCount ? '<span class="av-fail-count" title="การ์ดล้ม">' + q.failCount + '</span>' : '') +
+        '</div><span class="av-quest-label">' + label + '</span></div>';
+    }).join(''));
+
+    const n = Number(S.rejectCount || 0);
+    const max = Number(S.maxRejects || 5);
+    $('#avPips').html(Array.from({ length: max }, function(_, i) {
+      return '<span class="av-pip' + (i < n ? ' is-on' : '') + (i === max - 1 ? ' is-last' : '') + '"></span>';
+    }).join(''));
+    $('#avRejectText').text(n + '/' + max + (n >= max - 1 && S.phase !== 'finished' ? ' · ครั้งหน้าไม่ผ่าน = ฝ่ายร้ายชนะ' : ''));
+
+    const lv = S.lastVote;
+    $('#avLastLine').text(lv
+      ? 'โหวตล่าสุด (ภารกิจ ' + lv.questNumber + '): ' + (lv.approved ? 'ผ่าน ' : 'ไม่ผ่าน ') + lv.approveCount + ':' + lv.rejectCount
+      : '');
+  }
+
+  /* ------------------------------------------------------------ seats */
+  function seatMode() {
+    const self = me() || {};
+    if (S.phase === 'team' && self.canPickTeam) return 'pick';
+    if (S.phase === 'assassin' && self.canAssassinate) return 'stab';
+    return null;
+  }
+
+  function renderSeats() {
+    const mode = seatMode();
+    const finished = S.phase === 'finished';
+    const size = quest() ? quest().size : 0;
+    const showVotes = S.lastVote && (S.phase === 'team' || S.phase === 'vote' || S.phase === 'quest');
+    $('#avSeats').html((S.players || []).map(function(p) {
+      let cls = 'av-seat';
+      if (p.isSelf) cls += ' is-self';
+      if (p.isLeader) cls += ' is-leader';
+      if (p.onTeam) cls += ' is-team';
+      if (p.left) cls += ' is-left';
+      let disabled = false;
+      if (mode === 'pick') {
+        if (picks.indexOf(p.playerId) >= 0) cls += ' is-picked';
+        disabled = p.left || (picks.indexOf(p.playerId) < 0 && picks.length >= size);
+        if (!disabled && picks.length < size && picks.indexOf(p.playerId) < 0) cls += ' is-pickable';
+      }
+      if (mode === 'stab') {
+        const allowed = (S.assassinTargets || []).indexOf(p.playerId) >= 0;
+        disabled = !allowed;
+        if (assassinPick === p.playerId) cls += ' is-target';
+      }
+      if (disabled) cls += ' is-disabled';
+      if (finished && S.assassinTargetId === p.playerId) cls += ' is-target';
+
+      let tag = '';
+      if (p.left) tag = 'ออกจากโต๊ะ';
+      else if (finished && p.role) tag = p.role.thaiName;
+      else if (S.phase === 'assassin' && p.isAssassin) tag = '🗡 มือสังหาร';
+      else if (p.onTeam) tag = S.phase === 'quest' ? (p.hasPlayed ? 'ลงการ์ดแล้ว' : 'ในทีม') : 'ถูกเสนอ';
+      else if (S.phase === 'vote') tag = p.hasVoted ? 'โหวตแล้ว' : 'รอโหวต';
+      else if (p.isLeader) tag = 'หัวหน้า';
+      else if (p.isSelf) tag = 'คุณ';
+
+      let badge = '';
+      if (finished && p.role) {
+        badge = '';
+      } else if (S.phase === 'night' && p.ready && !p.left) {
+        badge = '<span class="av-seat-check" aria-label="พร้อม">✓</span>';
+      } else if (showVotes && p.lastVote) {
+        badge = '<span class="av-seat-badge"><img src="' + esc(ART(p.lastVote === 'approve' ? 'approve' : 'reject')) + '" alt="' + (p.lastVote === 'approve' ? 'เห็นด้วย' : 'คัดค้าน') + '"></span>';
+      }
+
+      const inner =
+        (p.isLeader ? '<img class="av-seat-crown" src="' + esc(ART('crown')) + '" alt="หัวหน้า">' : '') +
+        '<span class="av-seat-dot' + (p.online ? ' is-on' : '') + '" title="' + (p.online ? 'ออนไลน์' : 'ออฟไลน์') + '"></span>' +
+        badge +
+        (finished && p.role
+          ? '<img class="av-seat-role" src="' + esc(p.role.image) + '" alt="' + esc(p.role.thaiName) + '">'
+          : avatarHtml(p, 38)) +
+        '<span class="av-seat-name" style="color:' + esc(p.color || 'inherit') + '">' + esc(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</span>' +
+        (tag ? '<span class="av-seat-tag">' + esc(tag) + '</span>' : '') +
+        (finished && p.team ? '<span class="av-seat-win ' + (p.team === 'good' ? 'is-good' : 'is-evil') + '">' + (p.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย') + '</span>' : '');
+
+      if (mode && !disabled) {
+        const pressed = mode === 'pick' ? picks.indexOf(p.playerId) >= 0 : assassinPick === p.playerId;
+        return '<button type="button" class="' + cls + '" data-seat="' + esc(p.playerId) + '" aria-pressed="' + pressed + '">' + inner + '</button>';
+      }
+      return '<div class="' + cls + '" data-seat="' + esc(p.playerId) + '">' + inner + '</div>';
+    }).join(''));
+  }
+
+  $(document).on('click', 'button.av-seat', function() {
+    const id = $(this).attr('data-seat');
+    const mode = seatMode();
+    if (mode === 'pick') {
+      const at = picks.indexOf(id);
+      if (at >= 0) picks.splice(at, 1);
+      else if (picks.length < quest().size) picks.push(id);
+      if (window.gameHaptic) window.gameHaptic(10);
+    } else if (mode === 'stab') {
+      assassinPick = assassinPick === id ? null : id;
+    }
+    renderSeats();
+    renderAction();
+  });
+
+  /* ------------------------------------------------------------ role card */
+  function knowledgeHtml(self) {
+    if (!self || !self.role) return '';
+    const inPlay = (S.rolesInPlay || []).map(function(r) { return r.id; });
+    const list = self.knowledge || [];
+    let title = 'สิ่งที่คุณรู้';
+    let empty = 'คุณไม่รู้ว่าใครเป็นใคร — อ่านเกมจากการโหวตและผลภารกิจ';
+    let extra = '';
+    if (self.role.id === 'merlin') {
+      title = 'ฝ่ายร้ายที่คุณเห็น';
+      if (inPlay.indexOf('mordred') >= 0) extra = 'มอร์เดรดซ่อนจากคุณ — มีฝ่ายร้ายที่คุณไม่เห็นอีก 1 คน';
+    } else if (self.role.id === 'percival') {
+      title = 'หนึ่งในนี้คือเมอร์ลิน';
+      if (inPlay.indexOf('morgana') >= 0) extra = 'อีกคนคือมอร์กานาที่ปลอมตัว — ดูให้ดีว่าใครของจริง';
+    } else if (self.team === 'evil' && self.role.id !== 'oberon') {
+      title = 'พวกเดียวกันของคุณ';
+      if (inPlay.indexOf('oberon') >= 0) extra = 'มีโอเบรอนซ่อนอยู่ — เขาเป็นฝ่ายร้ายแต่คุณไม่รู้ว่าเป็นใคร';
+    } else if (self.role.id === 'oberon') {
+      empty = 'คุณไม่รู้จักพวกเดียวกัน และพวกเขาก็ไม่รู้จักคุณ — ลงการ์ดล้มให้ถูกจังหวะ';
+    }
+    const pills = list.map(function(k) {
+      const cls = k.tag === 'merlin' ? 'is-merlin' : 'is-evil';
+      return '<span class="av-name-pill ' + cls + '">' + esc(k.name) + '</span>';
+    }).join('');
+    return '<p class="av-know-title">' + esc(title) + '</p>' +
+      (pills ? '<div class="av-team-list">' + pills + '</div>' : '<p class="av-muted">' + esc(empty) + '</p>') +
+      (extra ? '<p class="av-muted" style="margin-top:6px;">' + esc(extra) + '</p>' : '');
+  }
+
+  function roleBlockHtml(options) {
+    const self = me();
+    if (!self || !self.role) return '<p class="av-muted">คุณไม่ได้อยู่ในเกมนี้</p>';
+    const open = options && options.open;
+    const teamLabel = self.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย';
+    return '<div class="av-role">' +
+      '<button type="button" class="av-rolecard' + (open ? ' is-open' : '') + (options && options.deal ? ' is-deal' : '') + '" data-rolecard aria-pressed="' + (open ? 'true' : 'false') + '" aria-label="' + (open ? 'ซ่อนการ์ดบทบาท' : 'แตะเพื่อเปิดการ์ดบทบาท') + '">' +
+        '<span class="av-rolecard-inner">' +
+          '<span class="av-rolecard-back"><img src="' + esc(ART('back')) + '" alt=""></span>' +
+          '<span class="av-rolecard-face"><img src="' + esc(self.role.image) + '" alt="' + esc(self.role.thaiName) + '"></span>' +
+        '</span>' +
+        (open ? '' : '<span class="av-rolecard-hint">แตะเพื่อเปิด</span>') +
+      '</button>' +
+      '<div>' + (open
+        ? '<p class="av-role-name">' + esc(self.role.icon + ' ' + self.role.thaiName) + '</p>' +
+          '<span class="av-role-team ' + (self.team === 'good' ? 'is-good' : 'is-evil') + '">' + teamLabel + '</span>' +
+          '<p class="av-role-blurb">' + esc(self.role.blurb) + '</p>' + knowledgeHtml(self)
+        : '<p class="av-secret-hidden">บังจอจากเพื่อนข้าง ๆ ก่อน แล้วแตะการ์ดเพื่อดูบทและข้อมูลลับของคุณ</p>') +
+      '</div></div>';
+  }
+
+  /* ------------------------------------------------------------ action panel */
+  function renderAction() {
+    const self = me() || {};
+    const q = quest();
+    let html = '';
+
+    if (S.phase === 'night') {
+      html = '<h2>บทของคุณ</h2>' + roleBlockHtml({ open: roleOpen, deal: !roleSeen }) +
+        '<div class="av-stack" style="margin-top:16px;">' +
+        (self.ready
+          ? '<p class="av-muted" style="text-align:center;">พร้อมแล้ว · รอคนอื่น ' + (S.readyCount || 0) + '/' + S.players.filter(function(p) { return !p.left; }).length + '</p>'
+          : '<button type="button" id="avReadyBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block"' + (roleSeen ? '' : ' disabled') + '>' + (roleSeen ? 'จำได้แล้ว พร้อม' : 'เปิดการ์ดก่อน แล้วกดพร้อม') + '</button>') +
+        '</div>';
+    } else if (S.phase === 'team') {
+      if (self.canPickTeam) {
+        if (picksStep !== S.step) { picks = []; picksStep = S.step; }
+        const names = picks.map(function(id) { return '<span class="av-name-pill">' + esc(nameOf(id)) + '</span>'; }).join('');
+        html = '<h2>เลือกทีมภารกิจ ' + q.number + '</h2>' +
+          '<p class="av-muted">แตะชื่อบนโต๊ะ ' + q.size + ' คน (เลือกตัวเองได้)' + (q.failsNeeded > 1 ? ' · ภารกิจนี้ต้องมีการ์ดล้ม 2 ใบถึงจะล้ม' : '') + '</p>' +
+          '<div class="av-team-list">' + (names || '<span class="av-muted">ยังไม่ได้เลือก</span>') + '</div>' +
+          '<button type="button" id="avTeamBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block"' + (picks.length === q.size ? '' : ' disabled') + '>' +
+          (picks.length === q.size ? 'ส่งทีมให้ทุกคนโหวต' : 'เลือกแล้ว ' + picks.length + '/' + q.size) + '</button>';
+      } else {
+        html = '<h2>' + esc(nameOf(S.leaderId)) + ' กำลังเลือกทีม</h2>' +
+          '<p class="av-muted">ภารกิจ ' + q.number + ' ใช้ ' + q.size + ' คน' + (q.failsNeeded > 1 ? ' · ต้องล้ม 2 ใบถึงจะล้ม' : '') + ' — คุยกันเสนอชื่อได้เลย</p>';
+      }
+    } else if (S.phase === 'vote') {
+      const team = ((S.proposal && S.proposal.teamIds) || []).map(function(id) {
+        return '<span class="av-name-pill">' + esc(nameOf(id)) + '</span>';
+      }).join('');
+      const header = '<h2>ทีมของ ' + esc(nameOf(S.proposal && S.proposal.leaderId)) + '</h2><div class="av-team-list">' + team + '</div>';
+      const voters = S.players.filter(function(p) { return !p.left; }).length;
+      const bar = '<div class="av-progress" aria-hidden="true"><span style="width:' + Math.round(100 * (S.votedCount || 0) / Math.max(1, voters)) + '%"></span></div>';
+      if (self.canVote) {
+        html = header +
+          '<div class="av-choices">' +
+            '<button type="button" class="av-choice av-choice--token is-approve" data-vote="approve"><img src="' + esc(ART('approve')) + '" alt="">เห็นด้วย</button>' +
+            '<button type="button" class="av-choice av-choice--token is-reject" data-vote="reject"><img src="' + esc(ART('reject')) + '" alt="">คัดค้าน</button>' +
+          '</div>' +
+          '<p class="av-muted" style="margin-top:10px;">' + (S.rejectCount >= S.maxRejects - 1 ? '⚠️ ถ้าไม่ผ่านอีกครั้ง ฝ่ายร้ายชนะทันที' : 'ผ่านเมื่อเห็นด้วยเกินครึ่ง · ไม่โหวต = เห็นด้วย') + '</p>' + bar;
+      } else {
+        html = header + '<p class="av-muted">คุณโหวต <b>' + (self.myVote === 'approve' ? 'เห็นด้วย' : (self.myVote === 'reject' ? 'คัดค้าน' : '-')) + '</b> · เปิดผลพร้อมกันเมื่อครบ ' + (S.votedCount || 0) + '/' + voters + '</p>' + bar;
+      }
+    } else if (S.phase === 'quest') {
+      const team = ((S.proposal && S.proposal.teamIds) || []).map(function(id) {
+        return '<span class="av-name-pill">' + esc(nameOf(id)) + '</span>';
+      }).join('');
+      const bar = '<div class="av-progress" aria-hidden="true"><span style="width:' + Math.round(100 * (S.questPlayedCount || 0) / Math.max(1, q.size)) + '%"></span></div>';
+      if (self.canPlayQuest) {
+        html = '<h2>ภารกิจ ' + q.number + ' — ลงการ์ดลับ</h2>' +
+          '<div class="av-choices">' +
+            '<button type="button" class="av-choice av-choice--card is-approve" data-card="success"><img src="' + esc(ART('success')) + '" alt="">สำเร็จ</button>' +
+            '<button type="button" class="av-choice av-choice--card is-reject" data-card="fail"' + (self.canFail ? '' : ' disabled aria-disabled="true"') + '><img src="' + esc(ART('fail')) + '" alt="">ล้มเหลว' +
+              (self.canFail ? '' : '<span class="av-choice-note">ฝ่ายดีลงได้แค่สำเร็จ</span>') + '</button>' +
+          '</div>' + bar;
+      } else if (self.onTeam) {
+        html = '<h2>ลงการ์ดแล้ว</h2><p class="av-muted">คุณลง <b>' + (self.myQuestCard === 'fail' ? 'ล้มเหลว' : 'สำเร็จ') + '</b> · รอทีม ' + (S.questPlayedCount || 0) + '/' + q.size + '</p>' + bar;
+      } else {
+        html = '<h2>ทีมกำลังออกภารกิจ ' + q.number + '</h2><div class="av-team-list">' + team + '</div>' +
+          '<p class="av-muted">เปิดการ์ดแบบสลับเมื่อครบทีม — เห็นแค่จำนวนการ์ดล้ม</p>' + bar;
+      }
+    } else if (S.phase === 'assassin') {
+      if (self.canAssassinate) {
+        html = '<h2>🗡 แทงเมอร์ลิน</h2><p class="av-muted">ฝ่ายดีทำภารกิจครบ 3 แล้ว — ถ้าแทงถูกเมอร์ลิน ฝ่ายร้ายชนะ · คุยกับพวกเดียวกันได้ · แตะคนบนโต๊ะ</p>' +
+          '<button type="button" id="avStabBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" style="margin-top:12px;"' + (assassinPick ? '' : ' disabled') + '>' +
+          (assassinPick ? 'แทง ' + esc(nameOf(assassinPick)) : 'เลือกเป้าก่อน') + '</button>';
+      } else {
+        html = '<h2>ช่วงลอบสังหาร</h2><p class="av-muted">' + esc(nameOf(S.assassinId)) + ' เปิดตัวเป็นมือสังหาร · ฝ่ายร้ายคุยกันได้ · ฝ่ายดีห้ามบอกว่าใครคือเมอร์ลิน</p>';
+      }
+    } else if (S.phase === 'finished') {
+      const w = S.winner || {};
+      if (w.abandoned) {
+        html = '<div class="av-result"><p class="av-result-team">ยกเลิกเกม</p><p class="av-result-why">' + esc(w.text || '') + '</p>';
+      } else {
+        html = '<div class="av-result"><p class="av-result-team ' + (w.team === 'good' ? 'is-good' : 'is-evil') + '">' + (w.team === 'good' ? '🏆 ฝ่ายดีชนะ' : '🏆 ฝ่ายร้ายชนะ') + '</p>' +
+          '<p class="av-result-why">' + esc(w.text || '') + '</p>';
+      }
+      const mine = me();
+      if (mine && mine.team && !w.abandoned) {
+        html += '<p class="av-muted" style="margin-bottom:12px;">คุณเป็น ' + esc(mine.role.thaiName) + ' — ' + (mine.team === w.team ? 'ชนะ!' : 'แพ้') + ' · บททุกคนเปิดบนโต๊ะด้านบนแล้ว</p>';
+      }
+      html += '<div class="av-stack">' +
+        (isRoomAdmin ? '<button type="button" id="avRestartBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block">เล่นอีกรอบ</button>' : '') +
+        '<div class="av-row av-row--center">' +
+          (w.abandoned ? '' : '<button type="button" id="avShareBtn" class="ui-btn">แชร์ผล</button>') +
+          '<button type="button" id="avBackBtn" class="ui-btn">กลับห้องรอ</button>' +
+        '</div><p class="av-muted" id="avBackRemain">ทุกคนกลับพร้อมกัน</p></div></div>';
+    } else {
+      html = '<p class="av-muted">กำลังโหลด...</p>';
+    }
+    $('#avAction').html(html);
+  }
+
+  $(document).on('click', '[data-rolecard]', function() {
+    const inSheet = $(this).closest('#avSheet').length > 0;
+    if (inSheet) {
+      $(this).toggleClass('is-open');
+      const open = $(this).hasClass('is-open');
+      $('#avSheet [data-role-detail]').toggle(open);
+      $(this).find('.av-rolecard-hint').toggle(!open);
+      return;
+    }
+    roleOpen = !roleOpen;
+    if (roleOpen) roleSeen = true;
+    renderAction();
+    if (roleOpen && window.gameHaptic) window.gameHaptic(12);
+  });
+
+  /* ------------------------------------------------------------ commands */
+  function send(eventName, payload) {
+    if (sending) return;
+    sending = true;
+    socket.emit(eventName, Object.assign({ roomId: roomId, playerId: playerId, step: S.step }, payload || {}), function(res) {
+      sending = false;
+      if (res && !res.success) {
+        Swal.fire({ icon: 'info', title: res.error || 'ทำรายการไม่สำเร็จ', background: '#1b2336', color: '#fff', timer: 2600, showConfirmButton: false });
+      }
+    });
+    setTimeout(function() { sending = false; }, 4000);
+  }
+
+  $(document).on('click', '#avReadyBtn', function() { send('avalon_ready'); });
+  $(document).on('click', '#avTeamBtn', function() {
+    if (picks.length !== quest().size) return;
+    send('avalon_team', { teamIds: picks.slice() });
+  });
+  $(document).on('click', '[data-vote]', function() {
+    const vote = $(this).attr('data-vote');
+    $(this).addClass('is-chosen');
+    send('avalon_vote', { vote: vote });
+  });
+  $(document).on('click', '[data-card]', function() {
+    if ($(this).prop('disabled')) return;
+    send('avalon_quest', { card: $(this).attr('data-card') });
+  });
+  $(document).on('click', '#avStabBtn', function() {
+    if (!assassinPick) return;
+    const target = nameOf(assassinPick);
+    Swal.fire({
+      title: 'แทง ' + target + ' ?', text: 'ถ้าเป็นเมอร์ลิน ฝ่ายร้ายชนะ — เปลี่ยนใจไม่ได้',
+      showCancelButton: true, confirmButtonText: 'แทงเลย', cancelButtonText: 'ยังก่อน',
+      background: '#1b2336', color: '#fff', confirmButtonColor: '#b3303f'
+    }).then(function(r) { if (r.isConfirmed) send('avalon_assassinate', { targetId: assassinPick }); });
+  });
+  $(document).on('click', '#avRestartBtn', function() {
+    socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
+      if (res && !res.success) Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#1b2336', color: '#fff' });
+    });
+  });
+  $(document).on('click', '#avBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  $(document).on('click', '#avShareBtn', function() {
+    if (!window.partyPlay || !S.winner) return;
+    const good = S.players.filter(function(p) { return p.team === 'good'; }).map(function(p) { return p.name + (p.role ? ' (' + p.role.thaiName + ')' : ''); });
+    const evil = S.players.filter(function(p) { return p.team === 'evil'; }).map(function(p) { return p.name + (p.role ? ' (' + p.role.thaiName + ')' : ''); });
+    window.partyPlay.shareResult({
+      mode: 'อวาลอน',
+      headline: S.winner.team === 'good' ? 'ฝ่ายดีชนะ!' : 'ฝ่ายร้ายชนะ!',
+      sub: S.winner.text || '',
+      lines: ['ฝ่ายดี: ' + good.join(', '), 'ฝ่ายร้าย: ' + evil.join(', ')],
+      accent: S.winner.team === 'good' ? '#6ea3f5' : '#e25563',
+      fileName: 'avalon-result'
+    });
+  });
+
+  /* ------------------------------------------------------------ overlays */
+  function openOverlay(kind, html, autoCloseMs) {
+    overlayKind = kind;
+    clearTimeout(overlayTimer);
+    $('#avSheet').html(html);
+    $('#avOverlay').addClass('is-on');
+    if (autoCloseMs) overlayTimer = setTimeout(closeOverlay, autoCloseMs);
+  }
+  function closeOverlay() {
+    clearTimeout(overlayTimer);
+    overlayKind = null;
+    $('#avOverlay').removeClass('is-on');
+    $('#avSheet').empty();
+  }
+  $('#avOverlay').on('click', function(e) {
+    if (e.target === this || $(e.target).is('[data-close]')) closeOverlay();
+  });
+  $(document).on('keydown', function(e) {
+    if (e.key === 'Escape' && $('#avOverlay').hasClass('is-on')) closeOverlay();
+  });
+
+  function showRoleSheet() {
+    const self = me();
+    if (!self || !self.role) return;
+    const html = '<h3 id="avOverlayTitle">บทของฉัน</h3><p class="av-sheet-sub">บังจอก่อนเปิด</p>' +
+      '<div class="av-row av-row--center">' +
+        '<button type="button" class="av-rolecard" data-rolecard aria-label="แตะเพื่อเปิดการ์ด">' +
+          '<span class="av-rolecard-inner">' +
+            '<span class="av-rolecard-back"><img src="' + esc(ART('back')) + '" alt=""></span>' +
+            '<span class="av-rolecard-face"><img src="' + esc(self.role.image) + '" alt="' + esc(self.role.thaiName) + '"></span>' +
+          '</span><span class="av-rolecard-hint">แตะเพื่อเปิด</span></button>' +
+      '</div>' +
+      '<div data-role-detail style="display:none; text-align:left; margin-top:16px;">' +
+        '<p class="av-role-name">' + esc(self.role.icon + ' ' + self.role.thaiName) + '</p>' +
+        '<span class="av-role-team ' + (self.team === 'good' ? 'is-good' : 'is-evil') + '">' + (self.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย') + '</span>' +
+        '<p class="av-role-blurb">' + esc(self.role.blurb) + '</p>' + knowledgeHtml(self) +
+      '</div>' +
+      '<button type="button" class="ui-btn ui-btn--block" data-close>ปิด</button>';
+    openOverlay('role', html);
+  }
+  $('#avRoleBtn').on('click', showRoleSheet);
+
+  function showVoteReveal(event) {
+    const lv = S.lastVote;
+    if (!lv) return;
+    const html = '<h3 id="avOverlayTitle">ผลโหวตทีม · ภารกิจ ' + lv.questNumber + '</h3>' +
+      '<p class="av-sheet-sub">ทีมของ ' + esc(nameOf(lv.leaderId)) + ': ' + esc(lv.teamIds.map(nameOf).join(', ')) + '</p>' +
+      '<div class="av-reveal-grid">' + lv.votes.map(function(v) {
+        return '<div class="av-reveal-vote"><div class="av-coin"><div class="av-coin-inner">' +
+          '<div class="av-coin-back"></div>' +
+          '<div class="av-coin-face"><img src="' + esc(ART(v.vote === 'approve' ? 'approve' : 'reject')) + '" alt="' + (v.vote === 'approve' ? 'เห็นด้วย' : 'คัดค้าน') + '"></div>' +
+          '</div></div><span>' + esc(nameOf(v.playerId)) + '</span></div>';
+      }).join('') + '</div>' +
+      '<p class="av-verdict ' + (lv.approved ? 'is-good' : 'is-evil') + '">' + (lv.approved ? 'ผ่าน ' : 'ไม่ผ่าน ') + lv.approveCount + ' : ' + lv.rejectCount + '</p>' +
+      '<p class="av-sheet-sub" style="margin:4px 0 0;">' + (lv.approved ? 'ทีมออกภารกิจได้' : (S.phase === 'finished' ? 'คัดค้านครบ ' + S.maxRejects + ' ครั้ง' : 'หัวหน้าส่งต่อ · คัดค้านติดกัน ' + S.rejectCount + '/' + S.maxRejects)) + '</p>' +
+      '<button type="button" class="ui-btn ui-btn--block" data-close>ปิด</button>';
+    openOverlay('vote', html, 7000);
+    const coins = $('#avSheet .av-coin');
+    if (reduceMotion) {
+      coins.addClass('is-flipped');
+      $('#avSheet .av-verdict').addClass('is-on');
+      return;
+    }
+    setTimeout(function() {
+      coins.addClass('is-flipped');
+      setTimeout(function() { $('#avSheet .av-verdict').addClass('is-on'); }, 550);
+    }, 450);
+  }
+
+  function showQuestReveal(event) {
+    const lq = S.lastQuest;
+    if (!lq) return;
+    const success = lq.result === 'success';
+    const html = '<h3 id="avOverlayTitle">ผลภารกิจ ' + lq.questNumber + '</h3>' +
+      '<p class="av-sheet-sub">สลับการ์ดแล้ว — ไม่มีใครรู้ว่าใบไหนของใคร' + (lq.failsNeeded > 1 ? ' · ต้องล้ม 2 ใบถึงจะล้ม' : '') + '</p>' +
+      '<div class="av-cards-row">' + lq.cards.map(function(card) {
+        return '<div class="av-qcard"><div class="av-qcard-inner">' +
+          '<img src="' + esc(ART('back')) + '" alt="">' +
+          '<img class="is-face" src="' + esc(ART(card === 'fail' ? 'fail' : 'success')) + '" alt="' + (card === 'fail' ? 'ล้มเหลว' : 'สำเร็จ') + '">' +
+          '</div></div>';
+      }).join('') + '</div>' +
+      '<p class="av-verdict ' + (success ? 'is-good' : 'is-evil') + '">' + (success ? 'ภารกิจสำเร็จ' : 'ภารกิจล้มเหลว') + '</p>' +
+      '<p class="av-sheet-sub" style="margin:4px 0 0;">การ์ดล้ม ' + lq.failCount + ' ใบ · สำเร็จ ' + S.successCount + ' / ล้ม ' + S.failCount + '</p>' +
+      '<button type="button" class="ui-btn ui-btn--block" data-close>ปิด</button>';
+    openOverlay('quest', html, 5000 + lq.cards.length * 500);
+    const cards = $('#avSheet .av-qcard');
+    if (reduceMotion) {
+      cards.addClass('is-flipped');
+      $('#avSheet .av-verdict').addClass('is-on');
+      return;
+    }
+    cards.each(function(i, node) {
+      setTimeout(function() { $(node).addClass('is-flipped'); }, 500 + i * 550);
+    });
+    setTimeout(function() { $('#avSheet .av-verdict').addClass('is-on'); }, 700 + cards.length * 550);
+  }
+
+  function playFx() {
+    const events = (S.fx || []).filter(function(e) { return e && e.seq > seenFx; });
+    if (!events.length) return;
+    seenFx = events[events.length - 1].seq;
+    // โชว์แค่อันสำคัญล่าสุด ไม่ไล่ทีละอัน (กันจอกระพริบตอนหลายเหตุการณ์มาพร้อมกัน)
+    const quest = events.filter(function(e) { return e.kind === 'quest'; }).pop();
+    const vote = events.filter(function(e) { return e.kind === 'vote'; }).pop();
+    if (quest) showQuestReveal(quest);
+    else if (vote) showVoteReveal(vote);
+    const stab = events.filter(function(e) { return e.kind === 'stab'; }).pop();
+    if (stab && !quest && !vote) {
+      openOverlay('stab', '<h3 id="avOverlayTitle">' + (stab.hit ? '🗡 แทงถูกเมอร์ลิน!' : '🛡 แทงพลาด!') + '</h3>' +
+        '<p class="av-sheet-sub">' + esc(nameOf(stab.targetId)) + (stab.hit ? ' คือเมอร์ลินจริง — ฝ่ายร้ายพลิกชนะ' : ' ไม่ใช่เมอร์ลิน — ฝ่ายดีชนะ') + '</p>' +
+        '<button type="button" class="ui-btn ui-btn--block" data-close>ดูบททุกคน</button>', 6000);
+    }
+  }
+
+  /* ------------------------------------------------------------ misc */
+  function renderLog() {
+    $('#avLog').html((S.history || []).map(function(h) {
+      return '<li>' + esc((h.icon || '') + ' ' + (h.text || '')) + '</li>';
+    }).join(''));
+  }
+
+  function pingNeed() {
+    if (!window.partyPlay) return;
+    const self = me() || {};
+    if (self.canPickTeam) window.partyPlay.pingTurn({ key: 'av-team-' + S.step, title: 'คุณเป็นหัวหน้า', subtitle: 'เลือก ' + quest().size + ' คนออกภารกิจ' });
+    else if (self.canVote) window.partyPlay.pingTurn({ key: 'av-vote-' + S.step, title: 'โหวตทีม', subtitle: 'เห็นด้วยหรือคัดค้าน' });
+    else if (self.canPlayQuest) window.partyPlay.pingTurn({ key: 'av-quest-' + S.step, title: 'คุณอยู่ในทีม', subtitle: 'ลงการ์ดภารกิจแบบลับ' });
+    else if (self.canAssassinate) window.partyPlay.pingTurn({ key: 'av-stab-' + S.step, title: 'คุณคือมือสังหาร', subtitle: 'แทงคนที่คิดว่าเป็นเมอร์ลิน' });
+  }
+
+  function render(state) {
+    if (!state || !state.phase) return;
+    const prevStep = S && S.step;
+    S = state;
+    if (S.phase !== 'assassin') assassinPick = null;
+    if (S.phase !== 'night') { roleOpen = false; }
+    if (prevStep !== S.step && S.phase === 'team' && picksStep !== S.step) picks = [];
+    if (overlayKind === 'role' && S.phase === 'finished') closeOverlay();
+    renderStatus();
+    renderTrack();
+    renderSeats();
+    renderAction();
+    renderLog();
+    tickTimer();
+    pingNeed();
+    playFx();
+    // ถึงตาต้องกด (หัวหน้า/โหวต/ลงการ์ด/แทง) — เลื่อนแผงปุ่มขึ้นมาให้เห็นทันทีบนมือถือ
+    const self = me() || {};
+    const needsMe = self.canPickTeam || self.canVote || self.canPlayQuest || self.canAssassinate;
+    if (needsMe && prevStep !== S.step) {
+      const node = document.getElementById('avAction');
+      const rect = node.getBoundingClientRect();
+      if (rect.top > window.innerHeight * 0.6) {
+        node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------ chrome */
+  $('#avHowBtn').on('click', function() {
+    Swal.fire({
+      title: 'อวาลอน เล่นยังไง',
+      html: '<div style="text-align:left; line-height:1.6; font-size:0.95rem;">' +
+        '<p><b>ฝ่ายดี</b> ทำภารกิจสำเร็จ 3 ใน 5 · <b>ฝ่ายร้าย</b> ทำให้ล้ม 3 ครั้ง</p>' +
+        '<p>1. หัวหน้า (มีมงกุฎ) เลือกทีมตามจำนวนบนเหรียญภารกิจ</p>' +
+        '<p>2. ทุกคนโหวตพร้อมกัน — เห็นด้วยเกินครึ่งถึงผ่าน ไม่ผ่านหัวหน้าส่งต่อ · ไม่ผ่านติดกัน 5 ครั้ง ฝ่ายร้ายชนะ</p>' +
+        '<p>3. ทีมลงการ์ดลับ ฝ่ายดีลงได้แค่สำเร็จ ฝ่ายร้ายเลือกได้ · มีการ์ดล้มใบเดียวก็ล้ม (ยกเว้นเหรียญที่เขียน “ล้ม 2”)</p>' +
+        '<p>4. ฝ่ายดีสำเร็จครบ 3 — มือสังหารยังแทงเมอร์ลินได้ 1 ครั้ง แทงถูกฝ่ายร้ายชนะ</p>' +
+        '<p><b>เมอร์ลิน</b> เห็นฝ่ายร้าย (ยกเว้นมอร์เดรด) · <b>เพอร์ซิวัล</b> เห็นเมอร์ลินกับมอร์กานาแต่แยกไม่ออก · <b>โอเบรอน</b> ไม่รู้จักพวกเดียวกัน</p>' +
+        '<p style="color:#a8b3c9;">หมดเวลา: ไม่โหวต = เห็นด้วย · ไม่ลงการ์ด = สำเร็จ · หัวหน้าไม่เลือก = ระบบเลือกให้</p></div>',
+      background: '#1b2336', color: '#fff', confirmButtonColor: '#c9a24a', confirmButtonText: 'เข้าใจแล้ว'
+    });
+  });
+
+  $('#avEndBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบเกมและกลับห้องรอ?', text: 'เกมนี้จะไม่นับสถิติ', showCancelButton: true,
+      confirmButtonText: 'จบเกม', cancelButtonText: 'ยกเลิก', background: '#1b2336', color: '#fff'
+    }).then(function(r) { if (r.isConfirmed) socket.emit('endTableSession', { roomId: roomId }); });
+  });
+
+  function setSidebarOpen(open) {
+    if (open && $('#chatBox').is(':visible')) $('#closeChat').trigger('click');
+    $('#playerSidebar').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#sidebarOverlay').toggle(open);
+    $('#avPlayersBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('closeSidebarBtn').focus();
+    else if (document.activeElement && document.getElementById('playerSidebar').contains(document.activeElement)) document.getElementById('avPlayersBtn').focus();
+  }
+  $('#avPlayersBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
+  $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
+  $(document).on('keydown', function(event) {
+    if (event.key === 'Escape' && $('#playerSidebar').hasClass('open')) setSidebarOpen(false);
+  });
+
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({
+      icon: 'question', title: 'ออกจากห้อง?', text: S.phase !== 'finished' ? 'ระหว่างเกม ระบบจะเล่นแทนคุณตามเวลา' : '',
+      showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#1b2336', color: '#fff'
+    }).then(function(r) {
+      if (r.isConfirmed) {
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+      }
+    });
+  });
+
+  window.addEventListener('beforeunload', function(event) {
+    if (!allowNavigation && S.phase && S.phase !== 'finished') event.preventDefault();
+  });
+
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('avalon_requestState', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  socket.on('avalonState', render);
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(function(p) {
+      return '<li>' + avatarHtml({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 28) +
+        '<span style="color:' + esc(p.color || '#fff') + '">' + esc(p.displayName || p.playerName) + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:var(--av-muted);">ออฟไลน์</span>' : '') + '</li>';
+    }).join(''));
+  });
+  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('returnToLobby', function(data) {
+    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    tickTimer();
+  });
+  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && data.reason) || '', background: '#1b2336', color: '#fff' })
+      .then(function() { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+
+  window.initChatPanel({
+    socket: socket, playerId: playerId, playerName: playerName,
+    onCommand: function(text) {
+      if (text.trim().toLowerCase() !== '/m') return false;
+      socket.emit('avalon_admin_reveal');
+      return true;
+    }
+  });
+  socket.on('avalon_admin_reveal', function(data) {
+    const rows = (data.players || []).map(function(p) {
+      return '<div style="margin:6px 0;"><strong>' + esc(p.name) + '</strong> — ' + esc(p.role ? p.role.icon + ' ' + p.role.name : '-') + (p.left ? ' (ออกแล้ว)' : '') + '</div>';
+    }).join('');
+    Swal.fire({ title: '/m บททั้งโต๊ะ', html: rows, background: '#1b2336', color: '#fff' });
+  });
+  socket.on('avalon_admin_reveal_denied', function() {
+    Swal.fire({ icon: 'error', title: 'ดูบทไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บเท่านั้น', background: '#1b2336', color: '#fff' });
+  });
+
+  if (S && S.phase) render(S);
+});
+</script>

@@ -36,6 +36,9 @@ const DEFAULT_SETTINGS = {
             defaultRoundTimeMinutes: 8,
             defaultVoteTimeMinutes: 1.5
         },
+        avalon: {
+            defaultMaxPlayers: 10
+        },
         liar: {
             defaultMaxPlayers: 6
         },

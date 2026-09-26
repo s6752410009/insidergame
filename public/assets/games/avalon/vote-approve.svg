@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="เห็นด้วย">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0c2"/>
+      <stop offset="0.45" stop-color="#f5c86b"/>
+      <stop offset="1" stop-color="#b9822f"/>
+    </linearGradient>
+    <linearGradient id="goldSide" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b9822f"/>
+      <stop offset="0.5" stop-color="#ffe7a6"/>
+      <stop offset="1" stop-color="#b9822f"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9aa7bb"/>
+      <stop offset="0.5" stop-color="#f4f7fb"/>
+      <stop offset="1" stop-color="#7d8aa0"/>
+    </linearGradient>
+    <radialGradient id="disc" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#3d74c4"/>
+      <stop offset="1" stop-color="#15305c"/>
+    </radialGradient>
+    <radialGradient id="shine" cx="0.35" cy="0.25" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="58" fill="#1a2332"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <circle cx="60" cy="60" r="49" fill="url(#disc)"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#f5c86b" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="2 4"/>
+  <ellipse cx="42.2" cy="93.6" rx="3.4" ry="7.5" transform="rotate(118 42.2 93.6)" fill="url(#gold)"/><ellipse cx="32.2" cy="85.9" rx="3.4" ry="7.5" transform="rotate(137 32.2 85.9)" fill="url(#gold)"/><ellipse cx="25.3" cy="75.5" rx="3.4" ry="7.5" transform="rotate(156 25.3 75.5)" fill="url(#gold)"/><ellipse cx="22.1" cy="63.3" rx="3.4" ry="7.5" transform="rotate(175 22.1 63.3)" fill="url(#gold)"/><ellipse cx="23.1" cy="50.8" rx="3.4" ry="7.5" transform="rotate(194 23.1 50.8)" fill="url(#gold)"/><ellipse cx="28.1" cy="39.3" rx="3.4" ry="7.5" transform="rotate(213 28.1 39.3)" fill="url(#gold)"/><ellipse cx="36.6" cy="30.1" rx="3.4" ry="7.5" transform="rotate(232 36.6 30.1)" fill="url(#gold)"/><ellipse cx="77.8" cy="93.6" rx="3.4" ry="7.5" transform="rotate(62 77.8 93.6)" fill="url(#gold)"/><ellipse cx="87.8" cy="85.9" rx="3.4" ry="7.5" transform="rotate(43 87.8 85.9)" fill="url(#gold)"/><ellipse cx="94.7" cy="75.5" rx="3.4" ry="7.5" transform="rotate(24 94.7 75.5)" fill="url(#gold)"/><ellipse cx="97.9" cy="63.3" rx="3.4" ry="7.5" transform="rotate(5 97.9 63.3)" fill="url(#gold)"/><ellipse cx="96.9" cy="50.8" rx="3.4" ry="7.5" transform="rotate(-14 96.9 50.8)" fill="url(#gold)"/><ellipse cx="91.9" cy="39.3" rx="3.4" ry="7.5" transform="rotate(-33 91.9 39.3)" fill="url(#gold)"/><ellipse cx="83.4" cy="30.1" rx="3.4" ry="7.5" transform="rotate(-52 83.4 30.1)" fill="url(#gold)"/>
+    <path d="M44 61 L55 72 L77 47" fill="none" stroke="#0d1a33" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0.55" transform="translate(0 2)"/>
+    <path d="M44 61 L55 72 L77 47" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="60" r="49" fill="url(#shine)"/>
+</svg>

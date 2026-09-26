@@ -103,7 +103,7 @@ function createDefaultWinByRole() {
     };
 }
 
-const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'liar', 'poker5', 'poker4', 'pokdeng'];
+const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'coup', 'avalon', 'liar', 'poker5', 'poker4', 'pokdeng'];
 
 function createDefaultModeStats() {
     return {
@@ -112,6 +112,7 @@ function createDefaultModeStats() {
         blackmarket: { games: 0, wins: 0, losses: 0 },
         spyfall: { games: 0, wins: 0, losses: 0 },
         coup: { games: 0, wins: 0, losses: 0 },
+        avalon: { games: 0, wins: 0, losses: 0 },
         liar: { games: 0, wins: 0, losses: 0 },
         poker5: { games: 0, wins: 0, losses: 0 },
         poker4: { games: 0, wins: 0, losses: 0 },
@@ -383,6 +384,10 @@ function recordGameEnd(roomId, gameResult) {
         return recordCoupGameEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'avalon') {
+        return recordAvalonGameEnd(roomId, gameResult);
+    }
+
     if (gameResult?.mode === 'liar') {
         return recordLiarGameEnd(roomId, gameResult);
     }
@@ -396,6 +401,55 @@ function recordGameEnd(roomId, gameResult) {
     }
 
     return recordInsiderGameEnd(roomId, gameResult);
+}
+
+/** อวาลอน: ชนะ/แพ้ตามฝ่าย (ดี/ร้าย) — เกมที่ยกเลิกเพราะคนไม่พอไม่ต้องส่งมา */
+function recordAvalonGameEnd(roomId, gameResult) {
+    const { winner, players, roomName } = gameResult;
+    if (!winner || !winner.team || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid avalon game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const teamLabel = winner.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย';
+
+    players.forEach(player => {
+        if (!player.playerId || !player.team || isBotPlayerId(player.playerId)) return;
+
+        const stat = initializeStats(player.playerId, player.playerName || player.name);
+        if (!stat) return;
+        const playerWon = player.team === winner.team;
+
+        stat.totalGames += 1;
+        stat.modeStats.avalon.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.avalon.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.avalon.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'avalon',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            role: player.roleName || null,
+            team: player.team,
+            playerCount: players.length,
+            winnerName: teamLabel,
+            resultText: `${teamLabel}ชนะ${winner.text ? ' — ' + winner.text : ''}`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
 }
 
 /** Coup: ผู้รอดคนสุดท้ายชนะคนเดียว ที่เหลือแพ้ทั้งหมด (ไม่มีทีม) */

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="มงกุฎหัวหน้า">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0c2"/>
+      <stop offset="0.45" stop-color="#f5c86b"/>
+      <stop offset="1" stop-color="#b9822f"/>
+    </linearGradient>
+    <linearGradient id="goldSide" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b9822f"/>
+      <stop offset="0.5" stop-color="#ffe7a6"/>
+      <stop offset="1" stop-color="#b9822f"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9aa7bb"/>
+      <stop offset="0.5" stop-color="#f4f7fb"/>
+      <stop offset="1" stop-color="#7d8aa0"/>
+    </linearGradient></defs>
+  <path d="M18 88 L12 38 L38 60 L60 22 L82 60 L108 38 L102 88 Z" fill="url(#gold)" stroke="#8a5d1f" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M26 80 L22 52 L40 68 L60 36 L80 68 L98 52 L94 80" fill="none" stroke="#fff6dc" stroke-opacity="0.5" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="16" y="86" width="88" height="16" rx="4" fill="url(#goldSide)" stroke="#8a5d1f" stroke-width="2"/>
+  <circle cx="60" cy="94" r="5" fill="#2a5fa8" stroke="#fff0c2" stroke-width="1.2"/>
+  <circle cx="36" cy="94" r="3.5" fill="#c21f36"/><circle cx="84" cy="94" r="3.5" fill="#c21f36"/>
+  <circle cx="12" cy="38" r="5" fill="url(#gold)" stroke="#8a5d1f" stroke-width="1.5"/>
+  <circle cx="60" cy="22" r="6" fill="url(#gold)" stroke="#8a5d1f" stroke-width="1.5"/>
+  <circle cx="108" cy="38" r="5" fill="url(#gold)" stroke="#8a5d1f" stroke-width="1.5"/>
+</svg>
