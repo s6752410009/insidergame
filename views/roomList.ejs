@@ -892,6 +892,7 @@ $(function() {
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 },
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
+        { id: 'avalon', label: 'อวาลอน', description: 'อัศวินโต๊ะกลม 5–10 คน — ฝ่ายดีทำภารกิจ ฝ่ายร้ายแฝงตัว มือสังหารล่าเมอร์ลิน', minPlayers: 5, maxPlayers: 10 },
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
         { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
@@ -1105,6 +1106,15 @@ $(function() {
                 summary: 'ประกาศพลังของการ์ดที่ไม่มีก็ได้ — ใครไม่เชื่อก็ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ',
                 bullets: ['2-6 คน', 'โกหกได้ ท้าได้', 'จบใน 15 นาที', 'เล่น 2 คนก็ได้']
             },
+            avalon: {
+                tone: 'linear-gradient(135deg, rgba(59,110,200,0.26), rgba(10,14,26,0.92))',
+                border: 'rgba(110,163,245,0.34)',
+                cover: '/assets/games/avalon/cover.jpg',
+                badge: '🏰 ภารกิจ โหวต หักหลัง',
+                title: 'อวาลอน',
+                summary: 'ฝ่ายดีทำภารกิจให้สำเร็จ ฝ่ายร้ายแฝงตัวบ่อนทำลาย — จบแล้วมือสังหารยังล่าเมอร์ลินพลิกเกมได้',
+                bullets: ['5-10 คน', 'ไม่มีใครตกรอบ', 'จบใน 20-30 นาที', 'เล่นหน้ากันสนุกสุด']
+            },
             liar: {
                 tone: 'linear-gradient(135deg, rgba(220,38,38,0.22), rgba(20,8,8,0.92))',
                 border: 'rgba(248,113,113,0.32)',
@@ -1145,6 +1155,7 @@ $(function() {
             werewolf: 'คืนล่าหมาป่า',
             spyfall: 'วงสายลับสถานที่',
             coup: 'วงโค่นอำนาจ',
+            avalon: 'อวาลอน',
             liar: 'ไพ่โกหก',
             poker5: 'ไพ่ 5 ใบ',
             poker4: 'สี่ใบเก'
@@ -1288,6 +1299,7 @@ $(function() {
                     : (room.gameMode === 'blackmarket' ? 'Black Market'
                         : (room.gameMode === 'spyfall' ? 'Spyfall'
                             : (room.gameMode === 'coup' ? 'Coup'
+                                : room.gameMode === 'avalon' ? 'อวาลอน'
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
                                     : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
                                         : (room.gameMode === 'poker4' ? 'สี่ใบเก' : 'Insider'))))))
@@ -1300,6 +1312,8 @@ $(function() {
                         ? 'background: linear-gradient(135deg, #0f766e, #134e4a); color:#ccfbf1; border:1px solid rgba(94,234,212,0.35);'
                         : (room.gameMode === 'coup'
                             ? 'background: linear-gradient(135deg, #6d28d9, #3b0764); color:#f4ecff; border:1px solid rgba(196,141,255,0.35);'
+                            : room.gameMode === 'avalon'
+                            ? 'background: linear-gradient(135deg, #1d4ed8, #0f1a3a); color:#dbeafe; border:1px solid rgba(110,163,245,0.4);'
                             : (room.gameMode === 'liar'
                                 ? 'background: linear-gradient(135deg, #991b1b, #450a0a); color:#fecaca; border:1px solid rgba(248,113,113,0.4);'
                                 : (room.gameMode === 'poker5'
@@ -1684,6 +1698,10 @@ $(function() {
 
                     if (selectedMode === 'coup' && !['2', '3', '4', '5', '6'].includes(maxPlayersSlider.value)) {
                         maxPlayersSlider.value = '5';
+                    }
+
+                    if (selectedMode === 'avalon' && Number(maxPlayersSlider.value) < 5) {
+                        maxPlayersSlider.value = '10';
                     }
 
                     if (selectedMode === 'liar' && !['3', '4', '5', '6', '7', '8'].includes(maxPlayersSlider.value)) {
@@ -2074,6 +2092,24 @@ $(function() {
         ].join('');
     }
 
+    function buildAvalonGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<p class="bm-guide-lead">🏰 อวาลอน: ฝ่ายดีทำภารกิจสำเร็จ 3 ใน 5 · ฝ่ายร้ายทำให้ล้ม 3 · 5–10 คน</p>',
+            '<div class="bm-guide-section"><h4>หนึ่งรอบ</h4><ol>',
+            '<li><b>หัวหน้า</b> (มงกุฎ เวียนตามที่นั่ง) เลือกทีมตามจำนวนบนเหรียญ</li>',
+            '<li><b>ทุกคนโหวต</b> พร้อมกัน เห็นด้วยเกินครึ่งถึงผ่าน · ไม่ผ่านติดกัน 5 ครั้ง ฝ่ายร้ายชนะ</li>',
+            '<li><b>ทีมลงการ์ดลับ</b> ฝ่ายดีลงได้แค่สำเร็จ · ล้ม 1 ใบก็ล้ม (ภารกิจ 4 ตอน 7+ คน ต้องล้ม 2 ใบ)</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>บทหลัก</h4><ul>',
+            '<li><b>🔮 เมอร์ลิน</b> — เห็นฝ่ายร้าย (ยกเว้นมอร์เดรด) แต่ห้ามให้ถูกจับได้</li>',
+            '<li><b>🗡️ มือสังหาร</b> — ฝ่ายดีสำเร็จครบ 3 แล้ว แทงเมอร์ลินถูก = ฝ่ายร้ายชนะ</li>',
+            '<li><b>บทเสริม</b> — เพอร์ซิวัล · มอร์กานา · มอร์เดรด · โอเบรอน (เปิดในห้องรอ)</li>',
+            '</ul></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildLiarGuideHtml() {
         return [
             '<div class="bm-guide">',
@@ -2102,6 +2138,7 @@ $(function() {
             { id: 'werewolf',    label: '🐺 Werewolf',     html: WEREWOLF_GUIDE_HTML,          color: '#1d4ed8' },
             { id: 'blackmarket', label: '🎩 Black Market', html: buildBlackMarketGuideHtml(),  color: '#b45309' },
             { id: 'spyfall',     label: '🕶️ Spyfall',     html: buildSpyfallGuideHtml(),      color: '#0f766e' },
+            { id: 'avalon',      label: '🏰 อวาลอน',      html: buildAvalonGuideHtml(),       color: '#1d4ed8' },
             { id: 'liar',        label: '🃏 ไพ่โกหก',      html: buildLiarGuideHtml(),         color: '#b91c1c' },
             { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
             { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' }

@@ -765,6 +765,33 @@
     border-color: rgba(196, 181, 253, 0.6);
   }
 
+  #btnAvalonHowTo {
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(110, 163, 245, 0.45);
+    background: rgba(29, 78, 216, 0.2);
+    color: #dbeafe;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .avl-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; margin-top: 10px; }
+  .avl-role {
+    display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 10px 6px 6px; border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.04); color: #e2e8f0;
+    font-weight: 600; font-size: 0.86em; text-align: left; cursor: pointer; min-width: 0;
+  }
+  .avl-role img { width: 30px; height: 42px; border-radius: 4px; flex: 0 0 auto; }
+  .avl-role span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .avl-role.is-on { border-color: #f5c86b; background: rgba(245, 200, 107, 0.14); color: #fff; }
+  .avl-role.is-evil.is-on { border-color: #e25563; background: rgba(226, 85, 99, 0.16); }
+  .avl-role:disabled { cursor: default; }
+  .avl-plan { margin: 8px 0 0; font-size: 0.86em; color: #cbd5e1; line-height: 1.45; }
+  .avl-plan.is-bad { color: #fca5a5; }
+
   #btnLiarHowTo {
     padding: 10px 14px;
     border-radius: 14px;
@@ -1371,6 +1398,7 @@
         <button type="button" id="btnBlackMarketHowTo" class="<%= room.gameMode === 'blackmarket' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnCoupHowTo" class="<%= room.gameMode === 'coup' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnAvalonHowTo" class="<%= room.gameMode === 'avalon' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnLiarHowTo" class="<%= room.gameMode === 'liar' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
@@ -1469,6 +1497,15 @@
         startLabel: '👑 เริ่มเกม',
         readyText: 'พร้อมแล้ว กดเริ่มได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คนก่อนเริ่มเกม',
+        roundLabel: 'เวลาคิดต่อตา:'
+      },
+      avalon: {
+        minPlayers: 5,
+        maxPlayers: 10,
+        label: 'อวาลอน',
+        startLabel: '🏰 เริ่มเกม',
+        readyText: 'พร้อมแล้ว กดเริ่มได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 5 คนก่อนเริ่มเกม',
         roundLabel: 'เวลาคิดต่อตา:'
       },
       liar: {
@@ -1658,6 +1695,9 @@
       if (compactMode === 'coup' || compactMode === 'coupgame') {
         return 'coup';
       }
+      if (compactMode === 'avalon' || compactMode === 'avalongame' || compactMode === 'resistance' || compactMode === 'อวาลอน' || compactMode === 'อัศวินโต๊ะกลม') {
+        return 'avalon';
+      }
       if (compactMode === 'liar' || compactMode === 'liarsbar' || compactMode === 'liarbar' || compactMode === 'cheat' || compactMode === 'โกหก' || compactMode === 'ไพ่โกหก') {
         return 'liar';
       }
@@ -1711,6 +1751,9 @@
           color: '#f4ecff'
         };
       }
+      if (normalizedMode === 'avalon') {
+        return { background: 'linear-gradient(135deg, #1d4ed8, #0f1a3a)', color: '#dbeafe' };
+      }
       if (normalizedMode === 'liar') {
         return {
           background: 'linear-gradient(135deg, #991b1b, #450a0a)',
@@ -1754,6 +1797,9 @@
           kicker: '👑 ห้องเตรียมโค่นอำนาจ',
           pills: []
         };
+      }
+      if (normalizedMode === 'avalon') {
+        return { kicker: '🏰 ห้องเตรียมอวาลอน', pills: [] };
       }
       if (normalizedMode === 'liar') {
         return {
@@ -1847,6 +1893,7 @@
       setElementHidden('#btnBlackMarketHowTo', resolvedMode !== 'blackmarket');
       setElementHidden('#btnSpyfallHowTo', resolvedMode !== 'spyfall');
       setElementHidden('#btnCoupHowTo', resolvedMode !== 'coup');
+      setElementHidden('#btnAvalonHowTo', resolvedMode !== 'avalon');
       setElementHidden('#btnLiarHowTo', resolvedMode !== 'liar');
       setElementHidden('#btnPokerHowTo', resolvedMode !== 'poker5' && resolvedMode !== 'poker4');
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
@@ -1873,6 +1920,9 @@
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
             '</p>'
           ].join('');
+        } else if (resolvedMode === 'avalon') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = buildAvalonLobbyHtml(payload);
         } else if (resolvedMode === 'liar') {
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
@@ -1990,6 +2040,79 @@
         confirmButtonText: 'เข้าใจแล้ว',
         width: 'min(640px, 96vw)',
         customClass: { popup: 'pk-rank-popup' }
+      });
+    }
+
+    // อวาลอน: หัวห้องเปิด/ปิดบทเสริมได้ · ทุกคนเห็นว่าโต๊ะนี้มีบทอะไร (ข้อมูลสาธารณะตามกติกา)
+    const AVALON_TEAM_COUNTS = { 5: [3, 2], 6: [4, 2], 7: [4, 3], 8: [5, 3], 9: [6, 3], 10: [6, 4] };
+    const AVALON_OPTIONAL = [
+      { id: 'percival', name: 'เพอร์ซิวัล', team: 'good', hint: 'เห็นเมอร์ลิน+มอร์กานา' },
+      { id: 'morgana', name: 'มอร์กานา', team: 'evil', hint: 'ปลอมเป็นเมอร์ลิน' },
+      { id: 'mordred', name: 'มอร์เดรด', team: 'evil', hint: 'เมอร์ลินมองไม่เห็น' },
+      { id: 'oberon', name: 'โอเบรอน', team: 'evil', hint: 'ไม่รู้จักพวกเดียวกัน' }
+    ];
+    function getAvalonRoles(payload) {
+      const list = payload && payload.settings && Array.isArray(payload.settings.avalonRoles) ? payload.settings.avalonRoles : [];
+      return AVALON_OPTIONAL.map(r => r.id).filter(id => list.indexOf(id) >= 0);
+    }
+    function buildAvalonLobbyHtml(payload) {
+      const picked = getAvalonRoles(payload);
+      const count = Number((payload && (payload.playerCount || payload.onlineCount)) || 0);
+      const teams = AVALON_TEAM_COUNTS[count];
+      const evilPicked = picked.filter(id => id !== 'percival').length;
+      let plan;
+      let bad = false;
+      if (!teams) {
+        plan = 'ต้องมี 5–10 คนออนไลน์ (ตอนนี้ ' + count + ' คน) · ฝ่ายดี:ร้าย 5→3:2 · 7→4:3 · 10→6:4';
+      } else if (evilPicked > teams[1] - 1) {
+        bad = true;
+        plan = count + ' คน มีฝ่ายร้าย ' + teams[1] + ' คน (รวมมือสังหาร) — เลือกบทฝ่ายร้ายเสริมได้ไม่เกิน ' + (teams[1] - 1) + ' บท';
+      } else {
+        const good = ['เมอร์ลิน'].concat(picked.indexOf('percival') >= 0 ? ['เพอร์ซิวัล'] : []);
+        const evil = ['มือสังหาร'].concat(AVALON_OPTIONAL.filter(r => r.team === 'evil' && picked.indexOf(r.id) >= 0).map(r => r.name));
+        const loyal = teams[0] - good.length;
+        const minion = teams[1] - evil.length;
+        plan = count + ' คน · ฝ่ายดี ' + teams[0] + ': ' + good.join(', ') + (loyal ? ' + อัศวินผู้ภักดี ' + loyal : '') +
+          ' · ฝ่ายร้าย ' + teams[1] + ': ' + evil.join(', ') + (minion ? ' + สมุน ' + minion : '');
+      }
+      const chips = AVALON_OPTIONAL.map(function(r) {
+        const on = picked.indexOf(r.id) >= 0;
+        return '<button type="button" class="avl-role' + (on ? ' is-on' : '') + (r.team === 'evil' ? ' is-evil' : '') + '" data-avalon-role="' + r.id + '" aria-pressed="' + on + '"' + (isAdmin ? '' : ' disabled') + '>' +
+          '<img src="/assets/games/avalon/' + r.id + '.svg" alt=""><span>' + r.name + '<br><small style="color:#94a3b8;font-weight:500;">' + r.hint + '</small></span></button>';
+      }).join('');
+      return [
+        '<div class="lobby-spotlight-pill" style="background:rgba(29,78,216,0.3); color:#dbeafe;">🏰 อวาลอน · 5–10 คน</div>',
+        '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">ฝ่ายดีทำภารกิจสำเร็จ 3 ใน 5 · ฝ่ายร้ายทำให้ล้ม 3 · เมอร์ลินกับมือสังหารมีเสมอ</p>',
+        '<div style="margin-top:10px; font-size:0.85em; color:#f5c86b; font-weight:700;">บทเสริม' + (isAdmin ? ' (แตะเพื่อเปิด/ปิด)' : '') + '</div>',
+        '<div class="avl-roles">' + chips + '</div>',
+        '<p class="avl-plan' + (bad ? ' is-bad' : '') + '">' + plan + '</p>'
+      ].join('');
+    }
+    $(document).on('click', '[data-avalon-role]', function() {
+      if (!isAdmin) return;
+      const id = this.getAttribute('data-avalon-role');
+      const current = getAvalonRoles(latestRoomPayload);
+      const next = current.indexOf(id) >= 0 ? current.filter(x => x !== id) : current.concat([id]);
+      socket.emit('updateRoom', { avalonRoles: next }, function(res) {
+        if (res && !res.success) {
+          Swal.fire({ icon: 'error', title: res.error || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    });
+
+    function showAvalonLobbyGuide() {
+      Swal.fire({
+        title: '🏰 อวาลอน เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p><strong>ฝ่ายดี</strong> ทำภารกิจสำเร็จ 3 ใน 5 · <strong>ฝ่ายร้าย</strong> ทำให้ล้ม 3 ครั้ง</p>' +
+          '<p>กลางคืน: แตะการ์ดดูบทเงียบ ๆ เมอร์ลินเห็นฝ่ายร้าย ฝ่ายร้ายเห็นกันเอง</p>' +
+          '<p>หัวหน้า (เวียนตามที่นั่ง) เลือกทีม → ทุกคนโหวตพร้อมกัน เห็นด้วยเกินครึ่งถึงผ่าน · ไม่ผ่านติดกัน 5 ครั้ง ฝ่ายร้ายชนะ</p>' +
+          '<p>ทีมลงการ์ดลับ ฝ่ายดีลงได้แค่สำเร็จ · ล้ม 1 ใบก็ล้ม (ภารกิจ 4 ตอน 7+ คน ต้องล้ม 2 ใบ)</p>' +
+          '<p>ฝ่ายดีสำเร็จครบ 3 — มือสังหารแทงเมอร์ลินได้ 1 ครั้ง ถูก = ฝ่ายร้ายชนะ</p></div>',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#1d4ed8',
+        confirmButtonText: 'เข้าใจแล้ว'
       });
     }
 
@@ -2785,6 +2908,10 @@
 
     $('#btnCoupHowTo').on('click', function() {
       showCoupLobbyGuide();
+    });
+
+    $('#btnAvalonHowTo').on('click', function() {
+      showAvalonLobbyGuide();
     });
 
     $('#btnLiarHowTo').on('click', function() {

@@ -88,6 +88,7 @@ const blackMarketPhaseTimeouts = new Map();
 // เก็บ timeout สำหรับ phase อัตโนมัติของ Spyfall
 const spyfallPhaseTimeouts = new Map();
 const coupPhaseTimeouts = new Map();
+const avalonPhaseTimeouts = new Map();
 const liarPhaseTimeouts = new Map();
 const pokerPhaseTimeouts = new Map();
 const pokerBotTimeouts = new Map();
@@ -823,6 +824,7 @@ function clearInsiderReturnTimer(roomId) {
 }
 
 function isFinishedTableReturnMode(gameMode) {
+    if (gameMode === 'avalon') return true;
     return gameMode === 'liar' || gameMode === 'coup' || gameMode === 'poker5' || gameMode === 'poker4';
 }
 
@@ -850,6 +852,7 @@ function returnFinishedGameToLobby(roomId) {
 
     clearLiarPhaseTimer(roomId);
     clearCoupPhaseTimer(roomId);
+    clearAvalonPhaseTimer(roomId);
     clearPokerPhaseTimer(roomId);
     clearPokerBotTimer(roomId);
     roomManager.resetRoomGame(roomId);
@@ -1319,6 +1322,7 @@ function clearAllRoomTimers(roomId) {
     clearSpyfallPhaseTimer(roomId);
     clearSpyfallReturnTimer(roomId);
     clearCoupPhaseTimer(roomId);
+    clearAvalonPhaseTimer(roomId);
     clearLiarPhaseTimer(roomId);
     clearPokerPhaseTimer(roomId);
     clearPokerBotTimer(roomId);
@@ -1470,6 +1474,7 @@ const GAME_MODE_LOG_STYLES = {
     blackmarket: { label: 'Black Market', emoji: '🎩', badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
     spyfall: { label: 'Spyfall', emoji: '🕵️', badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
     coup: { label: 'Coup', emoji: '👑', badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' },
+    avalon: { label: 'อวาลอน', emoji: '🏰', badgeBg: 'rgba(37,99,235,0.2)', badgeColor: '#bfdbfe' },
     liar: { label: 'ไพ่โกหก', emoji: '🃏', badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
     poker5: { label: 'ไพ่ 5 ใบ', emoji: '♠', badgeBg: 'rgba(22,101,52,0.25)', badgeColor: '#bbf7d0' },
     poker4: { label: 'สี่ใบเก', emoji: '♦', badgeBg: 'rgba(153,27,27,0.25)', badgeColor: '#fecaca' }
@@ -1550,6 +1555,21 @@ function buildGameEndNotification(room) {
             logMessage: `👑 Coup จบ — ${winnerName} ชนะ · ${playerCount} คน`,
             logType: 'success',
             meta: { winnerName, playerCount, turnNumber: gameState.turnNumber || 0 }
+        };
+    }
+
+    if (mode === 'avalon') {
+        const winner = gameState.winner || {};
+        if (winner.abandoned || !winner.team) {
+            return null;
+        }
+        const teamLabel = winner.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย';
+        return {
+            chatMessage: `เกมจบ! ${teamLabel}ชนะ — ${winner.text || ''}`,
+            chatColor: winner.team === 'good' ? '#60a5fa' : '#ef4444',
+            logMessage: `🏰 อวาลอน จบ — ${teamLabel}ชนะ · ${winner.text || ''} · ${playerCount} คน`,
+            logType: winner.team === 'good' ? 'success' : 'warning',
+            meta: { team: winner.team, reason: winner.reason || null, playerCount }
         };
     }
 
@@ -2753,6 +2773,143 @@ function finalizeCoupGameIfNeeded(room) {
     scheduleFinishedGameReturnToLobby(room);
 }
 
+// ==================== AVALON ====================
+
+function clearAvalonPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = avalonPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        avalonPhaseTimeouts.delete(roomId);
+    }
+    if (!resetPhaseEndsAt) return;
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState && room.settings?.gameMode === 'avalon') room.gameState.phaseEndsAt = null;
+}
+
+/**
+ * ทุกเฟสของอวาลอนมีเวลาจำกัด — คนหลุด/ไม่กด เกมต้องเดินต่อเองได้
+ * (engine.autoResolvePhase ตัดสินแทน: พร้อมให้ / เลือกทีมให้ / โหวตเห็นด้วย / การ์ดสำเร็จ / สุ่มเป้า)
+ */
+function syncAvalonPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'avalon') return;
+
+    const state = room.gameState;
+    if (!state || state.phase === 'finished' || state.phase === 'lobby' || !state.phaseEndsAt) {
+        const existing = avalonPhaseTimeouts.get(room.roomId);
+        if (existing) {
+            clearTimeout(existing.timeoutId);
+            avalonPhaseTimeouts.delete(room.roomId);
+        }
+        return;
+    }
+
+    const existing = avalonPhaseTimeouts.get(room.roomId);
+    if (existing && existing.endsAt === state.phaseEndsAt) return;
+
+    clearAvalonPhaseTimer(room.roomId, false);
+    const delay = Math.max(250, state.phaseEndsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        avalonPhaseTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'avalon') return;
+        try {
+            getGameEngine('avalon').autoResolvePhase(current);
+            emitAvalonRoomState(current);
+        } catch (error) {
+            console.error('[avalon] auto resolve failed:', error.message);
+        }
+    }, delay);
+    avalonPhaseTimeouts.set(room.roomId, { timeoutId, endsAt: state.phaseEndsAt });
+}
+
+function buildAvalonStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'avalon') return null;
+    return getGameEngine('avalon').buildClientState(room, playerId);
+}
+
+// ส่งทีละ socket — แต่ละคนเห็นข้อมูลลับเฉพาะของบทตัวเอง ห้าม broadcast ทั้งห้อง
+function emitAvalonState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'avalon') return;
+
+    syncAvalonPhaseTimer(room);
+
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('avalonState', buildAvalonStatePayload(room, playerId));
+        return;
+    }
+
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('avalonState', buildAvalonStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function flushAvalonHistoryToLogs(room) {
+    if (!room || room.settings?.gameMode !== 'avalon') return;
+    const history = room.gameState?.history;
+    if (!Array.isArray(history) || !history.length) return;
+
+    const lastAt = Number(room.gameState.lastLoggedHistoryAt) || 0;
+    const fresh = history
+        .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
+        .sort((left, right) => new Date(left.at) - new Date(right.at));
+
+    fresh.forEach(item => {
+        addServerLog(
+            io,
+            'game',
+            room.roomId,
+            `🏰 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
+            item.kind === 'winner' ? 'success' : 'info',
+            { gameMode: 'avalon', meta: { kind: item.kind || null, event: 'avalon_history' } }
+        );
+    });
+
+    if (fresh.length) {
+        room.gameState.lastLoggedHistoryAt = new Date(fresh[fresh.length - 1].at).getTime();
+    }
+}
+
+function emitAvalonRoomState(room) {
+    if (!room || room.settings.gameMode !== 'avalon') return;
+    flushAvalonHistoryToLogs(room);
+    finalizeAvalonGameIfNeeded(room);
+    emitAvalonState(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+// บันทึกสถิติครั้งเดียวต่อเกม (statsRecordedAt กันซ้ำ) · เกมที่ยกเลิกเพราะคนไม่พอไม่นับสถิติ
+function finalizeAvalonGameIfNeeded(room) {
+    const state = room?.gameState;
+    if (!state || state.mode !== 'avalon' || state.phase !== 'finished' || !state.winner || state.statsRecordedAt) return;
+
+    if (!state.winner.abandoned && state.winner.team) {
+        const roles = getGameEngine('avalon').ROLE_DEFINITIONS;
+        statsManager.recordGameEnd(room.roomId, {
+            mode: 'avalon',
+            winner: state.winner,
+            players: (state.seats || [])
+                .filter(seat => !seat.left)
+                .map(seat => ({
+                    playerId: seat.playerId,
+                    name: seat.name,
+                    team: seat.team,
+                    roleName: roles[seat.role]?.thaiName || null
+                })),
+            roomName: room.name
+        });
+    }
+    state.statsRecordedAt = new Date().toISOString();
+    clearAvalonPhaseTimer(room.roomId);
+    if (state.winner.abandoned) {
+        sendChatMessageToRoom(io, room.roomId, 'System', state.winner.text || 'เกมถูกยกเลิก', '#f39c12');
+    } else {
+        notifyGameEndAfterRecord(room);
+    }
+    scheduleFinishedGameReturnToLobby(room);
+}
+
 // ==================== LIAR / โกหก ====================
 
 function clearLiarPhaseTimer(roomId, resetPhaseEndsAt = true) {
@@ -3034,6 +3191,8 @@ function broadcastGameStateForRoom(room) {
         emitSpyfallRoomState(room);
     } else if (room.settings.gameMode === 'coup') {
         emitCoupRoomState(room);
+    } else if (room.settings.gameMode === 'avalon') {
+        emitAvalonRoomState(room);
     } else if (room.settings.gameMode === 'liar') {
         emitLiarRoomState(room);
     } else if (isPokerMode(room.settings.gameMode)) {
@@ -3091,6 +3250,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 getGameEngine('coup').handlePlayerLeft(room, playerId);
             } catch (error) {
                 console.error('[coup] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'avalon') {
+            try {
+                getGameEngine('avalon').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[avalon] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'liar') {
@@ -3413,6 +3579,16 @@ function recoverGamePhaseTimers() {
             syncCoupPhaseTimer(room);
         }
 
+        if (room.settings.gameMode === 'avalon') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                getGameEngine('avalon').autoResolvePhase(room);
+                // resolve อาจจบเกม — ต้อง finalize (บันทึกสถิติ/นับถอยหลังกลับห้อง) + ตั้ง timer ใหม่
+                emitAvalonRoomState(room);
+                return;
+            }
+            syncAvalonPhaseTimer(room);
+        }
+
         if (room.settings.gameMode === 'liar') {
             if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
                 getGameEngine('liar').autoResolvePhase(room);
@@ -3482,6 +3658,10 @@ function runRoomCleanupSweep() {
             getGameEngine('coup').autoResolvePhase(room);
             emitCoupRoomState(room);
         }
+        if (room.settings.gameMode === 'avalon' && roomManager.isRoomGameInProgress(room)) {
+            getGameEngine('avalon').autoResolvePhase(room);
+            emitAvalonRoomState(room);
+        }
         if (room.settings.gameMode === 'liar' && roomManager.isRoomGameInProgress(room)) {
             getGameEngine('liar').autoResolvePhase(room);
             emitLiarRoomState(room);
@@ -3498,6 +3678,7 @@ function runRoomCleanupSweep() {
         }
 
         clearCoupPhaseTimer(candidate.roomId);
+        clearAvalonPhaseTimer(candidate.roomId);
         clearLiarPhaseTimer(candidate.roomId);
         clearPokerPhaseTimer(candidate.roomId);
         clearPokerBotTimer(candidate.roomId);
@@ -4359,6 +4540,25 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'avalon') {
+        return res.render('avalonBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            avalonState: buildAvalonStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
     if (room.settings.gameMode === 'liar') {
         return res.render('liarBoard.ejs', {
             player: gameStatePlayer,
@@ -5060,6 +5260,8 @@ io.sockets.on('connection', function(socket) {
             emitSpyfallState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'coup') {
             emitCoupState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'avalon') {
+            emitAvalonState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'liar') {
             emitLiarState(refreshedRoom, socket.id, playerId);
         } else if (isPokerMode(refreshedRoom?.settings?.gameMode)) {
@@ -5087,6 +5289,7 @@ io.sockets.on('connection', function(socket) {
             clearSpyfallPhaseTimer(roomId);
             clearSpyfallReturnTimer(roomId);
             clearCoupPhaseTimer(roomId);
+            clearAvalonPhaseTimer(roomId);
             clearLiarPhaseTimer(roomId);
             clearPokerPhaseTimer(roomId);
             clearPokerBotTimer(roomId);
@@ -5128,6 +5331,8 @@ io.sockets.on('connection', function(socket) {
                 emitSpyfallRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'coup') {
                 emitCoupRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'avalon') {
+                emitAvalonRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'liar') {
                 emitLiarRoomState(refreshedRoom);
             } else if (isPokerMode(refreshedRoom.settings.gameMode)) {
@@ -6470,6 +6675,8 @@ io.sockets.on('connection', function(socket) {
             const gameStatePlayer = room.gameState.players.find(p => p.playerId === playerId);
             if (room.settings.gameMode === 'coup') {
                 emitCoupState(room, socket.id, playerId);
+            } else if (room.settings.gameMode === 'avalon') {
+                emitAvalonState(room, socket.id, playerId);
             } else if (room.settings.gameMode === 'liar') {
                 emitLiarState(room, socket.id, playerId);
             } else if (isPokerMode(room.settings.gameMode)) {
@@ -6627,6 +6834,99 @@ io.sockets.on('connection', function(socket) {
                 alive: p.alive,
                 influence: (p.influence || []).map(describe),
                 revealed: (p.revealed || []).map(describe)
+            }))
+        });
+    });
+
+    // ==================== AVALON ====================
+
+    safeOn(socket, 'avalon_requestState', function(data) {
+        const room = getSocketRoom(socket, 'avalon');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        syncAvalonPhaseTimer(room);
+        emitAvalonState(room, socket.id, playerId);
+    });
+
+    // ทุก action ของอวาลอนผ่านทางเดียว: engine ตรวจกติกา (เฟส/บท/step) แล้ว broadcast state รายคน
+    // engine โยน Error ภาษาไทยเมื่อทำผิดกติกา — ส่งกลับให้คนกดเห็น แล้วส่ง state ล่าสุดให้เขาด้วย
+    function handleAvalonCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'avalon');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบห้องอวาลอน' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            emitAvalonRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            emitAvalonState(room, socket.id, socket.playerId);
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    function avalonContext(data) {
+        return { step: data?.step };
+    }
+
+    safeOn(socket, 'avalon_ready', function(data, callback) {
+        handleAvalonCommand(socket, callback, (room, playerId) =>
+            getGameEngine('avalon').submitReady(room, playerId, avalonContext(data)));
+    });
+
+    safeOn(socket, 'avalon_team', function(data, callback) {
+        handleAvalonCommand(socket, callback, (room, playerId) =>
+            getGameEngine('avalon').submitTeam(room, playerId, data?.teamIds, avalonContext(data)));
+    });
+
+    safeOn(socket, 'avalon_vote', function(data, callback) {
+        handleAvalonCommand(socket, callback, (room, playerId) =>
+            getGameEngine('avalon').submitVote(room, playerId, data?.vote, avalonContext(data)));
+    });
+
+    safeOn(socket, 'avalon_quest', function(data, callback) {
+        handleAvalonCommand(socket, callback, (room, playerId) =>
+            getGameEngine('avalon').submitQuestCard(room, playerId, data?.card, avalonContext(data)));
+    });
+
+    safeOn(socket, 'avalon_assassinate', function(data, callback) {
+        handleAvalonCommand(socket, callback, (room, playerId) =>
+            getGameEngine('avalon').submitAssassination(room, playerId, data?.targetId, avalonContext(data)));
+    });
+
+    // /m — แอดมินเว็บ (เท่านั้น) ขอดูบททั้งโต๊ะ ส่งกลับเฉพาะ socket ที่ขอ
+    safeOn(socket, 'avalon_admin_reveal', function() {
+        const room = getSocketRoom(socket, 'avalon');
+        if (!room) return;
+        if (!isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('avalon_admin_reveal_denied');
+            return;
+        }
+
+        const roles = getGameEngine('avalon').ROLE_DEFINITIONS;
+        const state = room.gameState;
+        const requester = playerManager.getPlayer(socket.playerId);
+        addServerLog(
+            io,
+            'admin',
+            room.roomId,
+            `${requester?.playerName || socket.playerId} ใช้ /m ดูบทอวาลอนทั้งโต๊ะ`,
+            'warning',
+            { gameMode: 'avalon', meta: { event: 'avalon_admin_reveal', playerId: socket.playerId } }
+        );
+
+        io.to(socket.id).emit('avalon_admin_reveal', {
+            phase: state.phase,
+            players: (state.seats || []).map(seat => ({
+                playerId: seat.playerId,
+                name: buildDisplayPlayerName(seat.playerId, seat.name),
+                role: roles[seat.role] ? { icon: roles[seat.role].icon, name: roles[seat.role].thaiName } : null,
+                team: seat.team,
+                left: !!seat.left
             }))
         });
     });
@@ -7684,6 +7984,26 @@ io.sockets.on('connection', function(socket) {
                         'เกมโค่นอำนาจเริ่มแล้ว — โกหกได้ ท้าได้ ใครรอดคนสุดท้ายชนะ', '#a855f7');
                     logGameStartFromRoom(currentRoom);
                     emitCoupRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'avalon') {
+                    clearAvalonPhaseTimer(roomId);
+                    getGameEngine('avalon').startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'อวาลอนเริ่มแล้ว — ดูบทของคุณเงียบ ๆ แล้วกดพร้อม', '#60a5fa');
+                    logGameStartFromRoom(currentRoom);
+                    emitAvalonRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

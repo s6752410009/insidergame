@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="คัดค้าน">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0c2"/>
+      <stop offset="0.45" stop-color="#f5c86b"/>
+      <stop offset="1" stop-color="#b9822f"/>
+    </linearGradient>
+    <linearGradient id="goldSide" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b9822f"/>
+      <stop offset="0.5" stop-color="#ffe7a6"/>
+      <stop offset="1" stop-color="#b9822f"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9aa7bb"/>
+      <stop offset="0.5" stop-color="#f4f7fb"/>
+      <stop offset="1" stop-color="#7d8aa0"/>
+    </linearGradient>
+    <radialGradient id="disc" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#b3303f"/>
+      <stop offset="1" stop-color="#4d0f1a"/>
+    </radialGradient>
+    <radialGradient id="shine" cx="0.35" cy="0.25" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="58" fill="#1a2332"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <circle cx="60" cy="60" r="49" fill="url(#disc)"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="#f5c86b" stroke-opacity="0.5" stroke-width="1" stroke-dasharray="2 4"/>
+    <g stroke-linecap="round">
+      <path d="M40 40 L80 80 M80 40 L40 80" stroke="#1a2332" stroke-width="13" opacity="0.5" transform="translate(0 2)"/>
+      <path d="M40 40 L80 80 M80 40 L40 80" stroke="url(#gold)" stroke-width="10"/>
+    </g>
+    <circle cx="60" cy="60" r="6" fill="#4d0f1a" stroke="url(#gold)" stroke-width="2"/>
+  <circle cx="60" cy="60" r="49" fill="url(#shine)"/>
+</svg>

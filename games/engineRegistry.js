@@ -3,6 +3,7 @@ const blackMarketEngine = require('./blackMarketEngine');
 const werewolfEngine = require('./werewolfEngine');
 const spyfallEngine = require('./spyfallEngine');
 const coupEngine = require('./coupEngine');
+const avalonEngine = require('./avalonEngine');
 const liarEngine = require('./liarEngine');
 const { poker5, poker4 } = require('./pokerEngine');
 
@@ -12,6 +13,7 @@ const ENGINES = {
     werewolf: werewolfEngine,
     spyfall: spyfallEngine,
     coup: coupEngine,
+    avalon: avalonEngine,
     liar: liarEngine,
     poker5,
     poker4
@@ -41,6 +43,11 @@ function normalizeGameMode(gameMode) {
         secretplace: 'spyfall',
         coup: 'coup',
         coupgame: 'coup',
+        avalon: 'avalon',
+        avalongame: 'avalon',
+        resistance: 'avalon',
+        อวาลอน: 'avalon',
+        อัศวินโต๊ะกลม: 'avalon',
         liar: 'liar',
         liarsbar: 'liar',
         liarbar: 'liar',

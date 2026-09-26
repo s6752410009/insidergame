@@ -34,6 +34,12 @@
 - [x] `views/spyfallBoard.ejs` — role panel, location pills, จบเกม
 - [ ] สถานที่จาก admin (`extraLocations`) — ต้องใส่ `image` เองถ้าต้องการการ์ด
 
+### อวาลอน (17 ไฟล์ · SVG ต้นฉบับ)
+
+- [x] `scripts/generate-avalon-art.js` สร้างทั้งชุดจากกรอบเดียวกัน (การ์ด 240×336 · โทเคน 120×120)
+- [x] `public/assets/games/avalon/` — บท 8 ใบ, หลังการ์ด, การ์ดภารกิจสำเร็จ/ล้มเหลว, โทเคนโหวต, มงกุฎหัวหน้า, เหรียญภารกิจ, `cover.svg` + `cover.jpg`
+- [x] `games/avalonEngine.js` — `image` ใน `ROLE_DEFINITIONS` และ `ART`
+
 ### คุณภาพ / อนาคต
 
 - [x] รูป JPG จากเน็ต — `npm run assets:fetch` (Unsplash + Picsum fallback) → `public/assets/games/*/*.jpg`
