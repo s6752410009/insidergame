@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336" role="img" aria-hidden="true">
+  <defs>
+    <pattern id="ucPaper" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.6" fill="#8a6d3b" fill-opacity="0.08"/>
+      <circle cx="4" cy="4" r="0.5" fill="#8a6d3b" fill-opacity="0.06"/>
+    </pattern>
+    <linearGradient id="ucPaperShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf6ea"/>
+      <stop offset="1" stop-color="#f1e6cf"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="336" rx="18" fill="#1a2332"/>
+  <rect x="7" y="7" width="226" height="322" rx="13" fill="url(#ucPaperShade)"/>
+  <rect x="7" y="7" width="226" height="322" rx="13" fill="url(#ucPaper)"/>
+  <rect x="16" y="16" width="208" height="304" rx="9" fill="none" stroke="#c9a14a" stroke-width="1.5"/>
+  <rect x="21" y="21" width="198" height="294" rx="6" fill="none" stroke="#c9a14a" stroke-opacity="0.4" stroke-width="1"/>
+  <!-- corner bubbles -->
+  <g fill="#1a2332">
+    <path d="M30 32 h16 a5 5 0 0 1 5 5 v8 a5 5 0 0 1 -5 5 h-8 l-5 5 v-5 h-3 a5 5 0 0 1 -5 -5 v-8 a5 5 0 0 1 5 -5z"/>
+    <g transform="translate(240 336) rotate(180)">
+      <path d="M30 32 h16 a5 5 0 0 1 5 5 v8 a5 5 0 0 1 -5 5 h-8 l-5 5 v-5 h-3 a5 5 0 0 1 -5 -5 v-8 a5 5 0 0 1 5 -5z"/>
+    </g>
+  </g>
+  <g fill="#f5c86b">
+    <circle cx="33" cy="41" r="1.6"/><circle cx="38" cy="41" r="1.6"/><circle cx="43" cy="41" r="1.6"/>
+    <circle cx="197" cy="295" r="1.6"/><circle cx="202" cy="295" r="1.6"/><circle cx="207" cy="295" r="1.6"/>
+  </g>
+  <!-- flourish lines framing the word area -->
+  <g stroke="#c9a14a" stroke-width="1.2" fill="none" stroke-linecap="round">
+    <path d="M60 96 h120"/>
+    <path d="M60 240 h120"/>
+  </g>
+  <g fill="#c9a14a">
+    <path d="M120 90 l6 6 -6 6 -6 -6z"/>
+    <path d="M120 234 l6 6 -6 6 -6 -6z"/>
+  </g>
+</svg>

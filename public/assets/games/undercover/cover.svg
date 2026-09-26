@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="คำใครไม่เหมือน">
+  <defs>
+    <radialGradient id="cvGlow" cx="55%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#2a3d57"/>
+      <stop offset="1" stop-color="#0f1620"/>
+    </radialGradient>
+    <pattern id="cvWeave" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0 7 H14" stroke="#f5c86b" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="cvPaper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf6ea"/>
+      <stop offset="1" stop-color="#efe3c8"/>
+    </linearGradient>
+    <filter id="cvShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <g id="cvCard">
+      <rect x="-70" y="-98" width="140" height="196" rx="12" fill="#1a2332"/>
+      <rect x="-65" y="-93" width="130" height="186" rx="9" fill="url(#cvPaper)"/>
+      <rect x="-59" y="-87" width="118" height="174" rx="6" fill="none" stroke="#c9a14a" stroke-width="1.2"/>
+      <path d="M-34 -36 h68 M-34 40 h68" stroke="#c9a14a" stroke-width="1"/>
+    </g>
+  </defs>
+  <rect width="800" height="450" fill="url(#cvGlow)"/>
+  <rect width="800" height="450" fill="url(#cvWeave)"/>
+  <circle cx="440" cy="220" r="200" fill="#f5c86b" fill-opacity="0.05"/>
+
+  <!-- fan of word cards: three agree, one is off -->
+  <g transform="translate(-150 -20)" font-family="Chakra Petch, Bai Jamjuree, Thonburi, Tahoma, sans-serif" font-weight="700" text-anchor="middle" filter="url(#cvShadow)">
+    <g transform="translate(438 262) rotate(-14) scale(0.8)">
+      <use href="#cvCard"/>
+      <text y="12" font-size="34" fill="#1a2332">กาแฟ</text>
+    </g>
+    <g transform="translate(538 238) rotate(-5) scale(0.8)">
+      <use href="#cvCard"/>
+      <text y="12" font-size="34" fill="#1a2332">กาแฟ</text>
+    </g>
+    <g transform="translate(738 262) rotate(14) scale(0.8)">
+      <use href="#cvCard"/>
+      <text y="12" font-size="34" fill="#1a2332">กาแฟ</text>
+    </g>
+    <g transform="translate(638 214) rotate(5) scale(0.86)">
+      <use href="#cvCard"/>
+      <rect x="-65" y="-93" width="130" height="186" rx="9" fill="none" stroke="#e2493b" stroke-width="4"/>
+      <text y="14" font-size="44" fill="#c0392b">ชา</text>
+    </g>
+  </g>
+  <!-- magnifier over the odd card -->
+  <g transform="translate(540 106) rotate(-20) scale(0.85)">
+    <circle r="34" fill="#ffffff" fill-opacity="0.12" stroke="#f5c86b" stroke-width="7"/>
+    <path d="M24 26 l34 34" stroke="#f5c86b" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+</svg>

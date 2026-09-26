@@ -1,0 +1,917 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<style>
+  html.uc-active, html.uc-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: oklch(0.16 0.028 255) !important;
+  }
+  html.uc-active .container-fluid > header,
+  html.uc-active #music-controls { display: none !important; }
+  html.uc-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; background: oklch(0.16 0.028 255) !important; min-height: 100vh; }
+  html.uc-active .container-fluid > .row { margin: 0 !important; }
+  html.uc-active .col-lg-12 { padding: 0 !important; }
+
+  .uc {
+    --uc-bg: oklch(0.16 0.028 255);
+    --uc-surface: oklch(0.21 0.034 255);
+    --uc-surface-2: oklch(0.26 0.04 255);
+    --uc-sunken: oklch(0.13 0.025 255);
+    --uc-line: oklch(0.45 0.04 255 / 0.45);
+    --uc-ink: oklch(0.96 0.01 90);
+    --uc-soft: oklch(0.84 0.02 250);
+    --uc-muted: oklch(0.7 0.03 250);
+    --uc-gold: oklch(0.85 0.12 85);
+    --uc-gold-ink: oklch(0.24 0.04 255);
+    --uc-accent: oklch(0.66 0.2 28);
+    --uc-civ: oklch(0.76 0.1 215);
+    --uc-under: oklch(0.7 0.18 28);
+    --uc-white: oklch(0.95 0.02 90);
+    --uc-good: oklch(0.8 0.13 160);
+    --uc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --uc-display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px; --space-xl: 24px;
+
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg) calc(96px + env(safe-area-inset-bottom, 0px));
+    color: var(--uc-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .uc *, .uc *::before, .uc *::after { box-sizing: border-box; }
+  .uc button, .uc input { font-family: inherit; }
+  body.content { background: var(--uc-bg, oklch(0.16 0.028 255)); }
+
+  /* ---------- top ---------- */
+  .uc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); padding: var(--space-md) 0 var(--space-sm); }
+  .uc-top-copy { min-width: 0; }
+  .uc-kicker { margin: 0; font-family: var(--uc-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; color: var(--uc-gold); }
+  .uc-room { margin: 2px 0 0; font-family: var(--uc-display); font-size: 1.15rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; max-width: 60%; }
+  .uc-chip {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--uc-line); background: var(--uc-surface); color: var(--uc-soft);
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .uc-chip:hover { background: var(--uc-surface-2); color: var(--uc-ink); }
+  .uc-chip.is-danger { color: oklch(0.8 0.1 25); }
+  .uc-chip:focus-visible, .uc-tap:focus-visible, .uc-vote-tile:focus-visible { outline: 2px solid var(--uc-gold); outline-offset: 2px; }
+
+  /* ---------- phase steps ---------- */
+  .uc-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: var(--space-sm) 0 var(--space-md); padding: 0; list-style: none; }
+  .uc-steps li {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    height: 32px; border-radius: 8px; background: var(--uc-sunken); color: var(--uc-muted);
+    font-family: var(--uc-display); font-size: 0.82rem; font-weight: 600;
+  }
+  .uc-steps li.is-done { color: var(--uc-soft); }
+  .uc-steps li.is-now { background: var(--uc-gold); color: var(--uc-gold-ink); }
+  .uc-steps .n { font-variant-numeric: tabular-nums; opacity: 0.75; }
+
+  /* ---------- now bar ---------- */
+  .uc-now {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg); border-radius: 16px;
+    background: var(--uc-surface); border: 1px solid var(--uc-line);
+  }
+  .uc-now.is-mine { background: color-mix(in oklch, var(--uc-gold) 16%, var(--uc-surface)); border-color: color-mix(in oklch, var(--uc-gold) 55%, transparent); }
+  .uc-now-title { margin: 0; font-family: var(--uc-display); font-size: 1.2rem; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+  .uc-now-sub { margin: 2px 0 0; color: var(--uc-soft); font-size: 0.92rem; overflow-wrap: anywhere; }
+  .uc-timer { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+  .uc-timer svg { width: 56px; height: 56px; transform: rotate(-90deg); }
+  .uc-timer circle { fill: none; stroke-width: 5; }
+  .uc-timer .track { stroke: var(--uc-sunken); }
+  .uc-timer .bar { stroke: var(--uc-gold); stroke-linecap: round; transition: stroke-dashoffset 0.25s linear; }
+  .uc-timer.is-low .bar { stroke: var(--uc-accent); }
+  .uc-timer-num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--uc-display); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .uc-timer.is-idle { visibility: hidden; }
+
+  /* ---------- stage ---------- */
+  .uc-stage { margin-top: var(--space-lg); display: grid; gap: var(--space-lg); justify-items: center; text-align: center; }
+  .uc-stage > * { max-width: 100%; }
+  .uc-hint { margin: 0; color: var(--uc-muted); font-size: 0.9rem; }
+  .uc-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); justify-content: center; width: 100%; }
+  .uc-actions .ui-btn { flex: 1 1 160px; max-width: 360px; }
+  .uc-count { font-family: var(--uc-display); font-weight: 600; color: var(--uc-soft); font-variant-numeric: tabular-nums; }
+
+  /* word card (flip) */
+  .uc-card {
+    --w: min(64vw, 250px);
+    width: var(--w); aspect-ratio: 240 / 336; perspective: 1000px;
+    border: 0; padding: 0; background: none; cursor: pointer; color: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .uc-card.is-small { --w: min(34vw, 132px); }
+  .uc-card-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.55s var(--uc-ease); }
+  .uc-card.is-open .uc-card-inner { transform: rotateY(180deg); }
+  .uc-face, .uc-backface {
+    position: absolute; inset: 0; border-radius: 7.5%/5.4%; overflow: hidden;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    box-shadow: 0 18px 40px oklch(0.05 0.02 255 / 0.55);
+  }
+  .uc-backface img, .uc-face > img { width: 100%; height: 100%; display: block; }
+  .uc-face { transform: rotateY(180deg); background: #f6efe0; }
+  .uc-face-copy {
+    position: absolute; left: 12%; right: 12%; top: 30%; bottom: 30%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: #1a2332;
+  }
+  .uc-face-label { font-family: var(--uc-display); font-size: calc(var(--w) * 0.052); font-weight: 600; letter-spacing: 0.06em; color: #8a6d3b; }
+  .uc-word { font-family: var(--uc-display); font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; font-size: calc(var(--w) * var(--fs, 0.17)); }
+  .uc-card.is-mrwhite .uc-word { color: #6b6250; }
+  .uc-card-tag { font-size: calc(var(--w) * 0.05); color: #8a6d3b; font-weight: 600; }
+
+  /* role card */
+  .uc-role { width: min(56vw, 220px); aspect-ratio: 240 / 336; perspective: 1000px; }
+  .uc-role .uc-card-inner { animation: ucRoleFlip 0.9s 0.25s var(--uc-ease) both; }
+  @keyframes ucRoleFlip { from { transform: rotateY(0); } to { transform: rotateY(180deg); } }
+  .uc-role .uc-face { background: #1a2332; }
+
+  /* ready roster */
+  .uc-ready-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .uc-dot {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px;
+    background: var(--uc-sunken); color: var(--uc-muted); font-size: 0.85rem; font-weight: 600; max-width: 160px;
+  }
+  .uc-dot span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-dot.is-on { background: color-mix(in oklch, var(--uc-good) 20%, var(--uc-sunken)); color: var(--uc-ink); }
+
+  /* speaker */
+  .uc-speaker { display: grid; justify-items: center; gap: 6px; }
+  .uc-speaker-name { margin: 0; font-family: var(--uc-display); font-size: 1.5rem; font-weight: 700; overflow-wrap: anywhere; }
+  .uc-speaker .player-avatar { transform-origin: center; }
+  .uc-speaker.is-me .uc-speaker-ring { box-shadow: 0 0 0 4px var(--uc-gold); }
+  .uc-speaker-ring { border-radius: 999px; padding: 4px; animation: ucPulse 1.6s var(--uc-ease) infinite; }
+  @keyframes ucPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .uc-order { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 0; margin: 0; list-style: none; }
+  .uc-order li {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 999px;
+    background: var(--uc-sunken); color: var(--uc-muted); font-size: 0.82rem; font-weight: 600; max-width: 150px;
+  }
+  .uc-order li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-order li.is-now { background: var(--uc-gold); color: var(--uc-gold-ink); }
+  .uc-order li.is-done { color: var(--uc-soft); text-decoration: line-through; text-decoration-color: var(--uc-muted); }
+  .uc-field { width: 100%; max-width: 420px; display: grid; gap: 6px; text-align: left; }
+  .uc-field label { font-size: 0.85rem; color: var(--uc-muted); font-weight: 600; }
+  .uc-input {
+    height: 48px; width: 100%; padding: 0 14px; border-radius: 12px; border: 1px solid var(--uc-line);
+    background: var(--uc-sunken); color: var(--uc-ink); font-size: 1rem;
+  }
+  .uc-input:focus { outline: 2px solid var(--uc-gold); outline-offset: 1px; }
+
+  /* vote */
+  .uc-vote-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-sm); }
+  .uc-vote-tile {
+    display: flex; align-items: center; gap: 8px; min-height: 60px; padding: 8px 10px; border-radius: 14px;
+    background: var(--uc-surface); border: 2px solid var(--uc-line); color: var(--uc-ink);
+    text-align: left; cursor: pointer; min-width: 0;
+    transition: transform 0.15s var(--uc-ease), background-color 0.15s ease-out, border-color 0.15s ease-out;
+  }
+  .uc-vote-tile:active { transform: scale(0.97); }
+  .uc-vote-tile.is-picked { border-color: var(--uc-accent); background: color-mix(in oklch, var(--uc-accent) 18%, var(--uc-surface)); }
+  .uc-vote-tile[disabled] { cursor: default; opacity: 0.6; }
+  .uc-vote-name { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-vote-clue { display: block; font-size: 0.8rem; color: var(--uc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-vote-copy { min-width: 0; }
+
+  /* seats */
+  .uc-section-title { margin: var(--space-xl) 0 var(--space-sm); font-family: var(--uc-display); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; color: var(--uc-muted); }
+  .uc-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .uc-seat {
+    display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 10px; border-radius: 12px;
+    background: var(--uc-surface); min-width: 0;
+  }
+  .uc-seat.is-speaker { background: color-mix(in oklch, var(--uc-gold) 18%, var(--uc-surface)); }
+  .uc-seat.is-out { opacity: 0.55; }
+  .uc-seat-copy { min-width: 0; flex: 1; }
+  .uc-seat-name { display: block; font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-seat-state { display: block; line-height: 1.6; font-size: 0.78rem; color: var(--uc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-badge { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; white-space: nowrap; }
+  .uc-badge.civilian { background: color-mix(in oklch, var(--uc-civ) 25%, transparent); color: var(--uc-civ); }
+  .uc-badge.undercover { background: color-mix(in oklch, var(--uc-under) 25%, transparent); color: var(--uc-under); }
+  .uc-badge.mrwhite { background: color-mix(in oklch, var(--uc-white) 22%, transparent); color: var(--uc-white); }
+  .uc-badge.host { background: var(--uc-sunken); color: var(--uc-gold); }
+
+  /* clues */
+  .uc-clues { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .uc-clues li { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; border-radius: 10px; background: var(--uc-sunken); font-size: 0.92rem; min-width: 0; }
+  .uc-clues b { color: var(--uc-soft); flex-shrink: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .uc-clues span { overflow-wrap: anywhere; min-width: 0; }
+  .uc-clues .r { color: var(--uc-muted); font-size: 0.75rem; flex-shrink: 0; }
+
+  /* results */
+  .uc-result-title { margin: 0; font-family: var(--uc-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
+  .uc-result-sub { margin: 0; color: var(--uc-soft); overflow-wrap: anywhere; }
+  .uc-tally { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .uc-tally span { padding: 4px 10px; border-radius: 999px; background: var(--uc-sunken); font-size: 0.85rem; color: var(--uc-soft); }
+  .uc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); width: 100%; max-width: 440px; }
+  .uc-pair-item { padding: var(--space-md); border-radius: 14px; background: var(--uc-surface); min-width: 0; }
+  .uc-pair-item small { display: block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
+  .uc-pair-item strong { display: block; font-family: var(--uc-display); font-size: 1.5rem; overflow-wrap: anywhere; line-height: 1.2; margin-top: 2px; }
+  .uc-pair-item.civ small { color: var(--uc-civ); }
+  .uc-pair-item.und small { color: var(--uc-under); }
+  .uc-outcome { font-family: var(--uc-display); font-weight: 700; padding: 6px 14px; border-radius: 999px; }
+  .uc-outcome.win { background: color-mix(in oklch, var(--uc-good) 22%, transparent); color: var(--uc-good); }
+  .uc-outcome.lose { background: var(--uc-sunken); color: var(--uc-muted); }
+  .uc-final { width: 100%; display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; text-align: left; }
+  .uc-final li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--uc-surface); min-width: 0; }
+  .uc-final img { width: 34px; height: 48px; border-radius: 4px; flex-shrink: 0; }
+  .uc-final .who { min-width: 0; flex: 1; }
+  .uc-final .who b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uc-final .who span { font-size: 0.82rem; color: var(--uc-muted); }
+  .uc-final .w { font-family: var(--uc-display); font-weight: 700; flex-shrink: 0; max-width: 40%; overflow-wrap: anywhere; text-align: right; }
+  .uc-final li.is-winner { background: color-mix(in oklch, var(--uc-gold) 14%, var(--uc-surface)); }
+
+  .uc-feed { margin-top: var(--space-lg); }
+  .uc-feed summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--uc-muted); font-weight: 600; font-size: 0.9rem; }
+  .uc-feed ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+  .uc-feed li { font-size: 0.85rem; color: var(--uc-soft); padding: 4px 0; border-bottom: 1px solid oklch(0.45 0.04 255 / 0.2); overflow-wrap: anywhere; }
+
+  .uc-banner {
+    position: fixed; left: 50%; top: 38%; z-index: 11000; pointer-events: none;
+    transform: translate(-50%, -50%); padding: 12px 22px; border-radius: 999px;
+    background: var(--uc-gold, #f5c86b); color: #1a2332; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 1.1rem;
+    opacity: 0; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
+  }
+  .uc-banner.is-on { animation: ucBanner 1.6s var(--uc-ease, ease) both; }
+  @keyframes ucBanner {
+    0% { opacity: 0; transform: translate(-50%, -30%) scale(0.92); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%); }
+    100% { opacity: 0; transform: translate(-50%, -64%); }
+  }
+  .uc-enter { animation: ucEnter 0.4s var(--uc-ease) both; }
+  @keyframes ucEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* chat + sidebar skin */
+  .chat-box {
+    --chat-accent: #f5c86b; --chat-accent-dark: #b98a2c;
+    --chat-surface: #151d2a; --chat-border: rgba(245,200,107,0.22); --chat-bubble: #22303f;
+    font-family: 'Bai Jamjuree', sans-serif;
+  }
+  .chat-toggle { --chat-toggle-bg: #22303f; border-radius: 999px; padding: 12px 18px; min-height: 48px; }
+  .btn-chat-send { --chat-send-bg: #f5c86b; --chat-send-color: #1a2332; }
+  .uc-sidebar {
+    position: fixed; top: 0; right: -320px; width: min(300px, 86vw); height: 100%;
+    background: #151d2a; border-left: 1px solid rgba(245,200,107,0.18); color: #f1f0fa;
+    padding: 18px; z-index: 9000; transition: right 0.25s ease; overflow-y: auto; font-family: 'Bai Jamjuree', sans-serif;
+    visibility: hidden;
+  }
+  .uc-sidebar.open { right: 0; visibility: visible; }
+  .uc-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 8999; }
+  .uc-conn {
+    display: none; position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10001;
+    padding: 8px 14px; border-radius: 999px; background: #5b1d1d; color: #ffd9d4; font-weight: 600; font-size: 0.9rem;
+  }
+
+  @media (min-width: 720px) {
+    .uc-card { --w: 260px; }
+    .uc-card.is-small { --w: 140px; }
+    .uc-role { width: 220px; }
+    .uc-now-title { font-size: 1.35rem; }
+  }
+  @media (max-width: 440px) {
+    .uc-tools .uc-chip .t { display: none; }
+  }
+  @media (max-width: 380px) {
+    .uc-steps li .label { font-size: 0.74rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .uc-card-inner, .uc-vote-tile, .uc-timer .bar { transition: none !important; }
+    .uc-role .uc-card-inner { animation: none !important; transform: rotateY(180deg); }
+    .uc-speaker-ring, .uc-enter, .uc-banner.is-on { animation: none !important; }
+    .uc-banner.is-on { opacity: 1; }
+  }
+</style>
+
+<div id="ucConn" class="uc-conn" role="status">กำลังเชื่อมต่อใหม่...</div>
+<div id="ucBanner" class="uc-banner" aria-hidden="true"></div>
+
+<main class="uc" id="ucRoot">
+  <div class="uc-top">
+    <div class="uc-top-copy">
+      <p class="uc-kicker" id="ucKicker">คำใครไม่เหมือน</p>
+      <h1 class="uc-room"><%= room.name %></h1>
+    </div>
+    <div class="uc-tools">
+      <button type="button" id="ucHowTo" class="uc-chip" aria-label="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
+      <button type="button" id="ucSidebarBtn" class="uc-chip" aria-expanded="false" aria-controls="playerSidebar" aria-label="ผู้เล่น">👥<span class="t">ผู้เล่น</span></button>
+      <% if (room.admin) { %>
+      <button type="button" id="ucEndGameBtn" class="uc-chip is-danger" aria-label="จบเกม">⏹<span class="t">จบเกม</span></button>
+      <% } %>
+    </div>
+  </div>
+
+  <ol class="uc-steps" id="ucSteps" aria-label="ขั้นตอนของรอบ">
+    <li data-step="reveal"><span class="n">1</span><span class="label">ดูคำ</span></li>
+    <li data-step="clue"><span class="n">2</span><span class="label">ใบ้</span></li>
+    <li data-step="vote"><span class="n">3</span><span class="label">โหวต</span></li>
+    <li data-step="result"><span class="n">4</span><span class="label">เฉลย</span></li>
+  </ol>
+
+  <section id="ucNow" class="uc-now" aria-live="polite">
+    <div>
+      <p class="uc-now-title" id="ucNowTitle">กำลังโหลด...</p>
+      <p class="uc-now-sub" id="ucNowSub"></p>
+    </div>
+    <div class="uc-timer is-idle" id="ucTimer" aria-hidden="true">
+      <svg viewBox="0 0 56 56"><circle class="track" cx="28" cy="28" r="24"/><circle class="bar" id="ucTimerBar" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="0"/></svg>
+      <span class="uc-timer-num" id="ucTimerNum">--</span>
+    </div>
+  </section>
+
+  <section id="ucStage" class="uc-stage"></section>
+
+  <div id="ucCluesWrap" style="display:none;">
+    <h2 class="uc-section-title">คำใบ้ที่พิมพ์ไว้</h2>
+    <ol id="ucClues" class="uc-clues"></ol>
+  </div>
+
+  <h2 class="uc-section-title" id="ucSeatsTitle">ผู้เล่นในวง</h2>
+  <ul id="ucSeats" class="uc-seats"></ul>
+
+  <details class="uc-feed">
+    <summary>บันทึกเกม</summary>
+    <ol id="ucFeed"></ol>
+  </details>
+</main>
+
+<aside id="playerSidebar" class="uc-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="ucPlayerTitle">
+  <h4 id="ucPlayerTitle" style="margin-top:0; font-family:'Chakra Petch',sans-serif;">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="leaveRoomBtn" type="button" class="ui-btn ui-btn--block" style="margin-bottom:8px;">🚪 ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="ui-btn ui-btn--ghost ui-btn--block">ปิด</button>
+</aside>
+<div id="sidebarOverlay" class="uc-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="ucChatTitle" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title" id="ucChatTitle">💬 แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('uc-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = <%- JSON.stringify(String(player.name || '')).replace(/</g, '\\u003c') %>;
+  if (window.partyPlay) window.partyPlay.startSession('undercover', socket);
+
+  let state = <%- JSON.stringify(typeof undercoverState !== 'undefined' && undercoverState ? undercoverState : {}).replace(/</g, '\\u003c') %>;
+  let allowNavigation = false;
+  let stageKey = '';
+  let timerHandle = null;
+  let seenFxSeq = Math.max(0, ...((state.fx || []).map(f => f.seq || 0)));
+  let pickedVote = null;
+  let busy = false;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const BACK = '/assets/games/undercover/back.svg';
+  const FRONT = '/assets/games/undercover/card-front.svg';
+
+  function esc(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+  }
+  function avatar(p, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 32 });
+    }
+    return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
+  }
+  function playerById(id) { return (state.players || []).find(p => p.playerId === id) || null; }
+  function nameOf(id) { const p = playerById(id); return p ? p.name : '—'; }
+  function roleBadge(role) { return role ? '<span class="uc-badge ' + esc(role.id) + '">' + esc(role.name) + '</span>' : ''; }
+  function wordScale(word) {
+    const len = Array.from(String(word || '')).length;
+    return len <= 4 ? 0.2 : (len <= 7 ? 0.16 : (len <= 10 ? 0.125 : 0.1));
+  }
+
+  // ---------- word card ----------
+  function wordCardHtml(opts) {
+    const self = state.self || {};
+    const isWhite = !!self.isMrWhite;
+    const word = isWhite ? 'ไม่มีคำ' : (self.word || '—');
+    const cls = 'uc-card' + (opts.small ? ' is-small' : '') + (opts.open ? ' is-open' : '') + (isWhite ? ' is-mrwhite' : '');
+    return '<button type="button" class="' + cls + '" id="' + opts.id + '" aria-pressed="' + (opts.open ? 'true' : 'false') + '" aria-label="' + (opts.open ? 'ซ่อนคำ' : 'แตะเพื่อดูคำของคุณ') + '">' +
+      '<div class="uc-card-inner">' +
+        '<div class="uc-backface"><img src="' + BACK + '" alt=""></div>' +
+        '<div class="uc-face"><img src="' + FRONT + '" alt="">' +
+          '<div class="uc-face-copy">' +
+            '<span class="uc-face-label">' + (isWhite ? 'MR. WHITE' : 'คำของคุณ') + '</span>' +
+            '<span class="uc-word" style="--fs:' + wordScale(word) + '">' + esc(word) + '</span>' +
+            (isWhite ? '<span class="uc-card-tag">ฟังคนอื่นแล้วเนียนตาม</span>' : '') +
+          '</div></div>' +
+      '</div></button>';
+  }
+  function bindCardToggle(id, autoHideMs) {
+    let hideTimer = null;
+    $('#' + id).on('click', function() {
+      const open = !this.classList.contains('is-open');
+      this.classList.toggle('is-open', open);
+      this.setAttribute('aria-pressed', open ? 'true' : 'false');
+      this.setAttribute('aria-label', open ? 'ซ่อนคำ' : 'แตะเพื่อดูคำของคุณ');
+      clearTimeout(hideTimer);
+      if (open && autoHideMs) {
+        const node = this;
+        hideTimer = setTimeout(function() { node.classList.remove('is-open'); node.setAttribute('aria-pressed', 'false'); }, autoHideMs);
+      }
+    });
+  }
+  function roleCardHtml(role, label) {
+    return '<div class="uc-role" role="img" aria-label="' + esc(label || (role && role.name) || '') + '"><div class="uc-card-inner">' +
+      '<div class="uc-backface"><img src="' + BACK + '" alt=""></div>' +
+      '<div class="uc-face"><img src="' + esc(role.image) + '" alt=""></div></div></div>';
+  }
+
+  // ---------- now bar ----------
+  function describeNow() {
+    const s = state; const self = s.self || {};
+    const sp = playerById(s.speakerId);
+    if (s.phase === 'finished') {
+      const won = ((s.winner && s.winner.winnerIds) || []).indexOf(playerId) >= 0;
+      return { title: won ? 'คุณชนะ!' : 'คุณแพ้', sub: 'จบเกม · ' + ((s.winner && s.winner.name) || ''), mine: won };
+    }
+    if (self.alive === false && s.phase !== 'mrwhite') {
+      return { title: 'คุณถูกโหวตออกแล้ว', sub: 'ดูต่อได้ แต่ห้ามบอกใบ้คนในวงนะ', mine: false };
+    }
+    if (s.phase === 'reveal') {
+      return self.ready
+        ? { title: 'รอคนอื่นดูคำ', sub: 'พร้อมแล้ว ' + s.readyCount + '/' + s.readyTotal + ' คน', mine: false }
+        : { title: 'แตะการ์ดเพื่อดูคำของคุณ', sub: 'จำไว้ แล้วกด “พร้อม” · อย่าให้คนข้าง ๆ เห็น', mine: true };
+    }
+    if (s.phase === 'clue') {
+      if (self.isSpeaker) return { title: 'ตาคุณพูด!', sub: 'ใบ้ 1 คำเกี่ยวกับคำของคุณ ห้ามพูดคำตรง ๆ', mine: true };
+      return { title: 'ตาของ ' + (sp ? sp.name : '...'), sub: 'ฟังให้ดี ใครใบ้แปลก ๆ?', mine: false };
+    }
+    if (s.phase === 'vote') {
+      const v = s.vote || {};
+      if (self.hasVoted) return { title: 'โหวตแล้ว — รอคนอื่น', sub: 'โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน', mine: false };
+      return { title: v.isRevote ? 'เสมอ! โหวตใหม่' : 'โหวตคนที่คำไม่เหมือน', sub: v.isRevote ? 'เลือกได้เฉพาะคนที่เสมอ' : 'แตะชื่อ แล้วกดยืนยัน · โหวตตัวเองไม่ได้', mine: true };
+    }
+    if (s.phase === 'mrwhite') {
+      if (self.canGuess) return { title: 'ทายคำของพลเมือง!', sub: 'ทายถูก = คุณชนะทันที', mine: true };
+      return { title: (s.mrWhiteGuess && s.mrWhiteGuess.name) + ' คือ Mr. White', sub: 'กำลังทายคำของพลเมือง...', mine: false };
+    }
+    if (s.phase === 'elimination') {
+      const last = s.lastElimination || {};
+      if (!last.playerId) return { title: 'รอบนี้ไม่มีใครออก', sub: 'ไปรอบต่อไป ใบ้ใหม่อีกรอบ', mine: false };
+      return { title: last.name + ' เป็น' + (last.role ? last.role.name : ''), sub: 'เดี๋ยวไปรอบต่อไป', mine: false };
+    }
+    return { title: 'รอเริ่มเกม', sub: '', mine: false };
+  }
+
+  function renderSteps() {
+    const order = ['reveal', 'clue', 'vote', 'result'];
+    const current = state.phase === 'mrwhite' || state.phase === 'elimination' || state.phase === 'finished' ? 'result' : state.phase;
+    const idx = order.indexOf(current);
+    $('#ucSteps li').each(function(i) {
+      this.classList.toggle('is-now', i === idx);
+      this.classList.toggle('is-done', idx > i);
+      if (i === idx) this.setAttribute('aria-current', 'step'); else this.removeAttribute('aria-current');
+    });
+    $('#ucKicker').text('คำใครไม่เหมือน' + (state.round ? ' · รอบที่ ' + state.round : '') + ' · สายแฝง ' + ((state.roleCounts || {}).undercover || 1) + ((state.roleCounts || {}).mrWhite ? ' + Mr. White' : ''));
+  }
+
+  // ---------- stage ----------
+  function computeStageKey() {
+    const self = state.self || {};
+    return [state.phase, state.step, self.alive, self.ready, self.hasVoted, self.canGuess, (state.vote || {}).isRevote].join('|');
+  }
+
+  function renderStage() {
+    const key = computeStageKey();
+    if (key === stageKey) { refreshStageCounters(); return; }
+    const prevPhase = stageKey.split('|')[0];
+    stageKey = key;
+    const s = state; const self = s.self || {};
+    let html = '';
+
+    if (s.phase === 'reveal') {
+      html = wordCardHtml({ id: 'ucWordCard', open: false }) +
+        '<p class="uc-hint">แตะการ์ดเพื่อเปิด · แตะอีกทีเพื่อปิด</p>' +
+        (self.alive && !self.ready
+          ? '<div class="uc-actions"><button type="button" id="ucReadyBtn" class="ui-btn ui-btn--primary ui-btn--lg">พร้อม</button></div>'
+          : '<p class="uc-count" id="ucReadyCount"></p>') +
+        '<div class="uc-ready-row" id="ucReadyRow"></div>';
+    } else if (s.phase === 'clue') {
+      const sp = playerById(s.speakerId) || {};
+      const order = (s.speakerOrder || []).map(function(id, i) {
+        const cls = i === s.speakerIndex ? 'is-now' : (i < s.speakerIndex ? 'is-done' : '');
+        return '<li class="' + cls + '"><b>' + (i + 1) + '</b><span>' + esc(nameOf(id)) + '</span></li>';
+      }).join('');
+      const remote = s.tableMode === 'remote';
+      html = '<div class="uc-speaker' + (self.isSpeaker ? ' is-me' : '') + '"><div class="uc-speaker-ring">' + avatar(sp, 72) + '</div>' +
+        '<p class="uc-speaker-name">' + (self.isSpeaker ? 'ตาคุณ' : esc(sp.name || '')) + '</p></div>' +
+        '<ol class="uc-order" aria-label="ลำดับการพูด">' + order + '</ol>';
+      if (self.isSpeaker) {
+        html += '<div class="uc-field"><label for="ucClueInput">' + (remote ? 'พิมพ์คำใบ้ให้ทุกคนเห็น' : 'พิมพ์คำใบ้ (ไม่บังคับ · พูดปากเปล่าได้เลย)') + '</label>' +
+          '<input id="ucClueInput" class="uc-input" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="เช่น ดื่มตอนเช้า"></div>' +
+          '<div class="uc-actions"><button type="button" id="ucClueDoneBtn" class="ui-btn ui-btn--primary ui-btn--lg">พูดเสร็จ</button></div>';
+      } else if (self.isHost) {
+        html += '<div class="uc-actions"><button type="button" id="ucSkipBtn" class="ui-btn ui-btn--ghost">ข้ามตา ' + esc(sp.name || '') + '</button></div>';
+      }
+      if (self.alive) html += wordCardHtml({ id: 'ucPeekCard', small: true, open: false }) + '<p class="uc-hint">ลืมคำ? แตะการ์ดดูแป๊บเดียว</p>';
+    } else if (s.phase === 'vote') {
+      const v = s.vote || {};
+      if (self.alive && !self.hasVoted) {
+        const targets = self.voteTargets || [];
+        if (pickedVote && targets.indexOf(pickedVote) < 0) pickedVote = null;
+        const lastClues = {};
+        (s.clues || []).filter(c => c.round === s.round).forEach(c => { lastClues[c.playerId] = c.text; });
+        html = '<div class="uc-vote-grid" role="radiogroup" aria-label="เลือกคนที่จะโหวตออก">' + targets.map(function(id) {
+          const p = playerById(id) || {};
+          return '<button type="button" role="radio" class="uc-vote-tile' + (pickedVote === id ? ' is-picked' : '') + '" data-target="' + esc(id) + '" aria-checked="' + (pickedVote === id ? 'true' : 'false') + '">' +
+            avatar(p, 36) + '<span class="uc-vote-copy"><span class="uc-vote-name">' + esc(p.name) + '</span>' +
+            (lastClues[id] ? '<span class="uc-vote-clue">“' + esc(lastClues[id]) + '”</span>' : '') + '</span></button>';
+        }).join('') + '</div>' +
+          '<div class="uc-actions"><button type="button" id="ucVoteConfirm" class="ui-btn ui-btn--primary ui-btn--lg"' + (pickedVote ? '' : ' disabled') + '>' +
+          (pickedVote ? 'โหวต ' + esc(nameOf(pickedVote)) : 'เลือกคนก่อน') + '</button></div>';
+      } else {
+        html = '<p class="uc-result-sub">' + (self.hasVoted ? 'คุณโหวต <b>' + esc(nameOf(self.voteTargetId)) + '</b>' : 'คุณไม่ได้โหวตรอบนี้') + '</p>' +
+          '<p class="uc-count" id="ucVoteCount"></p>';
+      }
+      if (self.alive) html += wordCardHtml({ id: 'ucPeekCard', small: true, open: false });
+    } else if (s.phase === 'elimination') {
+      const last = s.lastElimination || {};
+      const tally = Object.entries(last.counts || {}).sort((a, b) => b[1] - a[1])
+        .map(([id, n]) => '<span>' + esc(nameOf(id)) + ' · ' + n + ' เสียง</span>').join('');
+      if (last.playerId && last.role) {
+        html = roleCardHtml(last.role, last.name + ' เป็น' + last.role.name) +
+          '<div><p class="uc-result-title">' + esc(last.name) + ' ถูกโหวตออก</p><p class="uc-result-sub">เป็น ' + roleBadge(last.role) + '</p></div>';
+        if (s.mrWhiteGuess && !s.mrWhiteGuess.pending && s.mrWhiteGuess.playerId === last.playerId) {
+          html += '<p class="uc-result-sub">ทายว่า “' + esc(s.mrWhiteGuess.guess || '—') + '” — ผิด</p>';
+        }
+      } else {
+        html = '<div style="font-size:3rem" aria-hidden="true">🤝</div><p class="uc-result-title">' + (last.reason === 'tie' ? 'เสมออีกรอบ' : 'ไม่มีใครโหวต') + '</p><p class="uc-result-sub">รอบนี้ไม่มีใครออก</p>';
+      }
+      if (tally) html += '<div class="uc-tally">' + tally + '</div>';
+      html += self.isHost
+        ? '<div class="uc-actions"><button type="button" id="ucContinueBtn" class="ui-btn ui-btn--primary">ไปรอบต่อไป</button></div>'
+        : '<p class="uc-hint">รอรอบต่อไป...</p>';
+    } else if (s.phase === 'mrwhite') {
+      const mw = s.roles.find(r => r.id === 'mrwhite');
+      html = roleCardHtml(mw, 'Mr. White');
+      if (self.canGuess) {
+        html += '<div class="uc-field"><label for="ucGuessInput">คำของพลเมืองคือ...</label>' +
+          '<input id="ucGuessInput" class="uc-input" maxlength="40" autocomplete="off" enterkeyhint="send" placeholder="พิมพ์คำที่คิดว่าใช่"></div>' +
+          '<div class="uc-actions"><button type="button" id="ucGuessBtn" class="ui-btn ui-btn--primary ui-btn--lg">ทายเลย</button></div>';
+      } else {
+        html += '<p class="uc-result-sub">' + esc((s.mrWhiteGuess || {}).name || '') + ' ได้ทาย 1 ครั้ง ถ้าถูกชนะทันที</p>';
+      }
+    } else if (s.phase === 'finished') {
+      html = renderFinished();
+    }
+
+    const $stage = $('#ucStage');
+    $stage.html(html);
+    if (!reduceMotion && prevPhase !== s.phase) $stage.children().addClass('uc-enter');
+    bindCardToggle('ucWordCard', 0);
+    bindCardToggle('ucPeekCard', 3000);
+    refreshStageCounters();
+    if (s.phase === 'mrwhite' && self.canGuess) setTimeout(function() { $('#ucGuessInput').trigger('focus'); }, 300);
+  }
+
+  function renderFinished() {
+    const s = state; const self = s.self || {};
+    const w = s.winner || {};
+    const pair = s.pair || {};
+    const rows = (s.players || []).slice().sort(function(a, b) {
+      return ((w.winnerIds || []).indexOf(b.playerId) >= 0) - ((w.winnerIds || []).indexOf(a.playerId) >= 0);
+    }).map(function(p) {
+      const win = (w.winnerIds || []).indexOf(p.playerId) >= 0;
+      return '<li class="' + (win ? 'is-winner' : '') + '">' + (p.role ? '<img src="' + esc(p.role.image) + '" alt="">' : '') +
+        '<span class="who"><b>' + esc(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</b><span>' + (p.role ? esc(p.role.name) : '') + (win ? ' · ชนะ' : '') + (p.left ? ' · ออกกลางเกม' : '') + '</span></span>' +
+        '<span class="w">' + esc(p.word || 'ไม่มีคำ') + '</span></li>';
+    }).join('');
+    const guess = s.mrWhiteGuess && !s.mrWhiteGuess.pending && s.mrWhiteGuess.guess
+      ? '<p class="uc-result-sub">Mr. White ทาย “' + esc(s.mrWhiteGuess.guess) + '” — ' + (s.mrWhiteGuess.correct ? 'ถูก!' : 'ผิด') + '</p>' : '';
+    return '<p class="uc-result-title">' + esc(w.name || 'จบเกม') + '</p><p class="uc-result-sub">' + esc(w.reason || '') + '</p>' + guess +
+      '<div class="uc-pair"><div class="uc-pair-item civ"><small>คำพลเมือง</small><strong>' + esc(pair.civilian || '-') + '</strong></div>' +
+      '<div class="uc-pair-item und"><small>คำสายแฝง</small><strong>' + esc(pair.undercover || '-') + '</strong></div></div>' +
+      '<ul class="uc-final">' + rows + '</ul>' +
+      '<div class="uc-actions">' +
+        (self.isHost ? '<button type="button" id="ucRestartBtn" class="ui-btn ui-btn--primary">เล่นอีกรอบ (คำใหม่)</button>' : '') +
+        '<button type="button" id="ucShareBtn" class="ui-btn">แชร์ผล</button>' +
+        '<button type="button" id="ucBackLobbyBtn" class="ui-btn ui-btn--ghost">กลับห้องรอ</button></div>' +
+      '<p class="uc-hint" id="ucBackRemain">ทุกคนกลับห้องรอพร้อมกัน</p>';
+  }
+
+  function refreshStageCounters() {
+    const s = state;
+    if (s.phase === 'reveal') {
+      $('#ucReadyCount').text('พร้อมแล้ว ' + s.readyCount + '/' + s.readyTotal + ' คน');
+      $('#ucReadyRow').html((s.players || []).filter(p => p.alive).map(function(p) {
+        return '<span class="uc-dot' + (p.ready ? ' is-on' : '') + '">' + avatar(p, 24) + '<span>' + esc(p.name) + (p.ready ? ' ✓' : '') + '</span></span>';
+      }).join(''));
+    }
+    if (s.phase === 'vote') {
+      const v = s.vote || {};
+      $('#ucVoteCount').text('โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน');
+    }
+  }
+
+  // ---------- seats / clues / feed ----------
+  function seatState(p) {
+    const s = state;
+    if (!p.alive) return p.left ? 'ออกจากเกม' : 'ถูกโหวตออก รอบ ' + (p.eliminatedRound || '-');
+    if (!p.online) return 'ออฟไลน์';
+    if (s.phase === 'reveal') return p.ready ? 'พร้อมแล้ว' : 'กำลังดูคำ';
+    if (s.phase === 'clue') return p.isSpeaker ? 'กำลังพูด' : (p.spoke ? 'ใบ้แล้ว' : 'รอพูด');
+    if (s.phase === 'vote') return p.hasVoted ? 'โหวตแล้ว' : 'กำลังเลือก';
+    return 'ยังอยู่ในวง';
+  }
+  function renderSeats() {
+    const s = state;
+    $('#ucSeatsTitle').text('ผู้เล่นในวง · เหลือ ' + (s.aliveCount || 0) + ' คน');
+    $('#ucSeats').html((s.players || []).map(function(p) {
+      const cls = 'uc-seat' + (p.isSpeaker ? ' is-speaker' : '') + (p.alive ? '' : ' is-out');
+      return '<li class="' + cls + '">' + avatar(p, 32) +
+        '<span class="uc-seat-copy"><span class="uc-seat-name">' + esc(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</span>' +
+        '<span class="uc-seat-state">' + (p.role ? roleBadge(p.role) + ' ' : (p.isHost ? '<span class="uc-badge host">หัวห้อง</span> ' : '')) + esc(seatState(p)) + '</span></span></li>';
+    }).join(''));
+  }
+  function renderClues() {
+    const clues = state.clues || [];
+    $('#ucCluesWrap').toggle(clues.length > 0);
+    $('#ucClues').html(clues.slice().reverse().slice(0, 30).map(function(c) {
+      return '<li><span class="r">ร.' + c.round + '</span><b>' + esc(c.name) + '</b><span>' + esc(c.text) + '</span></li>';
+    }).join(''));
+  }
+  function renderFeed() {
+    $('#ucFeed').html((state.history || []).map(function(h) {
+      return '<li>' + esc((h.icon || '') + ' ' + (h.text || '')) + '</li>';
+    }).join(''));
+  }
+
+  // ---------- timer ----------
+  function phaseTotal() {
+    const t = state.timers || {};
+    return { reveal: t.reveal, clue: t.clue, vote: t.vote, mrwhite: t.mrwhite, elimination: t.result }[state.phase] || 30000;
+  }
+  function tickTimer() {
+    clearInterval(timerHandle);
+    const C = 150.8;
+    function paint() {
+      const node = document.getElementById('ucTimer');
+      if (state.phase === 'finished') {
+        const endsAt = Number(state.returnLobbyEndsAt) || 0;
+        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+        node.classList.toggle('is-idle', !remain);
+        $('#ucTimerNum').text(remain || '--');
+        $('#ucTimerBar').attr('stroke-dashoffset', 0);
+        $('#ucBackRemain').text(remain > 0 ? 'ระบบพาทุกคนกลับห้องรอใน ' + remain + ' วิ' : 'กำลังพากลับห้องรอ...');
+        return;
+      }
+      if (!state.phaseEndsAt) { node.classList.add('is-idle'); return; }
+      const left = Math.max(0, state.phaseEndsAt - Date.now());
+      const frac = Math.max(0, Math.min(1, left / phaseTotal()));
+      node.classList.remove('is-idle');
+      node.classList.toggle('is-low', left < 10000);
+      $('#ucTimerNum').text(Math.ceil(left / 1000));
+      $('#ucTimerBar').attr('stroke-dashoffset', (C * (1 - frac)).toFixed(1));
+    }
+    paint();
+    timerHandle = setInterval(paint, 250);
+  }
+
+  // ---------- fx ----------
+  function flashBanner(text) {
+    const node = document.getElementById('ucBanner');
+    node.textContent = text;
+    node.classList.remove('is-on');
+    void node.offsetWidth;
+    node.classList.add('is-on');
+    clearTimeout(flashBanner.t);
+    flashBanner.t = setTimeout(function() { node.classList.remove('is-on'); }, 1700);
+  }
+  function playFx() {
+    const events = (state.fx || []).filter(f => f && f.seq > seenFxSeq);
+    if (!events.length) return;
+    seenFxSeq = events[events.length - 1].seq;
+    const last = events[events.length - 1];
+    if (last.kind === 'round') flashBanner('รอบที่ ' + last.round + ' · เริ่มใบ้');
+    else if (last.kind === 'vote') flashBanner(last.isRevote ? 'เสมอ! โหวตใหม่' : 'ถึงเวลาโหวต');
+    else if (last.kind === 'mrwhite') flashBanner(last.correct ? 'Mr. White ทายถูก!' : 'Mr. White ทายผิด');
+    else if (last.kind === 'finish') flashBanner('จบเกม!');
+    if (window.haptics && typeof window.haptics.tap === 'function' && last.kind !== 'deal') { try { window.haptics.tap(); } catch (e) {} }
+  }
+  function pingNeed() {
+    if (!window.partyPlay || !state.self) return;
+    const self = state.self;
+    if (state.phase === 'clue' && self.isSpeaker) {
+      window.partyPlay.pingTurn({ key: 'uc-clue-' + state.step, title: 'ตาคุณพูด', subtitle: 'ใบ้ 1 คำ แล้วกดพูดเสร็จ' });
+    } else if (state.phase === 'vote' && self.alive && !self.hasVoted) {
+      window.partyPlay.pingTurn({ key: 'uc-vote-' + state.step, title: 'ถึงเวลาโหวต', subtitle: 'เลือกคนที่คำไม่เหมือน' });
+    } else if (state.phase === 'mrwhite' && self.canGuess) {
+      window.partyPlay.pingTurn({ key: 'uc-guess-' + state.step, title: 'ทายคำ!', subtitle: 'ทายถูกชนะทันที' });
+    }
+  }
+
+  function render(next) {
+    if (!next || !next.phase) return;
+    state = next;
+    const now = describeNow();
+    $('#ucNowTitle').text(now.title);
+    $('#ucNowSub').text(now.sub);
+    $('#ucNow').toggleClass('is-mine', !!now.mine);
+    renderSteps();
+    renderStage();
+    renderSeats();
+    renderClues();
+    renderFeed();
+    tickTimer();
+    playFx();
+    pingNeed();
+  }
+
+  // ---------- commands ----------
+  function send(eventName, payload, onDone) {
+    if (busy) return;
+    busy = true;
+    socket.emit(eventName, Object.assign({ roomId: roomId, step: state.step }, payload || {}), function(res) {
+      busy = false;
+      if (res && !res.success) {
+        Swal.fire({ icon: 'error', title: res.error || 'ทำรายการไม่สำเร็จ', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b' });
+        socket.emit('undercover_requestState', { roomId: roomId, playerId: playerId });
+      }
+      if (onDone) onDone(res);
+    });
+    setTimeout(function() { busy = false; }, 4000);
+  }
+
+  $(document).on('click', '#ucReadyBtn', function() { this.disabled = true; send('undercover_ready'); });
+  $(document).on('click', '#ucClueDoneBtn', function() { this.disabled = true; send('undercover_clueDone', { text: ($('#ucClueInput').val() || '').trim() }, function(res) { if (res && !res.success) $('#ucClueDoneBtn').prop('disabled', false); }); });
+  $(document).on('keydown', '#ucClueInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); $('#ucClueDoneBtn').trigger('click'); } });
+  $(document).on('click', '#ucSkipBtn', function() { send('undercover_skipSpeaker'); });
+  $(document).on('click', '.uc-vote-tile', function() {
+    pickedVote = this.getAttribute('data-target');
+    $('.uc-vote-tile').each(function() {
+      const on = this.getAttribute('data-target') === pickedVote;
+      this.classList.toggle('is-picked', on);
+      this.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    $('#ucVoteConfirm').prop('disabled', false).text('โหวต ' + nameOf(pickedVote));
+  });
+  $(document).on('click', '#ucVoteConfirm', function() {
+    if (!pickedVote) return;
+    this.disabled = true;
+    const target = pickedVote;
+    send('undercover_vote', { targetPlayerId: target }, function(res) { if (res && !res.success) $('#ucVoteConfirm').prop('disabled', false); });
+  });
+  $(document).on('click', '#ucGuessBtn', function() {
+    const guess = ($('#ucGuessInput').val() || '').trim();
+    if (!guess) { $('#ucGuessInput').trigger('focus'); return; }
+    this.disabled = true;
+    send('undercover_mrWhiteGuess', { guess: guess }, function(res) { if (res && !res.success) $('#ucGuessBtn').prop('disabled', false); });
+  });
+  $(document).on('keydown', '#ucGuessInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); $('#ucGuessBtn').trigger('click'); } });
+  $(document).on('click', '#ucContinueBtn', function() { this.disabled = true; send('undercover_continue'); });
+  $(document).on('click', '#ucRestartBtn', function() {
+    this.disabled = true;
+    socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
+      if (res && !res.success) {
+        $('#ucRestartBtn').prop('disabled', false);
+        Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#151d2a', color: '#fff' });
+      }
+    });
+  });
+  $(document).on('click', '#ucBackLobbyBtn', function() { socket.emit('undercover_backToLobby', { roomId: roomId }); });
+  $(document).on('click', '#ucShareBtn', function() {
+    if (!window.partyPlay || !state.winner) return;
+    const pair = state.pair || {};
+    const under = (state.players || []).filter(p => p.role && p.role.id !== 'civilian').map(p => p.name + ' (' + p.role.name + ')');
+    window.partyPlay.shareResult({
+      mode: 'คำใครไม่เหมือน',
+      headline: state.winner.name + '!',
+      sub: 'คำพลเมือง “' + (pair.civilian || '-') + '” · คำสายแฝง “' + (pair.undercover || '-') + '”',
+      lines: ['ฝ่ายแฝง: ' + (under.join(', ') || '-'), state.winner.reason || ''],
+      accent: '#f5c86b',
+      fileName: 'undercover-result'
+    });
+  });
+
+  $('#ucHowTo').on('click', function() {
+    Swal.fire({
+      title: 'คำใครไม่เหมือน เล่นยังไง',
+      html: '<div style="text-align:left; line-height:1.6; font-family:\'Bai Jamjuree\',sans-serif;">' +
+        '<p><strong>ทุกคนได้คำเดียวกัน</strong> ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน</p>' +
+        '<p>1. แตะการ์ดดูคำ แล้วกดพร้อม</p>' +
+        '<p>2. ใบ้คนละ 1 คำตามลำดับ (พูดปากเปล่า) ห้ามพูดคำตรง ๆ</p>' +
+        '<p>3. โหวตคนที่คิดว่าคำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง</p>' +
+        '<p>4. เปิดบทคนที่ออก · <strong>Mr. White</strong> (ไม่มีคำ) ถ้าถูกโหวตออกได้ทายคำพลเมือง ถูก = ชนะทันที</p>' +
+        '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อรอดถึง 2 คนสุดท้าย</p>' +
+        '<p style="color:#9fb3c8">เวลา: ดูคำ 30 วิ · พูดคนละ 45 วิ · โหวต 60 วิ · Mr. White ทาย 30 วิ</p></div>',
+      background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b', confirmButtonText: 'เข้าใจแล้ว'
+    });
+  });
+  $('#ucEndGameBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบเกมและกลับห้องรอ?', text: 'เกมนี้จะไม่นับสถิติ', showCancelButton: true,
+      confirmButtonText: 'จบเกม', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b'
+    }).then(r => { if (r.isConfirmed) socket.emit('endTableSession', { roomId: roomId }); });
+  });
+
+  function setSidebarOpen(open) {
+    if (open && $('#chatBox').is(':visible')) $('#closeChat').trigger('click');
+    $('#playerSidebar').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#sidebarOverlay').toggle(open);
+    $('#ucSidebarBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('closeSidebarBtn').focus();
+    else if (document.getElementById('playerSidebar').contains(document.activeElement)) document.getElementById('ucSidebarBtn').focus();
+  }
+  $('#ucSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
+  $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
+  $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#playerSidebar').hasClass('open')) setSidebarOpen(false); });
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({
+      icon: 'question', title: 'ออกจากห้อง?', text: 'ออกกลางเกม = นับว่าตกรอบ', showCancelButton: true,
+      confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff'
+    }).then(r => {
+      if (r.isConfirmed) {
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+      }
+    });
+  });
+  window.addEventListener('beforeunload', function(e) { if (!allowNavigation && state.phase && state.phase !== 'finished') e.preventDefault(); });
+
+  socket.on('connect', function() {
+    $('#ucConn').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('undercover_requestState', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#ucConn').show(); });
+  socket.on('undercoverState', render);
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(p =>
+      '<li style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.08);">' +
+        avatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 28) +
+        '<span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.displayName || p.playerName) + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:#9fb3c8;">ออฟไลน์</span>' : '') +
+      '</li>').join(''));
+  });
+  function goLobby() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
+  socket.on('redirectToLobby', goLobby);
+  socket.on('restartGame', goLobby);
+  socket.on('returnToLobby', function(data) {
+    state.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 20) * 1000);
+    tickTimer();
+  });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && data.reason) || '', background: '#151d2a', color: '#fff' })
+      .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+
+  window.initChatPanel({
+    socket: socket, playerId: playerId, playerName: playerName,
+    onCommand: function(text) {
+      if (text.trim().toLowerCase() !== '/m') return false;
+      socket.emit('undercover_admin_reveal');
+      return true;
+    }
+  });
+  socket.on('undercover_admin_reveal', function(data) {
+    const pair = data.pair || {};
+    const rows = (data.players || []).map(p =>
+      '<div style="margin:6px 0;"><strong>' + esc(p.name) + '</strong> · ' + esc(p.roleName) + ' · ' + esc(p.word || 'ไม่มีคำ') + (p.alive ? '' : ' (ออกแล้ว)') + '</div>').join('');
+    Swal.fire({ title: '/m คำทั้งวง', html: '<p>พลเมือง “' + esc(pair.civilian || '-') + '” · สายแฝง “' + esc(pair.undercover || '-') + '”</p>' + rows, background: '#151d2a', color: '#fff' });
+  });
+  socket.on('undercover_admin_reveal_denied', function() {
+    Swal.fire({ icon: 'error', title: 'ดูคำไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บเท่านั้น', background: '#151d2a', color: '#fff' });
+  });
+
+  if (state && state.phase) render(state);
+});
+</script>

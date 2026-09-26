@@ -39,6 +39,9 @@ const DEFAULT_SETTINGS = {
         avalon: {
             defaultMaxPlayers: 10
         },
+        undercover: {
+            defaultMaxPlayers: 8
+        },
         liar: {
             defaultMaxPlayers: 6
         },

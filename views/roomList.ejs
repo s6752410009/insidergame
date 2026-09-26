@@ -891,6 +891,7 @@ $(function() {
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 },
+        { id: 'undercover', label: 'คำใครไม่เหมือน', description: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 4–10 คน', minPlayers: 4, maxPlayers: 10 },
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
         { id: 'avalon', label: 'อวาลอน', description: 'อัศวินโต๊ะกลม 5–10 คน — ฝ่ายดีทำภารกิจ ฝ่ายร้ายแฝงตัว มือสังหารล่าเมอร์ลิน', minPlayers: 5, maxPlayers: 10 },
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
@@ -1098,6 +1099,15 @@ $(function() {
                 summary: 'ทุกคนรู้สถานที่และบทในที่นั้นยกเว้นสายลับ — คุยแล้วโหวตจับ',
                 bullets: ['4-8 คน', 'บทในสถานที่คนละบท', 'รอบเดียวจบ', 'ไม่ต้องมีคนคุมเกม']
             },
+            undercover: {
+                tone: 'linear-gradient(135deg, rgba(245,200,107,0.2), rgba(15,22,32,0.92))',
+                border: 'rgba(245,200,107,0.34)',
+                cover: '/assets/games/undercover/cover.jpg',
+                badge: '🫥 ใบ้คำ จับคนคำไม่เหมือน',
+                title: 'คำใครไม่เหมือน',
+                summary: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำ แล้วโหวตหาว่าใครคำไม่เหมือน',
+                bullets: ['4-10 คน', 'เล่นหน้ากัน พูดใบ้', 'มี Mr. White ให้เปิดได้', 'ไม่ต้องมีคนคุมเกม']
+            },
             coup: {
                 tone: 'linear-gradient(135deg, rgba(168,85,247,0.24), rgba(18,7,26,0.92))',
                 border: 'rgba(196,141,255,0.32)',
@@ -1164,6 +1174,7 @@ $(function() {
             blackmarket: 'ตลาดมืดคืนนี้',
             werewolf: 'คืนล่าหมาป่า',
             spyfall: 'วงสายลับสถานที่',
+            undercover: 'คำใครไม่เหมือน',
             coup: 'วงโค่นอำนาจ',
             avalon: 'อวาลอน',
             liar: 'ไพ่โกหก',
@@ -1308,7 +1319,7 @@ $(function() {
             const gameModeLabel = room.gameModeLabel || (
                 room.gameMode === 'werewolf' ? 'Werewolf'
                     : (room.gameMode === 'blackmarket' ? 'Black Market'
-                        : (room.gameMode === 'spyfall' ? 'Spyfall'
+                        : (room.gameMode === 'spyfall' ? 'Spyfall' : room.gameMode === 'undercover' ? 'คำใครไม่เหมือน'
                             : (room.gameMode === 'coup' ? 'Coup'
                                 : room.gameMode === 'avalon' ? 'อวาลอน'
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
@@ -1322,6 +1333,7 @@ $(function() {
                     ? 'background: linear-gradient(135deg, #7f1d1d, #111111); color:#fde68a; border:1px solid rgba(251,191,36,0.35);'
                     : (room.gameMode === 'spyfall'
                         ? 'background: linear-gradient(135deg, #0f766e, #134e4a); color:#ccfbf1; border:1px solid rgba(94,234,212,0.35);'
+                        : room.gameMode === 'undercover' ? 'background: #1a2332; color:#f5c86b; border:1px solid rgba(245,200,107,0.45);'
                         : (room.gameMode === 'coup'
                             ? 'background: linear-gradient(135deg, #6d28d9, #3b0764); color:#f4ecff; border:1px solid rgba(196,141,255,0.35);'
                             : room.gameMode === 'avalon'
@@ -1762,6 +1774,11 @@ $(function() {
                         updateSliderBackground(maxPlayersSlider);
                     }
 
+                    // คำใครไม่เหมือนจับเวลาเป็นช่วงในเกมเอง — ไม่ใช้เวลาต่อรอบ
+                    if (selectedMode === 'undercover') {
+                        createRoundTimeGroup.style.display = 'none';
+                    }
+
                     maxPlayersValue.textContent = maxPlayersSlider.value;
                     updateSliderBackground(maxPlayersSlider);
                     syncModeQuickPick();
@@ -2143,6 +2160,26 @@ $(function() {
         ].join('');
     }
 
+    function buildUndercoverGuideHtml() {
+        return [
+            '<div class="bm-guide">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทุกคนได้คำเดียวกัน ยกเว้น<b>สายแฝง</b>ที่ได้คำคล้าย ๆ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>แตะการ์ดดูคำของตัวเอง แล้วกดพร้อม</li>',
+            '<li>ใบ้คนละ 1 คำตามคิว (พูดปากเปล่า) ห้ามพูดคำตรง ๆ</li>',
+            '<li>โหวตคนที่คิดว่าคำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง</li>',
+            '<li>เปิดบทคนที่ออก แล้วเล่นรอบต่อไป</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
+            '<li><b>พลเมือง</b> — ฝ่ายแฝงออกหมด</li>',
+            '<li><b>ฝ่ายแฝง</b> — รอดถึง 2 คนสุดท้าย</li>',
+            '<li><b>Mr. White</b> (ไม่มีคำ เปิดได้ตอน 6 คนขึ้นไป) — ถูกโหวตออกแล้วทายคำพลเมืองถูก</li>',
+            '</ul></div>',
+            '<div class="bm-guide-section"><h4>คน</h4><p>4–10 คน · 7 คนขึ้นไปมีสายแฝง 2 คน</p></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildLiarGuideHtml() {
         return [
             '<div class="bm-guide">',
@@ -2187,6 +2224,7 @@ $(function() {
             { id: 'blackmarket', label: '🎩 Black Market', html: buildBlackMarketGuideHtml(),  color: '#b45309' },
             { id: 'spyfall',     label: '🕶️ Spyfall',     html: buildSpyfallGuideHtml(),      color: '#0f766e' },
             { id: 'avalon',      label: '🏰 อวาลอน',      html: buildAvalonGuideHtml(),       color: '#1d4ed8' },
+            { id: 'undercover',  label: '🫥 คำใครไม่เหมือน', html: buildUndercoverGuideHtml(), color: '#b98a2c' },
             { id: 'liar',        label: '🃏 ไพ่โกหก',      html: buildLiarGuideHtml(),         color: '#b91c1c' },
             { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
             { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' },

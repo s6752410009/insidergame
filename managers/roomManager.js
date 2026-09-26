@@ -254,6 +254,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'werewolf_finished',
     'blackmarket_finished',
     'spyfall_finished',
+    'undercover_finished',
     'coup_finished',
     'avalon_finished',
     'liar_finished',
@@ -271,6 +272,8 @@ const ROOM_NAME_MODE_HINTS = {
     'อวาลอน': 'avalon',
     'อัศวินโต๊ะกลม': 'avalon',
     'วงสายลับสถานที่': 'spyfall',
+    'คำใครไม่เหมือน': 'undercover',
+    'วงคำใครไม่เหมือน': 'undercover',
     'วงโกหก': 'liar',
     'ไพ่โกหก': 'liar',
     'ห้าใบเลือกสาม': 'poker5',
@@ -620,6 +623,7 @@ function createRoom(roomData, creatorPlayerId) {
             traitorOptional: normalizedRoomData.traitorOptional !== undefined ? normalizedRoomData.traitorOptional : true,
             dualTraitorMode: normalizedRoomData.dualTraitorMode || false,
             spyfallVoteSeconds: spyfallVoteMinutes != null ? Math.round(spyfallVoteMinutes * 60) : 90,
+            undercoverMrWhite: gameMode === 'undercover' ? normalizedRoomData.undercoverMrWhite === true : false,
             werewolfRoles,
             wolfCount,
             avalonRoles: gameMode === 'avalon' && typeof gameEngine.sanitizeRoleSelection === 'function'
@@ -1013,6 +1017,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (updates.avalonRoles !== undefined && room.settings.gameMode === 'avalon') {
         const avalonEngine = getGameEngine('avalon');
         room.settings.avalonRoles = avalonEngine.sanitizeRoleSelection(updates.avalonRoles);
+    }
+
+    if (updates.undercoverMrWhite !== undefined && room.settings.gameMode === 'undercover') {
+        room.settings.undercoverMrWhite = updates.undercoverMrWhite === true;
     }
 
     if (updates.pokerTableType !== undefined) {

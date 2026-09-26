@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336" role="img" aria-label="หลังการ์ดคำใครไม่เหมือน">
+  <defs>
+    <pattern id="ucBackWeave" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0 6 H12" stroke="#f5c86b" stroke-opacity="0.07" stroke-width="1"/>
+      <path d="M6 0 V12" stroke="#f5c86b" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="ucBackGlow" cx="50%" cy="42%" r="60%">
+      <stop offset="0" stop-color="#24344a"/>
+      <stop offset="1" stop-color="#141c28"/>
+    </radialGradient>
+  </defs>
+  <rect width="240" height="336" rx="18" fill="#0f1620"/>
+  <rect x="7" y="7" width="226" height="322" rx="13" fill="url(#ucBackGlow)"/>
+  <rect x="7" y="7" width="226" height="322" rx="13" fill="url(#ucBackWeave)"/>
+  <rect x="17" y="17" width="206" height="302" rx="9" fill="none" stroke="#f5c86b" stroke-width="2"/>
+  <rect x="23" y="23" width="194" height="290" rx="6" fill="none" stroke="#f5c86b" stroke-opacity="0.35" stroke-width="1"/>
+  <!-- corner diamonds -->
+  <g fill="#f5c86b">
+    <path d="M40 34 l6 6 -6 6 -6 -6z"/>
+    <path d="M200 34 l6 6 -6 6 -6 -6z"/>
+    <path d="M40 290 l6 6 -6 6 -6 -6z"/>
+    <path d="M200 290 l6 6 -6 6 -6 -6z"/>
+  </g>
+  <!-- emblem: two speech bubbles, one odd -->
+  <circle cx="120" cy="150" r="66" fill="#101823" stroke="#f5c86b" stroke-width="2"/>
+  <circle cx="120" cy="150" r="58" fill="none" stroke="#f5c86b" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="2 5"/>
+  <path d="M74 118 h54 a12 12 0 0 1 12 12 v26 a12 12 0 0 1 -12 12 h-30 l-14 14 v-14 h-10 a12 12 0 0 1 -12 -12 v-26 a12 12 0 0 1 12 -12z" fill="#f5c86b"/>
+  <g fill="#1a2332">
+    <circle cx="87" cy="143" r="5"/>
+    <circle cx="101" cy="143" r="5"/>
+    <circle cx="115" cy="143" r="5"/>
+  </g>
+  <path d="M112 132 h50 a12 12 0 0 1 12 12 v26 a12 12 0 0 1 -12 12 h-8 v14 l-14 -14 h-28 a12 12 0 0 1 -12 -12 v-26 a12 12 0 0 1 12 -12z" fill="#1a2332" stroke="#f5c86b" stroke-width="3"/>
+  <text x="137" y="170" text-anchor="middle" font-family="Chakra Petch, Bai Jamjuree, Tahoma, sans-serif" font-size="30" font-weight="700" fill="#f5c86b">?</text>
+  <!-- title -->
+  <text x="120" y="258" text-anchor="middle" font-family="Chakra Petch, Bai Jamjuree, Thonburi, Tahoma, sans-serif" font-size="21" font-weight="700" fill="#f5c86b" letter-spacing="0.5">คำใครไม่เหมือน</text>
+  <path d="M70 272 h100" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1"/>
+  <text x="120" y="290" text-anchor="middle" font-family="Chakra Petch, Tahoma, sans-serif" font-size="10" font-weight="600" fill="#f5c86b" fill-opacity="0.65" letter-spacing="3">UNDERCOVER</text>
+</svg>

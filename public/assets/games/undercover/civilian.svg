@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336" role="img" aria-label="การ์ดบท พลเมือง">
+  <defs>
+    <linearGradient id="civSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2d7c93"/>
+      <stop offset="1" stop-color="#123a4b"/>
+    </linearGradient>
+    <pattern id="civHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+      <path d="M0 4 H8" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+    <clipPath id="civWindow"><rect x="26" y="26" width="188" height="214" rx="94"/></clipPath>
+  </defs>
+  <!-- frame -->
+  <rect width="240" height="336" rx="18" fill="#0f1620"/>
+  <rect x="7" y="7" width="226" height="322" rx="13" fill="#1a2332"/>
+  <rect x="15" y="15" width="210" height="306" rx="9" fill="none" stroke="#f5c86b" stroke-width="1.6"/>
+  <!-- arched window -->
+  <g clip-path="url(#civWindow)">
+    <rect x="26" y="26" width="188" height="214" fill="url(#civSky)"/>
+    <rect x="26" y="26" width="188" height="214" fill="url(#civHatch)"/>
+    <circle cx="120" cy="96" r="70" fill="#ffffff" fill-opacity="0.05"/>
+    <!-- back row -->
+    <g fill="#c79a45">
+      <circle cx="66" cy="150" r="17"/>
+      <path d="M36 214 c0 -30 14 -44 30 -44 s30 14 30 44z"/>
+      <circle cx="174" cy="150" r="17"/>
+      <path d="M144 214 c0 -30 14 -44 30 -44 s30 14 30 44z"/>
+    </g>
+    <!-- front figure -->
+    <g fill="#f5c86b">
+      <circle cx="120" cy="158" r="24"/>
+      <path d="M76 244 c0 -42 20 -62 44 -62 s44 20 44 62z"/>
+    </g>
+    <!-- identical bubbles: everyone says the same word -->
+    <g>
+      <path d="M50 108 h32 a8 8 0 0 1 8 8 v14 a8 8 0 0 1 -8 8 h-14 l-8 8 v-8 h-10 a8 8 0 0 1 -8 -8 v-14 a8 8 0 0 1 8 -8z" fill="#fbf6ea"/>
+      <path d="M158 108 h32 a8 8 0 0 1 8 8 v14 a8 8 0 0 1 -8 8 h-10 v8 l-8 -8 h-14 a8 8 0 0 1 -8 -8 v-14 a8 8 0 0 1 8 -8z" fill="#fbf6ea"/>
+      <path d="M102 62 h36 a9 9 0 0 1 9 9 v16 a9 9 0 0 1 -9 9 h-12 l-6 10 -6 -10 h-12 a9 9 0 0 1 -9 -9 v-16 a9 9 0 0 1 9 -9z" fill="#fbf6ea"/>
+      <g fill="#2d7c93">
+        <path d="M66 115 l2.6 5.3 5.8 0.8 -4.2 4.1 1 5.8 -5.2 -2.7 -5.2 2.7 1 -5.8 -4.2 -4.1 5.8 -0.8z"/>
+        <path d="M174 115 l2.6 5.3 5.8 0.8 -4.2 4.1 1 5.8 -5.2 -2.7 -5.2 2.7 1 -5.8 -4.2 -4.1 5.8 -0.8z"/>
+        <path d="M120 69 l3 6.1 6.7 1 -4.9 4.7 1.2 6.7 -6 -3.2 -6 3.2 1.2 -6.7 -4.9 -4.7 6.7 -1z"/>
+      </g>
+    </g>
+  </g>
+  <rect x="26" y="26" width="188" height="214" rx="94" fill="none" stroke="#f5c86b" stroke-width="2.5"/>
+  <!-- name banner -->
+  <path d="M28 252 h184 l-10 17 10 17 h-184 l10 -17z" fill="#f5c86b"/>
+  <path d="M28 252 h184 l-10 17 10 17 h-184 l10 -17z" fill="none" stroke="#0f1620" stroke-opacity="0.25" stroke-width="1"/>
+  <text x="120" y="277" text-anchor="middle" font-family="Chakra Petch, Bai Jamjuree, Thonburi, Tahoma, sans-serif" font-size="22" font-weight="700" fill="#1a2332">พลเมือง</text>
+  <text x="120" y="306" text-anchor="middle" font-family="Chakra Petch, Tahoma, sans-serif" font-size="9.5" font-weight="600" fill="#9fd3e2" letter-spacing="4">CIVILIAN</text>
+</svg>
