@@ -69,7 +69,7 @@
             '#ppFirstPlay .pp-row{display:flex;gap:8px;align-items:center;}',
             '#ppFirstPlay button{flex:1;min-height:48px;border:0;border-radius:12px;padding:10px 12px;font-weight:700;cursor:pointer;background:#f5c86b;color:#1a1204;}',
             '#ppFirstPlay .pp-skip{background:transparent;color:#ddd;border:1px solid rgba(255,255,255,0.2);}',
-            '#ppTermsBar{position:fixed;left:12px;right:12px;bottom:12px;z-index:11900;padding:8px 12px;border-radius:12px;background:rgba(12,14,22,0.88);color:#c8cde0;font-size:.78rem;text-align:center;pointer-events:none;border:1px solid rgba(255,255,255,0.08);}',
+            '#ppTermsBar{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:11900;padding:8px 12px;border-radius:12px;background:rgba(12,14,22,0.88);color:#c8cde0;font-size:.78rem;text-align:center;pointer-events:none;border:1px solid rgba(255,255,255,0.08);}',
             '#ppCountdown{position:fixed;inset:0;z-index:12080;display:none;align-items:center;justify-content:center;background:rgba(6,8,14,0.72);}',
             '#ppCountdown.is-on{display:flex;}',
             '#ppCountdown .pp-count{font-size:4rem;font-weight:800;color:#f5c86b;}',

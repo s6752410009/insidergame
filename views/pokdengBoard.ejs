@@ -63,6 +63,7 @@
 
   /* ---------- top ---------- */
   .pd-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding: 6px 0 10px; }
+  .pd-top > :first-child { padding-right: 104px; } /* เว้นที่ให้ปุ่มแชทมุมขวาบน */
   .pd-kicker { color: var(--pd-gold); font-family: var(--pd-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; }
   .pd-title { margin: 0; font-family: var(--pd-display); font-weight: 700; font-size: clamp(1.1rem, 4.4vw, 1.5rem); line-height: 1.2; }
   .pd-fun { display: inline-block; margin-top: 2px; font-size: 0.74rem; color: var(--pd-muted); }
@@ -299,7 +300,8 @@
     --chat-surface: oklch(0.19 0.035 22); --chat-border: oklch(0.84 0.13 85 / 0.24); --chat-bubble: oklch(0.26 0.05 22);
     font-family: 'Bai Jamjuree', sans-serif;
   }
-  .chat-toggle { --chat-toggle-bg: oklch(0.45 0.13 25); border-radius: 999px; padding: 12px 18px; bottom: calc(var(--pd-dock-h, 180px) + 12px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* มุมขวาบนข้างชื่อโต๊ะว่างอยู่ — ถ้าไว้เหนือแถบไพ่ จะบังผลของที่นั่งขวาสุด */
+  .chat-toggle { --chat-toggle-bg: oklch(0.45 0.13 25); border-radius: 999px; padding: 10px 16px; min-height: 44px; top: calc(12px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; }
   .btn-chat-send { --chat-send-bg: oklch(0.84 0.13 85); --chat-send-color: oklch(0.2 0.05 60); }
 
   @keyframes pdDeal {
