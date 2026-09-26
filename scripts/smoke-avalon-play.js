@@ -109,6 +109,16 @@ async function waitFor(pred, message, ms = 6000) {
 }
 
 const byId = (table, id) => table.players.find(p => p.id === id);
+
+// state ถูกส่งให้ทีละ socket — ก่อนอ่านข้อมูลของ "คนอื่น" (หัวหน้า/มือสังหาร) ต้องรอให้ทุกคนได้ step ล่าสุดก่อน
+// ไม่งั้นเทสจะอ่าน state เก่าของคนที่ข้อความยังมาไม่ถึง (พังแบบสุ่มเมื่อเซิร์ฟเวอร์ช้า)
+async function settle(table) {
+    await waitFor(() => {
+        const live = table.players.filter(p => !p.gone && latest(p));
+        const top = Math.max(...live.map(p => Number(latest(p).step) || 0));
+        return live.every(p => Number(latest(p).step) === top);
+    }, 'ทุกคนต้องได้ state รอบเดียวกัน');
+}
 const view = table => latest(table.players.find(p => latest(p) && !p.gone) || table.players[0]);
 
 /** ส่งคำสั่งแล้วรอจน step เปลี่ยน/ทุกคนได้ state ใหม่ */
@@ -131,6 +141,7 @@ async function nightAll(table) {
  * teamPicker(state) → teamIds · voter(p) → 'approve'|'reject' · carder(p) → 'success'|'fail'
  */
 async function playRound(table, { teamPicker, voter = () => 'approve', carder = () => 'success' }) {
+    await settle(table);
     const st = view(table);
     assert(st.phase === 'team', 'ต้องอยู่ช่วงเลือกทีม ได้ ' + st.phase);
     const leader = byId(table, st.leaderId);
@@ -178,6 +189,7 @@ function pickTeam(table, st, { evil = 0 } = {}) {
 
 async function assassinate(table, targetPred) {
     await waitFor(() => view(table).phase === 'assassin', 'ต้องเข้าเฟสลอบสังหาร');
+    await settle(table);
     const st = view(table);
     const assassin = byId(table, st.assassinId);
     assert(assassin && assassin.role === 'assassin', 'มือสังหารตัวจริงเป็นคนเลือก');
