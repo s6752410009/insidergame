@@ -814,6 +814,20 @@
     border-color: rgba(248, 113, 113, 0.65);
   }
 
+  #btnPokDengHowTo {
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(245, 200, 107, 0.45);
+    background: rgba(179, 38, 46, 0.28);
+    color: #fde68a;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .btn-add-bots {
     background: #059669;
     color: #ecfdf5;
@@ -1372,6 +1386,7 @@
         <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnCoupHowTo" class="<%= room.gameMode === 'coup' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnLiarHowTo" class="<%= room.gameMode === 'liar' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnPokDengHowTo" class="<%= room.gameMode === 'pokdeng' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1400,6 +1415,7 @@
         </div>
         
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
+        <button type="button" id="btnPokDengAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'pokdeng' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnBlackMarketAddBots" class="btn-admin-small btn-add-bots <%= ((room.gameMode === 'blackmarket' || isPokerLobbyRoom) && room.isAdmin) ? '' : 'is-hidden' %>"><%= isPokerLobbyRoom ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ' %></button>
       </div>
     </div>
@@ -1497,6 +1513,15 @@
         readyText: 'พร้อมแล้ว แจกไพ่ได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คนก่อนเริ่ม',
         roundLabel: 'เวลาเลือกไพ่:'
+      },
+      pokdeng: {
+        minPlayers: 2,
+        maxPlayers: 10,
+        label: 'ป๊อกเด้ง',
+        startLabel: '🎴 เปิดโต๊ะ',
+        readyText: 'พร้อมแล้ว เปิดโต๊ะได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
+        roundLabel: 'เวลาคิดต่อตา:'
       }
     };
     const werewolfRoleVisuals = {
@@ -1667,6 +1692,9 @@
       if (compactMode === 'poker4' || compactMode === 'สี่ใบเก' || compactMode === '4ใบเก' || compactMode === 'fourcard') {
         return 'poker4';
       }
+      if (compactMode === 'pokdeng' || compactMode === 'ป๊อกเด้ง' || compactMode === 'ป็อกเด้ง') {
+        return 'pokdeng';
+      }
       return 'insider';
     }
 
@@ -1677,6 +1705,9 @@
       }
       if (compact === 'สี่ใบเก' || compact === '4ใบเก' || compact === 'poker4' || compact === 'fourcard') {
         return 'poker4';
+      }
+      if (compact === 'ป๊อกเด้ง' || compact === 'pokdeng') {
+        return 'pokdeng';
       }
       return null;
     }
@@ -1723,6 +1754,9 @@
       if (normalizedMode === 'poker4') {
         return { background: 'linear-gradient(135deg, #991b1b, #1c1917)', color: '#fecaca' };
       }
+      if (normalizedMode === 'pokdeng') {
+        return { background: '#5c1419', color: '#fde68a' };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -1766,6 +1800,9 @@
       }
       if (normalizedMode === 'poker4') {
         return { kicker: '♦ ห้องสี่ใบเก', pills: [] };
+      }
+      if (normalizedMode === 'pokdeng') {
+        return { kicker: '🎴 โต๊ะป๊อกเด้ง', pills: [] };
       }
 
       return {
@@ -1849,6 +1886,8 @@
       setElementHidden('#btnCoupHowTo', resolvedMode !== 'coup');
       setElementHidden('#btnLiarHowTo', resolvedMode !== 'liar');
       setElementHidden('#btnPokerHowTo', resolvedMode !== 'poker5' && resolvedMode !== 'poker4');
+      setElementHidden('#btnPokDengHowTo', resolvedMode !== 'pokdeng');
+      setElementHidden('#btnPokDengAddBots', !(isAdmin && resolvedMode === 'pokdeng'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
       fillPokerRankPanel(resolvedMode);
@@ -1891,6 +1930,15 @@
             isFour
               ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง คนที่ยังไม่หมอบได้ใบที่ 3 หงายให้ดู แล้วเปิดเทียบเลย'
               : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย',
+            '</p>'
+          ].join('');
+        } else if (resolvedMode === 'pokdeng') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(179,38,46,0.35); color:#fde68a;">🎴 ป๊อกเด้ง · 2–10 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ลงเดิมพัน แจก 2 ใบ ได้ 8/9 = ป๊อก เปิดเลย · ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ',
+            ' · <strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> (' + (settings && settings.pokdengRotateDealer ? 'หมุนเจ้ามือทุกตา' : 'หัวห้องเป็นเจ้ามือ') + ')',
             '</p>'
           ].join('');
         } else if (resolvedMode === 'blackmarket') {
@@ -2789,6 +2837,35 @@
 
     $('#btnLiarHowTo').on('click', function() {
       showLiarLobbyGuide();
+    });
+
+    $('#btnPokDengHowTo').on('click', function() {
+      Swal.fire({
+        title: '🎴 ป๊อกเด้ง เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p><strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> · ทุกคนเริ่ม 1,000 · หมดตัวขอชิปใหม่ได้ 1 ครั้ง</p>' +
+          '<p>1. ขาไพ่ลงเดิมพัน 10–500 (เจ้ามือไม่ต้องลง)</p>' +
+          '<p>2. แจกคนละ 2 ใบ · แต้ม = หลักหน่วยของผลรวม (A = 1, 10/J/Q/K = 0)</p>' +
+          '<p>3. ได้ 8/9 = <strong>ป๊อก</strong> เปิดเลย · เจ้ามือป๊อก = วัดทุกคนทันที</p>' +
+          '<p>4. ที่เหลือจั่วเพิ่มได้ 1 ใบ แล้วเจ้ามือจั่ว/อยู่ แล้ววัดทุกขาพร้อมกัน</p>' +
+          '<p>อันดับ: ป๊อก &gt; ตอง (5 เด้ง) &gt; เรียง (3 เด้ง) &gt; เซียน (3 เด้ง) &gt; แต้ม · ดอกเดียวกัน/คู่ = 2 เด้ง · 3 ใบดอกเดียว = 3 เด้ง</p>' +
+          '<p>จบโต๊ะแล้วชิปเกินทุน = ชนะ (นับเจ้ามือด้วย)</p></div>',
+        background: '#1f1214',
+        color: '#fff',
+        confirmButtonColor: '#b3262e',
+        confirmButtonText: 'เข้าใจแล้ว'
+      });
+    });
+
+    $(document).on('click', '#btnPokDengAddBots', function() {
+      const btn = $(this);
+      if (btn.data('loading')) return;
+      btn.data('loading', true).text('🤖 กำลังเพิ่มบอท...');
+      socket.emit('pokdeng_addBots', { roomId: roomId, count: 1 }, function(res) {
+        btn.data('loading', false).text('🤖 เพิ่มบอท');
+        if (res && res.success) return;
+        Swal.fire({ icon: 'error', title: 'เพิ่มบอทไม่สำเร็จ', text: (res && res.error) || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+      });
     });
 
     $(document).on('click', '#btnPokerHowTo', function(event) {

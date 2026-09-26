@@ -5,6 +5,7 @@ const spyfallEngine = require('./spyfallEngine');
 const coupEngine = require('./coupEngine');
 const liarEngine = require('./liarEngine');
 const { poker5, poker4 } = require('./pokerEngine');
+const pokdengEngine = require('./pokdengEngine');
 
 const ENGINES = {
     insider: insiderEngine,
@@ -14,7 +15,8 @@ const ENGINES = {
     coup: coupEngine,
     liar: liarEngine,
     poker5,
-    poker4
+    poker4,
+    pokdeng: pokdengEngine
 };
 
 function isPokerMode(gameMode) {
@@ -56,7 +58,11 @@ function normalizeGameMode(gameMode) {
         ไพ่5ใบ: 'poker5',
         สี่ใบเก: 'poker4',
         '4ใบเก': 'poker4',
-        fourcard: 'poker4'
+        fourcard: 'poker4',
+        pokdeng: 'pokdeng',
+        pokdang: 'pokdeng',
+        ป๊อกเด้ง: 'pokdeng',
+        ป็อกเด้ง: 'pokdeng'
     };
 
     return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';

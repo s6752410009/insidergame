@@ -44,6 +44,9 @@ const DEFAULT_SETTINGS = {
         },
         poker4: {
             defaultMaxPlayers: 4
+        },
+        pokdeng: {
+            defaultMaxPlayers: 6
         }
     },
     insider: {
