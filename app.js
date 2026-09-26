@@ -87,6 +87,7 @@ const blackMarketPhaseTimeouts = new Map();
 
 // เก็บ timeout สำหรับ phase อัตโนมัติของ Spyfall
 const spyfallPhaseTimeouts = new Map();
+const undercoverPhaseTimeouts = new Map();
 const coupPhaseTimeouts = new Map();
 const liarPhaseTimeouts = new Map();
 const pokerPhaseTimeouts = new Map();
@@ -1318,6 +1319,7 @@ function clearAllRoomTimers(roomId) {
     clearBlackMarketPhaseTimer(roomId);
     clearSpyfallPhaseTimer(roomId);
     clearSpyfallReturnTimer(roomId);
+    clearUndercoverPhaseTimer(roomId); clearUndercoverReturnTimer(roomId);
     clearCoupPhaseTimer(roomId);
     clearLiarPhaseTimer(roomId);
     clearPokerPhaseTimer(roomId);
@@ -1469,6 +1471,7 @@ const GAME_MODE_LOG_STYLES = {
     werewolf: { label: 'Werewolf', emoji: '🐺', badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
     blackmarket: { label: 'Black Market', emoji: '🎩', badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
     spyfall: { label: 'Spyfall', emoji: '🕵️', badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
+    undercover: { label: 'คำใครไม่เหมือน', emoji: '🫥', badgeBg: 'rgba(245,200,107,0.18)', badgeColor: '#fde68a' },
     coup: { label: 'Coup', emoji: '👑', badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' },
     liar: { label: 'ไพ่โกหก', emoji: '🃏', badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
     poker5: { label: 'ไพ่ 5 ใบ', emoji: '♠', badgeBg: 'rgba(22,101,52,0.25)', badgeColor: '#bbf7d0' },
@@ -1539,6 +1542,18 @@ function buildGameEndNotification(room) {
                 spyName: winner.spyName,
                 playerCount
             }
+        };
+    }
+
+    if (mode === 'undercover') {
+        const winner = gameState.winner || {};
+        const words = gameState.pair ? `${gameState.pair.civilian} / ${gameState.pair.undercover}` : '-';
+        return {
+            chatMessage: `เกมจบ! ${winner.name || 'จบเกม'} — คำพลเมือง “${gameState.pair?.civilian || '-'}” · คำสายแฝง “${gameState.pair?.undercover || '-'}”`,
+            chatColor: winner.team === 'civilians' ? '#38bdf8' : '#f5c86b',
+            logMessage: `🫥 คำใครไม่เหมือน จบ — ${winner.name || '-'} · ${words} · ${playerCount} คน`,
+            logType: winner.team === 'civilians' ? 'success' : 'warning',
+            meta: { team: winner.team || null, reason: winner.reason || null, words, playerCount, round: gameState.round || 0 }
         };
     }
 
@@ -2636,6 +2651,155 @@ function emitSpyfallRoomState(room) {
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
 }
 
+// ==================== UNDERCOVER ====================
+// คำใครไม่เหมือน — timer ของเฟส / ส่ง state รายคน / บันทึกสถิติครั้งเดียว / พากลับห้องรอหลังจบ
+
+const UNDERCOVER_RETURN_MS = Number(process.env.UNDERCOVER_RETURN_MS) || 25000;
+const undercoverReturnTimeouts = new Map();
+
+function clearUndercoverPhaseTimer(roomId, resetPhaseEndsAt = true) {
+    const timer = undercoverPhaseTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        undercoverPhaseTimeouts.delete(roomId);
+    }
+    if (!resetPhaseEndsAt) return;
+    const room = roomManager.getRoom(roomId);
+    if (room?.gameState && room.settings?.gameMode === 'undercover') room.gameState.phaseEndsAt = null;
+}
+
+function clearUndercoverReturnTimer(roomId) {
+    const timeoutId = undercoverReturnTimeouts.get(roomId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        undercoverReturnTimeouts.delete(roomId);
+    }
+}
+
+function returnUndercoverGameToLobby(roomId) {
+    clearUndercoverReturnTimer(roomId);
+    clearUndercoverPhaseTimer(roomId);
+    const room = roomManager.getRoom(roomId);
+    if (!room || room.settings?.gameMode !== 'undercover' || room.gameState?.phase !== 'finished') {
+        return false;
+    }
+    roomManager.resetRoomGame(roomId);
+    const refreshedRoom = roomManager.getRoom(roomId);
+    io.to(roomId).emit('redirectToLobby', { roomId });
+    if (refreshedRoom) {
+        io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(refreshedRoom));
+    }
+    io.emit('roomListUpdate', roomManager.getAllRooms());
+    return true;
+}
+
+function scheduleUndercoverReturnToLobby(room) {
+    if (!room?.roomId || undercoverReturnTimeouts.has(room.roomId)) return;
+    const roomId = room.roomId;
+    const endsAt = Date.now() + UNDERCOVER_RETURN_MS;
+    room.gameState.returnLobbyEndsAt = endsAt;
+    io.to(roomId).emit('returnToLobby', { countdown: Math.round(UNDERCOVER_RETURN_MS / 1000), roomId, endsAt });
+    undercoverReturnTimeouts.set(roomId, setTimeout(() => {
+        undercoverReturnTimeouts.delete(roomId);
+        returnUndercoverGameToLobby(roomId);
+    }, UNDERCOVER_RETURN_MS));
+}
+
+function syncUndercoverPhaseTimer(room) {
+    if (!room || room.settings.gameMode !== 'undercover') return;
+    const state = room.gameState;
+    if (!state || state.phase === 'finished' || state.phase === 'lobby' || !state.phaseEndsAt) {
+        clearUndercoverPhaseTimer(room.roomId, false);
+        return;
+    }
+    const existing = undercoverPhaseTimeouts.get(room.roomId);
+    if (existing && existing.endsAt === state.phaseEndsAt) return;
+
+    clearUndercoverPhaseTimer(room.roomId, false);
+    const delay = Math.max(250, state.phaseEndsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        undercoverPhaseTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'undercover') return;
+        try {
+            getGameEngine('undercover').autoResolvePhase(current);
+        } catch (error) {
+            console.error('[undercover] auto resolve failed:', error.message);
+        }
+        emitUndercoverRoomState(current);
+    }, delay);
+    undercoverPhaseTimeouts.set(room.roomId, { timeoutId, endsAt: state.phaseEndsAt });
+}
+
+function buildUndercoverStatePayload(room, playerId) {
+    if (!room || room.settings.gameMode !== 'undercover') return null;
+    return getGameEngine('undercover').buildClientState(room, playerId);
+}
+
+function emitUndercoverState(room, targetSocketId = null, playerId = null) {
+    if (!room || room.settings.gameMode !== 'undercover') return;
+    syncUndercoverPhaseTimer(room);
+    if (targetSocketId && playerId) {
+        io.to(targetSocketId).emit('undercoverState', buildUndercoverStatePayload(room, playerId));
+        return;
+    }
+    room.players.forEach(player => {
+        if (player.socketId) {
+            io.to(player.socketId).emit('undercoverState', buildUndercoverStatePayload(room, player.playerId));
+        }
+    });
+}
+
+function flushUndercoverHistoryToLogs(room) {
+    const history = room?.gameState?.history;
+    if (!Array.isArray(history) || !history.length) return;
+    const lastAt = Number(room.gameState.lastLoggedHistoryAt) || 0;
+    const fresh = history
+        .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
+        .sort((left, right) => new Date(left.at) - new Date(right.at));
+    fresh.forEach(item => {
+        addServerLog(
+            io, 'game', room.roomId,
+            `🕵️ ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
+            item.kind === 'winner' ? 'success' : 'info',
+            { gameMode: 'undercover', meta: { kind: item.kind || null, event: 'undercover_history' } }
+        );
+    });
+    if (fresh.length) {
+        room.gameState.lastLoggedHistoryAt = new Date(fresh[fresh.length - 1].at).getTime();
+    }
+}
+
+function finalizeUndercoverGameIfNeeded(room) {
+    const state = room?.gameState;
+    if (!state || room.settings?.gameMode !== 'undercover') return;
+    if (state.phase !== 'finished' || !state.winner || state.statsRecordedAt) return;
+
+    state.statsRecordedAt = new Date().toISOString();
+    try {
+        statsManager.recordGameEnd(room.roomId, {
+            mode: 'undercover',
+            winner: state.winner,
+            players: getGameEngine('undercover').getScoringPlayers(room),
+            pair: state.pair,
+            roomName: room.name
+        });
+    } catch (error) {
+        console.error('[undercover] record stats failed:', error.message);
+    }
+    clearUndercoverPhaseTimer(room.roomId);
+    notifyGameEndAfterRecord(room);
+    scheduleUndercoverReturnToLobby(room);
+}
+
+function emitUndercoverRoomState(room) {
+    if (!room || room.settings.gameMode !== 'undercover') return;
+    flushUndercoverHistoryToLogs(room);
+    finalizeUndercoverGameIfNeeded(room);
+    emitUndercoverState(room);
+    io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
 // ==================== COUP ====================
 
 function clearCoupPhaseTimer(roomId, resetPhaseEndsAt = true) {
@@ -3032,6 +3196,8 @@ function broadcastGameStateForRoom(room) {
         emitBlackMarketState(room);
     } else if (room.settings.gameMode === 'spyfall') {
         emitSpyfallRoomState(room);
+    } else if (room.settings.gameMode === 'undercover') {
+        emitUndercoverRoomState(room);
     } else if (room.settings.gameMode === 'coup') {
         emitCoupRoomState(room);
     } else if (room.settings.gameMode === 'liar') {
@@ -3084,6 +3250,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 getGameEngine('spyfall').handlePlayerLeft(room, playerId);
             } catch (error) {
                 console.error('[spyfall] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'undercover') {
+            try {
+                getGameEngine('undercover').handlePlayerLeft(room, playerId);
+            } catch (error) {
+                console.error('[undercover] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'coup') {
@@ -3403,6 +3576,17 @@ function recoverGamePhaseTimers() {
             syncSpyfallPhaseTimer(room);
         }
 
+        if (room.settings.gameMode === 'undercover') {
+            if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
+                getGameEngine('undercover').autoResolvePhase(room);
+            }
+            // resolve อาจจบเกม — emit จะ finalize (สถิติ/กลับห้อง) และตั้ง timer ใหม่ให้เอง
+            emitUndercoverRoomState(room);
+            // จบไปแล้วก่อนรีสตาร์ต — ตั้งนับถอยหลังกลับห้องรอใหม่ ไม่งั้นห้องค้างหน้าผล
+            if (room.gameState.phase === 'finished') scheduleUndercoverReturnToLobby(room);
+            return;
+        }
+
         if (room.settings.gameMode === 'coup') {
             if (room.gameState.phaseEndsAt && room.gameState.phaseEndsAt <= Date.now()) {
                 getGameEngine('coup').autoResolvePhase(room);
@@ -3478,6 +3662,10 @@ function runRoomCleanupSweep() {
             spyfallEngine.autoResolvePhase(room);
             emitSpyfallRoomState(room);
         }
+        if (room.settings.gameMode === 'undercover' && roomManager.isRoomGameInProgress(room)) {
+            getGameEngine('undercover').autoResolvePhase(room);
+            emitUndercoverRoomState(room);
+        }
         if (room.settings.gameMode === 'coup' && roomManager.isRoomGameInProgress(room)) {
             getGameEngine('coup').autoResolvePhase(room);
             emitCoupRoomState(room);
@@ -3506,6 +3694,7 @@ function runRoomCleanupSweep() {
         clearBlackMarketPhaseTimer(candidate.roomId);
         clearSpyfallPhaseTimer(candidate.roomId);
         clearSpyfallReturnTimer(candidate.roomId);
+        clearUndercoverPhaseTimer(candidate.roomId); clearUndercoverReturnTimer(candidate.roomId);
         clearFinishedReturnTimer(candidate.roomId);
         if (roomCountdowns.has(candidate.roomId)) {
             clearInterval(roomCountdowns.get(candidate.roomId));
@@ -4416,6 +4605,25 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'undercover') {
+        return res.render('undercoverBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            undercoverState: buildUndercoverStatePayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
     res.render('board.ejs', {
         player: gameStatePlayer,
         playerInfo: playerInRoom,
@@ -5058,6 +5266,8 @@ io.sockets.on('connection', function(socket) {
             emitBlackMarketState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'spyfall') {
             emitSpyfallState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'undercover') {
+            emitUndercoverState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'coup') {
             emitCoupState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'liar') {
@@ -5086,6 +5296,7 @@ io.sockets.on('connection', function(socket) {
             clearBlackMarketPhaseTimer(roomId);
             clearSpyfallPhaseTimer(roomId);
             clearSpyfallReturnTimer(roomId);
+            clearUndercoverPhaseTimer(roomId); clearUndercoverReturnTimer(roomId);
             clearCoupPhaseTimer(roomId);
             clearLiarPhaseTimer(roomId);
             clearPokerPhaseTimer(roomId);
@@ -5126,6 +5337,8 @@ io.sockets.on('connection', function(socket) {
                 emitBlackMarketState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'spyfall') {
                 emitSpyfallRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'undercover') {
+                emitUndercoverRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'coup') {
                 emitCoupRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'liar') {
@@ -6482,6 +6695,8 @@ io.sockets.on('connection', function(socket) {
                     emitBlackMarketState(room, socket.id, playerId);
                 } else if (room.settings.gameMode === 'spyfall') {
                     emitSpyfallState(room, socket.id, playerId);
+                } else if (room.settings.gameMode === 'undercover') {
+                    emitUndercoverState(room, socket.id, playerId);
                 } else {
                     // Insider: resync ให้ตรงเฟสจริง (ไม่ replay role/startGame ผิดเฟส)
                     const gs = room.gameState;
@@ -7545,6 +7760,104 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // ==================== UNDERCOVER ====================
+    // คำใครไม่เหมือน — ทุกคำสั่งต้องแนบ step (engine ปัดคำสั่งค้างจากจอเก่า)
+
+    safeOn(socket, 'undercover_requestState', function(data) {
+        const room = getSocketRoom(socket, 'undercover');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        syncUndercoverPhaseTimer(room);
+        emitUndercoverState(room, socket.id, playerId);
+    });
+
+    function handleUndercoverCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'undercover');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบห้องคำใครไม่เหมือน' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+            return;
+        }
+        emitUndercoverRoomState(room);
+        done({ success: true });
+    }
+
+    function undercoverContext(data, extra = {}) {
+        return { step: data?.step, ...extra };
+    }
+
+    safeOn(socket, 'undercover_ready', function(data, callback) {
+        handleUndercoverCommand(socket, callback, (room, playerId) =>
+            getGameEngine('undercover').submitReady(room, playerId, undercoverContext(data)));
+    });
+
+    safeOn(socket, 'undercover_clueDone', function(data, callback) {
+        handleUndercoverCommand(socket, callback, (room, playerId) =>
+            getGameEngine('undercover').submitClueDone(room, playerId, undercoverContext(data, { text: data?.text })));
+    });
+
+    safeOn(socket, 'undercover_skipSpeaker', function(data, callback) {
+        handleUndercoverCommand(socket, callback, (room, playerId) =>
+            getGameEngine('undercover').skipSpeaker(room, playerId, undercoverContext(data)));
+    });
+
+    safeOn(socket, 'undercover_vote', function(data, callback) {
+        handleUndercoverCommand(socket, callback, (room, playerId) =>
+            getGameEngine('undercover').submitVote(room, playerId, data?.targetPlayerId, undercoverContext(data)));
+    });
+
+    safeOn(socket, 'undercover_mrWhiteGuess', function(data, callback) {
+        handleUndercoverCommand(socket, callback, (room, playerId) =>
+            getGameEngine('undercover').submitMrWhiteGuess(room, playerId, data?.guess, undercoverContext(data)));
+    });
+
+    safeOn(socket, 'undercover_continue', function(data, callback) {
+        handleUndercoverCommand(socket, callback, (room, playerId) =>
+            getGameEngine('undercover').continueAfterResult(room, playerId, undercoverContext(data)));
+    });
+
+    safeOn(socket, 'undercover_backToLobby', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'undercover');
+        if (!room || room.gameState?.phase !== 'finished') {
+            done({ success: false, error: 'เกมยังไม่จบ' });
+            return;
+        }
+        if (room.gameStarting) {
+            done({ success: false, error: 'กำลังเริ่มเกมใหม่' });
+            return;
+        }
+        done({ success: returnUndercoverGameToLobby(room.roomId) });
+    });
+
+    safeOn(socket, 'undercover_admin_reveal', function() {
+        const room = getSocketRoom(socket, 'undercover');
+        if (!room) return;
+        // ดูคำทั้งวงได้เฉพาะแอดมินเว็บ — หัวห้องเป็นผู้เล่นด้วย ปล่อยให้ดูคือโกง
+        if (!isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('undercover_admin_reveal_denied');
+            return;
+        }
+        const requester = playerManager.getPlayer(socket.playerId);
+        addServerLog(
+            io, 'admin', room.roomId,
+            `${requester?.playerName || socket.playerId} ใช้ /m ดูคำคำใครไม่เหมือนทั้งวง`,
+            'warning',
+            { gameMode: 'undercover', meta: { event: 'undercover_admin_reveal', playerId: socket.playerId } }
+        );
+        const reveal = getGameEngine('undercover').buildAdminReveal(room);
+        reveal.players = reveal.players.map(p => ({ ...p, name: buildDisplayPlayerName(p.playerId, p.name) }));
+        io.to(socket.id).emit('undercover_admin_reveal', reveal);
+    });
+
     // Start game from lobby (redirect all players to game board)
     socket.on('startGameFromLobby', function(data, callback) {
         try {
@@ -7746,6 +8059,28 @@ io.sockets.on('connection', function(socket) {
                     sendChatMessageToRoom(io, roomId, 'System', 'เกมสายลับเริ่มแล้ว — จำสถานที่หรือเล่นให้เนียน', '#1abc9c');
                     logGameStartFromRoom(currentRoom);
                     emitSpyfallRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'undercover') {
+                    clearUndercoverPhaseTimer(roomId);
+                    clearUndercoverReturnTimer(roomId);
+                    getGameEngine('undercover').startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) {
+                            io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                        }
+                    });
+
+                    const ucCounts = currentRoom.gameState.roleCounts || {};
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        `คำใครไม่เหมือนเริ่มแล้ว — สายแฝง ${ucCounts.undercover || 1} คน${ucCounts.mrWhite ? ' + Mr. White' : ''} · แตะการ์ดดูคำของตัวเอง`, '#f5c86b');
+                    logGameStartFromRoom(currentRoom);
+                    emitUndercoverRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

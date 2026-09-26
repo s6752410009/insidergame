@@ -233,6 +233,17 @@
     border: 1px solid rgba(196, 141, 255, 0.35);
   }
 
+  .guide-card.mode-undercover {
+    border-color: rgba(245, 200, 107, 0.34);
+    background: linear-gradient(180deg, #1a2332 0%, #141b27 60%, #10151e 100%);
+  }
+
+  .guide-card.mode-undercover .guide-mode-badge {
+    background: rgba(245, 200, 107, 0.14);
+    color: #fde68a;
+    border: 1px solid rgba(245, 200, 107, 0.38);
+  }
+
   .guide-card.mode-liar {
     border-color: rgba(248, 113, 113, 0.35);
     background:
@@ -896,6 +907,7 @@
     { id: 'werewolf', ico: '🐺', label: 'Werewolf' },
     { id: 'blackmarket', ico: '🎩', label: 'Black Market' },
     { id: 'spyfall', ico: '🕶️', label: 'Spyfall' },
+    { id: 'undercover', ico: '🫥', label: 'คำใครไม่เหมือน' },
     { id: 'coup', ico: '👑', label: 'Coup' },
     { id: 'liar', ico: '🃏', label: 'ไพ่โกหก' },
     { id: 'poker5', ico: '♠', label: 'ไพ่ 5 ใบ' },
@@ -1025,6 +1037,36 @@
         <div class="guide-list-item"><strong>เป้าหมาย</strong> พลเมืองโหวตจับสายลับ · สายลับหลบรอด</div>
         <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 4-8 คนที่อยากเล่นรอบเดียวจบใน 10-15 นาที</div>
         <div class="guide-list-item"><strong>จุดเด่น</strong> ไม่ต้องมีคนคุมเกม ทุกคนเล่นพร้อมกัน เน้นถาม–ตอบและสังเกตคน</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-undercover" id="undercover">
+      <div class="guide-mode-badge">🫥 คำใครไม่เหมือน</div>
+      <h2>ใบ้คนละคำ หาคนที่คำไม่เหมือน</h2>
+      <p>ทุกคนได้คำเดียวกัน ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ แต่ไม่ใช่ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน ต้องฟังคำใบ้ของคนอื่นแล้วเดาเอง</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> พลเมืองโหวตฝ่ายแฝงออกให้หมด · ฝ่ายแฝงรอดถึง 2 คนสุดท้าย</div>
+        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 4-10 คนที่นั่งด้วยกัน รอบละ 3-5 นาที (7 คนขึ้นไปมีสายแฝง 2 คน)</div>
+        <div class="guide-list-item"><strong>หนึ่งรอบ</strong> แตะการ์ดดูคำ → ใบ้คนละ 1 คำตามคิว (พูดปากเปล่า ห้ามพูดคำตรง ๆ) → โหวตออก 1 คน → เปิดบทคนที่ออก</div>
+        <div class="guide-list-item"><strong>เสมอ</strong> โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง ยังเสมออีก = รอบนั้นไม่มีใครออก</div>
+        <div class="guide-list-item"><strong>Mr. White</strong> (หัวห้องเปิดได้ ตอน 6 คนขึ้นไป) ไม่ได้คำเลย ต้องเนียนตามวง ถ้าถูกโหวตออกได้ทายคำพลเมือง ทายถูก = ชนะทันที</div>
+      </div>
+      <div class="guide-coup-roles">
+        <article class="guide-coup-role">
+          <img src="/assets/games/undercover/civilian.svg" alt="พลเมือง" width="160" height="224" loading="lazy">
+          <strong>🙂 พลเมือง</strong>
+          <span>ได้คำเดียวกับคนส่วนใหญ่</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/undercover/undercover.svg" alt="สายแฝง" width="160" height="224" loading="lazy">
+          <strong>🕶️ สายแฝง</strong>
+          <span>ได้คำคล้ายแต่ไม่ใช่</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/undercover/mrwhite.svg" alt="Mr. White" width="160" height="224" loading="lazy">
+          <strong>❔ Mr. White</strong>
+          <span>ไม่มีคำ ทายถูกชนะ</span>
+        </article>
       </div>
     </article>
 

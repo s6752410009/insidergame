@@ -36,6 +36,9 @@ const DEFAULT_SETTINGS = {
             defaultRoundTimeMinutes: 8,
             defaultVoteTimeMinutes: 1.5
         },
+        undercover: {
+            defaultMaxPlayers: 8
+        },
         liar: {
             defaultMaxPlayers: 6
         },

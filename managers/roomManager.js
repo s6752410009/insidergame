@@ -254,6 +254,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'werewolf_finished',
     'blackmarket_finished',
     'spyfall_finished',
+    'undercover_finished',
     'coup_finished',
     'liar_finished',
     'poker_finished',
@@ -267,6 +268,8 @@ const ROOM_NAME_MODE_HINTS = {
     'คืนล่าหมาป่า': 'werewolf',
     'วงโค่นอำนาจ': 'coup',
     'วงสายลับสถานที่': 'spyfall',
+    'คำใครไม่เหมือน': 'undercover',
+    'วงคำใครไม่เหมือน': 'undercover',
     'วงโกหก': 'liar',
     'ไพ่โกหก': 'liar',
     'ห้าใบเลือกสาม': 'poker5',
@@ -614,6 +617,7 @@ function createRoom(roomData, creatorPlayerId) {
             traitorOptional: normalizedRoomData.traitorOptional !== undefined ? normalizedRoomData.traitorOptional : true,
             dualTraitorMode: normalizedRoomData.dualTraitorMode || false,
             spyfallVoteSeconds: spyfallVoteMinutes != null ? Math.round(spyfallVoteMinutes * 60) : 90,
+            undercoverMrWhite: gameMode === 'undercover' ? normalizedRoomData.undercoverMrWhite === true : false,
             werewolfRoles,
             wolfCount,
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
@@ -998,6 +1002,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
         } else {
             room.settings.dualTraitorMode = updates.dualTraitorMode;
         }
+    }
+
+    if (updates.undercoverMrWhite !== undefined && room.settings.gameMode === 'undercover') {
+        room.settings.undercoverMrWhite = updates.undercoverMrWhite === true;
     }
 
     if (updates.pokerTableType !== undefined) {

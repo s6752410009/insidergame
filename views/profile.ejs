@@ -15,6 +15,7 @@
         { id: 'insider', icon: '🎯', label: 'Insider' },
         { id: 'blackmarket', icon: '🎩', label: 'Black Market' },
         { id: 'spyfall', icon: '🕵️', label: 'Spyfall' },
+        { id: 'undercover', icon: '🫥', label: 'คำใครไม่เหมือน' },
         { id: 'coup', icon: '👑', label: 'Coup' },
         { id: 'liar', icon: '🃏', label: 'ไพ่โกหก' },
         { id: 'poker5', icon: '♠\uFE0E', label: 'ไพ่ 5 ใบ' },
@@ -670,6 +671,9 @@
                                         <span>📍 <%= game.location || 'ไม่ทราบสถานที่' %></span>
                                         <span>สายลับ <%= game.spyName || '—' %></span>
                                         <span><%= game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด' %></span>
+                                    <% } else if (game.mode === 'undercover') { %>
+                                        <% if (game.civilianWord) { %><span>คำ “<%= game.civilianWord %>” / “<%= game.undercoverWord || '-' %>”</span><% } %>
+                                        <% if (game.resultText) { %><span><%= game.resultText %></span><% } %>
                                     <% } else if (!game.mode || game.mode === 'insider') { %>
                                         <% if (game.word) { %><span>คำ “<%= game.word %>”</span><% } %>
                                         <% if (game.traitor) { %><span>จอมบงการ <%= game.traitor %></span><% } %>

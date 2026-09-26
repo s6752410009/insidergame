@@ -746,6 +746,21 @@
     border-color: rgba(94, 234, 212, 0.55);
   }
 
+  #btnUndercoverHowTo {
+    padding: 10px 14px; min-height: 44px; border-radius: 14px;
+    border: 1px solid rgba(245, 200, 107, 0.4); background: rgba(245, 200, 107, 0.12); color: #fde68a;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.95em;
+    cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+  }
+  #btnUndercoverHowTo:hover { background: rgba(245, 200, 107, 0.22); }
+  .uc-mw-toggle {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; padding: 0 14px;
+    border-radius: 12px; border: 1px solid rgba(245, 200, 107, 0.35); background: #1a2332; color: #f1f0fa;
+    font-weight: 700; cursor: pointer;
+  }
+  .uc-mw-toggle[aria-pressed="true"] { background: #f5c86b; color: #1a2332; border-color: transparent; }
+  .uc-mw-toggle:disabled { cursor: default; opacity: 0.8; }
+
   #btnCoupHowTo {
     padding: 10px 14px;
     border-radius: 14px;
@@ -1370,6 +1385,7 @@
         </span>
         <button type="button" id="btnBlackMarketHowTo" class="<%= room.gameMode === 'blackmarket' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnSpyfallHowTo" class="<%= room.gameMode === 'spyfall' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnUndercoverHowTo" class="<%= room.gameMode === 'undercover' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnCoupHowTo" class="<%= room.gameMode === 'coup' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnLiarHowTo" class="<%= room.gameMode === 'liar' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
@@ -1461,6 +1477,15 @@
         readyText: 'พร้อมแล้ว เริ่มเกมสายลับได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเริ่ม',
         roundLabel: 'เวลาช่วงคุย:'
+      },
+      undercover: {
+        minPlayers: 4,
+        maxPlayers: 10,
+        label: 'คำใครไม่เหมือน',
+        startLabel: '🫥 แจกคำ',
+        readyText: 'พร้อมแล้ว แจกคำได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเริ่ม',
+        roundLabel: 'เวลาต่อช่วง:'
       },
       coup: {
         minPlayers: 2,
@@ -1655,6 +1680,9 @@
       if (compactMode === 'spyfall' || compactMode === 'spy' || compactMode === 'secretplace') {
         return 'spyfall';
       }
+      if (compactMode === 'undercover' || compactMode === 'whoisundercover' || compactMode === 'คำใครไม่เหมือน') {
+        return 'undercover';
+      }
       if (compactMode === 'coup' || compactMode === 'coupgame') {
         return 'coup';
       }
@@ -1705,6 +1733,9 @@
           color: '#ccfbf1'
         };
       }
+      if (normalizedMode === 'undercover') {
+        return { background: '#1a2332', color: '#f5c86b' };
+      }
       if (normalizedMode === 'coup') {
         return {
           background: 'linear-gradient(135deg, #6d28d9, #3b0764)',
@@ -1748,6 +1779,9 @@
           kicker: '🕶️ ห้องเตรียมสายลับ',
           pills: []
         };
+      }
+      if (normalizedMode === 'undercover') {
+        return { kicker: '🫥 ห้องเตรียมคำใครไม่เหมือน', pills: [] };
       }
       if (normalizedMode === 'coup') {
         return {
@@ -1846,6 +1880,7 @@
 
       setElementHidden('#btnBlackMarketHowTo', resolvedMode !== 'blackmarket');
       setElementHidden('#btnSpyfallHowTo', resolvedMode !== 'spyfall');
+      setElementHidden('#btnUndercoverHowTo', resolvedMode !== 'undercover');
       setElementHidden('#btnCoupHowTo', resolvedMode !== 'coup');
       setElementHidden('#btnLiarHowTo', resolvedMode !== 'liar');
       setElementHidden('#btnPokerHowTo', resolvedMode !== 'poker5' && resolvedMode !== 'poker4');
@@ -1863,6 +1898,18 @@
             'ทุกคนรู้<strong>สถานที่</strong>ยกเว้นสายลับ 1 คน — ถาม–ตอบให้เนียนแล้วโหวตจับ',
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
             '</p>'
+          ].join('');
+        } else if (resolvedMode === 'undercover') {
+          const mrWhiteOn = !!(settings && settings.undercoverMrWhite);
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#fde68a;">🫥 คำใครไม่เหมือน · 4–10 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ทุกคนได้คำเดียวกัน ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหา · 7 คนขึ้นไปมีสายแฝง 2 คน · Mr. White (ไม่มีคำ) ใช้ตอน 6 คนขึ้นไป',
+            '</p>',
+            '<button type="button" class="uc-mw-toggle" id="ucMrWhiteToggle" aria-pressed="' + (mrWhiteOn ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>',
+            (mrWhiteOn ? '✓ ' : '') + 'Mr. White: ' + (mrWhiteOn ? 'เปิด' : 'ปิด'),
+            '</button>'
           ].join('');
         } else if (resolvedMode === 'coup') {
           lobbySpotlight.style.display = 'block';
@@ -1990,6 +2037,23 @@
         confirmButtonText: 'เข้าใจแล้ว',
         width: 'min(640px, 96vw)',
         customClass: { popup: 'pk-rank-popup' }
+      });
+    }
+
+    function showUndercoverLobbyGuide() {
+      Swal.fire({
+        title: '🫥 คำใครไม่เหมือน เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p><strong>ทุกคนได้คำเดียวกัน</strong> ยกเว้นสายแฝงที่ได้คำคล้าย ๆ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน</p>' +
+          '<p>1. แตะการ์ดดูคำ แล้วกดพร้อม</p>' +
+          '<p>2. ใบ้คนละ 1 คำตามคิว พูดปากเปล่า ห้ามพูดคำตรง ๆ</p>' +
+          '<p>3. โหวตคนที่คำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ</p>' +
+          '<p>4. เปิดบทคนที่ออก · Mr. White ถ้าถูกโหวตออกได้ทายคำพลเมือง ถูก = ชนะทันที</p>' +
+          '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อรอดถึง 2 คนสุดท้าย</p></div>',
+        background: '#151d2a',
+        color: '#fff',
+        confirmButtonColor: '#e2493b',
+        confirmButtonText: 'เข้าใจแล้ว เริ่มเลย'
       });
     }
 
@@ -2781,6 +2845,21 @@
 
     $('#btnSpyfallHowTo').on('click', function() {
       showSpyfallLobbyGuide();
+    });
+
+    $('#btnUndercoverHowTo').on('click', function() {
+      showUndercoverLobbyGuide();
+    });
+
+    $(document).on('click', '#ucMrWhiteToggle', function() {
+      if (!isAdmin) return;
+      const next = this.getAttribute('aria-pressed') !== 'true';
+      this.disabled = true;
+      socket.emit('updateRoom', { undercoverMrWhite: next }, function(res) {
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
     });
 
     $('#btnCoupHowTo').on('click', function() {

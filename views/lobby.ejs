@@ -167,6 +167,7 @@ $(function() {
         { id: 'insider', label: 'Insider' },
         { id: 'werewolf', label: 'Werewolf' },
         { id: 'spyfall', label: 'Spyfall' },
+        { id: 'undercover', label: 'คำใครไม่เหมือน' },
         { id: 'coup', label: 'Coup' },
         { id: 'liar', label: 'ไพ่โกหก' },
         { id: 'poker5', label: 'ไพ่ 5 ใบ' },
@@ -621,13 +622,14 @@ $(function() {
                     const isWerewolf = mode === 'werewolf';
                     const isBlackMarket = mode === 'blackmarket';
                     const isSpyfall = mode === 'spyfall';
+                    const isUndercover = mode === 'undercover';
                     const isCoup = mode === 'coup';
                     const isLiar = mode === 'liar';
                     const isPoker5 = mode === 'poker5';
                     const isPoker4 = mode === 'poker4';
                     const modeLabel = isWerewolf ? '🐺 Werewolf'
                         : (isBlackMarket ? '🎩 Black Market'
-                            : (isSpyfall ? '🕵️ Spyfall'
+                            : (isSpyfall ? '🕵️ Spyfall' : isUndercover ? '🫥 คำใครไม่เหมือน'
                                 : (isCoup ? '👑 Coup'
                                     : (isLiar ? '🃏 ไพ่โกหก'
                                         : (isPoker5 ? '♠ ไพ่ 5 ใบ'
@@ -639,7 +641,7 @@ $(function() {
                             ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
                             : (isSpyfall
                                 ? 'สถานที่: ' + escapeHtml(game.location || 'ไม่ทราบ')
-                                : (isCoup || isLiar
+                                : (isCoup || isLiar || isUndercover
                                     ? escapeHtml(game.resultText || ((game.winnerName || 'คนอื่น') + ' รอดเป็นคนสุดท้าย'))
                                     : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'))));
                     const detailSecondary = isWerewolf
@@ -648,7 +650,8 @@ $(function() {
                             ? `👑 ${Number(game.influence || 0)} • 💵 ${Number(game.cash || 0)} • 🔥 ${Number(game.heat || 0)}`
                             : (isSpyfall
                                 ? `สายลับ: ${escapeHtml(game.spyName || 'ไม่ทราบ')} • ${game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด'}`
-                                : (isCoup || isLiar ? '' : escapeHtml(game.word || 'ไม่ทราบคำ'))));
+                                : (isUndercover ? escapeHtml((game.civilianWord || '-') + ' / ' + (game.undercoverWord || '-'))
+                                    : (isCoup || isLiar ? '' : escapeHtml(game.word || 'ไม่ทราบคำ')))));
                     const gameDate = game.date
                         ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : '-';
@@ -735,6 +738,10 @@ $(function() {
                         <div class="profile-role-row">
                             <span>🕵️ Spyfall</span>
                             <span>${stats.modeStats?.spyfall?.games || 0} เกม · ชนะ ${stats.modeStats?.spyfall?.wins || 0}</span>
+                        </div>
+                        <div class="profile-role-row">
+                            <span>🫥 คำใครไม่เหมือน</span>
+                            <span>${stats.modeStats?.undercover?.games || 0} เกม · ชนะ ${stats.modeStats?.undercover?.wins || 0}</span>
                         </div>
                         <div class="profile-role-row">
                             <span>👑 Coup</span>
