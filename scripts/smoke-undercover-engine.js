@@ -399,7 +399,15 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
     const sp = speaker(room);
     room.players.find(p => p.playerId === sp).socketId = null;
     engine.handlePlayerLeft(room, sp);
-    assert(speaker(room) !== sp && room.gameState.phase === 'clue', 'คนพูดออก = ข้ามไปคนถัดไป');
+    const leaver = (room.gameState.players || []).find(p => p.playerId === sp);
+    const undercoverLeft = (room.gameState.players || []).filter(p => p.playerId !== sp && p.alive !== false && !p.left && p.role !== 'civilian').length;
+    if (leaver && leaver.role !== 'civilian' && undercoverLeft === 0) {
+        // คนที่ออกเป็นฝ่ายแฝงคนสุดท้าย — ถูกกติกาแล้วที่เกมจบให้พลเมืองชนะทันที (บทสุ่ม เคสนี้โผล่เป็นบางรอบ)
+        assert(room.gameState.phase === 'finished' && room.gameState.winner && room.gameState.winner.team === 'civilians',
+            'ฝ่ายแฝงคนสุดท้ายออก = พลเมืองชนะ');
+    } else {
+        assert(speaker(room) !== sp && room.gameState.phase === 'clue', 'คนพูดออก = ข้ามไปคนถัดไป');
+    }
     const uc = byRole(room, 'undercover')[0];
     if (uc.alive) {
         engine.handlePlayerLeft(room, uc.playerId);
