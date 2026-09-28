@@ -22,7 +22,17 @@ function assert(cond, msg) {
     passed += 1;
 }
 
-function bootServer() {
+// server ค้างจากรอบก่อนที่ยังจองพอร์ตอยู่ = เทสต์จะไปคุยกับ server เก่า (คนละคุกกี้ → 403 มั่วๆ) — ให้พังชัดๆ แทน
+function assertPortFree() {
+    return new Promise((resolve, reject) => {
+        const sock = require('net').connect(PORT, '127.0.0.1');
+        sock.once('connect', () => { sock.destroy(); reject(new Error(`port ${PORT} ถูกใช้อยู่ — ปิด server ค้างก่อน (lsof -ti:${PORT} | xargs kill)`)); });
+        sock.once('error', () => resolve());
+    });
+}
+
+async function bootServer() {
+    await assertPortFree();
     const child = spawn(process.execPath, [path.join(__dirname, '..', 'app.js')], {
         cwd: path.join(__dirname, '..'),
         env: { ...process.env, PORT: String(PORT), MONGO_URL: '' },
@@ -95,6 +105,8 @@ async function layoutProblems(page) {
             if (m.type() !== 'error') return;
             const text = m.text();
             if (/fonts\.g|Failed to load resource.*(fonts|gstatic)|sweetalert|jsdelivr|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED/i.test(text)) return;
+            // เทสจำลองเน็ตหลุด/รีสตาร์ตเซิร์ฟเวอร์เอง — เบราว์เซอร์จะบ่นว่าต่อ socket/โหลดไม่ได้ช่วงนั้น ไม่ใช่บัคของหน้า
+            if (/WebSocket connection to .* failed|ERR_CONNECTION_REFUSED|ERR_CONNECTION_RESET|net::ERR_EMPTY_RESPONSE/i.test(text)) return;
             errors.push('console: ' + text);
         });
 
