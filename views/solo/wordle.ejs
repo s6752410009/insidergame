@@ -1,0 +1,438 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* หน้าเกมต้องการความสูงเต็มจอ (กระดาน + คีย์บอร์ด) — ซ่อนแถบโลโก้ใหญ่ของเว็บเฉพาะหน้านี้ */
+    body:has(.wd) .container-fluid > header { display: none !important; }
+    body:has(.wd) .container-fluid { padding-top: 0 !important; }
+
+    .wd, .wd-sheet-bg {
+        --wd-surface: oklch(0.24 0.035 262);
+        --wd-surface-2: oklch(0.29 0.04 262);
+        --wd-sunken: oklch(0.19 0.03 262);
+        --wd-line: oklch(0.46 0.04 262 / 0.6);
+        --wd-ink: oklch(0.96 0.01 262);
+        --wd-soft: oklch(0.82 0.025 262);
+        --wd-muted: oklch(0.7 0.03 262);
+        --wd-correct: oklch(0.67 0.13 158);
+        --wd-correct-ink: oklch(0.99 0.01 158);
+        --wd-present: oklch(0.84 0.13 84);
+        --wd-present-ink: oklch(0.24 0.04 262);
+        --wd-absent: oklch(0.34 0.02 262);
+        --wd-absent-ink: oklch(0.8 0.02 262);
+        --wd-key: oklch(0.44 0.035 265);
+        --wd-key-ink: oklch(0.97 0.01 265);
+        --wd-gold: oklch(0.84 0.13 84);
+        --wd-accent: oklch(0.66 0.2 28);
+        --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+        --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --tile: clamp(48px, min(15vw, 7.2svh), 62px);
+        --key-h: clamp(40px, 5.7svh, 50px);
+    }
+    .wd {
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 6px 4px 0;
+        color: var(--wd-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .wd *, .wd *::before, .wd *::after { box-sizing: border-box; }
+    .wd [hidden], .wd-sheet [hidden] { display: none !important; }
+    .wd button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+
+    /* ---------- แถบบน ---------- */
+    .wd-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 4px;
+        min-height: 48px;
+    }
+    .wd-title { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+    .wd-title h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 1.3rem;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .wd-no {
+        flex: none;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--wd-surface-2);
+        color: var(--wd-gold);
+        font-family: var(--display);
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    .wd-icon {
+        flex: none;
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--wd-line);
+        background: var(--wd-surface);
+        color: var(--wd-soft);
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: background-color 0.18s ease-out, transform 0.08s ease-out;
+    }
+    .wd-icon:hover { background: var(--wd-surface-2); color: var(--wd-ink); }
+    .wd-icon:active { transform: scale(0.94); }
+    .wd-icon:focus-visible, .wd-key:focus-visible, .wd-tab:focus-visible { outline: 2px solid var(--wd-gold); outline-offset: 2px; }
+
+    /* ---------- กระดาน ---------- */
+    .wd-board-wrap { position: relative; display: grid; place-items: center; padding: 2px 0; }
+    .wd-board {
+        display: grid;
+        grid-template-rows: repeat(6, var(--tile));
+        gap: 6px;
+    }
+    .wd-row { display: grid; grid-template-columns: repeat(4, var(--tile)); gap: 6px; }
+    .wd-row.is-shake { animation: wd-shake 0.42s var(--ease-out); }
+    .wd-tile {
+        position: relative;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        border: 2px solid var(--wd-line);
+        background: var(--wd-sunken);
+        color: var(--wd-ink);
+        font-family: 'Bai Jamjuree', 'Chakra Petch', sans-serif;
+        font-size: calc(var(--tile) * 0.5);
+        font-weight: 600;
+        line-height: 1.5;
+        overflow: visible;
+    }
+    .wd-tile.is-filled { border-color: oklch(0.62 0.04 262); background: var(--wd-surface); }
+    .wd-tile.is-pop { animation: wd-pop 0.14s var(--ease-out); }
+    .wd-tile[data-state] { border-color: transparent; }
+    .wd-tile[data-state="correct"] { background: var(--wd-correct); color: var(--wd-correct-ink); }
+    .wd-tile[data-state="present"] { background: var(--wd-present); color: var(--wd-present-ink); }
+    .wd-tile[data-state="absent"] { background: var(--wd-absent); color: var(--wd-absent-ink); }
+    .wd-tile.is-flip { animation: wd-flip 0.5s ease-in-out both; }
+    .wd-tile.is-bounce { animation: wd-bounce 0.6s var(--ease-out) both; }
+    /* จุดเขียว = ตัวอักษรหลักถูกที่แล้ว แต่สระบน/ล่าง/วรรณยุกต์ยังไม่ตรง */
+    .wd-near {
+        position: absolute;
+        right: 5px;
+        top: 5px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--wd-correct);
+        box-shadow: 0 0 0 2px var(--wd-present);
+    }
+    .wd-row.is-current .wd-tile.is-next { border-color: oklch(0.72 0.05 262 / 0.9); }
+
+    /* ---------- ข้อความลอย ---------- */
+    .wd-toasts {
+        position: absolute;
+        inset: 8px 0 auto;
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        pointer-events: none;
+        z-index: 5;
+    }
+    .wd-toast {
+        max-width: 92%;
+        padding: 10px 16px;
+        border-radius: 12px;
+        background: var(--wd-ink);
+        color: var(--wd-sunken);
+        font-weight: 700;
+        font-size: 0.98rem;
+        line-height: 1.4;
+        text-align: center;
+        box-shadow: 0 8px 24px oklch(0.1 0.03 262 / 0.5);
+        animation: wd-toast-in 0.22s var(--ease-out) both;
+    }
+    .wd-toast.is-out { animation: wd-toast-out 0.25s ease-in both; }
+    .wd-toast.is-answer { background: var(--wd-gold); color: var(--wd-present-ink); font-family: var(--display); font-size: 1.1rem; }
+
+    /* ---------- คีย์บอร์ด ---------- */
+    .wd-kb { display: grid; gap: 6px; padding: 0 0 4px; touch-action: manipulation; }
+    .wd-kb-rows { display: grid; grid-template-rows: repeat(4, var(--key-h)); gap: 6px; }
+    .wd-kb-row { display: flex; justify-content: center; gap: 3px; }
+    .wd-key {
+        flex: 1 1 0;
+        max-width: 44px;
+        min-width: 0;
+        height: var(--key-h);
+        padding: 0;
+        border: 0;
+        border-radius: 8px;
+        background: var(--wd-key);
+        color: var(--wd-key-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        font-size: clamp(1.02rem, 4.6vw, 1.3rem);
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color 0.25s ease-out, transform 0.06s ease-out;
+    }
+    .wd-key:active { transform: scale(0.92); }
+    .wd-key.is-mark { font-family: 'Noto Sans Thai', 'Thonburi', 'Sukhumvit Set', 'Leelawadee UI', 'Tahoma', sans-serif; font-size: clamp(1.2rem, 5.6vw, 1.5rem); font-weight: 500; }
+    .wd-key[data-state="correct"] { background: var(--wd-correct); color: var(--wd-correct-ink); }
+    .wd-key[data-state="present"] { background: var(--wd-present); color: var(--wd-present-ink); }
+    .wd-key[data-state="absent"] { background: var(--wd-absent); color: oklch(0.62 0.02 262); }
+    .wd-key-spacer { flex: 0.5 1 0; max-width: 22px; }
+    .wd-actions { display: grid; grid-template-columns: 1.15fr 1fr 1.8fr; gap: 6px; }
+    .wd-action {
+        height: 48px;
+        border-radius: 12px;
+        border: 1px solid var(--wd-line);
+        background: var(--wd-surface-2);
+        color: var(--wd-ink);
+        font-size: 1rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color 0.18s ease-out, transform 0.06s ease-out;
+    }
+    .wd-action:active { transform: scale(0.96); }
+    .wd-action[aria-pressed="true"] { background: var(--wd-gold); color: var(--wd-present-ink); border-color: transparent; }
+    .wd-action.wd-enter { background: var(--wd-accent); border-color: transparent; color: #fff7f5; }
+    .wd-action.wd-enter:disabled { opacity: 0.5; cursor: default; }
+    .wd-action .wd-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wd-correct); display: none; }
+    .wd-action.has-dot .wd-dot { display: inline-block; }
+
+    /* ---------- จบเกม (แทนคีย์บอร์ด) ---------- */
+    .wd-done {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 16px;
+        background: var(--wd-surface);
+        border: 1px solid var(--wd-line);
+        text-align: center;
+    }
+    .wd-done-title { margin: 0; font-family: var(--display); font-size: 1.15rem; font-weight: 700; }
+    .wd-done-sub { margin: 0; color: var(--wd-muted); font-size: 0.92rem; }
+    .wd-done-sub strong { color: var(--wd-ink); font-family: var(--display); font-variant-numeric: tabular-nums; }
+    .wd-done-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+
+    /* ---------- แผ่นป๊อปอัป ---------- */
+    .wd-sheet-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 1050;
+        display: grid;
+        align-items: end;
+        justify-items: center;
+        background: oklch(0.12 0.03 262 / 0.72);
+        padding: 12px;
+        animation: wd-fade 0.2s ease-out both;
+    }
+    .wd-sheet-bg[hidden] { display: none; }
+    .wd-sheet {
+        width: min(100%, 460px);
+        max-height: calc(100svh - 24px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border-radius: 20px;
+        background: var(--wd-surface);
+        border: 1px solid var(--wd-line);
+        color: var(--wd-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        padding: 18px 16px 16px;
+        text-align: left;
+        animation: wd-rise 0.32s var(--ease-out) both;
+    }
+    @media (min-width: 700px) { .wd-sheet-bg { align-items: center; } }
+    .wd-sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .wd-sheet-head h2 { flex: 1; margin: 0; font-family: var(--display); font-size: 1.25rem; font-weight: 700; }
+    .wd-sheet p { margin: 0 0 10px; line-height: 1.6; color: var(--wd-soft); }
+    .wd-sheet .ui-btn { width: 100%; }
+
+    .wd-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--wd-sunken); margin-bottom: 14px; }
+    .wd-tab { height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--wd-muted); font-weight: 700; font-size: 0.98rem; cursor: pointer; }
+    .wd-tab[aria-selected="true"] { background: var(--wd-surface-2); color: var(--wd-ink); }
+
+    .wd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 16px; }
+    .wd-stat { display: grid; gap: 2px; justify-items: center; padding: 10px 4px; border-radius: 12px; background: var(--wd-sunken); text-align: center; }
+    .wd-stat b { font-family: var(--display); font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .wd-stat span { font-size: 0.74rem; color: var(--wd-muted); line-height: 1.25; }
+    .wd-stat.is-streak b { color: var(--wd-gold); }
+    .wd-h3 { margin: 0 0 8px; font-family: var(--display); font-size: 0.82rem; letter-spacing: 0.1em; color: var(--wd-muted); font-weight: 600; }
+    .wd-dist { display: grid; gap: 5px; margin-bottom: 16px; }
+    .wd-dist-row { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 8px; font-family: var(--display); font-weight: 600; font-size: 0.9rem; }
+    .wd-dist-track { display: block; }
+    .wd-dist-bar {
+        display: inline-flex;
+        justify-content: flex-end;
+        align-items: center;
+        min-width: 28px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 6px;
+        background: var(--wd-absent);
+        color: var(--wd-ink);
+        font-variant-numeric: tabular-nums;
+        transform-origin: left center;
+        animation: wd-grow 0.6s var(--ease-out) both;
+    }
+    .wd-dist-row.is-today .wd-dist-bar { background: var(--wd-correct); }
+    .wd-next { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--wd-sunken); margin-bottom: 12px; }
+    .wd-next span { color: var(--wd-muted); font-size: 0.9rem; }
+    .wd-next b { font-family: var(--display); font-size: 1.35rem; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+    .wd-reveal { display: flex; justify-content: center; gap: 6px; margin: 4px 0 14px; }
+    .wd-reveal .wd-tile { --tile: 50px; width: 50px; height: 50px; }
+
+    .wd-lb { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+    .wd-lb li { display: grid; grid-template-columns: 28px 32px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 48px; padding: 6px 10px; border-radius: 12px; background: var(--wd-sunken); }
+    .wd-lb li.is-me { background: color-mix(in oklch, var(--wd-gold) 18%, var(--wd-sunken)); }
+    .wd-lb-rank { font-family: var(--display); font-weight: 700; color: var(--wd-muted); text-align: center; }
+    .wd-lb li:nth-child(1) .wd-lb-rank { color: var(--wd-gold); }
+    .wd-lb-av { font-size: 1.3rem; text-align: center; }
+    .wd-lb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .wd-lb-score { font-family: var(--display); font-weight: 700; color: var(--wd-gold); white-space: nowrap; }
+    .wd-empty { padding: 18px; text-align: center; color: var(--wd-muted); border: 1px dashed var(--wd-line); border-radius: 12px; }
+
+    .wd-howto-list { margin: 0 0 12px; padding-left: 20px; color: var(--wd-soft); line-height: 1.6; }
+    .wd-howto-list li { margin-bottom: 4px; }
+    .wd-ex { display: grid; gap: 6px; margin: 0 0 12px; }
+    .wd-ex-row { display: flex; gap: 5px; }
+    .wd-ex .wd-tile { --tile: 42px; width: 42px; height: 42px; font-size: 21px; border-radius: 8px; }
+    .wd-ex .wd-near { width: 9px; height: 9px; right: 4px; top: 4px; }
+    .wd-ex-note { margin: 0; font-size: 0.92rem; color: var(--wd-soft); line-height: 1.5; }
+    .wd-ex-note b { color: var(--wd-ink); }
+
+    /* ---------- เฉลิมฉลอง ---------- */
+    .wd-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 1040; overflow: hidden; }
+    .wd-confetti i {
+        position: absolute;
+        top: -16px;
+        width: 9px;
+        height: 14px;
+        border-radius: 2px;
+        opacity: 0;
+        animation: wd-fall var(--d, 1.8s) cubic-bezier(0.25, 0.6, 0.4, 1) var(--delay, 0s) forwards;
+    }
+
+    @keyframes wd-pop { 0% { transform: scale(0.86); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+    @keyframes wd-flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+    @keyframes wd-bounce { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-16px); } 60% { transform: translateY(3px); } }
+    @keyframes wd-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+    @keyframes wd-toast-in { from { opacity: 0; transform: translateY(-8px) scale(0.96); } to { opacity: 1; transform: none; } }
+    @keyframes wd-toast-out { to { opacity: 0; transform: translateY(-6px); } }
+    @keyframes wd-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes wd-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    @keyframes wd-grow { from { transform: scaleX(0.2); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes wd-fall {
+        0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); }
+        100% { opacity: 0; transform: translate3d(var(--x, 0), 105vh, 0) rotate(var(--r, 540deg)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .wd *, .wd-sheet-bg, .wd-sheet { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition: none !important; }
+        .wd-confetti { display: none; }
+    }
+</style>
+
+<main class="wd" id="wd" data-player="<%= player && player.playerId ? player.playerId : '' %>">
+    <div class="wd-top">
+        <div class="wd-title">
+            <h1><%= soloGame.title %></h1>
+            <span class="wd-no" id="wd-no" aria-live="polite">#–</span>
+        </div>
+        <button type="button" class="wd-icon" id="wd-help" aria-label="วิธีเล่น"><i class="fas fa-question" aria-hidden="true"></i></button>
+        <button type="button" class="wd-icon" id="wd-stats-btn" aria-label="สถิติและอันดับ"><i class="fas fa-chart-bar" aria-hidden="true"></i></button>
+    </div>
+
+    <div class="wd-board-wrap">
+        <div class="wd-board" id="wd-board" aria-label="กระดานทายคำ"></div>
+        <div class="wd-toasts" id="wd-toasts" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="wd-kb" id="wd-kb" aria-label="คีย์บอร์ดภาษาไทย">
+        <div class="wd-kb-rows" id="wd-kb-rows"></div>
+        <div class="wd-actions">
+            <button type="button" class="wd-action" id="wd-shift" aria-pressed="false" aria-label="สลับไปอักษรอื่น"><span id="wd-shift-label">ฆ ศ ษ</span><span class="wd-dot" aria-hidden="true"></span></button>
+            <button type="button" class="wd-action" id="wd-back" aria-label="ลบ"><i class="fas fa-backspace" aria-hidden="true"></i> ลบ</button>
+            <button type="button" class="wd-action wd-enter" id="wd-enter">ทายคำนี้</button>
+        </div>
+    </div>
+
+    <section class="wd-done" id="wd-done" hidden>
+        <h2 class="wd-done-title" id="wd-done-title"></h2>
+        <p class="wd-done-sub">ข้อถัดไปใน <strong id="wd-done-next">--:--:--</strong></p>
+        <div class="wd-done-actions">
+            <button type="button" class="ui-btn" id="wd-done-stats">สถิติ</button>
+            <button type="button" class="ui-btn ui-btn--primary" id="wd-done-share"><i class="fas fa-share-alt" aria-hidden="true"></i> แชร์ผล</button>
+        </div>
+    </section>
+</main>
+
+<div class="wd-sheet-bg" id="wd-howto" hidden>
+    <div class="wd-sheet" role="dialog" aria-modal="true" aria-labelledby="wd-howto-title">
+        <div class="wd-sheet-head">
+            <h2 id="wd-howto-title">วิธีเล่น</h2>
+            <button type="button" class="wd-icon" data-close aria-label="ปิด"><i class="fas fa-times" aria-hidden="true"></i></button>
+        </div>
+        <ul class="wd-howto-list">
+            <li>ทายคำไทย <b>4 ช่อง</b> ให้ถูกภายใน <b>6 ครั้ง</b> — ทุกคนได้คำเดียวกัน วันละคำ</li>
+            <li>1 ช่อง = ตัวอักษร 1 ตัว พร้อมสระบน/ล่างและวรรณยุกต์ที่อยู่บนตัวนั้น</li>
+        </ul>
+        <div class="wd-ex" aria-hidden="true">
+            <div class="wd-ex-row"><div class="wd-tile" data-state="correct">ต้</div><div class="wd-tile is-filled">น</div><div class="wd-tile is-filled">ไ</div><div class="wd-tile is-filled">ม้</div></div>
+            <p class="wd-ex-note"><b>เขียว</b> ถูกทั้งตัวอักษรและตำแหน่ง</p>
+            <div class="wd-ex-row"><div class="wd-tile is-filled">ท</div><div class="wd-tile is-filled">ะ</div><div class="wd-tile" data-state="present">เ</div><div class="wd-tile is-filled">ล</div></div>
+            <p class="wd-ex-note"><b>ทอง</b> มีตัวนี้ในคำ แต่อยู่คนละช่อง</p>
+            <div class="wd-ex-row"><div class="wd-tile is-filled">ก</div><div class="wd-tile" data-state="present">ล<span class="wd-near"></span></div><div class="wd-tile is-filled">อ</div><div class="wd-tile is-filled">ง</div></div>
+            <p class="wd-ex-note"><b>ทอง + จุดเขียว</b> ตัวอักษรถูกช่องแล้ว แต่สระบน/ล่างหรือวรรณยุกต์ยังไม่ใช่</p>
+            <div class="wd-ex-row"><div class="wd-tile is-filled">ห</div><div class="wd-tile" data-state="absent">ม</div><div class="wd-tile is-filled">อ</div><div class="wd-tile is-filled">น</div></div>
+            <p class="wd-ex-note"><b>เทา</b> ไม่มีตัวนี้ในคำ</p>
+        </div>
+        <p>ปุ่ม <b>ฆ ศ ษ</b> สลับไปพยัญชนะที่ใช้น้อย รวมถึงไม้ตรี ไม้จัตวา และการันต์ · เล่นจบแล้วแชร์ผลแบบไม่เฉลยให้เพื่อนได้</p>
+        <button type="button" class="ui-btn ui-btn--primary" data-close>เริ่มเล่น</button>
+    </div>
+</div>
+
+<div class="wd-sheet-bg" id="wd-sheet" hidden>
+    <div class="wd-sheet" role="dialog" aria-modal="true" aria-labelledby="wd-sheet-title">
+        <div class="wd-sheet-head">
+            <h2 id="wd-sheet-title">สถิติของคุณ</h2>
+            <button type="button" class="wd-icon" data-close aria-label="ปิด"><i class="fas fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="wd-tabs" role="tablist">
+            <button type="button" class="wd-tab" role="tab" id="wd-tab-stats" aria-selected="true" aria-controls="wd-panel-stats">สถิติ</button>
+            <button type="button" class="wd-tab" role="tab" id="wd-tab-lb" aria-selected="false" aria-controls="wd-panel-lb">อันดับสตรีค</button>
+        </div>
+        <div id="wd-panel-stats" role="tabpanel" aria-labelledby="wd-tab-stats">
+            <div id="wd-result"></div>
+            <div class="wd-stats" id="wd-stat-grid"></div>
+            <h3 class="wd-h3">จำนวนครั้งที่ทายถูก</h3>
+            <div class="wd-dist" id="wd-dist"></div>
+            <div class="wd-next"><span>ข้อถัดไป (เที่ยงคืนเวลาไทย)</span><b id="wd-next">--:--:--</b></div>
+            <button type="button" class="ui-btn ui-btn--primary" id="wd-share" hidden><i class="fas fa-share-alt" aria-hidden="true"></i> แชร์ผล</button>
+        </div>
+        <div id="wd-panel-lb" role="tabpanel" aria-labelledby="wd-tab-lb" hidden>
+            <p>คนที่ทายถูกติดกันหลายวันที่สุดตอนนี้ (พลาดวันเดียวสตรีครีเซ็ต)</p>
+            <ol class="wd-lb" id="wd-lb"></ol>
+        </div>
+    </div>
+</div>
+
+<%- contentFor('footer') %>
+<%- include('../partials/footerNav', { back: { href: '/solo', label: 'เกมเดี่ยว' } }) %>
+
+<%- contentFor('script') %>
+<script src="/js/solo/wordle-logic.js"></script>
+<script src="/js/solo/wordle.js"></script>

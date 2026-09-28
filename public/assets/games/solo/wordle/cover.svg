@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="1280" height="720" role="img" aria-label="ทายคำรายวัน">
+  <defs>
+    <radialGradient id="glowG" cx="0.18" cy="0.1" r="0.75">
+      <stop offset="0" stop-color="#4fbf8a" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#4fbf8a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowY" cx="0.92" cy="1" r="0.6">
+      <stop offset="0" stop-color="#f5c86b" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#f5c86b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fd19b"/>
+      <stop offset="1" stop-color="#3fa877"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f9d88e"/>
+      <stop offset="1" stop-color="#e9b54f"/>
+    </linearGradient>
+    <linearGradient id="slate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a475c"/>
+      <stop offset="1" stop-color="#2c374a"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#070b12" flood-opacity="0.55"/>
+    </filter>
+    <pattern id="dots" width="12" height="12" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="0.9" fill="#f5c86b" fill-opacity="0.07"/>
+    </pattern>
+  </defs>
+
+  <rect width="320" height="180" fill="#1a2332"/>
+  <rect width="320" height="180" fill="url(#dots)"/>
+  <rect width="320" height="180" fill="url(#glowG)"/>
+  <rect width="320" height="180" fill="url(#glowY)"/>
+
+  <!-- mini result grid (spoiler-free share grid) -->
+  <g transform="translate(236 26)" opacity="0.9">
+    <g fill="#2c374a">
+      <rect x="0" y="0" width="13" height="13" rx="3"/><rect x="16" y="0" width="13" height="13" rx="3" fill="#e9b54f"/><rect x="32" y="0" width="13" height="13" rx="3"/><rect x="48" y="0" width="13" height="13" rx="3"/>
+      <rect x="0" y="16" width="13" height="13" rx="3" fill="#e9b54f"/><rect x="16" y="16" width="13" height="13" rx="3"/><rect x="32" y="16" width="13" height="13" rx="3" fill="#3fa877"/><rect x="48" y="16" width="13" height="13" rx="3"/>
+      <rect x="0" y="32" width="13" height="13" rx="3" fill="#3fa877"/><rect x="16" y="32" width="13" height="13" rx="3" fill="#e9b54f"/><rect x="32" y="32" width="13" height="13" rx="3" fill="#3fa877"/><rect x="48" y="32" width="13" height="13" rx="3"/>
+      <rect x="0" y="48" width="13" height="13" rx="3" fill="#3fa877"/><rect x="16" y="48" width="13" height="13" rx="3" fill="#3fa877"/><rect x="32" y="48" width="13" height="13" rx="3" fill="#3fa877"/><rect x="48" y="48" width="13" height="13" rx="3" fill="#3fa877"/>
+    </g>
+    <g fill="none" stroke="#f5c86b" stroke-opacity="0.18">
+      <rect x="0.5" y="64.5" width="12" height="12" rx="3"/><rect x="16.5" y="64.5" width="12" height="12" rx="3"/><rect x="32.5" y="64.5" width="12" height="12" rx="3"/><rect x="48.5" y="64.5" width="12" height="12" rx="3"/>
+      <rect x="0.5" y="80.5" width="12" height="12" rx="3"/><rect x="16.5" y="80.5" width="12" height="12" rx="3"/><rect x="32.5" y="80.5" width="12" height="12" rx="3"/><rect x="48.5" y="80.5" width="12" height="12" rx="3"/>
+    </g>
+  </g>
+
+  <!-- hero tiles: ท ะ เ ล with one mid-flip -->
+  <g font-family="'Bai Jamjuree','Thonburi','Noto Sans Thai','Leelawadee UI','Tahoma',sans-serif" font-weight="700" text-anchor="middle">
+    <g filter="url(#shadow)">
+      <rect x="22" y="62" width="46" height="46" rx="9" fill="url(#green)"/>
+      <text x="45" y="96" font-size="30" fill="#f4fff9">ท</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="74" y="62" width="46" height="46" rx="9" fill="url(#gold)"/>
+      <text x="97" y="96" font-size="30" fill="#1a2332">ะ</text>
+    </g>
+    <!-- mid-flip tile (squashed on the X axis like the in-game flip) -->
+    <g filter="url(#shadow)" transform="translate(149 85) scale(1 0.38) translate(-149 -85)">
+      <rect x="126" y="62" width="46" height="46" rx="9" fill="url(#slate)"/>
+      <text x="149" y="96" font-size="30" fill="#c9d2e0">เ</text>
+    </g>
+    <g fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.6" stroke-linecap="round">
+      <path d="M131 64 q18 -9 36 0"/>
+      <path d="M131 106 q18 9 36 0"/>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="178" y="62" width="46" height="46" rx="9" fill="#1a2332" stroke="#5b6b84" stroke-width="2"/>
+      <text x="201" y="96" font-size="30" fill="#e8edf6">ล</text>
+    </g>
+  </g>
+
+  <!-- sparkles -->
+  <g fill="#f5c86b">
+    <path d="M58 40 l2.2 5.6 5.6 2.2 -5.6 2.2 -2.2 5.6 -2.2 -5.6 -5.6 -2.2 5.6 -2.2z"/>
+    <path d="M150 42 l1.4 3.4 3.4 1.4 -3.4 1.4 -1.4 3.4 -1.4 -3.4 -3.4 -1.4 3.4 -1.4z" fill-opacity="0.7"/>
+    <circle cx="214" cy="124" r="2" fill-opacity="0.8"/>
+    <circle cx="30" cy="128" r="1.4" fill-opacity="0.5"/>
+  </g>
+
+  <!-- title bar -->
+  <g font-family="'Chakra Petch','Bai Jamjuree','Thonburi','Noto Sans Thai',sans-serif">
+    <rect x="22" y="130" width="124" height="26" rx="13" fill="#f5c86b" fill-opacity="0.12"/>
+    <text x="84" y="148" text-anchor="middle" font-size="13" font-weight="700" fill="#f5c86b">วันละคำ · 6 ครั้ง</text>
+  </g>
+</svg>
