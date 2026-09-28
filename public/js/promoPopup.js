@@ -15,6 +15,8 @@
 
     var path = location.pathname;
     if (SKIP_PREFIXES.some(function(p) { return path === p || path.indexOf(p + '/') === 0; })) return;
+    // กำลังเล่นเกมเดี่ยวอยู่ ห้ามเด้งทับกระดาน (หน้ารวม /solo ขึ้นได้ตามปกติ)
+    if (path.indexOf('/solo/') === 0) return;
 
     try {
         if (sessionStorage.getItem(SEEN_KEY)) return;
