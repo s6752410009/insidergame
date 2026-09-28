@@ -53,11 +53,12 @@
 </style>
 
 <main class="solo">
-    <header class="solo-head">
+    <!-- ห้ามใช้แท็ก <header>: style.css/mobile.css ทาสีแดง+ลายตาให้ header ทุกตัว -->
+    <div class="solo-head">
         <p class="solo-kicker">Solo</p>
         <h1 class="solo-title">เล่นคนเดียว</h1>
         <p class="solo-sub">ไม่มีเพื่อนออนไลน์ก็มีอะไรให้เล่น เก็บสถิติไว้ในโปรไฟล์ และแข่งอันดับกับคนทั้งเว็บ</p>
-    </header>
+    </div>
 
     <% if (soloGames.length === 0) { %>
         <p class="solo-empty">กำลังเตรียมเกมอยู่ เร็ว ๆ นี้</p>
