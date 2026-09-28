@@ -1,0 +1,409 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  html.pds-active .container-fluid > header { display: none !important; }
+  html.pds-active, html.pds-active body, html.pds-active .container-fluid, html.pds-active .container-fluid > .row {
+    background: #141b27 !important; background-image: none !important;
+  }
+  html.pds-active body { overflow-x: hidden; }
+
+  .pds, .pds-sheet {
+    --bg: #141b27;
+    --navy: #1a2332;
+    --surface: oklch(0.25 0.03 255);
+    --surface-2: oklch(0.3 0.035 255);
+    --line: oklch(0.84 0.13 85 / 0.22);
+    --line-soft: oklch(1 0 0 / 0.09);
+    --ink: oklch(0.97 0.01 85);
+    --soft: oklch(0.86 0.02 250);
+    --muted: oklch(0.72 0.03 250);
+    --gold: #f5c86b;
+    --gold-deep: oklch(0.72 0.13 75);
+    --gold-ink: oklch(0.22 0.05 60);
+    --felt: oklch(0.42 0.14 25);
+    --felt-deep: oklch(0.24 0.08 20);
+    --rail: oklch(0.18 0.03 30);
+    --accent: #e2574c;
+    --win: oklch(0.84 0.16 150);
+    --win-bg: oklch(0.42 0.1 150 / 0.6);
+    --lose: oklch(0.76 0.15 25);
+    --lose-bg: oklch(0.36 0.12 25 / 0.7);
+    --push-bg: oklch(0.4 0.02 250 / 0.7);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    --p-card-w: 82px;
+    --p-card-h: 115px;
+    --d-card-w: 62px;
+    --d-card-h: 87px;
+  }
+  .pds {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 10px 16px 24px;
+    color: var(--ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    text-align: left;
+  }
+  .pds *, .pds *::before, .pds *::after { box-sizing: border-box; }
+  .pds button { font-family: inherit; }
+  .pds h1, .pds h2, .pds h3, .pds p { margin: 0; overflow-wrap: anywhere; }
+
+  /* ---------- top ---------- */
+  .pds-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pds-kicker { font-family: var(--display); font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; color: var(--gold); }
+  .pds-title { font-family: var(--display); font-weight: 700; font-size: clamp(1.1rem, 4.6vw, 1.45rem); line-height: 1.2; }
+  .pds-tools { display: flex; gap: 6px; flex: 0 0 auto; }
+  .pds-pill {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font-size: 0.86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: background-color 0.18s ease-out, transform 0.08s ease-out;
+  }
+  .pds-pill:hover { background: var(--surface-2); }
+  .pds-pill:active { transform: scale(0.96); }
+  .pds :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* ---------- HUD ---------- */
+  .pds-hud { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+  .pds-stat { min-width: 0; padding: 6px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-soft); }
+  .pds-stat-label { display: block; font-size: 0.7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pds-stat-value { display: block; font-family: var(--display); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pds-stat--chips { display: flex; align-items: center; gap: 8px; background: oklch(0.3 0.06 80 / 0.35); border-color: var(--line); }
+  .pds-stat--chips img { width: 30px; height: 30px; flex: 0 0 auto; }
+  .pds-stat--chips .pds-stat-value { font-size: 1.4rem; color: var(--gold); }
+  .pds-stat-value.is-bump { animation: pdsBump 0.5s var(--ease); }
+  .pds-fun { margin-top: 4px; font-size: 0.72rem; color: var(--muted); }
+
+  /* ---------- table ---------- */
+  .pds-table {
+    position: relative; margin-top: 8px; padding: 14px 12px 12px; border-radius: 30px; overflow: hidden;
+    background:
+      url('/assets/games/pokdeng/emblem.svg') center 50% / 190px no-repeat,
+      url('/assets/games/pokdeng/felt.svg') 0 0 / 64px repeat,
+      radial-gradient(ellipse at 50% 40%, var(--felt), var(--felt-deep) 80%);
+    box-shadow: inset 0 0 0 8px var(--rail), inset 0 0 0 10px oklch(0.84 0.13 85 / 0.5), inset 0 18px 40px oklch(0 0 0 / 0.35), 0 18px 40px oklch(0 0 0 / 0.45);
+  }
+  .pds-side { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pds-side-head { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 30px; max-width: 100%; min-width: 0; }
+  .pds-who { font-family: var(--display); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.06em; color: var(--gold); }
+  .pds-badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: oklch(0 0 0 / 0.35); color: var(--soft); border: 1px solid var(--line-soft); white-space: nowrap; }
+  .pds-badge.is-thinking { color: var(--gold); border-color: var(--line); }
+  .pds-badge.is-thinking::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: pdsDots 1s steps(4) infinite; }
+  .pds-cards { position: relative; display: flex; justify-content: center; gap: 8px; }
+  .pds-dealer .pds-cards { min-height: var(--d-card-h); }
+  .pds-cards:empty::before, .pds-cards:empty::after {
+    content: ''; flex: 0 0 auto; width: var(--p-card-w); height: var(--p-card-h); border-radius: 8px;
+    border: 1.5px dashed oklch(0.84 0.13 85 / 0.28); background: oklch(0 0 0 / 0.12);
+  }
+  .pds-dealer .pds-cards:empty::before, .pds-dealer .pds-cards:empty::after { width: var(--d-card-w); height: var(--d-card-h); }
+  .pds-player .pds-cards { min-height: var(--p-card-h); }
+  .pds-label {
+    min-height: 28px; min-width: 0; display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px;
+    font-family: var(--display); font-weight: 700; font-size: 0.95rem; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    background: oklch(0 0 0 / 0.35); color: var(--ink);
+  }
+  .pds-label:empty { display: none; }
+  .pds-label.is-special { background: var(--gold); color: var(--gold-ink); }
+  .pds-label.is-pop { animation: pdsPop 0.42s var(--ease) both; }
+
+  .pds-mid { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; align-items: center; gap: 8px; margin: 8px 0; min-height: 64px; }
+  .pds-deck { position: relative; width: 40px; height: 56px; justify-self: center; }
+  .pds-deck img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 5px; box-shadow: 0 2px 4px oklch(0 0 0 / 0.4); }
+  .pds-deck img:nth-child(2) { transform: translate(-2px, -2px); }
+  .pds-deck img:nth-child(3) { transform: translate(-4px, -4px); }
+  .pds-status { text-align: center; min-width: 0; }
+  .pds-status-text { font-weight: 700; font-size: 0.98rem; line-height: 1.3; }
+  .pds-status-sub { font-size: 0.76rem; color: oklch(0.9 0.03 60 / 0.8); }
+  .pds-pot { display: grid; justify-items: center; gap: 2px; min-width: 0; }
+  .pds-pot img { width: 34px; height: 34px; transition: transform 0.3s var(--ease), opacity 0.3s; }
+  .pds-pot.is-empty img { opacity: 0.25; transform: scale(0.8); }
+  .pds-pot-amount { font-family: var(--display); font-weight: 700; font-size: 0.9rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* ---------- cards ---------- */
+  .pc { position: relative; flex: 0 0 auto; width: var(--p-card-w); height: var(--p-card-h); perspective: 800px; }
+  .pds-dealer .pc { width: var(--d-card-w); height: var(--d-card-h); }
+  .pc-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.5s var(--ease); }
+  .pc.is-face .pc-inner { transform: rotateY(180deg); }
+  .pc-back, .pc-face {
+    position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 8px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 5px 12px oklch(0 0 0 / 0.4);
+  }
+  .pc-face { transform: rotateY(180deg); }
+  .pc.no-anim .pc-inner { transition: none; }
+  .pc.is-third .pc-face, .pc.is-third .pc-back { box-shadow: 0 0 0 2px var(--gold), 0 5px 12px oklch(0 0 0 / 0.4); }
+  .pc.is-glow .pc-face { box-shadow: 0 0 0 2px var(--gold), 0 0 26px oklch(0.84 0.13 85 / 0.7); }
+  .pds-cards.is-fading .pc { opacity: 0; transform: translateY(-10px) scale(0.96); transition: opacity 0.22s ease-in, transform 0.22s ease-in; }
+
+  /* ---------- outcome ---------- */
+  .pds-outcome {
+    position: absolute; left: 50%; top: 50%; z-index: 5; pointer-events: none;
+    display: grid; justify-items: center; gap: 2px; padding: 10px 22px; border-radius: 18px; min-width: 180px; max-width: calc(100% - 24px);
+    background: oklch(0.17 0.03 255 / 0.95); border: 1.5px solid var(--gold); text-align: center;
+    transform: translate(-50%, -50%); opacity: 0;
+  }
+  .pds-outcome.is-on { animation: pdsOutcome 2.2s var(--ease) both; }
+  .pds-outcome.is-win { border-color: var(--win); }
+  .pds-outcome.is-lose { border-color: var(--lose); }
+  .pds-outcome-title { font-family: var(--display); font-size: 1.5rem; font-weight: 700; line-height: 1.15; }
+  .pds-outcome.is-win .pds-outcome-title { color: var(--win); }
+  .pds-outcome.is-lose .pds-outcome-title { color: var(--lose); }
+  .pds-outcome-sub { font-size: 0.86rem; color: var(--soft); font-weight: 600; white-space: nowrap; }
+
+  .pds-burst {
+    position: absolute; left: 50%; z-index: 6; pointer-events: none; padding: 6px 16px; border-radius: 999px;
+    background: var(--gold); color: var(--gold-ink); font-family: var(--display); font-weight: 700; font-size: 1.25rem; white-space: nowrap;
+    box-shadow: 0 0 0 4px oklch(0.84 0.13 85 / 0.3), 0 10px 26px oklch(0 0 0 / 0.45);
+    transform: translate(-50%, -50%); animation: pdsBurst 1.8s var(--ease) both;
+  }
+  .pds-ring { position: absolute; left: 50%; z-index: 4; width: 160px; height: 160px; margin: -80px 0 0 -80px; border-radius: 50%; border: 3px solid var(--gold); pointer-events: none; animation: pdsRing 0.9s var(--ease) both; }
+
+  /* ---------- dock ---------- */
+  .pds-dock { margin-top: 10px; padding: 10px 12px 12px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line-soft); }
+  .pds-row { display: flex; gap: 8px; }
+  .pds-row > * { flex: 1 1 0; min-width: 0; }
+  .pds-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 14px;
+    border-radius: 14px; border: 1px solid var(--line-soft); background: var(--surface-2); color: var(--ink);
+    font-weight: 700; font-size: 1rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: transform 0.08s ease-out, background-color 0.18s ease-out, opacity 0.18s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pds-btn:hover { background: oklch(0.34 0.04 255); }
+  .pds-btn:active { transform: scale(0.97); }
+  .pds-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+  .pds-btn--primary { background: var(--gold); color: var(--gold-ink); border-color: transparent; font-family: var(--display); font-size: 1.12rem; min-height: 56px; }
+  .pds-btn--primary:hover { background: oklch(0.88 0.12 85); }
+  .pds-btn--draw { background: var(--accent); color: #fff7f5; border-color: transparent; font-family: var(--display); font-size: 1.15rem; min-height: 60px; }
+  .pds-btn--draw:hover { background: #ec6a5f; }
+  .pds-btn--stay { font-family: var(--display); font-size: 1.15rem; min-height: 60px; }
+  .pds-btn small { font-family: 'Bai Jamjuree', sans-serif; font-weight: 600; font-size: 0.78rem; opacity: 0.8; }
+  .pds-btn--sm { min-height: 44px; font-size: 0.88rem; padding: 0 8px; }
+
+  .pds-bet { display: grid; gap: 8px; }
+  .pds-bet-top { display: flex; align-items: center; gap: 10px; }
+  .pds-bet-amount { flex: 0 0 auto; min-width: 84px; display: grid; }
+  .pds-bet-amount strong { font-family: var(--display); font-size: 1.9rem; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .pds-bet-amount span { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+  .pds-chips { flex: 1 1 auto; display: flex; justify-content: flex-end; gap: 2px; min-width: 0; }
+  .pds-chip { flex: 0 1 58px; min-width: 44px; min-height: 52px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 50%; }
+  .pds-chip img { width: 48px; height: 48px; transition: transform 0.14s var(--ease); }
+  .pds-chip:active img { transform: translateY(-5px) scale(1.08); }
+  .pds-chip:disabled { opacity: 0.3; cursor: not-allowed; }
+  .pds-hint { margin-top: 8px; font-size: 0.78rem; color: var(--muted); text-align: center; }
+
+  .pds-bust { display: grid; gap: 10px; text-align: center; }
+  .pds-bust h2 { font-family: var(--display); font-size: 1.35rem; }
+  .pds-bust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .pds-bust-grid div { padding: 8px 4px; border-radius: 12px; background: oklch(0 0 0 / 0.22); }
+  .pds-bust-grid b { display: block; font-family: var(--display); font-size: 1.1rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .pds-bust-grid span { font-size: 0.72rem; color: var(--muted); }
+  .pds-newbest { color: var(--gold); font-weight: 700; }
+
+  .pds-error { margin-top: 8px; padding: 8px 12px; border-radius: 12px; background: var(--lose-bg); color: oklch(0.95 0.03 25); font-size: 0.86rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pds-error[hidden] { display: none; }
+  .pds-error button { min-height: 40px; flex: 0 0 auto; }
+  .pds [hidden] { display: none !important; }
+
+  /* ---------- stats / board ---------- */
+  .pds-section { margin-top: 16px; }
+  .pds-section h2 { font-family: var(--display); font-size: 1.02rem; font-weight: 700; margin-bottom: 8px; color: var(--ink); }
+  .pds-section h2 span { color: var(--muted); font-family: 'Bai Jamjuree', sans-serif; font-weight: 500; font-size: 0.8rem; margin-left: 6px; }
+  .pds-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pds-grid .pds-stat-value { font-size: 1.15rem; }
+  .pds-grid .pds-stat-label { white-space: normal; line-height: 1.3; }
+  .pds-grid .pds-stat.is-best .pds-stat-value { color: var(--gold); }
+  .pds-board { list-style: none; margin: 0; overflow: hidden; padding: 4px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line-soft); }
+  .pds-board li { display: grid; grid-template-columns: 30px 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 48px; border-top: 1px solid var(--line-soft); }
+  .pds-board li:first-child { border-top: 0; }
+  .pds-board li.is-me { background: oklch(0.84 0.13 85 / 0.1); margin: 0 -12px; padding: 0 12px; }
+  .pds-rank { font-family: var(--display); font-weight: 700; text-align: center; color: var(--muted); }
+  .pds-board li:nth-child(-n+3) .pds-rank { color: var(--gold); }
+  .pds-name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pds-score { font-family: var(--display); font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pds-av { width: 28px; height: 28px; display: grid; place-items: center; font-size: 1rem; }
+  .pds-board-empty { padding: 14px 0; color: var(--muted); text-align: center; font-size: 0.9rem; }
+
+  /* ---------- sheet (วิธีเล่น / อันดับไพ่) ---------- */
+  .pds-sheet { position: fixed; inset: 0; z-index: 12000; display: grid; align-items: end; justify-items: center; background: oklch(0.1 0.02 255 / 0.72); padding: 16px; text-align: left; }
+  .pds-sheet *, .pds-sheet *::before, .pds-sheet *::after { box-sizing: border-box; }
+  .pds-sheet[hidden] { display: none; }
+  .pds-sheet-box {
+    width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 18px 18px 16px; border-radius: 22px;
+    background: #1a2332; border: 1px solid var(--line); color: var(--ink); font-family: 'Bai Jamjuree', sans-serif;
+    animation: pdsSheet 0.32s var(--ease) both;
+  }
+  @media (min-width: 640px) { .pds-sheet { align-items: center; } }
+  .pds-sheet h2 { margin: 0 0 10px; font-family: var(--display); font-size: 1.25rem; font-weight: 700; }
+  .pds-sheet h3 { margin: 14px 0 6px; font-family: var(--display); font-size: 0.98rem; color: var(--gold); }
+  .pds-sheet p { margin: 0 0 6px; line-height: 1.55; color: var(--soft); }
+  .pds-sheet b { color: var(--ink); }
+  .pds-steps { display: grid; gap: 10px; margin: 6px 0 14px; padding: 0; list-style: none; counter-reset: s; }
+  .pds-steps li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .pds-steps li::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--gold); color: var(--gold-ink); font-family: var(--display); font-weight: 700; }
+  .pds-steps p { margin: 4px 0 0; }
+  .pds-rankrow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line-soft); }
+  .pds-rankrow:first-child { border-top: 0; }
+  .pds-rankno { font-family: var(--display); font-weight: 700; color: var(--gold); text-align: center; }
+  .pds-rankname { font-weight: 700; }
+  .pds-rankdesc { display: block; font-size: 0.78rem; color: var(--muted); }
+  .pds-deng { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--gold); color: var(--gold-ink); font-family: var(--display); font-weight: 700; font-size: 0.72rem; }
+  .pds-mini { display: flex; gap: 2px; }
+  .pds-mini img { width: 24px; height: 34px; border-radius: 3px; }
+  .pds-sheet-actions { position: sticky; bottom: -16px; margin: 14px -18px -16px; padding: 12px 18px 16px; background: #1a2332; }
+
+  /* ---------- fx ---------- */
+  .pds-fx { position: fixed; inset: 0; pointer-events: none; z-index: 11000; overflow: hidden; }
+  .pds-fly { position: absolute; left: 0; top: 0; width: 30px; height: 30px; will-change: transform, opacity; }
+
+  @keyframes pdsPop { 0% { opacity: 0; transform: scale(0.6); } 60% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes pdsBump { 0% { transform: scale(1); } 35% { transform: scale(1.14); } 100% { transform: scale(1); } }
+  @keyframes pdsOutcome {
+    0% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+    14% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+    22% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -58%) scale(0.98); }
+  }
+  @keyframes pdsBurst {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1.18) rotate(2deg); }
+    30% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+    78% { opacity: 1; transform: translate(-50%, -62%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -85%) scale(0.95); }
+  }
+  @keyframes pdsRing { 0% { opacity: 0.9; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes pdsSheet { 0% { opacity: 0; transform: translateY(24px); } 100% { opacity: 1; transform: none; } }
+  @keyframes pdsDots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+  @keyframes pdsShake { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+  .pds-table.is-shake { animation: pdsShake 0.4s ease-out; }
+
+  @media (min-width: 720px) {
+    .pds { --p-card-w: 100px; --p-card-h: 140px; --d-card-w: 78px; --d-card-h: 109px; }
+    .pds-table { padding: 20px 20px 22px; }
+    .pds-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+  @media (max-width: 359px) {
+    .pds { --p-card-w: 70px; --p-card-h: 98px; --d-card-w: 54px; --d-card-h: 76px; padding-left: 12px; padding-right: 12px; }
+    .pds-chip img { width: 40px; height: 40px; }
+    .pds-hud { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .pds-hud .pds-stat--chips { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pds *, .pds-sheet-box, .pds-fx * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    .pds-outcome.is-on { animation: none !important; opacity: 1; }
+    .pds-burst, .pds-ring { display: none; }
+  }
+</style>
+
+<div id="pdsFx" class="pds-fx" aria-hidden="true"></div>
+
+<main class="pds" id="pds">
+  <div class="pds-top">
+    <div style="min-width:0;">
+      <div class="pds-kicker" id="pdsKicker">เล่นคนเดียว</div>
+      <h1 class="pds-title">ป๊อกเด้งท้าเจ้ามือ</h1>
+    </div>
+    <div class="pds-tools">
+      <button type="button" class="pds-pill" id="pdsRankBtn" aria-haspopup="dialog">อันดับไพ่</button>
+      <button type="button" class="pds-pill" id="pdsHowBtn" aria-haspopup="dialog">วิธีเล่น</button>
+    </div>
+  </div>
+
+  <div class="pds-hud">
+    <div class="pds-stat pds-stat--chips">
+      <img src="/assets/games/pokdeng/chip-100.svg" alt="">
+      <div style="min-width:0;">
+        <span class="pds-stat-label">ชิปของคุณ</span>
+        <span class="pds-stat-value" id="pdsChips">–</span>
+      </div>
+    </div>
+    <div class="pds-stat">
+      <span class="pds-stat-label">สูงสุดรอบนี้</span>
+      <span class="pds-stat-value" id="pdsRunPeak">–</span>
+    </div>
+    <div class="pds-stat">
+      <span class="pds-stat-label">สถิติตลอดกาล</span>
+      <span class="pds-stat-value" id="pdsBestPeak">–</span>
+    </div>
+  </div>
+  <p class="pds-fun">ชิปเล่นๆ ไม่ผูกกระเป๋า · ไม่มีมูลค่าจริง</p>
+
+  <section class="pds-table" id="pdsTable" aria-label="โต๊ะป๊อกเด้ง">
+    <div class="pds-side pds-dealer">
+      <div class="pds-side-head">
+        <span class="pds-who">เจ้ามือบอท</span>
+        <span class="pds-label" id="pdsDealerLabel"></span>
+        <span class="pds-badge" id="pdsDealerBadge" hidden></span>
+      </div>
+      <div class="pds-cards" id="pdsDealerCards"></div>
+    </div>
+
+    <div class="pds-mid">
+      <div class="pds-deck" id="pdsDeck" aria-hidden="true">
+        <img src="/assets/games/poker/back.svg" alt=""><img src="/assets/games/poker/back.svg" alt=""><img src="/assets/games/poker/back.svg" alt="">
+      </div>
+      <div class="pds-status">
+        <div class="pds-status-text" id="pdsStatus" role="status" aria-live="polite">กำลังโหลดโต๊ะ…</div>
+        <div class="pds-status-sub" id="pdsStatusSub"></div>
+      </div>
+      <div class="pds-pot is-empty" id="pdsPot">
+        <img src="/assets/games/pokdeng/chip-100.svg" alt="">
+        <span class="pds-pot-amount" id="pdsPotAmount">0</span>
+      </div>
+    </div>
+
+    <div class="pds-side pds-player">
+      <div class="pds-cards" id="pdsPlayerCards"></div>
+      <div class="pds-side-head">
+        <span class="pds-who">คุณ</span>
+        <span class="pds-label" id="pdsPlayerLabel"></span>
+      </div>
+    </div>
+
+    <div class="pds-outcome" id="pdsOutcome" aria-hidden="true">
+      <span class="pds-outcome-title" id="pdsOutcomeTitle"></span>
+      <span class="pds-outcome-sub" id="pdsOutcomeSub"></span>
+    </div>
+  </section>
+
+  <section class="pds-dock" id="pdsDock" aria-label="การเล่น">
+    <div id="pdsActions"><div class="pds-hint">กำลังโหลด…</div></div>
+    <div class="pds-error" id="pdsError" role="alert" hidden>
+      <span id="pdsErrorText"></span>
+      <button type="button" class="pds-btn pds-btn--sm" id="pdsRetry">ลองอีกครั้ง</button>
+    </div>
+  </section>
+
+  <section class="pds-section" aria-labelledby="pdsRunTitle">
+    <h2 id="pdsRunTitle">สถิติ <span id="pdsRunSub"></span></h2>
+    <div class="pds-grid" id="pdsStats"></div>
+  </section>
+
+  <section class="pds-section" aria-labelledby="pdsBoardTitle">
+    <h2 id="pdsBoardTitle">อันดับชิปสูงสุด <span>ทั้งเว็บ · 20 อันดับ</span></h2>
+    <ol class="pds-board" id="pdsBoard"><li class="pds-board-empty" style="display:block;">กำลังโหลด…</li></ol>
+  </section>
+</main>
+
+<div class="pds-sheet" id="pdsSheet" hidden>
+  <div class="pds-sheet-box" role="dialog" aria-modal="true" aria-labelledby="pdsSheetTitle">
+    <h2 id="pdsSheetTitle"></h2>
+    <div id="pdsSheetBody"></div>
+    <div class="pds-sheet-actions">
+      <button type="button" class="pds-btn pds-btn--primary" id="pdsSheetClose" style="width:100%;">เข้าใจแล้ว</button>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="pdsBoot"><%- JSON.stringify({
+  playerId: (typeof player !== 'undefined' && player && player.playerId) || null,
+  stats: (typeof soloData !== 'undefined' && soloData) || null
+}).replace(/</g, '\\u003c') %></script>
+
+<%- contentFor('footer') %>
+<%- include('../partials/footerNav', { back: { href: '/solo', label: 'เกมเดี่ยว' } }) %>
+
+<%- contentFor('script') %>
+<script src="/js/solo/pokdengsolo.js"></script>
