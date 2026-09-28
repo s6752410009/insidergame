@@ -68,6 +68,9 @@
     "smoke:poker:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js",
     "smoke:pokdeng": "node scripts/smoke-pokdeng-engine.js",
     "smoke:pokdeng:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-pokdeng-play.js",
+    "smoke:solo:pokdengsolo": "node scripts/smoke-solo-pokdengsolo.js",
+    "smoke:solo:pokdengsolo:api": "node scripts/api-solo-pokdengsolo.js",
+    "smoke:solo:pokdengsolo:browser": "node scripts/browser-solo-pokdengsolo.js",
     "smoke:poker:layout": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-poker-layout.js",
     "smoke:poker:audit": "node scripts/smoke-poker-engine.js && ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js"
   },
