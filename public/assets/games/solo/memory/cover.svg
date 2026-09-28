@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="จับคู่การ์ดความจำ">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#24375a"/>
+      <stop offset="0.6" stop-color="#1a2332"/>
+      <stop offset="1" stop-color="#111827"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#4fd1c5" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#4fd1c5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbe3a6"/>
+      <stop offset="0.5" stop-color="#f5c86b"/>
+      <stop offset="1" stop-color="#b98a35"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26406a"/>
+      <stop offset="1" stop-color="#15213a"/>
+    </linearGradient>
+    <pattern id="lattice" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0 7h14M7 0v14" stroke="#4fd1c5" stroke-opacity="0.18" stroke-width="1"/>
+    </pattern>
+    <g id="back">
+      <rect x="-50" y="-68" width="100" height="136" rx="11" fill="#172238" stroke="url(#gold)" stroke-width="2.5"/>
+      <rect x="-42" y="-60" width="84" height="120" rx="7" fill="url(#lattice)" stroke="#f5c86b" stroke-opacity="0.3"/>
+      <circle r="20" fill="#141c2b" stroke="url(#gold)" stroke-width="2"/>
+      <path d="M-9 0l5 -5l5 5l-5 5z" fill="#4fd1c5"/>
+      <path d="M3 0l5 -5l5 5l-5 5z" fill="#f5c86b"/>
+    </g>
+    <g id="wolf">
+      <rect x="-50" y="-68" width="100" height="136" rx="11" fill="url(#face)" stroke="url(#gold)" stroke-width="3"/>
+      <circle cx="-18" cy="-40" r="14" fill="#fbe3a6"/>
+      <circle cx="-12" cy="-44" r="12" fill="#22375c"/>
+      <path d="M-34 46 L-30 22 Q-30 6 -20 -2 L-18 -20 L-10 -8 Q-2 -12 4 -18 L10 -34 L14 -22 Q22 -26 30 -34 Q30 -22 20 -12 Q16 -6 10 -4 Q18 10 16 28 L20 46 Z" fill="#0c1422" stroke="#f5c86b" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="4" cy="-10" r="2.6" fill="#4fd1c5"/>
+      <path d="M-40 54 H40" stroke="#f5c86b" stroke-opacity="0.35" stroke-width="2"/>
+    </g>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <g fill="#f5c86b" opacity="0.5">
+    <circle cx="70" cy="60" r="1.6"/><circle cx="560" cy="44" r="2"/><circle cx="600" cy="300" r="1.4"/>
+    <circle cx="40" cy="290" r="1.8"/><circle cx="500" cy="330" r="1.2"/><circle cx="150" cy="330" r="1.4"/>
+  </g>
+  <ellipse cx="320" cy="190" rx="260" ry="130" fill="url(#halo)"/>
+
+  <use href="#back" transform="translate(112 206) rotate(-14) scale(0.9)" opacity="0.85"/>
+  <use href="#back" transform="translate(528 206) rotate(14) scale(0.9)" opacity="0.85"/>
+  <use href="#back" transform="translate(320 214) scale(0.96)"/>
+
+  <g transform="translate(212 176) rotate(-8)">
+    <use href="#wolf"/>
+  </g>
+  <g transform="translate(428 176) rotate(8)">
+    <use href="#wolf"/>
+  </g>
+
+  <g stroke="#4fd1c5" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9">
+    <path d="M274 104 q46 -40 92 0" stroke-dasharray="2 9"/>
+  </g>
+  <g fill="url(#gold)">
+    <path d="M320 58 l6 14 l15 1 l-11.5 9.5 l4 14.5 l-13.5 -8 l-13.5 8 l4 -14.5 l-11.5 -9.5 l15 -1 z"/>
+    <path d="M280 76 l3 7 l7.5 .5 l-5.8 4.7 l2 7.3 l-6.7 -4 l-6.7 4 l2 -7.3 l-5.8 -4.7 l7.5 -.5 z" opacity="0.8"/>
+    <path d="M360 76 l3 7 l7.5 .5 l-5.8 4.7 l2 7.3 l-6.7 -4 l-6.7 4 l2 -7.3 l-5.8 -4.7 l7.5 -.5 z" opacity="0.8"/>
+  </g>
+  <g fill="#4fd1c5">
+    <path d="M168 88 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z"/>
+    <path d="M476 92 l2.4 6 l6 2.4 l-6 2.4 l-2.4 6 l-2.4 -6 l-6 -2.4 l6 -2.4 z"/>
+  </g>
+</svg>
