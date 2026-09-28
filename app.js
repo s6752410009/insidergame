@@ -51,6 +51,8 @@ const { getGameEngine, getAvailableGameModes, isPokerMode } = require('./games/e
 const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
+const soloStats = require('./managers/soloStatsManager');
+const soloGames = require('./games/solo');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
 // (Render ตั้ง RENDER_GIT_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
@@ -4664,6 +4666,131 @@ app.get('/terms', function(req, res) {
     res.render('legal.ejs', { doc: 'terms' });
 });
 
+// ==================== SOLO GAMES (เล่นคนเดียว) ====================
+// แต่ละเกมอยู่ใน games/solo/<id>.js + views/solo/<id>.ejs (ดูรายละเอียดใน games/solo/index.js)
+const soloHits = new Map();
+function soloRateLimit(key, max, windowMs) {
+    const now = Date.now();
+    const recent = (soloHits.get(key) || []).filter(at => now - at < windowMs);
+    if (recent.length >= max) {
+        soloHits.set(key, recent);
+        return false;
+    }
+    recent.push(now);
+    soloHits.set(key, recent);
+    if (soloHits.size > 20000) soloHits.clear();
+    return true;
+}
+
+function soloSummaries(playerId) {
+    return soloGames.listSoloGames().map(meta => {
+        const game = soloGames.getSoloGame(meta.id);
+        const data = playerId ? soloStats.getData(playerId, meta.id) : null;
+        let summary = null;
+        try {
+            summary = data && typeof game.summary === 'function' ? game.summary(data) : null;
+        } catch (error) {
+            summary = null;
+        }
+        return { ...meta, summary };
+    });
+}
+
+function soloLeaderboard(gameId, limit = 20) {
+    const game = soloGames.getSoloGame(gameId);
+    if (!game || typeof game.leaderboardEntry !== 'function') return [];
+    const asc = game.leaderboardOrder === 'asc';
+    return soloStats.listGame(gameId)
+        .map(row => {
+            let entry = null;
+            try { entry = game.leaderboardEntry(row.data); } catch (error) { entry = null; }
+            if (!entry || !Number.isFinite(Number(entry.score))) return null;
+            const player = playerManager.getPlayer(row.playerId);
+            if (!player) return null;
+            return {
+                playerId: row.playerId,
+                playerName: player.playerName,
+                color: player.color,
+                avatar: player.avatar || '👤',
+                avatarFrame: player.avatarFrame || 'none',
+                score: Number(entry.score),
+                label: entry.label || String(entry.score)
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => asc ? a.score - b.score : b.score - a.score)
+        .slice(0, limit)
+        .map((entry, index) => ({ rank: index + 1, ...entry }));
+}
+
+app.get('/solo', function(req, res) {
+    const player = getRenderablePlayer(req.playerId);
+    res.render('solo.ejs', { player, soloGames: soloSummaries(req.playerId) });
+});
+
+app.get('/solo/:gameId', function(req, res, next) {
+    const game = soloGames.getSoloGame(req.params.gameId);
+    if (!game) return next();
+    const player = getRenderablePlayer(req.playerId);
+    res.render(`solo/${game.meta.id}.ejs`, {
+        player,
+        soloGame: game.meta,
+        soloData: req.playerId ? soloStats.getData(req.playerId, game.meta.id) : null
+    });
+});
+
+const soloApi = express.Router({ mergeParams: true });
+soloApi.use(function(req, res, next) {
+    const game = soloGames.getSoloGame(req.params.gameId);
+    if (!game) return res.status(404).json({ success: false, error: 'ไม่พบเกมนี้' });
+    req.soloGame = game;
+    next();
+});
+soloApi.post('/result', async function(req, res) {
+    const playerId = getTrustedPlayerId(req);
+    if (!playerId) return res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
+    if (!soloRateLimit(`result:${playerId}`, 30, 60 * 1000)) {
+        return res.status(429).json({ success: false, error: 'ส่งผลถี่เกินไป รอสักครู่' });
+    }
+    try {
+        await ensurePersistedPlayer(playerId);
+        const game = req.soloGame;
+        const prev = soloStats.getData(playerId, game.meta.id) || null;
+        const next = game.recordResult(prev, req.body || {}, { playerId, now: new Date() });
+        soloStats.setData(playerId, game.meta.id, next);
+        return res.json({
+            success: true,
+            data: next,
+            summary: typeof game.summary === 'function' ? game.summary(next) : null
+        });
+    } catch (error) {
+        return res.status(400).json({ success: false, error: error.message || 'บันทึกผลไม่สำเร็จ' });
+    }
+});
+soloApi.get('/stats', function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    const playerId = getTrustedPlayerId(req);
+    res.json({ success: true, data: playerId ? soloStats.getData(playerId, req.soloGame.meta.id) : null });
+});
+soloApi.get('/leaderboard', function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, entries: soloLeaderboard(req.soloGame.meta.id) });
+});
+// API เฉพาะของแต่ละเกม (เช่น ตรวจคำทายรายวันฝั่ง server)
+soloGames.listSoloGames().forEach(meta => {
+    const game = soloGames.getSoloGame(meta.id);
+    if (typeof game.registerRoutes !== 'function') return;
+    const router = express.Router();
+    game.registerRoutes(router, {
+        getPlayerId: getTrustedPlayerId,
+        soloStats,
+        rateLimit: soloRateLimit,
+        ensurePersistedPlayer
+    });
+    app.use(`/api/solo/${meta.id}`, router);
+});
+app.use('/api/solo/:gameId', soloApi);
+
 app.get('/how-to-play', function(req, res) {
     res.render('howToPlay.ejs', {
         pokerRankGuide: rankGuideForClient()
@@ -9271,7 +9398,7 @@ async function flushAndExit(signal) {
     console.log(`[insider] ${signal} received — flushing wallets`);
     try {
         await Promise.race([
-            walletManager.persistNow(),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -9311,6 +9438,7 @@ async function startServer() {
 
         // ต้องโหลดหลัง connectDB เหมือนกัน — ไฟล์ wallets.json หายทุก deploy บน Render
         await walletManager.initWalletManager();
+        await soloStats.initSoloStatsManager();
 
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());

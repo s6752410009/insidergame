@@ -135,6 +135,15 @@ const AdminMessageThread = mongoose.model('AdminMessageThread', adminMessageThre
 const RoomSnapshot = mongoose.model('RoomSnapshot', roomSnapshotSchema);
 const Wallet = mongoose.model('Wallet', walletSchema);
 
+// สถิติเกมเล่นคนเดียว — หนึ่งแถวต่อ (ผู้เล่น, เกม); data แต่ละเกมกำหนดรูปแบบเอง
+const soloStatSchema = new mongoose.Schema({
+    playerId: { type: String, required: true, index: true },
+    gameId: { type: String, required: true, index: true },
+    data: { type: mongoose.Schema.Types.Mixed, default: {} }
+}, { timestamps: true });
+soloStatSchema.index({ playerId: 1, gameId: 1 }, { unique: true });
+const SoloStat = mongoose.model('SoloStat', soloStatSchema);
+
 module.exports = {
     Player,
     PlayerStats,
@@ -142,5 +151,6 @@ module.exports = {
     AdminMessageThread,
     RoomSnapshot,
     SeasonArchive,
-    Wallet
+    Wallet,
+    SoloStat
 };

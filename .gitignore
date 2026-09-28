@@ -11,6 +11,8 @@ data/backups/
 data/seasons.json
 data/adminMessages.json
 data/wallets.json
+data/soloStats.json
+data/soloStats.json.bak
 data/wallets.json.bak
 data/*.tmp
 # Editor-local

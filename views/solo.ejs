@@ -1,0 +1,83 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+    .solo {
+        --so-surface: oklch(0.22 0.035 285);
+        --so-surface-2: oklch(0.27 0.04 285);
+        --so-line: oklch(0.42 0.04 285 / 0.55);
+        --so-ink: oklch(0.96 0.01 285);
+        --so-muted: oklch(0.7 0.03 285);
+        --so-gold: oklch(0.84 0.14 85);
+        --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+        max-width: 980px;
+        margin: 0 auto 32px;
+        padding: 8px 16px 0;
+        color: var(--so-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        text-align: left;
+    }
+    .solo *, .solo *::before, .solo *::after { box-sizing: border-box; }
+    .solo-head { margin: 8px 0 20px; }
+    .solo-kicker { margin: 0; font-family: var(--display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--so-gold); }
+    .solo-title { margin: 4px 0 6px; font-family: var(--display); font-size: clamp(1.7rem, 1.2rem + 2.2vw, 2.4rem); font-weight: 700; line-height: 1.15; }
+    .solo-sub { margin: 0; color: var(--so-muted); max-width: 52ch; line-height: 1.6; }
+    .solo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .solo-card {
+        position: relative;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        overflow: hidden;
+        border-radius: 16px;
+        background: var(--so-surface);
+        border: 1px solid var(--so-line);
+        color: inherit;
+        text-decoration: none;
+        transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s;
+    }
+    .solo-card:hover { transform: translateY(-3px); border-color: var(--accent); color: inherit; text-decoration: none; }
+    .solo-card:focus-visible { outline: 2px solid var(--so-gold); outline-offset: 3px; }
+    .solo-art {
+        aspect-ratio: 16 / 9;
+        background: radial-gradient(120% 90% at 20% 0%, color-mix(in oklch, var(--accent) 45%, transparent), transparent 60%), var(--so-surface-2);
+        display: grid;
+        place-items: center;
+        font-size: 3.2rem;
+    }
+    .solo-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .solo-body { display: grid; gap: 4px; padding: 14px 16px 16px; }
+    .solo-name { margin: 0; font-family: var(--display); font-size: 1.2rem; font-weight: 700; }
+    .solo-tag { margin: 0; color: var(--so-muted); font-size: 0.92rem; line-height: 1.5; }
+    .solo-best { margin-top: 6px; font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+    .solo-empty { padding: 32px; border: 1px dashed var(--so-line); border-radius: 16px; color: var(--so-muted); }
+    @media (prefers-reduced-motion: reduce) { .solo-card { transition: none; } }
+</style>
+
+<main class="solo">
+    <header class="solo-head">
+        <p class="solo-kicker">Solo</p>
+        <h1 class="solo-title">เล่นคนเดียว</h1>
+        <p class="solo-sub">ไม่มีเพื่อนออนไลน์ก็มีอะไรให้เล่น เก็บสถิติไว้ในโปรไฟล์ และแข่งอันดับกับคนทั้งเว็บ</p>
+    </header>
+
+    <% if (soloGames.length === 0) { %>
+        <p class="solo-empty">กำลังเตรียมเกมอยู่ เร็ว ๆ นี้</p>
+    <% } else { %>
+        <div class="solo-grid">
+            <% soloGames.forEach(function(game) { %>
+                <a class="solo-card" href="/solo/<%= game.id %>" style="--accent: <%= game.accent || '#f5c86b' %>;">
+                    <div class="solo-art">
+                        <% if (game.cover) { %><img src="<%= game.cover %>" alt="" loading="lazy"><% } else { %><span aria-hidden="true"><%= game.emoji %></span><% } %>
+                    </div>
+                    <div class="solo-body">
+                        <h2 class="solo-name"><%= game.emoji %> <%= game.title %></h2>
+                        <p class="solo-tag"><%= game.tagline %></p>
+                        <% if (game.summary) { %><p class="solo-best"><%= game.summary %></p><% } %>
+                    </div>
+                </a>
+            <% }); %>
+        </div>
+    <% } %>
+</main>
+
+<%- contentFor('footer') %>
+<%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
