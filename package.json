@@ -69,6 +69,10 @@
     "smoke:pokdeng": "node scripts/smoke-pokdeng-engine.js",
     "smoke:pokdeng:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-pokdeng-play.js",
     "smoke:poker:layout": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-poker-layout.js",
+    "smoke:solo:solitaire": "node scripts/smoke-solo-solitaire.js",
+    "smoke:solo:solitaire:api": "node scripts/smoke-solo-solitaire-api.js",
+    "smoke:solo:solitaire:browser": "node scripts/browser-solo-solitaire.js",
+    "solitaire:seeds": "node scripts/gen-solitaire-seeds.js",
     "smoke:poker:audit": "node scripts/smoke-poker-engine.js && ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js"
   },
   "devDependencies": {

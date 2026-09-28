@@ -1,0 +1,396 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<script>
+    document.documentElement.classList.add('sol-active');
+</script>
+<style>
+    html.sol-active .container-fluid > header { display: none !important; }
+    html.sol-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: 0 !important; }
+    html.sol-active .container-fluid > .row { margin: 0 !important; }
+    html.sol-active .col-lg-12 { padding: 0 !important; }
+    html.sol-active body { background: #121a26 !important; }
+
+    .sol, .sol-dialog {
+        --navy: #1a2332;
+        --navy-2: oklch(0.29 0.035 255);
+        --navy-3: oklch(0.34 0.04 255);
+        --felt: oklch(0.25 0.04 220);
+        --ink: oklch(0.96 0.01 255);
+        --muted: oklch(0.74 0.03 255);
+        --line: oklch(0.55 0.04 255 / 0.35);
+        --gold: #f5c86b;
+        --gold-soft: oklch(0.84 0.12 85 / 0.35);
+        --jade: #3fb58a;
+        --red: #c41e3a;
+        --paper: #fffdf8;
+        --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --cw: 50px;
+        --ch: 70px;
+    }
+    .sol {
+        display: grid;
+        gap: 12px;
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 10px 12px 16px;
+        color: var(--ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        text-align: left;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    .sol *, .sol *::before, .sol *::after, .sol-dialog * { box-sizing: border-box; }
+    .sol-play { display: grid; gap: 10px; min-width: 0; }
+
+    /* ---------- แถบบน ---------- */
+    .sol-top { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+    .sol-heading { flex: 1 1 auto; min-width: 0; }
+    .sol-title { margin: 0; font-family: var(--display); font-size: 1.15rem; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sol-mode { margin: 2px 0 0; font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sol-meters { display: flex; gap: 6px; flex: 0 0 auto; }
+    .sol-meter { display: grid; justify-items: center; min-width: 58px; padding: 4px 8px; border-radius: 10px; background: var(--navy-2); border: 1px solid var(--line); }
+    .sol-meter span { font-size: 0.68rem; color: var(--muted); line-height: 1.2; }
+    .sol-meter b { font-family: var(--display); font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .sol-icon-btn { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border-radius: 12px; }
+    .sol-icon-btn svg { width: 20px; height: 20px; }
+
+    /* ---------- โต๊ะ ---------- */
+    .sol-board {
+        position: relative;
+        width: 100%;
+        min-height: 380px;
+        border-radius: 16px;
+        background:
+            radial-gradient(120% 70% at 50% 0%, oklch(0.36 0.07 165 / 0.45), transparent 70%),
+            var(--felt);
+        border: 1px solid var(--line);
+        touch-action: none;
+        overflow: hidden;
+        contain: layout paint;
+    }
+    .sol-slot {
+        position: absolute;
+        left: 0; top: 0;
+        width: var(--cw);
+        height: var(--ch);
+        border-radius: calc(var(--cw) * 0.09);
+        border: 1.5px solid var(--gold-soft);
+        background: oklch(0.2 0.03 230 / 0.5);
+        display: grid;
+        place-items: center;
+        color: oklch(0.84 0.12 85 / 0.45);
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: calc(var(--cw) * 0.5);
+        font-weight: 700;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+    .sol-slot.is-target { border-color: var(--gold); background: oklch(0.84 0.12 85 / 0.14); }
+    .sol-stock { cursor: pointer; }
+    .sol-stock svg { width: 42%; height: auto; opacity: 0; transition: opacity 0.2s; }
+    .sol-stock.can-recycle svg { opacity: 0.85; }
+    .sol-stock-count {
+        position: absolute; left: 0; top: 0; z-index: 400;
+        min-width: 22px; height: 20px; padding: 0 5px; border-radius: 10px;
+        background: var(--navy); border: 1px solid var(--gold-soft); color: var(--gold);
+        font: 600 0.72rem/18px var(--display); text-align: center; pointer-events: none;
+    }
+
+    .sol-card {
+        position: absolute;
+        left: 0; top: 0;
+        width: var(--cw);
+        height: var(--ch);
+        transition: transform 0.24s var(--ease);
+        will-change: transform;
+        touch-action: none;
+        perspective: 600px;
+    }
+    .sol-card.no-anim, .sol-card.is-dragging { transition: none; }
+    .sol-card.is-dragging .sol-card-in { box-shadow: 0 10px 22px oklch(0.1 0.02 255 / 0.55); }
+    .sol-card-in {
+        position: relative;
+        width: 100%; height: 100%;
+        transform-style: preserve-3d;
+        transition: transform 0.32s var(--ease);
+        border-radius: calc(var(--cw) * 0.07);
+        box-shadow: 0 1px 2px oklch(0.1 0.02 255 / 0.45);
+    }
+    .sol-card.is-down .sol-card-in { transform: rotateY(180deg); }
+    .sol-face, .sol-back {
+        position: absolute; inset: 0;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        border-radius: inherit;
+        overflow: hidden;
+    }
+    .sol-back { transform: rotateY(180deg); }
+    .sol .sol-face img, .sol .sol-back img { display: block; width: 100%; height: 100%; max-width: none; pointer-events: none; -webkit-user-drag: none; }
+    /* ดัชนีตัวใหญ่ที่มุมซ้ายบน — ไพ่ซ้อนกันบนมือถือจะเห็นแค่แถบบนสุด ตัวเลขใน SVG เดิมเล็กเกินอ่าน */
+    .sol-idx {
+        position: absolute;
+        left: 2.4%; top: 1.6%;
+        height: 15.6%;
+        display: flex; align-items: center; gap: 1px;
+        padding: 0 4% 0 3%;
+        border-radius: 4px;
+        background: var(--paper);
+        font-family: Georgia, 'Times New Roman', serif;
+        font-weight: 700;
+        font-size: clamp(10px, calc(var(--cw) * 0.26), 21px);
+        line-height: 1;
+        letter-spacing: -0.05em;
+        color: #111;
+        pointer-events: none;
+    }
+    /* ปิดดอกเล็กใต้ตัวเลขเดิมของ SVG (ไม่ให้ซ้อนกับดัชนีตัวใหญ่) โดยไม่ทับจุดดอกกลางไพ่ */
+    .sol-face::after {
+        content: '';
+        position: absolute;
+        left: 5.5%; top: 14.5%;
+        width: 10%; height: 6.5%;
+        background: var(--paper);
+        pointer-events: none;
+    }
+    .sol-idx i { font-style: normal; font-size: 0.86em; letter-spacing: 0; }
+    .sol-card.is-red .sol-idx { color: var(--red); }
+    .sol-card.is-hint .sol-card-in, .sol-slot.is-hint { animation: solHint 0.75s var(--ease) 2; }
+    .sol-card.is-nope .sol-card-in { animation: solNope 0.32s var(--ease); }
+    @keyframes solHint {
+        0%, 100% { transform: translateY(0); box-shadow: 0 0 0 0 oklch(0.84 0.14 85 / 0); }
+        40% { transform: translateY(-6px); box-shadow: 0 0 0 3px var(--gold); }
+    }
+    .sol-slot.is-hint { animation-name: solHintSlot; }
+    @keyframes solHintSlot { 0%, 100% { opacity: 1; } 40% { opacity: 0.35; } }
+    @keyframes solNope { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+    .sol-toast {
+        position: absolute; left: 50%; bottom: 12px; z-index: 900;
+        max-width: calc(100% - 24px);
+        padding: 10px 14px; border-radius: 12px;
+        background: var(--navy); border: 1px solid var(--gold-soft);
+        color: var(--ink); font-size: 0.9rem; text-align: center;
+        transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+        transition: transform 0.25s var(--ease), opacity 0.25s;
+    }
+    .sol-toast.is-on { transform: translate(-50%, 0); opacity: 1; }
+    .sol-auto {
+        position: absolute; left: 50%; bottom: 12px; z-index: 950;
+        transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+        transition: transform 0.25s var(--ease), opacity 0.25s;
+        background: var(--jade) !important; color: #06281c !important;
+        box-shadow: 0 8px 20px oklch(0.1 0.02 255 / 0.5);
+    }
+    .sol-auto.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+
+    /* ---------- ปุ่มควบคุม ---------- */
+    .sol-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .sol-actions .ui-btn { padding: 0 8px; gap: 6px; }
+    .sol-actions svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+    /* ---------- สถิติ + อันดับ ---------- */
+    .sol-side { display: grid; gap: 12px; align-content: start; min-width: 0; }
+    .sol-panel { padding: 14px; border-radius: 16px; background: var(--navy-2); border: 1px solid var(--line); min-width: 0; }
+    .sol-panel h2 { margin: 0 0 10px; font-family: var(--display); font-size: 1rem; font-weight: 700; color: var(--gold); }
+    .sol-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .sol-stat { padding: 8px 10px; border-radius: 12px; background: var(--navy); min-width: 0; }
+    .sol-stat span { display: block; font-size: 0.75rem; color: var(--muted); }
+    .sol-stat b { display: block; font-family: var(--display); font-size: 1.2rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sol-board-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+    .sol-board-list li { display: grid; grid-template-columns: 28px 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px; border-radius: 10px; }
+    .sol-board-list li.is-me { background: oklch(0.84 0.12 85 / 0.12); }
+    .sol-rank { font-family: var(--display); font-weight: 700; color: var(--muted); text-align: center; }
+    .sol-board-list li:nth-child(-n+3) .sol-rank { color: var(--gold); }
+    .sol-ava { font-size: 1.1rem; text-align: center; }
+    .sol-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sol-time { font-family: var(--display); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .sol-empty { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+    /* ---------- dialog ---------- */
+    .sol-dialog {
+        width: min(100% - 32px, 420px);
+        max-height: calc(100dvh - 32px);
+        padding: 0;
+        border: 1px solid var(--gold-soft);
+        border-radius: 18px;
+        background: var(--navy);
+        color: var(--ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        overflow: auto;
+    }
+    .sol-dialog::backdrop { background: oklch(0.12 0.02 255 / 0.72); }
+    #dlgWin::backdrop { background: oklch(0.12 0.02 255 / 0.4); }
+    .sol-dialog[open] { animation: solPop 0.28s var(--ease); }
+    @keyframes solPop { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .sol-dialog-in { display: grid; gap: 14px; padding: 20px; }
+    .sol-dialog-in { text-align: left; }
+    .sol-dialog h2 { margin: 0; font-family: var(--display); font-size: 1.35rem; font-weight: 700; }
+    .sol-dialog p { margin: 0; line-height: 1.55; color: var(--muted); }
+    .sol-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+    .sol-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; line-height: 1.5; }
+    .sol-steps b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--navy-3); color: var(--gold); font-family: var(--display); }
+    .sol-dialog-actions { display: grid; gap: 8px; }
+    .sol-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: var(--navy-2); }
+    .sol-seg button {
+        min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--muted);
+        font: 600 0.95rem 'Bai Jamjuree', sans-serif; cursor: pointer; padding: 4px 6px; line-height: 1.25;
+    }
+    .sol-seg button[aria-pressed="true"] { background: var(--navy-3); color: var(--ink); box-shadow: inset 0 0 0 1px var(--gold-soft); }
+    .sol-seg button small { display: block; font-weight: 500; font-size: 0.75rem; color: var(--muted); }
+    .sol-field { display: grid; gap: 6px; }
+    .sol-field > span { font-size: 0.85rem; color: var(--muted); }
+    .sol-warn { padding: 10px 12px; border-radius: 12px; background: oklch(0.55 0.16 25 / 0.16); color: oklch(0.88 0.06 25) !important; font-size: 0.9rem; }
+    .sol-win-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .sol-win-grid .sol-stat { text-align: center; background: var(--navy-2); }
+    .sol-badge { justify-self: start; padding: 4px 10px; border-radius: 999px; background: oklch(0.84 0.12 85 / 0.16); color: var(--gold); font-weight: 600; font-size: 0.85rem; }
+    .sol-save { font-size: 0.85rem; }
+
+    .sol-cascade { position: fixed; inset: 0; z-index: 1500; pointer-events: none; overflow: hidden; }
+    .sol-cascade img { position: absolute; left: 0; top: 0; will-change: transform; }
+
+    @media (min-width: 1080px) {
+        .sol { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; gap: 20px; padding-top: 16px; }
+        .sol-side { position: sticky; top: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .sol-card, .sol-card-in, .sol-toast, .sol-auto, .sol-slot { transition: none !important; }
+        .sol-card.is-hint .sol-card-in, .sol-slot.is-hint, .sol-card.is-nope .sol-card-in, .sol-dialog[open] { animation: none !important; }
+        .sol-card.is-hint .sol-card-in { box-shadow: 0 0 0 3px var(--gold); }
+    }
+</style>
+
+<main class="sol" id="sol">
+    <section class="sol-play" aria-label="โต๊ะไพ่">
+        <div class="sol-top">
+            <div class="sol-heading">
+                <h1 class="sol-title">ไพ่โซลิแทร์</h1>
+                <p class="sol-mode" id="solMode">จั่ว 1 ใบ</p>
+            </div>
+            <div class="sol-meters" aria-live="off">
+                <div class="sol-meter"><span>เวลา</span><b id="solTime">0:00</b></div>
+                <div class="sol-meter"><span>ตา</span><b id="solMoves">0</b></div>
+            </div>
+            <button type="button" class="ui-btn sol-icon-btn" id="solHelp" aria-label="วิธีเล่น">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.3-2.7 4"/><circle cx="12" cy="17.6" r="0.6" fill="currentColor"/></svg>
+            </button>
+        </div>
+
+        <div class="sol-board" id="solBoard">
+            <div class="sol-toast" id="solToast" role="status" aria-live="polite"></div>
+            <button type="button" class="ui-btn sol-auto" id="solAuto">เก็บไพ่ให้เลย</button>
+        </div>
+
+        <div class="sol-actions">
+            <button type="button" class="ui-btn" id="solUndo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                ย้อน
+            </button>
+            <button type="button" class="ui-btn" id="solHint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z"/></svg>
+                คำใบ้
+            </button>
+            <button type="button" class="ui-btn" id="solNew">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>
+                เกมใหม่
+            </button>
+        </div>
+    </section>
+
+    <aside class="sol-side">
+        <section class="sol-panel" aria-labelledby="solStatsTitle">
+            <h2 id="solStatsTitle">สถิติของฉัน</h2>
+            <div class="sol-stats">
+                <div class="sol-stat"><span>ชนะ / เล่น</span><b id="stWins">0 / 0</b></div>
+                <div class="sol-stat"><span>ชนะติดกัน</span><b id="stStreak">0</b></div>
+                <div class="sol-stat"><span>เร็วสุด จั่ว 1</span><b id="stBest1">–</b></div>
+                <div class="sol-stat"><span>เร็วสุด จั่ว 3</span><b id="stBest3">–</b></div>
+            </div>
+        </section>
+        <section class="sol-panel" aria-labelledby="solLbTitle">
+            <h2 id="solLbTitle">ชนะเร็วสุด (จั่ว 1 ใบ)</h2>
+            <ol class="sol-board-list" id="solLb"><li><span></span><span></span><span class="sol-empty">กำลังโหลด…</span><span></span></li></ol>
+        </section>
+    </aside>
+</main>
+
+<dialog class="sol-dialog" id="dlgHelp" aria-labelledby="dlgHelpTitle">
+    <form method="dialog" class="sol-dialog-in">
+        <h2 id="dlgHelpTitle">วิธีเล่นโซลิแทร์</h2>
+        <ol class="sol-steps">
+            <li><b>1</b><span>เก็บไพ่ทั้ง 52 ใบขึ้น <strong>ช่องเก็บ 4 ช่องมุมขวาบน</strong> แยกดอก เรียงจาก A ไป K</span></li>
+            <li><b>2</b><span>กองล่างต่อไพ่ <strong>ลดลงทีละ 1 สลับสีแดง–ดำ</strong> ช่องว่างวางได้เฉพาะ K</span></li>
+            <li><b>3</b><span><strong>แตะไพ่</strong> แล้วมันจะไปที่ที่ดีที่สุดเอง หรือ <strong>ลาก</strong> ไปวางเองก็ได้</span></li>
+            <li><b>4</b><span>ไม่มีทางไป แตะ <strong>กองคว่ำมุมซ้ายบน</strong> เพื่อจั่ว หมดกองแล้วแตะอีกทีเพื่อวนใหม่</span></li>
+        </ol>
+        <div class="sol-dialog-actions">
+            <button class="ui-btn ui-btn--primary" value="ok" autofocus>เข้าใจแล้ว เริ่มเลย</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog class="sol-dialog" id="dlgNew" aria-labelledby="dlgNewTitle">
+    <form method="dialog" class="sol-dialog-in" id="formNew">
+        <h2 id="dlgNewTitle">แจกไพ่ใหม่</h2>
+        <div class="sol-field">
+            <span>จั่วทีละ</span>
+            <div class="sol-seg" role="group" aria-label="จั่วทีละ">
+                <button type="button" data-draw="1">1 ใบ<small>ง่ายกว่า</small></button>
+                <button type="button" data-draw="3">3 ใบ<small>ท้าทาย</small></button>
+            </div>
+        </div>
+        <div class="sol-field">
+            <span>สำรับ</span>
+            <div class="sol-seg" role="group" aria-label="สำรับ">
+                <button type="button" data-deal="winnable">ชนะได้แน่นอน<small>ตรวจแล้วมีทางชนะ</small></button>
+                <button type="button" data-deal="random">สุ่มล้วน<small>อาจไม่มีทางชนะ</small></button>
+            </div>
+        </div>
+        <p class="sol-warn" id="newWarn" hidden>ตานี้ยังไม่จบ ถ้าแจกใหม่จะนับเป็นแพ้ และสถิติชนะติดกันจะเริ่มใหม่</p>
+        <div class="sol-dialog-actions">
+            <button class="ui-btn ui-btn--primary" value="deal" id="btnDeal">แจกไพ่</button>
+            <button class="ui-btn ui-btn--ghost" value="cancel" formnovalidate>เล่นตาเดิมต่อ</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog class="sol-dialog" id="dlgWin" aria-labelledby="dlgWinTitle">
+    <form method="dialog" class="sol-dialog-in">
+        <h2 id="dlgWinTitle">ชนะแล้ว! 🎉</h2>
+        <span class="sol-badge" id="winBadge" hidden>สถิติใหม่ของคุณ</span>
+        <div class="sol-win-grid">
+            <div class="sol-stat"><span>เวลา</span><b id="winTime">0:00</b></div>
+            <div class="sol-stat"><span>จำนวนตา</span><b id="winMoves">0</b></div>
+            <div class="sol-stat"><span>ชนะติดกัน</span><b id="winStreak">1</b></div>
+        </div>
+        <p class="sol-save" id="winSave">กำลังบันทึกผล…</p>
+        <div class="sol-dialog-actions">
+            <button class="ui-btn ui-btn--primary" value="again" id="btnAgain" autofocus>เล่นอีกตา</button>
+            <button class="ui-btn ui-btn--ghost" value="settings">เปลี่ยนโหมด</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog class="sol-dialog" id="dlgStuck" aria-labelledby="dlgStuckTitle">
+    <form method="dialog" class="sol-dialog-in">
+        <h2 id="dlgStuckTitle">ไม่มีทางไปต่อแล้ว</h2>
+        <p>จั่ววนจนครบแล้วก็ไม่มีใบไหนลงได้ ลองย้อนกลับไปเดินทางอื่น หรือแจกไพ่ใหม่</p>
+        <div class="sol-dialog-actions">
+            <button class="ui-btn ui-btn--primary" value="undo">ย้อนกลับ</button>
+            <button class="ui-btn" value="new">แจกไพ่ใหม่</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+    window.SOLITAIRE_BOOT = {
+        data: <%- JSON.stringify(soloData || null).replace(/</g, '\\u003c') %>,
+        playerId: <%- JSON.stringify(player && player.playerId ? player.playerId : null) %>,
+        assets: '/assets/games/poker/'
+    };
+</script>
+<script src="/js/solo/solitaire-engine.js?v=<%= typeof buildId !== 'undefined' ? buildId : '' %>"></script>
+<script src="/js/solo/solitaire-seeds.js?v=<%= typeof buildId !== 'undefined' ? buildId : '' %>"></script>
+<script src="/js/solo/solitaire.js?v=<%= typeof buildId !== 'undefined' ? buildId : '' %>"></script>
+
+<%- contentFor('footer') %>
+<%- include('../partials/footerNav', { back: { href: '/solo', label: 'เกมเดี่ยว' } }) %>
