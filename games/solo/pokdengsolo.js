@@ -125,7 +125,9 @@ module.exports = {
             if (!run) return res.status(409).json({ success: false, error: 'ยังไม่ได้เริ่มรอบ', state: null });
             const expected = Number(body.hand);
             // กดซ้ำ/ส่งซ้ำตอนเน็ตกระตุก: มือนี้เริ่มไปแล้ว → คืนสถานะปัจจุบัน ไม่หักชิปซ้ำ
-            if (Number.isInteger(expected) && expected === run.handNo && run.phase !== 'bet') {
+            // รวมกรณีมือจบทันทีตอนลงเดิมพัน (มีป๊อก) — phase วนกลับเป็น 'bet' แล้ว แต่ lastResult ยังเป็นมือนี้
+            const alreadyPlayed = run.phase !== 'bet' || (run.lastResult && run.lastResult.handNo === expected);
+            if (Number.isInteger(expected) && expected === run.handNo && alreadyPlayed) {
                 return res.json({ replay: true, ...payload(run, soloStats.getData(playerId, GAME_ID)) });
             }
             if (Number.isInteger(expected) && expected !== run.handNo + 1) {
