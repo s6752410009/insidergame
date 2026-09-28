@@ -99,6 +99,7 @@ module.exports = {
             try {
                 if (typeof ensurePersistedPlayer === 'function') await ensurePersistedPlayer(playerId);
             } catch (error) {
+                console.error('[pokdengsolo] start: ensurePersistedPlayer failed:', error.message);
                 return res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
             }
             // อ่าน run หลัง await เท่านั้น (ไม่มี await คั่นระหว่างอ่าน-เขียน)

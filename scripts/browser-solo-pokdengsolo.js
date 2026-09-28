@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
 const PORT = Number(process.env.SOLO_TEST_PORT) || 8491;
 const BASE = `http://127.0.0.1:${PORT}`;
 const SHOTS = process.env.SOLO_SHOTS || '';
-const MAX_HANDS = Number(process.env.SOLO_MAX_HANDS) || 80;
+const MAX_HANDS = Number(process.env.SOLO_MAX_HANDS) || 25; // 80 มือบางทีเกิน 5 นาที (ชนะติดไม่หมดตัว)
 
 let passed = 0;
 function assert(cond, msg) {
@@ -45,7 +45,7 @@ async function bootServer() {
             logs += String(c);
             if (logs.includes(`Server started on port ${PORT}`)) { clearTimeout(timer); resolve(child); }
         });
-        child.stderr.on('data', c => { logs += String(c); });
+        child.stderr.on('data', c => { logs += String(c); process.stderr.write('[server] ' + c); });
         child.once('exit', code => { clearTimeout(timer); reject(new Error('server exited ' + code + '\n' + logs.slice(-1500))); });
     });
 }
@@ -101,6 +101,8 @@ async function layoutProblems(page) {
         await ctx.addInitScript(noPromo);
         const page = await ctx.newPage();
         page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+        // console บอกแค่สถานะ ไม่บอก URL — เก็บ URL ของคำขอที่พังไว้ให้ไล่ต่อได้
+        page.on('response', r => { if (r.status() >= 400) errors.push(`http ${r.status()} ${r.request().method()} ${r.url().replace(BASE, '')}`); });
         page.on('console', m => {
             if (m.type() !== 'error') return;
             const text = m.text();
@@ -291,6 +293,7 @@ async function layoutProblems(page) {
         assert(errors.length === 0, 'ไม่มี error ในหน้า: ' + errors.join(' | '));
         console.log(`✅ browser-solo-pokdengsolo: ${passed} assertions passed (${hands} hands on mobile)`);
     } finally {
+        if (errors.length) console.error('errors seen:', errors.join(' | '));
         await browser.close();
         server.kill('SIGTERM');
     }
