@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="60%">
+      <stop offset="0" stop-color="#23385a"/>
+      <stop offset="1" stop-color="#141c2b"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbe3a6"/>
+      <stop offset="0.5" stop-color="#f5c86b"/>
+      <stop offset="1" stop-color="#b98a35"/>
+    </linearGradient>
+    <pattern id="lattice" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45 120 160)">
+      <path d="M0 12h24M12 0v24" stroke="#4fd1c5" stroke-opacity="0.13" stroke-width="1.2"/>
+      <circle cx="12" cy="12" r="1.6" fill="#f5c86b" fill-opacity="0.28"/>
+    </pattern>
+  </defs>
+  <rect width="240" height="320" fill="url(#glow)"/>
+  <rect x="14" y="14" width="212" height="292" rx="12" fill="url(#lattice)"/>
+  <rect x="14" y="14" width="212" height="292" rx="12" fill="none" stroke="url(#gold)" stroke-opacity="0.75" stroke-width="2"/>
+  <rect x="22" y="22" width="196" height="276" rx="8" fill="none" stroke="#f5c86b" stroke-opacity="0.25" stroke-width="1"/>
+  <g transform="translate(120 160)">
+    <circle r="58" fill="#141c2b" stroke="url(#gold)" stroke-width="3"/>
+    <circle r="48" fill="none" stroke="#4fd1c5" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="3 6"/>
+    <g transform="rotate(-12)">
+      <rect x="-30" y="-26" width="32" height="44" rx="5" fill="#1e2c47" stroke="#4fd1c5" stroke-width="2.5"/>
+    </g>
+    <g transform="rotate(12)">
+      <rect x="-2" y="-26" width="32" height="44" rx="5" fill="#1e2c47" stroke="url(#gold)" stroke-width="2.5"/>
+    </g>
+    <path d="M-16 -3l6 -6l6 6l-6 6z" fill="#4fd1c5"/>
+    <path d="M10 -3l6 -6l6 6l-6 6z" fill="#f5c86b"/>
+  </g>
+  <g fill="url(#gold)">
+    <path d="M120 34l6 6l-6 6l-6 -6z"/>
+    <path d="M120 274l6 6l-6 6l-6 -6z"/>
+  </g>
+</svg>

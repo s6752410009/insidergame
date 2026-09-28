@@ -1,0 +1,412 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="/assets/games/solo/memory/back.svg">
+<script>document.documentElement.classList.add('mm-active');</script>
+<style>
+    html.mm-active, html.mm-active body.content {
+        overflow-x: hidden;
+        margin: 0 !important;
+        background: oklch(0.2 0.03 258) !important;
+    }
+    html.mm-active .container-fluid > header,
+    html.mm-active #music-controls { display: none !important; }
+    html.mm-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; background: transparent !important; }
+    html.mm-active .container-fluid > .row { margin: 0 !important; }
+    html.mm-active .col-lg-12 { padding: 0 !important; }
+    html.mm-playing, html.mm-playing body.content { overflow: hidden; overscroll-behavior: none; }
+    html.mm-playing body.content { padding-bottom: 0 !important; }
+    html.mm-playing .container-fluid { padding-bottom: 0 !important; min-height: 0 !important; }
+
+    .mm {
+        --mm-bg: oklch(0.2 0.03 258);
+        --mm-surface: oklch(0.25 0.035 258);
+        --mm-surface-2: oklch(0.3 0.04 258);
+        --mm-sunken: oklch(0.17 0.028 258);
+        --mm-line: oklch(0.5 0.04 258 / 0.4);
+        --mm-ink: oklch(0.96 0.01 90);
+        --mm-soft: oklch(0.85 0.02 250);
+        --mm-muted: oklch(0.72 0.03 250);
+        --mm-gold: oklch(0.85 0.12 80);
+        --mm-gold-deep: oklch(0.7 0.12 75);
+        --mm-gold-ink: oklch(0.24 0.04 258);
+        --mm-teal: oklch(0.8 0.11 185);
+        --mm-teal-ink: oklch(0.22 0.04 200);
+        --mm-miss: oklch(0.7 0.17 25);
+        --mm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --mm-display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+        --mm-footer: 76px;
+
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0 16px;
+        color: var(--mm-ink);
+        font-family: 'Bai Jamjuree', sans-serif;
+        font-size: 1rem;
+        line-height: 1.5;
+        text-align: left;
+    }
+    .mm *, .mm *::before, .mm *::after { box-sizing: border-box; }
+    .mm button { font-family: inherit; }
+    .mm [hidden] { display: none !important; }
+    .mm h1, .mm h2, .mm h3, .mm p { margin: 0; }
+    .mm .ui-btn--primary { --ui-accent: var(--mm-gold); --ui-accent-ink: var(--mm-gold-ink); background: var(--mm-gold); color: var(--mm-gold-ink); }
+    .mm .ui-btn--primary:hover { background: oklch(0.89 0.11 82); color: var(--mm-gold-ink); }
+    .mm-num { font-family: var(--mm-display); font-variant-numeric: tabular-nums; }
+
+    /* ---------- เมนู ---------- */
+    .mm-menu { padding: 14px 0 24px; display: grid; gap: 18px; }
+    .mm-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .mm-kicker { font-family: var(--mm-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mm-teal); }
+    .mm-title { font-family: var(--mm-display); font-size: clamp(1.5rem, 1.2rem + 1.6vw, 2.1rem); font-weight: 700; line-height: 1.15; }
+    .mm-chip {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 999px;
+        border: 1px solid var(--mm-line); background: var(--mm-surface); color: var(--mm-soft);
+        font-size: 0.92rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+        transition: transform 0.12s var(--mm-ease), background-color 0.15s;
+    }
+    .mm-chip:hover { background: var(--mm-surface-2); color: var(--mm-ink); }
+    .mm-chip:active { transform: scale(0.96); }
+    .mm-chip:focus-visible, .mm-card:focus-visible, .mm-opt:focus-visible { outline: 2px solid var(--mm-gold); outline-offset: 2px; }
+
+    .mm-resume {
+        display: flex; align-items: center; gap: 12px; justify-content: space-between;
+        padding: 12px 14px; border-radius: 14px; background: var(--mm-surface); border: 1px solid var(--mm-teal);
+    }
+    .mm-resume p { font-weight: 600; min-width: 0; }
+    .mm-resume small { display: block; color: var(--mm-muted); font-weight: 500; }
+    .mm-resume-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .mm-daily {
+        position: relative; overflow: hidden;
+        display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center;
+        padding: 16px; border-radius: 18px;
+        background:
+            radial-gradient(120% 140% at 100% 0%, oklch(0.8 0.11 185 / 0.18), transparent 55%),
+            var(--mm-surface);
+        border: 1px solid var(--mm-line);
+    }
+    .mm-daily-art { grid-row: 1 / span 3; grid-column: 2; width: 74px; height: 98px; position: relative; }
+    .mm-daily-art span {
+        position: absolute; inset: 0; border-radius: 9px;
+        background: url('/assets/games/solo/memory/back.svg') center / cover;
+        box-shadow: 0 6px 16px oklch(0.1 0.02 258 / 0.5);
+    }
+    .mm-daily-art span:first-child { transform: rotate(-10deg) translate(-8px, 2px); opacity: 0.75; }
+    .mm-daily-art span:last-child { transform: rotate(6deg) translate(4px, 0); }
+    .mm-daily-label { font-family: var(--mm-display); font-size: 0.78rem; letter-spacing: 0.1em; color: var(--mm-gold); font-weight: 600; }
+    .mm-daily-title { font-family: var(--mm-display); font-size: 1.25rem; font-weight: 700; }
+    .mm-daily-meta { color: var(--mm-muted); font-size: 0.9rem; }
+    .mm-daily-cta { grid-column: 1 / -1; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .mm-daily-cta .ui-btn { flex: 1 1 200px; }
+    .mm-daily-done { grid-column: 1 / -1; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+    .mm-daily-done strong { font-family: var(--mm-display); font-size: 1.5rem; color: var(--mm-gold); }
+    .mm-daily-done span { color: var(--mm-soft); }
+    .mm-btn-gold { background: transparent; border-color: var(--mm-gold); color: var(--mm-gold); }
+    .mm-btn-gold:hover { background: oklch(0.85 0.12 80 / 0.12); color: var(--mm-gold); }
+
+    .mm-sec-title { font-family: var(--mm-display); font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .mm-sec-title small { font-family: 'Bai Jamjuree', sans-serif; font-weight: 500; font-size: 0.85rem; color: var(--mm-muted); }
+    .mm-levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .mm-opt {
+        display: grid; gap: 2px; justify-items: start; align-content: start;
+        min-height: 88px; padding: 10px 12px; border-radius: 14px; text-align: left;
+        background: var(--mm-surface); border: 1.5px solid var(--mm-line); color: var(--mm-ink); cursor: pointer;
+        transition: transform 0.12s var(--mm-ease), border-color 0.15s, background-color 0.15s;
+    }
+    .mm-opt:active { transform: scale(0.97); }
+    .mm-opt[aria-checked="true"] { border-color: var(--mm-gold); background: oklch(0.85 0.12 80 / 0.1); }
+    .mm-opt-name { font-family: var(--mm-display); font-weight: 700; font-size: 1.05rem; }
+    .mm-opt-sub { font-size: 0.8rem; color: var(--mm-muted); }
+    .mm-opt-best { font-size: 0.8rem; color: var(--mm-soft); min-height: 1.2em; }
+    .mm-stars { color: var(--mm-gold); letter-spacing: 1px; font-size: 0.85rem; }
+    .mm-stars .off { color: oklch(0.5 0.03 258); }
+
+    .mm-decks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .mm-deck {
+        display: grid; gap: 6px; justify-items: center; padding: 8px 6px 10px; border-radius: 14px;
+        background: var(--mm-surface); border: 1.5px solid var(--mm-line); color: var(--mm-ink); cursor: pointer;
+        font-size: 0.85rem; font-weight: 600; min-height: 44px;
+        transition: transform 0.12s var(--mm-ease), border-color 0.15s;
+    }
+    .mm-deck:active { transform: scale(0.97); }
+    .mm-deck[aria-checked="true"] { border-color: var(--mm-teal); background: oklch(0.8 0.11 185 / 0.1); }
+    .mm-deck img { width: 100%; max-width: 72px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; display: block; }
+    .mm-deck span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .mm-start { width: 100%; }
+    .mm-statrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .mm-stat { padding: 10px 8px; border-radius: 12px; background: var(--mm-sunken); text-align: center; min-width: 0; }
+    .mm-stat b { display: block; font-family: var(--mm-display); font-size: 1.25rem; color: var(--mm-ink); line-height: 1.2; }
+    .mm-stat span { display: block; font-size: 0.75rem; color: var(--mm-muted); line-height: 1.3; }
+
+    .mm-board-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .mm-lb-row { display: grid; grid-template-columns: 32px 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--mm-surface); min-height: 48px; }
+    .mm-lb-row.is-me { background: oklch(0.8 0.11 185 / 0.14); outline: 1px solid oklch(0.8 0.11 185 / 0.5); }
+    .mm-lb-rank { font-family: var(--mm-display); font-weight: 700; text-align: center; color: var(--mm-muted); }
+    .mm-lb-row:nth-child(-n+3) .mm-lb-rank { color: var(--mm-gold); }
+    .mm-lb-ava { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--mm-surface-2); font-size: 1rem; overflow: hidden; }
+    .mm-lb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .mm-lb-score { font-family: var(--mm-display); font-variant-numeric: tabular-nums; color: var(--mm-soft); font-size: 0.9rem; white-space: nowrap; }
+    .mm-empty { color: var(--mm-muted); padding: 14px; border: 1px dashed var(--mm-line); border-radius: 12px; text-align: center; font-size: 0.92rem; }
+
+    /* ---------- หน้าเล่น ---------- */
+    .mm-play {
+        display: flex; flex-direction: column;
+        height: calc(100dvh - var(--mm-footer));
+        min-height: 360px;
+        padding: 8px 0 10px;
+    }
+    .mm-hud { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; }
+    .mm-pause-btn { width: 44px; height: 44px; border-radius: 50%; padding: 0; min-width: 0; }
+    .mm-pause-btn i { display: block; width: 12px; height: 14px; border-left: 4px solid currentColor; border-right: 4px solid currentColor; }
+    .mm-readouts { display: flex; gap: 14px; align-items: baseline; min-width: 0; }
+    .mm-readout { display: grid; line-height: 1.1; min-width: 0; }
+    .mm-readout b { font-family: var(--mm-display); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+    .mm-readout span { font-size: 0.72rem; color: var(--mm-muted); white-space: nowrap; }
+    .mm-live-stars { font-size: 1.15rem; letter-spacing: 2px; color: var(--mm-gold); white-space: nowrap; }
+    .mm-live-stars i { font-style: normal; display: inline-block; transition: opacity 0.3s, transform 0.3s var(--mm-ease); }
+    .mm-live-stars i.off { opacity: 0.22; transform: scale(0.8); }
+    .mm-progress { margin-top: 8px; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--mm-muted); }
+    .mm-progress-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+    .mm-bar { flex: 1 1 40%; height: 6px; border-radius: 99px; background: var(--mm-sunken); overflow: hidden; }
+    .mm-bar i { display: block; height: 100%; width: 100%; background: var(--mm-teal); transform-origin: left center; transform: scaleX(0); transition: transform 0.4s var(--mm-ease); }
+    .mm-progress-count { font-family: var(--mm-display); color: var(--mm-soft); white-space: nowrap; }
+
+    .mm-stage { position: relative; flex: 1 1 auto; min-height: 0; margin-top: 10px; display: grid; place-items: center; }
+    .mm-grid { display: grid; gap: var(--gap, 8px); grid-template-columns: repeat(var(--cols), var(--cw)); grid-auto-rows: var(--ch); }
+
+    .mm-card {
+        position: relative; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+        perspective: 700px; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+        animation: mm-deal 0.42s var(--mm-ease) both; animation-delay: calc(var(--i, 0) * 22ms);
+    }
+    .mm-card-inner {
+        position: absolute; inset: 0; transform-style: preserve-3d;
+        transition: transform 0.42s var(--mm-ease);
+    }
+    .mm-card.is-up .mm-card-inner, .mm-card.is-matched .mm-card-inner { transform: rotateY(180deg); }
+    .mm-face {
+        position: absolute; inset: 0; border-radius: var(--radius, 10px); overflow: hidden;
+        backface-visibility: hidden; -webkit-backface-visibility: hidden;
+        box-shadow: 0 4px 12px oklch(0.1 0.02 258 / 0.45);
+    }
+    .mm-back { background: #1a2332 url('/assets/games/solo/memory/back.svg') center / cover; }
+    .mm-front { transform: rotateY(180deg); background: #16203a; }
+    .mm-front img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+    .mm-front::after {
+        content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+        border: 2px solid var(--mm-gold); opacity: 0; transition: opacity 0.25s;
+    }
+    .mm-card.is-matched .mm-front::after { opacity: 1; }
+    .mm-card.is-miss .mm-front::after { border-color: var(--mm-miss); opacity: 1; }
+    .mm-card.is-matched { cursor: default; }
+    .mm-card.is-matched .mm-card-inner { animation: mm-pop 0.5s var(--mm-ease) 0.3s; }
+    .mm-card.is-settled .mm-face { opacity: 0.55; transition: opacity 0.6s; }
+    .mm-card.is-miss .mm-card-inner { animation: mm-shake 0.38s ease-in-out 0.34s; }
+    .mm-card:active:not(.is-matched):not(.is-up) .mm-card-inner { transform: scale(0.96); transition-duration: 0.1s; }
+
+    @keyframes mm-deal { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: none; } }
+    @keyframes mm-pop { 0% { transform: rotateY(180deg) scale(1); } 45% { transform: rotateY(180deg) scale(1.1); } 100% { transform: rotateY(180deg) scale(1); } }
+    @keyframes mm-shake { 0%, 100% { transform: rotateY(180deg) translateX(0); } 20% { transform: rotateY(180deg) translateX(-6px); } 40% { transform: rotateY(180deg) translateX(6px); } 60% { transform: rotateY(180deg) translateX(-4px); } 80% { transform: rotateY(180deg) translateX(3px); } }
+
+    .mm-toast {
+        position: absolute; left: 50%; top: 42%; z-index: 5; pointer-events: none;
+        padding: 10px 18px; border-radius: 999px; white-space: nowrap;
+        background: var(--mm-teal); color: var(--mm-teal-ink);
+        font-family: var(--mm-display); font-weight: 700; font-size: 1.2rem;
+        box-shadow: 0 10px 30px oklch(0.1 0.02 258 / 0.5);
+        opacity: 0; transform: translate(-50%, 10px) scale(0.85);
+    }
+    .mm-toast.is-on { animation: mm-toast 1.1s var(--mm-ease) both; }
+    @keyframes mm-toast {
+        0% { opacity: 0; transform: translate(-50%, 10px) scale(0.85); }
+        18% { opacity: 1; transform: translate(-50%, 0) scale(1.06); }
+        30% { transform: translate(-50%, 0) scale(1); }
+        78% { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -22px) scale(0.96); }
+    }
+
+    /* ---------- overlay (พัก / ผลลัพธ์ / วิธีเล่น) ---------- */
+    .mm-overlay {
+        position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 16px;
+        background: oklch(0.14 0.025 258 / 0.94);
+        animation: mm-fade 0.2s ease-out both;
+    }
+    .mm-sheet {
+        width: min(100%, 420px); max-height: calc(100dvh - 32px); overflow-y: auto;
+        padding: 22px 18px 18px; border-radius: 20px; background: var(--mm-surface); border: 1px solid var(--mm-line);
+        display: grid; gap: 14px; text-align: center; color: var(--mm-ink); font-family: 'Bai Jamjuree', sans-serif;
+        animation: mm-rise 0.32s var(--mm-ease) both;
+    }
+    .mm-sheet h2 { font-family: var(--mm-display); font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .mm-sheet p { margin: 0; color: var(--mm-soft); }
+    .mm-sheet-actions { display: grid; gap: 10px; }
+    .mm-sheet-actions .ui-btn { width: 100%; }
+    .mm-big-stars { display: flex; justify-content: center; gap: 10px; }
+    .mm-big-stars svg { width: 54px; height: 54px; }
+    .mm-big-stars .star { opacity: 0; transform: scale(0.3) rotate(-30deg); }
+    .mm-big-stars .star.is-on { animation: mm-star 0.5s var(--mm-ease) both; }
+    .mm-big-stars .star.is-dim { animation: mm-fade 0.3s ease-out both; }
+    @keyframes mm-star { 0% { opacity: 0; transform: scale(0.3) rotate(-30deg); } 60% { opacity: 1; transform: scale(1.18) rotate(6deg); } 100% { opacity: 1; transform: none; } }
+    @keyframes mm-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes mm-rise { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .mm-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .mm-result-grid div { padding: 10px; border-radius: 12px; background: var(--mm-sunken); }
+    .mm-result-grid b { display: block; font-family: var(--mm-display); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+    .mm-result-grid span { font-size: 0.8rem; color: var(--mm-muted); }
+    .mm-badge { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 99px; background: var(--mm-gold); color: var(--mm-gold-ink); font-size: 0.72rem; font-weight: 700; }
+    .mm-save { font-size: 0.88rem; min-height: 1.4em; }
+    .mm-save.is-ok { color: var(--mm-teal); }
+    .mm-save.is-err { color: var(--mm-miss); }
+    .mm-steps { display: grid; gap: 10px; text-align: left; margin: 0; padding: 0; list-style: none; }
+    .mm-steps li { display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: center; }
+    .mm-steps b { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--mm-sunken); color: var(--mm-gold); font-family: var(--mm-display); }
+    .mm-close { justify-self: end; margin: -10px -6px -6px 0; }
+
+    @media (min-width: 720px) {
+        .mm-menu { grid-template-columns: 1fr 1fr; align-items: start; column-gap: 20px; }
+        .mm-menu > .mm-top, .mm-menu > .mm-resume, .mm-menu > .mm-daily { grid-column: 1 / -1; }
+        .mm-col { display: grid; gap: 18px; align-content: start; }
+    }
+    @media (max-width: 719px) { .mm-col { display: contents; } }
+
+    @media (prefers-reduced-motion: reduce) {
+        .mm-card, .mm-card.is-miss .mm-card-inner, .mm-card.is-matched .mm-card-inner, .mm-sheet, .mm-overlay { animation: none; }
+        .mm-card-inner, .mm-bar i, .mm-live-stars i { transition: none; }
+        .mm-toast.is-on { animation: mm-fade 0.2s both; transform: translate(-50%, 0); }
+        .mm-big-stars .star.is-on { animation: none; opacity: 1; transform: none; }
+        .mm-big-stars .star.is-dim { animation: none; opacity: 1; transform: none; }
+    }
+</style>
+
+<main class="mm" id="mm">
+    <!-- เมนู -->
+    <section class="mm-menu" id="mmMenu" aria-labelledby="mmTitle">
+        <div class="mm-top">
+            <div>
+                <p class="mm-kicker">เกมเดี่ยว</p>
+                <h1 class="mm-title" id="mmTitle">จับคู่การ์ดความจำ</h1>
+            </div>
+            <button type="button" class="mm-chip" id="mmHowBtn">วิธีเล่น</button>
+        </div>
+
+        <div class="mm-resume" id="mmResume" hidden>
+            <p>มีเกมค้างอยู่<small id="mmResumeInfo"></small></p>
+            <div class="mm-resume-actions">
+                <button type="button" class="mm-chip" id="mmResumeDrop">ทิ้ง</button>
+                <button type="button" class="ui-btn ui-btn--sm mm-btn-gold" id="mmResumeGo">เล่นต่อ</button>
+            </div>
+        </div>
+
+        <section class="mm-daily" aria-labelledby="mmDailyTitle">
+            <p class="mm-daily-label">DAILY · <span id="mmDailyDate"></span></p>
+            <h2 class="mm-daily-title" id="mmDailyTitle">กระดานประจำวัน</h2>
+            <p class="mm-daily-meta" id="mmDailyMeta">กระดานเดียวกันทุกคน · เล่นได้วันละครั้ง</p>
+            <div class="mm-daily-art" aria-hidden="true"><span></span><span></span></div>
+            <div class="mm-daily-cta" id="mmDailyCta">
+                <button type="button" class="ui-btn mm-btn-gold" id="mmDailyBtn">เล่นกระดานวันนี้</button>
+            </div>
+            <div class="mm-daily-done" id="mmDailyDone" hidden></div>
+        </section>
+
+        <div class="mm-col">
+            <section aria-labelledby="mmLevelTitle">
+                <h2 class="mm-sec-title" id="mmLevelTitle">เลือกระดับ</h2>
+                <div class="mm-levels" role="radiogroup" aria-labelledby="mmLevelTitle" id="mmLevels"></div>
+            </section>
+            <section aria-labelledby="mmDeckTitle">
+                <h2 class="mm-sec-title" id="mmDeckTitle">สำรับการ์ด</h2>
+                <div class="mm-decks" role="radiogroup" aria-labelledby="mmDeckTitle" id="mmDecks"></div>
+            </section>
+            <button type="button" class="ui-btn ui-btn--lg ui-btn--primary mm-start" id="mmStart">เริ่มเกม</button>
+        </div>
+
+        <div class="mm-col">
+            <section aria-labelledby="mmStatsTitle">
+                <h2 class="mm-sec-title" id="mmStatsTitle">สถิติของคุณ</h2>
+                <div class="mm-statrow" id="mmStats"></div>
+            </section>
+            <section aria-labelledby="mmLbTitle">
+                <h2 class="mm-sec-title" id="mmLbTitle">เร็วสุดวันนี้ <small>กระดานประจำวัน</small></h2>
+                <ol class="mm-board-list" id="mmBoard"><li class="mm-empty">กำลังโหลด…</li></ol>
+            </section>
+        </div>
+    </section>
+
+    <!-- เล่น -->
+    <section class="mm-play" id="mmPlay" hidden aria-label="กระดานเกม">
+        <div class="mm-hud">
+            <button type="button" class="ui-btn mm-pause-btn" id="mmPauseBtn" aria-label="พักเกม"><i aria-hidden="true"></i></button>
+            <div class="mm-readouts">
+                <div class="mm-readout"><b id="mmTime">0:00</b><span>เวลา</span></div>
+                <div class="mm-readout"><b id="mmMoves">0</b><span>ครั้ง</span></div>
+            </div>
+            <div class="mm-live-stars" id="mmLiveStars" aria-label="ดาวที่จะได้"><i>★</i><i>★</i><i>★</i></div>
+        </div>
+        <div class="mm-progress">
+            <span class="mm-progress-label" id="mmPlayLabel"></span>
+            <span class="mm-bar" aria-hidden="true"><i id="mmBar"></i></span>
+            <span class="mm-progress-count" id="mmFound">0/0</span>
+        </div>
+        <div class="mm-stage" id="mmStage">
+            <div class="mm-grid" id="mmGrid"></div>
+            <div class="mm-toast" id="mmToast" aria-live="polite"></div>
+        </div>
+    </section>
+
+    <!-- พักเกม -->
+    <div class="mm-overlay" id="mmPause" hidden role="dialog" aria-modal="true" aria-labelledby="mmPauseTitle">
+        <div class="mm-sheet">
+            <h2 id="mmPauseTitle">พักเกม</h2>
+            <p id="mmPauseInfo"></p>
+            <div class="mm-sheet-actions">
+                <button type="button" class="ui-btn ui-btn--lg ui-btn--primary" id="mmResumeBtn">เล่นต่อ</button>
+                <button type="button" class="ui-btn" id="mmRestartBtn">เริ่มกระดานใหม่</button>
+                <button type="button" class="ui-btn ui-btn--ghost" id="mmQuitBtn">กลับเมนู (เก็บเกมไว้)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ผลลัพธ์ -->
+    <div class="mm-overlay" id="mmResult" hidden role="dialog" aria-modal="true" aria-labelledby="mmResultTitle">
+        <div class="mm-sheet">
+            <div class="mm-big-stars" id="mmBigStars" aria-hidden="true"></div>
+            <h2 id="mmResultTitle">ครบทุกคู่!</h2>
+            <p id="mmResultSub"></p>
+            <div class="mm-result-grid" id="mmResultGrid"></div>
+            <p class="mm-save" id="mmSave" aria-live="polite"></p>
+            <div class="mm-sheet-actions">
+                <button type="button" class="ui-btn ui-btn--lg ui-btn--primary" id="mmAgainBtn">เล่นอีกครั้ง</button>
+                <button type="button" class="ui-btn" id="mmMenuBtn">กลับเมนู</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- วิธีเล่น -->
+    <div class="mm-overlay" id="mmHow" hidden role="dialog" aria-modal="true" aria-labelledby="mmHowTitle">
+        <div class="mm-sheet">
+            <button type="button" class="mm-chip mm-close" id="mmHowSkip">ข้าม</button>
+            <h2 id="mmHowTitle">วิธีเล่น</h2>
+            <ol class="mm-steps">
+                <li><b>1</b><span>แตะเปิดการ์ดทีละ 2 ใบ ถ้าภาพตรงกันจะค้างไว้</span></li>
+                <li><b>2</b><span>ไม่ตรงก็คว่ำกลับ จำตำแหน่งไว้ แล้วหาคู่ให้ครบทุกใบ</span></li>
+                <li><b>3</b><span>จับคู่ติดกันได้คอมโบ ยิ่งใช้ครั้งน้อยยิ่งได้ดาวเยอะ (สูงสุด 3 ดาว)</span></li>
+                <li><b>☀</b><span>กระดานประจำวันเหมือนกันทุกคน เล่นได้วันละครั้ง แข่งเวลากับทั้งเว็บ</span></li>
+            </ol>
+            <button type="button" class="ui-btn ui-btn--lg ui-btn--primary" id="mmHowOk">เข้าใจแล้ว</button>
+        </div>
+    </div>
+</main>
+
+<script>
+    window.MEMORY_BOOT = <%- JSON.stringify({
+        data: soloData || null,
+        playerId: (player && player.playerId) || null
+    }).replace(/</g, '\\u003c') %>;
+</script>
+<script src="/js/solo/memory-core.js?v=<%= typeof buildId !== 'undefined' ? buildId : '' %>"></script>
+<script src="/js/solo/memory.js?v=<%= typeof buildId !== 'undefined' ? buildId : '' %>"></script>
+
+<%- contentFor('footer') %>
+<%- include('../partials/footerNav', { back: { href: '/solo', label: 'เกมเดี่ยว' } }) %>
