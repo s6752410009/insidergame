@@ -428,12 +428,21 @@ function readStats() {
         assert(r.success, 'เปิดมือสังหาร');
         await waitFor(() => last(spectator).phase === 'finished', 5000, 'B finished');
         assert(last(spectator).winner === t2 && last(spectator).winReason === 'assassin', 'เปิดมือสังหาร = อีกทีมชนะ');
-        await waitFor(() => readStats().some(x => x.playerId === promotedId && x.modeStats?.codenames?.wins >= 1), 15000, 'stats B saved');
+        // หัวหน้าที่ถูกตั้งใหม่อาจเป็นหัวห้องที่ออกไปใน B4 (ทีมสุ่ม) — คนที่ออกแล้วไม่นับสถิติ เลยเช็คคนในทีมที่ยังอยู่แทน
+        const promotedLeft = promoted === B.host || promoted === leaver;
+        const winnerToCheck = promotedLeft
+            ? (last(spectator).teams[t2].members.find(m => !m.left && m.playerId !== B.host.id) || {}).playerId
+            : promotedId;
+        assert(winnerToCheck, 'มีคนในทีมชนะที่ยังอยู่ในห้อง');
+        await waitFor(() => readStats().some(x => x.playerId === winnerToCheck && x.modeStats?.codenames?.wins >= 1), 15000, 'stats B saved');
         rows = readStats();
         assert(!rows.find(x => x.playerId === spectator.id && x.modeStats.codenames.games > 0), 'ผู้ชมไม่นับสถิติ');
         assert(!rows.find(x => x.playerId === leaver.id && x.modeStats.codenames.games > 0), 'คนที่ออกไปแล้วไม่นับสถิติ');
-        const winnerStat = rows.find(x => x.playerId === promotedId);
+        const winnerStat = rows.find(x => x.playerId === winnerToCheck);
         assert(winnerStat && winnerStat.modeStats.codenames.wins === 1, 'ทีมชนะได้ win (รวมหัวหน้าที่ถูกตั้งใหม่)');
+        if (promotedLeft) {
+            assert(!rows.find(x => x.playerId === promotedId && x.modeStats.codenames.games > 0), 'หัวหน้าที่ออกไปแล้วไม่นับสถิติ');
+        }
         console.log('B6. มือสังหาร = แพ้ทันที · สถิติไม่นับผู้ชม/คนที่ออก ✓');
 
         B.clients.forEach(c => { try { c.socket.close(); } catch (e) { /* ignore */ } });
