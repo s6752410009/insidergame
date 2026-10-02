@@ -292,7 +292,8 @@ function readStats() {
         assert(s.keyVisible && s.board.every(c => c.color), 'จบเกมเปิดกุญแจให้ทุกคน');
         console.log('A5. เล่นจนจบ: ผิดสีจบเทิร์น · เปิดครบ 8 ชนะ · จบแล้วเปิดกุญแจ ✓');
 
-        await delay(1200);
+        // สถิติเซฟลงไฟล์แบบหน่วงเวลา — รอจนเขียนจริง (เครื่องช้าเกิน 1.2s ได้)
+        await waitFor(() => readStats().some(x => x.playerId === sm2.id && x.modeStats?.codenames?.games >= 1), 15000, 'stats A saved');
         let rows = readStats();
         [sm2, op2].forEach(c => {
             const st = rows.find(x => x.playerId === c.id);
@@ -427,7 +428,7 @@ function readStats() {
         assert(r.success, 'เปิดมือสังหาร');
         await waitFor(() => last(spectator).phase === 'finished', 5000, 'B finished');
         assert(last(spectator).winner === t2 && last(spectator).winReason === 'assassin', 'เปิดมือสังหาร = อีกทีมชนะ');
-        await delay(1200);
+        await waitFor(() => readStats().some(x => x.playerId === promotedId && x.modeStats?.codenames?.wins >= 1), 15000, 'stats B saved');
         rows = readStats();
         assert(!rows.find(x => x.playerId === spectator.id && x.modeStats.codenames.games > 0), 'ผู้ชมไม่นับสถิติ');
         assert(!rows.find(x => x.playerId === leaver.id && x.modeStats.codenames.games > 0), 'คนที่ออกไปแล้วไม่นับสถิติ');
