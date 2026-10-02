@@ -592,10 +592,6 @@
             font-size: 0.78em;
         }
 
-        #logsContainer {
-            max-height: min(60vh, 420px);
-            font-size: 0.8em;
-        }
     }
 </style>
 
@@ -882,7 +878,100 @@
 
     .table-meta { color: var(--ad-text-mute); }
     .empty-message { color: var(--ad-text-mute); }
-    #logsContainer { border: 1px solid var(--ad-border); }
+    /* ---------- แท็บ Logs ---------- */
+    .lg { text-align: left; }
+    .lg [hidden] { display: none !important; }
+    .lg-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; margin-bottom: 16px; }
+    .lg-head-text { min-width: 0; }
+    .lg-title { margin: 0; }
+    .lg-sub { margin: 4px 0 0; color: var(--ad-text-mute); font-size: 0.85rem; }
+    .lg-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .lg-tools .btn-admin { margin: 0; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; min-height: 44px; white-space: nowrap; }
+    .lg-live {
+        display: inline-flex; align-items: center; gap: 8px;
+        min-height: 44px; padding: 0 14px;
+        border-radius: 999px; border: 1px solid var(--ad-border-strong);
+        background: transparent; color: var(--ad-text-dim);
+        font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .lg-live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ad-text-mute); }
+    .lg-live.is-on { color: var(--ad-green); border-color: color-mix(in srgb, var(--ad-green) 45%, transparent); }
+    .lg-live.is-on .lg-live-dot { background: var(--ad-green); animation: lgPulse 1.6s ease-in-out infinite; }
+    @keyframes lgPulse { 50% { opacity: 0.35; } }
+
+    .lg-cats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .lg-cat {
+        display: inline-flex; align-items: center; gap: 6px;
+        min-height: 40px; padding: 0 14px;
+        border-radius: 999px; border: 1px solid var(--ad-border-strong);
+        background: var(--ad-surface-2); color: var(--ad-text-dim);
+        font: inherit; font-size: 0.92rem; font-weight: 600; white-space: nowrap; cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .lg-cat:hover { color: var(--ad-text); border-color: rgba(255, 255, 255, 0.28); }
+    .lg-cat:focus-visible, .lg-live:focus-visible, .lg-newpill:focus-visible { outline: 2px solid var(--ad-amber); outline-offset: 2px; }
+    .lg-cat.is-active { background: var(--ad-text); border-color: var(--ad-text); color: #12141f; }
+    .lg-count { font-variant-numeric: tabular-nums; font-weight: 700; opacity: 0.7; }
+    .lg-cat.is-alert:not(.is-active) { color: var(--ad-red); border-color: color-mix(in srgb, var(--ad-red) 50%, transparent); }
+    .lg-cat.is-alert .lg-count { opacity: 1; }
+
+    .lg-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 220px); gap: 8px; margin-bottom: 12px; }
+    .lg-filters .search-box { width: 100%; min-width: 0; margin: 0; }
+
+    .lg-list-wrap { position: relative; }
+    .lg-list {
+        max-height: min(70vh, 720px); overflow-y: auto; overscroll-behavior: contain;
+        border: 1px solid var(--ad-border); border-radius: var(--ad-radius-sm);
+        background: var(--ad-bg-0);
+        font-family: 'Bai Jamjuree', 'Kanit', system-ui, sans-serif;
+    }
+    .lg-day {
+        position: sticky; top: 0; z-index: 1;
+        padding: 8px 14px; background: var(--ad-bg-1);
+        border-bottom: 1px solid var(--ad-border);
+        color: var(--ad-text-dim); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .lg-row {
+        display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 4px 10px; align-items: start;
+        padding: 10px 14px; border-bottom: 1px solid var(--ad-border);
+    }
+    .lg-row:last-child { border-bottom: 0; }
+    .lg-ico { font-size: 1rem; line-height: 1.5; text-align: center; }
+    .lg-body { min-width: 0; }
+    .lg-msg { color: var(--ad-text); font-size: 0.95rem; line-height: 1.5; overflow-wrap: anywhere; }
+    .lg-ctx { margin-top: 2px; color: var(--ad-text-mute); font-size: 0.8rem; overflow-wrap: anywhere; }
+    .lg-time { color: var(--ad-text-mute); font-size: 0.8rem; line-height: 1.9; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .lg-row--error { background: color-mix(in srgb, var(--ad-red) 12%, transparent); }
+    .lg-row--error .lg-msg { color: #fecaca; }
+    .lg-row--admin { background: color-mix(in srgb, var(--ad-purple) 8%, transparent); }
+    .lg-row--success .lg-msg { color: #bbf7d0; }
+    .lg-row--warning .lg-msg { color: #fde68a; }
+    .lg-meta { margin-top: 4px; font-size: 0.8rem; color: var(--ad-text-dim); }
+    .lg-meta summary { cursor: pointer; color: var(--ad-text-mute); width: max-content; }
+    .lg-meta dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 6px 0 0; }
+    .lg-meta dt { color: var(--ad-text-mute); font-weight: 400; }
+    .lg-meta dd { margin: 0; font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; user-select: all; }
+    .lg-empty { padding: 40px 16px; text-align: center; }
+    .lg-newpill {
+        position: absolute; top: 44px; left: 50%; z-index: 2; transform: translateX(-50%);
+        min-height: 36px; padding: 0 16px; border: 0; border-radius: 999px;
+        background: var(--ad-blue); color: #04121f; font: inherit; font-weight: 700; cursor: pointer;
+        box-shadow: var(--ad-shadow-sm);
+    }
+    .lg-more { display: block; width: 100%; margin-top: 10px; }
+    @media (max-width: 600px) {
+        .lg-tools { width: 100%; display: grid; grid-template-columns: auto 1fr 1fr; }
+        .lg-tools .btn-admin { width: 100%; padding: 0 10px; }
+        .lg-cats { flex-wrap: nowrap; overflow-x: auto; margin-inline: -4px; padding: 0 4px 4px; scrollbar-width: none; }
+        .lg-cats::-webkit-scrollbar { display: none; }
+        .lg-filters { grid-template-columns: 1fr; }
+        .lg-row { padding: 10px 12px; grid-template-columns: 24px minmax(0, 1fr) auto; }
+        .lg-list { max-height: 68vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .lg-live.is-on .lg-live-dot { animation: none; }
+        .lg-cat { transition: none; }
+    }
 
     @media (max-width: 900px) {
         .admin-container { padding: 12px 10px 36px; }
@@ -1428,37 +1517,37 @@
     
     <!-- Logs Tab -->
     <div class="tab-content" id="tab-logs">
-        <div class="panel">
-            <div class="panel-header">
-                <h2>📋 Server Activity Logs</h2>
-                <div class="panel-actions">
-                    <select id="logFilter" class="search-box" style="width: auto;">
-                        <option value="all">ทั้งหมด</option>
-                        <option value="join">เข้าห้อง</option>
-                        <option value="leave">ออกจากห้อง</option>
-                        <option value="game">เกม</option>
-                        <option value="admin">Admin</option>
-                        <option value="system">ระบบ</option>
-                        <option value="error">Error</option>
-                    </select>
-                    <select id="logModeFilter" class="search-box" style="width: auto;">
-                        <option value="all">ทุกโหมด</option>
-                        <option value="insider">Insider</option>
-                        <option value="werewolf">Werewolf</option>
-                        <option value="blackmarket">Black Market</option>
-                        <option value="spyfall">Spyfall</option>
-                        <option value="undercover">คำใครไม่เหมือน</option>
-                        <option value="coup">Coup</option>
-                        <option value="avalon">อวาลอน</option>
-                        <option value="liar">ไพ่โกหก</option>
-                    </select>
-                    <button class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง Logs</button>
-                    <button class="btn-admin btn-success" onclick="exportLogs()">📥 Export</button>
+        <div class="panel lg">
+            <div class="lg-head">
+                <div class="lg-head-text">
+                    <h2 class="lg-title">📋 บันทึกกิจกรรม</h2>
+                    <p class="lg-sub">เก็บ 2,000 รายการล่าสุด · หายเมื่อเซิร์ฟเวอร์รีสตาร์ต</p>
+                </div>
+                <div class="lg-tools">
+                    <button type="button" class="lg-live is-on" id="lgLive" aria-pressed="true" title="หยุดไว้ = รายการใหม่ไม่เด้งเข้ามาระหว่างอ่าน">
+                        <span class="lg-live-dot" aria-hidden="true"></span><span class="lg-live-label">สด</span>
+                    </button>
+                    <button type="button" class="btn-admin btn-success" onclick="exportLogs()">📥 ดาวน์โหลด</button>
+                    <button type="button" class="btn-admin btn-danger" onclick="clearLogs()">🗑️ ล้าง</button>
                 </div>
             </div>
-            <div id="logsContainer" style="max-height: 500px; overflow-y: auto; background: #0a0a0a; border-radius: 8px; padding: 15px; font-family: 'Consolas', monospace; font-size: 0.85em;">
-                <div class="empty-message">Logs จะแสดงที่นี่เมื่อมีกิจกรรม...</div>
+
+            <div class="lg-cats" id="lgCats" role="group" aria-label="ประเภท"></div>
+
+            <div class="lg-filters">
+                <input type="search" id="lgSearch" class="search-box" placeholder="ค้นหา ชื่อผู้เล่น / ห้อง / ข้อความ" autocomplete="off">
+                <select id="lgMode" class="search-box" aria-label="เกม">
+                    <option value="all">ทุกเกม</option>
+                </select>
             </div>
+
+            <div class="lg-list-wrap">
+                <button type="button" class="lg-newpill" id="lgNewPill" hidden>↑ มีรายการใหม่</button>
+                <div class="lg-list" id="logsContainer" aria-live="off">
+                    <div class="empty-message">กำลังโหลด...</div>
+                </div>
+            </div>
+            <button type="button" class="btn-admin lg-more" id="lgMore" hidden>แสดงเพิ่ม</button>
         </div>
     </div>
     
@@ -3669,19 +3758,6 @@ $(function() {
     
     // ========== Logs Functions ==========
     let serverLogs = [];
-    const LOG_MODE_BADGE_STYLES = {
-        insider: { badgeBg: 'rgba(52,152,219,0.18)', badgeColor: '#d6ebff' },
-        werewolf: { badgeBg: 'rgba(192,57,43,0.2)', badgeColor: '#ffd5d0' },
-        blackmarket: { badgeBg: 'rgba(246,211,101,0.18)', badgeColor: '#fde68a' },
-        spyfall: { badgeBg: 'rgba(26,188,156,0.18)', badgeColor: '#7bedd6' },
-        undercover: { badgeBg: 'rgba(245,200,107,0.18)', badgeColor: '#fde68a' },
-        coup: { badgeBg: 'rgba(124,58,237,0.2)', badgeColor: '#ddd6fe' },
-        avalon: { badgeBg: 'rgba(37,99,235,0.2)', badgeColor: '#bfdbfe' },
-        liar: { badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
-        poker5: { badgeBg: 'rgba(22,101,52,0.2)', badgeColor: '#bbf7d0' },
-        poker4: { badgeBg: 'rgba(153,27,27,0.2)', badgeColor: '#fecaca' },
-        pokdeng: { badgeBg: 'rgba(245,200,107,0.2)', badgeColor: '#fde68a' }
-    };
     const ROOM_MODE_LABELS = {
         insider: '🎯 Insider',
         werewolf: '🐺 Werewolf',
@@ -3719,117 +3795,253 @@ $(function() {
         return `<span class="status-badge ${statusClass}">${formatRoomModeLabel(mode)}</span>`;
     }
 
-    function formatLogModeBadge(log) {
-        if (!log.gameMode) {
-            return '';
-        }
-        const style = LOG_MODE_BADGE_STYLES[log.gameMode] || { badgeBg: 'rgba(255,255,255,0.1)', badgeColor: '#fff' };
-        const label = log.gameModeLabel || log.gameMode;
-        return `<span style="display:inline-flex; align-items:center; gap:4px; margin-right:6px; padding:1px 7px; border-radius:999px; background:${style.badgeBg}; color:${style.badgeColor}; font-size:0.75em; font-weight:700;">${escapeHtml(label)}</span>`;
+    // ---------- แท็บ Logs ----------
+    // แยก "เรื่องที่แอดมินต้องสนใจ" ออกจาก log ระหว่างเล่น ซึ่งมีเยอะกว่ามาก
+    const LOG_CATS = [
+        { id: 'important', label: '⭐ สำคัญ', hint: 'Error, สิ่งที่แอดมินทำ, ระบบ, เริ่มเกม/ผลเกม' },
+        { id: 'error', label: '❌ Error' },
+        { id: 'admin', label: '🛡️ แอดมิน' },
+        { id: 'game', label: '🎮 ในเกม' },
+        { id: 'room', label: '🚪 เข้า/ออกห้อง' },
+        { id: 'system', label: '⚙️ ระบบ' },
+        { id: 'all', label: 'ทั้งหมด' }
+    ];
+    const LOG_ICONS = { join: '➡️', leave: '⬅️', game: '🎮', admin: '🛡️', error: '❌', chat: '💬', system: '⚙️' };
+    // event/kind เป็นรหัสภายใน ไม่ช่วยแอดมินอ่าน (ยังอยู่ในไฟล์ที่ดาวน์โหลด)
+    const LOG_META_HIDDEN = new Set(['event', 'kind']);
+    // log บางเกมขึ้นต้นด้วยอีโมจิคนละตัวกับป้ายเกม
+    const LOG_MESSAGE_PREFIX = { undercover: '🕵️' };
+    const LOG_META_LABELS = { playerId: 'ผู้เล่น', playerCount: 'จำนวนคน', round: 'ยกที่', amount: 'จำนวน', enabled: 'เปิด', kind: 'ชนิด', event: 'event' };
+    const LOG_PAGE = 200;
+    const logView = {
+        cat: readLogPref('adminLogCat', 'important'),
+        mode: 'all',
+        query: '',
+        limit: LOG_PAGE,
+        live: true,
+        pending: 0
+    };
+
+    function readLogPref(key, fallback) {
+        try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; }
+    }
+    function writeLogPref(key, value) {
+        try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
     }
 
-    function formatLogMeta(log) {
-        if (!log.meta || typeof log.meta !== 'object') {
-            return '';
+    function logMatchesCat(log, cat) {
+        switch (cat) {
+            case 'all': return true;
+            case 'room': return log.category === 'join' || log.category === 'leave';
+            case 'error': return log.category === 'error' || log.type === 'error';
+            case 'important':
+                return log.category === 'error' || log.type === 'error' || log.category === 'admin' || log.category === 'system'
+                    || (log.category === 'game' && log.type === 'success');
+            default: return log.category === cat;
         }
-        const parts = Object.entries(log.meta)
-            .filter(([, value]) => value !== null && value !== undefined && value !== '')
-            .map(([key, value]) => `${key}=${value}`);
-        return parts.length ? `<span style="color:#777; font-size:0.78em;"> (${parts.join(' · ')})</span>` : '';
     }
-    
-    // Load existing logs from server
-    function getFilteredLogs() {
-        const filter = $('#logFilter').val();
-        const modeFilter = $('#logModeFilter').val();
-        return serverLogs.filter(function(log) {
-            const matchesCategory = filter === 'all' || log.category === filter;
-            const matchesMode = modeFilter === 'all' || log.gameMode === modeFilter;
-            return matchesCategory && matchesMode;
+
+    function logModeLabel(log) {
+        return log.gameModeLabel || (log.gameMode ? formatRoomModeLabel(log.gameMode) : '');
+    }
+
+    // ข้อความจาก server มักขึ้นต้นด้วยชื่อเกมซ้ำกับป้ายเกม เช่น "[BlackMarket] ..." หรืออีโมจิประจำเกม
+    function cleanLogMessage(log) {
+        let text = String(log.message || '');
+        text = text.replace(/^\[(BlackMarket|Cleanup)\]\s*/, '');
+        const label = logModeLabel(log);
+        const emoji = label ? label.split(' ')[0] : '';
+        [emoji, LOG_MESSAGE_PREFIX[log.gameMode]].forEach(prefix => {
+            if (prefix && text.startsWith(prefix + ' ')) text = text.slice(prefix.length + 1);
         });
+        return text;
+    }
+
+    function logSearchText(log) {
+        if (!log._search) {
+            log._search = [log.message, log.roomName, logModeLabel(log), log.meta ? Object.values(log.meta).join(' ') : '']
+                .join(' ').toLowerCase();
+        }
+        return log._search;
+    }
+
+    // ตัวกรองเกม + คำค้น (ยังไม่กรองประเภท — ใช้นับตัวเลขบนปุ่มประเภทด้วย)
+    function logsInScope() {
+        const q = logView.query.trim().toLowerCase();
+        return serverLogs.filter(log =>
+            (logView.mode === 'all' || log.gameMode === logView.mode) && (!q || logSearchText(log).includes(q)));
+    }
+
+    function getFilteredLogs() {
+        return logsInScope().filter(log => logMatchesCat(log, logView.cat));
+    }
+
+    function renderLogCats(scope) {
+        const html = LOG_CATS.map(cat => {
+            const count = scope.filter(log => logMatchesCat(log, cat.id)).length;
+            const active = cat.id === logView.cat;
+            const tone = cat.id === 'error' && count > 0 ? ' is-alert' : '';
+            return `<button type="button" class="lg-cat${active ? ' is-active' : ''}${tone}" data-cat="${cat.id}" aria-pressed="${active}"${cat.hint ? ` title="${escapeHtml(cat.hint)}"` : ''}>
+                ${escapeHtml(cat.label)} <span class="lg-count">${count.toLocaleString('th-TH')}</span></button>`;
+        }).join('');
+        $('#lgCats').html(html);
+    }
+
+    function renderLogModes() {
+        const seen = new Map();
+        serverLogs.forEach(log => { if (log.gameMode && !seen.has(log.gameMode)) seen.set(log.gameMode, logModeLabel(log)); });
+        if (logView.mode !== 'all' && !seen.has(logView.mode)) seen.set(logView.mode, formatRoomModeLabel(logView.mode));
+        const options = ['<option value="all">ทุกเกม</option>']
+            .concat(Array.from(seen.entries())
+                .sort((x, y) => x[1].localeCompare(y[1], 'th'))
+                .map(([mode, label]) => `<option value="${escapeHtml(mode)}">${escapeHtml(label)}</option>`));
+        const $select = $('#lgMode');
+        const next = options.join('');
+        if ($select.data('html') !== next) {
+            $select.html(next).data('html', next);
+        }
+        $select.val(logView.mode);
+    }
+
+    function logDayLabel(dt) {
+        const startOf = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const diff = Math.round((startOf(new Date()) - startOf(dt)) / 86400000);
+        if (diff === 0) return 'วันนี้';
+        if (diff === 1) return 'เมื่อวาน';
+        return dt.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function renderLogMeta(log) {
+        if (!log.meta || typeof log.meta !== 'object') return '';
+        const rows = Object.entries(log.meta)
+            .filter(([key, value]) => !LOG_META_HIDDEN.has(key) && value !== null && value !== undefined && value !== '')
+            .map(([key, value]) => `<dt>${escapeHtml(LOG_META_LABELS[key] || key)}</dt><dd>${escapeHtml(String(value))}</dd>`);
+        if (!rows.length) return '';
+        return `<details class="lg-meta"><summary>รายละเอียด</summary><dl>${rows.join('')}</dl></details>`;
+    }
+
+    function renderLogRow(log) {
+        const dt = new Date(log.timestamp);
+        const time = dt.toLocaleTimeString('th-TH', { hour12: false });
+        const isError = log.category === 'error' || log.type === 'error';
+        const tone = isError ? 'error' : (log.category === 'admin' ? 'admin' : (log.type === 'success' ? 'success' : (log.type === 'warning' ? 'warning' : 'info')));
+        const ctx = [logModeLabel(log), log.roomId ? log.roomName : ''].filter(Boolean).map(escapeHtml).join(' · ');
+        return `<div class="lg-row lg-row--${tone}">
+            <span class="lg-ico" aria-hidden="true">${LOG_ICONS[log.category] || '•'}</span>
+            <div class="lg-body">
+                <div class="lg-msg">${escapeHtml(cleanLogMessage(log))}</div>
+                ${ctx ? `<div class="lg-ctx">${ctx}</div>` : ''}
+                ${renderLogMeta(log)}
+            </div>
+            <time class="lg-time" datetime="${escapeHtml(log.timestamp)}" title="${escapeHtml(dt.toLocaleString('th-TH'))}">${time}</time>
+        </div>`;
+    }
+
+    function renderLogs() {
+        const scope = logsInScope();
+        const filtered = scope.filter(log => logMatchesCat(log, logView.cat));
+        renderLogCats(scope);
+        renderLogModes();
+        logView.pending = 0;
+        $('#lgNewPill').prop('hidden', true);
+
+        const $container = $('#logsContainer');
+        if (filtered.length === 0) {
+            const why = serverLogs.length === 0 ? 'ยังไม่มีกิจกรรม' : 'ไม่มีรายการที่ตรงกับตัวกรองนี้';
+            $container.html(`<div class="empty-message lg-empty">${why}</div>`);
+            $('#lgMore').prop('hidden', true);
+            return;
+        }
+
+        const shown = filtered.slice(0, logView.limit);
+        let lastDay = '';
+        const parts = [];
+        shown.forEach(log => {
+            const day = logDayLabel(new Date(log.timestamp));
+            if (day !== lastDay) {
+                parts.push(`<div class="lg-day">${escapeHtml(day)}</div>`);
+                lastDay = day;
+            }
+            parts.push(renderLogRow(log));
+        });
+        $container.html(parts.join(''));
+        const rest = filtered.length - shown.length;
+        $('#lgMore').prop('hidden', rest <= 0).text(`แสดงเพิ่ม (เหลืออีก ${rest.toLocaleString('th-TH')})`);
     }
 
     function loadLogs() {
-        const filter = $('#logFilter').val();
-        const modeFilter = $('#logModeFilter').val();
-        socket.emit('admin_getLogs', { filter: filter, gameMode: modeFilter, limit: 1000 }, function(response) {
-            if (response.success) {
+        socket.emit('admin_getLogs', { filter: 'all', gameMode: 'all', limit: 2000 }, function(response) {
+            if (response && response.success) {
                 serverLogs = response.logs || [];
                 renderLogs();
             }
         });
     }
-    
-    // Receive new log entries in real-time
+
+    // log ใหม่: ถ้ากำลังเลื่อนอ่านอยู่หรือกดหยุดไว้ ไม่ดึงหน้าจอกลับขึ้นบน — โชว์ปุ่ม "มีรายการใหม่" แทน
+    let logRenderQueued = false;
     socket.on('adminLog', function(logEntry) {
         serverLogs.unshift(logEntry);
         if (serverLogs.length > 2000) serverLogs.length = 2000;
-        renderLogs();
-    });
-    
-    function renderLogs() {
-        const filtered = getFilteredLogs();
-        
-        const $container = $('#logsContainer');
-        if (filtered.length === 0) {
-            $container.html('<div class="empty-message">ไม่มี Logs</div>');
+        const reading = !logView.live || $('#logsContainer').scrollTop() > 40;
+        if (reading) {
+            const scope = logsInScope();
+            if (scope[0] === logEntry && logMatchesCat(logEntry, logView.cat)) {
+                logView.pending += 1;
+                $('#lgNewPill').prop('hidden', false).text(`↑ มีรายการใหม่ ${logView.pending}`);
+            }
+            renderLogCats(scope);
             return;
         }
-        
-        const colors = {
-            'join': '#2ecc71',
-            'leave': '#e74c3c', 
-            'game': '#3498db',
-            'admin': '#9b59b6',
-            'error': '#ff6b6b',
-            'chat': '#f39c12',
-            'system': '#95a5a6'
-        };
-        const typeColors = {
-            'info': '#3498db',
-            'success': '#2ecc71',
-            'warning': '#f39c12',
-            'error': '#e74c3c'
-        };
-        const icons = {
-            'join': '➡️',
-            'leave': '⬅️',
-            'game': '🎮',
-            'admin': '👑',
-            'error': '❌',
-            'chat': '💬',
-            'system': '⚙️'
-        };
-        
-        $container.html(filtered.map(log => {
-            const dt = new Date(log.timestamp);
-            const pad = (n) => String(n).padStart(2, '0');
-            const dateStr = `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
-            const timeStr = dt.toLocaleTimeString('th-TH', { hour12: false });
-            const time = `${dateStr} ${timeStr}`;
-            
-            const color = typeColors[log.type] || colors[log.category] || '#fff';
-            const icon = icons[log.category] || '•';
-            const roomInfo = log.roomName ? `<span style="color: #888;">[${escapeHtml(log.roomName)}]</span> ` : '';
-            const modeBadge = formatLogModeBadge(log);
-            const metaInfo = formatLogMeta(log);
-            return `<div style="margin-bottom: 6px; padding: 4px 8px; border-left: 3px solid ${color}; background: rgba(255,255,255,0.03); font-size: 0.88rem; line-height: 1.4;">
-                <span style="color: #888; font-family: monospace; font-size: 0.82rem; margin-right: 6px;">[${time}]</span> ${icon} ${modeBadge}${roomInfo}<span style="color: ${color};">${escapeHtml(log.message)}</span>${metaInfo}
-            </div>`;
-        }).join(''));
-        
-        // Auto scroll to top (newest)
-        $container.scrollTop(0);
-    }
-    
-    $('#logFilter, #logModeFilter').on('change', function() {
+        if (logRenderQueued) return;
+        logRenderQueued = true;
+        requestAnimationFrame(function() {
+            logRenderQueued = false;
+            renderLogs();
+        });
+    });
+
+    $('#lgCats').on('click', '.lg-cat', function() {
+        logView.cat = $(this).data('cat');
+        logView.limit = LOG_PAGE;
+        writeLogPref('adminLogCat', logView.cat);
         renderLogs();
+        $('#logsContainer').scrollTop(0);
+    });
+    $('#lgMode').on('change', function() {
+        logView.mode = $(this).val();
+        logView.limit = LOG_PAGE;
+        renderLogs();
+    });
+    let logSearchTimer = null;
+    $('#lgSearch').on('input', function() {
+        const value = $(this).val();
+        clearTimeout(logSearchTimer);
+        logSearchTimer = setTimeout(function() {
+            logView.query = value;
+            logView.limit = LOG_PAGE;
+            renderLogs();
+        }, 150);
+    });
+    $('#lgMore').on('click', function() {
+        logView.limit += LOG_PAGE;
+        renderLogs();
+    });
+    $('#lgNewPill').on('click', function() {
+        renderLogs();
+        $('#logsContainer').scrollTop(0);
+    });
+    $('#lgLive').on('click', function() {
+        logView.live = !logView.live;
+        $(this).toggleClass('is-on', logView.live).attr('aria-pressed', String(logView.live));
+        $(this).find('.lg-live-label').text(logView.live ? 'สด' : 'หยุดไว้');
+        if (logView.live) renderLogs();
     });
     
     window.clearLogs = function() {
         Swal.fire({
-            title: '🗑️ ล้าง Logs',
-            text: 'ต้องการล้าง Logs ทั้งหมด?',
+            title: '🗑️ ล้างบันทึกทั้งหมด?',
+            text: 'ลบทุกรายการบนเซิร์ฟเวอร์ (ไม่ใช่แค่ที่กรองอยู่) ย้อนคืนไม่ได้',
             showCancelButton: true,
             confirmButtonText: 'ล้าง',
             cancelButtonText: 'ยกเลิก',
@@ -3840,26 +4052,26 @@ $(function() {
             if (result.isConfirmed) {
                 socket.emit('admin_clearLogs', function(response) {
                     if (response.success) {
-                        serverLogs = [];
-                        renderLogs();
-                        Swal.fire({ icon: 'success', title: 'ล้าง Logs สำเร็จ', timer: 1000, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
+                        loadLogs();
+                        Swal.fire({ icon: 'success', title: 'ล้างแล้ว', timer: 1000, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
                     }
                 });
             }
         });
     };
     
+    // ดาวน์โหลดเฉพาะที่กรองอยู่ตอนนี้
     window.exportLogs = function() {
         const filtered = getFilteredLogs();
         if (filtered.length === 0) {
-            Swal.fire({ icon: 'warning', title: 'ไม่มี Logs', background: '#1e1e1e', color: '#fff' });
+            Swal.fire({ icon: 'warning', title: 'ไม่มีรายการให้ดาวน์โหลด', background: '#1e1e1e', color: '#fff' });
             return;
         }
         const logsText = filtered.map(l => {
             const time = new Date(l.timestamp).toLocaleString('th-TH');
-            const modeLabel = l.gameModeLabel ? `[${l.gameModeLabel}] ` : (l.gameMode ? `[${l.gameMode}] ` : '');
+            const modeLabel = logModeLabel(l) ? `[${logModeLabel(l)}] ` : '';
             const metaLabel = l.meta ? ` ${JSON.stringify(l.meta)}` : '';
-            return `[${time}] [${l.category.toUpperCase()}] ${modeLabel}${l.roomName ? '[' + l.roomName + '] ' : ''}${l.message}${metaLabel}`;
+            return `[${time}] [${String(l.category || '').toUpperCase()}] ${modeLabel}${l.roomId ? '[' + l.roomName + '] ' : ''}${l.message}${metaLabel}`;
         }).join('\n');
         const blob = new Blob([logsText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -3867,6 +4079,7 @@ $(function() {
         a.href = url;
         a.download = 'server_logs_' + new Date().toISOString().slice(0,10) + '.txt';
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
     
     // Load logs after authentication
@@ -4195,17 +4408,6 @@ $(function() {
         }
     });
 
-    // Listen for real-time events
-    socket.on('admin_log', function(data) {
-        serverLogs.unshift({
-            timestamp: new Date().toISOString(),
-            category: 'admin',
-            type: data.type || 'info',
-            message: data.message || ''
-        });
-        if (serverLogs.length > 2000) serverLogs.length = 2000;
-        renderLogs();
-    });
 
     updateSortIcons('.sortable:not(.room-sortable):not(.stats-sortable)', dashboardState.players.sortCol, dashboardState.players.sortDir);
     updateSortIcons('.room-sortable', dashboardState.rooms.sortCol, dashboardState.rooms.sortDir);
