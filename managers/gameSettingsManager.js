@@ -56,6 +56,9 @@ const DEFAULT_SETTINGS = {
         },
         wavelength: {
             defaultMaxPlayers: 8
+        },
+        drawguess: {
+            defaultMaxPlayers: 8
         }
     },
     insider: {

@@ -935,7 +935,8 @@ $(function() {
         { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'codenames', label: 'สายลับคำใบ้', description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน', minPlayers: 4, maxPlayers: 12 },
         { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
-        { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 }
+        { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
+        { id: 'drawguess', label: 'วาดแล้วทาย', description: 'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ — 3–12 คน', minPlayers: 3, maxPlayers: 12 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1217,6 +1218,15 @@ $(function() {
                 title: 'คลื่นความคิด',
                 summary: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ เช่น ร้อน ↔ เย็น ใบ้ว่า “ไอติม” แล้วทุกคนหมุนเข็มทาย ใกล้เป้าได้แต้มเยอะ',
                 bullets: ['3-12 คน', 'รอบละ 2 นาที', 'ไม่ต้องพูด เล่นในจอ', 'เข้ากลางเกมได้']
+            },
+            drawguess: {
+                tone: 'linear-gradient(135deg, rgba(56,189,248,0.24), rgba(14,22,36,0.92))',
+                border: 'rgba(125,211,252,0.34)',
+                cover: '/assets/games/drawguess/cover.jpg',
+                badge: '🎨 วาด · ทาย · แข่งไว',
+                title: 'วาดแล้วทาย',
+                summary: 'ผลัดกันวาดคำลับบนจอ ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ คนวาดได้แต้มตามคนที่ทายถูก',
+                bullets: ['3-12 คน', 'คำไทย 400+ คำ 8 หมวด', 'ตาละ 60-100 วิ', 'มีคำใบ้ค่อย ๆ เปิด']
             }
         };
 
@@ -1238,7 +1248,8 @@ $(function() {
             poker4: 'สี่ใบเก',
             codenames: 'สายลับคำใบ้',
             pokdeng: 'ป๊อกเด้ง',
-            wavelength: 'คลื่นความคิด'
+            wavelength: 'คลื่นความคิด',
+            drawguess: 'วาดแล้วทาย'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1449,7 +1460,9 @@ $(function() {
                                         ? 'background: linear-gradient(135deg, #991b1b, #1c1917); color:#fecaca; border:1px solid rgba(248,113,113,0.35);'
                                         : (room.gameMode === 'pokdeng'
                                             ? 'background: #5c1419; color:#fde68a; border:1px solid rgba(245,200,107,0.4);'
-                                            : 'background: linear-gradient(135deg, #e67e22, #d35400);')))))));
+                                            : (room.gameMode === 'drawguess'
+                                                ? 'background: #12324a; color:#bae6fd; border:1px solid rgba(125,211,252,0.45);'
+                                                : 'background: linear-gradient(135deg, #e67e22, #d35400);'))))))));
             const roomCard = `
                 <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
@@ -1665,6 +1678,40 @@ $(function() {
                             </label>
                         </div>
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">รอบละ ~2 นาที · คิดคำใบ้ 60 วิ · ทาย 45 วิ · 5 คน 1 รอบโต๊ะ ≈ 10 นาที</div>
+                    </div>
+
+                    <div class="room-form-group" id="drawguessSettingsGroup" role="group" aria-labelledby="drawguessSettingsLabel" style="display:none;">
+                        <div class="room-form-label" id="drawguessSettingsLabel"><span class="icon">🎨</span> ตั้งค่าวาดแล้วทาย:</div>
+                        <div style="color:#aaa; font-size:0.85em; margin:4px 0;">จำนวนรอบ (ทุกคนได้วาดรอบละ 1 ตา)</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <% [2, 3, 4].forEach(function(n) { %>
+                            <label style="flex:1; min-width:72px; display:flex; align-items:center; justify-content:center; gap:6px; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(125,211,252,0.35); background:rgba(56,189,248,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="drawguessRounds" value="<%= n %>" <%= n === 3 ? 'checked' : '' %> style="accent-color:#38bdf8;">
+                                <span><%= n %> รอบ</span>
+                            </label>
+                            <% }) %>
+                        </div>
+                        <div style="color:#aaa; font-size:0.85em; margin:10px 0 4px;">เวลาวาดต่อตา</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <% [60, 80, 100].forEach(function(n) { %>
+                            <label style="flex:1; min-width:72px; display:flex; align-items:center; justify-content:center; gap:6px; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(125,211,252,0.35); background:rgba(56,189,248,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="drawguessSeconds" value="<%= n %>" <%= n === 80 ? 'checked' : '' %> style="accent-color:#38bdf8;">
+                                <span><%= n %> วิ</span>
+                            </label>
+                            <% }) %>
+                        </div>
+                        <label for="drawguessCategory" style="display:block; color:#aaa; font-size:0.85em; margin:10px 0 4px;">หมวดคำ</label>
+                        <select id="drawguessCategory" style="width:100%; min-height:48px; padding:8px 12px; border-radius:10px; border:1px solid rgba(125,211,252,0.35); background:#13202e; color:#fff; font-size:1rem;">
+                            <option value="mixed" selected>🎲 รวมทุกหมวด</option>
+                            <option value="animals">🐘 สัตว์</option>
+                            <option value="food">🍜 อาหาร</option>
+                            <option value="objects">🎒 สิ่งของ</option>
+                            <option value="places">🏝️ สถานที่</option>
+                            <option value="jobs">👩‍🍳 อาชีพ</option>
+                            <option value="activities">🏸 กิจกรรม</option>
+                            <option value="nature">🌈 ธรรมชาติ</option>
+                            <option value="vehicles">🚲 ยานพาหนะ</option>
+                        </select>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
@@ -1905,6 +1952,8 @@ $(function() {
                     if (document.getElementById('codenamesTimerGroup')) document.getElementById('codenamesTimerGroup').style.display = selectedMode === 'codenames' ? 'block' : 'none';
                     if (selectedMode === 'wavelength') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('wavelengthLapsGroup')) document.getElementById('wavelengthLapsGroup').style.display = selectedMode === 'wavelength' ? 'block' : 'none';
+                    if (selectedMode === 'drawguess') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('drawguessSettingsGroup')) document.getElementById('drawguessSettingsGroup').style.display = selectedMode === 'drawguess' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
@@ -2065,7 +2114,10 @@ $(function() {
                     codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined,
                     wavelengthLaps: gameMode === 'wavelength'
                         ? (parseInt((document.querySelector('input[name="wavelengthLaps"]:checked') || {}).value, 10) === 2 ? 2 : 1)
-                        : 1
+                        : 1,
+                    drawguessRounds: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessRounds"]:checked') || {}).value || 3) : undefined,
+                    drawguessSeconds: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessSeconds"]:checked') || {}).value || 80) : undefined,
+                    drawguessCategory: gameMode === 'drawguess' ? ((document.getElementById('drawguessCategory') || {}).value || 'mixed') : undefined
                 };
             }
             }).then((result) => {
@@ -2434,6 +2486,21 @@ $(function() {
         ].join('');
     }
 
+    function buildDrawGuessGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทายให้ถูกเร็วที่สุด และวาดให้เพื่อนทายออก · แต้มรวมสูงสุดตอนจบชนะ</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>ผลัดกันวาดตามลำดับที่นั่ง รอบละคนละ 1 ตา (ตั้งได้ 2–4 รอบ)</li>',
+            '<li>คนวาดเลือก 1 ใน 3 คำ แล้ววาดภายใน 60–100 วิ ห้ามเขียนตัวหนังสือ</li>',
+            '<li>ที่เหลือพิมพ์ทายได้ไม่จำกัด · ใกล้แล้วขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว</li>',
+            '<li>เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิดเป็นคำใบ้</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>แต้ม</h4><p>ทายถูกเร็วได้เยอะ + โบนัสคนแรก ๆ · คนวาดได้ +40 ต่อคนที่ทายถูก · 3–12 คน</p></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildPokerGuideHtml(variant) {
         if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
         return '';
@@ -2452,7 +2519,8 @@ $(function() {
             { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' },
             { id: 'codenames',   label: '🕵️ สายลับคำใบ้',  html: buildCodenamesGuideHtml(),     color: '#2563eb' },
             { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' },
-            { id: 'wavelength',  label: '📡 คลื่นความคิด', html: buildWavelengthGuideHtml(),    color: '#0f766e' }
+            { id: 'wavelength',  label: '📡 คลื่นความคิด', html: buildWavelengthGuideHtml(),    color: '#0f766e' },
+            { id: 'drawguess',   label: '🎨 วาดแล้วทาย',   html: buildDrawGuessGuideHtml(),     color: '#0369a1' }
         ];
 
         const tabsHtml = '<div class="global-guide-tabs">' +

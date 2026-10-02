@@ -774,6 +774,28 @@
   .wl-laps button[aria-pressed="true"] { background: #5eead4; color: #0b1a2a; border-color: transparent; }
   .wl-laps button:disabled { cursor: default; opacity: 0.85; }
 
+  #btnDrawGuessHowTo {
+    padding: 10px 14px; min-height: 44px; border-radius: 14px;
+    border: 1px solid rgba(125, 211, 252, 0.45); background: rgba(56, 189, 248, 0.14); color: #bae6fd;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.95em;
+    cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+  }
+  .dg-lobby-set { display: grid; gap: 8px; margin-top: 10px; }
+  .dg-lobby-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .dg-lobby-row > span { flex: 0 0 72px; color: #94a3b8; font-size: 0.85em; }
+  .dg-lobby-opt {
+    min-height: 44px; min-width: 56px; padding: 0 12px; border-radius: 12px;
+    border: 1px solid rgba(125, 211, 252, 0.3); background: #13202e; color: #e2e8f0;
+    font-weight: 700; cursor: pointer;
+  }
+  .dg-lobby-opt[aria-pressed="true"] { background: #38bdf8; color: #0f1620; border-color: transparent; }
+  .dg-lobby-opt:disabled { cursor: default; }
+  .dg-lobby-opt:disabled:not([aria-pressed="true"]) { opacity: 0.55; }
+  .dg-lobby-select {
+    flex: 1 1 160px; min-height: 44px; padding: 0 10px; border-radius: 12px;
+    border: 1px solid rgba(125, 211, 252, 0.3); background: #13202e; color: #e2e8f0; font-size: 1rem;
+  }
+
   #btnCoupHowTo {
     padding: 10px 14px;
     border-radius: 14px;
@@ -1452,6 +1474,7 @@
         <button type="button" id="btnPokDengHowTo" class="<%= room.gameMode === 'pokdeng' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnCodenamesHowTo" class="<%= room.gameMode === 'codenames' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnWavelengthHowTo" class="<%= room.gameMode === 'wavelength' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnDrawGuessHowTo" class="<%= room.gameMode === 'drawguess' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1615,6 +1638,15 @@
         readyText: 'พร้อมแล้ว เริ่มได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 3 คนก่อนเริ่ม',
         roundLabel: 'เวลาคิดคำใบ้:'
+      },
+      drawguess: {
+        minPlayers: 3,
+        maxPlayers: 12,
+        label: 'วาดแล้วทาย',
+        startLabel: '🎨 เริ่มวาด',
+        readyText: 'พร้อมแล้ว เริ่มวาดได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 3 คนก่อนเริ่ม',
+        roundLabel: 'เวลาวาดต่อตา:'
       }
     };
     currentModeMeta.codenames = {
@@ -1809,6 +1841,9 @@
       if (compactMode === 'wavelength' || compactMode === 'คลื่นความคิด') {
         return 'wavelength';
       }
+      if (compactMode === 'drawguess' || compactMode === 'วาดแล้วทาย') {
+        return 'drawguess';
+      }
       return 'insider';
     }
 
@@ -1828,6 +1863,9 @@
       }
       if (compact === 'คลื่นความคิด' || compact === 'วงคลื่นความคิด' || compact === 'wavelength') {
         return 'wavelength';
+      }
+      if (compact === 'วาดแล้วทาย' || compact === 'drawguess') {
+        return 'drawguess';
       }
       return null;
     }
@@ -1889,6 +1927,9 @@
       if (normalizedMode === 'wavelength') {
         return { background: '#10233a', color: '#99f6e4' };
       }
+      if (normalizedMode === 'drawguess') {
+        return { background: '#12324a', color: '#bae6fd' };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -1947,6 +1988,9 @@
       }
       if (normalizedMode === 'wavelength') {
         return { kicker: '📡 ห้องคลื่นความคิด', pills: [] };
+      }
+      if (normalizedMode === 'drawguess') {
+        return { kicker: '🎨 ห้องวาดแล้วทาย', pills: [] };
       }
 
       return {
@@ -2036,6 +2080,7 @@
       setElementHidden('#btnCodenamesHowTo', resolvedMode !== 'codenames');
       setElementHidden('#btnWavelengthHowTo', resolvedMode !== 'wavelength');
       setElementHidden('#btnPokDengAddBots', !(isAdmin && resolvedMode === 'pokdeng'));
+      setElementHidden('#btnDrawGuessHowTo', resolvedMode !== 'drawguess');
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
       fillPokerRankPanel(resolvedMode);
@@ -2095,6 +2140,9 @@
               : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย',
             '</p>'
           ].join('');
+        } else if (resolvedMode === 'drawguess') {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = buildDrawGuessLobbyHtml(settings);
         } else if (resolvedMode === 'pokdeng') {
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
@@ -2303,6 +2351,46 @@
           '<p>3. โหวตคนที่คำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ</p>' +
           '<p>4. เปิดบทคนที่ออก · Mr. White ถ้าถูกโหวตออกได้ทายคำพลเมือง ถูก = ชนะทันที</p>' +
           '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อรอดถึง 2 คนสุดท้าย</p></div>',
+        background: '#151d2a',
+        color: '#fff',
+        confirmButtonColor: '#e2493b',
+        confirmButtonText: 'เข้าใจแล้ว เริ่มเลย'
+      });
+    }
+
+    function buildDrawGuessLobbyHtml(settings) {
+      const rounds = Number(settings && settings.drawguessRounds) || 3;
+      const seconds = Number(settings && settings.drawguessSeconds) || 80;
+      const category = (settings && settings.drawguessCategory) || 'mixed';
+      const categories = [['mixed', '🎲 รวมทุกหมวด'], ['animals', '🐘 สัตว์'], ['food', '🍜 อาหาร'], ['objects', '🎒 สิ่งของ'], ['places', '🏝️ สถานที่'], ['jobs', '👩‍🍳 อาชีพ'], ['activities', '🏸 กิจกรรม'], ['nature', '🌈 ธรรมชาติ'], ['vehicles', '🚲 ยานพาหนะ']];
+      const dis = isAdmin ? '' : ' disabled';
+      const opt = function(key, value, label, current) {
+        return '<button type="button" class="dg-lobby-opt" data-dg-key="' + key + '" data-dg-value="' + value + '" aria-pressed="' + (value === current ? 'true' : 'false') + '"' + dis + '>' + label + '</button>';
+      };
+      return [
+        '<div class="lobby-spotlight-pill" style="background:rgba(56,189,248,0.2); color:#bae6fd;">🎨 วาดแล้วทาย · 3–12 คน</div>',
+        '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+        'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ · คนวาดได้แต้มตามคนที่ทายถูก',
+        '</p>',
+        '<div class="dg-lobby-set" role="group" aria-label="ตั้งค่าวาดแล้วทาย">',
+        '<div class="dg-lobby-row"><span>จำนวนรอบ</span>' + [2, 3, 4].map(function(n) { return opt('drawguessRounds', n, n + ' รอบ', rounds); }).join('') + '</div>',
+        '<div class="dg-lobby-row"><span>เวลาวาด</span>' + [60, 80, 100].map(function(n) { return opt('drawguessSeconds', n, n + ' วิ', seconds); }).join('') + '</div>',
+        '<div class="dg-lobby-row"><span>หมวดคำ</span><select class="dg-lobby-select" id="dgLobbyCategory" aria-label="หมวดคำ"' + dis + '>' +
+          categories.map(function(c) { return '<option value="' + c[0] + '"' + (c[0] === category ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') +
+        '</select></div>',
+        '</div>'
+      ].join('');
+    }
+
+    function showDrawGuessLobbyGuide() {
+      Swal.fire({
+        title: '🎨 วาดแล้วทาย เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p>1. ผลัดกันวาดตามลำดับที่นั่ง ทุกรอบทุกคนได้วาดคนละ 1 ตา</p>' +
+          '<p>2. คนวาดเลือก 1 ใน 3 คำ (12 วิ) แล้ววาดให้เพื่อนทาย ห้ามเขียนตัวหนังสือ</p>' +
+          '<p>3. ที่เหลือพิมพ์ทายได้ไม่จำกัด · ทายถูกแล้วคนอื่นเห็นแค่ “✅ ทายถูก!” · ใกล้แล้วขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว</p>' +
+          '<p>4. เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิดเป็นคำใบ้</p>' +
+          '<p><strong>แต้ม</strong> ทายถูกเร็วได้เยอะ + โบนัสคนแรก ๆ · คนวาดได้ +40 ต่อคนที่ทายถูก · ครบทุกรอบ แต้มสูงสุดชนะ</p></div>',
         background: '#151d2a',
         color: '#fff',
         confirmButtonColor: '#e2493b',
@@ -3108,6 +3196,30 @@
 
     $('#btnUndercoverHowTo').on('click', function() {
       showUndercoverLobbyGuide();
+    });
+
+    $('#btnDrawGuessHowTo').on('click', function() {
+      showDrawGuessLobbyGuide();
+    });
+
+    function saveDrawGuessSetting(key, value) {
+      if (!isAdmin) return;
+      const update = {};
+      update[key] = value;
+      socket.emit('updateRoom', update, function(res) {
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    }
+    $(document).on('click', '.dg-lobby-opt', function() {
+      if (this.getAttribute('aria-pressed') === 'true') return;
+      $(this).siblings('.dg-lobby-opt').attr('aria-pressed', 'false');
+      this.setAttribute('aria-pressed', 'true');
+      saveDrawGuessSetting(this.getAttribute('data-dg-key'), Number(this.getAttribute('data-dg-value')));
+    });
+    $(document).on('change', '#dgLobbyCategory', function() {
+      saveDrawGuessSetting('drawguessCategory', this.value);
     });
 
     $(document).on('click', '#ucMrWhiteToggle', function() {

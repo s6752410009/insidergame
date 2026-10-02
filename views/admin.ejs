@@ -1391,6 +1391,7 @@
                             <option value="pokdeng">ป๊อกเด้ง</option>
                             <option value="codenames">สายลับคำใบ้</option>
                             <option value="wavelength">คลื่นความคิด</option>
+                            <option value="drawguess">วาดแล้วทาย</option>
                         </select>
                         <select id="roomStatusFilter" class="search-box" style="width: auto;">
                             <option value="all">ทุกสถานะ</option>
@@ -1482,6 +1483,7 @@
                             <option value="has-pokdeng">มีป๊อกเด้ง</option>
                             <option value="has-codenames">มีสายลับคำใบ้</option>
                             <option value="has-wavelength">มีคลื่นความคิด</option>
+                            <option value="has-drawguess">มีวาดแล้วทาย</option>
                         </select>
                     </div>
                     <button class="btn-admin btn-warning" onclick="resetSeason()" id="resetSeasonBtn" style="display:none;">🏆 ปิด Season / รีแรงค์</button>
@@ -1729,6 +1731,7 @@ $(function() {
         const pokdeng = modeStats?.pokdeng || {};
         const codenames = modeStats?.codenames || {};
         const wavelength = modeStats?.wavelength || {};
+        const drawguess = modeStats?.drawguess || {};
         return `
             <div style="display:grid; gap:6px; min-width:170px;">
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🎯 Insider ${insider.games || 0} เกม</span><span class="status-badge status-online">🏆 ${insider.wins || 0}W</span><span class="status-badge status-offline">💀 ${insider.losses || 0}L</span></div>
@@ -1744,6 +1747,7 @@ $(function() {
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">🎴 ป๊อกเด้ง ${pokdeng.games || 0} เกม</span><span class="status-badge status-online">🏆 ${pokdeng.wins || 0}W</span><span class="status-badge status-offline">💀 ${pokdeng.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🕵️ สายลับคำใบ้ ${codenames.games || 0} เกม</span><span class="status-badge status-online">🏆 ${codenames.wins || 0}W</span><span class="status-badge status-offline">💀 ${codenames.losses || 0}L</span></div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">📡 คลื่นความคิด ${wavelength.games || 0} เกม</span><span class="status-badge status-online">🏆 ${wavelength.wins || 0}W</span><span class="status-badge status-offline">💀 ${wavelength.losses || 0}L</span></div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🎨 วาดแล้วทาย ${drawguess.games || 0} เกม</span><span class="status-badge status-online">🏆 ${drawguess.wins || 0}W</span><span class="status-badge status-offline">💀 ${drawguess.losses || 0}L</span></div>
             </div>
         `;
     }
@@ -2375,6 +2379,7 @@ $(function() {
             const hasPokDeng = Number(stat.modeStats?.pokdeng?.games || 0) > 0;
             const hasCodenames = Number(stat.modeStats?.codenames?.games || 0) > 0;
             const hasWavelength = Number(stat.modeStats?.wavelength?.games || 0) > 0;
+            const hasDrawGuess = Number(stat.modeStats?.drawguess?.games || 0) > 0;
             const matchesSearch = !search || haystack.includes(search);
             const matchesMode = modeFilter === 'all'
                 || (modeFilter === 'has-insider' && hasInsider)
@@ -2389,7 +2394,8 @@ $(function() {
                 || (modeFilter === 'has-poker4' && hasPoker4)
                 || (modeFilter === 'has-codenames' && hasCodenames)
                 || (modeFilter === 'has-pokdeng' && hasPokDeng)
-                || (modeFilter === 'has-wavelength' && hasWavelength);
+                || (modeFilter === 'has-wavelength' && hasWavelength)
+                || (modeFilter === 'has-drawguess' && hasDrawGuess);
             return matchesSearch && matchesMode;
         });
 
@@ -2784,6 +2790,7 @@ $(function() {
         const pokdengMode = stat.modeStats?.pokdeng || {};
         const codenamesMode = stat.modeStats?.codenames || {};
         const wavelengthMode = stat.modeStats?.wavelength || {};
+        const drawguessMode = stat.modeStats?.drawguess || {};
         const werewolfInputs = WEREWOLF_ROLE_META.map(role => `
             <div>
                 <label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">${role.emoji} ${role.label}</label>
@@ -2926,6 +2933,14 @@ $(function() {
                             <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeWavelengthLosses" class="swal2-input" value="${wavelengthMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
                         </div>
                     </div>
+                    <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(56,189,248,0.1); border:1px solid rgba(125,211,252,0.24);">
+                        <div style="font-weight:700; color:#bae6fd; margin-bottom:10px;">🎨 วาดแล้วทาย</div>
+                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">เกม</label><input type="number" id="editModeDrawGuessGames" class="swal2-input" value="${drawguessMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">ชนะ</label><input type="number" id="editModeDrawGuessWins" class="swal2-input" value="${drawguessMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                            <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">แพ้</label><input type="number" id="editModeDrawGuessLosses" class="swal2-input" value="${drawguessMode.losses || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
+                        </div>
+                    </div>
                 </div>
             `,
             showCancelButton: true,
@@ -3021,6 +3036,11 @@ $(function() {
                             games: parseInt(document.getElementById('editModeWavelengthGames').value, 10) || 0,
                             wins: parseInt(document.getElementById('editModeWavelengthWins').value, 10) || 0,
                             losses: parseInt(document.getElementById('editModeWavelengthLosses').value, 10) || 0
+                        },
+                        drawguess: {
+                            games: parseInt(document.getElementById('editModeDrawGuessGames').value, 10) || 0,
+                            wins: parseInt(document.getElementById('editModeDrawGuessWins').value, 10) || 0,
+                            losses: parseInt(document.getElementById('editModeDrawGuessLosses').value, 10) || 0
                         }
                     }
                 };
@@ -3811,7 +3831,8 @@ $(function() {
         poker4: '♦ สี่ใบเก',
         codenames: '🕵️ สายลับคำใบ้',
         pokdeng: '🎴 ป๊อกเด้ง',
-        wavelength: '📡 คลื่นความคิด'
+        wavelength: '📡 คลื่นความคิด',
+        drawguess: '🎨 วาดแล้วทาย'
     };
     const ROOM_MODE_STATUS_CLASS = {
         insider: 'status-online',
@@ -3826,7 +3847,8 @@ $(function() {
         poker4: 'status-banned',
         codenames: 'status-online',
         pokdeng: 'status-waiting',
-        wavelength: 'status-online'
+        wavelength: 'status-online',
+        drawguess: 'status-online'
     };
 
     function formatRoomModeLabel(gameMode) {

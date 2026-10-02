@@ -262,6 +262,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'pokdeng_finished',
     'codenames_finished',
     'wavelength_finished',
+    'drawguess_finished',
     'end',
     'finished'
 ]);
@@ -292,6 +293,14 @@ const ROOM_NAME_MODE_HINTS = {
 };
 ROOM_NAME_MODE_HINTS['สายลับคำใบ้'] = 'codenames';
 ROOM_NAME_MODE_HINTS['วงสายลับคำใบ้'] = 'codenames';
+ROOM_NAME_MODE_HINTS['วาดแล้วทาย'] = 'drawguess';
+ROOM_NAME_MODE_HINTS['วงวาดแล้วทาย'] = 'drawguess';
+
+/** วาดแล้วทาย: รอบ 2/3/4 · เวลาวาด 60/80/100 วิ · หมวดคำ (mixed หรือหมวดเดียว) */
+function sanitizeDrawGuessSettings(source) {
+    const clean = getGameEngine('drawguess').sanitizeSettings(source || {});
+    return { drawguessRounds: clean.rounds, drawguessSeconds: clean.drawSeconds, drawguessCategory: clean.category };
+}
 
 function inferGameModeFromRoomName(roomName) {
     const trimmed = String(roomName || '').trim();
@@ -642,6 +651,7 @@ function createRoom(roomData, creatorPlayerId) {
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
             wavelengthLaps: Number(normalizedRoomData.wavelengthLaps) === 2 ? 2 : 1,
+            ...(gameMode === 'drawguess' ? sanitizeDrawGuessSettings(normalizedRoomData) : {}),
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1054,6 +1064,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.wavelengthLaps !== undefined) {
         room.settings.wavelengthLaps = Number(updates.wavelengthLaps) === 2 ? 2 : 1;
+    }
+    if (room.settings.gameMode === 'drawguess'
+        && (updates.drawguessRounds !== undefined || updates.drawguessSeconds !== undefined || updates.drawguessCategory !== undefined)) {
+        Object.assign(room.settings, sanitizeDrawGuessSettings({ ...room.settings, ...updates }));
     }
 
     if (updates.locked !== undefined) {

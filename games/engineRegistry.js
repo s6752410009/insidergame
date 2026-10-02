@@ -10,6 +10,7 @@ const { poker5, poker4 } = require('./pokerEngine');
 const pokdengEngine = require('./pokdengEngine');
 const codenamesEngine = require('./codenamesEngine');
 const wavelengthEngine = require('./wavelengthEngine');
+const drawguessEngine = require('./drawguessEngine');
 
 const ENGINES = {
     insider: insiderEngine,
@@ -26,6 +27,7 @@ const ENGINES = {
     wavelength: wavelengthEngine
 };
 ENGINES.codenames = codenamesEngine;
+ENGINES.drawguess = drawguessEngine;
 
 function isPokerMode(gameMode) {
     return gameMode === 'poker5' || gameMode === 'poker4';
@@ -89,6 +91,16 @@ function normalizeGameMode(gameMode) {
         codenames: 'codenames',
         สายลับคำใบ้: 'codenames',
         คำใบ้สายลับ: 'codenames'
+    });
+    Object.assign(aliases, {
+        drawguess: 'drawguess',
+        drawandguess: 'drawguess',
+        drawing: 'drawguess',
+        skribbl: 'drawguess',
+        pictionary: 'drawguess',
+        วาดแล้วทาย: 'drawguess',
+        วาดภาพทายคำ: 'drawguess',
+        วาดรูปทายคำ: 'drawguess'
     });
 
     return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';
