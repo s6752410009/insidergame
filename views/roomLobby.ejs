@@ -760,6 +760,15 @@
   }
   .uc-mw-toggle[aria-pressed="true"] { background: #f5c86b; color: #1a2332; border-color: transparent; }
   .uc-mw-toggle:disabled { cursor: default; opacity: 0.8; }
+  #btnColorCardsHowTo {
+    padding: 10px 14px; min-height: 44px; border-radius: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.5); background: rgba(37, 99, 235, 0.2); color: #f5c86b;
+    font-weight: 700; font-size: 0.95em; cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+  }
+  .cc-lobby-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .cc-lobby-opts select { min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid rgba(245, 200, 107, 0.35); background: #1a2332; color: #f1f0fa; font-weight: 700; max-width: 100%; }
+  .cc-lobby-opts select:disabled { opacity: 0.85; }
+  .cc-lobby-opts .uc-mw-toggle { margin-top: 0; }
 
   #btnWavelengthHowTo {
     padding: 10px 14px; min-height: 44px; border-radius: 14px;
@@ -1475,6 +1484,7 @@
         <button type="button" id="btnCodenamesHowTo" class="<%= room.gameMode === 'codenames' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnWavelengthHowTo" class="<%= room.gameMode === 'wavelength' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnDrawGuessHowTo" class="<%= room.gameMode === 'drawguess' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnColorCardsHowTo" class="<%= room.gameMode === 'colorcards' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1504,6 +1514,7 @@
         
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
         <button type="button" id="btnPokDengAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'pokdeng' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
+        <button type="button" id="btnColorCardsAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'colorcards' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnBlackMarketAddBots" class="btn-admin-small btn-add-bots <%= ((room.gameMode === 'blackmarket' || isPokerLobbyRoom) && room.isAdmin) ? '' : 'is-hidden' %>"><%= isPokerLobbyRoom ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ' %></button>
       </div>
     </div>
@@ -1627,6 +1638,15 @@
         label: 'ป๊อกเด้ง',
         startLabel: '🎴 เปิดโต๊ะ',
         readyText: 'พร้อมแล้ว เปิดโต๊ะได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
+        roundLabel: 'เวลาคิดต่อตา:'
+      },
+      colorcards: {
+        minPlayers: 2,
+        maxPlayers: 10,
+        label: 'ไพ่ทิ้งสี',
+        startLabel: '🃏 แจกไพ่',
+        readyText: 'พร้อมแล้ว แจกไพ่ได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
         roundLabel: 'เวลาคิดต่อตา:'
       },
@@ -1844,6 +1864,9 @@
       if (compactMode === 'drawguess' || compactMode === 'วาดแล้วทาย') {
         return 'drawguess';
       }
+      if (compactMode === 'colorcards' || compactMode === 'ไพ่ทิ้งสี' || compactMode === 'ทิ้งสี') {
+        return 'colorcards';
+      }
       return 'insider';
     }
 
@@ -1866,6 +1889,9 @@
       }
       if (compact === 'วาดแล้วทาย' || compact === 'drawguess') {
         return 'drawguess';
+      }
+      if (compact === 'ไพ่ทิ้งสี' || compact === 'colorcards') {
+        return 'colorcards';
       }
       return null;
     }
@@ -1930,6 +1956,9 @@
       if (normalizedMode === 'drawguess') {
         return { background: '#12324a', color: '#bae6fd' };
       }
+      if (normalizedMode === 'colorcards') {
+        return { background: '#1a2332', color: '#f5c86b' };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -1991,6 +2020,9 @@
       }
       if (normalizedMode === 'drawguess') {
         return { kicker: '🎨 ห้องวาดแล้วทาย', pills: [] };
+      }
+      if (normalizedMode === 'colorcards') {
+        return { kicker: '🃏 โต๊ะไพ่ทิ้งสี', pills: [] };
       }
 
       return {
@@ -2081,6 +2113,8 @@
       setElementHidden('#btnWavelengthHowTo', resolvedMode !== 'wavelength');
       setElementHidden('#btnPokDengAddBots', !(isAdmin && resolvedMode === 'pokdeng'));
       setElementHidden('#btnDrawGuessHowTo', resolvedMode !== 'drawguess');
+      setElementHidden('#btnColorCardsHowTo', resolvedMode !== 'colorcards');
+      setElementHidden('#btnColorCardsAddBots', !(isAdmin && resolvedMode === 'colorcards'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
       fillPokerRankPanel(resolvedMode);
@@ -2151,6 +2185,27 @@
             'ลงเดิมพัน แจก 2 ใบ ได้ 8/9 = ป๊อก เปิดเลย · ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ',
             ' · <strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> (' + (settings && settings.pokdengRotateDealer ? 'หมุนเจ้ามือทุกตา' : 'หัวห้องเป็นเจ้ามือ') + ')',
             '</p>'
+          ].join('');
+        } else if (resolvedMode === 'colorcards') {
+          const ccTarget = Number(settings && settings.colorcardsTarget) || 0;
+          const ccTurn = Number(settings && settings.colorcardsTurnSeconds) || 20;
+          const ccStack = !!(settings && settings.colorcardsStacking);
+          const dis = isAdmin ? '' : ' disabled';
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(37,99,235,0.25); color:#f5c86b;">🃏 ไพ่ทิ้งสี · 2–10 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ลงสีหรือเลขให้ตรงกับกอง ทิ้งให้หมดมือก่อนชนะ · เหลือใบเดียวต้องกด <strong>เหลือใบเดียว!</strong> ไม่งั้นโดนจับ',
+            '</p>',
+            '<div class="cc-lobby-opts">',
+            '<select id="ccLobbyTarget" aria-label="เล่นถึง"' + dis + '>',
+            [[0, '1 รอบ'], [300, 'ถึง 300 แต้ม'], [500, 'ถึง 500 แต้ม']].map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === ccTarget ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''),
+            '</select>',
+            '<select id="ccLobbyTurn" aria-label="เวลาต่อตา"' + dis + '>',
+            [15, 20, 30].map(function(v) { return '<option value="' + v + '"' + (v === ccTurn ? ' selected' : '') + '>ตาละ ' + v + ' วิ</option>'; }).join(''),
+            '</select>',
+            '<button type="button" class="uc-mw-toggle" id="ccLobbyStack" aria-pressed="' + (ccStack ? 'true' : 'false') + '"' + dis + '>' + (ccStack ? '✓ ' : '') + 'ซ้อน +2/+4: ' + (ccStack ? 'ได้' : 'ไม่ได้') + '</button>',
+            '</div>'
           ].join('');
         } else if (resolvedMode === 'wavelength') {
           const laps = settings && Number(settings.wavelengthLaps) === 2 ? 2 : 1;
@@ -3308,6 +3363,48 @@
         color: '#fff',
         confirmButtonColor: '#b3262e',
         confirmButtonText: 'เข้าใจแล้ว'
+      });
+    });
+
+    function updateColorCardsSetting(patch) {
+      if (!isAdmin) return;
+      socket.emit('updateRoom', patch, function(res) {
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    }
+    $(document).on('change', '#ccLobbyTarget', function() { updateColorCardsSetting({ colorcardsTarget: Number(this.value) }); });
+    $(document).on('change', '#ccLobbyTurn', function() { updateColorCardsSetting({ colorcardsTurnSeconds: Number(this.value) }); });
+    $(document).on('click', '#ccLobbyStack', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ colorcardsStacking: this.getAttribute('aria-pressed') !== 'true' });
+    });
+
+    $('#btnColorCardsHowTo').on('click', function() {
+      Swal.fire({
+        title: '🃏 ไพ่ทิ้งสี เล่นยังไง',
+        html: '<div style="text-align:left; font-size:0.95em; line-height:1.6;">' +
+          '<p>1. แจกคนละ 7 ใบ ลงไพ่<strong>สีเดียวกัน</strong> หรือ<strong>เลข/สัญลักษณ์เดียวกัน</strong>กับใบบนกอง</p>' +
+          '<p>2. ไม่มีใบลง = จั่ว 1 ใบ ถ้าลงได้ลงต่อเลย ไม่งั้นผ่าน · หมดเวลา = จั่วให้แล้วผ่าน</p>' +
+          '<p>3. ข้าม · กลับทิศ (2 คน = ข้าม) · +2 · เปลี่ยนสี · +4 (ลงได้ทุกเมื่อ ไม่มีกติกาท้า)</p>' +
+          '<p>4. ก่อนลงใบรองสุดท้ายกด <strong>เหลือใบเดียว!</strong> ลืมกด คนอื่นกด <strong>จับได้!</strong> = จั่ว 2</p>' +
+          '<p>หมดมือก่อนชนะ ได้แต้ม = ไพ่ในมือคนอื่น (เลขตามหน้า · ไพ่พิเศษ 20 · เปลี่ยนสี/+4 50)</p></div>',
+        background: '#1a2332',
+        color: '#fff',
+        confirmButtonColor: '#b8862b',
+        confirmButtonText: 'เข้าใจแล้ว'
+      });
+    });
+
+    $(document).on('click', '#btnColorCardsAddBots', function() {
+      const btn = $(this);
+      if (btn.data('loading')) return;
+      btn.data('loading', true).text('🤖 กำลังเพิ่มบอท...');
+      socket.emit('colorcards_addBots', { roomId: roomId, count: 1 }, function(res) {
+        btn.data('loading', false).text('🤖 เพิ่มบอท');
+        if (res && res.success) return;
+        Swal.fire({ icon: 'error', title: 'เพิ่มบอทไม่สำเร็จ', text: (res && res.error) || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
       });
     });
 

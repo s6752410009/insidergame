@@ -106,6 +106,7 @@ function createDefaultWinByRole() {
 const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover', 'coup', 'avalon', 'liar', 'poker5', 'poker4', 'pokdeng', 'wavelength'];
 GAME_MODES.push('codenames');
 GAME_MODES.push('drawguess');
+GAME_MODES.push('colorcards');
 
 function createDefaultModeStats() {
     return {
@@ -122,7 +123,8 @@ function createDefaultModeStats() {
         codenames: { games: 0, wins: 0, losses: 0 },
         pokdeng: { games: 0, wins: 0, losses: 0 },
         wavelength: { games: 0, wins: 0, losses: 0 },
-        drawguess: { games: 0, wins: 0, losses: 0 }
+        drawguess: { games: 0, wins: 0, losses: 0 },
+        colorcards: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -420,6 +422,10 @@ function recordGameEnd(roomId, gameResult) {
 
     if (gameResult?.mode === 'drawguess') {
         return recordDrawGuessGameEnd(roomId, gameResult);
+    }
+
+    if (gameResult?.mode === 'colorcards') {
+        return recordColorCardsGameEnd(roomId, gameResult);
     }
 
     return recordInsiderGameEnd(roomId, gameResult);
@@ -801,6 +807,51 @@ function recordDrawGuessGameEnd(roomId, gameResult) {
             winnerName,
             playerCount: standings.length,
             resultText: `อันดับ ${row.rank || '-'} · ${Number(row.score) || 0} แต้ม${rounds ? ` · ${rounds} รอบ` : ''}${row.left ? ' (ออกกลางเกม)' : ''}`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+/** ไพ่ทิ้งสี: คนที่ชนะรอบ (โหมด 1 รอบ) หรือถึงแต้มเป้าก่อน = ชนะ คนอื่นแพ้ — ไม่บันทึกบอท */
+function recordColorCardsGameEnd(roomId, gameResult) {
+    const { winner, standings, roomName, rounds, target } = gameResult;
+    if (!winner || !winner.playerId || !Array.isArray(standings) || standings.length === 0) {
+        console.warn('Invalid colorcards game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    standings.forEach(row => {
+        if (!row || !row.playerId || isBotPlayerId(row.playerId)) return;
+        const stat = initializeStats(row.playerId, row.name);
+        if (!stat) return;
+        const playerWon = row.playerId === winner.playerId;
+
+        stat.totalGames += 1;
+        stat.modeStats.colorcards.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.colorcards.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.colorcards.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'colorcards',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            winnerName: winner.name || 'ไม่ทราบ',
+            resultText: target
+                ? `${winner.name || 'ไม่ทราบ'} ถึง ${target} แต้มก่อน · ${rounds || 1} รอบ`
+                : `${winner.name || 'ไม่ทราบ'} ทิ้งหมดมือก่อน`
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {
             stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);

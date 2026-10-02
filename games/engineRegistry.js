@@ -11,6 +11,7 @@ const pokdengEngine = require('./pokdengEngine');
 const codenamesEngine = require('./codenamesEngine');
 const wavelengthEngine = require('./wavelengthEngine');
 const drawguessEngine = require('./drawguessEngine');
+const colorcardsEngine = require('./colorcardsEngine');
 
 const ENGINES = {
     insider: insiderEngine,
@@ -24,7 +25,8 @@ const ENGINES = {
     poker5,
     poker4,
     pokdeng: pokdengEngine,
-    wavelength: wavelengthEngine
+    wavelength: wavelengthEngine,
+    colorcards: colorcardsEngine
 };
 ENGINES.codenames = codenamesEngine;
 ENGINES.drawguess = drawguessEngine;
@@ -85,7 +87,11 @@ function normalizeGameMode(gameMode) {
         ป็อกเด้ง: 'pokdeng',
         wavelength: 'wavelength',
         คลื่นความคิด: 'wavelength',
-        คลื่น: 'wavelength'
+        คลื่น: 'wavelength',
+        colorcards: 'colorcards',
+        colorcard: 'colorcards',
+        ไพ่ทิ้งสี: 'colorcards',
+        ทิ้งสี: 'colorcards'
     };
     Object.assign(aliases, {
         codenames: 'codenames',

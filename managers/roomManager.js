@@ -263,6 +263,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'codenames_finished',
     'wavelength_finished',
     'drawguess_finished',
+    'colorcards_finished',
     'end',
     'finished'
 ]);
@@ -289,7 +290,9 @@ const ROOM_NAME_MODE_HINTS = {
     'ป๊อกเด้ง': 'pokdeng',
     'วงป๊อกเด้ง': 'pokdeng',
     'คลื่นความคิด': 'wavelength',
-    'วงคลื่นความคิด': 'wavelength'
+    'วงคลื่นความคิด': 'wavelength',
+    'ไพ่ทิ้งสี': 'colorcards',
+    'วงไพ่ทิ้งสี': 'colorcards'
 };
 ROOM_NAME_MODE_HINTS['สายลับคำใบ้'] = 'codenames';
 ROOM_NAME_MODE_HINTS['วงสายลับคำใบ้'] = 'codenames';
@@ -652,6 +655,11 @@ function createRoom(roomData, creatorPlayerId) {
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
             wavelengthLaps: Number(normalizedRoomData.wavelengthLaps) === 2 ? 2 : 1,
             ...(gameMode === 'drawguess' ? sanitizeDrawGuessSettings(normalizedRoomData) : {}),
+            colorcardsTurnSeconds: gameMode !== 'colorcards' ? undefined
+                : ([15, 20, 30].includes(Number(normalizedRoomData.colorcardsTurnSeconds)) ? Number(normalizedRoomData.colorcardsTurnSeconds) : 20),
+            colorcardsTarget: gameMode !== 'colorcards' ? undefined
+                : ([0, 300, 500].includes(Number(normalizedRoomData.colorcardsTarget)) ? Number(normalizedRoomData.colorcardsTarget) : 0),
+            colorcardsStacking: gameMode === 'colorcards' && normalizedRoomData.colorcardsStacking === true,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1068,6 +1076,11 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (room.settings.gameMode === 'drawguess'
         && (updates.drawguessRounds !== undefined || updates.drawguessSeconds !== undefined || updates.drawguessCategory !== undefined)) {
         Object.assign(room.settings, sanitizeDrawGuessSettings({ ...room.settings, ...updates }));
+    }
+    if (room.settings.gameMode === 'colorcards' && !isRoomGameInProgress(room)) {
+        if ([15, 20, 30].includes(Number(updates.colorcardsTurnSeconds))) room.settings.colorcardsTurnSeconds = Number(updates.colorcardsTurnSeconds);
+        if ([0, 300, 500].includes(Number(updates.colorcardsTarget))) room.settings.colorcardsTarget = Number(updates.colorcardsTarget);
+        if (updates.colorcardsStacking !== undefined) room.settings.colorcardsStacking = updates.colorcardsStacking === true;
     }
 
     if (updates.locked !== undefined) {

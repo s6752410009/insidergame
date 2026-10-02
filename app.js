@@ -100,6 +100,7 @@ const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManage
 const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
+const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
@@ -835,6 +836,7 @@ function isFinishedTableReturnMode(gameMode) {
     if (gameMode === 'codenames') return true;
     if (gameMode === 'wavelength') return true;
     if (gameMode === 'drawguess') return true;
+    if (gameMode === 'colorcards') return true;
     if (gameMode === 'avalon') return true;
     return gameMode === 'liar' || gameMode === 'coup' || gameMode === 'poker5' || gameMode === 'poker4';
 }
@@ -870,6 +872,7 @@ function returnFinishedGameToLobby(roomId) {
     codenamesRuntime.clearTimers(roomId);
     wavelengthRuntime.clearTimers(roomId);
     drawguessRuntime.clearTimers(roomId);
+    colorcardsRuntime.clearTimers(roomId);
     roomManager.resetRoomGame(roomId);
     const refreshedRoom = roomManager.getRoom(roomId);
     io.to(roomId).emit('redirectToLobby', { roomId });
@@ -1346,6 +1349,7 @@ function clearAllRoomTimers(roomId) {
     codenamesRuntime.clearTimers(roomId);
     wavelengthRuntime.clearTimers(roomId);
     drawguessRuntime.clearTimers(roomId);
+    colorcardsRuntime.clearTimers(roomId);
     clearInsiderVoteTimer(roomId);
     clearInsiderReturnTimer(roomId);
     clearFinishedReturnTimer(roomId);
@@ -1500,7 +1504,8 @@ const GAME_MODE_LOG_STYLES = {
     poker5: { label: 'ไพ่ 5 ใบ', emoji: '♠', badgeBg: 'rgba(22,101,52,0.25)', badgeColor: '#bbf7d0' },
     poker4: { label: 'สี่ใบเก', emoji: '♦', badgeBg: 'rgba(153,27,27,0.25)', badgeColor: '#fecaca' },
     pokdeng: { label: 'ป๊อกเด้ง', emoji: '🎴', badgeBg: 'rgba(245,200,107,0.2)', badgeColor: '#fde68a' },
-    wavelength: { label: 'คลื่นความคิด', emoji: '📡', badgeBg: 'rgba(94,234,212,0.18)', badgeColor: '#99f6e4' }
+    wavelength: { label: 'คลื่นความคิด', emoji: '📡', badgeBg: 'rgba(94,234,212,0.18)', badgeColor: '#99f6e4' },
+    colorcards: { label: 'ไพ่ทิ้งสี', emoji: '🃏', badgeBg: 'rgba(56,189,248,0.2)', badgeColor: '#bae6fd' }
 };
 GAME_MODE_LOG_STYLES.codenames = { label: 'สายลับคำใบ้', emoji: '🕵️', badgeBg: 'rgba(96,165,250,0.2)', badgeColor: '#bfdbfe' };
 GAME_MODE_LOG_STYLES.drawguess = { label: 'วาดแล้วทาย', emoji: '🎨', badgeBg: 'rgba(56,189,248,0.18)', badgeColor: '#bae6fd' };
@@ -1647,6 +1652,10 @@ function buildGameEndNotification(room) {
 
     if (mode === 'drawguess') {
         return drawguessRuntime.gameEndNotification(room);
+    }
+
+    if (mode === 'colorcards') {
+        return colorcardsRuntime.gameEndNotification(room);
     }
 
     if (mode === 'insider' && gameState.resultVote2) {
@@ -3409,6 +3418,8 @@ function broadcastGameStateForRoom(room) {
         wavelengthRuntime.emitRoomState(room);
     } else if (room.settings.gameMode === 'drawguess') {
         drawguessRuntime.emitRoomState(room);
+    } else if (room.settings.gameMode === 'colorcards') {
+        colorcardsRuntime.emitRoomState(room);
     }
 }
 
@@ -3518,6 +3529,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 drawguessRuntime.handleLeft(room, playerId);
             } catch (error) {
                 console.error('[drawguess] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'colorcards') {
+            try {
+                colorcardsRuntime.handleLeft(room, playerId);
+            } catch (error) {
+                console.error('[colorcards] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'werewolf') {
@@ -3880,6 +3898,10 @@ function recoverGamePhaseTimers() {
             drawguessRuntime.recover(room);
         }
 
+        if (room.settings.gameMode === 'colorcards') {
+            colorcardsRuntime.recover(room);
+        }
+
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
             if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
                 finalizeInsiderVote2(room);
@@ -3957,6 +3979,9 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'wavelength' && roomManager.isRoomGameInProgress(room)) {
             wavelengthRuntime.forceResolve(room);
         }
+        if (room.settings.gameMode === 'colorcards' && roomManager.isRoomGameInProgress(room)) {
+            colorcardsRuntime.forceResolve(room);
+        }
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
             && room.gameState.status === 'vote2'
             && room.gameState.vote2EndsAt
@@ -3972,6 +3997,7 @@ function runRoomCleanupSweep() {
         pokdengRuntime.clearTimers(candidate.roomId);
         codenamesRuntime.clearTimers(candidate.roomId);
         wavelengthRuntime.clearTimers(candidate.roomId);
+        colorcardsRuntime.clearTimers(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
@@ -5087,6 +5113,25 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'colorcards') {
+        return res.render('colorcardsBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            colorcardsState: colorcardsRuntime.buildPayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
     if (room.settings.gameMode === 'spyfall') {
         return res.render('spyfallBoard.ejs', {
             player: gameStatePlayer,
@@ -5790,6 +5835,8 @@ io.sockets.on('connection', function(socket) {
         } else if (refreshedRoom?.settings?.gameMode === 'drawguess') {
             drawguessRuntime.emitState(refreshedRoom, socket.id, playerId);
             drawguessRuntime.emitCanvas(refreshedRoom, socket.id);
+        } else if (refreshedRoom?.settings?.gameMode === 'colorcards') {
+            colorcardsRuntime.emitState(refreshedRoom, socket.id, playerId);
         }
     });
 
@@ -5822,6 +5869,7 @@ io.sockets.on('connection', function(socket) {
             codenamesRuntime.clearTimers(roomId);
             wavelengthRuntime.clearTimers(roomId);
             drawguessRuntime.clearTimers(roomId);
+            colorcardsRuntime.clearTimers(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
             clearFinishedReturnTimer(roomId);
@@ -5876,6 +5924,8 @@ io.sockets.on('connection', function(socket) {
                 wavelengthRuntime.emitRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'drawguess') {
                 drawguessRuntime.emitRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'colorcards') {
+                colorcardsRuntime.emitRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -7230,6 +7280,8 @@ io.sockets.on('connection', function(socket) {
             } else if (room.settings.gameMode === 'drawguess') {
                 drawguessRuntime.emitState(room, socket.id, playerId);
                 drawguessRuntime.emitCanvas(room, socket.id);
+            } else if (room.settings.gameMode === 'colorcards') {
+                colorcardsRuntime.emitState(room, socket.id, playerId);
             } else if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
@@ -8656,6 +8708,143 @@ io.sockets.on('connection', function(socket) {
     });
     // ===== END DRAWGUESS =====
 
+    // ===== COLORCARDS (ไพ่ทิ้งสี) =====
+    // ไพ่ในมือส่งทีละ socket ผ่าน colorcardsRuntime.emitState เท่านั้น · ทุกคำสั่งตรวจตา/เฟส/กติกาใน engine
+
+    safeOn(socket, 'colorcards_requestState', function(data) {
+        const room = getSocketRoom(socket, 'colorcards');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        colorcardsRuntime.emitState(room, socket.id, playerId);
+        colorcardsRuntime.scheduleBots(room);
+    });
+
+    function handleColorCardsCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'colorcards');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบโต๊ะไพ่ทิ้งสี' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            colorcardsRuntime.emitRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    function colorcardsContext(data) {
+        return { turnSeq: data?.turnSeq };
+    }
+
+    safeOn(socket, 'colorcards_play', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.playCard(room, playerId, {
+                cardId: typeof data?.cardId === 'string' ? data.cardId : '',
+                color: typeof data?.color === 'string' ? data.color : null,
+                callLast: data?.callLast === true
+            }, colorcardsContext(data)));
+    });
+
+    safeOn(socket, 'colorcards_draw', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.drawCard(room, playerId, colorcardsContext(data)));
+    });
+
+    safeOn(socket, 'colorcards_pass', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.passTurn(room, playerId, colorcardsContext(data)));
+    });
+
+    safeOn(socket, 'colorcards_call', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.callLast(room, playerId));
+    });
+
+    safeOn(socket, 'colorcards_catch', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.catchPlayer(room, playerId, typeof data?.targetId === 'string' ? data.targetId : null));
+    });
+
+    safeOn(socket, 'colorcards_nextRound', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.nextRound(room, playerId));
+    });
+
+    safeOn(socket, 'colorcards_end', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.endGame(room, playerId));
+    });
+
+    safeOn(socket, 'colorcards_admin_reveal', function() {
+        const room = getSocketRoom(socket, 'colorcards');
+        if (!room) return;
+        // ส่องไพ่ได้เฉพาะแอดมินเว็บ — หัวห้องเป็นผู้เล่นด้วย ปล่อยให้ส่องคือโกง
+        if (!isSiteAdminPlayer(socket.playerId)) {
+            io.to(socket.id).emit('colorcards_admin_reveal_denied');
+            return;
+        }
+        const requester = playerManager.getPlayer(socket.playerId);
+        addServerLog(io, 'admin', room.roomId, `${requester?.playerName || socket.playerId} ใช้ /m ดูไพ่ทิ้งสีทั้งโต๊ะ`, 'warning',
+            { gameMode: 'colorcards', meta: { event: 'colorcards_admin_reveal', playerId: socket.playerId } });
+        io.to(socket.id).emit('colorcards_admin_reveal', colorcardsRuntime.adminRevealPayload(room));
+    });
+
+    safeOn(socket, 'colorcards_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const inFlight = colorcardsRuntime.botAddInFlight;
+        try {
+            const roomId = data?.roomId || socket.roomId;
+            const adminPlayerId = socket.playerId;
+            const room = roomManager.getRoom(roomId);
+            if (!room) throw new Error('ไม่พบห้อง');
+            if (room.settings.gameMode !== 'colorcards') throw new Error('โหมดนี้เพิ่มบอทไม่ได้');
+            if (room.admin !== adminPlayerId && !isSiteAdminPlayer(adminPlayerId)) {
+                throw new Error('เฉพาะหัวหน้าห้องหรือแอดมินที่เพิ่มบอทได้');
+            }
+            if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
+            if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
+
+            const seatCap = Math.min(10, Number(room.settings.maxPlayers || 10));
+            const remaining = Math.max(0, seatCap - room.players.length);
+            if (!remaining) throw new Error('ห้องเต็มแล้ว');
+            const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
+            const botNames = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทสายฝน', 'บอทแก้วตา', 'บอทก้องภพ'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄', '🐙', '🦉'];
+            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad', '#16a085', '#d35400'];
+
+            inFlight.add(room.roomId);
+            let added = 0;
+            try {
+                for (let i = 0; i < wanted; i += 1) {
+                    if (roomManager.getRoom(roomId) !== room) break;
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    const botId = `bot_${uuidv4()}`;
+                    const slot = room.players.length % botNames.length;
+                    await playerManager.createOrGetPlayer(botId, { approved: true });
+                    await playerManager.updatePlayerName(botId, `${botNames[slot]} ${botId.slice(-4)}`);
+                    await playerManager.updatePlayerColor(botId, botColors[slot]);
+                    await playerManager.updatePlayerAvatar(botId, botAvatars[slot]);
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    roomManager.joinRoom(roomId, botId, `bot_socket_${uuidv4()}`, null, { bypassLock: true });
+                    added += 1;
+                }
+            } finally {
+                inFlight.delete(room.roomId);
+            }
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+            done({ success: true, added });
+        } catch (error) {
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
+    });
+    // ===== END COLORCARDS =====
+
     socket.on('spyfall_endDiscussion', function(data, callback) {
         try {
             const roomId = socket.roomId;
@@ -9092,6 +9281,21 @@ io.sockets.on('connection', function(socket) {
                         pokerLabel + ' เริ่มแล้ว — แจกไพ่ ทิ้งคืนกลาง แล้ววัด 3 ใบที่ดีสุด', '#d4a017');
                     logGameStartFromRoom(currentRoom);
                     emitPokerRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'colorcards') {
+                    colorcardsRuntime.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                    });
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'ไพ่ทิ้งสีเริ่มแล้ว — ลงสีหรือเลขให้ตรง ทิ้งให้หมดมือ เหลือใบเดียวอย่าลืมกดบอก!', '#f5c86b');
+                    logGameStartFromRoom(currentRoom);
+                    colorcardsRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

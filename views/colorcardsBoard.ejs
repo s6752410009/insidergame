@@ -1,0 +1,1411 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<style>
+  html.cc-active,
+  html.cc-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: oklch(0.2 0.03 258) !important;
+  }
+  html.cc-active .container-fluid > header,
+  html.cc-active .footer,
+  html.cc-active #music-controls { display: none !important; }
+  html.cc-active, html.cc-active .container-fluid, html.cc-active .container-fluid > .row { background: oklch(0.2 0.03 258) !important; background-image: none !important; }
+  html.cc-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  html.cc-active .container-fluid > .row { margin: 0 !important; }
+  html.cc-active .col-lg-12 { padding: 0 !important; }
+
+  /* โทเคนอยู่ที่ html — dock/ชีต/ตัวเลือกสีอยู่นอก .cc ก็ใช้ได้ */
+  html.cc-active {
+    --cc-bg: oklch(0.2 0.03 258);
+    --cc-navy: oklch(0.255 0.032 258);
+    --cc-surface: oklch(0.27 0.034 258);
+    --cc-surface-2: oklch(0.32 0.04 258);
+    --cc-line: oklch(0.86 0.12 85 / 0.22);
+    --cc-line-soft: oklch(1 0 0 / 0.09);
+    --cc-gold: oklch(0.86 0.12 85);
+    --cc-gold-ink: oklch(0.24 0.05 70);
+    --cc-ink: oklch(0.97 0.01 250);
+    --cc-soft: oklch(0.88 0.02 250);
+    --cc-muted: oklch(0.76 0.03 255);
+    --cc-r: oklch(0.62 0.21 27);
+    --cc-y: oklch(0.85 0.16 90);
+    --cc-g: oklch(0.64 0.17 150);
+    --cc-b: oklch(0.6 0.17 255);
+    --cc-w: oklch(0.86 0.12 85);
+    --cc-danger: oklch(0.66 0.21 25);
+    --cc-ok: oklch(0.8 0.15 150);
+    --cc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --cc-display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    --cur: var(--cc-w);
+    --cw: 62px;
+    --ch: 88px;
+    --pw: 82px;
+    --ph: 116px;
+    --dock-h: 210px;
+  }
+  .cc {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 8px 16px calc(var(--dock-h) + 16px);
+    color: var(--cc-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    text-align: left;
+  }
+  body.content { background: var(--cc-bg, oklch(0.2 0.03 258)); }
+  .cc *, .cc *::before, .cc *::after, .cc-dock *, .cc-sheet * { box-sizing: border-box; }
+  .cc button, .cc-dock button, .cc-sheet button, .cc-picker button { font-family: inherit; }
+  .cc h1, .cc h2 { overflow-wrap: anywhere; }
+
+  /* ---------- top ---------- */
+  .cc-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 6px 10px; padding: 6px 0 8px; }
+  .cc-top > :first-child { padding-right: 96px; min-width: 0; } /* เว้นที่ปุ่มแชทมุมขวาบน */
+  .cc-kicker { color: var(--cc-gold); font-family: var(--cc-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; }
+  .cc-title { margin: 0; font-family: var(--cc-display); font-weight: 700; font-size: clamp(1.05rem, 4.2vw, 1.4rem); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cc-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cc-pill {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px;
+    border-radius: 999px; border: 1px solid var(--cc-line); background: var(--cc-surface);
+    color: var(--cc-ink); font-size: 0.86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .cc-pill:hover { background: var(--cc-surface-2); }
+  .cc-pill--danger { color: oklch(0.86 0.08 25); border-color: oklch(0.66 0.18 25 / 0.5); }
+  .cc-pill:focus-visible, .cc-btn:focus-visible, .cc-card:focus-visible, .cc-deck:focus-visible { outline: 2px solid var(--cc-gold); outline-offset: 2px; }
+
+  /* ---------- now bar ---------- */
+  .cc-now {
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px;
+    padding: 9px 14px 11px; border-radius: 16px; background: var(--cc-surface); border: 1px solid var(--cc-line-soft);
+  }
+  .cc-now.is-mine { background: oklch(0.34 0.06 80 / 0.5); border-color: var(--cc-gold); }
+  .cc-now-phase { font-family: var(--cc-display); font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; color: var(--cc-gold); }
+  .cc-now-copy { grid-column: 1; font-size: 1rem; font-weight: 700; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
+  .cc-now-timer { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
+  .cc-now-sec { font-family: var(--cc-display); font-size: 1.55rem; font-weight: 700; color: var(--cc-gold); font-variant-numeric: tabular-nums; line-height: 1; }
+  .cc-now-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--cc-gold); transform-origin: left center; transform: scaleX(0); }
+  .cc-now.is-urgent .cc-now-bar { background: var(--cc-danger); }
+  .cc-now.is-urgent .cc-now-sec { color: var(--cc-danger); }
+
+  /* ---------- opponents ---------- */
+  .cc-opps { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 180px)); justify-content: center; gap: 6px; margin-top: 10px; position: relative; }
+  .cc-flow { display: flex; align-items: center; justify-content: center; gap: 8px; height: 20px; margin-top: 4px; color: var(--cc-muted); font-size: 0.74rem; }
+  .cc-flow-arrows { display: inline-flex; gap: 2px; }
+  .cc-flow-arrows i { width: 8px; height: 8px; border-top: 2px solid var(--cc-gold); border-right: 2px solid var(--cc-gold); transform: rotate(45deg); opacity: 0.35; animation: ccFlow 1.2s linear infinite; }
+  .cc-flow-arrows i:nth-child(2) { animation-delay: 0.2s; }
+  .cc-flow-arrows i:nth-child(3) { animation-delay: 0.4s; }
+  .cc-flow.is-rev .cc-flow-arrows { flex-direction: row-reverse; }
+  .cc-flow.is-rev .cc-flow-arrows i { transform: rotate(-135deg); }
+  @keyframes ccFlow { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+  .cc-opp {
+    position: relative; min-width: 0; padding: 7px 4px 6px; border-radius: 14px; text-align: center;
+    background: oklch(0.27 0.034 258 / 0.85); border: 1px solid var(--cc-line-soft);
+    transition: background-color 0.2s var(--cc-ease);
+  }
+  .cc-opp.is-turn { background: oklch(0.36 0.06 80 / 0.6); border-color: var(--cc-gold); box-shadow: 0 0 0 1px var(--cc-gold), 0 6px 22px oklch(0.86 0.12 85 / 0.22); }
+  .cc-opp.is-left { opacity: 0.4; }
+  .cc-opp.is-offline .cc-opp-av { opacity: 0.55; }
+  .cc-opp-av { display: flex; justify-content: center; height: 30px; align-items: center; }
+  .cc-opp-name { font-size: 0.74rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .cc-opp-count { display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; font-family: var(--cc-display); font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .cc-opp-count .cc-minibk { width: 12px; height: 17px; border-radius: 3px; }
+  .cc-opp.is-one .cc-opp-count { color: var(--cc-danger); }
+  .cc-opp-score { display: block; font-size: 0.68rem; color: var(--cc-muted); font-variant-numeric: tabular-nums; }
+  .cc-tag {
+    position: absolute; left: 50%; top: -9px; transform: translateX(-50%);
+    padding: 1px 7px; border-radius: 999px; font-size: 0.64rem; font-weight: 700; white-space: nowrap;
+    background: var(--cc-gold); color: var(--cc-gold-ink); max-width: 110%; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cc-tag--warn { background: var(--cc-danger); color: #fff; }
+  .cc-pop {
+    position: absolute; left: 50%; top: 40%; z-index: 4; pointer-events: none;
+    padding: 3px 9px; border-radius: 999px; font-family: var(--cc-display); font-weight: 700; font-size: 0.9rem; white-space: nowrap;
+    background: var(--cc-ink); color: var(--cc-navy); box-shadow: 0 6px 16px oklch(0 0 0 / 0.4);
+    animation: ccPop 1.3s var(--cc-ease) both;
+  }
+  .cc-pop--bad { background: var(--cc-danger); color: #fff; }
+  .cc-pop--gold { background: var(--cc-gold); color: var(--cc-gold-ink); }
+  @keyframes ccPop {
+    0% { opacity: 0; transform: translate(-50%, 8px) scale(0.6); }
+    18% { opacity: 1; transform: translate(-50%, -6px) scale(1.08); }
+    70% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -22px) scale(0.96); }
+  }
+
+  /* ---------- table ---------- */
+  .cc-table {
+    position: relative; margin-top: 8px; padding: 18px 12px 16px; border-radius: 30px; overflow: hidden;
+    background:
+      radial-gradient(ellipse at 50% 40%, oklch(0.31 0.045 258), oklch(0.22 0.035 258) 75%);
+    box-shadow: inset 0 0 0 1px var(--cc-line), inset 0 16px 40px oklch(0 0 0 / 0.3);
+    min-height: 236px;
+  }
+  .cc-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 55% at 50% 46%, var(--cur), transparent 70%); opacity: 0.26; transition: opacity 0.4s var(--cc-ease); }
+  .cc-glow.is-flash { animation: ccGlow 0.7s var(--cc-ease); }
+  @keyframes ccGlow { 0% { opacity: 0; } 40% { opacity: 0.55; } 100% { opacity: 0.26; } }
+  .cc-ring { position: absolute; left: 50%; top: 46%; width: 230px; height: 230px; margin: -115px 0 0 -115px; pointer-events: none; opacity: 0.55; }
+  .cc-ring svg { width: 100%; height: 100%; animation: ccSpin 26s linear infinite; }
+  .cc-ring.is-rev svg { animation-direction: reverse; }
+  .cc-ring.is-flip { animation: ccFlip 0.75s var(--cc-ease); }
+  @keyframes ccSpin { to { transform: rotate(360deg); } }
+  @keyframes ccFlip { 0% { transform: scale(1) rotate(0); } 50% { transform: scale(1.12) rotate(180deg); } 100% { transform: scale(1) rotate(360deg); } }
+
+  .cc-center { position: relative; display: flex; align-items: center; justify-content: center; gap: 22px; min-height: calc(var(--ph) + 16px); }
+  .cc-deck {
+    position: relative; width: var(--cw); height: var(--ch); padding: 0; border: 0; background: none; cursor: default; border-radius: 10px;
+  }
+  .cc-deck .cc-back { position: absolute; inset: 0; }
+  .cc-deck .cc-back:nth-child(2) { transform: translate(-3px, -3px); }
+  .cc-deck .cc-back:nth-child(3) { transform: translate(-6px, -6px); }
+  .cc-deck.is-can { cursor: pointer; }
+  .cc-deck.is-can::after { content: ''; position: absolute; inset: -8px -2px -2px -8px; border-radius: 14px; border: 2px dashed var(--cc-gold); opacity: 0.7; animation: ccBreath 1.6s ease-in-out infinite; }
+  @keyframes ccBreath { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+  .cc-deck-count { position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); font-size: 0.72rem; color: var(--cc-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cc-deck.is-pulse .cc-back:nth-child(3) { animation: ccNudge 0.6s var(--cc-ease); }
+  @keyframes ccNudge { 50% { transform: translate(-6px, -12px) rotate(-6deg); } }
+
+  .cc-pile { position: relative; width: var(--pw); height: var(--ph); }
+  .cc-pile .cc-card { position: absolute; left: 0; top: 0; width: var(--pw); height: var(--ph); --fs: 1.32; }
+  .cc-pile .cc-card.is-under { opacity: 0.9; }
+
+  .cc-state { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+  .cc-chip {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 3px 12px 3px 6px; border-radius: 999px;
+    background: oklch(0 0 0 / 0.32); border: 1px solid var(--cc-line-soft); font-size: 0.84rem; font-weight: 600; white-space: nowrap;
+  }
+  .cc-swatch { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--sw, var(--cc-w)); color: oklch(0.2 0.03 258 / 0.85); }
+  .cc-swatch svg { width: 11px; height: 11px; fill: currentColor; }
+  .cc-chip--pending { background: var(--cc-danger); color: #fff; border-color: transparent; padding-left: 12px; font-family: var(--cc-display); }
+
+  /* ---------- cards ---------- */
+  .cc-card {
+    --fill: var(--cc-w); --ink: #fff; --fs: 1;
+    position: relative; display: block; width: var(--cw); height: var(--ch); padding: 0; margin: 0;
+    border: 0; border-radius: 11px; background: none; color: var(--ink); text-align: center; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+  }
+  .cc-face {
+    position: absolute; inset: 0; border-radius: inherit; overflow: hidden;
+    background-color: var(--fill);
+    background-image:
+      repeating-linear-gradient(135deg, oklch(1 0 0 / 0.08) 0 5px, transparent 5px 13px),
+      linear-gradient(180deg, oklch(1 0 0 / 0.16), oklch(0 0 0 / 0.12));
+    box-shadow: inset 0 0 0 1.5px oklch(1 0 0 / 0.32), inset 0 0 0 4px oklch(0 0 0 / 0.1), 0 3px 8px oklch(0 0 0 / 0.38);
+  }
+  .cc-c-r { --fill: var(--cc-r); }
+  .cc-c-y { --fill: var(--cc-y); --ink: oklch(0.24 0.04 258); }
+  .cc-c-g { --fill: var(--cc-g); }
+  .cc-c-b { --fill: var(--cc-b); }
+  .cc-c-w { --fill: var(--cc-navy); }
+  .cc-c-w .cc-face {
+    background-image:
+      radial-gradient(circle at 50% 50%, oklch(0.86 0.12 85 / 0.16), transparent 62%),
+      repeating-linear-gradient(45deg, oklch(0.86 0.12 85 / 0.07) 0 2px, transparent 2px 9px);
+    box-shadow: inset 0 0 0 1.5px oklch(0.86 0.12 85 / 0.6), inset 0 0 0 4px oklch(0 0 0 / 0.2), 0 3px 8px oklch(0 0 0 / 0.4);
+  }
+  .cc-idx { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 1px; font-family: var(--cc-display); font-weight: 700; line-height: 1; font-size: calc(0.78rem * var(--fs)); }
+  .cc-idx.tl { left: 6px; top: 6px; }
+  .cc-idx.br { right: 6px; bottom: 6px; transform: rotate(180deg); }
+  .cc-idx svg { width: calc(8px * var(--fs)); height: calc(8px * var(--fs)); fill: currentColor; opacity: 0.85; }
+  .cc-idx .cc-mini-glyph { width: calc(12px * var(--fs)); height: calc(12px * var(--fs)); }
+  .cc-glyph { position: absolute; inset: 0; display: grid; place-items: center; }
+  .cc-big { font-family: var(--cc-display); font-weight: 700; font-size: calc(2.1rem * var(--fs)); line-height: 1; text-shadow: 0 2px 0 oklch(0 0 0 / 0.18); }
+  .cc-big.is-69 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+  .cc-glyph svg { width: calc(34px * var(--fs)); height: calc(34px * var(--fs)); }
+  .cc-glyph .cc-plus { font-family: var(--cc-display); font-weight: 700; font-size: calc(1.75rem * var(--fs)); line-height: 1; }
+  .cc-wild-stack { display: grid; place-items: center; gap: 2px; }
+  .cc-wild-stack svg { width: calc(26px * var(--fs)); height: calc(26px * var(--fs)); }
+  .cc-c-w .cc-plus { color: var(--cc-gold); }
+
+  .cc-back {
+    display: block; width: 100%; height: 100%; border-radius: 10px;
+    background-color: var(--cc-navy);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-40 -40 80 80'%3E%3Ccircle r='34' fill='%231f2a3d' stroke='%23f5c86b' stroke-width='4'/%3E%3Cg transform='scale(0.62) rotate(45)'%3E%3Crect x='-30' y='-30' width='28' height='28' rx='7' fill='%23d9473a'/%3E%3Crect x='2' y='-30' width='28' height='28' rx='7' fill='%23f2c230'/%3E%3Crect x='2' y='2' width='28' height='28' rx='7' fill='%232f9e5b'/%3E%3Crect x='-30' y='2' width='28' height='28' rx='7' fill='%233b7be0'/%3E%3C/g%3E%3C/svg%3E"),
+      repeating-linear-gradient(45deg, oklch(0.86 0.12 85 / 0.12) 0 1.5px, transparent 1.5px 7px),
+      repeating-linear-gradient(-45deg, oklch(0.86 0.12 85 / 0.12) 0 1.5px, transparent 1.5px 7px);
+    background-size: 46% auto, auto, auto;
+    background-position: center, 0 0, 0 0;
+    background-repeat: no-repeat, repeat, repeat;
+    box-shadow: inset 0 0 0 1.5px oklch(0.86 0.12 85 / 0.55), inset 0 0 0 5px var(--cc-navy), inset 0 0 0 6px oklch(0.86 0.12 85 / 0.3), 0 2px 6px oklch(0 0 0 / 0.4);
+  }
+  .cc-minibk { display: inline-block; border-radius: 3px; background: var(--cc-navy); box-shadow: inset 0 0 0 1px oklch(0.86 0.12 85 / 0.7); }
+
+  /* ---------- dock / hand ---------- */
+  .cc-dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, oklch(0.2 0.03 258 / 0.9), var(--cc-bg) 28%);
+    border-top: 1px solid var(--cc-line);
+    box-shadow: 0 -12px 30px oklch(0 0 0 / 0.4);
+    color: var(--cc-ink); font-family: 'Bai Jamjuree', sans-serif;
+  }
+  .cc-dock-inner { max-width: 980px; margin: 0 auto; }
+  .cc-actions { display: flex; gap: 8px; padding: 0 16px; min-height: 48px; align-items: center; }
+  .cc-actions:empty { display: none; }
+  .cc-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 16px; flex: 1 1 0; min-width: 0;
+    border-radius: 14px; border: 1px solid var(--cc-line); background: var(--cc-surface-2); color: var(--cc-ink);
+    font-size: 0.98rem; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: transform 0.08s ease-out, background-color 0.18s ease-out;
+  }
+  .cc-btn:active { transform: scale(0.97); }
+  .cc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .cc-btn--primary { background: var(--cc-gold); color: var(--cc-gold-ink); border-color: transparent; }
+  .cc-btn--call { background: var(--cc-gold); color: var(--cc-gold-ink); border-color: transparent; font-family: var(--cc-display); font-size: 1.05rem; box-shadow: 0 0 0 3px oklch(0.86 0.12 85 / 0.3); animation: ccCallPulse 0.9s ease-in-out 2; }
+  .cc-btn--call.is-urgent { background: var(--cc-danger); color: #fff; box-shadow: 0 0 0 3px oklch(0.66 0.21 25 / 0.35); }
+  @keyframes ccCallPulse { 50% { transform: scale(1.03); } }
+  .cc-btn--ghost { background: transparent; }
+  .cc-called { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; min-height: 36px; border-radius: 999px; background: oklch(0.8 0.15 150 / 0.16); color: var(--cc-ok); font-weight: 700; font-size: 0.86rem; white-space: nowrap; }
+  .cc-hint { padding: 2px 16px 0; min-height: 20px; font-size: 0.78rem; color: var(--cc-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-hint.is-strong { color: var(--cc-gold); font-weight: 700; }
+
+  .cc-hand-wrap { position: relative; }
+  .cc-hand {
+    position: relative; display: flex; align-items: flex-end;
+    padding: 30px 16px 16px; min-height: calc(var(--ch) + 50px);
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+  .cc-hand::-webkit-scrollbar { display: none; }
+  .cc-hand.is-fit { justify-content: center; }
+  .cc-hand .cc-card { flex: 0 0 auto; margin-left: var(--ov, 0px); transform: translateY(var(--ty, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 120%; transition: transform 0.22s var(--cc-ease), opacity 0.2s ease, filter 0.2s ease; }
+  .cc-hand .cc-card:first-child { margin-left: 0; }
+  .cc-hand.is-myturn .cc-card.is-playable { --ty: -10px; }
+  .cc-hand.is-myturn .cc-card.is-playable .cc-face { box-shadow: inset 0 0 0 1.5px oklch(1 0 0 / 0.4), 0 0 0 2px oklch(0.86 0.12 85 / 0.85), 0 8px 18px oklch(0.86 0.12 85 / 0.28), 0 3px 8px oklch(0 0 0 / 0.38); }
+  .cc-hand.is-myturn .cc-card:not(.is-playable) { opacity: 0.45; filter: saturate(0.55); }
+  .cc-hand .cc-card.is-selected { --ty: -26px; z-index: 2; }
+  .cc-hand .cc-card.is-selected .cc-face { box-shadow: inset 0 0 0 1.5px oklch(1 0 0 / 0.5), 0 0 0 3px var(--cc-gold), 0 14px 26px oklch(0 0 0 / 0.45); }
+  .cc-hand .cc-card.is-shake { animation: ccShake 0.32s ease; }
+  @keyframes ccShake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+  .cc-hand-fade { position: absolute; top: 24px; bottom: 0; width: 22px; pointer-events: none; z-index: 3; }
+  .cc-hand-fade.l { left: 0; background: linear-gradient(90deg, var(--cc-bg), transparent); }
+  .cc-hand-fade.r { right: 0; background: linear-gradient(270deg, var(--cc-bg), transparent); }
+  .cc-hand-empty { padding: 18px 16px 12px; text-align: center; color: var(--cc-muted); font-size: 0.92rem; }
+  .cc-yourturn {
+    position: absolute; left: 50%; top: 2px; transform: translateX(-50%); z-index: 4; pointer-events: none;
+    padding: 2px 12px; border-radius: 999px; background: var(--cc-gold); color: var(--cc-gold-ink); font-family: var(--cc-display); font-weight: 700; font-size: 0.8rem;
+    opacity: 0;
+  }
+  .cc-yourturn.is-on { animation: ccYourTurn 1.6s var(--cc-ease) both; }
+  @keyframes ccYourTurn { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+
+  /* ---------- catch ---------- */
+  .cc-catch {
+    position: fixed; left: 50%; bottom: calc(var(--dock-h) + 14px); z-index: 40; transform: translateX(-50%);
+    width: min(92vw, 360px); display: none;
+  }
+  .cc-catch.is-on { display: block; animation: ccCatchIn 0.25s var(--cc-ease) both; }
+  @keyframes ccCatchIn { from { opacity: 0; transform: translate(-50%, 16px) scale(0.92); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+  .cc-catch button {
+    position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 64px;
+    border: 0; border-radius: 18px; background: var(--cc-danger); color: #fff; cursor: pointer; padding: 8px 14px 12px;
+    box-shadow: 0 0 0 4px oklch(0.66 0.21 25 / 0.35), 0 14px 34px oklch(0 0 0 / 0.5);
+  }
+  .cc-catch strong { font-family: var(--cc-display); font-size: 1.45rem; line-height: 1.1; }
+  .cc-catch span { font-size: 0.82rem; opacity: 0.92; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cc-catch i { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: oklch(1 0 0 / 0.75); transform-origin: left center; }
+
+  /* ---------- fx overlay ---------- */
+  .cc-fx { position: fixed; inset: 0; pointer-events: none; z-index: 11000; }
+  .cc-fly { position: absolute; left: 0; top: 0; width: var(--cw, 62px); height: var(--ch, 88px); will-change: transform, opacity; }
+  .cc-banner {
+    position: fixed; left: 50%; top: 34%; z-index: 11001; pointer-events: none; transform: translate(-50%, -50%);
+    padding: 12px 22px; border-radius: 18px; background: oklch(0.2 0.03 258 / 0.94); border: 1px solid var(--cc-gold);
+    color: var(--cc-gold); font-family: var(--cc-display); font-weight: 700; font-size: 1.4rem; text-align: center;
+    max-width: 90vw; opacity: 0; box-shadow: 0 20px 50px oklch(0 0 0 / 0.5);
+  }
+  .cc-banner.is-on { animation: ccBanner 1.8s var(--cc-ease) both; }
+  .cc-banner.is-bad { color: #fff; background: oklch(0.45 0.17 25 / 0.95); border-color: var(--cc-danger); }
+  .cc-banner small { display: block; font-family: 'Bai Jamjuree', sans-serif; font-size: 0.86rem; font-weight: 600; color: var(--cc-soft); }
+  @keyframes ccBanner {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+    14% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+    24% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -58%); }
+  }
+
+  /* ---------- color picker ---------- */
+  .cc-picker { position: fixed; inset: 0; z-index: 11500; display: none; align-items: flex-end; justify-content: center; background: oklch(0.1 0.02 258 / 0.6); }
+  .cc-picker.is-on { display: flex; }
+  .cc-picker-card { width: min(100%, 520px); padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 22px 22px 0 0; background: var(--cc-surface, oklch(0.27 0.034 258)); border-top: 1px solid oklch(0.86 0.12 85 / 0.3); color: oklch(0.97 0.01 250); font-family: 'Bai Jamjuree', sans-serif; animation: ccSheet 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes ccSheet { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cc-picker h3 { margin: 0 0 12px; font-family: 'Chakra Petch', sans-serif; font-size: 1.1rem; text-align: center; }
+  .cc-picker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cc-picker-grid button {
+    display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; border-radius: 16px; border: 0; cursor: pointer;
+    font-size: 1.1rem; font-weight: 700; color: #fff; background: var(--sw);
+    box-shadow: inset 0 0 0 1.5px oklch(1 0 0 / 0.3), 0 4px 12px oklch(0 0 0 / 0.3);
+  }
+  .cc-picker-grid button[data-color="y"] { color: oklch(0.24 0.04 258); }
+  .cc-picker-grid button svg { width: 18px; height: 18px; fill: currentColor; }
+  .cc-picker-grid button.is-best { box-shadow: inset 0 0 0 1.5px oklch(1 0 0 / 0.3), 0 0 0 3px oklch(0.97 0.01 250 / 0.85), 0 4px 12px oklch(0 0 0 / 0.3); }
+  .cc-picker-note { margin: 10px 0 0; text-align: center; font-size: 0.8rem; color: oklch(0.76 0.03 255); }
+  .cc-picker-cancel { display: block; width: 100%; margin-top: 10px; min-height: 48px; border-radius: 14px; border: 1px solid oklch(1 0 0 / 0.14); background: transparent; color: oklch(0.88 0.02 250); font-weight: 700; cursor: pointer; }
+
+  /* ---------- results sheet ---------- */
+  .cc-sheet { position: fixed; inset: 0; z-index: 9500; display: none; align-items: center; justify-content: center; padding: 16px; background: oklch(0.1 0.02 258 / 0.66); overflow-y: auto; }
+  .cc-sheet.is-on { display: flex; }
+  .cc-sheet-card { width: min(100%, 520px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 18px 16px 16px; border-radius: 22px; background: var(--cc-surface, oklch(0.27 0.034 258)); border: 1px solid oklch(0.86 0.12 85 / 0.35); color: oklch(0.97 0.01 250); font-family: 'Bai Jamjuree', sans-serif; box-shadow: 0 30px 70px oklch(0 0 0 / 0.55); animation: ccSheet 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .cc-sheet-kicker { font-family: 'Chakra Petch', sans-serif; font-weight: 600; letter-spacing: 0.12em; font-size: 0.76rem; color: oklch(0.86 0.12 85); text-align: center; }
+  .cc-sheet-title { margin: 4px 0 2px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 1.45rem; text-align: center; line-height: 1.25; overflow-wrap: anywhere; }
+  .cc-sheet-sub { margin: 0 0 12px; text-align: center; color: oklch(0.88 0.02 250); font-size: 0.92rem; }
+  .cc-rows { display: grid; gap: 6px; text-align: left; }
+  .cc-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 8px 10px; border-radius: 12px; background: oklch(0 0 0 / 0.22); }
+  .cc-row.is-win { background: oklch(0.86 0.12 85 / 0.16); box-shadow: inset 0 0 0 1px oklch(0.86 0.12 85 / 0.5); }
+  .cc-rank { font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: oklch(0.86 0.12 85); text-align: center; }
+  .cc-row-name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-row-val { font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cc-row-cards { grid-column: 2 / span 2; display: flex; flex-wrap: wrap; gap: 3px; }
+  .cc-row-cards .cc-card { --cw: 26px; --ch: 37px; --fs: 0.42; border-radius: 5px; cursor: default; }
+  .cc-row-cards .cc-card .cc-idx { display: none; }
+  .cc-sheet-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .cc-sheet-actions .cc-btn { flex: 1 1 140px; }
+  .cc-sheet-note { margin-top: 8px; text-align: center; font-size: 0.8rem; color: oklch(0.76 0.03 255); }
+
+  /* ---------- feed / sidebar / guide ---------- */
+  .cc-history { margin-top: 14px; border-radius: 14px; background: var(--cc-surface); border: 1px solid var(--cc-line-soft); }
+  .cc-history summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; cursor: pointer; font-weight: 700; font-size: 0.9rem; color: var(--cc-soft); }
+  .cc-feed { padding: 0 14px 10px; display: grid; gap: 4px; max-height: 220px; overflow-y: auto; }
+  .cc-feed-item { font-size: 0.84rem; color: var(--cc-soft); overflow-wrap: anywhere; }
+  .cc-sidebar { position: fixed; top: 0; right: -320px; width: 300px; max-width: 86vw; height: 100%; background: oklch(0.27 0.034 258); border-left: 1px solid oklch(0.86 0.12 85 / 0.22); padding: 18px; z-index: 9000; transition: right 0.25s ease; overflow-y: auto; color: oklch(0.97 0.01 250); font-family: 'Bai Jamjuree', sans-serif; }
+  .cc-sidebar.open { right: 0; }
+  .cc-sidebar h4 { margin: 0 0 10px; font-family: 'Chakra Petch', sans-serif; }
+  .cc-sidebar-overlay { display: none; position: fixed; inset: 0; background: oklch(0 0 0 / 0.55); z-index: 8999; }
+  .cc-guide { text-align: left; font-size: 0.92rem; line-height: 1.55; }
+  .cc-guide h4 { margin: 12px 0 4px; font-size: 0.98rem; color: oklch(0.86 0.12 85); font-family: 'Chakra Petch', sans-serif; }
+  .cc-guide p { margin: 0; }
+  .cc-guide .cc-card { display: inline-block; vertical-align: middle; --cw: 30px; --ch: 43px; --fs: 0.48; margin-right: 4px; border-radius: 6px; cursor: default; }
+  .cc-guide .cc-card .cc-idx { display: none; }
+
+  .chat-box {
+    --chat-accent: oklch(0.7 0.13 255); --chat-accent-dark: oklch(0.45 0.12 258);
+    --chat-surface: oklch(0.24 0.032 258); --chat-border: oklch(0.86 0.12 85 / 0.24); --chat-bubble: oklch(0.3 0.04 258);
+    font-family: 'Bai Jamjuree', sans-serif;
+  }
+  /* มุมขวาบนว่าง — ถ้าไว้ล่างจอจะบังไพ่ในมือ */
+  .chat-toggle { --chat-toggle-bg: oklch(0.36 0.06 258); border-radius: 999px; padding: 10px 16px; min-height: 44px; top: calc(12px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; }
+  .chat-box { top: calc(64px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; max-height: calc(100dvh - 90px); }
+  .btn-chat-send { --chat-send-bg: oklch(0.86 0.12 85); --chat-send-color: oklch(0.24 0.05 70); }
+
+  @media (min-width: 720px) {
+    html.cc-active { --cw: 78px; --ch: 110px; --pw: 100px; --ph: 142px; }
+    .cc-table { padding: 22px 18px 20px; min-height: 290px; }
+    .cc-ring { width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+    .cc-opp-name { font-size: 0.82rem; }
+  }
+  @media (max-width: 360px) {
+    html.cc-active { --cw: 56px; --ch: 80px; --pw: 72px; --ph: 102px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cc-ring svg, .cc-flow-arrows i, .cc-deck.is-can::after, .cc-btn--call { animation: none !important; }
+    .cc-pop, .cc-banner.is-on, .cc-yourturn.is-on, .cc-catch.is-on, .cc-ring.is-flip, .cc-glow.is-flash, .cc-picker-card, .cc-sheet-card { animation-duration: 0.01ms !important; }
+    .cc-hand .cc-card, .cc-opp, .cc-glow { transition: none !important; }
+  }
+</style>
+
+<div id="connectionStatus" class="cc-pill cc-pill--danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+<div id="ccFx" class="cc-fx" aria-hidden="true"></div>
+<div id="ccBanner" class="cc-banner" aria-hidden="true"></div>
+
+<div class="cc" id="ccRoot">
+  <div class="cc-top">
+    <div>
+      <div class="cc-kicker">ไพ่ทิ้งสี · <span id="ccRoundNo">รอบ -</span></div>
+      <h1 class="cc-title"><%= room.name %></h1>
+    </div>
+    <div class="cc-tools">
+      <button type="button" id="ccHowBtn" class="cc-pill">วิธีเล่น</button>
+      <button type="button" id="ccSoundBtn" class="cc-pill" aria-pressed="true">เสียง: เปิด</button>
+      <button type="button" id="ccSidebarBtn" class="cc-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
+      <% if (room.admin) { %>
+      <button type="button" id="ccEndBtn" class="cc-pill cc-pill--danger">จบเกม</button>
+      <% } %>
+    </div>
+  </div>
+
+  <div id="ccNow" class="cc-now">
+    <span id="ccNowPhase" class="cc-now-phase">กำลังโหลด</span>
+    <span id="ccNowCopy" class="cc-now-copy" role="status" aria-live="polite" aria-atomic="true">กำลังโหลด...</span>
+    <div class="cc-now-timer" aria-hidden="true"><div id="ccNowSec" class="cc-now-sec">--</div></div>
+    <div id="ccNowBar" class="cc-now-bar"></div>
+  </div>
+
+  <div id="ccOpps" class="cc-opps" aria-label="ผู้เล่นคนอื่น"></div>
+  <div id="ccFlow" class="cc-flow" aria-hidden="true"><span>ลำดับ</span><span class="cc-flow-arrows"><i></i><i></i><i></i></span></div>
+
+  <section class="cc-table" id="ccTable" aria-label="โต๊ะไพ่ทิ้งสี">
+    <div class="cc-glow" id="ccGlow"></div>
+    <div class="cc-ring" id="ccRing" aria-hidden="true">
+      <svg viewBox="0 0 200 200" fill="none" stroke="oklch(0.86 0.12 85 / 0.55)" stroke-width="2" stroke-linecap="round">
+        <circle cx="100" cy="100" r="92" stroke-dasharray="2 9" />
+        <path d="M100 8 l9 5 -9 5" stroke-width="3" stroke-linejoin="round" />
+        <path d="M192 100 l-5 9 -5 -9" stroke-width="3" stroke-linejoin="round" />
+        <path d="M100 192 l-9 -5 9 -5" stroke-width="3" stroke-linejoin="round" />
+        <path d="M8 100 l5 -9 5 9" stroke-width="3" stroke-linejoin="round" />
+      </svg>
+    </div>
+    <div class="cc-center">
+      <button type="button" class="cc-deck" id="ccDeck" aria-label="กองจั่ว">
+        <span class="cc-back"></span><span class="cc-back"></span><span class="cc-back"></span>
+        <span class="cc-deck-count" id="ccDeckCount"></span>
+      </button>
+      <div class="cc-pile" id="ccPile" aria-live="polite"></div>
+    </div>
+    <div class="cc-state" id="ccState"></div>
+  </section>
+
+  <details class="cc-history">
+    <summary>บันทึกเกม</summary>
+    <div id="ccFeed" class="cc-feed"></div>
+  </details>
+</div>
+
+<div id="ccDock" class="cc-dock">
+  <div class="cc-dock-inner">
+    <div id="ccActions" class="cc-actions"></div>
+    <div id="ccHint" class="cc-hint"></div>
+    <div class="cc-hand-wrap">
+      <div id="ccYourTurn" class="cc-yourturn" aria-hidden="true">ตาคุณ!</div>
+      <div class="cc-hand-fade l" id="ccFadeL" hidden></div>
+      <div class="cc-hand-fade r" id="ccFadeR" hidden></div>
+      <div id="ccHand" class="cc-hand" role="listbox" aria-label="ไพ่ในมือ"></div>
+    </div>
+  </div>
+</div>
+
+<div id="ccCatch" class="cc-catch" aria-live="assertive"></div>
+
+<div id="ccPicker" class="cc-picker" role="dialog" aria-modal="true" aria-labelledby="ccPickerTitle">
+  <div class="cc-picker-card">
+    <h3 id="ccPickerTitle">เลือกสีต่อไป</h3>
+    <div class="cc-picker-grid" id="ccPickerGrid"></div>
+    <p class="cc-picker-note" id="ccPickerNote"></p>
+    <button type="button" class="cc-picker-cancel" id="ccPickerCancel">ยกเลิก</button>
+  </div>
+</div>
+
+<div id="ccSheet" class="cc-sheet" role="dialog" aria-modal="true" aria-labelledby="ccSheetTitle">
+  <div class="cc-sheet-card" id="ccSheetCard"></div>
+</div>
+
+<aside id="playerSidebar" class="cc-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="ccPlayerTitle">
+  <h4 id="ccPlayerTitle">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="leaveRoomBtn" type="button" class="cc-btn" style="width:100%; margin-bottom:8px;">ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="cc-btn cc-btn--ghost" style="width:100%;">ปิด</button>
+</aside>
+<div id="sidebarOverlay" class="cc-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="ccChatTitle" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title" id="ccChatTitle">แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('cc-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = '<%= player.name %>';
+  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  if (window.partyPlay) window.partyPlay.startSession('colorcards', socket);
+
+  let S = <%- JSON.stringify(typeof colorcardsState !== 'undefined' && colorcardsState ? colorcardsState : {}).replace(/</g, '\\u003c') %>;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COLOR_NAME = { r: 'แดง', y: 'เหลือง', g: 'เขียว', b: 'น้ำเงิน' };
+  const COLOR_VAR = { r: 'var(--cc-r)', y: 'var(--cc-y)', g: 'var(--cc-g)', b: 'var(--cc-b)' };
+  const COLOR_ORDER = { r: 0, y: 1, g: 2, b: 3 };
+  const KIND_ORDER = { num: 0, skip: 1, rev: 2, d2: 3, wild: 4, d4: 5 };
+  const KIND_NAME = { skip: 'ข้าม', rev: 'กลับทิศ', d2: '+2', wild: 'เปลี่ยนสี', d4: '+4' };
+
+  // สัญลักษณ์ประจำสี (ช่วยคนตาบอดสี): แดง ▲ เหลือง ● เขียว ■ น้ำเงิน ◆
+  const SHAPE = {
+    r: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0.8 L9.4 8.8 H0.6Z"/></svg>',
+    y: '<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4.2"/></svg>',
+    g: '<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" rx="1.2"/></svg>',
+    b: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0.3 L9.7 5 L5 9.7 L0.3 5Z"/></svg>'
+  };
+  const GLYPH = {
+    skip: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 32 C9 12 36 10 41 28"/><path d="M33 25 L41 30 L45 21"/><circle cx="24" cy="37" r="5" fill="currentColor" stroke="none"/></svg>',
+    rev: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17 H37"/><path d="M30 10 L38 17 L30 24"/><path d="M39 31 H11"/><path d="M18 24 L10 31 L18 38"/></svg>',
+    pinwheel: '<svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(45 24 24)"><rect x="8.5" y="8.5" width="14" height="14" rx="3.5" fill="oklch(0.62 0.21 27)"/><rect x="25.5" y="8.5" width="14" height="14" rx="3.5" fill="oklch(0.85 0.16 90)"/><rect x="25.5" y="25.5" width="14" height="14" rx="3.5" fill="oklch(0.64 0.17 150)"/><rect x="8.5" y="25.5" width="14" height="14" rx="3.5" fill="oklch(0.6 0.17 255)"/></g></svg>'
+  };
+
+  let allowNavigation = false;
+  let firstRender = true;
+  let seenFx = 0;
+  let skew = 0;
+  let selectedId = null;
+  let pending = false;
+  let timerHandle = null;
+  let pickerCard = null;
+  let lastTurnCue = '';
+  let prevHandIds = [];
+  let soundOn = true;
+  try { soundOn = localStorage.getItem('ccSound') !== 'off'; } catch (e) { soundOn = true; }
+
+  // ---------- helpers ----------
+  function esc(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+  }
+  function now() { return Date.now() + skew; }
+  function avatarHtml(p, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 26 });
+    }
+    return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
+  }
+  function seatById(id) { return (S.seats || []).find(p => p.playerId === id) || null; }
+  function selfSeat() { return seatById(playerId); }
+  function nameOf(id) { const s = seatById(id); return id === playerId ? 'คุณ' : (s ? s.name : ''); }
+  function sortHand(cards) {
+    return (cards || []).slice().sort((a, b) =>
+      ((a.color ? COLOR_ORDER[a.color] : 4) - (b.color ? COLOR_ORDER[b.color] : 4))
+      || (KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
+      || ((a.value || 0) - (b.value || 0))
+      || a.id.localeCompare(b.id));
+  }
+  function cardName(card) {
+    if (!card) return '';
+    if (card.kind === 'num') return COLOR_NAME[card.color] + ' ' + card.value;
+    if (card.kind === 'wild' || card.kind === 'd4') return KIND_NAME[card.kind];
+    return COLOR_NAME[card.color] + ' ' + KIND_NAME[card.kind];
+  }
+
+  /** หน้าไพ่ (HTML+SVG ของเราเอง) */
+  function faceHtml(card) {
+    const c = card.color || 'w';
+    let index = '';
+    let big = '';
+    if (card.kind === 'num') {
+      index = String(card.value);
+      big = '<span class="cc-big' + (card.value === 6 || card.value === 9 ? ' is-69' : '') + '">' + card.value + '</span>';
+    } else if (card.kind === 'skip' || card.kind === 'rev') {
+      index = '<span class="cc-mini-glyph" style="display:inline-flex;">' + GLYPH[card.kind].replace('stroke-width="5"', 'stroke-width="7"') + '</span>';
+      big = GLYPH[card.kind];
+    } else if (card.kind === 'd2') {
+      index = '+2';
+      big = '<span class="cc-plus">+2</span>';
+    } else if (card.kind === 'wild') {
+      index = '<span class="cc-mini-glyph" style="display:inline-flex;">' + GLYPH.pinwheel + '</span>';
+      big = GLYPH.pinwheel;
+    } else {
+      index = '+4';
+      big = '<span class="cc-wild-stack"><span class="cc-plus">+4</span>' + GLYPH.pinwheel + '</span>';
+    }
+    const shape = card.color ? SHAPE[card.color] : '';
+    return '<span class="cc-face"></span>' +
+      '<span class="cc-idx tl">' + index + shape + '</span>' +
+      '<span class="cc-glyph">' + big + '</span>' +
+      '<span class="cc-idx br">' + index + shape + '</span>';
+  }
+  function cardHtml(card, extraClass, attrs) {
+    return '<span class="cc-card cc-c-' + (card.color || 'w') + (extraClass ? ' ' + extraClass : '') + '" ' + (attrs || '') + ' role="img" aria-label="' + esc(cardName(card)) + '">' + faceHtml(card) + '</span>';
+  }
+
+  // ---------- sound (เบา ๆ ปิดได้) ----------
+  let audioCtx = null;
+  function tone(freq, dur, type, gain, slideTo) {
+    if (!soundOn) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type || 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain || 0.08, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + dur + 0.02);
+    } catch (e) { /* ไม่มีเสียงก็เล่นได้ */ }
+  }
+  const sfx = {
+    play: () => tone(420, 0.09, 'triangle', 0.07, 210),
+    draw: () => tone(300, 0.07, 'sine', 0.05, 520),
+    turn: () => { tone(660, 0.1, 'triangle', 0.06); setTimeout(() => tone(880, 0.12, 'triangle', 0.06), 90); },
+    call: () => { tone(740, 0.12, 'square', 0.04); setTimeout(() => tone(990, 0.16, 'square', 0.04), 110); },
+    bad: () => tone(160, 0.22, 'sawtooth', 0.05, 110),
+    win: () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.16, 'triangle', 0.06), i * 110)); }
+  };
+  function haptic(p) { if (window.gameHaptic) window.gameHaptic(p); }
+
+  // ---------- render: top / now ----------
+  function describeNow() {
+    const a = S.availableActions || {};
+    const self = S.self;
+    if (S.phase === 'finished') return { phase: 'จบเกม', text: S.winner ? (S.winner.playerId === playerId ? 'คุณชนะ!' : esc(S.winner.name) + ' ชนะ') : 'จบเกม', mine: false };
+    if (S.phase === 'roundEnd') return { phase: 'จบรอบ ' + S.round, text: S.roundResult ? (S.roundResult.winnerId === playerId ? 'คุณ' : esc(S.roundResult.winnerName)) + ' ทิ้งหมดมือ +' + S.roundResult.points + ' แต้ม' : 'จบรอบ', mine: false };
+    if (!S.turn) return { phase: 'รอเริ่ม', text: 'รอเริ่มเกม…', mine: false };
+    if (self && self.left) return { phase: 'ดูอยู่', text: 'คุณออกจากเกมนี้แล้ว · ตา ' + esc(S.turn.name || ''), mine: false };
+    if (S.turn.playerId === playerId) {
+      if (S.pendingDraw > 0) return { phase: 'ตาคุณ', text: a.canPlay ? 'ซ้อน +2/+4 ต่อ หรือรับ ' + S.pendingDraw + ' ใบ' : 'ไม่มีไพ่ซ้อน — รับ ' + S.pendingDraw + ' ใบ', mine: true };
+      if (S.turn.drawn) return { phase: 'ตาคุณ', text: 'ใบที่จั่วลงได้ — ลงเลย หรือเก็บไว้แล้วผ่าน', mine: true };
+      const col = S.currentColor ? 'สี' + COLOR_NAME[S.currentColor] : 'สีไหนก็ได้';
+      const sym = S.top && S.currentColor ? (S.top.kind === 'num' ? ' หรือเลข ' + S.top.value : (S.top.kind === 'wild' || S.top.kind === 'd4' ? '' : ' หรือ ' + KIND_NAME[S.top.kind])) : '';
+      return { phase: 'ตาคุณ', text: a.canPlay ? 'ลง' + col + sym + ' — หรือจั่ว' : 'ไม่มีใบที่ลงได้ — จั่ว 1 ใบ', mine: true };
+    }
+    const who = esc(S.turn.name || '');
+    return { phase: 'ตา ' + (S.turn.name || ''), text: S.turn.drawn ? who + ' จั่วแล้ว กำลังคิด…' : (S.pendingDraw > 0 ? who + ' ต้องซ้อนหรือรับ ' + S.pendingDraw + ' ใบ' : 'รอ ' + who + ' ลงไพ่'), mine: false };
+  }
+  function renderTop() {
+    $('#ccRoundNo').text(S.round ? 'รอบ ' + S.round + (S.config && S.config.target ? ' · ถึง ' + S.config.target + ' แต้ม' : '') : 'รอบ -');
+    const d = describeNow();
+    $('#ccNowPhase').text(d.phase);
+    $('#ccNowCopy').html(d.text);
+    $('#ccNow').toggleClass('is-mine', !!d.mine);
+  }
+
+  // ---------- opponents ----------
+  function orderedOpponents() {
+    const seats = S.seats || [];
+    const me = seats.findIndex(p => p.playerId === playerId);
+    const start = me >= 0 ? me + 1 : 0;
+    const out = [];
+    for (let i = 0; i < seats.length; i += 1) {
+      const p = seats[(start + i) % seats.length];
+      if (p.playerId !== playerId) out.push(p);
+    }
+    return out;
+  }
+  function renderOpps() {
+    const opps = orderedOpponents();
+    const n = opps.length;
+    const wide = window.innerWidth >= 720;
+    const cols = n <= (wide ? 9 : 5) ? Math.max(1, n) : Math.ceil(n / 2);
+    document.getElementById('ccOpps').style.setProperty('--cols', cols);
+    const showScore = S.config && S.config.target;
+    const win = S.catchWindow;
+    $('#ccOpps').html(opps.map(p => {
+      let tag = '';
+      if (p.left) tag = '<span class="cc-tag cc-tag--warn">ออกแล้ว</span>';
+      else if (win && win.playerId === p.playerId) tag = '<span class="cc-tag cc-tag--warn">ยังไม่บอก!</span>';
+      else if (p.called && p.count <= 2) tag = '<span class="cc-tag">เหลือใบเดียว!</span>';
+      else if (!p.online && !p.isBot) tag = '<span class="cc-tag cc-tag--warn">หลุด</span>';
+      return '<div class="cc-opp' + (p.isTurn ? ' is-turn' : '') + (p.left ? ' is-left' : '') + (p.count === 1 ? ' is-one' : '') + (!p.online && !p.isBot ? ' is-offline' : '') + '" data-seat-id="' + esc(p.playerId) + '">' +
+        tag +
+        '<div class="cc-opp-av">' + avatarHtml(p, 28) + '</div>' +
+        '<div class="cc-opp-name">' + esc(p.name) + '</div>' +
+        '<div class="cc-opp-count"><span class="cc-minibk" aria-hidden="true"></span><span aria-label="' + p.count + ' ใบ">' + p.count + '</span></div>' +
+        (showScore ? '<span class="cc-opp-score">' + p.score + ' แต้ม</span>' : '') +
+      '</div>';
+    }).join(''));
+    $('#ccFlow').toggleClass('is-rev', S.direction === -1)
+      .find('span:first').text(S.direction === -1 ? 'ลำดับ ← (กลับทิศ)' : 'ลำดับ →');
+  }
+
+  // ---------- table ----------
+  function pileOffset(id, i) {
+    let h = 0;
+    for (let k = 0; k < id.length; k += 1) h = (h * 31 + id.charCodeAt(k)) % 997;
+    const rot = ((h % 23) - 11) * (i === 0 ? 0.6 : 1);
+    const dx = ((h % 9) - 4) * 1.2;
+    const dy = (((h >> 3) % 7) - 3) * 1.2;
+    return 'transform: translate(' + dx + 'px,' + dy + 'px) rotate(' + rot + 'deg);';
+  }
+  function renderTable() {
+    const cur = S.currentColor;
+    document.documentElement.style.setProperty('--cur', cur ? COLOR_VAR[cur] : 'var(--cc-w)');
+    $('#ccRing').toggleClass('is-rev', S.direction === -1);
+    const pile = S.pile || [];
+    $('#ccPile').html(pile.map((card, i) => {
+      const top = i === pile.length - 1;
+      return cardHtml(card, top ? 'is-top' : 'is-under', 'data-id="' + esc(card.id) + '" style="' + pileOffset(card.id, top ? 0 : 1) + '"');
+    }).join(''));
+    const a = S.availableActions || {};
+    const canDraw = !!a.canDraw;
+    $('#ccDeck').toggleClass('is-can', canDraw).attr('aria-disabled', canDraw ? 'false' : 'true')
+      .attr('aria-label', canDraw ? 'จั่วไพ่' : 'กองจั่ว');
+    $('#ccDeckCount').text('กองจั่ว ' + (S.drawCount || 0));
+    const chips = [];
+    if (cur) chips.push('<span class="cc-chip"><span class="cc-swatch" style="--sw:' + COLOR_VAR[cur] + '">' + SHAPE[cur] + '</span>สีตอนนี้: ' + COLOR_NAME[cur] + '</span>');
+    else if (S.phase === 'turn') chips.push('<span class="cc-chip"><span class="cc-swatch">' + '</span>ลงสีไหนก็ได้</span>');
+    if (S.pendingDraw > 0) chips.push('<span class="cc-chip cc-chip--pending">+' + S.pendingDraw + ' ค้างอยู่</span>');
+    $('#ccState').html(chips.join(''));
+  }
+
+  // ---------- hand ----------
+  function layoutHand() {
+    const hand = document.getElementById('ccHand');
+    const cards = hand.querySelectorAll('.cc-card');
+    const n = cards.length;
+    if (!n) { $('#ccFadeL, #ccFadeR').prop('hidden', true); return; }
+    const cw = cards[0].offsetWidth || 62;
+    const avail = hand.clientWidth - 44; // เผื่อมุมไพ่ที่เอียง
+    const minStep = Math.min(cw, 44);
+    let step = n > 1 ? (avail - cw) / (n - 1) : cw;
+    step = Math.max(minStep, Math.min(cw + 6, step));
+    const fits = cw + step * (n - 1) <= avail + 1;
+    hand.classList.toggle('is-fit', fits);
+    const mid = (n - 1) / 2;
+    const tilt = fits && !reduceMotion ? Math.min(2.6, 18 / Math.max(n, 1)) : 0;
+    cards.forEach((el, i) => {
+      el.style.setProperty('--ov', (step - cw) + 'px');
+      const off = i - mid;
+      el.style.setProperty('--rot', (off * tilt).toFixed(2) + 'deg');
+      if (!el.classList.contains('is-selected') && !(el.classList.contains('is-playable') && hand.classList.contains('is-myturn'))) {
+        el.style.setProperty('--ty', fits ? Math.min(6, off * off * 0.4).toFixed(1) + 'px' : '0px');
+      } else {
+        el.style.removeProperty('--ty');
+      }
+    });
+    updateFades();
+  }
+  function updateFades() {
+    const hand = document.getElementById('ccHand');
+    const over = hand.scrollWidth > hand.clientWidth + 2;
+    $('#ccFadeL').prop('hidden', !over || hand.scrollLeft < 4);
+    $('#ccFadeR').prop('hidden', !over || hand.scrollLeft + hand.clientWidth >= hand.scrollWidth - 4);
+  }
+  function captureRects() {
+    const map = new Map();
+    document.querySelectorAll('#ccHand .cc-card[data-id]').forEach(el => map.set(el.dataset.id, el.getBoundingClientRect()));
+    return map;
+  }
+  function renderHand() {
+    const self = S.self;
+    const hand = $('#ccHand');
+    if (!self || self.left) {
+      hand.removeClass('is-myturn').html('<div class="cc-hand-empty">' + (self && self.left ? 'คุณออกจากเกมนี้แล้ว — ดูต่อได้' : 'คุณกำลังดูเกมนี้') + '</div>');
+      return;
+    }
+    const myTurn = S.phase === 'turn' && S.turn && S.turn.playerId === playerId;
+    const playable = new Set(self.playable || []);
+    if (selectedId && (!myTurn || !playable.has(selectedId))) selectedId = null;
+    if (myTurn && self.drawnCardId && playable.has(self.drawnCardId)) selectedId = self.drawnCardId;
+    const cards = sortHand(self.hand);
+    hand.toggleClass('is-myturn', myTurn);
+    if (!cards.length) { hand.html('<div class="cc-hand-empty">ไม่มีไพ่ในมือ</div>'); return; }
+    hand.html(cards.map(card => {
+      const can = myTurn && playable.has(card.id);
+      return '<button type="button" class="cc-card cc-c-' + (card.color || 'w') + (can ? ' is-playable' : '') + (card.id === selectedId ? ' is-selected' : '') + '" data-id="' + esc(card.id) + '" role="option" aria-selected="' + (card.id === selectedId) + '" aria-label="' + esc(cardName(card)) + (can ? ' (ลงได้)' : '') + '">' + faceHtml(card) + '</button>';
+    }).join(''));
+    layoutHand();
+  }
+  function scrollCardIntoView(id) {
+    const el = document.querySelector('#ccHand .cc-card[data-id="' + id + '"]');
+    if (!el) return;
+    const hand = document.getElementById('ccHand');
+    const target = el.offsetLeft - hand.clientWidth / 2 + el.offsetWidth / 2;
+    hand.scrollTo({ left: Math.max(0, target), behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+
+  // ---------- actions ----------
+  function renderActions() {
+    const a = S.availableActions || {};
+    const self = S.self;
+    const parts = [];
+    let hint = '';
+    let strong = false;
+    if (S.phase === 'turn' && self && !self.left) {
+      const myTurn = S.turn && S.turn.playerId === playerId;
+      if (a.canCall) {
+        const urgent = self.hand.length === 1;
+        parts.push('<button type="button" class="cc-btn cc-btn--call' + (urgent ? ' is-urgent' : '') + '" id="ccCallBtn">เหลือใบเดียว!</button>');
+        if (urgent) { hint = 'กดก่อนโดนจับ! ไม่งั้นจั่ว 2'; strong = true; }
+        else { hint = 'จะลงใบรองสุดท้าย — กด "เหลือใบเดียว!" ก่อน'; strong = true; }
+      } else if (self.called && self.hand.length <= 2) {
+        parts.push('<span class="cc-called">✓ บอกแล้ว: เหลือใบเดียว</span>');
+      }
+      if (myTurn && a.canPass) {
+        parts.push('<button type="button" class="cc-btn cc-btn--primary" id="ccPlayDrawnBtn">ลงใบที่จั่ว</button>');
+        parts.push('<button type="button" class="cc-btn" id="ccPassBtn">เก็บไว้ · ผ่าน</button>');
+      } else if (myTurn && a.canDraw) {
+        const label = S.pendingDraw > 0 ? 'รับ ' + S.pendingDraw + ' ใบ' : 'จั่ว 1 ใบ';
+        parts.push('<button type="button" class="cc-btn' + (a.canPlay ? '' : ' cc-btn--primary') + '" id="ccDrawBtn">' + label + '</button>');
+      }
+      if (!hint) {
+        if (myTurn && selectedId) hint = 'แตะอีกครั้ง หรือปัดขึ้น เพื่อลงใบนี้';
+        else if (myTurn && a.canPlay) hint = 'แตะไพ่ที่ยกขึ้นเพื่อเลือก';
+        else if (!myTurn) hint = 'ไพ่ในมือ ' + self.hand.length + ' ใบ';
+      }
+    } else if (self && !self.left && S.phase !== 'turn') {
+      hint = 'ไพ่ในมือ ' + self.hand.length + ' ใบ';
+    }
+    $('#ccActions').html(parts.join(''));
+    $('#ccHint').text(hint).toggleClass('is-strong', strong);
+    renderCatch();
+    syncDockHeight();
+  }
+  function renderCatch() {
+    const a = S.availableActions || {};
+    const target = a.canCatch ? seatById(a.canCatch) : null;
+    const box = $('#ccCatch');
+    if (!target || !S.catchWindow) { box.removeClass('is-on').empty(); return; }
+    if (!box.hasClass('is-on') || box.data('target') !== target.playerId) {
+      box.data('target', target.playerId).html('<button type="button" id="ccCatchBtn"><strong>จับได้!</strong><span>' + esc(target.name) + ' เหลือ 1 ใบ แต่ยังไม่บอก</span><i id="ccCatchBar"></i></button>').addClass('is-on');
+      haptic([12, 30, 12]);
+    }
+  }
+  function syncDockHeight() {
+    const h = document.getElementById('ccDock').offsetHeight || 210;
+    document.documentElement.style.setProperty('--dock-h', h + 'px');
+  }
+
+  // ---------- results ----------
+  function renderSheet() {
+    const sheet = $('#ccSheet');
+    if (S.phase !== 'roundEnd' && S.phase !== 'finished') { sheet.removeClass('is-on'); return; }
+    const rr = S.roundResult;
+    const finished = S.phase === 'finished';
+    const iWon = finished ? (S.winner && S.winner.playerId === playerId) : (rr && rr.winnerId === playerId);
+    let title = '';
+    let sub = '';
+    if (finished) {
+      title = S.winner ? (iWon ? 'คุณชนะ!' : esc(S.winner.name) + ' ชนะ!') : 'จบเกม';
+      sub = esc(S.finishReason || '') + (S.config && S.config.target && S.winner ? ' · ' + S.winner.score + ' แต้ม' : '');
+    } else if (rr) {
+      title = (iWon ? 'คุณ' : esc(rr.winnerName)) + ' ทิ้งหมดมือ!';
+      sub = 'ได้ ' + rr.points + ' แต้มจากไพ่ในมือคนอื่น · เป้า ' + (S.config ? S.config.target : '') + ' แต้ม';
+    }
+    let rows = '';
+    if (rr && (!finished || !S.config || !S.config.target)) {
+      rows = rr.hands.map((h, i) => '<div class="cc-row' + (h.playerId === rr.winnerId ? ' is-win' : '') + '">' +
+        '<span class="cc-rank">' + (h.playerId === rr.winnerId ? '🏆' : (i + 1)) + '</span>' +
+        '<span class="cc-row-name">' + esc(h.name) + (h.playerId === playerId ? ' (คุณ)' : '') + '</span>' +
+        '<span class="cc-row-val">' + (h.playerId === rr.winnerId ? '+' + rr.points : h.cards.length + ' ใบ · ' + h.value) + '</span>' +
+        (h.cards.length ? '<span class="cc-row-cards">' + sortHand(h.cards).map(c => cardHtml(c)).join('') + '</span>' : '') +
+      '</div>').join('');
+    }
+    if (S.config && S.config.target) {
+      const board = finished && S.standings ? S.standings : (S.seats || []).slice().sort((x, y) => y.score - x.score);
+      rows += '<div class="cc-sheet-kicker" style="margin-top:12px;">คะแนนรวม (ถึง ' + S.config.target + ')</div>' + board.map((p, i) =>
+        '<div class="cc-row' + ((finished && p.won) ? ' is-win' : '') + '"><span class="cc-rank">' + (i + 1) + '</span>' +
+        '<span class="cc-row-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + (p.left ? ' · ออกแล้ว' : '') + '</span>' +
+        '<span class="cc-row-val">' + p.score + '</span></div>').join('');
+    } else if (finished && !rr && S.standings) {
+      rows = S.standings.map((p, i) => '<div class="cc-row' + (p.won ? ' is-win' : '') + '"><span class="cc-rank">' + (p.won ? '🏆' : i + 1) + '</span>' +
+        '<span class="cc-row-name">' + esc(p.name) + (p.left ? ' · ออกแล้ว' : '') + '</span><span class="cc-row-val">' + p.cardsLeft + ' ใบ</span></div>').join('');
+    }
+    let actions = '';
+    if (finished) {
+      actions = '<div class="cc-sheet-actions">' +
+        '<button type="button" class="cc-btn cc-btn--primary" id="ccBackBtn">กลับห้องรอ · เล่นอีกตา</button>' +
+        '<button type="button" class="cc-btn" id="ccShareBtn">แชร์ผล</button>' +
+        '</div><div class="cc-sheet-note" id="ccSheetNote">ทุกคนกลับห้องรอพร้อมกัน</div>';
+    } else {
+      actions = '<div class="cc-sheet-actions">' +
+        ((S.availableActions || {}).canNextRound ? '<button type="button" class="cc-btn cc-btn--primary" id="ccNextBtn">เริ่มรอบต่อไปเลย</button>' : '') +
+        '</div><div class="cc-sheet-note" id="ccSheetNote">รอบต่อไปเริ่มเอง</div>';
+    }
+    $('#ccSheetCard').html(
+      '<div class="cc-sheet-kicker">' + (finished ? 'จบเกม' : 'จบรอบ ' + S.round) + '</div>' +
+      '<h2 class="cc-sheet-title" id="ccSheetTitle">' + title + '</h2>' +
+      '<p class="cc-sheet-sub">' + sub + '</p>' +
+      '<div class="cc-rows">' + rows + '</div>' + actions);
+    sheet.addClass('is-on');
+  }
+  function renderFeed() {
+    $('#ccFeed').html((S.history || []).slice(0, 30).map(item =>
+      '<div class="cc-feed-item">' + esc((item.icon || '') + ' ' + (item.text || '')) + '</div>').join(''));
+  }
+
+  // ---------- motion ----------
+  function rectOf(el) { return el ? el.getBoundingClientRect() : null; }
+  function flyFrom(el, fromRect, opts) {
+    if (!el || !fromRect || reduceMotion || !el.animate) return;
+    opts = opts || {};
+    const to = el.getBoundingClientRect();
+    if (!to.width) return;
+    const dx = (fromRect.left + fromRect.width / 2) - (to.left + to.width / 2);
+    const dy = (fromRect.top + fromRect.height / 2) - (to.top + to.height / 2);
+    const s = fromRect.width ? Math.max(0.3, Math.min(1.4, fromRect.width / to.width)) : 1;
+    el.animate([
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ') rotate(' + (opts.rot || 0) + 'deg)', opacity: opts.fade ? 0.2 : 1 },
+      { transform: getComputedStyle(el).transform === 'none' ? 'none' : getComputedStyle(el).transform, opacity: 1 }
+    ], { duration: opts.duration || 380, delay: opts.delay || 0, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
+  }
+  function flyBacks(fromEl, toEl, count, delayBase) {
+    if (reduceMotion || !fromEl || !toEl) return;
+    const a = fromEl.getBoundingClientRect();
+    const b = toEl.getBoundingClientRect();
+    const n = Math.min(count, 6);
+    for (let i = 0; i < n; i += 1) {
+      const node = document.createElement('span');
+      node.className = 'cc-fly';
+      node.innerHTML = '<span class="cc-back"></span>';
+      const w = Math.min(a.width || 60, 62);
+      const h = w * 1.42;
+      node.style.width = w + 'px';
+      node.style.height = h + 'px';
+      document.getElementById('ccFx').appendChild(node);
+      const x0 = a.left + a.width / 2 - w / 2;
+      const y0 = a.top + a.height / 2 - h / 2;
+      const x1 = b.left + b.width / 2 - w / 2;
+      const y1 = b.top + b.height / 2 - h / 2;
+      const anim = node.animate([
+        { transform: 'translate(' + x0 + 'px,' + y0 + 'px) scale(1)', opacity: 1 },
+        { transform: 'translate(' + x1 + 'px,' + y1 + 'px) scale(0.4) rotate(' + (i % 2 ? 14 : -14) + 'deg)', opacity: 0.1 }
+      ], { duration: 420, delay: (delayBase || 0) + i * 80, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' });
+      anim.onfinish = function() { node.remove(); };
+    }
+  }
+  function popOn(playerIdOf, text, kind) {
+    const el = playerIdOf === playerId ? document.querySelector('.cc-hand-wrap') : document.querySelector('.cc-opp[data-seat-id="' + CSS.escape(playerIdOf) + '"]');
+    if (!el) return;
+    const pop = document.createElement('span');
+    pop.className = 'cc-pop' + (kind ? ' cc-pop--' + kind : '');
+    pop.textContent = text;
+    el.appendChild(pop);
+    setTimeout(() => pop.remove(), 1400);
+  }
+  let bannerTimer = null;
+  function banner(text, sub, bad) {
+    const el = document.getElementById('ccBanner');
+    el.innerHTML = esc(text) + (sub ? '<small>' + esc(sub) + '</small>' : '');
+    el.classList.remove('is-on', 'is-bad');
+    void el.offsetWidth;
+    el.classList.add('is-on');
+    el.classList.toggle('is-bad', !!bad);
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => el.classList.remove('is-on'), 1900);
+  }
+
+  function consumeFx(prevRects, prevIds) {
+    const events = (S.fx || []).filter(e => e.seq > seenFx);
+    if (!events.length) return;
+    seenFx = Math.max(seenFx, ...events.map(e => e.seq));
+    if (firstRender) return;
+    const deck = document.getElementById('ccDeck');
+    const topEl = document.querySelector('#ccPile .cc-card.is-top');
+    const curIds = new Set(((S.self && S.self.hand) || []).map(c => c.id));
+    const handDelta = [...curIds].filter(id => !prevIds.has(id));
+    let myDrawAnimated = false;
+    let delay = 0;
+    events.forEach(e => {
+      const oppEl = e.playerId ? document.querySelector('.cc-opp[data-seat-id="' + CSS.escape(e.playerId) + '"]') : null;
+      if (e.kind === 'play') {
+        sfx.play();
+        haptic(10);
+        if (topEl && e.card && topEl.dataset.id === e.card.id) {
+          const from = e.playerId === playerId ? prevRects.get(e.card.id) : rectOf(oppEl);
+          flyFrom(topEl, from, { rot: e.playerId === playerId ? 0 : -18, duration: 420 });
+        }
+        if (e.card && (e.card.kind === 'wild' || e.card.kind === 'd4') && e.color) {
+          setTimeout(() => banner('เปลี่ยนเป็นสี' + COLOR_NAME[e.color], (e.playerId === playerId ? 'คุณ' : nameOf(e.playerId)) + ' เลือก'), 260);
+        }
+        const glow = document.getElementById('ccGlow');
+        glow.classList.remove('is-flash'); void glow.offsetWidth; glow.classList.add('is-flash');
+      } else if (e.kind === 'draw' || e.kind === 'penalty') {
+        if (e.playerId === playerId) {
+          if (!myDrawAnimated) {
+            myDrawAnimated = true;
+            sfx.draw();
+            handDelta.forEach((id, i) => {
+              const el = document.querySelector('#ccHand .cc-card[data-id="' + id + '"]');
+              flyFrom(el, rectOf(deck), { delay: i * 70, rot: -10, duration: 460 });
+            });
+            if (handDelta.length === 1) setTimeout(() => scrollCardIntoView(handDelta[0]), 80);
+          }
+          if (e.kind === 'penalty' && e.count) popOn(playerId, '+' + e.count, 'bad');
+        } else if (oppEl) {
+          flyBacks(deck, oppEl, e.count || 1, delay);
+          if (e.kind === 'penalty' && e.count) popOn(e.playerId, '+' + e.count, 'bad');
+        }
+        deck.classList.remove('is-pulse'); void deck.offsetWidth; deck.classList.add('is-pulse');
+      } else if (e.kind === 'skip') {
+        popOn(e.playerId, 'ข้าม!', 'bad');
+        if (e.playerId === playerId) { haptic([20, 40, 20]); sfx.bad(); }
+      } else if (e.kind === 'reverse') {
+        const ring = document.getElementById('ccRing');
+        ring.classList.remove('is-flip'); void ring.offsetWidth; ring.classList.add('is-flip');
+        banner('กลับทิศ!', e.direction === -1 ? 'วนทางซ้าย' : 'วนทางขวา');
+      } else if (e.kind === 'call') {
+        sfx.call();
+        popOn(e.playerId, 'เหลือใบเดียว!', 'gold');
+      } else if (e.kind === 'caught') {
+        sfx.bad();
+        haptic([30, 50, 30]);
+        banner('จับได้!', nameOf(e.by) + ' จับ ' + nameOf(e.playerId) + ' — จั่ว 2 ใบ', true);
+      } else if (e.kind === 'timeout') {
+        popOn(e.playerId, 'หมดเวลา', 'bad');
+      } else if (e.kind === 'reshuffle') {
+        banner('สับกองใหม่', 'กองจั่วหมด เอากองทิ้งมาสับ');
+      } else if (e.kind === 'deal') {
+        if (S.round > 1) banner('รอบที่ ' + S.round, 'แจกคนละ 7 ใบ');
+        document.querySelectorAll('#ccHand .cc-card').forEach((el, i) => flyFrom(el, rectOf(deck), { delay: i * 45, rot: -12, duration: 420 }));
+        myDrawAnimated = true;
+        document.querySelectorAll('.cc-opp:not(.is-left)').forEach((el, i) => flyBacks(deck, el, 2, i * 60));
+      } else if (e.kind === 'roundEnd') {
+        if (e.winnerId === playerId) { sfx.win(); haptic([20, 40, 20, 40, 60]); }
+      } else if (e.kind === 'finished') {
+        if (e.winnerId === playerId) sfx.win();
+      } else if (e.kind === 'left') {
+        popOn(e.playerId, 'ออกแล้ว', 'bad');
+      }
+      delay += 60;
+    });
+  }
+
+  function turnCue() {
+    if (!(S.phase === 'turn' && S.turn && S.turn.playerId === playerId && !S.turn.drawn)) return;
+    const key = S.round + ':' + S.turnSeq;
+    if (key === lastTurnCue || firstRender) { lastTurnCue = key; return; }
+    lastTurnCue = key;
+    const el = document.getElementById('ccYourTurn');
+    el.classList.remove('is-on'); void el.offsetWidth; el.classList.add('is-on');
+    sfx.turn();
+    haptic([14, 30, 14]);
+    if (document.hidden && window.partyPlay) window.partyPlay.pingTurn({ key: 'cc-' + key, title: 'ตาคุณ', subtitle: 'ลงไพ่หรือจั่ว' });
+  }
+
+  function tickTimer() {
+    if (timerHandle) clearInterval(timerHandle);
+    function paint() {
+      if (S.phase === 'finished') {
+        const endsAt = Number(S.returnLobbyEndsAt) || 0;
+        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - now()) / 1000)) : 0;
+        $('#ccNowSec').text(remain > 0 ? remain : '--');
+        $('#ccSheetNote').text(remain > 0 ? 'กลับห้องรอพร้อมกันใน ' + remain + ' วิ' : 'ทุกคนกลับห้องรอพร้อมกัน');
+        $('#ccNowBar').css('transform', 'scaleX(0)');
+        return;
+      }
+      if (S.catchWindow) {
+        const left = S.catchWindow.until - now();
+        if (left <= 0) {
+          S.catchWindow = null;
+          if (S.availableActions) S.availableActions.canCatch = null;
+          renderCatch();
+          renderOpps();
+        } else {
+          $('#ccCatchBar').css('transform', 'scaleX(' + Math.max(0, Math.min(1, left / 4000)).toFixed(3) + ')');
+        }
+      }
+      if (!S.phaseEndsAt) {
+        $('#ccNowSec').text('--');
+        $('#ccNowBar').css('transform', 'scaleX(0)');
+        return;
+      }
+      const ms = Math.max(0, S.phaseEndsAt - now());
+      const remain = Math.ceil(ms / 1000);
+      $('#ccNowSec').text(remain);
+      if (S.phase === 'roundEnd') $('#ccSheetNote').text('รอบต่อไปเริ่มใน ' + remain + ' วิ');
+      const total = S.phase === 'turn' ? Math.max(ms, (S.config && S.config.turnMs) || 20000) : Math.max(ms, 12000);
+      $('#ccNow').toggleClass('is-urgent', remain <= 5 && S.phase === 'turn' && !!(describeNow().mine));
+      $('#ccNowBar').css('transform', 'scaleX(' + Math.max(0, Math.min(1, ms / total)).toFixed(3) + ')');
+    }
+    paint();
+    timerHandle = setInterval(paint, 200);
+  }
+
+  function render(state) {
+    if (!state || state.mode !== 'colorcards') return;
+    const prevRects = captureRects();
+    const prevIds = new Set(prevHandIds);
+    S = state;
+    skew = (Number(S.serverNow) || Date.now()) - Date.now();
+    renderTop();
+    renderOpps();
+    renderTable();
+    renderHand();
+    renderActions();
+    renderSheet();
+    renderFeed();
+    // ไพ่ที่ยังอยู่ในมือเลื่อนตำแหน่งนุ่ม ๆ (FLIP)
+    if (!firstRender && !reduceMotion) {
+      document.querySelectorAll('#ccHand .cc-card[data-id]').forEach(el => {
+        const before = prevRects.get(el.dataset.id);
+        if (before && prevIds.has(el.dataset.id)) {
+          const after = el.getBoundingClientRect();
+          const dx = before.left - after.left;
+          if (Math.abs(dx) > 2 && el.animate) {
+            el.animate([{ translate: dx + 'px 0' }, { translate: '0 0' }], { duration: 240, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+          }
+        }
+      });
+    }
+    consumeFx(prevRects, prevIds);
+    turnCue();
+    tickTimer();
+    prevHandIds = ((S.self && S.self.hand) || []).map(c => c.id);
+    firstRender = false;
+    if (S.self && S.self.drawnCardId) setTimeout(() => scrollCardIntoView(S.self.drawnCardId), 120);
+  }
+
+  // ---------- commands ----------
+  function toastError(msg) {
+    Swal.fire({ toast: true, position: 'top', icon: 'error', title: msg || 'ทำรายการไม่สำเร็จ', showConfirmButton: false, timer: 2200, background: '#1d2433', color: '#fff' });
+  }
+  function send(eventName, payload, after) {
+    if (pending) return;
+    pending = true;
+    $('#ccActions button, #ccCatch button').prop('disabled', true);
+    const ctx = { roomId: roomId, turnSeq: S.turnSeq };
+    let settled = false;
+    const guard = setTimeout(function() { if (!settled) { pending = false; renderActions(); } }, 6000);
+    socket.emit(eventName, Object.assign(ctx, payload || {}), function(res) {
+      settled = true;
+      clearTimeout(guard);
+      pending = false;
+      if (res && !res.success) {
+        toastError(res.error);
+        sfx.bad();
+        socket.emit('colorcards_requestState', { roomId: roomId, playerId: playerId });
+      }
+      if (typeof after === 'function') after(res);
+      renderActions();
+    });
+  }
+  function bestColor(excludeId) {
+    const counts = { r: 0, y: 0, g: 0, b: 0 };
+    ((S.self && S.self.hand) || []).forEach(c => { if (c.color && c.id !== excludeId) counts[c.color] += 1; });
+    return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  }
+  function openPicker(card) {
+    pickerCard = card;
+    const best = bestColor(card.id);
+    $('#ccPickerTitle').text(card.kind === 'd4' ? '+4 · เลือกสีต่อไป' : 'เปลี่ยนสี · เลือกสีต่อไป');
+    $('#ccPickerGrid').html(['r', 'y', 'g', 'b'].map(c =>
+      '<button type="button" data-color="' + c + '" class="' + (c === best ? 'is-best' : '') + '" style="--sw:' + COLOR_VAR[c] + '">' + SHAPE[c] + COLOR_NAME[c] + '</button>').join(''));
+    $('#ccPickerNote').text('ขอบขาว = สีที่คุณถือเยอะสุด');
+    $('#ccPicker').addClass('is-on');
+    setTimeout(() => { const b = document.querySelector('#ccPickerGrid .is-best'); if (b) b.focus(); }, 30);
+  }
+  function closePicker() { $('#ccPicker').removeClass('is-on'); pickerCard = null; }
+  function tryPlay(id) {
+    const card = ((S.self && S.self.hand) || []).find(c => c.id === id);
+    if (!card) return;
+    const a = S.availableActions || {};
+    if (!(S.self.playable || []).includes(id) || !a.canPlay) {
+      const el = document.querySelector('#ccHand .cc-card[data-id="' + id + '"]');
+      if (el) { el.classList.remove('is-shake'); void el.offsetWidth; el.classList.add('is-shake'); }
+      $('#ccHint').text(S.turn && S.turn.playerId === playerId ? 'ลงใบนี้ไม่ได้ — สีหรือเลขไม่ตรง' : 'ยังไม่ถึงตาคุณ').addClass('is-strong');
+      haptic(8);
+      return;
+    }
+    if (card.kind === 'wild' || card.kind === 'd4') { openPicker(card); return; }
+    sendPlay(card, null);
+  }
+  function sendPlay(card, color) {
+    selectedId = null;
+    send('colorcards_play', { cardId: card.id, color: color });
+  }
+  function onCardTap(id) {
+    if (pending) return;
+    const myTurn = S.phase === 'turn' && S.turn && S.turn.playerId === playerId;
+    const playable = (S.self && S.self.playable) || [];
+    if (!myTurn || !playable.includes(id)) { tryPlay(id); return; }
+    if (selectedId === id) { tryPlay(id); return; }
+    selectedId = id;
+    haptic(6);
+    document.querySelectorAll('#ccHand .cc-card').forEach(el => {
+      const on = el.dataset.id === id;
+      el.classList.toggle('is-selected', on);
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    layoutHand();
+    renderActions();
+  }
+
+  // tap / swipe-up บนไพ่ในมือ
+  let swipe = null;
+  $('#ccHand').on('pointerdown', '.cc-card', function(e) {
+    swipe = { id: this.dataset.id, x: e.clientX, y: e.clientY, t: Date.now() };
+  });
+  $('#ccHand').on('pointerup', '.cc-card', function(e) {
+    if (!swipe || swipe.id !== this.dataset.id) return;
+    const dy = e.clientY - swipe.y;
+    const dx = Math.abs(e.clientX - swipe.x);
+    const id = swipe.id;
+    swipe = null;
+    if (dy < -36 && dx < 50) {
+      e.preventDefault();
+      const myTurn = S.phase === 'turn' && S.turn && S.turn.playerId === playerId;
+      if (myTurn && ((S.self && S.self.playable) || []).includes(id)) {
+        selectedId = id;
+        const el = this;
+        el.dataset.swiped = '1';
+        setTimeout(function() { el.dataset.swiped = ''; }, 450);
+        tryPlay(id);
+      }
+    }
+  });
+  $('#ccHand').on('pointercancel', function() { swipe = null; });
+  $('#ccHand').on('click', '.cc-card', function() {
+    if (this.dataset.swiped === '1') { this.dataset.swiped = ''; return; }
+    onCardTap(this.dataset.id);
+  });
+  $('#ccHand').on('keydown', '.cc-card', function(e) {
+    if (e.key === 'ArrowUp') { e.preventDefault(); tryPlay(this.dataset.id); }
+  });
+  document.getElementById('ccHand').addEventListener('scroll', updateFades, { passive: true });
+  window.addEventListener('resize', function() { renderOpps(); layoutHand(); syncDockHeight(); });
+
+  $(document).on('click', '#ccDrawBtn', function() { send('colorcards_draw'); });
+  $('#ccDeck').on('click', function() { if ((S.availableActions || {}).canDraw) send('colorcards_draw'); });
+  $(document).on('click', '#ccPassBtn', function() { send('colorcards_pass'); });
+  $(document).on('click', '#ccPlayDrawnBtn', function() { if (S.self && S.self.drawnCardId) tryPlay(S.self.drawnCardId); });
+  $(document).on('click', '#ccCallBtn', function() { send('colorcards_call', {}, function(res) { if (res && res.success) haptic([10, 20, 10]); }); });
+  $(document).on('click', '#ccCatchBtn', function() {
+    const target = $('#ccCatch').data('target');
+    send('colorcards_catch', { targetId: target });
+  });
+  $(document).on('click', '#ccPickerGrid button', function() {
+    const color = this.dataset.color;
+    const card = pickerCard;
+    closePicker();
+    if (card) sendPlay(card, color);
+  });
+  $('#ccPickerCancel').on('click', closePicker);
+  $('#ccPicker').on('click', function(e) { if (e.target === this) closePicker(); });
+  $(document).on('click', '#ccNextBtn', function() { send('colorcards_nextRound'); });
+  $(document).on('click', '#ccBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  $(document).on('click', '#ccShareBtn', function() {
+    if (!window.partyPlay || !S.standings) return;
+    window.partyPlay.shareResult({
+      mode: 'ไพ่ทิ้งสี',
+      headline: S.winner ? S.winner.name + ' ชนะ!' : 'จบไพ่ทิ้งสี',
+      sub: (S.round || 1) + ' รอบ · ' + (S.config && S.config.target ? 'ถึง ' + S.config.target + ' แต้ม' : 'เล่นรอบเดียว'),
+      lines: S.standings.slice(0, 8).map((r, i) => (i + 1) + '. ' + r.name + (S.config && S.config.target ? ' ' + r.score + ' แต้ม' : ' เหลือ ' + r.cardsLeft + ' ใบ')),
+      accent: '#f5c86b',
+      fileName: 'colorcards-result'
+    });
+  });
+  $('#ccEndBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบเกมเลยไหม?', text: 'ถ้ามีคนแต้มนำอยู่ จะนับเป็นผู้ชนะ แล้วทุกคนกลับห้องรอ',
+      showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#1d2433', color: '#fff', confirmButtonColor: '#c2410c'
+    }).then(r => { if (r.isConfirmed) send('colorcards_end'); });
+  });
+  function paintSound() { $('#ccSoundBtn').attr('aria-pressed', soundOn ? 'true' : 'false').text('เสียง: ' + (soundOn ? 'เปิด' : 'ปิด')); }
+  $('#ccSoundBtn').on('click', function() {
+    soundOn = !soundOn;
+    try { localStorage.setItem('ccSound', soundOn ? 'on' : 'off'); } catch (e) { /* ignore */ }
+    paintSound();
+    if (soundOn) sfx.play();
+  });
+  paintSound();
+
+  // ---------- guide ----------
+  function howToHtml() {
+    const c = (color, kind, value) => cardHtml({ id: 'g', color: color, kind: kind, value: value });
+    return '<div class="cc-guide">' +
+      '<h4>เป้าหมาย</h4><p>ทิ้งไพ่ในมือให้หมดก่อน · แจกคนละ 7 ใบ</p>' +
+      '<h4>ลงไพ่</h4><p>' + c('r', 'num', 7) + c('r', 'num', 2) + c('b', 'num', 7) + 'ลงสีเดียวกัน หรือเลข/สัญลักษณ์เดียวกับใบบนกอง</p>' +
+      '<h4>ไม่ลง = จั่ว 1 ใบ</h4><p>ถ้าใบที่จั่วลงได้ ลงต่อได้ทันที ไม่งั้นผ่าน · หมดเวลา = จั่วให้แล้วผ่าน</p>' +
+      '<h4>ไพ่พิเศษ</h4><p>' + c('g', 'skip') + 'ข้ามคนถัดไป ' + c('y', 'rev') + 'กลับทิศ (เล่น 2 คน = ข้าม)</p>' +
+      '<p style="margin-top:6px;">' + c('b', 'd2') + 'คนถัดไปจั่ว 2 แล้วโดนข้าม ' + c(null, 'wild') + 'เปลี่ยนสี ' + c(null, 'd4') + 'เปลี่ยนสี + คนถัดไปจั่ว 4</p>' +
+      '<p style="margin-top:6px;">+4 ลงได้ทุกเมื่อ (ไม่มีกติกาท้า)' + (S.config && S.config.stacking ? ' · ห้องนี้ <b>ซ้อน +2/+4 ได้</b> คนที่ไม่มีซ้อนรับทั้งหมด' : '') + '</p>' +
+      '<h4>เหลือใบเดียว!</h4><p>ก่อนลงใบรองสุดท้าย กด <b>เหลือใบเดียว!</b> · ลืมกด คนอื่นกด <b>จับได้!</b> ภายใน 4 วิ = จั่ว 2</p>' +
+      '<h4>แต้ม</h4><p>คนหมดมือได้แต้ม = ไพ่ในมือคนอื่นรวมกัน (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50)' + (S.config && S.config.target ? ' · ห้องนี้เล่นจนมีคนถึง <b>' + S.config.target + ' แต้ม</b>' : ' · ห้องนี้เล่น <b>1 รอบ</b>') + '</p>' +
+      '<h4>สีกับสัญลักษณ์</h4><p>แดง ▲ · เหลือง ● · เขียว ■ · น้ำเงิน ◆ (ดูง่ายแม้แยกสีลำบาก)</p>' +
+      '</div>';
+  }
+  $('#ccHowBtn').on('click', function() {
+    Swal.fire({ title: 'ไพ่ทิ้งสี เล่นยังไง', html: howToHtml(), background: '#1d2433', color: '#fff', confirmButtonText: 'เข้าใจแล้ว', confirmButtonColor: '#b8862b', width: 'min(520px, 94vw)' });
+  });
+
+  // ---------- sidebar ----------
+  function setSidebarOpen(open) {
+    if (open && $('#chatBox').is(':visible')) $('#closeChat').trigger('click');
+    $('#playerSidebar').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#sidebarOverlay').toggle(open);
+    $('#ccSidebarBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('closeSidebarBtn').focus();
+  }
+  $('#ccSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
+  $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
+  $(document).on('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    if ($('#ccPicker').hasClass('is-on')) closePicker();
+    else if ($('#playerSidebar').hasClass('open')) setSidebarOpen(false);
+  });
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({ icon: 'question', title: 'ออกจากเกม?', text: 'ไพ่ในมือคุณจะกลับไปใต้กองจั่ว แล้วเกมเดินต่อโดยไม่มีคุณ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1d2433', color: '#fff' })
+      .then(r => {
+        if (!r.isConfirmed) return;
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+      });
+  });
+  // ถามก่อนปิดแท็บเฉพาะหลังผู้เล่นแตะจอแล้ว (สคริปต์ผูกตัวตนอาจ reload หน้าเองตอนโหลด)
+  let touched = false;
+  document.addEventListener('pointerdown', function() { touched = true; }, { once: true, capture: true });
+  window.addEventListener('beforeunload', function(e) { if (touched && !allowNavigation && S.phase === 'turn') e.preventDefault(); });
+
+  // ---------- socket ----------
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('colorcards_requestState', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  socket.on('colorcardsState', render);
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(p =>
+      '<li style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid oklch(1 0 0 / 0.08); min-width:0;">' +
+        avatarHtml({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 26) +
+        '<span style="color:' + esc(p.color || '#fff') + '; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.displayName || p.playerName) + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:oklch(0.76 0.03 255);">หลุด</span>' : '') +
+      '</li>').join(''));
+  });
+  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('returnToLobby', function(data) {
+    S.returnLobbyEndsAt = (Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000));
+    tickTimer();
+  });
+  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && data.reason) || '', background: '#1d2433', color: '#fff' })
+      .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+
+  window.initChatPanel({
+    socket: socket, playerId: playerId, playerName: playerName,
+    onCommand: function(text) {
+      if (text.trim().toLowerCase() !== '/m') return false;
+      socket.emit('colorcards_admin_reveal');
+      return true;
+    }
+  });
+  socket.on('colorcards_admin_reveal', function(data) {
+    const rows = (data.players || []).map(p => '<div style="margin:6px 0; text-align:left;"><strong>' + esc(p.name) + '</strong>' +
+      (p.left ? ' (ออกแล้ว)' : '') + ' · ' + p.score + ' แต้ม<br>' + esc((p.cards || []).join(' · ') || '—') + '</div>').join('');
+    Swal.fire({ title: '/m ไพ่ทั้งโต๊ะ', html: rows, background: '#1d2433', color: '#fff' });
+  });
+  socket.on('colorcards_admin_reveal_denied', function() {
+    Swal.fire({ icon: 'error', title: 'ดูไพ่ไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บ', background: '#1d2433', color: '#fff' });
+  });
+
+  if (S && S.mode) render(S);
+  syncDockHeight();
+});
+</script>
