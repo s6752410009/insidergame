@@ -1,5 +1,5 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/pokerHands.css">
 <style>
     :root {
@@ -655,79 +655,115 @@
         font-family: 'Rajdhani', sans-serif !important;
     }
 
+    /* ---------- หน้าเลือกเกม (ขั้นที่ 1 ของการสร้างห้อง) ---------- */
+    .room-popup.is-picking { max-width: 880px !important; }
+    .gp {
+        --gp-ink: oklch(0.97 0.01 280);
+        --gp-muted: oklch(0.74 0.03 280);
+        --gp-line: oklch(0.45 0.04 280 / 0.5);
+        --gp-surface: oklch(0.23 0.035 275);
+        --gp-gold: #f5c86b;
+        font-family: 'Bai Jamjuree', 'Rajdhani', sans-serif;
+        text-align: left;
+        color: var(--gp-ink);
+    }
+    .gp-intro { margin: 0 0 14px; color: var(--gp-muted); font-size: 0.95rem; line-height: 1.5; }
+    .gp-cats { display: flex; gap: 8px; margin: 0 0 14px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .gp-cats::-webkit-scrollbar { display: none; }
+    .gp-cat {
+        flex: 0 0 auto; min-height: 40px; padding: 0 14px;
+        border-radius: 999px; border: 1px solid var(--gp-line);
+        background: transparent; color: var(--gp-muted);
+        font: inherit; font-size: 0.92rem; font-weight: 600; white-space: nowrap; cursor: pointer;
+        transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .gp-cat:hover { color: var(--gp-ink); border-color: oklch(0.6 0.04 280 / 0.7); }
+    .gp-cat.is-active { background: var(--gp-gold); border-color: var(--gp-gold); color: #1a2332; }
+    .gp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
     .mode-quick-card {
         position: relative;
-        isolation: isolate;
-        overflow: hidden;
-        min-height: 128px;
-        padding: 14px 14px 12px;
-        text-align: left;
-        font-family: Rajdhani, sans-serif;
-        color: #fff;
-        cursor: pointer;
-        display: grid;
-        gap: 6px;
-        align-content: end;
-        background-color: #111;
-        background-size: cover;
-        background-position: center;
-        border-radius: 16px;
-        border: 1px solid transparent;
-        transition: transform .18s ease, box-shadow .18s ease;
+        display: grid; grid-template-rows: auto 1fr;
+        min-width: 0; padding: 0; overflow: hidden;
+        border-radius: 16px; border: 1px solid var(--gp-line);
+        background: var(--gp-surface); color: var(--gp-ink);
+        font: inherit; text-align: left; cursor: pointer;
+        transition: transform .2s cubic-bezier(0.22, 1, 0.36, 1), border-color .2s ease, box-shadow .2s ease;
+        animation: gpIn .35s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: calc(var(--i, 0) * 28ms);
     }
-    .mode-quick-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-        background: linear-gradient(180deg, rgba(8,8,12,0.12) 0%, rgba(8,8,12,0.78) 68%);
+    .mode-quick-card[hidden] { display: none; }
+    .mode-quick-card:hover { transform: translateY(-3px); border-color: var(--gp-accent, var(--gp-gold)); box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
+    .mode-quick-card:active { transform: scale(0.98); }
+    .gp-grid[data-chosen] .mode-quick-card.is-on { border-color: var(--gp-gold); box-shadow: 0 0 0 2px var(--gp-gold); }
+    .mq-art { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #1a2332; }
+    .mq-art img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s cubic-bezier(0.22, 1, 0.36, 1); }
+    .mode-quick-card:hover .mq-art img { transform: scale(1.05); }
+    .mq-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(10, 12, 24, 0.55)); }
+    .mq-players {
+        position: absolute; right: 8px; bottom: 8px; z-index: 1;
+        padding: 3px 8px; border-radius: 999px;
+        background: rgba(10, 12, 24, 0.78); color: #fff;
+        font-size: 0.75rem; font-weight: 700; white-space: nowrap;
     }
-    .mode-quick-card > * { position: relative; z-index: 1; }
-    .mode-quick-card strong { text-shadow: 0 1px 8px rgba(0,0,0,0.7); }
-    .mode-quick-card.is-on {
-        transform: translateY(-2px);
-        box-shadow: 0 14px 32px rgba(0,0,0,0.42);
-        outline: 2px solid rgba(245,200,107,0.72);
-        outline-offset: 1px;
+    .mq-new {
+        position: absolute; left: 8px; top: 8px; z-index: 1;
+        padding: 3px 9px; border-radius: 999px;
+        background: var(--gp-gold); color: #1a2332;
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
     }
-    .mode-featured-grid, .mode-all-grid {
-        display:grid; grid-template-columns:repeat(auto-fit, minmax(178px, 1fr)); gap:10px;
+    .mq-body { display: grid; align-content: start; gap: 3px; padding: 10px 12px 12px; min-width: 0; }
+    .mq-title { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.06rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+    .mq-tag { color: var(--gp-muted); font-size: 0.84rem; line-height: 1.4; overflow-wrap: anywhere; }
+    .gp-empty { padding: 28px 12px; color: var(--gp-muted); text-align: center; }
+    @keyframes gpIn { from { opacity: 0; transform: translateY(8px); } }
+
+    /* ขั้นที่ 2: เกมที่เลือก + ตั้งค่าห้อง */
+    .mode-spotlight {
+        display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: start;
+        margin-bottom: 20px; padding: 12px;
+        border-radius: 16px; border: 1px solid var(--gp-line, rgba(255,255,255,0.14));
+        background: oklch(0.23 0.035 275);
+        font-family: 'Bai Jamjuree', 'Rajdhani', sans-serif; text-align: left; color: #f4f3fb;
+        animation: gpIn .3s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .mode-all-details, .room-advanced-details {
+    .ms-art { width: 100%; aspect-ratio: 1; border-radius: 12px; object-fit: cover; background: #1a2332; display: block; }
+    .ms-body { min-width: 0; display: grid; gap: 4px; }
+    .ms-kicker { color: #f5c86b; font-size: 0.8rem; font-weight: 700; overflow-wrap: anywhere; }
+    .ms-title { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.3rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+    .ms-summary { margin: 0; color: oklch(0.8 0.025 280); font-size: 0.9rem; line-height: 1.5; overflow-wrap: anywhere; }
+    .ms-bullets { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .ms-bullets li { display: inline-flex; width: auto; margin: 0; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.07); font-size: 0.78rem; color: #e6e4f2; }
+    .ms-change {
+        grid-column: 1 / -1; justify-self: stretch; min-height: 44px;
+        border-radius: 12px; border: 1px solid rgba(255,255,255,0.16);
+        background: rgba(255,255,255,0.04); color: #f4f3fb;
+        font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .ms-change:hover { background: rgba(255,255,255,0.09); }
+    .mode-quick-card:focus-visible, .gp-cat:focus-visible, .ms-change:focus-visible,
+    .room-advanced-details > summary:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .room-advanced-details {
         margin-top:10px; border:1px solid rgba(255,255,255,0.12); border-radius:14px;
         background:rgba(255,255,255,0.035);
     }
-    .mode-all-details > summary, .room-advanced-details > summary {
-        padding:11px 13px; cursor:pointer; color:#f5c86b; font-weight:700; text-align:left;
+    .room-advanced-details > summary { padding:11px 13px; cursor:pointer; color:#f5c86b; font-weight:700; text-align:left; }
+    .room-advanced-body { padding:0 10px 10px; }
+    @media (max-width: 520px) {
+        .gp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .mq-body { padding: 8px 10px 10px; }
+        .mq-title { font-size: 0.98rem; }
+        .mq-tag { font-size: 0.78rem; }
+        .mode-spotlight { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 10px; }
+        .ms-title { font-size: 1.12rem; }
+        .ms-summary { font-size: 0.84rem; }
+        .ms-bullets li { font-size: 0.74rem; padding: 2px 8px; }
     }
-    .mode-all-grid, .room-advanced-body { padding:0 10px 10px; }
-    .mode-quick-card:focus-visible, .mode-all-details > summary:focus-visible,
-    .room-advanced-details > summary:focus-visible {
-        outline:3px solid #fff; outline-offset:3px;
+    @media (prefers-reduced-motion: reduce) {
+        .mode-quick-card, .mode-spotlight { animation: none; }
+        .mode-quick-card, .mq-art img, .gp-cat { transition: none; }
+        .mode-quick-card:hover { transform: none; }
+        .mode-quick-card:hover .mq-art img { transform: none; }
     }
-    .mode-spotlight {
-        position: relative;
-        isolation: isolate;
-        overflow: hidden;
-        border-radius: 18px;
-        padding: 16px;
-        min-height: 92px;
-        display: grid;
-        gap: 8px;
-        background-color: #111;
-        background-size: cover;
-        background-position: center;
-    }
-    .mode-spotlight::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-        background: linear-gradient(90deg, rgba(8,8,12,0.72) 0%, rgba(8,8,12,0.42) 100%);
-    }
-    .mode-spotlight > * { position: relative; z-index: 1; }
     
     .swal2-title {
         color: #fff !important;
@@ -1212,17 +1248,59 @@ $(function() {
         return resolved;
     }
 
-    function buildModeQuickPickHtml(modeItems) {
-        return (Array.isArray(modeItems) ? modeItems : []).map(function(mode) {
-            const spotlight = getModeSpotlightMeta(mode.id);
-            const badgeLabel = escapeHtml(spotlight.badge);
-            const badgeColor = mode.id === 'werewolf' ? '#fff' : '#fde68a';
+    // หมวดของแต่ละเกมในหน้าเลือกเกม (เกมหนึ่งอยู่ได้หลายหมวด) — เกมใหม่ไม่ใส่ก็ยังโผล่ในแท็บ "ทั้งหมด"
+    const MODE_CATEGORIES = [
+        { id: 'all', label: 'ทั้งหมด' },
+        { id: 'word', label: '🗣️ ใบ้คำ · ทายคำ' },
+        { id: 'bluff', label: '🎭 หักหลัง · จับโกหก' },
+        { id: 'cards', label: '🃏 ไพ่' },
+        { id: 'team', label: '🤝 เล่นเป็นทีม' }
+    ];
+    const MODE_CATEGORY_OF = {
+        insider: ['word', 'bluff'],
+        undercover: ['word', 'bluff'],
+        spyfall: ['word', 'bluff'],
+        drawguess: ['word'],
+        codenames: ['word', 'team'],
+        wavelength: ['word'],
+        werewolf: ['bluff', 'team'],
+        avalon: ['bluff', 'team'],
+        blackmarket: ['bluff'],
+        coup: ['bluff', 'cards'],
+        liar: ['bluff', 'cards'],
+        poker5: ['cards'],
+        poker4: ['cards'],
+        pokdeng: ['cards'],
+        colorcards: ['cards']
+    };
+    const NEW_MODE_IDS = ['drawguess', 'codenames', 'wavelength', 'colorcards'];
 
+    function buildModeCategoryChipsHtml(modeItems) {
+        const present = new Set();
+        (modeItems || []).forEach(function(mode) { (MODE_CATEGORY_OF[mode.id] || []).forEach(function(cat) { present.add(cat); }); });
+        return MODE_CATEGORIES
+            .filter(function(cat) { return cat.id === 'all' || present.has(cat.id); })
+            .map(function(cat, index) {
+                return `<button type="button" class="gp-cat${index === 0 ? ' is-active' : ''}" data-cat="${cat.id}" aria-pressed="${index === 0}">${escapeHtml(cat.label)}</button>`;
+            }).join('');
+    }
+
+    function buildModeQuickPickHtml(modeItems) {
+        return (Array.isArray(modeItems) ? modeItems : []).map(function(mode, index) {
+            const spotlight = getModeSpotlightMeta(mode.id);
+            const cats = (MODE_CATEGORY_OF[mode.id] || []).join(' ');
+            const isNew = NEW_MODE_IDS.includes(mode.id);
             return `
-                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" aria-pressed="false" style="border-color:${spotlight.border}; background-image:url('${escapeHtml(spotlight.cover || '')}');">
-                    <strong style="font-size:1.02rem; letter-spacing:0.02em; white-space:nowrap;">${escapeHtml(spotlight.title)}</strong>
-                    <span style="justify-self:start; max-width:100%; padding:4px 9px; border-radius:999px; background:rgba(8,8,12,0.55); font-size:0.74em; font-weight:700; line-height:1.5; color:${badgeColor};">${badgeLabel}</span>
-                    <div style="color:#d7dde8; font-size:0.8em;">${Number(mode.minPlayers || 3)}-${Number(mode.maxPlayers || 10)} คน</div>
+                <button type="button" class="mode-quick-card" data-mode-id="${escapeHtml(mode.id)}" data-cats="${escapeHtml(cats)}" aria-pressed="false" style="--i:${index}; --gp-accent:${spotlight.border};">
+                    <span class="mq-art">
+                        <img src="${escapeHtml(spotlight.cover || '')}" alt="" loading="lazy" decoding="async">
+                        ${isNew ? '<span class="mq-new">ใหม่</span>' : ''}
+                        <span class="mq-players">👥 ${Number(mode.minPlayers || 3)}–${Number(mode.maxPlayers || 10)}</span>
+                    </span>
+                    <span class="mq-body">
+                        <strong class="mq-title">${escapeHtml(spotlight.title || mode.label)}</strong>
+                        <span class="mq-tag">${escapeHtml(spotlight.badge || '')}</span>
+                    </span>
                 </button>
             `;
         }).join('');
@@ -1231,15 +1309,17 @@ $(function() {
     function buildModeSpotlightHtml(modeId, modeItems) {
         const mode = (modeItems || []).find(function(item) { return item.id === modeId; }) || (modeItems || [])[0] || defaultGameModes[0];
         const spotlight = getModeSpotlightMeta(mode?.id);
+        const bullets = (spotlight.bullets || []).map(function(item) { return `<li>${escapeHtml(item)}</li>`; }).join('');
         return `
-            <div class="mode-spotlight" style="border:1px solid ${spotlight.border}; background-image:url('${escapeHtml(spotlight.cover || '')}');">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <div>
-                        <div style="color:${mode?.id === 'blackmarket' ? '#fde68a' : '#8fd3ff'}; font-size:0.8em; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">${escapeHtml(spotlight.badge)}</div>
-                        <div style="color:#fff; font-family:Orbitron, sans-serif; font-size:1.15rem; margin-top:4px; text-shadow:0 1px 10px rgba(0,0,0,0.7);">${escapeHtml(spotlight.title)}</div>
-                    </div>
-                    <div style="padding:6px 10px; border-radius:999px; background:rgba(8,8,12,0.55); color:#fff; font-weight:700;">👥 ${Number(mode?.minPlayers || 3)}-${Number(mode?.maxPlayers || 10)} คน</div>
+            <div class="mode-spotlight">
+                <img class="ms-art" src="${escapeHtml(spotlight.cover || '')}" alt="">
+                <div class="ms-body">
+                    <div class="ms-kicker">${escapeHtml(spotlight.badge || '')}</div>
+                    <div class="ms-title">${escapeHtml(spotlight.title || mode?.label || '')}</div>
+                    ${spotlight.summary ? `<p class="ms-summary">${escapeHtml(spotlight.summary)}</p>` : ''}
                 </div>
+                ${bullets ? `<ul class="ms-bullets">${bullets}</ul>` : ''}
+                <button type="button" class="ms-change" id="modeChangeBtn">↺ เปลี่ยนเกม</button>
             </div>
         `;
     }
@@ -1455,38 +1535,34 @@ $(function() {
     // Create room popup
     $('#createRoomBtn').on('click', function() {
         Swal.fire({
-            title: '⚙️ สร้างห้องใหม่',
+            title: '🎮 เลือกเกม',
+            width: 880,
             customClass: {
-                popup: 'room-popup',
+                popup: 'room-popup is-picking',
                 confirmButton: 'room-btn-confirm',
                 cancelButton: 'room-btn-cancel'
             },
             html: `
                 <div style="font-family: 'Rajdhani', sans-serif;">
-                    <div class="room-form-group">
-                        <div class="room-form-label" id="modeQuickPickLabel">
-                            <span class="icon">🌙</span> เลือกแนวห้องเร็ว ๆ:
+                    <div class="gp" id="gamePickStep">
+                        <p class="gp-intro" id="modeQuickPickLabel">แตะเกมที่อยากเล่น แล้วค่อยตั้งค่าห้องต่อ</p>
+                        <div class="gp-cats" id="modeCategoryChips" role="group" aria-label="หมวดเกม">
+                            ${buildModeCategoryChipsHtml(gameModes)}
                         </div>
-                        <div id="modeQuickPickGrid" role="group" aria-labelledby="modeQuickPickLabel" style="margin-bottom:12px;">
-                            <div class="mode-featured-grid">
-                                ${buildModeQuickPickHtml(gameModes.filter(function(mode) { return ['insider', 'liar', 'poker5', 'poker4'].includes(mode.id); }))}
-                            </div>
-                            <details class="mode-all-details">
-                                <summary>ดูเกมทั้งหมด</summary>
-                                <div class="mode-all-grid">
-                                    ${buildModeQuickPickHtml(gameModes.filter(function(mode) { return !['insider', 'liar', 'poker5', 'poker4'].includes(mode.id); }))}
-                                </div>
-                            </details>
+                        <div id="modeQuickPickGrid" class="gp-grid" role="group" aria-labelledby="modeQuickPickLabel">
+                            ${buildModeQuickPickHtml(gameModes)}
                         </div>
-                        <div id="modeSpotlight"></div>
                     </div>
+
+                    <div id="roomSetupStep" hidden>
+                    <div id="modeSpotlight"></div>
 
                     <div class="room-form-group">
                         <label class="room-form-label" for="roomName">
                             <span class="icon">📝</span> ชื่อห้อง:
                         </label>
                         <input id="roomName" class="room-form-input" placeholder="ไม่กรอกได้ ระบบจะตั้งชื่อให้" maxlength="20">
-                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">เลือกโหมดจากการ์ดด้านบนพอแล้ว ชื่อห้องปล่อยว่างได้</div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">ปล่อยว่างได้ ระบบตั้งชื่อตามเกมให้</div>
                         <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
@@ -1601,6 +1677,7 @@ $(function() {
                     </div>
                     </div>
                     </details>
+                    </div>
                 </div>
             `,
             background: 'transparent',
@@ -1634,6 +1711,47 @@ $(function() {
                 let selectedGameMode = selectedGameModeInput.value || 'insider';
                 selectedGameModeInput.value = selectedGameMode;
                 modeQuickPickGrid.dataset.selectedMode = selectedGameMode;
+
+                // สองขั้น: เลือกเกม → ตั้งค่าห้อง (ปุ่มสร้างห้องโผล่เฉพาะขั้นที่ 2)
+                const gamePickStep = document.getElementById('gamePickStep');
+                const roomSetupStep = document.getElementById('roomSetupStep');
+                const modeCategoryChips = document.getElementById('modeCategoryChips');
+                function showCreateStep(step) {
+                    const picking = step === 'pick';
+                    gamePickStep.hidden = !picking;
+                    roomSetupStep.hidden = picking;
+                    Swal.getPopup().classList.toggle('is-picking', picking);
+                    Swal.getTitle().textContent = picking ? '🎮 เลือกเกม' : '⚙️ ตั้งค่าห้อง';
+                    Swal.getConfirmButton().style.display = picking ? 'none' : '';
+                    Swal.resetValidationMessage();
+                    const container = Swal.getHtmlContainer();
+                    if (container) container.scrollTop = 0;
+                    Swal.getPopup().scrollTop = 0;
+                    if (picking) {
+                        const current = modeQuickPickGrid.querySelector('.mode-quick-card.is-on');
+                        if (current) current.focus({ preventScroll: true });
+                    }
+                }
+                modeCategoryChips.addEventListener('click', function(event) {
+                    const chip = event.target.closest('.gp-cat');
+                    if (!chip) return;
+                    const cat = chip.dataset.cat;
+                    modeCategoryChips.querySelectorAll('.gp-cat').forEach(function(item) {
+                        const active = item === chip;
+                        item.classList.toggle('is-active', active);
+                        item.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    });
+                    let index = 0;
+                    modeQuickPickGrid.querySelectorAll('.mode-quick-card').forEach(function(card) {
+                        const show = cat === 'all' || (card.dataset.cats || '').split(' ').includes(cat);
+                        card.hidden = !show;
+                        if (show) card.style.setProperty('--i', String(index++));
+                    });
+                });
+                roomSetupStep.addEventListener('click', function(event) {
+                    if (event.target.closest('#modeChangeBtn')) showCreateStep('pick');
+                });
+                showCreateStep('pick');
                 
                 maxPlayersSlider.addEventListener('input', function() {
                     maxPlayersValue.textContent = this.value;
@@ -1791,6 +1909,8 @@ $(function() {
                     modeQuickPickGrid.dataset.selectedMode = urlMode;
                     updateWerewolfRoleVisibility();
                     applyModeAutofill(urlMode);
+                    modeQuickPickGrid.dataset.chosen = '1';
+                    showCreateStep('setup');
                 } else {
                     updateWerewolfRoleVisibility();
                 }
@@ -1804,8 +1924,10 @@ $(function() {
                     selectedGameMode = card.dataset.modeId;
                     selectedGameModeInput.value = card.dataset.modeId;
                     modeQuickPickGrid.dataset.selectedMode = card.dataset.modeId;
+                    modeQuickPickGrid.dataset.chosen = '1';
                     updateWerewolfRoleVisibility();
                     applyModeAutofill(card.dataset.modeId);
+                    showCreateStep('setup');
                 });
 
                 createWolfCountSelector.addEventListener('click', function(event) {
