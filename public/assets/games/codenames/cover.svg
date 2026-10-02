@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="853" viewBox="0 0 1280 853" role="img" aria-label="สายลับคำใบ้">
+  <defs>
+    <radialGradient id="glow" cx="62%" cy="48%" r="70%">
+      <stop offset="0" stop-color="#2c3e58"/>
+      <stop offset="1" stop-color="#121a26"/>
+    </radialGradient>
+    <pattern id="weave" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0 8 H16" stroke="#f5c86b" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+    <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0 5 H10" stroke="#ffffff" stroke-opacity="0.09" stroke-width="1.2"/>
+    </pattern>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf6ea"/>
+      <stop offset="1" stop-color="#ece0c4"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <g id="tile">
+      <rect width="150" height="96" rx="12" fill="url(#paper)"/>
+      <rect x="6" y="6" width="138" height="84" rx="8" fill="none" stroke="#c9a14a" stroke-opacity="0.7" stroke-width="1.2"/>
+    </g>
+    <g id="agent">
+      <path d="M-30 0 C-28 -18 -16 -24 0 -25 C16 -24 28 -18 30 0 Z"/>
+      <ellipse cx="0" cy="-40" rx="14" ry="16"/>
+      <ellipse cx="0" cy="-53" rx="26" ry="5.5"/>
+      <path d="M-15 -53 C-15 -67 -10 -73 0 -73 C10 -73 15 -67 15 -53 Z"/>
+      <rect x="-15" y="-59" width="30" height="4" fill="#f5c86b"/>
+      <rect x="-12" y="-45" width="10" height="6" rx="3" fill="#0b111b"/><rect x="2" y="-45" width="10" height="6" rx="3" fill="#0b111b"/>
+    </g>
+    <g id="hood">
+      <path d="M-34 0 C-30 -30 -18 -60 0 -76 C18 -60 30 -30 34 0 Z"/>
+      <path d="M-17 -30 C-17 -50 -9 -60 0 -62 C9 -60 17 -50 17 -30 C10 -26 -10 -26 -17 -30 Z" fill="#1b2029"/>
+    </g>
+  </defs>
+  <rect width="1280" height="853" fill="url(#glow)"/>
+  <rect width="1280" height="853" fill="url(#weave)"/>
+  <circle cx="800" cy="420" r="330" fill="#f5c86b" fill-opacity="0.045"/>
+  <!-- team light spills -->
+  <circle cx="420" cy="760" r="260" fill="#e5484d" fill-opacity="0.12"/>
+  <circle cx="1220" cy="90" r="240" fill="#3b82f6" fill-opacity="0.14"/>
+
+  <g transform="translate(470 140) rotate(-7 403 268) scale(0.92)" font-family="Chakra Petch, Bai Jamjuree, Thonburi, Tahoma, sans-serif" font-weight="700" text-anchor="middle" filter="url(#shadow)">
+    <g transform="translate(0 0)"><use href="#tile"/><text x="75.0" y="60.0" font-size="34" fill="#1a2332">ช้าง</text></g><g transform="translate(164 0)"><rect width="150" height="96" rx="12" fill="#d9443c"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#1a2332"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(328 0)"><use href="#tile"/><text x="75.0" y="60.0" font-size="34" fill="#1a2332">กาแฟ</text></g><g transform="translate(492 0)"><use href="#tile"/><text x="75.0" y="60.0" font-size="34" fill="#1a2332">ร่ม</text></g><g transform="translate(656 0)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">ปราสาท</text></g><g transform="translate(0 110)"><use href="#tile"/><text x="75.0" y="60.0" font-size="34" fill="#1a2332">หมวก</text></g><g transform="translate(164 110)"><rect width="150" height="96" rx="12" fill="#2f6fd1"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#1a2332"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(328 110)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">ดอกบัว</text></g><g transform="translate(492 110)"><rect width="150" height="96" rx="12" fill="#d9443c"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#1a2332"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(656 110)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">กีตาร์</text></g><g transform="translate(0 220)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">นาฬิกา</text></g><g transform="translate(164 220)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">มังกร</text></g><g transform="translate(328 220)"><rect width="150" height="96" rx="12" fill="#d8c69f"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#7a6a50"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(492 220)"><rect width="150" height="96" rx="12" fill="#2f6fd1"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#1a2332"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(656 220)"><use href="#tile"/><text x="75.0" y="60.0" font-size="34" fill="#1a2332">เพชร</text></g><g transform="translate(0 330)"><use href="#tile"/><text x="75.0" y="60.0" font-size="34" fill="#1a2332">รถไฟ</text></g><g transform="translate(164 330)"><use href="#tile"/><text x="75.0" y="60.0" font-size="26" fill="#1a2332">ประภาคาร</text></g><g transform="translate(328 330)"><rect width="150" height="96" rx="12" fill="#d9443c"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#1a2332"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(492 330)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">ตุ๊กตา</text></g><g transform="translate(656 330)"><rect width="150" height="96" rx="12" fill="#10141b"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#000"><use href="#hood"/></g><path d="M61.0 44.0 l10 3 l-10 3z M89.0 44.0 l-10 3 l10 3z" fill="#ff5a5f"/><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(0 440)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">กุญแจ</text></g><g transform="translate(164 440)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">ไข่มุก</text></g><g transform="translate(328 440)"><rect width="150" height="96" rx="12" fill="#2f6fd1"/><rect width="150" height="96" rx="12" fill="url(#hatch)"/><g transform="translate(75.0 92)" fill="#1a2332"><use href="#agent"/></g><rect x="4" y="4" width="142" height="88" rx="9" fill="none" stroke="#f5c86b" stroke-opacity="0.45" stroke-width="1.5"/></g><g transform="translate(492 440)"><use href="#tile"/><text x="75.0" y="60.0" font-size="26" fill="#1a2332">ลูกเต๋า</text></g><g transform="translate(656 440)"><use href="#tile"/><text x="75.0" y="60.0" font-size="30" fill="#1a2332">นินจา</text></g>
+  </g>
+
+  <!-- spymaster key card -->
+  <g transform="translate(230 520) rotate(10)" filter="url(#shadow)">
+    <rect x="-90" y="-90" width="180" height="180" rx="16" fill="#1a2332" stroke="#f5c86b" stroke-width="3"/>
+    <g transform="translate(-70 -70)">
+      <rect x="0" y="0" width="24" height="24" rx="4" fill="#d9443c"/><rect x="28" y="0" width="24" height="24" rx="4" fill="#d8c69f"/><rect x="56" y="0" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="84" y="0" width="24" height="24" rx="4" fill="#d9443c"/><rect x="112" y="0" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="0" y="28" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="28" y="28" width="24" height="24" rx="4" fill="#d9443c"/><rect x="56" y="28" width="24" height="24" rx="4" fill="#d8c69f"/><rect x="84" y="28" width="24" height="24" rx="4" fill="#d9443c"/><rect x="112" y="28" width="24" height="24" rx="4" fill="#d8c69f"/><rect x="0" y="56" width="24" height="24" rx="4" fill="#d9443c"/><rect x="28" y="56" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="56" y="56" width="24" height="24" rx="4" fill="#d8c69f"/><rect x="84" y="56" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="112" y="56" width="24" height="24" rx="4" fill="#d9443c"/><rect x="0" y="84" width="24" height="24" rx="4" fill="#d8c69f"/><rect x="28" y="84" width="24" height="24" rx="4" fill="#d9443c"/><rect x="56" y="84" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="84" y="84" width="24" height="24" rx="4" fill="#d9443c"/><rect x="112" y="84" width="24" height="24" rx="4" fill="#10141b"/><rect x="0" y="112" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="28" y="112" width="24" height="24" rx="4" fill="#d9443c"/><rect x="56" y="112" width="24" height="24" rx="4" fill="#2f6fd1"/><rect x="84" y="112" width="24" height="24" rx="4" fill="#d8c69f"/><rect x="112" y="112" width="24" height="24" rx="4" fill="#2f6fd1"/>
+    </g>
+    <rect x="-92" y="-92" width="184" height="184" rx="17" fill="none" stroke="#000" stroke-opacity="0.2"/>
+  </g>
+
+  <!-- magnifier -->
+  <g transform="translate(1035 470) rotate(-28)">
+    <circle r="58" fill="#ffffff" fill-opacity="0.1" stroke="#f5c86b" stroke-width="12"/>
+    <path d="M40 44 l70 70" stroke="#f5c86b" stroke-width="20" stroke-linecap="round"/>
+  </g>
+</svg>

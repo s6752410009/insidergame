@@ -68,6 +68,7 @@ const DEFAULT_SETTINGS = {
         profanityWords: DEFAULT_PROFANITY
     }
 };
+DEFAULT_SETTINGS.modes.codenames = { defaultMaxPlayers: 10 };
 
 let settings = null;
 const wordPools = new Map();

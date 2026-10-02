@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="224" viewBox="0 0 160 224" role="img" aria-label="คนเดินถนน">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe4cb"/>
+      <stop offset="1" stop-color="#d8c69f"/>
+    </linearGradient>
+    <pattern id="dots" width="12" height="12" patternUnits="userSpaceOnUse">
+      <circle cx="6" cy="6" r="1.2" fill="#8a7550" fill-opacity="0.18"/>
+    </pattern>
+  </defs>
+  <rect width="160" height="224" rx="14" fill="url(#bg)"/>
+  <rect width="160" height="224" rx="14" fill="url(#dots)"/>
+  <circle cx="80" cy="104" r="64" fill="#ffffff" fill-opacity="0.25"/>
+  <!-- shirt -->
+  <path d="M20 224 C24 178 48 158 80 156 C112 158 136 178 140 224 Z" fill="#7a6a50"/>
+  <path d="M66 158 C70 168 90 168 94 158" stroke="#5e5039" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- bag strap -->
+  <path d="M50 166 L112 224" stroke="#5e5039" stroke-width="7" stroke-linecap="round"/>
+  <!-- neck + head -->
+  <rect x="70" y="134" width="20" height="26" rx="6" fill="#7a6a50"/>
+  <ellipse cx="80" cy="114" rx="26" ry="29" fill="#7a6a50"/>
+  <!-- cap -->
+  <path d="M54 104 C54 80 64 74 80 74 C96 74 106 80 106 104 Z" fill="#5e5039"/>
+  <path d="M100 98 C112 98 122 100 126 104 L100 106 Z" fill="#5e5039"/>
+  <circle cx="80" cy="76" r="3" fill="#5e5039"/>
+  <!-- face hint -->
+  <circle cx="70" cy="118" r="2.6" fill="#efe4cb"/>
+  <circle cx="90" cy="118" r="2.6" fill="#efe4cb"/>
+  <path d="M72 129 C77 133 83 133 88 129" stroke="#efe4cb" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <rect x="7" y="7" width="146" height="210" rx="10" fill="none" stroke="#a88f62" stroke-opacity="0.6" stroke-width="1.5"/>
+</svg>

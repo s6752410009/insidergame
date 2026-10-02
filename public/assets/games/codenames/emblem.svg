@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="สายลับคำใบ้">
+  <rect x="4" y="4" width="112" height="112" rx="18" fill="#1a2332"/>
+  <path d="M4 22 a18 18 0 0 1 18 -18 H60 V116 H22 a18 18 0 0 1 -18 -18 Z" fill="#e5484d" fill-opacity="0.22"/>
+  <path d="M60 4 H98 a18 18 0 0 1 18 18 V98 a18 18 0 0 1 -18 18 H60 Z" fill="#3b82f6" fill-opacity="0.22"/>
+  <ellipse cx="60" cy="52" rx="38" ry="8" fill="#f5c86b"/>
+  <path d="M38 52 C38 30 46 22 60 22 C74 22 82 30 82 52 Z" fill="#f5c86b"/>
+  <rect x="38" y="44" width="44" height="6" fill="#1a2332"/>
+  <rect x="36" y="64" width="20" height="11" rx="5" fill="#f5c86b"/>
+  <rect x="64" y="64" width="20" height="11" rx="5" fill="#f5c86b"/>
+  <path d="M56 68 H64" stroke="#f5c86b" stroke-width="3"/>
+  <path d="M42 92 C50 98 70 98 78 92" stroke="#f5c86b" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>
