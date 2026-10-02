@@ -933,6 +933,7 @@ $(function() {
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
         { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'codenames', label: 'สายลับคำใบ้', description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน', minPlayers: 4, maxPlayers: 12 },
         { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
@@ -1189,6 +1190,15 @@ $(function() {
                 summary: 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู',
                 bullets: ['2-10 คน', 'ตาละวางกอง 500', 'หมอบไม่ได้ใบที่ 3', 'เปิดเทียบเลยหลังได้ใบ 3']
             },
+            codenames: {
+                tone: 'linear-gradient(135deg, rgba(59,130,246,0.22), rgba(26,35,50,0.94) 55%, rgba(220,60,50,0.22))',
+                border: 'rgba(245,200,107,0.34)',
+                cover: '/assets/games/codenames/cover.jpg',
+                badge: '🕵️ 2 ทีม ใบ้คำเดียว',
+                title: 'สายลับคำใบ้',
+                summary: 'หัวหน้าเห็นว่าคำไหนเป็นสายลับทีมตัวเอง ใบ้คำเดียว + ตัวเลข ลูกทีมช่วยกันเปิด — ระวังมือสังหาร',
+                bullets: ['4-12 คน แบ่ง 2 ทีม', 'กระดาน 25 คำไทย', 'เกมละ 15-25 นาที', 'สนุกสุดตอนเล่นหน้ากัน']
+            },
             pokdeng: {
                 tone: 'linear-gradient(135deg, rgba(179,38,46,0.3), rgba(24,8,10,0.92))',
                 border: 'rgba(245,200,107,0.34)',
@@ -1216,6 +1226,7 @@ $(function() {
             liar: 'ไพ่โกหก',
             poker5: 'ไพ่ 5 ใบ',
             poker4: 'สี่ใบเก',
+            codenames: 'สายลับคำใบ้',
             pokdeng: 'ป๊อกเด้ง'
         };
         return {
@@ -1605,6 +1616,30 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · ไม่เกี่ยวกับกระเป๋าชิป · ลงได้ 10–500 ต่อมือ · เปลี่ยนแบบเจ้ามือในเกมได้</div>
                     </div>
 
+                    <div class="room-form-group" id="codenamesTimerGroup" role="group" aria-labelledby="codenamesTimerLabel" style="display:none;">
+                        <div class="room-form-label" id="codenamesTimerLabel"><span class="icon">🕵️</span> เวลาต่อเทิร์น:</div>
+                        <div style="display:grid; gap:8px;">
+                            <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
+                                <span style="min-width:96px;">หัวหน้าคิดคำใบ้</span>
+                                <select id="codenamesClueSeconds" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(245,200,107,0.4); background:#1a2332; color:#fff; font:inherit;">
+                                    <option value="120" selected>120 วินาที</option>
+                                    <option value="90">90 วินาที</option>
+                                    <option value="0">ไม่จับเวลา</option>
+                                </select>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
+                                <span style="min-width:96px;">ลูกทีมทาย</span>
+                                <select id="codenamesGuessSeconds" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#1a2332; color:#fff; font:inherit;">
+                                    <option value="0" selected>ไม่จับเวลา</option>
+                                    <option value="60">60 วินาที</option>
+                                    <option value="90">90 วินาที</option>
+                                    <option value="120">120 วินาที</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลาแล้วข้ามไปอีกทีม · เลือกทีมและหัวหน้ากันในห้องรอ · เปลี่ยนเวลาในห้องรอได้</div>
+                    </div>
+
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
                         <div class="room-form-label" id="wolfCountLabel">
                             <span class="icon">🐺</span> จำนวนหมาป่า:
@@ -1839,6 +1874,8 @@ $(function() {
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
                     if (selectedMode === 'pokdeng') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('pokdengTableGroup')) document.getElementById('pokdengTableGroup').style.display = selectedMode === 'pokdeng' ? 'block' : 'none';
+                    if (selectedMode === 'codenames') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('codenamesTimerGroup')) document.getElementById('codenamesTimerGroup').style.display = selectedMode === 'codenames' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
@@ -1994,7 +2031,9 @@ $(function() {
                         ? (parseInt((document.getElementById('pokerAnte') || {}).value, 10) || 500)
                         : 500,
                     pokdengRotateDealer: gameMode === 'pokdeng'
-                        && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate')
+                        && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate'),
+                    codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,
+                    codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined
                 };
             }
             }).then((result) => {
@@ -2334,6 +2373,21 @@ $(function() {
         ].join('');
     }
 
+    function buildCodenamesGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>สองทีม แดง vs น้ำเงิน — เปิดการ์ดสายลับของทีมตัวเองให้ครบก่อน · เจอ<b>มือสังหาร</b> = แพ้ทันที</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>ทีมละหัวหน้า 1 คน หัวหน้าเห็นกุญแจว่าคำไหนสีอะไร</li>',
+            '<li>หัวหน้าใบ้คำเดียว + ตัวเลข เช่น “ทะเล 2” ห้ามใช้คำบนกระดาน</li>',
+            '<li>ลูกทีมแตะเสนอ เสียงข้างมากเปิด หรือกด “เปิดเลย” · เปิดได้ถึงตัวเลข + 1</li>',
+            '<li>เปิดผิดสี = จบเทิร์น · กด “จบเทิร์น” เมื่อพอแล้ว</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>กระดาน</h4><p>25 คำ · ทีมเริ่มก่อน 9 · อีกทีม 8 · คนเดินถนน 7 · มือสังหาร 1 · 4–12 คน</p></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildPokerGuideHtml(variant) {
         if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
         return '';
@@ -2350,6 +2404,7 @@ $(function() {
             { id: 'liar',        label: '🃏 ไพ่โกหก',      html: buildLiarGuideHtml(),         color: '#b91c1c' },
             { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
             { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' },
+            { id: 'codenames',   label: '🕵️ สายลับคำใบ้',  html: buildCodenamesGuideHtml(),     color: '#2563eb' },
             { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' }
         ];
 

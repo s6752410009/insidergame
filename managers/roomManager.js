@@ -260,6 +260,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'liar_finished',
     'poker_finished',
     'pokdeng_finished',
+    'codenames_finished',
     'end',
     'finished'
 ]);
@@ -286,6 +287,8 @@ const ROOM_NAME_MODE_HINTS = {
     'ป๊อกเด้ง': 'pokdeng',
     'วงป๊อกเด้ง': 'pokdeng'
 };
+ROOM_NAME_MODE_HINTS['สายลับคำใบ้'] = 'codenames';
+ROOM_NAME_MODE_HINTS['วงสายลับคำใบ้'] = 'codenames';
 
 function inferGameModeFromRoomName(roomName) {
     const trimmed = String(roomName || '').trim();
@@ -632,6 +635,9 @@ function createRoom(roomData, creatorPlayerId) {
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
+            codenamesClueSeconds: gameMode === 'codenames' ? gameEngine.sanitizeClueSeconds(normalizedRoomData.codenamesClueSeconds) : undefined,
+            codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
+            codenamesTeams: gameMode === 'codenames' ? {} : undefined,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -984,6 +990,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (updates.pokerTableType === 'cash' && room.players.some(p => String(p.playerId || '').startsWith('bot_'))) {
         throw new Error('โต๊ะเงินจริงใส่บอทไม่ได้ — เอาบอทออกก่อน');
     }
+    // สายลับคำใบ้: กลางเกมห้ามแก้ห้อง — callback ของ updateRoom ส่ง room ทั้งก้อน (มีกุญแจกระดาน) กลับไปหาหัวห้อง
+    if (room.settings.gameMode === 'codenames' && isRoomGameInProgress(room)) {
+        throw new Error('เกมกำลังเล่นอยู่ แก้ห้องไม่ได้');
+    }
 
     // อัปเดตชื่อห้อง
     if (updates.name !== undefined) {
@@ -1031,6 +1041,11 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.pokdengRotateDealer !== undefined) {
         room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;
+    }
+    if (room.settings.gameMode === 'codenames') {
+        const codenamesEngine = getGameEngine('codenames');
+        if (updates.codenamesClueSeconds !== undefined) room.settings.codenamesClueSeconds = codenamesEngine.sanitizeClueSeconds(updates.codenamesClueSeconds);
+        if (updates.codenamesGuessSeconds !== undefined) room.settings.codenamesGuessSeconds = codenamesEngine.sanitizeGuessSeconds(updates.codenamesGuessSeconds);
     }
 
     if (updates.locked !== undefined) {

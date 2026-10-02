@@ -8,6 +8,7 @@ const avalonEngine = require('./avalonEngine');
 const liarEngine = require('./liarEngine');
 const { poker5, poker4 } = require('./pokerEngine');
 const pokdengEngine = require('./pokdengEngine');
+const codenamesEngine = require('./codenamesEngine');
 
 const ENGINES = {
     insider: insiderEngine,
@@ -22,6 +23,7 @@ const ENGINES = {
     poker4,
     pokdeng: pokdengEngine
 };
+ENGINES.codenames = codenamesEngine;
 
 function isPokerMode(gameMode) {
     return gameMode === 'poker5' || gameMode === 'poker4';
@@ -78,6 +80,11 @@ function normalizeGameMode(gameMode) {
         ป๊อกเด้ง: 'pokdeng',
         ป็อกเด้ง: 'pokdeng'
     };
+    Object.assign(aliases, {
+        codenames: 'codenames',
+        สายลับคำใบ้: 'codenames',
+        คำใบ้สายลับ: 'codenames'
+    });
 
     return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';
 }

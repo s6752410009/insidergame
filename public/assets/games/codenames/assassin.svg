@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="224" viewBox="0 0 160 224" role="img" aria-label="มือสังหาร">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2f3a"/>
+      <stop offset="1" stop-color="#0c0f14"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="46%" r="50%">
+      <stop offset="0" stop-color="#e5484d" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#e5484d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="160" height="224" rx="14" fill="url(#bg)"/>
+  <circle cx="80" cy="104" r="80" fill="url(#glow)"/>
+  <!-- cloak -->
+  <path d="M14 224 C18 170 40 120 80 52 C120 120 142 170 146 224 Z" fill="#06080c"/>
+  <!-- hood -->
+  <path d="M42 140 C40 92 56 58 80 50 C104 58 120 92 118 140 C106 150 54 150 42 140 Z" fill="#11151c"/>
+  <path d="M54 136 C54 102 64 80 80 76 C96 80 106 102 106 136 C96 142 64 142 54 136 Z" fill="#000"/>
+  <!-- eyes -->
+  <path d="M63 110 L76 113 L63 116 Z" fill="#ff5a5f"/>
+  <path d="M97 110 L84 113 L97 116 Z" fill="#ff5a5f"/>
+  <!-- mask band -->
+  <path d="M58 122 C70 128 90 128 102 122" stroke="#1d232d" stroke-width="5" fill="none"/>
+  <!-- x mark -->
+  <g stroke="#ff5a5f" stroke-width="5" stroke-linecap="round" opacity="0.9">
+    <path d="M66 182 L94 206"/><path d="M94 182 L66 206"/>
+  </g>
+  <rect x="7" y="7" width="146" height="210" rx="10" fill="none" stroke="#ff5a5f" stroke-opacity="0.5" stroke-width="1.5"/>
+</svg>

@@ -314,6 +314,20 @@
     border: 1px solid rgba(245, 200, 107, 0.4);
   }
 
+  .guide-card.mode-codenames {
+    border-color: rgba(245, 200, 107, 0.3);
+    background:
+      radial-gradient(ellipse 80% 70% at 0% -20%, rgba(229, 72, 77, 0.16), transparent 60%),
+      radial-gradient(ellipse 80% 70% at 100% -20%, rgba(59, 130, 246, 0.18), transparent 60%),
+      linear-gradient(180deg, #1a2332 0%, #141b27 60%, #10151e 100%);
+  }
+
+  .guide-card.mode-codenames .guide-mode-badge {
+    background: rgba(245, 200, 107, 0.14);
+    color: #fde68a;
+    border: 1px solid rgba(245, 200, 107, 0.38);
+  }
+
   .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
   .pd-howto-cards img { width: 26px; height: 36px; border-radius: 3px; }
 
@@ -948,6 +962,7 @@
     { id: 'poker5', ico: '♠', label: 'ไพ่ 5 ใบ' },
     { id: 'poker4', ico: '♦', label: 'สี่ใบเก' },
     { id: 'pokdeng', ico: '🎴', label: 'ป๊อกเด้ง' },
+    { id: 'codenames', ico: '🕵️', label: 'สายลับคำใบ้' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1392,6 +1407,42 @@
           </div>
         </div>
       </details>
+    </article>
+
+    <article class="guide-card mode-codenames" id="codenames">
+      <div class="guide-mode-badge">🕵️ สายลับคำใบ้</div>
+      <h2>สองทีมแข่งหาสายลับบนกระดาน 25 คำ</h2>
+      <p>แบ่งเป็น<strong>ทีมแดง</strong>กับ<strong>ทีมน้ำเงิน</strong> ทีมละหัวหน้า 1 คน หัวหน้าเห็นกุญแจว่าคำไหนเป็นสายลับของทีมตัวเอง คำไหนเป็นคนเดินถนน และคำไหนคือ<strong>มือสังหาร</strong> ส่วนลูกทีมเห็นแค่คำ ต้องเดาจากคำใบ้ของหัวหน้า</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>เป้าหมาย</strong> เปิดการ์ดสายลับของทีมตัวเองให้ครบก่อนอีกทีม · ทีมที่เริ่มก่อนมี 9 คำ อีกทีม 8 คำ</div>
+        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 4-12 คน แบ่งทีมในห้องรอ เลือกเองหรือกดสุ่มทีม · เกมละ 15-25 นาที</div>
+        <div class="guide-list-item"><strong>ใบ้</strong> หัวหน้าพิมพ์คำเดียว + ตัวเลข 0-9 หรือ ∞ เช่น “ทะเล 2” ห้ามใช้คำบนกระดานหรือคำที่มีคำบนกระดานอยู่ข้างใน ห้ามใบ้ด้วยท่าทาง</div>
+        <div class="guide-list-item"><strong>ทาย</strong> ลูกทีมแตะการ์ดเพื่อเสนอ ถ้าเกินครึ่งของลูกทีมที่ออนไลน์เลือกใบเดียวกันจะเปิดทันที หรือกด “เปิดเลย” · เปิดได้ถึงตัวเลข + 1 ใบ หรือกด “จบเทิร์น”</div>
+        <div class="guide-list-item"><strong>พลาด</strong> เปิดเจอคนเดินถนนหรือสายลับอีกทีม = จบเทิร์น · เจอ<strong>มือสังหาร</strong> = แพ้ทันที</div>
+        <div class="guide-list-item"><strong>หลุด</strong> หัวหน้าหลุดนาน ลูกทีมที่ออนไลน์ขึ้นเป็นหัวหน้าแทนอัตโนมัติ · ทีมที่ไม่มีลูกทีมออนไลน์จะถูกข้ามเทิร์น</div>
+      </div>
+      <div class="guide-coup-roles">
+        <article class="guide-coup-role">
+          <img src="/assets/games/codenames/agent-red.svg" alt="สายลับทีมแดง" width="160" height="224" loading="lazy">
+          <strong>🟥 สายลับแดง</strong>
+          <span>เปิดเจอ = ทีมแดงได้แต้ม</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/codenames/agent-blue.svg" alt="สายลับทีมน้ำเงิน" width="160" height="224" loading="lazy">
+          <strong>🟦 สายลับน้ำเงิน</strong>
+          <span>เปิดเจอ = ทีมน้ำเงินได้แต้ม</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/codenames/bystander.svg" alt="คนเดินถนน" width="160" height="224" loading="lazy">
+          <strong>🚶 คนเดินถนน</strong>
+          <span>ไม่ได้แต้ม จบเทิร์น</span>
+        </article>
+        <article class="guide-coup-role">
+          <img src="/assets/games/codenames/assassin.svg" alt="มือสังหาร" width="160" height="224" loading="lazy">
+          <strong>💀 มือสังหาร</strong>
+          <span>เปิดเจอ = แพ้ทันที</span>
+        </article>
+      </div>
     </article>
   </section>
 

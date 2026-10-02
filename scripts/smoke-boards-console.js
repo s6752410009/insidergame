@@ -102,6 +102,7 @@ async function startGameRoom(baseUrl, gameMode, playerCount) {
         assert(joined?.success, `joinRoom ${gameMode} failed`);
     }
     await delay(900);
+    if (gameMode === 'codenames') await emitAck(players[0].socket, 'codenames_shuffleTeams', {});
 
     const started = await emitAck(players[0].socket, 'startGameFromLobby', { roomId });
     assert(started?.success, `startGame ${gameMode} failed: ${JSON.stringify(started)}`);
@@ -162,7 +163,7 @@ async function main() {
         results.push(await inspectPage(browser, `${server.baseUrl}/profile?playerId=${guestId}`, 'profile'));
         results.push(await inspectPage(browser, `${server.baseUrl}/support?playerId=${guestId}`, 'support'));
 
-        for (const [mode, count] of [['insider', 4], ['spyfall', 4], ['undercover', 4], ['werewolf', 5], ['blackmarket', 5], ['coup', 3], ['avalon', 5], ['liar', 3], ['poker5', 3], ['poker4', 3], ['pokdeng', 3]]) {
+        for (const [mode, count] of [['insider', 4], ['spyfall', 4], ['undercover', 4], ['werewolf', 5], ['blackmarket', 5], ['coup', 3], ['avalon', 5], ['liar', 3], ['poker5', 3], ['poker4', 3], ['pokdeng', 3], ['codenames', 4]]) {
             const room = await startGameRoom(server.baseUrl, mode, count);
             room.players.forEach(p => openSockets.push(p.socket));
             results.push(await inspectPage(

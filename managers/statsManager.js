@@ -104,6 +104,7 @@ function createDefaultWinByRole() {
 }
 
 const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover', 'coup', 'avalon', 'liar', 'poker5', 'poker4', 'pokdeng'];
+GAME_MODES.push('codenames');
 
 function createDefaultModeStats() {
     return {
@@ -117,6 +118,7 @@ function createDefaultModeStats() {
         liar: { games: 0, wins: 0, losses: 0 },
         poker5: { games: 0, wins: 0, losses: 0 },
         poker4: { games: 0, wins: 0, losses: 0 },
+        codenames: { games: 0, wins: 0, losses: 0 },
         pokdeng: { games: 0, wins: 0, losses: 0 }
     };
 }
@@ -405,6 +407,10 @@ function recordGameEnd(roomId, gameResult) {
         return recordPokDengGameEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'codenames') {
+        return recordCodenamesGameEnd(roomId, gameResult);
+    }
+
     return recordInsiderGameEnd(roomId, gameResult);
 }
 
@@ -637,6 +643,61 @@ function recordPokDengGameEnd(roomId, gameResult) {
             won: playerWon,
             winnerName: standings[0]?.name || 'ไม่ทราบ',
             resultText: `${net > 0 ? 'กำไร +' : (net < 0 ? 'ขาดทุน ' : 'เสมอตัว ')}${net === 0 ? '' : net} ชิปโต๊ะ · ${handNumber || 0} มือ`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+/** สายลับคำใบ้: ทีมที่ชนะได้ชนะทุกคน (หัวหน้า + ลูกทีม) อีกทีมแพ้ — ผู้ชม/คนที่ออกกลางเกมไม่นับ */
+function recordCodenamesGameEnd(roomId, gameResult) {
+    const { winner, players, roomName, winReason, remaining } = gameResult;
+    if ((winner !== 'red' && winner !== 'blue') || !Array.isArray(players) || players.length === 0) {
+        console.warn('Invalid codenames game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const teamLabel = winner === 'red' ? 'ทีมแดง' : 'ทีมน้ำเงิน';
+    const reasonText = {
+        words: 'เจอสายลับครบ',
+        gift: 'อีกทีมเปิดคำสุดท้ายให้',
+        assassin: 'อีกทีมเจอมือสังหาร',
+        forfeit: 'อีกทีมไม่เหลือผู้เล่น'
+    }[winReason] || '';
+
+    players.forEach(player => {
+        if (!player || !player.playerId || isBotPlayerId(player.playerId)) return;
+        if (player.team !== 'red' && player.team !== 'blue') return;
+        const stat = initializeStats(player.playerId, player.name);
+        if (!stat) return;
+        const playerWon = player.team === winner;
+
+        stat.totalGames += 1;
+        stat.modeStats.codenames.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.codenames.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.codenames.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'codenames',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            role: player.role === 'spymaster' ? 'หัวหน้า' : 'ลูกทีม',
+            team: player.team,
+            playerCount: players.length,
+            winnerName: teamLabel,
+            resultText: `${teamLabel}ชนะ${reasonText ? ' — ' + reasonText : ''}${remaining ? ` · เหลือแดง ${remaining.red || 0} / น้ำเงิน ${remaining.blue || 0}` : ''}`
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {
             stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);

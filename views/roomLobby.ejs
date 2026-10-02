@@ -870,6 +870,12 @@
     white-space: nowrap;
   }
 
+  #btnCodenamesHowTo {
+    min-height: 44px; padding: 10px 14px; border-radius: 14px;
+    border: 1px solid rgba(245, 200, 107, 0.4); background: rgba(245, 200, 107, 0.12); color: #fde68a;
+    font-weight: 700; font-size: 0.95em; cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+  }
+
   .btn-add-bots {
     background: #059669;
     color: #ecfdf5;
@@ -1431,6 +1437,7 @@
         <button type="button" id="btnAvalonHowTo" class="<%= room.gameMode === 'avalon' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnLiarHowTo" class="<%= room.gameMode === 'liar' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokDengHowTo" class="<%= room.gameMode === 'pokdeng' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnCodenamesHowTo" class="<%= room.gameMode === 'codenames' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1472,6 +1479,7 @@
 <%- contentFor('script') %>
 <script src="/js/pokerRankChart.js?v=20260814b"></script>
 <script src="/js/coupGuide.js"></script>
+<script src="/js/codenamesLobby.js?v=1"></script>
 <script>
   $(function () {
     const socket = window.appSocket || io();
@@ -1585,6 +1593,15 @@
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
         roundLabel: 'เวลาคิดต่อตา:'
       }
+    };
+    currentModeMeta.codenames = {
+      minPlayers: 4,
+      maxPlayers: 12,
+      label: 'สายลับคำใบ้',
+      startLabel: '🕵️ เริ่มเกม',
+      readyText: 'ทีมพร้อมแล้ว กดเริ่มได้เลย',
+      waitingText: 'รอผู้เล่นอย่างน้อย 4 คน แล้วแบ่ง 2 ทีม',
+      roundLabel: 'เวลาใบ้:'
     };
     const werewolfRoleVisuals = {
       werewolf: { emoji: '🐺', teamLabel: 'ฝั่งหมาป่า' },
@@ -1763,6 +1780,9 @@
       if (compactMode === 'pokdeng' || compactMode === 'ป๊อกเด้ง' || compactMode === 'ป็อกเด้ง') {
         return 'pokdeng';
       }
+      if (compactMode === 'codenames' || compactMode === 'สายลับคำใบ้') {
+        return 'codenames';
+      }
       return 'insider';
     }
 
@@ -1776,6 +1796,9 @@
       }
       if (compact === 'ป๊อกเด้ง' || compact === 'pokdeng') {
         return 'pokdeng';
+      }
+      if (compact === 'สายลับคำใบ้' || compact === 'วงสายลับคำใบ้') {
+        return 'codenames';
       }
       return null;
     }
@@ -1831,6 +1854,9 @@
       if (normalizedMode === 'pokdeng') {
         return { background: '#5c1419', color: '#fde68a' };
       }
+      if (normalizedMode === 'codenames') {
+        return { background: '#1a2332', color: '#f5c86b' };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -1883,6 +1909,9 @@
       }
       if (normalizedMode === 'pokdeng') {
         return { kicker: '🎴 โต๊ะป๊อกเด้ง', pills: [] };
+      }
+      if (normalizedMode === 'codenames') {
+        return { kicker: '🕵️ ห้องเตรียมสายลับคำใบ้', pills: [] };
       }
 
       return {
@@ -1969,6 +1998,7 @@
       setElementHidden('#btnLiarHowTo', resolvedMode !== 'liar');
       setElementHidden('#btnPokerHowTo', resolvedMode !== 'poker5' && resolvedMode !== 'poker4');
       setElementHidden('#btnPokDengHowTo', resolvedMode !== 'pokdeng');
+      setElementHidden('#btnCodenamesHowTo', resolvedMode !== 'codenames');
       setElementHidden('#btnPokDengAddBots', !(isAdmin && resolvedMode === 'pokdeng'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
@@ -2038,6 +2068,9 @@
             ' · <strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> (' + (settings && settings.pokdengRotateDealer ? 'หมุนเจ้ามือทุกตา' : 'หัวห้องเป็นเจ้ามือ') + ')',
             '</p>'
           ].join('');
+        } else if (resolvedMode === 'codenames' && window.codenamesLobby) {
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = window.codenamesLobby.html(payload);
         } else if (resolvedMode === 'blackmarket') {
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
@@ -2564,7 +2597,13 @@
       const count = (players || []).filter(function(player) {
         return player.online !== false;
       }).length;
-      if (count >= modeMeta.minPlayers) {
+      const codenamesBlock = normalizeLobbyGameMode(currentGameMode) === 'codenames' && window.codenamesLobby && latestRoomPayload
+        ? window.codenamesLobby.blockReason(latestRoomPayload)
+        : null;
+      if (count >= modeMeta.minPlayers && codenamesBlock) {
+        btn.prop('disabled', true);
+        $('#lobbyStatusText').text(codenamesBlock);
+      } else if (count >= modeMeta.minPlayers) {
         btn.prop('disabled', false);
         $('#lobbyStatusText').text(modeMeta.readyText);
       } else {
@@ -3043,6 +3082,26 @@
 
     $('#btnLiarHowTo').on('click', function() {
       showLiarLobbyGuide();
+    });
+
+    if (window.codenamesLobby) {
+      window.codenamesLobby.init({ socket: socket, playerId: playerId, isAdmin: function() { return isAdmin; } });
+    }
+    $('#btnCodenamesHowTo').on('click', function() {
+      Swal.fire({
+        title: '🕵️ สายลับคำใบ้ เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p><strong>สองทีม แดง vs น้ำเงิน</strong> · ทีมละหัวหน้า 1 คน ที่เหลือเป็นลูกทีม</p>' +
+          '<p>1. กระดาน 25 คำ หัวหน้าเห็นว่าคำไหนเป็นสายลับทีมตัวเอง คำไหนคนเดินถนน และ<strong>มือสังหาร</strong></p>' +
+          '<p>2. หัวหน้าใบ้ <strong>คำเดียว + ตัวเลข</strong> เช่น “ทะเล 2” — ห้ามใช้คำบนกระดาน ห้ามใบ้ทางอื่น</p>' +
+          '<p>3. ลูกทีมแตะการ์ดเพื่อเสนอ เสียงข้างมากเปิดเลย หรือกด “เปิดเลย” · เปิดได้ถึงตัวเลข + 1 ใบ</p>' +
+          '<p>4. เปิดผิดสี = จบเทิร์น · เจอ<strong>มือสังหาร</strong> = แพ้ทันที · เจอสายลับทีมตัวเองครบก่อน = ชนะ</p>' +
+          '<p>ทีมที่เริ่มก่อนมี 9 คำ อีกทีม 8 คำ</p></div>',
+        background: '#151d2a',
+        color: '#fff',
+        confirmButtonColor: '#e2493b',
+        confirmButtonText: 'เข้าใจแล้ว'
+      });
     });
 
     $('#btnPokDengHowTo').on('click', function() {
