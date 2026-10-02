@@ -328,6 +328,21 @@
     border: 1px solid rgba(245, 200, 107, 0.38);
   }
 
+  .guide-card.mode-wavelength {
+    border-color: rgba(94, 234, 212, 0.28);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(20, 184, 166, 0.2), transparent 55%),
+      linear-gradient(180deg, #0f1b2b 0%, #0d1726 55%, #0b1320 100%);
+  }
+
+  .guide-card.mode-wavelength .guide-mode-badge {
+    background: rgba(20, 184, 166, 0.2);
+    color: #99f6e4;
+    border: 1px solid rgba(94, 234, 212, 0.4);
+  }
+
+  .wl-howto-dial { display: block; width: min(100%, 320px); height: auto; margin: 12px auto 4px; }
+
   .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
   .pd-howto-cards img { width: 26px; height: 36px; border-radius: 3px; }
 
@@ -963,6 +978,7 @@
     { id: 'poker4', ico: '♦', label: 'สี่ใบเก' },
     { id: 'pokdeng', ico: '🎴', label: 'ป๊อกเด้ง' },
     { id: 'codenames', ico: '🕵️', label: 'สายลับคำใบ้' },
+    { id: 'wavelength', ico: '📡', label: 'คลื่นความคิด' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1442,6 +1458,20 @@
           <strong>💀 มือสังหาร</strong>
           <span>เปิดเจอ = แพ้ทันที</span>
         </article>
+      </div>
+    </article>
+
+    <article class="guide-card mode-wavelength" id="wavelength">
+      <div class="guide-mode-badge">📡 คลื่นความคิด</div>
+      <h2>ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าเป้าอยู่ตรงไหน</h2>
+      <p>แต่ละรอบมีการ์ดคำตรงข้าม เช่น <strong>ร้อน ↔ เย็น</strong> และเป้าลับบนหน้าปัดที่ผู้ใบ้เห็นคนเดียว ผู้ใบ้พิมพ์คำใบ้ที่น่าจะอยู่ตรงเป้านั้น (เป้าค่อนไปทางเย็น → “ไอติม”) แล้วทุกคนหมุนเข็มของตัวเองไปตรงที่คิดว่าใช่ เล่น 3–12 คน ไม่ต้องพูด เล่นในจอได้เลย</p>
+      <img class="wl-howto-dial" src="/assets/games/wavelength/emblem.svg" alt="หน้าปัดคลื่นความคิด มีแถบคะแนน 2 3 4 3 2" width="320" height="180" loading="lazy">
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>ผู้ใบ้</strong> วนตามที่นั่ง 1 หรือ 2 รอบโต๊ะ (ตั้งในห้อง) · เลือกการ์ด 1 จาก 2 ใบ สุ่มใหม่ได้ 1 ครั้ง · คิดคำใบ้ 60 วิ ไม่ทัน = ข้ามรอบ</div>
+        <div class="guide-list-item"><strong>คำใบ้</strong> คำเดียวหรือวลีสั้น ๆ ไม่เกิน 40 ตัวอักษร ห้ามใช้คำบนการ์ด ห้ามตัวเลข</div>
+        <div class="guide-list-item"><strong>คนทาย</strong> ลากเข็มบนหน้าปัดแล้วกดล็อกภายใน 45 วิ · เห็นว่าใครล็อกแล้ว แต่ไม่เห็นว่าล็อกตรงไหน · ไม่ล็อก = ล็อกให้ตรงที่เข็มอยู่</div>
+        <div class="guide-list-item"><strong>แต้ม</strong> เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 · ผู้ใบ้ได้ค่าเฉลี่ยแต้มของคนทาย (ปัดเศษ) — ใบ้ดี ทุกคนได้</div>
+        <div class="guide-list-item"><strong>ชนะ</strong> ครบทุกคนแล้วแต้มรวมสูงสุดชนะ เสมอกันชนะร่วม · เพื่อนมาทีหลังเข้ากลางเกมได้ เริ่มทายรอบถัดไป</div>
       </div>
     </article>
   </section>

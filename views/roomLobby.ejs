@@ -761,6 +761,19 @@
   .uc-mw-toggle[aria-pressed="true"] { background: #f5c86b; color: #1a2332; border-color: transparent; }
   .uc-mw-toggle:disabled { cursor: default; opacity: 0.8; }
 
+  #btnWavelengthHowTo {
+    padding: 10px 14px; min-height: 44px; border-radius: 14px;
+    border: 1px solid rgba(94, 234, 212, 0.45); background: rgba(20, 184, 166, 0.14); color: #99f6e4;
+    font-weight: 700; font-size: 0.95em; cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+  }
+  .wl-laps { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .wl-laps button {
+    flex: 1 1 120px; min-height: 44px; padding: 0 12px; border-radius: 12px; font-weight: 700; cursor: pointer;
+    border: 1px solid rgba(94, 234, 212, 0.35); background: #10233a; color: #e6fffb;
+  }
+  .wl-laps button[aria-pressed="true"] { background: #5eead4; color: #0b1a2a; border-color: transparent; }
+  .wl-laps button:disabled { cursor: default; opacity: 0.85; }
+
   #btnCoupHowTo {
     padding: 10px 14px;
     border-radius: 14px;
@@ -1438,6 +1451,7 @@
         <button type="button" id="btnLiarHowTo" class="<%= room.gameMode === 'liar' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokDengHowTo" class="<%= room.gameMode === 'pokdeng' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnCodenamesHowTo" class="<%= room.gameMode === 'codenames' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnWavelengthHowTo" class="<%= room.gameMode === 'wavelength' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1592,6 +1606,15 @@
         readyText: 'พร้อมแล้ว เปิดโต๊ะได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
         roundLabel: 'เวลาคิดต่อตา:'
+      },
+      wavelength: {
+        minPlayers: 3,
+        maxPlayers: 12,
+        label: 'คลื่นความคิด',
+        startLabel: '📡 เริ่มเกม',
+        readyText: 'พร้อมแล้ว เริ่มได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 3 คนก่อนเริ่ม',
+        roundLabel: 'เวลาคิดคำใบ้:'
       }
     };
     currentModeMeta.codenames = {
@@ -1783,6 +1806,9 @@
       if (compactMode === 'codenames' || compactMode === 'สายลับคำใบ้') {
         return 'codenames';
       }
+      if (compactMode === 'wavelength' || compactMode === 'คลื่นความคิด') {
+        return 'wavelength';
+      }
       return 'insider';
     }
 
@@ -1799,6 +1825,9 @@
       }
       if (compact === 'สายลับคำใบ้' || compact === 'วงสายลับคำใบ้') {
         return 'codenames';
+      }
+      if (compact === 'คลื่นความคิด' || compact === 'วงคลื่นความคิด' || compact === 'wavelength') {
+        return 'wavelength';
       }
       return null;
     }
@@ -1857,6 +1886,9 @@
       if (normalizedMode === 'codenames') {
         return { background: '#1a2332', color: '#f5c86b' };
       }
+      if (normalizedMode === 'wavelength') {
+        return { background: '#10233a', color: '#99f6e4' };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -1912,6 +1944,9 @@
       }
       if (normalizedMode === 'codenames') {
         return { kicker: '🕵️ ห้องเตรียมสายลับคำใบ้', pills: [] };
+      }
+      if (normalizedMode === 'wavelength') {
+        return { kicker: '📡 ห้องคลื่นความคิด', pills: [] };
       }
 
       return {
@@ -1999,6 +2034,7 @@
       setElementHidden('#btnPokerHowTo', resolvedMode !== 'poker5' && resolvedMode !== 'poker4');
       setElementHidden('#btnPokDengHowTo', resolvedMode !== 'pokdeng');
       setElementHidden('#btnCodenamesHowTo', resolvedMode !== 'codenames');
+      setElementHidden('#btnWavelengthHowTo', resolvedMode !== 'wavelength');
       setElementHidden('#btnPokDengAddBots', !(isAdmin && resolvedMode === 'pokdeng'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
@@ -2067,6 +2103,19 @@
             'ลงเดิมพัน แจก 2 ใบ ได้ 8/9 = ป๊อก เปิดเลย · ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ',
             ' · <strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> (' + (settings && settings.pokdengRotateDealer ? 'หมุนเจ้ามือทุกตา' : 'หัวห้องเป็นเจ้ามือ') + ')',
             '</p>'
+          ].join('');
+        } else if (resolvedMode === 'wavelength') {
+          const laps = settings && Number(settings.wavelengthLaps) === 2 ? 2 : 1;
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(20,184,166,0.22); color:#99f6e4;">📡 คลื่นความคิด · 3–12 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทาย · ใกล้เป้าได้ 4/3/2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ย',
+            '</p>',
+            '<div class="wl-laps" role="group" aria-label="ผู้ใบ้วนกี่รอบโต๊ะ">',
+            '<button type="button" class="wl-laps-btn" data-laps="1" aria-pressed="' + (laps === 1 ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>ใบ้คนละ 1 ครั้ง</button>',
+            '<button type="button" class="wl-laps-btn" data-laps="2" aria-pressed="' + (laps === 2 ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>ใบ้คนละ 2 ครั้ง</button>',
+            '</div>'
           ].join('');
         } else if (resolvedMode === 'codenames' && window.codenamesLobby) {
           lobbySpotlight.style.display = 'block';
@@ -3074,6 +3123,34 @@
 
     $('#btnCoupHowTo').on('click', function() {
       showCoupLobbyGuide();
+    });
+
+    $(document).on('click', '.wl-laps-btn', function() {
+      if (!isAdmin || this.getAttribute('aria-pressed') === 'true') return;
+      const laps = Number(this.getAttribute('data-laps')) === 2 ? 2 : 1;
+      $('.wl-laps-btn').prop('disabled', true);
+      socket.emit('updateRoom', { wavelengthLaps: laps }, function(res) {
+        $('.wl-laps-btn').prop('disabled', false);
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    });
+
+    $('#btnWavelengthHowTo').on('click', function() {
+      Swal.fire({
+        title: '📡 คลื่นความคิด เล่นยังไง',
+        html: '<div style="text-align:left; line-height:1.6;">' +
+          '<p>1. ผู้ใบ้ (วนตามที่นั่ง) เลือกการ์ด 1 จาก 2 ใบ เช่น <strong>ร้อน ↔ เย็น</strong> แล้วเห็นเป้าลับบนหน้าปัดคนเดียว</p>' +
+          '<p>2. พิมพ์คำใบ้สั้น ๆ ที่อยู่ตรงเป้านั้น เช่น เป้าค่อนไปทางเย็น → “ไอติม” (ห้ามใช้คำบนการ์ด ห้ามตัวเลข · 60 วิ)</p>' +
+          '<p>3. ที่เหลือหมุนเข็มของตัวเองแล้วกดล็อก (45 วิ) · เห็นว่าใครล็อกแล้ว แต่ไม่เห็นว่าล็อกตรงไหน</p>' +
+          '<p>4. เปิดเป้า: <strong>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2</strong> แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยของทุกคน — ใบ้ดี ได้เยอะ</p>' +
+          '<p>ครบทุกคนแล้วแต้มสูงสุดชนะ (เสมอกันชนะร่วม) · เข้ากลางเกมได้ เริ่มทายรอบถัดไป</p></div>',
+        background: '#0f1b2b',
+        color: '#fff',
+        confirmButtonColor: '#0f766e',
+        confirmButtonText: 'เข้าใจแล้ว'
+      });
     });
 
     $('#btnAvalonHowTo').on('click', function() {

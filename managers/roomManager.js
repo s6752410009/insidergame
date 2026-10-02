@@ -261,6 +261,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'poker_finished',
     'pokdeng_finished',
     'codenames_finished',
+    'wavelength_finished',
     'end',
     'finished'
 ]);
@@ -285,7 +286,9 @@ const ROOM_NAME_MODE_HINTS = {
     '4 ใบเก': 'poker4',
     '4ใบเก': 'poker4',
     'ป๊อกเด้ง': 'pokdeng',
-    'วงป๊อกเด้ง': 'pokdeng'
+    'วงป๊อกเด้ง': 'pokdeng',
+    'คลื่นความคิด': 'wavelength',
+    'วงคลื่นความคิด': 'wavelength'
 };
 ROOM_NAME_MODE_HINTS['สายลับคำใบ้'] = 'codenames';
 ROOM_NAME_MODE_HINTS['วงสายลับคำใบ้'] = 'codenames';
@@ -557,7 +560,7 @@ function isRoomJoinable(room, options = {}) {
         return false;
     }
 
-    return !isRoomGameInProgress(room);
+    return !isRoomGameInProgress(room) || !!getGameEngine(room.settings.gameMode).allowsLateJoin;
 }
 
 function clampMaxPlayers(gameEngine, requestedMaxPlayers, currentPlayers = 0) {
@@ -638,6 +641,7 @@ function createRoom(roomData, creatorPlayerId) {
             codenamesClueSeconds: gameMode === 'codenames' ? gameEngine.sanitizeClueSeconds(normalizedRoomData.codenamesClueSeconds) : undefined,
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
+            wavelengthLaps: Number(normalizedRoomData.wavelengthLaps) === 2 ? 2 : 1,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -692,7 +696,8 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
             throw new Error('Room is full');
         }
 
-        if (isRoomGameInProgress(room) && !rejoinableGamePlayer) {
+        // บางโหมด (คลื่นความคิด) รับคนเข้ากลางเกมได้ — engine เป็นคนพาเข้าร่วมรอบหน้า
+        if (isRoomGameInProgress(room) && !rejoinableGamePlayer && !gameEngine.allowsLateJoin) {
             throw new Error('เกมกำลังดำเนินอยู่ ไม่สามารถเข้าร่วมได้');
         }
     }
@@ -1046,6 +1051,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
         const codenamesEngine = getGameEngine('codenames');
         if (updates.codenamesClueSeconds !== undefined) room.settings.codenamesClueSeconds = codenamesEngine.sanitizeClueSeconds(updates.codenamesClueSeconds);
         if (updates.codenamesGuessSeconds !== undefined) room.settings.codenamesGuessSeconds = codenamesEngine.sanitizeGuessSeconds(updates.codenamesGuessSeconds);
+    }
+    if (updates.wavelengthLaps !== undefined) {
+        room.settings.wavelengthLaps = Number(updates.wavelengthLaps) === 2 ? 2 : 1;
     }
 
     if (updates.locked !== undefined) {

@@ -1,0 +1,1334 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<style>
+  html.wl-active,
+  html.wl-active body.content {
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: oklch(0.17 0.035 255) !important;
+  }
+  html.wl-active .container-fluid > header,
+  html.wl-active .footer,
+  html.wl-active #music-controls { display: none !important; }
+  html.wl-active, html.wl-active .container-fluid, html.wl-active .container-fluid > .row { background: oklch(0.17 0.035 255) !important; background-image: none !important; }
+  html.wl-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  html.wl-active .container-fluid > .row { margin: 0 !important; }
+  html.wl-active .col-lg-12 { padding: 0 !important; }
+
+  .wl {
+    --wl-bg: oklch(0.17 0.035 255);
+    --wl-surface: oklch(0.21 0.04 255);
+    --wl-surface-2: oklch(0.26 0.045 255);
+    --wl-line: oklch(0.85 0.1 185 / 0.2);
+    --wl-line-soft: oklch(1 0 0 / 0.09);
+    --wl-ink: oklch(0.97 0.01 240);
+    --wl-soft: oklch(0.86 0.02 240);
+    --wl-muted: oklch(0.73 0.03 245);
+    --wl-gold: oklch(0.84 0.13 85);
+    --wl-teal: oklch(0.85 0.12 182);
+    --wl-teal-deep: oklch(0.55 0.1 190);
+    --wl-coral: oklch(0.75 0.15 32);
+    --wl-band2: oklch(0.83 0.13 88);
+    --wl-band3: oklch(0.73 0.15 40);
+    --wl-band4: oklch(0.82 0.13 182);
+    --wl-win: oklch(0.84 0.15 160);
+    --wl-miss: oklch(0.72 0.05 250);
+    --wl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --wl-spring: cubic-bezier(0.25, 1.35, 0.4, 1);
+    --wl-display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 8px 16px calc(var(--wl-dock-h, 160px) + 20px);
+    color: var(--wl-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    text-align: left;
+  }
+  body.content { background: var(--wl-bg, oklch(0.17 0.035 255)); }
+  .wl *, .wl *::before, .wl *::after { box-sizing: border-box; }
+  .wl button, .wl input { font-family: inherit; }
+  .wl h1, .wl h2, .wl h3, .wl p { overflow-wrap: anywhere; }
+
+  /* ---------- top ---------- */
+  .wl-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px; padding: 6px 0 10px; }
+  .wl-top > :first-child { padding-right: 104px; min-width: 0; } /* เว้นที่ให้ปุ่มแชทมุมขวาบน */
+  .wl-kicker { color: var(--wl-teal); font-family: var(--wl-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.1em; }
+  .wl-title { margin: 0; font-family: var(--wl-display); font-weight: 700; font-size: clamp(1.1rem, 4.4vw, 1.5rem); line-height: 1.2; }
+  .wl-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .wl-pill {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px;
+    border-radius: 999px; border: 1px solid var(--wl-line); background: var(--wl-surface);
+    color: var(--wl-ink); font-size: 0.86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .wl-pill:hover { background: var(--wl-surface-2); }
+  .wl-pill--danger { color: oklch(0.85 0.08 25); border-color: oklch(0.7 0.14 25 / 0.45); }
+  .wl-pill:focus-visible, .wl-btn:focus-visible, .wl-option:focus-visible, .wl-input:focus-visible { outline: 2px solid var(--wl-gold); outline-offset: 2px; }
+
+  /* ---------- now bar ---------- */
+  .wl-now {
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px;
+    padding: 10px 14px 12px; border-radius: 16px; background: var(--wl-surface); border: 1px solid var(--wl-line-soft);
+  }
+  .wl-now.is-mine { background: oklch(0.3 0.06 185 / 0.55); border-color: var(--wl-teal); }
+  .wl-now-phase { font-family: var(--wl-display); font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; color: var(--wl-teal); }
+  .wl-now-copy { grid-column: 1; font-size: 1.04rem; font-weight: 700; line-height: 1.3; min-width: 0; }
+  .wl-now-timer { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
+  .wl-now-sec { font-family: var(--wl-display); font-size: 1.6rem; font-weight: 700; color: var(--wl-gold); font-variant-numeric: tabular-nums; line-height: 1; }
+  .wl-now-hint { display: block; font-size: 0.7rem; color: var(--wl-muted); margin-top: 3px; max-width: 120px; }
+  .wl-now-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--wl-teal); transform-origin: left center; transform: scaleX(0); }
+  .wl-now.is-urgent .wl-now-bar { background: var(--wl-coral); }
+  .wl-now.is-urgent .wl-now-sec { color: var(--wl-coral); }
+
+  /* ---------- stage ---------- */
+  .wl-stage {
+    position: relative; margin-top: 10px; padding: 14px 12px 12px; border-radius: 26px;
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 0%, oklch(0.3 0.06 210 / 0.55), transparent 70%),
+      var(--wl-surface);
+    border: 1px solid var(--wl-line-soft);
+  }
+  .wl-spectrum { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; min-height: 48px; }
+  .wl-end {
+    display: flex; align-items: center; min-height: 44px; padding: 6px 12px; border-radius: 14px;
+    font-family: var(--wl-display); font-weight: 700; font-size: 1rem; line-height: 1.2; min-width: 0;
+  }
+  .wl-end--left { background: oklch(0.85 0.12 182 / 0.14); color: var(--wl-teal); border: 1px solid oklch(0.85 0.12 182 / 0.35); justify-content: flex-start; }
+  .wl-end--right { background: oklch(0.75 0.15 32 / 0.14); color: oklch(0.85 0.1 40); border: 1px solid oklch(0.75 0.15 32 / 0.4); justify-content: flex-end; text-align: right; }
+  .wl-end span { overflow-wrap: anywhere; }
+  .wl-arrow { color: var(--wl-muted); font-size: 1.1rem; }
+  .wl-spectrum.is-empty .wl-end { opacity: 0.45; }
+
+  .wl-clue { margin: 10px 0 2px; text-align: center; min-height: 0; }
+  .wl-clue-label { font-size: 0.74rem; color: var(--wl-muted); letter-spacing: 0.08em; }
+  .wl-clue-text {
+    display: inline-block; max-width: 100%; margin-top: 2px; padding: 6px 18px; border-radius: 16px;
+    font-family: var(--wl-display); font-weight: 700; font-size: clamp(1.35rem, 6.4vw, 1.9rem); line-height: 1.2;
+    color: var(--wl-ink); background: oklch(0.13 0.03 255 / 0.65); border: 1px solid var(--wl-line);
+    overflow-wrap: anywhere;
+  }
+  .wl-clue-text.is-in { animation: wlClueIn 0.55s var(--wl-spring) both; }
+  .wl-wait { text-align: center; color: var(--wl-soft); font-weight: 600; margin: 10px 0 0; }
+  .wl-wait strong { color: var(--wl-teal); }
+
+  /* ---------- dial ---------- */
+  .wl-dial-wrap { position: relative; width: 100%; max-width: 560px; margin: 8px auto 0; user-select: none; -webkit-user-select: none; }
+  .wl-dial { display: block; width: 100%; height: auto; overflow: visible; }
+  .wl-dial.is-interactive { touch-action: none; cursor: grab; }
+  .wl-dial.is-dragging { cursor: grabbing; }
+  .wl-dial g, .wl-dial path, .wl-dial line, .wl-dial circle { transform-box: view-box; }
+  .wl-rot { transform-origin: 200px 200px; }
+  .wl-bands { will-change: transform; }
+  .wl-shutter { transition: transform 0.9s var(--wl-ease); will-change: transform; }
+  .wl-shutter.is-open { transform: rotate(-180deg); }
+  .wl-shutter.no-anim, .wl-bands.no-anim { transition: none !important; }
+  .wl-beam { opacity: 0; }
+  .wl-beam.is-idle { animation: wlBeamIdle 3.2s ease-in-out infinite alternate; }
+  .wl-beam.is-sweep { animation: wlBeamSweep 1.15s var(--wl-ease) both; }
+  .wl-tick-lit { opacity: 0; transition: opacity 0.12s ease-out; }
+  .wl-tick-lit.is-on { opacity: 1; }
+  .wl-needle { transition: opacity 0.25s ease-out; }
+  .wl-needle.is-hidden { opacity: 0; pointer-events: none; }
+  .wl-needle .wl-knob-ring { transform-origin: 200px 50px; transition: transform 0.18s var(--wl-spring); }
+  .wl-dial.is-dragging .wl-knob-ring { transform: scale(1.22); }
+  .wl-needle.is-locked .wl-knob-core { fill: var(--wl-teal); }
+  .wl-needle.is-locked .wl-needle-line { stroke: var(--wl-teal); }
+  .wl-needle-wobble { transform-origin: 200px 200px; }
+  .wl-needle-wobble.is-clunk { animation: wlClunk 0.5s var(--wl-spring); }
+  .wl-needle.is-ghost { opacity: 0.35; }
+  .wl-knob-hit { cursor: grab; }
+  .wl-knob-hit:focus { outline: none; }
+  .wl-knob-hit:focus-visible + .wl-knob-ring { stroke: var(--wl-gold); }
+
+  .wl-pins { position: absolute; inset: 0; pointer-events: none; }
+  .wl-pin {
+    position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 4px;
+    max-width: 96px; padding: 2px 8px 2px 3px; border-radius: 999px;
+    background: oklch(0.14 0.03 255 / 0.92); border: 1.5px solid var(--pin-color, #fff);
+    font-size: 0.7rem; font-weight: 700; color: var(--wl-ink); white-space: nowrap;
+    transform: translate(-50%, -50%);
+  }
+  .wl-pin-dot { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; background: var(--pin-color, #fff); }
+  .wl-pin-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .wl-pin.is-me { border-width: 2px; background: oklch(0.25 0.06 185 / 0.95); }
+  .wl-pin.is-drop { animation: wlPinDrop 0.5s var(--wl-spring) both; animation-delay: var(--d, 0ms); }
+
+  .wl-dial-note { text-align: center; font-size: 0.8rem; color: var(--wl-muted); margin: 4px 0 0; min-height: 1.2em; }
+
+  /* ---------- giver card picks ---------- */
+  .wl-options { display: grid; gap: 8px; margin-top: 4px; }
+  .wl-options-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .wl-options-title { font-family: var(--wl-display); font-weight: 700; color: var(--wl-gold); font-size: 0.92rem; }
+  .wl-option {
+    position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr); align-items: center; gap: 8px;
+    min-height: 56px; padding: 8px 12px; border-radius: 16px; cursor: pointer; text-align: left;
+    background: oklch(0.15 0.03 255 / 0.7); border: 1.5px solid var(--wl-line-soft); color: var(--wl-ink);
+    transition: transform 0.12s var(--wl-ease), border-color 0.2s ease-out, background-color 0.2s ease-out;
+  }
+  .wl-option:active { transform: scale(0.98); }
+  .wl-option.is-picked { border-color: var(--wl-teal); background: oklch(0.28 0.06 190 / 0.6); }
+  .wl-option-l { font-weight: 700; color: var(--wl-teal); min-width: 0; overflow-wrap: anywhere; }
+  .wl-option-r { font-weight: 700; color: oklch(0.85 0.1 40); text-align: right; min-width: 0; overflow-wrap: anywhere; }
+  .wl-option-bar { height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--wl-teal), var(--wl-gold), var(--wl-coral)); }
+  .wl-option.is-in { animation: wlOptionIn 0.45s var(--wl-spring) both; animation-delay: var(--d, 0ms); }
+
+  /* ---------- lock chips ---------- */
+  .wl-locks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+  .wl-lock {
+    display: inline-flex; align-items: center; gap: 5px; max-width: 150px; min-height: 30px; padding: 2px 10px 2px 3px;
+    border-radius: 999px; background: oklch(0.14 0.03 255 / 0.6); border: 1px solid var(--wl-line-soft);
+    font-size: 0.78rem; color: var(--wl-soft); white-space: nowrap;
+  }
+  .wl-lock-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .wl-lock.is-locked { border-color: oklch(0.85 0.12 182 / 0.6); color: var(--wl-ink); background: oklch(0.3 0.06 185 / 0.45); }
+  .wl-lock-state { flex: 0 0 auto; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed oklch(0.75 0.03 250); font-size: 10px; font-weight: 700; line-height: 1; }
+  .wl-lock.is-locked .wl-lock-state { border: 0; background: var(--wl-teal); color: oklch(0.2 0.05 200); }
+  .wl-lock.is-off .wl-lock-state { width: auto; height: auto; border: 0; border-radius: 0; font-size: 0.72rem; font-weight: 600; }
+  .wl-lock.is-off { opacity: 0.5; }
+  .wl-lock.is-pulse { animation: wlPulse 0.45s var(--wl-spring); }
+
+  /* ---------- results ---------- */
+  .wl-results { margin-top: 12px; }
+  .wl-results-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .wl-results h2 { margin: 0; font-family: var(--wl-display); font-size: 1rem; color: var(--wl-gold); }
+  .wl-results-sub { font-size: 0.78rem; color: var(--wl-muted); }
+  .wl-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--wl-line-soft); }
+  .wl-row:first-of-type { border-top: 0; }
+  .wl-row-name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl-row-sub { grid-column: 2; font-size: 0.78rem; color: var(--wl-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wl-pts {
+    grid-column: 3; grid-row: 1 / span 2; display: inline-flex; align-items: center; justify-content: center; min-width: 52px; min-height: 30px; padding: 2px 10px;
+    border-radius: 999px; font-family: var(--wl-display); font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums;
+    background: oklch(0.3 0.03 250 / 0.7); color: var(--wl-miss);
+  }
+  .wl-pts.p4 { background: var(--wl-band4); color: oklch(0.2 0.05 200); }
+  .wl-pts.p3 { background: var(--wl-band3); color: oklch(0.18 0.05 40); }
+  .wl-pts.p2 { background: var(--wl-band2); color: oklch(0.22 0.05 85); }
+  .wl-pts.giver { background: oklch(0.84 0.13 85 / 0.18); color: var(--wl-gold); border: 1px solid oklch(0.84 0.13 85 / 0.5); }
+  .wl-pts.is-pop { animation: wlPop 0.45s var(--wl-spring) both; animation-delay: var(--d, 0ms); }
+  .wl-skip { text-align: center; padding: 6px 0 2px; }
+  .wl-skip strong { display: block; font-family: var(--wl-display); font-size: 1.15rem; color: var(--wl-coral); }
+  .wl-skip span { color: var(--wl-muted); font-size: 0.86rem; }
+
+  /* ---------- scoreboard ---------- */
+  .wl-board { margin-top: 12px; padding: 12px 14px; border-radius: 20px; background: var(--wl-surface); border: 1px solid var(--wl-line-soft); }
+  .wl-board h2 { margin: 0 0 4px; font-family: var(--wl-display); font-size: 0.95rem; color: var(--wl-soft); }
+  .wl-score { display: grid; grid-template-columns: 26px 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 40px; }
+  .wl-score-rank { font-family: var(--wl-display); font-weight: 700; color: var(--wl-muted); text-align: center; }
+  .wl-score-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .wl-score-name small { color: var(--wl-muted); font-weight: 500; }
+  .wl-score-val { font-family: var(--wl-display); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--wl-ink); }
+  .wl-score-val em { font-style: normal; color: var(--wl-teal); font-size: 0.8rem; margin-left: 4px; }
+  .wl-score.is-me .wl-score-name { color: var(--wl-teal); }
+  .wl-score.is-giver .wl-score-rank { color: var(--wl-gold); }
+
+  /* ---------- dock ---------- */
+  .wl-dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 10px max(16px, calc((100vw - 728px) / 2)) calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--wl-bg); border-top: 1px solid var(--wl-line);
+    box-shadow: 0 -12px 30px oklch(0 0 0 / 0.45);
+    max-height: 60vh; overflow-y: auto;
+  }
+  .wl-dock:empty { display: none; }
+  .wl-dock.is-static { position: static; max-height: none; margin: 12px 0 0; padding: 14px; border: 1px solid var(--wl-line); border-radius: 20px; box-shadow: none; }
+  .wl.is-finished { padding-bottom: 24px; }
+  .wl.is-finished #wlSpectrum, .wl.is-finished #wlDialWrap, .wl.is-finished #wlDialNote, .wl.is-finished #wlBoard { display: none !important; }
+  .wl-pill[hidden], .wl [hidden] { display: none !important; }
+  .wl-actions { display: grid; gap: 8px; }
+  .wl-row-btns { display: flex; gap: 8px; }
+  .wl-row-btns > * { flex: 1 1 0; min-width: 0; }
+  .wl-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 16px;
+    border-radius: 14px; border: 1px solid var(--wl-line); background: var(--wl-surface-2); color: var(--wl-ink);
+    font-weight: 700; font-size: 1.02rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: transform 0.08s ease-out, background-color 0.18s ease-out;
+  }
+  .wl-btn:active { transform: scale(0.97); }
+  .wl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .wl-btn--primary { background: var(--wl-teal); color: oklch(0.2 0.05 200); border-color: transparent; font-family: var(--wl-display); font-size: 1.1rem; }
+  .wl-btn--primary:hover { background: oklch(0.89 0.11 182); }
+  .wl-btn--ghost { background: transparent; color: var(--wl-soft); }
+  .wl-btn--big { min-height: 60px; font-size: 1.2rem; }
+  .wl-btn--sm { min-height: 44px; font-size: 0.9rem; padding: 0 12px; }
+  .wl-hint { font-size: 0.8rem; color: var(--wl-muted); text-align: center; }
+  .wl-hint.is-error { color: var(--wl-coral); font-weight: 600; }
+  .wl-dock-wait { text-align: center; color: var(--wl-soft); padding: 4px 0; font-weight: 600; }
+
+  .wl-clue-form { display: grid; gap: 6px; }
+  .wl-input-row { display: flex; gap: 8px; }
+  .wl-input {
+    flex: 1 1 auto; min-width: 0; min-height: 52px; padding: 0 14px; border-radius: 14px;
+    border: 1.5px solid var(--wl-line); background: oklch(0.13 0.03 255); color: var(--wl-ink); font-size: 1.05rem;
+  }
+  .wl-input::placeholder { color: oklch(0.6 0.03 250); }
+  .wl-input.is-bad { border-color: var(--wl-coral); }
+  .wl-input-row .wl-btn { flex: 0 0 auto; }
+  .wl-counter { font-variant-numeric: tabular-nums; }
+
+  /* ---------- finished ---------- */
+  .wl-final-title { font-family: var(--wl-display); font-size: 1.3rem; font-weight: 700; margin: 0 0 6px; text-align: center; }
+  .wl-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; margin: 10px 0 12px; }
+  .wl-step { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .wl-step-name { max-width: 100%; font-weight: 700; font-size: 0.86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl-step-score { font-family: var(--wl-display); font-weight: 700; color: var(--wl-gold); font-variant-numeric: tabular-nums; }
+  .wl-step-block {
+    width: 100%; display: grid; place-items: center; border-radius: 14px 14px 6px 6px;
+    font-family: var(--wl-display); font-weight: 700; font-size: 1.4rem; color: oklch(0.2 0.05 220);
+    transform-origin: bottom center;
+  }
+  .wl-step.r1 .wl-step-block { height: 96px; background: var(--wl-gold); }
+  .wl-step.r2 .wl-step-block { height: 70px; background: var(--wl-teal); }
+  .wl-step.r3 .wl-step-block { height: 52px; background: var(--wl-coral); }
+  .wl-step.is-empty { visibility: hidden; }
+  .wl-step.is-rise .wl-step-block { animation: wlRise 0.6s var(--wl-spring) both; animation-delay: var(--d, 0ms); }
+  .wl-crown { font-size: 1.3rem; line-height: 1; }
+
+  /* ---------- history / sidebar ---------- */
+  .wl-history { margin-top: 12px; }
+  .wl-history summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--wl-soft); font-weight: 600; font-size: 0.88rem; }
+  .wl-feed { display: grid; gap: 4px; }
+  .wl-feed-item { font-size: 0.82rem; color: var(--wl-soft); padding: 5px 10px; background: var(--wl-surface); border-radius: 10px; }
+
+  .wl-banner {
+    position: fixed; left: 50%; top: 40%; z-index: 11001; pointer-events: none; max-width: calc(100vw - 32px);
+    padding: 12px 22px; border-radius: 999px; background: oklch(0.15 0.035 255 / 0.95); border: 1.5px solid var(--wl-teal, #5eead4);
+    color: #f1f5f9; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 1.2rem; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transform: translate(-50%, -50%);
+  }
+  .wl-banner.is-on { animation: wlBanner 1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .wl-banner.is-gold { border-color: oklch(0.84 0.13 85); color: oklch(0.9 0.1 85); }
+  .wl-banner.is-coral { border-color: oklch(0.75 0.15 32); }
+
+  .wl-sidebar { position: fixed; top: 0; right: -320px; width: 300px; max-width: 86vw; height: 100%; background: oklch(0.21 0.04 255); border-left: 1px solid oklch(0.85 0.1 185 / 0.2); padding: 18px; z-index: 9000; transition: right 0.25s ease; overflow-y: auto; color: #f1f5f9; font-family: 'Bai Jamjuree', sans-serif; }
+  .wl-sidebar.open { right: 0; }
+  .wl-sidebar h4 { margin: 0 0 10px; font-family: 'Chakra Petch', sans-serif; }
+  .wl-sidebar-overlay { display: none; position: fixed; inset: 0; background: oklch(0 0 0 / 0.55); z-index: 8999; }
+  .wl-guide { text-align: left; font-family: 'Bai Jamjuree', sans-serif; line-height: 1.55; font-size: 0.94rem; }
+  .wl-guide h4 { margin: 12px 0 4px; font-family: 'Chakra Petch', sans-serif; color: oklch(0.85 0.12 182); font-size: 0.98rem; }
+  .wl-guide p { margin: 0 0 6px; }
+
+  .chat-box {
+    --chat-accent: oklch(0.78 0.12 182); --chat-accent-dark: oklch(0.5 0.1 190);
+    --chat-surface: oklch(0.2 0.04 255); --chat-border: oklch(0.85 0.12 182 / 0.24); --chat-bubble: oklch(0.27 0.05 255);
+    font-family: 'Bai Jamjuree', sans-serif;
+  }
+  .chat-toggle { --chat-toggle-bg: oklch(0.45 0.09 195); border-radius: 999px; padding: 10px 16px; min-height: 44px; top: calc(12px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; }
+  .btn-chat-send { --chat-send-bg: oklch(0.85 0.12 182); --chat-send-color: oklch(0.2 0.05 200); }
+
+  @keyframes wlClueIn { 0% { opacity: 0; transform: translateY(8px) scale(0.9); } 100% { opacity: 1; transform: none; } }
+  @keyframes wlBeamIdle { 0% { opacity: 0.55; transform: rotate(-70deg); } 100% { opacity: 0.55; transform: rotate(70deg); } }
+  @keyframes wlBeamSweep { 0% { opacity: 0; transform: rotate(-95deg); } 15% { opacity: 0.9; } 85% { opacity: 0.7; } 100% { opacity: 0; transform: rotate(95deg); } }
+  @keyframes wlClunk { 0% { transform: rotate(0deg); } 30% { transform: rotate(-2.4deg); } 60% { transform: rotate(1.2deg); } 100% { transform: rotate(0deg); } }
+  @keyframes wlPinDrop { 0% { opacity: 0; transform: translate(-50%, -150%) scale(0.6); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+  @keyframes wlOptionIn { 0% { opacity: 0; transform: translateY(10px) scale(0.97); } 100% { opacity: 1; transform: none; } }
+  @keyframes wlPulse { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes wlPop { 0% { opacity: 0; transform: scale(0.5); } 70% { opacity: 1; transform: scale(1.15); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes wlRise { 0% { transform: scaleY(0.1); } 100% { transform: scaleY(1); } }
+  @keyframes wlBanner {
+    0% { opacity: 0; transform: translate(-50%, -38%) scale(0.92); }
+    16% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    78% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -62%) scale(0.98); }
+  }
+
+  @media (min-width: 720px) {
+    .wl-stage { padding: 18px 20px 16px; }
+    .wl-pin { font-size: 0.78rem; max-width: 120px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wl-shutter, .wl-bands, .wl-needle, .wl-tick-lit, .wl-option, .wl-btn, .wl-sidebar { transition: none !important; }
+    .wl-beam.is-idle, .wl-beam.is-sweep, .wl-needle-wobble.is-clunk, .wl-pin.is-drop, .wl-option.is-in, .wl-lock.is-pulse,
+    .wl-pts.is-pop, .wl-step.is-rise .wl-step-block, .wl-clue-text.is-in { animation: none !important; }
+    .wl-banner.is-on { animation: none !important; opacity: 1; }
+  }
+</style>
+
+<div id="connectionStatus" class="wl-pill wl-pill--danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
+<div id="wlBanner" class="wl-banner" aria-hidden="true"></div>
+
+<div class="wl" id="wlRoot">
+  <div class="wl-top">
+    <div>
+      <div class="wl-kicker">📡 คลื่นความคิด · <span id="wlRoundNo">เตรียมเกม</span></div>
+      <h1 class="wl-title"><%= room.name %></h1>
+    </div>
+    <div class="wl-tools">
+      <button type="button" id="wlHowBtn" class="wl-pill">วิธีเล่น</button>
+      <button type="button" id="wlSidebarBtn" class="wl-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
+      <button type="button" id="wlEndBtn" class="wl-pill wl-pill--danger" <%= room.admin ? '' : 'hidden' %>>จบเกม</button>
+    </div>
+  </div>
+
+  <div id="wlNow" class="wl-now">
+    <span id="wlNowPhase" class="wl-now-phase">กำลังโหลด</span>
+    <span id="wlNowCopy" class="wl-now-copy" role="status" aria-live="polite" aria-atomic="true">กำลังโหลด...</span>
+    <div class="wl-now-timer" aria-hidden="true">
+      <div id="wlNowSec" class="wl-now-sec">--</div>
+      <span id="wlNowHint" class="wl-now-hint"></span>
+    </div>
+    <div id="wlNowBar" class="wl-now-bar"></div>
+  </div>
+
+  <section class="wl-stage" aria-label="หน้าปัดคลื่นความคิด">
+    <div id="wlOptions"></div>
+    <div id="wlSpectrum" class="wl-spectrum is-empty">
+      <div class="wl-end wl-end--left"><span id="wlLeft">—</span></div>
+      <div class="wl-arrow" aria-hidden="true">↔</div>
+      <div class="wl-end wl-end--right"><span id="wlRight">—</span></div>
+    </div>
+    <div id="wlClue" class="wl-clue" hidden></div>
+
+    <div class="wl-dial-wrap" id="wlDialWrap">
+      <svg id="wlDial" class="wl-dial" viewBox="0 0 400 214" role="group" aria-label="หน้าปัด">
+        <defs>
+          <radialGradient id="wlFace" cx="200" cy="200" r="190" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#0f1a2b"/>
+            <stop offset="0.7" stop-color="#16263b"/>
+            <stop offset="1" stop-color="#1d3049"/>
+          </radialGradient>
+          <linearGradient id="wlRing" x1="16" y1="0" x2="384" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#5eead4"/>
+            <stop offset="0.5" stop-color="#f5c86b"/>
+            <stop offset="1" stop-color="#fb8a6b"/>
+          </linearGradient>
+          <linearGradient id="wlShutterFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#22344f"/>
+            <stop offset="1" stop-color="#172538"/>
+          </linearGradient>
+          <linearGradient id="wlBeamFill" x1="200" y1="200" x2="200" y2="20" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#5eead4" stop-opacity="0"/>
+            <stop offset="1" stop-color="#5eead4" stop-opacity="0.45"/>
+          </linearGradient>
+          <clipPath id="wlClip"><path d="M16 200 A184 184 0 0 1 384 200 Z"/></clipPath>
+        </defs>
+        <path d="M16 200 A184 184 0 0 1 384 200 Z" fill="url(#wlFace)"/>
+        <g clip-path="url(#wlClip)">
+          <g id="wlBands" class="wl-rot wl-bands" style="display:none"></g>
+          <g id="wlShutter" class="wl-rot wl-shutter">
+            <path d="M16 200 A184 184 0 0 1 384 200 Z" fill="url(#wlShutterFill)"/>
+            <path d="M56 200 A144 144 0 0 1 344 200" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="2"/>
+            <path d="M96 200 A104 104 0 0 1 304 200" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="2"/>
+            <path d="M136 200 A64 64 0 0 1 264 200" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="2"/>
+            <line x1="16" y1="200.5" x2="384" y2="200.5" stroke="#5eead4" stroke-opacity="0.25" stroke-width="1.5"/>
+          </g>
+          <path id="wlBeam" class="wl-rot wl-beam" d="M200 200 L186 18 A182 182 0 0 1 214 18 Z" fill="url(#wlBeamFill)"/>
+        </g>
+        <path d="M16 200 A184 184 0 0 1 384 200" fill="none" stroke="url(#wlRing)" stroke-width="7" stroke-linecap="round"/>
+        <g id="wlTicks"></g>
+        <g id="wlNeedle" class="wl-rot wl-needle is-hidden">
+          <g id="wlNeedleWobble" class="wl-needle-wobble">
+            <line class="wl-needle-line" x1="200" y1="200" x2="200" y2="58" stroke="#f5c86b" stroke-width="5" stroke-linecap="round"/>
+            <circle id="wlKnobHit" class="wl-knob-hit" cx="200" cy="50" r="30" fill="transparent" tabindex="-1" role="slider" aria-label="เข็มของคุณ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"/>
+            <circle class="wl-knob-ring" cx="200" cy="50" r="15" fill="#0f1a2b" stroke="#f5c86b" stroke-width="3.5"/>
+            <circle class="wl-knob-core" cx="200" cy="50" r="7" fill="#f5c86b"/>
+          </g>
+        </g>
+        <circle cx="200" cy="200" r="13" fill="#0f1a2b" stroke="#f5c86b" stroke-width="3"/>
+        <circle cx="200" cy="200" r="4.5" fill="#f5c86b"/>
+      </svg>
+      <div id="wlPins" class="wl-pins"></div>
+    </div>
+    <p id="wlDialNote" class="wl-dial-note"></p>
+    <div id="wlLocks" class="wl-locks"></div>
+    <div id="wlResults" class="wl-results" hidden></div>
+    <div id="wlFinal"></div>
+  </section>
+
+  <section id="wlBoard" class="wl-board" aria-label="คะแนน"></section>
+
+  <details class="wl-history">
+    <summary>บันทึกเกม</summary>
+    <div id="wlFeed" class="wl-feed"></div>
+  </details>
+
+  <div id="wlDock" class="wl-dock"></div>
+</div>
+
+<aside id="playerSidebar" class="wl-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wlPlayerTitle">
+  <h4 id="wlPlayerTitle">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="leaveRoomBtn" type="button" class="wl-btn" style="width:100%; margin-bottom:8px; min-height:48px; border-radius:14px; border:1px solid oklch(0.85 0.1 185 / 0.2); background:oklch(0.26 0.045 255); color:#f1f5f9; font-weight:700;">ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="wl-btn" style="width:100%; min-height:48px; border-radius:14px; border:0; background:transparent; color:#cbd5e1; font-weight:700;">ปิด</button>
+</aside>
+<div id="sidebarOverlay" class="wl-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="wlChatTitle" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title" id="wlChatTitle">แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script src="/js/chatPanel.js"></script>
+<script>
+$(function() {
+  document.documentElement.classList.add('wl-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  const playerName = <%- JSON.stringify(String(player.name || player.playerName || '')) %>;
+  if (window.partyPlay) window.partyPlay.startSession('wavelength', socket);
+
+  let S = <%- JSON.stringify(typeof wavelengthState !== 'undefined' && wavelengthState ? wavelengthState : {}).replace(/</g, '\\u003c') %>;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const PHASE_LABEL = { clue: 'คิดคำใบ้', guess: 'หมุนเข็มทาย', reveal: 'เปิดเป้า', finished: 'จบเกม', lobby: 'รอเริ่ม' };
+  const CX = 200, CY = 200;
+
+  let allowNavigation = false;
+  let firstRender = true;
+  let seenFx = 0;
+  let pending = false;
+  let timerHandle = null;
+  let bandsShown = false;
+  let bandsRound = 0;
+  let pinsShownRound = 0;
+  let clueShownKey = '';
+  let optionsKey = '';
+  let draftClue = '';
+  let draftRound = 0;
+  let lastRevealRound = 0;
+  let finalAnimated = false;
+
+  // ---------- helpers ----------
+  function esc(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+  }
+  function avatarHtml(p, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 26 });
+    }
+    return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
+  }
+  function haptic(p) { if (typeof window.gameHaptic === 'function') window.gameHaptic(p); }
+  function playerById(id) { return (S.players || []).find(p => p.playerId === id) || null; }
+  function nameOf(id) { const p = playerById(id); return p ? p.name : ''; }
+  function angleOf(v) { return (Number(v) - 50) * 1.8; }
+  function polar(v, r) {
+    const a = (180 - Number(v) * 1.8) * Math.PI / 180;
+    return { x: CX + r * Math.cos(a), y: CY - r * Math.sin(a) };
+  }
+  const segmenter = window.Intl && Intl.Segmenter ? new Intl.Segmenter('th', { granularity: 'grapheme' }) : null;
+  function glen(text) {
+    if (!segmenter) return Array.from(String(text)).length;
+    let n = 0; for (const _ of segmenter.segment(String(text))) n += 1; // eslint-disable-line no-unused-vars
+    return n;
+  }
+  function compact(text) {
+    return String(text || '').normalize('NFC').replace(/[​-‍⁠﻿­]/g, '').toLowerCase().replace(/[\sๆ.,!?'"“”‘’()\-_/\\:;~*]+/g, '');
+  }
+  function clueProblem(text, card) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean) return 'พิมพ์คำใบ้ก่อน';
+    if (glen(clean) > (S.maxClueLength || 40)) return 'ยาวเกิน ' + (S.maxClueLength || 40) + ' ตัวอักษร';
+    if (/[0-9๐-๙]/.test(clean)) return 'ห้ามใช้ตัวเลข';
+    if (card) {
+      const c = compact(clean);
+      const hit = [card.left, card.right].map(compact).some(w => w && (c.includes(w) || (glen(c) >= 2 && w.includes(c))));
+      if (hit) return 'ห้ามใช้คำบนการ์ด';
+    }
+    return '';
+  }
+
+  // ---------- dial: static parts ----------
+  (function buildTicks() {
+    let html = '';
+    for (let v = 0; v <= 100; v += 5) {
+      const major = v % 25 === 0;
+      const a = polar(v, 176), b = polar(v, major ? 160 : 167);
+      html += '<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '" stroke="#cbd5e1" stroke-opacity="' + (major ? 0.55 : 0.28) + '" stroke-width="' + (major ? 2.2 : 1.4) + '" stroke-linecap="round"/>';
+      html += '<line class="wl-tick-lit" data-tick="' + (v / 5) + '" x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '" stroke="#5eead4" stroke-width="3" stroke-linecap="round"/>';
+    }
+    document.getElementById('wlTicks').innerHTML = html;
+  })();
+
+  function wedge(halfUnits, r) {
+    const a = polar(50 - halfUnits, r), b = polar(50 + halfUnits, r);
+    return 'M' + CX + ' ' + CY + ' L' + a.x.toFixed(2) + ' ' + a.y.toFixed(2) + ' A' + r + ' ' + r + ' 0 0 1 ' + b.x.toFixed(2) + ' ' + b.y.toFixed(2) + ' Z';
+  }
+  function buildBands() {
+    const bands = S.bands && S.bands.length ? S.bands : [{ points: 4, halfWidth: 4 }, { points: 3, halfWidth: 11 }, { points: 2, halfWidth: 18 }];
+    const colors = { 2: '#f2c66d', 3: '#f08a5d', 4: '#5eead4' };
+    const sorted = bands.slice().sort((x, y) => y.halfWidth - x.halfWidth);
+    let html = '';
+    sorted.forEach(b => { html += '<path d="' + wedge(b.halfWidth, 196) + '" fill="' + colors[b.points] + '"/>'; });
+    // เส้นคั่นแถบ ให้อ่านง่ายบนจอมือถือ
+    sorted.forEach(b => {
+      [-b.halfWidth, b.halfWidth].forEach(u => {
+        const p = polar(50 + u, 196);
+        html += '<line x1="' + CX + '" y1="' + CY + '" x2="' + p.x.toFixed(1) + '" y2="' + p.y.toFixed(1) + '" stroke="#0f1a2b" stroke-opacity="0.55" stroke-width="1.5"/>';
+      });
+    });
+    // ตัวเลขแต้มบนแถบ
+    const inner = bands.find(b => b.points === 4) || { halfWidth: 4 };
+    const mid = bands.find(b => b.points === 3) || { halfWidth: 11 };
+    const out = bands.find(b => b.points === 2) || { halfWidth: 18 };
+    const labels = [[0, 4], [-(inner.halfWidth + mid.halfWidth) / 2, 3], [(inner.halfWidth + mid.halfWidth) / 2, 3], [-(mid.halfWidth + out.halfWidth) / 2, 2], [(mid.halfWidth + out.halfWidth) / 2, 2]];
+    labels.forEach(([u, pts]) => {
+      const p = polar(50 + u, 150);
+      html += '<text x="' + p.x.toFixed(1) + '" y="' + p.y.toFixed(1) + '" text-anchor="middle" dominant-baseline="central" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="' + (pts === 4 ? 17 : 14) + '" fill="#0b1626" transform="rotate(' + (u * 1.8).toFixed(1) + ' ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + ')">' + pts + '</text>';
+    });
+    document.getElementById('wlBands').innerHTML = html;
+  }
+  buildBands();
+
+  // ---------- needle ----------
+  const dialEl = document.getElementById('wlDial');
+  const needleEl = document.getElementById('wlNeedle');
+  const wobbleEl = document.getElementById('wlNeedleWobble');
+  const knobEl = document.getElementById('wlKnobHit');
+  let needleVal = 50;
+  let needleTarget = 50;
+  let needleRaf = null;
+  let myPin = 50;
+  let myPinRound = 0;
+  let dragging = false;
+  let lastTick = -1;
+  let lastHapticAt = 0;
+  let lastSentAt = 0;
+  let sendTimer = null;
+  let litTick = null;
+
+  function applyNeedle() {
+    needleEl.style.transform = 'rotate(' + angleOf(needleVal).toFixed(2) + 'deg)';
+    knobEl.setAttribute('aria-valuenow', String(Math.round(needleVal)));
+  }
+  function stepNeedle() {
+    needleRaf = null;
+    const d = needleTarget - needleVal;
+    if (Math.abs(d) < 0.04) { needleVal = needleTarget; applyNeedle(); return; }
+    needleVal += d * (dragging ? 0.42 : 0.2);
+    applyNeedle();
+    needleRaf = requestAnimationFrame(stepNeedle);
+  }
+  function setNeedle(v, immediate) {
+    needleTarget = Math.max(0, Math.min(100, Number(v)));
+    if (immediate || reduceMotion) {
+      if (needleRaf) { cancelAnimationFrame(needleRaf); needleRaf = null; }
+      needleVal = needleTarget;
+      applyNeedle();
+      return;
+    }
+    if (!needleRaf) needleRaf = requestAnimationFrame(stepNeedle);
+  }
+  function lightTick(v) {
+    const t = Math.round(v / 5);
+    if (litTick && litTick.dataset.tick === String(t)) return;
+    if (litTick) litTick.classList.remove('is-on');
+    litTick = document.querySelector('.wl-tick-lit[data-tick="' + t + '"]');
+    if (litTick) litTick.classList.add('is-on');
+  }
+  function clearTick() { if (litTick) litTick.classList.remove('is-on'); litTick = null; }
+
+  function canDrag() { return !!(S.availableActions && S.availableActions.canGuess); }
+  function valueFromEvent(e) {
+    const rect = dialEl.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * 400 / rect.width;
+    const y = (e.clientY - rect.top) * 214 / rect.height;
+    let deg = Math.atan2(CY - y, x - CX) * 180 / Math.PI;
+    if (y > CY) deg = x < CX ? 180 : 0;
+    deg = Math.max(0, Math.min(180, deg));
+    return Math.round(((180 - deg) / 1.8) * 10) / 10;
+  }
+  function onPinChange(v, fromDrag) {
+    myPin = v;
+    myPinRound = S.round;
+    setNeedle(v, false);
+    lightTick(v);
+    const tick = Math.floor(v / 5);
+    const now = performance.now();
+    if (fromDrag && tick !== lastTick && now - lastHapticAt > 35) { haptic(4); lastHapticAt = now; }
+    lastTick = tick;
+    queueSendPin();
+  }
+  function queueSendPin() {
+    const now = Date.now();
+    const wait = Math.max(0, 160 - (now - lastSentAt));
+    clearTimeout(sendTimer);
+    sendTimer = setTimeout(function() {
+      lastSentAt = Date.now();
+      if (!canDrag()) return;
+      socket.emit('wavelength_pin', { value: myPin, round: S.round, phase: 'guess' });
+    }, wait);
+  }
+  dialEl.addEventListener('pointerdown', function(e) {
+    if (!canDrag()) return;
+    e.preventDefault();
+    dragging = true;
+    dialEl.classList.add('is-dragging');
+    try { dialEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    onPinChange(valueFromEvent(e), true);
+    haptic(8);
+  });
+  dialEl.addEventListener('pointermove', function(e) {
+    if (!dragging) return;
+    onPinChange(valueFromEvent(e), true);
+  });
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    dialEl.classList.remove('is-dragging');
+    clearTick();
+    queueSendPin();
+  }
+  dialEl.addEventListener('pointerup', endDrag);
+  dialEl.addEventListener('pointercancel', endDrag);
+  dialEl.addEventListener('lostpointercapture', endDrag);
+  knobEl.addEventListener('keydown', function(e) {
+    if (!canDrag()) return;
+    const step = e.shiftKey ? 5 : 1;
+    let v = myPin;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') v -= step;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') v += step;
+    else if (e.key === 'Home') v = 0;
+    else if (e.key === 'End') v = 100;
+    else if (e.key === 'Enter') { lockNow(); e.preventDefault(); return; }
+    else return;
+    e.preventDefault();
+    onPinChange(Math.max(0, Math.min(100, v)), false);
+  });
+
+  // ---------- dial: per-state ----------
+  const bandsEl = document.getElementById('wlBands');
+  const shutterEl = document.getElementById('wlShutter');
+  const beamEl = document.getElementById('wlBeam');
+
+  function setBands(target, animate) {
+    bandsEl.style.display = '';
+    if (!animate || reduceMotion) {
+      bandsEl.classList.add('no-anim');
+      bandsEl.style.transition = 'none';
+      bandsEl.style.transform = 'rotate(' + angleOf(target).toFixed(2) + 'deg)';
+      shutterEl.classList.add('no-anim');
+      shutterEl.classList.add('is-open');
+      void bandsEl.getBoundingClientRect();
+      bandsEl.classList.remove('no-anim');
+      shutterEl.classList.remove('no-anim');
+      return;
+    }
+    // กวาดเข้ามาจากขอบซ้าย แล้วเด้งหยุดที่เป้า + ม่านหมุนเปิด + ลำแสงกวาด
+    bandsEl.style.transition = 'none';
+    bandsEl.style.transform = 'rotate(' + angleOf(-25).toFixed(2) + 'deg)';
+    shutterEl.classList.add('no-anim');
+    shutterEl.classList.remove('is-open');
+    void bandsEl.getBoundingClientRect();
+    shutterEl.classList.remove('no-anim');
+    requestAnimationFrame(function() {
+      bandsEl.style.transition = 'transform 1.25s cubic-bezier(0.25, 1.3, 0.4, 1) 0.12s';
+      bandsEl.style.transform = 'rotate(' + angleOf(target).toFixed(2) + 'deg)';
+      shutterEl.classList.add('is-open');
+      beamEl.classList.remove('is-idle', 'is-sweep');
+      void beamEl.getBoundingClientRect();
+      beamEl.classList.add('is-sweep');
+    });
+  }
+  function hideBands() {
+    shutterEl.classList.remove('is-open');
+    bandsEl.style.display = 'none';
+  }
+
+  function renderPins(animate) {
+    const wrap = document.getElementById('wlPins');
+    const lr = S.lastRound;
+    if (!(S.phase === 'reveal' || S.phase === 'finished') || !lr || lr.skipped) { wrap.innerHTML = ''; pinsShownRound = 0; return; }
+    if (pinsShownRound === lr.round && !animate) return;
+    pinsShownRound = lr.round;
+    const rows = (lr.results || []).filter(r => r.pin != null).slice().sort((a, b) => a.pin - b.pin);
+    // วางป้ายชื่อตามแนวเข็ม ชนกันก็ขยับเข้าด้านใน
+    const rings = [128, 100, 72];
+    const lastAt = [-99, -99, -99];
+    let html = '';
+    rows.forEach(function(r, i) {
+      let ring = 0;
+      while (ring < rings.length - 1 && r.pin - lastAt[ring] < 13) ring += 1;
+      lastAt[ring] = r.pin;
+      const tip = polar(r.pin, 172);
+      const lab = polar(r.pin, rings[ring]);
+      const me = r.playerId === playerId;
+      html += '<span class="wl-pin' + (me ? ' is-me' : '') + (animate ? ' is-drop' : '') + '" style="left:' + (lab.x / 4).toFixed(2) + '%; top:' + (lab.y / 2.14).toFixed(2) + '%; --pin-color:' + esc(r.color || '#fff') + '; --d:' + (900 + i * 70) + 'ms">' +
+        '<span class="wl-pin-dot" aria-hidden="true">' + esc(r.avatar || '') + '</span><span class="wl-pin-name">' + esc(me ? 'คุณ' : r.name) + '</span></span>';
+      void tip;
+    });
+    wrap.innerHTML = html;
+    // เข็มบางของทุกคนบนหน้าปัด (SVG)
+    let lines = '';
+    rows.forEach(function(r) {
+      const tip = polar(r.pin, 180), base = polar(r.pin, 30);
+      lines += '<line x1="' + base.x.toFixed(1) + '" y1="' + base.y.toFixed(1) + '" x2="' + tip.x.toFixed(1) + '" y2="' + tip.y.toFixed(1) + '" stroke="' + esc(r.color || '#fff') + '" stroke-width="' + (r.playerId === playerId ? 3.4 : 2.2) + '" stroke-linecap="round" opacity="0.95"/>' +
+        '<circle cx="' + tip.x.toFixed(1) + '" cy="' + tip.y.toFixed(1) + '" r="' + (r.playerId === playerId ? 6 : 4.5) + '" fill="' + esc(r.color || '#fff') + '" stroke="#0f1a2b" stroke-width="1.5"/>';
+    });
+    let g = document.getElementById('wlPinLines');
+    if (!g) {
+      g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.id = 'wlPinLines';
+      dialEl.insertBefore(g, document.getElementById('wlNeedle'));
+    }
+    g.innerHTML = lines;
+    g.style.opacity = '0';
+    g.style.transition = animate && !reduceMotion ? 'opacity 0.4s ease-out 0.9s' : 'none';
+    requestAnimationFrame(function() { g.style.opacity = '1'; });
+  }
+  function clearPinLines() {
+    const g = document.getElementById('wlPinLines');
+    if (g) g.innerHTML = '';
+  }
+
+  function renderDial(revealAnim) {
+    const self = S.self || {};
+    const phase = S.phase;
+    const showTarget = S.target != null;
+    // แถบเป้า: ผู้ใบ้เห็นตลอดรอบ · คนอื่นเห็นตอนเปิดเท่านั้น (ไม่มีข้อมูลเป้าใน DOM ก่อนหน้านั้น)
+    if (showTarget) {
+      const key = S.round;
+      if (!bandsShown || bandsRound !== key) {
+        setBands(S.target, !firstRender && (revealAnim || phase === 'clue'));
+      } else if (revealAnim) {
+        setBands(S.target, true);
+      }
+      bandsShown = true;
+      bandsRound = key;
+    } else {
+      if (bandsShown) hideBands();
+      bandsShown = false;
+    }
+    // ลำแสงเรดาร์ตอนรอคำใบ้
+    const idle = phase === 'clue' && !showTarget;
+    if (idle && !beamEl.classList.contains('is-idle') && !reduceMotion) { beamEl.classList.remove('is-sweep'); beamEl.classList.add('is-idle'); }
+    if (!idle) beamEl.classList.remove('is-idle');
+
+    // เข็มของตัวเอง
+    const guessing = phase === 'guess' && self.isGuesser;
+    if (S.round !== myPinRound) {
+      myPin = self.pin != null ? self.pin : 50;
+      myPinRound = S.round;
+      setNeedle(myPin, true);
+    } else if (!dragging && self.pin != null && guessing && Math.abs(self.pin - myPin) > 0.05 && (S.availableActions || {}).canGuess === false) {
+      myPin = self.pin;
+      setNeedle(myPin, true);
+    }
+    needleEl.classList.toggle('is-hidden', !guessing);
+    needleEl.classList.toggle('is-locked', !!self.locked);
+    dialEl.classList.toggle('is-interactive', canDrag());
+    knobEl.setAttribute('tabindex', canDrag() ? '0' : '-1');
+    if (phase !== 'reveal' && phase !== 'finished') { document.getElementById('wlPins').innerHTML = ''; pinsShownRound = 0; clearPinLines(); }
+    renderPins(revealAnim);
+
+    let note = '';
+    if (phase === 'clue' && self.isGiver) note = S.card ? 'เป้าลับของคุณ — คนอื่นมองไม่เห็น' : 'เป้าลับของคุณ — เลือกการ์ดก่อน';
+    else if (phase === 'guess' && self.isGiver) note = 'คุณเห็นเป้า · รอทุกคนล็อก';
+    else if (phase === 'guess' && self.isGuesser) note = self.locked ? 'ล็อกแล้ว — แก้ได้ก่อนหมดเวลา' : 'ลากเข็มไปตรงที่คิดว่าใช่';
+    else if (phase === 'guess') note = 'ดูเพื่อนทาย — รอบหน้าคุณได้เล่น';
+    document.getElementById('wlDialNote').textContent = note;
+  }
+
+  // ---------- render ----------
+  function describeNow() {
+    const self = S.self || {};
+    const a = S.availableActions || {};
+    const giver = S.giverName || 'ผู้ใบ้';
+    switch (S.phase) {
+      case 'clue':
+        if (self.isGiver) return { text: S.card ? 'พิมพ์คำใบ้ที่อยู่ตรงเป้า' : 'ตาคุณใบ้! เลือกการ์ด 1 ใบ', mine: true };
+        if (S.giverAway) return { text: giver + ' หลุด — รอสักครู่', mine: false };
+        return { text: giver + ' กำลังคิดคำใบ้…', mine: false };
+      case 'guess':
+        if (a.canGuess) return { text: 'ลากเข็มแล้วกดล็อก', mine: true };
+        if (self.isGuesser && self.locked) return { text: 'ล็อกแล้ว — รอคนอื่น', mine: false };
+        if (self.isGiver) return { text: 'เพื่อนกำลังทายคำใบ้ของคุณ', mine: false };
+        return { text: 'เพื่อนกำลังทาย — รอบหน้าคุณได้เล่น', mine: false };
+      case 'reveal': {
+        const lr = S.lastRound;
+        if (lr && lr.skipped) return { text: 'ข้ามรอบนี้', mine: false };
+        const mine = lr && (lr.results || []).find(r => r.playerId === playerId);
+        if (mine) return { text: mine.points ? mine.label + ' +' + mine.points + ' แต้ม' : (mine.pin == null ? 'รอบนี้ไม่ได้ทาย' : 'พลาด — ไม่ได้แต้ม'), mine: mine.points > 0 };
+        if (lr && lr.giverId === playerId) return { text: 'คุณได้ +' + lr.giverPoints + ' (เฉลี่ยของเพื่อน)', mine: lr.giverPoints > 0 };
+        return { text: 'เปิดเป้าแล้ว', mine: false };
+      }
+      case 'finished': return { text: 'จบเกม — ดูอันดับด้านล่าง', mine: false };
+      default: return { text: 'รอเริ่มเกม', mine: false };
+    }
+  }
+  function timerHint() {
+    switch (S.phase) {
+      case 'clue': return S.giverAway ? 'ผู้ใบ้หลุด ไม่กลับ = ข้าม' : 'หมดเวลา = ข้ามรอบ';
+      case 'guess': return 'หมดเวลา = ล็อกที่เข็มอยู่';
+      case 'reveal': return 'รอบต่อไปอัตโนมัติ';
+      default: return '';
+    }
+  }
+  function renderTop() {
+    const total = Math.max(S.round || 0, S.roundsTotal || 0);
+    $('#wlRoundNo').text(S.round ? 'รอบ ' + S.round + (total ? '/' + total : '') : 'เตรียมเกม');
+    const now = describeNow();
+    $('#wlNowPhase').text((PHASE_LABEL[S.phase] || '') + (S.round && S.phase !== 'finished' ? ' · รอบ ' + S.round : ''));
+    $('#wlNowCopy').text(now.text);
+    $('#wlNow').toggleClass('is-mine', !!now.mine);
+    $('#wlNowHint').text(timerHint());
+    $('#wlEndBtn').prop('hidden', !(S.availableActions && S.availableActions.canEnd));
+  }
+
+  function renderSpectrum() {
+    const card = S.card;
+    $('#wlSpectrum').toggleClass('is-empty', !card)
+      .css('display', S.phase === 'clue' && S.self && S.self.isGiver ? 'none' : ''); // ผู้ใบ้เห็นการ์ดที่เลือกในรายการด้านบนอยู่แล้ว
+    $('#wlLeft').text(card ? card.left : (S.phase === 'clue' ? 'รอการ์ด' : '—'));
+    $('#wlRight').text(card ? card.right : (S.phase === 'clue' ? 'รอการ์ด' : '—'));
+    const clueBox = document.getElementById('wlClue');
+    if (S.clue && (S.phase === 'guess' || S.phase === 'reveal')) {
+      const key = S.round + ':' + S.clue;
+      const fresh = key !== clueShownKey && !firstRender;
+      clueShownKey = key;
+      clueBox.hidden = false;
+      clueBox.innerHTML = '<div class="wl-clue-label">คำใบ้จาก ' + esc(S.giverName || 'ผู้ใบ้') + '</div>' +
+        '<div class="wl-clue-text' + (fresh ? ' is-in' : '') + '">“' + esc(S.clue) + '”</div>';
+    } else if (S.phase === 'clue' && !(S.self && S.self.isGiver)) {
+      clueShownKey = '';
+      clueBox.hidden = false;
+      clueBox.innerHTML = '<p class="wl-wait">' + (S.self && S.self.pending ? 'คุณเข้ามากลางรอบ — <strong>รอบหน้าได้ทาย</strong> · ' : '') +
+        '📡 <strong>' + esc(S.giverName || 'ผู้ใบ้') + '</strong> กำลังเลือกการ์ดและคิดคำใบ้</p>';
+    } else {
+      clueBox.hidden = true;
+      clueBox.innerHTML = '';
+    }
+  }
+
+  function renderOptions() {
+    const box = document.getElementById('wlOptions');
+    const a = S.availableActions || {};
+    if (!(S.phase === 'clue' && a.canPickCard)) { box.innerHTML = ''; optionsKey = ''; return; }
+    const key = S.round + ':' + (S.options || []).map(c => c.id).join(',');
+    const fresh = key !== optionsKey;
+    optionsKey = key;
+    box.innerHTML = '<div class="wl-options">' +
+      '<div class="wl-options-head"><span class="wl-options-title">เลือกการ์ด 1 ใบ</span>' +
+      (a.canReroll ? '<button type="button" id="wlRerollBtn" class="wl-btn wl-btn--ghost wl-btn--sm">สุ่มใหม่ (1 ครั้ง)</button>' : '<span class="wl-hint">สุ่มใหม่ไปแล้ว</span>') +
+      '</div>' +
+      (S.options || []).map(function(c, i) {
+        const picked = S.card && S.card.id === c.id;
+        return '<button type="button" class="wl-option' + (picked ? ' is-picked' : '') + (fresh && !firstRender ? ' is-in' : '') + '" data-index="' + i + '" style="--d:' + (i * 90) + 'ms" aria-pressed="' + (picked ? 'true' : 'false') + '">' +
+          '<span class="wl-option-l">' + esc(c.left) + '</span><span class="wl-option-bar" aria-hidden="true"></span><span class="wl-option-r">' + esc(c.right) + '</span></button>';
+      }).join('') + '</div>';
+  }
+
+  function renderLocks() {
+    const box = document.getElementById('wlLocks');
+    if (S.phase !== 'guess') { box.innerHTML = ''; return; }
+    const guessers = (S.players || []).filter(p => p.isGuesser);
+    box.innerHTML = guessers.map(p =>
+      '<span class="wl-lock' + (p.locked ? ' is-locked' : '') + (p.online ? '' : ' is-off') + '" data-lock-id="' + esc(p.playerId) + '">' +
+        avatarHtml(p, 22) + '<span class="wl-lock-name">' + esc(p.isSelf ? 'คุณ' : p.name) + '</span>' +
+        '<span class="wl-lock-state" aria-label="' + (p.locked ? 'ล็อกแล้ว' : (p.online ? 'กำลังทาย' : 'หลุด')) + '">' + (p.locked ? '✓' : (p.online ? '' : 'หลุด')) + '</span></span>').join('');
+  }
+
+  function bandClass(points) { return points === 4 ? 'p4' : (points === 3 ? 'p3' : (points === 2 ? 'p2' : '')); }
+  function renderResults(animate) {
+    const box = document.getElementById('wlResults');
+    const lr = S.lastRound;
+    if (S.phase !== 'reveal' || !lr) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    if (lr.skipped) {
+      box.innerHTML = '<div class="wl-skip"><strong>ข้ามรอบ</strong><span>' + esc(lr.reason || '') + ' · ไม่มีใครได้แต้ม</span></div>';
+      return;
+    }
+    const giver = playerById(lr.giverId) || { name: lr.giverName };
+    const rows = (lr.results || []).map(function(r, i) {
+      const sub = r.pin == null ? 'ไม่ได้ทาย' : (r.label + (r.auto ? ' · ล็อกอัตโนมัติ' : '') + ' · ห่าง ' + Math.round(r.distance));
+      return '<div class="wl-row">' + avatarHtml(r, 28) +
+        '<span class="wl-row-name">' + esc(r.playerId === playerId ? 'คุณ' : r.name) + '</span>' +
+        '<span class="wl-pts ' + bandClass(r.points) + (animate ? ' is-pop' : '') + '" style="--d:' + (1300 + i * 110) + 'ms">+' + r.points + '</span>' +
+        '<span class="wl-row-sub">' + esc(sub) + '</span></div>';
+    }).join('');
+    box.innerHTML = '<div class="wl-results-head"><h2>ผลรอบ ' + lr.round + '</h2><span class="wl-results-sub">เป้าอยู่ที่ ' + lr.target + '/100</span></div>' + rows +
+      '<div class="wl-row">' + avatarHtml(giver, 28) +
+        '<span class="wl-row-name">' + esc(lr.giverId === playerId ? 'คุณ' : (giver.name || 'ผู้ใบ้')) + ' (ผู้ใบ้)</span>' +
+        '<span class="wl-pts giver' + (animate ? ' is-pop' : '') + '" style="--d:' + (1400 + (lr.results || []).length * 110) + 'ms">+' + lr.giverPoints + '</span>' +
+        '<span class="wl-row-sub">เฉลี่ยแต้มของคนทาย</span></div>';
+  }
+
+  function renderBoard() {
+    const rows = S.scoreboard || [];
+    const lr = S.phase === 'reveal' ? S.lastRound : null;
+    const gained = {};
+    if (lr && !lr.skipped) {
+      (lr.results || []).forEach(r => { gained[r.playerId] = r.points; });
+      gained[lr.giverId] = lr.giverPoints;
+    }
+    let rank = 0, prev = null;
+    const html = rows.map(function(r, i) {
+      if (r.score !== prev) { rank = i + 1; prev = r.score; }
+      const g = gained[r.playerId];
+      return '<div class="wl-score' + (r.playerId === playerId ? ' is-me' : '') + (r.playerId === S.giverId && S.phase !== 'finished' ? ' is-giver' : '') + '">' +
+        '<span class="wl-score-rank">' + (r.playerId === S.giverId && S.phase !== 'finished' ? '📡' : rank) + '</span>' + avatarHtml(r, 28) +
+        '<span class="wl-score-name">' + esc(r.name) + (r.playerId === playerId ? ' <small>(คุณ)</small>' : '') + (r.left ? ' <small>· ออกแล้ว</small>' : '') + '</span>' +
+        '<span class="wl-score-val">' + r.score + (g ? '<em>+' + g + '</em>' : '') + '</span></div>';
+    }).join('');
+    const pendingPlayers = (S.players || []).filter(p => !p.active);
+    $('#wlBoard').html('<h2>คะแนน</h2>' + (html || '<p class="wl-hint" style="text-align:left">ยังไม่มีคะแนน</p>') +
+      (pendingPlayers.length ? '<p class="wl-hint" style="text-align:left; margin:6px 0 0;">รอเข้าร่วมรอบหน้า: ' + pendingPlayers.map(p => esc(p.name)).join(', ') + '</p>' : ''));
+  }
+
+  function renderFinal(animate) {
+    const box = document.getElementById('wlFinal');
+    if (S.phase !== 'finished') { box.innerHTML = ''; return; }
+    const st = S.standings || [];
+    const winners = S.winners || [];
+    const title = winners.length
+      ? (winners.length > 1 ? 'ชนะร่วม! ' : '') + winners.map(w => esc(w.name)).join(', ') + ' · ' + winners[0].score + ' แต้ม'
+      : 'จบเกม — ยังไม่มีใครทำแต้ม';
+    const top = [st[1], st[0], st[2]];
+    const cls = ['r2', 'r1', 'r3'];
+    const podium = '<div class="wl-podium">' + top.map(function(r, i) {
+      if (!r) return '<div class="wl-step ' + cls[i] + ' is-empty"></div>';
+      return '<div class="wl-step ' + cls[i] + (animate ? ' is-rise' : '') + '" style="--d:' + ([300, 600, 0][i]) + 'ms">' +
+        (r.rank === 1 && r.score > 0 ? '<span class="wl-crown" aria-hidden="true">👑</span>' : '') +
+        avatarHtml(r, 40) + '<span class="wl-step-name">' + esc(r.playerId === playerId ? 'คุณ' : r.name) + '</span>' +
+        '<span class="wl-step-score">' + r.score + ' แต้ม</span>' +
+        '<div class="wl-step-block">' + r.rank + '</div></div>';
+    }).join('') + '</div>';
+    const list = st.map(r => '<div class="wl-score' + (r.playerId === playerId ? ' is-me' : '') + '">' +
+      '<span class="wl-score-rank">' + r.rank + '</span>' + avatarHtml(r, 28) +
+      '<span class="wl-score-name">' + esc(r.name) + (r.left ? ' <small>· ออกแล้ว</small>' : '') + (r.bullseyes ? ' <small>· เป๊ะ ' + r.bullseyes + ' ครั้ง</small>' : '') + '</span>' +
+      '<span class="wl-score-val">' + r.score + '</span></div>').join('');
+    box.innerHTML = '<p class="wl-final-title">' + title + '</p>' + podium + list;
+  }
+
+  function renderDock() {
+    const a = S.availableActions || {};
+    const self = S.self || {};
+    let html = '';
+    if (S.phase === 'finished') {
+      html = '<div class="wl-row-btns">' +
+        '<button type="button" id="wlShareBtn" class="wl-btn">แชร์ผล</button>' +
+        '<button type="button" id="wlBackBtn" class="wl-btn wl-btn--primary">กลับห้องรอ</button>' +
+        '</div><div class="wl-hint" id="wlBackRemain" style="margin-top:6px;">ทุกคนกลับห้องรอพร้อมกัน</div>';
+    } else if (S.phase === 'clue' && self.isGiver) {
+      if (draftRound !== S.round) { draftRound = S.round; draftClue = ''; }
+      const problem = draftClue ? clueProblem(draftClue, S.card) : '';
+      html = '<div class="wl-clue-form">' +
+        '<label class="wl-hint" for="wlClueInput" style="text-align:left;">' + (S.card ? 'คำใบ้ 1 คำหรือวลีสั้น ๆ (ห้ามคำบนการ์ด · ห้ามตัวเลข)' : 'เลือกการ์ดด้านบนก่อน แล้วพิมพ์คำใบ้') + '</label>' +
+        '<div class="wl-input-row"><input id="wlClueInput" class="wl-input' + (problem ? ' is-bad' : '') + '" type="text" autocomplete="off" enterkeyhint="send" maxlength="80" placeholder="เช่น ไอติม" value="' + esc(draftClue) + '"' + (S.card ? '' : ' disabled') + '>' +
+        '<button type="button" id="wlClueBtn" class="wl-btn wl-btn--primary"' + (a.canSubmitClue && draftClue && !problem ? '' : ' disabled') + '>ส่งคำใบ้</button></div>' +
+        '<div id="wlClueMsg" class="wl-hint' + (problem ? ' is-error' : '') + '">' + (problem || '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>') + '</div></div>';
+    } else if (S.phase === 'guess' && self.isGuesser) {
+      const done = (S.players || []).filter(p => p.isGuesser && p.locked).length;
+      const total = (S.players || []).filter(p => p.isGuesser).length;
+      html = a.canGuess
+        ? '<button type="button" id="wlLockBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">ล็อกคำตอบ</button><div class="wl-hint" style="margin-top:6px;">ล็อกแล้ว ' + done + '/' + total + ' คน</div>'
+        : '<div class="wl-row-btns"><div class="wl-dock-wait" style="flex:2 1 0;">ล็อกแล้ว ✓ รอเพื่อน ' + done + '/' + total + '</div>' +
+          (a.canUnlock ? '<button type="button" id="wlUnlockBtn" class="wl-btn wl-btn--ghost wl-btn--sm">แก้คำตอบ</button>' : '') + '</div>';
+    } else if (S.phase === 'reveal') {
+      const ready = (S.readyIds || []).length;
+      const total = (S.players || []).filter(p => p.active && p.online).length;
+      if (a.canNext) html = '<button type="button" id="wlNextBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">รอบต่อไป</button>' + (ready ? '<div class="wl-hint" style="margin-top:6px;">พร้อมแล้ว ' + ready + '/' + total + ' คน</div>' : '');
+      else if (a.canReady) html = '<button type="button" id="wlReadyBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">รอบต่อไป</button><div class="wl-hint" style="margin-top:6px;">พร้อมครบหรือหัวห้องกด = ไปต่อ</div>';
+      else html = '<div class="wl-dock-wait">พร้อมแล้ว — รอเพื่อน ' + ready + '/' + total + '</div>';
+    } else if (S.phase === 'clue') {
+      html = '<div class="wl-dock-wait">รอคำใบ้จาก ' + esc(S.giverName || 'ผู้ใบ้') + '…</div>';
+    } else if (S.phase === 'guess') {
+      html = '<div class="wl-dock-wait">' + (self.isGiver ? 'เพื่อนกำลังทาย — คุณได้แต้มตามค่าเฉลี่ย' : 'ดูเพื่อนทาย — รอบหน้าคุณได้เล่น') + '</div>';
+    }
+    const dock = document.getElementById('wlDock');
+    const input = document.getElementById('wlClueInput');
+    const hadFocus = input && document.activeElement === input;
+    const caret = hadFocus ? input.selectionStart : null;
+    dock.innerHTML = html;
+    if (hadFocus) {
+      const next = document.getElementById('wlClueInput');
+      if (next && !next.disabled) { next.focus(); try { next.setSelectionRange(caret, caret); } catch (e) { /* ignore */ } }
+    }
+    const finished = S.phase === 'finished';
+    $('#wlDock').toggleClass('is-static', finished);
+    $('#wlRoot').toggleClass('is-finished', finished);
+    if (finished && !$('#wlNow').next().is('#wlDock')) $('#wlDock').insertAfter('#wlNow');
+    syncDockHeight();
+  }
+
+  function renderFeed() {
+    $('#wlFeed').html((S.history || []).slice(0, 14).map(item =>
+      '<div class="wl-feed-item">' + esc((item.icon || '') + ' ' + (item.text || '')) + '</div>').join(''));
+  }
+
+  function syncDockHeight() {
+    const dock = document.getElementById('wlDock');
+    const h = dock && !dock.classList.contains('is-static') && dock.innerHTML ? Math.round(dock.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--wl-dock-h', h + 'px');
+  }
+  if (window.ResizeObserver) new ResizeObserver(syncDockHeight).observe(document.getElementById('wlDock'));
+
+  // ---------- fx ----------
+  function banner(text, tone) {
+    const node = document.getElementById('wlBanner');
+    node.textContent = text;
+    node.className = 'wl-banner' + (tone ? ' is-' + tone : '');
+    void node.offsetWidth;
+    node.classList.add('is-on');
+  }
+  function consumeFx(initial) {
+    const events = (S.fx || []).filter(e => e && e.seq > seenFx);
+    if (!events.length) return { reveal: false };
+    seenFx = events[events.length - 1].seq;
+    if (initial) return { reveal: false };
+    let reveal = false;
+    events.forEach(function(e) {
+      if (e.kind === 'round') {
+        if (e.giverId === playerId) { banner('ตาคุณใบ้!', 'gold'); }
+        else banner('รอบ ' + e.round + ' · ' + (nameOf(e.giverId) || 'ผู้ใบ้') + ' ใบ้');
+      } else if (e.kind === 'clue') {
+        haptic([10, 30, 10]);
+      } else if (e.kind === 'lock') {
+        const chip = document.querySelector('.wl-lock[data-lock-id="' + e.playerId + '"]');
+        if (chip && !reduceMotion) { chip.classList.remove('is-pulse'); void chip.offsetWidth; chip.classList.add('is-pulse'); }
+      } else if (e.kind === 'reveal') {
+        reveal = true;
+      } else if (e.kind === 'skip') {
+        banner('ข้ามรอบ', 'coral');
+      } else if (e.kind === 'finished') {
+        banner('จบเกม!', 'gold');
+        haptic([20, 50, 20, 50, 40]);
+      }
+    });
+    return { reveal };
+  }
+  function revealCelebrate() {
+    const lr = S.lastRound;
+    if (!lr || lr.skipped) return;
+    const mine = (lr.results || []).find(r => r.playerId === playerId);
+    setTimeout(function() {
+      if (mine) {
+        if (mine.points === 4) { banner('เป๊ะ! +4', 'gold'); haptic([20, 40, 20, 40, 30]); }
+        else if (mine.points > 0) { banner(mine.label + ' +' + mine.points); haptic([16, 30, 16]); }
+        else { banner(mine.pin == null ? 'ไม่ได้ทาย' : 'พลาด', 'coral'); haptic(12); }
+      } else if (lr.giverId === playerId) {
+        banner('คุณได้ +' + lr.giverPoints, lr.giverPoints >= 3 ? 'gold' : '');
+        haptic([16, 30, 16]);
+      }
+    }, reduceMotion ? 0 : 1500);
+  }
+
+  function pingNeed() {
+    if (!window.partyPlay) return;
+    const a = S.availableActions || {};
+    if (S.phase === 'clue' && a.canPickCard) window.partyPlay.pingTurn({ key: 'wl-clue-' + S.round, title: 'ตาคุณใบ้', subtitle: 'เลือกการ์ด แล้วพิมพ์คำใบ้' });
+  }
+
+  function tickTimer() {
+    if (timerHandle) clearInterval(timerHandle);
+    const total = S.timers ? ({ clue: S.giverAway ? S.timers.grace : S.timers.clue, guess: S.timers.guess, reveal: (S.lastRound && S.lastRound.skipped) ? S.timers.skip : S.timers.reveal })[S.phase] : 0;
+    function paint() {
+      if (S.phase === 'finished') {
+        const endsAt = Number(S.returnLobbyEndsAt) || 0;
+        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+        $('#wlNowSec').text(remain > 0 ? remain : '--');
+        $('#wlNowHint').text(remain > 0 ? 'วิ แล้วกลับห้องรอ' : '');
+        $('#wlBackRemain').text(remain > 0 ? 'กลับห้องรอพร้อมกันใน ' + remain + ' วิ' : 'ทุกคนกลับห้องรอพร้อมกัน');
+        $('#wlNowBar').css('transform', 'scaleX(0)');
+        return;
+      }
+      if (!S.phaseEndsAt) {
+        $('#wlNowSec').text('--');
+        $('#wlNowBar').css('transform', 'scaleX(0)');
+        return;
+      }
+      const ms = Math.max(0, S.phaseEndsAt - Date.now());
+      const remain = Math.ceil(ms / 1000);
+      $('#wlNowSec').text(remain);
+      $('#wlNow').toggleClass('is-urgent', remain <= 10 && (S.phase === 'clue' || S.phase === 'guess') && !!describeNow().mine);
+      const frac = total ? Math.max(0, Math.min(1, ms / total)) : 0;
+      $('#wlNowBar').css('transform', 'scaleX(' + frac.toFixed(3) + ')');
+    }
+    paint();
+    timerHandle = setInterval(paint, 250);
+  }
+
+  function render(state) {
+    if (!state || !state.mode) return;
+    S = state;
+    const fx = consumeFx(firstRender);
+    const revealAnim = fx.reveal && !firstRender && S.phase === 'reveal' && S.lastRound && !S.lastRound.skipped && lastRevealRound !== S.lastRound.round;
+    if (S.phase === 'reveal' && S.lastRound) lastRevealRound = S.lastRound.round;
+    renderTop();
+    renderOptions();
+    renderSpectrum();
+    renderDial(revealAnim);
+    renderLocks();
+    renderResults(revealAnim);
+    renderBoard();
+    const finalAnim = !firstRender && !finalAnimated && S.phase === 'finished';
+    if (S.phase === 'finished') finalAnimated = true;
+    renderFinal(finalAnim);
+    renderDock();
+    renderFeed();
+    tickTimer();
+    pingNeed();
+    if (revealAnim) revealCelebrate();
+    firstRender = false;
+  }
+
+  // ---------- commands ----------
+  function toastError(msg) {
+    Swal.fire({ toast: true, position: 'top', icon: 'error', title: msg || 'ทำรายการไม่สำเร็จ', showConfirmButton: false, timer: 2400, background: '#13213a', color: '#fff' });
+  }
+  function send(eventName, payload, after) {
+    if (pending) return;
+    pending = true;
+    $('#wlDock button, #wlOptions button').prop('disabled', true);
+    socket.emit(eventName, Object.assign({ roomId: roomId, round: S.round, phase: S.phase }, payload || {}), function(res) {
+      pending = false;
+      if (res && !res.success) {
+        toastError(res.error);
+        socket.emit('wavelength_requestState', { roomId: roomId, playerId: playerId });
+      } else if (typeof after === 'function') {
+        after();
+      }
+      renderOptions();
+      renderDock();
+    });
+    setTimeout(function() { pending = false; }, 6000);
+  }
+  function lockNow() {
+    if (!canDrag()) return;
+    clearTimeout(sendTimer);
+    needleEl.classList.add('is-locked');
+    if (!reduceMotion) { wobbleEl.classList.remove('is-clunk'); void wobbleEl.getBoundingClientRect(); wobbleEl.classList.add('is-clunk'); }
+    haptic([12, 30, 18]);
+    send('wavelength_lock', { value: myPin });
+  }
+  $(document).on('click', '.wl-option', function() {
+    const idx = Number(this.getAttribute('data-index'));
+    haptic(8);
+    send('wavelength_pickCard', { index: idx });
+  });
+  $(document).on('click', '#wlRerollBtn', function() { send('wavelength_reroll'); });
+  $(document).on('input', '#wlClueInput', function() {
+    draftClue = this.value;
+    const problem = clueProblem(draftClue, S.card);
+    $(this).toggleClass('is-bad', !!(draftClue && problem));
+    $('#wlClueBtn').prop('disabled', !draftClue.trim() || !!problem);
+    $('#wlClueMsg').toggleClass('is-error', !!(draftClue && problem))
+      .html(draftClue && problem ? esc(problem) : '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>');
+  });
+  function submitClue() {
+    const text = (document.getElementById('wlClueInput') || {}).value || '';
+    const problem = clueProblem(text, S.card);
+    if (problem) { toastError(problem); return; }
+    send('wavelength_clue', { text: text }, function() { draftClue = ''; });
+  }
+  $(document).on('keydown', '#wlClueInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); submitClue(); } });
+  $(document).on('click', '#wlClueBtn', submitClue);
+  $(document).on('click', '#wlLockBtn', lockNow);
+  $(document).on('click', '#wlUnlockBtn', function() { send('wavelength_unlock'); });
+  $(document).on('click', '#wlNextBtn, #wlReadyBtn', function() { haptic(8); send('wavelength_next'); });
+  $(document).on('click', '#wlBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  $(document).on('click', '#wlShareBtn', function() {
+    if (!window.partyPlay || !S.standings) return;
+    const w = S.winners || [];
+    window.partyPlay.shareResult({
+      mode: 'คลื่นความคิด',
+      headline: w.length ? w.map(x => x.name).join(', ') + ' ชนะ' : 'จบเกมคลื่นความคิด',
+      sub: S.round + ' รอบ · ' + (S.standings || []).length + ' คน',
+      lines: S.standings.slice(0, 6).map(r => r.rank + '. ' + r.name + ' ' + r.score + ' แต้ม'),
+      accent: '#5eead4',
+      fileName: 'wavelength-result'
+    });
+  });
+  $('#wlEndBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบเกมเลยไหม?', text: 'สรุปคะแนนตอนนี้แล้วกลับห้องรอ',
+      showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#13213a', color: '#fff', confirmButtonColor: '#0f766e'
+    }).then(r => { if (r.isConfirmed) send('wavelength_end'); });
+  });
+
+  // ---------- guide ----------
+  function howToHtml() {
+    return '<div class="wl-guide">' +
+      '<h4>1. ผู้ใบ้เลือกการ์ด</h4><p>การ์ดเป็นคำตรงข้าม เช่น <b>ร้อน ↔ เย็น</b> เลือก 1 จาก 2 ใบ (สุ่มใหม่ได้ 1 ครั้ง) แล้วเห็นเป้าลับบนหน้าปัดคนเดียว</p>' +
+      '<h4>2. ใบ้ 1 คำ</h4><p>พิมพ์คำที่อยู่ตรงเป้า เช่น เป้าค่อนไปทางเย็น → “ไอติม” · ห้ามใช้คำบนการ์ด ห้ามตัวเลข · 60 วิ ไม่ทัน = ข้ามรอบ</p>' +
+      '<h4>3. หมุนเข็มทาย</h4><p>ลากเข็มของคุณไปตรงที่คิดว่าใช่ แล้วกด <b>ล็อกคำตอบ</b> (45 วิ) · เพื่อนเห็นว่าคุณล็อกแล้ว แต่ไม่เห็นว่าล็อกตรงไหน</p>' +
+      '<h4>4. เปิดเป้า</h4><p>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยแต้มของเพื่อน — ใบ้ดี ได้กันทั้งวง</p>' +
+      '<h4>ชนะ</h4><p>ทุกคนได้ใบ้ครบรอบโต๊ะ แล้วแต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</p>' +
+      '</div>';
+  }
+  $('#wlHowBtn').on('click', function() {
+    Swal.fire({ title: 'คลื่นความคิด เล่นยังไง', html: howToHtml(), background: '#13213a', color: '#fff', confirmButtonText: 'เข้าใจแล้ว', confirmButtonColor: '#0f766e', width: 'min(520px, 94vw)' });
+  });
+
+  // ---------- sidebar ----------
+  function setSidebarOpen(open) {
+    if (open && $('#chatBox').is(':visible')) $('#closeChat').trigger('click');
+    $('#playerSidebar').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#sidebarOverlay').toggle(open);
+    $('#wlSidebarBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('closeSidebarBtn').focus();
+  }
+  $('#wlSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
+  $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
+  $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#playerSidebar').hasClass('open')) setSidebarOpen(false); });
+  $('#leaveRoomBtn').on('click', function() {
+    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: 'แต้มของคุณในเกมนี้จะหยุดนับ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#13213a', color: '#fff' })
+      .then(r => {
+        if (!r.isConfirmed) return;
+        allowNavigation = true;
+        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+      });
+  });
+  window.addEventListener('beforeunload', function(e) { if (!allowNavigation) e.preventDefault(); });
+
+  // ---------- socket ----------
+  socket.on('connect', function() {
+    $('#connectionStatus').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('wavelength_requestState', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  socket.on('wavelengthState', render);
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    $('#onlinePlayerList').html(data.players.map(p =>
+      '<li style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid oklch(1 0 0 / 0.08); min-width:0;">' +
+        avatarHtml({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 26) +
+        '<span style="color:' + esc(p.color || '#fff') + '; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.displayName || p.playerName) + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:oklch(0.74 0.03 250);">หลุด</span>' : '') +
+      '</li>').join(''));
+  });
+  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('returnToLobby', function(data) {
+    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    tickTimer();
+  });
+  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && (data.reason || data.message)) || '', background: '#13213a', color: '#fff' })
+      .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+
+  window.initChatPanel({ socket: socket, playerId: playerId, playerName: playerName });
+
+  applyNeedle();
+  if (S && S.mode) render(S);
+});
+</script>

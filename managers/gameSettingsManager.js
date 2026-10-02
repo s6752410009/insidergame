@@ -53,6 +53,9 @@ const DEFAULT_SETTINGS = {
         },
         pokdeng: {
             defaultMaxPlayers: 6
+        },
+        wavelength: {
+            defaultMaxPlayers: 8
         }
     },
     insider: {

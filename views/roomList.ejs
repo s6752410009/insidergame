@@ -934,7 +934,8 @@ $(function() {
         { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'codenames', label: 'สายลับคำใบ้', description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน', minPlayers: 4, maxPlayers: 12 },
-        { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
+        { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1207,6 +1208,15 @@ $(function() {
                 title: 'ป๊อกเด้ง',
                 summary: 'แจก 2 ใบ ป๊อกเปิดเลย ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ — ชิปในโต๊ะ ไม่มีมูลค่าจริง',
                 bullets: ['2-10 คน', 'มือละไม่ถึงนาที', 'ดอกเดียวกัน/คู่ = 2 เด้ง', 'ใส่บอทได้']
+            },
+            wavelength: {
+                tone: 'linear-gradient(135deg, rgba(45,212,191,0.24), rgba(14,22,38,0.94))',
+                border: 'rgba(94,234,212,0.36)',
+                cover: '/assets/games/wavelength/cover.jpg',
+                badge: '📡 ใบ้คำ · หมุนเข็ม',
+                title: 'คลื่นความคิด',
+                summary: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ เช่น ร้อน ↔ เย็น ใบ้ว่า “ไอติม” แล้วทุกคนหมุนเข็มทาย ใกล้เป้าได้แต้มเยอะ',
+                bullets: ['3-12 คน', 'รอบละ 2 นาที', 'ไม่ต้องพูด เล่นในจอ', 'เข้ากลางเกมได้']
             }
         };
 
@@ -1227,7 +1237,8 @@ $(function() {
             poker5: 'ไพ่ 5 ใบ',
             poker4: 'สี่ใบเก',
             codenames: 'สายลับคำใบ้',
-            pokdeng: 'ป๊อกเด้ง'
+            pokdeng: 'ป๊อกเด้ง',
+            wavelength: 'คลื่นความคิด'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1399,7 +1410,7 @@ $(function() {
             const isPlaying = room.gameStatus === 'playing';
             const isFinished = room.gameStatus === 'finished';
             const isStuck = room.isStuck || (isPlaying && (room.onlineCount || 0) === 0);
-            const isJoinable = room.isJoinable !== false && !isPlaying && !isStuck;
+            const isJoinable = room.isJoinable !== false && (!isPlaying || room.gameMode === 'wavelength') && !isStuck;
             const isDualTraitor = room.settings && room.settings.dualTraitorMode && room.gameMode === 'insider';
             const onlineCount = room.onlineCount || 0;
             const playerPercentage = (onlineCount / room.maxPlayers) * 100;
@@ -1416,7 +1427,7 @@ $(function() {
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
                                     : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
                                         : (room.gameMode === 'poker4' ? 'สี่ใบเก'
-                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : 'Insider')))))))
+                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : room.gameMode === 'wavelength' ? 'คลื่นความคิด' : 'Insider')))))))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1425,6 +1436,7 @@ $(function() {
                     : (room.gameMode === 'spyfall'
                         ? 'background: linear-gradient(135deg, #0f766e, #134e4a); color:#ccfbf1; border:1px solid rgba(94,234,212,0.35);'
                         : room.gameMode === 'undercover' ? 'background: #1a2332; color:#f5c86b; border:1px solid rgba(245,200,107,0.45);'
+                        : room.gameMode === 'wavelength' ? 'background: #10233a; color:#99f6e4; border:1px solid rgba(94,234,212,0.45);'
                         : (room.gameMode === 'coup'
                             ? 'background: linear-gradient(135deg, #6d28d9, #3b0764); color:#f4ecff; border:1px solid rgba(196,141,255,0.35);'
                             : room.gameMode === 'avalon'
@@ -1638,6 +1650,21 @@ $(function() {
                             </label>
                         </div>
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลาแล้วข้ามไปอีกทีม · เลือกทีมและหัวหน้ากันในห้องรอ · เปลี่ยนเวลาในห้องรอได้</div>
+                    </div>
+
+                    <div class="room-form-group" id="wavelengthLapsGroup" role="group" aria-labelledby="wavelengthLapsLabel" style="display:none;">
+                        <div class="room-form-label" id="wavelengthLapsLabel"><span class="icon">📡</span> ผู้ใบ้วนกี่รอบโต๊ะ:</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <label style="flex:1; min-width:120px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(94,234,212,0.4); background:rgba(94,234,212,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="wavelengthLaps" value="1" checked style="accent-color:#5eead4;">
+                                <span>1 รอบ (ทุกคนใบ้ 1 ครั้ง)</span>
+                            </label>
+                            <label style="flex:1; min-width:120px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="radio" name="wavelengthLaps" value="2" style="accent-color:#5eead4;">
+                                <span>2 รอบ (ใบ้คนละ 2 ครั้ง)</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">รอบละ ~2 นาที · คิดคำใบ้ 60 วิ · ทาย 45 วิ · 5 คน 1 รอบโต๊ะ ≈ 10 นาที</div>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
@@ -1876,6 +1903,8 @@ $(function() {
                     if (document.getElementById('pokdengTableGroup')) document.getElementById('pokdengTableGroup').style.display = selectedMode === 'pokdeng' ? 'block' : 'none';
                     if (selectedMode === 'codenames') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('codenamesTimerGroup')) document.getElementById('codenamesTimerGroup').style.display = selectedMode === 'codenames' ? 'block' : 'none';
+                    if (selectedMode === 'wavelength') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('wavelengthLapsGroup')) document.getElementById('wavelengthLapsGroup').style.display = selectedMode === 'wavelength' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
@@ -2033,7 +2062,10 @@ $(function() {
                     pokdengRotateDealer: gameMode === 'pokdeng'
                         && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate'),
                     codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,
-                    codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined
+                    codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined,
+                    wavelengthLaps: gameMode === 'wavelength'
+                        ? (parseInt((document.querySelector('input[name="wavelengthLaps"]:checked') || {}).value, 10) === 2 ? 2 : 1)
+                        : 1
                 };
             }
             }).then((result) => {
@@ -2388,6 +2420,20 @@ $(function() {
         ].join('');
     }
 
+    function buildWavelengthGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทายให้ใกล้เป้าลับบนหน้าปัดที่สุด · ใบ้ให้เพื่อนทายถูก · จบเกมแต้มสูงสุดชนะ</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>ผู้ใบ้เลือกการ์ด 1 จาก 2 ใบ เช่น <b>ร้อน ↔ เย็น</b> แล้วเห็นเป้าลับคนเดียว</li>',
+            '<li>พิมพ์คำใบ้สั้น ๆ 1 คำหรือวลี (ห้ามใช้คำบนการ์ด ห้ามตัวเลข) ภายใน 60 วิ</li>',
+            '<li>ที่เหลือหมุนเข็มของตัวเองแล้วกดล็อก ภายใน 45 วิ</li>',
+            '<li>เปิดเป้า: เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยของทุกคน</li>',
+            '</ol></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildPokerGuideHtml(variant) {
         if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
         return '';
@@ -2405,7 +2451,8 @@ $(function() {
             { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
             { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' },
             { id: 'codenames',   label: '🕵️ สายลับคำใบ้',  html: buildCodenamesGuideHtml(),     color: '#2563eb' },
-            { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' }
+            { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' },
+            { id: 'wavelength',  label: '📡 คลื่นความคิด', html: buildWavelengthGuideHtml(),    color: '#0f766e' }
         ];
 
         const tabsHtml = '<div class="global-guide-tabs">' +

@@ -103,7 +103,7 @@ function createDefaultWinByRole() {
     };
 }
 
-const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover', 'coup', 'avalon', 'liar', 'poker5', 'poker4', 'pokdeng'];
+const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover', 'coup', 'avalon', 'liar', 'poker5', 'poker4', 'pokdeng', 'wavelength'];
 GAME_MODES.push('codenames');
 
 function createDefaultModeStats() {
@@ -119,7 +119,8 @@ function createDefaultModeStats() {
         poker5: { games: 0, wins: 0, losses: 0 },
         poker4: { games: 0, wins: 0, losses: 0 },
         codenames: { games: 0, wins: 0, losses: 0 },
-        pokdeng: { games: 0, wins: 0, losses: 0 }
+        pokdeng: { games: 0, wins: 0, losses: 0 },
+        wavelength: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -411,6 +412,10 @@ function recordGameEnd(roomId, gameResult) {
         return recordCodenamesGameEnd(roomId, gameResult);
     }
 
+    if (gameResult?.mode === 'wavelength') {
+        return recordWavelengthGameEnd(roomId, gameResult);
+    }
+
     return recordInsiderGameEnd(roomId, gameResult);
 }
 
@@ -698,6 +703,51 @@ function recordCodenamesGameEnd(roomId, gameResult) {
             playerCount: players.length,
             winnerName: teamLabel,
             resultText: `${teamLabel}ชนะ${reasonText ? ' — ' + reasonText : ''}${remaining ? ` · เหลือแดง ${remaining.red || 0} / น้ำเงิน ${remaining.blue || 0}` : ''}`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+/** คลื่นความคิด: แต้มสูงสุดชนะ (เสมอกันชนะร่วม) — คนที่ออกกลางเกมก็นับถ้าเล่นไปแล้ว */
+function recordWavelengthGameEnd(roomId, gameResult) {
+    const { standings, roomName, rounds } = gameResult;
+    if (!Array.isArray(standings) || standings.length === 0) {
+        console.warn('Invalid wavelength game result data');
+        return;
+    }
+
+    const gameTimestamp = new Date().toISOString();
+    const winnerNames = standings.filter(row => row.won).map(row => row.name);
+    standings.forEach(row => {
+        if (!row || !row.playerId || isBotPlayerId(row.playerId)) return;
+        const stat = initializeStats(row.playerId, row.name);
+        if (!stat) return;
+        const playerWon = !!row.won;
+
+        stat.totalGames += 1;
+        stat.modeStats.wavelength.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.wavelength.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.wavelength.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'wavelength',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            playerCount: standings.length,
+            winnerName: winnerNames.join(', ') || 'ไม่มี',
+            resultText: `${Number(row.score) || 0} แต้ม · อันดับ ${row.rank || '-'}/${standings.length} · ${rounds || 0} รอบ`
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {
             stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
