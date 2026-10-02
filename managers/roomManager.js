@@ -260,6 +260,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'liar_finished',
     'poker_finished',
     'pokdeng_finished',
+    'colorcards_finished',
     'end',
     'finished'
 ]);
@@ -284,7 +285,9 @@ const ROOM_NAME_MODE_HINTS = {
     '4 ใบเก': 'poker4',
     '4ใบเก': 'poker4',
     'ป๊อกเด้ง': 'pokdeng',
-    'วงป๊อกเด้ง': 'pokdeng'
+    'วงป๊อกเด้ง': 'pokdeng',
+    'ไพ่ทิ้งสี': 'colorcards',
+    'วงไพ่ทิ้งสี': 'colorcards'
 };
 
 function inferGameModeFromRoomName(roomName) {
@@ -632,6 +635,11 @@ function createRoom(roomData, creatorPlayerId) {
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
+            colorcardsTurnSeconds: gameMode !== 'colorcards' ? undefined
+                : ([15, 20, 30].includes(Number(normalizedRoomData.colorcardsTurnSeconds)) ? Number(normalizedRoomData.colorcardsTurnSeconds) : 20),
+            colorcardsTarget: gameMode !== 'colorcards' ? undefined
+                : ([0, 300, 500].includes(Number(normalizedRoomData.colorcardsTarget)) ? Number(normalizedRoomData.colorcardsTarget) : 0),
+            colorcardsStacking: gameMode === 'colorcards' && normalizedRoomData.colorcardsStacking === true,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1031,6 +1039,11 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.pokdengRotateDealer !== undefined) {
         room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;
+    }
+    if (room.settings.gameMode === 'colorcards' && !isRoomGameInProgress(room)) {
+        if ([15, 20, 30].includes(Number(updates.colorcardsTurnSeconds))) room.settings.colorcardsTurnSeconds = Number(updates.colorcardsTurnSeconds);
+        if ([0, 300, 500].includes(Number(updates.colorcardsTarget))) room.settings.colorcardsTarget = Number(updates.colorcardsTarget);
+        if (updates.colorcardsStacking !== undefined) room.settings.colorcardsStacking = updates.colorcardsStacking === true;
     }
 
     if (updates.locked !== undefined) {

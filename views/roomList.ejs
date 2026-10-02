@@ -897,7 +897,8 @@ $(function() {
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
         { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
-        { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 }
+        { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'colorcards', label: 'ไพ่ทิ้งสี', description: 'ลงไพ่ให้สีหรือเลขตรงกัน ทิ้งให้หมดมือก่อนชนะ เหลือใบเดียวต้องกดบอก — 2–10 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 10 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1161,6 +1162,15 @@ $(function() {
                 title: 'ป๊อกเด้ง',
                 summary: 'แจก 2 ใบ ป๊อกเปิดเลย ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ — ชิปในโต๊ะ ไม่มีมูลค่าจริง',
                 bullets: ['2-10 คน', 'มือละไม่ถึงนาที', 'ดอกเดียวกัน/คู่ = 2 เด้ง', 'ใส่บอทได้']
+            },
+            colorcards: {
+                tone: 'linear-gradient(135deg, rgba(56,132,220,0.3), rgba(16,22,40,0.92))',
+                border: 'rgba(245,200,107,0.34)',
+                cover: '/assets/games/colorcards/cover.jpg',
+                badge: '🃏 สีตรง · เลขตรง · ทิ้งให้หมด',
+                title: 'ไพ่ทิ้งสี',
+                summary: 'ลงไพ่ให้สีหรือเลขตรงกับกอง ใช้ข้าม กลับทิศ +2 +4 แกล้งเพื่อน ทิ้งหมดมือก่อนชนะ — เหลือใบเดียวต้องกดบอก!',
+                bullets: ['2-10 คน', 'รอบละ 5–10 นาที', 'กด "จับได้!" คนลืมบอก', 'ใส่บอทได้']
             }
         };
 
@@ -1180,7 +1190,8 @@ $(function() {
             liar: 'ไพ่โกหก',
             poker5: 'ไพ่ 5 ใบ',
             poker4: 'สี่ใบเก',
-            pokdeng: 'ป๊อกเด้ง'
+            pokdeng: 'ป๊อกเด้ง',
+            colorcards: 'ไพ่ทิ้งสี'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1325,7 +1336,7 @@ $(function() {
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
                                     : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
                                         : (room.gameMode === 'poker4' ? 'สี่ใบเก'
-                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : 'Insider')))))))
+                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : (room.gameMode === 'colorcards' ? 'ไพ่ทิ้งสี' : 'Insider'))))))))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1344,9 +1355,11 @@ $(function() {
                                     ? 'background: linear-gradient(135deg, #166534, #052e16); color:#bbf7d0; border:1px solid rgba(74,222,128,0.4);'
                                     : (room.gameMode === 'poker4'
                                         ? 'background: linear-gradient(135deg, #991b1b, #1c1917); color:#fecaca; border:1px solid rgba(248,113,113,0.35);'
+                                        : (room.gameMode === 'colorcards'
+                                            ? 'background: #1a2332; color:#f5c86b; border:1px solid rgba(96,165,250,0.5);'
                                         : (room.gameMode === 'pokdeng'
                                             ? 'background: #5c1419; color:#fde68a; border:1px solid rgba(245,200,107,0.4);'
-                                            : 'background: linear-gradient(135deg, #e67e22, #d35400);')))))));
+                                            : 'background: linear-gradient(135deg, #e67e22, #d35400);'))))))));
             const roomCard = `
                 <div class="room-card${isJoinable ? '' : ' room-card-disabled'}" data-room-id="${room.roomId}" data-joinable="${isJoinable ? '1' : '0'}" style="${isJoinable ? '' : 'opacity:0.72; cursor:not-allowed;'}">
                     <div class="room-card-header">
@@ -1527,6 +1540,31 @@ $(function() {
                             </label>
                         </div>
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · ไม่เกี่ยวกับกระเป๋าชิป · ลงได้ 10–500 ต่อมือ · เปลี่ยนแบบเจ้ามือในเกมได้</div>
+                    </div>
+
+                    <div class="room-form-group" id="colorcardsTableGroup" role="group" aria-labelledby="colorcardsTableLabel" style="display:none;">
+                        <div class="room-form-label" id="colorcardsTableLabel"><span class="icon">🃏</span> กติกาโต๊ะ:</div>
+                        <div style="display:grid; gap:10px;">
+                            <label style="display:grid; gap:6px; color:#ddd; font-size:0.9em;">เล่นถึง
+                                <select id="colorcardsTarget" class="search-box" style="min-height:48px; width:100%;">
+                                    <option value="0" selected>1 รอบ (ใครหมดมือก่อนชนะ)</option>
+                                    <option value="300">ใครถึง 300 แต้มก่อน</option>
+                                    <option value="500">ใครถึง 500 แต้มก่อน</option>
+                                </select>
+                            </label>
+                            <label style="display:grid; gap:6px; color:#ddd; font-size:0.9em;">เวลาต่อตา
+                                <select id="colorcardsTurnSeconds" class="search-box" style="min-height:48px; width:100%;">
+                                    <option value="15">15 วินาที</option>
+                                    <option value="20" selected>20 วินาที</option>
+                                    <option value="30">30 วินาที</option>
+                                </select>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="checkbox" id="colorcardsStacking" style="accent-color:#f5c86b; width:20px; height:20px;">
+                                <span>ซ้อน +2/+4 ได้ (คนที่ไม่มีซ้อน รับทั้งหมด)</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">แจกคนละ 7 ใบ · หมดเวลา = จั่วให้แล้วผ่าน · ใส่บอทได้ในห้องรอ</div>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
@@ -1721,6 +1759,8 @@ $(function() {
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
                     if (selectedMode === 'pokdeng') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('pokdengTableGroup')) document.getElementById('pokdengTableGroup').style.display = selectedMode === 'pokdeng' ? 'block' : 'none';
+                    if (selectedMode === 'colorcards') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('colorcardsTableGroup')) document.getElementById('colorcardsTableGroup').style.display = selectedMode === 'colorcards' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
@@ -1872,7 +1912,10 @@ $(function() {
                         ? (parseInt((document.getElementById('pokerAnte') || {}).value, 10) || 500)
                         : 500,
                     pokdengRotateDealer: gameMode === 'pokdeng'
-                        && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate')
+                        && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate'),
+                    colorcardsTarget: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTarget') || {}).value || 0) : undefined,
+                    colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
+                    colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked
                 };
             }
             }).then((result) => {
@@ -2212,6 +2255,22 @@ $(function() {
         ].join('');
     }
 
+    function buildColorCardsGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทิ้งไพ่ในมือให้หมดก่อนคนอื่น · แจกคนละ 7 ใบ · 2–10 คน ใส่บอทได้</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>ลงไพ่สีเดียวกัน หรือเลข/สัญลักษณ์เดียวกับใบบนกอง</li>',
+            '<li>ไม่มีใบลง (หรือไม่อยากลง) = จั่ว 1 ใบ ถ้าลงได้ลงต่อเลย ไม่งั้นผ่าน</li>',
+            '<li><b>ข้าม</b> ข้ามคนถัดไป · <b>กลับทิศ</b> (2 คน = ข้าม) · <b>+2</b> คนถัดไปจั่ว 2 แล้วโดนข้าม</li>',
+            '<li><b>เปลี่ยนสี</b> เลือกสีใหม่ · <b>+4</b> เปลี่ยนสี + คนถัดไปจั่ว 4 (ลงได้ทุกเมื่อ ไม่มีกติกาท้า)</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>เหลือใบเดียว!</h4><p>ก่อนลงใบรองสุดท้ายต้องกด <b>เหลือใบเดียว!</b> ลืมกด คนอื่นกด <b>จับได้!</b> ภายใน 4 วิ = จั่ว 2</p></div>',
+            '<div class="bm-guide-section"><h4>แต้ม</h4><p>คนหมดมือได้แต้ม = ไพ่ที่เหลือในมือคนอื่น (เลข = ตามหน้า, ข้าม/กลับทิศ/+2 = 20, เปลี่ยนสี/+4 = 50) · ตั้งห้องเล่น 1 รอบ หรือถึง 300/500 แต้ม</p></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildPokerGuideHtml(variant) {
         if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
         return '';
@@ -2228,7 +2287,8 @@ $(function() {
             { id: 'liar',        label: '🃏 ไพ่โกหก',      html: buildLiarGuideHtml(),         color: '#b91c1c' },
             { id: 'poker5',      label: '♠ ไพ่ 5 ใบ', html: buildPokerGuideHtml('poker5'), color: '#166534' },
             { id: 'poker4',      label: '♦ สี่ใบเก',       html: buildPokerGuideHtml('poker4'), color: '#991b1b' },
-            { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' }
+            { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' },
+            { id: 'colorcards',  label: '🃏 ไพ่ทิ้งสี',     html: buildColorCardsGuideHtml(),    color: '#2563eb' }
         ];
 
         const tabsHtml = '<div class="global-guide-tabs">' +

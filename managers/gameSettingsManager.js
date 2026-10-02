@@ -53,6 +53,9 @@ const DEFAULT_SETTINGS = {
         },
         pokdeng: {
             defaultMaxPlayers: 6
+        },
+        colorcards: {
+            defaultMaxPlayers: 6
         }
     },
     insider: {

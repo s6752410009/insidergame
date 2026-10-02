@@ -314,6 +314,22 @@
     border: 1px solid rgba(245, 200, 107, 0.4);
   }
 
+  .guide-card.mode-colorcards {
+    border-color: rgba(96, 165, 250, 0.32);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(37, 99, 235, 0.22), transparent 55%),
+      linear-gradient(180deg, #1a2332 0%, #151c2a 55%, #111722 100%);
+  }
+
+  .guide-card.mode-colorcards .guide-mode-badge {
+    background: rgba(37, 99, 235, 0.22);
+    color: #f5c86b;
+    border: 1px solid rgba(96, 165, 250, 0.45);
+  }
+
+  .cc-howto-swatches { display: inline-flex; gap: 4px; vertical-align: middle; margin-right: 8px; }
+  .cc-howto-swatches i { width: 16px; height: 22px; border-radius: 4px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); }
+
   .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
   .pd-howto-cards img { width: 26px; height: 36px; border-radius: 3px; }
 
@@ -948,6 +964,7 @@
     { id: 'poker5', ico: '♠', label: 'ไพ่ 5 ใบ' },
     { id: 'poker4', ico: '♦', label: 'สี่ใบเก' },
     { id: 'pokdeng', ico: '🎴', label: 'ป๊อกเด้ง' },
+    { id: 'colorcards', ico: '🃏', label: 'ไพ่ทิ้งสี' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1392,6 +1409,19 @@
           </div>
         </div>
       </details>
+    </article>
+
+    <article class="guide-card mode-colorcards" id="colorcards">
+      <div class="guide-mode-badge">🃏 ไพ่ทิ้งสี</div>
+      <h2>ลงสีหรือเลขให้ตรง ทิ้งให้หมดมือก่อนชนะ</h2>
+      <p>แจกคนละ 7 ใบ ไล่ลงทีละคน ลงไพ่ที่สีเดียวกันหรือเลข/สัญลักษณ์เดียวกับใบบนกอง ไม่มีใบลง (หรือไม่อยากลง) ให้จั่ว 1 ใบ ถ้าใบที่จั่วลงได้ลงต่อได้เลย ไม่งั้นผ่าน หมดเวลา (15/20/30 วิ ตามห้อง) = จั่วให้แล้วผ่าน เล่น 2–10 คน ใส่บอทได้</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><span class="cc-howto-swatches"><i style="background:#d9473a"></i><i style="background:#f2c230"></i><i style="background:#2f9e5b"></i><i style="background:#3b7be0"></i></span><strong>กอง 108 ใบ</strong> 4 สี (แดง ▲ เหลือง ● เขียว ■ น้ำเงิน ◆) สีละ 0–9 · ข้าม · กลับทิศ · +2 และไพ่ดำ เปลี่ยนสี 4 ใบ +4 อีก 4 ใบ</div>
+        <div class="guide-list-item"><strong>ไพ่พิเศษ</strong> ข้าม = ข้ามคนถัดไป · กลับทิศ = เปลี่ยนทิศ (เล่น 2 คน = ข้าม) · +2 = คนถัดไปจั่ว 2 แล้วโดนข้าม · เปลี่ยนสี = เลือกสีใหม่ · +4 = เลือกสี + คนถัดไปจั่ว 4 แล้วโดนข้าม</div>
+        <div class="guide-list-item"><strong>+4 ลงได้ทุกเมื่อ</strong> ไม่มีกติกาท้าว่ามีสีตรงหรือเปล่า · หัวห้องเปิด <strong>ซ้อน +2/+4</strong> ได้ (คนที่ไม่มีซ้อนรับทั้งหมด)</div>
+        <div class="guide-list-item"><strong>เหลือใบเดียว!</strong> ก่อนลงใบรองสุดท้ายกดปุ่ม "เหลือใบเดียว!" ถ้าลืม คนอื่นกด "จับได้!" ทันก่อนหมดเวลาสั้น ๆ = จั่ว 2</div>
+        <div class="guide-list-item"><strong>ชนะ + แต้ม</strong> หมดมือก่อนชนะรอบ ได้แต้ม = ไพ่ในมือคนอื่น (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50) · ตั้งห้องเล่น 1 รอบ หรือใครถึง 300/500 แต้มก่อน</div>
+      </div>
     </article>
   </section>
 
