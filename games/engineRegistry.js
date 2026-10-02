@@ -8,6 +8,7 @@ const avalonEngine = require('./avalonEngine');
 const liarEngine = require('./liarEngine');
 const { poker5, poker4 } = require('./pokerEngine');
 const pokdengEngine = require('./pokdengEngine');
+const wavelengthEngine = require('./wavelengthEngine');
 
 const ENGINES = {
     insider: insiderEngine,
@@ -20,7 +21,8 @@ const ENGINES = {
     liar: liarEngine,
     poker5,
     poker4,
-    pokdeng: pokdengEngine
+    pokdeng: pokdengEngine,
+    wavelength: wavelengthEngine
 };
 
 function isPokerMode(gameMode) {
@@ -76,7 +78,10 @@ function normalizeGameMode(gameMode) {
         pokdeng: 'pokdeng',
         pokdang: 'pokdeng',
         ป๊อกเด้ง: 'pokdeng',
-        ป็อกเด้ง: 'pokdeng'
+        ป็อกเด้ง: 'pokdeng',
+        wavelength: 'wavelength',
+        คลื่นความคิด: 'wavelength',
+        คลื่น: 'wavelength'
     };
 
     return ENGINES[aliases[compactMode]] ? aliases[compactMode] : 'insider';

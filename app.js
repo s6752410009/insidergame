@@ -97,6 +97,7 @@ const pokerPhaseTimeouts = new Map();
 const pokerBotTimeouts = new Map();
 const pokerBotAddInFlight = new Set();
 const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
@@ -829,6 +830,7 @@ function clearInsiderReturnTimer(roomId) {
 
 function isFinishedTableReturnMode(gameMode) {
     if (gameMode === 'pokdeng') return true;
+    if (gameMode === 'wavelength') return true;
     if (gameMode === 'avalon') return true;
     return gameMode === 'liar' || gameMode === 'coup' || gameMode === 'poker5' || gameMode === 'poker4';
 }
@@ -861,6 +863,7 @@ function returnFinishedGameToLobby(roomId) {
     clearPokerPhaseTimer(roomId);
     clearPokerBotTimer(roomId);
     pokdengRuntime.clearTimers(roomId);
+    wavelengthRuntime.clearTimers(roomId);
     roomManager.resetRoomGame(roomId);
     const refreshedRoom = roomManager.getRoom(roomId);
     io.to(roomId).emit('redirectToLobby', { roomId });
@@ -1334,6 +1337,7 @@ function clearAllRoomTimers(roomId) {
     clearPokerPhaseTimer(roomId);
     clearPokerBotTimer(roomId);
     pokdengRuntime.clearTimers(roomId);
+    wavelengthRuntime.clearTimers(roomId);
     clearInsiderVoteTimer(roomId);
     clearInsiderReturnTimer(roomId);
     clearFinishedReturnTimer(roomId);
@@ -1487,7 +1491,8 @@ const GAME_MODE_LOG_STYLES = {
     liar: { label: 'ไพ่โกหก', emoji: '🃏', badgeBg: 'rgba(220,38,38,0.2)', badgeColor: '#fecaca' },
     poker5: { label: 'ไพ่ 5 ใบ', emoji: '♠', badgeBg: 'rgba(22,101,52,0.25)', badgeColor: '#bbf7d0' },
     poker4: { label: 'สี่ใบเก', emoji: '♦', badgeBg: 'rgba(153,27,27,0.25)', badgeColor: '#fecaca' },
-    pokdeng: { label: 'ป๊อกเด้ง', emoji: '🎴', badgeBg: 'rgba(245,200,107,0.2)', badgeColor: '#fde68a' }
+    pokdeng: { label: 'ป๊อกเด้ง', emoji: '🎴', badgeBg: 'rgba(245,200,107,0.2)', badgeColor: '#fde68a' },
+    wavelength: { label: 'คลื่นความคิด', emoji: '📡', badgeBg: 'rgba(94,234,212,0.18)', badgeColor: '#99f6e4' }
 };
 
 function getGameModeLogStyle(gameMode) {
@@ -1620,6 +1625,10 @@ function buildGameEndNotification(room) {
 
     if (mode === 'pokdeng') {
         return pokdengRuntime.gameEndNotification(room);
+    }
+
+    if (mode === 'wavelength') {
+        return wavelengthRuntime.gameEndNotification(room);
     }
 
     if (mode === 'insider' && gameState.resultVote2) {
@@ -3376,6 +3385,8 @@ function broadcastGameStateForRoom(room) {
         emitPokerRoomState(room);
     } else if (room.settings.gameMode === 'pokdeng') {
         pokdengRuntime.emitRoomState(room);
+    } else if (room.settings.gameMode === 'wavelength') {
+        wavelengthRuntime.emitRoomState(room);
     }
 }
 
@@ -3464,6 +3475,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 pokdengRuntime.handleLeft(room, playerId);
             } catch (error) {
                 console.error('[pokdeng] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'wavelength') {
+            try {
+                wavelengthRuntime.handleLeft(room, playerId);
+            } catch (error) {
+                console.error('[wavelength] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'werewolf') {
@@ -3814,6 +3832,10 @@ function recoverGamePhaseTimers() {
             pokdengRuntime.recover(room);
         }
 
+        if (room.settings.gameMode === 'wavelength') {
+            wavelengthRuntime.recover(room);
+        }
+
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
             if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
                 finalizeInsiderVote2(room);
@@ -3885,6 +3907,9 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'pokdeng' && roomManager.isRoomGameInProgress(room)) {
             pokdengRuntime.forceResolve(room);
         }
+        if (room.settings.gameMode === 'wavelength' && roomManager.isRoomGameInProgress(room)) {
+            wavelengthRuntime.forceResolve(room);
+        }
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
             && room.gameState.status === 'vote2'
             && room.gameState.vote2EndsAt
@@ -3898,6 +3923,7 @@ function runRoomCleanupSweep() {
         clearPokerPhaseTimer(candidate.roomId);
         clearPokerBotTimer(candidate.roomId);
         pokdengRuntime.clearTimers(candidate.roomId);
+        wavelengthRuntime.clearTimers(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
@@ -4958,6 +4984,25 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'wavelength') {
+        return res.render('wavelengthBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            wavelengthState: wavelengthRuntime.buildPayload(room, playerId),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
     if (room.settings.gameMode === 'spyfall') {
         return res.render('spyfallBoard.ejs', {
             player: gameStatePlayer,
@@ -5057,7 +5102,7 @@ app.get('/room/:roomId', async function(req, res) {
         }
         
         // เช็คว่าเกมเริ่มแล้วหรือยัง (เกมจบแล้วถือว่า join ได้ — รอเริ่มรอบใหม่)
-        if (roomManager.isRoomGameInProgress(room)) {
+        if (roomManager.isRoomGameInProgress(room) && !getGameEngine(room.settings.gameMode).allowsLateJoin) {
             return res.redirect('/rooms?msg=game_in_progress');
         }
         
@@ -5069,6 +5114,10 @@ app.get('/room/:roomId', async function(req, res) {
             }
             
             playerInRoom = room.players.find(p => p.playerId === playerId);
+            // เข้ากลางเกมที่รับคนเพิ่มได้ (คลื่นความคิด) → ไปหน้าเกมเลย ได้เล่นตั้งแต่รอบหน้า
+            if (roomManager.isRoomGameInProgress(room) && getGameEngine(room.settings.gameMode).allowsLateJoin) {
+                return res.redirect('/game/' + roomId + '?playerId=' + playerId);
+            }
         } catch (error) {
             console.error('Error auto-joining room:', error);
             return res.redirect('/rooms?msg=' + encodeURIComponent(error.message));
@@ -5650,6 +5699,8 @@ io.sockets.on('connection', function(socket) {
             emitPokerState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'pokdeng') {
             pokdengRuntime.emitState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'wavelength') {
+            wavelengthRuntime.handlePresence(refreshedRoom);
         }
     });
 
@@ -5679,6 +5730,7 @@ io.sockets.on('connection', function(socket) {
             clearPokerPhaseTimer(roomId);
             clearPokerBotTimer(roomId);
             pokdengRuntime.clearTimers(roomId);
+            wavelengthRuntime.clearTimers(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
             clearFinishedReturnTimer(roomId);
@@ -5727,6 +5779,8 @@ io.sockets.on('connection', function(socket) {
                 emitPokerRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'pokdeng') {
                 pokdengRuntime.emitRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'wavelength') {
+                wavelengthRuntime.emitRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -7073,6 +7127,9 @@ io.sockets.on('connection', function(socket) {
                 emitPokerState(room, socket.id, playerId);
             } else if (room.settings.gameMode === 'pokdeng') {
                 pokdengRuntime.emitState(room, socket.id, playerId);
+            } else if (room.settings.gameMode === 'wavelength') {
+                // full resync ให้คนที่ต่อกลับ + บอกทุกคนว่าออนไลน์แล้ว (ผู้ใบ้กลับมาทัน = นาฬิกาเดินต่อ)
+                wavelengthRuntime.handlePresence(room);
             } else if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
@@ -8247,6 +8304,87 @@ io.sockets.on('connection', function(socket) {
     });
     // ==================== END POK DENG ====================
 
+    // ===== WAVELENGTH (คลื่นความคิด) =====
+    // ทุกคำสั่งเช็คฝั่งเซิร์ฟเวอร์ (ใครเป็นผู้ใบ้ เฟส รอบ) · state ส่งทีละ socket เพราะเป้าลับเห็นแค่ผู้ใบ้
+
+    safeOn(socket, 'wavelength_requestState', function(data) {
+        const room = getSocketRoom(socket, 'wavelength');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        wavelengthRuntime.emitState(room, socket.id, playerId);
+    });
+
+    function handleWavelengthCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'wavelength');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบห้องคลื่นความคิด' });
+            return;
+        }
+        try {
+            run(room, socket.playerId);
+            wavelengthRuntime.emitRoomState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    function wavelengthContext(data) {
+        return { round: data?.round, phase: data?.phase || null };
+    }
+
+    safeOn(socket, 'wavelength_pickCard', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.pickCard(room, playerId, data?.index, wavelengthContext(data)));
+    });
+
+    safeOn(socket, 'wavelength_reroll', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.rerollCards(room, playerId, wavelengthContext(data)));
+    });
+
+    safeOn(socket, 'wavelength_clue', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.submitClue(room, playerId, typeof data?.text === 'string' ? data.text.slice(0, 200) : '', wavelengthContext(data)));
+    });
+
+    // ลากเข็ม: เก็บตำแหน่งล่าสุดไว้ (หมดเวลาจะล็อกให้ตรงนี้) — ไม่กระจายให้ใคร ตำแหน่งเข็มเป็นความลับจนเปิด
+    safeOn(socket, 'wavelength_pin', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'wavelength');
+        if (!room) return done({ success: false, error: 'ไม่พบห้องคลื่นความคิด' });
+        try {
+            wavelengthRuntime.engine.movePin(room, socket.playerId, data?.value, wavelengthContext(data));
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ขยับเข็มไม่สำเร็จ' });
+        }
+    });
+
+    safeOn(socket, 'wavelength_lock', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.lockPin(room, playerId, data?.value, wavelengthContext(data)));
+    });
+
+    safeOn(socket, 'wavelength_unlock', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.unlockPin(room, playerId, wavelengthContext(data)));
+    });
+
+    safeOn(socket, 'wavelength_next', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.nextRound(room, playerId, wavelengthContext(data)));
+    });
+
+    safeOn(socket, 'wavelength_end', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.endGame(room, playerId));
+    });
+    // ===== END WAVELENGTH =====
+
     socket.on('spyfall_endDiscussion', function(data, callback) {
         try {
             const roomId = socket.roomId;
@@ -8689,6 +8827,21 @@ io.sockets.on('connection', function(socket) {
                         'ป๊อกเด้งเปิดโต๊ะแล้ว — ลงเดิมพัน แจก 2 ใบ ป๊อกเปิดเลย (ชิปในโต๊ะ ไม่มีมูลค่าจริง)', '#f5c86b');
                     logGameStartFromRoom(currentRoom);
                     pokdengRuntime.emitRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'wavelength') {
+                    wavelengthRuntime.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                    });
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'คลื่นความคิดเริ่มแล้ว — ผู้ใบ้ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าเป้าอยู่ตรงไหน', '#5eead4');
+                    logGameStartFromRoom(currentRoom);
+                    wavelengthRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }
@@ -9298,6 +9451,7 @@ io.sockets.on('connection', function(socket) {
                 // ส่ง roomUpdate ทันที (เพื่ออัปเดต online status)
                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
                 advanceBlackMarketAfterDisconnect(updatedRoom);
+                if (updatedRoom.settings?.gameMode === 'wavelength') wavelengthRuntime.handlePresence(updatedRoom);
 
                 // ตั้ง timeout ก่อนส่งข้อความ "หลุดการเชื่อมต่อ" และลบผู้เล่นออกจากห้อง
                 const player = playerManager.getPlayer(playerId);
