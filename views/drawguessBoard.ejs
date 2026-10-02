@@ -1,0 +1,1302 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  html.dg-active, html.dg-active body.content {
+    overflow: hidden;
+    overscroll-behavior: none;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: oklch(0.17 0.03 255) !important;
+  }
+  html.dg-active .container-fluid > header,
+  html.dg-active #music-controls { display: none !important; }
+  html.dg-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: 0 !important; }
+  html.dg-active .container-fluid > .row { margin: 0 !important; }
+  html.dg-active .col-lg-12 { padding: 0 !important; }
+
+  .dg {
+    --dg-bg: oklch(0.17 0.03 255);
+    --dg-surface: oklch(0.22 0.035 255);
+    --dg-surface-2: oklch(0.27 0.04 255);
+    --dg-sunken: oklch(0.14 0.026 255);
+    --dg-line: oklch(0.48 0.04 255 / 0.4);
+    --dg-ink: oklch(0.96 0.01 90);
+    --dg-soft: oklch(0.85 0.02 250);
+    --dg-muted: oklch(0.7 0.03 250);
+    --dg-gold: oklch(0.85 0.12 85);
+    --dg-gold-ink: oklch(0.24 0.04 255);
+    --dg-sky: oklch(0.78 0.12 225);
+    --dg-sky-deep: oklch(0.55 0.14 240);
+    --dg-good: oklch(0.8 0.15 155);
+    --dg-warn: oklch(0.83 0.13 70);
+    --dg-hot: oklch(0.68 0.19 28);
+    --dg-paper: #fffdf6;
+    --dg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --dg-display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    --dg-gutter: 12px;
+
+    position: fixed;
+    left: 0; right: 0;
+    top: var(--vv-top, 0px);
+    height: var(--vv-h, 100dvh);
+    display: flex;
+    flex-direction: column;
+    background: var(--dg-bg);
+    color: var(--dg-ink);
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    text-align: left;
+    z-index: 5;
+  }
+  .dg *, .dg *::before, .dg *::after { box-sizing: border-box; }
+  .dg button, .dg input { font-family: inherit; }
+  .dg [hidden] { display: none !important; }
+  .dg :focus-visible { outline: 2px solid var(--dg-gold); outline-offset: 2px; }
+
+  /* ---------- top ---------- */
+  .dg-top {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) var(--dg-gutter) 4px;
+    max-width: 1320px; width: 100%; margin: 0 auto;
+  }
+  .dg-top-copy { min-width: 0; }
+  .dg-kicker { margin: 0; font-family: var(--dg-display); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; color: var(--dg-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dg-kicker .r { color: var(--dg-sky); }
+  .dg-room { margin: 0; font-family: var(--dg-display); font-size: 1.02rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dg-tools { display: flex; gap: 6px; flex-shrink: 0; }
+  .dg-chip {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--dg-line); background: var(--dg-surface); color: var(--dg-soft);
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: background-color 0.15s ease-out, transform 0.1s ease-out;
+  }
+  .dg-chip:hover { background: var(--dg-surface-2); color: var(--dg-ink); }
+  .dg-chip:active { transform: scale(0.95); }
+  .dg-chip .t { display: none; }
+
+  /* ---------- body ---------- */
+  .dg-body {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+    width: 100%; max-width: 1320px; margin: 0 auto;
+  }
+  .dg-main { flex: 0 0 auto; display: flex; flex-direction: column; min-width: 0; padding: 0 var(--dg-gutter); }
+  .dg-side { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; min-width: 0; }
+
+  /* word bar */
+  .dg-wordbar {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px;
+    min-height: 56px; padding: 6px 6px 6px 12px; margin-bottom: 8px;
+    border-radius: 14px; background: var(--dg-surface); border: 1px solid var(--dg-line);
+  }
+  .dg-wordbar.is-mine { background: color-mix(in oklch, var(--dg-gold) 15%, var(--dg-surface)); border-color: color-mix(in oklch, var(--dg-gold) 55%, transparent); }
+  .dg-wordbar.is-solved { background: color-mix(in oklch, var(--dg-good) 14%, var(--dg-surface)); border-color: color-mix(in oklch, var(--dg-good) 50%, transparent); }
+  .dg-word { min-width: 0; }
+  .dg-word-label { margin: 0; font-size: 0.78rem; color: var(--dg-muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dg-word-main { margin: 0; font-family: var(--dg-display); font-size: 1.25rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+  .dg-word-main .cat { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--dg-sunken); color: var(--dg-sky); font-size: 0.72rem; font-weight: 600; vertical-align: middle; font-family: 'Bai Jamjuree', sans-serif; }
+  .dg-mask { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 3px; margin-top: 2px; }
+  .dg-mask .slot {
+    flex: 0 0 auto; min-width: 26px; height: 32px; padding: 0 2px;
+    display: grid; place-items: end center;
+    border-bottom: 3px solid var(--dg-soft);
+    font-family: var(--dg-display); font-size: 1.2rem; font-weight: 700; line-height: 1; color: var(--dg-ink);
+  }
+  .dg-mask .slot.is-open { border-bottom-color: var(--dg-gold); color: var(--dg-gold); }
+  .dg-mask .slot.is-new { animation: dgPop 0.5s var(--dg-ease) both; }
+  .dg-mask .gap { width: 12px; }
+  .dg-mask .len { align-self: flex-end; padding-bottom: 2px; margin-left: 8px; font-size: 0.75rem; color: var(--dg-muted); font-weight: 600; white-space: nowrap; }
+  @keyframes dgPop { 0% { transform: scale(0.4); opacity: 0; } 70% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+
+  .dg-timer { position: relative; width: 48px; height: 48px; flex-shrink: 0; }
+  .dg-timer svg { width: 48px; height: 48px; transform: rotate(-90deg); }
+  .dg-timer circle { fill: none; stroke-width: 5; }
+  .dg-timer .track { stroke: var(--dg-sunken); }
+  .dg-timer .bar { stroke: var(--dg-sky); stroke-linecap: round; transition: stroke-dashoffset 0.25s linear; }
+  .dg-timer.is-low .bar { stroke: var(--dg-hot); }
+  .dg-timer.is-low .dg-timer-num { color: var(--dg-hot); animation: dgBeat 1s ease-in-out infinite; }
+  .dg-timer-num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--dg-display); font-weight: 700; font-size: 1rem; font-variant-numeric: tabular-nums; }
+  .dg-timer.is-idle { visibility: hidden; }
+  @keyframes dgBeat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+
+  /* stage */
+  .dg-stage-wrap { display: flex; justify-content: center; min-width: 0; }
+  .dg-stage {
+    position: relative; width: 100%; aspect-ratio: 4 / 3;
+    border-radius: 14px; overflow: hidden;
+    background: var(--dg-paper);
+    box-shadow: 0 0 0 1px oklch(0.48 0.04 255 / 0.5), 0 14px 34px oklch(0.06 0.02 255 / 0.55);
+  }
+  .dg-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .dg-stage.can-draw canvas { cursor: crosshair; }
+  .dg-stage.can-draw { box-shadow: 0 0 0 3px var(--dg-gold), 0 14px 34px oklch(0.06 0.02 255 / 0.55); }
+  .dg-overlay {
+    position: absolute; inset: 0; display: grid; place-items: center; padding: 14px;
+    background: oklch(0.17 0.03 255 / 0.86);
+    text-align: center; overflow: auto;
+    animation: dgFade 0.25s ease-out both;
+  }
+  @keyframes dgFade { from { opacity: 0; } to { opacity: 1; } }
+  .dg-ov { display: grid; gap: 10px; justify-items: center; width: 100%; max-width: 520px; }
+  .dg-ov-kicker { margin: 0; font-family: var(--dg-display); font-size: 0.82rem; font-weight: 600; letter-spacing: 0.08em; color: var(--dg-gold); }
+  .dg-ov-title { margin: 0; font-family: var(--dg-display); font-size: 1.35rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+  .dg-ov-sub { margin: 0; color: var(--dg-soft); font-size: 0.9rem; overflow-wrap: anywhere; }
+  .dg-ov-word { margin: 0; font-family: var(--dg-display); font-size: clamp(1.8rem, 9vw, 3rem); font-weight: 700; line-height: 1.1; color: var(--dg-gold); overflow-wrap: anywhere; animation: dgReveal 0.6s var(--dg-ease) both; }
+  @keyframes dgReveal { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: none; } }
+  .dg-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+  .dg-choice {
+    display: grid; gap: 2px; align-content: center; justify-items: center;
+    min-height: 72px; padding: 8px 6px; border-radius: 14px;
+    border: 2px solid color-mix(in oklch, var(--dg-gold) 55%, transparent);
+    background: var(--dg-surface); color: var(--dg-ink); cursor: pointer;
+    transition: transform 0.12s var(--dg-ease), background-color 0.15s ease-out;
+  }
+  .dg-choice:hover { background: var(--dg-surface-2); }
+  .dg-choice:active { transform: scale(0.96); }
+  .dg-choice .w { font-family: var(--dg-display); font-size: 1.12rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+  .dg-choice .c { font-size: 0.74rem; color: var(--dg-sky); font-weight: 600; }
+  .dg-dots::after { content: '…'; display: inline-block; animation: dgDots 1.2s steps(3, end) infinite; overflow: hidden; vertical-align: bottom; width: 1.2em; text-align: left; }
+  @keyframes dgDots { from { width: 0.3em; } to { width: 1.2em; } }
+  .dg-deltas { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; width: 100%; max-width: 360px; }
+  .dg-deltas li { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 10px; background: var(--dg-surface); min-width: 0; font-size: 0.9rem; }
+  .dg-deltas li .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  .dg-deltas li .d { font-family: var(--dg-display); font-weight: 700; color: var(--dg-good); font-variant-numeric: tabular-nums; }
+  .dg-deltas li.is-drawer .d { color: var(--dg-gold); }
+  .dg-late {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    padding: 6px 12px; border-radius: 999px; background: oklch(0.17 0.03 255 / 0.85); color: var(--dg-soft);
+    font-size: 0.82rem; font-weight: 600; white-space: nowrap; pointer-events: none;
+  }
+
+  /* toolbar */
+  .dg-toolbar {
+    display: grid; grid-template-columns: auto auto; grid-template-areas: "sw act" "sz clr";
+    gap: 6px 10px; justify-content: center; padding: 8px 0 2px;
+  }
+  .dg-swatches { grid-area: sw; display: grid; grid-template-columns: repeat(6, 44px); gap: 4px; }
+  .dg-actions { grid-area: act; display: grid; grid-template-rows: repeat(2, 44px); gap: 4px; }
+  .dg-sizes { grid-area: sz; display: flex; gap: 4px; }
+  .dg-clear-wrap { grid-area: clr; display: flex; }
+  .dg-tool {
+    width: 44px; height: 44px; padding: 0; border-radius: 12px;
+    display: grid; place-items: center;
+    border: 1px solid var(--dg-line); background: var(--dg-surface); color: var(--dg-ink);
+    cursor: pointer; font-size: 1.1rem; line-height: 1;
+    transition: transform 0.1s ease-out, background-color 0.15s ease-out, border-color 0.15s ease-out;
+  }
+  .dg-tool:active { transform: scale(0.92); }
+  .dg-tool[aria-pressed="true"] { border-color: var(--dg-gold); background: color-mix(in oklch, var(--dg-gold) 20%, var(--dg-surface)); box-shadow: 0 0 0 2px var(--dg-gold) inset; }
+  .dg-tool:disabled { opacity: 0.45; cursor: default; }
+  .dg-swatch .dot { width: 26px; height: 26px; border-radius: 50%; box-shadow: 0 0 0 1px oklch(0 0 0 / 0.25) inset, 0 0 0 1px oklch(1 0 0 / 0.18); }
+  .dg-size .dot { border-radius: 50%; background: var(--dg-ink); }
+  .dg-clear { width: 100%; min-width: 44px; }
+  .dg-clear.is-armed { background: var(--dg-hot); border-color: transparent; color: #fff; font-size: 0.8rem; font-weight: 700; }
+
+  /* players */
+  .dg-players {
+    flex: 0 0 auto; list-style: none; margin: 4px 0 0; padding: 8px var(--dg-gutter) 6px;
+    display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  }
+  .dg-players::-webkit-scrollbar { display: none; }
+  .dg-pl {
+    flex: 0 0 auto; position: relative;
+    display: flex; align-items: center; gap: 6px;
+    min-height: 46px; max-width: 150px; padding: 4px 10px 4px 4px; border-radius: 999px;
+    background: var(--dg-surface); border: 1px solid transparent;
+    transition: background-color 0.2s ease-out;
+  }
+  .dg-pl .who { min-width: 0; display: grid; line-height: 1.15; }
+  .dg-pl .n { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88px; }
+  .dg-pl .s { font-family: var(--dg-display); font-size: 0.86rem; font-weight: 700; color: var(--dg-gold); font-variant-numeric: tabular-nums; }
+  .dg-pl .b { position: absolute; top: -4px; left: 26px; font-size: 0.8rem; line-height: 1; }
+  .dg-pl.is-self { border-color: color-mix(in oklch, var(--dg-gold) 60%, transparent); }
+  .dg-pl.is-drawer { background: color-mix(in oklch, var(--dg-sky) 24%, var(--dg-surface)); }
+  .dg-pl.is-guessed { background: color-mix(in oklch, var(--dg-good) 22%, var(--dg-surface)); }
+  .dg-pl.is-off, .dg-pl.is-left { opacity: 0.5; }
+  .dg-pl.is-pop { animation: dgChip 0.6s var(--dg-ease); }
+  @keyframes dgChip { 0% { transform: scale(1); } 40% { transform: scale(1.1); } 100% { transform: scale(1); } }
+  .dg-pl .player-avatar { flex-shrink: 0; }
+
+  /* feed */
+  .dg-feed {
+    flex: 1 1 auto; min-height: 64px; overflow-y: auto; overscroll-behavior: contain;
+    list-style: none; margin: 0; padding: 4px var(--dg-gutter) 8px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .dg-feed li { font-size: 0.9rem; line-height: 1.4; padding: 3px 10px; border-radius: 10px; overflow-wrap: anywhere; animation: dgIn 0.22s ease-out both; }
+  @keyframes dgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .dg-feed li b { color: var(--dg-soft); font-weight: 700; margin-right: 4px; }
+  .dg-feed li.k-guess.is-mine b { color: var(--dg-sky); }
+  .dg-feed li.k-correct { background: color-mix(in oklch, var(--dg-good) 18%, transparent); color: var(--dg-good); font-weight: 700; }
+  .dg-feed li.k-correct .pts { float: right; font-family: var(--dg-display); }
+  .dg-feed li.k-close { background: color-mix(in oklch, var(--dg-warn) 16%, transparent); color: var(--dg-warn); }
+  .dg-feed li.k-chat.is-solved { background: color-mix(in oklch, var(--dg-good) 9%, transparent); color: oklch(0.88 0.06 155); }
+  .dg-feed li.k-chat.is-solved .tag, .dg-feed li.k-close .tag { font-size: 0.72rem; font-weight: 600; opacity: 0.85; margin-left: 6px; }
+  .dg-feed li.k-system, .dg-feed li.k-turn, .dg-feed li.k-round, .dg-feed li.k-reveal { text-align: center; color: var(--dg-muted); font-size: 0.8rem; padding: 2px 8px; }
+  .dg-feed li.k-turn { color: var(--dg-sky); font-weight: 600; }
+  .dg-feed li.k-round { color: var(--dg-gold); font-weight: 700; font-family: var(--dg-display); letter-spacing: 0.04em; }
+  .dg-feed li.k-reveal { color: var(--dg-gold); font-weight: 600; }
+
+  /* guess bar */
+  .dg-guess {
+    flex: 0 0 auto; display: flex; gap: 8px; align-items: center;
+    padding: 8px var(--dg-gutter) calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--dg-sunken); border-top: 1px solid var(--dg-line);
+  }
+  .dg-guess input {
+    flex: 1; min-width: 0; height: 48px; padding: 0 14px; border-radius: 12px;
+    border: 1px solid var(--dg-line); background: var(--dg-surface); color: var(--dg-ink); font-size: 16px;
+  }
+  .dg-guess input:focus { outline: 2px solid var(--dg-sky); outline-offset: 0; }
+  .dg-guess input:disabled { opacity: 0.6; }
+  .dg-guess .ui-btn { flex: 0 0 auto; min-width: 76px; }
+  .dg-guess.is-shake input { animation: dgShake 0.36s ease-in-out; }
+  @keyframes dgShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .dg-toast {
+    position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+    padding: 8px 16px; border-radius: 999px; background: var(--dg-warn); color: var(--dg-gold-ink);
+    font-weight: 700; font-size: 0.92rem; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis;
+    pointer-events: none; opacity: 0;
+  }
+  .dg-toast.is-on { animation: dgToast 1.8s var(--dg-ease) both; }
+  .dg-toast.is-bad { background: var(--dg-hot); color: #fff; }
+  @keyframes dgToast { 0% { opacity: 0; transform: translate(-50%, 6px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .dg-guess-wrap { position: relative; flex: 0 0 auto; }
+
+  /* results */
+  .dg-results {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    width: 100%; max-width: 640px; margin: 0 auto;
+    padding: 8px var(--dg-gutter) calc(24px + env(safe-area-inset-bottom, 0px));
+    display: grid; align-content: start; gap: 14px; justify-items: center; text-align: center;
+  }
+  .dg-results h2 { margin: 0; font-family: var(--dg-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
+  .dg-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; width: 100%; max-width: 440px; margin-top: 6px; }
+  .dg-pod { display: grid; justify-items: center; gap: 4px; min-width: 0; }
+  .dg-pod .nm { font-weight: 700; font-size: 0.9rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dg-pod .sc { font-family: var(--dg-display); font-weight: 700; color: var(--dg-gold); font-variant-numeric: tabular-nums; }
+  .dg-pod .bl {
+    width: 100%; border-radius: 12px 12px 4px 4px; display: grid; place-items: center;
+    font-family: var(--dg-display); font-size: 1.6rem; font-weight: 700; color: var(--dg-gold-ink);
+    transform-origin: bottom; animation: dgRise 0.7s var(--dg-ease) both;
+  }
+  .dg-pod.p1 .bl { height: 108px; background: var(--dg-gold); animation-delay: 0.35s; }
+  .dg-pod.p2 .bl { height: 80px; background: oklch(0.85 0.02 250); animation-delay: 0.2s; }
+  .dg-pod.p3 .bl { height: 60px; background: oklch(0.7 0.09 55); animation-delay: 0.05s; }
+  .dg-pod.is-empty { visibility: hidden; }
+  @keyframes dgRise { from { transform: scaleY(0.1); opacity: 0; } to { transform: none; opacity: 1; } }
+  .dg-final { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 6px; text-align: left; }
+  .dg-final li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--dg-surface); min-width: 0; }
+  .dg-final li.is-win { background: color-mix(in oklch, var(--dg-gold) 16%, var(--dg-surface)); }
+  .dg-final li.is-self { box-shadow: 0 0 0 1px color-mix(in oklch, var(--dg-gold) 60%, transparent) inset; }
+  .dg-final .rk { width: 26px; flex-shrink: 0; font-family: var(--dg-display); font-weight: 700; color: var(--dg-muted); text-align: center; }
+  .dg-final .nm { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dg-final .sc { font-family: var(--dg-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dg-note { margin: 0; color: var(--dg-muted); font-size: 0.85rem; }
+  .dg-res-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; }
+  .dg-res-actions .ui-btn { flex: 1 1 150px; max-width: 280px; }
+
+  .dg-banner {
+    position: fixed; left: 50%; top: 34%; z-index: 11000; pointer-events: none;
+    transform: translate(-50%, -50%); padding: 12px 24px; border-radius: 999px;
+    background: #f5c86b; color: #1a2332; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 1.15rem;
+    opacity: 0; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
+  }
+  .dg-banner.is-good { background: oklch(0.8 0.15 155); }
+  .dg-banner.is-on { animation: dgBanner 1.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes dgBanner {
+    0% { opacity: 0; transform: translate(-50%, -30%) scale(0.9); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%); }
+    100% { opacity: 0; transform: translate(-50%, -64%); }
+  }
+  .dg-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 10990; overflow: hidden; }
+  .dg-confetti i { position: absolute; top: 30%; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: dgBurst 1.1s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+  @keyframes dgBurst { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); } }
+
+  .dg-conn {
+    display: none; position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 12001;
+    padding: 8px 14px; border-radius: 999px; background: #5b1d1d; color: #ffd9d4; font-weight: 600; font-size: 0.9rem;
+  }
+  .dg-sheet {
+    position: fixed; top: 0; right: 0; width: min(320px, 88vw); height: 100%;
+    background: #151d2a; border-left: 1px solid rgba(245,200,107,0.18); color: #f1f0fa;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 18px 18px; z-index: 9000; overflow-y: auto; font-family: 'Bai Jamjuree', sans-serif;
+    transform: translateX(105%); visibility: hidden; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.25s;
+  }
+  .dg-sheet.open { transform: none; visibility: visible; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+  .dg-sheet h4 { margin: 0 0 10px; font-family: 'Chakra Petch', sans-serif; }
+  .dg-sheet ul { list-style: none; padding: 0; margin: 0 0 16px; }
+  .dg-sheet li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); min-width: 0; }
+  .dg-sheet li span.nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dg-sheet .ui-btn { margin-bottom: 8px; }
+  .dg-sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 8999; }
+
+  /* compact (คีย์บอร์ดเปิด/จอเตี้ย) — เก็บแถบชื่อห้องกับรายชื่อ ให้ภาพกับช่องทายอยู่ครบ */
+  .dg.is-short .dg-room { display: none; }
+  .dg.is-short .dg-players { display: none; }
+  .dg.is-short .dg-wordbar { min-height: 48px; margin-bottom: 6px; }
+
+  @media (min-width: 560px) {
+    .dg-chip .t { display: inline; }
+  }
+
+  /* desktop: ภาพซ้าย แถบผู้เล่น/ทายขวา */
+  @media (min-width: 900px) {
+    .dg { --dg-gutter: 20px; }
+    .dg-body { flex-direction: row; gap: 18px; padding: 0 var(--dg-gutter) 16px; }
+    .dg-main { flex: 1 1 auto; min-height: 0; padding: 0; }
+    .dg-canvas-row { flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; align-items: flex-start; }
+    .dg-stage-wrap { flex: 1 1 auto; min-width: 0; }
+    .dg-toolbar { order: -1; grid-template-columns: auto; grid-template-areas: "sw" "sz" "act" "clr"; padding: 0; align-content: start; }
+    .dg-swatches { grid-template-columns: repeat(2, 44px); }
+    .dg-sizes { flex-wrap: wrap; width: 92px; }
+    .dg-actions { grid-template-rows: none; grid-template-columns: repeat(2, 44px); }
+    .dg-side { flex: 0 0 340px; border-radius: 16px; background: var(--dg-surface); border: 1px solid var(--dg-line); overflow: hidden; }
+    .dg-players { flex-direction: column; overflow-x: hidden; overflow-y: auto; max-height: 40%; margin: 0; padding: 10px; }
+    .dg-pl { max-width: none; border-radius: 12px; }
+    .dg-pl .n { max-width: 200px; }
+    .dg-pl .s { margin-left: auto; }
+    .dg-pl .who { flex: 1; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+    .dg-pl .b { top: 0; left: 30px; }
+    .dg-feed { border-top: 1px solid var(--dg-line); padding-top: 8px; }
+    .dg-guess { background: var(--dg-sunken); }
+    .dg-chip .t { display: inline; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dg *, .dg-banner, .dg-confetti i { animation: none !important; transition: none !important; }
+    .dg-banner.is-on { opacity: 1; }
+    .dg-confetti { display: none; }
+  }
+</style>
+
+<div id="dgConn" class="dg-conn" role="status">กำลังเชื่อมต่อใหม่...</div>
+<div id="dgBanner" class="dg-banner" aria-hidden="true"></div>
+
+<main class="dg" id="dgRoot">
+  <div class="dg-top">
+    <div class="dg-top-copy">
+      <p class="dg-kicker">🎨 วาดแล้วทาย · <span class="r" id="dgRound">กำลังโหลด</span></p>
+      <h1 class="dg-room"><%= room.name %></h1>
+    </div>
+    <div class="dg-tools">
+      <button type="button" id="dgSkipBtn" class="dg-chip" hidden aria-label="ข้ามตานี้">⏭<span class="t">ข้ามตา</span></button>
+      <button type="button" id="dgHowTo" class="dg-chip" aria-label="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
+      <button type="button" id="dgMenuBtn" class="dg-chip" aria-label="ผู้เล่นและเมนู" aria-expanded="false" aria-controls="dgSheet">☰<span class="t">เมนู</span></button>
+    </div>
+  </div>
+
+  <div class="dg-body" id="dgBody">
+    <section class="dg-main" id="dgMain">
+      <div class="dg-wordbar" id="dgWordbar" aria-live="polite">
+        <div class="dg-word" id="dgWord"><p class="dg-word-label">กำลังโหลด...</p></div>
+        <div class="dg-timer is-idle" id="dgTimer" aria-hidden="true">
+          <svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="20"/><circle class="bar" id="dgTimerBar" cx="24" cy="24" r="20" stroke-dasharray="125.66" stroke-dashoffset="0"/></svg>
+          <span class="dg-timer-num" id="dgTimerNum">--</span>
+        </div>
+      </div>
+      <div class="dg-canvas-row">
+        <div class="dg-stage-wrap" id="dgStageWrap">
+          <div class="dg-stage" id="dgStage">
+            <canvas id="dgCanvas" aria-label="ภาพที่กำลังวาด" role="img"></canvas>
+            <div class="dg-overlay" id="dgOverlay" hidden></div>
+            <div class="dg-late" id="dgLate" hidden>เพิ่งเข้ามา — ทายได้ตั้งแต่ตาถัดไป</div>
+          </div>
+        </div>
+        <div class="dg-toolbar" id="dgToolbar" hidden role="toolbar" aria-label="เครื่องมือวาด">
+          <div class="dg-swatches" id="dgSwatches"></div>
+          <div class="dg-actions">
+            <button type="button" class="dg-tool" id="dgEraser" aria-pressed="false" aria-label="ยางลบ">🧽</button>
+            <button type="button" class="dg-tool" id="dgUndo" aria-label="ย้อนกลับ">↶</button>
+          </div>
+          <div class="dg-sizes" id="dgSizes"></div>
+          <div class="dg-clear-wrap"><button type="button" class="dg-tool dg-clear" id="dgClear" aria-label="ล้างภาพ">🗑</button></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="dg-side" id="dgSide">
+      <ol class="dg-players" id="dgPlayers" aria-label="คะแนนผู้เล่น"></ol>
+      <ol class="dg-feed" id="dgFeed" role="log" aria-live="polite" aria-label="คำทายและข้อความ"></ol>
+      <div class="dg-guess-wrap">
+        <div class="dg-toast" id="dgToast" role="status"></div>
+        <form class="dg-guess" id="dgGuessForm" autocomplete="off">
+          <input id="dgGuessInput" type="text" maxlength="40" enterkeyhint="send" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์คำที่ทาย..." aria-label="พิมพ์คำที่ทาย">
+          <button type="submit" class="ui-btn ui-btn--primary" id="dgGuessBtn">ทาย</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+
+  <section class="dg-results" id="dgResults" hidden aria-live="polite"></section>
+</main>
+
+<aside id="dgSheet" class="dg-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="dgSheetTitle">
+  <h4 id="dgSheetTitle">ผู้เล่นในห้อง</h4>
+  <ul id="dgRoomPlayers"></ul>
+  <button id="dgEndBtn" type="button" class="ui-btn ui-btn--block" hidden>⏹ จบเกม (ไม่นับสถิติ)</button>
+  <button id="dgLeaveBtn" type="button" class="ui-btn ui-btn--block">🚪 ออกจากห้อง</button>
+  <button id="dgSheetClose" type="button" class="ui-btn ui-btn--ghost ui-btn--block">ปิด</button>
+</aside>
+<div id="dgSheetOverlay" class="dg-sheet-overlay"></div>
+
+<%- contentFor('script') %>
+<script>
+$(function() {
+  document.documentElement.classList.add('dg-active');
+
+  const socket = io({ reconnection: true, reconnectionAttempts: Infinity, transports: ['websocket', 'polling'] });
+  const roomId = '<%= room.roomId %>';
+  const playerId = '<%= player.playerId %>';
+  if (window.partyPlay) window.partyPlay.startSession('drawguess', socket);
+
+  let S = <%- JSON.stringify(typeof drawguessState !== 'undefined' && drawguessState ? drawguessState : {}).replace(/</g, '\\u003c') %>;
+  let clockOffset = S && S.serverNow ? S.serverNow - Date.now() : 0;
+  let allowNavigation = false;
+  let seenFxSeq = Math.max(0, ...((S.fx || []).map(f => f.seq || 0)));
+  let overlayKey = '';
+  let prevMaskOpen = new Set();
+  let prevMaskTurn = 0;
+  let lastFeedSeq = 0;
+  let busy = false;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const desktopMq = window.matchMedia('(min-width: 900px)');
+
+  // ---------- palette (ลำดับต้องตรงกับเซิร์ฟเวอร์: index 0–11) ----------
+  const COLORS = ['#1f2430', '#ffffff', '#8a8f98', '#e2493b', '#f28c28', '#f7d038', '#4caf50', '#2bb3a3', '#3b82f6', '#8b5cf6', '#ec6fa8', '#8d5a3b'];
+  const COLOR_NAMES = ['ดำ', 'ขาว', 'เทา', 'แดง', 'ส้ม', 'เหลือง', 'เขียว', 'เขียวอมฟ้า', 'น้ำเงิน', 'ม่วง', 'ชมพู', 'น้ำตาล'];
+  const SIZES = [0.007, 0.015, 0.03, 0.055];
+  const SIZE_NAMES = ['เส้นเล็ก', 'เส้นกลาง', 'เส้นใหญ่', 'เส้นใหญ่มาก'];
+  const PAPER = '#fffdf6';
+
+  function esc(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+  }
+  function avatar(p, size) {
+    if (typeof window.renderPlayerAvatar === 'function') {
+      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 30 });
+    }
+    return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
+  }
+  function now() { return Date.now() + clockOffset; }
+  function haptic(pattern) { if (typeof window.gameHaptic === 'function') window.gameHaptic(pattern); }
+  function playerById(id) { return (S.players || []).find(p => p.playerId === id) || null; }
+  function isHost() { return !!S.hostId && S.hostId === playerId; }
+  function self() { return S.self || {}; }
+
+  // ---------- viewport (ช่องทายติดเหนือคีย์บอร์ด) ----------
+  const root = document.getElementById('dgRoot');
+  function syncViewport() {
+    const vv = window.visualViewport;
+    const h = vv ? vv.height : window.innerHeight;
+    const top = vv ? vv.offsetTop : 0;
+    root.style.setProperty('--vv-h', Math.round(h) + 'px');
+    root.style.setProperty('--vv-top', Math.round(top) + 'px');
+    root.classList.toggle('is-short', h < 640 && !desktopMq.matches);
+    layoutCanvas();
+  }
+
+  // ---------- canvas ----------
+  const stage = document.getElementById('dgStage');
+  const stageWrap = document.getElementById('dgStageWrap');
+  const canvas = document.getElementById('dgCanvas');
+  const ctx = canvas.getContext('2d');
+  let cssW = 0;
+  let cssH = 0;
+  let strokes = [];
+  let canvasTurn = 0;
+
+  function layoutCanvas() {
+    const vv = window.visualViewport;
+    const vh = vv ? vv.height : window.innerHeight;
+    const wrapW = stageWrap.clientWidth || 300;
+    let maxH;
+    if (desktopMq.matches) {
+      const used = document.querySelector('.dg-top').offsetHeight + document.getElementById('dgWordbar').offsetHeight + 40;
+      maxH = vh - used;
+    } else {
+      const toolbar = document.getElementById('dgToolbar');
+      const guess = document.getElementById('dgGuessForm');
+      const players = document.getElementById('dgPlayers');
+      const used = document.querySelector('.dg-top').offsetHeight
+        + document.getElementById('dgWordbar').offsetHeight + 8
+        + (toolbar.hidden ? 0 : toolbar.offsetHeight)
+        + (players.offsetParent ? players.offsetHeight + 8 : 0)
+        + (guess.offsetParent ? guess.offsetHeight : 0)
+        + 76; // ให้แถบข้อความเห็นอย่างน้อย ~3 บรรทัด
+      maxH = vh - used;
+    }
+    const w = Math.max(180, Math.floor(Math.min(wrapW, Math.max(135, maxH) * 4 / 3)));
+    stage.style.width = w + 'px';
+    const h = Math.round(w * 3 / 4);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    if (w === cssW && h === cssH && canvas.width === Math.round(w * dpr)) return;
+    cssW = w;
+    cssH = h;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(canvas.width / w, 0, 0, canvas.height / h, 0, 0);
+    redraw();
+  }
+
+  function strokeColor(s) { return s.e ? PAPER : (COLORS[s.c] || COLORS[0]); }
+  function lineWidth(s) { return Math.max(1.5, (SIZES[s.w] || SIZES[1]) * cssW); }
+  function drawFrom(s, startPoint) {
+    const p = s.p;
+    const n = p.length / 2;
+    if (!n || !cssW) return;
+    ctx.strokeStyle = strokeColor(s);
+    ctx.fillStyle = strokeColor(s);
+    ctx.lineWidth = lineWidth(s);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (n === 1 || (startPoint === 0 && n === 1)) {
+      ctx.beginPath();
+      ctx.arc(p[0] * cssW, p[1] * cssH, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    const from = Math.max(0, startPoint - 1);
+    ctx.beginPath();
+    ctx.moveTo(p[from * 2] * cssW, p[from * 2 + 1] * cssH);
+    for (let i = from + 1; i < n; i += 1) ctx.lineTo(p[i * 2] * cssW, p[i * 2 + 1] * cssH);
+    ctx.stroke();
+  }
+  function redraw() {
+    if (!cssW) return;
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, cssW, cssH);
+    strokes.forEach(s => drawFrom(s, 0));
+  }
+  function applyOps(ops) {
+    let needRedraw = false;
+    (ops || []).forEach(op => {
+      if (!op) return;
+      if (op.t === 's') {
+        const s = { id: op.id, c: op.c, w: op.w, e: op.e, p: (op.p || []).slice() };
+        strokes.push(s);
+        drawFrom(s, 0);
+      } else if (op.t === 'p') {
+        const last = strokes[strokes.length - 1];
+        if (!last || last.id !== op.id) return;
+        const start = last.p.length / 2;
+        for (let i = 0; i < op.p.length; i += 1) last.p.push(op.p[i]);
+        drawFrom(last, start);
+      } else if (op.t === 'u') {
+        strokes.pop();
+        needRedraw = true;
+      } else if (op.t === 'c') {
+        strokes = [];
+        needRedraw = true;
+      }
+    });
+    if (needRedraw) redraw();
+  }
+  function setCanvasTurn(turnNo) {
+    if (turnNo === canvasTurn) return;
+    canvasTurn = turnNo;
+    strokes = [];
+    pending = [];
+    current = null;
+    redraw();
+  }
+
+  // ---------- drawing input (เฉพาะคนวาด) ----------
+  const tool = { color: 0, size: 1, eraser: false };
+  let strokeSeq = Math.floor(Math.random() * 1000) * 1000;
+  let current = null;
+  let pending = [];
+  const MAX_OP_POINTS = 120;
+  const MAX_BATCH_OPS = 40;
+  const MAX_BATCH_POINTS = 400;
+
+  function canDraw() { return !!(S.self && S.self.canDraw && S.phase === 'draw'); }
+  function pointFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    return [Math.round(Math.max(0, Math.min(1, x)) * 10000) / 10000, Math.round(Math.max(0, Math.min(1, y)) * 10000) / 10000];
+  }
+  function addPoint(pt) {
+    if (!current) return;
+    const s = current;
+    const n = s.p.length / 2;
+    if (n) {
+      const dx = pt[0] - s.p[s.p.length - 2];
+      const dy = pt[1] - s.p[s.p.length - 1];
+      if (dx * dx + dy * dy < 0.0012 * 0.0012) return;
+    }
+    s.p.push(pt[0], pt[1]);
+    drawFrom(s, n);
+    const last = pending[pending.length - 1];
+    if (n === 0) {
+      pending.push({ t: 's', id: s.id, c: s.c, w: s.w, e: s.e, p: [pt[0], pt[1]] });
+    } else if (last && last.id === s.id && (last.t === 's' || last.t === 'p') && last.p.length / 2 < MAX_OP_POINTS) {
+      last.p.push(pt[0], pt[1]);
+    } else {
+      pending.push({ t: 'p', id: s.id, p: [pt[0], pt[1]] });
+    }
+  }
+  canvas.addEventListener('pointerdown', function(e) {
+    if (!canDraw() || current) return;
+    e.preventDefault();
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    strokeSeq += 1;
+    current = { id: strokeSeq, c: tool.eraser ? 0 : tool.color, w: tool.size, e: tool.eraser ? 1 : 0, p: [], pointerId: e.pointerId };
+    strokes.push(current);
+    addPoint(pointFromEvent(e));
+  });
+  canvas.addEventListener('pointermove', function(e) {
+    if (!current || e.pointerId !== current.pointerId) return;
+    e.preventDefault();
+    const list = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+    (list.length ? list : [e]).forEach(ev => addPoint(pointFromEvent(ev)));
+  });
+  function endStroke(e) {
+    if (!current || (e && e.pointerId !== current.pointerId)) return;
+    current = null;
+    flush();
+  }
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+  canvas.addEventListener('lostpointercapture', endStroke);
+
+  function flush() {
+    if (!pending.length) return;
+    if (!canDraw()) { pending = []; return; }
+    const ops = [];
+    let points = 0;
+    while (pending.length && ops.length < MAX_BATCH_OPS) {
+      const op = pending[0];
+      const pts = op.p ? op.p.length / 2 : 0;
+      if (ops.length && points + pts > MAX_BATCH_POINTS) break;
+      // op ที่กำลังวาดอยู่ ถ้ายังสั้นมาก ปล่อยรอบหน้าค่อยส่ง ลดจำนวนแพ็กเก็ต
+      ops.push(pending.shift());
+      points += pts;
+    }
+    socket.emit('drawguess_stroke', { roomId: roomId, turnNo: S.turnNo, ops: ops });
+  }
+  setInterval(flush, 40);
+
+  // toolbar
+  const swatchHost = document.getElementById('dgSwatches');
+  swatchHost.innerHTML = COLORS.map((c, i) =>
+    '<button type="button" class="dg-tool dg-swatch" data-color="' + i + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '" aria-label="สี' + COLOR_NAMES[i] + '"><span class="dot" style="background:' + c + '"></span></button>').join('');
+  document.getElementById('dgSizes').innerHTML = SIZES.map((s, i) => {
+    const d = [6, 11, 17, 24][i];
+    return '<button type="button" class="dg-tool dg-size" data-size="' + i + '" aria-pressed="' + (i === tool.size ? 'true' : 'false') + '" aria-label="' + SIZE_NAMES[i] + '"><span class="dot" style="width:' + d + 'px;height:' + d + 'px"></span></button>';
+  }).join('');
+  function syncToolButtons() {
+    $('.dg-swatch').each(function() { this.setAttribute('aria-pressed', (!tool.eraser && Number(this.dataset.color) === tool.color) ? 'true' : 'false'); });
+    $('.dg-size').each(function() {
+      this.setAttribute('aria-pressed', Number(this.dataset.size) === tool.size ? 'true' : 'false');
+      const dot = this.querySelector('.dot');
+      if (dot) dot.style.background = tool.eraser ? '#cfd3da' : (tool.color === 1 ? '#cfd3da' : COLORS[tool.color]);
+    });
+    document.getElementById('dgEraser').setAttribute('aria-pressed', tool.eraser ? 'true' : 'false');
+  }
+  $(document).on('click', '.dg-swatch', function() { tool.color = Number(this.dataset.color); tool.eraser = false; syncToolButtons(); haptic(8); });
+  $(document).on('click', '.dg-size', function() { tool.size = Number(this.dataset.size); syncToolButtons(); haptic(8); });
+  $('#dgEraser').on('click', function() { tool.eraser = !tool.eraser; syncToolButtons(); haptic(8); });
+  $('#dgUndo').on('click', function() {
+    if (!canDraw() || !strokes.length) return;
+    current = null;
+    strokes.pop();
+    redraw();
+    pending.push({ t: 'u' });
+    flush();
+    haptic(10);
+  });
+  let clearArmed = null;
+  $('#dgClear').on('click', function() {
+    if (!canDraw()) return;
+    const btn = this;
+    if (!clearArmed) {
+      btn.classList.add('is-armed');
+      btn.textContent = 'ล้าง?';
+      clearArmed = setTimeout(function() { clearArmed = null; btn.classList.remove('is-armed'); btn.textContent = '🗑'; }, 2200);
+      return;
+    }
+    clearTimeout(clearArmed);
+    clearArmed = null;
+    btn.classList.remove('is-armed');
+    btn.textContent = '🗑';
+    current = null;
+    strokes = [];
+    redraw();
+    pending.push({ t: 'c' });
+    flush();
+    haptic([10, 40, 10]);
+  });
+  syncToolButtons();
+
+  // ---------- timer ----------
+  const RING = 125.66;
+  function phaseSpan() {
+    if (S.phase === 'choose') return S.chooseMs || 12000;
+    if (S.phase === 'draw') return S.drawMs || 80000;
+    if (S.phase === 'reveal') return S.revealMs || 6000;
+    return 0;
+  }
+  function tickTimer() {
+    const node = document.getElementById('dgTimer');
+    const span = phaseSpan();
+    if (!S.phaseEndsAt || !span || S.phase === 'finished') {
+      node.classList.add('is-idle');
+    } else {
+      const remain = Math.max(0, S.phaseEndsAt - now());
+      const secs = Math.ceil(remain / 1000);
+      node.classList.remove('is-idle');
+      document.getElementById('dgTimerNum').textContent = secs;
+      document.getElementById('dgTimerBar').setAttribute('stroke-dashoffset', String(RING * (1 - Math.min(1, remain / span))));
+      node.classList.toggle('is-low', (S.phase === 'draw' && secs <= 10) || (S.phase === 'choose' && secs <= 4));
+    }
+    if (S.phase === 'finished') {
+      const note = document.getElementById('dgReturnNote');
+      if (note && S.returnLobbyEndsAt) {
+        const left = Math.max(0, Math.ceil((S.returnLobbyEndsAt - now()) / 1000));
+        note.textContent = left > 0 ? 'กลับห้องรออัตโนมัติใน ' + left + ' วิ' : 'กำลังกลับห้องรอ…';
+      }
+    }
+  }
+  setInterval(tickTimer, 250);
+
+  // ---------- render ----------
+  function roundLabel() {
+    if (S.phase === 'finished') return 'จบเกม';
+    const rounds = (S.settings && S.settings.rounds) || 3;
+    return 'รอบ ' + Math.max(1, S.round || 1) + '/' + rounds;
+  }
+
+  function renderWordbar() {
+    const bar = document.getElementById('dgWordbar');
+    const host = document.getElementById('dgWord');
+    const me = self();
+    bar.classList.toggle('is-mine', !!me.isDrawer);
+    bar.classList.toggle('is-solved', !!me.guessed && S.phase === 'draw');
+    let html = '';
+    if (S.phase === 'choose') {
+      html = me.isDrawer
+        ? '<p class="dg-word-label">ตาคุณวาด</p><p class="dg-word-main">เลือก 1 คำด้านล่าง</p>'
+        : '<p class="dg-word-label">✏️ ' + esc(S.drawerName || '') + '</p><p class="dg-word-main"><span class="dg-dots">กำลังเลือกคำ</span></p>';
+    } else if (S.phase === 'draw') {
+      if (S.word && me.isDrawer) {
+        html = '<p class="dg-word-label">วาดคำนี้ (ห้ามเขียนตัวหนังสือ)</p><p class="dg-word-main">' + esc(S.word) + (S.wordCategory ? '<span class="cat">' + esc(S.wordCategory) + '</span>' : '') + '</p>';
+      } else if (S.word) {
+        html = '<p class="dg-word-label">✅ คุณทายถูกแล้ว</p><p class="dg-word-main">' + esc(S.word) + '</p>';
+      } else {
+        const mask = S.mask || [];
+        const letters = mask.filter(m => !m.sp).length;
+        const turnKey = S.turnNo;
+        if (turnKey !== prevMaskTurn) { prevMaskTurn = turnKey; prevMaskOpen = new Set(); }
+        const slots = mask.map((m, i) => {
+          if (m.sp) return '<span class="gap" aria-hidden="true"></span>';
+          const isNew = m.ch && !prevMaskOpen.has(i);
+          if (m.ch) prevMaskOpen.add(i);
+          return '<span class="slot' + (m.ch ? ' is-open' : '') + (isNew ? ' is-new' : '') + '">' + (m.ch ? esc(m.ch) : '') + '</span>';
+        }).join('');
+        html = '<p class="dg-word-label">✏️ ' + esc(S.drawerName || '') + ' วาดอยู่' + (S.wordCategory ? ' · หมวด' + esc(S.wordCategory) : '') + '</p>' +
+          '<div class="dg-mask" aria-label="คำใบ้ ' + letters + ' ตัว">' + slots + '<span class="len">' + letters + ' ตัว</span></div>';
+      }
+    } else if (S.phase === 'reveal') {
+      const lt = S.lastTurn;
+      html = S.waiting
+        ? '<p class="dg-word-label">พักเกม</p><p class="dg-word-main"><span class="dg-dots">รอผู้เล่นกลับมา</span></p>'
+        : (lt && lt.word
+          ? '<p class="dg-word-label">เฉลย</p><p class="dg-word-main">' + esc(lt.word) + '</p>'
+          : '<p class="dg-word-label">ข้ามตา</p><p class="dg-word-main">' + esc((lt && lt.drawerName) || '') + '</p>');
+    } else if (S.phase === 'finished') {
+      html = '<p class="dg-word-label">จบเกม</p><p class="dg-word-main">สรุปคะแนน</p>';
+    } else {
+      html = '<p class="dg-word-label">กำลังเริ่ม…</p>';
+    }
+    host.innerHTML = html;
+  }
+
+  const REASON_TEXT = {
+    all: 'ทุกคนทายถูก!',
+    timeout: 'หมดเวลา',
+    away: 'คนวาดหลุด — ข้ามตา',
+    left: 'คนวาดออกจากเกม',
+    skipped: 'หัวห้องข้ามตานี้'
+  };
+  function renderOverlay() {
+    const node = document.getElementById('dgOverlay');
+    const me = self();
+    let key = '';
+    let html = '';
+    if (S.phase === 'choose') {
+      key = 'choose-' + S.turnNo + '-' + (me.isDrawer ? 'd' : 'g');
+      if (me.isDrawer) {
+        html = '<div class="dg-ov"><p class="dg-ov-kicker">ตาคุณวาด!</p><p class="dg-ov-title">เลือกคำที่จะวาด</p>' +
+          '<div class="dg-choices">' + (S.choices || []).map((c, i) =>
+            '<button type="button" class="dg-choice" data-index="' + i + '"><span class="w">' + esc(c.word) + '</span><span class="c">' + esc(c.category) + '</span></button>').join('') + '</div>' +
+          '<p class="dg-ov-sub">ไม่เลือกภายใน ' + Math.round((S.chooseMs || 12000) / 1000) + ' วิ ระบบสุ่มให้</p></div>';
+      } else {
+        const d = playerById(S.drawerId) || { name: S.drawerName };
+        html = '<div class="dg-ov">' + avatar(d, 56) + '<p class="dg-ov-title">' + esc(d.name || '') + '</p><p class="dg-ov-sub"><span class="dg-dots">กำลังเลือกคำ</span></p></div>';
+      }
+    } else if (S.phase === 'reveal') {
+      const lt = S.lastTurn;
+      key = 'reveal-' + S.turnNo + '-' + (S.waiting ? 'w' : '');
+      if (S.waiting || !lt) {
+        html = '<div class="dg-ov"><p class="dg-ov-kicker">พักเกม</p><p class="dg-ov-title"><span class="dg-dots">รอผู้เล่นกลับมา</span></p></div>';
+      } else if (!lt.word) {
+        html = '<div class="dg-ov"><p class="dg-ov-kicker">ข้ามตา</p><p class="dg-ov-title">' + esc(lt.drawerName) + '</p><p class="dg-ov-sub">' + esc(REASON_TEXT[lt.reason] || '') + '</p></div>';
+      } else {
+        const rows = (lt.deltas || []).slice(0, 6).map(d => {
+          const p = playerById(d.playerId) || { name: d.name };
+          return '<li class="' + (d.isDrawer ? 'is-drawer' : '') + '">' + avatar(p, 24) + '<span class="n">' + esc(d.name) + (d.isDrawer ? ' ✏️' : '') + '</span><span class="d">+' + d.delta + '</span></li>';
+        }).join('');
+        html = '<div class="dg-ov"><p class="dg-ov-kicker">' + esc(REASON_TEXT[lt.reason] || 'เฉลย') + ' · คำนี้คือ</p>' +
+          '<p class="dg-ov-word">' + esc(lt.word) + '</p>' +
+          (rows ? '<ol class="dg-deltas">' + rows + '</ol>' : '<p class="dg-ov-sub">ไม่มีใครทายถูกเลย</p>') + '</div>';
+      }
+    }
+    if (!html) {
+      node.hidden = true;
+      overlayKey = '';
+      node.innerHTML = '';
+      return;
+    }
+    node.hidden = false;
+    if (key !== overlayKey) {
+      overlayKey = key;
+      node.innerHTML = html;
+    }
+  }
+
+  function renderPlayers() {
+    const host = document.getElementById('dgPlayers');
+    const prevGuessed = new Set($(host).find('.dg-pl.is-guessed').map(function() { return this.dataset.id; }).get());
+    host.innerHTML = (S.players || []).filter(p => !p.left).map(p => {
+      const cls = ['dg-pl'];
+      if (p.isSelf) cls.push('is-self');
+      if (p.isDrawer) cls.push('is-drawer');
+      if (p.guessed && S.phase !== 'finished') cls.push('is-guessed');
+      if (!p.online) cls.push('is-off');
+      if (p.guessed && S.phase === 'draw' && !prevGuessed.has(p.playerId)) cls.push('is-pop');
+      const badge = p.isDrawer ? '✏️' : (p.guessed && S.phase === 'draw' ? '✅' : (p.online ? '' : '📴'));
+      return '<li class="' + cls.join(' ') + '" data-id="' + esc(p.playerId) + '">' + avatar(p, 30) +
+        (badge ? '<span class="b" aria-hidden="true">' + badge + '</span>' : '') +
+        '<span class="who"><span class="n">' + esc(p.name) + (p.isHost ? ' 👑' : '') + '</span><span class="s">' + (p.score || 0) + '</span></span></li>';
+    }).join('');
+  }
+
+  function feedRow(f) {
+    const cls = ['k-' + f.kind];
+    if (f.mine) cls.push('is-mine');
+    if (f.solvedOnly) cls.push('is-solved');
+    let body;
+    if (f.kind === 'correct') {
+      body = '✅ ' + esc(f.text) + (f.points ? '<span class="pts">+' + f.points + '</span>' : '');
+    } else if (f.kind === 'close') {
+      body = f.privateTo === playerId
+        ? '<b>' + esc(f.text) + '</b> — เกือบแล้ว!<span class="tag">(เห็นคนเดียว)</span>'
+        : '<b>' + esc(f.name) + '</b>' + esc(f.text) + '<span class="tag">เกือบ</span>';
+    } else if (f.kind === 'guess' || f.kind === 'chat') {
+      body = '<b>' + esc(f.name) + '</b>' + esc(f.text) + (f.solvedOnly ? '<span class="tag">เฉพาะคนที่ทายถูก</span>' : '');
+    } else {
+      body = (f.icon ? esc(f.icon) + ' ' : '') + esc(f.text);
+    }
+    return '<li class="' + cls.join(' ') + '">' + body + '</li>';
+  }
+  function renderFeed() {
+    const host = document.getElementById('dgFeed');
+    const nearBottom = host.scrollHeight - host.scrollTop - host.clientHeight < 60;
+    const items = S.feed || [];
+    host.innerHTML = items.map(feedRow).join('');
+    // แถวใหม่เท่านั้นที่เด้งเข้ามา
+    const newest = items.length ? items[items.length - 1].seq : 0;
+    $(host).children().each(function(i) { if (items[i].seq <= lastFeedSeq) this.style.animation = 'none'; });
+    lastFeedSeq = newest;
+    if (nearBottom || items.length && items[items.length - 1].mine) host.scrollTop = host.scrollHeight;
+  }
+
+  function renderGuessBar() {
+    const me = self();
+    const form = document.getElementById('dgGuessForm');
+    const input = document.getElementById('dgGuessInput');
+    const btn = document.getElementById('dgGuessBtn');
+    const drawing = S.phase === 'draw' && me.isDrawer;
+    form.hidden = drawing || S.phase === 'finished';
+    let placeholder = 'พิมพ์คำที่ทาย...';
+    let label = 'ทาย';
+    let disabled = false;
+    if (S.phase === 'draw') {
+      if (me.guessed) { placeholder = 'ทายถูกแล้ว! คุยกับคนที่ถูกได้'; label = 'ส่ง'; }
+      else if (me.late) { placeholder = 'ทายได้ตั้งแต่ตาถัดไป'; disabled = true; }
+    } else if (S.phase === 'choose') {
+      placeholder = me.isDrawer ? 'เลือกคำก่อนนะ' : 'รอคนวาดเลือกคำ… คุยได้';
+      label = 'ส่ง';
+      disabled = !!me.isDrawer;
+    } else if (S.phase === 'reveal') {
+      placeholder = 'พิมพ์คุยได้';
+      label = 'ส่ง';
+    }
+    if (!me.inGame) { disabled = true; placeholder = 'คุณไม่ได้อยู่ในเกมนี้'; }
+    input.placeholder = placeholder;
+    input.disabled = disabled;
+    btn.disabled = disabled;
+    btn.textContent = label;
+  }
+
+  function renderResults() {
+    const host = document.getElementById('dgResults');
+    const body = document.getElementById('dgBody');
+    const finished = S.phase === 'finished';
+    host.hidden = !finished;
+    body.hidden = finished;
+    if (!finished) { host.dataset.key = ''; return; }
+    const key = 'fin-' + S.step + '-' + (isHost() ? 'h' : '');
+    if (host.dataset.key === key) return;
+    host.dataset.key = key;
+    const rows = S.standings || [];
+    const winners = rows.filter(r => (S.winnerIds || []).includes(r.playerId));
+    const title = winners.length
+      ? '🏆 ' + winners.map(w => esc(w.name)).join(', ') + ' ชนะ!'
+      : (S.endReason === 'notenough' ? 'จบเกมก่อนกำหนด' : 'จบเกม');
+    const pod = [rows[1], rows[0], rows[2]];
+    const podHtml = pod.map((r, i) => {
+      const place = [2, 1, 3][i];
+      if (!r) return '<div class="dg-pod p' + place + ' is-empty"><div class="bl"></div></div>';
+      return '<div class="dg-pod p' + place + '">' + avatar(r, place === 1 ? 56 : 44) +
+        '<span class="nm">' + esc(r.name) + '</span><span class="sc">' + r.score + '</span><div class="bl">' + r.rank + '</div></div>';
+    }).join('');
+    const list = rows.map(r => '<li class="' + ((S.winnerIds || []).includes(r.playerId) ? 'is-win ' : '') + (r.playerId === playerId ? 'is-self' : '') + '">' +
+      '<span class="rk">' + r.rank + '</span>' + avatar(r, 30) + '<span class="nm">' + esc(r.name) + (r.left ? ' (ออกแล้ว)' : '') + '</span><span class="sc">' + r.score + '</span></li>').join('');
+    const note = S.endReason === 'notenough' ? '<p class="dg-note">ผู้เล่นเหลือไม่พอ' + (S.countsForStats ? '' : ' · เกมนี้ไม่นับสถิติ') + '</p>' : '';
+    host.innerHTML = '<p class="dg-kicker">วาดแล้วทาย · ' + ((S.settings && S.settings.rounds) || 3) + ' รอบ</p>' +
+      '<h2>' + title + '</h2>' +
+      (rows.length ? '<div class="dg-podium">' + podHtml + '</div>' : '') +
+      '<ol class="dg-final">' + list + '</ol>' + note +
+      '<div class="dg-res-actions">' +
+        (isHost() ? '<button type="button" class="ui-btn ui-btn--primary" id="dgAgainBtn">🎨 เล่นอีกรอบ</button>' : '') +
+        '<button type="button" class="ui-btn" id="dgBackBtn">กลับห้องรอ</button>' +
+        '<button type="button" class="ui-btn ui-btn--ghost" id="dgShareBtn">แชร์ผล</button>' +
+      '</div>' +
+      '<p class="dg-note" id="dgReturnNote">' + (isHost() ? '' : 'รอหัวห้องกดเล่นอีกรอบ หรือกลับห้องรอ') + '</p>';
+  }
+
+  function renderChrome() {
+    document.getElementById('dgRound').textContent = roundLabel();
+    const me = self();
+    const canSkip = isHost() && (S.phase === 'choose' || S.phase === 'draw');
+    document.getElementById('dgSkipBtn').hidden = !canSkip;
+    document.getElementById('dgEndBtn').hidden = !isHost() || S.phase === 'finished';
+    const drawing = canDraw();
+    const toolbar = document.getElementById('dgToolbar');
+    const wasHidden = toolbar.hidden;
+    toolbar.hidden = !(S.phase === 'draw' && me.isDrawer);
+    stage.classList.toggle('can-draw', drawing);
+    document.getElementById('dgLate').hidden = !(S.phase === 'draw' && me.late);
+    if (wasHidden !== toolbar.hidden) layoutCanvas();
+  }
+
+  // ---------- fx ----------
+  function flashBanner(text, good) {
+    const node = document.getElementById('dgBanner');
+    node.textContent = text;
+    node.classList.toggle('is-good', !!good);
+    node.classList.remove('is-on');
+    void node.offsetWidth;
+    node.classList.add('is-on');
+    clearTimeout(flashBanner.t);
+    flashBanner.t = setTimeout(function() { node.classList.remove('is-on'); }, 1700);
+  }
+  function confetti() {
+    if (reduceMotion) return;
+    const host = document.createElement('div');
+    host.className = 'dg-confetti';
+    const colors = ['#f5c86b', '#38bdf8', '#4caf50', '#ec6fa8', '#f28c28'];
+    for (let i = 0; i < 26; i += 1) {
+      const p = document.createElement('i');
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 90 + Math.random() * 160;
+      p.style.left = '50%';
+      p.style.background = colors[i % colors.length];
+      p.style.setProperty('--dx', Math.round(Math.cos(angle) * dist) + 'px');
+      p.style.setProperty('--dy', Math.round(Math.sin(angle) * dist + 80) + 'px');
+      p.style.setProperty('--rot', Math.round(Math.random() * 540 - 270) + 'deg');
+      p.style.animationDelay = Math.round(Math.random() * 120) + 'ms';
+      host.appendChild(p);
+    }
+    document.body.appendChild(host);
+    setTimeout(function() { host.remove(); }, 1500);
+  }
+  function toast(text, bad) {
+    const node = document.getElementById('dgToast');
+    node.textContent = text;
+    node.classList.toggle('is-bad', !!bad);
+    node.classList.remove('is-on');
+    void node.offsetWidth;
+    node.classList.add('is-on');
+  }
+  function playFx() {
+    const events = (S.fx || []).filter(f => f && f.seq > seenFxSeq);
+    if (!events.length) return;
+    seenFxSeq = events[events.length - 1].seq;
+    events.forEach(f => {
+      if (f.kind === 'turn') {
+        if (f.drawerId === playerId) {
+          haptic([20, 60, 30]);
+          if (window.partyPlay) window.partyPlay.pingTurn({ key: 'dg-turn-' + f.turnNo, title: 'ตาคุณวาด!', subtitle: 'เลือก 1 ใน 3 คำ' });
+        }
+      } else if (f.kind === 'round') {
+        flashBanner('รอบที่ ' + f.round);
+      } else if (f.kind === 'correct' && f.playerId !== playerId) {
+        haptic(8);
+      } else if (f.kind === 'reveal') {
+        haptic(12);
+      } else if (f.kind === 'finish') {
+        flashBanner('จบเกม!');
+        if ((S.winnerIds || []).includes(playerId)) confetti();
+      }
+    });
+  }
+
+  function render(next) {
+    if (!next || !next.mode) return;
+    S = next;
+    if (S.serverNow) clockOffset = S.serverNow - Date.now();
+    if (S.turnNo) setCanvasTurn(S.turnNo);
+    if (!canDraw()) { current = null; pending = []; }
+    const me = self();
+    root.dataset.phase = S.phase || '';
+    root.dataset.turn = String(S.turnNo || 0);
+    root.dataset.role = me.isDrawer ? 'drawer' : (me.guessed ? 'solved' : 'guesser');
+    renderChrome();
+    renderWordbar();
+    renderOverlay();
+    renderPlayers();
+    renderFeed();
+    renderGuessBar();
+    renderResults();
+    tickTimer();
+    playFx();
+  }
+
+  // ---------- commands ----------
+  function showError(text) { toast(text || 'ทำรายการไม่สำเร็จ', true); }
+
+  $(document).on('click', '.dg-choice', function() {
+    if (busy) return;
+    busy = true;
+    $('.dg-choice').prop('disabled', true);
+    socket.emit('drawguess_choose', { roomId: roomId, turnNo: S.turnNo, index: Number(this.dataset.index) }, function(res) {
+      busy = false;
+      if (res && !res.success) {
+        showError(res.error);
+        $('.dg-choice').prop('disabled', false);
+        socket.emit('drawguess_requestState', { roomId: roomId, playerId: playerId });
+      } else {
+        haptic(15);
+      }
+    });
+  });
+
+  let guessInFlight = false;
+  $('#dgGuessForm').on('submit', function(e) {
+    e.preventDefault();
+    const input = document.getElementById('dgGuessInput');
+    const text = (input.value || '').trim();
+    if (!text || guessInFlight) return;
+    if (text.toLowerCase() === '/m') {
+      input.value = '';
+      socket.emit('drawguess_admin_reveal');
+      return;
+    }
+    guessInFlight = true;
+    socket.emit('drawguess_guess', { roomId: roomId, text: text }, function(res) {
+      guessInFlight = false;
+      if (!res || !res.success) {
+        showError(res && res.error);
+        return;
+      }
+      input.value = '';
+      const r = res.result || {};
+      if (r.result === 'correct') {
+        flashBanner('ถูกต้อง! +' + r.points, true);
+        confetti();
+        haptic([15, 40, 25]);
+      } else if (r.result === 'close') {
+        toast('เกือบแล้ว!');
+        const form = document.getElementById('dgGuessForm');
+        form.classList.remove('is-shake');
+        void form.offsetWidth;
+        form.classList.add('is-shake');
+        haptic([10, 30, 10]);
+      }
+    });
+    setTimeout(function() { guessInFlight = false; }, 4000);
+  });
+
+  $('#dgSkipBtn').on('click', function() {
+    Swal.fire({
+      icon: 'question', title: 'ข้ามตานี้?', text: 'ใช้เมื่อคนวาดไม่อยู่หน้าจอ', showCancelButton: true,
+      confirmButtonText: 'ข้ามตา', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b'
+    }).then(r => {
+      if (!r.isConfirmed) return;
+      socket.emit('drawguess_skip', { roomId: roomId, turnNo: S.turnNo }, function(res) { if (res && !res.success) showError(res.error); });
+    });
+  });
+
+  $('#dgHowTo').on('click', function() {
+    Swal.fire({
+      title: '🎨 วาดแล้วทาย เล่นยังไง',
+      html: '<div style="text-align:left; line-height:1.6; font-family:\'Bai Jamjuree\',sans-serif;">' +
+        '<p>ทุกรอบ ทุกคนได้วาดคนละ 1 ตา ตามลำดับที่นั่ง</p>' +
+        '<p><strong>คนวาด</strong> เลือก 1 ใน 3 คำ แล้ววาดให้เพื่อนทาย — ห้ามเขียนตัวหนังสือ/ตัวเลข</p>' +
+        '<p><strong>คนทาย</strong> พิมพ์คำตอบในช่องล่างได้ไม่จำกัด · ทายถูกแล้วคำจะไม่โผล่ให้คนอื่นเห็น · ใกล้แล้วจะขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว</p>' +
+        '<p><strong>คำใบ้</strong> เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิด</p>' +
+        '<p><strong>แต้ม</strong> ทายถูกเร็วได้เยอะ + โบนัสคนแรก ๆ · คนวาดได้ +40 ต่อคนที่ทายถูก</p>' +
+        '<p>ครบทุกรอบ แต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</p></div>',
+      background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b', confirmButtonText: 'เข้าใจแล้ว'
+    });
+  });
+
+  // results buttons
+  $(document).on('click', '#dgAgainBtn', function() {
+    this.disabled = true;
+    const btn = this;
+    socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
+      if (res && !res.success) {
+        btn.disabled = false;
+        showError(res.error || 'เริ่มใหม่ไม่สำเร็จ');
+        Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#151d2a', color: '#fff' });
+      }
+    });
+  });
+  $(document).on('click', '#dgBackBtn', function() {
+    this.disabled = true;
+    socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) {
+      if (res && !res.success) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
+    });
+  });
+  $(document).on('click', '#dgShareBtn', function() {
+    if (!window.partyPlay || !S.standings) return;
+    const winners = S.standings.filter(r => (S.winnerIds || []).includes(r.playerId)).map(r => r.name);
+    window.partyPlay.shareResult({
+      mode: 'วาดแล้วทาย',
+      headline: winners.length ? winners.join(', ') + ' ชนะ!' : 'จบเกมวาดแล้วทาย',
+      sub: ((S.settings && S.settings.rounds) || 3) + ' รอบ · ' + S.standings.length + ' คน',
+      lines: S.standings.slice(0, 6).map(r => r.rank + '. ' + r.name + ' ' + r.score + ' แต้ม'),
+      accent: '#38bdf8',
+      fileName: 'drawguess-result'
+    });
+  });
+
+  // sheet (ผู้เล่น + ออกห้อง)
+  function setSheetOpen(open) {
+    $('#dgSheet').toggleClass('open', open).attr('aria-hidden', open ? 'false' : 'true');
+    $('#dgSheetOverlay').toggle(open);
+    $('#dgMenuBtn').attr('aria-expanded', open ? 'true' : 'false');
+    if (open) document.getElementById('dgSheetClose').focus();
+    else if (document.getElementById('dgSheet').contains(document.activeElement)) document.getElementById('dgMenuBtn').focus();
+  }
+  $('#dgMenuBtn').on('click', function() { setSheetOpen(!$('#dgSheet').hasClass('open')); });
+  $('#dgSheetClose, #dgSheetOverlay').on('click', function() { setSheetOpen(false); });
+  $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#dgSheet').hasClass('open')) setSheetOpen(false); });
+  $('#dgLeaveBtn').on('click', function() {
+    Swal.fire({
+      icon: 'question', title: 'ออกจากห้อง?', text: 'ออกกลางเกม = นับว่าแพ้ (ถ้าเกมนับสถิติ)', showCancelButton: true,
+      confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff'
+    }).then(r => {
+      if (!r.isConfirmed) return;
+      allowNavigation = true;
+      socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
+    });
+  });
+  $('#dgEndBtn').on('click', function() {
+    Swal.fire({
+      icon: 'warning', title: 'จบเกมและกลับห้องรอ?', text: 'เกมนี้จะไม่นับสถิติ', showCancelButton: true,
+      confirmButtonText: 'จบเกม', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b'
+    }).then(r => { if (r.isConfirmed) socket.emit('endTableSession', { roomId: roomId }); });
+  });
+  window.addEventListener('beforeunload', function(e) {
+    if (!allowNavigation && S.phase && S.phase !== 'finished' && S.phase !== 'lobby') e.preventDefault();
+  });
+
+  // ---------- socket ----------
+  function requestState() { socket.emit('drawguess_requestState', { roomId: roomId, playerId: playerId }); }
+  socket.on('connect', function() {
+    $('#dgConn').hide();
+    socket.emit('initPlayer', playerId);
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+  });
+  socket.on('disconnect', function() { $('#dgConn').show(); });
+  socket.on('drawguessState', render);
+  socket.on('drawguess_draw', function(data) {
+    if (!data || Number(data.turnNo) !== Number(S.turnNo)) return;
+    setCanvasTurn(Number(data.turnNo));
+    applyOps(data.ops);
+  });
+  socket.on('drawguess_canvas', function(data) {
+    if (!data) return;
+    if (Number(data.turnNo) !== Number(S.turnNo)) return;
+    canvasTurn = Number(data.turnNo);
+    strokes = (data.strokes || []).map(s => ({ id: s.id, c: s.c, w: s.w, e: s.e, p: (s.p || []).slice() }));
+    current = null;
+    pending = [];
+    redraw();
+  });
+  socket.on('drawguess_strokeRejected', function(data) {
+    showError((data && data.error) || 'ส่งเส้นไม่สำเร็จ');
+    current = null;
+    pending = [];
+    requestState();
+  });
+  socket.on('roomUpdate', function(data) {
+    if (!data || !data.players) return;
+    if (data.admin && data.admin !== S.hostId) { S.hostId = data.admin; renderChrome(); renderResults(); }
+    $('#dgRoomPlayers').html(data.players.map(p =>
+      '<li>' + avatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 28) +
+        '<span class="nm">' + esc(p.displayName || p.playerName) + (p.playerId === data.admin ? ' 👑' : '') + '</span>' +
+        (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:#9fb3c8;">ออฟไลน์</span>' : '') +
+      '</li>').join(''));
+  });
+  function goLobby() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
+  socket.on('redirectToLobby', goLobby);
+  socket.on('restartGame', goLobby);
+  socket.on('roomClosed', function() { allowNavigation = true; window.location.href = '/rooms?playerId=' + playerId; });
+  socket.on('returnToLobby', function(data) {
+    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    tickTimer();
+  });
+  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('kickedFromRoom', function(data) {
+    allowNavigation = true;
+    Swal.fire({ icon: 'error', title: 'ออกจากห้องแล้ว', text: (data && (data.reason || data.message)) || '', background: '#151d2a', color: '#fff' })
+      .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
+  });
+  socket.on('drawguess_admin_reveal', function(data) {
+    Swal.fire({
+      title: '/m คำตานี้',
+      html: '<p>คนวาด: ' + esc(data.drawerName || '-') + '</p><p>คำ: <strong>' + esc(data.word || '-') + '</strong></p>' +
+        ((data.choices || []).length ? '<p>ตัวเลือก: ' + esc(data.choices.join(' / ')) + '</p>' : ''),
+      background: '#151d2a', color: '#fff'
+    });
+  });
+  socket.on('drawguess_admin_reveal_denied', function() { showError('/m ใช้ได้เฉพาะแอดมินเว็บ'); });
+
+  // ---------- init ----------
+  window.addEventListener('resize', syncViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewport);
+    window.visualViewport.addEventListener('scroll', syncViewport);
+  }
+  if (typeof desktopMq.addEventListener === 'function') desktopMq.addEventListener('change', syncViewport);
+  document.getElementById('dgGuessInput').addEventListener('focus', function() {
+    // iOS เลื่อนหน้าเองตอนคีย์บอร์ดขึ้น — ดึงกลับให้แถบบนยังอยู่
+    setTimeout(function() { window.scrollTo(0, 0); syncViewport(); }, 60);
+  });
+  if (S && S.mode) render(S);
+  syncViewport();
+});
+</script>

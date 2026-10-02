@@ -260,6 +260,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'liar_finished',
     'poker_finished',
     'pokdeng_finished',
+    'drawguess_finished',
     'end',
     'finished'
 ]);
@@ -286,6 +287,14 @@ const ROOM_NAME_MODE_HINTS = {
     'ป๊อกเด้ง': 'pokdeng',
     'วงป๊อกเด้ง': 'pokdeng'
 };
+ROOM_NAME_MODE_HINTS['วาดแล้วทาย'] = 'drawguess';
+ROOM_NAME_MODE_HINTS['วงวาดแล้วทาย'] = 'drawguess';
+
+/** วาดแล้วทาย: รอบ 2/3/4 · เวลาวาด 60/80/100 วิ · หมวดคำ (mixed หรือหมวดเดียว) */
+function sanitizeDrawGuessSettings(source) {
+    const clean = getGameEngine('drawguess').sanitizeSettings(source || {});
+    return { drawguessRounds: clean.rounds, drawguessSeconds: clean.drawSeconds, drawguessCategory: clean.category };
+}
 
 function inferGameModeFromRoomName(roomName) {
     const trimmed = String(roomName || '').trim();
@@ -632,6 +641,7 @@ function createRoom(roomData, creatorPlayerId) {
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
+            ...(gameMode === 'drawguess' ? sanitizeDrawGuessSettings(normalizedRoomData) : {}),
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1031,6 +1041,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.pokdengRotateDealer !== undefined) {
         room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;
+    }
+    if (room.settings.gameMode === 'drawguess'
+        && (updates.drawguessRounds !== undefined || updates.drawguessSeconds !== undefined || updates.drawguessCategory !== undefined)) {
+        Object.assign(room.settings, sanitizeDrawGuessSettings({ ...room.settings, ...updates }));
     }
 
     if (updates.locked !== undefined) {

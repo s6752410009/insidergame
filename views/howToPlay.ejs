@@ -314,6 +314,19 @@
     border: 1px solid rgba(245, 200, 107, 0.4);
   }
 
+  .guide-card.mode-drawguess {
+    border-color: rgba(125, 211, 252, 0.3);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(56, 189, 248, 0.2), transparent 55%),
+      linear-gradient(180deg, #111c2a 0%, #0f1824 55%, #0c141e 100%);
+  }
+
+  .guide-card.mode-drawguess .guide-mode-badge {
+    background: rgba(56, 189, 248, 0.2);
+    color: #bae6fd;
+    border: 1px solid rgba(125, 211, 252, 0.4);
+  }
+
   .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
   .pd-howto-cards img { width: 26px; height: 36px; border-radius: 3px; }
 
@@ -948,6 +961,7 @@
     { id: 'poker5', ico: '♠', label: 'ไพ่ 5 ใบ' },
     { id: 'poker4', ico: '♦', label: 'สี่ใบเก' },
     { id: 'pokdeng', ico: '🎴', label: 'ป๊อกเด้ง' },
+    { id: 'drawguess', ico: '🎨', label: 'วาดแล้วทาย' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1392,6 +1406,19 @@
           </div>
         </div>
       </details>
+    </article>
+
+    <article class="guide-card mode-drawguess" id="drawguess">
+      <div class="guide-mode-badge">🎨 วาดแล้วทาย</div>
+      <h2>ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ</h2>
+      <p>เล่น 3–12 คน ทุกรอบทุกคนได้วาดคนละ 1 ตาตามลำดับที่นั่ง (หัวห้องตั้งได้ 2–4 รอบ) คนวาดเลือก 1 ใน 3 คำภายใน 12 วิ แล้ววาดบนจอภายในเวลา 60–100 วิ คนอื่นพิมพ์ทายในช่องด้านล่างได้ไม่จำกัด</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>ทายถูก</strong> คำจะไม่โผล่ให้คนอื่นเห็น ทุกคนเห็นแค่ “✅ ชื่อ ทายถูก!” · ทายถูกแล้วพิมพ์คุยได้ เห็นเฉพาะคนวาดและคนที่ถูกแล้ว</div>
+        <div class="guide-list-item"><strong>เกือบแล้ว!</strong> ถ้าคำที่พิมพ์ต่างจากคำตอบแค่ตัวเดียว หรือเป็นส่วนหนึ่งของคำตอบ จะขึ้นเตือนให้เห็นคนเดียว</div>
+        <div class="guide-list-item"><strong>คำใบ้</strong> พ้นช่วงแรกของเวลาวาด ตัวอักษรจะค่อย ๆ เปิดทีละตัว (ไม่เกินราว 40% ของคำ)</div>
+        <div class="guide-list-item"><strong>แต้ม</strong> ทายถูกเร็วได้เยอะ + โบนัสคนที่ 1–4 · คนวาดได้ +40 ต่อคนที่ทายถูก · ครบทุกรอบ แต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</div>
+        <div class="guide-list-item"><strong>คำ</strong> คำไทย 400+ คำ 8 หมวด (สัตว์ อาหาร สิ่งของ สถานที่ อาชีพ กิจกรรม ธรรมชาติ ยานพาหนะ) เลือกหมวดเดียวหรือรวมก็ได้ ในเกมเดียวไม่มีคำซ้ำ</div>
+      </div>
     </article>
   </section>
 
