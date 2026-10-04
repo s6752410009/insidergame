@@ -866,20 +866,20 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🕹️ v<%= appVersion %> — เล่นคนเดียวได้แล้ว!',
+            title: '🎉 v<%= appVersion %> — 4 เกมปาร์ตี้ใหม่!',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     ${seasonResetNoticeHtml}
                     <p style="color: #f6c453; font-size: 0.95em; line-height: 1.65; margin-bottom: 15px;">
-                        เพื่อนไม่ว่างก็เล่นได้ — กดปุ่ม <strong>“🕹️ เล่นคนเดียว”</strong> ในหน้าแรก มี 4 เกม เก็บสถิติและแข่งอันดับทั้งเว็บ
+                        ชวนเพื่อนมาลอง — กด <strong>“🎮 เริ่มเกม” → “สร้างห้อง”</strong> แล้วเลือกเกมที่มีป้าย <strong>ใหม่</strong>
                     </p>
 
                     <div style="background: rgba(22, 101, 52, 0.18); padding: 14px; border: 1px solid rgba(74, 222, 128, 0.28); border-radius: 12px; margin-bottom: 15px;">
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.92em; color: #ddd; line-height: 1.7;">
-                            <li>🟩 <strong>ทายคำรายวัน</strong> — ทายคำไทย 4 ช่อง วันละคำ 6 ครั้ง แชร์ผลให้เพื่อนได้</li>
-                            <li>🃏 <strong>ไพ่โซลิแทร์</strong> — ทุกกระดานชนะได้แน่นอน แข่งเวลาเร็วสุด</li>
-                            <li>🎴 <strong>ป๊อกเด้งท้าเจ้ามือ</strong> — สู้เจ้ามือบอท ทำสถิติชิปสูงสุด (ชิปไม่มีมูลค่าจริง)</li>
-                            <li>🧠 <strong>จับคู่การ์ดความจำ</strong> — 3 ระดับ + กระดานรายวันแข่งเวลากับทุกคน</li>
+                            <li>🎨 <strong>วาดแล้วทาย</strong> · 3–12 คน — ผลัดกันวาด คนอื่นพิมพ์ทาย ทายถูกเร็วได้แต้มเยอะ</li>
+                            <li>🕵️ <strong>สายลับคำใบ้</strong> · 4–12 คน — แข่ง 2 ทีม หัวหน้าใบ้คำเดียว ระวังมือสังหาร!</li>
+                            <li>📡 <strong>คลื่นความคิด</strong> · 3–12 คน — ใบ้ 1 คำ แล้วลากเข็มทายว่าเป้าอยู่ตรงไหน</li>
+                            <li>🃏 <strong>ไพ่ทิ้งสี</strong> · 2–10 คน — ทิ้งไพ่ตามสีหรือเลข เหลือใบเดียวต้องกดบอก ใส่บอทได้</li>
                         </ul>
                     </div>
 
@@ -888,6 +888,10 @@ $(function() {
                             📦 ดูอัปเดตเวอร์ชันก่อนหน้า
                         </summary>
                         <div style="padding: 10px 0;">
+                            <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v6.2.0</h4>
+                            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
+                                <li>เล่นคนเดียว: ทายคำรายวัน, ไพ่โซลิแทร์, ป๊อกเด้งท้าเจ้ามือ, จับคู่การ์ดความจำ</li>
+                            </ul>
                             <h4 style="color: #2ecc71; margin: 10px 0 8px 0;">v6.1.0</h4>
                             <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 0.9em;">
                                 <li>3 เกมใหม่: คำใครไม่เหมือน, ป๊อกเด้ง, อวาลอน</li>
