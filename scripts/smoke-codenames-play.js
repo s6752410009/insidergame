@@ -155,6 +155,18 @@ function pickClue(board, n) {
     }
     throw new Error('หาคำใบ้ไม่ได้');
 }
+// เปิดการ์ดแบบที่ UI ทำ: เสนอก่อน (ถ้ายังไม่ได้เสนอ) แล้วค่อยกดเปิด
+async function revealAs(c, index) {
+    let s = last(c);
+    if (!s.board[index].mine) {
+        const p = await ack(c.socket, 'codenames_propose', { index, step: s.step });
+        if (!p.success) return p;
+        await waitFor(() => last(c).board[index].mine || last(c).board[index].revealed, 4000, 'propose ' + index);
+    }
+    s = last(c);
+    if (s.board[index].revealed) return { success: true };
+    return ack(c.socket, 'codenames_reveal', { index, step: s.step });
+}
 async function waitAllStep(clients, minStep, label) {
     await waitFor(() => clients.every(c => c.socket.disconnected || (last(c) && last(c).step >= minStep)), 8000, label);
 }
@@ -271,6 +283,8 @@ function readStats() {
         assert(last(op2).board[own[0]].color === team1, 'ทุกคนเห็นสีการ์ดที่เปิดแล้ว');
         s = last(op1);
         r = await ack(op1.socket, 'codenames_reveal', { index: neutral, ...ctx(s) });
+        assert(r.success === false && /เลือกการ์ดใบนี้ก่อน/.test(r.error) && !last(op1).board[neutral].revealed, 'เปิดใบที่ยังไม่ได้เสนอไม่ได้ (กันมือลั่น): ' + JSON.stringify(r));
+        r = await revealAs(op1, neutral);
         assert(r.success, 'เปิดใบที่สอง');
         await waitFor(() => last(op2).currentTeam === team2 && last(op2).phase === 'clue', 4000, 'turn passes');
         assert(last(op2).clueLog.length === 1 && last(op2).clueLog[0].picks.length === 2 && last(op2).clueLog[0].endedBy === 'neutral', 'ประวัติคำใบ้ต่อทีม');
@@ -284,13 +298,20 @@ function readStats() {
         for (const index of own2) {
             await waitFor(() => last(op2).phase === 'guess' || last(op2).phase === 'finished', 4000, 'can guess');
             s = last(op2);
-            r = await ack(op2.socket, 'codenames_reveal', { index, ...ctx(s) });
+            r = await revealAs(op2, index);
             assert(r.success, 'เปิดการ์ดทีมตัวเอง: ' + JSON.stringify(r));
             await waitFor(() => last(op2).step > s.step, 4000, 'reveal state');
         }
         await waitFor(() => A.clients.every(c => last(c).phase === 'finished'), 6000, 'A finished');
         s = last(op1);
         assert(s.winner === team2 && s.winReason === 'words', 'ทีมที่เปิดครบชนะ');
+        // หน้าจบของสายลับคำใบ้ค้าง ~30 วิ (เกมอื่น 10 วิ) · รีเฟรช/หลุดแล้วนับต่อจากเดิม ไม่เริ่มใหม่
+        await waitFor(() => last(op1).returnLobbyEndsAt, 4000, 'return countdown');
+        const endsAt = last(op1).returnLobbyEndsAt;
+        const leftMs = endsAt - last(op1).serverNow;
+        assert(leftMs > 25000 && leftMs <= 30000, 'สายลับคำใบ้: กลับห้องรอใน ~30 วิ (เหลือ ' + leftMs + ')');
+        const finishedBack = await reconnect(base, op1, A.roomId);
+        assert(finishedBack.phase === 'finished' && finishedBack.returnLobbyEndsAt === endsAt, 'รีเฟรชหน้าจบ: นับถอยหลังเดิม');
         assert(s.keyVisible && s.board.every(c => c.color), 'จบเกมเปิดกุญแจให้ทุกคน');
         console.log('A5. เล่นจนจบ: ผิดสีจบเทิร์น · เปิดครบ 8 ชนะ · จบแล้วเปิดกุญแจ ✓');
 
@@ -309,8 +330,8 @@ function readStats() {
         console.log('A6. สถิติ: ทีมชนะได้ win ทุกคน ทีมแพ้ได้ loss ✓');
 
         const back = new Promise(res => h.socket.once('redirectToLobby', () => res(true)));
-        r = await ack(a1.socket, 'returnFinishedToLobby', { roomId: A.roomId });
-        assert(r.success, 'กลับห้องรอได้');
+        r = await ack(h.socket, 'returnFinishedToLobby', { roomId: A.roomId });
+        assert(r.success, 'หัวห้องพาทุกคนกลับห้องรอได้ทันที');
         assert(await Promise.race([back, delay(4000).then(() => false)]), 'ทุกคนถูกพากลับห้องรอ');
         await delay(400);
         assert(Object.keys(h.room.settings.codenamesTeams || {}).length === 4, 'ทีมเดิมยังอยู่หลังจบเกม');
@@ -425,8 +446,7 @@ function readStats() {
         await waitFor(() => last(opsB[0]).phase === 'guess', 4000, 'guess inf');
         assert(last(opsB[0]).clue.maxGuesses === null, '∞ ไม่จำกัด');
         const assassin = last(smB).board.find(c => c.color === 'assassin').index;
-        s = last(opsB[0]);
-        r = await ack(opsB[0].socket, 'codenames_reveal', { index: assassin, ...ctx(s) });
+        r = await revealAs(opsB[0], assassin);
         assert(r.success, 'เปิดมือสังหาร');
         await waitFor(() => last(spectator).phase === 'finished', 5000, 'B finished');
         assert(last(spectator).winner === t2 && last(spectator).winReason === 'assassin', 'เปิดมือสังหาร = อีกทีมชนะ');
@@ -488,6 +508,17 @@ function readStats() {
         r = await ack(cHost.socket, 'codenames_hostSkip', ctx(last(cHost)));
         assert(r.success === false && /ค้างนานเกิน/.test(r.error), 'เพิ่งเปลี่ยนตา ข้ามทันทีไม่ได้');
         console.log('C2. หัวห้องข้ามเทิร์นที่ค้างได้ (หลังรอ) · คนอื่นข้ามไม่ได้ ✓');
+
+        // โหมดอื่นยังกลับห้องใน 10 วิเหมือนเดิม — มีแค่สายลับคำใบ้ที่ประกาศ finishedReturnMs
+        const { getGameEngine, getAvailableGameModes } = require('../games/engineRegistry');
+        const modes = (getAvailableGameModes() || []).map(m => (typeof m === 'string' ? m : m.id || m.value || m.mode)).filter(Boolean);
+        assert(modes.length >= 5 && modes.includes('codenames'), 'อ่านรายชื่อโหมดได้: ' + JSON.stringify(modes));
+        modes.forEach(m => {
+            const ms = (getGameEngine(m) || {}).finishedReturnMs;
+            assert(m === 'codenames' ? ms === 30000 : ms === undefined, `โหมด ${m} finishedReturnMs = ${ms}`);
+        });
+        assert(/const FINISHED_RETURN_MS = 10000;/.test(fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8')), 'ค่ากลับห้องปกติยัง 10 วิ');
+        console.log('C3. หน้าจบสายลับคำใบ้ 30 วิ · โหมดอื่น 10 วิเหมือนเดิม ✓');
 
         assert(leakChecks > 100, `ตรวจความลับ ${leakChecks} payload`);
         assert(!/\[codenames\].*failed/.test(server.logs()), 'server log มี error:\n' + server.logs().split('\n').filter(l => /codenames/.test(l)).slice(-5).join('\n'));

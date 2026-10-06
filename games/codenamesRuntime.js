@@ -123,6 +123,11 @@ module.exports = function createCodenamesRuntime(getDeps) {
     function recover(room) {
         if (!isRoom(room)) return;
         if (room.gameState && room.gameState.phase === 'finished') {
+            if (room.gameState.statsRecordedAt) {
+                // รีสตาร์ตตอนอยู่หน้าจบ: ตัวจับเวลากลับห้องหายไปกับ process เดิม → ตั้งใหม่ ไม่งั้นค้างหน้าจบ
+                deps().scheduleFinishedGameReturnToLobby(room);
+                return;
+            }
             finalizeIfNeeded(room);
             return;
         }

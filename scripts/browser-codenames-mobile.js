@@ -275,14 +275,27 @@ async function boardState(page) {
                 const i = plan[k];
                 const sel = `#cnBoard .cn-card[data-i="${i}"]`;
                 if (turns === 0 && k === 1) {
-                    // กดค้าง = เปิดทันที
-                    const box = await op.page.$eval(sel, el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
-                    await op.page.mouse.move(box.x, box.y);
-                    await op.page.mouse.down();
-                    await delay(800);
-                    await op.page.mouse.up();
+                    // กดค้างใบที่ยังไม่ได้เลือก = แค่เลือก ไม่เปิด · กดค้างซ้ำใบเดิม = เปิด
+                    const hold = async () => {
+                        const box = await op.page.$eval(sel, el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+                        await op.page.mouse.move(box.x, box.y);
+                        await op.page.mouse.down();
+                        await delay(800);
+                        await op.page.mouse.up();
+                    };
+                    await hold();
+                    await waitFor(() => op.page.$eval(sel, el => el.classList.contains('is-mine')), 5000, 'long-press selects');
+                    await delay(700);
+                    assert(!(await watcher.page.$eval(sel, el => el.classList.contains('is-revealed'))), 'กดค้างใบที่ยังไม่ได้เลือก ไม่เปิด');
+                    const st = await op.page.evaluate(s2 => ({ tag: document.querySelector(s2 + ' .cn-tag.is-me')?.textContent || '', btn: document.getElementById('cnRevealBtn').textContent, dock: document.getElementById('cnDockInner').textContent }), sel);
+                    assert(/คุณ/.test(st.tag) && /^เปิด ".+" เลย$/.test(st.btn) && /กดค้างที่ใบนี้/.test(st.dock), 'ใบที่เลือกแล้วบอกชัดว่าพร้อมเปิด: ' + JSON.stringify(st));
+                    shots.push(await shot(op, '06b-operative-longpress-selected-390.png'));
+                    await hold();
                     usedLongPress = true;
                 } else {
+                    if (turns === 0 && k === 0) {
+                        assert(/เลือกการ์ดก่อน/.test(await op.page.$eval('#cnRevealBtn', b => b.textContent)) && await op.page.$eval('#cnRevealBtn', b => b.disabled), 'ยังไม่เลือก = ปุ่มเปิดกดไม่ได้ บอกเหตุผล');
+                    }
                     await op.page.click(sel);
                     await waitFor(() => op.page.$eval(sel, el => el.classList.contains('is-mine')), 5000, 'card selected');
                     if (turns === 0 && k === 0) {
@@ -331,6 +344,11 @@ async function boardState(page) {
             probs = await layoutProblems(p.page, '#cnRoot');
             assert(probs.length === 0, `${p.label} (จบเกม) เลย์เอาต์มีปัญหา: ${probs.join(' | ')}`);
         }
+        // หน้าจบค้าง ~30 วิ มีนับถอยหลัง · หัวห้อง = พาทุกคนกลับ · คนอื่น = กลับห้องเลย (คนเดียว)
+        const backSec = Number(((await p1.page.$eval('#cnResultBack', e => e.textContent)).match(/(\d+) วิ/) || [])[1]);
+        assert(backSec > 20 && backSec <= 30, 'หน้าจบนับถอยหลัง ~30 วิ: ' + backSec);
+        assert(await host.page.$('#cnBackAllBtn') && !(await host.page.$('#cnBackBtn')), 'หัวห้องเห็น "พาทุกคนกลับห้อง"');
+        assert(/กลับห้องเลย/.test(await p1.page.$eval('#cnBackBtn', b => b.textContent)) && !(await p1.page.$('#cnBackAllBtn')), 'คนอื่นเห็น "กลับห้องเลย"');
         shots.push(await shot(p1, '08-finished-390.png'));
         shots.push(await shot(p1, '09-finished-390-full.png', { full: true }));
         shots.push(await shot(watcher, '10-finished-1280.png'));
@@ -342,8 +360,24 @@ async function boardState(page) {
         assert(!probs.some(x => /horizontal|offscreen|overflow/.test(x)), 'แนวนอนล้น: ' + probs.join(' | '));
         shots.push(await shot(p3, '11-landscape-844x390.png'));
 
-        // เล่นอีกตา: กลับห้องรอพร้อมกัน
-        await host.page.click('#cnBackBtn');
+        // รีเฟรชหน้าจบ: นับถอยหลังต่อจากเดิม ไม่เริ่ม 30 ใหม่
+        await delay(2000);
+        await p2.page.reload({ waitUntil: 'domcontentloaded' });
+        await p2.page.waitForSelector('#cnResultBack', { timeout: 15000 });
+        await delay(800);
+        const afterReload = Number(((await p2.page.$eval('#cnResultBack', e => e.textContent)).match(/(\d+) วิ/) || [])[1]);
+        assert(afterReload > 0 && afterReload < backSec, `รีเฟรชแล้วนับต่อ (${backSec} → ${afterReload})`);
+
+        // คนเดียวกลับห้องก่อน: p1 ไปห้องรอ คนอื่นยังอยู่หน้าจบ
+        await p1.page.click('#cnBackBtn');
+        await p1.page.waitForURL(/\/room\//, { timeout: 15000 });
+        await p1.page.waitForSelector('[data-cn-pick]', { timeout: 10000 });
+        await delay(600);
+        assert(/\/game\//.test(p3.page.url()) && await p3.page.$eval('#cnResult', el => !el.hidden), 'คนอื่นยังดูหน้าจบต่อได้');
+        shots.push(await shot(p1, '12-early-return-lobby-390.png'));
+
+        // หัวห้องพาทุกคนกลับตอนนี้
+        await host.page.click('#cnBackAllBtn');
         await Promise.all(players.map(p => p.page.waitForURL(/\/room\//, { timeout: 15000 })));
         await waitFor(() => host.page.evaluate(() => !document.getElementById('btnStartGameLobby').disabled), 8000, 'teams kept, start enabled');
         console.log('   · เล่นอีกตา: กลับห้องรอพร้อมทีมเดิม ปุ่มเริ่มใช้ได้');

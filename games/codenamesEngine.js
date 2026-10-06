@@ -3,7 +3,7 @@
  *
  * สองทีม แดง/น้ำเงิน ทีมละหัวหน้า 1 คน + ลูกทีม ≥1 · กระดาน 5×5
  * ทีมที่เริ่มก่อนมีคำ 9 ใบ อีกทีม 8 · คนเดินถนน 7 · มือสังหาร 1
- * หัวหน้าใบ้ 1 คำ + ตัวเลข → ลูกทีมแตะเสนอการ์ด เสียงข้างมากเปิด หรือกด "เปิดเลย"
+ * หัวหน้าใบ้ 1 คำ + ตัวเลข → ลูกทีมแตะเสนอการ์ด เสียงข้างมากเปิด หรือคนที่เสนอใบนั้นกด "เปิดเลย"
  *
  * ความลับ: สีของการ์ดที่ยังไม่เปิด (กุญแจ) ส่งให้เฉพาะหัวหน้า — buildClientState เป็นคนตัดสิน
  * ทุก action ตรวจฝั่งนี้: ตาใคร เฟสไหน บทอะไร การ์ดเปิดแล้วหรือยัง step ตรงไหม
@@ -39,6 +39,8 @@ const NO_OPERATIVE_GRACE_MS = Number(process.env.CODENAMES_NO_OPERATIVE_GRACE_MS
 // หัวหน้าห้องกด "ข้ามเทิร์น" ได้เมื่อเฟสเดิมค้างนานเกินนี้ (กันคน AFK ตอนปิดนาฬิกา) — สั้นกว่านี้ถือว่ายังเล่นอยู่
 const HOST_SKIP_AFTER_MS = Number(process.env.CODENAMES_HOST_SKIP_MS) || 60000;
 const MAX_CLUE_GRAPHEMES = 24;
+// หน้าจบเกมค้างไว้นานกว่าเกมอื่น (ค่าปกติ 10 วิ) ให้ดูกุญแจทั้งกระดาน — app.js อ่านผ่าน engine.finishedReturnMs
+const FINISHED_RETURN_MS = Number(process.env.CODENAMES_FINISHED_RETURN_MS) || 30000;
 const MAX_HISTORY = 60;
 const MAX_FX = 12;
 
@@ -552,6 +554,8 @@ function confirmReveal(room, playerId, index, context = null, now = Date.now()) 
     const me = assertOperativeTurn(state, playerId);
     assertStep(state, context);
     const i = assertCard(state, index);
+    // เปิดได้เฉพาะใบที่ตัวเองเสนอไว้แล้ว = ต้องตั้งใจสองจังหวะ (แตะเลือก → กดเปิด/กดค้างใบเดิม) กันมือลั่นเปิดมือสังหาร
+    if ((state.votes || {})[me.playerId] !== i) throw new Error('แตะเลือกการ์ดใบนี้ก่อน แล้วค่อยกดเปิด');
     revealCard(room, i, me, now, 'confirm');
     return state;
 }
@@ -958,6 +962,7 @@ module.exports = {
     description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน',
     minPlayers: MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
+    finishedReturnMs: FINISHED_RETURN_MS,
     MODE,
     FINISHED_STATUS,
     TEAMS,

@@ -891,19 +891,21 @@ function scheduleFinishedGameReturnToLobby(room) {
         return;
     }
     const roomId = room.roomId;
-    const endsAt = Date.now() + FINISHED_RETURN_MS;
+    // โหมดที่อยากให้ดูหน้าจบนานกว่าปกติประกาศ finishedReturnMs ใน engine ได้ (เช่น สายลับคำใบ้ 30 วิ ไว้ดูกุญแจ)
+    const returnMs = Number(getGameEngine(room.settings?.gameMode)?.finishedReturnMs) || FINISHED_RETURN_MS;
+    const endsAt = Date.now() + returnMs;
     if (room.gameState) {
         room.gameState.returnLobbyEndsAt = endsAt;
     }
     io.to(roomId).emit('returnToLobby', {
-        countdown: Math.round(FINISHED_RETURN_MS / 1000),
+        countdown: Math.round(returnMs / 1000),
         roomId,
         endsAt
     });
     const timeoutId = setTimeout(() => {
         finishedReturnTimeouts.delete(roomId);
         returnFinishedGameToLobby(roomId);
-    }, FINISHED_RETURN_MS);
+    }, returnMs);
     finishedReturnTimeouts.set(roomId, timeoutId);
 }
 
@@ -8480,6 +8482,8 @@ io.sockets.on('connection', function(socket) {
         if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
             return;
         }
+        // หน้าจบ: ถ้าตัวจับเวลากลับห้องหายไป (รีสตาร์ต) ตั้งใหม่ · มีอยู่แล้วไม่ทับ นับต่อจากเดิม
+        if (room.gameState?.phase === 'finished') codenamesRuntime.recover(room);
         codenamesRuntime.emitState(room, socket.id, playerId);
     });
 

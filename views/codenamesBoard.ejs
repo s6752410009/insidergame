@@ -179,8 +179,15 @@
   /* โหวต */
   .cn-votes { position: absolute; left: 4px; bottom: 3px; display: flex; gap: 2px; }
   .cn-votes i { width: 7px; height: 7px; border-radius: 50%; background: var(--turn); box-shadow: 0 0 0 1.5px oklch(1 0 0 / 0.85); }
+  /* สถานะการ์ด: เพื่อนเสนอ = กรอบประ · คุณเลือก = กรอบทองทึบ + ป้าย "✓ คุณ" · ใกล้ครบเสียง = ป้าย "อีก 1" */
   .cn-card.is-mine .cn-front { box-shadow: 0 0 0 3px var(--cn-gold), 0 6px 16px oklch(0.05 0.02 255 / 0.5); transform: translateY(-2px); }
-  .cn-card.is-voted:not(.is-mine) .cn-front { box-shadow: 0 0 0 2px color-mix(in oklch, var(--turn) 80%, white); }
+  .cn-card.is-voted:not(.is-mine) .cn-front { outline: 2px dashed color-mix(in oklch, var(--turn) 85%, white); outline-offset: -3px; }
+  .cn-tag { position: absolute; top: 2px; left: 3px; padding: 0 4px; border-radius: 5px; font-size: 0.6rem; font-weight: 700; line-height: 1.35; white-space: nowrap; pointer-events: none; }
+  .cn-tag.is-me { background: var(--cn-gold); color: var(--cn-gold-ink); }
+  .cn-tag.is-near { top: auto; bottom: 2px; left: auto; right: 3px; background: var(--turn); color: #fff; }
+  .cn-hold { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--cn-gold); transform: scaleX(0); transform-origin: left center; pointer-events: none; }
+  .cn-card.is-mine .cn-hold { background: oklch(0.68 0.21 28); }
+  .cn-card.is-holding .cn-hold { transform: scaleX(1); transition: transform 0.6s linear; }
   /* ด้านหลัง (เปิดแล้ว) */
   .cn-back { transform: rotateY(180deg); padding: 0; place-items: stretch; }
   .cn-back.c-red { background: var(--cn-red-deep); }
@@ -204,6 +211,7 @@
   .cn-result h2 { margin: 0; font-family: var(--cn-display); font-size: 1.6rem; }
   .cn-result p { margin: 4px 0 0; color: var(--cn-soft); }
   .cn-result .me { margin-top: 10px; font-family: var(--cn-display); font-weight: 700; font-size: 1.1rem; color: var(--cn-gold); }
+  .cn-result .cn-result-back { margin-top: 8px; font-size: 0.86rem; color: var(--cn-muted); font-variant-numeric: tabular-nums; }
   .cn-result-stats { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; font-size: 0.82rem; }
   .cn-result-stats span { padding: 4px 10px; border-radius: 999px; background: oklch(0 0 0 / 0.25); }
 
@@ -375,6 +383,7 @@
   @media (prefers-reduced-motion: reduce) {
     .cn-card-inner, .cn-front, .cn-team-pill, .cn-boardwrap, .cn-btn, .cn-timer .bar { transition: none !important; }
     .cn-card.is-new .cn-card-inner, .cn-clue.is-pop { animation: none !important; }
+    .cn-card.is-holding .cn-hold { transition: none !important; }
     .cn-banner.is-on { animation-duration: 2.2s; animation-name: cnFade; }
   }
   @keyframes cnFade { 0%, 100% { opacity: 0; } 10%, 85% { opacity: 1; } }
@@ -583,7 +592,7 @@ $(function() {
     const clue = S.clue || {};
     const left = clue.maxGuesses ? Math.max(0, clue.maxGuesses - (clue.guessesMade || 0)) : null;
     if (self.canGuess) {
-      return { title: 'ตาคุณทาย', sub: left === null ? 'เปิดได้ไม่จำกัด จนกว่าจะพลาดหรือกดจบเทิร์น' : 'เปิดได้อีก ' + left + ' ใบ · แตะการ์ดเพื่อเสนอ', mine: true };
+      return { title: 'ตาคุณทาย', sub: left === null ? 'เปิดได้ไม่จำกัด จนกว่าจะพลาดหรือกดจบเทิร์น' : 'เปิดได้อีก ' + left + ' ใบ · แตะการ์ดเพื่อเลือก', mine: true };
     }
     if (self.team === team && self.role === 'spymaster') return { title: 'ลูกทีมกำลังทาย', sub: 'ห้ามพูดใบ้เพิ่ม ห้ามทำท่า — นั่งลุ้นอย่างเดียว', mine: false };
     return { title: tName + 'กำลังทาย', sub: 'คำใบ้ "' + (clue.word || '') + '" ' + numText(clue.number), mine: false };
@@ -668,12 +677,18 @@ $(function() {
       const votes = !card.revealed && card.votes && card.votes.length
         ? '<span class="cn-votes" aria-hidden="true">' + card.votes.map(() => '<i></i>').join('') + '</span>' : '';
       const keyMark = !card.revealed && card.color === 'assassin' ? '<span class="cn-keymark" aria-hidden="true">💀</span>' : '';
+      const nVotes = !card.revealed && card.votes ? card.votes.length : 0;
+      const tags = card.revealed ? '' :
+        (card.mine ? '<span class="cn-tag is-me" aria-hidden="true">✓ คุณ</span>' : '') +
+        (S.votesNeeded && nVotes && nVotes === S.votesNeeded - 1 ? '<span class="cn-tag is-near" aria-hidden="true">อีก 1</span>' : '') +
+        (canGuess ? '<span class="cn-hold" aria-hidden="true"></span>' : '');
       const label = card.word + (card.revealed ? ' — ' + COLOR_NAME[card.color] : (card.color ? ' (กุญแจ: ' + COLOR_NAME[card.color] + ')' : '')) +
+        (card.mine ? ' · คุณเลือกใบนี้ กดค้างหรือกดปุ่มเปิดเพื่อเปิด' : '') +
         (card.votes && card.votes.length ? ' · เสนอโดย ' + card.votes.join(', ') : '');
       return '<button type="button" class="' + cls.join(' ') + '" data-i="' + card.index + '" aria-label="' + esc(label) + '"' +
         (!canGuess || card.revealed ? ' aria-disabled="true"' : '') + (card.mine ? ' aria-pressed="true"' : '') + '>' +
         '<span class="cn-card-inner">' +
-          '<span class="cn-face cn-front">' + keyMark + '<span class="cn-word" style="--fs:' + baseFont(card.word) + 'px">' + esc(card.word) + '</span>' + votes + '</span>' +
+          '<span class="cn-face cn-front">' + keyMark + tags + '<span class="cn-word" style="--fs:' + baseFont(card.word) + 'px">' + esc(card.word) + '</span>' + votes + '</span>' +
           (card.revealed ? '<span class="cn-face cn-back c-' + card.color + '"><img src="' + ART[card.color] + '" alt="" draggable="false"><span class="cn-back-word">' + esc(card.word) + '</span></span>' : '') +
         '</span></button>';
     }).join('');
@@ -721,6 +736,7 @@ $(function() {
     el.innerHTML = '<h2>' + (S.winner ? '🏆 ' + TEAM[S.winner] + 'ชนะ!' : 'จบเกม') + '</h2>' +
       '<p>' + esc(winWhy()) + '</p>' +
       '<div class="me">' + mine + '</div>' +
+      '<p class="cn-result-back" id="cnResultBack" role="timer">' + (backRemainSec() ? 'กลับห้องรออัตโนมัติใน ' + backRemainSec() + ' วิ' : '') + '</p>' +
       '<div class="cn-result-stats"><span>🟥 เหลือ ' + ((t.red || {}).remaining || 0) + ' คำ</span><span>🟦 เหลือ ' + ((t.blue || {}).remaining || 0) + ' คำ</span><span>' + (S.turnNumber || 0) + ' เทิร์น</span></div>';
   }
 
@@ -771,7 +787,7 @@ $(function() {
     const self = me();
     const inner = document.getElementById('cnDockInner');
     let key;
-    if (S.phase === 'finished') key = 'fin';
+    if (S.phase === 'finished') key = 'fin:' + (S.isHost ? 'host' : 'p');
     else if (self.canGiveClue) key = 'clue:' + S.turnNumber;
     else if (self.canGuess) key = 'guess:' + S.step;
     else key = 'wait:' + S.phase + ':' + S.currentTeam + ':' + self.role + ':' + voteSignature();
@@ -797,11 +813,13 @@ $(function() {
       return;
     }
     dockKey = key;
-    if (key === 'fin') {
-      const endsAt = Number(S.returnLobbyEndsAt) || 0;
+    if (key.startsWith('fin')) {
+      // หัวห้อง = พาทุกคนกลับตอนนี้ · คนอื่น = กลับห้องรอก่อนคนเดียว (ที่เหลือดูกุญแจต่อได้)
       inner.innerHTML = '<div class="cn-row"><button type="button" id="cnShareBtn" class="cn-btn">แชร์ผล</button>' +
-        '<button type="button" id="cnBackBtn" class="cn-btn cn-btn--primary">กลับห้องรอ เล่นอีกตา</button></div>' +
-        '<p class="cn-hint" id="cnBackRemain">' + (endsAt ? '' : 'ทุกคนกลับห้องรอพร้อมกัน · ทีมเดิมยังอยู่ สุ่มใหม่ได้') + '</p>';
+        (S.isHost
+          ? '<button type="button" id="cnBackAllBtn" class="cn-btn cn-btn--primary">พาทุกคนกลับห้อง</button>'
+          : '<button type="button" id="cnBackBtn" class="cn-btn cn-btn--primary">กลับห้องเลย</button>') + '</div>' +
+        '<p class="cn-hint" id="cnBackRemain">' + backRemainText() + '</p>';
       return;
     }
     if (self.canGuess) {
@@ -810,15 +828,16 @@ $(function() {
       const need = S.votesNeeded;
       let status;
       if (mineCard) {
-        status = 'คุณเสนอ "' + esc(mineCard.word) + '"' + (need ? ' · ' + mineCard.votes.length + '/' + need + ' เสียง' : '');
+        status = '✓ คุณเลือก "' + esc(mineCard.word) + '"' + (need ? ' · ' + mineCard.votes.length + '/' + need + ' เสียง' : '') +
+          ' — กดปุ่มเปิด หรือกดค้างที่ใบนี้';
       } else {
-        status = need ? 'แตะการ์ดเพื่อเสนอ — ครบ ' + need + ' เสียงเปิดเอง' : 'แตะการ์ดที่คิดว่าใช่ แล้วกด "เปิดเลย"';
+        status = need ? '① แตะการ์ดเพื่อเลือก — ครบ ' + need + ' เสียงเปิดเอง หรือ ② กดเปิดยืนยัน' : '① แตะการ์ดเพื่อเลือก ② กดเปิดยืนยัน';
       }
       inner.innerHTML = '<div class="cn-wait">' + status + '</div>' + voteListHtml() +
         '<div class="cn-row">' +
         '<button type="button" id="cnEndTurnBtn" class="cn-btn"' + (made > 0 ? '' : ' disabled') + '>จบเทิร์น</button>' +
-        '<button type="button" id="cnRevealBtn" class="cn-btn cn-btn--primary"' + (mineCard ? ' data-i="' + mineCard.index + '"' : ' disabled') + '>' + (mineCard ? 'เปิด "' + esc(mineCard.word) + '" เลย' : 'เปิดเลย') + '</button>' +
-        '</div><p class="cn-hint">' + (mineCard ? 'แตะใบเดิมซ้ำ = ยกเลิก · ' : '') + 'กดค้างที่การ์ด = เปิดทันที' + (made > 0 ? '' : ' · ต้องเปิดอย่างน้อย 1 ใบก่อนจบเทิร์น') + '</p>';
+        '<button type="button" id="cnRevealBtn" class="cn-btn cn-btn--primary"' + (mineCard ? ' data-i="' + mineCard.index + '"' : ' disabled') + '>' + (mineCard ? 'เปิด "' + esc(mineCard.word) + '" เลย' : 'เลือกการ์ดก่อน') + '</button>' +
+        '</div><p class="cn-hint">' + (mineCard ? 'แตะใบเดิมซ้ำ = ยกเลิก · ' : '') + 'กดค้างใบใหม่ = เลือก (ยังไม่เปิด) · กดค้างใบที่เลือกแล้ว = เปิด' + (made > 0 ? '' : ' · ต้องเปิดอย่างน้อย 1 ใบก่อนจบเทิร์น') + '</p>';
       return;
     }
     const d = describeNow();
@@ -855,6 +874,15 @@ $(function() {
     $('#cnNumOut').text(numText(clueNumber));
     $('.cn-stepper [data-step="inf"]').attr('aria-pressed', clueNumber === 'inf' ? 'true' : 'false');
     $('#cnClueSend').prop('disabled', !ok || pending);
+  }
+
+  function backRemainSec() {
+    const endsAt = Number(S.returnLobbyEndsAt) || 0;
+    return endsAt ? Math.max(0, Math.ceil((endsAt - now()) / 1000)) : 0;
+  }
+  function backRemainText() {
+    const remain = backRemainSec();
+    return (remain > 0 ? 'ดูกุญแจได้อีก ' + remain + ' วิ แล้วทุกคนกลับห้องรอพร้อมกัน' : 'ทุกคนกลับห้องรอพร้อมกัน') + ' · ทีมเดิมยังอยู่';
   }
 
   function syncDockHeight() {
@@ -895,12 +923,12 @@ $(function() {
       paintSkip();
       const wrap = document.getElementById('cnTimer');
       if (S.phase === 'finished') {
-        const endsAt = Number(S.returnLobbyEndsAt) || 0;
-        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+        const remain = backRemainSec();
         $('#cnTimerNum').text(remain > 0 ? remain : '--');
         wrap.classList.toggle('is-idle', !remain);
         $('#cnTimerBar').attr('stroke-dashoffset', circ);
-        $('#cnBackRemain').text(remain > 0 ? 'กลับห้องรอพร้อมกันใน ' + remain + ' วิ · ทีมเดิมยังอยู่' : 'ทุกคนกลับห้องรอพร้อมกัน');
+        $('#cnBackRemain').text(backRemainText());
+        $('#cnResultBack').text(remain > 0 ? 'กลับห้องรออัตโนมัติใน ' + remain + ' วิ' : 'กำลังกลับห้องรอ...');
         return;
       }
       const total = ((S.phase === 'clue' ? (S.settings || {}).clueSeconds : (S.settings || {}).guessSeconds) || 0) * 1000;
@@ -1006,17 +1034,31 @@ $(function() {
     if (!el) return;
     clearTimeout(pressTimer);
     pressStart = { x: e.clientX, y: e.clientY };
+    const index = Number(el.dataset.i);
+    el.classList.add('is-holding');
+    // กดค้าง: ใบที่ยังไม่ได้เลือก = แค่เลือก · ใบที่เลือกไว้แล้ว = เปิด (ต้องตั้งใจสองจังหวะเสมอ)
     pressTimer = setTimeout(function() {
       pressFired = true;
-      haptic([15, 30, 40]);
-      send('codenames_reveal', { index: Number(el.dataset.i) });
+      $('#cnBoard .cn-card.is-holding').removeClass('is-holding');
+      const card = (S.board || [])[index];
+      if (!card || card.revealed || !me().canGuess) return;
+      if (card.mine) {
+        haptic([15, 30, 40]);
+        send('codenames_reveal', { index: index });
+      } else {
+        haptic(12);
+        send('codenames_propose', { index: index });
+      }
     }, 600);
   });
-  $('#cnBoard').on('pointerup pointerleave pointercancel', '.cn-card', function() { clearTimeout(pressTimer); });
+  $('#cnBoard').on('pointerup pointerleave pointercancel', '.cn-card', function() {
+    clearTimeout(pressTimer);
+    $('#cnBoard .cn-card.is-holding').removeClass('is-holding');
+  });
   // นิ้วเลื่อน (กำลังเลื่อนจอ) = ไม่ใช่กดค้าง — กันเปิดการ์ดโดยไม่ตั้งใจ
   $('#cnBoard').on('pointermove', '.cn-card', function(e) {
     if (!pressStart) return;
-    if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) { clearTimeout(pressTimer); pressStart = null; }
+    if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) { clearTimeout(pressTimer); pressStart = null; $('#cnBoard .cn-card.is-holding').removeClass('is-holding'); }
   });
   $('#cnBoard').on('contextmenu', '.cn-card', function(e) { e.preventDefault(); });
   $('#cnBoard').on('click', '.cn-card', function(e) {
@@ -1065,10 +1107,16 @@ $(function() {
       haptic([20, 40, 20]);
     });
   });
+  // กลับห้องรอคนเดียวก่อน — คนอื่นยังดูหน้าจบต่อ จนหมดเวลา/หัวห้องพากลับ
   $(document).on('click', '#cnBackBtn', function() {
+    goLobby();
+  });
+  $(document).on('click', '#cnBackAllBtn', function() {
+    const btn = this;
+    btn.disabled = true;
     allowNavigation = true;
     socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) {
-      if (res && res.success === false) { allowNavigation = false; toast(res.error || 'กลับห้องรอไม่สำเร็จ', 'error'); }
+      if (res && res.success === false) { allowNavigation = false; btn.disabled = false; toast(res.error || 'กลับห้องรอไม่สำเร็จ', 'error'); }
     });
   });
   $(document).on('click', '#cnShareBtn', function() {
@@ -1089,7 +1137,7 @@ $(function() {
     return '<div class="cn-guide">' +
       '<h4>เป้าหมาย</h4><p>เปิดการ์ด<strong>สายลับของทีมตัวเอง</strong>ให้ครบก่อนอีกทีม · ทีมที่เริ่มก่อนมี 9 คำ อีกทีม 8 คำ</p>' +
       '<h4>หัวหน้า</h4><p>เห็นกุญแจว่าคำไหนสีอะไร ใบ้ <strong>คำเดียว + ตัวเลข</strong> เช่น "ทะเล 2" · ห้ามใช้คำบนกระดาน ห้ามใบ้ด้วยท่าทาง · 0 หรือ ∞ = เปิดได้ไม่จำกัด</p>' +
-      '<h4>ลูกทีม</h4><p>แตะการ์ดเพื่อเสนอ ถ้าเกินครึ่งของลูกทีมที่ออนไลน์เลือกใบเดียวกันจะเปิดทันที หรือกด <strong>เปิดเลย</strong> (กดค้างที่การ์ดก็ได้) · เปิดได้ถึงตัวเลข + 1 ใบ</p>' +
+      '<h4>ลูกทีม</h4><p>แตะการ์ดเพื่อเลือก ถ้าเกินครึ่งของลูกทีมที่ออนไลน์เลือกใบเดียวกันจะเปิดทันที หรือคนที่เลือกไว้กด <strong>เปิดเลย</strong> (หรือกดค้างที่ใบที่เลือกไว้) — กดค้างใบที่ยังไม่ได้เลือกแค่เลือก ไม่เปิด · เปิดได้ถึงตัวเลข + 1 ใบ</p>' +
       '<h4>พลาด</h4><p>เปิดเจอคนเดินถนนหรือสายลับอีกทีม = จบเทิร์น · เจอ<strong>มือสังหาร</strong> = แพ้ทันที</p>' +
       '<div class="cn-guide-cards"><div><img src="' + ART.red + '" alt="">แดง</div><div><img src="' + ART.blue + '" alt="">น้ำเงิน</div><div><img src="' + ART.neutral + '" alt="">คนเดินถนน</div><div><img src="' + ART.assassin + '" alt="">มือสังหาร</div></div>' +
       '</div>';
