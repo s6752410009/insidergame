@@ -163,6 +163,10 @@
   .hint-bar.hint-focus { border-color: rgba(250,204,21,0.3); box-shadow: 0 0 8px rgba(250,204,21,0.1); }
   .hint-role { font-size: 0.82rem; font-weight: 700; color: #fde68a; white-space: nowrap; }
   .hint-text { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
+  .hint-news { flex-basis: 100%; font-size: 0.8rem; font-weight: 600; line-height: 1.45; color: oklch(0.9 0.04 85); background: oklch(0.32 0.05 70 / 0.35); border: 1px solid oklch(0.75 0.1 80 / 0.3); border-radius: 10px; padding: 6px 10px; }
+  .hint-news-label { color: oklch(0.85 0.12 80); margin-right: 4px; }
+  .role-strip-caption { flex-basis: 100%; text-align: center; font-size: 0.72rem; font-weight: 600; color: oklch(0.72 0.02 260); }
+  .phase-transition-skip { margin-top: 14px; font-size: 0.75rem; font-weight: 600; color: oklch(0.75 0.02 260); }
   .hint-sep { color: rgba(255,255,255,0.2); font-size: 0.7rem; }
   .hint-seer-tag { display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 12px; font-size: 0.76rem; font-weight: 700; margin-left: 6px; border: 1px solid rgba(148,163,184,0.22); color: #f8fafc; max-width: min(100%, 280px); overflow: hidden; }
   .hint-seer-tag strong { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -723,6 +727,7 @@
   <div class="phase-transition-card">
     <div id="phaseTransitionTitle" class="phase-transition-title">N คืนใหม่</div>
     <div id="phaseTransitionSubtitle" class="phase-transition-subtitle">เกมกำลังเดินต่อ</div>
+    <div class="phase-transition-skip">แตะเพื่อไปต่อ</div>
   </div>
 </div>
 
@@ -802,7 +807,7 @@
   <!-- ===== MOBILE PLAYER GRID (always visible on mobile) ===== -->
   <div class="ww-mobile-players">
     <div id="mobileInlinePlayerGrid" class="player-grid"></div>
-    <div id="mobileInlineRoleStrip" class="role-strip"></div>
+    <div id="mobileInlineRoleStrip" class="role-strip" role="button" tabindex="0" aria-label="ดูบทบาททั้งหมดในเกมนี้" style="cursor:pointer;"></div>
   </div>
 
   <!-- ===== MOBILE HINT BAR (role + action + seer results) ===== -->
@@ -1016,6 +1021,7 @@
     let wasHidden = false;
     let hasInitiallyConnected = false;
     let phaseTransitionTimeouts = [];
+    let phaseTransitionSkip = null;
     let roleAnnouncementTimeout = null;
     let lastRoleAnnouncementKey = null;
     let audioContext = null;
@@ -1170,15 +1176,8 @@
     }
 
     function phaseIcon(phase) {
-      const icons = {
-        lobby: 'LB',
-        night: 'N',
-        'day-discussion': 'D1',
-        'day-vote': 'D2',
-        finished: 'END'
-      };
-
-      return icons[phase] || 'ST';
+      // เดิมเป็นรหัส N / D1 / D2 ที่อ่านไม่ออก (D2 โผล่ตอนวันที่ 1) — ป้ายเฟสมีอีโมจิอยู่แล้ว
+      return '';
     }
 
     function teamIcon(team) {
@@ -1397,7 +1396,7 @@
         var stateClass = role.active ? 'is-active' : 'is-inactive';
         var statusLabel = role.active ? 'มีบทนี้ในเกม' : 'ไม่มีบทนี้ในเกม';
         return '<div class="role-strip-item ' + teamClass + ' ' + stateClass + '" title="' + escapeHtml((role.thaiName || role.id) + ' - ' + statusLabel) + '"><span class="rs-emoji">' + roleIcon(role, 'game-icon') + '</span></div>';
-      }).join('');
+      }).join('') + '<div class="role-strip-caption">บทที่สว่าง = มีในเกมนี้ · แตะเพื่อดูว่าแต่ละบททำอะไร</div>';
       $('#roleStrip').html(html);
       $('#mobileInlineRoleStrip').html(html);
     }
@@ -2285,24 +2284,24 @@
       let metaText = dayNumber > 0 ? `วันที่ ${dayNumber}` : 'ก่อนเริ่มเกม';
 
       if (phase === 'night' && Number(nightStatus.totalAlive || 0) > 0) {
-        metaText += ` • โหวตจบคืน ${nightStatus.skipCount || 0}/${nightStatus.skipNeeded || 0}`;
+        metaText += ` • พร้อมเช้า ${nightStatus.readyCount != null ? nightStatus.readyCount : (nightStatus.skipCount || 0)}/${nightStatus.skipNeeded || 0}`;
       } else if (phase === 'day-vote' && daySummary) {
         metaText += ` • คะแนนนำ ${daySummary.leadingVoteWeight || 0}/${dayActions.voteThreshold || 0}`;
       } else if (phase === 'day-discussion' && Number(discussion.totalAlive || 0) > 0) {
-        metaText += ` • พร้อมข้าม ${discussion.skipCount || 0}/${discussion.totalAlive || 0}`;
+        metaText += ` • พร้อมโหวต ${discussion.skipCount || 0}/${discussion.skipNeeded || discussion.totalAlive || 0}`;
       } else if (canAct) {
         metaText += ' • ถึงตาคุณ';
       }
 
       return {
-        title: `${phaseIcon(phase)} ${phaseLabel(phase)}`,
+        title: phaseLabel(phase),
         current: sections[1]?.body || 'รอระบบอัปเดตสถานะของเกม',
         past: sections[0]?.body || 'รอข้อมูล',
         now: sections[1]?.body || 'รอข้อมูล',
         goal: sections[2]?.body || 'รอข้อมูล',
         timer: formatCountdown(state?.phaseEndsAt || null),
         meta: metaText,
-        kicker: canAct ? '🎯 ถึงตา!' : (state?.winner ? 'END จบ!' : '📍 สถานะ')
+        kicker: canAct ? '🎯 ถึงตา!' : (state?.winner ? '🏁 จบ!' : '📍 สถานะ')
       };
     }
 
@@ -2360,9 +2359,9 @@
           detail = `ล็อก ${firstNightAction.label} ก่อนหมดเวลา`;
           primaryLabel = `🎯 ${firstNightAction.label}`;
         } else if (nightStatus.canSkip || nightStatus.hasSkipped) {
-          headline = 'คืนนี้ไม่มีสกิล — โหวตจบคืนเมื่อพร้อม';
-          detail = `โหวตจบคืนเร็ว ${Number(nightStatus.skipCount || 0)}/${Number(nightStatus.skipNeeded || 0)} คน`;
-          primaryLabel = nightStatus.hasSkipped ? '✅ โหวตแล้ว' : '🗳️ โหวตจบคืน';
+          headline = 'คืนนี้คุณไม่มีสกิล — รอได้เลย';
+          detail = `คืนจะจบเองเมื่อคนมีสกิลเลือกครบ · พร้อม ${Number(nightStatus.readyCount != null ? nightStatus.readyCount : (nightStatus.skipCount || 0))}/${Number(nightStatus.skipNeeded || 0)} คน`;
+          primaryLabel = nightStatus.hasSkipped ? '✅ พร้อมแล้ว' : '🌅 พร้อมจบคืน';
         } else {
           kicker = 'ไม่มีสกิลคืนนี้';
           headline = 'ดูที่นั่ง เตรียมข้อมูลไว้สำหรับเช้า';
@@ -2403,7 +2402,7 @@
         if (dayActions.canVote) {
           headline = 'เลือกคนจากที่นั่ง แล้วลงคะแนน!';
           detail = dayActions.selectedVoteTargetId
-            ? `กำลังเล็ง ${describeTarget(dayActions.selectedVoteTargetId, 'เป้าหมาย', { context: 'day-vote' })} อยู่ เปลี่ยนใจได้`
+            ? `กำลังเล็ง ${describeTarget(dayActions.selectedVoteTargetId, 'เป้าหมาย', { context: 'day-vote' })} อยู่ เปลี่ยนใจได้จนกว่าทุกคนโหวตครบ`
             : 'ดูที่นั่งแล้วแตะคนที่สงสัย';
           primaryLabel = '🗳️ โหวต';
         } else if (dayActions.canReveal) {
@@ -2418,7 +2417,7 @@
           tone = 'tone-lock';
           kicker = 'ล็อกแล้ว';
           headline = `คะแนนนำ ${leadingVoteWeight}/${voteThreshold}`;
-          detail = totalVoters > 0 ? `ตัดสินใจแล้ว ${completedVotes}/${totalVoters} คน และยังเปลี่ยนใจได้` : 'เปลี่ยนใจได้จนกว่าหมดเวลา';
+          detail = totalVoters > 0 ? `ตัดสินใจแล้ว ${completedVotes}/${totalVoters} คน — ครบทุกคนแล้วปิดโหวตทันที` : 'รอผลโหวต';
           primaryLabel = '👥 ดูที่นั่ง';
           primaryTarget = 'players';
           secondaryLabel = '🎯 ดูสถานะ';
@@ -2434,10 +2433,10 @@
       if (phase === 'night') {
         chips.push(`<div class="phase-status-chip">🌙 <strong>${actionableNightActions.length > 0 ? `${actionableNightActions.length} สกิล` : 'รอเช้า'}</strong></div>`);
         if (Number(nightStatus.skipNeeded || 0) > 0) {
-          chips.push(`<div class="phase-status-chip">⏭️ พร้อม <strong>${Number(nightStatus.skipCount || 0)}/${Number(nightStatus.skipNeeded || 0)}</strong></div>`);
+          chips.push(`<div class="phase-status-chip">⏭️ พร้อม <strong>${Number(nightStatus.readyCount != null ? nightStatus.readyCount : (nightStatus.skipCount || 0))}/${Number(nightStatus.skipNeeded || 0)}</strong></div>`);
         }
       } else if (phase === 'day-discussion') {
-        chips.push(`<div class="phase-status-chip">💬 ข้าม <strong>${Number(discussion.skipCount || 0)}/${Number(discussion.totalAlive || 0)}</strong></div>`);
+        chips.push(`<div class="phase-status-chip">💬 พร้อมโหวต <strong>${Number(discussion.skipCount || 0)}/${Number(discussion.skipNeeded || discussion.totalAlive || 0)}</strong></div>`);
       } else if (phase === 'day-vote') {
         chips.push(`<div class="phase-status-chip">🗳️ คะแนนนำ <strong>${Number(daySummary?.leadingVoteWeight || 0)}/${Number(dayActions.voteThreshold || 0)}</strong></div>`);
       } else if (state?.winner) {
@@ -3247,8 +3246,24 @@
       }
     }
 
+    // พรใช้ได้ครั้งเดียวทั้งเกม และแตะที่นั่งตอนประชุมกันบ่อย — ถามก่อนกันมือลั่น
     window.selectClericBlessTarget = function(targetPlayerId) {
-      submitClericBless(targetPlayerId);
+      Swal.fire({
+        icon: 'question',
+        title: '⛪ มอบพรให้ ' + describeTarget(targetPlayerId, 'ผู้เล่นคนนี้') + '?',
+        text: 'พรกันตายได้ 1 ครั้งในคืนถัดไป และใช้ได้ครั้งเดียวทั้งเกม เปลี่ยนใจภายหลังไม่ได้',
+        showCancelButton: true,
+        confirmButtonText: 'มอบพร',
+        cancelButtonText: 'ยกเลิก',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#475569'
+      }).then(function(result) {
+        if (result.isConfirmed) {
+          submitClericBless(targetPlayerId);
+        }
+      });
     };
 
     // Tap role pill -> full role description + remaining uses (compact UI hides the sidebar)
@@ -3281,6 +3296,26 @@
       });
     };
 
+    function buildLatestNewsHtml(state) {
+      var phase = state?.phase || '';
+      var label = '';
+      var text = '';
+      if ((phase === 'day-discussion' || phase === 'day-vote') && state.morningAnnouncement) {
+        var morning = state.morningAnnouncement;
+        label = '📰 เมื่อคืน:';
+        text = (morning.outcomeType === 'death' || morning.outcomeType === 'multiple-deaths') && morning.detail
+          ? morning.detail
+          : (morning.lead || '');
+      } else if (phase === 'night' && state.dayResolutionAnnouncement) {
+        label = '📢 ผลโหวตเมื่อวาน:';
+        text = state.dayResolutionAnnouncement.lead || '';
+      }
+      if (!text) {
+        return '';
+      }
+      return '<div class="hint-news" data-testid="ww-latest-news"><span class="hint-news-label">' + label + '</span>' + escapeHtml(text) + '</div>';
+    }
+
     // ===== RENDER MOBILE HINT BAR (unified: role + action + notes) =====
     function renderMobileHint() {
       var $hint = $('#mobileHint');
@@ -3295,10 +3330,13 @@
       var amDead = selfP && selfP.alive === false;
       var $deadBanner = $('#mobileDeadBanner');
       if (amDead && !winner) {
-        $deadBanner.html('💀 คุณตายแล้ว — ดูเกม/แชทต่อได้ แต่โหวตและใช้สกิลไม่ได้').show();
+        $deadBanner.html('💀 คุณตายแล้ว — ดูเกมต่อได้ แต่แชท โหวต และใช้สกิลไม่ได้ (อย่าใบ้คนที่ยังอยู่นะ)').show();
       } else {
         $deadBanner.hide();
       }
+
+      // ข่าวล่าสุดแบบถาวร: ใครตาย/โดนโหวต เพราะอะไร — ป๊อปอัปหายไปแล้ว หรือเพิ่งรีเฟรชก็ยังอ่านได้
+      var newsHtml = buildLatestNewsHtml(currentState);
 
       // Role pill text (tappable to open full role info + remaining uses)
       var rolePill = role
@@ -3321,13 +3359,20 @@
       if (phase === 'night') {
         var actions = actionState.nightActions || [];
         var nightState = actionState.nightStatus || {};
-        var nightSkipCount = Number(nightState.skipCount || 0);
+        var nightSkipCount = Number(nightState.readyCount != null ? nightState.readyCount : (nightState.skipCount || 0));
         var nightSkipNeeded = Number(nightState.skipNeeded || nightState.totalAlive || 0);
         var nightSkipHtml = '';
-        if (nightState.canSkip) {
-          nightSkipHtml = '<button class="hint-btn btn-skip" onclick="skipNightPhase()">🌅 โหวตให้จบคืน</button>';
-        } else if (nightState.hasSkipped) {
-          nightSkipHtml = '<span class="hint-btn btn-done" style="cursor:default;">✅ โหวตจบคืนแล้ว</span>';
+        if (nightState.hasSkipped || nightState.selfReady) {
+          nightSkipHtml = '<span class="hint-btn btn-done" style="cursor:default;">✅ พร้อมเช้าแล้ว</span>';
+        } else if (nightState.canSkip) {
+          nightSkipHtml = '<button class="hint-btn btn-skip" onclick="skipNightPhase()">🌅 พร้อมจบคืน</button>';
+        }
+        // บอกเหตุผลที่คืนยังไม่จบ (ไม่บอกจำนวนบท กันเดาบทของคนที่ตาย)
+        var nightWaitReason = '';
+        if (nightState.wolvesSplit) {
+          nightWaitReason = '<span class="hint-sep">·</span><span class="hint-text" style="color:#fca5a5;">🐺 ฝูงยังเลือกเหยื่อไม่ตรงกัน คืนจะยังไม่จบ</span>';
+        } else if (nightState.waitingForRoles) {
+          nightWaitReason = '<span class="hint-sep">·</span><span class="hint-text">⏳ คนพร้อมครบแล้ว รอคนที่มีสกิลเลือกให้เสร็จ</span>';
         }
         if (actions.length === 0) {
           var seerTagHtml = '';
@@ -3336,11 +3381,12 @@
             var lastSeer = notes.seerHistory[0];
             seerTagHtml = buildSeerResultBadge(lastSeer, { compact: true });
           }
-          var nightWaitText = nightSkipNeeded > 0
-            ? '🌅 โหวตให้จบคืน ' + nightSkipCount + '/' + nightSkipNeeded
-            : '😴 รอเช้า...';
-          var focusClassIdle = nightState.canSkip ? ' hint-focus' : '';
-          $hint.html('<div class="hint-bar hint-night' + focusClassIdle + '">' + rolePill + '<span class="hint-text">' + nightWaitText + '</span>' + nightSkipHtml + seerTagHtml + oracleTagHtml + notesHtml + '</div>');
+          var nightWaitText = amDead
+            ? '😴 รอเช้า...'
+            : '😴 คืนนี้คุณไม่มีสกิล — รอได้เลย คืนจะจบเองเมื่อคนมีสกิลเลือกครบ';
+          var nightReadyMeta = nightSkipNeeded > 0 && !amDead ? '<span class="hint-sep">·</span><span class="hint-text">🌅 พร้อม ' + nightSkipCount + '/' + nightSkipNeeded + '</span>' : '';
+          var focusClassIdle = (nightState.canSkip && !nightState.hasSkipped) ? ' hint-focus' : '';
+          $hint.html('<div class="hint-bar hint-night' + focusClassIdle + '">' + rolePill + '<span class="hint-text">' + nightWaitText + '</span>' + nightReadyMeta + nightWaitReason + nightSkipHtml + seerTagHtml + oracleTagHtml + newsHtml + notesHtml + '</div>');
           return;
         }
         var action = actions[0];
@@ -3354,7 +3400,7 @@
             return '<button class="hint-btn" onclick="selectWitchPotion(\'' + escapeHtml(option.type) + '\')">' + iconOnly + ' ' + shortLabelOnly + '</button>';
           }).join('');
           var focusClassPotion = ' hint-focus';
-          $hint.html('<div class="hint-bar hint-night' + focusClassPotion + '">' + rolePill + '<span class="hint-text">WIT เลือกยาก่อน แล้วค่อยเลือกคน</span>' + potionBtnsOnly + nightSkipHtml + notesHtml + '</div>');
+          $hint.html('<div class="hint-bar hint-night' + focusClassPotion + '">' + rolePill + '<span class="hint-text">🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน</span>' + potionBtnsOnly + nightSkipHtml + notesHtml + '</div>');
           return;
         }
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
@@ -3380,7 +3426,7 @@
           status = '🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน';
         }
         var nightBtns = '';
-        if (action.allowSkip && !action.locked) {
+        if (action.allowSkip && !action.locked && nightSelId !== '__skip__') {
           nightBtns = '<button class="hint-btn btn-skip" onclick="selectNightTarget(\'' + escapeHtml(action.type) + '\', \'__skip__\')">🫥 ข้ามสกิลของฉัน</button>';
         }
         if (isWitchChoiceNight(actions)) {
@@ -3399,9 +3445,9 @@
           var lastSeer2 = notes.seerHistory[0];
           seerTagHtml2 = buildSeerResultBadge(lastSeer2, { compact: true });
         }
-        var focusClass = (action.locked && !nightState.canSkip) ? '' : ' hint-focus';
-        var nightMetaHtml = nightSkipNeeded > 0 ? '<span class="hint-sep">·</span><span class="hint-text">🗳️ ' + nightSkipCount + '/' + nightSkipNeeded + '</span>' : '';
-        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + nightMetaHtml + nightBtns + seerTagHtml2 + oracleTagHtml2 + notesHtml + '</div>');
+        var focusClass = (nightSelId || action.locked) ? '' : ' hint-focus';
+        var nightMetaHtml = nightSkipNeeded > 0 ? '<span class="hint-sep">·</span><span class="hint-text">🌅 พร้อม ' + nightSkipCount + '/' + nightSkipNeeded + '</span>' : '';
+        $hint.html('<div class="hint-bar hint-night' + focusClass + '">' + rolePill + '<span class="hint-text">' + actionLabel + '</span><span class="hint-sep">·</span><span class="hint-text">' + status + '</span>' + nightMetaHtml + nightWaitReason + nightBtns + seerTagHtml2 + oracleTagHtml2 + newsHtml + notesHtml + '</div>');
         return;
       }
 
@@ -3413,7 +3459,7 @@
         if (disc.canSkip) {
           btnsHtml += '<button class="hint-btn" onclick="skipDiscussionPhase()">⏩ พร้อมไปโหวต</button>';
         } else if (disc.hasSkipped) {
-          btnsHtml += '<span class="hint-btn btn-done" style="cursor:default;">✅ พร้อมแล้ว</span>';
+          btnsHtml += '<span class="hint-btn btn-done" style="cursor:default;">✅ พร้อมโหวตแล้ว</span>';
         }
         if (disc.canRevealMayor) {
           btnsHtml += '<button class="hint-btn btn-reveal" onclick="revealMayorRole()">🎖️ เปิดนายก</button>';
@@ -3433,7 +3479,8 @@
           btnsHtml += '<span class="hint-text" style="color:#bfdbfe;">⛪ มอบพรแล้ว</span>';
         }
         var focusClass2 = (disc.canSkip || disc.canRevealMayor || disc.canReveal || disc.canClericBless) ? ' hint-focus' : '';
-        $hint.html('<div class="hint-bar hint-discussion' + focusClass2 + '">' + rolePill + '<span class="hint-text">💬 ข้าม ' + skipCount + '/' + skipNeeded + '</span>' + btnsHtml + notesHtml + '</div>');
+        var discText = amDead ? '💬 ช่วงประชุม' : '💬 คุยกันได้เลย · พร้อมโหวต ' + skipCount + '/' + skipNeeded + ' (ครบ = เปิดโหวตทันที)';
+        $hint.html('<div class="hint-bar hint-discussion' + focusClass2 + '">' + rolePill + '<span class="hint-text">' + discText + '</span>' + btnsHtml + newsHtml + notesHtml + '</div>');
         return;
       }
 
@@ -3468,8 +3515,12 @@
           } else {
             vBtns += '<span class="hint-text" style="color:#97a4bf;">👆 แตะที่ผู้เล่นเพื่อโหวตขับออก</span>';
           }
+        } else if (amDead) {
+          vBtns += '<span class="hint-text" style="color:#97a4bf;">👀 คุณตายแล้ว — ดูเสียงโหวตได้อย่างเดียว</span>';
+        } else if (dayActions.pendingRevealTargetId || dayActions.revealUsed) {
+          vBtns += '<span class="hint-text" style="color:#fda4af;">💥 ใช้สกิลเปิดโปงวันนี้แล้ว จึงงดโหวต</span>';
         } else {
-          vBtns += '<span class="hint-text" style="color:#6ee7b7;">✅ โหวตแล้ว</span>';
+          vBtns += '<span class="hint-text" style="color:#97a4bf;">⏳ รอผลโหวต</span>';
         }
         if (dayActions.allowSkipVote && dayActions.canVote && myVoteId !== '__skip__') {
           vBtns += '<button class="hint-btn btn-skip" onclick="selectVoteTarget(\'__skip__\')">🙅 ข้ามโหวต (ไม่ขับใคร)</button>';
@@ -3487,7 +3538,7 @@
           vBtns += '<span class="hint-text" style="color:#fda4af;">🎯 ล็อกเป้า ' + escapeHtml(dayActions.pendingRevealTargetName || 'ไว้แล้ว') + '</span>';
         }
         var focusClass3 = dayActions.canVote ? ' hint-focus' : '';
-        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง</span>' + vBtns + seerTagVote + oracleTagVote + notesHtml + '</div>');
+        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง · ครบทุกคน = ปิดโหวตทันที</span>' + vBtns + seerTagVote + oracleTagVote + newsHtml + notesHtml + '</div>');
         return;
       }
 
@@ -4489,10 +4540,10 @@
         const skipTitle = isDayVoteCard ? 'ข้ามโหวตรอบนี้' : 'ไม่ใช้สกิลคืนนี้';
         const skipMetaTag = isDayVoteCard
           ? 'ไม่ลงคะแนนให้ใครในรอบโหวตนี้'
-          : 'ไม่เลือกเป้าสำหรับสกิลบทนี้ (ต่างจากปุ่มโหวตจบคืนเร็ว)';
+          : 'ไม่เลือกเป้าสำหรับสกิลบทนี้คืนนี้';
         const skipHint = isDayVoteCard
           ? 'เหมาะตอนยังข้อมูลไม่พอ หรืออยากดันเกมไปเฟสถัดไปโดยไม่เทคะแนนให้ใคร'
-          : 'ยืนยันว่าคืนนี้คุณไม่ใช้สกิลบทตัวเอง — ถ้าทุกคนเลือกจบแล้ว ให้กด «โหวตจบคืนเร็ว» ด้วย (โหวตจากทั้งโต๊ะ ไม่ใช่แค่คุณ)';
+          : 'ยืนยันว่าคืนนี้คุณไม่ใช้สกิลบทตัวเอง (นับว่าคุณพร้อมเช้าแล้ว)';
         const skipStatusSelected = isDayVoteCard ? 'เลือกข้ามโหวตแล้ว' : 'เลือกไม่ใช้สกิลแล้ว';
         const skipStatusReady = isDayVoteCard ? 'แตะเพื่อข้ามโหวต' : 'แตะเพื่อไม่ใช้สกิล';
         const isSkipSelected = action.selectedTargetId === '__skip__';
@@ -4562,8 +4613,24 @@
       submitNightSkip();
     };
 
+    // เปิดตัวนายกย้อนกลับไม่ได้ (ทุกคนจะรู้บทคุณ) — ยืนยันก่อน
     window.revealMayorRole = function() {
-      submitMayorReveal();
+      Swal.fire({
+        icon: 'warning',
+        title: '🎖️ เปิดตัวว่าเป็นนายก?',
+        text: 'ทุกคนจะเห็นว่าคุณเป็นนายก และเสียงโหวตของคุณจะนับเป็น 2 ตั้งแต่นี้ ย้อนกลับไม่ได้ (หมาป่าก็จะรู้ด้วย)',
+        showCancelButton: true,
+        confirmButtonText: 'เปิดตัวเลย',
+        cancelButtonText: 'ยังก่อน',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#475569'
+      }).then(function(result) {
+        if (result.isConfirmed) {
+          submitMayorReveal();
+        }
+      });
     };
 
     window.selectRevealTarget = function(targetPlayerId) {
@@ -4626,7 +4693,7 @@
         const actions = actionState?.nightActions || [];
         const nightStatus = actionState?.nightStatus || {};
         if (actions.length === 0) {
-          $root.append('<div class="history-row">😴 คืนนี้ไม่มีสกิล — กด «โหวตจบคืนเร็ว» ด้านล่างเมื่อพร้อม</div>');
+          $root.append('<div class="history-row">😴 คืนนี้คุณไม่มีสกิล — รอได้เลย คืนจะจบเองเมื่อคนมีสกิลเลือกครบ (กด «พร้อมจบคืน» เพื่อช่วยให้เช้าเร็วขึ้น)</div>');
         } else {
           if (isWitchChoiceNight(actions)) {
             const selectedAction = getPreferredNightAction(actions);
@@ -4660,22 +4727,24 @@
             });
           }
         }
-        const nightLegendHtml = '<div class="night-action-legend" role="note"><strong>แยกปุ่มให้ชัด:</strong> การ์ด <strong>ไม่ใช้สกิลคืนนี้</strong> = บทคุณไม่ทำอะไรในคืนนี้ • ปุ่ม <strong>โหวตจบคืนเร็ว</strong> = ทั้งโต๊ะโหวตให้จบคืนทันที (คนมีชีวิตเกินครึ่ง)</div>';
-        const nightSkipCount = Number(nightStatus.skipCount || 0);
+        const nightLegendHtml = '<div class="night-action-legend" role="note"><strong>คืนจบเมื่อไหร่:</strong> ทุกคนที่มีสกิลเลือกครบ (เลือกเป้า หรือการ์ด <strong>ไม่ใช้สกิลคืนนี้</strong>) และคนมีชีวิตเกินครึ่งพร้อม — ใช้สกิลแล้วนับว่าพร้อมให้อัตโนมัติ</div>';
+        const nightSkipCount = Number(nightStatus.readyCount != null ? nightStatus.readyCount : (nightStatus.skipCount || 0));
         const nightSkipNeeded = Number(nightStatus.skipNeeded || nightStatus.totalAlive || 0);
-        const nightStatusText = nightSkipNeeded > 0
-          ? `โหวตจบคืนเร็ว ${nightSkipCount}/${nightSkipNeeded} คน — ครบแล้วจบคืนทันที`
-          : 'รอสถานะผู้เล่น';
-        const nightButtonHtml = nightStatus.canSkip
-          ? '<button class="action-btn" onclick="skipNightPhase()">🗳️ โหวตจบคืนเร็ว</button>'
-          : (nightStatus.hasSkipped
-            ? '<button class="action-btn selected" disabled>✅ โหวตจบคืนแล้ว</button>'
+        const nightStatusText = nightStatus.wolvesSplit
+          ? `พร้อม ${nightSkipCount}/${nightSkipNeeded} คน — ฝูงหมาป่ายังเลือกเหยื่อไม่ตรงกัน คืนจะยังไม่จบ`
+          : (nightStatus.waitingForRoles
+            ? `พร้อม ${nightSkipCount}/${nightSkipNeeded} คน — รอคนที่มีสกิลเลือกให้เสร็จ`
+            : (nightSkipNeeded > 0 ? `พร้อม ${nightSkipCount}/${nightSkipNeeded} คน — ครบและคนมีสกิลเลือกครบ = เช้าทันที` : 'รอสถานะผู้เล่น'));
+        const nightButtonHtml = (nightStatus.hasSkipped || nightStatus.selfReady)
+          ? '<button class="action-btn selected" disabled>✅ พร้อมเช้าแล้ว</button>'
+          : (nightStatus.canSkip
+            ? '<button class="action-btn" onclick="skipNightPhase()">🌅 พร้อมจบคืน</button>'
             : '<button class="action-btn" disabled>⏳ รอสถานะกลางคืน</button>');
         $root.append(`
           ${nightLegendHtml}
-          <div class="history-row ${nightStatus.canSkip ? 'turn-focus' : ''}" style="display:block;">
-            <div class="action-title"><span>🗳️</span><strong>โหวตจบคืนเร็ว (ทั้งโต๊ะ)</strong></div>
-            <div class="subtle">ไม่ใช่การ์ด «ไม่ใช้สกิล» — เมื่อคนมีชีวิตเกินครึ่งกดแล้ว ระบบจะเติมคนที่ยังไม่เลือกให้เป็นไม่ใช้สกิลแล้วจบคืน</div>
+          <div class="history-row ${nightStatus.canSkip && !nightStatus.hasSkipped && !nightStatus.selfReady ? 'turn-focus' : ''}" style="display:block;">
+            <div class="action-title"><span>🌅</span><strong>พร้อมจบคืน</strong></div>
+            <div class="subtle">ไม่ใช่การ์ด «ไม่ใช้สกิล» — กดเพื่อบอกว่าคุณพร้อมเข้าเช้า ถ้าหมดเวลาก่อน คนที่ยังไม่เลือกจะถือว่าไม่ใช้สกิล</div>
             <div class="highlight" style="margin-top:8px;">${escapeHtml(nightStatusText)}</div>
             <div style="margin-top:12px;">${nightButtonHtml}</div>
           </div>
@@ -4693,8 +4762,9 @@
           : (discussion.mayorRevealed
             ? `<div class="highlight" style="margin-top:12px;">🎖️ เปิดตัวแล้ว! โหวตคุณ = ${discussion.currentVoteWeight || 2} เสียง</div>`
             : '');
+        const skipNeededDisc = Number(discussion.skipNeeded || totalAlive || 0);
         const statusText = totalAlive > 0
-          ? `พร้อมข้าม ${skipCount}/${totalAlive} คน ครบ = เปิดโหวตเลย`
+          ? `พร้อมโหวต ${skipCount}/${skipNeededDisc} คน ครบ = เปิดโหวตเลย`
           : 'รอข้อมูลจำนวนผู้เล่น';
         const buttonHtml = discussion.canSkip
           ? '<button class="action-btn" onclick="skipDiscussionPhase()">⏭️ พร้อม ข้ามไปโหวต!</button>'
@@ -4748,8 +4818,10 @@
               <div class="target-grid">${buildTargetCards({ targets: dayActions.voteTargets, selectedTargetId: dayActions.selectedVoteTargetId, allowSkip: dayActions.allowSkipVote, voteTallies: dayActions.voteTallies, dayVoteSummary: dayActions.dayVoteSummary, skipVoteWeight: dayActions.skipVoteWeight }, 'selectVoteTarget', '', 'day-vote')}</div>
             </div>
           `);
+        } else if (getSelfPlayer() && getSelfPlayer().alive === false) {
+          $root.append('<div class="history-row">👀 คุณตายแล้ว — ดูเสียงโหวตได้อย่างเดียว</div>');
         } else {
-          $root.append('<div class="history-row">✅ โหวตแล้ว เปลี่ยนใจได้จนหมดเวลา</div>');
+          $root.append('<div class="history-row">💥 คุณใช้สกิลเปิดโปงวันนี้แล้ว จึงงดโหวต</div>');
         }
 
         if (dayActions.canReveal) {
@@ -4993,10 +5065,17 @@
 
       $('#werewolfShell').addClass('phase-lock');
       $('#phaseTransitionBanner').addClass('visible');
+      let currentStepIndex = 0;
+      phaseTransitionSkip = function() {
+        clearPhaseTransitionSequence();
+        applyStep(currentStepIndex + 1);
+      };
 
       function applyStep(index) {
+        currentStepIndex = index;
         const step = steps[index];
         if (!step) {
+          phaseTransitionSkip = null;
           $('#phaseTransitionBanner').removeClass('visible');
           $('#werewolfShell').removeClass('phase-lock');
           startPhaseCountdown(activePhaseDeadline);
@@ -5617,6 +5696,17 @@
           window.location.href = '/rooms?playerId=' + playerId;
         });
       });
+    });
+
+    $(document).on('click', '#mobileInlineRoleStrip, #roleStrip', function() {
+      showRoleCatalogPopup();
+    });
+
+    // แตะป๊อปอัปเปลี่ยนเฟสเพื่อข้ามไปข้อความถัดไป (ข่าวเช้ายาว ~13 วิ)
+    $('#phaseTransitionBanner').on('click', function() {
+      if (typeof phaseTransitionSkip === 'function') {
+        phaseTransitionSkip();
+      }
     });
 
     $(document).on('click', '.target-card-actionable', function() {

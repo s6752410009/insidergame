@@ -119,12 +119,41 @@ async function main() {
         await validateSessions(sessions, 'night');
         screenshots.push(...await screenshotPhase(sessions, 'werewolf', 'night', artifactDir));
 
-        await emitForAlive(clients, 'werewolf_skipNight', roomId);
+        // UX regressions: readable phase title (no N/D1/D2 codes) and a labelled, tappable role strip
+        for (const session of sessions) {
+            const ui = await session.page.evaluate(() => ({
+                title: document.getElementById('phaseHudTitle')?.textContent?.trim() || '',
+                caption: document.querySelector('#mobileInlineRoleStrip .role-strip-caption')?.textContent || ''
+            }));
+            assert(!/^(N|D1|D2|END|LB|ST)\b/.test(ui.title), `${session.client.label}: cryptic phase code in title "${ui.title}"`);
+            assert(ui.caption.includes('แตะ'), `${session.client.label}: role strip caption missing`);
+        }
+
+        // Skill holders act (acting = ready); one player without a night skill presses ready → morning, no timer wait
+        const byRole = id => clients.find(client => client.label === id);
+        const seerAck = await emitAck(byRole('seer').socket, 'werewolf_submitNightAction', { roomId, targetPlayerId: byRole('werewolf').playerId, actionType: 'seer-check' });
+        assert(seerAck?.success, `seer check failed: ${seerAck?.error}`);
+        const doctorAck = await emitAck(byRole('doctor').socket, 'werewolf_submitNightAction', { roomId, targetPlayerId: '__skip__', actionType: 'doctor-save' });
+        assert(doctorAck?.success && !doctorAck.resolved, 'night must not end before a ready majority');
+        const mayorReady = await emitAck(byRole('mayor').socket, 'werewolf_skipNight', { roomId });
+        assert(mayorReady?.success && mayorReady.resolved, `night should end once skills are done and a majority is ready: ${JSON.stringify(mayorReady)}`);
         console.log('2. wait for day discussion');
         await Promise.all(sessions.map(session => waitUiPhase(session, 'day-discussion')));
         await delay(3000);
         await validateSessions(sessions, 'day-discussion');
         screenshots.push(...await screenshotPhase(sessions, 'werewolf', 'day-discussion', artifactDir));
+
+        // Persistent "last night" news line, and the mayor reveal asks for confirmation (cancel keeps the role hidden)
+        const mayorSession = sessions.find(session => session.client.label === 'mayor');
+        await mayorSession.page.waitForFunction(() => !document.getElementById('phaseTransitionBanner')?.classList.contains('visible'), null, { timeout: 30000 });
+        const newsText = await mayorSession.page.textContent('#mobileHint [data-testid="ww-latest-news"]').catch(() => '');
+        assert(/เมื่อคืน/.test(newsText || ''), 'day discussion should show the last-night news line');
+        await mayorSession.page.click('#mobileHint .btn-reveal');
+        await mayorSession.page.waitForSelector('.swal2-popup', { timeout: 5000 });
+        await mayorSession.page.click('.swal2-cancel');
+        await delay(800);
+        const stillHidden = await mayorSession.page.$('#mobileHint .btn-reveal');
+        assert(stillHidden, 'cancelled mayor confirm must not reveal the mayor');
 
         await emitForAlive(clients, 'werewolf_skipDiscussion', roomId);
         console.log('3. wait for day vote');

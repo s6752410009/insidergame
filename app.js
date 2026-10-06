@@ -7817,7 +7817,14 @@ io.sockets.on('connection', function(socket) {
             }
 
             const werewolfEngine = getGameEngine('werewolf');
-            const result = werewolfEngine.submitNightAction(room, playerId, targetPlayerId, actionType);
+            let result = werewolfEngine.submitNightAction(room, playerId, targetPlayerId, actionType);
+            // ทุกบทที่มีสกิลตัดสินใจครบ + คนส่วนใหญ่พร้อม → เช้าเลย ไม่ต้องรอหมดเวลา
+            if (!result?.resolved && !result?.unvoted) {
+                const early = werewolfEngine.maybeAutoEndNight(room);
+                if (early?.resolved) {
+                    result = { ...result, ...early };
+                }
+            }
             emitWerewolfRoomState(room);
 
             if (typeof callback === 'function') {
@@ -7959,7 +7966,13 @@ io.sockets.on('connection', function(socket) {
             }
 
             const werewolfEngine = getGameEngine('werewolf');
-            const result = werewolfEngine.submitNightSkip(room, playerId);
+            let result = werewolfEngine.submitNightSkip(room, playerId);
+            if (!result?.resolved) {
+                const early = werewolfEngine.maybeAutoEndNight(room);
+                if (early?.resolved) {
+                    result = { ...result, ...early, skippedToMorning: true };
+                }
+            }
             emitWerewolfRoomState(room);
 
             if (typeof callback === 'function') {

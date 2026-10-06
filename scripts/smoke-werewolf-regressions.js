@@ -202,8 +202,102 @@ function testOfflineNotDealt() {
     return { offlinePlayersNotDealt: true };
 }
 
+// UX: the night ends as soon as every skill holder has decided and a majority is ready
+// (acting counts as ready), so players without a night skill can just wait.
+function testNightAutoEnd() {
+    const roles = ['werewolf', 'seer', 'doctor', 'mayor', 'cleric'];
+    const room = createRoom(roles, 5);
+    resetNightPhase(room, 2);
+    const wolf = role(room, 'werewolf');
+    const seer = role(room, 'seer');
+    const doctor = role(room, 'doctor');
+    werewolfEngine.submitNightAction(room, wolf.playerId, role(room, 'mayor').playerId);
+    werewolfEngine.submitNightAction(room, seer.playerId, doctor.playerId);
+    assert(!werewolfEngine.maybeAutoEndNight(room).resolved, 'night must wait for the doctor');
+    const waiting = werewolfEngine.buildClientState(room, role(room, 'cleric').playerId).actionState.nightStatus;
+    assert(waiting.readyCount === 2 && waiting.skipNeeded === 3, 'acting should count as ready');
+    werewolfEngine.submitNightAction(room, doctor.playerId, SKIP);
+    const ended = werewolfEngine.maybeAutoEndNight(room);
+    assert(ended.resolved && room.gameState.phase === 'day-discussion', 'night should end once every skill holder decided');
+
+    // Stuck case: majority pressed ready first, the last skill holder acts later.
+    const late = createRoom(roles, 5);
+    resetNightPhase(late, 2);
+    ['mayor', 'cleric', 'werewolf'].forEach(id => werewolfEngine.submitNightSkip(late, role(late, id).playerId));
+    werewolfEngine.submitNightAction(late, role(late, 'seer').playerId, SKIP);
+    const lateState = werewolfEngine.buildClientState(late, role(late, 'mayor').playerId).actionState.nightStatus;
+    assert(lateState.waitingForRoles, 'UI should explain the night waits for skill holders');
+    werewolfEngine.submitNightAction(late, role(late, 'doctor').playerId, SKIP);
+    assert(werewolfEngine.maybeAutoEndNight(late).resolved, 'last skill holder acting must end a night that already has a ready majority');
+
+    // A split wolf pack never auto-ends the night (a tie would silently cancel the kill).
+    const pack = createRoom(PACK_ROLES, 7);
+    resetNightPhase(pack, 2);
+    werewolfEngine.submitNightAction(pack, role(pack, 'alphaWolf').playerId, role(pack, 'mayor').playerId);
+    werewolfEngine.submitNightAction(pack, role(pack, 'werewolf').playerId, role(pack, 'seer').playerId);
+    // every other skill holder (the 7th seat may be any filler role) chooses "no skill"
+    pack.gameState.players.filter(p => !['werewolf', 'alphaWolf'].includes(p.role)).forEach(p => {
+        try {
+            werewolfEngine.submitNightAction(pack, p.playerId, SKIP, p.role === 'witch' ? 'witch-heal' : null);
+        } catch (error) {
+            // roles without a night skill (mayor, cleric, ...) just wait
+        }
+    });
+    assert(!werewolfEngine.maybeAutoEndNight(pack).resolved, 'split wolf pack must not auto-end the night');
+    assert(werewolfEngine.buildClientState(pack, role(pack, 'werewolf').playerId).actionState.nightStatus.wolvesSplit, 'wolves should be told the pack is split');
+    werewolfEngine.submitNightAction(pack, role(pack, 'werewolf').playerId, role(pack, 'mayor').playerId);
+    assert(werewolfEngine.maybeAutoEndNight(pack).resolved, 'agreeing pack ends the night');
+    return { nightAutoEndsWhenSkillsDone: true, nightLateActorEndsNight: true, splitPackWaits: true };
+}
+
+// UX: yesterday's vote result survives into the night, and the end-game recap follows the phase that ended it.
+function testAnnouncementsFollowLastPhase() {
+    const room = createRoom(['werewolf', 'seer', 'doctor', 'mayor', 'bodyguard', 'cleric'], 6);
+    resetNightPhase(room, 1);
+    werewolfEngine.autoResolvePhase(room); // night 1 -> discussion
+    werewolfEngine.autoResolvePhase(room); // discussion -> vote
+    const voteState = werewolfEngine.buildClientState(room, role(room, 'seer').playerId);
+    assert(voteState.morningAnnouncement, 'day-vote should still carry last night news');
+    const victim = role(room, 'mayor');
+    room.gameState.players.filter(p => p.playerId !== victim.playerId)
+        .forEach(p => werewolfEngine.submitDayVote(room, p.playerId, victim.playerId));
+    werewolfEngine.submitDayVote(room, victim.playerId, SKIP);
+    assert(room.gameState.phase === 'night', 'vote should resolve into night');
+    const nightState = werewolfEngine.buildClientState(room, role(room, 'seer').playerId);
+    assert(nightState.dayResolutionAnnouncement && nightState.dayResolutionAnnouncement.outcomeType === 'vote-elimination',
+        'night must announce who was voted out');
+
+    // Game ends on a day vote: the recap is the vote, not the previous night.
+    const endRoom = createRoom(['werewolf', 'seer', 'doctor', 'mayor'], 4);
+    resetNightPhase(endRoom, 2);
+    werewolfEngine.submitNightAction(endRoom, role(endRoom, 'werewolf').playerId, role(endRoom, 'mayor').playerId);
+    werewolfEngine.autoResolvePhase(endRoom);
+    werewolfEngine.autoResolvePhase(endRoom);
+    const wolf = role(endRoom, 'werewolf');
+    ['seer', 'doctor'].forEach(id => werewolfEngine.submitDayVote(endRoom, role(endRoom, id).playerId, wolf.playerId));
+    werewolfEngine.submitDayVote(endRoom, wolf.playerId, role(endRoom, 'seer').playerId);
+    const finished = werewolfEngine.buildClientState(endRoom, wolf.playerId);
+    assert(finished.winner === 'village', 'village should win');
+    assert(!finished.morningAnnouncement && finished.dayResolutionAnnouncement, 'finished-by-vote recap must show the vote, not last night');
+    return { voteResultAnnouncedAtNight: true, finishRecapFollowsLastPhase: true };
+}
+
+// UX: a witch who chose "no potion" is not told she used the heal.
+function testWitchSkipLabel() {
+    const room = createRoom(['werewolf', 'witch', 'seer', 'doctor', 'mayor', 'villager'], 6);
+    const witch = role(room, 'witch');
+    resetNightPhase(room, 2);
+    werewolfEngine.submitNightAction(room, witch.playerId, SKIP, 'witch-heal');
+    const label = werewolfEngine.buildClientState(room, witch.playerId).actionState.nightActions[0].label;
+    assert(/ไม่ใช้ยา/.test(label), `witch skip label should say no potion, got: ${label}`);
+    return { witchSkipLabel: true };
+}
+
 function main() {
     const tested = {
+        ...testNightAutoEnd(),
+        ...testAnnouncementsFollowLastPhase(),
+        ...testWitchSkipLabel(),
         ...testAfkWolfFollowsPack(),
         ...testAfkProtectorsSkip(),
         ...testAfkSeerSkips(),

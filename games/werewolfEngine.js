@@ -980,7 +980,10 @@ function ensureActionMaps(room) {
 function startNightPhase(room, incrementDay = true) {
     clearPlayerTransientState(room);
     resetNightActions(room);
+    // เก็บผลโหวตเมื่อวานไว้ให้คืนนี้ประกาศ/สรุปได้ (resetDayState ล้างทิ้ง ทำให้ไม่มีใครรู้ว่าใครโดนโหวตออก)
+    const previousDayResolution = room.gameState.lastResolvedDay || null;
     resetDayState(room);
+    room.gameState.lastResolvedDay = previousDayResolution;
     room.gameState.players.forEach(player => {
         player.trackerUsed = false;
         player.trackerLastTargetId = null;
@@ -1323,6 +1326,62 @@ function haveAllRequiredNightActorsDecided(room) {
     return getRequiredNightActors(room).every(actor =>
         hasNightActionSubmitted(room, actor) || room.gameState.nightSkips?.[actor.playerId]
     );
+}
+
+// "พร้อมจบคืน" = กดปุ่มพร้อมเอง หรือบทที่มีสกิลตัดสินใจคืนนี้แล้ว (เลือกเป้าหรือกดไม่ใช้สกิล)
+function isPlayerReadyForMorning(room, player) {
+    if (!player || player.alive === false) {
+        return false;
+    }
+    if (room.gameState.nightSkips?.[player.playerId]) {
+        return true;
+    }
+    const nightActions = room.gameState.nightActions || {};
+    const decidedMaps = {
+        werewolf: ['werewolfVotes'],
+        alphaWolf: ['werewolfVotes'],
+        seer: ['seerChecks'],
+        oracle: ['oracleReads'],
+        doctor: ['doctorSaves'],
+        bodyguard: ['bodyguardProtects'],
+        witch: ['witchHeals', 'witchPoisons'],
+        tracker: ['trackerScans'],
+        vigilante: ['vigilanteShots'],
+        hunter: ['hunterShots']
+    }[player.role] || [];
+    return decidedMaps.some(key => !!nightActions[key]?.[player.playerId]);
+}
+
+function getNightReadyCount(room) {
+    return getAlivePlayers(room).filter(player => isPlayerReadyForMorning(room, player)).length;
+}
+
+// ฝูงหมาป่าเลือกเหยื่อตรงกันแล้วหรือยัง (ไม่นับคนที่กดไม่ใช้สกิล)
+function isWolfPackSettled(room) {
+    const votes = room.gameState.nightActions?.werewolfVotes || {};
+    const picks = new Set(getAliveWerewolves(room)
+        .map(wolf => votes[wolf.playerId])
+        .filter(targetId => targetId && targetId !== SKIP_TARGET_ID));
+    return picks.size <= 1;
+}
+
+/**
+ * จบคืนทันทีเมื่อทุกบทที่มีสกิลตัดสินใจครบ และคนมีชีวิตเกินครึ่ง "พร้อม" (กดพร้อมหรือใช้สกิลแล้ว)
+ * คนที่ไม่มีสกิลกลางคืนจึงไม่ต้องกดอะไร ถ้าคนมีสกิลเป็นเสียงส่วนใหญ่อยู่แล้ว
+ * ถ้าฝูงหมาป่ายังเลือกเหยื่อไม่ตรงกัน ให้รอ (หรือรอหมดเวลา/ทั้งโต๊ะกดพร้อมเอง)
+ */
+function maybeAutoEndNight(room) {
+    if (!room?.gameState || room.gameState.phase !== 'night' || room.gameState.winner) {
+        return { resolved: false };
+    }
+    ensureActionMaps(room);
+    const totalAlive = getAlivePlayers(room).length;
+    const needed = Math.floor(totalAlive / 2) + 1;
+    if (getNightReadyCount(room) < needed || !haveAllRequiredNightActorsDecided(room) || !isWolfPackSettled(room)) {
+        return { resolved: false };
+    }
+    pushHistory(room, 'ทุกบทที่มีสกิลตัดสินใจครบแล้ว และคนส่วนใหญ่พร้อม จึงเข้าสู่ตอนเช้าทันที', 'night');
+    return { ...resolveNight(room), autoEndedNight: true };
 }
 
 function fillMissingNightActionsAsSkip(room) {
@@ -1685,6 +1744,8 @@ function resolveNight(room) {
         }
     });
 
+    // ผลกลางคืนคือเหตุการณ์ล่าสุดแล้ว — ล้างสรุปของกลางวันก่อนหน้า กันหน้าจบเกมเล่าเหตุการณ์ผิดช่วง
+    room.gameState.lastResolvedDay = null;
     room.gameState.lastResolvedNight = {
         attackedPlayerId,
         eliminatedPlayerIds: eliminatedPlayers.map(player => player.playerId),
@@ -2659,7 +2720,9 @@ function getNightActionOptions(room, viewer) {
                 const selectedTargetId = selectedPoisonTargetId || selectedHealTargetId;
                 return [{
                     type: selectedType,
-                    label: selectedType === 'witch-poison' ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'คืนนี้คุณเลือกใช้ยาช่วยชีวิตแล้ว',
+                    label: selectedTargetId === SKIP_TARGET_ID
+                        ? 'คืนนี้คุณเลือกไม่ใช้ยา'
+                        : (selectedType === 'witch-poison' ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'คืนนี้คุณเลือกใช้ยาช่วยชีวิตแล้ว'),
                     description: 'แม่มดใช้ได้เพียง 1 สกิลต่อคืน ถ้าจะเปลี่ยนใจ เลือกเป้าหมายใหม่ในสกิลเดิม หรือกดเป้าเดิมซ้ำเพื่อยกเลิก',
                     selectedTargetId,
                     allowSkip: true,
@@ -2726,6 +2789,16 @@ function getNightActionState(room, viewer) {
     const skipCount = getNightSkipCount(room);
     const skipNeeded = Math.floor(totalAlive / 2) + 1;
     const hasSkipped = !!room.gameState.nightSkips?.[viewer?.playerId];
+    const readyCount = room.gameState.phase === 'night' ? getNightReadyCount(room) : 0;
+    const allRolesDecided = room.gameState.phase === 'night' ? haveAllRequiredNightActorsDecided(room) : false;
+    const viewerIsWolf = !!viewer && viewer.alive !== false && isWerewolfRole(viewer.role);
+    const extra = {
+        readyCount,
+        // เสียงพร้อมครบแล้ว แต่ยังมีคนมีสกิลที่ยังไม่ตัดสินใจ (ไม่บอกจำนวน กันเดาบทของคนที่ตาย)
+        waitingForRoles: readyCount >= skipNeeded && !allRolesDecided,
+        selfReady: !!viewer && isPlayerReadyForMorning(room, viewer),
+        wolvesSplit: viewerIsWolf && !isFirstNight(room) && !isWolfPackSettled(room)
+    };
 
     if (!viewer || viewer.alive === false || room.gameState.phase !== 'night') {
         return {
@@ -2733,7 +2806,9 @@ function getNightActionState(room, viewer) {
             hasSkipped: false,
             skipCount,
             totalAlive,
-            skipNeeded
+            skipNeeded,
+            readyCount: extra.readyCount,
+            waitingForRoles: extra.waitingForRoles
         };
     }
 
@@ -2742,7 +2817,8 @@ function getNightActionState(room, viewer) {
         hasSkipped,
         skipCount,
         totalAlive,
-        skipNeeded
+        skipNeeded,
+        ...extra
     };
 }
 
@@ -3141,6 +3217,9 @@ function handlePlayerLeft(room, playerId) {
     if (phase === 'night' && getRequiredNightActors(room).length === 0) {
         return resolveNight(room);
     }
+    if (phase === 'night' && maybeAutoEndNight(room).resolved) {
+        return room.gameState;
+    }
     if (phase === 'day-discussion' && canSkipDiscussion(room)) {
         startDayPhase(room, 'player-left');
         return room.gameState;
@@ -3174,7 +3253,11 @@ function buildClientState(room, viewerPlayerId, options = {}) {
         status: room.gameState.status || '',
         dayNumber: room.gameState.dayNumber || 0,
         winner: room.gameState.winner || null,
-        morningAnnouncement: ['day-discussion', 'finished'].includes(room.gameState.phase) ? buildMorningAnnouncement(room) : null,
+        // day-vote ยังส่งข่าวเมื่อคืนให้ (แถบ "ข่าวล่าสุด"); ตอนจบเกมส่งเฉพาะถ้าเกมจบในกลางคืน
+        morningAnnouncement: ['day-discussion', 'day-vote'].includes(room.gameState.phase)
+            || (room.gameState.phase === 'finished' && !room.gameState.lastResolvedDay)
+            ? buildMorningAnnouncement(room)
+            : null,
         dayResolutionAnnouncement: ['night', 'finished'].includes(room.gameState.phase) ? buildDayResolutionAnnouncement(room) : null,
         playerRole: viewer ? serializePublicRole(viewer.roleInfo || ROLE_DEFINITIONS[viewer.role]) : null,
         personalNotes: {
@@ -3224,6 +3307,8 @@ function buildClientState(room, viewerPlayerId, options = {}) {
 }
 
 module.exports = {
+    maybeAutoEndNight,
+    getNightReadyCount,
     id: 'werewolf',
     label: 'Werewolf',
     description: 'โหมดใหม่ เกมหมาป่าที่ทุกคนรู้จักกันดี แต่เพิ่มบทบาทใหม่และปรับสมดุลให้เล่นสนุกขึ้น',
