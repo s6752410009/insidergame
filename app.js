@@ -8409,6 +8409,12 @@ io.sockets.on('connection', function(socket) {
             pokdengRuntime.engine.nextHand(room, playerId));
     });
 
+    // ดูผลจบแล้วกด "พร้อม" — คนจริงพร้อมครบ = มือต่อไปเลย ไม่ต้องรอนาฬิกา
+    safeOn(socket, 'pokdeng_ready', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitReady(room, playerId));
+    });
+
     safeOn(socket, 'pokdeng_end', function(data, callback) {
         handlePokDengCommand(socket, callback, (room, playerId) =>
             pokdengRuntime.engine.endTable(room, playerId));

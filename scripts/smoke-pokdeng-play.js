@@ -30,7 +30,7 @@ function bootServer(port) {
             POKDENG_DEAL_MS: '500',
             POKDENG_DRAW_MS: '2500',
             POKDENG_DEALER_MS: '2500',
-            POKDENG_RESULT_MS: '1500'
+            POKDENG_RESULT_MS: '4000'
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -119,6 +119,8 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         let rotated = false;
         let droppedP2 = false;
         let leakChecks = 0;
+        let readyAt = 0;
+        let readyAdvanceMs = -1;
         for (let guard = 0; guard < 900; guard += 1) {
             const s = last(p1);
             if (!s) { await delay(60); continue; }
@@ -139,6 +141,20 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
                     const end = await ack(host.socket, 'pokdeng_end', {});
                     assert(end.success, 'หัวห้องจบโต๊ะได้');
                     break;
+                }
+                // มือ 2: คนจริงกด "พร้อม" ครบ → ต้องไปมือต่อไปเลย ไม่รอนาฬิกา 4 วิ
+                if (s.handNumber === 2) {
+                    const first = await ack(p1.socket, 'pokdeng_ready', {});
+                    assert(first.success, 'p1 กดพร้อม: ' + JSON.stringify(first));
+                    await waitFor(() => (last(p2)?.readyIds || []).includes(p1.id), 3000, 'p2 เห็นว่า p1 พร้อม');
+                    assert(last(p2).phase === 'result' && last(p2).availableActions.canReady, 'ยังไม่ครบ ยังอยู่สรุปผล');
+                    readyAt = Date.now();
+                    await ack(p2.socket, 'pokdeng_ready', {});
+                    const fin = await ack(host.socket, 'pokdeng_ready', {});
+                    assert(fin.success, 'หัวห้องกดพร้อม');
+                    await waitFor(() => last(p1)?.handNumber === 3, 3000, 'พร้อมครบแล้วไปมือ 3');
+                    readyAdvanceMs = Date.now() - readyAt;
+                    assert(readyAdvanceMs < 2500, `พร้อมครบต้องไปต่อทันที (${readyAdvanceMs}ms)`);
                 }
                 if (s.handNumber % 2 === 1) {
                     const nx = await ack(host.socket, 'pokdeng_next', {});
@@ -181,6 +197,8 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         assert(dealers[0] === host.id && dealers[1] === host.id, 'ก่อนเปิดหมุน เจ้ามือคงที่');
         assert(new Set(dealers.slice(2)).size >= 2, `เปิดหมุนแล้วเจ้ามือต้องเปลี่ยน: ${dealers.join(',')}`);
         assert(leakChecks > 0, 'ต้องตรวจความลับตอนจั่วได้อย่างน้อยครั้งหนึ่ง');
+        assert(readyAdvanceMs >= 0, 'ได้ทดสอบปุ่มพร้อมมือต่อไป');
+        console.log(`   · พร้อมครบ 3 คน → มือต่อไปใน ${readyAdvanceMs}ms (ไม่รอนาฬิกา 4 วิ)`);
         console.log(`4. เล่น ${handsSeen.size} มือ · บอทเล่นเอง · หมุนเจ้ามือ (${dealers.map(d => d.slice(0, 6)).join(' → ')}) · ความลับ ${leakChecks} จุด ✓`);
 
         assert(fin.standings && fin.standings.length >= 3, 'จบโต๊ะมีตารางสรุป');

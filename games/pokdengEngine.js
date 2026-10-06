@@ -210,6 +210,7 @@ function createInitialState() {
         drawOrder: [],
         emptyHands: 0,
         lastResult: null,
+        readyIds: [],
         standings: null,
         winner: null,
         history: [],
@@ -398,6 +399,7 @@ function startHand(room) {
     state.drawOrder = [];
     state.deck = [];
     state.lastResult = null;
+    state.readyIds = [];
 
     const previousDealer = state.dealerId;
     const dealer = pickDealer(room);
@@ -536,6 +538,7 @@ function dealHand(room) {
             return finishTable(room, `ไม่มีใครลงเดิมพัน ${MAX_EMPTY_HANDS} มือติด — จบโต๊ะ`);
         }
         state.lastResult = { empty: true, rows: [], dealer: null, shortfall: false };
+        state.readyIds = [];
         setPhase(room, 'result', Math.min(RESULT_MS, 4000));
         return state;
     }
@@ -775,6 +778,7 @@ function settleHand(room) {
     const losses = rows.filter(r => r.outcome === 'lose').length;
     pushHistory(room, '🏁', `มือที่ ${state.handNumber}: เจ้ามือ${dealerEval.label} · ขาชนะ ${wins} แพ้ ${losses} · เจ้ามือ ${dealerDelta >= 0 ? '+' : ''}${dealerDelta}`, 'result');
     pushFx(room, { kind: 'reveal', handNumber: state.handNumber });
+    state.readyIds = [];
     setPhase(room, 'result', RESULT_MS);
     // บอทหมดตัวใช้สิทธิ์ขอชิปใหม่เอง โต๊ะจะได้ไม่เงียบ
     state.players.forEach(p => {
@@ -838,6 +842,40 @@ function nextHand(room, playerId) {
     if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่เริ่มมือต่อไปได้');
     if (state.phase !== 'result') throw new Error('ยังไม่จบมือ');
     return startHand(room);
+}
+
+/** คนจริงที่ยังต่ออยู่ (ไม่นับบอท) — ใช้ตัดสินว่า "พร้อมครบ" */
+function connectedHumans(room) {
+    return room.gameState.players.filter(p => !isBotId(p.playerId) && isConnected(room, p));
+}
+
+function allHumansReady(room) {
+    const ready = new Set(room.gameState.readyIds || []);
+    const humans = connectedHumans(room);
+    return humans.length > 0 && humans.every(p => ready.has(p.playerId));
+}
+
+/**
+ * ดูผลจบแล้ว กด "พร้อม" — คนจริงที่ต่ออยู่พร้อมครบ = เริ่มมือต่อไปเลย ไม่ต้องรอนาฬิกา
+ * (หัวห้องยังกด "มือต่อไป" ข้ามได้ทันทีเหมือนเดิม)
+ */
+function submitReady(room, playerId) {
+    const state = assertCanAct(room);
+    if (state.phase !== 'result') throw new Error('ยังไม่จบมือ');
+    const player = getPlayer(room, playerId);
+    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
+    const ready = new Set(state.readyIds || []);
+    ready.add(playerId);
+    state.readyIds = [...ready];
+    if (allHumansReady(room)) return startHand(room);
+    return state;
+}
+
+/** มือหน้าใครเป็นเจ้ามือ (ดูอย่างเดียว ไม่แตะ state) — แสดงให้รู้ล่วงหน้าตอนหมุนเจ้ามือ */
+function previewNextDealer(room) {
+    const state = room.gameState;
+    if (!state.rotateDealer || !state.dealerId) return null;
+    return nextEligibleDealer(room, state.dealerId);
 }
 
 function setRotateDealer(room, playerId, enabled) {
@@ -993,6 +1031,10 @@ function handlePlayerLeft(room, playerId) {
         player.done = true;
         return advanceDraw(room);
     }
+    // คนที่ยังไม่กดพร้อมออกไป — ที่เหลือพร้อมครบแล้วก็ไปมือต่อไปเลย
+    if (state.phase === 'result' && (state.readyIds || []).length && allHumansReady(room)) {
+        return startHand(room);
+    }
     return state;
 }
 
@@ -1010,6 +1052,7 @@ function getAvailableActions(room, viewerId) {
         canDealerDecide: false,
         canRebuy: false,
         canNext: false,
+        canReady: false,
         canEnd: isHost && playing,
         canToggleRotate: isHost && playing,
         minBet: MIN_BET,
@@ -1024,11 +1067,16 @@ function getAvailableActions(room, viewerId) {
         actions.canSkip = true;
         actions.defaultBet = Math.max(MIN_BET, Math.min(maxBetFor(player), player.lastBet || MIN_BET));
     }
+    // ชิปหมดแต่ยังขอชิปใหม่ได้: ให้ข้ามมือนี้ได้ด้วย ไม่งั้นทั้งโต๊ะต้องรอนาฬิกาเดิมพันหมด
+    if (state.phase === 'bet' && !isDealer && !player.decided && actions.canRebuy) {
+        actions.canSkip = true;
+    }
     if (state.phase === 'draw' && state.toActPlayerId === viewerId && player.inHand && !player.done) {
         actions.canDraw = true;
     }
     if (state.phase === 'dealer' && isDealer) actions.canDealerDecide = true;
     if (state.phase === 'result' && isHost) actions.canNext = true;
+    if (state.phase === 'result' && !isBotId(viewerId) && !(state.readyIds || []).includes(viewerId)) actions.canReady = true;
     return actions;
 }
 
@@ -1086,6 +1134,13 @@ function buildClientState(room, viewerId) {
         phaseEndsAt: state.phaseEndsAt,
         toActPlayerId: state.toActPlayerId,
         toActName: getPlayer(room, state.toActPlayerId)?.name || null,
+        drawOrder: Array.isArray(state.drawOrder) ? [...state.drawOrder] : [],
+        readyIds: Array.isArray(state.readyIds) ? [...state.readyIds] : [],
+        readyNeeded: state.phase === 'result' ? connectedHumans(room).length : 0,
+        nextDealer: (() => {
+            const next = state.phase === 'result' ? previewNextDealer(room) : null;
+            return next ? { playerId: next.playerId, name: next.name } : null;
+        })(),
         dealerId: state.dealerId,
         dealerName: dealer ? dealer.name : null,
         rotateDealer: !!state.rotateDealer,
@@ -1152,6 +1207,8 @@ module.exports = {
     submitDraw,
     submitDealerDecision,
     nextHand,
+    submitReady,
+    previewNextDealer,
     endTable,
     setRotateDealer,
     autoResolvePhase,
