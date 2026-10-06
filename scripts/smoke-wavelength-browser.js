@@ -51,10 +51,15 @@ function launchOptions() {
 }
 async function waitFor(fn, ms, label) {
     const until = Date.now() + ms;
-    while (Date.now() < until) { const v = await fn(); if (v) return v; await delay(80); }
+    while (Date.now() < until) {
+        // หน้ากำลังรีโหลด (เทสรีเฟรชกลางรอบ) = context หาย ชั่วคราว — ลองใหม่
+        const v = await Promise.resolve().then(fn).catch(e => { if (/context was destroyed|navigat/i.test(e.message)) return null; throw e; });
+        if (v) return v;
+        await delay(80);
+    }
     throw new Error('รอไม่ถึง: ' + label);
 }
-const IGNORE = /favicon|manifest|service-worker|autoplay|play\(\) failed|AudioContext|\.mp3|vibrate|googleapis|gstatic/i;
+const IGNORE = /favicon|manifest|service-worker|autoplay|play\(\) failed|AudioContext|\.mp3|vibrate|googleapis|gstatic|ERR_QUIC_PROTOCOL_ERROR/i; // QUIC = ฟอนต์ Google ผ่าน HTTP/3 เน็ตสะดุด ไม่ใช่บั๊กของเรา
 
 async function layoutProblems(page) {
     return page.evaluate(() => {
@@ -219,6 +224,9 @@ async function layoutProblems(page) {
         assert(!(await bandsVisible(p1.page)), 'คนทายไม่เห็นแถบเป้า');
         assert((await p1.page.$$('#wlBands path')).length === 0 || !(await bandsVisible(p1.page)), 'แถบเป้าของคนทายซ่อน');
         assert(/ตาคุณใบ้/.test(await nowCopy(host.page)), 'ผู้ใบ้รู้ว่าถึงตาตัวเอง');
+        assert(await host.page.$('#wlPassBtn'), 'ผู้ใบ้มีปุ่ม "คิดไม่ออก ข้ามตา"');
+        assert(!(await p1.page.$('#wlPassBtn')), 'คนอื่นไม่มีปุ่มข้ามตา');
+        assert(await host.page.$eval('#wlSkipBtn', b => b.hidden), 'หัวห้องที่เป็นผู้ใบ้ ใช้ปุ่มข้ามตาในช่องคำใบ้ (ไม่ซ้อนปุ่ม)');
         assert(/กำลังคิดคำใบ้/.test(await nowCopy(p1.page)), 'คนทายรู้ว่ารอใคร');
         await delay(8200); // ให้แถบข้อตกลงด้านบนหายก่อนถ่าย
         await snap('01-clue-pick');
@@ -242,6 +250,15 @@ async function layoutProblems(page) {
         await snap('03-guess-dragging');
         const v1 = Number(await p1.page.getAttribute('#wlKnobHit', 'aria-valuenow'));
         assert(Math.abs(v1 - 22) <= 3, `เข็ม p1 ตามที่ลาก (${v1})`);
+        // ปุ่ม ‹ › ขยับทีละ 1 (นิ้วโป้งบังเข็ม ลากละเอียดยาก)
+        await p1.page.click('.wl-nudge[data-step="1"]');
+        await p1.page.click('.wl-nudge[data-step="1"]');
+        await delay(500);
+        const v1b = Number(await p1.page.getAttribute('#wlKnobHit', 'aria-valuenow'));
+        assert(v1b === Math.round(v1) + 2 || v1b === Math.round(v1) + 1, `ปุ่ม › ขยับเข็มทีละ 1 (${v1} → ${v1b})`);
+        // หัวห้อง (ผู้ใบ้) ไม่มีปุ่ม "เปิดเป้าเลย" ของหัวห้องซ้อน — มีแค่ตอนหัวห้องเป็นคนทาย · คนอื่นไม่เห็นเลย
+        assert(await p1.page.$eval('#wlSkipBtn', b => b.hidden), 'คนทั่วไปไม่เห็นปุ่มข้าม/เปิดเป้า');
+        assert(!(await host.page.$eval('#wlSkipBtn', b => b.hidden)) && /เปิดเป้าเลย/.test(await host.page.textContent('#wlSkipBtn')), 'หัวห้องเห็นปุ่มเปิดเป้าเลยตอนเพื่อนทาย');
         await p1.page.click('#wlLockBtn');
         await waitFor(async () => /ล็อกแล้ว/.test(await p1.page.textContent('#wlDock')), 3000, 'locked p1');
         await waitFor(async () => !!(await p2.page.$('.wl-lock.is-locked')), 3000, 'p2 sees p1 locked');
@@ -256,10 +273,20 @@ async function layoutProblems(page) {
         await snap('05-reveal');
 
         // ---------- รอบ 2: p1 ใบ้ · p2 กดพร้อม หัวห้องกดรอบต่อไป ----------
+        assert(/พร้อมไปรอบต่อไป/.test(await p2.page.textContent('#wlReadyBtn')), 'ปุ่มของคนทั่วไปบอกว่าเป็น "พร้อม"');
         await p2.page.click('#wlReadyBtn');
-        await waitFor(async () => /พร้อมแล้ว/.test(await p2.page.textContent('#wlDock')), 3000, 'p2 ready');
+        await waitFor(async () => /พร้อมแล้ว ✓/.test(await p2.page.textContent('#wlDock')), 3000, 'p2 ready');
+        await waitFor(async () => /เพื่อนพร้อม 1\/3/.test(await host.page.textContent('#wlDock')), 3000, 'host sees ready count (ไม่นับหัวห้อง)');
         await host.page.click('#wlNextBtn');
         await waitFor(() => p1.page.$('.wl-option'), 5000, 'r2 options');
+        // พิมพ์ร่างได้ก่อนเลือกการ์ด · รีเฟรชแล้วร่างยังอยู่
+        await p1.page.fill('#wlClueInput', 'แมวส้ม');
+        await waitFor(async () => /เลือกการ์ด/.test(await p1.page.textContent('#wlClueMsg')), 2000, 'pick-first hint');
+        assert(await p1.page.$eval('#wlClueBtn', b => b.disabled), 'ยังไม่เลือกการ์ด = ส่งไม่ได้ พร้อมบอกเหตุผล');
+        p1.page.once('dialog', d => d.accept().catch(() => {}));
+        await p1.page.reload({ waitUntil: 'domcontentloaded' });
+        await waitFor(() => p1.page.$('.wl-option'), 8000, 'r2 options after reload');
+        assert((await p1.page.inputValue('#wlClueInput')) === 'แมวส้ม', 'รีเฟรชแล้วร่างคำใบ้ยังอยู่');
         await p1.page.click('#wlRerollBtn');
         await waitFor(async () => /สุ่มใหม่ไปแล้ว/.test(await p1.page.textContent('#wlOptions')), 3000, 'reroll');
         await p1.page.click('.wl-option[data-index="1"]');
@@ -301,7 +328,13 @@ async function layoutProblems(page) {
         await p2.page.click('#wlClueBtn');
         for (const v of [host, p1]) {
             await waitFor(() => v.page.$('#wlLockBtn'), 5000, 'r3 lock btn');
-            await v.page.click('#wlLockBtn'); // ไม่ขยับเลย = กลางหน้าปัด
+            await v.page.click('#wlLockBtn'); // ไม่ขยับเลย = ถามก่อน
+            await waitFor(async () => /ล็อกตรงกลางเลย/.test(await v.page.textContent('#wlLockBtn')), 2000, 'center warn');
+            assert(/ยังไม่ได้ขยับเข็ม/.test(await v.page.textContent('#wlDock')), 'บอกว่ายังไม่ได้ขยับเข็ม');
+            assert(!(await v.page.$('.wl-lock.is-locked')) || v === p1, 'กดครั้งแรกยังไม่ล็อก');
+            if (v === host) { const f = path.join(SHOT_DIR, '08a-lock-center-warn-host-390.png'); await v.page.screenshot({ path: f }); shots.push(f); }
+            await v.page.click('#wlLockBtn'); // กดซ้ำ = ล็อกตรงกลาง
+            await waitFor(async () => /ล็อกแล้ว ✓/.test(await v.page.textContent('#wlDock')), 3000, 'center locked');
         }
         await waitFor(() => view(bot).phase === 'guess', 3000, 'bot r3');
         await ack(bot.socket, 'wavelength_lock', { value: 50, round: view(bot).round, phase: 'guess' });
@@ -330,6 +363,7 @@ async function layoutProblems(page) {
             const txt = await v.page.textContent('#wlFinal');
             assert(/แต้ม/.test(txt), `${v.label}: หน้าจบมีคะแนน`);
             assert(await v.page.$('#wlBackBtn'), `${v.label}: มีปุ่มกลับห้องรอ`);
+            assert(/ย้อนดูทีละรอบ \(4\)/.test(txt), `${v.label}: มีสรุปทีละรอบ`);
         }
         const broken = await host.page.evaluate(() => Array.from(document.images).filter(i => i.getAttribute('src') && i.naturalWidth === 0).map(i => i.getAttribute('src')));
         assert(broken.length === 0, 'รูปแตก: ' + broken.join(', '));
@@ -339,6 +373,111 @@ async function layoutProblems(page) {
         await waitFor(async () => /\/room\//.test(p1.page.url()), 6000, 'p1 back to lobby');
         await delay(800);
         for (const v of viewers) assert(v.errors.length === 0, `${v.label}: ${v.errors.join(' | ')}`);
+
+        // ---------- วงใหญ่ 12 คน ทายกระจุกกัน: ป้ายชื่อบนหน้าปัดต้องไม่ซ้อนกัน (รวมเป็น +N) ----------
+        {
+            const big = [];
+            for (let i = 0; i < 12; i += 1) {
+                const socket = await conn(base);
+                const id = randomUUID();
+                socket.emit('initPlayer', id);
+                const states = [];
+                socket.on('wavelengthState', st => states.push(st));
+                big.push({ socket, id, states });
+                sockets.push(socket);
+            }
+            await delay(300);
+            const made = await ack(big[0].socket, 'createRoom', { playerId: big[0].id, name: 'วงใหญ่', gameMode: 'wavelength', maxPlayers: 12 });
+            assert(made?.success, 'create big room');
+            big[0].socket.emit('setRoom', { roomId: made.roomId, playerId: big[0].id });
+            for (const p of big.slice(1)) {
+                assert((await ack(p.socket, 'joinRoom', { roomId: made.roomId, playerId: p.id }))?.success, 'join big');
+                p.socket.emit('setRoom', { roomId: made.roomId, playerId: p.id });
+            }
+            await delay(300);
+            assert((await ack(big[0].socket, 'startGameFromLobby', { roomId: made.roomId }))?.success, 'start big');
+            await waitFor(() => view(big[0]) && view(big[0]).phase === 'clue', 8000, 'big clue');
+            const me = big[1];
+            me.socket.close();
+            const v = await newPage(me.id, { width: 390, height: 844 }, 'big12');
+            // จำลองคีย์บอร์ด iOS: visualViewport หดแต่ layout viewport ไม่หด
+            await v.ctx.addInitScript(() => {
+                const fake = new EventTarget();
+                fake.offsetTop = 0;
+                Object.defineProperty(fake, 'height', { get() { return window.__vvH || window.innerHeight; } });
+                Object.defineProperty(window, 'visualViewport', { value: fake, configurable: true });
+            });
+            await v.goto(`${base}/game/${made.roomId}?playerId=${me.id}`);
+            await v.page.waitForURL(/\/game\//, { timeout: 10000 });
+            v.page.once('dialog', d => d.accept().catch(() => {}));
+            await v.page.reload({ waitUntil: 'domcontentloaded' }); // ให้ visualViewport ปลอมมีผล
+            await delay(300);
+            v.errors = v.errors.filter(e => !/beforeunload/.test(e));
+            const target = view(big[0]).target;
+            // มือถือแนวนอน: พอเริ่มทาย หน้าปัดต้องอยู่ในจอเหนือ dock เอง · ปุ่มแชทไม่ทับปุ่มเครื่องมือ
+            await v.page.setViewportSize({ width: 844, height: 390 });
+            await delay(300);
+            await ack(big[0].socket, 'wavelength_pickCard', { index: 0, round: 1, phase: 'clue' });
+            await waitFor(() => view(big[0]).card, 3000, 'big card');
+            await ack(big[0].socket, 'wavelength_clue', { text: 'ลมหนาว', round: 1, phase: 'clue' });
+            await waitFor(() => v.page.$('#wlLockBtn'), 8000, 'big lock btn');
+            await delay(1200);
+            const land = await v.page.evaluate(() => {
+                const d = document.getElementById('wlDial').getBoundingClientRect();
+                const dock = document.getElementById('wlDock').getBoundingClientRect();
+                const clue = document.getElementById('wlClue').getBoundingClientRect();
+                const chat = document.getElementById('toggleChat').getBoundingClientRect();
+                const hits = Array.from(document.querySelectorAll('.wl-tools .wl-pill')).filter(b => !b.hidden).filter(b => {
+                    const q = b.getBoundingClientRect();
+                    return !(chat.right < q.left || chat.left > q.right || chat.bottom < q.top || chat.top > q.bottom);
+                }).map(b => b.textContent);
+                return { top: Math.round(d.top), bottom: Math.round(d.bottom), clueTop: Math.round(clue.top), dockTop: Math.round(dock.top), hits };
+            });
+            assert(land.top >= -2 && land.bottom <= land.dockTop + 2, 'แนวนอน: หน้าปัดอยู่ในจอเหนือ dock ' + JSON.stringify(land));
+            assert(land.clueTop >= -2, 'แนวนอน: เห็นคำใบ้พร้อมหน้าปัด ' + JSON.stringify(land));
+            assert(land.hits.length === 0, 'แนวนอน: ปุ่มแชททับ ' + land.hits.join(','));
+            { const f = path.join(SHOT_DIR, '11-guess-landscape-844.png'); await v.page.screenshot({ path: f }); shots.push(f); }
+            await v.page.setViewportSize({ width: 390, height: 844 });
+            await v.page.evaluate(() => window.scrollTo(0, 0));
+            await delay(300);
+            for (let i = 2; i < 12; i += 1) {
+                await ack(big[i].socket, 'wavelength_lock', { value: Math.max(0, Math.min(100, target + (i - 7) * 1.5)), round: 1, phase: 'guess' });
+            }
+            await drag(v.page, 50, target > 50 ? target - 3 : target + 3);
+            await v.page.click('#wlLockBtn');
+            await waitFor(async () => !!(await v.page.$('.wl-pin')), 5000, 'big pins');
+            await delay(2600);
+            const pins = await v.page.$$eval('.wl-pin', els => els.map(e => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, text: e.textContent }; }));
+            const overlaps = [];
+            for (let i = 0; i < pins.length; i += 1) for (let j = i + 1; j < pins.length; j += 1) {
+                const a = pins[i], c = pins[j];
+                const w = Math.min(a.r, c.r) - Math.max(a.l, c.l), h = Math.min(a.b, c.b) - Math.max(a.t, c.t);
+                if (w > 6 && h > 6) overlaps.push(a.text + '×' + c.text);
+            }
+            assert(overlaps.length === 0, 'ป้ายชื่อบนหน้าปัดซ้อนกัน: ' + overlaps.join(', '));
+            assert(pins.some(x => /คุณ/.test(x.text)), 'ป้ายของเราอยู่บนหน้าปัดเสมอ');
+            assert(pins.some(x => /\+\d/.test(x.text)), 'คนกระจุกกันรวมเป็น +N');
+            assert(await v.page.$('.wl-row.is-me'), 'แถวของเราในผลรอบถูกไฮไลต์');
+            const problems = await layoutProblems(v.page);
+            assert(problems.length === 0, 'big12 layout: ' + problems.join(' | '));
+            const f1 = path.join(SHOT_DIR, '11-reveal-12-dial-390.png');
+            await v.page.locator('#wlDialWrap').screenshot({ path: f1 });
+            const f2 = path.join(SHOT_DIR, '11-reveal-12-390.png');
+            await v.page.screenshot({ path: f2, fullPage: true });
+            shots.push(f1, f2);
+            // คีย์บอร์ดขึ้น 300px → dock ยกตาม ไม่จมใต้คีย์บอร์ด · คีย์บอร์ดลง → กลับที่เดิม
+            const dockShift = await v.page.evaluate(async () => {
+                window.__vvH = window.innerHeight - 300;
+                window.visualViewport.dispatchEvent(new Event('resize'));
+                const up = document.getElementById('wlDock').style.transform;
+                window.__vvH = 0;
+                window.visualViewport.dispatchEvent(new Event('resize'));
+                return { up, down: document.getElementById('wlDock').style.transform };
+            });
+            assert(/translateY\(-300px\)/.test(dockShift.up) && !dockShift.down, 'dock ยกหนีคีย์บอร์ด: ' + JSON.stringify(dockShift));
+            assert(v.errors.length === 0, 'big12 errors: ' + v.errors.join(' | '));
+            await v.ctx.close();
+        }
 
         // หน้าวิธีเล่น + รายการห้อง (มีโหมดใหม่)
         {

@@ -184,10 +184,10 @@ function goodClue(card) {
     const others = room.players.map(p => p.playerId).filter(id => id !== room.admin);
     others.slice(0, -1).forEach(id => engine.nextRound(room, id, null, env));
     assert(S(room).phase === 'reveal', 'ยังพร้อมไม่ครบ ยังไม่ขึ้นรอบใหม่');
+    assert(engine.buildClientState(room, others[0]).readyNeeded.length === others.length, 'readyNeeded ไม่นับหัวห้อง');
     others.slice(-1).forEach(id => engine.nextRound(room, id, null, env));
-    assert(S(room).phase === 'reveal', 'หัวห้องยังไม่พร้อม ยังไม่ขึ้นรอบใหม่');
-    engine.nextRound(room, room.admin, null, env);
-    assert(S(room).phase === 'clue' && S(room).round === 2, 'หัวห้องกด = รอบใหม่');
+    // หัวห้องมีปุ่ม "รอบต่อไป" ของตัวเองอยู่แล้ว — คนอื่นพร้อมครบ = ไปต่อทันที ไม่ต้องรอหัวห้อง
+    assert(S(room).phase === 'clue' && S(room).round === 2, 'คนอื่นพร้อมครบ = รอบใหม่ทันที (ไม่ต้องรอหัวห้อง)');
     console.log('5. แต้มตามแถบ · ผู้ใบ้ได้ค่าเฉลี่ยปัดเศษ · ล็อกครบเปิดทันที · พร้อมครบขึ้นรอบใหม่ ✓');
 })();
 
@@ -246,11 +246,17 @@ function goodClue(card) {
     assert(lateView.self.pending && !lateView.self.isGuesser, 'เข้ากลางเกม = รอรอบหน้า');
     engine.pickCard(room, S(room).giverId, 0, ctx(room), env);
     engine.submitClue(room, S(room).giverId, goodClue(S(room).card), ctx(room), env);
-    assert(!S(room).guesserIds.includes('L1'), 'คนมาสายไม่ได้ทายรอบนี้');
-    throwsLike(() => engine.lockPin(room, 'L1', 40, ctx(room), env), /รอบหน้า/, 'คนมาสายล็อกไม่ได้');
+    // เข้ามาตอนผู้ใบ้ยังคิดคำ = ยังไม่มีใครทาย → ได้ทายรอบนี้เลย
+    assert(S(room).guesserIds.includes('L1'), 'เข้าช่วงคิดคำใบ้ = ได้ทายรอบนี้');
+    assert(S(room).players.find(p => p.playerId === 'L1').active && S(room).order.includes('L1'), 'คนมาสายเข้าคิวใบ้ด้วย');
+    // เข้ามาตอนกำลังทาย = รอรอบหน้า
+    lateJoin(room, 'L2');
+    assert(!S(room).guesserIds.includes('L2'), 'เข้าช่วงทาย = ไม่ได้ทายรอบนี้');
+    throwsLike(() => engine.lockPin(room, 'L2', 40, ctx(room), env), /รอบหน้า/, 'คนมาสายช่วงทายล็อกไม่ได้');
     S(room).guesserIds.forEach(id => engine.lockPin(room, id, 70, ctx(room), env));
+    assert(S(room).lastRound.results.some(r => r.playerId === 'L1'), 'คนมาสายมีผลในรอบนี้');
     engine.nextRound(room, room.admin, null, env);
-    assert(S(room).players.find(p => p.playerId === 'L1').active, 'รอบใหม่ คนมาสายเข้าร่วมแล้ว');
+    assert(S(room).players.find(p => p.playerId === 'L2').active, 'รอบใหม่ คนมาสายเข้าร่วมแล้ว');
     assert(S(room).giverId === 'L1' || engine.buildClientState(room, 'L1').self.active, 'คนมาสายได้เล่น');
     // ผู้ใบ้ออกกลางช่วงคิด → ข้ามรอบ
     const giver = S(room).giverId;
@@ -269,7 +275,7 @@ function goodClue(card) {
     // ออกจนเหลือคนเดียว → จบเกม
     while (S(room).phase !== 'finished' && room.players.length > 1) leave(room, room.players[room.players.length - 1].playerId);
     assert(S(room).phase === 'finished' && S(room).status === 'wavelength_finished', 'เหลือคนไม่พอ → จบเกม');
-    console.log('7. เข้ากลางเกมได้ทายรอบหน้า · ผู้ใบ้ออก = ข้าม · คนออกจนเหลือ 1 = จบ ✓');
+    console.log('7. เข้าช่วงคิดคำ = ทายรอบนี้ · เข้าช่วงทาย = รอบหน้า · ผู้ใบ้ออก = ข้าม · คนออกจนเหลือ 1 = จบ ✓');
 })();
 
 // ---------- 8. ความลับ + คำสั่งผิด ----------
@@ -425,6 +431,35 @@ function goodClue(card) {
         if (st.length && st[0].score > 0) assert(st.filter(x => x.won).every(x => x.score === st[0].score), 'ผู้ชนะ = แต้มสูงสุด');
     }
     console.log(`10. สุ่ม ${games} เกม · ${totalRounds} รอบ (ข้าม ${skipped}) · เข้ากลางเกม ${lateJoins} · ออก ${leaves} — จบทุกเกม ไม่มีเป้าหลุด ✓`);
+})();
+
+// ---------- 11. ข้ามจังหวะ: ผู้ใบ้ขอข้ามตา · หัวห้องข้าม/เปิดเป้าเลย ----------
+(function skipping() {
+    const env = makeEnv(77);
+    const room = makeRoom(4);
+    engine.startGame(room, env);
+    let giver = S(room).giverId;
+    const outsider = room.players.map(p => p.playerId).find(id => id !== giver && id !== room.admin);
+    throwsLike(() => engine.skipPhase(room, outsider, ctx(room), env), /ผู้ใบ้หรือหัวห้อง/, 'คนทั่วไปข้ามตาคนอื่นไม่ได้');
+    assert(engine.buildClientState(room, giver).availableActions.canSkipTurn, 'ผู้ใบ้เห็นปุ่มข้ามตา');
+    assert(!engine.buildClientState(room, outsider).availableActions.canSkipTurn, 'คนอื่นไม่เห็นปุ่มข้ามตา');
+    engine.skipPhase(room, giver, ctx(room), env);
+    assert(S(room).phase === 'reveal' && S(room).lastRound.skipped && /ขอข้ามตา/.test(S(room).lastRound.reason), 'ผู้ใบ้ขอข้ามตา = ข้ามรอบทันที');
+    assert(S(room).players.every(p => p.score === 0), 'ข้ามตาไม่มีใครได้แต้ม');
+    engine.nextRound(room, room.admin, null, env);
+    giver = S(room).giverId;
+    engine.pickCard(room, giver, 0, ctx(room), env);
+    engine.submitClue(room, giver, goodClue(S(room).card), ctx(room), env);
+    const notHost = S(room).guesserIds.find(id => id !== room.admin);
+    throwsLike(() => engine.skipPhase(room, notHost, ctx(room), env), /หัวห้อง/, 'คนทายเปิดเป้าก่อนเวลาไม่ได้');
+    engine.movePin(room, notHost, 33.3, ctx(room));
+    engine.skipPhase(room, room.admin, ctx(room), env);
+    assert(S(room).phase === 'reveal' && !S(room).lastRound.skipped, 'หัวห้องเปิดเป้าเลย');
+    const row = S(room).lastRound.results.find(r => r.playerId === notHost);
+    assert(row.pin === 33.3 && row.auto, 'เปิดก่อนเวลา: ล็อกให้ตรงที่เข็มอยู่');
+    throwsLike(() => engine.skipPhase(room, room.admin, ctx(room), env), /ไม่มีอะไรให้ข้าม|จังหวะ/, 'ช่วงเปิดเป้าไม่มีอะไรให้ข้าม');
+    throwsLike(() => engine.skipPhase(room, room.admin, { round: S(room).round, phase: 'guess' }, env), /จังหวะ/, 'กดซ้ำจากจอเก่า = ปัดทิ้ง');
+    console.log('11. ผู้ใบ้ขอข้ามตา · หัวห้องข้ามตา/เปิดเป้าเลย · กดซ้ำถูกปัด ✓');
 })();
 
 console.log(`\n✅ smoke-wavelength-engine: ${checks} checks passed`);

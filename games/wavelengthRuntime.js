@@ -52,7 +52,8 @@ module.exports = function createWavelengthRuntime(getDeps) {
 
     function buildPayload(room, playerId) {
         if (!isRoom(room)) return null;
-        return engine.buildClientState(room, playerId);
+        // serverNow ให้จอคำนวณนาฬิกาเทียบเครื่องเซิร์ฟเวอร์ (มือถือเวลาเพี้ยนก็นับถอยหลังถูก)
+        return { ...engine.buildClientState(room, playerId), serverNow: Date.now() };
     }
 
     // ส่งทีละ socket เสมอ — เป้าลับของผู้ใบ้ห้ามออกไปทาง room broadcast
