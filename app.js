@@ -1768,8 +1768,21 @@ function addServerLog(io, category, roomId, message, type = 'info', options = {}
  * ตรงนี้เลยเลือกจดบันทึกแล้วอยู่ต่อ ดีกว่าตัดทุกคนกลางเกม
  * (พังจริงระดับ OOM ยังจบโปรเซสเองอยู่ดี Render จะรีสตาร์ตให้)
  */
+// stdout/stderr ปิดไปแล้ว (เช่น โปรเซสแม่ที่เปิดเซิร์ฟเวอร์ตายไป) — เขียน log ไม่ได้อีกแล้ว
+// ห้ามจด error ตัวนี้ซ้ำ: console.error → EPIPE → uncaughtException → console.error … วนไม่จบ กิน CPU ~90%
+function isBrokenOutputPipe(error) {
+    return Boolean(error) && (error.code === 'EPIPE' || error.code === 'ERR_STREAM_DESTROYED');
+}
+
 function installCrashGuards() {
+    [process.stdout, process.stderr].forEach(stream => {
+        stream.on('error', error => {
+            if (!isBrokenOutputPipe(error)) throw error;
+        });
+    });
+
     process.on('uncaughtException', error => {
+        if (isBrokenOutputPipe(error)) return;
         console.error('[FATAL] uncaughtException — เซิร์ฟเวอร์ทำงานต่อ:', error);
         try {
             addServerLog(io, 'error', null, `เซิร์ฟเวอร์เจอ error ที่ไม่ถูกดัก: ${error.message}`, 'error');
