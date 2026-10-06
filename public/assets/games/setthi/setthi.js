@@ -304,32 +304,38 @@
   var tokenEls = {};
   function cellBox(i) { var c = cells[i]; return { x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight }; }
   function tokenSize() { return parseFloat(getComputedStyle(el.tokens).getPropertyValue('--tks')) || 18; }
-  /** หมากยืนใน "เลน" ด้านในกระดาน ชิดขอบในของช่อง — ไม่ทับชื่อ/ค่าผ่านทางบนช่อง */
+  /**
+   * หมากยืน "ในช่อง" เสมอ: โซนหมาก = แถบไอคอนตอนบนของช่อง (เหนือชื่อและค่าผ่านทาง ไม่ทับตัวหนังสือ)
+   * 1 ตัว = ขนาดเต็ม · หลายตัว = ย่อแล้วเรียงแถวเดียวกันในช่องเดียวกัน · มุม = กลางรูป
+   * คืน { x, y, k } โดย x,y = มุมซ้ายบนของกล่องขนาดฐาน (--tks) และ k = สเกล
+   */
   function slotXY(i, k, n) {
     var b = cellBox(i);
     var size = tokenSize();
     var side = gridOf(i).side;
+    var band = 0.08;
     var cx = b.x + b.w / 2;
-    var cy = b.y + b.h / 2;
-    var lane = size * 0.62;
-    if (side === 'b') cy = b.y - lane + size * 0.15;
-    else if (side === 't') cy = b.y + b.h + lane - size * 0.15;
-    else if (side === 'l') cx = b.x + b.w + lane - size * 0.15;
-    else if (side === 'r') cx = b.x - lane + size * 0.15;
-    else {
-      // มุม: ชิดมุมด้านในของกระดาน
-      var inX = i === 0 || i === 24 ? -1 : 1;
-      var inY = i === 0 || i === 8 ? -1 : 1;
-      cx = b.x + b.w / 2 + inX * (b.w / 2 + lane * 0.6);
-      cy = b.y + b.h / 2 + inY * (b.h / 2 + lane * 0.6);
-    }
+    var cy;
+    if (side === 'x') cy = b.y + b.h * 0.4;
+    else if (side === 'b') cy = b.y + b.h * (band + 0.2);
+    else if (side === 't') cy = b.y + b.h * 0.21;
+    else { cy = b.y + b.h * 0.24; cx = b.x + b.w * (side === 'l' ? 0.46 : 0.54); }
+    var scale = 1;
     if (n > 1) {
-      var spread = (k - (n - 1) / 2) * size * 0.72;
-      if (side === 'b' || side === 't') cx += spread;
-      else if (side === 'l' || side === 'r') cy += spread;
-      else { cx += spread * 0.7; cy -= spread * 0.7 * (i === 8 || i === 24 ? -1 : 1); }
+      scale = n === 2 ? 0.8 : 0.7;
+      var tok = size * scale;
+      var span = b.w * (side === 'x' ? 0.8 : 0.9) - tok;
+      var step = Math.min(tok * 0.92, span / (n - 1));
+      cx += (k - (n - 1) / 2) * step;
     }
-    return { x: cx - size / 2, y: cy - size / 2 };
+    return { x: cx - size / 2, y: cy - size / 2, k: scale };
+  }
+  function tokenTransform(xy) { return 'translate(' + xy.x + 'px,' + xy.y + 'px)' + (xy.k && xy.k !== 1 ? ' scale(' + xy.k + ')' : ''); }
+  /** ขนาดหมากตามขนาดช่องจริง (เปลี่ยนตามจอ) */
+  function sizeTokens() {
+    var c = cells[1];
+    if (!c || !c.offsetWidth) return;
+    el.tokens.style.setProperty('--tks', Math.round(Math.min(c.offsetWidth * 0.5, 40)) + 'px');
   }
   function ensureTokens(state) {
     (state.seats || []).forEach(function(s) {
@@ -344,6 +350,7 @@
   }
   function placeTokens(model, skipId) {
     if (!S) return;
+    sizeTokens();
     ensureTokens(S);
     var groups = {};
     (S.seats || []).forEach(function(s) {
@@ -359,7 +366,7 @@
       var pos = model.pos[s.playerId];
       var list = groups[pos] || [s.playerId];
       var xy = slotXY(pos, list.indexOf(s.playerId), list.length);
-      t.style.transform = 'translate(' + xy.x + 'px,' + xy.y + 'px)';
+      t.style.transform = tokenTransform(xy);
     });
   }
 
