@@ -8523,7 +8523,7 @@ io.sockets.on('connection', function(socket) {
     // ==================== END POK DENG ====================
 
     // ===== SETTHI (เศรษฐี) =====
-    // state ส่งทีละ socket ผ่าน setthiRuntime.emitState (ดีลเทรดเห็นเฉพาะคู่ดีล) · ลำดับการ์ดกับแผนบอทอยู่ฝั่งเซิร์ฟเวอร์
+    // state ส่งทีละ socket ผ่าน setthiRuntime.emitState · ลำดับกองการ์ดอยู่ฝั่งเซิร์ฟเวอร์
     // ทุกคำสั่งตรวจตา/เฟส/เงิน/กติกาใน engine — client แก้ JS ก็โกงไม่ได้
 
     safeOn(socket, 'setthi_requestState', function(data) {
@@ -8544,9 +8544,9 @@ io.sockets.on('connection', function(socket) {
             return;
         }
         try {
-            const result = run(room, socket.playerId);
+            run(room, socket.playerId);
             setthiRuntime.emitRoomState(room);
-            done({ success: true, tradeId: result && result.id && result.from ? result.id : undefined });
+            done({ success: true });
         } catch (error) {
             done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
         }
@@ -8558,15 +8558,6 @@ io.sockets.on('connection', function(socket) {
 
     function setthiSquare(data) {
         return Number.isInteger(Number(data?.square)) ? Number(data.square) : -1;
-    }
-
-    function setthiOffer(data) {
-        const side = raw => ({
-            cash: Number(raw?.cash) || 0,
-            props: Array.isArray(raw?.props) ? raw.props.slice(0, 28).map(Number) : [],
-            jailCards: Number(raw?.jailCards) || 0
-        });
-        return { to: typeof data?.to === 'string' ? data.to : '', give: side(data?.give), get: side(data?.get) };
     }
 
     safeOn(socket, 'setthi_roll', function(data, callback) {
@@ -8602,53 +8593,42 @@ io.sockets.on('connection', function(socket) {
             console.error('[setthi] cancel hold on disconnect failed:', error.message);
         }
     });
-    safeOn(socket, 'setthi_payJail', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.payJailFine(room, playerId, setthiContext(data)));
-    });
-    safeOn(socket, 'setthi_useJailCard', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.useJailCard(room, playerId, setthiContext(data)));
-    });
-    safeOn(socket, 'setthi_buy', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.buyProperty(room, playerId, setthiContext(data)));
-    });
-    safeOn(socket, 'setthi_decline', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.declineBuy(room, playerId, setthiContext(data)));
-    });
-    safeOn(socket, 'setthi_endTurn', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endTurn(room, playerId, setthiContext(data)));
-    });
-    safeOn(socket, 'setthi_bid', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.placeBid(room, playerId, Number(data?.amount)));
+    safeOn(socket, 'setthi_payIsland', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.payIsland(room, playerId, setthiContext(data)));
     });
     safeOn(socket, 'setthi_build', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.build(room, playerId, setthiSquare(data)));
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.buildTo(room, playerId, Number(data?.level), setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_pass', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.passBuild(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_takeover', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.acceptTakeover(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_declineTakeover', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.declineTakeover(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_pick', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.pickSquare(room, playerId, setthiSquare(data), setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_skipPick', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.skipPick(room, playerId, setthiContext(data)));
     });
     safeOn(socket, 'setthi_sell', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.sellBuilding(room, playerId, setthiSquare(data)));
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.sellSquare(room, playerId, setthiSquare(data)));
     });
-    safeOn(socket, 'setthi_mortgage', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.mortgage(room, playerId, setthiSquare(data)));
-    });
-    safeOn(socket, 'setthi_unmortgage', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.unmortgage(room, playerId, setthiSquare(data)));
-    });
-    safeOn(socket, 'setthi_tradePropose', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.proposeTrade(room, playerId, setthiOffer(data)));
-    });
-    safeOn(socket, 'setthi_tradeRespond', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) =>
-            setthiRuntime.engine.respondTrade(room, playerId, Number(data?.tradeId), data?.accept === true));
-    });
-    safeOn(socket, 'setthi_tradeCounter', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) =>
-            setthiRuntime.engine.counterTrade(room, playerId, Number(data?.tradeId), setthiOffer(data)));
-    });
-    safeOn(socket, 'setthi_tradeCancel', function(data, callback) {
-        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.cancelTrade(room, playerId));
+    safeOn(socket, 'setthi_fast', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.setFast(room, playerId, data?.on === true));
     });
     safeOn(socket, 'setthi_end', function(data, callback) {
         handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endGame(room, playerId));
     });
+    if (process.env.SETTHI_TEST_HOOKS === '1') {
+        // เทสเท่านั้น — ไม่ลงทะเบียนเลยถ้าไม่ได้ตั้ง env
+        safeOn(socket, 'setthi_testSetup', function(data, callback) {
+            handleSetthiCommand(socket, callback, room => setthiRuntime.testSetup(room, data && data.spec));
+        });
+    }
 
     safeOn(socket, 'setthi_addBots', async function(data, callback) {
         const done = typeof callback === 'function' ? callback : function() {};
@@ -8665,7 +8645,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || 6));
+            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || 4));
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));

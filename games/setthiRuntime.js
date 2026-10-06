@@ -151,7 +151,7 @@ module.exports = function createSetthiRuntime(getDeps) {
         return engine.board.publicBoard();
     }
 
-    // state ส่งทีละ socket (ดีลเทรดเห็นเฉพาะคู่ดีล · แต่ละคนได้ปุ่มของตัวเอง)
+    // state ส่งทีละ socket (แต่ละคนได้ปุ่มของตัวเอง · ลำดับการ์ดอยู่ฝั่งเซิร์ฟเวอร์)
     function emitState(room, targetSocketId = null, playerId = null) {
         if (!isRoom(room)) return;
         const { io } = deps();
@@ -177,7 +177,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
             .sort((left, right) => new Date(left.at) - new Date(right.at));
         fresh.forEach(item => {
-            if (!['bankrupt', 'finished', 'left', 'trade', 'timeup'].includes(item.kind)) return;
+            if (!['bankrupt', 'finished', 'left', 'takeover', 'landmark', 'monopoly', 'timeup'].includes(item.kind)) return;
             addServerLog(io, 'game', room.roomId, `💰 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
                 item.kind === 'left' || item.kind === 'bankrupt' ? 'warning' : 'info',
                 { gameMode: MODE, meta: { kind: item.kind || null, event: 'setthi_history' } });
@@ -262,21 +262,78 @@ module.exports = function createSetthiRuntime(getDeps) {
         const winners = Array.isArray(state.winners) ? state.winners : [];
         const playerCount = (state.seats || []).length;
         const fmt = n => '฿' + Math.round(Number(n) || 0).toLocaleString('en-US');
+        const how = state.monopoly ? engine.MONOPOLY_LABEL[state.monopoly.type] : null;
         const text = winners.length
-            ? `${winners.map(w => w.name).join(', ')} ${winners.length > 1 ? 'ชนะร่วม' : 'ชนะ'} (ทรัพย์สิน ${fmt(winners[0].netWorth)})`
+            ? `${winners.map(w => w.name).join(', ')} ${winners.length > 1 ? 'ชนะร่วม' : 'ชนะ'}${how ? ' — ' + how + '!' : ' (ทรัพย์สิน ' + fmt(winners[0].netWorth) + ')'}`
             : 'ไม่มีผู้ชนะ';
         return {
             chatMessage: `จบเกมเศรษฐี! ${text}`,
             chatColor: '#f5c86b',
             logMessage: `💰 เศรษฐี จบ — ${text} · ${playerCount} คน · ${state.finishReason || ''}`.trim(),
             logType: 'success',
-            meta: { winnerName: winners[0] ? winners[0].name : null, winners: winners.length, playerCount, rounds: state.round || 1 }
+            meta: { winnerName: winners[0] ? winners[0].name : null, winners: winners.length, playerCount, rounds: state.round || 1, monopoly: state.monopoly ? state.monopoly.type : null }
         };
+    }
+
+    /**
+     * เทสเท่านั้น (SETTHI_TEST_HOOKS=1): จัดฉากกลางเกม เช่น ใครถือช่องไหนขั้นไหน เงิน ตำแหน่ง เต๋าถัดไป
+     * spec = { props: { [square]: { owner: seatIndex|null, level } }, seats: { [seatIndex]: { cash, pos, laps, island, tourPending, shield } },
+     *          dice: [[a,b], ...], festival, turnSeat }
+     */
+    function testSetup(room, spec = {}) {
+        if (process.env.SETTHI_TEST_HOOKS !== '1') throw new Error('ปิดอยู่');
+        if (!isLive(room)) throw new Error('เกมยังไม่เริ่ม');
+        const state = room.gameState;
+        const seatAt = k => state.seats[Number(k)];
+        Object.entries(spec.props || {}).forEach(([k, v]) => {
+            const p = state.props[Number(k)];
+            if (!p) return;
+            const seat = v.owner === null || v.owner === undefined ? null : seatAt(v.owner);
+            p.owner = seat ? seat.playerId : null;
+            p.level = seat ? Math.max(0, Math.min(engine.board.SQUARES[Number(k)].type === 'city' ? 4 : 0, Number(v.level) || 0)) : 0;
+        });
+        Object.entries(spec.seats || {}).forEach(([k, v]) => {
+            const seat = seatAt(k);
+            if (!seat) return;
+            if (Number.isInteger(v.cash)) {
+                state.ledger.bankOut += v.cash - seat.cash; // ปรับบัญชีให้ยังลง
+                seat.cash = v.cash;
+            }
+            ['pos', 'laps', 'island'].forEach(f => { if (Number.isInteger(v[f])) seat[f] = v[f]; });
+            if (v.tourPending !== undefined) seat.tourPending = !!v.tourPending;
+            if (v.shield !== undefined) seat.shield = v.shield || null;
+        });
+        if (spec.festival !== undefined) state.festival = spec.festival;
+        if (Array.isArray(spec.dice)) state.testDice = spec.dice.map(d => [Number(d[0]), Number(d[1])]);
+        if (Number.isInteger(spec.turnSeat) && state.seats[spec.turnSeat]) {
+            const seat = state.seats[spec.turnSeat];
+            state.turn = { playerId: seat.playerId, seq: (state.turnSeq || 0) + 1, doublesStreak: 0, canRollAgain: false, hasRolled: false, lastRoll: null, startedAt: Date.now() };
+            state.turnSeq = state.turn.seq;
+            state.pending = null;
+            state.debts = [];
+            state.phase = 'roll';
+            state.phaseActor = seat.playerId;
+            state.phaseSeq = (state.phaseSeq || 0) + 1;
+            state.phaseStartedAt = Date.now();
+            state.phaseMs = engine.TURN_MS;
+            if (seat.tourPending) {
+                state.pending = { type: 'pick', purpose: 'tour', playerId: seat.playerId, id: (state.pendingSeq || 0) + 1 };
+                state.pendingSeq = state.pending.id;
+                state.phase = 'pick';
+                state.phasePendingId = state.pending.id;
+                state.phaseMs = engine.DECIDE_MS;
+            }
+        }
+        state.animUntil = Date.now();
+        state.lastActionAt = Date.now();
+        state.step = (state.step || 0) + 1;
+        return state;
     }
 
     return {
         MODE,
         STATE_EVENT,
+        testSetup,
         engine,
         botAddInFlight,
         isRoom,
