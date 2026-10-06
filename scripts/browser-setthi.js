@@ -1,9 +1,10 @@
 /**
- * เศรษฐี ในเบราว์เซอร์จริง: มือถือ 3 เครื่อง (390×844) + เดสก์ท็อป 1 เครื่อง (1280×900) เล่นผ่าน UI
- *  - ทอย/ซื้อ/จบเทิร์นด้วยปุ่มจริง · ไม่ซื้อ → ประมูล (กดเสนอราคาจากหลายเครื่อง) · เทรดผ่านชีต → อีกฝ่ายกดรับ
- *  - จำนอง/ไถ่ถอนผ่านชีตทรัพย์สิน · แตะช่องดูโฉนด · หัวห้องจบเกม → โพเดียม
- *  - ถ่ายภาพทุกฉาก (cutscene) ผ่าน __setthi.demo เพื่อดูด้วยตา
- * ตรวจ: ไม่มี page error / console error · ไม่มี scroll แนวนอน · ไม่มีข้อความล้นจอ
+ * เศรษฐี ในเบราว์เซอร์จริง: มือถือ 3 เครื่อง (390×844) + เดสก์ท็อป (1280×900) เล่นผ่าน UI
+ *  - ทอย/ซื้อ/สร้าง/ผ่าน ด้วยปุ่มจริง · จัดฉากด้วย setthi_testSetup (เปิดเฉพาะ SETTHI_TEST_HOOKS=1) แล้วกดผ่าน UI:
+ *    แผ่นซื้อหลายขั้น · แผ่นแวบบนเครื่องอื่น · ซื้อต่อ (คนโดนซื้อเห็นฉาก) · แลนด์มาร์ก · ทัวร์แตะช่อง · งานวัดซ้อน
+ *    ตกจุดเริ่มอัปฟรี · ขายที่ตอนเงินไม่พอ · เกาะร้าง · /m · ผูกขาดชนะจริง → หน้าสรุป
+ *  - ถ่ายภาพทุกฉากไว้ดูด้วยตา · ตรวจ 6 ขนาดจอ (กระดานไม่ทับแผงข้าง/หัว)
+ * ตรวจ: ไม่มี page error / console error · ไม่มี scroll แนวนอน · ไม่มีข้อความล้น · หมากทุกตัวอยู่ในกรอบช่องของตัวเอง
  *
  * รัน: npm run smoke:setthi:browser   (SMOKE_PORT=8851, SHOTS_DIR=<โฟลเดอร์ภาพ>)
  */
@@ -24,7 +25,7 @@ const { io } = require('socket.io-client');
 const { chromium } = require(path.join(__dirname, '..', 'node_modules', 'playwright'));
 
 const PORT = Number(process.env.SMOKE_PORT) || 8851;
-const SHOTS = process.env.SHOTS_DIR || path.join(__dirname, '..', '..', '..', 'newgames', 'setthi');
+const SHOTS = process.env.SHOTS_DIR || path.join(__dirname, '..', '..', '..', 'newgames', 'setthi-v2');
 fs.mkdirSync(SHOTS, { recursive: true });
 const delay = ms => new Promise(r => setTimeout(r, ms));
 let checks = 0;
@@ -65,12 +66,10 @@ function bootServer(port) {
         env: {
             ...process.env,
             PORT: String(port),
-            SETTHI_TURN_MS: '40000',
-            SETTHI_AUCTION_START_MS: '7000',
-            SETTHI_AUCTION_MS: '4500',
-            SETTHI_TRADE_MS: '40000',
-            // ทอยแรก ๆ ตกที่ดินว่างแน่นอน (ไม่ผ่านช่องการ์ด) ที่เหลือสุ่ม
-            SETTHI_DICE: '12,34,45,24,13,14,23,12'
+            SETTHI_TEST_HOOKS: '1',
+            SETTHI_TURN_MS: '120000',
+            SETTHI_DECIDE_MS: '120000',
+            SETTHI_DEBT_MS: '120000'
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -91,7 +90,7 @@ async function layoutProblems(page) {
         const out = [];
         const vw = window.innerWidth;
         if (document.documentElement.scrollWidth > vw + 1) out.push('scroll แนวนอน ' + document.documentElement.scrollWidth + ' > ' + vw);
-        const skip = e => e.closest('.st-cam, .st-board, .st-tokens, #stFx, .st-sidebar:not(.open), #chatBox, .swal2-container, #ppTermsBar, .st-sheet:not(.is-open), .st-trade-who, .st-toast');
+        const skip = e => e.closest('.st-cam, .st-board, .st-tokens, #stFx, .st-sidebar:not(.open), #chatBox, .swal2-container, #ppTermsBar, .st-sheet:not(.is-open), .st-toast, #stDebug');
         document.querySelectorAll('#stRoot *, #stDock *, #stSheet.is-open *, #stEnd.is-on *').forEach(e => {
             if (skip(e)) return;
             const r = e.getBoundingClientRect();
@@ -134,7 +133,8 @@ async function openPlayer(browser, base, id, viewport, label, roomId, extra = {}
         if (/beforeunload/.test(m.text()) && /\/room\//.test(prevUrl)) return;
         errors.push('console: ' + m.text().slice(0, 80) + ' @ ' + page.url());
     });
-    page.on('requestfailed', r => { if (!IGNORE.test(r.url())) errors.push('requestfailed: ' + r.url()); });
+    // ยกเลิกเพราะเปลี่ยนหน้า/ปิดหน้า (ERR_ABORTED) ไม่ใช่ error · 404 จริงจะโผล่เป็น console error
+    page.on('requestfailed', r => { const why = (r.failure() && r.failure().errorText) || ''; if (!IGNORE.test(r.url()) && !/ERR_ABORTED/.test(why)) errors.push('requestfailed: ' + r.url() + ' ' + why); });
     await page.goto(`${base}/?playerId=${id}`, { waitUntil: 'domcontentloaded' });
     await page.goto(`${base}/game/${roomId}?playerId=${id}`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#stBoard .st-cell', { timeout: 15000 });
@@ -173,23 +173,51 @@ async function shot(p, name) {
     await p.page.screenshot({ path: path.join(SHOTS, name + '.png'), timeout: 60000 });
 }
 
+/** หมากทุกตัวต้องอยู่ "ในกรอบช่อง" ของตัวเอง (จุดกึ่งกลางหมากอยู่ในกรอบช่อง) */
+async function tokenProblems(page) {
+    return page.evaluate(() => {
+        const S = window.__setthi.state();
+        const out = [];
+        const pieces = [...document.querySelectorAll('#stTokens .st-piece')];
+        (S.seats || []).forEach((s, k) => {
+            if (s.bankrupt || s.left) return;
+            const t = pieces[k];
+            const cell = document.querySelector('.st-cell[data-i="' + s.pos + '"]');
+            if (!t || !cell) return;
+            const r = t.getBoundingClientRect();
+            const c = cell.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            if (!(cx >= c.left && cx <= c.right && cy >= c.top && cy <= c.bottom)) out.push(`${s.name}@${s.pos}`);
+        });
+        return out;
+    });
+}
+/** กระดานต้องไม่ทับแผงข้าง/หัว */
+async function overlapProblems(page) {
+    return page.evaluate(() => {
+        const rect = s => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return b.width && b.height ? b : null; };
+        const hit = (a, b) => a && b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+        const board = rect('#stFrame');
+        const out = [];
+        [['.st-strip', 'แถบผู้เล่น'], ['#stDock', 'แผงตา'], ['.st-top', 'หัว'], ['#stAlerts', 'เตือน']].forEach(([s, n]) => { if (hit(board, rect(s))) out.push('กระดานทับ' + n); });
+        if (document.documentElement.scrollWidth > innerWidth + 1) out.push('scroll แนวนอน');
+        if (board && innerWidth >= 1000 && board.bottom > innerHeight + 1) out.push('กระดานล้นจอล่าง');
+        return out;
+    });
+}
+
 async function main() {
     const server = await bootServer(PORT);
     const base = `http://127.0.0.1:${PORT}`;
     const browser = await chromium.launch();
     const started = Date.now();
-    const report = {};
     try {
-        // ---------- ตั้งห้อง 4 คน ----------
         const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
         const sockets = [];
-        for (const id of ids) {
-            const s = await conn(base);
-            s.emit('initPlayer', id);
-            sockets.push(s);
-        }
+        for (const id of ids) { const s = await conn(base); s.emit('initPlayer', id); sockets.push(s); }
         await delay(500);
-        const created = await ack(sockets[0], 'createRoom', { playerId: ids[0], name: 'วงเศรษฐี', gameMode: 'setthi', maxPlayers: 6, setthiMinutes: 30 });
+        const created = await ack(sockets[0], 'createRoom', { playerId: ids[0], name: 'วงเศรษฐี', gameMode: 'setthi', maxPlayers: 4, setthiMinutes: 30 });
         assert(created && created.success, 'สร้างห้องได้');
         const roomId = created.roomId;
         sockets[0].emit('setRoom', { roomId, playerId: ids[0] });
@@ -199,382 +227,317 @@ async function main() {
             sockets[i].emit('setRoom', { roomId, playerId: ids[i] });
         }
         await delay(300);
-        const st = await ack(sockets[0], 'startGameFromLobby', { roomId });
-        assert(st && st.success, 'เริ่มเกมได้');
+        assert((await ack(sockets[0], 'startGameFromLobby', { roomId })).success, 'เริ่มเกมได้');
         await delay(3600);
-
         const phones = [];
         for (let i = 0; i < 3; i += 1) phones.push(await openPlayer(browser, base, ids[i], { width: 390, height: 844 }, 'phone' + (i + 1), roomId));
         const desk = await openPlayer(browser, base, ids[3], { width: 1280, height: 900 }, 'desktop', roomId);
         const players = [...phones, desk];
         sockets.forEach(s => s.close());
-        await delay(800);
+        await delay(900);
         await skipAll(players);
-        await delay(600);
-        await shot(phones[0], 'board-mobile');
-        await shot(desk, 'board-desktop');
-        for (const p of players) {
-            const probs = await layoutProblems(p.page);
-            assert(!probs.length, `${p.label} layout ตอนเริ่ม: ${probs.join(' | ')}`);
+        for (const p of players) await p.page.evaluate(() => { const b = document.getElementById('ppTermsBar'); if (b) b.remove(); });
+        const host = phones[0];
+        const seatIdx = async p => (await state(p)).seats.findIndex(s => s.playerId === p.id);
+        const idx = {};
+        for (const p of players) idx[p.label] = await seatIdx(p);
+        async function setup(spec) {
+            const r = await host.page.evaluate(sp => window.__setthi.emit('setthi_testSetup', { spec: sp }), spec);
+            assert(r && r.success, 'setup: ' + JSON.stringify(r));
+            await delay(700);
+            await skipAll(players);
+            await delay(250);
         }
-        console.log('1. 4 คนเปิดกระดาน (3 มือถือ + เดสก์ท็อป) ไม่มี scroll แนวนอน/ข้อความล้น ✓');
-
-        // แตะช่องดูโฉนด
-        await phones[1].page.click('#stBoard .st-cell[data-i="39"]');
-        await phones[1].page.waitForSelector('.st-sheet.is-open .st-deed', { timeout: 15000 });
-        await delay(400);
-        await shot(phones[1], 'sheet-deed');
-        assert(/สุขุมวิท/.test(await phones[1].page.textContent('.st-sheet.is-open')), 'โฉนดสุขุมวิท');
-        await phones[1].page.click('.st-sheet.is-open .st-sheet-close');
-        console.log('2. แตะช่องเปิดโฉนด ✓');
+        async function waitPhase(p, phase, ms = 15000) {
+            try {
+                await p.page.waitForFunction(ph => { const S = window.__setthi.state(); return S && S.phase === ph && S.phaseActor === window.SETTHI_BOOT.playerId && !window.__setthi.running(); }, phase, { timeout: ms });
+            } catch (error) {
+                const info = await p.page.evaluate(() => { const S = window.__setthi.state(); return { phase: S.phase, actor: S.phaseActor, me: window.SETTHI_BOOT.playerId, running: window.__setthi.running(), q: window.__setthi.queueLength(), last: (S.history || []).slice(0, 4).map(h => h.text) }; });
+                throw new Error(`${p.label} รอเฟส ${phase} ไม่มา: ${JSON.stringify(info)}`);
+            }
+        }
+        /** กดทอยจริง (แตะ = pointerdown/up) · แผงล่างวาดใหม่ระหว่างทางได้ — กดซ้ำจนเซิร์ฟเวอร์รับ */
+        async function roll(p) {
+            for (let k = 0; k < 5; k += 1) {
+                await p.page.waitForSelector('#stRollBtn:not([disabled])', { timeout: 15000 });
+                const seq = (await state(p)).turn.seq;
+                await p.page.click('#stRollBtn').catch(() => {});
+                const ok = await p.page.waitForFunction(q => { const S = window.__setthi.state(); return S.turn && (S.turn.seq !== q || S.turn.hasRolled); }, seq, { timeout: 3000 }).then(() => true, () => false);
+                if (ok) return;
+            }
+            throw new Error(p.label + ' ทอยไม่ได้');
+        }
+        async function check(p, label) {
+            const lay = await layoutProblems(p.page);
+            assert(!lay.length, `${p.label} ${label} layout: ${lay.join(' | ')}`);
+            const tok = await tokenProblems(p.page);
+            assert(!tok.length, `${p.label} ${label} หมากไม่อยู่ในช่อง: ${tok.join(', ')}`);
+            const ov = await overlapProblems(p.page);
+            assert(!ov.length, `${p.label} ${label}: ${ov.join(', ')}`);
+        }
+        for (const p of players) await check(p, 'ตอนเริ่ม');
+        console.log('1. 4 คน (3 มือถือ + เดสก์ท็อป) เปิดกระดาน · ไม่ล้น ไม่ทับ หมากอยู่ในช่อง ✓');
 
         // ---------- เล่นจริงผ่าน UI ----------
-        let auctionDone = false;
-        let auctionShot = false;
-        let tradeDone = false;
-        let mortgageDone = false;
-        let bidRound = 0;
-        let auctionId = null;
-        let auctionBids = 0;
         let actions = 0;
-        let rolls = 0;
-        const deadline = Date.now() + 150000;
-        let loops = 0;
-        while (Date.now() < deadline) {
-            const S = await state(phones[0]);
-            loops += 1;
-            if (process.env.DEBUG_SETTHI && loops % 15 === 0) console.log('   …', S.phase, (S.seats.find(x => x.playerId === S.phaseActor) || {}).name, 'rolls', rolls, 'auction', auctionDone, 'trade', tradeDone, 'owners', Object.values(S.props).filter(p => p.owner).length);
-            if (S.phase === 'auction') {
-                // เปิดชีตประมูลเองบนทุกเครื่อง แล้วผลัดกันกดเสนอ
-                for (const p of players) {
-                    if (!(await p.page.$('.st-sheet.is-open #stAuctionSec'))) {
-                        if (!(await clickIf(p, '#stOpenAuction'))) await clickIf(p, '#stAuctionPill');
-                    }
-                }
-                await delay(400);
-                if (S.auction && S.auction.id !== auctionId) { auctionId = S.auction.id; auctionBids = 0; }
-                const bidder = players[bidRound % players.length];
-                bidRound += 1;
-                const quick = await bidder.page.$$('.st-sheet.is-open .st-bid-row button:not([disabled])');
-                if (quick.length && auctionBids < 4) {
-                    const ok = await quick[Math.min(quick.length - 1, bidRound % 2)].click({ timeout: 3000 }).then(() => true, () => false);
-                    if (ok) { auctionBids += 1; report.bids = (report.bids || 0) + 1; }
-                }
-                if (!auctionShot && bidRound >= 3) {
-                    await delay(350);
-                    await shot(phones[0], 'sheet-auction-mobile');
-                    await shot(desk, 'sheet-auction-desktop');
-                    auctionShot = true;
-                }
-                await delay(700);
-                continue;
-            }
+        const until = Date.now() + 90000;
+        while (actions < 14 && Date.now() < until) {
+            const S = await state(host);
             if (S.phase === 'finished') break;
-            if (!auctionDone && (S.fx.some(f => f.kind === 'auctionEnd' && f.winner) || S.history.some(h => h.kind === 'auctionWon'))) auctionDone = true;
-
-            // เทรด: เมื่อมีอย่างน้อยสองคนมีที่ดินแล้ว
-            if (!tradeDone && auctionDone) {
-                const owners = {};
-                Object.keys(S.props).forEach(k => { if (S.props[k].owner) (owners[S.props[k].owner] = owners[S.props[k].owner] || []).push(Number(k)); });
-                const proposer = players.find(p => owners[p.id]);
-                const target = players.find(p => p !== proposer && owners[p.id]);
-                if (proposer && target && S.phase !== 'auction') {
-                    await skipAll(players);
-                    await proposer.page.click('#stTradeBtn', { timeout: 15000 });
-                    await proposer.page.waitForSelector('.st-sheet.is-open .st-trade-grid', { timeout: 15000 }).catch(async e => {
-                        await shot(proposer, 'debug-trade');
-                        console.log('   debug', proposer.label, await proposer.page.evaluate(() => ({ html: (document.querySelector('#stSheetCard') || {}).innerHTML.slice(0, 300), open: document.querySelector('#stSheet').className })));
-                        throw e;
-                    });
-                    await proposer.page.click(`.st-trade-who button[data-to="${target.id}"]`);
-                    await proposer.page.click(`.st-pick[data-side="give"][data-sq="${owners[proposer.id][0]}"]`);
-                    await proposer.page.click(`.st-pick[data-side="get"][data-sq="${owners[target.id][0]}"]`);
-                    await proposer.page.click('.st-cash-input button[data-cash="give"][data-d="50"]');
-                    await delay(300);
-                    await shot(proposer, 'sheet-trade-' + (proposer === desk ? 'desktop' : 'mobile'));
-                    const probs = await layoutProblems(proposer.page);
-                    assert(!probs.length, 'ชีตเทรดไม่ล้น: ' + probs.join(' | '));
-                    await proposer.page.click('#stTradeSend');
-                    await target.page.waitForFunction(() => document.querySelector('.st-sheet.is-open #stOfferAccept') || document.querySelector('[id^="stViewDeal"]'), null, { timeout: 15000 });
-                    if (!(await target.page.$('.st-sheet.is-open #stOfferAccept'))) await target.page.click('[id^="stViewDeal"]');
-                    await target.page.waitForSelector('.st-sheet.is-open #stOfferAccept', { timeout: 15000 });
-                    await delay(300);
-                    await shot(target, 'sheet-offer-' + (target === desk ? 'desktop' : 'mobile'));
-                    await target.page.click('#stOfferAccept');
-                    await target.page.waitForFunction(() => document.querySelector('.st-shake'), null, { timeout: 15000 });
-                    await delay(500);
-                    await shot(target, 'cut-trade-live');
-                    await delay(1500);
-                    const after = await state(target);
-                    assert(after.props[owners[proposer.id][0]].owner === target.id && after.props[owners[target.id][0]].owner === proposer.id, 'เทรดผ่าน UI สลับที่ดิน');
-                    tradeDone = true;
-                    console.log('4. เทรดผ่านชีต (เลือกคน · ให้/ได้ · เงิน) → อีกฝ่ายกดรับ → จับมือ ✓');
-                    continue;
-                }
-            }
-
-            // ตาของใคร → กดปุ่มบนเครื่องคนนั้น
             const actor = players.find(p => p.id === S.phaseActor);
             if (!actor) { await delay(200); continue; }
             if (await busy(actor)) { await actor.page.evaluate(() => window.__setthi.skip()); await delay(150); continue; }
-
-            // จำนอง/ไถ่ถอนผ่าน UI ตอนถึงตาและมีที่ดิน
-            const mine = Object.keys(S.props).filter(k => S.props[k].owner === actor.id);
-            if (!mortgageDone && mine.length && ['roll', 'manage'].includes(S.phase)) {
-                await actor.page.click('#stPropsBtn', { timeout: 15000 });
-                await actor.page.waitForSelector('.st-sheet.is-open [data-act="mortgage"]:not([disabled])', { timeout: 15000 });
-                await delay(250);
-                await shot(actor, 'sheet-props-' + (actor === desk ? 'desktop' : 'mobile'));
-                const cash0 = S.seats.find(s => s.playerId === actor.id).cash;
-                await actor.page.click('.st-sheet.is-open [data-act="mortgage"]:not([disabled])');
-                await actor.page.waitForSelector('.st-sheet.is-open [data-act="unmortgage"]:not([disabled])', { timeout: 15000 });
-                const mid = await state(actor);
-                assert(mid.seats.find(s => s.playerId === actor.id).cash > cash0, 'จำนองได้เงิน');
-                await actor.page.click('.st-sheet.is-open [data-act="unmortgage"]:not([disabled])');
-                await actor.page.waitForSelector('.st-sheet.is-open [data-act="mortgage"]:not([disabled])', { timeout: 15000 });
-                await actor.page.click('.st-sheet.is-open .st-sheet-close');
-                mortgageDone = true;
-                console.log('3. จำนอง → ไถ่ถอนผ่านชีตทรัพย์สิน ✓');
-                continue;
-            }
-
             let did = false;
-            if (await clickIf(actor, '#stRollBtn')) { did = true; rolls += 1; }
-            else if (await actor.page.$('#stBuyBtn')) {
-                // ไม่ซื้อจนกว่าจะได้ประมูลที่มีผู้ชนะอย่างน้อยหนึ่งครั้ง
-                if (!auctionDone) did = await clickIf(actor, '#stDeclineBtn');
-                else did = (await clickIf(actor, '#stBuyBtn')) || (await clickIf(actor, '#stDeclineBtn'));
-            } else if (await clickIf(actor, '#stEndTurnBtn')) did = true;
-            else if (await clickIf(actor, '#stPayJailBtn')) did = true;
-            else if (S.phase === 'debt') {
-                await clickIf(actor, '#stDebtBtn');
-                await delay(300);
-                did = (await clickIf(actor, '.st-sheet.is-open [data-act="sell"]:not([disabled])')) || (await clickIf(actor, '.st-sheet.is-open [data-act="mortgage"]:not([disabled])'));
-            }
+            if (S.phase === 'roll') did = await clickIf(actor, '#stRollBtn');
+            else if (S.phase === 'build') did = (await clickIf(actor, '.st-sheet.is-open .st-tile.is-open')) && (await clickIf(actor, '#stBuildBtn')) || await clickIf(actor, '#stBuildBtn') || await clickIf(actor, '#stPassBtn') || await clickIf(actor, '#stOpenDecision');
+            else if (S.phase === 'takeover') did = await clickIf(actor, '#stNoTakeBtn') || await clickIf(actor, '#stOpenDecision');
+            else if (S.phase === 'pick') did = await clickIf(actor, '#stSkipPick');
+            else if (S.phase === 'debt') did = await clickIf(actor, '.st-sheet.is-open .st-sell') || await clickIf(actor, '#stOpenSell');
             if (did) actions += 1;
-            if (did && actions % 6 === 0) {
-                for (const p of players) {
-                    const probs = await layoutProblems(p.page);
-                    assert(!probs.length, `${p.label} layout กลางเกม: ${probs.join(' | ')}`);
-                }
-            }
-            if (auctionDone && tradeDone && mortgageDone && rolls >= 12) break;
-            await delay(did ? 350 : 200);
+            await delay(350);
         }
-        assert(auctionDone, 'มีการประมูลจบด้วยผู้ชนะ (ผ่าน UI)');
-        assert(tradeDone && mortgageDone, 'ทำเทรดและจำนองผ่าน UI');
-        assert(rolls >= 12, 'ทอยผ่านปุ่มอย่างน้อย 12 ครั้ง (' + rolls + ')');
-        console.log(`5. เล่นจริงผ่านปุ่ม ${actions} ครั้ง (ทอย ${rolls}) · ประมูลผ่านชีตเสนอราคา ${report.bids || 0} ครั้ง ✓`);
+        assert(actions >= 10, 'เล่นผ่าน UI ได้หลายจังหวะ: ' + actions);
+        await skipAll(players);
+        console.log(`2. เล่นจริงผ่านปุ่ม (ทอย · ซื้อ/สร้าง · ผ่าน) ${actions} จังหวะ ✓`);
 
-        // ---------- กดค้างทอย: เข็มแรง · ช่องเขียว · ทอยแรงสุด ----------
-        async function waitMyRoll(p) {
-            for (let i = 0; i < 200; i += 1) {
-                const S2 = await state(p);
-                if (S2.phase === 'roll' && S2.phaseActor === p.id && !(await busy(p))) {
-                    const b = await p.page.$('#stRollBtn:not([disabled])');
-                    if (b) return S2;
-                }
-                const actor = players.find(x => x.id === S2.phaseActor);
-                if (S2.phase === 'auction') { await delay(600); continue; }
-                if (actor && actor !== p) {
-                    if (await busy(actor)) await actor.page.evaluate(() => window.__setthi.skip());
-                    else if (!(await clickIf(actor, '#stRollBtn')) && !(await clickIf(actor, '#stBuyBtn')) && !(await clickIf(actor, '#stDeclineBtn')) && !(await clickIf(actor, '#stEndTurnBtn'))) await clickIf(actor, '#stPayJailBtn');
-                } else if (actor === p) {
-                    if (await busy(p)) await p.page.evaluate(() => window.__setthi.skip());
-                    else if (!(await clickIf(p, '#stBuyBtn')) && !(await clickIf(p, '#stEndTurnBtn'))) await clickIf(p, '#stPayJailBtn');
-                }
-                await delay(250);
-            }
-            throw new Error('ไม่ถึงตาทอยของ ' + p.label);
-        }
-        /** กดค้าง · ถ้า wantGreen ยกเลิก (เลื่อนนิ้วออก) แล้วกดใหม่จนกว่าจะมีช่องเขียว · ให้หน้าเว็บปล่อยเองตามเวลาเป้า */
-        async function holdTo(p, target, opts = {}) {
-            for (let attempt = 0; attempt < 16; attempt += 1) {
-                const box = await p.page.locator('#stRollBtn').boundingBox();
-                await p.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-                await p.page.mouse.down();
-                await p.page.waitForFunction(() => { const h = window.__setthi.hold(); return h && h.meter; }, null, { timeout: 15000 });
-                const meter = await p.page.evaluate(() => window.__setthi.hold().meter);
-                if (target === 'green' && !meter.green) {
-                    await p.page.waitForSelector('#stMeter.is-on', { timeout: 15000 });
-                    await p.page.mouse.move(box.x + box.width / 2, box.y - 400, { steps: 4 }); // นิ้วเลื่อนออก = ยกเลิก
-                    await p.page.mouse.up();
-                    await p.page.waitForFunction(() => !window.__setthi.hold(), null, { timeout: 15000 });
-                    await delay(250);
-                    continue;
-                }
-                await p.page.waitForSelector('#stMeter.is-on', { timeout: 15000 });
-                if (opts.midShot && meter.green) {
-                    await p.page.waitForFunction(() => document.querySelector('#stMeter.has-green'), null, { timeout: 4000 });
-                    await delay(140);
-                    await shot(p, 'hold-green-pop');
-                } else if (opts.midShot) {
-                    await delay(opts.midShot);
-                    await shot(p, 'hold-meter');
-                }
-                const result = await p.page.evaluate(t => new Promise(resolve => {
-                    const h = window.__setthi.hold();
-                    const m = h.meter;
-                    const pos = x => (1 - Math.cos(2 * Math.PI * x / m.period)) / 2;
-                    const now0 = performance.now() - h.t0 + 40;
-                    let at = null;
-                    if (t === 'green') {
-                        const g = m.green;
-                        for (let x = Math.max(now0, g.appearAt + 20); x < g.until - 25; x += 2) {
-                            if (Math.abs(pos(x) - g.center) <= g.width * 0.25) { at = x; break; }
-                        }
-                    } else {
-                        const base = Math.acos(1 - 2 * t) * m.period / (2 * Math.PI);
-                        at = base;
-                        while (at < now0) at += m.period;
-                    }
-                    if (at === null) { resolve({ miss: true }); return; }
-                    const step = () => {
-                        const e = performance.now() - h.t0;
-                        if (e >= at) {
-                            window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, pointerType: 'mouse', bubbles: true }));
-                            resolve({ elapsed: e, at, green: m.green, period: m.period, fxSeq: window.__setthi.state().fxSeq });
-                        } else requestAnimationFrame(step);
-                    };
-                    requestAnimationFrame(step);
-                }), target);
-                await p.page.mouse.up();
-                if (result.miss) { await p.page.waitForFunction(() => !window.__setthi.hold(), null, { timeout: 15000 }).catch(() => {}); continue; }
-                return result;
-            }
-            throw new Error('กดค้างแล้วไม่ได้ช่องเขียวเลย');
-        }
-        await skipAll(players);
-        await waitMyRoll(phones[0]);
-        // ภาพเข็มกลางการชาร์จ (ครั้งที่ไม่สนช่องเขียว) แล้วยกเลิกด้วยการเลื่อนนิ้วออก
-        {
-            const box = await phones[0].page.locator('#stRollBtn').boundingBox();
-            await phones[0].page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-            await phones[0].page.mouse.down();
-            await phones[0].page.waitForSelector('#stMeter.is-on', { timeout: 15000 });
-            await delay(420);
-            await shot(phones[0], 'hold-meter');
-            await phones[0].page.mouse.move(box.x + box.width / 2, box.y - 400, { steps: 4 });
-            await phones[0].page.mouse.up();
-            await phones[0].page.waitForFunction(() => !window.__setthi.hold(), null, { timeout: 15000 });
-            const S3 = await state(phones[0]);
-            assert(S3.phase === 'roll' && S3.phaseActor === phones[0].id && !S3.turn.holding, 'เลื่อนนิ้วออก = ยกเลิก ยังไม่ทอย');
-            await delay(300);
-        }
-        // ปล่อยในช่องเขียวระหว่างที่โผล่ · ถ้าเครื่องช้าจนเซิร์ฟเวอร์หนีบเวลา (ตามกติกา) ลองตาถัดไป
-        let perfectSeen = false;
-        for (let attempt = 0; attempt < 4 && !perfectSeen; attempt += 1) {
-            if (attempt) { await skipAll(players); await waitMyRoll(phones[0]); }
-            const g = await holdTo(phones[0], 'green', { midShot: attempt === 0 });
-            const fxOf = async () => (await state(phones[0])).fx.filter(f => f.kind === 'dice' && f.playerId === phones[0].id).pop();
-            await phones[0].page.waitForFunction(seqBefore => { const S4 = window.__setthi.state(); return S4.fx.some(f => f.kind === 'dice' && f.seq > seqBefore); }, g.fxSeq || 0, { timeout: 15000 }).catch(() => {});
-            const gfx = await fxOf();
-            const used = gfx && gfx.elapsed;
-            const sched = g.green;
-            const posAt = t => (1 - Math.cos(2 * Math.PI * t / g.period)) / 2;
-            const shouldHit = used !== undefined && used >= sched.appearAt && used <= sched.until && Math.abs(posAt(used) - sched.center) <= sched.width / 2;
-            assert(!!(gfx && gfx.perfect) === shouldHit, `เซิร์ฟเวอร์ตัดสินช่องเขียวตามตารางเดียวกัน (ใช้ ${used}ms, เป๊ะ=${gfx && gfx.perfect})`);
-            if (gfx && gfx.perfect) {
-                await phones[0].page.waitForSelector('.st-perfect', { timeout: 15000 });
-                await delay(480);
-                await shot(phones[0], 'hold-perfect');
-                perfectSeen = true;
-            } else if (process.env.DEBUG_SETTHI) console.log('   green retry: claimed', Math.round(g.elapsed), 'used', used);
-        }
-        assert(perfectSeen, 'ปล่อยในช่องเขียวผ่านปุ่มจริง = เป๊ะ!');
-        await skipAll(players);
-        await waitMyRoll(phones[0]);
-        await holdTo(phones[0], 0.999);
-        await delay(520);
-        await shot(phones[0], 'hold-max-throw');
-        const afterMax = await state(phones[0]);
-        const mfx = afterMax.fx.filter(f => f.kind === 'dice' && f.playerId === phones[0].id).pop();
-        assert(mfx && mfx.power >= 0.95, 'ปล่อยตอนเข็มสุด = แรงสุด (' + (mfx && mfx.power) + ')');
-        for (const p of players) assert(!(await layoutProblems(p.page)).length, p.label + ' layout หลังกดค้าง');
-        console.log(`5b. กดค้างทอยผ่านปุ่มจริง: เข็มแกว่ง · ปล่อยในช่องเขียว = เป๊ะ! · ปล่อยตอนสุด = แรง ${mfx.power} ✓`);
-
-        // ---------- ภาพทุกฉาก ----------
-        await skipAll(players);
-        const p0 = phones[0];
-        const S = await state(p0);
-        const me = p0.id;
-        const other = phones[1].id;
-        const posMe = S.seats.find(s => s.playerId === me).pos;
-        const scenes = {
-            dice: [[{ kind: 'dice', playerId: me, d: [6, 6], doubles: true }], [650, 1250]],
-            move: [[{ kind: 'move', playerId: me, from: posMe, to: (posMe + 8) % 40, steps: 8, path: Array.from({ length: 8 }, (_, k) => (posMe + k + 1) % 40), passGo: false }], [700]],
-            salary: [[{ kind: 'move', playerId: me, from: 37, to: 2, steps: 5, path: [38, 39, 0, 1, 2], passGo: true }], [1000]],
-            card: [[{ kind: 'card', playerId: me, deck: 'fortune', card: { id: 'f07', deck: 'fortune', title: 'วันเกิดคุณ!', text: 'เพื่อนทุกคนให้ซองคนละ ฿10', icon: 'gift' } }], [320, 900]],
-            buy: [[{ kind: 'buy', playerId: me, square: 37, price: 360, cash: {} }], [700, 1150]],
-            rent: [[{ kind: 'rent', from: other, to: me, amount: 620, square: 39, cash: {} }], [550]],
-            build: [[{ kind: 'build', playerId: me, square: 26, houses: 3, cost: 150, cash: {} }], [450]],
-            hotel: [[{ kind: 'build', playerId: me, square: 29, houses: 5, cost: 150, cash: {} }], [1000]],
-            set: [[{ kind: 'set', playerId: me, group: 'g7' }], [700]],
-            jail: [[{ kind: 'jail', playerId: me, from: 30, reason: 'ตกช่องไปคุก' }], [1250]],
-            auction: [[{ kind: 'auctionStart', square: 34 }], [750]],
-            sold: [[{ kind: 'auctionEnd', square: 34, winner: other, amount: 410, cash: {} }], [700]],
-            trade: [[{ kind: 'trade', from: me, to: other, give: { cash: 150, props: [26], jailCards: 0 }, get: { cash: 0, props: [16, 18], jailCards: 0 }, cash: {} }], [800]],
-            bankrupt: [[{ kind: 'bankrupt', playerId: phones[2].id, creditor: me, squares: [], cash: {} }], [800, 1550]],
-            timeup: [[{ kind: 'timeUp' }], [500]]
+        // ---------- กระดานกลางเกม: เจ้าของ ขั้น ค่าผ่านทาง แลนด์มาร์ก หมาก ----------
+        const P = idx.phone1, Q = idx.phone2, R = idx.phone3, D = idx.desktop;
+        const midProps = {
+            1: { owner: P, level: 1 }, 2: { owner: P, level: 2 }, 5: { owner: P }, 14: { owner: P, level: 3 }, 15: { owner: P, level: 0 },
+            4: { owner: Q, level: 3 }, 6: { owner: Q, level: 4 }, 7: { owner: Q, level: 1 }, 21: { owner: Q },
+            9: { owner: R, level: 2 }, 10: { owner: R, level: 1 }, 11: { owner: R }, 12: { owner: R, level: 0 },
+            17: { owner: D, level: 3 }, 18: { owner: D, level: 2 }, 22: { owner: D, level: 1 }, 28: { owner: D, level: 4, stars: 2 }, 30: { owner: D, level: 0 }
         };
-        for (const [name, [list, times]] of Object.entries(scenes)) {
-            await p0.page.evaluate(l => window.__setthi.demo(l), list);
-            let lastT = 0;
-            for (const t of times) {
-                await delay(t - lastT);
-                lastT = t;
-                await shot(p0, `cut-${name}-${t}`);
-            }
-            await skipAll([p0]);
-            await delay(300);
-        }
-        await desk.page.evaluate(l => window.__setthi.demo(l), scenes.card[0]);
-        await delay(900);
-        await shot(desk, 'cut-card-desktop');
-        await skipAll([desk]);
-        console.log(`6. ถ่ายภาพฉาก ${Object.keys(scenes).length} แบบ ✓`);
+        await setup({ props: midProps, festival: 14, festivalMult: 4, seats: { [P]: { pos: 6, laps: 1 }, [Q]: { pos: 6 }, [R]: { pos: 6 }, [D]: { pos: 8, island: 2 } }, turnSeat: P });
+        await shot(host, 'board-mobile');
+        await shot(desk, 'board-desktop');
+        for (const p of players) await check(p, 'กลางเกม');
+        const own = await host.page.evaluate(() => {
+            const S = window.__setthi.state();
+            const want = Object.keys(S.props).filter(k => S.props[k].owner).sort().join();
+            const got = [...document.querySelectorAll('.st-cell.is-owned')].map(c => c.dataset.i).sort().join();
+            const colors = [...document.querySelectorAll('.st-cell.is-owned')].every(c => {
+                const seat = S.seats.find(x => x.playerId === S.props[c.dataset.i].owner);
+                return seat && c.style.getPropertyValue('--own') === seat.tokenColor;
+            });
+            return { ok: want === got && colors, want, got };
+        });
+        assert(own.ok, 'ทุกช่องที่มีเจ้าของระบายสีเจ้าของตรงคน: ' + JSON.stringify(own));
+        assert(await host.page.evaluate(() => !!document.querySelector('.st-cell[data-i="6"] .st-lm') && !!document.querySelector('.st-cell.is-fest[data-i="14"]')), 'แลนด์มาร์กเด้ง + ธงงานวัด');
+        console.log('3. กระดานกลางเกม: 4 สีเจ้าของ · ขั้นสิ่งปลูกสร้าง · ค่าผ่านทาง · แลนด์มาร์ก · หมาก 3 ตัวช่องเดียว + มุม ✓');
 
-        // ---------- prefers-reduced-motion: ฉากสั้นลงเหลือสรุป ไม่มี error ----------
-        const calm = phones[2];
-        await calm.page.emulateMedia({ reducedMotion: 'reduce' });
-        await calm.page.reload({ waitUntil: 'domcontentloaded' });
-        await calm.page.waitForSelector('#stBoard .st-cell', { timeout: 15000 });
-        await delay(600);
-        await skipAll([calm]);
-        assert(await calm.page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'จำลองลดการเคลื่อนไหวได้');
-        const t0 = Date.now();
-        await calm.page.evaluate(l => window.__setthi.demo(l), [...scenes.dice[0], ...scenes.move[0], ...scenes.rent[0], ...scenes.build[0]]);
-        await calm.page.waitForFunction(() => window.__setthi.queueLength() === 0, null, { timeout: 10000 });
-        assert(Date.now() - t0 < 4000, 'ลดการเคลื่อนไหว: ฉากจบเร็ว (' + (Date.now() - t0) + 'ms)');
-        await calm.page.evaluate(l => window.__setthi.demo(l), scenes.card[0]);
+        // ---------- เตือนผูกขาด ----------
+        await setup({ props: { 9: { owner: P }, 10: { owner: P }, 11: { owner: null }, 12: { owner: P }, 14: { owner: P }, 15: { owner: P } } });
+        await host.page.waitForSelector('#stAlerts.is-on .st-alert', { timeout: 8000 });
+        assert(await phones[1].page.evaluate(() => !!document.querySelector('.st-cell.is-threat[data-i="11"]')), 'ช่องที่ขาดกระพริบ');
+        await shot(phones[1], 'warn-monopoly-mobile');
+        await shot(desk, 'warn-monopoly-desktop');
+        console.log('4. เตือน "อีก 1 ช่อง ผูกขาดแถว" + วงกระพริบช่องที่ขาด ✓');
+
+        // ---------- แผ่นซื้อ + สร้างหลายขั้น (แผ่นแวบบนเครื่องอื่น) ----------
+        const buyer = phones[1];
+        await setup({ props: { 20: { owner: null } }, seats: { [Q]: { pos: 17, laps: 1, cash: 30000 } }, dice: [[1, 2]], turnSeat: Q });
+        await roll(buyer);
+        await waitPhase(buyer, 'build');
+        await buyer.page.waitForSelector('.st-sheet.is-open .st-tile', { timeout: 10000 });
         await delay(400);
-        await shot(calm, 'reduced-motion-card');
-        await skipAll([calm]);
-        await calm.page.emulateMedia({ reducedMotion: 'no-preference' });
-        console.log('6b. prefers-reduced-motion: ฉากสั้น อ่านการ์ดได้ ไม่มี error ✓');
-
-        // ---------- หัวห้องจบเกม → โพเดียม ----------
+        await shot(buyer, 'sheet-buy-mobile');
+        await buyer.page.click('.st-sheet.is-open .st-tile[data-level="2"]');
+        await delay(150);
+        await buyer.page.click('#stBuildBtn');
+        await phones[2].page.waitForSelector('#stFx .st-flash', { timeout: 8000 });
+        await delay(250);
+        await shot(phones[2], 'flash-spectator-buy');
         await skipAll(players);
-        const hostPage = phones[0];
-        await hostPage.page.click('#stMenuBtn');
-        await hostPage.page.waitForSelector('#stSidebar.open #stEndBtn', { timeout: 15000 });
+        assert((await state(host)).props[20].level === 2, 'ซื้อถึงตึกในแผ่นเดียว');
+        console.log('5. แผ่นซื้อ (ภาพแต่ละขั้น + ราคา) → ซื้อถึงตึก · เครื่องอื่นเห็นแผ่นแวบ "ซื้อ ✔" ✓');
+
+        // ---------- ซื้อต่อ (คนโดนซื้อเห็นฉากใหญ่) ----------
+        await setup({ props: { 7: { owner: P, level: 3 } }, seats: { [Q]: { pos: 0, cash: 90000 } }, dice: [[3, 4]], turnSeat: Q });
+        await roll(buyer);
+        await waitPhase(buyer, 'takeover');
+        await buyer.page.waitForSelector('.st-sheet.is-open #stTakeBtn', { timeout: 10000 });
+        await delay(350);
+        await shot(buyer, 'sheet-takeover-mobile');
+        await buyer.page.click('#stTakeBtn');
+        await host.page.waitForSelector('#stFx .st-take-scene.is-lost', { timeout: 10000 });
+        await delay(900);
+        await shot(host, 'cut-takeover-victim');
+        await skipAll(players);
+        assert((await state(host)).props[7].owner === buyer.id, 'ซื้อต่อแล้วเปลี่ยนเจ้าของ');
+        if ((await state(buyer)).phase === 'build') { await buyer.page.click('#stPassBtn').catch(() => {}); }
+        console.log('6. ซื้อต่อ 2 เท่า: แผ่นซื้อต่อ → เจ้าของเดิมเห็น "ถูกซื้อต่อ!" ✓');
+
+        // ---------- แลนด์มาร์ก ----------
+        await skipAll(players);
+        await setup({ props: { 12: { owner: Q, level: 3 } }, seats: { [Q]: { pos: 8, island: 0, cash: 90000 } }, dice: [[1, 3]], turnSeat: Q });
+        await roll(buyer);
+        await waitPhase(buyer, 'build');
+        await buyer.page.waitForSelector('.st-sheet.is-open .st-tile[data-level="4"]', { timeout: 10000 });
         await delay(300);
-        await hostPage.page.click('#stEndBtn');
-        await hostPage.page.waitForSelector('.swal2-confirm', { timeout: 15000 });
-        await hostPage.page.click('.swal2-confirm');
-        for (const p of players) await p.page.waitForSelector('#stEnd.is-on .st-podium', { timeout: 15000 });
+        await shot(buyer, 'sheet-landmark-mobile');
+        await buyer.page.click('.st-sheet.is-open .st-tile[data-level="4"]');
+        await buyer.page.click('#stBuildBtn');
+        await host.page.waitForSelector('#stFx .st-lm-rise', { timeout: 10000 });
+        await delay(900);
+        await shot(host, 'cut-landmark');
+        await skipAll(players);
+        assert((await state(host)).props[12].level === 4, 'สร้างแลนด์มาร์ก');
+        console.log('7. แลนด์มาร์ก: แผ่นสร้าง → ฉากแลนด์มาร์ก ✓');
+
+        // ---------- ทัวร์: แตะช่องบนกระดาน (เดินหน้า ผ่านเริ่ม) ----------
+        const tourer = phones[2];
+        await setup({ props: { 23: { owner: null } }, seats: { [R]: { pos: 24, tourPending: true, cash: 30000 } }, turnSeat: R });
+        await waitPhase(tourer, 'pick');
+        await tourer.page.waitForSelector('#stPickbar.is-on', { timeout: 8000 });
+        await delay(300);
+        await shot(tourer, 'pick-tour-mobile');
+        await tourer.page.click('.st-cell.is-pickable[data-i="23"]');
         await delay(1300);
-        await shot(phones[1], 'cut-podium-mobile');
-        await shot(desk, 'cut-podium-desktop');
-        for (const p of players) {
+        await shot(tourer, 'cut-warp');
+        await skipAll(players);
+        const afterTour = await state(host);
+        assert(afterTour.seats[R].pos === 23 && afterTour.fx.some(f => f.kind === 'move' && f.warp && f.passGo && f.path.length === 31), 'วาร์ปเดินหน้า 31 ช่อง ผ่านจุดเริ่ม');
+        if (afterTour.phase === 'build') { await tourer.page.waitForSelector('.st-sheet.is-open #stPassBtn', { timeout: 8000 }); await tourer.page.click('#stPassBtn'); await delay(400); await skipAll(players); }
+        console.log('8. ทัวร์: แตะช่อง (บอกจำนวนก้าว · สีเขียว = ผ่านเริ่ม) → เดินหน้าเร็ว ✓');
+
+        // ---------- งานวัดซ้อน ----------
+        await setup({ props: { 14: { owner: P, level: 2 } }, festival: 14, festivalMult: 4, seats: { [P]: { pos: 10, cash: 30000 } }, dice: [[2, 4]], turnSeat: P });
+        await roll(host);
+        await waitPhase(host, 'pick');
+        await delay(300);
+        await shot(host, 'pick-festival-mobile');
+        await host.page.click('.st-cell.is-pickable[data-i="14"]');
+        await host.page.waitForSelector('#stFx .st-banner.is-fest', { timeout: 10000 });
+        await delay(500);
+        await shot(host, 'cut-festival-x8');
+        await skipAll(players);
+        assert((await state(host)).festivalMult === 8, 'งานวัดซ้อนเป็น ×8');
+        console.log('9. งานวัดซ้อน ×4 → ×8 ✓');
+
+        // ---------- ตกจุดเริ่มพอดี: อัปฟรี ----------
+        await setup({ props: { 4: { owner: D, level: 1 } }, seats: { [D]: { pos: 28, laps: 1, island: 0, cash: 30000 } }, dice: [[1, 3]], turnSeat: D });
+        await roll(desk);
+        await waitPhase(desk, 'pick');
+        await delay(300);
+        await shot(desk, 'pick-startbonus-desktop');
+        await desk.page.click('.st-cell.is-pickable[data-i="4"]');
+        await delay(500);
+        await skipAll(players);
+        assert((await state(host)).props[4].level === 2, 'อัปฟรี 1 ขั้น');
+        console.log('10. ทอยตกจุดเริ่มพอดี → แตะเมืองอัปฟรี ✓');
+
+        // ---------- เงินไม่พอ: แผ่นขายที่ ----------
+        await setup({ props: { 31: { owner: D, level: 3 }, 20: { owner: Q, level: 3 }, 22: { owner: Q, level: 3 }, 23: { owner: Q, level: 3 } }, seats: { [Q]: { pos: 29, cash: 500 } }, dice: [[1, 1]], turnSeat: Q });
+        await roll(buyer);
+        await waitPhase(buyer, 'debt');
+        await buyer.page.waitForSelector('.st-sheet.is-open .st-sell', { timeout: 10000 });
+        await delay(300);
+        await shot(buyer, 'sheet-sell-mobile');
+        for (let k = 0; k < 14 && (await state(buyer)).phase === 'debt'; k += 1) {
+            await clickIf(buyer, '.st-sheet.is-open .st-sell') || await clickIf(buyer, '#stOpenSell');
+            await delay(600);
+            await skipAll(players);
+        }
+        assert((await state(buyer)).phase !== 'debt', 'ขายที่จนจ่ายครบ');
+        console.log('11. เงินไม่พอ → แผ่นขายที่ → จ่ายครบ ✓');
+
+        // ---------- เกาะร้าง ----------
+        await setup({ seats: { [R]: { pos: 8, island: 2, cash: 30000 } }, turnSeat: R });
+        await tourer.page.waitForSelector('#stPayIsland', { timeout: 8000 });
+        await shot(tourer, 'dock-island-mobile');
+        console.log('12. ติดเกาะ: ปุ่มจ่ายค่าเรือ + ทอยลุ้นดับเบิล ✓');
+
+        // ---------- ฉากตัวอย่าง (ผลเต๋า/ผูกขาด/เกาะ) ----------
+        const demo = async (p, name, fx, ms) => {
+            await p.page.evaluate(f => window.__setthi.demo(f), fx);
+            await delay(ms);
+            await shot(p, name);
+            await p.page.evaluate(() => window.__setthi.skip());
+            await delay(400);
+            await p.page.evaluate(() => window.__setthi.skip());
+            await delay(300);
+        };
+        await demo(host, 'cut-dice-double', { kind: 'dice', playerId: host.id, d: [6, 6], doubles: true, streak: 2, power: 0.92 }, 1500);
+        await demo(host, 'cut-dice-slow', { kind: 'dice', playerId: host.id, d: [1, 2], doubles: false, streak: 0, power: 0.1 }, 1100);
+        await demo(host, 'cut-dice-triple', { kind: 'dice', playerId: host.id, d: [3, 3], doubles: true, streak: 3 }, 1700);
+        await demo(host, 'cut-island', { kind: 'island', playerId: host.id, from: 3, reason: 'triple' }, 1200);
+        await demo(desk, 'cut-monopoly-color', { kind: 'monopoly', playerId: desk.id, type: 'color', squares: [1, 2, 4, 6, 7, 9, 10] }, 1400);
+        await demo(desk, 'cut-monopoly-line', { kind: 'monopoly', playerId: phones[1].id, type: 'line', side: 1, squares: [9, 10, 11, 12, 14, 15] }, 1400);
+        await demo(host, 'cut-monopoly-tourist', { kind: 'monopoly', playerId: phones[2].id, type: 'tourist', squares: [5, 11, 21, 27] }, 1400);
+        await demo(host, 'cut-landmark-star', { kind: 'landmarkStar', playerId: host.id, square: 14, stars: 2, bonus: 1500, upgraded: true, toll: 12000, cash: {} }, 900);
+        await skipAll(players);
+        console.log('13. ฉาก: ผลเต๋า (ดับเบิล/เดินช้าๆ/3 ครั้ง) · เกาะร้าง · ผูกขาด 3 แบบ · ดาวแลนด์มาร์ก ✓');
+
+        // ---------- แผ่นข้อมูลช่อง + วิธีเล่น/เครดิต ----------
+        await host.page.click('.st-cell[data-i="28"]');
+        await host.page.waitForSelector('.st-sheet.is-open .st-ownerbar', { timeout: 8000 });
+        await delay(300);
+        await shot(host, 'sheet-deed-mobile');
+        await host.page.click('.st-sheet.is-open .st-sheet-close');
+        await host.page.click('#stHowBtn');
+        await host.page.waitForSelector('.st-sheet.is-open .st-credits', { timeout: 8000 });
+        await host.page.click('.st-sheet.is-open .st-credits summary');
+        await host.page.waitForFunction(() => document.querySelectorAll('#stCredits .st-credit').length >= 20, null, { timeout: 8000 });
+        await shot(host, 'sheet-help-credits');
+        await check(host, 'แผ่นวิธีเล่น');
+        await host.page.click('.st-sheet.is-open .st-sheet-close');
+        console.log('14. แตะช่อง = เจ้าของ + ค่าผ่านทาง + ดาว · วิธีเล่น + เครดิตรูปภาพ ✓');
+
+        // ---------- /m: เฉพาะหัวห้อง ----------
+        const typeChat = async (p, text) => {
+            if (!(await p.page.isVisible('#chatBox'))) await p.page.click('#toggleChat');
+            await p.page.fill('#chatInput', text);
+            await p.page.click('#sendChat');
+        };
+        await typeChat(phones[1], '/m');
+        await phones[1].page.waitForSelector('.swal2-popup', { timeout: 8000 });
+        assert(/แอดมินหรือหัวห้อง/.test(await phones[1].page.textContent('.swal2-popup')), 'คนอื่นใช้ /m ไม่ได้');
+        await phones[1].page.click('.swal2-confirm');
+        await typeChat(host, '/m');
+        await host.page.waitForSelector('#stDebug:not([hidden])', { timeout: 8000 });
+        await host.page.click('#closeChat').catch(() => {});
+        await host.page.click('#stDbgMint');
+        await phones[1].page.waitForSelector('#stDebugBadge:not([hidden])', { timeout: 8000 });
+        await shot(host, 'debug-panel');
+        await shot(phones[1], 'debug-badge-other');
+        await host.page.click('#stDebugToggle');
+        console.log('15. /m: หัวห้องเปิดเมนูทดสอบ · คนอื่นโดนปฏิเสธ · ทุกคนเห็นป้ายโหมดทดสอบ ✓');
+
+        // ---------- ขนาดจอหลายแบบ ----------
+        const sizes = [[1280, 900], [1440, 800], [1920, 1080], [2000, 700], [390, 844], [844, 390]];
+        for (const [w, h] of sizes) {
+            const v = await openPlayer(browser, base, ids[3], { width: w, height: h }, `view-${w}x${h}`, roomId);
+            await delay(700);
+            await v.page.evaluate(() => { const b = document.getElementById('ppTermsBar'); if (b) b.remove(); window.__setthi.skip(); });
+            await delay(400);
+            await check(v, `${w}x${h}`);
+            await shot(v, `viewport-${w}x${h}`);
+            assert(!v.errors.length, `${v.label} error: ${v.errors.join(' | ')}`);
+            await v.context.close();
+        }
+        console.log('16. 1280×900 · 1440×800 · 1920×1080 · 2000×700 · 390×844 · 844×390: กระดานไม่ทับแผง/หัว ไม่ล้น หมากอยู่ในช่อง ✓');
+
+        // ---------- ชนะจริง: ผูกขาดท่องเที่ยวผ่าน UI ----------
+        await setup({ props: { 5: { owner: P }, 11: { owner: P }, 21: { owner: P }, 27: { owner: null } }, seats: { [P]: { pos: 24, cash: 30000, island: 0, tourPending: false } }, dice: [[1, 2]], turnSeat: P });
+        await roll(host);
+        await waitPhase(host, 'build');
+        await host.page.waitForSelector('.st-sheet.is-open #stBuildBtn:not([disabled])', { timeout: 8000 });
+        await host.page.click('#stBuildBtn');
+        await phones[1].page.waitForSelector('#stFx .st-banner.is-huge', { timeout: 10000 });
+        await delay(1200);
+        await shot(phones[1], 'cut-monopoly-live');
+        for (const p of phones) await p.page.waitForSelector('#stEnd.is-on .st-podium', { timeout: 20000 });
+        await delay(1300);
+        await shot(host, 'end-mobile');
+        const fin = await state(host);
+        assert(fin.phase === 'finished' && fin.monopoly && fin.monopoly.type === 'tourist' && fin.winners[0].playerId === host.id, 'ชนะผูกขาดท่องเที่ยว');
+        for (const p of phones) {
             const probs = await layoutProblems(p.page);
             assert(!probs.length, `${p.label} layout ตอนจบ: ${probs.join(' | ')}`);
         }
-        const fin = await state(phones[1]);
-        assert(fin.phase === 'finished' && fin.standings.length === 4, 'จบเกมมีอันดับครบ');
-        console.log('7. หัวห้องจบเกม → โพเดียม + อันดับบนทุกเครื่อง ✓');
+        console.log('17. ผูกขาดท่องเที่ยวผ่าน UI → ฉากฉลอง → หน้าสรุปบนทุกเครื่อง ✓');
 
-        // ---------- error ----------
         for (const p of players) assert(!p.errors.length, `${p.label} มี error: ${p.errors.slice(0, 3).join(' | ')}`);
         assert(!/\[setthi\][^\n]*failed/.test(server.logs()), 'เซิร์ฟเวอร์ไม่มี error ของเศรษฐี');
         console.log(`✅ setthi browser: ${checks} checks · ภาพที่ ${SHOTS} · ${((Date.now() - started) / 1000).toFixed(1)}s`);

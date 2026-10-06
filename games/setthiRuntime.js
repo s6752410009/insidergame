@@ -296,6 +296,13 @@ module.exports = function createSetthiRuntime(getDeps) {
         if (!isLive(room)) throw new Error('เกมยังไม่เริ่ม');
         const state = room.gameState;
         const seatAt = k => state.seats[Number(k)];
+        // resetProps: ล้างกระดานทั้งหมดก่อน (ให้ฉากเทสไม่ขึ้นกับสิ่งที่เกิดก่อนหน้า)
+        if (spec.resetProps) {
+            Object.values(state.props).forEach(p => { p.owner = null; p.level = 0; p.stars = 0; });
+            state.festival = null;
+            state.festivalMult = 1;
+        }
+        if (spec.resetSeats) state.seats.forEach(seat => { seat.island = 0; seat.tourPending = false; seat.shield = null; });
         Object.entries(spec.props || {}).forEach(([k, v]) => {
             const p = state.props[Number(k)];
             if (!p) return;

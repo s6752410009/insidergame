@@ -355,6 +355,26 @@ test('ผูกขาดหลังโดนซื้อต่อ: ซื้อ
     audit(r3, 'หลังซื้อต่อ');
 });
 
+test('ผูกขาดพร้อมกันหลายแบบ: รายงานแบบที่มีช่องที่เพิ่งได้มา ตามลำดับ 3 สี → แถว → ท่องเที่ยว (คงที่ทุกครั้ง)', () => {
+    // ซื้อช่อง 7 = ครบสีที่ 3 และครบแถวล่างพร้อมกัน → รายงาน "3 สี"
+    for (let k = 0; k < 20; k += 1) {
+        const room = monoRoom();
+        give(room, 'a', [1, 2, 4, 5, 6, 9, 10]);
+        rollTotal(room, 'a', 0, [3, 4]);
+        E.buildTo(room, 'a', 0, null);
+        eq(S(room).phase, 'finished', 'ชนะ');
+        eq(S(room).monopoly.type, 'color', 'สี+แถวพร้อมกัน = รายงาน 3 สี');
+        eq(S(room).winners[0].playerId, 'a', 'a ชนะ');
+    }
+    // ซื้อช่อง 21 = ครบท่องเที่ยวและครบแถวบนพร้อมกัน → รายงาน "แถว"
+    const room = monoRoom();
+    give(room, 'a', [5, 11, 27, 17, 18, 20, 22, 23]);
+    rollTotal(room, 'a', 19, [1, 1]);
+    E.buildTo(room, 'a', 0, null);
+    eq(S(room).monopoly.type, 'line', 'ท่องเที่ยว+แถวพร้อมกัน = รายงานแถว');
+    eq(S(room).monopoly.side, 2, 'แถวบน');
+});
+
 test('เตือนผูกขาด: ขาดหลายช่องไม่เตือน · ล้มละลายแล้วไม่เตือน', () => {
     const room = monoRoom();
     give(room, 'a', B.SIDE_SQUARES[2].slice(0, 4));
