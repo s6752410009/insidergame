@@ -354,5 +354,54 @@ const handOf = (room, id) => room.gameState.players.find(p => p.playerId === id)
     console.log('17. เล่นสุ่มยาว — การ์ดคงที่ 15 ใบ ไม่มีชนิดไหนเกิน 3 ใบ ✓');
 }
 
+// ---------- 18. UX: เมนูแอ็กชันบอกเหตุผลที่กดไม่ได้ ----------
+{
+    const room = makeRoom(3);
+    let view = engine.buildClientState(room, 'p0');
+    assert(view.actionMenu.length === 7, `เมนูต้องมีครบ 7 แอ็กชัน (ได้ ${view.actionMenu.length})`);
+    const coup = view.actionMenu.find(a => a.id === 'coup');
+    const assassinate = view.actionMenu.find(a => a.id === 'assassinate');
+    assert(!coup.enabled && /ต้องมี 7 เหรียญ/.test(coup.reason) && /ขาดอีก 5/.test(coup.reason), 'รัฐประหารต้องล็อกพร้อมเหตุผล: ' + coup.reason);
+    assert(!assassinate.enabled && /ขาดอีก 1/.test(assassinate.reason), 'ลอบสังหารต้องบอกว่าขาดอีก 1');
+    assert(view.actionMenu.filter(a => a.enabled).length === 5, '2 เหรียญต้องกดได้ 5 แอ็กชัน');
+    assert(view.actionMenu.filter(a => a.enabled).map(a => a.id).join() === view.availableActions.map(a => a.id).join(),
+        'แอ็กชันที่กดได้ในเมนูต้องตรงกับ availableActions');
+    assert(engine.buildClientState(room, 'p1').actionMenu.length === 0, 'คนที่ยังไม่ถึงตาต้องไม่มีเมนู');
+
+    handOf(room, 'p0').coins = 10;
+    view = engine.buildClientState(room, 'p0');
+    const enabled = view.actionMenu.filter(a => a.enabled).map(a => a.id);
+    assert(enabled.length === 1 && enabled[0] === 'coup', '10 เหรียญต้องกดได้แค่รัฐประหาร');
+    assert(/ต้องรัฐประหารเท่านั้น/.test(view.actionMenu.find(a => a.id === 'income').reason), 'ปุ่มอื่นต้องบอกว่าต้องรัฐประหาร');
+    assert(typeof view.serverNow === 'number' && Math.abs(view.serverNow - Date.now()) < 5000, 'state ต้องมี serverNow ไว้ชดเชยนาฬิกา');
+    console.log('18. เมนูแอ็กชันครบ 7 ปุ่ม + เหตุผลที่ล็อก (เหรียญไม่พอ / ต้องรัฐประหาร) + serverNow ✓');
+}
+
+// ---------- 19. UX: ระหว่างแลกการ์ด ทูตไม่ดูเหมือนตกรอบ / จบเกมเปิดมือทุกคน ----------
+{
+    const room = makeRoom(3);
+    setHand(room, 'p0', ['ambassador', 'duke']);
+    engine.submitAction(room, 'p0', 'exchange');
+    engine.submitResponse(room, 'p1', 'pass');
+    engine.submitResponse(room, 'p2', 'pass');
+    assert(room.gameState.phase === 'exchange', 'ทุกคนผ่านต้องเข้าเฟสแลกทันที');
+    const other = engine.buildClientState(room, 'p1');
+    assert(other.players.find(p => p.playerId === 'p0').influenceCount === 2, 'คนอื่นต้องเห็นทูตยังมีการ์ด 2 ใบระหว่างแลก');
+    assert(other.players.every(p => p.finalHand === null), 'ระหว่างเกมห้ามเปิดมือใคร');
+    const mine = engine.buildClientState(room, 'p0');
+    assert(mine.pendingExchange.options.slice(0, 2).map(c => c.id).join() === 'ambassador,duke', 'ตัวเลือกสองใบแรกต้องเป็นการ์ดเดิม (UI ติดป้าย "ใบเดิม")');
+
+    const fin = makeRoom(2);
+    handOf(fin, 'p1').influence = ['duke'];
+    handOf(fin, 'p0').coins = 7;
+    setHand(fin, 'p0', ['captain', 'contessa']);
+    engine.submitAction(fin, 'p0', 'coup', 'p1');
+    assert(fin.gameState.phase === 'finished', 'รัฐประหารใบสุดท้ายต้องจบเกม');
+    const end = engine.buildClientState(fin, 'p1');
+    const winnerRow = end.players.find(p => p.playerId === 'p0');
+    assert(winnerRow.finalHand.map(c => c.id).join() === 'captain,contessa', 'จบเกมต้องเปิดการ์ดที่เหลือของผู้ชนะ');
+    console.log('19. แลกการ์ดยังนับ 2 ใบ · จบเกมเปิดมือที่เหลือให้ดูย้อนหลัง ✓');
+}
+
 console.log(`\n✅ COUP ENGINE ผ่านทั้งหมด (${passed} assertions)`);
 process.exit(0);

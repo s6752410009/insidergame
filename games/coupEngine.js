@@ -823,6 +823,38 @@ function getAvailableActions(room, playerId) {
         }));
 }
 
+/**
+ * เมนูแอ็กชันครบทุกปุ่ม พร้อมเหตุผลว่าทำไมกดไม่ได้ (เหรียญไม่พอ / ต้องรัฐประหาร)
+ * availableActions ซ่อนปุ่มที่กดไม่ได้ไปเลย คนเล่นครั้งแรกเลยไม่รู้ว่ามีลอบสังหาร/รัฐประหาร
+ */
+function getActionMenu(room, playerId) {
+    const state = room.gameState;
+    const player = getPlayer(room, playerId);
+    if (!player || !player.alive || state.phase !== 'action' || state.currentPlayerId !== playerId) {
+        return [];
+    }
+    const mustCoup = player.coins >= FORCED_COUP_AT;
+    return Object.values(ACTIONS).map(action => {
+        let reason = '';
+        if (mustCoup && action.id !== 'coup') {
+            reason = `มี ${player.coins} เหรียญ (ครบ ${FORCED_COUP_AT}) ต้องรัฐประหารเท่านั้น`;
+        } else if (player.coins < action.cost) {
+            reason = `ต้องมี ${action.cost} เหรียญ · ขาดอีก ${action.cost - player.coins}`;
+        }
+        return {
+            id: action.id,
+            thaiLabel: action.thaiLabel,
+            icon: action.icon,
+            detail: action.detail,
+            cost: action.cost,
+            claimCard: action.claim ? CARD_DEFINITIONS[action.claim] : null,
+            needsTarget: action.needsTarget,
+            enabled: !reason,
+            reason
+        };
+    });
+}
+
 function getAvailableResponses(room, playerId) {
     const state = room.gameState;
     const pending = state.pendingAction;
@@ -870,6 +902,8 @@ function buildClientState(room, viewerPlayerId) {
         currentPlayerId: state.currentPlayerId,
         isMyTurn: state.currentPlayerId === viewerPlayerId,
         phaseEndsAt: state.phaseEndsAt,
+        // เวลาเครื่องมือถือกับ server ไม่ตรงกันบ่อย — client ใช้ค่านี้ชดเชยนาฬิกานับถอยหลัง
+        serverNow: Date.now(),
         deckCount: state.deck.length,
         winner: state.winner,
         history: state.history || [],
@@ -893,7 +927,13 @@ function buildClientState(room, viewerPlayerId) {
             avatarFrame: player.avatarFrame,
             coins: player.coins,
             alive: player.alive,
-            influenceCount: player.influence.length,
+            // ระหว่างแลกการ์ด การ์ดในมือถูกย้ายไปกองตัวเลือกชั่วคราว — นับเท่าที่จะได้เก็บคืน
+            // ไม่งั้นคนอื่นเห็นทูตเหลือ 0 ใบเหมือนตกรอบไปแล้ว
+            influenceCount: state.pendingExchange?.playerId === player.playerId
+                ? state.pendingExchange.keepCount
+                : player.influence.length,
+            // จบเกมแล้วเปิดการ์ดที่เหลือของทุกคน ให้ดูย้อนได้ว่าใครถืออะไร/ใครโกหก
+            finalHand: isFinished ? player.influence.map(id => CARD_DEFINITIONS[id]) : null,
             // การ์ดที่หงายแล้วทุกคนเห็นได้ ส่วนคว่ำอยู่เห็นแค่จำนวน
             revealed: player.revealed.map(id => CARD_DEFINITIONS[id]),
             isSelf: player.playerId === viewerPlayerId,
@@ -929,6 +969,7 @@ function buildClientState(room, viewerPlayerId) {
         } : (state.pendingExchange ? { waitingFor: getPlayer(room, state.pendingExchange.playerId)?.name } : null),
 
         availableActions: getAvailableActions(room, viewerPlayerId),
+        actionMenu: getActionMenu(room, viewerPlayerId),
         availableResponses: getAvailableResponses(room, viewerPlayerId),
         cardCatalog: isFinished || true ? Object.values(CARD_DEFINITIONS) : []
     };
@@ -954,5 +995,6 @@ module.exports = {
     autoResolvePhase,
     handlePlayerLeft,
     getAvailableActions,
+    getActionMenu,
     buildClientState
 };
