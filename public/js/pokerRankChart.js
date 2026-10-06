@@ -61,31 +61,39 @@
         });
     }
 
-    function rankListHtml(list) {
+    // highlightName (ไม่บังคับ): ชื่อมือที่ผู้เล่นถืออยู่ ให้แถวนั้นเด่น + ป้าย "มือคุณ"
+    function rankListHtml(list, highlightName) {
         return '<div class="pk-rank-list">' + normalizeRows(list).map(function(row, index) {
             var pics = (row.example || []).map(function(card) {
                 return '<img src="' + escapeText(card.image) + '" alt="' + escapeText(row.name) + '">';
             }).join('');
-            return '<div class="pk-rank-item">' +
+            var mine = !!highlightName && highlightName === row.name;
+            return '<div class="pk-rank-item' + (mine ? ' is-you' : '') + '">' +
                 '<div class="pk-rank-n">' + (index + 1) + '</div>' +
                 '<div class="pk-rank-cards">' + pics + '</div>' +
-                '<div class="pk-rank-copy"><b>' + escapeText(row.name) + '</b><small>' +
+                '<div class="pk-rank-copy"><b>' + escapeText(row.name) +
+                (mine ? '<span class="pk-rank-you-tag">มือคุณ</span>' : '') + '</b><small>' +
                 escapeText(row.hint) + '</small></div>' +
                 '</div>';
         }).join('') + '</div>';
     }
 
-    function chartHtml(list) {
-        return rankListHtml(list);
+    function chartHtml(list, highlightName) {
+        return rankListHtml(list, typeof highlightName === 'string' ? highlightName : '');
     }
 
-    function guideHtml(mode, list) {
+    // ante (ไม่บังคับ): ค่าวางกองจริงของโต๊ะ — ไม่ส่งมาจะใช้ค่าเริ่มต้น 500
+    function guideHtml(mode, list, ante) {
         var isFour = mode === 'poker4';
+        var anteText = Number(ante) > 0 ? Math.floor(Number(ante)) : 500;
         var lead = isFour
             ? '<p>ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง คนที่ยังไม่หมอบได้ใบที่ 3 หงายให้ดู แล้วเปิดเทียบเลย</p>'
             : '<p>ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย</p>';
         return '<div class="pk-howto-copy">' + lead +
-            '<p>ตาละวางกอง 500 · สู้ ตาม เกทับ หมอบได้ · มือใหญ่กินกอง</p></div>' +
+            '<p>ตาละวางกอง ' + anteText + ' · มือใหญ่กินกอง</p>' +
+            '<p><b>ผ่าน</b> ไม่ลงเพิ่ม (ได้ถ้ายังไม่มีใครสู้) · <b>สู้</b> ลงชิปก่อน · <b>ตาม</b> ลงให้เท่าคนสู้ · ' +
+            '<b>เกทับ</b> ลงเพิ่มให้สูงกว่า · <b>หมอบ</b> ทิ้งมือ เสียชิปที่ลงไปแล้ว · <b>หมดหน้าตัก</b> ลงทั้งหมดที่มี</p>' +
+            '<p>หมดเวลาเลือกไพ่ ระบบทิ้งใบอ่อนสุดให้ · หมดเวลาลงชิป = หมอบอัตโนมัติ</p></div>' +
             '<p class="pk-rank-kicker">ใหญ่ → เล็ก</p>' +
             rankListHtml(list) +
             '<p class="pk-howto-foot">เล่นสนุก: ได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000<br>เล่นเก็บชิป: ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย</p>';

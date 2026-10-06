@@ -90,6 +90,134 @@ async function assertCriticalUiInViewport(page, label) {
     assert(geometry.scrollHeight <= geometry.height + 2, `${label}: หน้าเกิด scroll ที่ซ่อนไว้ ${geometry.scrollHeight}/${geometry.height}`);
 }
 
+function rectsOverlap(a, b) {
+    return !!(a && b && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom);
+}
+
+async function swalVisible(page) {
+    return page.evaluate(() => {
+        const node = document.querySelector('.swal2-popup');
+        return !!(node && node.offsetParent !== null && getComputedStyle(node).display !== 'none');
+    });
+}
+
+async function closeSwal(page, buttonSelector) {
+    await page.click(buttonSelector);
+    await page.waitForFunction(() => !document.querySelector('.swal2-container'), null, { timeout: 5000 });
+}
+
+// UX audit (มือถือแนวตั้ง 390×844, สี่ใบเก + บอท 1): เลือกทิ้ง/กันกดซ้ำ/ยืนยันก่อนหมอบ-หมดหน้าตัก/สรุปผลเปิดไพ่
+async function portraitPapercuts(browser, baseUrl) {
+    const socket = await connect(baseUrl);
+    const playerId = randomUUID();
+    let context;
+    try {
+        socket.emit('initPlayer', playerId);
+        await delay(250);
+        const created = await ack(socket, 'createRoom', {
+            playerId, name: 'Poker portrait', gameMode: 'poker4', maxPlayers: 10, pokerAnte: 300, pokerTableType: 'fun'
+        });
+        assert(created?.success, 'สร้างห้องแนวตั้งไม่ได้: ' + JSON.stringify(created));
+        const roomId = created.roomId;
+        socket.emit('setRoom', { roomId, playerId });
+        assert((await ack(socket, 'poker_addBots', { roomId, count: 1 }))?.success, 'เพิ่มบอทไม่ได้');
+        assert((await ack(socket, 'startGameFromLobby', { roomId }))?.success, 'เริ่มเกมแนวตั้งไม่ได้');
+        socket.close();
+
+        context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+        await context.addInitScript(() => {
+            try {
+                sessionStorage.setItem('insiderPromoSeen', '1');
+                localStorage.setItem('ig-firstplay-poker4', '1');
+                localStorage.removeItem('pkBetMoreOpen');
+            } catch (error) { /* ignore */ }
+        });
+        const page = await context.newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        await page.goto(`${baseUrl}/?playerId=${playerId}`);
+        await page.goto(`${baseUrl}/game/${roomId}?playerId=${playerId}`, { waitUntil: 'networkidle' });
+
+        await assertOwnCardsVisible(page, 4, 'แนวตั้ง ช่วงเลือกไพ่');
+        await assertCriticalUiInViewport(page, 'แนวตั้ง ช่วงเลือกไพ่');
+        const hud = await page.evaluate(() => {
+            const box = selector => { const r = document.querySelector(selector)?.getBoundingClientRect(); return r ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null; };
+            return { wallet: box('#pkWallet'), chat: box('#toggleChat'), rankTab: getComputedStyle(document.querySelector('#pkRankTab')).visibility };
+        });
+        assert(!rectsOverlap(hud.wallet, hud.chat), 'ปุ่มแชทต้องไม่ทับกระเป๋าชิป ' + JSON.stringify(hud));
+        assert(hud.rankTab === 'visible', 'ช่วงเลือกทิ้งต้องเปิดแรงก์ไพ่ได้');
+        assert(await page.locator('#myHand .pk-card-tag').count() === 2, 'ไพ่ที่ระบบเลือกทิ้งต้องมีป้าย "ทิ้ง" 2 ใบ');
+        assert(/ทิ้ง 2 ใบนี้/.test(await page.textContent('#pkSelectBtn')), 'ปุ่มยืนยันต้องบอกว่าทิ้ง 2 ใบ');
+        console.log('4. แนวตั้ง: ป้าย "ทิ้ง" ชัด ปุ่มแชทไม่ทับชิป และเปิดแรงก์ไพ่ได้ตอนเลือก ✓');
+
+        await page.click('#pkRankTab');
+        await page.waitForSelector('#pkRankDrawer.open');
+        assert(await page.locator('#pkRankList .pk-rank-item.is-you').count() === 1, 'แรงก์ไพ่ต้องไฮไลต์มือเรา 1 แถว');
+        await delay(400);
+        assert(await page.isVisible('#pkRankDrawer.open'), 'ลิ้นชักแรงก์ไพ่ต้องไม่ปิดเองระหว่างเลือกทิ้ง');
+        await page.click('#pkRankClose');
+        console.log('5. แรงก์ไพ่ไฮไลต์มือเรา และไม่เด้งปิดเองตอนเลือกทิ้ง ✓');
+
+        // แตะใบที่ 3 ตอนเลือกครบแล้ว = สลับ ไม่ใช่เงียบ
+        await page.click('#myHand .pk-playing.is-pick:not(.is-selected)');
+        assert(await page.locator('#myHand .pk-playing.is-selected').count() === 2, 'แตะใบใหม่ตอนเลือกครบต้องสลับ ยังเลือก 2 ใบ');
+        assert(await page.isEnabled('#pkSelectBtn'), 'สลับแล้วยังต้องกดยืนยันได้');
+        assert(/ถ้าเก็บแบบนี้|มือคุณ/.test(await page.textContent('#pkHint')), 'คำใบ้ต้องบอกผลของใบที่เลือกอยู่');
+        await page.click('#myHand .pk-playing.is-selected');
+        assert(await page.isDisabled('#pkSelectBtn'), 'เลือกไม่ครบต้องกดยืนยันไม่ได้');
+        assert(/อีก 1 ใบ/.test(await page.textContent('#pkSelectBtn')), 'ปุ่มที่กดไม่ได้ต้องบอกเหตุผล (เลือกอีก 1 ใบ)');
+        await page.click('#myHand .pk-playing.is-pick:not(.is-selected)');
+        // กดยืนยันรัว 2 ที — ต้องไม่เด้ง error
+        await page.evaluate(() => { const button = document.querySelector('#pkSelectBtn'); button.click(); button.click(); });
+        await delay(700);
+        assert(!(await swalVisible(page)), 'กดยืนยันทิ้งซ้ำต้องไม่เด้ง error');
+        console.log('6. แตะใบใหม่สลับได้ ปุ่มบอกเหตุผล และกดรัวไม่เด้ง error ✓');
+
+        // คนนั่งต่อจากคนแจก (บอท) = ได้ลงชิปก่อน ยังไม่มีใครสู้
+        await page.waitForSelector('[data-pk-bet="check"]', { timeout: 30000 });
+        await assertCriticalUiInViewport(page, 'แนวตั้ง ตาลงชิป');
+        const panelDisplay = await page.$eval('#pkMorePanel', node => getComputedStyle(node).display);
+        assert(panelDisplay === 'none', 'แผงสู้/หมดหน้าตักต้องพับไว้ก่อน ได้ display=' + panelDisplay);
+        await page.click('[data-pk-bet="fold"]');
+        await page.waitForSelector('.swal2-popup');
+        assert(/ผ่าน/.test(await page.textContent('.swal2-popup')), 'หมอบทั้งที่ผ่านได้ฟรีต้องถามก่อน');
+        await closeSwal(page, '.swal2-cancel');
+        await page.click('#pkBetMoreToggle');
+        await page.waitForSelector('#pkMorePanel:not([hidden])');
+        assert(/สู้ 300/.test(await page.textContent('#pkMorePanel [data-pk-bet="bet"]')), 'ปุ่มสู้ต้องบอกจำนวนชิป');
+        await page.click('#pkChipPlus');
+        assert(/สู้ 600/.test(await page.textContent('#pkMorePanel [data-pk-bet="bet"]')), 'กด + แล้วปุ่มสู้ต้องอัปเดตจำนวน');
+        await page.click('#pkMorePanel [data-pk-bet="allin"]');
+        await page.waitForSelector('.swal2-popup');
+        assert(/หมดหน้าตัก/.test(await page.textContent('.swal2-popup')), 'หมดหน้าตักต้องถามยืนยัน');
+        await closeSwal(page, '.swal2-cancel');
+        assert(await page.isVisible('[data-pk-bet="check"]'), 'ยกเลิกหมดหน้าตักแล้วยังต้องเป็นตาเรา');
+        await page.evaluate(() => { const button = document.querySelector('[data-pk-bet="check"]'); button.click(); button.click(); });
+        await delay(700);
+        assert(!(await swalVisible(page)), 'กดผ่านซ้ำต้องไม่เด้ง "ยังไม่ถึงตาคุณ"');
+        console.log('7. ตาลงชิป: แผงพับได้ ปุ่มบอกยอด ถามก่อนหมอบฟรี/หมดหน้าตัก กดรัวไม่ error ✓');
+
+        // เล่นต่อจนเปิดไพ่ (บอทสู้มา = ตาม)
+        const deadline = Date.now() + 45000;
+        let result = '';
+        while (Date.now() < deadline) {
+            result = await page.textContent('#pkNowCopy');
+            if (/ชนะ|ได้กอง/.test(result)) break;
+            const call = await page.$('[data-pk-bet="call"], [data-pk-bet="check"]');
+            if (call) await call.click().catch(() => {});
+            await delay(300);
+        }
+        assert(/ชนะด้วย .+ · ได้ \d+|ได้กอง \d+|แบ่งกอง \d+/.test(result), 'ตอนเปิดไพ่ต้องบอกว่าใครชนะด้วยมืออะไร ได้เท่าไร ได้ "' + result + '"');
+        const hint = await page.textContent('#pkHint');
+        assert(/คุณ(ชนะ|แพ้|หมอบ)/.test(hint), 'ต้องสรุปผลของเราเอง ได้ "' + hint + '"');
+        assert(errors.length === 0, 'มี JavaScript error: ' + errors.join(' | '));
+        console.log('8. เปิดไพ่บอกผู้ชนะ + มือ + ยอด และสรุปผลของเรา ✓');
+    } finally {
+        try { socket.close(); } catch {}
+        if (context) await context.close();
+    }
+}
+
 (async () => {
     const server = await spawnServer();
     const socket = await connect(server.baseUrl);
@@ -138,6 +266,9 @@ async function assertCriticalUiInViewport(page, label) {
         assert(await page.locator('#pkMorePanel [data-pk-bet]').count() >= 1, 'แผงเพิ่มเดิมพันต้องมีคำสั่งเดิมพัน');
         assert(errors.length === 0, 'มี JavaScript error: ' + errors.join(' | '));
         console.log('3. แผงเพิ่มเดิมพันเปิดได้ และยังอยู่ใน viewport ✓');
+        await context.close();
+
+        await portraitPapercuts(browser, server.baseUrl);
         console.log('\n✅ Poker UI regression ผ่าน');
     } finally {
         try { socket.close(); } catch {}

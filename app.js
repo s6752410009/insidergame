@@ -3416,6 +3416,13 @@ function isPokerCashRoom(room) {
     return room?.gameState?.tableType === 'cash' || room?.settings?.pokerTableType === 'cash';
 }
 
+// บอทลงชิปช้าลงให้คนอ่านทัน (เดิม 0.7–1.2 วิ บอท 3 ตัวจบรอบใน 2 วิ) — ตอนเลือกทิ้งยังเร็วเหมือนเดิม
+const POKER_BOT_BET_MS = Number(process.env.POKER_BOT_BET_MS) >= 0 && process.env.POKER_BOT_BET_MS !== '' && process.env.POKER_BOT_BET_MS != null ? Number(process.env.POKER_BOT_BET_MS) : 1400;
+function pokerBotDelayMs(phase) {
+    if (phase === 'bet') return POKER_BOT_BET_MS + Math.floor(Math.random() * 600);
+    return 700 + Math.floor(Math.random() * 500);
+}
+
 function schedulePokerBots(room) {
     if (!room || !isPokerMode(room.settings.gameMode)) return;
     clearPokerBotTimer(room.roomId);
@@ -3440,7 +3447,7 @@ function schedulePokerBots(room) {
         } catch (error) {
             console.error('[poker] bots failed:', error.message);
         }
-    }, 700 + Math.floor(Math.random() * 500));
+    }, pokerBotDelayMs(state.phase));
     pokerBotTimeouts.set(room.roomId, timeoutId);
 }
 

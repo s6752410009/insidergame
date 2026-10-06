@@ -345,4 +345,15 @@ assert(!roomManager.isRoomJoinable({
     gameState: { status: 'playing', phase: 'reveal', winner: { playerId: 'p0', name: 'A' } }
 }), 'กำลังเล่นต้องเข้าห้องใหม่ไม่ได้');
 
+// UX audit: แผงแรงก์ไพ่ไฮไลต์มือเรา + วิธีเล่นใช้ค่าวางกองจริง (ไม่ fix 500)
+require('../public/js/pokerRankChart.js');
+const rankChart = globalThis.pokerRankChart;
+const guideRows = hands.rankGuideForClient();
+const marked = rankChart.chartHtml(guideRows, 'เรียง');
+assert((marked.match(/is-you/g) || []).length === 1, 'แรงก์ไพ่ต้องไฮไลต์มือเราแถวเดียว');
+assert(!rankChart.chartHtml(guideRows, true).includes('is-you'), 'ไม่ส่งชื่อมือ ห้ามไฮไลต์');
+assert(rankChart.guideHtml('poker5', guideRows, 300).includes('วางกอง 300'), 'วิธีเล่นต้องใช้ค่าวางกองจริงของโต๊ะ');
+assert(rankChart.guideHtml('poker4', guideRows).includes('วางกอง 500'), 'ไม่รู้ค่าวางกองใช้ 500');
+assert(/หมดเวลาลงชิป/.test(rankChart.guideHtml('poker5', guideRows)), 'วิธีเล่นต้องบอกว่าหมดเวลาแล้วเกิดอะไร');
+
 console.log(`OK ${passed} asserts`);

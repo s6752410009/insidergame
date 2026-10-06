@@ -220,8 +220,13 @@ async function playStreet(players, roomId, script) {
         const human = bots.players[0];
         const dumped = await ack(human.socket, 'poker_select', { roomId: bots.roomId, cardIds: dumpTwo(latest(human)) });
         assert(dumped?.success, 'คนทิ้งไพ่ไม่ได้');
+        let botTurnAt = 0;
+        let botThinkMs = null;
         for (let guard = 0; guard < 40; guard += 1) {
             const state = latest(human);
+            const botTurn = !!(state && state.phase === 'bet' && state.toActPlayerId && state.toActPlayerId !== human.id);
+            if (botTurn && !botTurnAt) botTurnAt = Date.now();
+            if (!botTurn && botTurnAt && botThinkMs == null) botThinkMs = Date.now() - botTurnAt;
             if (state && state.lastResult) break;
             if (state && state.phase === 'bet' && state.toActPlayerId === human.id) {
                 const actions = state.availableActions || {};
@@ -232,6 +237,8 @@ async function playStreet(players, roomId, script) {
         }
         const botDone = latest(human);
         assert(botDone && botDone.lastResult, 'เล่นกับบอทต้องมีผลมือ');
+        // UX: บอทต้องคิดนานพอให้คนอ่านทัน (ตั้งไว้ ≥1.4 วิ เผื่อรอบ poll 250ms)
+        assert(botThinkMs == null || botThinkMs >= 900, 'บอทลงชิปเร็วเกินคนตามทัน: ' + botThinkMs + 'ms');
         const leftBots = await ack(human.socket, 'leaveRoom', { roomId: bots.roomId });
         assert(leftBots?.success !== false && !leftBots?.__timeout, 'ออกจากห้องบอทไม่ได้: ' + JSON.stringify(leftBots));
         const probe = await conn(base);
@@ -241,7 +248,7 @@ async function playStreet(players, roomId, script) {
         const rooms = (listed && listed.rooms) || [];
         assert(!rooms.some(row => row.roomId === bots.roomId), 'ห้องที่เหลือแต่บอทต้องหายจากรายการ ยังเจอ ' + bots.roomId);
         probe.close();
-        console.log('4. คน + บอท เล่นจนเปิดเทียบ และออกแล้วห้องบอทหาย ✓');
+        console.log('4. คน + บอท เล่นจนเปิดเทียบ (บอทคิด ' + botThinkMs + 'ms) และออกแล้วห้องบอทหาย ✓');
         bots.players.forEach(p => p.socket.close());
 
         const cycle = await seatPlayers(base, 'poker5', 2);
