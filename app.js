@@ -9554,7 +9554,7 @@ io.sockets.on('connection', function(socket) {
                         if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId: roomId });
                     });
                     sendChatMessageToRoom(io, roomId, 'System',
-                        'เศรษฐีเริ่มแล้ว — ทอยเต๋า ซื้อที่ดิน เก็บค่าเช่า (เงินในเกม ไม่มีมูลค่าจริง)', '#f5c86b');
+                        'เศรษฐีเริ่มแล้ว — ทอยเต๋า ซื้อเมือง สร้างแลนด์มาร์ก ผูกขาดชนะ (เงินในเกม ไม่มีมูลค่าจริง)', '#f5c86b');
                     logGameStartFromRoom(currentRoom);
                     setthiRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;

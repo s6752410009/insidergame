@@ -61,7 +61,7 @@ module.exports = function createSetthiRuntime(getDeps) {
         return isRoom(room) ? room : null;
     }
 
-    /** ปลุก engine ตามเวลาที่ใกล้สุด (หมดเวลาตา/ประมูล/ดีล/นาฬิกาเกม) */
+    /** ปลุก engine ตามเวลาที่ใกล้สุด (หมดเวลาตา/นาฬิกาเกม) */
     function syncPhaseTimer(room) {
         if (!isLive(room)) {
             clearPhaseTimer(room.roomId);
