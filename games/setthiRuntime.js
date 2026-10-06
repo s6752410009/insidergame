@@ -1,0 +1,367 @@
+/**
+ * เศรษฐี — ส่วนฝั่งเซิร์ฟเวอร์ที่ผูกกับ socket/timer (แยกจาก app.js ให้ merge ง่าย)
+ * engine ล้วนอยู่ที่ games/setthiEngine.js — ไฟล์นี้แค่ตั้งเวลา ยิง state ทีละ socket บันทึกสถิติ และกู้เกมหลังรีสตาร์ต
+ *
+ * ใช้: const setthi = require('./games/setthiRuntime')(() => ({ io, roomManager, ... }))
+ */
+
+const engine = require('./setthiEngine');
+
+const MODE = 'setthi';
+const STATE_EVENT = 'setthiState';
+const WATCHDOG_MS = 2000;
+
+module.exports = function createSetthiRuntime(getDeps) {
+    const phaseTimeouts = new Map();
+    const botTimeouts = new Map();
+    const watchdogs = new Map();
+    const botAddInFlight = new Set();
+    const deps = () => getDeps();
+
+    function isRoom(room) {
+        return !!(room && room.settings && room.settings.gameMode === MODE);
+    }
+
+    function isLive(room) {
+        return isRoom(room) && room.gameState && room.gameState.status === 'playing' && room.gameState.phase !== 'finished';
+    }
+
+    function clearPhaseTimer(roomId) {
+        const timer = phaseTimeouts.get(roomId);
+        if (timer) {
+            clearTimeout(timer.timeoutId);
+            phaseTimeouts.delete(roomId);
+        }
+    }
+
+    function clearBotTimer(roomId) {
+        const timer = botTimeouts.get(roomId);
+        if (timer) {
+            clearTimeout(timer.timeoutId);
+            botTimeouts.delete(roomId);
+        }
+    }
+
+    function clearWatchdog(roomId) {
+        const id = watchdogs.get(roomId);
+        if (id) {
+            clearInterval(id);
+            watchdogs.delete(roomId);
+        }
+    }
+
+    function clearTimers(roomId) {
+        clearPhaseTimer(roomId);
+        clearBotTimer(roomId);
+        clearWatchdog(roomId);
+    }
+
+    function currentRoom(roomId) {
+        const room = deps().roomManager.getRoom(roomId);
+        return isRoom(room) ? room : null;
+    }
+
+    /** ปลุก engine ตามเวลาที่ใกล้สุด (หมดเวลาตา/นาฬิกาเกม) */
+    function syncPhaseTimer(room) {
+        if (!isLive(room)) {
+            clearPhaseTimer(room.roomId);
+            return;
+        }
+        const due = engine.nextDeadline(room);
+        if (!due) {
+            clearPhaseTimer(room.roomId);
+            return;
+        }
+        const existing = phaseTimeouts.get(room.roomId);
+        if (existing && existing.due === due) return;
+        clearPhaseTimer(room.roomId);
+        const timeoutId = setTimeout(() => {
+            phaseTimeouts.delete(room.roomId);
+            runTick(room.roomId);
+        }, Math.max(60, due - Date.now() + 15));
+        phaseTimeouts.set(room.roomId, { timeoutId, due });
+    }
+
+    function runTick(roomId) {
+        const live = currentRoom(roomId);
+        if (!live || !isLive(live)) return;
+        try {
+            if (engine.tick(live)) emitRoomState(live);
+            else syncPhaseTimer(live);
+        } catch (error) {
+            console.error('[setthi] tick failed:', error.message);
+        }
+    }
+
+    // คนที่ต้องตัดสินใจหลุดกลางตา → deadline สั้นลง ต้องมีคนคอยเช็ก (ไม่มี event ตอน socket หลุด)
+    function ensureWatchdog(room) {
+        if (!isLive(room)) {
+            clearWatchdog(room.roomId);
+            return;
+        }
+        if (watchdogs.has(room.roomId)) return;
+        const roomId = room.roomId;
+        const id = setInterval(() => {
+            const live = currentRoom(roomId);
+            if (!live || !isLive(live)) {
+                clearWatchdog(roomId);
+                return;
+            }
+            const due = engine.nextDeadline(live);
+            if (due && due <= Date.now()) runTick(roomId);
+            else syncPhaseTimer(live);
+        }, WATCHDOG_MS);
+        if (typeof id.unref === 'function') id.unref();
+        watchdogs.set(roomId, id);
+    }
+
+    function scheduleBots(room) {
+        if (!isLive(room) || !engine.botNeedsTurn(room)) {
+            clearBotTimer(room.roomId);
+            return;
+        }
+        const delay = engine.botDelay(room);
+        if (delay === null) return;
+        const dueAt = Date.now() + delay;
+        const existing = botTimeouts.get(room.roomId);
+        if (existing && existing.step === room.gameState.step && Math.abs(existing.dueAt - dueAt) < 40) return;
+        clearBotTimer(room.roomId);
+        const timeoutId = setTimeout(() => {
+            botTimeouts.delete(room.roomId);
+            const live = currentRoom(room.roomId);
+            if (!live || !isLive(live)) return;
+            try {
+                if (engine.playBotTurns(live)) emitRoomState(live);
+                else scheduleBots(live);
+            } catch (error) {
+                console.error('[setthi] bots failed:', error.message);
+                // บอทพัง (ไม่ควรเกิด) — ปล่อยให้ autopilot ตามเวลาพาเกมเดินต่อ
+                syncPhaseTimer(live);
+            }
+        }, delay + 20);
+        botTimeouts.set(room.roomId, { timeoutId, dueAt, step: room.gameState.step });
+    }
+
+    /** /m ใช้ได้: แอดมินเว็บ หรือหัวห้อง (เงินในเกมเป็นเงินสนุก ไม่มีมูลค่าจริง — กติกาเดียวกับโต๊ะโป๊กเกอร์เล่นสนุก) */
+    function canDebug(room, playerId) {
+        if (!room || !playerId) return false;
+        const { isSiteAdminPlayer } = deps();
+        if (typeof isSiteAdminPlayer === 'function' && isSiteAdminPlayer(playerId)) return true;
+        return room.admin === playerId;
+    }
+
+    function buildPayload(room, playerId) {
+        if (!isRoom(room)) return null;
+        const payload = engine.buildClientState(room, playerId);
+        payload.canDebug = canDebug(room, playerId);
+        return payload;
+    }
+
+    function boardDef() {
+        return engine.board.publicBoard();
+    }
+
+    // state ส่งทีละ socket (แต่ละคนได้ปุ่มของตัวเอง · ลำดับการ์ดอยู่ฝั่งเซิร์ฟเวอร์)
+    function emitState(room, targetSocketId = null, playerId = null) {
+        if (!isRoom(room)) return;
+        const { io } = deps();
+        syncPhaseTimer(room);
+        ensureWatchdog(room);
+        if (targetSocketId && playerId) {
+            io.to(targetSocketId).emit(STATE_EVENT, buildPayload(room, playerId));
+            return;
+        }
+        (room.players || []).forEach(player => {
+            if (player.socketId && !engine.isBotId(player.playerId)) {
+                io.to(player.socketId).emit(STATE_EVENT, buildPayload(room, player.playerId));
+            }
+        });
+    }
+
+    function flushHistoryToLogs(room) {
+        const history = room.gameState?.history;
+        if (!Array.isArray(history) || !history.length) return;
+        const { io, addServerLog } = deps();
+        const lastAt = Number(room.gameState.lastLoggedHistoryAt) || 0;
+        const fresh = history
+            .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
+            .sort((left, right) => new Date(left.at) - new Date(right.at));
+        fresh.forEach(item => {
+            if (!['bankrupt', 'finished', 'left', 'takeover', 'landmark', 'monopoly', 'timeup'].includes(item.kind)) return; // debug ลงแยกเป็น admin log ใน app.js
+            addServerLog(io, 'game', room.roomId, `💰 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
+                item.kind === 'left' || item.kind === 'bankrupt' ? 'warning' : 'info',
+                { gameMode: MODE, meta: { kind: item.kind || null, event: 'setthi_history' } });
+        });
+        if (fresh.length) {
+            room.gameState.lastLoggedHistoryAt = new Date(fresh[fresh.length - 1].at).getTime();
+        }
+    }
+
+    function finalizeIfNeeded(room) {
+        const state = room?.gameState;
+        if (!state || state.phase !== 'finished' || state.statsRecordedAt) return;
+        const { statsManager, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby } = deps();
+        state.statsRecordedAt = new Date().toISOString();
+        // เกมที่ใช้เมนูทดสอบ /m ไม่บันทึกสถิติ/ชนะ
+        if (Array.isArray(state.winners) && state.winners.length && !state.debugUsed) {
+            statsManager.recordGameEnd(room.roomId, {
+                mode: MODE,
+                winners: state.winners,
+                standings: state.standings || [],
+                roomName: room.name,
+                minutes: state.clock ? state.clock.minutes : 0,
+                reason: state.finishReason
+            });
+        }
+        clearTimers(room.roomId);
+        notifyGameEndAfterRecord(room);
+        scheduleFinishedGameReturnToLobby(room);
+    }
+
+    function emitRoomState(room) {
+        if (!isRoom(room)) return;
+        const { io, buildRoomUpdatePayload, roomManager } = deps();
+        flushHistoryToLogs(room);
+        finalizeIfNeeded(room);
+        emitState(room);
+        scheduleBots(room);
+        io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+        // engine แก้ state ตรง ๆ — สั่งเซฟ (debounce ใน roomManager) ให้รีสตาร์ตแล้วกู้เกมได้สด
+        if (roomManager && typeof roomManager.schedulePersistRooms === 'function') roomManager.schedulePersistRooms();
+    }
+
+    /** หลังรีสตาร์ต: อะไรที่เลยเวลาแล้ว resolve ทันที ที่เหลือตั้งนาฬิกา/บอทใหม่ */
+    function recover(room) {
+        if (!isLive(room)) return;
+        try {
+            if (engine.tick(room)) {
+                emitRoomState(room);
+                return;
+            }
+        } catch (error) {
+            console.error('[setthi] recover failed:', error.message);
+        }
+        syncPhaseTimer(room);
+        ensureWatchdog(room);
+        scheduleBots(room);
+    }
+
+    /** ห้องถูกทิ้ง (ไม่มีคนออนไลน์นาน) — ให้เวลาเดินต่อหนึ่งจังหวะเหมือนเกมอื่น */
+    function forceResolve(room) {
+        if (!isLive(room)) return;
+        try {
+            room.gameState.phaseEndsAt = Date.now() - 1;
+            engine.tick(room);
+        } catch (error) {
+            console.error('[setthi] forceResolve failed:', error.message);
+        }
+        emitRoomState(room);
+    }
+
+    function handleLeft(room, playerId) {
+        if (!isRoom(room)) return;
+        engine.handlePlayerLeft(room, playerId);
+    }
+
+    function startGame(room) {
+        clearTimers(room.roomId);
+        engine.startGame(room);
+    }
+
+    function gameEndNotification(room) {
+        const state = room.gameState || {};
+        const winners = Array.isArray(state.winners) ? state.winners : [];
+        const playerCount = (state.seats || []).length;
+        const fmt = n => '฿' + Math.round(Number(n) || 0).toLocaleString('en-US');
+        const how = state.monopoly ? engine.MONOPOLY_LABEL[state.monopoly.type] : null;
+        const text = winners.length
+            ? `${winners.map(w => w.name).join(', ')} ${winners.length > 1 ? 'ชนะร่วม' : 'ชนะ'}${how ? ' — ' + how + '!' : ' (ทรัพย์สิน ' + fmt(winners[0].netWorth) + ')'}`
+            : 'ไม่มีผู้ชนะ';
+        return {
+            chatMessage: `จบเกมเศรษฐี! ${text}`,
+            chatColor: '#f5c86b',
+            logMessage: `💰 เศรษฐี จบ — ${text} · ${playerCount} คน · ${state.finishReason || ''}`.trim(),
+            logType: 'success',
+            meta: { winnerName: winners[0] ? winners[0].name : null, winners: winners.length, playerCount, rounds: state.round || 1, monopoly: state.monopoly ? state.monopoly.type : null }
+        };
+    }
+
+    /**
+     * เทสเท่านั้น (SETTHI_TEST_HOOKS=1): จัดฉากกลางเกม เช่น ใครถือช่องไหนขั้นไหน เงิน ตำแหน่ง เต๋าถัดไป
+     * spec = { props: { [square]: { owner: seatIndex|null, level } }, seats: { [seatIndex]: { cash, pos, laps, island, tourPending, shield } },
+     *          dice: [[a,b], ...], festival, turnSeat }
+     */
+    function testSetup(room, spec = {}) {
+        if (process.env.SETTHI_TEST_HOOKS !== '1') throw new Error('ปิดอยู่');
+        if (!isLive(room)) throw new Error('เกมยังไม่เริ่ม');
+        const state = room.gameState;
+        const seatAt = k => state.seats[Number(k)];
+        Object.entries(spec.props || {}).forEach(([k, v]) => {
+            const p = state.props[Number(k)];
+            if (!p) return;
+            const seat = v.owner === null || v.owner === undefined ? null : seatAt(v.owner);
+            p.owner = seat ? seat.playerId : null;
+            p.level = seat ? Math.max(0, Math.min(engine.board.SQUARES[Number(k)].type === 'city' ? 4 : 0, Number(v.level) || 0)) : 0;
+            p.stars = seat && p.level === 4 ? Math.max(0, Math.min(engine.STAR_MAX, Number(v.stars) || 0)) : 0;
+        });
+        Object.entries(spec.seats || {}).forEach(([k, v]) => {
+            const seat = seatAt(k);
+            if (!seat) return;
+            if (Number.isInteger(v.cash)) {
+                state.ledger.bankOut += v.cash - seat.cash; // ปรับบัญชีให้ยังลง
+                seat.cash = v.cash;
+            }
+            ['pos', 'laps', 'island'].forEach(f => { if (Number.isInteger(v[f])) seat[f] = v[f]; });
+            if (v.tourPending !== undefined) seat.tourPending = !!v.tourPending;
+            if (v.shield !== undefined) seat.shield = v.shield || null;
+        });
+        if (spec.festival !== undefined) { state.festival = spec.festival; state.festivalMult = spec.festival === null ? 1 : ([2, 4, 8, 16].includes(Number(spec.festivalMult)) ? Number(spec.festivalMult) : 2); }
+        if (Array.isArray(spec.dice)) state.testDice = spec.dice.map(d => [Number(d[0]), Number(d[1])]);
+        if (Number.isInteger(spec.turnSeat) && state.seats[spec.turnSeat]) {
+            const seat = state.seats[spec.turnSeat];
+            state.turn = { playerId: seat.playerId, seq: (state.turnSeq || 0) + 1, doublesStreak: 0, canRollAgain: false, hasRolled: false, lastRoll: null, startedAt: Date.now() };
+            state.turnSeq = state.turn.seq;
+            state.pending = null;
+            state.debts = [];
+            state.phase = 'roll';
+            state.phaseActor = seat.playerId;
+            state.phaseSeq = (state.phaseSeq || 0) + 1;
+            state.phaseStartedAt = Date.now();
+            state.phaseMs = engine.TURN_MS;
+            if (seat.tourPending) {
+                state.pending = { type: 'pick', purpose: 'tour', playerId: seat.playerId, id: (state.pendingSeq || 0) + 1 };
+                state.pendingSeq = state.pending.id;
+                state.phase = 'pick';
+                state.phasePendingId = state.pending.id;
+                state.phaseMs = engine.DECIDE_MS;
+            }
+        }
+        state.animUntil = Date.now();
+        state.lastActionAt = Date.now();
+        state.step = (state.step || 0) + 1;
+        return state;
+    }
+
+    return {
+        MODE,
+        STATE_EVENT,
+        testSetup,
+        canDebug,
+        engine,
+        botAddInFlight,
+        isRoom,
+        clearTimers,
+        syncPhaseTimer,
+        scheduleBots,
+        buildPayload,
+        boardDef,
+        emitState,
+        emitRoomState,
+        finalizeIfNeeded,
+        recover,
+        forceResolve,
+        handleLeft,
+        startGame,
+        gameEndNotification
+    };
+};

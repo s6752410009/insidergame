@@ -937,7 +937,8 @@ $(function() {
         { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'drawguess', label: 'วาดแล้วทาย', description: 'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
-        { id: 'colorcards', label: 'ไพ่ทิ้งสี', description: 'ลงไพ่ให้สีหรือเลขตรงกัน ทิ้งให้หมดมือก่อนชนะ เหลือใบเดียวต้องกดบอก — 2–10 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 10 }
+        { id: 'colorcards', label: 'ไพ่ทิ้งสี', description: 'ลงไพ่ให้สีหรือเลขตรงกัน ทิ้งให้หมดมือก่อนชนะ เหลือใบเดียวต้องกดบอก — 2–10 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 10 },
+        { id: 'setthi', label: 'เศรษฐี', description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–4 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 4 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1237,6 +1238,15 @@ $(function() {
                 title: 'ไพ่ทิ้งสี',
                 summary: 'ลงไพ่ให้สีหรือเลขตรงกับกอง ใช้ข้าม กลับทิศ +2 +4 แกล้งเพื่อน ทิ้งหมดมือก่อนชนะ — เหลือใบเดียวต้องกดบอก!',
                 bullets: ['2-10 คน', 'รอบละ 5–10 นาที', 'กด "จับได้!" คนลืมบอก', 'ใส่บอทได้']
+            },
+            setthi: {
+                tone: 'linear-gradient(135deg, rgba(245,200,107,0.26), rgba(26,35,50,0.94) 60%)',
+                border: 'rgba(245,200,107,0.45)',
+                cover: '/assets/games/setthi/cover.jpg',
+                badge: '💰 ทอย · ซื้อ · ผูกขาด',
+                title: 'เศรษฐี',
+                summary: 'ทอยเต๋าเดินรอบกระดานเมืองไทย ซื้อเมืองแล้วสร้างจนเป็นแลนด์มาร์ก ซื้อต่อที่ของเพื่อน 2 เท่า ผูกขาดชนะทันที — เงินในเกม ไม่มีมูลค่าจริง',
+                bullets: ['2-4 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้']
             }
         };
 
@@ -1260,7 +1270,8 @@ $(function() {
             pokdeng: 'ป๊อกเด้ง',
             wavelength: 'คลื่นความคิด',
             drawguess: 'วาดแล้วทาย',
-            colorcards: 'ไพ่ทิ้งสี'
+            colorcards: 'ไพ่ทิ้งสี',
+            setthi: 'เศรษฐี'
         };
         return {
             roomName: roomNames[modeId] || roomNames.insider,
@@ -1298,7 +1309,8 @@ $(function() {
         { id: 'word', label: '🗣️ ใบ้คำ · ทายคำ' },
         { id: 'bluff', label: '🎭 หักหลัง · จับโกหก' },
         { id: 'cards', label: '🃏 ไพ่' },
-        { id: 'team', label: '🤝 เล่นเป็นทีม' }
+        { id: 'team', label: '🤝 เล่นเป็นทีม' },
+        { id: 'board', label: '🎲 เกมกระดาน' }
     ];
     const MODE_CATEGORY_OF = {
         insider: ['word', 'bluff'],
@@ -1315,9 +1327,11 @@ $(function() {
         poker5: ['cards'],
         poker4: ['cards'],
         pokdeng: ['cards'],
-        colorcards: ['cards']
+        colorcards: ['cards'],
+        setthi: ['board']
     };
     const NEW_MODE_IDS = ['drawguess', 'codenames', 'wavelength', 'colorcards'];
+    NEW_MODE_IDS.push('setthi');
 
     function buildModeCategoryChipsHtml(modeItems) {
         const present = new Set();
@@ -1449,7 +1463,7 @@ $(function() {
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
                                     : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
                                         : (room.gameMode === 'poker4' ? 'สี่ใบเก'
-                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : room.gameMode === 'wavelength' ? 'คลื่นความคิด' : room.gameMode === 'colorcards' ? 'ไพ่ทิ้งสี' : 'Insider')))))))
+                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : room.gameMode === 'wavelength' ? 'คลื่นความคิด' : room.gameMode === 'colorcards' ? 'ไพ่ทิ้งสี' : room.gameMode === 'setthi' ? 'เศรษฐี' : 'Insider')))))))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'
@@ -1469,7 +1483,9 @@ $(function() {
                                     ? 'background: linear-gradient(135deg, #166534, #052e16); color:#bbf7d0; border:1px solid rgba(74,222,128,0.4);'
                                     : (room.gameMode === 'poker4'
                                         ? 'background: linear-gradient(135deg, #991b1b, #1c1917); color:#fecaca; border:1px solid rgba(248,113,113,0.35);'
-                                        : (room.gameMode === 'colorcards'
+                                        : (room.gameMode === 'setthi'
+                                            ? 'background: #1a2332; color:#f5c86b; border:1px solid rgba(245,200,107,0.6);'
+                                            : room.gameMode === 'colorcards'
                                             ? 'background: #1a2332; color:#f5c86b; border:1px solid rgba(96,165,250,0.5);'
                                         : (room.gameMode === 'pokdeng'
                                             ? 'background: #5c1419; color:#fde68a; border:1px solid rgba(245,200,107,0.4);'
@@ -1752,6 +1768,18 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">แจกคนละ 7 ใบ · หมดเวลา = จั่วให้แล้วผ่าน · ใส่บอทได้ในห้องรอ</div>
                     </div>
 
+                    <div class="room-form-group" id="setthiSettingsGroup" role="group" aria-labelledby="setthiSettingsLabel" style="display:none;">
+                        <div class="room-form-label" id="setthiSettingsLabel"><span class="icon">💰</span> เวลาเกม:</div>
+                        <select id="setthiMinutes" class="search-box" style="min-height:48px; width:100%;" aria-label="เวลาเกมเศรษฐี">
+                            <option value="20">20 นาที</option>
+                            <option value="30" selected>30 นาที</option>
+                            <option value="45">45 นาที</option>
+                            <option value="60">60 นาที</option>
+                            <option value="0">ไม่จำกัด (เล่นจนเหลือคนสุดท้าย)</option>
+                        </select>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–4 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง</div>
+                    </div>
+
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
                         <div class="room-form-label" id="wolfCountLabel">
                             <span class="icon">🐺</span> จำนวนหมาป่า:
@@ -2010,6 +2038,8 @@ $(function() {
                     if (document.getElementById('drawguessSettingsGroup')) document.getElementById('drawguessSettingsGroup').style.display = selectedMode === 'drawguess' ? 'block' : 'none';
                     if (selectedMode === 'colorcards') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('colorcardsTableGroup')) document.getElementById('colorcardsTableGroup').style.display = selectedMode === 'colorcards' ? 'block' : 'none';
+                    if (selectedMode === 'setthi') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('setthiSettingsGroup')) document.getElementById('setthiSettingsGroup').style.display = selectedMode === 'setthi' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
@@ -2180,7 +2210,8 @@ $(function() {
                     drawguessCategory: gameMode === 'drawguess' ? ((document.getElementById('drawguessCategory') || {}).value || 'mixed') : undefined,
                     colorcardsTarget: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTarget') || {}).value || 0) : undefined,
                     colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
-                    colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked
+                    colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
+                    setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined
                 };
             }
             }).then((result) => {
@@ -2580,6 +2611,22 @@ $(function() {
         ].join('');
     }
 
+    function buildSetthiGuideHtml() {
+        return [
+            '<div class="bm-guide-inner">',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · หรือทำให้คนอื่นล้มละลาย · 2–4 คน ใส่บอทได้</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<li>กดค้างปุ่มทอย ปล่อยตอนเข็มแรง = เดินไกล · ผ่านจุดเริ่มรับ ฿3,000 · ดับเบิลทอยอีก (3 ครั้งติด = เกาะร้าง)</li>',
+            '<li>ตกเมืองว่าง: ซื้อที่ดิน + สร้างบ้าน/ตึก/โรงแรมได้ในแผ่นเดียว (รอบแรกถึงบ้าน) · มีโรงแรมแล้วตกซ้ำ = แลนด์มาร์ก</li>',
+            '<li>ตกที่คนอื่น: จ่ายค่าผ่านทาง แล้วซื้อต่อได้ 2 เท่า (แลนด์มาร์ก/ท่องเที่ยวซื้อต่อไม่ได้)</li>',
+            '<li>งานวัด ค่าผ่านทาง ×2 (เลือกซ้ำซ้อนถึง ×16) · ทัวร์ ตาหน้าแตะช่องไหนก็ได้ · เกาะร้าง ติดได้ 3 ตา</li>',
+            '<li>เงินไม่พอ: ขายที่คืนครึ่งราคา · หมดทาง = ล้มละลาย</li>',
+            '</ol></div>',
+            '<div class="bm-guide-section"><h4>เวลา</h4><p>หัวห้องตั้งเวลา 20/30/45/60 นาทีหรือไม่จำกัด · หมดเวลาเล่นครบรอบแล้วนับทรัพย์สินรวม · เงินในเกม ไม่มีมูลค่าจริง</p></div>',
+            '</div>'
+        ].join('');
+    }
+
     function buildPokerGuideHtml(variant) {
         if (window.pokerRankChart) return window.pokerRankChart.guideHtml(variant, pokerRankGuide);
         return '';
@@ -2600,7 +2647,8 @@ $(function() {
             { id: 'pokdeng',     label: '🎴 ป๊อกเด้ง',     html: buildPokDengGuideHtml(),       color: '#b3262e' },
             { id: 'wavelength',  label: '📡 คลื่นความคิด', html: buildWavelengthGuideHtml(),    color: '#0f766e' },
             { id: 'drawguess',   label: '🎨 วาดแล้วทาย',   html: buildDrawGuessGuideHtml(),     color: '#0369a1' },
-            { id: 'colorcards',  label: '🃏 ไพ่ทิ้งสี',     html: buildColorCardsGuideHtml(),    color: '#2563eb' }
+            { id: 'colorcards',  label: '🃏 ไพ่ทิ้งสี',     html: buildColorCardsGuideHtml(),    color: '#2563eb' },
+            { id: 'setthi',      label: '💰 เศรษฐี',       html: buildSetthiGuideHtml(),        color: '#b8862b' }
         ];
 
         const tabsHtml = '<div class="global-guide-tabs">' +

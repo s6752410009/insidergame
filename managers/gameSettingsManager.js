@@ -78,6 +78,7 @@ const DEFAULT_SETTINGS = {
     }
 };
 DEFAULT_SETTINGS.modes.codenames = { defaultMaxPlayers: 10 };
+DEFAULT_SETTINGS.modes.setthi = { defaultMaxPlayers: 4 };
 
 let settings = null;
 const wordPools = new Map();

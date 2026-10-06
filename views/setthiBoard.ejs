@@ -1,0 +1,116 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/chatPanel.css">
+<link rel="stylesheet" href="/assets/games/setthi/setthi.css?v=<%= typeof buildId !== 'undefined' ? buildId : '1' %>">
+
+<div id="stConn" class="st-toast" style="display:none;">กำลังเชื่อมต่อใหม่...</div>
+
+<div class="st" id="stRoot">
+  <div class="st-top">
+    <div class="st-brand">
+      <span class="st-logo">เศรษฐี</span>
+    </div>
+    <span class="st-debug-badge" id="stDebugBadge" hidden>🛠 โหมดทดสอบ</span>
+    <div class="st-clock" id="stClock" role="timer" aria-live="off" title="เวลาเกม">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9.5 2.5h5"/></svg>
+      <span class="st-clock-txt" id="stClockTxt">--:--</span>
+    </div>
+    <div class="st-tools">
+      <button type="button" class="st-fast" id="stFastBtn" aria-pressed="false" aria-label="เร่งเกม (บอทเล่นเร็วขึ้น ฉากสั้นลง)"><span aria-hidden="true">⏩</span> เร่ง</button>
+      <button type="button" class="st-icon-btn" id="stHowBtn" aria-label="วิธีเล่น">?</button>
+      <button type="button" class="st-icon-btn" id="stMenuBtn" aria-label="ผู้เล่นและเมนู" aria-expanded="false" aria-controls="stSidebar">☰</button>
+    </div>
+  </div>
+
+  <div class="st-strip" id="stStrip" aria-label="ผู้เล่น — แตะเพื่อดูที่ของแต่ละคน"></div>
+
+  <div class="st-stage">
+    <div class="st-frame" id="stFrame">
+      <div class="st-cam" id="stCam">
+        <div class="st-board" id="stBoard" role="grid" aria-label="กระดานเศรษฐี — แตะช่องเพื่อดูรายละเอียด"></div>
+        <div class="st-tokens" id="stTokens" aria-hidden="true"></div>
+      </div>
+      <div class="st-pickbar" id="stPickbar" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="st-alerts" id="stAlerts" role="status" aria-live="polite"></div>
+
+  <div class="st-dock" id="stDock">
+    <div class="st-timer" id="stTimer" aria-hidden="true"><i></i></div>
+    <div class="st-dock-body" id="stDockBody"></div>
+  </div>
+</div>
+
+<div class="st-fx" id="stFx" aria-hidden="true"></div>
+<div class="st-sheet" id="stSheet" role="dialog" aria-modal="true" aria-labelledby="stSheetTitle">
+  <div class="st-sheet-scrim" data-close="1"></div>
+  <div class="st-sheet-card" id="stSheetCard"></div>
+</div>
+<div class="st-end" id="stEnd" role="dialog" aria-modal="true" aria-label="สรุปผลเกม"></div>
+
+<div id="stDebug" class="st-debug" hidden role="dialog" aria-label="เมนูทดสอบ /m">
+  <div class="st-debug-head" id="stDebugHead">
+    <span class="st-debug-title">🛠 /m ทดสอบ</span>
+    <button type="button" id="stDebugToggle" class="st-debug-toggle" aria-label="ย่อ">✕</button>
+  </div>
+  <div class="st-debug-body">
+    <label class="st-debug-row"><input type="checkbox" id="stDbgSix"> ทอยได้ 6+6 ทุกครั้ง</label>
+    <label class="st-debug-row"><input type="checkbox" id="stDbgDoubles"> ได้ดับเบิลทุกครั้ง</label>
+    <div class="st-debug-row">
+      <input type="number" id="stDbgAmt" value="10000" min="1" max="1000000" step="1000" inputmode="numeric" aria-label="จำนวนเงินที่จะเสก">
+      <button type="button" id="stDbgMint">เสกเงิน</button>
+    </div>
+    <div class="st-debug-note">ทุกคนเห็นว่าใช้ · เกมนี้ไม่นับสถิติ</div>
+  </div>
+</div>
+
+<aside id="stSidebar" class="st-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="stPlayerTitle">
+  <h4 id="stPlayerTitle">ผู้เล่นในห้อง</h4>
+  <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
+  <button id="stSoundBtn" type="button" class="st-btn" style="width:100%; margin-bottom:8px;" aria-pressed="true">🔊 เสียง: เปิด</button>
+  <% if (room.admin) { %>
+  <button id="stEndBtn" type="button" class="st-btn st-btn--danger" style="width:100%; margin-bottom:8px;">จบเกมเลย (นับทรัพย์สิน)</button>
+  <% } %>
+  <button id="leaveRoomBtn" type="button" class="st-btn" style="width:100%; margin-bottom:8px;">ออกจากห้อง</button>
+  <button id="closeSidebarBtn" type="button" class="st-btn st-btn--ghost" style="width:100%;">ปิด</button>
+</aside>
+<div id="stSidebarOverlay" class="st-sidebar-overlay"></div>
+
+<div id="chatBox" class="chat-box" role="dialog" aria-modal="true" aria-labelledby="stChatTitle" aria-hidden="true" style="display:none;">
+  <div class="chat-header">
+    <div class="chat-title" id="stChatTitle">แชท</div>
+    <button type="button" id="closeChat" class="chat-close" aria-label="ปิดแชท">✕</button>
+  </div>
+  <div id="replyPreview" class="chat-reply-preview-bar" style="display:none;">
+    <div class="reply-content">
+      <span class="reply-indicator">ตอบกลับ</span>
+      <span class="reply-player-name"></span>:
+      <span class="reply-message-content"></span>
+    </div>
+    <button type="button" class="reply-cancel-btn" aria-label="ยกเลิกการตอบกลับ">✕</button>
+  </div>
+  <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
+  <div class="chat-input-wrap">
+    <textarea id="chatInput" rows="1" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความ"></textarea>
+    <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
+  </div>
+</div>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+  แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
+</button>
+
+<%- contentFor('script') %>
+<script>
+  window.SETTHI_BOOT = {
+    roomId: '<%= room.roomId %>',
+    playerId: '<%= player.playerId %>',
+    playerName: <%- JSON.stringify(String(player.name || '')).replace(/</g, '\\u003c') %>,
+    isRoomAdmin: <%= room.admin === true ? 'true' : 'false' %>,
+    board: <%- JSON.stringify(setthiBoard).replace(/</g, '\\u003c') %>,
+    state: <%- JSON.stringify(typeof setthiState !== 'undefined' && setthiState ? setthiState : {}).replace(/</g, '\\u003c') %>
+  };
+</script>
+<script src="/js/chatPanel.js"></script>
+<script src="/assets/games/setthi/setthi-art.js?v=<%= typeof buildId !== 'undefined' ? buildId : '1' %>"></script>
+<script src="/assets/games/setthi/setthi.js?v=<%= typeof buildId !== 'undefined' ? buildId : '1' %>"></script>

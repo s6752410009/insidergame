@@ -107,6 +107,7 @@ const GAME_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover
 GAME_MODES.push('codenames');
 GAME_MODES.push('drawguess');
 GAME_MODES.push('colorcards');
+GAME_MODES.push('setthi');
 
 function createDefaultModeStats() {
     return {
@@ -124,7 +125,8 @@ function createDefaultModeStats() {
         pokdeng: { games: 0, wins: 0, losses: 0 },
         wavelength: { games: 0, wins: 0, losses: 0 },
         drawguess: { games: 0, wins: 0, losses: 0 },
-        colorcards: { games: 0, wins: 0, losses: 0 }
+        colorcards: { games: 0, wins: 0, losses: 0 },
+        setthi: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -426,6 +428,10 @@ function recordGameEnd(roomId, gameResult) {
 
     if (gameResult?.mode === 'colorcards') {
         return recordColorCardsGameEnd(roomId, gameResult);
+    }
+
+    if (gameResult?.mode === 'setthi') {
+        return recordSetthiGameEnd(roomId, gameResult);
     }
 
     return recordInsiderGameEnd(roomId, gameResult);
@@ -852,6 +858,53 @@ function recordColorCardsGameEnd(roomId, gameResult) {
             resultText: target
                 ? `${winner.name || 'ไม่ทราบ'} ถึง ${target} แต้มก่อน · ${rounds || 1} รอบ`
                 : `${winner.name || 'ไม่ทราบ'} ทิ้งหมดมือก่อน`
+        });
+        if (stat.gameHistory.length > MAX_GAME_HISTORY) {
+            stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        }
+    });
+
+    saveStats();
+}
+
+/** เศรษฐี: คนที่ทรัพย์สินรวมสูงสุด (หรือรอดคนสุดท้าย) ชนะ — เสมอกันชนะร่วม · ไม่บันทึกบอท */
+function recordSetthiGameEnd(roomId, gameResult) {
+    const { winners, standings, roomName, reason } = gameResult;
+    if (!Array.isArray(winners) || !winners.length || !Array.isArray(standings) || standings.length === 0) {
+        console.warn('Invalid setthi game result data');
+        return;
+    }
+    const winnerIds = new Set(winners.map(w => w && w.playerId).filter(Boolean));
+    const winnerNames = winners.map(w => w.name || 'ไม่ทราบ').join(', ');
+    const money = n => '฿' + Math.round(Number(n) || 0).toLocaleString('en-US');
+
+    const gameTimestamp = new Date().toISOString();
+    standings.forEach(row => {
+        if (!row || !row.playerId || isBotPlayerId(row.playerId)) return;
+        const stat = initializeStats(row.playerId, row.name);
+        if (!stat) return;
+        if (!stat.modeStats.setthi) stat.modeStats.setthi = { games: 0, wins: 0, losses: 0 };
+        const playerWon = winnerIds.has(row.playerId);
+
+        stat.totalGames += 1;
+        stat.modeStats.setthi.games += 1;
+        if (playerWon) {
+            stat.wins += 1;
+            stat.modeStats.setthi.wins += 1;
+        } else {
+            stat.losses += 1;
+            stat.modeStats.setthi.losses += 1;
+        }
+
+        stat.lastPlayedAt = gameTimestamp;
+        stat.gameHistory.unshift({
+            mode: 'setthi',
+            date: gameTimestamp,
+            roomId,
+            roomName: roomName || 'ไม่ทราบ',
+            won: playerWon,
+            winnerName: winnerNames,
+            resultText: `${winnerNames} ${winners.length > 1 ? 'ชนะร่วม' : 'ชนะ'} · ทรัพย์สิน ${money(winners[0].netWorth)}${reason && /หมดเวลา/.test(reason) ? ' · หมดเวลา' : ''}`
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {
             stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);

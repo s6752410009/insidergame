@@ -370,6 +370,20 @@
   }
 
   .cc-howto-swatches { display: inline-flex; gap: 4px; vertical-align: middle; margin-right: 8px; }
+
+  .guide-card.mode-setthi {
+    border-color: rgba(245, 200, 107, 0.36);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(245, 200, 107, 0.18), transparent 55%),
+      linear-gradient(180deg, #1a2332 0%, #151c2a 55%, #111722 100%);
+  }
+  .guide-card.mode-setthi .guide-mode-badge {
+    background: rgba(245, 200, 107, 0.16);
+    color: #f5c86b;
+    border: 1px solid rgba(245, 200, 107, 0.45);
+  }
+  .st-howto-bands { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+  .st-howto-bands i { width: 10px; height: 18px; border-radius: 3px; display: inline-block; }
   .cc-howto-swatches i { width: 16px; height: 22px; border-radius: 4px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); }
 
   .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
@@ -1010,6 +1024,7 @@
     { id: 'wavelength', ico: '📡', label: 'คลื่นความคิด' },
     { id: 'drawguess', ico: '🎨', label: 'วาดแล้วทาย' },
     { id: 'colorcards', ico: '🃏', label: 'ไพ่ทิ้งสี' },
+    { id: 'setthi', ico: '💰', label: 'เศรษฐี' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1531,6 +1546,19 @@
         <div class="guide-list-item"><strong>+4 ลงได้ทุกเมื่อ</strong> ไม่มีกติกาท้าว่ามีสีตรงหรือเปล่า · หัวห้องเปิด <strong>ซ้อน +2/+4</strong> ได้ (คนที่ไม่มีซ้อนรับทั้งหมด)</div>
         <div class="guide-list-item"><strong>เหลือใบเดียว!</strong> ก่อนลงใบรองสุดท้ายกดปุ่ม "เหลือใบเดียว!" ถ้าลืม คนอื่นกด "จับได้!" ทันก่อนหมดเวลาสั้น ๆ = จั่ว 2</div>
         <div class="guide-list-item"><strong>ชนะ + แต้ม</strong> หมดมือก่อนชนะรอบ ได้แต้ม = ไพ่ในมือคนอื่น (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50) · ตั้งห้องเล่น 1 รอบ หรือใครถึง 300/500 แต้มก่อน</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-setthi" id="setthi">
+      <div class="guide-mode-badge">💰 เศรษฐี</div>
+      <h2>ทอยเต๋า ซื้อเมือง สร้างจนเป็นแลนด์มาร์ก ผูกขาดชนะ</h2>
+      <p>กระดาน 32 ช่อง เมืองไทย 20 เมือง (ยโสธรถึงสุขุมวิท) แหล่งท่องเที่ยว 4 แห่ง ทุกคนเริ่ม ฿15,000 ผ่านจุดเริ่มรับ ฿3,000 · ช่องที่มีเจ้าของเป็นสีของคนนั้นทั้งช่อง ดูกระดานแล้วรู้ทันทีว่าใครถือที่ไหน · 2–4 คน ใส่บอทได้ · เงินในเกม ไม่มีมูลค่าจริง</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>กดค้างทอย</strong> เข็มกวาดช้า ๆ ปล่อยตอนแรง = แต้มมักสูงขึ้น · บางครั้งช่องเขียวโผล่แล้วค้างไว้ ปล่อยในช่อง = ลุ้นดับเบิล · ดับเบิลทอยอีก 3 ครั้งติด = เกาะร้าง</div>
+        <div class="guide-list-item"><strong>ซื้อ + สร้างในแผ่นเดียว</strong> ตกเมืองว่าง เลือกที่ดิน → บ้าน → ตึก → โรงแรม ได้ในครั้งเดียว (รอบแรกถึงบ้าน) · มีโรงแรมแล้วตกซ้ำ = สร้างแลนด์มาร์ก · ตกแลนด์มาร์กตัวเองได้โบนัส + ดาว (สูงสุด ⭐4)</div>
+        <div class="guide-list-item"><strong>ค่าผ่านทาง + ซื้อต่อ</strong> ตกที่คนอื่นจ่ายค่าผ่านทาง แล้วซื้อต่อได้ราคา 2 เท่าของมูลค่า · แลนด์มาร์กกับแหล่งท่องเที่ยวซื้อต่อไม่ได้</div>
+        <div class="guide-list-item"><strong>ช่องมุม</strong> ทอยตกจุดเริ่มพอดี = อัปเมืองฟรี 1 ขั้น · เกาะร้าง ออกด้วยดับเบิล/จ่าย/รอ 3 ตา · งานวัด ค่าผ่านทาง ×2 (เลือกซ้ำซ้อนถึง ×16) · ทัวร์ ตาหน้าแตะช่องไหนก็ได้ (เดินหน้าเสมอ)</div>
+        <div class="guide-list-item"><strong>ชนะ</strong> ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · คนอื่นล้มละลายหมด · หรือหมดเวลาที่หัวห้องตั้ง แล้วทรัพย์สินรวมสูงสุดชนะ</div>
       </div>
     </article>
   </section>
