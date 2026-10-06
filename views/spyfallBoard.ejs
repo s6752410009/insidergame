@@ -1,12 +1,13 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/chatPanel.css">
 <style>
   * { box-sizing: border-box; }
 
+  /* clip (ไม่ใช่ hidden) — hidden ทำให้ body เป็น scroll container แล้วแถบเวลา sticky ไม่ติดจอ */
   html.sf-active,
   html.sf-active body.content {
-    overflow-x: hidden;
+    overflow-x: clip;
     margin: 0 !important;
     padding: 0 !important;
     background: #071318 !important;
@@ -19,6 +20,7 @@
   }
 
   html.sf-active .container-fluid {
+    overflow: clip !important;
     padding: 0 !important;
     margin: 0 !important;
     max-width: none !important;
@@ -70,10 +72,11 @@
 
   .sf-page {
     max-width: 920px;
-    margin: 16px auto 32px;
+    /* เผื่อที่ให้ปุ่มแชทมุมล่าง ไม่ให้บังปุ่มยืนยันโหวต/เล่นอีกรอบ */
+    margin: 16px auto 96px;
     padding: 12px;
     color: var(--sf-text);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Bai Jamjuree', sans-serif;
   }
 
   .sf-shell {
@@ -81,7 +84,7 @@
     border-radius: 28px;
     background: var(--sf-panel);
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
+    overflow: clip;
   }
 
   .sf-topbar {
@@ -104,7 +107,7 @@
 
   .sf-title {
     margin: 4px 0 0;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
     font-size: clamp(1.4rem, 4vw, 2rem);
     color: var(--sf-text);
   }
@@ -133,6 +136,7 @@
   }
 
   .sf-chip-btn {
+    min-height: 44px;
     cursor: pointer;
     color: var(--sf-text);
     font-family: inherit;
@@ -141,16 +145,32 @@
   .sf-chip-danger { border-color: rgba(248, 113, 113, 0.35); color: #fecaca; }
   .sf-phase { color: var(--sf-teal); }
 
+  /* แถบ "ตอนนี้" ติดบนจอ: เฟส + เวลาเหลือเห็นตลอด ไม่ต้องเลื่อนหา (สายลับมีรายชื่อสถานที่ยาว) */
   .sf-now-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
     display: flex;
     gap: 10px;
     align-items: center;
-    padding: 14px 22px;
+    padding: 12px 22px;
     border-bottom: 1px solid var(--sf-line);
-    background: rgba(0, 0, 0, 0.18);
+    background: #0b1d22;
   }
+  .sf-now-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .sf-now-timer {
+    flex: none;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--sf-amber);
+    font-variant-numeric: tabular-nums;
+  }
+  .sf-now-timer.is-urgent { color: var(--sf-red); }
+  .sf-now-timer.is-idle { display: none; }
 
   .sf-now-label {
+    white-space: nowrap;
     color: var(--sf-teal);
     font-size: 0.78rem;
     font-weight: 700;
@@ -160,6 +180,9 @@
 
   .sf-now-copy { color: var(--sf-text); font-size: 1rem; }
   .sf-grid { padding: 18px 22px 24px; }
+  .sf-main { display: flex; flex-direction: column; }
+  /* ช่วงโหวต/เฉลย: เอาการ์ดที่ต้องกดขึ้นก่อนการ์ดบท */
+  .sf-main.stage-first .sf-card-stage { order: -1; }
 
   .sf-card {
     border: 1px solid var(--sf-line);
@@ -184,7 +207,7 @@
   }
 
   .sf-timer {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
     font-size: 1.4rem;
     color: var(--sf-amber);
   }
@@ -207,6 +230,9 @@
   .sf-role-icon .game-icon-emoji { line-height: 1; }
   .sf-location-pill .game-icon { width: 44px; height: 44px; object-fit: cover; border-radius: 10px; margin: 0; }
   .sf-location-pill .game-icon-emoji { font-size: 1.2rem; margin: 0; }
+  button.sf-location-pill { cursor: pointer; font-family: inherit; min-height: 48px; }
+  .sf-location-pill.is-out { opacity: 0.35; text-decoration: line-through; }
+  .sf-location-pill.is-out .game-icon { filter: grayscale(1); }
   .sf-location-pill {
     display: inline-flex;
     flex-direction: column;
@@ -226,7 +252,7 @@
   .sf-role-summary { color: var(--sf-muted); margin-top: 8px; line-height: 1.45; }
 
   .sf-location-name {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
     font-size: 1.6rem;
     margin: 10px 0 6px;
     color: var(--sf-amber);
@@ -272,6 +298,72 @@
   }
 
   .sf-vote-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .sf-vote-btn strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .sf-vote-btn .sf-tag { margin-left: auto; flex: none; font-size: 0.8rem; color: var(--sf-muted); }
+
+  .sf-turn { text-align: center; margin-bottom: 14px; }
+  .sf-turn-label { font-size: 0.8rem; font-weight: 700; color: var(--sf-teal); letter-spacing: 0.08em; }
+  .sf-turn-name { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--sf-text); overflow-wrap: anywhere; }
+  .sf-turn.is-me .sf-turn-name { color: var(--sf-amber); }
+  .sf-turn-sub { color: var(--sf-muted); font-size: 0.92rem; margin-top: 4px; line-height: 1.45; }
+  .sf-section-label { font-size: 0.82rem; color: var(--sf-muted); margin: 12px 0 8px; }
+  .sf-ready { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--sf-line); text-align: center; }
+  .sf-ready .ui-btn { width: 100%; }
+  .sf-ready .ui-btn.is-on { background: rgba(94, 234, 212, 0.18); border-color: rgba(94, 234, 212, 0.55); }
+  .sf-ready-note { color: var(--sf-muted); font-size: 0.86rem; margin-top: 6px; }
+  .sf-host-row { margin-top: 10px; }
+  .sf-host-row .ui-btn { width: 100%; }
+  .sf-confirm-bar { position: sticky; bottom: 76px; margin-top: 12px; z-index: 5; }
+  .sf-confirm-bar .ui-btn { width: 100%; }
+  .sf-pending { text-align: center; color: var(--sf-muted); font-size: 0.86rem; margin-top: 10px; overflow-wrap: anywhere; }
+
+  .sf-recap-me { display: inline-block; padding: 6px 14px; border-radius: 999px; font-weight: 700; margin-bottom: 8px; }
+  .sf-recap-me.win { background: rgba(110, 231, 183, 0.16); color: #6ee7b7; }
+  .sf-recap-me.lose { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
+  .sf-recap-why { color: var(--sf-text); line-height: 1.5; margin: 6px 0 10px; }
+  .sf-roster { display: grid; gap: 6px; margin: 12px auto 0; max-width: 360px; text-align: left; }
+  .sf-roster-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.04); }
+  .sf-roster-row.is-spy { background: rgba(248, 113, 113, 0.12); }
+  .sf-roster-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .sf-roster-name small { display: block; color: var(--sf-muted); }
+  .sf-roster-votes { flex: none; font-size: 0.86rem; color: var(--sf-muted); }
+  .sf-recap-actions { margin-top: 16px; display: grid; gap: 8px; }
+  .sf-recap-actions .ui-btn { width: 100%; }
+  .sf-return-note { color: var(--sf-muted); font-size: 0.86rem; margin-top: 10px; }
+
+  .sf-role-hide { min-height: 44px; }
+  #rolePanel.is-hidden .sf-role-card { display: none; }
+  .sf-role-cover {
+    display: none;
+    width: 100%;
+    min-height: 96px;
+    border: 1px dashed var(--sf-line);
+    border-radius: 18px;
+    background: rgba(0,0,0,0.25);
+    color: var(--sf-muted);
+    font-family: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #rolePanel.is-hidden .sf-role-cover { display: block; }
+
+  .sf-guess-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-height: 52vh; overflow-y: auto; padding: 2px; }
+  .sf-guess-tile {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-height: 72px; padding: 8px 4px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+    color: #e2e8f0; font-family: inherit; font-size: 0.82rem; cursor: pointer;
+  }
+  .sf-guess-tile .game-icon { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; margin: 0; }
+  .sf-guess-tile.is-out { opacity: 0.4; }
+  .sf-guess-tile.is-picked { border-color: var(--sf-amber); background: rgba(251, 191, 36, 0.16); color: #fff; }
+
+  /* นับถอยหลังกลับห้องรอ: แถบเล็กด้านบน ไม่บังเฉลย */
+  #returnToLobbyModal.sf-modal { inset: auto 0 auto 0; top: 12px; background: transparent; pointer-events: none; }
+  #returnToLobbyModal .sf-modal-card { padding: 10px 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--sf-line); }
+  #returnToLobbyModal .sf-modal-card h3 { font-size: 1rem; margin: 0; }
+  #returnToLobbyModal .sf-modal-card p { margin: 0; }
+  #returnToLobbyModal .sf-countdown { font-size: 1.2rem; }
   .sf-vote-btn.selected {
     border-color: rgba(94, 234, 212, 0.55);
     background: rgba(94, 234, 212, 0.14);
@@ -286,7 +378,7 @@
 
   .sf-result { text-align: center; padding: 12px 0; }
   .sf-result h3 {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
     font-size: 1.3rem;
     margin: 0 0 10px;
   }
@@ -311,6 +403,7 @@
   .sf-btn {
     border: none;
     border-radius: 12px;
+    min-height: 48px;
     padding: 10px 14px;
     font-family: inherit;
     font-weight: 700;
@@ -361,7 +454,7 @@
     --chat-surface: linear-gradient(135deg, #0f172a 0%, #0b1f24 100%);
     --chat-border: rgba(94, 234, 212, 0.22);
     --chat-bubble: #1e293b;
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Bai Jamjuree', sans-serif;
   }
 
   .chat-toggle {
@@ -428,8 +521,15 @@
   .sf-manual-body ol { padding-left: 20px; line-height: 1.55; }
   .sf-manual-body p { line-height: 1.5; color: #cbd5e1; }
 
+  @media (prefers-reduced-motion: reduce) {
+    .sf-sidebar { transition: none; }
+  }
+
   @media (max-width: 640px) {
-    .sf-topbar, .sf-grid { padding-left: 14px; padding-right: 14px; }
+    .sf-topbar, .sf-grid, .sf-now-bar { padding-left: 14px; padding-right: 14px; }
+    .sf-location-pool { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .sf-location-pool .sf-location-pill { width: auto; font-size: 0.72rem; padding: 6px 2px; }
+    .sf-location-pill .game-icon { width: 34px; height: 34px; }
     .sf-top-meta .sf-chip { font-size: 0.82rem; }
   }
 </style>
@@ -446,34 +546,36 @@
       </div>
       <div class="sf-top-meta">
         <span class="sf-chip">🆔 <%= room.roomId %></span>
-        <span class="sf-chip">👥 <%= room.playerCount %>/<%= room.maxPlayers %></span>
+        <span class="sf-chip" id="sfPlayerCountChip">👥 <%= room.playerCount %>/<%= room.maxPlayers %></span>
         <span id="phaseChip" class="sf-chip sf-phase">🎭 รอเริ่ม</span>
         <button type="button" id="sfHowToOpen" class="sf-chip sf-chip-btn">📖 วิธีเล่น</button>
         <button type="button" id="sfSidebarBtn" class="sf-chip sf-chip-btn"><i class="fas fa-users"></i> ผู้เล่น</button>
-        <% if (room.admin) { %>
-        <button type="button" id="sfEndGameBtn" class="sf-chip sf-chip-btn sf-chip-danger">⏹ จบเกม</button>
-        <% } %>
+        <%# แสดงเสมอแล้วซ่อนด้วย JS — หัวหน้าห้องคนใหม่ (คนเดิมออก) จะได้ปุ่มทันทีไม่ต้องรีเฟรช %>
+        <button type="button" id="sfEndGameBtn" class="sf-chip sf-chip-btn sf-chip-danger"<% if (!room.admin) { %> style="display:none;"<% } %>>⏹ ยุติเกม</button>
       </div>
     </div>
 
-    <div id="sfNowBar" class="sf-now-bar" aria-live="polite">
-      <span class="sf-now-label">ตอนนี้</span>
-      <span id="sfNowCopy" class="sf-now-copy">กำลังโหลดเกม...</span>
+    <div id="sfNowBar" class="sf-now-bar">
+      <div class="sf-now-text" aria-live="polite">
+        <span class="sf-now-label">ตอนนี้</span>
+        <span id="sfNowCopy" class="sf-now-copy">กำลังโหลดเกม...</span>
+      </div>
+      <div id="timerDisplay" class="sf-now-timer is-idle" aria-label="เวลาเหลือ">--:--</div>
     </div>
 
     <div class="sf-grid">
-      <main class="sf-main">
+      <main class="sf-main" id="sfMain">
         <section class="sf-card sf-card-role">
           <div class="sf-card-header">
             <div class="sf-card-title">🎭 บทของคุณ</div>
+            <button type="button" id="sfHideRoleBtn" class="sf-chip sf-chip-btn sf-role-hide" aria-pressed="false">🙈 ซ่อนบท</button>
           </div>
           <div id="rolePanel" class="sf-role-panel"></div>
         </section>
 
         <section class="sf-card sf-card-stage">
           <div class="sf-card-header">
-            <div class="sf-card-title">⏱️ เวลาเหลือ</div>
-            <div id="timerDisplay" class="sf-timer">--:--</div>
+            <div class="sf-card-title" id="sfStageTitle">🎮 ตาเล่น</div>
           </div>
           <div id="mainStage" class="sf-stage"></div>
         </section>
@@ -548,9 +650,11 @@
       <p><strong>เป้าหมาย:</strong> พลเมืองจับสายลับให้ได้ · สายลับหลบรอด</p>
       <ol>
         <li><strong>เปิดบท</strong> — พลเมืองเห็นสถานที่ · สายลับไม่เห็น</li>
-        <li><strong>คุย</strong> — ถามคำถามที่ตอบได้หลายทาง อย่าเปิดเผยสถานที่ตรงๆ (หัวหน้าห้องกดจบคุยได้เมื่อพร้อมโหวต)</li>
-        <li><strong>โหวต</strong> — เลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)</li>
+        <li><strong>คุย</strong> — ระบบสุ่มคนถามคนแรก · คนที่ถึงตาเลือก 1 คนแล้วถาม (พูดหรือพิมพ์แชทก็ได้) · คนที่ถูกถามตอบ แล้วได้ถามต่อ (ห้ามถามกลับคนที่เพิ่งถามเรา) · อย่าเปิดเผยสถานที่ตรงๆ</li>
+        <li><strong>พร้อมโหวต</strong> — ใครคิดว่ารู้แล้วกด "พร้อมโหวต" · เกินครึ่งวงกด = ไปโหวตทันที (หัวหน้าห้องกดข้ามได้)</li>
+        <li><strong>โหวต</strong> — แตะเลือก 1 คนที่คิดว่าเป็นสายลับ แล้วกดยืนยัน · ทุกคนโหวตครบ = เฉลยทันที</li>
       </ol>
+      <p><strong>สายลับ:</strong> แตะชื่อสถานที่ในรายการเพื่อขีดฆ่าที่ตัดทิ้งแล้ว (เห็นคนเดียว)</p>
       <p><strong>ชนะ:</strong> โหวตโดนใจสายลับ = พลเมืองชนะ · โหวตพลาดหรือเสมอ = สายลับชนะ · สายลับกด "ทายสถานที่" ได้ครั้งเดียวช่วงคุย/โหวต: ถูก = สายลับชนะทันที, ผิด = แพ้ทันที</p>
     </div>
   </div>
@@ -568,7 +672,7 @@ $(function() {
   const roomId = '<%= room.roomId %>';
   const playerId = '<%= player.playerId %>';
   const playerName = '<%= player.name %>';
-  const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
+  let isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
   if (window.partyPlay) window.partyPlay.startSession('spyfall', socket);
   let currentState = <%- safeJson(typeof spyfallState !== 'undefined' ? spyfallState : {}) %>;
   const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
@@ -615,19 +719,41 @@ $(function() {
       reveal: '🎭 เปิดบท',
       discussion: '💬 ช่วงคุย',
       vote: '🗳️ โหวตจับสายลับ',
-      finished: '🏁 จบเกม',
+      finished: '🏁 เฉลยผล',
       lobby: '⏳ รอเริ่ม'
     };
     return map[phase] || '⏳ รอเริ่ม';
   }
 
   function updateTimer() {
+    const $timer = $('#timerDisplay');
+    if (currentState && currentState.phase === 'finished' && currentState.returnLobbyAt) {
+      const left = Math.max(0, Math.ceil((currentState.returnLobbyAt - Date.now()) / 1000));
+      $('#sfReturnNote').text('กลับห้องรออัตโนมัติใน ' + left + ' วิ');
+    }
     if (!currentState?.phaseEndsAt || currentState.phase === 'finished') {
-      $('#timerDisplay').text('--:--');
+      $timer.text('--:--').addClass('is-idle').removeClass('is-urgent');
       return;
     }
     const remaining = currentState.phaseEndsAt - Date.now();
-    $('#timerDisplay').text(formatTimer(remaining));
+    $timer.text(formatTimer(remaining)).removeClass('is-idle')
+      .toggleClass('is-urgent', remaining <= 30000 && currentState.phase !== 'reveal');
+  }
+
+  // สายลับขีดฆ่าสถานที่ที่ตัดทิ้งแล้ว — เก็บแค่ในเครื่องนี้ ต่อรอบ
+  function struckKey() {
+    return 'sfStruck:' + roomId + ':' + ((currentState && currentState.roundId) || '0');
+  }
+  function readStruck() {
+    try { return JSON.parse(sessionStorage.getItem(struckKey()) || '[]') || []; } catch (e) { return []; }
+  }
+  function writeStruck(list) {
+    try { sessionStorage.setItem(struckKey(), JSON.stringify(list)); } catch (e) {}
+  }
+
+  function playerNameById(state, id) {
+    const found = (state.players || []).find(function(p) { return p.playerId === id; });
+    return found ? found.name : '';
   }
 
   function renderRolePanel(state) {
@@ -658,13 +784,14 @@ $(function() {
         '<div class="sf-role-icon">' + gameIconHtml({ id: 'spy', image: roleInfo.image, icon: roleInfo.icon || '🕶️', alt: 'สายลับ' }, { className: 'game-icon' }) + '</div>' +
         '<div class="sf-role-name">' + escapeHtml(roleInfo.title || 'สายลับ') + '</div>' +
         '<p class="sf-role-summary">' + escapeHtml(roleInfo.summary || 'คุณไม่รู้สถานที่ — ฟังคำถามให้ดีแล้วเดาให้เนียน') + '</p>' +
-        (pool.length ? '<div class="sf-location-pool-label" style="font-size:0.72rem;color:#94a3b8;margin-top:8px;">📋 สถานที่ที่เป็นไปได้ — ไว้ช่วยเดาจากบทสนทนา (ไม่ต้องกดเลือก)</div>' +
+        (pool.length ? '<div class="sf-location-pool-label" style="font-size:0.8rem;color:#94a3b8;margin-top:8px;">📋 สถานที่ที่เป็นไปได้ — แตะเพื่อขีดฆ่าที่ตัดทิ้งแล้ว (เห็นคนเดียว)</div>' +
           '<div class="sf-location-pool">' + pool.map(function(loc) {
-          return '<span class="sf-location-pill">' + gameIconHtml({ id: loc.id, image: loc.image, icon: loc.icon, alt: loc.name }, { className: 'game-icon' }) + escapeHtml(loc.name) + '</span>';
+          const out = readStruck().indexOf(loc.id) !== -1;
+          return '<button type="button" class="sf-location-pill' + (out ? ' is-out' : '') + '" data-loc-id="' + escapeHtml(loc.id) + '" aria-pressed="' + out + '">' + gameIconHtml({ id: loc.id, image: loc.image, icon: loc.icon, alt: loc.name }, { className: 'game-icon' }) + escapeHtml(loc.name) + '</button>';
         }).join('') + '</div>' : '') +
         (state.canGuessLocation && pool.length
-          ? '<div style="margin-top:12px;text-align:center;"><button type="button" id="sfGuessLocationBtn" class="sf-btn sf-btn-primary">🎯 ทายสถานที่</button>' +
-            '<div style="font-size:0.72rem;color:#94a3b8;margin-top:6px;">ทายได้ครั้งเดียว — ถูกชนะทันที ผิดแพ้ทันที</div></div>'
+          ? '<div style="margin-top:12px;text-align:center;"><button type="button" id="sfGuessLocationBtn" class="ui-btn ui-btn--primary">🎯 ทายสถานที่</button>' +
+            '<div style="font-size:0.8rem;color:#94a3b8;margin-top:6px;">ทายได้ครั้งเดียว — ถูกชนะทันที ผิดแพ้ทันที</div></div>'
           : '') +
       '</div>';
     } else if (location) {
@@ -681,96 +808,212 @@ $(function() {
       body = '<div class="sf-stage-empty">รอเกมเริ่ม...</div>';
     }
 
+    if (state.phase !== 'finished' && (isSpy || location)) {
+      body = '<button type="button" class="sf-role-cover" id="sfRoleCover">🙈 ซ่อนบทอยู่ — แตะเพื่อดู</button>' + body;
+    }
     $('#rolePanel').html(body);
+    applyRoleHidden(state.phase !== 'finished' && readRoleHidden());
+  }
+
+  // ซ่อนบทกันคนข้างๆ แอบมองจอ (เช่นเห็นปุ่มทายสถานที่ของสายลับ)
+  function readRoleHidden() {
+    try { return sessionStorage.getItem('sfHideRole') === '1'; } catch (e) { return false; }
+  }
+  function applyRoleHidden(hidden) {
+    $('#rolePanel').toggleClass('is-hidden', !!hidden);
+    $('#sfHideRoleBtn').attr('aria-pressed', hidden ? 'true' : 'false').text(hidden ? '👁 ดูบท' : '🙈 ซ่อนบท')
+      .toggle(!!currentState && currentState.phase !== 'finished' && currentState.phase !== 'lobby');
+  }
+
+  let pendingVoteTarget = null;
+
+  function stageTitle(phase) {
+    return ({ reveal: '🎭 จำบทของคุณ', discussion: '🎤 ถาม–ตอบ', vote: '🗳️ โหวตจับสายลับ', finished: '🏁 เฉลย' })[phase] || '🎮 ตาเล่น';
+  }
+
+  function renderDiscussion(state, tip) {
+    const turn = state.turn || {};
+    const self = state.self || {};
+    const others = (state.players || []).filter(function(p) { return !p.isSelf; });
+    const askerName = turn.askerName || '';
+    const canPick = turn.isMyTurn || isRoomAdmin;
+    const counts = turn.timesAsked || {};
+    let html = '<div class="sf-turn' + (turn.isMyTurn ? ' is-me' : '') + '">' +
+      '<div class="sf-turn-label">ตาถาม</div>' +
+      '<div class="sf-turn-name">' + (turn.isMyTurn ? '🎤 ตาคุณถาม!' : (askerName ? '🎤 ' + escapeHtml(askerName) : '🎤 ใครก็ได้เริ่มถาม')) + '</div>' +
+      '<div class="sf-turn-sub">' +
+        (turn.isMyTurn
+          ? (turn.lastAskerName ? 'ตอบคำถามของ ' + escapeHtml(turn.lastAskerName) + ' ก่อน แล้ว' : '') + 'เลือก 1 คนด้านล่าง แล้วถามเขา (พูดหรือพิมพ์แชทก็ได้)' +
+            (turn.lastAskerName ? ' · ห้ามถามกลับ ' + escapeHtml(turn.lastAskerName) : '')
+          : (askerName ? 'รอ ' + escapeHtml(askerName) + ' เลือกคนที่จะถาม · คนที่ถูกถามจะได้ถามต่อ' : escapeHtml(tip))) +
+      '</div></div>';
+
+    if (canPick) {
+      const allPlayers = (state.players || []);
+      const askerId = turn.askerId;
+      const pickList = allPlayers.filter(function(p) { return p.playerId !== askerId; });
+      html += '<div class="sf-section-label">' + (turn.isMyTurn ? 'คุณจะถามใคร?' : '👑 กดแทน ' + escapeHtml(askerName || 'คนถาม') + ' ได้ ถ้าเขาลืมกด') + '</div>';
+      html += '<div class="sf-vote-grid">';
+      pickList.forEach(function(p) {
+        const blocked = turn.isMyTurn && turn.lastAskerId && p.playerId === turn.lastAskerId;
+        const n = Number(counts[p.playerId] || 0);
+        html += '<button type="button" class="sf-vote-btn sf-ask-btn" data-target-id="' + escapeHtml(p.playerId) + '"' + (blocked ? ' disabled' : '') + '>' +
+          playerAvatarHtml(p, 34) +
+          '<strong style="color:' + escapeHtml(p.color || '#fff') + '">' + escapeHtml(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</strong>' +
+          '<span class="sf-tag">' + (blocked ? 'เพิ่งถามคุณ' : 'ถูกถาม ' + n + ' ครั้ง') + '</span>' +
+        '</button>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="sf-section-label">ถูกถามไปแล้วกี่ครั้ง (ใครยังไม่โดนถาม ลองถามเขาดู)</div><div class="sf-vote-grid">';
+      (state.players || []).forEach(function(p) {
+        const isAsker = p.playerId === turn.askerId;
+        html += '<div class="sf-vote-btn" style="cursor:default;">' + playerAvatarHtml(p, 30) +
+          '<strong style="color:' + escapeHtml(p.color || '#fff') + '">' + escapeHtml(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</strong>' +
+          '<span class="sf-tag">' + (isAsker ? '🎤 กำลังถาม' : 'ถูกถาม ' + Number(counts[p.playerId] || 0) + ' ครั้ง') + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    const ready = state.readyVote || {};
+    html += '<div class="sf-ready">' +
+      '<button type="button" id="sfReadyVoteBtn" class="ui-btn' + (ready.self ? ' is-on' : '') + '" aria-pressed="' + (ready.self ? 'true' : 'false') + '">' +
+        (ready.self ? '✓ คุณพร้อมโหวตแล้ว (แตะเพื่อยกเลิก)' : '🙋 พร้อมโหวตแล้ว') + '</button>' +
+      '<div class="sf-ready-note">พร้อมแล้ว ' + Number(ready.count || 0) + ' คน · ครบ ' + Number(ready.needed || 0) + ' คน ไปโหวตทันที ไม่ต้องรอหมดเวลา</div>';
+    if (isRoomAdmin) {
+      html += '<div class="sf-host-row"><button type="button" id="sfEndDiscussionBtn" class="ui-btn ui-btn--ghost">⏭️ จบคุย → ไปโหวตเลย (หัวหน้าห้อง)</button></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderVote(state, tip) {
+    const players = (state.players || []).filter(function(p) { return !p.isSelf; });
+    const selfVoted = !!(state.self && state.self.hasVoted);
+    const selfTarget = state.self && state.self.voteTargetId;
+    const progress = state.voteProgress || {};
+    const submitted = Number(progress.submitted || 0);
+    const total = Number(progress.total || 0);
+    if (selfVoted || !players.some(function(p) { return p.playerId === pendingVoteTarget; })) {
+      pendingVoteTarget = null;
+    }
+    let html = '<p class="sf-role-summary" style="text-align:center;margin:0 0 6px;">' +
+      (selfVoted ? 'ส่งโหวตแล้ว — รอคนอื่น ครบเมื่อไหร่เฉลยทันที' : 'แตะเลือก 1 คนที่คิดว่าเป็นสายลับ แล้วกดยืนยัน') + '</p>';
+    if (total > 0) {
+      html += '<p style="text-align:center;margin:0 0 12px;color:var(--sf-teal);font-weight:600;">ลงคะแนนแล้ว ' + submitted + ' / ' + total + ' คน</p>';
+    }
+    html += '<div class="sf-vote-grid">';
+    players.forEach(function(player) {
+      const isMyPick = selfTarget && player.playerId === selfTarget;
+      const isPending = !selfVoted && player.playerId === pendingVoteTarget;
+      html += '<button type="button" class="sf-vote-btn sf-vote-pick' + (isMyPick || isPending ? ' selected' : '') + '" data-target-id="' + escapeHtml(player.playerId) + '" aria-pressed="' + (isMyPick || isPending ? 'true' : 'false') + '" ' + (selfVoted ? 'disabled' : '') + '>' +
+        playerAvatarHtml(player, 38) +
+        '<strong style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</strong>' +
+        (isMyPick ? '<span class="sf-tag" style="color:var(--sf-teal);">✓ คุณโหวตคนนี้</span>'
+          : (isPending ? '<span class="sf-tag" style="color:var(--sf-amber);">เลือกอยู่</span>'
+          : (player.hasVoted ? '<span class="sf-tag">ลงคะแนนแล้ว</span>' : ''))) +
+      '</button>';
+    });
+    html += '</div>';
+    if (!selfVoted) {
+      const pendingName = pendingVoteTarget ? playerNameById(state, pendingVoteTarget) : '';
+      html += '<div class="sf-confirm-bar"><button type="button" id="sfConfirmVoteBtn" class="ui-btn ui-btn--primary"' + (pendingVoteTarget ? '' : ' disabled') + '>' +
+        (pendingVoteTarget ? '🗳️ ยืนยันโหวต ' + escapeHtml(pendingName) : 'เลือกคนก่อน แล้วกดยืนยัน') + '</button></div>';
+    }
+    const waiting = (state.players || []).filter(function(p) { return !p.hasVoted && !(p.isSelf && selfVoted); }).map(function(p) { return p.isSelf ? 'คุณ' : p.name; });
+    if (waiting.length && submitted < total) {
+      html += '<div class="sf-pending">ยังไม่โหวต: ' + escapeHtml(waiting.join(', ')) + '</div>';
+    }
+    if (state.self && state.self.isSpy && state.canGuessLocation) {
+      html += '<div class="sf-pending">🕶️ สายลับยังกด "ทายสถานที่" ได้ในการ์ดบทของคุณ</div>';
+    }
+    return html;
+  }
+
+  function recapWhy(w, state) {
+    const spy = escapeHtml(w.spyName || '-');
+    const place = escapeHtml(w.locationName || '-');
+    if (w.spyGuess) {
+      return w.spyGuess.correct
+        ? 'สายลับ ' + spy + ' ฟังคำถามจนเดาถูกว่าคือ <strong>' + place + '</strong>'
+        : 'สายลับ ' + spy + ' ทายว่า <strong>' + escapeHtml(w.spyGuess.locationName || '-') + '</strong> แต่ที่จริงคือ <strong>' + place + '</strong>';
+    }
+    if (w.spyLeft) return 'สายลับ ' + spy + ' ออกจากเกมกลางคัน';
+    if (!w.topVotes) return 'ไม่มีใครโหวตเลย — สายลับ ' + spy + ' จึงรอด';
+    if (w.wasTie) return 'คะแนนโหวตเสมอกัน — ไม่มีใครถูกจับ สายลับ ' + spy + ' จึงรอด';
+    if (w.accusedPlayerId === w.spyPlayerId) return 'ส่วนใหญ่โหวตจับ ' + spy + ' ซึ่งเป็นสายลับจริง (' + w.topVotes + ' เสียง)';
+    const accused = (state.players || []).find(function(p) { return p.playerId === w.accusedPlayerId; });
+    return 'ส่วนใหญ่โหวต ' + escapeHtml(w.accusedName || '-') + (accused && accused.roleTitle ? ' (' + escapeHtml(accused.roleTitle) + ')' : '') +
+      ' ซึ่งไม่ใช่สายลับ — สายลับตัวจริงคือ ' + spy;
+  }
+
+  function renderFinished(state) {
+    const w = state.winner;
+    const citizensWin = w.team === 'citizens';
+    const selfIsSpy = !!(state.self && state.self.isSpy);
+    const iWon = selfIsSpy ? !citizensWin : citizensWin;
+    const counts = w.voteCounts || {};
+    const roster = (state.players || []).slice().sort(function(a, b) {
+      return (b.isSpy ? 1 : 0) - (a.isSpy ? 1 : 0) || Number(counts[b.playerId] || 0) - Number(counts[a.playerId] || 0);
+    });
+    const rosterHtml = '<div class="sf-roster">' + roster.map(function(p) {
+      const n = Number(counts[p.playerId] || 0);
+      return '<div class="sf-roster-row' + (p.isSpy ? ' is-spy' : '') + '">' + playerAvatarHtml(p, 30) +
+        '<span class="sf-roster-name"><strong>' + escapeHtml(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</strong>' +
+        '<small>' + (p.isSpy ? '🕶️ สายลับ' : '🎭 ' + escapeHtml(p.roleTitle || 'พลเมือง')) + '</small></span>' +
+        (w.spyGuess ? '' : '<span class="sf-roster-votes">' + n + ' เสียง</span>') + '</div>';
+    }).join('') + '</div>';
+    return '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + (window.__sfRevealAnimate ? ' win-pop' : '') + '">' +
+      '<div class="sf-recap-me ' + (iWon ? 'win' : 'lose') + '">' + (iWon ? '🎉 คุณชนะ' : '😵 คุณแพ้') + (selfIsSpy ? ' (คุณคือสายลับ)' : '') + '</div>' +
+      '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
+      '<p class="sf-recap-why">' + recapWhy(w, state) + '</p>' +
+      '<p>สถานที่: <strong>' + gameIconHtml({ id: w.locationId, image: w.locationImage, icon: w.locationIcon, alt: w.locationName }, { className: 'game-icon', px: 22 }) + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
+      rosterHtml +
+      '<div class="sf-recap-actions">' +
+        (isRoomAdmin
+          ? '<button type="button" id="sfRematchBtn" class="ui-btn ui-btn--primary">🎲 เล่นอีกรอบ (สุ่มสถานที่ใหม่)</button>' +
+            '<button type="button" id="sfBackLobbyBtn" class="ui-btn">🏠 กลับห้องรอเลย</button>'
+          : '<div class="sf-return-note">รอหัวหน้าห้องกดเล่นอีกรอบ</div>') +
+        '<button type="button" id="sfShareBtn" class="ui-btn ui-btn--ghost">📸 เซฟผล</button>' +
+      '</div>' +
+      '<div class="sf-return-note" id="sfReturnNote"></div>' +
+    '</div>';
   }
 
   function renderStage(state) {
     const $stage = $('#mainStage');
     const tip = (state.phaseTips && state.phaseTips[state.phase]) || '';
+    $('#sfStageTitle').text(stageTitle(state.phase));
+    $('#sfMain').toggleClass('stage-first', state.phase === 'vote' || state.phase === 'finished');
 
     if (state.phase === 'vote') {
-      const players = (state.players || []).filter(function(p) { return !p.isSelf; });
-      const selfVoted = !!(state.self && state.self.hasVoted);
-      const selfTarget = state.self && state.self.voteTargetId;
-      const progress = state.voteProgress || {};
-      const submitted = Number(progress.submitted || 0);
-      const total = Number(progress.total || 0);
-      let html = '<h3 style="text-align:center;margin:0 0 8px;font-size:1.15rem;color:var(--sf-amber);">🗳️ โหวตจับสายลับ</h3>';
-      html += '<p class="sf-role-summary" style="text-align:center;margin-bottom:6px;">' + escapeHtml(tip) + '</p>';
-      if (total > 0) {
-        html += '<p style="text-align:center;margin:0 0 12px;color:var(--sf-teal);font-weight:600;">ลงคะแนนแล้ว ' + submitted + ' / ' + total + ' คน</p>';
-      }
-      html += '<div class="sf-vote-grid">';
-      players.forEach(function(player) {
-        const isMyPick = selfTarget && player.playerId === selfTarget;
-        html += '<button type="button" class="sf-vote-btn' + (isMyPick ? ' selected' : '') + '" data-target-id="' + escapeHtml(player.playerId) + '" ' + (selfVoted ? 'disabled' : '') + '>' +
-          playerAvatarHtml(player, 38) +
-          '<span><strong style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</strong></span>' +
-          (isMyPick ? '<span style="margin-left:auto;font-size:0.82rem;color:var(--sf-teal);">✓ คุณโหวตคนนี้</span>'
-                    : (player.hasVoted ? '<span style="margin-left:auto;font-size:0.78rem;color:var(--sf-muted);">ลงคะแนนแล้ว</span>' : '')) +
-        '</button>';
-      });
-      html += '</div>';
-      if (selfVoted) {
-        html += '<p style="text-align:center;color:var(--sf-teal);margin-top:12px;">ส่งโหวตแล้ว รอคนอื่น...</p>';
-      }
-      $stage.html(html);
+      $stage.html(renderVote(state, tip));
       return;
     }
-
     if (state.phase === 'finished' && state.winner) {
-      const w = state.winner;
-      const citizensWin = w.team === 'citizens';
-      const counts = w.voteCounts || {};
-      const nameById = {};
-      (state.players || []).forEach(function(p) { nameById[p.playerId] = p; });
-      const tally = Object.keys(counts)
-        .map(function(id) { return { id: id, count: Number(counts[id] || 0), player: nameById[id] }; })
-        .filter(function(row) { return row.count > 0; })
-        .sort(function(a, b) { return b.count - a.count; });
-      let tallyHtml = '';
-      if (tally.length) {
-        tallyHtml = '<div style="margin-top:14px;text-align:left;max-width:280px;margin-left:auto;margin-right:auto;">' +
-          '<div style="font-size:0.8rem;color:var(--sf-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">ผลโหวต</div>' +
-          tally.map(function(row) {
-            const isSpy = w.spyPlayerId && row.id === w.spyPlayerId;
-            const label = row.player ? row.player.name : 'ไม่ทราบ';
-            return '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;">' +
-              '<span>' + (isSpy ? '🕶️ ' : '') + escapeHtml(label) + '</span>' +
-              '<strong style="color:' + (isSpy ? 'var(--sf-red)' : 'var(--sf-text)') + ';">' + row.count + ' เสียง</strong>' +
-            '</div>';
-          }).join('') +
-        '</div>';
-      }
-      $stage.html(
-        '<div class="sf-result ' + (citizensWin ? 'win-citizens' : 'win-spy') + (window.__sfRevealAnimate ? ' win-pop' : '') + '">' +
-          '<h3>' + escapeHtml(w.teamLabel || '') + '</h3>' +
-          '<p>สายลับ: <strong>' + escapeHtml(w.spyName) + '</strong></p>' +
-          (w.spyGuess
-            ? '<p>สายลับทายว่า: <strong>' + escapeHtml(w.spyGuess.locationName || '-') + '</strong> ' + (w.spyGuess.correct ? '✅ ถูก' : '❌ ผิด') + '</p>'
-            : '<p>โหวตมากสุด: <strong>' + escapeHtml(w.accusedName) + '</strong></p>') +
-          '<p>สถานที่: <strong>' + gameIconHtml({ id: w.locationId, image: w.locationImage, icon: w.locationIcon, alt: w.locationName }, { className: 'game-icon', px: 22 }) + ' ' + escapeHtml(w.locationName || '') + '</strong></p>' +
-          tallyHtml +
-          '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
-            (isRoomAdmin ? '<button type="button" id="sfRematchBtn" class="sf-btn sf-btn-primary">🎲 เล่นอีกรอบ</button>' : '') +
-            '<button type="button" id="sfShareBtn" class="sf-btn">📸 เซฟผล</button>' +
-          '</div>' +
-        '</div>'
-      );
+      $stage.html(renderFinished(state));
       return;
     }
-
-    if (state.phase === 'reveal' || state.phase === 'discussion') {
-      let html = '<div class="sf-stage-empty">' + escapeHtml(tip) + '<br><span style="color:var(--sf-muted);font-size:0.92rem;">ใช้แชทมุมล่างถาม–ตอบได้เลย</span>';
-      if (state.phase === 'discussion' && isRoomAdmin) {
-        html += '<div style="margin-top:16px;text-align:center;"><button type="button" id="sfEndDiscussionBtn" class="sf-btn sf-btn-primary">⏭️ จบคุย → ไปโหวต</button></div>';
-      }
-      html += '</div>';
-      $stage.html(html);
+    if (state.phase === 'discussion') {
+      $stage.html(renderDiscussion(state, tip));
       return;
     }
-
+    if (state.phase === 'reveal') {
+      $stage.html('<div class="sf-stage-empty">' + escapeHtml(tip) + '<br><span style="color:var(--sf-muted);font-size:0.92rem;">ช่วงคุย ระบบจะสุ่มคนถามคนแรก · ถามกันด้วยเสียงหรือในแชทก็ได้</span></div>');
+      return;
+    }
     $stage.html('<div class="sf-stage-empty">รอเกมเริ่ม...</div>');
+  }
+
+  function nowCopy(state) {
+    if (state.phase === 'discussion' && state.turn) {
+      if (state.turn.isMyTurn) return '🎤 ตาคุณถาม — เลือกคนแล้วถามเขา';
+      if (state.turn.askerName) return '🎤 ตา ' + state.turn.askerName + ' ถาม';
+    }
+    if (state.phase === 'vote') {
+      return state.self && state.self.hasVoted ? 'โหวตแล้ว — รอคนอื่น' : 'โหวต 1 คนที่คิดว่าเป็นสายลับ';
+    }
+    return (state.phaseTips && state.phaseTips[state.phase]) || 'เล่นต่อได้เลย';
   }
 
   function renderHistory(state) {
@@ -785,9 +1028,18 @@ $(function() {
   }
 
   function renderState(state) {
-    if (!state) return;
+    if (!state) {
+      // ไม่ได้อยู่ในรอบนี้ (เช่นเข้าห้องตอนเกมเริ่มไปแล้ว) — บอกให้ชัด แทนที่จะค้าง "กำลังโหลด"
+      if (!currentState || !currentState.self) {
+        $('#sfNowCopy').text('คุณไม่ได้อยู่ในรอบนี้ — รอรอบหน้าในห้องรอ');
+        $('#rolePanel').html('<div class="sf-stage-empty">รอบนี้เริ่มไปแล้ว ดูแชทได้ แล้วรอเล่นรอบหน้า</div>');
+        $('#mainStage').html('<div class="sf-stage-empty"><a class="ui-btn" href="/room/' + roomId + '?playerId=' + playerId + '">🏠 กลับห้องรอ</a></div>');
+      }
+      return;
+    }
     // จังหวะพีค: เข้าเฟสเปิดบท/ประกาศผล "ครั้งแรก" เท่านั้น (กันเด้งซ้ำทุก broadcast)
     const prevPhase = currentState && currentState.phase;
+    const prevMyTurn = !!(currentState && currentState.turn && currentState.turn.isMyTurn);
     const enteredReveal = state.phase === 'reveal' && prevPhase !== 'reveal';
     const enteredFinish = state.phase === 'finished' && prevPhase !== 'finished';
     window.__sfRevealAnimate = enteredReveal || enteredFinish;
@@ -797,7 +1049,11 @@ $(function() {
     currentState = state;
 
     $('#phaseChip').text(phaseLabel(state.phase));
-    $('#sfNowCopy').text((state.phaseTips && state.phaseTips[state.phase]) || 'เล่นต่อได้เลย');
+    $('#sfEndGameBtn').toggle(isRoomAdmin && state.phase !== 'finished');
+    $('#sfNowCopy').text(nowCopy(state));
+    if (state.phase === 'discussion' && state.turn && state.turn.isMyTurn && !prevMyTurn) {
+      window.gameHaptic && window.gameHaptic([15, 40, 15]);
+    }
 
     renderRolePanel(state);
     renderStage(state);
@@ -852,7 +1108,16 @@ $(function() {
   });
 
   socket.on('roomUpdate', function(data) {
+    if (data && data.admin) {
+      const nowAdmin = data.admin === playerId;
+      if (nowAdmin !== isRoomAdmin) {
+        isRoomAdmin = nowAdmin;
+        if (currentState && currentState.self) renderState(currentState);
+      }
+    }
     if (data && data.players) {
+      const onlineCount = data.players.filter(function(p) { return p.online !== false; }).length;
+      $('#sfPlayerCountChip').text('👥 ' + onlineCount + '/<%= room.maxPlayers %>');
       $('#onlinePlayerList').empty();
       data.players.forEach(function(player) {
         $('#onlinePlayerList').append(
@@ -896,33 +1161,57 @@ $(function() {
     });
   });
 
-  // สายลับทายสถานที่ — เลือกจากรายการ แล้วยืนยันอีกชั้น (ทายได้ครั้งเดียว)
+  function swalError(title) {
+    Swal.fire({ icon: 'warning', title: title || 'ไม่สำเร็จ', background: '#111', color: '#fff' });
+  }
+
+  // สายลับทายสถานที่ — แตะการ์ดสถานที่ (ปุ่มใหญ่ กดง่ายบนมือถือ) แล้วยืนยันอีกชั้น (ทายได้ครั้งเดียว)
   let guessInFlight = false;
   $(document).on('click', '#sfGuessLocationBtn', function() {
     if (guessInFlight || !currentState || !currentState.canGuessLocation) return;
     const pool = currentState.locationPool || [];
-    const options = {};
-    pool.forEach(function(loc) { options[loc.id] = (loc.icon ? loc.icon + ' ' : '') + loc.name; });
+    const struck = readStruck();
+    const ordered = pool.filter(function(loc) { return struck.indexOf(loc.id) === -1; })
+      .concat(pool.filter(function(loc) { return struck.indexOf(loc.id) !== -1; }));
+    const nameById = {};
+    pool.forEach(function(loc) { nameById[loc.id] = loc.name; });
+    let picked = null;
     Swal.fire({
       title: '🎯 ทายสถานที่',
-      text: 'ถ้าทายถูก สายลับชนะทันที — ถ้าผิด แพ้ทันที',
-      input: 'select',
-      inputOptions: options,
-      inputPlaceholder: 'เลือกสถานที่',
+      html: '<div style="font-size:0.9rem;color:#cbd5e1;margin-bottom:10px;">ถูก = สายลับชนะทันที · ผิด = แพ้ทันที' + (struck.length ? '<br>ที่ขีดฆ่าไว้อยู่ท้ายรายการ' : '') + '</div>' +
+        '<div class="sf-guess-grid">' + ordered.map(function(loc) {
+          return '<button type="button" class="sf-guess-tile' + (struck.indexOf(loc.id) !== -1 ? ' is-out' : '') + '" data-loc-id="' + escapeHtml(loc.id) + '">' +
+            gameIconHtml({ id: loc.id, image: loc.image, icon: loc.icon, alt: loc.name }, { className: 'game-icon' }) + escapeHtml(loc.name) + '</button>';
+        }).join('') + '</div>',
       showCancelButton: true,
       confirmButtonText: 'ต่อไป',
       cancelButtonText: 'ยกเลิก',
       background: '#111',
       color: '#fff',
-      inputValidator: function(value) { return value ? null : 'เลือกสถานที่ก่อน'; }
+      didOpen: function(popup) {
+        $(popup).on('click', '.sf-guess-tile', function() {
+          picked = String($(this).data('loc-id'));
+          $(popup).find('.sf-guess-tile').removeClass('is-picked');
+          $(this).addClass('is-picked');
+          Swal.getConfirmButton().textContent = 'ทาย "' + (nameById[picked] || picked) + '"';
+          Swal.resetValidationMessage();
+        });
+      },
+      preConfirm: function() {
+        if (!picked) {
+          Swal.showValidationMessage('แตะเลือกสถานที่ก่อน');
+          return false;
+        }
+        return picked;
+      }
     }).then(function(pick) {
       if (!pick.isConfirmed || !pick.value) return;
       const locationId = pick.value;
-      const name = options[locationId] || locationId;
+      const name = nameById[locationId] || locationId;
       return Swal.fire({
         icon: 'warning',
         title: 'ยืนยันทาย "' + name + '"?',
-        text: 'ทายได้ครั้งเดียว ยกเลิกไม่ได้',
+        text: 'ทายได้ครั้งเดียว ยกเลิกไม่ได้ — ผิดแพ้ทันที',
         showCancelButton: true,
         confirmButtonText: 'ยืนยันทายสถานที่',
         cancelButtonText: 'ยกเลิก',
@@ -933,36 +1222,92 @@ $(function() {
         guessInFlight = true;
         socket.emit('spyfall_guessLocation', { locationId: locationId }, function(res) {
           guessInFlight = false;
-          if (res && !res.success) {
-            Swal.fire({ icon: 'warning', title: res.error || 'ทายไม่สำเร็จ', background: '#111', color: '#fff' });
-          }
+          if (res && !res.success) swalError(res.error || 'ทายไม่สำเร็จ');
         });
       });
     });
   });
 
-  // กันกดโหวตซ้ำก่อน state ใหม่จะกลับมา — คลิกที่สองเคยเด้ง "คุณโหวตไปแล้ว" ทั้งที่โหวตแรกสำเร็จ
+  // สายลับขีดฆ่าสถานที่ในรายการ (กันลืมว่าตัดอะไรทิ้งไปแล้ว)
+  $(document).on('click', '.sf-location-pool .sf-location-pill', function() {
+    const id = String($(this).data('loc-id') || '');
+    if (!id) return;
+    const list = readStruck();
+    const at = list.indexOf(id);
+    if (at === -1) list.push(id); else list.splice(at, 1);
+    writeStruck(list);
+    $(this).toggleClass('is-out', at === -1).attr('aria-pressed', at === -1 ? 'true' : 'false');
+  });
+
+  // ซ่อน/ดูบท
+  $(document).on('click', '#sfHideRoleBtn, #sfRoleCover', function() {
+    const next = !$('#rolePanel').hasClass('is-hidden');
+    try { sessionStorage.setItem('sfHideRole', next ? '1' : '0'); } catch (e) {}
+    applyRoleHidden(next);
+  });
+
+  // ส่งตาถาม: คนที่ถึงตาแตะคนที่จะถาม → คนนั้นได้ถามต่อ
+  let askInFlight = false;
+  $(document).on('click', '.sf-ask-btn', function() {
+    const targetId = $(this).data('target-id');
+    if (!targetId || askInFlight || $(this).prop('disabled')) return;
+    askInFlight = true;
+    $('.sf-ask-btn').prop('disabled', true);
+    $(this).addClass('selected');
+    window.gameHaptic && window.gameHaptic(15);
+    socket.emit('spyfall_passQuestion', { targetPlayerId: targetId }, function(res) {
+      askInFlight = false;
+      if (res && !res.success) {
+        swalError(res.error);
+        if (currentState) renderStage(currentState);
+      }
+    });
+  });
+
+  let readyInFlight = false;
+  $(document).on('click', '#sfReadyVoteBtn', function() {
+    if (readyInFlight) return;
+    readyInFlight = true;
+    $(this).prop('disabled', true);
+    window.gameHaptic && window.gameHaptic(15);
+    socket.emit('spyfall_readyVote', {}, function(res) {
+      readyInFlight = false;
+      $('#sfReadyVoteBtn').prop('disabled', false);
+      if (res && !res.success) swalError(res.error);
+    });
+  });
+
+  // โหวต 2 จังหวะ: แตะเลือก (เปลี่ยนใจได้) → กดยืนยัน — กันนิ้วลั่นโหวตผิดคนแบบย้อนไม่ได้
   let voteInFlight = false;
 
-  $(document).on('click', '.sf-vote-btn', function() {
+  $(document).on('click', '.sf-vote-pick', function() {
     const targetId = $(this).data('target-id');
     if (!targetId || voteInFlight || currentState.self?.hasVoted) return;
+    pendingVoteTarget = String(targetId);
+    window.gameHaptic && window.gameHaptic(10);
+    renderStage(currentState);
+  });
 
-    // Optimistic: ไฮไลต์คนที่เลือกทันที ไม่รอ server — ถ้า server ปัด ค่อยถอยกลับ
+  $(document).on('click', '#sfConfirmVoteBtn', function() {
+    const targetId = pendingVoteTarget;
+    if (!targetId || voteInFlight || currentState.self?.hasVoted) return;
     voteInFlight = true;
-    const $chosen = $(this);
-    $chosen.addClass('selected optimistic-pending');
-    $('.sf-vote-btn').not($chosen).addClass('optimistic-wait');
-    window.gameHaptic(15);
+    $(this).prop('disabled', true).text('กำลังส่งโหวต...');
+    $('.sf-vote-pick').prop('disabled', true);
+    window.gameHaptic && window.gameHaptic(15);
 
     socket.emit('spyfall_vote', { targetPlayerId: targetId }, function(res) {
       voteInFlight = false;
-      $chosen.removeClass('optimistic-pending');
       if (res && !res.success) {
-        $chosen.removeClass('selected');
-        $('.sf-vote-btn').removeClass('optimistic-wait');
-        Swal.fire({ icon: 'warning', title: res.error || 'โหวตไม่สำเร็จ', background: '#111', color: '#fff' });
+        swalError(res.error || 'โหวตไม่สำเร็จ');
+        if (currentState) renderStage(currentState);
       }
+    });
+  });
+
+  $(document).on('click', '#sfBackLobbyBtn', function() {
+    socket.emit('spyfall_restartGame', {}, function(res) {
+      if (res && !res.success) swalError(res.error);
     });
   });
 
@@ -1027,9 +1372,10 @@ $(function() {
   $('#sfEndGameBtn').on('click', function() {
     Swal.fire({
       icon: 'warning',
-      title: 'จบเกมและกลับห้องรอ?',
+      title: 'ยุติเกมกลางคันและกลับห้องรอ?',
+      text: 'รอบนี้จะไม่นับผล ทุกคนกลับห้องรอ',
       showCancelButton: true,
-      confirmButtonText: 'จบเกม',
+      confirmButtonText: 'ยุติเกม',
       cancelButtonText: 'ยกเลิก',
       background: '#111',
       color: '#fff'

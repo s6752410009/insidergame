@@ -233,24 +233,43 @@ async function main() {
         assert(citizens[0].location?.name, 'citizen must see location');
         assert(spies[0].locationPool?.length >= 18, 'spy needs location pool');
 
-        console.log('6. Vote phase (~65s: reveal 5s + discussion 60s)');
-        await waitSpyfallState(admin, roomId, payload => payload.phase === 'vote', 90000);
-
         const spyId = spies[0].self.playerId;
         const citizenId = citizens[0].self.playerId;
+        const byId = id => clients.find(c => c.playerId === id);
 
-        console.log('7. Vote to catch spy');
-        for (const client of clients) {
-            const targetId = client.playerId === spyId ? citizenId : spyId;
-            const voteResponse = await emitAck(client.socket, 'spyfall_vote', {
-                roomId,
-                playerId: client.playerId,
-                targetPlayerId: targetId
-            });
-            assert(voteResponse?.success !== false, `vote failed: ${client.label}`);
+        console.log('6. Discussion: asker passes the question, the person asked asks next');
+        const disc = await waitSpyfallState(admin, roomId, payload => payload.phase === 'discussion' && payload.turn?.askerId, 20000);
+        const askerId = disc.turn.askerId;
+        const target = clients.find(c => c.playerId !== askerId && c !== admin) || clients.find(c => c.playerId !== askerId);
+        const outsider = clients.find(c => c.playerId !== askerId && c !== admin && c !== target);
+        if (outsider) {
+            const denied = await emitAck(outsider.socket, 'spyfall_passQuestion', { targetPlayerId: target.playerId });
+            assert(denied?.success === false && /ตาของ/.test(denied.error || ''), 'non-asker must not pass the turn: ' + JSON.stringify(denied));
         }
+        const passed = await emitAck(byId(askerId).socket, 'spyfall_passQuestion', { targetPlayerId: target.playerId });
+        assert(passed?.success, 'pass question failed: ' + JSON.stringify(passed));
+        await waitSpyfallState(target, roomId, payload => payload.turn?.isMyTurn === true && payload.turn?.lastAskerId === askerId, 10000);
 
-        console.log('8. Finished — citizens win');
+        console.log('7. Ready-to-vote: majority (3 of 4) jumps straight to the vote');
+        const readyOrder = clients.slice(0, 3);
+        for (const client of readyOrder) {
+            const r = await emitAck(client.socket, 'spyfall_readyVote', {});
+            assert(r?.success, 'ready failed: ' + JSON.stringify(r));
+        }
+        await waitSpyfallState(admin, roomId, payload => payload.phase === 'vote', 10000);
+
+        console.log('8. Everyone but one citizen votes, then that citizen leaves → result without waiting');
+        const leaver = clients.find(c => c.playerId !== spyId && c !== admin);
+        for (const client of clients) {
+            if (client === leaver) continue;
+            const targetId = client.playerId === spyId ? (leaver === byId(citizenId) ? admin.playerId : citizenId) : spyId;
+            const voteResponse = await emitAck(client.socket, 'spyfall_vote', { targetPlayerId: targetId });
+            assert(voteResponse?.success !== false, `vote failed: ${client.label} ${voteResponse?.error}`);
+        }
+        const leaveResponse = await emitAck(leaver.socket, 'leaveRoom', { roomId, playerId: leaver.playerId });
+        assert(leaveResponse?.success !== false, 'leave failed: ' + JSON.stringify(leaveResponse));
+
+        console.log('9. Finished — citizens win, recap has roles + return countdown');
         const finishedState = await waitSpyfallState(
             admin,
             roomId,
@@ -259,6 +278,9 @@ async function main() {
         );
         assert(finishedState.location?.name, 'location revealed');
         assert(finishedState.players.some(player => player.isSpy === true), 'roles revealed');
+        assert(finishedState.players.every(player => player.roleTitle), 'every player shows a role title in the recap');
+        assert(finishedState.returnLobbyAt && finishedState.returnLobbyAt - Date.now() > 15000,
+            'players get >15s to read the recap before returning to the lobby');
 
         console.log('smoke-spyfall-integration: OK');
     } finally {

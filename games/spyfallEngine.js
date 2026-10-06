@@ -104,7 +104,15 @@ function createInitialState() {
         history: [],
         lastAction: 0,
         phaseEndsAt: null,
-        statsRecordedAt: null
+        statsRecordedAt: null,
+        // ลำดับถาม–ตอบ (ไม่บังคับ แค่บอกว่าตาใครถาม): คนที่ถูกถามจะได้ถามต่อ
+        askerId: null,
+        lastAskerId: null,
+        questionCount: 0,
+        timesAsked: {},
+        // ปุ่ม "พร้อมโหวต" — เกินครึ่งของคนออนไลน์กด = ข้ามไปโหวตได้เลย ไม่ต้องรอหมดเวลา
+        readyToVote: {},
+        returnLobbyAt: null
     };
 }
 
@@ -278,6 +286,7 @@ function startGame(room) {
     room.gameState.statsRecordedAt = null;
     room.gameState.spyGuess = null;
     room.gameState.lastAction = Date.now();
+    room.gameState.roundStartedAt = Date.now();
 
     assignRoles(room, spyPlayer.playerId, location);
     // roster ตอนแจกบท — คนออกกลางเกม (โดยเฉพาะสายลับ) ยังต้องถูกนับสถิติ
@@ -297,19 +306,44 @@ function moveToRevealPhase(room) {
     pushHistory(room, '🎭', 'แจกสถานที่และบทในที่นั้นแล้ว — จำให้แม่น หรือเล่นให้เนียน', 'gold');
 }
 
+function getOnlinePlayers(room) {
+    return getActivePlayers(room).filter(player => isPlayerOnline(room, player.playerId));
+}
+
+function pickFirstAsker(room) {
+    const online = getOnlinePlayers(room);
+    const pool = online.length ? online : getActivePlayers(room);
+    return pool.length ? pickRandom(pool) : null;
+}
+
 function moveToDiscussionPhase(room) {
     room.gameState.phase = 'discussion';
     room.gameState.status = 'spyfall_discussion';
     room.gameState.votes = {};
+    room.gameState.readyToVote = {};
+    room.gameState.questionCount = 0;
+    room.gameState.timesAsked = {};
+    room.gameState.lastAskerId = null;
     room.gameState.players.forEach(player => {
         player.hasVoted = false;
         player.voteTargetId = null;
     });
     setPhaseDeadline(room, getDiscussionMs(room));
     pushHistory(room, '💬', 'เริ่มถาม–ตอบ — อย่าเปิดเผยสถานที่ตรงๆ', 'teal');
+    const firstAsker = pickFirstAsker(room);
+    room.gameState.askerId = firstAsker ? firstAsker.playerId : null;
+    if (firstAsker) {
+        pushHistory(room, '🎤', `${firstAsker.name} ได้ถามก่อน — เลือก 1 คนแล้วถามได้เลย`, 'teal');
+    }
 }
 
-function moveToVotePhase(room) {
+const VOTE_REASON_TEXT = {
+    timeout: 'หมดเวลาคุย — โหวตจับสายลับ',
+    host: 'หัวหน้าห้องจบช่วงคุย — เริ่มโหวตจับสายลับ',
+    ready: 'ผู้เล่นเกินครึ่งพร้อมโหวต — เริ่มโหวตจับสายลับ'
+};
+
+function moveToVotePhase(room, reason = 'timeout') {
     room.gameState.phase = 'vote';
     room.gameState.status = 'spyfall_vote';
     room.gameState.votes = {};
@@ -318,7 +352,107 @@ function moveToVotePhase(room) {
         player.voteTargetId = null;
     });
     setPhaseDeadline(room, getVoteMs(room));
-    pushHistory(room, '🗳️', 'หมดเวลาคุย — โหวตจับสายลับ', 'amber');
+    pushHistory(room, reason === 'timeout' ? '🗳️' : '⏭️', VOTE_REASON_TEXT[reason] || VOTE_REASON_TEXT.timeout, 'amber');
+}
+
+function getReadyNeeded(room) {
+    const online = getOnlinePlayers(room).length || getActivePlayers(room).length;
+    return Math.floor(online / 2) + 1;
+}
+
+function getReadyCount(room) {
+    const ready = room.gameState.readyToVote || {};
+    return getActivePlayers(room).filter(player => ready[player.playerId] && isPlayerOnline(room, player.playerId)).length;
+}
+
+// คนที่ถูกถามจะได้เป็นคนถามคนต่อไป (กติกา Spyfall มาตรฐาน) — ปุ่มนี้แค่ช่วยบอกตา ไม่ได้บังคับใคร
+function passQuestion(room, playerId, targetPlayerId, options = {}) {
+    if (!room?.gameState || room.settings?.gameMode !== 'spyfall') {
+        throw new Error('ไม่พบเกมนี้');
+    }
+    if (room.gameState.phase !== 'discussion') {
+        throw new Error('ส่งคำถามได้เฉพาะช่วงคุย');
+    }
+    const caller = getPlayer(room, playerId);
+    if (!caller) {
+        throw new Error('ไม่พบผู้เล่น');
+    }
+    const askerId = room.gameState.askerId;
+    const asker = askerId ? getPlayer(room, askerId) : null;
+    // ปกติคนที่ถึงตาเป็นคนกด · หัวหน้าห้องกดแทนได้ (เช่นคนถามวางมือถือ/หลุด)
+    if (asker && askerId !== playerId && !options.isHost) {
+        throw new Error(`ตอนนี้ตาของ ${asker.name} ถาม`);
+    }
+    const fromId = asker ? askerId : playerId;
+    const target = getPlayer(room, targetPlayerId);
+    if (!target) {
+        throw new Error('เลือกผู้เล่นไม่ถูกต้อง');
+    }
+    if (targetPlayerId === fromId) {
+        throw new Error('ถามตัวเองไม่ได้ — เลือกคนอื่น');
+    }
+    const from = getPlayer(room, fromId);
+    room.gameState.lastAskerId = fromId;
+    room.gameState.askerId = targetPlayerId;
+    room.gameState.questionCount = (room.gameState.questionCount || 0) + 1;
+    room.gameState.timesAsked = room.gameState.timesAsked || {};
+    room.gameState.timesAsked[targetPlayerId] = (room.gameState.timesAsked[targetPlayerId] || 0) + 1;
+    room.gameState.lastAction = Date.now();
+    pushHistory(room, '🎤', `${from?.name || 'ผู้เล่น'} ถาม ${target.name} — ${target.name} ตอบแล้วถามต่อ`, 'teal');
+    return { askerId: targetPlayerId };
+}
+
+function toggleReadyToVote(room, playerId) {
+    if (!room?.gameState || room.settings?.gameMode !== 'spyfall') {
+        throw new Error('ไม่พบเกมนี้');
+    }
+    if (room.gameState.phase !== 'discussion') {
+        throw new Error('กดพร้อมโหวตได้เฉพาะช่วงคุย');
+    }
+    if (!getPlayer(room, playerId)) {
+        throw new Error('ไม่พบผู้เล่น');
+    }
+    room.gameState.readyToVote = room.gameState.readyToVote || {};
+    const nowReady = !room.gameState.readyToVote[playerId];
+    if (nowReady) {
+        room.gameState.readyToVote[playerId] = true;
+    } else {
+        delete room.gameState.readyToVote[playerId];
+    }
+    room.gameState.lastAction = Date.now();
+    return { ready: nowReady, ...checkReadyToVote(room) };
+}
+
+function checkReadyToVote(room) {
+    if (room?.gameState?.phase !== 'discussion') {
+        return { advanced: false };
+    }
+    const count = getReadyCount(room);
+    const needed = getReadyNeeded(room);
+    if (count >= needed) {
+        moveToVotePhase(room, 'ready');
+        room.gameState.lastAction = Date.now();
+        return { advanced: true, phase: room.gameState.phase, count, needed };
+    }
+    return { advanced: false, phase: room.gameState.phase, count, needed };
+}
+
+// คนถามหลุด/ออก → ส่งตาให้คนที่ยังออนไลน์ ไม่งั้นทั้งวงรอคนที่ไม่อยู่
+function ensureAskerPresent(room) {
+    const state = room?.gameState;
+    if (!state || state.phase !== 'discussion') {
+        return false;
+    }
+    if (state.askerId && getPlayer(room, state.askerId)) {
+        return false;
+    }
+    const online = getOnlinePlayers(room).filter(player => player.playerId !== state.lastAskerId);
+    const next = online.length ? pickRandom(online) : pickFirstAsker(room);
+    state.askerId = next ? next.playerId : null;
+    if (next) {
+        pushHistory(room, '🎤', `คนถามออกจากเกม — ${next.name} ถามต่อ`, 'teal');
+    }
+    return true;
 }
 
 function everyoneVoted(room) {
@@ -426,6 +560,14 @@ function handlePlayerLeft(room, playerId) {
         return null;
     }
     if (playerId !== room.gameState.spyPlayerId) {
+        // คนธรรมดาออก: ส่งตาถามต่อ + เช็กว่าที่เหลือพร้อมโหวตครบหรือยัง
+        if (room.gameState.readyToVote) {
+            delete room.gameState.readyToVote[playerId];
+        }
+        ensureAskerPresent(room);
+        if (phase === 'discussion' && getReadyCount(room) > 0) {
+            checkReadyToVote(room);
+        }
         return null;
     }
     pushHistory(room, '🚪', 'สายลับออกจากเกม — จบเกมทันที', 'amber');
@@ -505,8 +647,7 @@ function endDiscussionEarly(room) {
     if (room.gameState.phase !== 'discussion') {
         throw new Error('จบช่วงคุยได้เฉพาะตอนถาม–ตอบ');
     }
-    moveToVotePhase(room);
-    pushHistory(room, '⏭️', 'หัวหน้าห้องจบช่วงคุย — เริ่มโหวตจับสายลับ', 'amber');
+    moveToVotePhase(room, 'host');
     room.gameState.lastAction = Date.now();
     return { advanced: true, phase: room.gameState.phase };
 }
@@ -592,6 +733,9 @@ function buildClientState(room, playerId) {
     if (!self) {
         return null;
     }
+    const state = room.gameState;
+    const askerPlayer = state.phase === 'discussion' && state.askerId ? getPlayer(room, state.askerId) : null;
+    const lastAskerPlayer = state.phase === 'discussion' && state.lastAskerId ? getPlayer(room, state.lastAskerId) : null;
 
     const isSpy = self.role === ROLE_SPY;
     const isFinished = room.gameState.phase === 'finished';
@@ -599,6 +743,7 @@ function buildClientState(room, playerId) {
 
     return {
         roomId: room.roomId,
+        roundId: state.roundStartedAt || null,
         mode: 'spyfall',
         status: room.gameState.status,
         phase: room.gameState.phase,
@@ -661,12 +806,27 @@ function buildClientState(room, playerId) {
             total: getActivePlayers(room).filter(player => isPlayerOnline(room, player.playerId)).length
         },
         accusedPlayerId: isFinished ? room.gameState.accusedPlayerId : null,
+        turn: state.phase === 'discussion' ? {
+            askerId: askerPlayer ? askerPlayer.playerId : null,
+            askerName: askerPlayer ? askerPlayer.name : null,
+            lastAskerId: lastAskerPlayer ? lastAskerPlayer.playerId : null,
+            lastAskerName: lastAskerPlayer ? lastAskerPlayer.name : null,
+            questionCount: state.questionCount || 0,
+            timesAsked: { ...(state.timesAsked || {}) },
+            isMyTurn: !!askerPlayer && askerPlayer.playerId === self.playerId
+        } : null,
+        readyVote: state.phase === 'discussion' ? {
+            count: getReadyCount(room),
+            needed: getReadyNeeded(room),
+            self: !!(state.readyToVote || {})[self.playerId]
+        } : null,
+        returnLobbyAt: isFinished ? (state.returnLobbyAt || null) : null,
         history: room.gameState.history || [],
         phaseTips: {
             reveal: 'จำสถานที่และบทของคุณ — อีกไม่กี่วิจะเริ่มคุย',
-            discussion: 'ถาม–ตอบให้จับสายลับ — อย่าเปิดเผยสถานที่หรือบทตัวเองตรงๆ',
+            discussion: 'ถาม–ตอบทีละคน — คนที่ถูกถามจะได้ถามคนต่อไป',
             vote: 'โหวตเลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)',
-            finished: 'เกมจบแล้ว — กำลังกลับห้องรอ'
+            finished: 'เกมจบแล้ว — ดูเฉลยด้านล่าง'
         }
     };
 }
@@ -689,6 +849,11 @@ module.exports = {
     startGame,
     advancePhase,
     endDiscussionEarly,
+    passQuestion,
+    toggleReadyToVote,
+    checkReadyToVote,
+    ensureAskerPresent,
+    everyoneVoted,
     autoResolvePhase,
     submitVote,
     resolveVotes,

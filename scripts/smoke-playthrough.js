@@ -155,9 +155,10 @@ async function main() {
             await page.click('.swal2-confirm');
             await delay(2200);
 
-            const voteButtons = await page.$$('.sf-vote-btn');
+            const voteButtons = await page.$$('.sf-vote-pick');
             assert(voteButtons.length > 0, `[${mode}] ไม่มีปุ่มโหวตหลังจบช่วงคุย`);
             await voteButtons[0].click();
+            await page.click('#sfConfirmVoteBtn'); // โหวต 2 จังหวะ: เลือก → ยืนยัน
             for (const p of players.slice(1)) p.socket.emit('spyfall_vote', { targetPlayerId: players[0].playerId }, () => {});
             await delay(4500);
 

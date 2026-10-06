@@ -25,7 +25,7 @@ const PHASE_LABELS = {
     reveal: 'เปิดบท',
     discussion: 'ช่วงคุย',
     vote: 'โหวต',
-    finished: 'จบเกม'
+    finished: 'เฉลย'
 };
 
 async function waitUiPhase(session, phase) {
@@ -111,8 +111,49 @@ async function main() {
         await validateSessions(sessions, 'discussion');
         screenshots.push(...await screenshotPhase(sessions, 'spyfall', 'discussion', artifactDir));
 
-        const ended = await emitAck(admin.socket, 'spyfall_endDiscussion', { roomId });
-        assert(ended?.success, `end discussion failed: ${ended?.error || 'unknown'}`);
+        const spySession = sessions.find(session => session.client.label === 'spy');
+        const citizenSessions = sessions.filter(session => session !== spySession);
+
+        console.log('2b. timer stays on screen while scrolling (sticky now-bar)');
+        await spySession.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await delay(200);
+        const timerTop = await spySession.page.evaluate(() => document.getElementById('timerDisplay').getBoundingClientRect().top);
+        assert(timerTop >= 0 && timerTop < 120, `timer should stay visible after scrolling, top=${timerTop}`);
+        await spySession.page.evaluate(() => window.scrollTo(0, 0));
+
+        console.log('2c. whose turn: asker taps who they ask → that player is told it is their turn');
+        const turnInfo = await sessions[0].page.evaluate(() => document.getElementById('sfNowCopy').textContent);
+        assert(/ตา/.test(turnInfo), `now-bar should say whose turn it is: ${turnInfo}`);
+        let askerSession = null;
+        for (const session of sessions) {
+            if (/ตาคุณถาม/.test(await session.page.evaluate(() => document.getElementById('sfNowCopy').textContent))) askerSession = session;
+        }
+        assert(askerSession, 'one player should see "ตาคุณถาม"');
+        const askTargetId = await askerSession.page.evaluate(() => document.querySelector('.sf-ask-btn:not([disabled])')?.dataset.targetId);
+        assert(askTargetId, 'asker needs player buttons to pick who to ask');
+        await askerSession.page.click(`.sf-ask-btn[data-target-id="${askTargetId}"]`);
+        const targetSession = sessions.find(session => session.client.playerId === askTargetId);
+        await targetSession.page.waitForFunction(() => /ตาคุณถาม/.test(document.getElementById('sfNowCopy').textContent), null, { timeout: 10000 });
+        const blockedBack = await targetSession.page.evaluate(id => !!document.querySelector(`.sf-ask-btn[data-target-id="${id}"]`)?.disabled, askerSession.client.playerId);
+        assert(blockedBack, 'cannot ask back the player who just asked you');
+
+        console.log('2d. spy: strike out a location + tap-to-pick guess grid');
+        await spySession.page.click('.sf-location-pool .sf-location-pill >> nth=0');
+        assert(await spySession.page.evaluate(() => document.querySelector('.sf-location-pool .sf-location-pill').classList.contains('is-out')), 'tapping a location should strike it out');
+        await spySession.page.click('#sfGuessLocationBtn');
+        await spySession.page.waitForSelector('.sf-guess-tile');
+        const tileCount = await spySession.page.$$eval('.sf-guess-tile', tiles => tiles.length);
+        assert(tileCount >= 18, `guess grid should list every location, got ${tileCount}`);
+        const tileHeight = await spySession.page.$eval('.sf-guess-tile', tile => tile.getBoundingClientRect().height);
+        assert(tileHeight >= 48, `guess tiles must be thumb-sized, got ${tileHeight}`);
+        await spySession.page.click('.swal2-cancel');
+        await delay(300);
+
+        console.log('2e. ready-to-vote: a majority (3 of 4) skips the rest of the discussion');
+        for (const session of sessions.slice(0, 3)) {
+            await session.page.click('#sfReadyVoteBtn');
+            await delay(250);
+        }
         console.log('3. capture vote');
         await Promise.all(sessions.map(session => waitUiPhase(session, 'vote')));
         await validateSessions(sessions, 'vote');
@@ -121,17 +162,32 @@ async function main() {
         const spyClient = clients.find(client => client.label === 'spy');
         const citizenClient = clients.find(client => client.label !== 'spy');
         assert(spyClient && citizenClient, 'missing spy/citizen clients');
-        for (const client of clients) {
-            const targetPlayerId = client === spyClient ? citizenClient.playerId : spyClient.playerId;
-            const response = await emitAck(client.socket, 'spyfall_vote', { roomId, playerId: client.playerId, targetPlayerId });
-            if (response?.success === false && !/ยังไม่ใช่ช่วง/.test(response.error || '')) {
-                throw new Error(`${client.label} vote failed: ${response.error}`);
-            }
+        console.log('3b. vote is two-step: first tap only selects, confirm sends');
+        for (const session of sessions) {
+            const targetPlayerId = session.client === spyClient ? citizenClient.playerId : spyClient.playerId;
+            await session.page.click(`.sf-vote-pick[data-target-id="${targetPlayerId}"]`);
+            await delay(150);
+            const stillMine = await session.page.evaluate(() => !document.querySelector('.sf-vote-pick[disabled]'));
+            assert(stillMine, `${session.client.label}: a single tap must not lock the vote`);
+            await session.page.click('#sfConfirmVoteBtn');
+            await delay(250);
         }
 
         console.log('4. capture finished');
         await Promise.all(sessions.map(session => waitUiPhase(session, 'finished')));
         await validateSessions(sessions, 'finished');
+        for (const session of sessions) {
+            const recap = await session.page.evaluate(() => ({
+                rows: document.querySelectorAll('.sf-roster-row').length,
+                why: document.querySelector('.sf-recap-why')?.textContent || '',
+                me: document.querySelector('.sf-recap-me')?.textContent || '',
+                note: document.getElementById('sfReturnNote')?.textContent || ''
+            }));
+            assert(recap.rows === 4, `${session.client.label}: recap should list every player's role, got ${recap.rows}`);
+            assert(recap.why.length > 5, `${session.client.label}: recap should explain why`);
+            assert(/คุณ(ชนะ|แพ้)/.test(recap.me), `${session.client.label}: recap should say if I won`);
+            assert(/กลับห้องรอ/.test(recap.note), `${session.client.label}: recap should show the auto-return countdown`);
+        }
         screenshots.push(...await screenshotPhase(sessions, 'spyfall', 'finished', artifactDir));
 
         const pageErrors = sessions.flatMap(session => session.errors.filter(error =>
