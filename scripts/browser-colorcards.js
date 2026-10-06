@@ -123,6 +123,15 @@ async function act(p, mode, opts = {}) {
         return 'play-drawn';
     }
     const playable = page.locator('#ccHand .cc-card.is-playable');
+    if (opts.badTap && mode !== 'hoard' && await playable.count()) {
+        const bad = page.locator('#ccHand .cc-card:not(.is-playable)').first();
+        if (await bad.count()) {
+            await bad.scrollIntoViewIfNeeded();
+            await bad.click({ position: { x: 10, y: 40 }, timeout: 5000 });
+            await delay(120);
+            opts.badTap(await page.locator('#ccHint').textContent());
+        }
+    }
     if (mode !== 'hoard' && await playable.count()) {
         if (await page.locator('#ccCallBtn').isVisible().catch(() => false) && !opts.forgetCall) {
             await page.locator('#ccCallBtn').click({ timeout: 5000 });
@@ -178,7 +187,7 @@ async function act(p, mode, opts = {}) {
             const body = await res.json().catch(() => ({}));
             if (!body.success) console.log('   · ตั้งชื่อไม่สำเร็จ (ใช้ชื่อสุ่ม):', JSON.stringify(body).slice(0, 80));
         }
-        const created = await ack(sockets[0], 'createRoom', { playerId: ids[0], name: 'ไพ่ทิ้งสี', gameMode: 'colorcards', maxPlayers: 6, colorcardsTarget: 0 });
+        const created = await ack(sockets[0], 'createRoom', { playerId: ids[0], name: 'ไพ่ทิ้งสี', gameMode: 'colorcards', maxPlayers: 6, colorcardsTarget: 500 });
         assert(created?.success, 'สร้างห้องไม่ได้ ' + JSON.stringify(created));
         const roomId = created.roomId;
         sockets[0].emit('setRoom', { roomId, playerId: ids[0] });
@@ -245,6 +254,35 @@ async function act(p, mode, opts = {}) {
         }
         console.log('2. เปิดกระดาน 3 จอ ไพ่ 7 ใบ · ไม่มีล้นจอ ✓');
 
+        // แตะกองจั่วตอนไม่ใช่ตาตัวเอง → บอกเหตุผล (ไม่เงียบ)
+        // เช็กตา + แตะ + อ่านข้อความในจังหวะเดียว (ตาเปลี่ยนเร็วตอนเครื่องช้า)
+        let deckHint = '';
+        for (let tries = 0; tries < 6 && !deckHint; tries += 1) {
+            for (const p of players) {
+                deckHint = await p.page.evaluate(() => {
+                    if (document.querySelector('#ccHand.is-myturn')) return '';
+                    document.getElementById('ccDeck').click();
+                    return document.getElementById('ccHint').textContent;
+                });
+                if (deckHint) break;
+            }
+            if (!deckHint) await delay(300);
+        }
+        assert(/ยังไม่ถึงตาคุณ/.test(deckHint), 'แตะกองจั่วนอกตา บอกว่ายังไม่ถึงตา: ' + deckHint);
+        // เปิดแท็บที่สองของคนเดียวกันแล้วปิด → แท็บแรกกลับมา (visibilitychange) ต้องได้ state ต่อ ไม่ค้าง
+        const dupCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+        await dupCtx.addInitScript(() => { try { sessionStorage.setItem('insiderPromoSeen', '1'); localStorage.setItem('ig-firstplay-colorcards', '1'); } catch (e) { /* ignore */ } });
+        const dup = await dupCtx.newPage();
+        await dup.goto(`${base}/?playerId=${ids[1]}`, { waitUntil: 'domcontentloaded' });
+        await dup.goto(`${base}/game/${roomId}?playerId=${ids[1]}`, { waitUntil: 'domcontentloaded' });
+        await dup.waitForSelector('#ccHand .cc-card', { timeout: 15000 });
+        await delay(400);
+        await dupCtx.close();
+        await delay(600);
+        await players[1].page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+        await delay(500);
+        console.log('2b. แตะกองจั่วนอกตามีเหตุผล · เปิด/ปิดแท็บซ้ำแล้วแท็บเดิมกลับมาเล่นต่อได้ ✓');
+
         // ช่วงสะสมไพ่: ทุกคนจั่วอย่างเดียว ~10 รอบโต๊ะ จนมือใหญ่ (ทดสอบ 15+ ใบที่ 390px)
         let guard = 0;
         while (guard < 200) {
@@ -264,8 +302,40 @@ async function act(p, mode, opts = {}) {
             const probs = await layoutProblems(p.page);
             assert(!probs.length, `${p.label} (มือใหญ่) layout: ${probs.join(' | ')}`);
         }
+        assert(/ล่าสุด/.test(await players[0].page.locator('#ccNowLast').textContent()), 'แถบสถานะบอกว่าเกิดอะไรล่าสุด');
         const bigTurn = await (async () => { for (const p of players) if (await isMyTurn(p.page)) return p; return players[0]; })();
         await bigTurn.page.screenshot({ path: path.join(SHOTS, 'bighand-myturn-390.png') });
+        // ไพ่ที่ลงได้ถูกเลื่อนออกนอกจอ → ป้าย "ลงได้" ที่ขอบ แตะแล้วเลื่อนไปหา
+        if (await isMyTurn(bigTurn.page) && !(await bigTurn.page.locator('#ccPassBtn').isVisible())) {
+            // เลื่อนมือไปสุดขวา → ถ้าใบที่ลงได้ใบแรกหลุดจอซ้าย ต้องมีป้าย "‹ ลงได้" (หรือกลับกัน)
+            const pill = await bigTurn.page.evaluate(async () => {
+                const hand = document.getElementById('ccHand');
+                const cards = [...hand.querySelectorAll('.cc-card.is-playable')];
+                if (!cards.length) return { side: 'none' };
+                const vis = el => { const box = hand.getBoundingClientRect(); const r = el.getBoundingClientRect(); return Math.min(r.right, box.right - 16) - Math.max(r.left, box.left + 16) >= 24; };
+                for (const [edge, side, el] of [[hand.scrollWidth, 'L', cards[0]], [0, 'R', cards[cards.length - 1]]]) {
+                    hand.scrollTo({ left: edge, behavior: 'instant' });
+                    hand.dispatchEvent(new Event('scroll'));
+                    await new Promise(r => setTimeout(r, 150));
+                    if (!vis(el)) return { side, id: el.dataset.id };
+                }
+                return { side: 'visible' };
+            });
+            if (pill.side === 'L' || pill.side === 'R') {
+                const btn = bigTurn.page.locator('#ccMore' + pill.side);
+                assert(await btn.isVisible(), 'ไพ่ที่ลงได้อยู่นอกจอ → ป้ายลงได้ที่ขอบ ' + pill.side);
+                await bigTurn.page.screenshot({ path: path.join(SHOTS, 'bighand-offscreen-390.png') });
+                await btn.click();
+                await delay(800);
+                const seen = await bigTurn.page.evaluate(() => {
+                    const hand = document.getElementById('ccHand');
+                    const box = hand.getBoundingClientRect();
+                    return [...hand.querySelectorAll('.cc-card.is-playable')].some(el => { const r = el.getBoundingClientRect(); return r.left >= box.left - 2 && r.right <= box.right + 2; });
+                });
+                assert(seen, 'แตะป้ายลงได้ → เลื่อนไพ่ที่ลงได้เข้าจอ');
+                console.log('   · ป้าย "ลงได้" ' + pill.side + ' โชว์และเลื่อนถูก');
+            } else console.log('   · ไพ่ที่ลงได้อยู่ในจอเสมอ (' + pill.side + ') ข้ามเช็กป้าย');
+        }
         // เลือกไพ่ (ยกขึ้น) แล้วถ่าย
         const sel = bigTurn.page.locator('#ccHand .cc-card.is-playable').first();
         if (await sel.count()) {
@@ -282,6 +352,8 @@ async function act(p, mode, opts = {}) {
         let forgot = false;
         let catchShot = false;
         let actions = { play: 0, swipe: 0, draw: 0, pass: 0, catch: 0, 'play-drawn': 0 };
+        let badHint = null;
+        let pickerClosedChecked = false;
         guard = 0;
         while (guard < 900) {
             guard += 1;
@@ -295,12 +367,26 @@ async function act(p, mode, opts = {}) {
                 const hand = await handCount(p.page);
                 const forgetCall = !forgot && hand === 2;
                 const r = await act(p, 'play', {
+                    badTap: badHint === null ? (h => { badHint = h; }) : null,
                     swipe: !swiped,
                     forgetCall,
                     onPicker: pickerShot ? null : async page => {
                         await delay(250);
                         await page.screenshot({ path: path.join(SHOTS, 'picker-390.png') });
                         pickerShot = true;
+                        // ชีตเลือกสีบังปุ่มเหลือใบเดียว → ต้องมีปุ่มเดียวกันในชีตเมื่อกดได้
+                        const callInSheet = await page.locator('#ccPickerCall').isVisible();
+                        const canCall = hand === 2 && !(await page.locator('#ccPickerCalled').isVisible());
+                        assert(callInSheet === canCall, `ปุ่มเหลือใบเดียวในชีตเลือกสี (มือ ${hand} · โชว์ ${callInSheet})`);
+                        // ระหว่างเลือกสี ตาเปลี่ยน (จั่วจากอีกเครื่อง) → ชีตต้องปิดเอง ไม่ค้างให้กดแล้ว error
+                        if (!pickerClosedChecked) {
+                            const sock = sockets[ids.indexOf(p.id)];
+                            const res = await ack(sock, 'colorcards_draw', { roomId });
+                            if (res && res.success) {
+                                await page.waitForFunction(() => !document.getElementById('ccPicker').classList.contains('is-on'), null, { timeout: 5000 });
+                                pickerClosedChecked = true;
+                            }
+                        }
                     }
                 });
                 if (r) {
@@ -315,6 +401,30 @@ async function act(p, mode, opts = {}) {
         }
         await players[0].page.waitForSelector('#ccSheet.is-on', { timeout: 30000 });
         assert(actions.swipe === 1, 'ปัดขึ้นลงไพ่ได้');
+        assert(badHint === null || /ต้องเป็น|จั่วแล้ว|ต้องซ้อน/.test(badHint), 'แตะไพ่ที่ลงไม่ได้ → บอกว่าต้องสี/เลขอะไร: ' + badHint);
+        let readyChecked = false;
+        if (/จบรอบ/.test(await players[0].page.locator('#ccSheetCard .cc-sheet-kicker').first().textContent())) {
+            await delay(700);
+            await players[1].page.screenshot({ path: path.join(SHOTS, 'roundend-390.png') });
+            const sheetText = await players[1].page.locator('#ccSheetCard').innerText();
+            assert(/แต้ม/.test(sheetText) && /คะแนนรวม/.test(sheetText), 'สรุปจบรอบมีหน่วยแต้มและคะแนนรวม');
+            assert(await players[0].page.locator('#ccNextBtn').isVisible(), 'หัวห้องเห็นปุ่มเริ่มรอบต่อไป');
+            for (const p of players.slice(1)) {
+                assert(await p.page.locator('#ccReadyBtn').isVisible(), `${p.label} เห็นปุ่มพร้อมรอบต่อไป`);
+                await p.page.locator('#ccReadyBtn').click();
+            }
+            await players[0].page.waitForFunction(() => /พร้อมแล้ว 2\/3/.test(document.getElementById('ccSheetNote').textContent), null, { timeout: 5000 });
+            assert(await players[1].page.locator('#ccSheetCard .cc-called').isVisible(), 'กดพร้อมแล้วเห็นสถานะพร้อม');
+            const rnd = await players[0].page.locator('#ccRoundNo').textContent();
+            await players[0].page.locator('#ccNextBtn').click();
+            await players[0].page.waitForFunction(r => !document.getElementById('ccSheet').classList.contains('is-on') && document.getElementById('ccRoundNo').textContent !== r, rnd, { timeout: 5000 });
+            // หัวห้องจบเกมกลางรอบ 2 (มีกล่องยืนยัน) → สรุปผลจบเกม
+            await players[0].page.locator('#ccEndBtn').click();
+            await players[0].page.locator('.swal2-confirm').click();
+            await players[0].page.waitForFunction(() => /จบเกม/.test((document.querySelector('#ccSheetCard .cc-sheet-kicker') || {}).textContent || ''), null, { timeout: 8000 });
+            readyChecked = true;
+            console.log('   · จบรอบ: คนอื่นกดพร้อม 2/3 → หัวห้องเริ่มรอบ 2 → หัวห้องจบเกม ✓');
+        }
         assert(actions.play + actions.swipe + actions['play-drawn'] > 10, 'ลงไพ่ผ่าน UI ได้หลายใบ');
         await delay(700);
         for (const p of players) {
@@ -326,6 +436,8 @@ async function act(p, mode, opts = {}) {
         const winnerTitle = await players[0].page.locator('#ccSheetTitle').textContent();
         assert(/ชนะ/.test(winnerTitle), 'สรุปผลบอกผู้ชนะ');
         assert(await players[0].page.locator('#ccBackBtn').isVisible(), 'มีปุ่มกลับห้องรอ/เล่นอีกตา');
+        console.log(`   · ชีตเลือกสีปิดเองเมื่อตาเปลี่ยน ${pickerClosedChecked ? '✓' : '-'}`);
+        console.log(`   · เหตุผลแตะไพ่ผิด: ${badHint || '-'} · จบรอบ/พร้อม ${readyChecked ? '✓' : 'ข้าม (จบในรอบเดียว)'}`);
         console.log(`4. เล่นผ่าน UI จนจบ (ลง ${actions.play} · ปัด ${actions.swipe} · จั่ว ${actions.draw} · ผ่าน ${actions.pass} · จับได้ ${actions.catch}) · ภาพ picker ${pickerShot ? '✓' : '-'} · catch ${catchShot ? '✓' : '-'} ✓`);
 
         // จอใหญ่ 1280×900 (เกมใหม่)
@@ -340,6 +452,27 @@ async function act(p, mode, opts = {}) {
         const deskProbs = await layoutProblems(desk.page);
         assert(!deskProbs.length, 'desktop layout: ' + deskProbs.join(' | '));
         console.log('5. 1280×900 ไม่ล้นจอ ✓');
+        const land = await openPlayer(browser, base, ids[0], { width: 844, height: 390 }, 'land', roomId);
+        players.push(land);
+        await delay(8500);
+        await land.page.screenshot({ path: path.join(SHOTS, 'landscape-844.png') });
+        const landProbs = await layoutProblems(land.page);
+        assert(!landProbs.length, 'landscape layout: ' + landProbs.join(' | '));
+        const overlap = await land.page.evaluate(() => {
+            const chat = document.getElementById('toggleChat').getBoundingClientRect();
+            return [...document.querySelectorAll('.cc-tools .cc-pill')].some(el => { const r = el.getBoundingClientRect(); return r.right > chat.left && r.left < chat.right && r.bottom > chat.top && r.top < chat.bottom; });
+        });
+        assert(!overlap, 'แนวนอน: ปุ่มแชทไม่ทับปุ่มเครื่องมือ (จบเกม)');
+        const landFit = await land.page.evaluate(() => {
+            const dock = document.getElementById('ccDock').getBoundingClientRect();
+            const table = document.getElementById('ccTable').getBoundingClientRect();
+            window.scrollTo({ top: window.scrollY + table.bottom - dock.top, behavior: 'instant' }); // เลื่อนให้ขอบล่างโต๊ะชนขอบบนแถบมือ
+            const pile = document.getElementById('ccPile').getBoundingClientRect();
+            return { dockTop: Math.round(dock.top), pileTop: Math.round(pile.top), pileBottom: Math.round(pile.bottom) };
+        });
+        await delay(300);
+        assert(landFit.pileTop >= 0 && landFit.pileBottom <= landFit.dockTop + 2, 'แนวนอน: เห็นกองทิ้งพร้อมไพ่ในมือ ' + JSON.stringify(landFit));
+        console.log('5b. แนวนอน 844×390: ไม่ล้นจอ · แชทไม่ทับปุ่ม · เห็นโต๊ะพร้อมมือ ✓');
 
         for (const p of players) {
             assert(!p.errors.length, `${p.label} มี error: ${p.errors.slice(0, 4).join(' | ')}`);

@@ -8790,6 +8790,11 @@ io.sockets.on('connection', function(socket) {
             colorcardsRuntime.engine.nextRound(room, playerId));
     });
 
+    safeOn(socket, 'colorcards_ready', function(data, callback) {
+        handleColorCardsCommand(socket, callback, (room, playerId) =>
+            colorcardsRuntime.engine.readyNextRound(room, playerId));
+    });
+
     safeOn(socket, 'colorcards_end', function(data, callback) {
         handleColorCardsCommand(socket, callback, (room, playerId) =>
             colorcardsRuntime.engine.endGame(room, playerId));
@@ -8829,8 +8834,8 @@ io.sockets.on('connection', function(socket) {
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
             const botNames = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทสายฝน', 'บอทแก้วตา', 'บอทก้องภพ'];
-            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄', '🐙', '🦉'];
-            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad', '#16a085', '#d35400'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄', '🐲', '🦁'];
+            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad', '#e91e63', '#00bcd4'];
 
             inFlight.add(room.roomId);
             let added = 0;

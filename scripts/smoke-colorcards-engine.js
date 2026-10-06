@@ -614,4 +614,85 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
     console.log(`12. playBotTurns/botDelay ใช้กับ runtime ได้ (${guard} ตา) ✓`);
 })();
 
+// ---------- 13. UX: คนไม่อยู่ตาสั้นลง · ทุกคนพร้อม = รอบต่อไป · บอทจั่วแล้วรอก่อนลง · ข้อมูลให้ UI ----------
+(function uxPacingTest() {
+    // หมดเวลาติดกัน 2 ตา → ตาถัดไปสั้นลง · เล่นเองแล้วกลับเป็นเวลาปกติ
+    const room = setup(2, { colorcardsTurnSeconds: 30 });
+    const s = room.gameState;
+    const timeoutTurn = () => { s.phaseEndsAt = Date.now() - 1; E.autoResolvePhase(room, mulberry32(5)); };
+    const turnLen = () => s.phaseEndsAt - s.turn.startedAt;
+    assert(s.turn.playerId === 'p1', 'ตาแรก p1');
+    timeoutTurn(); // p1 หมดเวลา 1
+    assert(s.seats[1].idle === 1 && turnLen() > 20000, 'หมดเวลาครั้งเดียวยังไม่นับว่าไม่อยู่');
+    timeoutTurn(); // p0 หมดเวลา 1
+    timeoutTurn(); // p1 หมดเวลา 2
+    assert(s.seats[1].idle === 2, 'นับหมดเวลาติดกัน');
+    assert(E.buildClientState(room, 'p0').seats[1].idle === true, 'UI รู้ว่าคนนี้ไม่อยู่');
+    timeoutTurn(); // p0 หมดเวลา 2 → ตา p1 ต้องสั้น
+    assert(s.turn.playerId === 'p1' && turnLen() <= 6000, `คนไม่อยู่ได้ตาสั้น (${turnLen()}ms)`);
+    E.drawCard(room, 'p1', { turnSeq: s.turnSeq });
+    assert(s.seats[1].idle === 0, 'เล่นเองแล้วรีเซ็ต');
+    if (s.turn.playerId === 'p1') E.passTurn(room, 'p1', { turnSeq: s.turnSeq });
+    assert(s.turn.playerId === 'p0' && turnLen() <= 6000, 'p0 หมดเวลา 2 ตาก็สั้นเหมือนกัน');
+    E.drawCard(room, 'p0', { turnSeq: s.turnSeq });
+    if (s.turn.playerId === 'p0') E.passTurn(room, 'p0', { turnSeq: s.turnSeq });
+    assert(s.turn.playerId === 'p1' && turnLen() > 20000, 'กลับมาเล่นแล้ว ตาเวลาปกติ');
+
+    // บอทไม่นับไม่อยู่
+    const rb = makeRoom(2, {}, { botFrom: 1 });
+    E.startGame(rb, () => 0, { deck: deckWithFirst(2, numCard('r', 5), mulberry32(7)) });
+    rb.gameState.turn.playerId = 'bot_p1';
+    rb.gameState.phaseEndsAt = Date.now() - 1;
+    E.autoResolvePhase(rb, mulberry32(1));
+    assert(!rb.gameState.seats[1].idle, 'บอทไม่ถูกนับว่าไม่อยู่');
+
+    // จบรอบ: ทุกคนจริงที่ต่ออยู่กดพร้อม → รอบต่อไปเริ่มทันที (บอท/คนหลุดไม่ต้องรอ)
+    const r3 = makeRoom(4, { colorcardsTarget: 300 }, { botFrom: 3 });
+    E.startGame(r3, () => 0, { deck: deckWithFirst(4, numCard('r', 5), mulberry32(11)) });
+    const u = r3.gameState;
+    giveHand(r3, 1, [numCard('r', 1)]);
+    [0, 2, 3].forEach(i => giveHand(r3, i, [numCard('b', i + 1)])); // มือเล็ก ไม่ให้ถึงเป้าในรอบเดียว
+    u.seats[1].called = true;
+    u.turn.playerId = 'p1';
+    E.playCard(r3, 'p1', { cardId: numCard('r', 1) });
+    assert(u.phase === 'roundEnd', 'จบรอบ 1');
+    throws(() => E.readyNextRound(makeRoom(2), 'p0'), /ยังไม่จบรอบ/, 'กดพร้อมนอกช่วงจบรอบไม่ได้');
+    assert(E.getAvailableActions(r3, 'p1').canReady === true, 'ปุ่มพร้อมโชว์ตอนจบรอบ');
+    E.readyNextRound(r3, 'p1');
+    assert(u.phase === 'roundEnd' && E.getAvailableActions(r3, 'p1').canReady === false, 'กดแล้วปุ่มหาย ยังรอคนอื่น');
+    assert(E.buildClientState(r3, 'p0').roundReady.includes('p1'), 'UI เห็นว่าใครพร้อม');
+    E.readyNextRound(r3, 'p1'); // กดซ้ำไม่เป็นไร
+    assert(u.roundReady.length === 1, 'กดซ้ำไม่นับซ้ำ');
+    r3.players[2].socketId = null; // p2 หลุด — ไม่ต้องรอ
+    E.readyNextRound(r3, 'p0');
+    assert(u.phase === 'turn' && u.round === 2, 'คนจริงที่ต่ออยู่พร้อมครบ → เริ่มรอบ 2 ทันที');
+    assert(Array.isArray(u.roundReady) && u.roundReady.length === 0, 'รอบใหม่ล้างรายชื่อพร้อม');
+    assert(E.getAvailableActions(r3, 'p1').canReady === false, 'ระหว่างเล่นไม่มีปุ่มพร้อม');
+
+    // บอทจั่วได้ใบที่ลงได้ → รออีกครู่ก่อนลง (คนดูทันว่าจั่วก่อน)
+    const r4 = makeRoom(2, {}, { botFrom: 1 });
+    E.startGame(r4, () => 0, { deck: deckWithFirst(2, numCard('r', 5), mulberry32(3)) });
+    const v = r4.gameState;
+    v.turn.playerId = 'bot_p1';
+    giveHand(r4, 1, [numCard('b', 9)]);
+    v.drawPile.push(numCard('r', 7)); // ใบบนกองลงได้
+    E.drawCard(r4, 'bot_p1', { turnSeq: v.turnSeq });
+    assert(v.turn.drawnCardId && v.turn.drawnAt, 'จั่วได้ใบลงได้ บันทึกเวลาจั่ว');
+    v.turn.startedAt = Date.now() - 5000; // ต้นตานานแล้ว แต่เพิ่งจั่ว
+    const wait = E.botDelay(r4);
+    assert(wait >= 500, `บอทรอหลังจั่วอย่างน้อยครึ่งวิ (${wait}ms)`);
+    assert(!E.playBotTurns(r4, mulberry32(2), Date.now()), 'ยังไม่ลงทันทีหลังจั่ว');
+    assert(E.playBotTurns(r4, mulberry32(2), Date.now() + 2000), 'ครบเวลาแล้วลง');
+
+    // หน้าต่างจับบอกระยะเวลาให้ UI วาดแถบนับถอยหลังได้ถูก
+    const r5 = setup(2);
+    const w = r5.gameState;
+    giveHand(r5, 1, [numCard('r', 1), numCard('r', 2)]);
+    E.playCard(r5, 'p1', { cardId: numCard('r', 1) });
+    const cw = E.buildClientState(r5, 'p0').catchWindow;
+    assert(cw && cw.ms === E.CATCH_MS && cw.until > Date.now(), 'catchWindow มี ms');
+    assert(w.catchWindow, 'ลืมบอก → เปิดหน้าต่างจับ');
+    console.log('13. UX: หมดเวลา 2 ตาติด = ตาสั้น · พร้อมครบ = รอบใหม่ทันที · บอทจั่วแล้วรอก่อนลง · catch ms ✓');
+})();
+
 console.log(`\n✅ smoke-colorcards-engine: ${checks} checks passed`);
