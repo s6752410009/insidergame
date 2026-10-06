@@ -539,6 +539,60 @@ function rig(room, hands, draws = []) {
     assert(engine.shouldBotDraw(3, () => 0.9) && !engine.shouldBotDraw(5, () => 0) && engine.shouldBotDraw(4, () => 0.1) && !engine.shouldBotDraw(4, () => 0.9), 'กติกาจั่วของบอท');
 }
 
+// ================= 13b) UX: พร้อมครบไปต่อเลย · ชิปหมดข้ามได้ · บอกเจ้ามือมือหน้า · ลำดับจั่ว =================
+{
+    const room = makeRoom(4, { rotate: true });
+    const s = gs(room);
+    const toResult = () => { let g = 0; while (s.phase !== 'result' && g < 20) { s.phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(room); g += 1; } };
+    toResult();
+    const hand = s.handNumber;
+    let v = engine.buildClientState(room, 'p1');
+    assert(v.availableActions.canReady && !v.availableActions.canNext, 'สรุปผล: คนที่ไม่ใช่หัวห้องกดพร้อมได้');
+    assert(v.readyNeeded === 4 && v.readyIds.length === 0, 'ต้องพร้อม 4 คน');
+    assert(v.nextDealer && v.nextDealer.playerId === 'p1', 'หมุนเจ้ามือ: บอกล่วงหน้าว่ามือหน้า p1 เป็นเจ้ามือ');
+    ['p1', 'p2'].forEach(id => engine.submitReady(room, id));
+    engine.submitReady(room, 'p2'); // กดซ้ำไม่นับซ้ำ
+    assert(s.phase === 'result' && s.readyIds.length === 2, 'พร้อม 2/4 ยังไม่ไปต่อ');
+    assert(!engine.buildClientState(room, 'p2').availableActions.canReady, 'กดพร้อมแล้ว ปุ่มหาย');
+    room.players.find(p => p.playerId === 'p3').socketId = null; // p3 หลุด → ไม่ต้องรอ
+    engine.submitReady(room, 'p0');
+    assert(s.phase === 'bet' && s.handNumber === hand + 1, 'คนที่ต่ออยู่พร้อมครบ → มือต่อไปทันที');
+    assert(s.dealerId === 'p1', 'เจ้ามือตรงกับที่บอกล่วงหน้า');
+    assert(s.readyIds.length === 0, 'มือใหม่ล้างรายการพร้อม');
+    throws(() => engine.submitReady(room, 'p2'), /ยังไม่จบมือ/, 'กดพร้อมนอกช่วงสรุปผลไม่ได้');
+    // คนสุดท้ายที่ยังไม่พร้อมออกจากห้อง → ที่เหลือพร้อมครบ ไปต่อเลย
+    room.players.find(p => p.playerId === 'p3').socketId = 's3';
+    toResult();
+    const hand2 = s.handNumber;
+    ['p0', 'p1', 'p2'].forEach(id => engine.submitReady(room, id));
+    assert(s.phase === 'result', 'p3 ยังไม่พร้อม ต้องรอ');
+    room.players = room.players.filter(p => p.playerId !== 'p3');
+    engine.handlePlayerLeft(room, 'p3');
+    assert(s.phase === 'bet' && s.handNumber === hand2 + 1, 'คนที่ค้างออกไป → ไปมือต่อไปเลย');
+    conservation(room, 'ready');
+
+    // ลำดับจั่วส่งให้ client (ใช้บอก "อีก N คนถึงตาคุณ")
+    const r2 = makeRoom(4);
+    rig(r2, { p1: ['2S', '3D'], p2: ['2H', '3C'], p3: ['2D', '4S'], p0: ['AS', '5D'] });
+    ['p1', 'p2', 'p3'].forEach(id => engine.submitBet(r2, id, 50, ctx(r2)));
+    gs(r2).phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(r2);
+    const dv = engine.buildClientState(r2, 'p3');
+    assert(dv.phase === 'draw' && dv.drawOrder.join(',') === 'p1,p2,p3' && dv.toActPlayerId === 'p1', 'ส่งลำดับจั่วให้ client: ' + dv.drawOrder);
+    assert(dv.nextDealer === null, 'เจ้ามือคงที่/ระหว่างเล่น ไม่ต้องบอกเจ้ามือมือหน้า');
+
+    // ชิปหมด ยังขอชิปใหม่ได้ → ข้ามมือได้ ไม่ต้องรอนาฬิกา
+    const r3 = makeRoom(3);
+    const broke = P(r3, 'p1');
+    P(r3, 'p0').chips += broke.chips; // ย้ายชิปไปเจ้ามือ = ชิปรวมยังเท่าทุน
+    broke.chips = 0;
+    const bv = engine.buildClientState(r3, 'p1').availableActions;
+    assert(!bv.canBet && bv.canRebuy && bv.canSkip, 'ชิปหมด: ขอชิปใหม่หรือข้ามมือได้');
+    engine.submitSkip(r3, 'p1', ctx(r3));
+    engine.submitBet(r3, 'p2', 20, ctx(r3));
+    assert(gs(r3).phase !== 'bet', 'คนชิปหมดกดข้าม → แจกไพ่เลย ไม่ต้องรอหมดเวลา');
+    conservation(r3, 'broke-skip');
+}
+
 // ================= 14) สุ่มเล่นหลายโต๊ะ: ชิปไม่หาย ไม่ค้าง ไม่รั่ว =================
 {
     let seed = 12345;

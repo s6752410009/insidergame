@@ -210,6 +210,7 @@
   .pd-me { display: flex; align-items: center; gap: 12px; min-height: 44px; }
   .pd-me-cards { display: flex; gap: 6px; flex: 0 0 auto; min-height: var(--card-h); align-items: center; }
   .pd-me-cards:empty { display: none; }
+  .pd-me[hidden] { display: none; }
   .pd-me-info { min-width: 0; flex: 1 1 auto; }
   .pd-me-label { font-family: var(--pd-display); font-weight: 700; font-size: 1.3rem; line-height: 1.15; }
   .pd-me-label.is-special { color: var(--pd-gold); }
@@ -248,9 +249,14 @@
   .pd-chipbtn img { width: 46px; height: 46px; transition: transform 0.12s var(--pd-ease); }
   .pd-chipbtn:active img { transform: translateY(-4px) scale(1.06); }
   .pd-chipbtn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .pd-range { width: 100%; accent-color: oklch(0.84 0.13 85); height: 44px; margin: 0; }
   .pd-quick { display: flex; gap: 6px; }
   .pd-quick .pd-btn { min-height: 44px; font-size: 0.86rem; padding: 0 8px; flex: 1 1 0; }
+  .pd-btn.is-confirm { background: var(--pd-lose); color: oklch(0.18 0.04 25); }
+  .pd-why { margin-top: 4px; font-size: 0.8rem; color: var(--pd-soft); line-height: 1.35; }
+  .pd-why strong { color: var(--pd-ink); }
+  .pd-next-dealer { margin-top: 6px; font-size: 0.8rem; color: var(--pd-gold); text-align: center; }
+  .pd-pill.is-static { opacity: 0.85; }
+  .pd-pill[hidden] { display: none; }
 
   .pd-standings { display: grid; gap: 0; margin: 4px 0 8px; }
   .pd-standings .pd-row { grid-template-columns: 28px minmax(0, 1fr) auto; }
@@ -337,6 +343,18 @@
     .pd { --card-w: 72px; --card-h: 101px; --seat-card-w: 30px; --seat-card-h: 42px; }
     .pd-chipbtn img { width: 40px; height: 40px; }
   }
+  /* ปุ่มแชทลอยมุมขวาบน — จอกว้างแต่ไม่ถึงเดสก์ท็อป แถบปุ่มอยู่บรรทัดเดียวกับชื่อโต๊ะ จะโดนบัง */
+  @media (min-width: 560px) and (max-width: 1240px) {
+    .pd-tools { margin-right: 116px; }
+  }
+  /* มือถือแนวนอน: ไพ่ในแถบล่างย่อลง ไม่ให้แถบกินทั้งจอจนไม่เห็นโต๊ะ */
+  @media (orientation: landscape) and (max-height: 520px) {
+    .pd { --card-w: 52px; --card-h: 73px; }
+    .pd-dock { max-height: 60vh; padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+    .pd-me-label { font-size: 1.05rem; }
+    .pd-actions { margin-top: 6px; }
+    .pd-btn--big { min-height: 48px; font-size: 1.05rem; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .pd-card.is-dealing, .pd-outcome.is-pop, .pd-pokburst, .pd-banner.is-on { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
     .pd-card-inner, .pd-fly, .pd-seat, .pd-btn, .pd-chipbtn img { transition: none !important; }
@@ -358,11 +376,9 @@
     <div class="pd-tools">
       <button type="button" id="pdRankBtn" class="pd-pill">อันดับไพ่</button>
       <button type="button" id="pdHowBtn" class="pd-pill">วิธีเล่น</button>
-      <button type="button" id="pdRotateBtn" class="pd-pill <%= room.admin ? '' : 'is-static' %>" aria-pressed="false">เจ้ามือคงที่</button>
+      <button type="button" id="pdRotateBtn" class="pd-pill <%= room.admin ? '' : 'is-static' %>" aria-pressed="false">เจ้ามือ: คงที่</button>
       <button type="button" id="pdSidebarBtn" class="pd-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
-      <% if (room.admin) { %>
-      <button type="button" id="pdEndBtn" class="pd-pill pd-pill--danger">จบโต๊ะ</button>
-      <% } %>
+      <button type="button" id="pdEndBtn" class="pd-pill pd-pill--danger"<%= room.admin ? '' : ' hidden' %>>จบโต๊ะ</button>
     </div>
   </div>
 
@@ -463,6 +479,8 @@ $(function() {
   let betAmount = null;
   let betHand = -1;
   let betTouched = false;
+  let betStack = []; // ยอดก่อนหน้า — ปุ่ม "ย้อน" เอาชิปที่แตะพลาดออก
+  let confirmBetUntil = 0; // แตะลงก้อนใหญ่ครั้งแรก = ขอยืนยันก่อน
   let pending = false;
   let timerHandle = null;
   const cardMemo = new Map(); // key → 'back' | 'face'
@@ -480,6 +498,8 @@ $(function() {
     }
     return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
   }
+  // "บอด" มือใหม่ไม่รู้ว่าคือ 0 แต้ม
+  function niceLabel(label) { return String(label || '').replace(/^บอด/, 'บอด (0 แต้ม)'); }
   function dengWord(d) { return d >= 5 ? 'ห้าเด้ง' : (d === 3 ? 'สามเด้ง' : (d === 2 ? 'สองเด้ง' : '')); }
   function selfSeat() { return (S.players || []).find(p => p.playerId === playerId) || null; }
   function seatById(id) { return (S.players || []).find(p => p.playerId === id) || null; }
@@ -531,6 +551,22 @@ $(function() {
     return html;
   }
 
+  // ระหว่างจั่ว: อีกกี่คนจะถึงตาเรา (-1 = ไม่ต้องรอตา เช่นป๊อก/ตัดสินใจแล้ว/ไม่ได้ลง)
+  function drawAhead() {
+    const self = S.self;
+    if (!self || !self.inHand || self.done || self.isDealer) return -1;
+    const order = S.drawOrder || [];
+    const mine = order.indexOf(playerId);
+    const cur = order.indexOf(S.toActPlayerId);
+    if (mine < 0 || cur < 0 || mine <= cur) return -1;
+    let n = 0;
+    for (let i = cur + 1; i < mine; i += 1) {
+      const p = seatById(order[i]);
+      if (p && p.inHand && !p.done) n += 1;
+    }
+    return n;
+  }
+
   // ---------- render ----------
   function describeNow() {
     const self = S.self;
@@ -542,15 +578,17 @@ $(function() {
     if (phase === 'bet') {
       if (self.isDealer) return { text: 'คุณเป็นเจ้ามือ — รอขาไพ่ลงเดิมพัน', mine: false };
       if (acts.canBet) return { text: 'เลือกยอดแล้วกดลงเดิมพัน', mine: true };
-      if (acts.canRebuy) return { text: 'ชิปหมด — กดขอชิปใหม่เพื่อเล่นต่อ', mine: true };
+      if (acts.canRebuy) return { text: 'ชิปหมด — ขอชิปใหม่ หรือข้ามมือนี้', mine: true };
       if (self.skipped) return { text: 'คุณข้ามมือนี้ — รอมือหน้า', mine: false };
       if (self.decided) return { text: 'ลงแล้ว ' + fmt(self.bet) + ' — รอคนอื่น', mine: false };
       return { text: 'ชิปไม่พอเล่นต่อ — ดูเพื่อนเล่นได้', mine: false };
     }
-    if (phase === 'deal') return { text: 'แจกไพ่คนละ 2 ใบ — ใครป๊อกเปิดเลย', mine: false };
+    const myPok = self.inHand && self.eval && self.eval.pok;
+    if (phase === 'deal') return { text: myPok ? 'คุณป๊อก ' + self.eval.points + '! ไม่ต้องจั่ว รอเปิดวัด' : 'แจกไพ่คนละ 2 ใบ — ใครป๊อกเปิดเลย', mine: !!myPok };
     if (phase === 'draw') {
       if (acts.canDraw) return { text: 'ตาคุณ — จั่วเพิ่ม 1 ใบ หรืออยู่', mine: true };
-      return { text: 'รอ ' + (S.toActName || 'คนถัดไป') + ' จั่วหรืออยู่', mine: false };
+      const ahead = drawAhead();
+      return { text: 'รอ ' + (S.toActName || 'คนถัดไป') + ' จั่วหรืออยู่' + (ahead > 0 ? ' · อีก ' + ahead + ' คนถึงตาคุณ' : (ahead === 0 ? ' · คุณคนถัดไป' : '')), mine: false };
     }
     if (phase === 'dealer') {
       if (acts.canDealerDecide) return { text: 'ตาคุณ (เจ้ามือ) — จั่วหรืออยู่ แล้วเปิดวัดทุกคน', mine: true };
@@ -583,7 +621,14 @@ $(function() {
   function renderTop() {
     $('#pdHandNo').text(S.handNumber ? 'มือที่ ' + S.handNumber : 'เตรียมโต๊ะ');
     const rotate = !!S.rotateDealer;
-    $('#pdRotateBtn').text(rotate ? 'หมุนเจ้ามือทุกตา' : 'เจ้ามือคงที่').attr('aria-pressed', rotate ? 'true' : 'false');
+    const host = !!S.isHost && S.phase !== 'finished';
+    $('#pdRotateBtn').text(rotate ? 'เจ้ามือ: หมุนทุกตา' : 'เจ้ามือ: คงที่')
+      .attr('aria-pressed', rotate ? 'true' : 'false')
+      .attr('aria-disabled', host ? 'false' : 'true')
+      .attr('title', host ? 'แตะเพื่อสลับ (มีผลมือหน้า)' : 'หัวห้องเป็นคนตั้ง')
+      .toggleClass('is-static', !host);
+    $('#pdEndBtn').prop('hidden', !host);
+    $('#pdRoot').attr('data-phase', S.phase || '');
     const now = describeNow();
     $('#pdNowPhase').text((PHASE_LABEL[S.phase] || '') + (S.handNumber ? ' · มือที่ ' + S.handNumber : ''));
     $('#pdNowCopy').text(now.text);
@@ -603,7 +648,7 @@ $(function() {
     }
     let label = '';
     if (!d.isSelf && d.eval && d.revealed) {
-      label = '<span class="pd-handlabel' + (d.eval.special || d.eval.pok ? ' is-special' : '') + '">' + esc(d.eval.label) + '</span>';
+      label = '<span class="pd-handlabel' + (d.eval.special || d.eval.pok ? ' is-special' : '') + '">' + esc(niceLabel(d.eval.label)) + '</span>';
     }
     const outcome = res ? '<span class="pd-outcome is-pop ' + (res.delta > 0 ? 'is-win' : (res.delta < 0 ? 'is-lose' : 'is-push')) + '" style="--pop-delay:700ms">เจ้ามือ ' + signed(res.delta) + '</span>' : '';
     const turn = S.phase === 'dealer' ? ' <span class="pd-badge pd-badge--soft">กำลังตัดสินใจ</span>' : '';
@@ -650,8 +695,8 @@ $(function() {
       let bottom = '';
       if (res) {
         const cls = res.outcome === 'win' ? 'is-win' : (res.outcome === 'lose' ? 'is-lose' : 'is-push');
-        const txt = res.outcome === 'push' ? 'เสมอ' : signed(res.delta);
-        bottom = '<span class="pd-handlabel' + (res.special || res.pok ? ' is-special' : '') + '">' + esc(res.label) + '</span>' +
+        const txt = res.outcome === 'push' ? 'เสมอ' : (res.outcome === 'win' ? 'ชนะ ' : 'แพ้ ') + signed(res.delta);
+        bottom = '<span class="pd-handlabel' + (res.special || res.pok ? ' is-special' : '') + '">' + esc(niceLabel(res.label)) + '</span>' +
           '<span class="pd-outcome is-pop ' + cls + '" style="--pop-delay:' + (700 + index * 90) + 'ms">' + txt + '</span>';
       } else {
         bottom = '<div class="pd-seat-status' + (st.hot ? ' is-hot' : '') + '">' + esc(st.text) + '</div>' +
@@ -671,6 +716,29 @@ $(function() {
     $('#pdPotAmount').text(fmt(total));
   }
 
+  // ทำไมชนะ/แพ้: เทียบมือกับเจ้ามือ + เด้งมาจากฝั่งไหน
+  function whyLine(res) {
+    const r = S.lastResult;
+    if (!r || !r.dealer) return '';
+    const d = r.dealer;
+    if (res.isDealer) {
+      const rows = r.rows || [];
+      const w = rows.filter(x => x.outcome === 'lose').length;
+      const l = rows.filter(x => x.outcome === 'win').length;
+      const p = rows.length - w - l;
+      return 'กินขา ' + w + ' · จ่ายขา ' + l + (p ? ' · เสมอ ' + p : '') + (r.shortfall ? ' · ชิปไม่พอ แบ่งจ่ายตามสัดส่วน' : '');
+    }
+    const mine = '<strong>' + esc(niceLabel(res.label)) + '</strong>';
+    const theirs = '<strong>' + esc(niceLabel(d.label)) + '</strong>';
+    if (res.outcome === 'push') return 'คุณ ' + mine + ' เท่าเจ้ามือ ' + theirs + ' — คืนเดิมพัน';
+    if (res.outcome === 'win') {
+      return 'คุณ ' + mine + ' ชนะเจ้ามือ ' + theirs + ' · ได้ ' + fmt(res.bet) + ' × ' + res.multiplier +
+        (res.multiplier > 1 ? ' (เด้งของคุณ)' : '') + (res.short ? ' · เจ้ามือชิปไม่พอ จ่ายเท่าที่มี' : '');
+    }
+    return 'เจ้ามือ ' + theirs + ' ชนะ ' + mine + ' · เสีย ' + fmt(res.bet) + ' × ' + res.multiplier +
+      (res.multiplier > 1 ? ' (เด้งของเจ้ามือ)' : '') + (res.short ? ' · ชิปไม่พอ เสียเท่าที่มี' : '');
+  }
+
   function renderMe() {
     const self = S.self;
     const seat = selfSeat();
@@ -679,12 +747,19 @@ $(function() {
       $('#pdMeInfo').html('<div class="pd-me-sub">คุณกำลังดูโต๊ะนี้</div>');
       return;
     }
+    // จบโต๊ะแล้ว ไพ่มือสุดท้ายค้างไว้ทำให้งง — ตารางสรุปอยู่ในกล่องเดียวกันแทน
+    $('#pdDock .pd-me').prop('hidden', S.phase === 'finished');
+    if (S.phase === 'finished') {
+      $('#pdMeCards').html('');
+      $('#pdMeInfo').html('');
+      return;
+    }
     const meSeat = Object.assign({}, seat, { cards: self.cards, cardCount: (self.cards || []).length });
     $('#pdMeCards').html(seatCards(meSeat, 'm'));
     const ev = self.eval;
     const res = (S.phase === 'result') ? resultRow(playerId) : null;
     let label = '';
-    if (ev) label = '<div class="pd-me-label' + (ev.special || ev.pok ? ' is-special' : '') + '">' + esc(ev.label) + '</div>';
+    if (ev) label = '<div class="pd-me-label' + (ev.special || ev.pok ? ' is-special' : '') + '">' + esc(niceLabel(ev.label)) + '</div>';
     else if (self.isDealer) label = '<div class="pd-me-label">เจ้ามือ</div>';
     else if (S.phase === 'bet' && self.decided && !self.skipped) label = '<div class="pd-me-label">ลง ' + fmt(self.bet) + '</div>';
     const netNow = (self.chips + (self.bet || 0)) - self.buyIn;
@@ -698,7 +773,8 @@ $(function() {
       const txt = res.isDealer ? 'เจ้ามือ ' + signed(res.delta)
         : (res.outcome === 'win' ? 'ชนะ ' + signed(res.delta) + (res.multiplier > 1 ? ' (' + res.multiplier + ' เด้ง)' : '')
           : (res.outcome === 'lose' ? 'แพ้ ' + signed(res.delta) + (res.multiplier > 1 ? ' (' + res.multiplier + ' เด้ง)' : '') : 'เสมอ คืนเดิมพัน'));
-      out = '<span class="pd-outcome is-pop ' + cls + '" style="--pop-delay:650ms">' + txt + '</span>';
+      out = '<span class="pd-outcome is-pop ' + cls + '" style="--pop-delay:650ms">' + txt + '</span>' +
+        '<div class="pd-why" id="pdWhy">' + whyLine(res) + '</div>';
     }
     $('#pdMeInfo').html(label + sub + out);
   }
@@ -711,6 +787,41 @@ $(function() {
     return Math.max(min, Math.min(max, v));
   }
 
+  function betButtonHtml() {
+    // state ใหม่มาระหว่างรอยืนยัน (บอทลงเงิน) — คงสถานะ "แตะอีกครั้ง" ไว้
+    const confirming = Date.now() < confirmBetUntil;
+    return '<button type="button" id="pdBetBtn" class="pd-btn pd-btn--primary pd-btn--big' + (confirming ? ' is-confirm' : '') + '">' +
+      (confirming ? 'แตะอีกครั้ง ยืนยันลง ' : 'ลงเดิมพัน ') + fmt(betAmount) + '</button>';
+  }
+
+  // ลงก้อนใหญ่ (ครึ่งหนึ่งของชิปขึ้นไป) ต้องแตะยืนยันอีกครั้ง — กันนิ้วโดนชิป 500 พลาด
+  function isBigBet(v) {
+    const chips = (S.self && S.self.chips) || 0;
+    const min = (S.availableActions && S.availableActions.minBet) || 10;
+    return v > min && chips > 0 && v * 2 >= chips;
+  }
+
+  function quickHtml(a) {
+    const last = S.self && S.self.lastBet ? clampBet(S.self.lastBet) : 0;
+    return '<div class="pd-quick">' +
+      '<button type="button" class="pd-btn" data-set="undo" id="pdUndoBtn"' + (betStack.length ? '' : ' disabled') + ' aria-label="ย้อนชิปที่แตะล่าสุด">↶ ย้อน</button>' +
+      '<button type="button" class="pd-btn" data-set="min">ขั้นต่ำ ' + fmt(a.minBet) + '</button>' +
+      (last ? '<button type="button" class="pd-btn" data-set="last">เท่าเดิม ' + fmt(last) + '</button>' : '') +
+      '<button type="button" class="pd-btn" data-set="max">สูงสุด ' + fmt(a.maxBet) + '</button>' +
+      '</div>';
+  }
+
+  function drawTip(ev, a) {
+    if (!ev) return '';
+    let tip = ev.points <= 3 ? 'แต้มน้อย ส่วนใหญ่จั่ว' : (ev.points >= 6 ? 'แต้มดี ส่วนใหญ่อยู่' : 'ครึ่งๆ ลองเสี่ยงดู');
+    if (ev.deng >= 2) tip += ' · ถือสองเด้งอยู่ จั่วแล้วเด้งอาจหาย';
+    if (a.canDealerDecide) {
+      const waiting = (S.players || []).filter(p => p.inHand && !p.isDealer).length;
+      tip += ' · แล้วเปิดวัด ' + waiting + ' ขาพร้อมกัน';
+    }
+    return tip;
+  }
+
   function renderActions() {
     const a = S.availableActions || {};
     const self = S.self;
@@ -721,6 +832,8 @@ $(function() {
       if (betHand !== S.handNumber || betAmount == null) {
         betHand = S.handNumber;
         betTouched = false;
+        betStack = [];
+        confirmBetUntil = 0;
         betAmount = clampBet(a.defaultBet || a.minBet);
       }
       betAmount = clampBet(betAmount);
@@ -729,31 +842,48 @@ $(function() {
         '<div class="pd-chips">' + CHIP_VALUES.map(v =>
           '<button type="button" class="pd-chipbtn" data-chip="' + v + '"' + (v > a.maxBet ? ' disabled' : '') + ' aria-label="เพิ่ม ' + v + '">' +
           '<img src="' + CHIP(v) + '" alt=""></button>').join('') + '</div></div>' +
-        '<input type="range" class="pd-range" id="pdBetRange" min="' + a.minBet + '" max="' + a.maxBet + '" step="10" value="' + betAmount + '" aria-label="ยอดเดิมพัน">' +
+        quickHtml(a) +
         '<div class="pd-actions-row">' +
           '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามมือ</button>' +
-          '<button type="button" id="pdBetBtn" class="pd-btn pd-btn--primary pd-btn--big">ลงเดิมพัน ' + fmt(betAmount) + '</button>' +
+          betButtonHtml() +
         '</div></div>';
     } else if (a.canDraw || a.canDealerDecide) {
-      const ev = self && self.eval;
-      const tip = ev ? (ev.points <= 3 ? 'แต้มน้อย ส่วนใหญ่จั่ว' : (ev.points >= 6 ? 'แต้มดี ส่วนใหญ่อยู่' : 'ครึ่งๆ ลองเสี่ยงดู')) : '';
+      const tip = drawTip(self && self.eval, a);
       html = '<div class="pd-actions-row">' +
         '<button type="button" id="pdStayBtn" class="pd-btn pd-btn--big">อยู่</button>' +
         '<button type="button" id="pdDrawBtn" class="pd-btn pd-btn--primary pd-btn--big">จั่วไพ่</button>' +
-        '</div>' + (tip ? '<div class="pd-hint">' + esc(tip) + (a.canDealerDecide ? ' · แล้วเปิดวัดทุกขาพร้อมกัน' : '') + '</div>' : '');
+        '</div>' + (tip ? '<div class="pd-hint">' + esc(tip) + '</div>' : '');
     } else if (S.phase === 'result') {
-      html = a.canNext
-        ? '<button type="button" id="pdNextBtn" class="pd-btn pd-btn--primary pd-btn--big">มือต่อไป</button>'
-        : '<div class="pd-wait">รอมือต่อไป…</div>';
+      const need = Number(S.readyNeeded) || 0;
+      const ready = (S.readyIds || []).length;
+      if (a.canNext) {
+        html = '<button type="button" id="pdNextBtn" class="pd-btn pd-btn--primary pd-btn--big">มือต่อไป</button>' +
+          (ready ? '<div class="pd-hint">พร้อมแล้ว ' + ready + '/' + need + ' คน</div>' : '');
+      } else if (a.canReady) {
+        html = '<button type="button" id="pdReadyBtn" class="pd-btn pd-btn--primary pd-btn--big">พร้อมมือต่อไป' + (need > 1 ? ' (' + ready + '/' + need + ')' : '') + '</button>';
+      } else {
+        html = '<div class="pd-wait">พร้อมแล้ว — รออีก ' + Math.max(0, need - ready) + ' คน หรือหมดเวลา</div>';
+      }
+      if (S.nextDealer) {
+        html += '<div class="pd-next-dealer">มือหน้า: ' + (S.nextDealer.playerId === playerId ? 'คุณเป็นเจ้ามือ' : esc(S.nextDealer.name) + ' เป็นเจ้ามือ') + '</div>';
+      }
     } else if (self && self.isDealer && S.phase === 'bet') {
       html = '<div class="pd-wait">รอขาไพ่ลงเดิมพัน แล้วแจกอัตโนมัติ</div>';
     } else if (S.phase === 'draw' || S.phase === 'dealer' || S.phase === 'deal') {
-      html = '<div class="pd-wait">' + (self && self.inHand && self.done && S.phase === 'draw' ? 'ตัดสินใจแล้ว — รอคนอื่น' : 'รอตาคนอื่น…') + '</div>';
+      const myPok = self && self.inHand && self.eval && self.eval.pok;
+      let wait = 'รอตาคนอื่น…';
+      if (myPok) wait = 'คุณป๊อก — ไม่ต้องจั่ว รอเปิดวัด';
+      else if (self && self.inHand && self.done && S.phase === 'draw') wait = 'ตัดสินใจแล้ว — รอคนอื่น';
+      else if (self && self.isDealer && S.phase !== 'dealer') wait = 'รอขาไพ่จั่วให้ครบ แล้วถึงตาคุณ (เจ้ามือ)';
+      else if (self && !self.inHand && !self.isDealer) wait = 'มือนี้คุณไม่ได้ลง — ดูเพื่อนเล่นได้';
+      html = '<div class="pd-wait">' + wait + '</div>';
     } else if (self && self.decided && S.phase === 'bet') {
       html = '<div class="pd-wait">' + (self.skipped ? 'ข้ามมือนี้แล้ว' : 'ลงแล้ว ' + fmt(self.bet) + ' — รอแจกไพ่') + '</div>';
     }
     if (a.canRebuy && S.phase !== 'finished') {
-      html += '<button type="button" id="pdRebuyBtn" class="pd-btn">ขอชิปใหม่ +' + fmt((S.limits && S.limits.rebuy) || 1000) + ' (ได้ครั้งเดียว)</button>';
+      html += '<div class="pd-actions-row">' +
+        (a.canSkip && !a.canBet ? '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามมือ</button>' : '') +
+        '<button type="button" id="pdRebuyBtn" class="pd-btn">ขอชิปใหม่ +' + fmt((S.limits && S.limits.rebuy) || 1000) + ' (ได้ครั้งเดียว)</button></div>';
     }
     $('#pdActions').html(html);
     const finished = S.phase === 'finished';
@@ -776,7 +906,10 @@ $(function() {
       }).join('') + '</div>' +
       '<div class="pd-actions-row">' +
         '<button type="button" id="pdShareBtn" class="pd-btn">แชร์ผล</button>' +
-        '<button type="button" id="pdBackBtn" class="pd-btn pd-btn--primary">กลับห้องรอ</button>' +
+        // หัวห้องพาทุกคนกลับ · คนอื่นกลับเฉพาะตัวเอง (ไม่ลากทั้งวง)
+        (S.isHost
+          ? '<button type="button" id="pdBackBtn" class="pd-btn pd-btn--primary">พาทุกคนกลับ</button>'
+          : '<button type="button" id="pdBackSelfBtn" class="pd-btn pd-btn--primary">กลับห้องรอ</button>') +
       '</div><div class="pd-hint" id="pdBackRemain">ทุกคนกลับห้องรอพร้อมกัน</div>';
   }
 
@@ -789,17 +922,20 @@ $(function() {
     const mini = cards => '<span class="pd-row-cards">' + (cards || []).map(c => '<img src="' + esc(c.image) + '" alt="' + esc(c.thaiName) + '">').join('') + '</span>';
     const rows = (r.rows || []).map(function(row) {
       const cls = row.outcome === 'win' ? 'is-win' : (row.outcome === 'lose' ? 'is-lose' : 'is-push');
-      const txt = row.outcome === 'push' ? 'เสมอ' : signed(row.delta);
+      const txt = row.outcome === 'push' ? 'เสมอ' : (row.outcome === 'win' ? 'ชนะ ' : 'แพ้ ') + signed(row.delta);
       const how = row.outcome === 'push' ? 'คืนเดิมพัน ' + fmt(row.bet)
-        : ('เดิมพัน ' + fmt(row.bet) + ' × ' + row.multiplier + (row.short ? ' (จ่ายได้ไม่ครบ)' : ''));
+        : ('เดิมพัน ' + fmt(row.bet) + ' × ' + row.multiplier +
+          (row.multiplier > 1 ? (row.outcome === 'win' ? ' เด้งของขา' : ' เด้งเจ้ามือ') : '') +
+          (row.short ? ' (จ่ายได้ไม่ครบ)' : ''));
       return '<div class="pd-row"><span class="pd-row-name">' + esc(row.name) + (row.playerId === playerId ? ' (คุณ)' : '') + '</span>' +
         '<span class="pd-outcome ' + cls + '">' + txt + '</span>' +
-        '<span class="pd-row-hand">' + mini(row.cards) + esc(row.label) + ' · ' + esc(how) + '</span></div>';
+        '<span class="pd-row-hand">' + mini(row.cards) + esc(niceLabel(row.label)) + ' · ' + esc(how) + '</span></div>';
     }).join('');
     const d = r.dealer;
     $('#pdResults').prop('hidden', false).html(
       '<h2>ผลมือที่ ' + r.handNumber + '</h2>' +
-      (d ? '<p class="pd-results-note">เจ้ามือ ' + esc(d.name) + ': ' + mini(d.cards) + esc(d.label) + ' · ' + signed(d.delta) + ' ชิป</p>' : '') +
+      (d ? '<p class="pd-results-note">เจ้ามือ ' + esc(d.name) + ': ' + mini(d.cards) + esc(niceLabel(d.label)) + ' · ' + signed(d.delta) + ' ชิป</p>' : '') +
+      '<p class="pd-results-note">ชนะได้ เดิมพัน × เด้งของขา · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ</p>' +
       (r.shortfall ? '<p class="pd-results-note">เจ้ามือชิปไม่พอจ่าย — แบ่งจ่ายตามสัดส่วน</p>' : '') +
       rows
     );
@@ -822,13 +958,16 @@ $(function() {
     const deck = document.getElementById('pdDeck');
     const deckRect = deck ? deck.getBoundingClientRect() : null;
     let flipIndex = 0;
+    // โต๊ะ 10 คน = 20 ใบ: ถ้าใบละ 85ms ไพ่เจ้ามือหงายช้ากว่าป้ายผล ~2 วิ — บีบให้แจกครบใน ~1 วิ
+    const dealCount = document.querySelectorAll('.pd-card[data-mode="new"]').length;
+    const step = Math.min(85, Math.floor(1000 / Math.max(1, dealCount)));
     document.querySelectorAll('.pd-card[data-mode="new"]').forEach(function(el) {
       if (!deckRect) return;
       const r = el.getBoundingClientRect();
       const dx = (deckRect.left + deckRect.width / 2) - (r.left + r.width / 2);
       const dy = (deckRect.top + deckRect.height / 2) - (r.top + r.height / 2);
       const idx = el.dataset.deal != null ? Number(el.dataset.deal) : 0;
-      const delay = idx * 85;
+      const delay = idx * step;
       el.style.setProperty('--dx', dx.toFixed(0) + 'px');
       el.style.setProperty('--dy', dy.toFixed(0) + 'px');
       el.style.setProperty('--deal-delay', delay + 'ms');
@@ -1005,14 +1144,26 @@ $(function() {
       $('#pdActions button').prop('disabled', false);
       renderActions();
     });
-    setTimeout(function() { pending = false; }, 6000);
+    // ไม่มีคำตอบใน 6 วิ (เน็ตช้า) — ปลดล็อกปุ่มให้กดใหม่ได้ ไม่ค้างเทา
+    setTimeout(function() {
+      if (!pending) return;
+      pending = false;
+      $('#pdActions button').prop('disabled', false);
+      renderActions();
+    }, 6000);
   }
 
-  function setBet(v) {
-    betAmount = clampBet(v);
+  function setBet(v, remember) {
+    const next = clampBet(v);
+    if (remember !== false && next !== betAmount) {
+      betStack.push(betAmount);
+      if (betStack.length > 20) betStack.shift();
+    }
+    betAmount = next;
+    confirmBetUntil = 0;
     $('#pdBetValue').text(fmt(betAmount));
-    $('#pdBetRange').val(betAmount);
-    $('#pdBetBtn').text('ลงเดิมพัน ' + fmt(betAmount));
+    $('#pdBetBtn').removeClass('is-confirm').text('ลงเดิมพัน ' + fmt(betAmount));
+    $('#pdUndoBtn').prop('disabled', !betStack.length);
   }
   $(document).on('click', '.pd-chipbtn', function() {
     const add = Number($(this).data('chip')) || 0;
@@ -1020,16 +1171,39 @@ $(function() {
     betTouched = true;
     if (window.gameHaptic) window.gameHaptic(8);
   });
-  $(document).on('input', '#pdBetRange', function() { setBet(Number(this.value)); });
   $(document).on('click', '[data-set]', function() {
     const a = S.availableActions || {};
     const kind = $(this).data('set');
+    if (kind === 'undo') {
+      if (!betStack.length) return;
+      setBet(betStack.pop(), false);
+      if (!betStack.length) betTouched = false;
+      return;
+    }
     betTouched = true;
     if (kind === 'min') setBet(a.minBet);
     else if (kind === 'max') setBet(a.maxBet);
     else if (kind === 'last' && S.self) setBet(S.self.lastBet);
   });
-  $(document).on('click', '#pdBetBtn', function() { send('pokdeng_bet', { amount: clampBet(betAmount) }); });
+  $(document).on('click', '#pdBetBtn', function() {
+    const amount = clampBet(betAmount);
+    if (isBigBet(amount) && Date.now() > confirmBetUntil) {
+      confirmBetUntil = Date.now() + 3000;
+      const btn = $(this).addClass('is-confirm').text('แตะอีกครั้ง ยืนยันลง ' + fmt(amount));
+      setTimeout(function() {
+        if (Date.now() >= confirmBetUntil) btn.removeClass('is-confirm').text('ลงเดิมพัน ' + fmt(betAmount));
+      }, 3050);
+      if (window.gameHaptic) window.gameHaptic([10, 40, 10]);
+      return;
+    }
+    confirmBetUntil = 0;
+    send('pokdeng_bet', { amount: amount });
+  });
+  $(document).on('click', '#pdReadyBtn', function() { send('pokdeng_ready'); });
+  $(document).on('click', '#pdBackSelfBtn', function() {
+    allowNavigation = true;
+    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+  });
   $(document).on('click', '#pdSkipBtn', function() { send('pokdeng_skip'); });
   $(document).on('click', '#pdDrawBtn', function() { send(S.availableActions.canDealerDecide ? 'pokdeng_dealer' : 'pokdeng_draw', { draw: true }); });
   $(document).on('click', '#pdStayBtn', function() { send(S.availableActions.canDealerDecide ? 'pokdeng_dealer' : 'pokdeng_draw', { draw: false }); });
@@ -1049,8 +1223,13 @@ $(function() {
     });
   });
   $('#pdRotateBtn').on('click', function() {
-    if (!isRoomAdmin || S.phase === 'finished') return;
-    send('pokdeng_rotate', { enabled: !S.rotateDealer });
+    if (!S.isHost || S.phase === 'finished') {
+      Swal.fire({ toast: true, position: 'top', icon: 'info', title: S.rotateDealer ? 'หมุนเจ้ามือทุกตา — หัวห้องเป็นคนตั้ง' : 'เจ้ามือคงที่ — หัวห้องเป็นคนตั้ง', showConfirmButton: false, timer: 2000, background: '#2a1416', color: '#fff' });
+      return;
+    }
+    const enable = !S.rotateDealer;
+    send('pokdeng_rotate', { enabled: enable });
+    Swal.fire({ toast: true, position: 'top', icon: 'success', title: enable ? 'มือหน้าเริ่มหมุนเจ้ามือทุกตา' : 'มือหน้าเจ้ามือคงที่', showConfirmButton: false, timer: 2200, background: '#2a1416', color: '#fff' });
   });
   $('#pdEndBtn').on('click', function() {
     Swal.fire({
@@ -1084,10 +1263,11 @@ $(function() {
   }
   function howToHtml() {
     return '<div class="pd-guide">' +
-      '<h4>1. ลงเดิมพัน</h4><p>ทุกขา (ยกเว้นเจ้ามือ) ลง 10–500 ภายใน 20 วิ · ไม่เลือก = ลงขั้นต่ำให้</p>' +
+      '<h4>1. ลงเดิมพัน</h4><p>ทุกขา (ยกเว้นเจ้ามือ) ลง 10–500 ภายใน 20 วิ · แตะชิปเพื่อเพิ่ม แตะพลาดกด <b>↶ ย้อน</b> · ไม่เลือก = ลงขั้นต่ำให้</p>' +
       '<h4>2. แจก 2 ใบ</h4><p>ได้ 8 หรือ 9 = <b>ป๊อก</b> เปิดเลย ไม่ต้องจั่ว · ถ้าเจ้ามือป๊อก เปิดวัดทุกคนทันที</p>' +
       '<h4>3. จั่วหรืออยู่</h4><p>ไล่ทีละคน จั่วเพิ่มได้ 1 ใบ (15 วิ ไม่เลือก = อยู่) แล้วเจ้ามือจั่ว/อยู่</p>' +
-      '<h4>4. วัดกับเจ้ามือ</h4><p>ชนะได้ เดิมพัน × เด้ง · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ · แต้มเท่ากัน = เสมอ</p>' +
+      '<h4>4. วัดกับเจ้ามือ</h4><p>ชนะได้ เดิมพัน × เด้งของมือคุณ · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ · แต้มเท่ากัน = เสมอ คืนเดิมพัน</p>' +
+      '<h4>5. มือต่อไป</h4><p>ดูผลแล้วกด <b>พร้อมมือต่อไป</b> — ทุกคนพร้อมครบ ไปต่อทันที ไม่ต้องรอเวลา (หัวห้องกดข้ามได้)</p>' +
       '<h4>ชิป</h4><p>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · เริ่มคนละ 1,000 · หมดตัวขอชิปใหม่ได้ 1 ครั้ง · จบโต๊ะแล้วชิปเกินทุน = ชนะ</p>' +
       '<h4>เจ้ามือ</h4><p>หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือเลือก <b>หมุนเจ้ามือทุกตา</b> · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</p>' +
       '</div>';
