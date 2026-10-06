@@ -60,7 +60,8 @@ async function waitFor(fn, ms, label) {
     throw new Error('รอไม่ถึง: ' + label);
 }
 
-const IGNORE = /favicon|manifest|service-worker|autoplay|play\(\) failed|AudioContext|\.mp3|vibrate|googleapis|gstatic/i;
+// ERR_SOCKET_NOT_CONNECTED = socket.io polling ที่ค้างตอนปิด socket บอท/สลับ transport — socket.io ต่อใหม่เอง ไม่ใช่บั๊กหน้าเว็บ
+const IGNORE = /favicon|manifest|service-worker|autoplay|play\(\) failed|AudioContext|\.mp3|vibrate|googleapis|gstatic|ERR_SOCKET_NOT_CONNECTED/i;
 
 async function layoutProblems(page) {
     return page.evaluate(() => {
@@ -225,6 +226,7 @@ async function layoutProblems(page) {
         // ---------- clue: ให้คนแรกที่เป็นหน้าเว็บได้พูด (บอทพูดไปก่อนจนถึงคิว)
         let shotSpeaker = false;
         let shotWaiting = false;
+        let skipChecked = false;
         let guard = 0;
         while (hostView().phase === 'clue' && guard++ < 10) {
             const sp = hostView().speakerId;
@@ -235,9 +237,26 @@ async function layoutProblems(page) {
                 if (!shotSpeaker) { await snap('04-clue-speaking'); shotSpeaker = true; }
                 await page.click('#ucClueDoneBtn');
             } else {
+                // หัวห้องกดข้ามตาแล้วกดยกเลิก → ต้องไม่ข้าม (กันนิ้วพลาด)
+                if (!skipChecked && pageOf(host)) {
+                    skipChecked = true;
+                    await pageOf(host).click('#ucSkipBtn');
+                    await pageOf(host).waitForSelector('.swal2-cancel');
+                    await pageOf(host).click('.swal2-cancel');
+                    await delay(400);
+                    assert(hostView().speakerId === sp, 'กดยกเลิกข้ามตาแล้วคนพูดต้องเหมือนเดิม');
+                }
                 await botSpeak(bots.find(x => x.id === sp), guard % 2 ? 'ของกินได้' : '');
             }
             await waitFor(() => hostView().speakerId !== sp || hostView().phase !== 'clue', 4000, 'next speaker');
+            if (hostView().phase === 'clue') {
+                await delay(350);
+                const p0 = viewers[0].page;
+                const typed = hostView().clues.some(c => c.round === hostView().round);
+                if (typed) assert(await p0.$('#ucRoundClues li'), 'คำใบ้รอบนี้ต้องอยู่บนเวทีช่วงใบ้');
+                const order = hostView().speakerOrder;
+                if (hostView().speakerIndex < order.length - 1) assert(await p0.$('.uc-order li.is-next'), 'ต้องมีป้าย "ถัดไป" บนลำดับพูด');
+            }
         }
         assert(hostView().phase === 'vote', 'ต้องเข้าโหวต');
         await delay(500);
@@ -249,12 +268,17 @@ async function layoutProblems(page) {
         for (const v of viewers) await v.page.click('#ucVoteConfirm');
         await delay(400);
         await snap('06-vote-waiting');
+        assert(/รอ /.test(await viewers[0].page.textContent('#ucVoteCount')), 'หน้ารอโหวตต้องบอกว่ายังรอใคร');
         for (const b of liveBots()) {
             await botVote(b, b === civTarget ? host.id : civTarget.id);
         }
         await waitFor(() => hostView().phase === 'elimination', 5000, 'elimination');
         await delay(1200);
         await snap('07-eliminated-civilian');
+        for (const v of viewers) {
+            const txt = await v.page.textContent('.uc-votelist');
+            assert(/โหวตโดย/.test(txt), `${v.tag}: หน้าเฉลยต้องบอกว่าใครโหวตใคร`);
+        }
         await pageOf(host).click('#ucContinueBtn');
         await waitFor(() => hostView().phase === 'clue', 5000, 'round 2');
 
@@ -278,9 +302,15 @@ async function layoutProblems(page) {
         }
         await waitFor(() => hostView().phase === 'mrwhite', 5000, 'mrwhite phase');
         await delay(1200);
+        assert(!(await pageOf(mw).$('.uc-role')), 'คนทายไม่ต้องมีการ์ดใหญ่ดันช่องพิมพ์ลง');
+        assert(await pageOf(mw).$('#ucGuessClues li'), 'Mr. White ต้องเห็นคำใบ้ทั้งเกมตอนทาย');
         await pageOf(mw).fill('#ucGuessInput', 'ไม่รู้เลย');
         await snap('08-mrwhite-guess');
         await pageOf(mw).click('#ucGuessBtn');
+        await pageOf(mw).waitForSelector('.swal2-confirm');
+        assert(hostView().phase === 'mrwhite', 'ยังไม่ยืนยัน = ยังไม่ส่งคำทาย');
+        await pageOf(mw).screenshot({ path: path.join(SHOT_DIR, '08b-mrwhite-confirm-390.png') });
+        await pageOf(mw).click('.swal2-confirm');
         await waitFor(() => hostView().phase === 'elimination', 5000, 'after guess');
         await delay(1200);
         await snap('09-mrwhite-missed');
@@ -297,13 +327,37 @@ async function layoutProblems(page) {
             await waitFor(() => hostView().speakerId !== sp || hostView().phase !== 'clue', 4000, 'next speaker r3');
         }
         await delay(400);
+        // โหวตเสมอ 2:2 ระหว่างสายแฝงกับพลเมือง Y → โหวตใหม่ ต้องไม่มีชื่อที่เลือกไว้ก่อนเสมอติดมา
+        const aliveIds = hostView().players.filter(p => p.alive).map(p => p.playerId);
+        const yId = aliveIds.find(id => id !== uc.id && id !== host.id);
+        let alt = 0;
+        const tieTarget = id => (id === uc.id ? yId : (id === yId ? uc.id : (alt++ % 2 === 0 ? uc.id : yId)));
+        const order3 = bots.filter(b => aliveIds.includes(b.id));
+        for (const b of order3) {
+            const t = tieTarget(b.id);
+            const page = pageOf(b);
+            if (page) { await pageVote(page, t); await page.click('#ucVoteConfirm'); await delay(250); }
+            else await botVote(b, t);
+        }
+        await waitFor(() => hostView().phase === 'vote' && hostView().vote.isRevote, 5000, 'revote');
+        await delay(600);
         for (const v of viewers) {
             if (!(await v.page.$('#ucVoteConfirm'))) continue;
-            await pageVote(v.page, uc.id);
+            assert(await v.page.$eval('#ucVoteConfirm', b => b.disabled), `${v.tag}: โหวตใหม่ต้องไม่มีตัวเลือกเดิมค้าง`);
+            assert(!(await v.page.$('.uc-vote-tile.is-picked')), `${v.tag}: ไม่มีชื่อถูกเลือกค้างตอนโหวตใหม่`);
+        }
+        for (const v of viewers) {
+            if (!(await v.page.$('#ucVoteConfirm'))) continue;
+            assert(/เสมอกัน: /.test(await v.page.textContent('#ucNowSub')), `${v.tag}: โหวตใหม่ต้องบอกว่าใครเสมอกัน`);
+        }
+        await snap('09b-revote');
+        for (const v of viewers) {
+            if (!(await v.page.$('#ucVoteConfirm'))) continue;
+            await pageVote(v.page, v.bot === uc ? yId : uc.id);
             await v.page.click('#ucVoteConfirm');
         }
         for (const b of liveBots()) {
-            await botVote(b, uc.id);
+            await botVote(b, b === uc ? yId : uc.id);
         }
         await waitFor(() => hostView().phase === 'finished', 5000, 'finished');
         await delay(1200);
@@ -311,6 +365,8 @@ async function layoutProblems(page) {
         for (const v of viewers) {
             const txt = await v.page.textContent('#ucStage');
             assert(/พลเมืองชนะ/.test(txt) && /คำสายแฝง/.test(txt), `${v.tag}: หน้าจบต้องบอกผู้ชนะและเปิดคำ`);
+            assert(/ถูกโหวตออกรอบ 1/.test(txt) && /รอดถึงจบ/.test(txt), `${v.tag}: หน้าจบต้องบอกว่าใครออกรอบไหน`);
+            assert(/คุณเป็น/.test(await v.page.textContent('#ucNowSub')), `${v.tag}: หน้าจบต้องบอกว่าตัวเองเป็นบทไหน`);
         }
 
         // desktop

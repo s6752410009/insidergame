@@ -157,6 +157,7 @@
   .uc-order li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .uc-order li.is-now { background: var(--uc-gold); color: var(--uc-gold-ink); }
   .uc-order li.is-done { color: var(--uc-soft); text-decoration: line-through; text-decoration-color: var(--uc-muted); }
+  .uc-order li.is-next { box-shadow: inset 0 0 0 1px var(--uc-gold); color: var(--uc-ink); }
   .uc-field { width: 100%; max-width: 420px; display: grid; gap: 6px; text-align: left; }
   .uc-field label { font-size: 0.85rem; color: var(--uc-muted); font-weight: 600; }
   .uc-input {
@@ -204,12 +205,20 @@
   .uc-clues b { color: var(--uc-soft); flex-shrink: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .uc-clues span { overflow-wrap: anywhere; min-width: 0; }
   .uc-clues .r { color: var(--uc-muted); font-size: 0.75rem; flex-shrink: 0; }
+  .uc-stage .uc-clues { width: 100%; max-width: 440px; text-align: left; }
+  .uc-clues-head { margin: 0 0 -8px; width: 100%; max-width: 440px; text-align: left; font-family: var(--uc-display); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; color: var(--uc-muted); }
 
   /* results */
   .uc-result-title { margin: 0; font-family: var(--uc-display); font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
   .uc-result-sub { margin: 0; color: var(--uc-soft); overflow-wrap: anywhere; }
   .uc-tally { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
   .uc-tally span { padding: 4px 10px; border-radius: 999px; background: var(--uc-sunken); font-size: 0.85rem; color: var(--uc-soft); }
+  .uc-votelist { width: 100%; max-width: 440px; display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; text-align: left; }
+  .uc-votelist li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 8px 12px; border-radius: 10px; background: var(--uc-sunken); font-size: 0.9rem; }
+  .uc-votelist b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .uc-votelist .n { font-family: var(--uc-display); font-weight: 700; color: var(--uc-gold); font-variant-numeric: tabular-nums; }
+  .uc-votelist .from { grid-column: 1 / -1; color: var(--uc-muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+  .uc-votelist li.is-out { background: color-mix(in oklch, var(--uc-accent) 16%, var(--uc-sunken)); }
   .uc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); width: 100%; max-width: 440px; }
   .uc-pair-item { padding: var(--space-md); border-radius: 14px; background: var(--uc-surface); min-width: 0; }
   .uc-pair-item small { display: block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
@@ -329,7 +338,7 @@
   <section id="ucStage" class="uc-stage"></section>
 
   <div id="ucCluesWrap" style="display:none;">
-    <h2 class="uc-section-title">คำใบ้ที่พิมพ์ไว้</h2>
+    <h2 class="uc-section-title" id="ucCluesTitle">คำใบ้ที่พิมพ์ไว้</h2>
     <ol id="ucClues" class="uc-clues"></ol>
   </div>
 
@@ -391,6 +400,7 @@ $(function() {
   let timerHandle = null;
   let seenFxSeq = Math.max(0, ...((state.fx || []).map(f => f.seq || 0)));
   let pickedVote = null;
+  let pickedVoteStep = null; // เลือกค้างไว้จากโหวตรอบก่อน/ก่อนเสมอ ห้ามติดมาเป็นค่าเริ่มต้น
   let busy = false;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const BACK = '/assets/games/undercover/back.svg';
@@ -408,6 +418,20 @@ $(function() {
   }
   function playerById(id) { return (state.players || []).find(p => p.playerId === id) || null; }
   function nameOf(id) { const p = playerById(id); return p ? p.name : '—'; }
+  /** คนพูดถัดไป (ข้ามคนที่ออกไปแล้ว) — ให้คนนั้นเตรียมตัว และให้วงรู้ว่าใครต่อ */
+  function nextSpeakerId() {
+    const order = state.speakerOrder || [];
+    for (let i = (state.speakerIndex || 0) + 1; i < order.length; i += 1) {
+      const p = playerById(order[i]);
+      if (p && p.alive) return p.playerId;
+    }
+    return null;
+  }
+  function clueRows(list) {
+    return list.map(function(c) {
+      return '<li><span class="r">ร.' + c.round + '</span><b>' + esc(c.name) + '</b><span>' + esc(c.text) + '</span></li>';
+    }).join('');
+  }
   function roleBadge(role) { return role ? '<span class="uc-badge ' + esc(role.id) + '">' + esc(role.name) + '</span>' : ''; }
   function wordScale(word) {
     const len = Array.from(String(word || '')).length;
@@ -457,10 +481,16 @@ $(function() {
     const sp = playerById(s.speakerId);
     if (s.phase === 'finished') {
       const won = ((s.winner && s.winner.winnerIds) || []).indexOf(playerId) >= 0;
-      return { title: won ? 'คุณชนะ!' : 'คุณแพ้', sub: 'จบเกม · ' + ((s.winner && s.winner.name) || ''), mine: won };
+      const me = playerById(playerId) || {};
+      const mine = me.role ? 'คุณเป็น' + me.role.name + (me.word ? ' (คำ “' + me.word + '”)' : ' (ไม่มีคำ)') + ' · ' : '';
+      return { title: won ? 'คุณชนะ!' : 'คุณแพ้', sub: mine + ((s.winner && s.winner.name) || 'จบเกม'), mine: won };
     }
     if (self.alive === false && s.phase !== 'mrwhite') {
-      return { title: 'คุณถูกโหวตออกแล้ว', sub: 'ดูต่อได้ แต่ห้ามบอกใบ้คนในวงนะ', mine: false };
+      let doing = 'ดูต่อได้';
+      if (s.phase === 'clue') doing = 'ตอนนี้ตาของ ' + (sp ? sp.name : '...') + ' พูด';
+      else if (s.phase === 'vote') doing = 'วงกำลังโหวต ' + ((s.vote || {}).votedCount || 0) + '/' + ((s.vote || {}).voterCount || 0) + ' คน';
+      else if (s.phase === 'reveal') doing = 'วงกำลังดูคำ';
+      return { title: 'คุณถูกโหวตออกแล้ว', sub: doing + ' · ห้ามบอกใบ้คนในวงนะ', mine: false };
     }
     if (s.phase === 'reveal') {
       return self.ready
@@ -468,13 +498,16 @@ $(function() {
         : { title: 'แตะการ์ดเพื่อดูคำของคุณ', sub: 'จำไว้ แล้วกด “พร้อม” · อย่าให้คนข้าง ๆ เห็น', mine: true };
     }
     if (s.phase === 'clue') {
-      if (self.isSpeaker) return { title: 'ตาคุณพูด!', sub: 'ใบ้ 1 คำเกี่ยวกับคำของคุณ ห้ามพูดคำตรง ๆ', mine: true };
-      return { title: 'ตาของ ' + (sp ? sp.name : '...'), sub: 'ฟังให้ดี ใครใบ้แปลก ๆ?', mine: false };
+      if (self.isSpeaker) return { title: 'ตาคุณพูด!', sub: 'ใบ้ 1 คำเกี่ยวกับคำของคุณ ห้ามพูดคำตรง ๆ · เสร็จแล้วกด “พูดเสร็จ”', mine: true };
+      const nextId = nextSpeakerId();
+      if (nextId === playerId) return { title: 'ตาของ ' + (sp ? sp.name : '...'), sub: 'คุณพูดคนถัดไป — เตรียมคำใบ้ไว้เลย', mine: false };
+      return { title: 'ตาของ ' + (sp ? sp.name : '...'), sub: 'ฟังให้ดี ใครใบ้แปลก ๆ?' + (nextId ? ' · ถัดไป: ' + nameOf(nextId) : ' · คนสุดท้ายแล้ว ต่อไปโหวต'), mine: false };
     }
     if (s.phase === 'vote') {
       const v = s.vote || {};
       if (self.hasVoted) return { title: 'โหวตแล้ว — รอคนอื่น', sub: 'โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน', mine: false };
-      return { title: v.isRevote ? 'เสมอ! โหวตใหม่' : 'โหวตคนที่คำไม่เหมือน', sub: v.isRevote ? 'เลือกได้เฉพาะคนที่เสมอ' : 'แตะชื่อ แล้วกดยืนยัน · โหวตตัวเองไม่ได้', mine: true };
+      const tied = (v.candidates || []).map(id => id === playerId ? 'คุณ' : nameOf(id)).join(' / ');
+      return { title: v.isRevote ? 'เสมอ! โหวตใหม่' : 'โหวตคนที่คำไม่เหมือน', sub: v.isRevote ? 'เสมอกัน: ' + tied + ' · เลือกได้เฉพาะคนที่เสมอ ถ้าเสมออีก รอบนี้ไม่มีใครออก' : 'แตะชื่อ แล้วกดยืนยัน · โหวตตัวเองไม่ได้', mine: true };
     }
     if (s.phase === 'mrwhite') {
       if (self.canGuess) return { title: 'ทายคำของพลเมือง!', sub: 'ทายถูก = คุณชนะทันที', mine: true };
@@ -523,9 +556,10 @@ $(function() {
         '<div class="uc-ready-row" id="ucReadyRow"></div>';
     } else if (s.phase === 'clue') {
       const sp = playerById(s.speakerId) || {};
+      const nextId = nextSpeakerId();
       const order = (s.speakerOrder || []).map(function(id, i) {
-        const cls = i === s.speakerIndex ? 'is-now' : (i < s.speakerIndex ? 'is-done' : '');
-        return '<li class="' + cls + '"><b>' + (i + 1) + '</b><span>' + esc(nameOf(id)) + '</span></li>';
+        const cls = i === s.speakerIndex ? 'is-now' : (i < s.speakerIndex ? 'is-done' : (id === nextId ? 'is-next' : ''));
+        return '<li class="' + cls + '"><b>' + (i + 1) + '</b><span>' + (id === playerId ? 'คุณ' : esc(nameOf(id))) + '</span></li>';
       }).join('');
       const remote = s.tableMode === 'remote';
       html = '<div class="uc-speaker' + (self.isSpeaker ? ' is-me' : '') + '"><div class="uc-speaker-ring">' + avatar(sp, 72) + '</div>' +
@@ -538,12 +572,15 @@ $(function() {
       } else if (self.isHost) {
         html += '<div class="uc-actions"><button type="button" id="ucSkipBtn" class="ui-btn ui-btn--ghost">ข้ามตา ' + esc(sp.name || '') + '</button></div>';
       }
+      // คำใบ้รอบนี้อยู่ใต้ลำดับพูดเลย — ไม่ต้องเลื่อนผ่านการ์ดลงไปดู
+      const roundClues = (s.clues || []).filter(c => c.round === s.round);
+      if (roundClues.length) html += '<p class="uc-clues-head">คำใบ้รอบนี้</p><ol class="uc-clues" id="ucRoundClues">' + clueRows(roundClues) + '</ol>';
       if (self.alive) html += wordCardHtml({ id: 'ucPeekCard', small: true, open: false }) + '<p class="uc-hint">ลืมคำ? แตะการ์ดดูแป๊บเดียว</p>';
     } else if (s.phase === 'vote') {
       const v = s.vote || {};
       if (self.alive && !self.hasVoted) {
         const targets = self.voteTargets || [];
-        if (pickedVote && targets.indexOf(pickedVote) < 0) pickedVote = null;
+        if (pickedVote && (targets.indexOf(pickedVote) < 0 || pickedVoteStep !== s.step)) pickedVote = null;
         const lastClues = {};
         (s.clues || []).filter(c => c.round === s.round).forEach(c => { lastClues[c.playerId] = c.text; });
         html = '<div class="uc-vote-grid" role="radiogroup" aria-label="เลือกคนที่จะโหวตออก">' + targets.map(function(id) {
@@ -555,36 +592,48 @@ $(function() {
           '<div class="uc-actions"><button type="button" id="ucVoteConfirm" class="ui-btn ui-btn--primary ui-btn--lg"' + (pickedVote ? '' : ' disabled') + '>' +
           (pickedVote ? 'โหวต ' + esc(nameOf(pickedVote)) : 'เลือกคนก่อน') + '</button></div>';
       } else {
-        html = '<p class="uc-result-sub">' + (self.hasVoted ? 'คุณโหวต <b>' + esc(nameOf(self.voteTargetId)) + '</b>' : 'คุณไม่ได้โหวตรอบนี้') + '</p>' +
+        html = '<p class="uc-result-sub">' + (self.hasVoted ? 'คุณโหวต <b>' + esc(nameOf(self.voteTargetId)) + '</b>' : (self.alive === false ? 'คุณออกจากเกมแล้ว — รอดูผลโหวต' : 'คุณไม่ได้โหวตรอบนี้')) + '</p>' +
           '<p class="uc-count" id="ucVoteCount"></p>';
       }
       if (self.alive) html += wordCardHtml({ id: 'ucPeekCard', small: true, open: false });
     } else if (s.phase === 'elimination') {
       const last = s.lastElimination || {};
-      const tally = Object.entries(last.counts || {}).sort((a, b) => b[1] - a[1])
-        .map(([id, n]) => '<span>' + esc(nameOf(id)) + ' · ' + n + ' เสียง</span>').join('');
+      // ใครโหวตใคร — เฉลยหลังปิดโหวต ให้วงคุยต่อได้ว่าใครชี้ใคร
+      const votersOf = {};
+      Object.entries(last.votes || {}).forEach(([voter, target]) => { (votersOf[target] = votersOf[target] || []).push(nameOf(voter)); });
+      const voted = new Set(Object.keys(last.votes || {}));
+      const abstain = (s.players || []).filter(p => (p.alive || p.playerId === last.playerId) && !p.left && !voted.has(p.playerId)).map(p => p.name);
+      const tally = Object.entries(last.counts || {}).sort((a, b) => b[1] - a[1]).map(([id, n]) =>
+        '<li class="' + (id === last.playerId ? 'is-out' : '') + '"><b>' + esc(nameOf(id)) + '</b><span class="n">' + n + ' เสียง</span>' +
+        '<span class="from">โหวตโดย ' + esc((votersOf[id] || []).join(', ') || '-') + '</span></li>').join('') +
+        (abstain.length && Object.keys(last.counts || {}).length ? '<li><b>ไม่ได้โหวต</b><span class="n"></span><span class="from">' + esc(abstain.join(', ')) + '</span></li>' : '');
       if (last.playerId && last.role) {
         html = roleCardHtml(last.role, last.name + ' เป็น' + last.role.name) +
           '<div><p class="uc-result-title">' + esc(last.name) + ' ถูกโหวตออก</p><p class="uc-result-sub">เป็น ' + roleBadge(last.role) + '</p></div>';
         if (s.mrWhiteGuess && !s.mrWhiteGuess.pending && s.mrWhiteGuess.playerId === last.playerId) {
-          html += '<p class="uc-result-sub">ทายว่า “' + esc(s.mrWhiteGuess.guess || '—') + '” — ผิด</p>';
+          html += '<p class="uc-result-sub">' + (s.mrWhiteGuess.guess ? 'ทายว่า “' + esc(s.mrWhiteGuess.guess) + '” — ผิด' : 'ไม่ได้ทายทันเวลา — นับว่าทายผิด') + '</p>';
         }
       } else {
         html = '<div style="font-size:3rem" aria-hidden="true">🤝</div><p class="uc-result-title">' + (last.reason === 'tie' ? 'เสมออีกรอบ' : 'ไม่มีใครโหวต') + '</p><p class="uc-result-sub">รอบนี้ไม่มีใครออก</p>';
       }
-      if (tally) html += '<div class="uc-tally">' + tally + '</div>';
+      if (tally) html += '<ul class="uc-votelist" aria-label="ผลโหวต">' + tally + '</ul>';
       html += self.isHost
         ? '<div class="uc-actions"><button type="button" id="ucContinueBtn" class="ui-btn ui-btn--primary">ไปรอบต่อไป</button></div>'
         : '<p class="uc-hint">รอรอบต่อไป...</p>';
     } else if (s.phase === 'mrwhite') {
       const mw = s.roles.find(r => r.id === 'mrwhite');
-      html = roleCardHtml(mw, 'Mr. White');
+      // คนทายต้องเห็นคำใบ้ทั้งเกมตรงหน้า (คีย์บอร์ดเปิดอยู่ก็ยังเห็น) — ไม่ต้องมีการ์ดใหญ่ดันช่องพิมพ์ลงไป
+      const allClues = (s.clues || []).slice().reverse();
+      const cluesHtml = allClues.length
+        ? '<p class="uc-clues-head">คำใบ้ทั้งเกม (ล่าสุดก่อน)</p><ol class="uc-clues" id="ucGuessClues">' + clueRows(allClues) + '</ol>'
+        : '<p class="uc-hint">ไม่มีใครพิมพ์คำใบ้ไว้ — นึกจากที่ได้ยินในวง</p>';
       if (self.canGuess) {
-        html += '<div class="uc-field"><label for="ucGuessInput">คำของพลเมืองคือ...</label>' +
+        html = '<div class="uc-field"><label for="ucGuessInput">คำของพลเมืองคือ... (ทายได้ครั้งเดียว · ไม่สนช่องว่าง/ตัวพิมพ์)</label>' +
           '<input id="ucGuessInput" class="uc-input" maxlength="40" autocomplete="off" enterkeyhint="send" placeholder="พิมพ์คำที่คิดว่าใช่"></div>' +
-          '<div class="uc-actions"><button type="button" id="ucGuessBtn" class="ui-btn ui-btn--primary ui-btn--lg">ทายเลย</button></div>';
+          '<div class="uc-actions"><button type="button" id="ucGuessBtn" class="ui-btn ui-btn--primary ui-btn--lg">ทายเลย</button></div>' + cluesHtml;
       } else {
-        html += '<p class="uc-result-sub">' + esc((s.mrWhiteGuess || {}).name || '') + ' ได้ทาย 1 ครั้ง ถ้าถูกชนะทันที</p>';
+        html = roleCardHtml(mw, 'Mr. White') +
+          '<p class="uc-result-sub">' + esc((s.mrWhiteGuess || {}).name || '') + ' ได้ทาย 1 ครั้ง ถ้าถูกชนะทันที</p>' + cluesHtml;
       }
     } else if (s.phase === 'finished') {
       html = renderFinished();
@@ -608,7 +657,8 @@ $(function() {
     }).map(function(p) {
       const win = (w.winnerIds || []).indexOf(p.playerId) >= 0;
       return '<li class="' + (win ? 'is-winner' : '') + '">' + (p.role ? '<img src="' + esc(p.role.image) + '" alt="">' : '') +
-        '<span class="who"><b>' + esc(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</b><span>' + (p.role ? esc(p.role.name) : '') + (win ? ' · ชนะ' : '') + (p.left ? ' · ออกกลางเกม' : '') + '</span></span>' +
+        '<span class="who"><b>' + esc(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</b><span>' + (p.role ? esc(p.role.name) : '') + (win ? ' · ชนะ' : '') +
+        (p.left ? ' · ออกกลางเกม' : (p.alive ? ' · รอดถึงจบ' : ' · ถูกโหวตออกรอบ ' + (p.eliminatedRound || '-'))) + '</span></span>' +
         '<span class="w">' + esc(p.word || 'ไม่มีคำ') + '</span></li>';
     }).join('');
     const guess = s.mrWhiteGuess && !s.mrWhiteGuess.pending && s.mrWhiteGuess.guess
@@ -617,6 +667,7 @@ $(function() {
       '<div class="uc-pair"><div class="uc-pair-item civ"><small>คำพลเมือง</small><strong>' + esc(pair.civilian || '-') + '</strong></div>' +
       '<div class="uc-pair-item und"><small>คำสายแฝง</small><strong>' + esc(pair.undercover || '-') + '</strong></div></div>' +
       '<ul class="uc-final">' + rows + '</ul>' +
+      (self.isHost ? '' : '<p class="uc-hint">รอหัวห้องกด “เล่นอีกรอบ” หรือกลับห้องรอได้เลย</p>') +
       '<div class="uc-actions">' +
         (self.isHost ? '<button type="button" id="ucRestartBtn" class="ui-btn ui-btn--primary">เล่นอีกรอบ (คำใหม่)</button>' : '') +
         '<button type="button" id="ucShareBtn" class="ui-btn">แชร์ผล</button>' +
@@ -634,7 +685,8 @@ $(function() {
     }
     if (s.phase === 'vote') {
       const v = s.vote || {};
-      $('#ucVoteCount').text('โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน');
+      const waiting = (s.players || []).filter(p => p.alive && p.online && !p.hasVoted).map(p => p.name);
+      $('#ucVoteCount').text('โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน' + (waiting.length ? ' · รอ ' + waiting.join(', ') : ''));
     }
   }
 
@@ -659,11 +711,12 @@ $(function() {
     }).join(''));
   }
   function renderClues() {
-    const clues = state.clues || [];
+    // ช่วงใบ้ คำใบ้รอบนี้อยู่บนเวทีแล้ว · ช่วง Mr. White ทาย เวทีโชว์ทั้งเกมแล้ว — ด้านล่างไม่ต้องซ้ำ
+    const inClue = state.phase === 'clue';
+    const clues = state.phase === 'mrwhite' ? [] : (state.clues || []).filter(c => !inClue || c.round !== state.round);
+    $('#ucCluesTitle').text(inClue ? 'คำใบ้รอบก่อน ๆ' : 'คำใบ้ที่พิมพ์ไว้');
     $('#ucCluesWrap').toggle(clues.length > 0);
-    $('#ucClues').html(clues.slice().reverse().slice(0, 30).map(function(c) {
-      return '<li><span class="r">ร.' + c.round + '</span><b>' + esc(c.name) + '</b><span>' + esc(c.text) + '</span></li>';
-    }).join(''));
+    $('#ucClues').html(clueRows(clues.slice().reverse().slice(0, 30)));
   }
   function renderFeed() {
     $('#ucFeed').html((state.history || []).map(function(h) {
@@ -770,9 +823,21 @@ $(function() {
   $(document).on('click', '#ucReadyBtn', function() { this.disabled = true; send('undercover_ready'); });
   $(document).on('click', '#ucClueDoneBtn', function() { this.disabled = true; send('undercover_clueDone', { text: ($('#ucClueInput').val() || '').trim() }, function(res) { if (res && !res.success) $('#ucClueDoneBtn').prop('disabled', false); }); });
   $(document).on('keydown', '#ucClueInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); $('#ucClueDoneBtn').trigger('click'); } });
-  $(document).on('click', '#ucSkipBtn', function() { send('undercover_skipSpeaker'); });
+  $(document).on('click', '#ucSkipBtn', function() {
+    const sp = playerById(state.speakerId);
+    const step = state.step;
+    Swal.fire({
+      icon: 'question', title: 'ข้ามตา ' + (sp ? sp.name : '') + '?', text: 'ใช้เมื่อคนนี้ไม่อยู่/ไม่พูด — ข้ามแล้วย้อนกลับไม่ได้',
+      showCancelButton: true, confirmButtonText: 'ข้ามเลย', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b'
+    }).then(function(r) {
+      if (!r.isConfirmed) return;
+      if (state.step !== step) return; // คิวขยับไปแล้วระหว่างถาม — ไม่ข้ามคนถัดไปแทน
+      send('undercover_skipSpeaker');
+    });
+  });
   $(document).on('click', '.uc-vote-tile', function() {
     pickedVote = this.getAttribute('data-target');
+    pickedVoteStep = state.step;
     $('.uc-vote-tile').each(function() {
       const on = this.getAttribute('data-target') === pickedVote;
       this.classList.toggle('is-picked', on);
@@ -789,8 +854,21 @@ $(function() {
   $(document).on('click', '#ucGuessBtn', function() {
     const guess = ($('#ucGuessInput').val() || '').trim();
     if (!guess) { $('#ucGuessInput').trigger('focus'); return; }
-    this.disabled = true;
-    send('undercover_mrWhiteGuess', { guess: guess }, function(res) { if (res && !res.success) $('#ucGuessBtn').prop('disabled', false); });
+    const btn = this;
+    btn.disabled = true;
+    // ทายได้ครั้งเดียว — กันกด Enter/ปุ่มพลาดตอนยังพิมพ์ไม่เสร็จ
+    Swal.fire({
+      icon: 'question', title: 'ทาย “' + guess + '”?', text: 'ทายได้ครั้งเดียว ถูก = ชนะทันที',
+      showCancelButton: true, confirmButtonText: 'ทายเลย', cancelButtonText: 'แก้คำ', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b'
+    }).then(function(r) {
+      if (!r.isConfirmed || !state.self || !state.self.canGuess) { btn.disabled = false; $('#ucGuessInput').trigger('focus'); return; }
+      send('undercover_mrWhiteGuess', { guess: guess }, function(res) { if (res && !res.success) $('#ucGuessBtn').prop('disabled', false); });
+    });
+  });
+  // คีย์บอร์ดมือถือเด้งขึ้นมาบังช่องพิมพ์ — เลื่อนช่องพิมพ์ขึ้นมาให้เห็นพร้อมปุ่ม
+  $(document).on('focus', '#ucClueInput, #ucGuessInput', function() {
+    const node = this;
+    setTimeout(function() { try { node.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); } catch (e) {} }, 300);
   });
   $(document).on('keydown', '#ucGuessInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); $('#ucGuessBtn').trigger('click'); } });
   $(document).on('click', '#ucContinueBtn', function() { this.disabled = true; send('undercover_continue'); });
@@ -824,8 +902,8 @@ $(function() {
       html: '<div style="text-align:left; line-height:1.6; font-family:\'Bai Jamjuree\',sans-serif;">' +
         '<p><strong>ทุกคนได้คำเดียวกัน</strong> ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน</p>' +
         '<p>1. แตะการ์ดดูคำ แล้วกดพร้อม</p>' +
-        '<p>2. ใบ้คนละ 1 คำตามลำดับ (พูดปากเปล่า) ห้ามพูดคำตรง ๆ</p>' +
-        '<p>3. โหวตคนที่คิดว่าคำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง</p>' +
+        '<p>2. ใบ้คนละ 1 คำตามลำดับ (พูดปากเปล่า) ห้ามพูดคำตรง ๆ · พูดจบกด <strong>“พูดเสร็จ”</strong> คนถัดไปได้พูดทันที ไม่ต้องรอเวลาหมด</p>' +
+        '<p>3. โหวตคนที่คิดว่าคำไม่เหมือน · ทุกคนโหวตครบ = เปิดผลทันที · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง</p>' +
         '<p>4. เปิดบทคนที่ออก · <strong>Mr. White</strong> (ไม่มีคำ) ถ้าถูกโหวตออกได้ทายคำพลเมือง ถูก = ชนะทันที</p>' +
         '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อรอดถึง 2 คนสุดท้าย</p>' +
         '<p style="color:#9fb3c8">เวลา: ดูคำ 30 วิ · พูดคนละ 45 วิ · โหวต 60 วิ · Mr. White ทาย 30 วิ</p></div>',

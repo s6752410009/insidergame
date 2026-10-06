@@ -367,6 +367,28 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
     console.log('✓ ปัดคำสั่งผิด: step เก่า / แซงคิว / ซ้ำ / โหวตตัวเอง / ไม่ใช่หัวห้อง / พิมพ์คำตัวเอง');
 }
 
+// ---------------------------------------------------------------- clue guard: คำสั้นไม่ปัดคำใบ้ปกติ
+{
+    const reveals = engine.clueRevealsWord;
+    // คำยาว: ยังปัดแบบ substring
+    assert(reveals('กาแฟเย็น', 'กาแฟ') && reveals('มัน กาแฟ นะ', 'กาแฟ') && reveals('ก า แ ฟ', 'กาแฟ'), 'คำยาวที่อยู่ในคำใบ้ต้องถูกปัด');
+    // คำสั้น: ปัดเมื่อเป็นคำเดียวกันทั้งคำ
+    assert(reveals('ชา', 'ชา') && reveals('ดื่มชา', 'ชา') && reveals('ชาเย็น', 'ชา') && reveals('ลมพัด', 'ลม'), 'คำสั้นที่พิมพ์ออกมาเป็นคำต้องถูกปัด');
+    // ...แต่ไม่ปัดคำอื่นที่บังเอิญมีตัวอักษรชุดเดียวกัน
+    assert(!reveals('เวลา', 'ลา') && !reveals('ศาลา', 'ลา') && !reveals('หมดแรง', 'มด') && !reveals('ชาวนา', 'ชา'), 'คำสั้นต้องไม่ปัดคำใบ้ที่แค่มีตัวอักษรซ้อน');
+    assert(!reveals('', 'ชา') && !reveals('อะไรก็ได้', ''), 'ค่าว่างไม่ปัด');
+    // ผ่าน submitClueDone จริง
+    const room = started(5);
+    readyAll(room);
+    const sp = speaker(room);
+    const seat = room.gameState.players.find(p => p.playerId === sp);
+    seat.word = 'ลา';
+    throwsWith(() => engine.submitClueDone(room, sp, { ...S(room), text: 'ลา' }), /ห้ามพิมพ์คำ/, 'พิมพ์คำสั้นของตัวเองตรง ๆ ไม่ได้');
+    engine.submitClueDone(room, sp, { ...S(room), text: 'ใช้เวลานาน' });
+    assert(room.gameState.clues.some(c => c.text === 'ใช้เวลานาน'), 'คำใบ้ "ใช้เวลานาน" ของคนได้คำ "ลา" ต้องผ่าน');
+    console.log('✓ กันพิมพ์คำตัวเอง: คำสั้นตัดเป็นคำไทยก่อน ไม่ปัดคำใบ้ปกติ');
+}
+
 // ---------------------------------------------------------------- timeouts
 {
     const room = started(6, { mrWhite: true });
