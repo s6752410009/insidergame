@@ -1085,3 +1085,78 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 .st-pickbar-legend i.is-salary { background: oklch(0.72 0.17 150); }
 .st-pickbar { border-radius: 16px; padding: 6px 12px; gap: 4px 8px; font-size: 0.86rem; max-width: 80%; }
 .st-pickbar b { white-space: nowrap; }
+
+/* ---------- ช่องแบบรูปถ่าย: รูปเต็มช่อง · ชื่อ/ค่าผ่านทางสีขาวบนพื้นไล่มืดด้านล่าง (มีเจ้าของ = พื้นล่างสีเจ้าของ) ---------- */
+.st-photo { position: absolute; z-index: 0; inset: 0; background-size: cover; background-position: center; background-color: var(--st-paper-2); }
+.st-band { z-index: 1; }
+.st-cell.side-b .st-photo { top: 8%; }
+.st-cell.side-t .st-photo { bottom: 8%; }
+.st-cell.side-l .st-photo { right: 8%; }
+.st-cell.side-r .st-photo { left: 8%; }
+.st-cell.type-city .st-cell-in, .st-cell.type-tourist .st-cell-in {
+  z-index: 2;
+  top: auto !important;
+  height: 54%;
+  justify-content: flex-end;
+  gap: 1px;
+  padding: 0 1px 2px;
+  background: linear-gradient(180deg, transparent, oklch(0.16 0.03 258 / 0.78) 38%, oklch(0.14 0.03 258 / 0.9));
+}
+.st-cell.side-b .st-cell-in { bottom: 0; left: 0; right: 0; }
+.st-cell.side-t .st-cell-in { bottom: 8% !important; left: 0; right: 0; }
+.st-cell.side-l .st-cell-in { bottom: 0; left: 0; right: 8% !important; }
+.st-cell.side-r .st-cell-in { bottom: 0; left: 8% !important; right: 0; }
+.st-cell.type-city .st-name, .st-cell.type-tourist .st-name { color: #fff; line-height: 1.02; text-shadow: 0 1px 2px oklch(0 0 0 / 0.9); }
+.st-cell.type-city .st-val, .st-cell.type-tourist .st-val { color: #fff4d6; background: oklch(0.12 0.02 258 / 0.65); padding: 1px 3px 0; border-radius: 999px; }
+/* มีเจ้าของ: พื้นล่างสีเจ้าของทึบ + กรอบหนาสีเจ้าของรอบช่อง + รูปอมสีเจ้าของ */
+.st-ownframe { position: absolute; inset: 0; z-index: 3; pointer-events: none; display: none; border: 3px solid color-mix(in oklch, var(--own) 72%, #000); }
+.st-cell.is-owned .st-ownframe { display: block; }
+.st-cell.is-owned { box-shadow: none; background: var(--own); }
+.st-cell.is-owned .st-photo { opacity: 0.88; }
+.st-cell.is-owned.type-city .st-cell-in, .st-cell.is-owned.type-tourist .st-cell-in { background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--own) 80%, transparent) 30%, var(--own) 55%); }
+.st-cell.is-owned .st-name { color: var(--own-ink); text-shadow: 0 1px 1px oklch(0 0 0 / 0.55); }
+.st-cell.is-owned.is-ink-dark .st-name { text-shadow: 0 1px 0 oklch(1 0 0 / 0.6); }
+.st-cell.is-owned .st-val { color: #fff; background: color-mix(in oklch, var(--own) 50%, #000); box-shadow: 0 0 0 1px oklch(1 0 0 / 0.7); }
+/* ไอคอนสิ่งปลูกสร้าง: มุมบนซ้ายของรูป (หมากอยู่กลางบน ชื่ออยู่ล่าง) */
+.st-cell .st-bld { position: absolute; z-index: 2; left: 2px; top: 10%; width: auto; height: 26%; display: flex; align-items: center; gap: 1px; }
+.st-cell.side-t .st-bld { top: 4%; }
+.st-cell.side-r .st-bld { left: 10%; }
+.st-cell .st-bld:empty { display: none; }
+.st-cell .st-bld span { height: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 4px; background: oklch(1 0 0 / 0.9); box-shadow: 0 1px 2px oklch(0 0 0 / 0.4); }
+.st-cell .st-bld svg { width: 80%; height: 80%; filter: none; }
+.st-cell .st-bld .st-stars { background: oklch(0.2 0.04 258 / 0.88); border-radius: 4px; padding: 1px 2px; font-size: calc(var(--fs) * 0.82); }
+/* ท่องเที่ยว: กรอบรูปเขียวน้ำทะเล + ป้าย 📷 */
+.st-cell.type-tourist .st-photo { box-shadow: inset 0 0 0 2px var(--st-tour); }
+.st-cell.type-tourist .st-band { background: var(--st-tour); }
+.st-tour-tag { position: absolute; z-index: 2; right: 2px; top: 10%; font-size: 8px; line-height: 1; padding: 1px; border-radius: 4px; background: var(--st-tour); }
+.st-cell.side-t .st-tour-tag { top: 4%; }
+.st-cell.is-owned.type-tourist .st-photo { box-shadow: none; }
+/* แลนด์มาร์ก: เหรียญรูปถ่ายวงกลมเรืองทอง เด้งออกไปกลางกระดาน (ไม่ทับชื่อ) */
+.st-cell .st-lm { position: absolute; z-index: 4; width: 92%; height: auto; aspect-ratio: 1; border-radius: 50%; background-size: cover; background-position: center; border: 3px solid #ffe28a; box-shadow: 0 0 0 2px var(--own), 0 0 14px oklch(0.92 0.14 85), 0 4px 10px oklch(0 0 0 / 0.45); filter: none; }
+.st-cell.side-b .st-lm { left: 4%; bottom: 100%; top: auto; }
+.st-cell.side-t .st-lm { left: 4%; top: 100%; bottom: auto; }
+.st-cell.side-l .st-lm { left: 100%; top: 4%; right: auto; }
+.st-cell.side-r .st-lm { right: 100%; top: 4%; left: auto; }
+/* มุม: รูปเต็มมุม + ป้ายชื่อขาวบนพื้นไล่มืด */
+.st-corner-photo { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.st-cell.is-corner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, oklch(0.12 0.03 258 / 0.8)); pointer-events: none; }
+.st-corner-name { z-index: 1; color: #fff; text-shadow: 0 1px 2px oklch(0 0 0 / 0.8); }
+.st-corner-sub { z-index: 1; color: #ffe28a; text-shadow: 0 1px 2px oklch(0 0 0 / 0.8); }
+/* แผ่นข้อมูล: รูปถ่ายแนวนอน */
+.st-dhead-art.is-photo { width: 104px; height: 76px; background: #000; }
+.st-dhead-art.is-photo img { width: 100%; height: 100%; object-fit: cover; }
+.st-sell-img img, .st-tier img { object-fit: cover; border-radius: 8px; }
+.st-tile.is-lm .st-tile-img img, .st-tiles.is-one .st-tile-img img { object-fit: cover; border-radius: 10px; }
+.st-banner-img { width: 160px; height: 100px; object-fit: cover; border-radius: 14px; border: 3px solid #fff4d6; margin: -56px auto 6px; }
+.st-lm-rise img { border-radius: 22px; border: 4px solid #ffe28a; aspect-ratio: 16 / 10; object-fit: cover; }
+.st-take-card img { width: 220px; height: 138px; object-fit: cover; border-radius: 14px; }
+.st-cell.type-chance .st-bld, .st-cell.type-tax .st-bld { position: static; width: 56%; height: 42%; display: flex; justify-content: center; }
+.st-cell.type-chance .st-bld svg, .st-cell.type-tax .st-bld svg { width: auto; height: 100%; }
+.st-cell.type-city .st-name, .st-cell.type-tourist .st-name { padding-top: 2px; line-height: 1.12; }
+.st-credits { margin-top: 12px; border-radius: 12px; background: var(--st-navy-2); padding: 8px 10px; }
+.st-credits summary { cursor: pointer; font-weight: 700; min-height: 32px; display: flex; align-items: center; }
+.st-credits-list { display: grid; gap: 6px; margin-top: 6px; font-size: 0.78rem; }
+.st-credit { display: grid; gap: 1px; min-width: 0; }
+.st-credit b { font-size: 0.82rem; }
+.st-credit span { color: var(--st-muted); overflow-wrap: anywhere; }
+.st-credit a { color: var(--st-gold); }

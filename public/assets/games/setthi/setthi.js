@@ -66,6 +66,10 @@
   function haptic(p) { if (typeof window.gameHaptic === 'function') window.gameHaptic(p); }
   function iconHtml(name) { return ART.icon(name); }
   function artSrc(name) { return LAND + name + '.svg'; }
+  // รูปถ่ายจริงของแต่ละที่ (scripts/build-setthi-photos.js) · ไม่มีรูป (โอกาส/ภาษี) = ใช้ไอคอน
+  var PHOTO_BASE = '/assets/games/setthi/photos/';
+  var NO_PHOTO = { chance: 1, tax: 1 };
+  function placeSrc(name, size) { return NO_PHOTO[name] ? artSrc(name) : PHOTO_BASE + name + '-' + (size || 't') + '.webp'; }
   function tokenHtml(seat, extra) {
     if (!seat) return '<span class="st-token" style="--tk:#6c7a93"><span>🏦</span></span>';
     return '<span class="st-token ' + (extra || '') + '" style="--tk:' + esc(seat.tokenColor) + '" title="' + esc(seat.name) + '"><span>' + esc(seat.avatar || '👤') + '</span></span>';
@@ -77,6 +81,12 @@
     return same > 1 || !seat.avatar ? String((seat.token || 0) + 1) : seat.avatar;
   }
   function inkOf(seat) { return (seat && seat.tokenInk) || '#fff'; }
+  /** ไอคอนบนช่อง (เล็ก): ขั้นสูงสุดอันเดียว + จำนวนขั้น · แลนด์มาร์กโชว์ดาว */
+  function tileBld(level, stars) {
+    if (level >= 4) return '<span class="is-lm">' + ART.ICONS.landmark + '</span>' + (stars ? '<b class="st-stars">⭐' + stars + '</b>' : '');
+    var icon = level >= 3 ? ART.ICONS.hotel : level === 2 ? ART.ICONS.bld : ART.ICONS.house;
+    return '<span>' + icon + '</span>';
+  }
   function bldIcons(level) {
     if (level >= 4) return '<span class="is-lm">' + ART.ICONS.landmark + '</span>';
     var out = '';
@@ -99,7 +109,7 @@
     }, ms || 2200);
   }
   var preloaded = {};
-  function preload(name) { if (!name || preloaded[name]) return; preloaded[name] = new Image(); preloaded[name].src = artSrc(name); }
+  function preload(name, place) { if (!name || preloaded[name]) return; preloaded[name] = new Image(); preloaded[name].src = place ? placeSrc(name, 'w') : artSrc(name); }
   TIER_ART.forEach(preload);
 
   // ---------- เสียง (สังเคราะห์เอง) ----------
@@ -177,20 +187,22 @@
     var attrs = ' data-i="' + i + '" role="gridcell" tabindex="0"';
     if (g.side === 'x') {
       return '<div class="st-cell is-corner corner-' + sq.type + '"' + attrs + ' style="' + style + '" aria-label="' + esc(sq.name) + '">' +
-        '<img class="st-corner-art" src="' + artSrc(sq.art) + '" alt="" width="64" height="64">' +
+        '<span class="st-corner-photo" style="background-image:url(' + placeSrc(sq.art, 't') + ')"></span>' +
         '<span class="st-corner-name">' + esc(CORNER_LABEL[sq.type] || sq.name) + '</span><span class="st-corner-sub">' + esc(CORNER_SUB[sq.type] || '') + '</span></div>';
     }
     var cls = 'st-cell side-' + g.side + ' type-' + sq.type;
     if (isCity(i)) {
       var grp = groupOf(i);
       return '<div class="' + cls + '"' + attrs + ' style="' + style + '--band:' + grp.color + '">' +
-        '<i class="st-band"></i><div class="st-cell-in"><span class="st-bld">' + iconHtml(sq.icon) + '</span><span class="st-name">' + esc(sq.short) + '</span><span class="st-val">' + moneyK(sq.price) + '</span></div>' +
-        '<span class="st-dot"></span><span class="st-flag" aria-hidden="true"></span></div>';
+        '<span class="st-photo" style="background-image:url(' + placeSrc(sq.art, 't') + ')"></span><i class="st-band"></i>' +
+        '<span class="st-bld"></span><div class="st-cell-in"><span class="st-name">' + esc(sq.short) + '</span><span class="st-val">' + moneyK(sq.price) + '</span></div>' +
+        '<span class="st-ownframe"></span><span class="st-dot"></span><span class="st-flag" aria-hidden="true"></span></div>';
     }
     if (isTour(i)) {
       return '<div class="' + cls + '"' + attrs + ' style="' + style + '">' +
-        '<i class="st-band"></i><div class="st-cell-in"><span class="st-tour-pic"><img src="' + artSrc(sq.art) + '" alt="" width="40" height="40" loading="lazy"></span><span class="st-name">' + esc(sq.short) + '</span><span class="st-val">' + moneyK(sq.price) + '</span></div>' +
-        '<span class="st-dot"></span><span class="st-flag" aria-hidden="true"></span></div>';
+        '<span class="st-photo" style="background-image:url(' + placeSrc(sq.art, 't') + ')"></span><i class="st-band"></i>' +
+        '<span class="st-bld"></span><span class="st-tour-tag" aria-hidden="true">📷</span><div class="st-cell-in"><span class="st-name">' + esc(sq.short) + '</span><span class="st-val">' + moneyK(sq.price) + '</span></div>' +
+        '<span class="st-ownframe"></span><span class="st-dot"></span><span class="st-flag" aria-hidden="true"></span></div>';
     }
     var sub = sq.type === 'tax' ? '10%' : '';
     return '<div class="' + cls + '"' + attrs + ' style="' + style + '" aria-label="' + esc(sq.name) + '">' +
@@ -274,15 +286,14 @@
       var key = owner ? 'L' + p.level + 's' + (p.stars || 0) : 'icon';
       if (bld.dataset.k !== key) {
         bld.dataset.k = key;
-        bld.innerHTML = owner && p.level > 0 ? bldIcons(p.level) + (p.level === 4 && p.stars ? '<b class="st-stars">⭐' + p.stars + '</b>' : '') : iconHtml(SQ[i].icon);
+        bld.innerHTML = owner && p.level > 0 ? tileBld(p.level, p.stars) : '';
         bld.classList.toggle('is-icons', !!(owner && p.level > 0));
       }
       var lm = c.querySelector('.st-lm');
       if (owner && p.level >= 4 && !lm) {
-        lm = document.createElement('img');
+        lm = document.createElement('span');
         lm.className = 'st-lm';
-        lm.src = artSrc(SQ[i].art);
-        lm.alt = '';
+        lm.style.backgroundImage = 'url(' + placeSrc(SQ[i].art, 't') + ')';
         c.appendChild(lm);
       } else if ((!owner || p.level < 4) && lm) lm.remove();
       c.classList.toggle('is-landmark', !!(owner && p.level >= 4));
@@ -318,10 +329,10 @@
     var band = 0.08;
     var cx = b.x + b.w / 2;
     var cy;
-    if (side === 'x') cy = b.y + b.h * 0.4;
-    else if (side === 'b') cy = b.y + b.h * (band + 0.2);
-    else if (side === 't') cy = b.y + b.h * 0.21;
-    else { cy = b.y + b.h * 0.24; cx = b.x + b.w * (side === 'l' ? 0.46 : 0.54); }
+    if (side === 'x') cy = b.y + b.h * 0.42;
+    else if (side === 'b') cy = b.y + b.h * (band + 0.22);
+    else if (side === 't') cy = b.y + b.h * 0.26;
+    else { cy = b.y + b.h * 0.27; cx = b.x + b.w * (side === 'l' ? 0.46 : 0.54); }
     var scale = 1;
     if (n > 1) {
       scale = n === 2 ? 0.8 : 0.7;
@@ -567,7 +578,7 @@
     ], { duration: 1100, easing: 'ease-out' });
   }
   function banner(opts) {
-    var html = (opts.token && !opts.art ? tokenHtml(opts.token) : '') + (opts.art ? '<img class="st-banner-img" src="' + artSrc(opts.art) + '" alt="" width="96" height="96">' : '') + (opts.icon ? '<div class="st-banner-art">' + iconHtml(opts.icon) + '</div>' : '') +
+    var html = (opts.token && !opts.art ? tokenHtml(opts.token) : '') + (opts.art ? '<img class="st-banner-img" src="' + placeSrc(opts.art, 'w') + '" alt="" width="160" height="100">' : '') + (opts.icon ? '<div class="st-banner-art">' + iconHtml(opts.icon) + '</div>' : '') +
       (opts.kicker ? '<div class="st-banner-kicker">' + esc(opts.kicker) + '</div>' : '') +
       '<div class="st-banner-title">' + esc(opts.title) + '</div>' +
       (opts.sub ? '<div class="st-banner-sub">' + opts.sub + '</div>' : '');
@@ -618,7 +629,7 @@
   // ---------- แผ่นตัดสินใจ (ใช้ทั้งแผ่นจริงและ "แผ่นแวบ" ที่โชว์ว่าคนอื่นเลือกอะไร) ----------
   function tileHtml(i, level, state, extra) {
     // state: built | sel | open | locked
-    var img = level === 4 || isTour(i) ? artSrc(SQ[i].art) : artSrc(TIER_ART[level]);
+    var img = level === 4 || isTour(i) ? placeSrc(SQ[i].art, 't') : artSrc(TIER_ART[level]);
     var label = isTour(i) ? 'ซื้อ' : LEVEL_NAMES[level];
     var small = extra || '';
     return '<button type="button" class="st-tile is-' + state + (level === 4 ? ' is-lm' : '') + '" data-level="' + level + '"' + (state === 'locked' || state === 'built' ? ' aria-disabled="true"' : '') + '>' +
@@ -627,7 +638,7 @@
   var LOCK_TEXT = { lap: '🔒 รอบ 2', hotel: '🔒 มีโรงแรม', later: '🔒 ตกซ้ำ' };
   function sheetHeadArt(i, title, sub) {
     var g = groupOf(i);
-    return '<div class="st-dhead"><span class="st-dhead-art" style="--band:' + (g ? g.color : '#139a8e') + '"><img src="' + artSrc(SQ[i].art) + '" alt="" width="72" height="72"></span>' +
+    return '<div class="st-dhead"><span class="st-dhead-art is-photo" style="--band:' + (g ? g.color : '#139a8e') + '"><img src="' + placeSrc(SQ[i].art, 'w') + '" alt="" width="72" height="72"></span>' +
       '<div class="st-dhead-txt"><h3 id="stSheetTitle">' + esc(title) + '</h3>' + (sub ? '<div class="st-dhead-sub">' + sub + '</div>' : '') + '</div></div>';
   }
   function groupChip(i) {
@@ -686,7 +697,7 @@
     var short = S.debt ? Math.max(0, S.debt.total - me.cash) : 0;
     var list = keys.map(function(i) {
       var p = S.props[i] || {};
-      return '<button type="button" class="st-sell" data-sell="' + i + '"><span class="st-sell-img"><img src="' + artSrc(SQ[i].art) + '" alt="" width="40" height="40"></span>' +
+      return '<button type="button" class="st-sell" data-sell="' + i + '"><span class="st-sell-img"><img src="' + placeSrc(SQ[i].art, 't') + '" alt="" width="40" height="40"></span>' +
         '<span class="st-sell-name">' + esc(SQ[i].short) + '<span class="st-sell-bld">' + (isCity(i) ? bldIcons(p.level) : '') + '</span></span><b>+' + money(sell[i]) + '</b></button>';
     }).join('');
     return '<div class="st-dhead"><span class="st-dhead-art is-alert">' + iconHtml('coins') + '</span><div class="st-dhead-txt"><h3 id="stSheetTitle">เงินไม่พอ! ขาด ' + money(short) + '</h3><div class="st-dhead-sub"><span class="st-chipline">ขายที่ = ได้คืนครึ่งราคา</span></div></div></div>' +
@@ -706,7 +717,7 @@
         chance: [['❓', 'สุ่มการ์ด 1 ใบ']],
         tax: [['🧾', 'จ่าย 10% ของที่']]
       }[sq.type] || [];
-      return '<div class="st-dhead"><span class="st-dhead-art"><img src="' + artSrc(sq.art) + '" alt="" width="72" height="72"></span><div class="st-dhead-txt"><h3 id="stSheetTitle">' + esc(sq.name) + '</h3></div></div>' +
+      return '<div class="st-dhead"><span class="st-dhead-art' + (NO_PHOTO[sq.art] ? '' : ' is-photo') + '"><img src="' + placeSrc(sq.art, 'w') + '" alt="" width="72" height="72"></span><div class="st-dhead-txt"><h3 id="stSheetTitle">' + esc(sq.name) + '</h3></div></div>' +
         '<div class="st-facts">' + what.map(function(w) { return '<div class="st-fact"><i>' + esc(w[0]) + '</i><span>' + esc(w[1]) + '</span></div>'; }).join('') + '</div>';
     }
     var sub = groupChip(i) + (owner ? '<span class="st-chipline">' + tokenHtml(owner) + esc(owner.playerId === playerId ? 'ของคุณ' : owner.name) + '</span>' : '<span class="st-chipline">ว่าง</span>') + (m.festival === i ? '<span class="st-chipline is-fest">🎉 ×2</span>' : '');
@@ -714,7 +725,7 @@
     var levels = isTour(i) ? [0] : [0, 1, 2, 3, 4];
     levels.forEach(function(k) {
       var here = owner && (isTour(i) || p.level === k);
-      rows += '<div class="st-tier' + (here ? ' is-now' : '') + '"><img src="' + (k === 4 || isTour(i) ? artSrc(sq.art) : artSrc(TIER_ART[k])) + '" alt="" width="36" height="36"><b>' + esc(isTour(i) ? 'ที่ดิน' : LEVEL_NAMES[k]) + '</b><span>' + money(sq.costs[k]) + '</span><span class="st-tier-toll">' + (isTour(i) ? '1→4 แห่ง ' + sq.tolls.map(moneyK).join(' / ') : money(sq.tolls[k])) + '</span></div>';
+      rows += '<div class="st-tier' + (here ? ' is-now' : '') + '"><img src="' + (k === 4 || isTour(i) ? placeSrc(sq.art, 't') : artSrc(TIER_ART[k])) + '" alt="" width="36" height="36"><b>' + esc(isTour(i) ? 'ที่ดิน' : LEVEL_NAMES[k]) + '</b><span>' + money(sq.costs[k]) + '</span><span class="st-tier-toll">' + (isTour(i) ? '1→4 แห่ง ' + sq.tolls.map(moneyK).join(' / ') : money(sq.tolls[k])) + '</span></div>';
     });
     var now = owner ? '<div class="st-dinfo"><span class="st-dinfo-item"><small>ค่าผ่านทางตอนนี้</small><b>' + money(tollIn(m, i)) + '</b></span>' + (isCity(i) && p.level === 4 ? '<span class="st-dinfo-item"><small>ดาว</small><b>' + (p.stars ? '⭐' + p.stars : '—') + ' / 4</b></span>' : '') + (isCity(i) && p.level < 4 ? '<span class="st-dinfo-item"><small>ซื้อต่อ ×2</small><b>' + money(valueOf(i, p.level) * 2) + '</b></span>' : '<span class="st-dinfo-item"><small>ซื้อต่อ</small><b>ไม่ได้</b></span>') + '</div>' : '';
     var ownerBar = owner ? '<div class="st-ownerbar" style="--tk:' + esc(owner.tokenColor) + ';--tk-ink:' + esc(inkOf(owner)) + '">' + tokenHtml(owner) + '<span>เจ้าของ: <b>' + esc(owner.playerId === playerId ? 'คุณ' : owner.name) + '</b></span></div>' : '<div class="st-ownerbar is-free">ยังไม่มีเจ้าของ · ราคา ' + money(sq.price) + '</div>';
@@ -742,7 +753,28 @@
       ['⏰', S && S.clock && S.clock.endsAt ? 'หมดเวลา: ทรัพย์สินมากสุดชนะ' : 'ไม่จำกัดเวลา: เหลือคนสุดท้ายชนะ']
     ];
     return '<div class="st-dhead"><span class="st-dhead-art">' + iconHtml('crown') + '</span><div class="st-dhead-txt"><h3 id="stSheetTitle">เล่นยังไง</h3><div class="st-dhead-sub"><span class="st-chipline">เงินในเกม ไม่มีมูลค่าจริง</span></div></div></div>' +
-      '<div class="st-facts">' + rows.map(function(r) { return '<div class="st-fact"><i>' + r[0] + '</i><span>' + esc(r[1]) + '</span></div>'; }).join('') + '</div>';
+      '<div class="st-facts">' + rows.map(function(r) { return '<div class="st-fact"><i>' + r[0] + '</i><span>' + esc(r[1]) + '</span></div>'; }).join('') + '</div>' +
+      '<details class="st-credits"><summary>เครดิตรูปภาพ</summary><div class="st-credits-list" id="stCredits">' + creditsHtml() + '</div></details>';
+  }
+  // เครดิตรูปถ่าย (photos/credits.json จาก scripts/build-setthi-photos.js)
+  var credits = null;
+  function creditsHtml() {
+    if (!credits) {
+      if (credits === null) {
+        credits = false;
+        fetch(PHOTO_BASE + 'credits.json').then(function(r) { return r.json(); }).then(function(list) {
+          credits = list;
+          var n = document.getElementById('stCredits');
+          if (n) n.innerHTML = creditsHtml();
+        }).catch(function() { credits = null; });
+      }
+      return 'กำลังโหลด…';
+    }
+    var nameOfKey = {};
+    SQ.forEach(function(q) { if (q.art) nameOfKey[q.art] = q.name; });
+    return credits.map(function(c) {
+      return '<div class="st-credit"><b>' + esc(nameOfKey[c.key] || c.key) + '</b><span>' + esc(c.author) + ' · <a href="' + esc(c.link) + '" target="_blank" rel="noopener">' + esc(c.source) + '</a> · <a href="' + esc(c.licenseUrl) + '" target="_blank" rel="noopener">' + esc(c.license) + '</a></span></div>';
+    }).join('');
   }
   function logHtml() {
     return '<div class="st-dhead"><span class="st-dhead-art">' + iconHtml('book') + '</span><div class="st-dhead-txt"><h3 id="stSheetTitle">เพิ่งเกิดอะไร</h3></div></div>' +
@@ -950,7 +982,7 @@
     // ชิ้นสิ่งปลูกสร้างตกลงมาทีละขั้น
     var first = Math.max(0, f.from + 1);
     for (var k = first; k <= f.to; k += 1) {
-      var drop = fxNode('st-drop', '<img src="' + (isTour(i) ? artSrc(SQ[i].art) : artSrc(TIER_ART[k])) + '" alt="" width="56" height="56">');
+      var drop = fxNode('st-drop', '<img src="' + (isTour(i) ? placeSrc(SQ[i].art, 't') : artSrc(TIER_ART[k])) + '" alt="" width="56" height="56">');
       sfx.build();
       await A(drop, [
         { transform: 'translate(' + at.x + 'px,' + (at.y - 110) + 'px) translate(-50%, -50%) scale(1.2)', opacity: 0 },
@@ -982,7 +1014,7 @@
     sfx.big();
     haptic([20, 40, 20, 40, 40]);
     var rays = fxNode('st-rays');
-    var img = fxNode('st-lm-rise', '<img src="' + artSrc(SQ[i].art) + '" alt="" width="220" height="220">');
+    var img = fxNode('st-lm-rise', '<img src="' + placeSrc(SQ[i].art, 'w') + '" alt="" width="320" height="200">');
     var b = banner({ token: who, kicker: SQ[i].name, title: 'แลนด์มาร์ก!', sub: 'ค่าผ่านทาง ' + money(SQ[i].tolls[4]) + ' · ซื้อต่อไม่ได้', cls: 'is-gold', style: 'top:auto;bottom:16%;' });
     A(rays, [{ transform: 'translate(-50%, -50%) rotate(0deg) scale(0.4)', opacity: 0 }, { transform: 'translate(-50%, -50%) rotate(40deg) scale(1)', opacity: 1 }], { duration: 1600 });
     await A(img, [{ transform: 'translate(-50%, -30%) scale(0.3)', opacity: 0 }, { transform: 'translate(-50%, -58%) scale(1.08)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%, -55%) scale(1)', opacity: 1 }], { duration: 620, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
@@ -1058,7 +1090,7 @@
     var mineLost = f.from === playerId;
     var node = fxNode('st-take-scene' + (mineLost ? ' is-lost' : ''),
       '<div class="st-take-title">' + (mineLost ? 'ถูกซื้อต่อ!' : 'ซื้อต่อ!') + '</div>' +
-      '<div class="st-take-card"><img src="' + artSrc(SQ[i].art) + '" alt="" width="120" height="120"><b>' + esc(SQ[i].name) + '</b><span class="st-take-bld">' + bldIcons(f.level) + '</span></div>' +
+      '<div class="st-take-card"><img src="' + placeSrc(SQ[i].art, 'w') + '" alt="" width="240" height="150"><b>' + esc(SQ[i].name) + '</b><span class="st-take-bld">' + bldIcons(f.level) + '</span></div>' +
       '<div class="st-take-swap">' + tokenHtml(victim, 'is-old') + '<span class="st-swap-arrow">→</span>' + tokenHtml(buyer, 'is-new') + '</div>' +
       '<div class="st-take-amt">' + money(f.price) + '</div>');
     if (mineLost) { sfx.sad(); haptic([60, 40, 60]); } else { sfx.stamp(); haptic(20); }
@@ -1898,8 +1930,8 @@
     var gap = fresh.length && fresh[0].seq > lastFxSeq + 1 && lastFxSeq > 0;
     S = next;
     lastFxSeq = Math.max(lastFxSeq, next.fxSeq || 0);
-    if (next.decision && next.decision.square !== undefined && SQ[next.decision.square]) preload(SQ[next.decision.square].art);
-    fresh.forEach(function(f) { if (f.square !== undefined && SQ[f.square]) preload(SQ[f.square].art); });
+    if (next.decision && next.decision.square !== undefined && SQ[next.decision.square]) preload(SQ[next.decision.square].art, true);
+    fresh.forEach(function(f) { if (f.square !== undefined && SQ[f.square]) preload(SQ[f.square].art, true); });
     if (first || gap || !fresh.length) {
       if (first || gap) queue = [];
       if (!running) renderAll();
