@@ -114,7 +114,7 @@ module.exports = {
         id: 'solitaire',
         order: 40,
         title: 'ไพ่โซลิแทร์',
-        emoji: '🃏',
+        emoji: '♠️',
         tagline: 'เรียงไพ่ขึ้นช่องเก็บให้ครบ 52 ใบ แตะไพ่ให้ไปเองได้',
         accent: '#3fb58a',
         cover: '/assets/games/solo/solitaire/cover.svg'

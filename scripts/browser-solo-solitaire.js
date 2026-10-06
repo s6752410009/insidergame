@@ -156,6 +156,16 @@ async function perform(page, mv, stats) {
         await delay(900);
         await page.screenshot({ path: path.join(SHOTS, '02-deal.png') });
         await layoutChecks(page, 'board');
+        // แตะไพ่คว่ำ → ต้องมีปฏิกิริยา + เหตุผล (ไม่เงียบ)
+        const downBox = await page.evaluate(() => {
+            const s = window.__solitaire.state;
+            const c = s.t[6][0];
+            const r = document.querySelector('.sol-card[data-card="' + c + '"]').getBoundingClientRect();
+            return { x: r.x + r.width / 2, y: r.y + 3 };
+        });
+        await tap(page, downBox);
+        await page.waitForFunction(() => document.getElementById('solToast').classList.contains('is-on') && /ไพ่คว่ำ/.test(document.getElementById('solToast').textContent), null, { timeout: 2000 });
+        assert((await page.evaluate(() => window.__solitaire.game.log)) === '', 'tapping a face-down card does not move anything');
 
         // วางสำรับที่รู้ผล (seed ชนะได้) แล้วรีโหลด — ทดสอบการกู้เกมจาก localStorage ไปในตัว
         const seed = SEEDS[1][3];
@@ -274,6 +284,13 @@ async function perform(page, mv, stats) {
         await rp.evaluate(code => window.__solitaire.move(code), E.encodeMove(sol2.moves[sol2.moves.length - 1]));
         await rp.waitForSelector('#dlgWin[open]');
         assert(!(await rp.locator('.sol-cascade img').count()), 'no cascade with reduced motion');
+        // ปัดหน้าต่างชนะทิ้ง (Esc / ปุ่มย้อนกลับมือถือ) → ยังอยู่บนโต๊ะที่ชนะ ไม่แจกใหม่เอง
+        const wonId = await rp.evaluate(() => window.__solitaire.game.id);
+        await rp.keyboard.press('Escape');
+        await delay(400);
+        assert(!(await rp.locator('#dlgWin[open]').count()), 'win dialog closes on Escape');
+        assert(await rp.evaluate(id => window.__solitaire.game.id === id && window.__solitaire.game.won, wonId), 'dismissing the win dialog keeps the won board');
+        assert(/เกมใหม่/.test(await rp.textContent('#solToast')), 'tells how to start the next game');
         await rm.close();
 
         assert(!errors.length, 'page errors: ' + errors.join(' | '));

@@ -146,6 +146,8 @@
         pointer-events: none;
         z-index: 5;
     }
+    /* แถวที่กำลังพิมพ์อยู่ครึ่งบน → ข้อความลอยไปครึ่งล่าง (ไม่บังคำที่พิมพ์) */
+    .wd-toasts.is-low { inset: auto 0 8px; }
     .wd-toast {
         max-width: 92%;
         padding: 10px 16px;
@@ -209,7 +211,7 @@
     .wd-action:active { transform: scale(0.96); }
     .wd-action[aria-pressed="true"] { background: var(--wd-gold); color: var(--wd-present-ink); border-color: transparent; }
     .wd-action.wd-enter { background: var(--wd-accent); border-color: transparent; color: #fff7f5; }
-    .wd-action.wd-enter:disabled { opacity: 0.5; cursor: default; }
+    .wd-action.wd-enter:disabled, .wd-action.wd-enter.is-off { opacity: 0.5; }
     .wd-action .wd-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wd-correct); display: none; }
     .wd-action.has-dot .wd-dot { display: inline-block; }
 
@@ -340,6 +342,15 @@
         100% { opacity: 0; transform: translate3d(var(--x, 0), 105vh, 0) rotate(var(--r, 540deg)); }
     }
 
+    /* จอเตี้ย (iPhone SE 375×667, Android 360×640): ย่อช่อง/ปุ่มให้กระดาน + คีย์บอร์ด + ปุ่มทาย พ้นแถบล่าง */
+    @media (max-height: 720px) {
+        .wd, .wd-sheet-bg { --tile: clamp(34px, min(15vw, 5.9svh), 62px); --key-h: clamp(34px, 5.4svh, 50px); }
+        .wd { gap: 8px; padding-top: 2px; }
+        .wd-top { min-height: 44px; }
+        .wd-board { gap: 5px; }
+        .wd-row { gap: 5px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
         .wd *, .wd-sheet-bg, .wd-sheet { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition: none !important; }
         .wd-confetti { display: none; }
@@ -366,7 +377,7 @@
         <div class="wd-actions">
             <button type="button" class="wd-action" id="wd-shift" aria-pressed="false" aria-label="สลับไปอักษรอื่น"><span id="wd-shift-label">ฆ ศ ษ</span><span class="wd-dot" aria-hidden="true"></span></button>
             <button type="button" class="wd-action" id="wd-back" aria-label="ลบ"><i class="fas fa-backspace" aria-hidden="true"></i> ลบ</button>
-            <button type="button" class="wd-action wd-enter" id="wd-enter">ทายคำนี้</button>
+            <button type="button" class="wd-action wd-enter is-off" id="wd-enter" aria-disabled="true">ทายคำนี้</button>
         </div>
     </div>
 
@@ -387,7 +398,7 @@
             <button type="button" class="wd-icon" data-close aria-label="ปิด"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
         <ul class="wd-howto-list">
-            <li>ทายคำไทย <b>4 ช่อง</b> ให้ถูกภายใน <b>6 ครั้ง</b> — ทุกคนได้คำเดียวกัน วันละคำ</li>
+            <li>ทายคำไทย <b>4 ช่อง</b> ให้ถูกภายใน <b>6 ครั้ง</b> — ทุกคนได้คำเดียวกัน วันละคำ ข้อใหม่ทุก<b>เที่ยงคืน (เวลาไทย)</b></li>
             <li>1 ช่อง = ตัวอักษร 1 ตัว พร้อมสระบน/ล่างและวรรณยุกต์ที่อยู่บนตัวนั้น</li>
         </ul>
         <div class="wd-ex" aria-hidden="true">

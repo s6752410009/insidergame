@@ -69,7 +69,9 @@ function summary(data) {
     if (!data) return null;
     const stars = Number(data.totalStars) || 0;
     const streak = core.liveStreak(data, new Date());
-    if (streak > 0) return `รายวันติดกัน ${streak} วัน · ★ ${stars}`;
+    const last = data.daily && data.daily.last;
+    const playedToday = Boolean(last && last.date === core.bangkokDate(new Date()));
+    if (streak > 0) return `รายวันติดกัน ${streak} วัน · ★ ${stars} · ${playedToday ? 'วันนี้เล่นแล้ว ✓' : 'วันนี้ยังไม่ได้เล่น'}`;
     const easy = data.levels && data.levels.easy && data.levels.easy.bestTimeMs;
     if (stars > 0) return `สะสม ★ ${stars}${easy ? ` · ง่ายดีสุด ${core.formatTime(easy)}` : ''}`;
     return null;
@@ -88,7 +90,7 @@ module.exports = {
         id: 'memory',
         order: 40,
         title: 'จับคู่การ์ดความจำ',
-        emoji: '🃏',
+        emoji: '🧠',
         tagline: 'เปิดการ์ดทีละสองใบ จำให้แม่น จับคู่ให้ครบเร็วที่สุด',
         accent: '#4fd1c5',
         cover: '/assets/games/solo/memory/cover.svg'

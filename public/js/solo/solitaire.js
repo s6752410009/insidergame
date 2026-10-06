@@ -395,9 +395,13 @@
         const p = locate(c);
         if (!p || busy || game.won) return;
         if (p.zone === 's') { drawStock(); return; }
-        if (!p.up) return;
+        // แตะแล้วต้องรู้ว่าแตะติด: ไพ่ที่ยังขยับไม่ได้ก็สั่นให้เห็น + บอกเหตุผล
+        if (!p.up) { flash(cardEls[c], 'is-nope'); toast('ไพ่คว่ำ — ย้ายใบที่ทับอยู่ออกก่อน แล้วจะหงายเอง'); return; }
         let from, index = 0;
-        if (p.zone === 'w') { if (p.idx !== state.waste.length - 1) return; from = 'w'; }
+        if (p.zone === 'w') {
+            if (p.idx !== state.waste.length - 1) { flash(cardEls[c], 'is-nope'); toast('ใช้ได้เฉพาะใบบนสุดของกองเปิด'); return; }
+            from = 'w';
+        }
         else if (p.zone === 'f') { from = E.FOUNDATION_CODES[p.suit]; if (state.f[p.suit] !== E.rankOf(c)) return; }
         else { from = p.pile; index = p.idx; }
         const mv = E.autoMoveFor(state, from, index);
@@ -703,6 +707,7 @@
     function openDialog(id) {
         const dlg = $(id);
         if (!dlg || dlg.open) return;
+        dlg.returnValue = ''; // ค่าจากครั้งก่อนห้ามค้าง (ปิดด้วย Esc/ปุ่มย้อนกลับ ต้องได้ '' เสมอ)
         document.querySelectorAll('dialog[open]').forEach(d => { if (d !== dlg) d.close('replaced'); });
         if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
     }
@@ -746,6 +751,8 @@
         $('dlgWin').addEventListener('close', () => {
             const v = $('dlgWin').returnValue;
             if (v === 'settings') { setTimeout(openNew, 0); return; }
+            // ปัดทิ้ง/ปุ่มย้อนกลับของมือถือ = ปิดดูโต๊ะที่ชนะ ไม่แจกใหม่ทันที
+            if (v !== 'again') { stopCascade(); toast('ชนะแล้ว! กด “เกมใหม่” เมื่อพร้อมเล่นตาต่อไป', 2600); return; }
             stopCascade();
             newGame(game.draw, game.deal);
         });

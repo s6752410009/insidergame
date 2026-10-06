@@ -129,6 +129,15 @@ async function tap(page, i) {
         await shot(page, 'm02-menu');
         await page.screenshot({ path: SHOTS ? path.join(SHOTS, 'm02-menu-full.png') : '/dev/null', fullPage: true }).catch(() => {});
 
+        assert(/เที่ยงคืน/.test(await page.textContent('#mmDailyMeta')), 'daily card says when the board changes');
+        // ---- เข้าแล้วออกโดยยังไม่แตะการ์ด = ไม่มี "เกมค้าง" ----
+        await page.click('#mmStart');
+        await page.waitForSelector('#mmPlay:not([hidden]) .mm-card');
+        await page.click('#mmPauseBtn');
+        await page.click('#mmQuitBtn');
+        await page.waitForSelector('#mmMenu:not([hidden])');
+        assert(!(await page.isVisible('#mmResume')), 'untouched board is not kept as a paused game');
+
         // ---- ทุกระดับต้องพอดีจอ ----
         for (const level of ['medium', 'hard']) {
             await page.click(`[data-level="${level}"]`);
@@ -147,8 +156,10 @@ async function tap(page, i) {
             await page.waitForSelector('#mmMenu:not([hidden])');
         }
         assert(await page.isVisible('#mmResume'), 'practice game kept → resume banner');
+        assert(/ทิ้งเกมที่ค้าง/.test(await page.textContent('#mmStart')), 'start button warns it discards the paused game');
         await page.click('#mmResumeDrop');
         assert(!(await page.isVisible('#mmResume')), 'drop saved game');
+        assert((await page.textContent('#mmStart')).trim() === 'เริ่มเกม', 'start button back to normal');
 
         // ---- เล่นเกมง่ายจนจบ พร้อมรีเฟรชกลางเกม ----
         await page.click('[data-level="easy"]');
@@ -226,6 +237,10 @@ async function tap(page, i) {
         await page.waitForSelector('#mmDailyDone:not([hidden])');
         await page.waitForSelector('.mm-lb-row.is-me');
         assert(/อันดับ 1/.test(await page.textContent('#mmDailyDone')), 'daily card shows rank');
+        const next1 = await page.textContent('#mmDailyNext');
+        assert(/^\d\d:\d\d:\d\d$/.test(next1), 'daily card counts down to the next board: ' + next1);
+        await delay(1300);
+        assert((await page.textContent('#mmDailyNext')) !== next1, 'countdown ticks');
         await delay(300);
         await layoutCheck(page, 'menu after daily');
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -281,6 +296,7 @@ async function tap(page, i) {
         await page.goto(`${base}/solo`);
         await delay(500);
         assert(/รายวันติดกัน 1 วัน/.test(await page.textContent('.solo-grid')), 'hub card shows summary');
+        assert(/วันนี้เล่นแล้ว/.test(await page.textContent('.solo-grid')), 'hub card says today\'s board is done');
         await shot(page, 'm14-hub');
 
         assert(errors.length === 0, 'no page/console errors:\n' + errors.join('\n'));

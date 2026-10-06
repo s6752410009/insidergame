@@ -159,6 +159,17 @@ async function layoutProblems(page) {
         act = await waitReady(page);
         assert(act === 'draw' || act === 'deal' || act === 'newrun', 'กดลองใหม่แล้วเล่นต่อได้');
         assert(await page.isHidden('#pdsError'), 'ข้อความ error หายไป');
+
+        // ---------- เน็ตหลุดอีกรอบ → พอเน็ตกลับมา ส่งต่อให้เองโดยไม่ต้องกดลองใหม่ ----------
+        const tableKey = () => page.evaluate(() => fetch('/api/solo/pokdengsolo/state', { cache: 'no-store' }).then(r => r.json()).then(j => j.state.handNo + ':' + j.state.phase));
+        const keyBefore = await tableKey();
+        await ctx.setOffline(true);
+        await page.click(act === 'draw' ? '[data-act="stay"]' : '[data-act="deal"]');
+        await page.waitForSelector('#pdsError:not([hidden])', { timeout: 10000 });
+        await ctx.setOffline(false);
+        await page.waitForSelector('#pdsError', { state: 'hidden', timeout: 10000 });
+        act = await waitReady(page);
+        assert((await tableKey()) !== keyBefore, 'ต่อเน็ตแล้วส่งคำสั่งที่ค้างให้เอง (ไม่ต้องกดลองใหม่)');
         if (act === 'draw') {
             await page.click('[data-act="stay"]');
             act = await waitReady(page);

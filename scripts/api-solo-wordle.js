@@ -179,6 +179,7 @@ async function main() {
         const hub = await a.raw('GET', '/solo');
         const html = await hub.text();
         ok(html.includes('ทายคำรายวัน') && html.includes('ติดกัน 1 วัน'), 'hub card shows the streak summary');
+        ok(html.includes('วันนี้ทายแล้ว'), 'hub card says today\'s word is done');
         const page = await a.raw('GET', '/solo/wordle');
         const pageHtml = await page.text();
         ok(page.status === 200 && !pageHtml.includes(answer), 'game page renders and does not embed the answer');
