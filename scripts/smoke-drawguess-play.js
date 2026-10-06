@@ -397,6 +397,8 @@ async function playTurn(active, opts = {}) {
         g1.forEach(p => assert(statsOf(p.id).games === 1, 'ขอ state ซ้ำไม่บันทึกสถิติซ้ำ'));
         assert(g1.some(p => p.events.some(([e]) => e === 'returnToLobby')), 'มีนับถอยหลังกลับห้องรอ');
         r = await ack(g1[2].socket, 'returnFinishedToLobby', { roomId: room1 });
+        assert(r && !r.success && r.canReturnSelf, 'ผู้เล่นทั่วไปพาทุกคนกลับห้องได้: ' + JSON.stringify(r));
+        r = await ack(g1[0].socket, 'returnFinishedToLobby', { roomId: room1 });
         assert(r?.success, 'กลับห้องรอได้');
         await waitFor(() => g1.every(p => p.events.some(([e]) => e === 'redirectToLobby')), 3000, 'ทุกคนกลับห้องรอ');
         const leaks1 = auditLeaks(g1, 'เกม 1');

@@ -1391,7 +1391,8 @@ $(function() {
   $(document).on('click', '#wlLockBtn', lockNow);
   $(document).on('click', '#wlUnlockBtn', function() { send('wavelength_unlock'); });
   $(document).on('click', '#wlNextBtn, #wlReadyBtn', function() { haptic(8); send('wavelength_next'); });
-  $(document).on('click', '#wlBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  // ไม่ใช่หัวห้อง = server ไม่พาทั้งวงกลับ (canReturnSelf) → กลับห้องเฉพาะตัวเอง
+  $(document).on('click', '#wlBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } }); });
   $(document).on('click', '#wlShareBtn', function() {
     if (!window.partyPlay || !S.standings) return;
     const w = S.winners || [];

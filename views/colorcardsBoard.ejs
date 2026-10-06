@@ -1436,9 +1436,11 @@ $(function() {
   $('#ccPickerCancel').on('click', closePicker);
   $('#ccPicker').on('click', function(e) { if (e.target === this) closePicker(); });
   $(document).on('click', '#ccNextBtn', function() { send('colorcards_nextRound'); });
+  // ไม่ใช่หัวห้อง = server ไม่พาทั้งวงกลับ (canReturnSelf) → กลับห้องเฉพาะตัวเอง
   $(document).on('click', '#ccBackBtn', function() {
     const btn = $(this).prop('disabled', true).text('กำลังพากลับห้องรอ…');
     socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) {
+      if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; return; }
       if (res && res.success === false) { toastError(res.error); btn.prop('disabled', false).text('กลับห้องรอ · เล่นอีกตา'); }
     });
   });

@@ -968,7 +968,7 @@ $(function() {
   });
 
   $(document).on('click', '#cpBackLobbyBtn', function() {
-    socket.emit('returnFinishedToLobby', { roomId: roomId });
+    socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } });
   });
 
   $('#cpHowToOpen').on('click', function() {

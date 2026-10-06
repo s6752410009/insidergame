@@ -799,7 +799,8 @@ $(function() {
       if (res && !res.success) Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#1b2336', color: '#fff' });
     });
   });
-  $(document).on('click', '#avBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  // ไม่ใช่หัวห้อง = server ไม่พาทั้งวงกลับ (canReturnSelf) → กลับห้องเฉพาะตัวเอง
+  $(document).on('click', '#avBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } }); });
   $(document).on('click', '#avShareBtn', function() {
     if (!window.partyPlay || !S.winner) return;
     const good = S.players.filter(function(p) { return p.team === 'good'; }).map(function(p) { return p.name + (p.role ? ' (' + p.role.thaiName + ')' : ''); });

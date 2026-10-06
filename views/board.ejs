@@ -13,6 +13,17 @@
         <% } %>
     </div>
 </div>
+<!-- ปุ่มดูบทของฉัน: บทหายไปหลังโชว์ 5 วิ (และโดน popup วิธีเล่นบังตอนเล่นครั้งแรก) — กดดูซ้ำได้ทุกเฟส
+     ซ่อนไว้เป็นค่าเริ่มต้น เพราะเล่นกันต่อหน้า เพื่อนข้างๆ เหลือบเห็นจอได้ -->
+<div id="insRoleChip" class="ins-rolechip" hidden>
+    <button type="button" id="insRoleToggle" class="ins-rolechip__btn" aria-expanded="false" aria-controls="insRolePanel">🎭 ดูบทของฉัน</button>
+    <div id="insRolePanel" class="ins-rolechip__panel" hidden>
+        <div class="ins-rolechip__role">คุณคือ <strong id="insRoleName"></strong></div>
+        <div id="insRoleWord" class="ins-rolechip__word" hidden>คำลับ: <strong id="insRoleWordText"></strong></div>
+        <div id="insRoleHint" class="ins-rolechip__hint"></div>
+    </div>
+</div>
+
 <!-- Connection Status Indicator -->
 <div id="connectionStatus" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #f39c12; color: #000; padding: 8px 16px; border-radius: 20px; display: none; z-index: 10001; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">กำลัง reconnect...</div>
 
@@ -83,7 +94,8 @@
 </div>
 
 <div id="reveal">
-    <% if (player.role === 'ผู้ดำเนินเกม') { %>
+    <%# render ให้ทุกคน: กด "เล่นอีกรอบ" แล้วบทเปลี่ยนโดยไม่ reload — ผู้ดำเนินเกมคนใหม่ต้องมีปุ่มนี้ด้วย
+        (เดิมมีเฉพาะคนที่เป็นผู้ดำเนินเกมตอนโหลดหน้า → รอบใหม่ค้างที่ตั้งคำ เปิดคำไม่ได้) %>
         <div class="reveal-container">
             <button class="btn btn-warning cta hidden">เปิดเผยคำ</button>
             <div class="auto-timer-hint" id="revealTimerHint" style="display:none;">
@@ -91,14 +103,13 @@
                 <span class="auto-timer-text">จะเปิดอัตโนมัติใน <span id="revealCountdown">5</span> วิ</span>
             </div>
         </div>
-    <% } %>
     <div id="word" class="hidden"></div>
 </div>
 
 <div id="startGame" class="hidden">
     <% if (player.permission == 'admin') { %>
         <div class="start-game-container">
-            <a href=""><i class="fas fa-play-circle"></i></a>
+            <a href="" class="ui-btn ui-btn--primary ui-btn--lg ins-cta" role="button">▶ เริ่มจับเวลาถาม–ตอบ</a>
             <div class="auto-timer-hint" id="startTimerHint" style="display:none;">
                 <span class="auto-timer-icon">⏱️</span>
                 <span class="auto-timer-text">จะเริ่มอัตโนมัติใน <span id="startCountdown">5</span> วิ</span>
@@ -107,7 +118,7 @@
     <% } else { %>
         <div class="waiting-for-host">
             <div class="pulse-icon">⏳</div>
-            <p>รอเจ้าของห้องเริ่มเกม...</p>
+            <p>รอหัวห้องกดเริ่มจับเวลา…</p>
         </div>
     <% } %>
 </div>
@@ -120,16 +131,14 @@
             <div class="ring ring3"></div>
         </div>
         <div class="countdown-center">
+            <span class="ins-timer-label">เวลาทายคำลับ</span>
             <span id="timer"></span>
-            <% if (player.permission == 'admin') { %>
-                <a href="" class="stop-timer-btn" title="หยุดเวลา → ไปโหวตจอมบงการ"><i class="fas fa-stop-circle"></i></a>
-            <% } %>
         </div>
     </div>
-    <p style="color:#9aa6c0; font-size:0.85rem; text-align:center; max-width:360px; margin:10px auto 0; line-height:1.5;">
-        💬 ถาม–ตอบในแชทเพื่อช่วยกันทายคำ — ผู้ดำเนินเกมตอบ ใช่/ไม่ใช่/อาจจะ<br>
-        <% if (player.permission == 'admin') { %>ทายคำได้แล้วกด ⏹ เพื่อไปโหวตจับจอมบงการ (หมดเวลาจะไปโหวตเอง)<% } else { %>เมื่อทุกคนทายคำได้ แอดมินจะกดเข้าสู่การโหวตจับจอมบงการ<% } %>
-    </p>
+    <%# ทางลัด "ทายถูกแล้ว": ผู้ดำเนินเกม (คนที่รู้คำ) หรือหัวห้องกด — ไม่ต้องรอนาฬิกาหมด %>
+    <button type="button" id="wordFoundBtn" class="ui-btn ui-btn--primary ui-btn--lg ins-cta" hidden>✅ มีคนทายถูกแล้ว → ไปโหวต</button>
+    <p id="countdownHelp" class="ins-help"></p>
+    <button type="button" id="openChatFromCountdown" class="ui-btn ins-cta ins-cta--ghost">💬 เปิดแชทถาม–ตอบ</button>
 </div>
 
 <div id="voteForm">
@@ -143,12 +152,13 @@
             </div>
             <div style="text-align:left;">
                 <h4 id="vote2Title" style="color:#fff; font-size:1.2rem; font-weight:700; margin:0 0 2px;">โหวตจอมบงการ</h4>
-                <p id="vote2Subtitle" style="color:#aaa; font-size:0.85rem; margin:0;">แตะการ์ดเพื่อเลือก · เหลือ <span id="vote2Timer" style="color:#f39c12; font-weight:700;">15</span> วิ</p>
+                <p id="vote2Subtitle" style="color:#aaa; font-size:0.85rem; margin:0;">แตะการ์ด แล้วกดยืนยัน · เหลือ <span id="vote2Timer" style="color:#f39c12; font-weight:700;">15</span> วิ</p>
             </div>
         </div>
         <div id="dualTraitorModeIndicator" style="display:none; background:linear-gradient(135deg,#e74c3c,#a93226); padding:8px 12px; border-radius:12px; margin-bottom:12px; text-align:center;">
             <span style="font-size:0.9rem; font-weight:700; color:#fff;">🔴🔴 เลือก 2 คน</span>
         </div>
+        <p id="vote2GmNote" class="ins-help ins-help--box" hidden>คุณเป็น <strong>ผู้ดำเนินเกม</strong> — รอบนี้ไม่ต้องโหวต ดูคะแนนสดด้านล่างได้เลย</p>
         <div class="vote2-choices" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;"></div>
         <div id="vote2SelectedInfo" class="vote2-selection-info" style="margin-top:10px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
             <div class="selection-counter" style="margin-bottom:8px;">
@@ -156,7 +166,7 @@
                 <span style="font-size:1.1rem; color:#2ecc71; font-weight:700; margin-left:6px;"><strong id="selectedCount">0</strong>/<span id="maxSelect">1</span></span>
             </div>
             <div id="vote2SelectedNames" class="vote2-selected-names" style="color:#fff; font-weight:600; font-size:0.9rem; min-height:20px; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></div>
-            <button id="confirmVote2Btn" class="confirm-vote-btn" type="button" style="margin-top:10px; width:100%; padding:12px; border-radius:10px; background:linear-gradient(135deg,#3498db,#2980b9); color:#fff; font-weight:bold; font-size:1rem; border:none; cursor:pointer;" disabled>ยืนยัน</button>
+            <button id="confirmVote2Btn" class="confirm-vote-btn" type="button" style="margin-top:10px; width:100%; padding:12px; border-radius:10px; background:linear-gradient(135deg,#3498db,#2980b9); color:#fff; font-weight:bold; font-size:1rem; border:none; cursor:pointer;" disabled>เลือกผู้ต้องสงสัยก่อน</button>
         </div>
         <div id="vote2LiveBoard" class="vote2-live-board" style="margin-top:10px; font-size:0.85rem; padding:12px; background:rgba(0,0,0,0.2); border-radius:12px; display:flex; flex-direction:column; gap:6px;">
             <div class="vote2-live-summary" style="display:flex; justify-content:space-between; color:#bbb;">
@@ -169,16 +179,21 @@
         </div>
     </div>
     <div id="vote2Result" class="hidden" style="background: linear-gradient(145deg, #1a1b2e, #16213e); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; margin: 15px auto; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
-        <h4 style="color: #f1c40f; font-size: 1.3rem; font-weight: 700; margin: 0 0 15px; letter-spacing: 0.02em;">📊 ผลการโหวต</h4>
-        <ul id="playerList" style="list-style: none; padding: 0; margin: 0 0 15px; display: flex; flex-direction: column; gap: 8px;"></ul>
+        <%# ผลของ "ฉัน" ขึ้นก่อน แล้วค่อยผลทีม/คำลับ/คะแนน/เฉลยบท — เดิมเริ่มด้วยตารางคะแนน ต้องเลื่อนหาว่าใครชนะ %>
+        <div id="insMyOutcome" class="ins-outcome"></div>
         <div id="finalResult" style="margin-top: 10px;"></div>
-        <div id="vote2EndActions" style="margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <div id="vote2EndActions" class="ins-end-actions">
             <% if (room.admin) { %>
-            <button type="button" id="insiderRematchBtn" style="border:0;border-radius:12px;padding:10px 14px;font-weight:700;background:#f1c40f;color:#1a1204;cursor:pointer;">🎲 เล่นอีกรอบ</button>
+            <button type="button" id="insiderRematchBtn" class="ui-btn ui-btn--primary ins-cta">🎲 เล่นอีกรอบ</button>
             <% } %>
-            <button type="button" id="insiderShareBtn" style="border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:10px 14px;font-weight:700;background:transparent;color:#fff;cursor:pointer;">📸 เซฟผล</button>
+            <button type="button" id="insiderBackRoomBtn" class="ui-btn ins-cta">🏠 กลับห้องเลย</button>
+            <button type="button" id="insiderShareBtn" class="ui-btn ui-btn--ghost ins-cta">📸 เซฟผล</button>
         </div>
-        <p id="vote2ReturnHint" style="margin:16px 0 0; color:#f39c12; font-weight:700;">กลับห้องใน <span id="vote2ReturnCount">5</span> วิ</p>
+        <p id="vote2ReturnHint" style="margin:16px 0 0; color:#f39c12; font-weight:700;">กลับห้องอัตโนมัติใน <span id="vote2ReturnCount">15</span> วิ</p>
+        <h4 id="vote2TallyTitle" style="color: #f1c40f; font-size: 1.05rem; font-weight: 700; margin: 16px 0 10px; letter-spacing: 0.02em;">📊 คะแนนโหวต</h4>
+        <ul id="playerList" style="list-style: none; padding: 0; margin: 0 0 15px; display: flex; flex-direction: column; gap: 8px;"></ul>
+        <div id="rolesReveal"></div>
+
     </div>
 </div>
 
@@ -206,15 +221,13 @@
 
     <div id="chatMessages" class="chat-messages" role="log" aria-live="polite"></div>
     
-    <% if (player.role === 'ผู้ดำเนินเกม') { %>
-    <!-- ปุ่มตอบด่วนสำหรับผู้ดำเนินเกม -->
+    <!-- ปุ่มตอบด่วนสำหรับผู้ดำเนินเกม (render ให้ทุกคน โชว์เฉพาะ body.gm-role — บทเปลี่ยนได้ตอนเล่นอีกรอบ) -->
     <div class="gm-quick-reply">
         <span class="gm-quick-label">🎭 ตอบด่วน:</span>
         <button class="gm-reply-btn gm-yes" data-reply="yes" title="ใช่">✅ ใช่</button>
         <button class="gm-reply-btn gm-no" data-reply="no" title="ไม่ใช่">❌ ไม่ใช่</button>
         <button class="gm-reply-btn gm-maybe" data-reply="maybe" title="อาจจะ">🤔 อาจจะ</button>
     </div>
-    <% } %>
     
     <!-- ย้าย chat-input-wrap มาไว้ที่นี่ (ด้านล่างสุด) -->
     <div class="chat-input-wrap">
@@ -251,7 +264,8 @@
 </div>
 <% } %>
 
-<%- contentFor('style') %>
+<%# layout.ejs ไม่มี defineContent('style') — เดิม CSS ก้อนนี้อยู่ใต้ contentFor('style') เลยไม่เคยถูกส่งออกไปเลย
+    (timer bar, วงนับถอยหลัง, การ์ดโหวต, เครื่องหมายถูก) ย้ายมาอยู่ section footer ให้ render จริง %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
     /* ==================== AUTO TIMER STYLES ==================== */
@@ -2092,6 +2106,96 @@
         transform: translateY(-30px);
     }
 }
+
+/* ==================== INSIDER UX PASS ==================== */
+:root {
+    --ins-ink: oklch(0.96 0.01 280);
+    --ins-muted: oklch(0.78 0.03 280);
+    --ins-surface: oklch(0.27 0.05 285);
+    --ins-line: oklch(1 0 0 / 0.14);
+    --ins-gm: oklch(0.78 0.17 150);
+    --ins-traitor: oklch(0.68 0.2 25);
+    --ins-citizen: oklch(0.78 0.11 240);
+    --ins-warn: oklch(0.8 0.15 75);
+}
+
+/* ปุ่มดูบทของฉัน */
+.ins-rolechip { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 auto 10px; max-width: 420px; padding: 0 16px; }
+.ins-rolechip[hidden], .ins-rolechip__panel[hidden], .ins-rolechip__word[hidden] { display: none !important; }
+.ins-rolechip__btn {
+    min-height: 44px; padding: 0 18px; border-radius: 999px;
+    border: 1px solid var(--ins-line); background: var(--ins-surface); color: var(--ins-ink);
+    font-family: 'Bai Jamjuree', system-ui, sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+}
+.ins-rolechip__btn:focus-visible { outline: 2px solid var(--ins-warn); outline-offset: 2px; }
+.ins-rolechip__panel {
+    width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 14px;
+    background: var(--ins-surface); border: 1px solid var(--ins-line); color: var(--ins-ink); text-align: center;
+    font-family: 'Bai Jamjuree', system-ui, sans-serif;
+}
+.ins-rolechip__role { font-size: 1rem; }
+.ins-rolechip__role strong { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.25rem; }
+.ins-rolechip__role strong[data-role="gm"] { color: var(--ins-gm); }
+.ins-rolechip__role strong[data-role="traitor"] { color: var(--ins-traitor); }
+.ins-rolechip__role strong[data-role="citizen"] { color: var(--ins-citizen); }
+.ins-rolechip__word { margin-top: 6px; font-size: 1rem; }
+.ins-rolechip__word strong { color: var(--ins-warn); font-size: 1.2rem; overflow-wrap: anywhere; }
+.ins-rolechip__hint { margin-top: 6px; color: var(--ins-muted); font-size: 0.86rem; line-height: 1.5; }
+
+/* ปุ่มหลักของแต่ละเฟส — สูง 48px+ กดง่ายบนมือถือ */
+.ui-btn.ins-cta { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.02rem !important; font-weight: 700; line-height: 1.2; text-decoration: none; }
+.ui-btn.ins-cta[hidden] { display: none !important; }
+.ins-cta--ghost { background: transparent; }
+#startGame .start-game-container a.ui-btn.ins-cta { width: min(100%, 340px); font-size: 1.05rem !important; color: var(--ui-accent-ink); }
+/* ปุ่มลอย "ผู้เล่นออนไลน์"/"แชท" มุมขวาล่างทับการ์ด — เว้นที่ท้ายเฟส */
+#countdown, #voteForm { padding-bottom: 104px; }
+#startGame .auto-timer-hint { animation: none; padding: 8px 14px; border-width: 1px; }
+#startGame .auto-timer-text, #startGame .auto-timer-text span { font-size: 0.95rem !important; }
+#startGame .auto-timer-icon { animation: none; font-size: 1rem; }
+#startGame .waiting-for-host p { font-size: 1rem; color: var(--ins-muted); }
+#reveal .reveal-container .btn.cta { min-height: 52px; min-width: min(100%, 300px); font-size: 1.1rem; }
+
+/* ช่วงทายคำ: ตัวเลขใหญ่ อยู่ในกรอบ ไม่ล้นจอ + ข้อความบอกว่าต้องทำอะไรตามบท */
+#countdown { flex-direction: column; gap: 12px; padding: 0 16px; min-height: 0; font-size: 1rem !important; }
+#countdown .countdown-rings { display: none; }
+#countdown .countdown-center { gap: 2px; }
+#countdown .ins-timer-label { font-family: 'Bai Jamjuree', sans-serif; font-size: 0.9rem; font-weight: 600; color: var(--ins-muted); }
+#countdown #timer { font-family: 'Chakra Petch', 'Orbitron', sans-serif; font-size: clamp(3rem, 18vw, 4.5rem) !important; line-height: 1; color: var(--ins-warn); text-shadow: none; margin: 0; }
+#countdown.is-low #timer { color: var(--ins-traitor); }
+#countdown .ui-btn.ins-cta { width: min(100%, 360px); }
+.ins-help { color: var(--ins-muted); font-family: 'Bai Jamjuree', sans-serif; font-size: 0.92rem !important; font-weight: 500; line-height: 1.55; text-align: center; max-width: 380px; margin: 0 auto; }
+.ins-help strong { color: var(--ins-ink); }
+.ins-help--box { padding: 10px 12px; border-radius: 12px; background: oklch(0.78 0.17 150 / 0.1); border: 1px solid oklch(0.78 0.17 150 / 0.3); margin-bottom: 12px; }
+.ins-help[hidden] { display: none !important; }
+
+/* โหวต: pill ในฟีดสดแยกกันชัด + ปุ่มยืนยันใหญ่ */
+#vote2LiveFeedList { display: flex; flex-wrap: wrap; gap: 6px; }
+#vote2 #confirmVote2Btn { min-height: 48px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ช่วงโหวตไม่ต้องดูรายชื่อออนไลน์ — ปุ่มลอยนี้ไปทับปุ่มยืนยันโหวต */
+body.ins-voting #toggleSidebarBtn { display: none !important; }
+#vote2 #confirmVote2Btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ผลเกม */
+.ins-outcome { border-radius: 14px; padding: 14px 16px; text-align: center; font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; }
+.ins-outcome:empty { display: none; }
+.ins-outcome__title { font-size: 1.35rem; font-weight: 700; }
+.ins-outcome__why { margin-top: 4px; font-family: 'Bai Jamjuree', sans-serif; font-size: 0.9rem; color: var(--ins-ink); line-height: 1.5; }
+.ins-outcome.is-win { background: oklch(0.78 0.17 150 / 0.14); border: 1px solid oklch(0.78 0.17 150 / 0.45); }
+.ins-outcome.is-win .ins-outcome__title { color: var(--ins-gm); }
+.ins-outcome.is-lose { background: oklch(0.68 0.2 25 / 0.14); border: 1px solid oklch(0.68 0.2 25 / 0.45); }
+.ins-outcome.is-lose .ins-outcome__title { color: var(--ins-traitor); }
+.ins-end-actions { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.ins-end-actions .ui-btn { flex: 1 1 140px; }
+
+/* ปุ่มตอบด่วนของผู้ดำเนินเกม: โชว์เฉพาะผู้ดำเนินเกมคนปัจจุบัน + เป้ากดใหญ่ (mobile.css เคยบีบเหลือ 11px) */
+.gm-quick-reply { display: none !important; }
+body.gm-role #chatBox .gm-quick-reply { display: flex !important; }
+body.gm-role #chatBox .gm-quick-reply .gm-reply-btn { min-height: 48px !important; font-size: 15px !important; }
+body.gm-role #chatBox .gm-quick-reply .gm-quick-label { font-size: 13px !important; white-space: normal; overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ins-rolechip__btn, .ui-btn.ins-cta { transition: none !important; }
+}
 </style>
 <script>
 $(function() {
@@ -2128,9 +2232,72 @@ $(function() {
     var replyingTo = null; // เพิ่มตัวแปรสำหรับเก็บข้อมูลข้อความที่กำลังจะตอบกลับ
     var wordSubmitted = false; // flag กันไม่ให้ฟอร์มตั้งคำกลับมาโชว์ซ้ำหลังส่งแล้ว
 
-    if (<%= typeof player !== 'undefined' && player.role === 'ผู้ดำเนินเกม' ? 'true' : 'false' %>) {
-        document.body.classList.add('gm-role');
+    // ===== บทของฉัน (เปลี่ยนได้ตอน "เล่นอีกรอบ" โดยไม่ reload — ห้ามอ่านจาก EJS ตรงๆ อีก) =====
+    var GM_ROLE = 'ผู้ดำเนินเกม';
+    var TRAITOR_ROLE = 'จอมบงการ';
+    var myRole = '<%= (typeof player !== "undefined" && player.role) || "" %>';
+    var mySecretWord = <%- typeof secretWordJson !== 'undefined' ? secretWordJson : 'null' %>;
+    var isRoomAdmin = <%= player.permission == 'admin' ? 'true' : 'false' %>;
+    var insiderPhase = '<%= status || "" %>';
+    var rolePanelTimer = null;
+
+    // ผี (รอบไม่มีจอมบงการ) ไม่มีสิทธิ์โหวตเหมือนผู้ดำเนินเกม — เดิม server ทิ้งเงียบ จอขึ้นว่าส่งแล้ว
+    var myIsGhost = <%= player.isGhost ? 'true' : 'false' %>;
+    function isGmNow() { return myRole === GM_ROLE; }
+    function cannotVote() { return isGmNow() || myIsGhost; }
+    function renderVoteEligibility() {
+        $('#vote2GmNote').prop('hidden', !cannotVote()).html(myIsGhost && !isGmNow()
+            ? 'รอบนี้คุณเป็น <strong>ผี 👻</strong> — ไม่มีสิทธิ์โหวต ดูคะแนนสดด้านล่างได้เลย'
+            : 'คุณเป็น <strong>ผู้ดำเนินเกม</strong> — รอบนี้ไม่ต้องโหวต ดูคะแนนสดด้านล่างได้เลย');
+        var $sub = $('#vote2Subtitle').contents().first();
+        if ($sub.length) $sub[0].textContent = cannotVote() ? 'รอทุกคนโหวต · เหลือ ' : 'แตะการ์ด แล้วกดยืนยัน · เหลือ ';
     }
+    function roleKey(role) {
+        if (role === GM_ROLE) return 'gm';
+        if (role === TRAITOR_ROLE) return 'traitor';
+        return 'citizen';
+    }
+    function roleHint() {
+        var revealed = ['word', 'in_progress', 'vote2', 'end'].indexOf(insiderPhase) !== -1;
+        if (myRole === GM_ROLE) {
+            return revealed
+                ? 'ตอบคำถามในแชทด้วยปุ่ม ✅ ใช่ / ❌ ไม่ใช่ / 🤔 อาจจะ ห้ามบอกคำตรงๆ · มีคนพูดคำลับถูกเมื่อไหร่ กด “มีคนทายถูกแล้ว”'
+                : 'ตั้งคำลับให้ทุกคนทาย แล้วกดเปิดเผยคำ';
+        }
+        if (myRole === TRAITOR_ROLE) {
+            return revealed
+                ? 'คุณรู้คำลับ — แอบถามนำให้ทุกคนทายถูกก่อนหมดเวลา แต่อย่าให้ใครจับได้'
+                : 'รอผู้ดำเนินเกมเปิดเผยคำ แล้วคุณจะเห็นคำลับคนเดียว';
+        }
+        return 'คุณไม่รู้คำลับ — ถามคำถามแบบใช่/ไม่ใช่ในแชทเพื่อทายให้ถูก แล้วช่วยกันจับจอมบงการ';
+    }
+    function renderRoleChip() {
+        if (!myRole) {
+            $('#insRoleChip').attr('hidden', true);
+            return;
+        }
+        $('#insRoleChip').removeAttr('hidden');
+        $('#insRoleName').text(myRole).attr('data-role', roleKey(myRole));
+        var canSeeWord = (myRole === GM_ROLE || myRole === TRAITOR_ROLE) && !!mySecretWord;
+        $('#insRoleWord').prop('hidden', !canSeeWord);
+        $('#insRoleWordText').text(canSeeWord ? mySecretWord : '');
+        $('#insRoleHint').text(roleHint());
+    }
+    function setRolePanelOpen(open) {
+        clearTimeout(rolePanelTimer);
+        $('#insRolePanel').prop('hidden', !open);
+        $('#insRoleToggle').attr('aria-expanded', open ? 'true' : 'false').text(open ? '🙈 ซ่อนบท' : '🎭 ดูบทของฉัน');
+        // ปิดเองใน 6 วิ — ลืมกดซ่อน เพื่อนข้างๆ ก็ไม่เห็น
+        if (open) rolePanelTimer = setTimeout(function() { setRolePanelOpen(false); }, 6000);
+    }
+    function applyRoleUi() {
+        document.body.classList.toggle('gm-role', isGmNow());
+        renderRoleChip();
+    }
+    $('#insRoleToggle').on('click', function() {
+        setRolePanelOpen($('#insRolePanel').prop('hidden'));
+    });
+    applyRoleUi();
 
     $('.player-name-accent').each(function() {
         const color = $(this).attr('data-player-color');
@@ -2809,6 +2976,8 @@ $(function() {
             const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
             $('#vote2Timer').text(left);
             $('#vote2Timer').css('color', left <= 5 ? '#e74c3c' : '#f39c12');
+            // เลือกไว้ครบแล้วแต่ไม่ทันกดยืนยัน — ส่งให้ก่อนหมดเวลา (ไม่งั้นเสียงหายเฉยๆ)
+            if (left <= 1 && !hasSubmittedVote2) submitVote2Selection();
             if (left <= 0) stopVote2Countdown();
         }
         tick();
@@ -2831,8 +3000,9 @@ $(function() {
     function setVote2InteractionLocked(isLocked) {
         hasSubmittedVote2 = isLocked;
         $('#vote2').toggleClass('vote2-locked', isLocked);
-        $('#vote2 .btn-vote2-player').prop('disabled', isLocked);
-        $('#confirmVote2Btn').prop('disabled', isLocked);
+        // ผู้ดำเนินเกมไม่มีสิทธิ์โหวต (server ทิ้งเงียบ) — ล็อกการ์ดไว้ ไม่ให้กดแล้วขึ้นว่า "ส่งโหวตแล้ว" หลอกๆ
+        $('#vote2 .btn-vote2-player').prop('disabled', isLocked || cannotVote());
+        updateVoteSelection();
     }
 
     function renderVote2Progress(progress) {
@@ -2906,21 +3076,57 @@ $(function() {
             ? selectedVotes.map(choice => `<span class="vote2-selected-pill">🎯 ${escapeHtml(choice.name)}</span>`).join('')
             : '<span class="vote2-selected-pill">ยังไม่ได้เลือกใคร</span>');
         
-        if (currentNumTraitors === 2) {
-            $('#vote2SelectedInfo').css('display', 'flex');
-            if (!hasSubmittedVote2 && selectedVotes.length === 2) {
-                $('#confirmVote2Btn').css('display', 'inline-block');
-            } else {
-                $('#confirmVote2Btn').hide();
-            }
-        } else {
+        // ทั้งโหมด 1 และ 2 จอมบงการ: แตะเลือก → กดยืนยัน (เดิมโหมด 1 คนแตะทีเดียวส่งเลย แตะพลาดแก้ไม่ได้)
+        if (cannotVote()) {
             $('#vote2SelectedInfo').hide();
+            return;
         }
+        $('#vote2SelectedInfo').css('display', 'flex');
+        const complete = selectedVotes.length === currentNumTraitors;
+        const $confirm = $('#confirmVote2Btn').css('display', 'inline-block');
+        if (hasSubmittedVote2) {
+            $confirm.prop('disabled', true).text('✓ ส่งโหวตแล้ว');
+        } else if (complete) {
+            $confirm.prop('disabled', false).text(currentNumTraitors === 2 ? 'ยืนยันโหวต 2 คนนี้' : 'ยืนยันโหวต ' + selectedVotes[0].name);
+        } else {
+            const left = currentNumTraitors - selectedVotes.length;
+            $confirm.prop('disabled', true).text(currentNumTraitors === 2 ? `เลือกอีก ${left} คน` : 'แตะการ์ดเพื่อเลือกผู้ต้องสงสัย');
+        }
+    }
+
+    function submitVote2Selection() {
+        if (hasSubmittedVote2 || cannotVote() || selectedVotes.length !== currentNumTraitors) return false;
+        if (currentNumTraitors === 2) {
+            socket.emit('vote2', {player: '<%= player.name %>', votes: selectedVotes.map(choice => choice.value)});
+        } else {
+            socket.emit('vote2', {player: '<%= player.name %>', vote: selectedVotes[0].value});
+        }
+        setVote2InteractionLocked(true);
+        updateVoteSelection();
+        $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
+        return true;
     }
 
     // ฟังก์ชันซ่อน element เกมทั้งหมด - ใช้ก่อนแสดง step ใหม่ (ไม่มี vote1 แล้ว)
     function hideAllGameElements() {
-        $('#waiting, #reset .role, #chooseWord, #reveal button, #word, #startGame, #countdown, #vote2, #vote2Result, #status').hide();
+        $('#waiting, #reset .role, #chooseWord, #reveal button, #revealTimerHint, #word, #startGame, #countdown, #vote2, #vote2Result, #status').hide();
+    }
+
+    // ช่วงทายคำ: ปุ่ม "ทายถูกแล้ว" ให้ผู้ดำเนินเกม (คนที่รู้คำ) และหัวห้อง + ข้อความบอกว่าบทนี้ต้องทำอะไร
+    var countdownUiReady = false;
+    function renderCountdownControls() {
+        countdownUiReady = true;
+        const canDeclare = isGmNow() || isRoomAdmin;
+        $('#wordFoundBtn').prop('hidden', !canDeclare);
+        let help;
+        if (isGmNow()) {
+            help = 'เปิดแชทแล้วตอบคำถามด้วยปุ่ม <strong>✅ ใช่ / ❌ ไม่ใช่ / 🤔 อาจจะ</strong><br>มีคนพูดคำลับถูกเมื่อไหร่ กด <strong>มีคนทายถูกแล้ว</strong> ได้ทันที';
+        } else {
+            help = 'ถามคำถามแบบ ใช่/ไม่ใช่ ในแชท แล้วพิมพ์คำที่คิดว่าใช่<br>ทายถูกเมื่อไหร่ ผู้ดำเนินเกมจะกดไปโหวตหาจอมบงการ' +
+                (isRoomAdmin ? ' (หัวห้องกดแทนได้)' : '');
+        }
+        help += '<br><strong>หมดเวลาก่อนทายถูก = ทุกคนแพ้</strong>';
+        $('#countdownHelp').html(help);
     }
 
     function updateCountdown(counter) {
@@ -2929,6 +3135,33 @@ $(function() {
         var seconds = counter % 60;
         var display = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
         $("#timer").html(display);
+        $('#countdown').toggleClass('is-low', counter <= 30);
+    }
+
+    // "ทำไมฉันชนะ/แพ้" — ใช้กติกาเดียวกับ statsManager.recordInsiderGameEnd
+    function explainMiss(result, sortedVotes) {
+        if (result.hasTraitor === false) return 'รอบนี้ไม่มีจอมบงการ แต่มีคนโดนโหวต';
+        if ((result.numTraitors || 1) === 2) return 'ต้องจับจอมบงการให้ได้ทั้ง 2 คน — ' + (result.finalTraitorName || '');
+        const top = sortedVotes[0];
+        const second = sortedVotes[1];
+        if (!top || !top.nbVote2) return 'ไม่มีใครโหวตทันเวลา จอมบงการเลยรอด';
+        if (second && second.nbVote2 === top.nbVote2) return `คะแนนโหวตเสมอกัน (${top.nbVote2} เสียง) — ต้องมีคนได้คะแนนสูงสุดคนเดียวถึงจะจับได้`;
+        if (top.role && top.role !== TRAITOR_ROLE) return `โหวตผิดคน — ${top.name} ไม่ใช่จอมบงการ`;
+        return 'จอมบงการหลุดรอดไปได้';
+    }
+    function buildMyOutcome(result, sortedVotes) {
+        if (!myRole) return null;
+        if (result.everyoneLoses) {
+            return { win: false, why: 'หมดเวลาก่อนมีคนทายคำลับถูก — กติกาคือทุกคนแพ้ (รวมจอมบงการ)' };
+        }
+        if (myRole === TRAITOR_ROLE) {
+            return result.hasWon
+                ? { win: false, why: 'โดนพลเมืองโหวตจับได้' }
+                : { win: true, why: 'พลเมืองจับจอมบงการไม่สำเร็จ — ' + explainMiss(result, sortedVotes) };
+        }
+        return result.hasWon
+            ? { win: true, why: result.hasTraitor === false ? 'รอบนี้ไม่มีจอมบงการ และไม่มีใครโดนโหวตผิด' : 'ทายคำถูก และโหวตจับจอมบงการได้' }
+            : { win: false, why: explainMiss(result, sortedVotes) };
     }
 
     function getResultIssue(result) {
@@ -2949,12 +3182,12 @@ $(function() {
         } else if (result.hasTraitor) {
             if (isWin) {
                 body = numTraitors === 2
-                    ? `จับจอมบงการได้ทั้ง 2 คน: <strong style="color:#fff;">${result.finalTraitorName}</strong>`
-                    : `จอมบงการคือ: <strong style="color:#fff;">${result.finalTraitorName}</strong>`;
+                    ? `จับจอมบงการได้ทั้ง 2 คน: <strong style="color:#fff;">${escapeHtml(result.finalTraitorName)}</strong>`
+                    : `จอมบงการคือ: <strong style="color:#fff;">${escapeHtml(result.finalTraitorName)}</strong>`;
             } else {
                 body = numTraitors === 2
-                    ? `พลเมืองโหวตพลาด — ${result.finalTraitorName}`
-                    : `จอมบงการคือ: <strong style="color:#fff;">${result.finalTraitorName}</strong>`;
+                    ? `พลเมืองโหวตพลาด — ${escapeHtml(result.finalTraitorName)}`
+                    : `จอมบงการคือ: <strong style="color:#fff;">${escapeHtml(result.finalTraitorName)}</strong>`;
             }
         } else {
             title = isWin ? 'พลเมืองชนะแล้ว! 🏆' : 'พลเมืองโหวตพลาด!';
@@ -3293,64 +3526,86 @@ $(function() {
         e.preventDefault();
     });
 
-    $( "#countdown a").click(function(e){
-        socket.emit('wordFound');
+    // ทายถูกแล้ว → ไปโหวตทันที ไม่ต้องรอนาฬิกาหมด (ย้อนไม่ได้ จึงถามยืนยันก่อน)
+    $('#wordFoundBtn').on('click', function(e) {
         e.preventDefault();
+        const $btn = $(this);
+        if ($btn.prop('disabled')) return;
+        const go = function() {
+            $btn.prop('disabled', true).text('กำลังไปโหวต…');
+            socket.emit('wordFound');
+            setTimeout(function() { $btn.prop('disabled', false).text('✅ มีคนทายถูกแล้ว → ไปโหวต'); }, 3000);
+        };
+        if (!window.Swal) { go(); return; }
+        // หัวห้องที่ไม่ใช่ผู้ดำเนินเกมไม่รู้คำ — ห้ามโชว์คำลับในกล่องยืนยัน
+        const wordLine = isGmNow() && mySecretWord
+            ? 'มีคนพูดคำว่า <strong>' + escapeHtml(mySecretWord) + '</strong> ถูกแล้วใช่ไหม?'
+            : 'ผู้ดำเนินเกมยืนยันแล้วว่ามีคนทายคำลับถูก?';
+        Swal.fire({
+            title: 'ทายถูกแล้ว?',
+            html: wordLine + '<br><small>นาฬิกาจะหยุด แล้วทุกคนไปโหวตหาจอมบงการทันที</small>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ใช่ ไปโหวต',
+            cancelButtonText: 'ยังก่อน',
+            reverseButtons: true,
+            background: '#1e1e2e',
+            color: '#fff'
+        }).then(function(result) { if (result.isConfirmed) go(); });
+    });
+
+    $('#openChatFromCountdown').on('click', function() {
+        if (!$('#chatBox').is(':visible')) $('#toggleChat').trigger('click');
+    });
+
+    $('#insiderBackRoomBtn').on('click', function() {
+        allowNavigation = true;
+        window.location.href = '/room/' + roomId + '?playerId=' + playerId;
     });
 
     // Vote1 ถูกตัดออก - ไม่ต้องใช้ displayVote1 และ vote1 handlers
 
-    // Vote2 - รองรับทั้งโหมด 1 และ 2 จอมบงการ
+    // Vote2 - รองรับทั้งโหมด 1 และ 2 จอมบงการ: แตะเลือก/เปลี่ยนใจได้ แล้วกดยืนยัน
     $(document).on('click', '.btn-vote2-player', function(e) {
         e.preventDefault();
+        if (hasSubmittedVote2 || cannotVote()) return;
         const $btn = $(this);
         const votedPlayer = decodeURIComponent($btn.attr('data-player-name') || '');
         const votedValue = decodeURIComponent($btn.attr('data-player-vote') || '');
         const accentColor = $btn.hasClass('selected') ? '#94a3b8' : ($btn[0].style.getPropertyValue('--vote2-accent') || '#60a5fa');
 
         triggerVote2CardFeedback($btn[0], accentColor);
-        
-        if (currentNumTraitors === 2) {
-            // โหมด 2 จอมบงการ - เลือกได้ 2 คน
-            if ($btn.hasClass('selected')) {
-                // ยกเลิกการเลือก
-                $btn.removeClass('selected');
-                selectedVotes = selectedVotes.filter(v => v.value !== votedValue);
-                soundNotify('dong');
-            } else if (selectedVotes.length < 2) {
-                // เลือกเพิ่ม
-                $btn.addClass('selected');
-                selectedVotes.push({ value: votedValue, name: votedPlayer });
-                soundNotify('ding');
-            } else {
-                showNotification('⚠️ เลือกได้แค่ 2 คน! กดที่คนที่เลือกไว้เพื่อยกเลิก', 'warning', 2000);
-                soundNotify('popup');
-            }
-            syncVote2CardState($btn);
-            updateVoteSelection();
-        } else {
-            // โหมดปกติ - โหวตทันที
-            soundNotify('ding');
+
+        if ($btn.hasClass('selected')) {
+            // แตะซ้ำ = ยกเลิก
+            $btn.removeClass('selected');
+            selectedVotes = selectedVotes.filter(v => v.value !== votedValue);
+            soundNotify('dong');
+        } else if (currentNumTraitors === 1) {
+            // โหมดปกติ: เลือกได้คนเดียว แตะคนอื่น = เปลี่ยนตัวเลือก
+            $('#vote2 .btn-vote2-player.selected').removeClass('selected').each(function() { syncVote2CardState($(this)); });
             $btn.addClass('selected');
-            syncVote2CardState($btn);
-            socket.emit('vote2', {player: '<%= player.name %>', vote: votedValue});
-            setVote2InteractionLocked(true);
-            $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
+            selectedVotes = [{ value: votedValue, name: votedPlayer }];
+            soundNotify('ding');
+        } else if (selectedVotes.length < 2) {
+            $btn.addClass('selected');
+            selectedVotes.push({ value: votedValue, name: votedPlayer });
+            soundNotify('ding');
+        } else {
+            showNotification('⚠️ เลือกได้แค่ 2 คน! กดที่คนที่เลือกไว้เพื่อยกเลิก', 'warning', 2000);
+            soundNotify('popup');
         }
+        syncVote2CardState($btn);
+        updateVoteSelection();
     });
-    
-    // ปุ่มยืนยันโหวต (สำหรับโหมด 2 จอมบงการ)
+
     $(document).on('click', '#confirmVote2Btn', function(e) {
         e.preventDefault();
-        if (selectedVotes.length !== 2) {
-            showNotification('⚠️ กรุณาเลือก 2 คน!', 'warning', 2000);
+        if (selectedVotes.length !== currentNumTraitors) {
+            showNotification(currentNumTraitors === 2 ? '⚠️ กรุณาเลือก 2 คน!' : '⚠️ แตะการ์ดเลือกผู้ต้องสงสัยก่อน', 'warning', 2000);
             return;
         }
-        
-        // ส่งโหวต 2 คน
-        socket.emit('vote2', {player: '<%= player.name %>', votes: selectedVotes.map(choice => choice.value)});
-        setVote2InteractionLocked(true);
-        $('#vote2ProgressStatus').text('คุณส่งโหวตแล้ว กำลังรอผู้เล่นคนอื่น...');
+        submitVote2Selection();
     });
 
     $("#reveal button").click(function(){
@@ -3397,9 +3652,7 @@ $(function() {
     
     // ถ้าเป็น phase แสดงบทบาท → แสดงตรงๆ
     <% if (status === 'role') { %>
-        const myRole = '<%= player.role %>';
-        const isGM = (myRole === 'ผู้ดำเนินเกม');
-        console.log('[Init] My role:', myRole);
+        const isGM = isGmNow();
         
         // บทบาทแสดงอยู่แล้ว (จาก HTML) - ซ่อนหลัง 5 วิ
         setTimeout(function() {
@@ -3413,7 +3666,7 @@ $(function() {
             } else { 
                 console.log('[Init] Others - showing wait message');
                 $("#waiting").removeClass('hidden').show();
-                $('#waiting p').html('<span style="color:#fff;">กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...</span>');
+                $('#waiting p').html('<span style="color:#fff;">รอ <strong>ผู้ดำเนินเกม</strong> ตั้งคำลับแล้วเปิดเผย… (ไม่เกิน 30 วิ)</span>');
             }
         }, 5000);
         
@@ -3541,9 +3794,29 @@ $(function() {
         $('#word').html('');
         $('#vote2 .vote2-choices').html('');
         $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
+        // รอบใหม่ (เล่นอีกรอบ) บนหน้าเดิม: ล้างสถานะรอบก่อนให้หมด
+        hideAllGameElements();
+        stopRevealTimer();
+        stopStartGameTimer();
+        stopVote2Countdown();
+        if (vote2ReturnInterval) { clearInterval(vote2ReturnInterval); vote2ReturnInterval = null; }
+        $('#reveal button').text('เปิดเผยคำ');
+        $('#wordForm button[type=submit]').prop('disabled', false).text('ส่ง');
+        $('#wordInput').val('');
+        hasSubmittedVote2 = false;
+        selectedVotes = [];
+        countdownUiReady = false;
         
         // เก็บข้อมูลโหมด 2 จอมบงการ
         currentNumTraitors = data.numTraitors || 1;
+        if (data.role) {
+            myRole = data.role;
+            myIsGhost = !!data.isGhost;
+            mySecretWord = null;
+            insiderPhase = 'role';
+            setRolePanelOpen(false);
+            applyRoleUi();
+        }
 
         // Server ส่งเฉพาะบทของผู้เล่นคนนี้; fallback รองรับ payload เก่าระหว่าง deploy
         var myPlayer = data.role ? { role: data.role, isGhost: !!data.isGhost } : null;
@@ -3578,7 +3851,7 @@ $(function() {
                 } else {
                     console.log('[newRole] Others - showing wait');
                     $("#waiting").removeClass('hidden').show();
-                    $('#waiting p').html('<span style="color:#fff;">กำลังรอ <strong>ผู้ดำเนินเกม</strong> เปิดเผยคำ...</span>');
+                    $('#waiting p').html('<span style="color:#fff;">รอ <strong>ผู้ดำเนินเกม</strong> ตั้งคำลับแล้วเปิดเผย… (ไม่เกิน 30 วิ)</span>');
                 }
             }, 5000);
         } else {
@@ -3600,13 +3873,25 @@ $(function() {
             });
         }
 
-        if(myPlayer) {
+        // ข้อความ "รอผู้ดำเนินเกมเปิดเผยคำ" ค้างอยู่เหนือคำลับ — ล้างจอก่อน
+        hideAllGameElements();
+        insiderPhase = 'word';
+        if (myPlayer) {
+            myRole = myPlayer.role || myRole;
+            mySecretWord = data.word || null;
+            applyRoleUi();
             if(myPlayer.role == 'ผู้ดำเนินเกม' || myPlayer.role == 'จอมบงการ') {
-                const message = $('<span>').text('คำที่ต้องทายคือ ');
+                const message = $('<span>').text('คำลับคือ ');
                 message.append($('<strong>').text(data.word || ''));
-                $('#word').empty().append(message);
+                $('#word').empty().append(message).append($('<small class="ins-help" style="display:block;">').text(
+                    myPlayer.role == 'จอมบงการ'
+                        ? 'มีแค่คุณกับผู้ดำเนินเกมที่รู้คำนี้ — แอบนำทางให้ทุกคนทายถูก แต่อย่าให้ใครจับได้'
+                        : 'ตอบคำถามในแชทได้แค่ ใช่ / ไม่ใช่ / อาจจะ'
+                ));
             } else {
-                $('#word').empty().append($('<span>').text('ผู้ดำเนินเกมและจอมบงการจะเห็นคำนี้'));
+                $('#word').empty()
+                    .append($('<span>').text('คุณเป็นพลเมือง — ไม่เห็นคำลับ'))
+                    .append($('<small class="ins-help" style="display:block;">').text('ช่วยกันถามคำถามแบบใช่/ไม่ใช่ในแชทเพื่อทายคำให้ถูกก่อนหมดเวลา'));
             }
         }
 
@@ -3649,8 +3934,11 @@ $(function() {
         } else {
             $('#dualTraitorModeIndicator').hide();
             $('#vote2Title').text('คิดว่าใครคือจอมบงการ?');
-            $('#vote2SelectedInfo').hide();
+            $('#maxSelect').text('1');
         }
+        insiderPhase = 'vote2';
+        document.body.classList.add('ins-voting');
+        renderVoteEligibility();
         
         updateVoteSelection();
         renderVote2Progress(data.progress);
@@ -3664,6 +3952,15 @@ $(function() {
         } else {
             showNotification('🎯 หยุดเวลา! โหวตหาจอมบงการ', 'warning', 3000);
         }
+    });
+
+    // server ปฏิเสธโหวต — บอกเหตุผล และปลดล็อกให้เลือกใหม่ (ถ้ายังมีสิทธิ์)
+    socket.on('voteError', function(data) {
+        showNotification('⚠️ ' + ((data && data.message) || 'โหวตไม่สำเร็จ'), 'warning', 3500);
+        // locked = ไม่มีสิทธิ์โหวตเลย (ผู้ดำเนินเกม/ผี) → ล็อกการ์ดพร้อมคำอธิบาย
+        if (data && data.locked && !isGmNow()) myIsGhost = true;
+        renderVoteEligibility();
+        setVote2InteractionLocked(false);
     });
 
     socket.on('vote2Progress', function(progress) {
@@ -3681,9 +3978,10 @@ $(function() {
         const $ul = $('#vote2Result ul');
         $ul.html('');
         const sortedVotes = [...(result.voteDetail || [])].sort((a, b) => b.nbVote2 - a.nbVote2);
+        $('#vote2TallyTitle').toggle(sortedVotes.length > 0); // หมดเวลา = ไม่มีการโหวต ไม่ต้องโชว์หัวข้อเปล่า
         sortedVotes.forEach(function(votePlayer, index) {
             const isTop = index === 0 && votePlayer.nbVote2 > 0;
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
             $ul.append(`<li style="background:${isTop ? 'rgba(241,196,15,0.1)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${isTop ? 'rgba(241,196,15,0.3)' : 'rgba(255,255,255,0.07)'}; border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="color:#fff; font-size:0.95rem; font-weight:600;">${medal} ${escapeHtml(votePlayer.name)}</span>
                 <span style="background:rgba(241,196,15,0.15); color:#f1c40f; font-weight:700; font-size:0.85rem; padding:3px 10px; border-radius:20px;">${votePlayer.nbVote2} โหวต</span>
@@ -3721,25 +4019,25 @@ $(function() {
         }
         rolesReveal += '</div></div>';
         
-        $('#vote2Result #finalResult').html(finalResult + rolesReveal);
+        insiderPhase = 'end';
+        document.body.classList.remove('ins-voting');
+        renderRoleChip();
+        const myOutcome = buildMyOutcome(result, sortedVotes);
+        $('#insMyOutcome')
+            .removeClass('is-win is-lose')
+            .addClass(myOutcome ? (myOutcome.win ? 'is-win' : 'is-lose') : '')
+            .html(myOutcome
+                ? `<div class="ins-outcome__title">${myOutcome.win ? '🏆 คุณชนะ!' : '💀 คุณแพ้'}</div>
+                   <div class="ins-outcome__why">คุณเป็น <strong>${escapeHtml(myRole)}</strong> · ${escapeHtml(myOutcome.why)}</div>`
+                : '');
+        $('#vote2Result #finalResult').html(finalResult);
+        $('#vote2Result #rolesReveal').html(rolesReveal);
         $('#vote2Result').removeClass('hidden').fadeIn();
+        window.scrollTo(0, Math.max(0, ($('#vote2Result').offset() || { top: 0 }).top - 12));
         soundNotify('tada');
-        startVote2ReturnCountdown(5);
+        startVote2ReturnCountdown(15);
         
-        // Show game result notification (เคารพเคสไม่มีจอมบงการ — ghost round)
-        if (result.everyoneLoses) {
-            showNotification('⌛ หมดเวลา! ไม่มีใครทายคำลับถูก — ทุกคนแพ้', 'error', 5000);
-        } else if (result.hasTraitor === false) {
-            if (result.hasWon) {
-                showNotification('🎉 พลเมืองชนะ! (ไม่มีจอมบงการในเกมนี้)', 'success', 5000);
-            } else {
-                showNotification('💀 พลเมืองโหวตพลาด! (ไม่มีจอมบงการในเกมนี้)', 'error', 5000);
-            }
-        } else if (result.hasWon) {
-            showNotification('🎉 พลเมืองชนะ! จอมบงการคือ: ' + (result.finalTraitorName || 'ไม่มี'), 'success', 5000);
-        } else {
-            showNotification('💀 จอมบงการชนะ! จอมบงการคือ: ' + (result.finalTraitorName || '???'), 'error', 5000);
-        }
+        // ไม่มี toast ผลเกมแล้ว — การ์ดผลบอกครบ (ผลของฉัน + ผลทีม) toast ซ้ำไปบังหัวการ์ด
         
         // ADDED: เปิดใช้งานปุ่มทั้งหมดเมื่อเกมจบลง
         $('#reveal button, #newGame, #vote1 button, #startGame a').attr("disabled", false); 
@@ -3748,7 +4046,10 @@ $(function() {
     // Return to Lobby after game ends
     socket.on('returnToLobby', function(data) {
         var countdown = data.countdown || 5;
-        $('#returnToLobbyModal').css('display', 'flex');
+        // การ์ดผลมีนับถอยหลัง + ปุ่มของตัวเองแล้ว — ห้ามเอา modal ทึบมาบังผล/ปุ่มเล่นอีกรอบ
+        if (!$('#vote2Result').is(':visible')) {
+            $('#returnToLobbyModal').css('display', 'flex');
+        }
         startVote2ReturnCountdown(countdown);
     });
 
@@ -3804,15 +4105,23 @@ $(function() {
     });
 
     socket.on('countdownUpdate', function(counter) {
-        console.log('[countdownUpdate] Received counter:', counter);
         hideAllGameElements();
         updateCountdown(counter);
+        // ครั้งแรกที่เห็นนาฬิกา (รวมตอน refresh กลางช่วงทายคำ ซึ่ง insiderPhase มาจาก server แล้ว)
+        if (!countdownUiReady) {
+            insiderPhase = 'in_progress';
+            renderCountdownControls();
+            renderRoleChip();
+        }
         $("#countdown").removeClass('hidden').show();
     });
 
     socket.on('startGame', function() {
         console.log('[startGame event] Received');
         hideAllGameElements();
+        insiderPhase = 'in_progress';
+        renderCountdownControls();
+        renderRoleChip();
         $("#countdown").removeClass('hidden').fadeIn();
         soundNotify('ding');
     });
@@ -3882,12 +4191,44 @@ $(function() {
     });
 
     socket.on('newMessage', function(data) {
+        renderChatMessage(data, false);
+        if (isGmNow()) refreshGmTargetLabel();
+    });
+
+    // refresh/เน็ตหลุดกลางเกม: server ส่งประวัติแชทมาทุกครั้งที่ setRoom — เดิมกระดานไม่รับ
+    // คำถาม–คำตอบทั้งหมดที่ถามกันมาหายเกลี้ยง (ซึ่งคือหัวใจของการทายคำ)
+    socket.on('chatHistory', function(history) {
+        if (!Array.isArray(history)) return;
+        $('#chatMessages').empty();
+        history.forEach(function(item) { renderChatMessage(item, true); });
+        if (isGmNow()) refreshGmTargetLabel();
+    });
+
+    function renderGmReaction($targetMsg, reactionType) {
+        if (!$targetMsg.length) return;
+        $targetMsg.find('.gm-reaction').remove();
+        var emoji, reactionClass;
+        if (reactionType === 'yes') { emoji = '✅ ใช่'; reactionClass = 'yes'; }
+        else if (reactionType === 'no') { emoji = '❌ ไม่ใช่'; reactionClass = 'no'; }
+        else { emoji = '🤔 อาจจะ'; reactionClass = 'maybe'; }
+        $targetMsg.addClass('gm-answered');
+        $targetMsg.find('.chat-message-bubble').append('<span class="gm-reaction ' + reactionClass + '">' + emoji + '</span>');
+    }
+
+    function decodeServerEntities(text) {
+        var map = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+        return String(text == null ? '' : text).replace(/&(amp|lt|gt|quot|#39);/g, function(m, name) { return map[name]; });
+    }
+
+    function renderChatMessage(data, fromHistory) {
         var $msgArea = $('#chatMessages');
         var isMyMessage = (data.playerId === playerId) || (data.playerName === '<%= player.name %>');
 
         // Sanitize name, message, and timestamp to prevent XSS
         var safeName = $('<div>').text(data.displayName || data.playerName).html();
-        var safeMsg  = $('<div>').text(data.message).html();
+        // server เก็บข้อความแบบ escape มาแล้ว (&amp; &quot; …) — ถอดกลับก่อน แล้ว escape ครั้งเดียวตอน render
+        // (เดิม escape ซ้ำ: พิมพ์ "A & B" ขึ้นเป็น "A &amp; B")
+        var safeMsg  = $('<div>').text(decodeServerEntities(data.message)).html();
         var timestamp = $('<div>').text(data.timestamp).html();
 
         // Create a wrapper div for each message to control its alignment
@@ -3928,8 +4269,11 @@ $(function() {
         $messageWrapper.append($swipeIndicator, $bubble, $actionBtn, $info);
         $msgArea.append($messageWrapper);
 
+        if (data.gmReaction) renderGmReaction($messageWrapper, data.gmReaction);
+
         // Auto-scroll to the bottom of the chat
         $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
+        if (fromHistory) return;
 
         // Show unread dot and play sound if chat is hidden
         if (!$('#chatBox').is(':visible')) {
@@ -3939,7 +4283,7 @@ $(function() {
         if (!isMyMessage) {
             soundNotify('popup');
         }
-    });
+    }
 
     // ลบ event listener เก่าที่ใช้คลิกเพื่อ reply - ใช้ระบบใหม่แทน (3-dot menu / swipe)
     // Old click-to-reply code removed - now using improved context menu and swipe system
@@ -4145,99 +4489,84 @@ function showNotification(message, type = 'info', duration = 5000) {
 // Notifications ถูกเรียกจาก main listeners ด้านบนแทน
 
     // ===== GM Quick Reply System =====
-    <% if (player.role === 'ผู้ดำเนินเกม') { %>
-    var selectedMessageId = null; // ID ข้อความที่เลือกจะตอบ
-    
-    // คลิกที่ข้อความเพื่อเลือกจะตอบ (สำหรับ GM)
-    $(document).on('click', '.chat-message-wrapper.other .chat-message-bubble', function(e) {
-        e.stopPropagation();
-        var $wrapper = $(this).closest('.chat-message-wrapper');
-        var messageId = $wrapper.data('message-id');
-        var playerName = $wrapper.find('.chat-message-name').text().replace(':', '').trim();
-        
-        // ไม่ตอบข้อความ System
-        if (playerName === 'System') return;
-        
-        // ลบการเลือกเก่า
+    // เดิม: ต้องแตะข้อความก่อนแล้วค่อยกดปุ่ม ไม่งั้นขึ้น popup สอนวิธีใช้ — ช้าเกินเวลาโดนถามรัวๆ
+    // ใหม่: ไม่ได้เลือก = ตอบคำถามล่าสุดที่ยังไม่ได้ตอบให้เลย (แตะข้อความอื่นเพื่อเลือกเองได้เหมือนเดิม)
+    var selectedMessageId = null; // ID ข้อความที่ GM แตะเลือกเอง
+
+    function messageAuthor($wrapper) {
+        return $wrapper.find('.chat-message-name').first().text().replace(/:\s*$/, '').trim();
+    }
+    function findLatestUnansweredQuestion() {
+        var $candidates = $('#chatMessages .chat-message-wrapper.other').filter(function() {
+            var $w = $(this);
+            return messageAuthor($w) !== 'System' && !$w.hasClass('gm-answered') && !!$w.data('message-id');
+        });
+        return $candidates.last();
+    }
+    function refreshGmTargetLabel() {
+        if (!isGmNow()) return;
+        if (selectedMessageId) return; // GM เลือกข้อความเองอยู่ — ไม่ทับ
         $('.chat-message-wrapper').removeClass('gm-selected');
-        
-        // เลือกข้อความนี้
-        $wrapper.addClass('gm-selected');
-        selectedMessageId = messageId;
-        
-        // แสดง preview ว่ากำลังจะตอบข้อความไหน
-        var msgPreview = $(this).text().substring(0, 50);
-        $('.gm-quick-label').html('🎯 ตอบ: <span style="color:#f6e05e;">' + playerName + '</span>');
-    });
-    
-    // คลิกที่พื้นที่อื่นเพื่อยกเลิกการเลือก
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.chat-message-bubble, .gm-reply-btn').length) {
-            $('.chat-message-wrapper').removeClass('gm-selected');
-            selectedMessageId = null;
-            $('.gm-quick-label').html('🎭 ตอบด่วน:');
-        }
-    });
-    
-    // เมื่อกดปุ่มตอบด่วน
-    $('.gm-reply-btn').on('click', function() {
-        var replyType = $(this).data('reply'); // 'yes', 'no', 'maybe'
-        
-        if (!selectedMessageId) {
-            // ไม่ได้เลือกข้อความ แสดงคำแนะนำ
-            Swal.fire({
-                icon: 'info',
-                title: '💡 วิธีใช้',
-                html: 'คลิกที่ <strong>ข้อความคำถาม</strong> ที่ต้องการตอบก่อน<br>จากนั้นค่อยกดปุ่มตอบด่วน',
-                background: '#1e1e1e',
-                color: '#fff',
-                timer: 3000,
-                showConfirmButton: false
-            });
+        var $latest = findLatestUnansweredQuestion();
+        if (!$latest.length) {
+            $('.gm-quick-label').text('🎭 ยังไม่มีคำถามใหม่ — รอผู้เล่นถามในแชท');
             return;
         }
-        
-        // ส่ง GM reaction ไปที่ข้อความที่เลือก
-        socket.emit('gmReaction', {
-            targetMessageId: selectedMessageId,
-            reactionType: replyType,
-            playerName: '<%= player.name %>'
-        });
-        
-        // รีเซ็ตการเลือก
+        $latest.addClass('gm-selected');
+        var preview = $latest.find('.chat-message-bubble').clone().children().remove().end().text().trim().slice(0, 40);
+        $('.gm-quick-label').text('🎯 ตอบล่าสุด: ' + messageAuthor($latest) + (preview ? ' — “' + preview + '”' : ''));
+    }
+
+    // แตะข้อความเพื่อเลือกตอบข้อความนั้นแทน
+    $(document).on('click', '.chat-message-wrapper.other .chat-message-bubble', function(e) {
+        if (!isGmNow()) return;
+        e.stopPropagation();
+        var $wrapper = $(this).closest('.chat-message-wrapper');
+        var playerName = messageAuthor($wrapper);
+        if (playerName === 'System') return;
         $('.chat-message-wrapper').removeClass('gm-selected');
-        selectedMessageId = null;
-        $('.gm-quick-label').html('🎭 ตอบด่วน:');
+        $wrapper.addClass('gm-selected');
+        selectedMessageId = $wrapper.data('message-id');
+        $('.gm-quick-label').text('🎯 ตอบ: ' + playerName);
     });
-    <% } %>
-    
+
+    // แตะที่อื่น = กลับไปตอบคำถามล่าสุด
+    $(document).on('click', function(e) {
+        if (!isGmNow() || !selectedMessageId) return;
+        if (!$(e.target).closest('.chat-message-bubble, .gm-reply-btn').length) {
+            selectedMessageId = null;
+            refreshGmTargetLabel();
+        }
+    });
+
+    $('.gm-reply-btn').on('click', function() {
+        if (!isGmNow()) return;
+        var replyType = $(this).data('reply'); // 'yes', 'no', 'maybe'
+        var targetId = selectedMessageId;
+        if (!targetId) {
+            var $latest = findLatestUnansweredQuestion();
+            targetId = $latest.length ? $latest.data('message-id') : null;
+        }
+        if (!targetId) {
+            showNotification('ยังไม่มีคำถามให้ตอบ — รอผู้เล่นพิมพ์ถามในแชทก่อน', 'info', 2500);
+            return;
+        }
+        socket.emit('gmReaction', { targetMessageId: targetId, reactionType: replyType });
+        haptic('light');
+        // ทำเครื่องหมายไว้ก่อนเลย ปุ่มถัดไปจะได้เลื่อนไปคำถามต่อไปทันที (server ยิงกลับมาแสดงผลซ้ำได้)
+        $('.chat-message-wrapper[data-message-id="' + targetId + '"]').addClass('gm-answered');
+        selectedMessageId = null;
+        refreshGmTargetLabel();
+    });
+
     // รับ GM reaction และแสดงที่ข้อความ
     socket.on('gmReactionReceived', function(data) {
         var $targetMsg = $('.chat-message-wrapper[data-message-id="' + data.targetMessageId + '"]');
         if ($targetMsg.length) {
-            // ลบ reaction เก่าถ้ามี
-            $targetMsg.find('.gm-reaction').remove();
-            
-            // เพิ่ม reaction ใหม่
-            var emoji, reactionClass;
-            if (data.reactionType === 'yes') {
-                emoji = '✅ ใช่';
-                reactionClass = 'yes';
-            } else if (data.reactionType === 'no') {
-                emoji = '❌ ไม่ใช่';
-                reactionClass = 'no';
-            } else {
-                emoji = '🤔 อาจจะ';
-                reactionClass = 'maybe';
-            }
-            
-            $targetMsg.find('.chat-message-bubble').append(
-                '<span class="gm-reaction ' + reactionClass + '">' + emoji + '</span>'
-            );
-            
-            // Scroll to bottom
+            renderGmReaction($targetMsg, data.reactionType);
             var $msgArea = $('#chatMessages');
             $msgArea[0].scrollTop = $msgArea[0].scrollHeight;
+            refreshGmTargetLabel();
         }
     });
 });

@@ -237,7 +237,10 @@ async function finishAndReturn(table, tally, winnerTeam) {
     for (const p of table.players) p.socket.emit('avalon_requestState', {});
     await delay(900);
     if (tally) expectStats(table, tally, 'หลังจบเกม');
-    const back = await ack(table.players[1].socket, 'returnFinishedToLobby', { roomId: table.roomId });
+    // คนที่ไม่ใช่หัวห้องพาทั้งวงกลับไม่ได้ (ได้ canReturnSelf ให้กลับคนเดียว) — หัวห้องทำได้
+    const denied = await ack(table.players[1].socket, 'returnFinishedToLobby', { roomId: table.roomId });
+    assert(denied && !denied.success && denied.canReturnSelf, 'ผู้เล่นทั่วไปพาทุกคนกลับห้องได้: ' + JSON.stringify(denied));
+    const back = await ack(table.players[0].socket, 'returnFinishedToLobby', { roomId: table.roomId });
     assert(back?.success, 'กลับห้องรอไม่ได้: ' + JSON.stringify(back));
     await delay(600);
 }
