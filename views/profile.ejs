@@ -353,6 +353,12 @@
     .pf-btn.is-quiet { background: transparent; border-color: transparent; color: var(--pf-muted); padding: 0 var(--space-sm); }
     .pf-btn.is-quiet:hover { color: var(--pf-ink); background: transparent; }
     .pf-btn:disabled { opacity: 0.55; cursor: progress; }
+    .pf-btn.is-danger { background: transparent; border-color: color-mix(in oklch, oklch(0.68 0.19 25) 55%, transparent); color: oklch(0.8 0.13 25); }
+    /* ช่องติ๊กยืนยันใน popup ออกจากระบบ — swal ทาพื้นขาวไว้ ข้อความขาวเลยมองไม่เห็น */
+    .swal2-popup .swal2-checkbox { background: transparent; }
+    .swal2-popup .swal2-checkbox .swal2-label { color: #fff; font-size: 1rem; }
+    .swal2-popup .swal2-checkbox input { width: 20px; height: 20px; accent-color: #f5c86b; }
+    .pf-btn.is-danger:hover { background: color-mix(in oklch, oklch(0.68 0.19 25) 16%, transparent); color: oklch(0.88 0.1 25); }
 
     /* ---------- style editor ---------- */
     .pf-field { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
@@ -735,6 +741,18 @@
                             <p class="pf-hint" style="margin-top: 8px;">บัญชีที่ใช้อยู่บนเครื่องนี้จะถูกสลับออก</p>
                         </details>
                     </div>
+
+                    <div class="pf-option pf-logout">
+                        <h2 class="pf-h">🚪 ออกจากระบบ</h2>
+                        <p class="pf-sub">
+                            <% if (googleLinked) { %>
+                                ออกจากบัญชีนี้บนเครื่องนี้ บัญชีไม่หาย กลับมาเมื่อไหร่กดล็อกอินด้วย Google<% if (googleEmail) { %> (<%= googleEmail %>)<% } %> หรือใช้รหัสกู้บัญชี
+                            <% } else { %>
+                                ออกจากบัญชีนี้บนเครื่องนี้ กลับเข้าได้ด้วย<b>รหัสกู้บัญชีเท่านั้น</b> จดรหัสไว้ก่อน ไม่งั้นบัญชีนี้จะหายถาวร
+                            <% } %>
+                        </p>
+                        <div><button type="button" class="pf-btn is-danger" id="pfLogout">ออกจากระบบ</button></div>
+                    </div>
                 </div>
             </section>
         </div>
@@ -987,6 +1005,74 @@
                 if (!ok) return;
                 fetch('/api/auth/google/unlink', { method: 'POST', credentials: 'same-origin' })
                     .then(function() { location.reload(); });
+            });
+        });
+    }
+
+    // ออกจากระบบ: server ลบคุกกี้ → เราล้างตัวตนในเครื่อง → กลับหน้าแรกเป็นผู้เล่นใหม่
+    var logoutBtn = document.getElementById('pfLogout');
+    if (logoutBtn) {
+        var logoutLinked = <%= googleLinked ? 'true' : 'false' %>;
+        var logoutCode = <%- JSON.stringify(recoveryCode || '') %>;
+        logoutBtn.addEventListener('click', function() {
+            var ask;
+            if (!window.Swal) {
+                ask = Promise.resolve(confirm(logoutLinked
+                    ? 'ออกจากระบบ? กลับเข้าได้ด้วย Google หรือรหัสกู้บัญชี'
+                    : 'ออกจากระบบ? ต้องใช้รหัสกู้บัญชี ' + (logoutCode || '') + ' เพื่อกลับเข้าบัญชีนี้'));
+            } else if (logoutLinked) {
+                ask = Swal.fire({
+                    icon: 'question',
+                    title: 'ออกจากระบบ?',
+                    text: 'กลับเข้าบัญชีนี้ได้ด้วยการล็อกอิน Google หรือรหัสกู้บัญชี',
+                    showCancelButton: true,
+                    confirmButtonText: 'ออกจากระบบ',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonText: 'ยกเลิก',
+                    background: '#1e1e2e',
+                    color: '#fff'
+                }).then(function(r) { return r.isConfirmed; });
+            } else {
+                var safeCode = String(logoutCode).replace(/[^A-Z0-9-]/gi, '');
+                ask = Swal.fire({
+                    icon: 'warning',
+                    title: 'จดรหัสกู้บัญชีก่อน!',
+                    html: safeCode
+                        ? '<p style="margin:0 0 10px">บัญชีนี้ยังไม่ได้ผูก Google ถ้าออกแล้ว <b>กลับเข้าได้ด้วยรหัสนี้เท่านั้น</b></p>'
+                          + '<p style="margin:0 0 12px; font-size:1.5em; font-weight:700; letter-spacing:0.08em; font-family:ui-monospace,Menlo,monospace; user-select:all;">' + safeCode + '</p>'
+                          + '<p style="margin:0; font-size:0.9em; opacity:0.8">ไม่มีรหัสนี้ = ถ้วยและสถิติหายถาวร</p>'
+                        : '<p style="margin:0">บัญชีนี้ยังไม่ได้ผูก Google และยังไม่มีรหัสกู้บัญชี ถ้าออกแล้วจะกลับมาบัญชีนี้ไม่ได้อีก</p>',
+                    input: 'checkbox',
+                    inputValue: 0,
+                    inputPlaceholder: safeCode ? 'จดรหัสไว้แล้ว' : 'เข้าใจแล้ว บัญชีนี้จะหาย',
+                    inputValidator: function(checked) { return checked ? null : 'ติ๊กยืนยันก่อน'; },
+                    showCancelButton: true,
+                    confirmButtonText: 'ออกจากระบบ',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonText: 'ยกเลิก',
+                    background: '#1e1e2e',
+                    color: '#fff'
+                }).then(function(r) { return r.isConfirmed; });
+            }
+            ask.then(function(ok) {
+                if (!ok) return;
+                logoutBtn.disabled = true;
+                fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        if (!res || !res.success) throw new Error('logout failed');
+                        try {
+                            localStorage.removeItem('insiderGamePlayerId');
+                            localStorage.removeItem('insiderGameRecoveryCode');
+                            sessionStorage.removeItem('insiderRecoverySynced');
+                        } catch (e) { /* ignore */ }
+                        try { if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); } catch (e) { /* ignore */ }
+                        location.replace('/');
+                    })
+                    .catch(function() {
+                        logoutBtn.disabled = false;
+                        toast('ออกจากระบบไม่สำเร็จ ลองใหม่อีกครั้ง', true);
+                    });
             });
         });
     }

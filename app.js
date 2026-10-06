@@ -4616,6 +4616,21 @@ app.post('/api/auth/google/unlink', async function(req, res) {
     return res.json({ success: true });
 });
 
+// ออกจากระบบเครื่องนี้ — ลบแค่ตัวตนผู้เล่นบนเครื่อง ไม่ลบบัญชี (กลับเข้าได้ด้วย Google หรือรหัสกู้บัญชี)
+// ไม่แตะ req.session.isAdmin: แอดมินที่ล็อกอินหน้า /admin ไว้ยังอยู่
+// POST + cookie sameSite=lax → เว็บอื่นยิงมาให้หลุดออกจากระบบไม่ได้
+app.post('/api/auth/logout', function(req, res) {
+    res.clearCookie(IDENTITY_COOKIE, {
+        signed: true,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+    });
+    if (req.session) delete req.session.playerId;
+    res.set('Cache-Control', 'no-store');
+    return res.json({ success: true });
+});
+
 // ข้อมูลบัญชีของเครื่องนี้ — client เก็บรหัสไว้ใน localStorage เผื่อ cookie หาย
 app.get('/api/identity/me', function(req, res) {
     res.set('Cache-Control', 'no-store');
