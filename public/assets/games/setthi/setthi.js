@@ -233,7 +233,7 @@
   function modelFrom(state) {
     var m = { pos: {}, cash: {}, island: {}, out: {}, props: {}, festival: state.festival === undefined ? null : state.festival };
     (state.seats || []).forEach(function(s) { m.pos[s.playerId] = s.pos; m.cash[s.playerId] = s.cash; m.island[s.playerId] = s.island; m.out[s.playerId] = s.bankrupt || s.left; });
-    Object.keys(state.props || {}).forEach(function(k) { var p = state.props[k]; m.props[k] = { owner: p.owner, level: p.level }; });
+    Object.keys(state.props || {}).forEach(function(k) { var p = state.props[k]; m.props[k] = { owner: p.owner, level: p.level, stars: p.stars || 0 }; });
     return m;
   }
   function tollIn(m, i) {
@@ -244,7 +244,9 @@
       var n = (BOARD.touristSquares || []).filter(function(k) { return m.props[k] && m.props[k].owner === p.owner; }).length;
       return (SQ[i].tolls[Math.max(0, n - 1)] || 0) * fest;
     }
-    return (SQ[i].tolls[p.level] || 0) * fest;
+    var t = SQ[i].tolls[p.level] || 0;
+    if (p.level === 4 && p.stars) t = Math.round(t * (1 + 0.25 * Math.min(4, p.stars)) / 10) * 10;
+    return t * fest;
   }
   function threatOn(i) {
     if (!S || !S.threats) return null;
@@ -269,10 +271,10 @@
     val.textContent = owner ? moneyK(toll) : moneyK(SQ[i].price);
     if (isCity(i)) {
       var bld = c.querySelector('.st-bld');
-      var key = owner ? 'L' + p.level : 'icon';
+      var key = owner ? 'L' + p.level + 's' + (p.stars || 0) : 'icon';
       if (bld.dataset.k !== key) {
         bld.dataset.k = key;
-        bld.innerHTML = owner && p.level > 0 ? bldIcons(p.level) : iconHtml(SQ[i].icon);
+        bld.innerHTML = owner && p.level > 0 ? bldIcons(p.level) + (p.level === 4 && p.stars ? '<b class="st-stars">⭐' + p.stars + '</b>' : '') : iconHtml(SQ[i].icon);
         bld.classList.toggle('is-icons', !!(owner && p.level > 0));
       }
       var lm = c.querySelector('.st-lm');
@@ -688,7 +690,7 @@
     var owner = p.owner ? seatOf(p.owner) : null;
     if (!ownable(i)) {
       var what = {
-        start: [['💰', 'ผ่าน +' + money(BOARD.salary)], ['🏗️', 'ตกพอดี = อัปเกรด ลดครึ่ง']],
+        start: [['💰', 'ผ่าน/ตก +' + money(BOARD.salary)], ['🎁', 'ทอยมาตกพอดี = อัปเมืองฟรี 1 ขั้น'], ['✈️', 'วาร์ป/การ์ด ไม่ได้อัปฟรี']],
         island: [['🏝️', 'ติด ' + BOARD.islandTurns + ' ตา'], ['🎲', 'ดับเบิล = ออก'], ['⛵', 'จ่าย ' + money(BOARD.islandFee) + ' = ออก']],
         festival: [['🎉', 'เลือกที่ตัวเอง'], ['×2', 'ค่าผ่านทาง 2 เท่า']],
         tour: [['✈️', 'ตาหน้าเลือกช่อง'], ['🎫', 'ค่าทัวร์ ' + money(BOARD.tourFee)]],
@@ -705,7 +707,7 @@
       var here = owner && (isTour(i) || p.level === k);
       rows += '<div class="st-tier' + (here ? ' is-now' : '') + '"><img src="' + (k === 4 || isTour(i) ? artSrc(sq.art) : artSrc(TIER_ART[k])) + '" alt="" width="36" height="36"><b>' + esc(isTour(i) ? 'ที่ดิน' : LEVEL_NAMES[k]) + '</b><span>' + money(sq.costs[k]) + '</span><span class="st-tier-toll">' + (isTour(i) ? '1→4 แห่ง ' + sq.tolls.map(moneyK).join(' / ') : money(sq.tolls[k])) + '</span></div>';
     });
-    var now = owner ? '<div class="st-dinfo"><span class="st-dinfo-item"><small>ค่าผ่านทางตอนนี้</small><b>' + money(tollIn(m, i)) + '</b></span>' + (isCity(i) && p.level < 4 ? '<span class="st-dinfo-item"><small>ซื้อต่อ ×2</small><b>' + money(valueOf(i, p.level) * 2) + '</b></span>' : '<span class="st-dinfo-item"><small>ซื้อต่อ</small><b>ไม่ได้</b></span>') + '</div>' : '';
+    var now = owner ? '<div class="st-dinfo"><span class="st-dinfo-item"><small>ค่าผ่านทางตอนนี้</small><b>' + money(tollIn(m, i)) + '</b></span>' + (isCity(i) && p.level === 4 ? '<span class="st-dinfo-item"><small>ดาว</small><b>' + (p.stars ? '⭐' + p.stars : '—') + ' / 4</b></span>' : '') + (isCity(i) && p.level < 4 ? '<span class="st-dinfo-item"><small>ซื้อต่อ ×2</small><b>' + money(valueOf(i, p.level) * 2) + '</b></span>' : '<span class="st-dinfo-item"><small>ซื้อต่อ</small><b>ไม่ได้</b></span>') + '</div>' : '';
     var ownerBar = owner ? '<div class="st-ownerbar" style="--tk:' + esc(owner.tokenColor) + ';--tk-ink:' + esc(inkOf(owner)) + '">' + tokenHtml(owner) + '<span>เจ้าของ: <b>' + esc(owner.playerId === playerId ? 'คุณ' : owner.name) + '</b></span></div>' : '<div class="st-ownerbar is-free">ยังไม่มีเจ้าของ · ราคา ' + money(sq.price) + '</div>';
     return ownerBar + sheetHeadArt(i, sq.name, sub) + now +
       '<div class="st-tiers"><div class="st-tier is-head"><span></span><b></b><span>ราคา</span><span class="st-tier-toll">ค่าผ่านทาง</span></div>' + rows + '</div>';
@@ -716,6 +718,8 @@
       ['🏠', 'ตกที่ว่าง: ซื้อ + สร้างได้ในแผ่นเดียว'],
       ['1️⃣', 'รอบแรกสร้างถึงบ้าน · รอบ 2 ถึงโรงแรม'],
       ['🏛️', 'มีโรงแรม แล้วตกซ้ำ = แลนด์มาร์ก'],
+      ['⭐', 'ตกแลนด์มาร์กตัวเอง: โบนัส 20% + ดาว (สูงสุด ⭐4 = ×2)'],
+      ['🎁', 'ทอยมาตกจุดเริ่มพอดี: อัปเมืองฟรี 1 ขั้น'],
       ['🛣️', 'ตกที่คนอื่น = จ่ายค่าผ่านทาง'],
       ['🤝', 'จ่ายแล้วซื้อต่อได้ ราคา ×2'],
       ['🚫', 'แลนด์มาร์ก/ท่องเที่ยว ซื้อต่อไม่ได้'],
@@ -971,7 +975,7 @@
     var who = seatOf(f.playerId);
     burst(at, [who ? who.tokenColor : '#f5c86b', '#fff3c4'], f.to >= 3 ? 18 : 10, 46);
     if (f.cost) moneyTag(centerOf(chipOf(f.playerId)), f.cost, false);
-    if (f.mode === 'startBonus' || f.mode === 'freeUpgrade') moneyTag({ x: at.x, y: at.y - 30 }, f.cost || 0, false, f.mode === 'freeUpgrade' ? 'อัปเกรดฟรี!' : 'ลดครึ่งราคา');
+    if (f.mode === 'startBonus' || f.mode === 'freeUpgrade') moneyTag({ x: at.x, y: at.y - 30 }, f.cost || 0, false, 'อัปฟรี!');
     await wait(300);
   };
 
@@ -997,6 +1001,25 @@
     if (lm) A(lm, [{ transform: 'scale(2)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 360, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'none' });
     pulseCell(i, 'is-land', 900);
   }
+
+  FX.startExact = async function(f) {
+    if (f.can) await showBanner({ token: seatOf(f.playerId), icon: 'go', kicker: 'ตกจุดเริ่มพอดี!', title: 'อัปฟรี 1 ขั้น', sub: 'แตะเมืองตัวเองที่เรืองแสง', cls: 'is-gold' }, 650);
+    else await showBanner({ token: seatOf(f.playerId), icon: 'go', kicker: 'ตกจุดเริ่มพอดี', title: 'ไม่มีเมืองที่อัปได้' }, 500);
+  };
+
+  FX.landmarkStar = async function(f) {
+    var i = f.square;
+    var who = seatOf(f.playerId);
+    if (camEnabled()) await camTo(camFor(i), 220);
+    var at = cellPoint(i);
+    flyCoins(bankPoint(), centerOf(chipOf(f.playerId)), f.bonus);
+    setCash(f.cash);
+    if (V) { V.props[i] = Object.assign({}, V.props[i], { stars: f.stars }); renderCell(i, V); }
+    burst(at, ['#f5c86b', '#fff3c4', who ? who.tokenColor : '#ef5b4c'], 22, 70);
+    sfx.fanfare();
+    if (f.playerId === playerId) haptic([15, 30, 15]);
+    await showBanner({ token: who, art: SQ[i].art, kicker: SQ[i].name + ' · โบนัส +' + money(f.bonus), title: f.upgraded ? (f.stars >= 4 ? 'แลนด์มาร์กเต็ม ⭐4' : 'แลนด์มาร์กอัปเกรด! ⭐' + f.stars) : 'แลนด์มาร์กเต็ม ⭐4', sub: 'ค่าผ่านทาง ' + money(f.toll), cls: 'is-gold', style: 'top:34%;' }, 750);
+  };
 
   FX.decision = async function(f) {
     if (f.playerId === playerId) return;
@@ -1346,7 +1369,7 @@
   var PICK_TEXT = {
     tour: { icon: '✈️', title: 'แตะช่องที่อยากไป', skip: 'ไม่ไป ทอยเลย' },
     festival: { icon: '🎉', title: 'แตะที่จัดงานวัด ×2', skip: 'ข้าม' },
-    startBonus: { icon: '🏗️', title: 'แตะเมืองอัปเกรด ลดครึ่ง', skip: 'ข้าม' },
+    startBonus: { icon: '🎁', title: 'แตะเมืองอัปฟรี 1 ขั้น', skip: 'ข้าม' },
     freeUpgrade: { icon: '🎁', title: 'แตะเมืองอัปเกรดฟรี', skip: 'ข้าม' }
   };
   function decisionPeek(d) {

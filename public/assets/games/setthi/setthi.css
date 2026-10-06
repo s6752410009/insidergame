@@ -1073,3 +1073,4 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 .st-chip-lands { font-size: 0.74rem; color: var(--st-text); }
 .st-chip { background: color-mix(in oklch, var(--tk) 16%, var(--st-navy)); }
 .st-tokens .st-token { box-shadow: 0 0 0 1.5px #fff, 0 3px 6px oklch(0 0 0 / 0.5); }
+.st-bld .st-stars { align-self: center; font: 700 calc(var(--fs) * 0.9)/1 var(--st-display); color: #fff4d6; text-shadow: 0 1px 0 oklch(0 0 0 / 0.6); white-space: nowrap; margin-left: 1px; }

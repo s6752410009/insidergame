@@ -509,20 +509,121 @@ test('ทัวร์ทั่วไทย: ตกช่องทัวร์ �
     audit(room, 'ทัวร์');
 });
 
-test('ตกจุดเริ่มพอดี: อัปเกรดเมืองตัวเอง 1 ขั้น ลดครึ่งราคา', () => {
+test('ทอยมาตกจุดเริ่มพอดี: ได้เงินเดือน + อัปเมืองตัวเองฟรี 1 ขั้น (ถึงโรงแรม) · ผ่านเฉย ๆ/การ์ด/วาร์ป ไม่ได้', () => {
     const room = makeRoom(['a', 'b']);
     give(room, 'a', [4], 1);
-    rollTotal(room, 'a', 28, [2, 2]);
+    give(room, 'a', [31], 3);
+    const c0 = seat(room, 'a').cash;
+    rollTotal(room, 'a', 28, [1, 3]);
     eq(seat(room, 'a').pos, 0, 'อยู่จุดเริ่ม');
+    eq(seat(room, 'a').cash - c0, B.SALARY, 'ได้เงินเดือน ฿3,000');
+    eq(B.SALARY, 3000, 'เงินเดือน 3,000');
     eq(S(room).phase, 'pick', 'เลือกเมือง');
     const d = E.buildClientState(room, 'a').decision;
-    eq(d.purpose, 'startBonus', 'โบนัส');
-    eq(d.costs[4], Math.round(B.levelCost(4, 2) / 2), 'ลดครึ่ง');
-    const c0 = seat(room, 'a').cash;
+    eq(d.purpose, 'startBonus', 'โบนัสจุดเริ่ม');
+    eq(d.options.join(), '4', 'เฉพาะเมืองที่ยังไม่ถึงโรงแรม');
+    assert(S(room).fx.some(f => f.kind === 'startExact' && f.can), 'ฉากตกจุดเริ่มพอดี');
     E.pickSquare(room, 'a', 4, null);
-    eq(p(room, 4).level, 2, 'ขึ้นตึก');
-    eq(c0 - seat(room, 'a').cash, d.costs[4], 'จ่ายครึ่งราคา');
+    eq(p(room, 4).level, 2, 'ขึ้นตึก ฟรี');
+    eq(seat(room, 'a').cash - c0, B.SALARY, 'ไม่เสียเงิน');
     audit(room, 'โบนัสจุดเริ่ม');
+    // ผ่านจุดเริ่ม (ไม่ตกพอดี) = ไม่ได้โบนัส
+    const r2 = makeRoom(['a', 'b']);
+    give(r2, 'a', [4], 1);
+    rollTotal(r2, 'a', 28, [2, 3]);
+    eq(seat(r2, 'a').pos, 1, 'เลยจุดเริ่ม');
+    assert(!S(r2).fx.some(f => f.kind === 'startExact'), 'ผ่านเฉย ๆ ไม่ได้โบนัส');
+    // การ์ดพากลับจุดเริ่ม = ไม่ได้
+    const r3 = makeRoom(['a', 'b']);
+    S(r3).deck = ['k02', ...S(r3).deck.filter(x => x !== 'k02')];
+    give(r3, 'a', [4], 1);
+    rollTotal(r3, 'a', 0, [1, 2]);
+    eq(seat(r3, 'a').pos, 0, 'การ์ดพากลับจุดเริ่ม');
+    assert(!S(r3).fx.some(f => f.kind === 'startExact') && S(r3).phase !== 'pick', 'การ์ดไม่ได้โบนัส');
+    // วาร์ปทัวร์มาจุดเริ่ม = ไม่ได้
+    const r4 = makeRoom(['a', 'b']);
+    give(r4, 'a', [4], 1);
+    seat(r4, 'a').pos = 24; seat(r4, 'a').tourPending = true;
+    forceTurn(r4, 'b');
+    rollTotal(r4, 'b', 12, [1, 3]);
+    E.pickSquare(r4, 'a', 0, null);
+    eq(seat(r4, 'a').pos, 0, 'วาร์ปมาจุดเริ่ม');
+    assert(!S(r4).fx.some(f => f.kind === 'startExact'), 'วาร์ปไม่ได้โบนัส');
+});
+
+test('โบนัสจุดเริ่ม: รอบแรกถึงบ้าน · ไม่มีเมืองให้อัป = โน้ตแล้วเล่นต่อ · หมดเวลาเลือกเมืองค่าผ่านทางสูงสุด · /m 6+6 ระยะพอดีก็ได้', () => {
+    const room = makeRoom(['a', 'b']);
+    give(room, 'a', [4], 1);
+    give(room, 'a', [2], 0);
+    seat(room, 'a').laps = 0;
+    // ตกจุดเริ่มพอดีโดยไม่นับรอบ (จำลองรอบแรก): ตั้ง laps ติดลบก่อนผ่าน
+    seat(room, 'a').laps = -1;
+    rollTotal(room, 'a', 28, [1, 3]);
+    eq(seat(room, 'a').laps, 0, 'ยังเป็นรอบแรก');
+    eq(E.buildClientState(room, 'a').decision.options.join(), '2', 'รอบแรกอัปได้ถึงบ้าน (บ้านแล้วอัปไม่ได้)');
+    E.skipPick(room, 'a', null);
+    // ไม่มีเมือง
+    const r2 = makeRoom(['a', 'b']);
+    rollTotal(r2, 'a', 28, [1, 3]);
+    assert(S(r2).fx.some(f => f.kind === 'startExact' && !f.can), 'โน้ต ไม่มีเมืองที่อัปได้');
+    assert(S(r2).phase !== 'pick', 'เล่นต่อเลย');
+    // หมดเวลา: เลือกค่าผ่านทางสูงสุด
+    const r3 = makeRoom(['a', 'b']);
+    give(r3, 'a', [1], 1);
+    give(r3, 'a', [30], 2);
+    seat(r3, 'a').laps = 1;
+    rollTotal(r3, 'a', 28, [1, 3]);
+    eq(S(r3).phase, 'pick', 'เลือก');
+    T += E.DECIDE_MS + 10;
+    E.tick(r3);
+    eq(p(r3, 30).level, 3, 'หมดเวลา = อัปเมืองค่าผ่านทางสูงสุด');
+    audit(r3, 'หมดเวลาโบนัส');
+    // /m 6+6 จาก 20 → 0
+    const r4 = makeRoom(['a', 'b']);
+    give(r4, 'a', [4], 1);
+    seat(r4, 'a').pos = 20;
+    E.setDebugDice(r4, 'a', { six: true });
+    E.rollDice(r4, 'a', null, mulberry(3));
+    eq(seat(r4, 'a').pos, 0, '6+6 ตกจุดเริ่มพอดี');
+    eq(S(r4).phase, 'pick', 'ได้โบนัสแม้ใช้ /m');
+});
+
+test('ดาวแลนด์มาร์ก: ตกแลนด์มาร์กตัวเอง = โบนัส 20% + ดาว (ค่าผ่านทาง +25%/ดาว เต็ม 4 = ×2) · ซ้อนงานวัด · ล้มละลายรีเซ็ต', () => {
+    const room = makeRoom(['a', 'b']);
+    give(room, 'a', [7], 4);
+    const base = Math.round(1000 * B.TOLL_MULT[4] / 10) * 10;
+    eq(E.tollFor(room, 7), base, 'ไม่มีดาว');
+    let expectStars = 0;
+    for (let k = 0; k < 5; k += 1) {
+        forceTurn(room, 'a');
+        const before = E.tollFor(room, 7);
+        const c0 = seat(room, 'a').cash;
+        rollTotal(room, 'a', 3, [1, 3]);
+        expectStars = Math.min(4, expectStars + 1);
+        eq(seat(room, 'a').cash - c0, Math.round(before * 0.2 / 10) * 10, 'โบนัส 20% ของค่าผ่านทางตอนนั้น');
+        eq(p(room, 7).stars, expectStars, 'ดาว ' + expectStars);
+        eq(E.tollFor(room, 7), Math.round(base * (1 + 0.25 * expectStars) / 10) * 10, 'ค่าผ่านทางตามดาว');
+    }
+    eq(E.tollFor(room, 7), base * 2, 'ดาวเต็ม = ×2');
+    assert(S(room).fx.some(f => f.kind === 'landmarkStar' && !f.upgraded), 'ดาวเต็มแล้วยังได้โบนัส ไม่เพิ่มดาว');
+    S(room).festival = 7;
+    eq(E.tollFor(room, 7), base * 4, 'ดาวเต็ม + งานวัด = ×4');
+    audit(room, 'ดาวแลนด์มาร์ก');
+    // ล้มละลาย → ที่คืนธนาคาร ดาวรีเซ็ต
+    S(room).ledger.bankIn += seat(room, 'a').cash - 10; seat(room, 'a').cash = 10;
+    give(room, 'b', [31], 4);
+    forceTurn(room, 'a');
+    rollTotal(room, 'a', 29, [1, 1]);
+    eq(seat(room, 'a').bankrupt, true, 'ล้มละลาย');
+    eq(p(room, 7).stars, 0, 'ดาวรีเซ็ต');
+    audit(room, 'หลังล้มละลาย');
+    // /m 6+6 มาตกแลนด์มาร์กตัวเองก็ได้โบนัส
+    const r2 = makeRoom(['a', 'b']);
+    give(r2, 'a', [14], 4);
+    seat(r2, 'a').pos = 2;
+    E.setDebugDice(r2, 'a', { six: true });
+    E.rollDice(r2, 'a', null, mulberry(1));
+    eq(p(r2, 14).stars, 1, '/m 6+6 ตกแลนด์มาร์ก = ได้ดาว');
 });
 
 // ---------- การ์ด ----------

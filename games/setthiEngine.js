@@ -52,6 +52,10 @@ const GREEN_DOUBLES = 0.2;
 const GREEN_SPAWN = num(env.SETTHI_GREEN_SPAWN, 0.5);
 const BOT_GREEN_HIT = 0.15;
 // สีผู้เล่น 4 สีสด ตัดกันชัด (แดง/น้ำเงิน/เขียว/เหลือง) · ink = สีตัวหนังสือบนพื้นสีนั้น
+// ดาวแลนด์มาร์ก: ตกแลนด์มาร์กตัวเอง = โบนัส 20% ของค่าผ่านทางตอนนั้น + ดาว 1 ดวง (ค่าผ่านทาง +25% ของฐาน สูงสุด 4 ดวง = ×2)
+const STAR_MAX = 4;
+const STAR_STEP = 0.25;
+const STAR_BONUS = 0.2;
 const TOKEN_COLORS = ['#e53935', '#1f6feb', '#16a34a', '#f5b800'];
 const TOKEN_INKS = ['#ffffff', '#ffffff', '#ffffff', '#2a1f00'];
 const TOKEN_COLOR_NAMES = ['แดง', 'น้ำเงิน', 'เขียว', 'เหลือง'];
@@ -205,6 +209,8 @@ function fxCost(event) {
         case 'pay': case 'gain': case 'tax': return 1000;
         case 'sell': return 700;
         case 'decision': return 900;
+        case 'landmarkStar': return 1700;
+        case 'startExact': return 1100;
         case 'debug': return 0;
         case 'monopoly': return 3800;
         case 'bankrupt': return 2400;
@@ -273,7 +279,9 @@ function tollFor(room, i) {
     if (!p || !p.owner) return 0;
     const festival = st(room).festival === i ? 2 : 1;
     if (isTourist(i)) return B.TOUR_TOLL[Math.max(0, touristCount(room, p.owner) - 1)] * festival;
-    return round10(B.SQUARES[i].price * B.TOLL_MULT[p.level]) * festival;
+    const base = round10(B.SQUARES[i].price * B.TOLL_MULT[p.level]);
+    const stars = p.level === 4 ? Math.max(0, Math.min(STAR_MAX, Number(p.stars) || 0)) : 0;
+    return round10(base * (1 + STAR_STEP * stars)) * festival;
 }
 
 function takeoverPrice(room, i) { return squareValue(room, i) * 2; }
@@ -302,6 +310,7 @@ function clearSquare(room, i) {
     const p = prop(room, i);
     p.owner = null;
     p.level = 0;
+    p.stars = 0;
     if (st(room).festival === i) st(room).festival = null;
 }
 
@@ -809,7 +818,14 @@ function land(room, seat, opts = {}) {
     const depth = opts.depth || 0;
     switch (sq.type) {
         case 'start':
-            if (pickOptions(room, seat, 'startBonus').length) setPending(room, { type: 'pick', purpose: 'startBonus', playerId: seat.playerId });
+            // ทอยมาตกจุดเริ่มพอดี (ไม่ใช่วาร์ป/การ์ด) = อัปเมืองตัวเองฟรี 1 ขั้น
+            if (!opts.byDice) return;
+            if (pickOptions(room, seat, 'startBonus').length) {
+                pushFx(room, { kind: 'startExact', playerId: seat.playerId, can: true });
+                setPending(room, { type: 'pick', purpose: 'startBonus', playerId: seat.playerId });
+            } else {
+                pushFx(room, { kind: 'startExact', playerId: seat.playerId, can: false });
+            }
             return;
         case 'island':
             sendToIsland(room, seat, 'landed');
@@ -844,7 +860,8 @@ function land(room, seat, opts = {}) {
                 return;
             }
             if (p.owner === seat.playerId) {
-                if (isCity(index)) setPending(room, { type: 'build', mode: 'upgrade', square: index, playerId: seat.playerId });
+                if (isCity(index) && p.level === 4) landmarkStar(room, seat, index);
+                else if (isCity(index)) setPending(room, { type: 'build', mode: 'upgrade', square: index, playerId: seat.playerId });
                 return;
             }
             const owner = seatOf(room, p.owner);
@@ -869,6 +886,17 @@ function land(room, seat, opts = {}) {
         }
         default:
     }
+}
+
+/** ตกแลนด์มาร์กตัวเอง: รับโบนัสจากธนาคาร แล้วอัปดาว (เต็ม 4 ดวงยังได้โบนัส แต่ไม่เพิ่มดาว) */
+function landmarkStar(room, seat, i) {
+    const p = prop(room, i);
+    const bonus = round10(tollFor(room, i) * STAR_BONUS);
+    bankPays(room, seat, bonus);
+    const before = Number(p.stars) || 0;
+    p.stars = Math.min(STAR_MAX, before + 1);
+    pushFx(room, { kind: 'landmarkStar', playerId: seat.playerId, square: i, stars: p.stars, bonus, upgraded: p.stars > before, toll: tollFor(room, i), cash: cashMap(room, [seat.playerId]) });
+    pushHistory(room, '⭐', `${seat.name} ตกแลนด์มาร์ก${sqName(i)} +${fmt(bonus)}${p.stars > before ? ' · อัปเป็น ⭐' + p.stars : ' · ดาวเต็มแล้ว'}`, 'landmarkStar');
 }
 
 function publicCard(card) {
@@ -964,10 +992,6 @@ function buildCost(room, seat, i, mode, level) {
     return cost;
 }
 
-function startBonusCost(room, i) {
-    const p = prop(room, i);
-    return Math.round(B.levelCost(i, p.level + 1) * (1 - B.START_BONUS_DISCOUNT));
-}
 
 /** ช่องที่แตะได้ในเฟส pick */
 function pickOptions(room, seat, purpose) {
@@ -980,8 +1004,7 @@ function pickOptions(room, seat, purpose) {
     if (purpose === 'startBonus' || purpose === 'freeUpgrade') {
         const cap = Math.min(3, levelCap(seat));
         return ownedSquares(room, seat.playerId).filter(i => {
-            if (!isCity(i) || prop(room, i).level >= cap) return false;
-            return purpose === 'freeUpgrade' || seat.cash >= startBonusCost(room, i);
+            return isCity(i) && prop(room, i).level < cap;
         });
     }
     return [];
@@ -1031,14 +1054,14 @@ function rollDice(room, playerId, ctx = null, rng = Math.random, bias = null) {
             seat.island = 0;
             pushFx(room, { kind: 'islandFree', playerId, how: 'doubles' });
             pushHistory(room, '🎲', `${seat.name} ทอยดับเบิล หนีออกจากเกาะ!`, 'islandFree');
-            moveSteps(room, seat, total, { rng });
+            moveSteps(room, seat, total, { rng, byDice: true });
         } else {
             seat.island -= 1;
             if (seat.island <= 0) {
                 seat.island = 0;
                 pushFx(room, { kind: 'islandFree', playerId, how: 'served' });
                 pushHistory(room, '🔓', `${seat.name} ครบ ${B.ISLAND_TURNS} ตา ออกจากเกาะ`, 'islandFree');
-                moveSteps(room, seat, total, { rng });
+                moveSteps(room, seat, total, { rng, byDice: true });
             } else {
                 pushFx(room, { kind: 'islandStay', playerId, left: seat.island, d: [a, b] });
                 pushHistory(room, '🏝️', `${seat.name} ยังติดเกาะ (เหลือ ${seat.island} ตา)`, 'islandStay');
@@ -1059,7 +1082,7 @@ function rollDice(room, playerId, ctx = null, rng = Math.random, bias = null) {
     }
     turn.canRollAgain = doubles;
     pushHistory(room, '🎲', `${seat.name} ทอย ${a}+${b} = ${total}${doubles ? ' ดับเบิล!' : ''}`, 'roll');
-    moveSteps(room, seat, total, { rng });
+    moveSteps(room, seat, total, { rng, byDice: true });
     markAction(room, 'roll');
     proceed(room);
     return state;
@@ -1212,8 +1235,7 @@ function pickSquare(room, playerId, square, ctx = null) {
         case 'startBonus':
         case 'freeUpgrade': {
             const p = prop(room, i);
-            const cost = pending.purpose === 'startBonus' ? startBonusCost(room, i) : 0;
-            if (cost) paysBank(room, seat, cost);
+            const cost = 0; // ฟรี (ธนาคารออกให้ ไม่มีเงินเปลี่ยนมือ)
             const from = p.level;
             p.level += 1;
             pushFx(room, { kind: 'build', playerId, square: i, from, to: p.level, cost, mode: pending.purpose, cash: cashMap(room, [playerId]) });
@@ -1351,7 +1373,7 @@ function startGame(room, rng = Math.random, options = {}) {
         outOrder: 0
     }));
     state.props = {};
-    B.OWNABLE.forEach(i => { state.props[i] = { owner: null, level: 0 }; });
+    B.OWNABLE.forEach(i => { state.props[i] = { owner: null, level: 0, stars: 0 }; });
     state.deck = shuffle(B.CARDS.map(c => c.id), rng);
     state.ledger = { startTotal: state.seats.length * B.START_CASH, bankOut: 0, bankIn: 0, debugMinted: 0 };
     state.clock = { minutes: state.config.minutes, startedAt: at, endsAt: state.config.minutes ? at + state.config.minutes * MINUTE_MS : null, timeUp: false };
@@ -1465,7 +1487,7 @@ function autopilot(room, rng = Math.random) {
             break;
         case 'pick': {
             const purpose = state.pending ? state.pending.purpose : null;
-            const best = purpose === 'festival' || purpose === 'freeUpgrade' ? botPickTarget(room, seat, purpose) : null;
+            const best = purpose === 'festival' || purpose === 'freeUpgrade' || purpose === 'startBonus' ? botPickTarget(room, seat, purpose) : null;
             if (best !== null) pickSquare(room, actor, best, ctx);
             else skipPick(room, actor, ctx);
             break;
@@ -1567,7 +1589,7 @@ function botPickTarget(room, seat, purpose) {
     const options = pickOptions(room, seat, purpose);
     if (!options.length) return null;
     if (purpose === 'festival') return options.slice().sort((a, b) => tollFor(room, b) - tollFor(room, a) || b - a)[0];
-    if (purpose === 'startBonus' || purpose === 'freeUpgrade') return options.slice().sort((a, b) => B.SQUARES[b].price - B.SQUARES[a].price)[0];
+    if (purpose === 'startBonus' || purpose === 'freeUpgrade') return options.slice().sort((a, b) => tollFor(room, b) - tollFor(room, a) || B.SQUARES[b].price - B.SQUARES[a].price)[0];
     if (purpose === 'tour') {
         const reserve = botReserve(room, seat);
         const cash = seat.cash - B.TOUR_FEE;
@@ -1580,6 +1602,8 @@ function botPickTarget(room, seat, purpose) {
         if (win.length) return pickFrom(win);
         const landmark = ownedSquares(room, seat.playerId).filter(i => isCity(i) && prop(room, i).level === 3 && cash - B.levelCost(i, 4) >= reserve * 0.5);
         if (landmark.length) return pickFrom(landmark);
+        const star = ownedSquares(room, seat.playerId).filter(i => isCity(i) && prop(room, i).level === 4 && (Number(prop(room, i).stars) || 0) < STAR_MAX);
+        if (star.length) return pickFrom(star);
         const block = free.filter(i => blocking.has(i) && afford(i));
         if (block.length) return pickFrom(block);
         const near = free.filter(i => isCity(i) && afford(i) && B.GROUP_SQUARES[B.SQUARES[i].group].some(k => ownerOf(room, k) === seat.playerId));
@@ -1678,10 +1702,7 @@ function publicDecision(room) {
         out.purpose = pending.purpose;
         out.options = pickOptions(room, seat, pending.purpose);
         out.fee = pending.purpose === 'tour' ? B.TOUR_FEE : null;
-        if (pending.purpose === 'startBonus') {
-            out.costs = {};
-            out.options.forEach(i => { out.costs[i] = startBonusCost(room, i); });
-        }
+
     }
     return out;
 }
@@ -1715,7 +1736,7 @@ function buildClientState(room, viewerId) {
     const tolls = {};
     Object.keys(state.props || {}).forEach(k => {
         const p = state.props[k];
-        props[k] = { owner: p.owner, level: p.level };
+        props[k] = { owner: p.owner, level: p.level, stars: Number(p.stars) || 0 };
         if (p.owner && room.gameState) tolls[k] = tollFor(room, Number(k));
     });
     return {
@@ -1819,6 +1840,8 @@ function auditState(room) {
         if (isCity(i) && (p.level < 0 || p.level > 4)) problems.push(`${sqName(i)} ขั้นผิด ${p.level}`);
         if (p.level > 0 && !p.owner) problems.push(`${sqName(i)} มีสิ่งปลูกสร้างแต่ไม่มีเจ้าของ`);
         if (p.owner && !isActive(seatOf(room, p.owner))) problems.push(`${sqName(i)} เจ้าของไม่อยู่ในเกม`);
+        const stars = Number(p.stars) || 0;
+        if (stars < 0 || stars > STAR_MAX || (stars > 0 && p.level !== 4)) problems.push(`${sqName(i)} ดาวผิด ${stars}`);
     });
     if (state.festival !== null && state.festival !== undefined && !ownerOf(room, state.festival)) problems.push('เทศกาลอยู่บนช่องที่ไม่มีเจ้าของ');
     if (state.phase === 'debt' && !state.debts.length) problems.push('เฟสหนี้แต่ไม่มีหนี้');
@@ -1855,6 +1878,9 @@ module.exports = {
     SWEEP_MIN_MS,
     SWEEP_MAX_MS,
     MONOPOLY_LABEL,
+    STAR_MAX,
+    STAR_STEP,
+    STAR_BONUS,
     greenSchedule,
     biasedDice,
     meterAt,

@@ -302,6 +302,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             const seat = v.owner === null || v.owner === undefined ? null : seatAt(v.owner);
             p.owner = seat ? seat.playerId : null;
             p.level = seat ? Math.max(0, Math.min(engine.board.SQUARES[Number(k)].type === 'city' ? 4 : 0, Number(v.level) || 0)) : 0;
+            p.stars = seat && p.level === 4 ? Math.max(0, Math.min(engine.STAR_MAX, Number(v.stars) || 0)) : 0;
         });
         Object.entries(spec.seats || {}).forEach(([k, v]) => {
             const seat = seatAt(k);

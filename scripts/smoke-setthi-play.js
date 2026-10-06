@@ -289,6 +289,19 @@ async function scenarioA(base) {
     assert(!S.fx.some(f => f.kind === 'takeover' && f.square === 12), 'ไม่มีการซื้อต่อแลนด์มาร์ก');
     await act(O, 'setthi_takeover', {}, false);
     console.log('4. แลนด์มาร์ก: มีโรงแรม + ตกซ้ำ → สร้างได้ · ตกแล้วจ่าย ×6 · ซื้อต่อไม่ได้ ✓');
+    await setup(A, { seats: { [iA]: { pos: 8, cash: 20000 } }, dice: [[1, 3]], turnSeat: iA });
+    const aCash = seatOf(last(A), A.id).cash;
+    await act(A, 'setthi_roll');
+    S = await until(A, S2 => S2.props[12].stars === 1, 'ตกแลนด์มาร์กตัวเองได้ดาว');
+    assert(seatOf(S, A.id).cash === aCash + Math.round(1400 * 6 * 0.2 / 10) * 10, 'โบนัส 20% ของค่าผ่านทาง');
+    assert(S.tolls[12] === Math.round(8400 * 1.25 / 10) * 10, 'ค่าผ่านทาง +25%');
+    await setup(A, { props: { 4: { owner: iA, level: 1 } }, seats: { [iA]: { pos: 28, laps: 2 } }, dice: [[1, 3]], turnSeat: iA });
+    await act(A, 'setthi_roll');
+    S = await until(A, turnOf(A, 'pick'), 'ตกจุดเริ่มพอดี เลือกอัปฟรี');
+    assert(S.decision.purpose === 'startBonus' && S.decision.options.includes(4) && !S.decision.options.includes(12), 'เลือกได้เฉพาะเมืองที่ยังไม่ถึงโรงแรม');
+    await act(A, 'setthi_pick', { square: 4 });
+    await until(A, S2 => S2.props[4].level === 2, 'อัปฟรี 1 ขั้น');
+    console.log('4b. ดาวแลนด์มาร์ก (+โบนัส) · ทอยตกจุดเริ่มพอดี = อัปเมืองฟรี 1 ขั้น ✓');
 
     // เกาะร้าง: ดับเบิล 3 ครั้ง · จ่ายออก · ครบ 3 ตา · ดับเบิลออก
     await setup(A, { seats: { [iA]: { pos: 0, island: 0, cash: 20000 } }, dice: [[1, 1], [2, 2], [3, 3]], turnSeat: iA });

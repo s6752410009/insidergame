@@ -20,7 +20,6 @@ const ISLAND_TURNS = 3;
 const ISLAND_FEE = 1000;
 const TOUR_FEE = 500;
 const TAX_RATE = 0.1;
-const START_BONUS_DISCOUNT = 0.5;
 
 // ราคาแต่ละขั้น = ราคาที่ดิน × ตัวคูณ · ค่าผ่านทาง = ราคาที่ดิน × ตัวคูณตามขั้น
 const LEVEL_COST = [1, 0.5, 1, 1.5, 2];
@@ -170,7 +169,6 @@ module.exports = {
     ISLAND_FEE,
     TOUR_FEE,
     TAX_RATE,
-    START_BONUS_DISCOUNT,
     LEVEL_COST,
     TOLL_MULT,
     LEVEL_NAMES,
