@@ -135,6 +135,27 @@ function normalizeWord(text) {
         .replace(/[\s\-_.·'"!?]+/g, '');
 }
 
+const THAI_WORDS = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter('th', { granularity: 'word' })
+    : null;
+
+/**
+ * คำใบ้มีคำของตัวเองอยู่ไหม — คำยาวเช็กแบบ substring (กาแฟเย็น)
+ * คำสั้น 1–2 ตัวอักษร (ชา/ลา/มด) ถ้าเช็ก substring จะปัดคำใบ้ปกติอย่าง "เวลา" "หมดแรง" "ชาวนา"
+ * เลยตัดเป็นคำไทยก่อน แล้วปัดเฉพาะเมื่อมีคำที่ตรงกันทั้งคำ
+ */
+function clueRevealsWord(text, word) {
+    const target = normalizeWord(word);
+    const clue = normalizeWord(text);
+    if (!target || !clue) return false;
+    if (clue === target) return true;
+    if (Array.from(target).length > 2 || !THAI_WORDS) return clue.includes(target);
+    for (const part of THAI_WORDS.segment(String(text).normalize('NFC'))) {
+        if (part.isWordLike && normalizeWord(part.segment) === target) return true;
+    }
+    return false;
+}
+
 function cleanText(text, maxLength) {
     return String(text == null ? '' : text)
         .replace(/[\u0000-\u001F\u007F]/g, ' ')
@@ -481,7 +502,7 @@ function submitClueDone(room, playerId, context = {}) {
     if (currentSpeakerId(state) !== playerId) throw new Error('ยังไม่ถึงตาคุณพูด');
 
     const text = cleanText(context.text, CLUE_MAX_LENGTH);
-    if (text && player.word && normalizeWord(text).includes(normalizeWord(player.word))) {
+    if (text && player.word && clueRevealsWord(text, player.word)) {
         throw new Error('ห้ามพิมพ์คำของตัวเองตรง ๆ — ใบ้อ้อม ๆ');
     }
     player.spokeRound = state.round;
@@ -957,6 +978,7 @@ module.exports = {
     parseWordPairs,
     pickWordPair,
     normalizeWord,
+    clueRevealsWord,
     getRoleCounts,
     createInitialState,
     createPlayerState,

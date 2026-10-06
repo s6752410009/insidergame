@@ -2140,7 +2140,11 @@
             '</p>',
             '<button type="button" class="uc-mw-toggle" id="ucMrWhiteToggle" aria-pressed="' + (mrWhiteOn ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>',
             (mrWhiteOn ? '✓ ' : '') + 'Mr. White: ' + (mrWhiteOn ? 'เปิด' : 'ปิด'),
-            '</button>'
+            '</button>',
+            // เปิดไว้แต่คนยังไม่ถึง 6 = เกมนี้จะไม่มี Mr. White — บอกก่อนเริ่ม ไม่ให้งงทีหลัง
+            (mrWhiteOn && Array.isArray(payload && payload.players) && payload.players.length < 6
+              ? '<p class="uc-mw-note" style="margin:6px 0 0; color:#fde68a; font-size:0.82em;">ตอนนี้ ' + payload.players.length + ' คน — Mr. White จะมีในเกมเมื่อครบ 6 คน</p>'
+              : '')
           ].join('');
         } else if (resolvedMode === 'coup') {
           lobbySpotlight.style.display = 'block';
