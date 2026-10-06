@@ -28,6 +28,11 @@ const CARD_DEFINITIONS = {
 
 const PLAY_MS = Number(process.env.LIAR_PLAY_MS) || 45000;
 const REACT_MS = Number(process.env.LIAR_REACT_MS) || 20000;
+// คนที่หมดเวลาตาก่อน (AFK) ได้เวลาสั้นลง — วงไม่ต้องรอ 45 วิซ้ำทุกตา · กดเองครั้งเดียวก็กลับเป็นเวลาปกติ
+const AFK_MS = Number(process.env.LIAR_AFK_MS) || 12000;
+// บอทคิดพอให้คนอ่านทัน · หลังหงายไพ่รอนานขึ้นให้ทุกคนเห็นว่าใครเสียหัวใจ
+const BOT_THINK_MS = Number(process.env.LIAR_BOT_MS) || 1600;
+const BOT_AFTER_REVEAL_MS = Number(process.env.LIAR_BOT_REVEAL_MS) || 2600;
 
 function shuffle(items) {
     const clone = [...items];
@@ -75,6 +80,8 @@ function createInitialState() {
         turnNumber: 0,
         history: [],
         winner: null,
+        eliminations: [],
+        turnStartedAt: null,
         phaseEndsAt: null,
         statsRecordedAt: null,
         fxSeq: 0,
@@ -85,7 +92,7 @@ function createInitialState() {
 function pushFx(room, event) {
     const state = room.gameState;
     state.fxSeq = (state.fxSeq || 0) + 1;
-    state.fx = [...(state.fx || []), { seq: state.fxSeq, ...event }].slice(-8);
+    state.fx = [...(state.fx || []), { seq: state.fxSeq, at: Date.now(), ...event }].slice(-8);
 }
 
 function createPlayerState(player, context = {}) {
@@ -98,7 +105,8 @@ function createPlayerState(player, context = {}) {
         permission: context.isAdmin ? 'admin' : null,
         hand: [],
         lives: STARTING_LIVES,
-        alive: true
+        alive: true,
+        idleStrikes: 0
     };
 }
 
@@ -221,8 +229,10 @@ function ensureCardsInPlay(room) {
     }
 }
 
-function turnDuration(room) {
-    return room.gameState.lastPlay ? REACT_MS : PLAY_MS;
+function turnDuration(room, actor) {
+    const base = room.gameState.lastPlay ? REACT_MS : PLAY_MS;
+    if (actor && actor.idleStrikes > 0) return Math.min(base, AFK_MS);
+    return base;
 }
 
 function beginTurn(room, playerId) {
@@ -247,7 +257,8 @@ function beginTurn(room, playerId) {
 
     state.currentPlayerId = actor.playerId;
     state.turnNumber += 1;
-    setPhase(room, 'turn', turnDuration(room));
+    state.turnStartedAt = Date.now();
+    setPhase(room, 'turn', turnDuration(room, actor));
     return state;
 }
 
@@ -292,13 +303,20 @@ function checkWinner(room) {
     return true;
 }
 
+function recordElimination(room, player, reason) {
+    const state = room.gameState;
+    state.eliminations = Array.isArray(state.eliminations) ? state.eliminations : [];
+    if (state.eliminations.some(item => item.playerId === player.playerId)) return;
+    state.eliminations.push({ playerId: player.playerId, roundNumber: state.roundNumber || 0, reason });
+}
+
 function loseLife(room, playerId, reason) {
     const player = getPlayer(room, playerId);
     if (!player || !player.alive) return player;
 
     player.lives = Math.max(0, player.lives - 1);
     if (player.lives > 0) {
-        pushHistory(room, '💔', `${player.name} เสียชีวิต เหลือ ${player.lives}`, reason || 'life');
+        pushHistory(room, '💔', `${player.name} เสียหัวใจ 1 ดวง เหลือ ${player.lives}`, reason || 'life');
         return player;
     }
 
@@ -306,7 +324,8 @@ function loseLife(room, playerId, reason) {
     player.lives = 0;
     discardCards(room, player.hand);
     player.hand = [];
-    pushHistory(room, '💀', `${player.name} หมดชีวิต — ตกรอบแล้ว`, 'eliminated');
+    recordElimination(room, player, reason || 'life');
+    pushHistory(room, '💀', `${player.name} หัวใจหมด — ตกรอบแล้ว`, 'eliminated');
     return player;
 }
 
@@ -320,7 +339,7 @@ function startGame(room) {
     room.gameState = state;
     // startRound แจกไพ่ให้เอง
 
-    pushHistory(room, '🎬', `เริ่มเกม — คนละ ${HAND_SIZE} ใบ ชีวิต ${STARTING_LIVES}`);
+    pushHistory(room, '🎬', `เริ่มเกม — คนละ ${HAND_SIZE} ใบ หัวใจ ${STARTING_LIVES} ดวง`);
     pushFx(room, { kind: 'deal' });
     startRound(room, state.players[0]?.playerId || null);
     return room.gameState;
@@ -344,8 +363,9 @@ function assertCurrentTurn(room, playerId) {
     return player;
 }
 
-function submitPlay(room, playerId, cardIds) {
+function submitPlay(room, playerId, cardIds, options = {}) {
     const player = assertCurrentTurn(room, playerId);
+    if (!options.auto) player.idleStrikes = 0;
     if (!player.hand.length) {
         throw new Error('ไพ่ในมือหมด ต้องท้าอย่างเดียว');
     }
@@ -369,8 +389,9 @@ function submitPlay(room, playerId, cardIds) {
     return beginTurn(room, next?.playerId || playerId);
 }
 
-function submitChallenge(room, playerId) {
+function submitChallenge(room, playerId, options = {}) {
     const challenger = assertCurrentTurn(room, playerId);
+    if (!options.auto) challenger.idleStrikes = 0;
     const state = room.gameState;
     const lastPlay = state.lastPlay;
     if (!lastPlay || !lastPlay.cards?.length) {
@@ -395,6 +416,9 @@ function submitChallenge(room, playerId) {
     discardCards(room, lastPlay.cards);
     state.lastPlay = null;
 
+    const loserId = truthful ? playerId : lastPlay.playerId;
+    state.lastReveal.loserId = loserId;
+
     if (truthful) {
         pushHistory(
             room,
@@ -413,17 +437,19 @@ function submitChallenge(room, playerId) {
         loseLife(room, lastPlay.playerId, 'caught');
     }
 
+    const loser = getPlayer(room, loserId);
     pushFx(room, {
         kind: 'reveal',
         truthful,
         actorId: lastPlay.playerId,
         challengerId: playerId,
+        loserId,
+        loserLives: loser ? loser.lives : 0,
         cards: lastPlay.cards.map(describeCard)
     });
 
     if (checkWinner(room)) return state;
 
-    const loserId = truthful ? playerId : lastPlay.playerId;
     const starter = nextAlive(room, loserId);
     return startRound(room, starter?.playerId || playerId);
 }
@@ -441,22 +467,18 @@ function autoResolvePhase(room) {
     }
 
     try {
-        if (state.lastPlay) {
-            if (!actor.hand.length) {
-                pushHistory(room, '⏰', `${actor.name} หมดเวลา — ท้าอัตโนมัติ`);
-                return submitChallenge(room, actor.playerId);
-            }
-            pushHistory(room, '⏰', `${actor.name} หมดเวลา — ลง 1 ใบอัตโนมัติ`);
-            return submitPlay(room, actor.playerId, [actor.hand[0]]);
-        }
-
-        if (!actor.hand.length) {
+        if (!state.lastPlay && !actor.hand.length) {
             const next = nextAlive(room, actor.playerId, p => p.alive && p.hand.length > 0);
             return beginTurn(room, next?.playerId || actor.playerId);
         }
-
+        // นับก่อนสั่ง — beginTurn ของตาถัดไปอ่านค่านี้ (กรณีวนกลับมาคนเดิม)
+        actor.idleStrikes = (Number(actor.idleStrikes) || 0) + 1;
+        if (state.lastPlay && !actor.hand.length) {
+            pushHistory(room, '⏰', `${actor.name} หมดเวลา — ท้าอัตโนมัติ`);
+            return submitChallenge(room, actor.playerId, { auto: true });
+        }
         pushHistory(room, '⏰', `${actor.name} หมดเวลา — ลง 1 ใบอัตโนมัติ`);
-        return submitPlay(room, actor.playerId, [actor.hand[0]]);
+        return submitPlay(room, actor.playerId, [actor.hand[0]], { auto: true });
     } catch (error) {
         const next = nextAlive(room, actor.playerId);
         return beginTurn(room, next?.playerId || actor.playerId);
@@ -472,6 +494,7 @@ function handlePlayerLeft(room, playerId) {
     player.hand = [];
     player.alive = false;
     player.lives = 0;
+    recordElimination(room, player, 'left');
     pushHistory(room, '🚪', `${player.name} ออกจากเกม`);
 
     if (checkWinner(room)) return state;
@@ -490,6 +513,76 @@ function handlePlayerLeft(room, playerId) {
     }
 
     return state;
+}
+
+// ---------- บอท ----------
+function isBotId(playerId) {
+    return String(playerId || '').startsWith('bot_');
+}
+
+function botNeedsTurn(room) {
+    const state = room?.gameState;
+    if (!state || state.status !== 'playing' || state.phase !== 'turn') return false;
+    if (!isBotId(state.currentPlayerId)) return false;
+    const bot = getPlayer(room, state.currentPlayerId);
+    return !!(bot && bot.alive && (bot.hand.length || state.lastPlay));
+}
+
+/** ms ที่บอทควรรอก่อนเล่น — ตาแรกหลังหงายไพ่รอนานขึ้นให้คนอ่านผลทัน */
+function botDelay(room, now = Date.now()) {
+    if (!botNeedsTurn(room)) return null;
+    const state = room.gameState;
+    const afterReveal = !state.lastPlay && !!state.lastReveal;
+    const think = (afterReveal ? BOT_AFTER_REVEAL_MS : BOT_THINK_MS) + ((Number(state.turnNumber) || 0) % 3) * 250;
+    const due = (Number(state.turnStartedAt) || now) + think;
+    return Math.max(150, due - now);
+}
+
+function totalMatchingCards(room, rank) {
+    const state = room.gameState;
+    const all = [...(state.deck || []), ...(state.discard || [])];
+    state.players.forEach(player => all.push(...player.hand));
+    if (state.lastPlay?.cards) all.push(...state.lastPlay.cards);
+    return all.filter(cardId => isWildOrRank(cardId, rank)).length;
+}
+
+function playBotTurn(room, rng = Math.random) {
+    if (!botNeedsTurn(room)) return false;
+    const state = room.gameState;
+    const bot = getPlayer(room, state.currentPlayerId);
+    const target = state.targetRank;
+    const matching = bot.hand.filter(cardId => isWildOrRank(cardId, target))
+        .sort((a, b) => (a === JOKER) - (b === JOKER));
+    const others = shuffle(bot.hand.filter(cardId => !isWildOrRank(cardId, target)));
+
+    if (state.lastPlay && state.lastPlay.playerId !== bot.playerId) {
+        if (!bot.hand.length) {
+            submitChallenge(room, bot.playerId);
+            return true;
+        }
+        const claimed = Number(state.lastPlay.count) || 1;
+        const unseen = totalMatchingCards(room, target) - matching.length;
+        let chance = 0.16 + 0.14 * (claimed - 1);
+        if (!matching.length) chance += 0.15;
+        if (getPlayer(room, state.lastPlay.playerId)?.hand.length === 0) chance += 0.1;
+        if (claimed > unseen || rng() < chance) {
+            submitChallenge(room, bot.playerId);
+            return true;
+        }
+    }
+
+    if (!bot.hand.length) return false;
+    let cards;
+    if (matching.length) {
+        const count = Math.min(matching.length, MAX_PLAY, 1 + (rng() < 0.45 ? 1 : 0));
+        cards = matching.slice(0, count);
+        if (others.length && cards.length < MAX_PLAY && rng() < 0.12) cards.push(others[0]);
+    } else {
+        const count = Math.min(others.length, 1 + (others.length > 1 && rng() < 0.3 ? 1 : 0));
+        cards = others.slice(0, count);
+    }
+    submitPlay(room, bot.playerId, cards);
+    return true;
 }
 
 function getAvailableActions(room, viewerPlayerId) {
@@ -525,6 +618,11 @@ function buildClientState(room, viewerPlayerId) {
         : null;
     const lastReveal = state.lastReveal
         ? {
+            actorId: state.lastReveal.actorId,
+            challengerId: state.lastReveal.challengerId,
+            loserId: state.lastReveal.loserId || null,
+            loserName: getPlayer(room, state.lastReveal.loserId)?.name || '',
+            loserLives: getPlayer(room, state.lastReveal.loserId)?.lives ?? null,
             actorName: getPlayer(room, state.lastReveal.actorId)?.name || '',
             challengerName: getPlayer(room, state.lastReveal.challengerId)?.name || '',
             truthful: state.lastReveal.truthful,
@@ -546,6 +644,13 @@ function buildClientState(room, viewerPlayerId) {
         lastPlay,
         lastReveal,
         winner: state.winner,
+        eliminations: (state.eliminations || []).map(item => ({
+            playerId: item.playerId,
+            name: getPlayer(room, item.playerId)?.name || '',
+            roundNumber: item.roundNumber,
+            reason: item.reason
+        })),
+        maxLives: STARTING_LIVES,
         history: state.history || [],
         deckCount: Array.isArray(state.deck) ? state.deck.length : 0,
         returnLobbyEndsAt: state.returnLobbyEndsAt || null,
@@ -564,6 +669,8 @@ function buildClientState(room, viewerPlayerId) {
             avatarFrame: player.avatarFrame,
             lives: player.lives,
             alive: player.alive,
+            isBot: isBotId(player.playerId),
+            afk: (Number(player.idleStrikes) || 0) > 0,
             handCount: player.hand.length,
             isSelf: player.playerId === viewerPlayerId,
             isCurrent: player.playerId === state.currentPlayerId
@@ -596,5 +703,9 @@ module.exports = {
     autoResolvePhase,
     handlePlayerLeft,
     buildClientState,
-    buildDeck
+    buildDeck,
+    isBotId,
+    botNeedsTurn,
+    botDelay,
+    playBotTurn
 };
