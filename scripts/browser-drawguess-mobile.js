@@ -1,6 +1,7 @@
 /**
  * เล่นวาดแล้วทายในเบราว์เซอร์จริง: มือถือ 390×844 สามเครื่อง + เดสก์ท็อป 1280×900 หนึ่งเครื่อง
  * สร้างห้องผ่านฟอร์มจริง → ห้องรอ → เริ่มเกม → เลือกคำ/วาดด้วยเมาส์/พิมพ์ทาย ครบทุกตา → โพเดียม → เล่นอีกรอบ
+ * คนวาดกด "✅ วาดเสร็จแล้ว" (แตะ 2 ครั้ง) → ทุกคนเห็นเวลาเหลือ ≤ 15 วิ · ตัวนับทายถูก · เฉลยบอกคนวาดต่อไป · สรุปรายคนตอนจบ
  * ทุกจังหวะเช็ก: ไม่มี JS/console error · ไม่เลื่อนแนวนอน · ข้อความไม่ล้น · ปุ่มแตะได้ ≥ 44px · ช่องทายอยู่ในจอ
  *
  * รัน: npm run smoke:drawguess:mobile   (ภาพ: DRAWGUESS_SHOT_DIR หรือโฟลเดอร์ชั่วคราว)
@@ -264,6 +265,11 @@ async function layoutProblems(page) {
             assert(!html.includes(word1) || (await readWord(g).catch(() => '')) !== word1, 'คนทายไม่เห็นคำ');
             assert(await g.page.$$eval('.dg-mask .slot', els => els.length) > 0, 'คนทายเห็นช่องคำใบ้');
         }
+        assert(await d1.page.$eval('#dgDoneBar', el => !el.hidden && el.offsetParent !== null), 'คนวาดเห็นแถบวาดเสร็จแล้ว');
+        for (const g of guessers1) assert(await g.page.$eval('#dgDoneBar', el => el.hidden), 'คนทายไม่เห็นแถบวาดเสร็จแล้ว');
+        await d1.page.click('#dgDoneBtn');
+        await waitFor(async () => d1.page.$eval('#dgToast', el => el.classList.contains('is-on') && /วาด/.test(el.textContent)), 3000, 'ยังไม่วาด กดเสร็จ = เตือน');
+        assert(await d1.page.$eval('#dgDoneBtn', el => !el.classList.contains('is-armed')), 'ยังไม่วาด ไม่ถามยืนยัน');
         await drawPicture(d1, 'undo');
         await waitFor(async () => (await canvasInk(guessers1[0])) > 30, 5000, 'ภาพไปถึงคนทาย');
         assert(Math.abs((await canvasInk(guessers1[0])) - (await canvasInk(d1))) < (await canvasInk(d1)) * 0.25 + 30, 'ภาพของคนทายตรงกับคนวาด (undo ส่งถึงด้วย)');
@@ -278,6 +284,7 @@ async function layoutProblems(page) {
         }
         await guess(guessers1[0], word1);
         await waitFor(async () => (await roleOf(guessers1[0])) === 'solved', 3000, 'ทายถูก');
+        await waitFor(async () => /1\/3/.test(await guessers1[1].page.$eval('.dg-count', el => el.textContent).catch(() => '')), 3000, 'ตัวนับทายถูก 1/3');
         await guess(guessers1[0], 'ง่ายมากเลย');
         await snap('12-solved', [guessers1[0], desk === d1 ? guessers1[2] : desk], { wait: 300 });
         const unsolvedFeed = await guessers1[1].page.textContent('#dgFeed');
@@ -293,10 +300,12 @@ async function layoutProblems(page) {
         await snap('14-reveal', [d1, guessers1[0]], { wait: 700 });
         const revealText = await guessers1[0].page.textContent('#dgOverlay');
         assert(revealText.includes(word1) && /\+\d+/.test(revealText), 'เฉลยคำ + แต้มตานี้');
+        assert(/ต่อไป/.test(revealText), 'เฉลยบอกคนวาดตาถัดไป');
 
         // ---------- ตาที่เหลือ
         let guard = 0;
         let deskDrawShot = false;
+        let doneTested = false;
         while (guard++ < 12) {
             await waitFor(async () => ['choose', 'finished'].includes(await phaseOf(host)), 12000, 'ตาถัดไป');
             if (await phaseOf(host) === 'finished') break;
@@ -307,6 +316,31 @@ async function layoutProblems(page) {
             const word = await readWord(d);
             await drawPicture(d);
             if (d.desktop && !deskDrawShot) { deskDrawShot = true; await snap('20-desktop-drawing', [d]); }
+            if (!doneTested && !d.desktop) {
+                // ✅ วาดเสร็จแล้ว: แตะแรกถามยืนยัน · แตะสองส่ง → ทุกคนเหลือ ≤ 15 วิ
+                doneTested = true;
+                const watcher = players.find(p => p !== d && !p.desktop);
+                const before = await watcher.page.$eval('#dgTimerNum', el => Number(el.textContent));
+                // มือถือแนวนอน: เครื่องมือวาด + ปุ่มวาดเสร็จต้องอยู่ในจอครบ (เดิมหลุดล่างจอ)
+                await d.page.setViewportSize({ width: 844, height: 390 });
+                await delay(400);
+                const fits = await d.page.evaluate(() => ['dgDoneBar', 'dgToolbar', 'dgStage'].map(id => {
+                    const r = document.getElementById(id).getBoundingClientRect();
+                    return r.height > 0 && r.bottom <= window.innerHeight + 1 && r.right <= window.innerWidth + 1;
+                }));
+                assert(fits.every(Boolean), 'แนวนอน: เครื่องมือ/ปุ่มวาดเสร็จ/ภาพอยู่ในจอ ' + JSON.stringify(fits));
+                await d.page.click('#dgDoneBtn');
+                assert(await d.page.$eval('#dgDoneBtn', el => el.classList.contains('is-armed') && /ยืนยัน/.test(el.textContent)), 'แตะแรกถามยืนยัน');
+                await snap('15-done-armed-landscape', [d], { wait: 150 });
+                await d.page.click('#dgDoneBtn');
+                await d.page.setViewportSize({ width: 390, height: 844 });
+                await waitFor(async () => /วาดเสร็จแล้ว/.test(await watcher.page.textContent('#dgWord')), 3000, 'คนทายเห็นว่าวาดเสร็จ');
+                const after = await watcher.page.$eval('#dgTimerNum', el => Number(el.textContent));
+                assert(after <= 15 && after < before, `เวลาเหลือถูกตัด (${before} → ${after})`);
+                assert(/วาดเสร็จแล้ว! เหลือ \d+ วินาที/.test(await watcher.page.textContent('#dgFeed')), 'ประกาศในแถบข้อความ');
+                assert(await d.page.$eval('#dgDoneBtn', el => el.disabled), 'กดแล้วปุ่มล็อก (ครั้งเดียว)');
+                await snap('16-done', [d, watcher], { wait: 300 });
+            }
             if (!d.desktop && guard <= 2) {
                 const guesserDesk = players.find(p => p.desktop && p !== d);
                 if (guesserDesk) await snap('21-desktop-guessing', [guesserDesk]);
@@ -319,6 +353,8 @@ async function layoutProblems(page) {
         await snap('30-finished', players, { wait: 1300 });
         const finalText = await host.page.textContent('#dgResults');
         assert(/ชนะ/.test(finalText), 'สรุปผลมีผู้ชนะ');
+        assert(doneTested, 'ได้ทดสอบปุ่มวาดเสร็จแล้ว');
+        assert((await host.page.$$('.dg-final .tl')).length === players.length && /ทายถูก \d+\/\d+ ตา/.test(finalText), 'สรุปรายคน: ทายถูกกี่ตา · วาดแล้วมีคนถูกกี่ครั้ง');
         assert(await host.page.$('#dgAgainBtn') && !(await b.page.$('#dgAgainBtn')), 'ปุ่มเล่นอีกรอบเฉพาะหัวห้อง');
 
         // ---------- เล่นอีกรอบ

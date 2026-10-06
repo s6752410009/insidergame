@@ -258,6 +258,105 @@ function stateJson(room, viewer, now) {
     ok(st.phase === 'reveal' && st.lastTurn.reason === 'skipped', 'host skip');
 })();
 
+// ---------------------------------------------------------------- "วาดเสร็จแล้ว" (คนวาดจบก่อนเวลา)
+
+(function doneTests() {
+    const DONE = engine.DONE_GUESS_MS;
+    ok(DONE === 15000, 'done window 15s by default');
+    let now = 7000000;
+    const room = makeRoom(4, { drawguessRounds: 2, drawguessSeconds: 80 });
+    const twin = makeRoom(4, { drawguessRounds: 2, drawguessSeconds: 80 });
+    engine.startGame(room, now);
+    engine.startGame(twin, now);
+    const st = room.gameState;
+    throwsMsg(() => engine.finishDrawing(room, 'p0', { turnNo: st.turnNo }, now), /ไม่ใช่ช่วงวาด/, 'done during choose');
+    engine.chooseWord(room, 'p0', 0, { turnNo: st.turnNo }, now);
+    engine.chooseWord(twin, 'p0', 0, { turnNo: twin.gameState.turnNo }, now);
+    const originalEnd = st.phaseEndsAt;
+    const T = st.turnNo;
+    throwsMsg(() => engine.finishDrawing(room, 'p1', { turnNo: T }, now), /ไม่ใช่ตาคุณ/, 'only the drawer can finish');
+    throwsMsg(() => engine.finishDrawing(room, 'p0', { turnNo: T - 1 }, now), /จบไปแล้ว/, 'stale turn finish');
+    throwsMsg(() => engine.finishDrawing(room, 'p0', {}, now), /จบไปแล้ว/, 'missing turnNo finish');
+    throwsMsg(() => engine.finishDrawing(room, 'p0', { turnNo: T }, now), /ยังไม่ได้วาด/, 'cannot finish an empty canvas');
+    engine.applyStrokes(room, 'p0', { turnNo: T, ops: [{ t: 's', id: 1, c: 0, w: 1, p: [0.1, 0.1, 0.5, 0.5] }] }, now);
+    engine.applyStrokes(room, 'p0', { turnNo: T, ops: [{ t: 'c' }] }, now);
+    throwsMsg(() => engine.finishDrawing(room, 'p0', { turnNo: T }, now), /ยังไม่ได้วาด/, 'cleared canvas counts as empty');
+    engine.applyStrokes(room, 'p0', { turnNo: T, ops: [{ t: 's', id: 2, c: 0, w: 1, p: [0.1, 0.1, 0.5, 0.5] }] }, now);
+    ok(engine.buildClientState(room, 'p0', now).self.canFinish, 'drawer sees the done button');
+    ok(!engine.buildClientState(room, 'p1', now).self.canFinish, 'guesser has no done button');
+
+    // p1 ทายถูกก่อนกด (แต้มเหมือนกันทั้งสองห้อง)
+    now += 10000;
+    const a1 = engine.submitGuess(room, 'p1', st.word, {}, now);
+    const b1 = engine.submitGuess(twin, 'p1', twin.gameState.word, {}, now);
+    ok(a1.points === b1.points, 'same points before done');
+    const stepBefore = st.step;
+    const res = engine.finishDrawing(room, 'p0', { turnNo: T }, now);
+    ok(res.result === 'done' && res.secs === 15, 'done result');
+    ok(st.phaseEndsAt === now + DONE, 'time cut to the guessing window');
+    ok(st.scoreEndsAt === originalEnd, 'score clock keeps the original deadline');
+    ok(st.step > stepBefore, 'step bumped so clients re-render');
+    const viewG = engine.buildClientState(room, 'p2', now);
+    ok(viewG.drawDone && viewG.drawDoneAt === now && viewG.phaseEndsAt === now + DONE, 'guessers see done + new deadline');
+    ok(viewG.feed.some(f => f.kind === 'done' && /วาดเสร็จแล้ว! เหลือ 15 วินาที/.test(f.text)), 'announced to everyone');
+    ok(st.fx.some(f => f.kind === 'done' && f.secs === 15 && f.turnNo === T), 'done fx');
+    ok(!engine.buildClientState(room, 'p0', now).self.canFinish, 'button gone after pressing');
+    ok(engine.buildClientState(room, 'p0', now).self.canDraw, 'drawer can still add details');
+    throwsMsg(() => engine.finishDrawing(room, 'p0', { turnNo: T }, now + 10), /ไปแล้ว/, 'once per turn');
+    // แต้มหลังกด = แต้มถ้าไม่ได้กด (นาฬิกาเดิม)
+    now += 4000;
+    const a2 = engine.submitGuess(room, 'p2', st.word, {}, now);
+    const b2 = engine.submitGuess(twin, 'p2', twin.gameState.word, {}, now);
+    ok(a2.result === 'correct' && a2.points === b2.points, `points unaffected by done (${a2.points} vs ${b2.points})`);
+    ok(st.phase === 'draw', 'still drawing within the window');
+    // หมดช่วงทาย → จบตา (timeout)
+    engine.tick(room, st.phaseEndsAt - 1);
+    ok(st.phase === 'draw', 'not before the window ends');
+    engine.tick(room, st.phaseEndsAt);
+    ok(st.phase === 'reveal' && st.lastTurn.reason === 'timeout', 'window ends the turn');
+    ok(st.lastTurn.deltas.find(d => d.playerId === 'p0').delta === 2 * engine.DRAWER_POINTS_PER_GUESS, 'drawer points unchanged');
+    ok(engine.buildClientState(room, 'p1', st.phaseStartedAt).nextDrawerId === 'p1', 'reveal previews next drawer');
+    // ตาใหม่: drawDone ล้างแล้ว
+    engine.tick(room, st.phaseEndsAt);
+    ok(st.phase === 'choose' && !st.drawDoneAt && !engine.buildClientState(room, 'p1', st.phaseStartedAt).drawDone, 'done flag reset next turn');
+
+    // เหลือเวลาน้อยกว่าช่วงทาย → ไม่ยืดเวลา ประกาศตามที่เหลือจริง
+    engine.chooseWord(room, 'p1', 0, { turnNo: st.turnNo }, st.phaseStartedAt);
+    engine.applyStrokes(room, 'p1', { turnNo: st.turnNo, ops: [{ t: 's', id: 3, c: 0, w: 1, p: [0.2, 0.2, 0.4, 0.4] }] }, st.phaseStartedAt);
+    const end2 = st.phaseEndsAt;
+    const late = end2 - 6200;
+    const r2 = engine.finishDrawing(room, 'p1', { turnNo: st.turnNo }, late);
+    ok(st.phaseEndsAt === end2 && r2.secs === 7, 'never extends time; announces what is left');
+    // ทุกคนทายถูกหลังกดเสร็จ → จบทันที
+    ['p0', 'p2', 'p3'].forEach((id, i) => engine.submitGuess(room, id, st.word, {}, late + 500 + i * 400));
+    ok(st.phase === 'reveal' && st.lastTurn.reason === 'all', 'everyone guessed after done → ends now');
+
+    // สรุปรายคนตอนจบ + ตาสุดท้ายไม่มีคนวาดต่อ
+    const room4 = makeRoom(3, { drawguessRounds: 2 });
+    let t4 = 9000000;
+    engine.startGame(room4, t4);
+    const s4 = room4.gameState;
+    let lastRevealView = null;
+    while (s4.phase !== 'finished') {
+        if (s4.phase === 'choose') engine.chooseWord(room4, s4.drawerId, 0, { turnNo: s4.turnNo }, t4);
+        else if (s4.phase === 'draw') {
+            const g = Object.keys(s4.roster).find(id => id !== s4.drawerId && !s4.guessed[id]);
+            engine.submitGuess(room4, g, s4.word, {}, t4);
+            t4 = s4.phaseEndsAt;
+            engine.tick(room4, t4);
+        } else {
+            lastRevealView = engine.buildClientState(room4, 'p0', t4);
+            t4 = s4.phaseEndsAt;
+            engine.tick(room4, t4);
+        }
+        t4 += 1;
+    }
+    ok(lastRevealView && lastRevealView.lastTurnOfGame && !lastRevealView.nextDrawerId, 'last reveal says the game is ending');
+    const rows = engine.buildClientState(room4, 'p0', t4).standings;
+    // 3 คน × 2 รอบ = 6 ตา · ตาละ 1 คนทายถูก (คนแรกที่ยังไม่ถูก)
+    ok(rows.every(r => r.chances === 4 && r.drew === 2 && r.drawHits === 2) && rows.reduce((n, r) => n + r.hits, 0) === 6, 'tally per player: ' + JSON.stringify(rows.map(r => [r.hits, r.chances, r.drew, r.drawHits])));
+})();
+
 // ---------------------------------------------------------------- disconnect / leave / late join
 
 (function presenceTests() {
@@ -423,6 +522,14 @@ function randomGame(gameIndex) {
                 const [id, stored] = storedLeavers.entries().next().value;
                 storedLeavers.delete(id);
                 if (stored) rejoin(room, stored, now);
+            } else if (r < 0.575) {
+                try {
+                    const before = st.phaseEndsAt;
+                    engine.finishDrawing(room, st.drawerId, { turnNo: st.turnNo }, now);
+                    ok(st.phaseEndsAt <= before && st.phaseEndsAt - now <= engine.DONE_GUESS_MS, 'done only shortens, to <= window');
+                } catch (error) {
+                    ok(/ยังไม่ได้วาด|ไปแล้ว/.test(error.message), `unexpected done error ${error.message}`);
+                }
             } else if (r < 0.58) {
                 const p = room.players[rand(room.players.length)];
                 if (p) { p.socketId = p.socketId ? null : `s-re-${steps}`; p.disconnectedAt = p.socketId ? null : new Date(now).toISOString(); }
@@ -452,6 +559,8 @@ function randomGame(gameIndex) {
         st.winnerIds.forEach(id => ok(st.scores[id] === top, 'winner has top score'));
     }
     Object.keys(drawCounts).forEach(id => ok(drawCounts[id] <= rounds + 1, `draws per player bounded (${id}: ${drawCounts[id]})`));
+    rows.forEach(row => ok(row.hits <= row.chances, 'tally hits <= chances'));
+    ok(rows.reduce((n, row) => n + row.hits, 0) === rows.reduce((n, row) => n + row.drawHits, 0), 'tally: every correct guess credits one drawer');
     audit();
     if (st.endReason === 'complete') {
         Object.keys(scoreAudit).forEach(id => ok(scoreAudit[id] === (st.scores[id] || 0), `score audit ${id}`));

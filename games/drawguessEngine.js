@@ -4,6 +4,7 @@
  * ทุกรอบ ทุกคนได้วาดคนละ 1 ตา ตามลำดับที่นั่ง (ตั้งได้ 2/3/4 รอบ)
  * ตาหนึ่ง: คนวาดเลือก 1 ใน 3 คำ (choose, 12 วิ ไม่เลือก = สุ่มให้) → วาด (draw, 60/80/100 วิ)
  *          คนอื่นพิมพ์ทาย · ทายถูกไม่โชว์คำ แค่ "✅ ชื่อ ทายถูก!" · ใกล้แล้วได้ "เกือบแล้ว!" เฉพาะตัว
+ *          คนวาดกด "วาดเสร็จแล้ว" ได้ 1 ครั้ง/ตา → เวลาที่เหลือถูกตัดเหลือ ≤ 15 วิ (แต้มยังคิดจากนาฬิกาเดิม)
  *          → เฉลย (reveal) พร้อมแต้มที่ได้ตานี้ → ตาถัดไป
  * แต้ม: ทายถูกเร็วได้มาก + โบนัสลำดับ (คนแรก/สอง/...) · คนวาดได้ต่อคนที่ทายถูก
  * ชนะ: แต้มรวมสูงสุดตอนจบ (เสมอ = ชนะร่วม)
@@ -43,6 +44,8 @@ const REVEAL_MS = Number(process.env.DRAWGUESS_REVEAL_MS) || 6000;
 const SKIP_REVEAL_MS = Math.min(REVEAL_MS, 3500);
 // คนวาดหลุด: รอกลับมาได้กี่วิก่อนข้ามตา (รีเฟรช/สลับแอปสั้น ๆ ไม่โดนข้าม)
 const GRACE_MS = Number(process.env.DRAWGUESS_GRACE_MS) || 12000;
+// คนวาดกด "วาดเสร็จแล้ว": เหลือเวลาให้ทายเท่านี้ (หรือเท่าที่เหลือ ถ้าน้อยกว่า)
+const DONE_GUESS_MS = Number(process.env.DRAWGUESS_DONE_MS) || 15000;
 // ทดสอบเท่านั้น — บังคับเวลาวาด (มิลลิวินาที) แทนค่าที่ห้องตั้ง
 const DRAW_MS_OVERRIDE = Number(process.env.DRAWGUESS_DRAW_MS) || 0;
 
@@ -276,6 +279,9 @@ function createInitialState() {
         phaseStartedAt: null,
         phaseEndsAt: null,
         drawMs: 0,
+        scoreEndsAt: null,
+        drawDoneAt: null,
+        tally: {},
         usedWords: [],
         canvas: { turnNo: 0, strokes: [], points: 0, strokeCount: 0 },
         feed: [],
@@ -516,6 +522,8 @@ function startNextTurn(room, now) {
     state.guessed = {};
     state.turnScores = {};
     state.canvas = { turnNo: state.turnNo, strokes: [], points: 0, strokeCount: 0 };
+    state.drawDoneAt = null;
+    state.scoreEndsAt = null;
     state.choices = pickChoices(room);
     state.drawMs = drawMsFor(state);
     setPhase(state, 'choose', CHOOSE_MS, now);
@@ -573,6 +581,9 @@ function startDrawing(room, choice, now) {
     state.choices = [];
     state.drawMs = drawMsFor(state);
     setPhase(state, 'draw', state.drawMs, now);
+    // แต้มคิดจากนาฬิกาเดิมเสมอ — คนวาดกดเสร็จก่อนก็ไม่ทำให้คนทายได้แต้มน้อยลง
+    state.scoreEndsAt = state.phaseEndsAt;
+    state.drawDoneAt = null;
     state.hintPlan = hintPlanFor(choice.word, state.drawMs).map(h => ({ index: h.index, at: now + h.offset }));
     pushFeed(state, { kind: 'system', icon: '✏️', text: `${nameOf(state, state.drawerId)} เริ่มวาดแล้ว — พิมพ์ทายได้เลย` }, now);
     pushFx(state, { kind: 'draw', turnNo: state.turnNo });
@@ -598,7 +609,8 @@ function roundTo5(n) {
 
 function guessPoints(state, order, now) {
     const span = Math.max(1, Number(state.drawMs) || 1);
-    const frac = Math.max(0, Math.min(1, ((state.phaseEndsAt || now) - now) / span));
+    const endsAt = state.scoreEndsAt || state.phaseEndsAt || now;
+    const frac = Math.max(0, Math.min(1, (endsAt - now) / span));
     const bonus = ORDER_BONUS[order - 1] != null ? ORDER_BONUS[order - 1] : ORDER_BONUS_REST;
     return roundTo5(GUESS_MIN_POINTS + GUESS_TIME_POINTS * frac) + bonus;
 }
@@ -681,11 +693,35 @@ function submitGuess(room, playerId, text, context = {}, now = Date.now()) {
 
 // ---------------------------------------------------------------- turn end
 
+function tallyOf(state, id) {
+    if (!state.tally || typeof state.tally !== 'object') state.tally = {};
+    if (!state.tally[id]) state.tally[id] = { hits: 0, chances: 0, drew: 0, drawHits: 0 };
+    return state.tally[id];
+}
+
+/** สรุปรายคนไว้โชว์ตอนจบ ("ทำไมได้แต้มเท่านี้"): ทายถูกกี่ตาจากกี่ตา · วาดแล้วมีคนทายถูกกี่คน */
+function tallyTurn(room, drawerId, guessedIds, now) {
+    const state = room.gameState;
+    const chances = new Set([...eligibleGuessers(room, now), ...guessedIds]);
+    chances.forEach(id => {
+        if (id === drawerId) return;
+        const t = tallyOf(state, id);
+        t.chances += 1;
+        if (state.guessed[id]) t.hits += 1;
+    });
+    if (drawerId) {
+        const t = tallyOf(state, drawerId);
+        t.drew += 1;
+        t.drawHits += guessedIds.length;
+    }
+}
+
 function endTurn(room, reason, now) {
     const state = room.gameState;
     const drawerId = state.drawerId;
     const guessedIds = Object.keys(state.guessed || {});
     const drew = !!state.word;
+    if (drew) tallyTurn(room, drawerId, guessedIds, now);
     if (drew && drawerId && guessedIds.length) {
         const drawerPoints = DRAWER_POINTS_PER_GUESS * guessedIds.length;
         state.turnScores[drawerId] = (state.turnScores[drawerId] || 0) + drawerPoints;
@@ -735,6 +771,49 @@ function skipTurn(room, actorId, context = {}, now = Date.now()) {
     return endTurn(room, 'skipped', now);
 }
 
+/**
+ * คนวาดกด "วาดเสร็จแล้ว" — ตัดเวลาที่เหลือให้เหลือช่วงทายสั้น ๆ (≤ DONE_GUESS_MS) แล้วประกาศให้ทุกคนรู้
+ * ได้เฉพาะคนวาดของตานี้ ช่วงวาด และ 1 ครั้งต่อตา · ต้องวาดอะไรไปแล้วสักเส้น (กันกดพลาดตอนเพิ่งเริ่ม)
+ * แต้มคนทายยังคิดจาก scoreEndsAt (นาฬิกาเดิม) ไม่เปลี่ยน
+ */
+function finishDrawing(room, playerId, context = {}, now = Date.now()) {
+    const state = assertPlaying(room);
+    syncRoster(room, now);
+    if (state.phase !== 'draw') throw new Error('ตอนนี้ไม่ใช่ช่วงวาด');
+    assertTurn(state, context);
+    if (state.drawerId !== playerId) throw new Error('ไม่ใช่ตาคุณวาด');
+    if (state.drawDoneAt) throw new Error('กดวาดเสร็จไปแล้ว');
+    const strokes = state.canvas && state.canvas.turnNo === state.turnNo ? (state.canvas.strokes || []) : [];
+    if (!strokes.length) throw new Error('ยังไม่ได้วาดอะไรเลย — วาดก่อนแล้วค่อยกด');
+    const remaining = Math.max(0, (state.phaseEndsAt || now) - now);
+    const windowMs = Math.min(remaining, DONE_GUESS_MS);
+    state.drawDoneAt = now;
+    if (!state.scoreEndsAt) state.scoreEndsAt = state.phaseEndsAt;
+    state.phaseEndsAt = now + windowMs;
+    bumpStep(state);
+    const secs = Math.max(1, Math.ceil(windowMs / 1000));
+    pushFeed(state, { kind: 'done', icon: '✅', text: `${nameOf(state, playerId)} วาดเสร็จแล้ว! เหลือ ${secs} วินาที` }, now);
+    pushFx(state, { kind: 'done', turnNo: state.turnNo, secs });
+    return { result: 'done', secs };
+}
+
+/** ใครวาดตาถัดไป (ดูล่วงหน้าตอนเฉลย ไม่นับว่าจะหลุดหรือไม่) · null = ตานี้เป็นตาสุดท้าย */
+function peekNextDrawer(state) {
+    const order = state.order || [];
+    let index = state.turnIndex;
+    let round = state.round;
+    for (let guard = 0; guard < order.length * 2 + 2; guard += 1) {
+        index += 1;
+        if (index >= order.length) {
+            if (round >= (state.settings?.rounds || DEFAULT_ROUNDS)) return null;
+            round += 1;
+            index = 0;
+        }
+        if (isActive(state, order[index])) return order[index];
+    }
+    return null;
+}
+
 // ---------------------------------------------------------------- finish
 
 function computeStandings(state) {
@@ -745,7 +824,11 @@ function computeStandings(state) {
         color: state.roster[id].color,
         avatarFrame: state.roster[id].avatarFrame,
         score: state.scores[id] || 0,
-        left: !!state.departed[id]
+        left: !!state.departed[id],
+        hits: state.tally?.[id]?.hits || 0,
+        chances: state.tally?.[id]?.chances || 0,
+        drew: state.tally?.[id]?.drew || 0,
+        drawHits: state.tally?.[id]?.drawHits || 0
     }));
     rows.sort((a, b) => b.score - a.score || (a.left === b.left ? 0 : (a.left ? 1 : -1)));
     let rank = 0;
@@ -1045,6 +1128,7 @@ function buildClientState(room, viewerId, now = Date.now()) {
     }
 
     const cat = CATEGORY_BY_ID[state.settings?.category];
+    const nextId = phase === 'reveal' && !state.waiting ? peekNextDrawer(state) : null;
     return {
         mode: MODE,
         status: state.status,
@@ -1078,6 +1162,12 @@ function buildClientState(room, viewerId, now = Date.now()) {
         hintsShown: revealed.length,
         guessedCount: Object.keys(state.guessed || {}).length,
         guesserCount: inTurn ? eligibleGuessers(room, now).length : 0,
+        drawDone: phase === 'draw' && !!state.drawDoneAt,
+        drawDoneAt: phase === 'draw' ? (state.drawDoneAt || null) : null,
+        doneGuessMs: DONE_GUESS_MS,
+        nextDrawerId: nextId,
+        nextDrawerName: nextId ? nameOf(state, nextId) : null,
+        lastTurnOfGame: phase === 'reveal' && !state.waiting && !nextId,
         lastTurn: (phase === 'reveal' || phase === 'finished') && state.lastTurn ? {
             ...state.lastTurn,
             deltas: (state.lastTurn.deltas || []).map(d => ({ ...d }))
@@ -1095,6 +1185,7 @@ function buildClientState(room, viewerId, now = Date.now()) {
             late: isLate,
             canGuess: phase === 'draw' && !isDrawer && !viewerGuessed && !isLate && !!viewerRoster,
             canDraw: isDrawer && phase === 'draw',
+            canFinish: isDrawer && phase === 'draw' && !state.drawDoneAt,
             score: state.scores?.[viewerId] || 0
         } : null,
         players,
@@ -1123,6 +1214,7 @@ module.exports = {
     CHOOSE_MS,
     REVEAL_MS,
     GRACE_MS,
+    DONE_GUESS_MS,
     COLOR_COUNT,
     SIZE_COUNT,
     MAX_OPS_PER_BATCH,
@@ -1152,6 +1244,8 @@ module.exports = {
     chooseWord,
     submitGuess,
     skipTurn,
+    finishDrawing,
+    peekNextDrawer,
     applyStrokes,
     getCanvas,
     tick,
