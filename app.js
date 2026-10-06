@@ -8704,6 +8704,11 @@ io.sockets.on('connection', function(socket) {
         });
     });
 
+    // คนวาดกด "วาดเสร็จแล้ว" — เซิร์ฟเวอร์ตรวจ (คนวาดตานี้ · ช่วงวาด · ครั้งเดียว) แล้วตัดเวลาเหลือช่วงทายสั้น ๆ
+    safeOn(socket, 'drawguess_done', function(data, callback) {
+        handleDrawGuessCommand(socket, callback, (room, playerId) => drawguessRuntime.finishDrawing(room, playerId, data));
+    });
+
     // เส้นที่วาด — ยิงถี่ (ทุก ~40ms) ไม่ต้องส่ง state ทั้งก้อน แค่ตรวจแล้วส่งต่อ
     safeOn(socket, 'drawguess_stroke', function(data, callback) {
         const done = typeof callback === 'function' ? callback : null;

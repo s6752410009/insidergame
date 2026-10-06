@@ -172,6 +172,11 @@ module.exports = function createDrawGuessRuntime(getDeps) {
         return engine.skipTurn(room, playerId, { turnNo: data?.turnNo }, Date.now());
     }
 
+    /** คนวาดกด "วาดเสร็จแล้ว" — ตัดเวลาเหลือช่วงทายสั้น ๆ */
+    function finishDrawing(room, playerId, data) {
+        return engine.finishDrawing(room, playerId, { turnNo: data?.turnNo }, Date.now());
+    }
+
     /** รับเส้นจากคนวาด → ตรวจแล้วส่งต่อให้ทุกคนในห้อง (ยกเว้นคนส่ง) */
     function relayStrokes(socket, room, data) {
         const ops = engine.applyStrokes(room, socket.playerId, data, Date.now());
@@ -234,6 +239,7 @@ module.exports = function createDrawGuessRuntime(getDeps) {
         chooseWord,
         guess,
         skipTurn,
+        finishDrawing,
         relayStrokes,
         forceResolve,
         gameEndNotification,

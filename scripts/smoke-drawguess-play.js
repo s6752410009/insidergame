@@ -2,6 +2,7 @@
  * เล่นวาดแล้วทายจนจบผ่าน socket จริง (เซิร์ฟเวอร์ของตัวเอง, data ชั่วคราว)
  *
  * เกม 1 (3 คน = น้อยสุด): เลือกคำ · วาด · ทายผิด/เกือบ/ถูก · คุยหลังทายถูก · คำสั่งผิดกติกาถูกปัด
+ *        · คนวาดกด "วาดเสร็จแล้ว" → ตัดเวลาเหลือช่วงทาย ประกาศทุกคน (คนวาดเท่านั้น · ครั้งเดียว)
  *        · หลุดแล้วต่อใหม่ได้ state + ภาพเดิม · แชทห้องถูกปิดระหว่างเกม · จบ → สถิติครั้งเดียว → กลับห้องรอ
  * เกม 2 (12 คน = มากสุด): คนออกกลางเกม · หัวห้องออก (สิทธิ์ย้าย เกมไม่ค้าง) · คนวาดหลุด → ข้ามตา
  *        · คนที่ออกกลับเข้ามา = ทายได้ตาถัดไป · เล่นจนจบ
@@ -27,7 +28,8 @@ const TIMERS = {
     DRAWGUESS_CHOOSE_MS: '1500',
     DRAWGUESS_DRAW_MS: '3200',
     DRAWGUESS_REVEAL_MS: '600',
-    DRAWGUESS_GRACE_MS: '2200'
+    DRAWGUESS_GRACE_MS: '2200',
+    DRAWGUESS_DONE_MS: '1200'
 };
 
 function ack(s, e, p) {
@@ -331,6 +333,40 @@ async function playTurn(active, opts = {}) {
         assert(last(d3).lastTurn.reason === 'timeout' && !last(d3).lastTurn.deltas.length, 'หมดเวลา ไม่มีใครได้แต้ม');
         console.log('5. ไม่เลือกคำ → สุ่มให้ · ไม่มีใครทาย → หมดเวลาจบตา ✓');
 
+        // ---- ตาสี่: คนวาดกด "วาดเสร็จแล้ว"
+        {
+            const d = await waitFor(() => { const x = drawerOf(g1); return x && last(x).phase === 'choose' ? x : null; }, 5000, 'ตาสี่');
+            const T = last(d).turnNo;
+            const others = g1.filter(p => p !== d);
+            r = await ack(d.socket, 'drawguess_done', { turnNo: T });
+            assert(r?.success === false && /ไม่ใช่ช่วงวาด/.test(r.error), 'ยังไม่เลือกคำ กดเสร็จไม่ได้: ' + JSON.stringify(r));
+            await ack(d.socket, 'drawguess_choose', { turnNo: T, index: 0 });
+            await waitFor(() => last(d).phase === 'draw' && last(d).self.canFinish, 2000, 'คนวาดเห็นปุ่มวาดเสร็จ');
+            assert(others.every(p => !last(p).self.canFinish), 'คนทายไม่มีปุ่มวาดเสร็จ');
+            r = await ack(d.socket, 'drawguess_done', { turnNo: T });
+            assert(r?.success === false && /ยังไม่ได้วาด/.test(r.error), 'ยังไม่ได้วาด กดเสร็จไม่ได้');
+            await ack(d.socket, 'drawguess_stroke', { turnNo: T, ops: [{ t: 's', id: 400, c: 1, w: 1, p: [0.3, 0.3, 0.6, 0.6] }] });
+            r = await ack(others[0].socket, 'drawguess_done', { turnNo: T });
+            assert(r?.success === false, 'คนทายกดวาดเสร็จแทนไม่ได้');
+            r = await ack(d.socket, 'drawguess_done', { turnNo: T - 1 });
+            assert(r?.success === false, 'ตาเก่ากดไม่ได้');
+            const before = last(d).phaseEndsAt;
+            r = await ack(d.socket, 'drawguess_done', { turnNo: T });
+            assert(r?.success, 'คนวาดกดวาดเสร็จได้: ' + JSON.stringify(r));
+            await waitFor(() => g1.every(p => last(p).drawDone && last(p).turnNo === T), 2000, 'ทุกคนรู้ว่าวาดเสร็จ');
+            const v = last(others[1]);
+            assert(v.phaseEndsAt - v.drawDoneAt <= 1200 && v.phaseEndsAt < before, 'เวลาถูกตัดเหลือช่วงทาย');
+            assert(v.feed.some(f => f.kind === 'done' && /วาดเสร็จแล้ว! เหลือ \d+ วินาที/.test(f.text)), 'ประกาศในแถบข้อความทุกคน');
+            r = await ack(d.socket, 'drawguess_done', { turnNo: T });
+            assert(r?.success === false, 'กดซ้ำไม่ได้');
+            await waitFor(() => last(d).phase === 'reveal' && last(d).turnNo === T, 3000, 'หมดช่วงทาย → เฉลย');
+            assert(last(d).lastTurn.reason === 'timeout', 'จบด้วยเวลา (ช่วงทายหมด)');
+            // เฉลยสั้นมากในเทสต์ (600ms) — หา state ช่วงเฉลยของตานี้ที่ได้รับมา ไม่ใช่แค่ล่าสุด
+            const rv = await waitFor(() => others[0].states.find(x => x.phase === 'reveal' && x.turnNo === T), 3000, 'คนทายได้ state เฉลย');
+            assert(rv.nextDrawerId && rv.nextDrawerName, 'เฉลยบอกคนวาดตาถัดไป');
+        }
+        console.log('5b. "วาดเสร็จแล้ว": คนวาดเท่านั้น · ต้องวาดก่อน · ครั้งเดียว · ตัดเวลา + ประกาศทุกคน ✓');
+
         // ตาที่เหลือ (2 รอบ × 3 คน = 6 ตา)
         let guard = 0;
         while (last(g1[0]).phase !== 'finished' && guard++ < 8) {
@@ -344,6 +380,7 @@ async function playTurn(active, opts = {}) {
         const top = f1.standings[0].score;
         f1.winnerIds.forEach(id => assert(f1.standings.find(s => s.playerId === id).score === top, 'ผู้ชนะแต้มสูงสุด'));
         assert(f1.countsForStats, 'เล่นครบนับสถิติ');
+        assert(f1.standings.every(s => s.drew === 2 && s.chances >= 1 && s.hits <= s.chances), 'สรุปรายคน (ทายถูก/วาด) มาพร้อมผล');
         const turns1 = (ROOM_WORDS.get(room1) || new Map()).size;
         assert(turns1 === 6, 'ทุกคนได้วาดครบ 2 รอบ (6 ตา) ได้ ' + turns1);
         const words1 = Array.from(ROOM_WORDS.get(room1).values()).flatMap(e => e.choices);
