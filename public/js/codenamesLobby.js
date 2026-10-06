@@ -8,6 +8,7 @@
     var GUESS_OPTIONS = [[0, 'ปิด'], [60, '60 วิ'], [90, '90 วิ'], [120, '120 วิ']];
     var ctx = { socket: null, playerId: null, isAdmin: function() { return false; } };
     var busy = false;
+    var latestPayload = null;
 
     function esc(text) {
         return String(text == null ? '' : text).replace(/[&<>"']/g, function(ch) {
@@ -49,6 +50,7 @@
             '.cnl-timer-label{font-size:0.82rem;color:var(--cnl-muted);min-width:64px}',
             '.cnl-seg{display:flex;gap:4px;flex:1 1 auto}',
             '.cnl-seg .cnl-btn{flex:1 1 0;min-width:0;padding:6px 4px;font-size:0.8rem}',
+            '.cnl-note{margin:0;font-size:0.78rem;color:var(--cnl-muted)}',
             '.cnl-status{margin:10px 0 0;padding:8px 10px;border-radius:10px;font-size:0.86rem;font-weight:600;line-height:1.4}',
             '.cnl-status.is-bad{background:oklch(0.3 0.08 60 / 0.45);color:#fde68a}',
             '.cnl-status.is-ok{background:oklch(0.32 0.08 150 / 0.45);color:#bbf7d0}',
@@ -76,7 +78,8 @@
         var unassigned = online.filter(function(m) { return !m.role; });
         if (unassigned.length) {
             return 'ยังไม่ได้เลือกทีม: ' + unassigned.slice(0, 3).map(function(m) { return m.name; }).join(', ') +
-                (unassigned.length > 3 ? ' และอีก ' + (unassigned.length - 3) + ' คน' : '') + ' — เลือกทีมเอง หรือกด "สุ่มทีม"';
+                (unassigned.length > 3 ? ' และอีก ' + (unassigned.length - 3) + ' คน' : '') +
+                (ctx.isAdmin() ? ' — เลือกทีมเอง หรือกด "สุ่มทีม"' : ' — เลือกทีมเอง หรือรอหัวหน้าห้องกด "สุ่มทีม"');
         }
         var players = online.filter(function(m) { return m.team; });
         if (players.length > MAX_PLAYERS) return 'เล่นได้สูงสุด ' + MAX_PLAYERS + ' คน ให้บางคนเป็นผู้ชม';
@@ -113,7 +116,7 @@
             '<div class="cnl-label">ลูกทีม</div>' +
             '<div class="cnl-ops">' + (ops.length ? ops.map(function(m) { return nameRow(m); }).join('') : '<div class="cnl-empty">ยังไม่มี</div>') + '</div>' +
             '<div class="cnl-actions">' +
-            '<button type="button" class="cnl-btn' + (amMaster ? ' is-on' : '') + '" data-cn-pick="' + team + '" data-cn-role="spymaster"' + (masterTaken || amMaster ? ' disabled' : '') + '>' + (amMaster ? '✓ คุณเป็นหัวหน้า' : 'เป็นหัวหน้า') + '</button>' +
+            '<button type="button" class="cnl-btn' + (amMaster ? ' is-on' : '') + '" data-cn-pick="' + team + '" data-cn-role="spymaster"' + (masterTaken || amMaster ? ' disabled' : '') + '>' + (amMaster ? '✓ คุณเป็นหัวหน้า' : (masterTaken ? 'มีหัวหน้าแล้ว' : 'เป็นหัวหน้า')) + '</button>' +
             '<button type="button" class="cnl-btn' + (amOp ? ' is-on' : '') + '" data-cn-pick="' + team + '" data-cn-role="operative"' + (amOp ? ' disabled' : '') + '>' + (amOp ? '✓ อยู่ทีมนี้' : 'เข้า' + TEAM[team]) + '</button>' +
             '</div></div>';
     }
@@ -126,6 +129,7 @@
     }
 
     function html(payload) {
+        latestPayload = payload;
         injectCss();
         var list = members(payload);
         var me = list.filter(function(m) { return m.playerId === ctx.playerId; })[0] || null;
@@ -152,6 +156,7 @@
             '<div class="cnl-timers">',
             '<div class="cnl-timer"><span class="cnl-timer-label">เวลาใบ้</span>' + segHtml('codenamesClueSeconds', CLUE_OPTIONS, clue, admin) + '</div>',
             '<div class="cnl-timer"><span class="cnl-timer-label">เวลาทาย</span>' + segHtml('codenamesGuessSeconds', GUESS_OPTIONS, guess, admin) + '</div>',
+            admin ? '' : '<p class="cnl-note">หัวหน้าห้องเป็นคนตั้งเวลา</p>',
             '</div>',
             '<p class="cnl-status ' + (reason ? 'is-bad' : 'is-ok') + '" role="status">' + esc(reason || 'ทีมพร้อมแล้ว — หัวหน้าห้องกดเริ่มได้เลย') + '</p>',
             '</div>'
@@ -185,6 +190,13 @@
                 return;
             }
             if (event.target.closest('[data-cn-shuffle]')) {
+                // มีคนเลือกทีมไว้แล้ว = สุ่มใหม่จะล้างที่เลือก → ถามก่อน (กันกดพลาด)
+                var picked = members(latestPayload).filter(function(m) { return m.team; }).length;
+                if (picked && global.Swal) {
+                    global.Swal.fire({ title: 'สุ่มทีมใหม่?', text: 'ทีมและหัวหน้าที่เลือกไว้ ' + picked + ' คนจะถูกสุ่มใหม่ (ผู้ชมยังเป็นผู้ชม)', showCancelButton: true, confirmButtonText: '🎲 สุ่มเลย', cancelButtonText: 'ยกเลิก', background: '#1e1e1e', color: '#fff', confirmButtonColor: '#d9443c' })
+                        .then(function(r) { if (r.isConfirmed) emit('codenames_shuffleTeams', {}); });
+                    return;
+                }
                 emit('codenames_shuffleTeams', {});
                 return;
             }

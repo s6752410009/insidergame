@@ -123,6 +123,11 @@ module.exports = function createCodenamesRuntime(getDeps) {
     function recover(room) {
         if (!isRoom(room)) return;
         if (room.gameState && room.gameState.phase === 'finished') {
+            if (room.gameState.statsRecordedAt) {
+                // รีสตาร์ตตอนอยู่หน้าจบ: ตัวจับเวลากลับห้องหายไปกับ process เดิม → ตั้งใหม่ ไม่งั้นค้างหน้าจบ
+                deps().scheduleFinishedGameReturnToLobby(room);
+                return;
+            }
             finalizeIfNeeded(room);
             return;
         }
@@ -150,6 +155,12 @@ module.exports = function createCodenamesRuntime(getDeps) {
         if (!isRoom(room)) throw new Error('ห้องนี้ไม่ใช่สายลับคำใบ้');
         if (room.admin !== playerId) throw new Error('เฉพาะหัวหน้าห้องที่สุ่มทีมได้');
         return engine.shuffleTeams(room, Math.random);
+    }
+
+    // หัวหน้าห้องข้ามเทิร์นที่ค้าง (engine ตรวจว่าค้างนานพอ)
+    function hostSkipTurn(room, playerId, context) {
+        if (!isRoom(room)) throw new Error('ห้องนี้ไม่ใช่สายลับคำใบ้');
+        return engine.hostSkipTurn(room, playerId, room.admin === playerId, context, Date.now());
     }
 
     function startBlockReason(room) {
@@ -192,6 +203,7 @@ module.exports = function createCodenamesRuntime(getDeps) {
         startGame,
         pickTeam,
         shuffleTeams,
+        hostSkipTurn,
         startBlockReason,
         gameEndNotification
     };

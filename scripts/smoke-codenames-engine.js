@@ -62,6 +62,12 @@ const S = room => room.gameState;
 const ctx = room => ({ step: S(room).step });
 const spymaster = (room, team) => S(room).roster.find(p => p.team === team && p.role === 'spymaster' && !p.left);
 const operatives = (room, team) => S(room).roster.filter(p => p.team === team && p.role === 'operative' && !p.left);
+// เปิดการ์ดแบบที่ UI ทำ: เสนอใบนั้นก่อน (ถ้ายังไม่ได้เสนอ) แล้วค่อยกดเปิด — เสนอแล้วอาจครบเสียงเปิดเองไปแล้ว
+function reveal(room, opId, index, now) {
+    const state = S(room);
+    if ((state.votes || {})[opId] !== index) engine.proposeCard(room, opId, index, ctx(room), now);
+    if (!state.board[index].revealed) engine.confirmReveal(room, opId, index, ctx(room), now);
+}
 const setOnline = (room, id, online) => { room.players.find(p => p.playerId === id).socketId = online ? 's-' + id : null; };
 
 // ---------- 1. คลังคำ ----------
@@ -221,7 +227,7 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     engine.submitClue(room, sm.playerId, { word: 'ทดสอบ', number: 9 }, ctx(room), 2000);
     const neutralIndex = state.board.findIndex(c => c.color === 'neutral');
     const op = operatives(room, team)[0];
-    engine.confirmReveal(room, op.playerId, neutralIndex, ctx(room), 2100);
+    reveal(room, op.playerId, neutralIndex, 2100);
     const opView = engine.buildClientState(room, 'p6');
     assert(opView.board[neutralIndex].color === 'neutral', 'การ์ดที่เปิดแล้วทุกคนเห็นสี');
     assert(opView.board.filter(c => c.color).length === 1, 'ผู้ชมเห็นแค่สีที่เปิดแล้ว');
@@ -276,7 +282,7 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     engine.proposeCard(room, opB.playerId, own[0], ctx(room), 1600);
     assert(state.board[own[0]].revealed && state.guessesMade === 1 && state.phase === 'guess', 'เสียงข้างมากเปิด ถูกสีทาย');
     throws(() => engine.confirmReveal(room, opA.playerId, own[0], ctx(room)), /เปิดไปแล้ว/, 'เปิดซ้ำไม่ได้');
-    engine.confirmReveal(room, opB.playerId, own[1], ctx(room), 1700);
+    reveal(room, opB.playerId, own[1], 1700);
     assert(state.currentTeam === other && state.phase === 'clue', 'ครบ number+1 = จบเทิร์น');
     assert(state.clueLog.length === 1 && state.clueLog[0].picks.length === 2 && state.clueLog[0].endedBy === 'limit', 'บันทึกคำใบ้เก็บการ์ดที่เปิด');
 
@@ -284,21 +290,21 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     engine.submitClue(room, otherSm.playerId, { word: 'อีกคำ', number: 'inf' }, ctx(room), 1800);
     assert(state.clue.maxGuesses === null, '∞ = ไม่จำกัด');
     const wrong = state.board.findIndex(c => c.color === team && !c.revealed);
-    engine.confirmReveal(room, otherOp.playerId, wrong, ctx(room), 1900);
+    reveal(room, otherOp.playerId, wrong, 1900);
     assert(state.currentTeam === team && state.phase === 'clue', 'เปิดสีอีกทีม = จบเทิร์น');
 
     // ใบ้ 0 = ไม่จำกัด
     engine.submitClue(room, sm.playerId, { word: 'ศูนย์', number: 0 }, ctx(room), 2000);
     assert(state.clue.maxGuesses === null, 'ใบ้ 0 = ไม่จำกัดจำนวน');
     const own2 = state.board.findIndex(c => c.color === team && !c.revealed);
-    engine.confirmReveal(room, opA.playerId, own2, ctx(room), 2100);
+    reveal(room, opA.playerId, own2, 2100);
     engine.endTurn(room, opA.playerId, ctx(room), 2200);
     assert(state.currentTeam === other, 'กดจบเทิร์นหลังเปิด 1 ใบได้');
 
     // มือสังหาร = แพ้ทันที
     engine.submitClue(room, otherSm.playerId, { word: 'เสี่ยง', number: 3 }, ctx(room), 2300);
     const assassin = state.board.findIndex(c => c.color === 'assassin');
-    engine.confirmReveal(room, otherOp.playerId, assassin, ctx(room), 2400);
+    reveal(room, otherOp.playerId, assassin, 2400);
     assert(state.phase === 'finished' && state.winner === team && state.winReason === 'assassin', 'เปิดมือสังหาร = อีกทีมชนะ');
     throws(() => engine.submitClue(room, sm.playerId, { word: 'จบ', number: 1 }, ctx(room)), /จบไปแล้ว/, 'จบแล้วเล่นต่อไม่ได้');
     console.log('6. ตาใคร/บทไหน/โหวต/จำนวนครั้ง/ผิดสี/มือสังหาร ✓');
@@ -312,11 +318,15 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     const team = S(solo).currentTeam;
     engine.submitClue(solo, spymaster(solo, team).playerId, { word: 'เดี่ยว', number: 2 }, ctx(solo));
     const op = operatives(solo, team)[0];
+    // เปิดใบที่ยังไม่ได้เลือกไม่ได้ (กดค้าง/กดเปิดเลยใบอื่น = ไม่มีผล)
+    throws(() => engine.confirmReveal(solo, op.playerId, 3, ctx(solo)), /เลือกการ์ดใบนี้ก่อน/, 'เปิดใบที่ยังไม่ได้เสนอไม่ได้');
+    assert(!S(solo).board[3].revealed, 'ยังไม่เปิด');
     engine.proposeCard(solo, op.playerId, 3, ctx(solo));
     assert(!S(solo).board[3].revealed, 'ลูกทีมคนเดียว: แตะแล้วยังไม่เปิด');
+    throws(() => engine.confirmReveal(solo, op.playerId, 4, ctx(solo)), /เลือกการ์ดใบนี้ก่อน/, 'เลือกใบหนึ่ง แต่สั่งเปิดอีกใบไม่ได้');
     assert(engine.buildClientState(solo, op.playerId).board[3].mine, 'เห็นการ์ดที่ตัวเองเสนอ');
     assert(engine.buildClientState(solo, op.playerId).votesNeeded === null, 'คนเดียว = ต้องกดเปิดเลย');
-    engine.confirmReveal(solo, op.playerId, 3, ctx(solo));
+    reveal(solo, op.playerId, 3);
     assert(S(solo).board[3].revealed, 'กดเปิดเลยแล้วเปิด');
 
     const trio = makeRoom(8);
@@ -514,10 +524,10 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
                 if (own.length) pick = own[Math.floor(rng() * own.length)];
             }
             const color = state.board[pick].color;
-            if (r2 < 0.5) engine.confirmReveal(room, op.playerId, pick, ctx(room), now);
+            if (r2 < 0.5) reveal(room, op.playerId, pick, now);
             else {
                 ops.forEach(o => { try { engine.proposeCard(room, o.playerId, pick, ctx(room), now); } catch (e) { /* อาจเปิดไปแล้ว */ } });
-                if (!state.board[pick].revealed) engine.confirmReveal(room, op.playerId, pick, ctx(room), now);
+                if (!state.board[pick].revealed) reveal(room, op.playerId, pick, now);
             }
             assert(state.board[pick].revealed, 'การ์ดต้องเปิดแล้ว');
             // invariants หลังเปิด
@@ -551,6 +561,42 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     }
     assert(reasons.words > 0 && reasons.assassin > 0, 'สุ่มแล้วต้องเจอทั้งชนะด้วยคำและมือสังหาร: ' + JSON.stringify(reasons));
     console.log(`9. สุ่มเล่น ${games} เกม (4–12 คน) จบทุกเกม ✓ ${JSON.stringify(reasons)}`);
+})();
+
+// ---------- 10. UX: หัวห้องข้ามเทิร์นที่ค้าง · ข้อความคำใบ้ยาว ----------
+(function hostSkip() {
+    const room = makeRoom(4, { clue: 0, guess: 0 });
+    setTeams(room, { red: [0, 1], blue: [2, 3] });
+    engine.startGame(room, mulberry32(77), 1000);
+    const state = S(room);
+    const wait = engine.HOST_SKIP_AFTER_MS;
+    assert(state.phaseStartedAt === 1000 && state.phaseEndsAt === null, 'ปิดนาฬิกา: จำเวลาเริ่มเฟสไว้');
+    const view = engine.buildClientState(room, 'p1', 1000);
+    assert(view.phaseStartedAt === 1000 && view.hostSkipAfterMs === wait, 'client รู้ว่าข้ามได้เมื่อไร');
+    const team = state.currentTeam;
+    throws(() => engine.hostSkipTurn(room, 'p1', false, ctx(room), 1000 + wait + 1), /เฉพาะหัวหน้าห้อง/, 'ไม่ใช่หัวห้องข้ามไม่ได้');
+    throws(() => engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + wait - 5000), /อีก 5 วิ/, 'ยังไม่ค้างนานพอ บอกว่าอีกกี่วิ');
+    throws(() => engine.hostSkipTurn(room, 'p0', true, { step: state.step - 1 }, 1000 + wait), /จังหวะ/, 'step เก่า');
+    engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + wait);
+    assert(state.currentTeam === engine.otherTeam(team) && state.phase === 'clue' && state.turnNumber === 2, 'ข้ามช่วงใบ้ไปอีกทีม');
+    assert(state.phaseStartedAt === 1000 + wait, 'เฟสใหม่เริ่มนับใหม่');
+    assert(/ข้ามเทิร์น/.test(state.history[state.history.length - 1].text), 'บันทึกว่าใครข้าม');
+    // ช่วงทาย: ข้ามได้หลังค้างนาน · clueLog บอกว่าจบเพราะหัวห้องข้าม
+    const t2 = state.currentTeam;
+    const sm = spymaster(room, t2);
+    engine.submitClue(room, sm.playerId, { word: 'ลองดู', number: 2 }, ctx(room), 1000 + wait + 10);
+    assert(state.phaseStartedAt === 1000 + wait + 10, 'เริ่มช่วงทายนับใหม่');
+    throws(() => engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + wait + 20), /ค้างนานเกิน/, 'เพิ่งใบ้ ข้ามไม่ได้');
+    engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + 2 * wait + 10);
+    assert(state.currentTeam === team && state.clueLog[state.clueLog.length - 1].endedBy === 'host-skip', 'ข้ามช่วงทาย บันทึกเหตุ');
+    // state เก่า (ก่อนมี phaseStartedAt) ข้ามได้ทันที
+    state.phaseStartedAt = null;
+    assert(engine.hostSkipWaitMs(state, 5) === 0, 'state เก่าไม่ติดรอ');
+    // จบเกมแล้วข้ามไม่ได้
+    state.status = engine.FINISHED_STATUS;
+    throws(() => engine.hostSkipTurn(room, 'p0', true, ctx(room), 9e9), /จบไปแล้ว/, 'จบแล้วข้ามไม่ได้');
+    assert(/ไม่เกิน 24/.test(engine.validateClueWord({ board: [] }, 'ก'.repeat(25))), 'คำใบ้ยาวบอกขีดจำกัด');
+    console.log('10. หัวห้องข้ามเทิร์นที่ค้าง (หลัง ' + wait / 1000 + ' วิ) · ข้อความคำใบ้ยาว ✓');
 })();
 
 console.log(`\n✅ smoke:codenames ผ่าน ${checks} เช็ก`);
