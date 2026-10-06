@@ -707,4 +707,27 @@ function leave(room, playerId) {
     console.log(`9. สุ่มเล่น ${GAMES} เกม invariant ผ่านทั้งหมด · ผลจบ ${JSON.stringify(endings)} ✓`);
 })();
 
+// ux: คนในห้องที่หลุดตอนเริ่ม ต้องอยู่ใน gameState.players (ไม่งั้น /game ↔ /room เด้งวน) แต่ไม่ได้นั่งโต๊ะ
+(function lateWatcher() {
+    const room = makeRoom(6);
+    room.players[5].socketId = null;
+    engine.startGame(room);
+    const st = S(room);
+    assert(st.seats.length === 5 && !st.seats.some(seat => seat.playerId === 'p6'), 'คนที่หลุดตอนเริ่มต้องไม่ได้นั่งโต๊ะ');
+    assert(st.players.some(player => player.playerId === 'p6'), 'คนที่หลุดตอนเริ่มต้องยังเปิดหน้าเกมได้ (อยู่ใน gameState.players)');
+    const view = engine.buildClientState(room, 'p6');
+    assert(view.self === null && view.players.length === 5 && view.players.every(p => p.role === null), 'คนดูไม่มีบทและไม่เห็นบทใคร');
+    skipNight(room);
+    // ช่วงลอบสังหารไม่มีหัวหน้า (มงกุฎไม่ค้าง)
+    const r2 = start(5);
+    skipNight(r2);
+    for (let q = 0; q < 3; q += 1) {
+        const goods = seatsBy(r2, seat => seat.team === 'good').map(seat => seat.playerId);
+        runQuest(r2, () => 'success', goods.slice(0, S(r2).quests[S(r2).questIndex].size));
+    }
+    assert(S(r2).phase === 'assassin', 'สำเร็จ 3 ต้องเข้าลอบสังหาร');
+    assert(engine.buildClientState(r2, 'p1').players.every(p => !p.isLeader), 'ช่วงลอบสังหารไม่มีหัวหน้า');
+    console.log('10. คนหลุดตอนเริ่มเปิดหน้าเกมได้แบบคนดู · ช่วงลอบสังหารไม่มีมงกุฎค้าง ✓');
+})();
+
 console.log(`\n✅ avalon engine: ผ่าน ${checks} เช็ก`);

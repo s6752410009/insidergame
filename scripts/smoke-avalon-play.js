@@ -177,6 +177,12 @@ async function playRound(table, { teamPicker, voter = () => 'approve', carder = 
         await act(p, 'avalon_quest', { card });
     }
     await waitFor(() => view(table).step !== questStep, 'ลงการ์ดครบต้องสรุปภารกิจ');
+    // ux: ทีมของภารกิจที่จบแล้วเป็นข้อมูลสาธารณะ ทุกคนย้อนดูได้ (สรุปภารกิจ)
+    await settle(table);
+    const doneQuest = view(table).quests[after.questIndex];
+    assert(doneQuest.result && JSON.stringify(doneQuest.teamIds) === JSON.stringify(after.proposal.teamIds), 'สรุปภารกิจต้องบอกทีมที่ออก');
+    assert(doneQuest.leaderId === after.proposal.leaderId, 'สรุปภารกิจต้องบอกหัวหน้าที่เสนอ');
+    assert(view(table).quests.filter(q => !q.result).every(q => q.teamIds.length === 0 && q.leaderId === null), 'ภารกิจที่ยังไม่จบต้องไม่มีทีม');
     return view(table);
 }
 
