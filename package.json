@@ -61,6 +61,7 @@
     "smoke:solo:wordle:api": "node scripts/api-solo-wordle.js",
     "smoke:solo:wordle:browser": "node scripts/browser-solo-wordle.js",
     "smoke:insider:reconnect": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-insider-reconnect.js",
+    "smoke:insider:ux": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-insider-ux.js",
     "smoke:playthrough": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-playthrough.js",
     "smoke:crash": "node scripts/smoke-crash-guard.js",
     "smoke:isolation": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-error-isolation.js",

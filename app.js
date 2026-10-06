@@ -106,7 +106,8 @@ const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
 const finishedReturnTimeouts = new Map();
 const INSIDER_VOTE2_MS = 15000;
-const INSIDER_RETURN_MS = 5000;
+// หน้าผลมีเฉลยบท + คำลับ + เหตุผลแพ้ชนะ — 5 วิอ่านไม่ทัน (มีปุ่มกลับห้องเลย/เล่นอีกรอบให้กดก่อนได้)
+const INSIDER_RETURN_MS = 15000;
 const FINISHED_RETURN_MS = 10000;
 
 // เก็บ timeout สำหรับ disconnect notification (Key: playerId, Value: timeout)
@@ -5213,7 +5214,15 @@ app.get('/game/:roomId', async function(req, res) {
         },
         status: room.gameState.status,
         resultVote1: room.gameState.resultVote1,
-        resultVote2: room.gameState.resultVote2
+        resultVote2: room.gameState.resultVote2,
+        // คำลับสำหรับปุ่ม "ดูบทของฉัน" — เฉพาะผู้ดำเนินเกม/จอมบงการ และหลังเปิดเผยคำแล้วเท่านั้น
+        secretWordJson: safeJsonForScript(
+            gameStatePlayer
+            && (gameStatePlayer.role === gameMasterRole || gameStatePlayer.role === traitorRole)
+            && ['word', 'in_progress', 'vote2', 'end'].includes(room.gameState.status)
+                ? (room.gameState.word || null)
+                : null
+        )
     });
 });
 
@@ -9690,11 +9699,18 @@ io.sockets.on('connection', function(socket) {
         const room = roomManager.getRoom(roomId);
         if (!room) return;
 
-        // ต้องเป็น admin เท่านั้นที่จะกดหยุดเกมได้
-        if (!isAdminSocket(room, socket)) return;
+        // ผู้ดำเนินเกมคือคนที่รู้ว่ามีคนทายถูก — กดเองได้ (หัวห้องกดแทนได้ด้วย)
+        const caller = room.gameState.players.find(p => p.playerId === socket.playerId);
+        const isMaster = !!caller && caller.role === gameMasterRole;
+        if (!isMaster && !isAdminSocket(room, socket)) {
+            io.to(socket.id).emit('notAuthorized', { message: 'เฉพาะผู้ดำเนินเกมหรือหัวห้องที่กดยืนยันว่าทายถูกได้' });
+            return;
+        }
         // เฉพาะช่วงคุยเท่านั้น — กันเปิดโหวตก่อนเปิดคำ หรือ replay หลังจบเกม
         if (room.gameState.status !== 'in_progress') return;
 
+        const callerName = caller ? caller.name : 'หัวห้อง';
+        sendChatMessageToRoom(io, roomId, 'System', `✅ ${callerName} ยืนยันว่ามีคนทายคำลับถูก — โหวตหาจอมบงการ!`, '#2ecc71');
         // ไปโหวต 2 เลย ไม่ต้องผ่านโหวต 1 (ใช้ helper เดียวกับ timeout)
         advanceInsiderToVote2(io, room);
     });
@@ -9877,7 +9893,8 @@ io.sockets.on('connection', function(socket) {
         }, 1000);
 
         roomCountdowns.set(roomId, countdownInterval);
-        room.gameState.countdown = countdownInterval;
+        // ห้ามเก็บ Timeout ไว้ใน gameState — persist ห้องเป็น JSON แล้วพัง (circular) ทั้งช่วงทายคำ
+        // ตัว interval อยู่ใน roomCountdowns แล้ว เวลาหมดใช้ countdownEndsAt
 
         io.to(roomId).emit('startGame', {});
         console.log('[startGame] Game started in room:', roomId);
@@ -9965,11 +9982,19 @@ io.sockets.on('connection', function(socket) {
             return; // ไม่ใช่ผู้ดำเนินเกม
         }
 
+        if (!data || !['yes', 'no', 'maybe'].includes(data.reactionType)) return;
+        const targetMessageId = String(data.targetMessageId || '');
+        // จำคำตอบไว้ในประวัติแชท — คนที่ refresh/ต่อเน็ตใหม่ยังเห็นว่าถามอะไรไปแล้ว ได้คำตอบอะไร
+        const historyEntry = Array.isArray(room.chatHistory)
+            ? room.chatHistory.find(entry => entry && entry.messageId === targetMessageId)
+            : null;
+        if (historyEntry) historyEntry.gmReaction = data.reactionType;
+
         // ส่ง reaction ไปให้ทุกคนในห้อง
         io.to(roomId).emit('gmReactionReceived', {
-            targetMessageId: data.targetMessageId,
+            targetMessageId: targetMessageId,
             reactionType: data.reactionType, // 'yes', 'no', 'maybe'
-            gmName: data.playerName
+            gmName: gameStatePlayer.name
         });
     });
 
