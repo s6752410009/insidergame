@@ -739,7 +739,7 @@ $(function() {
     });
   });
   $(document).on('click', '#lrBackLobbyBtn', function() {
-    socket.emit('returnFinishedToLobby', { roomId: roomId });
+    socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } });
   });
 
   $('#lrHowToOpen').on('click', function() {

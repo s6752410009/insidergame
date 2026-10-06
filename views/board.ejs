@@ -2241,7 +2241,17 @@ $(function() {
     var insiderPhase = '<%= status || "" %>';
     var rolePanelTimer = null;
 
+    // ผี (รอบไม่มีจอมบงการ) ไม่มีสิทธิ์โหวตเหมือนผู้ดำเนินเกม — เดิม server ทิ้งเงียบ จอขึ้นว่าส่งแล้ว
+    var myIsGhost = <%= player.isGhost ? 'true' : 'false' %>;
     function isGmNow() { return myRole === GM_ROLE; }
+    function cannotVote() { return isGmNow() || myIsGhost; }
+    function renderVoteEligibility() {
+        $('#vote2GmNote').prop('hidden', !cannotVote()).html(myIsGhost && !isGmNow()
+            ? 'รอบนี้คุณเป็น <strong>ผี 👻</strong> — ไม่มีสิทธิ์โหวต ดูคะแนนสดด้านล่างได้เลย'
+            : 'คุณเป็น <strong>ผู้ดำเนินเกม</strong> — รอบนี้ไม่ต้องโหวต ดูคะแนนสดด้านล่างได้เลย');
+        var $sub = $('#vote2Subtitle').contents().first();
+        if ($sub.length) $sub[0].textContent = cannotVote() ? 'รอทุกคนโหวต · เหลือ ' : 'แตะการ์ด แล้วกดยืนยัน · เหลือ ';
+    }
     function roleKey(role) {
         if (role === GM_ROLE) return 'gm';
         if (role === TRAITOR_ROLE) return 'traitor';
@@ -2991,7 +3001,7 @@ $(function() {
         hasSubmittedVote2 = isLocked;
         $('#vote2').toggleClass('vote2-locked', isLocked);
         // ผู้ดำเนินเกมไม่มีสิทธิ์โหวต (server ทิ้งเงียบ) — ล็อกการ์ดไว้ ไม่ให้กดแล้วขึ้นว่า "ส่งโหวตแล้ว" หลอกๆ
-        $('#vote2 .btn-vote2-player').prop('disabled', isLocked || isGmNow());
+        $('#vote2 .btn-vote2-player').prop('disabled', isLocked || cannotVote());
         updateVoteSelection();
     }
 
@@ -3067,7 +3077,7 @@ $(function() {
             : '<span class="vote2-selected-pill">ยังไม่ได้เลือกใคร</span>');
         
         // ทั้งโหมด 1 และ 2 จอมบงการ: แตะเลือก → กดยืนยัน (เดิมโหมด 1 คนแตะทีเดียวส่งเลย แตะพลาดแก้ไม่ได้)
-        if (isGmNow()) {
+        if (cannotVote()) {
             $('#vote2SelectedInfo').hide();
             return;
         }
@@ -3085,7 +3095,7 @@ $(function() {
     }
 
     function submitVote2Selection() {
-        if (hasSubmittedVote2 || isGmNow() || selectedVotes.length !== currentNumTraitors) return false;
+        if (hasSubmittedVote2 || cannotVote() || selectedVotes.length !== currentNumTraitors) return false;
         if (currentNumTraitors === 2) {
             socket.emit('vote2', {player: '<%= player.name %>', votes: selectedVotes.map(choice => choice.value)});
         } else {
@@ -3558,7 +3568,7 @@ $(function() {
     // Vote2 - รองรับทั้งโหมด 1 และ 2 จอมบงการ: แตะเลือก/เปลี่ยนใจได้ แล้วกดยืนยัน
     $(document).on('click', '.btn-vote2-player', function(e) {
         e.preventDefault();
-        if (hasSubmittedVote2 || isGmNow()) return;
+        if (hasSubmittedVote2 || cannotVote()) return;
         const $btn = $(this);
         const votedPlayer = decodeURIComponent($btn.attr('data-player-name') || '');
         const votedValue = decodeURIComponent($btn.attr('data-player-vote') || '');
@@ -3801,6 +3811,7 @@ $(function() {
         currentNumTraitors = data.numTraitors || 1;
         if (data.role) {
             myRole = data.role;
+            myIsGhost = !!data.isGhost;
             mySecretWord = null;
             insiderPhase = 'role';
             setRolePanelOpen(false);
@@ -3927,8 +3938,7 @@ $(function() {
         }
         insiderPhase = 'vote2';
         document.body.classList.add('ins-voting');
-        $('#vote2GmNote').prop('hidden', !isGmNow());
-        $('#vote2Subtitle').contents().first()[0].textContent = isGmNow() ? 'รอทุกคนโหวต · เหลือ ' : 'แตะการ์ด แล้วกดยืนยัน · เหลือ ';
+        renderVoteEligibility();
         
         updateVoteSelection();
         renderVote2Progress(data.progress);
@@ -3942,6 +3952,15 @@ $(function() {
         } else {
             showNotification('🎯 หยุดเวลา! โหวตหาจอมบงการ', 'warning', 3000);
         }
+    });
+
+    // server ปฏิเสธโหวต — บอกเหตุผล และปลดล็อกให้เลือกใหม่ (ถ้ายังมีสิทธิ์)
+    socket.on('voteError', function(data) {
+        showNotification('⚠️ ' + ((data && data.message) || 'โหวตไม่สำเร็จ'), 'warning', 3500);
+        // locked = ไม่มีสิทธิ์โหวตเลย (ผู้ดำเนินเกม/ผี) → ล็อกการ์ดพร้อมคำอธิบาย
+        if (data && data.locked && !isGmNow()) myIsGhost = true;
+        renderVoteEligibility();
+        setVote2InteractionLocked(false);
     });
 
     socket.on('vote2Progress', function(progress) {
@@ -4196,13 +4215,20 @@ $(function() {
         $targetMsg.find('.chat-message-bubble').append('<span class="gm-reaction ' + reactionClass + '">' + emoji + '</span>');
     }
 
+    function decodeServerEntities(text) {
+        var map = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+        return String(text == null ? '' : text).replace(/&(amp|lt|gt|quot|#39);/g, function(m, name) { return map[name]; });
+    }
+
     function renderChatMessage(data, fromHistory) {
         var $msgArea = $('#chatMessages');
         var isMyMessage = (data.playerId === playerId) || (data.playerName === '<%= player.name %>');
 
         // Sanitize name, message, and timestamp to prevent XSS
         var safeName = $('<div>').text(data.displayName || data.playerName).html();
-        var safeMsg  = $('<div>').text(data.message).html();
+        // server เก็บข้อความแบบ escape มาแล้ว (&amp; &quot; …) — ถอดกลับก่อน แล้ว escape ครั้งเดียวตอน render
+        // (เดิม escape ซ้ำ: พิมพ์ "A & B" ขึ้นเป็น "A &amp; B")
+        var safeMsg  = $('<div>').text(decodeServerEntities(data.message)).html();
         var timestamp = $('<div>').text(data.timestamp).html();
 
         // Create a wrapper div for each message to control its alignment

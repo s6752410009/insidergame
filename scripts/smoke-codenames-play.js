@@ -307,7 +307,10 @@ function readStats() {
         console.log('A6. สถิติ: ทีมชนะได้ win ทุกคน ทีมแพ้ได้ loss ✓');
 
         const back = new Promise(res => h.socket.once('redirectToLobby', () => res(true)));
+        // ลูกทีมพาทั้งวงกลับไม่ได้ — ได้เหตุผล + กลับห้องเฉพาะตัวเอง (canReturnSelf)
         r = await ack(a1.socket, 'returnFinishedToLobby', { roomId: A.roomId });
+        assert(!r.success && r.canReturnSelf && /หัวห้อง/.test(r.error || ''), 'คนที่ไม่ใช่หัวห้องพาทุกคนกลับไม่ได้: ' + JSON.stringify(r));
+        r = await ack(h.socket, 'returnFinishedToLobby', { roomId: A.roomId });
         assert(r.success, 'กลับห้องรอได้');
         assert(await Promise.race([back, delay(4000).then(() => false)]), 'ทุกคนถูกพากลับห้องรอ');
         await delay(400);

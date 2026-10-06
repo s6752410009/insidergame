@@ -1035,7 +1035,8 @@ $(function() {
   $(document).on('click', '#pdStayBtn', function() { send(S.availableActions.canDealerDecide ? 'pokdeng_dealer' : 'pokdeng_draw', { draw: false }); });
   $(document).on('click', '#pdNextBtn', function() { send('pokdeng_next'); });
   $(document).on('click', '#pdRebuyBtn', function() { send('pokdeng_rebuy'); });
-  $(document).on('click', '#pdBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  // ไม่ใช่หัวห้อง = server ไม่พาทั้งวงกลับ (canReturnSelf) → กลับห้องเฉพาะตัวเอง
+  $(document).on('click', '#pdBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } }); });
   $(document).on('click', '#pdShareBtn', function() {
     if (!window.partyPlay || !S.standings) return;
     window.partyPlay.shareResult({

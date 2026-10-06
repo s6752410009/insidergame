@@ -1132,7 +1132,13 @@ function processVote2Result(gameState) {
 
     gameState.resultVote2 = { 
         hasWon: hasWon, 
-        voteDetail: votePlayers, 
+        // ส่งให้ทุกคนตอนจบ — เฉพาะที่หน้าผลใช้ ห้ามแนบ object ผู้เล่นทั้งก้อน (socketId, permission, โหวตดิบ ฯลฯ)
+        voteDetail: votePlayers.map(player => ({
+            name: player.name,
+            role: player.role,
+            nbVote2: player.nbVote2 || 0,
+            isGhost: !!player.isGhost
+        })),
         hasTraitor: hasTraitorInGame,
         numTraitors: numTraitors, // เพิ่มจำนวนจอมบงการ
         finalTraitorName: finalResultTraitorName,
@@ -1148,6 +1154,13 @@ function processVote2Result(gameState) {
 function isAdminSocket(room, socket) {
     if (!room || !socket.playerId) return false;
     return room.admin === socket.playerId;
+}
+
+// พาทุกคนกลับห้องรอได้เฉพาะหัวห้อง (หรือแอดมินเว็บ) — เดิมใครกดก็ดึงทั้งวงออกจากหน้าผล
+// คนอื่นได้ error ภาษาไทย + canReturnSelf ให้ client พากลับห้องเฉพาะตัวเอง (/room/:id เข้าได้เพราะเกมจบแล้ว)
+const RETURN_ALL_DENIED = 'มีแค่หัวห้องที่พาทุกคนกลับห้องรอได้ — กำลังพาคุณกลับห้องคนเดียว';
+function canReturnEveryoneToLobby(room, socket) {
+    return isAdminSocket(room, socket) || isSiteAdminPlayer(socket.playerId);
 }
 
 // ==================== PLAYER IDENTITY ====================
@@ -7628,6 +7641,10 @@ io.sockets.on('connection', function(socket) {
             done({ success: false, error: 'เกมยังไม่จบ' });
             return;
         }
+        if (!canReturnEveryoneToLobby(room, socket)) {
+            done({ success: false, error: RETURN_ALL_DENIED, canReturnSelf: true });
+            return;
+        }
         const ok = returnFinishedGameToLobby(room.roomId);
         done({ success: ok });
     });
@@ -9086,6 +9103,10 @@ io.sockets.on('connection', function(socket) {
             done({ success: false, error: 'กำลังเริ่มเกมใหม่' });
             return;
         }
+        if (!canReturnEveryoneToLobby(room, socket)) {
+            done({ success: false, error: RETURN_ALL_DENIED, canReturnSelf: true });
+            return;
+        }
         done({ success: returnUndercoverGameToLobby(room.roomId) });
     });
 
@@ -9785,7 +9806,16 @@ io.sockets.on('connection', function(socket) {
         }
 
         const player = room.gameState.players.find(p => p.playerId === playerId);
-        if (!player || player.role === gameMasterRole || player.isGhost || object.player !== player.name) return;
+        if (!player || object.player !== player.name) return;
+        // เดิมทิ้งเงียบ — จอยังขึ้นว่า "ส่งโหวตแล้ว" ทั้งที่ไม่นับ บอกเหตุผลแทน
+        if (player.role === gameMasterRole) {
+            io.to(socket.id).emit('voteError', { message: 'ผู้ดำเนินเกมไม่ต้องโหวตในรอบนี้', locked: true });
+            return;
+        }
+        if (player.isGhost) {
+            io.to(socket.id).emit('voteError', { message: 'รอบนี้คุณเป็นผี 👻 ไม่มีสิทธิ์โหวต — รอดูผลได้เลย', locked: true });
+            return;
+        }
 
         // ตรวจสอบสถานะเกม
         if (room.gameState.status !== 'vote2') {

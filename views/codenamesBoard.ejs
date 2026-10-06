@@ -972,6 +972,8 @@ $(function() {
   $(document).on('click', '#cnBackBtn', function() {
     allowNavigation = true;
     socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) {
+      // ไม่ใช่หัวห้อง = server ไม่พาทั้งวงกลับ → กลับห้องเฉพาะตัวเอง
+      if (res && res.canReturnSelf) { goLobby(); return; }
       if (res && res.success === false) { allowNavigation = false; toast(res.error || 'กลับห้องรอไม่สำเร็จ', 'error'); }
     });
   });

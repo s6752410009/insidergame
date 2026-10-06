@@ -10,6 +10,9 @@
  *  6. โหวต: แตะการ์ด = แค่เลือก (ยังไม่ส่ง) ต้องกดยืนยัน / ผู้ดำเนินเกมกดการ์ดไม่ได้
  *  7. จบเกม: ไม่มี modal ทึบบังผล ปุ่มเล่นอีกรอบ/กลับห้องกดได้จริง + บอกว่า "คุณชนะ/แพ้ เพราะ…"
  *  8. เล่นอีกรอบบนหน้าเดิม: ผู้ดำเนินเกมคนใหม่ (ที่โหลดหน้ามาตอนเป็นบทอื่น) มีปุ่มเปิดเผยคำ
+ *  9. แชท escape ครั้งเดียว ("A & B" ไม่กลายเป็น "A &amp; B") และ HTML ไม่ถูก render
+ * 10. ผลจบเกมไม่มี socketId / ฟิลด์ภายในของผู้เล่น
+ * 11. คนที่ไม่มีสิทธิ์โหวต (ผู้ดำเนินเกม/ผี) ส่งโหวต → ได้เหตุผล ไม่ใช่เงียบ
  *
  * รัน: ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-insider-ux.js
  */
@@ -24,6 +27,7 @@ const { chromium } = require('playwright');
 const GM = 'ผู้ดำเนินเกม';
 const TRAITOR = 'จอมบงการ';
 const SECRET = 'ช้างเผือกทดสอบ';
+const TRICKY = 'A & "B" <i>x</i> \'c\'';
 const delay = ms => new Promise(r => setTimeout(r, ms));
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
@@ -176,6 +180,7 @@ async function main() {
         results.push('wordFound: คนทั่วไปกดไม่ได้ + บอกเหตุผล');
 
         // 2. คำถาม + ปุ่มตอบด่วนของ GM
+        citizen.socket.emit('sendMessage', { message: TRICKY });
         citizen.socket.emit('sendMessage', { message: 'เป็นสัตว์ไหม' });
         const question = await waitFor(gm.events, e => e.name === 'newMessage' && e.payload.message === 'เป็นสัตว์ไหม');
         assert(question, 'คำถามไม่ถึง GM');
@@ -202,6 +207,12 @@ async function main() {
         }));
         assert(restored.question && restored.answered, 'refresh แล้วประวัติถาม–ตอบหาย ' + JSON.stringify(restored));
         assert(restored.timerVisible, 'refresh กลางช่วงทายคำแล้วไม่เห็นนาฬิกา');
+        const escaping = await citizenPage.evaluate(tricky => {
+            const box = document.querySelector('#chatMessages');
+            return { exact: box.textContent.includes(tricky), doubled: /&amp;|&quot;|&lt;|&#39;/.test(box.textContent), injected: !!box.querySelector('i') };
+        }, TRICKY);
+        assert(escaping.exact && !escaping.doubled && !escaping.injected, 'แชท escape ผิด: ' + JSON.stringify(escaping));
+        results.push('แชท: escape ครั้งเดียว ไม่ render HTML');
         if (citizen !== host) assert(restored.foundBtnHidden, 'พลเมืองเห็นปุ่มทายถูกแล้ว');
         await citizenPage.click('#insRoleToggle');
         const chip = await citizenPage.evaluate(() => ({
@@ -254,6 +265,21 @@ async function main() {
         assert(prog, 'กดยืนยันแล้วโหวตไม่ถึง server');
         results.push('โหวต: แตะ=เลือก เปลี่ยนใจได้ กดยืนยันถึงส่ง');
 
+        // 11. ผู้ดำเนินเกมส่งโหวตตรงๆ → ได้เหตุผล (เดิม server ทิ้งเงียบ)
+        const gmRaw = await connect(base);
+        const gmRawEvents = [];
+        gmRaw.on('voteError', p => gmRawEvents.push(p));
+        gmRaw.emit('initPlayer', gm.playerId);
+        gmRaw.emit('setRoom', { roomId, playerId: gm.playerId });
+        await delay(500);
+        const gmVoteInfo = (await waitFor(host.events, e => e.name === 'displayVote2')).payload;
+        // ชื่อผู้ดำเนินเกมจาก server (ได้มาตอนตอบด่วน) — vote2 ต้องส่งชื่อตัวเอง
+        gmRaw.emit('vote2', { player: reaction.payload.gmName, vote: gmVoteInfo.players[0].playerId });
+        await delay(800);
+        gmRaw.close();
+        assert(gmRawEvents.some(e => /ผู้ดำเนินเกม/.test(e.message)), 'ผู้ดำเนินเกมส่งโหวตแล้วเงียบ ไม่มีเหตุผล');
+        results.push('โหวตไม่มีสิทธิ์: ได้เหตุผล ไม่เงียบ');
+
         // GM: การ์ดกดไม่ได้ + มีคำอธิบาย
         const gmVote = await gmPage.evaluate(() => ({
             note: !document.querySelector('#vote2GmNote').hidden,
@@ -276,6 +302,14 @@ async function main() {
         }
         await citizenPage.waitForSelector('#vote2Result', { state: 'visible', timeout: 20000 });
         await delay(1200);
+
+        // 10. ผลจบเกมไม่มีฟิลด์ภายใน
+        const ended = await waitFor(host.events, e => e.name === 'vote2Ended', 5000);
+        assert(ended, 'host ไม่ได้รับผลจบเกม');
+        const endJson = JSON.stringify(ended.payload);
+        assert(!/socketId|permission|vote2"|_voting/.test(endJson), 'ผลจบเกมรั่วฟิลด์ภายใน: ' + endJson.slice(0, 300));
+        assert(ended.payload.voteDetail.every(v => Object.keys(v).every(k => ['name', 'role', 'nbVote2', 'isGhost'].includes(k))), 'voteDetail มีฟิลด์เกิน');
+        results.push('ผลจบเกม: ไม่มี socketId/ฟิลด์ภายใน');
 
         // 7. ผลเกม: ไม่มี modal บัง ปุ่มกดได้ + บอกผลของฉัน
         const end = await citizenPage.evaluate(() => {
