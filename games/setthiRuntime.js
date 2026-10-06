@@ -315,7 +315,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             if (v.tourPending !== undefined) seat.tourPending = !!v.tourPending;
             if (v.shield !== undefined) seat.shield = v.shield || null;
         });
-        if (spec.festival !== undefined) state.festival = spec.festival;
+        if (spec.festival !== undefined) { state.festival = spec.festival; state.festivalMult = spec.festival === null ? 1 : ([2, 4, 8, 16].includes(Number(spec.festivalMult)) ? Number(spec.festivalMult) : 2); }
         if (Array.isArray(spec.dice)) state.testDice = spec.dice.map(d => [Number(d[0]), Number(d[1])]);
         if (Number.isInteger(spec.turnSeat) && state.seats[spec.turnSeat]) {
             const seat = state.seats[spec.turnSeat];

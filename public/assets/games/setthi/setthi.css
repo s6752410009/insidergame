@@ -290,7 +290,7 @@ html.st-active {
 /* ธงงานวัด */
 .st-flag { position: absolute; z-index: 5; display: none; top: -6px; left: -4px; width: 22px; height: 24px; }
 .st-flag::before { content: ''; position: absolute; left: 3px; top: 1px; width: 2px; height: 22px; background: #5a3418; border-radius: 1px; }
-.st-flag::after { content: '×2'; position: absolute; left: 5px; top: 1px; padding: 1px 3px; font: 700 9px/1 var(--st-display); color: #fff; background: var(--st-red); border-radius: 0 4px 4px 0; box-shadow: 0 1px 2px oklch(0 0 0 / 0.4); }
+.st-flag::after { content: '×' attr(data-x); position: absolute; left: 5px; top: 1px; padding: 1px 3px; font: 700 9px/1 var(--st-display); color: #fff; background: var(--st-red); border-radius: 0 4px 4px 0; box-shadow: 0 1px 2px oklch(0 0 0 / 0.4); }
 .st-cell.is-fest .st-flag { display: block; }
 /* เตือนผูกขาด: วงกระพริบสีของคนที่ขาดอีก 1 ช่อง */
 .st-cell.is-threat::after {
@@ -317,7 +317,7 @@ html.st-active {
   animation: stThreat 0.8s ease-in-out infinite alternate;
   pointer-events: none;
 }
-.st-pickcost { position: absolute; z-index: 6; left: 50%; bottom: -3px; transform: translateX(-50%); font: 700 9px/1 var(--st-display); padding: 2px 4px; border-radius: 999px; background: var(--st-gold); color: var(--st-gold-ink); white-space: nowrap; }
+.st-pickcost { position: absolute; z-index: 6; left: 1px; top: 1px; min-width: 15px; text-align: center; font: 700 9px/1 var(--st-display); padding: 2px 3px; border-radius: 999px; background: var(--st-gold); color: var(--st-gold-ink); white-space: nowrap; box-shadow: 0 1px 2px oklch(0 0 0 / 0.4); }
 .st-cell.is-land::before { content: ''; position: absolute; inset: 0; z-index: 4; box-shadow: inset 0 0 0 3px var(--st-gold); pointer-events: none; }
 .st-cell.is-win::before { content: ''; position: absolute; inset: 0; z-index: 4; background: var(--win); opacity: 0.55; animation: stThreat 0.5s ease-in-out infinite alternate; pointer-events: none; }
 .st-cell.is-sold { animation: stSold 0.6s ease-out; }
@@ -1075,3 +1075,13 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 .st-chip { background: color-mix(in oklch, var(--tk) 16%, var(--st-navy)); }
 .st-tokens .st-token { box-shadow: 0 0 0 1.5px #fff, 0 3px 6px oklch(0 0 0 / 0.5); }
 .st-bld .st-stars { align-self: center; font: 700 calc(var(--fs) * 0.9)/1 var(--st-display); color: #fff4d6; text-shadow: 0 1px 0 oklch(0 0 0 / 0.6); white-space: nowrap; margin-left: 1px; }
+.st-flag.is-x4::after { background: oklch(0.6 0.22 20); transform: scale(1.12); transform-origin: 0 0; }
+.st-flag.is-x8::after { background: oklch(0.55 0.24 10); transform: scale(1.25); transform-origin: 0 0; box-shadow: 0 0 6px oklch(0.7 0.22 30); }
+.st-flag.is-x16::after { background: linear-gradient(180deg, oklch(0.8 0.17 80), oklch(0.6 0.22 30)); color: #2a1200; transform: scale(1.4); transform-origin: 0 0; box-shadow: 0 0 10px oklch(0.85 0.15 80); }
+.st-pickcost.is-salary { background: oklch(0.72 0.17 150); color: #04240f; }
+.st-pickbar { flex-wrap: wrap; justify-content: center; white-space: normal; text-align: center; }
+.st-pickbar-legend { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--st-muted); }
+.st-pickbar-legend i { width: 12px; height: 12px; border-radius: 50%; background: var(--st-gold); }
+.st-pickbar-legend i.is-salary { background: oklch(0.72 0.17 150); }
+.st-pickbar { border-radius: 16px; padding: 6px 12px; gap: 4px 8px; font-size: 0.86rem; max-width: 80%; }
+.st-pickbar b { white-space: nowrap; }

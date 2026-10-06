@@ -54,6 +54,9 @@ const BOT_GREEN_HIT = 0.15;
 // สีผู้เล่น 4 สีสด ตัดกันชัด (แดง/น้ำเงิน/เขียว/เหลือง) · ink = สีตัวหนังสือบนพื้นสีนั้น
 // ดาวแลนด์มาร์ก: ตกแลนด์มาร์กตัวเอง = โบนัส 20% ของค่าผ่านทางตอนนั้น + ดาว 1 ดวง (ค่าผ่านทาง +25% ของฐาน สูงสุด 4 ดวง = ×2)
 const STAR_MAX = 4;
+const STAR_BONUS_CAP = 20000;
+// งานวัดซ้อน: เลือกเมืองเดิมซ้ำ = ทวีคูณ ×2 → ×4 → ×8 → ×16 (เพดาน)
+const FESTIVAL_MAX = 16;
 const STAR_STEP = 0.25;
 const STAR_BONUS = 0.2;
 const TOKEN_COLORS = ['#e53935', '#1f6feb', '#16a34a', '#f5b800'];
@@ -109,6 +112,7 @@ function createInitialState() {
         debtSeq: 0,
         resume: null,
         festival: null,
+        festivalMult: 1,
         clock: null,
         ledger: null,
         firstSeat: 0,
@@ -194,7 +198,7 @@ function fxCost(event) {
             const big = event.doubles || (event.d && event.d[0] + event.d[1] === 12);
             return big ? 2000 : 1300;
         }
-        case 'move': return event.warp ? 1100 : 220 * (event.path || []).length + 300;
+        case 'move': return (event.warp ? 85 : 220) * (event.path || []).length + 300;
         case 'salary': return 250;
         case 'build': return event.to === 4 ? 2600 : 1400;
         case 'toll': return 1600;
@@ -277,11 +281,25 @@ function touristCount(room, playerId) {
 function tollFor(room, i) {
     const p = prop(room, i);
     if (!p || !p.owner) return 0;
-    const festival = st(room).festival === i ? 2 : 1;
+    const festival = festivalMultOf(room, i);
     if (isTourist(i)) return B.TOUR_TOLL[Math.max(0, touristCount(room, p.owner) - 1)] * festival;
     const base = round10(B.SQUARES[i].price * B.TOLL_MULT[p.level]);
     const stars = p.level === 4 ? Math.max(0, Math.min(STAR_MAX, Number(p.stars) || 0)) : 0;
     return round10(base * (1 + STAR_STEP * stars)) * festival;
+}
+
+function festivalMultOf(room, i) {
+    const state = st(room);
+    if (state.festival !== i) return 1;
+    return Math.max(2, Math.min(FESTIVAL_MAX, Number(state.festivalMult) || 2));
+}
+
+/** ค่าผ่านทางถ้าเลือกช่องนี้จัดงานวัด (ไว้โชว์ในแผ่นเลือก) */
+function festivalPreview(room, i) {
+    const state = st(room);
+    const cur = festivalMultOf(room, i);
+    const next = state.festival === i ? Math.min(FESTIVAL_MAX, cur * 2) : 2;
+    return Math.round(tollFor(room, i) / cur) * next;
 }
 
 function takeoverPrice(room, i) { return squareValue(room, i) * 2; }
@@ -311,7 +329,7 @@ function clearSquare(room, i) {
     p.owner = null;
     p.level = 0;
     p.stars = 0;
-    if (st(room).festival === i) st(room).festival = null;
+    if (st(room).festival === i) { st(room).festival = null; st(room).festivalMult = 1; }
 }
 
 // ---------- ผูกขาด ----------
@@ -891,7 +909,7 @@ function land(room, seat, opts = {}) {
 /** ตกแลนด์มาร์กตัวเอง: รับโบนัสจากธนาคาร แล้วอัปดาว (เต็ม 4 ดวงยังได้โบนัส แต่ไม่เพิ่มดาว) */
 function landmarkStar(room, seat, i) {
     const p = prop(room, i);
-    const bonus = round10(tollFor(room, i) * STAR_BONUS);
+    const bonus = Math.min(STAR_BONUS_CAP, round10(tollFor(room, i) * STAR_BONUS));
     bankPays(room, seat, bonus);
     const before = Number(p.stars) || 0;
     p.stars = Math.min(STAR_MAX, before + 1);
@@ -1226,9 +1244,11 @@ function pickSquare(room, playerId, square, ctx = null) {
         }
         case 'festival': {
             const prev = state.festival;
+            const stacked = prev === i;
+            state.festivalMult = stacked ? Math.min(FESTIVAL_MAX, festivalMultOf(room, i) * 2) : 2;
             state.festival = i;
-            pushFx(room, { kind: 'festival', playerId, square: i, prev });
-            pushHistory(room, '🎉', `${seat.name} จัดงานวัดที่${sqName(i)} ค่าผ่านทาง ×2`, 'festival');
+            pushFx(room, { kind: 'festival', playerId, square: i, prev, mult: state.festivalMult, stacked, toll: tollFor(room, i) });
+            pushHistory(room, '🎉', `${seat.name} ${stacked ? 'งานวัดใหญ่ขึ้นที่' : 'จัดงานวัดที่'}${sqName(i)} ค่าผ่านทาง ×${state.festivalMult}`, 'festival');
             markAction(room, 'festival');
             break;
         }
@@ -1588,17 +1608,20 @@ function botWantsTakeover(room, seat, i) {
 function botPickTarget(room, seat, purpose) {
     const options = pickOptions(room, seat, purpose);
     if (!options.length) return null;
-    if (purpose === 'festival') return options.slice().sort((a, b) => tollFor(room, b) - tollFor(room, a) || b - a)[0];
+    if (purpose === 'festival') return options.slice().sort((a, b) => festivalPreview(room, b) - festivalPreview(room, a) || b - a)[0];
     if (purpose === 'startBonus' || purpose === 'freeUpgrade') return options.slice().sort((a, b) => tollFor(room, b) - tollFor(room, a) || B.SQUARES[b].price - B.SQUARES[a].price)[0];
     if (purpose === 'tour') {
         const reserve = botReserve(room, seat);
+        // วาร์ปเดินหน้าเสมอ: ปลายทางที่อยู่ "หลัง" เรา = วนผ่านจุดเริ่มได้เงินเดือนด้วย
+        const passes = i => i < seat.pos;
+        const cashAt = i => seat.cash - B.TOUR_FEE + (passes(i) ? B.SALARY : 0);
         const cash = seat.cash - B.TOUR_FEE;
-        const afford = i => cash - B.levelCost(i, 0) >= reserve * 0.3;
+        const afford = i => cashAt(i) - B.levelCost(i, 0) >= reserve * 0.3;
         const free = options.filter(i => B.OWNABLE.includes(i) && !ownerOf(room, i));
         const winning = threatSquaresOf(room, t => t.playerId === seat.playerId);
         const blocking = threatSquaresOf(room, t => t.playerId !== seat.playerId);
         const pickFrom = list => list.sort((a, b) => B.SQUARES[b].price - B.SQUARES[a].price)[0];
-        const win = free.filter(i => winning.has(i) && cash >= B.levelCost(i, 0));
+        const win = free.filter(i => winning.has(i) && cashAt(i) >= B.levelCost(i, 0));
         if (win.length) return pickFrom(win);
         const landmark = ownedSquares(room, seat.playerId).filter(i => isCity(i) && prop(room, i).level === 3 && cash - B.levelCost(i, 4) >= reserve * 0.5);
         if (landmark.length) return pickFrom(landmark);
@@ -1702,6 +1725,15 @@ function publicDecision(room) {
         out.purpose = pending.purpose;
         out.options = pickOptions(room, seat, pending.purpose);
         out.fee = pending.purpose === 'tour' ? B.TOUR_FEE : null;
+        out.preview = {};
+        if (pending.purpose === 'tour') {
+            out.options.forEach(i => {
+                const steps = ((i - seat.pos) % B.BOARD_SIZE + B.BOARD_SIZE) % B.BOARD_SIZE;
+                out.preview[i] = { steps, salary: seat.pos + steps >= B.BOARD_SIZE };
+            });
+        } else if (pending.purpose === 'festival') {
+            out.options.forEach(i => { out.preview[i] = { toll: festivalPreview(room, i), mult: state.festival === i ? Math.min(FESTIVAL_MAX, festivalMultOf(room, i) * 2) : 2 }; });
+        }
 
     }
     return out;
@@ -1792,6 +1824,7 @@ function buildClientState(room, viewerId) {
         props,
         tolls,
         festival: state.festival,
+        festivalMult: state.festival !== null && state.festival !== undefined ? Math.max(2, Number(state.festivalMult) || 2) : 1,
         decision: room.gameState && playing ? publicDecision(room) : null,
         threats: room.gameState && playing ? monopolyThreats(room) : [],
         monopoly: state.monopoly || null,
@@ -1844,6 +1877,7 @@ function auditState(room) {
         if (stars < 0 || stars > STAR_MAX || (stars > 0 && p.level !== 4)) problems.push(`${sqName(i)} ดาวผิด ${stars}`);
     });
     if (state.festival !== null && state.festival !== undefined && !ownerOf(room, state.festival)) problems.push('เทศกาลอยู่บนช่องที่ไม่มีเจ้าของ');
+    if (state.festival !== null && state.festival !== undefined && ![2, 4, 8, 16].includes(Math.max(2, Number(state.festivalMult) || 2))) problems.push('ตัวคูณงานวัดผิด ' + state.festivalMult);
     if (state.phase === 'debt' && !state.debts.length) problems.push('เฟสหนี้แต่ไม่มีหนี้');
     if (['build', 'takeover', 'pick'].includes(state.phase) && (!state.pending || state.pending.type !== state.phase)) problems.push(`เฟส ${state.phase} แต่ไม่มีเรื่องให้ตัดสินใจ`);
     if (state.phase === 'takeover' && state.pending && prop(room, state.pending.square).level >= 4) problems.push('เสนอซื้อต่อแลนด์มาร์ก');
@@ -1879,6 +1913,9 @@ module.exports = {
     SWEEP_MAX_MS,
     MONOPOLY_LABEL,
     STAR_MAX,
+    STAR_BONUS_CAP,
+    FESTIVAL_MAX,
+    festivalPreview,
     STAR_STEP,
     STAR_BONUS,
     greenSchedule,

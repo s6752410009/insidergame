@@ -231,7 +231,7 @@
 
   // ---------- โมเดลภาพ ----------
   function modelFrom(state) {
-    var m = { pos: {}, cash: {}, island: {}, out: {}, props: {}, festival: state.festival === undefined ? null : state.festival };
+    var m = { pos: {}, cash: {}, island: {}, out: {}, props: {}, festival: state.festival === undefined ? null : state.festival, festivalMult: state.festivalMult || 2 };
     (state.seats || []).forEach(function(s) { m.pos[s.playerId] = s.pos; m.cash[s.playerId] = s.cash; m.island[s.playerId] = s.island; m.out[s.playerId] = s.bankrupt || s.left; });
     Object.keys(state.props || {}).forEach(function(k) { var p = state.props[k]; m.props[k] = { owner: p.owner, level: p.level, stars: p.stars || 0 }; });
     return m;
@@ -239,7 +239,7 @@
   function tollIn(m, i) {
     var p = m.props[i];
     if (!p || !p.owner) return 0;
-    var fest = m.festival === i ? 2 : 1;
+    var fest = m.festival === i ? Math.max(2, m.festivalMult || 2) : 1;
     if (isTour(i)) {
       var n = (BOARD.touristSquares || []).filter(function(k) { return m.props[k] && m.props[k].owner === p.owner; }).length;
       return (SQ[i].tolls[Math.max(0, n - 1)] || 0) * fest;
@@ -288,6 +288,8 @@
       c.classList.toggle('is-landmark', !!(owner && p.level >= 4));
     }
     c.classList.toggle('is-fest', m.festival === i && !!owner);
+    var fl = c.querySelector('.st-flag');
+    if (fl) { var fm = m.festival === i ? Math.max(2, m.festivalMult || 2) : 0; fl.dataset.x = fm; fl.className = 'st-flag' + (fm >= 4 ? ' is-x' + fm : ''); }
     var th = threatOn(i);
     c.classList.toggle('is-threat', !!th);
     if (th) { var ts = seatOf(th.playerId); c.style.setProperty('--threat', ts ? ts.tokenColor : '#fff'); }
@@ -699,8 +701,8 @@
       var what = {
         start: [['💰', 'ผ่าน/ตก +' + money(BOARD.salary)], ['🎁', 'ทอยมาตกพอดี = อัปเมืองฟรี 1 ขั้น'], ['✈️', 'วาร์ป/การ์ด ไม่ได้อัปฟรี']],
         island: [['🏝️', 'ติด ' + BOARD.islandTurns + ' ตา'], ['🎲', 'ดับเบิล = ออก'], ['⛵', 'จ่าย ' + money(BOARD.islandFee) + ' = ออก']],
-        festival: [['🎉', 'เลือกที่ตัวเอง'], ['×2', 'ค่าผ่านทาง 2 เท่า']],
-        tour: [['✈️', 'ตาหน้าเลือกช่อง'], ['🎫', 'ค่าทัวร์ ' + money(BOARD.tourFee)]],
+        festival: [['🎉', 'เลือกที่ตัวเอง ค่าผ่านทาง ×2'], ['×16', 'เลือกเมืองเดิมซ้ำ ×4 ×8 ×16']],
+        tour: [['✈️', 'ตาหน้าเลือกช่อง เดินหน้าเสมอ'], ['💰', 'ผ่านจุดเริ่มได้เงินเดือน'], ['🎫', 'ค่าทัวร์ ' + money(BOARD.tourFee)]],
         chance: [['❓', 'สุ่มการ์ด 1 ใบ']],
         tax: [['🧾', 'จ่าย 10% ของที่']]
       }[sq.type] || [];
@@ -732,8 +734,8 @@
       ['🚫', 'แลนด์มาร์ก/ท่องเที่ยว ซื้อต่อไม่ได้'],
       ['👑', 'ผูกขาด 3 สี / ทั้งแถว / ท่องเที่ยว 4 = ชนะ'],
       ['⚠️', 'วงกระพริบ = อีก 1 ช่องผูกขาด!'],
-      ['🎉', 'งานวัด: ที่ที่เลือก ค่าผ่านทาง ×2'],
-      ['✈️', 'ทัวร์: ตาหน้าแตะช่องที่อยากไป'],
+      ['🎉', 'งานวัด: ค่าผ่านทาง ×2 · เลือกเมืองเดิมซ้ำ ซ้อนถึง ×16'],
+      ['✈️', 'ทัวร์: ตาหน้าแตะช่อง เดินหน้าเสมอ ผ่านเริ่มได้เงิน'],
       ['🏝️', 'เกาะร้าง: ดับเบิล / จ่าย / รอ 3 ตา'],
       ['🎲🎲', 'ดับเบิล = ทอยอีก · 3 ครั้ง = เกาะ'],
       ['💸', 'เงินไม่พอ: ขายที่คืนครึ่ง · หมด = ล้ม'],
@@ -884,23 +886,9 @@
     var useCam = camEnabled();
     V.island[f.playerId] = 0;
     t.classList.remove('is-island');
-    if (f.warp) {
-      // บินวาร์ป
-      sfx.whoosh();
-      var from = t.style.transform;
-      var xy0 = slotXY(f.to, 0, 1);
-      var to = 'translate(' + xy0.x + 'px,' + xy0.y + 'px)';
-      if (useCam) camReset(240);
-      t.style.transform = to;
-      await A(t, [{ transform: from + ' scale(1)', opacity: 1 }, { transform: from + ' translateY(-30px) scale(1.8)', opacity: 1, offset: 0.3 }, { transform: to + ' translateY(-30px) scale(1.8)', opacity: 1, offset: 0.75 }, { transform: to + ' scale(1)', opacity: 1 }], { duration: 950, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'none' });
-      if (f.passGo) passGoPop(f.playerId);
-      V.pos[f.playerId] = f.to;
-      placeTokens(V);
-      pulseCell(f.to, 'is-land', 900);
-      return;
-    }
+    if (f.warp) sfx.whoosh();
     if (useCam) await camTo(camFor(f.from), 240);
-    var per = hops > 14 ? Math.max(90, 2600 / hops) : 210;
+    var per = f.warp ? 85 : (hops > 14 ? Math.max(90, 2600 / hops) : 210);
     var cur = t.style.transform;
     for (var k = 0; k < hops; k += 1) {
       var sq = path[k];
@@ -915,7 +903,7 @@
       ], { duration: per, easing: 'ease-in-out', fill: 'none' });
       if (useCam) camTo(camFor(sq), per);
       showStepBubble(hops - k - 1 > 0 ? hops - k - 1 : '✓', xy);
-      sfx.hop(k % 4);
+      if (!f.warp || k % 3 === 0) sfx.hop(k % 4);
       await hop;
       cur = target;
       if (sq === 0 && f.passGo) passGoPop(f.playerId);
@@ -1163,9 +1151,11 @@
     var flag = fxNode('st-flag-drop', iconHtml('flag'));
     sfx.fanfare();
     await A(flag, [{ transform: 'translate(' + at.x + 'px,' + (at.y - 120) + 'px) translate(-50%, -50%) scale(1.6)', opacity: 0 }, { transform: 'translate(' + at.x + 'px,' + (at.y - 10) + 'px) translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(0.5, 0, 0.5, 1.4)' });
-    if (V) { V.festival = i; renderCells(V); }
-    burst(at, ['#ef5b4c', '#f5c86b', '#4ea8dc', '#3fbf7f'], 20, 80);
-    await showBanner({ token: seatOf(f.playerId), kicker: SQ[i].name, title: 'งานวัด! ×2', sub: 'ค่าผ่านทาง ' + money(V ? tollIn(V, i) : 0), cls: 'is-fest', style: 'top:auto;bottom:22%;' }, 500);
+    if (V) { V.festival = i; V.festivalMult = f.mult || 2; renderCells(V); }
+    var n = Math.min(4, Math.log2(f.mult || 2));
+    for (var k = 0; k < n; k += 1) burst({ x: at.x + (k - n / 2) * 30, y: at.y - 20 - k * 12 }, ['#ef5b4c', '#f5c86b', '#4ea8dc', '#3fbf7f', '#fff3c4'], 16 + k * 6, 70 + k * 25);
+    if (f.stacked) sfx.big();
+    await showBanner({ token: seatOf(f.playerId), kicker: SQ[i].name, title: f.stacked ? (f.mult >= 16 && !f.grew ? 'งานวัดใหญ่ขึ้น! ×' + f.mult : 'งานวัดใหญ่ขึ้น! ×' + f.mult) : 'งานวัด! ×2', sub: 'ค่าผ่านทาง ' + money(f.toll || (V ? tollIn(V, i) : 0)), cls: 'is-fest', style: 'top:auto;bottom:22%;' }, 560);
   };
 
   FX.tourReady = async function(f) {
@@ -1374,8 +1364,8 @@
       ' aria-label="ทอยเต๋า — กดค้างแล้วปล่อยตอนเข็มแรง"><span class="st-roll-face" aria-hidden="true">🎲</span><span class="st-roll-txt">ทอย</span><small>กดค้าง</small></button>';
   }
   var PICK_TEXT = {
-    tour: { icon: '✈️', title: 'แตะช่องที่อยากไป', skip: 'ไม่ไป ทอยเลย' },
-    festival: { icon: '🎉', title: 'แตะที่จัดงานวัด ×2', skip: 'ข้าม' },
+    tour: { icon: '✈️', title: 'แตะช่องที่อยากไป (เดินหน้า)', skip: 'ไม่ไป ทอยเลย' },
+    festival: { icon: '🎉', title: 'แตะที่จัดงานวัด (ซ้ำ = ทวีคูณ)', skip: 'ข้าม' },
     startBonus: { icon: '🎁', title: 'แตะเมืองอัปฟรี 1 ขั้น', skip: 'ข้าม' },
     freeUpgrade: { icon: '🎁', title: 'แตะเมืองอัปเกรดฟรี', skip: 'ข้าม' }
   };
@@ -1457,15 +1447,20 @@
       var ok = !!(mine && S.decision.options.indexOf(i) >= 0);
       c.classList.toggle('is-pickable', ok);
       var badge = c.querySelector('.st-pickcost');
-      var cost = ok && S.decision.costs ? S.decision.costs[i] : null;
-      if (cost !== null && cost !== undefined) {
+      var pv = ok && S.decision.preview ? S.decision.preview[i] : null;
+      var text = '';
+      if (pv && pv.toll !== undefined) text = '→' + moneyK(pv.toll);
+      else if (pv && pv.steps !== undefined) text = String(pv.steps);
+      if (text) {
         if (!badge) { badge = document.createElement('span'); badge.className = 'st-pickcost'; c.appendChild(badge); }
-        badge.textContent = moneyK(cost);
+        badge.textContent = text;
+        badge.classList.toggle('is-salary', !!(pv && pv.salary));
       } else if (badge) badge.remove();
     });
     if (mine) {
       var pt = PICK_TEXT[S.decision.purpose] || {};
-      el.pickbar.innerHTML = '<span class="st-pickbar-ico">' + pt.icon + '</span><b>' + esc(pt.title) + '</b>' + (S.decision.fee ? '<span class="st-chipline">' + money(S.decision.fee) + '</span>' : '');
+      el.pickbar.innerHTML = '<span class="st-pickbar-ico">' + pt.icon + '</span><b>' + esc(pt.title) + '</b>' + (S.decision.fee ? '<span class="st-chipline">' + money(S.decision.fee) + '</span>' : '') +
+        (S.decision.purpose === 'tour' ? '<span class="st-pickbar-legend"><i class="is-salary"></i>ผ่านเริ่ม +' + moneyK(BOARD.salary) + '</span>' : '');
     }
     el.pickbar.classList.toggle('is-on', !!mine);
   }

@@ -626,6 +626,98 @@ test('ดาวแลนด์มาร์ก: ตกแลนด์มาร์
     eq(p(r2, 14).stars, 1, '/m 6+6 ตกแลนด์มาร์ก = ได้ดาว');
 });
 
+test('งานวัดซ้อน: เลือกเมืองเดิม ×2→×4→×8→×16 (เพดาน) · ย้ายเมือง = ×2 ที่ใหม่ ที่เดิมกลับ ×1 · ซ้อนกับดาว · โบนัสดาวเพดาน ฿20,000', () => {
+    const room = makeRoom(['a', 'b']);
+    give(room, 'a', [12, 14], 2);
+    const base12 = E.tollFor(room, 12);
+    const mults = [];
+    for (let k = 0; k < 5; k += 1) {
+        forceTurn(room, 'a');
+        rollTotal(room, 'a', 10, [2, 4]);
+        eq(S(room).phase, 'pick', 'เลือกที่จัดงานวัด');
+        const prev = E.buildClientState(room, 'a').decision.preview[12];
+        E.pickSquare(room, 'a', 12, null);
+        mults.push(S(room).festivalMult);
+        eq(E.tollFor(room, 12), base12 * S(room).festivalMult, 'ค่าผ่านทาง = ฐาน × ตัวคูณ');
+        eq(prev.toll, E.tollFor(room, 12), 'แผ่นเลือกโชว์ค่าผ่านทางที่จะได้');
+    }
+    eq(mults.join(), '2,4,8,16,16', 'ซ้อน ×2→×16 แล้วค้างที่ ×16');
+    assert(S(room).fx.some(f => f.kind === 'festival' && f.stacked && f.mult === 8), 'ฉากงานวัดใหญ่ขึ้น');
+    forceTurn(room, 'a');
+    rollTotal(room, 'a', 10, [2, 4]);
+    E.pickSquare(room, 'a', 14, null);
+    eq(S(room).festival, 14, 'ย้ายเมือง');
+    eq(S(room).festivalMult, 2, 'ที่ใหม่เริ่ม ×2');
+    eq(E.tollFor(room, 12), base12, 'ที่เดิมกลับ ×1');
+    audit(room, 'งานวัดซ้อน');
+    // ซ้อนกับดาว
+    const r2 = makeRoom(['a', 'b']);
+    give(r2, 'a', [7], 4);
+    p(r2, 7).stars = 2;
+    S(r2).festival = 7; S(r2).festivalMult = 4;
+    const lmBase = Math.round(1000 * B.TOLL_MULT[4] / 10) * 10;
+    eq(E.tollFor(r2, 7), Math.round(lmBase * 1.5 / 10) * 10 * 4, 'ดาว 2 × งานวัด ×4');
+    // โบนัสดาวเพดาน
+    give(r2, 'a', [31], 4);
+    p(r2, 31).stars = 4;
+    S(r2).festival = 31; S(r2).festivalMult = 16;
+    const c0 = seat(r2, 'a').cash;
+    rollTotal(r2, 'a', 29, [1, 1]);
+    eq(seat(r2, 'a').cash - c0, 20000, 'โบนัสดาวไม่เกิน ฿20,000');
+    audit(r2, 'เพดานโบนัส');
+});
+
+test('งานวัดติดเมืองตอนโดนซื้อต่อ · ล้มละลายคืนธนาคาร = รีเซ็ต', () => {
+    const room = makeRoom(['a', 'b']);
+    give(room, 'b', [7], 2);
+    S(room).festival = 7; S(room).festivalMult = 4;
+    seat(room, 'a').cash = 900000; S(room).ledger.bankOut += 900000 - B.START_CASH;
+    rollTotal(room, 'a', 0, [3, 4]);
+    eq(S(room).phase, 'takeover', 'ซื้อต่อ');
+    eq(S(room).pending && E.buildClientState(room, 'a').decision.price, 2 * B.valueAt(7, 2), 'ราคาซื้อต่อไม่ขึ้นกับงานวัด');
+    E.acceptTakeover(room, 'a', null);
+    eq(S(room).festival, 7, 'งานวัดยังอยู่');
+    eq(S(room).festivalMult, 4, 'ตัวคูณยังอยู่');
+    if (S(room).phase === 'build') E.passBuild(room, 'a', null);
+    // a ล้มละลาย → งานวัดหาย
+    S(room).ledger.bankIn += seat(room, 'a').cash - 10; seat(room, 'a').cash = 10;
+    give(room, 'b', [31], 4);
+    forceTurn(room, 'a');
+    rollTotal(room, 'a', 29, [1, 1]);
+    eq(seat(room, 'a').bankrupt, true, 'ล้มละลาย');
+    eq(S(room).festival, null, 'งานวัดหาย');
+    eq(S(room).festivalMult, 1, 'ตัวคูณรีเซ็ต');
+    audit(room, 'งานวัดรีเซ็ต');
+});
+
+test('วาร์ปเดินหน้าเสมอ: ปลายทางอยู่ข้างหลัง = วนเกือบรอบ ผ่านจุดเริ่มได้เงินเดือน นับรอบ ตกแล้วมีผลตามช่อง', () => {
+    const room = makeRoom(['a', 'b']);
+    give(room, 'b', [20], 2);
+    seat(room, 'a').pos = 24; seat(room, 'a').tourPending = true; seat(room, 'a').laps = 0;
+    forceTurn(room, 'b');
+    rollTotal(room, 'b', 9, [1, 2]);
+    if (S(room).phase === 'build') E.passBuild(room, 'b', null);
+    eq(S(room).phase, 'pick', 'เลือกช่องทัวร์');
+    const d = E.buildClientState(room, 'a').decision;
+    eq(d.purpose, 'tour', 'ทัวร์');
+    eq(d.preview[20].steps, 28, 'ไป 20 = เดินหน้า 28 ช่อง');
+    eq(d.preview[20].salary, true, 'ผ่านจุดเริ่ม');
+    eq(d.preview[30].salary, false, 'ไปข้างหน้าไม่ผ่านจุดเริ่ม');
+    const c0 = seat(room, 'a').cash;
+    const b0 = seat(room, 'b').cash;
+    const toll = E.tollFor(room, 20);
+    E.pickSquare(room, 'a', 20, null);
+    const mv = S(room).fx.filter(f => f.kind === 'move' && f.playerId === 'a').pop();
+    eq(mv.path.length, 28, 'เดินหน้า 28 ช่อง');
+    eq(mv.path[7], 0, 'ผ่านจุดเริ่มระหว่างทาง');
+    assert(mv.warp && mv.passGo, 'วาร์ปผ่านจุดเริ่ม');
+    eq(seat(room, 'a').laps, 1, 'นับรอบ');
+    eq(seat(room, 'a').cash - c0, B.SALARY - B.TOUR_FEE - toll, 'เงินเดือน − ค่าทัวร์ − ค่าผ่านทาง');
+    eq(seat(room, 'b').cash - b0, toll, 'ตกแล้วจ่ายค่าผ่านทาง');
+    eq(S(room).phase, 'takeover', 'ตกแล้วมีผลตามช่อง (ซื้อต่อได้)');
+    audit(room, 'วาร์ปเดินหน้า');
+});
+
 // ---------- การ์ด ----------
 function cardRoom(id) {
     const room = makeRoom(['a', 'b']);

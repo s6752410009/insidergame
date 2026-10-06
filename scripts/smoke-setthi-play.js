@@ -268,8 +268,7 @@ async function scenarioA(base) {
     S = await until(A, S2 => S2.props[7].owner === A.id && S2.phase === 'build', 'ซื้อต่อแล้ว สร้างต่อได้');
     assert(S.props[7].level === 2, 'สิ่งปลูกสร้างอยู่ครบ');
     assert(S.decision.mode === 'afterTakeover' && S.decision.options[4].locked === 'later', 'แลนด์มาร์กต้องตกซ้ำ');
-    const tk = last(O).fx.filter(f => f.kind === 'takeover').pop();
-    assert(tk && tk.from === O.id && tk.price === 5000, 'เจ้าของเดิมได้ฉากถูกซื้อต่อ');
+    await until(O, S2 => S2.fx.some(f => f.kind === 'takeover' && f.from === O.id && f.price === 5000), 'เจ้าของเดิมได้ฉากถูกซื้อต่อ');
     assert(seatOf(last(O), O.id).cash === oCash + 2200 + 5000, 'เจ้าของเดิมได้ค่าผ่านทาง + ค่าซื้อต่อ');
     await act(A, 'setthi_pass');
     console.log('3. ซื้อต่อ 2 เท่า: เงินถึงเจ้าของเดิม · สิ่งปลูกสร้างอยู่ครบ · สร้างต่อได้ทันที ✓');
