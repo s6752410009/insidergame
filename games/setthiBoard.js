@@ -9,7 +9,7 @@
  */
 
 const START_CASH = 15000;
-const SALARY = 1500;
+const SALARY = 3000;
 const BOARD_SIZE = 32;
 const SIDE = 8;
 const START_SQUARE = 0;

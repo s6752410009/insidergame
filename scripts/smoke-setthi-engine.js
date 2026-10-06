@@ -763,6 +763,56 @@ test('กดค้างทอย: ช่องเขียว/แรง ทำ�
     }
 });
 
+test('เมนูทดสอบ /m: 6+6 ทุกครั้ง (3 ครั้ง = เกาะ) · ดับเบิลทุกครั้ง · เสกเงินลงบัญชี · เกมถูกตีตราไม่นับสถิติ', () => {
+    const room = makeRoom(['a', 'b']);
+    seat(room, 'a').pos = 2; // 2 → 14 → 26 → (ครั้งที่ 3) เกาะ
+    E.setDebugDice(room, 'a', { six: true });
+    eq(S(room).debugUsed, true, 'ตีตราว่าใช้เมนูทดสอบ');
+    assert(S(room).history.some(h => h.kind === 'debug' && /6\+6/.test(h.text)), 'ทุกคนเห็นโน้ต');
+    for (let k = 0; k < 3; k += 1) {
+        E.rollDice(room, 'a', null, mulberry(k));
+        const d = S(room).fx.filter(f => f.kind === 'dice').pop();
+        eq(d.d.join(), '6,6', 'ได้ 6+6');
+        while (['build', 'takeover', 'pick'].includes(S(room).phase) && S(room).phaseActor === 'a') {
+            if (S(room).phase === 'build') E.passBuild(room, 'a', null);
+            else if (S(room).phase === 'takeover') E.declineTakeover(room, 'a', null);
+            else E.skipPick(room, 'a', null);
+        }
+    }
+    eq(seat(room, 'a').island, 3, '6+6 สามครั้งติด = ไปเกาะ');
+    eq(S(room).phaseActor, 'b', 'ตาจบ');
+    E.rollDice(room, 'b', null, mulberry(1));
+    const bd = S(room).fx.filter(f => f.kind === 'dice').pop();
+    assert(bd.playerId === 'b', 'คนอื่นทอยปกติ');
+    const r2 = makeRoom(['a', 'b']);
+    E.setDebugDice(r2, 'a', { doubles: true });
+    for (let k = 0; k < 20; k += 1) {
+        forceTurn(r2, 'a');
+        S(r2).turn.doublesStreak = 0;
+        seat(r2, 'a').island = 0;
+        E.rollDice(r2, 'a', null, mulberry(50 + k));
+        const d = S(r2).fx.filter(f => f.kind === 'dice').pop();
+        assert(d.d[0] === d.d[1], 'ดับเบิลทุกครั้ง');
+    }
+    E.setDebugDice(r2, 'a', { six: true });
+    forceTurn(r2, 'a');
+    seat(r2, 'a').island = 0;
+    E.rollDice(r2, 'a', null, mulberry(9));
+    eq(S(r2).fx.filter(f => f.kind === 'dice').pop().d.join(), '6,6', 'เปิดสองอย่าง 6+6 ชนะ');
+    const c0 = seat(r2, 'b').cash;
+    throws(() => E.debugMint(r2, 'b', 0), 'เสก 0 ไม่ได้');
+    throws(() => E.debugMint(r2, 'b', -5), 'เสกติดลบไม่ได้');
+    throws(() => E.debugMint(r2, 'b', 1.5), 'ต้องเป็นจำนวนเต็ม');
+    throws(() => E.debugMint(r2, 'b', 2000000), 'เกินเพดาน');
+    E.debugMint(r2, 'b', 50000);
+    eq(seat(r2, 'b').cash, c0 + 50000, 'ได้เงิน');
+    eq(S(r2).ledger.debugMinted, 50000, 'ลงบัญชีเสกเงินแยก');
+    audit(r2, 'หลังเสกเงิน');
+    E.endGame(r2, 'a');
+    eq(Object.keys(S(r2).debug).length, 0, 'จบเกม = ปิดเมนูทดสอบ');
+    eq(S(r2).debugUsed, true, 'ยังตีตราว่าใช้ (ไม่นับสถิติ)');
+});
+
 // ---------- สุ่มหลายพันเกม ----------
 function randomGames(count) {
     const reasons = {};

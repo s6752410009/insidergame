@@ -70,6 +70,13 @@
     if (!seat) return '<span class="st-token" style="--tk:#6c7a93"><span>🏦</span></span>';
     return '<span class="st-token ' + (extra || '') + '" style="--tk:' + esc(seat.tokenColor) + '" title="' + esc(seat.name) + '"><span>' + esc(seat.avatar || '👤') + '</span></span>';
   }
+  /** เครื่องหมายเจ้าของบนธง: อวาตาร์ (ถ้าไม่ซ้ำใคร) ไม่งั้นเลขที่นั่ง — คู่กับสี ให้คนตาบอดสีแยกได้ */
+  function markOf(seat) {
+    if (!seat) return '';
+    var same = ((S && S.seats) || []).filter(function(x) { return x.avatar === seat.avatar; }).length;
+    return same > 1 || !seat.avatar ? String((seat.token || 0) + 1) : seat.avatar;
+  }
+  function inkOf(seat) { return (seat && seat.tokenInk) || '#fff'; }
   function bldIcons(level) {
     if (level >= 4) return '<span class="is-lm">' + ART.ICONS.landmark + '</span>';
     var out = '';
@@ -245,6 +252,7 @@
     return null;
   }
   var focusId = null;
+  var focusTimer = null;
   function renderCell(i, m) {
     var c = cells[i];
     if (!c || !ownable(i)) return;
@@ -252,8 +260,10 @@
     var owner = p.owner ? seatOf(p.owner) : null;
     c.classList.toggle('is-owned', !!owner);
     c.style.setProperty('--own', owner ? owner.tokenColor : 'transparent');
+    c.style.setProperty('--own-ink', owner ? inkOf(owner) : 'inherit');
+    c.classList.toggle('is-ink-dark', !!(owner && inkOf(owner) !== '#ffffff' && inkOf(owner) !== '#fff'));
     var dot = c.querySelector('.st-dot');
-    dot.innerHTML = owner ? esc(owner.avatar || '👤') : '';
+    dot.textContent = owner ? markOf(owner) : '';
     var val = c.querySelector('.st-val');
     var toll = owner ? tollIn(m, i) : 0;
     val.textContent = owner ? moneyK(toll) : moneyK(SQ[i].price);
@@ -292,16 +302,30 @@
   var tokenEls = {};
   function cellBox(i) { var c = cells[i]; return { x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight }; }
   function tokenSize() { return parseFloat(getComputedStyle(el.tokens).getPropertyValue('--tks')) || 18; }
+  /** หมากยืนใน "เลน" ด้านในกระดาน ชิดขอบในของช่อง — ไม่ทับชื่อ/ค่าผ่านทางบนช่อง */
   function slotXY(i, k, n) {
     var b = cellBox(i);
     var size = tokenSize();
+    var side = gridOf(i).side;
     var cx = b.x + b.w / 2;
-    var cy = b.y + b.h * 0.55;
+    var cy = b.y + b.h / 2;
+    var lane = size * 0.62;
+    if (side === 'b') cy = b.y - lane + size * 0.15;
+    else if (side === 't') cy = b.y + b.h + lane - size * 0.15;
+    else if (side === 'l') cx = b.x + b.w + lane - size * 0.15;
+    else if (side === 'r') cx = b.x - lane + size * 0.15;
+    else {
+      // มุม: ชิดมุมด้านในของกระดาน
+      var inX = i === 0 || i === 24 ? -1 : 1;
+      var inY = i === 0 || i === 8 ? -1 : 1;
+      cx = b.x + b.w / 2 + inX * (b.w / 2 + lane * 0.6);
+      cy = b.y + b.h / 2 + inY * (b.h / 2 + lane * 0.6);
+    }
     if (n > 1) {
-      var step = Math.min(size * 0.58, (Math.min(b.w, b.h) - size) / 1.2);
-      var offs = [[-1, -1], [1, 1], [1, -1], [-1, 1]];
-      cx += offs[k % 4][0] * step * 0.5;
-      cy += offs[k % 4][1] * step * 0.45;
+      var spread = (k - (n - 1) / 2) * size * 0.72;
+      if (side === 'b' || side === 't') cx += spread;
+      else if (side === 'l' || side === 'r') cy += spread;
+      else { cx += spread * 0.7; cy -= spread * 0.7 * (i === 8 || i === 24 ? -1 : 1); }
     }
     return { x: cx - size / 2, y: cy - size / 2 };
   }
@@ -425,7 +449,7 @@
   }, true);
   document.addEventListener('keydown', function(e) { if (running && e.key === 'Escape') skipNow(); });
 
-  var INSTANT = { left: 1, start: 1, debt: 1, fast: 1, finished: 0 };
+  var INSTANT = { left: 1, start: 1, debt: 1, fast: 1, debug: 1, finished: 0 };
 
   function enqueueFx(list) {
     list.forEach(function(f) {
@@ -467,6 +491,7 @@
   function instantFx(f) {
     if (f.kind === 'left' && f.playerId !== playerId) toast(nameOf(f.playerId) + ' ออกจากเกม');
     if (f.kind === 'debt' && f.playerId === playerId) { haptic([30, 50, 30]); sfx.bad(); }
+    if (f.kind === 'debug') { paintDebug(); toast('🛠 ' + nameOf(f.playerId) + ': ' + f.text, 2600); }
     if (f.kind === 'fast') { paintFast(); if (f.by !== playerId) toast(f.on ? '⏩ ' + nameOf(f.by) + ' เปิดเร่งเกม' : nameOf(f.by) + ' ปิดเร่งเกม', 1600); }
   }
 
@@ -558,6 +583,17 @@
       ], { duration: 700 + Math.random() * 400, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' }));
     }
     return Promise.all(ps);
+  }
+  /** สีเจ้าของไหลเต็มช่องตอนเปลี่ยนเจ้าของ */
+  function floodCell(i, color) {
+    var c = cells[i];
+    if (!c || reduceMotion) return;
+    var f = document.createElement('span');
+    f.className = 'st-flood';
+    f.style.background = color;
+    c.appendChild(f);
+    var a = f.animate([{ transform: 'scale(0)', opacity: 1 }, { transform: 'scale(1.6)', opacity: 1, offset: 0.6 }, { transform: 'scale(1.6)', opacity: 0 }], { duration: 650 / speed, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    a.onfinish = function() { f.remove(); };
   }
   function pulseCell(i, cls, ms) {
     var c = cells[i];
@@ -670,7 +706,8 @@
       rows += '<div class="st-tier' + (here ? ' is-now' : '') + '"><img src="' + (k === 4 || isTour(i) ? artSrc(sq.art) : artSrc(TIER_ART[k])) + '" alt="" width="36" height="36"><b>' + esc(isTour(i) ? 'ที่ดิน' : LEVEL_NAMES[k]) + '</b><span>' + money(sq.costs[k]) + '</span><span class="st-tier-toll">' + (isTour(i) ? '1→4 แห่ง ' + sq.tolls.map(moneyK).join(' / ') : money(sq.tolls[k])) + '</span></div>';
     });
     var now = owner ? '<div class="st-dinfo"><span class="st-dinfo-item"><small>ค่าผ่านทางตอนนี้</small><b>' + money(tollIn(m, i)) + '</b></span>' + (isCity(i) && p.level < 4 ? '<span class="st-dinfo-item"><small>ซื้อต่อ ×2</small><b>' + money(valueOf(i, p.level) * 2) + '</b></span>' : '<span class="st-dinfo-item"><small>ซื้อต่อ</small><b>ไม่ได้</b></span>') + '</div>' : '';
-    return sheetHeadArt(i, sq.name, sub) + now +
+    var ownerBar = owner ? '<div class="st-ownerbar" style="--tk:' + esc(owner.tokenColor) + ';--tk-ink:' + esc(inkOf(owner)) + '">' + tokenHtml(owner) + '<span>เจ้าของ: <b>' + esc(owner.playerId === playerId ? 'คุณ' : owner.name) + '</b></span></div>' : '<div class="st-ownerbar is-free">ยังไม่มีเจ้าของ · ราคา ' + money(sq.price) + '</div>';
+    return ownerBar + sheetHeadArt(i, sq.name, sub) + now +
       '<div class="st-tiers"><div class="st-tier is-head"><span></span><b></b><span>ราคา</span><span class="st-tier-toll">ค่าผ่านทาง</span></div>' + rows + '</div>';
   }
   function helpHtml() {
@@ -924,9 +961,11 @@
       ], { duration: f.to - first > 1 ? 300 : 440, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' });
       drop.remove();
     }
+    var wasOwner = V.props[i] && V.props[i].owner;
     V.props[i] = { owner: f.playerId, level: f.to };
     renderCell(i, V);
     renderStripLands();
+    if (wasOwner !== f.playerId) { var bw = seatOf(f.playerId); floodCell(i, bw ? bw.tokenColor : '#f5c86b'); }
     var ring = fxNode('st-ring');
     A(ring, [{ transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.3)', opacity: 0.9 }, { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(1.8)', opacity: 0 }], { duration: 500, easing: 'ease-out' });
     var who = seatOf(f.playerId);
@@ -1018,6 +1057,7 @@
     V.props[i] = { owner: f.playerId, level: f.level };
     renderCell(i, V);
     renderStripLands();
+    floodCell(i, buyer ? buyer.tokenColor : '#f5c86b');
     burst(centerOf(card), [buyer ? buyer.tokenColor : '#f5c86b', '#fff3c4'], 18, 110);
     await wait(700);
     await Promise.all([A(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }), scrim(false, 200)]);
@@ -1201,6 +1241,7 @@
     renderDock();
     if (S.turn && S.turn.lastRoll) setDice(S.turn.lastRoll);
     paintFast();
+    paintDebug();
     syncSheets();
     if (S.phase === 'finished' && !running && !endShown) showEnd(false, true);
   }
@@ -1221,7 +1262,7 @@
       return '<button type="button" class="st-chip' + (s.isTurn ? ' is-turn' : '') + (out ? ' is-out' : '') + (s.isSelf ? ' is-self' : '') + (focusId === s.playerId ? ' is-focus' : '') + '" data-id="' + esc(s.playerId) + '" style="--tk:' + esc(s.tokenColor) + '" aria-pressed="' + (focusId === s.playerId) + '" aria-label="' + esc(s.name + ' เงิน ' + money(model.cash[s.playerId]) + ' ที่ดิน ' + lands + ' ช่อง' + (s.isTurn ? ' กำลังเล่น' : '') + ' — แตะเพื่อดูที่ของคนนี้') + '">' +
         tokenHtml(s) +
         '<span class="st-chip-body"><span class="st-chip-name">' + esc(s.isSelf ? 'คุณ' : s.name) + '</span><span class="st-chip-cash">' + money(out ? 0 : model.cash[s.playerId]) + '</span></span>' +
-        '<span class="st-chip-lands" data-lands>' + ART.ICONS.house + '<b>' + lands + '</b></span>' + badge + '</button>';
+        '<span class="st-chip-lands" data-lands>🏠<b>' + lands + '</b></span>' + badge + '</button>';
     }).join('');
   }
   function landsOf(id, model) { var n = 0; Object.keys(model.props).forEach(function(k) { if (model.props[k].owner === id) n += 1; }); return n; }
@@ -1711,6 +1752,8 @@
     if (t.classList.contains('st-chip')) {
       var pid = t.dataset.id;
       focusId = focusId === pid ? null : pid;
+      clearTimeout(focusTimer);
+      if (focusId) focusTimer = setTimeout(function() { focusId = null; if (V) renderCells(V); renderStrip(); }, 3000);
       if (V) renderCells(V);
       renderStrip();
       return;
@@ -1927,7 +1970,70 @@
       .then(function() { window.location.href = '/rooms?playerId=' + playerId; });
   });
 
-  if (window.initChatPanel) window.initChatPanel({ socket: socket, playerId: playerId, playerName: BOOT.playerName });
+  // ---------- เมนูทดสอบ /m (แอดมินเว็บ/หัวห้อง · เซิร์ฟเวอร์ตรวจสิทธิ์ทุกคำสั่ง) ----------
+  var dbg = { panel: $('#stDebug'), head: $('#stDebugHead'), toggle: $('#stDebugToggle'), six: $('#stDbgSix'), doubles: $('#stDbgDoubles'), amt: $('#stDbgAmt'), mint: $('#stDbgMint'), badge: $('#stDebugBadge') };
+  function paintDebug() {
+    if (!S) return;
+    if (dbg.badge) dbg.badge.hidden = !S.debugUsed;
+    if (!dbg.panel) return;
+    if (!S.canDebug || S.phase === 'finished') dbg.panel.hidden = true;
+    var mine = S.debug || {};
+    if (dbg.six) dbg.six.checked = !!mine.six;
+    if (dbg.doubles) dbg.doubles.checked = !!mine.doubles;
+  }
+  function setDebugMin(min) {
+    dbg.panel.classList.toggle('is-min', min);
+    dbg.toggle.textContent = min ? '+' : '✕';
+    dbg.toggle.setAttribute('aria-label', min ? 'ขยาย' : 'ย่อ');
+  }
+  if (dbg.panel) {
+    var drag = null;
+    dbg.head.addEventListener('pointerdown', function(ev) {
+      if (ev.target.closest('button')) return;
+      var rect = dbg.panel.getBoundingClientRect();
+      drag = { x: ev.clientX, y: ev.clientY, left: rect.left, top: rect.top, moved: false };
+      dbg.head.setPointerCapture(ev.pointerId);
+    });
+    dbg.head.addEventListener('pointermove', function(ev) {
+      if (!drag) return;
+      var dx = ev.clientX - drag.x;
+      var dy = ev.clientY - drag.y;
+      if (!drag.moved && dx * dx + dy * dy < 36) return;
+      drag.moved = true;
+      dbg.panel.style.left = Math.max(0, Math.min(window.innerWidth - dbg.panel.offsetWidth, drag.left + dx)) + 'px';
+      dbg.panel.style.top = Math.max(0, Math.min(window.innerHeight - dbg.panel.offsetHeight, drag.top + dy)) + 'px';
+      dbg.panel.style.right = 'auto';
+    });
+    dbg.head.addEventListener('pointerup', function() {
+      if (drag && !drag.moved && dbg.panel.classList.contains('is-min')) setDebugMin(false);
+      drag = null;
+    });
+    dbg.toggle.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); setDebugMin(!dbg.panel.classList.contains('is-min')); });
+    dbg.six.addEventListener('change', function() { socket.emit('setthi_debug_dice', { roomId: roomId, six: dbg.six.checked }, debugAck); });
+    dbg.doubles.addEventListener('change', function() { socket.emit('setthi_debug_dice', { roomId: roomId, doubles: dbg.doubles.checked }, debugAck); });
+    dbg.mint.addEventListener('click', function() {
+      var v = Math.floor(Number(dbg.amt.value));
+      if (!(v >= 1 && v <= 1000000)) { toast('ใส่จำนวน 1–1,000,000'); return; }
+      socket.emit('setthi_debug_mint', { roomId: roomId, amount: v }, debugAck);
+    });
+  }
+  function debugAck(res) {
+    if (res && !res.success) { toast(res.error || 'ทำรายการไม่สำเร็จ'); paintDebug(); }
+  }
+  function openDebug(text) {
+    if (String(text || '').trim().toLowerCase() !== '/m') return false;
+    if (!S || !S.canDebug) {
+      if (window.Swal) Swal.fire({ icon: 'error', title: '/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง', background: '#1d2433', color: '#fff' });
+      else toast('/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
+      return true;
+    }
+    if (S.phase === 'finished') { toast('เกมจบแล้ว'); return true; }
+    dbg.panel.hidden = false;
+    setDebugMin(false);
+    paintDebug();
+    return true;
+  }
+  if (window.initChatPanel) window.initChatPanel({ socket: socket, playerId: playerId, playerName: BOOT.playerName, onCommand: openDebug });
 
   // ---------- เริ่ม ----------
   buildBoard();

@@ -101,7 +101,7 @@ const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomMa
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer }));
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
@@ -6116,6 +6116,9 @@ io.sockets.on('connection', function(socket) {
                 ...buildRoomUpdatePayload(room)
             });
 
+            // เศรษฐี: สิทธิ์ /m ย้ายตามหัวห้อง — ส่ง state ใหม่ให้ทุกคน
+            if (room.settings.gameMode === 'setthi') setthiRuntime.emitState(room);
+
             // Send chat notification
             const newAdmin = playerManager.getPlayer(newAdminPlayerId);
             sendChatMessageToRoom(io, roomId, 'System', `👑 สิทธิ์ Admin ถูกโอนให้ ${newAdmin.playerName}`, '#f39c12');
@@ -8622,6 +8625,39 @@ io.sockets.on('connection', function(socket) {
     });
     safeOn(socket, 'setthi_end', function(data, callback) {
         handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endGame(room, playerId));
+    });
+    // เมนูทดสอบ /m: แอดมินเว็บหรือหัวห้อง · มีผลกับคนที่ขอคนเดียว · ทุกคนเห็นโน้ต · เกมนี้ไม่บันทึกสถิติ
+    function handleSetthiDebug(socket, callback, label, run) {
+        handleSetthiCommand(socket, callback, (room, playerId) => {
+            if (!setthiRuntime.canDebug(room, playerId)) throw new Error('/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
+            const note = run(room, playerId);
+            if (!note) return;
+            const requester = playerManager.getPlayer(playerId);
+            const name = requester?.playerName || playerId;
+            sendChatMessageToRoom(io, room.roomId, 'System', `🛠 ${name} ใช้เมนูทดสอบ: ${note}`, '#f39c12');
+            addServerLog(io, 'admin', room.roomId, `${name} ${note} (/m เศรษฐี)`, 'warning', { gameMode: 'setthi', meta: { event: 'setthi_debug_' + label, playerId } });
+        });
+    }
+    safeOn(socket, 'setthi_debug_dice', function(data, callback) {
+        handleSetthiDebug(socket, callback, 'dice', (room, playerId) => {
+            const before = { ...((room.gameState.debug || {})[playerId] || {}) };
+            const opts = {};
+            if (typeof data?.six === 'boolean') opts.six = data.six;
+            if (typeof data?.doubles === 'boolean') opts.doubles = data.doubles;
+            setthiRuntime.engine.setDebugDice(room, playerId, opts);
+            const after = room.gameState.debug[playerId] || {};
+            const parts = [];
+            if (!!after.six !== !!before.six) parts.push(`${after.six ? 'เปิด' : 'ปิด'} ทอยได้ 6+6 ทุกครั้ง`);
+            if (!!after.doubles !== !!before.doubles) parts.push(`${after.doubles ? 'เปิด' : 'ปิด'} ได้ดับเบิลทุกครั้ง`);
+            return parts.join(' · ');
+        });
+    });
+    safeOn(socket, 'setthi_debug_mint', function(data, callback) {
+        handleSetthiDebug(socket, callback, 'mint', (room, playerId) => {
+            const amount = Number(data?.amount);
+            setthiRuntime.engine.debugMint(room, playerId, amount);
+            return `เสกเงิน +฿${amount.toLocaleString('en-US')}`;
+        });
     });
     if (process.env.SETTHI_TEST_HOOKS === '1') {
         // เทสเท่านั้น — ไม่ลงทะเบียนเลยถ้าไม่ได้ตั้ง env

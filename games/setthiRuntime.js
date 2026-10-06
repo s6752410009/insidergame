@@ -142,9 +142,19 @@ module.exports = function createSetthiRuntime(getDeps) {
         botTimeouts.set(room.roomId, { timeoutId, dueAt, step: room.gameState.step });
     }
 
+    /** /m ใช้ได้: แอดมินเว็บ หรือหัวห้อง (เงินในเกมเป็นเงินสนุก ไม่มีมูลค่าจริง — กติกาเดียวกับโต๊ะโป๊กเกอร์เล่นสนุก) */
+    function canDebug(room, playerId) {
+        if (!room || !playerId) return false;
+        const { isSiteAdminPlayer } = deps();
+        if (typeof isSiteAdminPlayer === 'function' && isSiteAdminPlayer(playerId)) return true;
+        return room.admin === playerId;
+    }
+
     function buildPayload(room, playerId) {
         if (!isRoom(room)) return null;
-        return engine.buildClientState(room, playerId);
+        const payload = engine.buildClientState(room, playerId);
+        payload.canDebug = canDebug(room, playerId);
+        return payload;
     }
 
     function boardDef() {
@@ -177,7 +187,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             .filter(item => item && item.at && new Date(item.at).getTime() > lastAt)
             .sort((left, right) => new Date(left.at) - new Date(right.at));
         fresh.forEach(item => {
-            if (!['bankrupt', 'finished', 'left', 'takeover', 'landmark', 'monopoly', 'timeup'].includes(item.kind)) return;
+            if (!['bankrupt', 'finished', 'left', 'takeover', 'landmark', 'monopoly', 'timeup'].includes(item.kind)) return; // debug ลงแยกเป็น admin log ใน app.js
             addServerLog(io, 'game', room.roomId, `💰 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
                 item.kind === 'left' || item.kind === 'bankrupt' ? 'warning' : 'info',
                 { gameMode: MODE, meta: { kind: item.kind || null, event: 'setthi_history' } });
@@ -192,7 +202,8 @@ module.exports = function createSetthiRuntime(getDeps) {
         if (!state || state.phase !== 'finished' || state.statsRecordedAt) return;
         const { statsManager, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby } = deps();
         state.statsRecordedAt = new Date().toISOString();
-        if (Array.isArray(state.winners) && state.winners.length) {
+        // เกมที่ใช้เมนูทดสอบ /m ไม่บันทึกสถิติ/ชนะ
+        if (Array.isArray(state.winners) && state.winners.length && !state.debugUsed) {
             statsManager.recordGameEnd(room.roomId, {
                 mode: MODE,
                 winners: state.winners,
@@ -334,6 +345,7 @@ module.exports = function createSetthiRuntime(getDeps) {
         MODE,
         STATE_EVENT,
         testSetup,
+        canDebug,
         engine,
         botAddInFlight,
         isRoom,

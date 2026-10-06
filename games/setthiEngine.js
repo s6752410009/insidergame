@@ -51,8 +51,10 @@ const SWEEP_MAX_MS = 2000;
 const GREEN_DOUBLES = 0.2;
 const GREEN_SPAWN = num(env.SETTHI_GREEN_SPAWN, 0.5);
 const BOT_GREEN_HIT = 0.15;
-const TOKEN_COLORS = ['#ef4b4b', '#3b82f6', '#22b573', '#a259e6'];
-const TOKEN_COLOR_NAMES = ['แดง', 'ฟ้า', 'เขียว', 'ม่วง'];
+// สีผู้เล่น 4 สีสด ตัดกันชัด (แดง/น้ำเงิน/เขียว/เหลือง) · ink = สีตัวหนังสือบนพื้นสีนั้น
+const TOKEN_COLORS = ['#e53935', '#1f6feb', '#16a34a', '#f5b800'];
+const TOKEN_INKS = ['#ffffff', '#ffffff', '#ffffff', '#2a1f00'];
+const TOKEN_COLOR_NAMES = ['แดง', 'น้ำเงิน', 'เขียว', 'เหลือง'];
 
 let clock = () => Date.now();
 function now() { return clock(); }
@@ -120,6 +122,8 @@ function createInitialState() {
         lastActionKind: null,
         animUntil: 0,
         fast: false,
+        debug: {},
+        debugUsed: false,
         rollHold: null,
         testDice: [],
         statsRecordedAt: null,
@@ -201,6 +205,7 @@ function fxCost(event) {
         case 'pay': case 'gain': case 'tax': return 1000;
         case 'sell': return 700;
         case 'decision': return 900;
+        case 'debug': return 0;
         case 'monopoly': return 3800;
         case 'bankrupt': return 2400;
         case 'timeUp': return 1500;
@@ -529,6 +534,7 @@ function finishGame(room, reason, opts = {}) {
     state.debts = [];
     state.resume = null;
     state.rollHold = null;
+    state.debug = {};
     state.finishReason = reason || 'จบเกม';
     state.standings = computeStandings(room, opts.winnerId || null);
     const alive = state.standings.filter(r => !r.bankrupt && !r.left);
@@ -739,9 +745,13 @@ function greenSchedule(rng, period) {
     };
 }
 
-function nextDice(room, rng, bias = null) {
+function nextDice(room, rng, bias = null, playerId = null) {
     const state = st(room);
     if (Array.isArray(state.testDice) && state.testDice.length) return state.testDice.shift();
+    // เมนูทดสอบ /m (หัวห้อง/แอดมิน): บังคับเต๋าของคนนั้นคนเดียว · 6+6 ชนะดับเบิลสุ่ม
+    const dbg = playerId && state.debug ? state.debug[playerId] : null;
+    if (dbg && dbg.six) return [6, 6];
+    if (dbg && dbg.doubles) { const v = 1 + Math.floor(rng() * 6); return [v, v]; }
     if (diceScriptIndex < DICE_SCRIPT.length) {
         const pair = DICE_SCRIPT[diceScriptIndex];
         diceScriptIndex += 1;
@@ -1007,7 +1017,7 @@ function rollDice(room, playerId, ctx = null, rng = Math.random, bias = null) {
     const state = st(room);
     const turn = state.turn;
     state.rollHold = null;
-    const [a, b] = nextDice(room, rng, bias);
+    const [a, b] = nextDice(room, rng, bias, playerId);
     const throwInfo = bias ? { power: Math.round((bias.power || 0) * 100) / 100, perfect: !!bias.green } : {};
     const doubles = a === b;
     const total = a + b;
@@ -1262,6 +1272,54 @@ function setFast(room, playerId, on) {
     return state;
 }
 
+// ---------- เมนูทดสอบ /m (สิทธิ์ตรวจใน app.js: แอดมินเว็บหรือหัวห้อง) ----------
+
+const MINT_MAX = 1000000;
+
+function debugNote(room, seat, text) {
+    const state = st(room);
+    state.debugUsed = true;
+    pushHistory(room, '🛠', `${seat.name} ใช้เมนูทดสอบ: ${text}`, 'debug');
+    pushFx(room, { kind: 'debug', playerId: seat.playerId, text });
+    bumpStep(room);
+}
+
+/** ตั้งเต๋าบังคับของตัวเอง: { six, doubles } */
+function setDebugDice(room, playerId, opts = {}) {
+    assertPlaying(room);
+    const state = st(room);
+    const seat = seatOf(room, playerId);
+    if (!isActive(seat)) throw new Error('คุณไม่ได้อยู่ในเกมนี้');
+    const prev = (state.debug || {})[playerId] || { six: false, doubles: false };
+    const next = {
+        six: opts.six === undefined ? !!prev.six : opts.six === true,
+        doubles: opts.doubles === undefined ? !!prev.doubles : opts.doubles === true
+    };
+    if (next.six === prev.six && next.doubles === prev.doubles) return state;
+    state.debug = { ...(state.debug || {}), [playerId]: next };
+    const parts = [];
+    if (next.six !== !!prev.six) parts.push(`${next.six ? 'เปิด' : 'ปิด'} ทอยได้ 6+6 ทุกครั้ง`);
+    if (next.doubles !== !!prev.doubles) parts.push(`${next.doubles ? 'เปิด' : 'ปิด'} ได้ดับเบิลทุกครั้ง`);
+    debugNote(room, seat, parts.join(' · '));
+    return state;
+}
+
+/** เสกเงินให้ตัวเอง (ลงบัญชีแยก debugMinted ให้ตรวจบัญชีเงินยังลง) */
+function debugMint(room, playerId, amount) {
+    assertPlaying(room);
+    const state = st(room);
+    const seat = seatOf(room, playerId);
+    if (!isActive(seat)) throw new Error('คุณไม่ได้อยู่ในเกมนี้');
+    const value = Number(amount);
+    if (!Number.isInteger(value) || value < 1 || value > MINT_MAX) throw new Error(`ใส่จำนวนเต็ม 1–${MINT_MAX.toLocaleString('en-US')}`);
+    seat.cash += value;
+    state.ledger.debugMinted = (Number(state.ledger.debugMinted) || 0) + value;
+    pushFx(room, { kind: 'gain', playerId, amount: value, reason: 'เสกเงิน', cash: cashMap(room, [playerId]) });
+    debugNote(room, seat, `เสกเงิน +${fmt(value)}`);
+    proceed(room); // อาจกำลังติดหนี้อยู่ — จ่ายได้แล้วให้เดินต่อ
+    return state;
+}
+
 // ---------- เริ่ม / จบ ----------
 
 /** options.dice (เทสเท่านั้น): รายการเต๋าที่จะออกก่อน เช่น [[6,6],[3,4]] · options.firstSeat */
@@ -1281,6 +1339,7 @@ function startGame(room, rng = Math.random, options = {}) {
         token: i,
         tokenColor: TOKEN_COLORS[i % TOKEN_COLORS.length],
         colorName: TOKEN_COLOR_NAMES[i % TOKEN_COLOR_NAMES.length],
+        tokenInk: TOKEN_INKS[i % TOKEN_INKS.length],
         cash: B.START_CASH,
         pos: 0,
         laps: 0,
@@ -1294,7 +1353,7 @@ function startGame(room, rng = Math.random, options = {}) {
     state.props = {};
     B.OWNABLE.forEach(i => { state.props[i] = { owner: null, level: 0 }; });
     state.deck = shuffle(B.CARDS.map(c => c.id), rng);
-    state.ledger = { startTotal: state.seats.length * B.START_CASH, bankOut: 0, bankIn: 0 };
+    state.ledger = { startTotal: state.seats.length * B.START_CASH, bankOut: 0, bankIn: 0, debugMinted: 0 };
     state.clock = { minutes: state.config.minutes, startedAt: at, endsAt: state.config.minutes ? at + state.config.minutes * MINUTE_MS : null, timeUp: false };
     state.testDice = Array.isArray(options.dice) ? options.dice.map(d => d.slice()) : [];
     state.firstSeat = Number.isInteger(options.firstSeat) ? options.firstSeat : Math.floor(rng() * state.seats.length);
@@ -1670,6 +1729,8 @@ function buildClientState(room, viewerId) {
         clock: state.clock ? { ...state.clock } : null,
         round: state.round,
         fast: !!state.fast,
+        debugUsed: !!state.debugUsed,
+        debug: viewer && state.debug && state.debug[viewerId] ? { ...state.debug[viewerId] } : { six: false, doubles: false },
         turn: state.turn ? {
             playerId: state.turn.playerId,
             seq: state.turn.seq,
@@ -1691,6 +1752,7 @@ function buildClientState(room, viewerId) {
             token: seat.token,
             tokenColor: seat.tokenColor,
             colorName: seat.colorName,
+            tokenInk: seat.tokenInk || '#ffffff',
             cash: seat.cash,
             pos: seat.pos,
             laps: seat.laps || 0,
@@ -1738,7 +1800,7 @@ function auditState(room) {
     const problems = [];
     if (!state || !state.ledger) return problems;
     const cash = state.seats.reduce((sum, seat) => sum + seat.cash, 0);
-    const expected = state.ledger.startTotal + state.ledger.bankOut - state.ledger.bankIn;
+    const expected = state.ledger.startTotal + state.ledger.bankOut - state.ledger.bankIn + (Number(state.ledger.debugMinted) || 0);
     if (cash !== expected) problems.push(`เงินรวม ${cash} ≠ บัญชี ${expected}`);
     state.seats.forEach(seat => {
         if (!Number.isInteger(seat.cash) || seat.cash < 0) problems.push(`${seat.name} เงินติดลบ/ไม่ใช่จำนวนเต็ม ${seat.cash}`);
@@ -1819,6 +1881,9 @@ module.exports = {
     skipPick,
     sellSquare,
     setFast,
+    setDebugDice,
+    debugMint,
+    MINT_MAX,
     endGame,
     handlePlayerLeft,
     tick,
