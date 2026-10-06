@@ -644,6 +644,9 @@ function createRoom(roomData, creatorPlayerId) {
             undercoverMrWhite: gameMode === 'undercover' ? normalizedRoomData.undercoverMrWhite === true : false,
             werewolfRoles,
             wolfCount,
+            ...(gameMode === 'werewolf' && typeof gameEngine.sanitizeWerewolfSettings === 'function'
+                ? gameEngine.sanitizeWerewolfSettings(normalizedRoomData)
+                : {}),
             avalonRoles: gameMode === 'avalon' && typeof gameEngine.sanitizeRoleSelection === 'function'
                 ? gameEngine.sanitizeRoleSelection(normalizedRoomData.avalonRoles)
                 : undefined,
@@ -1095,8 +1098,16 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (room.settings.gameMode === 'werewolf') {
         const gameEngine = getGameEngine(room.settings.gameMode);
         const hasExplicitWerewolfRoles = Array.isArray(updates.werewolfRoles) && updates.werewolfRoles.length > 0;
+        // เวลาแต่ละช่วง + คนตายเห็นบท: แก้ได้ก่อนเริ่มเกมเท่านั้น
+        if (typeof gameEngine.sanitizeWerewolfSettings === 'function' && !isRoomGameInProgress(room)) {
+            Object.assign(room.settings, gameEngine.sanitizeWerewolfSettings(updates, room.settings));
+        }
+        // แพตช์เฉพาะเวลา (จากหน้าห้องรอ) ห้ามล้างบทที่เลือกไว้
+        const touchesRoles = updates.werewolfRoles !== undefined || updates.wolfCount !== undefined;
 
-        if (hasExplicitWerewolfRoles) {
+        if (!touchesRoles) {
+            // keep current role selection
+        } else if (hasExplicitWerewolfRoles) {
             room.settings.werewolfRoles = typeof gameEngine.sanitizeRoleSelection === 'function'
                 ? gameEngine.sanitizeRoleSelection(updates.werewolfRoles)
                 : updates.werewolfRoles;

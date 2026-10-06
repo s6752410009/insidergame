@@ -259,6 +259,62 @@ const CONFIGURABLE_ROLE_IDS = ['werewolf', 'alphaWolf', 'seer', 'oracle', 'docto
 const DEFAULT_ROLE_SELECTION = [...CONFIGURABLE_ROLE_IDS];
 const SKIP_TARGET_ID = '__skip__';
 
+// ===== ตั้งเวลาโดยหัวห้อง + ช่วงเรียกโหวตสุดท้าย =====
+const VOTE_LAST_CALL_MS = 4000;
+const WEREWOLF_TIMER_CHOICES = {
+    werewolfNightSeconds: [45, 60, 90],
+    werewolfDaySeconds: [120, 180, 240, 300],
+    werewolfVoteSeconds: [45, 60, 90]
+};
+const WEREWOLF_TIMER_DEFAULTS = {
+    werewolfNightSeconds: 60,
+    werewolfDaySeconds: 180,
+    werewolfVoteSeconds: 60
+};
+
+function sanitizeTimerSeconds(key, value, fallback) {
+    const numeric = Number(value);
+    if (WEREWOLF_TIMER_CHOICES[key].includes(numeric)) {
+        return numeric;
+    }
+    return WEREWOLF_TIMER_CHOICES[key].includes(Number(fallback)) ? Number(fallback) : WEREWOLF_TIMER_DEFAULTS[key];
+}
+
+/** คืนค่าตั้งเวลา/การมองเห็นบทของคนตายที่ปลอดภัยแล้ว (ค่าที่ไม่ได้ส่งมา = ใช้ค่าเดิมหรือค่าเริ่มต้น) */
+function sanitizeWerewolfSettings(input = {}, current = {}) {
+    const source = input || {};
+    const previous = current || {};
+    const result = {};
+    Object.keys(WEREWOLF_TIMER_DEFAULTS).forEach(key => {
+        result[key] = source[key] !== undefined
+            ? sanitizeTimerSeconds(key, source[key], previous[key])
+            : sanitizeTimerSeconds(key, previous[key]);
+    });
+    if (source.werewolfDeadSeeRoles !== undefined) {
+        result.werewolfDeadSeeRoles = source.werewolfDeadSeeRoles === true || source.werewolfDeadSeeRoles === 'true';
+    } else {
+        result.werewolfDeadSeeRoles = previous.werewolfDeadSeeRoles !== false;
+    }
+    return result;
+}
+
+function getPhaseDurationMs(room, phase) {
+    const settings = sanitizeWerewolfSettings({}, room?.settings || {});
+    if (phase === 'night') return settings.werewolfNightSeconds * 1000;
+    if (phase === 'day-discussion') return settings.werewolfDaySeconds * 1000;
+    return settings.werewolfVoteSeconds * 1000;
+}
+
+/** ทุกคนโหวตครบ → ไม่ปิดทันที เปิดช่วงเรียกสุดท้าย 4 วิ (ไม่ต่อเวลาเมื่อมีคนเปลี่ยนโหวต) */
+function startVoteLastCall(room) {
+    if (!room.gameState.voteClosesAt) {
+        room.gameState.voteClosesAt = Date.now() + VOTE_LAST_CALL_MS;
+        const currentEnd = Number(room.gameState.phaseEndsAt || 0);
+        room.gameState.phaseEndsAt = currentEnd > 0 ? Math.min(currentEnd, room.gameState.voteClosesAt) : room.gameState.voteClosesAt;
+    }
+    return { resolved: false, lastCall: true, voteClosesAt: room.gameState.voteClosesAt };
+}
+
 function isFirstNight(room) {
     return Number(room?.gameState?.dayNumber) === 1;
 }
@@ -573,7 +629,8 @@ function createInitialState() {
         pendingRevealActions: {},
         lastProtectedByBodyguard: {},
         lastResolvedNight: null,
-        lastResolvedDay: null
+        lastResolvedDay: null,
+        voteClosesAt: null
     };
 }
 
@@ -919,6 +976,7 @@ function resetNightActions(room) {
 }
 
 function resetDayState(room) {
+    room.gameState.voteClosesAt = null;
     room.gameState.dayVotes = {};
     room.gameState.discussionSkips = {};
     room.gameState.dayActionUsedBy = {};
@@ -1019,6 +1077,7 @@ function startDiscussionPhase(room) {
 function startDayPhase(room, trigger = 'discussion-ended') {
     room.gameState.phase = 'day-vote';
     room.gameState.phaseEndsAt = null;
+    room.gameState.voteClosesAt = null;
     room.gameState.status = 'werewolf_day_vote';
     room.gameState.dayVotes = {};
     room.gameState.discussionSkips = {};
@@ -1885,6 +1944,7 @@ function submitClericBless(room, actorId, targetPlayerId) {
 }
 
 function resolveDayVote(room) {
+    room.gameState.voteClosesAt = null;
     const publicEvents = resolvePendingRevealActions(room);
     syncAlivePlayerIds(room);
 
@@ -2242,7 +2302,7 @@ function submitNightSkip(room, actorId) {
     };
 }
 
-function submitDayVote(room, actorId, targetPlayerId) {
+function submitDayVote(room, actorId, targetPlayerId, options = {}) {
     if (room.gameState.phase !== 'day-vote') {
         throw new Error('ยังไม่ใช่ช่วงโหวตกลางวัน');
     }
@@ -2274,14 +2334,18 @@ function submitDayVote(room, actorId, targetPlayerId) {
     room.gameState.dayVotes[actorId] = targetPlayerId;
     room.gameState.lastAction = Date.now();
 
+    if (options.lastCall && room.gameState.voteClosesAt) {
+        return { resolved: false, lastCall: true, voteClosesAt: room.gameState.voteClosesAt };
+    }
+
     if (canSkipDayVote(room) || canResolveDay(room)) {
-        return resolveDayVote(room);
+        return options.lastCall ? startVoteLastCall(room) : resolveDayVote(room);
     }
 
     return { resolved: false };
 }
 
-function submitMayorReveal(room, actorId) {
+function submitMayorReveal(room, actorId, options = {}) {
     if (room.gameState.phase !== 'day-discussion' && room.gameState.phase !== 'day-vote') {
         throw new Error('นายกเปิดเผยตัวได้เฉพาะตอนเช้าเท่านั้น');
     }
@@ -2301,7 +2365,7 @@ function submitMayorReveal(room, actorId) {
     pushHistory(room, `${actor.name} เปิดเผยตัวว่าเป็นนายก ทำให้เสียงโหวตของเขานับเป็น 2 ตั้งแต่นี้`, 'day');
 
     if (room.gameState.phase === 'day-vote' && (canSkipDayVote(room) || canResolveDay(room))) {
-        return resolveDayVote(room);
+        return options.lastCall ? { ...startVoteLastCall(room), mayorRevealed: true } : resolveDayVote(room);
     }
 
     return { resolved: false, mayorRevealed: true };
@@ -2335,7 +2399,7 @@ function submitDiscussionSkip(room, actorId) {
     };
 }
 
-function useRevealAction(room, actorId, targetPlayerId) {
+function useRevealAction(room, actorId, targetPlayerId, options = {}) {
     if (room.gameState.phase !== 'day-discussion' && room.gameState.phase !== 'day-vote') {
         throw new Error('สกิลเปิดโปงใช้ได้เฉพาะตอนกลางวัน');
     }
@@ -2365,7 +2429,7 @@ function useRevealAction(room, actorId, targetPlayerId) {
 
     if (room.gameState.phase === 'day-vote' && canResolveDay(room)) {
         return {
-            ...resolveDayVote(room),
+            ...(options.lastCall ? startVoteLastCall(room) : resolveDayVote(room)),
             queued: true,
             revealTargetId: target.playerId,
             revealTargetName: target.name
@@ -3243,9 +3307,21 @@ function buildClientState(room, viewerPlayerId, options = {}) {
     // เปลี่ยนเมื่อแผนบทหรือรายการบทที่เปิดใช้เปลี่ยนเท่านั้น
     const staticVersion = rolePlan.map(r => r?.id || '').join(',') + '|' + [...enabledRoleIds].sort().join(',');
     const dayVoteTallies = getDayVoteTallies(room);
+    const isFinished = room.gameState.phase === 'finished';
+    // คนตายเห็นบททุกคน (ตั้งค่าห้อง ค่าเริ่มต้นเปิด) — ส่งเฉพาะ state ของคนที่ตายแล้วเท่านั้น
+    const deadRoleView = !isFinished
+        && !!viewer && viewer.alive === false
+        && room.settings?.werewolfDeadSeeRoles !== false
+        && room.gameState.phase !== 'lobby';
+    const showRoles = isFinished || deadRoleView;
+    const timerSettings = sanitizeWerewolfSettings({}, room.settings || {});
 
     return {
         mode: 'werewolf',
+        isHost: !!viewerPlayerId && room.admin === viewerPlayerId,
+        deadRoleView,
+        voteClosesAt: room.gameState.phase === 'day-vote' ? (room.gameState.voteClosesAt || null) : null,
+        timerSettings,
         roomId: room.roomId,
         roomName: room.name,
         phase: room.gameState.phase || 'lobby',
@@ -3276,10 +3352,12 @@ function buildClientState(room, viewerPlayerId, options = {}) {
             avatarFrame: player.avatarFrame || 'none',
             alive: player.alive !== false,
             isSelf: player.playerId === viewerPlayerId,
-            revealedRole: room.gameState.phase === 'finished' ? (player.revealedRole || null) : null,
-            roleId: room.gameState.phase === 'finished' ? (player.role || null) : null,
-            roleTeam: room.gameState.phase === 'finished' ? (player.roleInfo?.team || null) : null,
-            roleThaiName: room.gameState.phase === 'finished' ? (player.roleInfo?.thaiName || null) : null,
+            revealedRole: isFinished
+                ? (player.revealedRole || null)
+                : (deadRoleView ? (player.roleInfo?.thaiName || player.role || null) : null),
+            roleId: showRoles ? (player.role || null) : null,
+            roleTeam: showRoles ? (player.roleInfo?.team || null) : null,
+            roleThaiName: showRoles ? (player.roleInfo?.thaiName || null) : null,
             voteWeight: getCurrentVoteWeight(player),
             voteCount: dayVoteTallies[player.playerId] || 0
         })),
@@ -3307,6 +3385,11 @@ function buildClientState(room, viewerPlayerId, options = {}) {
 }
 
 module.exports = {
+    VOTE_LAST_CALL_MS,
+    WEREWOLF_TIMER_CHOICES,
+    WEREWOLF_TIMER_DEFAULTS,
+    sanitizeWerewolfSettings,
+    getPhaseDurationMs,
     maybeAutoEndNight,
     getNightReadyCount,
     id: 'werewolf',

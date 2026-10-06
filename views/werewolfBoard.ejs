@@ -340,6 +340,10 @@
     .chat-message-wrapper.system .chat-message-name { display: none; }
   .chat-channel-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 4px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
   .chat-channel-badge.channel-public { background: rgba(59,130,246,0.16); color: #dbeafe; border: 1px solid rgba(96,165,250,0.16); }
+  .chat-channel-badge.channel-ghost { background: oklch(0.32 0.04 290 / 0.5); color: oklch(0.92 0.03 290); border: 1px solid oklch(0.7 0.08 290 / 0.3); }
+  .chat-tab[data-chat-filter="ghost"] { display: none; }
+  .hint-lastcall { flex-basis: 100%; font-size: 0.9rem; font-weight: 700; line-height: 1.45; color: oklch(0.95 0.06 85); background: oklch(0.42 0.12 60 / 0.45); border: 1px solid oklch(0.8 0.14 75 / 0.5); border-radius: 10px; padding: 8px 10px; }
+  .hint-btn.btn-host-skip { border-color: oklch(0.75 0.13 70 / 0.55); color: oklch(0.92 0.08 80); }
   .chat-channel-badge.channel-wolf { background: rgba(127,29,29,0.36); color: #fee2e2; border: 1px solid rgba(248,113,113,0.18); }
   .chat-channel-badge.channel-system { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.08); }
   .chat-message-body { white-space: pre-wrap; word-break: break-word; font-size: 0.92rem; color: #f8fafc; }
@@ -889,7 +893,7 @@
         <div class="ww-filters">
           <button class="chat-tab active" type="button" data-chat-filter="all">ทั้งหมด</button>
           <button class="chat-tab" type="button" data-chat-filter="player">วงหลัก</button>
-          <button class="chat-tab" type="button" data-chat-filter="wolf">หมาป่า</button>
+          <button class="chat-tab" type="button" data-chat-filter="wolf">หมาป่า</button><button class="chat-tab" type="button" data-chat-filter="ghost">👻 ผี</button>
           <button class="chat-tab" type="button" data-chat-filter="system">ระบบ</button>
         </div>
 
@@ -960,7 +964,7 @@
     <div id="overlayChatFilters" class="ww-filters">
       <button class="chat-tab active" type="button" data-chat-filter="all">ทั้งหมด</button>
       <button class="chat-tab" type="button" data-chat-filter="player">วงหลัก</button>
-      <button class="chat-tab" type="button" data-chat-filter="wolf">หมาป่า</button>
+      <button class="chat-tab" type="button" data-chat-filter="wolf">หมาป่า</button><button class="chat-tab" type="button" data-chat-filter="ghost">👻 ผี</button>
       <button class="chat-tab" type="button" data-chat-filter="system">ระบบ</button>
     </div>
     <div id="overlayChatMessages" class="ww-chat-scroll"></div>
@@ -2402,7 +2406,7 @@
         if (dayActions.canVote) {
           headline = 'เลือกคนจากที่นั่ง แล้วลงคะแนน!';
           detail = dayActions.selectedVoteTargetId
-            ? `กำลังเล็ง ${describeTarget(dayActions.selectedVoteTargetId, 'เป้าหมาย', { context: 'day-vote' })} อยู่ เปลี่ยนใจได้จนกว่าทุกคนโหวตครบ`
+            ? `กำลังเล็ง ${describeTarget(dayActions.selectedVoteTargetId, 'เป้าหมาย', { context: 'day-vote' })} อยู่ เปลี่ยนใจได้จนกว่าจะปิดโหวต`
             : 'ดูที่นั่งแล้วแตะคนที่สงสัย';
           primaryLabel = '🗳️ โหวต';
         } else if (dayActions.canReveal) {
@@ -2417,7 +2421,7 @@
           tone = 'tone-lock';
           kicker = 'ล็อกแล้ว';
           headline = `คะแนนนำ ${leadingVoteWeight}/${voteThreshold}`;
-          detail = totalVoters > 0 ? `ตัดสินใจแล้ว ${completedVotes}/${totalVoters} คน — ครบทุกคนแล้วปิดโหวตทันที` : 'รอผลโหวต';
+          detail = totalVoters > 0 ? `ตัดสินใจแล้ว ${completedVotes}/${totalVoters} คน — ครบทุกคนแล้วปิดโหวตใน 4 วิ` : 'รอผลโหวต';
           primaryLabel = '👥 ดูที่นั่ง';
           primaryTarget = 'players';
           secondaryLabel = '🎯 ดูสถานะ';
@@ -2622,7 +2626,7 @@
         $('#phaseCountdown').text(formatCountdown(countdownDeadline));
         $('#mobilePhaseCountdown').text(formatCountdown(countdownDeadline));
         $('#phaseHudTimer').text(formatCountdown(countdownDeadline));
-        if (secondsLeft <= 10 && secondsLeft > 0 && lastWarningKey !== String(phaseEndsAt)) {
+        if (secondsLeft <= 10 && secondsLeft > 0 && lastWarningKey !== String(phaseEndsAt) && !currentState.voteClosesAt) {
           lastWarningKey = String(phaseEndsAt);
           playSound('warning');
           appendChatMessage({
@@ -3316,6 +3320,46 @@
       return '<div class="hint-news" data-testid="ww-latest-news"><span class="hint-news-label">' + label + '</span>' + escapeHtml(text) + '</div>';
     }
 
+    function lastCallSecondsLeft() {
+      var closesAt = Number(currentState && currentState.voteClosesAt || 0);
+      return closesAt ? Math.max(0, Math.ceil((closesAt - Date.now()) / 1000)) : 0;
+    }
+
+    // นับถอยหลังช่วงเรียกโหวตสุดท้าย (คำนวณจากเวลา server → รีเฟรชแล้วยังตรง)
+    setInterval(function() {
+      if (!currentState || !currentState.voteClosesAt) return;
+      $('.ww-lastcall-count').text(lastCallSecondsLeft());
+    }, 250);
+
+    window.hostSkipPhase = function() {
+      var phase = currentState.phase;
+      var copy = {
+        night: ['จบคืนนี้เลย?', 'คนที่ยังไม่เลือกสกิลจะถือว่าไม่ใช้สกิล (เหมือนหมดเวลา) แล้วไปเปิดข่าวตอนเช้า'],
+        'day-discussion': ['ข้ามไปโหวตเลย?', 'ช่วงประชุมจะจบทันทีและเปิดโหวตให้ทุกคน'],
+        'day-vote': ['ปิดโหวตเลย?', 'คนที่ยังไม่โหวตจะถือว่าข้ามโหวต (เหมือนหมดเวลา) แล้วนับผลทันที']
+      }[phase];
+      if (!copy) return;
+      Swal.fire({
+        icon: 'question',
+        title: '⏭️ ' + copy[0],
+        text: copy[1] + ' — ทุกคนจะเห็นว่าหัวห้องเป็นคนข้าม',
+        showCancelButton: true,
+        confirmButtonText: 'ข้ามเลย',
+        cancelButtonText: 'ยกเลิก',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#475569'
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        socket.emit('werewolf_hostSkipPhase', { roomId: roomId, phase: phase }, function(response) {
+          if (!response || !response.success) {
+            Swal.fire({ icon: 'error', title: 'ข้ามช่วงไม่สำเร็จ', text: response?.error || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+          }
+        });
+      });
+    };
+
     // ===== RENDER MOBILE HINT BAR (unified: role + action + notes) =====
     function renderMobileHint() {
       var $hint = $('#mobileHint');
@@ -3330,13 +3374,20 @@
       var amDead = selfP && selfP.alive === false;
       var $deadBanner = $('#mobileDeadBanner');
       if (amDead && !winner) {
-        $deadBanner.html('💀 คุณตายแล้ว — ดูเกมต่อได้ แต่แชท โหวต และใช้สกิลไม่ได้ (อย่าใบ้คนที่ยังอยู่นะ)').show();
+        $deadBanner.html('💀 คุณตายแล้ว — โหวตและใช้สกิลไม่ได้ แต่คุยกับคนตายด้วยกันใน 👻 แชทผีได้'
+          + (currentState.deadRoleView ? '<br>👁️ ตอนนี้คุณเห็นบทของทุกคนแล้ว — ห้ามบอกหรือใบ้คนที่ยังอยู่เด็ดขาด' : ' (อย่าใบ้คนที่ยังอยู่นะ)')).show();
       } else {
         $deadBanner.hide();
       }
 
       // ข่าวล่าสุดแบบถาวร: ใครตาย/โดนโหวต เพราะอะไร — ป๊อปอัปหายไปแล้ว หรือเพิ่งรีเฟรชก็ยังอ่านได้
       var newsHtml = buildLatestNewsHtml(currentState);
+      // ปุ่มหัวห้องข้ามช่วง (เช็คหัวห้องจาก state ล่าสุด รองรับการย้ายหัวห้อง)
+      var hostSkipLabels = { night: '⏭️ หัวห้อง: จบคืนเลย', 'day-discussion': '⏭️ หัวห้อง: เปิดโหวตเลย', 'day-vote': '⏭️ หัวห้อง: ปิดโหวตเลย' };
+      var hostSkipHtml = (currentState.isHost && !winner && hostSkipLabels[phase])
+        ? '<button class="hint-btn btn-host-skip" data-testid="ww-host-skip" onclick="hostSkipPhase()">' + hostSkipLabels[phase] + '</button>'
+        : '';
+      newsHtml = newsHtml + hostSkipHtml;
 
       // Role pill text (tappable to open full role info + remaining uses)
       var rolePill = role
@@ -3538,7 +3589,10 @@
           vBtns += '<span class="hint-text" style="color:#fda4af;">🎯 ล็อกเป้า ' + escapeHtml(dayActions.pendingRevealTargetName || 'ไว้แล้ว') + '</span>';
         }
         var focusClass3 = dayActions.canVote ? ' hint-focus' : '';
-        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง · ครบทุกคน = ปิดโหวตทันที</span>' + vBtns + seerTagVote + oracleTagVote + newsHtml + notesHtml + '</div>');
+        var lastCallHtml = currentState.voteClosesAt
+          ? '<div class="hint-lastcall" data-testid="ww-last-call" role="status">⏳ ทุกคนโหวตครบแล้ว — ปิดโหวตใน <span class="ww-lastcall-count">' + lastCallSecondsLeft() + '</span>… ' + (dayActions.canVote ? 'เปลี่ยนใจได้ตอนนี้' : 'รอนับผล') + '</div>'
+          : '';
+        $hint.html('<div class="hint-bar hint-vote' + focusClass3 + '">' + lastCallHtml + rolePill + '<span class="hint-text">🗳️ คะแนนนำ ' + leadingVoteWeight + '/' + voteThreshold + ' • ลงแล้ว ' + submittedVoteWeight + '/' + totalVoteWeight + ' เสียง · ครบทุกคน = ปิดโหวตใน 4 วิ</span>' + vBtns + seerTagVote + oracleTagVote + newsHtml + notesHtml + '</div>');
         return;
       }
 
@@ -3594,11 +3648,21 @@
       if (messageType === 'wolf-team') {
         return 'wolf';
       }
+      if (messageType === 'ghost') {
+        return 'ghost';
+      }
 
       return messageType === 'player' ? 'player' : 'system';
     }
 
     function getChatChannelBadge(messageType) {
+      if (messageType === 'ghost') {
+        return {
+          className: 'channel-ghost',
+          label: '👻 แชทผี'
+        };
+      }
+
       if (messageType === 'wolf-team') {
         return {
           className: 'channel-wolf',
@@ -3625,6 +3689,13 @@
       $wolfTab.toggle(canSeeWolfChat);
 
       if (!canSeeWolfChat && currentChatFilter === 'wolf') {
+        currentChatFilter = 'all';
+      }
+
+      const selfForGhost = (state?.players || []).find(function(player) { return player.isSelf; });
+      const canSeeGhostChat = !!selfForGhost && selfForGhost.alive === false;
+      $('.chat-tab[data-chat-filter="ghost"]').css('display', canSeeGhostChat ? 'inline-flex' : 'none');
+      if (!canSeeGhostChat && currentChatFilter === 'ghost') {
         currentChatFilter = 'all';
       }
     }
@@ -3690,14 +3761,17 @@
       const phase = state?.phase || 'lobby';
       const isAlive = !selfPlayer || selfPlayer.alive;
       const canWolfNightChat = phase === 'night' && isAlive && (roleId === 'werewolf' || roleId === 'alphaWolf');
+      // คนตายระหว่างเกม → พิมพ์ได้แต่เข้าแชทผีเท่านั้น
+      const canGhostChat = !isAlive && !state?.winner && ['night', 'day-discussion', 'day-vote'].indexOf(phase) !== -1;
       const chatLocked = Boolean(state?.winner)
         ? false
-        : (!isAlive || (phase === 'night' && !canWolfNightChat));
+        : ((!isAlive && !canGhostChat) || (isAlive && phase === 'night' && !canWolfNightChat));
 
       return {
         isAlive,
         phase,
         canWolfNightChat,
+        canGhostChat,
         chatLocked,
         adminCommandOnly: Boolean(canUseAdminReveal && chatLocked)
       };
@@ -3705,7 +3779,9 @@
 
     function syncChatComposerState(state) {
       const composerState = getChatComposerState(state);
-      const placeholder = !composerState.isAlive
+      const placeholder = composerState.canGhostChat
+        ? '👻 แชทผี — คุยได้เฉพาะคนที่ตายแล้ว คนที่ยังอยู่ไม่เห็น'
+        : !composerState.isAlive
         ? (composerState.adminCommandOnly
           ? 'คุณตายแล้ว แชทปกติถูกปิด แต่ยังใช้ช่องนี้สำหรับคำสั่งผู้ดูแลได้'
           : 'คุณตายแล้ว จึงไม่สามารถพิมพ์ข้อความได้')
@@ -3719,6 +3795,7 @@
 
       $('#werewolfChatInput').prop('disabled', composerState.chatLocked && !composerState.adminCommandOnly).attr('placeholder', placeholder);
       $('#sendWerewolfChat').prop('disabled', composerState.chatLocked && !composerState.adminCommandOnly);
+      $('#overlayChatInput').attr('placeholder', placeholder);
     }
 
     function showAdminReveal(data) {
@@ -5438,6 +5515,7 @@
 
     socket.on('werewolfChatSync', function(entries) {
       $('#werewolfChatMessages').empty();
+      $('#overlayChatMessages').empty(); // กันข้อความซ้ำในแชทลอย (มือถือ) หลัง sync
       renderedMessageIds.clear();
       (entries || []).forEach(function(entry) {
         appendChatMessage(entry, { silent: true });

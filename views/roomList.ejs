@@ -1763,6 +1763,22 @@ $(function() {
                             }).join('')}
                         </div>
                         <div style="margin-top:8px; color:#aaa; font-size:0.9em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด และระบบจะปรับจำนวนหมาป่าสูงสุดตามจำนวนผู้เล่นให้เองถ้าตั้งเกิน</div>
+                        <div class="room-form-label" style="margin-top:14px;"><span class="icon">⏱️</span> เวลาแต่ละช่วง:</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+                            <select id="werewolfNightSeconds" aria-label="เวลากลางคืน" style="flex:1 1 100%; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(231,76,60,0.4); background:#1a2332; color:#fff; font:inherit;">
+                                ${[45, 60, 90].map(function(v) { return '<option value="' + v + '"' + (v === 60 ? ' selected' : '') + '>🌙 คืน ' + v + ' วิ</option>'; }).join('')}
+                            </select>
+                            <select id="werewolfDaySeconds" aria-label="เวลาประชุม" style="flex:1 1 100%; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(231,76,60,0.4); background:#1a2332; color:#fff; font:inherit;">
+                                ${[120, 180, 240, 300].map(function(v) { return '<option value="' + v + '"' + (v === 180 ? ' selected' : '') + '>☀️ ประชุม ' + (v / 60) + ' นาที</option>'; }).join('')}
+                            </select>
+                            <select id="werewolfVoteSeconds" aria-label="เวลาโหวต" style="flex:1 1 100%; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(231,76,60,0.4); background:#1a2332; color:#fff; font:inherit;">
+                                ${[45, 60, 90].map(function(v) { return '<option value="' + v + '"' + (v === 60 ? ' selected' : '') + '>🗳️ โหวต ' + v + ' วิ</option>'; }).join('')}
+                            </select>
+                        </div>
+                        <label style="display:flex; align-items:flex-start; gap:10px; margin-top:12px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#fff; cursor:pointer;">
+                            <input type="checkbox" id="werewolfDeadSeeRoles" checked style="margin-top:3px; width:20px; height:20px; accent-color:#e74c3c;">
+                            <span style="text-align:left;"><strong>👻 คนตายเห็นบททุกคน</strong><br><span style="color:#aaa; font-size:0.85em;">ถ้าเล่นต่อหน้ากัน คนที่ตายแล้วห้ามบอกใครเด็ดขาด</span></span>
+                        </label>
                     </div>
 
                     <details class="room-advanced-details">
@@ -2139,6 +2155,10 @@ $(function() {
                     maxPlayers: maxPlayers,
                     roundTime: gameMode === 'werewolf' ? undefined : roundTime,
                     wolfCount: wolfCount,
+                    werewolfNightSeconds: gameMode === 'werewolf' ? Number((document.getElementById('werewolfNightSeconds') || {}).value || 60) : undefined,
+                    werewolfDaySeconds: gameMode === 'werewolf' ? Number((document.getElementById('werewolfDaySeconds') || {}).value || 180) : undefined,
+                    werewolfVoteSeconds: gameMode === 'werewolf' ? Number((document.getElementById('werewolfVoteSeconds') || {}).value || 60) : undefined,
+                    werewolfDeadSeeRoles: gameMode === 'werewolf' ? !!(document.getElementById('werewolfDeadSeeRoles') || { checked: true }).checked : undefined,
                     locked: locked,
                     password: locked ? password : null,
                     tableMode: tableMode,

@@ -2231,6 +2231,30 @@
             'กวาดของเถื่อน เปิดดีล หักหลัง — กด <strong>📖 วิธีเล่น</strong> ด้านล่าง',
             '</p>'
           ].join('');
+        } else if (resolvedMode === 'werewolf') {
+          // หัวห้องตั้งเวลาแต่ละช่วง + ให้คนตายเห็นบทได้ ก่อนเริ่มเกม (คนอื่นเห็นค่าแต่แก้ไม่ได้)
+          const wwNight = Number(settings && settings.werewolfNightSeconds) || 60;
+          const wwDay = Number(settings && settings.werewolfDaySeconds) || 180;
+          const wwVote = Number(settings && settings.werewolfVoteSeconds) || 60;
+          const wwDeadRoles = !(settings && settings.werewolfDeadSeeRoles === false);
+          const wwDis = isAdmin ? '' : ' disabled';
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(127,29,29,0.35); color:#fecaca;">🐺 Werewolf · เวลาแต่ละช่วง</div>',
+            '<div class="cc-lobby-opts" id="wwLobbyOpts">',
+            '<select id="wwLobbyNight" aria-label="เวลากลางคืน"' + wwDis + '>',
+            [45, 60, 90].map(function(v) { return '<option value="' + v + '"' + (v === wwNight ? ' selected' : '') + '>🌙 คืน ' + v + ' วิ</option>'; }).join(''),
+            '</select>',
+            '<select id="wwLobbyDay" aria-label="เวลาประชุม"' + wwDis + '>',
+            [120, 180, 240, 300].map(function(v) { return '<option value="' + v + '"' + (v === wwDay ? ' selected' : '') + '>☀️ ประชุม ' + (v / 60) + ' นาที</option>'; }).join(''),
+            '</select>',
+            '<select id="wwLobbyVote" aria-label="เวลาโหวต"' + wwDis + '>',
+            [45, 60, 90].map(function(v) { return '<option value="' + v + '"' + (v === wwVote ? ' selected' : '') + '>🗳️ โหวต ' + v + ' วิ</option>'; }).join(''),
+            '</select>',
+            '<button type="button" class="uc-mw-toggle" id="wwLobbyDeadRoles" aria-pressed="' + (wwDeadRoles ? 'true' : 'false') + '"' + wwDis + '>' + (wwDeadRoles ? '✓ ' : '') + '👻 คนตายเห็นบททุกคน: ' + (wwDeadRoles ? 'เปิด' : 'ปิด') + '</button>',
+            '</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.82em; line-height:1.45;">ถ้าเล่นต่อหน้ากัน คนที่ตายแล้วห้ามบอกใครเด็ดขาด' + (isAdmin ? '' : ' · หัวห้องเป็นคนตั้งค่า') + '</p>'
+          ].join('');
         } else {
           lobbySpotlight.style.display = 'none';
           lobbySpotlight.innerHTML = '';
@@ -3374,6 +3398,13 @@
         }
       });
     }
+    $(document).on('change', '#wwLobbyNight', function() { updateColorCardsSetting({ werewolfNightSeconds: Number(this.value) }); });
+    $(document).on('change', '#wwLobbyDay', function() { updateColorCardsSetting({ werewolfDaySeconds: Number(this.value) }); });
+    $(document).on('change', '#wwLobbyVote', function() { updateColorCardsSetting({ werewolfVoteSeconds: Number(this.value) }); });
+    $(document).on('click', '#wwLobbyDeadRoles', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ werewolfDeadSeeRoles: this.getAttribute('aria-pressed') !== 'true' });
+    });
     $(document).on('change', '#ccLobbyTarget', function() { updateColorCardsSetting({ colorcardsTarget: Number(this.value) }); });
     $(document).on('change', '#ccLobbyTurn', function() { updateColorCardsSetting({ colorcardsTurnSeconds: Number(this.value) }); });
     $(document).on('click', '#ccLobbyStack', function() {
@@ -3605,7 +3636,7 @@
                     return `<button type="button" data-wolf-count="${n}" class="wolf-count-btn${isActive ? ' active' : ''}" style="flex:1; padding:10px 0; border-radius:10px; border:2px solid ${isActive ? '#e74c3c' : 'rgba(255,255,255,0.12)'}; background:${isActive ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)'}; color:#fff; font-size:1.1em; cursor:pointer; font-family:Rajdhani,sans-serif; font-weight:700;">🐺 ${n} ตัว</button>`;
                   }).join('')}
                 </div>
-                <div style="margin-top:8px; color:#aaa; font-size:0.82em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด และเวลาในเกมถูกล็อกเป็น กลางคืน 1 นาที / ประชุม 3 นาที / โหวต 1 นาที</div>
+                <div style="margin-top:8px; color:#aaa; font-size:0.82em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด · ตั้งเวลาแต่ละช่วงและ "คนตายเห็นบท" ได้ที่การ์ด Werewolf ในหน้าห้องรอ</div>
               </div>
               
               <div class="room-form-group" id="editPokerTableGroup" style="display: ${isPokerLobby ? 'block' : 'none'};">
