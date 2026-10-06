@@ -259,6 +259,9 @@ async function layoutProblems(page) {
         await delay(600);
         const dp = { page: dpage, role: 'desktop' };
         await shot(dp, 'finished-desktop', { full: true });
+        // ux: กฎกลาง .content ul li { font-size: 20px } ต้องไม่ทำให้สรุปภารกิจ/บันทึกเกมตัวใหญ่กว่าส่วนอื่นบนเดสก์ท็อป
+        const recapSizes = await dpage.$$eval('.av-recap li, .av-log-list li', els => els.map(e => parseFloat(getComputedStyle(e).fontSize)));
+        assert(recapSizes.length > 0 && recapSizes.every(px => px <= 15), 'สรุปภารกิจ/บันทึกบนเดสก์ท็อปตัวใหญ่ผิด: ' + recapSizes.join(','));
         assert(derrors.length === 0, 'desktop JS error: ' + derrors.join(' | '));
 
         // รูปไม่แตก + ไม่มี JS error

@@ -379,7 +379,10 @@ function startGame(room) {
         failCount: 0,
         teamIds: []
     }));
-    state.players = connected.map(player => createPlayerState(player, {
+    // ทุกคนในห้อง (รวมคนที่หลุดตอนเริ่ม) อยู่ใน players — กลับมาแล้วเปิดหน้าเกมดูได้
+    // ไม่งั้น /game ส่งไป /room แล้ว /room ส่งกลับ /game วนจนเบราว์เซอร์ขึ้น ERR_TOO_MANY_REDIRECTS
+    // คนที่นั่งโต๊ะจริงดูจาก seats เท่านั้น
+    state.players = (room.players || []).map(player => createPlayerState(player, {
         socketId: player.socketId,
         isAdmin: player.playerId === room.admin || player.permission === 'admin'
     }));
@@ -588,6 +591,7 @@ function resolveQuest(room) {
     quest.result = result;
     quest.failCount = failCount;
     quest.teamIds = teamIds;
+    quest.leaderId = state.proposal?.leaderId || null;
     state.lastQuest = {
         questNumber: quest.number,
         teamIds,
@@ -830,7 +834,10 @@ function buildClientState(room, viewerPlayerId) {
             size: entry.size,
             failsNeeded: entry.failsNeeded,
             result: entry.result,
-            failCount: entry.result ? entry.failCount : null
+            failCount: entry.result ? entry.failCount : null,
+            // ทีมที่ออกภารกิจแล้วเป็นข้อมูลสาธารณะ — ให้ทุกคนย้อนดูได้ว่าใครอยู่ในภารกิจที่ล้ม
+            teamIds: entry.result ? [...(entry.teamIds || [])] : [],
+            leaderId: entry.result ? (entry.leaderId || null) : null
         })),
         currentQuest: quest ? { number: quest.number, size: quest.size, failsNeeded: quest.failsNeeded } : null,
         successCount: countResults(state, 'success'),
@@ -883,7 +890,8 @@ function buildClientState(room, viewerPlayerId) {
                 avatarFrame: seat.avatarFrame,
                 seat: seat.seat,
                 isSelf: seat.playerId === viewerPlayerId,
-                isLeader: seat.playerId === state.leaderId && !finished,
+                // ช่วงลอบสังหารไม่มีหัวหน้าแล้ว — ไม่โชว์มงกุฎค้าง
+                isLeader: seat.playerId === state.leaderId && !finished && !inPhase('assassin'),
                 onTeam: proposalIds.includes(seat.playerId) && (inPhase('vote') || inPhase('quest')),
                 hasVoted: inPhase('vote') ? !!state.votes[seat.playerId] : false,
                 hasPlayed: inPhase('quest') ? !!state.questCards[seat.playerId] : false,
