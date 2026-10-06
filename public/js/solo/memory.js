@@ -82,7 +82,8 @@
         return run.baseMs + (run.startedAt !== null ? performance.now() - run.startedAt : 0);
     }
     function persistGame() {
-        if (!game || !run || run.finished) return;
+        // ยังไม่แตะการ์ดสักใบ = ไม่มีอะไรให้ "เล่นต่อ" — ไม่เก็บ (ไม่งั้นเมนูขึ้น "มีเกมค้าง 0 คู่ · 0:00")
+        if (!game || !run || run.finished || !game.log.length) return;
         save(KEYS.game, {
             v: 1, runId: run.runId, level: game.level, seed: game.seed, deck: game.deck,
             log: game.log, elapsedMs: Math.round(elapsedMs()), started: run.started, savedAt: Date.now()
@@ -129,6 +130,24 @@
         const last = stats.daily && stats.daily.last;
         return last && last.date === todayInfo().date ? last : null;
     }
+    // กระดานประจำวันเปลี่ยนตอนเที่ยงคืนเวลาไทย
+    function msUntilNextDaily() {
+        const day = 24 * 60 * 60 * 1000;
+        const local = Date.now() + 7 * 60 * 60 * 1000;
+        return day - (local % day);
+    }
+    function fmtCountdown(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        return [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60].map(n => String(n).padStart(2, '0')).join(':');
+    }
+    let shownDailyDate = null;
+    function tickDaily() {
+        if (menuEl.hidden) return;
+        // ข้ามเที่ยงคืนระหว่างเปิดเมนูค้างไว้ → วาดเมนูใหม่ให้เป็นกระดานของวันใหม่
+        if (shownDailyDate && shownDailyDate !== todayInfo().date) { renderMenu(); fetchBoard(); return; }
+        const el = $('mmDailyNext');
+        if (el) el.textContent = fmtCountdown(msUntilNextDaily());
+    }
     function fmtDateThai(date) {
         const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
         const [y, m, d] = date.split('-').map(Number);
@@ -137,9 +156,10 @@
 
     function renderMenu() {
         const t = todayInfo();
+        shownDailyDate = t.date;
         $('mmDailyDate').textContent = fmtDateThai(t.date);
         const streak = C.liveStreak(stats);
-        $('mmDailyMeta').textContent = `สำรับ${C.DECKS[t.deck].label} · ${C.LEVELS.daily.pairs} คู่ · ${streak > 0 ? `ติดกัน ${streak} วัน` : 'เล่นได้วันละครั้ง'}`;
+        $('mmDailyMeta').textContent = `สำรับ${C.DECKS[t.deck].label} · ${C.LEVELS.daily.pairs} คู่ · ${streak > 0 ? `ติดกัน ${streak} วัน` : 'เล่นได้วันละครั้ง'} · เปลี่ยนกระดานเที่ยงคืน`;
         const done = dailyDoneToday();
         const resumable = readSavedGame();
         const dailyInProgress = resumable && resumable.saved.level === 'daily' && C.dateFromDailySeed(resumable.saved.seed) === t.date;
@@ -147,13 +167,16 @@
         $('mmDailyDone').hidden = !done;
         $('mmDailyBtn').textContent = dailyInProgress ? 'เล่นกระดานวันนี้ต่อ' : 'เล่นกระดานวันนี้';
         if (done) {
-            $('mmDailyDone').innerHTML = `<strong>${esc(C.formatTimePrecise(done.timeMs))}</strong><span>${done.moves} ครั้ง ${starsHtml(done.stars)}</span><span id="mmDailyRank"></span>`;
+            $('mmDailyDone').innerHTML = `<strong>${esc(C.formatTimePrecise(done.timeMs))}</strong><span>${done.moves} ครั้ง ${starsHtml(done.stars)}</span><span id="mmDailyRank"></span>`
+                + `<span class="mm-daily-next">กระดานใหม่ใน <b id="mmDailyNext">${fmtCountdown(msUntilNextDaily())}</b> (เที่ยงคืนเวลาไทย)</span>`;
             updateDailyRank();
         }
 
         // เกมค้าง (เฉพาะฝึกซ้อม — รายวันใช้ปุ่มด้านบน)
         const practice = resumable && resumable.saved.level !== 'daily' ? resumable : null;
         $('mmResume').hidden = !practice;
+        // กดเริ่มเกมตอนมีเกมค้าง = ทิ้งเกมนั้น → บอกให้ชัดบนปุ่ม
+        $('mmStart').textContent = practice ? 'เริ่มเกมใหม่ (ทิ้งเกมที่ค้าง)' : 'เริ่มเกม';
         if (practice) {
             const s = practice.saved;
             $('mmResumeInfo').textContent = `${C.LEVELS[s.level].label} · ${C.DECKS[s.deck].label} · ${practice.state.found}/${C.LEVELS[s.level].pairs} คู่ · ${C.formatTime(s.elapsedMs)}`;
@@ -628,6 +651,7 @@
     if (window.ResizeObserver) new ResizeObserver(() => layoutBoard()).observe($('mmStage'));
 
     // ---------- boot ----------
+    setInterval(tickDaily, 1000);
     renderMenu();
     renderBoard();
     fetchBoard();

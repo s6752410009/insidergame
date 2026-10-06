@@ -180,6 +180,13 @@ check(game.recordResult(data, payload('daily', core.dailySeed(today), dDeck), ct
 // summary
 check(game.summary(null) === null, 'summary null');
 check(typeof game.summary({ totalStars: 5, levels: { easy: { bestTimeMs: 30000 } } }) === 'string', 'summary text');
+{
+    // การ์ดหน้า /solo บอกว่ากระดานประจำวันของวันนี้เล่นแล้วหรือยัง
+    const real = core.bangkokDate(new Date());
+    const prev = core.shiftDate(real, -1);
+    check(/วันนี้เล่นแล้ว ✓/.test(game.summary({ totalStars: 3, daily: { lastDate: real, streak: 2, last: { date: real } } })), 'summary: daily done today');
+    check(/ติดกัน 2 วัน.*วันนี้ยังไม่ได้เล่น/.test(game.summary({ totalStars: 3, daily: { lastDate: prev, streak: 2, last: { date: prev } } })), 'summary: streak alive but today not played');
+}
 
 // min time
 check(core.minTimeMs('easy', 6) === 5400 && core.minTimeMs('hard', 40) === 16000, 'min time');

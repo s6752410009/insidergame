@@ -112,6 +112,7 @@ async function main() {
         const p1 = await newPlayerPage(browser, { width: 390, height: 844 }, { touch: true });
         const page = p1.page;
         ok(await page.isVisible('#wd-howto'), 'intro shows on first visit');
+        ok(/เที่ยงคืน/.test(await page.textContent('#wd-howto')), 'intro says when the next word comes');
         await page.screenshot({ path: path.join(SHOTS, '01-intro.png') });
         await layoutChecks(page, 'intro');
         await page.click('#wd-howto [data-close].ui-btn');
@@ -119,21 +120,38 @@ async function main() {
         await page.screenshot({ path: path.join(SHOTS, '02-empty.png') });
         await layoutChecks(page, 'empty board');
 
-        // พิมพ์ไม่ครบ → เขย่า
+        // พิมพ์ไม่ครบ → แตะปุ่มทายได้ และบอกเหตุผล (ไม่ใช่ปุ่มตายเงียบ ๆ)
         await page.click(`.wd-key[data-key="${Array.from(wrongs[0])[0]}"]`);
-        await page.click('#wd-enter', { force: true });
+        ok(await page.getAttribute('#wd-enter', 'aria-disabled') === 'true', 'enter marked not-ready while row incomplete');
+        await page.click('#wd-enter', { force: true }); // Playwright ถือว่า aria-disabled กดไม่ได้ แต่นิ้วจริงกดได้
+        await page.waitForFunction(() => /ยังไม่ครบ/.test(document.getElementById('wd-toasts').textContent));
+        // ข้อความลอยต้องไม่บังแถวแรกที่กำลังพิมพ์
+        const cover = await page.evaluate(() => {
+            const t = document.querySelector('.wd-toast').getBoundingClientRect();
+            const r = document.querySelector('#wd-board .wd-row').getBoundingClientRect();
+            return t.bottom > r.top && t.top < r.bottom;
+        });
+        ok(!cover, 'toast does not cover the row being typed');
         await page.click('#wd-back');
         ok((await page.$$eval('#wd-board .wd-row:first-child .is-filled', n => n.length)) === 0, 'backspace clears');
 
         // คำที่ไม่มีในคลัง
         await typeWord(page, 'กกกก');
+        await page.click('.wd-key[data-key="ก"]');
+        await page.waitForFunction(() => /ครบ 4 ช่องแล้ว/.test(document.getElementById('wd-toasts').textContent));
+        ok(true, 'extra letter on a full row explains why');
         await page.click('#wd-enter');
-        await page.waitForSelector('.wd-toast');
+        await page.waitForFunction(() => /ไม่มีคำนี้/.test(document.getElementById('wd-toasts').textContent), null, { timeout: 5000 }).catch(() => {});
         ok(/ไม่มีคำนี้/.test(await page.textContent('#wd-toasts')), 'unknown word toast');
         for (let i = 0; i < 4; i++) await page.click('#wd-back');
 
         await typeWord(page, wrongs[0]);
         await submitAndWait(page, 0);
+        // หน้าอักษรพิเศษ: พิมพ์ 1 ตัวแล้วกลับแป้นหลักเอง
+        await page.click('#wd-shift');
+        await page.click('.wd-key[data-key="ศ"]');
+        ok(await page.getAttribute('#wd-shift', 'aria-pressed') === 'false', 'alt layer returns to main after one letter');
+        await page.click('#wd-back');
         await typeWord(page, altWrong);
         await page.screenshot({ path: path.join(SHOTS, '03-typing-alt-layer.png') });
         await submitAndWait(page, 1);
@@ -183,7 +201,20 @@ async function main() {
         // ---------- ผู้เล่น 2: แพ้ ----------
         const p2 = await newPlayerPage(browser, { width: 390, height: 844 }, { touch: true });
         await p2.page.click('#wd-howto [data-close].ui-btn');
-        for (let i = 0; i < 6; i++) {
+        // เน็ตหลุดตอนกดทาย → ปุ่มบอกว่ารอเน็ต, ต่อเน็ตแล้วส่งเอง
+        await typeWord(p2.page, wrongs[2]);
+        await p2.context.setOffline(true);
+        await p2.page.click('#wd-enter');
+        await p2.page.waitForFunction(() => document.getElementById('wd-enter').textContent === 'รอเน็ต…', null, { timeout: 5000 });
+        await p2.page.click('.wd-key[data-key="ก"]');
+        ok(/รอส่งคำเดิม/.test(await p2.page.textContent('#wd-toasts')), 'typing while offline explains the wait');
+        await p2.page.screenshot({ path: path.join(SHOTS, '08b-offline-pending.png') });
+        await p2.context.setOffline(false);
+        await p2.page.waitForFunction(() => Array.from(document.querySelectorAll('#wd-board .wd-row')[0].children).every(t => t.hasAttribute('data-state')), null, { timeout: 15000 });
+        await delay(1600);
+        ok(await p2.page.textContent('#wd-enter') === 'ทายคำนี้', 'queued guess delivered after reconnect');
+        p2.errors.splice(0, p2.errors.length, ...p2.errors.filter(e => !/INTERNET_DISCONNECTED|socket\.io/.test(e)));
+        for (let i = 1; i < 6; i++) {
             await typeWord(p2.page, wrongs[2 + i]);
             if (i < 5) await submitAndWait(p2.page, i);
             else await p2.page.click('#wd-enter');
@@ -214,9 +245,26 @@ async function main() {
         await layoutChecks(p3.page, 'desktop');
         ok(p3.errors.length === 0, 'no page/console errors (desktop) ' + p3.errors.join(' | '));
 
+        // ---------- จอเตี้ย: ปุ่มทายต้องพ้นแถบล่าง ----------
+        for (const vp of [{ width: 360, height: 640 }, { width: 375, height: 667 }]) {
+            const small = await newPlayerPage(browser, vp, { touch: true });
+            await small.page.click('#wd-howto [data-close].ui-btn');
+            const fit = await small.page.evaluate(() => {
+                const enter = document.getElementById('wd-enter').getBoundingClientRect();
+                const footer = document.querySelector('.ui-footer-bar');
+                const tile = document.querySelector('.wd-tile').getBoundingClientRect();
+                return { enterBottom: enter.bottom, footerTop: footer ? footer.getBoundingClientRect().top : innerHeight, tile: tile.width };
+            });
+            ok(fit.enterBottom <= fit.footerTop + 1, `${vp.width}×${vp.height}: guess button clears the footer (${fit.enterBottom} <= ${fit.footerTop})`);
+            ok(fit.tile >= 34, `${vp.width}×${vp.height}: tiles stay readable (${fit.tile}px)`);
+            await small.page.screenshot({ path: path.join(SHOTS, `13-small-${vp.width}x${vp.height}.png`) });
+            await small.context.close();
+        }
+
         // ---------- hub card ----------
         await page.goto(`${BASE}/solo`, { waitUntil: 'networkidle' });
         ok(/ติดกัน 1 วัน/.test(await page.textContent('.solo-grid')), 'hub card shows streak');
+        ok(/วันนี้ทายแล้ว/.test(await page.textContent('.solo-grid')), 'hub card says today is done');
         await page.screenshot({ path: path.join(SHOTS, '12-hub.png') });
 
         // ---------- reduced motion ----------

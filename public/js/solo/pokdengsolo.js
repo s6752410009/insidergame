@@ -96,6 +96,11 @@
         clearError();
         if (fn) fn();
     });
+    // เน็ตกลับมา → ลองส่งคำขอที่ค้างให้เอง (เลขมือกันกดซ้ำอยู่แล้ว ส่งซ้ำไม่หักชิปซ้ำ)
+    window.addEventListener('online', () => {
+        if (!retryFn || $('pdsError').hidden || busy) return;
+        setTimeout(() => { if (retryFn && !$('pdsError').hidden && !busy) $('pdsRetry').click(); }, 400);
+    });
 
     // ---------- cards ----------
     function makeCard(card, opts) {

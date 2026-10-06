@@ -79,6 +79,9 @@
     // ---------- toast ----------
     function toast(text, opts) {
         opts = opts || {};
+        // ข้อความลอยต้องไม่บังแถวที่กำลังพิมพ์: แถว 1–3 → ลอยล่างกระดาน (แถวว่าง), แถว 4–6 → ลอยบน
+        var row = state ? state.guesses.length : 0;
+        els.toasts.classList.toggle('is-low', !(state && state.done) && row < 3);
         var node = document.createElement('div');
         node.className = 'wd-toast' + (opts.answer ? ' is-answer' : '');
         node.textContent = text;
@@ -164,8 +167,16 @@
             void t.offsetWidth;
             t.classList.add('is-pop');
         }
-        els.enter.disabled = draft.length < W.LENGTH;
+        syncEnter();
         store(DRAFT_KEY, { puzzle: state ? state.puzzle : null, cells: draft });
+    }
+
+    // ปุ่มทายไม่ใช้ disabled จริง — แตะตอนยังไม่พร้อมแล้วบอกเหตุผล (submit() กันซ้ำเอง)
+    function syncEnter() {
+        var off = busy || Boolean(pending) || draft.length < W.LENGTH || Boolean(state && state.done);
+        els.enter.classList.toggle('is-off', off);
+        els.enter.setAttribute('aria-disabled', off ? 'true' : 'false');
+        els.enter.textContent = pending ? 'รอเน็ต…' : 'ทายคำนี้';
     }
 
     function shakeRow() {
@@ -220,20 +231,25 @@
     }
 
     function pressKey(ch) {
+        if (pending) { toast('รอส่งคำเดิมก่อน — ต่อเน็ตได้แล้วจะส่งให้เอง'); return; }
         if (!canType()) return;
         var res = W.typeKey(draft, ch, W.LENGTH);
         if (!res.ok) {
             if (W.isMark(ch) && draft.length) toast('สระ/วรรณยุกต์ต้องวางบนพยัญชนะ');
             else if (!draft.length && W.isMark(ch)) toast('พิมพ์พยัญชนะก่อน แล้วค่อยใส่สระ/วรรณยุกต์');
+            else if (W.isBase(ch) && draft.length >= W.LENGTH) toast('ครบ ' + W.LENGTH + ' ช่องแล้ว — กด “ทายคำนี้” หรือลบก่อน');
             shakeRow();
             return;
         }
         draft = res.cells;
         haptic(8);
         renderDraftRow(draft.length - 1);
+        // หน้าอักษรพิเศษใช้ทีละตัว (แบบ shift บนมือถือ) — พิมพ์แล้วกลับแป้นหลักให้เอง
+        if (shift) { shift = false; buildKeyboard(); }
     }
 
     function pressBack() {
+        if (pending) { toast('รอส่งคำเดิมก่อน — ต่อเน็ตได้แล้วจะส่งให้เอง'); return; }
         if (!canType()) return;
         draft = W.backspace(draft);
         haptic(8);
@@ -304,9 +320,10 @@
     }
 
     function submit() {
-        if (busy || pending || (state && state.done)) return;
+        if (pending) { toast('ยังไม่มีเน็ต — จะส่งคำนี้ให้เองเมื่อต่อได้'); return; }
+        if (busy || (state && state.done)) return;
         if (draft.length < W.LENGTH) {
-            toast('ยังไม่ครบ ' + W.LENGTH + ' ช่อง');
+            toast(draft.length ? 'ยังไม่ครบ ' + W.LENGTH + ' ช่อง (เหลืออีก ' + (W.LENGTH - draft.length) + ')' : 'แตะตัวอักษรด้านบนให้ครบ ' + W.LENGTH + ' ช่องก่อน');
             shakeRow();
             return;
         }
@@ -321,7 +338,7 @@
 
     function sendGuess(word) {
         busy = true;
-        els.enter.disabled = true;
+        syncEnter();
         request('POST', API + '/guess', { guess: word, puzzle: state ? state.puzzle : null })
             .then(function (res) {
                 var json = res.json || {};
@@ -361,6 +378,7 @@
                 // เน็ตหลุด: เก็บคำไว้ ส่งใหม่ให้อัตโนมัติ (ไม่ต้องพิมพ์ใหม่)
                 pending = word;
                 busy = false;
+                syncEnter();
                 toast('เน็ตหลุด — จะส่งคำนี้ใหม่ให้อัตโนมัติ', { ms: 2400 });
                 scheduleRetry();
             });
@@ -382,6 +400,12 @@
     window.addEventListener('online', function () {
         if (pending) { clearRetry(); sendGuess(pending); }
         else if (!state) fetchToday({ silent: true }).catch(function () {});
+    });
+
+    // กลับเข้าแท็บ (สลับแอป/เปิดอีกแท็บไว้) → ดึงสถานะล่าสุดเงียบ ๆ ให้ตรงกับที่ทายจากที่อื่น
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible' || busy || pending) return;
+        fetchToday({ silent: true }).catch(function () {});
     });
 
     // ---------- แอนิเมชันเปิดแถว ----------

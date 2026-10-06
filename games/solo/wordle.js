@@ -156,9 +156,13 @@ module.exports = {
 
     summary(data) {
         const d = normalizeData(data);
-        const streak = W.currentStreak(d, todayPuzzle());
-        if (streak > 0) return `🔥 ติดกัน ${streak} วัน`;
-        if (d.played > 0) return `เล่นแล้ว ${d.played} วัน · ชนะ ${Math.round((d.wins / d.played) * 100)}%`;
+        const puzzle = todayPuzzle();
+        const streak = W.currentStreak(d, puzzle);
+        // บอกบนการ์ดหน้า /solo ว่าข้อวันนี้ทำไปหรือยัง (สตรีคจะหลุดถ้าลืม)
+        const today = d.today && d.today.puzzle === puzzle ? d.today : null;
+        const todayNote = today && today.done ? 'วันนี้ทายแล้ว ✓' : 'วันนี้ยังไม่ได้ทาย';
+        if (streak > 0) return `🔥 ติดกัน ${streak} วัน · ${todayNote}`;
+        if (d.played > 0) return `เล่นแล้ว ${d.played} วัน · ชนะ ${Math.round((d.wins / d.played) * 100)}% · ${todayNote}`;
         return null;
     },
 

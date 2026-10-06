@@ -231,6 +231,16 @@ test('server applyGuess: validation, progress, finish, stats', () => {
     assert.strictEqual(d.played, 2);
     assert.strictEqual(game.leaderboardEntry(d), null);
 });
+test('hub summary says whether today\'s word is done', () => {
+    const now = Date.now();
+    const puzzle = W.puzzleNumber(now);
+    const answer = answerFor(puzzle);
+    // เมื่อวานชนะ วันนี้ยังไม่ทาย → สตรีคยังอยู่ แต่เตือนว่ายังไม่ได้ทาย
+    let d = applyGuess(null, answerFor(puzzle - 1), puzzle - 1, now - 86400000);
+    assert.match(game.summary(d), /ติดกัน 1 วัน · วันนี้ยังไม่ได้ทาย/);
+    d = applyGuess(d, answer, puzzle, now);
+    assert.match(game.summary(d), /ติดกัน 2 วัน · วันนี้ทายแล้ว ✓/);
+});
 test('recordResult rejects client-submitted results', () => {
     assert.throws(() => game.recordResult(null, { won: true }), /บันทึกผลอัตโนมัติ/);
 });
