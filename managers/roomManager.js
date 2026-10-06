@@ -264,6 +264,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'wavelength_finished',
     'drawguess_finished',
     'colorcards_finished',
+    'setthi_finished',
     'end',
     'finished'
 ]);
@@ -298,6 +299,8 @@ ROOM_NAME_MODE_HINTS['สายลับคำใบ้'] = 'codenames';
 ROOM_NAME_MODE_HINTS['วงสายลับคำใบ้'] = 'codenames';
 ROOM_NAME_MODE_HINTS['วาดแล้วทาย'] = 'drawguess';
 ROOM_NAME_MODE_HINTS['วงวาดแล้วทาย'] = 'drawguess';
+ROOM_NAME_MODE_HINTS['เศรษฐี'] = 'setthi';
+ROOM_NAME_MODE_HINTS['วงเศรษฐี'] = 'setthi';
 
 /** วาดแล้วทาย: รอบ 2/3/4 · เวลาวาด 60/80/100 วิ · หมวดคำ (mixed หรือหมวดเดียว) */
 function sanitizeDrawGuessSettings(source) {
@@ -660,6 +663,7 @@ function createRoom(roomData, creatorPlayerId) {
             colorcardsTarget: gameMode !== 'colorcards' ? undefined
                 : ([0, 300, 500].includes(Number(normalizedRoomData.colorcardsTarget)) ? Number(normalizedRoomData.colorcardsTarget) : 0),
             colorcardsStacking: gameMode === 'colorcards' && normalizedRoomData.colorcardsStacking === true,
+            setthiMinutes: gameMode === 'setthi' ? gameEngine.sanitizeMinutes(normalizedRoomData.setthiMinutes) : undefined,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1081,6 +1085,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
         if ([15, 20, 30].includes(Number(updates.colorcardsTurnSeconds))) room.settings.colorcardsTurnSeconds = Number(updates.colorcardsTurnSeconds);
         if ([0, 300, 500].includes(Number(updates.colorcardsTarget))) room.settings.colorcardsTarget = Number(updates.colorcardsTarget);
         if (updates.colorcardsStacking !== undefined) room.settings.colorcardsStacking = updates.colorcardsStacking === true;
+    }
+    if (room.settings.gameMode === 'setthi' && !isRoomGameInProgress(room) && updates.setthiMinutes !== undefined) {
+        room.settings.setthiMinutes = getGameEngine('setthi').sanitizeMinutes(updates.setthiMinutes);
     }
 
     if (updates.locked !== undefined) {

@@ -769,6 +769,11 @@
   .cc-lobby-opts select { min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid rgba(245, 200, 107, 0.35); background: #1a2332; color: #f1f0fa; font-weight: 700; max-width: 100%; }
   .cc-lobby-opts select:disabled { opacity: 0.85; }
   .cc-lobby-opts .uc-mw-toggle { margin-top: 0; }
+  #btnSetthiHowTo {
+    padding: 10px 14px; min-height: 44px; border-radius: 14px;
+    border: 1px solid rgba(245, 200, 107, 0.55); background: rgba(245, 200, 107, 0.14); color: #f5c86b;
+    font-weight: 700; font-size: 0.95em; cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+  }
 
   #btnWavelengthHowTo {
     padding: 10px 14px; min-height: 44px; border-radius: 14px;
@@ -1485,6 +1490,7 @@
         <button type="button" id="btnWavelengthHowTo" class="<%= room.gameMode === 'wavelength' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnDrawGuessHowTo" class="<%= room.gameMode === 'drawguess' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnColorCardsHowTo" class="<%= room.gameMode === 'colorcards' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
+        <button type="button" id="btnSetthiHowTo" class="<%= room.gameMode === 'setthi' ? '' : 'is-hidden' %>">📖 วิธีเล่น</button>
         <button type="button" id="btnPokerHowTo" class="<%= isPoker4Lobby ? 'is-four' : '' %> <%= isPokerLobbyRoom ? '' : 'is-hidden' %>">📖 แรงก์ไพ่</button>
         <button id="btnStartGameLobby" disabled class="<%= room.isAdmin ? '' : 'is-hidden' %>">เปิดเกม</button>
       </div>
@@ -1515,6 +1521,7 @@
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
         <button type="button" id="btnPokDengAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'pokdeng' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnColorCardsAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'colorcards' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
+        <button type="button" id="btnSetthiAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'setthi' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnBlackMarketAddBots" class="btn-admin-small btn-add-bots <%= ((room.gameMode === 'blackmarket' || isPokerLobbyRoom) && room.isAdmin) ? '' : 'is-hidden' %>"><%= isPokerLobbyRoom ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ' %></button>
       </div>
     </div>
@@ -1640,6 +1647,15 @@
         readyText: 'พร้อมแล้ว เปิดโต๊ะได้เลย',
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
         roundLabel: 'เวลาคิดต่อตา:'
+      },
+      setthi: {
+        minPlayers: 2,
+        maxPlayers: 6,
+        label: 'เศรษฐี',
+        startLabel: '💰 เริ่มเกม',
+        readyText: 'พร้อมแล้ว เริ่มเกมได้เลย',
+        waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
+        roundLabel: 'เวลาเกม:'
       },
       colorcards: {
         minPlayers: 2,
@@ -1867,6 +1883,9 @@
       if (compactMode === 'colorcards' || compactMode === 'ไพ่ทิ้งสี' || compactMode === 'ทิ้งสี') {
         return 'colorcards';
       }
+      if (compactMode === 'setthi' || compactMode === 'เศรษฐี') {
+        return 'setthi';
+      }
       return 'insider';
     }
 
@@ -1892,6 +1911,9 @@
       }
       if (compact === 'ไพ่ทิ้งสี' || compact === 'colorcards') {
         return 'colorcards';
+      }
+      if (compact === 'เศรษฐี' || compact === 'วงเศรษฐี' || compact === 'setthi') {
+        return 'setthi';
       }
       return null;
     }
@@ -1959,6 +1981,9 @@
       if (normalizedMode === 'colorcards') {
         return { background: '#1a2332', color: '#f5c86b' };
       }
+      if (normalizedMode === 'setthi') {
+        return { background: '#1a2332', color: '#f5c86b' };
+      }
       return {
         background: 'linear-gradient(135deg, #e67e22, #d35400)',
         color: '#fff'
@@ -2023,6 +2048,9 @@
       }
       if (normalizedMode === 'colorcards') {
         return { kicker: '🃏 โต๊ะไพ่ทิ้งสี', pills: [] };
+      }
+      if (normalizedMode === 'setthi') {
+        return { kicker: '💰 วงเศรษฐี', pills: [] };
       }
 
       return {
@@ -2115,6 +2143,8 @@
       setElementHidden('#btnDrawGuessHowTo', resolvedMode !== 'drawguess');
       setElementHidden('#btnColorCardsHowTo', resolvedMode !== 'colorcards');
       setElementHidden('#btnColorCardsAddBots', !(isAdmin && resolvedMode === 'colorcards'));
+      setElementHidden('#btnSetthiHowTo', resolvedMode !== 'setthi');
+      setElementHidden('#btnSetthiAddBots', !(isAdmin && resolvedMode === 'setthi'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
       fillPokerRankPanel(resolvedMode);
@@ -2205,6 +2235,20 @@
             [15, 20, 30].map(function(v) { return '<option value="' + v + '"' + (v === ccTurn ? ' selected' : '') + '>ตาละ ' + v + ' วิ</option>'; }).join(''),
             '</select>',
             '<button type="button" class="uc-mw-toggle" id="ccLobbyStack" aria-pressed="' + (ccStack ? 'true' : 'false') + '"' + dis + '>' + (ccStack ? '✓ ' : '') + 'ซ้อน +2/+4: ' + (ccStack ? 'ได้' : 'ไม่ได้') + '</button>',
+            '</div>'
+          ].join('');
+        } else if (resolvedMode === 'setthi') {
+          const stMinutes = settings && settings.setthiMinutes !== undefined && settings.setthiMinutes !== null ? Number(settings.setthiMinutes) : 30;
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#f5c86b;">💰 เศรษฐี · 2–6 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ทอยเต๋าซื้อที่ดินทั่วไทย เก็บค่าเช่า สร้างบ้าน ประมูล เทรด · หมดเวลานับทรัพย์สินรวม · <strong>เงินในเกม ไม่มีมูลค่าจริง</strong>',
+            '</p>',
+            '<div class="cc-lobby-opts">',
+            '<select id="stLobbyMinutes" aria-label="เวลาเกม"' + (isAdmin ? '' : ' disabled') + '>',
+            [[20, 'เวลา 20 นาที'], [30, 'เวลา 30 นาที'], [45, 'เวลา 45 นาที'], [60, 'เวลา 60 นาที'], [0, 'ไม่จำกัดเวลา']].map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === stMinutes ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''),
+            '</select>',
             '</div>'
           ].join('');
         } else if (resolvedMode === 'wavelength') {
@@ -3379,6 +3423,44 @@
     $(document).on('click', '#ccLobbyStack', function() {
       this.disabled = true;
       updateColorCardsSetting({ colorcardsStacking: this.getAttribute('aria-pressed') !== 'true' });
+    });
+
+    $(document).on('change', '#stLobbyMinutes', function() {
+      if (!isAdmin) return;
+      socket.emit('updateRoom', { setthiMinutes: Number(this.value) }, function(res) {
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    });
+
+    $('#btnSetthiHowTo').on('click', function() {
+      Swal.fire({
+        title: '💰 เศรษฐี เล่นยังไง',
+        html: '<div style="text-align:left; font-size:0.95em; line-height:1.6;">' +
+          '<p>1. ทอยเต๋า 2 ลูก เดินรอบกระดานจังหวัดไทย · ผ่านจุดเริ่มรับ ฿200 · ดับเบิลทอยอีก (3 ครั้งติด = คุก)</p>' +
+          '<p>กดค้างปุ่มทอย: ปล่อยตอนเข็มแรง = เดินไกลขึ้น · ช่องเขียวสุ่มโผล่ ปล่อยในช่องทัน = ลุ้นดับเบิล · แตะเฉย ๆ = ทอยปกติ</p>' +
+          '<p>2. ตกที่ว่าง: <strong>ซื้อ</strong> หรือไม่ซื้อ = <strong>ประมูล</strong> ให้ทุกคน (นับถอยหลังเริ่มใหม่ทุกครั้งที่มีคนเสนอ)</p>' +
+          '<p>3. ตกที่ของคนอื่น: จ่ายค่าเช่า · ครบชุดสี = 2 เท่า · สร้างบ้านเท่ากันทั้งชุด บ้าน 4 หลังแล้วเป็นโรงแรม</p>' +
+          '<p>4. เงินไม่พอ: ขายบ้าน (คืนครึ่ง) / จำนอง (ได้ครึ่ง ไถ่ถอน +10%) · หมดทาง = ล้มละลาย</p>' +
+          '<p>5. เทรดที่ดิน เงิน บัตรอภัยโทษกับเพื่อนได้ · หมดเวลาเล่นครบรอบ แล้วทรัพย์สินรวมสูงสุดชนะ</p>' +
+          '<p style="color:#aaa;">เงินในเกม ไม่มีมูลค่าจริง ไม่เกี่ยวกับกระเป๋าเงินของเว็บ</p></div>',
+        background: '#1a2332',
+        color: '#fff',
+        confirmButtonColor: '#b8862b',
+        confirmButtonText: 'เข้าใจแล้ว'
+      });
+    });
+
+    $(document).on('click', '#btnSetthiAddBots', function() {
+      const btn = $(this);
+      if (btn.data('loading')) return;
+      btn.data('loading', true).text('🤖 กำลังเพิ่มบอท...');
+      socket.emit('setthi_addBots', { roomId: roomId, count: 1 }, function(res) {
+        btn.data('loading', false).text('🤖 เพิ่มบอท');
+        if (res && res.success) return;
+        Swal.fire({ icon: 'error', title: 'เพิ่มบอทไม่สำเร็จ', text: (res && res.error) || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+      });
     });
 
     $('#btnColorCardsHowTo').on('click', function() {

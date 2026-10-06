@@ -101,6 +101,7 @@ const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomMa
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const spyfallReturnTimeouts = new Map();
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
@@ -837,6 +838,7 @@ function isFinishedTableReturnMode(gameMode) {
     if (gameMode === 'wavelength') return true;
     if (gameMode === 'drawguess') return true;
     if (gameMode === 'colorcards') return true;
+    if (gameMode === 'setthi') return true;
     if (gameMode === 'avalon') return true;
     return gameMode === 'liar' || gameMode === 'coup' || gameMode === 'poker5' || gameMode === 'poker4';
 }
@@ -873,6 +875,7 @@ function returnFinishedGameToLobby(roomId) {
     wavelengthRuntime.clearTimers(roomId);
     drawguessRuntime.clearTimers(roomId);
     colorcardsRuntime.clearTimers(roomId);
+    setthiRuntime.clearTimers(roomId);
     roomManager.resetRoomGame(roomId);
     const refreshedRoom = roomManager.getRoom(roomId);
     io.to(roomId).emit('redirectToLobby', { roomId });
@@ -1350,6 +1353,7 @@ function clearAllRoomTimers(roomId) {
     wavelengthRuntime.clearTimers(roomId);
     drawguessRuntime.clearTimers(roomId);
     colorcardsRuntime.clearTimers(roomId);
+    setthiRuntime.clearTimers(roomId);
     clearInsiderVoteTimer(roomId);
     clearInsiderReturnTimer(roomId);
     clearFinishedReturnTimer(roomId);
@@ -1509,6 +1513,7 @@ const GAME_MODE_LOG_STYLES = {
 };
 GAME_MODE_LOG_STYLES.codenames = { label: 'สายลับคำใบ้', emoji: '🕵️', badgeBg: 'rgba(96,165,250,0.2)', badgeColor: '#bfdbfe' };
 GAME_MODE_LOG_STYLES.drawguess = { label: 'วาดแล้วทาย', emoji: '🎨', badgeBg: 'rgba(56,189,248,0.18)', badgeColor: '#bae6fd' };
+GAME_MODE_LOG_STYLES.setthi = { label: 'เศรษฐี', emoji: '💰', badgeBg: 'rgba(245,200,107,0.22)', badgeColor: '#fde68a' };
 
 function getGameModeLogStyle(gameMode) {
     const engine = getGameEngine(gameMode);
@@ -1656,6 +1661,10 @@ function buildGameEndNotification(room) {
 
     if (mode === 'colorcards') {
         return colorcardsRuntime.gameEndNotification(room);
+    }
+
+    if (mode === 'setthi') {
+        return setthiRuntime.gameEndNotification(room);
     }
 
     if (mode === 'insider' && gameState.resultVote2) {
@@ -3420,6 +3429,8 @@ function broadcastGameStateForRoom(room) {
         drawguessRuntime.emitRoomState(room);
     } else if (room.settings.gameMode === 'colorcards') {
         colorcardsRuntime.emitRoomState(room);
+    } else if (room.settings.gameMode === 'setthi') {
+        setthiRuntime.emitRoomState(room);
     }
 }
 
@@ -3536,6 +3547,13 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 colorcardsRuntime.handleLeft(room, playerId);
             } catch (error) {
                 console.error('[colorcards] handlePlayerLeft failed:', error?.message || error);
+            }
+        }
+        if (room.settings.gameMode === 'setthi') {
+            try {
+                setthiRuntime.handleLeft(room, playerId);
+            } catch (error) {
+                console.error('[setthi] handlePlayerLeft failed:', error?.message || error);
             }
         }
         if (room.settings.gameMode === 'werewolf') {
@@ -3902,6 +3920,10 @@ function recoverGamePhaseTimers() {
             colorcardsRuntime.recover(room);
         }
 
+        if (room.settings.gameMode === 'setthi') {
+            setthiRuntime.recover(room);
+        }
+
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
             if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
                 finalizeInsiderVote2(room);
@@ -3982,6 +4004,9 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'colorcards' && roomManager.isRoomGameInProgress(room)) {
             colorcardsRuntime.forceResolve(room);
         }
+        if (room.settings.gameMode === 'setthi' && roomManager.isRoomGameInProgress(room)) {
+            setthiRuntime.forceResolve(room);
+        }
         if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
             && room.gameState.status === 'vote2'
             && room.gameState.vote2EndsAt
@@ -3998,6 +4023,7 @@ function runRoomCleanupSweep() {
         codenamesRuntime.clearTimers(candidate.roomId);
         wavelengthRuntime.clearTimers(candidate.roomId);
         colorcardsRuntime.clearTimers(candidate.roomId);
+        setthiRuntime.clearTimers(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
         clearBlackMarketPhaseTimer(candidate.roomId);
@@ -5132,6 +5158,26 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'setthi') {
+        return res.render('setthiBoard.ejs', {
+            player: gameStatePlayer,
+            playerInfo: playerInRoom,
+            room: {
+                roomId: room.roomId,
+                name: room.name,
+                playerCount: room.players.filter(p => p.socketId).length,
+                maxPlayers: room.settings.maxPlayers,
+                locked: room.settings.locked,
+                admin: room.admin === req.playerId,
+                isSiteAdmin: isSiteAdminPlayer(req.playerId),
+                settings: room.settings
+            },
+            setthiState: setthiRuntime.buildPayload(room, playerId),
+            setthiBoard: setthiRuntime.boardDef(),
+            chatHistory: Array.isArray(room.chatHistory) ? room.chatHistory : []
+        });
+    }
+
     if (room.settings.gameMode === 'spyfall') {
         return res.render('spyfallBoard.ejs', {
             player: gameStatePlayer,
@@ -5837,6 +5883,8 @@ io.sockets.on('connection', function(socket) {
             drawguessRuntime.emitCanvas(refreshedRoom, socket.id);
         } else if (refreshedRoom?.settings?.gameMode === 'colorcards') {
             colorcardsRuntime.emitState(refreshedRoom, socket.id, playerId);
+        } else if (refreshedRoom?.settings?.gameMode === 'setthi') {
+            setthiRuntime.emitState(refreshedRoom, socket.id, playerId);
         }
     });
 
@@ -5870,6 +5918,7 @@ io.sockets.on('connection', function(socket) {
             wavelengthRuntime.clearTimers(roomId);
             drawguessRuntime.clearTimers(roomId);
             colorcardsRuntime.clearTimers(roomId);
+            setthiRuntime.clearTimers(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
             clearFinishedReturnTimer(roomId);
@@ -5926,6 +5975,8 @@ io.sockets.on('connection', function(socket) {
                 drawguessRuntime.emitRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'colorcards') {
                 colorcardsRuntime.emitRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'setthi') {
+                setthiRuntime.emitRoomState(refreshedRoom);
             }
 
             if (typeof callback === 'function') {
@@ -7282,6 +7333,8 @@ io.sockets.on('connection', function(socket) {
                 drawguessRuntime.emitCanvas(room, socket.id);
             } else if (room.settings.gameMode === 'colorcards') {
                 colorcardsRuntime.emitState(room, socket.id, playerId);
+            } else if (room.settings.gameMode === 'setthi') {
+                setthiRuntime.emitState(room, socket.id, playerId);
             } else if (gameStatePlayer && gameStatePlayer.role) {
                 if (room.settings.gameMode === 'werewolf') {
                     emitWerewolfState(room, socket.id, playerId);
@@ -8456,6 +8509,185 @@ io.sockets.on('connection', function(socket) {
     });
     // ==================== END POK DENG ====================
 
+    // ===== SETTHI (เศรษฐี) =====
+    // state ส่งทีละ socket ผ่าน setthiRuntime.emitState (ดีลเทรดเห็นเฉพาะคู่ดีล) · ลำดับการ์ดกับแผนบอทอยู่ฝั่งเซิร์ฟเวอร์
+    // ทุกคำสั่งตรวจตา/เฟส/เงิน/กติกาใน engine — client แก้ JS ก็โกงไม่ได้
+
+    safeOn(socket, 'setthi_requestState', function(data) {
+        const room = getSocketRoom(socket, 'setthi');
+        const playerId = socket.playerId;
+        if (!room || (data?.roomId && data.roomId !== room.roomId) || (data?.playerId && data.playerId !== playerId)) {
+            return;
+        }
+        setthiRuntime.emitState(room, socket.id, playerId);
+        setthiRuntime.scheduleBots(room);
+    });
+
+    function handleSetthiCommand(socket, callback, run) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'setthi');
+        if (!room) {
+            done({ success: false, error: 'ไม่พบโต๊ะเศรษฐี' });
+            return;
+        }
+        try {
+            const result = run(room, socket.playerId);
+            setthiRuntime.emitRoomState(room);
+            done({ success: true, tradeId: result && result.id && result.from ? result.id : undefined });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    }
+
+    function setthiContext(data) {
+        return { seq: Number.isFinite(Number(data?.seq)) ? Number(data.seq) : null };
+    }
+
+    function setthiSquare(data) {
+        return Number.isInteger(Number(data?.square)) ? Number(data.square) : -1;
+    }
+
+    function setthiOffer(data) {
+        const side = raw => ({
+            cash: Number(raw?.cash) || 0,
+            props: Array.isArray(raw?.props) ? raw.props.slice(0, 28).map(Number) : [],
+            jailCards: Number(raw?.jailCards) || 0
+        });
+        return { to: typeof data?.to === 'string' ? data.to : '', give: side(data?.give), get: side(data?.get) };
+    }
+
+    safeOn(socket, 'setthi_roll', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.rollDice(room, playerId, setthiContext(data)));
+    });
+    // กดค้างทอย: เซิร์ฟเวอร์จับเวลาเอง ส่งพารามิเตอร์เข็มให้คนทอยคนเดียว (ผ่าน ack) · เวลาจาก client ที่เพี้ยนถูกหนีบ
+    safeOn(socket, 'setthi_rollHoldStart', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const room = getSocketRoom(socket, 'setthi');
+        if (!room) { done({ success: false, error: 'ไม่พบโต๊ะเศรษฐี' }); return; }
+        try {
+            const meter = setthiRuntime.engine.startRollHold(room, socket.playerId, setthiContext(data));
+            setthiRuntime.emitRoomState(room);
+            done({ success: true, meter });
+        } catch (error) {
+            done({ success: false, error: error.message || 'ทำรายการไม่สำเร็จ' });
+        }
+    });
+    safeOn(socket, 'setthi_rollRelease', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.releaseRoll(room, playerId, Number(data?.elapsedMs)));
+    });
+    safeOn(socket, 'setthi_rollHoldCancel', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.cancelRollHold(room, playerId));
+    });
+    socket.on('disconnect', function() {
+        // หลุดระหว่างกดค้าง = ยกเลิกการกดค้าง (ตาหมดเวลาก็ทอยปกติให้)
+        try {
+            const room = socket.roomId ? roomManager.getRoom(socket.roomId) : null;
+            if (room && room.settings && room.settings.gameMode === 'setthi' && setthiRuntime.engine.cancelRollHold(room, socket.playerId)) {
+                setthiRuntime.emitRoomState(room);
+            }
+        } catch (error) {
+            console.error('[setthi] cancel hold on disconnect failed:', error.message);
+        }
+    });
+    safeOn(socket, 'setthi_payJail', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.payJailFine(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_useJailCard', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.useJailCard(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_buy', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.buyProperty(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_decline', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.declineBuy(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_endTurn', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endTurn(room, playerId, setthiContext(data)));
+    });
+    safeOn(socket, 'setthi_bid', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.placeBid(room, playerId, Number(data?.amount)));
+    });
+    safeOn(socket, 'setthi_build', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.build(room, playerId, setthiSquare(data)));
+    });
+    safeOn(socket, 'setthi_sell', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.sellBuilding(room, playerId, setthiSquare(data)));
+    });
+    safeOn(socket, 'setthi_mortgage', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.mortgage(room, playerId, setthiSquare(data)));
+    });
+    safeOn(socket, 'setthi_unmortgage', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.unmortgage(room, playerId, setthiSquare(data)));
+    });
+    safeOn(socket, 'setthi_tradePropose', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.proposeTrade(room, playerId, setthiOffer(data)));
+    });
+    safeOn(socket, 'setthi_tradeRespond', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) =>
+            setthiRuntime.engine.respondTrade(room, playerId, Number(data?.tradeId), data?.accept === true));
+    });
+    safeOn(socket, 'setthi_tradeCounter', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) =>
+            setthiRuntime.engine.counterTrade(room, playerId, Number(data?.tradeId), setthiOffer(data)));
+    });
+    safeOn(socket, 'setthi_tradeCancel', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.cancelTrade(room, playerId));
+    });
+    safeOn(socket, 'setthi_end', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endGame(room, playerId));
+    });
+
+    safeOn(socket, 'setthi_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const inFlight = setthiRuntime.botAddInFlight;
+        try {
+            const roomId = data?.roomId || socket.roomId;
+            const adminPlayerId = socket.playerId;
+            const room = roomManager.getRoom(roomId);
+            if (!room) throw new Error('ไม่พบห้อง');
+            if (room.settings.gameMode !== 'setthi') throw new Error('โหมดนี้เพิ่มบอทไม่ได้');
+            if (room.admin !== adminPlayerId && !isSiteAdminPlayer(adminPlayerId)) {
+                throw new Error('เฉพาะหัวหน้าห้องหรือแอดมินที่เพิ่มบอทได้');
+            }
+            if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
+            if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
+
+            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || 6));
+            const remaining = Math.max(0, seatCap - room.players.length);
+            if (!remaining) throw new Error('ห้องเต็มแล้ว');
+            const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
+            const botNames = ['บอทเสี่ยหนุ่ม', 'บอทเจ๊ทองคำ', 'บอทป๋าที่ดิน', 'บอทน้าเงินล้าน', 'บอทพี่นายหน้า', 'บอทคุณนายบ้านสวย'];
+            const botAvatars = ['🤖', '🦊', '🐼', '🐯', '🦁', '🐵'];
+            const botColors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#e67e22'];
+
+            inFlight.add(room.roomId);
+            let added = 0;
+            try {
+                for (let i = 0; i < wanted; i += 1) {
+                    if (roomManager.getRoom(roomId) !== room) break;
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    const botId = `bot_${uuidv4()}`;
+                    const slot = room.players.length % botNames.length;
+                    await playerManager.createOrGetPlayer(botId, { approved: true });
+                    await playerManager.updatePlayerName(botId, `${botNames[slot]} ${botId.slice(-3)}`);
+                    await playerManager.updatePlayerColor(botId, botColors[slot]);
+                    await playerManager.updatePlayerAvatar(botId, botAvatars[slot]);
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    roomManager.joinRoom(roomId, botId, `bot_socket_${uuidv4()}`, null, { bypassLock: true });
+                    added += 1;
+                }
+            } finally {
+                inFlight.delete(room.roomId);
+            }
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+            done({ success: true, added });
+        } catch (error) {
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
+    });
+    // ===== END SETTHI =====
+
     // ===== CODENAMES (สายลับคำใบ้) =====
     // กุญแจกระดานส่งทีละ socket ผ่าน codenamesRuntime.emitState เท่านั้น — ห้าม broadcast ทั้งห้อง
 
@@ -9281,6 +9513,21 @@ io.sockets.on('connection', function(socket) {
                         pokerLabel + ' เริ่มแล้ว — แจกไพ่ ทิ้งคืนกลาง แล้ววัด 3 ใบที่ดีสุด', '#d4a017');
                     logGameStartFromRoom(currentRoom);
                     emitPokerRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'setthi') {
+                    setthiRuntime.startGame(currentRoom);
+                    currentRoom.chatHistory = (currentRoom.chatHistory || []).filter(entry => entry.playerName !== 'System');
+                    io.to(roomId).emit('gameStarting', { roomId: roomId });
+                    currentOnlinePlayers.forEach(p => {
+                        if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId: roomId });
+                    });
+                    sendChatMessageToRoom(io, roomId, 'System',
+                        'เศรษฐีเริ่มแล้ว — ทอยเต๋า ซื้อที่ดิน เก็บค่าเช่า (เงินในเกม ไม่มีมูลค่าจริง)', '#f5c86b');
+                    logGameStartFromRoom(currentRoom);
+                    setthiRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

@@ -370,6 +370,20 @@
   }
 
   .cc-howto-swatches { display: inline-flex; gap: 4px; vertical-align: middle; margin-right: 8px; }
+
+  .guide-card.mode-setthi {
+    border-color: rgba(245, 200, 107, 0.36);
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -30%, rgba(245, 200, 107, 0.18), transparent 55%),
+      linear-gradient(180deg, #1a2332 0%, #151c2a 55%, #111722 100%);
+  }
+  .guide-card.mode-setthi .guide-mode-badge {
+    background: rgba(245, 200, 107, 0.16);
+    color: #f5c86b;
+    border: 1px solid rgba(245, 200, 107, 0.45);
+  }
+  .st-howto-bands { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+  .st-howto-bands i { width: 10px; height: 18px; border-radius: 3px; display: inline-block; }
   .cc-howto-swatches i { width: 16px; height: 22px; border-radius: 4px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); }
 
   .pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
@@ -1010,6 +1024,7 @@
     { id: 'wavelength', ico: '📡', label: 'คลื่นความคิด' },
     { id: 'drawguess', ico: '🎨', label: 'วาดแล้วทาย' },
     { id: 'colorcards', ico: '🃏', label: 'ไพ่ทิ้งสี' },
+    { id: 'setthi', ico: '💰', label: 'เศรษฐี' },
     { id: 'faq', ico: '❓', label: 'คำถามบ่อย' }
   ];
 %>
@@ -1529,6 +1544,21 @@
         <div class="guide-list-item"><strong>+4 ลงได้ทุกเมื่อ</strong> ไม่มีกติกาท้าว่ามีสีตรงหรือเปล่า · หัวห้องเปิด <strong>ซ้อน +2/+4</strong> ได้ (คนที่ไม่มีซ้อนรับทั้งหมด)</div>
         <div class="guide-list-item"><strong>เหลือใบเดียว!</strong> ก่อนลงใบรองสุดท้ายกดปุ่ม "เหลือใบเดียว!" ถ้าลืม คนอื่นกด "จับได้!" ทันก่อนหมดเวลาสั้น ๆ = จั่ว 2</div>
         <div class="guide-list-item"><strong>ชนะ + แต้ม</strong> หมดมือก่อนชนะรอบ ได้แต้ม = ไพ่ในมือคนอื่น (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50) · ตั้งห้องเล่น 1 รอบ หรือใครถึง 300/500 แต้มก่อน</div>
+      </div>
+    </article>
+
+    <article class="guide-card mode-setthi" id="setthi">
+      <div class="guide-mode-badge">💰 เศรษฐี</div>
+      <h2>ทอยเต๋า ซื้อที่ดินทั่วไทย เก็บค่าเช่า</h2>
+      <p>กระดาน 40 ช่องธีมจังหวัดไทย ตั้งแต่ยโสธรถึงสุขุมวิท ทุกคนเริ่ม ฿1,500 ทอยเต๋า 2 ลูกเดินตามแต้ม ผ่านจุดเริ่มรับ ฿200 ดับเบิลได้ทอยอีก (3 ครั้งติด = เข้าคุก) เล่น 2–6 คน ใส่บอทได้ · เงินในเกม ไม่มีมูลค่าจริง</p>
+      <div class="guide-list">
+        <div class="guide-list-item"><strong>กดค้างทอย</strong> กดปุ่มทอยค้างไว้ เข็มแกว่งขึ้นลง ปล่อยตอนแรง = แต้มรวมมักสูงขึ้น · บางครั้งช่องเขียวสุ่มโผล่สั้น ๆ ปล่อยในช่องทัน = ลุ้นดับเบิล (ราว 1 ใน 3) · แตะเฉย ๆ = ทอยปกติ · โลภมากระวังดับเบิล 3 ครั้งติดเข้าคุก</div>
+        <div class="guide-list-item"><span class="st-howto-bands"><i style="background:#a8673f"></i><i style="background:#4ea8dc"></i><i style="background:#cc4f95"></i><i style="background:#ee8a2c"></i><i style="background:#d9443b"></i><i style="background:#ecbc2c"></i><i style="background:#2f9d63"></i><i style="background:#3d64d8"></i></span><strong>ซื้อหรือประมูล</strong> ตกที่ว่างซื้อตามราคา หรือไม่ซื้อ = เปิดประมูลให้ทุกคน (+10/+50/+100 นับถอยหลังเริ่มใหม่ทุกครั้งที่มีคนเสนอ)</div>
+        <div class="guide-list-item"><strong>ค่าเช่า</strong> ครบชุดสี = 2 เท่า · ขนส่ง 4 แห่ง ยิ่งมีมากยิ่งแพง · การไฟฟ้า/การประปา = แต้มเต๋า × 4 (มีครบ × 10) · ที่ดินที่จำนองไม่เก็บค่าเช่า</div>
+        <div class="guide-list-item"><strong>บ้าน/โรงแรม</strong> ครบชุดสีแล้วสร้างบ้าน ต้องสร้างเท่ากันทั้งชุด · 4 หลังแล้วอัปเป็นโรงแรม · ขายคืนได้ครึ่งราคา · จำนองได้ครึ่งราคา ไถ่ถอน +10%</div>
+        <div class="guide-list-item"><strong>เทรด</strong> แลกที่ดิน (ที่ไม่มีบ้าน) เงิน และบัตรอภัยโทษ · อีกฝ่ายรับ ปฏิเสธ หรือโต้กลับได้</div>
+        <div class="guide-list-item"><strong>คุก + การ์ด</strong> การ์ดโอกาส/ดวงชะตา มีทั้งได้เงิน เสียเงิน พาเดิน · ติดคุกออกได้ด้วยดับเบิล จ่าย ฿50 หรือบัตรอภัยโทษ</div>
+        <div class="guide-list-item"><strong>ชนะ</strong> เหลือคนสุดท้ายที่ไม่ล้มละลาย · หรือหัวห้องตั้งเวลา 20/30/45/60 นาที หมดเวลาเล่นครบรอบ แล้วทรัพย์สินรวม (เงินสด + ที่ดิน + บ้าน) สูงสุดชนะ</div>
       </div>
     </article>
   </section>
