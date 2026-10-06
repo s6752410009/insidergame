@@ -704,6 +704,183 @@ const SCENES = {
         const s = P(-0.2, 3.1, 4);
         S.add(`<text x="${f(s[0])}" y="${f(s[1])}" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="5" fill="${PAL.red}" text-anchor="middle">฿</text>`);
     },
+    // ---------- แหล่งท่องเที่ยว ----------
+    damnoen(S, ac) {
+        platform(S, PAL.grass, ac);
+        S.poly([P(-10, -4, 0.01), P(10, -4, 0.01), P(10, 5, 0.01), P(-10, 5, 0.01)], '#5aa9a0');
+        waves(S, '#ffffff', -1);
+        // บ้านริมคลองยกพื้น
+        [[-8, -9.4], [-2, -9.4], [4, -9.4]].forEach(([x, y], k) => {
+            [[x, y + 4], [x + 4.4, y + 4]].forEach(([px, py]) => box(S, px, py, 0, 0.5, 0.5, 2.4, PAL.wood));
+            box(S, x, y, 2.4, 5, 4.6, 3.4, k === 1 ? '#c98b52' : '#b8794a');
+            gable(S, x, y, 5.8, 5, 4.6, 2.6, k === 1 ? PAL.red : '#8a5a33', 'x');
+        });
+        // เรือขายของ + งอบ + ผลไม้
+        const boat = (x, y, fruit) => {
+            S.poly([P(x - 5, y, 0), P(x + 3, y, 0.2), P(x + 5, y + 1, 1.2), P(x + 3, y + 2, 0.2), P(x - 5, y + 2, 0)], '#7a4a2a', EDGE);
+            box(S, x - 4.6, y + 0.2, 0.2, 7.6, 1.6, 0.8, '#8a5a33');
+            fruit.forEach(([dx, c]) => sphere(S, x + dx, y + 1, 1.6, 0.7, c));
+            lathe(S, x - 3, y + 1, 1, [[0.6, 0], [0.5, 1.6]], '#2f6fb0');
+            lathe(S, x - 3, y + 1, 2.6, [[2.2, 0], [0.2, 1.4]], '#e6c27a', { rings: [] });
+        };
+        boat(-2, -2.5, [[0, '#f39a3d'], [1.2, '#e2443b'], [2.2, '#ecbc2c']]);
+        boat(4, 1.6, [[0, '#3fbf7f'], [1.2, '#e06aa6'], [2.2, '#f39a3d']]);
+        tree(S, 8, 7, 0.8, '#3f8f55');
+        tree(S, -8, 7.5, 0.7);
+    },
+    khaoyai(S, ac) {
+        platform(S, PAL.grass, ac);
+        pyramid(S, -4, -6, 0, 6, 12, '#3f8f55');
+        pyramid(S, 4, -7, 0, 5, 9, '#4f9f65');
+        // หน้าผา + น้ำตก
+        box(S, -3, -2, 0, 6, 3, 8, '#9a8f7c');
+        S.poly([P(-1, 1.01, 0.5), P(1, 1.01, 0.5), P(1, 1.01, 8), P(-1, 1.01, 8)], '#9fd8f5');
+        for (let k = 0; k < 3; k += 1) line(S, P(-0.6 + k * 0.6, 1.02, 1), P(-0.6 + k * 0.6, 1.02, 7.6), '#ffffff', 0.4, ' opacity=".8"');
+        S.poly([P(-3.5, 1, 0.02), P(3.5, 1, 0.02), P(4.5, 5.5, 0.02), P(-4.5, 5.5, 0.02)], PAL.water);
+        [[-1.5, 2.6], [1.6, 3.4], [0, 4.4]].forEach(([x, y]) => sphere(S, x, y, 0.4, 0.9, '#ffffff'));
+        tree(S, -7, 3, 1); tree(S, 6.5, 2, 1.1, '#3f8f55'); tree(S, -6, 7, 0.8); tree(S, 7, 7, 0.7);
+        // ป้ายกวางเดินข้าม
+        const sg = P(5, 6, 4.6);
+        line(S, P(5, 6, 0), sg, '#59647a', 0.7);
+        S.add(`<path transform="translate(${f(sg[0])} ${f(sg[1] - 1)})" d="M0 -4L4 0 0 4-4 0z" fill="${GOLD}" stroke="${INK}" stroke-width=".5"/><path transform="translate(${f(sg[0])} ${f(sg[1] - 1)})" d="M-1.6 1.4l.6-1.6h1.6l.8-1.4M-.6 -.2v1.6M.8 -.2v1.6M1.4 -1.6l.6-.8" stroke="${INK}" stroke-width=".55" fill="none" stroke-linecap="round"/>`);
+    },
+    inthanon(S, ac) {
+        platform(S, PAL.grass, ac);
+        pyramid(S, -1, -3, 0, 8, 17, '#4f8f6a');
+        pyramid(S, -1, -3, 11, 3.4, 6, '#6aa98a');
+        // ทะเลหมอก
+        [[-8, 2, 2], [-5, 5, 2.4], [-1, 6.5, 2.2], [3, 5.5, 2.6], [7, 3, 2.2], [7, -2, 1.8], [-8, -3, 1.6]].forEach(([x, y, r]) => sphere(S, x, y, r * 0.7, r, '#f4f6fb'));
+        // ป้ายจุดสูงสุด
+        const top = P(-1, -3, 17);
+        line(S, P(-1, -3, 17), P(-1, -3, 21), '#8a5a33', 0.8);
+        S.add(`<rect x="${f(top[0] - 7)}" y="${f(top[1] - 14)}" width="14" height="5" rx="1" fill="${PAL.white}" stroke="${INK}" stroke-width=".5"/><text x="${f(top[0])}" y="${f(top[1] - 10.4)}" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="3.4" fill="${INK}" text-anchor="middle">2,565 ม.</text>`);
+        // ดอกกุหลาบพันปี
+        [[5, 7], [6.5, 6], [-6, 7.5]].forEach(([x, y]) => { tree(S, x, y, 0.55, '#3f8f55'); sphere(S, x + 0.3, y + 0.3, 2.6, 0.55, '#d9443b'); });
+        const sun = P(8, -9, 18);
+        S.add(`<circle cx="${f(sun[0])}" cy="${f(sun[1])}" r="4" fill="#f7c66a" opacity=".9"/>`);
+    },
+    phiphi(S, ac) {
+        platform(S, PAL.water, ac);
+        waves(S, '#ffffff', 3);
+        const karst = (x, y, r, h) => {
+            lathe(S, x, y, 0, [[r, 0], [r * 1.02, h * 0.25], [r * 0.85, h * 0.55], [r * 0.9, h * 0.8], [r * 0.6, h]], '#c9bfac', { topCap: false, ribs: 5 });
+            [[0, 0, 1], [-0.45, 0.2, 0.75], [0.45, -0.1, 0.8], [0.1, 0.5, 0.7]].forEach(([dx, dy, k]) => sphere(S, x + dx * r, y + dy * r, h * 0.98 + k, r * 0.55 * k + 0.5, k === 1 ? '#4f9a5e' : '#5aa86a'));
+        };
+        karst(-6, -5, 3.4, 16);
+        karst(5, -6, 3, 13);
+        // หาดทราย
+        lathe(S, 0, 0, 0, [[5, 0], [4.6, 0.6]], PAL.sand, { topCap: true });
+        palm(S, -1, -0.5, 0.75);
+        palm(S, 2, 0.5, 0.6);
+        // เรือหางยาว
+        S.poly([P(-2, 5, 0), P(4, 5, 0.3), P(5.5, 6, 1.6), P(4, 7, 0.3), P(-2, 7, 0)], PAL.wood, EDGE);
+        const prow = P(5.5, 6, 1.6);
+        S.add(`<path d="M${f(prow[0])} ${f(prow[1])}l2 -3" stroke="${PAL.wood}" stroke-width="1"/><path d="M${f(prow[0] + 2)} ${f(prow[1] - 3)}l2 1.2-1 1.2z" fill="${PAL.red}"/>`);
+        box(S, 0, 5.4, 0.3, 2, 1.2, 1.4, '#efe3c8');
+    },
+    // ---------- มุมใหม่ ----------
+    island(S, ac) {
+        platform(S, PAL.water, ac);
+        waves(S, '#ffffff', 2);
+        waves(S, '#ffffff', -8);
+        lathe(S, -1, -1, 0, [[7, 0], [6.4, 1.2], [4.6, 1.8]], PAL.sand, { topCap: true });
+        palm(S, -3, -3, 1.1);
+        palm(S, 1.5, -4, 0.85);
+        // กระท่อม
+        [[1, 1], [4, 1], [1, 3.6], [4, 3.6]].forEach(([x, y]) => box(S, x, y, 1.8, 0.4, 0.4, 2.6, PAL.wood));
+        box(S, 0.6, 0.6, 2.8, 4, 3.6, 0.5, '#b8794a');
+        gable(S, 0.4, 0.4, 4.4, 4.4, 4, 2.4, '#d9b46a', 'x');
+        // ป้าย SOS บนทราย + ขวด
+        const sos = P(-3.5, 3.2, 1.85);
+        S.add(`<text x="${f(sos[0])}" y="${f(sos[1])}" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="4.2" fill="${PAL.wood}" text-anchor="middle" transform="skewX(-20) translate(${f(sos[1] * 0.36)} 0)">SOS</text>`);
+        const bt = P(6, 6, 0.3);
+        S.add(`<g transform="translate(${f(bt[0])} ${f(bt[1])}) rotate(-30)"><rect x="-2.6" y="-1" width="4" height="2" rx=".9" fill="#7ac9a8" opacity=".9" stroke="${INK}" stroke-width=".3"/><rect x="1.3" y="-.5" width="1.4" height="1" fill="#a8673f"/></g>`);
+    },
+    festival(S, ac) {
+        platform(S, PAL.paving, ac);
+        // ชิงช้าสวรรค์
+        const c = P(-3, -4, 11);
+        const R = 8;
+        line(S, P(-5, -4, 0), c, '#59647a', 1.1);
+        line(S, P(-1, -4, 0), c, '#59647a', 1.1);
+        S.add(`<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${R * 2.2}" fill="none" stroke="#e06aa6" stroke-width="1.4"/>`);
+        for (let k = 0; k < 8; k += 1) {
+            const a = (Math.PI * 2 * k) / 8;
+            const x = c[0] + Math.cos(a) * R * 2.2;
+            const y = c[1] + Math.sin(a) * R * 2.2;
+            S.add(`<path d="M${f(c[0])} ${f(c[1])}L${f(x)} ${f(y)}" stroke="#f3c6dc" stroke-width=".6"/><rect x="${f(x - 1.8)}" y="${f(y)}" width="3.6" height="2.8" rx=".8" fill="${['#ef5b4c', '#f5c86b', '#4ea8dc', '#3fbf7f'][k % 4]}" stroke="${INK}" stroke-width=".3"/>`);
+        }
+        S.add(`<circle cx="${f(c[0])}" cy="${f(c[1])}" r="1.6" fill="${GOLD}" stroke="${INK}" stroke-width=".4"/>`);
+        // ซุ้มขายของ ผ้าใบลายแดงขาว
+        box(S, 2, 2, 0, 6, 4, 3.2, '#efe3c8');
+        for (let k = 0; k < 6; k += 1) S.poly([P(2 + k, 1.4, 4.6), P(3 + k, 1.4, 4.6), P(3 + k, 6.6, 3.4), P(2 + k, 6.6, 3.4)], k % 2 ? '#ffffff' : PAL.red, EDGE);
+        [[2.4, 6.2], [7.6, 6.2]].forEach(([x, y]) => box(S, x, y, 0, 0.3, 0.3, 3.4, PAL.wood));
+        [[3.4, '#f39a3d'], [5, '#e06aa6'], [6.6, '#3fbf7f']].forEach(([x, col]) => sphere(S, x, 6.2, 3.8, 0.7, col));
+        // ไฟประดับ
+        const a = P(-9, 7, 7);
+        const b = P(9, 7, 7);
+        S.add(`<path d="M${f(a[0])} ${f(a[1])}Q${f((a[0] + b[0]) / 2)} ${f((a[1] + b[1]) / 2 + 6)} ${f(b[0])} ${f(b[1])}" stroke="${INK}" stroke-width=".3" fill="none"/>`);
+        for (let k = 1; k < 10; k += 1) {
+            const t = k / 10;
+            const x = a[0] + (b[0] - a[0]) * t;
+            const y = a[1] + (b[1] - a[1]) * t + 6 * 4 * t * (1 - t) * 0.5 * 2;
+            S.add(`<circle cx="${f(x)}" cy="${f(y)}" r=".9" fill="${['#f5c86b', '#ef5b4c', '#4ea8dc'][k % 3]}"/>`);
+        }
+        [[-8, 6], [8, -7]].forEach(([x, y]) => { const t = P(x, y, 9); line(S, P(x, y, 0), t, '#8a5a33', 0.6); S.add(`<path d="M${f(t[0])} ${f(t[1])}l5 1.6-5 1.8z" fill="${PAL.red}"/>`); });
+    },
+    tour(S, ac) {
+        platform(S, '#bfe3a8', ac);
+        // เส้นทางบนแผนที่
+        const pts = [P(-8, 6, 0.03), P(-3, 1, 0.03), P(3, 4, 0.03), P(7, -5, 0.03)];
+        S.add(`<path d="M${pts.map(q => f(q[0]) + ' ' + f(q[1])).join('L')}" fill="none" stroke="${PAL.red}" stroke-width="1" stroke-dasharray="2 1.6" stroke-linecap="round"/>`);
+        [[-8, 6], [-3, 1], [3, 4]].forEach(([x, y]) => { const q = P(x, y, 0.05); S.add(`<ellipse cx="${f(q[0])}" cy="${f(q[1])}" rx="1.4" ry=".8" fill="${PAL.red}"/>`); });
+        // หมุดใหญ่
+        const pin = P(7, -5, 0);
+        S.add(`<ellipse cx="${f(pin[0])}" cy="${f(pin[1])}" rx="3" ry="1.4" fill="${INK}" opacity=".18"/><path transform="translate(${f(pin[0])} ${f(pin[1])})" d="M0 0C-1.6 -6 -7 -9 -7 -15a7 7 0 0 1 14 0C7 -9 1.6 -6 0 0z" fill="${S.grad(PAL.red)}" stroke="${INK}" stroke-width=".6"/><circle cx="${f(pin[0])}" cy="${f(pin[1] - 15)}" r="2.8" fill="#fff8e6"/>`);
+        // กระเป๋าเดินทาง
+        box(S, -7, -6, 0, 5, 2.4, 6, '#2d8bd6');
+        box(S, -6, -5.6, 6, 3, 1.6, 0.6, '#1f6aa8');
+        S.poly([P(-7, -3.59, 2.4), P(-2, -3.59, 2.4), P(-2, -3.59, 3.2), P(-7, -3.59, 3.2)], GOLD);
+        // เครื่องบินบนฟ้า
+        const pl = P(-2, -8, 20);
+        S.add(`<g transform="translate(${f(pl[0])} ${f(pl[1])}) rotate(-18)"><path d="M-9 0h15l3 -1.2h2v2.4h-2l-3 -1.2" fill="#f6f8fb" stroke="${INK}" stroke-width=".5"/><path d="M-1 0l-4 -6h2l5 6zM-1 0l-4 6h2l5 -6zM-8 0l-2 -3h1.4l2.4 3z" fill="#cfd7e0" stroke="${INK}" stroke-width=".4"/><path d="M-6 -.2h10" stroke="#2b6f9a" stroke-width=".8"/></g>`);
+        S.add(`<path d="M${f(pl[0] - 26)} ${f(pl[1] + 10)}q8 -3 14 -6" stroke="#ffffff" stroke-width="1.2" fill="none" stroke-dasharray="2 2" opacity=".9"/>`);
+    },
+    // ---------- ขั้นสิ่งปลูกสร้าง (ใช้ในแผ่นสร้าง) ----------
+    'b-land'(S, ac) {
+        platform(S, PAL.grass, ac);
+        S.poly([P(-6, -6, 0.02), P(6, -6, 0.02), P(6, 6, 0.02), P(-6, 6, 0.02)], '#c9a46a');
+        [[-6, -6], [6, -6], [6, 6], [-6, 6]].forEach(([x, y]) => box(S, x - 0.3, y - 0.3, 0, 0.6, 0.6, 2.4, PAL.white));
+        const t = P(0, 0, 11);
+        line(S, P(0, 0, 0), t, '#8a5a33', 0.9);
+        S.add(`<path d="M${f(t[0])} ${f(t[1])}l9 2.6-9 2.8z" fill="${S.grad(GOLD)}" stroke="${INK}" stroke-width=".4"/>`);
+    },
+    'b-house'(S, ac) {
+        platform(S, PAL.grass, ac);
+        box(S, -5, -4, 0, 10, 8, 6, '#f3ead6');
+        windows(S, -5, -4, 1.2, 10, 8, 3.4, 'L', 2, 1, '#7cc4ea');
+        S.poly([P(-0.8, 4.01, 0), P(0.8, 4.01, 0), P(0.8, 4.01, 3.6), P(-0.8, 4.01, 3.6)], PAL.wood);
+        gable(S, -5, -4, 6, 10, 8, 4.4, PAL.red, 'x');
+        tree(S, 7, 5, 0.7);
+    },
+    'b-building'(S, ac) {
+        platform(S, PAL.paving, ac);
+        box(S, -5, -5, 0, 10, 9, 16, '#e6d3b0');
+        windows(S, -5, -5, 1.4, 10, 9, 14, 'L', 3, 4, '#7cc4ea');
+        windows(S, -5, -5, 1.4, 10, 9, 14, 'R', 2, 4, '#7cc4ea');
+        box(S, -5.4, -5.4, 16, 10.8, 9.8, 0.8, '#c9a46a');
+    },
+    'b-hotel'(S, ac) {
+        platform(S, PAL.paving, ac);
+        box(S, -6, -5, 0, 12, 9, 4, '#f3efe6');
+        box(S, -4, -4, 4, 8, 7, 20, '#3d64d8', { topK: 0.3 });
+        windows(S, -4, -4, 5, 8, 7, 18, 'L', 3, 6, '#bfe6ff');
+        windows(S, -4, -4, 5, 8, 7, 18, 'R', 2, 6, '#bfe6ff');
+        box(S, -4.4, -4.4, 24, 8.8, 7.8, 1, GOLD);
+        const h = P(0, 3.05, 21);
+        S.add(`<rect x="${f(h[0] - 3.6)}" y="${f(h[1] - 3)}" width="7.2" height="6" rx="1" fill="${PAL.red}" stroke="${INK}" stroke-width=".4"/><text x="${f(h[0])}" y="${f(h[1] + 2)}" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="5" fill="#fff" text-anchor="middle">H</text>`);
+        S.poly([P(-6, 4.01, 0), P(6, 4.01, 0), P(6, 4.01, 1), P(-6, 4.01, 1)], PAL.red);
+    },
     luxury(S, ac) {
         platform(S, PAL.paving, ac);
         lathe(S, 0, 0, 0, [[3, 0], [3, 2], [2.4, 2.6], [2.4, 4]], '#a8873f', { topCap: true });
@@ -716,12 +893,14 @@ const SCENES = {
 const OR_LANTERN = '#f39a3d';
 
 const ART_OF = Object.fromEntries(B.SQUARES.map(sq => [sq.index, sq.art]));
+// ภาพขั้นสิ่งปลูกสร้าง (ไม่ใช่ช่องบนกระดาน) — ใช้ในแผ่นสร้าง
+const EXTRA_ART = { 'b-land': '#8a6a3a', 'b-house': '#c94a3c', 'b-building': '#4c5f80', 'b-hotel': '#2b3c5c' };
 
 function accentFor(index) {
     const sq = B.SQUARES[index];
     if (sq.group) return B.GROUPS[sq.group].color;
-    if (sq.type === 'transport') return '#35435e';
-    if (sq.type === 'utility') return '#4c5f80';
+    if (sq.type === 'tourist') return '#139a8e';
+    if (sq.type === 'start') return '#c94a3c';
     return '#35435e';
 }
 
@@ -761,6 +940,14 @@ async function main() {
         fs.writeFileSync(path.join(OUT, name + '.svg'), svg);
         bytes += Buffer.byteLength(svg);
     });
+    Object.entries(EXTRA_ART).forEach(([name, accent]) => {
+        const svg = render(name, accent);
+        fs.writeFileSync(path.join(OUT, name + '.svg'), svg);
+        bytes += Buffer.byteLength(svg);
+        done.add(name);
+    });
+    // ภาพเก่าที่ไม่ใช้แล้ว (กระดาน v1) ลบทิ้ง
+    fs.readdirSync(OUT).filter(f => f.endsWith('.svg') && !done.has(f.slice(0, -4))).forEach(f => fs.unlinkSync(path.join(OUT, f)));
     await fitAll([...done].map(n => path.join(OUT, n + '.svg')));
     fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(ART_OF));
     console.log(`wrote ${done.size} landmark SVGs (${(bytes / 1024).toFixed(1)} KB) → ${OUT}`);

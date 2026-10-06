@@ -735,7 +735,23 @@ test('คนหลุด: เวลาตาสั้นลงหลังช่
 test('กดค้างทอย: ช่องเขียว/แรง ทำงานตามเวลา · เวลาปลอมถูกหนีบ', () => {
     const room = makeRoom(['a', 'b']);
     const m = E.startRollHold(room, 'a', null, mulberry(9));
-    assert(m.period >= 1000 && m.period <= 1500, 'คาบเข็ม');
+    assert(m.period / 2 >= 1600 && m.period / 2 <= 2000, 'เข็มกวาดเบา→แรง 1.6–2.0 วิ');
+    // ช่องเขียว: โผล่ 0.6–0.8 วิ และเข็มวิ่งผ่านกลางช่องระหว่างที่โผล่เสมอ
+    let greens = 0;
+    for (let k = 0; k < 3000; k += 1) {
+        const r = mulberry(100 + k);
+        const period = 3200 + Math.floor(r() * 800);
+        const g = E.greenSchedule(r, period);
+        if (!g) continue;
+        greens += 1;
+        const life = g.until - g.appearAt;
+        assert(life >= 600 && life <= 800, 'ช่องเขียวโผล่ 0.6–0.8 วิ ได้ ' + life);
+        assert(g.appearAt >= 350, 'ไม่โผล่ทันทีที่กด');
+        let hit = false;
+        for (let t = g.appearAt; t <= g.until; t += 5) if (E.meterAt({ period, green: g }, t).green) { hit = true; break; }
+        assert(hit, 'เข็มผ่านช่องเขียวระหว่างที่โผล่');
+    }
+    assert(greens > 1000, 'ช่องเขียวโผล่บางครั้ง');
     throws(() => E.releaseRoll(room, 'b', 500), 'คนอื่นปล่อยไม่ได้');
     T += 400;
     E.releaseRoll(room, 'a', 99999, null, mulberry(2));

@@ -1,17 +1,18 @@
 /* เศรษฐี — client
- * เซิร์ฟเวอร์เป็นคนตัดสินทุกอย่าง (เต๋า การ์ด เงิน) · ไฟล์นี้แค่วาดกระดาน เล่นฉากเคลื่อนไหวตาม fx ที่เซิร์ฟเวอร์ส่งมา
- * และส่งคำสั่งของผู้เล่นกลับไป
+ * เซิร์ฟเวอร์ตัดสินทุกอย่าง (เต๋า การ์ด เงิน) · ไฟล์นี้วาดกระดาน เล่นฉากตาม fx ที่เซิร์ฟเวอร์ส่งมา และส่งคำสั่งกลับ
  *
- * ฉาก (cutscene) เข้าคิวเล่นตามลำดับ · แตะข้ามได้ · ตามไม่ทัน (เช่นบอทเล่นรัว ๆ) = เร่งความเร็ว/ข้าม
- * โมชันใช้ transform/opacity ผ่าน Web Animations เท่านั้น · prefers-reduced-motion = ตัดฉากเหลือแค่สรุปสั้น ๆ
+ * หลักการ: ดูกระดานแล้วรู้ทันทีว่าช่องไหนของใคร (ระบายสีเจ้าของทั้งช่อง + ค่าผ่านทางบนช่อง) · ตัดสินใจทีละเรื่องในแผ่นเดียว
+ * ฉากเข้าคิวเล่นทีละฉาก แตะข้ามได้ · เซิร์ฟเวอร์เผื่อเวลาฉากไว้แล้ว (fxCost) จึงไม่ต้องเร่งเอง ยกเว้นตามไม่ทันจริง ๆ
+ * โมชันใช้ transform/opacity ผ่าน Web Animations · prefers-reduced-motion = ตัดการเคลื่อนไหว เหลือผลลัพธ์สั้น ๆ
  */
 (function() {
   'use strict';
   var BOOT = window.SETTHI_BOOT || {};
-  var BOARD = BOOT.board || { squares: [], groups: {}, groupSquares: {} };
+  var BOARD = BOOT.board || { squares: [], groups: {}, groupSquares: {}, sideSquares: [], touristSquares: [] };
   var ART = window.SetthiArt;
   var SQ = BOARD.squares;
   var GROUPS = BOARD.groups;
+  var N = SQ.length || 32;
   var roomId = BOOT.roomId;
   var playerId = BOOT.playerId;
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -33,52 +34,52 @@
   var $ = function(sel) { return document.querySelector(sel); };
   var el = {
     board: $('#stBoard'), tokens: $('#stTokens'), cam: $('#stCam'), frame: $('#stFrame'),
-    strip: $('#stStrip'), dock: $('#stDockBody'), timer: $('#stTimer'), log: $('#stLog'),
+    strip: $('#stStrip'), dock: $('#stDockBody'), timer: $('#stTimer'), alerts: $('#stAlerts'),
     clock: $('#stClock'), clockTxt: $('#stClockTxt'), fx: $('#stFx'), sheet: $('#stSheet'), sheetCard: $('#stSheetCard'),
-    end: $('#stEnd'), pill: $('#stAuctionPill'), deskProps: $('#stDeskPropsBody')
+    end: $('#stEnd'), pickbar: $('#stPickbar'), fast: $('#stFastBtn'), log: $('#stLogList')
   };
+  var LAND = '/assets/games/setthi/land/';
+  var TIER_ART = ['b-land', 'b-house', 'b-building', 'b-hotel'];
+  var LEVEL_NAMES = BOARD.levelNames || ['ที่ดิน', 'บ้าน', 'ตึก', 'โรงแรม', 'แลนด์มาร์ก'];
+  var MONO = { color: 'ผูกขาด 3 สี', line: 'ผูกขาดแถว', tourist: 'ผูกขาดท่องเที่ยว' };
 
   // ---------- เครื่องมือ ----------
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
   }
   function money(n) { return '฿' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+  function moneyK(n) {
+    n = Math.round(Number(n) || 0);
+    if (n < 1000) return '฿' + n;
+    if (n < 10000) return '฿' + (Math.round(n / 100) / 10).toString() + 'k';
+    return '฿' + Math.round(n / 1000) + 'k';
+  }
   function nowServer() { return Date.now() + skew; }
   function seatOf(id, state) { return ((state || S || {}).seats || []).find(function(s) { return s.playerId === id; }) || null; }
   function meSeat() { return seatOf(playerId); }
-  function nameOf(id) { var s = seatOf(id); return s ? s.name : 'ธนาคาร'; }
+  function nameOf(id) { var s = seatOf(id); return s ? (s.playerId === playerId ? 'คุณ' : s.name) : 'ธนาคาร'; }
   function isOut(seat) { return !seat || seat.bankrupt || seat.left; }
   function groupOf(i) { return SQ[i] && SQ[i].group ? GROUPS[SQ[i].group] : null; }
-  function bandOf(i) {
-    var sq = SQ[i];
-    if (!sq) return '#888';
-    if (sq.group) return GROUPS[sq.group].color;
-    if (sq.type === 'transport') return '#35435e';
-    if (sq.type === 'utility') return '#6c7a93';
-    return 'transparent';
-  }
-  function bandInkOf(i) { var g = groupOf(i); return g ? g.ink : '#fff'; }
+  function isCity(i) { return SQ[i] && SQ[i].type === 'city'; }
+  function isTour(i) { return SQ[i] && SQ[i].type === 'tourist'; }
+  function ownable(i) { return isCity(i) || isTour(i); }
   function haptic(p) { if (typeof window.gameHaptic === 'function') window.gameHaptic(p); }
-  function tokenHtml(seat, extraClass) {
-    if (!seat) return '<span class="st-token" style="--tk:#6c7a93"><span>🏦</span></span>';
-    return '<span class="st-token ' + (extraClass || '') + '" style="--tk:' + esc(seat.tokenColor) + '" title="' + esc(seat.name) + '"><span>' + esc(seat.avatar || '👤') + '</span></span>';
-  }
   function iconHtml(name) { return ART.icon(name); }
-  // ภาพแลนด์มาร์กใหญ่ (โหลดเมื่อจะใช้)
-  var LAND_BASE = '/assets/games/setthi/land/';
-  function landHtml(i, cls) {
-    var sq = SQ[i];
-    if (!sq || !sq.art) return '<div class="st-deed-art">' + iconHtml(sq ? sq.icon : 'chance') + '</div>';
-    return '<div class="st-deed-art is-land ' + (cls || '') + '"><img src="' + LAND_BASE + sq.art + '.svg" alt="" loading="lazy" decoding="async" width="240" height="240"></div>';
+  function artSrc(name) { return LAND + name + '.svg'; }
+  function tokenHtml(seat, extra) {
+    if (!seat) return '<span class="st-token" style="--tk:#6c7a93"><span>🏦</span></span>';
+    return '<span class="st-token ' + (extra || '') + '" style="--tk:' + esc(seat.tokenColor) + '" title="' + esc(seat.name) + '"><span>' + esc(seat.avatar || '👤') + '</span></span>';
   }
-  var preloaded = {};
-  function preloadLand(i) {
-    var sq = SQ[i];
-    if (!sq || !sq.art || preloaded[sq.art]) return;
-    preloaded[sq.art] = new Image();
-    preloaded[sq.art].src = LAND_BASE + sq.art + '.svg';
+  function bldIcons(level) {
+    if (level >= 4) return '<span class="is-lm">' + ART.ICONS.landmark + '</span>';
+    var out = '';
+    if (level >= 1) out += '<span>' + ART.ICONS.house + '</span>';
+    if (level >= 2) out += '<span>' + ART.ICONS.bld + '</span>';
+    if (level >= 3) out += '<span class="is-hotel">' + ART.ICONS.hotel + '</span>';
+    return out;
   }
-  function ownable(i) { var t = SQ[i] && SQ[i].type; return t === 'property' || t === 'transport' || t === 'utility'; }
+  function costOf(i, level) { var c = SQ[i].costs || []; return c[level] || 0; }
+  function valueOf(i, level) { var t = 0; for (var k = 0; k <= level; k += 1) t += costOf(i, k); return t; }
   function toast(msg, ms) {
     var t = document.createElement('div');
     t.className = 'st-toast';
@@ -90,8 +91,11 @@
       a.onfinish = function() { t.remove(); };
     }, ms || 2200);
   }
+  var preloaded = {};
+  function preload(name) { if (!name || preloaded[name]) return; preloaded[name] = new Image(); preloaded[name].src = artSrc(name); }
+  TIER_ART.forEach(preload);
 
-  // ---------- เสียง (สังเคราะห์เอง ไม่โหลดไฟล์) ----------
+  // ---------- เสียง (สังเคราะห์เอง) ----------
   var sfx = (function() {
     var ctx = null;
     function c() {
@@ -128,156 +132,176 @@
       } catch (e) { /* ignore */ }
     }
     return {
-      dice: function() { for (var i = 0; i < 6; i += 1) noise(0.035, 0.22, 2600 + i * 300, i * 0.07 + Math.random() * 0.03); },
-      hop: function() { tone(620, 0.05, 'triangle', 0.05); },
+      dice: function() { for (var i = 0; i < 5; i += 1) noise(0.035, 0.22, 2600 + i * 300, i * 0.06 + Math.random() * 0.03); },
+      hop: function(k) { tone(560 + (k || 0) * 30, 0.05, 'triangle', 0.05); },
       coin: function() { tone(1320, 0.08, 'sine', 0.14); tone(1760, 0.14, 'sine', 0.11, 0.06); },
       stamp: function() { tone(92, 0.2, 'sine', 0.45); noise(0.08, 0.3, 700); },
-      gavel: function() { tone(240, 0.05, 'square', 0.12); noise(0.07, 0.4, 1400); },
       card: function() { noise(0.2, 0.12, 4200); },
       fanfare: function() { [523, 659, 784, 1047].forEach(function(f, i) { tone(f, 0.22, 'triangle', 0.14, i * 0.09); }); },
-      jail: function() { tone(150, 0.45, 'sawtooth', 0.08); tone(112, 0.5, 'sawtooth', 0.07, 0.1); noise(0.12, 0.25, 900, 0.05); },
+      big: function() { [392, 523, 659, 784, 1047, 1319].forEach(function(f, i) { tone(f, 0.3, 'triangle', 0.13, i * 0.08); }); },
+      alarm: function() { for (var i = 0; i < 4; i += 1) { tone(880, 0.12, 'square', 0.07, i * 0.22); tone(660, 0.12, 'square', 0.07, i * 0.22 + 0.11); } },
+      sad: function() { tone(330, 0.25, 'sawtooth', 0.07); tone(247, 0.4, 'sawtooth', 0.07, 0.2); },
       turn: function() { tone(880, 0.1, 'sine', 0.12); tone(1175, 0.16, 'sine', 0.1, 0.08); },
       build: function() { tone(520, 0.06, 'square', 0.06); tone(780, 0.08, 'square', 0.05, 0.06); },
       bad: function() { tone(180, 0.16, 'square', 0.07); },
-      bid: function() { tone(988, 0.06, 'triangle', 0.1); }
+      tick: function() { tone(988, 0.05, 'triangle', 0.08); },
+      whoosh: function() { noise(0.35, 0.14, 900); }
     };
   })();
 
   // ---------- กระดาน ----------
   function gridOf(i) {
-    if (i === 0) return { r: 11, c: 11, side: 'x' };
-    if (i < 10) return { r: 11, c: 11 - i, side: 'b' };
-    if (i === 10) return { r: 11, c: 1, side: 'x' };
-    if (i < 20) return { r: 11 - (i - 10), c: 1, side: 'l' };
-    if (i === 20) return { r: 1, c: 1, side: 'x' };
-    if (i < 30) return { r: 1, c: 1 + (i - 20), side: 't' };
-    if (i === 30) return { r: 1, c: 11, side: 'x' };
-    return { r: 1 + (i - 30), c: 11, side: 'r' };
+    if (i === 0) return { r: 9, c: 9, side: 'x' };
+    if (i < 8) return { r: 9, c: 9 - i, side: 'b' };
+    if (i === 8) return { r: 9, c: 1, side: 'x' };
+    if (i < 16) return { r: 9 - (i - 8), c: 1, side: 'l' };
+    if (i === 16) return { r: 1, c: 1, side: 'x' };
+    if (i < 24) return { r: 1, c: 1 + (i - 16), side: 't' };
+    if (i === 24) return { r: 1, c: 9, side: 'x' };
+    return { r: 1 + (i - 24), c: 9, side: 'r' };
   }
-
+  var CORNER_LABEL = { start: 'เริ่ม', island: 'เกาะร้าง', festival: 'งานวัด', tour: 'ทัวร์' };
+  var CORNER_SUB = { start: '+' + moneyK(BOARD.salary), island: 'ติด 3 ตา', festival: 'ค่าผ่าน ×2', tour: 'วาร์ป' };
   var cells = [];
-  function cornerHtml(i) {
+  function cellHtml(i) {
     var sq = SQ[i];
-    if (sq.type === 'go') return '<div class="st-corner st-corner--go"><div class="st-corner-icon">' + iconHtml('go') + '</div><div class="st-corner-label">เริ่ม</div><div class="st-corner-sub">ผ่านรับ ' + money(BOARD.salary) + '</div></div>';
-    if (sq.type === 'jail') return '<div class="st-corner st-corner--jail"><div class="st-jail-box"><div class="st-corner-icon">' + iconHtml('jail') + '</div></div><span class="st-visit">เยี่ยมคุก</span></div>';
-    if (sq.type === 'parking') return '<div class="st-corner"><div class="st-corner-icon">' + iconHtml('parking') + '</div><div class="st-corner-label">จอดฟรี</div></div>';
-    return '<div class="st-corner st-corner--gotojail"><div class="st-corner-icon">' + iconHtml('whistle') + '</div><div class="st-corner-label">ไปคุก</div></div>';
+    var g = gridOf(i);
+    var style = 'grid-row:' + g.r + ';grid-column:' + g.c + ';';
+    var attrs = ' data-i="' + i + '" role="gridcell" tabindex="0"';
+    if (g.side === 'x') {
+      return '<div class="st-cell is-corner corner-' + sq.type + '"' + attrs + ' style="' + style + '" aria-label="' + esc(sq.name) + '">' +
+        '<img class="st-corner-art" src="' + artSrc(sq.art) + '" alt="" width="64" height="64">' +
+        '<span class="st-corner-name">' + esc(CORNER_LABEL[sq.type] || sq.name) + '</span><span class="st-corner-sub">' + esc(CORNER_SUB[sq.type] || '') + '</span></div>';
+    }
+    var cls = 'st-cell side-' + g.side + ' type-' + sq.type;
+    if (isCity(i)) {
+      var grp = groupOf(i);
+      return '<div class="' + cls + '"' + attrs + ' style="' + style + '--band:' + grp.color + '">' +
+        '<i class="st-band"></i><div class="st-cell-in"><span class="st-bld">' + iconHtml(sq.icon) + '</span><span class="st-name">' + esc(sq.short) + '</span><span class="st-val">' + moneyK(sq.price) + '</span></div>' +
+        '<span class="st-dot"></span><span class="st-flag" aria-hidden="true"></span></div>';
+    }
+    if (isTour(i)) {
+      return '<div class="' + cls + '"' + attrs + ' style="' + style + '">' +
+        '<i class="st-band"></i><div class="st-cell-in"><span class="st-tour-pic"><img src="' + artSrc(sq.art) + '" alt="" width="40" height="40" loading="lazy"></span><span class="st-name">' + esc(sq.short) + '</span><span class="st-val">' + moneyK(sq.price) + '</span></div>' +
+        '<span class="st-dot"></span><span class="st-flag" aria-hidden="true"></span></div>';
+    }
+    var sub = sq.type === 'tax' ? '10%' : '';
+    return '<div class="' + cls + '"' + attrs + ' style="' + style + '" aria-label="' + esc(sq.name) + '">' +
+      '<div class="st-cell-in"><span class="st-bld">' + iconHtml(sq.icon) + '</span><span class="st-name">' + esc(sq.short) + '</span>' + (sub ? '<span class="st-val is-plain">' + sub + '</span>' : '') + '</div></div>';
+  }
+  function dieHtml() {
+    var pips = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
+    var faces = '';
+    for (var f = 1; f <= 6; f += 1) {
+      var h = '';
+      for (var k = 1; k <= 9; k += 1) h += pips[f].indexOf(k) >= 0 ? '<i style="grid-area:' + (Math.ceil(k / 3)) + '/' + (((k - 1) % 3) + 1) + '"></i>' : '';
+      faces += '<div class="st-die-face f' + f + '">' + h + '</div>';
+    }
+    return '<div class="st-die">' + faces + '</div>';
   }
   function buildBoard() {
     var html = [];
-    for (var i = 0; i < 40; i += 1) {
-      var g = gridOf(i);
-      var sq = SQ[i];
-      var style = 'grid-row:' + g.r + ';grid-column:' + g.c + ';--band:' + bandOf(i) + ';';
-      var label = sq.name + (sq.price ? ' ราคา ' + money(sq.price) : '');
-      if (g.side === 'x') {
-        html.push('<div class="st-cell is-corner" data-i="' + i + '" style="' + style + '" role="gridcell" tabindex="0" aria-label="' + esc(sq.name) + '">' + cornerHtml(i) + '</div>');
-        continue;
-      }
-      var hasBand = ownable(i) && sq.type === 'property';
-      html.push('<div class="st-cell side-' + g.side + (hasBand ? '' : ' no-band') + '" data-i="' + i + '" style="' + style + '" role="gridcell" tabindex="0" aria-label="' + esc(label) + '">' +
-        '<div class="st-cell-owner"></div>' +
-        (hasBand ? '<div class="st-cell-band"><span class="st-cell-houses"></span></div>' : '') +
-        '<div class="st-cell-main"><div class="st-cell-icon">' + iconHtml(sq.icon) + '</div><div class="st-cell-txt">' +
-        '<div class="st-cell-name">' + esc(sq.short || sq.name) + '</div>' +
-        (sq.price ? '<div class="st-cell-price">' + money(sq.price) + '</div>' : (sq.amount ? '<div class="st-cell-price">' + money(sq.amount) + '</div>' : '')) +
-        '</div></div></div>');
-    }
+    for (var i = 0; i < N; i += 1) html.push(cellHtml(i));
     html.push('<div class="st-center" id="stCenter">' +
-      '<div class="st-word"><b>เศรษฐี</b><span>ทอย · ซื้อ · เก็บค่าเช่า</span></div>' +
-      '<div class="st-deck st-deck--chance" id="stDeckChance"><i></i><i></i><i>' + iconHtml('chance') + '</i><b>โอกาส</b></div>' +
-      '<div class="st-deck st-deck--fortune" id="stDeckFortune"><i></i><i></i><i>' + iconHtml('fortune') + '</i><b>ดวงชะตา</b></div>' +
+      '<div class="st-word"><b>เศรษฐี</b></div>' +
       '<div class="st-dice" id="stDice">' + dieHtml() + dieHtml() + '<div class="st-die-shadow"></div></div>' +
-      '<div class="st-center-status" id="stCenterStatus"></div>' +
+      '<div class="st-turnline" id="stTurnline"></div>' +
+      '<button type="button" class="st-lastlog" id="stLastLog" aria-label="ดูบันทึกเกม"></button>' +
       '</div>');
     el.board.innerHTML = html.join('');
     cells = [];
     el.board.querySelectorAll('.st-cell').forEach(function(c) { cells[Number(c.dataset.i)] = c; });
   }
-  function dieHtml() {
-    var pips = {
-      1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9]
-    };
-    var faces = '';
-    for (var f = 1; f <= 6; f += 1) {
-      var cellsHtml = '';
-      for (var k = 1; k <= 9; k += 1) cellsHtml += pips[f].indexOf(k) >= 0 ? '<i style="grid-area:' + (Math.ceil(k / 3)) + '/' + (((k - 1) % 3) + 1) + '"></i>' : '';
-      faces += '<div class="st-die-face f' + f + '">' + cellsHtml + '</div>';
-    }
-    return '<div class="st-die">' + faces + '</div>';
-  }
   var DIE_ROT = { 1: [0, 0], 2: [-90, 0], 3: [0, -90], 4: [0, 90], 5: [90, 0], 6: [0, 180] };
-  function dieTransform(v, extraX, extraY, tx, ty, tz) {
+  function dieTransform(v, ex, ey, tx, ty, tz) {
     var r = DIE_ROT[v] || [0, 0];
-    return 'translate3d(' + (tx || 0) + 'px,' + (ty || 0) + 'px,' + (tz || 0) + 'px) rotateX(-16deg) rotateY(22deg) rotateX(' + (r[0] + (extraX || 0)) + 'deg) rotateY(' + (r[1] + (extraY || 0)) + 'deg)';
+    return 'translate3d(' + (tx || 0) + 'px,' + (ty || 0) + 'px,' + (tz || 0) + 'px) rotateX(-16deg) rotateY(22deg) rotateX(' + (r[0] + (ex || 0)) + 'deg) rotateY(' + (r[1] + (ey || 0)) + 'deg)';
   }
   function setDice(pair) {
-    var dice = el.board.querySelectorAll('.st-die');
     if (!pair) pair = [5, 2];
-    dice.forEach(function(d, k) { d.style.transform = dieTransform(pair[k]); });
+    el.board.querySelectorAll('.st-die').forEach(function(d, k) { d.style.transform = dieTransform(pair[k]); });
   }
 
   // ---------- โมเดลภาพ ----------
   function modelFrom(state) {
-    var m = { pos: {}, cash: {}, jail: {}, out: {}, props: {} };
-    (state.seats || []).forEach(function(s) { m.pos[s.playerId] = s.pos; m.cash[s.playerId] = s.cash; m.jail[s.playerId] = s.inJail; m.out[s.playerId] = s.bankrupt || s.left; });
-    Object.keys(state.props || {}).forEach(function(k) { var p = state.props[k]; m.props[k] = { owner: p.owner, houses: p.houses, mortgaged: p.mortgaged }; });
+    var m = { pos: {}, cash: {}, island: {}, out: {}, props: {}, festival: state.festival === undefined ? null : state.festival };
+    (state.seats || []).forEach(function(s) { m.pos[s.playerId] = s.pos; m.cash[s.playerId] = s.cash; m.island[s.playerId] = s.island; m.out[s.playerId] = s.bankrupt || s.left; });
+    Object.keys(state.props || {}).forEach(function(k) { var p = state.props[k]; m.props[k] = { owner: p.owner, level: p.level }; });
     return m;
   }
-
-  function housesHtml(n) {
-    if (!n) return '';
-    if (n >= 5) return '<span class="is-hotel">' + ART.ICONS.hotel + '</span>';
-    var out = '';
-    for (var k = 0; k < n; k += 1) out += '<span>' + ART.ICONS.house + '</span>';
-    return out;
+  function tollIn(m, i) {
+    var p = m.props[i];
+    if (!p || !p.owner) return 0;
+    var fest = m.festival === i ? 2 : 1;
+    if (isTour(i)) {
+      var n = (BOARD.touristSquares || []).filter(function(k) { return m.props[k] && m.props[k].owner === p.owner; }).length;
+      return (SQ[i].tolls[Math.max(0, n - 1)] || 0) * fest;
+    }
+    return (SQ[i].tolls[p.level] || 0) * fest;
   }
-  function renderCell(i, model) {
+  function threatOn(i) {
+    if (!S || !S.threats) return null;
+    for (var k = 0; k < S.threats.length; k += 1) if (S.threats[k].squares.indexOf(i) >= 0) return S.threats[k];
+    return null;
+  }
+  var focusId = null;
+  function renderCell(i, m) {
     var c = cells[i];
     if (!c || !ownable(i)) return;
-    var p = (model.props || {})[i] || {};
+    var p = (m.props || {})[i] || {};
     var owner = p.owner ? seatOf(p.owner) : null;
+    c.classList.toggle('is-owned', !!owner);
     c.style.setProperty('--own', owner ? owner.tokenColor : 'transparent');
-    c.classList.toggle('is-mortgaged', !!p.mortgaged);
-    var pip = c.querySelector('.st-cell-pip');
-    if (owner && !pip) { pip = document.createElement('span'); pip.className = 'st-cell-pip'; c.appendChild(pip); }
-    if (!owner && pip) pip.remove();
-    var lock = c.querySelector('.st-cell-lock');
-    if (p.mortgaged && !lock) { lock = document.createElement('span'); lock.className = 'st-cell-lock'; lock.textContent = 'จำนอง'; c.appendChild(lock); }
-    if (!p.mortgaged && lock) lock.remove();
-    var h = c.querySelector('.st-cell-houses');
-    if (h) {
-      var key = String(p.houses || 0);
-      if (h.dataset.n !== key) { h.dataset.n = key; h.innerHTML = housesHtml(p.houses || 0); }
+    var dot = c.querySelector('.st-dot');
+    dot.innerHTML = owner ? esc(owner.avatar || '👤') : '';
+    var val = c.querySelector('.st-val');
+    var toll = owner ? tollIn(m, i) : 0;
+    val.textContent = owner ? moneyK(toll) : moneyK(SQ[i].price);
+    if (isCity(i)) {
+      var bld = c.querySelector('.st-bld');
+      var key = owner ? 'L' + p.level : 'icon';
+      if (bld.dataset.k !== key) {
+        bld.dataset.k = key;
+        bld.innerHTML = owner && p.level > 0 ? bldIcons(p.level) : iconHtml(SQ[i].icon);
+        bld.classList.toggle('is-icons', !!(owner && p.level > 0));
+      }
+      var lm = c.querySelector('.st-lm');
+      if (owner && p.level >= 4 && !lm) {
+        lm = document.createElement('img');
+        lm.className = 'st-lm';
+        lm.src = artSrc(SQ[i].art);
+        lm.alt = '';
+        c.appendChild(lm);
+      } else if ((!owner || p.level < 4) && lm) lm.remove();
+      c.classList.toggle('is-landmark', !!(owner && p.level >= 4));
     }
+    c.classList.toggle('is-fest', m.festival === i && !!owner);
+    var th = threatOn(i);
+    c.classList.toggle('is-threat', !!th);
+    if (th) { var ts = seatOf(th.playerId); c.style.setProperty('--threat', ts ? ts.tokenColor : '#fff'); }
+    c.classList.toggle('is-focus', !!focusId && p.owner === focusId);
     var sq = SQ[i];
-    c.setAttribute('aria-label', sq.name + (owner ? ' — เจ้าของ ' + owner.name : sq.price ? ' — ยังไม่มีเจ้าของ ราคา ' + money(sq.price) : '') + (p.houses ? (p.houses >= 5 ? ' โรงแรม' : ' บ้าน ' + p.houses + ' หลัง') : '') + (p.mortgaged ? ' (จำนอง)' : ''));
+    c.setAttribute('aria-label', sq.name + (owner ? ' — ของ ' + owner.name + (isCity(i) ? ' ' + LEVEL_NAMES[p.level] : '') + ' ค่าผ่านทาง ' + money(toll) : ' — ว่าง ราคา ' + money(sq.price)) + (m.festival === i ? ' (งานวัด ×2)' : ''));
   }
-  function renderCells(model) { for (var i = 0; i < 40; i += 1) renderCell(i, model); }
+  function renderCells(m) {
+    for (var i = 0; i < N; i += 1) renderCell(i, m);
+    el.board.classList.toggle('is-focusing', !!focusId);
+  }
 
   // ---------- โทเคน ----------
   var tokenEls = {};
-  function cellBox(i) {
-    var c = cells[i];
-    return { x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight };
-  }
+  function cellBox(i) { var c = cells[i]; return { x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight }; }
   function tokenSize() { return parseFloat(getComputedStyle(el.tokens).getPropertyValue('--tks')) || 18; }
-  function slotXY(i, k, n, jailed) {
+  function slotXY(i, k, n) {
     var b = cellBox(i);
     var size = tokenSize();
     var cx = b.x + b.w / 2;
-    var cy = b.y + b.h / 2;
-    if (i === 10) {
-      if (jailed) { cx = b.x + b.w * 0.67; cy = b.y + b.h * 0.33; } else { cx = b.x + b.w * 0.2; cy = b.y + b.h * 0.8; }
-    }
+    var cy = b.y + b.h * 0.55;
     if (n > 1) {
-      var cols = n <= 2 ? 2 : (n <= 4 ? 2 : 3);
-      var rows = Math.ceil(n / cols);
-      var col = k % cols;
-      var row = Math.floor(k / cols);
-      var step = Math.min(size * 0.62, (Math.min(b.w, b.h) - size) / Math.max(1, cols - 1));
-      cx += (col - (cols - 1) / 2) * step;
-      cy += (row - (rows - 1) / 2) * step * 0.8;
+      var step = Math.min(size * 0.58, (Math.min(b.w, b.h) - size) / 1.2);
+      var offs = [[-1, -1], [1, 1], [1, -1], [-1, 1]];
+      cx += offs[k % 4][0] * step * 0.5;
+      cy += offs[k % 4][1] * step * 0.45;
     }
     return { x: cx - size / 2, y: cy - size / 2 };
   }
@@ -285,7 +309,7 @@
     (state.seats || []).forEach(function(s) {
       if (tokenEls[s.playerId]) return;
       var t = document.createElement('div');
-      t.className = 'st-token';
+      t.className = 'st-token st-piece';
       t.style.setProperty('--tk', s.tokenColor);
       t.innerHTML = '<span>' + esc(s.avatar || '👤') + '</span>';
       el.tokens.appendChild(t);
@@ -298,33 +322,28 @@
     var groups = {};
     (S.seats || []).forEach(function(s) {
       if (model.out[s.playerId]) return;
-      var key = model.pos[s.playerId] + (model.pos[s.playerId] === 10 && model.jail[s.playerId] ? 'j' : '');
-      (groups[key] = groups[key] || []).push(s.playerId);
+      (groups[model.pos[s.playerId]] = groups[model.pos[s.playerId]] || []).push(s.playerId);
     });
     (S.seats || []).forEach(function(s) {
       var t = tokenEls[s.playerId];
       t.classList.toggle('is-out', !!model.out[s.playerId]);
       t.classList.toggle('is-turn', !!(S.turn && S.turn.playerId === s.playerId && S.phase !== 'finished'));
+      t.classList.toggle('is-island', !!model.island[s.playerId]);
       if (s.playerId === skipId || model.out[s.playerId]) return;
       var pos = model.pos[s.playerId];
-      var key = pos + (pos === 10 && model.jail[s.playerId] ? 'j' : '');
-      var list = groups[key] || [s.playerId];
-      var xy = slotXY(pos, list.indexOf(s.playerId), list.length, pos === 10 && model.jail[s.playerId]);
+      var list = groups[pos] || [s.playerId];
+      var xy = slotXY(pos, list.indexOf(s.playerId), list.length);
       t.style.transform = 'translate(' + xy.x + 'px,' + xy.y + 'px)';
     });
-  }
-  function tokenTransformAt(i, jailed) {
-    var xy = slotXY(i, 0, 1, jailed);
-    return { x: xy.x, y: xy.y };
   }
 
   // ---------- กล้อง (มือถือ) ----------
   var camState = { x: 0, y: 0, k: 1 };
-  function camEnabled() { return !reduceMotion && window.innerWidth < 1000 && el.frame.offsetWidth < 620; }
-  function camFor(i) {
+  function camEnabled() { return !reduceMotion && el.frame.offsetWidth < 620; }
+  function camFor(i, k) {
     var b = cellBox(i);
     var W = el.cam.offsetWidth;
-    var k = 1.85;
+    k = k || 1.55;
     var x = W / 2 - (b.x + b.w / 2) * k;
     var y = W / 2 - (b.y + b.h / 2) * k;
     x = Math.min(0, Math.max(W - W * k, x));
@@ -341,7 +360,7 @@
   }
   function camReset(dur) {
     if (camState.k === 1 && camState.x === 0 && camState.y === 0) return Promise.resolve();
-    return camTo({ x: 0, y: 0, k: 1 }, dur == null ? 320 : dur);
+    return camTo({ x: 0, y: 0, k: 1 }, dur == null ? 300 : dur);
   }
 
   // ---------- คิวฉาก ----------
@@ -380,10 +399,7 @@
     el.fx.classList.toggle('is-modal', !!on);
     el.fx.setAttribute('aria-hidden', on ? 'false' : 'true');
   }
-  function clearFx() {
-    el.fx.innerHTML = '';
-    setModal(false);
-  }
+  function clearFx() { el.fx.innerHTML = ''; setModal(false); }
   function fxNode(cls, html, style) {
     var n = document.createElement('div');
     n.className = cls;
@@ -398,95 +414,68 @@
       s = document.createElement('div');
       s.className = 'st-fx-scrim';
       el.fx.insertBefore(s, el.fx.firstChild);
-      fxNode('st-fx-skip', 'แตะเพื่อข้าม');
     }
-    return A(s, [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { duration: dur || 220 });
+    return A(s, [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { duration: dur || 200 });
   }
-  function centerNode() { return el.fx.querySelector('.st-fx-center') || fxNode('st-fx-center'); }
 
   document.addEventListener('pointerdown', function(e) {
     if (!running) return;
-    if (e.target && e.target.closest && e.target.closest('.st-sheet-card, .st-dock, .chat-box, .st-sidebar')) return;
+    if (e.target && e.target.closest && e.target.closest('.st-sheet-card, .st-dock, .chat-box, .st-sidebar, .st-top, #toggleChat')) return;
     skipNow();
   }, true);
-  document.addEventListener('keydown', function(e) { if (running && (e.key === 'Escape' || e.key === ' ')) skipNow(); });
+  document.addEventListener('keydown', function(e) { if (running && e.key === 'Escape') skipNow(); });
 
-  var INSTANT = { bid: 1, tradeOffer: 1, tradeClosed: 1, left: 1, start: 1, debt: 1 };
+  var INSTANT = { left: 1, start: 1, debt: 1, fast: 1, finished: 0 };
 
   function enqueueFx(list) {
     list.forEach(function(f) {
       if (INSTANT[f.kind]) { instantFx(f); return; }
-      if (f.kind === 'turn' && f.playerId !== playerId) return;
-      if (f.kind === 'salary') return; // เล่นตอนเดินผ่านจุดเริ่มแล้ว
+      if (f.kind === 'salary') return; // เล่นตอนเดินผ่านจุดเริ่ม
       queue.push(f);
     });
     if (!running) runQueue();
   }
-
   function pickSpeed(f) {
-    var base = reduceMotion ? 5 : 1;
+    var base = reduceMotion ? 4 : (S && S.fast ? 2 : 1);
     var lag = nowServer() - (f.at || nowServer());
-    if (queue.length >= 14 || lag > 12000) return Math.max(base, 5);
-    if (queue.length >= 7 || lag > 6000) return Math.max(base, 2.6);
-    if (queue.length >= 4) return Math.max(base, 1.6);
+    if (queue.length >= 24 || lag > 15000) return Math.max(base, 5);
+    if (queue.length >= 12 || lag > 8000) return Math.max(base, 2.5);
     return base;
   }
-
   async function runQueue() {
     if (running) return;
     running = true;
     renderDock();
+    closeSheetForScenes();
     while (queue.length) {
-      if (document.hidden || queue.length > 40) { queue = []; break; }
+      if (document.hidden || queue.length > 60) { queue = []; break; }
       var f = queue.shift();
       speed = pickSpeed(f);
       skipping = false;
-      try {
-        await playFx(f);
-      } catch (e) {
-        if (window.console) console.warn('[setthi] fx', f.kind, e && e.message);
-      }
+      try { await playFx(f); } catch (e) { if (window.console) console.warn('[setthi] fx', f.kind, e && e.message); }
       clearFx();
       skipping = false;
     }
     running = false;
     speed = 1;
+    hideStepBubble();
     await camReset(260);
     renderAll();
   }
-
-  function playFx(f) {
-    var h = FX[f.kind];
-    return h ? h(f) : Promise.resolve();
-  }
+  function playFx(f) { var h = FX[f.kind]; return h ? h(f) : Promise.resolve(); }
 
   function instantFx(f) {
-    if (f.kind === 'bid') {
-      sfx.bid();
-      var hi = document.querySelector('.st-auction-high strong');
-      if (hi) { hi.classList.remove('is-bump'); void hi.offsetWidth; hi.classList.add('is-bump'); }
-      if (f.playerId !== playerId && S && S.auction) {
-        // ประมูลกำลังดำเนิน — sheet วาดใหม่จาก S อยู่แล้ว
-      }
-      return;
-    }
-    if (f.kind === 'tradeOffer' && f.to === playerId) {
-      haptic([15, 40, 15]);
-      sfx.turn();
-    }
-    if (f.kind === 'tradeClosed' && f.from === playerId && f.reason === 'rejected') toast(nameOf(f.to) + ' ปฏิเสธข้อเสนอของคุณ');
-    if (f.kind === 'tradeClosed' && f.from === playerId && f.reason === 'expired') toast('ข้อเสนอหมดเวลา');
-    if (f.kind === 'left' && f.playerId !== playerId) toast(nameOf(f.playerId) + ' ออกจากเกม — ทรัพย์สินคืนธนาคาร');
+    if (f.kind === 'left' && f.playerId !== playerId) toast(nameOf(f.playerId) + ' ออกจากเกม');
     if (f.kind === 'debt' && f.playerId === playerId) { haptic([30, 50, 30]); sfx.bad(); }
+    if (f.kind === 'fast') { paintFast(); if (f.by !== playerId) toast(f.on ? '⏩ ' + nameOf(f.by) + ' เปิดเร่งเกม' : nameOf(f.by) + ' ปิดเร่งเกม', 1600); }
   }
 
-  // ตำแหน่งบนจอ
   function centerOf(node) {
     if (!node) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     var r = node.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
-  function chipOf(id) { return el.strip.querySelector('.st-chip[data-id="' + id + '"] .st-chip-token') || el.strip.querySelector('.st-chip[data-id="' + id + '"]'); }
+  function chipOf(id) { return el.strip.querySelector('.st-chip[data-id="' + id + '"] .st-token') || el.strip.querySelector('.st-chip[data-id="' + id + '"]'); }
   function bankPoint() { return centerOf($('#stCenter .st-word')); }
   function cellPoint(i) { return centerOf(cells[i]); }
 
@@ -503,57 +492,58 @@
     if (from == null || reduceMotion) { node.textContent = money(to); return; }
     var t0 = performance.now();
     var dur = 520 / Math.max(1, speed);
+    node.classList.toggle('is-down', to < from);
+    node.classList.toggle('is-up', to > from);
     function step(t) {
       var k = Math.min(1, (t - t0) / dur);
       var e = 1 - Math.pow(1 - k, 3);
       node.textContent = money(from + (to - from) * e);
       if (k < 1) requestAnimationFrame(step);
+      else setTimeout(function() { node.classList.remove('is-down', 'is-up'); }, 600);
     }
     requestAnimationFrame(step);
     A(node, [{ transform: 'scale(1.18)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
   }
-
   function flyCoins(from, to, amount) {
     if (reduceMotion) return Promise.resolve();
-    var n = Math.max(4, Math.min(12, Math.round(Math.log2((amount || 10) / 5)) + 3));
-    var promises = [];
+    var n = Math.max(4, Math.min(12, Math.round(Math.log2((amount || 10) / 50)) + 3));
+    var ps = [];
     for (var k = 0; k < n; k += 1) {
-      var coin = fxNode('st-coin' + (amount >= 300 ? ' is-big' : ''));
-      var dx = (Math.random() - 0.5) * 30;
-      var mid = { x: (from.x + to.x) / 2 + dx, y: Math.min(from.y, to.y) - 50 - Math.random() * 40 };
-      promises.push(A(coin, [
+      var coin = fxNode('st-coin' + (amount >= 3000 ? ' is-big' : ''));
+      var mid = { x: (from.x + to.x) / 2 + (Math.random() - 0.5) * 30, y: Math.min(from.y, to.y) - 50 - Math.random() * 40 };
+      ps.push(A(coin, [
         { transform: 'translate(' + from.x + 'px,' + from.y + 'px) scale(0.6)', opacity: 0 },
         { transform: 'translate(' + from.x + 'px,' + from.y + 'px) scale(1)', opacity: 1, offset: 0.12 },
         { transform: 'translate(' + mid.x + 'px,' + mid.y + 'px) scale(1.15) rotate(180deg)', opacity: 1, offset: 0.55 },
         { transform: 'translate(' + to.x + 'px,' + to.y + 'px) scale(0.7) rotate(360deg)', opacity: 0.2 }
-      ], { duration: 760, delay: k * 55, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' }));
+      ], { duration: 680, delay: k * 45, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' }));
     }
-    setTimeout(function() { sfx.coin(); }, 420 / speed);
-    return Promise.all(promises);
+    setTimeout(function() { sfx.coin(); }, 380 / speed);
+    return Promise.all(ps);
   }
-  function moneyTag(at, amount, plus) {
-    var tag = fxNode('st-money ' + (plus ? 'is-plus' : 'is-minus'), (plus ? '+' : '−') + money(amount));
+  function moneyTag(at, amount, plus, label) {
+    var tag = fxNode('st-money ' + (plus ? 'is-plus' : 'is-minus'), (label ? '<small>' + esc(label) + '</small>' : '') + (plus ? '+' : '−') + money(amount));
     return A(tag, [
       { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.6)', opacity: 0 },
-      { transform: 'translate(' + at.x + 'px,' + (at.y - 26) + 'px) translate(-50%, -50%) scale(1.08)', opacity: 1, offset: 0.3 },
-      { transform: 'translate(' + at.x + 'px,' + (at.y - 46) + 'px) translate(-50%, -50%) scale(1)', opacity: 0 }
+      { transform: 'translate(' + at.x + 'px,' + (at.y - 26) + 'px) translate(-50%, -50%) scale(1.08)', opacity: 1, offset: 0.25 },
+      { transform: 'translate(' + at.x + 'px,' + (at.y - 40) + 'px) translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.75 },
+      { transform: 'translate(' + at.x + 'px,' + (at.y - 52) + 'px) translate(-50%, -50%) scale(1)', opacity: 0 }
     ], { duration: 1100, easing: 'ease-out' });
   }
-
   function banner(opts) {
-    var html = (opts.token ? tokenHtml(opts.token) : '') + (opts.icon ? '<div class="st-banner-art">' + iconHtml(opts.icon) + '</div>' : '') +
+    var html = (opts.token ? tokenHtml(opts.token) : '') + (opts.art ? '<img class="st-banner-img" src="' + artSrc(opts.art) + '" alt="" width="96" height="96">' : '') + (opts.icon ? '<div class="st-banner-art">' + iconHtml(opts.icon) + '</div>' : '') +
       (opts.kicker ? '<div class="st-banner-kicker">' + esc(opts.kicker) + '</div>' : '') +
       '<div class="st-banner-title">' + esc(opts.title) + '</div>' +
-      (opts.sub ? '<div class="st-banner-sub">' + esc(opts.sub) + '</div>' : '');
-    var b = fxNode('st-banner', html);
+      (opts.sub ? '<div class="st-banner-sub">' + opts.sub + '</div>' : '');
+    var b = fxNode('st-banner' + (opts.cls ? ' ' + opts.cls : ''), html);
     if (opts.style) b.setAttribute('style', opts.style);
     return b;
   }
   async function showBanner(opts, hold) {
     var b = banner(opts);
-    await A(b, [{ transform: 'translateX(-50%) translateY(18px) scale(0.92)', opacity: 0 }, { transform: 'translateX(-50%) translateY(0) scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
-    await wait(hold || 700);
-    await A(b, [{ opacity: 1 }, { opacity: 0, transform: 'translateX(-50%) translateY(-10px) scale(0.98)' }], { duration: 220 });
+    await A(b, [{ transform: 'translateX(-50%) translateY(18px) scale(0.92)', opacity: 0 }, { transform: 'translateX(-50%) translateY(0) scale(1)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    await wait(hold || 600);
+    await A(b, [{ opacity: 1 }, { opacity: 0, transform: 'translateX(-50%) translateY(-10px) scale(0.98)' }], { duration: 200 });
   }
   function burst(at, colors, count, spread) {
     if (reduceMotion) return Promise.resolve();
@@ -569,106 +559,274 @@
     }
     return Promise.all(ps);
   }
-  function deedHtml(i, opts) {
-    opts = opts || {};
-    var sq = SQ[i];
-    var g = groupOf(i);
-    var p = (S && S.props && S.props[i]) || {};
-    var kicker = g ? 'สี' + g.name + ' · ' + g.region : (sq.type === 'transport' ? 'การเดินทาง' : sq.type === 'utility' ? 'สาธารณูปโภค' : '');
-    var rows = '';
-    if (sq.type === 'property') {
-      var labels = ['ค่าเช่า', 'บ้าน 1 หลัง', 'บ้าน 2 หลัง', 'บ้าน 3 หลัง', 'บ้าน 4 หลัง', 'โรงแรม'];
-      sq.rent.forEach(function(r, k) {
-        rows += '<tr class="' + (p.owner && p.houses === k ? 'is-now' : '') + '"><td>' + labels[k] + '</td><td>' + money(r) + '</td></tr>';
-        if (k === 0) rows += '<tr><td>ครบชุดสี (ไม่มีบ้าน)</td><td>' + money(r * 2) + '</td></tr>';
-      });
-    } else if (sq.type === 'transport') {
-      BOARD.transportRent.forEach(function(r, k) { rows += '<tr><td>มี ' + (k + 1) + ' แห่ง</td><td>' + money(r) + '</td></tr>'; });
-    } else if (sq.type === 'utility') {
-      rows = '<tr><td>มี 1 แห่ง</td><td>เต๋า × ' + BOARD.utilityMult[0] + '</td></tr><tr><td>มี 2 แห่ง</td><td>เต๋า × ' + BOARD.utilityMult[1] + '</td></tr>';
-    }
-    var foot = '';
-    if (sq.type === 'property') foot = 'บ้านหลังละ ' + money(g.houseCost) + ' · โรงแรม = บ้าน 4 + ' + money(g.houseCost) + '<br>จำนองได้ ' + money(Math.floor(sq.price / 2)) + ' · ไถ่ถอน ' + money(Math.ceil(Math.floor(sq.price / 2) * 11 / 10));
-    else if (sq.price) foot = 'จำนองได้ ' + money(Math.floor(sq.price / 2)) + ' · ไถ่ถอน ' + money(Math.ceil(Math.floor(sq.price / 2) * 11 / 10));
-    var owner = p.owner ? seatOf(p.owner) : null;
-    return '<div class="st-deed" style="--band:' + (g ? g.color : bandOf(i)) + ';--band-ink:' + (g ? g.ink : '#fff') + '">' +
-      '<div class="st-deed-head"><span class="st-deed-kicker">' + esc(kicker) + '</span><b class="st-deed-name">' + esc(sq.name) + '</b></div>' +
-      landHtml(i, opts.compact ? 'is-compact' : '') +
-      (sq.blurb && !opts.compact ? '<div class="st-deed-blurb">' + esc(sq.blurb) + '</div>' : '') +
-      '<div class="st-deed-price">ราคา ' + money(sq.price) + '</div>' +
-      (opts.compact ? '' : '<table class="st-deed-rent">' + rows + '</table><div class="st-deed-foot">' + foot + '</div>') +
-      (opts.owner !== false && owner ? '<div class="st-deed-owner">' + tokenHtml(owner) + '<span>' + esc(owner.name) + '</span></div>' : '') +
-      (opts.owner !== false && p.mortgaged ? '<span class="st-deed-tag">จำนองอยู่ — ไม่เก็บค่าเช่า</span>' : '') +
-      '</div>';
+  function pulseCell(i, cls, ms) {
+    var c = cells[i];
+    if (!c) return;
+    c.classList.remove(cls);
+    void c.offsetWidth;
+    c.classList.add(cls);
+    setTimeout(function() { if (cells[i]) cells[i].classList.remove(cls); }, ms || 1200);
   }
 
-  // ---------- ฉากแต่ละแบบ ----------
+  // ---------- แผ่นตัดสินใจ (ใช้ทั้งแผ่นจริงและ "แผ่นแวบ" ที่โชว์ว่าคนอื่นเลือกอะไร) ----------
+  function tileHtml(i, level, state, extra) {
+    // state: built | sel | open | locked
+    var img = level === 4 || isTour(i) ? artSrc(SQ[i].art) : artSrc(TIER_ART[level]);
+    var label = isTour(i) ? 'ซื้อ' : LEVEL_NAMES[level];
+    var small = extra || '';
+    return '<button type="button" class="st-tile is-' + state + (level === 4 ? ' is-lm' : '') + '" data-level="' + level + '"' + (state === 'locked' || state === 'built' ? ' aria-disabled="true"' : '') + '>' +
+      '<span class="st-tile-img"><img src="' + img + '" alt="" width="56" height="56"></span><b>' + esc(label) + '</b><small>' + small + '</small></button>';
+  }
+  var LOCK_TEXT = { lap: '🔒 รอบ 2', hotel: '🔒 มีโรงแรม', later: '🔒 ตกซ้ำ' };
+  function sheetHeadArt(i, title, sub) {
+    var g = groupOf(i);
+    return '<div class="st-dhead"><span class="st-dhead-art" style="--band:' + (g ? g.color : '#139a8e') + '"><img src="' + artSrc(SQ[i].art) + '" alt="" width="72" height="72"></span>' +
+      '<div class="st-dhead-txt"><h3 id="stSheetTitle">' + esc(title) + '</h3>' + (sub ? '<div class="st-dhead-sub">' + sub + '</div>' : '') + '</div></div>';
+  }
+  function groupChip(i) {
+    var g = groupOf(i);
+    if (!g) return '<span class="st-chipline"><i style="background:#139a8e"></i>ท่องเที่ยว</span>';
+    return '<span class="st-chipline"><i style="background:' + g.color + '"></i>สี' + esc(g.name) + '</span>';
+  }
+
+  // ตัวเลือกในแผ่นสร้างของเรา
+  var buildSel = null;
+  function buildSheetHtml(d, readonly, chosen) {
+    var i = d.square;
+    var sq = SQ[i];
+    var title = d.mode === 'buy' ? 'ซื้อ ' + sq.short + '?' : d.current === 3 ? 'สร้างแลนด์มาร์ก?' : 'สร้างเพิ่ม?';
+    var sel = readonly ? chosen : buildSel;
+    var tiles = '';
+    var total = 0;
+    (d.options || []).forEach(function(o) {
+      var st;
+      if (o.built) st = 'built';
+      else if (o.locked) st = 'locked';
+      else st = sel !== null && sel !== undefined && o.level <= sel ? 'sel' : 'open';
+      if (st === 'sel') total += o.cost;
+      var small = st === 'built' ? '✓ มีแล้ว' : st === 'locked' ? LOCK_TEXT[o.locked] || '🔒' : money(o.cost);
+      tiles += tileHtml(i, o.level, st, small);
+    });
+    var tollNow = sel !== null && sel !== undefined && sel >= 0 ? (isTour(i) ? sq.tolls[0] : sq.tolls[sel]) : null;
+    var cash = d.cash;
+    var info = '<div class="st-dinfo">' +
+      '<span class="st-dinfo-item"><small>ค่าผ่านทาง</small><b>' + (tollNow !== null ? money(tollNow) : '—') + '</b></span>' +
+      '<span class="st-dinfo-item"><small>จ่าย</small><b class="is-pay">' + money(total) + '</b></span>' +
+      '<span class="st-dinfo-item"><small>เหลือ</small><b class="' + (cash - total < 0 ? 'is-bad' : '') + '">' + money(cash - total) + '</b></span></div>';
+    var verb = d.mode === 'buy' ? 'ซื้อ' : 'สร้าง';
+    var btns = readonly ? '' : '<div class="st-sheet-foot">' +
+      btn('stPassBtn', 'ผ่าน', {}) +
+      btn('stBuildBtn', total > 0 ? verb + ' ' + money(total) : 'เลือกขั้นก่อน', { primary: true, disabled: !total || total > cash || pending || running }) + '</div>';
+    var sub = groupChip(i) + (d.mode === 'afterTakeover' ? '<span class="st-chipline">ซื้อต่อแล้ว</span>' : '');
+    return sheetHeadArt(i, title, sub) +
+      '<div class="st-tiles' + (isTour(i) ? ' is-one' : '') + '" role="group" aria-label="เลือกขั้นที่จะสร้าง">' + tiles + '</div>' + info + btns;
+  }
+  function takeoverSheetHtml(d, readonly) {
+    var i = d.square;
+    var owner = seatOf(d.owner);
+    var me = seatOf(d.playerId);
+    var sub = '<span class="st-swap">' + tokenHtml(owner) + '<span class="st-swap-arrow">→</span>' + tokenHtml(me) + '</span>';
+    return sheetHeadArt(i, 'ซื้อต่อ ' + SQ[i].short + '?', sub) +
+      '<div class="st-take"><div class="st-take-bld">' + (d.level > 0 ? bldIcons(d.level) : '<span class="st-take-land">ที่ดิน</span>') + '</div>' +
+      '<div class="st-take-price"><small>ราคา ×2</small><b>' + money(d.price) + '</b></div>' +
+      '<div class="st-take-left"><small>เหลือ</small><b>' + money(d.cash - d.price) + '</b></div></div>' +
+      (readonly ? '' : '<div class="st-sheet-foot">' + btn('stNoTakeBtn', 'ไม่ซื้อ', {}) + btn('stTakeBtn', 'ซื้อต่อ ' + money(d.price), { primary: true, disabled: d.cash < d.price || pending || running }) + '</div>');
+  }
+  function sellSheetHtml() {
+    var me = meSeat();
+    var sell = (S.self && S.self.sell) || {};
+    var keys = Object.keys(sell).map(Number).sort(function(a, b) { return sell[a] - sell[b]; });
+    var short = S.debt ? Math.max(0, S.debt.total - me.cash) : 0;
+    var list = keys.map(function(i) {
+      var p = S.props[i] || {};
+      return '<button type="button" class="st-sell" data-sell="' + i + '"><span class="st-sell-img"><img src="' + artSrc(SQ[i].art) + '" alt="" width="40" height="40"></span>' +
+        '<span class="st-sell-name">' + esc(SQ[i].short) + '<span class="st-sell-bld">' + (isCity(i) ? bldIcons(p.level) : '') + '</span></span><b>+' + money(sell[i]) + '</b></button>';
+    }).join('');
+    return '<div class="st-dhead"><span class="st-dhead-art is-alert">' + iconHtml('coins') + '</span><div class="st-dhead-txt"><h3 id="stSheetTitle">เงินไม่พอ! ขาด ' + money(short) + '</h3><div class="st-dhead-sub"><span class="st-chipline">ขายที่ = ได้คืนครึ่งราคา</span></div></div></div>' +
+      '<div class="st-sells">' + list + '</div>';
+  }
+  function squareSheetHtml(i) {
+    var sq = SQ[i];
+    var m = V || modelFrom(S);
+    var p = m.props[i] || {};
+    var owner = p.owner ? seatOf(p.owner) : null;
+    if (!ownable(i)) {
+      var what = {
+        start: [['💰', 'ผ่าน +' + money(BOARD.salary)], ['🏗️', 'ตกพอดี = อัปเกรด ลดครึ่ง']],
+        island: [['🏝️', 'ติด ' + BOARD.islandTurns + ' ตา'], ['🎲', 'ดับเบิล = ออก'], ['⛵', 'จ่าย ' + money(BOARD.islandFee) + ' = ออก']],
+        festival: [['🎉', 'เลือกที่ตัวเอง'], ['×2', 'ค่าผ่านทาง 2 เท่า']],
+        tour: [['✈️', 'ตาหน้าเลือกช่อง'], ['🎫', 'ค่าทัวร์ ' + money(BOARD.tourFee)]],
+        chance: [['❓', 'สุ่มการ์ด 1 ใบ']],
+        tax: [['🧾', 'จ่าย 10% ของที่']]
+      }[sq.type] || [];
+      return '<div class="st-dhead"><span class="st-dhead-art"><img src="' + artSrc(sq.art) + '" alt="" width="72" height="72"></span><div class="st-dhead-txt"><h3 id="stSheetTitle">' + esc(sq.name) + '</h3></div></div>' +
+        '<div class="st-facts">' + what.map(function(w) { return '<div class="st-fact"><i>' + esc(w[0]) + '</i><span>' + esc(w[1]) + '</span></div>'; }).join('') + '</div>';
+    }
+    var sub = groupChip(i) + (owner ? '<span class="st-chipline">' + tokenHtml(owner) + esc(owner.playerId === playerId ? 'ของคุณ' : owner.name) + '</span>' : '<span class="st-chipline">ว่าง</span>') + (m.festival === i ? '<span class="st-chipline is-fest">🎉 ×2</span>' : '');
+    var rows = '';
+    var levels = isTour(i) ? [0] : [0, 1, 2, 3, 4];
+    levels.forEach(function(k) {
+      var here = owner && (isTour(i) || p.level === k);
+      rows += '<div class="st-tier' + (here ? ' is-now' : '') + '"><img src="' + (k === 4 || isTour(i) ? artSrc(sq.art) : artSrc(TIER_ART[k])) + '" alt="" width="36" height="36"><b>' + esc(isTour(i) ? 'ที่ดิน' : LEVEL_NAMES[k]) + '</b><span>' + money(sq.costs[k]) + '</span><span class="st-tier-toll">' + (isTour(i) ? '1→4 แห่ง ' + sq.tolls.map(moneyK).join(' / ') : money(sq.tolls[k])) + '</span></div>';
+    });
+    var now = owner ? '<div class="st-dinfo"><span class="st-dinfo-item"><small>ค่าผ่านทางตอนนี้</small><b>' + money(tollIn(m, i)) + '</b></span>' + (isCity(i) && p.level < 4 ? '<span class="st-dinfo-item"><small>ซื้อต่อ ×2</small><b>' + money(valueOf(i, p.level) * 2) + '</b></span>' : '<span class="st-dinfo-item"><small>ซื้อต่อ</small><b>ไม่ได้</b></span>') + '</div>' : '';
+    return sheetHeadArt(i, sq.name, sub) + now +
+      '<div class="st-tiers"><div class="st-tier is-head"><span></span><b></b><span>ราคา</span><span class="st-tier-toll">ค่าผ่านทาง</span></div>' + rows + '</div>';
+  }
+  function helpHtml() {
+    var rows = [
+      ['🎲', 'กดค้างทอย ปล่อยตอนแรง = เดินไกล'],
+      ['🏠', 'ตกที่ว่าง: ซื้อ + สร้างได้ในแผ่นเดียว'],
+      ['1️⃣', 'รอบแรกสร้างถึงบ้าน · รอบ 2 ถึงโรงแรม'],
+      ['🏛️', 'มีโรงแรม แล้วตกซ้ำ = แลนด์มาร์ก'],
+      ['🛣️', 'ตกที่คนอื่น = จ่ายค่าผ่านทาง'],
+      ['🤝', 'จ่ายแล้วซื้อต่อได้ ราคา ×2'],
+      ['🚫', 'แลนด์มาร์ก/ท่องเที่ยว ซื้อต่อไม่ได้'],
+      ['👑', 'ผูกขาด 3 สี / ทั้งแถว / ท่องเที่ยว 4 = ชนะ'],
+      ['⚠️', 'วงกระพริบ = อีก 1 ช่องผูกขาด!'],
+      ['🎉', 'งานวัด: ที่ที่เลือก ค่าผ่านทาง ×2'],
+      ['✈️', 'ทัวร์: ตาหน้าแตะช่องที่อยากไป'],
+      ['🏝️', 'เกาะร้าง: ดับเบิล / จ่าย / รอ 3 ตา'],
+      ['🎲🎲', 'ดับเบิล = ทอยอีก · 3 ครั้ง = เกาะ'],
+      ['💸', 'เงินไม่พอ: ขายที่คืนครึ่ง · หมด = ล้ม'],
+      ['⏰', S && S.clock && S.clock.endsAt ? 'หมดเวลา: ทรัพย์สินมากสุดชนะ' : 'ไม่จำกัดเวลา: เหลือคนสุดท้ายชนะ']
+    ];
+    return '<div class="st-dhead"><span class="st-dhead-art">' + iconHtml('crown') + '</span><div class="st-dhead-txt"><h3 id="stSheetTitle">เล่นยังไง</h3><div class="st-dhead-sub"><span class="st-chipline">เงินในเกม ไม่มีมูลค่าจริง</span></div></div></div>' +
+      '<div class="st-facts">' + rows.map(function(r) { return '<div class="st-fact"><i>' + r[0] + '</i><span>' + esc(r[1]) + '</span></div>'; }).join('') + '</div>';
+  }
+  function logHtml() {
+    return '<div class="st-dhead"><span class="st-dhead-art">' + iconHtml('book') + '</span><div class="st-dhead-txt"><h3 id="stSheetTitle">เพิ่งเกิดอะไร</h3></div></div>' +
+      '<div class="st-log">' + (S.history || []).map(function(h) { return '<div class="st-log-item"><i>' + esc(h.icon || '•') + '</i><span>' + esc(h.text) + '</span></div>'; }).join('') + '</div>';
+  }
+  function btn(id, label, opts) {
+    opts = opts || {};
+    return '<button type="button" class="st-btn' + (opts.primary ? ' st-btn--primary' + (opts.pulse ? ' is-pulse' : '') : '') + (opts.cls ? ' ' + opts.cls : '') + '" id="' + id + '"' + (opts.disabled ? ' disabled' : '') + '>' +
+      (opts.icon ? '<span class="st-btn-ico">' + iconHtml(opts.icon) + '</span>' : '') + '<span class="st-btn-label">' + label + '</span></button>';
+  }
+
+  /** แผ่นแวบ: โชว์ว่าคนอื่น (หรือบอท) เลือกอะไร ในหน้าตาเดียวกับแผ่นจริง */
+  async function flashDecision(actorId, inner, stamp, good) {
+    if (actorId === playerId) return;
+    var who = seatOf(actorId);
+    var card = fxNode('st-flash', '<div class="st-flash-who">' + tokenHtml(who) + '<b>' + esc(who ? who.name : '') + '</b></div>' + inner +
+      '<div class="st-stamp2 ' + (good ? 'is-good' : 'is-bad') + '">' + esc(stamp) + '</div>');
+    var st = card.querySelector('.st-stamp2');
+    await A(card, [{ transform: 'translate(-50%, 30px) scale(0.96)', opacity: 0 }, { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }], { duration: 200 });
+    sfx.stamp();
+    await A(st, [{ transform: 'scale(2.2) rotate(-6deg)', opacity: 0 }, { transform: 'scale(0.94) rotate(-10deg)', opacity: 1, offset: 0.7 }, { transform: 'scale(1) rotate(-10deg)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(0.5, 0, 0.75, 0)' });
+    await wait(420);
+    await A(card, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%, 16px) scale(0.98)' }], { duration: 160 });
+    card.remove();
+  }
+
+  // ---------- ฉาก ----------
   var FX = {};
 
   FX.turn = async function(f) {
-    if (f.playerId !== playerId) return;
-    sfx.turn();
-    haptic([18, 40, 28]);
-    await camReset(200);
-    var b = banner({ kicker: 'รอบที่ ' + (f.round || 1), title: 'ตาคุณ!', token: meSeat(), style: 'top:38%' });
-    await A(b, [{ transform: 'translateX(-50%) scale(0.7)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
-    await wait(450);
-    await A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 180 });
+    var who = seatOf(f.playerId);
+    var mine = f.playerId === playerId;
+    if (mine) { sfx.turn(); haptic([18, 40, 28]); }
+    var t = tokenEls[f.playerId];
+    if (camEnabled() && V && V.pos[f.playerId] !== undefined) camTo(camFor(V.pos[f.playerId], 1.35), 300);
+    if (t) A(t, [{ transform: t.style.transform + ' scale(1)' }, { transform: t.style.transform + ' scale(1.5)' }, { transform: t.style.transform + ' scale(1)' }], { duration: 600, fill: 'none' });
+    var b = banner({ token: who, kicker: 'รอบ ' + (f.round || 1), title: mine ? 'ตาคุณ!' : 'ตาของ ' + (who ? who.name : ''), cls: 'is-turn' + (mine ? ' is-mine' : ''), style: '--tk:' + (who ? who.tokenColor : '#f5c86b') });
+    await A(b, [{ transform: 'translateX(-50%) scale(0.7)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 200, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    await wait(430);
+    await A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
   };
 
+  // ผลเต๋าแบบเกม: ตัวเลขเด้งบนเต๋าแต่ละลูก → แต้มรวมตัวใหญ่ (ระดับคำตามแต้ม) → ป้ายพลังเต็ม/ดับเบิล/เตือน
+  function totalTier(t) {
+    if (t <= 4) return { cls: 'is-slow', text: 'เดินช้าๆ', num: String(t) };
+    if (t <= 8) return { cls: 'is-ok', text: 'ได้ ' + t + '!', num: '' };
+    if (t <= 11) return { cls: 'is-strong', text: 'แรงดี! ' + t, num: '' };
+    return { cls: 'is-max', text: 'สุดยอด 12!!', num: '' };
+  }
   FX.dice = async function(f) {
-    await camReset(220);
+    await camReset(200);
     sfx.dice();
     var power = Number(f.power) || 0;
-    if (f.perfect) perfectFlash();
     var dice = el.board.querySelectorAll('.st-die');
     var W = el.cam.offsetWidth;
-    var ps = [];
-    var throwK = 1 + power * 0.9;
-    dice.forEach(function(d, k) {
-      var v = f.d[k];
-      var spinX = 720 + Math.floor(Math.random() * 2) * 360 + Math.round(power * 2) * 360;
-      var spinY = 540 + Math.floor(Math.random() * 2) * 360 + Math.round(power * 2) * 360;
-      var sx = (k ? 1 : -1) * W * (0.18 + Math.random() * 0.08) * throwK;
-      var sy = -W * (0.28 + Math.random() * 0.06) * throwK;
-      d.style.transform = dieTransform(v, 0, 0, 0, 0, 0);
-      ps.push(A(d, [
-        { transform: dieTransform(v, spinX, spinY, sx, sy, 60) },
-        { transform: dieTransform(v, spinX * 0.35, spinY * 0.35, sx * 0.25, W * 0.02, 0), offset: 0.55 },
-        { transform: dieTransform(v, spinX * 0.08, spinY * 0.08, sx * 0.05, -W * 0.03, 10), offset: 0.75 },
-        { transform: dieTransform(v, 0, 0, 0, 0, 0) }
-      ], { duration: 980 + power * 620, delay: k * 70, easing: 'cubic-bezier(0.3, 0.6, 0.35, 1)', fill: 'none' }));
-    });
-    if (power >= 0.85) { var c0 = centerOf($('#stDice')); setTimeout(function() { burst(c0, ['#f5c86b', '#ef5b4c', '#fff3c4'], 14, 70); }, (900 + power * 600) / speed); }
-    await Promise.all(ps);
-    if (f.doubles) {
-      var c = cellPoint(0);
-      var center = centerOf($('#stDice'));
-      var tag = fxNode('st-money is-plus', f.purpose === 'jail' ? 'ดับเบิล! ออกคุก' : 'ดับเบิล!');
-      await A(tag, [
-        { transform: 'translate(' + center.x + 'px,' + center.y + 'px) translate(-50%, -50%) scale(0.5)', opacity: 0 },
-        { transform: 'translate(' + center.x + 'px,' + (center.y - 40) + 'px) translate(-50%, -50%) scale(1.1)', opacity: 1, offset: 0.35 },
-        { transform: 'translate(' + center.x + 'px,' + (center.y - 50) + 'px) translate(-50%, -50%) scale(1)', opacity: 0 }
-      ], { duration: 900 });
-      void c;
+    var total = f.d[0] + f.d[1];
+    var big = f.doubles || total === 12;
+    if (!reduceMotion) {
+      var ps = [];
+      var throwK = 1 + power * 0.6;
+      dice.forEach(function(d, k) {
+        var v = f.d[k];
+        var spinX = 720 + Math.floor(Math.random() * 2) * 360;
+        var spinY = 540 + Math.floor(Math.random() * 2) * 360;
+        var sx = (k ? 1 : -1) * W * (0.16 + Math.random() * 0.06) * throwK;
+        var sy = -W * (0.24 + Math.random() * 0.05) * throwK;
+        d.style.transform = dieTransform(v);
+        ps.push(A(d, [
+          { transform: dieTransform(v, spinX, spinY, sx, sy, 60) },
+          { transform: dieTransform(v, spinX * 0.3, spinY * 0.3, sx * 0.2, W * 0.02, 0), offset: 0.6 },
+          { transform: dieTransform(v, spinX * 0.06, spinY * 0.06, sx * 0.04, -W * 0.025, 10), offset: 0.8 },
+          { transform: dieTransform(v) }
+        ], { duration: 620 + power * 200, delay: k * 60, easing: 'cubic-bezier(0.3, 0.6, 0.35, 1)', fill: 'none' }));
+      });
+      await Promise.all(ps);
     } else {
-      await wait(180);
+      setDice(f.d);
+    }
+    // ตัวเลขบนเต๋าแต่ละลูก
+    var nums = [];
+    dice.forEach(function(d, k) {
+      var at = centerOf(d);
+      var n = fxNode('st-die-num', String(f.d[k]));
+      n.style.transform = 'translate(' + at.x + 'px,' + (at.y - 34) + 'px) translate(-50%, -50%)';
+      nums.push(A(n, [{ transform: 'translate(' + at.x + 'px,' + (at.y - 20) + 'px) translate(-50%, -50%) scale(0.2)', opacity: 0 }, { transform: 'translate(' + at.x + 'px,' + (at.y - 38) + 'px) translate(-50%, -50%) scale(1.25)', opacity: 1, offset: 0.6 }, { transform: 'translate(' + at.x + 'px,' + (at.y - 34) + 'px) translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 220, delay: k * 80, easing: 'cubic-bezier(0.34,1.56,0.64,1)' }));
+    });
+    sfx.tick();
+    await Promise.all(nums);
+    // แต้มรวม
+    var c0 = centerOf($('#stDice'));
+    var tier = totalTier(total);
+    var label = f.purpose === 'island' ? (f.doubles ? 'ดับเบิล! หนีออกจากเกาะ' : total + ' · ไม่ใช่ดับเบิล') : tier.text;
+    var tot = fxNode('st-total ' + (f.purpose === 'island' && !f.doubles ? 'is-slow' : tier.cls), '<b>' + esc(label) + '</b>' + (tier.num && f.purpose !== 'island' ? '<span>' + tier.num + '</span>' : ''));
+    var badges = '';
+    if (power >= 0.85 && f.purpose !== 'island') badges += '<span class="st-badge2 is-power">พลังเต็ม!</span>';
+    if (f.perfect) badges += '<span class="st-badge2 is-green">เป๊ะ! ช่องเขียว</span>';
+    if (badges) tot.insertAdjacentHTML('beforeend', '<div class="st-badges2">' + badges + '</div>');
+    var ty = c0.y + 46;
+    A(tot, [{ transform: 'translate(' + c0.x + 'px,' + ty + 'px) translate(-50%, -50%) scale(0.4)', opacity: 0 }, { transform: 'translate(' + c0.x + 'px,' + ty + 'px) translate(-50%, -50%) scale(1.12)', opacity: 1, offset: 0.65 }, { transform: 'translate(' + c0.x + 'px,' + ty + 'px) translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    if (total === 12) { sfx.big(); burst(c0, ['#f5c86b', '#fff3c4', '#ef5b4c'], 22, 110); }
+    if (power >= 0.85) haptic(14);
+    if (f.doubles && f.purpose !== 'island') {
+      await wait(220);
+      var streak = f.streak || 1;
+      var rib = fxNode('st-ribbon' + (streak >= 3 ? ' is-alarm' : ''), '<b>ดับเบิล!</b><span>' + (streak >= 3 ? 'ครบ 3 ครั้ง!' : 'ทอยอีกครั้ง!') + '</span>' + (streak === 2 ? '<em>อีกครั้งติดเกาะ!</em>' : ''));
+      sfx.fanfare();
+      haptic([10, 30, 10]);
+      await A(rib, [{ transform: 'translate(-50%, -50%) scaleX(0.1) rotate(-4deg)', opacity: 0 }, { transform: 'translate(-50%, -50%) scaleX(1.06) rotate(-4deg)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%, -50%) scaleX(1) rotate(-4deg)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+      if (streak === 2) { var em = rib.querySelector('em'); if (em) A(em, [{ opacity: 0.4 }, { opacity: 1 }, { opacity: 0.4 }, { opacity: 1 }], { duration: 600 }); sfx.bad(); }
+      if (streak >= 3) {
+        sfx.alarm();
+        haptic([60, 40, 60, 40, 60]);
+        var flash = fxNode('st-alarm');
+        await A(flash, [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.2 }, { opacity: 1 }, { opacity: 0 }], { duration: 900 });
+      } else {
+        await wait(780);
+      }
+    } else if (f.purpose === 'island' && f.doubles) {
+      sfx.fanfare();
+      await wait(800);
+    } else {
+      await wait(total === 12 ? 900 : 520);
     }
   };
 
-  function perfectFlash() {
-    var at = centerOf($('#stDice'));
-    var n = fxNode('st-perfect', 'เป๊ะ!<small>ช่องเขียว · ลุ้นดับเบิล</small>');
-    sfx.fanfare();
-    haptic([10, 30, 10]);
-    burst(at, ['#45f09a', '#f5c86b', '#ffffff'], 18, 90);
-    A(n, [
-      { transform: 'translate(' + at.x + 'px,' + (at.y - 30) + 'px) translate(-50%, -50%) scale(0.4) rotate(-8deg)', opacity: 0 },
-      { transform: 'translate(' + at.x + 'px,' + (at.y - 58) + 'px) translate(-50%, -50%) scale(1.15) rotate(-4deg)', opacity: 1, offset: 0.25 },
-      { transform: 'translate(' + at.x + 'px,' + (at.y - 62) + 'px) translate(-50%, -50%) scale(1) rotate(-4deg)', opacity: 1, offset: 0.75 },
-      { transform: 'translate(' + at.x + 'px,' + (at.y - 76) + 'px) translate(-50%, -50%) scale(0.95) rotate(-4deg)', opacity: 0 }
-    ], { duration: 1300 });
+  var stepBubble = null;
+  function showStepBubble(n, xy) {
+    if (!stepBubble) { stepBubble = document.createElement('div'); stepBubble.className = 'st-steps'; el.tokens.appendChild(stepBubble); }
+    stepBubble.textContent = n;
+    var size = tokenSize();
+    stepBubble.style.transform = 'translate(' + (xy.x + size / 2) + 'px,' + (xy.y - size * 0.55) + 'px) translate(-50%, -100%)';
+    stepBubble.classList.add('is-on');
   }
+  function hideStepBubble() { if (stepBubble) stepBubble.classList.remove('is-on'); }
 
   FX.move = async function(f) {
     var t = tokenEls[f.playerId];
@@ -676,457 +834,353 @@
     var path = f.path || [];
     var hops = path.length;
     var useCam = camEnabled();
-    var per = hops > 12 ? Math.max(70, 1500 / hops) : 150;
+    V.island[f.playerId] = 0;
+    t.classList.remove('is-island');
+    if (f.warp) {
+      // บินวาร์ป
+      sfx.whoosh();
+      var from = t.style.transform;
+      var xy0 = slotXY(f.to, 0, 1);
+      var to = 'translate(' + xy0.x + 'px,' + xy0.y + 'px)';
+      if (useCam) camReset(240);
+      t.style.transform = to;
+      await A(t, [{ transform: from + ' scale(1)', opacity: 1 }, { transform: from + ' translateY(-30px) scale(1.8)', opacity: 1, offset: 0.3 }, { transform: to + ' translateY(-30px) scale(1.8)', opacity: 1, offset: 0.75 }, { transform: to + ' scale(1)', opacity: 1 }], { duration: 950, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'none' });
+      if (f.passGo) passGoPop(f.playerId);
+      V.pos[f.playerId] = f.to;
+      placeTokens(V);
+      pulseCell(f.to, 'is-land', 900);
+      return;
+    }
+    if (useCam) await camTo(camFor(f.from), 240);
+    var per = hops > 14 ? Math.max(90, 2600 / hops) : 210;
     var cur = t.style.transform;
-    V.jail[f.playerId] = false;
-    if (useCam) await camTo(camFor(f.from), 300);
     for (var k = 0; k < hops; k += 1) {
       var sq = path[k];
-      var xy = tokenTransformAt(sq, false);
+      var xy = slotXY(sq, 0, 1);
       var target = 'translate(' + xy.x + 'px,' + xy.y + 'px)';
       var fromT = cur.replace(/ ?translateY\([^)]*\)| ?scale\([^)]*\)/g, '');
-      var midX = xy.x;
-      var midY = xy.y;
       t.style.transform = target;
       var hop = A(t, [
         { transform: fromT + ' translateY(0px) scale(1)' },
-        { transform: 'translate(' + midX + 'px,' + midY + 'px) translateY(-' + Math.round(tokenSize() * 0.9) + 'px) scale(1.22)', offset: 0.45 },
+        { transform: 'translate(' + xy.x + 'px,' + xy.y + 'px) translateY(-' + Math.round(tokenSize() * 0.9) + 'px) scale(1.2)', offset: 0.45 },
         { transform: target + ' translateY(0px) scale(1)' }
       ], { duration: per, easing: 'ease-in-out', fill: 'none' });
       if (useCam) camTo(camFor(sq), per);
-      if (k % 2 === 0) sfx.hop();
+      showStepBubble(hops - k - 1 > 0 ? hops - k - 1 : '✓', xy);
+      sfx.hop(k % 4);
       await hop;
       cur = target;
       if (sq === 0 && f.passGo) passGoPop(f.playerId);
     }
     V.pos[f.playerId] = f.to;
     placeTokens(V);
-    if (cells[f.to]) {
-      cells[f.to].classList.add('is-land');
-      setTimeout(function() { if (cells[f.to]) cells[f.to].classList.remove('is-land'); }, 900);
-    }
-    await wait(useCam ? 260 : 120);
+    pulseCell(f.to, 'is-land', 900);
+    await wait(220);
+    hideStepBubble();
   };
 
   function passGoPop(id) {
     var salaryFx = (S.fx || []).find(function(x) { return x.kind === 'salary' && x.playerId === id && x.seq > lastPlayedSeq; });
     var at = cellPoint(0);
-    var pop = fxNode('st-salary', '<small>ผ่านจุดเริ่ม · เงินเดือน</small>+' + money(BOARD.salary));
+    var pop = fxNode('st-salary', '<small>เงินเดือน</small>+' + money(BOARD.salary));
     A(pop, [
       { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.4)', opacity: 0 },
       { transform: 'translate(' + at.x + 'px,' + (at.y - 40) + 'px) translate(-50%, -50%) scale(1.12)', opacity: 1, offset: 0.25 },
       { transform: 'translate(' + at.x + 'px,' + (at.y - 52) + 'px) translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.75 },
       { transform: 'translate(' + at.x + 'px,' + (at.y - 70) + 'px) translate(-50%, -50%) scale(0.95)', opacity: 0 }
-    ], { duration: 1400, easing: 'ease-out' });
+    ], { duration: 1300, easing: 'ease-out' });
     flyCoins(at, centerOf(chipOf(id)), BOARD.salary);
-    burst(at, ['#f5c86b', '#fff3c4', '#3fbf7f'], 16, 70);
     sfx.coin();
     if (salaryFx && salaryFx.cash) setCash(salaryFx.cash);
-    else if (V) setCash((function() { var m = {}; m[id] = (V.cash[id] || 0) + BOARD.salary; return m; })());
   }
   var lastPlayedSeq = 0;
 
-  FX.card = async function(f) {
-    var deck = f.deck === 'chance' ? $('#stDeckChance') : $('#stDeckFortune');
-    var from = centerOf(deck);
-    setModal(true);
-    sfx.card();
-    var center = centerNode();
-    var cx = window.innerWidth / 2;
-    var cy = window.innerHeight * 0.46;
-    var scale0 = Math.max(0.12, (deck ? deck.getBoundingClientRect().width : 50) / 240);
-    var card = document.createElement('div');
-    card.className = 'st-bigcard';
-    var deckColor = f.deck === 'chance' ? 'oklch(0.66 0.13 70)' : 'oklch(0.5 0.17 25)';
+  // ซื้อ / สร้าง / อัปเกรด
+  FX.build = async function(f) {
+    var i = f.square;
+    var d = { square: i, mode: f.mode === 'buy' || f.from < 0 ? 'buy' : 'upgrade', cash: (V && V.cash[f.playerId]) || 0, current: f.from, options: [] };
+    var levels = isTour(i) ? [0] : [0, 1, 2, 3, 4];
+    levels.forEach(function(k) { d.options.push({ level: k, cost: costOf(i, k), built: k <= f.from, locked: null }); });
+    if (f.mode === 'buy' || f.mode === 'upgrade' || f.mode === 'afterTakeover') {
+      var verb = f.mode === 'buy' ? 'ซื้อ' : 'สร้าง';
+      await flashDecision(f.playerId, buildSheetHtml(d, true, f.to), verb + ' ✔', true);
+    }
+    setCash(f.cash);
+    var c = cells[i];
+    if (!c || !V) return;
+    if (camEnabled()) await camTo(camFor(i), 220);
+    var at = centerOf(c);
+    if (f.to === 4) { await landmarkScene(f); return; }
+    // ชิ้นสิ่งปลูกสร้างตกลงมาทีละขั้น
+    var first = Math.max(0, f.from + 1);
+    for (var k = first; k <= f.to; k += 1) {
+      var drop = fxNode('st-drop', '<img src="' + (isTour(i) ? artSrc(SQ[i].art) : artSrc(TIER_ART[k])) + '" alt="" width="56" height="56">');
+      sfx.build();
+      await A(drop, [
+        { transform: 'translate(' + at.x + 'px,' + (at.y - 110) + 'px) translate(-50%, -50%) scale(1.2)', opacity: 0 },
+        { transform: 'translate(' + at.x + 'px,' + (at.y - 8) + 'px) translate(-50%, -50%) scale(1.05)', opacity: 1, offset: 0.65 },
+        { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(1.1, 0.88)', opacity: 1, offset: 0.82 },
+        { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.4)', opacity: 0 }
+      ], { duration: f.to - first > 1 ? 300 : 440, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' });
+      drop.remove();
+    }
+    V.props[i] = { owner: f.playerId, level: f.to };
+    renderCell(i, V);
+    renderStripLands();
+    var ring = fxNode('st-ring');
+    A(ring, [{ transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.3)', opacity: 0.9 }, { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(1.8)', opacity: 0 }], { duration: 500, easing: 'ease-out' });
     var who = seatOf(f.playerId);
-    card.innerHTML = '<div class="st-bigcard-inner">' +
-      '<div class="st-bigcard-back ' + (f.deck === 'chance' ? 'is-chance' : 'is-fortune') + '">' + iconHtml(f.deck === 'chance' ? 'chance' : 'fortune') + '</div>' +
-      '<div class="st-bigcard-face" style="--deck:' + deckColor + '">' +
-      '<div class="st-bigcard-kicker">' + (f.deck === 'chance' ? 'โอกาส' : 'ดวงชะตา') + '</div>' +
-      '<div class="st-bigcard-art">' + iconHtml(f.card.icon) + '</div>' +
-      '<div class="st-bigcard-title">' + esc(f.card.title) + '</div>' +
-      '<div class="st-bigcard-text">' + esc(f.card.text) + '</div>' +
-      '<div class="st-bigcard-who">' + esc(who ? who.name : '') + '</div>' +
-      '</div></div>';
-    center.appendChild(card);
-    var inner = card.querySelector('.st-bigcard-inner');
-    scrim(true, 260);
-    var dx = from.x - cx;
-    var dy = from.y - cy;
-    inner.style.transform = 'rotateY(180deg)';
-    card.style.transform = 'translate(0px, 0px) scale(1)';
-    await Promise.all([
-      A(card, [
-        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + scale0 + ') rotate(' + (f.deck === 'chance' ? -11 : 11) + 'deg)' },
-        { transform: 'translate(0px, -20px) scale(1.04) rotate(0deg)', offset: 0.7 },
-        { transform: 'translate(0px, 0px) scale(1) rotate(0deg)' }
-      ], { duration: 620, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'none' }),
-      A(inner, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(0deg)', offset: 0.35 }, { transform: 'rotateY(180deg)' }], { duration: 760, easing: 'cubic-bezier(0.5, 0, 0.2, 1)', fill: 'none' })
-    ]);
-    if (f.playerId === playerId) haptic(12);
-    await wait(reduceMotion ? 1600 : 1500);
-    await Promise.all([
-      A(card, [{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: 'translate(0, 30px) scale(0.86)', opacity: 0 }], { duration: 240 }),
-      scrim(false, 240)
-    ]);
+    burst(at, [who ? who.tokenColor : '#f5c86b', '#fff3c4'], f.to >= 3 ? 18 : 10, 46);
+    if (f.cost) moneyTag(centerOf(chipOf(f.playerId)), f.cost, false);
+    if (f.mode === 'startBonus' || f.mode === 'freeUpgrade') moneyTag({ x: at.x, y: at.y - 30 }, f.cost || 0, false, f.mode === 'freeUpgrade' ? 'อัปเกรดฟรี!' : 'ลดครึ่งราคา');
+    await wait(300);
   };
 
-  async function soldScene(f, opts) {
-    var sq = f.square;
-    var to = chipOf(f.winner || f.playerId);
+  async function landmarkScene(f) {
+    var i = f.square;
+    var who = seatOf(f.playerId);
     setModal(true);
-    var center = centerNode();
-    var fly = document.createElement('div');
-    fly.className = 'st-flydeed';
-    fly.innerHTML = deedHtml(sq, { compact: true, owner: false });
-    center.appendChild(fly);
-    var w = 170;
-    fly.style.left = (-w / 2) + 'px';
-    fly.style.top = '-120px';
-    scrim(true, 200);
-    await A(fly, [{ transform: 'translateY(40px) scale(0.6) rotate(-6deg)', opacity: 0 }, { transform: 'translateY(0) scale(1) rotate(0deg)', opacity: 1 }], { duration: 320, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
-    var stamp = document.createElement('div');
-    stamp.className = 'st-stamp';
-    stamp.style.top = (fly.offsetHeight - 120 - 70) + 'px';
-    stamp.innerHTML = '<div>ขายแล้ว<small>SOLD</small></div>';
-    center.appendChild(stamp);
-    sfx.stamp();
-    haptic(20);
-    await A(stamp, [
-      { transform: 'scale(2.4) rotate(-4deg)', opacity: 0 },
-      { transform: 'scale(0.92) rotate(-12deg)', opacity: 1, offset: 0.6 },
-      { transform: 'scale(1) rotate(-12deg)', opacity: 1 }
-    ], { duration: 340, easing: 'cubic-bezier(0.5, 0, 0.75, 0)' });
-    A(center.querySelector('.st-flydeed .st-deed') || fly, [{ transform: 'translateY(0)' }, { transform: 'translateY(5px)', offset: 0.3 }, { transform: 'translateY(0)' }], { duration: 220 });
-    if (opts && opts.price) moneyTag({ x: window.innerWidth / 2, y: window.innerHeight * 0.46 + 70 }, opts.price, false);
-    await wait(560);
-    var target = centerOf(to);
-    var here = centerOf(fly);
-    A(stamp, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
-    scrim(false, 300);
-    await A(fly, [
-      { transform: 'translate(0,0) scale(1)', opacity: 1 },
-      { transform: 'translate(' + (target.x - here.x) + 'px,' + (target.y - here.y) + 'px) scale(0.16) rotate(10deg)', opacity: 0.2 }
-    ], { duration: 520, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' });
-    if (V) {
-      V.props[sq] = Object.assign({}, V.props[sq] || {}, { owner: f.winner || f.playerId });
-      renderCell(sq, V);
-      var pip = cells[sq] && cells[sq].querySelector('.st-cell-pip');
-      if (pip) A(pip, [{ transform: 'scale(2.2)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 360, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'none' });
-    }
+    scrim(true, 220);
+    sfx.big();
+    haptic([20, 40, 20, 40, 40]);
+    var rays = fxNode('st-rays');
+    var img = fxNode('st-lm-rise', '<img src="' + artSrc(SQ[i].art) + '" alt="" width="220" height="220">');
+    var b = banner({ token: who, kicker: SQ[i].name, title: 'แลนด์มาร์ก!', sub: 'ค่าผ่านทาง ' + money(SQ[i].tolls[4]) + ' · ซื้อต่อไม่ได้', cls: 'is-gold', style: 'top:auto;bottom:16%;' });
+    A(rays, [{ transform: 'translate(-50%, -50%) rotate(0deg) scale(0.4)', opacity: 0 }, { transform: 'translate(-50%, -50%) rotate(40deg) scale(1)', opacity: 1 }], { duration: 1600 });
+    await A(img, [{ transform: 'translate(-50%, -30%) scale(0.3)', opacity: 0 }, { transform: 'translate(-50%, -58%) scale(1.08)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%, -55%) scale(1)', opacity: 1 }], { duration: 620, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    A(b, [{ transform: 'translateX(-50%) scale(0.7)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    burst({ x: window.innerWidth / 2, y: window.innerHeight * 0.4 }, ['#f5c86b', '#fff3c4', who ? who.tokenColor : '#ef5b4c'], 30, 160);
+    await wait(900);
+    V.props[i] = { owner: f.playerId, level: 4 };
+    renderCell(i, V);
+    await Promise.all([A(img, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%, -55%) scale(0.6)' }], { duration: 260 }), A(rays, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 }), A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }), scrim(false, 240)]);
+    var lm = cells[i] && cells[i].querySelector('.st-lm');
+    if (lm) A(lm, [{ transform: 'scale(2)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 360, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'none' });
+    pulseCell(i, 'is-land', 900);
   }
 
-  FX.buy = async function(f) {
-    setCash(f.cash);
-    await soldScene(f, { price: f.price });
+  FX.decision = async function(f) {
+    if (f.playerId === playerId) return;
+    var what = { build: 'ไม่ซื้อ', takeover: 'ไม่ซื้อต่อ', tour: 'ไม่วาร์ป', festival: 'ข้าม', startBonus: 'ข้าม', freeUpgrade: 'ข้าม' }[f.about] || 'ผ่าน';
+    var inner = f.square !== null && f.square !== undefined && SQ[f.square] ? sheetHeadArt(f.square, SQ[f.square].short, groupChip(f.square)) : '';
+    await flashDecision(f.playerId, inner, what + ' ✖', false);
   };
 
-  var GAVEL_SVG = '<svg viewBox="0 0 160 64" aria-hidden="true"><defs><linearGradient id="stGh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9995f"/><stop offset=".5" stop-color="#a8673f"/><stop offset="1" stop-color="#6b3f22"/></linearGradient><linearGradient id="stGs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b57a49"/><stop offset="1" stop-color="#6b3f22"/></linearGradient></defs>' +
-    '<rect x="4" y="27" width="104" height="10" rx="5" fill="url(#stGs)"/><circle cx="8" cy="32" r="6" fill="#6b3f22"/>' +
-    '<rect x="100" y="4" width="40" height="56" rx="10" fill="url(#stGh)"/><rect x="96" y="10" width="48" height="8" rx="3" fill="#f5c86b"/><rect x="96" y="46" width="48" height="8" rx="3" fill="#f5c86b"/><rect x="106" y="20" width="5" height="24" rx="2" fill="#fff" opacity=".25"/></svg>';
-  FX.auctionStart = async function(f) {
-    setModal(true);
-    var center = centerNode();
-    scrim(true, 200);
-    var stage = document.createElement('div');
-    stage.className = 'st-auction-stage';
-    stage.innerHTML = '<div class="st-flydeed">' + deedHtml(f.square, { compact: true, owner: false }) + '</div>' +
-      '<div class="st-gavel-block"></div><div class="st-gavel">' + GAVEL_SVG + '</div>';
-    center.appendChild(stage);
-    var fly = stage.querySelector('.st-flydeed');
-    var gavel = stage.querySelector('.st-gavel');
-    var block = stage.querySelector('.st-gavel-block');
-    var title = banner({ kicker: 'ไม่มีใครซื้อ', title: 'เปิดประมูล!', sub: 'ใครก็เสนอราคาได้ · ' + SQ[f.square].name, style: 'top:7%;' });
-    A(title, [{ transform: 'translateX(-50%) translateY(-16px)', opacity: 0 }, { transform: 'translateX(-50%) translateY(0)', opacity: 1 }], { duration: 300 });
-    await Promise.all([
-      A(fly, [{ transform: 'translateY(30px) scale(0.5) rotate(-6deg)', opacity: 0 }, { transform: 'translateY(0) scale(0.82) rotate(-4deg)', opacity: 1 }], { duration: 340, easing: 'cubic-bezier(0.34,1.56,0.64,1)' }),
-      A(block, [{ transform: 'translateY(20px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 300 }),
-      A(gavel, [{ transform: 'translateX(60px) rotate(-70deg)', opacity: 0 }, { transform: 'translateX(0) rotate(-48deg)', opacity: 1 }], { duration: 320 })
-    ]);
-    for (var k = 0; k < 2; k += 1) {
-      await A(gavel, [{ transform: 'rotate(-48deg)' }, { transform: 'rotate(-56deg)', offset: 0.45 }, { transform: 'rotate(6deg)' }], { duration: k ? 300 : 360, easing: 'cubic-bezier(0.6, 0, 0.9, 0.6)' });
-      sfx.gavel();
-      haptic(14);
-      A(block, [{ transform: 'translateY(0) scaleY(1)' }, { transform: 'translateY(3px) scaleY(0.9)' }, { transform: 'translateY(0) scaleY(1)' }], { duration: 160 });
-      burst(centerOf(block), ['#f5c86b', '#fff3c4'], 8, 46);
-      await A(gavel, [{ transform: 'rotate(6deg)' }, { transform: 'rotate(-48deg)' }], { duration: 240, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' });
-    }
-    await wait(380);
-    scrim(false, 220);
-    await Promise.all([A(stage, [{ opacity: 1 }, { opacity: 0, transform: 'scale(0.96)' }], { duration: 220 }), A(title, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 })]);
-  };
-
-  FX.auctionEnd = async function(f) {
-    closeSheetIf('auction');
-    if (!f.winner) {
-      await showBanner({ icon: 'gavel', kicker: 'จบประมูล', title: 'ไม่มีผู้ประมูล', sub: SQ[f.square].name + ' ยังเป็นของธนาคาร' }, 650);
-      return;
-    }
-    setCash(f.cash);
-    sfx.gavel();
-    await soldScene({ square: f.square, winner: f.winner }, { price: f.amount });
-  };
-
-  FX.rent = async function(f) {
-    var hasSq = f.square !== undefined && f.square !== null && cells[f.square];
+  FX.toll = async function(f) {
+    var i = f.square;
+    var hasSq = i !== undefined && i !== null && cells[i];
     var payerToken = tokenEls[f.from];
     var from = payerToken && V && !V.out[f.from] ? centerOf(payerToken) : centerOf(chipOf(f.from));
     var to = centerOf(chipOf(f.to));
-    if (hasSq) cells[f.square].classList.add('is-land');
+    if (hasSq) cells[i].classList.add('is-land');
     var owner = seatOf(f.to);
-    var ribbon = fxNode('st-rent', '<span class="st-rent-k">ค่าเช่า' + (hasSq ? ' · ' + esc(SQ[f.square].short || SQ[f.square].name) : '') + '</span><b>' + money(f.amount) + '</b><span class="st-rent-to">→ ' + esc(owner ? owner.name : '') + '</span>');
-    var at = hasSq ? cellPoint(f.square) : from;
-    var rx = Math.max(90, Math.min(window.innerWidth - 90, at.x));
-    var boardRect = el.frame.getBoundingClientRect();
-    var dir = at.y < boardRect.top + boardRect.height / 2 ? 1 : -1; // แถวบนให้ป้ายอยู่ใต้ช่อง ไม่ทับแถบผู้เล่น
-    var ry = at.y + dir * 54;
-    A(ribbon, [
-      { transform: 'translate(' + rx + 'px,' + (ry - dir * 16) + 'px) translate(-50%, -50%) scale(0.7)', opacity: 0 },
-      { transform: 'translate(' + rx + 'px,' + ry + 'px) translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.2 },
-      { transform: 'translate(' + rx + 'px,' + (ry + dir * 4) + 'px) translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.8 },
-      { transform: 'translate(' + rx + 'px,' + (ry + dir * 12) + 'px) translate(-50%, -50%) scale(0.96)', opacity: 0 }
-    ], { duration: 1500 });
-    moneyTag(centerOf(chipOf(f.from)), f.amount, false);
+    var rib = fxNode('st-toll', '<span class="st-toll-k">ค่าผ่านทาง' + (f.festival ? ' <em>งานวัด ×2</em>' : '') + '</span><b>' + money(f.amount) + '</b><span class="st-toll-to">' + tokenHtml(seatOf(f.from)) + '→' + tokenHtml(owner) + '</span>');
+    if (f.from === playerId) { haptic([30, 30]); sfx.bad(); }
+    await A(rib, [{ transform: 'translate(-50%, -50%) scale(0.6)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.06)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
     await flyCoins(from, to, f.amount);
     setCash(f.cash);
     moneyTag(to, f.amount, true);
     if (f.to === playerId) haptic(10);
-    await wait(260);
-    if (f.square !== undefined && f.square !== null && cells[f.square]) cells[f.square].classList.remove('is-land');
+    await wait(380);
+    await A(rib, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
+    if (hasSq) cells[i].classList.remove('is-land');
+  };
+
+  FX.shield = async function(f) {
+    var angel = f.shield === 'angel';
+    await showBanner({ token: seatOf(f.playerId), icon: angel ? 'angel' : 'ticket', kicker: angel ? 'การ์ดนางฟ้า' : 'ส่วนลดครึ่ง', title: angel ? 'ไม่ต้องจ่าย!' : 'จ่ายครึ่งเดียว!', sub: 'ประหยัด ' + money(f.saved), cls: 'is-gold' }, 650);
+  };
+
+  FX.takeover = async function(f) {
+    var i = f.square;
+    var buyer = seatOf(f.playerId);
+    var victim = seatOf(f.from);
+    await flashDecision(f.playerId, takeoverSheetHtml({ square: i, owner: f.from, playerId: f.playerId, price: f.price, level: f.level, cash: (V && V.cash[f.playerId]) || 0 }, true), 'ซื้อต่อ ✔', true);
+    setModal(true);
+    scrim(true, 200);
+    var mineLost = f.from === playerId;
+    var node = fxNode('st-take-scene' + (mineLost ? ' is-lost' : ''),
+      '<div class="st-take-title">' + (mineLost ? 'ถูกซื้อต่อ!' : 'ซื้อต่อ!') + '</div>' +
+      '<div class="st-take-card"><img src="' + artSrc(SQ[i].art) + '" alt="" width="120" height="120"><b>' + esc(SQ[i].name) + '</b><span class="st-take-bld">' + bldIcons(f.level) + '</span></div>' +
+      '<div class="st-take-swap">' + tokenHtml(victim, 'is-old') + '<span class="st-swap-arrow">→</span>' + tokenHtml(buyer, 'is-new') + '</div>' +
+      '<div class="st-take-amt">' + money(f.price) + '</div>');
+    if (mineLost) { sfx.sad(); haptic([60, 40, 60]); } else { sfx.stamp(); haptic(20); }
+    var card = node.querySelector('.st-take-card');
+    var title = node.querySelector('.st-take-title');
+    await Promise.all([
+      A(title, [{ transform: 'scale(2.4) rotate(-6deg)', opacity: 0 }, { transform: 'scale(0.95) rotate(-4deg)', opacity: 1, offset: 0.7 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 360, easing: 'cubic-bezier(0.5, 0, 0.75, 0)' }),
+      A(card, [{ transform: 'rotateY(0deg) scale(0.8)', opacity: 0 }, { transform: 'rotateY(0deg) scale(1)', opacity: 1 }], { duration: 300 })
+    ]);
+    card.style.setProperty('--own', victim ? victim.tokenColor : '#888');
+    await A(card, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)', offset: 0.5 }, { transform: 'rotateY(0deg)' }], { duration: 520 });
+    card.style.setProperty('--own', buyer ? buyer.tokenColor : '#f5c86b');
+    setCash(f.cash);
+    V.props[i] = { owner: f.playerId, level: f.level };
+    renderCell(i, V);
+    renderStripLands();
+    burst(centerOf(card), [buyer ? buyer.tokenColor : '#f5c86b', '#fff3c4'], 18, 110);
+    await wait(700);
+    await Promise.all([A(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }), scrim(false, 200)]);
+  };
+
+  FX.card = async function(f) {
+    var center = $('#stDice');
+    var from = centerOf(center);
+    setModal(true);
+    sfx.card();
+    var who = seatOf(f.playerId);
+    var sub = {
+      forward: 'เดินหน้า ' + (f.card.steps || 3) + ' ช่อง', toStart: 'รับเงินเดือน + โบนัส', freeUpgrade: 'เลือกเมืองตัวเอง +1 ขั้น',
+      shield: f.card.kind === 'angel' ? 'ตกที่คนอื่นครั้งหน้า ไม่ต้องจ่าย' : 'ค่าผ่านทางครั้งหน้า ลดครึ่ง', island: 'ติดเกาะ 3 ตา',
+      pay: '−' + money(f.card.amount), gain: '+' + money(f.card.amount), festival: 'เลือกที่ตัวเอง ×2', tour: 'ตาหน้าเลือกช่องไหนก็ได้'
+    }[f.card.type] || '';
+    var card = fxNode('st-bigcard', '<div class="st-bigcard-inner"><div class="st-bigcard-back">' + iconHtml('chance') + '</div>' +
+      '<div class="st-bigcard-face"><div class="st-bigcard-kicker">โอกาส</div><div class="st-bigcard-art">' + iconHtml(f.card.icon) + '</div>' +
+      '<div class="st-bigcard-title">' + esc(f.card.title) + '</div><div class="st-bigcard-text">' + esc(sub) + '</div><div class="st-bigcard-who">' + tokenHtml(who) + '</div></div></div>');
+    var inner = card.querySelector('.st-bigcard-inner');
+    scrim(true, 220);
+    var cx = window.innerWidth / 2;
+    var cy = window.innerHeight * 0.44;
+    inner.style.transform = 'rotateY(180deg)';
+    await Promise.all([
+      A(card, [{ transform: 'translate(' + (from.x - cx) + 'px,' + (from.y - cy) + 'px) translate(-50%, -50%) scale(0.2)' }, { transform: 'translate(0px, -16px) translate(-50%, -50%) scale(1.04)', offset: 0.7 }, { transform: 'translate(0px, 0px) translate(-50%, -50%) scale(1)' }], { duration: 520, fill: 'none' }),
+      A(inner, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(0deg)', offset: 0.3 }, { transform: 'rotateY(180deg)' }], { duration: 640, easing: 'cubic-bezier(0.5, 0, 0.2, 1)', fill: 'none' })
+    ]);
+    if (f.playerId === playerId) haptic(12);
+    await wait(950);
+    await Promise.all([A(card, [{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%, -40%) scale(0.86)', opacity: 0 }], { duration: 200 }), scrim(false, 200)]);
+  };
+
+  FX.island = async function(f) {
+    var t = tokenEls[f.playerId];
+    var who = seatOf(f.playerId);
+    if (t && V && f.reason !== 'landed') {
+      var xy = slotXY(8, 0, 1);
+      var from = t.style.transform;
+      var to = 'translate(' + xy.x + 'px,' + xy.y + 'px)';
+      t.style.transform = to;
+      sfx.whoosh();
+      await A(t, [{ transform: from + ' scale(1)' }, { transform: from + ' translateY(-24px) scale(1.6)', offset: 0.3 }, { transform: to + ' scale(1)' }], { duration: 560, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'none' });
+    }
+    if (V) { V.pos[f.playerId] = 8; V.island[f.playerId] = BOARD.islandTurns; placeTokens(V); }
+    setModal(true);
+    scrim(true, 200);
+    if (f.playerId === playerId) haptic([40, 60, 40]);
+    sfx.sad();
+    var b = banner({ token: who, art: 'island', kicker: f.reason === 'triple' ? 'ดับเบิล 3 ครั้ง!' : f.reason === 'card' ? 'การ์ดโอกาส' : (who ? who.name : ''), title: 'ติดเกาะร้าง!', sub: '<span class="st-pips"><i></i><i></i><i></i></span> ดับเบิล · จ่าย ' + money(BOARD.islandFee) + ' · รอ 3 ตา', cls: 'is-island', style: 'top:30%;' });
+    var waves = fxNode('st-waves');
+    A(waves, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: 600 });
+    await A(b, [{ transform: 'translateX(-50%) scale(0.85)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 280 });
+    await wait(900);
+    await Promise.all([A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }), A(waves, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }), scrim(false, 200)]);
+  };
+  FX.islandFree = async function(f) {
+    if (V) { V.island[f.playerId] = 0; placeTokens(V); }
+    var how = { fee: 'นั่งเรือออก ⛵', doubles: 'ดับเบิล! 🎲', served: 'ครบ 3 ตา' }[f.how] || '';
+    await showBanner({ token: seatOf(f.playerId), kicker: how, title: 'ออกจากเกาะ!', cls: 'is-island' }, 420);
+  };
+  FX.islandStay = async function(f) {
+    if (V) V.island[f.playerId] = f.left;
+    var pips = '';
+    for (var k = 0; k < BOARD.islandTurns; k += 1) pips += '<i class="' + (k < BOARD.islandTurns - f.left ? 'is-used' : '') + '"></i>';
+    await showBanner({ token: seatOf(f.playerId), kicker: 'ไม่ใช่ดับเบิล', title: 'ยังติดเกาะ', sub: '<span class="st-pips">' + pips + '</span> เหลือ ' + f.left + ' ตา', cls: 'is-island' }, 380);
+  };
+
+  FX.festival = async function(f) {
+    var i = f.square;
+    if (camEnabled()) await camTo(camFor(i), 240);
+    var at = centerOf(cells[i]);
+    var flag = fxNode('st-flag-drop', iconHtml('flag'));
+    sfx.fanfare();
+    await A(flag, [{ transform: 'translate(' + at.x + 'px,' + (at.y - 120) + 'px) translate(-50%, -50%) scale(1.6)', opacity: 0 }, { transform: 'translate(' + at.x + 'px,' + (at.y - 10) + 'px) translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(0.5, 0, 0.5, 1.4)' });
+    if (V) { V.festival = i; renderCells(V); }
+    burst(at, ['#ef5b4c', '#f5c86b', '#4ea8dc', '#3fbf7f'], 20, 80);
+    await showBanner({ token: seatOf(f.playerId), kicker: SQ[i].name, title: 'งานวัด! ×2', sub: 'ค่าผ่านทาง ' + money(V ? tollIn(V, i) : 0), cls: 'is-fest', style: 'top:auto;bottom:22%;' }, 500);
+  };
+
+  FX.tourReady = async function(f) {
+    await showBanner({ token: seatOf(f.playerId), icon: 'plane', title: 'ได้ตั๋วทัวร์!', sub: 'ตาหน้าแตะช่องที่อยากไป' }, 520);
   };
 
   FX.pay = async function(f) {
     var from = centerOf(chipOf(f.from));
     var to = f.to ? centerOf(chipOf(f.to)) : bankPoint();
-    moneyTag(from, f.amount, false);
+    moneyTag(from, f.amount, false, f.reason || '');
     await flyCoins(from, to, f.amount);
     setCash(f.cash);
-    if (f.to) moneyTag(to, f.amount, true);
-    await wait(180);
+    await wait(160);
   };
-
+  FX.tax = async function(f) {
+    if (!f.amount) { await showBanner({ token: seatOf(f.from), icon: 'tax', title: 'ไม่มีที่ ไม่เสียภาษี' }, 360); return; }
+    await FX.pay(Object.assign({}, f, { reason: 'ภาษี 10%' }));
+  };
   FX.gain = async function(f) {
     var to = centerOf(chipOf(f.playerId));
     await flyCoins(bankPoint(), to, f.amount);
     setCash(f.cash);
     moneyTag(to, f.amount, true);
-    await wait(200);
+    await wait(180);
   };
-
-  FX.build = async function(f) {
-    setCash(f.cash);
-    var c = cells[f.square];
-    if (!c || !V) return;
-    var hotel = f.houses >= 5;
-    if (camEnabled()) await camTo(camFor(f.square), 260);
-    var band = c.querySelector('.st-cell-band') || c;
-    var at = centerOf(band);
-    var drop = fxNode('st-house-drop' + (hotel ? ' is-hotel' : ''), hotel ? ART.ICONS.hotel : ART.ICONS.house);
-    var size = hotel ? 52 : 38;
-    sfx.build();
-    await A(drop, [
-      { transform: 'translate(' + (at.x - size / 2) + 'px,' + (at.y - size / 2 - 120) + 'px) scale(1.3) rotate(-8deg)', opacity: 0 },
-      { transform: 'translate(' + (at.x - size / 2) + 'px,' + (at.y - size / 2 - 8) + 'px) scale(1.05) rotate(0deg)', opacity: 1, offset: 0.65 },
-      { transform: 'translate(' + (at.x - size / 2) + 'px,' + (at.y - size / 2 + 2) + 'px) scale(1.12, 0.86)', opacity: 1, offset: 0.82 },
-      { transform: 'translate(' + (at.x - size / 2) + 'px,' + (at.y - size / 2) + 'px) scale(0.45)', opacity: 0 }
-    ], { duration: hotel ? 700 : 560, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' });
-    var ring = fxNode('st-ring');
-    A(ring, [{ transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.3)', opacity: 0.9 }, { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(1.6)', opacity: 0 }], { duration: 520, easing: 'ease-out' });
-    V.props[f.square] = Object.assign({}, V.props[f.square], { houses: f.houses });
-    renderCell(f.square, V);
-    var hs = c.querySelectorAll('.st-cell-houses > span');
-    var newest = hs[hs.length - 1];
-    if (newest) A(newest, [{ transform: 'scale(2)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'none' });
-    burst(at, hotel ? ['#f5c86b', '#fff3c4', '#e5534b'] : ['#d9c9a3', '#ffffff'], hotel ? 22 : 8, hotel ? 70 : 26);
-    if (hotel) {
-      haptic([15, 30, 15]);
-      sfx.fanfare();
-      await showBanner({ icon: 'crown', kicker: SQ[f.square].name, title: 'สร้างโรงแรม!', sub: 'ค่าเช่า ' + money(SQ[f.square].rent[5]) }, 650);
-    } else {
-      await wait(160);
-    }
-  };
-
   FX.sell = async function(f) {
     setCash(f.cash);
-    var c = cells[f.square];
-    if (!c || !V) return;
-    var at = centerOf(c.querySelector('.st-cell-band') || c);
-    var up = fxNode('st-house-drop', ART.ICONS.house);
-    V.props[f.square] = Object.assign({}, V.props[f.square], { houses: f.houses });
-    renderCell(f.square, V);
-    await A(up, [
-      { transform: 'translate(' + (at.x - 11) + 'px,' + (at.y - 11) + 'px) scale(0.8)', opacity: 1 },
-      { transform: 'translate(' + (at.x - 11) + 'px,' + (at.y - 60) + 'px) scale(1.2)', opacity: 0 }
-    ], { duration: 460 });
+    var at = cellPoint(f.square);
+    if (V) { V.props[f.square] = { owner: null, level: 0 }; if (V.festival === f.square) V.festival = null; renderCell(f.square, V); renderStripLands(); }
+    pulseCell(f.square, 'is-sold', 700);
+    await moneyTag(at, f.amount, true, 'ขายคืน');
   };
 
-  FX.mortgage = async function(f) {
-    setCash(f.cash);
-    if (!V) return;
-    V.props[f.square] = Object.assign({}, V.props[f.square], { mortgaged: true });
-    renderCell(f.square, V);
-    var lock = cells[f.square] && cells[f.square].querySelector('.st-cell-lock');
-    if (lock) await A(lock, [{ transform: 'scale(2.4) rotate(-12deg)', opacity: 0 }, { transform: 'scale(1) rotate(0deg)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'none' });
-    moneyTag(centerOf(chipOf(f.playerId)), f.amount, true);
-    await wait(200);
-  };
-
-  FX.unmortgage = async function(f) {
-    setCash(f.cash);
-    if (!V) return;
-    var lock = cells[f.square] && cells[f.square].querySelector('.st-cell-lock');
-    if (lock) await A(lock, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.6) translateY(-6px)', opacity: 0 }], { duration: 300 });
-    V.props[f.square] = Object.assign({}, V.props[f.square], { mortgaged: false });
-    renderCell(f.square, V);
-    await wait(120);
-  };
-
-  FX.set = async function(f) {
-    var g = GROUPS[f.group];
-    var squares = BOARD.groupSquares[f.group] || [];
-    squares.forEach(function(i) { if (cells[i]) { cells[i].classList.remove('is-glow'); void cells[i].offsetWidth; cells[i].classList.add('is-glow'); } });
-    sfx.fanfare();
-    if (f.playerId === playerId) haptic([20, 40, 20, 40, 30]);
+  var MONO_ICON = { color: 'crown', line: 'flag', tourist: 'camera' };
+  FX.monopoly = async function(f) {
     var who = seatOf(f.playerId);
-    var b = banner({ token: who, kicker: 'ครบชุดสี' + g.name + '!', title: g.region, sub: (who ? who.name : '') + ' · ค่าเช่า 2 เท่า สร้างบ้านได้แล้ว', style: 'border-color:' + g.color + ';' });
-    var top = centerOf(b);
-    await A(b, [{ transform: 'translateX(-50%) scale(0.6)', opacity: 0 }, { transform: 'translateX(-50%) scale(1.04)', opacity: 1, offset: 0.7 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
-    burst(top, [g.color, '#f5c86b', '#fff3c4'], 26, 150);
-    await wait(900);
-    await A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 });
-    squares.forEach(function(i) { if (cells[i]) cells[i].classList.remove('is-glow'); });
-  };
-
-  FX.jail = async function(f) {
-    var t = tokenEls[f.playerId];
-    var who = seatOf(f.playerId);
-    if (t && V) {
-      var xy = tokenTransformAt(10, true);
-      var from = t.style.transform;
-      var to = 'translate(' + xy.x + 'px,' + xy.y + 'px)';
-      t.style.transform = to;
-      if (camEnabled()) camTo(camFor(10), 360);
-      await A(t, [
-        { transform: from + ' scale(1)' },
-        { transform: from + ' scale(1.6)', offset: 0.25 },
-        { transform: to + ' scale(1)' }
-      ], { duration: 520, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'none' });
-      V.pos[f.playerId] = 10;
-      V.jail[f.playerId] = true;
-      placeTokens(V);
-    }
     setModal(true);
-    sfx.jail();
-    if (f.playerId === playerId) haptic([40, 60, 40]);
-    scrim(true, 200);
-    var b = banner({ token: who, kicker: f.reason || 'โดนจับ', title: 'เข้าคุก!', sub: (who ? who.name : '') + ' · ทอยดับเบิล จ่าย ' + money(BOARD.jailFine) + ' หรือใช้บัตรเพื่อออก', style: 'top:40%;' });
-    var bars = fxNode('st-bars', '<i></i><i></i><i></i><i></i><i></i><i></i>');
-    var rail = fxNode('st-bars-rail');
-    A(b, [{ transform: 'translateX(-50%) scale(0.85)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 260 });
-    await Promise.all([
-      A(bars, [{ transform: 'translateY(-100%)' }, { transform: 'translateY(0)', offset: 0.8 }, { transform: 'translateY(-3%)' }], { duration: 520, easing: 'cubic-bezier(0.6, 0, 0.9, 0.5)' }),
-      A(rail, [{ transform: 'translateY(-100vh)' }, { transform: 'translateY(0)', offset: 0.8 }, { transform: 'translateY(-2vh)' }], { duration: 560, easing: 'cubic-bezier(0.6, 0, 0.9, 0.5)' })
-    ]);
-    await wait(800);
-    await Promise.all([A(bars, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }), A(rail, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }), A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }), scrim(false, 220)]);
-  };
-
-  FX.jailFree = async function(f) {
-    var who = seatOf(f.playerId);
-    if (V) { V.jail[f.playerId] = false; placeTokens(V); }
-    var how = { fine: 'จ่ายค่าปรับ ' + money(BOARD.jailFine), card: 'ใช้บัตรอภัยโทษ', doubles: 'ทอยได้ดับเบิล', forced: 'ครบ 3 ตา จ่ายค่าปรับ' }[f.how] || '';
-    var bars = fxNode('st-bars', '<i></i><i></i><i></i><i></i><i></i><i></i>', 'opacity:0.85');
-    var b = banner({ token: who, kicker: how, title: 'ออกจากคุก!', sub: who ? who.name : '', style: 'top:40%;' });
-    A(b, [{ transform: 'translateX(-50%) scale(0.85)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 240 });
-    await A(bars, [{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], { duration: 560, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' });
-    await wait(400);
-    await A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
-  };
-
-  FX.trade = async function(f) {
-    closeSheetIf('offer');
-    var a = seatOf(f.from);
-    var b = seatOf(f.to);
-    setModal(true);
-    scrim(true, 200);
-    var center = centerNode();
-    var sum = function(side) {
-      var parts = (side.props || []).map(function(i) { return SQ[i].short || SQ[i].name; });
-      if (side.cash) parts.push(money(side.cash));
-      if (side.jailCards) parts.push('บัตรอภัยโทษ');
-      return parts.join(' + ') || 'ไม่มี';
-    };
-    var node = document.createElement('div');
-    node.className = 'st-shake';
-    node.innerHTML = '<div class="st-shake-row">' + tokenHtml(a) + '<div class="st-shake-hands">' + iconHtml('handshake') + '</div>' + tokenHtml(b) + '</div>' +
-      '<div class="st-shake-title">ดีลสำเร็จ!</div>' +
-      '<div class="st-shake-sub">' + esc(a ? a.name : '') + ' ให้ ' + esc(sum(f.give)) + '<br>' + esc(b ? b.name : '') + ' ให้ ' + esc(sum(f.get)) + '</div>';
-    center.appendChild(node);
-    var tokens = node.querySelectorAll('.st-shake-row .st-token');
-    var hands = node.querySelector('.st-shake-hands');
-    sfx.fanfare();
-    if (f.from === playerId || f.to === playerId) haptic([20, 40, 20]);
-    await Promise.all([
-      A(tokens[0], [{ transform: 'translateX(-120px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], { duration: 360 }),
-      A(tokens[1], [{ transform: 'translateX(120px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], { duration: 360 }),
-      A(hands, [{ transform: 'scale(0.2) rotate(-20deg)', opacity: 0 }, { transform: 'scale(1.15) rotate(6deg)', opacity: 1, offset: 0.7 }, { transform: 'scale(1) rotate(0deg)', opacity: 1 }], { duration: 520, delay: 180, easing: 'cubic-bezier(0.34,1.56,0.64,1)' })
-    ]);
-    A(hands, [{ transform: 'translateY(0)' }, { transform: 'translateY(-6px)' }, { transform: 'translateY(4px)' }, { transform: 'translateY(0)' }], { duration: 420 });
-    burst(centerOf(hands), ['#f5c86b', '#fff3c4', '#3fbf7f'], 18, 110);
-    setCash(f.cash);
-    if (V) {
-      (f.give.props || []).forEach(function(i) { V.props[i] = Object.assign({}, V.props[i], { owner: f.to }); renderCell(i, V); });
-      (f.get.props || []).forEach(function(i) { V.props[i] = Object.assign({}, V.props[i], { owner: f.from }); renderCell(i, V); });
-    }
-    await wait(1100);
-    await Promise.all([A(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }), scrim(false, 220)]);
+    scrim(true, 240);
+    sfx.big();
+    haptic([30, 40, 30, 40, 60]);
+    (f.squares || []).forEach(function(i) { if (cells[i]) { cells[i].classList.add('is-win'); cells[i].style.setProperty('--win', who ? who.tokenColor : '#f5c86b'); } });
+    var rays = fxNode('st-rays');
+    A(rays, [{ transform: 'translate(-50%, -50%) rotate(0deg) scale(0.4)', opacity: 0 }, { transform: 'translate(-50%, -50%) rotate(60deg) scale(1.2)', opacity: 1 }], { duration: 2400 });
+    var b = banner({ token: who, icon: MONO_ICON[f.type], kicker: who ? who.name : '', title: MONO[f.type] + '!', sub: 'ชนะทันที 👑', cls: 'is-gold is-huge', style: 'top:26%;' });
+    await A(b, [{ transform: 'translateX(-50%) scale(0.4)', opacity: 0 }, { transform: 'translateX(-50%) scale(1.1)', opacity: 1, offset: 0.7 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 480, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    confetti(70);
+    burst({ x: window.innerWidth / 2, y: window.innerHeight * 0.32 }, [who ? who.tokenColor : '#f5c86b', '#f5c86b', '#fff3c4'], 36, 180);
+    await wait(2400);
+    await Promise.all([A(b, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 }), A(rays, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 }), scrim(false, 260)]);
   };
 
   FX.bankrupt = async function(f) {
     var who = seatOf(f.playerId);
     setModal(true);
     scrim(true, 200);
-    sfx.jail();
-    var creditor = f.creditor ? seatOf(f.creditor) : null;
-    var inner = tokenHtml(who) + '<div class="st-banner-kicker">' + esc(creditor ? 'ทรัพย์สินทั้งหมดตกเป็นของ ' + creditor.name : 'ที่ดินคืนธนาคาร') + '</div><div class="st-banner-title">ล้มละลาย!</div><div class="st-banner-sub">' + esc(who ? who.name : '') + '</div>';
+    sfx.sad();
+    var inner = tokenHtml(who) + '<div class="st-banner-kicker">ที่ดินคืนธนาคาร</div><div class="st-banner-title">ล้มละลาย!</div><div class="st-banner-sub">' + esc(who ? who.name : '') + '</div>';
     var wrap = fxNode('st-break', '<div class="st-break-half is-l"><div class="st-banner">' + inner + '</div></div><div class="st-break-half is-r"><div class="st-banner">' + inner + '</div></div>' +
       '<svg class="st-break-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="52,0 47,30 55,52 46,75 51,100" fill="none" stroke="#fff7e0" stroke-width="2.2" vector-effect="non-scaling-stroke"/></svg>');
     var halves = wrap.querySelectorAll('.st-break-half');
     var line = wrap.querySelector('.st-break-line');
     if (f.playerId === playerId) haptic([60, 40, 60]);
-    await A(wrap, [{ transform: 'translateX(-50%) scale(1.25)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
-    await A(wrap, [
-      { transform: 'translateX(-50%) translateX(0)' }, { transform: 'translateX(-50%) translateX(-10px) rotate(-1.5deg)' },
-      { transform: 'translateX(-50%) translateX(9px) rotate(1.2deg)' }, { transform: 'translateX(-50%) translateX(-5px)' },
-      { transform: 'translateX(-50%) translateX(0)' }
-    ], { duration: 380 });
+    await A(wrap, [{ transform: 'translateX(-50%) scale(1.25)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+    await A(wrap, [{ transform: 'translateX(-50%) translateX(0)' }, { transform: 'translateX(-50%) translateX(-10px) rotate(-1.5deg)' }, { transform: 'translateX(-50%) translateX(9px) rotate(1.2deg)' }, { transform: 'translateX(-50%) translateX(0)' }], { duration: 320 });
     sfx.stamp();
     await A(line, [{ opacity: 0 }, { opacity: 1 }], { duration: 90 });
-    await wait(520);
-    A(line, [{ opacity: 1 }, { opacity: 0 }], { duration: 120 });
+    await wait(420);
     await Promise.all([
-      A(halves[0], [{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 }, { transform: 'translate(-34px, 160px) rotate(-14deg)', opacity: 0 }], { duration: 640, easing: 'cubic-bezier(0.55, 0, 0.9, 0.4)' }),
-      A(halves[1], [{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 }, { transform: 'translate(38px, 180px) rotate(16deg)', opacity: 0 }], { duration: 680, easing: 'cubic-bezier(0.55, 0, 0.9, 0.4)' })
+      A(halves[0], [{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 }, { transform: 'translate(-34px, 160px) rotate(-14deg)', opacity: 0 }], { duration: 600, easing: 'cubic-bezier(0.55, 0, 0.9, 0.4)' }),
+      A(halves[1], [{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 }, { transform: 'translate(38px, 180px) rotate(16deg)', opacity: 0 }], { duration: 640, easing: 'cubic-bezier(0.55, 0, 0.9, 0.4)' })
     ]);
     if (V) {
       V.out[f.playerId] = true;
-      (f.squares || []).forEach(function(i) {
-        V.props[i] = creditor ? Object.assign({}, V.props[i], { owner: creditor.playerId, houses: 0 }) : { owner: null, houses: 0, mortgaged: false };
-        renderCell(i, V);
-      });
+      (f.squares || []).forEach(function(i) { V.props[i] = { owner: null, level: 0 }; if (V.festival === i) V.festival = null; renderCell(i, V); });
       var t = tokenEls[f.playerId];
-      if (t) A(t, [{ opacity: 1 }, { opacity: 0, transform: t.style.transform + ' scale(0.2)' }], { duration: 400 });
+      if (t) A(t, [{ opacity: 1 }, { opacity: 0, transform: t.style.transform + ' scale(0.2)' }], { duration: 360 });
     }
     setCash(f.cash);
-    await scrim(false, 220);
+    await scrim(false, 200);
   };
 
   FX.timeUp = async function() {
-    sfx.jail();
-    await showBanner({ icon: 'clock', kicker: 'หมดเวลาเกม', title: 'รอบสุดท้าย!', sub: 'เล่นให้ครบรอบนี้ แล้วนับทรัพย์สินหาผู้ชนะ' }, 1000);
+    sfx.alarm();
+    await showBanner({ icon: 'clock', kicker: 'หมดเวลา', title: 'รอบสุดท้าย!', sub: 'จบรอบนี้แล้วนับทรัพย์สิน' }, 900);
   };
-
   FX.finished = async function() {
     renderAll();
     showEnd(true, true);
@@ -1139,13 +1193,14 @@
     renderCells(V);
     placeTokens(V);
     renderStrip();
-    renderDock();
-    renderLog();
+    renderAlerts();
     renderCenter();
     renderClock();
     renderSidebar();
-    renderDeskProps();
+    renderPick();
+    renderDock();
     if (S.turn && S.turn.lastRoll) setDice(S.turn.lastRoll);
+    paintFast();
     syncSheets();
     if (S.phase === 'finished' && !running && !endShown) showEnd(false, true);
   }
@@ -1153,58 +1208,78 @@
   function renderStrip() {
     if (!S) return;
     var model = V || modelFrom(S);
-    var html = (S.seats || []).map(function(s) {
+    el.strip.innerHTML = (S.seats || []).map(function(s) {
       var out = isOut(s);
-      var badges = '';
-      if (s.left) badges += '<span class="st-badge st-badge--off">ออกแล้ว</span>';
-      else if (s.bankrupt) badges += '<span class="st-badge st-badge--off">ล้มละลาย</span>';
-      else {
-        if (s.inJail) badges += '<span class="st-badge st-badge--jail">ติดคุก</span>';
-        if (!s.online && !s.isBot) badges += '<span class="st-badge st-badge--off">หลุด</span>';
-        if (s.hasOffer) badges += '<span class="st-badge st-badge--deal">เสนอดีล</span>';
-      }
-      return '<div class="st-chip' + (s.isTurn ? ' is-turn' : '') + (out ? ' is-out' : '') + (s.isSelf ? ' is-self' : '') + '" data-id="' + esc(s.playerId) + '" role="button" tabindex="0" aria-label="' + esc(s.name + ' เงินสด ' + money(model.cash[s.playerId]) + (s.isTurn ? ' กำลังเล่น' : '')) + '">' +
-        '<span class="st-chip-token">' + tokenHtml(s) + '</span>' +
+      var badge = '';
+      if (s.left) badge = '<span class="st-badge st-badge--off">ออกแล้ว</span>';
+      else if (s.bankrupt) badge = '<span class="st-badge st-badge--off">ล้มละลาย</span>';
+      else if (!s.online && !s.isBot) badge = '<span class="st-badge st-badge--off">หลุด</span>';
+      else if (s.island) badge = '<span class="st-badge st-badge--island">🏝️ ' + s.island + '</span>';
+      else if (s.tourPending) badge = '<span class="st-badge st-badge--tour">✈️</span>';
+      else if (s.shield) badge = '<span class="st-badge st-badge--shield">' + (s.shield === 'angel' ? '😇' : '🎟️') + '</span>';
+      var lands = landsOf(s.playerId, model);
+      return '<button type="button" class="st-chip' + (s.isTurn ? ' is-turn' : '') + (out ? ' is-out' : '') + (s.isSelf ? ' is-self' : '') + (focusId === s.playerId ? ' is-focus' : '') + '" data-id="' + esc(s.playerId) + '" style="--tk:' + esc(s.tokenColor) + '" aria-pressed="' + (focusId === s.playerId) + '" aria-label="' + esc(s.name + ' เงิน ' + money(model.cash[s.playerId]) + ' ที่ดิน ' + lands + ' ช่อง' + (s.isTurn ? ' กำลังเล่น' : '') + ' — แตะเพื่อดูที่ของคนนี้') + '">' +
+        tokenHtml(s) +
         '<span class="st-chip-body"><span class="st-chip-name">' + esc(s.isSelf ? 'คุณ' : s.name) + '</span><span class="st-chip-cash">' + money(out ? 0 : model.cash[s.playerId]) + '</span></span>' +
-        (badges ? '<span class="st-chip-badges">' + badges + '</span>' : '') +
-        '</div>';
+        '<span class="st-chip-lands" data-lands>' + ART.ICONS.house + '<b>' + lands + '</b></span>' + badge + '</button>';
     }).join('');
-    el.strip.innerHTML = html;
   }
-
+  function landsOf(id, model) { var n = 0; Object.keys(model.props).forEach(function(k) { if (model.props[k].owner === id) n += 1; }); return n; }
+  function renderStripLands() {
+    if (!V) return;
+    el.strip.querySelectorAll('.st-chip').forEach(function(c) { var b = c.querySelector('[data-lands] b'); if (b) b.textContent = landsOf(c.dataset.id, V); });
+  }
+  function renderAlerts() {
+    if (!S) return;
+    var list = (S.threats || []).slice(0, 3);
+    el.alerts.innerHTML = list.map(function(t) {
+      var s = seatOf(t.playerId);
+      if (!s) return '';
+      return '<div class="st-alert" style="--tk:' + esc(s.tokenColor) + '"><span class="st-alert-ico">⚠️</span>' + tokenHtml(s) + '<b>' + esc(s.isSelf ? 'คุณ' : s.name) + '</b><span>อีก 1 ช่อง ' + esc(MONO[t.type]) + '!</span></div>';
+    }).join('');
+    el.alerts.classList.toggle('is-on', !!list.length);
+  }
   function renderCenter() {
-    var node = $('#stCenterStatus');
+    var node = $('#stTurnline');
+    var last = $('#stLastLog');
     if (!node || !S) return;
-    if (S.phase === 'finished') { node.innerHTML = '<b>จบเกม</b>'; return; }
-    var actor = S.phaseActor ? seatOf(S.phaseActor) : null;
-    var txt = '';
-    if (S.phase === 'auction' && S.auction) txt = 'ประมูล<b> ' + esc(SQ[S.auction.square].name) + '</b>' + (S.auction.high ? ' · ' + money(S.auction.high) : '');
-    else if (actor) txt = (actor.playerId === playerId ? '<b>ตาคุณ</b>' : 'ตาของ <b>' + esc(actor.name) + '</b>');
-    node.innerHTML = txt;
+    if (S.phase === 'finished') node.innerHTML = '<b>จบเกม</b>';
+    else {
+      var t = S.turn ? seatOf(S.turn.playerId) : null;
+      node.innerHTML = t ? tokenHtml(t) + '<span>' + (t.playerId === playerId ? '<b>ตาคุณ</b>' : 'ตาของ <b>' + esc(t.name) + '</b>') + '</span>' : '';
+    }
+    var h = (S.history || [])[0];
+    last.innerHTML = h ? '<i>' + esc(h.icon || '•') + '</i><span>' + esc(h.text) + '</span>' : '';
   }
-
   function renderClock() {
     if (!S || !S.clock) return;
     var c = S.clock;
     el.clock.classList.toggle('is-final', !!c.timeUp);
     if (c.timeUp) { el.clockTxt.textContent = 'รอบสุดท้าย'; return; }
-    if (!c.endsAt) { el.clockTxt.textContent = 'ไม่จำกัด · รอบ ' + (S.round || 1); return; }
+    if (!c.endsAt) { el.clockTxt.textContent = 'รอบ ' + (S.round || 1); return; }
     var left = Math.max(0, c.endsAt - nowServer());
     var m = Math.floor(left / 60000);
     var s = Math.floor((left % 60000) / 1000);
     el.clockTxt.textContent = m + ':' + (s < 10 ? '0' : '') + s;
     el.clock.setAttribute('aria-label', 'เวลาเกมเหลือ ' + m + ' นาที ' + s + ' วินาที');
   }
+  function paintFast() {
+    if (!el.fast || !S) return;
+    el.fast.setAttribute('aria-pressed', S.fast ? 'true' : 'false');
+    el.fast.classList.toggle('is-on', !!S.fast);
+    el.fast.disabled = !(S.availableActions && S.availableActions.fast);
+  }
 
-  // แถบเวลาตา (transform: scaleX)
+  // แถบเวลาตา
   var timerKey = '';
   var timerTotal = 0;
   var timerAnim = null;
   function syncTimer() {
+    var bar = el.timer.querySelector('i');
     if (!S || !S.phaseEndsAt || S.phase === 'finished') {
       if (timerAnim) { timerAnim.cancel(); timerAnim = null; }
       timerKey = '';
-      el.timer.querySelector('i').style.transform = 'scaleX(0)';
+      bar.style.transform = 'scaleX(0)';
       return;
     }
     var key = S.phaseSeq + ':' + S.phaseEndsAt;
@@ -1212,452 +1287,195 @@
     var remain = Math.max(0, S.phaseEndsAt - nowServer());
     if (!timerKey || timerKey.split(':')[0] !== String(S.phaseSeq) || remain > timerTotal) timerTotal = Math.max(remain, 1000);
     timerKey = key;
-    var bar = el.timer.querySelector('i');
     var frac = Math.max(0, Math.min(1, remain / timerTotal));
     if (timerAnim) timerAnim.cancel();
     bar.style.transform = 'scaleX(0)';
     timerAnim = bar.animate([{ transform: 'scaleX(' + frac + ')' }, { transform: 'scaleX(0)' }], { duration: Math.max(1, remain), easing: 'linear', fill: 'none' });
   }
-
   function secondsLeft() {
     if (!S || !S.phaseEndsAt) return null;
     return Math.max(0, Math.ceil((S.phaseEndsAt - nowServer()) / 1000));
   }
 
   // ---------- แผงล่าง ----------
-  function btn(id, label, opts) {
-    opts = opts || {};
-    return '<button type="button" class="st-btn' + (opts.primary ? ' st-btn--primary' + (opts.pulse ? ' is-pulse' : '') : '') + (opts.danger ? ' st-btn--danger' : '') + '" id="' + id + '"' + (opts.disabled ? ' disabled' : '') + (opts.aria ? ' aria-label="' + esc(opts.aria) + '"' : '') + '>' +
-      (opts.icon ? '<span class="st-btn-ico">' + iconHtml(opts.icon) + '</span>' : '') +
-      '<span class="st-btn-label">' + label + '</span></button>';
-  }
-  function rollBtn(disabled, hint) {
+  function rollBtn(disabled) {
     return '<button type="button" class="st-roll' + (disabled ? '' : ' is-ready') + '" id="stRollBtn"' + (disabled ? ' disabled' : '') +
-      ' aria-label="ทอยเต๋า — กดค้างเพื่อชาร์จแรง ปล่อยในช่องเขียวลุ้นดับเบิล (แตะ = ทอยปกติ)"><span class="st-roll-face" aria-hidden="true">🎲</span><span class="st-roll-txt">ทอย</span><small>' + esc(hint) + '</small></button>';
+      ' aria-label="ทอยเต๋า — กดค้างแล้วปล่อยตอนเข็มแรง"><span class="st-roll-face" aria-hidden="true">🎲</span><span class="st-roll-txt">ทอย</span><small>กดค้าง</small></button>';
+  }
+  var PICK_TEXT = {
+    tour: { icon: '✈️', title: 'แตะช่องที่อยากไป', skip: 'ไม่ไป ทอยเลย' },
+    festival: { icon: '🎉', title: 'แตะที่จัดงานวัด ×2', skip: 'ข้าม' },
+    startBonus: { icon: '🏗️', title: 'แตะเมืองอัปเกรด ลดครึ่ง', skip: 'ข้าม' },
+    freeUpgrade: { icon: '🎁', title: 'แตะเมืองอัปเกรดฟรี', skip: 'ข้าม' }
+  };
+  function decisionPeek(d) {
+    if (!d) return '';
+    if (d.type === 'build') return (d.mode === 'buy' ? 'ซื้อ ' : 'สร้าง ') + SQ[d.square].short + '?';
+    if (d.type === 'takeover') return 'ซื้อต่อ ' + SQ[d.square].short + '?';
+    if (d.type === 'pick') return (PICK_TEXT[d.purpose] || {}).title || '';
+    return '';
   }
   function renderDock() {
-    if (hold) { syncTimer(); return; } // กำลังกดค้าง อย่าสร้างปุ่มใหม่ใต้นิ้ว
+    if (hold) { syncTimer(); return; }
     if (!S || !S.mode) { el.dock.innerHTML = '<div class="st-status"><div class="st-status-text"><div class="st-status-title">กำลังโหลด...</div></div></div>'; return; }
     var me = meSeat();
     var a = S.availableActions || {};
     var actor = S.phaseActor ? seatOf(S.phaseActor) : null;
-    var myAction = !!(me && S.phaseActor === playerId && !isOut(me));
+    var mine = !!(me && S.phaseActor === playerId && !isOut(me));
     var busy = running || pending;
     var title = '';
     var sub = '';
     var token = actor || (S.turn ? seatOf(S.turn.playerId) : null);
     var actions = '';
-    var extra = '';
-    var wide = false;
-    var propsBtn = btn('stPropsBtn', 'ทรัพย์สิน', { icon: 'house' });
-    var tradeBtn = btn('stTradeBtn', 'เทรด', { icon: 'handshake', disabled: !a.trade || !me || isOut(me) });
-
+    var cls = '';
     if (S.phase === 'finished') {
-      title = 'จบเกม!';
+      var w = S.winners && S.winners[0] ? seatOf(S.winners[0].playerId) : null;
+      title = w ? (w.playerId === playerId ? 'คุณชนะ!' : w.name + ' ชนะ!') : 'จบเกม';
       sub = S.finishReason || '';
-      token = S.winners && S.winners[0] ? seatOf(S.winners[0].playerId) : null;
-      actions = btn('stShowEnd', 'ดูผลสรุป', { primary: true }) + btn('stBackBtn', 'กลับห้องรอ');
-      wide = true;
+      token = w;
+      actions = btn('stShowEnd', 'ดูผล', { primary: true }) + btn('stBackBtn', 'กลับห้องรอ');
     } else if (!me || isOut(me)) {
-      title = me && me.bankrupt ? 'คุณล้มละลายแล้ว' : 'กำลังดูเกม';
-      sub = actor ? 'ตาของ ' + actor.name + ' · ดูเกมต่อได้จนจบ' : 'ดูเกมต่อได้จนจบ';
-      actions = '';
-    } else if (S.phase === 'auction' && S.auction) {
-      var aq = SQ[S.auction.square];
-      var leader = S.auction.leader ? seatOf(S.auction.leader) : null;
-      title = 'ประมูล ' + aq.name;
-      sub = leader ? 'สูงสุด ' + money(S.auction.high) + ' โดย ' + (leader.playerId === playerId ? 'คุณ' : leader.name) : 'ยังไม่มีใครเสนอ · ราคาตั้ง ' + money(aq.price);
-      token = leader;
-      actions = btn('stOpenAuction', a.bid && a.bid.leading ? 'คุณนำอยู่ · ดูประมูล' : 'เสนอราคา', { primary: true, pulse: !(a.bid && a.bid.leading), icon: 'gavel' });
-      wide = true;
-      actions = propsBtn + actions;
-    } else if (myAction && S.phase === 'roll') {
-      if (me.inJail) {
-        title = 'คุณติดคุก (' + (me.jailTurns + 1) + '/3)';
-        sub = 'ทอยให้ได้ดับเบิลเพื่อออก · หรือจ่าย ' + money(BOARD.jailFine) + (me.jailCards ? ' / ใช้บัตรอภัยโทษ' : '');
-        actions = (a.useJailCard ? btn('stJailCardBtn', 'ใช้บัตร', { icon: 'key' }) : btn('stPayJailBtn', 'จ่าย ' + money(BOARD.jailFine), { disabled: !a.payJail || busy })) +
-          rollBtn(busy, 'ลุ้นดับเบิล') +
-          (a.useJailCard ? btn('stPayJailBtn', 'จ่าย ' + money(BOARD.jailFine), { disabled: !a.payJail || busy }) : propsBtn);
+      title = me && me.bankrupt ? 'คุณล้มละลาย' : 'กำลังดูเกม';
+      sub = actor ? 'ตาของ ' + actor.name : '';
+    } else if (mine && S.phase === 'roll') {
+      cls = 'is-roll';
+      if (me.island) {
+        title = '🏝️ ติดเกาะ · เหลือ ' + me.island + ' ตา';
+        sub = 'ดับเบิล = ออก';
+        actions = btn('stPayIsland', 'จ่าย ' + money(BOARD.islandFee) + ' ออก', { disabled: !a.payIsland || busy, cls: 'is-island' }) + rollBtn(busy);
       } else {
-        title = S.turn && S.turn.canRollAgain ? 'ดับเบิล! ทอยอีกครั้ง' : 'ตาคุณ! ทอยเต๋าเลย';
-        sub = 'กดค้างให้เข็มแกว่ง ปล่อยตอนแรง = เดินไกล · ถ้าช่องเขียวโผล่ ปล่อยในช่อง = ลุ้นดับเบิล';
-        actions = propsBtn + rollBtn(busy, 'กดค้าง') + tradeBtn;
+        title = S.turn && S.turn.canRollAgain ? 'ดับเบิล! ทอยอีก' : 'ตาคุณ!';
+        sub = 'กดค้าง ปล่อยตอนแรง';
+        actions = rollBtn(busy);
       }
-    } else if (myAction && S.phase === 'buy') {
-      var bq = SQ[S.pendingBuy];
-      var g = groupOf(S.pendingBuy);
-      title = 'ซื้อ' + bq.name + 'ไหม?';
-      sub = a.buy ? 'ไม่ซื้อ = เปิดประมูลให้ทุกคน (รวมคุณ)' : 'เงินสดไม่พอ — จำนองที่ดินในทรัพย์สิน หรือส่งประมูล';
-      extra = '<div class="st-mini-deed" data-deed="' + S.pendingBuy + '"><span class="st-mini-deed-band" style="--band:' + (g ? g.color : bandOf(S.pendingBuy)) + '"></span><span class="st-mini-deed-icon"><img src="' + LAND_BASE + bq.art + '.svg" alt="" width="48" height="48"></span><span class="st-mini-deed-txt"><b>' + esc(bq.name) + '</b><span>' + (g ? 'สี' + g.name + ' · ' : '') + 'ค่าเช่าเริ่ม ' + (bq.rent ? money(bq.rent[0]) : bq.type === 'transport' ? money(BOARD.transportRent[0]) : 'เต๋า × ' + BOARD.utilityMult[0]) + ' · แตะดูโฉนด</span></span></div>';
-      actions = btn('stDeclineBtn', 'ประมูล', { icon: 'gavel', disabled: busy }) + btn('stBuyBtn', 'ซื้อ ' + money(bq.price), { primary: true, pulse: !!a.buy, disabled: !a.buy || busy }) + propsBtn;
-    } else if (myAction && S.phase === 'manage') {
-      title = 'จะทำอะไรต่อ?';
-      sub = 'สร้างบ้าน จำนอง เทรด — หรือจบเทิร์น';
-      actions = propsBtn + btn('stEndTurnBtn', 'จบเทิร์น', { primary: true, pulse: true, disabled: busy }) + tradeBtn;
-    } else if (myAction && S.phase === 'debt' && S.debt) {
-      var short = S.debt.total - me.cash;
-      title = 'ต้องจ่าย ' + money(S.debt.total) + ' (ขาด ' + money(short) + ')';
-      sub = S.debt.reason + ' · ขายบ้าน/จำนองให้พอ แล้วจ่ายให้อัตโนมัติ';
-      actions = btn('stDebtBtn', 'ขายบ้าน / จำนอง', { primary: true, pulse: true }) + tradeBtn;
-      wide = true;
+    } else if (mine && (S.phase === 'build' || S.phase === 'takeover')) {
+      title = decisionPeek(S.decision);
+      actions = btn('stOpenDecision', S.phase === 'build' ? 'เปิดแผ่นสร้าง' : 'เปิดแผ่นซื้อต่อ', { primary: true, pulse: true, disabled: running });
+    } else if (mine && S.phase === 'pick' && S.decision) {
+      var pt = PICK_TEXT[S.decision.purpose] || {};
+      title = pt.icon + ' ' + pt.title;
+      sub = S.decision.purpose === 'tour' ? 'ค่าทัวร์ ' + money(S.decision.fee) : '';
+      actions = btn('stSkipPick', pt.skip || 'ข้าม', { disabled: busy });
+    } else if (mine && S.phase === 'debt' && S.debt) {
+      title = 'เงินไม่พอ! ขาด ' + money(Math.max(0, S.debt.total - me.cash));
+      actions = btn('stOpenSell', 'ขายที่', { primary: true, pulse: true, disabled: running });
+      cls = 'is-alert';
     } else {
       title = actor ? 'ตาของ ' + actor.name : 'รอสักครู่';
-      if (S.phase === 'roll') sub = S.turn && S.turn.holding ? 'กำลังชาร์จแรงทอย…' : (actor && actor.inJail ? 'ติดคุก กำลังลุ้นดับเบิล' : 'กำลังทอยเต๋า');
-      else if (S.phase === 'buy') sub = 'กำลังตัดสินใจซื้อ ' + (SQ[S.pendingBuy] ? SQ[S.pendingBuy].name : '');
-      else if (S.phase === 'manage') sub = 'กำลังจัดการทรัพย์สิน';
-      else if (S.phase === 'debt' && S.debt) sub = 'กำลังหาเงินจ่ายหนี้ ' + money(S.debt.total);
-      actions = propsBtn + tradeBtn;
-      wide = true;
+      if (S.phase === 'roll') sub = S.turn && S.turn.holding ? 'กำลังชาร์จแรง…' : actor && actor.island ? '🏝️ ลุ้นดับเบิล' : 'กำลังทอย';
+      else if (S.phase === 'debt') sub = 'กำลังขายที่ใช้หนี้';
+      else sub = '<span class="st-think">กำลังคิด<i></i><i></i><i></i></span> ' + esc(decisionPeek(S.decision));
+      cls = 'is-watch';
     }
-
-    // ดีลที่เกี่ยวกับเรา
-    var deals = '';
-    (S.trades || []).forEach(function(t) {
-      if (t.from === playerId) deals += '<div class="st-dock-deal"><span>รอ ' + esc(nameOf(t.to)) + ' ตอบข้อเสนอ…</span>' + btn('stCancelDeal', 'ยกเลิก') + '</div>';
-      if (t.to === playerId) deals += '<div class="st-dock-deal"><span>ข้อเสนอจาก ' + esc(nameOf(t.from)) + '</span>' + btn('stViewDeal' + t.id, 'ดูดีล', { primary: true }) + '</div>';
-    });
-
     var sec = secondsLeft();
     el.dock.innerHTML =
-      '<div class="st-status">' + (token ? '<span class="st-status-token">' + tokenHtml(token) + '</span>' : '') +
-      '<div class="st-status-text"><div class="st-status-title">' + esc(title) + '</div>' + (sub ? '<div class="st-status-sub">' + esc(sub) + '</div>' : '') + '</div>' +
+      '<div class="st-status ' + cls + '">' + (token ? '<span class="st-status-token">' + tokenHtml(token) + '</span>' : '') +
+      '<div class="st-status-text"><div class="st-status-title">' + esc(title) + '</div>' + (sub ? '<div class="st-status-sub">' + (cls === 'is-watch' ? sub : esc(sub)) + '</div>' : '') + '</div>' +
       (sec !== null && S.phase !== 'finished' ? '<div class="st-status-sec" id="stSec">' + sec + '</div>' : '') + '</div>' +
-      extra + deals +
-      (actions ? '<div class="st-actions' + (wide ? ' is-wide' : '') + '">' + actions + '</div>' : '');
+      (actions ? '<div class="st-actions">' + actions + '</div>' : '');
     syncTimer();
     var h = document.getElementById('stDock').offsetHeight;
     if (window.innerWidth < 1000) root.style.setProperty('--st-dock-h', h + 'px');
   }
 
-  function renderLog() {
-    if (!S) return;
-    el.log.innerHTML = (S.history || []).map(function(h) {
-      return '<div class="st-log-item"><i>' + esc(h.icon || '•') + '</i><span>' + esc(h.text) + '</span></div>';
-    }).join('');
+  // โหมดแตะช่อง (ทัวร์ · งานวัด · โบนัส)
+  function renderPick() {
+    var mine = S && S.phase === 'pick' && S.phaseActor === playerId && S.decision && !running;
+    el.board.classList.toggle('is-picking', !!mine);
+    cells.forEach(function(c, i) {
+      var ok = !!(mine && S.decision.options.indexOf(i) >= 0);
+      c.classList.toggle('is-pickable', ok);
+      var badge = c.querySelector('.st-pickcost');
+      var cost = ok && S.decision.costs ? S.decision.costs[i] : null;
+      if (cost !== null && cost !== undefined) {
+        if (!badge) { badge = document.createElement('span'); badge.className = 'st-pickcost'; c.appendChild(badge); }
+        badge.textContent = moneyK(cost);
+      } else if (badge) badge.remove();
+    });
+    if (mine) {
+      var pt = PICK_TEXT[S.decision.purpose] || {};
+      el.pickbar.innerHTML = '<span class="st-pickbar-ico">' + pt.icon + '</span><b>' + esc(pt.title) + '</b>' + (S.decision.fee ? '<span class="st-chipline">' + money(S.decision.fee) + '</span>' : '');
+    }
+    el.pickbar.classList.toggle('is-on', !!mine);
   }
 
   function renderSidebar() {
     var list = $('#onlinePlayerList');
     if (!list || !S) return;
     list.innerHTML = (S.seats || []).map(function(s) {
-      return '<li style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid oklch(1 0 0 / 0.08); min-width:0;">' + tokenHtml(s) +
-        '<span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 auto;">' + esc(s.name) + '</span>' +
-        '<span style="font-family:var(--st-display); color:var(--st-gold); white-space:nowrap;">' + money(isOut(s) ? 0 : s.netWorth) + '</span></li>';
-    }).join('') + '<li style="padding-top:8px; font-size:0.78rem; color:var(--st-muted);">ตัวเลข = ทรัพย์สินรวม (เงินสด + ที่ดิน + บ้าน)</li>';
-  }
-
-  // ---------- ทรัพย์สิน ----------
-  function myProps(id) {
-    var out = [];
-    Object.keys(S.props || {}).forEach(function(k) { if (S.props[k].owner === id) out.push(Number(k)); });
-    return out.sort(function(x, y) { return x - y; });
-  }
-  function propsHtml(forDesk) {
-    var me = meSeat();
-    if (!me) return '<div class="st-empty">คุณไม่ได้อยู่ในเกมนี้</div>';
-    var manage = (S.self && S.self.manage) || null;
-    var mine = myProps(playerId);
-    var head = forDesk ? '' : '<div class="st-prop-summary"><div><b>' + money(me.cash) + '</b><span>เงินสด</span></div><div><b>' + money(me.netWorth) + '</b><span>ทรัพย์สินรวม</span></div><div><b>' + mine.length + '</b><span>แปลง</span></div></div>';
-    if (!mine.length) return head + '<div class="st-empty">ยังไม่มีที่ดิน — ตกช่องที่ว่างแล้วกดซื้อ หรือชนะประมูล</div>' + (me.jailCards ? '<div class="st-note">บัตรอภัยโทษ ' + me.jailCards + ' ใบ</div>' : '');
-    var byGroup = {};
-    mine.forEach(function(i) { var key = SQ[i].group || SQ[i].type; (byGroup[key] = byGroup[key] || []).push(i); });
-    var order = Object.keys(GROUPS).concat(['transport', 'utility']);
-    var html = head;
-    order.forEach(function(key) {
-      var list = byGroup[key];
-      if (!list) return;
-      var g = GROUPS[key];
-      var total = g ? (BOARD.groupSquares[key] || []).length : (key === 'transport' ? 4 : 2);
-      html += '<div class="st-group" style="--band:' + (g ? g.color : bandOf(list[0])) + '"><i></i>' + (g ? 'สี' + esc(g.name) + ' · ' + esc(g.region) : (key === 'transport' ? 'การเดินทาง' : 'สาธารณูปโภค')) + '<em>' + list.length + '/' + total + (list.length === total && g ? ' ครบชุด!' : '') + '</em></div>';
-      list.forEach(function(i) {
-        var p = S.props[i];
-        var opt = manage && manage[i] ? manage[i] : {};
-        var btns = '';
-        if (manage) {
-          if (SQ[i].type === 'property') {
-            btns += '<button type="button" class="st-mini-btn st-mini-btn--build" data-act="build" data-sq="' + i + '"' + (opt.build ? '' : ' disabled') + '>' + (p.houses === 4 ? '+โรงแรม' : '+บ้าน') + '<small>' + (opt.build ? money(opt.build) : '—') + '</small></button>';
-            if (p.houses > 0) btns += '<button type="button" class="st-mini-btn st-mini-btn--sell" data-act="sell" data-sq="' + i + '"' + (opt.sell ? '' : ' disabled') + '>ขาย<small>' + (opt.sell ? '+' + money(opt.sell) : '—') + '</small></button>';
-          }
-          if (p.mortgaged) btns += '<button type="button" class="st-mini-btn" data-act="unmortgage" data-sq="' + i + '"' + (opt.unmortgage ? '' : ' disabled') + '>ไถ่ถอน<small>' + (opt.unmortgage ? money(opt.unmortgage) : '—') + '</small></button>';
-          else if (!p.houses) btns += '<button type="button" class="st-mini-btn" data-act="mortgage" data-sq="' + i + '"' + (opt.mortgage ? '' : ' disabled') + '>จำนอง<small>' + (opt.mortgage ? '+' + money(opt.mortgage) : '—') + '</small></button>';
-        }
-        html += '<div class="st-prop" style="--band:' + (g ? g.color : bandOf(i)) + '"><span class="st-prop-band"></span>' +
-          '<div class="st-prop-main" data-deed="' + i + '"><div class="st-prop-name">' + esc(SQ[i].name) + '</div><div class="st-prop-meta">' +
-          (p.mortgaged ? '<span>จำนองอยู่</span>' : '<span>ค่าเช่า ' + rentText(i) + '</span>') +
-          (p.houses ? '<span class="st-cell-houses">' + housesHtml(p.houses) + '</span>' : '') + '</div></div>' +
-          '<div class="st-prop-btns">' + btns + '</div></div>';
-      });
-    });
-    if (me.jailCards) html += '<div class="st-note">🗝️ บัตรอภัยโทษ ' + me.jailCards + ' ใบ (ใช้ตอนติดคุก หรือแลกในเทรด)</div>';
-    if (!manage && !forDesk) html += '<div class="st-note" style="margin-top:8px;">สร้างบ้าน/จำนองได้ตอนถึงตาคุณ (หรือตอนต้องหาเงินจ่ายหนี้)</div>';
-    return html;
-  }
-  function rentText(i) {
-    var sq = SQ[i];
-    var p = S.props[i];
-    if (sq.type === 'property') {
-      if (p.houses) return money(sq.rent[p.houses]);
-      var full = (BOARD.groupSquares[sq.group] || []).every(function(k) { return S.props[k].owner === p.owner; });
-      return money(sq.rent[0] * (full ? 2 : 1));
-    }
-    if (sq.type === 'transport') {
-      var n = BOARD.groupSquares ? Object.keys(S.props).filter(function(k) { return SQ[k].type === 'transport' && S.props[k].owner === p.owner; }).length : 1;
-      return money(BOARD.transportRent[Math.max(0, n - 1)]);
-    }
-    var u = Object.keys(S.props).filter(function(k) { return SQ[k].type === 'utility' && S.props[k].owner === p.owner; }).length;
-    return 'เต๋า × ' + BOARD.utilityMult[Math.max(0, u - 1)];
-  }
-  function renderDeskProps() {
-    if (!el.deskProps || window.innerWidth < 1000 || !S) return;
-    el.deskProps.innerHTML = propsHtml(true);
+      return '<li class="st-side-row">' + tokenHtml(s) + '<span class="st-side-name">' + esc(s.name) + '</span><span class="st-side-worth">' + money(isOut(s) ? 0 : s.netWorth) + '</span></li>';
+    }).join('') + '<li class="st-side-note">ทรัพย์สินรวม = เงิน + ที่ + สิ่งปลูกสร้าง</li>';
   }
 
   // ---------- ชีต ----------
   var sheetKind = null;
   var sheetArg = null;
   var lastFocus = null;
+  var dismissed = {};
   function openSheet(kind, arg) {
     sheetKind = kind;
     sheetArg = arg;
     if (!el.sheet.classList.contains('is-open')) lastFocus = document.activeElement;
+    if (kind === 'build' && S.decision) buildSel = defaultBuildSel(S.decision);
     buildSheet();
     el.sheet.classList.add('is-open');
+    el.sheet.classList.toggle('is-decision', kind === 'build' || kind === 'takeover' || kind === 'sell');
     var close = el.sheetCard.querySelector('.st-sheet-close');
     if (close) setTimeout(function() { try { close.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }, 50);
-    if (kind !== 'auction') el.pill.classList.remove('is-on');
   }
-  function closeSheet() {
-    var was = sheetKind;
+  function closeSheet(byUser) {
+    if (byUser && (sheetKind === 'build' || sheetKind === 'takeover' || sheetKind === 'sell') && S) dismissed[S.phaseSeq] = true;
     sheetKind = null;
-    el.sheet.classList.remove('is-open');
-    if (was === 'auction' && S && S.phase === 'auction') auctionMinimized = true;
-    syncAuctionPill();
+    el.sheet.classList.remove('is-open', 'is-decision');
     if (lastFocus && lastFocus.focus) try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+    renderDock();
   }
-  function closeSheetIf(kind) { if (sheetKind === kind) closeSheet(); }
-  function sheetHead(title) {
-    return '<div class="st-sheet-grab"></div><div class="st-sheet-head"><h3 id="stSheetTitle">' + esc(title) + '</h3><button type="button" class="st-sheet-close" data-close="1" aria-label="ปิด">✕</button></div>';
+  function closeSheetForScenes() {
+    if (sheetKind === 'build' || sheetKind === 'takeover' || sheetKind === 'sell') { sheetKind = null; el.sheet.classList.remove('is-open', 'is-decision'); }
+  }
+  function defaultBuildSel(d) {
+    // เลือกขั้นสูงสุดที่จ่ายไหวไว้ก่อน (แตะลดลงได้)
+    var best = null;
+    var total = 0;
+    (d.options || []).forEach(function(o) {
+      if (o.built || o.locked) return;
+      if (best === null && o.level !== d.current + 1) return;
+      if (best !== null && o.level !== best + 1) return;
+      if (total + o.cost > d.cash) return;
+      total += o.cost;
+      best = o.level;
+    });
+    return best;
   }
   function buildSheet() {
     if (!sheetKind || !S) return;
     var html = '';
-    if (sheetKind === 'deed') {
-      var i = sheetArg;
-      var sq = SQ[i];
-      if (ownable(i)) html = sheetHead('โฉนด') + deedHtml(i);
-      else html = sheetHead(sq.name) + infoHtml(i);
-    } else if (sheetKind === 'props') {
-      html = sheetHead(S.phase === 'debt' && S.phaseActor === playerId ? 'หาเงินจ่ายหนี้' : 'ทรัพย์สินของฉัน') + propsHtml(false);
-      if (S.phase === 'debt' && S.phaseActor === playerId && S.debt) html = html.replace('<div class="st-prop-summary">', '<div class="st-note" style="margin-bottom:8px;">ต้องจ่าย <b>' + money(S.debt.total) + '</b> · มีเงินสด <b>' + money(meSeat().cash) + '</b> — ขายบ้านหรือจำนองจนพอ ระบบจ่ายให้เอง</div><div class="st-prop-summary">');
-    } else if (sheetKind === 'auction') {
-      html = auctionHtml();
-    } else if (sheetKind === 'trade') {
-      html = tradeHtml();
-    } else if (sheetKind === 'offer') {
-      html = offerHtml(sheetArg);
-    } else if (sheetKind === 'howto') {
-      html = sheetHead('เศรษฐี เล่นยังไง') + guideHtml();
-    }
+    var closer = '<div class="st-sheet-grab"></div><button type="button" class="st-sheet-close" data-close="1" aria-label="ปิด">✕</button>';
+    if (sheetKind === 'build' && S.decision && S.decision.type === 'build') html = buildSheetHtml(S.decision, false);
+    else if (sheetKind === 'takeover' && S.decision && S.decision.type === 'takeover') html = takeoverSheetHtml(S.decision, false);
+    else if (sheetKind === 'sell' && S.phase === 'debt') html = sellSheetHtml();
+    else if (sheetKind === 'square') html = squareSheetHtml(sheetArg);
+    else if (sheetKind === 'help') html = helpHtml();
+    else if (sheetKind === 'log') html = logHtml();
     if (!html) { closeSheet(); return; }
     var scroll = el.sheetCard.scrollTop;
-    el.sheetCard.innerHTML = html;
+    el.sheetCard.innerHTML = closer + html;
     el.sheetCard.scrollTop = scroll;
-    if (sheetKind === 'auction') syncAuctionBar();
   }
   function syncSheets() {
-    if (!sheetKind) { maybeAutoOpen(); syncAuctionPill(); return; }
-    if (sheetKind === 'trade') return; // ห้ามล้างฟอร์มที่กำลังกรอก
-    if (sheetKind === 'auction' && (!S.auction || S.phase !== 'auction')) { closeSheet(); return; }
-    if (sheetKind === 'offer' && !(S.trades || []).some(function(t) { return t.id === sheetArg; })) { closeSheet(); return; }
-    if (sheetKind === 'auction') { updateAuctionSheet(); return; }
-    buildSheet();
-    maybeAutoOpen();
-  }
-  var seenOffers = {};
-  var auctionMinimized = false;
-  var lastAuctionId = null;
-  function maybeAutoOpen() {
-    if (!S || running) return;
-    if (S.phase === 'auction' && S.auction) {
-      if (lastAuctionId !== S.auction.id) { lastAuctionId = S.auction.id; auctionMinimized = false; }
-      var me = meSeat();
-      if (!auctionMinimized && me && !isOut(me) && sheetKind !== 'auction' && (!sheetKind || sheetKind === 'deed' || sheetKind === 'props')) openSheet('auction');
+    if (!S) return;
+    var mine = S.phaseActor === playerId && S.phase !== 'finished';
+    var want = null;
+    if (mine && S.phase === 'build') want = 'build';
+    if (mine && S.phase === 'takeover') want = 'takeover';
+    if (mine && S.phase === 'debt') want = 'sell';
+    if (sheetKind && ['build', 'takeover', 'sell'].indexOf(sheetKind) >= 0 && sheetKind !== want) { closeSheet(); }
+    if (want && !running && !dismissed[S.phaseSeq]) {
+      if (sheetKind !== want || sheetArg !== S.phaseSeq) openSheet(want, S.phaseSeq);
+      else buildSheet();
+      return;
     }
-    (S.trades || []).forEach(function(t) {
-      if (t.to === playerId && !seenOffers[t.id]) {
-        seenOffers[t.id] = true;
-        if (!sheetKind) openSheet('offer', t.id);
-        else toast('มีข้อเสนอเทรดจาก ' + nameOf(t.from) + ' — ดูได้ที่แผงล่าง', 2600);
-      }
-    });
-  }
-  function syncAuctionPill() {
-    var on = !!(S && S.phase === 'auction' && S.auction && sheetKind !== 'auction' && !running);
-    el.pill.classList.toggle('is-on', on);
-    if (on) {
-      var leader = S.auction.leader ? seatOf(S.auction.leader) : null;
-      el.pill.textContent = '🔨 ประมูล ' + SQ[S.auction.square].name + ' · ' + (leader ? money(S.auction.high) : 'ยังไม่มีคนเสนอ') + ' · แตะเพื่อเสนอ';
-    }
-  }
-
-  function infoHtml(i) {
-    var sq = SQ[i];
-    var t = {
-      go: 'จุดเริ่มต้น — เดินผ่านหรือหยุดที่นี่ได้เงินเดือน ' + money(BOARD.salary),
-      jail: 'เยี่ยมคุก: แค่เดินผ่าน ไม่เป็นอะไร · ติดคุก: ทอยหาดับเบิล (สูงสุด 3 ตา) จ่าย ' + money(BOARD.jailFine) + ' หรือใช้บัตรอภัยโทษเพื่อออก',
-      parking: 'จอดพักฟรี ไม่มีอะไรเกิดขึ้น',
-      gotojail: 'ตกช่องนี้ = ไปคุกทันที ไม่ผ่านจุดเริ่ม ไม่ได้เงินเดือน',
-      chance: 'เปิดการ์ดโอกาส: ส่วนใหญ่พาเดินไปที่อื่น บางใบได้เงิน บางใบเสียเงิน',
-      fortune: 'เปิดการ์ดดวงชะตา: ส่วนใหญ่เป็นเรื่องเงิน ได้บ้าง เสียบ้าง',
-      tax: 'จ่ายภาษีให้ธนาคาร ' + money(sq.amount)
-    }[sq.type] || '';
-    return '<div class="st-deed" style="--band:var(--st-navy-3)"><div class="st-deed-head"><b class="st-deed-name">' + esc(sq.name) + '</b></div>' + landHtml(i) + '<div<div class="st-deed-foot" style="font-size:0.9rem; color:var(--st-ink);">' + esc(t) + '</div></div>';
-  }
-
-  function guideHtml() {
-    return '<div class="st-guide">' +
-      '<h4>เป้าหมาย</h4><p>ซื้อที่ดินทั่วไทย เก็บค่าเช่า ทำให้คนอื่นล้มละลาย — หรือมีทรัพย์สินรวมมากสุดตอนหมดเวลา</p>' +
-      '<h4>ตาของคุณ</h4><p>ทอยเต๋า 2 ลูก เดินตามแต้ม · ผ่านจุดเริ่มรับ ' + money(BOARD.salary) + ' · ดับเบิลได้ทอยอีก แต่ดับเบิล 3 ครั้งติด = เข้าคุก</p>' +
-      '<h4>กดค้างทอย</h4><p>กดปุ่มทอยค้างไว้ เข็มจะแกว่งขึ้นลง · ปล่อยตอนเข็มไปทางแรง = แต้มรวมมักสูงขึ้น (สุดเฉลี่ยราว +2) · บางครั้งช่องเขียวจะโผล่ขึ้นมาสั้น ๆ ปล่อยในช่องตอนที่มันโผล่ = โอกาสดับเบิลราว 1 ใน 3 · แตะเฉย ๆ = ทอยปกติ · ระวังโลภ ดับเบิล 3 ครั้งติดเข้าคุก!</p>' +
-      '<h4>ตกที่ว่าง</h4><p>ซื้อตามราคา หรือไม่ซื้อ → เปิดประมูลให้ทุกคน (ปุ่ม +10/+50/+100 หรือใส่เอง · นับถอยหลังเริ่มใหม่ทุกครั้งที่มีคนเสนอ)</p>' +
-      '<h4>ตกที่ของคนอื่น</h4><p>จ่ายค่าเช่า · ครบชุดสี = ค่าเช่า 2 เท่า · ขนส่งยิ่งมีหลายแห่งยิ่งแพง · ไฟฟ้า/ประปา = แต้มเต๋า × 4 (มีครบ × 10) · ที่จำนองไม่เก็บค่าเช่า</p>' +
-      '<h4>สร้างบ้าน</h4><p>ครบชุดสีแล้วสร้างบ้านได้ ต้องสร้างให้เท่ากันทั้งชุด · บ้าน 4 หลังแล้วอัปเป็นโรงแรม · ขายคืนได้ครึ่งราคา</p>' +
-      '<h4>จำนอง</h4><p>จำนองได้ครึ่งราคา (ต้องขายบ้านในชุดก่อน) · ไถ่ถอน = ยอดจำนอง + 10%</p>' +
-      '<h4>เทรด</h4><p>แลกที่ดิน (ที่ไม่มีบ้าน) เงิน และบัตรอภัยโทษกับใครก็ได้ · อีกฝ่ายรับ ปฏิเสธ หรือโต้กลับได้ · ส่งข้อเสนอได้ทีละอัน</p>' +
-      '<h4>คุก</h4><p>ทอยหาดับเบิล (3 ตา) · จ่าย ' + money(BOARD.jailFine) + ' · หรือใช้บัตรอภัยโทษ · ครบ 3 ตาต้องจ่ายแล้วเดิน</p>' +
-      '<h4>เงินไม่พอ</h4><p>ขายบ้าน/จำนองจนพอจ่าย · ขายหมดยังไม่พอ = ล้มละลาย ทรัพย์สินไปที่เจ้าหนี้ (ถ้าเป็นธนาคาร ที่ดินกลับเป็นของว่าง)</p>' +
-      '<h4>เวลา</h4><p>' + (S && S.clock && S.clock.endsAt ? 'ห้องนี้เล่น ' + S.clock.minutes + ' นาที · หมดเวลาแล้วเล่นให้ครบรอบ นับเงินสด + ที่ดิน (จำนองนับครึ่ง) + บ้านตามทุน สูงสุดชนะ เท่ากันชนะร่วม' : 'ห้องนี้ไม่จำกัดเวลา — เล่นจนเหลือคนสุดท้าย') + '</p>' +
-      '<h4>หมดเวลาตา</h4><p>ตาละ ~30 วิ · ไม่กด = ระบบเล่นแบบปลอดภัยให้ (ทอย · ไม่ซื้อ · จบเทิร์น)</p>' +
-      '<p style="margin-top:12px; color:var(--st-muted);">เงินในเกมเป็นเงินสมมติ ไม่มีมูลค่าจริง และไม่เกี่ยวกับกระเป๋าเงินของเว็บ</p>' +
-      '</div>';
-  }
-
-  // ประมูล
-  function auctionHtml() {
-    var a = S.auction;
-    if (!a) return '';
-    var av = S.availableActions || {};
-    var bid = av.bid || { min: 10, max: 0, can: false };
-    var leader = a.leader ? seatOf(a.leader) : null;
-    var price = SQ[a.square].price;
-    var quick = [10, 50, 100].map(function(step) {
-      var amount = a.high ? a.high + step : Math.max(step, 10);
-      if (!a.high && step === 10) amount = 10;
-      return '<button type="button" class="st-btn" data-bid="' + amount + '"' + (bid.can && amount <= bid.max && amount >= bid.min ? '' : ' disabled') + '>+' + step + '<small>' + money(amount) + '</small></button>';
-    }).join('');
-    return sheetHead('ประมูล') +
-      '<div class="st-auction">' +
-      '<div class="st-auction-top">' + deedHtml(a.square, { compact: true, owner: false }) +
-      '<div class="st-auction-ring"><b id="stAuctionSec">' + (secondsLeft() || 0) + '</b></div></div>' +
-      '<div class="st-timer" id="stAuctionBar" style="border-radius:2px;"><i></i></div>' +
-      '<div class="st-auction-high">' + (leader ? tokenHtml(leader) : tokenHtml(null)) + '<div><span>' + (leader ? 'สูงสุดตอนนี้ · ' + esc(leader.playerId === playerId ? 'คุณ' : leader.name) : 'ยังไม่มีใครเสนอ · ราคาตั้ง ' + money(price)) + '</span><strong>' + money(a.high) + '</strong></div></div>' +
-      (bid.leading ? '<div class="st-note">คุณเสนอสูงสุดอยู่ — รอดูว่าจะมีใครสู้ไหม</div>' : '') +
-      '<div class="st-bid-row">' + quick + '</div>' +
-      '<div class="st-bid-custom"><input type="number" inputmode="numeric" id="stBidInput" min="' + bid.min + '" max="' + bid.max + '" step="10" value="' + Math.min(bid.max, Math.max(bid.min, a.high ? a.high + 20 : Math.round(price * 0.5 / 10) * 10)) + '" aria-label="ใส่ราคาเอง"' + (bid.can ? '' : ' disabled') + '>' +
-      '<button type="button" class="st-btn st-btn--primary" id="stBidCustom"' + (bid.can ? '' : ' disabled') + '>เสนอ</button></div>' +
-      '<div class="st-note">เงินสดคุณ ' + money(bid.max) + ' · ขั้นต่ำ ' + money(bid.min) + ' · นับถอยหลังเริ่มใหม่ทุกครั้งที่มีคนเสนอ · ไม่มีใครเสนอ = ยังเป็นของธนาคาร</div>' +
-      (a.bids && a.bids.length ? '<div class="st-bids">' + a.bids.slice().reverse().map(function(b) { return '<span>' + esc(nameOf(b.playerId)) + ' ' + money(b.amount) + '</span>'; }).join('') + '</div>' : '') +
-      '</div>';
-  }
-  function updateAuctionSheet() {
-    // วาดใหม่แต่คงค่าที่พิมพ์ไว้
-    var input = document.getElementById('stBidInput');
-    var typed = input && document.activeElement === input ? input.value : null;
-    buildSheet();
-    if (typed !== null) { var n = document.getElementById('stBidInput'); if (n) { n.value = typed; n.focus(); } }
-  }
-  var auctionBarAnim = null;
-  function syncAuctionBar() {
-    var bar = document.querySelector('#stAuctionBar i');
-    if (!bar || !S || !S.auction) return;
-    var remain = Math.max(0, S.auction.endsAt - nowServer());
-    var total = 8000;
-    if (auctionBarAnim) auctionBarAnim.cancel();
-    bar.style.transform = 'scaleX(0)';
-    auctionBarAnim = bar.animate([{ transform: 'scaleX(' + Math.min(1, remain / total) + ')' }, { transform: 'scaleX(0)' }], { duration: Math.max(1, remain), easing: 'linear' });
-  }
-
-  // เทรด
-  var draft = null;
-  function newDraft(to) {
-    return { to: to || null, give: { cash: 0, props: [], jailCards: 0 }, get: { cash: 0, props: [], jailCards: 0 }, counterOf: null };
-  }
-  function tradeable(i) {
-    var sq = SQ[i];
-    if (sq.type !== 'property') return true;
-    return (BOARD.groupSquares[sq.group] || []).every(function(k) { return !S.props[k].houses; });
-  }
-  function pickHtml(i, side) {
-    var sq = SQ[i];
-    var g = groupOf(i);
-    var on = draft[side].props.indexOf(i) >= 0;
-    var ok = tradeable(i);
-    var p = S.props[i];
-    return '<button type="button" class="st-pick" data-side="' + side + '" data-sq="' + i + '" aria-pressed="' + on + '"' + (ok ? '' : ' disabled') + ' style="--band:' + (g ? g.color : bandOf(i)) + '"><i></i><span>' + esc(sq.short || sq.name) + '<small>' + (ok ? money(sq.price) + (p.mortgaged ? ' · จำนอง' : '') : 'มีบ้านในชุด') + '</small></span></button>';
-  }
-  function tradeHtml() {
-    var me = meSeat();
-    if (!me || isOut(me)) return sheetHead('เทรด') + '<div class="st-empty">คุณไม่ได้อยู่ในเกมแล้ว</div>';
-    var others = (S.seats || []).filter(function(s) { return !s.isSelf && !isOut(s); });
-    if (!draft) draft = newDraft();
-    if (!draft.to || !others.some(function(s) { return s.playerId === draft.to; })) {
-      draft = Object.assign(newDraft(others[0] ? others[0].playerId : null), { counterOf: draft.counterOf });
-    }
-    var who = '<div class="st-trade-who" role="group" aria-label="เลือกคนที่จะเทรดด้วย">' + others.map(function(s) {
-      return '<button type="button" data-to="' + esc(s.playerId) + '" aria-pressed="' + (draft.to === s.playerId) + '">' + tokenHtml(s) + '<span>' + esc(s.name) + '</span></button>';
-    }).join('') + '</div>';
-    if (!draft.to) return sheetHead('เทรด') + '<div class="st-empty">ไม่มีใครให้เทรดด้วย</div>';
-    var them = seatOf(draft.to);
-    var mine = myProps(playerId);
-    var theirs = myProps(draft.to);
-    var col = function(side, title, seat, props, owner) {
-      return '<div class="st-trade-col is-' + side + '"><h4>' + (side === 'give' ? '↑' : '↓') + ' <span>' + esc(title) + '</span></h4>' +
-        '<div class="st-cash-input"><button type="button" data-cash="' + side + '" data-d="-50" aria-label="ลด 50">−</button><input type="number" inputmode="numeric" min="0" step="10" max="' + seat.cash + '" data-cashinput="' + side + '" value="' + draft[side].cash + '" aria-label="เงินที่' + (side === 'give' ? 'คุณให้' : 'คุณได้') + '"><button type="button" data-cash="' + side + '" data-d="50" aria-label="เพิ่ม 50">+</button></div>' +
-        '<div class="st-note" style="text-align:center;">มีเงินสด ' + money(seat.cash) + '</div>' +
-        (props.length ? props.map(function(i) { return pickHtml(i, side); }).join('') : '<div class="st-note" style="text-align:center;">ไม่มีที่ดิน</div>') +
-        (seat.jailCards ? '<button type="button" class="st-pick" data-jail="' + side + '" aria-pressed="' + (draft[side].jailCards > 0) + '" style="--band:var(--st-gold)"><i></i><span>บัตรอภัยโทษ<small>มี ' + seat.jailCards + ' ใบ</small></span></button>' : '') +
-        '</div>';
-      void owner;
-    };
-    var summary = tradeSummary(draft, them);
-    var mineOpen = (S.trades || []).some(function(t) { return t.from === playerId; });
-    return sheetHead(draft.counterOf ? 'โต้กลับข้อเสนอ' : 'ยื่นข้อเสนอเทรด') + who +
-      '<div class="st-trade-grid">' + col('give', 'คุณให้', me, mine, playerId) + col('get', 'คุณได้จาก ' + them.name, them, theirs, draft.to) + '</div>' +
-      '<div class="st-trade-sum">' + summary + '</div>' +
-      (mineOpen ? '<div class="st-note" style="margin-top:8px;">คุณมีข้อเสนอค้างอยู่ — ยกเลิกก่อนถึงส่งใหม่ได้</div>' : '') +
-      '<div class="st-sheet-foot">' + btn('stTradeClose', 'ยกเลิก') + btn('stTradeSend', draft.counterOf ? 'ส่งข้อเสนอโต้กลับ' : 'ส่งข้อเสนอ', { primary: true, disabled: mineOpen && !draft.counterOf }) + '</div>';
-  }
-  function tradeSummary(d, them) {
-    var side = function(s) {
-      var parts = s.props.map(function(i) { return SQ[i].short || SQ[i].name; });
-      if (s.cash) parts.push(money(s.cash));
-      if (s.jailCards) parts.push('บัตรอภัยโทษ');
-      return parts.join(' + ') || '—';
-    };
-    return 'คุณให้ <b>' + esc(side(d.give)) + '</b><br>คุณได้ <b>' + esc(side(d.get)) + '</b> จาก ' + esc(them ? them.name : '');
-  }
-  function offerHtml(id) {
-    var t = (S.trades || []).find(function(x) { return x.id === id; });
-    if (!t) return '';
-    var from = seatOf(t.from);
-    var list = function(side) {
-      var out = side.props.map(function(i) {
-        var g = groupOf(i);
-        return '<div class="st-pick" style="--band:' + (g ? g.color : bandOf(i)) + '; cursor:default;"><i></i><span>' + esc(SQ[i].name) + '<small>' + money(SQ[i].price) + (S.props[i].mortgaged ? ' · จำนอง' : '') + '</small></span></div>';
-      }).join('');
-      if (side.cash) out += '<div class="st-pick" style="--band:var(--st-gold); cursor:default;"><i></i><span>เงินสด<small>' + money(side.cash) + '</small></span></div>';
-      if (side.jailCards) out += '<div class="st-pick" style="--band:var(--st-gold); cursor:default;"><i></i><span>บัตรอภัยโทษ<small>' + side.jailCards + ' ใบ</small></span></div>';
-      return out || '<div class="st-note" style="text-align:center;">ไม่มี</div>';
-    };
-    var remain = Math.max(0, t.expiresAt - nowServer());
-    return sheetHead('ข้อเสนอจาก ' + (from ? from.name : '')) +
-      '<div class="st-offer-timer"><i style="transform:scaleX(' + Math.min(1, remain / 45000) + ')"></i></div>' +
-      '<div class="st-trade-grid">' +
-      '<div class="st-trade-col is-give"><h4>↑ <span>คุณให้</span></h4>' + list(t.get) + '</div>' +
-      '<div class="st-trade-col is-get"><h4>↓ <span>คุณได้</span></h4>' + list(t.give) + '</div>' +
-      '</div>' +
-      (S.phase === 'auction' ? '<div class="st-note" style="margin-top:8px;">กำลังประมูลอยู่ — กดรับได้หลังประมูลจบ</div>' : '') +
-      '<div class="st-sheet-foot">' + btn('stOfferReject', 'ปฏิเสธ') + btn('stOfferCounter', 'โต้กลับ') + btn('stOfferAccept', 'ยอมรับ', { primary: true, disabled: S.phase === 'auction' }) + '</div>';
+    if (sheetKind === 'square' || sheetKind === 'log') buildSheet();
   }
 
   // ---------- กดค้างทอย (มินิเกมเข็มแรง) ----------
@@ -1678,8 +1496,8 @@
       '<g class="st-meter-band" opacity="0"><path class="st-meter-green-glow" d="' + arc + '" pathLength="100" fill="none" stroke="#45f09a" stroke-width="28" filter="url(#stGlow)" opacity=".8"/>' +
       '<path class="st-meter-green" d="' + arc + '" pathLength="100" fill="none" stroke="#45f09a" stroke-width="20"/></g>' +
       '<text x="14" y="134" font-size="11" fill="#b9c1d6" font-family="Bai Jamjuree, sans-serif">เบา</text><text x="226" y="134" font-size="11" fill="#b9c1d6" text-anchor="end" font-family="Bai Jamjuree, sans-serif">แรง</text>' +
-      '<g class="st-meter-needle"><path d="M120 120 L120 30" stroke="#fff8e6" stroke-width="5" stroke-linecap="round"/><path d="M120 120 L120 30" stroke="#1a2332" stroke-width="1.5" stroke-linecap="round" opacity=".35"/><circle cx="120" cy="120" r="11" fill="#f5c86b" stroke="#1a2332" stroke-width="2"/></g>' +
-      '</svg><div class="st-meter-label"><b id="stMeterPct">แรง 0%</b><span id="stMeterHint">ปล่อยตอนเข็มแรง = เดินไกล</span></div>';
+      '<g class="st-meter-needle"><path d="M120 120 L120 30" stroke="#fff8e6" stroke-width="5" stroke-linecap="round"/><circle cx="120" cy="120" r="11" fill="#f5c86b" stroke="#1a2332" stroke-width="2"/></g>' +
+      '</svg><div class="st-meter-label"><b id="stMeterPct">แรง 0%</b><span id="stMeterHint">ปล่อยตอนแรง = เดินไกล</span></div>';
     document.body.appendChild(meterEl);
     return meterEl;
   }
@@ -1687,7 +1505,6 @@
     if (!m || t < (m.tapMs || 150)) return 0;
     return (1 - Math.cos((2 * Math.PI * t) / m.period)) / 2;
   }
-  // ช่องเขียวโผล่/หายตามตารางที่เซิร์ฟเวอร์กำหนด
   function setBand(node, on) {
     var band = node.querySelector('.st-meter-band');
     if (!band || band.__on === on) return;
@@ -1695,15 +1512,14 @@
     node.classList.toggle('has-green', on);
     var hint = node.querySelector('#stMeterHint');
     if (on) {
-      hint.textContent = 'ช่องเขียวโผล่! ปล่อยในช่อง = ลุ้นดับเบิล';
+      hint.textContent = 'ช่องเขียว! ปล่อยในช่อง = ลุ้นดับเบิล';
       haptic([8, 30, 8]);
-      sfx.bid();
+      sfx.tick();
       band.setAttribute('opacity', '1');
-      if (!reduceMotion) band.animate([{ opacity: 0, transform: 'scale(1.18)' }, { opacity: 1, transform: 'scale(0.97)', offset: 0.6 }, { opacity: 1, transform: 'scale(1)' }], { duration: 320, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+      if (!reduceMotion) band.animate([{ opacity: 0, transform: 'scale(1.18)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
     } else {
-      hint.textContent = node.__hadGreen ? 'ช่องเขียวหายแล้ว — ปล่อยตอนเข็มแรงก็ได้' : 'ปล่อยตอนเข็มแรง = เดินไกล';
+      hint.textContent = node.__hadGreen ? 'ช่องเขียวหายแล้ว' : 'ปล่อยตอนแรง = เดินไกล';
       band.setAttribute('opacity', '0');
-      if (!reduceMotion && node.__hadGreen) band.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
     }
     if (on) node.__hadGreen = true;
   }
@@ -1732,20 +1548,16 @@
     var m = hold.meter;
     var pos = meterPos(m, t);
     var node = meterNode();
-    var needle = node.querySelector('.st-meter-needle');
-    needle.setAttribute('transform', 'rotate(' + (-90 + 180 * pos).toFixed(2) + ' 120 120)');
-    node.querySelector('#stMeterPct').textContent = 'แรง ' + Math.round(pos * 100) + '%';
+    node.querySelector('.st-meter-needle').setAttribute('transform', 'rotate(' + (-90 + 180 * pos).toFixed(2) + ' 120 120)');
+    node.querySelector('#stMeterPct').textContent = pos >= 0.85 ? 'พลังเต็ม!' : 'แรง ' + Math.round(pos * 100) + '%';
+    node.classList.toggle('is-max', pos >= 0.85);
     var g = m && m.green;
     var greenOn = !!(g && t >= g.appearAt && t <= g.until);
     setBand(node, greenOn);
     var inGreen = greenOn && Math.abs(pos - g.center) <= g.width / 2;
-    if (inGreen !== hold.inGreen) {
-      hold.inGreen = inGreen;
-      node.classList.toggle('is-green', inGreen);
-      if (inGreen) haptic(6);
-    }
-    var btnEl = document.getElementById('stRollBtn');
-    if (btnEl && !reduceMotion) btnEl.style.transform = 'scale(' + (0.93 + pos * 0.07).toFixed(3) + ')';
+    if (inGreen !== hold.inGreen) { hold.inGreen = inGreen; node.classList.toggle('is-green', inGreen); if (inGreen) haptic(6); }
+    var b = document.getElementById('stRollBtn');
+    if (b && !reduceMotion) b.style.transform = 'scale(' + (0.93 + pos * 0.07).toFixed(3) + ')';
     if (holdTone) try { holdTone.o.frequency.setTargetAtTime(220 + pos * 700, holdTone.ctx.currentTime, 0.02); } catch (e) { /* ignore */ }
     hold.raf = requestAnimationFrame(holdFrame);
   }
@@ -1754,8 +1566,7 @@
     var node = meterNode();
     var m = hold.meter;
     node.__hadGreen = false;
-    var band = node.querySelector('.st-meter-band');
-    band.__on = null;
+    node.querySelector('.st-meter-band').__on = null;
     setBand(node, false);
     if (m.green) {
       ['.st-meter-green', '.st-meter-green-glow'].forEach(function(sel) {
@@ -1765,19 +1576,19 @@
       });
     }
     node.classList.add('is-on');
-    node.animate([{ opacity: 0, transform: 'translateX(-50%) translateY(14px) scale(0.92)' }, { opacity: 1, transform: 'translateX(-50%) translateY(0) scale(1)' }], { duration: reduceMotion ? 1 : 180, easing: 'cubic-bezier(0.22,1,0.36,1)' });
+    node.animate([{ opacity: 0, transform: 'translateY(14px) scale(0.92)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }], { duration: reduceMotion ? 1 : 180, easing: 'cubic-bezier(0.22,1,0.36,1)' });
     startTone();
     hold.raf = requestAnimationFrame(holdFrame);
   }
   function hideMeter(keepMs) {
     stopTone();
     var node = meterEl;
-    var btnEl = document.getElementById('stRollBtn');
-    if (btnEl) btnEl.style.transform = '';
+    var b = document.getElementById('stRollBtn');
+    if (b) b.style.transform = '';
     if (!node || !node.classList.contains('is-on')) return;
     setTimeout(function() {
       var a = node.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
-      a.onfinish = function() { node.classList.remove('is-on', 'is-green', 'has-green'); };
+      a.onfinish = function() { node.classList.remove('is-on', 'is-green', 'has-green', 'is-max'); };
     }, keepMs || 0);
   }
   function beginHold(pointerId) {
@@ -1790,8 +1601,6 @@
     socket.emit('setthi_rollHoldStart', { roomId: roomId, seq: S.phaseSeq }, function(res) {
       if (hold !== mine) { if (res && res.success) socket.emit('setthi_rollHoldCancel', { roomId: roomId }); return; }
       if (!res || !res.success) { toast((res && res.error) || 'ทอยไม่ได้'); endHold(); renderDock(); return; }
-      // เซิร์ฟเวอร์เริ่มจับเวลาตอนได้รับข้อความ ≈ กึ่งกลางระหว่างส่งกับได้ ack — ตั้งเข็มตามนั้นให้เวลาสองฝั่งตรงกัน
-      // (ถ้าปล่อยก่อน ack มา เวลาที่ส่งไปจะนับจากจุดนี้เหมือนกัน)
       mine.t0 = (sentAt + performance.now()) / 2;
       if (mine.pendingRelease !== null) mine.pendingRelease = Math.max(0, mine.pendingAt - mine.t0);
       mine.meter = res.meter;
@@ -1800,17 +1609,14 @@
     });
     setTimeout(function() { if (hold === mine && mine.meter && !mine.released && !(meterEl && meterEl.classList.contains('is-on'))) showMeter(); }, 120);
   }
-  function endHold() {
-    if (hold && hold.raf) cancelAnimationFrame(hold.raf);
-    hold = null;
-  }
+  function endHold() { if (hold && hold.raf) cancelAnimationFrame(hold.raf); hold = null; }
   function sendRelease(elapsed) {
     var h = hold;
     if (!h) return;
     h.released = true;
     if (h.raf) cancelAnimationFrame(h.raf);
     var tap = elapsed < ((h.meter && h.meter.tapMs) || 150);
-    hideMeter(tap ? 0 : 260);
+    hideMeter(tap ? 0 : 200);
     pending = true;
     socket.emit('setthi_rollRelease', { roomId: roomId, elapsedMs: Math.round(elapsed) }, function(res) {
       pending = false;
@@ -1850,11 +1656,10 @@
     var b = document.getElementById('stRollBtn');
     if (!b) return;
     var r = b.getBoundingClientRect();
-    var out = 48;
-    if (e.clientX < r.left - out || e.clientX > r.right + out || e.clientY < r.top - out * 2 || e.clientY > r.bottom + out) cancelHold('นิ้วเลื่อนออก — ยกเลิกการทอย');
+    var out = 56;
+    if (e.clientX < r.left - out || e.clientX > r.right + out || e.clientY < r.top - out * 2 || e.clientY > r.bottom + out) cancelHold('นิ้วเลื่อนออก — ยกเลิก');
   });
   document.addEventListener('contextmenu', function(e) { if (e.target.closest && e.target.closest('#stRollBtn')) e.preventDefault(); });
-  // Space บนเดสก์ท็อป: กดค้าง/ปล่อย
   document.addEventListener('keydown', function(e) {
     if (e.code !== 'Space' && e.key !== ' ') return;
     if (e.repeat) { if (hold) e.preventDefault(); return; }
@@ -1865,9 +1670,7 @@
     e.preventDefault();
     beginHold('key');
   });
-  document.addEventListener('keyup', function(e) {
-    if ((e.code === 'Space' || e.key === ' ') && hold && hold.pointerId === 'key') { e.preventDefault(); finishHold(); }
-  });
+  document.addEventListener('keyup', function(e) { if ((e.code === 'Space' || e.key === ' ') && hold && hold.pointerId === 'key') { e.preventDefault(); finishHold(); } });
 
   // ---------- ส่งคำสั่ง ----------
   function send(event, payload, after) {
@@ -1890,92 +1693,58 @@
   function seq() { return { seq: S ? S.phaseSeq : null }; }
 
   document.addEventListener('click', function(e) {
-    var t = e.target.closest('button, [data-deed], .st-cell, .st-chip, [data-close]');
+    var t = e.target.closest('button, .st-cell, [data-close]');
     if (!t) return;
     var id = t.id;
-    if (t.dataset.close) { closeSheet(); return; }
-    if (t.classList.contains('st-cell')) { openSheet('deed', Number(t.dataset.i)); return; }
-    if (t.classList.contains('st-chip')) {
-      var s = seatOf(t.dataset.id);
-      if (s && !s.isSelf && !isOut(s) && !isOut(meSeat())) { draft = newDraft(s.playerId); openSheet('trade'); }
-      else if (s && s.isSelf) openSheet('props');
+    if (t.dataset.close) { closeSheet(true); return; }
+    if (t.classList.contains('st-cell')) {
+      var i = Number(t.dataset.i);
+      if (S && S.phase === 'pick' && S.phaseActor === playerId && S.decision && !running) {
+        if (S.decision.options.indexOf(i) >= 0) { haptic(12); send('setthi_pick', Object.assign({ square: i }, seq())); }
+        else toast('เลือกช่องที่เรืองแสง', 1200);
+        return;
+      }
+      openSheet('square', i);
       return;
     }
-    if (t.dataset.deed !== undefined && !t.dataset.act && t.tagName !== 'BUTTON') { openSheet('deed', Number(t.dataset.deed)); return; }
+    if (t.classList.contains('st-chip')) {
+      var pid = t.dataset.id;
+      focusId = focusId === pid ? null : pid;
+      if (V) renderCells(V);
+      renderStrip();
+      return;
+    }
+    if (t.classList.contains('st-tile') && sheetKind === 'build') {
+      var lv = Number(t.dataset.level);
+      var d = S.decision;
+      var o = d && (d.options || []).find(function(x) { return x.level === lv; });
+      if (!o || o.built) return;
+      if (o.locked) { toast({ lap: 'ผ่านจุดเริ่มก่อน ถึงสร้างขั้นนี้ได้', hotel: 'ต้องมีโรงแรมก่อน แล้วตกซ้ำ', later: 'ตกช่องนี้อีกครั้งถึงสร้างได้' }[o.locked] || 'ยังสร้างไม่ได้', 1600); return; }
+      buildSel = buildSel === lv && lv > d.current + 1 ? lv - 1 : lv;
+      if (buildSel <= d.current) buildSel = null;
+      haptic(8);
+      buildSheet();
+      return;
+    }
+    if (t.dataset.sell !== undefined) { send('setthi_sell', { square: Number(t.dataset.sell) }); return; }
+    if (id === 'stBuildBtn') { if (buildSel !== null) send('setthi_build', Object.assign({ level: buildSel }, seq())); return; }
+    if (id === 'stPassBtn') { send('setthi_pass', seq()); return; }
+    if (id === 'stTakeBtn') { send('setthi_takeover', seq()); return; }
+    if (id === 'stNoTakeBtn') { send('setthi_declineTakeover', seq()); return; }
+    if (id === 'stSkipPick') { send('setthi_skipPick', seq()); return; }
+    if (id === 'stPayIsland') { send('setthi_payIsland', seq()); return; }
+    if (id === 'stOpenDecision') { dismissed[S.phaseSeq] = false; openSheet(S.phase === 'build' ? 'build' : 'takeover', S.phaseSeq); return; }
+    if (id === 'stOpenSell') { dismissed[S.phaseSeq] = false; openSheet('sell', S.phaseSeq); return; }
     if (id === 'stRollBtn') { if (e.detail === 0 && !hold) { haptic(10); send('setthi_roll', seq()); } return; }
-    if (id === 'stBuyBtn') { send('setthi_buy', seq()); return; }
-    if (id === 'stDeclineBtn') { send('setthi_decline', seq()); return; }
-    if (id === 'stEndTurnBtn') { send('setthi_endTurn', seq()); return; }
-    if (id === 'stPayJailBtn') { send('setthi_payJail', seq()); return; }
-    if (id === 'stJailCardBtn') { send('setthi_useJailCard', seq()); return; }
-    if (id === 'stPropsBtn' || id === 'stDebtBtn') { openSheet('props'); return; }
-    if (id === 'stTradeBtn') { draft = draft && draft.to ? draft : newDraft(); draft.counterOf = null; openSheet('trade'); return; }
-    if (id === 'stOpenAuction') { auctionMinimized = false; openSheet('auction'); return; }
-    if (id === 'stAuctionPill') { auctionMinimized = false; openSheet('auction'); return; }
+    if (id === 'stLastLog') { openSheet('log'); return; }
     if (id === 'stShowEnd') { showEnd(false, true); return; }
     if (id === 'stBackBtn' || id === 'stEndBack') { socket.emit('returnFinishedToLobby', { roomId: roomId }); return; }
     if (id === 'stEndClose') { el.end.classList.remove('is-on'); return; }
     if (id === 'stEndShare') { shareResult(); return; }
-    if (id === 'stCancelDeal') { send('setthi_tradeCancel', {}); return; }
-    if (id && id.indexOf('stViewDeal') === 0) { openSheet('offer', Number(id.slice(10))); return; }
-    if (t.dataset.act) { send('setthi_' + t.dataset.act, { square: Number(t.dataset.sq) }); return; }
-    if (t.dataset.bid) { send('setthi_bid', { amount: Number(t.dataset.bid) }); return; }
-    if (id === 'stBidCustom') {
-      var v = Number((document.getElementById('stBidInput') || {}).value);
-      send('setthi_bid', { amount: v });
-      return;
-    }
-    if (t.dataset.to && sheetKind === 'trade') { var keep = draft.counterOf; draft = newDraft(t.dataset.to); draft.counterOf = keep; buildSheet(); return; }
-    if (t.dataset.side && sheetKind === 'trade') {
-      var list = draft[t.dataset.side].props;
-      var sq = Number(t.dataset.sq);
-      var k = list.indexOf(sq);
-      if (k >= 0) list.splice(k, 1); else list.push(sq);
-      buildSheet();
-      return;
-    }
-    if (t.dataset.jail && sheetKind === 'trade') { draft[t.dataset.jail].jailCards = draft[t.dataset.jail].jailCards ? 0 : 1; buildSheet(); return; }
-    if (t.dataset.cash && sheetKind === 'trade') {
-      var sideKey = t.dataset.cash;
-      var owner = sideKey === 'give' ? meSeat() : seatOf(draft.to);
-      draft[sideKey].cash = Math.max(0, Math.min(owner ? owner.cash : 0, (draft[sideKey].cash || 0) + Number(t.dataset.d)));
-      buildSheet();
-      return;
-    }
-    if (id === 'stTradeClose') { closeSheet(); return; }
-    if (id === 'stTradeSend') {
-      var payload = { to: draft.to, give: draft.give, get: draft.get };
-      if (draft.counterOf) {
-        send('setthi_tradeCounter', Object.assign({ tradeId: draft.counterOf }, payload), function(res) { if (res.success) { draft = null; closeSheet(); toast('ส่งข้อเสนอโต้กลับแล้ว'); } });
-      } else {
-        send('setthi_tradePropose', payload, function(res) { if (res.success) { draft = null; closeSheet(); toast('ส่งข้อเสนอแล้ว — รออีกฝ่ายตอบ'); } });
-      }
-      return;
-    }
-    if (id === 'stOfferAccept') { send('setthi_tradeRespond', { tradeId: sheetArg, accept: true }, function(res) { if (res.success) closeSheet(); }); return; }
-    if (id === 'stOfferReject') { send('setthi_tradeRespond', { tradeId: sheetArg, accept: false }, function(res) { if (res.success) closeSheet(); }); return; }
-    if (id === 'stOfferCounter') {
-      var offer = (S.trades || []).find(function(x) { return x.id === sheetArg; });
-      if (!offer) return;
-      draft = { to: offer.from, give: JSON.parse(JSON.stringify(offer.get)), get: JSON.parse(JSON.stringify(offer.give)), counterOf: offer.id };
-      openSheet('trade');
-      return;
-    }
-  });
-  document.addEventListener('input', function(e) {
-    var t = e.target;
-    if (t.dataset && t.dataset.cashinput && draft) {
-      var side = t.dataset.cashinput;
-      var owner = side === 'give' ? meSeat() : seatOf(draft.to);
-      draft[side].cash = Math.max(0, Math.min(owner ? owner.cash : 0, Math.floor(Number(t.value) || 0)));
-      var sum = el.sheetCard.querySelector('.st-trade-sum');
-      if (sum) sum.innerHTML = tradeSummary(draft, seatOf(draft.to));
-    }
   });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && e.target && e.target.id === 'stBidInput') { e.preventDefault(); var b = document.getElementById('stBidCustom'); if (b) b.click(); }
-    if ((e.key === 'Enter' || e.key === ' ') && e.target && (e.target.classList.contains('st-cell') || e.target.classList.contains('st-chip'))) { e.preventDefault(); e.target.click(); }
-    if (e.key === 'Escape' && sheetKind) closeSheet();
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('st-cell')) { e.preventDefault(); e.target.click(); }
+    if (e.key === 'Escape' && sheetKind) closeSheet(true);
   });
 
   // ---------- จบเกม ----------
@@ -1997,31 +1766,31 @@
     }).join('');
     var list = rows.map(function(r) {
       var seat = seatOf(r.playerId) || r;
-      return '<div class="st-rank"><b>' + r.rank + '</b>' + tokenHtml(seat) + '<span class="st-rank-name">' + esc(r.name) + '<small>' + (r.bankrupt ? 'ล้มละลาย' : r.left ? 'ออกจากเกม' : 'เงินสด ' + money(r.cash) + ' · ที่ดิน ' + r.properties + ' แปลง') + '</small></span><span class="st-rank-worth">' + money(r.netWorth) + '</span></div>';
+      return '<div class="st-rank"><b>' + r.rank + '</b>' + tokenHtml(seat) + '<span class="st-rank-name">' + esc(r.name) + '<small>' + (r.bankrupt ? 'ล้มละลาย' : r.left ? 'ออกจากเกม' : '🏠 ' + r.properties + (r.landmarks ? ' · 🏛️ ' + r.landmarks : '')) + '</small></span><span class="st-rank-worth">' + money(r.netWorth) + '</span></div>';
     }).join('');
+    var mono = S.monopoly ? MONO[S.monopoly.type] : null;
     var title = winners.length > 1 ? winners.map(function(w) { return w.name; }).join(' & ') + ' ชนะร่วม!' : (winners[0] ? winners[0].name + ' คือเศรษฐี!' : 'จบเกม');
     var iWon = winners.some(function(w) { return w.playerId === playerId; });
     el.end.innerHTML = '<div class="st-end-inner">' +
       '<div class="st-end-kicker">' + (iWon ? 'คุณชนะ!' : 'จบเกม') + '</div>' +
+      (mono ? '<div class="st-end-mono">👑 ' + esc(mono) + '</div>' : '') +
       '<h2 class="st-end-title">' + esc(title) + '</h2>' +
       '<p class="st-end-reason">' + esc(S.finishReason || '') + '</p>' +
       '<div class="st-podium">' + pod + '</div>' +
       '<div class="st-ranks">' + list + '</div>' +
-      '<div class="st-end-btns">' + btn('stEndBack', 'กลับห้องรอ · เล่นอีกตา', { primary: true }) + btn('stEndShare', 'แชร์ผล') + '</div>' +
+      '<div class="st-end-btns">' + btn('stEndBack', 'เล่นอีกตา', { primary: true }) + btn('stEndShare', 'แชร์ผล') + '</div>' +
       btn('stEndClose', 'ดูกระดาน', {}) +
-      '<div class="st-end-note" id="stEndNote">ทรัพย์สินรวม = เงินสด + ราคาที่ดิน (จำนองนับครึ่ง) + บ้านตามทุน · เงินในเกม ไม่มีมูลค่าจริง</div>' +
-      '</div>';
+      '<div class="st-end-note" id="stEndNote">เงินในเกม ไม่มีมูลค่าจริง</div></div>';
     el.end.classList.add('is-on');
-    var blocks = el.end.querySelectorAll('.st-pod-block');
-    var toks = el.end.querySelectorAll('.st-pod .st-token');
     if (celebrate && !reduceMotion) {
       sfx.fanfare();
-      blocks.forEach(function(b, k) { b.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1.06)', offset: 0.8 }, { transform: 'scaleY(1)' }], { duration: 700, delay: [200, 500, 0][k], easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }); });
-      toks.forEach(function(t, k) { t.animate([{ transform: 'translateY(-120px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 600, delay: 600 + k * 120, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'both' }); });
+      el.end.querySelectorAll('.st-pod-block').forEach(function(b, k) { b.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1.06)', offset: 0.8 }, { transform: 'scaleY(1)' }], { duration: 700, delay: [200, 500, 0][k], easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }); });
+      el.end.querySelectorAll('.st-pod .st-token').forEach(function(t, k) { t.animate([{ transform: 'translateY(-120px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 600, delay: 600 + k * 120, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'both' }); });
       confetti(80);
     }
   }
   function confetti(n) {
+    if (reduceMotion) return;
     var layer = document.createElement('div');
     layer.className = 'st-confetti-layer';
     document.body.appendChild(layer);
@@ -2035,10 +1804,7 @@
       layer.appendChild(c);
       var x = Math.random() * W;
       var drift = (Math.random() - 0.5) * 160;
-      c.animate([
-        { transform: 'translate(' + x + 'px, -30px) rotate(0deg)', opacity: 1 },
-        { transform: 'translate(' + (x + drift) + 'px,' + (H + 40) + 'px) rotate(' + (540 + Math.random() * 720) + 'deg)', opacity: 0.9 }
-      ], { duration: 2200 + Math.random() * 1600, delay: Math.random() * 900, easing: 'cubic-bezier(0.25, 0.5, 0.5, 1)', fill: 'both' });
+      c.animate([{ transform: 'translate(' + x + 'px, -30px) rotate(0deg)', opacity: 1 }, { transform: 'translate(' + (x + drift) + 'px,' + (H + 40) + 'px) rotate(' + (540 + Math.random() * 720) + 'deg)', opacity: 0.9 }], { duration: 2200 + Math.random() * 1600, delay: Math.random() * 900, easing: 'cubic-bezier(0.25, 0.5, 0.5, 1)', fill: 'both' });
     }
     setTimeout(function() { layer.remove(); }, 5200);
   }
@@ -2047,8 +1813,8 @@
     window.partyPlay.shareResult({
       mode: 'เศรษฐี',
       headline: (S.winners || []).map(function(w) { return w.name; }).join(' & ') + ((S.winners || []).length > 1 ? ' ชนะร่วม!' : ' คือเศรษฐี!'),
-      sub: (S.finishReason || '') + ' · เงินในเกม ไม่มีมูลค่าจริง',
-      lines: S.standings.slice(0, 6).map(function(r) { return r.rank + '. ' + r.name + ' ' + (r.bankrupt ? 'ล้มละลาย' : money(r.netWorth)); }),
+      sub: (S.monopoly ? MONO[S.monopoly.type] + ' · ' : '') + 'เงินในเกม ไม่มีมูลค่าจริง',
+      lines: S.standings.slice(0, 4).map(function(r) { return r.rank + '. ' + r.name + ' ' + (r.bankrupt ? 'ล้มละลาย' : money(r.netWorth)); }),
       accent: '#f5c86b',
       fileName: 'setthi-result'
     });
@@ -2063,34 +1829,26 @@
     var gap = fresh.length && fresh[0].seq > lastFxSeq + 1 && lastFxSeq > 0;
     S = next;
     lastFxSeq = Math.max(lastFxSeq, next.fxSeq || 0);
-    if (next.pendingBuy !== null && next.pendingBuy !== undefined) preloadLand(next.pendingBuy);
-    if (next.auction) preloadLand(next.auction.square);
-    (next.fx || []).forEach(function(f) { if (f.seq > lastFxSeq - 12 && (f.kind === 'buy' || f.kind === 'auctionStart')) preloadLand(f.square); });
+    if (next.decision && next.decision.square !== undefined && SQ[next.decision.square]) preload(SQ[next.decision.square].art);
+    fresh.forEach(function(f) { if (f.square !== undefined && SQ[f.square]) preload(SQ[f.square].art); });
     if (first || gap || !fresh.length) {
-      if (first || gap) { queue = []; }
+      if (first || gap) queue = [];
       if (!running) renderAll();
-      else { renderDock(); syncSheets(); }
+      else { renderDock(); paintFast(); }
       return;
     }
     lastPlayedSeq = fresh[0].seq - 1;
     enqueueFx(fresh);
     if (!running) renderAll();
-    else { renderDock(); renderLog(); syncSheets(); renderClock(); }
+    else { renderDock(); renderCenter(); renderClock(); paintFast(); }
   }
 
-  // นาฬิกา + ตัวนับวินาที
   setInterval(function() {
     renderClock();
     var secNode = document.getElementById('stSec');
     var s = secondsLeft();
     if (secNode && s !== null) secNode.textContent = s;
-    var aSec = document.getElementById('stAuctionSec');
-    if (aSec && S && S.auction) aSec.textContent = Math.max(0, Math.ceil((S.auction.endsAt - nowServer()) / 1000));
     el.timer.classList.toggle('is-low', s !== null && s <= 5);
-    if (sheetKind === 'auction') {
-      var bar = document.querySelector('#stAuctionBar i');
-      if (bar && (!auctionBarAnim || auctionBarAnim.playState === 'finished')) syncAuctionBar();
-    }
   }, 250);
 
   // ---------- ปุ่มบน / sidebar ----------
@@ -2102,7 +1860,14 @@
     if (soundOn) sfx.coin();
   });
   paintSound();
-  $('#stHowBtn').addEventListener('click', function() { openSheet('howto'); });
+  $('#stHowBtn').addEventListener('click', function() { openSheet('help'); });
+  if (el.fast) el.fast.addEventListener('click', function() {
+    if (!S) return;
+    var on = !S.fast;
+    S.fast = on;
+    paintFast();
+    send('setthi_fast', { on: on });
+  });
   function setSidebar(open) {
     if (open && $('#chatBox').style.display !== 'none') { var c = $('#closeChat'); if (c) c.click(); }
     $('#stSidebar').classList.toggle('open', open);
@@ -2116,7 +1881,7 @@
   $('#stSidebarOverlay').addEventListener('click', function() { setSidebar(false); });
   var allowNavigation = false;
   $('#leaveRoomBtn').addEventListener('click', function() {
-    Swal.fire({ icon: 'question', title: 'ออกจากเกม?', text: 'ทรัพย์สินทั้งหมดของคุณจะคืนธนาคาร แล้วเกมเดินต่อโดยไม่มีคุณ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1d2433', color: '#fff' })
+    Swal.fire({ icon: 'question', title: 'ออกจากเกม?', text: 'ที่ดินของคุณจะคืนธนาคาร', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1d2433', color: '#fff' })
       .then(function(r) {
         if (!r.isConfirmed) return;
         allowNavigation = true;
@@ -2125,7 +1890,7 @@
   });
   var endBtn = $('#stEndBtn');
   if (endBtn) endBtn.addEventListener('click', function() {
-    Swal.fire({ icon: 'warning', title: 'จบเกมเลยไหม?', text: 'นับทรัพย์สินรวมตอนนี้ คนที่มากสุดชนะ แล้วทุกคนกลับห้องรอ', showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#1d2433', color: '#fff', confirmButtonColor: '#c2410c' })
+    Swal.fire({ icon: 'warning', title: 'จบเกมเลยไหม?', text: 'นับทรัพย์สินรวมตอนนี้ มากสุดชนะ', showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#1d2433', color: '#fff', confirmButtonColor: '#c2410c' })
       .then(function(r) { if (r.isConfirmed) { setSidebar(false); send('setthi_end', {}); } });
   });
   var touched = false;
@@ -2135,7 +1900,7 @@
   var resizeTimer = null;
   window.addEventListener('resize', function() {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function() { if (V) { camState = { x: 0, y: 0, k: 1 }; el.cam.style.transform = ''; placeTokens(V); renderDock(); renderDeskProps(); } }, 120);
+    resizeTimer = setTimeout(function() { if (V) { camState = { x: 0, y: 0, k: 1 }; el.cam.style.transform = ''; placeTokens(V); renderDock(); } }, 120);
   });
 
   // ---------- socket ----------
@@ -2165,19 +1930,15 @@
 
   // ---------- เริ่ม ----------
   buildBoard();
-  if (S) {
-    V = modelFrom(S);
-    renderAll();
-  } else {
-    renderDock();
-  }
-  // ช่องบนกระดานขนาดเปลี่ยนหลังฟอนต์โหลด
+  if (S) { V = modelFrom(S); renderAll(); } else renderDock();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function() { if (V) placeTokens(V); });
-  // ใช้ในเทส/ถ่ายภาพฉาก: เล่นฉากจาก fx ตัวอย่าง (แค่ภาพบนเครื่องนี้ ไม่ส่งอะไรไปเซิร์ฟเวอร์)
+  // เทส/ถ่ายภาพฉาก: เล่นฉากจาก fx ตัวอย่าง (แค่ภาพบนเครื่องนี้ ไม่ส่งอะไรไปเซิร์ฟเวอร์)
   window.__setthi = {
     state: function() { return S; },
     queueLength: function() { return queue.length + (running ? 1 : 0); },
+    running: function() { return running; },
     skip: skipNow,
+    sheet: function() { return sheetKind; },
     hold: function() { return hold ? { meter: hold.meter, t0: hold.t0, released: hold.released } : null; },
     demo: function(list) { enqueueFx((Array.isArray(list) ? list : [list]).map(function(f) { return Object.assign({ seq: 0, at: nowServer() }, f); })); }
   };

@@ -70,6 +70,17 @@
     gavel: s('<path d="M14 3.5l6.5 6.5-2.6 2.6-6.5-6.5z" fill="' + BR + '"/><path d="M13.5 8.5L4 18" stroke-width="2.4" stroke="' + BR + '"/><path d="M3 21h11" stroke-width="2"/>'),
     crown: s('<path d="M3 8l4.5 4 4.5-7 4.5 7L21 8l-2 10H5z" fill="' + G + '"/><path d="M5 20.5h14"/>'),
     clock: s('<circle cx="12" cy="13" r="8" fill="' + CR + '"/><path d="M12 8.5V13l3 2"/><path d="M9.5 2.5h5M12 2.5V5"/>'),
+    // ---------- ท่องเที่ยว / มุม / การ์ด (v2) ----------
+    boat: s('<path d="M2 14.5h20l-2.6 4H4.6z" fill="' + BR + '"/><path d="M8 14.5c0-3 1.8-5 4-5s4 2 4 5" fill="' + G + '"/><path d="M12 9.5V7"/><circle cx="7" cy="13" r="1.2" fill="' + OR + '"/><circle cx="17" cy="13" r="1.2" fill="' + R + '"/>' + waves),
+    forest: s('<path d="M2 19l6-11 4 6 3-4 7 9z" fill="' + GR + '" fill-opacity=".85"/><path d="M11 9.5h2.5v7H11z" fill="' + SKY + '" stroke="' + SKY + '"/><path d="M12.2 10v6M13 10.5v5" stroke="#fff"/>'),
+    peak: s('<path d="M2 20l7-12 3 4 3-5 7 13z" fill="' + GR + '" fill-opacity=".8"/><path d="M13.5 9.5L15 7l1.6 2.6-1.6.9z" fill="' + CR + '" stroke="' + CR + '"/><path d="M3 15c2-1 4 .6 6-.4M14 16c2-1 4 .5 6-.5" stroke="' + CR + '"/>'),
+    islet: s('<path d="M4 14c.4-5 2-9 4-9s3 4 3.5 8c.5-3 1.8-6 3.6-6S18.5 11 19 14z" fill="' + GR + '" fill-opacity=".8"/>' + waves),
+    island: s('<path d="M3 17c3-2 15-2 18 0" fill="' + G + '"/><path d="M11 16c-.3-4 .4-7 1.6-9.5" stroke="' + BR + '" stroke-width="1.8"/><path d="M12.6 6.5c-2-2-4.5-2-6.5-.8 2.2.2 3.8 1.2 4.6 2.4M12.6 6.5c1-2.8 3.4-3.4 6-2.6-2.2.4-3.6 1.4-4.2 3" stroke="' + GR + '" stroke-width="1.8"/>' + waves),
+    flag: s('<path d="M5 21V3"/><path d="M5 4c3-1.6 6 1.6 9 0s4-.6 5 0v8c-1-.6-2-1.6-5 0s-6-1.6-9 0z" fill="' + R + '"/><path d="M8 8.5l1.5 1.5 3-3" stroke="' + G + '"/>'),
+    arrow: s('<path d="M3 12h15" stroke-width="2.4"/><path d="M13 6.5l6 5.5-6 5.5" stroke-width="2.4"/>'),
+    angel: s('<circle cx="12" cy="5.5" r="2.4" fill="none" stroke="' + G + '" stroke-width="1.6"/><circle cx="12" cy="11" r="3" fill="' + CR + '"/><path d="M9 21c0-4 1.2-6.5 3-6.5s3 2.5 3 6.5z" fill="' + SKY + '"/><path d="M9 13c-3-2-5.5-1.5-6.5 1 2.6 0 4 1 5 2.5M15 13c3-2 5.5-1.5 6.5 1-2.6 0-4 1-5 2.5" fill="#fff" stroke="currentColor"/>'),
+    bld: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 11V3.2L6 1.2l3.8 2V11z" fill="#4ea8dc" stroke="#123f63" stroke-width="1"/><path d="M4 4.6h1.2M6.8 4.6H8M4 6.8h1.2M6.8 6.8H8M4 9h1.2M6.8 9H8" stroke="#123f63" stroke-width=".9"/></svg>',
+    landmark: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 15V8l5-6.5L13 8v7z" fill="#f5c86b" stroke="#7a5a12" stroke-width="1"/><path d="M6 15v-3.4h4V15" fill="#7a5a12"/><path d="M8 1.5V0" stroke="#7a5a12"/></svg>',
     house: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.2 6L6 1.6 10.8 6v4.8H1.2z" fill="#3fbf7f" stroke="#145c36" stroke-width="1"/><path d="M4.6 10.8V8h2.8v2.8" fill="#145c36"/></svg>',
     hotel: '<svg viewBox="0 0 16 12" aria-hidden="true"><path d="M1 4.5L8 .9l7 3.6v6.8H1z" fill="#e5534b" stroke="#7a1d18" stroke-width="1"/><path d="M3.4 6h2M7 6h2M10.6 6h2M3.4 8.4h2M10.6 8.4h2" stroke="#fff3d6" stroke-width="1.2"/><path d="M7 11.3V8.6h2v2.7" fill="#7a1d18"/></svg>'
   };

@@ -45,6 +45,9 @@ const TAP_MS = 150;
 const HOLD_EARLY_MS = 250;
 const HOLD_LATE_MS = 50;
 const HOLD_MAX_MS = 20000;
+// เข็มกวาดจากเบาสุด→แรงสุด 1.6–2.0 วิ (cos ช้าลงที่ปลายทั้งสองข้าง จับปลายแรงได้)
+const SWEEP_MIN_MS = 1600;
+const SWEEP_MAX_MS = 2000;
 const GREEN_DOUBLES = 0.2;
 const GREEN_SPAWN = num(env.SETTHI_GREEN_SPAWN, 0.5);
 const BOT_GREEN_HIT = 0.15;
@@ -722,16 +725,21 @@ function meterAt(hold, elapsedMs) {
     return { pos, power: pos, green, greenOn, tap: false };
 }
 
+/**
+ * ตารางช่องเขียวของการกดครั้งนี้ (หรือ null): โผล่ 0.6–0.8 วิ ในช่วงที่เข็มกำลังจะวิ่งผ่านกลางช่องพอดี
+ * (เข็มกวาดขึ้นหรือลงครั้งที่ 1–3) → มีเวลาเห็นแล้วตัดสินใจปล่อยทัน
+ */
 function greenSchedule(rng, period) {
     if (rng() >= GREEN_SPAWN) return null;
-    const appearAt = Math.round(300 + rng() * 900);
-    const life = Math.round(period * (0.8 + rng() * 0.3));
-    return {
-        appearAt,
-        until: appearAt + life,
-        center: Math.round((0.3 + rng() * 0.55) * 1000) / 1000,
-        width: Math.round((0.09 + rng() * 0.05) * 1000) / 1000
-    };
+    const center = Math.round((0.3 + rng() * 0.55) * 1000) / 1000;
+    const width = Math.round((0.1 + rng() * 0.05) * 1000) / 1000;
+    const life = Math.round(600 + rng() * 200);
+    // เวลาที่เข็มผ่าน center: pos(t) = (1 − cos(2πt/period)) / 2
+    const base = (period / (2 * Math.PI)) * Math.acos(1 - 2 * center);
+    const crossings = [base, period - base, period + base].filter(t => t - life * 0.55 >= 350);
+    const cross = crossings[Math.min(crossings.length - 1, Math.floor(rng() * crossings.length))];
+    const appearAt = Math.round(cross - life * 0.55);
+    return { appearAt, until: appearAt + life, center, width };
 }
 
 function nextDice(room, rng, bias = null) {
@@ -1054,7 +1062,7 @@ function rollDice(room, playerId, ctx = null, rng = Math.random, bias = null) {
 function startRollHold(room, playerId, ctx = null, rng = Math.random) {
     assertActor(room, playerId, 'roll', ctx);
     const state = st(room);
-    const period = Math.round(1000 + rng() * 500);
+    const period = Math.round(SWEEP_MIN_MS * 2 + rng() * (SWEEP_MAX_MS - SWEEP_MIN_MS) * 2); // ขึ้นสุด→ลงสุด = ครึ่งคาบ
     const hold = { playerId, phaseSeq: state.phaseSeq, startedAt: now(), period, green: greenSchedule(rng, period) };
     state.rollHold = hold;
     state.lastActionAt = now();
@@ -1785,6 +1793,8 @@ module.exports = {
     HOLD_LATE_MS,
     GREEN_DOUBLES,
     GREEN_SPAWN,
+    SWEEP_MIN_MS,
+    SWEEP_MAX_MS,
     MONOPOLY_LABEL,
     greenSchedule,
     biasedDice,

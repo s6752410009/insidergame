@@ -9,50 +9,38 @@
   <div class="st-top">
     <div class="st-brand">
       <span class="st-logo">เศรษฐี</span>
-      <span class="st-room"><%= room.name %></span>
     </div>
     <div class="st-clock" id="stClock" role="timer" aria-live="off" title="เวลาเกม">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9.5 2.5h5"/></svg>
       <span class="st-clock-txt" id="stClockTxt">--:--</span>
     </div>
     <div class="st-tools">
+      <button type="button" class="st-fast" id="stFastBtn" aria-pressed="false" aria-label="เร่งเกม (บอทเล่นเร็วขึ้น ฉากสั้นลง)"><span aria-hidden="true">⏩</span> เร่ง</button>
       <button type="button" class="st-icon-btn" id="stHowBtn" aria-label="วิธีเล่น">?</button>
       <button type="button" class="st-icon-btn" id="stMenuBtn" aria-label="ผู้เล่นและเมนู" aria-expanded="false" aria-controls="stSidebar">☰</button>
     </div>
   </div>
 
-  <div class="st-strip" id="stStrip" aria-label="ผู้เล่น"></div>
+  <div class="st-strip" id="stStrip" aria-label="ผู้เล่น — แตะเพื่อดูที่ของแต่ละคน"></div>
 
   <div class="st-stage">
     <div class="st-frame" id="stFrame">
       <div class="st-cam" id="stCam">
-        <div class="st-board" id="stBoard" role="grid" aria-label="กระดานเศรษฐี — แตะช่องเพื่อดูโฉนด"></div>
+        <div class="st-board" id="stBoard" role="grid" aria-label="กระดานเศรษฐี — แตะช่องเพื่อดูรายละเอียด"></div>
         <div class="st-tokens" id="stTokens" aria-hidden="true"></div>
       </div>
+      <div class="st-pickbar" id="stPickbar" role="status" aria-live="polite"></div>
     </div>
-    <div class="st-fun-note">เงินในเกมเป็นเงินสมมติ ไม่มีมูลค่าจริง · แตะช่องเพื่อดูโฉนด</div>
   </div>
 
-  <div class="st-side">
-    <details class="st-panel" id="stLogPanel" open>
-      <summary>บันทึกเกม</summary>
-      <div class="st-log" id="stLog" role="log" aria-live="polite"></div>
-    </details>
-  </div>
+  <div class="st-alerts" id="stAlerts" role="status" aria-live="polite"></div>
 
   <div class="st-dock" id="stDock">
-    <div class="st-dock-card">
-      <div class="st-timer" id="stTimer" aria-hidden="true"><i></i></div>
-      <div class="st-dock-body" id="stDockBody"></div>
-    </div>
-    <div class="st-panel st-desk-props" id="stDeskProps">
-      <div class="st-panel-head">ทรัพย์สินของฉัน</div>
-      <div class="st-panel-body" id="stDeskPropsBody"></div>
-    </div>
+    <div class="st-timer" id="stTimer" aria-hidden="true"><i></i></div>
+    <div class="st-dock-body" id="stDockBody"></div>
   </div>
 </div>
 
-<button type="button" class="st-auction-pill" id="stAuctionPill"></button>
 <div class="st-fx" id="stFx" aria-hidden="true"></div>
 <div class="st-sheet" id="stSheet" role="dialog" aria-modal="true" aria-labelledby="stSheetTitle">
   <div class="st-sheet-scrim" data-close="1"></div>
