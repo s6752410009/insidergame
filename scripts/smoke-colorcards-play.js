@@ -38,7 +38,7 @@ function bootServer(port) {
             PORT: String(port),
             COLORCARDS_TURN_MS: '6000',
             COLORCARDS_BOT_MS: '90',
-            COLORCARDS_ROUND_END_MS: '1500',
+            COLORCARDS_ROUND_END_MS: '5000', // ยาวพอให้ทุกคนกดพร้อมก่อนนาฬิกา (เครื่องช้า) — ทุกฉากใช้ "พร้อม" จึงไม่ต้องรอจริง
             COLORCARDS_CATCH_MS: '3000'
         },
         stdio: ['ignore', 'pipe', 'pipe']
@@ -164,7 +164,7 @@ function bestColor(hand, exclude) {
  * hooks.forgetCall(client) = true → ลงใบรองสุดท้ายโดยไม่กดบอก
  */
 async function drive(clients, admin, opts = {}) {
-    const stats = { actions: 0, plays: 0, draws: 0, passes: 0, rounds: new Set(), catches: 0, stale: 0 };
+    const stats = { actions: 0, plays: 0, draws: 0, passes: 0, rounds: new Set(), catches: 0, stale: 0, readyStarts: 0 };
     const deadline = Date.now() + (opts.timeoutMs || 240000);
     while (Date.now() < deadline) {
         const live = clients.filter(c => c.socket.connected && last(c));
@@ -177,6 +177,15 @@ async function drive(clients, admin, opts = {}) {
 
         if (S.phase === 'roundEnd') {
             stats.rounds.add(S.round);
+            if (opts.readyAll) {
+                // ทุกคนกด "พร้อมรอบต่อไป" → รอบใหม่ต้องเริ่มทันทีไม่รอนาฬิกา
+                const voters = live.filter(c => last(c).availableActions.canReady);
+                let lastRes = null;
+                let lastVoter = null;
+                for (const c of voters) { lastRes = await ack(c.socket, 'colorcards_ready', {}); lastVoter = c; }
+                // state ถูกส่งก่อน ack บน socket เดียวกัน → ดู state ล่าสุดของคนกดคนสุดท้าย
+                if (lastVoter && lastRes && lastRes.success && last(lastVoter).phase === 'turn' && last(lastVoter).round === S.round + 1) stats.readyStarts += 1;
+            }
             if (admin.socket.connected && opts.adminNext && last(admin).availableActions.canNextRound) {
                 await ack(admin.socket, 'colorcards_nextRound', {});
             }
@@ -383,7 +392,7 @@ function readStats() {
         let leaverCards = 0;
         let forgotB = 0;
         const statsB = await drive(B, B[0], {
-            adminNext: true,
+            readyAll: true,
             forgetCall: () => { if (forgotB < 2) { forgotB += 1; return true; } return false; },
             timeoutMs: 400000,
             after: async (S, st) => {
@@ -415,6 +424,32 @@ function readStats() {
         assert(winRows.every(Boolean), 'บันทึกสถิติทุกคนที่เล่นจบ');
         assert(winRows.filter(x => x.modeStats.colorcards.wins === 1).length === 1, 'มีผู้ชนะคนเดียว');
         B.forEach(c => c.socket.connected && c.socket.close());
+
+        // ================= B2) 3 คน ล่า 500: จบรอบแล้วทุกคนกดพร้อม → รอบใหม่เริ่มทันที =================
+        const R = [];
+        for (let i = 0; i < 3; i += 1) R.push(await makeClient(base, 'R' + i));
+        everyone.push(...R);
+        await delay(300);
+        const roomR = await createRoom(R[0], { settings: { colorcardsTarget: 500 } });
+        await joinAll(roomR, R.slice(1));
+        await start(R[0], R, roomR);
+        const statsR = await drive(R, R[0], { readyAll: true, timeoutMs: 200000, stop: (S, st) => st.readyStarts >= 1 });
+        assert(statsR.readyStarts >= 1, 'ทุกคนกดพร้อม → รอบใหม่เริ่มทันที');
+        const endR = await ack(R[0].socket, 'colorcards_end', {});
+        assert(endR.success, 'หัวห้องจบเกมได้');
+        console.log(`6a. 3 คน ล่า 500 · จบรอบแล้วทุกคนกดพร้อม → รอบ ${last(R[0]).round} เริ่มทันที ✓`);
+        R.forEach(c => c.socket.close());
+
+        // ================= C0) เติมบอทจนเต็ม 10 ที่ (สี/อวตารบอทต้องผ่าน validation ทุกช่อง) =================
+        const filler = await makeClient(base, 'F0');
+        everyone.push(filler);
+        await delay(300);
+        const roomF = await createRoom(filler, { maxPlayers: 10, settings: {} });
+        r = await ack(filler.socket, 'colorcards_addBots', { roomId: roomF, count: 9 });
+        assert(r.success && r.added === 9, 'เพิ่มบอท 9 ตัวเต็ม 10 ที่ได้: ' + JSON.stringify(r));
+        await ack(filler.socket, 'leaveRoom', {});
+        filler.socket.close();
+        console.log('6b. เพิ่มบอทจนเต็ม 10 ที่ ✓');
 
         // ================= C) คน 1 + บอท 3 =================
         const human = await makeClient(base, 'C0');

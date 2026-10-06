@@ -87,6 +87,9 @@
   .cc-now-copy { grid-column: 1; font-size: 1rem; font-weight: 700; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
   .cc-now-timer { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
   .cc-now-sec { font-family: var(--cc-display); font-size: 1.55rem; font-weight: 700; color: var(--cc-gold); font-variant-numeric: tabular-nums; line-height: 1; }
+  .cc-now-last { grid-column: 1 / span 2; min-width: 0; margin-top: 2px; font-size: 0.8rem; color: var(--cc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-now-last:empty { display: none; }
+  .cc-now.is-mine .cc-now-last { color: var(--cc-soft); }
   .cc-now-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--cc-gold); transform-origin: left center; transform: scaleX(0); }
   .cc-now.is-urgent .cc-now-bar { background: var(--cc-danger); }
   .cc-now.is-urgent .cc-now-sec { color: var(--cc-danger); }
@@ -286,6 +289,12 @@
   .cc-hand-fade { position: absolute; top: 24px; bottom: 0; width: 22px; pointer-events: none; z-index: 3; }
   .cc-hand-fade.l { left: 0; background: linear-gradient(90deg, var(--cc-bg), transparent); }
   .cc-hand-fade.r { right: 0; background: linear-gradient(270deg, var(--cc-bg), transparent); }
+  /* มีไพ่ที่ลงได้ซ่อนอยู่นอกจอ (มือ 15+ ใบ) — ป้ายทองที่ขอบให้รู้ว่าต้องเลื่อน */
+  /* อยู่ในแถบว่างเหนือไพ่ (padding บนของมือ) — ไม่ทับมุมไพ่ ไม่กินการแตะไพ่ */
+  .cc-hand-more { position: absolute; top: 0; z-index: 4; display: none; align-items: center; gap: 2px; min-height: 26px; padding: 2px 8px; border: 0; border-radius: 999px; background: var(--cc-gold); color: var(--cc-gold-ink); font-family: inherit; font-size: 0.74rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px oklch(0 0 0 / 0.4); }
+  .cc-hand-more.l { left: 6px; }
+  .cc-hand-more.r { right: 6px; }
+  .cc-hand-more.is-on { display: inline-flex; }
   .cc-hand-empty { padding: 18px 16px 12px; text-align: center; color: var(--cc-muted); font-size: 0.92rem; }
   .cc-yourturn {
     position: absolute; left: 50%; top: 2px; transform: translateX(-50%); z-index: 4; pointer-events: none;
@@ -347,6 +356,9 @@
   .cc-picker-grid button svg { width: 18px; height: 18px; fill: currentColor; }
   .cc-picker-grid button.is-best { box-shadow: inset 0 0 0 1.5px oklch(1 0 0 / 0.3), 0 0 0 3px oklch(0.97 0.01 250 / 0.85), 0 4px 12px oklch(0 0 0 / 0.3); }
   .cc-picker-note { margin: 10px 0 0; text-align: center; font-size: 0.8rem; color: oklch(0.76 0.03 255); }
+  .cc-picker-call { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; min-height: 48px; border-radius: 14px; border: 0; background: var(--cc-gold); color: var(--cc-gold-ink); font-family: 'Chakra Petch', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; }
+  .cc-picker-call[hidden] { display: none; }
+  .cc-picker-called { margin: 10px 0 0; text-align: center; font-weight: 700; color: oklch(0.8 0.15 150); font-size: 0.9rem; }
   .cc-picker-cancel { display: block; width: 100%; margin-top: 10px; min-height: 48px; border-radius: 14px; border: 1px solid oklch(1 0 0 / 0.14); background: transparent; color: oklch(0.88 0.02 250); font-weight: 700; cursor: pointer; }
 
   /* ---------- results sheet ---------- */
@@ -367,6 +379,7 @@
   .cc-row-cards .cc-card .cc-idx { display: none; }
   .cc-sheet-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
   .cc-sheet-actions .cc-btn { flex: 1 1 140px; }
+  .cc-row-delta { margin-left: 6px; font-size: 0.78rem; color: oklch(0.8 0.15 150); }
   .cc-sheet-note { margin-top: 8px; text-align: center; font-size: 0.8rem; color: oklch(0.76 0.03 255); }
 
   /* ---------- feed / sidebar / guide ---------- */
@@ -394,6 +407,11 @@
   .chat-box { top: calc(64px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; max-height: calc(100dvh - 90px); }
   .btn-chat-send { --chat-send-bg: oklch(0.86 0.12 85); --chat-send-color: oklch(0.24 0.05 70); }
 
+  /* จอกว้าง: ปุ่มเครื่องมืออยู่แถวเดียวกับชื่อห้อง — เว้นที่ให้ปุ่มแชทมุมขวาบน ไม่ให้ทับปุ่มจบเกม */
+  @media (min-width: 600px) {
+    .cc-top > :first-child { padding-right: 0; }
+    .cc-tools { margin-right: 104px; }
+  }
   @media (min-width: 720px) {
     html.cc-active { --cw: 78px; --ch: 110px; --pw: 100px; --ph: 142px; }
     .cc-table { padding: 22px 18px 20px; min-height: 290px; }
@@ -402,6 +420,25 @@
   }
   @media (max-width: 360px) {
     html.cc-active { --cw: 56px; --ch: 80px; --pw: 72px; --ph: 102px; }
+  }
+  /* มือถือแนวนอน (จอเตี้ย): ย่อไพ่/โต๊ะ/แถบล่าง ให้เห็นโต๊ะกับมือพร้อมกัน */
+  @media (max-height: 500px) and (orientation: landscape) {
+    html.cc-active { --cw: 46px; --ch: 66px; --pw: 56px; --ph: 80px; }
+    .cc-top { padding: 2px 0 4px; }
+    .cc-kicker { display: none; }
+    .cc-now { padding: 6px 12px 8px; }
+    .cc-opps { margin-top: 6px; }
+    .cc-opp { padding: 4px 4px 3px; }
+    .cc-opp-av { display: none; }
+    .cc-flow { height: 14px; margin-top: 2px; }
+    .cc-table { margin-top: 4px; padding: 8px 12px 8px; min-height: 0; border-radius: 22px; }
+    .cc-ring { display: none; }
+    .cc-state { margin-top: 6px; }
+    .cc-deck-count { bottom: -18px; }
+    .cc-dock { padding-top: 4px; }
+    .cc-hint { min-height: 16px; padding-top: 0; }
+    .cc-hand { padding: 20px 16px 6px; min-height: calc(var(--ch) + 28px); }
+    .cc-hand-more { min-height: 20px; padding: 0 8px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .cc-ring svg, .cc-flow-arrows i, .cc-deck.is-can::after, .cc-btn--call { animation: none !important; }
@@ -434,6 +471,7 @@
     <span id="ccNowPhase" class="cc-now-phase">กำลังโหลด</span>
     <span id="ccNowCopy" class="cc-now-copy" role="status" aria-live="polite" aria-atomic="true">กำลังโหลด...</span>
     <div class="cc-now-timer" aria-hidden="true"><div id="ccNowSec" class="cc-now-sec">--</div></div>
+    <span id="ccNowLast" class="cc-now-last" aria-hidden="true"></span>
     <div id="ccNowBar" class="cc-now-bar"></div>
   </div>
 
@@ -475,6 +513,8 @@
       <div id="ccYourTurn" class="cc-yourturn" aria-hidden="true">ตาคุณ!</div>
       <div class="cc-hand-fade l" id="ccFadeL" hidden></div>
       <div class="cc-hand-fade r" id="ccFadeR" hidden></div>
+      <button type="button" class="cc-hand-more l" id="ccMoreL" aria-label="เลื่อนไปดูไพ่ที่ลงได้ทางซ้าย">‹ ลงได้</button>
+      <button type="button" class="cc-hand-more r" id="ccMoreR" aria-label="เลื่อนไปดูไพ่ที่ลงได้ทางขวา">ลงได้ ›</button>
       <div id="ccHand" class="cc-hand" role="listbox" aria-label="ไพ่ในมือ"></div>
     </div>
   </div>
@@ -487,6 +527,8 @@
     <h3 id="ccPickerTitle">เลือกสีต่อไป</h3>
     <div class="cc-picker-grid" id="ccPickerGrid"></div>
     <p class="cc-picker-note" id="ccPickerNote"></p>
+    <button type="button" class="cc-picker-call" id="ccPickerCall" hidden>เหลือใบเดียว! (กดก่อนเลือกสี)</button>
+    <p class="cc-picker-called" id="ccPickerCalled" hidden>✓ บอกแล้ว: เหลือใบเดียว</p>
     <button type="button" class="cc-picker-cancel" id="ccPickerCancel">ยกเลิก</button>
   </div>
 </div>
@@ -688,6 +730,15 @@ $(function() {
     $('#ccNowPhase').text(d.phase);
     $('#ccNowCopy').html(d.text);
     $('#ccNow').toggleClass('is-mine', !!d.mine);
+    $('#ccNowLast').text(lastLine());
+  }
+  /** บรรทัดเล็กใต้แถบสถานะ: เกิดอะไรล่าสุด (บอทเล่นเร็ว ตามทันได้โดยไม่ต้องเปิดบันทึกเกม) */
+  function lastLine() {
+    const me = selfSeat();
+    if (S.phase === 'turn' && me && me.idle && !me.left) return '⏰ คุณหมดเวลาติดกัน — ตาคุณจะสั้นลงจนกว่าจะเล่นเอง';
+    if (S.phase !== 'turn') return '';
+    const item = (S.history || [])[0];
+    return item ? 'ล่าสุด: ' + (item.icon ? item.icon + ' ' : '') + (item.text || '') : '';
   }
 
   // ---------- opponents ----------
@@ -716,10 +767,11 @@ $(function() {
       else if (win && win.playerId === p.playerId) tag = '<span class="cc-tag cc-tag--warn">ยังไม่บอก!</span>';
       else if (p.called && p.count <= 2) tag = '<span class="cc-tag">เหลือใบเดียว!</span>';
       else if (!p.online && !p.isBot) tag = '<span class="cc-tag cc-tag--warn">หลุด</span>';
+      else if (p.idle && !p.isBot) tag = '<span class="cc-tag cc-tag--warn">ไม่อยู่?</span>';
       return '<div class="cc-opp' + (p.isTurn ? ' is-turn' : '') + (p.left ? ' is-left' : '') + (p.count === 1 ? ' is-one' : '') + (!p.online && !p.isBot ? ' is-offline' : '') + '" data-seat-id="' + esc(p.playerId) + '">' +
         tag +
         '<div class="cc-opp-av">' + avatarHtml(p, 28) + '</div>' +
-        '<div class="cc-opp-name">' + esc(p.name) + '</div>' +
+        '<div class="cc-opp-name" title="' + esc(p.name) + '">' + esc(p.name) + '</div>' +
         '<div class="cc-opp-count"><span class="cc-minibk" aria-hidden="true"></span><span aria-label="' + p.count + ' ใบ">' + p.count + '</span></div>' +
         (showScore ? '<span class="cc-opp-score">' + p.score + ' แต้ม</span>' : '') +
       '</div>';
@@ -790,6 +842,32 @@ $(function() {
     const over = hand.scrollWidth > hand.clientWidth + 2;
     $('#ccFadeL').prop('hidden', !over || hand.scrollLeft < 4);
     $('#ccFadeR').prop('hidden', !over || hand.scrollLeft + hand.clientWidth >= hand.scrollWidth - 4);
+    const hidden = hiddenPlayable();
+    $('#ccMoreL').toggleClass('is-on', over && hidden.left.length > 0);
+    $('#ccMoreR').toggleClass('is-on', over && hidden.right.length > 0);
+  }
+  /** ไพ่ที่ลงได้แต่ถูกเลื่อนออกนอกจอ (มือใหญ่) — แยกซ้าย/ขวา */
+  function hiddenPlayable() {
+    const out = { left: [], right: [] };
+    const hand = document.getElementById('ccHand');
+    if (!hand.classList.contains('is-myturn')) return out;
+    const box = hand.getBoundingClientRect();
+    hand.querySelectorAll('.cc-card.is-playable').forEach(el => {
+      const r = el.getBoundingClientRect();
+      const visible = Math.min(r.right, box.right - 16) - Math.max(r.left, box.left + 16);
+      if (visible >= 24) return;
+      (r.left < box.left + 16 ? out.left : out.right).push(el.dataset.id);
+    });
+    return out;
+  }
+  /** ต้นตา: ถ้าไม่มีไพ่ที่ลงได้อยู่ในจอเลย เลื่อนไปหาใบแรกที่ลงได้ */
+  function revealPlayable() {
+    const hand = document.getElementById('ccHand');
+    const playable = [...hand.querySelectorAll('.cc-card.is-playable')];
+    if (!playable.length || hand.scrollWidth <= hand.clientWidth + 2) return;
+    const hidden = hiddenPlayable();
+    if (hidden.left.length + hidden.right.length < playable.length) return;
+    scrollCardIntoView(playable[0].dataset.id);
   }
   function captureRects() {
     const map = new Map();
@@ -824,6 +902,12 @@ $(function() {
     hand.scrollTo({ left: Math.max(0, target), behavior: reduceMotion ? 'auto' : 'smooth' });
   }
 
+  $('#ccMoreL, #ccMoreR').on('click', function() {
+    const hidden = hiddenPlayable();
+    const list = this.id === 'ccMoreL' ? hidden.left : hidden.right;
+    if (list.length) scrollCardIntoView(this.id === 'ccMoreL' ? list[list.length - 1] : list[0]);
+  });
+
   // ---------- actions ----------
   function renderActions() {
     const a = S.availableActions || {};
@@ -850,7 +934,7 @@ $(function() {
       }
       if (!hint) {
         if (myTurn && selectedId) hint = 'แตะอีกครั้ง หรือปัดขึ้น เพื่อลงใบนี้';
-        else if (myTurn && a.canPlay) hint = 'แตะไพ่ที่ยกขึ้นเพื่อเลือก';
+        else if (myTurn && a.canPlay) hint = 'ลงได้ ' + (self.playable || []).length + ' ใบ — แตะไพ่ที่ยกขึ้นเพื่อเลือก';
         else if (!myTurn) hint = 'ไพ่ในมือ ' + self.hand.length + ' ใบ';
       }
     } else if (self && !self.left && S.phase !== 'turn') {
@@ -877,37 +961,55 @@ $(function() {
   }
 
   // ---------- results ----------
+  /** คนจริงที่ยังต่ออยู่ — ใช้นับ "พร้อมรอบต่อไป" ให้ตรงกับฝั่งเซิร์ฟเวอร์ */
+  function readyCount() {
+    const humans = (S.seats || []).filter(p => !p.isBot && !p.left && p.online);
+    const ready = new Set(S.roundReady || []);
+    return { ready: humans.filter(p => ready.has(p.playerId)).length, total: humans.length };
+  }
+  function roundEndNote(remain) {
+    const c = readyCount();
+    const tail = c.total > 1 ? ' · พร้อมแล้ว ' + c.ready + '/' + c.total + ' (ครบ = เริ่มเลย)' : '';
+    return (remain > 0 ? 'รอบต่อไปเริ่มเองใน ' + remain + ' วิ' : 'รอบต่อไปกำลังเริ่ม') + tail;
+  }
   function renderSheet() {
     const sheet = $('#ccSheet');
     if (S.phase !== 'roundEnd' && S.phase !== 'finished') { sheet.removeClass('is-on'); return; }
+    // ป้ายลอย (กลับทิศ/เปลี่ยนสี) ค้างทับหัวสรุปผล — เก็บก่อน
+    if (!sheet.hasClass('is-on')) { clearTimeout(bannerTimer); $('#ccBanner').removeClass('is-on'); }
     const rr = S.roundResult;
     const finished = S.phase === 'finished';
+    const target = S.config && S.config.target;
     const iWon = finished ? (S.winner && S.winner.playerId === playerId) : (rr && rr.winnerId === playerId);
     let title = '';
     let sub = '';
     if (finished) {
       title = S.winner ? (iWon ? 'คุณชนะ!' : esc(S.winner.name) + ' ชนะ!') : 'จบเกม';
-      sub = esc(S.finishReason || '') + (S.config && S.config.target && S.winner ? ' · ' + S.winner.score + ' แต้ม' : '');
+      sub = esc(S.finishReason || '') + (target && S.winner ? ' · ' + S.winner.score + ' แต้ม' : '');
     } else if (rr) {
       title = (iWon ? 'คุณ' : esc(rr.winnerName)) + ' ทิ้งหมดมือ!';
-      sub = 'ได้ ' + rr.points + ' แต้มจากไพ่ในมือคนอื่น · เป้า ' + (S.config ? S.config.target : '') + ' แต้ม';
+      sub = 'ได้ ' + rr.points + ' แต้มจากไพ่ในมือคนอื่น · เป้า ' + (target || '') + ' แต้ม';
     }
-    let rows = '';
-    if (rr && (!finished || !S.config || !S.config.target)) {
-      rows = rr.hands.map((h, i) => '<div class="cc-row' + (h.playerId === rr.winnerId ? ' is-win' : '') + '">' +
+    // มือที่เหลือของแต่ละคนรอบนี้ = เหตุผลว่าใครได้/เสียแต้มเท่าไร
+    const handRows = rr ? rr.hands.map((h, i) => '<div class="cc-row' + (h.playerId === rr.winnerId ? ' is-win' : '') + '">' +
         '<span class="cc-rank">' + (h.playerId === rr.winnerId ? '🏆' : (i + 1)) + '</span>' +
         '<span class="cc-row-name">' + esc(h.name) + (h.playerId === playerId ? ' (คุณ)' : '') + '</span>' +
-        '<span class="cc-row-val">' + (h.playerId === rr.winnerId ? '+' + rr.points : h.cards.length + ' ใบ · ' + h.value) + '</span>' +
+        '<span class="cc-row-val">' + (h.playerId === rr.winnerId ? '+' + rr.points + ' แต้ม' : h.value + ' แต้ม') + '</span>' +
         (h.cards.length ? '<span class="cc-row-cards">' + sortHand(h.cards).map(c => cardHtml(c)).join('') + '</span>' : '') +
-      '</div>').join('');
-    }
-    if (S.config && S.config.target) {
+      '</div>').join('') : '';
+    let rows = '';
+    if (target) {
       const board = finished && S.standings ? S.standings : (S.seats || []).slice().sort((x, y) => y.score - x.score);
-      rows += '<div class="cc-sheet-kicker" style="margin-top:12px;">คะแนนรวม (ถึง ' + S.config.target + ')</div>' + board.map((p, i) =>
+      const totals = '<div class="cc-sheet-kicker" style="margin-top:12px;">คะแนนรวม (ถึง ' + target + ')</div>' + board.map((p, i) =>
         '<div class="cc-row' + ((finished && p.won) ? ' is-win' : '') + '"><span class="cc-rank">' + (i + 1) + '</span>' +
         '<span class="cc-row-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + (p.left ? ' · ออกแล้ว' : '') + '</span>' +
-        '<span class="cc-row-val">' + p.score + '</span></div>').join('');
-    } else if (finished && !rr && S.standings) {
+        '<span class="cc-row-val">' + p.score + (rr && rr.winnerId === p.playerId && rr.points ? '<span class="cc-row-delta">+' + rr.points + '</span>' : '') + '</span></div>').join('');
+      rows = finished
+        ? totals + (handRows ? '<div class="cc-sheet-kicker" style="margin-top:12px;">ไพ่ที่เหลือ รอบสุดท้าย</div>' + handRows : '')
+        : handRows + totals;
+    } else if (rr) {
+      rows = handRows;
+    } else if (finished && S.standings) {
       rows = S.standings.map((p, i) => '<div class="cc-row' + (p.won ? ' is-win' : '') + '"><span class="cc-rank">' + (p.won ? '🏆' : i + 1) + '</span>' +
         '<span class="cc-row-name">' + esc(p.name) + (p.left ? ' · ออกแล้ว' : '') + '</span><span class="cc-row-val">' + p.cardsLeft + ' ใบ</span></div>').join('');
     }
@@ -918,9 +1020,13 @@ $(function() {
         '<button type="button" class="cc-btn" id="ccShareBtn">แชร์ผล</button>' +
         '</div><div class="cc-sheet-note" id="ccSheetNote">ทุกคนกลับห้องรอพร้อมกัน</div>';
     } else {
-      actions = '<div class="cc-sheet-actions">' +
-        ((S.availableActions || {}).canNextRound ? '<button type="button" class="cc-btn cc-btn--primary" id="ccNextBtn">เริ่มรอบต่อไปเลย</button>' : '') +
-        '</div><div class="cc-sheet-note" id="ccSheetNote">รอบต่อไปเริ่มเอง</div>';
+      const a = S.availableActions || {};
+      let btn = '';
+      if (a.canNextRound) btn = '<button type="button" class="cc-btn cc-btn--primary" id="ccNextBtn">เริ่มรอบต่อไปเลย</button>';
+      else if (a.canReady) btn = '<button type="button" class="cc-btn cc-btn--primary" id="ccReadyBtn">พร้อมรอบต่อไป</button>';
+      else if (S.self && !S.self.left) btn = '<span class="cc-called" style="margin:0 auto;">✓ พร้อมแล้ว — รอคนอื่น</span>';
+      const remain = S.phaseEndsAt ? Math.max(0, Math.ceil((S.phaseEndsAt - now()) / 1000)) : 0;
+      actions = '<div class="cc-sheet-actions">' + btn + '</div><div class="cc-sheet-note" id="ccSheetNote">' + esc(roundEndNote(remain)) + '</div>';
     }
     $('#ccSheetCard').html(
       '<div class="cc-sheet-kicker">' + (finished ? 'จบเกม' : 'จบรอบ ' + S.round) + '</div>' +
@@ -985,6 +1091,7 @@ $(function() {
   }
   let bannerTimer = null;
   function banner(text, sub, bad) {
+    if (document.getElementById('ccSheet').classList.contains('is-on')) return; // สรุปผลเปิดอยู่ ไม่เอาป้ายมาทับ
     const el = document.getElementById('ccBanner');
     el.innerHTML = esc(text) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     el.classList.remove('is-on', 'is-bad');
@@ -1006,6 +1113,8 @@ $(function() {
     const handDelta = [...curIds].filter(id => !prevIds.has(id));
     let myDrawAnimated = false;
     let delay = 0;
+    const myTimeout = events.some(e => e.kind === 'timeout' && e.playerId === playerId);
+    const myTurnNow = S.phase === 'turn' && S.turn && S.turn.playerId === playerId;
     events.forEach(e => {
       const oppEl = e.playerId ? document.querySelector('.cc-opp[data-seat-id="' + CSS.escape(e.playerId) + '"]') : null;
       if (e.kind === 'play') {
@@ -1032,6 +1141,8 @@ $(function() {
             if (handDelta.length === 1) setTimeout(() => scrollCardIntoView(handDelta[0]), 80);
           }
           if (e.kind === 'penalty' && e.count) popOn(playerId, '+' + e.count, 'bad');
+          // จั่วแล้วลงไม่ได้ เซิร์ฟเวอร์ผ่านให้เลย — บอกให้ชัดว่าทำไมตาหลุดไป
+          if (e.kind === 'draw' && e.count && !myTimeout && !myTurnNow) popOn(playerId, 'ใบที่จั่วลงไม่ได้ — ผ่าน');
         } else if (oppEl) {
           flyBacks(deck, oppEl, e.count || 1, delay);
           if (e.kind === 'penalty' && e.count) popOn(e.playerId, '+' + e.count, 'bad');
@@ -1078,6 +1189,13 @@ $(function() {
     lastTurnCue = key;
     const el = document.getElementById('ccYourTurn');
     el.classList.remove('is-on'); void el.offsetWidth; el.classList.add('is-on');
+    setTimeout(revealPlayable, 60);
+    // มือถือแนวนอน: ถึงตาแล้วเลื่อนให้เห็นกองทิ้งชิดเหนือแถบมือ (ไม่งั้นโต๊ะจมใต้แถบมือ)
+    if (window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches) {
+      const table = document.getElementById('ccTable').getBoundingClientRect();
+      const dock = document.getElementById('ccDock').getBoundingClientRect();
+      if (table.bottom > dock.top || table.top < 0) window.scrollTo({ top: Math.max(0, window.scrollY + table.bottom - dock.top + 4), behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
     sfx.turn();
     haptic([14, 30, 14]);
     if (document.hidden && window.partyPlay) window.partyPlay.pingTurn({ key: 'cc-' + key, title: 'ตาคุณ', subtitle: 'ลงไพ่หรือจั่ว' });
@@ -1102,7 +1220,7 @@ $(function() {
           renderCatch();
           renderOpps();
         } else {
-          $('#ccCatchBar').css('transform', 'scaleX(' + Math.max(0, Math.min(1, left / 4000)).toFixed(3) + ')');
+          $('#ccCatchBar').css('transform', 'scaleX(' + Math.max(0, Math.min(1, left / (Number(S.catchWindow.ms) || 4000))).toFixed(3) + ')');
         }
       }
       if (!S.phaseEndsAt) {
@@ -1113,7 +1231,7 @@ $(function() {
       const ms = Math.max(0, S.phaseEndsAt - now());
       const remain = Math.ceil(ms / 1000);
       $('#ccNowSec').text(remain);
-      if (S.phase === 'roundEnd') $('#ccSheetNote').text('รอบต่อไปเริ่มใน ' + remain + ' วิ');
+      if (S.phase === 'roundEnd') $('#ccSheetNote').text(roundEndNote(remain));
       const total = S.phase === 'turn' ? Math.max(ms, (S.config && S.config.turnMs) || 20000) : Math.max(ms, 12000);
       $('#ccNow').toggleClass('is-urgent', remain <= 5 && S.phase === 'turn' && !!(describeNow().mine));
       $('#ccNowBar').css('transform', 'scaleX(' + Math.max(0, Math.min(1, ms / total)).toFixed(3) + ')');
@@ -1135,6 +1253,7 @@ $(function() {
     renderActions();
     renderSheet();
     renderFeed();
+    syncPicker();
     // ไพ่ที่ยังอยู่ในมือเลื่อนตำแหน่งนุ่ม ๆ (FLIP)
     if (!firstRender && !reduceMotion) {
       document.querySelectorAll('#ccHand .cc-card[data-id]').forEach(el => {
@@ -1192,10 +1311,26 @@ $(function() {
     $('#ccPickerGrid').html(['r', 'y', 'g', 'b'].map(c =>
       '<button type="button" data-color="' + c + '" class="' + (c === best ? 'is-best' : '') + '" style="--sw:' + COLOR_VAR[c] + '">' + SHAPE[c] + COLOR_NAME[c] + '</button>').join(''));
     $('#ccPickerNote').text('ขอบขาว = สีที่คุณถือเยอะสุด');
+    syncPickerCall();
     $('#ccPicker').addClass('is-on');
     setTimeout(() => { const b = document.querySelector('#ccPickerGrid .is-best'); if (b) b.focus(); }, 30);
   }
   function closePicker() { $('#ccPicker').removeClass('is-on'); pickerCard = null; }
+  /** ลงไวลด์เป็นใบรองสุดท้าย: ปุ่มเหลือใบเดียวอยู่ใต้ชีตเลือกสี — ยกมาไว้ในชีตด้วย */
+  function syncPickerCall() {
+    const a = S.availableActions || {};
+    const self = S.self || {};
+    $('#ccPickerCall').prop('hidden', !a.canCall);
+    $('#ccPickerCalled').prop('hidden', !(self.called && (self.hand || []).length <= 2));
+  }
+  /** ตาเปลี่ยน/หมดเวลา/ไพ่ลงไม่ได้แล้ว ระหว่างเปิดชีตเลือกสี — ปิดชีต ไม่ให้กดสีแล้วเจอ error */
+  function syncPicker() {
+    if (!pickerCard) return;
+    const myTurn = S.phase === 'turn' && S.turn && S.turn.playerId === playerId;
+    if (!myTurn || !((S.self && S.self.playable) || []).includes(pickerCard.id)) { closePicker(); return; }
+    syncPickerCall();
+  }
+  $('#ccPickerCall').on('click', function() { send('colorcards_call', {}, function(res) { if (res && res.success) haptic([10, 20, 10]); }); });
   function tryPlay(id) {
     const card = ((S.self && S.self.hand) || []).find(c => c.id === id);
     if (!card) return;
@@ -1203,12 +1338,25 @@ $(function() {
     if (!(S.self.playable || []).includes(id) || !a.canPlay) {
       const el = document.querySelector('#ccHand .cc-card[data-id="' + id + '"]');
       if (el) { el.classList.remove('is-shake'); void el.offsetWidth; el.classList.add('is-shake'); }
-      $('#ccHint').text(S.turn && S.turn.playerId === playerId ? 'ลงใบนี้ไม่ได้ — สีหรือเลขไม่ตรง' : 'ยังไม่ถึงตาคุณ').addClass('is-strong');
+      $('#ccHint').text(whyNot(card)).addClass('is-strong');
       haptic(8);
       return;
     }
     if (card.kind === 'wild' || card.kind === 'd4') { openPicker(card); return; }
     sendPlay(card, null);
+  }
+  /** ทำไมลงใบนี้ไม่ได้ — บอกให้ตรงจุด (สีไหน/เลขไหนถึงจะลงได้) */
+  function whyNot(card) {
+    if (S.phase !== 'turn' || !S.turn) return 'ยังไม่ถึงจังหวะเล่น';
+    if (S.turn.playerId !== playerId) return 'ยังไม่ถึงตาคุณ — ตอนนี้ตา ' + (S.turn.name || '');
+    if (S.turn.drawn) return 'จั่วแล้ว — ลงได้แค่ใบที่เพิ่งจั่ว หรือกดผ่าน';
+    if (S.pendingDraw > 0) return 'ต้องซ้อน ' + (S.pendingKind === 'd4' ? '+4' : '+2/+4') + ' หรือกด "รับ ' + S.pendingDraw + ' ใบ"';
+    const top = S.top;
+    const col = S.currentColor ? 'สี' + COLOR_NAME[S.currentColor] : '';
+    let same = '';
+    if (top && top.kind === 'num') same = 'เลข ' + top.value;
+    else if (top && KIND_NAME[top.kind] && top.kind !== 'wild' && top.kind !== 'd4') same = 'ใบ ' + KIND_NAME[top.kind];
+    return 'ลง ' + cardName(card) + ' ไม่ได้ — ต้องเป็น' + [col, same].filter(Boolean).join(' หรือ') + ' หรือไพ่เปลี่ยนสี';
   }
   function sendPlay(card, color) {
     selectedId = null;
@@ -1266,7 +1414,12 @@ $(function() {
   window.addEventListener('resize', function() { renderOpps(); layoutHand(); syncDockHeight(); });
 
   $(document).on('click', '#ccDrawBtn', function() { send('colorcards_draw'); });
-  $('#ccDeck').on('click', function() { if ((S.availableActions || {}).canDraw) send('colorcards_draw'); });
+  $('#ccDeck').on('click', function() {
+    if ((S.availableActions || {}).canDraw) { send('colorcards_draw'); return; }
+    if (S.phase !== 'turn' || !S.self || S.self.left) return;
+    $('#ccHint').text(S.turn && S.turn.playerId === playerId && S.turn.drawn ? 'จั่วแล้ว — ลงใบที่จั่ว หรือกด "เก็บไว้ · ผ่าน"' : 'ยังไม่ถึงตาคุณ — ตอนนี้ตา ' + ((S.turn && S.turn.name) || '')).addClass('is-strong');
+    haptic(8);
+  });
   $(document).on('click', '#ccPassBtn', function() { send('colorcards_pass'); });
   $(document).on('click', '#ccPlayDrawnBtn', function() { if (S.self && S.self.drawnCardId) tryPlay(S.self.drawnCardId); });
   $(document).on('click', '#ccCallBtn', function() { send('colorcards_call', {}, function(res) { if (res && res.success) haptic([10, 20, 10]); }); });
@@ -1283,7 +1436,13 @@ $(function() {
   $('#ccPickerCancel').on('click', closePicker);
   $('#ccPicker').on('click', function(e) { if (e.target === this) closePicker(); });
   $(document).on('click', '#ccNextBtn', function() { send('colorcards_nextRound'); });
-  $(document).on('click', '#ccBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }); });
+  $(document).on('click', '#ccBackBtn', function() {
+    const btn = $(this).prop('disabled', true).text('กำลังพากลับห้องรอ…');
+    socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) {
+      if (res && res.success === false) { toastError(res.error); btn.prop('disabled', false).text('กลับห้องรอ · เล่นอีกตา'); }
+    });
+  });
+  $(document).on('click', '#ccReadyBtn', function() { send('colorcards_ready'); });
   $(document).on('click', '#ccShareBtn', function() {
     if (!window.partyPlay || !S.standings) return;
     window.partyPlay.shareResult({
@@ -1322,6 +1481,7 @@ $(function() {
       '<p style="margin-top:6px;">+4 ลงได้ทุกเมื่อ (ไม่มีกติกาท้า)' + (S.config && S.config.stacking ? ' · ห้องนี้ <b>ซ้อน +2/+4 ได้</b> คนที่ไม่มีซ้อนรับทั้งหมด' : '') + '</p>' +
       '<h4>เหลือใบเดียว!</h4><p>ก่อนลงใบรองสุดท้าย กด <b>เหลือใบเดียว!</b> · ลืมกด คนอื่นกด <b>จับได้!</b> ภายใน 4 วิ = จั่ว 2</p>' +
       '<h4>แต้ม</h4><p>คนหมดมือได้แต้ม = ไพ่ในมือคนอื่นรวมกัน (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50)' + (S.config && S.config.target ? ' · ห้องนี้เล่นจนมีคนถึง <b>' + S.config.target + ' แต้ม</b>' : ' · ห้องนี้เล่น <b>1 รอบ</b>') + '</p>' +
+      '<h4>จังหวะเกม</h4><p>หมดเวลาติดกัน 2 ตา ตาต่อไปจะสั้นลงจนกว่าจะกลับมาเล่นเอง · จบรอบแล้วทุกคนกด <b>พร้อม</b> = เริ่มรอบต่อไปทันที</p>' +
       '<h4>สีกับสัญลักษณ์</h4><p>แดง ▲ · เหลือง ● · เขียว ■ · น้ำเงิน ◆ (ดูง่ายแม้แยกสีลำบาก)</p>' +
       '</div>';
   }
@@ -1365,6 +1525,12 @@ $(function() {
     socket.emit('colorcards_requestState', { roomId: roomId, playerId: playerId });
   });
   socket.on('disconnect', function() { $('#connectionStatus').show(); });
+  // สลับแอป/แท็บแล้วกลับมา: ผูก socket นี้กับห้องใหม่ + ขอ state เต็ม (เปิดสองแท็บแล้วปิดแท็บหนึ่ง แท็บที่เหลือจะไม่ค้าง)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState !== 'visible' || !socket.connected) return;
+    socket.emit('setRoom', { roomId: roomId, playerId: playerId });
+    socket.emit('colorcards_requestState', { roomId: roomId, playerId: playerId });
+  });
   socket.on('colorcardsState', render);
   socket.on('roomUpdate', function(data) {
     if (!data || !data.players) return;

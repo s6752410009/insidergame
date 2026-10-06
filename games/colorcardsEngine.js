@@ -30,6 +30,7 @@ const DRAWN_MIN_MS = Number(process.env.COLORCARDS_DRAWN_MIN_MS) || 7000;
 const ROUND_END_MS = Number(process.env.COLORCARDS_ROUND_END_MS) || 12000;
 const CATCH_MS = Number(process.env.COLORCARDS_CATCH_MS) || 4000;
 const BOT_TURN_MS = Number(process.env.COLORCARDS_BOT_MS) || 1100;
+const IDLE_TURNS = 2; // หมดเวลาติดกันกี่ตา ถึงนับว่าไม่อยู่ (ตาถัดไปสั้นลงเหมือนคนหลุด)
 
 const COLORS = ['r', 'y', 'g', 'b'];
 const COLOR_NAME = { r: 'แดง', y: 'เหลือง', g: 'เขียว', b: 'น้ำเงิน' };
@@ -290,7 +291,7 @@ function setTurn(room, index) {
     const seat = state.seats[index];
     if (!seat) return;
     const now = Date.now();
-    const away = isLongOffline(room, seat, now);
+    const away = isLongOffline(room, seat, now) || (Number(seat.idle) || 0) >= IDLE_TURNS;
     state.turnSeq = (Number(state.turnSeq) || 0) + 1;
     state.turn = { playerId: seat.playerId, drawnCardId: null, startedAt: now, seq: state.turnSeq };
     state.phaseEndsAt = now + (away ? Math.min(OFFLINE_TURN_MS, state.config.turnMs) : state.config.turnMs);
@@ -331,7 +332,8 @@ function startGame(room, rng = Math.random, options = {}) {
         score: 0,
         roundsWon: 0,
         called: false,
-        left: false
+        left: false,
+        idle: 0
     }));
     state.dealerIndex = Math.floor(rng() * state.seats.length);
     room.gameState = state;
@@ -353,6 +355,7 @@ function startRound(room, rng = Math.random, presetDeck = null) {
     state.pendingKind = null;
     state.catchWindow = null;
     state.roundResult = null;
+    state.roundReady = [];
     state.currentColor = null;
     state.discard = [];
     stripFxCards(state);
@@ -442,6 +445,7 @@ function assertTurn(room, playerId, context) {
         && Number(context.turnSeq) !== Number(state.turnSeq)) {
         throw new Error('จังหวะเปลี่ยนไปแล้ว ลองใหม่อีกครั้ง');
     }
+    seat.idle = 0;
     return { state, seat };
 }
 
@@ -603,14 +607,15 @@ function drawCard(room, playerId, context = null, rng = Math.random) {
     }
     if (isPlayable(state, got[0])) {
         state.turn.drawnCardId = got[0];
+        state.turn.drawnAt = Date.now();
         state.turnSeq = (Number(state.turnSeq) || 0) + 1;
         state.turn.seq = state.turnSeq;
         state.phaseEndsAt = Math.max(state.phaseEndsAt || 0, Date.now() + Math.min(DRAWN_MIN_MS, state.config.turnMs));
-        pushHistory(room, '🂠', `${seat.name} จั่ว 1 ใบ`);
+        pushHistory(room, '📥', `${seat.name} จั่ว 1 ใบ`);
         bumpStep(room);
         return state;
     }
-    pushHistory(room, '🂠', `${seat.name} จั่ว 1 ใบ แล้วผ่าน`);
+    pushHistory(room, '📥', `${seat.name} จั่ว 1 ใบ แล้วผ่าน`);
     advance(room, 1);
     return state;
 }
@@ -763,6 +768,22 @@ function nextRound(room, playerId, rng = Math.random) {
     return startRound(room, rng);
 }
 
+/** ทุกคน (คนจริงที่ยังต่ออยู่) กดพร้อม → เริ่มรอบต่อไปทันที ไม่ต้องรอนาฬิกา/หัวห้อง */
+function readyNextRound(room, playerId, rng = Math.random) {
+    const state = room.gameState;
+    if (!state || state.status !== 'playing' || state.phase !== 'roundEnd') throw new Error('ยังไม่จบรอบ');
+    const seat = getSeat(room, playerId);
+    if (!seat || seat.left) throw new Error('คุณไม่ได้อยู่ในเกมนี้');
+    seat.idle = 0;
+    const ready = Array.isArray(state.roundReady) ? state.roundReady : [];
+    if (!ready.includes(playerId)) ready.push(playerId);
+    state.roundReady = ready;
+    const humans = activeSeats(room).filter(s => !isBotId(s.playerId) && isConnected(room, s));
+    if (humans.every(s => ready.includes(s.playerId))) return startRound(room, rng);
+    bumpStep(room);
+    return state;
+}
+
 function endGame(room, playerId) {
     const state = room.gameState;
     if (!state || state.status !== 'playing') throw new Error('เกมยังไม่เริ่มหรือจบแล้ว');
@@ -786,6 +807,7 @@ function autoResolvePhase(room, rng = Math.random) {
         advance(room, 1);
         return state;
     }
+    if (!isBotId(seat.playerId)) seat.idle = (Number(seat.idle) || 0) + 1;
     if (state.turn.drawnCardId) {
         pushHistory(room, '⏰', `${seat.name} หมดเวลา — ผ่าน`);
         pushFx(room, { kind: 'timeout', playerId: seat.playerId });
@@ -867,14 +889,19 @@ function botNeedsTurn(room) {
     return botTurnPending(room) || botCatchPending(room);
 }
 
+/** บอทขยับเมื่อไร: ต้นตา + 1.1 วิ · จั่วแล้วได้ใบลงได้ = นับจากตอนจั่วอีก 0.66 วิ (ให้คนเห็นว่าจั่วก่อนค่อยลง) */
+function botDueAt(state, now = Date.now()) {
+    if (state.turn.drawnCardId) return (state.turn.drawnAt || state.turn.startedAt || now) + BOT_TURN_MS * 0.6;
+    return (state.turn.startedAt || now) + BOT_TURN_MS;
+}
+
 /** เวลา (ms นับจากตอนนี้) ที่บอทควรขยับครั้งถัดไป หรือ null */
 function botDelay(room, now = Date.now()) {
     const state = room.gameState;
     const waits = [];
     if (botCatchPending(room, now)) waits.push(Math.max(0, state.catchWindow.botCatchAt - now));
     if (botTurnPending(room)) {
-        const base = state.turn.drawnCardId ? BOT_TURN_MS * 0.6 : BOT_TURN_MS;
-        const due = (state.turn.startedAt || now) + base;
+        const due = botDueAt(state, now);
         waits.push(Math.max(250, due - now));
     }
     return waits.length ? Math.min(...waits) : null;
@@ -897,7 +924,7 @@ function playBotTurns(room, rng = Math.random, now = Date.now()) {
 
     if (botTurnPending(room)) {
         const seat = getSeat(room, state.turn.playerId);
-        const due = (state.turn.startedAt || now) + (state.turn.drawnCardId ? BOT_TURN_MS * 0.6 : BOT_TURN_MS) - 50;
+        const due = botDueAt(state, now) - 50;
         if (seat && now >= due) {
             const move = chooseBotMove(room, seat, rng);
             const ctx = { turnSeq: state.turnSeq };
@@ -956,9 +983,13 @@ function getAvailableActions(room, viewerId) {
         canCall: false,
         canCatch: null,
         canNextRound: isHost && playing && state.phase === 'roundEnd',
+        canReady: false,
         canEnd: isHost && playing
     };
     if (!seat || seat.left || !playing) return base;
+    if (state.phase === 'roundEnd') {
+        return { ...base, canReady: !(state.roundReady || []).includes(viewerId) };
+    }
     const myTurn = state.phase === 'turn' && state.turn?.playerId === viewerId;
     const playable = myTurn ? playableIds(room, viewerId) : [];
     const actions = { ...base };
@@ -1012,7 +1043,8 @@ function buildClientState(room, viewerId) {
         phaseEndsAt: state.phaseEndsAt,
         pendingDraw: state.pendingDraw || 0,
         pendingKind: state.pendingKind || null,
-        catchWindow: win ? { playerId: win.playerId, until: win.until } : null,
+        catchWindow: win ? { playerId: win.playerId, until: win.until, ms: CATCH_MS } : null,
+        roundReady: state.phase === 'roundEnd' ? (state.roundReady || []).slice() : [],
         dealerId: dealer ? dealer.playerId : null,
         isHost: room.admin === viewerId,
         seats: seats.map(seat => ({
@@ -1026,6 +1058,7 @@ function buildClientState(room, viewerId) {
             roundsWon: seat.roundsWon,
             called: !!seat.called,
             left: !!seat.left,
+            idle: (Number(seat.idle) || 0) >= IDLE_TURNS,
             online: isConnected(room, seat),
             isBot: isBotId(seat.playerId),
             isSelf: seat.playerId === viewerId,
@@ -1087,6 +1120,7 @@ module.exports = {
     callLast,
     catchPlayer,
     nextRound,
+    readyNextRound,
     endGame,
     autoResolvePhase,
     playBotTurns,
