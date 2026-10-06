@@ -142,14 +142,23 @@ function conn(base) { return new Promise(r => { const s = io(base, { transports:
                 } catch {}
             }
             // เบราว์เซอร์ก็ต้องเล่นด้วย ไม่งั้นเกมค้างรอ (เลือกแอ็กชันแรกที่กดได้)
-            const mine = await page.$('.cp-action[data-action="tax"]') || await page.$('.cp-action[data-action="income"]');
+            // ปุ่มที่กดไม่ได้ยังโชว์ (ล็อก) — เลือกเฉพาะปุ่มที่กดได้ ครบ 10 เหรียญจะเหลือแค่รัฐประหาร
+            const mine = await page.$('.cp-action[data-action="tax"]:not([disabled])')
+                || await page.$('.cp-action[data-action="income"]:not([disabled])')
+                || await page.$('.cp-action[data-action="coup"]:not([disabled])');
             if (mine) await mine.click().catch(() => {});
             const pickTarget = await page.$('[data-target]');
             if (pickTarget) await pickTarget.click().catch(() => {});
+            // รัฐประหาร/ลอบสังหารต้องกดยืนยันเป้าหมายอีกครั้ง
+            const confirmTarget = await page.$('[data-confirm-target]');
+            if (confirmTarget) await confirmTarget.click().catch(() => {});
             const pass = await page.$('[data-respond="pass"]');
             if (pass) await pass.click().catch(() => {});
+            // หงายการ์ด: แตะเลือกก่อน แล้วกดยืนยัน
             const pick = await page.$('#myHand .cp-influence.is-pick');
             if (pick) await pick.click().catch(() => {});
+            const confirmLoss = await page.$('#cpLossConfirm:not([disabled])');
+            if (confirmLoss) await confirmLoss.click().catch(() => {});
             await delay(700);
         }
 

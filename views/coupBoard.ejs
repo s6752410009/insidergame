@@ -1,5 +1,5 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/chatPanel.css">
 <link rel="stylesheet" href="/static/css/coupGuide.css">
 <style>
@@ -18,6 +18,10 @@
   html.cp-active .footer,
   html.cp-active #music-controls { display: none !important; }
   html.cp-active .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  /* overflow-x:hidden ของ body/.container-fluid ทำให้ position:sticky ใช้ไม่ได้ (กลายเป็นกล่องเลื่อนเอง)
+     ใช้ clip แทน — ยังกันจอเลื่อนข้างได้เหมือนเดิม แต่แถบ "ตอนนี้" ติดขอบบนจอได้ */
+  html.cp-active body.content,
+  html.cp-active .container-fluid { overflow-x: clip !important; overflow-y: visible !important; }
   html.cp-active .container-fluid > .row { margin: 0 !important; }
   html.cp-active .col-lg-12 { padding: 0 !important; }
 
@@ -35,14 +39,17 @@
       radial-gradient(circle at 10% 5%, rgba(168, 85, 247, 0.20), transparent 26%),
       radial-gradient(circle at 90% 0%, rgba(245, 200, 107, 0.10), transparent 22%),
       linear-gradient(180deg, #12071a 0%, #1b0f2b 100%);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Bai Jamjuree', sans-serif;
   }
 
-  .cp-page { max-width: 960px; margin: 14px auto 32px; padding: 12px; color: var(--cp-text); }
+  /* padding ล่างเผื่อปุ่มแชทลอย ไม่ให้บังบันทึกเกม/ปุ่มท้ายหน้า */
+  .cp-page { max-width: 960px; margin: 14px auto 0; padding: 12px 12px 96px; color: var(--cp-text); }
   .cp-shell {
     border: 1px solid var(--cp-line); border-radius: 26px;
     background: rgba(20, 10, 32, 0.92);
-    box-shadow: 0 28px 80px rgba(0,0,0,0.5); overflow: hidden;
+    box-shadow: 0 28px 80px rgba(0,0,0,0.5);
+    /* clip (ไม่ใช่ hidden) — hidden ทำให้แถบ "ตอนนี้" ติดขอบบนจอ (sticky) ไม่ได้ */
+    overflow: hidden; overflow: clip;
   }
 
   .cp-topbar {
@@ -51,28 +58,35 @@
     background: linear-gradient(135deg, rgba(168,85,247,0.14), rgba(18,7,26,0.9));
   }
   .cp-kicker { color: var(--cp-purple); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
-  .cp-title { margin: 4px 0 0; font-family: 'Orbitron', sans-serif; font-size: clamp(1.3rem, 4vw, 1.9rem); }
+  .cp-title { margin: 4px 0 0; font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: clamp(1.3rem, 4vw, 1.9rem); }
   .cp-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; justify-content: flex-end; }
   .cp-chip {
     display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
     border: 1px solid var(--cp-line); background: rgba(255,255,255,0.04);
     font-size: 0.88rem; font-weight: 600; color: var(--cp-text); cursor: default; font-family: inherit;
   }
-  .cp-chip-btn { cursor: pointer; }
+  .cp-chip-btn { cursor: pointer; min-height: 40px; }
   .cp-chip-danger { border-color: rgba(255,107,129,0.35); color: #ffc9d1; }
 
   /* แถบบอกว่าตอนนี้ต้องทำอะไร — จุดสำคัญที่สุดของหน้านี้ */
+  /* ติดขอบบนจอตอนเลื่อน — มือถือเลื่อนลงไปดูปุ่ม/บันทึก ก็ยังเห็นว่าตาใคร เหลือกี่วิ */
   .cp-now {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 14px 20px; border-bottom: 1px solid var(--cp-line);
-    background: rgba(0,0,0,0.22);
+    position: sticky; top: 0; z-index: 60;
+    display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--cp-line);
+    background: #180c26;
   }
-  .cp-now.is-mine { background: linear-gradient(90deg, rgba(245,200,107,0.16), rgba(0,0,0,0.22)); }
+  .cp-now.is-mine { background: #2a1d24; box-shadow: inset 0 -2px 0 rgba(245,200,107,0.55); }
+  .cp-now-last {
+    flex: 1 0 100%; min-width: 0; font-size: 0.82rem; color: var(--cp-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cp-now-last b { color: #d8ccec; font-weight: 600; }
   .cp-now-label { color: var(--cp-purple); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-  .cp-now-copy { font-size: 1.02rem; }
+  .cp-now-copy { font-size: 1.02rem; flex: 1 1 0; min-width: 0; line-height: 1.35; }
   .cp-timer-wrap { margin-left: auto; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-  /* Orbitron ไม่มีสระ/วรรณยุกต์ไทย ต้องมี Rajdhani ต่อท้ายไม่งั้น "วิ" กลายเป็นกล่องเปล่า */
-  .cp-timer { font-family: 'Orbitron', 'Rajdhani', sans-serif; font-size: 1.25rem; color: var(--cp-gold); white-space: nowrap; }
+  /* Chakra Petch มีตัวไทยในตัว — ตัวเลขกับ "วิ" ใช้ฟอนต์เดียวกัน */
+  .cp-timer { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.25rem; color: var(--cp-gold); white-space: nowrap; }
   .cp-timeout-hint { font-size: 0.74rem; color: var(--cp-muted); white-space: nowrap; }
 
   .cp-grid { padding: 16px 20px 22px; display: grid; gap: 14px; }
@@ -99,7 +113,7 @@
   .cp-influence.is-pick { cursor: pointer; }
   .cp-influence.is-pick:hover, .cp-influence.is-selected { border-color: var(--cp-gold); box-shadow: 0 0 0 2px rgba(245,200,107,0.5); }
 
-  .cp-coins { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: var(--cp-gold); }
+  .cp-coins { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.5rem; color: var(--cp-gold); }
 
   /* ---- ผู้เล่นคนอื่น ---- */
   .cp-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -112,6 +126,14 @@
   .cp-player-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .cp-player-name { font-weight: 700; font-size: 0.94rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cp-player-stats { display: flex; gap: 10px; font-size: 0.84rem; color: var(--cp-muted); }
+  .cp-tag {
+    display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px;
+    font-size: 0.74rem; font-weight: 600; border: 1px solid var(--cp-line); color: var(--cp-text);
+  }
+  .cp-tag-wait { border-color: rgba(245,200,107,0.45); color: var(--cp-gold); }
+  .cp-tag-pass { color: #8ee6b8; border-color: rgba(110,231,183,0.35); }
+  .cp-tag-target { color: #ffc9d1; border-color: rgba(255,107,129,0.45); }
+  .cp-final-hand { margin-top: 4px; font-size: 0.74rem; color: var(--cp-gold); }
   .cp-backs { display: inline-flex; gap: 3px; }
   .cp-back { width: 13px; height: 19px; border-radius: 3px; background: linear-gradient(160deg,#6d28d9,#3b0764); border: 1px solid rgba(255,255,255,0.18); }
   .cp-dead-card { font-size: 0.72rem; color: #ff9aa8; }
@@ -119,6 +141,7 @@
   /* ---- ปุ่มแอ็กชัน ---- */
   .cp-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .cp-action {
+    min-height: 48px;
     display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
     padding: 12px; border-radius: 14px; cursor: pointer; text-align: left;
     border: 1px solid var(--cp-line); background: rgba(255,255,255,0.04);
@@ -129,32 +152,56 @@
   .cp-action-head { font-weight: 700; }
   .cp-action-detail { font-size: 0.76rem; color: var(--cp-muted); line-height: 1.35; }
   .cp-action-claim { font-size: 0.72rem; color: var(--cp-gold); }
+  .cp-action-why { font-size: 0.74rem; color: #ffb3bf; font-weight: 600; }
+  .cp-action:disabled .cp-action-why { opacity: 1; }
+
+  .cp-pending {
+    padding: 10px 12px; margin-bottom: 10px; border-radius: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--cp-line); line-height: 1.45;
+  }
+  .cp-hint { font-size: 0.8rem; color: var(--cp-muted); margin-top: 8px; line-height: 1.45; text-align: left; }
+  .cp-hint b { color: var(--cp-text); }
+  .cp-waitlist { margin-top: 8px; font-size: 0.86rem; color: var(--cp-muted); }
+  .cp-waitlist b { color: var(--cp-gold); }
+  .cp-done { color: #8ee6b8; font-weight: 700; margin-top: 8px; }
+  .cp-pick-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0 4px; }
+  .cp-card-tag {
+    position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700; background: rgba(10,4,18,0.85); color: var(--cp-text);
+  }
+  .cp-card-tag.is-new { color: var(--cp-gold); }
+  .cp-target-meta { display: block; font-size: 0.76rem; font-weight: 600; opacity: 0.85; }
 
   .cp-respond { display: flex; gap: 10px; flex-wrap: wrap; }
   .cp-btn {
-    padding: 11px 18px; border-radius: 12px; border: none; cursor: pointer;
+    min-height: 48px; padding: 11px 18px; border-radius: 12px; border: none; cursor: pointer;
     font-family: inherit; font-weight: 700; font-size: 0.95rem;
   }
+  .cp-btn:disabled, .cp-btn.is-busy { opacity: 0.55; cursor: progress; }
+  .cp-btn-confirm { flex: 1 1 100%; }
   .cp-btn-pass { background: rgba(255,255,255,0.1); color: var(--cp-text); }
   .cp-btn-challenge { background: linear-gradient(135deg, #ff6b81, #c81e3a); color: #fff; }
   .cp-btn-block { background: linear-gradient(135deg, #a855f7, #6d28d9); color: #fff; }
   .cp-btn-primary { background: linear-gradient(135deg, #f5c86b, #d99a24); color: #2a1a05; }
   .cp-btn-outline { background: transparent; border: 1px solid var(--cp-line); color: var(--cp-text); }
 
-  .cp-feed { display: grid; gap: 6px; max-height: 190px; overflow-y: auto; }
-  .cp-feed-item { font-size: 0.88rem; color: #d8ccec; padding: 5px 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+  .cp-feed { display: grid; gap: 6px; max-height: 260px; overflow-y: auto; text-align: left; }
+  .cp-feed-item { font-size: 0.9rem; color: #d8ccec; padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; line-height: 1.4; }
+  .cp-feed-item:first-child { color: var(--cp-text); background: rgba(196,141,255,0.10); }
+  .cp-result-me { font-size: 1.05rem; font-weight: 700; margin: 0 0 12px; }
+  .cp-result-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 
   .cp-empty { text-align: center; color: var(--cp-muted); padding: 18px 10px; }
 
   .cp-result { text-align: center; padding: 16px 8px; }
-  .cp-result h3 { font-family: 'Orbitron', sans-serif; font-size: 1.35rem; color: var(--cp-gold); margin: 0 0 8px; }
+  .cp-result h3 { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.35rem; color: var(--cp-gold); margin: 0 0 8px; }
 
   /* แชทกลาง แต่งสีให้เข้าธีมม่วง */
   .chat-box {
     --chat-accent: #a855f7; --chat-accent-dark: #6d28d9;
     --chat-surface: linear-gradient(135deg, #1b0f2b 0%, #12071a 100%);
     --chat-border: rgba(196,141,255,0.24); --chat-bubble: #2a1740;
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Bai Jamjuree', sans-serif;
   }
   .chat-toggle { --chat-toggle-bg: linear-gradient(135deg, #a855f7, #6d28d9); border-radius: 999px; padding: 12px 18px; }
   .btn-chat-send { --chat-send-bg: linear-gradient(135deg, #f5c86b, #d99a24); --chat-send-color: #2a1a05; }
@@ -169,7 +216,15 @@
 
   @media (max-width: 640px) {
     .cp-topbar, .cp-grid, .cp-now { padding-left: 14px; padding-right: 14px; }
+    /* แถบติดขอบบนต้องเตี้ย — ตัดป้าย "ตอนนี้" ออก ให้ข้อความกับเวลาอยู่บรรทัดเดียวกัน */
+    .cp-now { padding-top: 8px; padding-bottom: 8px; }
+    .cp-now-label { display: none; }
+    .cp-now-copy { font-size: 0.95rem; }
+    .cp-timeout-hint { white-space: normal; max-width: 9.5em; text-align: right; }
     .cp-influence { width: calc(50% - 6px); }
+    /* การ์ดเตี้ยลงบนมือถือ ให้ปุ่มตอบโต้ขึ้นมาอยู่ในจอแรกโดยไม่ต้องเลื่อน */
+    .cp-influence img, .cp-influence .cp-emoji { height: 112px; }
+    .cp-respond .cp-btn { flex: 1 1 auto; }
   }
 
   /* ==================== อนิเมชัน ====================
@@ -241,7 +296,7 @@
   }
   .cp-coin-delta {
     position: absolute; left: 50%; bottom: 100%;
-    font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 0.95rem;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-weight: 700; font-size: 0.95rem;
     pointer-events: none; white-space: nowrap; z-index: 5;
     animation: cpFloatUp 1s ease-out forwards;
   }
@@ -259,7 +314,7 @@
   #cpFlash {
     position: fixed; top: 42%; left: 50%; z-index: 9500;
     pointer-events: none;  /* ห้ามบังปุ่มเด็ดขาด */
-    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-weight: 900;
     font-size: clamp(1.8rem, 7vw, 3.4rem); text-align: center;
     padding: 16px 30px; border-radius: 18px;
     background: rgba(10, 4, 18, 0.82); border: 2px solid currentColor;
@@ -269,7 +324,7 @@
   #cpFlash.is-on { display: block; animation: cpSlam 1.25s cubic-bezier(0.2, 0.8, 0.3, 1) forwards; }
   #cpFlash .cp-flash-sub {
     display: block; margin-top: 6px;
-    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-family: 'Bai Jamjuree', sans-serif; font-weight: 700;
     font-size: 0.95rem; color: var(--cp-text); opacity: 0.85;
   }
 
@@ -343,6 +398,7 @@
         <span id="cpTimer" class="cp-timer">--</span>
         <span id="cpTimeoutHint" class="cp-timeout-hint" style="display:none;"></span>
       </span>
+      <div id="cpNowLast" class="cp-now-last" aria-live="polite" style="display:none;"></div>
     </div>
 
     <div class="cp-grid">
@@ -420,7 +476,12 @@ $(function() {
   let currentState = <%- JSON.stringify(typeof coupState !== 'undefined' ? coupState : {}) %>;
   let allowNavigation = false;
   let pendingTargetAction = null;   // แอ็กชันที่รอให้เลือกเป้าหมาย
+  let pendingTargetId = null;       // เป้าหมายที่แตะแล้ว รอกดยืนยัน (เฉพาะแอ็กชันที่เสียเหรียญ)
   let exchangeSelection = [];
+  let commandBusy = false;          // กันกดซ้ำระหว่างรอ server ตอบ
+  let commandBusyTimer = null;
+  let clockOffset = 0;              // เวลา server - เวลาเครื่อง (นาฬิกามือถือมักเพี้ยน)
+  function nowMs() { return Date.now() + clockOffset; }
 
   function escapeHtml(text) {
     return String(text == null ? '' : text).replace(/[&<>"']/g, c =>
@@ -485,19 +546,90 @@ $(function() {
     return { text: 'รอเกมเริ่ม...', mine: false };
   }
 
+  // ---------- ตัวช่วยอ่าน state ----------
+  function nameOf(state, id) {
+    const p = (state.players || []).find(x => x.playerId === id);
+    return p ? p.name : '';
+  }
+  // บอกเจ้าของมือ (เห็นคนเดียว) ว่าที่จะอ้างนี้มีจริงหรือบลัฟ — มือใหม่ชอบกดอ้างโดยไม่รู้ตัวว่ากำลังโกหก
+  function holds(state, cardId) {
+    return !!(state.self && (state.self.influence || []).some(c => c.id === cardId));
+  }
+  function namesOf(state, ids) {
+    return (ids || []).map(id => nameOf(state, id)).filter(Boolean);
+  }
+
+  /** ใครยังต้องตัดสินใจ และใครปล่อยผ่านไปแล้ว ในช่วงตอบโต้ (ใช้ทั้งแผงรอและป้ายในรายชื่อ) */
+  function responseStatus(state) {
+    const p = state.pendingAction;
+    if (!p) return null;
+    if (state.phase === 'respond') {
+      const waiting = p.waitingFor || [];
+      const eligible = (state.players || []).filter(x => x.alive && x.playerId !== p.actorId &&
+        (!p.blockOnly || x.playerId === p.targetId)).map(x => x.playerId);
+      return { waiting, passed: eligible.filter(id => !waiting.includes(id)), eligible };
+    }
+    if (state.phase === 'block-respond' && state.pendingBlock) {
+      const waiting = state.pendingBlock.waitingFor || [];
+      const eligible = (state.players || []).filter(x => x.alive && x.playerId !== state.pendingBlock.blockerId)
+        .map(x => x.playerId);
+      return { waiting, passed: eligible.filter(id => !waiting.includes(id)), eligible };
+    }
+    return null;
+  }
+
+  // ทำไมต้องหงายการ์ด — เดิมขึ้นแค่ "ต้องหงาย 1 ใบ" คนแพ้ไม่รู้ว่าแพ้เพราะอะไร
+  function lossReasonText(state) {
+    const loss = state.pendingLoss;
+    if (!loss) return '';
+    const p = state.pendingAction;
+    const who = loss.isMe ? 'คุณ' : loss.playerName;
+    switch (loss.reason) {
+      case 'coup': return (p ? p.actorName : 'มีคน') + ' ทำรัฐประหารใส่' + who;
+      case 'assassinate': return (p ? p.actorName : 'มีคน') + ' ลอบสังหาร' + who + 'สำเร็จ';
+      case 'challenge-lost': return who + 'ท้าแล้วแพ้ — อีกฝ่ายมีการ์ดจริง';
+      case 'bluff-caught': return who + 'โดนจับได้ว่าไม่มีการ์ดที่อ้าง';
+      default: return '';
+    }
+  }
+
+  function pendingSummaryHtml(state) {
+    const p = state.pendingAction;
+    if (!p) return '';
+    let html = '<b>' + escapeHtml(p.actorName) + '</b> ประกาศ <b>' + escapeHtml(p.action.icon + ' ' + p.action.thaiLabel) + '</b>' +
+      (p.targetName ? ' ใส่ <b>' + escapeHtml(p.targetName) + '</b>' : '') +
+      (p.claimCard ? '<br><small>อ้างว่ามี ' + escapeHtml(p.claimCard.icon + ' ' + p.claimCard.thaiName) + '</small>' : '');
+    if (state.phase === 'block-respond' && state.pendingBlock) {
+      html += '<br>🛡️ <b>' + escapeHtml(state.pendingBlock.blockerName) + '</b> ขวางโดยอ้างว่ามี <b>' +
+        escapeHtml(state.pendingBlock.card.icon + ' ' + state.pendingBlock.card.thaiName) + '</b>';
+    } else if (p.blockOnly) {
+      html += '<br><small>มีคนท้าแล้วแพ้ — ' + escapeHtml(p.targetName || 'เป้าหมาย') + ' ยังขวางได้</small>';
+    }
+    return '<div class="cp-pending">' + html + '</div>';
+  }
+
   // ---------- มือของเรา ----------
+  let lossSelection = null;      // การ์ดที่แตะเลือกจะหงาย (ต้องกดยืนยันอีกที)
+  let exchangeSeededStep = null; // เลือกการ์ดเดิมไว้ให้ก่อน ครั้งเดียวต่อการแลก
+
   function renderHand(state) {
     const me = state.self;
     $('#myCoins').text(me ? me.coins : 0);
-    if (!me) { $('#myHand').html('<div class="cp-empty">คุณไม่ได้อยู่ในเกมนี้</div>'); return; }
+    if (!me) { $('#myHand').html('<div class="cp-empty">คุณไม่ได้อยู่ในเกมนี้ — ดูอย่างเดียว</div>'); return; }
 
     const needPick = state.phase === 'lose-influence' && state.pendingLoss?.isMe;
     let html = me.influence.map(card =>
-      '<div class="cp-influence' + (needPick ? ' is-pick' : '') + '" data-card-id="' + escapeHtml(card.id) + '">' +
+      '<div class="cp-influence' + (needPick ? ' is-pick' : '') + (needPick && lossSelection === card.id ? ' is-selected' : '') +
+        '" data-card-id="' + escapeHtml(card.id) + '"' + (needPick ? ' role="button" tabindex="0"' : '') + '>' +
         cardArt(card) +
         '<div class="cp-influence-name">' + escapeHtml(card.icon + ' ' + card.thaiName) + '</div>' +
         '<div class="cp-influence-power">' + escapeHtml(card.power || card.counter || '') + '</div>' +
       '</div>').join('');
+
+    // ระหว่างแลกการ์ด การ์ดในมือย้ายไปอยู่ในตัวเลือกชั่วคราว — ห้ามขึ้นว่า "ตกรอบแล้ว"
+    if (!me.influence.length && me.alive && state.phase === 'exchange') {
+      html = '<div class="cp-empty">🔄 การ์ดของคุณอยู่ในกองแลกเปลี่ยน — เลือกใบที่จะเก็บด้านล่าง</div>' + html;
+    }
 
     html += me.revealed.map(card =>
       '<div class="cp-influence is-revealed">' + cardArt(card) +
@@ -518,39 +650,134 @@ $(function() {
     return '⏳ รอผู้เล่นคนอื่น';
   }
 
+  // ปุ่มแต่ละอันทำอะไรกับเรา — ใส่ไว้ใต้ปุ่มตอบโต้ คนเล่นครั้งแรกจะได้ไม่ต้องเดา
+  function respondHintHtml(state, respond) {
+    const p = state.pendingAction;
+    const b = state.pendingBlock;
+    const lines = [];
+    if (respond.challengingBlock && b) {
+      lines.push('🔥 <b>ท้าการขวาง</b>: ถ้า ' + escapeHtml(b.blockerName) + ' ไม่มี ' + escapeHtml(b.card.thaiName) +
+        ' จริง เขาเสียการ์ด 1 ใบและแอ็กชันเดินต่อ · ถ้ามีจริง <b>คุณ</b>เสียการ์ด 1 ใบ');
+      lines.push('✋ <b>ปล่อยผ่าน</b>: ยอมรับการขวาง แอ็กชันนี้เป็นโมฆะ');
+      return lines.join('<br>');
+    }
+    const iAmTarget = p.targetId === playerId;
+    if (respond.canChallenge) {
+      lines.push('🔥 <b>ท้า</b>: ถ้า ' + escapeHtml(p.actorName) + ' ไม่มี ' + escapeHtml(p.claimCard ? p.claimCard.thaiName : 'การ์ดนั้น') +
+        ' เขาเสียการ์ด 1 ใบ · ถ้ามีจริง <b>คุณ</b>เสียการ์ด 1 ใบ');
+    }
+    if ((respond.blockOptions || []).length) {
+      lines.push('🛡️ <b>ขวาง</b>: อ้างว่ามีการ์ดที่ขวางได้ (ไม่มีจริงก็อ้างได้ แต่ถ้าโดนท้าจะเสียการ์ด)');
+    }
+    if (iAmTarget && p.actionId === 'assassinate') lines.push('✋ <b>ยอมรับ</b>: คุณต้องหงายการ์ด 1 ใบ');
+    else if (iAmTarget && p.actionId === 'steal') lines.push('✋ <b>ยอมรับ</b>: โดนขโมยสูงสุด 2 เหรียญ');
+    else lines.push('✋ <b>ปล่อยผ่าน</b>: เชื่อ ให้แอ็กชันเกิดขึ้น');
+    return lines.join('<br>');
+  }
+
+  function waitingPanelHtml(state) {
+    const me = state.self;
+    const status = responseStatus(state);
+    if (status && (state.phase === 'respond' || state.phase === 'block-respond')) {
+      const iPassed = me && me.alive && status.passed.includes(playerId);
+      const iAmActor = state.pendingAction && state.pendingAction.actorId === playerId;
+      const iAmBlocker = state.pendingBlock && state.pendingBlock.blockerId === playerId;
+      const waitingNames = namesOf(state, status.waiting);
+      return pendingSummaryHtml(state) +
+        (iPassed ? '<div class="cp-done">✓ คุณปล่อยผ่านแล้ว</div>' : '') +
+        (iAmActor && state.phase === 'respond' ? '<div class="cp-hint">คนอื่นกำลังตัดสินใจว่าจะเชื่อคุณไหม</div>' : '') +
+        (iAmBlocker ? '<div class="cp-hint">คนอื่นกำลังตัดสินใจว่าจะเชื่อการขวางของคุณไหม</div>' : '') +
+        (waitingNames.length
+          ? '<div class="cp-waitlist">⏳ รอ <b>' + escapeHtml(waitingNames.join(', ')) + '</b> ตัดสินใจ' +
+            ' <small>(ทุกคนกดครบ = ไปต่อทันที)</small></div>'
+          : '');
+    }
+    if (state.phase === 'lose-influence' && state.pendingLoss) {
+      const why = lossReasonText(state);
+      return '<div class="cp-pending">💥 รอ <b>' + escapeHtml(state.pendingLoss.playerName) + '</b> เลือกหงายการ์ด 1 ใบ' +
+        (why ? '<br><small>' + escapeHtml(why) + '</small>' : '') + '</div>';
+    }
+    if (state.phase === 'exchange' && state.pendingExchange?.waitingFor) {
+      return '<div class="cp-pending">🔄 รอ <b>' + escapeHtml(state.pendingExchange.waitingFor) + '</b> เลือกการ์ดที่จะเก็บ</div>';
+    }
+    if (state.phase === 'action') {
+      const cur = (state.players || []).find(p => p.isCurrent);
+      return '<div class="cp-empty">รอ ' + escapeHtml(cur ? cur.name : '...') + ' เลือกแอ็กชัน...</div>';
+    }
+    return '<div class="cp-empty">รอตาของผู้เล่นคนอื่น...</div>';
+  }
+
+  function resultHtml(state) {
+    const me = state.self;
+    const winnerName = state.winner?.name || '-';
+    let meLine = '';
+    if (me) {
+      meLine = state.winner && state.winner.playerId === playerId
+        ? '🎉 คุณชนะ — รอดเป็นคนสุดท้าย!'
+        : 'คุณตกรอบ · ผู้ชนะคือ ' + winnerName;
+    }
+    return '<div class="cp-result"><h3>🏆 ' + escapeHtml(winnerName) + ' ชนะ!</h3>' +
+      (meLine ? '<p class="cp-result-me">' + escapeHtml(meLine) + '</p>' : '') +
+      '<div class="cp-result-actions">' +
+        (isRoomAdmin ? '<button type="button" id="cpRestartBtn" class="cp-btn cp-btn-primary">🎲 เล่นอีกรอบ</button>' : '') +
+        '<button type="button" id="cpShareBtn" class="cp-btn cp-btn-outline">📸 เซฟผล</button>' +
+        '<button type="button" id="cpBackLobbyBtn" class="cp-btn cp-btn-outline">🏠 กลับห้อง</button>' +
+      '</div>' +
+      '<p class="cp-hint">การ์ดที่เหลือในมือทุกคนเปิดให้ดูแล้วในรายชื่อผู้เล่น · ย้อนดูได้ในบันทึกเกม</p>' +
+      '<p class="cp-empty" id="cpBackRemain" style="margin-top:6px;">' +
+        (isRoomAdmin ? 'กดกลับห้องแล้วทุกคนไปด้วย' : 'เดี๋ยวระบบพาทุกคนกลับห้องรอ') + '</p></div>';
+  }
+
   // ---------- พื้นที่ปุ่มหลัก ----------
   function renderActionArea(state) {
     const $area = $('#actionArea');
     const me = state.self;
 
-    if (state.phase === 'finished') {
-      $area.html('<div class="cp-result"><h3>🏆 ' + escapeHtml(state.winner?.name || '-') + ' ชนะ!</h3>' +
-        (isRoomAdmin ? '<button type="button" id="cpRestartBtn" class="cp-btn cp-btn-primary">🎲 เล่นอีกรอบ</button> ' : '') +
-        '<button type="button" id="cpShareBtn" class="cp-btn cp-btn-outline">📸 เซฟผล</button> ' +
-        '<button type="button" id="cpBackLobbyBtn" class="cp-btn cp-btn-outline">🏠 กลับห้อง</button>' +
-        '<p class="cp-empty" id="cpBackRemain" style="margin-top:10px;">ทุกคนกลับพร้อมกัน</p></div>');
+    if (state.phase === 'finished') { $area.html(resultHtml(state)); return; }
+
+    if (me && !me.alive) {
+      $area.html('<div class="cp-empty">คุณตกรอบแล้ว — ดูเกมต่อได้</div>' + waitingPanelHtml(state));
       return;
     }
 
-    if (me && !me.alive) { $area.html('<div class="cp-empty">คุณตกรอบแล้ว — รอดูผลได้เลย</div>'); return; }
-
-    // เลือกการ์ดที่จะหงาย
+    // เลือกการ์ดที่จะหงาย — แตะเลือกก่อน แล้วกดยืนยัน (หงายแล้วย้อนไม่ได้)
     if (state.phase === 'lose-influence' && state.pendingLoss?.isMe) {
-      $area.html('<div class="cp-empty">เลือกการ์ดที่จะหงายจากมือด้านบน ⬆️</div>');
+      const cards = me ? me.influence : [];
+      if (lossSelection && !cards.some(c => c.id === lossSelection)) lossSelection = null;
+      const picked = cards.find(c => c.id === lossSelection);
+      const why = lossReasonText(state);
+      $area.html(
+        (why ? '<div class="cp-pending">💥 ' + escapeHtml(why) + '</div>' : '') +
+        '<div>แตะการ์ดที่จะ<b>หงายทิ้ง</b> แล้วกดยืนยัน — ใบที่เหลือยังใช้ต่อได้</div>' +
+        '<div class="cp-respond" style="margin-top:10px;">' +
+          cards.map(card => '<button type="button" class="cp-btn ' + (lossSelection === card.id ? 'cp-btn-challenge' : 'cp-btn-pass') +
+            '" data-loss-pick="' + escapeHtml(card.id) + '" aria-pressed="' + (lossSelection === card.id) + '">' +
+            escapeHtml(card.icon + ' ' + card.thaiName) + '</button>').join('') +
+          '<button type="button" id="cpLossConfirm" class="cp-btn cp-btn-primary cp-btn-confirm"' + (picked ? '' : ' disabled') + '>' +
+            (picked ? 'ยืนยันหงาย ' + escapeHtml(picked.thaiName) : 'เลือกการ์ดก่อน') + '</button>' +
+        '</div>');
       return;
     }
 
-    // Ambassador เลือกการ์ด
+    // Ambassador เลือกการ์ด — ใบเดิมถูกเลือกไว้ก่อน กดยืนยันได้เลยถ้าไม่อยากเปลี่ยน
     if (state.phase === 'exchange' && state.pendingExchange?.options) {
       const keep = state.pendingExchange.keepCount;
+      const options = state.pendingExchange.options;
+      if (exchangeSeededStep !== state.step) {
+        exchangeSeededStep = state.step;
+        exchangeSelection = options.slice(0, keep).map((_, i) => i);
+      }
       $area.html(
-        '<div style="margin-bottom:10px;">เลือกเก็บ <b>' + keep + '</b> ใบ (เลือกแล้ว <span id="exchangeCount">' + exchangeSelection.length + '</span>/' + keep + ')</div>' +
-        '<div class="cp-hand">' + state.pendingExchange.options.map((card, index) =>
-          '<div class="cp-influence is-pick' + (exchangeSelection.includes(index) ? ' is-selected' : '') + '" data-exchange-index="' + index + '">' +
-            cardArt(card) + '<div class="cp-influence-name">' + escapeHtml(card.icon + ' ' + card.thaiName) + '</div>' +
+        '<div style="margin-bottom:6px;">เลือกเก็บ <b>' + keep + '</b> ใบ (เลือกแล้ว <span id="exchangeCount">' + exchangeSelection.length + '</span>/' + keep + ')</div>' +
+        '<div class="cp-hint" style="margin:0 0 10px;">เลือกใบเดิมไว้ให้แล้ว — แตะใบใหม่เพื่อสลับ · ใบที่ไม่เลือกกลับเข้ากอง</div>' +
+        '<div class="cp-hand">' + options.map((card, index) =>
+          '<div class="cp-influence is-pick' + (exchangeSelection.includes(index) ? ' is-selected' : '') + '" data-exchange-index="' + index + '" role="button" tabindex="0">' +
+            '<span class="cp-card-tag' + (index < keep ? '' : ' is-new') + '">' + (index < keep ? 'ใบเดิม' : 'ใบใหม่') + '</span>' +
+            cardArt(card) + '<div class="cp-influence-name">' + (exchangeSelection.includes(index) ? '✓ ' : '') + escapeHtml(card.icon + ' ' + card.thaiName) + '</div>' +
           '</div>').join('') + '</div>' +
-        '<button type="button" id="cpExchangeConfirm" class="cp-btn cp-btn-primary" style="margin-top:12px;"' +
-          (exchangeSelection.length === keep ? '' : ' disabled') + '>ยืนยัน</button>');
+        '<button type="button" id="cpExchangeConfirm" class="cp-btn cp-btn-primary" style="margin-top:12px; width:100%;"' +
+          (exchangeSelection.length === keep ? '' : ' disabled') + '>' +
+          (exchangeSelection.length === keep ? 'ยืนยันเก็บ ' + keep + ' ใบนี้' : 'เลือกอีก ' + (keep - exchangeSelection.length) + ' ใบ') + '</button>');
       return;
     }
 
@@ -558,73 +785,102 @@ $(function() {
     const respond = state.availableResponses;
     if (respond) {
       const p = state.pendingAction;
-      const b = state.pendingBlock;
-      let html = '<div style="margin-bottom:10px;">' +
-        (respond.challengingBlock && b
-          ? escapeHtml(b.blockerName) + ' ขวางโดยอ้างว่ามี <b>' + escapeHtml(b.card.thaiName) + '</b>'
-          : escapeHtml(p.actorName) + ' ประกาศ <b>' + escapeHtml(p.action.thaiLabel) + '</b>' +
-            (p.claimCard ? ' โดยอ้างว่ามี <b>' + escapeHtml(p.claimCard.icon + ' ' + p.claimCard.thaiName) + '</b>' : '') +
-            (respond.blockOnly ? '<br><small>ท้าไม่สำเร็จ — แต่ยังขวางได้</small>' : '')) +
+      const iAmTarget = p && p.targetId === playerId;
+      const passLabel = iAmTarget && (p.actionId === 'assassinate' || p.actionId === 'steal') ? '✋ ยอมรับ' : '✋ ปล่อยผ่าน';
+      let html = pendingSummaryHtml(state) +
         // ผูกปุ่มกับ "ขั้น" ที่ render — server ปัดตกคำตอบที่ช้ามาถึงหลังเฟสเปลี่ยนแล้ว
-        '</div><div class="cp-respond" data-step="' + escapeHtml(String(state.step ?? '')) +
+        '<div class="cp-respond" data-step="' + escapeHtml(String(state.step ?? '')) +
         '" data-phase="' + escapeHtml(String(state.phase || '')) +
         '" data-turn="' + escapeHtml(String(state.turnNumber ?? '')) + '">';
-      html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">✋ ปล่อยผ่าน</button>';
+      html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">' + passLabel + '</button>';
       if (respond.canChallenge) {
         html += '<button type="button" class="cp-btn cp-btn-challenge" data-respond="challenge">🔥 ' +
           (respond.challengingBlock ? 'ท้าการขวาง' : 'ท้า (ไม่เชื่อ)') + '</button>';
       }
       (respond.blockOptions || []).forEach(option => {
         html += '<button type="button" class="cp-btn cp-btn-block" data-respond="block" data-claim="' +
-          escapeHtml(option.id) + '">' + escapeHtml(option.icon + ' ขวางด้วย ' + option.thaiName) + '</button>';
+          escapeHtml(option.id) + '">' + escapeHtml(option.icon + ' ขวางด้วย ' + option.thaiName) +
+          '<span class="cp-target-meta">' + (holds(state, option.id) ? '✓ คุณมีจริง' : 'ไม่มีจริง = บลัฟ') + '</span></button>';
       });
-      $area.html(html + '</div>');
+      html += '</div><div class="cp-hint">' + respondHintHtml(state, respond) + '</div>';
+      const status = responseStatus(state);
+      const others = status ? namesOf(state, status.waiting.filter(id => id !== playerId)) : [];
+      if (others.length) html += '<div class="cp-waitlist">ยังรอ: ' + escapeHtml(others.join(', ')) + '</div>';
+      $area.html(html);
       return;
     }
 
     // ตาเรา — เลือกแอ็กชัน
     if (state.phase === 'action' && state.isMyTurn) {
-      const actions = state.availableActions || [];
       if (pendingTargetAction) {
         const targets = state.players.filter(p => p.alive && p.playerId !== playerId);
+        const needsConfirm = pendingTargetAction.cost > 0;   // รัฐประหาร/ลอบสังหาร เสียเหรียญ ย้อนไม่ได้
+        const chosen = needsConfirm && pendingTargetId ? targets.find(t => t.playerId === pendingTargetId) : null;
         $area.html('<div style="margin-bottom:10px;">เลือกเป้าหมายสำหรับ <b>' +
-            escapeHtml(pendingTargetAction.thaiLabel) + '</b></div><div class="cp-respond">' +
-          targets.map(t => '<button type="button" class="cp-btn cp-btn-block" data-target="' +
-            escapeHtml(t.playerId) + '">' + escapeHtml(t.name) + '</button>').join('') +
+            escapeHtml(pendingTargetAction.icon + ' ' + pendingTargetAction.thaiLabel) + '</b>' +
+            (pendingTargetAction.cost ? ' · จ่าย ' + pendingTargetAction.cost + ' เหรียญ' : '') + '</div><div class="cp-respond">' +
+          targets.map(t => '<button type="button" class="cp-btn ' + (chosen && chosen.playerId === t.playerId ? 'cp-btn-challenge' : 'cp-btn-block') +
+            '" data-target="' + escapeHtml(t.playerId) + '">' + escapeHtml(t.name) +
+            '<span class="cp-target-meta">💰 ' + t.coins + ' · การ์ด ' + t.influenceCount + ' ใบ' +
+            (pendingTargetAction.id === 'steal' && t.coins === 0 ? ' · ไม่มีเหรียญให้ขโมย' : '') + '</span></button>').join('') +
+          (chosen ? '<button type="button" class="cp-btn cp-btn-primary cp-btn-confirm" data-confirm-target="1">ยืนยัน ' +
+            escapeHtml(pendingTargetAction.thaiLabel + ' ใส่ ' + chosen.name) + '</button>' : '') +
           '<button type="button" class="cp-btn cp-btn-pass" data-cancel-target="1">ยกเลิก</button></div>');
         return;
       }
+      const menu = (state.actionMenu && state.actionMenu.length)
+        ? state.actionMenu
+        : (state.availableActions || []).map(a => Object.assign({ enabled: true, reason: '' }, a));
+      // ต้องรัฐประหาร: ยกปุ่มที่กดได้ขึ้นบนสุด ไม่ให้จมอยู่ใต้ปุ่มที่ล็อก
+      if (state.self?.mustCoup) menu.sort((x, y) => Number(y.enabled) - Number(x.enabled));
       $area.html(
         (state.self?.mustCoup ? '<div style="color:var(--cp-red); margin-bottom:8px;">⚠️ มี 10 เหรียญขึ้นไป ต้องทำรัฐประหารเท่านั้น</div>' : '') +
-        '<div class="cp-actions">' + actions.map(action =>
+        '<div class="cp-actions">' + menu.map(action =>
           '<button type="button" class="cp-action" data-action="' + escapeHtml(action.id) +
-            '" data-needs-target="' + (action.needsTarget ? '1' : '') + '">' +
+            '" data-needs-target="' + (action.needsTarget ? '1' : '') + '"' + (action.enabled ? '' : ' disabled aria-disabled="true"') + '>' +
             '<span class="cp-action-head">' + escapeHtml(action.icon + ' ' + action.thaiLabel) +
               (action.cost ? ' · จ่าย ' + action.cost : '') + '</span>' +
             '<span class="cp-action-detail">' + escapeHtml(action.detail) + '</span>' +
-            (action.claimCard ? '<span class="cp-action-claim">อ้างว่ามี ' + escapeHtml(action.claimCard.icon + ' ' + action.claimCard.thaiName) + '</span>' : '') +
+            (action.claimCard ? '<span class="cp-action-claim">อ้างว่ามี ' + escapeHtml(action.claimCard.icon + ' ' + action.claimCard.thaiName) +
+              (holds(state, action.claimCard.id) ? ' · ✓ คุณมีจริง' : ' · ไม่มีจริง = บลัฟ') + '</span>' : '') +
+            (action.reason ? '<span class="cp-action-why">🔒 ' + escapeHtml(action.reason) + '</span>' : '') +
           '</button>').join('') + '</div>');
       return;
     }
 
-    $area.html('<div class="cp-empty">รอตาของผู้เล่นคนอื่น...</div>');
+    $area.html(waitingPanelHtml(state));
   }
 
   function renderPlayers(state) {
-    $('#playerGrid').html((state.players || []).map(p =>
-      '<div class="cp-player' + (p.isCurrent ? ' is-current' : '') + (p.alive ? '' : ' is-out') + '"' +
+    const status = responseStatus(state);
+    const targetId = state.phase !== 'action' && state.phase !== 'finished' ? state.pendingAction?.targetId : null;
+    $('#playerGrid').html((state.players || []).map(p => {
+      let tags = '';
+      if (p.alive && status) {
+        if (status.waiting.includes(p.playerId)) tags += '<span class="cp-tag cp-tag-wait">⏳ กำลังคิด</span> ';
+        else if (status.passed.includes(p.playerId)) tags += '<span class="cp-tag cp-tag-pass">✓ ผ่าน</span> ';
+      }
+      if (targetId && p.playerId === targetId) tags += '<span class="cp-tag cp-tag-target">🎯 เป้าหมาย</span> ';
+      if (state.phase === 'lose-influence' && state.pendingLoss?.playerId === p.playerId) tags += '<span class="cp-tag cp-tag-target">💥 กำลังเลือกหงาย</span> ';
+      return '<div class="cp-player' + (p.isCurrent ? ' is-current' : '') + (p.alive ? '' : ' is-out') + '"' +
         ' data-player-id="' + escapeHtml(p.playerId) + '">' +
         '<div class="cp-player-top">' + avatarHtml(p, 26) +
           '<span class="cp-player-name" style="color:' + escapeHtml(p.color || '#fff') + '">' +
           escapeHtml(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</span></div>' +
         '<div class="cp-player-stats">' +
           '<span class="cp-player-coins">💰 ' + p.coins + '</span>' +
-          '<span class="cp-backs">' + Array.from({ length: p.influenceCount }, () => '<span class="cp-back"></span>').join('') + '</span>' +
+          '<span class="cp-backs" aria-label="การ์ดคว่ำ ' + p.influenceCount + ' ใบ">' + Array.from({ length: p.influenceCount }, () => '<span class="cp-back"></span>').join('') + '</span>' +
+          (p.alive ? '' : '<span>ตกรอบ</span>') +
         '</div>' +
         (p.revealed.length
           ? '<div class="cp-dead-card">หงาย: ' + p.revealed.map(c => escapeHtml(c.thaiName)).join(', ') + '</div>'
           : '') +
-      '</div>').join(''));
+        (p.finalHand && p.finalHand.length
+          ? '<div class="cp-final-hand">ในมือ: ' + p.finalHand.map(c => escapeHtml(c.icon + ' ' + c.thaiName)).join(', ') + '</div>'
+          : '') +
+        (tags ? '<div>' + tags + '</div>' : '') +
+      '</div>';
+    }).join(''));
   }
 
   function renderHistory(state) {
@@ -633,6 +889,13 @@ $(function() {
       ? items.map(item => '<div class="cp-feed-item" data-at="' + escapeHtml(item.at || '') + '">' +
           escapeHtml(item.icon + ' ' + item.text) + '</div>').join('')
       : '<div class="cp-empty">ยังไม่มีเหตุการณ์</div>');
+    // บรรทัดล่าสุดโชว์ในแถบติดขอบบนด้วย — มือถือไม่ต้องเลื่อนลงไปอ่านบันทึก
+    const last = items[0];
+    if (last && state.phase !== 'lobby') {
+      $('#cpNowLast').html('ล่าสุด: <b>' + escapeHtml(last.icon + ' ' + last.text) + '</b>').show();
+    } else {
+      $('#cpNowLast').text('').hide();
+    }
   }
 
   // หมดเวลาแล้ว server ทำต่อให้เอง (autoResolvePhase) — บอกล่วงหน้าว่าจะทำอะไร
@@ -646,7 +909,7 @@ $(function() {
       case 'respond': return 'หมดเวลา → ถือว่าทุกคนปล่อยผ่าน';
       case 'block-respond': return 'หมดเวลา → ยอมรับการขวาง';
       case 'lose-influence': return 'หมดเวลา → หงายการ์ดใบซ้ายสุดให้';
-      case 'exchange': return 'หมดเวลา → เก็บการ์ดใบแรกให้';
+      case 'exchange': return 'หมดเวลา → เก็บการ์ดเดิมไว้ให้';
       default: return '';
     }
   }
@@ -658,12 +921,12 @@ $(function() {
 
     if (currentState.phase === 'finished') {
       const remain = currentState.returnLobbyEndsAt
-        ? Math.max(0, Math.ceil((Number(currentState.returnLobbyEndsAt) - Date.now()) / 1000))
+        ? Math.max(0, Math.ceil((Number(currentState.returnLobbyEndsAt) - nowMs()) / 1000))
         : 0;
       $timer.text(remain > 0 ? remain + ' วิ' : '--').removeClass('is-urgent');
       $hint.text(remain > 0 ? 'แล้วกลับห้องรอพร้อมกัน' : 'กำลังกลับห้องรอ...').show();
       $('#cpBackRemain').text(remain > 0
-        ? 'กดกลับห้องแล้วทุกคนไปด้วย · ระบบดึงกลับใน ' + remain + ' วิ'
+        ? (isRoomAdmin ? 'กดกลับห้องแล้วทุกคนไปด้วย · ' : '') + 'ระบบพาทุกคนกลับห้องใน ' + remain + ' วิ'
         : 'กำลังพากลับห้องรอ...');
       return;
     }
@@ -674,7 +937,7 @@ $(function() {
       return;
     }
 
-    const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    const left = Math.max(0, Math.ceil((endsAt - nowMs()) / 1000));
     $timer.text(left > 0 ? left + ' วิ' : 'หมดเวลา').toggleClass('is-urgent', left <= 5 && left > 0);
 
     // โผล่ตอนเหลือ 10 วิ — ช่วงที่คนเริ่มลุ้นว่าไม่กดแล้วจะเป็นยังไง
@@ -823,7 +1086,9 @@ $(function() {
   function renderState(state) {
     if (!state || !state.players) return;
     // เปลี่ยนเฟสแล้วล้างตัวเลือกค้าง กันกดพลาดข้ามเฟส
-    if (state.phase !== currentState.phase) { pendingTargetAction = null; exchangeSelection = []; }
+    if (state.phase !== currentState.phase) { pendingTargetAction = null; pendingTargetId = null; exchangeSelection = []; }
+    if (state.step !== currentState.step) lossSelection = null;
+    if (typeof state.serverNow === 'number') clockOffset = state.serverNow - Date.now();
     if (currentState.phase === 'finished' && state.phase !== 'finished' && window.partyPlay) {
       window.partyPlay.resetPing();
     }
@@ -848,6 +1113,36 @@ $(function() {
     updateTimer();
     applyMotion(state);
     pingCoupNeed(state);
+    revealDecision(state);
+  }
+
+  // ถึงคราวเราต้องตัดสินใจ (ตาเรา/ตอบโต้/หงาย/แลก) แต่กล่องปุ่มอยู่นอกจอ → เลื่อนให้เห็นครั้งเดียวต่อขั้น
+  // ไม่เลื่อนถ้ากำลังพิมพ์แชทอยู่ ไม่งั้นคีย์บอร์ดเด้ง/ข้อความหาย
+  let revealedDecisionKey = null;
+  let decisionSeenOnce = false;
+  function revealDecision(state) {
+    const mine = state.phase !== 'finished' && (
+      (state.phase === 'action' && state.isMyTurn) || !!state.availableResponses ||
+      (state.phase === 'lose-influence' && state.pendingLoss?.isMe) ||
+      (state.phase === 'exchange' && !!state.pendingExchange?.options));
+    if (!mine) { revealedDecisionKey = null; decisionSeenOnce = true; return; }
+    const key = state.phase + ':' + state.step;
+    if (key === revealedDecisionKey) return;
+    revealedDecisionKey = key;
+    // เพิ่งเปิด/รีเฟรชหน้า — ไม่กระชากจอ ให้เห็นหัวห้องก่อน (แถบบนติดจอบอกอยู่แล้วว่าถึงตาเรา)
+    if (!decisionSeenOnce) { decisionSeenOnce = true; if (window.scrollY === 0) return; }
+    const active = document.activeElement;
+    if (active && (active.id === 'chatInput' || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    const box = document.getElementById('actionArea');
+    if (!box) return;
+    const card = box.closest('.cp-card') || box;
+    const rect = card.getBoundingClientRect();
+    const barHeight = (document.getElementById('cpNowBar')?.getBoundingClientRect().height) || 0;
+    // พอแค่ปุ่มแรกโผล่พ้นแถบบนและปุ่มแชทลอยด้านล่าง (~70px) ก็ไม่ต้องเลื่อน — ไม่กระชากจอโดยไม่จำเป็น
+    const firstButton = box.querySelector('button') || card;
+    const b = firstButton.getBoundingClientRect();
+    if (b.top >= barHeight && b.bottom <= window.innerHeight - 70) return;
+    window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - barHeight - 8), behavior: reduceMotion ? 'auto' : 'smooth' });
   }
 
   function pingCoupNeed(state) {
@@ -863,7 +1158,8 @@ $(function() {
     }
     if (state.availableResponses) {
       window.partyPlay.pingTurn({
-        key: 'coup-respond-' + (state.pendingAction?.actorId || '') + '-' + (state.pendingAction?.actionId || state.phase),
+        // ใส่ step ด้วย — ไม่งั้นช่วง "ท้าการขวาง" ของแอ็กชันเดียวกันไม่เด้งเตือน
+        key: 'coup-respond-' + (state.pendingAction?.actorId || '') + '-' + (state.pendingAction?.actionId || state.phase) + '-' + (state.step || 0),
         title: 'ถึงตาคุณตอบโต้',
         subtitle: state.availableResponses.challengingBlock ? 'ท้าการขวาง หรือปล่อยผ่าน' : 'ท้า ขวาง หรือปล่อยผ่าน'
       });
@@ -878,13 +1174,36 @@ $(function() {
     }
   }
 
+  // แจ้ง error แบบ toast ด้านบน ไม่บังจอ ไม่ต้องกดปิด (เดิมเป็น popup ต้องกด OK ทุกครั้ง)
+  function toastError(message) {
+    Swal.fire({
+      toast: true, position: 'top', icon: 'warning', title: message || 'ทำรายการไม่สำเร็จ',
+      showConfirmButton: false, timer: 3200, timerProgressBar: true, background: '#1b0f2b', color: '#fff'
+    });
+  }
+
+  function releaseCommand() {
+    commandBusy = false;
+    clearTimeout(commandBusyTimer);
+    $('#actionArea, #myHand').removeClass('is-busy');
+  }
+
+  // กันกดซ้ำ: ระหว่างรอ server ปุ่มในกล่องแอ็กชันกดไม่ได้ (กดรัวแล้วเด้ง "คุณตอบไปแล้ว")
   function sendCommand(event, payload) {
+    if (commandBusy) return false;
+    commandBusy = true;
+    $('#actionArea button').prop('disabled', true).addClass('is-busy');
+    $('#actionArea, #myHand').addClass('is-busy');
+    commandBusyTimer = setTimeout(function() { releaseCommand(); renderActionArea(currentState); }, 8000);
     socket.emit(event, payload, function(res) {
+      releaseCommand();
       if (res && !res.success) {
-        Swal.fire({ icon: 'warning', title: res.error || 'ทำรายการไม่สำเร็จ', background: '#1b0f2b', color: '#fff' });
+        toastError(res.error);
+        renderActionArea(currentState);
         socket.emit('coup_requestState', { roomId, playerId });
       }
     });
+    return true;
   }
 
   // ---------- ปุ่มต่างๆ ----------
@@ -898,15 +1217,30 @@ $(function() {
   });
 
   $(document).on('click', '[data-target]', function() {
-    if (!pendingTargetAction) return;
+    if (!pendingTargetAction || commandBusy) return;
     const targetPlayerId = $(this).attr('data-target');
+    // รัฐประหาร/ลอบสังหารเสียเหรียญและย้อนไม่ได้ — แตะชื่อแล้วต้องกดยืนยันอีกที กันนิ้วโดนชื่อข้างๆ
+    if (pendingTargetAction.cost > 0) {
+      pendingTargetId = targetPlayerId;
+      renderActionArea(currentState);
+      return;
+    }
     const actionId = pendingTargetAction.id;
     pendingTargetAction = null;
     sendCommand('coup_submitAction', { actionId, targetPlayerId });
   });
 
+  $(document).on('click', '[data-confirm-target]', function() {
+    if (!pendingTargetAction || !pendingTargetId || commandBusy) return;
+    const payload = { actionId: pendingTargetAction.id, targetPlayerId: pendingTargetId };
+    pendingTargetAction = null;
+    pendingTargetId = null;
+    sendCommand('coup_submitAction', payload);
+  });
+
   $(document).on('click', '[data-cancel-target]', function() {
     pendingTargetAction = null;
+    pendingTargetId = null;
     renderActionArea(currentState);
   });
 
@@ -924,25 +1258,39 @@ $(function() {
     });
   });
 
-  // เลือกการ์ดหงายตอนเสีย influence
-  $(document).on('click', '.cp-influence.is-pick[data-card-id]', function() {
-    sendCommand('coup_loseInfluence', { cardId: $(this).attr('data-card-id') });
+  // เลือกการ์ดหงายตอนเสีย influence — แตะเลือก (จากมือหรือปุ่ม) แล้วค่อยกดยืนยัน
+  function pickLossCard(cardId) {
+    if (commandBusy || !(currentState.phase === 'lose-influence' && currentState.pendingLoss?.isMe)) return;
+    lossSelection = lossSelection === cardId ? null : cardId;
+    renderHand(currentState);
+    renderActionArea(currentState);
+  }
+  $(document).on('click', '.cp-influence.is-pick[data-card-id]', function() { pickLossCard($(this).attr('data-card-id')); });
+  $(document).on('click', '[data-loss-pick]', function() { pickLossCard($(this).attr('data-loss-pick')); });
+  $(document).on('click', '#cpLossConfirm', function() {
+    if (!lossSelection) return;
+    const cardId = lossSelection;
+    if (sendCommand('coup_loseInfluence', { cardId })) lossSelection = null;
   });
 
   // เลือกการ์ดตอนแลกเปลี่ยน
   $(document).on('click', '.cp-influence[data-exchange-index]', function() {
     const index = Number($(this).attr('data-exchange-index'));
     const keepCount = currentState.pendingExchange?.keepCount || 0;
+    if (commandBusy) return;
     const at = exchangeSelection.indexOf(index);
     if (at >= 0) exchangeSelection.splice(at, 1);
-    else if (exchangeSelection.length < keepCount) exchangeSelection.push(index);
+    else {
+      // เลือกครบแล้วแตะใบใหม่ = สลับกับใบที่เลือกไว้ก่อนสุด (เดิมแตะแล้วเงียบ ไม่รู้ว่าต้องยกเลิกก่อน)
+      if (exchangeSelection.length >= keepCount) exchangeSelection.shift();
+      if (keepCount > 0) exchangeSelection.push(index);
+    }
     renderActionArea(currentState);
   });
 
   $(document).on('click', '#cpExchangeConfirm', function() {
     const options = currentState.pendingExchange?.options || [];
     sendCommand('coup_exchange', { keepCardIds: exchangeSelection.map(i => options[i].id) });
-    exchangeSelection = [];
   });
 
   $(document).on('click', '#cpShareBtn', function() {
@@ -1027,7 +1375,7 @@ $(function() {
   socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('returnToLobby', function(data) {
     if (!currentState) return;
-    currentState.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    currentState.returnLobbyEndsAt = Number(data && data.endsAt) || (nowMs() + (Number(data && data.countdown) || 10) * 1000);
     updateTimer();
   });
   socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });

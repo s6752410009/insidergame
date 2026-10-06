@@ -282,4 +282,6 @@ function watchPage(page, label, errors) {
         await browser.close();
         server.kill('SIGKILL');
     }
+    // socket ของเทสยังเปิดค้าง (พยายามต่อใหม่ไม่รู้จบ) — ออกเองไม่งั้นสคริปต์ค้าง
+    process.exit(0);
 })().catch(e => { console.error('❌', e.message); process.exit(1); });

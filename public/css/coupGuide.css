@@ -15,7 +15,7 @@
 .coup-guide-popup .swal2-title {
   background: linear-gradient(135deg, #4c1d95, #7c3aed 55%, #2e1065) !important;
   color: #fff !important;
-  font-family: 'Rajdhani', sans-serif !important;
+  font-family: 'Bai Jamjuree', 'Rajdhani', sans-serif !important;
   font-size: 1.15em !important;
   font-weight: 800 !important;
   letter-spacing: 0.4px;
@@ -48,7 +48,7 @@
 .coup-guide-popup .swal2-confirm {
   border-radius: 12px !important;
   padding: 11px 30px !important;
-  font-family: 'Rajdhani', sans-serif !important;
+  font-family: 'Bai Jamjuree', 'Rajdhani', sans-serif !important;
   font-weight: 800 !important;
   font-size: 1em !important;
 }
