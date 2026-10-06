@@ -24,7 +24,7 @@ const ROLE_DEFINITIONS = {
         image: blackMarketImage('broker'),
         icon: '🕴️',
         title: 'นายหน้า',
-        summary: 'ของชิ้นแรกในตลาดถูกกว่าคนอื่น',
+        summary: 'ซื้อของในตลาดถูกกว่าคนอื่น',
         ability: 'ซื้อของในตลาดแต่ละยกราคาถูกลง 💵 1 (ต่ำสุด 1)'
     },
     smuggler: {
@@ -286,6 +286,9 @@ function createInitialState() {
         dealLedger: [],
         history: [],
         lastRoundReport: [],
+        // ผลยกลงมือล่าสุด เก็บไว้จนกว่ายกถัดไปจะเฉลย — เดิม lastRoundReport ถูกแทนด้วยสรุปตลาดทันทีที่ตลาดปิด
+        // คนที่อ่านช้าเลยไม่ทันเห็นว่าตัวเองโดนอะไร (โดยเฉพาะโน้ตลับที่ถูกล้างไปด้วย)
+        lastActionReport: null,
         winner: null,
         lastAction: 0,
         phaseEndsAt: null,
@@ -355,7 +358,8 @@ function createPlayerState(player, context = {}) {
         intelNotes: [],
         fixerEscapeAvailable: true,
         lastMove: null,
-        privateReport: []
+        privateReport: [],
+        lastActionPrivate: []
     };
 }
 
@@ -590,6 +594,7 @@ function assignRoles(room) {
         player.fixerEscapeAvailable = true;
         player.lastMove = null;
         player.privateReport = [];
+        player.lastActionPrivate = [];
     });
 }
 
@@ -604,6 +609,7 @@ function startGame(room) {
     room.gameState.actionChoices = {};
     room.gameState.dealLedger = [];
     room.gameState.lastRoundReport = [];
+    room.gameState.lastActionReport = null;
     room.gameState.winner = null;
     room.gameState.lastAction = Date.now();
     room.gameState.statsRecordedAt = null;
@@ -1193,6 +1199,13 @@ function resolveActionPhase(room) {
     room.gameState.actionChoices = {};
     room.gameState.marketChoices = {};
     room.gameState.lastAction = Date.now();
+    room.gameState.lastActionReport = {
+        roundNumber: room.gameState.roundNumber,
+        entries: report.map(entry => ({ ...entry }))
+    };
+    (room.gameState.players || []).forEach(player => {
+        player.lastActionPrivate = (player.privateReport || []).map(entry => ({ ...entry }));
+    });
 
     report.forEach(entry => pushHistory(room, entry.icon, entry.text, entry.tone));
     startNextRound(room, report);
@@ -1202,17 +1215,67 @@ function buildLockProgress(room) {
     const phase = room.gameState.phase;
     const alive = getAlivePlayers(room);
     const total = alive.length;
-    let locked = 0;
+    let choices = null;
     if (phase === 'market') {
-        const choices = room.gameState.marketChoices || {};
-        locked = alive.filter(p => Object.prototype.hasOwnProperty.call(choices, p.playerId)).length;
+        choices = room.gameState.marketChoices || {};
     } else if (phase === 'action') {
-        const choices = room.gameState.actionChoices || {};
-        locked = alive.filter(p => Object.prototype.hasOwnProperty.call(choices, p.playerId)).length;
+        choices = room.gameState.actionChoices || {};
     } else {
         return null;
     }
-    return { locked, total };
+    const hasChoice = p => Object.prototype.hasOwnProperty.call(choices, p.playerId);
+    const locked = alive.filter(hasChoice).length;
+    // บอกชื่อคนที่ยังไม่เลือก (เลือกแล้วหรือยังไม่ใช่ความลับ — แค่ "เลือกอะไร" ที่เป็นความลับ)
+    const waitingOn = alive
+        .filter(p => !hasChoice(p))
+        .map(p => ({ playerId: p.playerId, name: p.name, online: isPlayerOnline(room, p.playerId) }));
+    return { locked, total, waitingOn };
+}
+
+// ตารางอันดับตอนจบเกม: เรียงตามกติกาเดียวกับ finalizeWinner (รอด > 👑 > 💵 > 🔥 ต่ำกว่า)
+// คนที่เสมอทุกเกณฑ์ได้อันดับเดียวกัน
+function buildStandings(room) {
+    if (room.gameState.phase !== 'finished') {
+        return null;
+    }
+    const winnerIds = new Set(room.gameState.winner?.playerIds || []);
+    const sorted = [...room.gameState.players].sort((left, right) => (
+        compareStanding(left, right) || left.name.localeCompare(right.name, 'th')
+    ));
+    let rank = 0;
+    return sorted.map((player, index) => {
+        if (index === 0 || compareStanding(sorted[index - 1], player) !== 0) {
+            rank = index + 1;
+        }
+        return {
+            rank,
+            playerId: player.playerId,
+            name: player.name,
+            avatar: player.avatar,
+            roleId: player.role,
+            roleTitle: player.roleInfo?.title || player.role,
+            alive: player.alive !== false,
+            influence: player.influence,
+            cash: player.cash,
+            heat: player.heat,
+            lastMove: player.lastMove || null,
+            isWinner: winnerIds.has(player.playerId)
+        };
+    });
+}
+
+function buildActionReportView(room, self) {
+    const report = room.gameState.lastActionReport;
+    if (!report || !Array.isArray(report.entries)) {
+        return null;
+    }
+    return {
+        roundNumber: report.roundNumber,
+        entries: [
+            ...(self.lastActionPrivate || []).map(entry => ({ ...entry, private: true })),
+            ...report.entries
+        ].map(enrichFeedEntry)
+    };
 }
 
 function buildClientState(room, playerId) {
@@ -1295,6 +1358,8 @@ function buildClientState(room, playerId) {
             ...(self.privateReport || []).map(entry => ({ ...entry, private: true })),
             ...(room.gameState.lastRoundReport || [])
         ].map(enrichFeedEntry),
+        actionReport: buildActionReportView(room, self),
+        standings: buildStandings(room),
         actionCatalog: buildActionCatalog(self),
         tutorial: buildTutorialState(room, self),
         actionHelp: {
@@ -1424,6 +1489,34 @@ function submitAction(room, playerId, actionType, targetPlayerId = null, itemId 
     return { resolved: false, phase: room.gameState.phase };
 }
 
+// เปลี่ยนใจได้ตราบใดที่ยกยังไม่เฉลย (คนสุดท้ายที่ล็อกจะเฉลยทันที จึงไม่มีอะไรให้ยกเลิก)
+function cancelChoice(room, playerId, expected = {}) {
+    if (!room || room.settings.gameMode !== 'blackmarket') {
+        throw new Error('ไม่พบโต๊ะนี้');
+    }
+    const phase = room.gameState.phase;
+    // กดเปลี่ยนใจช้ากว่าการเฉลย: อย่าไปยกเลิกของในเฟส/ยกใหม่ที่ผู้เล่นยังไม่ได้เห็น
+    if ((expected.phase && expected.phase !== phase)
+        || (expected.roundNumber && Number(expected.roundNumber) !== Number(room.gameState.roundNumber))) {
+        throw new Error('ยกนี้ทุกคนล็อกครบและเฉลยไปแล้ว');
+    }
+    const bucket = phase === 'market'
+        ? room.gameState.marketChoices
+        : (phase === 'action' ? room.gameState.actionChoices : null);
+    if (!bucket) {
+        throw new Error('ตอนนี้ไม่มีอะไรให้เปลี่ยน');
+    }
+    const player = getPlayer(room, playerId);
+    if (!player || player.alive === false) {
+        throw new Error('คนที่ล้มไปแล้วเปลี่ยนแผนไม่ได้');
+    }
+    if (!bucket[playerId]) {
+        throw new Error('ยกนี้ทุกคนล็อกครบและเฉลยไปแล้ว');
+    }
+    delete bucket[playerId];
+    return { phase };
+}
+
 // ใช้หลังมีคนหลุดสาย (ยังไม่ถูกลบจากโต๊ะ): ถ้าทุกคนที่ยังออนไลน์ล็อกครบแล้ว ให้ปิด phase เลย ไม่ต้องรอเวลา
 // ต้องมีคนออนไลน์เหลืออย่างน้อย 1 คน ไม่งั้นโต๊ะร้างจะไหลข้ามยกเอง
 function resolveIfAllCommitted(room) {
@@ -1492,6 +1585,7 @@ module.exports = {
     buildClientState,
     submitMarketPurchase,
     submitAction,
+    cancelChoice,
     autoResolvePhase,
     resolveIfAllCommitted,
     handlePlayerLeft,

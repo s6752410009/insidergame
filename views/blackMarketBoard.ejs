@@ -452,6 +452,48 @@
 
   .bm-hide { display: none !important; }
 
+  @media (prefers-reduced-motion: reduce) {
+    .bm-page *,
+    .bm-page *::before,
+    .bm-page *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  /* ผลยก / เปลี่ยนใจ / ข้ามคนที่ยังไม่เลือก / ตารางอันดับ */
+  .bm-round-summary-item.is-self { background: rgba(245, 200, 107, 0.08); border-radius: 10px; padding: 4px 8px; margin: 0 -8px; }
+  .bm-rs-you { display: inline-block; margin-right: 4px; padding: 1px 6px; border-radius: 999px; background: rgba(245, 200, 107, 0.2); color: #fde68a; font-size: 0.72rem; font-weight: 700; }
+  .bm-rs-older { margin-top: 10px; }
+  .bm-rs-older > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--bm-muted); font-size: 0.85rem; font-weight: 700; }
+  .bm-now-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .bm-now-bar-actions .bm-btn { min-height: 48px; }
+  .bm-waiting-names { margin-top: 6px; color: #fde68a; font-size: 0.88rem; overflow-wrap: anywhere; }
+  .bm-locked-box { display: grid; gap: 10px; }
+  .bm-locked-box .bm-card-note { margin: 0; }
+  .bm-standings { display: grid; gap: 8px; margin-top: 12px; }
+  .bm-standing {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+  }
+  .bm-standing.is-self { border-color: rgba(245, 200, 107, 0.45); background: rgba(245, 200, 107, 0.07); }
+  .bm-standing.is-winner .bm-standing-rank { background: rgba(245, 200, 107, 0.25); color: #fde68a; }
+  .bm-standing-rank {
+    width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center;
+    background: rgba(255,255,255,0.08); font-family: 'Orbitron', sans-serif; font-weight: 700;
+  }
+  .bm-standing-name { font-weight: 700; overflow-wrap: anywhere; }
+  .bm-standing-meta { color: var(--bm-muted); font-size: 0.82rem; margin-top: 2px; overflow-wrap: anywhere; }
+  .bm-standing .bm-player-stats { margin-top: 6px; }
+  .bm-recap-you { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(0,0,0,0.28); line-height: 1.5; }
+  .bm-recap-rule { margin-top: 8px; color: var(--bm-muted); font-size: 0.8rem; line-height: 1.45; }
+
   /* Mobile Tabs Switcher for Black Market */
   .bm-mobile-tabs {
     display: none;
@@ -720,7 +762,7 @@
   }
 
   .bm-ceremony {
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: 5;
     display: flex;
@@ -1407,9 +1449,13 @@
 
   @media (max-width: 640px) {
     .bm-flow-guide {
-      grid-template-columns: 1fr;
-      margin: 0 14px 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin: 0 10px 10px;
+      padding: 6px;
     }
+    .bm-flow-step { padding: 6px; font-size: 0.72rem; }
+    .bm-flow-step strong { font-size: 0.76rem; }
     .bm-role-icon {
       width: 96px;
       height: 96px;
@@ -1623,6 +1669,9 @@
     gap: 8px;
   }
 
+  /* ชื่อไทยยาวไม่มีช่องว่าง ต้องตัดบรรทัดได้ ไม่ดันการ์ดล้นจอ */
+  .bm-player-name { min-width: 0; overflow-wrap: anywhere; flex-wrap: wrap; }
+
   .bm-price,
   .bm-tag {
     display: inline-flex;
@@ -1669,6 +1718,7 @@
   .bm-btn.gold { background: linear-gradient(135deg, #d97706, #92400e); }
   .bm-btn.green { background: linear-gradient(135deg, #047857, #065f46); }
   .bm-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .bm-btn { min-height: 48px; }
   .bm-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,0.24); }
 
   .bm-action-block {
@@ -1899,7 +1949,8 @@
       grid-template-columns: 1fr;
     }
 
-    .bm-announcer {
+    .bm-announcer,
+    .bm-announcer-body {
       grid-template-columns: 1fr;
     }
   }
@@ -1919,7 +1970,7 @@
     .bm-top-meta { gap: 6px; }
     .bm-top-meta .bm-chip { flex: 1 1 calc(50% - 6px); min-width: 0; padding-inline: 10px; }
     .bm-announcer-rails { grid-template-columns: 1fr; }
-    .bm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .bm-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .bm-action-grid { grid-template-columns: 1fr; }
     .bm-simple-actions { grid-template-columns: 1fr; }
     .bm-simple-btn { min-height: 96px; }
@@ -1995,10 +2046,12 @@
     .bm-card,
     .bm-manual-card { padding: 12px; }
     .bm-announcer { padding: 12px; }
-    .bm-top-meta .bm-chip,
+    .bm-top-meta .bm-chip { flex: 1 1 calc(50% - 6px); padding: 7px 8px; font-size: 0.85rem; }
     .bm-tour-actions .bm-btn,
     .bm-btn-row .bm-btn { flex: 1 1 100%; width: 100%; }
-    .bm-stats { grid-template-columns: 1fr; }
+    .bm-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+    .bm-stat { padding: 8px 6px; border-radius: 14px; text-align: center; }
+    .bm-stat-label { font-size: 0.7rem; letter-spacing: 0; }
     .bm-pill { max-width: 100%; }
   }
 </style>
@@ -2036,11 +2089,11 @@
 
     <div id="bmNowBar" class="bm-now-bar" aria-live="polite"></div>
 
+    <div id="bmRoundSummary" class="bm-round-summary" style="display:none;" aria-live="polite"></div>
+
     <div id="bmFlowGuide" class="bm-flow-guide" aria-label="ลำดับการเล่นในหนึ่งยก"></div>
 
     <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div>
-
-    <div id="bmRoundSummary" class="bm-round-summary" style="display:none;" aria-live="polite"></div>
 
     <div class="bm-mobile-tabs">
       <button class="bm-mobile-tab-btn active" type="button" data-tab="game">🎮 เล่นยกนี้</button>
@@ -2208,11 +2261,11 @@
           <div class="bm-manual-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
             <div class="bm-manual-section">
               <h3 style="color: #efd07a;">🛒 ช่วงที่ 1: ตลาดมืด (ซื้อของ)</h3>
-              <p>ในตลาดมีของ 3 ชิ้น: ลังสินค้า 📦 (ราคา 2), เกราะ 🦺 (ราคา 3), พาสปอร์ต 🛂 (ราคา 2)</p>
+              <p>ในตลาดมีของ 3 ชิ้น: ลังของ 📦 (ราคา 2), ปืน 🔫 (ราคา 3), พาสปลอม 🛂 (ราคา 2) · แต่ละคนซื้อได้ยกละ 1 ชิ้น</p>
               <div class="bm-manual-list">
-                <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: ซื้อ 📦 ลังสินค้า จ่าย 💵 2 (เงินเหลือ 3)</div>
-                <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: ซื้อปืน 🔫 จากตลาดก่อน จึงจะใช้คำสั่งเก็บในช่วงลงมือได้</div>
-                <div class="bm-manual-line">• <b>บอย (นายหน้า)</b>: ซื้อ 🛂 พาสปอร์ต จ่าย 💵 1 (ราคาลด 1 จากสกิลนายหน้า 🕴️, เงินเหลือ 4)</div>
+                <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: ซื้อ 📦 ลังของ จ่าย 💵 2 (เงินเหลือ 3)</div>
+                <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: ซื้อ 🔫 ปืน จ่าย 💵 3 (เงินเหลือ 2 — พอค่าสั่งเก็บของมือเก็บงานพอดี)</div>
+                <div class="bm-manual-line">• <b>บอย (นายหน้า)</b>: ซื้อ 🛂 พาสปลอม จ่าย 💵 1 (ราคาลด 1 จากสกิลนายหน้า 🕴️, เงินเหลือ 4)</div>
                 <div class="bm-manual-line">• <b>แอน (สายข่าว)</b>: เลือก ผ่าน 🤐 (เงินเหลือ 5)</div>
               </div>
             </div>
@@ -2221,7 +2274,7 @@
               <h3 style="color: #38bdf8;">🎯 ช่วงที่ 2: ลงมือ (ล็อกแผน)</h3>
               <p>ทุกคนทำการล็อกเลือกแผนการลับของยกนี้แบบปิดข้อมูล:</p>
               <div class="bm-manual-list">
-                <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: เลือก 📦 <b>ส่งของ</b> (ส่งลังสินค้าเถื่อน 📦 ในตัว)</div>
+                <div class="bm-manual-line">• <b>กิตติ (เจ้าพ่อ)</b>: เลือก 📦 <b>ส่งของ</b> (ส่งลังของ 📦 ที่เพิ่งซื้อ)</div>
                 <div class="bm-manual-line">• <b>นิด (มือเก็บงาน)</b>: เลือก 🔫 <b>สั่งเก็บ</b> (เป้าหมาย: กิตติ) จ่าย 💵 2 และใช้ปืน 🔫</div>
                 <div class="bm-manual-line">• <b>บอย (นายหน้า)</b>: เลือก 🤝 <b>เข้าดีล</b> (เป้าหมาย: แอน)</div>
                 <div class="bm-manual-line">• <b>แอน (สายข่าว)</b>: เลือก 🤝 <b>เข้าดีล</b> (เป้าหมาย: บอย)</div>
@@ -2233,10 +2286,10 @@
             <h3 style="color: #f87171;">📢 ลำดับการเฉลยผลการเล่นเมื่อจบยก:</h3>
             <div style="display: grid; gap: 12px; font-size: 0.92em; line-height: 1.6;">
               <div style="background: rgba(46,204,113,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #2ecc71;">
-                <strong>1. ดีลสำเร็จทำงานก่อน:</strong> บอย 🤝 แอน ต่างฝ่ายต่างเข้าดีลใส่กันตรง ๆ -> ดีลสำเร็จ! ทั้งคู่ได้ 👑 +1 และ 💵 +1 คืนกระเป๋า (และพิเศษ! บอยมีสกิลนายหน้า 🕴️ จึงได้รับเงินเพิ่ม 💵 +2 รวมเป็นได้รับ 2!)
+                <strong>1. ดีลสำเร็จทำงานก่อน:</strong> บอย 🤝 แอน ต่างฝ่ายต่างเข้าดีลใส่กันตรง ๆ -> ดีลสำเร็จ! ทั้งคู่ได้ 👑 +1 และ 💵 +1 (บอยเป็นนายหน้า 🕴️ ได้เงินเพิ่มอีก 💵 1 รวมเป็น 💵 +2)
               </div>
               <div style="background: rgba(231,76,60,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #e74c3c;">
-                <strong>2. สั่งเก็บทำงานต่อมา:</strong> นิด 🔫 สั่งเก็บ กิตติ -> จ่ายเงิน 2 + ปืนเงียบลั่นไก -> กิตติไม่มีเกราะ 🦺 ป้องกันตัว และไม่ใช่ฟิกเซอร์ -> กิตติ <b>💀 ล้มทันที! (กระเป๋าฉีกเสียเงินครึ่งหนึ่ง และเปิดเผยบทบาทเจ้าพ่อ)</b> นิดได้ 🔥 ค่าหัวสะสม 2
+                <strong>2. สั่งเก็บทำงานต่อมา:</strong> นิด 🔫 สั่งเก็บ กิตติ -> จ่ายเงิน 2 + ปืนเงียบลั่นไก -> กิตติไม่ได้ตั้งการ์ด ไม่มีเกราะ 🦺 และไม่ใช่คนเคลียร์ทาง -> กิตติ <b>💀 ล้มทันที! (กระเป๋าฉีกเสียเงินครึ่งหนึ่ง และเปิดเผยบทบาทเจ้าพ่อ)</b> นิดได้ 🔥 ค่าหัว +2
               </div>
               <div style="background: rgba(148,163,184,0.08); padding: 12px; border-radius: 12px; border-left: 4px solid #94a3b8;">
                 <strong>3. แผนการส่งของคนล้ม:</strong> เนื่องจากกิตติ <b>💀 ล้มลงไปแล้ว</b> ก่อนถึงลำดับส่งของ แผนจึง <b>🚫 ล้มเหลว</b> แต่สินค้าไม่ได้ถูกใช้และยังอยู่ในกระเป๋า
@@ -2278,7 +2331,7 @@
     let howToActive = false;
     let howToRestoreFocus = null;
     let showAdvancedActions = false;
-    let announcerExpanded = true;
+    let announcerExpanded = window.innerWidth > 640;
     let simplePickMode = null;
     let guideExpanded = false;
 
@@ -2321,7 +2374,7 @@
       },
       broker: {
         opening: [
-          'นายหน้ากินกำไรตั้งแต่ตอนเปิดตลาด ของชิ้นแรกแต่ละยกถูกกว่าคนอื่น ให้ใช้สิทธิ์นี้ทุกครั้งที่ของบนโต๊ะคุ้ม',
+          'นายหน้ากินกำไรตั้งแต่ตอนเปิดตลาด ของที่ซื้อแต่ละยกถูกกว่าคนอื่น ให้ใช้สิทธิ์นี้ทุกครั้งที่ของบนโต๊ะคุ้ม',
           'ต้นเกมควรเร่งสะสมของดีเข้ามือก่อน เพื่อเปิดทางให้กลางเกมคุณมีจังหวะส่งของหรือปล้นได้หลายแบบ'
         ],
         earlyGame: [
@@ -2706,7 +2759,7 @@
           showCeremony({
             kicker: `🎯 ช่วงวางแผนลงมือ (ยก ${nextRound})`,
             title: 'แผนการลับเริ่มทำงาน',
-            copy: 'เลือกเป้าหมายและแผนการของคุณ: ปล้น ฆ่า ทำดีล หรือหนีตำรวจ',
+            copy: 'เลือกแผน 1 อย่าง: ส่งของ ดีล ปล้น สั่งเก็บ หรือหมอบต่ำ',
             tone: 'gold',
             sound: 'open'
           });
@@ -3210,6 +3263,12 @@
 
       const lp = currentState.lockProgress;
       const lockText = (lp && lp.total) ? ('ล็อกแล้ว ' + lp.locked + '/' + lp.total + ' คน') : '';
+      const waitingOthers = ((lp && lp.waitingOn) || []).filter(function(entry) { return entry.playerId !== playerId; });
+      const waitingText = waitingOthers.length
+        ? 'ยังรอ: ' + waitingOthers.map(function(entry) { return entry.name + (entry.online ? '' : ' (หลุด)'); }).join(', ')
+        : '';
+      const onlineWaiting = waitingOthers.filter(function(entry) { return entry.online; });
+      let actionsHtml = '';
 
       if (!self.alive) {
         main = 'คุณออกจากเกมแล้ว — ดูผลอย่างเดียว';
@@ -3217,26 +3276,35 @@
       } else if (phase === 'market') {
         if (status.pendingMarketChoice) {
           main = 'รอคนอื่นเลือกตลาด — คุณล็อกแล้ว';
-          sub = lockText || 'แก้ไม่ได้จนกว่าจะปิดยก';
+          sub = (lockText || '') + ' · เปลี่ยนใจได้จนกว่าทุกคนจะเลือกครบ';
           locked = true;
         } else {
           main = 'ขั้นที่ 1: เลือกของจากตลาด';
-          sub = 'ซื้อ 1 ชิ้น หรือกด「ผ่าน — ไม่ซื้อ」· ของที่ซื้อไว้ใช้ตอน「ลงมือ」' + (lockText ? ' · ' + lockText : '');
+          sub = 'ซื้อ 1 ชิ้น หรือกด「ผ่าน — ไม่ซื้อ」· ของที่ซื้อไว้ใช้ตอน「ลงมือ」' + (lockText ? ' · ' + lockText : '') + ' · ไม่เลือกก่อนหมดเวลา = ผ่าน';
           cta = 'ไปที่ตลาดมืด';
         }
       } else if (phase === 'action') {
         if (status.pendingAction) {
-          main = 'รอคนอื่นลงมือ — คุณล็อกแล้ว';
-          sub = lockText || plainBmCopy(status.pendingAction.summaryText || status.pendingAction.label || '');
+          main = 'รอคนอื่นลงมือ — คุณล็อก「' + plainBmCopy(status.pendingAction.summaryText || status.pendingAction.label || 'แผน') + '」แล้ว';
+          sub = (lockText || '') + ' · เปลี่ยนใจได้จนกว่าทุกคนจะล็อกครบ';
           locked = true;
         } else {
           main = 'ขั้นที่ 2: เลือกแผน 1 อย่าง';
-          sub = 'แนะนำ: ส่งของ (ได้อิทธิพล) · สืบข่าว (ดูเป้า) · ผ่าน (ไม่ทำ) · แผนลับกด「ดูแผนหลักทั้งหมด」' + (lockText ? ' · ' + lockText : '');
+          sub = 'แนะนำ: ส่งของ (ได้อิทธิพล) · สืบข่าว (ดูเป้า) · ผ่าน (ไม่ทำ) · แผนลับกด「ดูแผนหลักทั้งหมด」' + (lockText ? ' · ' + lockText : '') + ' · ไม่เลือกก่อนหมดเวลา = ผ่าน';
           cta = 'ไปเลือกแผน';
         }
       } else if (phase === 'finished') {
         main = 'เกมจบแล้ว';
-        sub = currentState.winner ? ('ชนะ: ' + (currentState.winner.name || '')) : '';
+        sub = currentState.winner ? ('ชนะ: ' + winnerHeadline(currentState.winner)) : '';
+        cta = 'ดูอันดับทั้งโต๊ะ';
+      }
+
+      if (self.alive && locked) {
+        actionsHtml += '<button type="button" id="bmUndoChoice" class="bm-btn alt">↩️ เปลี่ยนใจ</button>';
+      }
+      // หัวห้อง: เพื่อนวางมือถือ/ไม่กดสักที → ข้ามได้ ไม่ต้องรอ timer (ฝั่ง server กันกดเร็วเกินไว้ 15 วิ)
+      if (isRoomAdmin && (phase === 'market' || phase === 'action') && onlineWaiting.length && (locked || !self.alive)) {
+        actionsHtml += '<button type="button" id="bmForceAdvance" class="bm-btn">⏭ ข้ามคนที่ยังไม่เลือก</button>';
       }
 
       $('#bmNowBar')
@@ -3245,7 +3313,9 @@
           '<div class="bm-now-bar-label">ทำอะไรตอนนี้</div>' +
           '<div class="bm-now-bar-text">' + escapeHtml(main) + '</div>' +
           (sub ? '<div class="bm-now-bar-sub">' + escapeHtml(sub) + '</div>' : '') +
-          (cta ? '<button type="button" id="bmNowBarGo" class="bm-now-bar-go">' + escapeHtml(cta) + '</button>' : '')
+          (waitingText && (phase === 'market' || phase === 'action') ? '<div class="bm-waiting-names">⏳ ' + escapeHtml(waitingText) + '</div>' : '') +
+          (cta ? '<button type="button" id="bmNowBarGo" class="bm-now-bar-go">' + escapeHtml(cta) + '</button>' : '') +
+          (actionsHtml ? '<div class="bm-now-bar-actions">' + actionsHtml + '</div>' : '')
         );
     }
 
@@ -3605,9 +3675,15 @@
         return;
       }
       spotlightStarted = true;
-      window.setTimeout(function() {
+      // อย่าเปิดทัวร์ซ้อนกับการ์ด "วิธีเล่นแบบสั้น" ของ partyPlay (เดิมเด้งพร้อมกันสองชั้น)
+      const startWhenClear = function(triesLeft) {
+        if (document.getElementById('ppFirstPlay') && triesLeft > 0) {
+          window.setTimeout(function() { startWhenClear(triesLeft - 1); }, 400);
+          return;
+        }
         openSpotlight(false);
-      }, 500);
+      };
+      window.setTimeout(function() { startWhenClear(40); }, 500);
     }
 
     function renderRolePanel() {
@@ -3685,9 +3761,9 @@
           }).join('')}
         </div>
         <div class="bm-btn-row">
-          <button type="button" class="bm-btn alt offer-buy" data-item-id="${escapeHtml(currentState.passChoice || '__pass__')}" ${lockedChoice ? 'disabled' : ''}>ผ่าน — ไม่ซื้อ</button>
+          <button type="button" class="bm-btn alt offer-buy" data-item-id="${escapeHtml(currentState.passChoice || '__pass__')}" ${lockedChoice ? 'disabled' : ''}>${lockedChoice === (currentState.passChoice || '__pass__') ? '✅ ผ่านตลาดแล้ว' : 'ผ่าน — ไม่ซื้อ'}</button>
         </div>
-        ${lockedChoice ? '<div class="bm-card-note" style="margin-top:10px;">🔒 รอคนอื่นเลือกตลาด</div>' : ''}
+        ${lockedChoice ? '<div class="bm-locked-box" style="margin-top:10px;"><div class="bm-card-note">🔒 รอคนอื่นเลือกตลาด — ยังไม่หักเงินจนกว่าตลาดปิด</div><div class="bm-btn-row" style="margin-top:0;"><button type="button" class="bm-btn alt bm-undo-choice">↩️ เปลี่ยนใจ เลือกใหม่</button></div></div>' : ''}
       `;
     }
 
@@ -3748,7 +3824,11 @@
       }
 
       if (locked) {
-        return '<div class="bm-card-note" style="margin:0;">🔒 ' + escapeHtml(pendingAction.summaryText || pendingAction.label || 'ล็อกแล้ว') + ' — รอคนอื่น</div>';
+        return '<div class="bm-locked-box">' +
+          '<div class="bm-card-note">🔒 ' + escapeHtml(pendingAction.summaryText || pendingAction.label || 'ล็อกแล้ว') + ' — รอคนอื่น</div>' +
+          (pendingAction.effectText ? '<div class="bm-card-note">ถ้าสำเร็จ: ' + escapeHtml(pendingAction.effectText) + '</div>' : '') +
+          '<div class="bm-btn-row" style="margin-top:0;"><button type="button" class="bm-btn alt bm-undo-choice">↩️ เปลี่ยนใจ เลือกใหม่</button></div>' +
+          '</div>';
       }
 
       const pickPanel = buildSimplePickPanel();
@@ -3799,7 +3879,10 @@
         const value = `${item.id || ''} ${item.name || ''} ${item.summary || ''}`.toLowerCase();
         return value.includes('gun') || value.includes('ปืน');
       });
-      const hitDisabledReason = selfHasGun ? 'ต้องมีเงินพอเปิดงาน 💵' : 'ต้องมีปืน 🔫 ก่อน';
+      const hitCost = currentState.playerRole && currentState.playerRole.id === 'hitman' ? 2 : 3;
+      const hitDisabledReason = selfHasGun
+        ? ('ต้องมี 💵 ' + hitCost + ' (มีอยู่ ' + selfCash + ')')
+        : 'ต้องซื้อปืน 🔫 จากตลาดก่อน';
       const catalog = currentState.actionCatalog || [];
       const actionById = function(id) {
         return catalog.find(function(a) { return a.id === id; }) || { id: id, icon: '🎴', label: id };
@@ -4025,7 +4108,7 @@
       // Step 10: Cash Management
       steps.push({
         title: '💵 การจัดการเงินดำ',
-        copy: 'ควรมีเงินสำรองติดตัวเสมอเพื่อจ่ายเป็นค่าลงแผนงาน (เช่น ดีล/สังหาร)'
+        copy: 'เก็บเงินสำรองไว้บ้าง: สั่งเก็บต้องจ่าย 💵 3 (มือเก็บงาน 2) และโดนปล้น/หักหลังจะเสียเงิน'
       });
 
       // Step 11: Heat / Danger Alert
@@ -4066,7 +4149,8 @@
       }
 
       if (currentState.phase === 'finished') {
-        $('#mainStage').html('<div class="bm-empty">👑 โต๊ะปิดแล้ว ดูผลด้านขวาแล้วตัดสินใจว่าจะเปิดเมืองใหม่หรือกลับห้อง</div>');
+        $('#stageCardTitle').text('👑 สรุปผลทั้งโต๊ะ');
+        $('#mainStage').html(buildRecapHtml());
         return;
       }
 
@@ -4130,29 +4214,63 @@
       $('#dealPanel').html(pendingHtml + ledgerHtml);
     }
 
+    // ชื่อเราในรายงานสาธารณะ → ติดป้าย "คุณ" ให้หาเจอเร็ว ๆ บนมือถือ
+    function reportLineHtml(entry, selfName) {
+      const tone = escapeHtml(entry.tone || 'neutral');
+      const text = String(entry.text || '');
+      const mentionsSelf = !entry.private && selfName && text.indexOf(selfName) !== -1;
+      return '<div class="bm-round-summary-item tone-' + tone + (entry.private || mentionsSelf ? ' is-self' : '') + '">' +
+        '<span class="bm-rs-icon">' + gameIcon(feedIconMeta(entry, { inline: true })) + '</span>' +
+        '<span class="bm-rs-copy">' +
+          (entry.private ? '<strong>🔒 เฉพาะคุณ:</strong> ' : (mentionsSelf ? '<span class="bm-rs-you">คุณ</span>' : '')) +
+          escapeHtml(text) +
+        '</span>' +
+        '</div>';
+    }
+
+    function sortReportForSelf(entries, selfName) {
+      // โน้ตลับของเรามาก่อน ตามด้วยบรรทัดที่มีชื่อเรา แล้วค่อยเรื่องของคนอื่น
+      return entries.slice().sort(function(left, right) {
+        const score = function(entry) {
+          if (entry.private) return 0;
+          return selfName && String(entry.text || '').indexOf(selfName) !== -1 ? 1 : 2;
+        };
+        return score(left) - score(right);
+      });
+    }
+
     function renderRoundSummary() {
       const panel = document.getElementById('bmRoundSummary');
       if (!panel) return;
-      const report = (currentState && currentState.lastRoundReport) || [];
       const phase = currentState && currentState.phase;
-      if (!report.length || phase === 'finished') {
+      const selfName = getSelfDisplayName();
+      const actionReport = currentState && currentState.actionReport;
+      const actionEntries = (actionReport && actionReport.entries) || [];
+      // ช่วงตลาด lastRoundReport = ผลลงมือยกที่แล้ว; ช่วงลงมือ = สรุปซื้อของ
+      const marketEntries = phase === 'action' ? ((currentState && currentState.lastRoundReport) || []) : [];
+      if (phase === 'finished' || (!actionEntries.length && !marketEntries.length)) {
         panel.style.display = 'none';
         panel.innerHTML = '';
         return;
       }
-      const items = report.map(function(entry) {
-        const tone = escapeHtml(entry.tone || 'neutral');
-        return '<div class="bm-round-summary-item tone-' + tone + '">' +
-          '<span class="bm-rs-icon">' + gameIcon(feedIconMeta(entry, { inline: true })) + '</span>' +
-          '<span class="bm-rs-copy">' + (entry.private ? '<strong>🔒 เฉพาะคุณ:</strong> ' : '') + escapeHtml(entry.text || '') + '</span>' +
+      const actionTitle = '🧾 ผลยก ' + Number((actionReport && actionReport.roundNumber) || 0) + ' — เกิดอะไรขึ้นกับคุณ';
+      const actionList = '<div class="bm-round-summary-list">' +
+        sortReportForSelf(actionEntries, selfName).map(function(entry) { return reportLineHtml(entry, selfName); }).join('') +
+        '</div>';
+      let html = '';
+      if (phase === 'action' && marketEntries.length) {
+        html += '<div class="bm-round-summary-title">🛒 สรุปตลาดยก ' + Number(currentState.roundNumber || 0) + '</div>' +
+          '<div class="bm-round-summary-list">' +
+          sortReportForSelf(marketEntries, selfName).map(function(entry) { return reportLineHtml(entry, selfName); }).join('') +
           '</div>';
-      }).join('');
-      var summaryTitle = phase === 'action'
-        ? '🧾 สรุปการซื้อของตลาดยกนี้'
-        : '🧾 สรุปผลการลงมือยกที่แล้ว';
+        if (actionEntries.length) {
+          html += '<details class="bm-rs-older"><summary>' + escapeHtml(actionTitle) + '</summary>' + actionList + '</details>';
+        }
+      } else if (actionEntries.length) {
+        html += '<div class="bm-round-summary-title">' + escapeHtml(actionTitle) + '</div>' + actionList;
+      }
       panel.style.display = '';
-      panel.innerHTML = '<div class="bm-round-summary-title">' + summaryTitle + '</div>' +
-        '<div class="bm-round-summary-list">' + items + '</div>';
+      panel.innerHTML = html;
     }
 
     function renderHistory() {
@@ -4165,30 +4283,80 @@
       `).join('') : '<div class="bm-empty">ข่าวยังไม่เดิน</div>');
     }
 
-    function renderWinner() {
+    function buildRecapHtml() {
       const winner = currentState.winner;
       if (!winner) {
-        $('#winnerPanel').hide().empty();
-        return;
+        return '<div class="bm-empty">👑 โต๊ะปิดแล้ว</div>';
       }
-
-      $('#winnerPanel').show().html(`
+      const standings = currentState.standings || [];
+      const me = standings.find(function(row) { return row.playerId === playerId; }) || null;
+      const top = standings[0] || null;
+      let youLine = '';
+      if (me) {
+        if (me.isWinner) {
+          youLine = winner.shared
+            ? '🤝 คุณชนะร่วม — เสมอกันทุกเกณฑ์'
+            : '🏆 คุณชนะ! คุมเมืองด้วย 👑 ' + Number(me.influence || 0);
+        } else {
+          const reasons = [];
+          if (!me.alive && top && top.alive) {
+            reasons.push('คุณหลุดจากโต๊ะ (คนที่ยังรอดจัดอันดับก่อนเสมอ)');
+          } else if (top && Number(top.influence || 0) > Number(me.influence || 0)) {
+            reasons.push('ขาดอีก 👑 ' + (Number(top.influence || 0) - Number(me.influence || 0)) + ' ถึงจะเท่าที่ 1');
+          } else if (top && Number(top.cash || 0) > Number(me.cash || 0)) {
+            reasons.push('👑 เท่าที่ 1 แต่ 💵 น้อยกว่า (เสมอแต้มตัดสินด้วยเงิน)');
+          } else if (top) {
+            reasons.push('👑 และ 💵 เท่าที่ 1 แต่ 🔥 ค่าหัวสูงกว่า');
+          }
+          youLine = 'คุณได้อันดับ ' + Number(me.rank || 0) + ' จาก ' + standings.length + (reasons.length ? ' — ' + reasons.join(' · ') : '');
+        }
+      }
+      const rows = standings.map(function(row) {
+        const cls = 'bm-standing' + (row.playerId === playerId ? ' is-self' : '') + (row.isWinner ? ' is-winner' : '');
+        return '<div class="' + cls + '">' +
+          '<div class="bm-standing-rank">' + Number(row.rank || 0) + '</div>' +
+          '<div>' +
+            '<div class="bm-standing-name">' + escapeHtml(row.avatar || '') + ' ' + escapeHtml(row.name || '-') +
+              (row.playerId === playerId ? ' <span class="bm-rs-you">คุณ</span>' : '') +
+              (row.isWinner ? ' 👑' : '') + '</div>' +
+            '<div class="bm-standing-meta">' + escapeHtml(row.roleTitle || '-') + ' · ' + (row.alive ? 'รอดถึงจบ' : '💀 หลุดจากโต๊ะ') +
+              (row.lastMove ? ' · ยกสุดท้าย: ' + escapeHtml(row.lastMove) : '') + '</div>' +
+            '<div class="bm-player-stats">' +
+              '<div class="bm-pill good">👑 ' + Number(row.influence || 0) + '</div>' +
+              '<div class="bm-pill">💵 ' + Number(row.cash || 0) + '</div>' +
+              '<div class="bm-pill warn">🔥 ' + Number(row.heat || 0) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      const finalReport = ((currentState.actionReport && currentState.actionReport.entries) || []);
+      const selfName = getSelfDisplayName();
+      const finalReportHtml = finalReport.length
+        ? '<details class="bm-rs-older"><summary>🧾 ผลยกสุดท้าย (ยก ' + Number(currentState.actionReport.roundNumber || 0) + ')</summary><div class="bm-round-summary-list">' +
+          sortReportForSelf(finalReport, selfName).map(function(entry) { return reportLineHtml(entry, selfName); }).join('') +
+          '</div></details>'
+        : '';
+      return `
         <div class="bm-winner-card">
           <div class="bm-winner-title">${winner.shared ? '👑 ชนะร่วม — เสมอกันทุกเกณฑ์' : '👑 คนที่คุมเมืองคืนนี้'}</div>
           <div class="bm-player-name">${escapeHtml(winnerHeadline(winner))}</div>
-          <div class="bm-player-copy" style="margin-top:8px;">${escapeHtml(winner.shared && Array.isArray(winner.coWinners) ? winner.coWinners.map(function(w) { return (w.name || '-') + ' (' + (w.roleTitle || '-') + ')'; }).join(', ') : (winner.roleTitle || '-')) } • ${escapeHtml(winner.reason || '')}</div>
-          <div class="bm-player-stats" style="margin-top:10px;">
-            <div class="bm-pill good">👑 ${Number(winner.influence || 0)}</div>
-            <div class="bm-pill">💵 ${Number(winner.cash || 0)}</div>
-            <div class="bm-pill warn">🔥 ${Number(winner.heat || 0)}</div>
-          </div>
+          <div class="bm-player-copy" style="margin-top:8px;">${escapeHtml(winner.reason || '')}</div>
+          ${youLine ? '<div class="bm-recap-you">' + escapeHtml(youLine) + '</div>' : ''}
+          <div class="bm-standings">${rows}</div>
+          <div class="bm-recap-rule">จัดอันดับ: คนที่ยังรอด → 👑 มากกว่า → เสมอดู 💵 มากกว่า → เสมอดู 🔥 น้อยกว่า · แต้มรวมโบนัสลับของบทแล้ว</div>
+          ${finalReportHtml}
           <div class="bm-footer-actions">
-            ${isRoomAdmin ? '<button id="restartBlackMarket" class="bm-btn gold">🎩 เล่นอีกรอบ</button>' : ''}
+            ${isRoomAdmin ? '<button id="restartBlackMarket" class="bm-btn gold">🎩 เล่นอีกรอบ</button>' : '<div class="bm-card-note" style="margin:0;">รอหัวห้องกด「เล่นอีกรอบ」 หรือกลับห้องได้เลย</div>'}
             <button id="shareBlackMarketResult" class="bm-btn alt">📸 เซฟผล</button>
             <button id="backToBlackMarketLobby" class="bm-btn alt">🚪 กลับห้อง</button>
           </div>
         </div>
-      `);
+      `;
+    }
+
+    function renderWinner() {
+      // สรุปผลย้ายไปอยู่ในการ์ด "เล่นยกนี้" (บนมือถือเห็นทันทีโดยไม่ต้องเลื่อนหา) — แผงเดิมไม่ต้องซ้ำ
+      $('#winnerPanel').hide().empty();
     }
 
     function renderState(state) {
@@ -4218,6 +4386,14 @@
       renderIntel();
       renderHistory();
       renderWinner();
+      // จบเกม: เอาการ์ดสรุปผลขึ้นก่อนการ์ดบท (มือถือจะเห็นอันดับทันที)
+      const $roleCard = $('.bm-card-role');
+      const $stageCard = $('.bm-card-stage');
+      if (currentState.phase === 'finished') {
+        if ($stageCard.next()[0] !== $roleCard[0]) $stageCard.insertBefore($roleCard);
+      } else if ($roleCard.next()[0] !== $stageCard[0]) {
+        $stageCard.insertAfter($roleCard);
+      }
       if (howToActive) {
         renderHowToPlay();
       }
@@ -4475,11 +4651,61 @@
     });
 
     $(document).on('click', '.action-submit', function() {
-      submitAction(
-        $(this).attr('data-action-type'),
-        $(this).attr('data-target-player-id') || null,
-        $(this).attr('data-item-id') || null
-      );
+      const actionType = $(this).attr('data-action-type');
+      const targetId = $(this).attr('data-target-player-id') || null;
+      const itemId = $(this).attr('data-item-id') || null;
+      if (actionType === 'hit') {
+        // สั่งเก็บเสียปืน + เงินทันทีที่เฉลย และถ้าเราเป็นคนสุดท้ายที่ล็อก ยกจะเฉลยเลย (เปลี่ยนใจไม่ทัน) — ถามก่อน
+        const target = (currentState.players || []).find(function(player) { return player.playerId === targetId; });
+        const cost = currentState.playerRole && currentState.playerRole.id === 'hitman' ? 2 : 3;
+        Swal.fire({
+          title: '🔫 สั่งเก็บ ' + (target ? target.name : 'เป้าหมายนี้') + '?',
+          text: 'ใช้ปืน 1 กระบอก + 💵 ' + cost + ' (เสียแม้เป้ารอด) และ 🔥 ค่าหัวขึ้น',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'สั่งเก็บเลย',
+          cancelButtonText: 'ยกเลิก',
+          background: '#111',
+          color: '#fff'
+        }).then(function(result) {
+          if (result.isConfirmed) submitAction(actionType, targetId, itemId);
+        });
+        return;
+      }
+      submitAction(actionType, targetId, itemId);
+    });
+
+    $(document).on('click', '#bmUndoChoice, .bm-undo-choice', function() {
+      if (submitInFlight) return;
+      setBmSubmitPending(true);
+      socket.emit('blackmarket_cancelChoice', { roomId, phase: currentState.phase, roundNumber: currentState.roundNumber }, function(response) {
+        setBmSubmitPending(false);
+        if (!response || !response.success) {
+          Swal.fire({ icon: 'info', title: 'เปลี่ยนไม่ทัน', text: response?.error || 'ยกนี้เฉลยไปแล้ว', background: '#111', color: '#fff' });
+        }
+      });
+    });
+
+    $(document).on('click', '#bmForceAdvance', function() {
+      const lp = currentState.lockProgress || {};
+      const names = (lp.waitingOn || []).map(function(entry) { return entry.name; }).join(', ');
+      Swal.fire({
+        title: '⏭ ข้ามคนที่ยังไม่เลือก?',
+        text: (names ? names + ' ' : '') + 'จะถือว่าผ่านยกนี้ และโต๊ะเดินต่อทันที',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ข้ามเลย',
+        cancelButtonText: 'รอต่อ',
+        background: '#111',
+        color: '#fff'
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        socket.emit('blackmarket_forceAdvance', { roomId, phase: currentState.phase, roundNumber: currentState.roundNumber }, function(response) {
+          if (!response || !response.success) {
+            Swal.fire({ icon: 'info', title: 'ยังข้ามไม่ได้', text: response?.error || 'ลองอีกครั้ง', background: '#111', color: '#fff' });
+          }
+        });
+      });
     });
 
     $(document).on('click', '#shareBlackMarketResult', function() {
@@ -4629,7 +4855,6 @@
           $('.bm-card-deals').hide();
           $('.bm-card-intel').hide();
           $('.bm-card-history').hide();
-          $('#winnerPanel').show();
         } else if (activeTab === 'players') {
           $('.bm-card-role').hide();
           $('.bm-card-guide').hide();
@@ -4657,7 +4882,6 @@
         $('.bm-card-deals').show();
         $('.bm-card-intel').show();
         $('.bm-card-history').show();
-        $('#winnerPanel').show();
       }
     }
 
