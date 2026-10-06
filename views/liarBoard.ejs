@@ -1,5 +1,5 @@
 <%- contentFor('content') %>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/chatPanel.css">
 <style>
   * { box-sizing: border-box; }
@@ -19,115 +19,131 @@
   html.lr-active .col-lg-12 { padding: 0 !important; }
 
   :root {
-    --lr-line: rgba(232, 197, 107, 0.18);
-    --lr-gold: #f5c86b;
-    --lr-red: #ff6b6b;
-    --lr-text: #f4efe4;
-    --lr-muted: #b9c4b4;
+    --lr-line: oklch(0.84 0.1 85 / 0.2);
+    --lr-gold: oklch(0.85 0.12 80);
+    --lr-gold-ink: oklch(0.25 0.05 70);
+    --lr-red: oklch(0.7 0.18 25);
+    --lr-red-deep: oklch(0.5 0.19 27);
+    --lr-heart: oklch(0.72 0.19 18);
+    --lr-heart-off: oklch(0.6 0.03 150 / 0.55);
+    --lr-ok: oklch(0.78 0.15 150);
+    --lr-text: oklch(0.96 0.015 85);
+    --lr-muted: oklch(0.8 0.03 140);
+    --lr-panel: oklch(0.2 0.03 155 / 0.72);
+    --lr-dock-bg: oklch(0.17 0.03 155);
     --lr-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --dock-h: 260px;
   }
 
   body.content {
     background:
       radial-gradient(ellipse at 50% 18%, rgba(46, 120, 72, 0.35), transparent 42%),
-      radial-gradient(circle at 12% 88%, rgba(127, 29, 29, 0.22), transparent 28%),
       linear-gradient(180deg, #0c1a12 0%, #163322 100%);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Bai Jamjuree', 'Kanit', system-ui, sans-serif;
     color: var(--lr-text);
   }
 
-  .lr-page { max-width: 980px; margin: 0 auto; padding: 8px 10px calc(132px + env(safe-area-inset-bottom, 0px)); }
+  .lr-page { max-width: 980px; margin: 0 auto; padding: 6px 16px calc(var(--dock-h) + 16px); }
   .lr-topbar {
-    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-    padding: 10px 4px 8px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 0 6px;
   }
-  .lr-kicker { color: var(--lr-gold); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
-  .lr-title { margin: 2px 0 0; font-family: 'Orbitron', sans-serif; font-size: clamp(1.05rem, 3.4vw, 1.45rem); }
+  .lr-kicker { color: var(--lr-gold); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; }
+  .lr-title { margin: 0; font-family: 'Chakra Petch', sans-serif; font-size: clamp(1.02rem, 3.4vw, 1.4rem); line-height: 1.2; overflow-wrap: anywhere; }
   .lr-meta { display: flex; flex-wrap: wrap; gap: 6px; }
   .lr-chip {
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px;
-    border: 1px solid var(--lr-line); background: rgba(8, 22, 14, 0.72);
+    background: oklch(0.15 0.03 155 / 0.6); border: 1px solid var(--lr-line);
     font-size: 0.84rem; font-weight: 600; color: var(--lr-text); font-family: inherit;
   }
-  .lr-chip-btn { min-height:44px; cursor: pointer; }
-  .lr-chip-danger { border-color: rgba(255,107,107,0.4); color: #ffc9c9; }
+  .lr-chip-btn { min-height: 44px; cursor: pointer; }
+  .lr-chip-danger { border-color: oklch(0.7 0.18 25 / 0.45); color: oklch(0.88 0.06 25); }
 
   .lr-now {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 16px;
-    background: rgba(6, 18, 10, 0.55); border: 1px solid var(--lr-line);
+    background: var(--lr-panel); border: 1px solid var(--lr-line);
   }
-  .lr-now.is-mine { background: rgba(245, 200, 107, 0.14); }
-  .lr-now-label { color: var(--lr-gold); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-  .lr-now-copy { font-size: 1.02rem; font-weight: 700; }
-  .lr-timer-wrap { margin-left: auto; text-align: right; }
-  .lr-timer { font-family: 'Orbitron', 'Rajdhani', sans-serif; font-size: 1.2rem; color: var(--lr-gold); }
-  .lr-timer-hint { display: block; font-size: 0.68rem; color: var(--lr-muted); font-weight: 600; margin-top: 2px; }
+  .lr-now.is-mine { background: oklch(0.85 0.12 80 / 0.16); border-color: oklch(0.85 0.12 80 / 0.5); }
+  .lr-now-copy { font-size: 1rem; font-weight: 700; line-height: 1.35; flex: 1; min-width: 0; }
+  .lr-timer-wrap { text-align: right; flex: 0 0 auto; }
+  .lr-timer { font-family: 'Chakra Petch', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--lr-gold); font-variant-numeric: tabular-nums; }
+  .lr-timer.is-low { color: var(--lr-red); }
+  .lr-timer-hint { display: block; font-size: 0.7rem; color: var(--lr-muted); font-weight: 600; margin-top: 2px; }
 
   .lr-table {
     margin-top: 10px;
-    min-height: 420px;
-    border-radius: 28px;
-    padding: 12px 10px 18px;
+    border-radius: 24px;
+    padding: 10px 10px 12px;
     background:
       radial-gradient(ellipse at 50% 40%, rgba(54, 140, 82, 0.55), rgba(12, 48, 28, 0.96) 62%),
       #0e2a18;
-    box-shadow: inset 0 0 0 10px rgba(18, 64, 36, 0.9), 0 24px 60px rgba(0,0,0,0.4);
+    box-shadow: inset 0 0 0 8px rgba(18, 64, 36, 0.9), 0 18px 44px rgba(0,0,0,0.4);
     position: relative;
-    overflow: hidden;
   }
 
-  .lr-opponents {
-    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
-    min-height: 92px;
-  }
+  .lr-opponents { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
   .lr-seat {
-    width: 92px; text-align: center; padding: 6px 4px; border-radius: 14px;
-    background: rgba(0,0,0,0.18);
+    position: relative;
+    width: 96px; text-align: center; padding: 6px 4px 5px; border-radius: 14px;
+    background: oklch(0 0 0 / 0.2); border: 1px solid transparent;
   }
-  .lr-seat.is-current { box-shadow: 0 0 0 2px var(--lr-gold); }
-  .lr-seat.is-out { opacity: 0.38; }
-  .lr-seat-name { font-size: 0.78rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lr-seat-backs { display: flex; justify-content: center; height: 34px; margin-top: 4px; }
-  .lr-mini-back {
-    width: 22px; height: 32px; margin-left: -10px; border-radius: 4px;
-    background: url('/assets/games/liar/back.svg') center/cover no-repeat;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+  .lr-seat.is-current { border-color: var(--lr-gold); background: oklch(0.85 0.12 80 / 0.14); }
+  .lr-seat.is-out { opacity: 0.45; }
+  .lr-seat-turn { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 1px 8px; border-radius: 999px; background: var(--lr-gold); color: var(--lr-gold-ink); font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+  .lr-seat-name { font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .lr-seat-meta { font-size: 0.72rem; color: var(--lr-muted); font-weight: 600; }
+  .lr-seat-tag { display: inline-block; padding: 0 6px; border-radius: 999px; background: oklch(1 0 0 / 0.1); font-size: 0.66rem; margin-left: 2px; }
+  .lr-hearts { letter-spacing: 1px; font-size: 0.95rem; line-height: 1.1; white-space: nowrap; }
+  .lr-hearts .on { color: var(--lr-heart); }
+  .lr-hearts .off { color: var(--lr-heart-off); }
+  .lr-hit-badge {
+    position: absolute; top: 18px; right: 4px; padding: 1px 6px; border-radius: 999px;
+    background: var(--lr-red-deep); color: #fff; font-weight: 700; font-size: 0.78rem; pointer-events: none;
+    animation: lrHitBadge 2.2s var(--lr-ease) forwards;
   }
-  .lr-seat-backs .lr-mini-back:first-child { margin-left: 0; }
-  .lr-hearts { letter-spacing: 1px; color: #ff8b8b; font-size: 0.78rem; }
+  .is-hit { animation: lrShake 0.5s ease-in-out 2; }
 
   .lr-felt {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 12px;
-    min-height: 210px;
-    padding: 8px 8px 4px;
+    display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px;
+    padding: 12px 6px 6px;
   }
-  .lr-deck-wrap, .lr-target-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .lr-center { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 150px; justify-content: center; }
-  .lr-pile { display: flex; gap: 8px; min-height: 122px; align-items: center; justify-content: center; }
-  .lr-label { font-size: 0.72rem; color: var(--lr-muted); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .lr-target-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .lr-center { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 140px; justify-content: center; min-width: 0; }
+  .lr-pile { display: flex; justify-content: center; align-items: center; min-height: 104px; }
+  .lr-pile .lr-playing { margin-left: -34px; }
+  .lr-pile .lr-playing:first-child { margin-left: 0; }
+  .lr-pile-caption { text-align: center; font-size: 0.86rem; font-weight: 600; line-height: 1.35; color: var(--lr-text); overflow-wrap: anywhere; }
+  .lr-pile-caption b { color: var(--lr-gold); }
+  .lr-label { font-size: 0.74rem; color: var(--lr-muted); font-weight: 700; }
   .lr-rank-chip {
-    width: 64px; height: 88px; border-radius: 10px;
+    width: 66px; height: 90px; border-radius: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: #fbf7ee; color: #16120c; border: 2px solid #d4a017;
-    font-family: 'Orbitron', serif;
+    background: #fbf7ee; color: #16120c; border: 3px solid #d4a017;
+    font-family: 'Chakra Petch', serif; font-weight: 700;
   }
   .lr-rank-chip.is-pulse { animation: lrPulse 0.55s var(--lr-ease); }
+  .lr-verdict { text-align: center; padding: 8px 10px; border-radius: 12px; font-weight: 700; font-size: 0.92rem; line-height: 1.4; background: oklch(0 0 0 / 0.32); border: 1px solid var(--lr-line); }
+  .lr-verdict.is-lie { border-color: oklch(0.7 0.18 25 / 0.7); }
+  .lr-verdict.is-truth { border-color: oklch(0.78 0.15 150 / 0.6); }
+  .lr-verdict small { display: block; font-weight: 600; color: var(--lr-muted); font-size: 0.78rem; }
+
   .lr-banner {
-    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
-    padding: 10px 18px; border-radius: 999px; background: rgba(8,16,10,0.86);
-    border: 1px solid var(--lr-gold); font-weight: 800; z-index: 5; pointer-events: none;
-    opacity: 0;
+    position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%);
+    max-width: calc(100vw - 32px); width: max-content; text-align: center;
+    padding: 12px 20px; border-radius: 18px; background: oklch(0.15 0.03 155 / 0.95);
+    border: 2px solid var(--lr-gold); font-weight: 700; font-size: 1.08rem; z-index: 11050; pointer-events: none;
+    opacity: 0; line-height: 1.35;
   }
-  .lr-banner.is-on { animation: lrBanner 1.4s var(--lr-ease); }
+  .lr-banner.is-lie { border-color: var(--lr-red); }
+  .lr-banner.is-truth { border-color: var(--lr-ok); }
+  .lr-banner.is-on { animation: lrBanner 1.9s var(--lr-ease); }
 
   .lr-playing {
-    width: 86px; height: 122px; padding:0; border:0; background:transparent; border-radius: 10px; position: relative;
+    width: 76px; height: 108px; padding: 0; border: 0; background: transparent; border-radius: 10px; position: relative;
     flex: 0 0 auto; transform-origin: bottom center;
-    box-shadow: 0 10px 18px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    transition: transform 0.16s var(--lr-ease);
   }
   .lr-playing img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 10px; }
   .lr-flip { perspective: 700px; }
@@ -137,59 +153,86 @@
     transition: transform 0.42s var(--lr-ease);
   }
   .lr-flip.is-face .lr-flip-inner { transform: rotateY(180deg); }
-  .lr-face, .lr-backface {
-    position: absolute; inset: 0; backface-visibility: hidden; border-radius: 10px; overflow: hidden;
-  }
+  .lr-face, .lr-backface { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 10px; overflow: hidden; }
   .lr-face { transform: rotateY(180deg); }
+  .lr-playing.is-match::after {
+    content: '✓'; position: absolute; right: -4px; top: -6px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--lr-ok); color: oklch(0.2 0.05 150); font-size: 0.75rem; font-weight: 700; line-height: 20px; text-align: center;
+  }
+  .lr-playing.is-nomatch { outline: 3px solid var(--lr-red); outline-offset: -1px; }
+  .lr-fan .lr-playing.is-match::after { right: auto; left: -4px; }
+  .lr-claim .is-lie { color: oklch(0.8 0.13 25); }
+  .lr-claim .is-truth { color: var(--lr-ok); }
 
   .lr-hand-dock {
-    position: sticky; bottom: 0; z-index: 20;
-    margin: 8px -10px -8px;
-    padding: 8px 8px calc(12px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(180deg, transparent, rgba(8, 18, 12, 0.92) 28%);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 6px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--lr-dock-bg);
+    border-top: 1px solid var(--lr-line);
   }
-  .lr-fan {
-    display: flex; justify-content: center; align-items: flex-end;
-    min-height: 150px; padding: 0 6px 4px;
-  }
-  .lr-fan .lr-playing { margin-left: -30px; }
+  .lr-dock-inner { max-width: 640px; margin: 0 auto; }
+  .lr-dock-top { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 0.9rem; font-weight: 600; }
+  .lr-dock-me { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: oklch(0 0 0 / 0.3); }
+  .lr-dock-status { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--lr-muted); }
+  .lr-dock-status.is-mine { color: var(--lr-gold); }
+  .lr-dock-timer { flex: 0 0 auto; font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: var(--lr-gold); font-variant-numeric: tabular-nums; }
+  .lr-dock-timer.is-low { color: var(--lr-red); }
+  .lr-fan { display: flex; justify-content: center; align-items: flex-end; min-height: 124px; padding: 18px 6px 2px; }
+  .lr-fan .lr-playing { margin-left: -20px; }
   .lr-fan .lr-playing:first-child { margin-left: 0; }
-  .lr-playing.is-pick { cursor: pointer; }
-  .lr-playing.is-pick:hover,
+  .lr-fan:empty { display: none; }
+  .lr-playing.is-pick { cursor: pointer; transform: rotate(var(--fan, 0deg)); }
   .lr-playing.is-selected {
-    transform: translateY(-22px) rotate(var(--fan, 0deg));
+    transform: translateY(-16px) rotate(var(--fan, 0deg));
     z-index: 6;
-    box-shadow: 0 16px 28px rgba(0,0,0,0.5), 0 0 0 2px var(--lr-gold);
+    box-shadow: 0 14px 24px rgba(0,0,0,0.5), 0 0 0 3px var(--lr-gold);
   }
-  .lr-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 4px 8px 0; }
+  @media (hover: hover) {
+    .lr-playing.is-pick:hover { transform: translateY(-8px) rotate(var(--fan, 0deg)); }
+    .lr-playing.is-pick.is-selected:hover { transform: translateY(-16px) rotate(var(--fan, 0deg)); }
+  }
+  .lr-claim { text-align: center; font-size: 0.86rem; font-weight: 600; color: var(--lr-muted); margin: 2px 0 6px; min-height: 1.2em; }
+  .lr-claim b { color: var(--lr-gold); }
+  .lr-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .lr-actions .ui-btn { flex: 1 1 0; min-width: 0; font-weight: 700; }
+  .lr-actions .ui-btn.is-wide { flex-basis: 100%; }
   .lr-btn {
-    padding: 13px 22px; border-radius: 14px; border: none; cursor: pointer;
-    font-family: inherit; font-weight: 800; font-size: 1.05rem;
+    min-height: 48px; padding: 0 18px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 700; font-size: 1rem;
   }
-  .lr-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .lr-btn-play { background: #f5c86b; color: #2a1a05; }
-  .lr-btn-challenge { background: #b91c1c; color: #fff; }
-  .lr-btn-pass { background: rgba(255,255,255,0.1); color: var(--lr-text); }
+  .lr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ui-btn.lr-btn-play { background: var(--lr-gold); color: var(--lr-gold-ink); border-color: transparent; }
+  .ui-btn.lr-btn-play:hover { background: oklch(0.89 0.11 82); color: var(--lr-gold-ink); }
+  .ui-btn.lr-btn-challenge { background: var(--lr-red-deep); color: #fff; border-color: transparent; }
+  .ui-btn.lr-btn-challenge:hover { background: oklch(0.56 0.2 27); color: #fff; }
+  .lr-btn-pass { background: oklch(1 0 0 / 0.1); color: var(--lr-text); }
   .lr-btn-outline { background: transparent; border: 1px solid var(--lr-line); color: var(--lr-text); }
-  .lr-btn-primary { background: #f5c86b; color: #2a1a05; }
   .lr-chip-btn:focus-visible, .lr-btn:focus-visible, .lr-playing.is-pick:focus-visible,
   .chat-toggle:focus-visible, .chat-close:focus-visible, .btn-chat-send:focus-visible {
     outline: 3px solid #fff; outline-offset: 3px;
   }
-  .lr-hint { text-align: center; color: var(--lr-muted); font-size: 0.84rem; margin-top: 6px; }
-  .lr-result { text-align: center; padding: 18px 8px; }
-  .lr-result h3 { font-family: 'Orbitron', sans-serif; font-size: 1.35rem; color: var(--lr-gold); margin: 0 0 8px; }
-  .lr-result .lr-hint { margin-top: 10px; }
+  .lr-hint { text-align: center; color: var(--lr-muted); font-size: 0.82rem; margin-top: 6px; line-height: 1.35; }
+  .lr-wait { text-align: center; color: var(--lr-muted); font-size: 0.9rem; padding: 6px 4px 2px; line-height: 1.4; }
+  .lr-wait b { color: var(--lr-text); }
 
-  .lr-feed { display: grid; gap: 6px; max-height: 120px; overflow-y: auto; margin-top: 8px; }
-  .lr-feed-item { font-size: 0.84rem; color: #e4ddd0; padding: 4px 8px; background: rgba(0,0,0,0.2); border-radius: 8px; }
+  .lr-result { text-align: center; padding: 4px 0 2px; }
+  .lr-result h3 { font-family: 'Chakra Petch', sans-serif; font-size: 1.3rem; color: var(--lr-gold); margin: 2px 0 2px; overflow-wrap: anywhere; }
+  .lr-result-me { font-weight: 700; margin-bottom: 6px; }
+  .lr-standings { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; max-height: 26vh; overflow-y: auto; text-align: left; }
+  .lr-standings li { display: flex; gap: 8px; align-items: center; padding: 4px 10px; border-radius: 10px; background: oklch(0 0 0 / 0.25); font-size: 0.86rem; }
+  .lr-standings li.is-me { outline: 1px solid var(--lr-gold); }
+  .lr-standings .rank { font-family: 'Chakra Petch', sans-serif; font-weight: 700; color: var(--lr-gold); width: 1.6em; }
+  .lr-standings .who { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .lr-standings .why { color: var(--lr-muted); font-size: 0.76rem; white-space: nowrap; }
+
+  .lr-feed { display: grid; gap: 5px; max-height: 132px; overflow-y: auto; margin-top: 8px; }
+  .lr-feed-item { font-size: 0.84rem; color: #e4ddd0; padding: 4px 8px; background: rgba(0,0,0,0.2); border-radius: 8px; line-height: 1.35; }
+  .lr-feed-item:first-child { color: var(--lr-text); background: rgba(0,0,0,0.34); }
   .lr-empty { text-align: center; color: var(--lr-muted); padding: 10px; }
 
-  .lr-fx {
-    position: fixed; inset: 0; pointer-events: none; z-index: 11000;
-  }
+  .lr-fx { position: fixed; inset: 0; pointer-events: none; z-index: 11000; }
   .lr-fly {
-    position: absolute; top: 0; left: 0; width: 86px; height: 122px;
+    position: absolute; top: 0; left: 0; width: 76px; height: 108px;
     transition: transform 0.42s var(--lr-ease), opacity 0.42s var(--lr-ease);
     z-index: 11001;
   }
@@ -198,13 +241,17 @@
     --chat-accent: #ef4444; --chat-accent-dark: #991b1b;
     --chat-surface: linear-gradient(135deg, #102016 0%, #0c1a12 100%);
     --chat-border: rgba(232,197,107,0.24); --chat-bubble: #1c3a24;
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Bai Jamjuree', sans-serif;
   }
-  .chat-toggle { --chat-toggle-bg: linear-gradient(135deg, #ef4444, #991b1b); border-radius: 999px; padding: 12px 18px; }
+  /* ปุ่มแชทลอยเหนือ dock — เดิมทับไพ่ในมือ/ปุ่มลงไพ่ */
+  .chat-toggle {
+    --chat-toggle-bg: oklch(0.42 0.12 25); border-radius: 999px; padding: 10px 16px; min-height: 44px;
+    bottom: calc(var(--dock-h) + 10px) !important; right: 12px !important;
+  }
   .btn-chat-send { --chat-send-bg: #f5c86b; --chat-send-color: #2a1a05; }
 
   .lr-sidebar {
-    position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
+    position: fixed; top: 0; right: -320px; width: 300px; max-width: 86vw; height: 100%;
     background: #102016; border-left: 1px solid var(--lr-line);
     padding: 18px; z-index: 9000; transition: right 0.25s ease; overflow-y: auto;
   }
@@ -217,57 +264,68 @@
   }
   @keyframes lrBanner {
     0% { opacity: 0; transform: translate(-50%, -40%); }
-    18% { opacity: 1; transform: translate(-50%, -50%); }
-    78% { opacity: 1; }
+    14% { opacity: 1; transform: translate(-50%, -50%); }
+    82% { opacity: 1; transform: translate(-50%, -50%); }
     100% { opacity: 0; transform: translate(-50%, -58%); }
   }
   @keyframes lrDealIn {
     from { opacity: 0; transform: translateY(-48px) scale(0.7); }
     to { opacity: 1; transform: translateY(0) scale(1) rotate(var(--fan, 0deg)); }
   }
+  @keyframes lrShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  @keyframes lrHitBadge {
+    0% { opacity: 0; transform: translateY(6px); }
+    15% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(-4px); }
+    100% { opacity: 0; transform: translateY(-10px); }
+  }
   .lr-playing.is-deal { animation: lrDealIn 0.38s var(--lr-ease) both; }
 
-  @media (max-width: 640px) {
-    .lr-playing { width: 72px; height: 102px; }
-    .lr-fan .lr-playing { margin-left: -26px; }
-    .lr-seat { width: 76px; }
-    .lr-page { padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)); }
-  }
   @media (max-width: 480px) {
-    .lr-table { min-height:390px; padding-inline:8px; }
-    .lr-felt {
-      grid-template-columns:1fr 1fr;
-      grid-template-areas:"deck target" "pile pile";
-      gap:8px; min-height:250px;
-    }
-    .lr-deck-wrap { grid-area:deck; }
-    .lr-target-wrap { grid-area:target; }
-    .lr-center { grid-area:pile; min-height:125px; width:100%; }
-    .lr-pile { width:100%; min-height:104px; gap:0; overflow:visible; }
-    .lr-pile .lr-playing { margin-left:-30px; }
-    .lr-pile .lr-playing:first-child { margin-left:0; }
+    .lr-page { padding-left: 12px; padding-right: 12px; }
+    .lr-table { padding-inline: 8px; }
+    .lr-seat { width: 84px; }
+    .lr-playing { width: 64px; height: 91px; }
+    .lr-fan .lr-playing { margin-left: -14px; }
+    .lr-fan { min-height: 108px; padding-top: 16px; }
+    .lr-pile .lr-playing { margin-left: -30px; }
+    .lr-hand-dock { padding-left: 12px; padding-right: 12px; }
+    .lr-meta .lr-chip { padding: 6px 10px; }
+    /* มือถือ: ปุ่มแชทเหลือแค่ไอคอนกลม — เดิมกว้างจนบังคำบรรยายกองไพ่ */
+    #toggleChat.chat-toggle { width: 48px; height: 48px; min-height: 48px; padding: 0 !important; font-size: 0 !important; display: inline-flex; align-items: center; justify-content: center; }
+    #toggleChat.chat-toggle::before { content: '💬'; font-size: 1.3rem; }
+    #toggleChat .unread-dot { position: absolute; top: 5px; right: 5px; margin: 0; }
+  }
+  @media (max-height: 700px) {
+    .lr-playing { width: 56px; height: 80px; }
+    .lr-fan { min-height: 92px; padding-top: 14px; }
+    .lr-fan .lr-playing { margin-left: -12px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .lr-playing.is-deal, .lr-rank-chip.is-pulse, .lr-banner.is-on, .lr-fly, .lr-flip-inner {
+    .lr-playing.is-deal, .lr-rank-chip.is-pulse, .lr-fly, .lr-flip-inner, .is-hit, .lr-hit-badge, .lr-playing {
       animation: none !important; transition: none !important;
     }
-    .lr-playing.is-pick:hover, .lr-playing.is-selected { transform: none; }
+    .lr-banner.is-on { animation: none !important; opacity: 1; }
+    .lr-playing.is-selected { transform: rotate(var(--fan, 0deg)); }
   }
 </style>
 
 <div id="connectionStatus" class="lr-chip lr-chip-danger" style="display:none; position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10001;">กำลังเชื่อมต่อใหม่...</div>
 <div id="lrFxLayer" class="lr-fx"></div>
-<div id="lrBanner" class="lr-banner"></div>
+<div id="lrBanner" class="lr-banner" role="status" aria-live="assertive"></div>
 
 <div class="lr-page">
   <div class="lr-topbar">
-    <div>
+    <div style="min-width:0;">
       <div class="lr-kicker">🃏 ไพ่โกหก · เหลือหัวใจคนสุดท้ายชนะ</div>
       <h1 class="lr-title"><%= room.name %></h1>
     </div>
     <div class="lr-meta">
-      <span class="lr-chip">🆔 <%= room.roomId %></span>
-      <span class="lr-chip">กอง <span id="deckCount">-</span></span>
+      <span class="lr-chip">ห้อง <%= room.roomId %></span>
       <button type="button" id="lrHowToOpen" class="lr-chip lr-chip-btn">📖 วิธีเล่น</button>
       <button type="button" id="lrSidebarBtn" class="lr-chip lr-chip-btn" aria-expanded="false" aria-controls="playerSidebar">👥 ผู้เล่น</button>
       <% if (room.admin) { %>
@@ -277,7 +335,6 @@
   </div>
 
   <div id="lrNowBar" class="lr-now">
-    <span class="lr-now-label">ตอนนี้</span>
     <span id="lrNowCopy" class="lr-now-copy" role="status" aria-live="polite" aria-atomic="true">กำลังโหลด...</span>
     <div class="lr-timer-wrap" aria-hidden="true">
       <span id="lrTimer" class="lr-timer">--</span>
@@ -288,26 +345,28 @@
   <div class="lr-table">
     <div id="lrOpponents" class="lr-opponents"></div>
     <div class="lr-felt">
-      <div class="lr-deck-wrap">
-        <div class="lr-label">กองจั่ว</div>
-        <div id="lrDeck" class="lr-playing lr-flip"></div>
-      </div>
-      <div class="lr-center">
-        <div class="lr-label">ไพ่บนโต๊ะ</div>
-        <div id="tablePile" class="lr-pile"></div>
-      </div>
       <div class="lr-target-wrap">
         <div class="lr-label">ไพ่รอบนี้</div>
         <div id="targetRank"></div>
+        <div id="lrRoundNo" class="lr-label"></div>
+      </div>
+      <div class="lr-center">
+        <div id="tablePile" class="lr-pile"></div>
+        <div id="lrPileCaption" class="lr-pile-caption"></div>
       </div>
     </div>
-    <div id="historyFeed" class="lr-feed"></div>
+    <div id="historyFeed" class="lr-feed" aria-label="เกิดอะไรขึ้นล่าสุด"></div>
   </div>
+</div>
 
-  <div class="lr-hand-dock">
-    <div id="myLives" class="lr-hint"></div>
+<div id="lrDock" class="lr-hand-dock">
+  <div class="lr-dock-inner">
+    <div class="lr-dock-top">
+      <span id="myLives" class="lr-dock-me"></span>
+      <span id="lrDockStatus" class="lr-dock-status"></span>
+      <span id="lrDockTimer" class="lr-dock-timer" aria-hidden="true"></span>
+    </div>
     <div id="myHand" class="lr-fan"></div>
-    <div id="actionAreaTitle" class="lr-empty" style="display:none;"></div>
     <div id="actionArea"></div>
   </div>
 </div>
@@ -343,6 +402,7 @@
   💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 
+
 <%- contentFor('script') %>
 <script src="/js/gameIcon.js"></script>
 <script src="/js/chatPanel.js"></script>
@@ -360,10 +420,18 @@ $(function() {
   let currentState = <%- JSON.stringify(typeof liarState !== 'undefined' ? liarState : {}) %>;
   let allowNavigation = false;
   let selectedIds = [];
+  // ใบที่ระบบเลือกให้ (ใบแรก) — แตะใบอื่นครั้งแรกจะ "แทน" ไม่ใช่ "เพิ่ม" (เดิมแตะใบที่ 3 แล้วลงไป 2 ใบ)
+  let autoPicked = false;
+  let pending = false;
+  let pendingTurn = null;
   let timerHandle = null;
   let seenFxSeq = 0;
   let lastTap = { key: '', at: 0 };
+  let bannerQueue = [];
+  let bannerBusy = false;
+  let pingHoldUntil = 0;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const BANNER_MS = 1900;
 
   function escapeHtml(text) {
     return String(text == null ? '' : text).replace(/[&<>"']/g, c =>
@@ -384,6 +452,20 @@ $(function() {
     return (state && state.cardBack) || '/assets/games/liar/back.svg';
   }
 
+  function playerById(state, id) {
+    return ((state && state.players) || []).find(function(p) { return p.playerId === id; }) || null;
+  }
+
+  function nameOf(state, id, fallback) {
+    if (id === playerId) return 'คุณ';
+    const p = playerById(state, id);
+    return (p && p.name) || fallback || '-';
+  }
+
+  function rankName(state) {
+    return (state && state.targetRank && state.targetRank.thaiName) || '-';
+  }
+
   function playingCard(card, opts) {
     opts = opts || {};
     const face = card && card.image ? card.image : '';
@@ -395,7 +477,7 @@ $(function() {
     const selectable = !!opts.handKey;
     const tag = selectable ? 'button' : 'div';
     const attrs = selectable
-      ? ' type="button" aria-label="เลือก ' + escapeHtml((card && card.thaiName) || 'ไพ่') + '" aria-pressed="' + (opts.selected ? 'true' : 'false') + '"'
+      ? ' type="button" aria-label="' + escapeHtml((card && card.thaiName) || 'ไพ่') + (opts.selected ? ' (เลือกแล้ว)' : '') + '" aria-pressed="' + (opts.selected ? 'true' : 'false') + '"'
       : '';
     return '<' + tag + attrs + ' class="lr-playing lr-flip' + (faceUp ? ' is-face' : '') + extra + '"' + fan + key + '>' +
       '<div class="lr-flip-inner">' +
@@ -404,37 +486,63 @@ $(function() {
       '</div></' + tag + '>';
   }
 
-  function hearts(lives) {
-    const n = Math.max(0, Number(lives) || 0);
-    return '<span class="lr-hearts">' + ('♥'.repeat(n) || '—') + '</span>';
+  // หัวใจเต็ม + หัวใจที่เสียไป — เห็นทันทีว่าเหลือกี่ดวงจากกี่ดวง
+  function hearts(lives, max) {
+    const total = Math.max(1, Number(max) || Number(currentState && currentState.maxLives) || 3);
+    const n = Math.max(0, Math.min(total, Number(lives) || 0));
+    return '<span class="lr-hearts" aria-label="หัวใจ ' + n + ' จาก ' + total + '">' +
+      '<span class="on">' + '♥'.repeat(n) + '</span><span class="off">' + '♡'.repeat(total - n) + '</span></span>';
+  }
+
+  function currentName(state) {
+    const p = (state.players || []).find(function(x) { return x.isCurrent; });
+    return p ? p.name : 'คนถัดไป';
   }
 
   function describeNow(state) {
     if (state.phase === 'finished') {
-      return { text: '🏆 ' + (state.winner ? state.winner.name + ' เป็นผู้รอดคนสุดท้าย' : 'จบเกม'), mine: false };
+      return { text: '🏆 ' + (state.winner ? state.winner.name + ' เป็นผู้รอดคนสุดท้าย' : 'จบเกม'), short: 'จบเกม', mine: false };
     }
-    if (state.self && !state.self.alive) return { text: 'คุณตกรอบแล้ว — ดูเกมต่อได้', mine: false };
+    if (!state.phase || state.phase === 'lobby') return { text: 'กำลังเริ่มเกม...', short: 'กำลังเริ่ม', mine: false };
+    if (!state.self) return { text: 'กำลังดูเกม — ตาของ ' + currentName(state), short: 'ตา ' + currentName(state), mine: false };
+    if (!state.self.alive) return { text: 'คุณตกรอบแล้ว — ดูเกมต่อได้ · ตาของ ' + currentName(state), short: 'ตา ' + currentName(state), mine: false };
     const mine = state.currentPlayerId === playerId;
     const emptyHand = !((state.self && state.self.hand) || []).length;
+    const rank = rankName(state);
     if (state.lastPlay) {
+      const who = state.lastPlay.playerName || 'คนก่อนหน้า';
       if (mine && emptyHand) {
-        return { text: 'มือว่าง — กดโกหก! เพื่อหงายไพ่คนก่อน', mine: true };
+        return { text: 'มือคุณว่าง — ต้องกด โกหก! เพื่อหงายไพ่ของ ' + who, short: 'ถึงตาคุณ · ต้องท้า', mine: true };
       }
       return mine
-        ? { text: (state.lastPlay.playerName || 'คนก่อนหน้า') + ' ลง ' + state.lastPlay.count + ' ใบ — ท้าหรือลงต่อ', mine: true }
-        : { text: 'รอ ' + (state.players.find(p => p.isCurrent)?.name || 'คนถัดไป') + ' ท้าหรือลงต่อ', mine: false };
+        ? { text: who + ' ลง ' + state.lastPlay.count + ' ใบ อ้างว่าเป็น' + rank + ' — เชื่อไหม?', short: 'ถึงตาคุณ · เชื่อหรือท้า', mine: true }
+        : { text: 'รอ ' + currentName(state) + ' เชื่อหรือท้า ' + who, short: 'รอ ' + currentName(state), mine: false };
     }
     return mine
-      ? { text: 'ถึงตาคุณ — เลือกไพ่แล้วลง บอกว่าเป็นไพ่รอบนี้', mine: true }
-      : { text: 'รอ ' + (state.players.find(p => p.isCurrent)?.name || 'คนถัดไป') + ' ลงไพ่', mine: false };
+      ? { text: 'ถึงตาคุณ — เลือก 1–3 ใบ ลงคว่ำ แล้วอ้างว่าเป็น' + rank, short: 'ถึงตาคุณ · ลงไพ่', mine: true }
+      : { text: 'รอ ' + currentName(state) + ' ลงไพ่ (ต้องอ้างว่าเป็น' + rank + ')', short: 'รอ ' + currentName(state), mine: false };
   }
 
-  function flashBanner(text) {
+  function showBanner(item) {
     const node = document.getElementById('lrBanner');
-    node.textContent = text;
-    node.classList.remove('is-on');
+    node.textContent = item.text;
+    node.className = 'lr-banner' + (item.tone ? ' is-' + item.tone : '');
     void node.offsetWidth;
     node.classList.add('is-on');
+    bannerBusy = true;
+    setTimeout(function() {
+      node.classList.remove('is-on');
+      bannerBusy = false;
+      const next = bannerQueue.shift();
+      if (next) showBanner(next);
+    }, item.ms || BANNER_MS);
+  }
+
+  // ป้ายเรียงคิว — เดิม "รอบใหม่" ทับ "โกหก!/ของจริง" ทันที คนเลยไม่เคยเห็นผลท้า
+  function queueBanner(text, tone, ms) {
+    const item = { text: text, tone: tone || '', ms: ms };
+    if (bannerBusy) bannerQueue.push(item);
+    else showBanner(item);
   }
 
   function flyTo(fromRect, toRect, html) {
@@ -452,54 +560,89 @@ $(function() {
     });
   }
 
+  function syncDockHeight() {
+    const dock = document.getElementById('lrDock');
+    const h = (dock && dock.offsetHeight) || 260;
+    document.documentElement.style.setProperty('--dock-h', h + 'px');
+  }
+
   function renderTarget(state) {
     const rank = state.targetRank;
+    $('#lrRoundNo').text(state.roundNumber ? 'รอบที่ ' + state.roundNumber : '');
     if (!rank) {
       $('#targetRank').html('<div class="lr-empty">-</div>');
       return;
     }
     $('#targetRank').html(
-      '<div class="lr-rank-chip lr-rank-' + escapeHtml(rank.id) + '"><div style="font-size:1.6rem;line-height:1;">' +
-      escapeHtml(rank.icon) + '</div><div style="font-size:0.72rem;">' + escapeHtml(rank.thaiName) + '</div></div>'
+      '<div class="lr-rank-chip lr-rank-' + escapeHtml(rank.id) + '" aria-label="ไพ่รอบนี้ ' + escapeHtml(rank.thaiName) + '"><div style="font-size:1.7rem;line-height:1;">' +
+      escapeHtml(rank.icon) + '</div><div style="font-size:0.78rem;">' + escapeHtml(rank.thaiName) + '</div></div>'
     );
   }
 
-  function renderDeck(state) {
-    const count = Number(state.deckCount || 0);
-    $('#deckCount').text(count);
-    $('#lrDeck').replaceWith(
-      $(playingCard({ id: 'back', image: cardBackSrc(state) }, { faceUp: false, extraClass: '', back: cardBackSrc(state) }))
-        .attr('id', 'lrDeck')
-    );
+  function revealVerdict(state, reveal) {
+    const actor = nameOf(state, reveal.actorId, reveal.actorName);
+    const challenger = nameOf(state, reveal.challengerId, reveal.challengerName);
+    const loser = nameOf(state, reveal.loserId, reveal.loserName);
+    const lives = reveal.loserLives;
+    const after = lives === 0 ? 'หัวใจหมด ตกรอบ' : (lives != null ? 'เหลือ ' + lives + ' ดวง' : '');
+    return reveal.truthful
+      ? { tone: 'truth', head: '✅ ของจริง! ' + challenger + ' ท้าพลาด', sub: loser + ' เสียหัวใจ 1 ดวง' + (after ? ' · ' + after : '') }
+      : { tone: 'lie', head: '🚨 จับได้! ' + actor + ' โกหก', sub: loser + ' เสียหัวใจ 1 ดวง' + (after ? ' · ' + after : '') };
   }
 
+  // ไพ่บนโต๊ะ: คว่ำ + ใครลง/อ้างว่าอะไร · หลังท้า: หงายค้างไว้พร้อมผล จนกว่าจะมีคนลงใหม่
   function renderPile(state) {
     if (state.lastPlay) {
       const backs = Array.from({ length: state.lastPlay.count }, function() {
         return playingCard({ id: 'back' }, { faceUp: false, back: cardBackSrc(state) });
       }).join('');
       $('#tablePile').html(backs);
+      const who = state.lastPlay.isMine ? 'คุณ' : escapeHtml(state.lastPlay.playerName || '-');
+      $('#lrPileCaption').html(who + ' ลง ' + state.lastPlay.count + ' ใบ<br>อ้างว่าเป็น <b>' + escapeHtml(rankName(state)) + '</b>');
       return;
     }
-    $('#tablePile').html('<span class="lr-empty">รอคนลง</span>');
+    const reveal = state.lastReveal;
+    if (reveal && reveal.cards && reveal.cards.length) {
+      const target = (reveal.targetRank && reveal.targetRank.id) || '';
+      $('#tablePile').html(reveal.cards.map(function(card) {
+        const ok = card.id === target || card.id === 'JOKER';
+        return playingCard(card, { faceUp: true, extraClass: ok ? 'is-match' : 'is-nomatch' });
+      }).join(''));
+      const v = revealVerdict(state, reveal);
+      $('#lrPileCaption').html('<div class="lr-verdict is-' + v.tone + '">' + escapeHtml(v.head) + '<small>' + escapeHtml(v.sub) + '</small></div>');
+      return;
+    }
+    $('#tablePile').html('<span class="lr-empty">ยังไม่มีไพ่บนโต๊ะ</span>');
+    $('#lrPileCaption').text('');
   }
 
   function renderHand(state) {
     const hand = (state.self && state.self.hand) || [];
-    $('#myLives').html(state.self ? ('หัวใจ ' + hearts(state.self.lives) + ' · ไพ่ ' + hand.length + ' ใบ') : '');
-    if (!hand.length) {
-      $('#myHand').html('<div class="lr-empty">มือว่าง — ยังไม่ชนะ<br>ลงไพ่ไม่ได้ · มีไพ่บนโต๊ะแล้วท้าอย่างเดียว</div>');
+    if (!state.self) {
+      $('#myLives').html('👀 ผู้ชม');
+      $('#myHand').html('');
       return;
     }
-    const maxPlay = (state.availableActions && state.availableActions.maxPlay) || 3;
+    $('#myLives').html('คุณ ' + hearts(state.self.lives, state.maxLives));
+    if (!state.self.alive || state.phase === 'finished') {
+      $('#myHand').html('');
+      return;
+    }
+    if (!hand.length) {
+      $('#myHand').html('<div class="lr-wait">มือว่าง — ยังไม่ชนะนะ<br>ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว</div>');
+      return;
+    }
+    const maxPlay = Math.min(3, hand.length);
     const mid = (hand.length - 1) / 2;
+    const target = state.targetRank && state.targetRank.id;
     $('#myHand').html(hand.map(function(card, index) {
       const key = card.id + ':' + index;
       const selected = selectedIds.indexOf(key) >= 0;
-      const fan = ((index - mid) * 7).toFixed(1);
+      const fan = ((index - mid) * 6).toFixed(1);
+      const isMatch = target && (card.id === target || card.id === 'JOKER');
       return playingCard(card, {
         faceUp: true,
-        extraClass: 'is-pick' + (selected ? ' is-selected' : ''),
+        extraClass: 'is-pick' + (selected ? ' is-selected' : '') + (isMatch ? ' is-match' : ''),
         handKey: key,
         selected: selected,
         fan: fan
@@ -508,16 +651,25 @@ $(function() {
     $('#myHand .lr-playing.is-pick').off('click').on('click', function() {
       const key = $(this).attr('data-hand-key');
       const now = Date.now();
-      if (lastTap.key === key && now - lastTap.at < 320 && currentState.availableActions && currentState.availableActions.canPlay) {
+      if (lastTap.key === key && now - lastTap.at < 320 && currentState.availableActions && currentState.availableActions.canPlay && !pending) {
         selectedIds = [key];
+        autoPicked = false;
         sendPlay();
         lastTap = { key: '', at: 0 };
         return;
       }
       lastTap = { key: key, at: now };
       const at = selectedIds.indexOf(key);
-      if (at >= 0) selectedIds.splice(at, 1);
-      else if (selectedIds.length < maxPlay) selectedIds.push(key);
+      if (autoPicked && at < 0) {
+        selectedIds = [key];
+      } else if (at >= 0) {
+        selectedIds.splice(at, 1);
+      } else if (selectedIds.length < maxPlay) {
+        selectedIds.push(key);
+      } else {
+        toast('ลงได้ครั้งละไม่เกิน 3 ใบ — แตะใบที่เลือกไว้เพื่อเอาออก');
+      }
+      autoPicked = false;
       renderHand(currentState);
       renderActions(currentState);
     });
@@ -527,49 +679,115 @@ $(function() {
     const others = (state.players || []).filter(function(p) { return !p.isSelf; });
     $('#lrOpponents').html(others.map(function(player) {
       const cls = 'lr-seat' + (player.isCurrent ? ' is-current' : '') + (player.alive ? '' : ' is-out');
-      const backs = Array.from({ length: Math.min(player.handCount || 0, 8) }, function() {
-        return '<span class="lr-mini-back"></span>';
-      }).join('');
+      const tags = (player.isBot ? '<span class="lr-seat-tag">บอท</span>' : '') +
+        (player.afk && player.alive ? '<span class="lr-seat-tag" title="หมดเวลาตาที่แล้ว">ไม่อยู่?</span>' : '');
+      const meta = player.alive ? ('ไพ่ ' + (player.handCount || 0) + ' ใบ') : 'ตกรอบ';
       return '<div class="' + cls + '" data-seat-id="' + escapeHtml(player.playerId) + '">' +
-        avatarHtml(player, 28) +
+        (player.isCurrent && state.phase !== 'finished' ? '<span class="lr-seat-turn">ตานี้</span>' : '') +
+        avatarHtml(player, 26) +
         '<div class="lr-seat-name" style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</div>' +
-        hearts(player.lives) +
-        '<div class="lr-seat-backs">' + (player.alive ? backs : 'ตกรอบ') + '</div></div>';
+        hearts(player.lives, state.maxLives) +
+        '<div class="lr-seat-meta">' + meta + tags + '</div></div>';
     }).join(''));
+  }
+
+  function eliminationWhy(reason) {
+    if (reason === 'caught') return 'โดนจับโกหก';
+    if (reason === 'challenge-fail') return 'ท้าพลาด';
+    if (reason === 'left') return 'ออกจากเกม';
+    return 'หัวใจหมด';
+  }
+
+  // อันดับ: ผู้ชนะ → คนตกรอบหลังสุด → คนตกรอบแรกสุด
+  function standings(state) {
+    const outs = (state.eliminations || []).slice();
+    const winnerId = state.winner && state.winner.playerId;
+    const rows = [];
+    if (winnerId) {
+      const w = playerById(state, winnerId) || { name: state.winner.name, lives: 0 };
+      rows.push({ id: winnerId, name: w.name, why: 'รอดคนสุดท้าย ' + '♥'.repeat(Math.max(0, w.lives || 0)) });
+    }
+    (state.players || []).forEach(function(p) {
+      if (p.playerId !== winnerId && p.alive && !outs.some(function(o) { return o.playerId === p.playerId; })) {
+        rows.push({ id: p.playerId, name: p.name, why: 'ยังรอด' });
+      }
+    });
+    outs.reverse().forEach(function(o) {
+      rows.push({ id: o.playerId, name: o.name || nameOf(state, o.playerId), why: eliminationWhy(o.reason) + (o.roundNumber ? ' · รอบ ' + o.roundNumber : '') });
+    });
+    return rows;
+  }
+
+  function renderResult(state) {
+    const rows = standings(state);
+    const myIndex = rows.findIndex(function(r) { return r.id === playerId; });
+    const won = state.winner && state.winner.playerId === playerId;
+    const meLine = !state.self ? '' : (won ? '🎉 คุณชนะ!' : (myIndex >= 0 ? 'คุณได้อันดับ ' + (myIndex + 1) + ' จาก ' + rows.length + ' · ' + rows[myIndex].why : ''));
+    $('#actionArea').html(
+      '<div class="lr-result"><h3>🏆 ' + escapeHtml((state.winner && state.winner.name) || '-') + ' ชนะ!</h3>' +
+      (meLine ? '<div class="lr-result-me">' + escapeHtml(meLine) + '</div>' : '') +
+      '<ol class="lr-standings">' + rows.map(function(r, i) {
+        return '<li class="' + (r.id === playerId ? 'is-me' : '') + '"><span class="rank">' + (i + 1) + '</span><span class="who">' + escapeHtml(r.name) + '</span><span class="why">' + escapeHtml(r.why) + '</span></li>';
+      }).join('') + '</ol>' +
+      '<div class="lr-actions">' +
+        (isRoomAdmin ? '<button type="button" id="lrRestartBtn" class="ui-btn lr-btn-play is-wide">🔁 เล่นอีกรอบ</button>' : '') +
+        '<button type="button" id="lrShareBtn" class="ui-btn">แชร์ผล</button>' +
+        (isRoomAdmin ? '<button type="button" id="lrBackLobbyBtn" class="ui-btn">🏠 กลับห้องรอ</button>' : '') +
+      '</div>' +
+      '<div class="lr-hint" id="lrBackRemain"></div></div>'
+    );
   }
 
   function renderActions(state) {
     if (state.phase === 'finished') {
-      $('#actionArea').html(
-        '<div class="lr-result"><h3>' + escapeHtml((state.winner && state.winner.name) || '-') + ' ชนะ!</h3>' +
-        '<div class="lr-actions">' +
-        (isRoomAdmin ? '<button type="button" id="lrRestartBtn" class="lr-btn lr-btn-primary">เล่นอีกรอบ</button>' : '') +
-        '<button type="button" id="lrShareBtn" class="lr-btn lr-btn-pass">แชร์ผล</button>' +
-        '<button type="button" id="lrBackLobbyBtn" class="lr-btn lr-btn-outline">กลับห้องรอ</button></div>' +
-        '<div class="lr-hint" id="lrBackRemain">ทุกคนกลับพร้อมกัน</div></div>'
-      );
+      renderResult(state);
       return;
     }
 
     const actions = state.availableActions || {};
     const mine = state.currentPlayerId === playerId && state.self && state.self.alive;
+    const rank = escapeHtml(rankName(state));
     if (!mine) {
-      $('#actionArea').html('<div class="lr-empty">ยังไม่ถึงตาคุณ</div>');
+      let wait;
+      if (!state.self) wait = 'คุณกำลังดูเกม';
+      else if (!state.self.alive) wait = 'คุณตกรอบแล้ว — ดูเพื่อนเล่นต่อได้';
+      else if (state.lastPlay) wait = 'ตา <b>' + escapeHtml(currentName(state)) + '</b> — มีแค่เขาที่ท้า ' + escapeHtml(state.lastPlay.isMine ? 'คุณ' : state.lastPlay.playerName) + ' ได้';
+      else wait = 'ตา <b>' + escapeHtml(currentName(state)) + '</b> ลงไพ่ · คุณเลือกไพ่ไว้ก่อนได้';
+      $('#actionArea').html('<div class="lr-wait">' + wait + '</div>');
       return;
     }
 
-    const canPlay = actions.canPlay && selectedIds.length >= (actions.minPlay || 1);
-    const hint = actions.canPlay
-      ? (selectedIds.length ? 'แตะเพิ่มได้ถึง 3 ใบ · แตะซ้ำใบเดิมเพื่อลงทันที' : 'แตะไพ่ในมือ หรือแตะซ้ำเพื่อลงทันที')
-      : (actions.canChallenge ? 'มือว่างยังไม่ชนะ — กดโกหก! เพื่อหงายไพ่' : 'มือว่าง — รอตาคนอื่น หรือรอแจกใหม่');
+    const n = selectedIds.length;
+    const canPlay = actions.canPlay && n >= (actions.minPlay || 1) && !pending;
+    const playLabel = n ? 'ลง ' + n + ' ใบ · บอกว่า' + rank : 'เลือกไพ่ก่อน';
+    const challengeName = escapeHtml((state.lastPlay && state.lastPlay.playerName) || '');
+    let claim = '';
+    if (actions.canPlay) {
+      const target = state.targetRank && state.targetRank.id;
+      const fakes = selectedIds.filter(function(key) {
+        const id = key.split(':')[0];
+        return id !== target && id !== 'JOKER';
+      }).length;
+      const room = Math.min(3, ((state.self && state.self.hand) || []).length) - n;
+      claim = n
+        ? (state.lastPlay ? 'ลงต่อ = เชื่อ ' + challengeName + ' · ' : '') +
+          'บอกว่า ' + n + ' ใบนี้เป็น <b>' + rank + '</b> · ' +
+          (fakes ? '<span class="is-lie">' + (fakes === n ? 'โกหกทั้งหมด' : 'โกหก ' + fakes + ' ใบ') + '</span>' : '<span class="is-truth">ของจริง ✓</span>') +
+          (room > 0 && !state.lastPlay ? ' · แตะเพิ่มได้อีก ' + room : '')
+        : 'แตะเลือกไพ่ 1–3 ใบ';
+    } else if (actions.canChallenge) {
+      claim = 'มือคุณว่าง — ต้องหงายไพ่ของ ' + challengeName;
+    }
     $('#actionArea').html(
+      '<div class="lr-claim">' + claim + '</div>' +
       '<div class="lr-actions">' +
-        (actions.canPlay
-          ? '<button type="button" id="lrPlayBtn" class="lr-btn lr-btn-play"' + (canPlay ? '' : ' disabled') + '>ลงไพ่' + (selectedIds.length ? ' ×' + selectedIds.length : '') + '</button>'
+        (actions.canChallenge
+          ? '<button type="button" id="lrChallengeBtn" class="ui-btn lr-btn-challenge"' + (pending ? ' disabled' : '') + '>🚨 โกหก! หงายไพ่</button>'
           : '') +
-        (actions.canChallenge ? '<button type="button" id="lrChallengeBtn" class="lr-btn lr-btn-challenge">โกหก!</button>' : '') +
-      '</div>' +
-      (hint ? '<div class="lr-hint">' + hint + '</div>' : '')
+        (actions.canPlay
+          ? '<button type="button" id="lrPlayBtn" class="ui-btn lr-btn-play"' + (canPlay ? '' : ' disabled') + '>' + (pending ? 'กำลังส่ง...' : playLabel) + '</button>'
+          : '') +
+      '</div>'
     );
   }
 
@@ -583,8 +801,9 @@ $(function() {
     if (!state || state.phase === 'finished' || state.phase === 'lobby') return '';
     const actor = (state.players || []).find(function(p) { return p.isCurrent; });
     const emptyActor = actor && Number(actor.handCount || 0) === 0;
-    if (state.lastPlay && emptyActor) return 'หมดเวลา = ท้าให้อัตโนมัติ';
-    return 'หมดเวลา = ลงใบแรกให้อัตโนมัติ';
+    const afk = actor && actor.afk ? 'ตาที่แล้วหมดเวลา เลยได้เวลาสั้นลง · ' : '';
+    if (state.lastPlay && emptyActor) return afk + 'หมดเวลา = ท้าให้อัตโนมัติ';
+    return afk + 'หมดเวลา = ลงใบแรกให้อัตโนมัติ';
   }
 
   function tickTimer(state) {
@@ -593,22 +812,23 @@ $(function() {
       if (state.phase === 'finished') {
         const endsAt = Number(state.returnLobbyEndsAt) || 0;
         const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
-        $('#lrTimer').text(remain > 0 ? remain : '--');
-        $('#lrTimerHint').text(remain > 0 ? 'วิ แล้วกลับห้องรอพร้อมกัน' : 'กำลังกลับห้องรอ...');
+        $('#lrTimer, #lrDockTimer').text(remain > 0 ? remain + ' วิ' : '');
+        $('#lrTimer, #lrDockTimer').removeClass('is-low');
+        $('#lrTimerHint').text(remain > 0 ? 'แล้วกลับห้องรอพร้อมกัน' : '');
         $('#lrBackRemain').text(remain > 0
-          ? 'กดกลับห้องรอแล้วทุกคนไปด้วย · ระบบดึงกลับใน ' + remain + ' วิ'
+          ? (isRoomAdmin ? 'กดเล่นอีกรอบได้เลย · ' : 'รอหัวห้องกดเล่นอีกรอบ · ') + 'กลับห้องรออัตโนมัติใน ' + remain + ' วิ'
           : 'กำลังพากลับห้องรอ...');
         return;
       }
       if (!state.phaseEndsAt || state.phase === 'lobby') {
-        $('#lrTimer').text('--');
+        $('#lrTimer, #lrDockTimer').text('').removeClass('is-low');
         $('#lrTimerHint').text('');
         return;
       }
       const remain = Math.max(0, Math.ceil((state.phaseEndsAt - Date.now()) / 1000));
-      const mm = String(Math.floor(remain / 60)).padStart(2, '0');
+      const mm = String(Math.floor(remain / 60));
       const ss = String(remain % 60).padStart(2, '0');
-      $('#lrTimer').text(mm + ':' + ss);
+      $('#lrTimer, #lrDockTimer').text('⏱ ' + mm + ':' + ss).toggleClass('is-low', remain <= 5);
       $('#lrTimerHint').text(timerHint(state));
     }
     paint();
@@ -617,128 +837,194 @@ $(function() {
 
   function pingNeed(state) {
     if (!window.partyPlay || !state.self || !state.self.alive || state.currentPlayerId !== playerId) return;
+    const wait = pingHoldUntil - Date.now();
+    if (wait > 0) {
+      // ให้ป้ายผลท้าแสดงก่อน แล้วค่อยเตือนถึงตา — เดิมป้ายเตือนทับผลหงายไพ่
+      setTimeout(function() { if (currentState === state) pingNeed(state); }, wait + 30);
+      return;
+    }
     if (state.lastPlay) {
       window.partyPlay.pingTurn({
         key: 'liar-react-' + (state.lastPlay.playerId || '') + '-' + (state.turnNumber || 0),
-        title: 'ท้าหรือลงต่อ',
-        subtitle: 'กด โกหก! ถ้าไม่เชื่อ'
+        title: 'เชื่อหรือท้า?',
+        subtitle: (state.lastPlay.playerName || '') + ' อ้างว่า ' + state.lastPlay.count + ' ใบเป็น' + rankName(state),
+        ms: 1100
       });
       return;
     }
     window.partyPlay.pingTurn({
       key: 'liar-play-' + (state.turnNumber || 0),
       title: 'ถึงตาคุณ',
-      subtitle: 'แตะไพ่ แล้วลง'
+      subtitle: 'ลงไพ่ แล้วบอกว่าเป็น' + rankName(state),
+      ms: 1100
     });
   }
 
   function autoSelectFirst(state) {
     const actions = state.availableActions || {};
     const hand = (state.self && state.self.hand) || [];
-    if (!actions.canPlay || !hand.length) return;
     selectedIds = selectedIds.filter(function(key) {
       return hand.some(function(card, index) { return (card.id + ':' + index) === key; });
     });
-    if (!selectedIds.length) selectedIds = [hand[0].id + ':0'];
+    if (!actions.canPlay || !hand.length) return;
+    if (!selectedIds.length) {
+      selectedIds = [hand[0].id + ':0'];
+      autoPicked = true;
+    }
   }
 
-  function playFx(state) {
+  function markHit(targetId) {
+    if (reduceMotion || !targetId) return;
+    const node = targetId === playerId
+      ? document.getElementById('myLives')
+      : document.querySelector('[data-seat-id="' + targetId + '"]');
+    if (!node) return;
+    node.classList.remove('is-hit');
+    void node.offsetWidth;
+    node.classList.add('is-hit');
+    if (node.classList.contains('lr-seat')) {
+      const badge = document.createElement('span');
+      badge.className = 'lr-hit-badge';
+      badge.textContent = '−1♥';
+      node.appendChild(badge);
+      setTimeout(function() { badge.remove(); }, 2300);
+    }
+  }
+
+  function playFx(state, initial) {
     const events = (state.fx || []).filter(function(item) { return item && item.seq > seenFxSeq; });
     if (!events.length) return;
     seenFxSeq = events[events.length - 1].seq;
-    events.forEach(function(event) {
+    // โหลดหน้า/รีเฟรช: เล่นเฉพาะเหตุการณ์สด ๆ (เช่นแจกไพ่ตอนเริ่ม) ไม่เล่นของเก่าย้อนหลัง
+    const fresh = initial
+      ? events.filter(function(event) { return event.at && Date.now() - event.at < 5000; })
+      : events;
+    fresh.forEach(function(event) {
       if (event.kind === 'deal' || event.kind === 'draw') {
         $('#myHand .lr-playing').addClass('is-deal');
         $('#myHand .lr-playing').each(function(i) {
           this.style.animationDelay = (i * 70) + 'ms';
         });
       }
+      if (event.kind === 'reveal') {
+        const actor = nameOf(state, event.actorId);
+        const challenger = nameOf(state, event.challengerId);
+        const text = event.truthful
+          ? '✅ ของจริง! ' + challenger + ' ท้าพลาด −1♥'
+          : '🚨 จับได้! ' + actor + ' โกหก −1♥';
+        queueBanner(text, event.truthful ? 'truth' : 'lie', 2200);
+        pingHoldUntil = Date.now() + 2300;
+        markHit(event.loserId);
+        if (event.loserId === playerId && navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }
+        // หงายไพ่แบบพลิก
+        if (!reduceMotion) {
+          const flips = $('#tablePile .lr-playing').removeClass('is-face');
+          if (flips[0]) void flips[0].offsetWidth;
+          requestAnimationFrame(function() { flips.addClass('is-face'); });
+        }
+      }
       if (event.kind === 'round' && event.targetRank) {
-        flashBanner('รอบใหม่ · ต้องบอกว่าเป็น' + event.targetRank.thaiName);
+        queueBanner('รอบ ' + (event.roundNumber || '') + ' · ต้องบอกว่าเป็น' + event.targetRank.thaiName, '', 1500);
         $('#targetRank .lr-rank-chip').addClass('is-pulse');
       }
       if (event.kind === 'play') {
         const fromSeat = event.fromId === playerId
-          ? document.querySelector('#myHand .lr-playing')
+          ? document.querySelector('#myHand')
           : document.querySelector('[data-seat-id="' + event.fromId + '"]');
         const pile = document.getElementById('tablePile');
         if (fromSeat && pile) {
           flyTo(fromSeat.getBoundingClientRect(), pile.getBoundingClientRect(), playingCard({ id: 'back' }, { faceUp: false }));
         }
       }
-      if (event.kind === 'reveal' && event.cards && event.cards.length) {
-        $('#tablePile').html(event.cards.map(function(card) {
-          return playingCard(card, { faceUp: false, extraClass: 'is-reveal' });
-        }).join(''));
-        requestAnimationFrame(function() {
-          $('#tablePile .lr-playing').addClass('is-face');
-        });
-        flashBanner(event.truthful ? 'ของจริง · คนท้าเสียหัวใจ' : 'โกหก! · คนลงเสียหัวใจ');
-        setTimeout(function() {
-          if (currentState && !currentState.lastPlay) renderPile(currentState);
-        }, 1600);
-      }
     });
   }
 
-  function renderState(state) {
+  function renderState(state, initial) {
     if (!state) return;
+    if (pending && pendingTurn !== state.turnNumber) { pending = false; pendingTurn = null; }
     currentState = state;
     autoSelectFirst(state);
     const now = describeNow(state);
     $('#lrNowCopy').text(now.text);
     $('#lrNowBar').toggleClass('is-mine', !!now.mine);
+    $('#lrDockStatus').text(now.short || now.text).toggleClass('is-mine', !!now.mine);
     renderTarget(state);
-    renderDeck(state);
     renderPile(state);
     renderOpponents(state);
     renderHand(state);
     renderActions(state);
     renderHistory(state);
     tickTimer(state);
+    playFx(state, initial);
     pingNeed(state);
-    playFx(state);
+    syncDockHeight();
+  }
+
+  function toast(text, icon) {
+    if (typeof Swal === 'undefined') return;
+    Swal.fire({ toast: true, position: 'top', timer: 2200, showConfirmButton: false, icon: icon || 'info', title: text, background: '#102016', color: '#fff' });
   }
 
   function sendCommand(eventName, payload) {
+    pending = true;
+    pendingTurn = currentState && currentState.turnNumber;
+    renderActions(currentState);
     socket.emit(eventName, Object.assign({ roomId: roomId, playerId: playerId }, payload || {}), function(res) {
       if (res && !res.success) {
-        Swal.fire({ icon: 'error', title: res.error || 'ทำรายการไม่สำเร็จ', background: '#102016', color: '#fff' });
+        pending = false;
+        pendingTurn = null;
+        renderActions(currentState);
+        toast(res.error || 'ทำรายการไม่สำเร็จ', 'error');
       }
     });
+    // กันปุ่มค้าง "กำลังส่ง" ถ้าเน็ตหลุดระหว่างส่ง
+    setTimeout(function() {
+      if (pending && currentState && pendingTurn === currentState.turnNumber) {
+        pending = false;
+        renderActions(currentState);
+      }
+    }, 6000);
   }
 
   function sendPlay() {
+    if (pending) return;
     const cardIds = selectedIds.map(function(key) { return key.split(':')[0]; });
+    if (!cardIds.length) { toast('แตะเลือกไพ่ก่อน'); return; }
     sendCommand('liar_play', { cardIds: cardIds });
     selectedIds = [];
   }
 
   $(document).on('click', '#lrPlayBtn', sendPlay);
   $(document).on('click', '#lrChallengeBtn', function() {
+    if (pending) return;
     sendCommand('liar_challenge');
   });
   $(document).on('click', '#lrRestartBtn', function() {
+    const btn = $(this);
+    btn.prop('disabled', true);
     socket.emit('startGameFromLobby', { roomId: roomId }, function(res) {
       if (res && !res.success) {
-        Swal.fire({ icon: 'error', title: res.error || 'เริ่มใหม่ไม่สำเร็จ', background: '#102016', color: '#fff' });
+        btn.prop('disabled', false);
+        toast(res.error || 'เริ่มใหม่ไม่สำเร็จ', 'error');
       }
     });
   });
   $(document).on('click', '#lrShareBtn', function() {
     if (!window.partyPlay || !currentState) return;
-    const alive = (currentState.players || []).filter(p => p.alive).map(p => p.name);
-    const dead = (currentState.players || []).filter(p => !p.alive).map(p => p.name);
+    const rows = standings(currentState);
     window.partyPlay.shareResult({
       mode: 'ไพ่โกหก',
       headline: (currentState.winner && currentState.winner.name ? currentState.winner.name : '-') + ' ชนะ!',
-      sub: 'รอด: ' + (alive.join(', ') || '-'),
-      lines: dead.length ? ['ตกรอบ: ' + dead.join(', ')] : ['ไม่มีใครตกรอบก่อนจบ'],
+      sub: 'รอดคนสุดท้ายจาก ' + rows.length + ' คน',
+      lines: rows.slice(1, 6).map(function(r, i) { return (i + 2) + '. ' + r.name + ' — ' + r.why; }),
       accent: '#ef4444',
       fileName: 'liar-result'
     });
   });
   $(document).on('click', '#lrBackLobbyBtn', function() {
+    if (!isRoomAdmin) return;
+    $(this).prop('disabled', true);
+    // ถ้าสิทธิ์หัวห้องเพิ่งย้ายไป server จะตอบ canReturnSelf → กลับห้องเฉพาะตัวเอง
     socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } });
   });
 
@@ -747,13 +1033,13 @@ $(function() {
       title: '🃏 ไพ่โกหก เล่นยังไง',
       html: '<div style="text-align:left; line-height:1.55;">' +
         '<p><strong>ชนะ = เหลือหัวใจคนสุดท้าย</strong> ไม่ใช่ทิ้งไพ่ให้หมดมือ</p>' +
-        '<p>เริ่มคนละ 5 ใบ หัวใจ 3 · หัวใจหมด = ตกรอบ</p>' +
-        '<p>รอบนี้สุ่มชนิดไพ่ เช่น คิง ลง 1–3 ใบคว่ำ แล้วบอกว่าเป็นคิง — โกหกได้</p>' +
-        '<p>คนถัดไปกด <strong>โกหก!</strong> (หงายไพ่) หรือลงต่อ (เชื่อ แล้วทิ้งกองนั้น)</p>' +
-        '<p>ท้าแล้ว: ของปลอม = คนลงเสียหัวใจ · ของจริง = คนท้าเสีย → เริ่มรอบใหม่</p>' +
-        '<p>มือว่างยังอยู่ในเกม — ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว · ทุกคนหมดมือ = แจกใหม่</p>' +
-        '<p>จับเวลา: ลงไพ่ 45 วินาที / ท้าหรือลงต่อ 20 วินาที หมดแล้วระบบลงใบแรกให้ (มือว่าง = ท้าให้)</p>' +
-        '<p>โจ๊กเกอร์ใช้แทนไพ่รอบนี้ได้</p></div>',
+        '<p>เริ่มคนละ 5 ใบ หัวใจ 3 ดวง (♥♥♥) · หัวใจหมด = ตกรอบ</p>' +
+        '<p><strong>ถึงตาคุณ:</strong> แตะเลือก 1–3 ใบ แล้วกดลง ไพ่จะคว่ำ และระบบประกาศว่าเป็น “ไพ่รอบนี้” (การ์ดใบใหญ่ขวามือบนโต๊ะ) — จะโกหกก็ได้</p>' +
+        '<p><strong>คนถัดไปเท่านั้น</strong> ที่ท้าได้: กด <strong>โกหก!</strong> เพื่อหงายไพ่ หรือลงไพ่ต่อ (= เชื่อ)</p>' +
+        '<p>หงายแล้ว: มีใบไม่ตรง = คนลงเสียหัวใจ · ตรงหมด = คนท้าเสีย → แจกไพ่ใหม่ เริ่มรอบใหม่</p>' +
+        '<p>มือว่างยังอยู่ในเกม — ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว</p>' +
+        '<p>จับเวลา: ลงไพ่ 45 วิ / เชื่อหรือท้า 20 วิ หมดแล้วระบบลงใบแรกให้ (มือว่าง = ท้าให้) · ใครหมดเวลาแล้ว ตาต่อไปได้เวลาสั้นลง</p>' +
+        '<p>โจ๊กเกอร์ใช้แทนไพ่รอบนี้ได้ · แตะใบเดิมสองครั้งเร็ว ๆ = ลงใบนั้นทันที</p></div>',
       background: '#102016', color: '#fff', confirmButtonColor: '#ef4444', confirmButtonText: 'เข้าใจแล้ว'
     });
   });
@@ -817,7 +1103,7 @@ $(function() {
     socket.emit('liar_requestState', { roomId: roomId, playerId: playerId });
   });
   socket.on('disconnect', function() { $('#connectionStatus').show(); });
-  socket.on('liarState', renderState);
+  socket.on('liarState', function(state) { renderState(state, false); });
   socket.on('roomUpdate', function(data) {
     if (!data || !data.players) return;
     $('#onlinePlayerList').html(data.players.map(p =>
@@ -861,6 +1147,8 @@ $(function() {
     Swal.fire({ icon: 'error', title: 'ดูไพ่ไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บเท่านั้น', background: '#102016', color: '#fff' });
   });
 
-  if (currentState && currentState.phase) renderState(currentState);
+  window.addEventListener('resize', syncDockHeight);
+  syncDockHeight();
+  if (currentState && currentState.phase) renderState(currentState, true);
 });
 </script>

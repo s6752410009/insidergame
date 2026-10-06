@@ -3219,6 +3219,44 @@ function finalizeAvalonGameIfNeeded(room) {
 
 // ==================== LIAR / โกหก ====================
 
+const liarBotTimeouts = new Map();
+const liarBotAddInFlight = new Set();
+
+function clearLiarBotTimer(roomId) {
+    const timer = liarBotTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        liarBotTimeouts.delete(roomId);
+    }
+}
+
+// บอทเล่นตามจังหวะ engine.botDelay — ตั้งใหม่เมื่อเปลี่ยนตา (turnNumber) เท่านั้น
+function scheduleLiarBots(room) {
+    if (!room || room.settings.gameMode !== 'liar') return;
+    const engine = getGameEngine('liar');
+    if (!engine.botNeedsTurn(room)) {
+        clearLiarBotTimer(room.roomId);
+        return;
+    }
+    const turn = room.gameState.turnNumber;
+    const existing = liarBotTimeouts.get(room.roomId);
+    if (existing && existing.turn === turn) return;
+    clearLiarBotTimer(room.roomId);
+    const delay = engine.botDelay(room);
+    if (delay === null) return;
+    const timeoutId = setTimeout(() => {
+        liarBotTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'liar' || current.gameState?.turnNumber !== turn) return;
+        try {
+            if (engine.playBotTurn(current)) emitLiarRoomState(current);
+        } catch (error) {
+            console.error('[liar] bot turn failed:', error.message);
+        }
+    }, delay);
+    liarBotTimeouts.set(room.roomId, { timeoutId, turn });
+}
+
 function clearLiarPhaseTimer(roomId, resetPhaseEndsAt = true) {
     const timer = liarPhaseTimeouts.get(roomId);
     if (timer) {
@@ -3226,6 +3264,7 @@ function clearLiarPhaseTimer(roomId, resetPhaseEndsAt = true) {
         liarPhaseTimeouts.delete(roomId);
     }
     if (!resetPhaseEndsAt) return;
+    clearLiarBotTimer(roomId);
     const room = roomManager.getRoom(roomId);
     if (room?.gameState) room.gameState.phaseEndsAt = null;
 }
@@ -3267,6 +3306,7 @@ function emitLiarState(room, targetSocketId = null, playerId = null) {
     if (!room || room.settings.gameMode !== 'liar') return;
 
     syncLiarPhaseTimer(room);
+    scheduleLiarBots(room);
 
     if (targetSocketId && playerId) {
         io.to(targetSocketId).emit('liarState', buildLiarStatePayload(room, playerId));
@@ -7725,6 +7765,55 @@ io.sockets.on('connection', function(socket) {
         }
         const ok = returnFinishedGameToLobby(room.roomId);
         done({ success: ok });
+    });
+
+    safeOn(socket, 'liar_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        try {
+            const roomId = data?.roomId || socket.roomId;
+            const requesterId = socket.playerId;
+            const room = roomManager.getRoom(roomId);
+            if (!room) throw new Error('ไม่พบห้อง');
+            if (room.settings.gameMode !== 'liar') throw new Error('โหมดนี้เพิ่มบอทไม่ได้');
+            if (room.admin !== requesterId && !isSiteAdminPlayer(requesterId)) {
+                throw new Error('เฉพาะหัวหน้าห้องที่เพิ่มบอทได้');
+            }
+            if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
+            if (liarBotAddInFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
+
+            const seatCap = Math.min(8, Number(room.settings.maxPlayers || 8));
+            const remaining = Math.max(0, seatCap - room.players.length);
+            if (!remaining) throw new Error('ห้องเต็มแล้ว');
+            const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
+            const botNames = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทแก้วตา'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦉'];
+            const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#16a085'];
+
+            liarBotAddInFlight.add(room.roomId);
+            let added = 0;
+            try {
+                for (let i = 0; i < wanted; i += 1) {
+                    if (roomManager.getRoom(roomId) !== room) break;
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    const botId = `bot_${uuidv4()}`;
+                    const slot = room.players.length % botNames.length;
+                    await playerManager.createOrGetPlayer(botId, { approved: true });
+                    await playerManager.updatePlayerName(botId, `${botNames[slot]} ${botId.slice(-3)}`);
+                    await playerManager.updatePlayerColor(botId, botColors[slot]);
+                    await playerManager.updatePlayerAvatar(botId, botAvatars[slot]);
+                    if (roomManager.isRoomGameInProgress(room) || room.players.length >= seatCap) break;
+                    roomManager.joinRoom(roomId, botId, `bot_socket_${uuidv4()}`, null, { bypassLock: true });
+                    added += 1;
+                }
+            } finally {
+                liarBotAddInFlight.delete(room.roomId);
+            }
+            io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+            io.emit('roomListUpdate', roomManager.getAllRooms());
+            done({ success: true, added });
+        } catch (error) {
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
     });
 
     safeOn(socket, 'liar_admin_reveal', function() {

@@ -178,4 +178,101 @@ assert(afkRoom.gameState.phase === 'finished', 'AFK ทั้งวงต้อ�
 assert(!!afkRoom.gameState.winner, 'AFK จบแล้วต้องมีผู้ชนะ');
 assert(countCards(afkRoom) === afkStart, 'AFK แล้วไพ่ต้องไม่หาย');
 
+// ---------- UX regressions (ux/liar) ----------
+{
+    // หงายไพ่: client ต้องรู้ว่าใครเสียหัวใจ เหลือกี่ดวง (แผงผลค้างบนโต๊ะ + ป้าย)
+    const r = makeRoom(3);
+    const t = r.gameState.targetRank;
+    const bad = engine.RANKS.find(rank => rank !== t);
+    const [a, b] = r.gameState.players;
+    a.hand = [bad, bad, bad, bad, bad];
+    setTurn(r, a.playerId);
+    engine.submitPlay(r, a.playerId, [bad]);
+    setTurn(r, b.playerId);
+    engine.submitChallenge(r, b.playerId);
+    const view = engine.buildClientState(r, b.playerId);
+    assert(view.lastReveal.loserId === a.playerId, 'lastReveal ต้องบอก loserId = คนโกหก');
+    assert(view.lastReveal.loserLives === 2, 'lastReveal ต้องบอกหัวใจที่เหลือของคนเสีย');
+    const fx = view.fx.find(item => item.kind === 'reveal');
+    assert(fx && fx.loserId === a.playerId && fx.loserLives === 2, 'fx reveal ต้องมี loserId/loserLives');
+    assert(fx.at > 0, 'fx ต้องมีเวลา (กันเล่นเอฟเฟกต์เก่าตอนรีเฟรช)');
+    const order = view.fx.map(item => item.kind);
+    assert(order.indexOf('reveal') < order.lastIndexOf('round'), 'fx: หงายไพ่ต้องมาก่อนรอบใหม่');
+    assert(view.maxLives === 3, 'client ต้องรู้หัวใจเต็ม (วาด ♡ ที่เสียไป)');
+    const texts = r.gameState.history.map(h => h.text).join('\n');
+    assert(!/เสียชีวิต/.test(texts), 'ประวัติห้ามใช้คำว่า "เสียชีวิต" (แปลว่าตาย) — ใช้ "เสียหัวใจ"');
+    assert(/เสียหัวใจ 1 ดวง เหลือ 2/.test(texts), 'ประวัติต้องบอกเสียหัวใจ เหลือกี่ดวง');
+}
+{
+    // ลำดับตกรอบ + เหตุผล สำหรับหน้าสรุปผล
+    const r = makeRoom(3);
+    const t = r.gameState.targetRank;
+    const bad = engine.RANKS.find(rank => rank !== t);
+    const [a, b] = r.gameState.players;
+    a.lives = 1;
+    a.hand = [bad, bad, bad, bad, bad];
+    setTurn(r, a.playerId);
+    engine.submitPlay(r, a.playerId, [bad]);
+    setTurn(r, b.playerId);
+    engine.submitChallenge(r, b.playerId);
+    const view = engine.buildClientState(r, b.playerId);
+    assert(view.eliminations.length === 1 && view.eliminations[0].playerId === a.playerId, 'ต้องบันทึกคนตกรอบ');
+    assert(view.eliminations[0].reason === 'caught', 'เหตุผลตกรอบต้องเป็น caught (โดนจับโกหก)');
+    engine.handlePlayerLeft(r, r.gameState.players[2].playerId);
+    const done = engine.buildClientState(r, b.playerId);
+    assert(done.phase === 'finished' && done.eliminations.length === 2, 'ออกจากเกมก็ต้องนับในลำดับตกรอบ');
+    assert(done.eliminations[1].reason === 'left', 'ออกจากเกมต้องมีเหตุผล left');
+}
+{
+    // คนหมดเวลา (AFK) ได้เวลาสั้นลงตาถัดไป · กดเองแล้วกลับเป็นปกติ
+    const r = makeRoom(3);
+    const afk = r.gameState.players.find(p => p.playerId === r.gameState.currentPlayerId);
+    r.gameState.phaseEndsAt = Date.now() - 1;
+    engine.autoResolvePhase(r);
+    assert(afk.idleStrikes === 1, 'หมดเวลาแล้วต้องนับ idleStrikes');
+    assert(engine.buildClientState(r, afk.playerId).players.find(p => p.playerId === afk.playerId).afk === true, 'client ต้องเห็นป้าย AFK');
+    // วนตาจนกลับมาที่คน AFK
+    let guard = 0;
+    while (r.gameState.currentPlayerId !== afk.playerId && guard < 10 && r.gameState.phase === 'turn') {
+        const cur = r.gameState.players.find(p => p.playerId === r.gameState.currentPlayerId);
+        engine.submitPlay(r, cur.playerId, [cur.hand[0]]);
+        guard += 1;
+    }
+    assert(r.gameState.currentPlayerId === afk.playerId, 'ต้องวนกลับมาถึงตาคน AFK');
+    {
+        const left = r.gameState.phaseEndsAt - Date.now();
+        assert(left <= 12500, `ตาคน AFK ต้องสั้นลง (เหลือ ${left}ms)`);
+        engine.submitPlay(r, afk.playerId, [afk.hand[0]]);
+        assert(afk.idleStrikes === 0, 'กดเองแล้วต้องล้าง idleStrikes');
+    }
+}
+{
+    // บอท: เล่นเองได้ · รอนานขึ้นหลังหงายไพ่ · เล่นทั้งวงจนจบ ไพ่ไม่หาย
+    const players = Array.from({ length: 4 }, (_, i) => ({ playerId: 'bot_' + i, playerName: 'บอท' + i, color: '#fff', avatar: '🤖' }));
+    const r = { roomId: 'bots', name: 'Bots', players, settings: { gameMode: 'liar' }, gameState: engine.createInitialState() };
+    engine.startGame(r);
+    assert(engine.botNeedsTurn(r), 'ตาบอทต้อง botNeedsTurn');
+    const normal = engine.botDelay(r, r.gameState.turnStartedAt);
+    assert(normal >= 1000 && normal <= 3000, `บอทคิด 1–3 วิ (ได้ ${normal})`);
+    assert(engine.isBotId('bot_x') && !engine.isBotId('p1'), 'isBotId');
+    const total = countCards(r);
+    let steps = 0;
+    let sawReveal = false;
+    while (r.gameState.phase !== 'finished' && steps < 400) {
+        if (!r.gameState.lastPlay && r.gameState.lastReveal && !sawReveal) {
+            sawReveal = true;
+            const after = engine.botDelay(r, r.gameState.turnStartedAt);
+            assert(after > normal, `หลังหงายไพ่บอทต้องรอนานขึ้น (${after} vs ${normal})`);
+        }
+        assert(engine.playBotTurn(r), 'บอทต้องเล่นได้ทุกตา');
+        assert(countCards(r) === total, 'บอทเล่นแล้วไพ่ต้องไม่หาย');
+        steps += 1;
+    }
+    assert(r.gameState.phase === 'finished' && r.gameState.winner, 'บอทล้วนต้องเล่นจนจบ');
+    assert(sawReveal, 'บอทต้องท้ากันบ้าง');
+    const humanRoom = makeRoom(3);
+    assert(!engine.botNeedsTurn(humanRoom), 'ตาคนจริง บอทห้ามเล่นแทน');
+    assert(engine.playBotTurn(humanRoom) === false, 'playBotTurn ต้องไม่ทำอะไรในตาคนจริง');
+}
+
 console.log(`smoke-liar-engine: ${passed} asserts passed`);

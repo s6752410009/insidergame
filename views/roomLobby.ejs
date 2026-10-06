@@ -1515,6 +1515,7 @@
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
         <button type="button" id="btnPokDengAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'pokdeng' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnColorCardsAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'colorcards' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
+        <button type="button" id="btnLiarAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'liar' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnBlackMarketAddBots" class="btn-admin-small btn-add-bots <%= ((room.gameMode === 'blackmarket' || isPokerLobbyRoom) && room.isAdmin) ? '' : 'is-hidden' %>"><%= isPokerLobbyRoom ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ' %></button>
       </div>
     </div>
@@ -2115,6 +2116,7 @@
       setElementHidden('#btnDrawGuessHowTo', resolvedMode !== 'drawguess');
       setElementHidden('#btnColorCardsHowTo', resolvedMode !== 'colorcards');
       setElementHidden('#btnColorCardsAddBots', !(isAdmin && resolvedMode === 'colorcards'));
+      setElementHidden('#btnLiarAddBots', !(isAdmin && resolvedMode === 'liar'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
       if (pokerHowToBtn) pokerHowToBtn.classList.toggle('is-four', resolvedMode === 'poker4');
       fillPokerRankPanel(resolvedMode);
@@ -3437,6 +3439,17 @@
       if (btn.data('loading')) return;
       btn.data('loading', true).text('🤖 กำลังเพิ่มบอท...');
       socket.emit('colorcards_addBots', { roomId: roomId, count: 1 }, function(res) {
+        btn.data('loading', false).text('🤖 เพิ่มบอท');
+        if (res && res.success) return;
+        Swal.fire({ icon: 'error', title: 'เพิ่มบอทไม่สำเร็จ', text: (res && res.error) || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
+      });
+    });
+
+    $(document).on('click', '#btnLiarAddBots', function() {
+      const btn = $(this);
+      if (btn.data('loading')) return;
+      btn.data('loading', true).text('🤖 กำลังเพิ่มบอท...');
+      socket.emit('liar_addBots', { roomId: roomId, count: 1 }, function(res) {
         btn.data('loading', false).text('🤖 เพิ่มบอท');
         if (res && res.success) return;
         Swal.fire({ icon: 'error', title: 'เพิ่มบอทไม่สำเร็จ', text: (res && res.error) || 'เกิดข้อผิดพลาด', background: '#1e1e1e', color: '#fff' });
