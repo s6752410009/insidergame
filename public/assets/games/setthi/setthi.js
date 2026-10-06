@@ -110,7 +110,7 @@
   }
   var preloaded = {};
   function preload(name, place) { if (!name || preloaded[name]) return; preloaded[name] = new Image(); preloaded[name].src = place ? placeSrc(name, 'w') : artSrc(name); }
-  TIER_ART.forEach(preload);
+  TIER_ART.forEach(function(n) { preload(n); });
 
   // ---------- เสียง (สังเคราะห์เอง) ----------
   var sfx = (function() {
@@ -2104,6 +2104,8 @@
     skip: skipNow,
     sheet: function() { return sheetKind; },
     hold: function() { return hold ? { meter: hold.meter, t0: hold.t0, released: hold.released } : null; },
+    // เทส: ส่งคำสั่งผ่าน socket ของหน้านี้ (เซิร์ฟเวอร์ตรวจสิทธิ์ทุกอย่างเหมือนเดิม)
+    emit: function(ev, payload) { return new Promise(function(resolve) { socket.emit(ev, Object.assign({ roomId: roomId }, payload || {}), function(res) { resolve(res || {}); }); }); },
     demo: function(list) { enqueueFx((Array.isArray(list) ? list : [list]).map(function(f) { return Object.assign({ seq: 0, at: nowServer() }, f); })); }
   };
 })();

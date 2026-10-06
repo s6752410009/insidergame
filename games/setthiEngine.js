@@ -347,16 +347,30 @@ function completeGroups(room, playerId) {
     return Object.keys(B.GROUP_SQUARES).filter(g => B.GROUP_SQUARES[g].every(i => prop(room, i).owner === playerId));
 }
 
-/** ผูกขาดแบบไหนสำเร็จแล้ว (หรือ null) */
-function monopolyOf(room, playerId) {
+/**
+ * ผูกขาดแบบไหนสำเร็จแล้ว (หรือ null)
+ * สำเร็จพร้อมกันหลายแบบ → เลือกแบบที่มีช่องที่เพิ่งได้มา (prefer) ก่อน ตามลำดับ 3 สี → แถว → ท่องเที่ยว
+ */
+function monopolyOf(room, playerId, prefer = null) {
     if (!playerId) return null;
-    if (B.TOURIST_SQUARES.every(i => prop(room, i).owner === playerId)) return { type: 'tourist', squares: B.TOURIST_SQUARES.slice() };
-    for (let side = 0; side < 4; side += 1) {
-        if (B.SIDE_SQUARES[side].every(i => prop(room, i).owner === playerId)) return { type: 'line', side, squares: B.SIDE_SQUARES[side].slice() };
-    }
+    const found = [];
     const groups = completeGroups(room, playerId);
-    if (groups.length >= 3) return { type: 'color', groups: groups.slice(0, 3), squares: groups.slice(0, 3).flatMap(g => B.GROUP_SQUARES[g]) };
-    return null;
+    if (groups.length >= 3) {
+        // ถ้าครบเกิน 3 สี ให้กลุ่มที่มีช่องที่เพิ่งได้มาติดไปด้วย
+        const withPrefer = prefer !== null ? groups.filter(g => B.GROUP_SQUARES[g].includes(prefer)) : [];
+        const pick = [...withPrefer, ...groups.filter(g => !withPrefer.includes(g))].slice(0, 3);
+        found.push({ type: 'color', groups: pick, squares: pick.flatMap(g => B.GROUP_SQUARES[g]) });
+    }
+    for (let side = 0; side < 4; side += 1) {
+        if (B.SIDE_SQUARES[side].every(i => prop(room, i).owner === playerId)) found.push({ type: 'line', side, squares: B.SIDE_SQUARES[side].slice() });
+    }
+    if (B.TOURIST_SQUARES.every(i => prop(room, i).owner === playerId)) found.push({ type: 'tourist', squares: B.TOURIST_SQUARES.slice() });
+    if (!found.length) return null;
+    if (prefer !== null) {
+        const hit = found.find(m => m.squares.includes(prefer));
+        if (hit) return hit;
+    }
+    return found[0];
 }
 
 const MONOPOLY_LABEL = { color: 'ผูกขาด 3 สี', line: 'ผูกขาดแถว', tourist: 'ผูกขาดท่องเที่ยว' };
@@ -386,10 +400,10 @@ function monopolyThreats(room) {
     return out;
 }
 
-function checkMonopoly(room, playerId) {
+function checkMonopoly(room, playerId, square = null) {
     const state = st(room);
     if (state.phase === 'finished') return true;
-    const m = monopolyOf(room, playerId);
+    const m = monopolyOf(room, playerId, square);
     if (!m) return false;
     const seat = seatOf(room, playerId);
     state.monopoly = { playerId, ...m };
@@ -1175,7 +1189,7 @@ function buildTo(room, playerId, level, ctx = null) {
     pushFx(room, { kind: 'build', playerId, square: i, from: choices.current, to: p.level, cost, mode: pending.mode, cash: cashMap(room, [playerId]) });
     pushHistory(room, p.level === 4 ? '🏛️' : buying ? '🏷️' : '🏗️', `${seat.name} ${buying ? 'ซื้อ' : 'สร้าง'}${sqName(i)}${isCity(i) ? ' (' + B.LEVEL_NAMES[p.level] + ')' : ''} ${fmt(cost)}`, p.level === 4 ? 'landmark' : 'build');
     markAction(room, 'build');
-    if (buying && checkMonopoly(room, playerId)) return state;
+    if (buying && checkMonopoly(room, playerId, i)) return state;
     proceed(room);
     return state;
 }
@@ -1206,7 +1220,7 @@ function acceptTakeover(room, playerId, ctx = null) {
     pushFx(room, { kind: 'takeover', playerId, from: owner.playerId, square: i, price, level: p.level, cash: cashMap(room, [playerId, owner.playerId]) });
     pushHistory(room, '🤝', `${seat.name} ซื้อต่อ${sqName(i)}จาก ${owner.name} ${fmt(price)}`, 'takeover');
     markAction(room, 'takeover');
-    if (checkMonopoly(room, playerId)) return state;
+    if (checkMonopoly(room, playerId, i)) return state;
     setPending(room, { type: 'build', mode: 'afterTakeover', square: i, playerId });
     proceed(room);
     return state;

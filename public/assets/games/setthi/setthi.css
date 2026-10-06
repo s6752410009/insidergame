@@ -1160,3 +1160,8 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 .st-credit b { font-size: 0.82rem; }
 .st-credit span { color: var(--st-muted); overflow-wrap: anywhere; }
 .st-credit a { color: var(--st-gold); }
+@media (max-width: 480px) {
+  .st-debug-txt { display: none; }
+  .st-debug-badge { padding: 4px 6px; }
+  .st-top:has(.st-debug-badge:not([hidden])) .st-fast-txt { display: none; }
+}

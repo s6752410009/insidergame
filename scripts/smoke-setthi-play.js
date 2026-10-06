@@ -467,7 +467,7 @@ async function scenarioB(base) {
     assert(r.success && r.added === 0 || !r.success, 'ห้องเต็ม 4 คน');
     await start(H1, [H1, H2, H3], roomId);
     assert(last(H1).seats.length === 4, '4 ที่นั่ง');
-    await drive([H1, H2, H3], { act: true, stop: (S, st) => st.actions >= 8 && S.phase === 'roll' });
+    await drive([H1, H2, H3], { act: true, timeoutMs: 60000, stop: (S, st) => st.actions >= 8 && S.phase === 'roll' && S.history.some(h => /^บอท/.test(h.text)) });
     assert(last(H1).history.some(h => /^บอท/.test(h.text)), 'บอทเล่นด้วย');
     const i3 = idx(H3);
     await setup(H1, { props: { 20: { owner: i3, level: 2 }, 22: { owner: i3, level: 1 } } });
@@ -478,13 +478,13 @@ async function scenarioB(base) {
     const own = {};
     [1, 2, 4, 6, 7, 9].forEach(i => { own[i] = { owner: i1, level: 0 }; });
     own[10] = { owner: null, level: 0 };
-    await setup(H1, { props: own, seats: { [i1]: { pos: 8, cash: 30000, island: 0 } }, dice: [[1, 1]], turnSeat: i1 });
+    await setup(H1, { resetProps: true, resetSeats: true, props: own, seats: { [i1]: { pos: 8, cash: 30000, island: 0 } }, dice: [[1, 1]], turnSeat: i1 });
     await until(H2, S2 => S2.threats.some(t => t.playerId === H1.id && t.type === 'color' && t.squares.includes(10)), 'ทุกคนเห็นเตือน อีก 1 ช่องผูกขาด 3 สี');
     await act(H1, 'setthi_roll');
     await until(H1, turnOf(H1, 'build'), 'ซื้อช่องสุดท้าย');
     await act(H1, 'setthi_build', { level: 0 });
     S = await until(H2, S2 => S2.phase === 'finished', 'ชนะผูกขาด 3 สี');
-    assert(S.monopoly && S.monopoly.type === 'color' && S.winners[0].playerId === H1.id, 'ผูกขาด 3 สี ชนะทันที');
+    assert(S.monopoly && S.monopoly.type === 'color' && S.winners[0].playerId === H1.id, 'ผูกขาด 3 สี ชนะทันที: ' + JSON.stringify({ monopoly: S.monopoly, winners: S.winners, reason: S.finishReason, h1: H1.id }));
     assert(S.fx.some(f => f.kind === 'monopoly' && f.type === 'color'), 'ฉากฉลอง');
     console.log('11. 4 คน (บอท 1): คนออก ที่ดินคืนธนาคาร · เตือนผูกขาด · ผูกขาด 3 สี ชนะทันที ✓');
     [H1, H2].forEach(c => c.socket.close());
@@ -498,13 +498,13 @@ async function scenarioB(base) {
     assert((await ack(L1.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
     await start(L1, [L1, L2], roomId);
     const l1 = idx(L1);
-    await setup(L1, { props: { 9: { owner: l1 }, 10: { owner: l1 }, 12: { owner: l1 }, 14: { owner: l1 }, 15: { owner: l1 }, 11: { owner: null } }, seats: { [l1]: { pos: 8, cash: 30000, island: 0 } }, dice: [[1, 2]], turnSeat: l1 });
+    await setup(L1, { resetProps: true, resetSeats: true, props: { 9: { owner: l1 }, 10: { owner: l1 }, 12: { owner: l1 }, 14: { owner: l1 }, 15: { owner: l1 }, 11: { owner: null } }, seats: { [l1]: { pos: 8, cash: 30000, island: 0 } }, dice: [[1, 2]], turnSeat: l1 });
     await until(L2, S2 => S2.threats.some(t => t.playerId === L1.id && t.type === 'line' && t.squares[0] === 11), 'เตือนผูกขาดแถว');
     await act(L1, 'setthi_roll');
     await until(L1, turnOf(L1, 'build'), 'ซื้อเขาใหญ่');
     await act(L1, 'setthi_build', { level: 0 });
     S = await until(L2, S2 => S2.phase === 'finished', 'ชนะผูกขาดแถว');
-    assert(S.monopoly.type === 'line' && S.monopoly.side === 1 && S.winners[0].playerId === L1.id, 'ผูกขาดแถว');
+    assert(S.monopoly && S.monopoly.type === 'line' && S.monopoly.side === 1 && S.winners[0].playerId === L1.id, 'ผูกขาดแถว: ' + JSON.stringify({ monopoly: S.monopoly, winners: S.winners }));
     console.log('12. 3 คน (บอท 1): ผูกขาดแถว (รวมแหล่งท่องเที่ยว) ชนะทันที ✓');
     [L1, L2].forEach(c => c.socket.close());
 
@@ -516,12 +516,12 @@ async function scenarioB(base) {
     await joinAll(roomId, [T2]);
     await start(T1, [T1, T2], roomId);
     const t1 = idx(T1);
-    await setup(T1, { props: { 5: { owner: t1 }, 11: { owner: t1 }, 21: { owner: t1 } }, seats: { [t1]: { pos: 24, cash: 30000, island: 0, tourPending: false } }, dice: [[1, 2]], turnSeat: t1 });
+    await setup(T1, { resetProps: true, resetSeats: true, props: { 5: { owner: t1 }, 11: { owner: t1 }, 21: { owner: t1 } }, seats: { [t1]: { pos: 24, cash: 30000, island: 0, tourPending: false } }, dice: [[1, 2]], turnSeat: t1 });
     await act(T1, 'setthi_roll');
     await until(T1, turnOf(T1, 'build'), 'ซื้อพีพี');
     await act(T1, 'setthi_build', { level: 0 });
     S = await until(T2, S2 => S2.phase === 'finished', 'ชนะผูกขาดท่องเที่ยว');
-    assert(S.monopoly.type === 'tourist' && S.winners[0].playerId === T1.id, 'ผูกขาดท่องเที่ยว');
+    assert(S.monopoly && S.monopoly.type === 'tourist' && S.winners[0].playerId === T1.id, 'ผูกขาดท่องเที่ยว: ' + JSON.stringify({ monopoly: S.monopoly, winners: S.winners }));
     console.log('13. 2 คน: ผูกขาดท่องเที่ยว ชนะทันที ✓');
     [T1, T2].forEach(c => c.socket.close());
 }
@@ -684,13 +684,15 @@ async function main() {
     let server = await bootServer(PORT);
     const base = `http://127.0.0.1:${PORT}`;
     try {
-        await scenarioA(base);
-        await scenarioB(base);
-        await scenarioC(base);
-        await scenarioF(base);
-        await scenarioG(base);
-        server = await scenarioE(server, PORT);
-        await scenarioD(PORT + 1);
+        const only = String(process.env.SETTHI_PLAY_ONLY || '').split(',').filter(Boolean);
+        const run = k => !only.length || only.includes(k);
+        if (run('A')) await scenarioA(base);
+        if (run('B')) await scenarioB(base);
+        if (run('C')) await scenarioC(base);
+        if (run('F')) await scenarioF(base);
+        if (run('G')) await scenarioG(base);
+        if (run('E')) server = await scenarioE(server, PORT);
+        if (run('D')) await scenarioD(PORT + 1);
         const logs = server.logs();
         assert(!/\[setthi\] (tick|bots|recover) failed/.test(logs), 'ไม่มี error ฝั่งเซิร์ฟเวอร์: ' + (logs.match(/\[setthi\][^\n]*/) || [''])[0]);
         console.log(`✅ setthi play: ${checks} checks · ตรวจ payload ${leakChecks} ชิ้น · ${((Date.now() - started) / 1000).toFixed(1)}s`);
