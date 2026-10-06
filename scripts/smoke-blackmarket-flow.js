@@ -1,4 +1,6 @@
 require('./isolateTestData');
+// หัวห้องข้ามคนที่ยังไม่เลือกได้หลังพ้นเวลากัน — เทสย่อเหลือ 4 วิ (ของจริง 15 วิ)
+process.env.BLACKMARKET_FORCE_ADVANCE_MIN_MS = process.env.BLACKMARKET_FORCE_ADVANCE_MIN_MS || '4000';
 const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -308,6 +310,31 @@ async function main() {
             assert(typeof view.self.cash === 'number', 'self cash visible');
         }
 
+        // UX: เปลี่ยนใจก่อนเฉลย + หัวห้องข้ามคนที่ยังไม่เลือก (มีเวลากันกดเร็ว)
+        {
+            const others = clients.slice(1);
+            let mark = creator.states.length;
+            const passAck = await emitAck(creator.socket, 'blackmarket_buyOffer', { roomId, playerId: creator.playerId, itemId: creator.lastState.passChoice });
+            assert(passAck && passAck.success, 'creator pass should succeed');
+            const lockedState = await waitForStateAfter(creator, mark,
+                payload => payload && payload.lockProgress && payload.lockProgress.locked === 1, 5000);
+            assert(lockedState.lockProgress && Array.isArray(lockedState.lockProgress.waitingOn), 'lockProgress.waitingOn should list who is still choosing');
+            assert(lockedState.lockProgress.waitingOn.length === 3 && !lockedState.lockProgress.waitingOn.some(entry => entry.playerId === creator.playerId),
+                'waitingOn should name the 3 players who have not chosen yet');
+            const staleUndo = await emitAck(creator.socket, 'blackmarket_cancelChoice', { roomId, phase: 'action', roundNumber: 1 });
+            assert(staleUndo && staleUndo.success === false, 'cancel for a phase that is not current must be refused');
+            mark = creator.states.length;
+            const undoAck = await emitAck(creator.socket, 'blackmarket_cancelChoice', { roomId, phase: 'market', roundNumber: 1 });
+            assert(undoAck && undoAck.success, 'cancelChoice should succeed before the market resolves: ' + JSON.stringify(undoAck));
+            const undone = await waitForStateAfter(creator, mark,
+                payload => payload && payload.phase === 'market' && !payload.self.pendingMarketChoice, 5000);
+            assert(undone.lockProgress.locked === 0, 'lock count drops after undo');
+            const guestSkip = await emitAck(others[0].socket, 'blackmarket_forceAdvance', { roomId });
+            assert(guestSkip && guestSkip.success === false, 'non-host must not force-advance');
+            const earlySkip = await emitAck(creator.socket, 'blackmarket_forceAdvance', { roomId });
+            assert(earlySkip && earlySkip.success === false && /วินาที/.test(earlySkip.error || ''), 'host skip right at phase start must be refused with a wait hint');
+        }
+
         const marketCheckpoint = checkpointStates(clients);
         for (const client of clients) {
             const state = client.lastState;
@@ -348,6 +375,22 @@ async function main() {
 
         assert(nextStates.every(state => ['market', 'finished'].includes(state.phase)), 'room did not resolve the first action round');
         assert(nextStates.some(state => Number(state.roundNumber || 0) >= 2 || state.phase === 'finished'), 'game did not move past the first round');
+
+        // UX: ผลยกที่แล้ว (รวมโน้ตลับ) ต้องยังอยู่ระหว่างตลาดยกถัดไป
+        const marketRound2 = nextStates.find(state => state.phase === 'market');
+        if (marketRound2) {
+            assert(marketRound2.actionReport && marketRound2.actionReport.roundNumber === 1 && marketRound2.actionReport.entries.length > 0,
+                'actionReport for round 1 should be visible during round 2 market');
+            // หัวห้องข้ามคนที่ยังไม่เลือก หลังพ้นเวลากัน (เทสตั้งไว้ 4 วิ)
+            await delay(4200);
+            const skipCheckpoint = checkpointStates(stayers);
+            const skipAck = await emitAck(creator.socket, 'blackmarket_forceAdvance', { roomId, phase: 'market', roundNumber: marketRound2.roundNumber });
+            assert(skipAck && skipAck.success, 'host force-advance should succeed after the guard time: ' + JSON.stringify(skipAck));
+            const afterSkip = await waitForStateAfter(creator, skipCheckpoint.get(creator.playerId) || 0,
+                payload => payload && payload.roomId === roomId && payload.phase === 'action', 5000);
+            assert(afterSkip.phase === 'action', 'force-advance moves market to action');
+            assert(afterSkip.actionReport && afterSkip.actionReport.roundNumber === 1, 'round-1 action report still available in round-2 action phase');
+        }
 
         console.log('SMOKE_RESULT ' + JSON.stringify({
             roomId,

@@ -338,6 +338,11 @@ async function main() {
         }
 
         console.log(`Game over! Final Phase: ${state.phase}`);
+        // UX: สรุปจบเกมต้องมีตารางอันดับครบทุกคน + ผลยกสุดท้าย
+        assert(Array.isArray(state.standings) && state.standings.length === 4, 'final state should include standings for all 4 players');
+        assert(state.standings[0].rank === 1 && state.standings[0].isWinner, 'first row is rank 1 and a winner');
+        assert(state.standings.some(row => row.playerId === human.playerId), 'human appears in standings');
+        assert(state.actionReport && state.actionReport.entries.length > 0, 'final round report is available on the finished screen');
         console.log(`Winner info: ${JSON.stringify(state.winner || {})}`);
         console.log('All rounds played successfully with bots!');
 

@@ -8465,6 +8465,69 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
+    // เปลี่ยนใจก่อนเฉลย — ของ/แผนที่ล็อกไว้ยังไม่ถูกคิดผล จึงยกเลิกได้ฟรี
+    socket.on('blackmarket_cancelChoice', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        try {
+            const room = roomManager.getRoom(socket.roomId);
+            if (!room || room.settings.gameMode !== 'blackmarket') {
+                throw new Error('ไม่พบโต๊ะนี้');
+            }
+            getGameEngine('blackmarket').cancelChoice(room, socket.playerId, {
+                phase: data?.phase,
+                roundNumber: data?.roundNumber
+            });
+            emitBlackMarketState(room);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message });
+        }
+    });
+
+    // หัวห้องข้ามคนที่ยังไม่เลือก (เช่น วางมือถือไปแล้ว) ไม่ต้องรอ timer 2-3 นาที — คนที่ยังไม่เลือกถือว่าผ่าน
+    const BLACKMARKET_FORCE_ADVANCE_MIN_MS = Number.isFinite(Number(process.env.BLACKMARKET_FORCE_ADVANCE_MIN_MS))
+        && process.env.BLACKMARKET_FORCE_ADVANCE_MIN_MS !== ''
+        ? Number(process.env.BLACKMARKET_FORCE_ADVANCE_MIN_MS)
+        : 15 * 1000;
+    socket.on('blackmarket_forceAdvance', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        try {
+            const room = roomManager.getRoom(socket.roomId);
+            if (!room || room.settings.gameMode !== 'blackmarket') {
+                throw new Error('ไม่พบโต๊ะนี้');
+            }
+            if (!isAdminSocket(room, socket) && !isSiteAdminPlayer(socket.playerId)) {
+                throw new Error('มีแค่หัวหน้าห้องที่ข้ามคนที่ยังไม่เลือกได้');
+            }
+            const phase = room.gameState?.phase;
+            if (phase !== 'market' && phase !== 'action') {
+                throw new Error('ตอนนี้ไม่มีเฟสให้ข้าม');
+            }
+            if ((data?.phase && data.phase !== phase)
+                || (data?.roundNumber && Number(data.roundNumber) !== Number(room.gameState.roundNumber))) {
+                throw new Error('เฟสนี้ปิดไปแล้ว');
+            }
+            const startedAt = Number(room.gameState.lastAction || 0);
+            const waitMs = startedAt + BLACKMARKET_FORCE_ADVANCE_MIN_MS - Date.now();
+            if (waitMs > 0) {
+                throw new Error(`ให้เวลาเพื่อนอีก ${Math.ceil(waitMs / 1000)} วินาทีก่อนข้าม`);
+            }
+            const roundNum = room.gameState.roundNumber;
+            clearBlackMarketPhaseTimer(room.roomId, false);
+            getGameEngine('blackmarket').autoResolvePhase(room);
+            addServerLog(io, 'game', room.roomId, `[BlackMarket] หัวห้องข้ามคนที่ยังไม่เลือก (${phase} ยกที่ ${roundNum})`, 'info', {
+                gameMode: 'blackmarket',
+                meta: { roundNumber: roundNum, phase }
+            });
+            sendChatMessageToRoom(io, room.roomId, 'System', 'หัวห้องข้ามคนที่ยังไม่เลือก — ถือว่าผ่านยกนี้', '#95a5a6');
+            emitBlackMarketState(room);
+            scheduleBlackMarketBots(room.roomId);
+            done({ success: true });
+        } catch (error) {
+            done({ success: false, error: error.message });
+        }
+    });
+
     socket.on('blackmarket_restartGame', function(data, callback) {
         try {
             const roomId = socket.roomId;

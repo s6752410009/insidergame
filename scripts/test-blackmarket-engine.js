@@ -223,6 +223,75 @@ console.log('bug 6: resolveIfAllCommitted after disconnect');
     check(result.resolved && room.gameState.phase !== 'action', 'phase advances once the only uncommitted player disconnects');
 }
 
+console.log('ux: last action report (with private notes) survives the next market');
+{
+    const room = makeRoom(4);
+    engine.startGame(room);
+    setRoles(room, ['boss', 'broker', 'smuggler', 'mole']);
+    room.gameState.players[1].cash = 5;
+    toAction(room);
+    engine.submitAction(room, 'p0', 'raid', 'p1');
+    ['p1', 'p2', 'p3'].forEach(id => engine.submitAction(room, id, 'pass'));
+    check(room.gameState.phase === 'market' && room.gameState.roundNumber === 2, 'round 2 market opened');
+    let victim = engine.buildClientState(room, 'p1');
+    check(victim.actionReport && victim.actionReport.roundNumber === 1, 'actionReport carries round 1');
+    check(victim.actionReport.entries.some(e => e.private && e.text.includes('ล้วง')), 'victim sees private raid note in actionReport');
+    room.gameState.players.forEach(p => engine.submitMarketPurchase(room, p.playerId, engine.PASS_CHOICE));
+    check(room.gameState.phase === 'action', 'market resolved to action');
+    victim = engine.buildClientState(room, 'p1');
+    check(victim.actionReport && victim.actionReport.entries.some(e => e.private && e.text.includes('ล้วง')), 'private raid note still there after the market resolved');
+    const other = engine.buildClientState(room, 'p2');
+    check(!other.actionReport.entries.some(e => e.private), 'others do not get p1 private notes');
+}
+
+console.log('ux: change your mind before the reveal');
+{
+    const room = makeRoom(4);
+    engine.startGame(room);
+    engine.submitMarketPurchase(room, 'p0', engine.PASS_CHOICE);
+    let lp = engine.buildClientState(room, 'p0').lockProgress;
+    check(lp.locked === 1 && lp.waitingOn.length === 3 && lp.waitingOn.every(e => e.name && e.online), 'waitingOn lists the 3 online players still choosing');
+    let threw = false;
+    try { engine.cancelChoice(room, 'p0', { phase: 'action' }); } catch (e) { threw = true; }
+    check(threw, 'cancel for a stale phase is refused');
+    engine.cancelChoice(room, 'p0', { phase: 'market', roundNumber: 1 });
+    check(!room.gameState.marketChoices.p0, 'market choice removed');
+    const offer = room.gameState.marketOffers.find(id => engine.ITEM_DEFINITIONS[id].price <= 4);
+    engine.submitMarketPurchase(room, 'p0', offer);
+    check(room.gameState.marketChoices.p0 === offer, 'can lock a different item after undo');
+    threw = false;
+    try { engine.cancelChoice(room, 'p1'); } catch (e) { threw = true; }
+    check(threw, 'cancel without a locked choice is refused');
+    ['p1', 'p2', 'p3'].forEach(id => engine.submitMarketPurchase(room, id, engine.PASS_CHOICE));
+    engine.submitAction(room, 'p0', 'guard');
+    engine.cancelChoice(room, 'p0', { phase: 'action', roundNumber: 1 });
+    check(!room.gameState.actionChoices.p0, 'action choice removed');
+}
+
+console.log('ux: final standings with shared ranks');
+{
+    const room = makeRoom(5);
+    engine.startGame(room);
+    const ps = room.gameState.players;
+    [[6, 2, 0], [3, 4, 1], [3, 4, 1], [3, 1, 0], [9, 9, 0]].forEach(([inf, cash, heat], i) => {
+        ps[i].influence = inf; ps[i].cash = cash; ps[i].heat = heat;
+    });
+    ps[4].alive = false;
+    room.gameState.roundNumber = room.gameState.maxRounds;
+    toAction(room);
+    ps.slice(0, 4).forEach(p => engine.submitAction(room, p.playerId, 'pass'));
+    const view = engine.buildClientState(room, 'p3');
+    const ranks = view.standings.map(r => r.playerId + ':' + r.rank).join(',');
+    check(view.standings.length === 5, 'standings list every player');
+    check(view.standings[0].playerId === 'p0' && view.standings[0].isWinner, 'p0 ranked first and marked winner');
+    check(view.standings[1].rank === 2 && view.standings[2].rank === 2, 'full tie shares rank 2 (' + ranks + ')');
+    check(view.standings[3].playerId === 'p3' && view.standings[3].rank === 4, 'lower cash ranks below the tie');
+    check(view.standings[4].playerId === 'p4' && !view.standings[4].alive, 'eliminated player ranks last despite high influence');
+    const mid = makeRoom(4);
+    engine.startGame(mid);
+    check(engine.buildClientState(mid, 'p0').standings === null, 'no standings mid-game');
+}
+
 if (failures) {
     console.error(`\n${failures} check(s) failed`);
     process.exit(1);

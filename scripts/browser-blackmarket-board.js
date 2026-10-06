@@ -65,7 +65,7 @@ async function waitForHttpReady(baseUrl, timeoutMs) {
 }
 
 async function spawnServer() {
-    const port = await getFreePort();
+    const port = Number(process.env.SMOKE_PORT) || await getFreePort();
     const appPath = path.join(__dirname, '..', 'app.js');
     const child = spawn(process.execPath, [appPath], {
         cwd: path.join(__dirname, '..'),
@@ -216,6 +216,7 @@ async function main() {
         server = await spawnServer();
         browser = await chromium.launch({ headless: true });
         const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+        await context.addInitScript(() => { try { sessionStorage.insiderPromoSeen = '1'; } catch (error) {} });
         const page = await context.newPage();
         const playerId = randomUUID();
 
@@ -263,6 +264,14 @@ async function main() {
         await page.waitForURL(/\/game\/[A-Za-z0-9-]+\?playerId=/, { timeout: BROWSER_TIMEOUT_MS });
         await page.waitForSelector('.bm-shell', { timeout: BROWSER_TIMEOUT_MS });
         await page.waitForSelector('#guidePanel .bm-guide-step', { timeout: BROWSER_TIMEOUT_MS, state: 'attached' });
+        // UX: การ์ด "วิธีเล่นแบบสั้น" (partyPlay) กับทัวร์ของโต๊ะห้ามเด้งซ้อนกัน
+        const firstPlay = await page.waitForSelector('#ppFirstPlay', { timeout: 4000 }).catch(() => null);
+        if (firstPlay) {
+            await page.waitForTimeout(1200);
+            const stacked = await page.evaluate(() => document.getElementById('bmTourOverlay')?.classList.contains('active'));
+            assert(!stacked, 'board tour must wait until the first-play card is dismissed');
+            await page.click('#ppFirstPlay .pp-skip');
+        }
         await page.waitForSelector('#bmTourOverlay.active', { timeout: BROWSER_TIMEOUT_MS });
 
         assert(await page.locator('#bmTourHole').count() === 0, 'spotlight hole element should not render');
@@ -389,6 +398,41 @@ async function main() {
 
         await page.keyboard.press('Escape');
         await page.waitForFunction(() => !document.getElementById('bmHowToOverlay')?.classList.contains('active'), null, { timeout: BROWSER_TIMEOUT_MS });
+
+        // UX (390px): หัวโต๊ะต้องไม่กินจอ, ceremony อยู่กลางจอ, ประกาศไม่บีบเป็นคอลัมน์แคบ
+        const layout = await page.evaluate(() => {
+            const meta = document.querySelector('.bm-top-meta');
+            const ceremony = document.getElementById('bmCeremonyOverlay');
+            const announcer = document.getElementById('bmAnnouncerBar');
+            const summary = document.getElementById('bmRoundSummary');
+            const nowBar = document.getElementById('bmNowBar');
+            return {
+                metaHeight: meta ? meta.getBoundingClientRect().height : 0,
+                ceremonyPosition: ceremony ? getComputedStyle(ceremony).position : '',
+                announcerColumns: announcer && announcer.querySelector('.bm-announcer-body')
+                    ? getComputedStyle(announcer.querySelector('.bm-announcer-body')).gridTemplateColumns.split(' ').length
+                    : 1,
+                summaryAfterNowBar: !!(nowBar && summary && nowBar.nextElementSibling === summary),
+                stageTop: document.querySelector('.bm-card-stage')?.getBoundingClientRect().top + window.scrollY
+            };
+        });
+        assert(layout.metaHeight > 0 && layout.metaHeight < 240, `top chips should wrap two per row on a phone, height=${layout.metaHeight}`);
+        assert(layout.ceremonyPosition === 'fixed', `ceremony overlay must be viewport-fixed, got ${layout.ceremonyPosition}`);
+        assert(layout.announcerColumns === 1, `announcer body must be one column on a phone, got ${layout.announcerColumns}`);
+        assert(layout.summaryAfterNowBar, 'round report should sit right under the now bar');
+
+        // UX: ซื้อแล้วเปลี่ยนใจได้ก่อนตลาดปิด + บอกว่ารอใคร
+        const buyButton = page.locator('.offer-buy:not([disabled])').first();
+        await buyButton.click();
+        await page.waitForSelector('#mainStage .bm-undo-choice', { timeout: BROWSER_TIMEOUT_MS });
+        const waitingText = await page.locator('#bmNowBar .bm-waiting-names').textContent();
+        assert(/ยังรอ/.test(waitingText || ''), `now bar should name who we are waiting for, got ${waitingText}`);
+        assert(await page.locator('#bmForceAdvance').count() === 1, 'host should see the skip-waiting button after locking in');
+        await page.click('#mainStage .bm-undo-choice');
+        await page.waitForFunction(() => {
+            const buttons = Array.from(document.querySelectorAll('.offer-buy'));
+            return buttons.length > 0 && buttons.some(button => !button.disabled) && !document.querySelector('#mainStage .bm-undo-choice');
+        }, null, { timeout: BROWSER_TIMEOUT_MS });
 
         console.log('BROWSER_RESULT ' + JSON.stringify({
             roomId,
