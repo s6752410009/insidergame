@@ -102,6 +102,9 @@ const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, room
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const spyfallReturnTimeouts = new Map();
+// Spyfall: เวลาให้อ่านเฉลยก่อนพากลับห้องรอ (เดิม 3 วิ อ่านไม่ทัน) + นับถอยหลังอีก 5 วิ
+const SPYFALL_RETURN_DELAY_MS = Number(process.env.SPYFALL_RETURN_DELAY_MS) || 20000;
+const SPYFALL_RETURN_COUNTDOWN_MS = 5000;
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
 const finishedReturnTimeouts = new Map();
@@ -2651,8 +2654,11 @@ function scheduleSpyfallReturnToLobby(room) {
     }
 
     const roomId = room.roomId;
+    if (room.gameState) {
+        room.gameState.returnLobbyAt = Date.now() + SPYFALL_RETURN_DELAY_MS + SPYFALL_RETURN_COUNTDOWN_MS;
+    }
     const returnTimeoutId = setTimeout(() => {
-        io.to(roomId).emit('returnToLobby', { countdown: 5, roomId });
+        io.to(roomId).emit('returnToLobby', { countdown: Math.round(SPYFALL_RETURN_COUNTDOWN_MS / 1000), roomId });
 
         const redirectTimeoutId = setTimeout(() => {
             roomManager.resetRoomGame(roomId);
@@ -2662,12 +2668,12 @@ function scheduleSpyfallReturnToLobby(room) {
             }
             io.to(roomId).emit('redirectToLobby', { roomId });
             spyfallReturnTimeouts.delete(roomId);
-        }, 5000);
+        }, SPYFALL_RETURN_COUNTDOWN_MS);
 
         const entry = spyfallReturnTimeouts.get(roomId) || {};
         entry.redirectTimeoutId = redirectTimeoutId;
         spyfallReturnTimeouts.set(roomId, entry);
-    }, 3000);
+    }, SPYFALL_RETURN_DELAY_MS);
 
     spyfallReturnTimeouts.set(roomId, { returnTimeoutId });
 }
@@ -2697,6 +2703,13 @@ function syncSpyfallPhaseTimer(room) {
     }
 
     const spyfallEngine = getGameEngine('spyfall');
+    // คนที่ยังไม่โหวตหลุด/ออก แล้วที่เหลือโหวตครบ → สรุปผลเลย ไม่ต้องรอหมดเวลา
+    if (phase === 'vote' && Object.keys(room.gameState.votes || {}).length > 0 && spyfallEngine.everyoneVoted(room)) {
+        clearSpyfallPhaseTimer(room.roomId, false);
+        spyfallEngine.autoResolvePhase(room);
+        handleSpyfallGameEnd(room);
+        return;
+    }
     const now = Date.now();
     const existingTimer = spyfallPhaseTimeouts.get(room.roomId);
     if (existingTimer && existingTimer.phase === phase && room.gameState.phaseEndsAt && room.gameState.phaseEndsAt > now) {
@@ -9058,6 +9071,51 @@ io.sockets.on('connection', function(socket) {
             const result = spyfallEngine.endDiscussionEarly(room);
             emitSpyfallRoomState(room);
 
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    // ส่งตาถาม: คนที่ถึงตา (หรือหัวหน้าห้องกดแทน) เลือกคนที่จะถาม → คนนั้นได้ถามต่อ
+    socket.on('spyfall_passQuestion', function(data, callback) {
+        try {
+            const room = roomManager.getRoom(socket.roomId);
+            if (!room || room.settings.gameMode !== 'spyfall') {
+                throw new Error('ไม่พบเกมนี้');
+            }
+            const result = getGameEngine('spyfall').passQuestion(room, socket.playerId, data?.targetPlayerId, {
+                isHost: isAdminSocket(room, socket)
+            });
+            emitSpyfallState(room);
+            if (typeof callback === 'function') {
+                callback({ success: true, ...result });
+            }
+        } catch (error) {
+            if (typeof callback === 'function') {
+                callback({ success: false, error: error.message });
+            }
+        }
+    });
+
+    // พร้อมโหวต: กดซ้ำ = ยกเลิก · เกินครึ่งของคนออนไลน์พร้อม → ไปโหวตทันที
+    socket.on('spyfall_readyVote', function(data, callback) {
+        try {
+            const room = roomManager.getRoom(socket.roomId);
+            if (!room || room.settings.gameMode !== 'spyfall') {
+                throw new Error('ไม่พบเกมนี้');
+            }
+            const result = getGameEngine('spyfall').toggleReadyToVote(room, socket.playerId);
+            if (result.advanced) {
+                sendChatMessageToRoom(io, room.roomId, 'System', 'ผู้เล่นเกินครึ่งพร้อมโหวต — เริ่มโหวตจับสายลับ', '#95a5a6');
+                emitSpyfallRoomState(room);
+            } else {
+                emitSpyfallState(room);
+            }
             if (typeof callback === 'function') {
                 callback({ success: true, ...result });
             }
