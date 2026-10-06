@@ -152,6 +152,12 @@ module.exports = function createCodenamesRuntime(getDeps) {
         return engine.shuffleTeams(room, Math.random);
     }
 
+    // หัวหน้าห้องข้ามเทิร์นที่ค้าง (engine ตรวจว่าค้างนานพอ)
+    function hostSkipTurn(room, playerId, context) {
+        if (!isRoom(room)) throw new Error('ห้องนี้ไม่ใช่สายลับคำใบ้');
+        return engine.hostSkipTurn(room, playerId, room.admin === playerId, context, Date.now());
+    }
+
     function startBlockReason(room) {
         if (!isRoom(room)) return null;
         return engine.getStartBlockReason(room);
@@ -192,6 +198,7 @@ module.exports = function createCodenamesRuntime(getDeps) {
         startGame,
         pickTeam,
         shuffleTeams,
+        hostSkipTurn,
         startBlockReason,
         gameEndNotification
     };

@@ -8559,6 +8559,12 @@ io.sockets.on('connection', function(socket) {
         handleCodenamesCommand(socket, callback, (room, playerId) =>
             codenamesRuntime.engine.endTurn(room, playerId, codenamesContext(data), Date.now()));
     });
+
+    // หัวหน้าห้องข้ามเทิร์นที่ค้าง (คน AFK ตอนปิดนาฬิกา) — ได้หลังเฟสนั้นนานเกินกำหนดเท่านั้น
+    safeOn(socket, 'codenames_hostSkip', function(data, callback) {
+        handleCodenamesCommand(socket, callback, (room, playerId) =>
+            codenamesRuntime.hostSkipTurn(room, playerId, codenamesContext(data)));
+    });
     // ===== END CODENAMES =====
 
     // ===== WAVELENGTH (คลื่นความคิด) =====

@@ -22,6 +22,7 @@ const engine = require('../games/codenamesEngine');
 
 const PORT = Number(process.env.SMOKE_PORT) || 8821;
 const GRACE_MS = 1500;
+const HOST_SKIP_MS = 1500;
 const delay = ms => new Promise(r => setTimeout(r, ms));
 let checks = 0;
 function assert(c, m) { if (!c) throw new Error(m); checks += 1; }
@@ -34,7 +35,8 @@ function bootServer(port) {
             PORT: String(port),
             CODENAMES_SPYMASTER_GRACE_MS: String(GRACE_MS),
             CODENAMES_NO_OPERATIVE_GRACE_MS: String(GRACE_MS),
-            CODENAMES_TICK_MS: '200'
+            CODENAMES_TICK_MS: '200',
+            CODENAMES_HOST_SKIP_MS: String(HOST_SKIP_MS)
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -470,6 +472,22 @@ function readStats() {
         assert(copBack.status === 'playing' && copBack.phase === 'guess' && copBack.clue.word === cClue && copBack.self.canGuess && !copBack.keyVisible, 'รีสตาร์ตแล้วลูกทีมเล่นต่อได้ ไม่มีกุญแจ');
         assert(csmBack.keyVisible && csmBack.board.map(c => c.word + ':' + c.color).join(',') === boardBefore, 'รีสตาร์ตแล้วกระดาน/กุญแจเดิม');
         console.log('C1. เซิร์ฟเวอร์รีสตาร์ตกลางเกม กลับมาเล่นต่อได้ กระดานเดิม ✓');
+
+        // C2: หัวห้องข้ามเทิร์นที่ค้าง (ลูกทีม AFK) — คนอื่นข้ามไม่ได้
+        const cHost = (C.host === cop || C.host === csm) ? C.host : (await reconnect(base, C.host, C.roomId), C.host);
+        const notHost = cop === cHost ? csm : cop;
+        s = last(cHost);
+        assert(s.isHost && s.hostSkipAfterMs === HOST_SKIP_MS && s.phaseStartedAt, 'หัวห้องได้ข้อมูลปุ่มข้ามเทิร์น');
+        r = await ack(notHost.socket, 'codenames_hostSkip', ctx(last(notHost)));
+        assert(r.success === false && /หัวหน้าห้อง/.test(r.error), 'คนที่ไม่ใช่หัวห้องข้ามเทิร์นไม่ได้: ' + JSON.stringify(r));
+        await delay(HOST_SKIP_MS + 200);
+        r = await ack(cHost.socket, 'codenames_hostSkip', ctx(last(cHost)));
+        assert(r.success, 'หัวห้องข้ามเทิร์นที่ค้างได้: ' + JSON.stringify(r));
+        await waitFor(() => last(cop).currentTeam !== ct && last(cop).phase === 'clue', 4000, 'skip passes turn');
+        assert(last(cop).clueLog.slice(-1)[0].endedBy === 'host-skip' && last(cop).history.some(h2 => /ข้ามเทิร์น/.test(h2.text)), 'ทุกคนเห็นว่าหัวห้องข้าม');
+        r = await ack(cHost.socket, 'codenames_hostSkip', ctx(last(cHost)));
+        assert(r.success === false && /ค้างนานเกิน/.test(r.error), 'เพิ่งเปลี่ยนตา ข้ามทันทีไม่ได้');
+        console.log('C2. หัวห้องข้ามเทิร์นที่ค้างได้ (หลังรอ) · คนอื่นข้ามไม่ได้ ✓');
 
         assert(leakChecks > 100, `ตรวจความลับ ${leakChecks} payload`);
         assert(!/\[codenames\].*failed/.test(server.logs()), 'server log มี error:\n' + server.logs().split('\n').filter(l => /codenames/.test(l)).slice(-5).join('\n'));

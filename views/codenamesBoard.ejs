@@ -74,6 +74,8 @@
   }
   .cn-pill:hover { background: var(--cn-surface-2); color: var(--cn-ink); }
   .cn-pill.is-danger { color: oklch(0.82 0.1 25); }
+  .cn-pill[hidden] { display: none; }
+  .cn-pill:disabled { opacity: 0.5; cursor: not-allowed; }
   .cn-pill:focus-visible, .cn-card:focus-visible, .cn-btn:focus-visible, .cn-num:focus-visible { outline: 2px solid var(--cn-gold); outline-offset: 2px; }
 
   /* ---------- score ---------- */
@@ -221,12 +223,13 @@
   .cn-log-clue .w { min-width: 0; overflow-wrap: anywhere; }
   .cn-log-clue .n { flex: 0 0 auto; font-family: var(--cn-display); color: var(--cn-gold); }
   .cn-log-picks { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
-  .cn-chip { display: inline-block; max-width: 100%; padding: 1px 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cn-chip { display: inline-block; max-width: 100%; padding: 2px 7px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cn-chip.c-red { background: var(--cn-red-deep); color: #fff; }
   .cn-chip.c-blue { background: var(--cn-blue-deep); color: #fff; }
   .cn-chip.c-neutral { background: var(--cn-neutral); color: var(--cn-neutral-ink); }
   .cn-chip.c-assassin { background: var(--cn-assassin); color: oklch(0.8 0.14 25); box-shadow: inset 0 0 0 1px oklch(0.62 0.2 25); }
-  .cn-log-end { margin-top: 3px; font-size: 0.68rem; color: var(--cn-muted); }
+  .cn-log-end { margin-top: 3px; font-size: 0.76rem; color: var(--cn-muted); }
+  .cn-log-end .owe { color: var(--cn-gold); font-weight: 700; }
   .cn-empty { font-size: 0.8rem; color: var(--cn-muted); }
   .cn-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .cn-roster { min-width: 0; display: grid; gap: 3px; align-content: start; }
@@ -254,6 +257,9 @@
   .cn-dock-inner { max-width: 640px; margin: 0 auto; display: grid; gap: 8px; }
   .cn-wait { text-align: center; color: var(--cn-soft); font-weight: 600; font-size: 0.92rem; padding: 4px 0; }
   .cn-hint { margin: 0; text-align: center; font-size: 0.76rem; color: var(--cn-muted); }
+  .cn-votelist { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; margin: 0; font-size: 0.8rem; color: var(--cn-soft); }
+  .cn-votelist span { max-width: 100%; padding: 2px 8px; border-radius: 999px; background: var(--cn-surface); border: 1px solid var(--cn-line-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cn-votelist b { color: var(--cn-ink); }
   .cn-row { display: flex; gap: 8px; }
   .cn-row > * { flex: 1 1 0; min-width: 0; }
   .cn-btn {
@@ -281,6 +287,7 @@
   .cn-stepper output { display: grid; place-items: center; min-width: 44px; min-height: 48px; border-radius: 10px; background: var(--turn); color: #fff; font-family: var(--cn-display); font-weight: 700; font-size: 1.3rem; }
   .cn-clue-row .cn-btn--primary { flex: 1 1 auto; min-width: 0; }
   .cn-preview { margin: 0; min-height: 1.2em; font-size: 0.8rem; color: var(--cn-muted); }
+  .cn-preview.cn-err { color: oklch(0.8 0.13 50); font-weight: 600; }
   .cn-num {
     min-height: 44px; border-radius: 10px; border: 1px solid var(--cn-line); background: var(--cn-surface);
     color: var(--cn-ink); font-family: var(--cn-display); font-size: 1.1rem; font-weight: 700; cursor: pointer;
@@ -387,9 +394,8 @@
   <div class="cn-tools">
     <button type="button" id="cnHowBtn" class="cn-pill">วิธีเล่น</button>
     <button type="button" id="cnLeaveBtn" class="cn-pill">ออกจากห้อง</button>
-    <% if (room.admin) { %>
-    <button type="button" id="cnEndBtn" class="cn-pill is-danger">จบเกม</button>
-    <% } %>
+    <button type="button" id="cnSkipBtn" class="cn-pill" hidden>ข้ามเทิร์น</button>
+    <button type="button" id="cnEndBtn" class="cn-pill is-danger"<%= room.admin ? '' : ' hidden' %>>จบเกม</button>
   </div>
   </div>
 
@@ -473,7 +479,7 @@ $(function() {
   const TEAM = { red: 'ทีมแดง', blue: 'ทีมน้ำเงิน' };
   const COLOR_NAME = { red: 'สายลับทีมแดง', blue: 'สายลับทีมน้ำเงิน', neutral: 'คนเดินถนน', assassin: 'มือสังหาร' };
   const ART = { red: '/assets/games/codenames/agent-red.svg', blue: '/assets/games/codenames/agent-blue.svg', neutral: '/assets/games/codenames/bystander.svg', assassin: '/assets/games/codenames/assassin.svg' };
-  const END_TEXT = { limit: 'ครบจำนวนแล้ว', neutral: 'เจอคนเดินถนน', wrong: 'เปิดผิดทีม', ended: 'กดจบเทิร์น', 'clue-timeout': 'หมดเวลาใบ้', 'guess-timeout': 'หมดเวลาทาย', 'no-operatives': 'ไม่มีลูกทีมออนไลน์', 'no-spymaster': 'ไม่มีหัวหน้า' };
+  const END_TEXT = { limit: 'ครบจำนวนแล้ว', neutral: 'เจอคนเดินถนน', wrong: 'เปิดผิดทีม', ended: 'กดจบเทิร์น', 'clue-timeout': 'หมดเวลาใบ้', 'guess-timeout': 'หมดเวลาทาย', 'no-operatives': 'ไม่มีลูกทีมออนไลน์', 'no-spymaster': 'ไม่มีหัวหน้า', 'host-skip': 'หัวหน้าห้องข้ามเทิร์น' };
   const WIN_TEXT = { words: 'เจอสายลับครบทุกคน', gift: 'อีกทีมเปิดคำสุดท้ายให้', assassin: 'อีกทีมเปิดเจอมือสังหาร', forfeit: 'อีกทีมไม่เหลือผู้เล่น', abandoned: 'ไม่เหลือลูกทีมให้ทาย' };
   const segmenter = window.Intl && Intl.Segmenter ? new Intl.Segmenter('th', { granularity: 'grapheme' }) : null;
 
@@ -485,6 +491,8 @@ $(function() {
   let revealedBefore = new Set();
   let clueNumber = 1;
   let dockKey = '';
+  let clueServerError = null; // คำใบ้ที่เซิร์ฟเวอร์ปฏิเสธ — โชว์ใต้ช่องพิมพ์จนกว่าจะแก้คำ
+  let lastBannerAt = 0;
 
   // ---------- helpers ----------
   function esc(text) {
@@ -515,7 +523,7 @@ $(function() {
     if (/\s/.test(text)) return 'ใบ้ได้คำเดียว ห้ามเว้นวรรค';
     const word = normalizeWord(text);
     if (!/^[\p{L}\p{M}\p{N}]+$/u.test(word)) return 'คำใบ้ใช้ได้แค่ตัวอักษรหรือตัวเลข ห้ามมีสัญลักษณ์';
-    if (graphemes(word).length > 24) return 'คำใบ้ยาวเกินไป';
+    if (graphemes(word).length > 24) return 'คำใบ้ยาวเกินไป (ไม่เกิน 24 ตัวอักษร)';
     const hit = (S.board || []).find(c => !c.revealed && containsWord(word, c.word));
     if (hit) return normalizeWord(hit.word) === word ? '"' + hit.word + '" อยู่บนกระดาน ใช้เป็นคำใบ้ไม่ได้' : 'คำใบ้มีคำว่า "' + hit.word + '" ที่อยู่บนกระดาน ลองคำอื่น';
     return null;
@@ -536,6 +544,7 @@ $(function() {
     const el = document.getElementById('cnBanner');
     el.className = 'cn-banner' + (cls ? ' ' + cls : '');
     el.textContent = text;
+    lastBannerAt = Date.now();
     void el.offsetWidth;
     el.classList.add('is-on');
   }
@@ -568,6 +577,7 @@ $(function() {
     if (S.phase === 'clue') {
       if (self.canGiveClue) return { title: 'ตาคุณใบ้คำ', sub: 'พิมพ์คำเดียว + เลือกจำนวน ให้ลูกทีมเปิดการ์ดสี' + (team === 'red' ? 'แดง' : 'น้ำเงิน'), mine: true };
       if (self.team === team) return { title: 'รอหัวหน้าใบ้คำ', sub: (sm ? sm.name + ' ' : '') + 'กำลังคิด — คุยกันได้ แต่หัวหน้าห้ามบอกใบ้ทางอื่น', mine: false };
+      if (!self.team) return { title: tName + 'กำลังคิดคำใบ้', sub: (sm ? 'หัวหน้า ' + sm.name + ' ' : '') + 'กำลังคิด · คุณดูอยู่ข้างสนาม (ไม่เห็นกุญแจ)', mine: false };
       return { title: tName + 'กำลังคิดคำใบ้', sub: self.role === 'spymaster' ? 'ดูกุญแจไว้ วางแผนเทิร์นถัดไป' : 'รอสักครู่ เดี๋ยวถึงตาทีมคุณ', mine: false };
     }
     const clue = S.clue || {};
@@ -687,6 +697,17 @@ $(function() {
     });
   }
 
+  // ทำไมชนะ/แพ้ — บอกชื่อทีมที่พลาด (ไม่ใช่ "อีกทีม" ที่อ่านแล้วงงว่าทีมไหน)
+  function winWhy() {
+    const loser = S.winner ? (S.winner === 'red' ? 'blue' : 'red') : null;
+    const assassin = (S.board || []).find(c => c.revealed && c.color === 'assassin');
+    if (S.winReason === 'assassin' && loser) return TEAM[loser] + 'เปิด' + (assassin ? ' "' + assassin.word + '" ' : '') + 'เจอมือสังหาร';
+    if (S.winReason === 'gift' && loser) return TEAM[loser] + 'เปิดคำสุดท้ายของ' + TEAM[S.winner] + 'ให้';
+    if (S.winReason === 'words' && S.winner) return TEAM[S.winner] + 'เจอสายลับครบทุกคน';
+    if (S.winReason === 'forfeit' && loser) return TEAM[loser] + 'ไม่เหลือผู้เล่น';
+    return WIN_TEXT[S.winReason] || '';
+  }
+
   function renderResult() {
     const el = document.getElementById('cnResult');
     $('#cnRoot').toggleClass('is-finished', S.phase === 'finished');
@@ -698,9 +719,21 @@ $(function() {
     el.hidden = false;
     el.className = 'cn-result' + (S.winner ? ' is-' + S.winner : '');
     el.innerHTML = '<h2>' + (S.winner ? '🏆 ' + TEAM[S.winner] + 'ชนะ!' : 'จบเกม') + '</h2>' +
-      '<p>' + esc(WIN_TEXT[S.winReason] || '') + '</p>' +
+      '<p>' + esc(winWhy()) + '</p>' +
       '<div class="me">' + mine + '</div>' +
       '<div class="cn-result-stats"><span>🟥 เหลือ ' + ((t.red || {}).remaining || 0) + ' คำ</span><span>🟦 เหลือ ' + ((t.blue || {}).remaining || 0) + ' คำ</span><span>' + (S.turnNumber || 0) + ' เทิร์น</span></div>';
+  }
+
+  // ท้ายคำใบ้: จบเพราะอะไร + ยังค้างกี่ใบ (ตัวเลข − ที่เปิดถูกของทีมนั้น) ให้ลูกทีมย้อนใช้คำใบ้เก่าได้
+  function logEnd(e) {
+    const parts = [];
+    if (e.endedBy && END_TEXT[e.endedBy]) parts.push(esc(END_TEXT[e.endedBy]));
+    const hits = (e.picks || []).filter(p => p.color === e.team).length;
+    if (typeof e.number === 'number' && e.number > 0 && e.endedBy && S.phase !== 'finished') {
+      const owe = e.number - hits;
+      if (owe > 0) parts.push('<span class="owe">ค้าง ' + owe + '</span>');
+    }
+    return parts.length ? '<div class="cn-log-end">' + parts.join(' · ') + '</div>' : '';
   }
 
   function renderLog() {
@@ -710,7 +743,7 @@ $(function() {
         const live = S.phase === 'guess' && e.turn === S.turnNumber;
         return '<div class="cn-log-item' + (live ? ' is-live' : '') + '"><div class="cn-log-clue"><span class="w">' + esc(e.word) + '</span><span class="n">' + numText(e.number) + '</span></div>' +
           (e.picks && e.picks.length ? '<div class="cn-log-picks">' + e.picks.map(p => '<span class="cn-chip c-' + p.color + '" title="' + esc(COLOR_NAME[p.color]) + '">' + esc(p.word) + '</span>').join('') + '</div>' : '') +
-          (e.endedBy && END_TEXT[e.endedBy] ? '<div class="cn-log-end">' + END_TEXT[e.endedBy] + '</div>' : '') + '</div>';
+          logEnd(e) + '</div>';
       }).join('') : '<div class="cn-empty">ยังไม่มีคำใบ้</div>';
       return '<div class="cn-log-col is-' + team + '"><div class="cn-log-head">' + TEAM[team] + '</div>' + body + '</div>';
     });
@@ -741,7 +774,7 @@ $(function() {
     if (S.phase === 'finished') key = 'fin';
     else if (self.canGiveClue) key = 'clue:' + S.turnNumber;
     else if (self.canGuess) key = 'guess:' + S.step;
-    else key = 'wait:' + S.phase + ':' + S.currentTeam + ':' + self.role;
+    else key = 'wait:' + S.phase + ':' + S.currentTeam + ':' + self.role + ':' + voteSignature();
 
     if (key.startsWith('clue:')) {
       if (dockKey === key) { validateClueInput(); return; }
@@ -779,25 +812,43 @@ $(function() {
       if (mineCard) {
         status = 'คุณเสนอ "' + esc(mineCard.word) + '"' + (need ? ' · ' + mineCard.votes.length + '/' + need + ' เสียง' : '');
       } else {
-        status = need ? 'แตะการ์ดเพื่อเสนอ — ได้ ' + need + ' เสียงเปิดเอง' : 'แตะการ์ดที่คิดว่าใช่ แล้วกด "เปิดเลย"';
+        status = need ? 'แตะการ์ดเพื่อเสนอ — ครบ ' + need + ' เสียงเปิดเอง' : 'แตะการ์ดที่คิดว่าใช่ แล้วกด "เปิดเลย"';
       }
-      inner.innerHTML = '<div class="cn-wait">' + status + '</div>' +
+      inner.innerHTML = '<div class="cn-wait">' + status + '</div>' + voteListHtml() +
         '<div class="cn-row">' +
         '<button type="button" id="cnEndTurnBtn" class="cn-btn"' + (made > 0 ? '' : ' disabled') + '>จบเทิร์น</button>' +
         '<button type="button" id="cnRevealBtn" class="cn-btn cn-btn--primary"' + (mineCard ? ' data-i="' + mineCard.index + '"' : ' disabled') + '>' + (mineCard ? 'เปิด "' + esc(mineCard.word) + '" เลย' : 'เปิดเลย') + '</button>' +
-        '</div><p class="cn-hint">กดค้างที่การ์ด = เปิดทันที' + (made > 0 ? '' : ' · ต้องเปิดอย่างน้อย 1 ใบก่อนจบเทิร์น') + '</p>';
+        '</div><p class="cn-hint">' + (mineCard ? 'แตะใบเดิมซ้ำ = ยกเลิก · ' : '') + 'กดค้างที่การ์ด = เปิดทันที' + (made > 0 ? '' : ' · ต้องเปิดอย่างน้อย 1 ใบก่อนจบเทิร์น') + '</p>';
       return;
     }
     const d = describeNow();
-    inner.innerHTML = '<div class="cn-wait">' + esc(d.title) + '</div>' + (self.role === 'spymaster' && S.phase !== 'finished' ? '<p class="cn-hint">คุณเห็นกุญแจ — อย่าหันจอให้ใครเห็น</p>' : '');
+    inner.innerHTML = '<div class="cn-wait">' + esc(d.title) + '</div>' + (S.phase === 'guess' ? voteListHtml() : '') + (self.role === 'spymaster' && S.phase !== 'finished' ? '<p class="cn-hint">คุณเห็นกุญแจ — อย่าหันจอให้ใครเห็น</p>' : '');
+  }
+
+  // ใครเสนอใบไหนอยู่ — โชว์ชื่อในแถบล่าง (บนการ์ดมีแค่จุด)
+  function votedCards() {
+    return (S.board || []).filter(c => !c.revealed && c.votes && c.votes.length)
+      .sort((a, b) => b.votes.length - a.votes.length);
+  }
+  function voteSignature() {
+    return votedCards().map(c => c.index + '=' + c.votes.join('|')).join(',');
+  }
+  function voteListHtml() {
+    const list = votedCards();
+    if (!list.length) return '';
+    return '<p class="cn-votelist" aria-label="การ์ดที่ถูกเสนอ">' + list.slice(0, 4).map(c =>
+      '<span><b>' + esc(c.word) + '</b> ' + c.votes.length + (S.votesNeeded ? '/' + S.votesNeeded : '') + ' · ' + esc(c.votes.join(', ')) + '</span>').join('') + '</p>';
   }
 
   function validateClueInput() {
     const input = document.getElementById('cnClueWord');
     if (!input) return;
     const value = input.value;
-    const error = value.trim() ? clueError(value) : null;
-    const ok = !!value.trim() && !error;
+    if (clueServerError && clueServerError.word !== value.trim()) clueServerError = null;
+    // ผิดกติกาฝั่งเรา = ส่งไม่ได้ · เซิร์ฟเวอร์ปฏิเสธ = โชว์เหตุผลค้างไว้ แต่ยังกดส่งซ้ำได้ (เช่น จังหวะเปลี่ยน)
+    const localError = value.trim() ? clueError(value) : null;
+    const error = localError || (value.trim() && clueServerError ? clueServerError.text : null);
+    const ok = !!value.trim() && !localError;
     $('#cnClueErr').toggleClass('cn-err', !!error)
       .text(error || (ok ? 'จะใบ้: "' + value.trim() + '" ' + numText(clueNumber) + (clueNumber === 'inf' || clueNumber === 0 ? ' · เปิดได้ไม่จำกัด' : ' · ลูกทีมเปิดได้ถึง ' + (clueNumber + 1) + ' ใบ') : 'เลือกจำนวนการ์ดที่คำนี้ใบ้ถึง ด้วย − / +'));
     input.classList.toggle('is-bad', !!error);
@@ -813,12 +864,35 @@ $(function() {
   }
   if (window.ResizeObserver) new ResizeObserver(syncDockHeight).observe(document.getElementById('cnDock'));
 
+  // หัวห้องเปลี่ยนกลางเกมได้ — ปุ่มจบเกม/ข้ามเทิร์นตาม S.isHost ไม่ใช่ค่าตอนโหลดหน้า
+  function renderHostTools() {
+    const host = !!S.isHost;
+    const playing = S.status === 'playing';
+    document.getElementById('cnEndBtn').hidden = !host || !playing;
+    paintSkip();
+  }
+  function skipWaitSec() {
+    if (!S.phaseStartedAt) return 0;
+    return Math.max(0, Math.ceil(((Number(S.hostSkipAfterMs) || 60000) - (now() - S.phaseStartedAt)) / 1000));
+  }
+  function paintSkip() {
+    const btn = document.getElementById('cnSkipBtn');
+    const show = !!S.isHost && S.status === 'playing' && (S.phase === 'clue' || S.phase === 'guess');
+    btn.hidden = !show;
+    if (!show) return;
+    const wait = skipWaitSec();
+    btn.disabled = wait > 0;
+    btn.textContent = wait > 0 ? 'ข้ามเทิร์น (' + wait + ')' : 'ข้ามเทิร์น';
+    btn.title = wait > 0 ? 'หัวหน้าห้องข้ามได้เมื่อเทิร์นนี้ค้างนานเกิน ' + Math.round((Number(S.hostSkipAfterMs) || 60000) / 1000) + ' วิ' : 'ข้ามเทิร์นที่ค้าง (คนไม่อยู่หน้าจอ)';
+  }
+
   // ---------- timer ----------
   let timerHandle = null;
   function tickTimer() {
     if (timerHandle) clearInterval(timerHandle);
     const circ = 138.2;
     function paint() {
+      paintSkip();
       const wrap = document.getElementById('cnTimer');
       if (S.phase === 'finished') {
         const endsAt = Number(S.returnLobbyEndsAt) || 0;
@@ -856,15 +930,20 @@ $(function() {
       seenFx = Math.max(seenFx, f.id || 0);
       if (f.type === 'reveal') {
         const myTeam = me().team;
-        if (f.color === 'assassin') { banner('💀 มือสังหาร!', 'c-assassin'); haptic([40, 60, 120]); }
-        else if (f.color === f.team) { banner('✅ ' + COLOR_NAME[f.color], 'c-' + f.color); haptic(20); }
-        else if (f.color === 'neutral') { banner('🚶 คนเดินถนน — จบเทิร์น', 'c-neutral'); haptic([20, 40, 20]); }
-        else { banner('❌ ' + COLOR_NAME[f.color] + '!', 'c-' + f.color); haptic([20, 40, 20]); }
+        const card = (S.board || [])[f.index];
+        const w = card && card.word ? '"' + card.word + '" ' : '';
+        if (f.color === 'assassin') { banner('💀 ' + w + 'มือสังหาร!', 'c-assassin'); haptic([40, 60, 120]); }
+        else if (f.color === f.team) { banner('✅ ' + w + COLOR_NAME[f.color], 'c-' + f.color); haptic(20); }
+        else if (f.color === 'neutral') { banner('🚶 ' + w + 'คนเดินถนน — จบเทิร์น', 'c-neutral'); haptic([20, 40, 20]); }
+        else { banner('❌ ' + w + COLOR_NAME[f.color] + '!', 'c-' + f.color); haptic([20, 40, 20]); }
         if (myTeam && f.team !== myTeam && f.color === myTeam) haptic(15);
       } else if (f.type === 'clue') {
         banner('💬 "' + f.word + '" ' + numText(f.number), 'c-' + f.team);
       } else if (f.type === 'turn' && S.phase !== 'finished') {
-        setTimeout(() => banner('ตา' + TEAM[f.team], 'c-' + f.team), 900);
+        // บอกเหตุที่เปลี่ยนตา (ครบจำนวน/หมดเวลา/กดจบ/หัวห้องข้าม) · รอแบนเนอร์เปิดการ์ดจบก่อน
+        const why = ['limit', 'ended', 'clue-timeout', 'guess-timeout', 'no-operatives', 'no-spymaster', 'host-skip'].includes(f.reason) ? END_TEXT[f.reason] + ' · ' : '';
+        const wait = Date.now() - lastBannerAt < 1500 ? 1500 - (Date.now() - lastBannerAt) : 0;
+        setTimeout(() => banner(why + 'ตา' + TEAM[f.team], 'c-' + f.team), Math.max(wait, why ? 0 : 900));
       } else if (f.type === 'promote') {
         toast((f.playerId === playerId ? 'คุณ' : f.name) + ' เป็นหัวหน้า' + TEAM[f.team] + 'แทน' + (f.playerId === playerId ? ' — ตอนนี้คุณเห็นกุญแจ' : ''), 'info');
       } else if (f.type === 'finish') {
@@ -890,6 +969,7 @@ $(function() {
     renderTeams();
     renderFeed();
     renderDock();
+    renderHostTools();
     consumeFx();
     tickTimer();
     syncDockHeight();
@@ -897,13 +977,14 @@ $(function() {
   }
 
   // ---------- commands ----------
-  function send(eventName, payload, onOk) {
+  function send(eventName, payload, onOk, onErr) {
     if (pending) return;
     pending = true;
     socket.emit(eventName, Object.assign({ roomId: roomId, step: S.step }, payload || {}), function(res) {
       pending = false;
       if (res && res.success === false) {
-        toast(res.error || 'ทำรายการไม่สำเร็จ', 'error');
+        if (onErr) onErr(res.error || 'ทำรายการไม่สำเร็จ');
+        else toast(res.error || 'ทำรายการไม่สำเร็จ', 'error');
         socket.emit('codenames_requestState', { roomId: roomId, playerId: playerId });
       } else if (onOk) onOk();
       validateClueInput();
@@ -913,6 +994,7 @@ $(function() {
 
   let pressTimer = null;
   let pressFired = false;
+  let pressStart = null;
   function cardFromEvent(e) {
     const el = e.target.closest('.cn-card');
     if (!el || !me().canGuess || el.classList.contains('is-revealed')) return null;
@@ -923,6 +1005,7 @@ $(function() {
     pressFired = false;
     if (!el) return;
     clearTimeout(pressTimer);
+    pressStart = { x: e.clientX, y: e.clientY };
     pressTimer = setTimeout(function() {
       pressFired = true;
       haptic([15, 30, 40]);
@@ -930,6 +1013,11 @@ $(function() {
     }, 600);
   });
   $('#cnBoard').on('pointerup pointerleave pointercancel', '.cn-card', function() { clearTimeout(pressTimer); });
+  // นิ้วเลื่อน (กำลังเลื่อนจอ) = ไม่ใช่กดค้าง — กันเปิดการ์ดโดยไม่ตั้งใจ
+  $('#cnBoard').on('pointermove', '.cn-card', function(e) {
+    if (!pressStart) return;
+    if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) { clearTimeout(pressTimer); pressStart = null; }
+  });
   $('#cnBoard').on('contextmenu', '.cn-card', function(e) { e.preventDefault(); });
   $('#cnBoard').on('click', '.cn-card', function(e) {
     const el = cardFromEvent(e);
@@ -967,7 +1055,15 @@ $(function() {
     const error = clueError(word);
     if (error) { $('#cnClueErr').text(error); input.classList.add('is-bad'); return; }
     haptic(12);
-    send('codenames_clue', { word: word, number: clueNumber }, function() { input.value = ''; });
+    send('codenames_clue', { word: word, number: clueNumber }, function() {
+      input.value = '';
+      clueNumber = 1;
+      clueServerError = null;
+    }, function(error) {
+      // เหตุผลที่โดนปฏิเสธอยู่ใต้ช่องพิมพ์ ไม่ใช่ toast ด้านบนที่คีย์บอร์ดบัง
+      clueServerError = { word: word, text: error };
+      haptic([20, 40, 20]);
+    });
   });
   $(document).on('click', '#cnBackBtn', function() {
     allowNavigation = true;
@@ -1001,8 +1097,17 @@ $(function() {
   $('#cnHowBtn').on('click', function() {
     Swal.fire({ title: 'สายลับคำใบ้ เล่นยังไง', html: howToHtml(), background: '#1a2332', color: '#fff', confirmButtonText: 'เข้าใจแล้ว', confirmButtonColor: '#d9443c', width: 'min(520px, 94vw)' });
   });
+  $('#cnSkipBtn').on('click', function() {
+    if (this.disabled) return;
+    const tName = TEAM[S.currentTeam] || '';
+    Swal.fire({ icon: 'warning', title: 'ข้ามเทิร์น' + tName + '?', text: 'ใช้เมื่อมีคนไม่อยู่หน้าจอ — ตาจะไปที่อีกทีมทันที', showCancelButton: true, confirmButtonText: 'ข้ามเทิร์น', cancelButtonText: 'รอต่อ', background: '#1a2332', color: '#fff', confirmButtonColor: '#d9443c' })
+      .then(r => { if (r.isConfirmed) send('codenames_hostSkip'); });
+  });
   $('#cnLeaveBtn').on('click', function() {
-    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: 'ทีมของคุณจะเล่นต่อโดยไม่มีคุณ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1a2332', color: '#fff' })
+    const self = me();
+    const leaveText = S.phase === 'finished' ? 'กลับไปหน้ารายชื่อห้อง'
+      : (self.role === 'spymaster' ? 'คุณเป็นหัวหน้า — ลูกทีมคนอื่นจะเป็นหัวหน้าแทน' : (self.team ? 'ทีมของคุณจะเล่นต่อโดยไม่มีคุณ' : 'คุณดูอยู่ ออกได้เลย เกมไม่สะดุด'));
+    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: leaveText, showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1a2332', color: '#fff' })
       .then(r => {
         if (!r.isConfirmed) return;
         allowNavigation = true;

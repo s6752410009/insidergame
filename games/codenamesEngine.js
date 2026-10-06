@@ -36,6 +36,9 @@ const DEFAULT_GUESS_SECONDS = 0;
 
 const SPYMASTER_GRACE_MS = Number(process.env.CODENAMES_SPYMASTER_GRACE_MS) || 25000;
 const NO_OPERATIVE_GRACE_MS = Number(process.env.CODENAMES_NO_OPERATIVE_GRACE_MS) || 12000;
+// หัวหน้าห้องกด "ข้ามเทิร์น" ได้เมื่อเฟสเดิมค้างนานเกินนี้ (กันคน AFK ตอนปิดนาฬิกา) — สั้นกว่านี้ถือว่ายังเล่นอยู่
+const HOST_SKIP_AFTER_MS = Number(process.env.CODENAMES_HOST_SKIP_MS) || 60000;
+const MAX_CLUE_GRAPHEMES = 24;
 const MAX_HISTORY = 60;
 const MAX_FX = 12;
 
@@ -153,6 +156,7 @@ function createInitialState() {
         votes: {},
         clueLog: [],
         phaseEndsAt: null,
+        phaseStartedAt: null,
         settings: { clueSeconds: DEFAULT_CLUE_SECONDS, guessSeconds: DEFAULT_GUESS_SECONDS },
         offlineSince: {},
         stuckSince: {},
@@ -408,6 +412,7 @@ function startGame(room, rng = Math.random, now = Date.now()) {
         }
     };
     state.phaseEndsAt = state.settings.clueSeconds ? now + state.settings.clueSeconds * 1000 : null;
+    state.phaseStartedAt = now;
     room.gameState = state;
     pushHistory(state, '🎬', `เริ่มเกม — ${TEAM_LABEL[startingTeam]}เริ่มก่อน (${STARTING_TEAM_CARDS} คำ) · ${TEAM_LABEL[otherTeam(startingTeam)]} ${OTHER_TEAM_CARDS} คำ`, 'start', now);
     pushFx(state, { type: 'start', team: startingTeam });
@@ -433,7 +438,7 @@ function validateClueWord(state, rawWord) {
     if (/\s/.test(raw)) return 'ใบ้ได้คำเดียว ห้ามเว้นวรรค';
     const word = normalizeWord(raw);
     if (!/^[\p{L}\p{M}\p{N}]+$/u.test(word)) return 'คำใบ้ใช้ได้แค่ตัวอักษรหรือตัวเลข ห้ามมีสัญลักษณ์';
-    if (graphemes(word).length > 24) return 'คำใบ้ยาวเกินไป';
+    if (graphemes(word).length > MAX_CLUE_GRAPHEMES) return `คำใบ้ยาวเกินไป (ไม่เกิน ${MAX_CLUE_GRAPHEMES} ตัวอักษร)`;
     const hit = (state.board || []).find(card => !card.revealed && containsWord(word, card.word));
     if (hit) {
         return normalizeWord(hit.word) === word
@@ -468,6 +473,7 @@ function submitClue(room, playerId, payload = {}, context = null, now = Date.now
     state.phase = 'guess';
     state.stuckSince = {};
     state.phaseEndsAt = state.settings.guessSeconds ? now + state.settings.guessSeconds * 1000 : null;
+    state.phaseStartedAt = now;
     state.clueLog = (state.clueLog || []).concat([{
         team: me.team, word, number, byName: me.name, turn: state.turnNumber, picks: [], endedBy: null
     }]);
@@ -603,6 +609,27 @@ function endTurn(room, playerId, context = null, now = Date.now()) {
     return passTurn(room, 'ended', now);
 }
 
+// หัวหน้าห้องข้ามเทิร์นที่ค้าง (ใบ้หรือทาย) — ได้เฉพาะเมื่อเฟสนั้นนานเกิน HOST_SKIP_AFTER_MS
+// isHost มาจาก runtime (room.admin) · engine ไม่ตัดสินสิทธิ์หัวห้องเอง
+function hostSkipWaitMs(state, now = Date.now()) {
+    const since = Number(state && state.phaseStartedAt) || 0;
+    if (!since) return 0; // state เก่าก่อนมี phaseStartedAt — ให้ข้ามได้
+    return Math.max(0, HOST_SKIP_AFTER_MS - (now - since));
+}
+
+function hostSkipTurn(room, playerId, isHost, context = null, now = Date.now()) {
+    const state = room.gameState;
+    assertPlaying(state);
+    if (!isHost) throw new Error('เฉพาะหัวหน้าห้องที่ข้ามเทิร์นได้');
+    assertStep(state, context);
+    if (state.phase !== 'clue' && state.phase !== 'guess') throw new Error('ตอนนี้ข้ามเทิร์นไม่ได้');
+    const wait = hostSkipWaitMs(state, now);
+    if (wait > 0) throw new Error(`ข้ามได้เมื่อเทิร์นนี้ค้างนานเกิน ${Math.round(HOST_SKIP_AFTER_MS / 1000)} วิ (อีก ${Math.ceil(wait / 1000)} วิ)`);
+    const me = rosterEntry(state, playerId);
+    pushHistory(state, '⏭️', `${me ? me.name : 'หัวหน้าห้อง'} (หัวหน้าห้อง) ข้ามเทิร์น${TEAM_LABEL[state.currentTeam]} ช่วง${state.phase === 'clue' ? 'ใบ้' : 'ทาย'} — ไป${TEAM_LABEL[otherTeam(state.currentTeam)]}`, 'pass', now);
+    return passTurn(room, 'host-skip', now);
+}
+
 const PASS_REASON_TEXT = {
     'clue-timeout': 'หมดเวลาคิดคำใบ้',
     'guess-timeout': 'หมดเวลาทาย',
@@ -626,6 +653,7 @@ function passTurn(room, reason, now = Date.now()) {
     state.votes = {};
     state.stuckSince = {};
     state.phaseEndsAt = state.settings.clueSeconds ? now + state.settings.clueSeconds * 1000 : null;
+    state.phaseStartedAt = now;
     pushFx(state, { type: 'turn', team: state.currentTeam, reason });
     bumpStep(state);
     return state;
@@ -855,6 +883,8 @@ function buildClientState(room, viewerId, now = Date.now()) {
         startingTeam: state.startingTeam,
         currentTeam: state.currentTeam,
         phaseEndsAt: state.phaseEndsAt,
+        phaseStartedAt: state.phaseStartedAt || null,
+        hostSkipAfterMs: HOST_SKIP_AFTER_MS,
         serverNow: now,
         settings: state.settings,
         keyVisible: showKey,
@@ -945,6 +975,8 @@ module.exports = {
     DEFAULT_GUESS_SECONDS,
     SPYMASTER_GRACE_MS,
     NO_OPERATIVE_GRACE_MS,
+    HOST_SKIP_AFTER_MS,
+    MAX_CLUE_GRAPHEMES,
     INFINITE,
     WORDS,
     graphemes,
@@ -969,6 +1001,8 @@ module.exports = {
     proposeCard,
     confirmReveal,
     endTurn,
+    hostSkipTurn,
+    hostSkipWaitMs,
     passTurn,
     handlePlayerLeft,
     tick,

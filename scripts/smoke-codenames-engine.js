@@ -553,4 +553,40 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     console.log(`9. สุ่มเล่น ${games} เกม (4–12 คน) จบทุกเกม ✓ ${JSON.stringify(reasons)}`);
 })();
 
+// ---------- 10. UX: หัวห้องข้ามเทิร์นที่ค้าง · ข้อความคำใบ้ยาว ----------
+(function hostSkip() {
+    const room = makeRoom(4, { clue: 0, guess: 0 });
+    setTeams(room, { red: [0, 1], blue: [2, 3] });
+    engine.startGame(room, mulberry32(77), 1000);
+    const state = S(room);
+    const wait = engine.HOST_SKIP_AFTER_MS;
+    assert(state.phaseStartedAt === 1000 && state.phaseEndsAt === null, 'ปิดนาฬิกา: จำเวลาเริ่มเฟสไว้');
+    const view = engine.buildClientState(room, 'p1', 1000);
+    assert(view.phaseStartedAt === 1000 && view.hostSkipAfterMs === wait, 'client รู้ว่าข้ามได้เมื่อไร');
+    const team = state.currentTeam;
+    throws(() => engine.hostSkipTurn(room, 'p1', false, ctx(room), 1000 + wait + 1), /เฉพาะหัวหน้าห้อง/, 'ไม่ใช่หัวห้องข้ามไม่ได้');
+    throws(() => engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + wait - 5000), /อีก 5 วิ/, 'ยังไม่ค้างนานพอ บอกว่าอีกกี่วิ');
+    throws(() => engine.hostSkipTurn(room, 'p0', true, { step: state.step - 1 }, 1000 + wait), /จังหวะ/, 'step เก่า');
+    engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + wait);
+    assert(state.currentTeam === engine.otherTeam(team) && state.phase === 'clue' && state.turnNumber === 2, 'ข้ามช่วงใบ้ไปอีกทีม');
+    assert(state.phaseStartedAt === 1000 + wait, 'เฟสใหม่เริ่มนับใหม่');
+    assert(/ข้ามเทิร์น/.test(state.history[state.history.length - 1].text), 'บันทึกว่าใครข้าม');
+    // ช่วงทาย: ข้ามได้หลังค้างนาน · clueLog บอกว่าจบเพราะหัวห้องข้าม
+    const t2 = state.currentTeam;
+    const sm = spymaster(room, t2);
+    engine.submitClue(room, sm.playerId, { word: 'ลองดู', number: 2 }, ctx(room), 1000 + wait + 10);
+    assert(state.phaseStartedAt === 1000 + wait + 10, 'เริ่มช่วงทายนับใหม่');
+    throws(() => engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + wait + 20), /ค้างนานเกิน/, 'เพิ่งใบ้ ข้ามไม่ได้');
+    engine.hostSkipTurn(room, 'p0', true, ctx(room), 1000 + 2 * wait + 10);
+    assert(state.currentTeam === team && state.clueLog[state.clueLog.length - 1].endedBy === 'host-skip', 'ข้ามช่วงทาย บันทึกเหตุ');
+    // state เก่า (ก่อนมี phaseStartedAt) ข้ามได้ทันที
+    state.phaseStartedAt = null;
+    assert(engine.hostSkipWaitMs(state, 5) === 0, 'state เก่าไม่ติดรอ');
+    // จบเกมแล้วข้ามไม่ได้
+    state.status = engine.FINISHED_STATUS;
+    throws(() => engine.hostSkipTurn(room, 'p0', true, ctx(room), 9e9), /จบไปแล้ว/, 'จบแล้วข้ามไม่ได้');
+    assert(/ไม่เกิน 24/.test(engine.validateClueWord({ board: [] }, 'ก'.repeat(25))), 'คำใบ้ยาวบอกขีดจำกัด');
+    console.log('10. หัวห้องข้ามเทิร์นที่ค้าง (หลัง ' + wait / 1000 + ' วิ) · ข้อความคำใบ้ยาว ✓');
+})();
+
 console.log(`\n✅ smoke:codenames ผ่าน ${checks} เช็ก`);
