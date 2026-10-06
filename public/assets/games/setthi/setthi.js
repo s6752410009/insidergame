@@ -531,7 +531,7 @@
     ], { duration: 1100, easing: 'ease-out' });
   }
   function banner(opts) {
-    var html = (opts.token ? tokenHtml(opts.token) : '') + (opts.art ? '<img class="st-banner-img" src="' + artSrc(opts.art) + '" alt="" width="96" height="96">' : '') + (opts.icon ? '<div class="st-banner-art">' + iconHtml(opts.icon) + '</div>' : '') +
+    var html = (opts.token && !opts.art ? tokenHtml(opts.token) : '') + (opts.art ? '<img class="st-banner-img" src="' + artSrc(opts.art) + '" alt="" width="96" height="96">' : '') + (opts.icon ? '<div class="st-banner-art">' + iconHtml(opts.icon) + '</div>' : '') +
       (opts.kicker ? '<div class="st-banner-kicker">' + esc(opts.kicker) + '</div>' : '') +
       '<div class="st-banner-title">' + esc(opts.title) + '</div>' +
       (opts.sub ? '<div class="st-banner-sub">' + opts.sub + '</div>' : '');
@@ -1067,7 +1067,7 @@
     scrim(true, 200);
     if (f.playerId === playerId) haptic([40, 60, 40]);
     sfx.sad();
-    var b = banner({ token: who, art: 'island', kicker: f.reason === 'triple' ? 'ดับเบิล 3 ครั้ง!' : f.reason === 'card' ? 'การ์ดโอกาส' : (who ? who.name : ''), title: 'ติดเกาะร้าง!', sub: '<span class="st-pips"><i></i><i></i><i></i></span> ดับเบิล · จ่าย ' + money(BOARD.islandFee) + ' · รอ 3 ตา', cls: 'is-island', style: 'top:30%;' });
+    var b = banner({ token: who, art: 'island', kicker: (who ? (who.playerId === playerId ? 'คุณ' : who.name) : '') + (f.reason === 'triple' ? ' · ดับเบิล 3 ครั้ง!' : f.reason === 'card' ? ' · การ์ดโอกาส' : ''), title: 'ติดเกาะร้าง!', sub: '<span class="st-pips"><i></i><i></i><i></i></span> ดับเบิล · จ่าย ' + money(BOARD.islandFee) + ' · รอ 3 ตา', cls: 'is-island', style: 'top:30%;' });
     var waves = fxNode('st-waves');
     A(waves, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: 600 });
     await A(b, [{ transform: 'translateX(-50%) scale(0.85)', opacity: 0 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 280 });
@@ -1481,6 +1481,9 @@
   // ---------- กดค้างทอย (มินิเกมเข็มแรง) ----------
   var hold = null;
   var meterEl = null;
+  // ช่องเขียววาดไว้ล่วงหน้าตั้งแต่เริ่มกด (ซ่อนด้วย opacity) แล้วค่อยโชว์ด้วย opacity อย่างเดียว · ไม่มี SVG filter
+  // ในแต่ละเฟรมไม่ query DOM / ไม่อ่าน layout — แตะแค่ transform ของเข็มกับข้อความเมื่อค่าเปลี่ยน
+  var meterRefs = null;
   function meterNode() {
     if (meterEl) return meterEl;
     meterEl = document.createElement('div');
@@ -1489,39 +1492,75 @@
     meterEl.setAttribute('aria-hidden', 'true');
     var arc = 'M20 120 A100 100 0 0 1 220 120';
     meterEl.innerHTML = '<svg viewBox="0 0 240 136">' +
-      '<defs><linearGradient id="stHeat" x1="0" x2="1"><stop offset="0" stop-color="#4ea8dc"/><stop offset=".55" stop-color="#f5c86b"/><stop offset="1" stop-color="#ef5b4c"/></linearGradient>' +
-      '<filter id="stGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5"/></filter></defs>' +
+      '<defs><linearGradient id="stHeat" x1="0" x2="1"><stop offset="0" stop-color="#4ea8dc"/><stop offset=".55" stop-color="#f5c86b"/><stop offset="1" stop-color="#ef5b4c"/></linearGradient></defs>' +
       '<path d="' + arc + '" fill="none" stroke="#162033" stroke-width="26" stroke-linecap="round"/>' +
       '<path d="' + arc + '" fill="none" stroke="url(#stHeat)" stroke-width="12" stroke-linecap="round" opacity=".9"/>' +
-      '<g class="st-meter-band" opacity="0"><path class="st-meter-green-glow" d="' + arc + '" pathLength="100" fill="none" stroke="#45f09a" stroke-width="28" filter="url(#stGlow)" opacity=".8"/>' +
+      '<g class="st-meter-band"><path class="st-meter-green-glow" d="' + arc + '" pathLength="100" fill="none" stroke="#45f09a" stroke-width="32" opacity=".28"/>' +
       '<path class="st-meter-green" d="' + arc + '" pathLength="100" fill="none" stroke="#45f09a" stroke-width="20"/></g>' +
       '<text x="14" y="134" font-size="11" fill="#b9c1d6" font-family="Bai Jamjuree, sans-serif">เบา</text><text x="226" y="134" font-size="11" fill="#b9c1d6" text-anchor="end" font-family="Bai Jamjuree, sans-serif">แรง</text>' +
       '<g class="st-meter-needle"><path d="M120 120 L120 30" stroke="#fff8e6" stroke-width="5" stroke-linecap="round"/><circle cx="120" cy="120" r="11" fill="#f5c86b" stroke="#1a2332" stroke-width="2"/></g>' +
       '</svg><div class="st-meter-label"><b id="stMeterPct">แรง 0%</b><span id="stMeterHint">ปล่อยตอนแรง = เดินไกล</span></div>';
     document.body.appendChild(meterEl);
+    meterRefs = {
+      needle: meterEl.querySelector('.st-meter-needle'),
+      pct: meterEl.querySelector('#stMeterPct'),
+      hint: meterEl.querySelector('#stMeterHint'),
+      greens: [meterEl.querySelector('.st-meter-green'), meterEl.querySelector('.st-meter-green-glow')]
+    };
     return meterEl;
   }
   function meterPos(m, t) {
     if (!m || t < (m.tapMs || 150)) return 0;
     return (1 - Math.cos((2 * Math.PI * t) / m.period)) / 2;
   }
-  function setBand(node, on) {
-    var band = node.querySelector('.st-meter-band');
-    if (!band || band.__on === on) return;
-    band.__on = on;
-    node.classList.toggle('has-green', on);
-    var hint = node.querySelector('#stMeterHint');
-    if (on) {
-      hint.textContent = 'ช่องเขียว! ปล่อยในช่อง = ลุ้นดับเบิล';
-      haptic([8, 30, 8]);
-      sfx.tick();
-      band.setAttribute('opacity', '1');
-      if (!reduceMotion) band.animate([{ opacity: 0, transform: 'scale(1.18)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 300, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
-    } else {
-      hint.textContent = node.__hadGreen ? 'ช่องเขียวหายแล้ว' : 'ปล่อยตอนแรง = เดินไกล';
-      band.setAttribute('opacity', '0');
+  function showGreen(node) {
+    if (node.__green) return;
+    node.__green = true;
+    node.classList.add('has-green');
+    meterRefs.hint.textContent = 'ช่องเขียว! ปล่อยในช่อง = ลุ้นดับเบิล';
+    haptic([8, 30, 8]);
+    sfx.tick();
+  }
+  function holdFrame(now) {
+    if (!hold || hold.released) return;
+    var t = (now || performance.now()) - hold.t0;
+    var m = hold.meter;
+    var pos = meterPos(m, t);
+    var node = meterEl;
+    meterRefs.needle.setAttribute('transform', 'rotate(' + (-90 + 180 * pos).toFixed(1) + ' 120 120)');
+    var label = pos >= 0.85 ? 'พลังเต็ม!' : 'แรง ' + Math.round(pos * 20) * 5 + '%';
+    if (label !== hold.label) { hold.label = label; meterRefs.pct.textContent = label; }
+    var max = pos >= 0.85;
+    if (max !== hold.max) { hold.max = max; node.classList.toggle('is-max', max); }
+    var g = m && m.green;
+    if (g && t >= g.appearAt) showGreen(node);
+    var inGreen = !!(g && t >= g.appearAt && Math.abs(pos - g.center) <= g.width / 2);
+    if (inGreen !== hold.inGreen) { hold.inGreen = inGreen; node.classList.toggle('is-green', inGreen); if (inGreen) haptic(6); }
+    if (hold.btn && !reduceMotion) {
+      var sc = (0.93 + Math.round(pos * 20) / 20 * 0.07).toFixed(3);
+      if (sc !== hold.sc) { hold.sc = sc; hold.btn.style.transform = 'scale(' + sc + ')'; }
     }
-    if (on) node.__hadGreen = true;
+    if (holdTone) try { holdTone.o.frequency.setTargetAtTime(220 + pos * 700, holdTone.ctx.currentTime, 0.02); } catch (e) { /* ignore */ }
+    hold.raf = requestAnimationFrame(holdFrame);
+  }
+  function showMeter() {
+    if (!hold || hold.released || !hold.meter) return;
+    var node = meterNode();
+    var m = hold.meter;
+    node.__green = false;
+    node.classList.remove('has-green', 'is-green', 'is-max');
+    meterRefs.hint.textContent = 'ปล่อยตอนแรง = เดินไกล';
+    if (m.green) {
+      meterRefs.greens.forEach(function(gp) {
+        gp.setAttribute('stroke-dasharray', (m.green.width * 100).toFixed(2) + ' 200');
+        gp.setAttribute('stroke-dashoffset', (-(m.green.center - m.green.width / 2) * 100).toFixed(2));
+      });
+    }
+    hold.btn = document.getElementById('stRollBtn');
+    node.classList.add('is-on');
+    node.animate([{ opacity: 0, transform: 'translateY(14px) scale(0.92)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }], { duration: reduceMotion ? 1 : 180, easing: 'cubic-bezier(0.22,1,0.36,1)' });
+    startTone();
+    hold.raf = requestAnimationFrame(holdFrame);
   }
   var holdTone = null;
   function startTone() {
@@ -1542,44 +1581,6 @@
     try { holdTone.g.gain.setTargetAtTime(0.0001, holdTone.ctx.currentTime, 0.03); holdTone.o.stop(holdTone.ctx.currentTime + 0.12); } catch (e) { /* ignore */ }
     holdTone = null;
   }
-  function holdFrame() {
-    if (!hold || hold.released) return;
-    var t = performance.now() - hold.t0;
-    var m = hold.meter;
-    var pos = meterPos(m, t);
-    var node = meterNode();
-    node.querySelector('.st-meter-needle').setAttribute('transform', 'rotate(' + (-90 + 180 * pos).toFixed(2) + ' 120 120)');
-    node.querySelector('#stMeterPct').textContent = pos >= 0.85 ? 'พลังเต็ม!' : 'แรง ' + Math.round(pos * 100) + '%';
-    node.classList.toggle('is-max', pos >= 0.85);
-    var g = m && m.green;
-    var greenOn = !!(g && t >= g.appearAt && t <= g.until);
-    setBand(node, greenOn);
-    var inGreen = greenOn && Math.abs(pos - g.center) <= g.width / 2;
-    if (inGreen !== hold.inGreen) { hold.inGreen = inGreen; node.classList.toggle('is-green', inGreen); if (inGreen) haptic(6); }
-    var b = document.getElementById('stRollBtn');
-    if (b && !reduceMotion) b.style.transform = 'scale(' + (0.93 + pos * 0.07).toFixed(3) + ')';
-    if (holdTone) try { holdTone.o.frequency.setTargetAtTime(220 + pos * 700, holdTone.ctx.currentTime, 0.02); } catch (e) { /* ignore */ }
-    hold.raf = requestAnimationFrame(holdFrame);
-  }
-  function showMeter() {
-    if (!hold || hold.released || !hold.meter) return;
-    var node = meterNode();
-    var m = hold.meter;
-    node.__hadGreen = false;
-    node.querySelector('.st-meter-band').__on = null;
-    setBand(node, false);
-    if (m.green) {
-      ['.st-meter-green', '.st-meter-green-glow'].forEach(function(sel) {
-        var gp = node.querySelector(sel);
-        gp.setAttribute('stroke-dasharray', (m.green.width * 100).toFixed(2) + ' 200');
-        gp.setAttribute('stroke-dashoffset', (-(m.green.center - m.green.width / 2) * 100).toFixed(2));
-      });
-    }
-    node.classList.add('is-on');
-    node.animate([{ opacity: 0, transform: 'translateY(14px) scale(0.92)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }], { duration: reduceMotion ? 1 : 180, easing: 'cubic-bezier(0.22,1,0.36,1)' });
-    startTone();
-    hold.raf = requestAnimationFrame(holdFrame);
-  }
   function hideMeter(keepMs) {
     stopTone();
     var node = meterEl;
@@ -1588,7 +1589,7 @@
     if (!node || !node.classList.contains('is-on')) return;
     setTimeout(function() {
       var a = node.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
-      a.onfinish = function() { node.classList.remove('is-on', 'is-green', 'has-green', 'is-max'); };
+      a.onfinish = function() { node.classList.remove('is-on', 'is-green', 'has-green', 'is-max'); node.__green = false; };
     }, keepMs || 0);
   }
   function beginHold(pointerId) {
@@ -1596,7 +1597,8 @@
     var a = S && S.availableActions;
     if (!a || !a.roll) return;
     var sentAt = performance.now();
-    hold = { t0: sentAt, pointerId: pointerId, meter: null, released: false, pendingRelease: null, inGreen: false };
+    var rb = document.getElementById('stRollBtn');
+    hold = { t0: sentAt, pointerId: pointerId, meter: null, released: false, pendingRelease: null, inGreen: false, rect: rb ? rb.getBoundingClientRect() : null };
     var mine = hold;
     socket.emit('setthi_rollHoldStart', { roomId: roomId, seq: S.phaseSeq }, function(res) {
       if (hold !== mine) { if (res && res.success) socket.emit('setthi_rollHoldCancel', { roomId: roomId }); return; }
@@ -1653,9 +1655,8 @@
   window.addEventListener('pointercancel', function(e) { if (hold && hold.pointerId === e.pointerId) cancelHold('ยกเลิกการทอย'); });
   window.addEventListener('pointermove', function(e) {
     if (!hold || hold.released || hold.pointerId !== e.pointerId) return;
-    var b = document.getElementById('stRollBtn');
-    if (!b) return;
-    var r = b.getBoundingClientRect();
+    var r = hold.rect;
+    if (!r) return;
     var out = 56;
     if (e.clientX < r.left - out || e.clientX > r.right + out || e.clientY < r.top - out * 2 || e.clientY > r.bottom + out) cancelHold('นิ้วเลื่อนออก — ยกเลิก');
   });

@@ -736,7 +736,7 @@ test('กดค้างทอย: ช่องเขียว/แรง ทำ�
     const room = makeRoom(['a', 'b']);
     const m = E.startRollHold(room, 'a', null, mulberry(9));
     assert(m.period / 2 >= 1600 && m.period / 2 <= 2000, 'เข็มกวาดเบา→แรง 1.6–2.0 วิ');
-    // ช่องเขียว: โผล่ 0.6–0.8 วิ และเข็มวิ่งผ่านกลางช่องระหว่างที่โผล่เสมอ
+    // ช่องเขียว: โผล่ 0.3–1.2 วิหลังกด แล้วค้างจนปล่อย · เข็มผ่านช่องได้ทุกรอบหลังโผล่
     let greens = 0;
     for (let k = 0; k < 3000; k += 1) {
         const r = mulberry(100 + k);
@@ -744,12 +744,13 @@ test('กดค้างทอย: ช่องเขียว/แรง ทำ�
         const g = E.greenSchedule(r, period);
         if (!g) continue;
         greens += 1;
-        const life = g.until - g.appearAt;
-        assert(life >= 600 && life <= 800, 'ช่องเขียวโผล่ 0.6–0.8 วิ ได้ ' + life);
-        assert(g.appearAt >= 350, 'ไม่โผล่ทันทีที่กด');
-        let hit = false;
-        for (let t = g.appearAt; t <= g.until; t += 5) if (E.meterAt({ period, green: g }, t).green) { hit = true; break; }
-        assert(hit, 'เข็มผ่านช่องเขียวระหว่างที่โผล่');
+        assert(g.appearAt >= 300 && g.appearAt <= 1200, 'โผล่ 0.3–1.2 วิ ได้ ' + g.appearAt);
+        assert(g.until === undefined, 'ไม่มีเวลาหาย');
+        assert(!E.meterAt({ period, green: g }, g.appearAt - 1).greenOn, 'ก่อนโผล่ยังไม่มีช่อง');
+        assert(E.meterAt({ period, green: g }, 19000).greenOn, 'โผล่แล้วค้างจนปล่อย');
+        let hits = 0;
+        for (let t = g.appearAt; t <= g.appearAt + period * 2; t += 5) if (E.meterAt({ period, green: g }, t).green) hits += 1;
+        assert(hits > 0, 'เข็มผ่านช่องเขียวหลังโผล่');
     }
     assert(greens > 1000, 'ช่องเขียวโผล่บางครั้ง');
     throws(() => E.releaseRoll(room, 'b', 500), 'คนอื่นปล่อยไม่ได้');

@@ -720,26 +720,23 @@ function meterAt(hold, elapsedMs) {
     if (!hold || t < TAP_MS) return { pos: 0, power: 0, green: false, greenOn: false, tap: true };
     const pos = (1 - Math.cos((2 * Math.PI * t) / hold.period)) / 2;
     const g = hold.green;
-    const greenOn = !!(g && t >= g.appearAt && t <= g.until);
+    const greenOn = !!(g && t >= g.appearAt); // โผล่แล้วค้างจนปล่อย
     const green = greenOn && Math.abs(pos - g.center) <= g.width / 2;
     return { pos, power: pos, green, greenOn, tap: false };
 }
 
 /**
- * ตารางช่องเขียวของการกดครั้งนี้ (หรือ null): โผล่ 0.6–0.8 วิ ในช่วงที่เข็มกำลังจะวิ่งผ่านกลางช่องพอดี
- * (เข็มกวาดขึ้นหรือลงครั้งที่ 1–3) → มีเวลาเห็นแล้วตัดสินใจปล่อยทัน
+ * ตารางช่องเขียวของการกดครั้งนี้ (หรือ null): โผล่ราวครึ่งหนึ่งของการกด ที่ 0.3–1.2 วิหลังเริ่มกด
+ * ตำแหน่ง/ความกว้างสุ่ม · โผล่แล้วค้างอยู่จนปล่อย (ไม่หายเอง)
  */
 function greenSchedule(rng, period) {
+    void period;
     if (rng() >= GREEN_SPAWN) return null;
-    const center = Math.round((0.3 + rng() * 0.55) * 1000) / 1000;
-    const width = Math.round((0.1 + rng() * 0.05) * 1000) / 1000;
-    const life = Math.round(600 + rng() * 200);
-    // เวลาที่เข็มผ่าน center: pos(t) = (1 − cos(2πt/period)) / 2
-    const base = (period / (2 * Math.PI)) * Math.acos(1 - 2 * center);
-    const crossings = [base, period - base, period + base].filter(t => t - life * 0.55 >= 350);
-    const cross = crossings[Math.min(crossings.length - 1, Math.floor(rng() * crossings.length))];
-    const appearAt = Math.round(cross - life * 0.55);
-    return { appearAt, until: appearAt + life, center, width };
+    return {
+        appearAt: Math.round(300 + rng() * 900),
+        center: Math.round((0.3 + rng() * 0.55) * 1000) / 1000,
+        width: Math.round((0.09 + rng() * 0.05) * 1000) / 1000
+    };
 }
 
 function nextDice(room, rng, bias = null) {

@@ -545,7 +545,8 @@ html.st-active {
 .st-meter-label { display: grid; gap: 1px; margin-top: 2px; }
 .st-meter-label b { font-family: var(--st-display); font-size: 1.25rem; color: var(--st-gold); font-variant-numeric: tabular-nums; }
 .st-meter-label span { font-size: 0.78rem; color: var(--st-muted); }
-.st-meter-band { transform-origin: 120px 120px; transform-box: view-box; }
+.st-meter-band { opacity: 0; transition: opacity 0.12s linear; }
+.st-meter.has-green .st-meter-band { opacity: 1; }
 .st-meter.has-green .st-meter-label span { color: #45f09a; font-weight: 700; }
 .st-meter.is-green { border-color: #45f09a; }
 .st-meter.is-green .st-meter-label b { color: #45f09a; }
@@ -751,7 +752,7 @@ html.st-active {
 .st-badge2.is-power { background: linear-gradient(180deg, oklch(0.72 0.19 40), oklch(0.58 0.2 30)); color: #fff; box-shadow: 0 0 12px oklch(0.7 0.2 40 / 0.6); }
 .st-badge2.is-green { background: #2fd583; color: #06301a; }
 .st-ribbon {
-  position: absolute; left: 50%; top: 40%;
+  position: absolute; left: 50%; top: 60%;
   display: grid; justify-items: center;
   padding: 10px 36px 12px;
   background: linear-gradient(180deg, oklch(0.92 0.13 88), oklch(0.75 0.15 75));
