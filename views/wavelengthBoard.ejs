@@ -157,6 +157,7 @@
   .wl-pin.is-me { border-width: 2px; background: oklch(0.25 0.06 185 / 0.95); }
   .wl-pin.is-drop { animation: wlPinDrop 0.5s var(--wl-spring) both; animation-delay: var(--d, 0ms); }
 
+  .wl-pin-more { flex: 0 0 auto; margin-left: 2px; padding: 0 5px; border-radius: 999px; background: var(--pin-color, #fff); color: oklch(0.18 0.03 255); font-size: 0.66rem; line-height: 1.5; }
   .wl-dial-note { text-align: center; font-size: 0.8rem; color: var(--wl-muted); margin: 4px 0 0; min-height: 1.2em; }
 
   /* ---------- giver card picks ---------- */
@@ -198,6 +199,8 @@
   .wl-results-sub { font-size: 0.78rem; color: var(--wl-muted); }
   .wl-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--wl-line-soft); }
   .wl-row:first-of-type { border-top: 0; }
+  .wl-row.is-me { margin: 0 -8px; padding: 8px; border-radius: 12px; border-top-color: transparent; background: oklch(0.3 0.06 185 / 0.35); }
+  .wl-row.is-me + .wl-row { border-top-color: transparent; }
   .wl-row-name { font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wl-row-sub { grid-column: 2; font-size: 0.78rem; color: var(--wl-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wl-pts {
@@ -260,6 +263,13 @@
   .wl-dock-wait { text-align: center; color: var(--wl-soft); padding: 4px 0; font-weight: 600; }
 
   .wl-clue-form { display: grid; gap: 6px; }
+  .wl-clue-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .wl-clue-foot .wl-hint { text-align: left; min-width: 0; }
+  .wl-guess-row { display: flex; gap: 8px; }
+  .wl-guess-row .wl-btn--primary { flex: 1 1 auto; min-width: 0; }
+  .wl-nudge { flex: 0 0 56px; min-height: 60px; padding: 0; font-size: 1.5rem; line-height: 1; }
+  .wl-btn--warn { background: var(--wl-gold); color: oklch(0.22 0.05 85); }
+  .wl-btn--warn:hover { background: oklch(0.88 0.12 85); }
   .wl-input-row { display: flex; gap: 8px; }
   .wl-input {
     flex: 1 1 auto; min-width: 0; min-height: 52px; padding: 0 14px; border-radius: 14px;
@@ -287,6 +297,12 @@
   .wl-step.is-empty { visibility: hidden; }
   .wl-step.is-rise .wl-step-block { animation: wlRise 0.6s var(--wl-spring) both; animation-delay: var(--d, 0ms); }
   .wl-crown { font-size: 1.3rem; line-height: 1; }
+
+  .wl-recap { margin-top: 14px; }
+  .wl-recap summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-family: var(--wl-display); font-weight: 700; color: var(--wl-gold); }
+  .wl-recap-row { padding: 8px 0; border-top: 1px solid var(--wl-line-soft); font-size: 0.86rem; color: var(--wl-soft); }
+  .wl-recap-row strong { color: var(--wl-ink); }
+  .wl-recap-meta { display: block; font-size: 0.78rem; color: var(--wl-muted); }
 
   /* ---------- history / sidebar ---------- */
   .wl-history { margin-top: 12px; }
@@ -340,6 +356,15 @@
     .wl-stage { padding: 18px 20px 16px; }
     .wl-pin { font-size: 0.78rem; max-width: 120px; }
   }
+  /* แท็บเล็ต/มือถือแนวนอน: ปุ่มแชทลอยมุมขวาบนทับปุ่มเครื่องมือที่อยู่แถวเดียวกัน */
+  @media (min-width: 520px) and (max-width: 1000px) {
+    .wl-tools { margin-right: 104px; }
+  }
+  /* มือถือแนวนอน: จอเตี้ย หน้าปัดต้องพอดีช่องเหนือ dock */
+  @media (orientation: landscape) and (max-height: 520px) {
+    /* เผื่อที่ให้คำใบ้ (~100px) อยู่ในจอพร้อมหน้าปัด — 390px สูง ได้หน้าปัดกว้าง ~300px ใกล้เคียงแนวตั้ง */
+    .wl-dial-wrap { max-width: min(560px, calc((100vh - var(--wl-dock-h, 120px) - 120px) * 1.87)); }
+  }
   @media (prefers-reduced-motion: reduce) {
     .wl-shutter, .wl-bands, .wl-needle, .wl-tick-lit, .wl-option, .wl-btn, .wl-sidebar { transition: none !important; }
     .wl-beam.is-idle, .wl-beam.is-sweep, .wl-needle-wobble.is-clunk, .wl-pin.is-drop, .wl-option.is-in, .wl-lock.is-pulse,
@@ -360,6 +385,7 @@
     <div class="wl-tools">
       <button type="button" id="wlHowBtn" class="wl-pill">วิธีเล่น</button>
       <button type="button" id="wlSidebarBtn" class="wl-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
+      <button type="button" id="wlSkipBtn" class="wl-pill" hidden>ข้ามตานี้</button>
       <button type="button" id="wlEndBtn" class="wl-pill wl-pill--danger" <%= room.admin ? '' : 'hidden' %>>จบเกม</button>
     </div>
   </div>
@@ -511,6 +537,17 @@ $(function() {
   let draftRound = 0;
   let lastRevealRound = 0;
   let finalAnimated = false;
+  // นาฬิกาเทียบเซิร์ฟเวอร์ — มือถือที่ตั้งเวลาเพี้ยนก็นับถอยหลังตรงกับคนอื่น
+  let clockOffset = S && S.serverNow ? S.serverNow - Date.now() : 0;
+  function now() { return Date.now() + clockOffset; }
+  // ล็อกโดยยังไม่ขยับเข็ม = ถามก่อน 1 ครั้ง (กันกดพลาดแล้วได้ตรงกลาง)
+  let touchedRound = 0;
+  let centerWarnRound = 0;
+  const DRAFT_KEY = 'wl-draft-' + '<%= room.roomId %>';
+  function saveDraft() { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ round: S.round, text: draftClue })); } catch (e) { /* ignore */ } }
+  function loadDraft(round) {
+    try { const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); return d && d.round === round ? String(d.text || '') : ''; } catch (e) { return ''; }
+  }
 
   // ---------- helpers ----------
   function esc(text) {
@@ -655,6 +692,8 @@ $(function() {
   function onPinChange(v, fromDrag) {
     myPin = v;
     myPinRound = S.round;
+    touchedRound = S.round;
+    if (centerWarnRound === S.round) { centerWarnRound = 0; renderDock(); }
     setNeedle(v, false);
     lightTick(v);
     const tick = Math.floor(v / 5);
@@ -756,21 +795,43 @@ $(function() {
     if (pinsShownRound === lr.round && !animate) return;
     pinsShownRound = lr.round;
     const rows = (lr.results || []).filter(r => r.pin != null).slice().sort((a, b) => a.pin - b.pin);
-    // วางป้ายชื่อตามแนวเข็ม ชนกันก็ขยับเข้าด้านใน
+    // วางป้ายชื่อตามแนวเข็ม ชนกันก็ขยับเข้าด้านใน · ไม่มีที่ว่างแล้ว = รวมเป็น "+N" ที่ป้ายใกล้สุด
+    // (วงใหญ่ 12 คนทายกระจุกกัน ป้ายเคยซ้อนกันอ่านไม่ออก) · เช็กชนจากขนาดจริงบนจอ · ป้ายของเราวางก่อนเสมอ
     const rings = [128, 100, 72];
-    const lastAt = [-99, -99, -99];
-    let html = '';
-    rows.forEach(function(r, i) {
-      let ring = 0;
-      while (ring < rings.length - 1 && r.pin - lastAt[ring] < 13) ring += 1;
-      lastAt[ring] = r.pin;
-      const tip = polar(r.pin, 172);
-      const lab = polar(r.pin, rings[ring]);
+    const order = rows.filter(r => r.playerId === playerId).concat(rows.filter(r => r.playerId !== playerId));
+    const labelHtml = function(r, more, i, pos) {
       const me = r.playerId === playerId;
-      html += '<span class="wl-pin' + (me ? ' is-me' : '') + (animate ? ' is-drop' : '') + '" style="left:' + (lab.x / 4).toFixed(2) + '%; top:' + (lab.y / 2.14).toFixed(2) + '%; --pin-color:' + esc(r.color || '#fff') + '; --d:' + (900 + i * 70) + 'ms">' +
-        '<span class="wl-pin-dot" aria-hidden="true">' + esc(r.avatar || '') + '</span><span class="wl-pin-name">' + esc(me ? 'คุณ' : r.name) + '</span></span>';
-      void tip;
-    });
+      const title = [me ? 'คุณ' : r.name].concat(more || []).join(', ');
+      return '<span class="wl-pin' + (me ? ' is-me' : '') + (animate && pos ? ' is-drop' : '') + '" title="' + esc(title) + '" style="' + (pos ? 'left:' + pos.left + '%; top:' + pos.top + '%; ' : 'visibility:hidden; ') + '--pin-color:' + esc(r.color || '#fff') + '; --d:' + (900 + i * 70) + 'ms">' +
+        '<span class="wl-pin-dot" aria-hidden="true">' + esc(r.avatar || '') + '</span><span class="wl-pin-name">' + esc(me ? 'คุณ' : r.name) + '</span>' +
+        (more && more.length ? '<span class="wl-pin-more">+' + more.length + '</span>' : '') + '</span>';
+    };
+    // วัดขนาดป้ายจริงก่อน (ซ่อนไว้)
+    wrap.innerHTML = order.map((r, i) => labelHtml(r, null, i, null)).join('');
+    const W = wrap.clientWidth || 1, H = wrap.clientHeight || 1;
+    const sizes = Array.from(wrap.children).map(el => ({ w: el.offsetWidth, h: el.offsetHeight }));
+    // pad = ที่เผื่อป้าย "+N" ต่อท้าย — ลองแบบไม่เผื่อก่อน ถ้าต้องรวมป้าย ค่อยจัดใหม่แบบเผื่อ
+    function layout(pad) {
+      const placed = [];
+      let merged = 0;
+      order.forEach(function(r, i) {
+        for (let k = 0; k < rings.length; k += 1) {
+          const lab = polar(r.pin, rings[k]);
+          const box = { x: lab.x / 400 * W, y: lab.y / 214 * H, w: sizes[i].w + pad, h: sizes[i].h };
+          const hit = placed.some(p => Math.abs(p.box.x - box.x) * 2 < p.box.w + box.w && Math.abs(p.box.y - box.y) * 2 < p.box.h + box.h);
+          if (!hit) { placed.push({ r: r, lab: lab, box: box, more: [] }); return; }
+        }
+        merged += 1;
+        const near = placed.slice().sort((a, b) => Math.abs(a.r.pin - r.pin) - Math.abs(b.r.pin - r.pin))[0];
+        near.more.push(r.name);
+      });
+      return { placed: placed, merged: merged };
+    }
+    let fit = layout(0);
+    if (fit.merged) fit = layout(24);
+    const placed = fit.placed;
+    const html = placed.sort((a, b) => a.r.pin - b.r.pin).map((p, i) =>
+      labelHtml(p.r, p.more, i, { left: (p.lab.x / 4).toFixed(2), top: (p.lab.y / 2.14).toFixed(2) })).join('');
     wrap.innerHTML = html;
     // เข็มบางของทุกคนบนหน้าปัด (SVG)
     let lines = '';
@@ -874,7 +935,7 @@ $(function() {
     switch (S.phase) {
       case 'clue': return S.giverAway ? 'ผู้ใบ้หลุด ไม่กลับ = ข้าม' : 'หมดเวลา = ข้ามรอบ';
       case 'guess': return 'หมดเวลา = ล็อกที่เข็มอยู่';
-      case 'reveal': return 'รอบต่อไปอัตโนมัติ';
+      case 'reveal': return 'หมดเวลา = รอบต่อไป';
       default: return '';
     }
   }
@@ -886,7 +947,11 @@ $(function() {
     $('#wlNowCopy').text(now.text);
     $('#wlNow').toggleClass('is-mine', !!now.mine);
     $('#wlNowHint').text(timerHint());
-    $('#wlEndBtn').prop('hidden', !(S.availableActions && S.availableActions.canEnd));
+    const a = S.availableActions || {};
+    $('#wlEndBtn').prop('hidden', !a.canEnd);
+    // หัวห้อง: ข้ามผู้ใบ้ที่เงียบ / เปิดเป้าเมื่อมีคน AFK (ถ้าหัวห้องเป็นผู้ใบ้เอง ใช้ปุ่มข้ามตาในช่องคำใบ้แทน)
+    const hostSkip = a.canHostSkip && !a.canSkipTurn;
+    $('#wlSkipBtn').prop('hidden', !hostSkip).text(S.phase === 'guess' ? 'เปิดเป้าเลย' : 'ข้ามตานี้');
   }
 
   function renderSpectrum() {
@@ -906,7 +971,7 @@ $(function() {
     } else if (S.phase === 'clue' && !(S.self && S.self.isGiver)) {
       clueShownKey = '';
       clueBox.hidden = false;
-      clueBox.innerHTML = '<p class="wl-wait">' + (S.self && S.self.pending ? 'คุณเข้ามากลางรอบ — <strong>รอบหน้าได้ทาย</strong> · ' : '') +
+      clueBox.innerHTML = '<p class="wl-wait">' + (S.self && S.self.pending ? 'คุณเพิ่งเข้ามา — <strong>ได้ทายรอบนี้ด้วย</strong> · ' : '') +
         '📡 <strong>' + esc(S.giverName || 'ผู้ใบ้') + '</strong> กำลังเลือกการ์ดและคิดคำใบ้</p>';
     } else {
       clueBox.hidden = true;
@@ -954,14 +1019,14 @@ $(function() {
     }
     const giver = playerById(lr.giverId) || { name: lr.giverName };
     const rows = (lr.results || []).map(function(r, i) {
-      const sub = r.pin == null ? 'ไม่ได้ทาย' : (r.label + (r.auto ? ' · ล็อกอัตโนมัติ' : '') + ' · ห่าง ' + Math.round(r.distance));
-      return '<div class="wl-row">' + avatarHtml(r, 28) +
+      const sub = r.pin == null ? 'ไม่ได้ทาย' : (r.label + (r.auto ? ' · ล็อกอัตโนมัติ' : '') + ' · ห่างเป้า ' + Math.round(r.distance));
+      return '<div class="wl-row' + (r.playerId === playerId ? ' is-me' : '') + '">' + avatarHtml(r, 28) +
         '<span class="wl-row-name">' + esc(r.playerId === playerId ? 'คุณ' : r.name) + '</span>' +
         '<span class="wl-pts ' + bandClass(r.points) + (animate ? ' is-pop' : '') + '" style="--d:' + (1300 + i * 110) + 'ms">+' + r.points + '</span>' +
         '<span class="wl-row-sub">' + esc(sub) + '</span></div>';
     }).join('');
     box.innerHTML = '<div class="wl-results-head"><h2>ผลรอบ ' + lr.round + '</h2><span class="wl-results-sub">เป้าอยู่ที่ ' + lr.target + '/100</span></div>' + rows +
-      '<div class="wl-row">' + avatarHtml(giver, 28) +
+      '<div class="wl-row' + (lr.giverId === playerId ? ' is-me' : '') + '">' + avatarHtml(giver, 28) +
         '<span class="wl-row-name">' + esc(lr.giverId === playerId ? 'คุณ' : (giver.name || 'ผู้ใบ้')) + ' (ผู้ใบ้)</span>' +
         '<span class="wl-pts giver' + (animate ? ' is-pop' : '') + '" style="--d:' + (1400 + (lr.results || []).length * 110) + 'ms">+' + lr.giverPoints + '</span>' +
         '<span class="wl-row-sub">เฉลี่ยแต้มของคนทาย</span></div>';
@@ -986,7 +1051,7 @@ $(function() {
     }).join('');
     const pendingPlayers = (S.players || []).filter(p => !p.active);
     $('#wlBoard').html('<h2>คะแนน</h2>' + (html || '<p class="wl-hint" style="text-align:left">ยังไม่มีคะแนน</p>') +
-      (pendingPlayers.length ? '<p class="wl-hint" style="text-align:left; margin:6px 0 0;">รอเข้าร่วมรอบหน้า: ' + pendingPlayers.map(p => esc(p.name)).join(', ') + '</p>' : ''));
+      (pendingPlayers.length ? '<p class="wl-hint" style="text-align:left; margin:6px 0 0;">' + (S.phase === 'clue' ? 'เข้าร่วมเมื่อผู้ใบ้ส่งคำใบ้: ' : 'รอเข้าร่วมรอบหน้า: ') + pendingPlayers.map(p => esc(p.name)).join(', ') + '</p>' : ''));
   }
 
   function renderFinal(animate) {
@@ -1011,7 +1076,12 @@ $(function() {
       '<span class="wl-score-rank">' + r.rank + '</span>' + avatarHtml(r, 28) +
       '<span class="wl-score-name">' + esc(r.name) + (r.left ? ' <small>· ออกแล้ว</small>' : '') + (r.bullseyes ? ' <small>· เป๊ะ ' + r.bullseyes + ' ครั้ง</small>' : '') + '</span>' +
       '<span class="wl-score-val">' + r.score + '</span></div>').join('');
-    box.innerHTML = '<p class="wl-final-title">' + title + '</p>' + podium + list;
+    const recap = (S.rounds || []).map(x =>
+      '<div class="wl-recap-row"><strong>รอบ ' + x.round + '</strong> · ' + esc(x.giverName || 'ผู้ใบ้') + ' ใบ้ <strong>“' + esc(x.clue || '') + '”</strong>' +
+        '<span class="wl-recap-meta">' + (x.card ? esc(x.card.left) + ' ↔ ' + esc(x.card.right) + ' · ' : '') + 'เป้า ' + x.target + ' · ผู้ใบ้ +' + x.giverPoints +
+        (x.best && x.best.points ? ' · ใกล้สุด ' + esc(x.best.name) + ' +' + x.best.points : '') + '</span></div>').join('');
+    box.innerHTML = '<p class="wl-final-title">' + title + '</p>' + podium + list +
+      (recap ? '<details class="wl-recap"><summary>ย้อนดูทีละรอบ (' + (S.rounds || []).length + ')</summary>' + recap + '</details>' : '');
   }
 
   function renderDock() {
@@ -1024,26 +1094,38 @@ $(function() {
         '<button type="button" id="wlBackBtn" class="wl-btn wl-btn--primary">กลับห้องรอ</button>' +
         '</div><div class="wl-hint" id="wlBackRemain" style="margin-top:6px;">ทุกคนกลับห้องรอพร้อมกัน</div>';
     } else if (S.phase === 'clue' && self.isGiver) {
-      if (draftRound !== S.round) { draftRound = S.round; draftClue = ''; }
+      if (draftRound !== S.round) { draftRound = S.round; draftClue = loadDraft(S.round); }
       const problem = draftClue ? clueProblem(draftClue, S.card) : '';
+      // พิมพ์ร่างได้ตั้งแต่ยังไม่เลือกการ์ด (คิดไปพร้อมกัน) — แต่ส่งได้เมื่อเลือกการ์ดแล้ว
+      const msg = problem || (draftClue && !S.card ? 'เลือกการ์ดด้านบนก่อน แล้วค่อยส่ง' : '');
       html = '<div class="wl-clue-form">' +
-        '<label class="wl-hint" for="wlClueInput" style="text-align:left;">' + (S.card ? 'คำใบ้ 1 คำหรือวลีสั้น ๆ (ห้ามคำบนการ์ด · ห้ามตัวเลข)' : 'เลือกการ์ดด้านบนก่อน แล้วพิมพ์คำใบ้') + '</label>' +
-        '<div class="wl-input-row"><input id="wlClueInput" class="wl-input' + (problem ? ' is-bad' : '') + '" type="text" autocomplete="off" enterkeyhint="send" maxlength="80" placeholder="เช่น ไอติม" value="' + esc(draftClue) + '"' + (S.card ? '' : ' disabled') + '>' +
-        '<button type="button" id="wlClueBtn" class="wl-btn wl-btn--primary"' + (a.canSubmitClue && draftClue && !problem ? '' : ' disabled') + '>ส่งคำใบ้</button></div>' +
-        '<div id="wlClueMsg" class="wl-hint' + (problem ? ' is-error' : '') + '">' + (problem || '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>') + '</div></div>';
+        '<label class="wl-hint" for="wlClueInput" style="text-align:left;">' + (S.card ? 'คำใบ้ 1 คำหรือวลีสั้น ๆ (ห้ามคำบนการ์ด · ห้ามตัวเลข)' : 'เลือกการ์ดด้านบน 1 ใบ แล้วพิมพ์คำใบ้') + '</label>' +
+        '<div class="wl-input-row"><input id="wlClueInput" class="wl-input' + (problem ? ' is-bad' : '') + '" type="text" autocomplete="off" enterkeyhint="send" maxlength="80" placeholder="เช่น ไอติม" value="' + esc(draftClue) + '">' +
+        '<button type="button" id="wlClueBtn" class="wl-btn wl-btn--primary"' + (a.canSubmitClue && draftClue.trim() && !problem ? '' : ' disabled') + '>ส่งคำใบ้</button></div>' +
+        '<div class="wl-clue-foot"><div id="wlClueMsg" class="wl-hint' + (msg ? ' is-error' : '') + '">' + (msg ? esc(msg) : '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>') + '</div>' +
+        (a.canSkipTurn ? '<button type="button" id="wlPassBtn" class="wl-btn wl-btn--ghost wl-btn--sm">คิดไม่ออก ข้ามตา</button>' : '') + '</div></div>';
     } else if (S.phase === 'guess' && self.isGuesser) {
       const done = (S.players || []).filter(p => p.isGuesser && p.locked).length;
       const total = (S.players || []).filter(p => p.isGuesser).length;
+      const warn = centerWarnRound === S.round;
       html = a.canGuess
-        ? '<button type="button" id="wlLockBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">ล็อกคำตอบ</button><div class="wl-hint" style="margin-top:6px;">ล็อกแล้ว ' + done + '/' + total + ' คน</div>'
+        ? '<div class="wl-guess-row">' +
+            '<button type="button" class="wl-btn wl-nudge" data-step="-1" aria-label="ขยับเข็มไปทางซ้าย 1 ช่อง">‹</button>' +
+            '<button type="button" id="wlLockBtn" class="wl-btn wl-btn--primary wl-btn--big' + (warn ? ' wl-btn--warn' : '') + '">' + (warn ? 'ล็อกตรงกลางเลย' : 'ล็อกคำตอบ') + '</button>' +
+            '<button type="button" class="wl-btn wl-nudge" data-step="1" aria-label="ขยับเข็มไปทางขวา 1 ช่อง">›</button></div>' +
+          '<div class="wl-hint' + (warn ? ' is-error' : '') + '" style="margin-top:6px;">' + (warn ? 'ยังไม่ได้ขยับเข็ม — ลากเข็มก่อน หรือกดอีกครั้งเพื่อล็อกตรงกลาง' : 'ล็อกแล้ว ' + done + '/' + total + ' คน · ‹ › ขยับทีละนิด') + '</div>'
         : '<div class="wl-row-btns"><div class="wl-dock-wait" style="flex:2 1 0;">ล็อกแล้ว ✓ รอเพื่อน ' + done + '/' + total + '</div>' +
           (a.canUnlock ? '<button type="button" id="wlUnlockBtn" class="wl-btn wl-btn--ghost wl-btn--sm">แก้คำตอบ</button>' : '') + '</div>';
     } else if (S.phase === 'reveal') {
-      const ready = (S.readyIds || []).length;
-      const total = (S.players || []).filter(p => p.active && p.online).length;
-      if (a.canNext) html = '<button type="button" id="wlNextBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">รอบต่อไป</button>' + (ready ? '<div class="wl-hint" style="margin-top:6px;">พร้อมแล้ว ' + ready + '/' + total + ' คน</div>' : '');
-      else if (a.canReady) html = '<button type="button" id="wlReadyBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">รอบต่อไป</button><div class="wl-hint" style="margin-top:6px;">พร้อมครบหรือหัวห้องกด = ไปต่อ</div>';
-      else html = '<div class="wl-dock-wait">พร้อมแล้ว — รอเพื่อน ' + ready + '/' + total + '</div>';
+      // ต้องพร้อมครบ = ทุกคนที่ออนไลน์ยกเว้นหัวห้อง (หัวห้องกด "รอบต่อไป" = ไปเลย)
+      const needed = S.readyNeeded || [];
+      const ready = (S.readyIds || []).filter(id => needed.includes(id)).length;
+      const total = needed.length;
+      if (a.canNext) html = '<button type="button" id="wlNextBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">รอบต่อไป</button>' +
+        '<div class="wl-hint" style="margin-top:6px;">' + (total ? 'เพื่อนพร้อม ' + ready + '/' + total + ' คน · พร้อมครบ = ไปต่อเอง' : 'กดเมื่อทุกคนดูผลเสร็จ') + '</div>';
+      else if (a.canReady) html = '<button type="button" id="wlReadyBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">พร้อมไปรอบต่อไป</button><div class="wl-hint" style="margin-top:6px;">พร้อมครบ ' + total + ' คน หรือหัวห้องกด = ไปต่อทันที · พร้อมแล้ว ' + ready + '/' + total + '</div>';
+      else if (self.active) html = '<div class="wl-dock-wait">พร้อมแล้ว ✓ รอเพื่อน ' + ready + '/' + total + '</div>';
+      else html = '<div class="wl-dock-wait">รอบหน้าคุณได้เล่นด้วย — รอเพื่อนดูผล</div>';
     } else if (S.phase === 'clue') {
       html = '<div class="wl-dock-wait">รอคำใบ้จาก ' + esc(S.giverName || 'ผู้ใบ้') + '…</div>';
     } else if (S.phase === 'guess') {
@@ -1076,6 +1158,18 @@ $(function() {
     document.documentElement.style.setProperty('--wl-dock-h', h + 'px');
   }
   if (window.ResizeObserver) new ResizeObserver(syncDockHeight).observe(document.getElementById('wlDock'));
+  // iOS: คีย์บอร์ดไม่ย่อ layout viewport — dock ที่ fixed ล่างจอจะจมใต้คีย์บอร์ด ยกขึ้นตาม visualViewport
+  function syncKeyboard() {
+    const vv = window.visualViewport;
+    const dock = document.getElementById('wlDock');
+    if (!vv || !dock) return;
+    const overlap = dock.classList.contains('is-static') ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    dock.style.transform = overlap > 40 ? 'translateY(' + (-overlap) + 'px)' : '';
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncKeyboard);
+    window.visualViewport.addEventListener('scroll', syncKeyboard);
+  }
 
   // ---------- fx ----------
   function banner(text, tone) {
@@ -1139,7 +1233,7 @@ $(function() {
     function paint() {
       if (S.phase === 'finished') {
         const endsAt = Number(S.returnLobbyEndsAt) || 0;
-        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
+        const remain = endsAt ? Math.max(0, Math.ceil((endsAt - now()) / 1000)) : 0;
         $('#wlNowSec').text(remain > 0 ? remain : '--');
         $('#wlNowHint').text(remain > 0 ? 'วิ แล้วกลับห้องรอ' : '');
         $('#wlBackRemain').text(remain > 0 ? 'กลับห้องรอพร้อมกันใน ' + remain + ' วิ' : 'ทุกคนกลับห้องรอพร้อมกัน');
@@ -1151,7 +1245,7 @@ $(function() {
         $('#wlNowBar').css('transform', 'scaleX(0)');
         return;
       }
-      const ms = Math.max(0, S.phaseEndsAt - Date.now());
+      const ms = Math.max(0, S.phaseEndsAt - now());
       const remain = Math.ceil(ms / 1000);
       $('#wlNowSec').text(remain);
       $('#wlNow').toggleClass('is-urgent', remain <= 10 && (S.phase === 'clue' || S.phase === 'guess') && !!describeNow().mine);
@@ -1162,9 +1256,32 @@ $(function() {
     timerHandle = setInterval(paint, 250);
   }
 
+  // เข้าเฟสทาย/เปิดเป้าแล้วหน้าปัดอยู่นอกจอ (แนวนอน/จอเตี้ย) — เลื่อนให้เห็นเอง ครั้งเดียวต่อเฟส
+  let dialScrollKey = '';
+  function revealDialIfHidden() {
+    const key = S.round + ':' + S.phase;
+    if (key === dialScrollKey) return;
+    dialScrollKey = key;
+    if (!(S.phase === 'guess' || S.phase === 'reveal')) return;
+    const wrap = document.getElementById('wlDialWrap');
+    const dock = document.getElementById('wlDock');
+    const active = document.activeElement;
+    if (!wrap || (active && active.tagName === 'INPUT')) return;
+    // ให้เห็นคำใบ้ + หน้าปัดพร้อมกันถ้าพอ ไม่พอก็เอาหน้าปัด
+    const d = wrap.getBoundingClientRect();
+    const clue = document.getElementById('wlClue');
+    const c = clue && !clue.hidden ? clue.getBoundingClientRect() : null;
+    const limit = window.innerHeight - (dock && !dock.classList.contains('is-static') ? dock.getBoundingClientRect().height : 0);
+    const r = c && d.bottom - c.top <= limit - 8 ? { top: c.top, bottom: d.bottom, height: d.bottom - c.top } : d;
+    if (r.bottom <= limit + 1 && r.top >= 0) return;
+    const delta = r.height > limit ? r.top - 8 : r.bottom - limit + 8;
+    window.scrollBy({ top: delta, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+
   function render(state) {
     if (!state || !state.mode) return;
     S = state;
+    if (S.serverNow) clockOffset = S.serverNow - Date.now();
     const fx = consumeFx(firstRender);
     const revealAnim = fx.reveal && !firstRender && S.phase === 'reveal' && S.lastRound && !S.lastRound.skipped && lastRevealRound !== S.lastRound.round;
     if (S.phase === 'reveal' && S.lastRound) lastRevealRound = S.lastRound.round;
@@ -1182,6 +1299,7 @@ $(function() {
     renderFeed();
     tickTimer();
     pingNeed();
+    revealDialIfHidden();
     if (revealAnim) revealCelebrate();
     firstRender = false;
   }
@@ -1209,6 +1327,14 @@ $(function() {
   }
   function lockNow() {
     if (!canDrag()) return;
+    const self = S.self || {};
+    if (touchedRound !== S.round && self.pin == null && centerWarnRound !== S.round) {
+      centerWarnRound = S.round;
+      haptic(12);
+      renderDock();
+      return;
+    }
+    centerWarnRound = 0;
     clearTimeout(sendTimer);
     needleEl.classList.add('is-locked');
     if (!reduceMotion) { wobbleEl.classList.remove('is-clunk'); void wobbleEl.getBoundingClientRect(); wobbleEl.classList.add('is-clunk'); }
@@ -1223,18 +1349,43 @@ $(function() {
   $(document).on('click', '#wlRerollBtn', function() { send('wavelength_reroll'); });
   $(document).on('input', '#wlClueInput', function() {
     draftClue = this.value;
-    const problem = clueProblem(draftClue, S.card);
-    $(this).toggleClass('is-bad', !!(draftClue && problem));
-    $('#wlClueBtn').prop('disabled', !draftClue.trim() || !!problem);
-    $('#wlClueMsg').toggleClass('is-error', !!(draftClue && problem))
-      .html(draftClue && problem ? esc(problem) : '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>');
+    saveDraft();
+    const problem = draftClue ? clueProblem(draftClue, S.card) : '';
+    const msg = problem || (draftClue && !S.card ? 'เลือกการ์ดด้านบนก่อน แล้วค่อยส่ง' : '');
+    $(this).toggleClass('is-bad', !!problem);
+    $('#wlClueBtn').prop('disabled', !draftClue.trim() || !!problem || !(S.availableActions || {}).canSubmitClue);
+    $('#wlClueMsg').toggleClass('is-error', !!msg)
+      .html(msg ? esc(msg) : '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>');
   });
   function submitClue() {
     const text = (document.getElementById('wlClueInput') || {}).value || '';
+    if (!S.card) { toastError('เลือกการ์ดด้านบนก่อน'); return; }
     const problem = clueProblem(text, S.card);
     if (problem) { toastError(problem); return; }
-    send('wavelength_clue', { text: text }, function() { draftClue = ''; });
+    send('wavelength_clue', { text: text }, function() { draftClue = ''; saveDraft(); });
   }
+  $(document).on('click', '.wl-nudge', function() {
+    if (!canDrag()) return;
+    const step = Number(this.getAttribute('data-step')) || 0;
+    onPinChange(Math.max(0, Math.min(100, Math.round(myPin) + step)), false);
+    haptic(4);
+  });
+  function confirmSkip(title, text, confirmText) {
+    Swal.fire({ icon: 'question', title: title, text: text, showCancelButton: true, confirmButtonText: confirmText, cancelButtonText: 'ยกเลิก', background: '#13213a', color: '#fff', confirmButtonColor: '#0f766e' })
+      .then(r => { if (r.isConfirmed) send('wavelength_skip'); });
+  }
+  $(document).on('click', '#wlPassBtn', function() {
+    confirmSkip('ข้ามตาใบ้ของคุณ?', 'รอบนี้จะไม่มีใครได้แต้ม แล้วไปผู้ใบ้คนถัดไป', 'ข้ามตา');
+  });
+  $('#wlSkipBtn').on('click', function() {
+    if (S.phase === 'guess') {
+      const done = (S.players || []).filter(p => p.isGuesser && p.locked).length;
+      const total = (S.players || []).filter(p => p.isGuesser).length;
+      confirmSkip('เปิดเป้าเลยไหม?', 'ล็อกแล้ว ' + done + '/' + total + ' คน · คนที่ยังไม่ล็อก จะล็อกตรงที่เข็มอยู่ตอนนี้', 'เปิดเป้า');
+    } else {
+      confirmSkip('ข้ามตา ' + (S.giverName || 'ผู้ใบ้') + '?', 'รอบนี้จะไม่มีใครได้แต้ม แล้วไปผู้ใบ้คนถัดไป', 'ข้ามตา');
+    }
+  });
   $(document).on('keydown', '#wlClueInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); submitClue(); } });
   $(document).on('click', '#wlClueBtn', submitClue);
   $(document).on('click', '#wlLockBtn', lockNow);
@@ -1264,9 +1415,9 @@ $(function() {
   function howToHtml() {
     return '<div class="wl-guide">' +
       '<h4>1. ผู้ใบ้เลือกการ์ด</h4><p>การ์ดเป็นคำตรงข้าม เช่น <b>ร้อน ↔ เย็น</b> เลือก 1 จาก 2 ใบ (สุ่มใหม่ได้ 1 ครั้ง) แล้วเห็นเป้าลับบนหน้าปัดคนเดียว</p>' +
-      '<h4>2. ใบ้ 1 คำ</h4><p>พิมพ์คำที่อยู่ตรงเป้า เช่น เป้าค่อนไปทางเย็น → “ไอติม” · ห้ามใช้คำบนการ์ด ห้ามตัวเลข · 60 วิ ไม่ทัน = ข้ามรอบ</p>' +
-      '<h4>3. หมุนเข็มทาย</h4><p>ลากเข็มของคุณไปตรงที่คิดว่าใช่ แล้วกด <b>ล็อกคำตอบ</b> (45 วิ) · เพื่อนเห็นว่าคุณล็อกแล้ว แต่ไม่เห็นว่าล็อกตรงไหน</p>' +
-      '<h4>4. เปิดเป้า</h4><p>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยแต้มของเพื่อน — ใบ้ดี ได้กันทั้งวง</p>' +
+      '<h4>2. ใบ้ 1 คำ</h4><p>พิมพ์คำที่อยู่ตรงเป้า เช่น เป้าค่อนไปทางเย็น → “ไอติม” · ห้ามใช้คำบนการ์ด ห้ามตัวเลข · 60 วิ ไม่ทัน = ข้ามรอบ · คิดไม่ออกกด <b>ข้ามตา</b> ได้</p>' +
+      '<h4>3. หมุนเข็มทาย</h4><p>ลากเข็มของคุณไปตรงที่คิดว่าใช่ แล้วกด <b>ล็อกคำตอบ</b> (45 วิ) · ปุ่ม ‹ › ขยับทีละนิด · เพื่อนเห็นว่าคุณล็อกแล้ว แต่ไม่เห็นว่าล็อกตรงไหน · ล็อกครบทุกคน = เปิดเป้าทันที</p>' +
+      '<h4>4. เปิดเป้า</h4><p>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยแต้มของเพื่อน — ใบ้ดี ได้กันทั้งวง · ดูผลเสร็จกด <b>พร้อม</b> ครบทุกคน = ไปรอบต่อไปเลย</p>' +
       '<h4>ชนะ</h4><p>ทุกคนได้ใบ้ครบรอบโต๊ะ แล้วแต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</p>' +
       '</div>';
   }
@@ -1315,7 +1466,7 @@ $(function() {
   });
   socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('returnToLobby', function(data) {
-    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    S.returnLobbyEndsAt = Number(data && data.endsAt) || (now() + (Number(data && data.countdown) || 10) * 1000);
     tickTimer();
   });
   socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });

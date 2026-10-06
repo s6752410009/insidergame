@@ -425,6 +425,9 @@ function submitClue(room, playerId, text, context = null, env = null) {
     const check = validateClue(text, state.card);
     if (!check.ok) throw new Error(check.error);
     state.clue = check.clue;
+    // คนที่เข้ามาระหว่างผู้ใบ้คิดคำ ยังไม่มีใครทาย — ให้ทายรอบนี้ได้เลย ไม่ต้องรอรอบหน้า
+    activatePending(room);
+    syncLedger(room);
     state.guesserIds = eligiblePlayers(room)
         .filter(p => p.playerId !== state.giverId)
         .map(p => p.playerId);
@@ -609,8 +612,11 @@ function skipRound(room, reason, env = null) {
     return state;
 }
 
+/** คนที่ต้องกดพร้อม — ไม่นับหัวห้อง (หัวห้องกด "รอบต่อไป" = ไปเลย) เว้นแต่หัวห้องอยู่คนเดียว */
 function readyTargets(room) {
-    return eligiblePlayers(room).filter(p => isOnline(room, p.playerId));
+    const online = eligiblePlayers(room).filter(p => isOnline(room, p.playerId));
+    const others = online.filter(p => p.playerId !== room.admin);
+    return others.length ? others : online;
 }
 
 function maybeAdvanceReady(room, env) {
@@ -633,6 +639,29 @@ function nextRound(room, playerId, context = null, env = null) {
     if (!state.readyIds.includes(playerId)) state.readyIds = [...state.readyIds, playerId];
     bumpStep(room);
     return maybeAdvanceReady(room, env);
+}
+
+/**
+ * ข้ามจังหวะที่รออยู่ (ไม่ต้องรอนาฬิกา):
+ *   ผู้ใบ้ช่วงคิดคำ = ขอข้ามตาตัวเอง (ผลเหมือนคิดไม่ทัน)
+ *   หัวห้อง ช่วงคิดคำ = ข้ามตาผู้ใบ้ · ช่วงทาย = เปิดเป้าเลย (คนที่ยังไม่ล็อก ล็อกตรงที่เข็มอยู่ เหมือนหมดเวลา)
+ */
+function skipPhase(room, playerId, context = null, env = null) {
+    const state = assertPlaying(room);
+    assertRound(state, context);
+    const isHost = room.admin === playerId;
+    const actor = getPlayer(room, playerId);
+    if (state.phase === 'clue') {
+        if (state.giverId === playerId) return skipRound(room, `${actor ? actor.name : 'ผู้ใบ้'} ขอข้ามตา`, env);
+        if (isHost) return skipRound(room, 'หัวห้องข้ามตานี้', env);
+        throw new Error('มีแค่ผู้ใบ้หรือหัวห้องที่ข้ามตาได้');
+    }
+    if (state.phase === 'guess') {
+        if (!isHost) throw new Error('มีแค่หัวห้องที่เปิดเป้าก่อนเวลาได้');
+        pushHistory(room, '⏩', 'หัวห้องเปิดเป้าก่อนหมดเวลา', null, env);
+        return revealRound(room, env);
+    }
+    throw new Error('ตอนนี้ไม่มีอะไรให้ข้าม');
 }
 
 // ---------- จบเกม ----------
@@ -775,7 +804,9 @@ function getAvailableActions(room, viewerId) {
         canNext: playing && state.phase === 'reveal' && room.admin === viewerId,
         canReady: playing && state.phase === 'reveal' && room.admin !== viewerId && !!self && self.active
             && !(state.readyIds || []).includes(viewerId),
-        canEnd: playing && room.admin === viewerId
+        canEnd: playing && room.admin === viewerId,
+        canSkipTurn: isGiver && state.phase === 'clue',
+        canHostSkip: playing && room.admin === viewerId && (state.phase === 'clue' || state.phase === 'guess')
     };
 }
 
@@ -846,6 +877,7 @@ function buildClientState(room, viewerId) {
         target: giverSees ? state.target : (open && state.lastRound ? state.lastRound.target : null),
         lastRound: open ? state.lastRound : null,
         readyIds: state.phase === 'reveal' ? (state.readyIds || []) : [],
+        readyNeeded: state.phase === 'reveal' && state.status === 'playing' ? readyTargets(room).map(p => p.playerId) : [],
         self: viewer ? {
             playerId: viewer.playerId,
             active: !!viewer.active,
@@ -897,6 +929,7 @@ module.exports = {
     revealRound,
     skipRound,
     nextRound,
+    skipPhase,
     endGame,
     finishGame,
     computeStandings,

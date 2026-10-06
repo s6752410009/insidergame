@@ -465,6 +465,50 @@ function readStats() {
         assert(sumScores >= 0, 'แต้มรวมถูกต้อง');
         console.log('13. 3 คน × 2 รอบโต๊ะ = 6 รอบ จบเกม ✓');
 
+        // ================= E: ข้ามจังหวะ · พร้อมครบไม่ต้องรอหัวห้อง · มาสายช่วงคิดคำ = ได้ทาย =================
+        {
+            const E = await setupRoom(base, 3, { maxPlayers: 6 });
+            everyone.push(...E.players);
+            const [eh, e1, e2] = E.players;
+            assert((await ack(eh.socket, 'startGameFromLobby', { roomId: E.roomId }))?.success, 'start E');
+            await waitFor(() => E.players.every(p => last(p)?.phase === 'clue'), 8000, 'E clue');
+            assert(typeof last(e1).serverNow === 'number' && Math.abs(last(e1).serverNow - Date.now()) < 5000, 'payload มี serverNow ให้จอเทียบนาฬิกา');
+            assert(last(eh).availableActions.canSkipTurn && !last(e1).availableActions.canSkipTurn, 'ปุ่มข้ามตาเห็นแค่ผู้ใบ้');
+            r = await ack(e1.socket, 'wavelength_skip', ctx(last(e1)));
+            assert(!r.success, 'คนทั่วไปข้ามตาผู้ใบ้ไม่ได้');
+            r = await ack(eh.socket, 'wavelength_skip', ctx(last(eh)));
+            assert(r.success, 'ผู้ใบ้ขอข้ามตา: ' + JSON.stringify(r));
+            await waitFor(() => E.players.every(p => last(p).phase === 'reveal' && last(p).lastRound && last(p).lastRound.skipped), 3000, 'E skipped');
+            assert(last(e1).readyNeeded.length === 2 && !last(e1).readyNeeded.includes(eh.id), 'ต้องพร้อม 2 คน (ไม่นับหัวห้อง)');
+            await ack(e1.socket, 'wavelength_next', ctx(last(e1)));
+            await ack(e2.socket, 'wavelength_next', ctx(last(e2)));
+            await waitFor(() => E.players.every(p => last(p).phase === 'clue' && last(p).round === 2), 3000, 'E all-ready advance');
+            const eg = E.players.find(p => p.id === last(eh).giverId);
+            const eLate = await makePlayer(base, 'ELate');
+            everyone.push(eLate);
+            assert((await ack(eLate.socket, 'joinRoom', { roomId: E.roomId, playerId: eLate.id }))?.success, 'E late join');
+            eLate.roomId = E.roomId;
+            eLate.socket.emit('setRoom', { roomId: E.roomId, playerId: eLate.id });
+            await waitFor(() => last(eLate)?.phase === 'clue', 3000, 'E late state');
+            assert(last(eLate).self.pending, 'มาสายช่วงคิดคำ: ยังรอ');
+            await ack(eg.socket, 'wavelength_pickCard', { index: 0, ...ctx(last(eg)) });
+            await waitFor(() => last(eg).card, 2000, 'E card');
+            r = await ack(eg.socket, 'wavelength_clue', { text: 'ปลาทอง', ...ctx(last(eg)) });
+            assert(r.success, 'E clue: ' + JSON.stringify(r));
+            await waitFor(() => last(eLate).phase === 'guess', 3000, 'E guess');
+            assert(last(eLate).self.isGuesser && last(eLate).availableActions.canGuess, 'มาสายช่วงคิดคำ = ได้ทายรอบนี้');
+            const guessers = [eh, e1, e2, eLate].filter(p => p !== eg && p !== eh);
+            for (const p of guessers.slice(0, 1)) await ack(p.socket, 'wavelength_lock', { value: 20, ...ctx(last(p)) });
+            r = await ack(e1 === eg ? e2.socket : e1.socket, 'wavelength_skip', ctx(last(e1)));
+            assert(!r.success, 'คนทายเปิดเป้าก่อนเวลาไม่ได้');
+            r = await ack(eh.socket, 'wavelength_skip', ctx(last(eh)));
+            assert(r.success, 'หัวห้องเปิดเป้าเลย: ' + JSON.stringify(r));
+            await waitFor(() => last(eLate).phase === 'reveal', 3000, 'E reveal');
+            const lrE = last(eLate).lastRound;
+            assert(!lrE.skipped && lrE.results.some(x => x.playerId === eLate.id), 'เปิดเป้าก่อนเวลา: มีผลของคนมาสาย');
+            console.log('15. ผู้ใบ้ขอข้ามตา · พร้อมครบไม่ต้องรอหัวห้อง · มาสายช่วงคิดคำได้ทาย · หัวห้องเปิดเป้าเลย ✓');
+        }
+
         checkLeaks(everyone);
         assert(leakChecks > 100, `ต้องตรวจความลับมากพอ (${leakChecks})`);
         assert(!/\[wavelength\].*failed/.test(server.logs()), 'server log มี error:\n' + server.logs().split('\n').filter(l => /wavelength/.test(l)).slice(-5).join('\n'));

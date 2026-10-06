@@ -8659,6 +8659,11 @@ io.sockets.on('connection', function(socket) {
             wavelengthRuntime.engine.nextRound(room, playerId, wavelengthContext(data)));
     });
 
+    safeOn(socket, 'wavelength_skip', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.skipPhase(room, playerId, wavelengthContext(data)));
+    });
+
     safeOn(socket, 'wavelength_end', function(data, callback) {
         handleWavelengthCommand(socket, callback, (room, playerId) =>
             wavelengthRuntime.engine.endGame(room, playerId));
