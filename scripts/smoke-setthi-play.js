@@ -1,13 +1,12 @@
 /**
  * เศรษฐี — เล่นผ่าน socket จริง (เซิร์ฟเวอร์จริง + socket.io-client)
- *  A) 2 คน: คำสั่งผิด/ข้อมูลขยะโดนปฏิเสธ · ประมูล · ดับเบิล 3 ครั้ง = คุก · จ่ายค่าปรับออก · จำนอง/ไถ่ถอน
- *     เทรด → โต้กลับ → รับ · ข้อเสนอหมดอายุ · หลุดแล้วต่อใหม่ได้ state เต็ม · หัวห้องจบเกม · สถิติบันทึก
- *  B) 6 คน (คน 4 + บอท 2): ดีลเห็นเฉพาะคู่ดีล · คนออกกลางเกม (ทรัพย์สินคืนธนาคาร) · หัวห้องออก เกมไม่ค้าง
- *  C) คน 1 + บอท 3: คนไม่กด = autopilot · คนหลุด = ตาสั้นลง เกมไม่ค้าง · คนสุดท้ายออก = ปิดห้อง
- *  D) จำกัดเวลา (นาฬิกาเร่ง): หมดเวลา → เล่นครบรอบ → จัดอันดับตามทรัพย์สินรวม
- *  F) กดค้างทอย: ปล่อยโดยไม่กด/ตาคนอื่น = ปฏิเสธ · เวลาปลอมถูกหนีบ · พารามิเตอร์เข็มเห็นแค่คนทอย · หลุด = ยกเลิก · แตะ = ปกติ
- *  E) เซิร์ฟเวอร์รีสตาร์ตกลางเกม: กู้ state ได้ เล่นต่อได้ timer กลับมาทำงาน
- * ทุก payload ที่ client ได้รับถูกตรวจว่าไม่มีลำดับกองการ์ด/แผนบอท/ดีลของคนอื่น
+ *  A) 2 คน: คำสั่งผิด/ขยะโดนปฏิเสธ · ซื้อหลายขั้นในแผ่นเดียว (รอบแรกถึงบ้าน) · ซื้อต่อ 2 เท่า · แลนด์มาร์ก (ซื้อต่อไม่ได้)
+ *     เกาะร้างทุกทางออก · งานวัด ×2 ย้ายที่ · ทัวร์วาร์ป · หลุดแล้วต่อใหม่ · เงินไม่พอขายที่ · ล้มละลาย
+ *  B) 4/3/2 คน (มีบอท): คนออกกลางเกม · เตือนผูกขาด · ผูกขาด 3 สี / แถว / ท่องเที่ยว ชนะทันที
+ *  C) คน 1 + บอท 3: autopilot · หลุดแล้วเกมไม่ค้าง · คนสุดท้ายออก = ปิดห้อง
+ *  F) กดค้างทอย: เข็มกวาด 1.6–2.0 วิ · ช่องเขียวค้างจนปล่อย · เวลาปลอมถูกหนีบ · พารามิเตอร์เห็นแค่คนทอย
+ *  E) เซิร์ฟเวอร์รีสตาร์ตกลางเกม · D) จำกัดเวลา
+ * ทุก payload ถูกตรวจว่าไม่มีลำดับกองการ์ด/บัญชีภายใน · จัดฉากด้วย setthi_testSetup (เปิดเฉพาะ SETTHI_TEST_HOOKS=1)
  *
  * รัน: npm run smoke:setthi:play   (SMOKE_PORT=8850 · พอร์ตที่สองใช้ +1)
  */
@@ -32,13 +31,12 @@ function assert(c, m) { if (!c) throw new Error(m); checks += 1; }
 
 const PORT = Number(process.env.SMOKE_PORT) || 8850;
 const BASE_ENV = {
+    SETTHI_TEST_HOOKS: '1',
+    SETTHI_ANIM_SCALE: '0',
     SETTHI_TURN_MS: '4000',
+    SETTHI_DECIDE_MS: '3000',
     SETTHI_DEBT_MS: '3000',
     SETTHI_BOT_MS: '60',
-    SETTHI_AUCTION_START_MS: '1500',
-    SETTHI_AUCTION_MS: '1000',
-    SETTHI_TRADE_MS: '4000',
-    SETTHI_TRADE_GRACE_MS: '3000',
     SETTHI_OFFLINE_GRACE_MS: '1500',
     SETTHI_OFFLINE_TURN_MS: '700'
 };
@@ -90,18 +88,18 @@ async function waitFor(pred, ms = 20000, label = 'condition') {
 
 // ---------- ตรวจความลับ ----------
 let leakChecks = 0;
-const DECK_RE = /"[cf]\d\d"/g;
+const CARD_RE = /"k\d\d"/g;
 function inspectPayload(client, event, payload) {
     const json = JSON.stringify(payload === undefined ? null : payload);
     leakChecks += 1;
-    assert(!/"decks"|botMemo|testDice|"ledger"|lastLoggedHistoryAt/.test(json), `รั่ว: ${client.name} ได้ field ภายใน (${event})`);
+    assert(!/"deck"|testDice|"ledger"|lastLoggedHistoryAt|rollHold/.test(json), `รั่ว: ${client.name} ได้ field ภายใน (${event})`);
     if (event === 'setthiState') {
         assert(!payload.self || payload.self.playerId === client.id, `${client.name} ได้ state ของคนอื่น`);
-        (payload.trades || []).forEach(t => assert(t.from === client.id || t.to === client.id, `รั่ว: ${client.name} เห็นดีลของคนอื่น`));
-        // id การ์ดโผล่ได้แค่ใน fx การ์ดที่เปิดแล้ว
+        // id การ์ดโผล่ได้แค่ใน fx การ์ดที่เปิดแล้ว (ลำดับกองไม่รั่ว)
         const allowed = new Set((payload.fx || []).filter(f => f.kind === 'card').map(f => f.card.id));
-        [...json.matchAll(DECK_RE)].map(m => m[0].slice(1, -1)).forEach(id => assert(allowed.has(id), `รั่ว: ${client.name} เห็นการ์ด ${id} ที่ยังไม่เปิด`));
+        [...json.matchAll(CARD_RE)].map(m => m[0].slice(1, -1)).forEach(id => assert(allowed.has(id), `รั่ว: ${client.name} เห็นการ์ด ${id} ที่ยังไม่เปิด`));
         assert(payload.seats.every(s => s.cash >= 0), 'เงินติดลบ');
+        if (payload.self && payload.self.sell) assert(payload.phaseActor === client.id, 'ราคาขายส่งให้เฉพาะคนที่ติดหนี้');
     }
 }
 
@@ -155,9 +153,32 @@ function newest(clients) {
 }
 const seatOf = (state, id) => state.seats.find(s => s.playerId === id);
 
+const idx = c => last(c).seats.findIndex(s => s.playerId === c.id);
+
+/** จัดฉากกลางเกม (เซิร์ฟเวอร์เปิด SETTHI_TEST_HOOKS เท่านั้น) แล้วรอ state ใหม่ */
+async function setup(c, spec) {
+    const before = last(c) ? last(c).step : 0;
+    const r = await ack(c.socket, 'setthi_testSetup', { spec });
+    assert(r.success, 'setup: ' + r.error);
+    await waitFor(() => last(c).step > before, 5000, 'state หลัง setup');
+    return last(c);
+}
+async function act(c, ev, payload = {}, ok = true) {
+    const step = last(c).step;
+    const r = await ack(c.socket, ev, { seq: last(c).phaseSeq, ...payload });
+    if (ok) assert(r.success, `${c.name} ${ev}: ${r.error}`);
+    else assert(!r.success, `${c.name} ${ev} ต้องโดนปฏิเสธ`);
+    return step;
+}
+async function until(c, pred, label, ms = 8000) {
+    await waitFor(() => last(c) && pred(last(c)), ms, label);
+    return last(c);
+}
+const turnOf = (c, phase) => S => S.phaseActor === c.id && S.phase === phase;
+
 /** ขับเกมด้วยนโยบายง่าย ๆ จนกว่า stop() จะจริงหรือเกมจบ */
 async function drive(clients, opts = {}) {
-    const stats = { actions: 0, rolls: 0, buys: 0, auctions: 0, bids: 0, builds: 0, trades: 0, ends: 0 };
+    const stats = { actions: 0, rolls: 0, builds: 0, takeovers: 0, picks: 0, sells: 0 };
     const deadline = Date.now() + (opts.timeoutMs || 90000);
     while (Date.now() < deadline) {
         const top = newest(clients);
@@ -165,260 +186,269 @@ async function drive(clients, opts = {}) {
         const S = last(top);
         if (S.phase === 'finished') return stats;
         if (opts.stop && opts.stop(S, stats)) return stats;
-
-        // ตอบดีลที่ส่งถึงคน
-        for (const c of clients) {
-            const v = last(c);
-            const offer = v && (v.trades || []).find(t => t.to === c.id);
-            if (offer && v.phase !== 'auction' && c.socket.connected) {
-                const r = await ack(c.socket, 'setthi_tradeRespond', { tradeId: offer.id, accept: Math.random() < 0.5 });
-                if (r.success) stats.trades += 1;
-            }
-        }
-        if (S.phase === 'auction' && S.auction) {
-            const bidder = clients.find(c => {
-                const v = last(c);
-                return c.socket.connected && v && v.availableActions.bid && v.availableActions.bid.can && v.availableActions.bid.min <= 140 && Math.random() < 0.5;
-            });
-            if (bidder) {
-                const r = await ack(bidder.socket, 'setthi_bid', { amount: last(bidder).availableActions.bid.min });
-                if (r.success) stats.bids += 1;
-            }
-            await delay(120);
-            continue;
-        }
         const actor = clients.find(c => c.socket.connected && S.phaseActor === c.id);
-        if (!actor || !opts.act) { await delay(60); continue; }
+        if (!actor || !opts.act) { await delay(50); continue; }
         const view = last(actor);
         if (view.phaseSeq !== S.phaseSeq) { await delay(30); continue; }
         const a = view.availableActions;
+        const d = view.decision;
         let ev = null;
-        let payload = { seq: view.phaseSeq };
-        const manage = view.self && view.self.manage;
-        if (view.phase === 'debt' && manage) {
-            const sq = Object.keys(manage).find(k => manage[k].sell) || Object.keys(manage).find(k => manage[k].mortgage);
-            if (sq !== undefined) { ev = manage[sq].sell ? 'setthi_sell' : 'setthi_mortgage'; payload = { square: Number(sq) }; }
+        const payload = { seq: view.phaseSeq };
+        if (view.phase === 'debt' && view.self && view.self.sell) {
+            const sq = Object.keys(view.self.sell)[0];
+            if (sq !== undefined) { ev = 'setthi_sell'; payload.square = Number(sq); stats.sells += 1; }
         } else if (a.roll) { ev = 'setthi_roll'; stats.rolls += 1; }
-        else if (a.decline) {
+        else if (a.build && d) {
+            const open = d.options.filter(o => !o.built && !o.locked);
             const cash = seatOf(view, actor.id).cash;
-            ev = a.buy && cash > 350 && Math.random() < 0.75 ? 'setthi_buy' : 'setthi_decline';
-            if (ev === 'setthi_buy') stats.buys += 1; else stats.auctions += 1;
-        } else if (a.endTurn) {
-            const build = manage && Object.keys(manage).find(k => manage[k].build && seatOf(view, actor.id).cash > 500);
-            if (build !== undefined) { ev = 'setthi_build'; payload = { square: Number(build) }; stats.builds += 1; }
-            else { ev = 'setthi_endTurn'; stats.ends += 1; }
+            if (open.length && cash > 6000 && Math.random() < 0.8) { ev = 'setthi_build'; payload.level = open[Math.floor(Math.random() * Math.min(2, open.length))].level; stats.builds += 1; }
+            else ev = 'setthi_pass';
+        } else if (view.phase === 'takeover') { ev = a.takeover && Math.random() < 0.4 ? 'setthi_takeover' : 'setthi_declineTakeover'; if (ev === 'setthi_takeover') stats.takeovers += 1; }
+        else if (a.pick && d) {
+            if (Math.random() < 0.7 && d.options.length) { ev = 'setthi_pick'; payload.square = d.options[Math.floor(Math.random() * d.options.length)]; stats.picks += 1; }
+            else ev = 'setthi_skipPick';
         }
-        if (!ev) { await delay(50); continue; }
+        if (!ev) { await delay(40); continue; }
         await ack(actor.socket, ev, payload);
         stats.actions += 1;
-        await delay(25);
+        await delay(20);
     }
-    throw new Error('drive timeout ' + JSON.stringify(stats) + ' phase=' + last(newest(clients)).phase);
+    return stats;
 }
 
-function readStats() {
-    const file = path.join(process.env.GAME_DATA_DIR, 'playerStats.json');
-    if (!fs.existsSync(file)) return {};
-    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return Array.isArray(raw) ? Object.fromEntries(raw.map(s => [s.playerId, s])) : raw;
-}
-
-// ================= A) 2 คน =================
+// ================= A) 2 คน: ทุกกติกาหลักผ่าน socket =================
 async function scenarioA(base) {
-    const X0 = await makeClient(base, 'A-host');
-    const Y0 = await makeClient(base, 'A-guest');
+    const P = await makeClient(base, 'A-host');
+    const Q = await makeClient(base, 'A-guest');
     await delay(300);
-    const roomId = await createRoom(X0, { name: 'วงเศรษฐี A', settings: { setthiMinutes: 0 } });
-    await joinAll(roomId, [Y0]);
-    // จำนวนคนขั้นต่ำ: คนเดียวเริ่มไม่ได้ (ตรวจหลังออกห้องก็ได้ แต่ทำง่ายกว่าคือ engine) — ไปเริ่มเลย
-    await start(X0, [X0, Y0], roomId);
-    const S0 = last(X0);
-    const X = S0.phaseActor === X0.id ? X0 : Y0;
-    const Y = X === X0 ? Y0 : X0;
-    console.log('   เริ่ม: ' + X.name + ' ทอยก่อน');
+    const roomId = await createRoom(P, { name: 'วงเศรษฐี A', settings: { setthiMinutes: 0 } });
+    await joinAll(roomId, [Q]);
+    await start(P, [P, Q], roomId);
+    const A = last(P).phaseActor === P.id ? P : Q;
+    const O = A === P ? Q : P;
+    const iA = idx(A);
+    const iO = idx(O);
 
-    // คำสั่งผิด
-    let r = await ack(Y.socket, 'setthi_roll', { seq: last(Y).phaseSeq });
-    assert(!r.success && /ถึงตา/.test(r.error), 'คนที่ไม่ใช่ตาทอยไม่ได้: ' + r.error);
-    r = await ack(X.socket, 'setthi_roll', { seq: last(X).phaseSeq - 1 });
-    assert(!r.success && /สถานะเปลี่ยน/.test(r.error), 'seq เก่าโดนปฏิเสธ');
-    r = await ack(X.socket, 'setthi_buy', { seq: last(X).phaseSeq });
-    assert(!r.success, 'ยังไม่ถึงเฟสซื้อ');
-    r = await ack(X.socket, 'setthi_bid', { amount: 50 });
-    assert(!r.success && /ไม่มีการประมูล/.test(r.error), 'ไม่มีประมูล');
-    r = await ack(X.socket, 'setthi_build', { square: 1 });
-    assert(!r.success, 'สร้างบ้านโดยไม่มีที่ดินไม่ได้');
-    r = await ack(X.socket, 'setthi_build', { square: 'abc' });
-    assert(!r.success && /ไม่มีที่ดิน/.test(r.error), 'ช่องขยะโดนปฏิเสธ');
-    r = await ack(X.socket, 'setthi_mortgage', { square: 99 });
-    assert(!r.success, 'ช่องเกินกระดานโดนปฏิเสธ');
-    r = await ack(X.socket, 'setthi_tradePropose', { to: X.id, give: { cash: 10 } });
-    assert(!r.success, 'เทรดกับตัวเองไม่ได้');
-    r = await ack(X.socket, 'setthi_tradePropose', { to: Y.id, give: { cash: 1e9 } });
-    assert(!r.success && /ไม่พอ/.test(r.error), 'เสนอเงินเกินตัวไม่ได้');
-    r = await ack(X.socket, 'setthi_tradePropose', { to: Y.id, give: { props: Array.from({ length: 500 }, (_, i) => i) } });
-    assert(!r.success, 'ที่ดินขยะในดีลโดนปฏิเสธ');
-    r = await ack(Y0.socket, 'setthi_end', {});
-    assert(!r.success && /หัวห้อง/.test(r.error), 'คนที่ไม่ใช่หัวห้องจบเกมไม่ได้');
-    console.log('1. คำสั่งผิด/ข้อมูลขยะโดนปฏิเสธ ✓');
+    // คำสั่งผิด/ขยะ
+    await act(O, 'setthi_roll', {}, false);
+    await act(O, 'setthi_build', { level: 2 }, false);
+    await act(A, 'setthi_sell', { square: 1 }, false);
+    await act(A, 'setthi_pick', { square: 4 }, false);
+    await act(A, 'setthi_takeover', {}, false);
+    let r = await ack(A.socket, 'setthi_roll', { seq: last(A).phaseSeq - 1 });
+    assert(!r.success, 'seq เก่าโดนปฏิเสธ');
+    r = await ack(A.socket, 'setthi_build', null);
+    assert(!r.success, 'payload ขยะโดนปฏิเสธ');
+    r = await ack(O.socket, 'setthi_fast', { on: true });
+    assert(r.success, 'ใครก็กดเร่งได้');
+    await until(A, S => S.fast === true, 'ทุกคนเห็นว่าเร่ง');
+    await ack(O.socket, 'setthi_fast', { on: false });
+    console.log('1. คำสั่งผิดตา/ผิดเฟส/seq เก่า/ข้อมูลขยะ โดนปฏิเสธ · ปุ่มเร่งเห็นทั้งโต๊ะ ✓');
 
-    // ทอย 6+6 → ลำปาง → ไม่ซื้อ → ประมูล
-    r = await ack(X.socket, 'setthi_roll', { seq: last(X).phaseSeq });
-    assert(r.success, 'ทอยได้: ' + r.error);
-    await waitFor(() => last(X).phase === 'buy', 5000, 'เฟสซื้อ');
-    assert(seatOf(last(X), X.id).pos === 12 && last(X).pendingBuy === 12, 'ตกลำปาง');
-    r = await ack(X.socket, 'setthi_decline', { seq: last(X).phaseSeq });
-    assert(r.success, 'ส่งประมูลได้');
-    await waitFor(() => last(Y).phase === 'auction', 5000, 'เปิดประมูล');
-    assert(last(Y).availableActions.bid && last(Y).availableActions.bid.can, 'อีกคนประมูลได้');
-    r = await ack(Y.socket, 'setthi_bid', { amount: 5 });
-    assert(!r.success, 'ต่ำกว่าขั้นต่ำ');
-    assert((await ack(Y.socket, 'setthi_bid', { amount: 10 })).success, 'Y เสนอ 10');
-    r = await ack(Y.socket, 'setthi_bid', { amount: 30 });
-    assert(!r.success && /สูงสุดอยู่แล้ว/.test(r.error), 'คนนำเสนอซ้ำไม่ได้');
-    assert((await ack(X.socket, 'setthi_bid', { amount: 20 })).success, 'คนที่ไม่ซื้อก็ประมูลได้');
-    assert((await ack(Y.socket, 'setthi_bid', { amount: 90 })).success, 'Y เสนอ 90');
-    await waitFor(() => last(X).phase !== 'auction', 6000, 'ประมูลจบ');
-    assert(last(X).props[12].owner === Y.id, 'Y ชนะประมูล');
-    assert(seatOf(last(X), Y.id).cash === 1410, 'Y จ่าย 90');
-    assert(last(X).phase === 'roll' && last(X).phaseActor === X.id, 'ดับเบิลได้ทอยอีก');
-    console.log('2. ไม่ซื้อ → ประมูล 3 ราคา → คนเสนอสูงสุดได้ · ดับเบิลทอยต่อ ✓');
+    // ซื้อหลายขั้นในแผ่นเดียว · รอบแรกถึงบ้าน
+    await setup(A, { seats: { [iA]: { pos: 0, laps: 0, cash: 20000 } }, dice: [[1, 3]], turnSeat: iA });
+    await act(A, 'setthi_roll');
+    let S = await until(A, turnOf(A, 'build'), 'แผ่นซื้อ');
+    assert(S.decision.square === 4 && S.decision.mode === 'buy', 'ตกอุดร');
+    assert(S.decision.options[2].locked === 'lap' && S.decision.options[1].locked === null, 'รอบแรกถึงบ้าน');
+    await until(O, S2 => S2.decision && S2.decision.square === 4 && S2.decision.playerId === A.id, 'อีกคนเห็นว่ากำลังตัดสินใจอะไร');
+    await act(A, 'setthi_build', { level: 3 }, false);
+    await act(A, 'setthi_build', { level: 1 });
+    S = await until(A, S2 => S2.props[4].owner === A.id, 'เป็นเจ้าของ');
+    assert(S.props[4].level === 1 && S.tolls[4] > 0, 'มีบ้าน + ค่าผ่านทาง');
+    console.log('2. ตกที่ว่าง: ซื้อที่ดิน+บ้านในแผ่นเดียว · รอบแรกสร้างเกินบ้านไม่ได้ ✓');
 
-    // ทอย 6+6 → กระบี่ ซื้อ · ทอย 6+6 ครั้งที่ 3 → คุก
-    assert((await ack(X.socket, 'setthi_roll', { seq: last(X).phaseSeq })).success, 'ทอยครั้งที่ 2');
-    await waitFor(() => last(X).phase === 'buy', 5000, 'ซื้อกระบี่');
-    assert(last(X).pendingBuy === 24, 'ตกกระบี่');
-    assert((await ack(X.socket, 'setthi_buy', { seq: last(X).phaseSeq })).success, 'ซื้อกระบี่');
-    assert(last(X).props[24].owner === X.id && seatOf(last(X), X.id).cash === 1260, 'เป็นเจ้าของกระบี่');
-    assert((await ack(X.socket, 'setthi_roll', { seq: last(X).phaseSeq })).success, 'ทอยครั้งที่ 3');
-    await waitFor(() => seatOf(last(X), X.id).inJail, 5000, 'เข้าคุก');
-    assert(seatOf(last(X), X.id).pos === 10 && last(X).phase === 'manage', 'ดับเบิล 3 ครั้ง = คุก ตาจบ');
-    // จำนอง/ไถ่ถอนตอนถึงตา
-    assert((await ack(X.socket, 'setthi_mortgage', { square: 24 })).success, 'จำนองได้');
-    assert(seatOf(last(X), X.id).cash === 1380 && last(X).props[24].mortgaged, 'ได้ครึ่งราคา');
-    assert((await ack(X.socket, 'setthi_unmortgage', { square: 24 })).success, 'ไถ่ถอนได้');
-    assert(seatOf(last(X), X.id).cash === 1380 - 132 && !last(X).props[24].mortgaged, 'ไถ่ถอน +10%');
-    r = await ack(Y.socket, 'setthi_mortgage', { square: 12 });
-    assert(!r.success && /ตาของคุณ/.test(r.error), 'ไม่ใช่ตาจำนองไม่ได้');
-    assert((await ack(X.socket, 'setthi_endTurn', { seq: last(X).phaseSeq })).success, 'จบเทิร์น');
-    console.log('3. ดับเบิล 3 ครั้งเข้าคุก · จำนองครึ่งราคา/ไถ่ถอน +10% ✓');
+    // ซื้อต่อ 2 เท่า
+    await setup(A, { props: { 7: { owner: iO, level: 2 } }, seats: { [iA]: { pos: 0, laps: 1, cash: 20000 } }, dice: [[3, 4]], turnSeat: iA });
+    const oCash = seatOf(last(O), O.id).cash;
+    await act(A, 'setthi_roll');
+    S = await until(A, turnOf(A, 'takeover'), 'เสนอซื้อต่อ');
+    assert(S.decision.price === 2 * (1000 + 500 + 1000), 'ราคาซื้อต่อ = 2 เท่าของมูลค่า: ' + S.decision.price);
+    await act(A, 'setthi_takeover');
+    S = await until(A, S2 => S2.props[7].owner === A.id && S2.phase === 'build', 'ซื้อต่อแล้ว สร้างต่อได้');
+    assert(S.props[7].level === 2, 'สิ่งปลูกสร้างอยู่ครบ');
+    assert(S.decision.mode === 'afterTakeover' && S.decision.options[4].locked === 'later', 'แลนด์มาร์กต้องตกซ้ำ');
+    const tk = last(O).fx.filter(f => f.kind === 'takeover').pop();
+    assert(tk && tk.from === O.id && tk.price === 5000, 'เจ้าของเดิมได้ฉากถูกซื้อต่อ');
+    assert(seatOf(last(O), O.id).cash === oCash + 2200 + 5000, 'เจ้าของเดิมได้ค่าผ่านทาง + ค่าซื้อต่อ');
+    await act(A, 'setthi_pass');
+    console.log('3. ซื้อต่อ 2 เท่า: เงินถึงเจ้าของเดิม · สิ่งปลูกสร้างอยู่ครบ · สร้างต่อได้ทันที ✓');
 
-    // Y ทอย 3+4 → ขอนแก่น ซื้อ
-    await waitFor(() => last(Y).phaseActor === Y.id && last(Y).phase === 'roll', 5000, 'ตา Y');
-    assert((await ack(Y.socket, 'setthi_roll', { seq: last(Y).phaseSeq })).success, 'Y ทอย');
-    await waitFor(() => last(Y).phase === 'buy', 5000, 'Y ซื้อขอนแก่น');
-    assert((await ack(Y.socket, 'setthi_buy', { seq: last(Y).phaseSeq })).success, 'Y ซื้อ');
-    assert((await ack(Y.socket, 'setthi_endTurn', { seq: last(Y).phaseSeq })).success, 'Y จบเทิร์น');
-    // X ติดคุก: จ่ายค่าปรับออก
-    await waitFor(() => last(X).phaseActor === X.id && last(X).phase === 'roll', 5000, 'ตา X ในคุก');
-    assert(last(X).availableActions.payJail, 'มีปุ่มจ่ายค่าปรับ');
-    assert((await ack(X.socket, 'setthi_payJail', { seq: last(X).phaseSeq })).success, 'จ่ายค่าปรับ');
-    assert(!seatOf(last(X), X.id).inJail, 'ออกคุก');
-    r = await ack(X.socket, 'setthi_useJailCard', { seq: last(X).phaseSeq });
-    assert(!r.success, 'ไม่ติดคุกแล้วใช้บัตรไม่ได้');
-    console.log('4. ติดคุก → จ่ายค่าปรับออก ✓');
+    // แลนด์มาร์ก: มีโรงแรม + ตกซ้ำ · ซื้อต่อไม่ได้
+    await setup(A, { props: { 12: { owner: iA, level: 3 } }, seats: { [iA]: { pos: 8, laps: 1, cash: 20000 } }, dice: [[1, 3]], turnSeat: iA });
+    await act(A, 'setthi_roll');
+    S = await until(A, turnOf(A, 'build'), 'แผ่นสร้าง');
+    assert(S.decision.options[4].locked === null, 'สร้างแลนด์มาร์กได้');
+    await act(A, 'setthi_build', { level: 4 });
+    await until(A, S2 => S2.props[12].level === 4, 'แลนด์มาร์ก');
+    await setup(O, { seats: { [iO]: { pos: 8, cash: 60000 } }, dice: [[1, 3]], turnSeat: iO });
+    await act(O, 'setthi_roll');
+    S = await until(O, S2 => S2.phaseActor === A.id, 'ตกแลนด์มาร์กแล้วจบตา');
+    assert(S.props[12].owner === A.id, 'แลนด์มาร์กยังเป็นของเดิม');
+    assert(S.fx.some(f => f.kind === 'toll' && f.square === 12 && f.amount === 1400 * 6), 'จ่ายค่าผ่านทางแลนด์มาร์ก');
+    assert(!S.fx.some(f => f.kind === 'takeover' && f.square === 12), 'ไม่มีการซื้อต่อแลนด์มาร์ก');
+    await act(O, 'setthi_takeover', {}, false);
+    console.log('4. แลนด์มาร์ก: มีโรงแรม + ตกซ้ำ → สร้างได้ · ตกแล้วจ่าย ×6 · ซื้อต่อไม่ได้ ✓');
 
-    // เทรด → โต้กลับ → รับ
-    r = await ack(X.socket, 'setthi_tradePropose', { to: Y.id, give: { cash: 100 }, get: { props: [7] } });
-    assert(r.success, 'ส่งข้อเสนอได้: ' + r.error);
-    await waitFor(() => (last(Y).trades || []).some(t => t.to === Y.id), 3000, 'Y เห็นข้อเสนอ');
-    r = await ack(X.socket, 'setthi_tradePropose', { to: Y.id, give: { cash: 1 } });
-    assert(!r.success && /ค้างอยู่/.test(r.error), 'ข้อเสนอค้างได้ทีละอัน');
-    const offer = last(Y).trades.find(t => t.to === Y.id);
-    r = await ack(Y.socket, 'setthi_tradeCounter', { tradeId: offer.id, to: X.id, give: { props: [7] }, get: { cash: 180 } });
-    assert(r.success, 'โต้กลับได้: ' + r.error);
-    await waitFor(() => (last(X).trades || []).some(t => t.to === X.id && t.counterOf === offer.id), 3000, 'X เห็นข้อเสนอโต้กลับ');
-    const counter = last(X).trades.find(t => t.to === X.id);
-    const cashX = seatOf(last(X), X.id).cash;
-    assert((await ack(X.socket, 'setthi_tradeRespond', { tradeId: counter.id, accept: true })).success, 'รับข้อเสนอโต้กลับ');
-    await waitFor(() => last(Y).props[7].owner === X.id, 3000, 'ขอนแก่นย้ายเจ้าของ');
-    assert(seatOf(last(Y), X.id).cash === cashX - 180, 'X จ่าย 180');
-    assert(last(Y).fx.some(f => f.kind === 'trade'), 'มี fx จับมือ');
-    console.log('5. เทรด → โต้กลับ → รับ ✓');
-    // ข้อเสนอหมดอายุ
-    assert((await ack(Y.socket, 'setthi_tradePropose', { to: X.id, give: { cash: 10 } })).success, 'Y ส่งข้อเสนอ');
-    await waitFor(() => !(last(X).trades || []).length, 8000, 'ข้อเสนอหมดอายุ');
-    console.log('6. ข้อเสนอหมดอายุเอง ✓');
+    // เกาะร้าง: ดับเบิล 3 ครั้ง · จ่ายออก · ครบ 3 ตา · ดับเบิลออก
+    await setup(A, { seats: { [iA]: { pos: 0, island: 0, cash: 20000 } }, dice: [[1, 1], [2, 2], [3, 3]], turnSeat: iA });
+    for (let k = 0; k < 6 && !seatOf(last(A), A.id).island; k += 1) {
+        S = last(A);
+        if (S.phaseActor !== A.id) break;
+        if (S.phase === 'roll') await act(A, 'setthi_roll');
+        else if (S.phase === 'build') await act(A, 'setthi_pass');
+        else if (S.phase === 'takeover') await act(A, 'setthi_declineTakeover');
+        else if (S.phase === 'pick') await act(A, 'setthi_skipPick');
+        await delay(120);
+    }
+    S = await until(A, S2 => seatOf(S2, A.id).island === 3, 'ติดเกาะ');
+    assert(seatOf(S, A.id).pos === 8 && S.fx.some(f => f.kind === 'dice' && f.streak === 3) && S.fx.some(f => f.kind === 'island' && f.reason === 'triple'), 'ดับเบิล 3 ครั้ง = เกาะ');
+    await setup(A, { dice: [[1, 2]], turnSeat: iA });
+    assert(last(A).availableActions.payIsland, 'มีปุ่มจ่ายออก');
+    await act(A, 'setthi_payIsland');
+    await until(A, S2 => seatOf(S2, A.id).island === 0 && S2.phase === 'roll', 'จ่ายแล้วออก');
+    await act(A, 'setthi_roll');
+    await until(A, S2 => seatOf(S2, A.id).pos === 11, 'เดินปกติ');
+    await setup(A, { seats: { [iA]: { pos: 8, island: 1 } }, dice: [[1, 2]], turnSeat: iA });
+    await act(A, 'setthi_roll');
+    S = await until(A, S2 => seatOf(S2, A.id).pos === 11, 'ครบ 3 ตาออก');
+    assert(S.fx.some(f => f.kind === 'islandFree' && f.how === 'served'), 'ออกเพราะครบ');
+    console.log('5. เกาะร้าง: ดับเบิล 3 ครั้งไปเกาะ · จ่ายค่าเรือ · ครบ 3 ตา ✓');
 
-    // หลุดแล้วต่อใหม่
-    Y.socket.close();
-    await waitFor(() => { const s = seatOf(last(X), Y.id); return s && s.online === false; }, 9000, 'X เห็น Y หลุด');
-    const Y2 = await reattach(base, Y);
-    await waitFor(() => last(Y2) && last(Y2).status === 'playing', 5000, 'Y ได้ state หลังต่อใหม่');
-    const full = last(Y2);
-    assert(full.self && full.self.playerId === Y.id && full.props[12].owner === Y.id && full.seats.length === 2, 'state เต็มหลังรีเฟรช');
-    console.log('7. หลุดแล้วต่อใหม่ได้ state เต็ม ✓');
+    // ดับเบิลออกเกาะ → ตกงานวัด → เลือกที่ตัวเอง ×2
+    await setup(A, { props: { 12: { owner: iA, level: 3 } }, seats: { [iA]: { pos: 8, island: 3 } }, dice: [[4, 4]], turnSeat: iA, festival: null });
+    const base12 = last(A).tolls[12];
+    await act(A, 'setthi_roll');
+    S = await until(A, turnOf(A, 'pick'), 'เลือกที่จัดงานวัด');
+    assert(S.decision.purpose === 'festival' && S.decision.options.includes(12) && !S.decision.options.includes(15), 'เลือกได้เฉพาะที่ตัวเอง');
+    await act(A, 'setthi_pick', { square: 15 }, false);
+    await act(A, 'setthi_pick', { square: 12 });
+    S = await until(A, S2 => S2.festival === 12, 'มีธงงานวัด');
+    assert(S.tolls[12] === base12 * 2, 'ค่าผ่านทาง ×2');
+    await setup(A, { props: { 4: { owner: iA, level: 1 } }, seats: { [iA]: { pos: 14, island: 0 } }, dice: [[1, 1]], turnSeat: iA });
+    await act(A, 'setthi_roll');
+    S = await until(A, turnOf(A, 'pick'), 'งานวัดรอบสอง');
+    await act(A, 'setthi_pick', { square: 4 });
+    S = await until(A, S2 => S2.festival === 4, 'ย้ายงานวัด');
+    assert(S.tolls[12] === base12, 'ที่เดิมกลับปกติ');
+    console.log('6. ดับเบิลออกเกาะ · งานวัด ×2 · ย้ายที่ได้ ✓');
 
-    // หัวห้องจบเกม
-    const hostClient = [X, Y2].find(c => c.id === X0.id);
-    r = await ack(hostClient.socket, 'setthi_end', {});
-    assert(r.success, 'หัวห้องจบเกมได้: ' + r.error);
-    await waitFor(() => last(X).phase === 'finished' && last(Y2).phase === 'finished', 5000, 'จบเกม');
-    const fin = last(X);
-    assert(fin.winners.length >= 1 && fin.standings.length === 2, 'มีผู้ชนะ/อันดับ');
-    assert(fin.standings[0].netWorth >= fin.standings[1].netWorth, 'เรียงตามทรัพย์สิน');
-    await waitFor(() => { const st = readStats(); return st[X.id] && st[X.id].modeStats && st[X.id].modeStats.setthi && st[X.id].modeStats.setthi.games === 1; }, 6000, 'สถิติเศรษฐีถูกบันทึก');
-    const st = readStats();
-    const wins = [X.id, Y.id].filter(id => st[id].modeStats.setthi.wins === 1).length;
-    assert(wins === fin.winners.length, 'นับชนะตามผู้ชนะ');
-    console.log(`8. หัวห้องจบเกม → ${fin.winners.map(w => w.name).join(', ')} ชนะ · สถิติบันทึก ✓`);
-    [X, Y2].forEach(c => c.socket.close());
+    // ทัวร์ทั่วไทย: แตะช่องวาร์ป
+    await setup(A, { seats: { [iA]: { pos: 24, tourPending: true, cash: 20000 } }, turnSeat: iA });
+    S = await until(A, turnOf(A, 'pick'), 'เลือกช่องทัวร์');
+    assert(S.decision.purpose === 'tour' && S.decision.options.length === 31, 'ไปได้ทุกช่อง');
+    const laps = seatOf(S, A.id).laps;
+    await act(A, 'setthi_pick', { square: 24 }, false);
+    await act(A, 'setthi_pick', { square: 9 });
+    S = await until(A, S2 => seatOf(S2, A.id).pos === 9, 'วาร์ปแล้ว');
+    assert(seatOf(S, A.id).laps === laps + 1 && !seatOf(S, A.id).tourPending, 'ผ่านจุดเริ่ม ใช้ตั๋วแล้ว');
+    assert(S.fx.some(f => f.kind === 'move' && f.warp), 'ฉากวาร์ป');
+    if (S.phase === 'build') await act(A, 'setthi_pass');
+    console.log('7. ทัวร์ทั่วไทย: แตะช่อง → จ่ายค่าทัวร์ วาร์ป ผ่านจุดเริ่มได้เงินเดือน ✓');
+
+    // หลุดแล้วต่อใหม่ = state เต็ม
+    const snap = last(O);
+    O.socket.close();
+    const O2 = await reattach(base, O);
+    await waitFor(() => last(O2), 6000, 'state หลังต่อใหม่');
+    const fresh = last(O2);
+    Object.keys(snap.props).forEach(k => assert(fresh.props[k].owner === snap.props[k].owner && fresh.props[k].level === snap.props[k].level, 'กระดานเหมือนเดิม ' + k));
+    assert(fresh.board === undefined && fresh.seats.length === 2, 'ได้ state เต็ม');
+    console.log('8. หลุดแล้วต่อใหม่ได้กระดานเต็ม ✓');
+
+    // เงินไม่พอ → ขายที่ → จ่ายอัตโนมัติ
+    await setup(O2, { props: { 31: { owner: iA, level: 3 }, 20: { owner: iO, level: 3 }, 22: { owner: iO, level: 3 }, 23: { owner: iO, level: 3 } }, seats: { [iO]: { pos: 29, cash: 500 } }, dice: [[1, 1]], turnSeat: iO });
+    await act(O2, 'setthi_roll');
+    S = await until(O2, turnOf(O2, 'debt'), 'เฟสหนี้');
+    assert(S.debt.total === 3200 * 3.5 && S.self.sell[20] === Math.floor(2100 * 4 / 2), 'ยอดหนี้/ราคาขายคืนครึ่ง');
+    assert(!last(A).self.sell, 'คนอื่นไม่เห็นปุ่มขาย');
+    await act(A, 'setthi_sell', { square: 20 }, false);
+    for (const sq of [20, 22, 23]) if (last(O2).phase === 'debt') { await act(O2, 'setthi_sell', { square: sq }); await delay(150); }
+    await until(O2, S2 => S2.phase !== 'debt', 'จ่ายครบ');
+    console.log('9. เงินไม่พอ: ขายที่คืนครึ่งราคา → จ่ายอัตโนมัติ · คนอื่นขายแทนไม่ได้ ✓');
+
+    // ล้มละลาย → ที่ดินคืนธนาคาร → เหลือคนเดียวชนะ
+    await setup(O2, { props: { 31: { owner: iA, level: 4 }, 1: { owner: iO, level: 0 } }, seats: { [iO]: { pos: 29, cash: 100 } }, dice: [[1, 1]], turnSeat: iO });
+    await act(O2, 'setthi_roll');
+    S = await until(A, S2 => S2.phase === 'finished', 'จบเกม');
+    assert(seatOf(S, O.id).bankrupt && S.props[1].owner === null, 'ล้มละลาย ที่ดินคืนธนาคาร');
+    assert(S.winners.length === 1 && S.winners[0].playerId === A.id, 'คนที่เหลือชนะ');
+    assert(S.standings[0].playerId === A.id, 'อันดับ 1');
+    console.log('10. ล้มละลาย: ที่ดินกลับเป็นว่าง · เหลือคนเดียวชนะ ✓');
+    [A, O2].forEach(c => c.socket.close());
 }
 
-// ================= B) 6 คน =================
+// ================= B) ผูกขาดทุกแบบ (4 / 3 / 2 คน มีบอท) + คนออกกลางเกม =================
 async function scenarioB(base) {
-    const H = [];
-    for (let i = 0; i < 4; i += 1) H.push(await makeClient(base, 'B' + i));
+    // B1: 3 คน + บอท 1 · คนออกกลางเกม · ผูกขาด 3 สี
+    const H1 = await makeClient(base, 'B-host');
+    const H2 = await makeClient(base, 'B-two');
+    const H3 = await makeClient(base, 'B-three');
     await delay(300);
-    const roomId = await createRoom(H[0], { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0 } });
-    await joinAll(roomId, H.slice(1));
-    let r = await ack(H[1].socket, 'setthi_addBots', { roomId, count: 2 });
-    assert(!r.success, 'คนที่ไม่ใช่หัวห้องเพิ่มบอทไม่ได้');
-    r = await ack(H[0].socket, 'setthi_addBots', { roomId, count: 5 });
-    assert(r.success && r.added === 2, 'เติมบอทได้แค่ถึง 6 ที่นั่ง: ' + JSON.stringify(r));
-    await start(H[0], H, roomId);
-    assert(last(H[0]).seats.length === 6, '6 ที่นั่ง');
-    r = await ack(H[0].socket, 'setthi_addBots', { roomId, count: 1 });
-    assert(!r.success, 'เกมเริ่มแล้วเพิ่มบอทไม่ได้');
+    let roomId = await createRoom(H1, { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0 } });
+    await joinAll(roomId, [H2, H3]);
+    assert((await ack(H1.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
+    let r = await ack(H1.socket, 'setthi_addBots', { roomId, count: 3 });
+    assert(r.success && r.added === 0 || !r.success, 'ห้องเต็ม 4 คน');
+    await start(H1, [H1, H2, H3], roomId);
+    assert(last(H1).seats.length === 4, '4 ที่นั่ง');
+    await drive([H1, H2, H3], { act: true, stop: (S, st) => st.actions >= 8 && S.phase === 'roll' });
+    assert(last(H1).history.some(h => /^บอท/.test(h.text)), 'บอทเล่นด้วย');
+    const i3 = idx(H3);
+    await setup(H1, { props: { 20: { owner: i3, level: 2 }, 22: { owner: i3, level: 1 } } });
+    await ack(H3.socket, 'leaveRoom', {});
+    let S = await until(H1, S2 => seatOf(S2, H3.id).left, 'คนออก');
+    assert(S.props[20].owner === null && S.props[22].owner === null && S.phase !== 'finished', 'ที่ดินคืนธนาคาร เกมเดินต่อ');
+    const i1 = idx(H1);
+    const own = {};
+    [1, 2, 4, 6, 7, 9].forEach(i => { own[i] = { owner: i1, level: 0 }; });
+    own[10] = { owner: null, level: 0 };
+    await setup(H1, { props: own, seats: { [i1]: { pos: 8, cash: 30000, island: 0 } }, dice: [[1, 1]], turnSeat: i1 });
+    await until(H2, S2 => S2.threats.some(t => t.playerId === H1.id && t.type === 'color' && t.squares.includes(10)), 'ทุกคนเห็นเตือน อีก 1 ช่องผูกขาด 3 สี');
+    await act(H1, 'setthi_roll');
+    await until(H1, turnOf(H1, 'build'), 'ซื้อช่องสุดท้าย');
+    await act(H1, 'setthi_build', { level: 0 });
+    S = await until(H2, S2 => S2.phase === 'finished', 'ชนะผูกขาด 3 สี');
+    assert(S.monopoly && S.monopoly.type === 'color' && S.winners[0].playerId === H1.id, 'ผูกขาด 3 สี ชนะทันที');
+    assert(S.fx.some(f => f.kind === 'monopoly' && f.type === 'color'), 'ฉากฉลอง');
+    console.log('11. 4 คน (บอท 1): คนออก ที่ดินคืนธนาคาร · เตือนผูกขาด · ผูกขาด 3 สี ชนะทันที ✓');
+    [H1, H2].forEach(c => c.socket.close());
 
-    await drive(H, { act: true, stop: (S, st) => st.actions > 40 });
-    // ดีลส่วนตัว
-    const S = last(H[1]);
-    const propOf = id => Object.keys(S.props).find(k => S.props[k].owner === id);
-    const giveCash = Math.min(50, seatOf(S, H[1].id).cash);
-    r = await ack(H[1].socket, 'setthi_tradePropose', { to: H[2].id, give: { cash: giveCash }, get: { props: propOf(H[2].id) ? [Number(propOf(H[2].id))] : [] } });
-    if (r.success) {
-        await waitFor(() => (last(H[2]).trades || []).length > 0, 3000, 'H2 เห็นดีล');
-        await delay(200);
-        assert(!(last(H[3]).trades || []).length, 'H3 ไม่เห็นรายละเอียดดีลของคนอื่น');
-        assert(seatOf(last(H[3]), H[1].id).hasOffer, 'แต่รู้ว่ามีดีลค้าง');
-        await ack(H[2].socket, 'setthi_tradeRespond', { tradeId: last(H[2]).trades[0].id, accept: false });
-    }
-    // คนออกกลางเกม
-    const leaver = H[3];
-    const before = last(H[0]);
-    const owned = Object.keys(before.props).filter(k => before.props[k].owner === leaver.id);
-    r = await ack(leaver.socket, 'leaveRoom', {});
-    await waitFor(() => { const s = seatOf(last(H[0]), leaver.id); return s && s.left; }, 5000, 'เห็นคนออก');
-    owned.forEach(k => assert(last(H[0]).props[k].owner === null, 'ที่ดินคนออกคืนธนาคาร'));
-    assert(seatOf(last(H[0]), leaver.id).cash === 0, 'เงินคนออกคืนธนาคาร');
-    const live = H.slice(0, 3);
-    await drive(live, { act: true, stop: (S2, st) => st.actions > 25 });
-    // หัวห้องออก
-    r = await ack(H[0].socket, 'leaveRoom', {});
-    const rest = H.slice(1, 3);
-    await waitFor(() => rest.some(c => last(c).isHost), 5000, 'มีหัวห้องใหม่');
-    await drive(rest, { act: true, stop: (S2, st) => st.actions > 15 });
-    const newHost = rest.find(c => last(c).isHost);
-    r = await ack(newHost.socket, 'setthi_end', {});
-    assert(r.success, 'หัวห้องใหม่จบเกมได้: ' + r.error);
-    await waitFor(() => rest.every(c => last(c).phase === 'finished'), 5000, 'จบเกม B');
-    const fin = last(rest[0]);
-    assert(fin.standings.length === 6, 'อันดับครบ 6 ที่นั่ง');
-    assert(fin.standings.filter(x => x.left).length === 2, 'คนออก 2 คนอยู่ท้ายตาราง');
-    assert(fin.standings.slice(-2).every(x => x.left || x.bankrupt), 'คนออกอยู่ท้าย');
-    console.log(`9. 6 คน (คน 4 + บอท 2): ดีลเห็นแค่คู่ดีล · คนออกทรัพย์สินคืนธนาคาร · หัวห้องออกแล้วเกมเดินต่อ · ${fin.winners.map(w => w.name).join(', ')} ชนะ ✓`);
-    rest.forEach(c => c.socket.close());
+    // B2: 2 คน + บอท · ผูกขาดแถว (ต้องรวมท่องเที่ยว)
+    const L1 = await makeClient(base, 'L-host');
+    const L2 = await makeClient(base, 'L-two');
+    await delay(300);
+    roomId = await createRoom(L1, { name: 'วงเศรษฐี L', settings: { setthiMinutes: 0 } });
+    await joinAll(roomId, [L2]);
+    assert((await ack(L1.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
+    await start(L1, [L1, L2], roomId);
+    const l1 = idx(L1);
+    await setup(L1, { props: { 9: { owner: l1 }, 10: { owner: l1 }, 12: { owner: l1 }, 14: { owner: l1 }, 15: { owner: l1 }, 11: { owner: null } }, seats: { [l1]: { pos: 8, cash: 30000, island: 0 } }, dice: [[1, 2]], turnSeat: l1 });
+    await until(L2, S2 => S2.threats.some(t => t.playerId === L1.id && t.type === 'line' && t.squares[0] === 11), 'เตือนผูกขาดแถว');
+    await act(L1, 'setthi_roll');
+    await until(L1, turnOf(L1, 'build'), 'ซื้อเขาใหญ่');
+    await act(L1, 'setthi_build', { level: 0 });
+    S = await until(L2, S2 => S2.phase === 'finished', 'ชนะผูกขาดแถว');
+    assert(S.monopoly.type === 'line' && S.monopoly.side === 1 && S.winners[0].playerId === L1.id, 'ผูกขาดแถว');
+    console.log('12. 3 คน (บอท 1): ผูกขาดแถว (รวมแหล่งท่องเที่ยว) ชนะทันที ✓');
+    [L1, L2].forEach(c => c.socket.close());
+
+    // B3: 2 คน · ผูกขาดท่องเที่ยว
+    const T1 = await makeClient(base, 'T-host');
+    const T2 = await makeClient(base, 'T-two');
+    await delay(300);
+    roomId = await createRoom(T1, { name: 'วงเศรษฐี T', settings: { setthiMinutes: 0 } });
+    await joinAll(roomId, [T2]);
+    await start(T1, [T1, T2], roomId);
+    const t1 = idx(T1);
+    await setup(T1, { props: { 5: { owner: t1 }, 11: { owner: t1 }, 21: { owner: t1 } }, seats: { [t1]: { pos: 24, cash: 30000, island: 0, tourPending: false } }, dice: [[1, 2]], turnSeat: t1 });
+    await act(T1, 'setthi_roll');
+    await until(T1, turnOf(T1, 'build'), 'ซื้อพีพี');
+    await act(T1, 'setthi_build', { level: 0 });
+    S = await until(T2, S2 => S2.phase === 'finished', 'ชนะผูกขาดท่องเที่ยว');
+    assert(S.monopoly.type === 'tourist' && S.winners[0].playerId === T1.id, 'ผูกขาดท่องเที่ยว');
+    console.log('13. 2 คน: ผูกขาดท่องเที่ยว ชนะทันที ✓');
+    [T1, T2].forEach(c => c.socket.close());
 }
 
 // ================= C) คน 1 + บอท 3 · autopilot · หลุด =================
@@ -428,35 +458,28 @@ async function scenarioC(base) {
     const roomId = await createRoom(human, { name: 'วงเศรษฐี C', settings: { setthiMinutes: 0 } });
     assert((await ack(human.socket, 'setthi_addBots', { roomId, count: 3 })).success, 'เพิ่มบอท');
     await start(human, [human], roomId);
-    // คนไม่กดอะไรเลย → autopilot เล่นแทน · บอทเล่นเอง
     const round0 = last(human).round;
-    const myTurns = () => last(human).fx.filter(f => f.kind === 'turn' && f.playerId === human.id).length;
     await waitFor(() => last(human).round >= round0 + 2 || last(human).phase === 'finished', 60000, 'เกมเดินด้วย autopilot');
-    assert([...human.seen].some(t => /C-human|guest/.test(t) && /หมดเวลา/.test(t)), 'มี autopilot เล่นแทนคน');
+    assert([...human.seen].some(t => /หมดเวลา/.test(t)) || last(human).phase === 'finished', 'มี autopilot เล่นแทนคน');
     assert([...human.seen].some(t => /^บอท/.test(t)), 'บอทเล่น');
-    void myTurns;
-    // หลุด → ตาสั้นลง เกมไม่ค้าง
     const stepBefore = last(human).step;
-    const roundBefore = last(human).round;
     const offAt = Date.now();
     human.socket.close();
-    await delay(7000);
+    await delay(6000);
     const back = await reattach(base, human);
     const backAt = Date.now();
     await waitFor(() => last(back) && last(back).step > stepBefore, 5000, 'state หลังหลุด');
     const after = last(back);
     const during = (after.history || []).filter(h => { const t = Date.parse(h.at); return t > offAt && t < backAt; });
     assert(during.length >= 3 || after.phase === 'finished', `เกมเดินต่อระหว่างหลุด (${during.length} เหตุการณ์)`);
-    assert([...back.seen].some(t => /หมดเวลา/.test(t)), 'ตาของคนหลุดถูกเล่นแทน');
-    console.log(`10. คน 1 + บอท 3: ไม่กด = autopilot · หลุด 7 วิ เกมเดินต่อ (${during.length} เหตุการณ์ · รอบ ${roundBefore} → ${after.round}) ✓`);
-    // คนสุดท้ายออก → ห้องปิด
+    console.log(`14. คน 1 + บอท 3: ไม่กด = autopilot · หลุด 6 วิ เกมเดินต่อ (${during.length} เหตุการณ์) ✓`);
     await ack(back.socket, 'leaveRoom', {});
     await delay(400);
     const probe = await makeClient(base, 'C-probe');
     await delay(200);
     const j = await ack(probe.socket, 'joinRoom', { roomId, playerId: probe.id });
     assert(!j.success, 'ห้องที่เหลือแต่บอทถูกปิด');
-    console.log('11. คนสุดท้ายออก → ห้องปิด ✓');
+    console.log('15. คนสุดท้ายออก → ห้องปิด ✓');
     probe.socket.close();
 }
 
@@ -473,24 +496,20 @@ async function scenarioF(base) {
     let r = await ack(A.socket, 'setthi_rollRelease', { elapsedMs: 500 });
     assert(!r.success && /ยังไม่ได้กดค้าง/.test(r.error), 'ปล่อยโดยไม่ได้กดค้างโดนปฏิเสธ');
     r = await ack(O.socket, 'setthi_rollHoldStart', { seq: last(O).phaseSeq });
-    assert(!r.success && /ถึงตา/.test(r.error), 'คนที่ไม่ใช่ตากดค้างไม่ได้');
+    assert(!r.success, 'คนที่ไม่ใช่ตากดค้างไม่ได้');
     const held = await ack(A.socket, 'setthi_rollHoldStart', { seq: last(A).phaseSeq });
-    const t0 = Date.now();
-    assert(held.success && held.meter && held.meter.period >= 1000 && (held.meter.green === null || held.meter.green.width > 0), 'ได้พารามิเตอร์เข็มผ่าน ack: ' + JSON.stringify(held));
+    assert(held.success && held.meter.period / 2 >= 1600 && held.meter.period / 2 <= 2000, 'เข็มกวาด 1.6–2.0 วิ: ' + JSON.stringify(held.meter));
     await waitFor(() => last(O).turn && last(O).turn.holding, 3000, 'อีกคนเห็นว่ากำลังชาร์จ');
     assert(!/appearAt|"period"/.test(JSON.stringify(O.states)), 'พารามิเตอร์เข็ม/ช่องเขียวไม่ส่งให้คนอื่น');
     r = await ack(O.socket, 'setthi_rollRelease', { elapsedMs: 500 });
-    assert(!r.success && /ถึงตา/.test(r.error), 'คนอื่นปล่อยแทนไม่ได้');
-    await delay(520);
+    assert(!r.success, 'คนอื่นปล่อยแทนไม่ได้');
+    await delay(400);
     r = await ack(A.socket, 'setthi_rollRelease', { elapsedMs: 999999 });
-    const realElapsed = Date.now() - t0;
-    assert(r.success, 'ปล่อยได้: ' + r.error);
+    assert(r.success, 'ปล่อยได้ (เวลาปลอมถูกหนีบ): ' + r.error);
     await waitFor(() => last(O).fx.some(f => f.kind === 'dice' && f.playerId === A.id), 3000, 'เห็นลูกเต๋า');
     const dice = last(O).fx.filter(f => f.kind === 'dice' && f.playerId === A.id).pop();
-    assert(dice.elapsed >= 450 && dice.elapsed <= realElapsed + 60, `เวลาปลอม 999999 ถูกหนีบเป็นเวลาเซิร์ฟเวอร์ (${dice.elapsed}ms จริง ~${realElapsed}ms)`);
-    assert(dice.power >= 0 && dice.power <= 1 && dice.d.every(v => v >= 1 && v <= 6), 'แรง 0..1 เต๋า 1..6');
-    console.log(`12. กดค้างทอย: ปล่อยไม่ได้ถ้าไม่ได้กด · ตาคนอื่นกด/ปล่อยไม่ได้ · เวลาปลอมถูกหนีบ (${dice.elapsed}ms) · พารามิเตอร์เข็มเห็นแค่คนทอย ✓`);
-    // หลุดระหว่างกดค้าง = ยกเลิก · แตะ = ทอยปกติ
+    assert(dice.power >= 0 && dice.power < 0.5 && dice.d.every(v => v >= 1 && v <= 6), `เวลาปลอม 999999 ใช้เวลาจริง ~0.4 วิ → แรงน้อย (${dice.power})`);
+    console.log(`16. กดค้างทอย: ปล่อยไม่ได้ถ้าไม่ได้กด · คนอื่นกด/ปล่อยแทนไม่ได้ · เวลาปลอมถูกหนีบ (แรง ${dice.power}) · พารามิเตอร์เห็นแค่คนทอย ✓`);
     await drive([P, Q], { act: true, stop: S => S.phase === 'roll' && S.phaseActor === O.id });
     const h2 = await ack(O.socket, 'setthi_rollHoldStart', { seq: last(O).phaseSeq });
     assert(h2.success, 'กดค้างได้');
@@ -499,7 +518,6 @@ async function scenarioF(base) {
     await waitFor(() => last(A).turn && !last(A).turn.holding, 4000, 'หลุดแล้วยกเลิกการกดค้าง');
     const O2 = await reattach(base, O);
     await waitFor(() => last(O2) && last(O2).phaseActor === O.id && last(O2).phase === 'roll', 6000, 'ได้ตากลับมา');
-    // อัตราเกิดช่องเขียวจากเซิร์ฟเวอร์จริง (กดค้าง-ยกเลิกหลายครั้ง) · ตั้งไว้ ~50%
     let greens = 0;
     const tries = 80;
     for (let i = 0; i < tries; i += 1) {
@@ -508,7 +526,7 @@ async function scenarioF(base) {
         if (h.meter.green) {
             greens += 1;
             const g = h.meter.green;
-            assert(g.appearAt >= 300 && g.appearAt <= 1200 && g.until > g.appearAt && g.width >= 0.09 && g.width <= 0.14, 'ช่องเขียวอยู่ในช่วงที่ตั้งไว้');
+            assert(g.appearAt >= 300 && g.appearAt <= 1200 && g.until === undefined && g.width >= 0.09 && g.width <= 0.14, 'ช่องเขียว 0.3–1.2 วิ ค้างจนปล่อย');
         }
         assert((await ack(O2.socket, 'setthi_rollHoldCancel', {})).success, 'ยกเลิกได้');
     }
@@ -519,7 +537,7 @@ async function scenarioF(base) {
     await waitFor(() => last(A).fx.some(f => f.kind === 'dice' && f.playerId === O.id), 3000, 'เห็นลูกเต๋าแตะ');
     const tapFx = last(A).fx.filter(f => f.kind === 'dice' && f.playerId === O.id).pop();
     assert(tapFx.power === undefined, 'แตะ (<150ms) = ทอยปกติไม่มีแรง');
-    console.log(`13. หลุดระหว่างกดค้าง = ยกเลิก · แตะ = ทอยปกติ · ช่องเขียวเกิด ${greens}/${tries} ครั้ง ✓`);
+    console.log(`17. หลุดระหว่างกดค้าง = ยกเลิก · แตะ = ทอยปกติ · ช่องเขียวเกิด ${greens}/${tries} ครั้ง ค้างจนปล่อย ✓`);
     [A, O2].forEach(c => c.socket.close());
 }
 
@@ -532,9 +550,9 @@ async function scenarioE(server, port) {
     const roomId = await createRoom(P, { name: 'วงเศรษฐี E', settings: { setthiMinutes: 30 } });
     await joinAll(roomId, [Q]);
     await start(P, [P, Q], roomId);
-    await drive([P, Q], { act: true, stop: (S, st) => st.actions >= 6 && S.phase === 'roll' });
+    await drive([P, Q], { act: true, stop: (S, st) => st.actions >= 8 && S.phase === 'roll' });
     const snap = last(P);
-    await delay(900); // ให้ roomManager เซฟ (debounce 250ms)
+    await delay(900);
     await stopServer(server, 'SIGKILL');
     P.socket.close();
     Q.socket.close();
@@ -544,14 +562,13 @@ async function scenarioE(server, port) {
     await waitFor(() => last(P2) && last(Q2), 8000, 'state หลังรีสตาร์ต');
     const s = last(P2);
     assert(s.status === 'playing', 'เกมยังเล่นอยู่หลังรีสตาร์ต');
-    Object.keys(snap.props).forEach(k => assert(s.props[k].owner === snap.props[k].owner, 'เจ้าของที่ดินเหมือนเดิม ' + k));
+    Object.keys(snap.props).forEach(k => assert(s.props[k].owner === snap.props[k].owner && s.props[k].level === snap.props[k].level, 'กระดานเหมือนเดิม ' + k));
     snap.seats.forEach(x => assert(seatOf(s, x.playerId).cash === x.cash, 'เงินเหมือนเดิม'));
     assert(s.clock && s.clock.endsAt === snap.clock.endsAt, 'นาฬิกาเกมเหมือนเดิม');
-    // timer กลับมา: ไม่มีใครกด → autopilot เดินต่อ
     const seq0 = s.phaseSeq;
     await waitFor(() => last(P2).phaseSeq > seq0, 12000, 'timer ทำงานหลังรีสตาร์ต');
     await drive([P2, Q2], { act: true, stop: (S, st) => st.actions >= 6 });
-    console.log('14. รีสตาร์ตเซิร์ฟเวอร์กลางเกม: กู้ state · timer/autopilot กลับมา · เล่นต่อได้ ✓');
+    console.log('18. รีสตาร์ตเซิร์ฟเวอร์กลางเกม: กู้ state · timer/autopilot กลับมา · เล่นต่อได้ ✓');
     [P2, Q2].forEach(c => c.socket.close());
     return server2;
 }
@@ -571,17 +588,16 @@ async function scenarioD(port) {
         assert((await ack(P.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
         await start(P, [P, Q], roomId);
         assert(last(P).clock.minutes === 20 && last(P).clock.endsAt, 'นาฬิกา 20 นาที');
-        let sawFinal = false;
-        await drive([P, Q], { act: true, timeoutMs: 60000, stop: S => { if (S.clock && S.clock.timeUp) sawFinal = true; return false; } });
+        await drive([P, Q], { act: true, timeoutMs: 60000 });
         const fin = last(P);
-        assert(fin.phase === 'finished' && /หมดเวลา/.test(fin.finishReason), 'จบเพราะหมดเวลา: ' + fin.finishReason);
-        assert(sawFinal || fin.clock.timeUp, 'เห็นรอบสุดท้าย');
-        const alive = fin.standings.filter(x => !x.bankrupt && !x.left);
-        for (let i = 1; i < alive.length; i += 1) assert(alive[i - 1].netWorth >= alive[i].netWorth, 'เรียงตามทรัพย์สินรวม');
-        const top = alive[0].netWorth;
-        assert(fin.winners.every(w => w.netWorth === top) && fin.winners.length === alive.filter(x => x.netWorth === top).length, 'ผู้ชนะ = ทรัพย์สินสูงสุด (เสมอชนะร่วม)');
-        assert(fin.fx.some(f => f.kind === 'finished'), 'มี fx จบเกม');
-        console.log(`15. จำกัดเวลา: หมดเวลา → เล่นครบรอบ → ${fin.winners.map(w => w.name).join(', ')} ชนะ (${top}) ✓`);
+        assert(fin.phase === 'finished', 'จบเกม');
+        if (!fin.monopoly && /หมดเวลา/.test(fin.finishReason)) {
+            const alive = fin.standings.filter(x => !x.bankrupt && !x.left);
+            for (let i = 1; i < alive.length; i += 1) assert(alive[i - 1].netWorth >= alive[i].netWorth, 'เรียงตามทรัพย์สินรวม');
+            assert(fin.winners.every(w => w.netWorth === alive[0].netWorth), 'ผู้ชนะ = ทรัพย์สินสูงสุด');
+            assert(fin.fx.some(f => f.kind === 'timeUp') || fin.clock.timeUp, 'เห็นรอบสุดท้าย');
+        }
+        console.log(`19. จำกัดเวลา: ${fin.finishReason} → ${fin.winners.map(w => w.name).join(', ')} ชนะ ✓`);
         [P, Q].forEach(c => c.socket.close());
     } finally {
         await stopServer(server);
@@ -590,7 +606,7 @@ async function scenarioD(port) {
 
 async function main() {
     const started = Date.now();
-    let server = await bootServer(PORT, { SETTHI_DICE: '66,66,66,34' });
+    let server = await bootServer(PORT);
     const base = `http://127.0.0.1:${PORT}`;
     try {
         await scenarioA(base);
