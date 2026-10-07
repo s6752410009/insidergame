@@ -1547,13 +1547,20 @@ function handlePlayerLeft(room, playerId) {
     }
 
     const player = getPlayer(room, playerId);
-    if (!player || player.alive === false) {
+    if (player && player.alive === false) {
         return room.gameState;
     }
 
-    player.alive = false;
-    player.revealedRole = player.roleInfo?.title || player.role;
-    pushHistory(room, '🚪', `${player.name} ออกจากโต๊ะ`, 'amber');
+    if (player) {
+        player.alive = false;
+        player.revealedRole = player.roleInfo?.title || player.role;
+        pushHistory(room, '🚪', `${player.name} ออกจากโต๊ะ`, 'amber');
+    } else {
+        // roomManager.leaveRoom ลบที่นั่งออกไปแล้ว — ยังต้องเช็คจบเกม/ครบทุกคนต่อ ไม่งั้นโต๊ะรอคนที่ออกไปจนหมดเวลา
+        const snapshot = room.rejoinableGamePlayers instanceof Map ? room.rejoinableGamePlayers.get(playerId) : null;
+        if (!snapshot) return room.gameState;
+        pushHistory(room, '🚪', `${snapshot.name || 'ผู้เล่น'} ออกจากโต๊ะ`, 'amber');
+    }
 
     if (maybeFinishGame(room)) {
         return room.gameState;

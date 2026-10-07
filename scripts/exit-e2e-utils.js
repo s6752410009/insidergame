@@ -116,6 +116,8 @@ async function openGamePage(browser, base, roomId, p, rootSelector, initScript) 
             sessionStorage.setItem('insiderPromoSeen', '1');
             ['insider', 'coup', 'avalon', 'liar', 'blackmarket', 'codenames', 'wavelength', 'drawguess', 'setthi']
                 .forEach(m => localStorage.setItem('ig-firstplay-' + m, '1'));
+            const pid = new URLSearchParams(location.search).get('playerId');
+            if (pid) localStorage.setItem('blackmarket-tour-v2:' + pid, 'done'); // ทัวร์โต๊ะครั้งแรก
         } catch (e) { /* */ }
     });
     if (initScript) await ctx.addInitScript(initScript);
@@ -165,7 +167,7 @@ async function swalText(page) {
  * กดออกจริง: เช็คปุ่ม → แตะ → popup ยืนยัน (ชื่อ/ปุ่ม/ผลที่ตามมา) → ยืนยัน → /rooms
  * → รอ 15 วิ ยังอยู่ /rooms → ย้อนกลับก็ไม่ถูกพาเข้าห้อง
  */
-async function exitAndStayOut(p, { button, expect, label, holdMs = 15000 }) {
+async function exitAndStayOut(p, { button, expect, label, holdMs = 15000, onLeft = null }) {
     const page = p.page;
     const vis = await exitVisible(page, button);
     assert(vis === 'ok', `${label}: ปุ่มออก ${vis}`);
@@ -184,6 +186,7 @@ async function exitAndStayOut(p, { button, expect, label, holdMs = 15000 }) {
     await page.waitForSelector('.swal2-popup .room-exit-list', { timeout: 6000 });
     await page.click('.swal2-confirm');
     await page.waitForURL(/\/rooms/, { timeout: 8000 });
+    if (onLeft) await onLeft();
     const t0 = Date.now();
     while (Date.now() - t0 < holdMs) {
         await delay(1000);

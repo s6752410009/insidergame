@@ -273,6 +273,7 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
 
+  .bm-chip.bm-chip-exit { min-height: 44px; cursor: pointer; font-family: inherit; font-size: inherit; border-color: rgba(248, 113, 113, 0.55); color: #fecaca; }
   .bm-chip.phase-market { border-color: rgba(245, 200, 107, 0.26); color: #fde68a; }
   .bm-chip.phase-action { border-color: rgba(248, 113, 113, 0.26); color: #fecaca; }
   .bm-chip.phase-finished { border-color: rgba(110, 231, 183, 0.24); color: #d1fae5; }
@@ -2073,6 +2074,7 @@
         <div class="bm-subtitle">สะสม 👑 ให้มากสุดใน 5 ยก</div>
       </div>
       <div class="bm-top-meta">
+        <button id="bmExitBtn" type="button" class="bm-chip bm-chip-exit">🚪 ออก</button>
         <div class="bm-chip">🆔 <span><%= room.roomId %></span></div>
         <div class="bm-chip">👥 <span><%= room.playerCount %>/<%= room.maxPlayers %></span></div>
         <div id="phaseChip" class="bm-chip phase-market">🛒 เปิดตลาด</div>
@@ -2305,6 +2307,7 @@
 <%- contentFor('script') %>
 <script src="/js/gameIcon.js"></script>
 <script src="/js/chatPanel.js"></script>
+<script src="/js/roomExit.js"></script>
 <script>
   document.documentElement.classList.add('bm-active');
   window.addEventListener('pagehide', function() {
@@ -4498,20 +4501,42 @@
       blackMarketChat?.appendMessage(entry, { silent: true });
     });
 
+    // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+    function exitConsequences() {
+      const s = currentState || {};
+      const self = s.self || null;
+      if (!s.phase || s.phase === 'lobby' || s.phase === 'finished' || s.winner) return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+      if (!self || self.alive === false) return ['คุณตกรอบแล้ว — โต๊ะเล่นต่อตามปกติ'];
+      const lines = ['ออกตอนนี้ = ตกรอบ · บทของคุณจะถูกเปิด'];
+      const others = (s.players || []).filter(p => p.alive && !p.isSelf);
+      lines.push(others.length <= 1 ? 'เหลือคนเดียว — เกมจบ' : 'โต๊ะเล่นต่อโดยไม่มีคุณ');
+      if (isRoomAdmin) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+      return lines;
+    }
+    const exit = window.roomExit.create({
+      socket, roomId, playerId,
+      consequences: exitConsequences,
+      onLeave: function() { allowNavigation = true; },
+      theme: { background: '#111', color: '#fff', confirmButtonColor: '#b3262e' }
+    });
+    document.getElementById('bmExitBtn').addEventListener('click', exit.confirm);
+
     socket.on('connect', function() {
+      if (exit.isLeaving()) return;
       socket.emit('initPlayer', playerId);
       socket.emit('setRoom', { roomId, playerId });
       requestState();
     });
 
     document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible' && socket.connected) {
+      if (document.visibilityState === 'visible' && socket.connected && !exit.isLeaving()) {
         socket.emit('checkRoomStatus', { roomId, playerId });
         requestState();
       }
     });
 
     socket.on('tableAbandoned', function(payload) {
+      if (exit.isLeaving()) return;
       allowNavigation = true;
       Swal.fire({
         icon: 'info',
@@ -4558,17 +4583,20 @@
     });
 
     socket.on('restartGame', function() {
+      if (exit.isLeaving()) return;
       allowNavigation = true;
       window.location.href = '/room/' + roomId + '?playerId=' + playerId;
     });
 
     socket.on('kickedFromRoom', function(data) {
+      if (exit.isLeaving()) return;
       allowNavigation = true;
       Swal.fire({ icon: 'error', title: 'โดนเคลียร์ออกจากห้อง', text: data?.message || data?.reason || 'คืนนี้โต๊ะนี้ไม่รับคุณแล้ว', background: '#111', color: '#fff' })
         .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
     });
 
     socket.on('roomClosed', function(data) {
+      if (exit.isLeaving()) return;
       allowNavigation = true;
       Swal.fire({ icon: 'warning', title: 'โต๊ะถูกปิด', text: data?.message || 'ห้องนี้ถูกพับเก็บไปแล้ว', background: '#111', color: '#fff' })
         .then(() => { window.location.href = '/rooms?playerId=' + playerId; });
@@ -4942,7 +4970,7 @@
     });
 
     document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !exit.isLeaving()) {
         requestState();
       }
     });

@@ -1872,6 +1872,7 @@
     if (id === 'stBackBtn' || id === 'stEndBack') { socket.emit('returnFinishedToLobby', { roomId: roomId }); return; }
     if (id === 'stEndClose') { el.end.classList.remove('is-on'); return; }
     if (id === 'stEndShare') { shareResult(); return; }
+    if (id === 'stEndExit') { exit.confirm(); return; }
   });
   document.addEventListener('keydown', function(e) {
     if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('st-cell')) { e.preventDefault(); e.target.click(); }
@@ -1909,7 +1910,7 @@
       '<p class="st-end-reason">' + esc(S.finishReason || '') + '</p>' +
       '<div class="st-podium">' + pod + '</div>' +
       '<div class="st-ranks">' + list + '</div>' +
-      '<div class="st-end-btns">' + btn('stEndBack', 'เล่นอีกตา', { primary: true }) + btn('stEndShare', 'แชร์ผล') + '</div>' +
+      '<div class="st-end-btns">' + btn('stEndBack', 'เล่นอีกตา', { primary: true }) + btn('stEndShare', 'แชร์ผล') + btn('stEndExit', '🚪 ออก') + '</div>' +
       btn('stEndClose', 'ดูกระดาน', {}) +
       '<div class="st-end-note" id="stEndNote">เงินในเกม ไม่มีมูลค่าจริง</div></div>';
     el.end.classList.add('is-on');
@@ -2011,14 +2012,26 @@
   $('#closeSidebarBtn').addEventListener('click', function() { setSidebar(false); });
   $('#stSidebarOverlay').addEventListener('click', function() { setSidebar(false); });
   var allowNavigation = false;
-  $('#leaveRoomBtn').addEventListener('click', function() {
-    Swal.fire({ icon: 'question', title: 'ออกจากเกม?', text: 'ที่ดินของคุณจะคืนธนาคาร', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1d2433', color: '#fff' })
-      .then(function(r) {
-        if (!r.isConfirmed) return;
-        allowNavigation = true;
-        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
-      });
+  // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+  function exitConsequences() {
+    if (!S || !S.phase || S.phase === 'lobby' || S.phase === 'finished') return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+    var me = meSeat();
+    if (isOut(me)) return ['คุณออกจากเกมแล้ว — ออกได้เลย เกมไม่สะดุด'];
+    var lines = ['ที่ดินและเงินของคุณคืนธนาคาร'];
+    if (S.turn && S.turn.playerId === playerId) lines.push('ตาของคุณจะข้ามไปคนต่อไป');
+    var others = (S.seats || []).filter(function(s) { return s.playerId !== playerId && !isOut(s); });
+    lines.push(others.length <= 1 ? ('เหลือคนเดียว — ' + (others[0] ? others[0].name + ' ชนะ' : 'เกมจบ')) : 'เกมเล่นต่อโดยไม่มีคุณ');
+    if (S.isHost === undefined ? BOOT.isRoomAdmin : S.isHost) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+    return lines;
+  }
+  var exit = window.roomExit.create({
+    socket: socket, roomId: roomId, playerId: playerId,
+    consequences: exitConsequences,
+    onLeave: function() { allowNavigation = true; },
+    theme: { background: '#1d2433', color: '#fff', confirmButtonColor: '#b3262e' }
   });
+  $('#stExitBtn').addEventListener('click', exit.confirm);
+  $('#leaveRoomBtn').addEventListener('click', function() { setSidebar(false); exit.confirm(); });
   var endBtn = $('#stEndBtn');
   if (endBtn) endBtn.addEventListener('click', function() {
     Swal.fire({ icon: 'warning', title: 'จบเกมเลยไหม?', text: 'นับทรัพย์สินรวมตอนนี้ มากสุดชนะ', showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#1d2433', color: '#fff', confirmButtonColor: '#c2410c' })
@@ -2036,6 +2049,7 @@
 
   // ---------- socket ----------
   socket.on('connect', function() {
+    if (exit.isLeaving()) return;
     $('#stConn').style.display = 'none';
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
@@ -2043,15 +2057,16 @@
   });
   socket.on('disconnect', function() { $('#stConn').style.display = 'block'; });
   socket.on('setthiState', onState);
-  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('redirectToLobby', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('returnToLobby', function(data) {
     var note = document.getElementById('stEndNote');
     var secs = Number(data && data.countdown) || 10;
     if (note) note.textContent = 'กลับห้องรอใน ' + secs + ' วินาที · เงินในเกม ไม่มีมูลค่าจริง';
   });
-  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('restartGame', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
+    if (exit.isLeaving()) return;
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && data.reason) || '', background: '#1d2433', color: '#fff' })
       .then(function() { window.location.href = '/rooms?playerId=' + playerId; });

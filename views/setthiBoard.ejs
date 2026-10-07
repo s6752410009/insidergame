@@ -16,6 +16,7 @@
       <span class="st-clock-txt" id="stClockTxt">--:--</span>
     </div>
     <div class="st-tools">
+      <button type="button" class="st-fast st-exit" id="stExitBtn">🚪 ออก</button>
       <button type="button" class="st-fast" id="stFastBtn" aria-pressed="false" aria-label="เร่งเกม (บอทเล่นเร็วขึ้น ฉากสั้นลง)"><span aria-hidden="true">⏩</span><span class="st-fast-txt"> เร่ง</span></button>
       <button type="button" class="st-icon-btn" id="stHowBtn" aria-label="วิธีเล่น">?</button>
       <button type="button" class="st-icon-btn" id="stMenuBtn" aria-label="ผู้เล่นและเมนู" aria-expanded="false" aria-controls="stSidebar">☰</button>
@@ -112,5 +113,6 @@
   };
 </script>
 <script src="/js/chatPanel.js"></script>
+<script src="/js/roomExit.js"></script>
 <script src="/assets/games/setthi/setthi-art.js?v=<%= typeof buildId !== 'undefined' ? buildId : '1' %>"></script>
 <script src="/assets/games/setthi/setthi.js?v=<%= typeof buildId !== 'undefined' ? buildId : '1' %>"></script>

@@ -1,4 +1,5 @@
 <%- contentFor('content') %>
+<div class="ins-exitbar"><button type="button" id="insExitBtn" class="ins-exit">🚪 ออก</button></div>
 <div class="player">
     <div class="playerStatus"></div>
     เริ่มเกมแล้ว <strong class="player-name-accent" data-player-color="<%= playerInfo.color %>"><%= player.name %></strong> !
@@ -2173,6 +2174,10 @@
 #vote2 #confirmVote2Btn { min-height: 48px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ช่วงโหวตไม่ต้องดูรายชื่อออนไลน์ — ปุ่มลอยนี้ไปทับปุ่มยืนยันโหวต */
 body.ins-voting #toggleSidebarBtn { display: none !important; }
+/* ปุ่มออก — เห็นทุกเฟส (รวมช่วงโหวตที่ปุ่มผู้เล่นถูกซ่อน) */
+.ins-exitbar { display: flex; justify-content: flex-start; padding: 6px 10px 0; }
+.ins-exit { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid oklch(0.65 0.16 25 / 0.7); background: oklch(0.24 0.02 260); color: oklch(0.88 0.08 25); font-family: 'Bai Jamjuree', sans-serif; font-weight: 700; font-size: 0.92rem; cursor: pointer; }
+.ins-exit:focus-visible { outline: 2px solid #f39c12; outline-offset: 2px; }
 #vote2 #confirmVote2Btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ผลเกม */
@@ -2197,9 +2202,12 @@ body.gm-role #chatBox .gm-quick-reply .gm-quick-label { font-size: 13px !importa
     .ins-rolechip__btn, .ui-btn.ins-cta { transition: none !important; }
 }
 </style>
+<script src="/js/roomExit.js"></script>
 <script>
 $(function() {
     var socket = window.appSocket || io();
+    var insExit = null; // ปุ่ม 🚪 ออก — ตั้งค่าด้านล่าง
+    function leavingNow() { return !!(insExit && insExit.isLeaving()); }
     if (window.partyPlay) window.partyPlay.startSession('insider', socket);
 
     // Socket.IO connection monitoring
@@ -2209,6 +2217,7 @@ $(function() {
     // 'connect' ยิงทุกครั้งรวมตอนต่อใหม่ จึงต้อง re-bind identity + ห้องที่นี่เสมอ
     socket.on('connect', function() {
         console.log('[Socket] Connected:', socket.id);
+        if (leavingNow()) return;
         $('#connectionStatus').hide();
         socket.emit('initPlayer', playerId);
         socket.emit('setRoom', { roomId: roomId, playerId: playerId });
@@ -2224,7 +2233,7 @@ $(function() {
 
     // สลับแอป (LINE ฯลฯ) แล้วกลับมา — ขอสถานะห้องใหม่กันจอค้างของเก่า
     document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible' && socket.connected) {
+        if (document.visibilityState === 'visible' && socket.connected && !leavingNow()) {
             socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
         }
     });
@@ -2450,40 +2459,8 @@ $(function() {
 
     // ปุ่มออกจากห้อง
     $('#leaveRoomBtn').on('click', function() {
-        Swal.fire({
-            icon: 'question',
-            title: 'ออกจากห้อง?',
-            text: 'คุณต้องการออกจากเกมนี้หรือไม่?',
-            background: '#1e1e1e',
-            color: '#fff',
-            showCancelButton: true,
-            confirmButtonColor: '#e74c3c',
-            cancelButtonColor: '#555',
-            confirmButtonText: 'ออกจากห้อง',
-            cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    title: 'กำลังออกจากห้อง...',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    background: '#1e1e1e',
-                    color: '#fff',
-                    didOpen: () => { Swal.showLoading(); }
-                });
-                
-                socket.emit('leaveRoom', {}, function(response) {
-                    allowNavigation = true;
-                    window.location.href = '/rooms?playerId=' + playerId;
-                });
-                
-                // Fallback
-                setTimeout(function() {
-                    allowNavigation = true;
-                    window.location.href = '/rooms?playerId=' + playerId;
-                }, 2000);
-            }
-        });
+        if ($('#playerSidebar').hasClass('open')) $('#closeSidebarBtn').trigger('click');
+        ensureInsExit().confirm();
     });
 
     // Admin Controls
@@ -2723,13 +2700,39 @@ $(function() {
     }
     setupBackBlocker();
     
-    // ฟังก์ชันออกจากเกม
+    // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+    function insExitConsequences() {
+        if ($('#vote2Result').is(':visible')) return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+        const voting = document.body.classList.contains('ins-voting');
+        const lines = [];
+        if (!myRole) {
+            lines.push('กลับไปหน้ารวมห้อง');
+        } else if (myRole === GM_ROLE && !voting) {
+            lines.push('คุณเป็นผู้ดำเนินเกม — รอบนี้ยกเลิก ทุกคนกลับห้องรอ');
+        } else {
+            if (voting) lines.push('โหวตของคุณไม่นับ');
+            lines.push('เกมเล่นต่อโดยไม่มีคุณ · บทของคุณยังเป็นความลับ');
+        }
+        if (isRoomAdmin) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+        return lines;
+    }
+    // สร้างตอนใช้ครั้งแรก — roomId/playerId ประกาศ (const) ไว้ท้ายไฟล์
+    function ensureInsExit() {
+        if (!insExit) {
+            insExit = window.roomExit.create({
+                socket: socket, roomId: roomId, playerId: playerId,
+                consequences: insExitConsequences,
+                onLeave: function() { allowNavigation = true; },
+                theme: { background: '#1e1e1e', color: '#fff', confirmButtonColor: '#b3262e' }
+            });
+        }
+        return insExit;
+    }
+    $('#insExitBtn').on('click', function() { ensureInsExit().confirm(); });
+
+    // ฟังก์ชันออกจากเกม (กดย้อนกลับ) — ไปหน้ารวมห้อง ไม่ใช่ /room/ (ที่ auto-join กลับเข้าห้อง)
     function leaveGameAndRedirect() {
-        allowNavigation = true;
-        socket.emit('leaveRoom', { roomId: roomId, playerId: playerId });
-        setTimeout(() => {
-            window.location.href = '/room/' + '<%= room.roomId %>' + '?playerId=' + '<%= player.playerId %>';
-        }, 150);
+        ensureInsExit().leave();
     }
     
     // ฟังก์ชันแสดง confirm dialog
@@ -2766,7 +2769,7 @@ $(function() {
     
     // 1. ดัก popstate (เมื่อ user กด back)
     window.addEventListener('popstate', function(e) {
-        if (allowNavigation) return;
+        if (allowNavigation || leavingNow()) return;
         
         // บล็อกการ back ทันที
         e.preventDefault();
@@ -2834,7 +2837,7 @@ $(function() {
             sessionStorage.setItem('hiddenTime', Date.now().toString());
         } else if (wasHidden) {
             wasHidden = false;
-            socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
+            if (!leavingNow()) socket.emit('checkRoomStatus', { roomId: roomId, playerId: playerId });
         }
     });
 
@@ -3681,6 +3684,7 @@ $(function() {
 
     // ถูกเตะออกจากห้อง
     socket.on('kickedFromRoom', function(data) {
+        if (leavingNow()) return;
         allowNavigation = true;
         Swal.fire({
             icon: 'warning',
@@ -4054,6 +4058,7 @@ $(function() {
     });
 
     socket.on('redirectToLobby', function(data) {
+        if (leavingNow()) return;
         allowNavigation = true;
         var target = '/room/' + data.roomId + '?playerId=' + playerId;
         if (data && data.reason === 'master-left' && window.Swal) {
@@ -4086,6 +4091,7 @@ $(function() {
 
     // Bug #1 Fix: รับ event restartGame จาก admin dashboard
     socket.on('restartGame', function() {
+        if (leavingNow()) return;
         Swal.fire({
             icon: 'info',
             title: '🔄 เกมถูกรีเซ็ต',

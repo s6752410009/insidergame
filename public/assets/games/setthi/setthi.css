@@ -94,6 +94,7 @@ html.st-active {
   -webkit-tap-highlight-color: transparent;
 }
 .st-fast { display: inline-flex; gap: 4px; padding: 0 10px; font-weight: 700; font-size: 0.86rem; }
+.st-exit { white-space: nowrap; color: oklch(0.88 0.08 25); border-color: oklch(0.65 0.16 25 / 0.7); }
 .st-fast.is-on { background: linear-gradient(180deg, oklch(0.88 0.12 84), oklch(0.76 0.13 76)); color: var(--st-gold-ink); border-color: oklch(0.95 0.06 85 / 0.7); }
 .st-fast:disabled { opacity: 0.45; }
 .st-icon-btn:active, .st-fast:active { transform: scale(0.95); }
@@ -1031,6 +1032,13 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
   }
   .st-top { grid-area: top; min-height: 44px; }
   .st-brand { display: none; }
+  /* คอลัมน์ขวาแคบ — ย่อแถบบนให้ปุ่ม 🚪 ออก พอดี */
+  .st-top, .st-tools { gap: 4px; }
+  .st-fast-txt { display: none; }
+  .st-fast:not(.st-exit) { padding: 0; width: 44px; justify-content: center; }
+  .st-exit { padding: 0 8px; font-size: 0.8rem; }
+  .st-clock { padding: 0 8px; }
+  .st-clock svg { display: none; }
   .st-stage { grid-area: stage; }
   .st-strip { grid-area: strip; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .st-alerts { grid-area: alerts; }
@@ -1161,7 +1169,15 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 .st-credit span { color: var(--st-muted); overflow-wrap: anywhere; }
 .st-credit a { color: var(--st-gold); }
 @media (max-width: 480px) {
+  /* แถบบนมือถือ: เผื่อที่ให้ปุ่ม 🚪 ออก — ปุ่มเร่งเหลือแค่ไอคอน */
+  .st-top, .st-tools { gap: 4px; }
+  .st-fast-txt { display: none; }
+  .st-fast:not(.st-exit) { padding: 0; width: 44px; justify-content: center; }
+  .st-exit { padding: 0 8px; font-size: 0.8rem; }
+  .st-clock { padding: 0 8px; }
   .st-debug-txt { display: none; }
   .st-debug-badge { padding: 4px 6px; }
   .st-top:has(.st-debug-badge:not([hidden])) .st-fast-txt { display: none; }
+  .st-top:has(.st-debug-badge:not([hidden])) .st-clock svg { display: none; }
+  .st-top:has(.st-debug-badge:not([hidden])) .st-exit { padding: 0 6px; }
 }
