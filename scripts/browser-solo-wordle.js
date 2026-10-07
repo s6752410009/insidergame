@@ -11,7 +11,7 @@ const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
 const { chromium } = require('playwright');
 const W = require('../public/js/solo/wordle-logic');
-const { answerFor, ANSWERS } = require('../games/solo/wordle')._internal;
+const { answerFor, ANSWERS, ALLOWED } = require('../games/solo/wordle')._internal;
 
 const PORT = Number(process.env.WORDLE_TEST_PORT) || 8483;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -259,6 +259,60 @@ async function main() {
             ok(fit.tile >= 34, `${vp.width}×${vp.height}: tiles stay readable (${fit.tile}px)`);
             await small.page.screenshot({ path: path.join(SHOTS, `13-small-${vp.width}x${vp.height}.png`) });
             await small.context.close();
+        }
+
+        // ---------- โหมดยาก (ตั้งในเครื่อง) + ทางกลับระหว่างเล่น ----------
+        {
+            const ac = W.toCells(answer);
+            const typable = Array.from(new Set([...ANSWERS, ...ALLOWED])).filter(w => w !== answer && Array.from(w).every(ch => MAIN.has(ch)) && (W.toCells(w) || []).length === ac.length);
+            const row = w => { const c = W.toCells(w); const r = W.scoreGuess(c, ac); return { cells: c, states: r.states, near: r.near }; };
+            let first = null;
+            let bad = null;
+            for (const w of typable) {
+                const r = row(w);
+                if (!r.states.some(x => x !== 'absent')) continue;
+                bad = typable.find(x => x !== w && W.hardModeError([r], W.toCells(x)));
+                if (bad) { first = w; break; }
+            }
+            ok(first && bad, `hard-mode sample words (${first} → ${bad})`);
+            const p4 = await newPlayerPage(browser, { width: 390, height: 844 }, { touch: true });
+            const hp = p4.page;
+            await hp.click('#wd-howto [data-close].ui-btn');
+            const back = hp.locator('.ui-footer-bar a.ui-back');
+            ok(await back.isVisible() && (await back.getAttribute('href')).startsWith('/solo'), 'back to game list visible while playing');
+            ok(await hp.isHidden('#wd-hard-badge'), 'hard mode off by default');
+            await hp.click('#wd-opts-btn');
+            ok(!(await hp.isChecked('#wd-hard-toggle')) && !(await hp.isDisabled('#wd-hard-toggle')), 'hard toggle can be switched on before the first guess');
+            await hp.check('#wd-hard-toggle');
+            await hp.screenshot({ path: path.join(SHOTS, '14-hard-settings.png') });
+            await layoutChecks(hp, 'settings sheet');
+            await hp.click('#wd-opts [data-close].ui-btn');
+            ok(await hp.isVisible('#wd-hard-badge'), 'hard badge shows');
+            await typeWord(hp, first);
+            await submitAndWait(hp, 0);
+            await typeWord(hp, bad);
+            await hp.click('#wd-enter');
+            await hp.waitForFunction(() => /โหมดยาก/.test(document.getElementById('wd-toasts').textContent), null, { timeout: 6000 });
+            ok(await hp.locator('#wd-board .wd-row').nth(1).locator('.wd-tile[data-state]').count() === 0, 'hard-mode violation not scored');
+            await hp.screenshot({ path: path.join(SHOTS, '15-hard-reject.png') });
+            // ปิดกลางเกมได้ → คำเดิมผ่าน
+            await hp.click('#wd-opts-btn');
+            await hp.uncheck('#wd-hard-toggle');
+            await hp.click('#wd-opts [data-close].ui-btn');
+            ok(await hp.isHidden('#wd-hard-badge'), 'hard badge hides when switched off');
+            await delay(400);
+            await submitAndWait(hp, 1);
+            ok(await hp.locator('#wd-board .wd-row').nth(1).locator('.wd-tile[data-state]').count() === 4, 'after switching off, the same word is accepted');
+            await hp.click('#wd-opts-btn');
+            ok(await hp.isDisabled('#wd-hard-toggle'), 'cannot switch hard mode back on mid-game');
+            await hp.click('#wd-opts [data-close].ui-btn');
+            await back.click();
+            await hp.waitForURL(u => new URL(u).pathname === '/solo');
+            await hp.goto(`${BASE}/solo/wordle`, { waitUntil: 'networkidle' });
+            await hp.waitForFunction(() => document.querySelectorAll('#wd-board .wd-tile[data-state]').length === 8);
+            ok(true, 'leaving and coming back keeps both guesses (saved on the server)');
+            ok(p4.errors.length === 0, 'no page/console errors (hard mode) ' + p4.errors.join(' | '));
+            await p4.context.close();
         }
 
         // ---------- hub card ----------

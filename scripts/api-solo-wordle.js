@@ -165,6 +165,36 @@ async function main() {
         ok(lb.some(e => e.playerId === a.id && e.score === 1), 'leaderboard lists the winner streak');
         ok(!lb.some(e => e.playerId === b.id), 'player with no streak not on the leaderboard');
 
+        // โหมดยาก: เปิดกับคำแรก แล้วคำที่ไม่ใช้ตัวที่เปิดเจอถูกปฏิเสธ
+        {
+            const ac = W.toCells(answer);
+            const pool = wrongs.slice(20);
+            let first = null;
+            let viol = null;
+            for (const w of pool) {
+                const c0 = W.toCells(w);
+                const sc = W.scoreGuess(c0, ac);
+                if (!sc.states.some(x => x !== 'absent')) continue;
+                viol = pool.find(x => x !== w && W.hardModeError([{ cells: c0, states: sc.states, near: sc.near }], W.toCells(x)));
+                if (viol) { first = w; break; }
+            }
+            const h = new Client();
+            await h.identify();
+            r = await h.json('POST', '/api/solo/wordle/guess', { guess: first, puzzle, hard: true });
+            ok(r.status === 200 && r.json.hard === true, 'hard mode switched on with the first guess');
+            r = await h.json('POST', '/api/solo/wordle/guess', { guess: viol, puzzle, hard: true });
+            ok(r.status === 200 && r.json.success === false && r.json.code === 'hard_mode' && /โหมดยาก/.test(r.json.error), 'hard-mode violation rejected by the server');
+            r = await h.json('POST', '/api/solo/wordle/guess', { guess: viol, puzzle, hard: 'yes' });
+            ok(r.json.code === 'hard_mode', 'non-boolean hard flag keeps the stored mode');
+            r = await h.json('POST', '/api/solo/wordle/guess', { guess: viol, puzzle, hard: false });
+            ok(r.status === 200 && r.json.success && r.json.hard === false && r.json.guesses.length === 2, 'hard mode can be switched off mid-game');
+            const s2 = new Client();
+            await s2.identify();
+            await s2.json('POST', '/api/solo/wordle/guess', { guess: first, puzzle });
+            r = await s2.json('POST', '/api/solo/wordle/guess', { guess: viol, puzzle, hard: true });
+            ok(r.json.success && r.json.hard === false, 'hard mode cannot be switched on after the first guess');
+        }
+
         // rate limit
         const c = new Client();
         await c.identify();
