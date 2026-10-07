@@ -159,7 +159,8 @@ module.exports = function createSetthiRuntime(getDeps) {
     }
 
     function boardDef() {
-        return engine.board.publicBoard();
+        // ตารางสกิล 🪙 (ข้อมูลคงที่) ไว้โชว์ไอคอน/ชื่อ/ป๊อปอัปตอนสกิลติด
+        return { ...engine.board.publicBoard(), skills: skills.publicSkills() };
     }
 
     // state ส่งทีละ socket (แต่ละคนได้ปุ่มของตัวเอง · ลำดับการ์ดอยู่ฝั่งเซิร์ฟเวอร์)

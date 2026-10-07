@@ -83,12 +83,21 @@ function setRng(fn) { defaultRng = typeof fn === 'function' ? fn : Math.random; 
 function rngFor(rng) { return typeof rng === 'function' ? rng : rand; }
 
 /**
- * จุดลุ้นเปอร์เซ็นต์ (เตรียมไว้ให้สกิล 🪙 ภายหลัง): procHook(room, seat, key, base) → โอกาสใหม่ 0..1
- * key ที่มีตอนนี้: 'start2x' (ผ่านเริ่มได้ ×2) · 'tollHalf' (ค่าผ่านทางลดครึ่ง) · 'escape' (หนีเกาะทันทีตอนเริ่มตา)
- * ไม่มี hook หรือโอกาส 0 = ไม่สุ่มเลย (ลำดับเลขสุ่มเหมือนเดิมทุกอย่าง)
+ * จุดลุ้นเปอร์เซ็นต์ของสกิล 🪙: โอกาส = สกิลที่ติดตั้ง (seat.skills ล็อกตอนเริ่มเกม · ห้องปิดสกิล = 0)
+ * key: 'start2x' (ผ่านเริ่ม ×2) · 'tollHalf' (ค่าผ่านทางลดครึ่ง) · 'escape' (หนีเกาะ) · 'double' (ดับเบิล)
+ *      'fly' (ตกทัวร์บินเลย) · 'luck' (เลี่ยงการ์ดร้าย)
+ * procHook(room, seat, key, base) → โอกาสใหม่ 0..1 (เทสใช้บังคับ) — ตั้งแล้วแทนค่าจากสกิล
+ * โอกาส 0 = ไม่สุ่มเลย (ไม่มีสกิล → ลำดับเลขสุ่มเหมือนเดิมทุกอย่าง)
  */
 let procHook = null;
 function setProcHook(fn) { procHook = typeof fn === 'function' ? fn : null; }
+function skillsOn(room) { return !(st(room) && st(room).config && st(room).config.skills === false); }
+/** สกิลที่ใช้ได้ของที่นั่งนี้ { id: lv } (ห้องปิดสกิล = ว่าง) */
+function seatSkills(room, seat) {
+    if (!seat || !seat.skills || !skillsOn(room)) return {};
+    return seat.skills;
+}
+function skillLv(room, seat, id) { return SK.clampLevel(seatSkills(room, seat)[id]); }
 function proc(room, seat, key, rng, base = 0) {
     let p = base;
     if (procHook && seat) {
@@ -96,6 +105,8 @@ function proc(room, seat, key, rng, base = 0) {
             const v = procHook(room, seat, key, base);
             if (Number.isFinite(v)) p = v;
         } catch (error) { /* hook พังต้องไม่ทำเกมพัง */ }
+    } else if (seat) {
+        p = base + SK.procChance(seatSkills(room, seat), key);
     }
     if (!(p > 0)) return false;
     return p >= 1 || rngFor(rng)() < p;
@@ -193,7 +204,8 @@ function sanitizeMinutes(value) {
 }
 
 function normalizeConfig(settings = {}) {
-    return { minutes: sanitizeMinutes(settings.setthiMinutes), turnMs: TURN_MS, startCash: B.START_CASH, salary: B.SALARY };
+    // skills: ห้องเปิดสกิล 🪙 ไหม (ค่าเริ่ม = เปิด) · ปิด = ไม่มีใครใช้สกิลได้
+    return { minutes: sanitizeMinutes(settings.setthiMinutes), turnMs: TURN_MS, startCash: B.START_CASH, salary: B.SALARY, skills: settings.setthiSkills !== false };
 }
 
 function st(room) { return room.gameState; }
@@ -257,6 +269,7 @@ function fxCost(event) {
         case 'threat': return 1500;
         case 'bankrupt': return 2400;
         case 'timeUp': return 1500;
+        case 'skill': return 1000;
         default: return 0;
     }
 }
@@ -279,6 +292,16 @@ function pushHistory(room, icon, text, kind = null) {
 }
 
 function bumpStep(room) { st(room).step = (Number(st(room).step) || 0) + 1; }
+
+/** สกิลติด: ป๊อปอัป ✨ ให้ทั้งห้องเห็น + บันทึกเกม + นับครั้ง */
+function skillFx(room, seat, id, extra = {}) {
+    const def = SK.SKILL_BY_ID.get(id);
+    if (!def || !seat) return;
+    const lv = skillLv(room, seat, id) || SK.clampLevel((seat.skills || {})[id]);
+    seat.skillProcs = { ...(seat.skillProcs || {}), [id]: ((seat.skillProcs || {})[id] || 0) + 1 };
+    pushFx(room, { kind: 'skill', playerId: seat.playerId, skill: id, lv, icon: def.icon, text: extra.text || def.proc, ...extra });
+    pushHistory(room, '✨', `${seat.name} ${def.icon} ${extra.text || def.proc}`, 'skill');
+}
 
 function markAction(room, kind) {
     st(room).lastActionAt = now();
@@ -324,16 +347,40 @@ function ownsColorSet(room, i, playerId = null) {
     return B.GROUP_SQUARES[B.SQUARES[i].group].every(k => ownerOf(room, k) === owner);
 }
 
-/** ค่าผ่านทางตอนนี้ (ขั้น × ดาว × ครบสี ×2 × งานวัด) */
+/** ค่าผ่านทางตอนนี้ (ขั้น × ดาว × ครบสี ×2 × งานวัด · สกิลงานวัดของเจ้าของ +%) */
 function tollFor(room, i) {
+    return tollWith(room, i, festivalMultOf(room, i));
+}
+
+/** ค่าผ่านทางถ้าตัวคูณงานวัดของช่องนี้เป็น festival (1 = ไม่มีงาน) */
+function tollWith(room, i, festival) {
     const p = prop(room, i);
     if (!p || !p.owner) return 0;
-    const festival = festivalMultOf(room, i);
-    if (isTourist(i)) return B.TOUR_TOLL[Math.max(0, touristCount(room, p.owner) - 1)] * festival;
-    const base = round10(B.SQUARES[i].price * B.TOLL_MULT[p.level]);
-    const stars = p.level === 4 ? Math.max(0, Math.min(STAR_MAX, Number(p.stars) || 0)) : 0;
-    const set = ownsColorSet(room, i, p.owner) ? COLOR_SET_MULT : 1;
-    return round10(base * (1 + STAR_STEP * stars)) * set * festival;
+    let toll;
+    if (isTourist(i)) toll = B.TOUR_TOLL[Math.max(0, touristCount(room, p.owner) - 1)] * festival;
+    else {
+        const base = round10(B.SQUARES[i].price * B.TOLL_MULT[p.level]);
+        const stars = p.level === 4 ? Math.max(0, Math.min(STAR_MAX, Number(p.stars) || 0)) : 0;
+        const set = ownsColorSet(room, i, p.owner) ? COLOR_SET_MULT : 1;
+        toll = round10(base * (1 + STAR_STEP * stars)) * set * festival;
+    }
+    if (festival > 1) {
+        const bonus = festivalBonus(room, p.owner);
+        if (bonus > 0) toll = round10(toll * (100 + bonus) / 100);
+    }
+    return toll;
+}
+
+/** สกิล 🎪 ของเจ้าของเมือง: ค่าผ่านทางเมืองงานวัด +% */
+function festivalBonus(room, ownerId) {
+    const owner = ownerId ? seatOf(room, ownerId) : null;
+    if (!owner) return 0;
+    return SK.valueOf('festival', skillLv(room, owner, 'festival'));
+}
+
+/** งานวัดใหม่เริ่มที่ ×2 · สกิล 🎪 Lv5 เริ่ม ×3 */
+function festivalStartMult(room, seat) {
+    return skillLv(room, seat, 'festival') >= SK.MAX_LEVEL ? SK.FESTIVAL_LV5_START : 2;
 }
 
 function festivalMultOf(room, i) {
@@ -343,11 +390,14 @@ function festivalMultOf(room, i) {
 }
 
 /** ค่าผ่านทางถ้าเลือกช่องนี้จัดงานวัด (ไว้โชว์ในแผ่นเลือก) */
-function festivalPreview(room, i) {
+function festivalPreview(room, i, seat = null) {
+    return tollWith(room, i, festivalNextMult(room, i, seat || seatOf(room, ownerOf(room, i))));
+}
+
+/** ตัวคูณถ้าเลือกช่องนี้จัดงานวัด: ช่องเดิม = ×2 ของตอนนี้ · ช่องใหม่ = ×2 (สกิล Lv5 = ×3) */
+function festivalNextMult(room, i, seat) {
     const state = st(room);
-    const cur = festivalMultOf(room, i);
-    const next = state.festival === i ? Math.min(FESTIVAL_MAX, cur * 2) : 2;
-    return Math.round(tollFor(room, i) / cur) * next;
+    return state.festival === i ? Math.min(FESTIVAL_MAX, festivalMultOf(room, i) * 2) : festivalStartMult(room, seat);
 }
 
 /** ราคาซื้อต่อ = มูลค่ารวม ×2 · ถือการ์ดส่วนลดซื้อต่อ = ครึ่งเดียว */
@@ -495,7 +545,7 @@ function settlePayees(room, payer, payees, reason, meta = {}) {
         const target = entry.to ? seatOf(room, entry.to) : null;
         if (target && isActive(target)) {
             transfer(room, payer, target, entry.amount);
-            pushFx(room, { kind: meta.kind === 'toll' ? 'toll' : 'pay', from: payer.playerId, to: target.playerId, amount: entry.amount, square: meta.square, festival: meta.festival, reason, cash: cashMap(room, [payer.playerId, target.playerId]) });
+            pushFx(room, { kind: meta.kind === 'toll' ? 'toll' : 'pay', from: payer.playerId, to: target.playerId, amount: entry.amount, square: meta.square, festival: meta.festival, festivalBonus: meta.festivalBonus, reason, cash: cashMap(room, [payer.playerId, target.playerId]) });
         } else {
             paysBank(room, payer, entry.amount);
             pushFx(room, { kind: meta.kind === 'tax' ? 'tax' : 'pay', from: payer.playerId, to: null, amount: entry.amount, square: meta.square, reason, cash: cashMap(room, [payer.playerId]) });
@@ -594,6 +644,7 @@ function computeStandings(room, winnerId = null) {
         landmarks: isActive(seat) ? ownedSquares(room, seat.playerId).filter(i => prop(room, i).level === 4).length : 0,
         landmarksBuilt: Number(seat.landmarksBuilt) || 0,
         takeovers: Number(seat.takeovers) || 0,
+        skillProcs: { ...(seat.skillProcs || {}) },
         bankrupt: !!seat.bankrupt,
         left: !!seat.left,
         outOrder: seat.outOrder || 0
@@ -907,6 +958,7 @@ function paySalary(room, seat, rng = rand) {
     bankPays(room, seat, amount);
     pushFx(room, { kind: 'salary', playerId: seat.playerId, amount, double, laps: seat.laps, cash: cashMap(room, [seat.playerId]) });
     pushHistory(room, '💰', `${seat.name} ผ่านจุดเริ่ม +${fmt(amount)}${double ? ' (×2)' : ''}`, 'salary');
+    if (double) skillFx(room, seat, 'start2x', { amount });
 }
 
 function sendToIsland(room, seat, reason) {
@@ -947,6 +999,11 @@ function land(room, seat, opts = {}) {
             if (state.turn && state.turn.playerId === seat.playerId) state.turn.canRollAgain = false;
             pushFx(room, { kind: 'tourReady', playerId: seat.playerId });
             pushHistory(room, '✈️', `${seat.name} ได้ตั๋วทัวร์ — ตาหน้าเลือกไปช่องไหนก็ได้`, 'tour');
+            // สกิล ✈️: บินได้เลยตานี้ (ต้องมีค่าทัวร์ ไม่งั้นไม่ลุ้น — ตั๋วไม่หาย)
+            if (state.turn && state.turn.playerId === seat.playerId && seat.cash >= B.TOUR_FEE && proc(room, seat, 'fly', opts.rng)) {
+                skillFx(room, seat, 'fly');
+                setPending(room, { type: 'pick', purpose: 'tour', playerId: seat.playerId, fly: true });
+            }
             return;
         case 'chance':
             if (depth < 3) drawCard(room, seat, { depth, rng: opts.rng });
@@ -965,7 +1022,7 @@ function land(room, seat, opts = {}) {
         case 'tourist': {
             const p = prop(room, index);
             if (!p.owner) {
-                if (seat.cash >= B.levelCost(index, 0)) setPending(room, { type: 'build', mode: 'buy', square: index, playerId: seat.playerId });
+                if (seat.cash >= buildPrice(room, seat, index, 0)) setPending(room, { type: 'build', mode: 'buy', square: index, playerId: seat.playerId });
                 return;
             }
             if (p.owner === seat.playerId) {
@@ -988,11 +1045,13 @@ function land(room, seat, opts = {}) {
             if (toll > 0 && proc(room, seat, 'tollHalf', opts.rng)) {
                 const saved = toll - round10(toll / 2);
                 toll -= saved;
+                skillFx(room, seat, 'tollShield', { square: index, saved });
                 pushFx(room, { kind: 'shield', playerId: seat.playerId, shield: 'half', square: index, saved, proc: 'tollHalf' });
             }
             if (toll > 0) {
-                pushHistory(room, '🛣️', `${seat.name} จ่ายค่าผ่านทาง ${fmt(toll)} ให้ ${owner.name}`, 'toll');
-                const result = charge(room, seat, [{ to: owner.playerId, amount: toll }], 'ค่าผ่านทาง', { kind: 'toll', square: index, festival });
+                const bonus = festival ? festivalBonus(room, owner.playerId) : 0;
+                pushHistory(room, '🛣️', `${seat.name} จ่ายค่าผ่านทาง ${fmt(toll)} ให้ ${owner.name}${bonus ? ` (🎪 +${bonus}%)` : ''}`, 'toll');
+                const result = charge(room, seat, [{ to: owner.playerId, amount: toll }], 'ค่าผ่านทาง', { kind: 'toll', square: index, festival, festivalBonus: bonus || undefined });
                 if (result === 'bankrupt') return;
             }
             if (isCity(index) && p.level < 4 && isActive(seat)) setPending(room, { type: 'takeover', square: index, playerId: seat.playerId });
@@ -1067,6 +1126,16 @@ function drawCard(room, seat, opts = {}) {
     else {
         if (!state.deck.length) state.deck = shuffle(B.CARDS.map(c => c.id), opts.rng || rand);
         cardId = state.deck.shift();
+        // สกิล 🃏: เปิดได้การ์ดร้าย → ลุ้นเปลี่ยนเป็นการ์ดดีใบถัดไปในกอง (ใบร้ายไปอยู่ท้ายกอง จำนวนการ์ดเท่าเดิม)
+        if (SK.BAD_CARDS.has(cardId)) {
+            const k = state.deck.findIndex(id => !SK.BAD_CARDS.has(id));
+            if (k >= 0 && proc(room, seat, 'luck', opts.rng)) {
+                const good = state.deck.splice(k, 1)[0];
+                state.deck.push(cardId);
+                cardId = good;
+                skillFx(room, seat, 'luck');
+            }
+        }
     }
     const card = B.CARD_BY_ID.get(cardId);
     pushFx(room, { kind: 'card', playerId: seat.playerId, card: publicCard(card) });
@@ -1139,7 +1208,7 @@ function buildChoices(room, seat, i, mode) {
     if (!sq || !p || !seat) return { current: -1, cap: 0, options };
     const cap = levelCap(seat);
     if (sq.type === 'tourist') {
-        if (mode === 'buy' && !p.owner) options.push({ level: 0, cost: B.levelCost(i, 0), built: false, locked: null });
+        if (mode === 'buy' && !p.owner) options.push({ level: 0, cost: buildPrice(room, seat, i, 0), full: B.levelCost(i, 0), built: false, locked: null });
         return { current: p.owner ? 0 : -1, cap: 0, options };
     }
     const current = mode === 'buy' ? -1 : p.level;
@@ -1156,10 +1225,27 @@ function buildChoices(room, seat, i, mode) {
                 locked = 'lap';
             }
         }
-        options.push({ level, cost: B.levelCost(i, level), built, locked });
+        options.push({ level, cost: buildPrice(room, seat, i, level), full: B.levelCost(i, level), built, locked });
     }
     // ตกเมืองตัวเองที่มีโรงแรม: เลือกได้แค่แลนด์มาร์ก · ยังไม่มีโรงแรม: แลนด์มาร์กล็อก
     return { current, cap, options };
+}
+
+/** ราคาขั้นนี้สำหรับคนนี้ (สกิล 🏗️ ลด %) — ปัดหลักสิบ */
+function buildPrice(room, seat, i, level) {
+    const full = B.levelCost(i, level);
+    const off = SK.valueOf('builder', skillLv(room, seat, 'builder'));
+    return off > 0 ? round10(full * (100 - off) / 100) : full;
+}
+
+/** ราคาเต็ม (ไม่หักส่วนลดสกิล) ของการสร้างถึงขั้น level จากตัวเลือกที่คำนวณแล้ว */
+function buildCostFull(choices, level) {
+    let full = 0;
+    for (let k = choices.current + 1; k <= level; k += 1) {
+        const opt = choices.options.find(o => o.level === k);
+        if (opt) full += opt.full !== undefined ? opt.full : opt.cost;
+    }
+    return full;
 }
 
 function buildCost(room, seat, i, mode, level) {
@@ -1231,7 +1317,13 @@ function rollDice(room, playerId, ctx = null, rng = rand, bias = null) {
     const state = st(room);
     const turn = state.turn;
     state.rollHold = null;
-    const [a, b] = nextDice(room, rng, bias, playerId);
+    // เต๋าที่ /m บังคับ = ไม่ให้สกิลมาเปลี่ยน
+    const dbgDice = state.debug && state.debug[playerId];
+    const forced = !!((state.debugNext && state.debugNext[playerId]) || (dbgDice && (dbgDice.six || dbgDice.doubles)));
+    let [a, b] = nextDice(room, rng, bias, playerId);
+    // สกิล 🎲: ไม่ได้ดับเบิล → ลุ้นเป็นดับเบิล (ไม่ใช่ตอนติดเกาะ · ไม่ใช่ครั้งที่ 3 ที่จะส่งไปเกาะ)
+    const doubleProc = !forced && !seat.island && a !== b && (Number(turn.doublesStreak) || 0) < 2 && proc(room, seat, 'double', rng);
+    if (doubleProc) b = a;
     const throwInfo = bias ? { power: Math.round((bias.power || 0) * 100) / 100, perfect: !!bias.green } : {};
     const doubles = a === b;
     const total = a + b;
@@ -1244,6 +1336,7 @@ function rollDice(room, playerId, ctx = null, rng = rand, bias = null) {
         const lucky = !doubles && proc(room, seat, 'escape', rng);
         if (lucky) {
             seat.island = 0;
+            skillFx(room, seat, 'escape');
             pushFx(room, { kind: 'islandFree', playerId, how: 'proc' });
             pushHistory(room, '🍀', `${seat.name} หนีออกจากเกาะ!`, 'islandFree');
             moveSteps(room, seat, total, { rng, byDice: true });
@@ -1270,7 +1363,8 @@ function rollDice(room, playerId, ctx = null, rng = rand, bias = null) {
     }
 
     if (doubles) turn.doublesStreak += 1;
-    pushFx(room, { kind: 'dice', playerId, d: [a, b], doubles, streak: doubles ? turn.doublesStreak : 0, ...throwInfo });
+    pushFx(room, { kind: 'dice', playerId, d: [a, b], doubles, streak: doubles ? turn.doublesStreak : 0, ...throwInfo, ...(doubleProc ? { skill: 'double' } : {}) });
+    if (doubleProc) skillFx(room, seat, 'double');
     if (doubles && turn.doublesStreak >= 3) {
         sendToIsland(room, seat, 'triple');
         markAction(room, 'roll');
@@ -1360,14 +1454,16 @@ function buildTo(room, playerId, level, ctx = null) {
     if (cost === null) throw new Error('ขั้นนี้ยังสร้างไม่ได้');
     if (seat.cash < cost) throw new Error(`เงินไม่พอ (ต้องใช้ ${fmt(cost)})`);
     paysBank(room, seat, cost);
+    const full = buildCostFull(choices, target);
+    const saved = Math.max(0, full - cost);
     const p = prop(room, i);
     const buying = !p.owner;
     p.owner = playerId;
     p.level = isCity(i) ? target : 0;
     if (p.level === 4 && choices.current < 4) seat.landmarksBuilt = (Number(seat.landmarksBuilt) || 0) + 1;
     state.pending = null;
-    pushFx(room, { kind: 'build', playerId, square: i, from: choices.current, to: p.level, cost, mode: pending.mode, cash: cashMap(room, [playerId]) });
-    pushHistory(room, p.level === 4 ? '🏛️' : buying ? '🏷️' : '🏗️', `${seat.name} ${buying ? 'ซื้อ' : 'สร้าง'}${sqName(i)}${isCity(i) ? ' (' + B.LEVEL_NAMES[p.level] + ')' : ''} ${fmt(cost)}`, p.level === 4 ? 'landmark' : 'build');
+    pushFx(room, { kind: 'build', playerId, square: i, from: choices.current, to: p.level, cost, saved: saved || undefined, mode: pending.mode, cash: cashMap(room, [playerId]) });
+    pushHistory(room, p.level === 4 ? '🏛️' : buying ? '🏷️' : '🏗️', `${seat.name} ${buying ? 'ซื้อ' : 'สร้าง'}${sqName(i)}${isCity(i) ? ' (' + B.LEVEL_NAMES[p.level] + ')' : ''} ${fmt(cost)}${saved ? ` (🏗️ ลด ${fmt(saved)})` : ''}`, p.level === 4 ? 'landmark' : 'build');
     if (buying) noteOwnerChange(room, playerId, i);
     markAction(room, 'build');
     if (buying && checkMonopoly(room, playerId, i)) return state;
@@ -1444,8 +1540,9 @@ function pickSquare(room, playerId, square, ctx = null) {
         case 'festival': {
             const prev = state.festival;
             const stacked = prev === i;
-            state.festivalMult = stacked ? Math.min(FESTIVAL_MAX, festivalMultOf(room, i) * 2) : 2;
+            state.festivalMult = festivalNextMult(room, i, seat);
             state.festival = i;
+            if (!stacked && state.festivalMult > 2) skillFx(room, seat, 'festival', { square: i, mult: state.festivalMult });
             pushFx(room, { kind: 'festival', playerId, square: i, prev, mult: state.festivalMult, stacked, toll: tollFor(room, i) });
             pushHistory(room, '🎉', `${seat.name} ${stacked ? 'งานวัดใหญ่ขึ้นที่' : 'จัดงานวัดที่'}${sqName(i)} ค่าผ่านทาง ×${state.festivalMult}`, 'festival');
             markAction(room, 'festival');
@@ -1908,6 +2005,9 @@ function startGame(room, rng = rand, options = {}) {
         takeHalf: false,
         landmarksBuilt: 0,
         takeovers: 0,
+        // สกิล 🪙 ที่ติดตั้ง ล็อกตอนเริ่มเกม (runtime ส่งมา · บอทไม่มี) · ห้องปิดสกิล = ว่าง
+        skills: state.config.skills ? SK.sanitizeSkillMap(options.skills && options.skills[p.playerId]) : {},
+        skillProcs: {},
         bankrupt: false,
         left: false,
         outOrder: 0
@@ -2131,7 +2231,7 @@ function botWantsTakeover(room, seat, i) {
 function botPickTarget(room, seat, purpose) {
     const options = pickOptions(room, seat, purpose);
     if (!options.length) return null;
-    if (purpose === 'festival') return options.slice().sort((a, b) => festivalPreview(room, b) - festivalPreview(room, a) || b - a)[0];
+    if (purpose === 'festival') return options.slice().sort((a, b) => festivalPreview(room, b, seat) - festivalPreview(room, a, seat) || b - a)[0];
     if (purpose === 'startBonus' || purpose === 'freeUpgrade') return options.slice().sort((a, b) => tollFor(room, b) - tollFor(room, a) || B.SQUARES[b].price - B.SQUARES[a].price)[0];
     // โจมตี: ช่องที่ทำให้คนอื่นใกล้ผูกขาดก่อน แล้วค่อยช่องแพงสุด
     const blocking = threatSquaresOf(room, t => t.playerId !== seat.playerId);
@@ -2292,7 +2392,7 @@ function publicDecision(room) {
                 out.preview[i] = { steps, salary: seat.pos + steps >= B.BOARD_SIZE };
             });
         } else if (pending.purpose === 'festival') {
-            out.options.forEach(i => { out.preview[i] = { toll: festivalPreview(room, i), mult: state.festival === i ? Math.min(FESTIVAL_MAX, festivalMultOf(room, i) * 2) : 2 }; });
+            out.options.forEach(i => { out.preview[i] = { toll: festivalPreview(room, i, seat), mult: festivalNextMult(room, i, seat) }; });
         }
 
     }
@@ -2384,6 +2484,8 @@ function buildClientState(room, viewerId) {
             takeHalf: !!seat.takeHalf,
             landmarksBuilt: Number(seat.landmarksBuilt) || 0,
             takeovers: Number(seat.takeovers) || 0,
+            // สกิลที่ติดตั้ง (ทุกคนเห็นของทุกคน) · ห้องปิดสกิล = ว่าง
+            skills: Object.keys(seatSkills(room, seat)).map(id => ({ id, lv: SK.clampLevel(seat.skills[id]) })),
             online: isConnected(room, seat),
             isBot: isBotId(seat.playerId),
             isSelf: seat.playerId === viewerId,
@@ -2451,7 +2553,7 @@ function auditState(room) {
         if (stars < 0 || stars > STAR_MAX || (stars > 0 && p.level !== 4)) problems.push(`${sqName(i)} ดาวผิด ${stars}`);
     });
     if (state.festival !== null && state.festival !== undefined && !ownerOf(room, state.festival)) problems.push('เทศกาลอยู่บนช่องที่ไม่มีเจ้าของ');
-    if (state.festival !== null && state.festival !== undefined && ![2, 4, 8, 16].includes(Math.max(2, Number(state.festivalMult) || 2))) problems.push('ตัวคูณงานวัดผิด ' + state.festivalMult);
+    if (state.festival !== null && state.festival !== undefined && ![2, 3, 4, 6, 8, 12, 16].includes(Math.max(2, Number(state.festivalMult) || 2))) problems.push('ตัวคูณงานวัดผิด ' + state.festivalMult);
     if (state.phase === 'debt' && !state.debts.length) problems.push('เฟสหนี้แต่ไม่มีหนี้');
     if (['build', 'takeover', 'pick'].includes(state.phase) && (!state.pending || state.pending.type !== state.phase)) problems.push(`เฟส ${state.phase} แต่ไม่มีเรื่องให้ตัดสินใจ`);
     if (state.phase === 'takeover' && state.pending && prop(room, state.pending.square).level >= 4) problems.push('เสนอซื้อต่อแลนด์มาร์ก');
@@ -2492,6 +2594,11 @@ module.exports = {
     rand,
     setProcHook,
     proc,
+    skillLv,
+    buildPrice,
+    festivalBonus,
+    festivalStartMult,
+    skills: SK,
     STAR_MAX,
     STAR_BONUS_CAP,
     FESTIVAL_MAX,
