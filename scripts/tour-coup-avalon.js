@@ -447,10 +447,12 @@ try { sessionStorage.insiderPromoSeen = '1'; localStorage.setItem('${firstPlayKe
             const p2 = await c2.newPage();
             p2.on('response', r => { if (r.status() === 404 && /\/assets\//.test(r.url())) errors.push('404 ' + r.url()); });
             await p2.goto(`${base}/rooms?playerId=${host.id}`, { waitUntil: 'networkidle' });
+            await clickIf(p2, '#createRoomBtn');
+            await delay(800);
             const coupCover = await p2.$('img[src*="/coup/cover"]');
-            if (coupCover) { await coupCover.scrollIntoViewIfNeeded(); await shot(p2, 'page-rooms-covers-' + tag); }
+            if (coupCover) { await coupCover.evaluate(el => el.scrollIntoView({ block: 'center' })); await delay(600); await shot(p2, 'page-rooms-covers-' + tag); }
             const avCover = await p2.$('img[src*="/avalon/cover"]');
-            if (avCover) { await avCover.scrollIntoViewIfNeeded(); await shot(p2, 'page-rooms-avalon-cover-' + tag); }
+            if (avCover) { await avCover.evaluate(el => el.scrollIntoView({ block: 'center' })); await delay(600); await shot(p2, 'page-rooms-avalon-cover-' + tag); }
             await c2.close();
         }
     }
