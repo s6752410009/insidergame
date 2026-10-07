@@ -1590,7 +1590,8 @@ function buildGameEndNotification(room) {
         const winner = gameState.winner || {};
         const resultMsg = winner.team === 'citizens' ? 'พลเมืองจับสายลับได้!' : 'สายลับหลบรอด!';
         return {
-            chatMessage: `เกมจบ! ${resultMsg} สถานที่: ${winner.locationName || gameState.locationName || '-'}`,
+            // เล่นหลายรอบ: บอกว่ารอบไหนจบ (ยังไม่จบเกม)
+            chatMessage: `${winner.matchOver === false ? `จบรอบ ${winner.round}/${winner.totalRounds}!` : 'เกมจบ!'} ${winner.teamLabel || resultMsg} สถานที่: ${winner.locationName || gameState.locationName || '-'}`,
             chatColor: '#1abc9c',
             logMessage: `🕵️ Spyfall จบ — ${resultMsg} · ${winner.locationName || gameState.locationName || '-'} · ${playerCount} คน`,
             logType: winner.team === 'citizens' ? 'success' : 'warning',

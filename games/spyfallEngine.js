@@ -955,7 +955,7 @@ function finishRound(room, result) {
     if (historyText) {
         pushHistory(room, result.team === 'citizens' ? '🎉' : '🕶️', historyText, result.team === 'citizens' ? 'green' : 'red');
     }
-    if (match?.over) {
+    if (match?.over && match.totalRounds > 1) {
         const names = (match.winnerIds || []).map(id => match.names[id]).filter(Boolean);
         pushHistory(room, '🏆', names.length ? `ครบ ${match.totalRounds} รอบ — ${names.join(', ')} คะแนนสูงสุด` : `ครบ ${match.totalRounds} รอบ`, 'gold');
     }

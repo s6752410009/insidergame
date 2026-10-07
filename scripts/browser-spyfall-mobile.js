@@ -58,7 +58,7 @@ async function main() {
     let browser;
 
     try {
-        server = await spawnServer({ SPYFALL_REVEAL_PHASE_MS: '30000' });
+        server = await spawnServer({ SPYFALL_REVEAL_PHASE_MS: '30000', MONGO_URL: '' });
         browser = await chromium.launch({ headless: true });
 
         for (let index = 0; index < 4; index += 1) {
@@ -74,7 +74,10 @@ async function main() {
             gameMode: 'spyfall',
             maxPlayers: 4,
             roundTime: 1,
-            spyfallVoteMinutes: 1
+            spyfallVoteMinutes: 1,
+            // ไฟล์นี้ทดสอบโหวตลับแบบเสียงข้างมาก (ค่าตั้งห้อง) · กติกาเอกฉันท์ดู browser-spyfall-exit.js
+            spyfallVoteMode: 'majority',
+            spyfallRounds: 1
         });
         assert(created?.success && created.roomId, `create room failed: ${created?.error || 'unknown'}`);
         const roomId = created.roomId;
