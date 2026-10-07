@@ -44,7 +44,7 @@ async function getFreePort() {
         const junk = [null, undefined, 0, '', [], 'string', { roomId: {} }, { playerId: [] }];
         const events = ['initPlayer', 'setRoom', 'checkRoomStatus', 'requestRoomUpdate', 'getRoomList',
             'leaveRoom', 'sendMessage', 'vote1', 'vote2', 'setWord', 'getWordSuggestions', 'wordFound',
-            'displayVote2', 'revealWord', 'resetGame', 'startGame', 'gmReaction',
+            'displayVote2', 'revealWord', 'resetGame', 'startGame', 'gmReaction', 'insiderEndDiscussion', 'insiderGuessCandidates',
             'werewolf_requestState', 'spyfall_requestState', 'blackmarket_requestState',
             'werewolf_admin_request_roles', 'admin_request_word_roles'];
         for (const event of events) for (const payload of junk) socket.emit(event, payload);
