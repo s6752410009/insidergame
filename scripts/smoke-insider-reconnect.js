@@ -91,10 +91,10 @@ async function main() {
     const browser = await chromium.launch();
 
     try {
-        // ตั้งห้อง insider 3 คน: hero (เบราว์เซอร์) + เพื่อน 2 คน (raw socket)
+        // ตั้งห้อง insider 4 คน (ขั้นต่ำกติกาจริง): hero (เบราว์เซอร์) + เพื่อน 3 คน (raw socket)
         const heroId = randomUUID();
         const friends = [];
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             const socket = await connectSocket(base);
             const playerId = randomUUID();
             socket.emit('initPlayer', playerId);
