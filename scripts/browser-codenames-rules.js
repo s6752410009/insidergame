@@ -20,6 +20,7 @@ const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
 const { chromium } = require('playwright');
 const { WORDS } = require('../games/codenamesWords');
+const engine = require('../games/codenamesEngine');
 
 const SHOT_DIR = process.env.CODENAMES_SHOT_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'codenames-rules-shots-'));
 fs.mkdirSync(SHOT_DIR, { recursive: true });
@@ -266,6 +267,15 @@ async function checkLayout(p, label) {
         const turn = await bs[0].page.evaluate(() => document.getElementById('cnRoot').dataset.turn);
         const tm = { red: { sm: bs[0], op: bs[1] }, blue: { sm: bs[2], op: bs[3] } };
         const other = turn === 'red' ? 'blue' : 'red';
+        // ช่องพิมพ์เตือนส่วนของคำประสมทันที (เช่น "รถ" ตอนมี "รถไฟ")
+        const bWords = (await keyOf(tm[turn].sm.page)).map(c => c.word);
+        const compound = bWords.find(w => engine.compoundParts(w).length);
+        if (compound) {
+            await waitFor(() => tm[turn].sm.page.$('#cnClueWord'), 8000, 'clue form B');
+            await tm[turn].sm.page.fill('#cnClueWord', engine.compoundParts(compound)[0]);
+            assert(await tm[turn].sm.page.$eval('#cnClueSend', b => b.disabled) && /ส่วนหนึ่งของ/.test(await tm[turn].sm.page.$eval('#cnClueErr', e => e.textContent)), 'เตือนส่วนของคำประสม: ' + compound);
+            await tm[turn].sm.page.fill('#cnClueWord', '');
+        }
         await giveClue(tm[turn].sm, 2);
         const flagger = tm[other].sm;
         await waitFor(() => flagger.page.$('#cnFlagBtn'), 8000, 'flag button');

@@ -468,6 +468,10 @@ function startGame(room, rng = Math.random, now = Date.now()) {
                 left: false
             };
         });
+    // ร่วมมือ: คนที่หลุดอยู่แต่เคยเลือกอีกทีม = ผู้ชม (อีกทีมต้องไม่มีคนเล่น)
+    if (coopTeam) {
+        roster.forEach(p => { if (p.team && p.team !== coopTeam) { p.team = null; p.role = 'spectator'; } });
+    }
     // หัวหน้าที่หลุดตอนเริ่มนับไม่ได้ — getStartBlockReason นับเฉพาะคนออนไลน์ ถ้ามีหัวหน้าซ้อน (ออฟไลน์) ให้เป็นลูกทีม
     TEAMS.forEach(team => {
         const masters = roster.filter(p => p.team === team && p.role === 'spymaster');
@@ -1154,6 +1158,8 @@ function buildClientState(room, viewerId, now = Date.now()) {
             color: card.revealed || showKey ? card.color : null,
             revealedBy: card.revealed ? card.revealedBy || null : null,
             covered: card.revealed ? card.covered || null : null,
+            // ส่วนของคำประสม (ข้อมูลสาธารณะจากตัวคำ) — ให้ช่องพิมพ์คำใบ้เตือนได้ทันที
+            parts: card.revealed ? [] : compoundParts(card.word),
             votes: card.revealed ? [] : (voterNames[index] || []),
             mine: !card.revealed && votes[viewerId] === index
         })),

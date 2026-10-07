@@ -155,6 +155,11 @@ function versus(seed = 1, settings = {}) {
     assert(engine.validateClueWord(board(['สเก็ตบอร์ด']), 'ตบ') === null, 'คำทับศัพท์: "ตบ" ใน สเก็ตบอร์ด ไม่ใช่คำประสม');
     assert(engine.validateClueWord(board(['หมากฝรั่ง']), 'หมา') === null, 'หมา ใน หมากฝรั่ง ใช้ได้');
     assert(engine.isCompoundPart('ปลา', 'ปลากระเบน') && !engine.isCompoundPart('แม', 'แมว'), 'isCompoundPart');
+    const vroom = versus(2);
+    const vstate = S(vroom);
+    vstate.board[0].word = 'รถไฟ';
+    const vview = engine.buildClientState(vroom, ops(vroom, 'red')[0].playerId);
+    assert(vview.board[0].parts.includes('รถ') && vview.board[0].color === null, 'client ได้ส่วนคำประสม (ไม่มีสี) ไว้เตือนทันที');
     console.log('3. ห้ามคำบนกระดาน · ห้ามมีคำบนกระดานข้างใน · ห้ามส่วนของคำประสม (ตัดคำไทย) ✓');
 })();
 
@@ -235,6 +240,14 @@ function versus(seed = 1, settings = {}) {
     const big = makeRoom(5);
     pick(big, { blue: [0, 1, 2, 3, 4] });
     assert(engine.getStartBlockReason(big) === null, '5 คนทีมเดียว = ร่วมมือ');
+
+    // คนที่หลุดแต่เลือกอีกทีมไว้ ไม่ทำให้ฝ่ายตรงข้ามมีคนเล่น
+    const ghost = makeRoom(3);
+    pick(ghost, { red: [0, 1], blue: [2] });
+    ghost.players[2].socketId = null;
+    assert(engine.getStartBlockReason(ghost) === null, 'คนออนไลน์อยู่ทีมเดียว = ร่วมมือ');
+    engine.startGame(ghost, mulberry32(5), 1000);
+    assert(S(ghost).coop.team === 'red' && S(ghost).roster.find(p => p.playerId === 'p2').role === 'spectator', 'คนหลุดที่เลือกอีกทีม = ผู้ชม');
 
     const room = makeRoom(3, { codenamesClueSeconds: 90 });
     pick(room, { red: [0, 1, 2] });

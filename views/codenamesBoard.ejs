@@ -544,6 +544,8 @@ $(function() {
     if (graphemes(word).length > 24) return 'คำใบ้ยาวเกินไป (ไม่เกิน 24 ตัวอักษร)';
     const hit = (S.board || []).find(c => !c.revealed && containsWord(word, c.word));
     if (hit) return normalizeWord(hit.word) === word ? '"' + hit.word + '" อยู่บนกระดาน ใช้เป็นคำใบ้ไม่ได้' : 'คำใบ้มีคำว่า "' + hit.word + '" ที่อยู่บนกระดาน ลองคำอื่น';
+    const part = (S.board || []).find(c => !c.revealed && (c.parts || []).includes(word));
+    if (part) return '"' + text + '" เป็นส่วนหนึ่งของ "' + part.word + '" บนกระดาน ลองคำอื่น';
     return null;
   }
   function numText(n) { return n === 'inf' ? '∞' : String(n); }
