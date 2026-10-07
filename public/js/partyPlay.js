@@ -86,6 +86,12 @@
             '#ppTurnPing .pp-title{font-size:1.55rem;font-weight:800;margin:0 0 4px;}',
             '#ppTurnPing .pp-sub{margin:0;color:#cfc6dd;font-size:.95rem;}',
             '@keyframes ppPingIn{from{opacity:0}to{opacity:1}}',
+            // แบบเล็ก: ป้ายบนสุดจอ ไม่หรี่จอ ไม่บังปุ่มกลางจอ (เกมที่ปุ่มตัดสินใจอยู่กลางจอ เช่น Coup/อวาลอน)
+            '#ppTurnPing.is-compact{align-items:flex-start;background:none;padding-top:calc(8px + env(safe-area-inset-top));}',
+            '#ppTurnPing.is-compact .pp-card{min-width:0;width:min(92vw,420px);padding:10px 16px;border-radius:14px;display:flex;align-items:baseline;gap:10px;justify-content:center;flex-wrap:wrap;box-shadow:0 10px 28px rgba(0,0,0,0.5);}',
+            '#ppTurnPing.is-compact .pp-kicker{margin:0;}',
+            '#ppTurnPing.is-compact .pp-title{font-size:1.15rem;margin:0;}',
+            '#ppTurnPing.is-compact .pp-sub{font-size:.85rem;}',
             '#ppFirstPlay{position:fixed;inset:0;z-index:12100;display:flex;align-items:center;justify-content:center;background:rgba(6,8,14,0.82);padding:18px;}',
             '#ppFirstPlay .pp-card{width:min(92vw,420px);padding:22px 22px 16px;border-radius:22px;background:#141826;color:#fff;border:1px solid rgba(255,255,255,0.12);text-align:left;}',
             '#ppFirstPlay h3{margin:0 0 12px;font-size:1.2rem;text-align:center;}',
@@ -135,6 +141,9 @@
         } catch (error) {}
     }
 
+    var pingCompact = false;
+    function setCompactPing(on) { pingCompact = !!on; }
+
     function pingTurn(opts) {
         opts = opts || {};
         var key = String(opts.key || opts.title || 'turn');
@@ -144,6 +153,7 @@
         var node = ensurePingNode();
         node.querySelector('.pp-title').textContent = opts.title || 'ถึงตาคุณแล้ว';
         node.querySelector('.pp-sub').textContent = opts.subtitle || 'เลือกแอ็กชันได้เลย';
+        node.classList.toggle('is-compact', opts.compact !== undefined ? !!opts.compact : pingCompact);
         node.classList.add('is-on');
         beep();
         if (typeof global.gameHaptic === 'function') global.gameHaptic([18, 40, 28]);
@@ -329,6 +339,7 @@
 
     global.partyPlay = {
         pingTurn: pingTurn,
+        setCompactPing: setCompactPing,
         resetPing: resetPing,
         shareResult: shareResult,
         startSession: startSession,

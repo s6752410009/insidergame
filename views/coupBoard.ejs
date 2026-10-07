@@ -136,7 +136,7 @@
   .cp-tag-target { color: #ffc9d1; border-color: rgba(255,107,129,0.45); }
   .cp-final-hand { margin-top: 4px; font-size: 0.74rem; color: var(--cp-gold); }
   .cp-backs { display: inline-flex; gap: 3px; }
-  .cp-back { width: 13px; height: 19px; border-radius: 3px; background: linear-gradient(160deg,#6d28d9,#3b0764); border: 1px solid rgba(255,255,255,0.18); }
+  .cp-back { width: 14px; height: 21px; border-radius: 3px; background: #5a1020 url('/assets/games/coup/back.webp') center / cover; border: 1px solid rgba(245,200,107,0.55); }
   .cp-dead-card { font-size: 0.72rem; color: #ff9aa8; }
 
   /* ---- ปุ่มแอ็กชัน ---- */
@@ -217,6 +217,14 @@
 
   @media (max-width: 640px) {
     .cp-topbar, .cp-grid, .cp-now { padding-left: 14px; padding-right: 14px; }
+    /* แถบบนบรรทัดเดียว — เดิมกินจอ ~170px ดันการ์ดกับปุ่มตาเราลงไปใต้จอ */
+    .cp-topbar { flex-wrap: nowrap; align-items: center; padding-top: 10px; padding-bottom: 10px; }
+    .cp-topbar > div:first-child { min-width: 0; flex: 1 1 auto; }
+    .cp-kicker { display: none; }
+    .cp-title { margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-meta { flex-wrap: nowrap; gap: 6px; flex: 0 0 auto; }
+    .cp-chip-btn { min-width: 44px; min-height: 44px; justify-content: center; padding: 6px 10px; }
+    .cp-chip-label { display: none; }
     /* แถบติดขอบบนต้องเตี้ย — ตัดป้าย "ตอนนี้" ออก ให้ข้อความกับเวลาอยู่บรรทัดเดียวกัน */
     .cp-now { padding-top: 8px; padding-bottom: 8px; }
     .cp-now-label { display: none; }
@@ -227,6 +235,78 @@
     .cp-influence img, .cp-influence .cp-emoji { height: 112px; }
     .cp-respond .cp-btn { flex: 1 1 auto; }
   }
+
+  /* ==================== อ่านน้อย เห็นภาพ ====================
+     ตาเรา = หัวข้อใหญ่ + ปุ่มมีไอคอน/ผล/ราคา · ช่วงท้า/ขวาง = การ์ดที่ถูกอ้าง + แถบเวลา + ผลของแต่ละปุ่มในบรรทัดเดียว
+     ผลตาที่แล้ว = กล่องสรุปว่าเกิดอะไร และเราได้/เสียอะไร */
+  .cp-prompt {
+    margin: 0 0 10px; text-align: center; color: var(--cp-gold);
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.3rem; font-weight: 700; line-height: 1.3;
+  }
+  .cp-prompt small { display: block; margin-top: 2px; font-family: 'Bai Jamjuree', sans-serif; font-size: 0.8rem; font-weight: 500; color: var(--cp-muted); }
+  .cp-mini {
+    width: 30px; height: 44px; border-radius: 5px; object-fit: cover; object-position: top center;
+    border: 1px solid rgba(245,200,107,0.6); background: #1c1030; flex: 0 0 auto; display: inline-block; vertical-align: middle;
+  }
+  .cp-mini.is-dead { filter: grayscale(1); opacity: 0.55; }
+
+  .cp-actions { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .cp-action {
+    display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-areas: "ico head" "fx fx" "meta meta";
+    column-gap: 8px; row-gap: 5px; align-items: center; align-content: start; padding: 10px;
+  }
+  .cp-action-ico { grid-area: ico; font-size: 1.6rem; line-height: 1; text-align: center; }
+  .cp-action-ico .cp-mini { width: 32px; height: 48px; }
+  .cp-action-head { grid-area: head; font-size: 0.95rem; line-height: 1.25; }
+  .cp-fxs { grid-area: fx; display: flex; flex-wrap: wrap; gap: 4px; }
+  .cp-fx {
+    justify-self: start; padding: 1px 9px; border-radius: 999px; white-space: nowrap;
+    font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-weight: 700; font-size: 0.86rem;
+    background: rgba(255,255,255,0.07); color: var(--cp-text);
+  }
+  .cp-fx.is-gain { color: #8ef0c0; background: rgba(110,231,183,0.13); }
+  .cp-fx.is-cost { color: #ffbcc6; background: rgba(255,107,129,0.15); }
+  .cp-action-meta { grid-area: meta; display: grid; gap: 1px; font-size: 0.72rem; line-height: 1.3; }
+  .cp-action-meta .cp-action-detail { font-size: 0.72rem; }
+
+  .cp-claim {
+    display: flex; gap: 12px; align-items: center; margin-bottom: 10px; padding: 10px 12px; border-radius: 14px;
+    background: rgba(245,200,107,0.07); border: 1px solid rgba(245,200,107,0.32); text-align: left;
+  }
+  .cp-claim-art {
+    width: 58px; height: 86px; border-radius: 8px; object-fit: cover; object-position: top center; flex: 0 0 auto;
+    border: 2px solid var(--cp-gold); box-shadow: 0 6px 14px rgba(0,0,0,0.45); background: #1c1030;
+  }
+  .cp-claim-ico { width: 58px; height: 58px; display: grid; place-items: center; font-size: 2rem; border-radius: 12px; background: rgba(255,255,255,0.06); flex: 0 0 auto; }
+  .cp-claim-text { min-width: 0; font-size: 1rem; line-height: 1.4; }
+  .cp-claim-text b { color: var(--cp-gold); }
+  .cp-claim-text .cp-fx { display: inline-block; margin-top: 4px; }
+
+  .cp-countdown { position: relative; height: 24px; margin: 0 0 10px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.08); }
+  .cp-countdown > span { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #a87418, #f5c86b); transition: width 0.5s linear; }
+  .cp-countdown.is-low > span { background: linear-gradient(90deg, #c81e3a, #ff6b81); }
+  .cp-countdown > em {
+    position: relative; display: block; text-align: center; font-style: normal; font-size: 0.78rem; font-weight: 700;
+    line-height: 24px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px;
+  }
+
+  .cp-respond .cp-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; flex: 1 1 140px; }
+  .cp-respond .cp-btn-confirm { flex-basis: 100%; }
+  .cp-btn-sub { display: block; font-size: 0.74rem; font-weight: 600; line-height: 1.3; opacity: 0.92; }
+  .cp-btn-row { display: inline-flex; align-items: center; gap: 6px; }
+  .cp-btn .cp-mini { width: 22px; height: 32px; }
+
+  .cp-outcome[hidden] { display: none; }
+  .cp-outcome { display: grid; gap: 6px; margin: 0 0 12px; padding: 10px 14px; text-align: left; border-radius: 16px; border: 1px solid var(--cp-line); background: rgba(196,141,255,0.07); }
+  .cp-outcome-title { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; color: var(--cp-purple); }
+  .cp-outcome-line { display: flex; gap: 8px; align-items: baseline; font-size: 0.94rem; line-height: 1.4; color: #d8ccec; }
+  .cp-outcome-line.is-me { color: #fff; font-weight: 700; }
+  .cp-outcome-me { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cp-delta { padding: 2px 10px; border-radius: 999px; font-size: 0.86rem; font-weight: 700; }
+  .cp-delta.is-down { color: #ffbcc6; background: rgba(255,107,129,0.16); }
+  .cp-delta.is-up { color: #8ef0c0; background: rgba(110,231,183,0.14); }
+  .cp-dead-row { display: flex; gap: 4px; align-items: center; margin-top: 4px; }
+  .cp-card-title-meta { font-size: 0.78rem; font-weight: 600; color: var(--cp-muted); }
 
   /* ==================== อนิเมชัน ====================
      ทั้งหมดสั่งจาก renderState โดยเทียบ state เก่ากับใหม่
@@ -383,12 +463,10 @@
       </div>
       <div class="cp-meta">
         <button type="button" id="cpExitBtn" class="cp-chip cp-chip-btn cp-chip-exit">🚪 ออก</button>
-        <span class="cp-chip">🆔 <%= room.roomId %></span>
-        <span class="cp-chip">🃏 กองกลาง <span id="deckCount">-</span></span>
-        <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn">📖 วิธีเล่น</button>
-        <button type="button" id="cpSidebarBtn" class="cp-chip cp-chip-btn">👥 ผู้เล่น</button>
+        <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn" aria-label="วิธีเล่น">📖<span class="cp-chip-label"> วิธีเล่น</span></button>
+        <button type="button" id="cpSidebarBtn" class="cp-chip cp-chip-btn" aria-label="ผู้เล่น">👥<span class="cp-chip-label"> ผู้เล่น</span></button>
         <% if (room.admin) { %>
-        <button type="button" id="cpEndGameBtn" class="cp-chip cp-chip-btn cp-chip-danger">⏹ จบเกม</button>
+        <button type="button" id="cpEndGameBtn" class="cp-chip cp-chip-btn cp-chip-danger" aria-label="จบเกม">⏹<span class="cp-chip-label"> จบเกม</span></button>
         <% } %>
       </div>
     </div>
@@ -411,11 +489,13 @@
 
       <section class="cp-card">
         <div class="cp-card-title" id="actionAreaTitle">🎯 ตาของคุณ</div>
+        <!-- ผลตาที่แล้วอยู่ในกล่องเดียวกับปุ่ม — มือถือเลื่อนมาที่ปุ่มแล้วต้องเห็นว่าเพิ่งเกิดอะไร -->
+        <div id="cpOutcome" class="cp-outcome" aria-live="polite" hidden></div>
         <div id="actionArea"><div class="cp-empty">รอเกมเริ่ม...</div></div>
       </section>
 
       <section class="cp-card">
-        <div class="cp-card-title">👥 ผู้เล่น</div>
+        <div class="cp-card-title">👥 ผู้เล่น <span class="cp-card-title-meta">· 🃏 กองกลาง <span id="deckCount">-</span> ใบ · 🆔 <%= room.roomId %></span></div>
         <div id="playerGrid" class="cp-players"></div>
       </section>
 
@@ -475,6 +555,8 @@ $(function() {
   const playerName = '<%= player.name %>';
   const isRoomAdmin = <%= room.admin === true ? 'true' : 'false' %>;
   if (window.partyPlay) window.partyPlay.startSession('coup', socket);
+  // ป้าย "ถึงตาคุณ" แบบเล็กบนสุดจอ — แบบเต็มจอเคยบังปุ่มท้า/ขวาง/โหวตกลางจอพอดี
+  if (window.partyPlay && window.partyPlay.setCompactPing) window.partyPlay.setCompactPing(true);
 
   let currentState = <%- JSON.stringify(typeof coupState !== 'undefined' ? coupState : {}) %>;
   let allowNavigation = false;
@@ -497,6 +579,148 @@ $(function() {
       return '<img src="' + escapeHtml(card.image) + '" alt="' + escapeHtml(card.thaiName) + '" loading="lazy">';
     }
     return '<div class="cp-emoji">' + escapeHtml(card.icon || '🃏') + '</div>';
+  }
+
+  // ---------- ตัวช่วยแสดงผลแบบอ่านน้อย ----------
+  // ผลของแต่ละแอ็กชันเป็นชิปสั้น ๆ (+3 💰 / −7 💰) แทนประโยคยาว
+  const ACTION_FX = {
+    income: { text: '+1 💰', tone: 'gain' },
+    foreign_aid: { text: '+2 💰', tone: 'gain' },
+    coup: { text: '−7 💰', tone: 'cost', hit: '💀 เป้าเสียการ์ด' },
+    tax: { text: '+3 💰', tone: 'gain' },
+    assassinate: { text: '−3 💰', tone: 'cost', hit: '💀 เป้าเสียการ์ด' },
+    steal: { text: '+2 💰 จากเป้า', tone: 'gain' },
+    exchange: { text: '🔄 สลับการ์ด', tone: '' }
+  };
+  const BLOCK_NOTE = { foreign_aid: 'ดยุคขวางได้', coup: 'ขวางไม่ได้', assassinate: 'ท่านหญิงขวางได้', steal: 'กัปตัน/ทูตขวางได้' };
+  // หมดเวลาแล้ว server ทำอะไรให้ — สั้นพอใส่ในแถบเวลา
+  const TIMEOUT_SHORT = {
+    respond: 'หมดเวลา = ปล่อยผ่าน', 'block-respond': 'หมดเวลา = ยอมให้ขวาง',
+    'lose-influence': 'หมดเวลา = หงายใบซ้าย', exchange: 'หมดเวลา = เก็บใบเดิม'
+  };
+
+  function fxChip(actionId) {
+    const fx = ACTION_FX[actionId];
+    if (!fx) return '';
+    return '<span class="cp-fx' + (fx.tone ? ' is-' + fx.tone : '') + '">' + escapeHtml(fx.text) + '</span>' +
+      (fx.hit ? ' <span class="cp-fx is-cost">' + escapeHtml(fx.hit) + '</span>' : '');
+  }
+  function miniCard(card, extraClass) {
+    if (!card || !card.image) return '';
+    return '<img class="cp-mini' + (extraClass ? ' ' + extraClass : '') + '" src="' + escapeHtml(card.image) + '" alt="' + escapeHtml(card.thaiName) + '" loading="lazy">';
+  }
+  // ชื่อของเราเองขึ้นว่า "คุณ" — อ่านเร็วกว่าต้องจำชื่อ guest ของตัวเอง
+  function who(id, name) { return id === playerId ? 'คุณ' : (name || ''); }
+
+  function countdownHtml(state) {
+    return '<div class="cp-countdown" data-countdown role="timer"><span style="width:100%"></span><em></em></div>';
+  }
+  function paintCountdowns() {
+    const nodes = document.querySelectorAll('[data-countdown]');
+    if (!nodes.length) return;
+    const st = currentState || {};
+    const endsAt = Number(st.phaseEndsAt) || 0;
+    const total = Number(st.phaseMs) || 20000;
+    const left = endsAt ? Math.max(0, Math.ceil((endsAt - nowMs()) / 1000)) : 0;
+    const ratio = endsAt ? Math.max(0, Math.min(1, (endsAt - nowMs()) / total)) : 0;
+    const note = st.phase === 'action'
+      ? (st.self && st.self.coins >= 10 ? 'หมดเวลา = รัฐประหารให้อัตโนมัติ' : 'หมดเวลา = รับรายได้ +1 ให้')
+      : (TIMEOUT_SHORT[st.phase] || '');
+    nodes.forEach(function(node) {
+      node.querySelector('span').style.width = Math.round(ratio * 100) + '%';
+      node.querySelector('em').textContent = endsAt ? ('⏱ ' + left + ' วิ' + (note ? ' · ' + note : '')) : '';
+      node.classList.toggle('is-low', endsAt && left <= 5);
+    });
+  }
+
+  function stealAmount(state, p) {
+    const t = (state.players || []).find(x => x.playerId === p.targetId);
+    return t ? Math.min(2, t.coins) : 2;
+  }
+  // ถ้าทุกคนปล่อยผ่าน จะเกิดอะไร (บรรทัดใต้ปุ่มปล่อยผ่าน)
+  function passOutcome(state, blockStage) {
+    const p = state.pendingAction;
+    if (blockStage) return p.action.thaiLabel + 'ของ ' + who(p.actorId, p.actorName) + ' ไม่เกิด';
+    const actor = who(p.actorId, p.actorName);
+    switch (p.actionId) {
+      case 'foreign_aid': return actor + ' ได้ +2 💰';
+      case 'tax': return actor + ' ได้ +3 💰';
+      case 'steal': return (p.targetId === playerId ? 'คุณเสีย ' : who(p.targetId, p.targetName) + ' เสีย ') + stealAmount(state, p) + ' 💰';
+      case 'assassinate': return who(p.targetId, p.targetName) + ' เสียการ์ด 1 ใบ';
+      case 'exchange': return actor + ' ได้สลับการ์ด';
+      default: return 'แอ็กชันเกิดขึ้น';
+    }
+  }
+  // การ์ดที่ถูกอ้าง + ใครอ้าง + ผล — หัวใจของช่วงท้า/ขวาง อ่านจบในบรรทัดเดียว
+  function claimHtml(state) {
+    const p = state.pendingAction;
+    if (!p) return '';
+    const b = state.pendingBlock;
+    if (state.phase === 'block-respond' && b) {
+      return '<div class="cp-claim">' +
+        (b.card && b.card.image ? '<img class="cp-claim-art" src="' + escapeHtml(b.card.image) + '" alt="' + escapeHtml(b.card.thaiName) + '">' : '<span class="cp-claim-ico">🛡️</span>') +
+        '<div class="cp-claim-text">🛡️ <b>' + escapeHtml(who(b.blockerId, b.blockerName)) + '</b> ขวางด้วย <b>' + escapeHtml(b.card.thaiName) + '</b>' +
+        '<br><span class="cp-fx is-cost">หยุด ' + escapeHtml(p.action.icon + ' ' + p.action.thaiLabel + 'ของ ' + who(p.actorId, p.actorName)) + '</span></div></div>';
+    }
+    const target = p.targetId ? ' ใส่ ' + who(p.targetId, p.targetName) : '';
+    return '<div class="cp-claim">' +
+      (p.claimCard && p.claimCard.image
+        ? '<img class="cp-claim-art" src="' + escapeHtml(p.claimCard.image) + '" alt="' + escapeHtml(p.claimCard.thaiName) + '">'
+        : '<span class="cp-claim-ico">' + escapeHtml(p.action.icon) + '</span>') +
+      '<div class="cp-claim-text"><b>' + escapeHtml(who(p.actorId, p.actorName)) + '</b> ' +
+        (p.claimCard ? 'อ้างว่ามี <b>' + escapeHtml(p.claimCard.thaiName) + '</b>' : 'ขอ<b>' + escapeHtml(p.action.thaiLabel) + '</b>') +
+        '<br>' + (p.claimCard ? '<span class="cp-fx">' + escapeHtml(p.action.icon + ' ' + p.action.thaiLabel + target) + '</span> ' : '') + fxChip(p.actionId) +
+        (p.blockOnly ? '<br><small>มีคนท้าแล้วแพ้ — ' + escapeHtml(who(p.targetId, p.targetName || 'เป้าหมาย')) + ' ยังขวางได้</small>' : '') +
+      '</div></div>';
+  }
+
+  // ตกรอบเพราะอะไร — หาเหตุการณ์ก่อนหน้าบรรทัด "ตกรอบ" ของเราในตาเดียวกัน
+  function eliminationCause(state) {
+    const me = (state.players || []).find(x => x.playerId === playerId);
+    if (!me) return '';
+    const hist = state.history || [];
+    const at = hist.findIndex(h => h.text.split(' ').indexOf(me.name) >= 0 && /ตกรอบ/.test(h.text));
+    if (at < 0) return '';
+    const cause = hist.slice(at + 1).find(h => h.turn === hist[at].turn && !/ ประกาศ /.test(' ' + h.text + ' ') && !/ หงาย /.test(' ' + h.text + ' '));
+    const line = cause || hist[at];
+    return (line.icon + ' ' + line.text.split(' ').map(t => t === me.name ? 'คุณ' : t).join(' '));
+  }
+
+  // ---------- กล่อง "ตาที่แล้วเกิดอะไร" + เราได้/เสียอะไร ----------
+  const selfAtTurn = {};
+  function renderOutcome(state) {
+    const $box = $('#cpOutcome');
+    const me = state.self;
+    const turn = Number(state.turnNumber) || 0;
+    if (me && !selfAtTurn[turn] && state.phase === 'action') {
+      selfAtTurn[turn] = { coins: me.coins, revealed: me.revealed.length };
+    }
+    const showTurn = state.phase === 'action' ? turn - 1 : turn;
+    if (state.phase === 'finished' || state.phase === 'lobby' || showTurn < 1) { $box.prop('hidden', true).empty(); return; }
+    const myName = me ? (state.players.find(x => x.playerId === playerId) || {}).name : null;
+    const items = (state.history || [])
+      .filter(h => h.turn === showTurn && h.icon !== '🎬' && !/ ประกาศ /.test(' ' + h.text + ' '))
+      .slice(0, 3).reverse();
+    let before = null, after = null;
+    if (me) {
+      if (state.phase === 'action') { before = selfAtTurn[turn - 1]; after = selfAtTurn[turn]; }
+      else { before = selfAtTurn[turn]; after = { coins: me.coins, revealed: me.revealed.length }; }
+    }
+    const deltas = [];
+    if (before && after) {
+      const dc = after.coins - before.coins;
+      if (dc) deltas.push('<span class="cp-delta ' + (dc > 0 ? 'is-up' : 'is-down') + '">คุณ ' + (dc > 0 ? '+' : '−') + Math.abs(dc) + ' 💰</span>');
+      const lost = me.revealed.slice(before.revealed, after.revealed);
+      lost.forEach(c => deltas.push('<span class="cp-delta is-down">คุณเสียการ์ด ' + escapeHtml(c.thaiName) + '</span>'));
+    }
+    if (!items.length && !deltas.length) { $box.prop('hidden', true).empty(); return; }
+    const lines = items.map(h => {
+      const mine = !!myName && h.text.split(' ').indexOf(myName) >= 0;
+      const text = myName ? h.text.split(' ').map(t => t === myName ? 'คุณ' : t).join(' ') : h.text;
+      return '<div class="cp-outcome-line' + (mine ? ' is-me' : '') + '"><span>' + escapeHtml(h.icon) + '</span><span>' + escapeHtml(text) + '</span></div>';
+    }).join('');
+    $box.html('<div class="cp-outcome-title">' + (state.phase === 'action' ? 'ตาที่แล้ว' : 'เพิ่งเกิด') + '</div>' + lines +
+      (deltas.length ? '<div class="cp-outcome-me">' + deltas.join('') + '</div>' : '')).prop('hidden', false);
   }
 
   function avatarHtml(player, size) {
@@ -543,7 +767,7 @@ $(function() {
     }
     if (state.phase === 'action') {
       return state.isMyTurn
-        ? { text: '🎯 ตาคุณแล้ว — เลือก 1 แอ็กชัน', mine: true }
+        ? { text: '🎯 ตาคุณ: เลือกทำอะไร', mine: true }
         : { text: 'รอ ' + (state.players.find(p => p.isCurrent)?.name || '...') + ' เลือกแอ็กชัน', mine: false };
     }
     return { text: 'รอเกมเริ่ม...', mine: false };
@@ -597,18 +821,7 @@ $(function() {
   }
 
   function pendingSummaryHtml(state) {
-    const p = state.pendingAction;
-    if (!p) return '';
-    let html = '<b>' + escapeHtml(p.actorName) + '</b> ประกาศ <b>' + escapeHtml(p.action.icon + ' ' + p.action.thaiLabel) + '</b>' +
-      (p.targetName ? ' ใส่ <b>' + escapeHtml(p.targetName) + '</b>' : '') +
-      (p.claimCard ? '<br><small>อ้างว่ามี ' + escapeHtml(p.claimCard.icon + ' ' + p.claimCard.thaiName) + '</small>' : '');
-    if (state.phase === 'block-respond' && state.pendingBlock) {
-      html += '<br>🛡️ <b>' + escapeHtml(state.pendingBlock.blockerName) + '</b> ขวางโดยอ้างว่ามี <b>' +
-        escapeHtml(state.pendingBlock.card.icon + ' ' + state.pendingBlock.card.thaiName) + '</b>';
-    } else if (p.blockOnly) {
-      html += '<br><small>มีคนท้าแล้วแพ้ — ' + escapeHtml(p.targetName || 'เป้าหมาย') + ' ยังขวางได้</small>';
-    }
-    return '<div class="cp-pending">' + html + '</div>';
+    return claimHtml(state);
   }
 
   // ---------- มือของเรา ----------
@@ -651,31 +864,6 @@ $(function() {
     if (state.availableResponses) return '⚡ ตอบโต้';
     if (state.phase === 'action' && state.isMyTurn) return '🎯 ตาของคุณ';
     return '⏳ รอผู้เล่นคนอื่น';
-  }
-
-  // ปุ่มแต่ละอันทำอะไรกับเรา — ใส่ไว้ใต้ปุ่มตอบโต้ คนเล่นครั้งแรกจะได้ไม่ต้องเดา
-  function respondHintHtml(state, respond) {
-    const p = state.pendingAction;
-    const b = state.pendingBlock;
-    const lines = [];
-    if (respond.challengingBlock && b) {
-      lines.push('🔥 <b>ท้าการขวาง</b>: ถ้า ' + escapeHtml(b.blockerName) + ' ไม่มี ' + escapeHtml(b.card.thaiName) +
-        ' จริง เขาเสียการ์ด 1 ใบและแอ็กชันเดินต่อ · ถ้ามีจริง <b>คุณ</b>เสียการ์ด 1 ใบ');
-      lines.push('✋ <b>ปล่อยผ่าน</b>: ยอมรับการขวาง แอ็กชันนี้เป็นโมฆะ');
-      return lines.join('<br>');
-    }
-    const iAmTarget = p.targetId === playerId;
-    if (respond.canChallenge) {
-      lines.push('🔥 <b>ท้า</b>: ถ้า ' + escapeHtml(p.actorName) + ' ไม่มี ' + escapeHtml(p.claimCard ? p.claimCard.thaiName : 'การ์ดนั้น') +
-        ' เขาเสียการ์ด 1 ใบ' + (p.coinsPaid ? ' (ได้ ' + p.coinsPaid + ' เหรียญคืน)' : '') + ' · ถ้ามีจริง <b>คุณ</b>เสียการ์ด 1 ใบ');
-    }
-    if ((respond.blockOptions || []).length) {
-      lines.push('🛡️ <b>ขวาง</b>: อ้างว่ามีการ์ดที่ขวางได้ (ไม่มีจริงก็อ้างได้ แต่ถ้าโดนท้าจะเสียการ์ด)');
-    }
-    if (iAmTarget && p.actionId === 'assassinate') lines.push('✋ <b>ยอมรับ</b>: คุณต้องหงายการ์ด 1 ใบ');
-    else if (iAmTarget && p.actionId === 'steal') lines.push('✋ <b>ยอมรับ</b>: โดนขโมยสูงสุด 2 เหรียญ');
-    else lines.push('✋ <b>ปล่อยผ่าน</b>: เชื่อ ให้แอ็กชันเกิดขึ้น');
-    return lines.join('<br>');
   }
 
   function waitingPanelHtml(state) {
@@ -734,12 +922,14 @@ $(function() {
   // ---------- พื้นที่ปุ่มหลัก ----------
   function renderActionArea(state) {
     const $area = $('#actionArea');
+    setTimeout(paintCountdowns, 0);   // แถบเวลาที่เพิ่งวาดใหม่ต้องมีตัวเลขทันที ไม่รอรอบนาฬิกาถัดไป
     const me = state.self;
 
     if (state.phase === 'finished') { $area.html(resultHtml(state)); return; }
 
     if (me && !me.alive) {
-      $area.html('<div class="cp-empty">คุณตกรอบแล้ว — ดูเกมต่อได้</div>' + waitingPanelHtml(state));
+      const cause = eliminationCause(state);
+      $area.html('<div class="cp-empty">💀 คุณตกรอบแล้ว — ดูเกมต่อได้' + (cause ? '<br><small>เพราะ ' + escapeHtml(cause) + '</small>' : '') + '</div>' + waitingPanelHtml(state));
       return;
     }
 
@@ -750,8 +940,8 @@ $(function() {
       const picked = cards.find(c => c.id === lossSelection);
       const why = lossReasonText(state);
       $area.html(
-        (why ? '<div class="cp-pending">💥 ' + escapeHtml(why) + '</div>' : '') +
-        '<div>แตะการ์ดที่จะ<b>หงายทิ้ง</b> แล้วกดยืนยัน — ใบที่เหลือยังใช้ต่อได้</div>' +
+        '<p class="cp-prompt">💥 เลือกการ์ดที่จะหงายทิ้ง 1 ใบ<small>ใบที่เหลือยังใช้ต่อได้ · หงายแล้วย้อนไม่ได้</small></p>' +
+        (why ? '<div class="cp-pending">💥 ' + escapeHtml(why) + '</div>' : '') + countdownHtml(state) +
         '<div class="cp-respond" style="margin-top:10px;">' +
           cards.map(card => '<button type="button" class="cp-btn ' + (lossSelection === card.id ? 'cp-btn-challenge' : 'cp-btn-pass') +
             '" data-loss-pick="' + escapeHtml(card.id) + '" aria-pressed="' + (lossSelection === card.id) + '">' +
@@ -771,7 +961,7 @@ $(function() {
         exchangeSelection = options.slice(0, keep).map((_, i) => i);
       }
       $area.html(
-        '<div style="margin-bottom:6px;">เลือกเก็บ <b>' + keep + '</b> ใบ (เลือกแล้ว <span id="exchangeCount">' + exchangeSelection.length + '</span>/' + keep + ')</div>' +
+        '<p class="cp-prompt">🔄 เลือกเก็บ ' + keep + ' ใบ<small>เลือกแล้ว <span id="exchangeCount">' + exchangeSelection.length + '</span>/' + keep + '</small></p>' + countdownHtml(state) +
         '<div class="cp-hint" style="margin:0 0 10px;">เลือกใบเดิมไว้ให้แล้ว — แตะใบใหม่เพื่อสลับ · ใบที่ไม่เลือกกลับเข้ากอง</div>' +
         '<div class="cp-hand">' + options.map((card, index) =>
           '<div class="cp-influence is-pick' + (exchangeSelection.includes(index) ? ' is-selected' : '') + '" data-exchange-index="' + index + '" role="button" tabindex="0">' +
@@ -790,22 +980,28 @@ $(function() {
       const p = state.pendingAction;
       const iAmTarget = p && p.targetId === playerId;
       const passLabel = iAmTarget && (p.actionId === 'assassinate' || p.actionId === 'steal') ? '✋ ยอมรับ' : '✋ ปล่อยผ่าน';
-      let html = pendingSummaryHtml(state) +
+      const blockStage = !!(respond.challengingBlock && state.pendingBlock);
+      const defender = blockStage ? who(state.pendingBlock.blockerId, state.pendingBlock.blockerName) : who(p.actorId, p.actorName);
+      let html = '<p class="cp-prompt">' + (blockStage ? 'เชื่อการขวางไหม?' : 'เชื่อไหม?') + '</p>' +
+        claimHtml(state) + countdownHtml(state) +
         // ผูกปุ่มกับ "ขั้น" ที่ render — server ปัดตกคำตอบที่ช้ามาถึงหลังเฟสเปลี่ยนแล้ว
         '<div class="cp-respond" data-step="' + escapeHtml(String(state.step ?? '')) +
         '" data-phase="' + escapeHtml(String(state.phase || '')) +
         '" data-turn="' + escapeHtml(String(state.turnNumber ?? '')) + '">';
-      html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">' + passLabel + '</button>';
+      html += '<button type="button" class="cp-btn cp-btn-pass" data-respond="pass">' + passLabel +
+        '<span class="cp-btn-sub">' + escapeHtml(passOutcome(state, blockStage)) + '</span></button>';
       if (respond.canChallenge) {
         html += '<button type="button" class="cp-btn cp-btn-challenge" data-respond="challenge">🔥 ' +
-          (respond.challengingBlock ? 'ท้าการขวาง' : 'ท้า (ไม่เชื่อ)') + '</button>';
+          (blockStage ? 'ท้าการขวาง' : 'ท้า (ไม่เชื่อ)') +
+          '<span class="cp-btn-sub">ถ้าโกหก: ' + escapeHtml(defender) + ' เสียการ์ด<br>ถ้ามีจริง: คุณเสียการ์ด 1 ใบ</span></button>';
       }
       (respond.blockOptions || []).forEach(option => {
+        const card = (state.cardCatalog || []).find(c => c.id === option.id);
         html += '<button type="button" class="cp-btn cp-btn-block" data-respond="block" data-claim="' +
-          escapeHtml(option.id) + '">' + escapeHtml(option.icon + ' ขวางด้วย ' + option.thaiName) +
-          '<span class="cp-target-meta">' + (holds(state, option.id) ? '✓ คุณมีจริง' : 'ไม่มีจริง = บลัฟ') + '</span></button>';
+          escapeHtml(option.id) + '"><span class="cp-btn-row">' + (miniCard(card) || '🛡️') + escapeHtml('ขวางด้วย ' + option.thaiName) + '</span>' +
+          '<span class="cp-btn-sub cp-target-meta">' + (holds(state, option.id) ? '✓ คุณมีจริง' : 'ไม่มีจริง = บลัฟ') + '</span></button>';
       });
-      html += '</div><div class="cp-hint">' + respondHintHtml(state, respond) + '</div>';
+      html += '</div>';
       const status = responseStatus(state);
       const others = status ? namesOf(state, status.waiting.filter(id => id !== playerId)) : [];
       if (others.length) html += '<div class="cp-waitlist">ยังรอ: ' + escapeHtml(others.join(', ')) + '</div>';
@@ -819,9 +1015,8 @@ $(function() {
         const targets = state.players.filter(p => p.alive && p.playerId !== playerId);
         const needsConfirm = pendingTargetAction.cost > 0;   // รัฐประหาร/ลอบสังหาร เสียเหรียญ ย้อนไม่ได้
         const chosen = needsConfirm && pendingTargetId ? targets.find(t => t.playerId === pendingTargetId) : null;
-        $area.html('<div style="margin-bottom:10px;">เลือกเป้าหมายสำหรับ <b>' +
-            escapeHtml(pendingTargetAction.icon + ' ' + pendingTargetAction.thaiLabel) + '</b>' +
-            (pendingTargetAction.cost ? ' · จ่าย ' + pendingTargetAction.cost + ' เหรียญ' : '') + '</div><div class="cp-respond">' +
+        $area.html('<p class="cp-prompt">' + escapeHtml(pendingTargetAction.icon + ' ' + pendingTargetAction.thaiLabel) + ' ใส่ใคร?' +
+            '<small>' + escapeHtml([(ACTION_FX[pendingTargetAction.id] || {}).text, (ACTION_FX[pendingTargetAction.id] || {}).hit].filter(Boolean).join(' · ')) + '</small></p>' + countdownHtml(state) + '<div class="cp-respond">' +
           targets.map(t => '<button type="button" class="cp-btn ' + (chosen && chosen.playerId === t.playerId ? 'cp-btn-challenge' : 'cp-btn-block') +
             '" data-target="' + escapeHtml(t.playerId) + '">' + escapeHtml(t.name) +
             '<span class="cp-target-meta">💰 ' + t.coins + ' · การ์ด ' + t.influenceCount + ' ใบ' +
@@ -837,16 +1032,21 @@ $(function() {
       // ต้องรัฐประหาร: ยกปุ่มที่กดได้ขึ้นบนสุด ไม่ให้จมอยู่ใต้ปุ่มที่ล็อก
       if (state.self?.mustCoup) menu.sort((x, y) => Number(y.enabled) - Number(x.enabled));
       $area.html(
+        '<p class="cp-prompt">ตาคุณ: เลือกทำอะไร<small>ทำ 1 อย่าง · ปุ่มมีรูปการ์ด = อ้างว่ามีการ์ดนั้น (โกหกได้)</small></p>' +
+        countdownHtml(state) +
         (state.self?.mustCoup ? '<div style="color:var(--cp-red); margin-bottom:8px;">⚠️ มี 10 เหรียญขึ้นไป ต้องทำรัฐประหารเท่านั้น</div>' : '') +
         '<div class="cp-actions">' + menu.map(action =>
           '<button type="button" class="cp-action" data-action="' + escapeHtml(action.id) +
             '" data-needs-target="' + (action.needsTarget ? '1' : '') + '"' + (action.enabled ? '' : ' disabled aria-disabled="true"') + '>' +
-            '<span class="cp-action-head">' + escapeHtml(action.icon + ' ' + action.thaiLabel) +
-              (action.cost ? ' · จ่าย ' + action.cost : '') + '</span>' +
-            '<span class="cp-action-detail">' + escapeHtml(action.detail) + '</span>' +
-            (action.claimCard ? '<span class="cp-action-claim">อ้างว่ามี ' + escapeHtml(action.claimCard.icon + ' ' + action.claimCard.thaiName) +
-              (holds(state, action.claimCard.id) ? ' · ✓ คุณมีจริง' : ' · ไม่มีจริง = บลัฟ') + '</span>' : '') +
-            (action.reason ? '<span class="cp-action-why">🔒 ' + escapeHtml(action.reason) + '</span>' : '') +
+            '<span class="cp-action-ico" aria-hidden="true">' + (action.claimCard ? miniCard(action.claimCard) : escapeHtml(action.icon)) + '</span>' +
+            '<span class="cp-action-head">' + escapeHtml((action.claimCard ? action.icon + ' ' : '') + action.thaiLabel) + '</span>' +
+            '<span class="cp-fxs">' + fxChip(action.id) + '</span>' +
+            '<span class="cp-action-meta">' +
+              (action.claimCard ? '<span class="cp-action-claim">อ้าง ' + escapeHtml(action.claimCard.thaiName) +
+                (holds(state, action.claimCard.id) ? ' · ✓ คุณมีจริง' : ' · ไม่มีจริง = บลัฟ') + '</span>' : '') +
+              (BLOCK_NOTE[action.id] ? '<span class="cp-action-detail">' + escapeHtml(BLOCK_NOTE[action.id]) + '</span>' : '') +
+              (action.reason ? '<span class="cp-action-why">🔒 ' + escapeHtml(action.reason) + '</span>' : '') +
+            '</span>' +
           '</button>').join('') + '</div>');
       return;
     }
@@ -876,7 +1076,8 @@ $(function() {
           (p.alive ? '' : '<span>ตกรอบ</span>') +
         '</div>' +
         (p.revealed.length
-          ? '<div class="cp-dead-card">หงาย: ' + p.revealed.map(c => escapeHtml(c.thaiName)).join(', ') + '</div>'
+          ? '<div class="cp-dead-row">' + p.revealed.map(c => miniCard(c, 'is-dead')).join('') +
+            '<span class="cp-dead-card">หงาย: ' + p.revealed.map(c => escapeHtml(c.thaiName)).join(', ') + '</span></div>'
           : '') +
         (p.finalHand && p.finalHand.length
           ? '<div class="cp-final-hand">ในมือ: ' + p.finalHand.map(c => escapeHtml(c.icon + ' ' + c.thaiName)).join(', ') + '</div>'
@@ -942,6 +1143,7 @@ $(function() {
 
     const left = Math.max(0, Math.ceil((endsAt - nowMs()) / 1000));
     $timer.text(left > 0 ? left + ' วิ' : 'หมดเวลา').toggleClass('is-urgent', left <= 5 && left > 0);
+    paintCountdowns();
 
     // โผล่ตอนเหลือ 10 วิ — ช่วงที่คนเริ่มลุ้นว่าไม่กดแล้วจะเป็นยังไง
     const hint = left <= 10 ? timeoutHint(currentState) : '';
@@ -1109,11 +1311,13 @@ $(function() {
     $('#cpNowBar').toggleClass('is-mine', now.mine);
     $('#deckCount').text(state.deckCount);
 
+    renderOutcome(state);
     renderHand(state);
     renderActionArea(state);
     renderPlayers(state);
     renderHistory(state);
     updateTimer();
+    paintCountdowns();
     applyMotion(state);
     pingCoupNeed(state);
     revealDecision(state);

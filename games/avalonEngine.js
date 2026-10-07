@@ -243,6 +243,7 @@ function setPhase(room, phase, durationMs) {
     state.phase = phase;
     state.step = (Number(state.step) || 0) + 1;
     state.phaseEndsAt = durationMs ? Date.now() + durationMs : null;
+    state.phaseMs = durationMs || null;   // ความยาวช่วงนี้ — หน้าเว็บวาดแถบเวลาเป็นสัดส่วน
 }
 
 function getSeat(room, playerId) {
@@ -957,6 +958,7 @@ function buildClientState(room, viewerPlayerId) {
         step: Number(state.step) || 0,
         isFinished: finished,
         phaseEndsAt: state.phaseEndsAt,
+        phaseMs: state.phaseMs || null,
         timeoutHint: TIMEOUT_HINTS[state.phase] || '',
         returnLobbyEndsAt: state.returnLobbyEndsAt || null,
         playerCount: state.playerCount || (state.seats || []).length,

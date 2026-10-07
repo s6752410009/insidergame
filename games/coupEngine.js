@@ -195,7 +195,8 @@ function getAlivePlayers(room) {
  */
 function pushHistory(room, icon, text, kind = null) {
     room.gameState.history = [
-        { icon, text, kind, at: new Date().toISOString() },
+        // turn = ตาที่เกิดเหตุการณ์ — หน้าเว็บสรุป "ตาที่แล้วเกิดอะไร / ทำไมเสียเหรียญ/การ์ด" จากตรงนี้
+        { icon, text, kind, at: new Date().toISOString(), turn: room.gameState.turnNumber || 0 },
         ...(room.gameState.history || [])
     ].slice(0, 40);
 }
@@ -204,6 +205,7 @@ function setPhase(room, phase, durationMs) {
     room.gameState.step = (Number(room.gameState.step) || 0) + 1;
     room.gameState.phase = phase;
     room.gameState.phaseEndsAt = durationMs ? Date.now() + durationMs : null;
+    room.gameState.phaseMs = durationMs || null;   // ความยาวช่วงนี้ — หน้าเว็บวาดแถบเวลาเป็นสัดส่วน
 }
 
 /** การ์ดที่ไม่ได้อยู่ในมือใคร ไม่ได้หงาย และไม่ได้ค้างอยู่ในการแลกเปลี่ยน */
@@ -1018,6 +1020,7 @@ function buildClientState(room, viewerPlayerId) {
         currentPlayerId: state.currentPlayerId,
         isMyTurn: state.currentPlayerId === viewerPlayerId,
         phaseEndsAt: state.phaseEndsAt,
+        phaseMs: state.phaseMs || null,
         // เวลาเครื่องมือถือกับ server ไม่ตรงกันบ่อย — client ใช้ค่านี้ชดเชยนาฬิกานับถอยหลัง
         serverNow: Date.now(),
         deckCount: state.deck.length,

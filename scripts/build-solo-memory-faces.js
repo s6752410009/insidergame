@@ -16,10 +16,10 @@ const SOURCES = {
     wolf: key => ({ file: `werewolf/${key}.webp`, mode: 'photo' }),
     market: key => ({ file: `blackmarket/${key}.webp`, mode: 'photo' }),
     city: key => ({ file: `spyfall/${key}.webp`, mode: 'icon' }),
-    knight: key => ({
-        file: `avalon/${key}.svg`,
-        mode: ['crown', 'token-fail', 'token-success', 'vote-approve', 'vote-reject'].includes(key) ? 'emblem' : 'card'
-    })
+    // บทบาทอวาลอนเปลี่ยนเป็นภาพวาด .webp แล้ว (เหลือแค่โทเคนที่เป็น SVG)
+    knight: key => (['crown', 'token-fail', 'token-success', 'vote-approve', 'vote-reject'].includes(key)
+        ? { file: `avalon/${key}.svg`, mode: 'emblem' }
+        : { file: `avalon/${key}.webp`, mode: 'photo' })
 };
 
 function dataUrl(file) {
