@@ -174,7 +174,8 @@ function statsOf(id) {
         for (let i = 0; i < 5; i++) g1.push(await makePlayer(base));
         g1.forEach(p => sockets.push(p.socket));
         await delay(400);
-        const room1 = await setupRoom(base, g1, 'UC-Play-1');
+        // Mr. White เปิดเป็นค่าเริ่ม (5 คนขึ้นไป) — เกมแรกปิดไว้เพื่อเช็กคำแบ่ง 4:1
+        const room1 = await setupRoom(base, g1, 'UC-Play-1', { undercoverMrWhite: false });
         await startAndWaitReveal(g1, room1);
         const v0 = last(g1[0]);
         assert(v0.roleCounts.undercover === 1 && v0.roleCounts.mrWhite === 0, '5 คน = สายแฝง 1 ไม่มี Mr. White');

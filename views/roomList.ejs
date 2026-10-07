@@ -927,7 +927,7 @@ $(function() {
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต · 3–20 คน', minPlayers: 3, maxPlayers: 20 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 3–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วกล่าวหาจับ', minPlayers: 3, maxPlayers: 8 },
-        { id: 'undercover', label: 'คำใครไม่เหมือน', description: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 4–10 คน', minPlayers: 4, maxPlayers: 10 },
+        { id: 'undercover', label: 'คำใครไม่เหมือน', description: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 3–10 คน', minPlayers: 3, maxPlayers: 10 },
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
         { id: 'avalon', label: 'อวาลอน', description: 'อัศวินโต๊ะกลม 5–10 คน — ฝ่ายดีทำภารกิจ ฝ่ายร้ายแฝงตัว มือสังหารล่าเมอร์ลิน', minPlayers: 5, maxPlayers: 10 },
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
@@ -1147,7 +1147,7 @@ $(function() {
                 badge: '🫥 ใบ้คำ จับคนคำไม่เหมือน',
                 title: 'คำใครไม่เหมือน',
                 summary: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำ แล้วโหวตหาว่าใครคำไม่เหมือน',
-                bullets: ['4-10 คน', 'เล่นหน้ากัน พูดใบ้', 'มี Mr. White ให้เปิดได้', 'ไม่ต้องมีคนคุมเกม']
+                bullets: ['3-10 คน', 'เล่นหน้ากัน พูดใบ้', 'มี Mr. White (ไม่มีคำ)', 'ไม่ต้องมีคนคุมเกม']
             },
             coup: {
                 tone: 'linear-gradient(135deg, rgba(168,85,247,0.24), rgba(18,7,26,0.92))',
@@ -1743,6 +1743,34 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลาแล้วข้ามไปอีกทีม · เลือกทีมและหัวหน้ากันในห้องรอ · เปลี่ยนเวลาในห้องรอได้</div>
                     </div>
 
+                    <div class="room-form-group" id="undercoverSettingsGroup" role="group" aria-labelledby="undercoverSettingsLabel" style="display:none;">
+                        <div class="room-form-label" id="undercoverSettingsLabel"><span class="icon">🫥</span> ตั้งค่าคำใครไม่เหมือน:</div>
+                        <div style="display:grid; gap:8px;">
+                            <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
+                                <span style="min-width:64px;">สายแฝง</span>
+                                <select id="undercoverCount" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(245,200,107,0.4); background:#1a2332; color:#fff; font:inherit;">
+                                    <option value="auto" selected>ตามจำนวนคน</option>
+                                    <option value="1">1 คน</option>
+                                    <option value="2">2 คน</option>
+                                    <option value="3">3 คน</option>
+                                </select>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; min-height:44px; color:#ddd; cursor:pointer;">
+                                <input type="checkbox" id="undercoverMrWhite" checked style="width:20px; height:20px; accent-color:#f5c86b;">
+                                <span>❔ มี Mr. White (ไม่มีคำ · 5 คนขึ้นไป)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
+                                <span style="min-width:64px;">โหวตเสมอ</span>
+                                <select id="undercoverTieRule" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#1a2332; color:#fff; font:inherit;">
+                                    <option value="speak" selected>ใบ้เพิ่มแล้วโหวตใหม่</option>
+                                    <option value="revote">โหวตใหม่เลย</option>
+                                    <option value="none">ไม่มีใครออก</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">แนะนำ: 3–6 คน สายแฝง 1 · 7–9 คน 2 · 10 คน 3 · เปลี่ยนในห้องรอได้</div>
+                    </div>
+
                     <div class="room-form-group" id="wavelengthLapsGroup" role="group" aria-labelledby="wavelengthLapsLabel" style="display:none;">
                         <div class="room-form-label" id="wavelengthLapsLabel"><span class="icon">📡</span> ผู้ใบ้วนกี่รอบโต๊ะ:</div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -2103,6 +2131,7 @@ $(function() {
                     if (selectedMode === 'codenames') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('codenamesTimerGroup')) document.getElementById('codenamesTimerGroup').style.display = selectedMode === 'codenames' ? 'block' : 'none';
                     if (document.getElementById('spyfallRulesGroup')) document.getElementById('spyfallRulesGroup').style.display = selectedMode === 'spyfall' ? 'block' : 'none';
+                    if (document.getElementById('undercoverSettingsGroup')) document.getElementById('undercoverSettingsGroup').style.display = selectedMode === 'undercover' ? 'block' : 'none';
                     if (selectedMode === 'wavelength') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('wavelengthLapsGroup')) document.getElementById('wavelengthLapsGroup').style.display = selectedMode === 'wavelength' ? 'block' : 'none';
                     if (selectedMode === 'drawguess') createRoundTimeGroup.style.display = 'none';
@@ -2283,6 +2312,9 @@ $(function() {
                     pokdengMustDraw: gameMode === 'pokdeng' && !!(document.getElementById('pokdengMustDraw') || {}).checked,
                     spyfallRounds: gameMode === 'spyfall' ? Number((document.getElementById('spyfallRounds') || {}).value || 5) : undefined,
                     spyfallVoteMode: gameMode === 'spyfall' ? (((document.getElementById('spyfallMajority') || {}).checked) ? 'majority' : 'unanimous') : undefined,
+                    undercoverCount: gameMode === 'undercover' ? ((document.getElementById('undercoverCount') || {}).value || 'auto') : undefined,
+                    undercoverMrWhite: gameMode === 'undercover' ? !!(document.getElementById('undercoverMrWhite') || { checked: true }).checked : undefined,
+                    undercoverTieRule: gameMode === 'undercover' ? ((document.getElementById('undercoverTieRule') || {}).value || 'speak') : undefined,
                     codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,
                     codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined,
                     wavelengthLaps: gameMode === 'wavelength'
@@ -2595,15 +2627,15 @@ $(function() {
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
             '<li>แตะการ์ดดูคำของตัวเอง แล้วกดพร้อม</li>',
             '<li>ใบ้คนละ 1 คำตามคิว (พูดปากเปล่า) ห้ามพูดคำตรง ๆ</li>',
-            '<li>โหวตคนที่คิดว่าคำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง</li>',
+            '<li>โหวตคนที่คิดว่าคำไม่เหมือน · เสมอ = คนที่เสมอใบ้เพิ่มคนละคำ แล้วโหวตใหม่ · เสมออีก = ไม่มีใครออก</li>',
             '<li>เปิดบทคนที่ออก แล้วเล่นรอบต่อไป</li>',
             '</ol></div>',
             '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
-            '<li><b>พลเมือง</b> — ฝ่ายแฝงออกหมด</li>',
-            '<li><b>ฝ่ายแฝง</b> — รอดถึง 2 คนสุดท้าย</li>',
-            '<li><b>Mr. White</b> (ไม่มีคำ เปิดได้ตอน 6 คนขึ้นไป) — ถูกโหวตออกแล้วทายคำพลเมืองถูก</li>',
+            '<li><b>พลเมือง</b> — ฝ่ายแฝงออกหมด (+2 แต้ม)</li>',
+            '<li><b>ฝ่ายแฝง</b> — เหลือพลเมืองแค่ 1 คน (สายแฝง +10 · Mr. White +6)</li>',
+            '<li><b>Mr. White</b> (ไม่มีคำ · ไม่พูดคนแรก) — ถูกโหวตออกแล้วทายคำพลเมืองถูก ชนะคนเดียว (+6)</li>',
             '</ul></div>',
-            '<div class="bm-guide-section"><h4>คน</h4><p>4–10 คน · 7 คนขึ้นไปมีสายแฝง 2 คน</p></div>',
+            '<div class="bm-guide-section"><h4>คน</h4><p>3–10 คน · 3–6 คน สายแฝง 1 · 7–9 คน 2 · 10 คน 3 · Mr. White ตั้งแต่ 5 คน</p></div>',
             '</div>'
         ].join('');
     }

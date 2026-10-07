@@ -650,7 +650,10 @@ function createRoom(roomData, creatorPlayerId) {
             // Spyfall: จำนวนรอบในแมตช์ (คู่มือแนะนำ 5) · แบบโหวต เอกฉันท์ (คู่มือ) / เสียงข้างมาก
             spyfallRounds: gameMode === 'spyfall' ? gameEngine.sanitizeRounds(normalizedRoomData.spyfallRounds) : undefined,
             spyfallVoteMode: gameMode === 'spyfall' ? gameEngine.sanitizeVoteMode(normalizedRoomData.spyfallVoteMode) : undefined,
-            undercoverMrWhite: gameMode === 'undercover' ? normalizedRoomData.undercoverMrWhite === true : false,
+            // Mr. White เปิดเป็นค่าเริ่ม (ตามจำนวนบทแนะนำของแอป Undercover) — ปิดได้ในห้อง
+            undercoverMrWhite: gameMode === 'undercover' ? normalizedRoomData.undercoverMrWhite !== false : false,
+            undercoverCount: gameMode === 'undercover' ? gameEngine.sanitizeUndercoverCount(normalizedRoomData.undercoverCount) : undefined,
+            undercoverTieRule: gameMode === 'undercover' ? gameEngine.sanitizeTieRule(normalizedRoomData.undercoverTieRule) : undefined,
             werewolfRoles,
             wolfCount,
             ...(gameMode === 'werewolf' && typeof gameEngine.sanitizeWerewolfSettings === 'function'
@@ -1083,8 +1086,11 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.avalonLady = getGameEngine('avalon').sanitizeLadySetting(updates.avalonLady);
     }
 
-    if (updates.undercoverMrWhite !== undefined && room.settings.gameMode === 'undercover') {
-        room.settings.undercoverMrWhite = updates.undercoverMrWhite === true;
+    if (room.settings.gameMode === 'undercover') {
+        const undercoverEngine = getGameEngine('undercover');
+        if (updates.undercoverMrWhite !== undefined) room.settings.undercoverMrWhite = updates.undercoverMrWhite === true;
+        if (updates.undercoverCount !== undefined) room.settings.undercoverCount = undercoverEngine.sanitizeUndercoverCount(updates.undercoverCount);
+        if (updates.undercoverTieRule !== undefined) room.settings.undercoverTieRule = undercoverEngine.sanitizeTieRule(updates.undercoverTieRule);
     }
 
     if (updates.pokerTableType !== undefined) {
