@@ -787,7 +787,7 @@
   }
   .wl-laps button[aria-pressed="true"] { background: #5eead4; color: #0b1a2a; border-color: transparent; }
   .wl-laps button:disabled { cursor: default; opacity: 0.85; }
-  .wl-laps .wl-mode-btn { flex: 1 1 0; min-width: 0; }
+  .wl-laps .wl-mode-btn { flex: 1 1 0; min-width: 0; padding: 0 8px; white-space: nowrap; }
 
   #btnDrawGuessHowTo {
     padding: 10px 14px; min-height: 44px; border-radius: 14px;
@@ -2265,7 +2265,7 @@
           const wlDesc = {
             teams: '2 ทีมผลัดกันใบ้ · ทีมช่วยกันหมุนเข็มเดียว · ทีมโน้นทาย ⬅️/➡️ · ถึง 10 แต้มก่อนชนะ' + (wlCount && wlCount < 4 ? ' · <strong>3 คน = เล่นร่วมมือ</strong>' : ''),
             coop: 'ทุกคนทีมเดียว 7 การ์ด · ช่วยกันหมุนเข็ม · เป๊ะได้การ์ดโบนัส · 16 แต้มขึ้นไป = ชนะ',
-            solo: 'ต่างคนต่างหมุนเข็มของตัวเอง · ใกล้เป้าได้ 4/3/2 · ผู้ใบ้ได้ค่าเฉลี่ย'
+            solo: 'แข่งเดี่ยว: ต่างคนต่างหมุนเข็มของตัวเอง · ใกล้เป้าได้ 4/3/2 · ผู้ใบ้ได้ค่าเฉลี่ย'
           }[wlMode];
           const wlBtn = function(id, label) {
             return '<button type="button" class="wl-mode-btn" data-wl-mode="' + id + '" aria-pressed="' + (wlMode === id ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>' + label + '</button>';
@@ -2274,7 +2274,7 @@
           lobbySpotlight.innerHTML = [
             '<div class="lobby-spotlight-pill" style="background:rgba(20,184,166,0.22); color:#99f6e4;">📡 คลื่นความคิด · 3–12 คน</div>',
             '<div class="wl-laps" role="group" aria-label="เล่นแบบไหน">',
-            wlBtn('teams', '👥 แข่งทีม'), wlBtn('coop', '🤝 ร่วมมือ'), wlBtn('solo', '🙋 แข่งเดี่ยว'),
+            wlBtn('teams', '👥 แข่งทีม'), wlBtn('coop', '🤝 ร่วมมือ'), wlBtn('solo', '🙋 เดี่ยว'),
             '</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">', wlDesc, '</p>',
             wlMode === 'solo' ? [

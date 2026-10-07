@@ -2,6 +2,7 @@
  * คลื่นความคิด — เล่นจริงในเบราว์เซอร์ 3 จอ (390×844) + บอท socket 1 ตัว + เดสก์ท็อป 1280×900
  * ลากเข็มบนหน้าปัดจริง พิมพ์คำใบ้จริง จบเกมเห็นโพเดียม
  * เช็ก: ไม่มี page/console error · ไม่เลื่อนแนวนอน · ข้อความไม่ล้น · ปุ่ม ≥ 44px · เป้าไม่อยู่ใน DOM ของคนทาย
+ * ไฟล์นี้เล่นโหมดแข่งเดี่ยว — แข่งทีมอยู่ที่ smoke-wavelength-teams-browser.js
  * รัน: npm run smoke:wavelength:browser   (ภาพไปที่ WAVELENGTH_SHOT_DIR)
  */
 const path = require('path');
@@ -122,7 +123,7 @@ async function layoutProblems(page) {
             const body = await res.json().catch(() => ({}));
             assert(body.success, 'ตั้งชื่อไม่ได้: ' + JSON.stringify(body));
         }
-        const created = await ack(ps[0].socket, 'createRoom', { playerId: ps[0].id, name: 'คลื่นความคิด', gameMode: 'wavelength', maxPlayers: 8 });
+        const created = await ack(ps[0].socket, 'createRoom', { playerId: ps[0].id, name: 'คลื่นความคิด', gameMode: 'wavelength', maxPlayers: 8, wavelengthMode: 'solo' });
         assert(created?.success, 'createRoom failed');
         const roomId = created.roomId;
         ps[0].socket.emit('setRoom', { roomId, playerId: ps[0].id });
@@ -387,7 +388,7 @@ async function layoutProblems(page) {
                 sockets.push(socket);
             }
             await delay(300);
-            const made = await ack(big[0].socket, 'createRoom', { playerId: big[0].id, name: 'วงใหญ่', gameMode: 'wavelength', maxPlayers: 12 });
+            const made = await ack(big[0].socket, 'createRoom', { playerId: big[0].id, name: 'วงใหญ่', gameMode: 'wavelength', maxPlayers: 12, wavelengthMode: 'solo' });
             assert(made?.success, 'create big room');
             big[0].socket.emit('setRoom', { roomId: made.roomId, playerId: big[0].id });
             for (const p of big.slice(1)) {
