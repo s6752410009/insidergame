@@ -127,6 +127,22 @@ async function playStreet(players, roomId, script) {
     throw new Error('ลงชิปไม่จบ');
 }
 
+// สี่ใบเก: รอบแรก → แจกใบ 3 → รอบสอง (ไพ่ 5 ใบเจอ lastResult ตั้งแต่รอบแรก)
+// getRoomList รับ callback เป็นอาร์กิวเมนต์แรก — ส่ง payload แล้วจะไม่มี ack (เดิมเทสผ่านเพราะ timeout)
+function roomList(socket) {
+    return new Promise(resolve => {
+        const timer = setTimeout(() => resolve({ __timeout: true }), 8000);
+        socket.emit('getRoomList', res => { clearTimeout(timer); resolve(res); });
+    });
+}
+
+async function playHand(players, roomId, first, second) {
+    const end = await playStreet(players, roomId, first);
+    if (end.phase !== 'deal3') return end;
+    await waitFor(players, s => s.lastResult || (s.phase === 'bet' && s.street === 2), 12000);
+    return playStreet(players, roomId, second || [{ action: 'check' }, { action: 'check' }]);
+}
+
 (async () => {
     const port = await getFreePort();
     const server = await bootServer(port);
@@ -150,16 +166,55 @@ async function playStreet(players, roomId, script) {
         const four = await seatPlayers(base, 'poker4', 2);
         await startTable(four.players, four.roomId, 'เริ่มสี่ใบเก');
         await discardAll(four.players, four.roomId);
-        await playStreet(four.players, four.roomId, [
+        const fourDeal = await playStreet(four.players, four.roomId, [
             { action: 'check' },
             { action: 'check' }
         ]);
+        assert(fourDeal.phase === 'deal3', 'สี่ใบเกรอบแรกจบต้องแจกใบที่ 3 ได้ ' + fourDeal.phase);
+        const early = await ack(four.players[0].socket, 'poker_bet', { roomId: four.roomId, action: 'bet', amount: 500 });
+        assert(early?.success === false, 'ระหว่างแจกใบ 3 ห้ามลงชิป: ' + JSON.stringify(early));
+        const street2 = await waitFor(four.players, s => s.phase === 'bet' && s.street === 2, 12000);
+        assert(street2.thirdCard === 'down' && street2.betRounds === 2, 'ค่าเริ่มต้นใบที่ 3 คว่ำ + ลงชิป 2 รอบ');
+        await delay(150);
+        four.players.forEach(player => {
+            const st = latest(player);
+            const others = (st.players || []).filter(row => !row.isSelf);
+            assert(others.every(row => !row.upCard), 'ใบที่ 3 คว่ำ: socket ต้องไม่ได้ใบที่ 3 คนอื่น');
+            assert(st.self.upCard && st.self.kept.length === 3, 'ตัวเองเห็นใบที่ 3');
+            const fx3 = (st.fx || []).find(f => f.kind === 'deal3');
+            assert(fx3 && fx3.ups.filter(r => r.card).every(r => r.playerId === player.id), 'fx ใบ 3 ห้ามรั่วรูปไพ่คนอื่น');
+        });
+        await playStreet(four.players, four.roomId, [{ action: 'bet', amount: 500 }, { action: 'call' }]);
         const fourDone = await waitFor(four.players, s => s.lastResult);
         const fourShow = fourDone.lastResult.show;
+        assert(fourDone.lastResult.pot === 2000, 'สี่ใบเก กอง = ค่าต๋ง 1000 + รอบสอง 1000 ได้ ' + fourDone.lastResult.pot);
         assert(fourShow.every(row => row.cards.length === 3), 'สี่ใบเกต้องได้ใบ 3 แล้วเปิด 3');
         assert(fourShow.every(row => row.cards.length < 4), 'ห้ามมีใบที่ 4');
-        console.log('2. สี่ใบเก ทั้งตา ใบ 3 หงายฟรี ไม่มีใบ 4 ✓');
+        console.log('2. สี่ใบเก ลงชิป 2 รอบ ใบ 3 คว่ำไม่รั่ว ไม่มีใบ 4 ✓');
         four.players.forEach(p => p.socket.close());
+
+        const fourUp = await seatPlayers(base, 'poker4', 2, { pokerThirdCard: 'up' });
+        await startTable(fourUp.players, fourUp.roomId, 'เริ่มสี่ใบเกหงาย');
+        await discardAll(fourUp.players, fourUp.roomId);
+        await playStreet(fourUp.players, fourUp.roomId, [{ action: 'check' }, { action: 'check' }]);
+        const upStreet = await waitFor(fourUp.players, s => s.phase === 'bet' && s.street === 2, 12000);
+        assert(upStreet.thirdCard === 'up', 'ตั้งห้องหงายใบที่ 3');
+        await delay(150);
+        fourUp.players.forEach(player => {
+            const others = (latest(player).players || []).filter(row => !row.isSelf);
+            assert(others.every(row => row.upCard && row.upCard.id), 'ใบที่ 3 หงาย: ทุกคนเห็นใบที่ 3 คนอื่น');
+            assert(others.every(row => !row.peekCards && !row.revealed), 'หงาย: 2 ใบแรกยังลับ');
+        });
+        await playStreet(fourUp.players, fourUp.roomId, [{ action: 'check' }, { action: 'check' }]);
+        await waitFor(fourUp.players, s => s.lastResult);
+        console.log('2b. สี่ใบเก ตั้งใบที่ 3 หงาย ทุกคนเห็นใบ 3 ✓');
+        fourUp.players.forEach(p => p.socket.close());
+
+        const fourBad = await seatPlayers(base, 'poker4', 2, { pokerThirdCard: '<script>' });
+        await startTable(fourBad.players, fourBad.roomId, 'เริ่มสี่ใบเกค่าแปลก');
+        const badState = await waitFor(fourBad.players, s => s.phase === 'select');
+        assert(badState.thirdCard === 'down', 'ค่าใบที่ 3 แปลกต้องตกเป็นคว่ำ');
+        fourBad.players.forEach(p => p.socket.close());
 
         // บอทบนโต๊ะเงินจริง = ชิปงอกจากอากาศ → ต้องถูกปฏิเสธ
         const cash = await seatPlayers(base, 'poker5', 2, { pokerTableType: 'cash' });
@@ -184,7 +239,8 @@ async function playStreet(players, roomId, script) {
         const waitingProbe = await conn(base);
         waitingProbe.emit('initPlayer', randomUUID());
         await delay(300);
-        const waitingList = await ack(waitingProbe, 'getRoomList', {});
+        const waitingList = await roomList(waitingProbe);
+        assert(waitingList && Array.isArray(waitingList.rooms), 'ดึงรายการห้องไม่ได้');
         assert(!((waitingList && waitingList.rooms) || []).some(row => row.roomId === waitingBots.roomId), 'ออกจากห้องรอแล้วบอทต้องไม่ค้าง ยังเจอ ' + waitingBots.roomId);
         waitingProbe.close();
         console.log('3b. ออกจากห้องรอแล้วบอทไม่ค้างในลิสต์ ✓');
@@ -206,7 +262,8 @@ async function playStreet(players, roomId, script) {
         const leftoverProbe = await conn(base);
         leftoverProbe.emit('initPlayer', randomUUID());
         await delay(300);
-        const leftoverList = await ack(leftoverProbe, 'getRoomList', {});
+        const leftoverList = await roomList(leftoverProbe);
+        assert(leftoverList && Array.isArray(leftoverList.rooms), 'ดึงรายการห้องไม่ได้');
         const leftoverRooms = (leftoverList && leftoverList.rooms) || [];
         assert(!leftoverRooms.some(row => row.roomId === leftover.roomId), 'สร้างห้องใหม่แล้วห้องเก่าบอทต้องหาย ยังเจอ ' + leftover.roomId);
         leftoverProbe.close();
@@ -244,7 +301,8 @@ async function playStreet(players, roomId, script) {
         const probe = await conn(base);
         probe.emit('initPlayer', randomUUID());
         await delay(300);
-        const listed = await ack(probe, 'getRoomList', {});
+        const listed = await roomList(probe);
+        assert(listed && Array.isArray(listed.rooms), 'ดึงรายการห้องไม่ได้');
         const rooms = (listed && listed.rooms) || [];
         assert(!rooms.some(row => row.roomId === bots.roomId), 'ห้องที่เหลือแต่บอทต้องหายจากรายการ ยังเจอ ' + bots.roomId);
         probe.close();
@@ -278,7 +336,7 @@ async function playStreet(players, roomId, script) {
         const afterLeave = await waitFor(stay, s => s.players && s.players.filter(row => !row.sittingOut).length === 2);
         assert(!afterLeave.players.some(row => row.playerId === leaver.id && !row.sittingOut), 'คนออกต้องไม่นั่งมือต่อ');
         await discardAll(stay, trio.roomId);
-        await playStreet(stay, trio.roomId, [{ action: 'check' }, { action: 'check' }]);
+        await playHand(stay, trio.roomId, [{ action: 'check' }, { action: 'check' }]);
         await waitFor(stay, s => s.lastResult);
         console.log('6. ออกกลางมือ สี่ใบเกที่เหลือเล่นจบได้ ✓');
         stay.forEach(p => p.socket.close());
@@ -345,7 +403,7 @@ async function playStreet(players, roomId, script) {
         ]);
         await Promise.all([
             playStreet(dualA.players, dualA.roomId, [{ action: 'check' }, { action: 'check' }]),
-            playStreet(dualB.players, dualB.roomId, [{ action: 'check' }, { action: 'check' }])
+            playHand(dualB.players, dualB.roomId, [{ action: 'check' }, { action: 'check' }])
         ]);
         await Promise.all([
             waitFor(dualA.players, s => s.lastResult && s.lastResult.show.every(row => row.cards.length === 3)),

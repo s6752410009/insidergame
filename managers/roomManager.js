@@ -655,6 +655,7 @@ function createRoom(roomData, creatorPlayerId) {
                 : undefined,
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
+            pokerThirdCard: gameMode === 'poker4' && normalizedRoomData.pokerThirdCard === 'up' ? 'up' : 'down',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
             codenamesClueSeconds: gameMode === 'codenames' ? gameEngine.sanitizeClueSeconds(normalizedRoomData.codenamesClueSeconds) : undefined,
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
@@ -1068,6 +1069,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.pokerAnte !== undefined) {
         room.settings.pokerAnte = Math.max(10, Number(updates.pokerAnte) || 500);
+    }
+    if (updates.pokerThirdCard !== undefined) {
+        room.settings.pokerThirdCard = updates.pokerThirdCard === 'up' ? 'up' : 'down';
     }
     if (updates.pokdengRotateDealer !== undefined) {
         room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;

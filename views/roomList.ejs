@@ -916,7 +916,7 @@
 <%- include('partials/footerNav', { back: { href: '/', label: 'กลับหน้าหลัก' } }) %>
 
 <%- contentFor('script') %>
-<script src="/js/pokerRankChart.js?v=20260814b"></script>
+<script src="/js/pokerRankChart.js?v=20261007rules"></script>
 <script>
 $(function() {
     const socket = window.appSocket || io();
@@ -931,8 +931,8 @@ $(function() {
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
         { id: 'avalon', label: 'อวาลอน', description: 'อัศวินโต๊ะกลม 5–10 คน — ฝ่ายดีทำภารกิจ ฝ่ายร้ายแฝงตัว มือสังหารล่าเมอร์ลิน', minPlayers: 5, maxPlayers: 10 },
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ — 3–8 คน รอบละไม่กี่นาที', minPlayers: 3, maxPlayers: 8 },
-        { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
-        { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
+        { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิป แล้วได้ใบที่ 3 ลงชิปอีกรอบ ค่อยเปิดเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'codenames', label: 'สายลับคำใบ้', description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน', minPlayers: 4, maxPlayers: 12 },
         { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
@@ -1182,17 +1182,17 @@ $(function() {
                 cover: '/assets/games/poker/cover.jpg',
                 badge: '♠ ทิ้ง 2 วัด 3',
                 title: 'ไพ่ 5 ใบ',
-                summary: 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ',
+                summary: 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ',
                 bullets: ['2-10 คน', 'ตาละวางกอง 500', 'สู้ ตาม เกทับ หมอบ', 'ตอง 3 ใหญ่กว่าตองเอซ']
             },
             poker4: {
                 tone: 'linear-gradient(135deg, rgba(153,27,27,0.28), rgba(20,8,8,0.92))',
                 border: 'rgba(248,113,113,0.32)',
                 cover: '/assets/games/poker4/cover.jpg',
-                badge: '♦ ทิ้ง 2 ได้ใบ 3 หงาย',
+                badge: '♦ ทิ้ง 2 ลุ้นใบ 3',
                 title: 'สี่ใบเก',
-                summary: 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู',
-                bullets: ['2-10 คน', 'ตาละวางกอง 500', 'หมอบไม่ได้ใบที่ 3', 'เปิดเทียบเลยหลังได้ใบ 3']
+                summary: 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบแรก ได้ใบที่ 3 แล้วลงชิปอีกรอบ',
+                bullets: ['2-10 คน', 'ตาละวางกอง 500', 'หมอบไม่ได้ใบที่ 3', 'ลงชิป 2 รอบ ก่อนและหลังใบ 3']
             },
             codenames: {
                 tone: 'linear-gradient(135deg, rgba(59,130,246,0.22), rgba(26,35,50,0.94) 55%, rgba(220,60,50,0.22))',
@@ -1652,6 +1652,19 @@ $(function() {
                                 <input type="range" id="pokerAnte" class="room-slider" min="100" max="2000" step="100" value="500">
                             </div>
                         </div>
+                        <div id="pokerThirdCardRow" role="group" aria-labelledby="pokerThirdCardLabel" style="margin-top:10px; display:none;">
+                            <div class="room-form-label" id="pokerThirdCardLabel"><span class="icon">🂡</span> ใบที่ 3 (สี่ใบเก):</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,200,107,0.4); background:rgba(245,200,107,0.08); cursor:pointer; color:#fff;">
+                                    <input type="radio" name="pokerThirdCard" value="down" checked style="accent-color:#f5c86b;">
+                                    <span>คว่ำ — เห็นเองคนเดียว (แบบวงจริง)</span>
+                                </label>
+                                <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                    <input type="radio" name="pokerThirdCard" value="up" style="accent-color:#f5c86b;">
+                                    <span>หงาย — ทั้งโต๊ะเห็นใบที่ 3 ก่อนลงชิปรอบสอง</span>
+                                </label>
+                            </div>
+                        </div>
                         <div id="pokerTableHint" style="margin-top:8px; color:#aaa; font-size:0.85em;">ทุกคนวางชิปลงกองกลางก่อนแจกไพ่ · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 · เล่นเก็บชิปใช้ชิปในบัญชี</div>
                     </div>
 
@@ -2016,6 +2029,8 @@ $(function() {
                     const isPokerMode = selectedMode === 'poker5' || selectedMode === 'poker4';
                     const isPoker4Mode = selectedMode === 'poker4';
                     if (pokerTableGroup) pokerTableGroup.style.display = isPokerMode ? 'block' : 'none';
+                    const pokerThirdCardRow = document.getElementById('pokerThirdCardRow');
+                    if (pokerThirdCardRow) pokerThirdCardRow.style.display = isPoker4Mode ? 'block' : 'none';
                     if (pokerTableLabel) {
                         pokerTableLabel.innerHTML = isPoker4Mode
                             ? '<span class="icon">♦</span> แบบเล่น:'
@@ -2023,8 +2038,8 @@ $(function() {
                     }
                     if (pokerTableHint) {
                         pokerTableHint.textContent = isPoker4Mode
-                            ? 'ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู · หมอบแล้วไม่ได้ใบที่ 3 · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด'
-                            : 'ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ · ตาละวางกองก่อนแจก · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด';
+                            ? 'ทิ้ง 2 ลงชิปรอบแรก ได้ใบที่ 3 แล้วลงชิปอีกรอบ · หมอบแล้วไม่ได้ใบที่ 3 · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด'
+                            : 'ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ · ตาละวางกองก่อนแจก · เล่นสนุกได้ชิป 10,000 ชนะเก็บยอด';
                     }
                     werewolfWolfCountGroup.style.display = isWerewolfMode ? 'block' : 'none';
                     createRoundTimeGroup.style.display = isWerewolfMode ? 'none' : 'block';
@@ -2198,6 +2213,8 @@ $(function() {
                     pokerAnte: (gameMode === 'poker5' || gameMode === 'poker4')
                         ? (parseInt((document.getElementById('pokerAnte') || {}).value, 10) || 500)
                         : 500,
+                    pokerThirdCard: gameMode === 'poker4'
+                        && ((document.querySelector('input[name="pokerThirdCard"]:checked') || {}).value === 'up') ? 'up' : 'down',
                     pokdengRotateDealer: gameMode === 'pokdeng'
                         && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate'),
                     codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,

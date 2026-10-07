@@ -1093,8 +1093,8 @@
           <div class="guide-side-item">🕶️ Spyfall: สถานที่ + จับสายลับ</div>
           <div class="guide-side-item">👑 Coup: โกหกแล้วลุ้นว่าใครจับได้</div>
           <div class="guide-side-item">🃏 ไพ่โกหก: ลงไพ่คว่ำ ท้าได้ จบในไม่กี่นาที</div>
-          <div class="guide-side-item">♠ ไพ่ 5 ใบ: ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ</div>
-          <div class="guide-side-item">♦ สี่ใบเก: ได้ 4 ทิ้ง 2 ลงชิปแล้วได้ใบที่ 3 หงายให้ดู</div>
+          <div class="guide-side-item">♠ ไพ่ 5 ใบ: ได้ 5 ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ</div>
+          <div class="guide-side-item">♦ สี่ใบเก: ได้ 4 ทิ้ง 2 ลงชิป ได้ใบที่ 3 แล้วลงชิปอีกรอบ</div>
         </div>
       </aside>
     </div>
@@ -1375,12 +1375,12 @@
 
     <%
       const pokerGuideFallback = [
-        { name: 'ตอง', hint: 'สามใบเลขเดียวกัน · ตอง 3 ใหญ่สุด เพราะ 3+3+3 เป็น 9 แล้วค่อยเอซ คิง ควีน', example: [{ image: '/assets/games/poker/3h.svg' }, { image: '/assets/games/poker/3s.svg' }, { image: '/assets/games/poker/3d.svg' }] },
-        { name: 'เรียงสี', hint: 'เหมือนเรียง แต่ต้องดอกเดียวกัน เช่น 7♥ 8♥ 9♥', example: [{ image: '/assets/games/poker/7h.svg' }, { image: '/assets/games/poker/8h.svg' }, { image: '/assets/games/poker/9h.svg' }] },
-        { name: 'เซียน', hint: 'แจ็ค ควีน คิง ทั้งสามใบ ดอกปนได้', example: [{ image: '/assets/games/poker/jh.svg' }, { image: '/assets/games/poker/qs.svg' }, { image: '/assets/games/poker/kd.svg' }] },
-        { name: 'เรียง', hint: 'เลขต่อกัน เช่น 3 > 4 > 5 ไม่ต้องดอกเดียวกัน · เอซ-2-3 ไม่นับเรียง', example: [{ image: '/assets/games/poker/5s.svg' }, { image: '/assets/games/poker/6h.svg' }, { image: '/assets/games/poker/7d.svg' }] },
+        { name: 'ตอง', hint: 'สามใบเลขเดียวกัน · ตอง 3 ใหญ่สุด เพราะ 3+3+3 เป็น 9 แล้วค่อยตองเอซ คิง ควีน … ตอง 2 เล็กสุด', example: [{ image: '/assets/games/poker/3h.svg' }, { image: '/assets/games/poker/3s.svg' }, { image: '/assets/games/poker/3d.svg' }] },
+        { name: 'เรียงสี', hint: 'เหมือนเรียง แต่ต้องดอกเดียวกัน เช่น 7♥ 8♥ 9♥ · เท่ากันดูใบใหญ่สุด แล้วดูดอก', example: [{ image: '/assets/games/poker/7h.svg' }, { image: '/assets/games/poker/8h.svg' }, { image: '/assets/games/poker/9h.svg' }] },
+        { name: 'เซียน', hint: 'แจ็ค ควีน คิง ล้วน (ซ้ำกันได้ เช่น Q Q K) ดอกปนได้ · เท่ากันดูใบใหญ่สุด แล้วดูดอก', example: [{ image: '/assets/games/poker/jh.svg' }, { image: '/assets/games/poker/qs.svg' }, { image: '/assets/games/poker/kd.svg' }] },
+        { name: 'เรียง', hint: 'เลขต่อกัน ไม่ต้องดอกเดียวกัน · Q-K-A ใหญ่สุด เอซ-2-3 เล็กสุด · K-A-2 ไม่นับ', example: [{ image: '/assets/games/poker/5s.svg' }, { image: '/assets/games/poker/6h.svg' }, { image: '/assets/games/poker/7d.svg' }] },
         { name: 'สี', hint: 'ดอกเดียวกัน แต่เลขไม่ต่อกัน · ดูดอกก่อน ♠ ใหญ่กว่า ♥ ♦ ♣', example: [{ image: '/assets/games/poker/kh.svg' }, { image: '/assets/games/poker/9h.svg' }, { image: '/assets/games/poker/2h.svg' }] },
-        { name: 'แต้ม', hint: 'ไม่เข้ามือไหน เอซ=1, 2–9 ตามหน้า, 10 แจ็คควีนคิง=0 รวมแล้วเอาหลักหน่วย เก้าใหญ่สุด', example: [{ image: '/assets/games/poker/as.svg' }, { image: '/assets/games/poker/8d.svg' }, { image: '/assets/games/poker/kc.svg' }] }
+        { name: 'แต้ม', hint: 'ไม่เข้ามือไหน เอซ=1, 2–9 ตามหน้า, 10 แจ็คควีนคิง=0 รวมแล้วเอาหลักหน่วย เก้าใหญ่สุด · เท่ากันดูใบใหญ่สุด แล้วดูดอก', example: [{ image: '/assets/games/poker/as.svg' }, { image: '/assets/games/poker/8d.svg' }, { image: '/assets/games/poker/kc.svg' }] }
       ];
       const pokerGuideRows = (typeof pokerRankGuide !== 'undefined' && Array.isArray(pokerRankGuide) && pokerRankGuide.length)
         ? pokerRankGuide.map((row, index) => Object.assign({}, pokerGuideFallback[index] || {}, row))
@@ -1389,12 +1389,14 @@
 
     <article class="guide-card mode-poker" id="poker5">
       <div class="guide-mode-badge">♠ ไพ่ 5 ใบ</div>
-      <h2>ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ</h2>
+      <h2>ได้ 5 ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ</h2>
       <p>ทุกคนวางกองก่อนแจก แล้วสู้ ตาม เกทับ หรือหมอบได้ มือใหญ่กินกอง เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
       <div class="guide-list">
         <div class="guide-list-item"><strong>เล่นสนุก</strong> ได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 ไม่เก็บผล</div>
         <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>
         <div class="guide-list-item"><strong>วางกองก่อนแจก</strong> ตาละ 500 ทุกคนวางลงกองกลางก่อนได้ไพ่</div>
+        <div class="guide-list-item"><strong>มือเท่ากัน</strong> ดูใบใหญ่สุด แล้วดูดอก ♠ &gt; ♥ &gt; ♦ &gt; ♣ — ไพ่คนละใบ จึงไม่มีเสมอ</div>
+        <div class="guide-list-item"><strong>หมดเวลาลงชิป</strong> ยังไม่มีใครสู้ = ผ่านให้ · มีคนสู้ = หมอบ</div>
       </div>
       <p class="pk-rank-kicker">ใหญ่ → เล็ก</p>
       <div class="pk-rank-list">
@@ -1417,8 +1419,8 @@
 
     <article class="guide-card mode-poker4" id="poker4">
       <div class="guide-mode-badge">♦ สี่ใบเก</div>
-      <h2>ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู</h2>
-      <p>ลงชิปเสร็จ เจ้ามือแจกใบที่ 3 หงายให้คนที่ยังไม่หมอบ แล้วเปิดเทียบเลย ไม่มีใบที่ 4 เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
+      <h2>ได้ 4 ทิ้ง 2 ลงชิปรอบแรก ได้ใบที่ 3 แล้วลงชิปอีกรอบ</h2>
+      <p>แบบ "2 ใบเก" ของวงไทย: ลงชิปรอบแรกตอนถือ 2 ใบ แล้วคนที่ยังไม่หมอบได้ใบที่ 3 คว่ำ เห็นเองคนเดียว (หัวห้องตั้งให้หงายให้ทั้งโต๊ะเห็นได้) แล้วลงชิปอีกรอบ ค่อยเปิดเทียบ ไม่มีใบที่ 4 เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
       <div class="guide-list">
         <div class="guide-list-item"><strong>เล่นสนุก</strong> ได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 ไม่เก็บผล</div>
         <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>

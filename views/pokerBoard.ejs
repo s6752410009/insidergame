@@ -67,6 +67,19 @@
   }
   .pk-hud-ico:active { transform: translateY(2px); box-shadow: 0 1px 0 #6b4423; }
   .pk-hud-ico.is-danger { color:#ffb4b4; }
+  /* ปุ่มออกต้องเห็นชัดทุกช่วง (มีคำ ไม่ใช่ไอคอนเดียว) — มาตรฐานออกจากเกม */
+  .pk-hud-exit {
+    min-width:44px; min-height:44px; padding:0 12px; border:1px solid rgba(255,180,180,0.45); border-radius:999px;
+    cursor:pointer; font:inherit; font-size:0.9rem; font-weight:700; white-space:nowrap; line-height:1;
+    background: linear-gradient(180deg,#4a1d1d,#241010); color:#ffd6d6;
+    box-shadow: 0 3px 0 #6b2323, 0 6px 12px rgba(0,0,0,0.4);
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .pk-hud-exit:active { transform: translateY(2px); box-shadow: 0 1px 0 #6b2323; }
+  /* กล่องยืนยัน (ออก/หมอบ/หมดหน้าตัก) ต้องอยู่เหนือป้าย "ตาคุณ" ของ partyPlay (z 12050) ไม่งั้นถูกบังช่วงแรก */
+  .swal2-container { z-index: 12200 !important; }
+  /* แถบข้อตกลงตอนเข้าเกม (partyPlay) เดิมทับแถบบนรวมปุ่มออก — ย้ายลงใต้แถบบนบนหน้าโต๊ะไพ่ */
+  #ppTermsBar { top: calc(118px + env(safe-area-inset-top)) !important; }
   .pk-wallet {
     display:inline-flex; align-items:center; gap:8px; min-height:40px;
     padding:4px 14px 4px 8px; border-radius:999px;
@@ -750,6 +763,8 @@
   .pk-now-copy { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3; }
   /* ผู้เล่นฝั่งบนตอนเปิดไพ่: เดิมไพ่ซ่อนใต้ป้ายชื่อ ย้ายลงใต้ป้ายชื่อให้เห็นทั้ง 3 ใบ */
   .pk-seat.is-north.is-show .pk-seat-cards { top:calc(100% + 18px); z-index:6; }
+  /* สี่ใบเกตั้งหงายใบที่ 3: ให้เห็นใบหงายของที่นั่งฝั่งบน (ปกติไพ่คว่ำซ่อนใต้ป้ายชื่อ) */
+  .pk-seat.is-north.has-up .pk-seat-cards { top:calc(100% + 18px); z-index:6; }
   /* ซ้าย/ขวา: วางใต้ป้ายชื่อ เยื้องเข้ากลางโต๊ะ ไม่ให้ทับไพ่ผู้เล่นฝั่งบนและไม่หลุดขอบจอ */
   .pk-table:not(.is-packed) .pk-seat.is-west.is-show .pk-seat-cards {
     left:50%; right:auto; top:calc(100% + 4px); transform:translate(-12px,0); z-index:6;
@@ -789,7 +804,7 @@
 <div class="pk-page">
   <div class="pk-hud">
     <div class="pk-hud-left">
-      <button type="button" id="pkLeaveRoomBtn" class="pk-hud-ico" title="ออกจากห้อง" aria-label="ออกจากห้อง">🚪</button>
+      <button type="button" id="pkLeaveRoomBtn" class="pk-hud-exit" title="ออกจากห้อง">🚪 ออก</button>
       <% if (room.admin) { %>
       <button type="button" id="pkEndGameBtn" class="pk-hud-ico is-danger" title="กลับห้องรอ" aria-label="กลับห้องรอ">⏹</button>
       <% } %>
@@ -882,7 +897,7 @@
 </aside>
 
 <%- contentFor('script') %>
-<script src="/js/pokerRankChart.js?v=20261007p"></script>
+<script src="/js/pokerRankChart.js?v=20261007rules"></script>
 <script src="/js/partyPlay.js"></script>
 <script src="/js/gameIcon.js"></script>
 <script src="/js/chatPanel.js"></script>
@@ -1146,7 +1161,7 @@ $(function() {
     if (p.folded) return 0;
     const afterPick = !!(p.ready || ['bet', 'deal3', 'reveal', 'between'].indexOf(state.phase) >= 0);
     if (!afterPick) return Math.min(p.handCount || state.dealCount || 5, state.dealCount || 5);
-    if (state.phase === 'bet' && state.mode === 'poker4') return Math.min(p.handCount || 2, 2);
+    if (state.phase === 'bet' && state.mode === 'poker4' && (Number(state.street) || 1) < 2) return Math.min(p.handCount || 2, 2);
     return Math.min(p.handCount || 3, 3);
   }
   function peekCardMeta(card) {
@@ -1174,7 +1189,8 @@ $(function() {
     const trips = ranks[0] === ranks[1] && ranks[1] === ranks[2];
     const flush = suits[0] === suits[1] && suits[1] === suits[2];
     const vals = cards.map(function(c) { return peekCardStraight(c.rank); }).sort(function(a, b) { return a - b; });
-    const straight = new Set(vals).size === 3 && vals[1] === vals[0] + 1 && vals[2] === vals[1] + 1;
+    const wheel = ranks.indexOf('A') >= 0 && ranks.indexOf('2') >= 0 && ranks.indexOf('3') >= 0;
+    const straight = wheel || (new Set(vals).size === 3 && vals[1] === vals[0] + 1 && vals[2] === vals[1] + 1);
     const sean = ranks.every(function(r) { return r === 'J' || r === 'Q' || r === 'K'; });
     if (trips) return 'ตอง';
     if (straight && flush) return 'เรียงสี';
@@ -1340,7 +1356,8 @@ $(function() {
       const shown = peekCards.slice(0, holeSize(p, state) || peekCards.length);
       return shown.map(function(c) { return wrapCard(cardHtml(c)); }).join('');
     }
-    if (p.upCard && state.phase === 'deal3') {
+    // ใบที่ 3 แบบหงาย: เซิร์ฟเวอร์ส่ง upCard ของคนอื่นมาเฉพาะโต๊ะที่ตั้งหงาย
+    if (p.upCard && (state.phase === 'deal3' || state.phase === 'bet')) {
       return wrapCard(backHtml()) + wrapCard(backHtml()) + wrapCard(cardHtml(p.upCard));
     }
     if (p.folded) return '';
@@ -1382,6 +1399,7 @@ $(function() {
       (p.folded ? ' is-fold' : '') +
       (p.sittingOut ? ' is-out' : '') +
       (showing ? ' is-show' : '') +
+      (p.upCard && !showing && !p.folded ? ' has-up' : '') +
       (peekFan ? ' is-peek' : '') +
       (p.isWinner && showdown ? ' is-winner' : '');
     return {
@@ -1660,7 +1678,10 @@ $(function() {
               if (last) last.classList.add('is-deal', 'is-flip');
             } else {
               const last = document.querySelector('[data-seat-id="' + id + '"] .pk-seat-cards .pk-playing:last-child');
-              if (last) last.classList.add('is-deal', 'is-flip');
+              if (last) {
+                last.classList.add('is-deal');
+                if (row && row.card) last.classList.add('is-flip');
+              }
             }
           }, i * 220);
           pkSfx('dealTick', i * 220);
@@ -1739,9 +1760,10 @@ $(function() {
     }
     if (state.phase === 'bet') {
       const mine = state.availableActions && state.availableActions.toAct;
-      return mine ? 'ตาคุณลงชิป' : ((state.toActName || 'รอคนอื่น') + ' กำลังลงชิป');
+      const round = state.betRounds > 1 ? (Number(state.street) >= 2 ? ' (รอบสอง)' : ' (รอบแรก)') : '';
+      return mine ? 'ตาคุณลงชิป' + round : ((state.toActName || 'รอคนอื่น') + ' กำลังลงชิป' + round);
     }
-    if (state.phase === 'deal3') return 'กำลังหงายใบที่ 3';
+    if (state.phase === 'deal3') return state.thirdCard === 'up' ? 'กำลังหงายใบที่ 3 ให้ทั้งโต๊ะดู' : 'กำลังแจกใบที่ 3 (คว่ำ เห็นเองคนเดียว)';
     if (state.phase === 'reveal') return resultText(state);
     if (state.phase === 'finished') return 'จบโต๊ะแล้ว — กำลังกลับห้องรอ';
     if (state.phase === 'between') return (state.lastResult ? resultText(state) : 'จบมือ') + ' — รอแจกมือถัดไป';
@@ -1750,7 +1772,7 @@ $(function() {
   function timerHint(state) {
     const actions = state.availableActions || {};
     if (state.phase === 'select' && actions.canSelect) return 'หมดเวลา: ระบบเลือกให้';
-    if (state.phase === 'bet' && actions.toAct) return 'หมดเวลา: หมอบอัตโนมัติ';
+    if (state.phase === 'bet' && actions.toAct) return actions.callAmount > 0 ? 'หมดเวลา: หมอบอัตโนมัติ' : 'หมดเวลา: ผ่านให้อัตโนมัติ';
     return '';
   }
   function flash(text) {
@@ -1982,7 +2004,7 @@ $(function() {
     tickTimer(state);
     if (window.partyPlay && (actions.toAct || actions.canSelect)) {
       window.partyPlay.pingTurn({
-        key: (state.handNumber || 0) + '-' + state.phase + '-' + (state.toActPlayerId || playerId),
+        key: (state.handNumber || 0) + '-' + state.phase + '-' + (state.street || 0) + '-' + (state.toActPlayerId || playerId),
         title: actions.toAct ? 'ตาคุณลงชิป' : 'เลือกไพ่ที่จะทิ้ง',
         subtitle: actions.toAct
           ? (actions.callAmount ? 'ต้องตาม ' + actions.callAmount + ' · หรือเกทับ / หมอบ' : 'ผ่านได้ฟรี · หรือสู้ / หมอบ')
@@ -2181,13 +2203,26 @@ $(function() {
   function handInPlay() {
     return !!(currentState && ['select', 'bet', 'deal3'].indexOf(currentState.phase) >= 0);
   }
-  // บอกให้รู้ก่อนว่าชิปที่ลงกองไปแล้วจะไม่ได้คืน (เดิมไม่เตือน)
+  // บอกผลของการออกตามช่วงเกม: กลางมือ = หมอบ ชิปที่ลงแล้วอยู่ในกองต่อ (โต๊ะเงินบอกชัดว่าหักจากบัญชีจริง)
   function leaveWarningText() {
-    const paid = Number(currentState && currentState.self && currentState.self.committed) || 0;
-    if (handInPlay() && paid > 0 && !(currentState.self && currentState.self.folded)) {
-      return 'มือนี้คุณลงไปแล้ว ' + paid + ' ชิป — ออกตอนนี้ถือว่าหมอบ ไม่ได้คืน';
+    const self = (currentState && currentState.self) || null;
+    const cash = !!(currentState && currentState.tableType === 'cash');
+    const paid = Number(self && self.committed) || 0;
+    const lines = [];
+    if (handInPlay() && self && !self.sittingOut) {
+      lines.push(self.folded ? 'คุณหมอบมือนี้ไปแล้ว' : 'มือนี้ถือว่าหมอบ');
+      if (paid > 0) {
+        lines.push('ชิปที่ลงกองไปแล้ว ' + paid + ' ชิป อยู่ในกองต่อ ไม่ได้คืน' +
+          (cash ? ' — โต๊ะเก็บชิป: ชิปนี้หักจากบัญชีคุณไปแล้วจริง' : ''));
+      }
+    } else if (cash) {
+      lines.push('ตอนนี้ไม่ได้ลงมือไหนอยู่ ชิปในบัญชีคุณครบ');
+    } else {
+      lines.push('ชิปเล่นสนุกบนโต๊ะนี้ไม่ติดตัวไป');
     }
-    return 'ออกจากห้องนี้ ไม่ใช่แค่กลับห้องรอ';
+    lines.push('เกมเล่นต่อโดยไม่มีคุณ');
+    if (isRoomAdmin) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น (เหลือแต่บอท = ปิดโต๊ะ)');
+    return lines.join(' · ');
   }
   function endWarningText() {
     const pot = Number(currentState && currentState.pot) || 0;
@@ -2248,15 +2283,27 @@ $(function() {
     }
     trapDialogFocus(event, rankOpen ? document.getElementById('pkRankDrawer') : (sidebarOpen ? document.getElementById('playerSidebar') : null));
   });
+  let leaving = false;
   $('#pkLeaveRoomBtn, #leaveRoomBtn').on('click', function() {
-    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: leaveWarningText(), showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#102016', color: '#fff' })
-      .then(function(result) {
-        if (result.isConfirmed) { allowNavigation = true; socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, function() { goToRoomList(); }); }
-      });
+    if (leaving) return;
+    Swal.fire({
+      icon: 'warning', title: 'ออกจากห้อง?', text: leaveWarningText(),
+      showCancelButton: true, focusCancel: true, reverseButtons: true,
+      confirmButtonText: 'ออกจากห้อง', cancelButtonText: 'อยู่ต่อ', confirmButtonColor: '#c0392b',
+      background: '#102016', color: '#fff'
+    }).then(function(result) {
+      if (!result.isConfirmed || leaving) return;
+      leaving = true;
+      allowNavigation = true;
+      // รอ ack ไม่เกิน 4 วิ แล้วไปหน้ารวมห้องเลย กันค้างหน้าโต๊ะ
+      const fallback = setTimeout(goToRoomList, 4000);
+      socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, function() { clearTimeout(fallback); goToRoomList(); });
+    });
   });
   window.addEventListener('beforeunload', function(event) { if (!allowNavigation) event.preventDefault(); });
   socket.on('connect', function() {
     $('#connectionStatus').hide();
+    if (leaving) return;
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
     socket.emit('poker_requestState', { roomId: roomId, playerId: playerId });
@@ -2270,9 +2317,10 @@ $(function() {
         '<span style="color:' + escapeHtml(p.color || '#fff') + '">' + escapeHtml(p.displayName || p.playerName) + '</span></li>';
     }).join(''));
   });
-  socket.on('redirectToLobby', goToWaitingRoom);
-  socket.on('restartGame', goToWaitingRoom);
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  // กำลังออกแล้ว ห้ามอีเวนต์ห้องเก่าดึงกลับ
+  socket.on('redirectToLobby', function() { if (!leaving) goToWaitingRoom(); });
+  socket.on('restartGame', function() { if (!leaving) goToWaitingRoom(); });
+  socket.on('gameStarting', function() { if (leaving) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: data && data.reason || '', background: '#102016', color: '#fff' })
