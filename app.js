@@ -3065,8 +3065,51 @@ function flushCoupHistoryToLogs(room) {
     }
 }
 
+// คนหลุดออฟไลน์ระหว่างช่วงท้า/ขวาง = ถือว่าปล่อยผ่าน ไม่ต้องให้ทั้งวงรอครบ 20 วิ
+// เผื่อเวลาไว้ก่อน (รีเฟรชหน้า/สลับแอปแป๊บเดียวต้องไม่โดนนับว่าผ่าน)
+const COUP_OFFLINE_GRACE_MS = Number(process.env.COUP_OFFLINE_GRACE_MS) || 5000;
+const coupOfflineChecks = new Map();
+
+function applyCoupOfflineAutoPass(room) {
+    if (!room || room.settings?.gameMode !== 'coup') return false;
+    const phase = room.gameState?.phase;
+    if (phase !== 'respond' && phase !== 'block-respond') return false;
+
+    const now = Date.now();
+    const offline = [];
+    let nextAt = null;
+    room.players.forEach(player => {
+        if (player.socketId || !player.disconnectedAt) return;
+        const readyAt = (Date.parse(player.disconnectedAt) || now) + COUP_OFFLINE_GRACE_MS;
+        if (readyAt <= now) offline.push(player.playerId);
+        else nextAt = Math.min(nextAt ?? Infinity, readyAt);
+    });
+    if (nextAt) scheduleCoupOfflineCheck(room.roomId, nextAt - now + 50);
+    if (!offline.length) return false;
+    try {
+        return getGameEngine('coup').autoPassOffline(room, offline);
+    } catch (error) {
+        console.error('[coup] offline auto-pass failed:', error.message);
+        return false;
+    }
+}
+
+function scheduleCoupOfflineCheck(roomId, delayMs) {
+    if (coupOfflineChecks.has(roomId)) return;
+    const timeoutId = setTimeout(() => {
+        coupOfflineChecks.delete(roomId);
+        const room = roomManager.getRoom(roomId);
+        if (room && room.settings?.gameMode === 'coup' && applyCoupOfflineAutoPass(room)) {
+            emitCoupRoomState(room);
+        }
+    }, Math.max(100, delayMs));
+    coupOfflineChecks.set(roomId, timeoutId);
+}
+
 function emitCoupRoomState(room) {
     if (!room || room.settings.gameMode !== 'coup') return;
+    // วนได้ไม่เกินไม่กี่รอบ: ผ่านครบแล้วเฟสถัดไปไม่ใช่ช่วงท้า/ขวางอีก
+    for (let guard = 0; guard < 3 && applyCoupOfflineAutoPass(room); guard += 1) { /* resolve ต่อ */ }
     flushCoupHistoryToLogs(room);
     finalizeCoupGameIfNeeded(room);
     emitCoupState(room);
@@ -10730,6 +10773,7 @@ io.sockets.on('connection', function(socket) {
                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
                 advanceBlackMarketAfterDisconnect(updatedRoom);
                 if (updatedRoom.settings?.gameMode === 'wavelength') wavelengthRuntime.handlePresence(updatedRoom);
+                if (updatedRoom.settings?.gameMode === 'coup') scheduleCoupOfflineCheck(roomId, COUP_OFFLINE_GRACE_MS + 50);
 
                 // ตั้ง timeout ก่อนส่งข้อความ "หลุดการเชื่อมต่อ" และลบผู้เล่นออกจากห้อง
                 const player = playerManager.getPlayer(playerId);

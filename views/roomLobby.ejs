@@ -2179,13 +2179,20 @@
               : '')
           ].join('');
         } else if (resolvedMode === 'coup') {
+          const cpActionSeconds = [30, 60, 90].indexOf(Number(settings && settings.coupActionSeconds)) >= 0 ? Number(settings.coupActionSeconds) : 60;
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
             '<div class="lobby-spotlight-pill" style="background:rgba(109,40,217,0.3); color:#e9d5ff;">👑 Coup · 2–6 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
             'ทุกคนได้การ์ดคว่ำ 2 ใบ <strong>ประกาศพลังของการ์ดที่ไม่มีก็ได้</strong> ใครไม่เชื่อก็ท้าเปิดได้',
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
-            '</p>'
+            '</p>',
+            '<div class="cc-lobby-opts">',
+            '<select id="cpLobbyActionSeconds" aria-label="เวลาเลือกแอ็กชันต่อตา"' + (isAdmin ? '' : ' disabled') + '>',
+            [30, 60, 90].map(function(v) { return '<option value="' + v + '"' + (v === cpActionSeconds ? ' selected' : '') + '>เลือกแอ็กชันตาละ ' + v + ' วิ</option>'; }).join(''),
+            '</select>',
+            '</div>',
+            '<p style="margin:6px 0 0; color:#94a3b8; font-size:0.8em;">หมดเวลา = รับรายได้ให้อัตโนมัติ · หลุดออฟไลน์ช่วงท้า/ขวาง = ถือว่าปล่อยผ่าน</p>'
           ].join('');
         } else if (resolvedMode === 'avalon') {
           lobbySpotlight.style.display = 'block';
@@ -3455,6 +3462,7 @@
       this.disabled = true;
       updateColorCardsSetting({ werewolfDeadSeeRoles: this.getAttribute('aria-pressed') !== 'true' });
     });
+    $(document).on('change', '#cpLobbyActionSeconds', function() { updateColorCardsSetting({ coupActionSeconds: Number(this.value) }); });
     $(document).on('change', '#ccLobbyTarget', function() { updateColorCardsSetting({ colorcardsTarget: Number(this.value) }); });
     $(document).on('change', '#ccLobbyTurn', function() { updateColorCardsSetting({ colorcardsTurnSeconds: Number(this.value) }); });
     $(document).on('click', '#ccLobbyStack', function() {
