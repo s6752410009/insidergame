@@ -166,7 +166,8 @@ const IGNORE = /favicon|manifest|service-worker|autoplay|play\(\) failed|AudioCo
         await waitFor(() => hostView().speakerId !== A.id, 4000, 'ตาพูดย้ายจาก A');
         const seatA = hostView().players.find(p => p.playerId === A.id);
         assert(seatA && seatA.left && !seatA.alive && seatA.role, 'A ถูกนับว่าออก ตกรอบ และเปิดบท');
-        assert(hostView().phase === 'clue', 'ตาพูดไปคนถัดไป เกมเดินต่อ');
+        // A เป็นคนพูดคนสุดท้ายของรอบ = เข้าโหวตเลย ก็ถือว่าเกมเดินต่อ
+        assert(['clue', 'vote'].includes(hostView().phase), 'ตาพูดไปคนถัดไป เกมเดินต่อ (phase=' + hostView().phase + ')');
         console.log('1. ออกตอนตาตัวเองพูด → /rooms · ตาพูดย้ายไปคนถัดไป ✓');
 
         // ---------- พูดให้ครบแล้วเข้าโหวต (B อาจต้องพูดผ่านหน้าเว็บ)
