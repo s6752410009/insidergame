@@ -243,6 +243,35 @@ async function main() {
         }
         console.log('2. แถบผู้เล่น 6 ใบ (390×844 = 3×2 · เดสก์ท็อป = คอลัมน์ซ้าย) ไม่ทับ ไม่ล้น เงินไม่ถูกตัด ✓');
 
+        // ---------- เหรียญแลนด์มาร์กทุกด้าน: ขนาดเท่ากัน ไม่บังกระดาน ----------
+        // เดิมช่องซ้าย/ขวา (วางนอน) เหรียญกว้าง 140% ของช่อง → วงกลมใหญ่บังกลางกระดานทั้งแถบ
+        const lmProps = { 2: { owner: 0, level: 4 }, 6: { owner: 1, level: 4 }, 10: { owner: 2, level: 4 }, 14: { owner: 3, level: 4 }, 18: { owner: 4, level: 4 }, 22: { owner: 5, level: 4 }, 26: { owner: 0, level: 4 }, 30: { owner: 1, level: 4 } };
+        await setup({ resetProps: true, props: lmProps, seats: all(0), turnSeat: 0 });
+        for (const p of players) {
+            const lm = await p.page.evaluate(ids => {
+                const board = document.getElementById('stBoard').getBoundingClientRect();
+                return ids.map(i => {
+                    const cell = document.querySelector('.st-cell[data-i="' + i + '"]');
+                    const m = cell && cell.querySelector('.st-lm');
+                    if (!m) return { i, missing: true };
+                    const r = m.getBoundingClientRect(); const c = cell.getBoundingClientRect();
+                    const narrow = Math.min(c.width, c.height);
+                    // เหรียญต้องแตะช่องของตัวเอง (โผล่จากขอบใน) และไม่ยื่นเข้ากลางกระดานเกินครึ่งช่อง
+                    const ix = Math.max(0, Math.min(r.right, c.right) - Math.max(r.left, c.left));
+                    const iy = Math.max(0, Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top));
+                    return { i, w: r.width, h: r.height, narrow, board: board.width, touches: ix > 0 && iy > 0 };
+                });
+            }, Object.keys(lmProps).map(Number));
+            for (const m of lm) {
+                assert(!m.missing, `${p.label} แลนด์มาร์กช่อง ${m.i} ไม่ขึ้น`);
+                assert(m.w <= m.narrow * 0.9 && m.w <= m.board * 0.08, `${p.label} เหรียญแลนด์มาร์กช่อง ${m.i} ใหญ่เกิน: ${Math.round(m.w)}px (ช่องแคบ ${Math.round(m.narrow)}px)`);
+                assert(Math.abs(m.w - lm[0].w) < 2, `${p.label} เหรียญช่อง ${m.i} ขนาดไม่เท่าด้านอื่น (${Math.round(m.w)} vs ${Math.round(lm[0].w)})`);
+                assert(m.touches, `${p.label} เหรียญช่อง ${m.i} ลอยห่างจากช่องตัวเอง`);
+            }
+            await shot(p, `landmarks-${p.label}`);
+        }
+        console.log('1b. เหรียญแลนด์มาร์กทั้ง 4 ด้าน ขนาดเท่ากัน ไม่ใหญ่เกินช่อง ไม่บังกลางกระดาน ✓');
+
         // ---------- สีเจ้าของ 6 สี ----------
         const owned = { 1: { owner: 0, level: 1 }, 2: { owner: 1, level: 1 }, 4: { owner: 2, level: 1 }, 6: { owner: 3, level: 1 }, 7: { owner: 4, level: 1 }, 9: { owner: 5, level: 1 } };
         await setup({ resetProps: true, props: owned, seats: all(0), turnSeat: 0 });
