@@ -925,7 +925,7 @@ $(function() {
     const defaultGameModes = [
         { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
-        { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต', minPlayers: 3, maxPlayers: 10 },
+        { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต · 3–20 คน', minPlayers: 3, maxPlayers: 20 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 },
         { id: 'undercover', label: 'คำใครไม่เหมือน', description: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 4–10 คน', minPlayers: 4, maxPlayers: 10 },
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
@@ -1799,13 +1799,14 @@ $(function() {
                         <div class="room-form-label" id="wolfCountLabel">
                             <span class="icon">🐺</span> จำนวนหมาป่า:
                         </div>
-                        <div id="createWolfCountSelector" style="display:flex; gap:8px; margin-top:4px;">
-                            ${[1,2,3].map(function(n, index) {
-                                const active = n === 2;
-                                return `<button type="button" data-wolf-count="${n}" class="wolf-count-btn${active ? ' active' : ''}" style="flex:1; padding:10px 0; border-radius:10px; border:2px solid ${active ? '#e74c3c' : 'rgba(255,255,255,0.12)'}; background:${active ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)'}; color:#fff; font-size:1.1em; cursor:pointer; font-family:Rajdhani,sans-serif; font-weight:700;">🐺 ${n} ตัว</button>`;
+                        <div id="createWolfCountSelector" style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:4px;">
+                            ${[0,1,2,3,4,5].map(function(n, index) {
+                                const active = n === 0;
+                                const label = n === 0 ? '✨ อัตโนมัติ' : '🐺 ' + n + ' ตัว';
+                                return `<button type="button" data-wolf-count="${n}" class="wolf-count-btn${active ? ' active' : ''}" style="min-height:44px; padding:8px 0; border-radius:10px; border:2px solid ${active ? '#e74c3c' : 'rgba(255,255,255,0.12)'}; background:${active ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.04)'}; color:#fff; font-size:1em; cursor:pointer; font-family:Rajdhani,sans-serif; font-weight:700;">${label}</button>`;
                             }).join('')}
                         </div>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">บทบาทอื่นสุ่มให้อัตโนมัติทั้งหมด และระบบจะปรับจำนวนหมาป่าสูงสุดตามจำนวนผู้เล่นให้เองถ้าตั้งเกิน</div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">อัตโนมัติ = ตามตารางแนะนำ (ประมาณ 1 หมาป่าต่อ 4–5 คน · 11 คนขึ้นไปมีบทเดี่ยว) · บทอื่นสุ่มให้เอง · ระบบไม่ให้หมาป่าเกิน 1 ใน 3 ของโต๊ะ</div>
                         <div class="room-form-label" style="margin-top:14px;"><span class="icon">⏱️</span> เวลาแต่ละช่วง:</div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
                             <select id="werewolfNightSeconds" aria-label="เวลากลางคืน" style="flex:1 1 100%; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(231,76,60,0.4); background:#1a2332; color:#fff; font:inherit;">
@@ -1821,6 +1822,10 @@ $(function() {
                         <label style="display:flex; align-items:flex-start; gap:10px; margin-top:12px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#fff; cursor:pointer;">
                             <input type="checkbox" id="werewolfDeadSeeRoles" checked style="margin-top:3px; width:20px; height:20px; accent-color:#e74c3c;">
                             <span style="text-align:left;"><strong>👻 คนตายเห็นบททุกคน</strong><br><span style="color:#aaa; font-size:0.85em;">ถ้าเล่นต่อหน้ากัน คนที่ตายแล้วห้ามบอกใครเด็ดขาด</span></span>
+                        </label>
+                        <label style="display:flex; align-items:flex-start; gap:10px; margin-top:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#fff; cursor:pointer;">
+                            <input type="checkbox" id="werewolfRevealOnDeath" style="margin-top:3px; width:20px; height:20px; accent-color:#e74c3c;">
+                            <span style="text-align:left;"><strong>🪦 เปิดบทเมื่อตาย</strong><br><span style="color:#aaa; font-size:0.85em;">แบบบอร์ดเกม/แอปทั่วไป: ใครตาย ทุกคนเห็นบทของคนนั้นทันที</span></span>
                         </label>
                     </div>
 
@@ -2186,8 +2191,9 @@ $(function() {
                 const locked = document.getElementById('locked').checked;
                 const password = document.getElementById('password').value.trim();
                 const activeWolfBtn = document.querySelector('#createWolfCountSelector .wolf-count-btn.active');
+                // 0 = อัตโนมัติตามตารางแนะนำ
                 const wolfCount = gameMode === 'werewolf' && activeWolfBtn
-                    ? parseInt(activeWolfBtn.dataset.wolfCount, 10)
+                    ? (parseInt(activeWolfBtn.dataset.wolfCount, 10) || 0)
                     : undefined;
                 const tableModeInput = document.querySelector('input[name="tableMode"]:checked');
                 const tableMode = tableModeInput ? tableModeInput.value : 'inPerson';
@@ -2207,6 +2213,7 @@ $(function() {
                     werewolfDaySeconds: gameMode === 'werewolf' ? Number((document.getElementById('werewolfDaySeconds') || {}).value || 180) : undefined,
                     werewolfVoteSeconds: gameMode === 'werewolf' ? Number((document.getElementById('werewolfVoteSeconds') || {}).value || 60) : undefined,
                     werewolfDeadSeeRoles: gameMode === 'werewolf' ? !!(document.getElementById('werewolfDeadSeeRoles') || { checked: true }).checked : undefined,
+                    werewolfRevealOnDeath: gameMode === 'werewolf' ? !!(document.getElementById('werewolfRevealOnDeath') || { checked: false }).checked : undefined,
                     locked: locked,
                     password: locked ? password : null,
                     tableMode: tableMode,

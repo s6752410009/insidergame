@@ -40,6 +40,7 @@ function restoreDataFiles(snapshot) {
 }
 
 function getFreePort() {
+    if (process.env.SMOKE_PORT) return Promise.resolve(Number(process.env.SMOKE_PORT));
     return new Promise((resolve, reject) => {
         const server = net.createServer();
         server.unref();

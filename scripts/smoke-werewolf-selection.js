@@ -32,6 +32,7 @@ function request(url) {
 }
 
 function getFreePort() {
+    if (process.env.SMOKE_PORT) return Promise.resolve(Number(process.env.SMOKE_PORT));
     return new Promise((resolve, reject) => {
         const server = require('net').createServer();
         server.unref();

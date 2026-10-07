@@ -64,6 +64,8 @@
   }
   @media (max-width: 960px) {
     .ww-page { position: fixed; inset: 0; width: 100%; max-height: var(--ww-app-height, 100dvh); }
+    /* ป๊อปอัปเปลี่ยนเฟส/เปิดบทไม่บังแถบบน — ปุ่ม 🚪 ออก ต้องกดได้ทุกเฟส */
+    body .phase-transition-banner, body .role-announce-banner, body .win-overlay { top: var(--ww-topbar-h, 0px); }
   }
 
   /* -- top bar (mobile) -- */
@@ -74,6 +76,8 @@
   .ww-topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .ww-topbar-btn { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.05); color: #f4f6fb; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.78rem; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
   .ww-topbar-btn.danger { background: linear-gradient(135deg, #c0392b, #7f1d1d); border: 0; }
+  /* ปุ่มออกต้องเห็นชัดทุกเฟส และแตะง่าย (≥44px) */
+  .ww-topbar-btn.ww-leave-btn { position: relative; z-index: 1400; min-height: 44px; min-width: 44px; padding: 6px 10px; font-size: 0.82rem; display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; }
   /* -- compact phase bar (Wolvesville-style) -- */
   .phase-hud { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; background: linear-gradient(180deg, rgba(11,18,32,0.98), rgba(14,24,40,0.94)); border-bottom: 1px solid rgba(255,255,255,0.06); }
   .phase-hud-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
@@ -183,6 +187,8 @@
   .hint-btn.btn-reveal { background: linear-gradient(135deg, #d97706, #b45309); }
   .hint-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .hint-pills { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; margin-top: 2px; }
+  /* คำแนะนำบทยาว (เช่นเงื่อนไขชนะ) ต้องตัดบรรทัด ไม่ล้นจอ 390px */
+  .hint-pills-guide .hint-pill { white-space: normal; max-width: 100%; border-radius: 12px; text-align: left; line-height: 1.35; }
   .hint-pill { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; color: #e2e8f0; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
   .hint-pill.tone-seer { background: rgba(79,70,229,0.22); border-color: rgba(129,140,248,0.28); color: #c4b5fd; }
   .hint-pill.tone-alert { background: rgba(239,68,68,0.2); border-color: rgba(252,165,165,0.22); color: #fca5a5; }
@@ -709,6 +715,24 @@
       .player-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     }
 
+  /* -- โต๊ะใหญ่ 11–20 คน: ที่นั่ง 5 คอลัมน์ อวาตาร์เล็กลง ยังกดได้ ≥44px -- */
+  .player-grid.grid-dense { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  .player-grid.grid-dense .player-row { padding: 14px 2px 6px; gap: 2px; border-radius: 12px; min-height: 64px; }
+  .player-grid.grid-dense .player-avatar-stage { width: 36px; height: 36px; font-size: 1.05rem; border-width: 1.5px; }
+  .player-grid.grid-dense .player-seat-number { top: 2px; left: 5px; font-size: 0.6rem; }
+  .player-grid.grid-dense .player-name { font-size: 0.66rem; }
+  .player-grid.grid-dense .player-status-tag { font-size: 0.56rem; line-height: 1.15; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .player-grid.grid-dense .player-vote-badge { font-size: 0.56rem; padding: 1px 4px; }
+  @media (min-width: 720px) {
+    .player-grid.grid-dense { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  }
+  @media (min-width: 1100px) {
+    .player-grid.grid-dense { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .player-grid.grid-dense { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .target-card,
     .target-card::before,
@@ -758,7 +782,7 @@
     <div class="ww-topbar-actions">
       <button id="openModeGuide" class="ww-topbar-btn">วิธีเล่น</button>
       <button id="openRoleCatalogMobile" class="ww-topbar-btn" type="button">บทบาท</button>
-      <button id="leaveWerewolfRoom" class="ww-topbar-btn danger">ออก</button>
+      <button id="leaveWerewolfRoom" class="ww-topbar-btn danger ww-leave-btn" type="button" data-testid="ww-leave">🚪 ออก</button>
     </div>
   </div>
 
@@ -1121,7 +1145,12 @@
         'ศาลเตี้ย': 'vigilante',
         'ตัวตลก': 'fool',
         'คนบ้า': 'fool',
-        'จอมเปิดโปง': 'revealer'
+        'จอมเปิดโปง': 'revealer',
+        'ฆาตกรต่อเนื่อง': 'serialKiller',
+        'เจ้าชาย': 'prince',
+        'ไลแคน': 'lycan',
+        'ผู้ติดเชื้อ': 'diseased',
+        'ศิษย์ผู้หยั่งรู้': 'apprenticeSeer'
       };
       return byThai[raw] || raw;
     }
@@ -1141,7 +1170,12 @@
       cleric: '⛪',
       vigilante: '🎯',
       fool: '🤪',
-      revealer: '💥'
+      revealer: '💥',
+      serialKiller: '🔪',
+      prince: '🤴',
+      lycan: '🌕',
+      diseased: '🤒',
+      apprenticeSeer: '🧿'
     };
 
     function resolveRoleMeta(roleIdOrRole) {
@@ -1228,7 +1262,7 @@
       var oracleRid = normalizeRoleId(entry.roleId);
       var oracleBadgeClass = 'result-unknown';
       if (oracleRid && oracleRid !== 'unknown') {
-        oracleBadgeClass = (oracleRid === 'werewolf' || oracleRid === 'alphaWolf') ? 'result-bad' : 'result-good';
+        oracleBadgeClass = (oracleRid === 'werewolf' || oracleRid === 'alphaWolf' || oracleRid === 'serialKiller') ? 'result-bad' : 'result-good';
       }
       var badgeHtml = '<span class="seer-result-badge ' + oracleBadgeClass + '">' + roleLabel + '</span>';
       var textHtml = '<span class="seer-result-inline"><span class="seer-result-day">' + escapeHtml(dayLabel) + '</span><strong class="seer-result-target">' + targetName + '</strong></span>';
@@ -1354,7 +1388,7 @@
     function renderRoleStrip() {
       const roleCatalog = Array.isArray(currentState.roleCatalog) ? currentState.roleCatalog : [];
       const activeCounts = new Map();
-      const orderedRoleIds = ['werewolf', 'alphaWolf', 'seer', 'oracle', 'doctor', 'bodyguard', 'witch', 'tracker', 'vigilante', 'hunter', 'cleric', 'fool', 'mayor', 'revealer'];
+      const orderedRoleIds = ['werewolf', 'alphaWolf', 'seer', 'apprenticeSeer', 'oracle', 'doctor', 'bodyguard', 'witch', 'tracker', 'vigilante', 'hunter', 'cleric', 'mayor', 'prince', 'revealer', 'lycan', 'diseased', 'fool', 'serialKiller'];
       // กันบทใหม่ตกหล่น: เติมบทใดๆ ใน catalog ที่ไม่อยู่ในลำดับด้านบนต่อท้าย
       roleCatalog.forEach(function(role) {
         if (role && role.id && orderedRoleIds.indexOf(role.id) === -1) {
@@ -1418,14 +1452,19 @@
         bodyguard: 'เลือกคุ้มกัน 1 คนตอนกลางคืน และห้ามเลือกคนเดิมติดกัน',
         seer: 'เลือกตรวจ 1 คนตอนกลางคืน ดูตัวเองไม่ได้ และผลมีแค่ ดี / ไม่ดี / ไม่ทราบ',
         doctor: 'เลือกช่วย 1 คนตอนกลางคืน ใช้รวมได้ 2 ครั้งตลอดเกม',
-        witch: 'มียาช่วย 1 ครั้งกับยาพิษ 1 ครั้ง คืนละใช้ได้แค่ 1 อย่าง',
+        witch: 'มียาช่วย 1 ครั้งกับยาพิษ 1 ครั้ง ใช้คืนเดียวกันได้ทั้งคู่ และเห็นว่าหมาป่ากำลังเล็งใคร',
         fool: 'หมาป่าฆ่าคุณไม่ได้ ถ้าถูกโหวตออกตอนกลางวันคุณชนะเดี่ยวทันที',
         revealer: 'ใช้ตอนกลางวัน 1 ครั้ง ล็อกเป้าแล้วรอเฉลยว่าถูกหรือผิด',
         oracle: 'เลือกตรวจ 1 คนตอนกลางคืน ระบบบอกบทบาทจริงทันทีและเก็บประวัติไว้',
         cleric: 'ใช้พรตอนประชุมเช้า 1 ครั้งทั้งเกม เพื่อกันตายคืนถัดไป',
         tracker: 'เลือกสะกดรอย 1 คนตอนกลางคืน ดูว่าคืนนั้นเป้าใช้สกิลหรือไม่',
         hunter: 'มีสิทธิ์ยิง 1 ครั้งตลอดเกมตอนกลางคืน ถ้าตายในคืนที่ล็อกเป้าไว้ ลูกธนูยังออก',
-        vigilante: 'มีสิทธิ์ยิง 1 ครั้งตลอดเกมตอนกลางคืน เลือกเป้าแล้วเปลี่ยน/ยกเลิกได้จนคืนจบ'
+        vigilante: 'มีสิทธิ์ยิง 1 ครั้งตลอดเกมตอนกลางคืน เลือกเป้าแล้วเปลี่ยน/ยกเลิกได้จนคืนจบ',
+        serialKiller: 'บทเดี่ยว ตั้งแต่คืนที่ 2 ฆ่าได้คืนละ 1 คน หมาป่าฆ่าคุณไม่ได้ ต้องเป็นคนรอดท้ายสุด',
+        prince: 'ถ้าถูกโหวตออกครั้งแรก ระบบเปิดตัวคุณเป็นเจ้าชายและคุณไม่ตาย',
+        lycan: 'ชาวบ้านไม่มีสกิล แต่ผู้หยั่งรู้จะเห็นคุณเป็น «ไม่ดี»',
+        diseased: 'ถ้าหมาป่ากัดคุณตาย คืนถัดไปหมาป่าจะป่วยล่าใครไม่ได้',
+        apprenticeSeer: 'ตอนผู้หยั่งรู้ยังรอดคุณไม่มีสกิล — พอไม่มีผู้หยั่งรู้แล้ว คุณตรวจออร่าแทนได้คืนละ 1 คน'
       };
 
       return hints[role.id] || 'ดูคำอธิบายบทของคุณ แล้วลงมือเมื่อถึงช่วงที่ระบบเปิดให้ใช้ความสามารถ';
@@ -1489,7 +1528,8 @@
         'witch-rest': '🔮',
         'mayor-reveal': '🎖️',
         'vigilante-shot': '🔫',
-        'hunter-shot': '🏹'
+        'hunter-shot': '🏹',
+        'serial-kill': '🔪'
       };
 
       return icons[actionType] || '🎯';
@@ -1557,7 +1597,7 @@
     function shareWerewolfResult() {
       if (!window.partyPlay || !currentState) return;
       var winner = currentState.winner;
-      var headline = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
+      var headline = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : (winner === 'serialKiller' ? 'ฆาตกรต่อเนื่องชนะ!' : 'คนบ้าชนะ!'));
       var lines = (currentState.players || []).map(function(p) {
         return (p.name || '-') + ' · ' + (p.roleThaiName || p.revealedRole || '?');
       });
@@ -1610,20 +1650,20 @@
         return;
       }
 
-      const alreadySelected = actions.find(function(action) {
-        return !!action?.selectedTargetId;
-      });
-      if (alreadySelected) {
-        selectedWitchNightActionType = alreadySelected.type;
-        return;
-      }
-
+      // ใช้ยาได้ทั้ง 2 ขวดในคืนเดียว: เคารพขวดที่ผู้เล่นกดเลือกอยู่ ไม่บังคับกลับไปขวดที่เลือกเป้าแล้ว
       const stillValid = actions.some(function(action) {
         return action?.type === selectedWitchNightActionType;
       });
-      if (!stillValid) {
-        selectedWitchNightActionType = null;
+      if (stillValid) {
+        return;
       }
+
+      const alreadySelected = actions.find(function(action) {
+        return !!action?.selectedTargetId && action.selectedTargetId !== '__skip__';
+      }) || actions.find(function(action) {
+        return !!action?.selectedTargetId;
+      });
+      selectedWitchNightActionType = alreadySelected ? alreadySelected.type : null;
     }
 
     function buildWitchPotionSelector(actions) {
@@ -1804,7 +1844,7 @@
       if (phase === 'finished') {
         const winnerText = state?.winner === 'village'
           ? '🏡 ชาวบ้านชนะ!'
-          : (state?.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : '🤪 คนบ้าชนะ!');
+          : (state?.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : (state?.winner === 'serialKiller' ? '🔪 ฆาตกรต่อเนื่องชนะ!' : '🤪 คนบ้าชนะ!'));
         model.sections = [
           {
             label: 'ผลรอบนี้',
@@ -1876,7 +1916,7 @@
         return 'tone-vote';
       }
       if (actionType === 'night-kill' || actionType === 'witch-poison' || actionType === 'reveal-action'
-          || actionType === 'vigilante-shot' || actionType === 'hunter-shot') {
+          || actionType === 'vigilante-shot' || actionType === 'hunter-shot' || actionType === 'serial-kill') {
         return 'tone-heavy';
       }
       return 'tone-soft';
@@ -1908,7 +1948,8 @@
             'witch-heal': isSkip ? 'คุณเลือกเก็บยาช่วยชีวิตไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาช่วยชีวิตกัน ${targetName} คืนนี้แล้ว`,
             'witch-poison': isSkip ? 'คุณเลือกเก็บยาพิษไว้คืนนี้แล้ว' : `คุณเลือกใช้ยาพิษกับ ${targetName} แล้ว`,
             'vigilante-shot': isSkip ? 'คุณยืนยันไม่ยิงในคืนนี้แล้ว' : `คุณเลือกยิง ${targetName} แล้ว`,
-            'hunter-shot': isSkip ? 'คุณยืนยันไม่ใช้สิทธิ์ยิงของพรานในคืนนี้แล้ว' : `คุณล็อกเป้ายิง ${targetName} แล้ว (ถ้าตายในคืนเดียวกันลูกยังถึงเป้า)`
+            'hunter-shot': isSkip ? 'คุณยืนยันไม่ใช้สิทธิ์ยิงของพรานในคืนนี้แล้ว' : `คุณล็อกเป้ายิง ${targetName} แล้ว (ถ้าตายในคืนเดียวกันลูกยังถึงเป้า)`,
+            'serial-kill': isSkip ? 'คุณยืนยันไม่ลงมือในคืนนี้แล้ว' : `คุณเลือกเหยื่อเป็น ${targetName} แล้ว`
           };
           items.push({
             icon: actionEmoji(action.type),
@@ -2083,7 +2124,8 @@
         'reveal-action': 'reveal',
         'discussion-skip': 'skip',
         'vigilante-shot': 'kill',
-        'hunter-shot': 'kill'
+        'hunter-shot': 'kill',
+        'serial-kill': 'kill'
       };
 
       return themeMap[actionType] || 'vote';
@@ -2100,6 +2142,7 @@
       if (actionType === 'reveal-action') return isSelected ? '💥' : '🎯';
       if (actionType === 'vigilante-shot') return isSelected ? '💥' : '🔫';
       if (actionType === 'hunter-shot') return isSelected ? '🎯' : '🏹';
+      if (actionType === 'serial-kill') return isSelected ? '🩸' : '🔪';
       if (actionType === 'day-vote') return isSelected ? '🗳️' : 'D';
       return isSelected ? '✅' : '👉';
     }
@@ -2120,6 +2163,7 @@
         if (actionType === 'reveal-action') return 'ล็อกเป้าเปิดโปงคนนี้';
         if (actionType === 'vigilante-shot') return 'คืนนี้จะยิงคนนี้';
         if (actionType === 'hunter-shot') return 'ล็อกยิงคนนี้แล้ว';
+        if (actionType === 'serial-kill') return 'คืนนี้จะลงมือกับคนนี้';
         if (actionType === 'day-vote') return 'คุณโหวตคนนี้อยู่';
         return 'เลือกคนนี้แล้ว';
       }
@@ -2134,6 +2178,7 @@
       if (actionType === 'reveal-action') return 'แตะเพื่อล็อกเป้าเปิดโปง';
       if (actionType === 'vigilante-shot') return 'แตะเพื่อยิงคนนี้';
       if (actionType === 'hunter-shot') return 'แตะเพื่อล็อกเป้ายิง (ตายคืนเดียวกันลูกยังถึง)';
+      if (actionType === 'serial-kill') return 'แตะเพื่อเลือกเป็นเหยื่อของฆาตกร';
       if (actionType === 'day-vote') return 'แตะเพื่อเทคะแนนให้คนนี้';
       return 'แตะเพื่อเลือก';
     }
@@ -2155,7 +2200,8 @@
         'discussion-skip': 'action-skip',
         'mayor-reveal': 'action-mayor',
         'vigilante-shot': 'action-kill',
-        'hunter-shot': 'action-kill'
+        'hunter-shot': 'action-kill',
+        'serial-kill': 'action-kill'
       };
 
       return soundMap[actionType] || 'action-confirm';
@@ -2173,6 +2219,7 @@
         'reveal-action': 'rgba(244, 114, 182, 0.72)',
         'vigilante-shot': 'rgba(248, 113, 113, 0.72)',
         'hunter-shot': 'rgba(52, 211, 153, 0.55)',
+        'serial-kill': 'rgba(248, 113, 113, 0.72)',
         'discussion-skip': 'rgba(148, 163, 184, 0.68)',
         'action-skip': 'rgba(148, 163, 184, 0.68)',
         'mayor-reveal': 'rgba(251, 191, 36, 0.72)'
@@ -2263,6 +2310,8 @@
       const height = viewport ? Math.round(viewport.height) : window.innerHeight;
       const keyboardOffset = viewport ? Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)) : 0;
       document.documentElement.style.setProperty('--ww-app-height', height + 'px');
+      const topbar = document.querySelector('.ww-topbar');
+      document.documentElement.style.setProperty('--ww-topbar-h', (topbar ? topbar.offsetHeight : 0) + 'px');
       document.documentElement.style.setProperty('--ww-keyboard-offset', keyboardOffset + 'px');
 
       const isKeyboardOpen = keyboardOffset > 120 || (viewport ? (window.innerHeight - viewport.height) > 140 : false);
@@ -2558,8 +2607,8 @@
 
       // Mobile winner bar (always visible above tabs)
       if (currentState.winner) {
-        var winnerEmoji = currentState.winner === 'village' ? '🏡' : (currentState.winner === 'werewolf' ? '🐺' : '🤪');
-        var winnerLabel = currentState.winner === 'village' ? 'ชาวบ้านชนะ!' : (currentState.winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
+        var winnerEmoji = currentState.winner === 'village' ? '🏡' : (currentState.winner === 'werewolf' ? '🐺' : (currentState.winner === 'serialKiller' ? '🔪' : '🤪'));
+        var winnerLabel = currentState.winner === 'village' ? 'ชาวบ้านชนะ!' : (currentState.winner === 'werewolf' ? 'หมาป่าชนะ!' : (currentState.winner === 'serialKiller' ? 'ฆาตกรต่อเนื่องชนะ!' : 'คนบ้าชนะ!'));
         $('#mobileWinnerText').text(winnerEmoji + ' ' + winnerLabel);
         var btns = '';
         if (isRoomAdmin) {
@@ -3085,6 +3134,8 @@
 
       // Toggle night-phase class on grid
       $root.toggleClass('night-phase', isNight);
+      // โต๊ะ 11–20 คน: ที่นั่งแบบกะทัดรัด (ทุก grid ที่ mirror กันด้วย)
+      $('.player-grid').toggleClass('grid-dense', players.length > 10);
 
       players.forEach(function(player, index) {
         const seatNumber = index + 1;
@@ -3451,7 +3502,9 @@
             return '<button class="hint-btn" onclick="selectWitchPotion(\'' + escapeHtml(option.type) + '\')">' + iconOnly + ' ' + shortLabelOnly + '</button>';
           }).join('');
           var focusClassPotion = ' hint-focus';
-          $hint.html('<div class="hint-bar hint-night' + focusClassPotion + '">' + rolePill + '<span class="hint-text">🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน</span>' + potionBtnsOnly + nightSkipHtml + notesHtml + '</div>');
+          var victimOnly = actions.find(function(option) { return option && option.type === 'witch-heal' && option.witchVictimName; });
+          var victimOnlyHtml = victimOnly ? '<span class="hint-sep">·</span><span class="hint-text" style="color:#fca5a5;">🐺 หมาป่าเล็ง ' + escapeHtml(victimOnly.witchVictimName) + '</span>' : '';
+          $hint.html('<div class="hint-bar hint-night' + focusClassPotion + '">' + rolePill + '<span class="hint-text">🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน</span>' + victimOnlyHtml + potionBtnsOnly + nightSkipHtml + notesHtml + '</div>');
           return;
         }
         var actionLabel = (actionEmoji(action.type) || '🌙') + ' ' + escapeHtml(action.label || 'เลือกเป้าหมาย');
@@ -3461,7 +3514,7 @@
           var nightSelT = (action.targets || []).find(function(t) { return t.playerId === nightSelId; });
           nightSelName = nightSelT ? (nightSelT.name || '') : '';
         }
-        var toggleCancelTypes = ['vigilante-shot', 'hunter-shot', 'doctor-save', 'witch-heal', 'witch-poison'];
+        var toggleCancelTypes = ['vigilante-shot', 'hunter-shot', 'doctor-save', 'witch-heal', 'witch-poison', 'serial-kill'];
         var canToggleCancel = toggleCancelTypes.indexOf(action.type) !== -1;
         var status;
         if (action.locked) {
@@ -3473,8 +3526,12 @@
         } else {
           status = '👆 แตะที่ผู้เล่นเพื่อเลือกเป้า';
         }
-        if (isWitchChoiceNight(actions) && !action.selectedTargetId) {
+        if (isWitchChoiceNight(actions) && !action.selectedTargetId && !selectedWitchNightActionType) {
           status = '🧙‍♀️ เลือกยาก่อน แล้วค่อยเลือกคน';
+        }
+        var witchVictimAction = actions.find(function(option) { return option && option.type === 'witch-heal'; });
+        if (witchVictimAction && witchVictimAction.witchVictimName) {
+          status += '<span class="hint-sep">·</span><span class="hint-text" style="color:#fca5a5;">🐺 หมาป่าเล็ง ' + escapeHtml(witchVictimAction.witchVictimName) + '</span>';
         }
         var nightBtns = '';
         if (action.allowSkip && !action.locked && nightSelId !== '__skip__') {
@@ -3901,6 +3958,7 @@
     function noteToneForRole(roleId) {
       const tones = {
         seer: 'seer',
+        apprenticeSeer: 'seer',
         oracle: 'seer',
         tracker: 'tracker',
         doctor: 'doctor',
@@ -3911,6 +3969,10 @@
         revealer: 'revealer',
         werewolf: 'werewolf',
         alphaWolf: 'werewolf',
+        serialKiller: 'werewolf',
+        lycan: 'villager',
+        diseased: 'villager',
+        prince: 'mayor',
         villager: 'villager'
       };
 
@@ -4200,8 +4262,10 @@
             <div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.06);">3) ตอนเช้า ระบบสรุปผล แล้วทุกคนคุยกันในวงก่อนโหวต</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(79,70,229,0.16); border:1px solid rgba(129,140,248,0.2);">🔮 ผู้หยั่งรู้ ดูได้แค่ ดี / ไม่ดี / ไม่ทราบ</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(249,115,22,0.16); border:1px solid rgba(251,191,36,0.2);">🎖️ นายกเปิดตัวแล้วโหวตแรงขึ้นเป็น 2</div>
-            <div style="padding:12px 14px; border-radius:12px; background:rgba(46,204,113,0.12); border:1px solid rgba(134,239,172,0.18);">🏡 ชาวบ้านชนะเมื่อหมาป่าหมด</div>
-            <div style="padding:12px 14px; border-radius:12px; background:rgba(192,57,43,0.16); border:1px solid rgba(248,113,113,0.18);">🐺 หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่ยังอยู่</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(46,204,113,0.12); border:1px solid rgba(134,239,172,0.18);">🏡 ชาวบ้านชนะเมื่อหมาป่า (และฆาตกรต่อเนื่องถ้ามี) หมด</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(192,57,43,0.16); border:1px solid rgba(248,113,113,0.18);">🐺 หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าคนอื่นที่ยังอยู่ และไม่มีฆาตกรต่อเนื่องเหลือ</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(168,85,247,0.14); border:1px solid rgba(196,181,253,0.2);">🎭 บทเดี่ยว: 🤪 คนบ้าชนะเมื่อถูกโหวตออก · 🔪 ฆาตกรต่อเนื่องชนะเมื่อเหลือรอดไม่เกิน 2 คน</div>
+            <div style="padding:12px 14px; border-radius:12px; background:rgba(16,185,129,0.12); border:1px solid rgba(110,231,183,0.2);">🧪 แม่มดเห็นว่าหมาป่าเล็งใคร และใช้ยาช่วย+ยาพิษคืนเดียวกันได้</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(52,152,219,0.12); border:1px solid rgba(125,211,252,0.16);">💡 โหมดนี้ตั้งใจให้เล่นหน้าจอเดียวบนโต๊ะจริง ไม่ต้องพึ่งแชทมาก</div>
             <div style="padding:12px 14px; border-radius:12px; background:rgba(79,70,229,0.14); border:1px solid rgba(129,140,248,0.22);">📖 กดปุ่ม <strong>คู่มือบทบาท</strong> (หรือ <strong>บทบาท</strong> บนมือถือ) เพื่อดูความสามารถและเงื่อนไขชนะทุกบท</div>
             <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">
@@ -4223,7 +4287,7 @@
       const winner = currentState.winner;
       const winHint = role?.winCondition ? `<div style="padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);">🏁 <strong>ชนะเมื่อ</strong> ${escapeHtml(role.winCondition)}</div>` : '';
       const winnerText = winner
-        ? `<div style="padding:12px 14px; border-radius:12px; background:${winner === 'village' ? 'rgba(34,197,94,0.16)' : (winner === 'werewolf' ? 'rgba(192,57,43,0.18)' : 'rgba(168,85,247,0.18)')}; border:1px solid rgba(255,255,255,0.08); font-weight:700;">${winner === 'village' ? '🏡 ชาวบ้านชนะแล้ว' : (winner === 'werewolf' ? '🐺 ฝั่งหมาป่าชนะแล้ว' : '🤪 คนบ้าชนะคนเดียวแล้ว')}</div>`
+        ? `<div style="padding:12px 14px; border-radius:12px; background:${winner === 'village' ? 'rgba(34,197,94,0.16)' : (winner === 'werewolf' ? 'rgba(192,57,43,0.18)' : 'rgba(168,85,247,0.18)')}; border:1px solid rgba(255,255,255,0.08); font-weight:700;">${winner === 'village' ? '🏡 ชาวบ้านชนะแล้ว' : (winner === 'werewolf' ? '🐺 ฝั่งหมาป่าชนะแล้ว' : (winner === 'serialKiller' ? '🔪 ฆาตกรต่อเนื่องชนะคนเดียวแล้ว' : '🤪 คนบ้าชนะคนเดียวแล้ว'))}</div>`
         : '';
       const noteHtml = renderNoteCards(buildNoteItems(notes, role.id));
 
@@ -4931,11 +4995,11 @@
         return;
       }
 
-      const winnerText = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
+      const winnerText = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : (winner === 'serialKiller' ? 'ฆาตกรต่อเนื่องชนะ!' : 'คนบ้าชนะ!'));
       const actionHtml = isRoomAdmin
         ? '<div class="winner-actions"><button id="restartWerewolfGame" class="werewolf-btn">🎲 เล่นอีกรอบ</button><button id="shareWerewolfResult" class="ghost-btn">📸 เซฟผล</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>'
         : '<div class="winner-actions"><button id="shareWerewolfResult" class="ghost-btn">📸 เซฟผล</button><button id="backToRoomLobby" class="ghost-btn">🏠 กลับห้อง</button></div>';
-      $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : '🤪 ')) + winnerText + '</div>' + actionHtml);
+      $banner.html('<div>' + (winner === 'village' ? '🏡 ' : (winner === 'werewolf' ? '🐺 ' : (winner === 'serialKiller' ? '🔪 ' : '🤪 '))) + winnerText + '</div>' + actionHtml);
       if (!$banner.is(':visible')) {
         $banner.addClass('win-pop');
         window.gameHaptic([15, 60, 25, 60, 40]);
@@ -4976,7 +5040,7 @@
 
       if (state.phase === 'finished' && state.winner) {
         return {
-          title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : (state.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : '🤪 คนบ้าชนะ!'),
+          title: state.winner === 'village' ? '🏡 ชาวบ้านชนะ!' : (state.winner === 'werewolf' ? '🐺 หมาป่าชนะ!' : (state.winner === 'serialKiller' ? '🔪 ฆาตกรต่อเนื่องชนะ!' : '🤪 คนบ้าชนะ!')),
           subtitle: 'จบรอบแล้ว! ' + (isRoomAdmin ? 'กดเริ่มรอบใหม่ได้เลย' : 'รอหัวหน้าห้องเริ่มใหม่')
         };
       }
@@ -5752,16 +5816,41 @@
       window.setTimeout(syncViewportHeight, 160);
     });
 
+    // ข้อความยืนยันบอกผลของการออกตามเฟส/สถานะจริง (server: handlePlayerLeft = ตายทันที, หัวห้องย้าย)
+    function buildLeaveConsequenceText() {
+      var state = currentState || {};
+      var phase = state.phase || 'lobby';
+      var self = (state.players || []).find(function(player) { return player.isSelf; });
+      var inPlay = ['night', 'day-discussion', 'day-vote'].indexOf(phase) !== -1 && !state.winner;
+      var lines = [];
+      if (inPlay && self && self.alive !== false) {
+        lines.push('ที่นั่งของคุณหายจากโต๊ะทันที เกมเล่นต่อโดยไม่มีคุณ — สกิลที่เลือกไว้คืนนี้/โหวตที่ลงไว้จะถูกยกเลิก');
+        lines.push('บทของคุณยังเป็นความลับจนจบเกม · ถ้าฝ่ายไหนเข้าเงื่อนไขชนะหลังคุณออก เกมจะจบทันที');
+        lines.push('กลับเข้าห้องเดิมก่อนเกมจบ = ได้ที่นั่งและบทเดิมคืน');
+      } else if (inPlay) {
+        lines.push('คุณตายแล้ว — ออกได้เลย เกมเล่นต่อโดยไม่มีคุณ และคุณจะออกจากแชทผีด้วย');
+      } else if (phase === 'finished' || state.winner) {
+        lines.push('เกมนี้จบแล้ว ออกได้เลย');
+      } else {
+        lines.push('คุณจะออกจากห้องรอ');
+      }
+      if (state.isHost) {
+        lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+      }
+      return lines;
+    }
+
     $('#leaveWerewolfRoom').on('click', function() {
+      var lines = buildLeaveConsequenceText();
       Swal.fire({
-        icon: 'question',
+        icon: 'warning',
         title: 'ออกจากห้อง?',
-        text: 'ต้องการออกจากห้อง Werewolf นี้หรือไม่?',
+        html: '<div data-testid="ww-leave-consequence" style="display:grid; gap:6px; text-align:left;">' + lines.map(function(line) { return '<div>• ' + escapeHtml(line) + '</div>'; }).join('') + '</div>',
         background: '#111827',
         color: '#fff',
         showCancelButton: true,
         confirmButtonText: 'ออกจากห้อง',
-        cancelButtonText: 'ยกเลิก',
+        cancelButtonText: 'อยู่ต่อ',
         confirmButtonColor: '#dc2626',
         cancelButtonColor: '#475569'
       }).then(function(result) {
@@ -5770,9 +5859,15 @@
         }
 
         allowNavigation = true;
-        socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, function() {
-          window.location.href = '/rooms?playerId=' + playerId;
-        });
+        var left = false;
+        var goRooms = function() {
+          if (left) return;
+          left = true;
+          window.location.href = '/rooms?playerId=' + encodeURIComponent(playerId);
+        };
+        // ack ไม่มาใน ~4 วิ ก็ไปหน้าห้องเลย (ไม่ให้ติดค้างในเกม)
+        window.setTimeout(goRooms, 4000);
+        socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, goRooms);
       });
     });
 
@@ -5868,8 +5963,8 @@
       var history = state.history || [];
 
       // Title
-      var titleEmoji = winner === 'village' ? '🏡' : (winner === 'werewolf' ? '🐺' : '🤪');
-      var titleText = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : 'คนบ้าชนะ!');
+      var titleEmoji = winner === 'village' ? '🏡' : (winner === 'werewolf' ? '🐺' : (winner === 'serialKiller' ? '🔪' : '🤪'));
+      var titleText = winner === 'village' ? 'ชาวบ้านชนะ!' : (winner === 'werewolf' ? 'หมาป่าชนะ!' : (winner === 'serialKiller' ? 'ฆาตกรต่อเนื่องชนะ!' : 'คนบ้าชนะ!'));
       $('#winTitle').html(titleEmoji + ' ' + titleText);
 
       // Subtitle

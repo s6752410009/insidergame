@@ -21,6 +21,8 @@ function serializePublicRole(role) {
     };
 }
 
+const VILLAGE_WIN_TEXT = 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมด (และฆาตกรต่อเนื่องถ้ามี) ถูกกำจัด';
+
 const ROLE_DEFINITIONS = {
     villager: {
         id: 'villager',
@@ -30,7 +32,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'ชาวบ้าน',
         team: 'village',
         description: 'ไม่มีสกิลพิเศษ ใช้การคุย จับพิรุธ และโหวตช่วยทีม',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     werewolf: {
         id: 'werewolf',
@@ -40,7 +42,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'หมาป่า',
         team: 'werewolf',
         description: 'คุยกับทีมหมาป่าและเลือกเหยื่อในตอนกลางคืน (คืนแรกยังล่าไม่ได้)',
-        winCondition: 'หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่ยังมีชีวิตอยู่รวมกัน'
+        winCondition: 'หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่ยังมีชีวิตอยู่รวมกัน และฆาตกรต่อเนื่อง (ถ้ามี) ตายแล้ว'
     },
     alphaWolf: {
         id: 'alphaWolf',
@@ -50,7 +52,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'อัลฟ่าหมาป่า',
         team: 'werewolf',
         description: 'หมาป่าหัวหน้า โหวตล่าแรงกว่า 1 เสียง และผู้หยั่งรู้จะเห็นว่าไม่ทราบ',
-        winCondition: 'หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่ยังมีชีวิตอยู่รวมกัน'
+        winCondition: 'หมาป่าชนะเมื่อจำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่ยังมีชีวิตอยู่รวมกัน และฆาตกรต่อเนื่อง (ถ้ามี) ตายแล้ว'
     },
     mayor: {
         id: 'mayor',
@@ -60,7 +62,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'นายก',
         team: 'village',
         description: 'เช้ากดเปิดตัวได้เอง แล้วเสียงโหวตของคุณจะนับเป็น 2',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     bodyguard: {
         id: 'bodyguard',
@@ -70,7 +72,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'บอดี้การ์ด',
         team: 'village',
         description: 'กันการโจมตีได้ 1 คนตอนกลางคืน ห้ามปกป้องคนเดิมสองคืนติดกัน และเกราะจะพังเมื่อกันสำเร็จ',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     seer: {
         id: 'seer',
@@ -80,7 +82,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'ผู้หยั่งรู้',
         team: 'village',
         description: 'ตรวจผู้เล่นได้ 1 คนต่อคืน ดูตัวเองไม่ได้ ผลเป็น ดี / ไม่ดี / ไม่ทราบ',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     oracle: {
         id: 'oracle',
@@ -90,7 +92,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'นักพยากรณ์',
         team: 'village',
         description: 'ตรวจผู้เล่นได้ 1 คนต่อคืน ดูตัวเองไม่ได้ ระบบบอกบทบาทจริงของเป้าหมาย (แม่นกว่าผู้หยั่งรู้) และเก็บประวัติไว้ให้',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     doctor: {
         id: 'doctor',
@@ -100,7 +102,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'หมอ',
         team: 'village',
         description: 'ช่วยชีวิตผู้เล่น 1 คนต่อคืน ใช้ได้รวม 2 ครั้งต่อเกม',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     witch: {
         id: 'witch',
@@ -110,7 +112,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'แม่มด',
         team: 'village',
         description: 'มียาช่วย 1 ครั้งและยาพิษ 1 ครั้ง คืนหนึ่งใช้ได้แค่ 1 อย่าง',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     tracker: {
         id: 'tracker',
@@ -120,7 +122,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'นักสอดแนม',
         team: 'village',
         description: 'เลือก 1 คนตอนกลางคืนเพื่อดูว่าเขาใช้สกิลในคืนนั้นหรือไม่',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     hunter: {
         id: 'hunter',
@@ -130,7 +132,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'พราน',
         team: 'village',
         description: 'กลางคืนเลือกยิง 1 คนได้ 1 ครั้งตลอดเกม เปลี่ยน/ยกเลิกเป้าได้จนกว่าจะปิดคืน — ถ้าล็อกเป้าไว้แล้วคุณตายในคืนเดียวกัน ลูกธนูยังออกตามที่เลือก',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     cleric: {
         id: 'cleric',
@@ -140,7 +142,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'นักบวช',
         team: 'village',
         description: 'มีพรคุ้มกัน 1 ครั้ง ใช้กันตายให้ผู้เล่น 1 คนได้',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     vigilante: {
         id: 'vigilante',
@@ -150,7 +152,7 @@ const ROLE_DEFINITIONS = {
         thaiName: 'ศาลเตี้ย',
         team: 'village',
         description: 'กลางคืนเลือกยิง 1 คนได้ 1 ครั้งทั้งเกม เปลี่ยน/ยกเลิกเป้าได้จนกว่าจะปิดคืน สิทธิ์จะถูกใช้ก็ต่อเมื่อคืนนั้นจบลง',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
     },
     fool: {
         id: 'fool',
@@ -170,9 +172,62 @@ const ROLE_DEFINITIONS = {
         thaiName: 'จอมเปิดโปง',
         team: 'village',
         description: 'ใช้ได้ 1 ครั้งตอนกลางวัน ล็อกเป้าแล้วรอเฉลยตอนหมดเวลา ถ้าพลาดคุณตายแทน',
-        winCondition: 'ชาวบ้านชนะเมื่อหมาป่าทั้งหมดถูกกำจัด'
+        winCondition: VILLAGE_WIN_TEXT
+    },
+    // ===== บทใหม่ v6.5 (อิง Ultimate Werewolf / Wolvesville) =====
+    serialKiller: {
+        id: 'serialKiller',
+        image: werewolfRoleImage('serialKiller'),
+        icon: '🔪',
+        name: 'Serial Killer',
+        thaiName: 'ฆาตกรต่อเนื่อง',
+        team: 'solo',
+        description: 'ตั้งแต่คืนที่ 2 เลือกฆ่าได้คืนละ 1 คน หมาป่าฆ่าคุณไม่ได้ ต้องเป็นคนรอดท้ายสุด',
+        winCondition: 'ชนะคนเดียวเมื่อเหลือผู้รอดชีวิตไม่เกิน 2 คน และคุณยังรอดอยู่'
+    },
+    prince: {
+        id: 'prince',
+        image: werewolfRoleImage('prince'),
+        icon: '🤴',
+        name: 'Prince',
+        thaiName: 'เจ้าชาย',
+        team: 'village',
+        description: 'ถ้าถูกโหวตออกครั้งแรก คุณจะเปิดตัวเป็นเจ้าชายและไม่ตาย (ครั้งต่อไปตายตามปกติ)',
+        winCondition: VILLAGE_WIN_TEXT
+    },
+    lycan: {
+        id: 'lycan',
+        image: werewolfRoleImage('lycan'),
+        icon: '🌕',
+        name: 'Lycan',
+        thaiName: 'ไลแคน',
+        team: 'village',
+        description: 'ชาวบ้านที่มีเลือดหมาป่า ไม่มีสกิล แต่ผู้หยั่งรู้จะเห็นคุณเป็น "ไม่ดี"',
+        winCondition: VILLAGE_WIN_TEXT
+    },
+    diseased: {
+        id: 'diseased',
+        image: werewolfRoleImage('diseased'),
+        icon: '🤒',
+        name: 'Diseased',
+        thaiName: 'ผู้ติดเชื้อ',
+        team: 'village',
+        description: 'ถ้าหมาป่ากัดคุณตาย หมาป่าจะติดเชื้อและล่าใครไม่ได้ในคืนถัดไป',
+        winCondition: VILLAGE_WIN_TEXT
+    },
+    apprenticeSeer: {
+        id: 'apprenticeSeer',
+        image: werewolfRoleImage('apprenticeSeer'),
+        icon: '🧿',
+        name: 'Apprentice Seer',
+        thaiName: 'ศิษย์ผู้หยั่งรู้',
+        team: 'village',
+        description: 'เมื่อไม่มีผู้หยั่งรู้เหลือรอด คุณจะได้พลังตรวจออร่าคืนละ 1 คนแทน',
+        winCondition: VILLAGE_WIN_TEXT
     }
 };
+
+const NEW_ROLE_IDS = ['serialKiller', 'prince', 'lycan', 'diseased', 'apprenticeSeer'];
 
 const ROLE_PLANS = {
     3: ['werewolf', 'seer', 'villager'],
@@ -255,8 +310,59 @@ const ROLE_PLAN_VARIANTS = {
     10: buildRolePlanVariantsForCount(10)
 };
 
-const CONFIGURABLE_ROLE_IDS = ['werewolf', 'alphaWolf', 'seer', 'oracle', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer', 'tracker', 'vigilante', 'hunter', 'cleric'];
+const CONFIGURABLE_ROLE_IDS = ['werewolf', 'alphaWolf', 'seer', 'oracle', 'doctor', 'witch', 'fool', 'bodyguard', 'mayor', 'revealer', 'tracker', 'vigilante', 'hunter', 'cleric', ...NEW_ROLE_IDS];
 const DEFAULT_ROLE_SELECTION = [...CONFIGURABLE_ROLE_IDS];
+const MIN_PLAYERS = 3;
+const MAX_PLAYERS = 20;
+const MAX_WOLF_COUNT = 5;
+
+// ===== ตารางบทแนะนำ 5–20 คน (ค่าเริ่มต้นเมื่อหัวห้องไม่ได้เลือกเอง) — ดู rules.md =====
+// หมาป่า ~1 ตัวต่อ 4–5 คน · บทเดี่ยวเริ่มที่ 11 คน · ชาวบ้านธรรมดาเริ่มที่ 11 คนให้โต๊ะใหญ่อ่านง่าย
+function getRecommendedWolfCount(playerCount) {
+    const n = Number(playerCount) || 0;
+    if (n <= 6) return 1;
+    if (n <= 11) return 2;
+    if (n <= 15) return 3;
+    return 4;
+}
+
+function getRecommendedDistribution(playerCount) {
+    const n = Math.max(5, Math.min(MAX_PLAYERS, Number(playerCount) || 5));
+    const wolfCount = getRecommendedWolfCount(n);
+    const wolves = wolfCount === 1 ? ['werewolf'] : ['alphaWolf', ...Array(wolfCount - 1).fill('werewolf')];
+    const solo = n >= 17 ? ['serialKiller', 'fool'] : (n >= 13 ? ['serialKiller'] : (n >= 11 ? ['fool'] : []));
+    const plainVillagers = n >= 18 ? 3 : (n >= 15 ? 2 : (n >= 11 ? 1 : 0));
+    const core = ['seer', 'doctor'];
+    if (n >= 8) core.push('bodyguard');
+    if (n >= 11) core.push('witch', 'hunter');
+    if (n >= 14) core.push('apprenticeSeer', 'prince');
+    if (n >= 16) core.push('lycan', 'diseased');
+    const flexPool = ['oracle', 'witch', 'bodyguard', 'mayor', 'revealer', 'tracker', 'vigilante', 'hunter', 'cleric', 'prince', 'lycan', 'diseased', 'apprenticeSeer']
+        .filter(roleId => !core.includes(roleId))
+        // บทใหม่ฝั่งชาวบ้านเหมาะกับโต๊ะ 7 คนขึ้นไป (โต๊ะเล็กไลแคน/ศิษย์ทำให้ข้อมูลน้อยเกินไป)
+        .filter(roleId => n >= 7 || !NEW_ROLE_IDS.includes(roleId));
+    const flexCount = Math.max(0, n - wolves.length - solo.length - plainVillagers - core.length);
+    return { playerCount: n, wolves, solo, core, flexCount, flexPool, plainVillagers };
+}
+
+function buildRecommendedRolePlan(playerCount, previousPlanRoleIds = []) {
+    const dist = getRecommendedDistribution(playerCount);
+    const previousSignature = serializeRolePlan(previousPlanRoleIds);
+    let plan = null;
+    // สุ่มบทเสริมใหม่ได้สูงสุด 6 ครั้งเพื่อไม่ให้ซ้ำชุดเดิมเกมก่อน
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const flex = shuffle(dist.flexPool).slice(0, dist.flexCount);
+        plan = [...dist.wolves, ...dist.solo, ...dist.core, ...flex, ...Array(dist.plainVillagers).fill('villager')];
+        while (plan.length < dist.playerCount) plan.push('villager');
+        if (serializeRolePlan(plan) !== previousSignature || dist.flexCount === 0) break;
+    }
+    return plan.slice(0, dist.playerCount);
+}
+
+function sanitizeWolfCount(value) {
+    const numeric = Number(value);
+    return Number.isInteger(numeric) && numeric >= 1 && numeric <= MAX_WOLF_COUNT ? numeric : null;
+}
 const SKIP_TARGET_ID = '__skip__';
 
 // ===== ตั้งเวลาโดยหัวห้อง + ช่วงเรียกโหวตสุดท้าย =====
@@ -294,6 +400,13 @@ function sanitizeWerewolfSettings(input = {}, current = {}) {
         result.werewolfDeadSeeRoles = source.werewolfDeadSeeRoles === true || source.werewolfDeadSeeRoles === 'true';
     } else {
         result.werewolfDeadSeeRoles = previous.werewolfDeadSeeRoles !== false;
+    }
+    // เปิดบทเมื่อตาย: กติกามาตรฐาน Ultimate Werewolf / Miller's Hollow / Wolvesville
+    // ค่าเริ่มต้นปิด เพราะเจ้าของเว็บอนุมัติให้ "คนที่ยังมีชีวิตไม่เห็นบทใครเลย" (v6.4)
+    if (source.werewolfRevealOnDeath !== undefined) {
+        result.werewolfRevealOnDeath = source.werewolfRevealOnDeath === true || source.werewolfRevealOnDeath === 'true';
+    } else {
+        result.werewolfRevealOnDeath = previous.werewolfRevealOnDeath === true;
     }
     return result;
 }
@@ -366,7 +479,41 @@ function isFoolRole(roleId) {
     return roleId === 'fool';
 }
 
+function hasLivingRole(room, roleId) {
+    return (room?.gameState?.players || []).some(player => player.alive !== false && player.role === roleId);
+}
+
+// ศิษย์ผู้หยั่งรู้ได้พลังเมื่อไม่มีผู้หยั่งรู้ที่ยังมีชีวิต (ตายแล้ว ออกจากเกม หรือไม่ได้แจกตั้งแต่ต้น)
+function isApprenticeSeerActive(room) {
+    return !hasLivingRole(room, 'seer');
+}
+
+function isSeerLikeActor(room, player) {
+    if (!player || player.alive === false) return false;
+    if (player.role === 'seer') return true;
+    return player.role === 'apprenticeSeer' && isApprenticeSeerActive(room);
+}
+
+// ฝูงหมาป่าติดเชื้อ: คืนนี้ล่าใครไม่ได้
+function isWolfPackSick(room) {
+    const sickNight = Number(room?.gameState?.wolvesSickNight || 0);
+    return sickNight > 0 && sickNight === Number(room?.gameState?.dayNumber || 0) && room?.gameState?.phase === 'night';
+}
+
+// บทที่ฆ่าตอนกลางคืนได้ตั้งแต่คืนที่ 2 (หมาป่า/ฆาตกร) — คืนแรกหมู่บ้านยังสงบ
+function canWolvesHuntTonight(room) {
+    return !isFirstNight(room) && !isWolfPackSick(room);
+}
+
 function getSeerAlignment(roleId) {
+    // ไลแคน = ชาวบ้านที่ออร่าเหมือนหมาป่า · ฆาตกรต่อเนื่องเป็นนักฆ่า ออร่าไม่ดี
+    if (roleId === 'lycan' || roleId === 'serialKiller') {
+        return {
+            code: 'bad',
+            label: 'ไม่ดี'
+        };
+    }
+
     if (roleId === 'alphaWolf' || isFoolRole(roleId)) {
         return {
             code: 'unknown',
@@ -398,7 +545,7 @@ function getOracleAlignment(roleId) {
     if (isWerewolfRole(roleId)) {
         return { code: 'werewolf', label: 'หมาป่า' };
     }
-    if (isFoolRole(roleId)) {
+    if (isFoolRole(roleId) || roleId === 'serialKiller') {
         return { code: 'solo', label: 'บทเดี่ยว' };
     }
     return { code: 'village', label: 'ชาวบ้าน' };
@@ -504,14 +651,75 @@ function capWolvesInPlan(roleIds, playerCount) {
     });
 }
 
+function buildWolfRoleIds(count, allowAlpha = true) {
+    if (count <= 0) return [];
+    if (count === 1 || !allowAlpha) return Array(count).fill('werewolf');
+    return ['alphaWolf', ...Array(count - 1).fill('werewolf')];
+}
+
+// หัวห้องเลือกจำนวนหมาป่าเอง: ใช้ตารางแนะนำแล้วปรับเฉพาะจำนวนหมาป่า (ไม่เกิน 1 ใน 3 ของโต๊ะ)
+function applyWolfCountToPlan(planRoleIds, requestedWolves, playerCount) {
+    const cap = Math.max(1, Math.floor(playerCount / 3));
+    const wolfCount = Math.min(requestedWolves, cap);
+    const nonWolves = planRoleIds.filter(roleId => !isWerewolfRole(roleId));
+    const need = playerCount - wolfCount;
+    let kept = nonWolves.slice(0, need);
+    if (kept.length < need) {
+        const extras = shuffle(getRecommendedDistribution(playerCount).flexPool.filter(roleId => !kept.includes(roleId)));
+        while (kept.length < need) {
+            kept.push(playerCount <= 10 && extras.length ? extras.shift() : 'villager');
+        }
+    }
+    return [...buildWolfRoleIds(wolfCount), ...kept];
+}
+
+// โต๊ะ 11–20 คนที่หัวห้องติ๊กบทเอง: บทที่ติ๊กได้ 1 ที่ต่อบท ที่เหลือเป็นชาวบ้านธรรมดา
+function buildLargeTableCustomPlan(playerCount, settings, wolfCountSetting) {
+    const selected = sanitizeRoleSelection(settings.werewolfRoles);
+    const cap = Math.max(1, Math.floor(playerCount / 3));
+    const wolfCount = Math.min(wolfCountSetting || getRecommendedWolfCount(playerCount), cap);
+    const hasAlpha = selected.includes('alphaWolf');
+    const hasWolf = selected.includes('werewolf');
+    const wolves = hasAlpha && (wolfCount >= 2 || !hasWolf)
+        ? ['alphaWolf', ...Array(wolfCount - 1).fill('werewolf')]
+        : Array(wolfCount).fill('werewolf');
+    const priority = ['seer', 'doctor'];
+    const specials = selected.filter(roleId => !isWerewolfRole(roleId));
+    const ordered = [
+        ...priority.filter(roleId => specials.includes(roleId)),
+        ...shuffle(specials.filter(roleId => !priority.includes(roleId)))
+    ];
+    const plan = [...wolves, ...ordered.slice(0, playerCount - wolves.length)];
+    while (plan.length < playerCount) plan.push('villager');
+    return plan;
+}
+
 function getRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
+    const safeSettings = settings || {};
+    const requestedCount = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Number(playerCount) || MIN_PLAYERS));
+    const hasExplicitRoles = Array.isArray(safeSettings.werewolfRoles) && safeSettings.werewolfRoles.length > 0;
+    const wolfCountSetting = hasExplicitRoles ? null : sanitizeWolfCount(safeSettings.wolfCount);
+    const toDefs = roleIds => roleIds.map(roleId => ROLE_DEFINITIONS[roleId] || ROLE_DEFINITIONS.villager);
+
+    if (requestedCount > 10 && hasExplicitRoles) {
+        return toDefs(capWolvesInPlan(buildLargeTableCustomPlan(requestedCount, safeSettings, sanitizeWolfCount(safeSettings.wolfCount)), requestedCount));
+    }
+    if (requestedCount >= 5 && !hasExplicitRoles) {
+        const recommended = buildRecommendedRolePlan(requestedCount, previousPlanRoleIds);
+        return toDefs(wolfCountSetting ? applyWolfCountToPlan(recommended, wolfCountSetting, requestedCount) : recommended);
+    }
+    return getLegacyRolePlan(requestedCount, safeSettings, previousPlanRoleIds);
+}
+
+// กติกาเดิม (v6.4) สำหรับโต๊ะ 3–4 คน และโต๊ะ ≤10 คนที่หัวห้องติ๊กบทเอง — ห้ามเปลี่ยนพฤติกรรม
+function getLegacyRolePlan(playerCount, settings = {}, previousPlanRoleIds = []) {
     const normalizedCount = Math.max(3, Math.min(10, Number(playerCount) || 3));
     const basePlan = getBaseRolePlan(normalizedCount, previousPlanRoleIds);
     const maxWolfCount = Math.max(1, basePlan.filter(isWerewolfRole).length);
 
     // Wolf count mode: pick N wolves, fill rest from base plan specials + villagers
     if (settings.wolfCount) {
-        const wolfCount = Math.min(Math.max(1, Number(settings.wolfCount) || 1), 3);
+        const wolfCount = Math.min(Math.max(1, Number(settings.wolfCount) || 1), MAX_WOLF_COUNT);
         const maxAllowedWolves = Math.max(1, Math.floor(normalizedCount / 3));
         const actualWolfCount = Math.min(wolfCount, maxAllowedWolves);
 
@@ -620,7 +828,8 @@ function createInitialState() {
             oracleReads: {},
             vigilanteShots: {},
             hunterShots: {},
-            clericBlesses: {}
+            clericBlesses: {},
+            serialKills: {}
         },
         nightSkips: {},
         dayVotes: {},
@@ -630,7 +839,9 @@ function createInitialState() {
         lastProtectedByBodyguard: {},
         lastResolvedNight: null,
         lastResolvedDay: null,
-        voteClosesAt: null
+        voteClosesAt: null,
+        // คืนที่ฝูงหมาป่าติดเชื้อจากผู้ติดเชื้อ (ล่าไม่ได้) — เก็บเป็นเลขคืน
+        wolvesSickNight: null
     };
 }
 
@@ -672,7 +883,11 @@ function createPlayerState(player, context = {}) {
         clericLastTargetId: null,
         clericLastResult: null,
         witchHealUsed: false,
-        witchPoisonUsed: false
+        witchPoisonUsed: false,
+        serialKillerLastTargetId: null,
+        serialKillerLastResult: null,
+        princeRevealed: false,
+        apprenticePromotedNotified: false
     };
 }
 
@@ -867,6 +1082,8 @@ function buildNightPublicEvent(player, cause) {
         detail = `${player.name} ถูกแม่มดวางยาพิษในตอนกลางคืน`;
     } else if (cause === 'night-shot') {
         detail = `${player.name} ถูกยิงเสียชีวิตในตอนกลางคืน`;
+    } else if (cause === 'serial-kill') {
+        detail = `${player.name} ถูกฆาตกรต่อเนื่องสังหารในตอนกลางคืน`;
     }
 
     return {
@@ -970,7 +1187,8 @@ function resetNightActions(room) {
         oracleReads: {},
         vigilanteShots: {},
         hunterShots: {},
-        clericBlesses: {}
+        clericBlesses: {},
+        serialKills: {}
     };
     room.gameState.nightSkips = {};
 }
@@ -1006,7 +1224,8 @@ function ensureActionMaps(room) {
         oracleReads: {},
         vigilanteShots: {},
         hunterShots: {},
-        clericBlesses: {}
+        clericBlesses: {},
+        serialKills: {}
     };
 
     Object.keys(nightDefaults).forEach(key => {
@@ -1120,9 +1339,8 @@ function assignRoles(room) {
     const roleIds = room.gameState.rolePlan.map(role => role.id);
     const players = room.gameState.players;
 
-    // getRolePlan cap ไว้ที่ 10 บท ถ้าห้องมีคนมากกว่านั้น backtrack จะหาบทไม่พอ
-    // แล้ว fallback แจก undefined ให้คนท้ายๆ แบบเงียบๆ (role/roleInfo เป็น undefined จน UI พัง)
-    // เติม villager ให้ครบจำนวนคนไว้ก่อน กันไว้เผื่อวันหลังขยับ maxPlayers
+    // getRolePlan รองรับถึง MAX_PLAYERS (20) — กันไว้อีกชั้น: ถ้าบทไม่พอ เติม villager ให้ครบ
+    // (ไม่งั้น fallback แจก undefined ให้คนท้ายๆ จน UI พัง)
     while (roleIds.length < players.length) {
         roleIds.push('villager');
     }
@@ -1135,9 +1353,12 @@ function assignRoles(room) {
         const searchPlayers = shuffle(playerStates);
         let bestAssignment = null;
         let bestRepeatCount = Number.POSITIVE_INFINITY;
+        // โต๊ะ 20 คน: จำกัดจำนวนรอบค้นหา กันกรณีหลีกเลี่ยงบทซ้ำไม่ได้แล้วค้นแบบ exponential
+        let searchBudget = 20000;
 
         function backtrack(index, assignment, repeatCount) {
-            if (repeatCount >= bestRepeatCount) {
+            searchBudget -= 1;
+            if (repeatCount >= bestRepeatCount || (searchBudget <= 0 && bestAssignment)) {
                 return;
             }
 
@@ -1208,7 +1429,11 @@ function assignRoles(room) {
             mayorRevealed: false,
             revealerUsed: false,
             witchHealUsed: false,
-            witchPoisonUsed: false
+            witchPoisonUsed: false,
+            serialKillerLastTargetId: null,
+            serialKillerLastResult: null,
+            princeRevealed: false,
+            apprenticePromotedNotified: false
         };
     });
 }
@@ -1252,66 +1477,76 @@ function startGame(room) {
     return room.gameState;
 }
 
+function finishGame(room, winner, message) {
+    room.gameState.phase = 'finished';
+    room.gameState.phaseEndsAt = null;
+    room.gameState.status = 'werewolf_finished';
+    room.gameState.winner = winner;
+    room.gameState.players.forEach(player => {
+        player.revealedRole = player.roleInfo?.thaiName || player.role;
+    });
+    pushHistory(room, message, 'result');
+    return winner;
+}
+
+/**
+ * ลำดับความสำคัญเมื่อเงื่อนไขชนะเกิดพร้อมกัน (ดู rules.md):
+ * 1) คนบ้าถูกโหวตออก (ตัดสินใน resolveDayVote ทันที) / คนบ้ารอดคนเดียว
+ * 2) ฆาตกรต่อเนื่องยังรอด และเหลือผู้รอดชีวิตไม่เกิน 2 คน
+ * 3) ชาวบ้าน: หมาป่าและฆาตกรต่อเนื่องตายหมด
+ * 4) หมาป่า: ไม่มีฆาตกรต่อเนื่องเหลือ และหมาป่า ≥ คนอื่นที่รอด (หรือเหลือแต่คนบ้า)
+ */
 function checkWinCondition(room) {
     const aliveWerewolves = getAliveWerewolves(room);
     const alivePlayers = getAlivePlayers(room);
     const aliveNonWerewolves = alivePlayers.filter(player => !isWerewolfRole(player.role));
     const aliveFools = alivePlayers.filter(player => player.role === 'fool');
+    const aliveKillers = alivePlayers.filter(player => player.role === 'serialKiller');
 
     if (aliveFools.length === 1 && alivePlayers.length === 1) {
-        room.gameState.phase = 'finished';
-        room.gameState.phaseEndsAt = null;
-        room.gameState.status = 'werewolf_finished';
-        room.gameState.winner = 'fool';
-        room.gameState.players.forEach(player => {
-            player.revealedRole = player.roleInfo?.thaiName || player.role;
-        });
-        pushHistory(room, 'คนบ้าชนะแล้วแบบเดี่ยวหลังเป็นผู้รอดชีวิตคนสุดท้าย', 'result');
-        return 'fool';
+        return finishGame(room, 'fool', 'คนบ้าชนะแล้วแบบเดี่ยวหลังเป็นผู้รอดชีวิตคนสุดท้าย');
     }
 
-    if (aliveWerewolves.length === 0) {
-        room.gameState.phase = 'finished';
-        room.gameState.phaseEndsAt = null;
-        room.gameState.status = 'werewolf_finished';
-        room.gameState.winner = 'village';
-        room.gameState.players.forEach(player => {
-            player.revealedRole = player.roleInfo?.thaiName || player.role;
-        });
-        pushHistory(room, 'ชาวบ้านชนะแล้ว หมาป่าถูกกำจัดหมด', 'result');
-        return 'village';
+    // ฆาตกรฆ่าได้ทุกคืนและหมาป่าฆ่าไม่ได้ — เหลือ 2 คนเมื่อไร ไม่มีใครหยุดได้อีก
+    if (aliveKillers.length > 0 && alivePlayers.length <= 2) {
+        return finishGame(room, 'serialKiller', 'ฆาตกรต่อเนื่องชนะแล้ว เหลือรอดจนไม่มีใครหยุดได้');
+    }
+
+    if (aliveWerewolves.length === 0 && aliveKillers.length === 0) {
+        return finishGame(room, 'village', 'ชาวบ้านชนะแล้ว หมาป่าถูกกำจัดหมด');
     }
 
     // ตัวตลกนับเป็น "ตัวโหวต" ฝั่งหมู่บ้านด้วย — ไม่งั้นหมาป่าชนะก่อนเวลาทั้งที่หมู่บ้านยังโหวตชนะได้
     // แต่ถ้าเหลือแค่ตัวตลก (หมาป่าฆ่าตัวตลกไม่ได้) ต้องจบเกมกันเกมค้างไม่มีวันจบ
+    // ฆาตกรต่อเนื่องยังรอด = หมาป่ายังชนะไม่ได้ (ฆาตกรยังฆ่าหมาป่าได้ทุกคืน)
     const aliveVillagersExcludingFool = aliveNonWerewolves.filter(player => player.role !== 'fool');
-    if (aliveWerewolves.length >= aliveNonWerewolves.length || aliveVillagersExcludingFool.length === 0) {
-        room.gameState.phase = 'finished';
-        room.gameState.phaseEndsAt = null;
-        room.gameState.status = 'werewolf_finished';
-        room.gameState.winner = 'werewolf';
-        room.gameState.players.forEach(player => {
-            player.revealedRole = player.roleInfo?.thaiName || player.role;
-        });
-        pushHistory(
+    if (aliveKillers.length === 0 && aliveWerewolves.length > 0
+        && (aliveWerewolves.length >= aliveNonWerewolves.length || aliveVillagersExcludingFool.length === 0)) {
+        return finishGame(
             room,
+            'werewolf',
             aliveWerewolves.length >= aliveNonWerewolves.length
                 ? 'หมาป่าชนะแล้ว จำนวนหมาป่าไม่น้อยกว่าผู้เล่นคนอื่นที่เหลือ'
-                : 'หมาป่าชนะแล้ว ฝั่งหมู่บ้านไม่เหลือกำลังพอจะต้านหมาป่าได้',
-            'result'
+                : 'หมาป่าชนะแล้ว ฝั่งหมู่บ้านไม่เหลือกำลังพอจะต้านหมาป่าได้'
         );
-        return 'werewolf';
     }
 
     return null;
 }
 
 function getRequiredNightActors(room) {
-    const roleIds = isFirstNight(room)
-        ? ['seer', 'oracle', 'doctor', 'bodyguard', 'witch', 'tracker', 'hunter', 'vigilante']
-        : ['werewolf', 'alphaWolf', 'seer', 'oracle', 'doctor', 'bodyguard', 'witch', 'tracker', 'hunter', 'vigilante'];
+    const alwaysActive = ['seer', 'oracle', 'doctor', 'bodyguard', 'witch', 'tracker', 'hunter', 'vigilante'];
+    const firstNight = isFirstNight(room);
+    const wolvesHunt = canWolvesHuntTonight(room);
+    const apprenticeActive = isApprenticeSeerActive(room);
 
-    return getAlivePlayers(room).filter(player => roleIds.includes(player.role));
+    return getAlivePlayers(room).filter(player => {
+        if (alwaysActive.includes(player.role)) return true;
+        if (isWerewolfRole(player.role)) return wolvesHunt;
+        if (player.role === 'serialKiller') return !firstNight;
+        if (player.role === 'apprenticeSeer') return apprenticeActive;
+        return false;
+    });
 }
 
 function hasNightActionSubmitted(room, player) {
@@ -1327,6 +1562,10 @@ function hasNightActionSubmitted(room, player) {
             return !!nightActions.werewolfVotes?.[player.playerId];
         case 'seer':
             return !!nightActions.seerChecks?.[player.playerId];
+        case 'apprenticeSeer':
+            return !isApprenticeSeerActive(room) || !!nightActions.seerChecks?.[player.playerId];
+        case 'serialKiller':
+            return isFirstNight(room) || !!nightActions.serialKills?.[player.playerId];
         case 'oracle':
             return !!nightActions.oracleReads?.[player.playerId];
         case 'doctor':
@@ -1334,9 +1573,10 @@ function hasNightActionSubmitted(room, player) {
         case 'bodyguard':
             return player.bodyguardArmorBroken || !!nightActions.bodyguardProtects?.[player.playerId];
         case 'witch': {
-            const healSubmitted = !!nightActions.witchHeals?.[player.playerId];
-            const poisonSubmitted = !!nightActions.witchPoisons?.[player.playerId];
-            return (player.witchHealUsed && player.witchPoisonUsed) || healSubmitted || poisonSubmitted;
+            // ใช้ยาได้ทั้ง 2 ขวดในคืนเดียว (กติกา Miller's Hollow) — ตัดสินใจครบเมื่อทุกขวดที่ยังเหลือถูกเลือกหรือกดไม่ใช้
+            const healDecided = player.witchHealUsed || !!nightActions.witchHeals?.[player.playerId];
+            const poisonDecided = player.witchPoisonUsed || !!nightActions.witchPoisons?.[player.playerId];
+            return healDecided && poisonDecided;
         }
         case 'tracker':
             return !!nightActions.trackerScans?.[player.playerId];
@@ -1363,7 +1603,8 @@ function hasAnyNightActionSelected(room) {
         room.gameState.nightActions.trackerScans,
         room.gameState.nightActions.vigilanteShots,
         room.gameState.nightActions.hunterShots,
-        room.gameState.nightActions.clericBlesses
+        room.gameState.nightActions.clericBlesses,
+        room.gameState.nightActions.serialKills
     ].some(actions => Object.values(actions || {}).some(targetId => !!targetId && targetId !== SKIP_TARGET_ID));
 }
 
@@ -1406,7 +1647,9 @@ function isPlayerReadyForMorning(room, player) {
         witch: ['witchHeals', 'witchPoisons'],
         tracker: ['trackerScans'],
         vigilante: ['vigilanteShots'],
-        hunter: ['hunterShots']
+        hunter: ['hunterShots'],
+        serialKiller: ['serialKills'],
+        apprenticeSeer: ['seerChecks']
     }[player.role] || [];
     return decidedMaps.some(key => !!nightActions[key]?.[player.playerId]);
 }
@@ -1469,11 +1712,18 @@ function fillMissingNightActionsAsSkip(room) {
                 nightActions.bodyguardProtects[actor.playerId] = SKIP_TARGET_ID;
                 break;
             case 'witch':
-                if (!actor.witchHealUsed && !nightActions.witchHeals[actor.playerId] && !nightActions.witchPoisons[actor.playerId]) {
+                if (!actor.witchHealUsed && !nightActions.witchHeals[actor.playerId]) {
                     nightActions.witchHeals[actor.playerId] = SKIP_TARGET_ID;
-                } else if (!actor.witchPoisonUsed && !nightActions.witchHeals[actor.playerId] && !nightActions.witchPoisons[actor.playerId]) {
+                }
+                if (!actor.witchPoisonUsed && !nightActions.witchPoisons[actor.playerId]) {
                     nightActions.witchPoisons[actor.playerId] = SKIP_TARGET_ID;
                 }
+                break;
+            case 'apprenticeSeer':
+                nightActions.seerChecks[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'serialKiller':
+                nightActions.serialKills[actor.playerId] = SKIP_TARGET_ID;
                 break;
             case 'tracker':
                 nightActions.trackerScans[actor.playerId] = SKIP_TARGET_ID;
@@ -1540,7 +1790,7 @@ function buildDayPublicEvent(type, payload = {}) {
         return {
             type,
             lead: `${payload.targetName || 'เป้าหมาย'} ถูกยกให้เป็นแพะของทั้งหมู่บ้าน`,
-            detail: `เสียงโหวตเทไปทางเดียวกัน และ ${payload.targetName || 'เป้าหมาย'} ถูกลากออกจากวงประชุม`
+            detail: `เสียงโหวตเทไปทางเดียวกัน และ ${payload.targetName || 'เป้าหมาย'} ถูกลากออกจากวงประชุม${payload.roleName ? ` (เป็น${payload.roleName})` : ''}`
         };
     }
 
@@ -1549,6 +1799,14 @@ function buildDayPublicEvent(type, payload = {}) {
             type,
             lead: 'วงโหวตปิดลง แต่ยังไม่มีใครถูกชี้เป็นคนผิด',
             detail: payload.reason || 'คะแนนยังไม่ขาดหรือเสมอกัน ทำให้วันนี้ไม่มีใครถูกลากออกจากเกม'
+        };
+    }
+
+    if (type === 'prince-reveal') {
+        return {
+            type,
+            lead: `${payload.targetName || 'เป้าหมาย'} ถูกโหวตออก แต่เปิดตัวว่าเป็นเจ้าชาย`,
+            detail: `${payload.targetName || 'เจ้าชาย'} ใช้สิทธิ์เจ้าชายรอดจากการโหวตได้ 1 ครั้ง วันนี้จึงไม่มีใครออกจากหมู่บ้าน`
         };
     }
 
@@ -1620,15 +1878,38 @@ function resolveNight(room) {
             .filter(targetId => targetId && targetId !== SKIP_TARGET_ID)
     ));
     const bodyguardBreakIds = new Set();
+    const wolvesWereSick = isWolfPackSick(room);
 
     const attackedPlayer = attackedPlayerId ? getPlayer(room, attackedPlayerId) : null;
     const eliminatedPlayers = [];
     const publicEvents = [];
     let immuneTargetId = null;
+    let blockedKillTargetId = null;
+
+    // เกราะบอดี้การ์ดแตกเฉพาะตอนที่บอดี้การ์ดเป็นผู้คุ้มกันคนเดียวของเป้าที่ถูกฆ่า
+    function breakSoleBodyguards(targetId) {
+        const otherProtections = [
+            ...Object.values(room.gameState.nightActions.doctorSaves || {}),
+            ...Object.values(room.gameState.nightActions.witchHeals || {}),
+            ...room.gameState.players
+                .filter(player => player.role === 'cleric' && player.clericBlessTargetId)
+                .map(player => player.clericBlessTargetId)
+        ];
+        if (otherProtections.includes(targetId)) {
+            return;
+        }
+        Object.entries(room.gameState.nightActions.bodyguardProtects || {}).forEach(([guardId, protectedId]) => {
+            if (protectedId === targetId) {
+                bodyguardBreakIds.add(guardId);
+            }
+        });
+    }
 
     if (isFirstNight(room)) {
         pushHistory(room, 'คืนแรกผ่านไปแบบเงียบผิดปกติ หมาป่ายังออกล่าไม่ได้ คืนนี้จึงไม่มีใครตาย', 'night');
-    } else if (attackedPlayer && attackedPlayer.role === 'fool') {
+    } else if (wolvesWereSick) {
+        pushHistory(room, `คืนที่ ${room.gameState.dayNumber} หมาป่าไม่ได้ออกล่า`, 'night');
+    } else if (attackedPlayer && (attackedPlayer.role === 'fool' || attackedPlayer.role === 'serialKiller')) {
         immuneTargetId = attackedPlayerId;
         // Public text must match a normal protected save so wolves can't identify the Fool.
         pushHistory(room, `คืนที่ ${room.gameState.dayNumber} ไม่มีใครตาย เพราะมีคนปกป้องสำเร็จ`, 'night');
@@ -1637,25 +1918,50 @@ function resolveNight(room) {
         eliminatedPlayers.push(attackedPlayer);
         publicEvents.push(buildNightPublicEvent(attackedPlayer, 'wolf-attack'));
         pushHistory(room, `${attackedPlayer.name} ถูกกำจัดในตอนกลางคืน`, 'night');
+        // ผู้ติดเชื้อ: หมาป่าที่กัดกินจะป่วย คืนถัดไปล่าไม่ได้ (เฉพาะตายจากหมาป่าเท่านั้น)
+        if (attackedPlayer.role === 'diseased') {
+            room.gameState.wolvesSickNight = Number(room.gameState.dayNumber || 0) + 1;
+        }
     } else if (attackedPlayer) {
         // Armour only breaks when the bodyguard(s) were the sole protection on the target.
-        const otherProtections = [
-            ...Object.values(room.gameState.nightActions.doctorSaves || {}),
-            ...Object.values(room.gameState.nightActions.witchHeals || {}),
-            ...room.gameState.players
-                .filter(player => player.role === 'cleric' && player.clericBlessTargetId)
-                .map(player => player.clericBlessTargetId)
-        ];
-        if (!otherProtections.includes(attackedPlayerId)) {
-            Object.entries(room.gameState.nightActions.bodyguardProtects || {}).forEach(([guardId, protectedId]) => {
-                if (protectedId === attackedPlayerId) {
-                    bodyguardBreakIds.add(guardId);
-                }
-            });
-        }
+        breakSoleBodyguards(attackedPlayerId);
+        blockedKillTargetId = attackedPlayerId;
         pushHistory(room, `คืนที่ ${room.gameState.dayNumber} ไม่มีใครตาย เพราะมีคนปกป้องสำเร็จ`, 'night');
     } else {
         pushHistory(room, `คืนที่ ${room.gameState.dayNumber} หมาป่าลังเลจนไม่มีใครตาย`, 'night');
+    }
+
+    // ฆาตกรต่อเนื่อง: ฆ่าหลังหมาป่า โดนกันได้ด้วยหมอ/บอดี้การ์ด/ยาช่วย/พรนักบวชเหมือนหมาป่า
+    // คนบ้ากันได้แค่หมาป่า — ฆาตกรฆ่าคนบ้าได้
+    if (!isFirstNight(room)) {
+        Object.entries(room.gameState.nightActions.serialKills || {}).forEach(([killerId, targetId]) => {
+            if (!targetId || targetId === SKIP_TARGET_ID) {
+                return;
+            }
+            const killer = getPlayer(room, killerId);
+            const target = getPlayer(room, targetId);
+            if (!killer || !target || killer.role !== 'serialKiller') {
+                return;
+            }
+            killer.serialKillerLastResult = { actorId: killerId, targetId, targetName: target.name, dayNumber: room.gameState.dayNumber };
+            if (target.alive === false) {
+                killer.serialKillerLastResult.alreadyDead = true;
+                return;
+            }
+            if (protectedTargets.has(targetId)) {
+                breakSoleBodyguards(targetId);
+                killer.serialKillerLastResult.blocked = true;
+                if (blockedKillTargetId !== targetId) {
+                    pushHistory(room, `คืนที่ ${room.gameState.dayNumber} มีคนถูกลอบทำร้าย แต่รอดเพราะมีคนปกป้อง`, 'night');
+                }
+                blockedKillTargetId = blockedKillTargetId || targetId;
+                return;
+            }
+            markPlayerDead(target, 'ถูกฆาตกรต่อเนื่องสังหารในตอนกลางคืน');
+            eliminatedPlayers.push(target);
+            publicEvents.push(buildNightPublicEvent(target, 'serial-kill'));
+            pushHistory(room, `${target.name} ถูกฆาตกรต่อเนื่องสังหารในตอนกลางคืน`, 'night');
+        });
     }
 
     poisonedTargetIds.forEach(targetId => {
@@ -1811,7 +2117,9 @@ function resolveNight(room) {
         publicEvents: publicEvents.filter(Boolean),
         protectedTargets: Array.from(protectedTargets),
         poisonedTargetIds,
-        immuneTargetId
+        immuneTargetId,
+        blockedKillTargetId,
+        wolvesWereSick
     };
 
     syncAlivePlayerIds(room);
@@ -1885,7 +2193,10 @@ function hasNightRoleAction(room, roleId, actorId) {
         case 'alphaWolf':
             return isRealChoice(nightActions.werewolfVotes?.[actorId]);
         case 'seer':
+        case 'apprenticeSeer':
             return isRealChoice(nightActions.seerChecks?.[actorId]);
+        case 'serialKiller':
+            return isRealChoice(nightActions.serialKills?.[actorId]);
         case 'oracle':
             return isRealChoice(nightActions.oracleReads?.[actorId]);
         case 'doctor':
@@ -1979,10 +2290,32 @@ function resolveDayVote(room) {
     const eliminatedPlayerId = hasValidTarget ? rankedTargets[0][0] : null;
     const eliminatedPlayer = eliminatedPlayerId ? getPlayer(room, eliminatedPlayerId) : null;
 
+    if (eliminatedPlayer && eliminatedPlayer.alive !== false && eliminatedPlayer.role === 'prince' && !eliminatedPlayer.princeRevealed) {
+        // เจ้าชาย: โดนโหวตออกครั้งแรก เปิดตัวต่อหน้าทุกคนและไม่ตาย วันนี้จึงไม่มีใครออก
+        eliminatedPlayer.princeRevealed = true;
+        publicEvents.push(buildDayPublicEvent('prince-reveal', { targetName: eliminatedPlayer.name }));
+        pushHistory(room, `${eliminatedPlayer.name} ถูกโหวตออก แต่เปิดตัวว่าเป็นเจ้าชาย จึงรอดไปได้ครั้งหนึ่ง`, 'day');
+        room.gameState.lastResolvedDay = {
+            eliminatedPlayerId: null,
+            princeRevealedId: eliminatedPlayer.playerId,
+            resolutionType: 'prince-reveal',
+            skippedByMajority: false,
+            skipVoteWeight: getDaySkipVoteWeight(room),
+            publicEvents
+        };
+        syncAlivePlayerIds(room);
+        if (checkWinCondition(room)) {
+            return { resolved: true, winner: room.gameState.winner };
+        }
+        startNightPhase(room);
+        return { resolved: true, winner: null, princeRevealed: true };
+    }
+
     if (eliminatedPlayer && eliminatedPlayer.alive !== false) {
         markPlayerDead(eliminatedPlayer, 'ถูกโหวตออกในเวลากลางวัน');
         publicEvents.push(buildDayPublicEvent('vote-elimination', {
-            targetName: eliminatedPlayer.name
+            targetName: eliminatedPlayer.name,
+            roleName: room.settings?.werewolfRevealOnDeath === true ? (eliminatedPlayer.roleInfo?.thaiName || null) : null
         }));
         pushHistory(room, `${eliminatedPlayer.name} ถูกโหวตออกจากหมู่บ้าน`, 'day');
 
@@ -2065,6 +2398,9 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             if (isFirstNight(room) && !isSkip) {
                 throw new Error('คืนแรกหมาป่ายังออกล่าไม่ได้');
             }
+            if (isWolfPackSick(room) && !isSkip) {
+                throw new Error('ฝูงหมาป่าติดเชื้อจากเหยื่อเมื่อคืน คืนนี้ล่าใครไม่ได้');
+            }
             if (room.gameState.nightActions.werewolfVotes[actorId] === targetPlayerId) {
                 delete room.gameState.nightActions.werewolfVotes[actorId];
                 delete room.gameState.nightSkips[actorId];
@@ -2080,7 +2416,11 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             }
             room.gameState.nightActions.werewolfVotes[actorId] = targetPlayerId;
             break;
+        case 'apprenticeSeer':
         case 'seer':
+            if (actor.role === 'apprenticeSeer' && !isApprenticeSeerActive(room)) {
+                throw new Error('ผู้หยั่งรู้ยังมีชีวิตอยู่ ศิษย์จึงยังไม่มีพลังตรวจ');
+            }
             if (room.gameState.nightActions.seerChecks[actorId] && room.gameState.nightActions.seerChecks[actorId] !== SKIP_TARGET_ID) {
                 throw new Error('ผู้หยั่งรู้ดูได้แค่ 1 คนต่อคืน');
             }
@@ -2147,45 +2487,57 @@ function submitNightAction(room, actorId, targetPlayerId, actionType = null) {
             room.gameState.nightActions.bodyguardProtects[actorId] = targetPlayerId;
             break;
         }
-        case 'witch':
-            if (actionType === 'witch-heal') {
-                if (actor.witchHealUsed) {
-                    throw new Error('คุณใช้ยาช่วยชีวิตไปแล้ว');
-                }
-                if (room.gameState.nightActions.witchPoisons[actorId] && room.gameState.nightActions.witchPoisons[actorId] !== SKIP_TARGET_ID) {
-                    throw new Error('คืนนี้แม่มดใช้ได้แค่ 1 สกิลต่อคืน');
-                }
-                if (room.gameState.nightActions.witchHeals[actorId] === targetPlayerId) {
-                    delete room.gameState.nightActions.witchHeals[actorId];
-                    delete room.gameState.nightSkips[actorId];
-                    room.gameState.lastAction = Date.now();
-                    return { resolved: false, unvoted: true };
-                }
-                room.gameState.nightActions.witchHeals[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
+        case 'witch': {
+            // แม่มดใช้ยาได้ทั้ง 2 ขวดในคืนเดียว (Miller's Hollow) · ช่วยตัวเองได้ · วางยาตัวเองไม่ได้
+            // กด "ไม่ใช้" ขวดใดขวดหนึ่ง = ไม่ใช้ทุกขวดที่ยังไม่ได้เลือกเป้า (เลือกเป้าทีหลังได้ ทับค่าไม่ใช้)
+            const isHeal = actionType === 'witch-heal';
+            const isPoison = actionType === 'witch-poison';
+            if (!isHeal && !isPoison) {
+                throw new Error('แม่มดต้องเลือกว่าจะใช้ยาช่วยชีวิตหรือยาพิษ');
+            }
+            const ownMap = isHeal ? room.gameState.nightActions.witchHeals : room.gameState.nightActions.witchPoisons;
+            const otherMap = isHeal ? room.gameState.nightActions.witchPoisons : room.gameState.nightActions.witchHeals;
+            const ownUsed = isHeal ? actor.witchHealUsed : actor.witchPoisonUsed;
+            const otherUsed = isHeal ? actor.witchPoisonUsed : actor.witchHealUsed;
+            if (ownUsed) {
+                throw new Error(isHeal ? 'คุณใช้ยาช่วยชีวิตไปแล้ว' : 'คุณใช้ยาพิษไปแล้ว');
+            }
+            if (isPoison && !isSkip && actorId === targetPlayerId) {
+                throw new Error('แม่มดวางยาพิษตัวเองไม่ได้');
+            }
+            if (ownMap[actorId] === targetPlayerId) {
+                delete ownMap[actorId];
+                delete room.gameState.nightSkips[actorId];
+                room.gameState.lastAction = Date.now();
+                return { resolved: false, unvoted: true };
+            }
+            ownMap[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
+            if (isSkip && !otherUsed && !otherMap[actorId]) {
+                otherMap[actorId] = SKIP_TARGET_ID;
+            }
+            break;
+        }
+        case 'serialKiller':
+            if (isFirstNight(room) && !isSkip) {
+                throw new Error('คืนแรกยังไม่มีใครลงมือฆ่าได้');
+            }
+            if (room.gameState.nightActions.serialKills[actorId] === targetPlayerId) {
+                delete room.gameState.nightActions.serialKills[actorId];
+                delete room.gameState.nightSkips[actorId];
+                actor.serialKillerLastTargetId = null;
+                room.gameState.lastAction = Date.now();
+                return { resolved: false, unvoted: true };
+            }
+            if (isSkip) {
+                room.gameState.nightActions.serialKills[actorId] = SKIP_TARGET_ID;
                 break;
             }
-
-            if (actionType === 'witch-poison') {
-                if (actor.witchPoisonUsed) {
-                    throw new Error('คุณใช้ยาพิษไปแล้ว');
-                }
-                if (room.gameState.nightActions.witchHeals[actorId] && room.gameState.nightActions.witchHeals[actorId] !== SKIP_TARGET_ID) {
-                    throw new Error('คืนนี้แม่มดใช้ได้แค่ 1 สกิลต่อคืน');
-                }
-                if (!isSkip && actorId === targetPlayerId) {
-                    throw new Error('แม่มดวางยาพิษตัวเองไม่ได้');
-                }
-                if (room.gameState.nightActions.witchPoisons[actorId] === targetPlayerId) {
-                    delete room.gameState.nightActions.witchPoisons[actorId];
-                    delete room.gameState.nightSkips[actorId];
-                    room.gameState.lastAction = Date.now();
-                    return { resolved: false, unvoted: true };
-                }
-                room.gameState.nightActions.witchPoisons[actorId] = isSkip ? SKIP_TARGET_ID : targetPlayerId;
-                break;
+            if (actorId === targetPlayerId) {
+                throw new Error('ฆาตกรต่อเนื่องเลือกฆ่าตัวเองไม่ได้');
             }
-
-            throw new Error('แม่มดต้องเลือกว่าจะใช้ยาช่วยชีวิตหรือยาพิษ');
+            room.gameState.nightActions.serialKills[actorId] = targetPlayerId;
+            actor.serialKillerLastTargetId = targetPlayerId;
+            break;
         case 'tracker':
             if (room.gameState.nightActions.trackerScans[actorId]) {
                 throw new Error('นักสอดแนมดูได้แค่ 1 คนต่อคืน');
@@ -2453,7 +2805,7 @@ function fillMissingNightActions(room) {
         switch (actor.role) {
             case 'werewolf':
             case 'alphaWolf': {
-                if (isFirstNight(room)) {
+                if (!canWolvesHuntTonight(room)) {
                     break;
                 }
                 // Follow the pack: copy a pick another living wolf already made; never random.
@@ -2484,13 +2836,21 @@ function fillMissingNightActions(room) {
                 room.gameState.nightActions.bodyguardProtects[actor.playerId] = SKIP_TARGET_ID;
                 break;
             case 'witch': {
-                if (!actor.witchHealUsed) {
+                if (!actor.witchHealUsed && !room.gameState.nightActions.witchHeals[actor.playerId]) {
                     room.gameState.nightActions.witchHeals[actor.playerId] = SKIP_TARGET_ID;
-                } else if (!actor.witchPoisonUsed) {
+                }
+                if (!actor.witchPoisonUsed && !room.gameState.nightActions.witchPoisons[actor.playerId]) {
                     room.gameState.nightActions.witchPoisons[actor.playerId] = SKIP_TARGET_ID;
                 }
                 break;
             }
+            case 'apprenticeSeer':
+                room.gameState.nightActions.seerChecks[actor.playerId] = SKIP_TARGET_ID;
+                break;
+            case 'serialKiller':
+                // บทฆ่า: AFK = ไม่ฆ่า (ไม่สุ่มฆ่าแทน)
+                room.gameState.nightActions.serialKills[actor.playerId] = SKIP_TARGET_ID;
+                break;
             case 'oracle':
                 // บทข้อมูล: ถ้าไม่ทันเลือก ให้ข้าม (ไม่บังคับอ่านสุ่ม)
                 room.gameState.nightActions.oracleReads[actor.playerId] = SKIP_TARGET_ID;
@@ -2572,7 +2932,8 @@ function getNightActionOptions(room, viewer) {
         trackerScans: {},
         vigilanteShots: {},
         hunterShots: {},
-        clericBlesses: {}
+        clericBlesses: {},
+        serialKills: {}
     };
     const alivePlayers = getAlivePlayers(room);
     switch (viewer.role) {
@@ -2589,6 +2950,17 @@ function getNightActionOptions(room, viewer) {
                     targets: []
                 }];
             }
+            if (isWolfPackSick(room)) {
+                return [{
+                    type: 'night-kill',
+                    label: 'ฝูงหมาป่าติดเชื้อ',
+                    description: 'เหยื่อเมื่อคืนเป็นผู้ติดเชื้อ คืนนี้ฝูงหมาป่าป่วยจนออกล่าไม่ได้ — กด «ไม่ใช้สกิลคืนนี้» แล้วรอเช้า',
+                    selectedTargetId: nightActions.werewolfVotes?.[viewer.playerId] || null,
+                    allowSkip: true,
+                    emptyStateText: 'คืนนี้หมาป่าล่าใครไม่ได้',
+                    targets: []
+                }];
+            }
             return [{
                 type: 'night-kill',
                 label: viewer.role === 'alphaWolf' ? 'เลือกเหยื่อของอัลฟ่า' : 'เลือกเหยื่อของหมาป่า',
@@ -2600,6 +2972,11 @@ function getNightActionOptions(room, viewer) {
                     name: player.name
                 }))
             }];
+        case 'apprenticeSeer':
+            if (!isApprenticeSeerActive(room)) {
+                return [];
+            }
+            // fall through: ศิษย์ที่ได้พลังแล้วใช้การ์ดตรวจออร่าเดียวกับผู้หยั่งรู้
         case 'seer':
             if (nightActions.seerChecks?.[viewer.playerId]) {
                 return [{
@@ -2778,33 +3155,25 @@ function getNightActionOptions(room, viewer) {
             const selectedHealTargetId = nightActions.witchHeals?.[viewer.playerId] || null;
             const selectedPoisonTargetId = nightActions.witchPoisons?.[viewer.playerId] || null;
             const actions = [];
-
-            if (selectedHealTargetId || selectedPoisonTargetId) {
-                const selectedType = selectedPoisonTargetId ? 'witch-poison' : 'witch-heal';
-                const selectedTargetId = selectedPoisonTargetId || selectedHealTargetId;
-                return [{
-                    type: selectedType,
-                    label: selectedTargetId === SKIP_TARGET_ID
-                        ? 'คืนนี้คุณเลือกไม่ใช้ยา'
-                        : (selectedType === 'witch-poison' ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'คืนนี้คุณเลือกใช้ยาช่วยชีวิตแล้ว'),
-                    description: 'แม่มดใช้ได้เพียง 1 สกิลต่อคืน ถ้าจะเปลี่ยนใจ เลือกเป้าหมายใหม่ในสกิลเดิม หรือกดเป้าเดิมซ้ำเพื่อยกเลิก',
-                    selectedTargetId,
-                    allowSkip: true,
-                    targets: alivePlayers
-                        .filter(player => selectedType !== 'witch-poison' || player.playerId !== viewer.playerId)
-                        .map(player => ({
-                            playerId: player.playerId,
-                            name: player.name
-                        }))
-                }];
+            // แม่มดเห็นเหยื่อที่หมาป่ากำลังเล็ง (กติกา Miller's Hollow) — อัปเดตสดจนกว่าคืนจะจบ
+            let wolfTargetName = null;
+            if (canWolvesHuntTonight(room)) {
+                const wolfVotes = Object.fromEntries(Object.entries(nightActions.werewolfVotes || {}).filter(([, targetId]) => targetId && targetId !== SKIP_TARGET_ID));
+                const wolfTargetId = getWeightedTarget(wolfVotes, room, { alphaWolf: 2 });
+                wolfTargetName = wolfTargetId ? (getPlayer(room, wolfTargetId)?.name || null) : null;
             }
+            const victimHint = isFirstNight(room)
+                ? 'คืนแรกหมาป่ายังไม่ล่า'
+                : (wolfTargetName ? `หมาป่ากำลังเล็ง: ${wolfTargetName}` : 'หมาป่ายังไม่ได้เลือกเหยื่อ');
 
             if (!viewer.witchHealUsed) {
+                const healSkipped = selectedHealTargetId === SKIP_TARGET_ID;
                 actions.push({
                     type: 'witch-heal',
-                    label: 'ยาช่วยชีวิตของแม่มด',
-                    description: 'เลือก 1 คนเพื่อกันตายในคืนนี้ ใช้ได้ 1 ครั้งตลอดเกม และคืนนี้จะใช้สกิลอื่นเพิ่มไม่ได้',
-                    selectedTargetId: nightActions.witchHeals?.[viewer.playerId] || null,
+                    label: healSkipped ? 'คืนนี้คุณเลือกไม่ใช้ยาช่วยชีวิต' : (selectedHealTargetId ? 'คืนนี้คุณเลือกใช้ยาช่วยชีวิตแล้ว' : 'ยาช่วยชีวิตของแม่มด'),
+                    description: `${victimHint} · เลือก 1 คนเพื่อกันตายคืนนี้ (ช่วยตัวเองได้) ใช้ได้ 1 ครั้งตลอดเกม แตะเป้าเดิมซ้ำเพื่อยกเลิก`,
+                    selectedTargetId: selectedHealTargetId,
+                    witchVictimName: wolfTargetName,
                     allowSkip: true,
                     targets: alivePlayers.map(player => ({
                         playerId: player.playerId,
@@ -2814,11 +3183,12 @@ function getNightActionOptions(room, viewer) {
             }
 
             if (!viewer.witchPoisonUsed) {
+                const poisonSkipped = selectedPoisonTargetId === SKIP_TARGET_ID;
                 actions.push({
                     type: 'witch-poison',
-                    label: 'ยาพิษของแม่มด',
-                    description: 'เลือก 1 คนเพื่อวางยาพิษคืนนี้ ใช้ได้ 1 ครั้งตลอดเกม และคืนนี้จะใช้สกิลอื่นเพิ่มไม่ได้',
-                    selectedTargetId: nightActions.witchPoisons?.[viewer.playerId] || null,
+                    label: poisonSkipped ? 'คืนนี้คุณเลือกไม่ใช้ยาพิษ' : (selectedPoisonTargetId ? 'คืนนี้คุณเลือกใช้ยาพิษแล้ว' : 'ยาพิษของแม่มด'),
+                    description: 'เลือก 1 คนเพื่อวางยาพิษคืนนี้ ใช้ได้ 1 ครั้งตลอดเกม ใช้คู่กับยาช่วยชีวิตในคืนเดียวกันได้',
+                    selectedTargetId: selectedPoisonTargetId,
                     allowSkip: true,
                     targets: alivePlayers
                         .filter(player => player.playerId !== viewer.playerId)
@@ -2842,6 +3212,30 @@ function getNightActionOptions(room, viewer) {
             }
 
             return actions;
+        }
+        case 'serialKiller': {
+            if (isFirstNight(room)) {
+                return [{
+                    type: 'serial-kill',
+                    label: 'คืนแรกของฆาตกร',
+                    description: 'คืนแรกยังไม่มีใครลงมือ — กด «ไม่ใช้สกิลคืนนี้» แล้วจำหน้าเหยื่อไว้ก่อน',
+                    selectedTargetId: nightActions.serialKills?.[viewer.playerId] || null,
+                    allowSkip: true,
+                    emptyStateText: 'คืนแรกยังฆ่าใครไม่ได้',
+                    targets: []
+                }];
+            }
+            return [{
+                type: 'serial-kill',
+                label: 'เลือกเหยื่อของฆาตกร',
+                description: 'เลือก 1 คนเพื่อสังหารคืนนี้ (เปลี่ยน/ยกเลิกได้จนจบคืน) หมอ บอดี้การ์ด ยาช่วย และพรนักบวชกันได้',
+                selectedTargetId: nightActions.serialKills?.[viewer.playerId] || null,
+                allowSkip: true,
+                targets: alivePlayers.filter(player => player.playerId !== viewer.playerId).map(player => ({
+                    playerId: player.playerId,
+                    name: player.name
+                }))
+            }];
         }
         default:
             return [];
@@ -3019,6 +3413,9 @@ function buildMorningAnnouncement(room) {
     const publicEvents = Array.isArray(summary.publicEvents) ? summary.publicEvents : [];
     const attackedPlayer = summary.attackedPlayerId ? getPlayer(room, summary.attackedPlayerId) : null;
     const immunePlayer = summary.immuneTargetId ? getPlayer(room, summary.immuneTargetId) : null;
+    const blockedPlayer = summary.blockedKillTargetId ? getPlayer(room, summary.blockedKillTargetId) : null;
+    const revealOnDeath = room.settings?.werewolfRevealOnDeath === true;
+    const roleSuffix = player => (revealOnDeath && player?.roleInfo?.thaiName ? ` (เป็น${player.roleInfo.thaiName})` : '');
 
     if (dayNumber === 1 && eliminatedPlayers.length === 0) {
         return {
@@ -3039,7 +3436,7 @@ function buildMorningAnnouncement(room) {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'death',
             lead,
-            detail: publicEvent?.detail || `${eliminatedPlayer.name} ไม่รอดในคืนนี้`
+            detail: (publicEvent?.detail || `${eliminatedPlayer.name} ไม่รอดในคืนนี้`) + roleSuffix(eliminatedPlayer)
         };
     }
 
@@ -3049,13 +3446,13 @@ function buildMorningAnnouncement(room) {
             outcomeType: 'multiple-deaths',
             lead: `รุ่งเช้ามีคนหายไปถึง ${eliminatedPlayers.length} คน`,
             detail: publicEvents.length > 0
-                ? publicEvents.map(event => event.detail).join(' • ')
+                ? publicEvents.map(event => event.detail + roleSuffix(getPlayer(room, event.playerId))).join(' • ')
                 : eliminatedPlayers.map(player => player.name).join(', ')
         };
     }
 
     // Fool immunity is announced exactly like a protected save (no distinct outcome).
-    if (attackedPlayer || immunePlayer) {
+    if (attackedPlayer || immunePlayer || blockedPlayer) {
         return {
             title: `☀️ เช้าวันที่ ${dayNumber}`,
             outcomeType: 'saved',
@@ -3129,7 +3526,9 @@ function buildDayResolutionAnnouncement(room) {
             title: nextTitle,
             outcomeType: 'eliminated',
             lead: `${eliminatedPlayer.name} ถูกขับออกจากหมู่บ้าน`,
-            detail: `บทบาทของ ${eliminatedPlayer.name} จะเฉลยเมื่อเกมจบ`
+            detail: room.settings?.werewolfRevealOnDeath === true && eliminatedPlayer.roleInfo?.thaiName
+                ? `${eliminatedPlayer.name} คือ ${eliminatedPlayer.roleInfo.thaiName}`
+                : `บทบาทของ ${eliminatedPlayer.name} จะเฉลยเมื่อเกมจบ`
         };
     }
 
@@ -3161,6 +3560,8 @@ function buildRoleNotes(room, viewer) {
 
             if (isFirstNight(room)) {
                 notes.push('🌙 คืนแรกหมาป่ายังออกล่าไม่ได้ ใช้เวลาจำหน้าและวางแผนก่อน');
+            } else if (isWolfPackSick(room)) {
+                notes.push('🤒 เหยื่อเมื่อคืนเป็นผู้ติดเชื้อ คืนนี้ฝูงหมาป่าป่วยจนออกล่าไม่ได้');
             } else if (viewer.role === 'alphaWolf') {
                 notes.push('👑 โหวตล่าของคุณมีน้ำหนัก 2 เสียงในฐานะ Alpha Wolf');
             }
@@ -3170,6 +3571,7 @@ function buildRoleNotes(room, viewer) {
             notes.push('🔮 คุณตรวจผู้เล่นได้คืนละ 1 คน และดูตัวเองไม่ได้');
             notes.push('🌓 ผลตรวจจะเห็นแค่ ดี, ไม่ดี หรือ ไม่ทราบ');
             notes.push('🕶️ อัลฟ่าหมาป่าและคนบ้าจะขึ้นว่า ไม่ทราบ');
+            notes.push('🌕 ไลแคน (ชาวบ้าน) และฆาตกรต่อเนื่องจะขึ้นว่า ไม่ดี');
             break;
         case 'doctor':
             notes.push(`💉 คุณช่วยตัวเองหรือคนอื่นได้ แต่ใช้ได้รวม ${Math.max(0, 2 - Number(viewer.doctorSaveUses || 0))} ครั้งที่เหลือตลอดเกม`);
@@ -3177,7 +3579,7 @@ function buildRoleNotes(room, viewer) {
         case 'witch':
             notes.push(viewer.witchHealUsed ? '🧪 คุณใช้ยาช่วยชีวิตไปแล้ว' : '🧪 คุณยังมียาช่วยชีวิต 1 ครั้ง ใช้กันตายให้ผู้เล่น 1 คนในคืนนี้');
             notes.push(viewer.witchPoisonUsed ? '☠️ คุณใช้ยาพิษไปแล้ว' : '☠️ คุณยังมียาพิษ 1 ครั้ง ใช้กำจัดผู้เล่น 1 คนในตอนกลางคืน');
-            notes.push('🌙 แต่ละคืนแม่มดเลือกใช้ได้เพียง 1 สกิลเท่านั้น');
+            notes.push('🌙 ใช้ยาทั้ง 2 ขวดในคืนเดียวกันได้ · ระบบบอกว่าหมาป่ากำลังเล็งใคร · ช่วยตัวเองได้ แต่วางยาตัวเองไม่ได้');
             break;
         case 'tracker':
             notes.push('🕵️ คุณดูได้ว่าเป้าหมายมีการใช้สกิลในคืนนั้นหรือไม่');
@@ -3233,6 +3635,37 @@ function buildRoleNotes(room, viewer) {
         case 'villager':
             notes.push('🏡 คุณไม่มีสกิลกลางคืน ใช้การคุยและการโหวตช่วยทีมชาวบ้าน');
             break;
+        case 'serialKiller': {
+            notes.push('🔪 ตั้งแต่คืนที่ 2 เลือกฆ่าได้คืนละ 1 คน — หมาป่าฆ่าคุณไม่ได้');
+            notes.push('🛡️ หมอ บอดี้การ์ด ยาช่วยของแม่มด และพรนักบวชกันการฆ่าของคุณได้ · ยาพิษ/ปืน/โหวตยังฆ่าคุณได้');
+            const last = viewer.serialKillerLastResult;
+            if (last && last.targetName) {
+                notes.push(last.blocked
+                    ? `🩹 คืนที่ ${last.dayNumber || '-'} ${last.targetName} รอดเพราะมีคนปกป้อง`
+                    : (last.alreadyDead ? `💀 คืนที่ ${last.dayNumber || '-'} ${last.targetName} ตายก่อนคุณลงมือ` : `🩸 คืนที่ ${last.dayNumber || '-'} คุณจัดการ ${last.targetName} แล้ว`));
+            }
+            break;
+        }
+        case 'prince':
+            notes.push(viewer.princeRevealed
+                ? '🤴 คุณเปิดตัวเป็นเจ้าชายแล้ว ถ้าถูกโหวตออกอีกครั้งจะตายตามปกติ'
+                : '🤴 ถ้าคุณถูกโหวตออกครั้งแรก ระบบจะเปิดตัวคุณเป็นเจ้าชายและคุณไม่ตาย');
+            notes.push('🌙 กลางคืนคุณตายได้ตามปกติ');
+            break;
+        case 'lycan':
+            notes.push('🌕 คุณเป็นชาวบ้าน แต่ผู้หยั่งรู้จะเห็นคุณเป็น «ไม่ดี» — เตรียมอธิบายตัวเองให้ดี');
+            break;
+        case 'diseased':
+            notes.push('🤒 ถ้าหมาป่ากัดคุณตาย คืนถัดไปฝูงหมาป่าจะป่วยและล่าใครไม่ได้');
+            notes.push('ℹ️ ตายด้วยวิธีอื่น (โหวต ยาพิษ ปืน ฆาตกร) ไม่มีผล');
+            break;
+        case 'apprenticeSeer':
+            if (isApprenticeSeerActive(room)) {
+                notes.push('🧿 ไม่มีผู้หยั่งรู้เหลือรอดแล้ว — คุณตรวจออร่าได้คืนละ 1 คนแทน (ดี / ไม่ดี / ไม่ทราบ)');
+            } else {
+                notes.push('🧿 ตอนนี้ผู้หยั่งรู้ยังมีชีวิต คุณยังไม่มีสกิล เมื่อผู้หยั่งรู้ตาย คุณจะได้พลังตรวจแทน');
+            }
+            break;
         default:
             break;
     }
@@ -3253,14 +3686,19 @@ function handlePlayerLeft(room, playerId) {
     }
 
     const player = getPlayer(room, playerId);
-    if (!player || player.alive === false) {
+    if (player && player.alive === false) {
         return room.gameState;
     }
 
     ensureActionMaps(room);
-    markPlayerDead(player, 'ออกจากเกม');
+    if (player) {
+        markPlayerDead(player, 'ออกจากเกม');
+        pushHistory(room, `${player.name} ออกจากเกม`, 'system');
+    }
+    // roomManager.leaveRoom ถอดที่นั่งออกจาก gameState ไปก่อนแล้ว (ออกเอง/เตะ/หลุดเกินเวลา)
+    // เดิมฟังก์ชันนี้ return ทันทีเมื่อหาที่นั่งไม่เจอ → ไม่เช็กผลชนะ/ไม่ปิดคืนต่อ (เช่น หมาป่าตัวสุดท้ายออก เกมยังเดินต่อ)
+    // จึงล้าง action ค้าง + เช็กผลชนะ + เดินเฟสต่อเหมือนกันทั้งสองกรณี
     syncAlivePlayerIds(room);
-    pushHistory(room, `${player.name} ออกจากเกม`, 'system');
 
     const nightActions = room.gameState.nightActions || {};
     Object.keys(nightActions).forEach(key => {
@@ -3314,6 +3752,10 @@ function buildClientState(room, viewerPlayerId, options = {}) {
         && room.settings?.werewolfDeadSeeRoles !== false
         && room.gameState.phase !== 'lobby';
     const showRoles = isFinished || deadRoleView;
+    const revealOnDeath = room.settings?.werewolfRevealOnDeath === true && room.gameState.phase !== 'lobby';
+    // บทที่ทุกคนรู้แล้ว: คนตาย (ถ้าเปิด "เปิดบทเมื่อตาย") และเจ้าชายที่เปิดตัวแล้ว
+    const isPubliclyKnownRole = player => (revealOnDeath && player.alive === false)
+        || (player.role === 'prince' && !!player.princeRevealed);
     const timerSettings = sanitizeWerewolfSettings({}, room.settings || {});
 
     return {
@@ -3354,10 +3796,11 @@ function buildClientState(room, viewerPlayerId, options = {}) {
             isSelf: player.playerId === viewerPlayerId,
             revealedRole: isFinished
                 ? (player.revealedRole || null)
-                : (deadRoleView ? (player.roleInfo?.thaiName || player.role || null) : null),
-            roleId: showRoles ? (player.role || null) : null,
-            roleTeam: showRoles ? (player.roleInfo?.team || null) : null,
-            roleThaiName: showRoles ? (player.roleInfo?.thaiName || null) : null,
+                : ((deadRoleView || isPubliclyKnownRole(player)) ? (player.roleInfo?.thaiName || player.role || null) : null),
+            roleId: (showRoles || isPubliclyKnownRole(player)) ? (player.role || null) : null,
+            roleTeam: (showRoles || isPubliclyKnownRole(player)) ? (player.roleInfo?.team || null) : null,
+            roleThaiName: (showRoles || isPubliclyKnownRole(player)) ? (player.roleInfo?.thaiName || null) : null,
+            princeRevealed: player.role === 'prince' && !!player.princeRevealed,
             voteWeight: getCurrentVoteWeight(player),
             voteCount: dayVoteTallies[player.playerId] || 0
         })),
@@ -3394,6 +3837,15 @@ module.exports = {
     getNightReadyCount,
     id: 'werewolf',
     label: 'Werewolf',
+    minPlayers: MIN_PLAYERS,
+    maxPlayers: MAX_PLAYERS,
+    MAX_WOLF_COUNT,
+    NEW_ROLE_IDS,
+    getRecommendedDistribution,
+    getRecommendedWolfCount,
+    sanitizeWolfCount,
+    checkWinCondition,
+    isApprenticeSeerActive,
     description: 'โหมดใหม่ เกมหมาป่าที่ทุกคนรู้จักกันดี แต่เพิ่มบทบาทใหม่และปรับสมดุลให้เล่นสนุกขึ้น',
     ROLE_DEFINITIONS,
     CONFIGURABLE_ROLE_IDS,
