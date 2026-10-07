@@ -8,6 +8,7 @@
  *  D. ปิด "โหวตคนทายถูกก่อน" → คุยจบแล้วไปชี้ตัวเลย
  *  E. ผู้ดำเนินเกมประกาศตัวในแชท / newRole บอกชื่อทุกคน
  *  F. รีสตาร์ต server กลางช่วงถาม–ตอบ → นาฬิกาเดินต่อ แล้วหมดเวลา = ทุกคนแพ้ (เดิมค้างตลอด)
+ *  G. เปิด 2 แท็บแล้วปิดแท็บใหม่ → แท็บเดิมยังได้ข้อความส่วนตัว (คำลับ/บท)
  *
  * รัน: ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-insider-flow.js
  */
@@ -267,6 +268,21 @@ async function scenarioF(serverRef) {
     back.forEach(c => { try { c.socket.close(); } catch (e) {} });
 }
 
+async function scenarioG() {
+    const game = await setupGame(4);
+    const c = game.commons[0];
+    const tab2 = await makeClient(c.playerId);
+    tab2.socket.emit('setRoom', { roomId: game.roomId, playerId: c.playerId });
+    await delay(600);
+    tab2.socket.close();
+    await delay(600);
+    const mark = Date.now();
+    game.gm.socket.emit('revealWord');
+    await waitFor(c, 'revealWord', null, 5000, mark).catch(() => { throw new Error('G: first tab lost private events after the second tab closed'); });
+    console.log('G. closing a second tab keeps private events on the first tab ✓');
+    closeAll(game);
+}
+
 async function main() {
     PORT = Number(process.env.SMOKE_PORT) || await freePort();
     BASE = `http://127.0.0.1:${PORT}`;
@@ -277,8 +293,9 @@ async function main() {
         await scenarioB();
         await scenarioC();
         await scenarioD();
+        await scenarioG();
         await scenarioF(serverRef);
-        console.log('\n✅ INSIDER FLOW CHECKS PASSED (6 scenarios)');
+        console.log('\n✅ INSIDER FLOW CHECKS PASSED (7 scenarios)');
     } finally {
         await stopServer(serverRef.child);
     }

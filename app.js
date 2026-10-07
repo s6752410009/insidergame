@@ -10675,6 +10675,16 @@ io.sockets.on('connection', function(socket) {
             if (hasOtherActiveSockets) {
                 console.log(`[Disconnect] Player ${playerId} has other active sockets, skipping cleanup`);
                 socketRoomMap.delete(socket.id);
+                // แท็บที่ปิดเป็นตัวที่ห้องจำไว้ → ย้ายไปแท็บที่ยังเปิดอยู่ ไม่งั้นข้อความส่วนตัว
+                // (บท/คำลับ/ผลโหวต) ส่งไปหา socket ที่ตายแล้ว แท็บที่เหลือไม่ได้รับเลย
+                const room = roomManager.getRoom(roomId);
+                const member = room?.players?.find(p => p.playerId === playerId);
+                if (member && member.socketId === socket.id) {
+                    const others = Array.from(io.sockets.sockets.values())
+                        .filter(s => s.playerId === playerId && s.id !== socket.id && s.connected);
+                    const next = others.find(s => s.roomId === roomId) || others[0];
+                    if (next) roomManager.updatePlayerSocketId(roomId, playerId, next.id);
+                }
                 return;
             }
             
