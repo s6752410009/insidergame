@@ -21,10 +21,11 @@
 - [x] History / deal / round report — ใช้ **emoji ขนาดเล็ก** (`inline: true`) ไม่ยืดการ์ด SVG เต็มแถว
 - [x] การ์ดบทบาท / ตลาด / ของ — ยังใช้ SVG ใน panel หลัก (ขนาดจำกัดใน `.bm-role-icon`)
 
-### Werewolf (15 SVG)
+### Werewolf (20 บท + ปก · ภาพการ์ตูน WebP/JPG)
 
 - [x] `games/werewolfEngine.js` — `image` + `icon` + `serializePublicRole`
-- [x] `public/assets/games/werewolf/*.svg`
+- [x] `public/assets/games/werewolf/{id}.webp` (+ `.jpg` fallback) — ชุด "Cute" ของ Justin Nichol (CC BY 4.0) ดู `CREDITS.md` · สร้างด้วย `scripts/build-werewolf-art.js`
+- [x] ภาพบทใช้ใน lobby/room list (ตัวเลือกบท), how-to-play (แกลเลอรีบท + ลิงก์เครดิตภาพ)
 - [x] `views/werewolfBoard.ejs` — banner, strip, room summary, win grid
 
 ### Spyfall (20 SVG)
@@ -70,7 +71,7 @@ public/
   js/gameIcon.js
   assets/games/
     blackmarket/{id}.svg   # บท 7 + ของ 7 + แอ็กชัน 9
-    werewolf/{id}.svg      # บท 15
+    werewolf/{id}.webp     # บท 20 (+ .jpg fallback, cover.jpg/webp)
     spyfall/{id}.svg       # spy, citizen + สถานที่ 18
 ```
 
@@ -100,7 +101,7 @@ public/
 | Agent | Scope | ผลลัพธ์ |
 |-------|--------|---------|
 | Black Market | engine + 23 SVG + board | เสร็จ |
-| Werewolf | engine + 15 SVG + board | เสร็จ |
+| Werewolf | engine + 20 ภาพการ์ตูน (webp/jpg) + board + lobby + how-to-play | เสร็จ |
 | Spyfall | engine + 20 SVG + board | เสร็จ |
 | Parent | docs, dedupe `app.js` static, CSS ร่วม (ถ้าทำ) | ไฟล์นี้ |
 

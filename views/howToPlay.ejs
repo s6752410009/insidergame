@@ -483,6 +483,49 @@
     line-height: 1.45;
   }
 
+  .ww-howto-roles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .ww-howto-role {
+    margin: 0;
+    display: grid;
+    gap: 4px;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .ww-howto-role img {
+    display: block;
+    width: 100%;
+    max-width: 96px;
+    aspect-ratio: 1;
+    object-fit: contain;
+    border-radius: 18px;
+    background: radial-gradient(circle at 50% 45%, #24345a, #0b1020 72%);
+    border: 1px solid rgba(250, 204, 21, 0.28);
+  }
+
+  .ww-howto-role.team-werewolf img { border-color: rgba(239, 68, 68, 0.5); }
+  .ww-howto-role.team-solo img { border-color: rgba(168, 85, 247, 0.5); }
+
+  .ww-howto-role figcaption {
+    color: #c8d2e3;
+    font-size: 0.74rem;
+    line-height: 1.3;
+  }
+
+  .ww-howto-credit {
+    margin: 10px 0 0;
+    color: #8b97ab;
+    font-size: 0.74rem;
+  }
+
+  .ww-howto-credit a { color: #a5b4fc; }
+
   @media (max-width: 900px) {
     .guide-coup-roles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
@@ -1130,6 +1173,17 @@
         <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 5–20 คน · ไม่ตั้งเองระบบจัดบทตามตารางแนะนำ (หมาป่าราว 1 ตัวต่อ 4–5 คน, 11 คนขึ้นไปมีบทเดี่ยวและชาวบ้านธรรมดา) · หัวห้องเลือกจำนวนหมาป่า 1–5 ตัวเองได้ · วง 15–20 คนแนะนำตั้งคืน 90 วิ และประชุม 4–5 นาที</div>
         <div class="guide-list-item"><strong>จุดเด่น</strong> มี phase กลางคืนและกลางวัน ทำให้เกมพลิกได้จากสกิลกับการโหวต</div>
       </div>
+      <% if (typeof werewolfRoleGallery !== 'undefined' && werewolfRoleGallery.length) { %>
+      <div class="ww-howto-roles">
+        <% werewolfRoleGallery.forEach(function(role) { %>
+        <figure class="ww-howto-role team-<%= role.team %>">
+          <img src="<%= role.image %>" alt="<%= role.thaiName %>" width="96" height="96" loading="lazy" decoding="async">
+          <figcaption><%= role.thaiName %></figcaption>
+        </figure>
+        <% }) %>
+      </div>
+      <p class="ww-howto-credit">ภาพตัวละครโดย Justin Nichol (CC BY 4.0) · <a href="/assets/games/werewolf/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
+      <% } %>
     </article>
 
     <article class="guide-card mode-blackmarket" id="blackmarket">

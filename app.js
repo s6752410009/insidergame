@@ -5344,8 +5344,15 @@ app.post('/api/setthi/shop/debug', function(req, res) {
 // ===== END เศรษฐี ร้าน =====
 
 app.get('/how-to-play', function(req, res) {
+    const werewolfDefs = getGameEngine('werewolf').ROLE_DEFINITIONS || {};
+    const teamOrder = { werewolf: 0, village: 1, solo: 2 };
+    const werewolfRoleGallery = Object.values(werewolfDefs)
+        .filter(role => role && role.id && role.image)
+        .map(role => ({ id: role.id, thaiName: role.thaiName, team: role.team, image: role.image }))
+        .sort((a, b) => (teamOrder[a.team] ?? 9) - (teamOrder[b.team] ?? 9));
     res.render('howToPlay.ejs', {
-        pokerRankGuide: rankGuideForClient()
+        pokerRankGuide: rankGuideForClient(),
+        werewolfRoleGallery
     });
 });
 

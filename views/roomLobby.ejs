@@ -1795,6 +1795,14 @@
       }
     ];
 
+    // ภาพบท (การ์ตูน webp) — ถ้าไม่มีภาพค่อยใช้ emoji
+    function werewolfRoleArt(role, size) {
+      const visual = werewolfRoleVisuals[role && role.id] || { emoji: '🎭' };
+      if (!role || !role.image) return visual.emoji;
+      const radius = Math.round(size / 4);
+      return `<img src="${role.image}" alt="" width="${size}" height="${size}" loading="lazy" decoding="async" style="width:${size}px; height:${size}px; object-fit:contain; border-radius:${radius}px; background:#1a2332; flex:none; vertical-align:middle;">`;
+    }
+
     function matchesWerewolfPreset(selectedRoleIds, preset) {
       const selected = [...(Array.isArray(selectedRoleIds) ? selectedRoleIds : [])].sort();
       const presetRoles = [...preset.roles].sort();
@@ -1805,8 +1813,7 @@
       const selected = Array.isArray(selectedRoleIds) ? selectedRoleIds : [];
       const selectedRoles = werewolfRoleOptions.filter(role => selected.includes(role.id));
       const chips = selectedRoles.map(role => {
-        const visual = werewolfRoleVisuals[role.id] || { emoji: '🎭', teamLabel: 'พิเศษ' };
-        return `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-size:0.85em;">${visual.emoji} ${role.thaiName}</span>`;
+        return `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#fff; font-size:0.85em;">${werewolfRoleArt(role, 22)} ${role.thaiName}</span>`;
       }).join('');
 
       if (!selectedRoles.length) {
@@ -1885,7 +1892,7 @@
                     <input type="checkbox" class="room-checkbox" ${selected.includes(role.id) ? 'checked' : ''}>
                     <div class="room-checkbox-custom">✓</div>
                     <span class="room-checkbox-text" style="display:grid; gap:4px;">
-                      <strong>${visual.emoji} ${role.thaiName}</strong>
+                      <strong style="display:flex; align-items:center; gap:8px;">${werewolfRoleArt(role, 36)} ${role.thaiName}</strong>
                       <span style="color:#8fd3ff; font-size:0.8em;">${visual.teamLabel}</span>
                       <span style="color:#aaa; font-size:0.85em; line-height:1.35;">${role.description}</span>
                       ${role.winCondition ? `<span style="color:#a5b4fc; font-size:0.78em; line-height:1.35;">🏁 ${role.winCondition}</span>` : ''}
@@ -4346,7 +4353,7 @@
         html += `
           <div style="background:rgba(255,255,255,0.05); border: 1px solid ${teamColor}; border-radius:8px; padding:12px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <span style="font-size:1.5em;">${visual.emoji}</span>
+              <span style="font-size:1.5em; display:inline-flex;">${werewolfRoleArt(role, 44)}</span>
               <strong style="font-size:1.1em; color:#fff;">${role.thaiName}</strong>
               <span style="font-size:0.8em; color:#aaa; margin-left:auto;">${visual.teamLabel}</span>
             </div>
