@@ -1535,7 +1535,7 @@
 <%- contentFor('script') %>
 <script src="/js/pokerRankChart.js?v=20260814b"></script>
 <script src="/js/coupGuide.js"></script>
-<script src="/js/codenamesLobby.js?v=2"></script>
+<script src="/js/codenamesLobby.js?v=3"></script>
 <script>
   $(function () {
     const socket = window.appSocket || io();
@@ -1687,12 +1687,12 @@
       }
     };
     currentModeMeta.codenames = {
-      minPlayers: 4,
+      minPlayers: 2,
       maxPlayers: 12,
       label: 'สายลับคำใบ้',
       startLabel: '🕵️ เริ่มเกม',
       readyText: 'ทีมพร้อมแล้ว กดเริ่มได้เลย',
-      waitingText: 'รอผู้เล่นอย่างน้อย 4 คน แล้วแบ่ง 2 ทีม',
+      waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (4 คนขึ้นไปแบ่ง 2 ทีม)',
       roundLabel: 'เวลาใบ้:'
     };
     const werewolfRoleVisuals = {

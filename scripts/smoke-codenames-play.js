@@ -2,6 +2,7 @@
  * สายลับคำใบ้ — เล่นผ่าน socket จริงกับเซิร์ฟเวอร์จริง
  *   A) 4 คน (ขั้นต่ำ): เลือกทีม/บล็อกเริ่ม · ผิดกติกา · reconnect · เล่นจนจบ · สถิติ · กลับห้องรอแล้วเล่นใหม่
  *   B) 12 คน (สูงสุด, 1 ผู้ชม): โหวตเสียงข้างมาก · หัวหน้าหลุด → ตั้งใหม่ · คนออกกลางเกม · ทีมไม่มีลูกทีมออนไลน์ข้ามเทิร์น · มือสังหาร
+ *   D) 2 คน โหมดร่วมมือ · หัวหน้าห้ามแชท   E) ทักท้วงคำใบ้
  * ทุก payload ที่ลูกทีม/ผู้ชมได้รับถูกตรวจว่าไม่มีกุญแจ
  * รัน: npm run smoke:codenames:play   (SMOKE_PORT=8821 เพื่อกำหนดพอร์ต)
  */
@@ -522,6 +523,97 @@ function readStats() {
         });
         assert(/const FINISHED_RETURN_MS = 10000;/.test(fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8')), 'ค่ากลับห้องปกติยัง 10 วิ');
         console.log('C3. หน้าจบสายลับคำใบ้ 30 วิ · โหมดอื่น 10 วิเหมือนเดิม ✓');
+
+        C.clients.forEach(c => { try { c.socket.close(); } catch (e) { /* ignore */ } });
+        await delay(300);
+
+        // ================= D: โหมดร่วมมือ 2 คน + หัวหน้าห้ามแชท =================
+        const D = await setupRoom(base, 2, 'D');
+        allClients.push(...D.clients);
+        const [dh, dp] = D.clients;
+        assert((await ack(dh.socket, 'codenames_shuffleTeams', {})).success, 'D สุ่มทีม 2 คน');
+        const dPicks = Object.values((dh.room.settings || {}).codenamesTeams || {});
+        await waitFor(() => Object.values((dh.room.settings || {}).codenamesTeams || {}).length === 2, 4000, 'D picks');
+        const dTeams = new Set(Object.values(dh.room.settings.codenamesTeams).map(p => p.team));
+        assert(dTeams.size === 1, '2 คนสุ่มแล้วอยู่ทีมเดียว: ' + JSON.stringify(dPicks));
+        assert((await ack(dh.socket, 'updateRoom', { codenamesClueFlag: false })).success, 'หัวห้องปิดทักท้วง');
+        await waitFor(() => dh.room.settings.codenamesClueFlag === false, 4000, 'flag setting');
+        r = await ack(dh.socket, 'startGameFromLobby', { roomId: D.roomId });
+        assert(r.success, '2 คนเริ่มโหมดร่วมมือได้: ' + JSON.stringify(r));
+        await waitFor(() => D.clients.every(c => last(c) && last(c).status === 'playing'), 15000, 'D playing');
+        s = last(dh);
+        const dTeam = s.coop && s.coop.team;
+        assert(dTeam && s.currentTeam === dTeam && s.startingTeam === dTeam && s.settings.clueFlag === false, 'ร่วมมือ: ทีมเราเริ่มก่อน');
+        const dsm = byRole(D.clients, dTeam, 'spymaster')[0];
+        const dop = byRole(D.clients, dTeam, 'operative')[0];
+        // หัวหน้าแชทไม่ได้ · ลูกทีมแชทได้
+        let chatErr = null;
+        dsm.socket.once('chatError', d => { chatErr = d; });
+        dsm.socket.emit('sendMessage', { message: 'ลองใบ้ในแชท' });
+        await waitFor(() => chatErr, 4000, 'chatError');
+        assert(/หัวหน้า/.test(chatErr.message), 'หัวหน้าโดนบล็อกแชท');
+        let got = null;
+        dsm.socket.once('newMessage', d => { got = d; });
+        dop.socket.emit('sendMessage', { message: 'ลูกทีมคุยได้' });
+        await waitFor(() => got, 4000, 'operative chat');
+        console.log('D1. 2 คน = โหมดร่วมมือ · หัวหน้าห้ามแชท ลูกทีมคุยได้ ✓');
+
+        s = last(dsm);
+        assert((await ack(dsm.socket, 'codenames_clue', { word: pickClue(s.board, 3), number: 1, ...ctx(s) })).success, 'D ใบ้');
+        await waitFor(() => last(dop).phase === 'guess', 4000, 'D guess');
+        const dNeutral = last(dsm).board.find(c => !c.revealed && c.color === 'neutral').index;
+        assert((await revealAs(dop, dNeutral)).success, 'D เปิดคนเดินถนน');
+        await waitFor(() => last(dsm).phase === 'cover' && last(dsm).self.canCover, 4000, 'cover phase');
+        assert(!last(dop).self.canCover, 'ลูกทีมปิดไม่ได้');
+        const enemy = s.coop.enemy;
+        const dEnemyCard = last(dsm).board.find(c => !c.revealed && c.color === enemy).index;
+        r = await ack(dop.socket, 'codenames_cover', { index: dEnemyCard, ...ctx(last(dop)) });
+        assert(r.success === false, 'ลูกทีมส่ง cover ไม่ได้');
+        r = await ack(dsm.socket, 'codenames_cover', { index: dEnemyCard, ...ctx(last(dsm)) });
+        assert(r.success, 'หัวหน้าปิดสายลับฝ่ายตรงข้าม: ' + JSON.stringify(r));
+        await waitFor(() => last(dop).phase === 'clue' && last(dop).board[dEnemyCard].revealed, 4000, 'back to clue');
+        // แพ้ด้วยมือสังหาร → ไม่นับสถิติ
+        s = last(dsm);
+        assert((await ack(dsm.socket, 'codenames_clue', { word: pickClue(s.board, 4), number: 1, ...ctx(s) })).success, 'D ใบ้ 2');
+        await waitFor(() => last(dop).phase === 'guess', 4000, 'D guess 2');
+        const dAssassin = last(dsm).board.find(c => c.color === 'assassin').index;
+        assert((await revealAs(dop, dAssassin)).success, 'D เปิดมือสังหาร');
+        await waitFor(() => last(dop).phase === 'finished', 4000, 'D finished');
+        assert(last(dop).winReason === 'assassin' && last(dop).winner !== dTeam, 'ร่วมมือแพ้ด้วยมือสังหาร');
+        await delay(500);
+        const dStats = readStats().filter(st => st && (st.playerId === dh.id || st.playerId === dp.id));
+        assert(dStats.every(st => !(st.modeStats && st.modeStats.codenames && st.modeStats.codenames.games)), 'ร่วมมือไม่นับสถิติ');
+        console.log('D2. ร่วมมือ: ตาฝ่ายตรงข้ามหัวหน้าปิด 1 ใบผ่าน socket · มือสังหาร = แพ้ · ไม่นับสถิติ ✓');
+        D.clients.forEach(c => { try { c.socket.close(); } catch (e) { /* ignore */ } });
+        await delay(300);
+
+        // ================= E: ทักท้วงคำใบ้ผ่าน socket =================
+        const E = await setupRoom(base, 4, 'E');
+        allClients.push(...E.clients);
+        assert((await ack(E.host.socket, 'codenames_shuffleTeams', {})).success, 'E สุ่มทีม');
+        assert((await ack(E.host.socket, 'startGameFromLobby', { roomId: E.roomId })).success, 'E เริ่ม');
+        await waitFor(() => E.clients.every(c => last(c) && last(c).status === 'playing'), 15000, 'E playing');
+        const et = last(E.host).currentTeam;
+        const eo = et === 'red' ? 'blue' : 'red';
+        const esm = byRole(E.clients, et, 'spymaster')[0];
+        const eosm = byRole(E.clients, eo, 'spymaster')[0];
+        const eop = byRole(E.clients, eo, 'operative')[0];
+        s = last(esm);
+        assert(s.settings.clueFlag === true, 'ค่าเริ่มเปิดทักท้วง');
+        assert((await ack(esm.socket, 'codenames_clue', { word: pickClue(s.board, 5), number: 2, ...ctx(s) })).success, 'E ใบ้');
+        await waitFor(() => last(eosm).phase === 'guess' && last(eosm).self.canFlag, 4000, 'flag button');
+        r = await ack(eop.socket, 'codenames_flag', ctx(last(eop)));
+        assert(r.success === false && /เฉพาะหัวหน้า/.test(r.error), 'ลูกทีมทักไม่ได้');
+        r = await ack(eosm.socket, 'codenames_flag', ctx(last(eosm)));
+        assert(r.success, 'หัวหน้าอีกทีมทัก: ' + JSON.stringify(r));
+        await waitFor(() => last(eosm).currentTeam === eo && last(eosm).phase === 'clue' && last(eosm).self.canCover, 4000, 'flag ends turn + bonus');
+        assert(E.clients.every(c => last(c).history.some(h2 => /ผิดกติกา/.test(h2.text))), 'ทุกคนเห็นว่าโดนทัก');
+        const eOwn = last(eosm).board.find(c => !c.revealed && c.color === eo).index;
+        r = await ack(eosm.socket, 'codenames_cover', { index: eOwn, ...ctx(last(eosm)) });
+        assert(r.success, 'ปิดคำทีมตัวเอง (โบนัส): ' + JSON.stringify(r));
+        await waitFor(() => last(eop).board[eOwn].revealed && !last(eosm).self.canCover && last(eosm).self.canGiveClue, 4000, 'bonus used');
+        assert(last(eosm).flagsLeft[eo] === 0, 'ใช้สิทธิ์ทักแล้ว');
+        console.log('E1. ทักท้วงคำใบ้ → จบเทิร์น + โบนัสปิดคำทีมตัวเอง ผ่าน socket ✓');
 
         assert(leakChecks > 100, `ตรวจความลับ ${leakChecks} payload`);
         assert(!/\[codenames\].*failed/.test(server.logs()), 'server log มี error:\n' + server.logs().split('\n').filter(l => /codenames/.test(l)).slice(-5).join('\n'));
