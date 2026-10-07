@@ -82,7 +82,7 @@ async function openShop(browser, id, viewport) {
     const context = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: mobile, isMobile: mobile });
     await context.route(CDN_RE, cdnRoute);
     context.setDefaultTimeout(30000);
-    await context.addInitScript(() => { try { sessionStorage.setItem('insiderPromoSeen', '1'); } catch (e) { /* ignore */ } });
+    await context.addInitScript(() => { try { sessionStorage.setItem('insiderPromoSeen', '1'); localStorage.setItem('ig-firstplay-setthi', '1'); localStorage.setItem('setthiSound', 'off'); } catch (e) { /* ignore */ } });
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -123,8 +123,7 @@ async function waitGold(page, value) {
 function ack(s, e, p) { return new Promise(r => { const t = setTimeout(() => r({ success: false, error: 'timeout ' + e }), 15000); s.emit(e, p, x => { clearTimeout(t); r(x || {}); }); }); }
 
 /** คนจริง 1 + บอท 1: ผูกขาดแถวจบเกม → หน้าจบเกมโชว์ +110 🪙 (เกมบอท = ครึ่ง) พร้อมรายละเอียด แล้วยอดในร้านเพิ่ม */
-async function endScreen(browser) {
-    const X = randomUUID();
+async function endScreen(browser, X) {
     const sock = io(BASE, { transports: ['websocket'], forceNew: true, reconnection: false });
     await new Promise(r => sock.once('connect', r));
     sock.emit('initPlayer', X);
@@ -145,6 +144,15 @@ async function endScreen(browser) {
     let st = null;
     for (let k = 0; k < 50; k += 1) { st = await PS(); if (st && st.status === 'playing') break; await delay(100); }
     const i = st.seats.findIndex(x => x.playerId === X);
+    // แถบผู้เล่น: ไอคอนสกิล + Lv ของคนที่ติดสกิล · บอทไม่มี
+    await p.page.waitForSelector('.st-chip[data-id="' + X + '"] .st-chip-sk');
+    assert(await p.page.locator('.st-chip[data-id="' + X + '"] .st-sk').count() === 3, 'แถบผู้เล่นโชว์ 3 สกิล');
+    assert((await p.page.locator('.st-chip[data-id="' + X + '"] .st-chip-sk').textContent()).includes('5'), 'โชว์ Lv');
+    assert(await p.page.locator('.st-chip-sk').count() === 1, 'บอทไม่มีสกิล');
+    await p.page.evaluate(id => window.__setthi.demo({ kind: 'skill', playerId: id, skill: 'start2x', lv: 5, text: 'Start ×2!', amount: 6000 }), X);
+    await p.page.waitForSelector('.st-banner.is-skill');
+    await p.page.screenshot({ path: path.join(SHOTS, 'skill-popup-mobile.png') });
+    await p.page.evaluate(() => window.__setthi.skip());
     const props = { 1: { owner: i, level: 1 }, 2: { owner: i, level: 1 }, 4: { owner: i, level: 1 }, 6: { owner: i, level: 1 }, 7: { owner: i, level: 1 } };
     assert((await emit('setthi_testSetup', { spec: { resetProps: true, props, seats: { [i]: { pos: 0, cash: 20000 } }, dice: [[2, 3]], turnSeat: i } })).success, 'จัดฉาก');
     for (let k = 0; k < 30; k += 1) { st = await PS(); if (st && st.phase === 'roll' && st.phaseActor === X && st.seats[i].pos === 0) break; await delay(100); }
@@ -186,9 +194,11 @@ async function endScreen(browser) {
     const started = Date.now();
     const mobileId = randomUUID();
     const deskId = randomUUID();
+    const endId = randomUUID();
     fs.writeFileSync(path.join(DATA, 'setthiGold.json'), JSON.stringify({
         [mobileId]: { gold: 1000, skills: {}, loadout: [] },
-        [deskId]: { gold: 9000, skills: { double: 2, luck: 5 }, loadout: ['luck'] }
+        [deskId]: { gold: 9000, skills: { double: 2, luck: 5 }, loadout: ['luck'] },
+        [endId]: { gold: 0, skills: { start2x: 5, festival: 5, double: 3 }, loadout: ['start2x', 'festival', 'double'] }
     }));
     const server = await bootServer();
     const browser = await chromium.launch();
@@ -282,7 +292,7 @@ async function endScreen(browser) {
         console.log('✓ เดสก์ท็อป 1280×900: Lv5 · ช่องเต็ม');
 
         // ---- หน้าจบเกม: +N 🪙 ----
-        await endScreen(browser);
+        await endScreen(browser, endId);
         await m.context.close();
         await d.context.close();
     } finally {
