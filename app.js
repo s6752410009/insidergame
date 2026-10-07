@@ -9247,7 +9247,7 @@ io.sockets.on('connection', function(socket) {
         const room = getSocketRoom(socket, 'wavelength');
         if (!room) return done({ success: false, error: 'ไม่พบห้องคลื่นความคิด' });
         try {
-            wavelengthRuntime.engine.movePin(room, socket.playerId, data?.value, wavelengthContext(data));
+            wavelengthRuntime.movePin(room, socket.playerId, data?.value, wavelengthContext(data));
             done({ success: true });
         } catch (error) {
             done({ success: false, error: error.message || 'ขยับเข็มไม่สำเร็จ' });
@@ -9257,6 +9257,12 @@ io.sockets.on('connection', function(socket) {
     safeOn(socket, 'wavelength_lock', function(data, callback) {
         handleWavelengthCommand(socket, callback, (room, playerId) =>
             wavelengthRuntime.engine.lockPin(room, playerId, data?.value, wavelengthContext(data)));
+    });
+
+    // ทีมตรงข้ามทาย ⬅️/➡️ ว่าเป้าอยู่ซ้ายหรือขวาของเข็มที่ล็อก
+    safeOn(socket, 'wavelength_vote', function(data, callback) {
+        handleWavelengthCommand(socket, callback, (room, playerId) =>
+            wavelengthRuntime.engine.voteSide(room, playerId, data?.side, wavelengthContext(data)));
     });
 
     safeOn(socket, 'wavelength_unlock', function(data, callback) {
@@ -10066,8 +10072,13 @@ io.sockets.on('connection', function(socket) {
                     currentOnlinePlayers.forEach(p => {
                         if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId: roomId });
                     });
-                    sendChatMessageToRoom(io, roomId, 'System',
-                        'คลื่นความคิดเริ่มแล้ว — ผู้ใบ้ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าเป้าอยู่ตรงไหน', '#5eead4');
+                    const wlState = currentRoom.gameState || {};
+                    const wlStartText = wlState.variant === 'teams'
+                        ? `คลื่นความคิดเริ่มแล้ว — แข่งทีม ${wavelengthRuntime.engine.TEAM_META[wlState.startTeam]?.name || ''}เริ่มก่อน · ถึง ${wavelengthRuntime.engine.WIN_SCORE} แต้มก่อนชนะ`
+                        : wlState.variant === 'coop'
+                            ? `คลื่นความคิดเริ่มแล้ว — ร่วมมือกัน ${wavelengthRuntime.engine.COOP_CARDS} การ์ด ช่วยกันหมุนเข็ม`
+                            : 'คลื่นความคิดเริ่มแล้ว — ผู้ใบ้ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าเป้าอยู่ตรงไหน';
+                    sendChatMessageToRoom(io, roomId, 'System', wlStartText, '#5eead4');
                     logGameStartFromRoom(currentRoom);
                     wavelengthRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;

@@ -163,6 +163,27 @@ module.exports = function createWavelengthRuntime(getDeps) {
         emitRoomState(room);
     }
 
+    /**
+     * ลากเข็ม — เดี่ยว: เก็บไว้เงียบ ๆ (ลับจนเปิด) · ทีม/ร่วมมือ: เข็มร่วมเป็นของสาธารณะ
+     * ส่ง wavelengthDial เบา ๆ ให้ทั้งห้อง (ถ้าล้าง ✅ ด้วย = ส่ง state เต็ม)
+     */
+    function movePin(room, playerId, value, context) {
+        const result = engine.movePin(room, playerId, value, context);
+        if (!result || !result.shared) return;
+        if (result.cleared) {
+            emitRoomState(room);
+            return;
+        }
+        if (!result.changed) return;
+        const state = room.gameState;
+        deps().io.to(room.roomId).emit('wavelengthDial', {
+            round: state.round,
+            value: state.dial,
+            by: state.dialBy,
+            step: Number(state.step) || 0
+        });
+    }
+
     function handleLeft(room, playerId) {
         if (!isRoom(room)) return;
         engine.handlePlayerLeft(room, playerId);
@@ -175,6 +196,32 @@ module.exports = function createWavelengthRuntime(getDeps) {
 
     function gameEndNotification(room) {
         const state = room.gameState || {};
+        const rows0 = state.standings || [];
+        if (state.variant === 'teams' && state.teams) {
+            const meta = engine.TEAM_META;
+            const a = state.teams.A.score;
+            const b = state.teams.B.score;
+            const w = state.winnerTeam;
+            const text = w ? `${meta[w].name}ชนะ ${state.teams[w].score}–${state.teams[w === 'A' ? 'B' : 'A'].score}` : `เสมอ ${a}–${b}`;
+            const winnerRow = rows0.find(r => r.won);
+            return {
+                chatMessage: `จบคลื่นความคิด! ${text} (${state.round || 0} รอบ)`,
+                chatColor: '#5eead4',
+                logMessage: `📡 คลื่นความคิด (ทีม) จบ — ${text} · ${state.round || 0} รอบ · ${rows0.length} คน`,
+                logType: 'success',
+                meta: { winnerName: w ? meta[w].name : null, score: w ? state.teams[w].score : a, playerCount: rows0.length, rounds: state.round || 0, variant: 'teams', winnerPlayer: winnerRow ? winnerRow.name : null }
+            };
+        }
+        if (state.variant === 'coop' && state.coop) {
+            const text = `ร่วมมือได้ ${state.coop.score} แต้ม — ${state.coopRank || ''}`;
+            return {
+                chatMessage: `จบคลื่นความคิด! ${text}`,
+                chatColor: '#5eead4',
+                logMessage: `📡 คลื่นความคิด (ร่วมมือ) จบ — ${text} · ${state.round || 0} รอบ · ${rows0.length} คน`,
+                logType: 'success',
+                meta: { winnerName: null, score: state.coop.score, playerCount: rows0.length, rounds: state.round || 0, variant: 'coop' }
+            };
+        }
         const winners = state.winners || [];
         const rows = state.standings || [];
         const text = winners.length
@@ -203,6 +250,7 @@ module.exports = function createWavelengthRuntime(getDeps) {
         recover,
         forceResolve,
         handleLeft,
+        movePin,
         startGame,
         gameEndNotification
     };

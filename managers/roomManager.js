@@ -303,6 +303,11 @@ ROOM_NAME_MODE_HINTS['เศรษฐี'] = 'setthi';
 ROOM_NAME_MODE_HINTS['วงเศรษฐี'] = 'setthi';
 
 /** วาดแล้วทาย: รอบ 2/3/4 · เวลาวาด 60/80/100 วิ · หมวดคำ (mixed หรือหมวดเดียว) */
+/** คลื่นความคิด: teams (ค่าเริ่มต้น ตามบอร์ดเกม) · coop · solo (แข่งเดี่ยวแบบเดิม) */
+function sanitizeWavelengthMode(value) {
+    return ['teams', 'coop', 'solo'].includes(value) ? value : 'teams';
+}
+
 function sanitizeDrawGuessSettings(source) {
     const clean = getGameEngine('drawguess').sanitizeSettings(source || {});
     return { drawguessRounds: clean.rounds, drawguessSeconds: clean.drawSeconds, drawguessCategory: clean.category };
@@ -660,6 +665,7 @@ function createRoom(roomData, creatorPlayerId) {
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
             wavelengthLaps: Number(normalizedRoomData.wavelengthLaps) === 2 ? 2 : 1,
+            wavelengthMode: gameMode === 'wavelength' ? sanitizeWavelengthMode(normalizedRoomData.wavelengthMode) : undefined,
             ...(gameMode === 'drawguess' ? sanitizeDrawGuessSettings(normalizedRoomData) : {}),
             colorcardsTurnSeconds: gameMode !== 'colorcards' ? undefined
                 : ([15, 20, 30].includes(Number(normalizedRoomData.colorcardsTurnSeconds)) ? Number(normalizedRoomData.colorcardsTurnSeconds) : 20),
@@ -1079,6 +1085,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.wavelengthLaps !== undefined) {
         room.settings.wavelengthLaps = Number(updates.wavelengthLaps) === 2 ? 2 : 1;
+    }
+    if (updates.wavelengthMode !== undefined && room.settings.gameMode === 'wavelength' && !isRoomGameInProgress(room)) {
+        room.settings.wavelengthMode = sanitizeWavelengthMode(updates.wavelengthMode);
     }
     if (room.settings.gameMode === 'drawguess'
         && (updates.drawguessRounds !== undefined || updates.drawguessSeconds !== undefined || updates.drawguessCategory !== undefined)) {

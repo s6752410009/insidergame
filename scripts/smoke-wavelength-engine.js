@@ -38,12 +38,13 @@ function makeEnv(seed) {
 }
 
 // จำลอง roomManager แบบย่อ: room.players + gameState.players ตามที่ joinRoom/leaveRoom ทำจริง
-function makeRoom(count, laps = 1) {
+// ไฟล์นี้เทสโหมดแข่งเดี่ยว (แบบเดิม) — โหมดทีม/ร่วมมือ อยู่ที่ smoke-wavelength-teams.js
+function makeRoom(count, laps = 1, variant = 'solo') {
     const players = [];
     for (let i = 0; i < count; i += 1) {
         players.push({ playerId: 'p' + i, playerName: 'ผู้เล่น' + i, color: '#fff', avatar: '🙂', socketId: 's' + i });
     }
-    return { roomId: 'R1', admin: 'p0', settings: { gameMode: 'wavelength', wavelengthLaps: laps }, players, gameState: engine.createInitialState() };
+    return { roomId: 'R1', admin: 'p0', settings: { gameMode: 'wavelength', wavelengthLaps: laps, wavelengthMode: variant }, players, gameState: engine.createInitialState() };
 }
 function lateJoin(room, id) {
     const entry = { playerId: id, playerName: 'มาสาย' + id, color: '#0ff', avatar: '🐢', socketId: 'sock-' + id };
