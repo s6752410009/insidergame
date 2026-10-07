@@ -97,6 +97,22 @@
   .lr-hearts { letter-spacing: 1px; font-size: 0.95rem; line-height: 1.1; white-space: nowrap; }
   .lr-hearts .on { color: var(--lr-heart); }
   .lr-hearts .off { color: var(--lr-heart-off); }
+  /* ปืนลูกโม่: 6 ช่อง · ช่องที่ยิงไปแล้วทึบ · ตัวเลขบอกโอกาสโดนนัดหน้า */
+  .lr-gun { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; line-height: 1.1; font-size: 0.72rem; font-weight: 700; }
+  .lr-gun-pips { display: inline-flex; gap: 2px; }
+  .lr-gun-pip { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid oklch(0.85 0.05 85 / 0.75); }
+  .lr-gun-pip.is-used { background: oklch(0.4 0.02 150); border-color: oklch(0.4 0.02 150); }
+  .lr-gun-odds { color: var(--lr-muted); font-variant-numeric: tabular-nums; }
+  .lr-gun-odds.is-hot { color: var(--lr-red); }
+  .lr-gun.is-dead { color: var(--lr-red); }
+  .lr-banner.is-gun { border-color: oklch(0.85 0.02 85); }
+  .lr-banner.is-bang { border-color: var(--lr-red); background: oklch(0.32 0.14 27 / 0.96); }
+  .lr-banner.is-click { border-color: var(--lr-ok); }
+  .lr-banner.is-devil { border-color: oklch(0.6 0.22 25); background: oklch(0.18 0.06 25 / 0.96); }
+  .lr-devil-tag { display: inline-block; margin-top: 2px; padding: 0 6px; border-radius: 999px; background: oklch(0.45 0.18 25); color: #fff; font-size: 0.68rem; font-weight: 700; }
+  .lr-flash { position: fixed; inset: 0; pointer-events: none; z-index: 10990; background: oklch(0.6 0.2 25 / 0.35); opacity: 0; }
+  .lr-flash.is-on { animation: lrFlash 0.5s ease-out; }
+  @keyframes lrFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
   .lr-hit-badge {
     position: absolute; top: 18px; right: 4px; padding: 1px 6px; border-radius: 999px;
     background: var(--lr-red-deep); color: #fff; font-weight: 700; font-size: 0.78rem; pointer-events: none;
@@ -310,6 +326,7 @@
       animation: none !important; transition: none !important;
     }
     .lr-banner.is-on { animation: none !important; opacity: 1; }
+    .lr-flash.is-on { animation: none !important; }
     .lr-playing.is-selected { transform: rotate(var(--fan, 0deg)); }
   }
 </style>
@@ -494,6 +511,37 @@ $(function() {
       '<span class="on">' + '♥'.repeat(n) + '</span><span class="off">' + '♡'.repeat(total - n) + '</span></span>';
   }
 
+  function isRevolver(state) {
+    return ((state || currentState || {}).punishment || 'revolver') === 'revolver';
+  }
+
+  function isTruthCard(id, target) {
+    return id === target || id === 'JOKER' || id === 'DEVIL';
+  }
+
+  // ปืน 6 ช่อง: ช่องที่ยิงแล้วทึบ + โอกาสโดนนัดหน้า (1/6 → 1/1)
+  function gunMeter(shots, alive, chambers) {
+    const total = Number(chambers) || 6;
+    const used = Math.max(0, Math.min(total, Number(shots) || 0));
+    if (!alive) return '<span class="lr-gun is-dead" aria-label="ตกรอบ">💥 ตกรอบ</span>';
+    const left = Math.max(1, total - used);
+    const pips = Array.from({ length: total }, function(_, i) {
+      return '<span class="lr-gun-pip' + (i < used ? ' is-used' : '') + '"></span>';
+    }).join('');
+    return '<span class="lr-gun" aria-label="ยิงไปแล้ว ' + used + ' จาก ' + total + ' นัด นัดหน้าโดน 1 ใน ' + left + '">🔫<span class="lr-gun-pips">' + pips + '</span>' +
+      '<span class="lr-gun-odds' + (left <= 2 ? ' is-hot' : '') + '">1/' + left + '</span></span>';
+  }
+
+  function lifeMeter(player, state) {
+    state = state || currentState || {};
+    if (isRevolver(state)) return gunMeter(player.shots, player.alive, state.chambers);
+    return hearts(player.lives, state.maxLives);
+  }
+
+  function penaltyWord(state) {
+    return isRevolver(state) ? 'ลั่นไก 🔫' : 'เสียหัวใจ';
+  }
+
   function currentName(state) {
     const p = (state.players || []).find(function(x) { return x.isCurrent; });
     return p ? p.name : 'คนถัดไป';
@@ -511,13 +559,14 @@ $(function() {
     const rank = rankName(state);
     if (state.lastPlay) {
       const who = state.lastPlay.playerName || 'คนก่อนหน้า';
-      if (mine && emptyHand) {
-        return { text: 'มือคุณว่าง — ต้องกด โกหก! เพื่อหงายไพ่ของ ' + who, short: 'ถึงตาคุณ · ต้องท้า', mine: true };
+      if (mine && (emptyHand || state.forcedCall)) {
+        return { text: 'เหลือคุณคนเดียวที่มีไพ่ — ต้องกด โกหก! หงายไพ่ของ ' + who, short: 'ถึงตาคุณ · ต้องท้า', mine: true };
       }
       return mine
         ? { text: who + ' ลง ' + state.lastPlay.count + ' ใบ อ้างว่าเป็น' + rank + ' — เชื่อไหม?', short: 'ถึงตาคุณ · เชื่อหรือท้า', mine: true }
         : { text: 'รอ ' + currentName(state) + ' เชื่อหรือท้า ' + who, short: 'รอ ' + currentName(state), mine: false };
     }
+    if (emptyHand && !mine) return { text: 'ไพ่คุณหมดมือ — ข้ามตาจนจบรอบ · ตาของ ' + currentName(state), short: 'มือว่าง · รอจบรอบ', mine: false };
     return mine
       ? { text: 'ถึงตาคุณ — เลือก 1–3 ใบ ลงคว่ำ แล้วอ้างว่าเป็น' + rank, short: 'ถึงตาคุณ · ลงไพ่', mine: true }
       : { text: 'รอ ' + currentName(state) + ' ลงไพ่ (ต้องอ้างว่าเป็น' + rank + ')', short: 'รอ ' + currentName(state), mine: false };
@@ -575,19 +624,33 @@ $(function() {
     }
     $('#targetRank').html(
       '<div class="lr-rank-chip lr-rank-' + escapeHtml(rank.id) + '" aria-label="ไพ่รอบนี้ ' + escapeHtml(rank.thaiName) + '"><div style="font-size:1.7rem;line-height:1;">' +
-      escapeHtml(rank.icon) + '</div><div style="font-size:0.78rem;">' + escapeHtml(rank.thaiName) + '</div></div>'
+      escapeHtml(rank.icon) + '</div><div style="font-size:0.78rem;">' + escapeHtml(rank.thaiName) + '</div></div>' +
+      (state.devilActive ? '<span class="lr-devil-tag" title="รอบนี้มีไพ่ปีศาจ 1 ใบ">😈 มีปีศาจ</span>' : '')
     );
   }
 
   function revealVerdict(state, reveal) {
     const actor = nameOf(state, reveal.actorId, reveal.actorName);
     const challenger = nameOf(state, reveal.challengerId, reveal.challengerName);
-    const loser = nameOf(state, reveal.loserId, reveal.loserName);
-    const lives = reveal.loserLives;
-    const after = lives === 0 ? 'หัวใจหมด ตกรอบ' : (lives != null ? 'เหลือ ' + lives + ' ดวง' : '');
+    const results = reveal.results || [];
+    let sub;
+    if (isRevolver(state) && results.length) {
+      sub = results.map(function(r) {
+        return nameOf(state, r.playerId, r.name) + (r.died ? ' 💥 ปัง! ตกรอบ' : ' 🔫 แชะ… รอด (' + r.shots + '/' + (state.chambers || 6) + ')');
+      }).join(' · ');
+    } else if (results.length) {
+      sub = results.map(function(r) {
+        return nameOf(state, r.playerId, r.name) + (r.died ? ' หัวใจหมด ตกรอบ' : ' −1♥ เหลือ ' + r.lives);
+      }).join(' · ');
+    } else {
+      const loser = nameOf(state, reveal.loserId, reveal.loserName);
+      const lives = reveal.loserLives;
+      sub = loser + ' เสียหัวใจ 1 ดวง' + (lives === 0 ? ' · ตกรอบ' : (lives != null ? ' · เหลือ ' + lives + ' ดวง' : ''));
+    }
+    if (reveal.outcome === 'devil') return { tone: 'lie', head: '😈 ไพ่ปีศาจ! ทุกคนยกเว้น ' + actor + ' รับโทษ', sub: sub };
     return reveal.truthful
-      ? { tone: 'truth', head: '✅ ของจริง! ' + challenger + ' ท้าพลาด', sub: loser + ' เสียหัวใจ 1 ดวง' + (after ? ' · ' + after : '') }
-      : { tone: 'lie', head: '🚨 จับได้! ' + actor + ' โกหก', sub: loser + ' เสียหัวใจ 1 ดวง' + (after ? ' · ' + after : '') };
+      ? { tone: 'truth', head: '✅ ของจริง! ' + challenger + ' ท้าพลาด', sub: sub }
+      : { tone: 'lie', head: '🚨 จับได้! ' + actor + ' โกหก', sub: sub };
   }
 
   // ไพ่บนโต๊ะ: คว่ำ + ใครลง/อ้างว่าอะไร · หลังท้า: หงายค้างไว้พร้อมผล จนกว่าจะมีคนลงใหม่
@@ -605,7 +668,7 @@ $(function() {
     if (reveal && reveal.cards && reveal.cards.length) {
       const target = (reveal.targetRank && reveal.targetRank.id) || '';
       $('#tablePile').html(reveal.cards.map(function(card) {
-        const ok = card.id === target || card.id === 'JOKER';
+        const ok = isTruthCard(card.id, target);
         return playingCard(card, { faceUp: true, extraClass: ok ? 'is-match' : 'is-nomatch' });
       }).join(''));
       const v = revealVerdict(state, reveal);
@@ -623,13 +686,13 @@ $(function() {
       $('#myHand').html('');
       return;
     }
-    $('#myLives').html('คุณ ' + hearts(state.self.lives, state.maxLives));
+    $('#myLives').html('คุณ ' + lifeMeter(state.self, state));
     if (!state.self.alive || state.phase === 'finished') {
       $('#myHand').html('');
       return;
     }
     if (!hand.length) {
-      $('#myHand').html('<div class="lr-wait">มือว่าง — ยังไม่ชนะนะ<br>ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว</div>');
+      $('#myHand').html('<div class="lr-wait">ไพ่หมดมือ — ยังไม่ชนะนะ<br>ข้ามตาจนจบรอบ แล้วได้ไพ่ใหม่</div>');
       return;
     }
     const maxPlay = Math.min(3, hand.length);
@@ -639,7 +702,7 @@ $(function() {
       const key = card.id + ':' + index;
       const selected = selectedIds.indexOf(key) >= 0;
       const fan = ((index - mid) * 6).toFixed(1);
-      const isMatch = target && (card.id === target || card.id === 'JOKER');
+      const isMatch = target && isTruthCard(card.id, target);
       return playingCard(card, {
         faceUp: true,
         extraClass: 'is-pick' + (selected ? ' is-selected' : '') + (isMatch ? ' is-match' : ''),
@@ -660,7 +723,12 @@ $(function() {
       }
       lastTap = { key: key, at: now };
       const at = selectedIds.indexOf(key);
-      if (autoPicked && at < 0) {
+      const devilKey = function(k) { return k.split(':')[0] === 'DEVIL'; };
+      if (at < 0 && (devilKey(key) || selectedIds.some(devilKey)) && selectedIds.length && !autoPicked) {
+        // ไพ่ปีศาจลงได้ใบเดียว — แตะสลับแทน ไม่รวมกับใบอื่น
+        selectedIds = [key];
+        toast('😈 ไพ่ปีศาจต้องลงใบเดียว');
+      } else if (autoPicked && at < 0) {
         selectedIds = [key];
       } else if (at >= 0) {
         selectedIds.splice(at, 1);
@@ -681,12 +749,12 @@ $(function() {
       const cls = 'lr-seat' + (player.isCurrent ? ' is-current' : '') + (player.alive ? '' : ' is-out');
       const tags = (player.isBot ? '<span class="lr-seat-tag">บอท</span>' : '') +
         (player.afk && player.alive ? '<span class="lr-seat-tag" title="หมดเวลาตาที่แล้ว">ไม่อยู่?</span>' : '');
-      const meta = player.alive ? ('ไพ่ ' + (player.handCount || 0) + ' ใบ') : 'ตกรอบ';
+      const meta = player.alive ? (player.handCount ? 'ไพ่ ' + player.handCount + ' ใบ' : 'มือว่าง · ข้าม') : 'ตกรอบ';
       return '<div class="' + cls + '" data-seat-id="' + escapeHtml(player.playerId) + '">' +
         (player.isCurrent && state.phase !== 'finished' ? '<span class="lr-seat-turn">ตานี้</span>' : '') +
         avatarHtml(player, 26) +
         '<div class="lr-seat-name" style="color:' + escapeHtml(player.color || '#fff') + '">' + escapeHtml(player.name) + '</div>' +
-        hearts(player.lives, state.maxLives) +
+        lifeMeter(player, state) +
         '<div class="lr-seat-meta">' + meta + tags + '</div></div>';
     }).join(''));
   }
@@ -694,8 +762,9 @@ $(function() {
   function eliminationWhy(reason) {
     if (reason === 'caught') return 'โดนจับโกหก';
     if (reason === 'challenge-fail') return 'ท้าพลาด';
+    if (reason === 'devil') return 'โดนไพ่ปีศาจ';
     if (reason === 'left') return 'ออกจากเกม';
-    return 'หัวใจหมด';
+    return isRevolver() ? 'โดนยิง' : 'หัวใจหมด';
   }
 
   // อันดับ: ผู้ชนะ → คนตกรอบหลังสุด → คนตกรอบแรกสุด
@@ -705,7 +774,9 @@ $(function() {
     const rows = [];
     if (winnerId) {
       const w = playerById(state, winnerId) || { name: state.winner.name, lives: 0 };
-      rows.push({ id: winnerId, name: w.name, why: 'รอดคนสุดท้าย ' + '♥'.repeat(Math.max(0, w.lives || 0)) });
+      rows.push({ id: winnerId, name: w.name, why: isRevolver(state)
+        ? 'รอดคนสุดท้าย 🔫 ' + (w.shots || 0) + '/' + (state.chambers || 6)
+        : 'รอดคนสุดท้าย ' + '♥'.repeat(Math.max(0, w.lives || 0)) });
     }
     (state.players || []).forEach(function(p) {
       if (p.playerId !== winnerId && p.alive && !outs.some(function(o) { return o.playerId === p.playerId; })) {
@@ -769,14 +840,16 @@ $(function() {
         return id !== target && id !== 'JOKER';
       }).length;
       const room = Math.min(3, ((state.self && state.self.hand) || []).length) - n;
+      const devilPicked = selectedIds.some(function(key) { return key.split(':')[0] === 'DEVIL'; });
       claim = n
-        ? (state.lastPlay ? 'ลงต่อ = เชื่อ ' + challengeName + ' · ' : '') +
+        ? (devilPicked ? '😈 ไพ่ปีศาจ — ใครท้า ทุกคนยกเว้นคุณรับโทษ · ' : '') +
+          (state.lastPlay ? 'ลงต่อ = เชื่อ ' + challengeName + ' · ' : '') +
           'บอกว่า ' + n + ' ใบนี้เป็น <b>' + rank + '</b> · ' +
           (fakes ? '<span class="is-lie">' + (fakes === n ? 'โกหกทั้งหมด' : 'โกหก ' + fakes + ' ใบ') + '</span>' : '<span class="is-truth">ของจริง ✓</span>') +
-          (room > 0 && !state.lastPlay ? ' · แตะเพิ่มได้อีก ' + room : '')
+          (room > 0 && !state.lastPlay && !devilPicked ? ' · แตะเพิ่มได้อีก ' + room : '')
         : 'แตะเลือกไพ่ 1–3 ใบ';
     } else if (actions.canChallenge) {
-      claim = 'มือคุณว่าง — ต้องหงายไพ่ของ ' + challengeName;
+      claim = 'เหลือคุณคนเดียวที่มีไพ่ — ต้องหงายไพ่ของ ' + challengeName + ' · แพ้ = ' + penaltyWord(state);
     }
     $('#actionArea').html(
       '<div class="lr-claim">' + claim + '</div>' +
@@ -802,7 +875,7 @@ $(function() {
     const actor = (state.players || []).find(function(p) { return p.isCurrent; });
     const emptyActor = actor && Number(actor.handCount || 0) === 0;
     const afk = actor && actor.afk ? 'ตาที่แล้วหมดเวลา เลยได้เวลาสั้นลง · ' : '';
-    if (state.lastPlay && emptyActor) return afk + 'หมดเวลา = ท้าให้อัตโนมัติ';
+    if (state.lastPlay && (emptyActor || state.forcedCall)) return afk + 'หมดเวลา = ท้าให้อัตโนมัติ';
     return afk + 'หมดเวลา = ลงใบแรกให้อัตโนมัติ';
   }
 
@@ -873,7 +946,7 @@ $(function() {
     }
   }
 
-  function markHit(targetId) {
+  function markHit(targetId, label) {
     if (reduceMotion || !targetId) return;
     const node = targetId === playerId
       ? document.getElementById('myLives')
@@ -885,7 +958,7 @@ $(function() {
     if (node.classList.contains('lr-seat')) {
       const badge = document.createElement('span');
       badge.className = 'lr-hit-badge';
-      badge.textContent = '−1♥';
+      badge.textContent = label || '−1♥';
       node.appendChild(badge);
       setTimeout(function() { badge.remove(); }, 2300);
     }
@@ -909,13 +982,45 @@ $(function() {
       if (event.kind === 'reveal') {
         const actor = nameOf(state, event.actorId);
         const challenger = nameOf(state, event.challengerId);
-        const text = event.truthful
-          ? '✅ ของจริง! ' + challenger + ' ท้าพลาด −1♥'
-          : '🚨 จับได้! ' + actor + ' โกหก −1♥';
-        queueBanner(text, event.truthful ? 'truth' : 'lie', 2200);
-        pingHoldUntil = Date.now() + 2300;
-        markHit(event.loserId);
-        if (event.loserId === playerId && navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }
+        const gun = event.punishment === 'revolver';
+        const results = event.results || [{ playerId: event.loserId, died: event.loserLives === 0, lives: event.loserLives }];
+        const devil = event.outcome === 'devil';
+        const text = devil
+          ? '😈 ไพ่ปีศาจ! ทุกคนยกเว้น ' + actor + ' รับโทษ'
+          : (event.truthful ? '✅ ของจริง! ' + challenger + ' ท้าพลาด' : '🚨 จับได้! ' + actor + ' โกหก') + (gun ? '' : ' −1♥');
+        queueBanner(text, devil ? 'devil' : (event.truthful ? 'truth' : 'lie'), 2000);
+        let hold = 2100;
+        if (gun) {
+          // ลั่นไก: ลุ้น 1 จังหวะ แล้วค่อยบอก แชะ/ปัง — หลายคน (ปีศาจ) รวมเป็นป้ายเดียว
+          const who = results.map(function(r) { return nameOf(state, r.playerId); });
+          queueBanner('🔫 ' + (who.length > 1 ? who.join(', ') : who[0] || '') + ' ลั่นไก…', 'gun', 1100);
+          const dead = results.filter(function(r) { return r.died; });
+          const outText = results.length > 1
+            ? results.map(function(r) { return nameOf(state, r.playerId) + (r.died ? ' 💥' : ' แชะ'); }).join(' · ')
+            : (dead.length ? '💥 ปัง! ' + who[0] + ' ตกรอบ' : '😮‍💨 แชะ… ' + who[0] + ' รอด! (' + (results[0] && results[0].shots) + '/' + (state.chambers || 6) + ')');
+          queueBanner(outText, dead.length ? 'bang' : 'click', 1700);
+          hold += 2900;
+          setTimeout(function() {
+            results.forEach(function(r) { markHit(r.playerId, r.died ? '💥' : 'แชะ'); });
+            if (dead.length && !reduceMotion) {
+              let flash = document.getElementById('lrFlash');
+              if (!flash) {
+                flash = document.createElement('div');
+                flash.id = 'lrFlash';
+                flash.className = 'lr-flash';
+                flash.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(flash);
+              }
+              flash.classList.remove('is-on'); void flash.offsetWidth; flash.classList.add('is-on');
+            }
+            const mine = results.find(function(r) { return r.playerId === playerId; });
+            if (mine && navigator.vibrate) { try { navigator.vibrate(mine.died ? [220] : [40]); } catch (e) {} }
+          }, initial ? 0 : 3100);
+        } else {
+          results.forEach(function(r) { markHit(r.playerId); });
+          if (results.some(function(r) { return r.playerId === playerId; }) && navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }
+        }
+        pingHoldUntil = Date.now() + hold;
         // หงายไพ่แบบพลิก
         if (!reduceMotion) {
           const flips = $('#tablePile .lr-playing').removeClass('is-face');
@@ -924,7 +1029,7 @@ $(function() {
         }
       }
       if (event.kind === 'round' && event.targetRank) {
-        queueBanner('รอบ ' + (event.roundNumber || '') + ' · ต้องบอกว่าเป็น' + event.targetRank.thaiName, '', 1500);
+        queueBanner('รอบ ' + (event.roundNumber || '') + ' · ไพ่บนโต๊ะ: ' + event.targetRank.thaiName + (event.devil ? ' · 😈 มีปีศาจ' : ''), '', 1500);
         $('#targetRank .lr-rank-chip').addClass('is-pulse');
       }
       if (event.kind === 'play') {
@@ -939,6 +1044,12 @@ $(function() {
     });
   }
 
+  function renderKicker(state) {
+    const node = document.querySelector('.lr-kicker');
+    if (!node || !state || !state.punishment) return;
+    node.textContent = '🃏 ไพ่โกหก · ' + (isRevolver(state) ? '🔫 รอดคนสุดท้ายชนะ' : '♥ เหลือหัวใจคนสุดท้ายชนะ') + (state.devilMode ? ' · 😈' : '');
+  }
+
   function renderState(state, initial) {
     if (!state) return;
     if (pending && pendingTurn !== state.turnNumber) { pending = false; pendingTurn = null; }
@@ -948,6 +1059,7 @@ $(function() {
     $('#lrNowCopy').text(now.text);
     $('#lrNowBar').toggleClass('is-mine', !!now.mine);
     $('#lrDockStatus').text(now.short || now.text).toggleClass('is-mine', !!now.mine);
+    renderKicker(state);
     renderTarget(state);
     renderPile(state);
     renderOpponents(state);
@@ -1032,14 +1144,17 @@ $(function() {
     Swal.fire({
       title: '🃏 ไพ่โกหก เล่นยังไง',
       html: '<div style="text-align:left; line-height:1.55;">' +
-        '<p><strong>ชนะ = เหลือหัวใจคนสุดท้าย</strong> ไม่ใช่ทิ้งไพ่ให้หมดมือ</p>' +
-        '<p>เริ่มคนละ 5 ใบ หัวใจ 3 ดวง (♥♥♥) · หัวใจหมด = ตกรอบ</p>' +
-        '<p><strong>ถึงตาคุณ:</strong> แตะเลือก 1–3 ใบ แล้วกดลง ไพ่จะคว่ำ และระบบประกาศว่าเป็น “ไพ่รอบนี้” (การ์ดใบใหญ่ขวามือบนโต๊ะ) — จะโกหกก็ได้</p>' +
-        '<p><strong>คนถัดไปเท่านั้น</strong> ที่ท้าได้: กด <strong>โกหก!</strong> เพื่อหงายไพ่ หรือลงไพ่ต่อ (= เชื่อ)</p>' +
-        '<p>หงายแล้ว: มีใบไม่ตรง = คนลงเสียหัวใจ · ตรงหมด = คนท้าเสีย → แจกไพ่ใหม่ เริ่มรอบใหม่</p>' +
-        '<p>มือว่างยังอยู่ในเกม — ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว</p>' +
-        '<p>จับเวลา: ลงไพ่ 45 วิ / เชื่อหรือท้า 20 วิ หมดแล้วระบบลงใบแรกให้ (มือว่าง = ท้าให้) · ใครหมดเวลาแล้ว ตาต่อไปได้เวลาสั้นลง</p>' +
-        '<p>โจ๊กเกอร์ใช้แทนไพ่รอบนี้ได้ · แตะใบเดิมสองครั้งเร็ว ๆ = ลงใบนั้นทันที</p></div>',
+        '<p><strong>ชนะ = รอดคนสุดท้าย</strong> ไม่ใช่ทิ้งไพ่ให้หมดมือ</p>' +
+        '<p>ไพ่ A K Q อย่างละ 6 + โจ๊กเกอร์ 2 · ทุกรอบสับใหม่ แจกคนละ 5 ใบ แล้วสุ่ม “ไพ่บนโต๊ะ” (การ์ดใหญ่บนโต๊ะ)</p>' +
+        '<p><strong>ถึงตาคุณ:</strong> แตะเลือก 1–3 ใบ แล้วกดลง ไพ่คว่ำ = อ้างว่าเป็นไพ่บนโต๊ะ — จะโกหกก็ได้</p>' +
+        '<p><strong>คนถัดไปเท่านั้น</strong> ที่ท้าได้: กด <strong>โกหก!</strong> หงายไพ่ หรือลงต่อ (= เชื่อ)</p>' +
+        '<p>หงายแล้ว: มีใบไม่ตรงแม้ใบเดียว = คนลงแพ้ · ตรงหมด = คนท้าแพ้ → รอบใหม่</p>' +
+        (isRevolver(currentState)
+          ? '<p><strong>คนแพ้ลั่นไกปืนตัวเอง</strong> 🔫 ปืน 6 ช่อง กระสุน 1 นัด ยิงแล้วช่องเลื่อน — โอกาสโดนเพิ่มทุกนัด (1/6 → 1/5 → … ) ปัง = ตกรอบ</p>'
+          : '<p><strong>คนแพ้เสียหัวใจ 1 ดวง</strong> เริ่ม 3 ดวง (♥♥♥) หมด = ตกรอบ</p>') +
+        '<p>ไพ่หมดมือ = ข้ามตาจนจบรอบ · เหลือคนเดียวที่มีไพ่ = ต้องกดโกหก!</p>' +
+        (currentState && currentState.devilMode ? '<p>😈 <strong>ไพ่ปีศาจ</strong> (เหลือ 3 คนขึ้นไป): ต้องลงใบเดียว ถ้าโดนท้า ทุกคนยกเว้นคนลงรับโทษ</p>' : '') +
+        '<p>ตาละ 30 วิ หมดแล้วระบบลงใบแรกให้ (ต้องท้า = ท้าให้) · โจ๊กเกอร์ = ของจริงเสมอ · แตะใบเดิมสองครั้งเร็ว ๆ = ลงใบนั้นทันที</p></div>',
       background: '#102016', color: '#fff', confirmButtonColor: '#ef4444', confirmButtonText: 'เข้าใจแล้ว'
     });
   });

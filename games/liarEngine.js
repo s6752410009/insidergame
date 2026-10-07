@@ -670,7 +670,9 @@ function botDelay(room, now = Date.now()) {
     if (!botNeedsTurn(room)) return null;
     const state = room.gameState;
     const afterReveal = !state.lastPlay && !!state.lastReveal;
-    const think = (afterReveal ? BOT_AFTER_REVEAL_MS : BOT_THINK_MS) + ((Number(state.turnNumber) || 0) % 3) * 250;
+    // โหมดปืน: หน้าจอเล่น "ลั่นไก… แชะ/ปัง" ต่อจากผลหงายไพ่ — บอทรอให้จบก่อน
+    const revolverPause = afterReveal && state.punishment === 'revolver' ? Math.round(BOT_AFTER_REVEAL_MS * 0.6) : 0;
+    const think = (afterReveal ? BOT_AFTER_REVEAL_MS + revolverPause : BOT_THINK_MS) + ((Number(state.turnNumber) || 0) % 3) * 250;
     const due = (Number(state.turnStartedAt) || now) + think;
     return Math.max(150, due - now);
 }

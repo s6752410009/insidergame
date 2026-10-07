@@ -36,5 +36,30 @@ Sources:
   The engine now keeps the seat as an eliminated ghost (in its saved seat order), marks it `left`, hands the turn on,
   re-checks the forced call and the winner, and drops the rejoin snapshot so leaving counts as out.
 - The room creation form showed a "time per turn" slider that the game never read. It is hidden for this game now.
+
+## Settings
+
+| Setting | Values | Default | Where |
+|---|---|---|---|
+| `liarPunishment` | `revolver`, `lives` | `revolver` | create form (`#liarPunishment`), lobby (`#lrLobbyPunish`) |
+| `liarDevil` | `true`, `false` | `false` | create form (`#liarDevil`), lobby (`#lrLobbyDevil`) |
+
+Both can be changed only while the room is in the lobby. The game reads them at start.
+
+## UI
+
+- Every seat shows its own revolver: 6 pips (fired ones filled) and the odds of the next pull (1/6 … 1/1).
+- On a LIAR call: verdict banner, then "🔫 … ลั่นไก…", then "แชะ… รอด" or "💥 ปัง! ตกรอบ" with a short red flash.
+  A Devil reveal shows everyone's pull in one banner.
+- A forced call hides the play button and says why. Empty-handed players see that they are skipped.
+- The table card shows a "😈 มีปีศาจ" tag in Devil rounds. The Devil card must be played alone (enforced in the hand).
+
+## Tests
+
+- `npm run smoke:liar:rules`: engine use cases for every rule above (deck, table card, revolver odds and persistence,
+  lives mode, empty-hand skip, forced call, next-round starter, Devil card, leaving mid-game, 30 s timer, full AFK/bot games).
+- `npm run browser:liar:rules`: settings over sockets and lobby UI, board at 390×844 (revolver, Devil tag, no horizontal scroll),
+  the shot banners, the create form, and a real-server mid-game leave.
+- Existing: `smoke:liar` (now in lives mode), `smoke:liar:play`, `smoke:coup-liar:regressions`, `smoke:boards:console`.
 </content>
 </invoke>

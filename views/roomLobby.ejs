@@ -2191,13 +2191,23 @@
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = buildAvalonLobbyHtml(payload);
         } else if (resolvedMode === 'liar') {
+          const lrLives = settings && settings.liarPunishment === 'lives';
+          const lrDevil = !!(settings && settings.liarDevil === true);
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
             '<div class="lobby-spotlight-pill" style="background:rgba(185,28,28,0.3); color:#fecaca;">🃏 ไพ่โกหก · 3–8 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
-            'เหลือหัวใจคนสุดท้ายชนะ · ลงไพ่คว่ำแล้วบอกว่าเป็นไพ่รอบนี้ คนถัดไปท้าหรือลงต่อ',
+            'รอดคนสุดท้ายชนะ · ลงไพ่คว่ำ อ้างว่าเป็นไพ่บนโต๊ะ คนถัดไปท้าหรือลงต่อ',
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกา',
-            '</p>'
+            '</p>',
+            '<div class="cc-lobby-opts">',
+            '<select id="lrLobbyPunish" aria-label="คนแพ้ต้องทำอะไร"' + (isAdmin ? '' : ' disabled') + '>',
+            '<option value="revolver"' + (lrLives ? '' : ' selected') + '>🔫 แพ้ = ลั่นไกปืน (เกมจริง)</option>',
+            '<option value="lives"' + (lrLives ? ' selected' : '') + '>♥ แพ้ = เสียหัวใจ (3 ดวง)</option>',
+            '</select>',
+            '<button type="button" class="uc-mw-toggle" id="lrLobbyDevil" aria-pressed="' + (lrDevil ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>' + (lrDevil ? '✓ ' : '') + '😈 ไพ่ปีศาจ: ' + (lrDevil ? 'มี' : 'ไม่มี') + '</button>',
+            '</div>',
+            '<p style="margin:6px 0 0; color:#94a3b8; font-size:0.8em;">' + (lrLives ? 'แพ้ = −1♥ หมด 3 ดวงตกรอบ' : 'ปืน 6 ช่อง กระสุน 1 นัด ยิงแล้วช่องเลื่อน โอกาสโดนเพิ่มทุกนัด') + (lrDevil ? ' · ปีศาจลงใบเดียว โดนท้า = ทุกคนยกเว้นคนลงรับโทษ' : '') + ' · ตาละ 30 วิ</p>'
           ].join('');
         } else if (resolvedMode === 'poker5' || resolvedMode === 'poker4') {
           const isFour = resolvedMode === 'poker4';
@@ -2531,13 +2541,14 @@
       Swal.fire({
         title: '🃏 ไพ่โกหก เล่นยังไง',
         html: '<div style="text-align:left; line-height:1.6;">' +
-          '<p><strong>ชนะ = เหลือหัวใจคนสุดท้าย</strong> ไม่ใช่ทิ้งไพ่ให้หมดมือ · เริ่มคนละ 5 ใบ หัวใจ 3</p>' +
-          '<p>รอบนี้สุ่มชนิดไพ่ เช่น คิง ลง 1–3 ใบคว่ำ แล้วบอกว่าเป็นคิง — โกหกได้</p>' +
+          '<p><strong>ชนะ = รอดคนสุดท้าย</strong> ไม่ใช่ทิ้งไพ่ให้หมดมือ</p>' +
+          '<p>ไพ่ A K Q อย่างละ 6 + โจ๊กเกอร์ 2 · ทุกรอบแจกคนละ 5 ใบ แล้วสุ่ม<strong>ไพ่บนโต๊ะ</strong> เช่น คิง</p>' +
+          '<p>ถึงตาลง 1–3 ใบคว่ำ อ้างว่าเป็นคิง — โกหกได้ · โจ๊กเกอร์ = ของจริง</p>' +
           '<p>คนถัดไปกด <strong>โกหก!</strong> (หงายไพ่) หรือลงต่อ</p>' +
-          '<p>ท้าแล้ว: ของปลอม = คนลงเสียหัวใจ · ของจริง = คนท้าเสีย → รอบใหม่</p>' +
-          '<p>มือว่างยังอยู่ในเกม ลงไพ่ไม่ได้ ถ้ามีไพ่บนโต๊ะต้องท้าอย่างเดียว · ทุกคนหมดมือ = แจกใหม่</p>' +
-          '<p>หมดเวลาลงไพ่ = ระบบลงใบแรกให้ · มือว่าง = ท้าให้</p>' +
-          '<p>หัวใจหมด = ตกรอบ · เล่น 3–8 คน</p></div>',
+          '<p>หงาย: มีใบไม่ตรง = คนลงแพ้ · ตรงหมด = คนท้าแพ้ → รอบใหม่</p>' +
+          '<p>🔫 <strong>คนแพ้ลั่นไกปืนตัวเอง</strong> 6 ช่อง กระสุน 1 นัด โอกาสโดนเพิ่มทุกนัด · ปัง = ตกรอบ (หัวห้องเปลี่ยนเป็นหัวใจ 3 ดวงได้)</p>' +
+          '<p>ไพ่หมดมือ = ข้ามตา · เหลือคนเดียวที่มีไพ่ = ต้องท้า</p>' +
+          '<p>😈 ไพ่ปีศาจ (ถ้าเปิด): ลงใบเดียว โดนท้า = ทุกคนยกเว้นคนลงรับโทษ · เล่น 3–8 คน ตาละ 30 วิ</p></div>',
         background: '#1c1010',
         color: '#fff',
         confirmButtonColor: '#ef4444',
@@ -3460,6 +3471,11 @@
     $(document).on('click', '#ccLobbyStack', function() {
       this.disabled = true;
       updateColorCardsSetting({ colorcardsStacking: this.getAttribute('aria-pressed') !== 'true' });
+    });
+    $(document).on('change', '#lrLobbyPunish', function() { updateColorCardsSetting({ liarPunishment: this.value === 'lives' ? 'lives' : 'revolver' }); });
+    $(document).on('click', '#lrLobbyDevil', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ liarDevil: this.getAttribute('aria-pressed') !== 'true' });
     });
 
     $(document).on('change', '#stLobbyMinutes', function() {
