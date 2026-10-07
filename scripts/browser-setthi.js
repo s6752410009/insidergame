@@ -497,12 +497,15 @@ async function main() {
         await typeChat(host, '/m');
         await host.page.waitForSelector('#stDebug:not([hidden])', { timeout: 8000 });
         await host.page.click('#closeChat').catch(() => {});
+        await host.page.click('#stDebug details:has(#stDbgMint) > summary');
         await host.page.click('#stDbgMint');
-        await phones[1].page.waitForSelector('#stDebugBadge:not([hidden])', { timeout: 8000 });
+        await phones[1].page.waitForSelector('#stStrip .st-chip[data-id="' + host.id + '"] .st-dbg-mark', { timeout: 8000 });
+        assert(!(await phones[1].page.locator('#chatMessages').innerText().catch(() => '')).includes('เมนูทดสอบ'), 'ไม่มีข้อความ /m ในแชท');
+        assert(!(await phones[1].page.evaluate(() => [...document.querySelectorAll('.st-toast')].some(t => /🛠|เมนูทดสอบ|เสกเงิน/.test(t.textContent)))), 'ไม่มีป้ายแจ้งเตือน /m บนเครื่องอื่น');
         await shot(host, 'debug-panel');
         await shot(phones[1], 'debug-badge-other');
         await host.page.click('#stDebugToggle');
-        console.log('15. /m: หัวห้องเปิดเมนูทดสอบ · คนอื่นโดนปฏิเสธ · ทุกคนเห็นป้ายโหมดทดสอบ ✓');
+        console.log('15. /m: หัวห้องเปิดเมนูทดสอบ · คนอื่นโดนปฏิเสธ · ไม่สแปมแชท · ป้าย 🛠 เล็กที่แถบหัวห้อง ✓');
 
         // ---------- ขนาดจอหลายแบบ ----------
         const sizes = [[1280, 900], [1440, 800], [1920, 1080], [2000, 700], [390, 844], [844, 390]];

@@ -10,7 +10,6 @@
     <div class="st-brand">
       <span class="st-logo">เศรษฐี</span>
     </div>
-    <span class="st-debug-badge" id="stDebugBadge" hidden title="โหมดทดสอบ (/m) — เกมนี้ไม่นับสถิติ">🛠<span class="st-debug-txt"> โหมดทดสอบ</span></span>
     <div class="st-clock" id="stClock" role="timer" aria-live="off" title="เวลาเกม">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9.5 2.5h5"/></svg>
       <span class="st-clock-txt" id="stClockTxt">--:--</span>
@@ -52,17 +51,94 @@
 
 <div id="stDebug" class="st-debug" hidden role="dialog" aria-label="เมนูทดสอบ /m">
   <div class="st-debug-head" id="stDebugHead">
-    <span class="st-debug-title">🛠 /m ทดสอบ</span>
-    <button type="button" id="stDebugToggle" class="st-debug-toggle" aria-label="ย่อ">✕</button>
+    <span class="st-debug-title">🛠 /m</span>
+    <span class="st-dbg-headtgt" id="stDbgHeadTarget" aria-live="polite"></span>
+    <span class="st-debug-tools">
+      <button type="button" id="stDebugToggle" class="st-debug-toggle" aria-label="ย่อ">–</button>
+      <button type="button" id="stDebugClose" class="st-debug-toggle" aria-label="ปิดเมนูทดสอบ">✕</button>
+    </span>
   </div>
   <div class="st-debug-body">
-    <label class="st-debug-row"><input type="checkbox" id="stDbgSix"> ทอยได้ 6+6 ทุกครั้ง</label>
-    <label class="st-debug-row"><input type="checkbox" id="stDbgDoubles"> ได้ดับเบิลทุกครั้ง</label>
-    <div class="st-debug-row">
-      <input type="number" id="stDbgAmt" value="10000" min="1" max="1000000" step="1000" inputmode="numeric" aria-label="จำนวนเงินที่จะเสก">
-      <button type="button" id="stDbgMint">เสกเงิน</button>
+    <div class="st-dbg-target">
+      <span class="st-dbg-lbl">🎯 ทำกับ:</span><b id="stDbgTargetName">—</b>
+      <div id="stDbgTargets" class="st-dbg-targets" role="radiogroup" aria-label="เลือกผู้เล่นเป้าหมาย"></div>
     </div>
-    <div class="st-debug-note">ทุกคนเห็นว่าใช้ · เกมนี้ไม่นับสถิติ</div>
+    <div class="st-dbg-status" id="stDbgStatus" role="status" aria-live="polite"></div>
+
+    <details class="st-dbg-sec" open><summary>🎲 เต๋า</summary>
+      <label class="st-debug-row"><input type="checkbox" id="stDbgSix"> 6+6 ทุกครั้ง <small>(ตัวเอง)</small></label>
+      <label class="st-debug-row"><input type="checkbox" id="stDbgDoubles"> ดับเบิลทุกครั้ง <small>(ตัวเอง)</small></label>
+      <div class="st-debug-row">ลูกถัดไป
+        <select id="stDbgA" aria-label="เต๋าลูกที่ 1"></select>+<select id="stDbgB" aria-label="เต๋าลูกที่ 2"></select>
+        <button type="button" data-dbg="nextDice">ตั้ง</button>
+      </div>
+    </details>
+
+    <details class="st-dbg-sec"><summary>📍 ช่อง · ย้าย · ที่ดิน</summary>
+      <div class="st-debug-row"><button type="button" id="stDbgPickSq" class="is-ghost">👆 แตะช่องบนกระดาน</button><b id="stDbgSqName" class="st-dbg-sq">ยังไม่เลือก</b></div>
+      <div class="st-dbg-grid">
+        <button type="button" data-dbg="movePlace">📍 วางเฉย ๆ</button>
+        <button type="button" data-dbg="moveLand">🚶 เดินไปตก</button>
+      </div>
+      <div class="st-debug-row"><select id="stDbgLevel" aria-label="ขั้นสิ่งปลูกสร้าง"></select></div>
+      <div class="st-dbg-grid">
+        <button type="button" data-dbg="propGive">🏠 ให้คนนี้</button>
+        <button type="button" data-dbg="propBank">🏦 คืนธนาคาร</button>
+      </div>
+      <div class="st-debug-row">🎉 <select id="stDbgMult" aria-label="ตัวคูณงานวัด"><option value="2">×2</option><option value="4">×4</option><option value="8">×8</option><option value="16">×16</option></select>
+        <button type="button" data-dbg="festival">จัดงานวัดช่องนี้</button></div>
+    </details>
+
+    <details class="st-dbg-sec"><summary>💰 เงิน</summary>
+      <div class="st-debug-row">
+        <input type="number" id="stDbgAmt" value="10000" min="0" max="1000000" step="1000" inputmode="numeric" aria-label="จำนวนเงิน">
+        <button type="button" data-dbg="addCash" id="stDbgMint">+ เสก</button>
+        <button type="button" data-dbg="setCash">= ตั้ง</button>
+      </div>
+    </details>
+
+    <details class="st-dbg-sec"><summary>🃏 การ์ด · 🏝️ เกาะ</summary>
+      <div class="st-debug-row"><select id="stDbgCard" aria-label="เลือกการ์ด"></select></div>
+      <div class="st-dbg-grid">
+        <button type="button" data-dbg="cardNow">เปิดเลย</button>
+        <button type="button" data-dbg="cardNext">ใบถัดไป</button>
+        <button type="button" data-dbg="islandOn">🏝️ ส่งเกาะ</button>
+        <button type="button" data-dbg="islandOff">⛵ ปล่อยจากเกาะ</button>
+      </div>
+    </details>
+
+    <details class="st-dbg-sec"><summary>🤖 บอท</summary>
+      <div class="st-dbg-grid"><button type="button" data-dbg="botNow">🤖 เล่นตานี้แทนเลย</button></div>
+      <label class="st-debug-row"><input type="checkbox" id="stDbgAuto"> ออโต้: บอทเล่นแทนฉัน</label>
+    </details>
+
+    <details class="st-dbg-sec"><summary>👑 ผูกขาด · ล้ม · จบ</summary>
+      <div class="st-dbg-grid">
+        <button type="button" data-dbg="nearLine">เกือบผูกขาดแถว</button>
+        <button type="button" data-dbg="nearColor">เกือบ 3 สี</button>
+        <button type="button" data-dbg="nearTourist">เกือบท่องเที่ยว</button>
+        <button type="button" data-dbg="bankrupt" class="is-danger">💥 ล้มละลาย</button>
+        <button type="button" data-dbg="end" class="is-danger">🏁 จบเกมเลย</button>
+      </div>
+    </details>
+
+    <details class="st-dbg-sec"><summary>⏰ เวลาเกม</summary>
+      <div class="st-dbg-grid is-4">
+        <button type="button" data-dbg="clock" data-min="-5">−5 น.</button>
+        <button type="button" data-dbg="clock" data-min="-1">−1 น.</button>
+        <button type="button" data-dbg="clock" data-min="1">+1 น.</button>
+        <button type="button" data-dbg="clock" data-min="5">+5 น.</button>
+      </div>
+    </details>
+    <details class="st-dbg-sec" id="stDbgGoldSec" hidden><summary>🪙 เหรียญทอง (แอดมินเว็บ)</summary>
+      <div class="st-debug-row">
+        <input type="number" id="stDbgGoldAmt" value="5000" min="1" max="100000" step="500" inputmode="numeric" aria-label="จำนวนเหรียญทอง">
+        <button type="button" data-dbg="goldGrant">🪙 เสกเหรียญทอง</button>
+      </div>
+      <div class="st-dbg-grid"><button type="button" data-dbg="goldReset" class="is-danger">↺ ล้างสกิล (คืนเหรียญ)</button></div>
+      <div class="st-debug-note">ของคุณเอง (เก็บถาวร) · สกิลที่ติดตั้งมีผลเกมหน้า</div>
+    </details>
+    <div class="st-debug-note">ไม่แจ้งในแชท · เกมนี้ไม่นับสถิติ</div>
   </div>
 </div>
 

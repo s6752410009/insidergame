@@ -709,6 +709,8 @@ function createRoom(roomData, creatorPlayerId) {
             colorcardsStacking: gameMode === 'colorcards' && normalizedRoomData.colorcardsStacking === true,
             colorcardsMulti: gameMode === 'colorcards' ? normalizedRoomData.colorcardsMulti !== false : undefined,
             setthiMinutes: gameMode === 'setthi' ? gameEngine.sanitizeMinutes(normalizedRoomData.setthiMinutes) : undefined,
+            // สกิล 🪙 ในห้องนี้ (ค่าเริ่ม = เปิด · ส่ง false มาเท่านั้นถึงปิด)
+            setthiSkills: gameMode === 'setthi' ? normalizedRoomData.setthiSkills !== false : undefined,
             coupActionSeconds: gameMode === 'coup' ? gameEngine.sanitizeActionSeconds(normalizedRoomData.coupActionSeconds) : undefined,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
@@ -1185,6 +1187,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (room.settings.gameMode === 'setthi' && !isRoomGameInProgress(room) && updates.setthiMinutes !== undefined) {
         room.settings.setthiMinutes = getGameEngine('setthi').sanitizeMinutes(updates.setthiMinutes);
+    }
+    if (room.settings.gameMode === 'setthi' && !isRoomGameInProgress(room) && typeof updates.setthiSkills === 'boolean') {
+        room.settings.setthiSkills = updates.setthiSkills;
     }
 
     if (updates.locked !== undefined) {

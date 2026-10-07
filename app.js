@@ -53,6 +53,7 @@ const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
 const soloStats = require('./managers/soloStatsManager');
+const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
@@ -102,7 +103,7 @@ const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomMa
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer }));
+const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
 const spyfallReturnTimeouts = new Map();
 // Spyfall: เวลาให้อ่านเฉลยก่อนพากลับห้องรอ (เดิม 3 วิ อ่านไม่ทัน) + นับถอยหลังอีก 5 วิ
 const SPYFALL_RETURN_DELAY_MS = Number(process.env.SPYFALL_RETURN_DELAY_MS) || 20000;
@@ -4859,6 +4860,8 @@ app.use(function(req, res, next) {
                     const gameStatus = room.gameState.status;
                     
                     // ถ้าเกมกำลังดำเนินอยู่ (ไม่ใช่ '' หรือ 'waiting') ให้ดึงกลับ
+                    // เศรษฐีจบแล้ว (หน้าจบเกมกด 🏪 ร้าน) = ให้เข้าร้านได้ ไม่ดึงกลับ
+                    if (req.path === '/setthi/shop' && room.gameState.phase === 'finished') break;
                     if (gameStatus && gameStatus !== '' && gameStatus !== 'waiting' && gameStatus !== 'ended') {
                         // ดึงกลับไปหน้าเกม
                         return res.redirect('/game/' + room.roomId);
@@ -5243,6 +5246,102 @@ soloGames.listSoloGames().forEach(meta => {
     app.use(`/api/solo/${meta.id}`, router);
 });
 app.use('/api/solo/:gameId', soloApi);
+
+// ===== เศรษฐี 🏪 ร้านสกิล + 🪙 เหรียญทอง =====
+// ทุกยอดคิดที่ setthiGoldManager ฝั่งเซิร์ฟเวอร์ · client ส่งได้แค่ "สกิลไหน + เลเวลที่เห็น" / รายชื่อช่องติดตั้ง
+// identity มาจาก signed cookie/session เท่านั้น (ไม่รับ playerId จาก body/query)
+const setthiSkillDefs = require('./games/setthiSkills');
+
+function setthiShopBackHref(req) {
+    const roomId = String(req.query.room || '');
+    return /^[A-Za-z0-9_-]{1,64}$/.test(roomId) && roomManager.getRoom(roomId) ? `/room/${roomId}` : '/rooms';
+}
+
+app.get('/setthi/shop', function(req, res) {
+    const player = getRenderablePlayer(req.playerId);
+    const playerId = playerManager.isValidPlayerId(req.playerId) ? req.playerId : null;
+    res.set('Cache-Control', 'no-store');
+    res.render('setthiShop.ejs', {
+        player,
+        shop: {
+            profile: setthiGold.publicProfile(playerId),
+            skills: setthiSkillDefs.publicSkills(),
+            reward: setthiSkillDefs.REWARD,
+            loadoutSize: setthiSkillDefs.LOADOUT_SIZE,
+            maxLevel: setthiSkillDefs.MAX_LEVEL,
+            isSiteAdmin: isSiteAdminPlayer(playerId),
+            backHref: setthiShopBackHref(req)
+        }
+    });
+});
+
+/** คำขอแก้ยอดต้องเป็น JSON (ฟอร์มข้ามเว็บส่ง JSON ไม่ได้ถ้าไม่ผ่าน CORS) + มี identity ที่เซิร์ฟเวอร์ออกให้ */
+function setthiShopActor(req, res, kind) {
+    if (!req.is('application/json')) {
+        res.status(415).json({ success: false, error: 'ส่งข้อมูลผิดรูปแบบ' });
+        return null;
+    }
+    const playerId = getTrustedPlayerId(req);
+    if (!playerId || playerManager.isBotPlayerId(playerId)) {
+        res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
+        return null;
+    }
+    if (!soloRateLimit(`setthiShop:${kind}:${playerId}`, 40, 60 * 1000)) {
+        res.status(429).json({ success: false, error: 'กดถี่เกินไป รอสักครู่' });
+        return null;
+    }
+    return playerId;
+}
+
+function setthiShopReply(res, result) {
+    res.set('Cache-Control', 'no-store');
+    if (result && result.ok) return res.json({ success: true, ...result, ok: undefined });
+    const status = result && ['gold', 'stale', 'max', 'locked', 'dup', 'loadout'].includes(result.code) ? 409 : result && result.code === 'loading' ? 503 : 400;
+    return res.status(status).json({ success: false, code: result && result.code, error: (result && result.error) || 'ทำรายการไม่สำเร็จ', profile: result && result.profile });
+}
+
+app.get('/api/setthi/gold', function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    const playerId = getTrustedPlayerId(req);
+    res.json({ success: true, profile: setthiGold.publicProfile(playerId), skills: setthiSkillDefs.publicSkills() });
+});
+
+app.post('/api/setthi/shop/upgrade', async function(req, res) {
+    const playerId = setthiShopActor(req, res, 'upgrade');
+    if (!playerId) return;
+    try { await ensurePersistedPlayer(playerId); } catch (error) { return res.status(400).json({ success: false, error: 'ไม่พบผู้เล่น' }); }
+    const skill = typeof req.body?.skill === 'string' ? req.body.skill.slice(0, 32) : null;
+    const result = setthiGold.upgrade(playerId, skill, req.body?.expectLv);
+    if (result.ok) addServerLog(io, 'game', null, `🏪 ${resolveDisplayPlayerName(playerId, playerId)} อัปสกิลเศรษฐี ${skill} → Lv${result.level} (−${result.cost} 🪙)`, 'info', { gameMode: 'setthi', meta: { event: 'setthi_shop_upgrade', playerId, skill, level: result.level, cost: result.cost } });
+    return setthiShopReply(res, result);
+});
+
+app.post('/api/setthi/shop/loadout', async function(req, res) {
+    const playerId = setthiShopActor(req, res, 'loadout');
+    if (!playerId) return;
+    try { await ensurePersistedPlayer(playerId); } catch (error) { return res.status(400).json({ success: false, error: 'ไม่พบผู้เล่น' }); }
+    return setthiShopReply(res, setthiGold.setLoadout(playerId, req.body?.loadout));
+});
+
+// เทส: เสกเหรียญ / ล้างสกิล — แอดมินเว็บเท่านั้น (ข้อมูลถาวร ไม่ใช่เงินในเกม) · ลงบันทึกแอดมินทุกครั้ง
+function setthiGoldDebug(playerId, action, amount) {
+    if (!isSiteAdminPlayer(playerId)) return { ok: false, code: 'forbidden', error: 'เฉพาะแอดมินเว็บ' };
+    const result = action === 'reset' ? setthiGold.resetSkills(playerId, playerId) : action === 'grant' ? setthiGold.debugGrant(playerId, Number(amount), playerId) : { ok: false, code: 'action', error: 'ไม่รู้จักคำสั่ง' };
+    if (result.ok) {
+        const note = action === 'reset' ? `ล้างสกิลเศรษฐี (คืน ${result.refund} 🪙)` : `เสกเหรียญทอง +${result.granted} 🪙`;
+        addServerLog(io, 'admin', null, `${resolveDisplayPlayerName(playerId, playerId)} ${note}`, 'warning', { gameMode: 'setthi', meta: { event: 'setthi_gold_debug', action, playerId } });
+    }
+    return result;
+}
+
+app.post('/api/setthi/shop/debug', function(req, res) {
+    const playerId = setthiShopActor(req, res, 'debug');
+    if (!playerId) return;
+    const result = setthiGoldDebug(playerId, String(req.body?.action || ''), req.body?.amount);
+    if (!result.ok && result.code === 'forbidden') return res.status(403).json({ success: false, error: result.error });
+    return setthiShopReply(res, result);
+});
+// ===== END เศรษฐี ร้าน =====
 
 app.get('/how-to-play', function(req, res) {
     res.render('howToPlay.ejs', {
@@ -9135,6 +9234,9 @@ io.sockets.on('connection', function(socket) {
             console.error('[setthi] cancel hold on disconnect failed:', error.message);
         }
     });
+    safeOn(socket, 'setthi_useEscape', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.useEscape(room, playerId, setthiContext(data)));
+    });
     safeOn(socket, 'setthi_payIsland', function(data, callback) {
         handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.payIsland(room, playerId, setthiContext(data)));
     });
@@ -9165,15 +9267,19 @@ io.sockets.on('connection', function(socket) {
     safeOn(socket, 'setthi_end', function(data, callback) {
         handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endGame(room, playerId));
     });
-    // เมนูทดสอบ /m: แอดมินเว็บหรือหัวห้อง · มีผลกับคนที่ขอคนเดียว · ทุกคนเห็นโน้ต · เกมนี้ไม่บันทึกสถิติ
+    // เมนูทดสอบ /m: แอดมินเว็บหรือหัวห้อง · เกมนี้ไม่บันทึกสถิติ
+    // ไม่ส่งข้อความเข้าแชทห้อง (เจ้าของสั่ง "ไม่ต้องแจ้งเตือนตรงนี้") — ลงแค่บันทึกแอดมิน + ป้าย 🛠 เล็ก ๆ ที่แถบคนใช้
     function handleSetthiDebug(socket, callback, label, run) {
-        handleSetthiCommand(socket, callback, (room, playerId) => {
+        let note = '';
+        const done = typeof callback === 'function' ? callback : function() {};
+        // ack กลับไปที่คนกดคนเดียว พร้อมข้อความยืนยัน (แสดงในเมนูของคนนั้นเท่านั้น)
+        const reply = res => done(res && res.success ? { ...res, note } : res);
+        handleSetthiCommand(socket, reply, (room, playerId) => {
             if (!setthiRuntime.canDebug(room, playerId)) throw new Error('/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
-            const note = run(room, playerId);
+            note = run(room, playerId) || '';
             if (!note) return;
             const requester = playerManager.getPlayer(playerId);
             const name = requester?.playerName || playerId;
-            sendChatMessageToRoom(io, room.roomId, 'System', `🛠 ${name} ใช้เมนูทดสอบ: ${note}`, '#f39c12');
             addServerLog(io, 'admin', room.roomId, `${name} ${note} (/m เศรษฐี)`, 'warning', { gameMode: 'setthi', meta: { event: 'setthi_debug_' + label, playerId } });
         });
     }
@@ -9198,6 +9304,28 @@ io.sockets.on('connection', function(socket) {
             return `เสกเงิน +฿${amount.toLocaleString('en-US')}`;
         });
     });
+    // เมนูทดสอบแบบเต็ม: { action, target?, square?, level?, amount?, a?, b?, land?, cardId?, now?, mult?, on?, type?, minutes?, bank? }
+    // engine ตรวจค่าทุกตัวเอง · ส่งต่อเฉพาะฟิลด์ที่รู้จัก
+    safeOn(socket, 'setthi_debug', function(data, callback) {
+        const action = String(data?.action || '');
+        handleSetthiDebug(socket, callback, action || 'unknown', (room, playerId) => {
+            if (!setthiRuntime.engine.DEBUG_ACTIONS.includes(action)) throw new Error('ไม่รู้จักคำสั่งทดสอบ');
+            const args = {};
+            ['square', 'level', 'amount', 'a', 'b', 'mult', 'minutes'].forEach(k => { if (data && data[k] !== undefined) args[k] = Number(data[k]); });
+            ['land', 'now', 'on', 'bank', 'six', 'doubles'].forEach(k => { if (data && typeof data[k] === 'boolean') args[k] = data[k]; });
+            ['target', 'cardId', 'type'].forEach(k => { if (data && typeof data[k] === 'string') args[k] = data[k].slice(0, 80); });
+            return setthiRuntime.engine.debugAction(room, playerId, action, args);
+        });
+    });
+    // /m 🪙 เสกเหรียญทอง / ล้างสกิล — แอดมินเว็บเท่านั้น (หัวห้องไม่ได้: เหรียญเป็นข้อมูลถาวร) · ไม่แตะเกมที่เล่นอยู่
+    safeOn(socket, 'setthi_debug_gold', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const playerId = socket.playerId;
+        if (!playerId || !isSiteAdminPlayer(playerId)) { done({ success: false, error: 'เฉพาะแอดมินเว็บ' }); return; }
+        const result = setthiGoldDebug(playerId, String(data?.action || ''), data?.amount);
+        if (result.ok) done({ success: true, granted: result.granted, refund: result.refund, profile: result.profile });
+        else done({ success: false, error: result.error || 'ไม่สำเร็จ' });
+    });
     if (process.env.SETTHI_TEST_HOOKS === '1') {
         // เทสเท่านั้น — ไม่ลงทะเบียนเลยถ้าไม่ได้ตั้ง env
         safeOn(socket, 'setthi_testSetup', function(data, callback) {
@@ -9220,7 +9348,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || 4));
+            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || setthiRuntime.engine.maxPlayers));
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
@@ -11061,7 +11189,7 @@ async function flushAndExit(signal) {
     try {
         await Promise.race([
             // ห้องด้วย — เดิมเซฟแค่ตามรอบ sweep รีสตาร์ตกลางเกมแล้วกู้ state เก่า (เช่น Insider ยังอยู่ช่วงเปิดคำ)
-            Promise.all([walletManager.persistNow(), soloStats.persistNow(), roomManager.flushPersistRooms()]),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -11102,6 +11230,7 @@ async function startServer() {
         // ต้องโหลดหลัง connectDB เหมือนกัน — ไฟล์ wallets.json หายทุก deploy บน Render
         await walletManager.initWalletManager();
         await soloStats.initSoloStatsManager();
+        await setthiGold.initSetthiGoldManager();
 
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
@@ -11111,6 +11240,10 @@ async function startServer() {
         }
     } catch (e) {
         console.log('⚠️ Starting without MongoDB:', e.message);
+        // ขั้นก่อนหน้าพัง → ร้าน 🪙 ยังต้องโหลด (ไม่งั้นรางวัลค้างคิว อัปเกรดไม่ได้ทั้งวัน)
+        if (!setthiGold.isReady()) {
+            try { await setthiGold.initSetthiGoldManager(); } catch (error) { console.error('[setthiGold] init failed:', error.message); }
+        }
     } finally {
         resolveCoreManagersReady();
     }

@@ -6,6 +6,7 @@
  */
 
 const engine = require('./setthiEngine');
+const skills = require('./setthiSkills');
 
 const MODE = 'setthi';
 const STATE_EVENT = 'setthiState';
@@ -154,11 +155,15 @@ module.exports = function createSetthiRuntime(getDeps) {
         if (!isRoom(room)) return null;
         const payload = engine.buildClientState(room, playerId);
         payload.canDebug = canDebug(room, playerId);
+        // 🪙 เสกเหรียญทอง/ล้างสกิล = ข้อมูลถาวร → แอดมินเว็บเท่านั้น (หัวห้องไม่ได้)
+        const { isSiteAdminPlayer } = deps();
+        payload.canGoldDebug = typeof isSiteAdminPlayer === 'function' && !!isSiteAdminPlayer(playerId);
         return payload;
     }
 
     function boardDef() {
-        return engine.board.publicBoard();
+        // ตารางสกิล 🪙 (ข้อมูลคงที่) ไว้โชว์ไอคอน/ชื่อ/ป๊อปอัปตอนสกิลติด
+        return { ...engine.board.publicBoard(), skills: skills.publicSkills() };
     }
 
     // state ส่งทีละ socket (แต่ละคนได้ปุ่มของตัวเอง · ลำดับการ์ดอยู่ฝั่งเซิร์ฟเวอร์)
@@ -213,9 +218,35 @@ module.exports = function createSetthiRuntime(getDeps) {
                 reason: state.finishReason
             });
         }
+        awardGold(room);
         clearTimers(room.roomId);
         notifyGameEndAfterRecord(room);
         scheduleFinishedGameReturnToLobby(room);
+    }
+
+    /**
+     * 🪙 รางวัลจบเกม — คิดจาก state ฝั่งเซิร์ฟเวอร์ · ร้านกันซ้ำด้วย gameId (รีสตาร์ตแล้ว finalize ซ้ำก็ไม่ได้เพิ่ม)
+     * ผลเก็บใน state.goldRewards ให้หน้าจบเกมโชว์ "+N 🪙" (แต่ละคนเห็นของตัวเอง)
+     */
+    function awardGold(room) {
+        const state = room.gameState;
+        const { setthiGold } = deps();
+        if (!state || !setthiGold || !state.gameId || state.goldRewards) return;
+        try {
+            const rewards = skills.computeRewards(state);
+            const granted = setthiGold.awardGame(state.gameId, rewards);
+            const out = {};
+            Object.keys(rewards).forEach(id => {
+                const r = rewards[id];
+                const g = granted[id] || { granted: 0, capped: false, gold: null };
+                out[id] = { total: g.granted, requested: r.total, parts: r.parts, reason: r.reason, botGame: !!r.botGame, capped: !!g.capped, pending: !!g.pending, gold: g.gold };
+            });
+            state.goldRewards = out;
+            // เซฟทันที (ไม่รอหน่วง) — รางวัลกับเครื่องหมายกันซ้ำอยู่แถวเดียวกัน
+            if (typeof setthiGold.persistNow === 'function') setthiGold.persistNow();
+        } catch (error) {
+            console.error('[setthi] gold award failed:', error.message);
+        }
     }
 
     function emitRoomState(room) {
@@ -263,9 +294,17 @@ module.exports = function createSetthiRuntime(getDeps) {
         engine.handlePlayerLeft(room, playerId);
     }
 
+    /** เริ่มเกม: ล็อกสกิลที่ติดตั้งของแต่ละคนไว้ใน state (เปลี่ยนในร้านกลางเกมไม่มีผล) · บอทไม่มีสกิล */
     function startGame(room) {
         clearTimers(room.roomId);
-        engine.startGame(room);
+        const { setthiGold } = deps();
+        const loadouts = {};
+        if (setthiGold && room.settings && room.settings.setthiSkills !== false) {
+            (room.players || []).forEach(p => {
+                if (!engine.isBotId(p.playerId)) loadouts[p.playerId] = setthiGold.equippedSkills(p.playerId);
+            });
+        }
+        engine.startGame(room, undefined, { skills: loadouts });
     }
 
     function gameEndNotification(room) {
@@ -302,7 +341,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             state.festival = null;
             state.festivalMult = 1;
         }
-        if (spec.resetSeats) state.seats.forEach(seat => { seat.island = 0; seat.tourPending = false; seat.shield = null; });
+        if (spec.resetSeats) state.seats.forEach(seat => { seat.island = 0; seat.tourPending = false; seat.shield = null; seat.escape = false; seat.takeHalf = false; });
         Object.entries(spec.props || {}).forEach(([k, v]) => {
             const p = state.props[Number(k)];
             if (!p) return;
@@ -321,9 +360,13 @@ module.exports = function createSetthiRuntime(getDeps) {
             ['pos', 'laps', 'island'].forEach(f => { if (Number.isInteger(v[f])) seat[f] = v[f]; });
             if (v.tourPending !== undefined) seat.tourPending = !!v.tourPending;
             if (v.shield !== undefined) seat.shield = v.shield || null;
+            if (v.escape !== undefined) seat.escape = !!v.escape;
+            if (v.takeHalf !== undefined) seat.takeHalf = !!v.takeHalf;
         });
         if (spec.festival !== undefined) { state.festival = spec.festival; state.festivalMult = spec.festival === null ? 1 : ([2, 4, 8, 16].includes(Number(spec.festivalMult)) ? Number(spec.festivalMult) : 2); }
         if (Array.isArray(spec.dice)) state.testDice = spec.dice.map(d => [Number(d[0]), Number(d[1])]);
+        if (spec.nextCard !== undefined) state.nextCard = spec.nextCard || null;
+        if (spec.forceProcs !== undefined) state.testForceProcs = !!spec.forceProcs;
         if (Number.isInteger(spec.turnSeat) && state.seats[spec.turnSeat]) {
             const seat = state.seats[spec.turnSeat];
             state.turn = { playerId: seat.playerId, seq: (state.turnSeq || 0) + 1, doublesStreak: 0, canRollAgain: false, hasRolled: false, lastRoll: null, startedAt: Date.now() };

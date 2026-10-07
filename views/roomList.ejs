@@ -740,6 +740,12 @@
         font: inherit; font-weight: 600; cursor: pointer;
     }
     .ms-change:hover { background: rgba(255,255,255,0.09); }
+    .ms-shop {
+        grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px;
+        border-radius: 12px; background: linear-gradient(180deg, #f5c86b, #d9a441); color: #3a2a06 !important;
+        font-weight: 700; text-decoration: none !important;
+    }
+    .ms-shop:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
     .mode-quick-card:focus-visible, .gp-cat:focus-visible, .ms-change:focus-visible,
     .room-advanced-details > summary:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
     .room-advanced-details {
@@ -938,7 +944,7 @@ $(function() {
         { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'drawguess', label: 'วาดแล้วทาย', description: 'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'colorcards', label: 'ไพ่ทิ้งสี', description: 'ลงไพ่ให้สีหรือเลขตรงกัน ทิ้งให้หมดมือก่อนชนะ เหลือใบเดียวต้องกดบอก — 2–10 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 10 },
-        { id: 'setthi', label: 'เศรษฐี', description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–4 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 4 }
+        { id: 'setthi', label: 'เศรษฐี', description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–6 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 6 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1246,7 +1252,7 @@ $(function() {
                 badge: '💰 ทอย · ซื้อ · ผูกขาด',
                 title: 'เศรษฐี',
                 summary: 'ทอยเต๋าเดินรอบกระดานเมืองไทย ซื้อเมืองแล้วสร้างจนเป็นแลนด์มาร์ก ซื้อต่อที่ของเพื่อน 2 เท่า ผูกขาดชนะทันที — เงินในเกม ไม่มีมูลค่าจริง',
-                bullets: ['2-4 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้']
+                bullets: ['2-6 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้', '🏪 ร้านสกิล']
             }
         };
 
@@ -1377,6 +1383,7 @@ $(function() {
                     ${spotlight.summary ? `<p class="ms-summary">${escapeHtml(spotlight.summary)}</p>` : ''}
                 </div>
                 ${bullets ? `<ul class="ms-bullets">${bullets}</ul>` : ''}
+                ${mode?.id === 'setthi' ? '<a class="ms-shop" href="/setthi/shop" id="setthiShopLink">🏪 ร้านสกิล · 🪙 เหรียญทอง</a>' : ''}
                 <button type="button" class="ms-change" id="modeChangeBtn">↺ เปลี่ยนเกม</button>
             </div>
         `;
@@ -1904,7 +1911,11 @@ $(function() {
                             <option value="60">60 นาที</option>
                             <option value="0">ไม่จำกัด (เล่นจนเหลือคนสุดท้าย)</option>
                         </select>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–4 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง</div>
+                        <label style="display:flex; align-items:center; gap:10px; min-height:48px; margin-top:8px; cursor:pointer;">
+                            <input type="checkbox" id="setthiSkills" checked style="width:22px; height:22px;">
+                            <span>✨ เปิดสกิล 🪙 <small style="color:#aaa;">(ปิด = ทุกคนเล่นแบบไม่มีสกิล)</small></span>
+                        </label>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–6 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง · <a href="/setthi/shop" style="color:#f5c86b;">🏪 ร้านสกิล</a></div>
                     </div>
 
                     <div class="room-form-group" id="liarSettingsGroup" role="group" aria-labelledby="liarSettingsLabel" style="display:none;">
@@ -2415,6 +2426,7 @@ $(function() {
                     colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
                     colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
                     setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined,
+                    setthiSkills: gameMode === 'setthi' ? !!(document.getElementById('setthiSkills') || { checked: true }).checked : undefined,
                     coupActionSeconds: gameMode === 'coup' ? Number((document.getElementById('coupActionSeconds') || {}).value || 60) : undefined,
                     colorcardsMulti: gameMode === 'colorcards' ? !!(document.getElementById('colorcardsMulti') || { checked: true }).checked : undefined,
                     insiderGuesserVote: gameMode === 'insider' ? !!(document.getElementById('insiderGuesserVote') || { checked: true }).checked : undefined
@@ -2830,7 +2842,7 @@ $(function() {
     function buildSetthiGuideHtml() {
         return [
             '<div class="bm-guide-inner">',
-            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · หรือทำให้คนอื่นล้มละลาย · 2–4 คน ใส่บอทได้</p></div>',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · หรือทำให้คนอื่นล้มละลาย · 2–6 คน ใส่บอทได้</p></div>',
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
             '<li>กดค้างปุ่มทอย ปล่อยตอนเข็มแรง = เดินไกล · ผ่านจุดเริ่มรับ ฿3,000 · ดับเบิลทอยอีก (3 ครั้งติด = เกาะร้าง)</li>',
             '<li>ตกเมืองว่าง: ซื้อที่ดิน + สร้างบ้าน/ตึก/โรงแรมได้ในแผ่นเดียว (รอบแรกถึงบ้าน) · มีโรงแรมแล้วตกซ้ำ = แลนด์มาร์ก</li>',

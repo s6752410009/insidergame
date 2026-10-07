@@ -769,6 +769,16 @@
   .cc-lobby-opts select { min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid rgba(245, 200, 107, 0.35); background: #1a2332; color: #f1f0fa; font-weight: 700; max-width: 100%; }
   .cc-lobby-opts select:disabled { opacity: 0.85; }
   .cc-lobby-opts .uc-mw-toggle { margin-top: 0; }
+  /* เศรษฐี 🎒 สกิลที่ติดตัว (ห้องรอ) */
+  .st-lo { margin-top: 12px; padding: 10px; border-radius: 14px; background: rgba(0,0,0,0.22); border: 1px solid rgba(245, 200, 107, 0.25); }
+  .st-lo-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; color: #f5c86b; font-size: 0.92em; }
+  .st-lo-head a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border-radius: 10px; background: rgba(245, 200, 107, 0.16); color: #f5c86b; text-decoration: none; font-weight: 700; white-space: nowrap; }
+  .st-lo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .st-lo-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.18); background: #1a2332; color: #e8e6f4; font-weight: 600; font-size: 0.88em; cursor: pointer; }
+  .st-lo-chip small { color: #f5c86b; font-weight: 700; }
+  .st-lo-chip[aria-pressed="true"] { border-color: #f5c86b; background: rgba(245, 200, 107, 0.18); color: #fff; }
+  .st-lo-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+  .st-lo-note { margin: 6px 0 0; color: #aab1c4; font-size: 0.82em; }
   #btnSetthiHowTo {
     padding: 10px 14px; min-height: 44px; border-radius: 14px;
     border: 1px solid rgba(245, 200, 107, 0.55); background: rgba(245, 200, 107, 0.14); color: #f5c86b;
@@ -1539,6 +1549,59 @@
 <script src="/js/coupGuide.js"></script>
 <script src="/js/codenamesLobby.js?v=3"></script>
 <script>
+  // 🎒 สกิลติดตัวเศรษฐี (โหลดครั้งเดียว · วาดใหม่ทุกครั้งที่ห้องอัปเดต)
+  var setthiLoadout = (function() {
+    var data = null;
+    var loading = false;
+    var busy = false;
+    var skillsOn = true;
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function shopHref() {
+      var m = location.pathname.match(/^\/room\/([^/?#]+)/);
+      return '/setthi/shop' + (m ? '?room=' + encodeURIComponent(m[1]) : '');
+    }
+    function paint() {
+      var box = document.getElementById('stLobbyLoadout');
+      if (!box) return;
+      var head = '<div class="st-lo-head"><span>🎒 สกิลติดตัว ' + (data ? (data.profile.loadout.length + '/3') : '') + '</span><a href="' + shopHref() + '" id="stLobbyShop">🏪 ร้าน' + (data ? ' · 🪙 ' + Number(data.profile.gold).toLocaleString('en-US') : '') + '</a></div>';
+      if (!data) { box.innerHTML = head + '<p class="st-lo-note">กำลังโหลด...</p>'; return; }
+      var owned = data.skills.filter(function(s) { return (data.profile.skills[s.id] || 0) > 0; });
+      var load = data.profile.loadout;
+      var chips = owned.map(function(s) {
+        var on = load.indexOf(s.id) >= 0;
+        return '<button type="button" class="st-lo-chip" data-lo="' + esc(s.id) + '" aria-pressed="' + on + '"' + (!on && load.length >= 3 ? ' disabled' : '') + '>' + s.icon + ' ' + esc(s.name) + ' <small>Lv' + data.profile.skills[s.id] + '</small></button>';
+      }).join('');
+      box.innerHTML = head + (owned.length ? '<div class="st-lo-chips">' + chips + '</div>' : '<p class="st-lo-note">ยังไม่มีสกิล — ชนะเกมเก็บ 🪙 แล้วไปอัปที่ร้าน</p>') +
+        (skillsOn ? '' : '<p class="st-lo-note">🚫 ห้องนี้ปิดสกิล — เกมนี้ทุกคนไม่มีสกิล</p>');
+    }
+    function load() {
+      if (loading) return;
+      loading = true;
+      fetch('/api/setthi/gold', { credentials: 'same-origin', cache: 'no-store' }).then(function(r) { return r.json(); }).then(function(res) {
+        loading = false;
+        if (res && res.success) { data = res; paint(); }
+      }).catch(function() { loading = false; });
+    }
+    return {
+      render: function(on) { skillsOn = on; paint(); if (!data) load(); },
+      reload: load,
+      toggle: function(id) {
+        if (!data || busy) return;
+        var load2 = data.profile.loadout.slice();
+        var at = load2.indexOf(id);
+        var next = at >= 0 ? load2.filter(function(x) { return x !== id; }) : load2.concat([id]);
+        if (next.length > 3) return;
+        busy = true;
+        fetch('/api/setthi/shop/loadout', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ loadout: next }) })
+          .then(function(r) { return r.json(); }).then(function(res) {
+            busy = false;
+            if (res && res.profile) data.profile = res.profile;
+            paint();
+          }).catch(function() { busy = false; });
+      }
+    };
+  })();
+  document.addEventListener('visibilitychange', function() { if (!document.hidden && document.getElementById('stLobbyLoadout')) setthiLoadout.reload(); });
   $(function () {
     const socket = window.appSocket || io();
     const roomId = '<%= room.roomId %>';
@@ -1653,7 +1716,7 @@
       },
       setthi: {
         minPlayers: 2,
-        maxPlayers: 4,
+        maxPlayers: 6,
         label: 'เศรษฐี',
         startLabel: '💰 เริ่มเกม',
         readyText: 'พร้อมแล้ว เริ่มเกมได้เลย',
@@ -2279,9 +2342,10 @@
           ].join('');
         } else if (resolvedMode === 'setthi') {
           const stMinutes = settings && settings.setthiMinutes !== undefined && settings.setthiMinutes !== null ? Number(settings.setthiMinutes) : 30;
+          const stSkillsOn = !(settings && settings.setthiSkills === false);
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
-            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#f5c86b;">💰 เศรษฐี · 2–4 คน</div>',
+            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#f5c86b;">💰 เศรษฐี · 2–6 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
             'ทอยเต๋าซื้อเมือง สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า · ผูกขาดชนะทันที · หมดเวลานับทรัพย์สินรวม · <strong>เงินในเกม ไม่มีมูลค่าจริง</strong>',
             '</p>',
@@ -2289,8 +2353,11 @@
             '<select id="stLobbyMinutes" aria-label="เวลาเกม"' + (isAdmin ? '' : ' disabled') + '>',
             [[20, 'เวลา 20 นาที'], [30, 'เวลา 30 นาที'], [45, 'เวลา 45 นาที'], [60, 'เวลา 60 นาที'], [0, 'ไม่จำกัดเวลา']].map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === stMinutes ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''),
             '</select>',
-            '</div>'
+            '<button type="button" class="uc-mw-toggle" id="stLobbySkills" aria-pressed="' + (stSkillsOn ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>' + (stSkillsOn ? '✨ สกิล: เปิด' : '🚫 สกิล: ปิด') + '</button>',
+            '</div>',
+            '<div class="st-lo" id="stLobbyLoadout"></div>'
           ].join('');
+          setthiLoadout.render(stSkillsOn);
         } else if (resolvedMode === 'wavelength') {
           const laps = settings && Number(settings.wavelengthLaps) === 2 ? 2 : 1;
           const wlMode = settings && ['teams', 'coop', 'solo'].includes(settings.wavelengthMode) ? settings.wavelengthMode : 'teams';
@@ -3694,6 +3761,18 @@
           Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
         }
       });
+    });
+
+    // ห้องรอเศรษฐี: สวิตช์สกิลของห้อง (หัวห้อง) + เลือกสกิลติดตัว 3 ช่อง (ของตัวเอง เก็บที่เซิร์ฟเวอร์)
+    $(document).on('click', '#stLobbySkills', function() {
+      if (!isAdmin) return;
+      this.disabled = true;
+      socket.emit('updateRoom', { setthiSkills: this.getAttribute('aria-pressed') !== 'true' }, function(res) {
+        if (!res || !res.success) Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+      });
+    });
+    $(document).on('click', '#stLobbyLoadout [data-lo]', function() {
+      setthiLoadout.toggle(this.getAttribute('data-lo'));
     });
 
     $('#btnSetthiHowTo').on('click', function() {

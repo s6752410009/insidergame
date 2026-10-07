@@ -88,6 +88,7 @@ async function waitFor(pred, ms = 20000, label = 'condition') {
 
 // ---------- ตรวจความลับ ----------
 let leakChecks = 0;
+const winTypesSeen = new Set();
 const CARD_RE = /"k\d\d"/g;
 function inspectPayload(client, event, payload) {
     const json = JSON.stringify(payload === undefined ? null : payload);
@@ -100,6 +101,13 @@ function inspectPayload(client, event, payload) {
         [...json.matchAll(CARD_RE)].map(m => m[0].slice(1, -1)).forEach(id => assert(allowed.has(id), `รั่ว: ${client.name} เห็นการ์ด ${id} ที่ยังไม่เปิด`));
         assert(payload.seats.every(s => s.cash >= 0), 'เงินติดลบ');
         if (payload.self && payload.self.sell) assert(payload.phaseActor === client.id, 'ราคาขายส่งให้เฉพาะคนที่ติดหนี้');
+        if (payload.phase === 'finished') {
+            assert(['monopoly', 'bankrupt', 'left', 'timeUp', 'hostEnd', 'debugEnd', 'empty'].includes(payload.endCause), 'endCause ' + payload.endCause);
+            if (payload.winners && payload.winners.length && payload.endCause !== 'left') assert(['time', 'bankrupt', 'line', 'triple', 'tourist'].includes(payload.winType), 'winType ' + payload.winType);
+            if (payload.endCause === 'monopoly') assert(payload.winType === { color: 'triple', line: 'line', tourist: 'tourist' }[payload.monopoly.type], 'winType ตรงผูกขาด');
+            (payload.standings || []).forEach(r => assert(Number.isInteger(r.landmarksBuilt) && Number.isInteger(r.takeovers), 'อันดับมีตัวนับ'));
+            winTypesSeen.add(payload.winType);
+        }
     }
 }
 
@@ -412,6 +420,8 @@ async function scenarioG(base) {
     await joinAll(roomId, [Q]);
     await start(P, [P, Q], roomId);
     await until(P, S => S.canDebug === true, 'หัวห้องได้ canDebug');
+    const chat = [];
+    [P, Q].forEach(c => c.socket.on('newMessage', m => chat.push(m)));
     assert(last(Q).canDebug === false, 'คนอื่นไม่ได้ canDebug');
     let r = await ack(Q.socket, 'setthi_debug_dice', { six: true });
     assert(!r.success && /แอดมินหรือหัวห้อง/.test(r.error), 'คนที่ไม่ใช่หัวห้อง/แอดมินใช้ไม่ได้');
@@ -422,7 +432,10 @@ async function scenarioG(base) {
     const pCash = seatOf(last(P), P.id).cash;
     r = await ack(P.socket, 'setthi_debug_mint', { amount: 5000 });
     assert(r.success, 'หัวห้องเสกเงินได้: ' + r.error);
-    let S = await until(Q, S2 => S2.debugUsed && S2.history.some(h => h.kind === 'debug' && /เสกเงิน/.test(h.text)), 'คนอื่นเห็นโน้ตเสกเงิน + ป้ายโหมดทดสอบ');
+    let S = await until(Q, S2 => S2.debugUsed && seatOf(S2, P.id).debugged, 'คนอื่นเห็นป้าย 🛠 เล็กที่แถบหัวห้อง');
+    assert(!S.history.some(h => h.kind === 'debug' || /เมนูทดสอบ/.test(h.text)), 'ไม่ลงบันทึกเกม');
+    assert(!S.fx.some(f => f.kind === 'debug'), 'ไม่มีป้ายแจ้งทั้งห้อง');
+    assert(!seatOf(S, Q.id).debugged, 'คนไม่ได้ใช้ไม่มีป้าย');
     assert(seatOf(S, P.id).cash === pCash + 5000, 'เงินเข้า');
     r = await ack(P.socket, 'setthi_debug_dice', { six: true });
     assert(r.success, 'เปิด 6+6');
@@ -433,12 +446,30 @@ async function scenarioG(base) {
     S = await until(Q, S2 => S2.fx.some(f => f.kind === 'dice' && f.playerId === P.id), 'เห็นเต๋า');
     const d = S.fx.filter(f => f.kind === 'dice' && f.playerId === P.id).pop();
     assert(d.d[0] === 6 && d.d[1] === 6, 'ทอยได้ 6+6');
+    // เมนูเต็ม (setthi_debug): คนอื่นโดนปฏิเสธทุกคำสั่ง · หัวห้องทำกับคนอื่นได้ · ack มีข้อความยืนยันเฉพาะคนกด
+    for (const action of ['setCash', 'move', 'prop', 'bankrupt', 'end', 'clock', 'botNow', 'nearMonopoly']) {
+        r = await ack(Q.socket, 'setthi_debug', { action, target: Q.id, amount: 1, square: 1, minutes: 1, type: 'line' });
+        assert(!r.success && /แอดมินหรือหัวห้อง/.test(r.error), 'คนอื่นใช้ ' + action + ' ไม่ได้');
+    }
+    r = await ack(P.socket, 'setthi_debug', { action: 'hack' });
+    assert(!r.success, 'คำสั่งแปลกโดนปฏิเสธ');
+    r = await ack(P.socket, 'setthi_debug', { action: 'setCash', target: Q.id, amount: 7777 });
+    assert(r.success && /7,777/.test(r.note), 'หัวห้องตั้งเงินคนอื่นได้ + ข้อความยืนยัน: ' + JSON.stringify(r));
+    await until(Q, S2 => seatOf(S2, Q.id).cash === 7777, 'เงิน Q = 7,777');
+    r = await ack(P.socket, 'setthi_debug', { action: 'prop', target: Q.id, square: 4, level: 1 });
+    assert(r.success, 'ให้ที่ได้: ' + r.error);
+    await until(Q, S2 => S2.props[4] && S2.props[4].owner === Q.id, 'Q ได้อุดร');
+    r = await ack(P.socket, 'setthi_debug', { action: 'clock', minutes: 3 });
+    assert(r.success, 'เพิ่มเวลาได้: ' + r.error);
+    await until(Q, S2 => S2.clock && S2.clock.endsAt, 'นาฬิกาเกมเริ่มนับ');
     // โอนหัวห้อง → คนเดิมใช้ไม่ได้ คนใหม่ใช้ได้
     r = await ack(P.socket, 'transferAdmin', { newAdminPlayerId: Q.id });
     assert(r && r.success !== false, 'โอนหัวห้องได้: ' + JSON.stringify(r));
     await until(Q, S2 => S2.canDebug === true, 'หัวห้องใหม่ได้ canDebug');
     r = await ack(P.socket, 'setthi_debug_mint', { amount: 100 });
     assert(!r.success, 'หัวห้องเดิมใช้ /m ไม่ได้แล้ว');
+    r = await ack(P.socket, 'setthi_debug', { action: 'setCash', target: P.id, amount: 1 });
+    assert(!r.success, 'หัวห้องเดิมใช้เมนูเต็มไม่ได้แล้ว');
     r = await ack(Q.socket, 'setthi_debug_dice', { doubles: true });
     assert(r.success, 'หัวห้องใหม่ใช้ได้');
     // จบเกม → ไม่บันทึกสถิติ
@@ -449,7 +480,9 @@ async function scenarioG(base) {
     await delay(1500);
     const st = readStats();
     [P.id, Q.id].forEach(id => assert(!(st[id] && st[id].modeStats && st[id].modeStats.setthi && st[id].modeStats.setthi.games), 'เกมที่ใช้ /m ไม่นับสถิติ'));
-    console.log('20. /m: เฉพาะหัวห้อง/แอดมิน · เสกเงิน/6+6 ใช้ได้ · ทุกคนเห็นโน้ต · โอนหัวห้องแล้วคนเดิมใช้ไม่ได้ · ไม่บันทึกสถิติ ✓');
+    await delay(400);
+    assert(!chat.some(m => /เมนูทดสอบ|🛠|เสกเงิน/.test(String(m && m.message))), 'ไม่มีข้อความ /m เข้าแชทห้อง: ' + JSON.stringify(chat.map(m => m.message)));
+    console.log('20. /m: เฉพาะหัวห้อง/แอดมิน · เสกเงิน/6+6 ใช้ได้ · ไม่สแปมแชท/บันทึกเกม (ป้าย 🛠 เล็กที่แถบคนใช้) · โอนหัวห้องแล้วคนเดิมใช้ไม่ได้ · ไม่บันทึกสถิติ ✓');
     [P, Q].forEach(c => c.socket.close());
 }
 
@@ -460,7 +493,7 @@ async function scenarioB(base) {
     const H2 = await makeClient(base, 'B-two');
     const H3 = await makeClient(base, 'B-three');
     await delay(300);
-    let roomId = await createRoom(H1, { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0 } });
+    let roomId = await createRoom(H1, { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0, maxPlayers: 4 } });
     await joinAll(roomId, [H2, H3]);
     assert((await ack(H1.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
     let r = await ack(H1.socket, 'setthi_addBots', { roomId, count: 3 });
@@ -695,6 +728,8 @@ async function main() {
         if (run('D')) await scenarioD(PORT + 1);
         const logs = server.logs();
         assert(!/\[setthi\] (tick|bots|recover) failed/.test(logs), 'ไม่มี error ฝั่งเซิร์ฟเวอร์: ' + (logs.match(/\[setthi\][^\n]*/) || [''])[0]);
+        for (const wt of ['bankrupt', 'line', 'triple', 'tourist', 'time']) assert(winTypesSeen.has(wt), 'เกมผ่านเซิร์ฟเวอร์ต้องจบแบบ ' + wt + ' (เห็น ' + [...winTypesSeen].join(',') + ')');
+        console.log('winType ที่เห็นผ่านเซิร์ฟเวอร์: ' + [...winTypesSeen].join(', '));
         console.log(`✅ setthi play: ${checks} checks · ตรวจ payload ${leakChecks} ชิ้น · ${((Date.now() - started) / 1000).toFixed(1)}s`);
     } finally {
         await stopServer(server);
