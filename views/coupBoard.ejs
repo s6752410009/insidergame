@@ -67,6 +67,7 @@
   }
   .cp-chip-btn { cursor: pointer; min-height: 40px; }
   .cp-chip-danger { border-color: rgba(255,107,129,0.35); color: #ffc9d1; }
+  .cp-chip-exit { min-height: 44px; border-color: rgba(255,107,129,0.55); color: #ffd3da; font-weight: 700; }
 
   /* แถบบอกว่าตอนนี้ต้องทำอะไร — จุดสำคัญที่สุดของหน้านี้ */
   /* ติดขอบบนจอตอนเลื่อน — มือถือเลื่อนลงไปดูปุ่ม/บันทึก ก็ยังเห็นว่าตาใคร เหลือกี่วิ */
@@ -381,6 +382,7 @@
         <h1 class="cp-title"><%= room.name %></h1>
       </div>
       <div class="cp-meta">
+        <button type="button" id="cpExitBtn" class="cp-chip cp-chip-btn cp-chip-exit">🚪 ออก</button>
         <span class="cp-chip">🆔 <%= room.roomId %></span>
         <span class="cp-chip">🃏 กองกลาง <span id="deckCount">-</span></span>
         <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn">📖 วิธีเล่น</button>
@@ -462,6 +464,7 @@
 <script src="/js/gameIcon.js"></script>
 <script src="/js/chatPanel.js"></script>
 <script src="/js/coupGuide.js"></script>
+<script src="/js/roomExit.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('cp-active');
@@ -1340,20 +1343,38 @@ $(function() {
   }
   $('#cpSidebarBtn, #closeSidebarBtn, #sidebarOverlay').on('click', toggleSidebar);
 
+  // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+  function exitConsequences() {
+    const s = currentState || {};
+    const self = s.self || null;
+    if (s.phase === 'finished' || s.phase === 'lobby' || !s.phase) return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+    const lines = [];
+    if (self && self.alive) {
+      lines.push('ออกตอนนี้ = ยอมแพ้ · การ์ดของคุณจะถูกเปิด');
+      if (s.isMyTurn) lines.push('ตานี้ของคุณจะข้ามไปคนต่อไป');
+      const others = (s.players || []).filter(p => p.alive && !p.isSelf);
+      lines.push(others.length <= 1 ? ('เหลือคนเดียว — ' + (others[0] ? others[0].name + ' ชนะ' : 'เกมจบ')) : 'เกมเล่นต่อโดยไม่มีคุณ');
+    } else {
+      lines.push('คุณตกรอบแล้ว — เกมเล่นต่อตามปกติ');
+    }
+    if (isRoomAdmin) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+    return lines;
+  }
+  const exit = window.roomExit.create({
+    socket, roomId, playerId,
+    consequences: exitConsequences,
+    onLeave: function() { allowNavigation = true; },
+    theme: { background: '#1b0f2b', color: '#fff', confirmButtonColor: '#b3262e' }
+  });
+  $('#cpExitBtn').on('click', exit.confirm);
   $('#leaveRoomBtn').on('click', function() {
-    Swal.fire({
-      icon: 'question', title: 'ออกจากห้อง?', showCancelButton: true,
-      confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#1b0f2b', color: '#fff'
-    }).then(result => {
-      if (result.isConfirmed) {
-        allowNavigation = true;
-        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
-      }
-    });
+    if ($('#playerSidebar').hasClass('open')) toggleSidebar();
+    exit.confirm();
   });
 
   // ---------- socket ----------
   socket.on('connect', function() {
+    if (exit.isLeaving()) return;
     $('#connectionStatus').hide();
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId, playerId });
@@ -1372,15 +1393,16 @@ $(function() {
       '</li>').join(''));
   });
 
-  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('redirectToLobby', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('returnToLobby', function(data) {
     if (!currentState) return;
     currentState.returnLobbyEndsAt = Number(data && data.endsAt) || (nowMs() + (Number(data && data.countdown) || 10) * 1000);
     updateTimer();
   });
-  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('restartGame', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
+    if (exit.isLeaving()) return;
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: data?.reason || '', background: '#1b0f2b', color: '#fff' })
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });

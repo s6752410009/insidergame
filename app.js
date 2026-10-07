@@ -1378,6 +1378,38 @@ function clearAllRoomTimers(roomId) {
     clearFinishedReturnTimer(roomId);
 }
 
+// คนที่กด "ออกจากห้อง" เอง — ห้ามพากลับเข้าห้องเดิมอัตโนมัติ
+// (เดิม: ย้อนกลับ/รีโหลด /game/:id → /room/:id → auto-join → เด้งกลับห้องวนไป)
+// ล้างเมื่อเจ้าตัวกดเข้าห้องนี้เองจากรายการห้อง (socket joinRoom)
+const explicitLeaves = new Map(); // `${roomId}:${playerId}` → ms
+const EXPLICIT_LEAVE_TTL_MS = 30 * 60 * 1000;
+const EXPLICIT_LEAVE_AUTOJOIN_BLOCK_MS = 2 * 60 * 1000;
+
+function markExplicitLeave(roomId, playerId) {
+    if (!roomId || !playerId) return;
+    explicitLeaves.set(`${roomId}:${playerId}`, Date.now());
+    if (explicitLeaves.size > 5000) {
+        const cutoff = Date.now() - EXPLICIT_LEAVE_TTL_MS;
+        explicitLeaves.forEach((at, key) => { if (at < cutoff) explicitLeaves.delete(key); });
+    }
+}
+
+function clearExplicitLeave(roomId, playerId) {
+    if (roomId && playerId) explicitLeaves.delete(`${roomId}:${playerId}`);
+}
+
+/** ms ที่ผ่านไปตั้งแต่กดออกห้องนี้เอง (null = ไม่ได้กดออก/นานเกินแล้ว) */
+function msSinceExplicitLeave(roomId, playerId) {
+    const at = explicitLeaves.get(`${roomId}:${playerId}`);
+    if (!at) return null;
+    const elapsed = Date.now() - at;
+    if (elapsed > EXPLICIT_LEAVE_TTL_MS) {
+        explicitLeaves.delete(`${roomId}:${playerId}`);
+        return null;
+    }
+    return elapsed;
+}
+
 function detachPlayerFromOtherRooms(socket, playerId, keepRoomId) {
     const result = roomManager.leavePlayerFromOtherRooms(playerId, keepRoomId);
     (result.closed || []).forEach(roomId => {
@@ -3691,7 +3723,11 @@ function handleMidGamePlayerRemoval(room, playerId) {
         }
         if (!room.settings.gameMode || room.settings.gameMode === 'insider') {
             try {
-                cancelInsiderRoundWithoutMaster(room);
+                if (!cancelInsiderRoundWithoutMaster(room) && room.gameState.status === 'vote2') {
+                    // คนออกระหว่างโหวต — คนที่เหลือโหวตครบแล้วก็สรุปเลย ไม่ต้องรอหมดเวลา
+                    io.to(room.roomId).emit('vote2Progress', buildVote2Progress(room.gameState));
+                    if (everybodyHasVoted(room.gameState, 2)) finalizeInsiderVote2(room);
+                }
             } catch (error) {
                 console.error('[insider] cancel without master failed:', error?.message || error);
             }
@@ -5188,7 +5224,11 @@ app.get('/game/:roomId', async function(req, res) {
     const playerInRoom = room.players.find(p => p.playerId === playerId);
     
     // ถ้าไม่อยู่ในห้อง → กลับไป room lobby (ให้ join ใหม่)
+    // ยกเว้นคนที่กดออกเอง (เช่นกดย้อนกลับหลังออก) — ส่งไปหน้ารวมห้อง ไม่ดึงกลับเข้าห้อง
     if (!playerInRoom) {
+        if (msSinceExplicitLeave(room.roomId, playerId) !== null) {
+            return res.redirect('/rooms?msg=left_room');
+        }
         return res.redirect('/room/' + roomId + '?playerId=' + playerId);
     }
 
@@ -5519,6 +5559,12 @@ app.get('/room/:roomId', async function(req, res) {
     
     // ถ้าผู้เล่นยังไม่อยู่ในห้อง → พยายาม join ห้องให้อัตโนมัติ
     if (!playerInRoom) {
+        // เพิ่งกดออกจากห้องนี้เอง (ย้อนกลับ/เด้งจากหน้าเกม) — ไม่ auto-join กลับ
+        // อยากกลับจริงให้แตะห้องในรายการ (socket joinRoom ล้างเครื่องหมายนี้)
+        const sinceLeave = msSinceExplicitLeave(room.roomId, playerId);
+        if (sinceLeave !== null && sinceLeave < EXPLICIT_LEAVE_AUTOJOIN_BLOCK_MS) {
+            return res.redirect('/rooms?msg=left_room');
+        }
         // เช็คว่าห้องเต็มหรือยัง
         if (room.players.length >= room.settings.maxPlayers) {
             return res.redirect('/rooms?msg=room_full');
@@ -5996,6 +6042,7 @@ io.sockets.on('connection', function(socket) {
             );
             // Always use canonical string roomId — clients may send numeric 6-digit IDs
             const joinedRoomId = room.roomId;
+            clearExplicitLeave(joinedRoomId, playerId); // กดเข้าห้องเอง — กลับเข้าได้ตามปกติ
             detachPlayerFromOtherRooms(socket, playerId, joinedRoomId);
             roomManager.markPlayerActive(joinedRoomId, playerId);
             socketRoomMap.set(socket.id, joinedRoomId);
@@ -6254,6 +6301,7 @@ io.sockets.on('connection', function(socket) {
         }
 
         const hintedRoomId = (data && data.roomId) || socket.roomId;
+        roomManager.findRoomIdsForPlayer(playerId).forEach(roomId => markExplicitLeave(roomId, playerId));
         const result = detachPlayerFromOtherRooms(socket, playerId, null);
         socketRoomMap.delete(socket.id);
         socket.roomId = null;

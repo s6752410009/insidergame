@@ -688,6 +688,9 @@ module.exports = {
     description: 'เหลือหัวใจคนสุดท้ายชนะ — ลงไพ่คว่ำ แล้วบอกว่าเป็นไพ่รอบนี้ คนอื่นท้าได้ · 3–8 คน',
     minPlayers: 3,
     maxPlayers: 8,
+    // ลำดับตาอยู่ใน gameState.players — roomManager.leaveRoom ต้องไม่ลบที่นั่งกลางเกม
+    // ให้ handlePlayerLeft ทำเครื่องหมายตกรอบ/ส่งตาต่อ (resetRoomGame สร้างใหม่จาก room.players)
+    keepSeatOnLeave: true,
     CARD_DEFINITIONS,
     CARD_BACK,
     RANKS,

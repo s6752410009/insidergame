@@ -867,8 +867,12 @@ function leaveRoom(roomId, playerId) {
     room.players.splice(playerIndex, 1);
     
     // ลบออกจาก gameState.players ด้วย
+    // engine ที่ประกาศ keepSeatOnLeave (เช่น ไพ่โกหก) ใช้ gameState.players เป็นลำดับตา —
+    // ระหว่างเล่นเก็บที่นั่งไว้ให้ engine.handlePlayerLeft ทำเครื่องหมายออก/ส่งตาต่อเอง
+    // (ถ้าลบตรงนี้ engine จะหาคนออกไม่เจอ แล้วตาค้างที่คนที่ไม่อยู่แล้ว)
+    const keepSeatForEngine = wasGameActive && getGameEngine(room.settings?.gameMode)?.keepSeatOnLeave === true;
     const gameStatePlayerIndex = room.gameState.players.findIndex(p => p.playerId === playerId);
-    if (gameStatePlayerIndex >= 0) {
+    if (gameStatePlayerIndex >= 0 && !keepSeatForEngine) {
         // ช่วง transition หลัง start อาจยังไม่ถูกนับเป็น in-progress ทั้งที่แจก role แล้ว
         // เก็บ snapshot เมื่อมี role ด้วย เพื่อให้ explicit leave/rejoin ไม่ทำ role หายจาก race นี้
         const gameStatePlayer = room.gameState.players[gameStatePlayerIndex];
