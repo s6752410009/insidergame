@@ -1,8 +1,10 @@
 /**
  * วัดมือเก้าเก 3 ใบ
- * ตอง (ตอง 3 สูงสุด) > เรียงสี > เซียน > เรียง > สี > แต้ม
- * เรียงไม่ห่อ — A-2-3 ไม่ใช่เรียง, Q-K-A สูงสุด
+ * ตอง (3 > A > K > … > 4 > 2) > เรียงสี > เซียน > เรียง > สี > แต้ม
+ * เรียง: A-2-3 เล็กสุด, Q-K-A ใหญ่สุด, ไม่วน (K-A-2 ไม่ใช่เรียง)
  * J-Q-K ดอกปน = เซียน; ดอกเดียวกัน = เรียงสี
+ * เสมอหมวด: ดูใบใหญ่สุด แล้วดูดอก ♠ > ♥ > ♦ > ♣ (สี: ดูดอกก่อน) — ไพ่คนละใบ จึงไม่มีเสมอ
+ * อ้างอิงกติกา: แอปเล่น89 (len89game.blogspot.com/2017/07/89_95.html), เก้าเกขั้นเทพ (casino.thaiportalgames.com)
  */
 
 const { gameAssetImage } = require('./gameAssets');
@@ -140,10 +142,28 @@ function packScore(category, parts) {
     return padded.reduce((acc, n) => acc * 100 + (Number(n) || 0), category);
 }
 
+// A-2-3 = เรียงเล็กสุด (เอซนับต่ำ) — ใบคุมคือ 3
+function isWheelCards(cards) {
+    const ranks = new Set(cards.map(card => card.rank));
+    return ranks.size === 3 && ranks.has('A') && ranks.has('2') && ranks.has('3');
+}
+
 function isStraightCards(cards) {
+    if (isWheelCards(cards)) return true;
     const vals = cards.map(card => card.straight).sort((a, b) => a - b);
     if (new Set(vals).size !== 3) return false;
     return vals[1] === vals[0] + 1 && vals[2] === vals[1] + 1;
+}
+
+// ลำดับในเรียง: เอซใน A-2-3 นับต่ำสุด
+function straightOrder(card, cards) {
+    if (card.rank === 'A' && isWheelCards(cards)) return 0;
+    return card.straight;
+}
+
+function straightTopCard(cards) {
+    return [...cards].sort((a, b) =>
+        (straightOrder(b, cards) - straightOrder(a, cards)) || (b.suitOrder - a.suitOrder))[0];
 }
 
 function isSeanCards(cards) {
@@ -156,7 +176,7 @@ function pointOf(cards) {
 
 function formatStraightLabel(cards) {
     return [...cards]
-        .sort((a, b) => a.straight - b.straight)
+        .sort((a, b) => straightOrder(a, cards) - straightOrder(b, cards))
         .map(card => rankThaiName(card.rank))
         .join('-');
 }
@@ -195,12 +215,12 @@ function withHandTitle(result) {
 }
 
 const RANK_GUIDE = [
-    { category: CATEGORY.TRIPS, name: 'ตอง', hint: 'สามใบเลขเดียวกัน · ตอง 3 ใหญ่สุด เพราะ 3+3+3 เป็น 9 แล้วค่อยเอซ คิง ควีน', example: ['3H', '3S', '3D'], live: [true, true, true] },
-    { category: CATEGORY.STRAIGHT_FLUSH, name: 'เรียงสี', hint: 'เหมือนเรียง แต่ต้องดอกเดียวกัน เช่น 7♥ 8♥ 9♥', example: ['7H', '8H', '9H'], live: [true, true, true] },
-    { category: CATEGORY.SEAN, name: 'เซียน', hint: 'แจ็ค ควีน คิง ทั้งสามใบ ดอกปนได้', example: ['JH', 'QS', 'KD'], live: [true, true, true] },
-    { category: CATEGORY.STRAIGHT, name: 'เรียง', hint: 'เลขต่อกัน เช่น 3 > 4 > 5 ไม่ต้องดอกเดียวกัน · เอซ-2-3 ไม่นับเรียง', example: ['5S', '6H', '7D'], live: [true, true, true] },
+    { category: CATEGORY.TRIPS, name: 'ตอง', hint: 'สามใบเลขเดียวกัน · ตอง 3 ใหญ่สุด เพราะ 3+3+3 เป็น 9 แล้วค่อยตองเอซ คิง ควีน … ตอง 2 เล็กสุด', example: ['3H', '3S', '3D'], live: [true, true, true] },
+    { category: CATEGORY.STRAIGHT_FLUSH, name: 'เรียงสี', hint: 'เหมือนเรียง แต่ต้องดอกเดียวกัน เช่น 7♥ 8♥ 9♥ · เท่ากันดูใบใหญ่สุด แล้วดูดอก', example: ['7H', '8H', '9H'], live: [true, true, true] },
+    { category: CATEGORY.SEAN, name: 'เซียน', hint: 'แจ็ค ควีน คิง ล้วน (ซ้ำกันได้ เช่น Q Q K) ดอกปนได้ · เท่ากันดูใบใหญ่สุด แล้วดูดอก', example: ['JH', 'QS', 'KD'], live: [true, true, true] },
+    { category: CATEGORY.STRAIGHT, name: 'เรียง', hint: 'เลขต่อกัน ไม่ต้องดอกเดียวกัน · Q-K-A ใหญ่สุด เอซ-2-3 เล็กสุด · K-A-2 ไม่นับ', example: ['5S', '6H', '7D'], live: [true, true, true] },
     { category: CATEGORY.FLUSH, name: 'สี', hint: 'ดอกเดียวกัน แต่เลขไม่ต่อกัน · ดูดอกก่อน ♠ ใหญ่กว่า ♥ ♦ ♣', example: ['KH', '9H', '2H'], live: [true, true, true] },
-    { category: CATEGORY.POINT, name: 'แต้ม', hint: 'ไม่เข้ามือไหน เอซ=1, 2–9 ตามหน้า, 10 แจ็คควีนคิง=0 รวมแล้วเอาหลักหน่วย เก้าใหญ่สุด', example: ['AS', '8D', 'KC'], live: [true, true, true] }
+    { category: CATEGORY.POINT, name: 'แต้ม', hint: 'ไม่เข้ามือไหน เอซ=1, 2–9 ตามหน้า, 10 แจ็คควีนคิง=0 รวมแล้วเอาหลักหน่วย เก้าใหญ่สุด · เท่ากันดูใบใหญ่สุด แล้วดูดอก', example: ['AS', '8D', 'KC'], live: [true, true, true] }
 ];
 
 function rankGuideForClient() {
@@ -241,22 +261,18 @@ function evaluateThree(cardIds) {
         score = packScore(CATEGORY.TRIPS, [cards[0].trips]);
     } else if (straight && flush) {
         category = CATEGORY.STRAIGHT_FLUSH;
-        const high = Math.max(...cards.map(card => card.straight));
-        score = packScore(CATEGORY.STRAIGHT_FLUSH, [high, cards[0].suitOrder]);
+        const top = straightTopCard(cards);
+        score = packScore(CATEGORY.STRAIGHT_FLUSH, [straightOrder(top, cards), top.suitOrder]);
     } else if (sean) {
         category = CATEGORY.SEAN;
-        const ordered = [...cards].sort((a, b) =>
-            (SEAN_RANK[b.rank] - SEAN_RANK[a.rank]) || (b.suitOrder - a.suitOrder));
-        score = packScore(CATEGORY.SEAN, [
-            SEAN_RANK[ordered[0].rank],
-            SEAN_RANK[ordered[1].rank],
-            SEAN_RANK[ordered[2].rank],
-            ordered[0].suitOrder
-        ]);
+        // เซียนเท่ากัน: ดูใบใหญ่สุด แล้วดูดอกของใบนั้น (กติกาแอปเล่น89/เก้าเกขั้นเทพ)
+        const top = [...cards].sort((a, b) =>
+            (SEAN_RANK[b.rank] - SEAN_RANK[a.rank]) || (b.suitOrder - a.suitOrder))[0];
+        score = packScore(CATEGORY.SEAN, [SEAN_RANK[top.rank], top.suitOrder]);
     } else if (straight) {
         category = CATEGORY.STRAIGHT;
-        const highCard = [...cards].sort((a, b) => (b.straight - a.straight) || (b.suitOrder - a.suitOrder))[0];
-        score = packScore(CATEGORY.STRAIGHT, [highCard.straight, highCard.suitOrder]);
+        const highCard = straightTopCard(cards);
+        score = packScore(CATEGORY.STRAIGHT, [straightOrder(highCard, cards), highCard.suitOrder]);
     } else if (flush) {
         category = CATEGORY.FLUSH;
         score = packScore(CATEGORY.FLUSH, [cards[0].suitOrder, ...values]);

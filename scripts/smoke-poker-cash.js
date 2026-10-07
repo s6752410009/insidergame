@@ -4,6 +4,8 @@
  * 1. 3 คน ลงไม่เท่ากัน (มีคนหมอบ) → หัวห้องจบโต๊ะกลางมือ → ทุกกระเป๋ากลับเท่าเดิมเป๊ะ
  * 2. เซิร์ฟเวอร์รีสตาร์ตกลางมือ → บูตแล้วคืนครั้งเดียว · รีสตาร์ตซ้ำไม่คืนซ้ำ
  * 3. มือจบปกติ → ผู้ชนะได้กอง ยอดรวมทั้งโต๊ะไม่หายไม่งอก · จบโต๊ะหลังจากนั้นไม่คืนซ้ำ
+ * 4. สี่ใบเก ลงชิป 2 รอบ (ก่อน/หลังใบที่ 3) จบมือ → ยอดรวมคงที่ ล้างเงินพัก
+ * 5. สี่ใบเก จบโต๊ะกลางรอบสอง → คืนชิปทั้งสองรอบครบทุกบาท
  *
  * รัน: npm run smoke:poker:cash
  */
@@ -91,7 +93,7 @@ function escrowsOf(id) {
     try { return JSON.parse(fs.readFileSync(walletsFile, 'utf8'))[id]?.pokerEscrow || {}; } catch (e) { return {}; }
 }
 
-async function seatCashTable(base, count) {
+async function seatCashTable(base, count, gameMode = 'poker5') {
     const players = [];
     for (let i = 0; i < count; i += 1) {
         const socket = await conn(base);
@@ -103,7 +105,7 @@ async function seatCashTable(base, count) {
     }
     await delay(400);
     const created = await ack(players[0].socket, 'createRoom', {
-        playerId: players[0].id, name: 'โต๊ะเงิน', gameMode: 'poker5', maxPlayers: 10, pokerAnte: ANTE, pokerTableType: 'cash'
+        playerId: players[0].id, name: 'โต๊ะเงิน', gameMode, maxPlayers: 10, pokerAnte: ANTE, pokerTableType: 'cash'
     });
     assert(created && created.success, 'สร้างโต๊ะเงิน: ' + JSON.stringify(created));
     const roomId = created.roomId;
@@ -211,6 +213,48 @@ const close = players => players.forEach(p => { try { p.socket.close(); } catch 
             assert(final[0] === after[0] && final[1] === after[1], 'จบโต๊ะหลังมือจบ ไม่คืนซ้ำ: ' + final.join(','));
             close(t.players);
             console.log('3. มือจบปกติ จ่ายผู้ชนะถูก · ยอดรวมคงที่ · ไม่คืนซ้ำ ✓');
+        }
+
+        // ---------- 4. สี่ใบเก ลงชิป 2 รอบ จบมือ ----------
+        {
+            const t = await seatCashTable(base, 2, 'poker4');
+            const ids = t.players.map(p => p.id);
+            await discardAll(t.players, t.roomId);
+            await betMoves(t.players, t.roomId, [{ action: 'bet', amount: 100 }, { action: 'call' }]);
+            await waitFor(t.players, s => s.phase === 'bet' && s.street === 2, 15000, 'รอบสองหลังใบที่ 3');
+            const mid = await balances(ids);
+            assert(mid.every(b => b === START - ANTE - 100), 'รอบแรกหักค่าต๋ง + 100 จากกระเป๋า: ' + mid.join(','));
+            await betMoves(t.players, t.roomId, [{ action: 'bet', amount: 200 }, { action: 'call' }]);
+            const done = await waitFor(t.players, s => s.lastResult, 15000, 'เปิดไพ่สี่ใบเก');
+            assert(done.lastResult.pot === (ANTE + 300) * 2, 'กองสี่ใบเก = ค่าต๋ง + รอบแรก + รอบสอง ได้ ' + done.lastResult.pot);
+            await delay(800);
+            const after = await balances(ids);
+            assert(after[0] + after[1] === START * 2, 'สี่ใบเก 2 รอบ ยอดรวมไม่หายไม่งอก: ' + after.join(','));
+            assert(after.some(b => b === START + ANTE + 300), 'ผู้ชนะได้กองเต็ม: ' + after.join(','));
+            assert(ids.every(id => Object.keys(escrowsOf(id)).length === 0), 'สี่ใบเกจบมือแล้วล้างเงินพัก');
+            close(t.players);
+            console.log('4. สี่ใบเก ลงชิป 2 รอบ จบมือ ยอดรวมคงที่ ✓');
+        }
+
+        // ---------- 5. สี่ใบเก จบโต๊ะกลางรอบสอง ----------
+        {
+            const t = await seatCashTable(base, 2, 'poker4');
+            const ids = t.players.map(p => p.id);
+            await discardAll(t.players, t.roomId);
+            await betMoves(t.players, t.roomId, [{ action: 'bet', amount: 100 }, { action: 'call' }]);
+            await waitFor(t.players, s => s.phase === 'bet' && s.street === 2, 15000, 'รอบสอง');
+            await betMoves(t.players, t.roomId, [{ action: 'bet', amount: 250 }]);
+            await delay(400);
+            const mid = await balances(ids);
+            assert(mid[0] + mid[1] === START * 2 - ANTE * 2 - 450, 'กลางรอบสองหักครบ: ' + mid.join(','));
+            const end = await ack(t.players[0].socket, 'endTableSession', { roomId: t.roomId, playerId: t.players[0].id });
+            assert(end && end.success, 'หัวห้องจบโต๊ะกลางรอบสอง');
+            await delay(800);
+            const after = await balances(ids);
+            assert(after.every(b => b === START), 'จบโต๊ะกลางรอบสอง → คืนทั้งสองรอบครบ: ' + after.join(','));
+            assert(ids.every(id => Object.keys(escrowsOf(id)).length === 0), 'ไม่มีเงินพักค้าง');
+            close(t.players);
+            console.log('5. สี่ใบเก จบโต๊ะกลางรอบสอง → คืนครบทุกบาท ✓');
         }
 
         console.log(`✅ poker-cash: ${passed} checks passed`);

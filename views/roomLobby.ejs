@@ -1533,7 +1533,7 @@
 <%- include('partials/footerNav', { back: { label: 'รายชื่อห้อง', id: 'btnLeaveRoom', asButton: true } }) %>
 
 <%- contentFor('script') %>
-<script src="/js/pokerRankChart.js?v=20260814b"></script>
+<script src="/js/pokerRankChart.js?v=20261007rules"></script>
 <script src="/js/coupGuide.js"></script>
 <script src="/js/codenamesLobby.js?v=2"></script>
 <script>
@@ -2213,8 +2213,8 @@
             '<div class="lobby-spotlight-pill" style="background:' + (isFour ? 'rgba(153,27,27,0.35); color:#fecaca;">♦ สี่ใบเก' : 'rgba(22,101,52,0.3); color:#bbf7d0;">♠ ไพ่ 5 ใบ') + ' · 2–10 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
             isFour
-              ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง คนที่ยังไม่หมอบได้ใบที่ 3 หงายให้ดู แล้วเปิดเทียบเลย'
-              : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย',
+              ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบแรก คนที่ยังไม่หมอบได้ใบที่ 3 ' + (settings && settings.pokerThirdCard === 'up' ? 'หงายให้ทั้งโต๊ะดู' : 'คว่ำ เห็นเองคนเดียว') + ' แล้วลงชิปอีกรอบ ค่อยเปิดเทียบ'
+              : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบเลย',
             '</p>'
           ].join('');
         } else if (resolvedMode === 'drawguess') {
@@ -2405,10 +2405,10 @@
       if (!html) {
         html = '<div class="pk-howto-copy"><p>' +
           (isFour
-            ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบนึง คนที่ยังไม่หมอบได้ใบที่ 3 หงายให้ดู แล้วเปิดเทียบเลย'
-            : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบเลย') +
+            ? 'ได้ 4 ใบ ทิ้ง 2 ลงชิปรอบแรก คนที่ยังไม่หมอบได้ใบที่ 3 แล้วลงชิปอีกรอบ ค่อยเปิดเทียบ'
+            : 'ได้ 5 ใบ ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบเลย') +
           '</p><p>ใหญ่ → เล็ก: ตอง · เรียงสี · เซียน · เรียง · สี · แต้ม</p>' +
-          '<p>เรียง = เลขต่อกัน เช่น 3 > 4 > 5 ไม่ต้องดอกเดียวกัน · เรียงสี = เรียงและดอกเดียวกัน</p></div>';
+          '<p>เรียง = เลขต่อกัน ไม่ต้องดอกเดียวกัน (Q-K-A ใหญ่สุด เอซ-2-3 เล็กสุด) · เรียงสี = เรียงและดอกเดียวกัน</p></div>';
       }
       Swal.fire({
         title: isFour ? '♦ สี่ใบเก' : '♠ ไพ่ 5 ใบ',
@@ -3752,6 +3752,7 @@
         const isPoker4LobbyEdit = activeMode === 'poker4';
         const currentPokerTableType = roomSettings.pokerTableType === 'cash' ? 'cash' : 'fun';
         const currentPokerAnte = Math.max(100, Number(roomSettings.pokerAnte) || 500);
+        const currentPokerThirdUp = roomSettings.pokerThirdCard === 'up';
         
         Swal.fire({
           title: '⚙️ แก้ไขห้อง',
@@ -3815,7 +3816,20 @@
                     <input type="range" id="editPokerAnte" class="room-slider" min="100" max="2000" step="100" value="${currentPokerAnte}">
                   </div>
                 </div>
-                <div style="margin-top:10px; color:#9ca89a; font-size:0.85em; line-height:1.4;">${isPoker4LobbyEdit ? 'ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู · หมอบไม่ได้ใบที่ 3 · ' : 'ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ · '}อยากมีคนเล่นเพิ่ม กด <strong style="color:#a7f3d0;">🤖 เพิ่มบอท</strong> ข้างปุ่มแก้ไขห้อง</div>
+                <div style="margin-top:10px; display:${isPoker4LobbyEdit ? 'block' : 'none'};">
+                  <div class="room-form-label"><span class="icon">🂡</span> ใบที่ 3:</div>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#fff;">
+                      <input type="radio" name="editPokerThirdCard" value="down" ${currentPokerThirdUp ? '' : 'checked'} style="accent-color:#f5c86b;">
+                      <span>คว่ำ — เห็นเองคนเดียว (แบบวงจริง)</span>
+                    </label>
+                    <label style="flex:1; min-width:140px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#fff;">
+                      <input type="radio" name="editPokerThirdCard" value="up" ${currentPokerThirdUp ? 'checked' : ''} style="accent-color:#f5c86b;">
+                      <span>หงาย — ทั้งโต๊ะเห็นก่อนลงชิปรอบสอง</span>
+                    </label>
+                  </div>
+                </div>
+                <div style="margin-top:10px; color:#9ca89a; font-size:0.85em; line-height:1.4;">${isPoker4LobbyEdit ? 'ทิ้ง 2 ลงชิปรอบแรก ได้ใบที่ 3 แล้วลงชิปอีกรอบ · หมอบไม่ได้ใบที่ 3 · ' : 'ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ · '}อยากมีคนเล่นเพิ่ม กด <strong style="color:#a7f3d0;">🤖 เพิ่มบอท</strong> ข้างปุ่มแก้ไขห้อง</div>
               </div>
               
               <div class="room-form-group">
@@ -3929,6 +3943,7 @@
             const wolfCount = activeWolfBtn ? (parseInt(activeWolfBtn.dataset.wolfCount, 10) || 0) : null;
             const pokerTableType = (document.querySelector('input[name="editPokerTableType"]:checked') || {}).value || 'fun';
             const pokerAnte = parseInt((document.getElementById('editPokerAnte') || {}).value, 10) || 500;
+            const pokerThirdCard = ((document.querySelector('input[name="editPokerThirdCard"]:checked') || {}).value === 'up') ? 'up' : 'down';
             
             if (locked && (!password || !/^\d{4}$/.test(password))) {
               Swal.showValidationMessage('กรุณากรอกรหัสผ่าน 4 หลัก (ตัวเลขเท่านั้น)');
@@ -3942,7 +3957,8 @@
               locked,
               password: locked ? password : '',
               pokerTableType: isPokerLobby ? pokerTableType : undefined,
-              pokerAnte: isPokerLobby ? pokerAnte : undefined
+              pokerAnte: isPokerLobby ? pokerAnte : undefined,
+              pokerThirdCard: isPoker4LobbyEdit ? pokerThirdCard : undefined
             };
           }
         }).then(result => {

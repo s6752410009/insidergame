@@ -1,7 +1,8 @@
 /**
- * ห้าใบเก / สี่ใบเก — กติกาเก้าเก
- * ห้าใบ: แจก 5 ทิ้ง 2 → เดิมพันไม้เดียว → วัด 3 ใบ
- * สี่ใบ: แจก 4 ทิ้ง 2 → เดิมพันไม้เดียว → แจกใบ 3 หงายฟรี → วัดทันที
+ * ห้าใบเก / สี่ใบเก — กติกาเก้าเก (กองกลาง ไม่มีเจ้ามือ ทุกคนวางค่าต๋งก่อนแจก)
+ * ห้าใบ: แจก 5 ทิ้ง 2 ("บางวงแจก 5 เอาออก 2") → ลงชิปรอบเดียว → วัด 3 ใบ
+ * สี่ใบ: แจก 4 ทิ้ง 2 → ลงชิปรอบแรก (2 ใบ) → แจกใบที่ 3 → ลงชิปอีกรอบ → วัด
+ *   แบบ "2ใบเก" ของวงไทย: แจก 2 ใบเกกันก่อน แล้วเรียกใบที่ 3 · ใบที่ 3 คว่ำ (ค่าเริ่มต้น) หรือหงาย ตามตั้งค่าห้อง
  */
 
 const walletManager = require('../managers/walletManager');
@@ -34,7 +35,7 @@ const VARIANT_META = {
         id: 'poker5',
         kind: 'three',
         label: 'ไพ่ 5 ใบ',
-        description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบนึง แล้วเปิด 3 ใบเทียบ — 2–10 คน',
+        description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ — 2–10 คน',
         dealCount: 5,
         selectCount: 2,
         selectMode: 'discard',
@@ -47,7 +48,7 @@ const VARIANT_META = {
         id: 'poker4',
         kind: 'three',
         label: 'สี่ใบเก',
-        description: 'ได้ 4 ทิ้ง 2 ลงชิปรอบนึง แล้วได้ใบที่ 3 หงายให้ดู — 2–10 คน',
+        description: 'ได้ 4 ทิ้ง 2 ลงชิป แล้วได้ใบที่ 3 ลงชิปอีกรอบ ค่อยเปิดเทียบ — 2–10 คน',
         dealCount: 4,
         selectCount: 2,
         selectMode: 'discard',
@@ -57,6 +58,14 @@ const VARIANT_META = {
         maxPlayers: 10
     }
 };
+
+// ใบที่ 3 ของสี่ใบเก: 'down' คว่ำ เห็นเองคนเดียว (วงจริง) · 'up' หงายให้ทั้งโต๊ะเห็น
+function thirdCardMode(room) {
+    // เริ่มโต๊ะแล้วใช้ค่าที่จดไว้ตอนเริ่ม (แก้ห้องกลางเกมไม่เปลี่ยนกติกามือที่เล่นอยู่) · ยังไม่เริ่มใช้ค่าห้อง
+    const started = Number(room?.gameState?.handNumber) > 0;
+    const value = started ? room.gameState.thirdCard : room?.settings?.pokerThirdCard;
+    return value === 'up' ? 'up' : 'down';
+}
 
 function variantOf(room) {
     const mode = room?.settings?.gameMode || room?.gameState?.mode;
@@ -80,6 +89,8 @@ function createInitialState(variantId = 'poker5') {
         pendingRefunds: {},
         currentBet: 0,
         raiseCount: 0,
+        street: 0,
+        thirdCard: 'down',
         toActPlayerId: null,
         dealerIndex: 0,
         handNumber: 0,
@@ -255,6 +266,7 @@ function resetRoomGame(room) {
         ...createInitialState(meta.id),
         tableType,
         ante,
+        thirdCard: room.settings?.pokerThirdCard === 'up' ? 'up' : 'down',
         players: room.players.map(createPlayerState),
         adminPeekIds: Array.isArray(room.gameState?.adminPeekIds) ? [...room.gameState.adminPeekIds] : []
     };
@@ -266,12 +278,20 @@ function setDiscarded(player, discardedIds) {
     player.kept = player.hand.filter(id => !dump.has(id));
 }
 
+// ระยะห่างเลขสองใบสำหรับลุ้นเรียง — เอซนับได้ทั้งบน (Q-K-A) และล่าง (A-2-3)
+function straightGap(left, right) {
+    const high = Math.abs(left.straight - right.straight);
+    const lowOf = card => (card.rank === 'A' ? 0 : card.straight);
+    const low = (left.rank === 'A' || right.rank === 'A') ? Math.abs(lowOf(left) - lowOf(right)) : high;
+    return Math.min(high, low);
+}
+
 function twoCardKeepScore(leftId, rightId) {
     const left = parseCardId(leftId);
     const right = parseCardId(rightId);
     if (left.rank === right.rank) return 8000 + left.trips;
     const suited = left.suit === right.suit;
-    const gap = Math.abs(left.straight - right.straight);
+    const gap = straightGap(left, right);
     const faces = (left.value >= 11 ? 1 : 0) + (right.value >= 11 ? 1 : 0);
     if (suited && gap === 1) return 5000 + Math.max(left.straight, right.straight);
     if (faces === 2) return 4200 + left.value + right.value;
@@ -588,6 +608,7 @@ function startHand(room) {
     state.board = [];
     state.currentBet = 0;
     state.raiseCount = 0;
+    state.street = 0;
     state.toActPlayerId = null;
     dealHands(room);
     setPhase(room, 'select', SELECT_MS);
@@ -665,7 +686,9 @@ function playerIndex(room, playerId) {
 }
 
 function beginBetStreet(room) {
+    const meta = variantOf(room);
     const state = room.gameState;
+    state.street = (Number(state.street) || 0) + 1;
     state.currentBet = 0;
     state.raiseCount = 0;
     state.toActPlayerId = null;
@@ -680,7 +703,10 @@ function beginBetStreet(room) {
     }
     state.toActPlayerId = first.playerId;
     setPhase(room, 'bet', betClock(room));
-    pushHistory(room, '🪙', 'ลงชิปรอบนึง — สู้ ตาม เกทับ หมอบได้', 'bet');
+    const label = !meta.hasThird
+        ? 'ลงชิปรอบเดียว — สู้ ตาม เกทับ หมอบได้'
+        : (state.street === 1 ? 'ลงชิปรอบแรก (2 ใบ) — สู้ ตาม เกทับ หมอบได้' : 'ลงชิปรอบสอง (ครบ 3 ใบ) — สู้ ตาม เกทับ หมอบได้');
+    pushHistory(room, '🪙', label, 'bet');
     return state;
 }
 
@@ -692,7 +718,7 @@ function afterSelect(room) {
     });
     dumpDiscardsToBoard(room);
     pushFx(room, { kind: 'discard', fromIds: seatedPlayers(room).map(player => player.playerId) });
-    pushHistory(room, '🂠', meta.hasThird ? 'ทิ้ง 2 ใบแล้ว — ลงชิปก่อนได้ใบที่ 3' : 'ทิ้ง 2 ใบแล้ว — ลงชิปก่อนเปิดเทียบ', 'discard');
+    pushHistory(room, '🂠', meta.hasThird ? 'ทิ้ง 2 ใบแล้ว — ลงชิปรอบแรกก่อนได้ใบที่ 3' : 'ทิ้ง 2 ใบแล้ว — ลงชิปก่อนเปิดเทียบ', 'discard');
     return beginBetStreet(room);
 }
 
@@ -837,8 +863,9 @@ function awardFoldWin(room, winner) {
     return state;
 }
 
-function dealThirdFaceUp(room) {
+function dealThirdCard(room) {
     const state = room.gameState;
+    const faceUp = thirdCardMode(room) === 'up';
     livePlayers(room).forEach(player => {
         if (player.upCard || (player.kept || []).length >= 3) return;
         const card = state.deck.length ? state.deck.pop() : null;
@@ -847,15 +874,17 @@ function dealThirdFaceUp(room) {
         player.upCard = card;
         player.hand = [...(player.kept || [])];
     });
+    // ใบคว่ำ: เก็บไพ่ไว้ใน fx แต่ buildClientState ตัดให้แต่ละคนเห็นแค่ใบตัวเอง
     pushFx(room, {
         kind: 'deal3',
+        faceUp,
         playerIds: livePlayers(room).map(player => player.playerId),
         ups: livePlayers(room).map(player => ({
             playerId: player.playerId,
             card: player.upCard ? describeCard(player.upCard) : null
         }))
     });
-    pushHistory(room, '🂡', 'แจกใบที่ 3 หงาย — เปิดเทียบเลย', 'deal');
+    pushHistory(room, '🂡', faceUp ? 'แจกใบที่ 3 หงาย — แล้วลงชิปอีกรอบ' : 'แจกใบที่ 3 คว่ำ (เห็นเองคนเดียว) — แล้วลงชิปอีกรอบ', 'deal');
 }
 
 function afterBet(room) {
@@ -866,10 +895,10 @@ function afterBet(room) {
     if (live.length <= 1) {
         return awardFoldWin(room, live[0]);
     }
-    // จบรอบเดิมพันแล้ว คืนส่วนที่ไม่มีใครตามก่อนเปิดไพ่
+    // จบรอบเดิมพันแล้ว คืนส่วนที่ไม่มีใครตามก่อนแจกต่อ/เปิดไพ่
     returnUncalled(room);
-    if (meta.hasThird) {
-        dealThirdFaceUp(room);
+    if (meta.hasThird && (Number(state.street) || 0) < 2) {
+        dealThirdCard(room);
         setPhase(room, 'deal3', DEAL3_MS);
         return state;
     }
@@ -968,10 +997,13 @@ function nextHand(room) {
     return startHand(room);
 }
 
+// หมดเวลาลงชิป: ยังไม่มีใครสู้ (ผ่านได้ฟรี) = ผ่านให้ · มียอดต้องตาม = หมอบ
 function autoCheckOrFold(room, player) {
     if (!player || player.folded || player.allIn) return room.gameState;
+    const state = room.gameState;
+    const toCall = Math.max(0, (Number(state.currentBet) || 0) - (Number(player.streetBet) || 0));
     try {
-        return submitBet(room, player.playerId, 'fold');
+        return submitBet(room, player.playerId, toCall > 0 ? 'fold' : 'check');
     } catch (error) {
         player.folded = true;
         player.acted = true;
@@ -990,7 +1022,8 @@ function autoResolvePhase(room) {
         const actor = getPlayer(room, state.toActPlayerId);
         return autoCheckOrFold(room, actor);
     }
-    if (state.phase === 'deal3') return revealHands(room);
+    // สี่ใบเก: หลังแจกใบที่ 3 ลงชิปอีกรอบ (ทุกคนหมดหน้าตักแล้ว beginBetStreet จะเปิดวัดเลย)
+    if (state.phase === 'deal3') return beginBetStreet(room);
     if (state.phase === 'reveal') return finishReveal(room);
     if (state.phase === 'between') return startHand(room);
     return state;
@@ -1017,7 +1050,7 @@ function twoCardScore(cardIds) {
     const right = cards[1];
     const suited = left.suit === right.suit;
     const pair = left.rank === right.rank;
-    const gap = Math.abs(left.straight - right.straight);
+    const gap = straightGap(left, right);
     const faces = (left.value >= 11 ? 1 : 0) + (right.value >= 11 ? 1 : 0);
     const point = (left.point + right.point) % 10;
     let score = 10 + point * 3;
@@ -1286,6 +1319,15 @@ function buildClientState(room, viewerPlayerId) {
     const showing = state.phase === 'reveal' || state.phase === 'between';
     const showRows = (state.lastResult && state.lastResult.show) || [];
     const winnerIds = new Set((state.lastResult && state.lastResult.winners || []).map(row => row.playerId));
+    const thirdUp = thirdCardMode(room) === 'up';
+    // fx แจกใบที่ 3 แบบคว่ำ: แต่ละคนได้รูปแค่ใบตัวเอง (กันไพ่รั่ว) — ตอนเปิดเทียบโชว์ผ่าน revealed อยู่แล้ว
+    const fx = (state.fx || []).map(event => {
+        if (event.kind !== 'deal3' || event.faceUp) return event;
+        return {
+            ...event,
+            ups: (event.ups || []).map(row => (row.playerId === viewerPlayerId ? row : { playerId: row.playerId, card: null }))
+        };
+    });
     return {
         mode: meta.id,
         kind: meta.kind,
@@ -1300,6 +1342,9 @@ function buildClientState(room, viewerPlayerId) {
         displayPot: showing && state.lastResult ? state.lastResult.pot : state.pot,
         betMs: betClock({ gameState: state }),
         currentBet: state.currentBet,
+        street: Number(state.street) || 0,
+        betRounds: meta.hasThird ? 2 : 1,
+        thirdCard: meta.hasThird ? thirdCardMode(room) : null,
         toActPlayerId: state.toActPlayerId,
         toActName,
         handNumber: state.handNumber,
@@ -1344,7 +1389,7 @@ function buildClientState(room, viewerPlayerId) {
             const shownCount = player.folded
                 ? 0
                 : (afterPick
-                    ? Math.min(holeIds.length || meta.keepCount, state.phase === 'bet' && meta.keepCount === 2 ? 2 : 3)
+                    ? Math.min(holeIds.length || meta.keepCount, state.phase === 'bet' && meta.keepCount === 2 && (Number(state.street) || 1) < 2 ? 2 : 3)
                     : (player.hand || []).length);
             const peekSource = holeIds.slice(0, shownCount || holeIds.length);
             const peekInfo = peekEnabled ? peekHandInfoFrom(peekSource, player.folded) : { title: null, categoryName: null, rank: null };
@@ -1373,7 +1418,10 @@ function buildClientState(room, viewerPlayerId) {
             bestName: player.bestName || null,
             showCategory: showRow ? showRow.categoryName : null,
             showTitle: showRow ? (showRow.title || showRow.categoryName) : (player.bestName || null),
-            upCard: player.upCard && (state.phase === 'deal3' || showing)
+            // ใบที่ 3 คว่ำ: คนอื่นเห็นตอนเปิดเทียบเท่านั้น · หงาย: เห็นตั้งแต่แจก
+            // คนหมอบหลังได้ใบคว่ำ: ใบนั้นเป็นความลับตลอด (ไม่เปิดตอนวัด)
+            upCard: player.upCard && (thirdUp || !player.folded || player.playerId === viewerPlayerId)
+                && (showing || (thirdUp && (state.phase === 'deal3' || state.phase === 'bet')))
                 ? describeCard(player.upCard)
                 : null,
             peekHand: peekEnabled ? (player.hand || []).map(describeCard) : null,
@@ -1388,7 +1436,7 @@ function buildClientState(room, viewerPlayerId) {
         };
         }),
         availableActions: getAvailableActions(room, viewerPlayerId),
-        fx: state.fx || []
+        fx
     };
 }
 

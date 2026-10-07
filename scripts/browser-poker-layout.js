@@ -218,6 +218,65 @@ async function portraitPapercuts(browser, baseUrl) {
     }
 }
 
+// สี่ใบเก ลงชิป 2 รอบ: รอบสองมือเราครบ 3 ใบ · ใบที่ 3 ของบอทคว่ำ (ค่าเริ่มต้น) หรือหงาย (ตั้งค่าห้อง)
+const SHOT_DIR = process.env.POKER_SHOT_DIR || '';
+async function thirdCardStreet(browser, baseUrl, thirdCard) {
+    const socket = await connect(baseUrl);
+    const playerId = randomUUID();
+    let context;
+    try {
+        socket.emit('initPlayer', playerId);
+        await delay(250);
+        const created = await ack(socket, 'createRoom', {
+            playerId, name: 'Poker third ' + thirdCard, gameMode: 'poker4', maxPlayers: 10, pokerAnte: 300, pokerTableType: 'fun', pokerThirdCard: thirdCard
+        });
+        assert(created?.success, 'สร้างห้องใบที่ 3 ไม่ได้: ' + JSON.stringify(created));
+        const roomId = created.roomId;
+        socket.emit('setRoom', { roomId, playerId });
+        assert((await ack(socket, 'poker_addBots', { roomId, count: 1 }))?.success, 'เพิ่มบอทไม่ได้');
+        assert((await ack(socket, 'startGameFromLobby', { roomId }))?.success, 'เริ่มเกมไม่ได้');
+        socket.close();
+        context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+        await context.addInitScript(() => {
+            try { sessionStorage.setItem('insiderPromoSeen', '1'); localStorage.setItem('ig-firstplay-poker4', '1'); } catch (error) { /* ignore */ }
+        });
+        const page = await context.newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        await page.goto(`${baseUrl}/?playerId=${playerId}`);
+        await page.goto(`${baseUrl}/game/${roomId}?playerId=${playerId}`, { waitUntil: 'networkidle' });
+        await assertOwnCardsVisible(page, 4, `ใบที่ 3 ${thirdCard}: ช่วงเลือก`);
+        await page.click('#pkSelectBtn');
+        const deadline = Date.now() + 45000;
+        let now = '';
+        while (Date.now() < deadline) {
+            now = await page.textContent('#pkNowCopy');
+            if (/รอบสอง/.test(now)) break;
+            const move = await page.$('[data-pk-bet="call"], [data-pk-bet="check"]');
+            if (move) await move.click().catch(() => {});
+            await delay(300);
+        }
+        assert(/รอบสอง/.test(now), `ใบที่ 3 ${thirdCard}: ต้องมีลงชิปรอบสอง ได้ "${now}"`);
+        await delay(500);
+        await assertOwnCardsVisible(page, 3, `ใบที่ 3 ${thirdCard}: รอบสอง`);
+        await assertCriticalUiInViewport(page, `ใบที่ 3 ${thirdCard}: รอบสอง`);
+        const seat = await page.$$eval('.pk-seat:not(.is-self) .pk-seat-cards img', nodes => nodes.map(node => node.getAttribute('alt')));
+        assert(seat.length === 3, `ใบที่ 3 ${thirdCard}: ที่นั่งบอทต้องมี 3 ใบ ได้ ${seat.length}`);
+        const faceUp = seat.filter(alt => alt !== 'ไพ่คว่ำ').length;
+        assert(faceUp === (thirdCard === 'up' ? 1 : 0), `ใบที่ 3 ${thirdCard}: บอทต้องหงาย ${thirdCard === 'up' ? 1 : 0} ใบ ได้ ${faceUp}`);
+        if (SHOT_DIR) {
+            await page.waitForFunction(() => !document.querySelector('.pp-turn-ping.is-on, .party-turn-ping.is-on'), null, { timeout: 6000 }).catch(() => {});
+            await delay(2500);
+            await page.screenshot({ path: path.join(SHOT_DIR, `poker4-street2-${thirdCard}.png`) });
+        }
+        assert(errors.length === 0, 'มี JavaScript error: ' + errors.join(' | '));
+        console.log(`9${thirdCard === 'up' ? 'b' : 'a'}. สี่ใบเก รอบสอง: มือเรา 3 ใบ บอท${thirdCard === 'up' ? 'หงายใบ 3' : 'คว่ำทั้ง 3 ใบ'} ✓`);
+    } finally {
+        try { socket.close(); } catch {}
+        if (context) await context.close();
+    }
+}
+
 (async () => {
     const server = await spawnServer();
     const socket = await connect(server.baseUrl);
@@ -269,6 +328,8 @@ async function portraitPapercuts(browser, baseUrl) {
         await context.close();
 
         await portraitPapercuts(browser, server.baseUrl);
+        await thirdCardStreet(browser, server.baseUrl, 'down');
+        await thirdCardStreet(browser, server.baseUrl, 'up');
         console.log('\n✅ Poker UI regression ผ่าน');
     } finally {
         try { socket.close(); } catch {}

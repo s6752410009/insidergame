@@ -661,6 +661,7 @@ function createRoom(roomData, creatorPlayerId) {
                 : undefined,
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
+            pokerThirdCard: gameMode === 'poker4' && normalizedRoomData.pokerThirdCard === 'up' ? 'up' : 'down',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
             pokdengStraights: gameMode === 'pokdeng' ? normalizedRoomData.pokdengStraights !== false : undefined,
             pokdengMustDraw: gameMode === 'pokdeng' ? normalizedRoomData.pokdengMustDraw === true : undefined,
@@ -1088,6 +1089,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (updates.pokerAnte !== undefined) {
         room.settings.pokerAnte = Math.max(10, Number(updates.pokerAnte) || 500);
+    }
+    if (updates.pokerThirdCard !== undefined) {
+        room.settings.pokerThirdCard = updates.pokerThirdCard === 'up' ? 'up' : 'down';
     }
     // ระหว่างเล่น แบบเจ้ามือเปลี่ยนผ่านปุ่มในโต๊ะ (ก่อนแจกมือแรก) เท่านั้น
     if (updates.pokdengRotateDealer !== undefined && !(room.settings.gameMode === 'pokdeng' && isRoomGameInProgress(room))) {

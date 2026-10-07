@@ -37,7 +37,7 @@ assert(sean.categoryName === 'เซียน', 'เซียน JQK ดอก�
 assert(jqkFlush.categoryName === 'เรียงสี', 'J-Q-K ดอกเดียวกันเป็นเรียงสี');
 assert(straight.categoryName === 'เรียง', 'เรียง');
 assert(qka.categoryName === 'เรียง', 'Q-K-A เป็นเรียงสูงสุด');
-assert(wheel.categoryName === 'แต้ม', 'A-2-3 ไม่ใช่เรียง');
+assert(wheel.categoryName === 'เรียง', 'A-2-3 เป็นเรียงเล็กสุด (เล่น89/เก้าเกขั้นเทพ)');
 assert(flush.categoryName === 'สี', 'สี');
 assert(point9.categoryName === 'แต้ม', 'แต้ม');
 assert(point9.point === 9, 'A+8+K = แต้ม 9');
@@ -143,13 +143,17 @@ const second = four.gameState.players.find(p => p.playerId !== first.playerId);
 poker4.submitBet(four, first.playerId, 'check');
 poker4.submitBet(four, second.playerId, 'check');
 assert(four.gameState.phase === 'deal3' || four.gameState.phase === 'reveal' || four.gameState.phase === 'between', 'เดิมพันจบต้องแจกใบ 3 หรือเปิดวัด');
-if (four.gameState.phase === 'deal3') {
-    assert(a.upCard && b.upCard, 'ใบที่ 3 ต้องหงายให้คนที่ไม่หมอบ');
-    assert(a.kept.length === 3 && b.kept.length === 3, 'ได้ใบที่ 3 ฟรีจนครบ 3 ใบ');
-    four.gameState.phaseEndsAt = Date.now() - 1;
-    poker4.autoResolvePhase(four);
-}
-assert(four.gameState.lastResult, 'ต้องเปิดวัดหลังใบที่ 3');
+assert(four.gameState.phase === 'deal3', 'รอบแรกจบต้องแจกใบที่ 3');
+assert(a.upCard && b.upCard, 'คนที่ไม่หมอบได้ใบที่ 3');
+assert(a.kept.length === 3 && b.kept.length === 3, 'ได้ใบที่ 3 ฟรีจนครบ 3 ใบ');
+assert(!four.gameState.lastResult, 'ยังไม่เปิดวัด ต้องลงชิปรอบสองก่อน');
+four.gameState.phaseEndsAt = Date.now() - 1;
+poker4.autoResolvePhase(four);
+assert(four.gameState.phase === 'bet' && four.gameState.street === 2, 'แจกใบที่ 3 แล้วต้องลงชิปรอบสอง');
+assert(four.gameState.currentBet === 0, 'รอบสองเริ่มยอดสู้ใหม่');
+poker4.submitBet(four, four.gameState.toActPlayerId, 'check');
+poker4.submitBet(four, four.gameState.toActPlayerId, 'check');
+assert(four.gameState.lastResult, 'ต้องเปิดวัดหลังลงชิปรอบสอง');
 const fourView = poker4.buildClientState(four, a.playerId);
 assert(fourView.fx.some(f => f.kind === 'deal3'), 'สี่ใบเกต้องมีแอนิเมชันจั่วใบ 3');
 assert(fourView.fx.some(f => f.kind === 'deal3' && Array.isArray(f.ups) && f.ups.length === 2), 'แอนิเมชันใบ 3 ต้องมีรูปไพ่หงาย');
@@ -190,7 +194,17 @@ assert(afkView.players.find(p => p.isSelf).handCount === 3, 'บนโต๊ะ�
 const sleeper = afk.gameState.players.find(p => p.playerId === afk.gameState.toActPlayerId);
 afk.gameState.phaseEndsAt = Date.now() - 1;
 poker5.autoResolvePhase(afk);
-assert(sleeper.folded, 'หมดเวลาต้องหมอบ');
+assert(!sleeper.folded, 'หมดเวลาตอนยังไม่มีใครสู้ต้องผ่านให้ ไม่หมอบ');
+assert(sleeper.acted && sleeper.lastSay === 'ผ่าน', 'หมดเวลาตอนผ่านได้ฟรี = ผ่าน');
+assert(afk.gameState.phase === 'bet', 'ผ่านให้คนแรกแล้วยังเหลือตาอีกคน');
+const sleeper2 = afk.gameState.players.find(p => p.playerId === afk.gameState.toActPlayerId);
+assert(sleeper2 && sleeper2 !== sleeper, 'ตาถัดไปต้องเป็นอีกคน');
+poker5.submitBet(afk, sleeper2.playerId, 'bet', 500);
+assert(afk.gameState.toActPlayerId === sleeper.playerId, 'มีคนสู้แล้ว ตากลับมาคนแรก');
+afk.gameState.phaseEndsAt = Date.now() - 1;
+poker5.autoResolvePhase(afk);
+assert(sleeper.folded, 'หมดเวลาตอนมีคนสู้ (ต้องตาม) = หมอบ');
+assert(afk.gameState.lastResult && afk.gameState.lastResult.winners[0].playerId === sleeper2.playerId, 'หมอบแล้วอีกคนกินกอง');
 
 const raiseRoom = makeRoom(poker5, 2);
 const ra = raiseRoom.gameState.players[0];
