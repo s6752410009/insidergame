@@ -513,8 +513,7 @@
   .role-announce-art {
     position: relative;
     margin: -28px -24px 16px;
-    aspect-ratio: 1 / 1;
-    max-height: 300px;
+    height: clamp(220px, 68vw, 300px);
     overflow: hidden;
     border-radius: 28px 28px 0 0;
     background: radial-gradient(circle at 50% 44%, #24345a 0%, #0b1020 72%);
@@ -530,7 +529,8 @@
     margin: 0;
   }
 
-  .role-announce-art img.game-icon[src$=".svg"] { padding: 26px 26px 92px; }
+  /* ภาพบทเป็นตัวการ์ตูนพื้นโปร่ง — โชว์ทั้งตัว ไม่ crop และเว้นที่ด้านล่างให้ชื่อบท */
+  .role-announce-art img.game-icon { object-fit: contain; padding: 14px 14px 52px; }
 
   .role-announce-art .game-icon-fallback {
     display: flex;
@@ -1580,6 +1580,8 @@
       if (!window.partyPlay || !state || state.phase !== 'night') {
         return;
       }
+      // คืนแรกการ์ดเปิดบทขึ้นพร้อมกัน — รอให้เปิดบทจบก่อน (เรียกซ้ำจาก onDone) ไม่งั้นป้าย "ถึงตาคุณ" บังชื่อบท
+      if ($('#roleAnnouncementBanner').hasClass('visible')) return;
       var selfPlayer = (state.players || []).find(function(p) { return p.isSelf; });
       if (selfPlayer && selfPlayer.alive === false) return;
       var nightActions = getActiveNightActions(state);
@@ -5324,17 +5326,20 @@
         });
         if (gmMsg) showGmToast(gmMsg);
       }
-      pingWerewolfNight(currentState);
       const shouldShowRoleAnnouncement = currentState.phase === 'night'
         && Number(currentState.dayNumber || 1) === 1
         && currentState.playerRole?.id;
       const announcementKey = shouldShowRoleAnnouncement
         ? [roomId, currentState.dayNumber || 1, currentState.playerRole?.id || 'unknown'].join('|')
         : null;
+      if (!(shouldShowRoleAnnouncement && announcementKey !== lastRoleAnnouncementKey)) {
+        pingWerewolfNight(currentState);
+      }
 
       if (shouldShowRoleAnnouncement && announcementKey !== lastRoleAnnouncementKey) {
         lastRoleAnnouncementKey = announcementKey;
         showRoleAnnouncement(currentState, function() {
+          pingWerewolfNight(currentState);
           if (isMobileLayout()) {
             setMobileView('game');
           }
