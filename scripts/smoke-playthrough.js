@@ -142,7 +142,8 @@ async function main() {
         // ---------- SPYFALL: reveal → discussion → vote → result ----------
         {
             const mode = 'spyfall';
-            const { players, roomId } = await setupRoom(base, mode, 4);
+            // โหวตลับเสียงข้างมากรอบเดียว (แบบเดิม) — ค่าเริ่มต้นตามคู่มือคือกล่าวหาแบบเอกฉันท์ 5 รอบ มีเทสของตัวเองใน smoke:spyfall:flow
+            const { players, roomId } = await setupRoom(base, mode, 4, { spyfallVoteMode: 'majority', spyfallRounds: 1 });
             players[0].socket.close();
             const page = await (await browser.newContext()).newPage();
             watchPage(page, mode, errors);
