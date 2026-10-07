@@ -2,7 +2,9 @@
  * สร้างการ์ด/โทเคน SVG ของอวาลอน (งานวาดต้นฉบับของโปรเจกต์ — ไม่ได้ใช้ภาพจากเกมจริง)
  *
  * รัน: node scripts/generate-avalon-art.js
- * ผลลัพธ์: public/assets/games/avalon/*.svg
+ * ผลลัพธ์: public/assets/games/avalon/{crown,vote-*,token-*}.svg (เฉพาะโทเคนเล็ก)
+ * ภาพบทบาท/ปก/หลังการ์ด/การ์ดภารกิจ เปลี่ยนเป็นภาพวาดสาธารณสมบัติ (.webp) แล้ว — ดู CREDITS.md ในโฟลเดอร์เดียวกัน
+ * สคริปต์นี้ไม่เขียนทับไฟล์เหล่านั้น
  * สไตล์: พื้นกรมท่า #1a2332 · สัญลักษณ์ทอง #f5c86b · ฝ่ายดีฟ้าคราม · ฝ่ายร้ายแดงเลือดนก
  */
 const fs = require('fs');
@@ -576,7 +578,10 @@ files['cover.svg'] = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 
 </svg>
 `;
 
-Object.entries(files).forEach(([name, svg]) => {
+// เหลือแค่โทเคนเล็กที่ยังเป็น SVG — ภาพบทบาท/ปก/หลังการ์ดใช้ .webp (gameAssets เลือก webp ก่อน svg อยู่แล้ว)
+const KEEP = new Set(['crown.svg', 'vote-approve.svg', 'vote-reject.svg', 'token-success.svg', 'token-fail.svg']);
+const written = Object.entries(files).filter(([name]) => KEEP.has(name));
+written.forEach(([name, svg]) => {
     fs.writeFileSync(path.join(OUT, name), svg.replace(/\n\s*\n/g, '\n'));
 });
-console.log(`wrote ${Object.keys(files).length} files to ${path.relative(process.cwd(), OUT)}`);
+console.log(`wrote ${written.length} files to ${path.relative(process.cwd(), OUT)}`);

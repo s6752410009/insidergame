@@ -246,8 +246,10 @@
   }
   .guide-avalon-roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
   .guide-avalon-role { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
-  .guide-avalon-role img { width: 100%; max-width: 120px; height: auto; border-radius: 8px; }
+  .guide-avalon-role img { width: 100%; max-width: 120px; height: auto; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 8px; border: 2px solid rgba(232, 185, 90, 0.75); box-shadow: 0 6px 14px rgba(0,0,0,0.45); background: #141a2a; }
   .guide-avalon-role strong { font-size: 0.86rem; }
+  .guide-credit { margin: 10px 0 0; font-size: 0.74rem; color: #8f9bb3; }
+  .guide-credit a { color: #c9b27a; }
   .guide-avalon-role span { font-size: 0.76rem; color: #aab4c8; line-height: 1.35; overflow-wrap: anywhere; }
   @media (max-width: 520px) { .guide-avalon-roles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
@@ -442,7 +444,8 @@
 
   .guide-coup-roles {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    /* คอลัมน์แคบ (หน้าจอกว้างแบ่ง 3 คอลัมน์) ห้ามบีบการ์ดจนตัวหนังสือแตกทีละคำ */
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
     gap: 10px;
     margin-top: 14px;
   }
@@ -1236,6 +1239,7 @@
           <span>ขวางการลอบสังหารได้</span>
         </article>
       </div>
+      <p class="guide-credit">ภาพ: ภาพวาดยุคเรอเนซองส์ (สาธารณสมบัติ) · <a href="/assets/games/coup/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
 
       <h3 class="guide-sub">หนึ่งตาเล่นยังไง — เรียงตามลำดับ</h3>
       <div class="guide-steps">
@@ -1333,46 +1337,47 @@
       </div>
       <div class="guide-avalon-roles">
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/merlin.svg" alt="เมอร์ลิน" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/merlin.webp" alt="เมอร์ลิน" width="120" height="168" loading="lazy">
           <strong>เมอร์ลิน</strong>
           <span>เห็นฝ่ายร้าย (ยกเว้นมอร์เดรด) ห้ามให้ถูกจับได้</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/percival.svg" alt="เพอร์ซิวัล" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/percival.webp" alt="เพอร์ซิวัล" width="120" height="168" loading="lazy">
           <strong>เพอร์ซิวัล</strong>
           <span>เห็นเมอร์ลิน+มอร์กานา แยกไม่ออก</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/loyal.svg" alt="อัศวินผู้ภักดี" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/loyal.webp" alt="อัศวินผู้ภักดี" width="120" height="168" loading="lazy">
           <strong>อัศวินผู้ภักดี</strong>
           <span>ฝ่ายดี ไม่รู้อะไร</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/assassin.svg" alt="มือสังหาร" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/assassin.webp" alt="มือสังหาร" width="120" height="168" loading="lazy">
           <strong>มือสังหาร</strong>
           <span>แทงเมอร์ลินตอนท้ายเพื่อพลิกเกม</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/morgana.svg" alt="มอร์กานา" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/morgana.webp" alt="มอร์กานา" width="120" height="168" loading="lazy">
           <strong>มอร์กานา</strong>
           <span>ปลอมเป็นเมอร์ลินให้เพอร์ซิวัลเห็น</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/mordred.svg" alt="มอร์เดรด" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/mordred.webp" alt="มอร์เดรด" width="120" height="168" loading="lazy">
           <strong>มอร์เดรด</strong>
           <span>เมอร์ลินมองไม่เห็น</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/oberon.svg" alt="โอเบรอน" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/oberon.webp" alt="โอเบรอน" width="120" height="168" loading="lazy">
           <strong>โอเบรอน</strong>
           <span>ฝ่ายร้ายที่ไม่รู้จักพวกเดียวกัน</span>
         </article>
         <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/minion.svg" alt="สมุนมอร์เดรด" width="120" height="168" loading="lazy">
+          <img src="/assets/games/avalon/minion.webp" alt="สมุนมอร์เดรด" width="120" height="168" loading="lazy">
           <strong>สมุนมอร์เดรด</strong>
           <span>ฝ่ายร้าย รู้จักพวกเดียวกัน</span>
         </article>
       </div>
+      <p class="guide-credit">ภาพ: N. C. Wyeth, The Boy's King Arthur (1917, สาธารณสมบัติ) · <a href="/assets/games/avalon/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
     </article>
 
     <article class="guide-card mode-liar" id="liar">

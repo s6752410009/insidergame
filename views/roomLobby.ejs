@@ -860,7 +860,7 @@
     border: 1.5px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.04); color: #e2e8f0;
     font-weight: 600; font-size: 0.86em; text-align: left; cursor: pointer; min-width: 0;
   }
-  .avl-role img { width: 30px; height: 42px; border-radius: 4px; flex: 0 0 auto; }
+  .avl-role img { width: 30px; height: 42px; border-radius: 4px; flex: 0 0 auto; object-fit: cover; border: 1px solid rgba(232, 185, 90, 0.7); }
   .avl-role span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .avl-role.is-on { border-color: #f5c86b; background: rgba(245, 200, 107, 0.14); color: #fff; }
   .avl-role.is-evil.is-on { border-color: #e25563; background: rgba(226, 85, 99, 0.16); }
@@ -2575,7 +2575,7 @@
       const chips = AVALON_OPTIONAL.map(function(r) {
         const on = picked.indexOf(r.id) >= 0;
         return '<button type="button" class="avl-role' + (on ? ' is-on' : '') + (r.team === 'evil' ? ' is-evil' : '') + '" data-avalon-role="' + r.id + '" aria-pressed="' + on + '"' + (isAdmin ? '' : ' disabled') + '>' +
-          '<img src="/assets/games/avalon/' + r.id + '.svg" alt=""><span>' + r.name + '<br><small style="color:#94a3b8;font-weight:500;">' + r.hint + '</small></span></button>';
+          '<img src="/assets/games/avalon/' + r.id + '.webp" alt=""><span>' + r.name + '<br><small style="color:#94a3b8;font-weight:500;">' + r.hint + '</small></span></button>';
       }).join('');
       return [
         '<div class="lobby-spotlight-pill" style="background:rgba(29,78,216,0.3); color:#dbeafe;">🏰 อวาลอน · 5–10 คน</div>',
