@@ -5200,6 +5200,102 @@ soloGames.listSoloGames().forEach(meta => {
 });
 app.use('/api/solo/:gameId', soloApi);
 
+// ===== เศรษฐี 🏪 ร้านสกิล + 🪙 เหรียญทอง =====
+// ทุกยอดคิดที่ setthiGoldManager ฝั่งเซิร์ฟเวอร์ · client ส่งได้แค่ "สกิลไหน + เลเวลที่เห็น" / รายชื่อช่องติดตั้ง
+// identity มาจาก signed cookie/session เท่านั้น (ไม่รับ playerId จาก body/query)
+const setthiSkillDefs = require('./games/setthiSkills');
+
+function setthiShopBackHref(req) {
+    const roomId = String(req.query.room || '');
+    return /^[A-Za-z0-9_-]{1,64}$/.test(roomId) && roomManager.getRoom(roomId) ? `/room/${roomId}` : '/rooms';
+}
+
+app.get('/setthi/shop', function(req, res) {
+    const player = getRenderablePlayer(req.playerId);
+    const playerId = playerManager.isValidPlayerId(req.playerId) ? req.playerId : null;
+    res.set('Cache-Control', 'no-store');
+    res.render('setthiShop.ejs', {
+        player,
+        shop: {
+            profile: setthiGold.publicProfile(playerId),
+            skills: setthiSkillDefs.publicSkills(),
+            reward: setthiSkillDefs.REWARD,
+            loadoutSize: setthiSkillDefs.LOADOUT_SIZE,
+            maxLevel: setthiSkillDefs.MAX_LEVEL,
+            isSiteAdmin: isSiteAdminPlayer(playerId),
+            backHref: setthiShopBackHref(req)
+        }
+    });
+});
+
+/** คำขอแก้ยอดต้องเป็น JSON (ฟอร์มข้ามเว็บส่ง JSON ไม่ได้ถ้าไม่ผ่าน CORS) + มี identity ที่เซิร์ฟเวอร์ออกให้ */
+function setthiShopActor(req, res, kind) {
+    if (!req.is('application/json')) {
+        res.status(415).json({ success: false, error: 'ส่งข้อมูลผิดรูปแบบ' });
+        return null;
+    }
+    const playerId = getTrustedPlayerId(req);
+    if (!playerId || playerManager.isBotPlayerId(playerId)) {
+        res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
+        return null;
+    }
+    if (!soloRateLimit(`setthiShop:${kind}:${playerId}`, 40, 60 * 1000)) {
+        res.status(429).json({ success: false, error: 'กดถี่เกินไป รอสักครู่' });
+        return null;
+    }
+    return playerId;
+}
+
+function setthiShopReply(res, result) {
+    res.set('Cache-Control', 'no-store');
+    if (result && result.ok) return res.json({ success: true, ...result, ok: undefined });
+    const status = result && ['gold', 'stale', 'max', 'locked', 'dup', 'loadout'].includes(result.code) ? 409 : result && result.code === 'loading' ? 503 : 400;
+    return res.status(status).json({ success: false, code: result && result.code, error: (result && result.error) || 'ทำรายการไม่สำเร็จ', profile: result && result.profile });
+}
+
+app.get('/api/setthi/gold', function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    const playerId = getTrustedPlayerId(req);
+    res.json({ success: true, profile: setthiGold.publicProfile(playerId), skills: setthiSkillDefs.publicSkills() });
+});
+
+app.post('/api/setthi/shop/upgrade', async function(req, res) {
+    const playerId = setthiShopActor(req, res, 'upgrade');
+    if (!playerId) return;
+    try { await ensurePersistedPlayer(playerId); } catch (error) { return res.status(400).json({ success: false, error: 'ไม่พบผู้เล่น' }); }
+    const skill = typeof req.body?.skill === 'string' ? req.body.skill.slice(0, 32) : null;
+    const result = setthiGold.upgrade(playerId, skill, req.body?.expectLv);
+    if (result.ok) addServerLog(io, 'game', null, `🏪 ${resolveDisplayPlayerName(playerId, playerId)} อัปสกิลเศรษฐี ${skill} → Lv${result.level} (−${result.cost} 🪙)`, 'info', { gameMode: 'setthi', meta: { event: 'setthi_shop_upgrade', playerId, skill, level: result.level, cost: result.cost } });
+    return setthiShopReply(res, result);
+});
+
+app.post('/api/setthi/shop/loadout', async function(req, res) {
+    const playerId = setthiShopActor(req, res, 'loadout');
+    if (!playerId) return;
+    try { await ensurePersistedPlayer(playerId); } catch (error) { return res.status(400).json({ success: false, error: 'ไม่พบผู้เล่น' }); }
+    return setthiShopReply(res, setthiGold.setLoadout(playerId, req.body?.loadout));
+});
+
+// เทส: เสกเหรียญ / ล้างสกิล — แอดมินเว็บเท่านั้น (ข้อมูลถาวร ไม่ใช่เงินในเกม) · ลงบันทึกแอดมินทุกครั้ง
+function setthiGoldDebug(playerId, action, amount) {
+    if (!isSiteAdminPlayer(playerId)) return { ok: false, code: 'forbidden', error: 'เฉพาะแอดมินเว็บ' };
+    const result = action === 'reset' ? setthiGold.resetSkills(playerId, playerId) : action === 'grant' ? setthiGold.debugGrant(playerId, Number(amount), playerId) : { ok: false, code: 'action', error: 'ไม่รู้จักคำสั่ง' };
+    if (result.ok) {
+        const note = action === 'reset' ? `ล้างสกิลเศรษฐี (คืน ${result.refund} 🪙)` : `เสกเหรียญทอง +${result.granted} 🪙`;
+        addServerLog(io, 'admin', null, `${resolveDisplayPlayerName(playerId, playerId)} ${note}`, 'warning', { gameMode: 'setthi', meta: { event: 'setthi_gold_debug', action, playerId } });
+    }
+    return result;
+}
+
+app.post('/api/setthi/shop/debug', function(req, res) {
+    const playerId = setthiShopActor(req, res, 'debug');
+    if (!playerId) return;
+    const result = setthiGoldDebug(playerId, String(req.body?.action || ''), req.body?.amount);
+    if (!result.ok && result.code === 'forbidden') return res.status(403).json({ success: false, error: result.error });
+    return setthiShopReply(res, result);
+});
+// ===== END เศรษฐี ร้าน =====
+
 app.get('/how-to-play', function(req, res) {
     res.render('howToPlay.ejs', {
         pokerRankGuide: rankGuideForClient()

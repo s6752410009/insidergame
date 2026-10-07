@@ -1,0 +1,410 @@
+<%- contentFor('content') %>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  html.sh-active, html.sh-active body.content { background: oklch(0.19 0.03 258) !important; background-image: none !important; overflow-x: hidden; }
+  html.sh-active .container-fluid > header { display: none !important; }
+  html.sh-active .container-fluid, html.sh-active .container-fluid > .row { background: transparent !important; }
+  .shop {
+    --bg: oklch(0.19 0.03 258);
+    --navy: oklch(0.24 0.035 258);
+    --navy-2: oklch(0.29 0.04 258);
+    --navy-3: oklch(0.34 0.045 258);
+    --line: oklch(1 0 0 / 0.1);
+    --gold: oklch(0.85 0.12 82);
+    --gold-2: oklch(0.74 0.13 75);
+    --gold-ink: oklch(0.25 0.05 70);
+    --paper: oklch(0.95 0.025 85);
+    --text: oklch(0.97 0.01 250);
+    --muted: oklch(0.78 0.03 255);
+    --green: oklch(0.72 0.16 155);
+    --red: oklch(0.66 0.19 27);
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --display: 'Chakra Petch', 'Bai Jamjuree', sans-serif;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 16px 110px;
+    color: var(--text);
+    font-family: 'Bai Jamjuree', 'Kanit', system-ui, sans-serif;
+    text-align: left;
+  }
+  .shop *, .shop *::before, .shop *::after { box-sizing: border-box; }
+  .shop button { font-family: inherit; }
+  .sh-top {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 -16px; padding: 10px 16px;
+    background: color-mix(in oklch, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .sh-back { color: var(--muted); text-decoration: none; font-size: 0.95rem; padding: 8px 4px; min-height: 44px; display: inline-flex; align-items: center; }
+  .sh-back:hover { color: var(--text); text-decoration: none; }
+  .sh-title { margin: 0; font-family: var(--display); font-size: 1.25rem; font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; }
+  .sh-bal {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 999px;
+    background: linear-gradient(180deg, var(--gold), var(--gold-2));
+    color: var(--gold-ink); font-family: var(--display); font-weight: 700; font-size: 1.15rem;
+    box-shadow: 0 2px 0 oklch(0.55 0.11 70), 0 6px 18px oklch(0.85 0.12 82 / 0.25);
+    font-variant-numeric: tabular-nums;
+  }
+  .sh-bal.is-bump { animation: sh-bump 0.5s var(--pop); }
+  @keyframes sh-bump { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  .sh-today { margin: 10px 0 0; color: var(--muted); font-size: 0.86rem; }
+
+  .sh-load { margin: 16px 0 6px; padding: 14px; border-radius: 16px; background: var(--navy); border: 1px solid var(--line); }
+  .sh-h { margin: 0 0 10px; font-family: var(--display); font-size: 1.02rem; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+  .sh-h small { color: var(--muted); font-family: 'Bai Jamjuree', sans-serif; font-weight: 500; font-size: 0.82rem; }
+  .sh-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .sh-slot {
+    min-height: 78px; border-radius: 14px; padding: 8px 6px;
+    display: grid; place-items: center; gap: 2px; text-align: center;
+    background: var(--navy-2); border: 2px solid var(--gold-2); color: var(--text);
+    cursor: pointer; transition: transform 0.15s var(--ease);
+  }
+  .sh-slot:active { transform: scale(0.96); }
+  .sh-slot.is-empty { border-style: dashed; border-color: oklch(1 0 0 / 0.22); background: transparent; color: var(--muted); cursor: default; }
+  .sh-slot .sh-slot-ic { font-size: 1.7rem; line-height: 1; }
+  .sh-slot .sh-slot-nm { font-size: 0.8rem; font-weight: 600; line-height: 1.2; }
+  .sh-slot .sh-slot-lv { font-size: 0.72rem; color: var(--gold); font-weight: 700; }
+  .sh-slot.is-new { animation: sh-slot-in 0.45s var(--pop); }
+  @keyframes sh-slot-in { from { transform: scale(0.7); opacity: 0.2; } to { transform: scale(1); opacity: 1; } }
+  .sh-hint { margin: 8px 0 0; color: var(--muted); font-size: 0.8rem; }
+
+  .sh-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 14px; }
+  @media (min-width: 640px) { .sh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 980px) { .sh-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .sk {
+    position: relative; overflow: hidden;
+    padding: 14px; border-radius: 16px;
+    background: var(--navy); border: 1px solid var(--line);
+    display: grid; gap: 10px;
+  }
+  .sk.is-equipped { border-color: var(--gold-2); box-shadow: inset 0 0 0 1px oklch(0.85 0.12 82 / 0.25); }
+  .sk-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .sk-ic { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 1.6rem; background: var(--navy-3); }
+  .sk-nm { margin: 0; font-family: var(--display); font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
+  .sk-ln { margin: 2px 0 0; color: var(--muted); font-size: 0.84rem; line-height: 1.35; }
+  .sk-lv { font-family: var(--display); font-weight: 700; color: var(--gold); font-size: 0.95rem; white-space: nowrap; }
+  .sk-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .sk-seg { height: 12px; border-radius: 4px; background: oklch(1 0 0 / 0.1); overflow: hidden; position: relative; }
+  .sk-seg i { position: absolute; inset: 0; background: linear-gradient(90deg, var(--gold-2), var(--gold)); transform-origin: left center; transform: scaleX(0); }
+  .sk-seg.is-on i { transform: scaleX(1); }
+  .sk-seg.is-fill i { animation: sk-fill 0.6s var(--ease) both; }
+  .sk-seg.is-fill { box-shadow: 0 0 0 2px oklch(0.85 0.12 82 / 0.5), 0 0 14px oklch(0.85 0.12 82 / 0.6); }
+  @keyframes sk-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .sk-val { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; flex-wrap: wrap; }
+  .sk-val b { font-family: var(--display); font-size: 1.05rem; }
+  .sk-val .sk-now { color: var(--text); }
+  .sk-val .sk-next { color: var(--green); }
+  .sk-val .sk-arrow { color: var(--muted); }
+  .sk-acts { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .sk-up {
+    min-height: 46px; border: 0; border-radius: 12px; padding: 8px 12px;
+    background: linear-gradient(180deg, var(--gold), var(--gold-2)); color: var(--gold-ink);
+    font-weight: 700; font-size: 1rem; cursor: pointer;
+    box-shadow: 0 3px 0 oklch(0.55 0.11 70);
+    transition: transform 0.12s var(--ease), filter 0.12s;
+  }
+  .sk-up:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 oklch(0.55 0.11 70); }
+  .sk-up:disabled { background: var(--navy-3); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+  .sk-up.is-busy { filter: brightness(0.85); }
+  .sk-eq {
+    min-height: 46px; min-width: 88px; border-radius: 12px; padding: 8px 10px; cursor: pointer;
+    background: transparent; border: 1.5px solid oklch(1 0 0 / 0.3); color: var(--text); font-weight: 600; font-size: 0.9rem;
+  }
+  .sk-eq[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: oklch(0.85 0.12 82 / 0.1); }
+  .sk-eq:disabled { opacity: 0.4; cursor: not-allowed; }
+  .sk.is-lvup { animation: sk-lvup 0.7s var(--ease); }
+  @keyframes sk-lvup { 0% { box-shadow: 0 0 0 0 oklch(0.85 0.12 82 / 0.7); } 100% { box-shadow: 0 0 0 18px oklch(0.85 0.12 82 / 0); } }
+  .sk-pop {
+    position: absolute; right: 14px; top: 10px; pointer-events: none;
+    font-family: var(--display); font-weight: 700; color: var(--gold); font-size: 1.05rem;
+    animation: sk-pop 1s var(--ease) forwards;
+  }
+  @keyframes sk-pop { 0% { transform: translateY(8px) scale(0.8); opacity: 0; } 25% { transform: translateY(0) scale(1.1); opacity: 1; } 100% { transform: translateY(-26px) scale(1); opacity: 0; } }
+  .sh-delta { position: fixed; z-index: 30; pointer-events: none; font-family: var(--display); font-weight: 700; color: oklch(0.8 0.15 27); text-shadow: 0 1px 6px oklch(0 0 0 / 0.6); font-size: 1rem; animation: sh-delta 0.9s var(--ease) forwards; }
+  @keyframes sh-delta { from { transform: translateY(0); opacity: 1; } to { transform: translateY(26px); opacity: 0; } }
+
+  .sh-box { margin-top: 16px; border-radius: 16px; background: var(--navy); border: 1px solid var(--line); overflow: hidden; }
+  .sh-box > summary { list-style: none; cursor: pointer; padding: 14px; min-height: 48px; font-family: var(--display); font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+  .sh-box > summary::-webkit-details-marker { display: none; }
+  .sh-box > summary::after { content: '▾'; color: var(--muted); transition: transform 0.2s; }
+  .sh-box[open] > summary::after { transform: rotate(180deg); }
+  .sh-box-body { padding: 0 14px 14px; }
+  .sh-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  .sh-table td { padding: 8px 0; border-top: 1px solid var(--line); }
+  .sh-table td:last-child { text-align: right; font-family: var(--display); font-weight: 700; color: var(--gold); white-space: nowrap; padding-left: 10px; }
+  .sh-notes { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
+  .sh-foot { margin: 14px 0 0; color: var(--muted); font-size: 0.8rem; text-align: center; }
+  .sh-admin { margin-top: 16px; padding: 14px; border-radius: 16px; border: 1px dashed oklch(0.66 0.19 27 / 0.6); background: oklch(0.66 0.19 27 / 0.08); }
+  .sh-admin-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .sh-admin input { flex: 1 1 120px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--navy-2); color: var(--text); padding: 0 12px; font-size: 1rem; }
+  .sh-admin button { min-height: 44px; border-radius: 10px; border: 0; padding: 0 14px; font-weight: 700; cursor: pointer; background: var(--navy-3); color: var(--text); }
+  .sh-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 40; max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 12px; background: oklch(0.15 0.02 258 / 0.95); color: var(--text); font-size: 0.95rem; box-shadow: 0 8px 24px oklch(0 0 0 / 0.4); }
+  .sh-toast[hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .sh-bal.is-bump, .sk.is-lvup, .sk-seg.is-fill i, .sk-pop, .sh-slot.is-new, .sh-delta { animation: none !important; }
+  }
+</style>
+
+<main class="shop" id="shop">
+  <div class="sh-top">
+    <a class="sh-back" href="<%= shop.backHref %>" id="shBack">←</a>
+    <h1 class="sh-title">🏪 ร้านเศรษฐี</h1>
+    <span class="sh-bal" id="shBal" aria-live="polite" aria-label="เหรียญทอง">🪙 <span id="shBalNum"><%= shop.profile.gold.toLocaleString('en-US') %></span></span>
+  </div>
+  <p class="sh-today" id="shToday"></p>
+
+  <section class="sh-load" aria-labelledby="shLoadH">
+    <h2 class="sh-h" id="shLoadH">🎒 ติดตัวเข้าเกม <small>สูงสุด <%= shop.loadoutSize %> สกิล</small></h2>
+    <div class="sh-slots" id="shSlots"></div>
+    <p class="sh-hint">แตะช่อง = ถอด · เลือกสกิลเปลี่ยนได้ในห้องรอด้วย</p>
+  </section>
+
+  <div class="sh-grid" id="shGrid"></div>
+
+  <details class="sh-box" id="shEarn">
+    <summary>🪙 ได้เหรียญยังไง</summary>
+    <div class="sh-box-body">
+      <table class="sh-table">
+        <tbody>
+          <tr><td>เล่นจนจบ</td><td>+<%= shop.reward.finished %></td></tr>
+          <tr><td>ชนะ (หมดเวลา ทรัพย์สินมากสุด)</td><td>+<%= shop.reward.win.time %></td></tr>
+          <tr><td>ชนะ (คนอื่นล้มละลาย)</td><td>+<%= shop.reward.win.bankrupt %></td></tr>
+          <tr><td>👑 ผูกขาดแถว</td><td>+<%= shop.reward.win.line %></td></tr>
+          <tr><td>👑 ผูกขาด 3 สี</td><td>+<%= shop.reward.win.triple %></td></tr>
+          <tr><td>👑 ผูกขาดท่องเที่ยว</td><td>+<%= shop.reward.win.tourist %></td></tr>
+          <tr><td>🏛️ แลนด์มาร์ก / 🤝 ซื้อต่อ ครั้งละ</td><td>+<%= shop.reward.perFeat %> <small>(สูงสุด +<%= shop.reward.featCap %>)</small></td></tr>
+        </tbody>
+      </table>
+      <ul class="sh-notes">
+        <li>เล่นกับบอทล้วน ได้ครึ่งเดียว · วันละไม่เกิน <%= shop.profile.botDailyCap %> 🪙</li>
+        <li>ทั้งวันไม่เกิน <%= shop.profile.dailyCap.toLocaleString('en-US') %> 🪙</li>
+        <li>ออกกลางเกม · ใช้เมนูทดสอบ · กดจบก่อนรอบ <%= shop.reward.minRounds %> = ไม่ได้เหรียญ</li>
+        <li>หัวห้องปิดสกิลได้ · บอทไม่มีสกิล</li>
+      </ul>
+    </div>
+  </details>
+
+  <% if (shop.isSiteAdmin) { %>
+  <section class="sh-admin" aria-label="เมนูทดสอบแอดมิน">
+    <strong>🛠 แอดมิน (ทดสอบ)</strong>
+    <div class="sh-admin-row">
+      <input id="shGrantAmt" type="number" inputmode="numeric" min="1" max="100000" value="5000" aria-label="จำนวนเหรียญ">
+      <button type="button" id="shGrant">🪙 เสกเหรียญทอง</button>
+      <button type="button" id="shReset">↺ ล้างสกิล (คืนเหรียญ)</button>
+    </div>
+  </section>
+  <% } %>
+
+  <p class="sh-foot">🪙 เหรียญทองใช้ในเศรษฐีเท่านั้น ไม่ใช่ชิป ไม่มีมูลค่าจริง</p>
+</main>
+<div class="sh-toast" id="shToast" role="status" aria-live="polite" hidden></div>
+
+<%- contentFor('footer') %>
+<%- include('partials/footerNav', { back: { href: shop.backHref, label: shop.backHref === '/rooms' ? 'รายชื่อห้อง' : 'กลับห้อง' } }) %>
+
+<%- contentFor('script') %>
+<script>
+  window.__SHOP__ = <%- safeJson(shop) %>;
+</script>
+<script>
+(function() {
+  document.documentElement.classList.add('sh-active');
+  var D = window.__SHOP__;
+  var SKILLS = D.skills;
+  var BY = {};
+  SKILLS.forEach(function(s) { BY[s.id] = s; });
+  var MAX = D.maxLevel;
+  var SLOTS = D.loadoutSize;
+  var P = D.profile;
+  var busy = {};
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function(id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function n(x) { return Number(x || 0).toLocaleString('en-US'); }
+  function lvOf(id) { return Number((P.skills || {})[id]) || 0; }
+  function costOf(lv) { return lv >= MAX ? null : BY.double.cost[lv]; }
+
+  /** ค่าของสกิลที่เลเวลนี้ แบบอ่านง่าย */
+  function val(s, lv) {
+    if (!lv) return 'ยังไม่มี';
+    var v = s.values[lv];
+    if (s.unit === 'off') return 'ถูกลง ' + v + '%';
+    if (s.unit === 'bonus') return '+' + v + '%' + (lv >= MAX ? ' · เปิด ×3' : '');
+    if (s.id === 'double') return 'ดับเบิล +' + v + '%';
+    return 'โอกาส ' + v + '%';
+  }
+
+  var toastTimer = null;
+  function toast(text) {
+    var t = $('shToast');
+    t.textContent = text;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { t.hidden = true; }, 2200);
+  }
+
+  function renderToday() {
+    $('shToday').textContent = 'วันนี้ได้ ' + n(P.earnedToday) + '/' + n(P.dailyCap) + ' 🪙 · เกมบอท ' + n(P.botEarnedToday) + '/' + n(P.botDailyCap);
+  }
+
+  var shownGold = P.gold;
+  function setGold(next, animate) {
+    var node = $('shBalNum');
+    var from = shownGold;
+    shownGold = next;
+    if (!animate || reduce || from === next) { node.textContent = n(next); return; }
+    var t0 = performance.now();
+    (function step(t) {
+      var k = Math.min(1, (t - t0) / 520);
+      var e = 1 - Math.pow(1 - k, 3);
+      node.textContent = n(Math.round(from + (next - from) * e));
+      if (k < 1) requestAnimationFrame(step);
+    })(t0);
+    var bal = $('shBal');
+    bal.classList.remove('is-bump');
+    void bal.offsetWidth;
+    bal.classList.add('is-bump');
+    if (next < from) {
+      var r = bal.getBoundingClientRect();
+      var d = document.createElement('div');
+      d.className = 'sh-delta';
+      d.textContent = '−' + n(from - next);
+      d.style.left = (r.left + r.width / 2 - 20) + 'px';
+      d.style.top = (r.bottom + 2) + 'px';
+      document.body.appendChild(d);
+      setTimeout(function() { d.remove(); }, 1000);
+    }
+  }
+
+  function renderSlots(newId) {
+    var html = '';
+    for (var k = 0; k < SLOTS; k += 1) {
+      var id = (P.loadout || [])[k];
+      var s = id && BY[id];
+      if (s) {
+        html += '<button type="button" class="sh-slot' + (id === newId ? ' is-new' : '') + '" data-unequip="' + esc(id) + '" aria-label="ถอด ' + esc(s.name) + '">' +
+          '<span class="sh-slot-ic" aria-hidden="true">' + s.icon + '</span><span class="sh-slot-nm">' + esc(s.name) + '</span><span class="sh-slot-lv">Lv' + lvOf(id) + '</span></button>';
+      } else {
+        html += '<div class="sh-slot is-empty" aria-label="ช่องว่าง"><span class="sh-slot-ic" aria-hidden="true">＋</span><span class="sh-slot-nm">ว่าง</span></div>';
+      }
+    }
+    $('shSlots').innerHTML = html;
+  }
+
+  function cardHtml(s) {
+    var lv = lvOf(s.id);
+    var cost = costOf(lv);
+    var equipped = (P.loadout || []).indexOf(s.id) >= 0;
+    var full = (P.loadout || []).length >= SLOTS;
+    var segs = '';
+    for (var k = 1; k <= MAX; k += 1) segs += '<span class="sk-seg' + (k <= lv ? ' is-on' : '') + '" data-seg="' + k + '"><i></i></span>';
+    var upLabel = cost === null ? '✨ เต็มแล้ว' : (P.gold >= cost ? 'อัป 🪙 ' + n(cost) : 'ขาด 🪙 ' + n(cost - P.gold));
+    return '<article class="sk' + (equipped ? ' is-equipped' : '') + '" data-skill="' + esc(s.id) + '">' +
+      '<div class="sk-head"><span class="sk-ic" aria-hidden="true">' + s.icon + '</span>' +
+      '<div><h3 class="sk-nm">' + esc(s.name) + '</h3><p class="sk-ln">' + esc(s.line) + '</p></div>' +
+      '<span class="sk-lv">Lv ' + lv + '/' + MAX + '</span></div>' +
+      '<div class="sk-bar" role="meter" aria-label="เลเวล ' + esc(s.name) + '" aria-valuemin="0" aria-valuemax="' + MAX + '" aria-valuenow="' + lv + '">' + segs + '</div>' +
+      '<div class="sk-val"><b class="sk-now">' + esc(val(s, lv)) + '</b>' + (cost !== null ? '<span class="sk-arrow" aria-hidden="true">→</span><b class="sk-next">' + esc(val(s, lv + 1)) + '</b>' : '') + '</div>' +
+      '<div class="sk-acts"><button type="button" class="sk-up" data-up="' + esc(s.id) + '"' + (cost === null || P.gold < cost ? ' disabled' : '') + '>' + upLabel + '</button>' +
+      '<button type="button" class="sk-eq" data-eq="' + esc(s.id) + '" aria-pressed="' + equipped + '"' + (!lv || (!equipped && full) ? ' disabled' : '') + '>' + (equipped ? '✓ ติดอยู่' : 'ใส่ช่อง') + '</button></div>' +
+      '</article>';
+  }
+
+  function render(opts) {
+    opts = opts || {};
+    renderToday();
+    renderSlots(opts.newSlot);
+    $('shGrid').innerHTML = SKILLS.map(cardHtml).join('');
+    if (opts.leveled) {
+      var card = document.querySelector('.sk[data-skill="' + opts.leveled + '"]');
+      if (card && !reduce) {
+        var seg = card.querySelector('.sk-seg[data-seg="' + lvOf(opts.leveled) + '"]');
+        if (seg) seg.classList.add('is-fill');
+        card.classList.add('is-lvup');
+        var pop = document.createElement('span');
+        pop.className = 'sk-pop';
+        pop.textContent = lvOf(opts.leveled) >= MAX ? 'MAX ✨' : 'Lv' + lvOf(opts.leveled) + '!';
+        card.appendChild(pop);
+        setTimeout(function() { pop.remove(); if (seg) seg.classList.remove('is-fill'); card.classList.remove('is-lvup'); }, 1000);
+      }
+    }
+  }
+
+  function post(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function(res) { return res.json().catch(function() { return { success: false, error: 'เชื่อมต่อไม่ได้' }; }); })
+      .catch(function() { return { success: false, error: 'เชื่อมต่อไม่ได้' }; });
+  }
+
+  function apply(profile, opts) {
+    if (!profile) return;
+    var before = P.gold;
+    P = profile;
+    render(opts);
+    setGold(P.gold, P.gold !== before);
+  }
+
+  document.addEventListener('click', function(e) {
+    var up = e.target.closest('[data-up]');
+    if (up && !up.disabled) {
+      var id = up.getAttribute('data-up');
+      if (busy[id]) return;
+      busy[id] = true;
+      up.classList.add('is-busy');
+      up.disabled = true;
+      var hadSlot = (P.loadout || []).slice();
+      post('/api/setthi/shop/upgrade', { skill: id, expectLv: lvOf(id) }).then(function(res) {
+        busy[id] = false;
+        if (res && res.success) {
+          var added = res.profile.loadout.filter(function(x) { return hadSlot.indexOf(x) < 0; })[0];
+          apply(res.profile, { leveled: id, newSlot: added });
+          if (typeof window.gameHaptic === 'function') window.gameHaptic([20, 40, 30]);
+        } else {
+          if (res && res.profile) apply(res.profile);
+          else render();
+          toast((res && res.error) || 'อัปไม่สำเร็จ');
+        }
+      });
+      return;
+    }
+    var eq = e.target.closest('[data-eq]');
+    var un = e.target.closest('[data-unequip]');
+    if ((eq && !eq.disabled) || un) {
+      var sid = eq ? eq.getAttribute('data-eq') : un.getAttribute('data-unequip');
+      if (busy.__loadout) return;
+      var cur = (P.loadout || []).slice();
+      var at = cur.indexOf(sid);
+      var next = at >= 0 ? cur.filter(function(x) { return x !== sid; }) : cur.concat([sid]);
+      if (next.length > SLOTS) { toast('ช่องเต็ม — ถอดก่อน'); return; }
+      busy.__loadout = true;
+      post('/api/setthi/shop/loadout', { loadout: next }).then(function(res) {
+        busy.__loadout = false;
+        if (res && res.success) apply(res.profile, { newSlot: at < 0 ? sid : null });
+        else { if (res && res.profile) apply(res.profile); toast((res && res.error) || 'ตั้งไม่สำเร็จ'); }
+      });
+      return;
+    }
+    if (e.target.id === 'shGrant' || e.target.id === 'shReset') {
+      var body = e.target.id === 'shGrant' ? { action: 'grant', amount: Number($('shGrantAmt').value) } : { action: 'reset' };
+      post('/api/setthi/shop/debug', body).then(function(res) {
+        if (res && res.success) { apply(res.profile); toast(body.action === 'grant' ? '🪙 เสกแล้ว +' + n(res.granted) : '↺ ล้างสกิลแล้ว คืน ' + n(res.refund) + ' 🪙'); }
+        else toast((res && res.error) || 'ไม่สำเร็จ');
+      });
+    }
+  });
+
+  // กลับมาที่แท็บ = ดึงยอดล่าสุด (อาจเพิ่งจบเกมในอีกแท็บ)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) return;
+    fetch('/api/setthi/gold', { credentials: 'same-origin', cache: 'no-store' }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res && res.success && res.profile) apply(res.profile);
+    }).catch(function() {});
+  });
+
+  render();
+})();
+</script>

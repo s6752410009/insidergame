@@ -740,6 +740,12 @@
         font: inherit; font-weight: 600; cursor: pointer;
     }
     .ms-change:hover { background: rgba(255,255,255,0.09); }
+    .ms-shop {
+        grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px;
+        border-radius: 12px; background: linear-gradient(180deg, #f5c86b, #d9a441); color: #3a2a06 !important;
+        font-weight: 700; text-decoration: none !important;
+    }
+    .ms-shop:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
     .mode-quick-card:focus-visible, .gp-cat:focus-visible, .ms-change:focus-visible,
     .room-advanced-details > summary:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
     .room-advanced-details {
@@ -1246,7 +1252,7 @@ $(function() {
                 badge: '💰 ทอย · ซื้อ · ผูกขาด',
                 title: 'เศรษฐี',
                 summary: 'ทอยเต๋าเดินรอบกระดานเมืองไทย ซื้อเมืองแล้วสร้างจนเป็นแลนด์มาร์ก ซื้อต่อที่ของเพื่อน 2 เท่า ผูกขาดชนะทันที — เงินในเกม ไม่มีมูลค่าจริง',
-                bullets: ['2-6 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้']
+                bullets: ['2-6 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้', '🏪 ร้านสกิล']
             }
         };
 
@@ -1377,6 +1383,7 @@ $(function() {
                     ${spotlight.summary ? `<p class="ms-summary">${escapeHtml(spotlight.summary)}</p>` : ''}
                 </div>
                 ${bullets ? `<ul class="ms-bullets">${bullets}</ul>` : ''}
+                ${mode?.id === 'setthi' ? '<a class="ms-shop" href="/setthi/shop" id="setthiShopLink">🏪 ร้านสกิล · 🪙 เหรียญทอง</a>' : ''}
                 <button type="button" class="ms-change" id="modeChangeBtn">↺ เปลี่ยนเกม</button>
             </div>
         `;
