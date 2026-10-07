@@ -3,6 +3,7 @@
  *  A) 2 คน (ขั้นต่ำ): คำสั่งผิดโดนปฏิเสธ · ลืมกดเหลือใบเดียวแล้วโดนจับ · รีเฟรชกลางเกมได้ state เต็ม · สถิติ
  *  B) 10 คน (สูงสุด): คนออกกลางเกม ไพ่กลับใต้กอง ตาเดินต่อ · ล่า 300 แต้มหลายรอบ
  *  C) คน 1 + บอท 3: บอทเล่นถูกกติกา จบเกมเอง · คนสุดท้ายออก = ปิดห้อง
+ *  D) ลงหลายใบ: กลุ่มเลข/สัญลักษณ์เดียวกันผ่าน socket · กลุ่มผิดโดนปฏิเสธ · คนอื่นเห็น · ห้องปิดกติกานี้ (ตั้งในห้องรอ)
  * ทุก payload ที่ทุก socket ได้รับถูกตรวจว่าไม่มี id ไพ่ที่ผู้รับไม่มีสิทธิ์เห็น
  *
  * รัน: npm run smoke:colorcards:play   (SMOKE_PORT=8841 เพื่อกำหนดพอร์ต)
@@ -81,7 +82,7 @@ function allowedIds(state) {
     if (state.self) (state.self.hand || []).forEach(c => ok.add(c.id));
     (state.pile || []).forEach(c => c && ok.add(c.id));
     if (state.top) ok.add(state.top.id);
-    (state.fx || []).forEach(e => { if (e.card) ok.add(e.card.id); if (e.top) ok.add(e.top.id); });
+    (state.fx || []).forEach(e => { if (e.card) ok.add(e.card.id); if (e.top) ok.add(e.top.id); (e.cards || []).forEach(c => ok.add(c.id)); });
     if (state.roundResult) state.roundResult.hands.forEach(h => h.cards.forEach(c => ok.add(c.id)));
     return ok;
 }
@@ -153,6 +154,22 @@ async function start(host, clients, roomId) {
     await waitFor(() => clients.every(c => last(c) && last(c).phase === 'turn'), 15000, 'turn phase');
 }
 
+const isWildCard = c => c.kind === 'wild' || c.kind === 'd4';
+const sameValue = (a, b) => !!a && !!b && !isWildCard(a) && !isWildCard(b) && a.kind === b.kind && (a.kind !== 'num' || a.value === b.value);
+/** กลุ่มที่ใหญ่ที่สุดที่ลงได้ตอนนี้ (ใบแรกลงได้เอง ที่เหลือค่าเดียวกัน) หรือ null */
+function bestGroup(view) {
+    const self = view.self;
+    if (!self || !view.config.multi || view.turn.drawn) return null;
+    let best = null;
+    (self.playable || []).forEach(id => {
+        const lead = self.hand.find(c => c.id === id);
+        if (!lead || isWildCard(lead)) return;
+        const mates = self.hand.filter(c => c.id !== id && sameValue(c, lead));
+        if (mates.length && (!best || mates.length + 1 > best.length)) best = [lead, ...mates];
+    });
+    return best;
+}
+
 function bestColor(hand, exclude) {
     const counts = { r: 0, y: 0, g: 0, b: 0 };
     hand.forEach(c => { if (c.color && c.id !== exclude) counts[c.color] += 1; });
@@ -164,7 +181,7 @@ function bestColor(hand, exclude) {
  * hooks.forgetCall(client) = true → ลงใบรองสุดท้ายโดยไม่กดบอก
  */
 async function drive(clients, admin, opts = {}) {
-    const stats = { actions: 0, plays: 0, draws: 0, passes: 0, rounds: new Set(), catches: 0, stale: 0, readyStarts: 0 };
+    const stats = { actions: 0, plays: 0, multiPlays: 0, draws: 0, passes: 0, rounds: new Set(), catches: 0, stale: 0, readyStarts: 0 };
     const deadline = Date.now() + (opts.timeoutMs || 240000);
     while (Date.now() < deadline) {
         const live = clients.filter(c => c.socket.connected && last(c));
@@ -211,8 +228,9 @@ async function drive(clients, admin, opts = {}) {
         let event; let payload;
         const playable = self.playable || [];
         // 2 คน: ข้าม/กลับทิศ = ได้เล่นต่อทันที จับไม่ทัน จึงลืมบอกเฉพาะไพ่เลข · 3 คนขึ้นไปลืมได้ทุกใบ
-        const mayForget = card => self.hand.length === 2 && (view.seats.filter(x => !x.left).length > 2 || card.kind === 'num')
+        const mayForget = (card, n = 1) => self.hand.length - n === 1 && (view.seats.filter(x => !x.left).length > 2 || card.kind === 'num')
             && opts.forgetCall && opts.forgetCall(actor, view);
+        const group = opts.multi === false ? null : bestGroup(view);
         if (a.canPass) {
             if (playable.includes(self.drawnCardId)) {
                 const card = self.hand.find(c => c.id === self.drawnCardId);
@@ -220,6 +238,10 @@ async function drive(clients, admin, opts = {}) {
                 event = 'colorcards_play';
                 payload = { cardId: card.id, color: card.color ? undefined : bestColor(self.hand, card.id), callLast: self.hand.length === 2 && !forget };
             } else { event = 'colorcards_pass'; payload = {}; }
+        } else if (a.canPlay && group) {
+            const forget = mayForget(group[0], group.length);
+            event = 'colorcards_play';
+            payload = { cardId: group[0].id, cardIds: group.map(c => c.id), callLast: self.hand.length - group.length === 1 && !forget };
         } else if (a.canPlay && playable.length) {
             const pickId = playable.find(id => { const c = self.hand.find(x => x.id === id); return c && c.color; }) || playable[0];
             const card = self.hand.find(c => c.id === pickId);
@@ -238,6 +260,7 @@ async function drive(clients, admin, opts = {}) {
         } else {
             stats.actions += 1;
             if (event === 'colorcards_play') stats.plays += 1;
+            if (payload.cardIds) stats.multiPlays += 1;
             else if (event === 'colorcards_draw') stats.draws += 1;
             else stats.passes += 1;
         }
@@ -467,7 +490,7 @@ function readStats() {
         const botTurns = finC.history.filter(h => /บอท/.test(h.text)).length;
         assert(botTurns > 0, 'บอทได้เล่นจริง');
         assert(!finC.history.some(h => /บอท/.test(h.text) && /หมดเวลา/.test(h.text)), 'บอทไม่ปล่อยให้หมดเวลา');
-        console.log(`7. คน 1 + บอท 3 จบเกม (คนลง ${statsC.plays} · บอทมีบันทึก ${botTurns} รายการ · ผู้ชนะ ${finC.winner.name}) ✓`);
+        console.log(`7. คน 1 + บอท 3 จบเกม (คนลง ${statsC.plays} · คนลงหลายใบ ${statsC.multiPlays} · บอทมีบันทึก ${botTurns} รายการ · ผู้ชนะ ${finC.winner.name}) ✓`);
         await delay(800);
         rows = readStats();
         assert(!rows.some(x => String(x.playerId).startsWith('bot_')), 'ไม่บันทึกสถิติบอท');
@@ -481,6 +504,125 @@ function readStats() {
         const list = await new Promise(res => human.socket.emit('getRoomList', x => res(x)));
         assert(!(list.rooms || []).some(x => x.roomId === roomC), 'คนสุดท้ายออก ห้องบอทล้วนถูกปิด');
         console.log('8. ไม่บันทึกสถิติบอท · คนสุดท้ายออก ปิดห้องบอทล้วน ✓');
+
+        // ================= D) ลงหลายใบผ่าน socket =================
+        const D = [];
+        for (let i = 0; i < 3; i += 1) D.push(await makeClient(base, 'D' + i));
+        everyone.push(...D);
+        await delay(300);
+        const roomD = await createRoom(D[0], { settings: { colorcardsTurnSeconds: 30 } });
+        await joinAll(roomD, D.slice(1));
+        await start(D[0], D, roomD);
+        assert(last(D[0]).config.multi === true, 'ลงหลายใบเปิดเป็นค่าเริ่มของห้อง');
+        /** จั่วอย่างเดียวจนคนที่ถึงตามีกลุ่มที่ลงได้ (มี pred เพิ่มได้) */
+        async function hoardUntil(clients, pred, label) {
+            for (let guard = 0; guard < 160; guard += 1) {
+                const S = last(clients[0]);
+                const actor = clients.find(c => S.turn && c.id === S.turn.playerId);
+                if (!actor) { await delay(60); continue; }
+                await waitFor(() => last(actor).turnSeq === last(clients[0]).turnSeq, 3000, 'actor sync');
+                const view = last(actor);
+                if (view.phase !== 'turn') throw new Error('เกมจบก่อนเจอกลุ่ม');
+                if (!view.turn.drawn && pred(view)) return actor;
+                const before = view.step;
+                const res = await ack(actor.socket, view.availableActions.canPass ? 'colorcards_pass' : 'colorcards_draw', { turnSeq: view.turnSeq });
+                if (res.success) await waitFor(() => last(actor).step !== before, 5000, 'hoard step');
+            }
+            throw new Error('หากลุ่มไม่เจอ: ' + label);
+        }
+        const dActor = await hoardUntil(D, v => {
+            const g = bestGroup(v);
+            return !!g && v.self.hand.length >= 4 && v.self.hand.some(c => !isWildCard(c) && !sameValue(c, g[0]));
+        }, 'D');
+        const dView = last(dActor);
+        const grp = bestGroup(dView);
+        const lead = grp[0];
+        const odd = dView.self.hand.find(c => c.id !== lead.id && !sameValue(c, lead) && !isWildCard(c));
+        const others = D.filter(c => c !== dActor);
+        const stepBefore = dView.step;
+        const seq = dView.turnSeq;
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: [lead.id, odd.id], turnSeq: seq });
+        assert(!r.success && /เฉพาะเลขเดียวกัน/.test(r.error), 'กลุ่มค่าไม่เหมือนกันโดนปฏิเสธ: ' + r.error);
+        const dWild = dView.self.hand.find(isWildCard);
+        if (dWild) {
+            r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: [lead.id, dWild.id], color: 'r', turnSeq: seq });
+            assert(!r.success && /ทีละใบ/.test(r.error), 'ไวลด์ในกลุ่มโดนปฏิเสธ: ' + r.error);
+        }
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: [lead.id, last(others[0]).self.hand[0].id], turnSeq: seq });
+        assert(!r.success && /ไม่มีไพ่/.test(r.error), 'ใส่ไพ่คนอื่นในกลุ่มโดนปฏิเสธ');
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: [lead.id, lead.id], turnSeq: seq });
+        assert(!r.success && /ซ้ำ/.test(r.error), 'ใบซ้ำในกลุ่มโดนปฏิเสธ');
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: [lead.id, 42, { id: 'k000' }], turnSeq: seq });
+        assert(!r.success && /ไม่มีไพ่/.test(r.error), 'id ไม่ใช่ string โดนปฏิเสธ');
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: Array(40).fill(lead.id), turnSeq: seq });
+        assert(!r.success && /ไม่เกิน/.test(r.error), 'กลุ่มยาวผิดปกติโดนปฏิเสธ');
+        const illegalFirst = dView.self.hand.find(c => !dView.self.playable.includes(c.id) && !isWildCard(c)
+            && dView.self.hand.some(m => m.id !== c.id && sameValue(m, c) && dView.self.playable.includes(m.id)));
+        if (illegalFirst) {
+            const mate = dView.self.hand.find(m => m.id !== illegalFirst.id && sameValue(m, illegalFirst) && dView.self.playable.includes(m.id));
+            r = await ack(dActor.socket, 'colorcards_play', { cardId: illegalFirst.id, cardIds: [illegalFirst.id, mate.id], turnSeq: seq });
+            assert(!r.success && /ใบแรก/.test(r.error), 'ใบแรกลงไม่ได้โดนปฏิเสธ: ' + r.error);
+        }
+        r = await ack(others[0].socket, 'colorcards_play', { cardId: lead.id, cardIds: grp.map(c => c.id), turnSeq: seq });
+        assert(!r.success && /ยังไม่ถึงตา/.test(r.error), 'ลงหลายใบนอกตาโดนปฏิเสธ');
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: grp.map(c => c.id), turnSeq: seq - 1 });
+        assert(!r.success && /จังหวะ/.test(r.error), 'ลงหลายใบด้วย turnSeq เก่าโดนปฏิเสธ');
+        assert(last(D[0]).step === stepBefore && last(dActor).self.hand.length === dView.self.hand.length, 'กลุ่มผิดไม่เปลี่ยน state');
+        // ลงจริง — เรียงให้ใบแรกลงได้ ใบสุดท้ายต่างสีจากใบแรกถ้ามี
+        const tail = grp.slice(1).sort((x, y) => Number(x.color === lead.color) - Number(y.color === lead.color)).reverse();
+        const order = [lead, ...tail];
+        const topCard = order[order.length - 1];
+        const countBefore = dView.self.hand.length;
+        r = await ack(dActor.socket, 'colorcards_play', { cardId: lead.id, cardIds: order.map(c => c.id), callLast: countBefore - order.length === 1, turnSeq: seq });
+        assert(r.success, 'ลงหลายใบผ่าน socket ได้: ' + r.error);
+        await waitFor(() => D.every(c => last(c).step !== stepBefore), 5000, 'others see multi');
+        const mine = last(dActor);
+        assert(mine.self.hand.length === countBefore - order.length, `มือลด ${order.length} ใบ`);
+        assert(order.every(c => !mine.self.hand.some(h => h.id === c.id)), 'ไพ่ทั้งกลุ่มออกจากมือ');
+        for (const o of others) {
+            const v = last(o);
+            assert(v.top.id === topCard.id, `${o.name} เห็นใบบนสุด = ใบสุดท้ายของกลุ่ม`);
+            if (topCard.color) assert(v.currentColor === topCard.color, `${o.name} เห็นสีต่อไป = สีใบสุดท้าย`);
+            assert(v.seats.find(x => x.playerId === dActor.id).count === countBefore - order.length, `${o.name} เห็นจำนวนไพ่ลดลง`);
+            const playFx = v.fx.filter(e => e.kind === 'play').pop();
+            assert(playFx && playFx.count === order.length && playFx.cards.map(c => c.id).join() === order.map(c => c.id).join(), `${o.name} ได้ fx ลงหลายใบตามลำดับ`);
+            const word = ['', '', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด'][order.length];
+            const val = topCard.kind === 'num' ? String(topCard.value) : ({ skip: 'ข้าม', rev: 'กลับทิศ', d2: '+2' })[topCard.kind];
+            assert(v.history.some(h => h.text.includes(`ลง ${val} ${word}ใบ!`)), `${o.name} เห็นบันทึก "ลง ${val} ${word}ใบ!"`);
+        }
+        console.log(`8b. ลงหลายใบผ่าน socket: ${order.length} ใบ (${order.map(c => c.color || 'w').join('→')} ${topCard.kind === 'num' ? topCard.value : topCard.kind}) · กลุ่มผิด/ไวลด์/ไพ่คนอื่น/ซ้ำ/ยาว/นอกตา/turnSeq เก่า โดนปฏิเสธ · คนอื่นเห็นใบบน+บันทึก ✓`);
+        // เล่นต่อจนจบด้วยกลุ่มเสมอเมื่อลงได้
+        const statsD = await drive(D, D[0], { timeoutMs: 200000 });
+        assert(last(D[0]).phase === 'finished', 'เกมที่ลงหลายใบจบได้');
+        console.log(`8c. เล่นต่อจนจบ (ลงหลายใบอีก ${statsD.multiPlays} ครั้ง · ลง ${statsD.plays}) ✓`);
+        D.forEach(c => c.socket.close());
+
+        // ห้องปิดกติกา (หัวห้องสลับในห้องรอ) → ลงหลายใบไม่ได้
+        const O = [await makeClient(base, 'O0'), await makeClient(base, 'O1')];
+        everyone.push(...O);
+        await delay(300);
+        const roomO = await createRoom(O[0], { settings: {} });
+        await joinAll(roomO, [O[1]]);
+        r = await ack(O[1].socket, 'updateRoom', { colorcardsMulti: false });
+        r = await ack(O[0].socket, 'updateRoom', { colorcardsMulti: false });
+        assert(r.success && r.room.settings.colorcardsMulti === false, 'หัวห้องปิดลงหลายใบในห้องรอได้');
+        await start(O[0], O, roomO);
+        assert(last(O[0]).config.multi === false, 'ปิดแล้วไปถึงเกม');
+        const oActor = await hoardUntil(O, v => (v.self.playable || []).some(id => {
+            const c = v.self.hand.find(x => x.id === id);
+            return c && !isWildCard(c) && v.self.hand.some(m => m.id !== id && sameValue(m, c));
+        }), 'O');
+        const oView = last(oActor);
+        const oLead = oView.self.hand.find(c => oView.self.playable.includes(c.id) && !isWildCard(c) && oView.self.hand.some(m => m.id !== c.id && sameValue(m, c)));
+        const oMate = oView.self.hand.find(m => m.id !== oLead.id && sameValue(m, oLead));
+        r = await ack(oActor.socket, 'colorcards_play', { cardId: oLead.id, cardIds: [oLead.id, oMate.id], turnSeq: oView.turnSeq });
+        assert(!r.success && /ทีละใบ/.test(r.error), 'ห้องปิด: ลงหลายใบโดนปฏิเสธ: ' + r.error);
+        r = await ack(oActor.socket, 'colorcards_play', { cardId: oLead.id, cardIds: [oLead.id], turnSeq: oView.turnSeq });
+        assert(r.success, 'ห้องปิด: ลงใบเดียวผ่าน cardIds ได้');
+        r = await ack(O[0].socket, 'colorcards_end', {});
+        assert(r.success, 'จบเกมห้องปิดกติกา');
+        console.log('8d. หัวห้องปิด "ลงไพ่เหมือนกันหลายใบพร้อมกัน" ในห้องรอ → เกมรับแค่ใบเดียว ✓');
+        O.forEach(c => c.socket.close());
 
         assert(!/\[colorcards\].*failed/.test(server.logs()), 'server log มี error ของไพ่ทิ้งสี:\n' + server.logs().split('\n').filter(l => /colorcards/.test(l)).slice(-5).join('\n'));
         assert(leakChecks > 500, 'ตรวจ payload มากพอ');

@@ -9403,6 +9403,8 @@ io.sockets.on('connection', function(socket) {
         handleColorCardsCommand(socket, callback, (room, playerId) =>
             colorcardsRuntime.engine.playCard(room, playerId, {
                 cardId: typeof data?.cardId === 'string' ? data.cardId : '',
+                // ลงหลายใบ: ส่งลำดับมาเป็น array (engine ตรวจทั้งกลุ่ม) · ไม่ใช่ string = '' → ถูกปฏิเสธ
+                cardIds: Array.isArray(data?.cardIds) ? data.cardIds.slice(0, 16).map(id => (typeof id === 'string' ? id : '')) : undefined,
                 color: typeof data?.color === 'string' ? data.color : null,
                 callLast: data?.callLast === true
             }, colorcardsContext(data)));
