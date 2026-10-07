@@ -335,11 +335,23 @@
     else { cy = b.y + b.h * 0.27; cx = b.x + b.w * (side === 'l' ? 0.46 : 0.54); }
     var scale = 1;
     if (n > 1) {
-      scale = n === 2 ? 0.8 : 0.7;
+      // 2–3 ตัว = แถวเดียว · 4–6 ตัว = 2 แถว แถวละ 3 (ย่อเล็กลง) ทุกตัวอยู่ในกรอบช่อง
+      var rows = n <= 3 ? 1 : 2;
+      var cols = Math.ceil(n / rows);
+      scale = n === 2 ? 0.8 : n === 3 ? 0.7 : 0.6;
       var tok = size * scale;
       var span = b.w * (side === 'x' ? 0.8 : 0.9) - tok;
-      var step = Math.min(tok * 0.92, span / (n - 1));
-      cx += (k - (n - 1) / 2) * step;
+      var row = Math.floor(k / cols);
+      var inRow = row === rows - 1 ? n - cols * (rows - 1) : cols;
+      var col = k - row * cols;
+      var step = Math.min(tok * 0.95, cols > 1 ? span / (cols - 1) : 0);
+      cx += (col - (inRow - 1) / 2) * step;
+      if (rows > 1) {
+        var gapY = tok * 0.92;
+        var half = (gapY + tok) / 2;
+        cy = Math.max(b.y + half + 1, Math.min(b.y + b.h - half - 1, cy));
+        cy += (row - (rows - 1) / 2) * gapY;
+      }
     }
     return { x: cx - size / 2, y: cy - size / 2, k: scale };
   }
@@ -1301,6 +1313,9 @@
   function renderStrip() {
     if (!S) return;
     var model = V || modelFrom(S);
+    var count = (S.seats || []).length;
+    el.strip.classList.toggle('is-many', count > 4);
+    el.strip.dataset.n = String(count);
     el.strip.innerHTML = (S.seats || []).map(function(s) {
       var out = isOut(s);
       var badge = '';
@@ -1946,7 +1961,7 @@
       mode: 'เศรษฐี',
       headline: (S.winners || []).map(function(w) { return w.name; }).join(' & ') + ((S.winners || []).length > 1 ? ' ชนะร่วม!' : ' คือเศรษฐี!'),
       sub: (S.monopoly ? MONO[S.monopoly.type] + ' · ' : '') + 'เงินในเกม ไม่มีมูลค่าจริง',
-      lines: S.standings.slice(0, 4).map(function(r) { return r.rank + '. ' + r.name + ' ' + (r.bankrupt ? 'ล้มละลาย' : money(r.netWorth)); }),
+      lines: S.standings.slice(0, 6).map(function(r) { return r.rank + '. ' + r.name + ' ' + (r.bankrupt ? 'ล้มละลาย' : money(r.netWorth)); }),
       accent: '#f5c86b',
       fileName: 'setthi-result'
     });

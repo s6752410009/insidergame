@@ -1,5 +1,5 @@
 /**
- * เศรษฐี — เกมกระดานธีมเมืองไทยแนว "ทอย ซื้อ สร้าง ซื้อต่อ ผูกขาด" 2–4 คน (ใส่บอทได้)
+ * เศรษฐี — เกมกระดานธีมเมืองไทยแนว "ทอย ซื้อ สร้าง ซื้อต่อ ผูกขาด" 2–6 คน (ใส่บอทได้)
  *
  * engine ล้วน: ไม่มี socket/IO · ทุกอย่างที่สุ่มรับ rng ได้ · เวลาอ่านผ่าน now() (เทสเปลี่ยนนาฬิกาได้ด้วย setClock)
  * เงินในเกมเป็นเงินสมมติ (฿) ไม่มีมูลค่าจริง ไม่เกี่ยวกับกระเป๋าเงินของเว็บ
@@ -25,7 +25,7 @@ const B = require('./setthiBoard');
 
 const MODE = 'setthi';
 const MIN_PLAYERS = 2;
-const MAX_PLAYERS = 4;
+const MAX_PLAYERS = 6;
 const MINUTE_CHOICES = [0, 20, 30, 45, 60];
 const DEFAULT_MINUTES = 30;
 
@@ -51,7 +51,7 @@ const SWEEP_MAX_MS = 2000;
 const GREEN_DOUBLES = 0.2;
 const GREEN_SPAWN = num(env.SETTHI_GREEN_SPAWN, 0.5);
 const BOT_GREEN_HIT = 0.15;
-// สีผู้เล่น 4 สีสด ตัดกันชัด (แดง/น้ำเงิน/เขียว/เหลือง) · ink = สีตัวหนังสือบนพื้นสีนั้น
+// สีผู้เล่น 6 สีสด ตัดกันชัด (แดง/น้ำเงิน/เขียว/เหลือง/ม่วง/ฟ้า) · ใช้ทั้งหมากและสีเจ้าของบนช่อง · ink = สีตัวหนังสือบนพื้นสีนั้น
 // ดาวแลนด์มาร์ก: ตกแลนด์มาร์กตัวเอง = โบนัส 20% ของค่าผ่านทางตอนนั้น + ดาว 1 ดวง (ค่าผ่านทาง +25% ของฐาน สูงสุด 4 ดวง = ×2)
 const STAR_MAX = 4;
 const STAR_BONUS_CAP = 20000;
@@ -59,9 +59,9 @@ const STAR_BONUS_CAP = 20000;
 const FESTIVAL_MAX = 16;
 const STAR_STEP = 0.25;
 const STAR_BONUS = 0.2;
-const TOKEN_COLORS = ['#e53935', '#1f6feb', '#16a34a', '#f5b800'];
-const TOKEN_INKS = ['#ffffff', '#ffffff', '#ffffff', '#2a1f00'];
-const TOKEN_COLOR_NAMES = ['แดง', 'น้ำเงิน', 'เขียว', 'เหลือง'];
+const TOKEN_COLORS = ['#e53935', '#1f6feb', '#16a34a', '#f5b800', '#9b3fe6', '#12c2d6'];
+const TOKEN_INKS = ['#ffffff', '#ffffff', '#ffffff', '#2a1f00', '#ffffff', '#032a30'];
+const TOKEN_COLOR_NAMES = ['แดง', 'น้ำเงิน', 'เขียว', 'เหลือง', 'ม่วง', 'ฟ้า'];
 
 let clock = () => Date.now();
 function now() { return clock(); }
@@ -1907,7 +1907,7 @@ function auditState(room) {
 module.exports = {
     id: MODE,
     label: 'เศรษฐี',
-    description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–4 คน ใส่บอทได้',
+    description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–6 คน ใส่บอทได้',
     minPlayers: MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
     MINUTE_CHOICES,

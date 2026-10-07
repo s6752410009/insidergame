@@ -938,7 +938,7 @@ $(function() {
         { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'drawguess', label: 'วาดแล้วทาย', description: 'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'colorcards', label: 'ไพ่ทิ้งสี', description: 'ลงไพ่ให้สีหรือเลขตรงกัน ทิ้งให้หมดมือก่อนชนะ เหลือใบเดียวต้องกดบอก — 2–10 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 10 },
-        { id: 'setthi', label: 'เศรษฐี', description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–4 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 4 }
+        { id: 'setthi', label: 'เศรษฐี', description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–6 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 6 }
     ];
     const serverModeDefaults = <%- safeJson(typeof gameModeDefaults !== 'undefined' ? gameModeDefaults : []) %>;
     const gameModes = defaultGameModes.reduce(function(result, fallbackMode) {
@@ -1246,7 +1246,7 @@ $(function() {
                 badge: '💰 ทอย · ซื้อ · ผูกขาด',
                 title: 'เศรษฐี',
                 summary: 'ทอยเต๋าเดินรอบกระดานเมืองไทย ซื้อเมืองแล้วสร้างจนเป็นแลนด์มาร์ก ซื้อต่อที่ของเพื่อน 2 เท่า ผูกขาดชนะทันที — เงินในเกม ไม่มีมูลค่าจริง',
-                bullets: ['2-4 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้']
+                bullets: ['2-6 คน', 'ตั้งเวลา 20–60 นาที', 'ซื้อต่อ · แลนด์มาร์ก · ผูกขาด', 'ใส่บอทได้']
             }
         };
 
@@ -1788,7 +1788,7 @@ $(function() {
                             <option value="60">60 นาที</option>
                             <option value="0">ไม่จำกัด (เล่นจนเหลือคนสุดท้าย)</option>
                         </select>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–4 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง</div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–6 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง</div>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
@@ -2630,7 +2630,7 @@ $(function() {
     function buildSetthiGuideHtml() {
         return [
             '<div class="bm-guide-inner">',
-            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · หรือทำให้คนอื่นล้มละลาย · 2–4 คน ใส่บอทได้</p></div>',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · หรือทำให้คนอื่นล้มละลาย · 2–6 คน ใส่บอทได้</p></div>',
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
             '<li>กดค้างปุ่มทอย ปล่อยตอนเข็มแรง = เดินไกล · ผ่านจุดเริ่มรับ ฿3,000 · ดับเบิลทอยอีก (3 ครั้งติด = เกาะร้าง)</li>',
             '<li>ตกเมืองว่าง: ซื้อที่ดิน + สร้างบ้าน/ตึก/โรงแรมได้ในแผ่นเดียว (รอบแรกถึงบ้าน) · มีโรงแรมแล้วตกซ้ำ = แลนด์มาร์ก</li>',

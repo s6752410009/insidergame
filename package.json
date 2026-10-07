@@ -108,6 +108,7 @@
     "smoke:setthi:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-setthi-play.js",
     "smoke:setthi:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-setthi.js",
     "smoke:setthi:exit": "node scripts/browser-exit-everywhere.js setthi",
+    "smoke:setthi:6p": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-setthi-6p.js",
     "smoke:solo:pokdengsolo": "node scripts/smoke-solo-pokdengsolo.js",
     "smoke:solo:pokdengsolo:api": "node scripts/api-solo-pokdengsolo.js",
     "smoke:solo:pokdengsolo:browser": "node scripts/browser-solo-pokdengsolo.js",

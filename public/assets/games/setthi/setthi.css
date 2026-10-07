@@ -123,6 +123,9 @@ html.st-active {
   min-height: 52px;
 }
 .st-chip .st-token { width: 26px; height: 26px; font-size: 13px; grid-row: 1 / span 2; }
+/* 5–6 คน (มือถือแนวตั้ง): 3 คอลัมน์ × 2 แถว ให้ชื่อ/เงินยังอ่านได้ */
+.st-strip.is-many { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 9px; }
+.st-strip.is-many .st-chip { min-height: 46px; padding: 5px 6px 4px; }
 .st-chip-body { min-width: 0; display: grid; line-height: 1.12; }
 .st-chip-name { font-size: 0.7rem; color: var(--st-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-chip-cash { font-family: var(--st-display); font-weight: 700; font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; letter-spacing: -0.01em; }
@@ -986,7 +989,8 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
   }
   .st-top { grid-area: top; }
   .st-stage { grid-area: stage; }
-  .st-strip { grid-area: strip; grid-auto-flow: row; grid-auto-columns: auto; gap: 8px; }
+  .st-strip, .st-strip.is-many { grid-area: strip; grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: none; gap: 8px; }
+  .st-strip.is-many .st-chip { min-height: 54px; padding: 8px 12px; }
   .st-alerts { grid-area: alerts; max-width: none; }
   .st-alert { flex-wrap: wrap; }
   .st-alert span:last-child { white-space: normal; }
@@ -1040,7 +1044,7 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
   .st-clock { padding: 0 8px; }
   .st-clock svg { display: none; }
   .st-stage { grid-area: stage; }
-  .st-strip { grid-area: strip; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-strip, .st-strip.is-many { grid-area: strip; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .st-alerts { grid-area: alerts; }
   .st-dock { grid-area: dock; position: static; border-radius: 16px; border-bottom: 1px solid oklch(0.85 0.12 82 / 0.28); max-width: none; margin: 0; padding-bottom: 0; }
   .st-roll { width: 76px; height: 76px; }

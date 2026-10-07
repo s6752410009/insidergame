@@ -9157,7 +9157,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || 4));
+            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || setthiRuntime.engine.maxPlayers));
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));

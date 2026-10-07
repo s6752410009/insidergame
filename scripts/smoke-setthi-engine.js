@@ -94,8 +94,41 @@ test('เริ่มเกม: เงินทุน · ตำแหน่ง �
     eq(view.phase, 'roll', 'เฟสทอย');
     eq(view.phaseActor, 'a', 'คนแรกทอย');
     throws(() => E.startGame({ roomId: 'x', players: [{ playerId: 'a', socketId: 's' }], settings: {} }), 'คนเดียวเริ่มไม่ได้');
-    throws(() => E.startGame({ roomId: 'x', players: ['a', 'b', 'c', 'd', 'e'].map(id => ({ playerId: id, socketId: 's' })), settings: {} }), '5 คนเริ่มไม่ได้');
+    throws(() => E.startGame({ roomId: 'x', players: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(id => ({ playerId: id, socketId: 's' })), settings: {} }), '7 คนเริ่มไม่ได้');
     audit(room, 'เริ่ม');
+});
+
+test('6 คน: เริ่มได้ · สีหมาก 6 สีไม่ซ้ำ (ใช้เป็นสีเจ้าของด้วย) · ทุนเท่ากัน · บัญชีลง · ลำดับตาวนครบ 6', () => {
+    eq(E.maxPlayers, 6, 'engine maxPlayers');
+    const ids = ['a', 'b', 'c', 'bot_d', 'bot_e', 'bot_f'];
+    const room = makeRoom(ids);
+    const seats = S(room).seats;
+    eq(seats.length, 6, '6 ที่นั่ง');
+    eq(new Set(seats.map(x => x.tokenColor)).size, 6, 'สีไม่ซ้ำ');
+    eq(new Set(seats.map(x => x.colorName)).size, 6, 'ชื่อสีไม่ซ้ำ');
+    seats.forEach(x => { eq(x.cash, B.START_CASH, 'ทุน'); assert(/^#[0-9a-f]{6}$/i.test(x.tokenInk), 'มีสีตัวหนังสือ'); });
+    eq(S(room).ledger.startTotal, 6 * B.START_CASH, 'ทุนรวม 6 คน');
+    // วนตาครบ 6 คน (ทอยแต้มที่ตกช่องว่างแล้วผ่าน)
+    const order = [];
+    for (let k = 0; k < 7; k += 1) {
+        const id = S(room).phaseActor;
+        order.push(id);
+        dice(room, [[1, 2]]);
+        E.rollDice(room, id, { seq: S(room).phaseSeq });
+        while (S(room).phase !== 'roll') {
+            const a = S(room).phaseActor;
+            if (S(room).phase === 'build') E.passBuild(room, a, null);
+            else if (S(room).phase === 'pick') E.skipPick(room, a, null);
+            else if (S(room).phase === 'takeover') E.declineTakeover(room, a, null);
+            else break;
+        }
+        audit(room, 'วนตา ' + k);
+    }
+    eq(order.slice(0, 6).join(','), ids.join(','), 'ตาวนตามที่นั่ง');
+    eq(order[6], 'a', 'ครบรอบกลับคนแรก');
+    eq(S(room).round, 2, 'นับรอบ 2');
+    const view = E.buildClientState(room, 'c');
+    eq(view.seats.length, 6, 'client เห็น 6 คน');
 });
 
 // ---------- ซื้อ / สร้าง ----------
@@ -1029,12 +1062,13 @@ test('เมนูทดสอบ /m: 6+6 ทุกครั้ง (3 ครั�
 // ---------- สุ่มหลายพันเกม ----------
 function randomGames(count) {
     const reasons = {};
+    const byN = {};
     let steps = 0;
     for (let g = 0; g < count; g += 1) {
         const rng = mulberry(1000 + g);
-        const n = 2 + (g % 3);
+        const n = 2 + (g % 5); // 2–6 คน
         const ids = Array.from({ length: n }, (_, k) => 'bot_' + k);
-        const room = makeRoom(ids, { rng, minutes: g % 5 === 0 ? 20 : 0 });
+        const room = makeRoom(ids, { rng, minutes: g % 7 === 0 ? 20 : 0 }); // 7 ไม่หาร 5 ลงตัว = ทุกจำนวนคนได้ลองจำกัดเวลา
         let guard = 0;
         while (S(room).phase !== 'finished' && guard < 6000) {
             T += 900;
@@ -1048,10 +1082,11 @@ function randomGames(count) {
         assert(S(room).phase === 'finished', `เกมสุ่ม ${g} ไม่จบ`);
         const r = S(room).monopoly ? S(room).monopoly.type : (S(room).clock.timeUp ? 'time' : 'last');
         reasons[r] = (reasons[r] || 0) + 1;
+        byN[n] = (byN[n] || 0) + 1;
         steps += guard;
         checks += 1;
     }
-    return { reasons, steps };
+    return { reasons, steps, byN };
 }
 
 /** คนกดมั่ว: สุ่มคำสั่งทุกแบบ (รวมคำสั่งผิด) ต้องไม่พัง บัญชีต้องลง */
@@ -1060,7 +1095,7 @@ function chaosGames(count) {
     let rejected = 0;
     for (let g = 0; g < count; g += 1) {
         const rng = mulberry(5000 + g);
-        const ids = ['a', 'b', 'bot_c', 'd'].slice(0, 2 + (g % 3));
+        const ids = ['a', 'b', 'bot_c', 'd', 'e', 'bot_f'].slice(0, 2 + (g % 5));
         const room = makeRoom(ids, { rng });
         let guard = 0;
         while (S(room).phase !== 'finished' && guard < 3000) {
@@ -1106,6 +1141,8 @@ function chaosGames(count) {
     const r = randomGames(games);
     console.log(`✓ เกมบอทสุ่ม ${games} เกม (${r.steps} ก้าว ตรวจทุกก้าว) — จบแบบ ${JSON.stringify(r.reasons)}`);
     for (const type of ['color', 'line', 'tourist', 'last']) assert(r.reasons[type] > 0, 'เกมสุ่มต้องมีจบแบบ ' + type);
+    for (let n = 2; n <= 6; n += 1) assert(r.byN[n] > 0, 'เกมสุ่มต้องมี ' + n + ' คน');
+    console.log('  จำนวนคนต่อเกม ' + JSON.stringify(r.byN));
     const rejected = chaosGames(Math.max(100, Math.round(games / 10)));
     console.log(`✓ เกมกดมั่ว ${Math.max(100, Math.round(games / 10))} เกม (คำสั่งโดนปฏิเสธ ${rejected} ครั้ง ไม่มีพัง)`);
     console.log(`setthi engine: ${checks} checks ผ่านทั้งหมด (${((Date.now() - started) / 1000).toFixed(1)}s)`);

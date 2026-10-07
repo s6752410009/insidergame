@@ -460,7 +460,7 @@ async function scenarioB(base) {
     const H2 = await makeClient(base, 'B-two');
     const H3 = await makeClient(base, 'B-three');
     await delay(300);
-    let roomId = await createRoom(H1, { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0 } });
+    let roomId = await createRoom(H1, { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0, maxPlayers: 4 } });
     await joinAll(roomId, [H2, H3]);
     assert((await ack(H1.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
     let r = await ack(H1.socket, 'setthi_addBots', { roomId, count: 3 });
