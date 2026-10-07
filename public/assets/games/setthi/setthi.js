@@ -1742,7 +1742,40 @@
     if (reason) toast(reason, 1400);
     renderDock();
   }
+  // นิ้ว (มือถือ) ใช้ touch event ตรงๆ: iPhone Safari มักยิง pointercancel ทิ้งตอนกดค้าง
+  // (คิดว่าจะเลื่อนจอ/กดค้างเปิดเมนู) → หลอดพลังไม่ทันโผล่ · preventDefault ที่ touchstart กันทั้งเลื่อนจอและเมนู
+  // เมาส์/ปากกายังใช้ pointer event เหมือนเดิม
+  function slidOut(x, y) {
+    var r = hold && hold.rect;
+    if (!r) return false;
+    var out = 56;
+    return x < r.left - out || x > r.right + out || y < r.top - out * 2 || y > r.bottom + out;
+  }
+  document.addEventListener('touchstart', function(e) {
+    var b = e.target.closest && e.target.closest('#stRollBtn');
+    if (!b) return;
+    e.preventDefault();
+    if (b.disabled || hold) return;
+    var t = e.changedTouches[0];
+    beginHold('touch:' + t.identifier);
+  }, { passive: false });
+  function touchOf(e) {
+    if (!hold || hold.released || String(hold.pointerId).indexOf('touch:') !== 0) return null;
+    var id = Number(String(hold.pointerId).slice(6));
+    for (var i = 0; i < e.changedTouches.length; i += 1) if (e.changedTouches[i].identifier === id) return e.changedTouches[i];
+    return null;
+  }
+  window.addEventListener('touchend', function(e) { if (touchOf(e)) finishHold(); });
+  window.addEventListener('touchcancel', function(e) { if (touchOf(e)) cancelHold('ยกเลิกการทอย'); });
+  window.addEventListener('touchmove', function(e) {
+    var t = touchOf(e);
+    if (!t) return;
+    e.preventDefault();
+    if (slidOut(t.clientX, t.clientY)) cancelHold('นิ้วเลื่อนออก — ยกเลิก');
+  }, { passive: false });
+
   document.addEventListener('pointerdown', function(e) {
+    if (e.pointerType === 'touch') return; // นิ้วไปทาง touch event ด้านบน
     var b = e.target.closest && e.target.closest('#stRollBtn');
     if (!b || b.disabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault();
@@ -1753,10 +1786,7 @@
   window.addEventListener('pointercancel', function(e) { if (hold && hold.pointerId === e.pointerId) cancelHold('ยกเลิกการทอย'); });
   window.addEventListener('pointermove', function(e) {
     if (!hold || hold.released || hold.pointerId !== e.pointerId) return;
-    var r = hold.rect;
-    if (!r) return;
-    var out = 56;
-    if (e.clientX < r.left - out || e.clientX > r.right + out || e.clientY < r.top - out * 2 || e.clientY > r.bottom + out) cancelHold('นิ้วเลื่อนออก — ยกเลิก');
+    if (slidOut(e.clientX, e.clientY)) cancelHold('นิ้วเลื่อนออก — ยกเลิก');
   });
   document.addEventListener('contextmenu', function(e) { if (e.target.closest && e.target.closest('#stRollBtn')) e.preventDefault(); });
   document.addEventListener('keydown', function(e) {
