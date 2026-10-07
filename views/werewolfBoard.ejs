@@ -3803,9 +3803,15 @@
     }
 
     function syncTurnSpotlight() {
+      // นับเฉพาะแผงที่มองเห็นจริง — จอกว้าง (คอม/iPad) แผงสกิลของมือถือถูกซ่อน (0×0)
+      // ถ้านับตัวที่ซ่อนด้วย ฉากมืดเบลอจะคลุมทั้งจอโดยไม่มีอะไรให้กด
+      const visibleFocus = $('.turn-focus').filter(function() {
+        const r = this.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      });
       const hasFocus = !pendingActionSubmission
         && !$('#werewolfShell').hasClass('phase-lock')
-        && $('.turn-focus').length > 0
+        && visibleFocus.length > 0
         && hasLiveTurnFocus(currentState);
       $('#werewolfShell').toggleClass('my-turn-active', hasFocus);
     }

@@ -55,6 +55,7 @@
     "smoke:werewolf:20": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-werewolf-20.js",
     "smoke:werewolf:20:ui": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-werewolf-20.js",
     "smoke:werewolf:exit": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-werewolf-exit.js",
+    "smoke:werewolf:desktop": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-werewolf-desktop.js",
     "smoke:admin:chat": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-admin-room-chat.js",
     "smoke:admin:inbox": "node scripts/smoke-admin-inbox.js",
     "smoke:admin:inbox:browser": "node scripts/smoke-admin-inbox-browser.js",
