@@ -4,6 +4,7 @@
  *      คิดไม่ทัน → ข้าม, หัวห้องออกกลางเกม, คนทายออก, สถิติ, กลับห้องรอแล้วเริ่มใหม่
  *   B) 12 คน เต็มเกม 1 รอบโต๊ะ   C) 3 คน 2 รอบโต๊ะ
  *   ทุก payload ที่คนไม่มีสิทธิ์ได้รับ ถูกสแกนหาเป้าลับ/เข็มคนอื่น/การ์ดตัวเลือก
+ * ไฟล์นี้เล่นโหมดแข่งเดี่ยว — แข่งทีม/ร่วมมือ อยู่ที่ smoke-wavelength-teams-play.js
  * รัน: npm run smoke:wavelength:play   (SMOKE_PORT=8831 ค่าเริ่มต้น)
  */
 const path = require('path');
@@ -141,7 +142,7 @@ async function setupRoom(base, count, opts = {}) {
     for (let i = 0; i < count; i += 1) players.push(await makePlayer(base, 'P' + i));
     await delay(300);
     const [host] = players;
-    const created = await ack(host.socket, 'createRoom', { playerId: host.id, name: 'คลื่นความคิด', gameMode: 'wavelength', maxPlayers: opts.maxPlayers || 12, wavelengthLaps: opts.laps || 1 });
+    const created = await ack(host.socket, 'createRoom', { playerId: host.id, name: 'คลื่นความคิด', gameMode: 'wavelength', maxPlayers: opts.maxPlayers || 12, wavelengthLaps: opts.laps || 1, wavelengthMode: opts.mode || 'solo' });
     assert(created?.success, 'สร้างห้องไม่ได้: ' + JSON.stringify(created));
     const roomId = created.roomId;
     host.roomId = roomId;

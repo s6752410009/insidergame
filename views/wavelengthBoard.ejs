@@ -337,6 +337,47 @@
   .chat-toggle { --chat-toggle-bg: oklch(0.45 0.09 195); border-radius: 999px; padding: 10px 16px; min-height: 44px; top: calc(12px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; }
   .btn-chat-send { --chat-send-bg: oklch(0.85 0.12 182); --chat-send-color: oklch(0.2 0.05 200); }
 
+  /* ---------- ทีม / ร่วมมือ ---------- */
+  .wl-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; margin: -2px 0 10px; }
+  .wl-teams:empty { display: none; }
+  .wl-tside {
+    display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 40px; padding: 4px 10px; border-radius: 14px;
+    background: oklch(0.14 0.03 255 / 0.55); border: 1.5px solid transparent; font-weight: 700; font-size: 0.9rem;
+  }
+  .wl-tside--B { justify-content: flex-end; text-align: right; }
+  .wl-tside.is-active { border-color: var(--team); background: color-mix(in oklab, var(--team) 18%, transparent); }
+  .wl-tside.is-mine .wl-tname::after { content: ' (คุณ)'; font-weight: 500; color: var(--wl-muted); font-size: 0.78rem; }
+  .wl-tname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wl-tscore { font-family: var(--wl-display); font-size: 1.5rem; line-height: 1; color: var(--team); font-variant-numeric: tabular-nums; }
+  .wl-tgoal { font-family: var(--wl-display); font-size: 0.72rem; color: var(--wl-muted); text-align: center; line-height: 1.15; }
+  .wl-tgoal b { display: block; font-size: 1rem; color: var(--wl-gold); }
+  .wl-coopbar { display: flex; align-items: center; justify-content: center; gap: 8px 14px; flex-wrap: wrap; margin: -2px 0 10px; font-weight: 700; }
+  .wl-coopbar b { font-family: var(--wl-display); font-size: 1.35rem; color: var(--wl-teal); }
+  .wl-coopbar span { color: var(--wl-soft); font-size: 0.88rem; }
+  .wl-vote-row { display: flex; gap: 8px; }
+  .wl-vote-row .wl-btn { flex: 1 1 0; min-width: 0; min-height: 64px; font-size: 1.2rem; }
+  .wl-btn[aria-pressed="true"] { background: var(--wl-gold); color: oklch(0.22 0.05 85); border-color: transparent; }
+  .wl-lock-vote { flex: 0 0 auto; font-size: 0.9rem; line-height: 1; }
+  .wl-sum { display: grid; gap: 8px; padding: 4px 0 2px; }
+  .wl-sum-line { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 700; }
+  .wl-sum-line > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .wl-sum-line .wl-pts { flex: 0 0 auto; grid-row: auto; }
+  .wl-sum-note { padding: 8px 12px; border-radius: 12px; background: oklch(0.84 0.13 85 / 0.14); border: 1px solid oklch(0.84 0.13 85 / 0.45); color: var(--wl-gold); font-weight: 700; text-align: center; }
+  .wl-tb { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .wl-tb-team { min-width: 0; padding: 8px 10px; border-radius: 14px; background: oklch(0.15 0.03 255 / 0.6); border: 1.5px solid var(--wl-line-soft); }
+  .wl-tb-team.is-active { border-color: var(--team); }
+  .wl-tb-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-weight: 700; }
+  .wl-tb-head strong { font-family: var(--wl-display); font-size: 1.3rem; color: var(--team); font-variant-numeric: tabular-nums; }
+  .wl-tb-bar { height: 6px; margin: 4px 0 6px; border-radius: 999px; background: oklch(1 0 0 / 0.08); overflow: hidden; }
+  .wl-tb-bar i { display: block; height: 100%; background: var(--team); border-radius: inherit; }
+  .wl-tb-m { display: flex; align-items: center; gap: 6px; min-height: 30px; min-width: 0; font-size: 0.84rem; }
+  .wl-tb-m span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wl-tb-m.is-me span:last-child { color: var(--wl-teal); font-weight: 700; }
+  .wl-chart { display: grid; gap: 2px; margin-top: 8px; font-size: 0.84rem; }
+  .wl-chart div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 10px; border-radius: 8px; color: var(--wl-muted); }
+  .wl-chart div.is-on { background: oklch(0.85 0.12 182 / 0.18); color: var(--wl-ink); font-weight: 700; }
+  .wl-final-big { text-align: center; font-family: var(--wl-display); font-size: 2.4rem; font-weight: 700; color: var(--wl-teal); line-height: 1.1; }
+
   @keyframes wlClueIn { 0% { opacity: 0; transform: translateY(8px) scale(0.9); } 100% { opacity: 1; transform: none; } }
   @keyframes wlBeamIdle { 0% { opacity: 0.55; transform: rotate(-70deg); } 100% { opacity: 0.55; transform: rotate(70deg); } }
   @keyframes wlBeamSweep { 0% { opacity: 0; transform: rotate(-95deg); } 15% { opacity: 0.9; } 85% { opacity: 0.7; } 100% { opacity: 0; transform: rotate(95deg); } }
@@ -403,6 +444,7 @@
   </div>
 
   <section class="wl-stage" aria-label="หน้าปัดคลื่นความคิด">
+    <div id="wlTeams" class="wl-teams" aria-live="polite"></div>
     <div id="wlOptions"></div>
     <div id="wlSpectrum" class="wl-spectrum is-empty">
       <div class="wl-end wl-end--left"><span id="wlLeft">—</span></div>
@@ -523,7 +565,7 @@ $(function() {
 
   let S = <%- JSON.stringify(typeof wavelengthState !== 'undefined' && wavelengthState ? wavelengthState : {}).replace(/</g, '\\u003c') %>;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const PHASE_LABEL = { clue: 'คิดคำใบ้', guess: 'หมุนเข็มทาย', reveal: 'เปิดเป้า', finished: 'จบเกม', lobby: 'รอเริ่ม' };
+  const PHASE_LABEL = { clue: 'คิดคำใบ้', guess: 'หมุนเข็มทาย', leftright: 'ทายซ้าย/ขวา', reveal: 'เปิดเป้า', finished: 'จบเกม', lobby: 'รอเริ่ม' };
   const CX = 200, CY = 200;
 
   let allowNavigation = false;
@@ -566,6 +608,14 @@ $(function() {
   function playerById(id) { return (S.players || []).find(p => p.playerId === id) || null; }
   function nameOf(id) { const p = playerById(id); return p ? p.name : ''; }
   function angleOf(v) { return (Number(v) - 50) * 1.8; }
+  // ---------- ทีม / ร่วมมือ ----------
+  function isShared() { return S.variant === 'teams' || S.variant === 'coop'; }
+  function teamById(id) { return (S.teams || []).find(t => t.id === id) || null; }
+  function teamLabel(id) { const t = teamById(id); return t ? t.icon + ' ' + t.name : ''; }
+  function myTeam() { return S.self && S.self.team ? S.self.team : null; }
+  function otherTeamId(id) { return id === 'A' ? 'B' : 'A'; }
+  function sideLabel(side) { return side === 'left' ? '⬅️ ซ้าย' : (side === 'right' ? 'ขวา ➡️' : ''); }
+  let lastLocalMoveAt = 0;
   function polar(v, r) {
     const a = (180 - Number(v) * 1.8) * Math.PI / 180;
     return { x: CX + r * Math.cos(a), y: CY - r * Math.sin(a) };
@@ -682,7 +732,7 @@ $(function() {
   }
   function clearTick() { if (litTick) litTick.classList.remove('is-on'); litTick = null; }
 
-  function canDrag() { return !!(S.availableActions && S.availableActions.canGuess); }
+  function canDrag() { const a = S.availableActions || {}; return !!(a.canGuess || a.canDial); }
   function valueFromEvent(e) {
     const rect = dialEl.getBoundingClientRect();
     const x = (e.clientX - rect.left) * 400 / rect.width;
@@ -695,6 +745,7 @@ $(function() {
   function onPinChange(v, fromDrag) {
     myPin = v;
     myPinRound = S.round;
+    lastLocalMoveAt = performance.now();
     touchedRound = S.round;
     if (centerWarnRound === S.round) { centerWarnRound = 0; renderDock(); }
     setNeedle(v, false);
@@ -882,6 +933,33 @@ $(function() {
     if (idle && !beamEl.classList.contains('is-idle') && !reduceMotion) { beamEl.classList.remove('is-sweep'); beamEl.classList.add('is-idle'); }
     if (!idle) beamEl.classList.remove('is-idle');
 
+    // ทีม/ร่วมมือ: เข็มร่วมเส้นเดียว ทุกคนเห็น · คนในทีมที่ทายลากได้
+    if (isShared()) {
+      const showShared = (phase === 'guess' || phase === 'leftright') && S.dial != null;
+      const fresh = S.round !== myPinRound;
+      if (S.dial != null && !dragging && (fresh || (Math.abs(S.dial - myPin) > 0.05 && performance.now() - lastLocalMoveAt > 700))) {
+        myPin = S.dial;
+        myPinRound = S.round;
+        setNeedle(myPin, fresh);
+      }
+      needleEl.classList.toggle('is-hidden', !showShared);
+      needleEl.classList.toggle('is-locked', phase === 'leftright' || !!self.locked);
+      dialEl.classList.toggle('is-interactive', canDrag());
+      knobEl.setAttribute('tabindex', canDrag() ? '0' : '-1');
+      knobEl.setAttribute('aria-label', 'เข็มของทีม');
+      if (phase !== 'reveal' && phase !== 'finished') { document.getElementById('wlPins').innerHTML = ''; pinsShownRound = 0; clearPinLines(); }
+      renderPins(revealAnim);
+      const act = S.activeTeam ? teamLabel(S.activeTeam) : 'ทุกคน';
+      let sharedNote = '';
+      if (phase === 'clue' && self.isGiver) sharedNote = S.card ? 'เป้าลับของคุณ — คนอื่นมองไม่เห็น' : 'เป้าลับของคุณ — เลือกการ์ดก่อน';
+      else if ((phase === 'guess' || phase === 'leftright') && self.isGiver) sharedNote = 'คุณเห็นเป้า · ห้ามใบ้เพิ่มนะ 🤐';
+      else if (phase === 'guess' && canDrag()) sharedNote = 'ลากเข็มร่วมกัน · คุยกันในแชทได้';
+      else if (phase === 'guess') sharedNote = act + ' กำลังหมุนเข็ม';
+      else if (phase === 'leftright' && (S.availableActions || {}).canVote) sharedNote = 'เป้าอยู่ซ้ายหรือขวาของเข็ม?';
+      else if (phase === 'leftright') sharedNote = teamLabel(otherTeamId(S.activeTeam)) + ' กำลังทาย ⬅️/➡️';
+      document.getElementById('wlDialNote').textContent = sharedNote;
+      return;
+    }
     // เข็มของตัวเอง
     const guessing = phase === 'guess' && self.isGuesser;
     if (S.round !== myPinRound) {
@@ -908,7 +986,44 @@ $(function() {
   }
 
   // ---------- render ----------
+  function describeShared() {
+    const self = S.self || {};
+    const a = S.availableActions || {};
+    const giver = S.giverName || 'ผู้ใบ้';
+    const teams = S.variant === 'teams';
+    const act = teams ? teamLabel(S.activeTeam) : '';
+    const mine = teams && myTeam() === S.activeTeam;
+    switch (S.phase) {
+      case 'clue':
+        if (self.isGiver) return { text: S.card ? 'พิมพ์คำใบ้ที่อยู่ตรงเป้า' : (S.catchUp ? '🔁 ตาพิเศษ! เลือกการ์ด 1 ใบ' : 'ตาคุณใบ้! เลือกการ์ด 1 ใบ'), mine: true };
+        if (S.giverAway) return { text: giver + ' หลุด — รอสักครู่', mine: false };
+        return { text: (teams ? act + (S.catchUp ? ' 🔁 ตาพิเศษ · ' : ' · ') : '') + giver + ' กำลังคิดคำใบ้…', mine: mine };
+      case 'guess':
+        if (a.canAgree) return { text: 'ช่วยกันหมุนเข็ม แล้วกด ✅ ตกลง', mine: true };
+        if (a.canUnagree) return { text: 'ตกลงแล้ว — รอเพื่อนในทีม', mine: false };
+        if (self.isGiver) return { text: 'ทีมคุณกำลังหมุนเข็ม — ห้ามใบ้เพิ่ม', mine: false };
+        if (teams && self.team) return { text: act + ' กำลังหมุน — เตรียมทาย ⬅️/➡️', mine: false };
+        return { text: 'เพื่อนกำลังหมุนเข็ม — รอบหน้าคุณได้เล่น', mine: false };
+      case 'leftright':
+        if (a.canVote) return { text: self.vote ? 'ทายแล้ว ' + sideLabel(self.vote) + ' — เปลี่ยนได้' : 'เป้าอยู่ซ้ายหรือขวาของเข็ม?', mine: !self.vote };
+        return { text: teamLabel(otherTeamId(S.activeTeam)) + ' กำลังทาย ⬅️/➡️', mine: false };
+      case 'reveal': {
+        const lr = S.lastRound;
+        if (lr && lr.skipped) return { text: 'ข้ามตานี้', mine: false };
+        if (!lr) return { text: 'เปิดเป้าแล้ว', mine: false };
+        if (lr.end && lr.end.winner) return { text: '🏆 ' + teamLabel(lr.end.winner) + ' ชนะ!', mine: myTeam() === lr.end.winner };
+        if (!teams) return { text: lr.label + ' +' + lr.gained + (lr.coop && lr.coop.bonusNow ? ' · 🃏 การ์ดโบนัส!' : ''), mine: lr.gained > 0 };
+        const myGain = myTeam() === lr.team ? lr.points : (lr.lr && myTeam() === lr.lr.team ? lr.lr.points : null);
+        return { text: myGain == null ? 'เปิดเป้าแล้ว' : ('ทีมคุณ +' + myGain + (lr.catchUpNext && myTeam() === lr.team ? ' · 🔁 ได้ตาพิเศษ' : '')), mine: !!myGain };
+      }
+      case 'finished':
+        if (teams) return { text: S.winnerTeam ? '🏆 ' + teamLabel(S.winnerTeam) + ' ชนะ!' : 'จบเกม — เสมอ', mine: !!S.winnerTeam && myTeam() === S.winnerTeam };
+        return { text: 'จบเกม — ' + (S.coopRank || 'ดูคะแนนด้านล่าง'), mine: false };
+      default: return { text: 'รอเริ่มเกม', mine: false };
+    }
+  }
   function describeNow() {
+    if (isShared()) return describeShared();
     const self = S.self || {};
     const a = S.availableActions || {};
     const giver = S.giverName || 'ผู้ใบ้';
@@ -938,12 +1053,13 @@ $(function() {
     switch (S.phase) {
       case 'clue': return S.giverAway ? 'ผู้ใบ้หลุด ไม่กลับ = ข้าม' : 'หมดเวลา = ข้ามรอบ';
       case 'guess': return 'หมดเวลา = ล็อกที่เข็มอยู่';
+      case 'leftright': return 'หมดเวลา = เปิดเป้า';
       case 'reveal': return 'หมดเวลา = รอบต่อไป';
       default: return '';
     }
   }
   function renderTop() {
-    const total = Math.max(S.round || 0, S.roundsTotal || 0);
+    const total = S.variant === 'teams' ? 0 : Math.max(S.round || 0, S.roundsTotal || 0);
     $('#wlRoundNo').text(S.round ? 'รอบ ' + S.round + (total ? '/' + total : '') : 'เตรียมเกม');
     const now = describeNow();
     $('#wlNowPhase').text((PHASE_LABEL[S.phase] || '') + (S.round && S.phase !== 'finished' ? ' · รอบ ' + S.round : ''));
@@ -954,7 +1070,7 @@ $(function() {
     $('#wlEndBtn').prop('hidden', !a.canEnd);
     // หัวห้อง: ข้ามผู้ใบ้ที่เงียบ / เปิดเป้าเมื่อมีคน AFK (ถ้าหัวห้องเป็นผู้ใบ้เอง ใช้ปุ่มข้ามตาในช่องคำใบ้แทน)
     const hostSkip = a.canHostSkip && !a.canSkipTurn;
-    $('#wlSkipBtn').prop('hidden', !hostSkip).text(S.phase === 'guess' ? 'เปิดเป้าเลย' : 'ข้ามตานี้');
+    $('#wlSkipBtn').prop('hidden', !hostSkip).text(S.phase === 'guess' ? (isShared() ? 'ล็อกเข็มเลย' : 'เปิดเป้าเลย') : (S.phase === 'leftright' ? 'เปิดเป้าเลย' : 'ข้ามตานี้'));
   }
 
   function renderSpectrum() {
@@ -964,7 +1080,7 @@ $(function() {
     $('#wlLeft').text(card ? card.left : (S.phase === 'clue' ? 'รอการ์ด' : '—'));
     $('#wlRight').text(card ? card.right : (S.phase === 'clue' ? 'รอการ์ด' : '—'));
     const clueBox = document.getElementById('wlClue');
-    if (S.clue && (S.phase === 'guess' || S.phase === 'reveal')) {
+    if (S.clue && (S.phase === 'guess' || S.phase === 'leftright' || S.phase === 'reveal')) {
       const key = S.round + ':' + S.clue;
       const fresh = key !== clueShownKey && !firstRender;
       clueShownKey = key;
@@ -1002,6 +1118,15 @@ $(function() {
 
   function renderLocks() {
     const box = document.getElementById('wlLocks');
+    if (isShared() && S.phase === 'leftright') {
+      const voters = (S.players || []).filter(p => p.isOpponent);
+      box.innerHTML = voters.map(p =>
+        '<span class="wl-lock' + (p.vote ? ' is-locked' : '') + (p.online ? '' : ' is-off') + '" data-lock-id="' + esc(p.playerId) + '">' +
+          avatarHtml(p, 22) + '<span class="wl-lock-name">' + esc(p.isSelf ? 'คุณ' : p.name) + '</span>' +
+          (p.vote ? '<span class="wl-lock-vote" aria-label="' + (p.vote === 'left' ? 'ซ้าย' : 'ขวา') + '">' + (p.vote === 'left' ? '⬅️' : '➡️') + '</span>'
+            : '<span class="wl-lock-state" aria-label="' + (p.online ? 'กำลังคิด' : 'หลุด') + '">' + (p.online ? '' : 'หลุด') + '</span>') + '</span>').join('');
+      return;
+    }
     if (S.phase !== 'guess') { box.innerHTML = ''; return; }
     const guessers = (S.players || []).filter(p => p.isGuesser);
     box.innerHTML = guessers.map(p =>
@@ -1020,6 +1145,7 @@ $(function() {
       box.innerHTML = '<div class="wl-skip"><strong>ข้ามรอบ</strong><span>' + esc(lr.reason || '') + ' · ไม่มีใครได้แต้ม</span></div>';
       return;
     }
+    if (isShared()) { box.innerHTML = sharedResultHtml(lr, animate); return; }
     const giver = playerById(lr.giverId) || { name: lr.giverName };
     const rows = (lr.results || []).map(function(r, i) {
       const sub = r.pin == null ? 'ไม่ได้ทาย' : (r.label + (r.auto ? ' · ล็อกอัตโนมัติ' : '') + ' · ห่างเป้า ' + Math.round(r.distance));
@@ -1035,7 +1161,83 @@ $(function() {
         '<span class="wl-row-sub">เฉลี่ยแต้มของคนทาย</span></div>';
   }
 
+  function sharedResultHtml(lr, animate) {
+    const pop = animate ? ' is-pop' : '';
+    let html = '<div class="wl-results-head"><h2>ผลรอบ ' + lr.round + '</h2><span class="wl-results-sub">เป้า ' + lr.target + ' · เข็ม ' + Math.round(lr.dial) + '</span></div><div class="wl-sum">';
+    const who = S.variant === 'teams' ? teamLabel(lr.team) : '🤝 ทุกคน';
+    html += '<div class="wl-sum-line"><span class="wl-pts ' + bandClass(lr.points) + pop + '" style="--d:1300ms">+' + lr.gained + '</span><span>' + esc(who) + ' · ' + esc(lr.label) +
+      (S.variant === 'coop' && lr.points === 4 ? ' (เป๊ะ = 3)' : '') + '</span></div>';
+    if (lr.lr) {
+      const t = teamLabel(lr.lr.team);
+      let txt;
+      if (!lr.lr.choice) txt = t + ' ไม่ได้ทายซ้าย/ขวา';
+      else if (lr.lr.blocked) txt = t + ' ทาย' + sideLabel(lr.lr.choice) + ' ถูก แต่เป๊ะ = ไม่ได้แต้ม';
+      else txt = t + ' ทาย' + sideLabel(lr.lr.choice) + (lr.lr.correct ? ' ✓' : ' ✗');
+      html += '<div class="wl-sum-line"><span class="wl-pts' + (lr.lr.points ? ' p2' : '') + pop + '" style="--d:1450ms">+' + lr.lr.points + '</span><span>' + esc(txt) + '</span></div>';
+    }
+    const giverName = lr.giverId === playerId ? 'คุณ' : (lr.giverName || 'ผู้ใบ้');
+    html += '<div class="wl-hint" style="text-align:left;">ผู้ใบ้: ' + esc(giverName) + '</div>';
+    if (lr.coop && lr.coop.bonusNow) html += '<div class="wl-sum-note">🃏 เป๊ะ! ได้การ์ดโบนัสเพิ่ม 1 ใบ</div>';
+    if (lr.end && lr.end.winner) html += '<div class="wl-sum-note">🏆 ' + esc(teamLabel(lr.end.winner)) + ' ชนะ!</div>';
+    else if (lr.end) html += '<div class="wl-sum-note">🏁 การ์ดหมด — ดูคะแนนรวม</div>';
+    else if (lr.catchUpNext) html += '<div class="wl-sum-note">🔁 ตาพิเศษ! ' + esc(teamLabel(lr.team)) + ' เป๊ะแต่ยังตามหลัง เล่นต่อ</div>';
+    else if (lr.suddenDeath) html += '<div class="wl-sum-note">⚔️ ต่อตาย — ทีมละ 1 ตา แต้มมากกว่าชนะ</div>';
+    return html + '</div>';
+  }
+
+  function renderTeams() {
+    const box = document.getElementById('wlTeams');
+    if (S.variant === 'teams' && S.teams && S.phase !== 'finished') {
+      const side = function(t) {
+        return '<div class="wl-tside wl-tside--' + t.id + (t.active ? ' is-active' : '') + (myTeam() === t.id ? ' is-mine' : '') + '" style="--team:' + esc(t.color) + '">' +
+          (t.id === 'A' ? '<span class="wl-tscore">' + t.score + '</span><span class="wl-tname">' + esc(t.icon + ' ' + t.name) + '</span>'
+            : '<span class="wl-tname">' + esc(t.icon + ' ' + t.name) + '</span><span class="wl-tscore">' + t.score + '</span>') + '</div>';
+      };
+      box.innerHTML = side(teamById('A')) + '<div class="wl-tgoal">' + (S.suddenDeath ? '⚔️<b>ต่อตาย</b>' : 'ถึง<b>' + (S.goal || 10) + '</b>') + '</div>' + side(teamById('B'));
+      return;
+    }
+    if (S.variant === 'coop' && S.coop && S.phase !== 'finished') {
+      const left = Math.max(0, S.coop.total + S.coop.bonus - S.coop.played);
+      box.innerHTML = '<div class="wl-coopbar" style="grid-column:1/-1;">🤝 <b>' + S.coop.score + '</b><span>แต้มรวม</span><span>🃏 เหลือ ' + left + ' ใบ</span><span>16+ = ชนะ</span></div>';
+      return;
+    }
+    box.innerHTML = '';
+  }
+
+  function renderTeamBoard() {
+    const members = function(t) {
+      return (t.members || []).map(function(id) {
+        const p = playerById(id) || { name: '?' };
+        return '<div class="wl-tb-m' + (id === playerId ? ' is-me' : '') + '">' + avatarHtml(p, 24) +
+          '<span>' + (id === S.giverId && S.phase !== 'finished' ? '📡 ' : '') + esc(p.name) + (id === playerId ? ' (คุณ)' : '') + (p.online === false ? ' · หลุด' : '') + '</span></div>';
+      }).join('');
+    };
+    const goal = S.goal || 10;
+    const html = (S.teams || []).map(t =>
+      '<div class="wl-tb-team' + (t.active ? ' is-active' : '') + '" style="--team:' + esc(t.color) + '">' +
+        '<div class="wl-tb-head"><span>' + esc(t.icon + ' ' + t.name) + '</span><strong>' + t.score + '</strong></div>' +
+        '<div class="wl-tb-bar"><i style="width:' + Math.min(100, Math.round(t.score / goal * 100)) + '%"></i></div>' + members(t) + '</div>').join('');
+    const pendingPlayers = (S.players || []).filter(p => !p.active);
+    $('#wlBoard').html('<h2>ทีม · ถึง ' + goal + ' แต้มก่อนชนะ</h2><div class="wl-tb">' + html + '</div>' +
+      (pendingPlayers.length ? '<p class="wl-hint" style="text-align:left; margin:6px 0 0;">รอเข้าทีม: ' + pendingPlayers.map(p => esc(p.name)).join(', ') + '</p>' : ''));
+  }
+
+  function coopChartHtml(score) {
+    return '<div class="wl-chart">' + (S.coopChart || []).map(function(r) {
+      const on = score >= r.min && (r.max == null || score <= r.max);
+      return '<div class="' + (on ? 'is-on' : '') + '"><span>' + r.min + (r.max == null ? '+' : '–' + r.max) + '</span><span>' + esc(r.text) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
   function renderBoard() {
+    if (S.variant === 'teams' && S.teams) { renderTeamBoard(); return; }
+    if (S.variant === 'coop' && S.coop) {
+      const list = (S.players || []).filter(p => p.active).map(p =>
+        '<div class="wl-tb-m' + (p.playerId === playerId ? ' is-me' : '') + '">' + avatarHtml(p, 24) + '<span>' + (p.playerId === S.giverId ? '📡 ' : '') + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</span></div>').join('');
+      $('#wlBoard').html('<h2>🤝 ทีมเดียวกันทั้งวง · ' + S.coop.score + ' แต้ม</h2>' + list +
+        '<details class="wl-recap"><summary>ตารางคะแนน</summary>' + coopChartHtml(S.coop.score) + '</details>');
+      return;
+    }
     const rows = S.scoreboard || [];
     const lr = S.phase === 'reveal' ? S.lastRound : null;
     const gained = {};
@@ -1057,9 +1259,38 @@ $(function() {
       (pendingPlayers.length ? '<p class="wl-hint" style="text-align:left; margin:6px 0 0;">' + (S.phase === 'clue' ? 'เข้าร่วมเมื่อผู้ใบ้ส่งคำใบ้: ' : 'รอเข้าร่วมรอบหน้า: ') + pendingPlayers.map(p => esc(p.name)).join(', ') + '</p>' : ''));
   }
 
+  function sharedRecapHtml() {
+    return (S.rounds || []).map(x =>
+      '<div class="wl-recap-row"><strong>รอบ ' + x.round + '</strong> · ' + (x.team ? esc(teamLabel(x.team)) + ' · ' : '') + esc(x.giverName || 'ผู้ใบ้') + ' ใบ้ <strong>“' + esc(x.clue || '') + '”</strong>' +
+        '<span class="wl-recap-meta">' + (x.card ? esc(x.card.left) + ' ↔ ' + esc(x.card.right) + ' · ' : '') + 'เป้า ' + x.target + ' · เข็ม ' + Math.round(x.dial) + ' · +' + x.gained +
+        (x.lrPoints ? ' · ทีมโน้น +1' : '') + '</span></div>').join('');
+  }
+  function renderSharedFinal(box, animate) {
+    const recap = sharedRecapHtml();
+    const recapHtml = recap ? '<details class="wl-recap"><summary>ย้อนดูทีละรอบ (' + (S.rounds || []).length + ')</summary>' + recap + '</details>' : '';
+    if (S.variant === 'coop') {
+      const score = S.coop ? S.coop.score : 0;
+      box.innerHTML = '<p class="wl-final-title">🤝 ร่วมมือกันได้</p><div class="wl-final-big">' + score + ' แต้ม</div>' +
+        '<p class="wl-final-title" style="margin-top:4px;">' + esc(S.coopRank || '') + '</p>' + coopChartHtml(score) + recapHtml;
+      return;
+    }
+    const w = S.winnerTeam;
+    const teams = S.teams || [];
+    const title = w ? '🏆 ' + esc(teamLabel(w)) + ' ชนะ!' : 'เสมอกัน!';
+    const cols = teams.map(t =>
+      '<div class="wl-tb-team' + (t.id === w ? ' is-active' : '') + '" style="--team:' + esc(t.color) + '">' +
+        '<div class="wl-tb-head"><span>' + (t.id === w ? '👑 ' : '') + esc(t.icon + ' ' + t.name) + '</span><strong>' + t.score + '</strong></div>' +
+        (t.members || []).map(function(id) {
+          const row = (S.standings || []).find(r => r.playerId === id) || playerById(id) || { name: '?' };
+          return '<div class="wl-tb-m' + (id === playerId ? ' is-me' : '') + '">' + avatarHtml(row, 24) + '<span>' + esc(row.name) + (id === playerId ? ' (คุณ)' : '') + '</span></div>';
+        }).join('') + '</div>').join('');
+    box.innerHTML = '<p class="wl-final-title">' + title + '</p><div class="wl-tb">' + cols + '</div>' + recapHtml;
+  }
+
   function renderFinal(animate) {
     const box = document.getElementById('wlFinal');
     if (S.phase !== 'finished') { box.innerHTML = ''; return; }
+    if (isShared()) { renderSharedFinal(box, animate); return; }
     const st = S.standings || [];
     const winners = S.winners || [];
     const title = winners.length
@@ -1107,6 +1338,30 @@ $(function() {
         '<button type="button" id="wlClueBtn" class="wl-btn wl-btn--primary"' + (a.canSubmitClue && draftClue.trim() && !problem ? '' : ' disabled') + '>ส่งคำใบ้</button></div>' +
         '<div class="wl-clue-foot"><div id="wlClueMsg" class="wl-hint' + (msg ? ' is-error' : '') + '">' + (msg ? esc(msg) : '<span class="wl-counter">' + glen(draftClue.trim()) + '/' + (S.maxClueLength || 40) + '</span>') + '</div>' +
         (a.canSkipTurn ? '<button type="button" id="wlPassBtn" class="wl-btn wl-btn--ghost wl-btn--sm">คิดไม่ออก ข้ามตา</button>' : '') + '</div></div>';
+    } else if (isShared() && S.phase === 'guess' && self.isGuesser) {
+      const done = (S.agreeIds || []).length;
+      const total = (S.players || []).filter(p => p.isGuesser && p.online).length || (S.players || []).filter(p => p.isGuesser).length;
+      html = a.canAgree
+        ? '<div class="wl-guess-row">' +
+            '<button type="button" class="wl-btn wl-nudge" data-step="-1" aria-label="ขยับเข็มไปทางซ้าย 1 ช่อง">‹</button>' +
+            '<button type="button" id="wlLockBtn" class="wl-btn wl-btn--primary wl-btn--big">✅ ตกลง</button>' +
+            '<button type="button" class="wl-btn wl-nudge" data-step="1" aria-label="ขยับเข็มไปทางขวา 1 ช่อง">›</button></div>' +
+          '<div class="wl-hint" style="margin-top:6px;">ตกลง ' + done + '/' + total + ' คน · ครบ = ล็อก · ขยับเข็ม = เริ่มนับใหม่</div>'
+        : '<div class="wl-row-btns"><div class="wl-dock-wait" style="flex:2 1 0;">ตกลงแล้ว ✓ ' + done + '/' + total + '</div>' +
+          '<button type="button" id="wlUnlockBtn" class="wl-btn wl-btn--ghost wl-btn--sm">ยกเลิก</button></div>' +
+          '<div class="wl-hint" style="margin-top:6px;">ลากเข็มได้ แต่ทุกคนต้องกดตกลงใหม่</div>';
+    } else if (isShared() && S.phase === 'leftright') {
+      if (a.canVote) {
+        const v = self.vote;
+        html = '<div class="wl-vote-row">' +
+          '<button type="button" class="wl-btn wl-vote" data-side="left" aria-pressed="' + (v === 'left' ? 'true' : 'false') + '">⬅️ ซ้าย</button>' +
+          '<button type="button" class="wl-btn wl-vote" data-side="right" aria-pressed="' + (v === 'right' ? 'true' : 'false') + '">ขวา ➡️</button></div>' +
+          '<div class="wl-hint" style="margin-top:6px;">ถูกได้ +1 · ทีมโน้นเป๊ะ = ไม่ได้ · เสียงข้างมากชนะ</div>';
+      } else {
+        html = '<div class="wl-dock-wait">' + esc(teamLabel(otherTeamId(S.activeTeam))) + ' กำลังทาย ⬅️/➡️</div>';
+      }
+    } else if (isShared() && S.phase === 'guess') {
+      html = '<div class="wl-dock-wait">' + (self.isGiver ? 'ทีมคุณกำลังหมุน — ห้ามใบ้เพิ่ม 🤐' : (S.variant === 'teams' && self.team ? esc(teamLabel(S.activeTeam)) + ' หมุนเข็ม · ต่อไปคุณทาย ⬅️/➡️' : 'ดูเพื่อนหมุนเข็ม — รอบหน้าคุณได้เล่น')) + '</div>';
     } else if (S.phase === 'guess' && self.isGuesser) {
       const done = (S.players || []).filter(p => p.isGuesser && p.locked).length;
       const total = (S.players || []).filter(p => p.isGuesser).length;
@@ -1124,7 +1379,8 @@ $(function() {
       const needed = S.readyNeeded || [];
       const ready = (S.readyIds || []).filter(id => needed.includes(id)).length;
       const total = needed.length;
-      if (a.canNext) html = '<button type="button" id="wlNextBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">รอบต่อไป</button>' +
+      const lastOne = !!(S.lastRound && S.lastRound.end);
+      if (a.canNext) html = '<button type="button" id="wlNextBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">' + (lastOne ? 'ดูผลจบเกม' : 'รอบต่อไป') + '</button>' +
         '<div class="wl-hint" style="margin-top:6px;">' + (total ? 'เพื่อนพร้อม ' + ready + '/' + total + ' คน · พร้อมครบ = ไปต่อเอง' : 'กดเมื่อทุกคนดูผลเสร็จ') + '</div>';
       else if (a.canReady) html = '<button type="button" id="wlReadyBtn" class="wl-btn wl-btn--primary wl-btn--big" style="width:100%;">พร้อมไปรอบต่อไป</button><div class="wl-hint" style="margin-top:6px;">พร้อมครบ ' + total + ' คน หรือหัวห้องกด = ไปต่อทันที · พร้อมแล้ว ' + ready + '/' + total + '</div>';
       else if (self.active) html = '<div class="wl-dock-wait">พร้อมแล้ว ✓ รอเพื่อน ' + ready + '/' + total + '</div>';
@@ -1190,8 +1446,13 @@ $(function() {
     let reveal = false;
     events.forEach(function(e) {
       if (e.kind === 'round') {
-        if (e.giverId === playerId) { banner('ตาคุณใบ้!', 'gold'); }
+        if (e.catchUp) banner('🔁 ตาพิเศษ · ' + teamLabel(e.team), 'gold');
+        else if (e.giverId === playerId) { banner('ตาคุณใบ้!', 'gold'); }
+        else if (e.team) banner('ตา' + (teamById(e.team) ? teamById(e.team).name : '') + ' · ' + (nameOf(e.giverId) || 'ผู้ใบ้') + ' ใบ้');
         else banner('รอบ ' + e.round + ' · ' + (nameOf(e.giverId) || 'ผู้ใบ้') + ' ใบ้');
+      } else if (e.kind === 'dialLock') {
+        banner((S.availableActions || {}).canVote ? '⬅️ ซ้าย หรือ ขวา ➡️ ?' : '🔒 ล็อกเข็มแล้ว', 'gold');
+        haptic([12, 30, 18]);
       } else if (e.kind === 'clue') {
         haptic([10, 30, 10]);
       } else if (e.kind === 'lock') {
@@ -1212,6 +1473,16 @@ $(function() {
     const lr = S.lastRound;
     if (!lr || lr.skipped) return;
     const mine = (lr.results || []).find(r => r.playerId === playerId);
+    if (isShared()) {
+      setTimeout(function() {
+        if (lr.end && lr.end.winner) { banner('🏆 ' + teamLabel(lr.end.winner) + ' ชนะ!', 'gold'); haptic([20, 50, 20, 50, 40]); return; }
+        const tone = lr.points === 4 ? 'gold' : (lr.points ? '' : 'coral');
+        const who = S.variant === 'teams' ? (teamById(lr.team) ? teamById(lr.team).name + ' ' : '') : '';
+        banner(who + (lr.points ? lr.label + ' +' + lr.gained : 'พลาด') + (lr.catchUpNext ? ' · 🔁' : ''), tone);
+        haptic(lr.points === 4 ? [20, 40, 20, 40, 30] : (lr.points ? [16, 30, 16] : 12));
+      }, reduceMotion ? 0 : 1500);
+      return;
+    }
     setTimeout(function() {
       if (mine) {
         if (mine.points === 4) { banner('เป๊ะ! +4', 'gold'); haptic([20, 40, 20, 40, 30]); }
@@ -1232,7 +1503,7 @@ $(function() {
 
   function tickTimer() {
     if (timerHandle) clearInterval(timerHandle);
-    const total = S.timers ? ({ clue: S.giverAway ? S.timers.grace : S.timers.clue, guess: S.timers.guess, reveal: (S.lastRound && S.lastRound.skipped) ? S.timers.skip : S.timers.reveal })[S.phase] : 0;
+    const total = S.timers ? ({ clue: S.giverAway ? S.timers.grace : S.timers.clue, guess: S.timers.guess, leftright: S.timers.leftright, reveal: (S.lastRound && S.lastRound.skipped) ? S.timers.skip : S.timers.reveal })[S.phase] : 0;
     function paint() {
       if (S.phase === 'finished') {
         const endsAt = Number(S.returnLobbyEndsAt) || 0;
@@ -1251,7 +1522,7 @@ $(function() {
       const ms = Math.max(0, S.phaseEndsAt - now());
       const remain = Math.ceil(ms / 1000);
       $('#wlNowSec').text(remain);
-      $('#wlNow').toggleClass('is-urgent', remain <= 10 && (S.phase === 'clue' || S.phase === 'guess') && !!describeNow().mine);
+      $('#wlNow').toggleClass('is-urgent', remain <= 10 && (S.phase === 'clue' || S.phase === 'guess' || S.phase === 'leftright') && !!describeNow().mine);
       const frac = total ? Math.max(0, Math.min(1, ms / total)) : 0;
       $('#wlNowBar').css('transform', 'scaleX(' + frac.toFixed(3) + ')');
     }
@@ -1265,7 +1536,7 @@ $(function() {
     const key = S.round + ':' + S.phase;
     if (key === dialScrollKey) return;
     dialScrollKey = key;
-    if (!(S.phase === 'guess' || S.phase === 'reveal')) return;
+    if (!(S.phase === 'guess' || S.phase === 'leftright' || S.phase === 'reveal')) return;
     const wrap = document.getElementById('wlDialWrap');
     const dock = document.getElementById('wlDock');
     const active = document.activeElement;
@@ -1289,6 +1560,7 @@ $(function() {
     const revealAnim = fx.reveal && !firstRender && S.phase === 'reveal' && S.lastRound && !S.lastRound.skipped && lastRevealRound !== S.lastRound.round;
     if (S.phase === 'reveal' && S.lastRound) lastRevealRound = S.lastRound.round;
     renderTop();
+    renderTeams();
     renderOptions();
     renderSpectrum();
     renderDial(revealAnim);
@@ -1331,7 +1603,7 @@ $(function() {
   function lockNow() {
     if (!canDrag()) return;
     const self = S.self || {};
-    if (touchedRound !== S.round && self.pin == null && centerWarnRound !== S.round) {
+    if (!isShared() && touchedRound !== S.round && self.pin == null && centerWarnRound !== S.round) {
       centerWarnRound = S.round;
       haptic(12);
       renderDock();
@@ -1350,6 +1622,23 @@ $(function() {
     send('wavelength_pickCard', { index: idx });
   });
   $(document).on('click', '#wlRerollBtn', function() { send('wavelength_reroll'); });
+  // ทีมโน้นทาย ⬅️/➡️ (เปลี่ยนใจได้จนกว่าจะครบ)
+  $(document).on('click', '.wl-vote', function() {
+    if (this.getAttribute('aria-pressed') === 'true') return;
+    haptic(10);
+    send('wavelength_vote', { side: this.getAttribute('data-side') === 'left' ? 'left' : 'right' });
+  });
+  // เข็มร่วมของทีมขยับ (จากเพื่อน) — ไม่ทับตอนเราลากอยู่
+  socket.on('wavelengthDial', function(d) {
+    if (!d || !isShared() || Number(d.round) !== Number(S.round) || d.by === playerId) return;
+    if (!(S.phase === 'guess')) return;
+    S.dial = Number(d.value);
+    S.dialBy = d.by;
+    if (dragging || performance.now() - lastLocalMoveAt < 700) return;
+    myPin = S.dial;
+    myPinRound = S.round;
+    setNeedle(myPin, false);
+  });
   $(document).on('input', '#wlClueInput', function() {
     draftClue = this.value;
     saveDraft();
@@ -1399,11 +1688,18 @@ $(function() {
   $(document).on('click', '#wlShareBtn', function() {
     if (!window.partyPlay || !S.standings) return;
     const w = S.winners || [];
+    const teamsShare = S.variant === 'teams' && S.teams;
+    const coopShare = S.variant === 'coop' && S.coop;
     window.partyPlay.shareResult({
       mode: 'คลื่นความคิด',
-      headline: w.length ? w.map(x => x.name).join(', ') + ' ชนะ' : 'จบเกมคลื่นความคิด',
-      sub: S.round + ' รอบ · ' + (S.standings || []).length + ' คน',
-      lines: S.standings.slice(0, 6).map(r => r.rank + '. ' + r.name + ' ' + r.score + ' แต้ม'),
+      headline: teamsShare ? (S.winnerTeam ? teamLabel(S.winnerTeam) + ' ชนะ' : 'เสมอ')
+        : coopShare ? 'ร่วมมือได้ ' + S.coop.score + ' แต้ม'
+        : (w.length ? w.map(x => x.name).join(', ') + ' ชนะ' : 'จบเกมคลื่นความคิด'),
+      sub: teamsShare ? S.teams.map(t => t.icon + ' ' + t.score).join(' – ') + ' · ' + S.round + ' รอบ'
+        : coopShare ? (S.coopRank || '') + ' · ' + S.round + ' รอบ'
+        : S.round + ' รอบ · ' + (S.standings || []).length + ' คน',
+      lines: teamsShare ? S.teams.map(t => t.icon + ' ' + t.name + ': ' + (t.members || []).map(id => (playerById(id) || {}).name || '').filter(Boolean).join(', '))
+        : S.standings.slice(0, 6).map(r => (coopShare ? '🤝 ' : r.rank + '. ') + r.name + (coopShare ? '' : ' ' + r.score + ' แต้ม')),
       accent: '#5eead4',
       fileName: 'wavelength-result'
     });
@@ -1417,6 +1713,21 @@ $(function() {
 
   // ---------- guide ----------
   function howToHtml() {
+    if (S.variant === 'teams') {
+      return '<div class="wl-guide">' +
+        '<h4>👥 2 ทีม ผลัดกันเล่น</h4><p>🔵 ทีมฟ้า vs 🟠 ทีมส้ม · ทีมที่เริ่มทีหลังได้ 1 แต้มตั้งต้น · ผู้ใบ้วนกันในทีม</p>' +
+        '<h4>1. ผู้ใบ้</h4><p>เลือกการ์ด 1 จาก 2 ใบ เห็นเป้าลับคนเดียว แล้วพิมพ์คำใบ้ (ห้ามคำบนการ์ด ห้ามตัวเลข · 60 วิ) จากนั้น <b>ห้ามใบ้เพิ่ม</b></p>' +
+        '<h4>2. ทีมหมุนเข็มเดียวกัน</h4><p>ใครในทีมก็ลากได้ ทุกคนเห็น · กด <b>✅ ตกลง</b> ครบทุกคน = ล็อก · ขยับเข็ม = ต้องตกลงใหม่ · 90 วิ</p>' +
+        '<h4>3. ทีมโน้นทาย ⬅️/➡️</h4><p>เป้าอยู่ซ้ายหรือขวาของเข็ม? ถูกได้ <b>+1</b> (ถ้าทีมนี้เป๊ะ = ไม่ได้)</p>' +
+        '<h4>4. แต้ม</h4><p>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 · <b>🔁 เป๊ะแต่ยังตามหลัง = เล่นต่ออีกตา</b></p>' +
+        '<h4>🏆 ชนะ</h4><p>ถึง 10 แต้มก่อนชนะ · เสมอที่ 10+ = ต่อตายทีมละ 1 ตา</p></div>';
+    }
+    if (S.variant === 'coop') {
+      return '<div class="wl-guide">' +
+        '<h4>🤝 ทุกคนทีมเดียวกัน</h4><p>มี 7 การ์ด · ผู้ใบ้วนตามที่นั่ง ที่เหลือช่วยกันหมุนเข็มเดียว กด <b>✅ ตกลง</b> ครบ = ล็อก</p>' +
+        '<h4>แต้ม</h4><p>เป๊ะ 3 + <b>🃏 การ์ดโบนัส 1 ใบ</b> · ใกล้มาก 3 · เฉียด 2</p>' +
+        '<h4>จบ</h4><p>การ์ดหมด = ดูตารางคะแนน · 16 แต้มขึ้นไป = ชนะ!</p></div>';
+    }
     return '<div class="wl-guide">' +
       '<h4>1. ผู้ใบ้เลือกการ์ด</h4><p>การ์ดเป็นคำตรงข้าม เช่น <b>ร้อน ↔ เย็น</b> เลือก 1 จาก 2 ใบ (สุ่มใหม่ได้ 1 ครั้ง) แล้วเห็นเป้าลับบนหน้าปัดคนเดียว</p>' +
       '<h4>2. ใบ้ 1 คำ</h4><p>พิมพ์คำที่อยู่ตรงเป้า เช่น เป้าค่อนไปทางเย็น → “ไอติม” · ห้ามใช้คำบนการ์ด ห้ามตัวเลข · 60 วิ ไม่ทัน = ข้ามรอบ · คิดไม่ออกกด <b>ข้ามตา</b> ได้</p>' +

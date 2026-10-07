@@ -787,6 +787,7 @@
   }
   .wl-laps button[aria-pressed="true"] { background: #5eead4; color: #0b1a2a; border-color: transparent; }
   .wl-laps button:disabled { cursor: default; opacity: 0.85; }
+  .wl-laps .wl-mode-btn { flex: 1 1 0; min-width: 0; padding: 0 8px; white-space: nowrap; }
 
   #btnDrawGuessHowTo {
     padding: 10px 14px; min-height: 44px; border-radius: 14px;
@@ -2291,16 +2292,29 @@
           ].join('');
         } else if (resolvedMode === 'wavelength') {
           const laps = settings && Number(settings.wavelengthLaps) === 2 ? 2 : 1;
+          const wlMode = settings && ['teams', 'coop', 'solo'].includes(settings.wavelengthMode) ? settings.wavelengthMode : 'teams';
+          const wlCount = Array.isArray(payload && payload.players) ? payload.players.length : 0;
+          const wlDesc = {
+            teams: '2 ทีมผลัดกันใบ้ · ทีมช่วยกันหมุนเข็มเดียว · ทีมโน้นทาย ⬅️/➡️ · ถึง 10 แต้มก่อนชนะ' + (wlCount && wlCount < 4 ? ' · <strong>3 คน = เล่นร่วมมือ</strong>' : ''),
+            coop: 'ทุกคนทีมเดียว 7 การ์ด · ช่วยกันหมุนเข็ม · เป๊ะได้การ์ดโบนัส · 16 แต้มขึ้นไป = ชนะ',
+            solo: 'แข่งเดี่ยว: ต่างคนต่างหมุนเข็มของตัวเอง · ใกล้เป้าได้ 4/3/2 · ผู้ใบ้ได้ค่าเฉลี่ย'
+          }[wlMode];
+          const wlBtn = function(id, label) {
+            return '<button type="button" class="wl-mode-btn" data-wl-mode="' + id + '" aria-pressed="' + (wlMode === id ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>' + label + '</button>';
+          };
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
             '<div class="lobby-spotlight-pill" style="background:rgba(20,184,166,0.22); color:#99f6e4;">📡 คลื่นความคิด · 3–12 คน</div>',
-            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
-            'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทาย · ใกล้เป้าได้ 4/3/2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ย',
-            '</p>',
-            '<div class="wl-laps" role="group" aria-label="ผู้ใบ้วนกี่รอบโต๊ะ">',
-            '<button type="button" class="wl-laps-btn" data-laps="1" aria-pressed="' + (laps === 1 ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>ใบ้คนละ 1 ครั้ง</button>',
-            '<button type="button" class="wl-laps-btn" data-laps="2" aria-pressed="' + (laps === 2 ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>ใบ้คนละ 2 ครั้ง</button>',
-            '</div>'
+            '<div class="wl-laps" role="group" aria-label="เล่นแบบไหน">',
+            wlBtn('teams', '👥 แข่งทีม'), wlBtn('coop', '🤝 ร่วมมือ'), wlBtn('solo', '🙋 เดี่ยว'),
+            '</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">', wlDesc, '</p>',
+            wlMode === 'solo' ? [
+              '<div class="wl-laps" role="group" aria-label="ผู้ใบ้วนกี่รอบโต๊ะ">',
+              '<button type="button" class="wl-laps-btn" data-laps="1" aria-pressed="' + (laps === 1 ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>ใบ้คนละ 1 ครั้ง</button>',
+              '<button type="button" class="wl-laps-btn" data-laps="2" aria-pressed="' + (laps === 2 ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>ใบ้คนละ 2 ครั้ง</button>',
+              '</div>'
+            ].join('') : ''
           ].join('');
         } else if (resolvedMode === 'codenames' && window.codenamesLobby) {
           lobbySpotlight.style.display = 'block';
@@ -3494,6 +3508,18 @@
       showCoupLobbyGuide();
     });
 
+    $(document).on('click', '.wl-mode-btn', function() {
+      if (!isAdmin || this.getAttribute('aria-pressed') === 'true') return;
+      const mode = this.getAttribute('data-wl-mode');
+      $('.wl-mode-btn').prop('disabled', true);
+      socket.emit('updateRoom', { wavelengthMode: mode }, function(res) {
+        $('.wl-mode-btn').prop('disabled', false);
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    });
+
     $(document).on('click', '.wl-laps-btn', function() {
       if (!isAdmin || this.getAttribute('aria-pressed') === 'true') return;
       const laps = Number(this.getAttribute('data-laps')) === 2 ? 2 : 1;
@@ -3510,11 +3536,11 @@
       Swal.fire({
         title: '📡 คลื่นความคิด เล่นยังไง',
         html: '<div style="text-align:left; line-height:1.6;">' +
-          '<p>1. ผู้ใบ้ (วนตามที่นั่ง) เลือกการ์ด 1 จาก 2 ใบ เช่น <strong>ร้อน ↔ เย็น</strong> แล้วเห็นเป้าลับบนหน้าปัดคนเดียว</p>' +
-          '<p>2. พิมพ์คำใบ้สั้น ๆ ที่อยู่ตรงเป้านั้น เช่น เป้าค่อนไปทางเย็น → “ไอติม” (ห้ามใช้คำบนการ์ด ห้ามตัวเลข · 60 วิ)</p>' +
-          '<p>3. ที่เหลือหมุนเข็มของตัวเองแล้วกดล็อก (45 วิ) · เห็นว่าใครล็อกแล้ว แต่ไม่เห็นว่าล็อกตรงไหน</p>' +
-          '<p>4. เปิดเป้า: <strong>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2</strong> แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยของทุกคน — ใบ้ดี ได้เยอะ</p>' +
-          '<p>ครบทุกคนแล้วแต้มสูงสุดชนะ (เสมอกันชนะร่วม) · เข้ากลางเกมได้ เริ่มทายรอบถัดไป</p></div>',
+          '<p>1. ผู้ใบ้เลือกการ์ด 1 จาก 2 ใบ เช่น <strong>ร้อน ↔ เย็น</strong> เห็นเป้าลับคนเดียว แล้วพิมพ์คำใบ้ เช่น ค่อนไปทางเย็น → “ไอติม” (ห้ามคำบนการ์ด ห้ามตัวเลข · 60 วิ)</p>' +
+          '<p>2. <strong>👥 แข่งทีม</strong>: ทีมผู้ใบ้ช่วยกันหมุนเข็มเดียว กด ✅ ตกลงครบ = ล็อก → ทีมโน้นทาย ⬅️/➡️ ถูก +1</p>' +
+          '<p>3. แต้ม: <strong>เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2</strong> · เป๊ะแต่ยังตามหลัง = เล่นต่ออีกตา · ถึง 10 ก่อนชนะ</p>' +
+          '<p>🤝 <strong>ร่วมมือ</strong>: 7 การ์ด ทุกคนทีมเดียว เป๊ะได้การ์ดโบนัส · 16+ ชนะ</p>' +
+          '<p>🙋 <strong>แข่งเดี่ยว</strong>: ต่างคนต่างหมุนเข็มตัวเอง ผู้ใบ้ได้ค่าเฉลี่ย · ครบรอบโต๊ะแต้มสูงสุดชนะ</p></div>',
         background: '#0f1b2b',
         color: '#fff',
         confirmButtonColor: '#0f766e',
