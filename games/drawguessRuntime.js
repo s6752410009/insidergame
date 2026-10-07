@@ -177,6 +177,11 @@ module.exports = function createDrawGuessRuntime(getDeps) {
         return engine.finishDrawing(room, playerId, { turnNo: data?.turnNo }, Date.now());
     }
 
+    /** คนทายกด 🚩 คนวาดเขียนตัวหนังสือ (กดซ้ำ = ยกเลิก) — เกินครึ่งของคนทาย = ตานี้โมฆะ */
+    function reportDrawing(room, playerId, data) {
+        return engine.reportDrawing(room, playerId, { turnNo: data?.turnNo }, Date.now());
+    }
+
     /** รับเส้นจากคนวาด → ตรวจแล้วส่งต่อให้ทุกคนในห้อง (ยกเว้นคนส่ง) */
     function relayStrokes(socket, room, data) {
         const ops = engine.applyStrokes(room, socket.playerId, data, Date.now());
@@ -240,6 +245,7 @@ module.exports = function createDrawGuessRuntime(getDeps) {
         guess,
         skipTurn,
         finishDrawing,
+        reportDrawing,
         relayStrokes,
         forceResolve,
         gameEndNotification,

@@ -302,11 +302,22 @@ ROOM_NAME_MODE_HINTS['วงวาดแล้วทาย'] = 'drawguess';
 ROOM_NAME_MODE_HINTS['เศรษฐี'] = 'setthi';
 ROOM_NAME_MODE_HINTS['วงเศรษฐี'] = 'setthi';
 
-/** วาดแล้วทาย: รอบ 2/3/4 · เวลาวาด 60/80/100 วิ · หมวดคำ (mixed หรือหมวดเดียว) */
+/**
+ * วาดแล้วทาย: รอบ 2/3/4 · เวลาวาด 60/80/100 วิ · หมวดคำ (mixed หรือหมวดเดียว)
+ * · คำใบ้เปิด/ปิด (ค่าเริ่ม เปิด) · คำของห้อง (≤ 200 คำ) · ใช้เฉพาะคำของห้อง (ต้องมี ≥ 10 คำ)
+ */
 function sanitizeDrawGuessSettings(source) {
     const clean = getGameEngine('drawguess').sanitizeSettings(source || {});
-    return { drawguessRounds: clean.rounds, drawguessSeconds: clean.drawSeconds, drawguessCategory: clean.category };
+    return {
+        drawguessRounds: clean.rounds,
+        drawguessSeconds: clean.drawSeconds,
+        drawguessCategory: clean.category,
+        drawguessHints: clean.hints,
+        drawguessCustomWords: clean.customWords,
+        drawguessCustomOnly: clean.customOnly
+    };
 }
+const DRAWGUESS_SETTING_KEYS = ['drawguessRounds', 'drawguessSeconds', 'drawguessCategory', 'drawguessHints', 'drawguessCustomWords', 'drawguessCustomOnly'];
 
 function inferGameModeFromRoomName(roomName) {
     const trimmed = String(roomName || '').trim();
@@ -1029,7 +1040,8 @@ function updateRoom(roomId, adminPlayerId, updates) {
         throw new Error('โต๊ะเงินจริงใส่บอทไม่ได้ — เอาบอทออกก่อน');
     }
     // สายลับคำใบ้: กลางเกมห้ามแก้ห้อง — callback ของ updateRoom ส่ง room ทั้งก้อน (มีกุญแจกระดาน) กลับไปหาหัวห้อง
-    if (room.settings.gameMode === 'codenames' && isRoomGameInProgress(room)) {
+    // วาดแล้วทาย: เหมือนกัน — room ที่ส่งกลับมีคำที่กำลังวาด (gameState.word) และหัวห้องเป็นคนทายด้วย
+    if ((room.settings.gameMode === 'codenames' || room.settings.gameMode === 'drawguess') && isRoomGameInProgress(room)) {
         throw new Error('เกมกำลังเล่นอยู่ แก้ห้องไม่ได้');
     }
 
@@ -1093,7 +1105,7 @@ function updateRoom(roomId, adminPlayerId, updates) {
         room.settings.wavelengthLaps = Number(updates.wavelengthLaps) === 2 ? 2 : 1;
     }
     if (room.settings.gameMode === 'drawguess'
-        && (updates.drawguessRounds !== undefined || updates.drawguessSeconds !== undefined || updates.drawguessCategory !== undefined)) {
+        && DRAWGUESS_SETTING_KEYS.some(key => updates[key] !== undefined)) {
         Object.assign(room.settings, sanitizeDrawGuessSettings({ ...room.settings, ...updates }));
     }
     if (room.settings.gameMode === 'colorcards' && !isRoomGameInProgress(room)) {
