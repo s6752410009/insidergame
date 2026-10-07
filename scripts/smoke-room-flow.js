@@ -95,13 +95,16 @@ async function main() {
     const clients = [
         createClient('player-a'),
         createClient('player-b'),
-        createClient('player-c')
+        createClient('player-c'),
+        // 5 คน: คนออก 1 คนแล้วเกมยังไม่เข้าเงื่อนไขชนะ (3 คน ออก 1 = จบเกมทันทีตามกติกา)
+        createClient('player-d'),
+        createClient('player-e')
     ];
 
     let roomId = null;
 
     try {
-        console.log('1. Connect 3 clients');
+        console.log('1. Connect 5 clients');
         for (const client of clients) {
             await connectClient(client);
             console.log(`   - connected ${client.label} ${client.playerId}`);
@@ -125,14 +128,14 @@ async function main() {
         assert(creatorRoomUpdate.admin === creator.playerId, 'creator not admin after room creation');
 
         console.log('3. Join player-b and player-c');
-        for (const client of [second, third]) {
+        for (const client of clients.slice(1)) {
             const joinResponse = await emitAck(client.socket, 'joinRoom', { roomId, playerId: client.playerId });
             assert(joinResponse && joinResponse.success, `joinRoom failed for ${client.label}`);
             bindRoom(client, roomId);
         }
 
-        const roomReadyPayload = await waitForClientEvent(creator, 'roomUpdate', payload => payload.roomId === roomId && Array.isArray(payload.players) && payload.players.length >= 3);
-        assert(roomReadyPayload.players.length === 3, 'room does not have 3 players after joins');
+        const roomReadyPayload = await waitForClientEvent(creator, 'roomUpdate', payload => payload.roomId === roomId && Array.isArray(payload.players) && payload.players.length >= 5);
+        assert(roomReadyPayload.players.length === 5, 'room does not have 5 players after joins');
 
         console.log('4. Transfer admin to player-b');
         const transferResponse = await emitAck(creator.socket, 'transferAdmin', { newAdminPlayerId: second.playerId });
@@ -180,17 +183,20 @@ async function main() {
         assert(thirdState.playerRole && thirdState.playerRole.id, 'player-c lost werewolf role after reconnect');
 
         console.log('8. Explicit leave and rejoin for player-c during game');
+        // หมาป่าตัวเดียวออก = ชาวบ้านชนะทันที ไม่มีเกมให้กลับเข้า — ข้ามขั้นนี้
+        const leaverIsWolf = thirdState.playerRole.id === 'werewolf';
         const leaveResponse = await emitAck(thirdReloaded.socket, 'leaveRoom', { roomId, playerId: thirdReloaded.playerId });
         assert(leaveResponse && leaveResponse.success, 'leaveRoom failed for player-c');
 
         const rejoinClient = createClient('player-c-rejoin', third.playerId);
         await connectClient(rejoinClient);
         const rejoinResponse = await emitAck(rejoinClient.socket, 'joinRoom', { roomId, playerId: third.playerId });
-        assert(rejoinResponse && rejoinResponse.success, `joinRoom failed for player-c rejoin: ${rejoinResponse?.error || 'no response'}`);
+        assert(leaverIsWolf || (rejoinResponse && rejoinResponse.success), `joinRoom failed for player-c rejoin: ${rejoinResponse?.error || 'no response'}`);
         bindRoom(rejoinClient, roomId);
 
         let rejoinStateError = null;
-        try {
+        if (leaverIsWolf) console.log('   - player-c was the only wolf: leaving ends the game, rejoin not applicable');
+        else try {
             const rejoinState = await waitForClientEvent(rejoinClient, 'werewolfState', payload => payload && payload.roomId === roomId, 5000);
             assert(rejoinState.playerRole && rejoinState.playerRole.id, 'player-c rejoined but did not recover a role');
             console.log('   - explicit leave/rejoin recovered role successfully');
