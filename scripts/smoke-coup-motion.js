@@ -26,6 +26,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 function assert(c, m) { if (!c) throw new Error(m); }
 
 async function getFreePort() {
+    if (process.env.SMOKE_PORT) return Number(process.env.SMOKE_PORT);
     return new Promise(res => {
         const s = require('net').createServer();
         s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => res(port)); });

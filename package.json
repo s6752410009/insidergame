@@ -70,6 +70,7 @@
     "smoke:coup": "node scripts/smoke-coup-engine.js",
     "smoke:coup:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-coup-play.js",
     "smoke:coup:ux": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-coup-ux.js",
+    "smoke:coup:rules": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-coup-rules.js",
     "smoke:avalon": "node scripts/smoke-avalon-engine.js",
     "smoke:avalon:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-avalon-play.js",
     "smoke:avalon:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-avalon-mobile.js",

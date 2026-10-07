@@ -664,7 +664,7 @@ $(function() {
     const iAmTarget = p.targetId === playerId;
     if (respond.canChallenge) {
       lines.push('🔥 <b>ท้า</b>: ถ้า ' + escapeHtml(p.actorName) + ' ไม่มี ' + escapeHtml(p.claimCard ? p.claimCard.thaiName : 'การ์ดนั้น') +
-        ' เขาเสียการ์ด 1 ใบ · ถ้ามีจริง <b>คุณ</b>เสียการ์ด 1 ใบ');
+        ' เขาเสียการ์ด 1 ใบ' + (p.coinsPaid ? ' (ได้ ' + p.coinsPaid + ' เหรียญคืน)' : '') + ' · ถ้ามีจริง <b>คุณ</b>เสียการ์ด 1 ใบ');
     }
     if ((respond.blockOptions || []).length) {
       lines.push('🛡️ <b>ขวาง</b>: อ้างว่ามีการ์ดที่ขวางได้ (ไม่มีจริงก็อ้างได้ แต่ถ้าโดนท้าจะเสียการ์ด)');

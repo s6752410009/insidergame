@@ -1768,6 +1768,16 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">แจกคนละ 7 ใบ · หมดเวลา = จั่วให้แล้วผ่าน · ใส่บอทได้ในห้องรอ</div>
                     </div>
 
+                    <div class="room-form-group" id="coupSettingsGroup" role="group" aria-labelledby="coupSettingsLabel" style="display:none;">
+                        <div class="room-form-label" id="coupSettingsLabel"><span class="icon">👑</span> เวลาเลือกแอ็กชันต่อตา:</div>
+                        <select id="coupActionSeconds" class="search-box" style="min-height:48px; width:100%;" aria-label="เวลาเลือกแอ็กชันต่อตา">
+                            <option value="30">30 วินาที</option>
+                            <option value="60" selected>60 วินาที</option>
+                            <option value="90">90 วินาที</option>
+                        </select>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลา = รับรายได้ 1 เหรียญให้อัตโนมัติ · ช่วงท้า/ขวางมี 20 วินาที คนที่หลุดออฟไลน์ถือว่าปล่อยผ่าน</div>
+                    </div>
+
                     <div class="room-form-group" id="setthiSettingsGroup" role="group" aria-labelledby="setthiSettingsLabel" style="display:none;">
                         <div class="room-form-label" id="setthiSettingsLabel"><span class="icon">💰</span> เวลาเกม:</div>
                         <select id="setthiMinutes" class="search-box" style="min-height:48px; width:100%;" aria-label="เวลาเกมเศรษฐี">
@@ -2039,6 +2049,9 @@ $(function() {
                     if (selectedMode === 'colorcards') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('colorcardsTableGroup')) document.getElementById('colorcardsTableGroup').style.display = selectedMode === 'colorcards' ? 'block' : 'none';
                     if (selectedMode === 'setthi') createRoundTimeGroup.style.display = 'none';
+                    // Coup ใช้เวลาต่อตาเป็นวินาทีของตัวเอง — สไลเดอร์นาทีเดิมไม่มีผลกับเกมนี้
+                    if (selectedMode === 'coup') createRoundTimeGroup.style.display = 'none';
+                    if (document.getElementById('coupSettingsGroup')) document.getElementById('coupSettingsGroup').style.display = selectedMode === 'coup' ? 'block' : 'none';
                     if (document.getElementById('setthiSettingsGroup')) document.getElementById('setthiSettingsGroup').style.display = selectedMode === 'setthi' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
@@ -2211,7 +2224,8 @@ $(function() {
                     colorcardsTarget: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTarget') || {}).value || 0) : undefined,
                     colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
                     colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
-                    setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined
+                    setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined,
+                    coupActionSeconds: gameMode === 'coup' ? Number((document.getElementById('coupActionSeconds') || {}).value || 60) : undefined
                 };
             }
             }).then((result) => {

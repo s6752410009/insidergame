@@ -670,6 +670,7 @@ function createRoom(roomData, creatorPlayerId) {
                 : ([0, 300, 500].includes(Number(normalizedRoomData.colorcardsTarget)) ? Number(normalizedRoomData.colorcardsTarget) : 0),
             colorcardsStacking: gameMode === 'colorcards' && normalizedRoomData.colorcardsStacking === true,
             setthiMinutes: gameMode === 'setthi' ? gameEngine.sanitizeMinutes(normalizedRoomData.setthiMinutes) : undefined,
+            coupActionSeconds: gameMode === 'coup' ? gameEngine.sanitizeActionSeconds(normalizedRoomData.coupActionSeconds) : undefined,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1095,6 +1096,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
         if ([15, 20, 30].includes(Number(updates.colorcardsTurnSeconds))) room.settings.colorcardsTurnSeconds = Number(updates.colorcardsTurnSeconds);
         if ([0, 300, 500].includes(Number(updates.colorcardsTarget))) room.settings.colorcardsTarget = Number(updates.colorcardsTarget);
         if (updates.colorcardsStacking !== undefined) room.settings.colorcardsStacking = updates.colorcardsStacking === true;
+    }
+    if (room.settings.gameMode === 'coup' && !isRoomGameInProgress(room) && updates.coupActionSeconds !== undefined) {
+        room.settings.coupActionSeconds = getGameEngine('coup').sanitizeActionSeconds(updates.coupActionSeconds);
     }
     if (room.settings.gameMode === 'setthi' && !isRoomGameInProgress(room) && updates.setthiMinutes !== undefined) {
         room.settings.setthiMinutes = getGameEngine('setthi').sanitizeMinutes(updates.setthiMinutes);
