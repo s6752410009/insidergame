@@ -478,7 +478,7 @@
 
   document.addEventListener('pointerdown', function(e) {
     if (!running) return;
-    if (e.target && e.target.closest && e.target.closest('.st-sheet-card, .st-dock, .chat-box, .st-sidebar, .st-top, #toggleChat')) return;
+    if (e.target && e.target.closest && e.target.closest('.st-sheet-card, .st-dock, .chat-box, .st-sidebar, .st-top, #toggleChat, #stDebug, .swal2-container')) return;
     skipNow();
   }, true);
   document.addEventListener('keydown', function(e) { if (running && e.key === 'Escape') skipNow(); });
@@ -1843,6 +1843,7 @@
     if (t.dataset.close) { closeSheet(true); return; }
     if (t.classList.contains('st-cell')) {
       var i = Number(t.dataset.i);
+      if (debugPickCell(i)) return;
       if (S && S.phase === 'pick' && S.phaseActor === playerId && S.decision && !running) {
         if (S.decision.options.indexOf(i) >= 0) { haptic(12); send('setthi_pick', Object.assign({ square: i }, seq())); }
         else toast('เลือกช่องที่เรืองแสง', 1200);
@@ -2088,20 +2089,122 @@
   });
 
   // ---------- เมนูทดสอบ /m (แอดมินเว็บ/หัวห้อง · เซิร์ฟเวอร์ตรวจสิทธิ์ทุกคำสั่ง) ----------
-  var dbg = { panel: $('#stDebug'), head: $('#stDebugHead'), toggle: $('#stDebugToggle'), six: $('#stDbgSix'), doubles: $('#stDbgDoubles'), amt: $('#stDbgAmt'), mint: $('#stDbgMint'), badge: $('#stDebugBadge') };
-  function paintDebug() {
-    if (!S) return;
-    if (dbg.badge) dbg.badge.hidden = !S.debugUsed;
+  // ไม่มีอะไรแจ้งทั้งห้อง — ผลลัพธ์โชว์ในเมนูของคนกดเท่านั้น (บรรทัดสถานะ)
+  var dbg = {
+    panel: $('#stDebug'), head: $('#stDebugHead'), toggle: $('#stDebugToggle'), close: $('#stDebugClose'),
+    six: $('#stDbgSix'), doubles: $('#stDbgDoubles'), auto: $('#stDbgAuto'), amt: $('#stDbgAmt'),
+    targets: $('#stDbgTargets'), targetName: $('#stDbgTargetName'), status: $('#stDbgStatus'),
+    a: $('#stDbgA'), b: $('#stDbgB'), level: $('#stDbgLevel'), mult: $('#stDbgMult'), card: $('#stDbgCard'),
+    pickSq: $('#stDbgPickSq'), sqName: $('#stDbgSqName')
+  };
+  var dbgTarget = null;
+  var dbgSquare = null;
+  var dbgPicking = false;
+  (function fillDebugSelects() {
     if (!dbg.panel) return;
-    if (!S.canDebug || S.phase === 'finished') dbg.panel.hidden = true;
+    var opts = '';
+    for (var v = 1; v <= 6; v += 1) opts += '<option value="' + v + '">' + v + '</option>';
+    dbg.a.innerHTML = opts; dbg.b.innerHTML = opts; dbg.b.value = '2';
+    dbg.level.innerHTML = LEVEL_NAMES.map(function(n, k) { return '<option value="' + k + '">' + esc(n) + '</option>'; }).join('');
+    dbg.card.innerHTML = (BOARD.cards || []).map(function(c) { return '<option value="' + esc(c.id) + '">' + esc(c.title) + '</option>'; }).join('');
+  })();
+  function dbgActiveTarget() {
+    var seats = (S && S.seats) || [];
+    var cur = seats.find(function(x) { return x.playerId === dbgTarget && !isOut(x); });
+    if (cur) return cur;
+    var me = meSeat();
+    cur = me && !isOut(me) ? me : seats.find(function(x) { return !isOut(x); });
+    dbgTarget = cur ? cur.playerId : null;
+    return cur || null;
+  }
+  function paintDebug() {
+    if (!S || !dbg.panel) return;
+    if (!S.canDebug || S.phase === 'finished') { dbg.panel.hidden = true; setDebugPicking(false); }
     var mine = S.debug || {};
-    if (dbg.six) dbg.six.checked = !!mine.six;
-    if (dbg.doubles) dbg.doubles.checked = !!mine.doubles;
+    dbg.six.checked = !!mine.six;
+    dbg.doubles.checked = !!mine.doubles;
+    dbg.auto.checked = !!mine.autoplay;
+    if (dbg.panel.hidden) return;
+    var t = dbgActiveTarget();
+    dbg.targetName.textContent = t ? (t.playerId === playerId ? 'คุณ' : t.name) : '—';
+    var head = $('#stDbgHeadTarget');
+    if (head) head.innerHTML = t ? '🎯 ' + tokenHtml(t) + '<span>' + esc(t.playerId === playerId ? 'คุณ' : t.name) + '</span>' : '';
+    dbg.targets.innerHTML = (S.seats || []).filter(function(x) { return !isOut(x); }).map(function(x) {
+      var on = t && x.playerId === t.playerId;
+      return '<button type="button" class="st-dbg-tgt' + (on ? ' is-on' : '') + '" role="radio" aria-checked="' + on + '" data-tgt="' + esc(x.playerId) + '" style="--tk:' + esc(x.tokenColor) + '" title="' + esc(x.name) + '">' + tokenHtml(x) + '</button>';
+    }).join('');
+    dbg.sqName.textContent = dbgSquare === null ? 'ยังไม่เลือก' : SQ[dbgSquare].name;
   }
   function setDebugMin(min) {
     dbg.panel.classList.toggle('is-min', min);
-    dbg.toggle.textContent = min ? '+' : '✕';
+    dbg.toggle.textContent = min ? '+' : '–';
     dbg.toggle.setAttribute('aria-label', min ? 'ขยาย' : 'ย่อ');
+  }
+  function setDebugPicking(on) {
+    dbgPicking = !!on;
+    if (el.board) el.board.classList.toggle('is-dbgpick', dbgPicking);
+    if (dbg.pickSq) dbg.pickSq.classList.toggle('is-on', dbgPicking);
+    if (dbg.panel) dbg.panel.classList.toggle('is-picking', dbgPicking);
+  }
+  function markDebugSquare() {
+    cells.forEach(function(c, i) { if (c) c.classList.toggle('is-dbgsel', i === dbgSquare && !!dbg.panel && !dbg.panel.hidden); });
+  }
+  function dbgStatus(text, bad) {
+    if (!dbg.status) return;
+    dbg.status.textContent = text;
+    dbg.status.classList.toggle('is-bad', !!bad);
+    dbg.status.classList.add('is-on');
+    clearTimeout(dbgStatus.t);
+    dbgStatus.t = setTimeout(function() { dbg.status.classList.remove('is-on'); }, 3500);
+  }
+  function dbgSend(action, extra, okText) {
+    var payload = Object.assign({ roomId: roomId, action: action }, extra || {});
+    socket.emit('setthi_debug', payload, function(res) {
+      if (res && res.success) dbgStatus('✓ ' + (res.note || okText || 'เรียบร้อย'));
+      else { dbgStatus('✗ ' + ((res && res.error) || 'ทำรายการไม่สำเร็จ'), true); paintDebug(); }
+    });
+  }
+  function needSquare() {
+    if (dbgSquare !== null) return true;
+    dbgStatus('แตะ "👆 แตะช่องบนกระดาน" แล้วเลือกช่องก่อน', true);
+    setDebugPicking(true);
+    return false;
+  }
+  function dbgConfirm(title, go) {
+    if (!window.Swal) { if (window.confirm(title)) go(); return; }
+    Swal.fire({ icon: 'warning', title: title, showCancelButton: true, confirmButtonText: 'ทำเลย', cancelButtonText: 'ยกเลิก', background: '#1d2433', color: '#fff', confirmButtonColor: '#c2410c' })
+      .then(function(r) { if (r.isConfirmed) go(); });
+  }
+  function runDebug(kind, btnEl) {
+    var t = dbgActiveTarget();
+    var target = t ? t.playerId : undefined;
+    var who = t ? (t.playerId === playerId ? 'คุณ' : t.name) : '';
+    switch (kind) {
+      case 'nextDice': dbgSend('nextDice', { target: target, a: Number(dbg.a.value), b: Number(dbg.b.value) }); break;
+      case 'movePlace': if (needSquare()) dbgSend('move', { target: target, square: dbgSquare }); break;
+      case 'moveLand': if (needSquare()) dbgSend('move', { target: target, square: dbgSquare, land: true }); break;
+      case 'propGive': if (needSquare()) dbgSend('prop', { target: target, square: dbgSquare, level: Number(dbg.level.value) }); break;
+      case 'propBank': if (needSquare()) dbgSend('prop', { square: dbgSquare, bank: true }); break;
+      case 'festival': if (needSquare()) dbgSend('festival', { square: dbgSquare, mult: Number(dbg.mult.value) }); break;
+      case 'addCash': case 'setCash': {
+        var v = Math.floor(Number(dbg.amt.value));
+        if (!(v >= (kind === 'setCash' ? 0 : 1) && v <= 1000000)) { dbgStatus('ใส่จำนวน ' + (kind === 'setCash' ? 0 : 1) + '–1,000,000', true); return; }
+        dbgSend(kind, { target: target, amount: v });
+        break;
+      }
+      case 'cardNow': dbgSend('card', { target: target, cardId: dbg.card.value, now: true }); break;
+      case 'cardNext': dbgSend('card', { target: target, cardId: dbg.card.value }); break;
+      case 'islandOn': dbgSend('island', { target: target, on: true }); break;
+      case 'islandOff': dbgSend('island', { target: target, on: false }); break;
+      case 'botNow': dbgSend('botNow', {}); break;
+      case 'nearLine': dbgSend('nearMonopoly', { target: target, type: 'line' }); break;
+      case 'nearColor': dbgSend('nearMonopoly', { target: target, type: 'color' }); break;
+      case 'nearTourist': dbgSend('nearMonopoly', { target: target, type: 'tourist' }); break;
+      case 'bankrupt': dbgConfirm('ให้ ' + who + ' ล้มละลาย?', function() { dbgSend('bankrupt', { target: target }); }); break;
+      case 'end': dbgConfirm('จบเกมเลย? (นับทรัพย์สินรวม)', function() { dbgSend('end', {}); }); break;
+      case 'clock': dbgSend('clock', { minutes: Number(btnEl && btnEl.dataset.min) }); break;
+      default:
+    }
   }
   if (dbg.panel) {
     var drag = null;
@@ -2118,7 +2221,7 @@
       if (!drag.moved && dx * dx + dy * dy < 36) return;
       drag.moved = true;
       dbg.panel.style.left = Math.max(0, Math.min(window.innerWidth - dbg.panel.offsetWidth, drag.left + dx)) + 'px';
-      dbg.panel.style.top = Math.max(0, Math.min(window.innerHeight - dbg.panel.offsetHeight, drag.top + dy)) + 'px';
+      dbg.panel.style.top = Math.max(0, Math.min(window.innerHeight - 48, drag.top + dy)) + 'px';
       dbg.panel.style.right = 'auto';
     });
     dbg.head.addEventListener('pointerup', function() {
@@ -2126,16 +2229,28 @@
       drag = null;
     });
     dbg.toggle.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); setDebugMin(!dbg.panel.classList.contains('is-min')); });
-    dbg.six.addEventListener('change', function() { socket.emit('setthi_debug_dice', { roomId: roomId, six: dbg.six.checked }, debugAck); });
-    dbg.doubles.addEventListener('change', function() { socket.emit('setthi_debug_dice', { roomId: roomId, doubles: dbg.doubles.checked }, debugAck); });
-    dbg.mint.addEventListener('click', function() {
-      var v = Math.floor(Number(dbg.amt.value));
-      if (!(v >= 1 && v <= 1000000)) { toast('ใส่จำนวน 1–1,000,000'); return; }
-      socket.emit('setthi_debug_mint', { roomId: roomId, amount: v }, debugAck);
+    dbg.close.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); dbg.panel.hidden = true; setDebugPicking(false); markDebugSquare(); });
+    dbg.six.addEventListener('change', function() { dbgSend('dice', { six: dbg.six.checked }); });
+    dbg.doubles.addEventListener('change', function() { dbgSend('dice', { doubles: dbg.doubles.checked }); });
+    dbg.auto.addEventListener('change', function() { dbgSend('autoplay', { on: dbg.auto.checked }); });
+    dbg.pickSq.addEventListener('click', function() { setDebugPicking(!dbgPicking); if (dbgPicking) dbgStatus('แตะช่องบนกระดาน 1 ช่อง'); });
+    dbg.panel.addEventListener('click', function(ev) {
+      var tgt = ev.target.closest('[data-tgt]');
+      if (tgt) { dbgTarget = tgt.dataset.tgt; paintDebug(); return; }
+      var b = ev.target.closest('[data-dbg]');
+      if (b) runDebug(b.dataset.dbg, b);
     });
   }
-  function debugAck(res) {
-    if (res && !res.success) { toast(res.error || 'ทำรายการไม่สำเร็จ'); paintDebug(); }
+  /** แตะช่องตอนเลือกช่องให้เมนูทดสอบ — คืน true ถ้ากินคลิกนี้ */
+  function debugPickCell(i) {
+    if (!dbgPicking || !dbg.panel || dbg.panel.hidden) return false;
+    dbgSquare = i;
+    setDebugPicking(false);
+    paintDebug();
+    markDebugSquare();
+    dbgStatus('เลือก ' + SQ[i].name);
+    haptic(10);
+    return true;
   }
   function openDebug(text) {
     if (String(text || '').trim().toLowerCase() !== '/m') return false;
@@ -2148,6 +2263,9 @@
     dbg.panel.hidden = false;
     setDebugMin(false);
     paintDebug();
+    markDebugSquare();
+    var c = $('#closeChat');
+    if (c && $('#chatBox').style.display !== 'none') c.click();
     return true;
   }
   if (window.initChatPanel) window.initChatPanel({ socket: socket, playerId: playerId, playerName: BOOT.playerName, onCommand: openDebug });
@@ -2166,6 +2284,7 @@
     hold: function() { return hold ? { meter: hold.meter, t0: hold.t0, released: hold.released } : null; },
     // เทส: ส่งคำสั่งผ่าน socket ของหน้านี้ (เซิร์ฟเวอร์ตรวจสิทธิ์ทุกอย่างเหมือนเดิม)
     emit: function(ev, payload) { return new Promise(function(resolve) { socket.emit(ev, Object.assign({ roomId: roomId }, payload || {}), function(res) { resolve(res || {}); }); }); },
+    openDebug: function() { return openDebug('/m'); },
     demo: function(list) { enqueueFx((Array.isArray(list) ? list : [list]).map(function(f) { return Object.assign({ seq: 0, at: nowServer() }, f); })); }
   };
 })();

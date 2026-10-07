@@ -438,12 +438,30 @@ async function scenarioG(base) {
     S = await until(Q, S2 => S2.fx.some(f => f.kind === 'dice' && f.playerId === P.id), 'เห็นเต๋า');
     const d = S.fx.filter(f => f.kind === 'dice' && f.playerId === P.id).pop();
     assert(d.d[0] === 6 && d.d[1] === 6, 'ทอยได้ 6+6');
+    // เมนูเต็ม (setthi_debug): คนอื่นโดนปฏิเสธทุกคำสั่ง · หัวห้องทำกับคนอื่นได้ · ack มีข้อความยืนยันเฉพาะคนกด
+    for (const action of ['setCash', 'move', 'prop', 'bankrupt', 'end', 'clock', 'botNow', 'nearMonopoly']) {
+        r = await ack(Q.socket, 'setthi_debug', { action, target: Q.id, amount: 1, square: 1, minutes: 1, type: 'line' });
+        assert(!r.success && /แอดมินหรือหัวห้อง/.test(r.error), 'คนอื่นใช้ ' + action + ' ไม่ได้');
+    }
+    r = await ack(P.socket, 'setthi_debug', { action: 'hack' });
+    assert(!r.success, 'คำสั่งแปลกโดนปฏิเสธ');
+    r = await ack(P.socket, 'setthi_debug', { action: 'setCash', target: Q.id, amount: 7777 });
+    assert(r.success && /7,777/.test(r.note), 'หัวห้องตั้งเงินคนอื่นได้ + ข้อความยืนยัน: ' + JSON.stringify(r));
+    await until(Q, S2 => seatOf(S2, Q.id).cash === 7777, 'เงิน Q = 7,777');
+    r = await ack(P.socket, 'setthi_debug', { action: 'prop', target: Q.id, square: 4, level: 1 });
+    assert(r.success, 'ให้ที่ได้: ' + r.error);
+    await until(Q, S2 => S2.props[4] && S2.props[4].owner === Q.id, 'Q ได้อุดร');
+    r = await ack(P.socket, 'setthi_debug', { action: 'clock', minutes: 3 });
+    assert(r.success, 'เพิ่มเวลาได้: ' + r.error);
+    await until(Q, S2 => S2.clock && S2.clock.endsAt, 'นาฬิกาเกมเริ่มนับ');
     // โอนหัวห้อง → คนเดิมใช้ไม่ได้ คนใหม่ใช้ได้
     r = await ack(P.socket, 'transferAdmin', { newAdminPlayerId: Q.id });
     assert(r && r.success !== false, 'โอนหัวห้องได้: ' + JSON.stringify(r));
     await until(Q, S2 => S2.canDebug === true, 'หัวห้องใหม่ได้ canDebug');
     r = await ack(P.socket, 'setthi_debug_mint', { amount: 100 });
     assert(!r.success, 'หัวห้องเดิมใช้ /m ไม่ได้แล้ว');
+    r = await ack(P.socket, 'setthi_debug', { action: 'setCash', target: P.id, amount: 1 });
+    assert(!r.success, 'หัวห้องเดิมใช้เมนูเต็มไม่ได้แล้ว');
     r = await ack(Q.socket, 'setthi_debug_dice', { doubles: true });
     assert(r.success, 'หัวห้องใหม่ใช้ได้');
     // จบเกม → ไม่บันทึกสถิติ

@@ -497,6 +497,7 @@ async function main() {
         await typeChat(host, '/m');
         await host.page.waitForSelector('#stDebug:not([hidden])', { timeout: 8000 });
         await host.page.click('#closeChat').catch(() => {});
+        await host.page.click('#stDebug details:has(#stDbgMint) > summary');
         await host.page.click('#stDbgMint');
         await phones[1].page.waitForSelector('#stStrip .st-chip[data-id="' + host.id + '"] .st-dbg-mark', { timeout: 8000 });
         assert(!(await phones[1].page.locator('#chatMessages').innerText().catch(() => '')).includes('เมนูทดสอบ'), 'ไม่มีข้อความ /m ในแชท');

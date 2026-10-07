@@ -576,6 +576,9 @@ function finishGame(room, reason, opts = {}) {
     state.resume = null;
     state.rollHold = null;
     state.debug = {};
+    state.debugNext = {};
+    state.autoplay = {};
+    state.nextCard = null;
     state.finishReason = reason || 'จบเกม';
     state.standings = computeStandings(room, opts.winnerId || null);
     const alive = state.standings.filter(r => !r.bankrupt && !r.left);
@@ -791,6 +794,9 @@ function nextDice(room, rng, bias = null, playerId = null) {
     if (Array.isArray(state.testDice) && state.testDice.length) return state.testDice.shift();
     // เมนูทดสอบ /m (หัวห้อง/แอดมิน): บังคับเต๋าของคนนั้นคนเดียว · 6+6 ชนะดับเบิลสุ่ม
     const dbg = playerId && state.debug ? state.debug[playerId] : null;
+    // ตั้งเต๋าลูกถัดไปแบบระบุแต้ม (ใช้ครั้งเดียว)
+    const next = playerId && state.debugNext ? state.debugNext[playerId] : null;
+    if (next) { delete state.debugNext[playerId]; return next.slice(); }
     if (dbg && dbg.six) return [6, 6];
     if (dbg && dbg.doubles) { const v = 1 + Math.floor(rng() * 6); return [v, v]; }
     if (diceScriptIndex < DICE_SCRIPT.length) {
@@ -937,8 +943,13 @@ function publicCard(card) {
 
 function drawCard(room, seat, opts = {}) {
     const state = st(room);
-    if (!state.deck.length) state.deck = shuffle(B.CARDS.map(c => c.id), opts.rng || Math.random);
-    const cardId = state.deck.shift();
+    let cardId = null;
+    if (opts.cardId && B.CARD_BY_ID.has(opts.cardId)) cardId = opts.cardId;
+    else if (state.nextCard && B.CARD_BY_ID.has(state.nextCard)) { cardId = state.nextCard; state.nextCard = null; }
+    else {
+        if (!state.deck.length) state.deck = shuffle(B.CARDS.map(c => c.id), opts.rng || Math.random);
+        cardId = state.deck.shift();
+    }
     const card = B.CARD_BY_ID.get(cardId);
     pushFx(room, { kind: 'card', playerId: seat.playerId, card: publicCard(card) });
     pushHistory(room, '❓', `${seat.name} เปิดการ์ด: ${card.title}`, 'card');
@@ -1379,6 +1390,262 @@ function debugMint(room, playerId, amount) {
     return state;
 }
 
+/** ที่นั่งเป้าหมายของเมนูทดสอบ (ไม่ระบุ = คนกด) — ต้องยังอยู่ในเกม */
+function debugTarget(room, actorId, targetId) {
+    const seat = seatOf(room, targetId || actorId);
+    if (!isActive(seat)) throw new Error('ผู้เล่นเป้าหมายไม่อยู่ในเกม');
+    return seat;
+}
+
+/** หลังเมนูทดสอบแก้กระดาน: เรื่องที่ค้างตัดสินใจอาจใช้ไม่ได้แล้ว → ล้างแล้วเดินเกมต่อ */
+function debugResettle(room) {
+    const state = st(room);
+    if (state.phase === 'finished') return;
+    if (state.pending && !pendingValid(room, state.pending)) {
+        if (state.pending.type === 'pick' && state.pending.purpose === 'tour') {
+            const s = seatOf(room, state.pending.playerId);
+            if (s) s.tourPending = false;
+        }
+        state.pending = null;
+    }
+    proceed(room);
+}
+
+function isRollTurnOf(room, seat) {
+    const state = st(room);
+    return state.phase === 'roll' && state.phaseActor === seat.playerId && !state.pending && !(state.debts || []).length;
+}
+
+const DEBUG_MONO = { line: 'แถว', color: '3 สี', tourist: 'ท่องเที่ยว' };
+
+/** ชุดช่องสำหรับ "เกือบผูกขาด" ของแบบนั้น · missing = ช่องที่จะเว้นไว้ (ใกล้หมากเป้าหมายข้างหน้าที่สุด) */
+function nearMonopolySet(room, seat, type) {
+    let set;
+    if (type === 'line') {
+        // ด้านที่หมากจะเดินไปถึงก่อน (ด้านถัดไปจากตำแหน่งตอนนี้)
+        const side = Math.floor(((seat.pos + 1) % B.BOARD_SIZE) / B.SIDE) % 4;
+        set = B.SIDE_SQUARES[side].slice();
+    } else if (type === 'tourist') {
+        set = B.TOURIST_SQUARES.slice();
+    } else if (type === 'color') {
+        set = [...B.GROUP_SQUARES.g1, ...B.GROUP_SQUARES.g3, ...B.GROUP_SQUARES.g5];
+    } else throw new Error('แบบผูกขาดไม่ถูกต้อง');
+    const ahead = i => ((i - seat.pos) % B.BOARD_SIZE + B.BOARD_SIZE) % B.BOARD_SIZE;
+    const candidates = set.filter(i => ahead(i) >= 2 && ahead(i) <= 12);
+    const missing = (candidates.length ? candidates : set).slice().sort((a, b) => ahead(a) - ahead(b))[0];
+    return { set, missing };
+}
+
+/**
+ * เมนูทดสอบ /m — ทุกคำสั่งตีตรา debugUsed (ไม่นับสถิติ/รางวัล) · ไม่แจ้งทั้งห้อง · คืนข้อความสั้นไว้ลงบันทึกแอดมิน
+ * สิทธิ์ตรวจใน app.js (setthiRuntime.canDebug) ก่อนเรียก
+ */
+function debugAction(room, actorId, action, args = {}, rng = Math.random) {
+    assertPlaying(room);
+    const state = st(room);
+    const actor = seatOf(room, actorId);
+    const note = text => debugNote(room, actor, text);
+    const nameOfSeat = s => (s ? s.name : 'ธนาคาร');
+    switch (action) {
+        case 'dice':
+            setDebugDice(room, actorId, args);
+            return note(`เต๋า 6+6 ${state.debug[actorId] && state.debug[actorId].six ? 'เปิด' : 'ปิด'} · ดับเบิล ${state.debug[actorId] && state.debug[actorId].doubles ? 'เปิด' : 'ปิด'}`);
+        case 'nextDice': {
+            const seat = debugTarget(room, actorId, args.target);
+            const a = Number(args.a);
+            const b = Number(args.b);
+            if (![a, b].every(v => Number.isInteger(v) && v >= 1 && v <= 6)) throw new Error('แต้มเต๋า 1–6');
+            state.debugNext = { ...(state.debugNext || {}), [seat.playerId]: [a, b] };
+            return note(`เต๋าถัดไปของ ${seat.name} = ${a}+${b}`);
+        }
+        case 'move': {
+            const seat = debugTarget(room, actorId, args.target);
+            const i = Number(args.square);
+            if (!Number.isInteger(i) || i < 0 || i >= B.BOARD_SIZE) throw new Error('เลือกช่องไม่ถูกต้อง');
+            if (args.land) {
+                if (!isRollTurnOf(room, seat)) throw new Error('"เดินไปตก" ใช้ได้ตอนถึงตาทอยของคนนั้น');
+                const turn = state.turn;
+                turn.hasRolled = true;
+                turn.canRollAgain = false;
+                seat.island = 0;
+                if (seat.pos === i) land(room, seat, { rng });
+                else moveForwardTo(room, seat, i, { warp: true, rng });
+                markAction(room, 'debugMove');
+                debugResettle(room);
+                return note(`${seat.name} เดินไปตก ${sqName(i)}`);
+            }
+            // วางเฉย ๆ: ย้ายหมาก ไม่มีผลตามช่อง
+            seat.pos = i;
+            if (i !== B.ISLAND_SQUARE) seat.island = 0;
+            if (state.phaseActor === seat.playerId && state.pending && state.pending.type !== 'pick') state.pending = null;
+            note(`วาง ${seat.name} ที่ ${sqName(i)}`);
+            debugResettle(room);
+            return `วาง ${seat.name} ที่ ${sqName(i)}`;
+        }
+        case 'setCash':
+        case 'addCash': {
+            const seat = debugTarget(room, actorId, args.target);
+            const value = Number(args.amount);
+            if (!Number.isInteger(value) || value < (action === 'setCash' ? 0 : 1) || value > MINT_MAX) throw new Error(`ใส่จำนวนเต็ม ${action === 'setCash' ? 0 : 1}–${MINT_MAX.toLocaleString('en-US')}`);
+            const target = action === 'setCash' ? value : seat.cash + value;
+            state.ledger.debugMinted = (Number(state.ledger.debugMinted) || 0) + (target - seat.cash);
+            seat.cash = target;
+            note(`${action === 'setCash' ? 'ตั้งเงิน' : 'เสกเงิน'} ${seat.name} = ${fmt(target)}`);
+            debugResettle(room); // อาจกำลังติดหนี้อยู่ — จ่ายได้แล้วให้เดินต่อ
+            return `${action === 'setCash' ? 'ตั้งเงิน' : 'เสกเงิน'} ${seat.name} = ${fmt(target)}`;
+        }
+        case 'prop': {
+            const i = Number(args.square);
+            if (!B.OWNABLE.includes(i)) throw new Error('ช่องนี้ซื้อไม่ได้');
+            const p = prop(room, i);
+            if (args.target === null || args.target === '' || args.target === undefined || args.bank) {
+                if (!p.owner) throw new Error('ช่องนี้ว่างอยู่แล้ว');
+                clearSquare(room, i);
+                note(`คืน ${sqName(i)} ให้ธนาคาร`);
+                debugResettle(room);
+                return `คืน ${sqName(i)} ให้ธนาคาร`;
+            }
+            const seat = debugTarget(room, actorId, args.target);
+            const level = isCity(i) ? Math.floor(Number(args.level) || 0) : 0;
+            if (level < 0 || level > 4) throw new Error('ขั้น 0–4');
+            const was = p.owner;
+            p.owner = seat.playerId;
+            if (p.level !== level || was !== seat.playerId) p.stars = 0;
+            p.level = level;
+            note(`ให้ ${sqName(i)} (${isCity(i) ? B.LEVEL_NAMES[level] : 'ท่องเที่ยว'}) แก่ ${seat.name}`);
+            if (checkMonopoly(room, seat.playerId, i)) return `ให้ ${sqName(i)} แก่ ${seat.name} → ผูกขาด`;
+            debugResettle(room);
+            return `ให้ ${sqName(i)} (${isCity(i) ? B.LEVEL_NAMES[level] : 'ท่องเที่ยว'}) แก่ ${seat.name}`;
+        }
+        case 'card': {
+            const card = B.CARD_BY_ID.get(String(args.cardId || ''));
+            if (!card) throw new Error('ไม่มีการ์ดนี้');
+            const seat = debugTarget(room, actorId, args.target);
+            if (args.now && isRollTurnOf(room, seat)) {
+                state.turn.hasRolled = true;
+                state.turn.canRollAgain = false;
+                drawCard(room, seat, { cardId: card.id, rng });
+                markAction(room, 'debugCard');
+                note(`${seat.name} เปิดการ์ด ${card.title}`);
+                debugResettle(room);
+                return `${seat.name} เปิดการ์ด ${card.title}`;
+            }
+            state.nextCard = card.id;
+            return note(`การ์ดโอกาสใบถัดไป = ${card.title}`);
+        }
+        case 'festival': {
+            const i = Number(args.square);
+            const mult = Number(args.mult) || 2;
+            if (!B.OWNABLE.includes(i) || !ownerOf(room, i)) throw new Error('งานวัดต้องอยู่บนช่องที่มีเจ้าของ');
+            if (![2, 4, 8, 16].includes(mult)) throw new Error('ตัวคูณ ×2 ×4 ×8 ×16');
+            state.festival = i;
+            state.festivalMult = mult;
+            bumpStep(room);
+            return note(`งานวัด ${sqName(i)} ×${mult}`);
+        }
+        case 'island': {
+            const seat = debugTarget(room, actorId, args.target);
+            if (args.on === false) {
+                if (!seat.island) throw new Error(`${seat.name} ไม่ได้ติดเกาะ`);
+                seat.island = 0;
+                bumpStep(room);
+                return note(`ปล่อย ${seat.name} ออกจากเกาะ`);
+            }
+            const mid = state.phaseActor === seat.playerId && state.phase !== 'roll';
+            sendToIsland(room, seat, 'card');
+            if (mid) state.pending = null;
+            note(`ส่ง ${seat.name} ไปเกาะ`);
+            debugResettle(room);
+            return `ส่ง ${seat.name} ไปเกาะ`;
+        }
+        case 'botNow': {
+            const seat = seatOf(room, state.phaseActor);
+            if (!isActive(seat)) throw new Error('ตอนนี้ไม่มีใครต้องเล่น');
+            if (!botAct(room, seat, rng)) throw new Error('ตอนนี้บอทเล่นแทนไม่ได้');
+            return note(`ให้บอทเล่นแทน ${seat.name} 1 ครั้ง`);
+        }
+        case 'autoplay': {
+            const seat = debugTarget(room, actorId, actorId);
+            const on = args.on === true;
+            state.autoplay = { ...(state.autoplay || {}) };
+            if (on) state.autoplay[seat.playerId] = true;
+            else delete state.autoplay[seat.playerId];
+            bumpStep(room);
+            return note(`ออโต้ (บอทเล่นแทนตัวเอง) ${on ? 'เปิด' : 'ปิด'}`);
+        }
+        case 'nearMonopoly': {
+            const seat = debugTarget(room, actorId, args.target);
+            const type = String(args.type || 'line');
+            const { set, missing } = nearMonopolySet(room, seat, type);
+            const others = new Set();
+            set.forEach(i => {
+                const p = prop(room, i);
+                if (i === missing) { if (p.owner) clearSquare(room, i); return; }
+                if (p.owner && p.owner !== seat.playerId) others.add(p.owner);
+                if (p.owner !== seat.playerId) { p.owner = seat.playerId; p.level = isCity(i) ? 1 : 0; p.stars = 0; }
+            });
+            // ห้ามชนะทันทีตอนจัดฉาก: ถ้าครบผูกขาดแบบอื่นอยู่แล้ว ปล่อยช่องที่ไม่อยู่ในชุดคืนธนาคาร
+            if (monopolyOf(room, seat.playerId)) ownedSquares(room, seat.playerId).filter(i => !set.includes(i)).forEach(i => clearSquare(room, i));
+            if (monopolyOf(room, seat.playerId)) throw new Error('จัดฉากไม่ได้');
+            // ถึงตาทอยของคนนั้น: ตั้งเต๋าให้เดินไปตกช่องที่ขาดพอดี (ถ้าไกล 2–12)
+            const dist = ((missing - seat.pos) % B.BOARD_SIZE + B.BOARD_SIZE) % B.BOARD_SIZE;
+            let diceNote = '';
+            if (dist >= 2 && dist <= 12) {
+                const a = dist <= 7 ? 1 : dist - 6; // ไม่ใช่ดับเบิล (ยกเว้น 2 = 1+1, 12 = 6+6)
+                const b = dist - a;
+                state.debugNext = { ...(state.debugNext || {}), [seat.playerId]: [a, b] };
+                diceNote = ` · เต๋าถัดไป ${a}+${b}`;
+            }
+            if (seat.cash < B.levelCost(missing, 0) + 2000) {
+                const target = B.levelCost(missing, 0) + 5000;
+                state.ledger.debugMinted = (Number(state.ledger.debugMinted) || 0) + (target - seat.cash);
+                seat.cash = target;
+            }
+            note(`เกือบผูกขาด${DEBUG_MONO[type]} ให้ ${seat.name} ขาด ${sqName(missing)}${diceNote}`);
+            debugResettle(room);
+            return `เกือบผูกขาด${DEBUG_MONO[type]} ให้ ${seat.name} ขาด ${sqName(missing)}${diceNote}`;
+        }
+        case 'bankrupt': {
+            const seat = debugTarget(room, actorId, args.target);
+            const wasTurn = state.turn && state.turn.playerId === seat.playerId;
+            const wasActor = state.phaseActor === seat.playerId;
+            note(`ทำให้ ${seat.name} ล้มละลาย`);
+            declareBankrupt(room, seat, [], 'เมนูทดสอบ');
+            if (state.phase !== 'finished') {
+                if (wasTurn) {
+                    state.pending = null;
+                    state.resume = null;
+                    if (state.debts.length) proceed(room);
+                    else advanceTurn(room);
+                } else if (wasActor) proceed(room);
+            }
+            return `ทำให้ ${seat.name} ล้มละลาย`;
+        }
+        case 'end':
+            note('จบเกมเลย');
+            finishGame(room, 'จบเกม (เมนูทดสอบ) — นับทรัพย์สินรวม');
+            return 'จบเกมเลย';
+        case 'clock': {
+            const delta = Math.round(Number(args.minutes));
+            if (!Number.isInteger(delta) || !delta || Math.abs(delta) > 120) throw new Error('นาที −120 ถึง +120');
+            const c = state.clock;
+            const at = now();
+            if (c.timeUp && delta > 0) { c.timeUp = false; c.endsAt = at + delta * MINUTE_MS; }
+            else if (!c.endsAt) { if (delta < 0) throw new Error('เกมนี้ไม่จำกัดเวลา'); c.endsAt = at + delta * MINUTE_MS; }
+            else if (!c.timeUp) c.endsAt = Math.max(at, c.endsAt + delta * MINUTE_MS);
+            else throw new Error('หมดเวลาแล้ว');
+            c.minutes = Math.max(1, Math.round((c.endsAt - c.startedAt) / MINUTE_MS));
+            note(`เวลาเกม ${delta > 0 ? '+' : ''}${delta} นาที`);
+            checkClock(room);
+            return `เวลาเกม ${delta > 0 ? '+' : ''}${delta} นาที`;
+        }
+        default:
+            throw new Error('ไม่รู้จักคำสั่งทดสอบ');
+    }
+}
+
+const DEBUG_ACTIONS = ['dice', 'nextDice', 'move', 'setCash', 'addCash', 'prop', 'card', 'festival', 'island', 'botNow', 'autoplay', 'nearMonopoly', 'bankrupt', 'end', 'clock'];
+
 // ---------- เริ่ม / จบ ----------
 
 /** options.dice (เทสเท่านั้น): รายการเต๋าที่จะออกก่อน เช่น [[6,6],[3,4]] · options.firstSeat */
@@ -1658,7 +1925,8 @@ function botPickTarget(room, seat, purpose) {
 function botPending(room) {
     const state = st(room);
     if (!state || state.status !== 'playing' || state.phase === 'finished') return null;
-    if (state.phaseActor && isBotId(state.phaseActor) && ['roll', 'build', 'takeover', 'pick', 'debt'].includes(state.phase)) {
+    const auto = state.phaseActor && (isBotId(state.phaseActor) || !!(state.autoplay && state.autoplay[state.phaseActor]));
+    if (auto && ['roll', 'build', 'takeover', 'pick', 'debt'].includes(state.phase)) {
         return { kind: 'actor', seat: seatOf(room, state.phaseActor) };
     }
     return null;
@@ -1682,7 +1950,13 @@ function playBotTurns(room, rng = Math.random, at = now()) {
     if (!pending) return false;
     const delay = botDelay(room, at);
     if (delay !== null && delay > 40) return false;
-    const seat = pending.seat;
+    return botAct(room, pending.seat, rng);
+}
+
+/** เล่นแทนคนที่ต้องตัดสินใจตอนนี้ 1 ครั้งด้วยสมองบอท (บอท · ออโต้ · เมนูทดสอบ "บอทเล่นเลย") */
+function botAct(room, seat, rng = Math.random) {
+    const state = st(room);
+    if (!seat || !isActive(seat) || state.phaseActor !== seat.playerId) return false;
     const id = seat.playerId;
     const ctx = { seq: state.phaseSeq };
     switch (state.phase) {
@@ -1800,7 +2074,11 @@ function buildClientState(room, viewerId) {
         round: state.round,
         fast: !!state.fast,
         debugUsed: !!state.debugUsed,
-        debug: viewer && state.debug && state.debug[viewerId] ? { ...state.debug[viewerId] } : { six: false, doubles: false },
+        debug: {
+            six: !!(viewer && state.debug && state.debug[viewerId] && state.debug[viewerId].six),
+            doubles: !!(viewer && state.debug && state.debug[viewerId] && state.debug[viewerId].doubles),
+            autoplay: !!(viewer && state.autoplay && state.autoplay[viewerId])
+        },
         turn: state.turn ? {
             playerId: state.turn.playerId,
             seq: state.turn.seq,
@@ -1964,6 +2242,9 @@ module.exports = {
     setFast,
     setDebugDice,
     debugMint,
+    debugAction,
+    DEBUG_ACTIONS,
+    botAct,
     MINT_MAX,
     endGame,
     handlePlayerLeft,

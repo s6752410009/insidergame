@@ -9105,9 +9105,13 @@ io.sockets.on('connection', function(socket) {
     // เมนูทดสอบ /m: แอดมินเว็บหรือหัวห้อง · เกมนี้ไม่บันทึกสถิติ
     // ไม่ส่งข้อความเข้าแชทห้อง (เจ้าของสั่ง "ไม่ต้องแจ้งเตือนตรงนี้") — ลงแค่บันทึกแอดมิน + ป้าย 🛠 เล็ก ๆ ที่แถบคนใช้
     function handleSetthiDebug(socket, callback, label, run) {
-        handleSetthiCommand(socket, callback, (room, playerId) => {
+        let note = '';
+        const done = typeof callback === 'function' ? callback : function() {};
+        // ack กลับไปที่คนกดคนเดียว พร้อมข้อความยืนยัน (แสดงในเมนูของคนนั้นเท่านั้น)
+        const reply = res => done(res && res.success ? { ...res, note } : res);
+        handleSetthiCommand(socket, reply, (room, playerId) => {
             if (!setthiRuntime.canDebug(room, playerId)) throw new Error('/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
-            const note = run(room, playerId);
+            note = run(room, playerId) || '';
             if (!note) return;
             const requester = playerManager.getPlayer(playerId);
             const name = requester?.playerName || playerId;
@@ -9133,6 +9137,19 @@ io.sockets.on('connection', function(socket) {
             const amount = Number(data?.amount);
             setthiRuntime.engine.debugMint(room, playerId, amount);
             return `เสกเงิน +฿${amount.toLocaleString('en-US')}`;
+        });
+    });
+    // เมนูทดสอบแบบเต็ม: { action, target?, square?, level?, amount?, a?, b?, land?, cardId?, now?, mult?, on?, type?, minutes?, bank? }
+    // engine ตรวจค่าทุกตัวเอง · ส่งต่อเฉพาะฟิลด์ที่รู้จัก
+    safeOn(socket, 'setthi_debug', function(data, callback) {
+        const action = String(data?.action || '');
+        handleSetthiDebug(socket, callback, action || 'unknown', (room, playerId) => {
+            if (!setthiRuntime.engine.DEBUG_ACTIONS.includes(action)) throw new Error('ไม่รู้จักคำสั่งทดสอบ');
+            const args = {};
+            ['square', 'level', 'amount', 'a', 'b', 'mult', 'minutes'].forEach(k => { if (data && data[k] !== undefined) args[k] = Number(data[k]); });
+            ['land', 'now', 'on', 'bank', 'six', 'doubles'].forEach(k => { if (data && typeof data[k] === 'boolean') args[k] = data[k]; });
+            ['target', 'cardId', 'type'].forEach(k => { if (data && typeof data[k] === 'string') args[k] = data[k].slice(0, 80); });
+            return setthiRuntime.engine.debugAction(room, playerId, action, args);
         });
     });
     if (process.env.SETTHI_TEST_HOOKS === '1') {

@@ -152,6 +152,8 @@ function publicBoard() {
         islandTurns: ISLAND_TURNS,
         tourFee: TOUR_FEE,
         taxRate: TAX_RATE,
+        // รายชื่อการ์ดทั้งหมด (ข้อมูลคงที่ ไว้โชว์ในวิธีเล่น/เมนูทดสอบ) — ลำดับกองอยู่ฝั่งเซิร์ฟเวอร์เท่านั้น
+        cards: CARDS.map(c => ({ id: c.id, title: c.title, icon: c.icon })),
         size: BOARD_SIZE
     };
 }

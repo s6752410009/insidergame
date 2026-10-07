@@ -254,6 +254,81 @@ async function main() {
         }
         console.log('3. สีเจ้าของบนช่อง = สีหมากของ 6 คน ไม่ซ้ำกัน ✓');
 
+        // ---------- เมนูทดสอบ /m (มือถือ 390×844) ----------
+        // แขกพิมพ์ /m โดนปฏิเสธ
+        assert(await desk.page.evaluate(() => window.__setthi.openDebug()), 'แขกเรียก /m');
+        await desk.page.waitForSelector('.swal2-popup', { timeout: 8000 });
+        assert(/แอดมินหรือหัวห้อง/.test(await desk.page.textContent('.swal2-popup')), 'แขกใช้ /m ไม่ได้');
+        await desk.page.click('.swal2-confirm');
+        assert(await desk.page.isHidden('#stDebug'), 'เมนูไม่เปิดให้แขก');
+        // หัวห้องเปิดเมนู
+        await phone.page.evaluate(() => window.__setthi.openDebug());
+        await phone.page.waitForSelector('#stDebug:not([hidden])');
+        const panelFits = await phone.page.evaluate(() => { const r = document.getElementById('stDebug').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight + 1; });
+        assert(panelFits, 'เมนูอยู่ในจอ 390×844');
+        const tgtCount = await phone.page.locator('#stDbgTargets .st-dbg-tgt').count();
+        assert(tgtCount === 6, 'เลือกเป้าหมายได้ 6 คน (' + tgtCount + ')');
+        assert((await phone.page.textContent('#stDbgTargetName')).trim() === 'คุณ', 'เป้าหมายเริ่มต้น = ตัวเอง');
+        await shot(phone, 'debug-menu-open');
+        // เลือกบอทที่นั่ง 4 เป็นเป้าหมาย
+        const S1 = await state(phone);
+        const botSeat = S1.seats[4];
+        await phone.page.click(`#stDbgTargets [data-tgt="${botSeat.playerId}"]`);
+        assert((await phone.page.textContent('#stDbgTargetName')).trim() === botSeat.name, 'เห็นชัดว่าทำกับใคร');
+        // เงิน: ตั้งเป็น 4,321
+        await phone.page.click('#stDebug details:has(#stDbgAmt) > summary');
+        await phone.page.fill('#stDbgAmt', '4321');
+        await phone.page.click('#stDebug [data-dbg="setCash"]');
+        await phone.page.waitForFunction(id => window.__setthi.state().seats.find(s => s.playerId === id).cash === 4321, botSeat.playerId, { timeout: 8000 });
+        await phone.page.waitForSelector('#stDbgStatus.is-on', { timeout: 5000 });
+        assert(/4,321/.test(await phone.page.textContent('#stDbgStatus')), 'ยืนยันในเมนูของคนกด');
+        // ช่อง: แตะเลือกบนกระดาน (เมนูย่อให้เห็นกระดาน) → ให้เป็นโรงแรม
+        await phone.page.click('#stDebug details:has(#stDbgPickSq) > summary');
+        await phone.page.click('#stDbgPickSq');
+        const coversBoard = await phone.page.evaluate(() => {
+            const d = document.getElementById('stDebug').getBoundingClientRect();
+            const c = document.querySelector('.st-cell[data-i="14"]').getBoundingClientRect();
+            return d.bottom > c.top && d.top < c.bottom && d.left < c.right && d.right > c.left;
+        });
+        assert(!coversBoard, 'ตอนเลือกช่อง เมนูไม่บังช่องบนกระดาน');
+        await shot(phone, 'debug-menu-picking');
+        await phone.page.click('.st-cell[data-i="14"]');
+        assert(/ลพบุรี/.test(await phone.page.textContent('#stDbgSqName')), 'เลือกลพบุรี');
+        assert(await phone.page.isVisible('#stDbgLevel'), 'เมนูกลับมาหลังเลือกช่อง');
+        await phone.page.selectOption('#stDbgLevel', '3');
+        await phone.page.click('#stDebug [data-dbg="propGive"]');
+        await phone.page.waitForFunction(id => { const p = window.__setthi.state().props[14]; return p && p.owner === id && p.level === 3; }, botSeat.playerId, { timeout: 8000 });
+        await desk.page.waitForFunction(id => { const p = window.__setthi.state().props[14]; return p && p.owner === id; }, botSeat.playerId, { timeout: 8000 });
+        // งานวัด ×4 ช่องเดียวกัน
+        await phone.page.selectOption('#stDbgMult', '4');
+        await phone.page.click('#stDebug [data-dbg="festival"]');
+        await phone.page.waitForFunction(() => window.__setthi.state().festival === 14 && window.__setthi.state().festivalMult === 4, null, { timeout: 8000 });
+        // เวลา +5 นาที
+        const endsBefore = (await state(phone)).clock.endsAt;
+        await phone.page.click('#stDebug details:has([data-min="5"]) > summary');
+        await phone.page.click('#stDebug [data-dbg="clock"][data-min="5"]');
+        await phone.page.waitForFunction(e => window.__setthi.state().clock.endsAt >= e + 5 * 60000 - 10, endsBefore, { timeout: 8000 });
+        // เกาะ: ส่งบอทไปเกาะ
+        await phone.page.click('#stDebug details:has([data-dbg="islandOn"]) > summary');
+        await phone.page.click('#stDebug [data-dbg="islandOn"]');
+        await phone.page.waitForFunction(id => window.__setthi.state().seats.find(s => s.playerId === id).island > 0, botSeat.playerId, { timeout: 8000 });
+        const lp = await layoutProblems(phone.page);
+        assert(!lp.length, 'เมนูเปิดอยู่ ไม่ล้นจอ: ' + lp.join(' | '));
+        await shot(phone, 'debug-menu-sections');
+        await settle(players);
+        // แขกไม่เห็นอะไรแจ้งเลย นอกจากป้าย 🛠 เล็กที่แถบหัวห้อง
+        await desk.page.waitForSelector(`#stStrip .st-chip[data-id="${S1.seats[0].playerId}"] .st-dbg-mark`, { timeout: 8000 });
+        const deskNoise = await desk.page.evaluate(() => ({
+            toast: [...document.querySelectorAll('.st-toast')].some(t => /🛠|เมนูทดสอบ|ตั้งเงิน/.test(t.textContent)),
+            chat: /เมนูทดสอบ|ตั้งเงิน/.test((document.getElementById('chatMessages') || {}).textContent || ''),
+            log: window.__setthi.state().history.some(h => /เมนูทดสอบ|ตั้งเงิน/.test(h.text))
+        }));
+        assert(!deskNoise.toast && !deskNoise.chat && !deskNoise.log, 'แขกไม่เห็นแจ้งเตือน /m: ' + JSON.stringify(deskNoise));
+        // ปิดเมนูได้
+        await phone.page.click('#stDebugClose');
+        assert(await phone.page.isHidden('#stDebug'), 'ปิดเมนูได้');
+        console.log('4. /m มือถือ: แขกโดนปฏิเสธ · เลือกเป้าหมาย 6 คน · ตั้งเงิน · แตะช่องบนกระดาน → ให้โรงแรม · งานวัด ×4 · +5 นาที · ส่งเกาะ · ไม่ล้นจอ · แขกไม่เห็นแจ้งเตือน · ปิดได้ ✓');
+
         for (const p of players) assert(!p.errors.length, `${p.label} มี error: ${p.errors.slice(0, 3).join(' | ')}`);
         assert(!/\[setthi\][^\n]*failed/.test(server.logs()), 'เซิร์ฟเวอร์ไม่มี error ของเศรษฐี');
         console.log(`✅ setthi 6p browser: ${checks} checks · ภาพที่ ${SHOTS} · ${((Date.now() - started) / 1000).toFixed(1)}s`);

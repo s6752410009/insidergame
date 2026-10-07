@@ -1065,6 +1065,157 @@ test('เมนูทดสอบ /m: 6+6 ทุกครั้ง (3 ครั�
     eq(S(r2).debugUsed, true, 'ยังตีตราว่าใช้ (ไม่นับสถิติ)');
 });
 
+test('เมนูทดสอบ /m แบบเต็ม: ทุกคำสั่งทำงาน · เป้าหมายเป็นคนอื่นได้ · บัญชีลง · เงียบ · ตีตรา', () => {
+    const room = makeRoom(['a', 'b', 'bot_c', 'd', 'e', 'bot_f']);
+    const dbg = (action, args = {}, who = 'a') => E.debugAction(room, who, action, args);
+    eq(E.DEBUG_ACTIONS.length, 15, 'จำนวนคำสั่งทดสอบ');
+    throws(() => dbg('nope'), 'คำสั่งไม่รู้จัก');
+    // เต๋าถัดไปของคนอื่น (ใช้ครั้งเดียว)
+    assert(/b/i.test(dbg('nextDice', { target: 'b', a: 2, b: 5 })), 'คืนข้อความ');
+    throws(() => dbg('nextDice', { target: 'b', a: 0, b: 7 }), 'แต้มเต๋าผิด');
+    throws(() => dbg('nextDice', { target: 'zz', a: 1, b: 1 }), 'เป้าหมายไม่มีอยู่');
+    eq(S(room).phaseActor, 'a', 'ตา a');
+    // ย้ายแบบวางเฉย ๆ (ไม่มีผล) และแบบเดินไปตก
+    dbg('move', { target: 'd', square: 20 });
+    eq(seat(room, 'd').pos, 20, 'วาง d ที่ 20');
+    eq(S(room).phase, 'roll', 'วางเฉย ๆ ไม่เปลี่ยนเฟส');
+    throws(() => dbg('move', { target: 'd', square: 4, land: true }), 'เดินไปตก ใช้ได้เฉพาะตาของคนนั้น');
+    throws(() => dbg('move', { target: 'a', square: 40 }), 'ช่องผิด');
+    const salaryBefore = seat(room, 'a').cash;
+    seat(room, 'a').pos = 30;
+    dbg('move', { target: 'a', square: 4, land: true });
+    eq(seat(room, 'a').pos, 4, 'เดินไปตก 4');
+    eq(seat(room, 'a').cash, salaryBefore + B.SALARY, 'ผ่านจุดเริ่มได้เงินเดือน');
+    eq(S(room).phase, 'build', 'ตกที่ว่าง = แผ่นซื้อ');
+    E.passBuild(room, 'a', null);
+    eq(S(room).phaseActor, 'b', 'ตาต่อไป b');
+    // เต๋าถัดไปของ b ถูกใช้
+    seat(room, 'b').pos = 0;
+    E.rollDice(room, 'b', null);
+    eq(S(room).fx.filter(f => f.kind === 'dice').pop().d.join(), '2,5', 'b ทอยได้ 2+5 ตามตั้ง');
+    while (S(room).phase !== 'roll') { const a = S(room).phaseActor; if (S(room).phase === 'build') E.passBuild(room, a, null); else if (S(room).phase === 'pick') E.skipPick(room, a, null); else if (S(room).phase === 'takeover') E.declineTakeover(room, a, null); else break; }
+    audit(room, 'หลังเต๋าถัดไป');
+    // เงิน: ตั้ง/เสก ของคนอื่น บัญชีลง
+    dbg('setCash', { target: 'bot_c', amount: 123 });
+    eq(seat(room, 'bot_c').cash, 123, 'ตั้งเงินบอท');
+    dbg('addCash', { target: 'e', amount: 1000 });
+    eq(seat(room, 'e').cash, B.START_CASH + 1000, 'เสกเงินให้ e');
+    throws(() => dbg('setCash', { target: 'e', amount: -1 }), 'ติดลบไม่ได้');
+    throws(() => dbg('addCash', { target: 'e', amount: 0 }), 'เสก 0 ไม่ได้');
+    audit(room, 'หลังตั้งเงิน');
+    // ให้/คืนที่ดิน · แลนด์มาร์ก
+    dbg('prop', { target: 'd', square: 31, level: 4 });
+    eq(p(room, 31).owner, 'd', 'ให้สุขุมวิท d');
+    eq(p(room, 31).level, 4, 'แลนด์มาร์ก');
+    throws(() => dbg('prop', { target: 'd', square: 0 }), 'มุมให้ไม่ได้');
+    throws(() => dbg('prop', { target: 'd', square: 1, level: 5 }), 'ขั้นเกิน');
+    dbg('prop', { target: 'e', square: 5, level: 3 });
+    eq(p(room, 5).level, 0, 'ท่องเที่ยวไม่มีสิ่งปลูกสร้าง');
+    dbg('prop', { square: 31, bank: true });
+    eq(p(room, 31).owner, null, 'คืนธนาคาร');
+    throws(() => dbg('prop', { square: 31, bank: true }), 'ว่างอยู่แล้ว');
+    audit(room, 'หลังให้ที่');
+    // งานวัด
+    throws(() => dbg('festival', { square: 31, mult: 2 }), 'งานวัดต้องมีเจ้าของ');
+    dbg('prop', { target: 'd', square: 30, level: 2 });
+    dbg('festival', { square: 30, mult: 8 });
+    eq(S(room).festival, 30, 'งานวัดที่ 30');
+    eq(E.tollFor(room, 30), Math.round(B.SQUARES[30].price * B.TOLL_MULT[2] / 10) * 10 * 8, 'ค่าผ่านทาง ×8');
+    throws(() => dbg('festival', { square: 30, mult: 3 }), 'ตัวคูณผิด');
+    // การ์ด: ใบถัดไป (ใครเปิดก่อนได้) · เปิดเลยตอนถึงตาตัวเอง
+    const cur = S(room).phaseActor;
+    dbg('card', { target: cur, cardId: 'k09' });
+    eq(S(room).nextCard, 'k09', 'ตั้งการ์ดใบถัดไป');
+    dbg('card', { target: cur, cardId: 'k04', now: true });
+    eq(seat(room, cur).shield, 'angel', 'เปิดการ์ดนางฟ้าทันที');
+    eq(S(room).nextCard, 'k09', 'ใบถัดไปยังอยู่');
+    throws(() => dbg('card', { cardId: 'k99' }), 'การ์ดไม่มี');
+    while (S(room).phase !== 'roll') { const a = S(room).phaseActor; if (S(room).phase === 'build') E.passBuild(room, a, null); else if (S(room).phase === 'pick') E.skipPick(room, a, null); else break; }
+    const nx = S(room).phaseActor;
+    seat(room, nx).pos = 0;
+    dice(room, [[1, 2]]); // → 3 โอกาส
+    const cashNx = seat(room, nx).cash;
+    E.rollDice(room, nx, null);
+    eq(S(room).fx.filter(f => f.kind === 'card').pop().card.id, 'k09', 'เปิดได้ใบที่ตั้งไว้');
+    assert(seat(room, nx).cash > cashNx, 'ได้เงินจากการ์ด');
+    eq(S(room).nextCard, null, 'ใช้แล้วหมด');
+    while (S(room).phase !== 'roll') { const a = S(room).phaseActor; if (S(room).phase === 'build') E.passBuild(room, a, null); else if (S(room).phase === 'pick') E.skipPick(room, a, null); else break; }
+    audit(room, 'หลังการ์ด');
+    // เกาะ: ส่ง/ปล่อย คนอื่น
+    dbg('island', { target: 'e', on: true });
+    eq(seat(room, 'e').island, B.ISLAND_TURNS, 'e ติดเกาะ');
+    eq(seat(room, 'e').pos, B.ISLAND_SQUARE, 'e อยู่เกาะ');
+    dbg('island', { target: 'e', on: false });
+    eq(seat(room, 'e').island, 0, 'ปล่อย e');
+    throws(() => dbg('island', { target: 'e', on: false }), 'ไม่ได้ติดเกาะ');
+    audit(room, 'หลังเกาะ');
+    // บอทเล่นแทน 1 ครั้ง (คนก็ได้) · ออโต้ตัวเอง
+    const actor = S(room).phaseActor;
+    const seqBefore = S(room).phaseSeq;
+    dbg('botNow');
+    assert(S(room).phaseSeq !== seqBefore, 'บอทเล่นแทนแล้วเฟสเปลี่ยน');
+    assert(S(room).fx.some(f => f.kind === 'dice' && f.playerId === actor), 'ทอยแทน');
+    dbg('autoplay', { on: true });
+    eq(E.buildClientState(room, 'a').debug.autoplay, true, 'ออโต้เปิด');
+    eq(E.buildClientState(room, 'b').debug.autoplay, false, 'ออโต้ของคนอื่นไม่เปิด');
+    forceTurn(room, 'a');
+    assert(E.botNeedsTurn(room), 'ออโต้ = engine เล่นแทน');
+    assert(E.playBotTurns(room, Math.random, T + 1e7), 'เล่นแทนได้');
+    dbg('autoplay', { on: false });
+    forceTurn(room, 'a');
+    assert(!E.botNeedsTurn(room), 'ปิดออโต้แล้วไม่เล่นแทน');
+    audit(room, 'หลังบอท');
+    // เวลาเกม
+    throws(() => dbg('clock', { minutes: -5 }), 'ไม่จำกัดเวลา ลดไม่ได้');
+    dbg('clock', { minutes: 5 });
+    eq(S(room).clock.endsAt, T + 5 * E.MINUTE_MS, 'ตั้งเวลา 5 นาที');
+    dbg('clock', { minutes: -1 });
+    eq(S(room).clock.endsAt, T + 4 * E.MINUTE_MS, 'ลด 1 นาที');
+    dbg('clock', { minutes: -10 });
+    eq(S(room).clock.timeUp, true, 'ลดจนหมด = หมดเวลา');
+    dbg('clock', { minutes: 2 });
+    eq(S(room).clock.timeUp, false, 'เพิ่มเวลา = กลับมาเล่นต่อ');
+    throws(() => dbg('clock', { minutes: 0 }), '0 นาทีไม่ได้');
+    // ล้มละลาย (ตาของคนนั้น = ตาข้ามไป)
+    forceTurn(room, 'd');
+    dbg('bankrupt', { target: 'd' });
+    eq(seat(room, 'd').bankrupt, true, 'd ล้ม');
+    assert(S(room).phaseActor !== 'd' && S(room).phase === 'roll', 'ตาข้ามไปคนต่อไป');
+    eq(S(room).festival, null, 'งานวัดบนที่ของ d หาย');
+    audit(room, 'หลังล้ม');
+    throws(() => dbg('setCash', { target: 'd', amount: 5 }), 'คนล้มแล้วเป็นเป้าหมายไม่ได้');
+    // เงียบ + ตีตรา
+    assert(!S(room).history.some(h => /เมนูทดสอบ/.test(h.text) && h.kind === 'debug'), 'ไม่ลงบันทึกเกม');
+    eq(S(room).debugUsed, true, 'ตีตรา');
+    eq(seat(room, 'a').debugged, true, 'ป้ายที่คนกด');
+    eq(seat(room, 'b').debugged, undefined, 'คนเป็นเป้าหมายไม่มีป้าย');
+    // จบเกม
+    dbg('end');
+    eq(S(room).phase, 'finished', 'จบเกม');
+    throws(() => dbg('setCash', { target: 'a', amount: 1 }), 'จบแล้วใช้ไม่ได้');
+    eq(Object.keys(S(room).autoplay).length, 0, 'ล้างออโต้ตอนจบ');
+});
+
+test('เมนูทดสอบ: เกือบผูกขาด แถว / 3 สี / ท่องเที่ยว → ทอยตามเต๋าที่ตั้ง = ชนะจริง', () => {
+    for (const type of ['line', 'color', 'tourist']) {
+        const room = makeRoom(['a', 'b', 'bot_c']);
+        give(room, 'b', [1, 2, 11]); // มีเจ้าของเดิมปน ต้องถูกล้าง
+        seat(room, 'a').pos = 0;
+        const msg = E.debugAction(room, 'a', 'nearMonopoly', { target: 'a', type });
+        assert(/เต๋าถัดไป/.test(msg), type + ': ตั้งเต๋าให้ด้วย');
+        eq(S(room).phase, 'roll', type + ': ยังไม่จบ');
+        const threat = E.monopolyThreats(room).find(t => t.playerId === 'a' && t.type === type);
+        assert(threat, type + ': ขึ้นเตือนอีก 1 ช่อง');
+        audit(room, type + ' จัดฉาก');
+        E.rollDice(room, 'a', null);
+        if (S(room).phase === 'build') E.buildTo(room, 'a', 0, null);
+        else if (S(room).phase === 'takeover') E.acceptTakeover(room, 'a', null);
+        eq(S(room).phase, 'finished', type + ': ซื้อช่องที่ขาด = ชนะ');
+        eq(S(room).monopoly.type, type, type + ': ผูกขาดแบบที่ตั้ง');
+        audit(room, type + ' จบ');
+    }
+});
+
 // ---------- สุ่มหลายพันเกม ----------
 function randomGames(count) {
     const reasons = {};
