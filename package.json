@@ -1,6 +1,6 @@
 {
   "name": "concept-boardgame",
-  "version": "6.5.1",
+  "version": "6.5.2",
   "dependencies": {
     "body-parser": "^1.20.4",
     "compression": "^1.8.1",
