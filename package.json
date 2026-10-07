@@ -88,6 +88,7 @@
     "smoke:codenames:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-codenames-mobile.js",
     "smoke:wavelength": "node scripts/smoke-wavelength-engine.js",
     "smoke:wavelength:teams": "node scripts/smoke-wavelength-teams.js",
+    "smoke:wavelength:teams:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-wavelength-teams-play.js",
     "smoke:wavelength:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-wavelength-play.js",
     "smoke:wavelength:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-wavelength-browser.js",
     "smoke:drawguess": "node scripts/smoke-drawguess-engine.js",

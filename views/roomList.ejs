@@ -1694,8 +1694,27 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลาแล้วข้ามไปอีกทีม · เลือกทีมและหัวหน้ากันในห้องรอ · เปลี่ยนเวลาในห้องรอได้</div>
                     </div>
 
+                    <div class="room-form-group" id="wavelengthModeGroup" role="group" aria-labelledby="wavelengthModeLabel" style="display:none;">
+                        <div class="room-form-label" id="wavelengthModeLabel"><span class="icon">📡</span> เล่นแบบไหน:</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <label style="flex:1; min-width:96px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(94,234,212,0.4); background:rgba(94,234,212,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="wavelengthMode" value="teams" checked style="accent-color:#5eead4;">
+                                <span>👥 แข่งทีม</span>
+                            </label>
+                            <label style="flex:1; min-width:96px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="radio" name="wavelengthMode" value="coop" style="accent-color:#5eead4;">
+                                <span>🤝 ร่วมมือ</span>
+                            </label>
+                            <label style="flex:1; min-width:96px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="radio" name="wavelengthMode" value="solo" style="accent-color:#5eead4;">
+                                <span>🙋 แข่งเดี่ยว</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">แข่งทีม = กติกาจริง 2 ทีม ถึง 10 แต้มชนะ (4 คนขึ้นไป · 3 คน = ร่วมมือ) · ร่วมมือ = 7 การ์ด ช่วยกันทาย · แข่งเดี่ยว = ต่างคนต่างทาย</div>
+                    </div>
+
                     <div class="room-form-group" id="wavelengthLapsGroup" role="group" aria-labelledby="wavelengthLapsLabel" style="display:none;">
-                        <div class="room-form-label" id="wavelengthLapsLabel"><span class="icon">📡</span> ผู้ใบ้วนกี่รอบโต๊ะ:</div>
+                        <div class="room-form-label" id="wavelengthLapsLabel"><span class="icon">🙋</span> แข่งเดี่ยว: ผู้ใบ้วนกี่รอบโต๊ะ:</div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
                             <label style="flex:1; min-width:120px; display:flex; align-items:center; gap:8px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(94,234,212,0.4); background:rgba(94,234,212,0.08); cursor:pointer; color:#fff;">
                                 <input type="radio" name="wavelengthLaps" value="1" checked style="accent-color:#5eead4;">
@@ -2033,7 +2052,8 @@ $(function() {
                     if (selectedMode === 'codenames') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('codenamesTimerGroup')) document.getElementById('codenamesTimerGroup').style.display = selectedMode === 'codenames' ? 'block' : 'none';
                     if (selectedMode === 'wavelength') createRoundTimeGroup.style.display = 'none';
-                    if (document.getElementById('wavelengthLapsGroup')) document.getElementById('wavelengthLapsGroup').style.display = selectedMode === 'wavelength' ? 'block' : 'none';
+                    if (document.getElementById('wavelengthModeGroup')) document.getElementById('wavelengthModeGroup').style.display = selectedMode === 'wavelength' ? 'block' : 'none';
+                    if (document.getElementById('wavelengthLapsGroup')) document.getElementById('wavelengthLapsGroup').style.display = selectedMode === 'wavelength' && ((document.querySelector('input[name="wavelengthMode"]:checked') || {}).value === 'solo') ? 'block' : 'none';
                     if (selectedMode === 'drawguess') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('drawguessSettingsGroup')) document.getElementById('drawguessSettingsGroup').style.display = selectedMode === 'drawguess' ? 'block' : 'none';
                     if (selectedMode === 'colorcards') createRoundTimeGroup.style.display = 'none';
@@ -2115,6 +2135,20 @@ $(function() {
                 } else {
                     updateWerewolfRoleVisibility();
                 }
+
+                // คลื่นความคิด: รอบโต๊ะใช้เฉพาะแข่งเดี่ยว · ไฮไลต์ช่องที่เลือก
+                document.querySelectorAll('input[name="wavelengthMode"]').forEach(function(radio) {
+                    radio.addEventListener('change', function() {
+                        document.querySelectorAll('input[name="wavelengthMode"]').forEach(function(r) {
+                            const box = r.closest('label');
+                            if (!box) return;
+                            box.style.borderColor = r.checked ? 'rgba(94,234,212,0.4)' : 'rgba(255,255,255,0.14)';
+                            box.style.background = r.checked ? 'rgba(94,234,212,0.08)' : 'rgba(255,255,255,0.04)';
+                            box.style.color = r.checked ? '#fff' : '#ddd';
+                        });
+                        updateWerewolfRoleVisibility();
+                    });
+                });
 
                 modeQuickPickGrid.addEventListener('click', function(event) {
                     const card = event.target.closest('.mode-quick-card');
@@ -2205,6 +2239,9 @@ $(function() {
                     wavelengthLaps: gameMode === 'wavelength'
                         ? (parseInt((document.querySelector('input[name="wavelengthLaps"]:checked') || {}).value, 10) === 2 ? 2 : 1)
                         : 1,
+                    wavelengthMode: gameMode === 'wavelength'
+                        ? ((document.querySelector('input[name="wavelengthMode"]:checked') || {}).value || 'teams')
+                        : undefined,
                     drawguessRounds: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessRounds"]:checked') || {}).value || 3) : undefined,
                     drawguessSeconds: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessSeconds"]:checked') || {}).value || 80) : undefined,
                     drawguessCategory: gameMode === 'drawguess' ? ((document.getElementById('drawguessCategory') || {}).value || 'mixed') : undefined,
@@ -2569,13 +2606,14 @@ $(function() {
     function buildWavelengthGuideHtml() {
         return [
             '<div class="bm-guide-inner">',
-            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทายให้ใกล้เป้าลับบนหน้าปัดที่สุด · ใบ้ให้เพื่อนทายถูก · จบเกมแต้มสูงสุดชนะ</p></div>',
-            '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
+            '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ใบ้ให้ทีมหมุนเข็มไปตรงเป้าลับบนหน้าปัด · ทีมแรกที่ถึง 10 แต้มชนะ</p></div>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง (แข่งทีม)</h4><ol>',
             '<li>ผู้ใบ้เลือกการ์ด 1 จาก 2 ใบ เช่น <b>ร้อน ↔ เย็น</b> แล้วเห็นเป้าลับคนเดียว</li>',
-            '<li>พิมพ์คำใบ้สั้น ๆ 1 คำหรือวลี (ห้ามใช้คำบนการ์ด ห้ามตัวเลข) ภายใน 60 วิ</li>',
-            '<li>ที่เหลือหมุนเข็มของตัวเองแล้วกดล็อก ภายใน 45 วิ</li>',
-            '<li>เปิดเป้า: เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 แต้ม · ผู้ใบ้ได้ค่าเฉลี่ยของทุกคน</li>',
+            '<li>พิมพ์คำใบ้ 1 คำหรือวลี (ห้ามคำบนการ์ด ห้ามตัวเลข) ภายใน 60 วิ</li>',
+            '<li>ทีมช่วยกันหมุนเข็มเดียวกัน กด ✅ ตกลงครบ = ล็อก</li>',
+            '<li>ทีมโน้นทาย ⬅️/➡️ ถูกได้ +1 · เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 · เป๊ะแต่ยังตามหลัง = เล่นต่อ</li>',
             '</ol></div>',
+            '<div class="bm-guide-section"><h4>โหมดอื่น</h4><p>🤝 ร่วมมือ: 7 การ์ด ทุกคนทีมเดียว · 🙋 แข่งเดี่ยว: ต่างคนต่างทาย ผู้ใบ้ได้ค่าเฉลี่ย</p></div>',
             '</div>'
         ].join('');
     }
