@@ -4,7 +4,8 @@
 const assert = require('assert');
 const spyfallEngine = require('../games/spyfallEngine');
 
-function createMockRoom(playerCount = 4) {
+// โหมดเสียงข้างมาก (ค่าตั้งห้อง) — ไฟล์นี้ทดสอบโหวตลับแบบเดิม · กติกาเอกฉันท์อยู่ใน smoke-spyfall-rules.js
+function createMockRoom(playerCount = 4, settings = { spyfallVoteMode: 'majority' }) {
     const players = Array.from({ length: playerCount }, (_, index) => ({
         playerId: `p${index + 1}`,
         playerName: `Player ${index + 1}`,
@@ -22,7 +23,9 @@ function createMockRoom(playerCount = 4) {
         settings: {
             gameMode: 'spyfall',
             maxPlayers: 8,
-            roundTime: 60 // seconds in mock (lobby stores minutes * 60)
+            roundTime: 60, // seconds in mock (lobby stores minutes * 60)
+            spyfallRounds: 1,
+            ...settings
         },
         gameState: null
     };
@@ -120,11 +123,16 @@ function run() {
     assert.strictEqual(guessRoom.gameState.winner.spyGuess.correct, true);
     assert.throws(() => spyfallEngine.guessLocation(guessRoom, guessSpy, guessRoom.gameState.locationId), /ช่วงคุย|แล้ว/, 'guess only once');
 
-    // ทายผิด (ช่วงโหวต) → สายลับแพ้ทันที
+    // ทายผิด (ช่วงคุย) → สายลับแพ้ทันที · ช่วงโหวตทายไม่ได้ (นาฬิกาหยุดแล้ว)
     const wrongRoom = createMockRoom(4);
     spyfallEngine.startGame(wrongRoom);
     spyfallEngine.advancePhase(wrongRoom);
-    spyfallEngine.endDiscussionEarly(wrongRoom);
+    const voteGuessRoom = createMockRoom(4);
+    spyfallEngine.startGame(voteGuessRoom);
+    spyfallEngine.advancePhase(voteGuessRoom);
+    spyfallEngine.endDiscussionEarly(voteGuessRoom);
+    assert.throws(() => spyfallEngine.guessLocation(voteGuessRoom, voteGuessRoom.gameState.spyPlayerId, voteGuessRoom.gameState.locationId), /ช่วงคุย/, 'no guessing during the vote');
+    assert.strictEqual(spyfallEngine.buildClientState(voteGuessRoom, voteGuessRoom.gameState.spyPlayerId).canGuessLocation, false);
     const wrongSpy = wrongRoom.gameState.spyPlayerId;
     const wrongLocation = spyfallEngine.getAllLocations().find(loc => loc.id !== wrongRoom.gameState.locationId);
     const wrong = spyfallEngine.guessLocation(wrongRoom, wrongSpy, wrongLocation.id);

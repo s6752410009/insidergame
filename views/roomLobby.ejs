@@ -1578,12 +1578,12 @@
         roundLabel: 'เวลาเดินเกมต่อยก:'
       },
       spyfall: {
-        minPlayers: 4,
+        minPlayers: 3,
         maxPlayers: 8,
         label: 'Spyfall',
         startLabel: '🕶️ เริ่มเกมสายลับ',
         readyText: 'พร้อมแล้ว เริ่มเกมสายลับได้เลย',
-        waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเริ่ม',
+        waitingText: 'รอผู้เล่นอย่างน้อย 3 คนก่อนเริ่ม',
         roundLabel: 'เวลาช่วงคุย:'
       },
       undercover: {
@@ -2155,12 +2155,24 @@
       if (lobbySpotlight) {
         if (resolvedMode === 'spyfall') {
           lobbySpotlight.style.display = 'block';
+          const sfRounds = [1, 3, 5].indexOf(Number(settings && settings.spyfallRounds)) >= 0 ? Number(settings.spyfallRounds) : 5;
+          const sfMajority = !!(settings && settings.spyfallVoteMode === 'majority');
+          const sfDis = isAdmin ? '' : ' disabled';
           lobbySpotlight.innerHTML = [
-            '<div class="lobby-spotlight-pill" style="background:rgba(15,118,110,0.25); color:#99f6e4;">🕶️ Spyfall · 4–8 คน</div>',
+            '<div class="lobby-spotlight-pill" style="background:rgba(15,118,110,0.25); color:#99f6e4;">🕶️ Spyfall · 3–8 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
-            'ทุกคนรู้<strong>สถานที่</strong>ยกเว้นสายลับ 1 คน — ถาม–ตอบให้เนียนแล้วโหวตจับ',
+            'ทุกคนรู้<strong>สถานที่</strong>ยกเว้นสายลับ 1 คน — ถาม–ตอบให้เนียน แล้ว' + (sfMajority ? 'โหวตจับ' : 'กล่าวหาจับ (ต้องเห็นด้วยทุกคน)'),
             ' · กด <strong>📖 วิธีเล่น</strong> ด้านล่างเพื่อดูกติกาเต็ม',
-            '</p>'
+            '</p>',
+            '<div class="cc-lobby-opts">',
+            '<select id="sfLobbyRounds" aria-label="จำนวนรอบ"' + sfDis + '>',
+            [1, 3, 5].map(function(v) { return '<option value="' + v + '"' + (v === sfRounds ? ' selected' : '') + '>' + (v === 1 ? 'รอบเดียว' : v + ' รอบ (สะสมแต้ม)') + '</option>'; }).join(''),
+            '</select>',
+            '<button type="button" class="uc-mw-toggle" id="sfLobbyVoteMode" aria-pressed="' + (sfMajority ? 'true' : 'false') + '"' + sfDis + '>' + (sfMajority ? '✓ ' : '') + 'โหวตเสียงข้างมาก: ' + (sfMajority ? 'เปิด' : 'ปิด') + '</button>',
+            '</div>',
+            '<p style="margin:6px 0 0; color:#94a3b8; font-size:0.8em; line-height:1.4;">' + (sfMajority
+              ? 'เสียงข้างมาก: หมดเวลาแล้วโหวตลับพร้อมกัน คะแนนสูงสุดถูกจับ (เสมอ = สายลับรอด)'
+              : 'กติกาจริง: ใครก็หยุดเวลากล่าวหาได้คนละครั้ง · ต้องเห็นด้วยทุกคน · หมดเวลาไล่กล่าวหาเริ่มจากเจ้ามือ') + '</p>'
           ].join('');
         } else if (resolvedMode === 'undercover') {
           const mrWhiteOn = !!(settings && settings.undercoverMrWhite);
@@ -2320,20 +2332,23 @@
     function buildSpyfallLobbyGuideHtml() {
       return [
         '<div class="bm-guide-inner">',
-        '<p class="bm-guide-lead">🕶️ ทุกคนรู้สถานที่ยกเว้น <strong>สายลับ 1 คน</strong> · เล่น 4–8 คน</p>',
+        '<p class="bm-guide-lead">🕶️ ทุกคนรู้สถานที่ยกเว้น <strong>สายลับ 1 คน</strong> · เล่น 3–8 คน</p>',
         '<div class="bm-guide-section"><h4>บทบาท</h4><ul>',
-        '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ + <strong>บทในที่นั้น</strong> (คนละบท) ถาม–ตอบเพื่อจับสายลับ</li>',
-        '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่และบท ต้องเดาจากคำถาม</li>',
+        '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ + <strong>บทในที่นั้น</strong> (คนละบท)</li>',
+        '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่ ต้องเดาจากคำถาม</li>',
         '</ul></div>',
-        '<div class="bm-guide-section"><h4>3 ช่วง</h4><ol>',
-        '<li><b>เปิดบท</b> — จำสถานที่และบทของคุณ (สายลับเห็นแค่รายการสถานที่เพื่อเดา)</li>',
-        '<li><b>คุย</b> — ถามคำถามที่ตอบได้หลายทาง หัวหน้าห้องกดจบคุยได้เมื่อพร้อมโหวต</li>',
-        '<li><b>โหวต</b> — เลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)</li>',
+        '<div class="bm-guide-section"><h4>เล่นยังไง (รอบละ 8 นาที)</h4><ol>',
+        '<li><b>🎤 ถาม–ตอบ</b> — เจ้ามือถามก่อน · คนที่ถูกถามตอบ แล้วถามคนอื่นต่อ (ห้ามถามกลับคนที่เพิ่งถามเรา)</li>',
+        '<li><b>🛑 กล่าวหา</b> — ใครก็หยุดเวลาได้คนละ 1 ครั้งต่อรอบ · ทุกคนยกเว้นคนถูกกล่าวหาต้องเห็นด้วย ✅ ถึงเปิดการ์ด · มีคนไม่เห็นด้วย = เวลาเดินต่อ</li>',
+        '<li><b>🎯 สายลับทายสถานที่</b> — หยุดเวลาทายได้ 1 ครั้ง ตอนเวลายังเดิน · ถูกชนะ ผิดแพ้</li>',
+        '<li><b>⏰ หมดเวลา</b> — ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ · ไม่มีใครถูกจับ = สายลับรอด</li>',
         '</ol></div>',
-        '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
-        '<li><b>พลเมือง</b> — โหวตโดนสายลับ</li>',
-        '<li><b>สายลับ</b> — โหวตพลาดหรือเสมอ</li>',
+        '<div class="bm-guide-section"><h4>คะแนนต่อรอบ</h4><ul>',
+        '<li><b>สายลับ</b> — รอด 2 · จับผิดคน หรือทายถูก 4</li>',
+        '<li><b>พลเมือง</b> — จับสายลับได้ หรือสายลับทายผิด คนละ 1 · คนเริ่มกล่าวหาที่จับได้ +1</li>',
+        '<li>เล่นหลายรอบ · สายลับรอบก่อนเป็นเจ้ามือ · ครบรอบ แต้มรวมสูงสุดชนะ</li>',
         '</ul></div>',
+        '<div class="bm-guide-section"><h4>ตั้งได้ในห้อง</h4><p>จำนวนรอบ 1/3/5 (ค่าเริ่ม 5) · โหวตเสียงข้างมาก: หมดเวลาแล้วโหวตลับครั้งเดียว</p></div>',
         '</div>'
       ].join('');
     }
@@ -3454,6 +3469,11 @@
     $(document).on('click', '#wwLobbyDeadRoles', function() {
       this.disabled = true;
       updateColorCardsSetting({ werewolfDeadSeeRoles: this.getAttribute('aria-pressed') !== 'true' });
+    });
+    $(document).on('change', '#sfLobbyRounds', function() { updateColorCardsSetting({ spyfallRounds: Number(this.value) }); });
+    $(document).on('click', '#sfLobbyVoteMode', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ spyfallVoteMode: this.getAttribute('aria-pressed') === 'true' ? 'unanimous' : 'majority' });
     });
     $(document).on('change', '#ccLobbyTarget', function() { updateColorCardsSetting({ colorcardsTarget: Number(this.value) }); });
     $(document).on('change', '#ccLobbyTurn', function() { updateColorCardsSetting({ colorcardsTurnSeconds: Number(this.value) }); });

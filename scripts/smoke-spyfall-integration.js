@@ -8,6 +8,9 @@ const { spawn } = require('child_process');
 const { io } = require('socket.io-client');
 const { randomUUID } = require('crypto');
 
+// เปิดบทสั้นๆ ให้เทสต์ไม่ต้องรอ 5 วิทุกรอบ
+process.env.SPYFALL_REVEAL_PHASE_MS = process.env.SPYFALL_REVEAL_PHASE_MS || '1500';
+
 const SERVER_TIMEOUT_MS = Number(process.env.SMOKE_SERVER_TIMEOUT_MS || 30000);
 const EVENT_TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 120000);
 
@@ -152,7 +155,10 @@ function createClient(label, baseUrl) {
 }
 
 async function connectClient(client) {
-    await onceWithTimeout(client.socket, 'connect', null, 15000);
+    // ต่อติดก่อนเริ่มรอ event ได้ (สร้างหลาย socket พร้อมกัน) — ไม่งั้นรอ connect ไม่มีวันมา
+    if (!client.socket.connected) {
+        await onceWithTimeout(client.socket, 'connect', null, 15000);
+    }
     client.socket.emit('initPlayer', client.playerId);
 }
 
@@ -196,7 +202,10 @@ async function main() {
             name: `Spyfall Smoke ${Date.now()}`,
             gameMode: 'spyfall',
             maxPlayers: 8,
-            roundTime: 1
+            roundTime: 1,
+            // ส่วนนี้ทดสอบโหวตลับแบบเสียงข้างมาก (ค่าตั้งห้อง) · กติกาเอกฉันท์อยู่ใน unanimousFlow
+            spyfallVoteMode: 'majority',
+            spyfallRounds: 1
         });
         assert(createResponse?.success && createResponse.roomId, JSON.stringify(createResponse));
         roomId = createResponse.roomId;
@@ -262,7 +271,10 @@ async function main() {
         const leaver = clients.find(c => c.playerId !== spyId && c !== admin);
         for (const client of clients) {
             if (client === leaver) continue;
-            const targetId = client.playerId === spyId ? (leaver === byId(citizenId) ? admin.playerId : citizenId) : spyId;
+            // สายลับโหวตพลเมืองคนไหนก็ได้ที่ไม่ใช่ตัวเองและไม่ใช่คนที่จะออก (เดิมสุ่มโดนโหวตตัวเองได้ถ้าสายลับเป็นหัวห้อง)
+            const targetId = client.playerId === spyId
+                ? clients.find(c => c.playerId !== spyId && c !== leaver).playerId
+                : spyId;
             const voteResponse = await emitAck(client.socket, 'spyfall_vote', { targetPlayerId: targetId });
             assert(voteResponse?.success !== false, `vote failed: ${client.label} ${voteResponse?.error}`);
         }
@@ -282,10 +294,121 @@ async function main() {
         assert(finishedState.returnLobbyAt && finishedState.returnLobbyAt - Date.now() > 15000,
             'players get >15s to read the recap before returning to the lobby');
 
+        clients.forEach(client => client.socket.disconnect());
+        await unanimousFlow(server);
         console.log('smoke-spyfall-integration: OK');
     } finally {
         clients.forEach(client => client.socket.disconnect());
         server.child.kill('SIGTERM');
+    }
+}
+
+// กติกาจริง (ค่าเริ่ม): หยุดเวลากล่าวหา เอกฉันท์ · สายลับทายตอนเวลาเดิน · หลายรอบ เจ้ามือ = สายลับรอบก่อน
+async function unanimousFlow(server) {
+    const clients = ['e', 'f', 'g', 'h'].map(label => createClient(`player-${label}`, server.baseUrl));
+    try {
+        for (const client of clients) {
+            await connectClient(client);
+        }
+        const [admin, ...guests] = clients;
+        console.log('10. Unanimous room, 3 rounds');
+        const created = await emitAck(admin.socket, 'createRoom', {
+            playerId: admin.playerId,
+            name: `Spyfall Rules ${Date.now()}`,
+            gameMode: 'spyfall',
+            maxPlayers: 8,
+            roundTime: 1,
+            spyfallRounds: 3
+        });
+        assert(created?.success && created.roomId, JSON.stringify(created));
+        const roomId = created.roomId;
+        bindRoom(admin, roomId);
+        for (const client of guests) {
+            const joined = await emitAck(client.socket, 'joinRoom', { roomId, playerId: client.playerId });
+            assert(joined?.success, `join failed: ${client.label}`);
+            bindRoom(client, roomId);
+        }
+        const started = await emitAck(admin.socket, 'startGameFromLobby', { roomId });
+        assert(started?.success, JSON.stringify(started));
+        await delay(400);
+        clients.forEach(c => bindRoom(c, roomId));
+
+        const disc = await Promise.all(clients.map(c =>
+            waitSpyfallState(c, roomId, s => s.phase === 'discussion' && s.match?.round === 1, 25000)));
+        const byId = id => clients.find(c => c.playerId === id);
+        const spyState = disc.find(s => s.self.isSpy);
+        const spy = byId(spyState.self.playerId);
+        const citizens = clients.filter(c => c !== spy);
+        const trueLocation = disc.find(s => !s.self.isSpy).location.id;
+        assert(disc[0].voteMode === 'unanimous', 'default vote mode is unanimous');
+        assert(disc[0].match.totalRounds === 3 && disc[0].match.dealerId, 'match info + dealer');
+        assert(disc[0].turn.askerId === disc[0].match.dealerId, 'dealer asks first');
+
+        console.log('11. Stop the clock: accuse, one "no" → clock runs again');
+        const [accuser, suspect, objector] = citizens;
+        const acc = await emitAck(accuser.socket, 'spyfall_accuse', { targetPlayerId: suspect.playerId });
+        assert(acc?.success, 'accuse failed: ' + JSON.stringify(acc));
+        const accState = await waitSpyfallState(suspect, roomId, s => s.phase === 'accuse' && s.accusation, 10000);
+        assert(accState.accusation.isSuspect === true && accState.accusation.canVote === false, 'suspect cannot vote');
+        const spyGuessBlocked = await emitAck(spy.socket, 'spyfall_guessLocation', { locationId: trueLocation });
+        assert(spyGuessBlocked?.success === false, 'spy cannot guess while the clock is stopped');
+        const no = await emitAck(objector.socket, 'spyfall_accuseVote', { agree: false });
+        assert(no?.success, 'vote failed: ' + JSON.stringify(no));
+        const resumed = await waitSpyfallState(accuser, roomId, s => s.phase === 'discussion' && s.accuseUsed === true, 10000);
+        assert(resumed.canAccuse === false && resumed.phaseEndsAt > Date.now(), 'clock resumed, accuser used their stop');
+        const again = await emitAck(accuser.socket, 'spyfall_accuse', { targetPlayerId: objector.playerId });
+        assert(again?.success === false, 'only one accusation per player per round');
+
+        console.log('12. Spy stops the clock and guesses right → 4 points, next round queued');
+        const guess = await emitAck(spy.socket, 'spyfall_guessLocation', { locationId: trueLocation });
+        assert(guess?.success && guess.correct, 'guess failed: ' + JSON.stringify(guess));
+        const fin1 = await waitSpyfallState(admin, roomId, s => s.phase === 'finished' && s.match?.round === 1 && s.nextRoundAt, 10000);
+        assert(fin1.winner.points[spy.playerId] === 4, 'spy guess = 4 points');
+        assert(fin1.match.over === false, 'match continues');
+
+        console.log('13. Host starts round 2 — last spy deals and asks first');
+        const next = await emitAck(admin.socket, 'spyfall_nextRound', {});
+        assert(next?.success, 'next round failed: ' + JSON.stringify(next));
+        const disc2 = await waitSpyfallState(admin, roomId, s => s.phase === 'discussion' && s.match?.round === 2, 20000);
+        assert(disc2.match.dealerId === spy.playerId, 'spy of round 1 deals round 2');
+        assert(disc2.turn.askerId === spy.playerId, 'dealer asks first');
+        assert(disc2.match.scoreboard.find(r => r.playerId === spy.playerId).score === 4, 'scores carry over');
+
+        console.log('14. Host skips the clock → dealer-first accusations → unanimous verdict');
+        const skip = await emitAck(admin.socket, 'spyfall_endDiscussion', {});
+        assert(skip?.success, 'end discussion failed: ' + JSON.stringify(skip));
+        const fin = await waitSpyfallState(admin, roomId, s => s.phase === 'final' && s.finalTurn, 10000);
+        assert(fin.finalTurn.accuserId === spy.playerId, 'final accusations start with the dealer');
+        const dealer = byId(fin.finalTurn.accuserId);
+        const target = clients.find(c => c !== dealer);
+        const fa = await emitAck(dealer.socket, 'spyfall_finalAccuse', { targetPlayerId: target.playerId });
+        assert(fa?.success, 'final accuse failed: ' + JSON.stringify(fa));
+        for (const c of clients) {
+            if (c === dealer || c === target) continue;
+            const v = await emitAck(c.socket, 'spyfall_accuseVote', { agree: true });
+            assert(v?.success, 'agree failed: ' + JSON.stringify(v));
+        }
+        const end = await waitSpyfallState(admin, roomId, s => s.phase === 'finished' && s.match?.round === 2, 10000);
+        assert(['convicted_spy', 'convicted_innocent'].includes(end.winner.reason), 'unanimous verdict: ' + end.winner.reason);
+        assert(end.match.over === false && end.nextRoundAt, 'round 2 of 3 → next round queued');
+
+        console.log('15. Round 3: spy guesses wrong → town wins, match over, back to lobby countdown');
+        await emitAck(admin.socket, 'spyfall_nextRound', {});
+        const disc3 = await Promise.all(clients.map(c =>
+            waitSpyfallState(c, roomId, s => s.phase === 'discussion' && s.match?.round === 3, 20000)));
+        const spy3 = byId(disc3.find(s => s.self.isSpy).self.playerId);
+        const real3 = disc3.find(s => !s.self.isSpy).location.id;
+        const wrong3 = disc3.find(s => s.self.isSpy).locationPool.find(l => l.id !== real3).id;
+        const g3 = await emitAck(spy3.socket, 'spyfall_guessLocation', { locationId: wrong3 });
+        assert(g3?.success && g3.correct === false, 'wrong guess ack');
+        const last = await waitSpyfallState(admin, roomId, s => s.phase === 'finished' && s.match?.round === 3, 10000);
+        assert(last.winner.reason === 'spy_guess_wrong' && last.winner.points[spy3.playerId] === undefined, 'wrong guess: spy gets nothing');
+        assert(last.match.over === true && last.returnLobbyAt && !last.nextRoundAt, 'match over → back to lobby countdown');
+        assert(last.match.rounds.length === 3, 'three rounds in the log');
+        const noMore = await emitAck(admin.socket, 'spyfall_nextRound', {});
+        assert(noMore?.success === false, 'no round 4');
+    } finally {
+        clients.forEach(client => client.socket.disconnect());
     }
 }
 

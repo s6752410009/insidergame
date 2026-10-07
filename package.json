@@ -34,6 +34,8 @@
     "smoke:spyfall": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-spyfall.js",
     "smoke:spyfall:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-spyfall-mobile.js",
     "smoke:spyfall:flow": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-spyfall-integration.js",
+    "smoke:spyfall:rules": "node scripts/smoke-spyfall-rules.js",
+    "smoke:spyfall:exit": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-spyfall-exit.js",
     "smoke:undercover": "node scripts/smoke-undercover-engine.js",
     "smoke:undercover:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-undercover-play.js",
     "smoke:undercover:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-undercover-mobile.js",
