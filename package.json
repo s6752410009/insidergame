@@ -84,6 +84,7 @@
     "smoke:pokdeng:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-pokdeng-play.js",
     "smoke:pokdeng:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-pokdeng-mobile.js",
     "smoke:codenames": "node scripts/smoke-codenames-engine.js",
+    "smoke:codenames:rules": "node scripts/smoke-codenames-rules.js",
     "smoke:codenames:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-codenames-play.js",
     "smoke:codenames:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-codenames-mobile.js",
     "smoke:wavelength": "node scripts/smoke-wavelength-engine.js",

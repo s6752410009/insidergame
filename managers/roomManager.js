@@ -658,6 +658,7 @@ function createRoom(roomData, creatorPlayerId) {
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
             codenamesClueSeconds: gameMode === 'codenames' ? gameEngine.sanitizeClueSeconds(normalizedRoomData.codenamesClueSeconds) : undefined,
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
+            codenamesClueFlag: gameMode === 'codenames' ? gameEngine.sanitizeClueFlag(normalizedRoomData.codenamesClueFlag) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
             wavelengthLaps: Number(normalizedRoomData.wavelengthLaps) === 2 ? 2 : 1,
             ...(gameMode === 'drawguess' ? sanitizeDrawGuessSettings(normalizedRoomData) : {}),
@@ -1076,6 +1077,7 @@ function updateRoom(roomId, adminPlayerId, updates) {
         const codenamesEngine = getGameEngine('codenames');
         if (updates.codenamesClueSeconds !== undefined) room.settings.codenamesClueSeconds = codenamesEngine.sanitizeClueSeconds(updates.codenamesClueSeconds);
         if (updates.codenamesGuessSeconds !== undefined) room.settings.codenamesGuessSeconds = codenamesEngine.sanitizeGuessSeconds(updates.codenamesGuessSeconds);
+        if (updates.codenamesClueFlag !== undefined) room.settings.codenamesClueFlag = codenamesEngine.sanitizeClueFlag(updates.codenamesClueFlag);
     }
     if (updates.wavelengthLaps !== undefined) {
         room.settings.wavelengthLaps = Number(updates.wavelengthLaps) === 2 ? 2 : 1;

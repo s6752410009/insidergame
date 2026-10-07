@@ -100,7 +100,8 @@ module.exports = function createCodenamesRuntime(getDeps) {
         if (!state || state.phase !== 'finished' || state.statsRecordedAt) return;
         const { statsManager, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby } = deps();
         state.statsRecordedAt = new Date().toISOString();
-        if (state.winner) {
+        // โหมดร่วมมือไม่มีทีมคู่แข่งจริง — ไม่นับแพ้/ชนะในสถิติ (กันปั๊มชนะ)
+        if (state.winner && !state.coop) {
             const result = engine.buildResult(room);
             statsManager.recordGameEnd(room.roomId, { ...result, roomName: room.name });
         }
@@ -177,7 +178,12 @@ module.exports = function createCodenamesRuntime(getDeps) {
             assassin: 'อีกทีมเปิดเจอมือสังหาร',
             forfeit: 'อีกทีมไม่เหลือผู้เล่น'
         }[state.winReason] || '';
-        const text = label ? `${label}ชนะ!${reason ? ' — ' + reason : ''}` : 'จบเกม ไม่มีผู้ชนะ';
+        let text = label ? `${label}ชนะ!${reason ? ' — ' + reason : ''}` : 'จบเกม ไม่มีผู้ชนะ';
+        if (state.coop && state.winner) {
+            text = state.winner === state.coop.team
+                ? `โหมดร่วมมือ ชนะ! คะแนน ${state.coopScore || 0}/${engine.OTHER_TEAM_CARDS}`
+                : `โหมดร่วมมือ แพ้ — ${{ assassin: 'เจอมือสังหาร', gift: 'เปิดสายลับฝ่ายตรงข้ามใบสุดท้าย', covered: 'ฝ่ายตรงข้ามถูกปิดครบ' }[state.winReason] || 'ลองใหม่'}`;
+        }
         const playerCount = (state.roster || []).filter(p => p.team && !p.left).length;
         return {
             chatMessage: `จบเกมสายลับคำใบ้! ${text}`,
