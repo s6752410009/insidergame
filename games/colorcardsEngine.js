@@ -6,6 +6,9 @@
  *
  * ตาหนึ่ง: ลงไพ่ที่สีตรงหรือเลข/สัญลักษณ์ตรง หรือไพ่เปลี่ยนสี/+4 ก็ได้
  *   ไม่ลง = จั่ว 1 ใบ ถ้าใบที่จั่วลงได้ ลงทันทีได้ ไม่งั้นผ่าน
+ * ลงหลายใบ (ค่าเริ่ม เปิด · หัวห้องปิดได้): ไพ่เลขเดียวกัน หรือสัญลักษณ์เดียวกัน (ข้าม/กลับทิศ/+2) ลงพร้อมกันได้ แม้คนละสี
+ *   ใบแรกต้องลงได้ตามปกติ ใบที่เหลือแค่ค่าเดียวกัน · ใบสุดท้ายอยู่บนกอง = สีต่อไป · เปลี่ยนสี/+4 ลงทีละใบ
+ *   ข้าม ×N = ข้าม N คน · กลับทิศ ×N = กลับ N ครั้ง (2 คน = ข้าม N) · +2 ×N = คนถัดไปจั่ว 2N (เปิดซ้อน = ค้าง 2N)
  * เหลือ 1 ใบต้องกด "เหลือใบเดียว!" ไม่งั้นคนอื่นกด "จับได้!" ภายในเวลาสั้น ๆ → จั่ว 2
  * หมดมือก่อนชนะรอบ ได้แต้ม = ผลรวมไพ่ในมือคนอื่น (เลข = ตามหน้า, ข้าม/กลับทิศ/+2 = 20, เปลี่ยนสี/+4 = 50)
  *
@@ -37,6 +40,8 @@ const COLOR_NAME = { r: 'แดง', y: 'เหลือง', g: 'เขีย�
 const KIND_NAME = { num: '', skip: 'ข้าม', rev: 'กลับทิศ', d2: '+2', wild: 'เปลี่ยนสี', d4: '+4' };
 const ACTION_KINDS = new Set(['skip', 'rev', 'd2']);
 const WILD_KINDS = new Set(['wild', 'd4']);
+const MAX_GROUP = 8; // ค่าเดียวกันมีไม่เกิน 8 ใบในกอง (เลข 1–9 / ข้าม / กลับทิศ / +2)
+const THAI_COUNT = ['', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด'];
 
 // ---------- ไพ่ ----------
 
@@ -196,7 +201,8 @@ function normalizeConfig(settings = {}) {
         turnSeconds,
         turnMs: ENV_TURN_MS || turnSeconds * 1000,
         target,
-        stacking: settings.colorcardsStacking === true
+        stacking: settings.colorcardsStacking === true,
+        multi: settings.colorcardsMulti !== false
     };
 }
 
@@ -238,7 +244,7 @@ function topCardId(state) {
 /** fx เก่าอ้างไพ่ที่กลับเข้ากองจั่วแล้ว (สับกอง/รอบใหม่) — ตัดออก ไม่ให้ id ของไพ่ในกองหรือในมือคนอื่นค้างใน payload */
 function stripFxCards(state) {
     state.fx = (state.fx || []).map(event => {
-        const { card, top, ...rest } = event;
+        const { card, cards, top, ...rest } = event;
         return rest;
     });
 }
@@ -338,7 +344,7 @@ function startGame(room, rng = Math.random, options = {}) {
     state.dealerIndex = Math.floor(rng() * state.seats.length);
     room.gameState = state;
     const goal = state.config.target ? `เก็บให้ถึง ${state.config.target} แต้ม` : 'เล่น 1 รอบ';
-    pushHistory(room, '🃏', `เริ่มไพ่ทิ้งสี — ${goal}${state.config.stacking ? ' · ซ้อน +2/+4 ได้' : ''}`);
+    pushHistory(room, '🃏', `เริ่มไพ่ทิ้งสี — ${goal}${state.config.stacking ? ' · ซ้อน +2/+4 ได้' : ''}${state.config.multi ? ' · ลงเลขเดียวกันหลายใบได้' : ''}`);
     startRound(room, rng, options.deck);
     return room.gameState;
 }
@@ -466,6 +472,25 @@ function isPlayable(state, cardId) {
     return card.kind === top.kind;
 }
 
+/** ลงคู่กันในกลุ่มเดียวได้ไหม: เลขเดียวกัน หรือสัญลักษณ์เดียวกัน (ไม่สนสี) · เปลี่ยนสี/+4 ไม่เข้ากลุ่ม */
+function sameValue(a, b) {
+    if (!a || !b || WILD_KINDS.has(a.kind) || WILD_KINDS.has(b.kind)) return false;
+    if (a.kind !== b.kind) return false;
+    return a.kind !== 'num' || a.value === b.value;
+}
+
+/** ตานี้ลงหลายใบได้ไหม (เปิดในห้อง + ยังไม่ได้จั่ว) */
+function multiAllowed(state) {
+    return !!(state.config && state.config.multi) && !state.turn?.drawnCardId;
+}
+
+/** ไพ่ในมือที่ลงพร้อม firstId ได้ (ไม่รวม firstId เอง) */
+function groupMates(state, hand, firstId) {
+    const first = getCard(firstId);
+    if (!first || !multiAllowed(state)) return [];
+    return hand.filter(id => id !== firstId && sameValue(getCard(id), first));
+}
+
 function playableIds(room, playerId) {
     const state = room.gameState;
     if (!state || state.phase !== 'turn' || state.turn?.playerId !== playerId) return [];
@@ -495,29 +520,70 @@ function applyPenaltyDraw(room, seat, count, reason, rng) {
     return got;
 }
 
-function playCard(room, playerId, payload = {}, context = null, rng = Math.random) {
-    const { state, seat } = assertTurn(room, playerId, context);
-    const cardId = String(payload.cardId || '');
-    const at = seat.hand.indexOf(cardId);
-    if (at < 0) throw new Error('ไม่มีไพ่ใบนี้ในมือ');
-    if (!isPlayable(state, cardId)) {
+/** payload.cardIds (ลงหลายใบ ตามลำดับที่เลือก) หรือ payload.cardId (ใบเดียว แบบเดิม) */
+function playIdsOf(payload) {
+    if (Array.isArray(payload.cardIds) && payload.cardIds.length) {
+        return payload.cardIds.map(id => (typeof id === 'string' ? id : ''));
+    }
+    return [String(payload.cardId || '')];
+}
+
+/** ตรวจกลุ่มไพ่ทั้งหมดก่อนแตะ state — ผิดข้อไหน throw เหตุผลภาษาไทย */
+function validatePlay(state, seat, ids) {
+    if (!ids.length || ids.some(id => !id)) throw new Error('ไม่มีไพ่ใบนี้ในมือ');
+    if (ids.length > MAX_GROUP) throw new Error(`ลงพร้อมกันได้ไม่เกิน ${MAX_GROUP} ใบ`);
+    if (new Set(ids).size !== ids.length) throw new Error('เลือกไพ่ใบเดียวกันซ้ำ');
+    if (ids.some(id => !seat.hand.includes(id))) throw new Error('ไม่มีไพ่ใบนี้ในมือ');
+    const cards = ids.map(getCard);
+    if (cards.some(card => !card)) throw new Error('ไม่มีไพ่ใบนี้ในมือ');
+    if (ids.length > 1) {
+        if (!state.config.multi) throw new Error('ห้องนี้ลงได้ทีละใบ');
+        if (state.turn.drawnCardId) throw new Error('จั่วแล้ว ลงได้แค่ใบที่เพิ่งจั่ว (ใบเดียว)');
+        if (cards.some(card => WILD_KINDS.has(card.kind))) throw new Error('ไพ่เปลี่ยนสี/+4 ลงได้ทีละใบ');
+        if (cards.some(card => !sameValue(card, cards[0]))) throw new Error('ลงหลายใบได้เฉพาะเลขเดียวกัน หรือสัญลักษณ์เดียวกัน');
+    }
+    if (!isPlayable(state, ids[0])) {
+        const lead = ids.length > 1 ? 'ใบแรก' : 'ใบนี้';
         if (state.pendingDraw > 0) throw new Error(`ต้องซ้อน +2/+4 หรือจั่ว ${state.pendingDraw} ใบ`);
         if (state.turn.drawnCardId) throw new Error('จั่วแล้ว ลงได้แค่ใบที่เพิ่งจั่ว');
-        throw new Error('ลงใบนี้ไม่ได้ — สีหรือเลขไม่ตรง');
+        throw new Error(`ลง${lead}ไม่ได้ — สีหรือเลขไม่ตรง`);
     }
-    const card = getCard(cardId);
+    return cards;
+}
+
+function valueLabel(card) {
+    return card.kind === 'num' ? String(card.value) : KIND_NAME[card.kind];
+}
+
+/** ที่นั่งที่ถูกข้าม ถ้าเดินต่อ steps ช่องจาก fromIndex (ไม่รวมช่องที่ลงจริง) */
+function skippedSeats(room, fromIndex, count) {
+    const out = [];
+    let index = fromIndex;
+    for (let i = 0; i < count; i += 1) {
+        index = nextActiveIndex(room, index);
+        if (index < 0) break;
+        out.push(room.gameState.seats[index]);
+    }
+    return out;
+}
+
+function playCard(room, playerId, payload = {}, context = null, rng = Math.random) {
+    const { state, seat } = assertTurn(room, playerId, context);
+    const ids = playIdsOf(payload || {});
+    const cards = validatePlay(state, seat, ids);
+    const count = ids.length;
+    const card = cards[count - 1]; // ใบบนสุด
+    const cardId = ids[count - 1];
     let chosen = card.color;
     if (WILD_KINDS.has(card.kind)) {
         chosen = String(payload.color || '');
         if (!COLORS.includes(chosen)) throw new Error('เลือกสีก่อนลงไพ่เปลี่ยนสี');
     }
 
-    seat.hand.splice(at, 1);
-    state.discard.push(cardId);
+    ids.forEach(id => seat.hand.splice(seat.hand.indexOf(id), 1));
+    state.discard.push(...ids);
     state.currentColor = chosen;
-    if (state.catchWindow && state.catchWindow.playerId !== playerId) {
-        // คนถัดไปลงมือแล้ว — หน้าต่างจับยังเปิดตามเวลา (กันบอทลงไวจนคนจับไม่ทัน)
-    }
+    // หน้าต่างจับของคนก่อนหน้ายังเปิดตามเวลา (กันบอทลงไวจนคนจับไม่ทัน)
 
     const remaining = seat.hand.length;
     if (remaining === 1) {
@@ -534,17 +600,25 @@ function playCard(room, playerId, payload = {}, context = null, rng = Math.rando
         if (state.catchWindow?.playerId === playerId) state.catchWindow = null;
     }
 
-    const colorNote = WILD_KINDS.has(card.kind) ? ` → ${COLOR_NAME[chosen]}` : '';
-    pushHistory(room, '🃏', `${seat.name} ลง ${cardLabel(card)}${colorNote}`, 'play');
-    pushFx(room, { kind: 'play', playerId, card: describeCard(cardId), color: chosen, left: remaining });
-
     const activeCount = activeSeats(room).length;
+    if (count > 1) {
+        let effect = '';
+        if (card.kind === 'skip' || (card.kind === 'rev' && activeCount === 2)) effect = ` · ข้าม ${count} คน`;
+        else if (card.kind === 'rev') effect = count % 2 ? ' · กลับทิศ' : ' · กลับคู่ = ทิศเดิม';
+        pushHistory(room, '🃏', `${seat.name} ลง ${valueLabel(card)} ${THAI_COUNT[count] || count}ใบ! · บนสุด${COLOR_NAME[chosen]}${effect}`, 'play');
+        pushFx(room, { kind: 'play', playerId, card: describeCard(cardId), cards: ids.map(describeCard), count, color: chosen, left: remaining });
+    } else {
+        const colorNote = WILD_KINDS.has(card.kind) ? ` → ${COLOR_NAME[chosen]}` : '';
+        pushHistory(room, '🃏', `${seat.name} ลง ${cardLabel(card)}${colorNote}`, 'play');
+        pushFx(room, { kind: 'play', playerId, card: describeCard(cardId), color: chosen, left: remaining });
+    }
+
     const curIndex = seatIndex(room, playerId);
     const nextIdx = nextActiveIndex(room, curIndex);
     const nextSeat = state.seats[nextIdx];
 
     if (card.kind === 'd2' || card.kind === 'd4') {
-        const amount = card.kind === 'd2' ? 2 : 4;
+        const amount = (card.kind === 'd2' ? 2 : 4) * count;
         if (state.config.stacking) {
             state.pendingDraw += amount;
             state.pendingKind = card.kind;
@@ -562,18 +636,15 @@ function playCard(room, playerId, payload = {}, context = null, rng = Math.rando
 
     if (remaining === 0) return endRound(room, seat);
 
-    if (card.kind === 'skip') {
-        pushFx(room, { kind: 'skip', playerId: nextSeat.playerId });
-        advance(room, 2);
+    if (card.kind === 'skip' || (card.kind === 'rev' && activeCount === 2)) {
+        // ข้าม ×N = ข้าม N ที่นั่งถัดไป (วนครบวงก็นับต่อ) · 2 คน กลับทิศ = ข้าม
+        const skipped = skippedSeats(room, curIndex, count);
+        skipped.forEach(s => pushFx(room, { kind: 'skip', playerId: s.playerId }));
+        advance(room, count + 1);
     } else if (card.kind === 'rev') {
-        if (activeCount === 2) {
-            pushFx(room, { kind: 'skip', playerId: nextSeat.playerId });
-            advance(room, 2);
-        } else {
-            state.direction *= -1;
-            pushFx(room, { kind: 'reverse', direction: state.direction });
-            advance(room, 1);
-        }
+        if (count % 2 === 1) state.direction *= -1; // กลับคู่ = ทิศเดิม
+        pushFx(room, { kind: 'reverse', direction: state.direction, times: count });
+        advance(room, 1);
     } else if ((card.kind === 'd2' || card.kind === 'd4') && !state.config.stacking) {
         pushFx(room, { kind: 'skip', playerId: nextSeat.playerId });
         advance(room, 2);
@@ -629,7 +700,18 @@ function passTurn(room, playerId, context = null) {
     return state;
 }
 
-/** กด "เหลือใบเดียว!" — ตอนเหลือ 1 ใบ (ก่อนโดนจับ) หรือกดล่วงหน้าตอนถึงตาและเหลือ 2 ใบ */
+/** ตาตัวเอง: ลงแล้วเหลือ 1 ใบได้ไหม (เหลือ 2 ใบลง 1 · หรือลงหลายใบค่าเดียวกันจนเหลือ 1) */
+function canEndOnOne(room, seat) {
+    const state = room.gameState;
+    const n = seat.hand.length;
+    if (n < 2) return false;
+    const playable = playableIds(room, seat.playerId);
+    if (!playable.length) return false;
+    if (n === 2) return true;
+    return playable.some(id => 1 + groupMates(state, seat.hand, id).length >= n - 1);
+}
+
+/** กด "เหลือใบเดียว!" — ตอนเหลือ 1 ใบ (ก่อนโดนจับ) หรือกดล่วงหน้าตอนถึงตาและลงแล้วจะเหลือ 1 ใบ */
 function callLast(room, playerId) {
     const state = assertPlaying(room);
     const seat = getSeat(room, playerId);
@@ -638,7 +720,7 @@ function callLast(room, playerId) {
     if (seat.hand.length === 1) {
         seat.called = true;
         if (state.catchWindow?.playerId === playerId) state.catchWindow = null;
-    } else if (seat.hand.length === 2 && state.turn?.playerId === playerId && playableIds(room, playerId).length) {
+    } else if (state.turn?.playerId === playerId && canEndOnOne(room, seat)) {
         seat.called = true;
     } else {
         throw new Error('กดได้ตอนกำลังจะเหลือไพ่ใบเดียว');
@@ -841,13 +923,28 @@ function botPickColor(hand, rng) {
     return options[Math.floor(rng() * options.length)] || 'r';
 }
 
-/** กลยุทธ์บอทแบบง่าย: เก็บไพ่ไวลด์ไว้ท้าย, คนถัดไปใกล้หมดมือ = ใส่ไพ่โจมตี, เลือกสีที่ถือเยอะสุด */
+/** ข้าม k ใบ (หรือกลับทิศ k ใบตอนเหลือ 2 คน) แล้วตาตกที่ใคร */
+function landingAfterSkips(room, fromIndex, k) {
+    let index = fromIndex;
+    for (let i = 0; i < k + 1; i += 1) {
+        const next = nextActiveIndex(room, index);
+        if (next < 0) break;
+        index = next;
+    }
+    return index;
+}
+
+/**
+ * กลยุทธ์บอทแบบง่าย: เก็บไพ่ไวลด์ไว้ท้าย, คนถัดไปใกล้หมดมือ = ใส่ไพ่โจมตี, เลือกสีที่ถือเยอะสุด
+ * ลงหลายใบ: เลขเดียวกันทิ้งหมด · +2 ทิ้งหมด · ข้ามเลือกจำนวนที่ตาวนกลับมาที่ตัวเอง · ใบบนสุด = สีที่เหลือในมือเยอะสุด
+ */
 function chooseBotMove(room, seat, rng) {
     const state = room.gameState;
     const playable = seat.hand.filter(cardId => isPlayable(state, cardId));
     if (!playable.length) return { type: state.turn.drawnCardId ? 'pass' : 'draw' };
 
-    const nextSeat = state.seats[nextActiveIndex(room, seatIndex(room, seat.playerId))];
+    const myIndex = seatIndex(room, seat.playerId);
+    const nextSeat = state.seats[nextActiveIndex(room, myIndex)];
     const threat = nextSeat && nextSeat.hand.length <= 2;
     const counts = colorCounts(seat.hand);
     const scored = playable.map(cardId => {
@@ -859,16 +956,48 @@ function chooseBotMove(room, seat, rng) {
         else score = threat ? 26 : 1;
         if (card.color) score += counts[card.color] * 1.5;
         if (seat.hand.length <= 2 && WILD_KINDS.has(card.kind)) score += 5;
+        score += groupMates(state, seat.hand, cardId).length * 4; // ทิ้งได้หลายใบในตาเดียว
         return { cardId, card, score: score + rng() * 0.5 };
     }).sort((a, b) => b.score - a.score);
 
     const pick = scored[0];
-    const rest = seat.hand.filter(id => id !== pick.cardId);
+    let group = [pick.cardId];
+    const mates = groupMates(state, seat.hand, pick.cardId);
+    if (mates.length) {
+        const all = [pick.cardId, ...mates];
+        let take = all.length;
+        const activeCount = activeSeats(room).length;
+        const skipLike = pick.card.kind === 'skip' || (pick.card.kind === 'rev' && activeCount === 2);
+        if (skipLike && all.length < seat.hand.length) {
+            // ข้ามกี่ใบดี: ถ้ามีจำนวนที่ตาวนกลับมาที่ตัวเอง เอาจำนวนมากสุดนั้น ไม่งั้นทิ้งหมด
+            for (let k = all.length; k >= 1; k -= 1) {
+                if (landingAfterSkips(room, myIndex, k) === myIndex) { take = k; break; }
+            }
+        }
+        group = all.slice(0, take);
+    }
+
+    // เรียง: ใบแรกต้องลงได้เอง · ใบสุดท้าย (อยู่บนกอง) = สีที่เหลือในมือเยอะสุด
+    if (group.length > 1) {
+        const rest = seat.hand.filter(id => !group.includes(id));
+        const best = rest.length ? botPickColor(rest, rng) : null;
+        let lastId = group.find(id => getCard(id).color === best) || group[group.length - 1];
+        let firstId = group.find(id => id !== lastId && isPlayable(state, id));
+        if (!firstId) {
+            firstId = lastId;
+            lastId = group.find(id => id !== firstId);
+        }
+        group = [firstId, ...group.filter(id => id !== firstId && id !== lastId), lastId];
+    }
+
+    const top = getCard(group[group.length - 1]);
+    const rest = seat.hand.filter(id => !group.includes(id));
     return {
         type: 'play',
-        cardId: pick.cardId,
-        color: WILD_KINDS.has(pick.card.kind) ? botPickColor(rest, rng) : undefined,
-        callLast: seat.hand.length === 2 ? rng() < 0.85 : false
+        cardId: group[0],
+        cardIds: group,
+        color: WILD_KINDS.has(top.kind) ? botPickColor(rest, rng) : undefined,
+        callLast: rest.length === 1 ? rng() < 0.85 : false
     };
 }
 
@@ -999,7 +1128,7 @@ function getAvailableActions(room, viewerId) {
         actions.canPass = !!state.turn.drawnCardId;
     }
     if (state.phase === 'turn' && !seat.called) {
-        actions.canCall = seat.hand.length === 1 || (myTurn && seat.hand.length === 2 && playable.length > 0);
+        actions.canCall = seat.hand.length === 1 || (myTurn && playable.length > 0 && canEndOnOne(room, seat));
     }
     const win = state.catchWindow;
     if (state.phase === 'turn' && win && win.playerId !== viewerId && catchWindowOpen(state)) {
@@ -1132,6 +1261,10 @@ module.exports = {
     getAvailableActions,
     isPlayable,
     playableIds,
+    sameValue,
+    groupMates,
+    canEndOnOne,
+    MAX_GROUP,
     cardPoints,
     describeCard,
     getCard,

@@ -497,6 +497,8 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
     let illegalRejected = 0;
     let catches = 0;
     let rounds = 0;
+    let multiPlays = 0;
+    let maxGroup = 1;
     const winsBySeatCount = {};
     for (let g = 0; g < GAMES; g += 1) {
         const rng = mulberry32(1000 + g);
@@ -504,7 +506,8 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
         const settings = {
             colorcardsStacking: g % 3 === 0,
             colorcardsTarget: g % 5 === 0 ? 300 : (g % 7 === 0 ? 500 : 0),
-            colorcardsTurnSeconds: [15, 20, 30][g % 3]
+            colorcardsTurnSeconds: [15, 20, 30][g % 3],
+            ...(g % 4 === 3 ? { colorcardsMulti: false } : {})
         };
         const room = makeRoom(n, settings, { bots: true });
         E.startGame(room, rng);
@@ -537,6 +540,14 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
                         const bad = turnSeat.hand.find(id => !E.isPlayable(s, id));
                         if (!bad) throw new Error('none');
                         E.playCard(room, turnSeat.playerId, { cardId: bad, color: 'g' }, null, rng);
+                    } else if (pick < 0.9) {
+                        // กลุ่มค่าไม่เหมือนกัน / มีไวลด์ปน / ห้องปิดลงหลายใบ
+                        const first = turnSeat.hand.find(id => E.isPlayable(s, id) && E.getCard(id).kind !== 'wild' && E.getCard(id).kind !== 'd4');
+                        const mate = first && (s.config.multi && !s.turn.drawnCardId
+                            ? turnSeat.hand.find(id => id !== first && !E.sameValue(E.getCard(id), E.getCard(first)))
+                            : turnSeat.hand.find(id => id !== first));
+                        if (!mate) throw new Error('none');
+                        E.playCard(room, turnSeat.playerId, { cardIds: [first, mate], color: 'r' }, null, rng);
                     } else E.passTurn(room, turnSeat.playerId, { turnSeq: s.turnSeq + 5 });
                 } catch (e) { rejected = true; }
                 assert(rejected, `เกม ${g}: คำสั่งผิดต้องโดนปฏิเสธ`);
@@ -558,7 +569,23 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
                 const ctx = { turnSeq: s.turnSeq };
                 if (move.type === 'play') {
                     assert(E.isPlayable(s, move.cardId), `เกม ${g}: บอทต้องลงไพ่ถูกกติกา`);
+                    const group = move.cardIds || [move.cardId];
+                    assert(group[0] === move.cardId, `เกม ${g}: cardId = ใบแรกของกลุ่ม`);
+                    if (group.length > 1) {
+                        multiPlays += 1;
+                        maxGroup = Math.max(maxGroup, group.length);
+                        assert(s.config.multi && !s.turn.drawnCardId, `เกม ${g}: ลงหลายใบได้เฉพาะห้องที่เปิด และยังไม่จั่ว`);
+                        assert(new Set(group).size === group.length && group.every(id => turnSeat.hand.includes(id)), `เกม ${g}: กลุ่มต้องเป็นไพ่ในมือไม่ซ้ำ`);
+                        assert(group.every(id => E.sameValue(E.getCard(id), E.getCard(group[0]))), `เกม ${g}: กลุ่มต้องค่าเดียวกัน ไม่มีไวลด์`);
+                    }
+                    const before = turnSeat.hand.length;
                     E.playCard(room, turnSeat.playerId, move, ctx, rng);
+                    assert(turnSeat.hand.length === before - group.length, `เกม ${g}: มือลดเท่าจำนวนที่ลง`);
+                    if (s.phase === 'turn') {
+                        assert(s.discard[s.discard.length - 1] === group[group.length - 1], `เกม ${g}: ใบสุดท้ายของกลุ่มอยู่บนกอง`);
+                        const top = E.getCard(group[group.length - 1]);
+                        if (top.color) assert(s.currentColor === top.color, `เกม ${g}: สีต่อไป = สีใบบนสุด`);
+                    }
                 } else if (move.type === 'pass') {
                     assert(s.turn.drawnCardId, 'บอทผ่านได้หลังจั่วเท่านั้น');
                     E.passTurn(room, turnSeat.playerId, ctx);
@@ -588,7 +615,8 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
         if (!settings.colorcardsTarget && !leftOne) assert(w.hand.length === 0, `เกม ${g}: 1 รอบ ผู้ชนะหมดมือ`);
         winsBySeatCount[n] = (winsBySeatCount[n] || 0) + 1;
     }
-    console.log(`11. สุ่ม ${GAMES} เกม (2–10 คน, ซ้อน/ไม่ซ้อน, 1 รอบ/300/500) · ${totalActions} แอ็กชัน · ปฏิเสธคำสั่งผิด ${illegalRejected} · จับได้ ${catches} · จบรอบ ${rounds} ✓`);
+    console.log(`11. สุ่ม ${GAMES} เกม (2–10 คน, ซ้อน/ไม่ซ้อน, 1 รอบ/300/500) · ${totalActions} แอ็กชัน · ปฏิเสธคำสั่งผิด ${illegalRejected} · จับได้ ${catches} · จบรอบ ${rounds} · ลงหลายใบ ${multiPlays} ครั้ง (มากสุด ${maxGroup} ใบ) ✓`);
+    assert(multiPlays > 200, 'บอทต้องใช้ลงหลายใบบ้าง');
 })();
 
 // ---------- 12. บอทผ่าน API ของ runtime ----------
@@ -693,6 +721,256 @@ function ctxOf(room) { return { turnSeq: room.gameState.turnSeq }; }
     assert(cw && cw.ms === E.CATCH_MS && cw.until > Date.now(), 'catchWindow มี ms');
     assert(w.catchWindow, 'ลืมบอก → เปิดหน้าต่างจับ');
     console.log('13. UX: หมดเวลา 2 ตาติด = ตาสั้น · พร้อมครบ = รอบใหม่ทันที · บอทจั่วแล้วรอก่อนลง · catch ms ✓');
+})();
+
+// ---------- 14. ลงหลายใบ (เลข/สัญลักษณ์เดียวกัน) ----------
+(function multiPlayTest() {
+    const snap = room => JSON.stringify(room.gameState);
+    const [rSkip, rSkip2] = byKind('skip', 'r');
+    const bSkip = byKind('skip', 'b')[0]; const gSkip = byKind('skip', 'g')[0];
+    const rRev = byKind('rev', 'r')[0]; const bRev = byKind('rev', 'b')[0]; const gRev = byKind('rev', 'g')[0];
+    const rD2 = byKind('d2', 'r')[0]; const bD2 = byKind('d2', 'b')[0]; const gD2 = byKind('d2', 'g')[0]; const yD2 = byKind('d2', 'y')[0];
+    const b5 = numCard('b', 5); const g5 = numCard('g', 5); const y5 = numCard('y', 5);
+
+    // a. เลขเดียวกันคนละสี ลงพร้อมกัน · ใบสุดท้ายอยู่บน = สีต่อไป
+    let room = setup(3);
+    let s = room.gameState;
+    assert(s.config.multi === true, 'ลงหลายใบเปิดเป็นค่าเริ่ม');
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2), numCard('b', 9)]);
+    E.playCard(room, 'p1', { cardIds: [b5, g5, y5] }, ctxOf(room));
+    assert(s.seats[1].hand.length === 2 && s.discard.slice(-3).join() === [b5, g5, y5].join(), 'ลง 3 ใบ เรียงตามที่เลือก');
+    assert(s.currentColor === 'y' && E.getCard(s.discard[s.discard.length - 1]).color === 'y', 'ใบสุดท้าย (เหลือง) อยู่บน = สีต่อไป');
+    assert(s.turn.playerId === 'p2', 'ลงเลขหลายใบ เดินตาปกติ');
+    assert(/ผู้เล่น1 ลง 5 สามใบ!/.test(s.history[0].text), `บันทึก "ลง 5 สามใบ!" (${s.history[0].text})`);
+    const fx = s.fx[s.fx.length - 1];
+    assert(fx.kind === 'play' && fx.count === 3 && fx.cards.map(c => c.id).join() === [b5, g5, y5].join() && fx.card.id === y5, 'fx บอกทั้งกลุ่ม ใบบนสุดท้าย');
+    noLeak(room, 'ลงหลายใบ');
+    conservation(room, 'ลงหลายใบ');
+    const view = E.buildClientState(room, 'p0');
+    assert(view.top.id === y5 && view.pile.slice(-3).map(c => c.id).join() === [b5, g5, y5].join(), 'คนอื่นเห็นกองทิ้งทั้งกลุ่ม');
+
+    // b. ลำดับต่างกัน → สีบนสุดต่างกัน · ใบแรกต้องลงได้เอง
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2)]);
+    E.playCard(room, 'p1', { cardIds: [g5, y5, b5] });
+    assert(s.currentColor === 'b', 'เรียงใหม่ ใบสุดท้ายน้ำเงิน → สีน้ำเงิน');
+    room = setup(3); s = room.gameState;
+    const r7 = numCard('r', 7); const b7 = numCard('b', 7); const g7 = numCard('g', 7);
+    giveHand(room, 1, [r7, b7, g7, numCard('y', 1)]);
+    let before = snap(room);
+    throws(() => E.playCard(room, 'p1', { cardIds: [b7, r7] }), /ใบแรกไม่ได้/, 'ใบแรกลงไม่ได้ (น้ำเงิน 7 บนแดง 5)');
+    assert(snap(room) === before, 'ปฏิเสธแล้ว state เดิม');
+    E.playCard(room, 'p1', { cardIds: [r7, b7, g7] });
+    assert(s.currentColor === 'g' && s.seats[1].hand.length === 1, 'ใบแรกแดงตรงสี ที่เหลือแค่เลขเดียวกัน');
+
+    // c. กลุ่มผิดกติกา — ปฏิเสธพร้อมเหตุผล ไม่แตะ state
+    room = setup(3); s = room.gameState;
+    const wild = byKind('wild')[0]; const d4 = byKind('d4')[0];
+    giveHand(room, 1, [b5, g5, numCard('r', 2), wild, d4, rSkip, rD2, numCard('b', 9)]);
+    before = snap(room);
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, numCard('r', 2)] }), /เฉพาะเลขเดียวกัน/, 'เลขต่างกัน');
+    throws(() => E.playCard(room, 'p1', { cardIds: [rSkip, rD2] }), /เฉพาะเลขเดียวกัน/, 'สัญลักษณ์ต่างกัน (ข้าม + +2)');
+    throws(() => E.playCard(room, 'p1', { cardIds: [numCard('r', 2), b5] }), /เฉพาะเลขเดียวกัน/, 'สีเดียวกันแต่เลขต่าง');
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, wild], color: 'r' }), /ทีละใบ/, 'เปลี่ยนสีในกลุ่ม');
+    throws(() => E.playCard(room, 'p1', { cardIds: [wild, d4], color: 'r' }), /ทีละใบ/, 'เปลี่ยนสี + +4');
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, y5] }), /ไม่มีไพ่/, 'ใบที่ไม่ได้อยู่ในมือ');
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, b5] }), /ซ้ำ/, 'ใบเดียวกันซ้ำ');
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, 42] }), /ไม่มีไพ่/, 'id ไม่ใช่ string');
+    throws(() => E.playCard(room, 'p1', { cardIds: Array(9).fill(b5) }), /ไม่เกิน/, 'เกิน 8 ใบ');
+    throws(() => E.playCard(room, 'p2', { cardIds: [b5, g5] }), /ยังไม่ถึงตา/, 'ลงหลายใบนอกตา');
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, g5] }, { turnSeq: s.turnSeq - 1 }), /จังหวะ/, 'turnSeq เก่า');
+    assert(snap(room) === before, 'ปฏิเสธทุกแบบ state เดิม');
+
+    // d. ปิดในห้อง → ลงได้ทีละใบ
+    room = setup(3, { colorcardsMulti: false }); s = room.gameState;
+    assert(s.config.multi === false, 'ปิดลงหลายใบ');
+    giveHand(room, 1, [b5, g5, numCard('r', 2)]);
+    before = snap(room);
+    throws(() => E.playCard(room, 'p1', { cardIds: [b5, g5] }), /ทีละใบ/, 'ห้องปิด ลงหลายใบไม่ได้');
+    assert(snap(room) === before, 'ห้องปิด ปฏิเสธแล้ว state เดิม');
+    assert(E.groupMates(s, s.seats[1].hand, b5).length === 0, 'ห้องปิด ไม่มีใบที่เพิ่มได้');
+    assert(!E.getAvailableActions(room, 'p1').canCall, 'ห้องปิด 3 ใบ ยังกดเหลือใบเดียวไม่ได้');
+    E.playCard(room, 'p1', { cardIds: [b5] });
+    assert(s.currentColor === 'b' && s.turn.playerId === 'p2', 'ห้องปิด ลงใบเดียวผ่าน cardIds ได้');
+
+    // e. ข้าม ×N = ข้าม N คน
+    room = setup(4); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, numCard('b', 1), numCard('b', 2)]);
+    E.playCard(room, 'p1', { cardIds: [rSkip, bSkip] });
+    assert(s.turn.playerId === 'p0' && s.currentColor === 'b', 'ข้าม ×2 (4 คน) → ข้าม p2 p3 ตกที่ p0');
+    assert(s.fx.filter(e => e.kind === 'skip').slice(-2).map(e => e.playerId).join() === 'p2,p3', 'fx ข้ามทั้งสองคน');
+    room = setup(4); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, gSkip, numCard('b', 2)]);
+    E.playCard(room, 'p1', { cardIds: [rSkip, bSkip, gSkip] });
+    assert(s.turn.playerId === 'p1', 'ข้าม ×3 (4 คน) → วนกลับมาตัวเอง');
+    room = setup(5); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, numCard('b', 2)]);
+    E.playCard(room, 'p1', { cardIds: [rSkip, bSkip] });
+    assert(s.turn.playerId === 'p4', 'ข้าม ×2 (5 คน) → p4');
+    room = setup(2); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, numCard('b', 2)]);
+    E.playCard(room, 'p1', { cardIds: [rSkip, bSkip] });
+    assert(s.turn.playerId === 'p0', 'ข้าม ×2 (2 คน) → ข้ามทั้งสองที่นั่ง ตกที่ p0');
+    room = setup(2); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, gSkip, numCard('b', 2)]);
+    E.playCard(room, 'p1', { cardIds: [rSkip, bSkip, gSkip] });
+    assert(s.turn.playerId === 'p1', 'ข้าม ×3 (2 คน) → ได้เล่นต่อ');
+    conservation(room, 'ข้ามหลายใบ');
+
+    // f. กลับทิศ ×N
+    room = setup(4); s = room.gameState;
+    giveHand(room, 1, [rRev, bRev, numCard('b', 1)]);
+    E.playCard(room, 'p1', { cardIds: [rRev, bRev] });
+    assert(s.direction === 1 && s.turn.playerId === 'p2', 'กลับทิศ ×2 (4 คน) = ทิศเดิม → p2');
+    assert(s.fx.some(e => e.kind === 'reverse' && e.times === 2), 'fx กลับทิศบอกจำนวนครั้ง');
+    room = setup(4); s = room.gameState;
+    giveHand(room, 1, [rRev, bRev, gRev, numCard('b', 1)]);
+    E.playCard(room, 'p1', { cardIds: [rRev, bRev, gRev] });
+    assert(s.direction === -1 && s.turn.playerId === 'p0', 'กลับทิศ ×3 (4 คน) = กลับ → p0');
+    room = setup(2); s = room.gameState;
+    giveHand(room, 1, [rRev, bRev, numCard('b', 1)]);
+    E.playCard(room, 'p1', { cardIds: [rRev, bRev] });
+    assert(s.turn.playerId === 'p0' && s.direction === 1, 'กลับทิศ ×2 (2 คน) = ข้าม 2 → p0');
+    room = setup(2); s = room.gameState;
+    giveHand(room, 1, [rRev, bRev, gRev, numCard('b', 1)]);
+    E.playCard(room, 'p1', { cardIds: [rRev, bRev, gRev] });
+    assert(s.turn.playerId === 'p1', 'กลับทิศ ×3 (2 คน) = ข้าม 3 → ได้เล่นต่อ');
+
+    // g. +2 ×N (ไม่ซ้อน) = คนถัดไปจั่ว 2N แล้วโดนข้าม
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [rD2, bD2, numCard('b', 1)]);
+    let h = s.seats[2].hand.length;
+    E.playCard(room, 'p1', { cardIds: [rD2, bD2] });
+    assert(s.seats[2].hand.length === h + 4 && s.turn.playerId === 'p0' && s.currentColor === 'b', '+2 ×2 → p2 จั่ว 4 โดนข้าม');
+    room = setup(4); s = room.gameState;
+    giveHand(room, 1, [rD2, bD2, gD2, numCard('b', 1)]);
+    h = s.seats[2].hand.length;
+    E.playCard(room, 'p1', { cardIds: [rD2, bD2, gD2] });
+    assert(s.seats[2].hand.length === h + 6 && s.turn.playerId === 'p3', '+2 ×3 (4 คน) → p2 จั่ว 6 → p3');
+    room = setup(2); s = room.gameState;
+    giveHand(room, 1, [rD2, bD2, numCard('b', 1)]);
+    h = s.seats[0].hand.length;
+    E.playCard(room, 'p1', { cardIds: [rD2, bD2] });
+    assert(s.seats[0].hand.length === h + 4 && s.turn.playerId === 'p1', '+2 ×2 (2 คน) → p0 จั่ว 4 ได้เล่นต่อ');
+    conservation(room, '+2 หลายใบ');
+
+    // h. ซ้อน: กลุ่ม +2 เปิดซ้อน / ตอบซ้อน / +2 ทับ +4 ไม่ได้
+    room = setup(3, { colorcardsStacking: true }); s = room.gameState;
+    giveHand(room, 1, [rD2, bD2, numCard('b', 1)]);
+    giveHand(room, 2, [gD2, yD2, numCard('y', 1), numCard('y', 2)]);
+    E.playCard(room, 'p1', { cardIds: [rD2, bD2] });
+    assert(s.pendingDraw === 4 && s.pendingKind === 'd2' && s.turn.playerId === 'p2', 'ซ้อน: +2 ×2 ค้าง 4');
+    before = snap(room);
+    throws(() => E.playCard(room, 'p2', { cardIds: [gD2, numCard('y', 1)] }), /เฉพาะเลขเดียวกัน/, 'ตอบซ้อนด้วยกลุ่มปนเลข');
+    throws(() => E.playCard(room, 'p2', { cardIds: [numCard('y', 1), numCard('y', 2)] }), /ต้องซ้อน|เฉพาะเลข/, 'มี +2 ค้าง ลงเลขไม่ได้');
+    assert(snap(room) === before, 'ปฏิเสธตอบซ้อนผิด state เดิม');
+    E.playCard(room, 'p2', { cardIds: [gD2, yD2] });
+    assert(s.pendingDraw === 8 && s.turn.playerId === 'p0' && s.currentColor === 'y', 'ตอบซ้อนด้วย +2 ×2 → ค้าง 8');
+    h = s.seats[0].hand.length;
+    E.drawCard(room, 'p0');
+    assert(s.seats[0].hand.length === h + 8 && s.pendingDraw === 0 && s.turn.playerId === 'p1', 'รับทั้ง 8');
+    conservation(room, 'ซ้อนหลายใบ');
+    room = setup(3, { colorcardsStacking: true }); s = room.gameState;
+    giveHand(room, 1, [d4, numCard('b', 1), numCard('b', 2)]);
+    giveHand(room, 2, [gD2, yD2, numCard('y', 1)]);
+    E.playCard(room, 'p1', { cardId: d4, color: 'g' });
+    throws(() => E.playCard(room, 'p2', { cardIds: [gD2, yD2] }), /ต้องซ้อน/, '+2 ×2 ทับ +4 ไม่ได้');
+
+    // i. เหลือใบเดียวหลังลงหลายใบ
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2)]);
+    assert(E.getAvailableActions(room, 'p1').canCall === true, '4 ใบ มีเลข 5 สามใบ → ลงแล้วเหลือ 1 → กดเหลือใบเดียวได้');
+    E.playCard(room, 'p1', { cardIds: [b5, g5, y5] });
+    assert(s.seats[1].hand.length === 1 && s.catchWindow && s.catchWindow.playerId === 'p1', 'ลืมกด → เปิดหน้าต่างจับ');
+    assert(E.buildClientState(room, 'p2').availableActions.canCatch === 'p1', 'คนอื่นจับได้');
+    E.catchPlayer(room, 'p2', 'p1');
+    assert(s.seats[1].hand.length === 3, 'โดนจับ → จั่ว 2');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2)]);
+    E.playCard(room, 'p1', { cardIds: [b5, g5, y5], callLast: true });
+    assert(s.seats[1].called && !s.catchWindow, 'กดพร้อมลงหลายใบ → ปลอดภัย');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2)]);
+    E.callLast(room, 'p1');
+    assert(s.seats[1].called, 'กดล่วงหน้าตอนมี 4 ใบ (ลงได้ 3) ได้');
+    E.playCard(room, 'p1', { cardIds: [b5, g5, y5] });
+    assert(s.seats[1].called && !s.catchWindow, 'กดล่วงหน้าแล้วลงหลายใบ → ปลอดภัย');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, numCard('r', 2), numCard('b', 9)]);
+    throws(() => E.callLast(room, 'p1'), /กดได้ตอน/, '4 ใบ ลงได้มากสุด 2 → ยังกดไม่ได้');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2)]);
+    E.callLast(room, 'p1');
+    E.playCard(room, 'p1', { cardIds: [b5] });
+    assert(!s.seats[1].called && s.seats[1].hand.length === 3, 'กดล่วงหน้าแต่ลงใบเดียว → ล้างสถานะ');
+
+    // j. ลงหมดมือทั้งกลุ่ม = ชนะรอบ (แต้มเหมือนเดิม)
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5]);
+    giveHand(room, 0, [numCard('b', 9), rSkip2]);
+    giveHand(room, 2, [wild, numCard('y', 3)]);
+    E.playCard(room, 'p1', { cardIds: [b5, g5] });
+    assert(s.phase === 'finished' && s.winner.playerId === 'p1', 'ลงหมดมือเป็นกลุ่ม → ชนะ');
+    assert(s.roundResult.points === 9 + 20 + 50 + 3, 'แต้มคิดเหมือนเดิม');
+    conservation(room, 'ชนะด้วยกลุ่ม');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [rD2, bD2]);
+    h = s.seats[2].hand.length;
+    E.playCard(room, 'p1', { cardIds: [rD2, bD2] });
+    assert(s.phase === 'finished' && s.seats[2].hand.length === h + 4, '+2 ×2 ใบสุดท้าย คนถัดไปยังจั่ว 4');
+
+    // k. จั่วแล้ว ลงได้แค่ใบที่จั่ว (ใบเดียว)
+    room = setup(3); s = room.gameState;
+    const r8 = numCard('r', 8); const b8 = numCard('b', 8);
+    giveHand(room, 1, [b8, numCard('b', 1)]);
+    s.drawPile.splice(s.drawPile.indexOf(r8), 1); s.drawPile.push(r8);
+    E.drawCard(room, 'p1');
+    assert(s.turn.drawnCardId === r8, 'จั่วได้ใบลงได้');
+    throws(() => E.playCard(room, 'p1', { cardIds: [r8, b8] }), /จั่วแล้ว/, 'จั่วแล้วลงหลายใบไม่ได้');
+    E.playCard(room, 'p1', { cardIds: [r8] });
+    assert(s.turn.playerId === 'p2', 'ลงใบที่จั่วใบเดียวได้');
+
+    // l. สับกองทิ้งหลังลงหลายใบ → fx ไม่อ้างไพ่ที่กลับเข้ากองจั่ว
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('r', 2)]);
+    E.playCard(room, 'p1', { cardIds: [b5, g5, y5] });
+    const top = s.discard[s.discard.length - 1];
+    s.discard.unshift(...s.drawPile.splice(0, s.drawPile.length));
+    s.discard = s.discard.filter(id => id !== top).concat([top]);
+    E.drawCard(room, 'p2');
+    assert(!s.fx.some(e => e.cards), 'สับกองแล้วล้าง fx.cards');
+    noLeak(room, 'สับกองหลังลงหลายใบ');
+    conservation(room, 'สับกองหลังลงหลายใบ');
+
+    // m. บอท: ทิ้งเลขเดียวกันทั้งหมด จบด้วยสีที่ถือเยอะสุด · ข้ามเลือกจำนวนที่ได้ตากลับมา
+    room = setup(3); s = room.gameState;
+    setTop(room, r7);
+    const y7 = numCard('y', 7);
+    giveHand(room, 1, [b7, g7, y7, numCard('g', 1), numCard('g', 2), numCard('b', 9)]);
+    let move = E.chooseBotMove(room, s.seats[1], mulberry32(3));
+    assert(move.type === 'play' && move.cardIds.length === 3, `บอททิ้ง 7 ทั้งสามใบ (${move.cardIds})`);
+    assert(E.getCard(move.cardIds[2]).color === 'g', 'บอทจบด้วยสีเขียว (เหลือเขียวเยอะสุด)');
+    E.playCard(room, 'p1', move, ctxOf(room));
+    assert(s.currentColor === 'g', 'บอทลงแล้วสีเขียว');
+    room = setup(2); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, numCard('g', 1), numCard('g', 2)]);
+    move = E.chooseBotMove(room, s.seats[1], () => 0.99);
+    if (E.getCard(move.cardId).kind === 'skip') assert(move.cardIds.length === 1, '2 คน: บอทลงข้ามใบเดียว (ได้ตาต่อ) ไม่ลงสองใบ');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [rSkip, bSkip, numCard('g', 1)]);
+    move = E.chooseBotMove(room, s.seats[1], () => 0.5);
+    assert(move.cardIds.length === 2, '3 คน: บอทข้าม ×2 → ได้ตาต่อ');
+    E.playCard(room, 'p1', move);
+    assert(s.turn.playerId === 'p1', 'ข้าม ×2 (3 คน) ได้ตาต่อจริง');
+    room = setup(3); s = room.gameState;
+    giveHand(room, 1, [b5, g5]);
+    move = E.chooseBotMove(room, s.seats[1], mulberry32(9));
+    assert(move.cardIds.length === 2, 'บอทลงหมดมือได้ ลงเลย');
+    room = setup(3, { colorcardsMulti: false }); s = room.gameState;
+    giveHand(room, 1, [b5, g5, y5, numCard('g', 1)]);
+    move = E.chooseBotMove(room, s.seats[1], mulberry32(9));
+    assert(move.cardIds.length === 1, 'ห้องปิด บอทลงใบเดียว');
+    console.log('14. ลงหลายใบ: เลข/สัญลักษณ์เดียวกัน · ลำดับ+สีบนสุด · ใบแรกต้องลงได้ · กลุ่มผิดโดนปฏิเสธ · ข้าม/กลับทิศ/+2 ×N (2–5 คน) · ซ้อน · เหลือใบเดียว · ชนะ · ห้องปิด · บอท ✓');
 })();
 
 console.log(`\n✅ smoke-colorcards-engine: ${checks} checks passed`);

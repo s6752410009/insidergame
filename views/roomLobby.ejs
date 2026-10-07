@@ -2233,6 +2233,7 @@
           const ccTarget = Number(settings && settings.colorcardsTarget) || 0;
           const ccTurn = Number(settings && settings.colorcardsTurnSeconds) || 20;
           const ccStack = !!(settings && settings.colorcardsStacking);
+          const ccMulti = !(settings && settings.colorcardsMulti === false);
           const dis = isAdmin ? '' : ' disabled';
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
@@ -2248,6 +2249,7 @@
             [15, 20, 30].map(function(v) { return '<option value="' + v + '"' + (v === ccTurn ? ' selected' : '') + '>ตาละ ' + v + ' วิ</option>'; }).join(''),
             '</select>',
             '<button type="button" class="uc-mw-toggle" id="ccLobbyStack" aria-pressed="' + (ccStack ? 'true' : 'false') + '"' + dis + '>' + (ccStack ? '✓ ' : '') + 'ซ้อน +2/+4: ' + (ccStack ? 'ได้' : 'ไม่ได้') + '</button>',
+            '<button type="button" class="uc-mw-toggle" id="ccLobbyMulti" aria-pressed="' + (ccMulti ? 'true' : 'false') + '"' + dis + '>' + (ccMulti ? '✓ ' : '') + 'ลงไพ่เหมือนกันหลายใบพร้อมกัน: ' + (ccMulti ? 'ได้' : 'ไม่ได้') + '</button>',
             '</div>'
           ].join('');
         } else if (resolvedMode === 'setthi') {
@@ -3484,6 +3486,10 @@
     $(document).on('click', '#ccLobbyStack', function() {
       this.disabled = true;
       updateColorCardsSetting({ colorcardsStacking: this.getAttribute('aria-pressed') !== 'true' });
+    });
+    $(document).on('click', '#ccLobbyMulti', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ colorcardsMulti: this.getAttribute('aria-pressed') !== 'true' });
     });
 
     $(document).on('change', '#stLobbyMinutes', function() {

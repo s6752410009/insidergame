@@ -1765,6 +1765,10 @@ $(function() {
                                 <input type="checkbox" id="colorcardsStacking" style="accent-color:#f5c86b; width:20px; height:20px;">
                                 <span>ซ้อน +2/+4 ได้ (คนที่ไม่มีซ้อน รับทั้งหมด)</span>
                             </label>
+                            <label style="display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="checkbox" id="colorcardsMulti" checked style="accent-color:#f5c86b; width:20px; height:20px; flex:0 0 auto;">
+                                <span style="text-align:left;">ลงไพ่เหมือนกันหลายใบพร้อมกัน (เลข/สัญลักษณ์เดียวกัน คนละสีก็ได้)</span>
+                            </label>
                         </div>
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">แจกคนละ 7 ใบ · หมดเวลา = จั่วให้แล้วผ่าน · ใส่บอทได้ในห้องรอ</div>
                     </div>
@@ -2226,7 +2230,8 @@ $(function() {
                     colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
                     colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
                     setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined,
-                    coupActionSeconds: gameMode === 'coup' ? Number((document.getElementById('coupActionSeconds') || {}).value || 60) : undefined
+                    coupActionSeconds: gameMode === 'coup' ? Number((document.getElementById('coupActionSeconds') || {}).value || 60) : undefined,
+                    colorcardsMulti: gameMode === 'colorcards' ? !!(document.getElementById('colorcardsMulti') || { checked: true }).checked : undefined
                 };
             }
             }).then((result) => {
@@ -2617,6 +2622,7 @@ $(function() {
             '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทิ้งไพ่ในมือให้หมดก่อนคนอื่น · แจกคนละ 7 ใบ · 2–10 คน ใส่บอทได้</p></div>',
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
             '<li>ลงไพ่สีเดียวกัน หรือเลข/สัญลักษณ์เดียวกับใบบนกอง</li>',
+            '<li><b>ลงหลายใบ</b> เลขหรือสัญลักษณ์เดียวกัน (คนละสีก็ได้) ลงพร้อมกันได้ ใบสุดท้ายอยู่บนกอง</li>',
             '<li>ไม่มีใบลง (หรือไม่อยากลง) = จั่ว 1 ใบ ถ้าลงได้ลงต่อเลย ไม่งั้นผ่าน</li>',
             '<li><b>ข้าม</b> ข้ามคนถัดไป · <b>กลับทิศ</b> (2 คน = ข้าม) · <b>+2</b> คนถัดไปจั่ว 2 แล้วโดนข้าม</li>',
             '<li><b>เปลี่ยนสี</b> เลือกสีใหม่ · <b>+4</b> เปลี่ยนสี + คนถัดไปจั่ว 4 (ลงได้ทุกเมื่อ ไม่มีกติกาท้า)</li>',
