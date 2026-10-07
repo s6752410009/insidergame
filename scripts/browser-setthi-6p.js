@@ -373,6 +373,27 @@ async function main() {
         assert((await state(desk)).props[9].owner === null, 'น่านคืนธนาคาร');
         console.log('7. การ์ดบังคับขาย: การ์ดพลิก → แตะเมืองคนอื่น (แลนด์มาร์กแตะไม่ได้) → ฉากค้อน → คืนธนาคาร ✓');
 
+        // ฉากใหม่ (เล่นเฉพาะบนเครื่องนี้ ไม่ส่งอะไรไปเซิร์ฟเวอร์): ค่าผ่านทางโหด · การ์ดเก็บได้บินเข้าแถบ · ครบสี · เตือน · โจมตี · นางฟ้ากัน
+        const ids6 = S0.seats.map(x => x.playerId);
+        const demos = [
+            ['toll-huge', { kind: 'toll', from: ids6[0], to: ids6[1], amount: 24000, square: 1, cash: {} }, '#stFx .st-toll.is-huge'],
+            ['card-keep', { kind: 'card', playerId: ids6[1], card: { id: 'k11', title: 'การ์ดหนีเกาะ', icon: 'boat', type: 'keep', kind: 'escape' } }, '#stFx .st-bigcard.is-keep'],
+            ['card-attack', { kind: 'card', playerId: ids6[2], card: { id: 'k14', title: 'แผ่นดินไหว!', icon: 'bolt', type: 'attack', kind: 'quake' } }, '#stFx .st-bigcard.is-attack'],
+            ['colorset', { kind: 'colorSet', playerId: ids6[1], group: 'g1', squares: [1, 2] }, '#stFx .st-banner'],
+            ['threat', { kind: 'threat', playerId: ids6[3], type: 'line', side: 1, squares: [12] }, '#stFx .st-banner.is-warn'],
+            ['attack-swap', { kind: 'attack', attack: 'swap', playerId: ids6[0], victim: ids6[2], square: 9, mine: 4, level: 1, mineLevel: 1 }, '#stFx .st-attack-stamp'],
+            ['blocked', { kind: 'blocked', playerId: ids6[4], by: ids6[0], square: 14, attack: 'forcedSale' }, '#stFx .st-banner']
+        ];
+        for (const [name, fx, sel] of demos) {
+            for (const p of players) await p.page.evaluate(f => window.__setthi.demo(f), fx);
+            await desk.page.waitForSelector(sel, { timeout: 8000 });
+            await delay(name === 'card-keep' ? 700 : 450);
+            await shot(desk, 'juice-' + name);
+            await settle(players);
+        }
+        await setup({ resetProps: true, resetSeats: true, seats: all(0), turnSeat: 0 });
+        console.log('7b. ฉาก: ค่าผ่านทางโหด · การ์ดเก็บได้บินเข้าแถบ · การ์ดโจมตี · ครบสี · เตือนผูกขาด · แลกเมือง · นางฟ้ากัน — ไม่มี error ✓');
+
         // ชนะผูกขาดท่องเที่ยวด้วยเมนูทดสอบ → หน้าสรุปบอกแบบชนะ
         await setup({ resetProps: true, resetSeats: true, seats: all(0), turnSeat: 0 });
         const nm = await emit(phone, 'setthi_debug', { action: 'nearMonopoly', target: S0.seats[0].playerId, type: 'tourist' });

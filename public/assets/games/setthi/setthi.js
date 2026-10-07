@@ -971,14 +971,16 @@
   function passGoPop(id) {
     var salaryFx = (S.fx || []).find(function(x) { return x.kind === 'salary' && x.playerId === id && x.seq > lastPlayedSeq; });
     var at = cellPoint(0);
-    var pop = fxNode('st-salary', '<small>เงินเดือน</small>+' + money(BOARD.salary));
+    var doubled = !!(salaryFx && salaryFx.double);
+    var pop = fxNode('st-salary' + (doubled ? ' is-double' : ''), '<small>' + (doubled ? 'เงินเดือน ×2!' : 'เงินเดือน') + '</small>+' + money(salaryFx ? salaryFx.amount : BOARD.salary));
     A(pop, [
       { transform: 'translate(' + at.x + 'px,' + at.y + 'px) translate(-50%, -50%) scale(0.4)', opacity: 0 },
       { transform: 'translate(' + at.x + 'px,' + (at.y - 40) + 'px) translate(-50%, -50%) scale(1.12)', opacity: 1, offset: 0.25 },
       { transform: 'translate(' + at.x + 'px,' + (at.y - 52) + 'px) translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.75 },
       { transform: 'translate(' + at.x + 'px,' + (at.y - 70) + 'px) translate(-50%, -50%) scale(0.95)', opacity: 0 }
     ], { duration: 1300, easing: 'ease-out' });
-    flyCoins(at, centerOf(chipOf(id)), BOARD.salary);
+    flyCoins(at, centerOf(chipOf(id)), salaryFx ? salaryFx.amount : BOARD.salary);
+    if (doubled) { sfx.fanfare(); burst(at, ['#f5c86b', '#fff3c4', '#45f09a'], 16, 60); }
     sfx.coin();
     if (salaryFx && salaryFx.cash) setCash(salaryFx.cash);
   }
@@ -1084,13 +1086,16 @@
     var to = centerOf(chipOf(f.to));
     if (hasSq) cells[i].classList.add('is-land');
     var owner = seatOf(f.to);
-    var rib = fxNode('st-toll', '<span class="st-toll-k">ค่าผ่านทาง' + (f.festival ? ' <em>งานวัด ×2</em>' : '') + '</span><b>' + money(f.amount) + '</b><span class="st-toll-to">' + tokenHtml(seatOf(f.from)) + '→' + tokenHtml(owner) + '</span>');
-    if (f.from === playerId) { haptic([30, 30]); sfx.bad(); }
+    var huge = f.amount >= 10000;
+    var rib = fxNode('st-toll' + (huge ? ' is-huge' : ''), '<span class="st-toll-k">' + (huge ? '💸 ค่าผ่านทางโหด!' : 'ค่าผ่านทาง') + (f.festival ? ' <em>งานวัด ×' + ((V && V.festivalMult) || 2) + '</em>' : '') + '</span><b>' + money(f.amount) + '</b><span class="st-toll-to">' + tokenHtml(seatOf(f.from)) + '→' + tokenHtml(owner) + '</span>');
+    if (f.from === playerId) { haptic(huge ? [60, 40, 60] : [30, 30]); sfx.bad(); }
+    if (huge && !reduceMotion) { sfx.alarm(); A(el.frame, [{ transform: 'translate(0,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(5px,-3px)' }, { transform: 'translate(-3px,2px)' }, { transform: 'translate(0,0)' }], { duration: 380, fill: 'none' }); }
     await A(rib, [{ transform: 'translate(-50%, -50%) scale(0.6)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.06)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
     await flyCoins(from, to, f.amount);
     setCash(f.cash);
     moneyTag(to, f.amount, true);
-    if (f.to === playerId) haptic(10);
+    burst(to, [owner ? owner.tokenColor : '#f5c86b', '#f5c86b', '#fff3c4'], huge ? 22 : 10, huge ? 70 : 40);
+    if (f.to === playerId) { haptic(10); sfx.coin(); }
     await wait(380);
     await A(rib, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
     if (hasSq) cells[i].classList.remove('is-land');
@@ -1164,6 +1169,15 @@
     ]);
     if (f.playerId === playerId) haptic(12);
     await wait(950);
+    if ((f.card.type === 'keep' || f.card.type === 'shield') && !reduceMotion) {
+      // การ์ดเก็บได้: ย่อบินเข้าแถบของคนนั้น (ป้ายการ์ดโผล่ที่แถบ)
+      var dest = centerOf(chipOf(f.playerId));
+      sfx.coin();
+      await Promise.all([A(card, [{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }, { transform: 'translate(' + (dest.x - cx) + 'px,' + (dest.y - cy) + 'px) translate(-50%, -50%) scale(0.12) rotate(12deg)', opacity: 0.6 }], { duration: 480, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' }), scrim(false, 300)]);
+      var chip = el.strip.querySelector('.st-chip[data-id="' + f.playerId + '"]');
+      if (chip) A(chip, [{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 300, fill: 'none' });
+      return;
+    }
     await Promise.all([A(card, [{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%, -40%) scale(0.86)', opacity: 0 }], { duration: 200 }), scrim(false, 200)]);
   };
 
