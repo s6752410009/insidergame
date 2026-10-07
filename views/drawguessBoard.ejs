@@ -160,6 +160,21 @@
   .dg-choice:active { transform: scale(0.96); }
   .dg-choice .w { font-family: var(--dg-display); font-size: 1.12rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
   .dg-choice .c { font-size: 0.74rem; color: var(--dg-sky); font-weight: 600; }
+  .dg-choice .lv { margin-top: 2px; padding: 0 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; line-height: 1.5; background: var(--dg-sunken); }
+  .dg-choice .lv-1 { color: var(--dg-good); }
+  .dg-choice .lv-2 { color: var(--dg-sky); }
+  .dg-choice .lv-3 { color: var(--dg-hot); }
+  /* 🚩 แจ้งว่าคนวาดเขียนตัวหนังสือ — มุมขวาบนของภาพ (คนทาย) · คนวาดเห็นเฉพาะตอนมีคนแจ้ง */
+  .dg-report {
+    position: absolute; top: 8px; right: 8px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 4px;
+    min-width: 44px; height: 44px; padding: 0 10px; border-radius: 999px;
+    border: 1px solid oklch(0.48 0.04 255 / 0.55); background: oklch(0.17 0.03 255 / 0.74); color: #fff;
+    font-family: var(--dg-display); font-weight: 700; font-size: 0.9rem; cursor: pointer;
+  }
+  .dg-report.is-on { background: var(--dg-hot); border-color: transparent; }
+  .dg-report[aria-disabled="true"] { cursor: default; background: color-mix(in oklch, var(--dg-hot) 70%, transparent); }
+  .dg-report:empty { display: none; }
   .dg-dots::after { content: '…'; display: inline-block; animation: dgDots 1.2s steps(3, end) infinite; overflow: hidden; vertical-align: bottom; width: 1.2em; text-align: left; }
   @keyframes dgDots { from { width: 0.3em; } to { width: 1.2em; } }
   .dg-deltas { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; width: 100%; max-width: 360px; }
@@ -284,6 +299,7 @@
   .dg-next { margin: 2px 0 0; font-size: 0.9rem; font-weight: 600; color: var(--dg-sky); overflow-wrap: anywhere; }
   .dg-next.is-me { color: var(--dg-gold); }
   .dg-final .nm .tl { display: block; font-size: 0.74rem; font-weight: 500; line-height: 1.3; color: var(--dg-muted); white-space: normal; overflow-wrap: anywhere; }
+  .dg-feed li.k-report { text-align: center; color: oklch(0.85 0.1 30); font-size: 0.8rem; font-weight: 600; padding: 2px 8px; }
   .dg-feed li.k-done { text-align: center; color: var(--dg-gold); font-weight: 700; background: color-mix(in oklch, var(--dg-gold) 12%, transparent); }
   /* แถบข้อตกลงของเว็บ (8 วิแรก) ย้ายลงล่าง ไม่บังนาฬิกา/ปุ่มบน */
   html.dg-active #ppTermsBar { top: auto; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
@@ -442,6 +458,7 @@
             <canvas id="dgCanvas" aria-label="ภาพที่กำลังวาด" role="img"></canvas>
             <div class="dg-overlay" id="dgOverlay" hidden></div>
             <div class="dg-late" id="dgLate" hidden>เพิ่งเข้ามา — ทายได้ตั้งแต่ตาถัดไป</div>
+            <button type="button" class="dg-report" id="dgReportBtn" hidden aria-label="แจ้งว่าคนวาดเขียนตัวหนังสือ"></button>
           </div>
         </div>
         <div class="dg-toolbar" id="dgToolbar" hidden role="toolbar" aria-label="เครื่องมือวาด">
@@ -852,7 +869,7 @@ $(function() {
           if (m.ch) prevMaskOpen.add(i);
           return '<span class="slot' + (m.ch ? ' is-open' : '') + (isNew ? ' is-new' : '') + '">' + (m.ch ? esc(m.ch) : '') + '</span>';
         }).join('');
-        html = '<p class="dg-word-label">✏️ ' + esc(S.drawerName || '') + (S.drawDone ? ' วาดเสร็จแล้ว!' : ' วาดอยู่') + (S.wordCategory ? ' · หมวด' + esc(S.wordCategory) : '') + '</p>' +
+        html = '<p class="dg-word-label">✏️ ' + esc(S.drawerName || '') + (S.drawDone ? ' วาดเสร็จแล้ว!' : ' วาดอยู่') + (S.wordCategory ? ' · ' + (S.wordCategory === 'คำของห้อง' ? '📝 ' : 'หมวด') + esc(S.wordCategory) : '') + (S.settings && S.settings.hints === false ? ' · ไม่มีใบ้' : '') + '</p>' +
           '<div class="dg-mask" aria-label="คำใบ้ ' + letters + ' ตัว">' + slots + '<span class="len">' + letters + ' ตัว</span>' + count + '</div>';
       }
     } else if (S.phase === 'reveal') {
@@ -875,7 +892,8 @@ $(function() {
     timeout: 'หมดเวลา',
     away: 'คนวาดหลุด — ข้ามตา',
     left: 'คนวาดออกจากเกม',
-    skipped: 'หัวห้องข้ามตานี้'
+    skipped: 'หัวห้องข้ามตานี้',
+    reported: '🚩 โหวตว่าเขียนตัวหนังสือ'
   };
   function renderOverlay() {
     const node = document.getElementById('dgOverlay');
@@ -887,7 +905,8 @@ $(function() {
       if (me.isDrawer) {
         html = '<div class="dg-ov"><p class="dg-ov-kicker">ตาคุณวาด!</p><p class="dg-ov-title">เลือกคำที่จะวาด</p>' +
           '<div class="dg-choices">' + (S.choices || []).map((c, i) =>
-            '<button type="button" class="dg-choice" data-index="' + i + '"><span class="w">' + esc(c.word) + '</span><span class="c">' + esc(c.category) + '</span></button>').join('') + '</div>' +
+            '<button type="button" class="dg-choice" data-index="' + i + '"><span class="w">' + esc(c.word) + '</span><span class="c">' + esc(c.category) + '</span>' +
+              (c.levelName ? '<span class="lv lv-' + (Number(c.level) || 2) + '">' + esc(c.levelName) + '</span>' : '') + '</button>').join('') + '</div>' +
           '<p class="dg-ov-sub">ไม่เลือกภายใน ' + Math.round((S.chooseMs || 12000) / 1000) + ' วิ ระบบสุ่มให้</p></div>';
       } else {
         const d = playerById(S.drawerId) || { name: S.drawerName };
@@ -912,7 +931,8 @@ $(function() {
         }).join('');
         html = '<div class="dg-ov"><p class="dg-ov-kicker">' + esc(REASON_TEXT[lt.reason] || 'เฉลย') + ' · คำนี้คือ</p>' +
           '<p class="dg-ov-word">' + esc(lt.word) + '</p>' +
-          (rows ? '<ol class="dg-deltas">' + rows + '</ol>' : '<p class="dg-ov-sub">ไม่มีใครทายถูกเลย</p>') + next + '</div>';
+          (lt.voided ? '<p class="dg-ov-sub">ตานี้ไม่นับแต้ม (ห้ามเขียนตัวหนังสือ/ตัวเลข)</p>'
+            : (rows ? '<ol class="dg-deltas">' + rows + '</ol>' : '<p class="dg-ov-sub">ไม่มีใครทายถูกเลย</p>')) + next + '</div>';
       }
     }
     if (!html) {
@@ -1120,8 +1140,56 @@ $(function() {
     toolbar.hidden = !(S.phase === 'draw' && me.isDrawer);
     stage.classList.toggle('can-draw', drawing);
     document.getElementById('dgLate').hidden = !(S.phase === 'draw' && me.late);
+    renderReport();
     if (wasHidden !== toolbar.hidden) layoutCanvas();
   }
+
+  // ---------- 🚩 แจ้งว่าเขียนตัวหนังสือ ----------
+  function renderReport() {
+    const btn = document.getElementById('dgReportBtn');
+    const me = self();
+    const votes = Number(S.reportVotes) || 0;
+    const need = Number(S.reportNeed) || 0;
+    const show = S.phase === 'draw' && (me.canReport || (votes > 0 && (me.isDrawer || me.inGame)));
+    btn.hidden = !show;
+    if (!show) return;
+    const passive = !me.canReport;
+    btn.setAttribute('aria-disabled', passive ? 'true' : 'false');
+    btn.classList.toggle('is-on', !!me.reported);
+    btn.textContent = '🚩' + (votes ? ' ' + votes + '/' + need : '');
+    btn.setAttribute('aria-label', me.isDrawer
+      ? 'มีคนแจ้งว่าเขียนตัวหนังสือ ' + votes + ' จาก ' + need + ' — ลบตัวหนังสือออก'
+      : (me.reported ? 'ยกเลิกแจ้ง' : 'แจ้งว่าคนวาดเขียนตัวหนังสือ'));
+  }
+  let reportBusy = false;
+  function sendReport() {
+    if (reportBusy) return;
+    reportBusy = true;
+    socket.emit('drawguess_report', { roomId: roomId, turnNo: S.turnNo }, function(res) {
+      reportBusy = false;
+      if (!res || !res.success) { showError(res && res.error); return; }
+      const r = res.result || {};
+      if (r.result === 'unreported') toast('ยกเลิกแจ้งแล้ว');
+      else if (r.result === 'reported') toast('แจ้งแล้ว ' + r.votes + '/' + r.need);
+      haptic(10);
+    });
+  }
+  $('#dgReportBtn').on('click', function() {
+    const me = self();
+    if (this.getAttribute('aria-disabled') === 'true') {
+      if (me.isDrawer) toast('มีคนแจ้งว่าเขียนตัวหนังสือ — ลบออกนะ', true);
+      return;
+    }
+    if (!me.canReport) return;
+    if (me.reported) { sendReport(); return; }
+    const need = Number(S.reportNeed) || 1;
+    Swal.fire({
+      icon: 'warning', title: 'คนวาดเขียนตัวหนังสือ?',
+      html: '<div style="line-height:1.6;">ห้ามเขียนตัวหนังสือ/ตัวเลข<br>แจ้งครบ ' + need + ' คน = ตานี้ไม่นับแต้มทุกคน</div>',
+      showCancelButton: true, confirmButtonText: '🚩 แจ้ง', cancelButtonText: 'ไม่แจ้ง',
+      background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b'
+    }).then(r => { if (r.isConfirmed && self().canReport && !self().reported) sendReport(); });
+  });
 
   // ---------- fx ----------
   function flashBanner(text, good) {
@@ -1282,9 +1350,10 @@ $(function() {
       title: '🎨 วาดแล้วทาย เล่นยังไง',
       html: '<div style="text-align:left; line-height:1.6; font-family:\'Bai Jamjuree\',sans-serif;">' +
         '<p>ทุกรอบ ทุกคนได้วาดคนละ 1 ตา ตามลำดับที่นั่ง</p>' +
-        '<p><strong>คนวาด</strong> เลือก 1 ใน 3 คำ แล้ววาดให้เพื่อนทาย — ห้ามเขียนตัวหนังสือ/ตัวเลข · วาดเสร็จก่อนเวลากด <strong>✅ วาดเสร็จแล้ว</strong> เพื่อนจะเหลือเวลาทาย ' + Math.round((S.doneGuessMs || 15000) / 1000) + ' วิ (แต้มคนทายไม่ลด)</p>' +
+        '<p><strong>คนวาด</strong> เลือก 1 ใน 3 คำ (ง่าย/กลาง/ยาก) แล้ววาดให้เพื่อนทาย — ห้ามเขียนตัวหนังสือ/ตัวเลข · วาดเสร็จก่อนเวลากด <strong>✅ วาดเสร็จแล้ว</strong> เพื่อนจะเหลือเวลาทาย ' + Math.round((S.doneGuessMs || 15000) / 1000) + ' วิ (แต้มคนทายไม่ลด)</p>' +
         '<p><strong>คนทาย</strong> พิมพ์คำตอบในช่องล่างได้ไม่จำกัด · ทายถูกแล้วคำจะไม่โผล่ให้คนอื่นเห็น · ใกล้แล้วจะขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว</p>' +
-        '<p><strong>คำใบ้</strong> เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิด</p>' +
+        '<p><strong>คำใบ้</strong> ช่อง _ _ _ = จำนวนตัว · เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิด (หัวห้องปิดใบ้ได้)</p>' +
+        '<p><strong>🚩 เขียนตัวหนังสือ</strong> คนวาดเขียนตัวหนังสือ/ตัวเลข กด 🚩 บนภาพ · แจ้งเกินครึ่ง = ตานี้ไม่นับแต้มทุกคน</p>' +
         '<p><strong>แต้ม</strong> ทายถูกเร็วได้เยอะ + โบนัสคนแรก ๆ · คนวาดได้ +40 ต่อคนที่ทายถูก</p>' +
         '<p><strong>ทุกคนทายถูก</strong> ตาจบทันที ไม่ต้องรอเวลา · หัวห้องกด ⏭ ข้ามตา ได้ถ้าคนวาดไม่อยู่</p>' +
         '<p>ครบทุกรอบ แต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</p></div>',

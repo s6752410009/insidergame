@@ -3,8 +3,11 @@
  *
  * ทุกรอบ ทุกคนได้วาดคนละ 1 ตา ตามลำดับที่นั่ง (ตั้งได้ 2/3/4 รอบ)
  * ตาหนึ่ง: คนวาดเลือก 1 ใน 3 คำ (choose, 12 วิ ไม่เลือก = สุ่มให้) → วาด (draw, 60/80/100 วิ)
+ *          3 คำคละความยาก ง่าย/กลาง/ยาก (คอลัมน์ level ใน words/drawguess-th.csv) · มีคำของห้อง = 1 ใน 3 เป็นคำของห้อง
  *          คนอื่นพิมพ์ทาย · ทายถูกไม่โชว์คำ แค่ "✅ ชื่อ ทายถูก!" · ใกล้แล้วได้ "เกือบแล้ว!" เฉพาะตัว
+ *          คำใบ้ = ช่องตามกลุ่มอักษรที่เห็นเป็น 1 ตัว (พยัญชนะ+สระบน/ล่าง+วรรณยุกต์) เปิดตัวที่มีพยัญชนะก่อน (ปิดได้ในห้อง)
  *          คนวาดกด "วาดเสร็จแล้ว" ได้ 1 ครั้ง/ตา → เวลาที่เหลือถูกตัดเหลือ ≤ 15 วิ (แต้มยังคิดจากนาฬิกาเดิม)
+ *          คนทายกด 🚩 "เขียนตัวหนังสือ" ได้ — เกินครึ่งของคนทาย = ตานี้โมฆะ ไม่มีใครได้แต้ม
  *          → เฉลย (reveal) พร้อมแต้มที่ได้ตานี้ → ตาถัดไป
  * แต้ม: ทายถูกเร็วได้มาก + โบนัสลำดับ (คนแรก/สอง/...) · คนวาดได้ต่อคนที่ทายถูก
  * ชนะ: แต้มรวมสูงสุดตอนจบ (เสมอ = ชนะร่วม)
@@ -37,7 +40,18 @@ const CATEGORY_LIST = [
     { id: 'vehicles', name: 'ยานพาหนะ', icon: '🚲' }
 ];
 const CATEGORY_BY_NAME = Object.fromEntries(CATEGORY_LIST.map(c => [c.name, c]));
-const CATEGORY_BY_ID = Object.fromEntries(CATEGORY_LIST.map(c => [c.id, c]));
+// คำของห้อง (หัวห้องพิมพ์เอง) — ไม่ใช่หมวดที่เลือกในห้องได้ แค่ป้ายบอกที่มา
+const CUSTOM_CATEGORY = { id: 'custom', name: 'คำของห้อง', icon: '📝' };
+const CATEGORY_BY_ID = Object.fromEntries([...CATEGORY_LIST, CUSTOM_CATEGORY].map(c => [c.id, c]));
+
+// ความยากของคำ (แบบการ์ด Pictionary ที่มีหมวด "ยาก") — 3 ตัวเลือกพยายามให้ครบ ง่าย/กลาง/ยาก
+const LEVEL_NAMES = { 1: 'ง่าย', 2: 'กลาง', 3: 'ยาก' };
+const DEFAULT_LEVEL = 2;
+
+// คำของห้อง (แบบ custom words ของ skribbl): สูงสุด 200 คำ · คำละ ≤ 20 ตัว · ใช้ "เฉพาะคำของห้อง" ได้เมื่อมี ≥ 10 คำ
+const CUSTOM_MAX_WORDS = 200;
+const CUSTOM_WORD_MAX_LETTERS = 20;
+const CUSTOM_ONLY_MIN = 10;
 
 const CHOOSE_MS = Number(process.env.DRAWGUESS_CHOOSE_MS) || 12000;
 const REVEAL_MS = Number(process.env.DRAWGUESS_REVEAL_MS) || 6000;
@@ -55,6 +69,8 @@ const GUESS_COOLDOWN_MS = 350;
 const FEED_LIMIT = 80;
 const FEED_CLIENT_LIMIT = 50;
 const HINT_MAX_RATIO = 0.4;
+// อักษรที่เปิดแล้วช่วยน้อย (สระหน้า/สระหลัง/ไม้ยมก) — เปิดหลังสุด
+const WEAK_HINT_START = /^[เแโใไาะำๆฯ]/;
 const HINT_START_RATIO = 0.3;
 const ROOM_WORD_MEMORY = 300;
 
@@ -169,10 +185,11 @@ function parseWordList(text) {
         .filter(Boolean)
         .map(line => line.split(',').map(cell => cell.trim()))
         .filter(cells => cells.length >= 2 && CATEGORY_BY_NAME[cells[0]] && cells[1])
-        .map(([category, word, aliases]) => ({
+        .map(([category, word, aliases, level]) => ({
             category: CATEGORY_BY_NAME[category].id,
             word: word.normalize('NFC'),
-            aliases: String(aliases || '').split('|').map(a => a.trim().normalize('NFC')).filter(Boolean)
+            aliases: String(aliases || '').split('|').map(a => a.trim().normalize('NFC')).filter(Boolean),
+            level: LEVEL_NAMES[Number(level)] ? Number(level) : DEFAULT_LEVEL
         }))
         .filter(entry => {
             if (seen.has(entry.word)) return false;
@@ -189,35 +206,86 @@ try {
 }
 if (WORDS.length < CHOICE_COUNT) {
     WORDS = [
-        { category: 'animals', word: 'แมว', aliases: [] },
-        { category: 'food', word: 'ไข่ดาว', aliases: [] },
-        { category: 'objects', word: 'ร่ม', aliases: [] },
-        { category: 'nature', word: 'ดวงอาทิตย์', aliases: ['พระอาทิตย์'] }
+        { category: 'animals', word: 'แมว', aliases: [], level: 1 },
+        { category: 'food', word: 'ไข่ดาว', aliases: [], level: 1 },
+        { category: 'objects', word: 'ร่ม', aliases: [], level: 2 },
+        { category: 'nature', word: 'ดวงอาทิตย์', aliases: ['พระอาทิตย์'], level: 3 }
     ];
 }
 const WORD_BY_TEXT = new Map(WORDS.map(entry => [entry.word, entry]));
+
+/**
+ * คำของห้อง: รับข้อความ (คั่นด้วยจุลภาค/ขึ้นบรรทัดใหม่) หรืออาร์เรย์ → คำที่ใช้ได้ ไม่ซ้ำ ไม่เกิน CUSTOM_MAX_WORDS
+ * คำที่เทียบแล้วว่าง (มีแต่เครื่องหมาย) หรือยาวเกิน CUSTOM_WORD_MAX_LETTERS ตัว ถูกตัดทิ้ง
+ */
+function sanitizeCustomWords(raw) {
+    const items = Array.isArray(raw)
+        ? raw
+        : String(raw == null ? '' : raw).split(/[\n,]+/);
+    const seen = new Set();
+    const out = [];
+    for (const item of items) {
+        if (out.length >= CUSTOM_MAX_WORDS) break;
+        if (typeof item !== 'string' && typeof item !== 'number') continue;
+        const word = cleanText(item, 60);
+        const norm = normalizeGuess(word);
+        if (!norm || seen.has(norm)) continue;
+        if (graphemes(word).length > CUSTOM_WORD_MAX_LETTERS) continue;
+        seen.add(norm);
+        out.push(word);
+    }
+    return out;
+}
+
+function flagOn(value, fallback) {
+    if (value === undefined || value === null || value === '') return fallback;
+    return !(value === false || value === 0 || value === '0' || value === 'false' || value === 'off');
+}
 
 function sanitizeSettings(raw = {}) {
     const rounds = Number(raw.drawguessRounds);
     const seconds = Number(raw.drawguessSeconds);
     const category = String(raw.drawguessCategory || 'mixed');
+    const customWords = sanitizeCustomWords(raw.drawguessCustomWords);
     return {
         rounds: ROUND_OPTIONS.includes(rounds) ? rounds : DEFAULT_ROUNDS,
         drawSeconds: DRAW_SECONDS_OPTIONS.includes(seconds) ? seconds : DEFAULT_DRAW_SECONDS,
-        category: CATEGORY_BY_ID[category] ? category : 'mixed'
+        category: CATEGORY_LIST.some(c => c.id === category) ? category : 'mixed',
+        hints: flagOn(raw.drawguessHints, true),
+        customWords,
+        customOnly: flagOn(raw.drawguessCustomOnly, false) && customWords.length >= CUSTOM_ONLY_MIN
     };
 }
 
-function wordPool(category) {
-    return category && category !== 'mixed'
-        ? WORDS.filter(entry => entry.category === category)
-        : WORDS;
+function customEntries(settings) {
+    return (settings?.customWords || []).map(word => {
+        const known = WORD_BY_TEXT.get(word);
+        return { category: CUSTOM_CATEGORY.id, word, aliases: known ? known.aliases : [], level: 0 };
+    });
 }
 
-/** สุ่ม 3 คำที่เกมนี้ (และห้องนี้ ล่าสุด) ยังไม่เคยเสนอ — โหมดรวมพยายามให้คนละหมวด */
+function wordPool(settings) {
+    const custom = customEntries(settings);
+    if (settings?.customOnly && custom.length) return custom;
+    const category = settings?.category;
+    const builtIn = category && category !== 'mixed'
+        ? WORDS.filter(entry => entry.category === category)
+        : WORDS;
+    const customSet = new Set(custom.map(entry => entry.word));
+    return [...builtIn.filter(entry => !customSet.has(entry.word)), ...custom];
+}
+
+/**
+ * สุ่ม 3 คำที่เกมนี้ (และห้องนี้ ล่าสุด) ยังไม่เคยเสนอ
+ * - ปกติ: ง่าย 1 · กลาง 1 · ยาก 1 (ขาดระดับไหนเติมจากที่มี) · โหมดรวมพยายามให้คนละหมวด
+ * - มีคำของห้อง (ไม่ได้ใช้เฉพาะคำของห้อง): ช่องหนึ่งเป็นคำของห้อง + ง่าย 1 + กลาง/ยาก 1
+ * - เฉพาะคำของห้อง: สุ่ม 3 คำจากคำของห้อง
+ * เรียงจากง่ายไปยาก (คำของห้องอยู่ท้าย)
+ */
 function pickChoices(room) {
     const state = room.gameState;
-    const pool = wordPool(state.settings?.category);
+    const settings = state.settings || {};
+    const pool = wordPool(settings);
     const usedInGame = new Set(state.usedWords || []);
     const roomRecent = new Set(Array.isArray(room.drawguessUsedWords) ? room.drawguessUsedWords : []);
     let candidates = pool.filter(entry => !usedInGame.has(entry.word) && !roomRecent.has(entry.word));
@@ -228,24 +296,42 @@ function pickChoices(room) {
         candidates = pool;
     }
     const shuffled = shuffle(candidates);
-    let picks = [];
-    if (state.settings?.category === 'mixed') {
-        const usedCategories = new Set();
-        shuffled.forEach(entry => {
-            if (picks.length < CHOICE_COUNT && !usedCategories.has(entry.category)) {
-                picks.push(entry);
-                usedCategories.add(entry.category);
-            }
-        });
+    const hasCustom = !settings.customOnly && shuffled.some(entry => entry.category === CUSTOM_CATEGORY.id);
+    const isCustom = entry => entry.category === CUSTOM_CATEGORY.id;
+    const levelIs = level => entry => !isCustom(entry) && entry.level === level;
+    let slots;
+    if (settings.customOnly) {
+        slots = [() => true, () => true, () => true];
+    } else if (hasCustom) {
+        slots = [isCustom, levelIs(1), entry => !isCustom(entry) && entry.level >= 2];
+    } else {
+        slots = [levelIs(1), levelIs(2), levelIs(3)];
     }
-    shuffled.forEach(entry => {
-        if (picks.length < CHOICE_COUNT && !picks.includes(entry)) picks.push(entry);
+    const spreadCategories = settings.category === 'mixed';
+    const picks = [];
+    const usedCategories = new Set();
+    const take = entry => { picks.push(entry); usedCategories.add(entry.category); };
+    const open = [];
+    slots.forEach(match => {
+        const found = shuffled.find(entry => !picks.includes(entry) && match(entry)
+            && (!spreadCategories || !usedCategories.has(entry.category)))
+            || shuffled.find(entry => !picks.includes(entry) && match(entry));
+        if (found) take(found);
+        else open.push(match);
     });
-    picks = picks.slice(0, CHOICE_COUNT);
-    state.usedWords = [...(state.usedWords || []), ...picks.map(entry => entry.word)];
-    const recent = [...(Array.isArray(room.drawguessUsedWords) ? room.drawguessUsedWords : []), ...picks.map(entry => entry.word)];
+    // ขาดระดับไหน (เช่นหมวดอาชีพไม่มีคำง่าย) เติมจากคำอื่น — ยังพยายามให้คนละหมวด
+    open.forEach(() => {
+        const found = shuffled.find(entry => !picks.includes(entry) && !isCustom(entry)
+            && (!spreadCategories || !usedCategories.has(entry.category)))
+            || shuffled.find(entry => !picks.includes(entry));
+        if (found) take(found);
+    });
+    const ordered = picks.slice(0, CHOICE_COUNT)
+        .sort((a, b) => (a.level || 9) - (b.level || 9));
+    state.usedWords = [...(state.usedWords || []), ...ordered.map(entry => entry.word)];
+    const recent = [...(Array.isArray(room.drawguessUsedWords) ? room.drawguessUsedWords : []), ...ordered.map(entry => entry.word)];
     room.drawguessUsedWords = recent.slice(-ROOM_WORD_MEMORY);
-    return picks.map(entry => ({ word: entry.word, category: entry.category }));
+    return ordered.map(entry => ({ word: entry.word, category: entry.category, level: entry.level || 0, aliases: entry.aliases || [] }));
 }
 
 // ---------------------------------------------------------------- state
@@ -272,6 +358,10 @@ function createInitialState() {
         word: null,
         wordCategory: null,
         hintPlan: [],
+        wordLevel: 0,
+        wordAliases: [],
+        reports: {},
+        reportsAnnounced: {},
         guessed: {},
         turnScores: {},
         lastTurn: null,
@@ -563,11 +653,18 @@ function chooseWord(room, playerId, index, context = {}, now = Date.now()) {
     return startDrawing(room, state.choices[i], now);
 }
 
-function hintPlanFor(word, drawMs) {
+/**
+ * แผนเปิดคำใบ้: ไม่เกิน 40% ของช่อง · เริ่มหลัง 30% ของเวลาวาด · ช่องที่ขึ้นต้นด้วยพยัญชนะ/ตัวอักษรเปิดก่อน
+ * (สระหน้า เ แ โ ใ ไ / สระหลัง า ะ ำ แทบไม่ช่วย เลยเปิดทีหลัง) · enabled=false (ห้องปิดคำใบ้) = ไม่เปิดเลย
+ */
+function hintPlanFor(word, drawMs, enabled = true) {
+    if (!enabled) return [];
     const letters = graphemes(word);
     const slots = letters.map((ch, i) => (/^\s+$/.test(ch) ? -1 : i)).filter(i => i >= 0);
     const count = Math.floor(slots.length * HINT_MAX_RATIO);
-    const picks = shuffle(slots).slice(0, count);
+    const strong = slots.filter(i => !WEAK_HINT_START.test(letters[i]));
+    const weak = slots.filter(i => WEAK_HINT_START.test(letters[i]));
+    const picks = [...shuffle(strong), ...shuffle(weak)].slice(0, count);
     return picks.map((index, k) => ({
         index,
         offset: Math.round(drawMs * (HINT_START_RATIO + 0.6 * (k + 1) / (count + 1)))
@@ -578,13 +675,19 @@ function startDrawing(room, choice, now) {
     const state = room.gameState;
     state.word = choice.word;
     state.wordCategory = choice.category;
+    state.wordLevel = choice.level || 0;
+    state.wordAliases = Array.isArray(choice.aliases) ? choice.aliases : [];
+    state.hintsShown = 0;
+    state.reports = {};
+    state.reportsAnnounced = {};
     state.choices = [];
     state.drawMs = drawMsFor(state);
     setPhase(state, 'draw', state.drawMs, now);
     // แต้มคิดจากนาฬิกาเดิมเสมอ — คนวาดกดเสร็จก่อนก็ไม่ทำให้คนทายได้แต้มน้อยลง
     state.scoreEndsAt = state.phaseEndsAt;
     state.drawDoneAt = null;
-    state.hintPlan = hintPlanFor(choice.word, state.drawMs).map(h => ({ index: h.index, at: now + h.offset }));
+    state.hintPlan = hintPlanFor(choice.word, state.drawMs, state.settings?.hints !== false)
+        .map(h => ({ index: h.index, at: now + h.offset }));
     pushFeed(state, { kind: 'system', icon: '✏️', text: `${nameOf(state, state.drawerId)} เริ่มวาดแล้ว — พิมพ์ทายได้เลย` }, now);
     pushFx(state, { kind: 'draw', turnNo: state.turnNo });
     return state;
@@ -617,7 +720,10 @@ function guessPoints(state, order, now) {
 
 function answerForms(state) {
     const entry = WORD_BY_TEXT.get(state.word);
-    return [state.word, ...((entry && entry.aliases) || [])].map(normalizeGuess).filter(Boolean);
+    const aliases = Array.isArray(state.wordAliases) && state.wordAliases.length
+        ? state.wordAliases
+        : ((entry && entry.aliases) || []);
+    return [...new Set([state.word, ...aliases].map(normalizeGuess).filter(Boolean))];
 }
 
 /** ผู้ทายที่ยังต้องรอ: อยู่ในเกม ไม่ใช่คนวาด เข้ามาก่อนตานี้ และยังอยู่ (ไม่หลุดนาน) */
@@ -691,6 +797,62 @@ function submitGuess(room, playerId, text, context = {}, now = Date.now()) {
     return { result: 'wrong' };
 }
 
+// ---------------------------------------------------------------- report (เขียนตัวหนังสือ)
+
+/** ต้องได้เสียงเกินครึ่งของคนทายที่อยู่ตอนนี้ (2 คน = ทั้งคู่ · 3 = 2 · 4 = 3 · 5 = 3) */
+function reportNeedFor(voterCount) {
+    return voterCount <= 1 ? 1 : Math.floor(voterCount / 2) + 1;
+}
+
+function reportStatus(room, now) {
+    const state = room.gameState;
+    const voters = eligibleGuessers(room, now);
+    const votes = voters.filter(id => state.reports && state.reports[id]).length;
+    return { votes, need: reportNeedFor(voters.length), voters };
+}
+
+function reportPassed(room, now) {
+    const state = room.gameState;
+    if (state.phase !== 'draw' || !state.word) return false;
+    const { votes, need } = reportStatus(room, now);
+    return votes > 0 && votes >= need;
+}
+
+/**
+ * คนทายกด 🚩 "คนวาดเขียนตัวหนังสือ/ตัวเลข" (กติกา Pictionary: ห้ามเขียนตัวอักษร ตัวเลข)
+ * ระบบตรวจภาพเองไม่ได้ จึงให้วงตัดสิน: กดซ้ำ = ยกเลิก · เสียงเกินครึ่ง = ตานี้โมฆะ (ไม่มีใครได้แต้มตานี้ รวมคนวาด)
+ * ทุกคนเห็นแค่จำนวน (ไม่บอกว่าใครกด) · ประกาศในแชทครั้งแรกของแต่ละคน ให้คนวาดรู้ตัวและลบทัน
+ */
+function reportDrawing(room, playerId, context = {}, now = Date.now()) {
+    const state = assertPlaying(room);
+    syncRoster(room, now);
+    if (state.phase !== 'draw' || !state.word) throw new Error('แจ้งได้เฉพาะตอนกำลังวาด');
+    assertTurn(state, context);
+    if (playerId === state.drawerId) throw new Error('คนวาดแจ้งตัวเองไม่ได้');
+    if (!isActive(state, playerId)) throw new Error('คุณไม่ได้อยู่ในเกมนี้');
+    if ((state.roster[playerId]?.joinedTurn || 0) >= state.turnNo) throw new Error('เพิ่งเข้ามา — แจ้งได้ตั้งแต่ตาถัดไป');
+    if (!state.reports || typeof state.reports !== 'object') state.reports = {};
+    if (!state.reportsAnnounced || typeof state.reportsAnnounced !== 'object') state.reportsAnnounced = {};
+    if (state.reports[playerId]) {
+        delete state.reports[playerId];
+        bumpStep(state);
+        const status = reportStatus(room, now);
+        return { result: 'unreported', votes: status.votes, need: status.need };
+    }
+    state.reports[playerId] = now;
+    const status = reportStatus(room, now);
+    if (!state.reportsAnnounced[playerId]) {
+        state.reportsAnnounced[playerId] = now;
+        pushFeed(state, { kind: 'report', icon: '🚩', text: `มีคนแจ้งว่าเขียนตัวหนังสือ (${status.votes}/${status.need})` }, now);
+    }
+    bumpStep(state);
+    if (status.votes >= status.need) {
+        endTurn(room, 'reported', now);
+        return { result: 'voided', votes: status.votes, need: status.need };
+    }
+    return { result: 'reported', votes: status.votes, need: status.need };
+}
+
 // ---------------------------------------------------------------- turn end
 
 function tallyOf(state, id) {
@@ -721,8 +883,16 @@ function endTurn(room, reason, now) {
     const drawerId = state.drawerId;
     const guessedIds = Object.keys(state.guessed || {});
     const drew = !!state.word;
-    if (drew) tallyTurn(room, drawerId, guessedIds, now);
-    if (drew && drawerId && guessedIds.length) {
+    // โหวตว่าเขียนตัวหนังสือ: ตานี้โมฆะ — คืนแต้มที่คนทายได้ไปแล้ว คนวาดไม่ได้แต้ม ไม่นับในสรุปรายคน
+    const voided = drew && reason === 'reported';
+    if (voided) {
+        Object.entries(state.turnScores || {}).forEach(([id, points]) => {
+            state.scores[id] = Math.max(0, (state.scores[id] || 0) - (Number(points) || 0));
+        });
+        state.turnScores = {};
+    }
+    if (drew && !voided) tallyTurn(room, drawerId, guessedIds, now);
+    if (drew && !voided && drawerId && guessedIds.length) {
         const drawerPoints = DRAWER_POINTS_PER_GUESS * guessedIds.length;
         state.turnScores[drawerId] = (state.turnScores[drawerId] || 0) + drawerPoints;
         state.scores[drawerId] = (state.scores[drawerId] || 0) + drawerPoints;
@@ -745,13 +915,19 @@ function endTurn(room, reason, now) {
         drawerId,
         drawerName: nameOf(state, drawerId),
         reason,
+        voided,
         guessedCount: guessedIds.length,
         deltas
     };
     if (drew) {
         state.turnsPlayed = (Number(state.turnsPlayed) || 0) + 1;
-        pushFeed(state, { kind: 'reveal', icon: '💡', text: `คำนี้คือ “${state.word}”` }, now);
-        pushHistory(state, '🎨', `${nameOf(state, drawerId)} วาด “${state.word}” — ทายถูก ${guessedIds.length} คน`, 'turn', now);
+        if (voided) {
+            pushFeed(state, { kind: 'reveal', icon: '🚩', text: `โหวตแล้ว: เขียนตัวหนังสือ — ตานี้ไม่นับแต้ม · คำนี้คือ “${state.word}”` }, now);
+            pushHistory(state, '🚩', `${nameOf(state, drawerId)} วาด “${state.word}” — โดนโหวตว่าเขียนตัวหนังสือ ตานี้ไม่นับแต้ม`, 'turn', now);
+        } else {
+            pushFeed(state, { kind: 'reveal', icon: '💡', text: `คำนี้คือ “${state.word}”` }, now);
+            pushHistory(state, '🎨', `${nameOf(state, drawerId)} วาด “${state.word}” — ทายถูก ${guessedIds.length} คน`, 'turn', now);
+        }
     } else {
         pushFeed(state, { kind: 'system', icon: '⏭️', text: `ข้ามตา ${nameOf(state, drawerId)}` }, now);
     }
@@ -903,6 +1079,10 @@ function tick(room, now = Date.now()) {
             endTurn(room, 'timeout', now);
             return true;
         }
+        if (reportPassed(room, now)) {
+            endTurn(room, 'reported', now);
+            return true;
+        }
         if (everyoneGuessed(room, now)) {
             endTurn(room, 'all', now);
             return true;
@@ -949,6 +1129,9 @@ function handlePlayerLeft(room, playerId, now = Date.now()) {
     }
     if (state.drawerId === playerId && (state.phase === 'choose' || state.phase === 'draw')) {
         return endTurn(room, 'left', now);
+    }
+    if (reportPassed(room, now)) {
+        return endTurn(room, 'reported', now);
     }
     if (state.phase === 'draw' && everyoneGuessed(room, now)) {
         return endTurn(room, 'all', now);
@@ -1128,6 +1311,7 @@ function buildClientState(room, viewerId, now = Date.now()) {
     }
 
     const cat = CATEGORY_BY_ID[state.settings?.category];
+    const report = phase === 'draw' && state.word ? reportStatus(room, now) : { votes: 0, need: 0, voters: [] };
     const nextId = phase === 'reveal' && !state.waiting ? peekNextDrawer(state) : null;
     return {
         mode: MODE,
@@ -1145,7 +1329,10 @@ function buildClientState(room, viewerId, now = Date.now()) {
             rounds: state.settings?.rounds || DEFAULT_ROUNDS,
             drawSeconds: state.settings?.drawSeconds || DEFAULT_DRAW_SECONDS,
             category: state.settings?.category || 'mixed',
-            categoryName: cat ? cat.name : 'รวมทุกหมวด'
+            categoryName: cat ? cat.name : 'รวมทุกหมวด',
+            hints: state.settings?.hints !== false,
+            customCount: (state.settings?.customWords || []).length,
+            customOnly: !!state.settings?.customOnly
         },
         round: state.round || 0,
         turnNo: state.turnNo || 0,
@@ -1154,12 +1341,20 @@ function buildClientState(room, viewerId, now = Date.now()) {
         drawerName: inTurn ? nameOf(state, state.drawerId) : null,
         hostId,
         choices: isDrawer && phase === 'choose'
-            ? (state.choices || []).map(choice => ({ word: choice.word, category: CATEGORY_BY_ID[choice.category]?.name || '' }))
+            ? (state.choices || []).map(choice => ({
+                word: choice.word,
+                category: CATEGORY_BY_ID[choice.category]?.name || '',
+                level: choice.level || 0,
+                levelName: LEVEL_NAMES[choice.level] || ''
+            }))
             : [],
         word,
         wordCategory: (seesWord || phase === 'draw') && state.wordCategory ? (CATEGORY_BY_ID[state.wordCategory]?.name || null) : null,
         mask,
         hintsShown: revealed.length,
+        letterCount: phase === 'draw' && state.word ? graphemes(state.word).filter(ch => !/^\s+$/.test(ch)).length : 0,
+        reportVotes: report.votes,
+        reportNeed: report.need,
         guessedCount: Object.keys(state.guessed || {}).length,
         guesserCount: inTurn ? eligibleGuessers(room, now).length : 0,
         drawDone: phase === 'draw' && !!state.drawDoneAt,
@@ -1186,6 +1381,8 @@ function buildClientState(room, viewerId, now = Date.now()) {
             canGuess: phase === 'draw' && !isDrawer && !viewerGuessed && !isLate && !!viewerRoster,
             canDraw: isDrawer && phase === 'draw',
             canFinish: isDrawer && phase === 'draw' && !state.drawDoneAt,
+            canReport: phase === 'draw' && !!state.word && report.voters.includes(viewerId),
+            reported: phase === 'draw' && !!(state.reports && state.reports[viewerId]),
             score: state.scores?.[viewerId] || 0
         } : null,
         players,
@@ -1211,6 +1408,11 @@ module.exports = {
     DRAW_SECONDS_OPTIONS,
     DEFAULT_DRAW_SECONDS,
     CATEGORY_LIST,
+    CUSTOM_CATEGORY,
+    LEVEL_NAMES,
+    CUSTOM_MAX_WORDS,
+    CUSTOM_WORD_MAX_LETTERS,
+    CUSTOM_ONLY_MIN,
     CHOOSE_MS,
     REVEAL_MS,
     GRACE_MS,
@@ -1234,7 +1436,11 @@ module.exports = {
     isCloseGuess,
     parseWordList,
     sanitizeSettings,
+    sanitizeCustomWords,
+    wordPool,
     pickChoices,
+    reportNeedFor,
+    reportDrawing,
     hintPlanFor,
     buildMask,
     createInitialState,

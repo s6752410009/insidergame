@@ -9512,6 +9512,11 @@ io.sockets.on('connection', function(socket) {
         handleDrawGuessCommand(socket, callback, (room, playerId) => drawguessRuntime.finishDrawing(room, playerId, data));
     });
 
+    // คนทายแจ้ง 🚩 "คนวาดเขียนตัวหนังสือ" — engine นับเสียง เกินครึ่ง = ตานี้โมฆะ
+    safeOn(socket, 'drawguess_report', function(data, callback) {
+        handleDrawGuessCommand(socket, callback, (room, playerId) => drawguessRuntime.reportDrawing(room, playerId, data));
+    });
+
     // เส้นที่วาด — ยิงถี่ (ทุก ~40ms) ไม่ต้องส่ง state ทั้งก้อน แค่ตรวจแล้วส่งต่อ
     safeOn(socket, 'drawguess_stroke', function(data, callback) {
         const done = typeof callback === 'function' ? callback : null;

@@ -1844,6 +1844,16 @@ $(function() {
                             <option value="nature">🌈 ธรรมชาติ</option>
                             <option value="vehicles">🚲 ยานพาหนะ</option>
                         </select>
+                        <div style="color:#aaa; font-size:0.85em; margin:10px 0 4px;">คำใบ้ (เปิดตัวอักษรทีละตัว)</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <% [[1, '💡 เปิด'], [0, 'ไม่ใบ้']].forEach(function(o) { %>
+                            <label style="flex:1; min-width:72px; display:flex; align-items:center; justify-content:center; gap:6px; min-height:48px; padding:8px 10px; border-radius:10px; border:1px solid rgba(125,211,252,0.35); background:rgba(56,189,248,0.08); cursor:pointer; color:#fff;">
+                                <input type="radio" name="drawguessHints" value="<%= o[0] %>" <%= o[0] === 1 ? 'checked' : '' %> style="accent-color:#38bdf8;">
+                                <span><%= o[1] %></span>
+                            </label>
+                            <% }) %>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">📝 ใส่คำของห้องเองได้ในห้องรอ</div>
                     </div>
 
                     <div class="room-form-group" id="colorcardsTableGroup" role="group" aria-labelledby="colorcardsTableLabel" style="display:none;">
@@ -2400,6 +2410,7 @@ $(function() {
                     drawguessRounds: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessRounds"]:checked') || {}).value || 3) : undefined,
                     drawguessSeconds: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessSeconds"]:checked') || {}).value || 80) : undefined,
                     drawguessCategory: gameMode === 'drawguess' ? ((document.getElementById('drawguessCategory') || {}).value || 'mixed') : undefined,
+                    drawguessHints: gameMode === 'drawguess' ? Number((document.querySelector('input[name="drawguessHints"]:checked') || {}).value || 1) : undefined,
                     colorcardsTarget: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTarget') || {}).value || 0) : undefined,
                     colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
                     colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
@@ -2790,9 +2801,9 @@ $(function() {
             '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ทายให้ถูกเร็วที่สุด และวาดให้เพื่อนทายออก · แต้มรวมสูงสุดตอนจบชนะ</p></div>',
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
             '<li>ผลัดกันวาดตามลำดับที่นั่ง รอบละคนละ 1 ตา (ตั้งได้ 2–4 รอบ)</li>',
-            '<li>คนวาดเลือก 1 ใน 3 คำ แล้ววาดภายใน 60–100 วิ ห้ามเขียนตัวหนังสือ</li>',
-            '<li>ที่เหลือพิมพ์ทายได้ไม่จำกัด · ใกล้แล้วขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว</li>',
-            '<li>เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิดเป็นคำใบ้</li>',
+            '<li>คนวาดเลือก 1 ใน 3 คำ (ง่าย/กลาง/ยาก) แล้ววาดภายใน 60–100 วิ ห้ามเขียนตัวหนังสือ/ตัวเลข (เพื่อนกด 🚩 ได้)</li>',
+            '<li>ที่เหลือพิมพ์ทายได้ไม่จำกัด · ใกล้แล้วขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว · ทุกคนถูก = จบตาทันที</li>',
+            '<li>เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิดเป็นคำใบ้ (ปิดได้)</li>',
             '</ol></div>',
             '<div class="bm-guide-section"><h4>แต้ม</h4><p>ทายถูกเร็วได้เยอะ + โบนัสคนแรก ๆ · คนวาดได้ +40 ต่อคนที่ทายถูก · 3–12 คน</p></div>',
             '</div>'

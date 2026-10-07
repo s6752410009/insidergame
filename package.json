@@ -117,6 +117,7 @@
     "smoke:wavelength:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-wavelength-browser.js",
     "smoke:wavelength:exit": "node scripts/browser-exit-everywhere.js wavelength",
     "smoke:drawguess": "node scripts/smoke-drawguess-engine.js",
+    "smoke:drawguess:rules": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-drawguess-rules.js",
     "smoke:drawguess:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-drawguess-play.js",
     "smoke:drawguess:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-drawguess-mobile.js",
     "smoke:drawguess:exit": "node scripts/browser-exit-everywhere.js drawguess",

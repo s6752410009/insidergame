@@ -806,6 +806,7 @@
   .dg-lobby-opt[aria-pressed="true"] { background: #38bdf8; color: #0f1620; border-color: transparent; }
   .dg-lobby-opt:disabled { cursor: default; }
   .dg-lobby-opt:disabled:not([aria-pressed="true"]) { opacity: 0.55; }
+  .dg-lobby-note { margin: 0; color: #94a3b8; font-size: 0.82em; }
   .dg-lobby-select {
     flex: 1 1 160px; min-height: 44px; padding: 0 10px; border-radius: 12px;
     border: 1px solid rgba(125, 211, 252, 0.3); background: #13202e; color: #e2e8f0; font-size: 1rem;
@@ -2619,8 +2620,13 @@
       });
     }
 
+    let drawGuessCustomWords = [];
     function buildDrawGuessLobbyHtml(settings) {
       const rounds = Number(settings && settings.drawguessRounds) || 3;
+      const hints = !(settings && settings.drawguessHints === false);
+      drawGuessCustomWords = Array.isArray(settings && settings.drawguessCustomWords) ? settings.drawguessCustomWords.slice() : [];
+      const customCount = drawGuessCustomWords.length;
+      const customOnly = !!(settings && settings.drawguessCustomOnly) && customCount >= 10;
       const seconds = Number(settings && settings.drawguessSeconds) || 80;
       const category = (settings && settings.drawguessCategory) || 'mixed';
       const categories = [['mixed', '🎲 รวมทุกหมวด'], ['animals', '🐘 สัตว์'], ['food', '🍜 อาหาร'], ['objects', '🎒 สิ่งของ'], ['places', '🏝️ สถานที่'], ['jobs', '👩‍🍳 อาชีพ'], ['activities', '🏸 กิจกรรม'], ['nature', '🌈 ธรรมชาติ'], ['vehicles', '🚲 ยานพาหนะ']];
@@ -2639,8 +2645,38 @@
         '<div class="dg-lobby-row"><span>หมวดคำ</span><select class="dg-lobby-select" id="dgLobbyCategory" aria-label="หมวดคำ"' + dis + '>' +
           categories.map(function(c) { return '<option value="' + c[0] + '"' + (c[0] === category ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') +
         '</select></div>',
+        '<div class="dg-lobby-row"><span>คำใบ้</span>' + opt('drawguessHints', 1, '💡 เปิด', hints ? 1 : 0) + opt('drawguessHints', 0, 'ไม่ใบ้', hints ? 1 : 0) + '</div>',
+        '<div class="dg-lobby-row"><span>คำของห้อง</span><button type="button" class="dg-lobby-opt" id="dgLobbyCustom"' + (isAdmin ? '' : ' disabled') + '>📝 ' + (customCount ? customCount + ' คำ' : (isAdmin ? 'เพิ่มคำ' : 'ไม่มี')) + '</button></div>',
+        customCount
+          ? (customCount >= 10
+            ? '<div class="dg-lobby-row"><span>ใช้คำ</span>' + opt('drawguessCustomOnly', 0, 'ผสม', customOnly ? 1 : 0) + opt('drawguessCustomOnly', 1, 'เฉพาะของห้อง', customOnly ? 1 : 0) + '</div>'
+            : '<p class="dg-lobby-note">ผสมกับคำของเว็บ · ครบ 10 คำ ใช้เฉพาะคำของห้องได้</p>')
+          : '',
         '</div>'
       ].join('');
+    }
+
+    function openDrawGuessCustomWords() {
+      if (!isAdmin) return;
+      Swal.fire({
+        title: '📝 คำของห้อง',
+        html: '<p style="margin:0 0 6px; font-size:0.9em; color:#cbd5e1;">คั่นด้วย , หรือขึ้นบรรทัดใหม่ · สูงสุด 200 คำ · คำละไม่เกิน 20 ตัว</p>',
+        input: 'textarea',
+        inputValue: drawGuessCustomWords.join(', '),
+        inputPlaceholder: 'เช่น ครูสมศรี, ร้านป้าแดง, หมาบ้านเรา',
+        inputAttributes: { 'aria-label': 'คำของห้อง', maxlength: '6000' },
+        showCancelButton: true,
+        showDenyButton: drawGuessCustomWords.length > 0,
+        confirmButtonText: 'บันทึก',
+        denyButtonText: 'ล้างทั้งหมด',
+        cancelButtonText: 'ยกเลิก',
+        background: '#151d2a',
+        color: '#fff',
+        confirmButtonColor: '#38bdf8'
+      }).then(function(r) {
+        if (r.isConfirmed) saveDrawGuessSetting('drawguessCustomWords', String(r.value || ''));
+        else if (r.isDenied) saveDrawGuessSetting('drawguessCustomWords', '');
+      });
     }
 
     function showDrawGuessLobbyGuide() {
@@ -2648,9 +2684,9 @@
         title: '🎨 วาดแล้วทาย เล่นยังไง',
         html: '<div style="text-align:left; line-height:1.6;">' +
           '<p>1. ผลัดกันวาดตามลำดับที่นั่ง ทุกรอบทุกคนได้วาดคนละ 1 ตา</p>' +
-          '<p>2. คนวาดเลือก 1 ใน 3 คำ (12 วิ) แล้ววาดให้เพื่อนทาย ห้ามเขียนตัวหนังสือ</p>' +
+          '<p>2. คนวาดเลือก 1 ใน 3 คำ (ง่าย/กลาง/ยาก · 12 วิ) แล้ววาดให้เพื่อนทาย ห้ามเขียนตัวหนังสือ/ตัวเลข — เพื่อนกด 🚩 ได้ แจ้งเกินครึ่ง = ตานี้ไม่นับแต้ม</p>' +
           '<p>3. ที่เหลือพิมพ์ทายได้ไม่จำกัด · ทายถูกแล้วคนอื่นเห็นแค่ “✅ ทายถูก!” · ใกล้แล้วขึ้น “เกือบแล้ว!” ให้เห็นคนเดียว</p>' +
-          '<p>4. เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิดเป็นคำใบ้</p>' +
+          '<p>4. เวลาผ่านไปสักพัก ตัวอักษรบางตัวจะค่อย ๆ เปิดเป็นคำใบ้ (หัวห้องปิดได้) · ทุกคนทายถูก = จบตาทันที</p>' +
           '<p><strong>แต้ม</strong> ทายถูกเร็วได้เยอะ + โบนัสคนแรก ๆ · คนวาดได้ +40 ต่อคนที่ทายถูก · ครบทุกรอบ แต้มสูงสุดชนะ</p></div>',
         background: '#151d2a',
         color: '#fff',
@@ -3474,15 +3510,16 @@
         }
       });
     }
-    $(document).on('click', '.dg-lobby-opt', function() {
+    $(document).on('click', '.dg-lobby-opt[data-dg-key]', function() {
       if (this.getAttribute('aria-pressed') === 'true') return;
-      $(this).siblings('.dg-lobby-opt').attr('aria-pressed', 'false');
+      $(this).siblings('.dg-lobby-opt[data-dg-key]').attr('aria-pressed', 'false');
       this.setAttribute('aria-pressed', 'true');
       saveDrawGuessSetting(this.getAttribute('data-dg-key'), Number(this.getAttribute('data-dg-value')));
     });
     $(document).on('change', '#dgLobbyCategory', function() {
       saveDrawGuessSetting('drawguessCategory', this.value);
     });
+    $(document).on('click', '#dgLobbyCustom', openDrawGuessCustomWords);
 
     $(document).on('click', '#ucMrWhiteToggle', function() {
       if (!isAdmin) return;
