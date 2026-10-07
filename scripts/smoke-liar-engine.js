@@ -11,7 +11,8 @@ function assert(cond, msg) {
     passed += 1;
 }
 
-function makeRoom(playerCount = 4) {
+// เทสชุดเดิมเขียนตอนยังใช้หัวใจ 3 ดวง — ตั้งห้องเป็นโหมดหัวใจ (ปืนลูกโม่อยู่ใน smoke-liar-rules.js)
+function makeRoom(playerCount = 4, settings = { liarPunishment: 'lives' }) {
     const players = Array.from({ length: playerCount }, (_, i) => ({
         playerId: 'p' + i,
         playerName: 'ผู้เล่น' + i,
@@ -23,7 +24,7 @@ function makeRoom(playerCount = 4) {
         roomId: 'test',
         name: 'LiarTest',
         players,
-        settings: { gameMode: 'liar' },
+        settings: { gameMode: 'liar', ...settings },
         gameState: engine.createInitialState()
     };
     engine.startGame(room);
@@ -249,7 +250,7 @@ assert(countCards(afkRoom) === afkStart, 'AFK แล้วไพ่ต้อง�
 {
     // บอท: เล่นเองได้ · รอนานขึ้นหลังหงายไพ่ · เล่นทั้งวงจนจบ ไพ่ไม่หาย
     const players = Array.from({ length: 4 }, (_, i) => ({ playerId: 'bot_' + i, playerName: 'บอท' + i, color: '#fff', avatar: '🤖' }));
-    const r = { roomId: 'bots', name: 'Bots', players, settings: { gameMode: 'liar' }, gameState: engine.createInitialState() };
+    const r = { roomId: 'bots', name: 'Bots', players, settings: { gameMode: 'liar', liarPunishment: 'lives' }, gameState: engine.createInitialState() };
     engine.startGame(r);
     assert(engine.botNeedsTurn(r), 'ตาบอทต้อง botNeedsTurn');
     const normal = engine.botDelay(r, r.gameState.turnStartedAt);

@@ -75,6 +75,7 @@
     "smoke:avalon:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-avalon-mobile.js",
     "smoke:avalon:ux": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-avalon-ux.js",
     "smoke:liar": "node scripts/smoke-liar-engine.js",
+    "smoke:liar:rules": "node scripts/smoke-liar-rules.js",
     "smoke:liar:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-liar-play.js",
     "smoke:coup-liar:regressions": "node scripts/smoke-coup-liar-regressions.js",
     "smoke:poker": "node scripts/smoke-poker-engine.js",

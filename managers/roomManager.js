@@ -667,6 +667,8 @@ function createRoom(roomData, creatorPlayerId) {
                 : ([0, 300, 500].includes(Number(normalizedRoomData.colorcardsTarget)) ? Number(normalizedRoomData.colorcardsTarget) : 0),
             colorcardsStacking: gameMode === 'colorcards' && normalizedRoomData.colorcardsStacking === true,
             setthiMinutes: gameMode === 'setthi' ? gameEngine.sanitizeMinutes(normalizedRoomData.setthiMinutes) : undefined,
+            liarPunishment: gameMode === 'liar' ? gameEngine.sanitizePunishment(normalizedRoomData.liarPunishment) : undefined,
+            liarDevil: gameMode === 'liar' ? gameEngine.sanitizeDevil(normalizedRoomData.liarDevil) : undefined,
             locked: normalizedRoomData.locked || false,
             password: normalizedRoomData.password || null,
             tableMode: normalizeTableMode(normalizedRoomData.tableMode)
@@ -1091,6 +1093,12 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (room.settings.gameMode === 'setthi' && !isRoomGameInProgress(room) && updates.setthiMinutes !== undefined) {
         room.settings.setthiMinutes = getGameEngine('setthi').sanitizeMinutes(updates.setthiMinutes);
+    }
+    // ไพ่โกหก: แบบลงโทษ (ปืน/หัวใจ) + ไพ่ปีศาจ — เปลี่ยนได้ตอนอยู่ห้องรอ เกมอ่านค่าตอนเริ่ม
+    if (room.settings.gameMode === 'liar' && !isRoomGameInProgress(room)) {
+        const liarEngine = getGameEngine('liar');
+        if (updates.liarPunishment !== undefined) room.settings.liarPunishment = liarEngine.sanitizePunishment(updates.liarPunishment);
+        if (updates.liarDevil !== undefined) room.settings.liarDevil = liarEngine.sanitizeDevil(updates.liarDevil);
     }
 
     if (updates.locked !== undefined) {

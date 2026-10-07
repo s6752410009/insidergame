@@ -168,7 +168,9 @@ for (const count of [3, 4, 5, 6, 8]) {
     const total = s.deck.length + s.players.reduce((n, p) => n + p.hand.length, 0);
     assert(s.players.every(p => p.hand.length === 5), `7 (${count}): เริ่มเกมทุกคนต้องได้ 5 ใบ`);
     const jokers = [...s.deck, ...s.players.flatMap(p => p.hand)].filter(c => c === 'JOKER').length;
-    assert(jokers === (count <= 5 ? 2 : 4), `7 (${count}): จำนวนโจ๊กเกอร์ผิด`);
+    // สำรับจริง Liar's Deck 20 ใบ (6/6/6 + โจ๊กเกอร์ 2) · 5 คนขึ้นไปใช้ 2 สำรับ
+    assert(jokers === (count <= 4 ? 2 : 4), `7 (${count}): จำนวนโจ๊กเกอร์ผิด`);
+    assert(total === (count <= 4 ? 20 : 40), `7 (${count}): สำรับต้อง ${count <= 4 ? 20 : 40} ใบ (ได้ ${total})`);
 
     for (let round = 0; round < 6 && s.phase !== 'finished'; round += 1) {
         // คนแรกลงหมดมือเท่าที่ลงได้ (สูงสุด 3 ใบ) แล้วคนถัดไปท้า
