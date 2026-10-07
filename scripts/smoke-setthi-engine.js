@@ -1014,7 +1014,11 @@ test('เมนูทดสอบ /m: 6+6 ทุกครั้ง (3 ครั�
     seat(room, 'a').pos = 2; // 2 → 14 → 26 → (ครั้งที่ 3) เกาะ
     E.setDebugDice(room, 'a', { six: true });
     eq(S(room).debugUsed, true, 'ตีตราว่าใช้เมนูทดสอบ');
-    assert(S(room).history.some(h => h.kind === 'debug' && /6\+6/.test(h.text)), 'ทุกคนเห็นโน้ต');
+    assert(!S(room).history.some(h => h.kind === 'debug' || /เมนูทดสอบ/.test(h.text)), 'ไม่ลงบันทึกเกม (ไม่สแปม)');
+    assert(!S(room).fx.some(f => f.kind === 'debug'), 'ไม่มีฉาก/ป้ายแจ้งทั้งห้อง');
+    eq(S(room).seats[0].debugged, true, 'ป้าย 🛠 เฉพาะคนใช้');
+    eq(E.buildClientState(room, 'b').seats[0].debugged, true, 'คนอื่นเห็นป้ายเล็กที่แถบคนใช้');
+    eq(E.buildClientState(room, 'b').seats[1].debugged, false, 'คนไม่ได้ใช้ไม่มีป้าย');
     for (let k = 0; k < 3; k += 1) {
         E.rollDice(room, 'a', null, mulberry(k));
         const d = S(room).fx.filter(f => f.kind === 'dice').pop();
@@ -1050,7 +1054,9 @@ test('เมนูทดสอบ /m: 6+6 ทุกครั้ง (3 ครั�
     throws(() => E.debugMint(r2, 'b', -5), 'เสกติดลบไม่ได้');
     throws(() => E.debugMint(r2, 'b', 1.5), 'ต้องเป็นจำนวนเต็ม');
     throws(() => E.debugMint(r2, 'b', 2000000), 'เกินเพดาน');
+    const fxBefore = S(r2).fxSeq;
     E.debugMint(r2, 'b', 50000);
+    eq(S(r2).fxSeq, fxBefore, 'เสกเงินเงียบ ไม่มีฉากเหรียญบิน');
     eq(seat(r2, 'b').cash, c0 + 50000, 'ได้เงิน');
     eq(S(r2).ledger.debugMinted, 50000, 'ลงบัญชีเสกเงินแยก');
     audit(r2, 'หลังเสกเงิน');

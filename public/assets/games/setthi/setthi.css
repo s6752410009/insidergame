@@ -1185,3 +1185,5 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
   .st-top:has(.st-debug-badge:not([hidden])) .st-clock svg { display: none; }
   .st-top:has(.st-debug-badge:not([hidden])) .st-exit { padding: 0 6px; }
 }
+/* ป้าย 🛠 เล็ก ๆ บนแถบคนที่ใช้เมนูทดสอบ (แทนการแจ้งเตือนทั้งห้อง) */
+.st-dbg-mark { position: absolute; left: 2px; bottom: 1px; font-size: 9px; line-height: 1; opacity: 0.75; pointer-events: none; }

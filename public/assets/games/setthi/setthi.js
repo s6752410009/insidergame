@@ -525,7 +525,6 @@
   function instantFx(f) {
     if (f.kind === 'left' && f.playerId !== playerId) toast(nameOf(f.playerId) + ' ออกจากเกม');
     if (f.kind === 'debt' && f.playerId === playerId) { haptic([30, 50, 30]); sfx.bad(); }
-    if (f.kind === 'debug') { paintDebug(); toast('🛠 ' + nameOf(f.playerId) + ': ' + f.text, 2600); }
     if (f.kind === 'fast') { paintFast(); if (f.by !== playerId) toast(f.on ? '⏩ ' + nameOf(f.by) + ' เปิดเร่งเกม' : nameOf(f.by) + ' ปิดเร่งเกม', 1600); }
   }
 
@@ -1325,11 +1324,12 @@
       else if (s.island) badge = '<span class="st-badge st-badge--island">🏝️ ' + s.island + '</span>';
       else if (s.tourPending) badge = '<span class="st-badge st-badge--tour">✈️</span>';
       else if (s.shield) badge = '<span class="st-badge st-badge--shield">' + (s.shield === 'angel' ? '😇' : '🎟️') + '</span>';
+      var dbgMark = s.debugged ? '<span class="st-dbg-mark" title="ใช้เมนูทดสอบ — เกมนี้ไม่นับสถิติ" aria-label="ใช้เมนูทดสอบ">🛠</span>' : '';
       var lands = landsOf(s.playerId, model);
       return '<button type="button" class="st-chip' + (s.isTurn ? ' is-turn' : '') + (out ? ' is-out' : '') + (s.isSelf ? ' is-self' : '') + (focusId === s.playerId ? ' is-focus' : '') + '" data-id="' + esc(s.playerId) + '" style="--tk:' + esc(s.tokenColor) + '" aria-pressed="' + (focusId === s.playerId) + '" aria-label="' + esc(s.name + ' เงิน ' + money(model.cash[s.playerId]) + ' ที่ดิน ' + lands + ' ช่อง' + (s.isTurn ? ' กำลังเล่น' : '') + ' — แตะเพื่อดูที่ของคนนี้') + '">' +
         tokenHtml(s) +
         '<span class="st-chip-body"><span class="st-chip-name">' + esc(s.isSelf ? 'คุณ' : s.name) + '</span><span class="st-chip-cash">' + money(out ? 0 : model.cash[s.playerId]) + '</span></span>' +
-        '<span class="st-chip-lands" data-lands>🏠<b>' + lands + '</b></span>' + badge + '</button>';
+        '<span class="st-chip-lands" data-lands>🏠<b>' + lands + '</b></span>' + badge + dbgMark + '</button>';
     }).join('');
   }
   function landsOf(id, model) { var n = 0; Object.keys(model.props).forEach(function(k) { if (model.props[k].owner === id) n += 1; }); return n; }

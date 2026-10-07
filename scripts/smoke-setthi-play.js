@@ -412,6 +412,8 @@ async function scenarioG(base) {
     await joinAll(roomId, [Q]);
     await start(P, [P, Q], roomId);
     await until(P, S => S.canDebug === true, 'หัวห้องได้ canDebug');
+    const chat = [];
+    [P, Q].forEach(c => c.socket.on('newMessage', m => chat.push(m)));
     assert(last(Q).canDebug === false, 'คนอื่นไม่ได้ canDebug');
     let r = await ack(Q.socket, 'setthi_debug_dice', { six: true });
     assert(!r.success && /แอดมินหรือหัวห้อง/.test(r.error), 'คนที่ไม่ใช่หัวห้อง/แอดมินใช้ไม่ได้');
@@ -422,7 +424,10 @@ async function scenarioG(base) {
     const pCash = seatOf(last(P), P.id).cash;
     r = await ack(P.socket, 'setthi_debug_mint', { amount: 5000 });
     assert(r.success, 'หัวห้องเสกเงินได้: ' + r.error);
-    let S = await until(Q, S2 => S2.debugUsed && S2.history.some(h => h.kind === 'debug' && /เสกเงิน/.test(h.text)), 'คนอื่นเห็นโน้ตเสกเงิน + ป้ายโหมดทดสอบ');
+    let S = await until(Q, S2 => S2.debugUsed && seatOf(S2, P.id).debugged, 'คนอื่นเห็นป้าย 🛠 เล็กที่แถบหัวห้อง');
+    assert(!S.history.some(h => h.kind === 'debug' || /เมนูทดสอบ/.test(h.text)), 'ไม่ลงบันทึกเกม');
+    assert(!S.fx.some(f => f.kind === 'debug'), 'ไม่มีป้ายแจ้งทั้งห้อง');
+    assert(!seatOf(S, Q.id).debugged, 'คนไม่ได้ใช้ไม่มีป้าย');
     assert(seatOf(S, P.id).cash === pCash + 5000, 'เงินเข้า');
     r = await ack(P.socket, 'setthi_debug_dice', { six: true });
     assert(r.success, 'เปิด 6+6');
@@ -449,7 +454,9 @@ async function scenarioG(base) {
     await delay(1500);
     const st = readStats();
     [P.id, Q.id].forEach(id => assert(!(st[id] && st[id].modeStats && st[id].modeStats.setthi && st[id].modeStats.setthi.games), 'เกมที่ใช้ /m ไม่นับสถิติ'));
-    console.log('20. /m: เฉพาะหัวห้อง/แอดมิน · เสกเงิน/6+6 ใช้ได้ · ทุกคนเห็นโน้ต · โอนหัวห้องแล้วคนเดิมใช้ไม่ได้ · ไม่บันทึกสถิติ ✓');
+    await delay(400);
+    assert(!chat.some(m => /เมนูทดสอบ|🛠|เสกเงิน/.test(String(m && m.message))), 'ไม่มีข้อความ /m เข้าแชทห้อง: ' + JSON.stringify(chat.map(m => m.message)));
+    console.log('20. /m: เฉพาะหัวห้อง/แอดมิน · เสกเงิน/6+6 ใช้ได้ · ไม่สแปมแชท/บันทึกเกม (ป้าย 🛠 เล็กที่แถบคนใช้) · โอนหัวห้องแล้วคนเดิมใช้ไม่ได้ · ไม่บันทึกสถิติ ✓');
     [P, Q].forEach(c => c.socket.close());
 }
 

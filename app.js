@@ -9102,7 +9102,8 @@ io.sockets.on('connection', function(socket) {
     safeOn(socket, 'setthi_end', function(data, callback) {
         handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.endGame(room, playerId));
     });
-    // เมนูทดสอบ /m: แอดมินเว็บหรือหัวห้อง · มีผลกับคนที่ขอคนเดียว · ทุกคนเห็นโน้ต · เกมนี้ไม่บันทึกสถิติ
+    // เมนูทดสอบ /m: แอดมินเว็บหรือหัวห้อง · เกมนี้ไม่บันทึกสถิติ
+    // ไม่ส่งข้อความเข้าแชทห้อง (เจ้าของสั่ง "ไม่ต้องแจ้งเตือนตรงนี้") — ลงแค่บันทึกแอดมิน + ป้าย 🛠 เล็ก ๆ ที่แถบคนใช้
     function handleSetthiDebug(socket, callback, label, run) {
         handleSetthiCommand(socket, callback, (room, playerId) => {
             if (!setthiRuntime.canDebug(room, playerId)) throw new Error('/m ใช้ได้เฉพาะแอดมินหรือหัวห้อง');
@@ -9110,7 +9111,6 @@ io.sockets.on('connection', function(socket) {
             if (!note) return;
             const requester = playerManager.getPlayer(playerId);
             const name = requester?.playerName || playerId;
-            sendChatMessageToRoom(io, room.roomId, 'System', `🛠 ${name} ใช้เมนูทดสอบ: ${note}`, '#f39c12');
             addServerLog(io, 'admin', room.roomId, `${name} ${note} (/m เศรษฐี)`, 'warning', { gameMode: 'setthi', meta: { event: 'setthi_debug_' + label, playerId } });
         });
     }

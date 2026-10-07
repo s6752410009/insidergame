@@ -1332,12 +1332,16 @@ function setFast(room, playerId, on) {
 
 const MINT_MAX = 1000000;
 
+/**
+ * ตีตราว่าใช้เมนูทดสอบ (เกมนี้ไม่นับสถิติ/รางวัล) — เงียบ: ไม่ลงบันทึกเกม ไม่มีฉาก ไม่ส่งเข้าแชท
+ * (เจ้าของห้องขอ: ไม่ต้องแจ้งเตือนทั้งห้อง) · คนกดเห็นป้าย 🛠 เล็ก ๆ ที่แถบตัวเองเท่านั้น · บันทึกแอดมินลงใน app.js
+ */
 function debugNote(room, seat, text) {
     const state = st(room);
     state.debugUsed = true;
-    pushHistory(room, '🛠', `${seat.name} ใช้เมนูทดสอบ: ${text}`, 'debug');
-    pushFx(room, { kind: 'debug', playerId: seat.playerId, text });
+    if (seat) seat.debugged = true;
     bumpStep(room);
+    return text;
 }
 
 /** ตั้งเต๋าบังคับของตัวเอง: { six, doubles } */
@@ -1370,7 +1374,6 @@ function debugMint(room, playerId, amount) {
     if (!Number.isInteger(value) || value < 1 || value > MINT_MAX) throw new Error(`ใส่จำนวนเต็ม 1–${MINT_MAX.toLocaleString('en-US')}`);
     seat.cash += value;
     state.ledger.debugMinted = (Number(state.ledger.debugMinted) || 0) + value;
-    pushFx(room, { kind: 'gain', playerId, amount: value, reason: 'เสกเงิน', cash: cashMap(room, [playerId]) });
     debugNote(room, seat, `เสกเงิน +${fmt(value)}`);
     proceed(room); // อาจกำลังติดหนี้อยู่ — จ่ายได้แล้วให้เดินต่อ
     return state;
@@ -1828,6 +1831,7 @@ function buildClientState(room, viewerId) {
             shield: seat.shield || null,
             bankrupt: !!seat.bankrupt,
             left: !!seat.left,
+            debugged: !!seat.debugged,
             online: isConnected(room, seat),
             isBot: isBotId(seat.playerId),
             isSelf: seat.playerId === viewerId,
