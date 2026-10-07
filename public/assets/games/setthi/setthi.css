@@ -1228,3 +1228,29 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 }
 /* ป้าย 🛠 เล็ก ๆ บนแถบคนที่ใช้เมนูทดสอบ (แทนการแจ้งเตือนทั้งห้อง) */
 .st-dbg-mark { position: absolute; left: 2px; bottom: 1px; font-size: 9px; line-height: 1; opacity: 0.75; pointer-events: none; }
+
+/* ---------- กติกาแนว LGR ---------- */
+/* ครบสี ×2: แถบสีกลุ่มหนาขึ้น เรืองทอง + ป้าย ×2 เล็ก ๆ */
+.st-cell.is-set .st-band { box-shadow: 0 0 0 1px #ffe28a, 0 0 8px #ffe28a; }
+.st-cell.is-set.side-b .st-band, .st-cell.is-set.side-t .st-band { height: 12% !important; }
+.st-cell.is-set.side-l .st-band, .st-cell.is-set.side-r .st-band { width: 12% !important; }
+.st-setx { display: none; position: absolute; z-index: 6; right: 1px; top: 1px; padding: 1px 3px; border-radius: 4px; font: 700 8px/1 var(--st-display); color: #2a1200; background: #ffe28a; box-shadow: 0 1px 2px oklch(0 0 0 / 0.45); pointer-events: none; }
+.st-cell.is-set .st-setx { display: block; }
+.st-cell.is-setflash::after { content: ''; position: absolute; inset: -2px; z-index: 6; border: 3px solid #ffe28a; border-radius: 6px; box-shadow: 0 0 16px #ffe28a; animation: stThreat 0.3s ease-in-out infinite alternate; pointer-events: none; }
+.st-cell.is-threatflash { animation: stShake 0.25s ease-in-out 5; }
+@keyframes stShake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-2px, 1px); } 75% { transform: translate(2px, -1px); } }
+/* การ์ด: โจมตี = กรอบแดง · ร้าย = กรอบเทา · เก็บได้ = กรอบฟ้า */
+.st-bigcard.is-attack .st-bigcard-face { border-color: oklch(0.6 0.2 27); box-shadow: 0 0 24px oklch(0.6 0.22 27 / 0.6); }
+.st-bigcard.is-attack .st-bigcard-kicker { color: oklch(0.55 0.2 27); }
+.st-bigcard.is-bad .st-bigcard-face { border-color: oklch(0.55 0.03 258); }
+.st-bigcard.is-keep .st-bigcard-face { border-color: oklch(0.72 0.12 220); box-shadow: 0 0 24px oklch(0.72 0.12 220 / 0.5); }
+/* ตราประทับการ์ดโจมตีบนช่อง */
+.st-attack-stamp { position: absolute; left: 0; top: 0; width: 64px; height: 64px; display: grid; place-items: center; font-size: 42px; border-radius: 50%; background: oklch(0.5 0.2 27 / 0.92); box-shadow: 0 0 0 3px #fff4d6, 0 10px 24px oklch(0 0 0 / 0.5); }
+.st-attack-stamp.is-swap { background: oklch(0.5 0.14 250 / 0.92); }
+.st-attack-stamp.is-donate { background: oklch(0.55 0.15 150 / 0.92); }
+.st-banner.is-warn { border-color: var(--tk, #ef5b4c); box-shadow: 0 0 0 3px color-mix(in oklch, var(--tk, #ef5b4c) 55%, transparent), 0 20px 60px oklch(0 0 0 / 0.55); }
+.st-take-was { font-size: 0.8rem; color: var(--st-muted); }
+.st-end-mono[data-wintype="bankrupt"], .st-end-mono[data-wintype="time"] { background: var(--st-navy-2); color: var(--st-gold); border: 1px solid oklch(0.85 0.12 82 / 0.5); }
+@media (prefers-reduced-motion: reduce) {
+  .st-cell.is-setflash::after, .st-cell.is-threatflash { animation: none; }
+}

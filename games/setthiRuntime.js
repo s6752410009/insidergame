@@ -302,7 +302,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             state.festival = null;
             state.festivalMult = 1;
         }
-        if (spec.resetSeats) state.seats.forEach(seat => { seat.island = 0; seat.tourPending = false; seat.shield = null; });
+        if (spec.resetSeats) state.seats.forEach(seat => { seat.island = 0; seat.tourPending = false; seat.shield = null; seat.escape = false; seat.takeHalf = false; });
         Object.entries(spec.props || {}).forEach(([k, v]) => {
             const p = state.props[Number(k)];
             if (!p) return;
@@ -321,9 +321,12 @@ module.exports = function createSetthiRuntime(getDeps) {
             ['pos', 'laps', 'island'].forEach(f => { if (Number.isInteger(v[f])) seat[f] = v[f]; });
             if (v.tourPending !== undefined) seat.tourPending = !!v.tourPending;
             if (v.shield !== undefined) seat.shield = v.shield || null;
+            if (v.escape !== undefined) seat.escape = !!v.escape;
+            if (v.takeHalf !== undefined) seat.takeHalf = !!v.takeHalf;
         });
         if (spec.festival !== undefined) { state.festival = spec.festival; state.festivalMult = spec.festival === null ? 1 : ([2, 4, 8, 16].includes(Number(spec.festivalMult)) ? Number(spec.festivalMult) : 2); }
         if (Array.isArray(spec.dice)) state.testDice = spec.dice.map(d => [Number(d[0]), Number(d[1])]);
+        if (spec.nextCard !== undefined) state.nextCard = spec.nextCard || null;
         if (Number.isInteger(spec.turnSeat) && state.seats[spec.turnSeat]) {
             const seat = state.seats[spec.turnSeat];
             state.turn = { playerId: seat.playerId, seq: (state.turnSeq || 0) + 1, doublesStreak: 0, canRollAgain: false, hasRolled: false, lastRoll: null, startedAt: Date.now() };

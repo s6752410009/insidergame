@@ -9072,6 +9072,9 @@ io.sockets.on('connection', function(socket) {
             console.error('[setthi] cancel hold on disconnect failed:', error.message);
         }
     });
+    safeOn(socket, 'setthi_useEscape', function(data, callback) {
+        handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.useEscape(room, playerId, setthiContext(data)));
+    });
     safeOn(socket, 'setthi_payIsland', function(data, callback) {
         handleSetthiCommand(socket, callback, (room, playerId) => setthiRuntime.engine.payIsland(room, playerId, setthiContext(data)));
     });

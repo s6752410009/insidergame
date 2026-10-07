@@ -329,6 +329,71 @@ async function main() {
         assert(await phone.page.isHidden('#stDebug'), 'ปิดเมนูได้');
         console.log('4. /m มือถือ: แขกโดนปฏิเสธ · เลือกเป้าหมาย 6 คน · ตั้งเงิน · แตะช่องบนกระดาน → ให้โรงแรม · งานวัด ×4 · +5 นาที · ส่งเกาะ · ไม่ล้นจอ · แขกไม่เห็นแจ้งเตือน · ปิดได้ ✓');
 
+        // ---------- กติกาแนว LGR ผ่าน UI ----------
+        const emit = (p, ev, payload) => p.page.evaluate(([e, pl]) => window.__setthi.emit(e, pl), [ev, payload]);
+        const waitState = (p, fn, arg, label) => p.page.waitForFunction(fn, arg, { timeout: 15000 }).catch(() => { throw new Error('timeout: ' + label); });
+        // ครบสี ×2: ป้าย ×2 บนช่อง + ค่าผ่านทางสองเท่า
+        await setup({ resetProps: true, resetSeats: true, props: { 1: { owner: 1, level: 1 }, 2: { owner: 1, level: 1 } }, seats: all(0), turnSeat: 0 });
+        for (const p of players) {
+            const set = await p.page.evaluate(() => ({ cls: document.querySelector('.st-cell[data-i="1"]').classList.contains('is-set'), x2: getComputedStyle(document.querySelector('.st-cell[data-i="1"] .st-setx')).display !== 'none', val: document.querySelector('.st-cell[data-i="1"] .st-val').textContent, toll: window.__setthi.state().tolls[1] }));
+            assert(set.cls && set.x2, p.label + ' ช่องครบสีมีป้าย ×2');
+            assert(set.toll === 2 * 500, p.label + ' ค่าผ่านทางยโสธรครบสี = ฿1,000: ' + set.toll);
+            assert(/1k|1,000|1000/.test(set.val), p.label + ' ช่องโชว์ค่าผ่านทาง ×2: ' + set.val);
+        }
+        await shot(phone, 'lgr-colorset');
+        console.log('5. ครบสี: ป้าย ×2 บนช่อง · ค่าผ่านทางสองเท่า ✓');
+
+        // การ์ดหนีเกาะ: ปุ่มบนแผงตา → ออกฟรี
+        await setup({ resetSeats: true, seats: { ...all(0), 0: { pos: 8, island: 3, escape: true } }, turnSeat: 0 });
+        await phone.page.waitForSelector('#stUseEscape:not([disabled])', { timeout: 10000 });
+        await shot(phone, 'lgr-escape-button');
+        const badge = await desk.page.textContent(`#stStrip .st-chip[data-id="${S0.seats[0].playerId}"] .st-badge`);
+        assert(/🏝️/.test(badge), 'แขกเห็นว่าหัวห้องติดเกาะ');
+        await phone.page.click('#stUseEscape');
+        await waitState(phone, () => { const S = window.__setthi.state(); return S.seats[0].island === 0 && !S.seats[0].escape && S.phase === 'roll'; }, null, 'ใช้การ์ดหนีเกาะ');
+        await settle(players);
+        console.log('6. การ์ดหนีเกาะ: ปุ่ม "⛵ ใช้การ์ดหนีเกาะ" → ออกจากเกาะฟรีแล้วทอยต่อ ✓');
+
+        // การ์ดบังคับขาย: ทอยตกโอกาส → การ์ดพลิก → แตะเมืองคนอื่น → คืนธนาคาร
+        await setup({ resetProps: true, resetSeats: true, props: { 9: { owner: 2, level: 2 }, 10: { owner: 3, level: 4 } }, seats: all(0), dice: [[1, 2]], nextCard: 'k13', turnSeat: 0 });
+        const rr = await emit(phone, 'setthi_roll', { seq: (await state(phone)).phaseSeq });
+        assert(rr.success, 'ทอย: ' + rr.error);
+        await waitState(desk, () => window.__setthi.state().fx.some(f => f.kind === 'card' && f.card.id === 'k13'), null, 'แขกเห็นการ์ดบังคับขาย');
+        await settle(players);
+        await phone.page.waitForSelector('#stPickbar.is-on', { timeout: 10000 });
+        const pickable = await phone.page.evaluate(() => [...document.querySelectorAll('.st-cell.is-pickable')].map(c => Number(c.dataset.i)));
+        assert(pickable.join() === '9', 'แตะได้เฉพาะเมืองคนอื่นที่ไม่ใช่แลนด์มาร์ก: ' + pickable);
+        await shot(phone, 'lgr-forced-sale-pick');
+        await phone.page.click('.st-cell[data-i="9"]');
+        await waitState(desk, () => window.__setthi.state().fx.some(f => f.kind === 'attack' && f.attack === 'forcedSale'), null, 'ฉากบังคับขาย');
+        await desk.page.waitForSelector('#stFx .st-attack-stamp, #stFx .st-banner', { timeout: 8000 });
+        await delay(500);
+        await shot(desk, 'lgr-forced-sale-cut');
+        await settle(players);
+        assert((await state(desk)).props[9].owner === null, 'น่านคืนธนาคาร');
+        console.log('7. การ์ดบังคับขาย: การ์ดพลิก → แตะเมืองคนอื่น (แลนด์มาร์กแตะไม่ได้) → ฉากค้อน → คืนธนาคาร ✓');
+
+        // ชนะผูกขาดท่องเที่ยวด้วยเมนูทดสอบ → หน้าสรุปบอกแบบชนะ
+        await setup({ resetProps: true, resetSeats: true, seats: all(0), turnSeat: 0 });
+        const nm = await emit(phone, 'setthi_debug', { action: 'nearMonopoly', target: S0.seats[0].playerId, type: 'tourist' });
+        assert(nm.success, 'จัดเกือบผูกขาด: ' + nm.error);
+        await settle(players);
+        await waitState(desk, () => window.__setthi.state().fx.some(f => f.kind === 'threat' && f.type === 'tourist'), null, 'ฉากเตือนผูกขาด');
+        const r2 = await emit(phone, 'setthi_roll', { seq: (await state(phone)).phaseSeq });
+        assert(r2.success, 'ทอย 2: ' + r2.error);
+        await settle(players);
+        await phone.page.waitForSelector('.st-sheet.is-open #stBuildBtn:not([disabled])', { timeout: 15000 });
+        await phone.page.click('#stBuildBtn');
+        for (const p of players) await p.page.waitForSelector('#stEnd.is-on .st-end-mono', { timeout: 30000 });
+        const fin = await state(phone);
+        assert(fin.winType === 'tourist' && fin.endCause === 'monopoly', 'winType tourist: ' + fin.winType);
+        assert(/ผูกขาดท่องเที่ยว/.test(await desk.page.textContent('#stEnd .st-end-mono')), 'หน้าสรุปบอกแบบชนะ');
+        await delay(800);
+        await shot(phone, 'lgr-end-tourist');
+        const endProbs = await layoutProblems(phone.page);
+        assert(!endProbs.length, 'หน้าสรุป 6 คนไม่ล้น: ' + endProbs.join(' | '));
+        console.log('8. เตือนผูกขาด → ชนะผูกขาดท่องเที่ยว → หน้าสรุปบอก "👑 ผูกขาดท่องเที่ยว" (winType=tourist) ✓');
+
         for (const p of players) assert(!p.errors.length, `${p.label} มี error: ${p.errors.slice(0, 3).join(' | ')}`);
         assert(!/\[setthi\][^\n]*failed/.test(server.logs()), 'เซิร์ฟเวอร์ไม่มี error ของเศรษฐี');
         console.log(`✅ setthi 6p browser: ${checks} checks · ภาพที่ ${SHOTS} · ${((Date.now() - started) / 1000).toFixed(1)}s`);

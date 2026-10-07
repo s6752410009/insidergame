@@ -88,6 +88,7 @@ async function waitFor(pred, ms = 20000, label = 'condition') {
 
 // ---------- ตรวจความลับ ----------
 let leakChecks = 0;
+const winTypesSeen = new Set();
 const CARD_RE = /"k\d\d"/g;
 function inspectPayload(client, event, payload) {
     const json = JSON.stringify(payload === undefined ? null : payload);
@@ -100,6 +101,13 @@ function inspectPayload(client, event, payload) {
         [...json.matchAll(CARD_RE)].map(m => m[0].slice(1, -1)).forEach(id => assert(allowed.has(id), `รั่ว: ${client.name} เห็นการ์ด ${id} ที่ยังไม่เปิด`));
         assert(payload.seats.every(s => s.cash >= 0), 'เงินติดลบ');
         if (payload.self && payload.self.sell) assert(payload.phaseActor === client.id, 'ราคาขายส่งให้เฉพาะคนที่ติดหนี้');
+        if (payload.phase === 'finished') {
+            assert(['monopoly', 'bankrupt', 'left', 'timeUp', 'hostEnd', 'debugEnd', 'empty'].includes(payload.endCause), 'endCause ' + payload.endCause);
+            if (payload.winners && payload.winners.length && payload.endCause !== 'left') assert(['time', 'bankrupt', 'line', 'triple', 'tourist'].includes(payload.winType), 'winType ' + payload.winType);
+            if (payload.endCause === 'monopoly') assert(payload.winType === { color: 'triple', line: 'line', tourist: 'tourist' }[payload.monopoly.type], 'winType ตรงผูกขาด');
+            (payload.standings || []).forEach(r => assert(Number.isInteger(r.landmarksBuilt) && Number.isInteger(r.takeovers), 'อันดับมีตัวนับ'));
+            winTypesSeen.add(payload.winType);
+        }
     }
 }
 
@@ -720,6 +728,8 @@ async function main() {
         if (run('D')) await scenarioD(PORT + 1);
         const logs = server.logs();
         assert(!/\[setthi\] (tick|bots|recover) failed/.test(logs), 'ไม่มี error ฝั่งเซิร์ฟเวอร์: ' + (logs.match(/\[setthi\][^\n]*/) || [''])[0]);
+        for (const wt of ['bankrupt', 'line', 'triple', 'tourist', 'time']) assert(winTypesSeen.has(wt), 'เกมผ่านเซิร์ฟเวอร์ต้องจบแบบ ' + wt + ' (เห็น ' + [...winTypesSeen].join(',') + ')');
+        console.log('winType ที่เห็นผ่านเซิร์ฟเวอร์: ' + [...winTypesSeen].join(', '));
         console.log(`✅ setthi play: ${checks} checks · ตรวจ payload ${leakChecks} ชิ้น · ${((Date.now() - started) / 1000).toFixed(1)}s`);
     } finally {
         await stopServer(server);

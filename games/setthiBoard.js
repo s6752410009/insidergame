@@ -107,8 +107,11 @@ function valueAt(index, level) {
 }
 
 /**
- * การ์ดโอกาส 10 ใบ (สุ่มลำดับ วนใช้) · effect:
+ * การ์ดโอกาส 17 ใบ (สุ่มลำดับ วนใช้) แนว LINE Let's Get Rich · effect:
  *  forward{steps} · toStart · freeUpgrade · shield{kind: angel|half} · island · pay{amount} · gain{amount} · festival · tour
+ *  keep{kind: escape|takeHalf} — เก็บไว้ใช้ทีหลัง (หนีเกาะ · ซื้อต่อลดครึ่ง)
+ *  attack{kind: forcedSale|quake|swap} — แตะเมืองคนอื่น (แลนด์มาร์กกันได้ · การ์ดนางฟ้าของเจ้าของกันได้)
+ *  donate — บังคับยกเมืองตัวเอง 1 เมืองให้คนที่จนที่สุด · goFestival — เดินไปเมืองงานวัด (จ่ายค่าผ่านทาง)
  */
 const CARDS = [
     { id: 'k01', icon: 'arrow', title: 'เดินหน้า 3 ช่อง', effect: { type: 'forward', steps: 3 } },
@@ -120,7 +123,14 @@ const CARDS = [
     { id: 'k07', icon: 'heart', title: 'ทำบุญ', effect: { type: 'pay', amount: 1000 } },
     { id: 'k08', icon: 'flag', title: 'จัดงานวัด!', effect: { type: 'festival' } },
     { id: 'k09', icon: 'coins', title: 'ขายของออนไลน์ปัง', effect: { type: 'gain', amount: 2000 } },
-    { id: 'k10', icon: 'plane', title: 'ตั๋วทัวร์ทั่วไทย', effect: { type: 'tour' } }
+    { id: 'k10', icon: 'plane', title: 'ตั๋วทัวร์ทั่วไทย', effect: { type: 'tour' } },
+    { id: 'k11', icon: 'boat', title: 'การ์ดหนีเกาะ', effect: { type: 'keep', kind: 'escape' } },
+    { id: 'k12', icon: 'handshake', title: 'ส่วนลดซื้อต่อ 50%', effect: { type: 'keep', kind: 'takeHalf' } },
+    { id: 'k13', icon: 'gavel', title: 'บังคับขายเมือง!', effect: { type: 'attack', kind: 'forcedSale' } },
+    { id: 'k14', icon: 'bolt', title: 'แผ่นดินไหว!', effect: { type: 'attack', kind: 'quake' } },
+    { id: 'k15', icon: 'arrow', title: 'แลกเมือง!', effect: { type: 'attack', kind: 'swap' } },
+    { id: 'k16', icon: 'gift', title: 'บริจาคเมือง', effect: { type: 'donate' } },
+    { id: 'k17', icon: 'flag', title: 'ไปเที่ยวงานวัด', effect: { type: 'goFestival' } }
 ];
 const CARD_BY_ID = new Map(CARDS.map(card => [card.id, card]));
 
