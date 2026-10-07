@@ -116,7 +116,9 @@ const walletSchema = new mongoose.Schema({
     playerId: { type: String, required: true, unique: true, index: true },
     balance: { type: Number, default: 0 },
     lastDailyClaim: { type: String, default: null },
-    ledger: { type: Array, default: [] }
+    ledger: { type: Array, default: [] },
+    // เงินพักโป๊กเกอร์โต๊ะเงิน ของมือที่ยังไม่จบ (ดู walletManager)
+    pokerEscrow: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
 
 // ประวัติ season. เดิมเก็บแค่ data/seasons.json ซึ่งดิสก์ Render หายทุกครั้งที่ deploy

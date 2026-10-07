@@ -17,6 +17,8 @@ const LEDGER_LIMIT = 40;
 
 const wallets = new Map();
 const dirtyIds = new Set();
+// คนที่มี "เงินพักโป๊กเกอร์" ค้างอยู่ — ไม่ต้องไล่ทุกกระเป๋าตอนหาเงินพักที่ต้องคืน
+const escrowHolders = new Set();
 let saveTimer = null;
 let useDatabase = false;
 let Wallet = null;
@@ -53,6 +55,7 @@ function readWalletFile(file) {
 
 function loadWalletsFromFile() {
     wallets.clear();
+    escrowHolders.clear();
     persistBlocked = false;
     if (!fs.existsSync(WALLETS_FILE)) return;
     try {
@@ -99,7 +102,7 @@ async function persistDbNow() {
             return {
                 updateOne: {
                     filter: { playerId: id },
-                    update: { $set: { balance: row.balance, lastDailyClaim: row.lastDailyClaim, ledger: row.ledger } },
+                    update: { $set: { balance: row.balance, lastDailyClaim: row.lastDailyClaim, ledger: row.ledger, pokerEscrow: row.pokerEscrow || {} } },
                     upsert: true
                 }
             };
@@ -157,21 +160,43 @@ async function initWalletManager() {
         return;
     }
     wallets.clear();
+    escrowHolders.clear();
     docs.forEach(doc => {
         if (!isBotId(doc.playerId)) wallets.set(doc.playerId, normalizeWallet(doc.playerId, doc));
     });
     console.log(`✅ WalletManager using MongoDB (${wallets.size} wallet(s))`);
 }
 
+// เงินพักโป๊กเกอร์: { [handKey]: { amount, roomId } } — ชิปที่หักเข้ามือที่ยังไม่จบ
+// เก็บในแถวเดียวกับ balance → เซฟพร้อมกันเสมอ ไม่มีจังหวะที่ยอดกับเงินพักไม่ตรงกัน
+function normalizeEscrow(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.entries(raw).forEach(([key, entry]) => {
+        const amount = Math.floor(Number(entry && entry.amount));
+        if (!key || !Number.isFinite(amount) || amount <= 0) return;
+        out[key] = { amount, roomId: entry && entry.roomId ? String(entry.roomId) : null };
+    });
+    return out;
+}
+
+function trackEscrow(row) {
+    if (row.pokerEscrow && Object.keys(row.pokerEscrow).length) escrowHolders.add(row.playerId);
+    else escrowHolders.delete(row.playerId);
+}
+
 function normalizeWallet(playerId, row = {}) {
     const raw = Number(row.balance);
     const balance = Number.isFinite(raw) ? Math.max(0, Math.min(DEBUG_BALANCE_CAP, Math.floor(raw))) : STARTING_CHIPS;
-    return {
+    const normalized = {
         playerId,
         balance,
         lastDailyClaim: typeof row.lastDailyClaim === 'string' ? row.lastDailyClaim : null,
-        ledger: Array.isArray(row.ledger) ? row.ledger.slice(0, LEDGER_LIMIT) : []
+        ledger: Array.isArray(row.ledger) ? row.ledger.slice(0, LEDGER_LIMIT) : [],
+        pokerEscrow: normalizeEscrow(row.pokerEscrow)
     };
+    trackEscrow(normalized);
+    return normalized;
 }
 
 function getOrCreate(playerId) {
@@ -211,8 +236,51 @@ function applyDelta(playerId, delta, reason, meta = {}) {
     const applied = capped - row.balance;
     row.balance = capped;
     pushLedger(row, { delta: applied, reason, roomId: meta.roomId || null });
+    if (meta.escrowKey) {
+        const escrow = row.pokerEscrow || (row.pokerEscrow = {});
+        const entry = escrow[meta.escrowKey] || { amount: 0, roomId: meta.roomId || null };
+        if (applied < 0) entry.amount += -applied;
+        else if (meta.escrowRelease) entry.amount = Math.max(0, entry.amount - applied);
+        if (entry.amount > 0) escrow[meta.escrowKey] = entry;
+        else delete escrow[meta.escrowKey];
+        trackEscrow(row);
+    }
     markDirty(playerId);
     return publicWallet(playerId);
+}
+
+// มือจบปกติ (จ่ายกองแล้ว) → ล้างเงินพักของมือนั้น ไม่ขยับยอด
+function settleEscrow(playerId, key) {
+    const row = wallets.get(playerId);
+    if (!row || !key || !row.pokerEscrow || !row.pokerEscrow[key]) return false;
+    delete row.pokerEscrow[key];
+    trackEscrow(row);
+    markDirty(playerId);
+    return true;
+}
+
+// มือค้าง/ถูกยกเลิก → คืนเงินพักทั้งก้อนให้เจ้าของ แล้วลบรายการในจังหวะเดียวกัน (กันคืนซ้ำ)
+function refundEscrow(playerId, key, reason = 'poker-void-refund') {
+    const row = wallets.get(playerId);
+    const entry = row && row.pokerEscrow ? row.pokerEscrow[key] : null;
+    if (!entry) return 0;
+    delete row.pokerEscrow[key];
+    trackEscrow(row);
+    const amount = Math.max(0, Math.floor(Number(entry.amount) || 0));
+    if (amount > 0) applyDelta(playerId, amount, reason, { roomId: entry.roomId, bypassCap: true });
+    else markDirty(playerId);
+    return amount;
+}
+
+function listEscrows() {
+    const rows = [];
+    escrowHolders.forEach(playerId => {
+        const row = wallets.get(playerId);
+        Object.entries((row && row.pokerEscrow) || {}).forEach(([key, entry]) => {
+            rows.push({ playerId, key, amount: entry.amount, roomId: entry.roomId });
+        });
+    });
+    return rows;
 }
 
 function credit(playerId, amount, reason, meta) {
@@ -266,6 +334,9 @@ module.exports = {
     publicWallet,
     credit,
     debit,
+    settleEscrow,
+    refundEscrow,
+    listEscrows,
     debugCredit,
     canAfford,
     claimDaily,

@@ -1,6 +1,6 @@
 {
   "name": "concept-boardgame",
-  "version": "6.4.0",
+  "version": "6.4.1",
   "dependencies": {
     "body-parser": "^1.20.4",
     "compression": "^1.8.1",
@@ -79,6 +79,7 @@
     "smoke:coup-liar:regressions": "node scripts/smoke-coup-liar-regressions.js",
     "smoke:poker": "node scripts/smoke-poker-engine.js",
     "smoke:poker:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js",
+    "smoke:poker:cash": "node scripts/smoke-poker-cash.js",
     "smoke:pokdeng": "node scripts/smoke-pokdeng-engine.js",
     "smoke:pokdeng:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-pokdeng-play.js",
     "smoke:pokdeng:mobile": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-pokdeng-mobile.js",

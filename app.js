@@ -3416,6 +3416,44 @@ function isPokerCashRoom(room) {
     return room?.gameState?.tableType === 'cash' || room?.settings?.pokerTableType === 'cash';
 }
 
+// ===== โต๊ะเงิน: คืนชิปของมือที่ไม่ได้เล่นจนจบ =====
+// ทุกชิปที่หักจากกระเป๋าเข้ามือถูกจดเป็นเงินพัก (walletManager.pokerEscrow) ในแถวเดียวกับยอดเงิน
+// มือจบปกติ engine ล้างเงินพักทันทีตอนจ่ายกอง → เงินพักที่ยังค้าง = มือนั้นไม่มีวันจบแล้ว
+// (หัวห้องจบโต๊ะ / แอดมินปิดห้อง / ห้องถูกเก็บกวาด / เซิร์ฟเวอร์รีสตาร์ต) → คืนให้เจ้าของ
+// ตัดสินจากเงินพักในกระเป๋า ไม่ใช่ snapshot ห้อง (เซฟแค่นาทีละครั้ง อาจเก่ากว่ากระเป๋า)
+function isLivePokerHand(room, handKey) {
+    const state = room && room.gameState;
+    return !!(state && isPokerMode(room.settings.gameMode) && state.handUid === handKey
+        && state.status === 'playing' && state.phase !== 'finished' && state.phase !== 'lobby');
+}
+
+function refundStalePokerEscrows(reason) {
+    let total = 0;
+    walletManager.listEscrows().forEach(entry => {
+        const room = entry.roomId ? roomManager.getRoom(entry.roomId) : null;
+        if (isLivePokerHand(room, entry.key)) return;
+        const amount = walletManager.refundEscrow(entry.playerId, entry.key);
+        if (amount <= 0) return;
+        total += amount;
+        addServerLog(io, 'system', entry.roomId || null,
+            `[โป๊กเกอร์] คืนชิป ${amount.toLocaleString('th-TH')} จากมือที่ไม่จบ (${reason})`, 'warning',
+            { gameMode: room?.settings?.gameMode || null, meta: { event: 'poker_escrow_refund', playerId: entry.playerId, amount, reason } });
+    });
+    return total;
+}
+
+// บูตใหม่: มือโต๊ะเงินที่ค้างจาก snapshot ห้อง เชื่อไม่ได้ว่าตรงกับกระเป๋า → ยกเลิกมือ คืนชิป กลับห้องรอ
+function voidCashPokerHandsOnBoot() {
+    roomManager.forEachRoom(room => {
+        if (!isPokerMode(room.settings.gameMode) || !isPokerCashRoom(room)) return;
+        const state = room.gameState;
+        if (!state || state.status !== 'playing') return;
+        roomManager.resetRoomGame(room.roomId);
+        console.log(`[poker] boot: voided unfinished cash hand in room ${room.roomId}`);
+    });
+    return refundStalePokerEscrows('เซิร์ฟเวอร์รีสตาร์ต');
+}
+
 // บอทลงชิปช้าลงให้คนอ่านทัน (เดิม 0.7–1.2 วิ บอท 3 ตัวจบรอบใน 2 วิ) — ตอนเลือกทิ้งยังเร็วเหมือนเดิม
 const POKER_BOT_BET_MS = Number(process.env.POKER_BOT_BET_MS) >= 0 && process.env.POKER_BOT_BET_MS !== '' && process.env.POKER_BOT_BET_MS != null ? Number(process.env.POKER_BOT_BET_MS) : 1400;
 function pokerBotDelayMs(phase) {
@@ -4088,6 +4126,7 @@ function runRoomCleanupSweep() {
     // ถ้าเซิร์ฟเวอร์รีสตาร์ตกลางเกม (Render รีบ่อย) ห้องจะถูกกู้คืนด้วย state เก่า
     // ยิงเซฟตามรอบ sweep เพื่อจำกัดความเก่าไว้ไม่เกิน 1 รอบ
     roomManager.schedulePersistRooms();
+    refundStalePokerEscrows('ห้องถูกปิด/เก็บกวาด');
 
     const activeSocketIds = new Set(Array.from(io.sockets.sockets.keys()));
     const staleSocketPlayers = roomManager.reconcileSocketState(activeSocketIds, ROOM_OFFLINE_GRACE_MS);
@@ -6100,6 +6139,7 @@ io.sockets.on('connection', function(socket) {
             }
 
             const { room: refreshedRoom, removedPlayers } = roomManager.endTableSession(roomId, playerId);
+            refundStalePokerEscrows('หัวห้องจบโต๊ะ');
 
             if (!refreshedRoom) {
                 io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -6807,6 +6847,7 @@ io.sockets.on('connection', function(socket) {
             });
             
             roomManager.forceCloseRoom(roomId);
+            refundStalePokerEscrows('แอดมินปิดห้อง');
             io.emit('roomListUpdate', roomManager.getAllRooms());
             
             callback({ success: true });
@@ -10778,6 +10819,7 @@ function onServerListening() {
         meta: null
     });
 
+    voidCashPokerHandsOnBoot();
     recoverGamePhaseTimers();
 }
 

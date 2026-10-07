@@ -2192,7 +2192,7 @@ $(function() {
   function endWarningText() {
     const pot = Number(currentState && currentState.pot) || 0;
     if (handInPlay() && pot > 0 && currentState.tableType === 'cash') {
-      return 'มือนี้ยังไม่จบ กองกลาง ' + pot + ' ชิปจะไม่ถูกแจกคืนใคร — รอจบมือก่อนดีกว่า';
+      return 'มือนี้ยังไม่จบ — ยกเลิกมือนี้ แล้วคืนชิปที่ทุกคนลงไว้ (กองกลาง ' + pot + ' ชิป) ให้เจ้าของครบทุกคน';
     }
     return 'ทุกคนจะถูกส่งกลับห้องรอ';
   }

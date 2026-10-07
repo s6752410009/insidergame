@@ -330,6 +330,24 @@ function walletStack(playerId) {
     return walletManager.publicWallet(playerId).balance;
 }
 
+// โต๊ะเงิน: ทุกชิปที่หักจากกระเป๋าเข้ามือนี้ถูกจดเป็น "เงินพัก" (escrow) ในแถวกระเป๋าเดียวกับยอดเงิน
+// มือจบปกติ → ล้างเงินพัก (เงินไปกองแล้ว) · มือค้าง/ถูกยกเลิก/รีสตาร์ต → คืนเงินพักให้เจ้าของครั้งเดียว
+function makeHandUid() {
+    return `h${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function noteEscrowHolder(state, playerId) {
+    const ids = Array.isArray(state.escrowIds) ? state.escrowIds : [];
+    if (!ids.includes(playerId)) ids.push(playerId);
+    state.escrowIds = ids;
+}
+
+function settleHandEscrow(room) {
+    const state = room.gameState;
+    if (state.tableType !== 'cash' || !state.handUid) return;
+    (state.escrowIds || []).forEach(playerId => walletManager.settleEscrow(playerId, state.handUid));
+}
+
 function takeChips(room, player, amount) {
     const want = Math.max(0, Math.floor(Number(amount) || 0));
     if (want <= 0) return 0;
@@ -338,7 +356,8 @@ function takeChips(room, player, amount) {
         const have = walletStack(player.playerId);
         const take = Math.min(have, want);
         if (take) {
-            walletManager.debit(player.playerId, take, 'poker-bet', { roomId: room.roomId });
+            walletManager.debit(player.playerId, take, 'poker-bet', { roomId: room.roomId, escrowKey: state.handUid });
+            noteEscrowHolder(state, player.playerId);
         }
         player.stack = walletStack(player.playerId);
         return take;
@@ -380,7 +399,14 @@ function giveChips(room, player, amount, reason) {
     const value = Math.max(0, Math.floor(Number(amount) || 0));
     if (!value || !player) return 0;
     if (room.gameState.tableType === 'cash') {
-        walletManager.credit(player.playerId, value, reason, { roomId: room.roomId, bypassCap: true });
+        // คืนส่วนที่ไม่มีใครตาม = ถอนออกจากเงินพักมือนี้ด้วย (ยังเป็นเงินของเจ้าของเอง)
+        const release = reason === 'poker-refund';
+        walletManager.credit(player.playerId, value, reason, {
+            roomId: room.roomId,
+            bypassCap: true,
+            escrowKey: release ? room.gameState.handUid : null,
+            escrowRelease: release
+        });
         player.stack = walletStack(player.playerId);
     } else {
         player.stack += value;
@@ -495,6 +521,8 @@ function settlePots(room, scoreOf) {
     Object.keys(payouts).forEach(playerId => {
         giveChips(room, getPlayer(room, playerId), payouts[playerId], 'poker-pot');
     });
+    // จ่ายกองครบแล้วในจังหวะเดียวกัน (sync) → ล้างเงินพักของทุกคนที่ลงมือนี้ รวมคนที่ออกไปแล้ว
+    settleHandEscrow(room);
     const paid = potRows.reduce((sum, pot) => sum + pot.amount, 0);
     const refunds = state.pendingRefunds || {};
     state.pendingRefunds = {};
@@ -548,6 +576,8 @@ function startHand(room) {
     state.deadMoney = [];
     state.pendingRefunds = {};
     state.pots = [];
+    state.handUid = makeHandUid();
+    state.escrowIds = [];
     if (state.players.length < 2 || !collectAnte(room)) {
         return finishTable(room, 'เหลือผู้เล่นหรือชิปไม่พอเริ่มมือนี้ — จบโต๊ะ');
     }
