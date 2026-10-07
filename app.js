@@ -1560,7 +1560,7 @@ function buildGameEndNotification(room) {
         const winner = gameState.winner;
         const winnerLabel = winner === 'werewolf'
             ? 'หมาป่า'
-            : (winner === 'village' ? 'ชาวบ้าน' : (winner === 'fool' ? 'คนบ้า' : String(winner || 'ไม่ทราบ')));
+            : (winner === 'village' ? 'ชาวบ้าน' : (winner === 'fool' ? 'คนบ้า' : (winner === 'serialKiller' ? 'ฆาตกรต่อเนื่อง' : String(winner || 'ไม่ทราบ'))));
         return {
             chatMessage: `เกมจบ! ${winnerLabel} ชนะ (วันที่ ${gameState.dayNumber || 0})`,
             chatColor: winner === 'werewolf' ? '#e74c3c' : '#2ecc71',

@@ -25,7 +25,7 @@ function isBotPlayerId(playerId) {
     return String(playerId || '').startsWith('bot_');
 }
 
-const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'witch', 'fool', 'revealer'];
+const WEREWOLF_ROLE_IDS = ['villager', 'werewolf', 'alphaWolf', 'mayor', 'bodyguard', 'seer', 'doctor', 'witch', 'fool', 'revealer', 'serialKiller', 'prince', 'lycan', 'diseased', 'apprenticeSeer'];
 const BLACKMARKET_ROLE_IDS = ['boss', 'broker', 'smuggler', 'fixer', 'hitman', 'mole', 'doubleAgent'];
 const WEREWOLF_ROLE_LABELS = {
     villager: 'ชาวบ้าน',
@@ -42,7 +42,12 @@ const WEREWOLF_ROLE_LABELS = {
     hunter: 'พราน',
     cleric: 'นักบวช',
     fool: 'คนบ้า',
-    revealer: 'จอมเปิดโปง'
+    revealer: 'จอมเปิดโปง',
+    serialKiller: 'ฆาตกรต่อเนื่อง',
+    prince: 'เจ้าชาย',
+    lycan: 'ไลแคน',
+    diseased: 'ผู้ติดเชื้อ',
+    apprenticeSeer: 'ศิษย์ผู้หยั่งรู้'
 };
 const BLACKMARKET_ROLE_LABELS = {
     boss: 'เจ้าพ่อ',
@@ -1151,7 +1156,7 @@ function recordWerewolfGameEnd(roomId, gameResult) {
     }
 
     const gameTimestamp = new Date().toISOString();
-    const winnerLabel = winner === 'village' ? 'ชาวบ้าน' : (winner === 'werewolf' ? 'หมาป่า' : 'คนบ้า');
+    const winnerLabel = winner === 'village' ? 'ชาวบ้าน' : (winner === 'werewolf' ? 'หมาป่า' : (winner === 'serialKiller' ? 'ฆาตกรต่อเนื่อง' : 'คนบ้า'));
 
     players.forEach(player => {
         if (!player.playerId || !player.role || isBotPlayerId(player.playerId)) {

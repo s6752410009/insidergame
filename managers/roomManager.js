@@ -626,7 +626,10 @@ function createRoom(roomData, creatorPlayerId) {
     const wolfCount = gameMode === 'werewolf'
         ? (hasExplicitWerewolfRoles
             ? null
-            : Math.min(Math.max(1, Number(normalizedRoomData.wolfCount) || 2), 3))
+            // ไม่ส่ง/ส่ง 0 = อัตโนมัติตามตารางบทแนะนำ · 1–5 = หัวห้องกำหนดเอง
+            : (typeof gameEngine.sanitizeWolfCount === 'function'
+                ? gameEngine.sanitizeWolfCount(normalizedRoomData.wolfCount)
+                : Math.min(Math.max(1, Number(normalizedRoomData.wolfCount) || 2), 3)))
         : null;
     const spyfallVoteMinutes = gameMode === 'spyfall'
         ? Math.min(10, Math.max(0.5, Number(normalizedRoomData.spyfallVoteMinutes) || 1.5))
@@ -1123,7 +1126,8 @@ function updateRoom(roomId, adminPlayerId, updates) {
             room.settings.werewolfRoles = [];
             if (updates.wolfCount !== undefined) {
                 const wc = Number(updates.wolfCount) || 0;
-                room.settings.wolfCount = (wc >= 1 && wc <= 3) ? wc : null;
+                const maxWolves = Number(gameEngine.MAX_WOLF_COUNT || 3);
+                room.settings.wolfCount = (Number.isInteger(wc) && wc >= 1 && wc <= maxWolves) ? wc : null;
             }
         }
     }
