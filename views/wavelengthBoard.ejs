@@ -66,6 +66,7 @@
   }
   .wl-pill:hover { background: var(--wl-surface-2); }
   .wl-pill--danger { color: oklch(0.85 0.08 25); border-color: oklch(0.7 0.14 25 / 0.45); }
+  .wl-pill--exit { color: oklch(0.88 0.08 25); border-color: oklch(0.65 0.16 25 / 0.7); font-weight: 700; }
   .wl-pill:focus-visible, .wl-btn:focus-visible, .wl-option:focus-visible, .wl-input:focus-visible { outline: 2px solid var(--wl-gold); outline-offset: 2px; }
 
   /* ---------- now bar ---------- */
@@ -383,6 +384,7 @@
       <h1 class="wl-title"><%= room.name %></h1>
     </div>
     <div class="wl-tools">
+      <button type="button" id="wlExitBtn" class="wl-pill wl-pill--exit">🚪 ออก</button>
       <button type="button" id="wlHowBtn" class="wl-pill">วิธีเล่น</button>
       <button type="button" id="wlSidebarBtn" class="wl-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
       <button type="button" id="wlSkipBtn" class="wl-pill" hidden>ข้ามตานี้</button>
@@ -508,6 +510,7 @@
 
 <%- contentFor('script') %>
 <script src="/js/chatPanel.js"></script>
+<script src="/js/roomExit.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('wl-active');
@@ -1437,18 +1440,32 @@ $(function() {
   $('#wlSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
   $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
   $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#playerSidebar').hasClass('open')) setSidebarOpen(false); });
-  $('#leaveRoomBtn').on('click', function() {
-    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: 'แต้มของคุณในเกมนี้จะหยุดนับ', showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#13213a', color: '#fff' })
-      .then(r => {
-        if (!r.isConfirmed) return;
-        allowNavigation = true;
-        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
-      });
+  // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+  function exitConsequences() {
+    const self = S.self || null;
+    if (!S.phase || S.phase === 'lobby' || S.phase === 'finished') return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+    const lines = [];
+    if (self && self.isGiver && S.phase === 'clue') lines.push('คุณเป็นผู้ใบ้ — ข้ามรอบนี้ไปผู้ใบ้คนถัดไป');
+    else if (self && self.isGuesser && !self.locked) lines.push('คำตอบของคุณรอบนี้ไม่นับ');
+    lines.push('แต้มของคุณหยุดนับ');
+    const others = (S.players || []).filter(p => p.active && !p.isSelf).length;
+    lines.push(others < 2 ? 'เหลือไม่ถึง 2 คน — เกมจบ' : 'เกมเล่นต่อโดยไม่มีคุณ');
+    if (S.isHost) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+    return lines;
+  }
+  const exit = window.roomExit.create({
+    socket: socket, roomId: roomId, playerId: playerId,
+    consequences: exitConsequences,
+    onLeave: function() { allowNavigation = true; },
+    theme: { background: '#13213a', color: '#fff', confirmButtonColor: '#b3262e' }
   });
+  $('#wlExitBtn').on('click', exit.confirm);
+  $('#leaveRoomBtn').on('click', function() { setSidebarOpen(false); exit.confirm(); });
   window.addEventListener('beforeunload', function(e) { if (!allowNavigation) e.preventDefault(); });
 
   // ---------- socket ----------
   socket.on('connect', function() {
+    if (exit.isLeaving()) return;
     $('#connectionStatus').hide();
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
@@ -1465,14 +1482,15 @@ $(function() {
         (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:oklch(0.74 0.03 250);">หลุด</span>' : '') +
       '</li>').join(''));
   });
-  socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('redirectToLobby', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('returnToLobby', function(data) {
     S.returnLobbyEndsAt = Number(data && data.endsAt) || (now() + (Number(data && data.countdown) || 10) * 1000);
     tickTimer();
   });
-  socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('restartGame', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
+    if (exit.isLeaving()) return;
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && (data.reason || data.message)) || '', background: '#13213a', color: '#fff' })
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });

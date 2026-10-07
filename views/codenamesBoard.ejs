@@ -73,6 +73,7 @@
     font-size: 0.86rem; font-weight: 600; cursor: pointer; white-space: nowrap;
   }
   .cn-pill:hover { background: var(--cn-surface-2); color: var(--cn-ink); }
+  .cn-pill--exit { color: oklch(0.88 0.08 25); border-color: oklch(0.65 0.16 25 / 0.7); font-weight: 700; }
   .cn-pill.is-danger { color: oklch(0.82 0.1 25); }
   .cn-pill[hidden] { display: none; }
   .cn-pill:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -401,8 +402,8 @@
     </div>
   </div>
   <div class="cn-tools">
+    <button type="button" id="cnLeaveBtn" class="cn-pill cn-pill--exit">🚪 ออก</button>
     <button type="button" id="cnHowBtn" class="cn-pill">วิธีเล่น</button>
-    <button type="button" id="cnLeaveBtn" class="cn-pill">ออกจากห้อง</button>
     <button type="button" id="cnSkipBtn" class="cn-pill" hidden>ข้ามเทิร์น</button>
     <button type="button" id="cnEndBtn" class="cn-pill is-danger"<%= room.admin ? '' : ' hidden' %>>จบเกม</button>
   </div>
@@ -472,6 +473,7 @@
 
 <%- contentFor('script') %>
 <script src="/js/chatPanel.js"></script>
+<script src="/js/roomExit.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('cn-active');
@@ -1153,17 +1155,29 @@ $(function() {
     Swal.fire({ icon: 'warning', title: 'ข้ามเทิร์น' + tName + '?', text: 'ใช้เมื่อมีคนไม่อยู่หน้าจอ — ตาจะไปที่อีกทีมทันที', showCancelButton: true, confirmButtonText: 'ข้ามเทิร์น', cancelButtonText: 'รอต่อ', background: '#1a2332', color: '#fff', confirmButtonColor: '#d9443c' })
       .then(r => { if (r.isConfirmed) send('codenames_hostSkip'); });
   });
-  $('#cnLeaveBtn').on('click', function() {
+  // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+  function exitConsequences() {
     const self = me();
-    const leaveText = S.phase === 'finished' ? 'กลับไปหน้ารายชื่อห้อง'
-      : (self.role === 'spymaster' ? 'คุณเป็นหัวหน้า — ลูกทีมคนอื่นจะเป็นหัวหน้าแทน' : (self.team ? 'ทีมของคุณจะเล่นต่อโดยไม่มีคุณ' : 'คุณดูอยู่ ออกได้เลย เกมไม่สะดุด'));
-    Swal.fire({ icon: 'question', title: 'ออกจากห้อง?', text: leaveText, showCancelButton: true, confirmButtonText: 'ออก', cancelButtonText: 'อยู่ต่อ', background: '#1a2332', color: '#fff' })
-      .then(r => {
-        if (!r.isConfirmed) return;
-        allowNavigation = true;
-        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
-      });
+    if (!S.phase || S.phase === 'lobby' || S.phase === 'finished') return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+    if (!self.team || (self.team !== 'red' && self.team !== 'blue')) return ['คุณดูอยู่ — ออกได้เลย เกมไม่สะดุด'];
+    const lines = [];
+    const mates = ((S.teams && S.teams[self.team] && S.teams[self.team].members) || []).filter(m => !m.left && m.playerId !== playerId);
+    if (!mates.length) {
+      lines.push('ทีมคุณไม่เหลือใคร — อีกทีมชนะ');
+    } else {
+      if (self.role === 'spymaster') lines.push('คุณเป็นหัวหน้า — ลูกทีมคนอื่นเป็นหัวหน้าแทน');
+      lines.push('ทีมของคุณเล่นต่อโดยไม่มีคุณ');
+    }
+    if (S.isHost) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+    return lines;
+  }
+  const exit = window.roomExit.create({
+    socket: socket, roomId: roomId, playerId: playerId,
+    consequences: exitConsequences,
+    onLeave: function() { allowNavigation = true; },
+    theme: { background: '#1a2332', color: '#fff', confirmButtonColor: '#b3262e' }
   });
+  $('#cnLeaveBtn').on('click', exit.confirm);
   $('#cnEndBtn').on('click', function() {
     Swal.fire({ icon: 'warning', title: 'จบเกมเลยไหม?', text: 'เกมนี้ไม่นับผล ทุกคนกลับห้องรอ', showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#1a2332', color: '#fff', confirmButtonColor: '#d9443c' })
       .then(r => {
@@ -1179,8 +1193,9 @@ $(function() {
   window.addEventListener('resize', function() { clearTimeout(resizeTimer); resizeTimer = setTimeout(function() { if (S && S.board) { renderBoard(); syncDockHeight(); } }, 150); });
 
   // ---------- socket ----------
-  function goLobby() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
+  function goLobby() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
   socket.on('connect', function() {
+    if (exit.isLeaving()) return;
     $('#cnConn').hide();
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
@@ -1194,8 +1209,9 @@ $(function() {
     S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
     tickTimer();
   });
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
+    if (exit.isLeaving()) return;
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && (data.reason || data.message)) || '', background: '#1a2332', color: '#fff' })
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });

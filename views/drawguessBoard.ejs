@@ -77,6 +77,7 @@
   .dg-chip:active { transform: scale(0.95); }
   .dg-chip .t { display: none; }
   #dgSkipBtn .t { display: inline; }
+  .dg-chip--exit { color: oklch(0.88 0.08 25); border-color: oklch(0.65 0.16 25 / 0.7); font-weight: 700; padding: 0 10px; }
 
   /* ---------- body ---------- */
   .dg-body {
@@ -419,6 +420,7 @@
       <h1 class="dg-room"><%= room.name %></h1>
     </div>
     <div class="dg-tools">
+      <button type="button" id="dgExitBtn" class="dg-chip dg-chip--exit">🚪 ออก</button>
       <button type="button" id="dgSkipBtn" class="dg-chip" hidden aria-label="ข้ามตานี้">⏭<span class="t">ข้ามตา</span></button>
       <button type="button" id="dgHowTo" class="dg-chip" aria-label="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
       <button type="button" id="dgMenuBtn" class="dg-chip" aria-label="ผู้เล่นและเมนู" aria-expanded="false" aria-controls="dgSheet">☰<span class="t">เมนู</span></button>
@@ -484,6 +486,7 @@
 <div id="dgSheetOverlay" class="dg-sheet-overlay"></div>
 
 <%- contentFor('script') %>
+<script src="/js/roomExit.js"></script>
 <script>
 $(function() {
   document.documentElement.classList.add('dg-active');
@@ -1331,16 +1334,26 @@ $(function() {
   $('#dgMenuBtn').on('click', function() { setSheetOpen(!$('#dgSheet').hasClass('open')); });
   $('#dgSheetClose, #dgSheetOverlay').on('click', function() { setSheetOpen(false); });
   $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#dgSheet').hasClass('open')) setSheetOpen(false); });
-  $('#dgLeaveBtn').on('click', function() {
-    Swal.fire({
-      icon: 'question', title: 'ออกจากห้อง?', text: 'ออกกลางเกม = นับว่าแพ้ (ถ้าเกมนับสถิติ)', showCancelButton: true,
-      confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff'
-    }).then(r => {
-      if (!r.isConfirmed) return;
-      allowNavigation = true;
-      socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
-    });
+  // ออกจากห้อง: บอกผลตามจังหวะเกม แล้วไป /rooms — กดแล้วห้ามมีอะไรดึงกลับเข้าเกม
+  function exitConsequences() {
+    if (!S.phase || S.phase === 'lobby' || S.phase === 'finished') return ['เกมจบแล้ว — กลับไปหน้ารวมห้อง'];
+    const lines = [];
+    const me = (S.players || []).find(p => p.isSelf) || null;
+    if (me && me.isDrawer) lines.push('คุณเป็นคนวาดอยู่ — ตาจะข้ามไปคนต่อไป');
+    lines.push('แต้มของคุณหยุดนับ · ออกกลางเกม = นับว่าแพ้');
+    const others = (S.players || []).filter(p => !p.left && !p.isSelf).length;
+    lines.push(others < 2 ? 'เหลือไม่ถึง 2 คน — เกมจบ' : 'เกมเล่นต่อโดยไม่มีคุณ');
+    if (isHost()) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
+    return lines;
+  }
+  const exit = window.roomExit.create({
+    socket: socket, roomId: roomId, playerId: playerId,
+    consequences: exitConsequences,
+    onLeave: function() { allowNavigation = true; },
+    theme: { background: '#151d2a', color: '#fff', confirmButtonColor: '#b3262e' }
   });
+  $('#dgExitBtn').on('click', exit.confirm);
+  $('#dgLeaveBtn').on('click', function() { setSheetOpen(false); exit.confirm(); });
   $('#dgEndBtn').on('click', function() {
     Swal.fire({
       icon: 'warning', title: 'จบเกมและกลับห้องรอ?', text: 'เกมนี้จะไม่นับสถิติ', showCancelButton: true,
@@ -1354,6 +1367,7 @@ $(function() {
   // ---------- socket ----------
   function requestState() { socket.emit('drawguess_requestState', { roomId: roomId, playerId: playerId }); }
   socket.on('connect', function() {
+    if (exit.isLeaving()) return;
     $('#dgConn').hide();
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
@@ -1389,7 +1403,7 @@ $(function() {
         (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:#9fb3c8;">ออฟไลน์</span>' : '') +
       '</li>').join(''));
   });
-  function goLobby() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
+  function goLobby() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
   socket.on('redirectToLobby', goLobby);
   socket.on('restartGame', goLobby);
   socket.on('roomClosed', function() { allowNavigation = true; window.location.href = '/rooms?playerId=' + playerId; });
@@ -1397,8 +1411,9 @@ $(function() {
     S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
     tickTimer();
   });
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { if (exit.isLeaving()) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
+    if (exit.isLeaving()) return;
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ออกจากห้องแล้ว', text: (data && (data.reason || data.message)) || '', background: '#151d2a', color: '#fff' })
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });

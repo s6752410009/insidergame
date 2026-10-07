@@ -518,7 +518,9 @@ function readStats() {
         assert(modes.length >= 5 && modes.includes('codenames'), 'อ่านรายชื่อโหมดได้: ' + JSON.stringify(modes));
         modes.forEach(m => {
             const ms = (getGameEngine(m) || {}).finishedReturnMs;
-            assert(m === 'codenames' ? ms === 30000 : ms === undefined, `โหมด ${m} finishedReturnMs = ${ms}`);
+            // อวาลอนตามกติกา: หน้าจบ 30 วิ ไว้ดูบททั้งโต๊ะ (rules/avalon)
+            const longEnd = m === 'codenames' || m === 'avalon';
+            assert(longEnd ? ms === 30000 : ms === undefined, `โหมด ${m} finishedReturnMs = ${ms}`);
         });
         assert(/const FINISHED_RETURN_MS = 10000;/.test(fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8')), 'ค่ากลับห้องปกติยัง 10 วิ');
         console.log('C3. หน้าจบสายลับคำใบ้ 30 วิ · โหมดอื่น 10 วิเหมือนเดิม ✓');
