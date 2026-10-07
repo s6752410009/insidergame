@@ -653,6 +653,9 @@ function createRoom(roomData, creatorPlayerId) {
             avalonRoles: gameMode === 'avalon' && typeof gameEngine.sanitizeRoleSelection === 'function'
                 ? gameEngine.sanitizeRoleSelection(normalizedRoomData.avalonRoles)
                 : undefined,
+            avalonLady: gameMode === 'avalon' && typeof gameEngine.sanitizeLadySetting === 'function'
+                ? gameEngine.sanitizeLadySetting(normalizedRoomData.avalonLady)
+                : undefined,
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
@@ -1057,6 +1060,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (updates.avalonRoles !== undefined && room.settings.gameMode === 'avalon') {
         const avalonEngine = getGameEngine('avalon');
         room.settings.avalonRoles = avalonEngine.sanitizeRoleSelection(updates.avalonRoles);
+    }
+
+    if (updates.avalonLady !== undefined && room.settings.gameMode === 'avalon') {
+        room.settings.avalonLady = getGameEngine('avalon').sanitizeLadySetting(updates.avalonLady);
     }
 
     if (updates.undercoverMrWhite !== undefined && room.settings.gameMode === 'undercover') {

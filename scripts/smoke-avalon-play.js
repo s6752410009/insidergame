@@ -67,8 +67,9 @@ async function makeTable(base, count, label) {
         const socket = await conn(base);
         const id = randomUUID();
         socket.emit('initPlayer', id);
-        const entry = { socket, id, name: `${label}${i + 1}`, states: [] };
+        const entry = { socket, id, name: `${label}${i + 1}`, states: [], returnEvents: [] };
         socket.on('avalonState', s => entry.states.push(s));
+        socket.on('returnToLobby', d => entry.returnEvents.push(d));
         players.push(entry);
     }
     await delay(400);
@@ -243,6 +244,10 @@ async function finishAndReturn(table, tally, winnerTeam) {
     for (const p of table.players) p.socket.emit('avalon_requestState', {});
     await delay(900);
     if (tally) expectStats(table, tally, 'หลังจบเกม');
+    // หน้าจบเกมค้าง ~30 วิ (engine.finishedReturnMs) ไม่ใช่ 10 วิแบบเดิม
+    const ret = table.players[0].returnEvents[table.players[0].returnEvents.length - 1];
+    assert(ret && ret.countdown === 30 && ret.endsAt - Date.now() > 20000, 'returnToLobby ต้องนับ 30 วิ: ' + JSON.stringify(ret));
+    table.players.forEach(p => { p.returnEvents.length = 0; });
     // คนที่ไม่ใช่หัวห้องพาทั้งวงกลับไม่ได้ (ได้ canReturnSelf ให้กลับคนเดียว) — หัวห้องทำได้
     const denied = await ack(table.players[1].socket, 'returnFinishedToLobby', { roomId: table.roomId });
     assert(denied && !denied.success && denied.canReturnSelf, 'ผู้เล่นทั่วไปพาทุกคนกลับห้องได้: ' + JSON.stringify(denied));
@@ -314,6 +319,7 @@ async function finishAndReturn(table, tally, winnerTeam) {
         const morgana = t7.players.find(p => p.role === 'morgana');
         assert(latest(morgana).self.knowledge.length === 2, 'ฝ่ายร้าย 3 คนเห็นกันเอง 2 คน');
         assert(latest(t7.players[0]).quests[3].failsNeeded === 2, '7 คน ภารกิจ 4 ต้องล้ม 2 ใบ');
+        assert(latest(t7.players[0]).lady === null, 'ค่าเริ่มต้น: ไม่มีนางแห่งทะเลสาบ');
 
         // เกม 4: ฝ่ายดีชนะ — ภารกิจ 4 มีการ์ดล้ม 1 ใบแต่ยังสำเร็จ
         await nightAll(t7);
@@ -338,6 +344,63 @@ async function finishAndReturn(table, tally, winnerTeam) {
         assert(st.winner.reason === 'quests', 'ฝ่ายร้ายชนะด้วยภารกิจล้ม 3');
         await finishAndReturn(t7, tally7, 'evil');
         console.log('5. 7 คน: ภารกิจ 4 ล้ม 2 ใบ → ล้มครบ 3 → ฝ่ายร้ายชนะ ✓');
+
+        /* ---------------- 7 คน + นางแห่งทะเลสาบ ---------------- */
+        const tL = await makeTable(base, 7, 'ทะเลสาบ');
+        const notHost = await ack(tL.players[1].socket, 'updateRoom', { avalonLady: true });
+        assert(notHost && !notHost.success, 'คนที่ไม่ใช่หัวห้องเปิดนางแห่งทะเลสาบไม่ได้');
+        const ladyOn = await ack(tL.players[0].socket, 'updateRoom', { avalonLady: 'yes-please' });
+        assert(ladyOn?.success && ladyOn.room.settings.avalonLady === false, 'ค่าแปลก ๆ ถูก sanitize เป็นปิด');
+        const ladyOn2 = await ack(tL.players[0].socket, 'updateRoom', { avalonLady: true });
+        assert(ladyOn2?.success && ladyOn2.room.settings.avalonLady === true, 'หัวห้องเปิดนางแห่งทะเลสาบได้');
+        await startGame(tL);
+        let lv = latest(tL.players[0]);
+        assert(lv.lady && lv.lady.holderId && lv.lady.checks.length === 0, 'เริ่มเกมมีคนถือนางแห่งทะเลสาบ');
+        const seatIds = lv.players.map(p => p.playerId);
+        await nightAll(tL);
+        const firstLeader = view(tL).leaderId;
+        assert(seatIds[(seatIds.indexOf(firstLeader) - 1 + seatIds.length) % seatIds.length] === lv.lady.holderId, 'คนถือคนแรก = ทางขวาของหัวหน้าคนแรก');
+        await playRound(tL, { teamPicker: s => pickTeam(tL, s) });
+        assert(view(tL).phase === 'team', 'หลังภารกิจ 1 ยังไม่ส่อง');
+        await playRound(tL, { teamPicker: s => pickTeam(tL, s) });
+        await waitFor(() => view(tL).phase === 'lady', 'หลังภารกิจ 2 ต้องเข้าเฟสนางแห่งทะเลสาบ');
+        await settle(tL);
+        const holderL = byId(tL, view(tL).lady.holderId);
+        assert(latest(holderL).self.canUseLady && latest(holderL).ladyTargets.length === 6, 'คนถือเห็นรายชื่อ 6 คน');
+        assert(tL.players.filter(p => p !== holderL).every(p => latest(p).ladyTargets.length === 0 && !latest(p).self.canUseLady), 'รายชื่อส่องไปถึงคนถือคนเดียว');
+        const victim = tL.players.find(p => p !== holderL && p.team === 'evil') || tL.players.find(p => p !== holderL);
+        const notHolder = tL.players.find(p => p !== holderL && p !== victim);
+        const deniedLady = await ack(notHolder.socket, 'avalon_lady', { targetId: victim.id, step: latest(notHolder).step });
+        assert(deniedLady && !deniedLady.success, 'คนไม่ถือส่องไม่ได้');
+        const selfLady = await ack(holderL.socket, 'avalon_lady', { targetId: holderL.id, step: latest(holderL).step });
+        assert(selfLady && !selfLady.success, 'ส่องตัวเองไม่ได้');
+        const staleLady = await ack(holderL.socket, 'avalon_lady', { targetId: victim.id, step: latest(holderL).step - 1 });
+        assert(staleLady && !staleLady.success, 'step เก่าส่องไม่ได้ (anti-replay)');
+        await act(holderL, 'avalon_lady', { targetId: victim.id });
+        await waitFor(() => view(tL).phase === 'team', 'ส่องแล้วไปเลือกทีม');
+        await settle(tL);
+        const hv = latest(holderL);
+        assert(hv.self.ladyResults.length === 1 && hv.self.ladyResults[0].team === victim.team, 'คนส่องเห็นฝ่ายจริงของเป้า');
+        assert(hv.players.find(p => p.playerId === victim.id).ladySeen === victim.team, 'ที่นั่งเป้าติดผลส่อง (เฉพาะคนส่อง)');
+        tL.players.filter(p => p !== holderL).forEach(p => {
+            const v = latest(p);
+            assert(v.self.ladyResults.length === 0 && v.players.every(x => x.ladySeen === null), `${p.name} ต้องไม่เห็นผลส่อง`);
+            assert(v.lady.holderId === victim.id && v.lady.checks.length === 1 && !('team' in v.lady.checks[0]), 'ทุกคนรู้แค่ว่าใครส่องใคร');
+            const raw = JSON.stringify(v);
+            assert(!raw.includes('"team":"' + victim.team + '","targetId"') && !/"checks":\[[^\]]*"team"/.test(raw), 'ฝ่ายของเป้าไม่หลุดใน payload คนอื่น');
+        });
+        tL.players.forEach(p => checkLeaks(p));
+        // ภารกิจ 3 สำเร็จ → ฝ่ายดีครบ 3 → ลอบสังหาร (ไม่ส่องอีกเพราะเกมตัดสินแล้ว)
+        await playRound(tL, { teamPicker: s => pickTeam(tL, s) });
+        await waitFor(() => view(tL).phase === 'assassin', 'สำเร็จครบ 3 → ลอบสังหาร ไม่ส่องอีก');
+        await settle(tL);
+        const assassinL = byId(tL, view(tL).assassinId);
+        const targetsL = latest(assassinL).assassinTargets;
+        assert(targetsL.length === 4 && targetsL.every(id => byId(tL, id).team === 'good'), 'มือสังหารแทงได้เฉพาะฝ่ายดี 4 คน');
+        assert(latest(assassinL).self.knowledge.length === 2, 'ช่วงลอบสังหาร ฝ่ายร้ายเห็นกันครบ');
+        await assassinate(tL, p => p.team === 'good' && p.role !== 'merlin');
+        await finishAndReturn(tL, null, 'good');
+        console.log('5b. 7 คน + นางแห่งทะเลสาบ: เปิด/ปิดได้เฉพาะหัวห้อง · ส่องหลังภารกิจ 2 · ผลลับถึงคนส่องคนเดียว · ท่าผิดถูกปฏิเสธ · ส่งต่อ ✓');
 
         /* ---------------- 6 คน: ออกกลางเกม ---------------- */
         const t6 = await makeTable(base, 6, 'หก');
@@ -382,7 +445,7 @@ async function finishAndReturn(table, tally, winnerTeam) {
         assert(selfRole && otherRoles.length === 4, 'บทครบ');
         console.log('8. หน้าเกมเรนเดอร์ได้ และไม่ฝังบทของคนอื่นใน HTML ✓');
 
-        [t5, t7, t6].forEach(t => t.players.forEach(p => { try { p.socket.close(); } catch (e) { /* ignore */ } }));
+        [t5, t7, t6, tL].forEach(t => t.players.forEach(p => { try { p.socket.close(); } catch (e) { /* ignore */ } }));
         console.log(`\n✅ avalon socket playthrough: ผ่าน ${checks} เช็ก`);
     } finally {
         server.kill('SIGTERM');

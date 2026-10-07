@@ -2411,6 +2411,7 @@
     }
     function buildAvalonLobbyHtml(payload) {
       const picked = getAvalonRoles(payload);
+      const lady = !!(payload && payload.settings && payload.settings.avalonLady === true);
       const count = Number((payload && (payload.playerCount || payload.onlineCount)) || 0);
       const teams = AVALON_TEAM_COUNTS[count];
       const evilPicked = picked.filter(id => id !== 'percival').length;
@@ -2439,7 +2440,11 @@
         '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">ฝ่ายดีทำภารกิจสำเร็จ 3 ใน 5 · ฝ่ายร้ายทำให้ล้ม 3 · เมอร์ลินกับมือสังหารมีเสมอ</p>',
         '<div style="margin-top:10px; font-size:0.85em; color:#f5c86b; font-weight:700;">บทเสริม' + (isAdmin ? ' (แตะเพื่อเปิด/ปิด)' : '') + '</div>',
         '<div class="avl-roles">' + chips + '</div>',
-        '<p class="avl-plan' + (bad ? ' is-bad' : '') + '">' + plan + '</p>'
+        '<p class="avl-plan' + (bad ? ' is-bad' : '') + '">' + plan + '</p>',
+        // นางแห่งทะเลสาบ — ตัวเสริมในกล่องหลัก ค่าเริ่มต้นปิด (กติกาแนะนำ 7 คนขึ้นไป)
+        '<div style="margin-top:10px; font-size:0.85em; color:#f5c86b; font-weight:700;">ตัวเสริม</div>',
+        '<div class="avl-roles"><button type="button" class="avl-role' + (lady ? ' is-on' : '') + '" style="grid-column:1 / -1;" data-avalon-lady aria-pressed="' + lady + '"' + (isAdmin ? '' : ' disabled') + '>' +
+          '<span style="font-size:1.6em; line-height:1;" aria-hidden="true">🌊</span><span>นางแห่งทะเลสาบ ' + (lady ? 'เปิด' : 'ปิด') + '<br><small style="color:#94a3b8;font-weight:500;">หลังภารกิจ 2–4 ส่องฝ่าย 1 คน · แนะนำ 7+ คน</small></span></button></div>'
       ].join('');
     }
     $(document).on('click', '[data-avalon-role]', function() {
@@ -2454,6 +2459,16 @@
       });
     });
 
+    $(document).on('click', '[data-avalon-lady]', function() {
+      if (!isAdmin) return;
+      const on = !!(latestRoomPayload && latestRoomPayload.settings && latestRoomPayload.settings.avalonLady === true);
+      socket.emit('updateRoom', { avalonLady: !on }, function(res) {
+        if (res && !res.success) {
+          Swal.fire({ icon: 'error', title: res.error || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    });
+
     function showAvalonLobbyGuide() {
       Swal.fire({
         title: '🏰 อวาลอน เล่นยังไง',
@@ -2462,7 +2477,8 @@
           '<p>กลางคืน: แตะการ์ดดูบทเงียบ ๆ เมอร์ลินเห็นฝ่ายร้าย ฝ่ายร้ายเห็นกันเอง</p>' +
           '<p>หัวหน้า (เวียนตามที่นั่ง) เลือกทีม → ทุกคนโหวตพร้อมกัน เห็นด้วยเกินครึ่งถึงผ่าน · ไม่ผ่านติดกัน 5 ครั้ง ฝ่ายร้ายชนะ</p>' +
           '<p>ทีมลงการ์ดลับ ฝ่ายดีลงได้แค่สำเร็จ · ล้ม 1 ใบก็ล้ม (ภารกิจ 4 ตอน 7+ คน ต้องล้ม 2 ใบ)</p>' +
-          '<p>ฝ่ายดีสำเร็จครบ 3 — มือสังหารแทงเมอร์ลินได้ 1 ครั้ง ถูก = ฝ่ายร้ายชนะ</p></div>',
+          '<p>ฝ่ายดีสำเร็จครบ 3 — ฝ่ายร้ายเปิดตัวคุยกัน แล้วมือสังหารแทงฝ่ายดี 1 คน ถ้าเป็นเมอร์ลิน = ฝ่ายร้ายชนะ</p>' +
+          '<p>🌊 นางแห่งทะเลสาบ (ถ้าเปิด): หลังภารกิจ 2, 3, 4 คนถือส่องฝ่ายของ 1 คน แล้วส่งต่อให้คนที่ถูกส่อง · ส่องคนที่เคยถือไม่ได้</p></div>',
         background: '#111827',
         color: '#fff',
         confirmButtonColor: '#1d4ed8',

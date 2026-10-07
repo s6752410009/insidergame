@@ -6,7 +6,10 @@
  *  - การ์ดภารกิจของฝ่ายดีหน้าตาเหมือนฝ่ายร้าย (คนข้าง ๆ เหลือบมองแล้วไม่รู้ฝ่าย) · แตะล้มแล้วไม่ส่ง แต่บอกเหตุผล
  *  - ลงการ์ดแล้วจอไม่โชว์ว่าลงใบไหน · สรุปภารกิจบอกทีม/หัวหน้า · ปุ่มปิดผลบอกว่าต้องทำอะไรต่อ
  *  - ช่วงลอบสังหาร: ไม่มีมงกุฎหัวหน้าค้าง · พวกเดียวกันมีป้ายบอกว่าทำไมแทงไม่ได้ · มีปุ่มชื่อเป้าในแผง
- *  - จบเกม: ปุ่ม "พาทุกคนกลับห้องรอ" เฉพาะหัวห้อง · สรุปภารกิจเปิดค้าง
+ *  - จบเกม: ปุ่ม "พาทุกคนกลับห้องรอ" เฉพาะหัวห้อง · คนอื่นมี "กลับห้องเลย" · นับถอยหลัง ~30 วิ · สรุปภารกิจเปิดค้าง
+ *  - นางแห่งทะเลสาบ: ปุ่มเปิดในห้องรอ · คนถือเลือกจากแผง · ผลลับเห็นคนเดียว · คนที่ไม่ใช่คนถือเห็นแค่ว่ากำลังส่อง
+ *  - ลอบสังหารมีโอเบรอน: โอเบรอนติดป้าย "พวกเดียวกัน" แทงไม่ได้
+ *  - ออกจากห้องกลางเฟสส่อง: ไปหน้า /rooms แล้วค้างอยู่ 15 วิ ไม่ถูกดึงกลับ · เกมเดินต่อ
  *  - คนในห้องที่ไม่ได้นั่งโต๊ะ ไม่เห็นข้อความ "โหวตแล้ว"/ปุ่มพร้อม ที่ไม่ใช่ของเขา
  *
  * รัน: ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-avalon-ux.js [โฟลเดอร์ภาพ]
@@ -79,6 +82,7 @@ async function waitFor(pred, message, ms = 8000) {
                 socket.emit('initPlayer', id);
                 const entry = { socket, id, name: `P${i + 1}`, states: [] };
                 socket.on('avalonState', s => entry.states.push(s));
+                socket.on('roomUpdate', d => { entry.lastRoom = d; });
                 list.push(entry);
             }
             await delay(400);
@@ -357,13 +361,204 @@ async function waitFor(pred, message, ms = 8000) {
         assert(hostView.back && hostView.restart, 'หัวห้องต้องมีปุ่มเล่นอีกรอบ + พาทุกคนกลับ');
         assert(hostView.recapOpen, 'จบเกมต้องเปิดสรุปภารกิจ');
         const other = pagePlayers.find(p => p !== host);
-        const otherView = await other.page.evaluate(() => ({ back: !!document.getElementById('avBackBtn'), remain: document.getElementById('avBackRemain').textContent }));
-        assert(!otherView.back && /กลับห้องรอ/.test(otherView.remain), 'คนที่ไม่ใช่หัวห้องต้องไม่มีปุ่มกลับที่กดแล้วไม่เกิดอะไร');
+        const otherView = await other.page.evaluate(() => ({
+            back: !!document.getElementById('avBackBtn'),
+            self: document.getElementById('avBackSelfBtn') && document.getElementById('avBackSelfBtn').textContent,
+            selfH: document.getElementById('avBackSelfBtn') && document.getElementById('avBackSelfBtn').getBoundingClientRect().height,
+            remain: document.getElementById('avBackRemain').textContent
+        }));
+        assert(!otherView.back && /กลับห้องรอ/.test(otherView.remain), 'คนที่ไม่ใช่หัวห้องต้องไม่มีปุ่มพาทุกคนกลับ');
+        assert(/กลับห้องเลย/.test(otherView.self || '') && otherView.selfH >= 44, 'คนที่ไม่ใช่หัวห้องต้องมีปุ่ม "กลับห้องเลย" ≥ 44px');
+        const remainSec = Number((otherView.remain.match(/(\d+) วิ/) || [])[1] || 0);
+        assert(remainSec >= 20 && remainSec <= 30, 'หน้าจบเกมต้องนับถอยหลัง ~30 วิ ได้ ' + otherView.remain);
         await other.page.evaluate(() => document.getElementById('avAction').scrollIntoView({ block: 'start' }));
         await shot(other.page, 'finished-nonhost');
-        console.log('6. จบเกม: ปุ่มพาทุกคนกลับเฉพาะหัวห้อง · สรุปภารกิจเปิดค้าง ✓');
+        await other.page.click('#avBackSelfBtn');
+        await other.page.waitForURL(new RegExp('/room/' + roomId), { timeout: 8000 });
+        await delay(800);
+        assert(new RegExp('/room/' + roomId).test(other.page.url()), 'กด "กลับห้องเลย" ต้องไปห้องรอ ได้ ' + other.page.url());
+        assert(latest(host).phase === 'finished' || latest(socketPlayers[0]).phase === 'finished', 'คนอื่นยังดูหน้าจบต่อได้');
+        await shot(other.page, 'back-to-room-alone');
+        console.log('6. จบเกม: พาทุกคนกลับเฉพาะหัวห้อง · คนอื่นกด "กลับห้องเลย" ไปห้องรอได้ทันที · นับ ~30 วิ · สรุปภารกิจเปิดค้าง ✓');
 
         for (const p of pagePlayers) assert(p.errors.length === 0, `${p.role} JS error: ${p.errors.join(' | ')}`);
+        for (const p of pagePlayers) await p.ctx.close().catch(() => {});
+        socketPlayers.forEach(p => p.socket.close());
+
+        /* ---- 7 คน + โอเบรอน + นางแห่งทะเลสาบ ---- */
+        const lt = await makeRoom(7, 'ทะเลสาบเจ็ดคน', ['oberon']);
+        const lp = lt.players;
+        const lHost = lp[0];
+        // ห้องรอ: หัวห้องแตะเปิดนางแห่งทะเลสาบเอง
+        const lobby = await (async () => {
+            const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+            await ctx.addInitScript(() => { try { sessionStorage.setItem('insiderPromoSeen', '1'); } catch (e) { /* ignore */ } });
+            const page = await ctx.newPage();
+            await page.goto(`${base}/room/${lt.roomId}?playerId=${lHost.id}`, { waitUntil: 'domcontentloaded' });
+            return { ctx, page };
+        })();
+        await lobby.page.waitForSelector('[data-avalon-lady]');
+        assert(await lobby.page.$eval('[data-avalon-lady]', b => b.getAttribute('aria-pressed')) === 'false', 'ค่าเริ่มต้น: นางแห่งทะเลสาบปิด');
+        await lobby.page.click('[data-avalon-lady]');
+        await waitFor(async () => (await lobby.page.$eval('[data-avalon-lady]', b => b.getAttribute('aria-pressed'))) === 'true', 'แตะแล้วต้องเปิด');
+        const ladyBtn = await lobby.page.$eval('[data-avalon-lady]', b => ({ h: b.getBoundingClientRect().height, t: b.textContent }));
+        assert(ladyBtn.h >= 44 && /แนะนำ 7\+ คน/.test(ladyBtn.t), 'ปุ่มนางแห่งทะเลสาบ ≥ 44px และมีคำอธิบาย');
+        await lobby.page.$eval('[data-avalon-lady]', b => b.scrollIntoView({ block: 'center' }));
+        await shot(lobby.page, 'lobby-lady-on');
+        await lobby.ctx.close();
+        lHost.socket.emit('setRoom', { roomId: lt.roomId, playerId: lHost.id });
+        await delay(600);
+        await startRoom(lt);
+        const lAny = () => latest(lp.find(p => !p.page && !p.gone) || lp[0]);
+        const holderP = lp.find(p => p.id === latest(lHost).lady.holderId);
+        const assassinL = lp.find(p => p.role === 'assassin');
+        // X = คนที่จะถูกส่องแล้วออกกลางเกม (ไม่ใช่โอเบรอน — ต้องเหลือไว้เช็กป้ายตอนลอบสังหาร)
+        const xP = lp.find(p => p !== holderP && p !== assassinL && p !== lHost && p.role !== 'oberon') || lp.find(p => p !== holderP && p !== assassinL && p.role !== 'oberon');
+        const lPages = [...new Set([holderP, xP, assassinL])];
+        for (const p of lPages) { p.socket.close(); Object.assign(p, await openPage(p.id, lt.roomId)); }
+        const lGoods = lp.filter(p => p.team === 'good');
+        const lEvil = lp.filter(p => p.team === 'evil');
+
+        async function lReady() {
+            for (const p of lp) {
+                if (p.page) { await p.page.click('#avAction [data-rolecard]'); await p.page.click('#avReadyBtn'); }
+                else await ack(p.socket, 'avalon_ready', { step: latest(p).step });
+            }
+            await waitFor(() => lAny().phase === 'team', 'lady team');
+        }
+        async function lRound(team, cardOf) {
+            await waitFor(() => lAny().phase === 'team', 'lady round team');
+            await delay(200);
+            const st = lAny();
+            const leader = lp.find(p => p.id === st.leaderId);
+            if (leader.page) {
+                await clearOverlay(leader);
+                await leader.page.waitForSelector('#avAction .av-pickgrid');
+                for (const id of team) await leader.page.click(`#avAction button[data-pick="${id}"]`);
+                await leader.page.click('#avTeamBtn');
+            } else {
+                assert((await ack(leader.socket, 'avalon_team', { teamIds: team, step: latest(leader).step }))?.success, 'lady ส่งทีมไม่ได้');
+            }
+            await waitFor(() => lAny().phase === 'vote', 'lady vote');
+            for (const p of lp) {
+                if (p.gone) continue;
+                if (p.page) { await clearOverlay(p); await p.page.waitForSelector('[data-vote="approve"]'); await p.page.click('[data-vote="approve"]'); }
+                else await ack(p.socket, 'avalon_vote', { vote: 'approve', step: latest(p).step });
+            }
+            await waitFor(() => lAny().phase === 'quest', 'lady quest');
+            for (const id of lAny().proposal.teamIds) {
+                const p = lp.find(x => x.id === id);
+                const card = cardOf(p);
+                if (p.page) { await clearOverlay(p); await p.page.waitForSelector(`[data-card="${card}"]`); await p.page.click(`[data-card="${card}"]`); }
+                else await ack(p.socket, 'avalon_quest', { card, step: latest(p).step });
+            }
+            await waitFor(() => lAny().phase !== 'quest', 'lady quest resolved');
+        }
+        const sizeOf = i => lAny().quests[i].size;
+        await lReady();
+        await lRound(lGoods.map(p => p.id).slice(0, sizeOf(0)), () => 'success');
+        assert(lAny().phase === 'team', 'หลังภารกิจ 1 ยังไม่ส่อง');
+        await lRound(lGoods.map(p => p.id).slice(0, sizeOf(1)), () => 'success');
+        await waitFor(() => lAny().phase === 'lady', 'หลังภารกิจ 2 ต้องเข้าเฟสนางแห่งทะเลสาบ');
+
+        const H = holderP.page;
+        await clearOverlay(holderP);
+        await delay(2600);
+        await clearOverlay(holderP);
+        await H.waitForSelector('#avAction .av-pickgrid button[data-pick]');
+        const hGrid = await H.$$eval('#avAction .av-pickgrid button[data-pick]', els => els.map(e => ({ id: e.getAttribute('data-pick'), h: e.getBoundingClientRect().height })));
+        assert(hGrid.length === 6 && hGrid.every(g => g.h >= 44) && !hGrid.some(g => g.id === holderP.id), 'คนถือเห็นชื่อ 6 คน (ไม่รวมตัวเอง) ปุ่ม ≥ 44px');
+        assert(/คุณถือนางแห่งทะเลสาบ/.test(await H.textContent('#avNow')), 'สถานะบอกคนถือว่าถึงตาส่อง');
+        assert(await H.$eval('#avLadyBtn', b => b.disabled), 'ยังไม่เลือกต้องกดส่องไม่ได้');
+        const X = xP.page;
+        await clearOverlay(xP);
+        const xText = await X.textContent('#avAction');
+        assert(/กำลังเลือกส่อง/.test(xText) && !(await X.$('#avAction .av-pickgrid')), 'คนอื่นเห็นแค่ว่ากำลังส่อง ไม่มีแผงเลือก');
+        await shot(X, 'lady-waiting-other');
+        await H.click(`#avAction button[data-pick="${xP.id}"]`);
+        assert(await H.$eval(`#avSeats .av-seat[data-seat="${xP.id}"]`, e => e.classList.contains('is-picked')), 'เลือกจากแผงต้องไฮไลต์บนโต๊ะ');
+        await H.evaluate(() => document.getElementById('avAction').scrollIntoView({ block: 'start' }));
+        await shot(H, 'lady-holder-picking');
+        await H.click('#avLadyBtn');
+        await H.click('.swal2-confirm');
+        await waitFor(() => lAny().phase === 'team', 'ส่องแล้วไปเลือกทีม');
+        await H.waitForSelector('#avOverlay.is-on');
+        const res = await H.textContent('#avSheet');
+        const teamWord = xP.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย';
+        assert(/ผลส่อง/.test(res) && res.includes(teamWord) && /มีแค่คุณที่เห็น/.test(res), 'คนถือเห็นผลส่องตรงฝ่าย: ' + res);
+        await shot(H, 'lady-result-private');
+        await clearOverlay(holderP);
+        const hTag = await H.$eval(`#avSeats .av-seat[data-seat="${xP.id}"] .av-seat-tag`, e => e.textContent);
+        assert(/ส่องแล้ว/.test(hTag), 'ที่นั่งเป้าติดป้ายผลส่องให้คนถือ: ' + hTag);
+        await delay(400);
+        const xSeen = await X.evaluate(() => Array.from(document.querySelectorAll('#avSeats .av-seat-tag')).map(e => e.textContent).filter(t => /ส่องแล้ว/.test(t)).length);
+        assert(xSeen === 0, 'คนอื่นต้องไม่เห็นผลส่อง');
+        assert(await X.$(`#avSeats .av-seat[data-seat="${xP.id}"] .av-seat-lady`), 'นางแห่งทะเลสาบย้ายมาที่คนถูกส่อง (ไอคอน 🌊)');
+        console.log('7. นางแห่งทะเลสาบ: หัวห้องเปิดในห้องรอ · คนถือเลือกจากแผง · ผลลับเห็นคนเดียว · ส่งต่อให้คนถูกส่อง ✓');
+
+        // ภารกิจ 3 ล้ม (ฝ่ายร้ายลงล้ม) → ยังไม่จบ → ส่องรอบสอง คนถือคือ X → X ออกจากห้องกลางเฟสส่อง
+        const evilOnTeam = lEvil.find(p => !p.page) || lEvil[0];
+        await lRound([evilOnTeam.id, ...lGoods.map(p => p.id)].slice(0, sizeOf(2)), p => (p === evilOnTeam ? 'fail' : 'success'));
+        await waitFor(() => lAny().phase === 'lady' && lAny().lady.holderId === xP.id, 'หลังภารกิจ 3 X ถือนางแห่งทะเลสาบ');
+        await clearOverlay(xP);
+        await delay(2600);
+        await clearOverlay(xP);
+        await X.waitForSelector('#avAction .av-pickgrid button[data-pick]');
+        assert(!(await X.$(`#avAction button[data-pick="${holderP.id}"]`)), 'ส่องคนที่เคยถือไม่ได้ (ไม่มีในแผง)');
+        await X.click('#avPlayersBtn');
+        await X.waitForSelector('#leaveRoomBtn', { state: 'visible' });
+        await X.click('#leaveRoomBtn');
+        await X.waitForSelector('.swal2-confirm');
+        await X.click('.swal2-confirm');
+        await X.waitForURL(/\/rooms/, { timeout: 8000 });
+        await waitFor(() => lAny().phase === 'lady' && lAny().lady.holderId !== xP.id, 'คนถือออก → ส่งต่อ');
+        const newHolder = lp.find(p => p.id === lAny().lady.holderId);
+        assert(newHolder && newHolder !== holderP, 'ส่งต่อให้คนที่ยังไม่เคยถือ');
+        await delay(15000);
+        assert(/\/rooms/.test(X.url()) && !/\/game\//.test(X.url()), 'ออกแล้วต้องค้างที่ /rooms 15 วิ ไม่ถูกดึงกลับ: ' + X.url());
+        const seatX = lAny().players.find(p => p.playerId === xP.id);
+        assert(seatX && seatX.left, 'X ถูกทำเครื่องหมายว่าออกจากโต๊ะ');
+        const roomPlayers = (lp.find(p => !p.page).lastRoom || {}).players || [];
+        assert(!roomPlayers.some(p => p.playerId === xP.id), 'X ไม่อยู่ในรายชื่อห้องแล้ว');
+        await shot(X, 'left-stays-on-rooms');
+        xP.gone = true;
+        console.log('8. ออกจากห้องกลางเฟสส่อง: ไป /rooms ค้าง 15 วิ ไม่ถูกดึงกลับ · นางแห่งทะเลสาบส่งต่อ · เกมเดินต่อ ✓');
+
+        // คนถือใหม่ส่อง (หมดเวลา/socket) → ภารกิจ 4 สำเร็จ → ลอบสังหาร
+        if (newHolder.page) {
+            await clearOverlay(newHolder);
+            await newHolder.page.waitForSelector('#avAction .av-pickgrid button[data-pick]');
+            await newHolder.page.click('#avAction .av-pickgrid button[data-pick]');
+            await newHolder.page.click('#avLadyBtn');
+            await newHolder.page.click('.swal2-confirm');
+        } else {
+            const t = latest(newHolder).ladyTargets[0];
+            assert((await ack(newHolder.socket, 'avalon_lady', { targetId: t, step: latest(newHolder).step }))?.success, 'คนถือใหม่ส่องไม่ได้');
+        }
+        const liveGoods = lGoods.filter(p => !p.gone).map(p => p.id);
+        await waitFor(() => lAny().phase === 'team', 'ส่องรอบสองเสร็จ');
+        // ทีมภารกิจ 4: ฝ่ายดีที่ยังอยู่ก่อน ขาดเท่าไรเติมฝ่ายร้าย (ลงสำเร็จ)
+        await lRound([...liveGoods, ...lEvil.filter(p => !p.gone).map(p => p.id)].slice(0, sizeOf(3)), () => 'success');
+        await waitFor(() => lAny().phase === 'assassin', 'ฝ่ายดีสำเร็จ 3 → ลอบสังหาร');
+        const AL = assassinL.page;
+        await clearOverlay(assassinL);
+        await delay(2600);
+        await clearOverlay(assassinL);
+        await AL.waitForSelector('#avAction .av-pickgrid button[data-pick]');
+        const oberon = lp.find(p => p.role === 'oberon');
+        const aInfo = await AL.evaluate(ob => ({
+            obTag: (document.querySelector(`#avSeats .av-seat[data-seat="${ob}"] .av-seat-tag`) || {}).textContent,
+            obInGrid: !!document.querySelector(`#avAction button[data-pick="${ob}"]`),
+            grid: document.querySelectorAll('#avAction .av-pickgrid button[data-pick]').length
+        }), oberon.id);
+        assert(aInfo.obTag === 'พวกเดียวกัน' && !aInfo.obInGrid, 'โอเบรอนต้องติดป้าย "พวกเดียวกัน" แทงไม่ได้: ' + JSON.stringify(aInfo));
+        assert(aInfo.grid === lGoods.length, 'แผงเป้า = ฝ่ายดีทุกคน ได้ ' + aInfo.grid);
+        await AL.evaluate(() => document.getElementById('avAction').scrollIntoView({ block: 'start' }));
+        await shot(AL, 'assassin-oberon-revealed');
+        console.log('9. ลอบสังหาร + โอเบรอน: ฝ่ายร้ายเปิดตัวกัน โอเบรอนแทงไม่ได้ · แผงเป้า = ฝ่ายดี ✓');
+        for (const p of lPages) assert(p.errors.length === 0, `lady ${p.role} JS error: ${p.errors.join(' | ')}`);
+        for (const p of lPages) await p.ctx.close().catch(() => {});
+        lp.forEach(p => { try { p.socket.close(); } catch (e) { /* ignore */ } });
         console.log(`\n✅ avalon ux: ผ่าน ${checks} เช็ก · ภาพ ${shotNo} ใบ → ${OUT}`);
     } finally {
         if (browser) await browser.close().catch(() => {});

@@ -24,6 +24,11 @@ const TEAM_MS = Number(process.env.AVALON_TEAM_MS) || 90000;
 const VOTE_MS = Number(process.env.AVALON_VOTE_MS) || 60000;
 const QUEST_MS = Number(process.env.AVALON_QUEST_MS) || 45000;
 const ASSASSIN_MS = Number(process.env.AVALON_ASSASSIN_MS) || 120000;
+const LADY_MS = Number(process.env.AVALON_LADY_MS) || 60000;
+// หน้าจบเกมเปิดบททั้งโต๊ะ + ฉากแทง (6 วิ) — 10 วิดูไม่ทัน · app.js อ่านผ่าน engine.finishedReturnMs (แบบเดียวกับสายลับคำใบ้)
+const FINISHED_RETURN_MS = Number(process.env.AVALON_FINISHED_RETURN_MS) || 30000;
+/** นางแห่งทะเลสาบ (Lady of the Lake) ใช้หลังจบภารกิจ 2, 3, 4 ตามกติกา */
+const LADY_AFTER_QUESTS = [2, 3, 4];
 
 /** จำนวนฝ่ายดี : ฝ่ายร้าย ตามจำนวนคน */
 const TEAM_COUNTS = {
@@ -108,7 +113,8 @@ const TIMEOUT_HINTS = {
     team: 'หมดเวลา = เลือกหัวหน้า + คนถัดไปให้',
     vote: 'หมดเวลา = คนที่ไม่โหวตนับเป็นเห็นด้วย',
     quest: 'หมดเวลา = ลงการ์ดสำเร็จให้',
-    assassin: 'หมดเวลา = สุ่มแทงฝ่ายดี 1 คน'
+    assassin: 'หมดเวลา = สุ่มแทงฝ่ายดี 1 คน',
+    lady: 'หมดเวลา = สุ่มส่องให้ 1 คน'
 };
 
 function shuffle(items) {
@@ -122,6 +128,11 @@ function shuffle(items) {
 
 function isBotId(playerId) {
     return String(playerId || '').startsWith('bot_');
+}
+
+/** ตั้งค่าห้อง avalonLady — ปิดเป็นค่าเริ่มต้น (กติกาจัดเป็นตัวเสริม แนะนำ 7 คนขึ้นไป) */
+function sanitizeLadySetting(value) {
+    return value === true || value === 'true' || value === 1 || value === '1';
 }
 
 function sanitizeRoleSelection(list) {
@@ -183,6 +194,7 @@ function createInitialState() {
         lastQuest: null,
         assassinId: null,
         assassinTargetId: null,
+        lady: null,
         winner: null,
         phaseEndsAt: null,
         statsRecordedAt: null,
@@ -296,6 +308,12 @@ function getKnowledge(state, viewerSeat) {
             .filter(seat => seat.role === 'merlin' || seat.role === 'morgana')
             .map(seat => ({ playerId: seat.playerId, tag: 'merlin' }));
     }
+    // ช่วงลอบสังหาร ฝ่ายร้ายเปิดตัวคุยกัน (กติกา: "Evil players discuss") — โอเบรอนก็เปิดด้วย
+    if (viewerSeat.team === 'evil' && state.phase === 'assassin') {
+        return others
+            .filter(seat => seat.team === 'evil')
+            .map(seat => ({ playerId: seat.playerId, tag: 'evil' }));
+    }
     if (viewerSeat.team === 'evil' && role !== 'oberon') {
         return others
             .filter(seat => seat.team === 'evil' && seat.role !== 'oberon')
@@ -398,12 +416,19 @@ function startGame(room) {
         ready: false,
         left: false
     }));
-    const firstLeader = state.seats[Math.floor(Math.random() * state.seats.length)];
+    const firstLeaderIndex = Math.floor(Math.random() * state.seats.length);
+    const firstLeader = state.seats[firstLeaderIndex];
     state.leaderId = firstLeader.playerId;
+    if (sanitizeLadySetting(room.settings?.avalonLady)) {
+        // กติกา: ให้คนทางขวาของหัวหน้าคนแรก — หัวหน้าเวียนตามเข็ม (ที่นั่งถัดไป) ทางขวาจึงเป็นที่นั่งก่อนหน้า
+        const holder = state.seats[(firstLeaderIndex - 1 + state.seats.length) % state.seats.length];
+        state.lady = { enabled: true, holderId: holder.playerId, pastHolderIds: [holder.playerId], checks: [] };
+    }
     room.gameState = state;
 
     setPhase(room, 'night', NIGHT_MS);
     pushHistory(room, '🌙', `เริ่มเกม ${count} คน — ฝ่ายดี ${plan.good} · ฝ่ายร้าย ${plan.evil} · ดูบทของคุณแล้วกดพร้อม`, 'start');
+    if (state.lady) pushHistory(room, '🌊', `${seatName(room, state.lady.holderId)} ถือนางแห่งทะเลสาบ — ใช้ได้หลังภารกิจ 2, 3, 4`, 'lady');
     pushFx(room, { kind: 'deal' });
     return room.gameState;
 }
@@ -619,6 +644,87 @@ function resolveQuest(room) {
     }
     state.questIndex += 1;
     state.rejectCount = 0;
+    if (state.lady?.enabled && LADY_AFTER_QUESTS.includes(quest.number)) {
+        return beginLadyPhase(room, quest.number);
+    }
+    return beginTeamPhase(room);
+}
+
+/* ---------------------------------------------------------------- lady of the lake */
+
+/** คนที่ส่องได้: ยังอยู่บนโต๊ะ ไม่ใช่ตัวเอง และไม่เคยถือนางแห่งทะเลสาบมาก่อน */
+function ladyTargets(room) {
+    const state = room.gameState;
+    const lady = state.lady;
+    if (!lady) return [];
+    const past = new Set(lady.pastHolderIds || []);
+    return activeSeats(room)
+        .filter(seat => seat.playerId !== lady.holderId && !past.has(seat.playerId))
+        .map(seat => seat.playerId);
+}
+
+/** คนถือออกจากโต๊ะ → ส่งให้คนถัดไปที่ยังไม่เคยถือ (ไม่มีเลย = ข้ามรอบนี้) */
+function ensureLadyHolder(room) {
+    const state = room.gameState;
+    const lady = state.lady;
+    const holder = getSeat(room, lady.holderId);
+    if (holder && !holder.left) return true;
+    const past = new Set(lady.pastHolderIds || []);
+    const seats = state.seats || [];
+    const start = Math.max(0, seats.findIndex(seat => seat.playerId === lady.holderId));
+    for (let offset = 1; offset <= seats.length; offset += 1) {
+        const candidate = seats[(start + offset) % seats.length];
+        if (!candidate.left && !past.has(candidate.playerId)) {
+            lady.holderId = candidate.playerId;
+            lady.pastHolderIds = [...(lady.pastHolderIds || []), candidate.playerId];
+            pushHistory(room, '🌊', `คนถือนางแห่งทะเลสาบออกจากโต๊ะ — ส่งต่อให้ ${candidate.name}`, 'lady');
+            return true;
+        }
+    }
+    return false;
+}
+
+function beginLadyPhase(room, afterQuest) {
+    const state = room.gameState;
+    if (!ensureLadyHolder(room) || !ladyTargets(room).length) {
+        pushHistory(room, '🌊', 'ไม่มีใครให้นางแห่งทะเลสาบส่องแล้ว — ข้ามไปเลือกทีม', 'lady');
+        return beginTeamPhase(room);
+    }
+    state.lady.afterQuest = afterQuest;
+    state.proposal = null;
+    state.votes = {};
+    state.questCards = {};
+    setPhase(room, 'lady', LADY_MS);
+    pushHistory(room, '🌊', `${seatName(room, state.lady.holderId)} ใช้นางแห่งทะเลสาบ — เลือกส่องฝ่ายของ 1 คน`, 'lady');
+    return state;
+}
+
+function submitLady(room, playerId, targetId, context = {}) {
+    const state = assertPlaying(room);
+    if (state.phase !== 'lady' || !state.lady) throw new Error('ตอนนี้ไม่ใช่ช่วงนางแห่งทะเลสาบ');
+    assertStep(state, context);
+    assertSeat(room, playerId);
+    if (state.lady.holderId !== playerId) throw new Error('คนถือนางแห่งทะเลสาบเท่านั้นที่ส่องได้');
+    const target = getSeat(room, targetId);
+    if (!target) throw new Error('ไม่พบผู้เล่นคนนี้');
+    if (targetId === playerId) throw new Error('ส่องตัวเองไม่ได้');
+    if ((state.lady.pastHolderIds || []).includes(targetId)) throw new Error(`${target.name} เคยถือนางแห่งทะเลสาบแล้ว ส่องไม่ได้`);
+    if (!ladyTargets(room).includes(targetId)) throw new Error('เลือกคนนี้ไม่ได้');
+    return resolveLady(room, targetId);
+}
+
+function resolveLady(room, targetId) {
+    const state = room.gameState;
+    const lady = state.lady;
+    const holderId = lady.holderId;
+    const target = getSeat(room, targetId);
+    // เห็นแค่ฝ่าย ไม่เห็นบท · มอร์เดรด/โอเบรอน = ฝ่ายร้ายตามกติกา
+    lady.checks = [...(lady.checks || []), { afterQuest: lady.afterQuest || null, holderId, targetId, team: target.team }];
+    lady.holderId = targetId;
+    lady.pastHolderIds = [...(lady.pastHolderIds || []), targetId];
+    lady.afterQuest = null;
+    pushHistory(room, '🌊', `${seatName(room, holderId)} ส่องฝ่ายของ ${target.name} — นางแห่งทะเลสาบย้ายไปที่ ${target.name}`, 'lady');
+    pushFx(room, { kind: 'lady', holderId, targetId });
     return beginTeamPhase(room);
 }
 
@@ -647,14 +753,16 @@ function beginAssassination(room) {
     return state;
 }
 
-/** เป้าที่มือสังหารแทงได้: ทุกคนยกเว้นตัวเองและฝ่ายร้ายที่เขารู้จัก */
+/**
+ * เป้าที่มือสังหารแทงได้: ฝ่ายดีเท่านั้น (กติกา: "name one Good player as Merlin")
+ * ฝ่ายร้ายเปิดตัวคุยกันช่วงนี้ — รวมโอเบรอนด้วย จึงแทงพวกเดียวกันไม่ได้
+ */
 function assassinTargets(room) {
     const state = room.gameState;
     const assassin = getSeat(room, state.assassinId);
     if (!assassin) return [];
-    const known = new Set(getKnowledge(state, assassin).map(entry => entry.playerId));
     return state.seats
-        .filter(seat => seat.playerId !== assassin.playerId && !known.has(seat.playerId))
+        .filter(seat => seat.playerId !== assassin.playerId && seat.team === 'good')
         .map(seat => seat.playerId);
 }
 
@@ -713,9 +821,15 @@ function autoResolvePhase(room, options = {}) {
         if (missing) pushHistory(room, '⏰', `หมดเวลาภารกิจ — ลงการ์ดสำเร็จแทน ${missing} คน`);
         return resolveQuest(room);
     }
+    if (state.phase === 'lady') {
+        if (!ensureLadyHolder(room) || !ladyTargets(room).length) return beginTeamPhase(room);
+        const pool = ladyTargets(room);
+        const target = pool[Math.floor(Math.random() * pool.length)];
+        pushHistory(room, '⏰', `${seatName(room, state.lady.holderId)} ส่องไม่ทัน — ระบบสุ่มให้`);
+        return resolveLady(room, target);
+    }
     if (state.phase === 'assassin') {
-        const goodTargets = assassinTargets(room).filter(id => getSeat(room, id)?.team === 'good');
-        const pool = goodTargets.length ? goodTargets : assassinTargets(room);
+        const pool = assassinTargets(room);
         const target = pool[Math.floor(Math.random() * pool.length)];
         pushHistory(room, '⏰', 'มือสังหารเลือกไม่ทัน — สุ่มเป้าให้');
         return resolveAssassination(room, target);
@@ -766,6 +880,19 @@ function handlePlayerLeft(room, playerId) {
         if (!pending.length) resolveQuest(room);
         return state;
     }
+    if (state.phase === 'lady' && state.lady?.holderId === playerId) {
+        if (!ensureLadyHolder(room) || !ladyTargets(room).length) {
+            pushHistory(room, '🌊', 'ไม่มีใครส่องต่อได้ — ข้ามไปเลือกทีม', 'lady');
+            beginTeamPhase(room);
+        } else {
+            setPhase(room, 'lady', LADY_MS);
+        }
+        return state;
+    }
+    if (state.phase === 'lady' && !ladyTargets(room).length) {
+        beginTeamPhase(room);
+        return state;
+    }
     if (state.phase === 'assassin' && state.assassinId === playerId) {
         const replacement = pickActingAssassin(room);
         if (!replacement) {
@@ -814,6 +941,14 @@ function buildClientState(room, viewerPlayerId) {
     const viewerActive = !!(viewer && !viewer.left && !finished);
     const onTeam = !!(viewer && proposalIds.includes(viewer.playerId));
     const targets = inPhase('assassin') ? assassinTargets(room) : [];
+    const lady = state.lady || null;
+    // ผลส่องเป็นความลับของคนส่องเท่านั้น — คนอื่นรู้แค่ว่าใครส่องใคร
+    const myLadyChecks = viewer && lady
+        ? (lady.checks || []).filter(entry => entry.holderId === viewer.playerId)
+        : [];
+    const ladySeenById = {};
+    myLadyChecks.forEach(entry => { ladySeenById[entry.targetId] = entry.team; });
+    const isLadyHolder = !!(viewer && lady && lady.holderId === viewer.playerId);
 
     return {
         mode: 'avalon',
@@ -857,6 +992,14 @@ function buildClientState(room, viewerPlayerId) {
         assassinId: (inPhase('assassin') || finished) ? state.assassinId : null,
         assassinTargetId: finished ? state.assassinTargetId : null,
         assassinTargets: viewer && state.assassinId === viewer.playerId ? targets : [],
+        lady: lady ? {
+            enabled: true,
+            holderId: lady.holderId,
+            pastHolderIds: [...(lady.pastHolderIds || [])],
+            afterQuests: [...LADY_AFTER_QUESTS],
+            checks: (lady.checks || []).map(entry => ({ afterQuest: entry.afterQuest, holderId: entry.holderId, targetId: entry.targetId }))
+        } : null,
+        ladyTargets: isLadyHolder && inPhase('lady') && viewerActive ? ladyTargets(room) : [],
         winner: state.winner || null,
         history: (state.history || []).slice(0, 30),
         fx: state.fx || [],
@@ -878,7 +1021,15 @@ function buildClientState(room, viewerPlayerId) {
             canFail: viewer.team === 'evil',
             myQuestCard: inPhase('quest') ? (state.questCards[viewer.playerId] || null) : null,
             isAssassin: state.assassinId === viewer.playerId && (inPhase('assassin') || finished),
-            canAssassinate: viewerActive && inPhase('assassin') && state.assassinId === viewer.playerId
+            canAssassinate: viewerActive && inPhase('assassin') && state.assassinId === viewer.playerId,
+            isLadyHolder,
+            canUseLady: viewerActive && inPhase('lady') && isLadyHolder,
+            ladyResults: myLadyChecks.map(entry => ({
+                afterQuest: entry.afterQuest,
+                targetId: entry.targetId,
+                name: seatName(room, entry.targetId),
+                team: entry.team
+            }))
         } : null,
         players: (state.seats || []).map(seat => {
             const reveal = finished;
@@ -899,6 +1050,9 @@ function buildClientState(room, viewerPlayerId) {
                 left: !!seat.left,
                 online: onlineIds.has(seat.playerId),
                 known: knowledgeById[seat.playerId] || null,
+                isLadyHolder: !!(lady && lady.holderId === seat.playerId && !finished),
+                ladyUsed: !!(lady && (lady.pastHolderIds || []).includes(seat.playerId)),
+                ladySeen: ladySeenById[seat.playerId] || null,
                 lastVote: lastVoteById[seat.playerId] || null,
                 isAssassin: (inPhase('assassin') || finished) && seat.playerId === state.assassinId,
                 role: reveal ? publicRole(seat.role) : null,
@@ -920,8 +1074,11 @@ module.exports = {
     QUEST_SIZES,
     MAX_REJECTS,
     ART,
-    TIMINGS: { NIGHT_MS, TEAM_MS, VOTE_MS, QUEST_MS, ASSASSIN_MS },
+    LADY_AFTER_QUESTS,
+    TIMINGS: { NIGHT_MS, TEAM_MS, VOTE_MS, QUEST_MS, ASSASSIN_MS, LADY_MS },
+    finishedReturnMs: FINISHED_RETURN_MS,
     sanitizeRoleSelection,
+    sanitizeLadySetting,
     getRolePlan,
     getKnowledge,
     createInitialState,
@@ -933,6 +1090,7 @@ module.exports = {
     submitVote,
     submitQuestCard,
     submitAssassination,
+    submitLady,
     autoResolvePhase,
     handlePlayerLeft,
     buildClientState

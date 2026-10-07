@@ -26,18 +26,18 @@ function throws(fn, pattern, message) {
     throw new Error(`${message} — ต้องโยน error`);
 }
 
-function makeRoom(count, avalonRoles = []) {
+function makeRoom(count, avalonRoles = [], extraSettings = {}) {
     const players = Array.from({ length: count }, (_, i) => ({
         playerId: `p${i + 1}`,
         playerName: `ผู้เล่น${i + 1}`,
         color: '#fff',
         socketId: `s${i + 1}`
     }));
-    return { roomId: 'R1', name: 'ทดสอบ', admin: 'p1', players, settings: { gameMode: 'avalon', avalonRoles }, gameState: engine.createInitialState() };
+    return { roomId: 'R1', name: 'ทดสอบ', admin: 'p1', players, settings: { gameMode: 'avalon', avalonRoles, ...extraSettings }, gameState: engine.createInitialState() };
 }
 
-function start(count, roles = []) {
-    const room = makeRoom(count, roles);
+function start(count, roles = [], extraSettings = {}) {
+    const room = makeRoom(count, roles, extraSettings);
     engine.startGame(room);
     return room;
 }
@@ -133,6 +133,24 @@ function assertNoLeak(room, viewerId, label) {
         assert(view.assassinTargets.length === 0, `${label}: รายชื่อเป้าส่งให้มือสังหารเท่านั้น`);
     }
     assert(!json.includes('"seats"'), `${label}: ห้ามส่ง seats ดิบ`);
+    // นางแห่งทะเลสาบ: ผลส่อง (ฝ่าย) ไปถึงคนส่องคนเดียว · รายชื่อที่ส่องได้ไปถึงคนถือคนเดียว
+    const ownChecks = (state.lady?.checks || []).filter(entry => entry.holderId === viewerId);
+    const ownSeen = new Set(ownChecks.map(entry => entry.targetId));
+    view.players.forEach(player => {
+        if (player.ladySeen) {
+            assert(ownSeen.has(player.playerId), `${label}: ${viewerId} เห็นผลส่องของ ${player.playerId} ที่ตัวเองไม่ได้ส่อง`);
+            assert(player.ladySeen === seatBy(room, seat => seat.playerId === player.playerId).team, `${label}: ผลส่องต้องตรงฝ่ายจริง`);
+        }
+    });
+    if (view.lady) {
+        view.lady.checks.forEach(entry => assert(!('team' in entry), `${label}: lady.checks สาธารณะห้ามมีฝ่าย`));
+    }
+    if (view.self) {
+        assert(view.self.ladyResults.length === ownChecks.length, `${label}: ladyResults ต้องเป็นของตัวเองเท่านั้น`);
+    }
+    if (!(state.phase === 'lady' && state.lady?.holderId === viewerId)) {
+        assert((view.ladyTargets || []).length === 0, `${label}: รายชื่อส่องส่งให้คนถือเท่านั้น`);
+    }
     // บทของคนอื่นต้องไม่อยู่ใน payload ในรูปของ role object ผูกกับ playerId
     if (!finished) {
         state.seats.forEach(seat => {
@@ -574,9 +592,11 @@ function leave(room, playerId) {
         const evil = engine.TEAM_COUNTS[count].evil;
         const choices = optionalSets.filter(set => set.filter(id => ['morgana', 'mordred', 'oberon'].includes(id)).length <= evil - 1);
         const roles = choices[Math.floor(Math.random() * choices.length)];
-        const room = start(count, roles);
+        const ladyOn = Math.random() < 0.5;
+        const room = start(count, roles, { avalonLady: ladyOn });
         const state = () => room.gameState;
         const fails = new Map();
+        assert(!!room.gameState.lady === ladyOn, 'นางแห่งทะเลสาบเปิดตามตั้งค่า');
         let steps = 0;
         let lastQuestIndex = 0;
         while (state().phase !== 'finished') {
@@ -658,8 +678,19 @@ function leave(room, playerId) {
                     engine.submitQuestCard(room, id, card, { step });
                     if (card === 'fail') fails.set(id, (fails.get(id) || 0) + 1);
                 });
+            } else if (st.phase === 'lady') {
+                assert(ladyOn && engine.LADY_AFTER_QUESTS.includes(st.questIndex), 'ส่องได้หลังภารกิจ 2, 3, 4 เท่านั้น');
+                const holder = st.lady.holderId;
+                const targets = engine.buildClientState(room, holder).ladyTargets;
+                assert(targets.length > 0, 'ถ้าเข้าเฟสส่องต้องมีคนให้ส่อง');
+                assert(targets.every(id => !st.lady.pastHolderIds.includes(id) && id !== holder), 'ส่องคนที่เคยถือไม่ได้');
+                const target = targets[Math.floor(Math.random() * targets.length)];
+                const before = st.lady.checks.length;
+                engine.submitLady(room, holder, target, { step: st.step });
+                assert(state().lady.checks.length === before + 1 && state().lady.holderId === target, 'ส่องแล้วส่งต่อให้คนที่ถูกส่อง');
             } else if (st.phase === 'assassin') {
                 const targets = engine.buildClientState(room, st.assassinId).assassinTargets;
+                assert(targets.every(id => st.seats.find(seat => seat.playerId === id).team === 'good'), 'มือสังหารแทงได้เฉพาะฝ่ายดี');
                 assert(targets.length > 0, 'มือสังหารต้องมีเป้าให้เลือก');
                 engine.submitAssassination(room, st.assassinId, targets[Math.floor(Math.random() * targets.length)], { step: st.step });
             }
@@ -695,6 +726,11 @@ function leave(room, playerId) {
             throw new Error('ผลจบเกมไม่รู้จัก: ' + JSON.stringify(w));
         }
         assert(successes <= 3 && failed <= 3, 'ภารกิจไม่เกิน 3');
+        if (st.lady) {
+            assert(new Set(st.lady.pastHolderIds).size === st.lady.pastHolderIds.length, 'ไม่มีใครถือนางแห่งทะเลสาบซ้ำ');
+            assert(st.lady.checks.length <= 3, 'ส่องได้ไม่เกิน 3 ครั้ง (หลังภารกิจ 2, 3, 4)');
+            st.lady.checks.forEach(entry => assert(entry.team === st.seats.find(seat => seat.playerId === entry.targetId).team, 'ผลส่องตรงฝ่ายจริง'));
+        }
         const view = engine.buildClientState(room, st.seats[0].playerId);
         assert(view.players.every(p => p.role && p.team), 'จบแล้วเปิดบททุกคน');
         JSON.parse(JSON.stringify(st));
@@ -728,6 +764,147 @@ function leave(room, playerId) {
     assert(S(r2).phase === 'assassin', 'สำเร็จ 3 ต้องเข้าลอบสังหาร');
     assert(engine.buildClientState(r2, 'p1').players.every(p => !p.isLeader), 'ช่วงลอบสังหารไม่มีหัวหน้า');
     console.log('10. คนหลุดตอนเริ่มเปิดหน้าเกมได้แบบคนดู · ช่วงลอบสังหารไม่มีมงกุฎค้าง ✓');
+})();
+
+/* ------------------------------------------------------------------ 11. assassination = good players only, evil reveal */
+(function testAssassinGoodOnly() {
+    // 7 คน + โอเบรอน: มือสังหารไม่รู้จักโอเบรอนตอนกลางคืน แต่ช่วงลอบสังหารฝ่ายร้ายเปิดตัว — แทงโอเบรอนไม่ได้
+    const room = goodSweep(7, ['oberon']);
+    const assassin = seatBy(room, seat => seat.role === 'assassin');
+    const oberon = seatBy(room, seat => seat.role === 'oberon');
+    const minion = seatBy(room, seat => seat.role === 'minion');
+    const merlin = seatBy(room, seat => seat.role === 'merlin');
+    const view = assertNoLeak(room, assassin.playerId, 'assassin+oberon');
+    const goodIds = seatsBy(room, seat => seat.team === 'good').map(seat => seat.playerId).sort();
+    assert(JSON.stringify([...view.assassinTargets].sort()) === JSON.stringify(goodIds), 'เป้า = ฝ่ายดีทุกคน (ไม่มีโอเบรอน)');
+    throws(() => engine.submitAssassination(room, assassin.playerId, oberon.playerId, ctx(room)), /เลือกคนนี้ไม่ได้/, 'แทงโอเบรอนไม่ได้');
+    assert(view.self.knowledge.map(k => k.playerId).sort().join() === [oberon.playerId, minion.playerId].sort().join(), 'ช่วงลอบสังหาร มือสังหารเห็นฝ่ายร้ายครบรวมโอเบรอน');
+    const oberonView = assertNoLeak(room, oberon.playerId, 'oberon@assassin');
+    assert(oberonView.self.knowledge.map(k => k.playerId).sort().join() === [assassin.playerId, minion.playerId].sort().join(), 'โอเบรอนเห็นพวกเดียวกันตอนลอบสังหาร');
+    const merlinView = assertNoLeak(room, merlin.playerId, 'merlin@assassin');
+    assert(merlinView.self.knowledge.length === 3, 'เมอร์ลินยังเห็นแค่ข้อมูลกลางคืนของตัวเอง');
+    const goodView = assertNoLeak(room, seatBy(room, seat => seat.role === 'loyal').playerId, 'loyal@assassin');
+    assert(goodView.self.knowledge.length === 0, 'ฝ่ายดีทั่วไปไม่ได้ข้อมูลเพิ่ม');
+    // หมดเวลา: สุ่มเฉพาะฝ่ายดี
+    for (let i = 0; i < 30; i += 1) {
+        const r = goodSweep(7, ['oberon']);
+        engine.autoResolvePhase(r, { force: true });
+        assert(seatBy(r, seat => seat.playerId === S(r).assassinTargetId).team === 'good', 'หมดเวลาสุ่มแทงเฉพาะฝ่ายดี');
+    }
+    // ก่อนลอบสังหาร โอเบรอนยังซ่อน
+    const night = start(7, ['oberon']);
+    const nightAssassin = seatBy(night, seat => seat.role === 'assassin');
+    assert(!engine.getKnowledge(S(night), nightAssassin).some(k => k.playerId === seatBy(night, seat => seat.role === 'oberon').playerId), 'กลางคืน มือสังหารไม่เห็นโอเบรอน');
+    console.log('11. ลอบสังหาร: แทงได้เฉพาะฝ่ายดี · ฝ่ายร้ายเปิดตัวกัน (รวมโอเบรอน) เฉพาะช่วงนี้ ✓');
+})();
+
+/* ------------------------------------------------------------------ 12. lady of the lake */
+(function testLady() {
+    assert(engine.sanitizeLadySetting(true) === true && engine.sanitizeLadySetting('true') === true, 'sanitize เปิด');
+    assert(engine.sanitizeLadySetting(undefined) === false && engine.sanitizeLadySetting('yes') === false && engine.sanitizeLadySetting({}) === false, 'sanitize ค่าอื่น = ปิด');
+    // ปิด (ค่าเริ่มต้น): ไม่มีเฟสส่อง
+    {
+        const room = start(7);
+        assert(S(room).lady === null && engine.buildClientState(room, 'p1').lady === null, 'ค่าเริ่มต้นไม่มีนางแห่งทะเลสาบ');
+        skipNight(room);
+        for (let q = 0; q < 2; q += 1) runQuest(room, () => 'success');
+        assert(S(room).phase === 'team', 'ปิดไว้ = หลังภารกิจ 2 ไปเลือกทีมเลย');
+    }
+    // เปิด: เริ่มที่คนทางขวาหัวหน้าคนแรก (ที่นั่งก่อนหน้า)
+    const room = start(7, [], { avalonLady: true });
+    const st = S(room);
+    const leaderIdx = st.seats.findIndex(seat => seat.playerId === st.leaderId);
+    const expectedHolder = st.seats[(leaderIdx - 1 + 7) % 7].playerId;
+    assert(st.lady.holderId === expectedHolder && st.lady.pastHolderIds.join() === expectedHolder, 'คนแรกที่ถือ = ทางขวาของหัวหน้าคนแรก');
+    skipNight(room);
+    runQuest(room, () => 'success');
+    assert(S(room).phase === 'team', 'หลังภารกิจ 1 ยังไม่ส่อง');
+    const goodIds = seatsBy(room, seat => seat.team === 'good').map(seat => seat.playerId);
+    const evilIds = seatsBy(room, seat => seat.team === 'evil').map(seat => seat.playerId);
+    runQuest(room, seat => (seat.team === 'evil' ? 'fail' : 'success'), [evilIds[0], ...goodIds].slice(0, S(room).quests[1].size));
+    assert(S(room).phase === 'lady' && S(room).quests[1].result === 'fail', 'หลังภารกิจ 2 → เฟสนางแห่งทะเลสาบ');
+    const holder = S(room).lady.holderId;
+    const holderView = assertNoLeak(room, holder, 'lady-holder');
+    assert(holderView.self.canUseLady && holderView.ladyTargets.length === 6, 'คนถือเห็นรายชื่อ 6 คน (ไม่รวมตัวเอง)');
+    const other = S(room).seats.find(seat => seat.playerId !== holder);
+    const otherView = assertNoLeak(room, other.playerId, 'lady-other');
+    assert(!otherView.self.canUseLady && otherView.ladyTargets.length === 0, 'คนอื่นส่องไม่ได้');
+    throws(() => engine.submitLady(room, other.playerId, holder, ctx(room)), /เท่านั้น/, 'คนไม่ถือส่องไม่ได้');
+    throws(() => engine.submitLady(room, holder, holder, ctx(room)), /ตัวเอง/, 'ส่องตัวเองไม่ได้');
+    throws(() => engine.submitLady(room, holder, 'nobody', ctx(room)), /ไม่พบ/, 'ส่องคนที่ไม่อยู่ไม่ได้');
+    throws(() => engine.submitLady(room, holder, other.playerId, { step: S(room).step - 1 }), /ผ่านไปแล้ว/, 'step เก่าส่องไม่ได้');
+    throws(() => engine.submitTeam(room, S(room).leaderId, [], ctx(room)), /ไม่ใช่ช่วงเลือกทีม/, 'ระหว่างส่อง ยังเลือกทีมไม่ได้');
+    // ส่องฝ่ายร้าย (มอร์เดรด/โอเบรอน ก็ต้องเห็นเป็นร้าย — ทดสอบแยกด้านล่าง)
+    const target = S(room).seats.find(seat => seat.playerId !== holder).playerId;
+    engine.submitLady(room, holder, target, ctx(room));
+    assert(S(room).phase === 'team' && S(room).lady.holderId === target, 'ส่องแล้วเข้าเลือกทีม · ส่งต่อให้คนที่ถูกส่อง');
+    const after = assertNoLeak(room, holder, 'lady-after');
+    const targetTeam = seatBy(room, seat => seat.playerId === target).team;
+    assert(after.self.ladyResults.length === 1 && after.self.ladyResults[0].team === targetTeam, 'คนส่องเห็นฝ่ายของเป้า');
+    assert(after.players.find(p => p.playerId === target).ladySeen === targetTeam, 'ที่นั่งเป้าติดผลส่องให้คนส่อง');
+    assert(Object.keys(after.self.ladyResults[0]).sort().join() === 'afterQuest,name,targetId,team', 'ผลส่องไม่แนบบท');
+    S(room).seats.filter(seat => seat.playerId !== holder).forEach(seat => {
+        const v = assertNoLeak(room, seat.playerId, 'lady-others-after');
+        assert(v.players.every(p => p.ladySeen === null), 'คนอื่นไม่เห็นผลส่อง');
+        assert(v.lady.checks.length === 1 && v.lady.checks[0].targetId === target, 'ทุกคนรู้ว่าใครส่องใคร');
+    });
+    // ภารกิจ 3: คนถือใหม่ส่องคนที่เคยถือไม่ได้
+    runQuest(room, () => 'success');
+    assert(S(room).phase === 'lady', 'หลังภารกิจ 3 ส่องอีก');
+    const holder2 = S(room).lady.holderId;
+    throws(() => engine.submitLady(room, holder2, holder, ctx(room)), /เคยถือ/, 'ส่องคนที่เคยถือไม่ได้');
+    throws(() => engine.submitLady(room, holder2, expectedHolder, ctx(room)), /เคยถือ|ตัวเอง/, 'ส่องคนถือคนแรกไม่ได้');
+    // หมดเวลา = สุ่มให้
+    engine.autoResolvePhase(room, { force: true });
+    assert(S(room).phase === 'team' && S(room).lady.checks.length === 2, 'หมดเวลาส่อง = สุ่มให้แล้วเดินต่อ');
+    assert(!S(room).lady.pastHolderIds.slice(0, 2).includes(S(room).lady.holderId), 'สุ่มไม่โดนคนเคยถือ');
+    // ภารกิจ 4 ถ้าเกมยังไม่จบ → ส่องครั้งที่ 3 · ภารกิจ 5 ไม่มีส่อง
+    if (S(room).phase === 'team') {
+        runQuest(room, seat => (seat.team === 'evil' ? 'fail' : 'success'), [...evilIds.slice(0, 2), ...goodIds].slice(0, S(room).quests[3].size));
+        if (S(room).phase !== 'finished' && S(room).phase !== 'assassin') {
+            assert(S(room).phase === 'lady', 'หลังภารกิจ 4 ส่องครั้งที่ 3');
+            engine.autoResolvePhase(room, { force: true });
+            assert(S(room).lady.checks.length === 3, 'ส่องครบ 3 ครั้ง');
+        }
+    }
+    // เกมจบที่ภารกิจ 3 (สำเร็จครบ 3) → ไม่มีส่อง เข้าลอบสังหารเลย
+    {
+        const r = start(7, [], { avalonLady: true });
+        skipNight(r);
+        const goods = seatsBy(r, seat => seat.team === 'good').map(seat => seat.playerId);
+        runQuest(r, () => 'success', goods.slice(0, S(r).quests[0].size));
+        runQuest(r, () => 'success', goods.slice(0, S(r).quests[1].size));
+        assert(S(r).phase === 'lady', 'หลังภารกิจ 2 ส่อง');
+        engine.autoResolvePhase(r, { force: true });
+        runQuest(r, () => 'success', goods.slice(0, S(r).quests[2].size));
+        assert(S(r).phase === 'assassin', 'สำเร็จครบ 3 → ลอบสังหารเลย ไม่ส่องอีก');
+    }
+    // มอร์เดรด / โอเบรอน ถูกส่องแล้วเห็นเป็นฝ่ายร้าย
+    {
+        const r = start(10, ['mordred', 'oberon'], { avalonLady: true });
+        skipNight(r);
+        runQuest(r, () => 'success');
+        runQuest(r, () => 'success');
+        assert(S(r).phase === 'lady', 'เข้าเฟสส่อง');
+        const h = S(r).lady.holderId;
+        const hidden = seatBy(r, seat => seat.playerId !== h && (seat.role === 'mordred' || seat.role === 'oberon'));
+        engine.submitLady(r, h, hidden.playerId, ctx(r));
+        assert(engine.buildClientState(r, h).self.ladyResults[0].team === 'evil', 'มอร์เดรด/โอเบรอน ถูกส่อง = ฝ่ายร้าย');
+    }
+    // คนถือออกจากโต๊ะระหว่างส่อง → ส่งต่อคนถัดไปที่ยังไม่เคยถือ
+    {
+        const r = start(7, [], { avalonLady: true });
+        skipNight(r);
+        runQuest(r, () => 'success');
+        runQuest(r, seat => (seat.team === 'evil' ? 'fail' : 'success'));
+        assert(S(r).phase === 'lady', 'เข้าเฟสส่อง (คนออก)');
+        const h = S(r).lady.holderId;
+        engine.handlePlayerLeft(r, h);
+        assert(S(r).phase === 'lady' && S(r).lady.holderId !== h && !seatBy(r, seat => seat.playerId === S(r).lady.holderId).left, 'คนถือออก → ส่งต่อให้คนที่ยังอยู่');
+        assert(!engine.buildClientState(r, S(r).lady.holderId).ladyTargets.includes(h), 'คนที่ออกแล้วส่องไม่ได้');
+    }
+    assert(engine.finishedReturnMs === 30000, 'หน้าจบเกมค้าง 30 วิ (engine.finishedReturnMs)');
+    console.log('12. นางแห่งทะเลสาบ: เริ่มขวาหัวหน้า · หลังภารกิจ 2/3/4 · เห็นแค่ฝ่าย คนเดียว · ส่งต่อ · ห้ามส่องคนเคยถือ · หมดเวลา/คนออก ✓');
 })();
 
 console.log(`\n✅ avalon engine: ผ่าน ${checks} เช็ก`);

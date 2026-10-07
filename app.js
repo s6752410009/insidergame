@@ -7773,6 +7773,12 @@ io.sockets.on('connection', function(socket) {
             getGameEngine('avalon').submitAssassination(room, playerId, data?.targetId, avalonContext(data)));
     });
 
+    // นางแห่งทะเลสาบ — ผลส่อง (ฝ่ายดี/ร้าย) ไปถึงคนส่องคนเดียวผ่าน buildClientState รายคน
+    safeOn(socket, 'avalon_lady', function(data, callback) {
+        handleAvalonCommand(socket, callback, (room, playerId) =>
+            getGameEngine('avalon').submitLady(room, playerId, data?.targetId, avalonContext(data)));
+    });
+
     // /m — แอดมินเว็บ (เท่านั้น) ขอดูบททั้งโต๊ะ ส่งกลับเฉพาะ socket ที่ขอ
     safeOn(socket, 'avalon_admin_reveal', function() {
         const room = getSocketRoom(socket, 'avalon');

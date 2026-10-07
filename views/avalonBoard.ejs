@@ -150,6 +150,7 @@
   .av-seat-badge img { width: 100%; height: 100%; }
   .av-seat-dot { position: absolute; top: 8px; left: 8px; width: 8px; height: 8px; border-radius: 50%; background: oklch(0.6 0.02 260); }
   .av-seat-dot.is-on { background: oklch(0.78 0.15 150); }
+  .av-seat-lady { position: absolute; top: 3px; left: 20px; font-size: 0.85rem; line-height: 1; }
   .av-seat-check { position: absolute; top: 5px; right: 6px; font-size: 0.8rem; color: oklch(0.8 0.14 150); font-weight: 700; }
   .av-seat-role { width: 52px; height: 73px; border-radius: 6px; box-shadow: 0 4px 10px rgb(0 0 0 / 0.4); }
   .av-seat-win { font-size: 0.7rem; font-weight: 700; }
@@ -417,6 +418,7 @@ $(function() {
   let picks = [];
   let picksStep = -1;
   let assassinPick = null;
+  let ladyPick = null;
   let roleOpen = false;
   let roleSeen = false;
   let sending = false;
@@ -433,6 +435,7 @@ $(function() {
     vote: '🗳 โหวตทีม',
     quest: '⚔️ ออกภารกิจ',
     assassin: '🗡 ลอบสังหาร',
+    lady: '🌊 นางแห่งทะเลสาบ',
     finished: '🏁 จบเกม'
   };
 
@@ -477,6 +480,9 @@ $(function() {
       case 'quest':
         if (self.canPlayQuest) return { text: 'คุณอยู่ในทีม — ลงการ์ดภารกิจแบบลับ', mine: true };
         return { text: 'ทีมกำลังออกภารกิจ ' + q.number + ' (' + (S.questPlayedCount || 0) + '/' + q.size + ' ลงแล้ว)', mine: false };
+      case 'lady':
+        if (self.canUseLady) return { text: 'คุณถือนางแห่งทะเลสาบ — เลือกส่องฝ่ายของ 1 คน', mine: true };
+        return { text: nameOf(S.lady && S.lady.holderId) + ' กำลังใช้นางแห่งทะเลสาบส่องใครสักคน', mine: false };
       case 'assassin':
         if (self.canAssassinate) return { text: 'คุณคือมือสังหาร — แทงคนที่คิดว่าเป็นเมอร์ลิน', mine: true };
         if (self.team === 'evil') return { text: 'ช่วย ' + nameOf(S.assassinId) + ' เดาว่าใครคือเมอร์ลิน', mine: false };
@@ -546,7 +552,8 @@ $(function() {
 
     const tc = S.teamCounts;
     const specials = (S.rolesInPlay || []).filter(function(r) { return r.id !== 'loyal' && r.id !== 'minion'; }).map(function(r) { return r.thaiName; });
-    $('#avRolesLine').text(tc ? 'ฝ่ายดี ' + tc.good + ' · ฝ่ายร้าย ' + tc.evil + (specials.length ? ' · บทพิเศษ: ' + specials.join(', ') : '') : '');
+    $('#avRolesLine').text(tc ? 'ฝ่ายดี ' + tc.good + ' · ฝ่ายร้าย ' + tc.evil + (specials.length ? ' · บทพิเศษ: ' + specials.join(', ') : '') +
+      (S.lady ? ' · 🌊 นางแห่งทะเลสาบ (หลังภารกิจ 2–4)' : '') : '');
     renderRecap();
 
     const lv = S.lastVote;
@@ -578,6 +585,7 @@ $(function() {
     const self = me() || {};
     if (S.phase === 'team' && self.canPickTeam) return 'pick';
     if (S.phase === 'assassin' && self.canAssassinate) return 'stab';
+    if (S.phase === 'lady' && self.canUseLady) return 'lady';
     return null;
   }
 
@@ -603,6 +611,10 @@ $(function() {
         disabled = !allowed;
         if (assassinPick === p.playerId) cls += ' is-target';
       }
+      if (mode === 'lady') {
+        disabled = (S.ladyTargets || []).indexOf(p.playerId) < 0;
+        if (ladyPick === p.playerId) cls += ' is-picked';
+      }
       if (disabled) cls += ' is-disabled';
       if (finished && S.assassinTargetId === p.playerId) cls += ' is-target';
 
@@ -610,6 +622,9 @@ $(function() {
       if (p.left) tag = 'ออกจากโต๊ะ';
       // ช่วงแทง: บอกว่าทำไมแตะคนนี้ไม่ได้
       else if (mode === 'stab' && disabled && !p.isSelf && p.known === 'evil') tag = 'พวกเดียวกัน';
+      else if (mode === 'lady' && disabled && !p.isSelf && p.ladyUsed) tag = 'เคยถือแล้ว';
+      else if (!finished && p.ladySeen) tag = 'ส่องแล้ว: ' + (p.ladySeen === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย');
+      else if (!finished && p.isLadyHolder && (S.phase === 'lady' || p.isSelf)) tag = 'ถือทะเลสาบ';
       else if (finished && p.role) tag = p.role.thaiName;
       else if (S.phase === 'assassin' && p.isAssassin) tag = '🗡 มือสังหาร';
       else if (p.onTeam) tag = S.phase === 'quest' ? (p.hasPlayed ? 'ลงการ์ดแล้ว' : 'ในทีม') : 'ถูกเสนอ';
@@ -629,6 +644,7 @@ $(function() {
       const inner =
         (p.isLeader ? '<img class="av-seat-crown" src="' + esc(ART('crown')) + '" alt="หัวหน้า">' : '') +
         '<span class="av-seat-dot' + (p.online ? ' is-on' : '') + '" title="' + (p.online ? 'ออนไลน์' : 'ออฟไลน์') + '"></span>' +
+        (p.isLadyHolder ? '<span class="av-seat-lady" title="ถือนางแห่งทะเลสาบ" aria-label="ถือนางแห่งทะเลสาบ">🌊</span>' : '') +
         badge +
         (finished && p.role
           ? '<img class="av-seat-role" src="' + esc(p.role.image) + '" alt="' + esc(p.role.thaiName) + '">'
@@ -638,7 +654,7 @@ $(function() {
         (finished && p.team ? '<span class="av-seat-win ' + (p.team === 'good' ? 'is-good' : 'is-evil') + '">' + (p.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย') + '</span>' : '');
 
       if (mode && !disabled) {
-        const pressed = mode === 'pick' ? picks.indexOf(p.playerId) >= 0 : assassinPick === p.playerId;
+        const pressed = mode === 'pick' ? picks.indexOf(p.playerId) >= 0 : (mode === 'lady' ? ladyPick === p.playerId : assassinPick === p.playerId);
         return '<button type="button" class="' + cls + '" data-seat="' + esc(p.playerId) + '" aria-pressed="' + pressed + '">' + inner + '</button>';
       }
       return '<div class="' + cls + '" data-seat="' + esc(p.playerId) + '">' + inner + '</div>';
@@ -655,6 +671,8 @@ $(function() {
       if (window.gameHaptic) window.gameHaptic(10);
     } else if (mode === 'stab') {
       assassinPick = assassinPick === id ? null : id;
+    } else if (mode === 'lady') {
+      ladyPick = ladyPick === id ? null : id;
     }
     renderSeats();
     renderAction();
@@ -688,9 +706,13 @@ $(function() {
       const cls = k.tag === 'merlin' ? 'is-merlin' : 'is-evil';
       return '<span class="av-name-pill ' + cls + '">' + esc(k.name) + '</span>';
     }).join('');
+    const lady = (self.ladyResults || []).map(function(r) {
+      return '<span class="av-name-pill ' + (r.team === 'good' ? 'is-merlin' : 'is-evil') + '">🌊 ' + esc(r.name) + ' · ' + (r.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย') + '</span>';
+    }).join('');
     return '<p class="av-know-title">' + esc(title) + '</p>' +
       (pills ? '<div class="av-team-list">' + pills + '</div>' : '<p class="av-muted">' + esc(empty) + '</p>') +
-      (extra ? '<p class="av-muted" style="margin-top:6px;">' + esc(extra) + '</p>' : '');
+      (extra ? '<p class="av-muted" style="margin-top:6px;">' + esc(extra) + '</p>' : '') +
+      (lady ? '<p class="av-know-title" style="margin-top:10px;">นางแห่งทะเลสาบที่คุณส่อง</p><div class="av-team-list">' + lady + '</div>' : '');
   }
 
   function roleBlockHtml(options) {
@@ -732,6 +754,7 @@ $(function() {
     if (self.canPickTeam) return 'ไปเลือกทีม';
     if (self.canVote) return 'ไปโหวต';
     if (self.canAssassinate) return 'ไปเลือกเป้า';
+    if (self.canUseLady) return 'ไปส่อง';
     return 'ปิด';
   }
 
@@ -804,9 +827,23 @@ $(function() {
         html = '<h2>ทีมกำลังออกภารกิจ ' + q.number + '</h2><div class="av-team-list">' + team + '</div>' +
           '<p class="av-muted">เปิดการ์ดแบบสลับเมื่อครบทีม — เห็นแค่จำนวนการ์ดล้ม</p>' + bar;
       }
+    } else if (S.phase === 'lady') {
+      const holder = nameOf(S.lady && S.lady.holderId);
+      if (self.canUseLady) {
+        html = '<h2>🌊 นางแห่งทะเลสาบ</h2><p class="av-muted">เลือก 1 คนเพื่อดูว่าเป็นฝ่ายดีหรือฝ่ายร้าย (ไม่เห็นบท) · เห็นคนเดียว จะบอกจริงหรือโกหกก็ได้ · ส่องคนที่เคยถือแล้วไม่ได้</p>' +
+          pickGridHtml(S.ladyTargets || [], {
+            label: 'เลือกคนที่จะส่อง',
+            isOn: function(id) { return ladyPick === id; },
+            isOff: function() { return false; }
+          }) +
+          '<button type="button" id="avLadyBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" style="margin-top:4px;"' + (ladyPick ? '' : ' disabled') + '>' +
+          (ladyPick ? 'ส่อง ' + esc(nameOf(ladyPick)) : 'เลือกคนก่อน') + '</button>';
+      } else {
+        html = '<h2>🌊 นางแห่งทะเลสาบ</h2><p class="av-muted">' + esc(holder) + ' กำลังเลือกส่องฝ่ายของ 1 คน — เห็นคนเดียว แล้วนางแห่งทะเลสาบจะย้ายไปอยู่กับคนที่ถูกส่อง</p>';
+      }
     } else if (S.phase === 'assassin') {
       if (self.canAssassinate) {
-        html = '<h2>🗡 แทงเมอร์ลิน</h2><p class="av-muted">ฝ่ายดีทำภารกิจครบ 3 แล้ว — ถ้าแทงถูกเมอร์ลิน ฝ่ายร้ายชนะ · คุยกับพวกเดียวกันได้ · แทงได้ครั้งเดียว</p>' +
+        html = '<h2>🗡 แทงเมอร์ลิน</h2><p class="av-muted">ฝ่ายดีทำภารกิจครบ 3 แล้ว — ถ้าแทงถูกเมอร์ลิน ฝ่ายร้ายชนะ · ฝ่ายร้ายเปิดตัวคุยกันได้ (รวมโอเบรอน) · เลือกได้เฉพาะฝ่ายดี แทงได้ครั้งเดียว</p>' +
           pickGridHtml(S.assassinTargets || [], {
             label: 'เลือกคนที่คิดว่าเป็นเมอร์ลิน', stab: true,
             isOn: function(id) { return assassinPick === id; },
@@ -815,7 +852,8 @@ $(function() {
           '<button type="button" id="avStabBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" style="margin-top:4px;"' + (assassinPick ? '' : ' disabled') + '>' +
           (assassinPick ? 'แทง ' + esc(nameOf(assassinPick)) : 'เลือกเป้าก่อน') + '</button>';
       } else {
-        html = '<h2>ช่วงลอบสังหาร</h2><p class="av-muted">' + esc(nameOf(S.assassinId)) + ' เปิดตัวเป็นมือสังหาร · ฝ่ายร้ายคุยกันได้ · ฝ่ายดีห้ามบอกว่าใครคือเมอร์ลิน</p>';
+        html = '<h2>ช่วงลอบสังหาร</h2><p class="av-muted">' + esc(nameOf(S.assassinId)) + ' เปิดตัวเป็นมือสังหาร · ฝ่ายร้ายเปิดตัวคุยกันได้ · ฝ่ายดีห้ามบอกว่าใครคือเมอร์ลิน</p>' +
+          (self.team === 'evil' && (self.knowledge || []).length ? '<div class="av-team-list">' + self.knowledge.map(function(k) { return '<span class="av-name-pill is-evil">' + esc(k.name) + '</span>'; }).join('') + '</div>' : '');
       }
     } else if (S.phase === 'finished') {
       const w = S.winner || {};
@@ -833,7 +871,10 @@ $(function() {
         (isRoomAdmin ? '<button type="button" id="avRestartBtn" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block">เล่นอีกรอบ</button>' : '') +
         '<div class="av-row av-row--center">' +
           (w.abandoned ? '' : '<button type="button" id="avShareBtn" class="ui-btn">แชร์ผล</button>') +
-          (isRoomAdmin ? '<button type="button" id="avBackBtn" class="ui-btn">พาทุกคนกลับห้องรอ</button>' : '') +
+          // หัวห้อง = พาทุกคนกลับตอนนี้ · คนอื่น = กลับห้องรอก่อนคนเดียว (ที่เหลือดูบทต่อได้)
+          (isRoomAdmin
+            ? '<button type="button" id="avBackBtn" class="ui-btn">พาทุกคนกลับห้องรอ</button>'
+            : '<button type="button" id="avBackSelfBtn" class="ui-btn">🏠 กลับห้องเลย</button>') +
         '</div><p class="av-muted" id="avBackRemain">ระบบพาทุกคนกลับห้องรอพร้อมกัน</p></div></div>';
     } else {
       html = '<p class="av-muted">กำลังโหลด...</p>';
@@ -904,6 +945,19 @@ $(function() {
   });
   // ไม่ใช่หัวห้อง = server ไม่พาทั้งวงกลับ (canReturnSelf) → กลับห้องเฉพาะตัวเอง
   $(document).on('click', '#avBackBtn', function() { socket.emit('returnFinishedToLobby', { roomId: roomId }, function(res) { if (res && res.canReturnSelf) { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; } }); });
+  $(document).on('click', '#avBackSelfBtn', function() {
+    allowNavigation = true;
+    window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+  });
+  $(document).on('click', '#avLadyBtn', function() {
+    if (!ladyPick) return;
+    const target = nameOf(ladyPick);
+    Swal.fire({
+      title: 'ส่อง ' + target + ' ?', text: 'คุณจะเห็นว่าเป็นฝ่ายดีหรือฝ่ายร้าย แล้วนางแห่งทะเลสาบจะย้ายไปที่ ' + target,
+      showCancelButton: true, confirmButtonText: 'ส่องเลย', cancelButtonText: 'ยังก่อน',
+      background: '#1b2336', color: '#fff', confirmButtonColor: '#c9a24a'
+    }).then(function(r) { if (r.isConfirmed) send('avalon_lady', { targetId: ladyPick }); });
+  });
   $(document).on('click', '#avShareBtn', function() {
     if (!window.partyPlay || !S.winner) return;
     const good = S.players.filter(function(p) { return p.team === 'good'; }).map(function(p) { return p.name + (p.role ? ' (' + p.role.thaiName + ')' : ''); });
@@ -1025,6 +1079,16 @@ $(function() {
     const vote = events.filter(function(e) { return e.kind === 'vote'; }).pop();
     if (quest) showQuestReveal(quest);
     else if (vote) showVoteReveal(vote);
+    const ladyFx = events.filter(function(e) { return e.kind === 'lady'; }).pop();
+    if (ladyFx && !quest && !vote && ladyFx.holderId === playerId) {
+      const r = ((me() || {}).ladyResults || []).filter(function(x) { return x.targetId === ladyFx.targetId; }).pop();
+      if (r) {
+        openOverlay('lady', '<h3 id="avOverlayTitle">🌊 ผลส่อง: ' + esc(r.name) + '</h3>' +
+          '<p class="av-verdict is-on ' + (r.team === 'good' ? 'is-good' : 'is-evil') + '">' + (r.team === 'good' ? 'ฝ่ายดี' : 'ฝ่ายร้าย') + '</p>' +
+          '<p class="av-sheet-sub">มีแค่คุณที่เห็น — จะบอกจริงหรือโกหกก็ได้ · ดูซ้ำได้ที่ "บทของฉัน"</p>' +
+          '<button type="button" class="ui-btn ui-btn--block" data-close>' + esc(closeLabel()) + '</button>');
+      }
+    }
     const stab = events.filter(function(e) { return e.kind === 'stab'; }).pop();
     if (stab && !quest && !vote) {
       openOverlay('stab', '<h3 id="avOverlayTitle">' + (stab.hit ? '🗡 แทงถูกเมอร์ลิน!' : '🛡 แทงพลาด!') + '</h3>' +
@@ -1047,6 +1111,7 @@ $(function() {
     else if (self.canVote) window.partyPlay.pingTurn({ key: 'av-vote-' + S.step, title: 'โหวตทีม', subtitle: 'เห็นด้วยหรือคัดค้าน' });
     else if (self.canPlayQuest) window.partyPlay.pingTurn({ key: 'av-quest-' + S.step, title: 'คุณอยู่ในทีม', subtitle: 'ลงการ์ดภารกิจแบบลับ' });
     else if (self.canAssassinate) window.partyPlay.pingTurn({ key: 'av-stab-' + S.step, title: 'คุณคือมือสังหาร', subtitle: 'แทงคนที่คิดว่าเป็นเมอร์ลิน' });
+    else if (self.canUseLady) window.partyPlay.pingTurn({ key: 'av-lady-' + S.step, title: 'นางแห่งทะเลสาบ', subtitle: 'เลือกส่องฝ่ายของ 1 คน' });
   }
 
   function render(state) {
@@ -1054,6 +1119,7 @@ $(function() {
     const prevStep = S && S.step;
     S = state;
     if (S.phase !== 'assassin') assassinPick = null;
+    if (S.phase !== 'lady' || prevStep !== S.step) ladyPick = null;
     if (S.phase !== 'night') { roleOpen = false; }
     if (prevStep !== S.step && S.phase === 'team' && picksStep !== S.step) picks = [];
     if (overlayKind === 'role' && S.phase === 'finished') closeOverlay();
@@ -1069,7 +1135,7 @@ $(function() {
     playFx();
     // ถึงตาต้องกด (หัวหน้า/โหวต/ลงการ์ด/แทง) — เลื่อนแผงปุ่มขึ้นมาให้เห็นทันทีบนมือถือ
     const self = me() || {};
-    const needsMe = self.canPickTeam || self.canVote || self.canPlayQuest || self.canAssassinate;
+    const needsMe = self.canPickTeam || self.canVote || self.canPlayQuest || self.canAssassinate || self.canUseLady;
     if (needsMe && prevStep !== S.step) {
       const node = document.getElementById('avAction');
       const rect = node.getBoundingClientRect();
@@ -1088,9 +1154,10 @@ $(function() {
         '<p>1. หัวหน้า (มีมงกุฎ) เลือกทีมตามจำนวนบนเหรียญภารกิจ</p>' +
         '<p>2. ทุกคนโหวตพร้อมกัน — เห็นด้วยเกินครึ่งถึงผ่าน ไม่ผ่านหัวหน้าส่งต่อ · ไม่ผ่านติดกัน 5 ครั้ง ฝ่ายร้ายชนะ</p>' +
         '<p>3. ทีมลงการ์ดลับ ฝ่ายดีลงได้แค่สำเร็จ ฝ่ายร้ายเลือกได้ · มีการ์ดล้มใบเดียวก็ล้ม (ยกเว้นเหรียญที่เขียน “ล้ม 2”)</p>' +
-        '<p>4. ฝ่ายดีสำเร็จครบ 3 — มือสังหารยังแทงเมอร์ลินได้ 1 ครั้ง แทงถูกฝ่ายร้ายชนะ</p>' +
+        '<p>4. ฝ่ายดีสำเร็จครบ 3 — ฝ่ายร้ายเปิดตัวคุยกัน (รวมโอเบรอน) แล้วมือสังหารแทงฝ่ายดี 1 คน ถ้าเป็นเมอร์ลิน ฝ่ายร้ายชนะ</p>' +
+        (S.lady ? '<p>🌊 <b>นางแห่งทะเลสาบ</b> (เปิดในห้องนี้): หลังภารกิจ 2, 3, 4 คนถือส่องฝ่ายของ 1 คน (เห็นแค่ดี/ร้าย คนเดียว) แล้วส่งต่อให้คนที่ถูกส่อง · ส่องคนที่เคยถือไม่ได้</p>' : '') +
         '<p><b>เมอร์ลิน</b> เห็นฝ่ายร้าย (ยกเว้นมอร์เดรด) · <b>เพอร์ซิวัล</b> เห็นเมอร์ลินกับมอร์กานาแต่แยกไม่ออก · <b>โอเบรอน</b> ไม่รู้จักพวกเดียวกัน</p>' +
-        '<p style="color:#a8b3c9;">หมดเวลา: ไม่โหวต = เห็นด้วย · ไม่ลงการ์ด = สำเร็จ · หัวหน้าไม่เลือก = ระบบเลือกให้</p>' +
+        '<p style="color:#a8b3c9;">หมดเวลา: ไม่โหวต = เห็นด้วย · ไม่ลงการ์ด = สำเร็จ · หัวหน้าไม่เลือก = ระบบเลือกให้' + (S.lady ? ' · ไม่ส่อง = สุ่มให้' : '') + '</p>' +
         ((S.rolesInPlay || []).length ? '<p><b>บทในเกมนี้:</b> ' + S.rolesInPlay.map(function(r) { return esc(r.thaiName) + (r.count > 1 ? ' ×' + r.count : ''); }).join(', ') + '</p>' : '') +
         '</div>',
       background: '#1b2336', color: '#fff', confirmButtonColor: '#c9a24a', confirmButtonText: 'เข้าใจแล้ว'
@@ -1152,7 +1219,7 @@ $(function() {
   });
   socket.on('redirectToLobby', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
   socket.on('returnToLobby', function(data) {
-    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 10) * 1000);
+    S.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 30) * 1000);
     tickTimer();
   });
   socket.on('restartGame', function() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; });
