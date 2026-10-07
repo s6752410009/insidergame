@@ -2214,13 +2214,27 @@
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = buildDrawGuessLobbyHtml(settings);
         } else if (resolvedMode === 'pokdeng') {
+          const pdRotate = !!(settings && settings.pokdengRotateDealer);
+          const pdStraights = !(settings && settings.pokdengStraights === false);
+          const pdMustDraw = !!(settings && settings.pokdengMustDraw);
+          const pdMax = [100, 200, 500].indexOf(Number(settings && settings.pokdengMaxBet)) >= 0 ? Number(settings.pokdengMaxBet) : 500;
+          const pdDis = isAdmin ? '' : ' disabled';
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
             '<div class="lobby-spotlight-pill" style="background:rgba(179,38,46,0.35); color:#fde68a;">🎴 ป๊อกเด้ง · 2–10 คน</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
             'ลงเดิมพัน แจก 2 ใบ ได้ 8/9 = ป๊อก เปิดเลย · ไม่งั้นจั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ',
-            ' · <strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> (' + (settings && settings.pokdengRotateDealer ? 'หมุนเจ้ามือทุกตา' : 'หัวห้องเป็นเจ้ามือ') + ')',
-            '</p>'
+            ' · <strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> (' + (pdRotate ? 'หมุนเจ้ามือทุกตา' : 'หัวห้องเป็นเจ้ามือ') + ')',
+            '</p>',
+            '<div class="cc-lobby-opts">',
+            '<select id="pdLobbyMaxBet" aria-label="อั้นเดิมพันสูงสุด"' + pdDis + '>',
+            [100, 200, 500].map(function(v) { return '<option value="' + v + '"' + (v === pdMax ? ' selected' : '') + '>อั้น ' + v + '</option>'; }).join(''),
+            '</select>',
+            '<button type="button" class="uc-mw-toggle" id="pdLobbyRotate" aria-pressed="' + (pdRotate ? 'true' : 'false') + '"' + pdDis + '>' + (pdRotate ? '✓ ' : '') + 'เจ้ามือ: ' + (pdRotate ? 'หมุนทุกตา' : 'หัวห้อง') + '</button>',
+            '<button type="button" class="uc-mw-toggle" id="pdLobbyStraights" aria-pressed="' + (pdStraights ? 'true' : 'false') + '"' + pdDis + '>' + (pdStraights ? '✓ ' : '') + 'นับไพ่เรียง: ' + (pdStraights ? 'นับ' : 'ไม่นับ') + '</button>',
+            '<button type="button" class="uc-mw-toggle" id="pdLobbyMustDraw" aria-pressed="' + (pdMustDraw ? 'true' : 'false') + '"' + pdDis + '>' + (pdMustDraw ? '✓ ' : '') + 'ต่ำกว่า 4 ต้องจั่ว: ' + (pdMustDraw ? 'ใช่' : 'ไม่') + '</button>',
+            '</div>',
+            '<p style="margin:6px 0 0; color:#94a3b8; font-size:0.8em; line-height:1.4;">ไพ่เรียง: เรียง 3 เด้ง สเตรทฟลัช 5 เด้ง (ปิด = นับแต้มธรรมดา) · ต่ำกว่า 4 ต้องจั่ว: 2 ใบได้ 0–3 แต้ม กดอยู่ไม่ได้ ทั้งขาไพ่และเจ้ามือ</p>'
           ].join('');
         } else if (resolvedMode === 'colorcards') {
           const ccTarget = Number(settings && settings.colorcardsTarget) || 0;
@@ -3454,6 +3468,12 @@
     $(document).on('click', '#wwLobbyDeadRoles', function() {
       this.disabled = true;
       updateColorCardsSetting({ werewolfDeadSeeRoles: this.getAttribute('aria-pressed') !== 'true' });
+    });
+    $(document).on('change', '#pdLobbyMaxBet', function() { updateColorCardsSetting({ pokdengMaxBet: Number(this.value) }); });
+    $(document).on('click', '#pdLobbyRotate, #pdLobbyStraights, #pdLobbyMustDraw', function() {
+      const key = { pdLobbyRotate: 'pokdengRotateDealer', pdLobbyStraights: 'pokdengStraights', pdLobbyMustDraw: 'pokdengMustDraw' }[this.id];
+      this.disabled = true;
+      updateColorCardsSetting({ [key]: this.getAttribute('aria-pressed') !== 'true' });
     });
     $(document).on('change', '#ccLobbyTarget', function() { updateColorCardsSetting({ colorcardsTarget: Number(this.value) }); });
     $(document).on('change', '#ccLobbyTurn', function() { updateColorCardsSetting({ colorcardsTurnSeconds: Number(this.value) }); });

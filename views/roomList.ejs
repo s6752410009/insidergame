@@ -1667,7 +1667,24 @@ $(function() {
                                 <span>หมุนเจ้ามือทุกตา (ทุกคนเริ่ม 1,000)</span>
                             </label>
                         </div>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · ไม่เกี่ยวกับกระเป๋าชิป · ลงได้ 10–500 ต่อมือ · เปลี่ยนแบบเจ้ามือในเกมได้</div>
+                        <div style="display:grid; gap:10px; margin-top:10px;">
+                            <label style="display:grid; gap:6px; color:#ddd; font-size:0.9em;">อั้น (ลงได้สูงสุดต่อมือ)
+                                <select id="pokdengMaxBet" class="search-box" style="min-height:48px; width:100%;">
+                                    <option value="100">100 ชิป</option>
+                                    <option value="200">200 ชิป</option>
+                                    <option value="500" selected>500 ชิป</option>
+                                </select>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="checkbox" id="pokdengStraights" checked style="accent-color:#f5c86b; width:20px; height:20px;">
+                                <span>นับไพ่เรียง (เรียง 3 เด้ง · สเตรทฟลัช 5 เด้ง) — ปิด = นับแต้มธรรมดา</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="checkbox" id="pokdengMustDraw" style="accent-color:#f5c86b; width:20px; height:20px;">
+                                <span>ต่ำกว่า 4 แต้มต้องจั่ว (ทั้งขาไพ่และเจ้ามือ)</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · ไม่เกี่ยวกับกระเป๋าชิป · ลงขั้นต่ำ 10 · แบบเจ้ามือเปลี่ยนได้ก่อนแจกมือแรกเท่านั้น</div>
                     </div>
 
                     <div class="room-form-group" id="codenamesTimerGroup" role="group" aria-labelledby="codenamesTimerLabel" style="display:none;">
@@ -2200,6 +2217,9 @@ $(function() {
                         : 500,
                     pokdengRotateDealer: gameMode === 'pokdeng'
                         && ((document.querySelector('input[name="pokdengDealer"]:checked') || {}).value === 'rotate'),
+                    pokdengMaxBet: gameMode === 'pokdeng' ? Number((document.getElementById('pokdengMaxBet') || {}).value || 500) : undefined,
+                    pokdengStraights: gameMode === 'pokdeng' ? !!(document.getElementById('pokdengStraights') || { checked: true }).checked : undefined,
+                    pokdengMustDraw: gameMode === 'pokdeng' && !!(document.getElementById('pokdengMustDraw') || {}).checked,
                     codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,
                     codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined,
                     wavelengthLaps: gameMode === 'wavelength'
@@ -2541,12 +2561,14 @@ $(function() {
             '<div class="bm-guide-inner">',
             '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>ชนะเจ้ามือให้ได้มากที่สุด · ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง (เริ่มคนละ 1,000)</p></div>',
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
-            '<li>ขาไพ่ลงเดิมพัน 10–500 (เจ้ามือไม่ต้องลง)</li>',
+            '<li>ขาไพ่ลงเดิมพัน 10 ถึงอั้นของห้อง (ค่าเริ่ม 500) · เจ้ามือไม่ต้องลง</li>',
             '<li>แจกคนละ 2 ใบ · แต้ม = หลักหน่วยของผลรวม (A = 1, 10/J/Q/K = 0)</li>',
             '<li>ได้ 8/9 = <b>ป๊อก</b> เปิดเลย · เจ้ามือป๊อก = เปิดวัดทุกคนทันที</li>',
             '<li>ที่เหลือจั่วเพิ่มได้ 1 ใบ แล้วเจ้ามือจั่ว/อยู่ แล้ววัดทุกขาพร้อมกัน</li>',
+            '<li>เจ้ามือ 4 แต้มขึ้นไป <b>จับ</b>ได้: วัดกับขา 3 ใบ (หรือ 2 ใบ) ก่อน แล้วค่อยจั่วสู้ที่เหลือ</li>',
             '</ol></div>',
-            '<div class="bm-guide-section"><h4>อันดับ + เด้ง</h4><p>ป๊อก &gt; ตอง (5 เด้ง) &gt; เรียง (3 เด้ง) &gt; เซียน J/Q/K (3 เด้ง) &gt; แต้ม · 2 ใบดอกเดียวกัน/คู่ = 2 เด้ง · 3 ใบดอกเดียวกัน = 3 เด้ง · ชนะได้ เดิมพัน × เด้งของคนชนะ</p></div>',
+            '<div class="bm-guide-section"><h4>อันดับ + เด้ง</h4><p>ป๊อก &gt; ตอง (5 เด้ง) &gt; สเตรทฟลัช (5 เด้ง) &gt; เรียง 2-3-4 ถึง Q-K-A (3 เด้ง) &gt; เซียน J/Q/K (3 เด้ง) &gt; แต้ม · 2 ใบดอกเดียวกัน/คู่ = 2 เด้ง · 3 ใบดอกเดียวกัน = 3 เด้ง · ชนะได้ เดิมพัน × เด้งของคนชนะ · แต้มเท่ากัน = เสมอ</p></div>',
+            '<div class="bm-guide-section"><h4>ตั้งได้ในห้อง</h4><p>อั้น 100/200/500 · นับไพ่เรียงหรือไม่ · ต่ำกว่า 4 ต้องจั่ว · หัวห้องเป็นเจ้ามือหรือหมุนเจ้ามือ</p></div>',
             '</div>'
         ].join('');
     }

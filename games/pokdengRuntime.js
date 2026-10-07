@@ -209,7 +209,7 @@ module.exports = function createPokDengRuntime(getDeps) {
             dealerId: state.dealerId,
             players: (state.players || []).map(p => {
                 let label = '';
-                try { label = (p.hand || []).length >= 2 ? engine.evaluateHand(p.hand).label : ''; } catch (e) { label = ''; }
+                try { label = (p.hand || []).length >= 2 ? engine.evaluateHand(p.hand, state.rules || undefined).label : ''; } catch (e) { label = ''; }
                 return {
                     playerId: p.playerId,
                     name: p.name,

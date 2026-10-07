@@ -93,6 +93,7 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         assert(s1.dealerId === host.id, 'มือแรกหัวห้องเป็นเจ้ามือ');
         assert(s1.players.length === 5, 'ที่นั่ง 5');
         assert(s1.players.find(p => p.playerId === host.id).chips === 5000, 'เจ้ามือคงที่ถือ 5,000');
+        assert(s1.rules && s1.rules.straights === true && s1.rules.mustDraw === false && s1.rules.maxBet === 500 && s1.limits.maxBet === 500, 'กติกาห้องค่าเริ่มต้น: นับเรียง · ไม่บังคับจั่ว · อั้น 500');
         const hostView = last(host);
         assert(!hostView.availableActions.canBet, 'เจ้ามือลงเดิมพันไม่ได้');
         const html = await (await fetch(`${base}/game/${roomId}?playerId=${p1.id}`)).text();
@@ -112,11 +113,28 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         assert(r.success === false, 'คนอื่นจบโต๊ะไม่ได้');
         r = await ack(p2.socket, 'pokdeng_rotate', { enabled: true });
         assert(r.success === false, 'คนอื่นตั้งหมุนเจ้ามือไม่ได้');
+        r = await ack(p1.socket, 'pokdeng_sitin', {});
+        assert(r.success === false && /ไม่ได้พักโต๊ะ/.test(r.error), 'ไม่ได้พักโต๊ะ กดกลับมาเล่นไม่ได้');
         console.log('3. ปฏิเสธคำสั่งผิดกติกา/ผิดสิทธิ์/step เก่า ✓');
+
+        // สลับแบบเจ้ามือก่อนแจกมือแรก: ปิด→เปิด→ปิด→เปิด กองหัวห้องต้องตามแบบ (ไม่ค้าง 5,000)
+        r = await ack(host.socket, 'pokdeng_rotate', { enabled: true });
+        assert(r.success, 'มือแรกก่อนแจก หัวห้องเปิดหมุนได้: ' + JSON.stringify(r));
+        await waitFor(() => last(p1)?.rotateDealer === true, 3000, 'เห็นหมุนเจ้ามือ');
+        assert(last(p1).players.find(p => p.playerId === host.id).chips === 1000, 'เปิดหมุน: หัวห้องเหลือ 1,000');
+        r = await ack(host.socket, 'pokdeng_rotate', { enabled: false });
+        await waitFor(() => last(p1)?.rotateDealer === false, 3000, 'เห็นเจ้ามือคงที่');
+        assert(last(p1).players.find(p => p.playerId === host.id).chips === 5000, 'ปิดหมุน: หัวห้องกลับมาถือ 5,000');
+        r = await ack(host.socket, 'pokdeng_rotate', { enabled: true });
+        assert(r.success, 'เปิดหมุนอีกครั้ง');
+        await waitFor(() => last(p1)?.rotateDealer === true, 3000, 'หมุนเจ้ามือ');
+        console.log('3b. สลับแบบเจ้ามือก่อนแจกมือแรก · ปรับกองหัวห้อง ✓');
 
         const handsSeen = new Set();
         const dealers = [];
-        let rotated = false;
+        let lockChecked = false;
+        let sitOutSeen = false;
+        let sitInOk = false;
         let droppedP2 = false;
         let leakChecks = 0;
         let readyAt = 0;
@@ -132,10 +150,10 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
                 assert(net === 0, `มือ ${s.handNumber}: ผลรวมกำไรขาดทุนต้องเป็น 0 (${net})`);
                 assert(s.lastResult && (s.lastResult.empty || s.lastResult.dealer), 'สรุปผลมีข้อมูลเจ้ามือ');
                 (s.lastResult.rows || []).forEach(row => assert(typeof row.delta === 'number' && row.label, 'ผลแต่ละขามีแต้ม/ยอด'));
-                if (s.handNumber === 2 && !rotated) {
-                    const rr = await ack(host.socket, 'pokdeng_rotate', { enabled: true });
-                    assert(rr.success, 'หัวห้องเปิดหมุนเจ้ามือ');
-                    rotated = true;
+                if (s.handNumber === 2 && !lockChecked) {
+                    const rr = await ack(host.socket, 'pokdeng_rotate', { enabled: false });
+                    assert(rr.success === false && /ก่อนแจกไพ่มือแรก/.test(rr.error), 'หลังแจกมือแรก เปลี่ยนแบบเจ้ามือไม่ได้: ' + JSON.stringify(rr));
+                    lockChecked = true;
                 }
                 if (s.handNumber >= 5) {
                     const end = await ack(host.socket, 'pokdeng_end', {});
@@ -166,6 +184,16 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
                 const v = last(p);
                 if (!v || v.phase === 'finished') continue;
                 const a = v.availableActions || {};
+                // p1 ไม่อยู่หน้าจอมือ 3–4 (ไม่ลงเดิมพัน) → มือ 3 ลงขั้นต่ำให้ · มือ 4 พักโต๊ะ แล้วกดกลับมาเล่น
+                if (p === p1 && a.canSitIn) {
+                    sitOutSeen = true;
+                    assert(v.self.sittingOut && v.players.find(x => x.playerId === p1.id).sittingOut, 'ทุกคนเห็นว่า p1 พักโต๊ะ');
+                    const back = await ack(p1.socket, 'pokdeng_sitin', {});
+                    assert(back.success, 'กลับมาเล่นได้: ' + JSON.stringify(back));
+                    sitInOk = true;
+                    continue;
+                }
+                if (p === p1 && v.phase === 'bet' && (v.handNumber === 3 || v.handNumber === 4) && !sitInOk) continue;
                 if (a.canBet && v.phase === 'bet') {
                     await ack(p.socket, 'pokdeng_bet', { amount: Math.min(a.maxBet, 50 + 10 * (guard % 7)), ...ctx(v) });
                 } else if (a.canRebuy) {
@@ -194,8 +222,11 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         await waitFor(() => last(p1)?.phase === 'finished', 20000, 'finished');
         const fin = last(p1);
         assert(handsSeen.size >= 5, `เล่นอย่างน้อย 5 มือ (${handsSeen.size})`);
-        assert(dealers[0] === host.id && dealers[1] === host.id, 'ก่อนเปิดหมุน เจ้ามือคงที่');
-        assert(new Set(dealers.slice(2)).size >= 2, `เปิดหมุนแล้วเจ้ามือต้องเปลี่ยน: ${dealers.join(',')}`);
+        assert(dealers[0] === host.id && dealers[1] === p1.id, 'หมุนเจ้ามือ: หัวห้อง → p1 ' + dealers.join(','));
+        assert(new Set(dealers).size >= 3, `หมุนเจ้ามือแล้วเจ้ามือต้องเปลี่ยน: ${dealers.join(',')}`);
+        assert(lockChecked, 'ได้ทดสอบล็อกแบบเจ้ามือ');
+        assert(sitOutSeen && sitInOk, 'p1 หมดเวลา 2 มือติด → พักโต๊ะ → กลับมาเล่น');
+        console.log('   · p1 หมดเวลาลงเดิมพัน 2 มือติด → พักโต๊ะ → กลับมาเล่น ✓');
         assert(leakChecks > 0, 'ต้องตรวจความลับตอนจั่วได้อย่างน้อยครั้งหนึ่ง');
         assert(readyAdvanceMs >= 0, 'ได้ทดสอบปุ่มพร้อมมือต่อไป');
         console.log(`   · พร้อมครบ 3 คน → มือต่อไปใน ${readyAdvanceMs}ms (ไม่รอนาฬิกา 4 วิ)`);
@@ -224,6 +255,13 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         assert(ret.success, 'กลับห้องรอได้');
         assert(await Promise.race([back, delay(4000).then(() => false)]), 'ทุกคนถูกพากลับห้องรอ');
         await delay(500);
+        // ตั้งกติกาห้องในห้องรอ: อั้น 100 · ต่ำกว่า 4 ต้องจั่ว · ไม่นับไพ่เรียง · เจ้ามือคงที่
+        const notAdmin = await ack(p1.socket, 'updateRoom', { pokdengMaxBet: 200 });
+        assert(notAdmin.success === false, 'คนที่ไม่ใช่หัวห้องตั้งกติกาไม่ได้');
+        const upd = await ack(host.socket, 'updateRoom', { pokdengMaxBet: 100, pokdengMustDraw: true, pokdengStraights: false, pokdengRotateDealer: false });
+        assert(upd.success && upd.room.settings.pokdengMaxBet === 100 && upd.room.settings.pokdengMustDraw === true && upd.room.settings.pokdengStraights === false, 'หัวห้องตั้งกติกาได้: ' + JSON.stringify(upd.room && upd.room.settings));
+        const junk = await ack(host.socket, 'updateRoom', { pokdengMaxBet: 9999 });
+        assert(junk.success && junk.room.settings.pokdengMaxBet === 100, 'อั้นแปลก ๆ ไม่เปลี่ยนค่า');
         const again = await ack(host.socket, 'startGameFromLobby', { roomId });
         assert(again.success, 'เปิดโต๊ะใหม่ได้อีกรอบ');
         await waitFor(() => last(p1)?.phase === 'bet' && last(p1).handNumber === 1, 15000, 'new table');
@@ -232,6 +270,89 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         const hostStat2 = (Array.isArray(stats2) ? stats2 : Object.values(stats2)).find(row => row.playerId === host.id);
         assert(hostStat2.modeStats.pokdeng.games === 1, 'สถิติยังเป็น 1 (ไม่บันทึกซ้ำ)');
         console.log('7. กลับห้องรอ → เปิดโต๊ะใหม่ได้ · สถิติไม่ซ้ำ ✓');
+
+        // ---------- 8. กติกาห้องเปิด: อั้น 100 · ต่ำกว่า 4 ต้องจั่ว · ไม่นับเรียง · เจ้ามือจับ ----------
+        let v8 = last(p1);
+        assert(v8.rules.maxBet === 100 && v8.rules.mustDraw === true && v8.rules.straights === false && v8.limits.maxBet === 100, 'โต๊ะใหม่ใช้กติกาห้อง: ' + JSON.stringify(v8.rules));
+        assert(v8.rotateDealer === false && v8.dealerId === host.id, 'เจ้ามือคงที่ = หัวห้อง');
+        let overMax = false; let mustDrawRejected = false; let caught = 0; let catchDenied = false; let straightLabels = 0;
+        const seen8 = new Set();
+        for (let guard = 0; guard < 700; guard += 1) {
+            const hv = last(host); const pv = last(p1);
+            if (!hv || !pv) { await delay(60); continue; }
+            if (pv.phase === 'result' && !seen8.has(pv.handNumber)) {
+                seen8.add(pv.handNumber);
+                (pv.lastResult && pv.lastResult.rows || []).forEach(row => { if (/เรียง|สเตรทฟลัช/.test(row.label)) straightLabels += 1; });
+                const net = pv.players.reduce((sum, p) => sum + p.net, 0);
+                assert(net === 0, `โต๊ะ 2 มือ ${pv.handNumber}: ชิปรวมคงที่ (${net})`);
+                if ((caught && mustDrawRejected && overMax) || pv.handNumber >= 12) break;
+                await ack(host.socket, 'pokdeng_next', {});
+                continue;
+            }
+            const pa = pv.availableActions || {};
+            if (pa.canBet && pv.phase === 'bet') {
+                if (!overMax) {
+                    const big = await ack(p1.socket, 'pokdeng_bet', { amount: 150, ...ctx(pv) });
+                    assert(big.success === false && /สูงสุด 100/.test(big.error), 'อั้น 100: ลง 150 ไม่ได้');
+                    overMax = true;
+                }
+                await ack(p1.socket, 'pokdeng_bet', { amount: Math.min(pa.maxBet, 100), ...ctx(last(p1)) });
+            } else if (pa.canDraw) {
+                if (pa.mustDraw && !mustDrawRejected) {
+                    const stay = await ack(p1.socket, 'pokdeng_draw', { draw: false, ...ctx(pv) });
+                    assert(stay.success === false && /ต้องจั่ว/.test(stay.error), 'ต่ำกว่า 4 กดอยู่ไม่ได้: ' + JSON.stringify(stay));
+                    mustDrawRejected = true;
+                }
+                // จั่วทุกครั้ง (ถ้าไม่ป๊อก) ให้มีขา 3 ใบให้เจ้ามือจับ
+                await ack(p1.socket, 'pokdeng_draw', { draw: true, ...ctx(last(p1)) });
+            }
+            const ha = hv.availableActions || {};
+            if (ha.canDealerDecide && hv.phase === 'dealer') {
+                if (!catchDenied) {
+                    const deny = await ack(p1.socket, 'pokdeng_dealer_catch', { group: 3, ...ctx(pv) });
+                    assert(deny.success === false, 'ขาไพ่สั่งจับไม่ได้');
+                    catchDenied = true;
+                }
+                if (ha.canCatch3) {
+                    const res = await ack(host.socket, 'pokdeng_dealer_catch', { group: 3, ...ctx(hv) });
+                    assert(res.success, 'เจ้ามือจับ 3 ใบ: ' + JSON.stringify(res));
+                    await waitFor(() => (last(p1)?.settledRows || []).length > 0 || last(p1)?.phase === 'result', 3000, 'ทุกคนเห็นผลจับ');
+                    const vv = last(p1);
+                    if (vv.phase === 'dealer') {
+                        assert(vv.players.find(p => p.playerId === host.id).cards.length === 2, 'จับแล้วเห็นไพ่เจ้ามือ 2 ใบ');
+                        assert(vv.settledRows.every(r => r.caught && r.dealerLabel), 'แถวที่จับมีมือเจ้ามือ');
+                    }
+                    caught += 1;
+                } else {
+                    const pts = hv.self.eval ? hv.self.eval.points : 0;
+                    await ack(host.socket, 'pokdeng_dealer', { draw: ha.mustDraw || pts <= 4, ...ctx(hv) });
+                }
+            }
+            await delay(100);
+        }
+        assert(overMax && mustDrawRejected && caught > 0, `กติกาห้องทำงานผ่าน socket (อั้น ${overMax} · บังคับจั่ว ${mustDrawRejected} · จับ ${caught})`);
+        assert(straightLabels === 0, 'ไม่นับไพ่เรียง: ไม่มีผลที่เป็นเรียง/สเตรทฟลัช');
+        console.log(`8. กติกาห้อง: อั้น 100 · ต่ำกว่า 4 ต้องจั่ว · ไม่นับเรียง · เจ้ามือจับ ${caught} ครั้ง ใน ${seen8.size} มือ ✓`);
+
+        // ---------- 9. เจ้ามือ (หัวห้อง) ออกจากห้องกลางมือ → ยกเลิกมือ คืนเดิมพัน เจ้ามือคนถัดไป ไม่ค้าง ----------
+        if (last(p1).phase === 'result') await ack(host.socket, 'pokdeng_next', {});
+        await waitFor(() => last(p1)?.phase === 'bet' && last(p1).availableActions.canBet, 15000, 'มือใหม่ก่อนเจ้ามือออก');
+        const chipsBefore = last(p1).self.chips;
+        await ack(p1.socket, 'pokdeng_bet', { amount: 50, ...ctx(last(p1)) });
+        await waitFor(() => ['deal', 'draw', 'dealer', 'result'].includes(last(p1)?.phase), 15000, 'แจกไพ่แล้ว');
+        const midPhase = last(p1).phase;
+        const handBefore = last(p1).handNumber;
+        const left = await ack(host.socket, 'leaveRoom', { roomId, playerId: host.id });
+        assert(left.success, 'หัวห้องออกได้');
+        if (midPhase !== 'result') {
+            await waitFor(() => last(p1)?.dealerId === p1.id && last(p1).phase === 'bet' && last(p1).handNumber === handBefore + 1, 10000, 'เจ้ามือออกกลางมือ → มือใหม่ p1 เป็นเจ้ามือ');
+            assert(last(p1).self.chips === chipsBefore, `คืนเดิมพัน p1 ครบ (${last(p1).self.chips}/${chipsBefore})`);
+            assert(last(p1).history.some(h => /เจ้ามือออกกลางมือ/.test(h.text)), 'บันทึกโต๊ะบอกว่ายกเลิกมือ');
+        }
+        await waitFor(() => last(p1)?.isHost === true, 5000, 'หัวห้องย้ายมาที่ p1 (คนจริงคนเดียวที่เหลือ)');
+        const hostSeat = last(p1).players.find(p => p.playerId === host.id);
+        assert(!hostSeat || hostSeat.left, 'หัวห้องเดิมถูกทำเครื่องหมายว่าออกแล้ว');
+        console.log(`9. เจ้ามือออกจากห้อง (${midPhase}) → ${midPhase !== 'result' ? 'ยกเลิกมือ คืนเดิมพัน · ' : ''}p1 เป็นหัวห้อง/เจ้ามือ ✓`);
 
         assert(!/\[pokdeng\].*failed/.test(server.logs()), 'server log มี error ของป๊อกเด้ง:\n' + server.logs().split('\n').filter(l => /pokdeng/.test(l)).slice(-5).join('\n'));
         players.forEach(p => { try { p.socket.close(); } catch (e) { /* ignore */ } });

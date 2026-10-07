@@ -656,6 +656,10 @@ function createRoom(roomData, creatorPlayerId) {
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
+            pokdengStraights: gameMode === 'pokdeng' ? normalizedRoomData.pokdengStraights !== false : undefined,
+            pokdengMustDraw: gameMode === 'pokdeng' ? normalizedRoomData.pokdengMustDraw === true : undefined,
+            pokdengMaxBet: gameMode !== 'pokdeng' ? undefined
+                : ([100, 200, 500].includes(Number(normalizedRoomData.pokdengMaxBet)) ? Number(normalizedRoomData.pokdengMaxBet) : 500),
             codenamesClueSeconds: gameMode === 'codenames' ? gameEngine.sanitizeClueSeconds(normalizedRoomData.codenamesClueSeconds) : undefined,
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
@@ -863,7 +867,10 @@ function leaveRoom(roomId, playerId) {
     room.players.splice(playerIndex, 1);
     
     // ลบออกจาก gameState.players ด้วย
-    const gameStatePlayerIndex = room.gameState.players.findIndex(p => p.playerId === playerId);
+    // ป๊อกเด้งระหว่างเล่น: เก็บที่นั่งไว้ให้ engine จัดการเอง (ทำเครื่องหมายออก · คืนเดิมพัน · เปลี่ยนเจ้ามือ)
+    // ถ้าลบตรงนี้ engine จะไม่เห็นคนออก — เจ้ามือออกกลางมือแล้วโต๊ะค้าง
+    const keepEngineSeat = room.settings?.gameMode === 'pokdeng' && wasGameActive;
+    const gameStatePlayerIndex = keepEngineSeat ? -1 : room.gameState.players.findIndex(p => p.playerId === playerId);
     if (gameStatePlayerIndex >= 0) {
         // ช่วง transition หลัง start อาจยังไม่ถูกนับเป็น in-progress ทั้งที่แจก role แล้ว
         // เก็บ snapshot เมื่อมี role ด้วย เพื่อให้ explicit leave/rejoin ไม่ทำ role หายจาก race นี้
@@ -1069,8 +1076,15 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (updates.pokerAnte !== undefined) {
         room.settings.pokerAnte = Math.max(10, Number(updates.pokerAnte) || 500);
     }
-    if (updates.pokdengRotateDealer !== undefined) {
+    // ระหว่างเล่น แบบเจ้ามือเปลี่ยนผ่านปุ่มในโต๊ะ (ก่อนแจกมือแรก) เท่านั้น
+    if (updates.pokdengRotateDealer !== undefined && !(room.settings.gameMode === 'pokdeng' && isRoomGameInProgress(room))) {
         room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;
+    }
+    // กติกาโต๊ะป๊อกเด้ง — เปลี่ยนได้ตอนอยู่ห้องรอเท่านั้น (เกมอ่านค่าตอนเปิดโต๊ะ)
+    if (room.settings.gameMode === 'pokdeng' && !isRoomGameInProgress(room)) {
+        if (updates.pokdengStraights !== undefined) room.settings.pokdengStraights = updates.pokdengStraights !== false;
+        if (updates.pokdengMustDraw !== undefined) room.settings.pokdengMustDraw = updates.pokdengMustDraw === true;
+        if ([100, 200, 500].includes(Number(updates.pokdengMaxBet))) room.settings.pokdengMaxBet = Number(updates.pokdengMaxBet);
     }
     if (room.settings.gameMode === 'codenames') {
         const codenamesEngine = getGameEngine('codenames');

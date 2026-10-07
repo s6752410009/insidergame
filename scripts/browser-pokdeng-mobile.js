@@ -80,6 +80,21 @@ async function layoutProblems(page) {
     });
 }
 
+/** ปุ่ม "🚪 ออก" เห็นได้ทันที ไม่ต้องเปิดอะไร: มีป้าย สูง ≥ 44 อยู่ในจอ ไม่มีอะไรบัง */
+async function exitVisible(p) {
+    return p.page.evaluate(() => {
+        const el = document.getElementById('pdExitBtn');
+        if (!el) return 'ไม่มีปุ่ม';
+        const r = el.getBoundingClientRect();
+        if (!/🚪\s*ออก/.test(el.textContent)) return 'ป้ายไม่ใช่ 🚪 ออก: ' + el.textContent;
+        if (r.height < 43.5 || r.width < 44) return 'เล็กไป ' + Math.round(r.width) + '×' + Math.round(r.height);
+        if (r.top < 0 || r.bottom > window.innerHeight || r.left < 0 || r.right > window.innerWidth) return 'ล้นจอ';
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!hit || (hit !== el && !el.contains(hit))) return 'โดนบังโดย ' + (hit ? hit.id || hit.className : 'null');
+        return 'ok';
+    }).catch(e => 'error ' + e.message);
+}
+
 const phaseOf = p => p.page.$eval('#pdRoot', el => el.dataset.phase).catch(() => '');
 const has = (p, sel) => p.page.$(sel).then(Boolean).catch(() => false);
 const text = (p, sel) => p.page.$eval(sel, el => el.textContent.trim()).catch(() => '');
@@ -134,6 +149,26 @@ const text = (p, sel) => p.page.$eval(sel, el => el.textContent.trim()).catch(()
         // ---------- มือ 1: ลงเดิมพัน
         await waitFor(async () => (await phaseOf(p1)) === 'bet' && (await has(p1, '#pdBetBtn')), 15000, 'p1 ลงเดิมพันได้');
         assert(!(await has(host, '#pdBetBtn')), 'เจ้ามือไม่มีปุ่มลงเดิมพัน');
+        // หัวห้องเลือกหมุนเจ้ามือได้ก่อนแจกมือแรกเท่านั้น
+        assert(await p1.page.$eval('#pdRotateBtn', el => el.getAttribute('aria-disabled') === 'true'), 'ปุ่มเจ้ามือของคนอื่นกดเปลี่ยนไม่ได้');
+        assert(await host.page.$eval('#pdRotateBtn', el => el.getAttribute('aria-disabled') === 'false'), 'หัวห้องสลับได้ก่อนแจกมือแรก');
+        await host.page.tap('#pdRotateBtn');
+        await waitFor(async () => /หมุนทุกตา/.test(await text(p1, '#pdRotateBtn')), 5000, 'ทุกคนเห็นว่าหมุนเจ้ามือ');
+        await waitFor(async () => /กองเจ้ามือ 1,000/.test(await text(p1, '#pdDealer')), 5000, 'หมุนเจ้ามือ: กองหัวห้องเหลือ 1,000');
+        // อันดับไพ่ (ค่าเริ่ม นับเรียง): มีสเตรทฟลัช · A-2-3 ไม่นับ
+        await delay(2500); // ให้ toast สลับเจ้ามือหายก่อน
+        for (const p of ps) {
+            await p.page.evaluate(() => window.scrollTo(0, 0));
+            assert((await exitVisible(p)) === 'ok', `ปุ่มออกตอนลงเดิมพัน (${p.tag}): ${await exitVisible(p)}`);
+        }
+        await host.page.screenshot({ path: path.join(SHOT_DIR, '04-exit-button-host.png') });
+        await p1.page.tap('#pdRankBtn');
+        await p1.page.waitForSelector('.swal2-popup .pd-guide', { timeout: 5000 });
+        const rankText = await text(p1, '.swal2-popup .pd-guide');
+        assert(/สเตรทฟลัช/.test(rankText) && /A-2-3 กับ K-A-2 ไม่นับ/.test(rankText), 'อันดับไพ่มีสเตรทฟลัช และบอกว่า A-2-3 ไม่นับ');
+        await p1.page.screenshot({ path: path.join(SHOT_DIR, '05-rank-guide-p1.png') });
+        await p1.page.click('.swal2-confirm');
+        await delay(400);
         assert(await p1.page.$eval('#pdUndoBtn', el => el.disabled), 'ยังไม่แตะชิป ปุ่มย้อนกดไม่ได้');
         assert(/สูงสุด 500/.test(await text(p1, '[data-set="max"]')), 'มีปุ่มสูงสุด 500');
         assert(!(await has(p1, '[data-set="last"]')), 'มือแรกยังไม่มีปุ่มเท่าเดิม');
@@ -189,17 +224,30 @@ const text = (p, sel) => p.page.$eval(sel, el => el.textContent.trim()).catch(()
         assert(await has(p1, '#pdReadyBtn') && !(await has(p1, '#pdNextBtn')), 'ขาไพ่เห็นปุ่มพร้อมมือต่อไป');
         assert(await has(host, '#pdNextBtn'), 'หัวห้องเห็นปุ่มมือต่อไป');
         assert(/\(0\/2\)/.test(await text(p1, '#pdReadyBtn')), 'ปุ่มพร้อมบอกจำนวน 0/2');
+        for (const p of ps) {
+            await p.page.evaluate(() => window.scrollTo(0, 0));
+            assert((await exitVisible(p)) === 'ok', `ปุ่มออกตอนสรุปผล (${p.tag}): ${await exitVisible(p)}`);
+        }
+        // แตะออกแล้วกด "อยู่ต่อ" = ยังอยู่โต๊ะเดิม
+        await p1.page.tap('#pdExitBtn');
+        await p1.page.waitForSelector('.swal2-popup .pd-exit-list', { timeout: 5000 });
+        assert(/โต๊ะเล่นต่อโดยไม่มีคุณ/.test(await text(p1, '.pd-exit-list')), 'ยืนยันออกบอกว่าโต๊ะเล่นต่อ');
+        await p1.page.click('.swal2-cancel');
+        await delay(500);
+        assert(/\/game\//.test(p1.page.url()) && (await phaseOf(p1)) === 'result', 'กดอยู่ต่อ ยังอยู่โต๊ะ');
         await snap('30-result');
         await p1.page.tap('#pdReadyBtn');
         await waitFor(async () => /รออีก 1 คน/.test(await text(p1, '#pdActions .pd-wait')), 5000, 'p1 พร้อมแล้ว รออีก 1');
         await waitFor(async () => /พร้อมแล้ว 1\/2/.test(await text(host, '#pdActions .pd-hint')), 5000, 'หัวห้องเห็น 1/2 พร้อม');
-        // หัวห้องเปิดหมุนเจ้ามือ (มีผลมือหน้า) แล้วกดมือต่อไป
-        assert(await p1.page.$eval('#pdRotateBtn', el => el.getAttribute('aria-disabled') === 'true'), 'ปุ่มเจ้ามือของคนอื่นกดเปลี่ยนไม่ได้');
+        // แจกมือแรกแล้ว แบบเจ้ามือล็อก
         assert(await p1.page.$eval('#pdEndBtn', el => el.hidden), 'คนอื่นไม่เห็นปุ่มจบโต๊ะ');
-        await host.page.tap('#pdRotateBtn');
-        await waitFor(async () => /หมุนทุกตา/.test(await text(p1, '#pdRotateBtn')), 5000, 'ทุกคนเห็นว่าหมุนเจ้ามือ');
+        assert(await host.page.$eval('#pdRotateBtn', el => el.getAttribute('aria-disabled') === 'true'), 'หลังแจกมือแรก ปุ่มแบบเจ้ามือล็อก');
+        await host.page.tap('#pdRotateBtn', { force: true }); // aria-disabled แต่ยังแตะได้ (ขึ้นบอกว่าล็อก)
+        await host.page.waitForSelector('.swal2-toast', { timeout: 3000 });
+        assert(/ล็อก/.test(await text(host, '.swal2-toast')), 'แตะตอนล็อก บอกว่าล็อกแล้ว');
+        assert(/หมุนทุกตา/.test(await text(p1, '#pdRotateBtn')), 'ยังหมุนเจ้ามืออยู่');
         await host.page.tap('#pdNextBtn');
-        console.log('4. สรุปผล: เหตุผล + เด้ง · ปุ่มพร้อม 1/2 · หัวห้องเปิดหมุนเจ้ามือ ✓');
+        console.log('4. สรุปผล: เหตุผล + เด้ง · ปุ่มพร้อม 1/2 · แบบเจ้ามือล็อกหลังแจกมือแรก ✓');
 
         // ---------- มือ 2: p1 เป็นเจ้ามือ (หมุนจากหัวห้อง)
         await waitFor(async () => (await phaseOf(p1)) === 'bet' && /มือที่ 2/.test(await text(p1, '#pdHandNo')), 15000, 'มือ 2');
@@ -236,12 +284,132 @@ const text = (p, sel) => p.page.$eval(sel, el => el.textContent.trim()).catch(()
         assert(await has(host, '#pdBackBtn') && !(await has(host, '#pdBackSelfBtn')), 'หัวห้อง: ปุ่มพาทุกคนกลับ');
         assert(await has(p1, '#pdBackSelfBtn') && !(await has(p1, '#pdBackBtn')), 'คนอื่น: ปุ่มกลับห้องเฉพาะตัวเอง');
         assert((await p1.page.$$('#pdMeCards .pd-card')).length === 0, 'จบโต๊ะ: ไม่โชว์ไพ่มือเก่าค้าง');
+        assert((await exitVisible(p1)) === 'ok' && (await exitVisible(host)) === 'ok', 'ปุ่มออกตอนจบโต๊ะ');
         await snap('50-finished');
         await p1.page.tap('#pdBackSelfBtn');
         await p1.page.waitForURL(/\/room\//, { timeout: 10000 });
         await delay(1500);
         assert(/\/game\//.test(host.page.url()), 'p1 กลับเอง หัวห้องยังอยู่หน้าสรุป (ไม่ลากทั้งวง)');
         console.log('6. จบโต๊ะ: หัวห้องพาทุกคน · คนอื่นกลับเฉพาะตัวเอง ✓');
+
+        // ---------- 7. ห้องรอ: ตั้งกติกาห้อง แล้วเปิดโต๊ะใหม่ ----------
+        await host.page.tap('#pdBackBtn');
+        await host.page.waitForURL(/\/room\//, { timeout: 15000 });
+        await waitFor(async () => has(host, '#pdLobbyMaxBet'), 10000, 'ตัวเลือกกติกาในห้องรอ');
+        assert(await p1.page.$eval('#pdLobbyMaxBet', el => el.disabled).catch(() => false), 'คนอื่นแก้กติกาห้องไม่ได้');
+        await host.page.selectOption('#pdLobbyMaxBet', '100');
+        await waitFor(async () => (await host.page.$eval('#pdLobbyMaxBet', el => el.value).catch(() => '')) === '100', 5000, 'อั้น 100');
+        const pressed = sel => host.page.$eval(sel, el => el.getAttribute('aria-pressed')).catch(() => '');
+        async function setToggle(sel, want) {
+            if ((await pressed(sel)) === want) return;
+            await host.page.tap(sel);
+            await waitFor(async () => (await pressed(sel)) === want, 5000, sel + ' = ' + want);
+        }
+        await setToggle('#pdLobbyMustDraw', 'true');
+        await setToggle('#pdLobbyStraights', 'false');
+        await setToggle('#pdLobbyRotate', 'false');
+        await waitFor(async () => /ต่ำกว่า 4 ต้องจั่ว: ใช่/.test(await text(p1, '#pdLobbyMustDraw')), 5000, 'p1 เห็นกติกาใหม่');
+        await snap('60-lobby-rules');
+        await host.page.click('#btnStartGameLobby');
+        for (const p of ps) await p.page.waitForURL(/\/game\//, { timeout: 20000 });
+        console.log('7. ห้องรอ: อั้น 100 · ต่ำกว่า 4 ต้องจั่ว · ไม่นับเรียง · เจ้ามือคงที่ → เปิดโต๊ะใหม่ ✓');
+
+        // ---------- 8. โต๊ะใหม่: พักโต๊ะ · ต่ำกว่า 4 ต้องจั่ว · เจ้ามือจับ ----------
+        await waitFor(async () => (await phaseOf(p1)) === 'bet', 15000, 'โต๊ะใหม่ลงเดิมพัน');
+        await p1.page.tap('#pdRankBtn');
+        await p1.page.waitForSelector('.swal2-popup .pd-guide', { timeout: 5000 });
+        assert(/ไม่นับไพ่เรียง/.test(await text(p1, '.swal2-popup .pd-guide')) && !/สเตรทฟลัช/.test(await text(p1, '.swal2-popup .pd-guide')), 'ปิดไพ่เรียง: อันดับไพ่บอกว่าโต๊ะนี้ไม่นับเรียง');
+        await p1.page.click('.swal2-confirm');
+        await delay(300);
+        assert(/สูงสุด 100/.test(await text(p1, '[data-set="max"]')), 'อั้น 100: ปุ่มสูงสุด 100');
+        let sawSitOut = false; let sawMustDraw = false; let sawCatch = false; let sawCaughtSeat = false;
+        let lastHand = 0;
+        const handNo = async p => Number(((await text(p, '#pdHandNo')).match(/\d+/) || [0])[0]);
+        await waitFor(async () => {
+            const ph = await phaseOf(p1);
+            const hn = await handNo(p1);
+            if (hn !== lastHand) lastHand = hn;
+            if (await has(p1, '#pdSitInBtn')) {
+                if (!sawSitOut) {
+                    assert(/พักโต๊ะ/.test(await text(p1, '#pdNowCopy')), 'บอกว่าพักโต๊ะอยู่');
+                    await snap('61-sitout', [p1]);
+                }
+                sawSitOut = true;
+                await p1.page.tap('#pdSitInBtn');
+                await waitFor(async () => !(await has(p1, '#pdSitInBtn')), 5000, 'กลับมาเล่นแล้ว');
+            }
+            // มือ 1–2 p1 ไม่แตะหน้าจอตอนลงเดิมพัน (หมดเวลา 2 ครั้ง) · มือถัดไปลงขั้นต่ำเอง
+            if (ph === 'bet' && sawSitOut && await has(p1, '#pdBetBtn')) {
+                await p1.page.tap('[data-set="min"]');
+                await p1.page.tap('#pdBetBtn');
+                await delay(300);
+            }
+            if (await has(p1, '#pdDrawBtn')) {
+                const stayDisabled = await p1.page.$eval('#pdStayBtn', el => el.disabled).catch(() => false);
+                if (stayDisabled && !sawMustDraw) {
+                    assert(/ต้องจั่ว/.test(await text(p1, '#pdActions .pd-hint')), 'บอกว่าต่ำกว่า 4 ต้องจั่ว');
+                    await snap('62-mustdraw', [p1]);
+                    sawMustDraw = true;
+                }
+                await p1.page.tap('#pdDrawBtn');
+                await delay(300);
+            }
+            if (await has(host, '#pdCatch3Btn')) {
+                assert(/จับ 3 ใบ \(\d+ ขา\)/.test(await text(host, '#pdCatch3Btn')), 'ปุ่มจับบอกจำนวนขา');
+                if (!sawCatch) await snap('63-catch', [host]);
+                sawCatch = true;
+                await host.page.tap('#pdCatch3Btn');
+                await delay(900);
+                if ((await phaseOf(p1)) === 'dealer') {
+                    if (await has(p1, '.pd-seat .pd-outcome') || /เจ้ามือจับคุณแล้ว/.test(await text(p1, '#pdNowCopy'))) {
+                        sawCaughtSeat = true;
+                        await snap('64-caught', [p1]);
+                    }
+                }
+            } else if (await has(host, '#pdDrawBtn')) {
+                const hostStayOff = await host.page.$eval('#pdStayBtn', el => el.disabled).catch(() => false);
+                await host.page.tap(hostStayOff ? '#pdDrawBtn' : '#pdStayBtn');
+                await delay(300);
+            }
+            if (ph === 'result' && await has(host, '#pdNextBtn')) {
+                if (sawCatch && sawSitOut) return true;
+                if (hn >= 9) return true;
+                await host.page.tap('#pdNextBtn');
+                await delay(600);
+            }
+            return false;
+        }, 420000, 'เล่นโต๊ะกติกาห้อง');
+        assert(sawSitOut, 'หมดเวลา 2 มือติด → เห็นปุ่มกลับมาเล่น');
+        assert(sawCatch, 'เจ้ามือเห็นปุ่มจับและกดได้');
+        console.log(`8. พักโต๊ะ → กลับมาเล่น ✓ · เจ้ามือจับ ✓ (ผลขาที่โดนจับ ${sawCaughtSeat ? 'เห็น' : 'จบมือทันที'}) · ต่ำกว่า 4 ต้องจั่ว ${sawMustDraw ? '✓' : '(ไม่เจอมือต่ำกว่า 4)'} · ${lastHand} มือ`);
+
+        // ---------- 9. ออกจากห้องกลางเกม: ยืนยัน → /rooms · ไม่โดนดึงกลับ · โต๊ะเล่นต่อ ----------
+        await host.page.tap('#pdNextBtn').catch(() => {});
+        await waitFor(async () => (await phaseOf(p1)) === 'bet' && await has(p1, '#pdBetBtn'), 30000, 'มือใหม่ให้ p1 ลง');
+        await p1.page.tap('[data-set="min"]');
+        await p1.page.tap('#pdBetBtn');
+        await waitFor(async () => ['deal', 'draw', 'dealer'].includes(await phaseOf(p1)), 30000, 'แจกไพ่แล้ว (กลางมือ)');
+        await p1.page.evaluate(() => window.scrollTo(0, 0));
+        assert((await exitVisible(p1)) === 'ok', 'ปุ่มออกกลางมือ: ' + await exitVisible(p1));
+        await p1.page.tap('#pdExitBtn');
+        await p1.page.waitForSelector('.swal2-popup .pd-exit-list', { timeout: 5000 });
+        const exitText = await text(p1, '.pd-exit-list');
+        assert(/มือนี้คุณลง 10 แล้ว/.test(exitText) && /ยังวัดกับเจ้ามือ/.test(exitText) && /โต๊ะเล่นต่อโดยไม่มีคุณ/.test(exitText), 'บอกผลของการออกกลางมือ: ' + exitText);
+        assert(/ออกจากห้อง/.test(await text(p1, '.swal2-confirm')) && /อยู่ต่อ/.test(await text(p1, '.swal2-cancel')), 'ปุ่ม ออกจากห้อง / อยู่ต่อ');
+        await delay(500); // รอ popup เฟดเข้าเต็มก่อนถ่ายภาพ
+        await p1.page.screenshot({ path: path.join(SHOT_DIR, '70-exit-confirm-p1.png') });
+        const rosterCount = () => host.page.$$eval('#onlinePlayerList li', els => els.length).catch(() => -1);
+        const before = await rosterCount();
+        await p1.page.click('.swal2-confirm');
+        await p1.page.waitForURL(/\/rooms/, { timeout: 8000 });
+        await waitFor(async () => /ออกจากโต๊ะ/.test(await text(host, '#pdFeed')), 8000, 'บันทึกโต๊ะบอกว่า p1 ออก');
+        await delay(15000);
+        assert(/\/rooms/.test(p1.page.url()) && !/\/game\/|\/room\//.test(p1.page.url()), 'ออกแล้ว 15 วิ ยังอยู่หน้ารวมห้อง: ' + p1.page.url());
+        await p1.page.screenshot({ path: path.join(SHOT_DIR, '71-after-exit-p1.png') });
+        const after = await rosterCount();
+        assert(before === 4 && after === 3, `รายชื่อผู้เล่นในห้องเหลือ 3 (หัวห้อง + บอท 2): ${before} → ${after}`);
+        assert(/\/game\//.test(host.page.url()) && (await phaseOf(host)) !== 'finished', 'โต๊ะเล่นต่อ (หัวห้อง + บอท 2)');
+        console.log('9. ปุ่ม 🚪 ออก เห็นทุกจังหวะ · ยืนยัน → /rooms · 15 วิ ไม่โดนดึงกลับ · โต๊ะเล่นต่อ ✓');
 
         ps.forEach(p => assert(p.errors.length === 0, `${p.tag}: ${p.errors.join(' | ')}`));
         assert(!/\[pokdeng\].*failed/.test(server.logs()), 'server log มี error ของป๊อกเด้ง');
