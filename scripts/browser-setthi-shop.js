@@ -178,6 +178,27 @@ async function waitGold(page, value) {
         assert(!m.errors.length, 'มือถือไม่มี error: ' + m.errors.join(' | '));
         console.log('✓ มือถือ 390×844: อัป/กดรัว/ช่องติดตั้ง/ยอด');
 
+        // ---- ห้องรอ: สวิตช์สกิล + สกิลติดตัว ----
+        const created = await m.page.evaluate(() => fetch('/api/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'ร้านเทส', gameMode: 'setthi', maxPlayers: 6, setthiMinutes: 30 }) }).then(r => r.json()));
+        assert(created.success, 'สร้างห้อง: ' + JSON.stringify(created));
+        await m.page.goto(`${BASE}/room/${created.roomId}`, { waitUntil: 'domcontentloaded' });
+        await m.page.waitForSelector('#stLobbyLoadout [data-lo="start2x"]');
+        assert(await m.page.locator('#stLobbySkills[aria-pressed="true"]').count() === 1, 'ห้องรอ: สกิลเปิด (ค่าเริ่ม)');
+        assert(await m.page.locator('#stLobbyLoadout [data-lo="start2x"][aria-pressed="true"]').count() === 1, 'ห้องรอ: เห็นสกิลที่ติดตัว');
+        await m.page.click('#stLobbyLoadout [data-lo="start2x"]');
+        await m.page.waitForSelector('#stLobbyLoadout [data-lo="start2x"][aria-pressed="false"]');
+        await m.page.click('#stLobbyLoadout [data-lo="start2x"]');
+        await m.page.waitForSelector('#stLobbyLoadout [data-lo="start2x"][aria-pressed="true"]');
+        await m.page.click('#stLobbySkills');
+        await m.page.waitForSelector('#stLobbySkills[aria-pressed="false"]');
+        assert((await m.page.locator('#stLobbyLoadout').textContent()).includes('ปิดสกิล'), 'ห้องรอ: บอกว่าห้องปิดสกิล');
+        assert((await m.page.locator('#stLobbyShop').getAttribute('href')).includes('room=' + created.roomId), 'ปุ่มร้านพากลับห้องได้');
+        probs = await m.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1 ? ['scroll แนวนอน'] : []);
+        assert(!probs.length, 'ห้องรอ: ' + probs.join(''));
+        await m.page.locator('#stLobbyLoadout').screenshot({ path: path.join(SHOTS, 'lobby-loadout.png') });
+        assert(!m.errors.length, 'ห้องรอไม่มี error: ' + m.errors.join(' | '));
+        console.log('✓ ห้องรอ: สวิตช์สกิลของห้อง + สกิลติดตัว');
+
         // ---- เดสก์ท็อป ----
         const d = await openShop(browser, deskId, { width: 1280, height: 900 });
         assert(await gold(d.page) === 9000, 'เดสก์ท็อป: ยอด 9000');

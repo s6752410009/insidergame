@@ -109,6 +109,7 @@
     "smoke:setthi:skills": "node scripts/smoke-setthi-skills.js",
     "smoke:setthi:shop:api": "node scripts/api-setthi-shop.js",
     "smoke:setthi:shop": "node scripts/browser-setthi-shop.js",
+    "smoke:setthi:gold:play": "node scripts/smoke-setthi-gold-play.js",
     "smoke:setthi:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-setthi-play.js",
     "smoke:setthi:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-setthi.js",
     "smoke:setthi:exit": "node scripts/browser-exit-everywhere.js setthi",

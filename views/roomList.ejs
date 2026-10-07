@@ -1795,7 +1795,11 @@ $(function() {
                             <option value="60">60 นาที</option>
                             <option value="0">ไม่จำกัด (เล่นจนเหลือคนสุดท้าย)</option>
                         </select>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–6 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง</div>
+                        <label style="display:flex; align-items:center; gap:10px; min-height:48px; margin-top:8px; cursor:pointer;">
+                            <input type="checkbox" id="setthiSkills" checked style="width:22px; height:22px;">
+                            <span>✨ เปิดสกิล 🪙 <small style="color:#aaa;">(ปิด = ทุกคนเล่นแบบไม่มีสกิล)</small></span>
+                        </label>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ผูกขาดชนะทันที · หมดเวลาแล้วเล่นให้ครบรอบ นับทรัพย์สินรวม · 2–6 คน ใส่บอทได้ในห้องรอ · เงินในเกม ไม่มีมูลค่าจริง · <a href="/setthi/shop" style="color:#f5c86b;">🏪 ร้านสกิล</a></div>
                     </div>
 
                     <div class="room-form-group" id="werewolfWolfCountGroup" role="group" aria-labelledby="wolfCountLabel" style="display:none;">
@@ -2233,6 +2237,7 @@ $(function() {
                     colorcardsTurnSeconds: gameMode === 'colorcards' ? Number((document.getElementById('colorcardsTurnSeconds') || {}).value || 20) : undefined,
                     colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
                     setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined,
+                    setthiSkills: gameMode === 'setthi' ? !!(document.getElementById('setthiSkills') || { checked: true }).checked : undefined,
                     coupActionSeconds: gameMode === 'coup' ? Number((document.getElementById('coupActionSeconds') || {}).value || 60) : undefined
                 };
             }

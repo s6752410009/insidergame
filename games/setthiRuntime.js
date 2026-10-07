@@ -155,6 +155,9 @@ module.exports = function createSetthiRuntime(getDeps) {
         if (!isRoom(room)) return null;
         const payload = engine.buildClientState(room, playerId);
         payload.canDebug = canDebug(room, playerId);
+        // 🪙 เสกเหรียญทอง/ล้างสกิล = ข้อมูลถาวร → แอดมินเว็บเท่านั้น (หัวห้องไม่ได้)
+        const { isSiteAdminPlayer } = deps();
+        payload.canGoldDebug = typeof isSiteAdminPlayer === 'function' && !!isSiteAdminPlayer(playerId);
         return payload;
     }
 
@@ -363,6 +366,7 @@ module.exports = function createSetthiRuntime(getDeps) {
         if (spec.festival !== undefined) { state.festival = spec.festival; state.festivalMult = spec.festival === null ? 1 : ([2, 4, 8, 16].includes(Number(spec.festivalMult)) ? Number(spec.festivalMult) : 2); }
         if (Array.isArray(spec.dice)) state.testDice = spec.dice.map(d => [Number(d[0]), Number(d[1])]);
         if (spec.nextCard !== undefined) state.nextCard = spec.nextCard || null;
+        if (spec.forceProcs !== undefined) state.testForceProcs = !!spec.forceProcs;
         if (Number.isInteger(spec.turnSeat) && state.seats[spec.turnSeat]) {
             const seat = state.seats[spec.turnSeat];
             state.turn = { playerId: seat.playerId, seq: (state.turnSeq || 0) + 1, doublesStreak: 0, canRollAgain: false, hasRolled: false, lastRoll: null, startedAt: Date.now() };

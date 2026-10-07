@@ -9252,6 +9252,15 @@ io.sockets.on('connection', function(socket) {
             return setthiRuntime.engine.debugAction(room, playerId, action, args);
         });
     });
+    // /m 🪙 เสกเหรียญทอง / ล้างสกิล — แอดมินเว็บเท่านั้น (หัวห้องไม่ได้: เหรียญเป็นข้อมูลถาวร) · ไม่แตะเกมที่เล่นอยู่
+    safeOn(socket, 'setthi_debug_gold', function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        const playerId = socket.playerId;
+        if (!playerId || !isSiteAdminPlayer(playerId)) { done({ success: false, error: 'เฉพาะแอดมินเว็บ' }); return; }
+        const result = setthiGoldDebug(playerId, String(data?.action || ''), data?.amount);
+        if (result.ok) done({ success: true, granted: result.granted, refund: result.refund, profile: result.profile });
+        else done({ success: false, error: result.error || 'ไม่สำเร็จ' });
+    });
     if (process.env.SETTHI_TEST_HOOKS === '1') {
         // เทสเท่านั้น — ไม่ลงทะเบียนเลยถ้าไม่ได้ตั้ง env
         safeOn(socket, 'setthi_testSetup', function(data, callback) {

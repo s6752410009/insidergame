@@ -11,6 +11,24 @@
   var BOARD = BOOT.board || { squares: [], groups: {}, groupSquares: {}, sideSquares: [], touristSquares: [] };
   var ART = window.SetthiArt;
   var SQ = BOARD.squares;
+  // สกิล 🪙 (ข้อมูลคงที่จากเซิร์ฟเวอร์): ไอคอน ชื่อ ค่าต่อเลเวล ข้อความป๊อปอัป
+  var SKILL = {};
+  (BOARD.skills || []).forEach(function(k) { SKILL[k.id] = k; });
+  function skillsHtml(s, cls) {
+    var list = (s && s.skills) || [];
+    if (!list.length) return '';
+    return '<span class="' + (cls || 'st-chip-sk') + '" title="สกิลที่ติดตัว">' + list.map(function(k) {
+      var d = SKILL[k.id] || {};
+      return '<span class="st-sk" aria-label="' + esc((d.name || k.id) + ' Lv' + k.lv) + '">' + (d.icon || '✨') + '<b>' + k.lv + '</b></span>';
+    }).join('') + '</span>';
+  }
+  /** สกิล 🎪 ของเจ้าของ: ค่าผ่านทางเมืองงานวัด +% */
+  function festBonusOf(ownerId) {
+    var seat = S && (S.seats || []).find(function(x) { return x.playerId === ownerId; });
+    var k = seat && (seat.skills || []).find(function(x) { return x.id === 'festival'; });
+    var d = SKILL.festival;
+    return k && d ? (d.values[k.lv] || 0) : 0;
+  }
   var GROUPS = BOARD.groups;
   var N = SQ.length || 32;
   var roomId = BOOT.roomId;
@@ -252,13 +270,15 @@
     var p = m.props[i];
     if (!p || !p.owner) return 0;
     var fest = m.festival === i ? Math.max(2, m.festivalMult || 2) : 1;
+    var bonus = fest > 1 ? festBonusOf(p.owner) : 0;
+    var withBonus = function(v) { return bonus ? Math.round(v * (100 + bonus) / 100 / 10) * 10 : v; };
     if (isTour(i)) {
       var n = (BOARD.touristSquares || []).filter(function(k) { return m.props[k] && m.props[k].owner === p.owner; }).length;
-      return (SQ[i].tolls[Math.max(0, n - 1)] || 0) * fest;
+      return withBonus((SQ[i].tolls[Math.max(0, n - 1)] || 0) * fest);
     }
     var t = SQ[i].tolls[p.level] || 0;
     if (p.level === 4 && p.stars) t = Math.round(t * (1 + 0.25 * Math.min(4, p.stars)) / 10) * 10;
-    return t * (setIn(m, i) ? 2 : 1) * fest;
+    return withBonus(t * (setIn(m, i) ? 2 : 1) * fest);
   }
   /** เจ้าของถือครบทั้งกลุ่มสี (ครบสี = ค่าผ่านทาง ×2) */
   function setIn(m, i) {
@@ -307,7 +327,7 @@
     c.classList.toggle('is-fest', m.festival === i && !!owner);
     c.classList.toggle('is-set', !!owner && setIn(m, i));
     var fl = c.querySelector('.st-flag');
-    if (fl) { var fm = m.festival === i ? Math.max(2, m.festivalMult || 2) : 0; fl.dataset.x = fm; fl.className = 'st-flag' + (fm >= 4 ? ' is-x' + fm : ''); }
+    if (fl) { var fm = m.festival === i ? Math.max(2, m.festivalMult || 2) : 0; fl.dataset.x = fm; fl.className = 'st-flag' + (fm >= 16 ? ' is-x16' : fm >= 8 ? ' is-x8' : fm >= 4 ? ' is-x4' : ''); }
     var th = threatOn(i);
     c.classList.toggle('is-threat', !!th);
     if (th) { var ts = seatOf(th.playerId); c.style.setProperty('--threat', ts ? ts.tokenColor : '#fff'); }
@@ -693,7 +713,8 @@
     var btns = readonly ? '' : '<div class="st-sheet-foot">' +
       btn('stPassBtn', 'ผ่าน', {}) +
       btn('stBuildBtn', total > 0 ? verb + ' ' + money(total) : 'เลือกขั้นก่อน', { primary: true, disabled: !total || total > cash || pending || running }) + '</div>';
-    var sub = groupChip(i) + (d.mode === 'afterTakeover' ? '<span class="st-chipline">ซื้อต่อแล้ว</span>' : '');
+    var off = (d.options || []).some(function(o) { return o.full && o.cost < o.full; });
+    var sub = groupChip(i) + (d.mode === 'afterTakeover' ? '<span class="st-chipline">ซื้อต่อแล้ว</span>' : '') + (off ? '<span class="st-chipline">🏗️ สกิลลดราคา</span>' : '');
     return sheetHeadArt(i, title, sub) +
       '<div class="st-tiles' + (isTour(i) ? ' is-one' : '') + '" role="group" aria-label="เลือกขั้นที่จะสร้าง">' + tiles + '</div>' + info + btns;
   }
@@ -1228,7 +1249,17 @@
     var n = Math.min(4, Math.log2(f.mult || 2));
     for (var k = 0; k < n; k += 1) burst({ x: at.x + (k - n / 2) * 30, y: at.y - 20 - k * 12 }, ['#ef5b4c', '#f5c86b', '#4ea8dc', '#3fbf7f', '#fff3c4'], 16 + k * 6, 70 + k * 25);
     if (f.stacked) sfx.big();
-    await showBanner({ token: seatOf(f.playerId), kicker: SQ[i].name, title: f.stacked ? (f.mult >= 16 && !f.grew ? 'งานวัดใหญ่ขึ้น! ×' + f.mult : 'งานวัดใหญ่ขึ้น! ×' + f.mult) : 'งานวัด! ×2', sub: 'ค่าผ่านทาง ' + money(f.toll || (V ? tollIn(V, i) : 0)), cls: 'is-fest', style: 'top:auto;bottom:22%;' }, 560);
+    await showBanner({ token: seatOf(f.playerId), kicker: SQ[i].name, title: f.stacked ? 'งานวัดใหญ่ขึ้น! ×' + f.mult : 'งานวัด! ×' + (f.mult || 2), sub: 'ค่าผ่านทาง ' + money(f.toll || (V ? tollIn(V, i) : 0)), cls: 'is-fest', style: 'top:auto;bottom:22%;' }, 560);
+  };
+
+  // ✨ สกิลติด — ทุกคนเห็น (สั้น ไม่บังเกม)
+  FX.skill = async function(f) {
+    var d = SKILL[f.skill] || {};
+    var me = f.playerId === playerId;
+    if (me) { sfx.fanfare(); if (window.gameHaptic) window.gameHaptic([20, 30, 20]); } else sfx.coin();
+    var chip = chipOf(f.playerId);
+    if (chip && !reduceMotion) burst(centerOf(chip), ['#f5c86b', '#fff3c4', '#b07cf0'], 12, 50);
+    await showBanner({ token: seatOf(f.playerId), kicker: '✨ สกิล ' + (d.name || '') + ' Lv' + (f.lv || ''), title: (d.icon || '✨') + ' ' + (f.text || d.proc || ''), sub: f.saved ? 'ประหยัด ' + money(f.saved) : (f.amount ? '+' + money(f.amount) : ''), cls: 'is-gold is-skill', style: 'top:auto;bottom:30%;' }, 620);
   };
 
   FX.tourReady = async function(f) {
@@ -1427,7 +1458,7 @@
       return '<button type="button" class="st-chip' + (s.isTurn ? ' is-turn' : '') + (out ? ' is-out' : '') + (s.isSelf ? ' is-self' : '') + (focusId === s.playerId ? ' is-focus' : '') + '" data-id="' + esc(s.playerId) + '" style="--tk:' + esc(s.tokenColor) + '" aria-pressed="' + (focusId === s.playerId) + '" aria-label="' + esc(s.name + ' เงิน ' + money(model.cash[s.playerId]) + ' ที่ดิน ' + lands + ' ช่อง' + (s.isTurn ? ' กำลังเล่น' : '') + ' — แตะเพื่อดูที่ของคนนี้') + '">' +
         tokenHtml(s) +
         '<span class="st-chip-body"><span class="st-chip-name">' + esc(s.isSelf ? 'คุณ' : s.name) + '</span><span class="st-chip-cash">' + money(out ? 0 : model.cash[s.playerId]) + '</span></span>' +
-        '<span class="st-chip-lands" data-lands>🏠<b>' + lands + '</b></span>' + badge + dbgMark + '</button>';
+        '<span class="st-chip-lands" data-lands>🏠<b>' + lands + '</b></span>' + badge + dbgMark + skillsHtml(s) + '</button>';
     }).join('');
   }
   function landsOf(id, model) { var n = 0; Object.keys(model.props).forEach(function(k) { if (model.props[k].owner === id) n += 1; }); return n; }
@@ -1620,8 +1651,9 @@
     var list = $('#onlinePlayerList');
     if (!list || !S) return;
     list.innerHTML = (S.seats || []).map(function(s) {
-      return '<li class="st-side-row">' + tokenHtml(s) + '<span class="st-side-name">' + esc(s.name) + '</span><span class="st-side-worth">' + money(isOut(s) ? 0 : s.netWorth) + '</span></li>';
-    }).join('') + '<li class="st-side-note">ทรัพย์สินรวม = เงิน + ที่ + สิ่งปลูกสร้าง</li>';
+      var sk = (s.skills || []).map(function(k) { var d = SKILL[k.id] || {}; return (d.icon || '✨') + ' ' + esc(d.name || k.id) + ' Lv' + k.lv; }).join(' · ');
+      return '<li class="st-side-row">' + tokenHtml(s) + '<span class="st-side-name">' + esc(s.name) + (sk ? '<small class="st-side-sk">' + sk + '</small>' : '') + '</span><span class="st-side-worth">' + money(isOut(s) ? 0 : s.netWorth) + '</span></li>';
+    }).join('') + '<li class="st-side-note">ทรัพย์สินรวม = เงิน + ที่ + สิ่งปลูกสร้าง' + (S.config && S.config.skills === false ? ' · ห้องนี้ปิดสกิล' : '') + '</li>';
   }
 
   // ---------- ชีต ----------
@@ -2230,6 +2262,8 @@
     dbg.six.checked = !!mine.six;
     dbg.doubles.checked = !!mine.doubles;
     dbg.auto.checked = !!mine.autoplay;
+    var goldSec = $('#stDbgGoldSec');
+    if (goldSec) goldSec.hidden = !S.canGoldDebug;
     if (dbg.panel.hidden) return;
     var t = dbgActiveTarget();
     dbg.targetName.textContent = t ? (t.playerId === playerId ? 'คุณ' : t.name) : '—';
@@ -2286,6 +2320,17 @@
     var target = t ? t.playerId : undefined;
     var who = t ? (t.playerId === playerId ? 'คุณ' : t.name) : '';
     switch (kind) {
+      case 'goldGrant': case 'goldReset': {
+        var amt = Math.floor(Number(($('#stDbgGoldAmt') || {}).value));
+        var go = function() {
+          socket.emit('setthi_debug_gold', { roomId: roomId, action: kind === 'goldGrant' ? 'grant' : 'reset', amount: amt }, function(res) {
+            if (res && res.success) dbgStatus('✓ ' + (kind === 'goldGrant' ? '🪙 +' + Number(res.granted || 0).toLocaleString('en-US') : '↺ คืน ' + Number(res.refund || 0).toLocaleString('en-US') + ' 🪙') + ' · ยอด ' + Number(res.profile ? res.profile.gold : 0).toLocaleString('en-US'));
+            else dbgStatus('✗ ' + ((res && res.error) || 'ไม่สำเร็จ'), true);
+          });
+        };
+        if (kind === 'goldReset') dbgConfirm('ล้างสกิลทั้งหมด (คืนเหรียญ)?', go); else go();
+        return;
+      }
       case 'nextDice': dbgSend('nextDice', { target: target, a: Number(dbg.a.value), b: Number(dbg.b.value) }); break;
       case 'movePlace': if (needSquare()) dbgSend('move', { target: target, square: dbgSquare }); break;
       case 'moveLand': if (needSquare()) dbgSend('move', { target: target, square: dbgSquare, land: true }); break;

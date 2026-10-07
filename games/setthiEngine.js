@@ -107,6 +107,8 @@ function proc(room, seat, key, rng, base = 0) {
         } catch (error) { /* hook พังต้องไม่ทำเกมพัง */ }
     } else if (seat) {
         p = base + SK.procChance(seatSkills(room, seat), key);
+        // เทสผ่านเซิร์ฟเวอร์เท่านั้น (setthi_testSetup ตั้งได้เมื่อ SETTHI_TEST_HOOKS=1): สกิลที่มี = ติดทุกครั้ง
+        if (p > 0 && st(room) && st(room).testForceProcs) p = 1;
     }
     if (!(p > 0)) return false;
     return p >= 1 || rngFor(rng)() < p;
