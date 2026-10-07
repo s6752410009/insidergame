@@ -933,7 +933,7 @@ $(function() {
         { id: 'liar', label: 'ไพ่โกหก', description: 'ลงไพ่คว่ำ อ้างว่าเป็นไพ่บนโต๊ะ ใครแพ้ต้องลั่นไกปืน — 3–8 คน รอดคนสุดท้ายชนะ', minPlayers: 3, maxPlayers: 8 },
         { id: 'poker5', label: 'ไพ่ 5 ใบ', description: 'ได้ 5 ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'poker4', label: 'สี่ใบเก', description: 'ได้ 4 ทิ้ง 2 ลงชิป แล้วได้ใบที่ 3 ลงชิปอีกรอบ ค่อยเปิดเทียบ — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
-        { id: 'codenames', label: 'สายลับคำใบ้', description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน', minPlayers: 4, maxPlayers: 12 },
+        { id: 'codenames', label: 'สายลับคำใบ้', description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน (2–3 คนเล่นทีมเดียว)', minPlayers: 2, maxPlayers: 12 },
         { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'drawguess', label: 'วาดแล้วทาย', description: 'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
@@ -1739,8 +1739,15 @@ $(function() {
                                     <option value="120">120 วินาที</option>
                                 </select>
                             </label>
+                            <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
+                                <span style="min-width:96px;">🚩 ทักคำใบ้</span>
+                                <select id="codenamesClueFlag" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#1a2332; color:#fff; font:inherit;">
+                                    <option value="1" selected>เปิด (ทีมละ 1 ครั้ง)</option>
+                                    <option value="0">ปิด</option>
+                                </select>
+                            </label>
                         </div>
-                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลาแล้วข้ามไปอีกทีม · เลือกทีมและหัวหน้ากันในห้องรอ · เปลี่ยนเวลาในห้องรอได้</div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">หมดเวลาแล้วข้ามไปอีกทีม · 2–3 คนเล่นทีมเดียว (ร่วมมือ) · เลือกทีมในห้องรอ</div>
                     </div>
 
                     <div class="room-form-group" id="undercoverSettingsGroup" role="group" aria-labelledby="undercoverSettingsLabel" style="display:none;">
@@ -2381,6 +2388,7 @@ $(function() {
                     undercoverTieRule: gameMode === 'undercover' ? ((document.getElementById('undercoverTieRule') || {}).value || 'speak') : undefined,
                     codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,
                     codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined,
+                    codenamesClueFlag: gameMode === 'codenames' ? ((document.getElementById('codenamesClueFlag') || {}).value || '1') !== '0' : undefined,
                     wavelengthLaps: gameMode === 'wavelength'
                         ? (parseInt((document.querySelector('input[name="wavelengthLaps"]:checked') || {}).value, 10) === 2 ? 2 : 1)
                         : 1,
@@ -2750,11 +2758,13 @@ $(function() {
             '<div class="bm-guide-section"><h4>เป้าหมาย</h4><p>สองทีม แดง vs น้ำเงิน — เปิดการ์ดสายลับของทีมตัวเองให้ครบก่อน · เจอ<b>มือสังหาร</b> = แพ้ทันที</p></div>',
             '<div class="bm-guide-section"><h4>เล่นยังไง</h4><ol>',
             '<li>ทีมละหัวหน้า 1 คน หัวหน้าเห็นกุญแจว่าคำไหนสีอะไร</li>',
-            '<li>หัวหน้าใบ้คำเดียว + ตัวเลข เช่น “ทะเล 2” ห้ามใช้คำบนกระดาน</li>',
-            '<li>ลูกทีมแตะเสนอ เสียงข้างมากเปิด หรือกด “เปิดเลย” · เปิดได้ถึงตัวเลข + 1</li>',
-            '<li>เปิดผิดสี = จบเทิร์น · กด “จบเทิร์น” เมื่อพอแล้ว</li>',
+            '<li>หัวหน้าใบ้คำเดียว + ตัวเลข เช่น “ทะเล 2” ห้ามใช้คำบนกระดานหรือส่วนของคำ (“รถ” ตอนมี “รถไฟ”)</li>',
+            '<li>ลูกทีมแตะเสนอ เสียงข้างมากเปิด หรือกด “เปิดเลย” · เปิดได้ถึงตัวเลข + 1 · 0 หรือ ∞ = ไม่จำกัด</li>',
+            '<li>เปิดผิดสี = จบเทิร์น · กด “จบเทิร์น” เมื่อพอแล้ว (ต้องเปิดอย่างน้อย 1 ใบ)</li>',
+            '<li>หัวหน้าห้ามแชท · คำใบ้ผิดกติกา หัวหน้าอีกทีมกด 🚩 ทักได้ ทีมละ 1 ครั้ง</li>',
             '</ol></div>',
             '<div class="bm-guide-section"><h4>กระดาน</h4><p>25 คำ · ทีมเริ่มก่อน 9 · อีกทีม 8 · คนเดินถนน 7 · มือสังหาร 1 · 4–12 คน</p></div>',
+            '<div class="bm-guide-section"><h4>2–3 คน</h4><p>อยู่ทีมเดียว (ร่วมมือ) · ตาอีกทีม หัวหน้าเลือกปิดสายลับฝ่ายตรงข้าม 1 ใบ · เจอครบก่อนชนะ</p></div>',
             '</div>'
         ].join('');
     }

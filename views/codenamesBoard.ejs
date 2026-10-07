@@ -204,6 +204,14 @@
   .cn-card.is-revealed.is-dim .cn-card-inner { opacity: 0.55; }
   .cn.is-finished .cn-card:not(.is-revealed) .cn-front { opacity: 0.8; }
 
+  /* ปิดคำ (โหมดร่วมมือ / โบนัสทักท้วง): การ์ดที่แตะปิดได้ */
+  .cn-card.can-cover { cursor: pointer; }
+  .cn-card.can-cover .cn-front { box-shadow: 0 0 0 3px var(--cn-gold), 0 6px 16px oklch(0.05 0.02 255 / 0.5); animation: cnCoverPulse 1.6s ease-in-out infinite; }
+  .cn-card.is-covered .cn-back::after { content: '🕶️'; position: absolute; top: 2px; right: 3px; font-size: 0.7rem; }
+  @keyframes cnCoverPulse { 0%, 100% { transform: none; } 50% { transform: translateY(-2px); } }
+  .cn-btn--flag { background: transparent; color: oklch(0.85 0.12 60); border-color: oklch(0.7 0.14 60 / 0.6); }
+  .cn-bonus { margin: 0; padding: 6px 10px; border-radius: 10px; background: oklch(0.85 0.12 85 / 0.14); color: var(--cn-gold); font-size: 0.84rem; font-weight: 600; text-align: center; }
+
   /* ---------- result ---------- */
   .cn-result { margin-top: 10px; padding: 16px; border-radius: 18px; text-align: center; border: 1px solid var(--cn-line); background: var(--cn-surface); }
   .cn-result[hidden] { display: none; }
@@ -385,6 +393,7 @@
     .cn-card-inner, .cn-front, .cn-team-pill, .cn-boardwrap, .cn-btn, .cn-timer .bar { transition: none !important; }
     .cn-card.is-new .cn-card-inner, .cn-clue.is-pop { animation: none !important; }
     .cn-card.is-holding .cn-hold { transition: none !important; }
+    .cn-card.can-cover .cn-front { animation: none !important; }
     .cn-banner.is-on { animation-duration: 2.2s; animation-name: cnFade; }
   }
   @keyframes cnFade { 0%, 100% { opacity: 0; } 10%, 85% { opacity: 1; } }
@@ -490,8 +499,8 @@ $(function() {
   const TEAM = { red: 'ทีมแดง', blue: 'ทีมน้ำเงิน' };
   const COLOR_NAME = { red: 'สายลับทีมแดง', blue: 'สายลับทีมน้ำเงิน', neutral: 'คนเดินถนน', assassin: 'มือสังหาร' };
   const ART = { red: '/assets/games/codenames/agent-red.svg', blue: '/assets/games/codenames/agent-blue.svg', neutral: '/assets/games/codenames/bystander.svg', assassin: '/assets/games/codenames/assassin.svg' };
-  const END_TEXT = { limit: 'ครบจำนวนแล้ว', neutral: 'เจอคนเดินถนน', wrong: 'เปิดผิดทีม', ended: 'กดจบเทิร์น', 'clue-timeout': 'หมดเวลาใบ้', 'guess-timeout': 'หมดเวลาทาย', 'no-operatives': 'ไม่มีลูกทีมออนไลน์', 'no-spymaster': 'ไม่มีหัวหน้า', 'host-skip': 'หัวหน้าห้องข้ามเทิร์น' };
-  const WIN_TEXT = { words: 'เจอสายลับครบทุกคน', gift: 'อีกทีมเปิดคำสุดท้ายให้', assassin: 'อีกทีมเปิดเจอมือสังหาร', forfeit: 'อีกทีมไม่เหลือผู้เล่น', abandoned: 'ไม่เหลือลูกทีมให้ทาย' };
+  const END_TEXT = { limit: 'ครบจำนวนแล้ว', neutral: 'เจอคนเดินถนน', wrong: 'เปิดผิดทีม', ended: 'กดจบเทิร์น', 'clue-timeout': 'หมดเวลาใบ้', 'guess-timeout': 'หมดเวลาทาย', 'no-operatives': 'ไม่มีลูกทีมออนไลน์', 'no-spymaster': 'ไม่มีหัวหน้า', 'host-skip': 'หัวหน้าห้องข้ามเทิร์น', flag: '🚩 โดนทักว่าผิดกติกา', covered: 'ฝ่ายตรงข้ามปิดแล้ว' };
+  const WIN_TEXT = { words: 'เจอสายลับครบทุกคน', gift: 'อีกทีมเปิดคำสุดท้ายให้', assassin: 'อีกทีมเปิดเจอมือสังหาร', forfeit: 'อีกทีมไม่เหลือผู้เล่น', abandoned: 'ไม่เหลือลูกทีมให้ทาย', covered: 'สายลับฝ่ายตรงข้ามถูกปิดครบ' };
   const segmenter = window.Intl && Intl.Segmenter ? new Intl.Segmenter('th', { granularity: 'grapheme' }) : null;
 
   let allowNavigation = false;
@@ -537,6 +546,8 @@ $(function() {
     if (graphemes(word).length > 24) return 'คำใบ้ยาวเกินไป (ไม่เกิน 24 ตัวอักษร)';
     const hit = (S.board || []).find(c => !c.revealed && containsWord(word, c.word));
     if (hit) return normalizeWord(hit.word) === word ? '"' + hit.word + '" อยู่บนกระดาน ใช้เป็นคำใบ้ไม่ได้' : 'คำใบ้มีคำว่า "' + hit.word + '" ที่อยู่บนกระดาน ลองคำอื่น';
+    const part = (S.board || []).find(c => !c.revealed && (c.parts || []).includes(word));
+    if (part) return '"' + text + '" เป็นส่วนหนึ่งของ "' + part.word + '" บนกระดาน ลองคำอื่น';
     return null;
   }
   function numText(n) { return n === 'inf' ? '∞' : String(n); }
@@ -569,7 +580,9 @@ $(function() {
       const t = (S.teams || {})[team] || { remaining: 0, total: 0 };
       const turn = S.status === 'playing' && S.currentTeam === team;
       const sm = t.spymaster;
-      const sub = turn ? (S.phase === 'clue' ? 'กำลังคิดคำใบ้' : 'กำลังทาย') : (sm ? 'หัวหน้า ' + sm.name : 'ยังไม่มีหัวหน้า');
+      const ghost = S.coop && S.coop.team !== team; // โหมดร่วมมือ: ทีมนี้ไม่มีคนเล่น
+      const sub = ghost ? (turn ? 'หัวหน้าเลือกปิด 1 ใบ' : 'ฝ่ายตรงข้าม · ไม่มีคน')
+        : (turn ? (S.phase === 'clue' ? 'กำลังคิดคำใบ้' : 'กำลังทาย') : (sm ? 'หัวหน้า ' + sm.name : 'ยังไม่มีหัวหน้า'));
       return '<div class="cn-team-pill is-' + team + (turn ? ' is-turn' : '') + '">' +
         '<span class="num" aria-label="เหลือ ' + t.remaining + ' คำ">' + t.remaining + '</span>' +
         '<span class="meta"><span class="name">' + TEAM[team] + '</span><span class="sub">' + esc(sub) + '</span></span></div>';
@@ -585,7 +598,14 @@ $(function() {
     if (S.phase === 'finished') {
       return { title: 'จบเกม — เปิดกุญแจทั้งกระดานแล้ว', sub: 'ดูว่าการ์ดไหนเป็นของใคร แล้วกลับห้องรอเล่นอีกตา', mine: false };
     }
+    if (S.phase === 'cover') {
+      const enemy = TEAM[S.currentTeam] || '';
+      if (self.canCover) return { title: 'ตาฝ่ายตรงข้าม — เลือกปิด 1 ใบ', sub: 'แตะสายลับ' + enemy + ' 1 ใบ (เลือกใบที่ชวนลูกทีมสับสน)', mine: true };
+      const master = S.coop && S.teams && S.teams[S.coop.team] && S.teams[S.coop.team].spymaster;
+      return { title: 'ตาฝ่ายตรงข้าม', sub: (master ? master.name + ' ' : 'หัวหน้า') + 'กำลังเลือกปิดสายลับ' + enemy + ' 1 ใบ', mine: false };
+    }
     if (S.phase === 'clue') {
+      if (self.canGiveClue && self.canCover) return { title: 'ตาคุณใบ้คำ + โบนัส', sub: '🚩 ทักสำเร็จ: แตะการ์ดทีมคุณ 1 ใบเพื่อปิดก่อนใบ้ (ไม่ปิดก็ได้)', mine: true };
       if (self.canGiveClue) return { title: 'ตาคุณใบ้คำ', sub: 'พิมพ์คำเดียว + เลือกจำนวน ให้ลูกทีมเปิดการ์ดสี' + (team === 'red' ? 'แดง' : 'น้ำเงิน'), mine: true };
       if (self.team === team) return { title: 'รอหัวหน้าใบ้คำ', sub: (sm ? sm.name + ' ' : '') + 'กำลังคิด — คุยกันได้ แต่หัวหน้าห้ามบอกใบ้ทางอื่น', mine: false };
       if (!self.team) return { title: tName + 'กำลังคิดคำใบ้', sub: (sm ? 'หัวหน้า ' + sm.name + ' ' : '') + 'กำลังคิด · คุณดูอยู่ข้างสนาม (ไม่เห็นกุญแจ)', mine: false };
@@ -596,7 +616,8 @@ $(function() {
     if (self.canGuess) {
       return { title: 'ตาคุณทาย', sub: left === null ? 'เปิดได้ไม่จำกัด จนกว่าจะพลาดหรือกดจบเทิร์น' : 'เปิดได้อีก ' + left + ' ใบ · แตะการ์ดเพื่อเลือก', mine: true };
     }
-    if (self.team === team && self.role === 'spymaster') return { title: 'ลูกทีมกำลังทาย', sub: 'ห้ามพูดใบ้เพิ่ม ห้ามทำท่า — นั่งลุ้นอย่างเดียว', mine: false };
+    if (self.team === team && self.role === 'spymaster') return { title: 'ลูกทีมกำลังทาย', sub: 'ห้ามใบ้เพิ่ม ห้ามแชท — นั่งลุ้นอย่างเดียว', mine: false };
+    if (self.canFlag) return { title: tName + 'กำลังทาย', sub: 'คำใบ้ "' + (clue.word || '') + '" ผิดกติกา? กด 🚩 ทักได้ (ทีมละ 1 ครั้ง)', mine: false };
     return { title: tName + 'กำลังทาย', sub: 'คำใบ้ "' + (clue.word || '') + '" ' + numText(clue.number), mine: false };
   }
 
@@ -616,8 +637,8 @@ $(function() {
     if (d.mine && window.partyPlay) {
       window.partyPlay.pingTurn({
         key: S.phase + ':' + S.turnNumber,
-        title: S.phase === 'clue' ? 'ถึงตาคุณใบ้คำ' : 'ถึงตาทีมคุณทาย',
-        subtitle: S.phase === 'clue' ? 'คำเดียว + ตัวเลข' : 'คำใบ้ "' + ((S.clue || {}).word || '') + '"'
+        title: S.phase === 'cover' ? 'เลือกปิดสายลับฝ่ายตรงข้าม' : (S.phase === 'clue' ? 'ถึงตาคุณใบ้คำ' : 'ถึงตาทีมคุณทาย'),
+        subtitle: S.phase === 'cover' ? 'แตะ 1 ใบ' : (S.phase === 'clue' ? 'คำเดียว + ตัวเลข' : 'คำใบ้ "' + ((S.clue || {}).word || '') + '"')
       });
     }
   }
@@ -662,6 +683,7 @@ $(function() {
   function renderBoard() {
     const self = me();
     const canGuess = !!self.canGuess;
+    const coverColor = self.canCover ? self.coverColor : null;
     const newOnes = [];
     const html = (S.board || []).map(card => {
       const cls = ['cn-card'];
@@ -669,10 +691,12 @@ $(function() {
       if (card.revealed) {
         cls.push('is-revealed');
         if (isNew) { cls.push('is-new'); newOnes.push(card.index); }
+        if (card.covered) cls.push('is-covered');
         if (S.keyVisible && S.phase !== 'finished') cls.push('is-dim');
       } else {
         if (card.color) cls.push('key-' + card.color);
         if (canGuess) cls.push('can-tap');
+        if (coverColor && card.color === coverColor) cls.push('can-cover');
         if (card.mine) cls.push('is-mine');
         if (card.votes && card.votes.length) cls.push('is-voted');
       }
@@ -686,9 +710,10 @@ $(function() {
         (canGuess ? '<span class="cn-hold" aria-hidden="true"></span>' : '');
       const label = card.word + (card.revealed ? ' — ' + COLOR_NAME[card.color] : (card.color ? ' (กุญแจ: ' + COLOR_NAME[card.color] + ')' : '')) +
         (card.mine ? ' · คุณเลือกใบนี้ กดค้างหรือกดปุ่มเปิดเพื่อเปิด' : '') +
+        (coverColor && !card.revealed && card.color === coverColor ? ' · แตะเพื่อปิดใบนี้' : '') +
         (card.votes && card.votes.length ? ' · เสนอโดย ' + card.votes.join(', ') : '');
       return '<button type="button" class="' + cls.join(' ') + '" data-i="' + card.index + '" aria-label="' + esc(label) + '"' +
-        (!canGuess || card.revealed ? ' aria-disabled="true"' : '') + (card.mine ? ' aria-pressed="true"' : '') + '>' +
+        ((!canGuess && !(coverColor && card.color === coverColor)) || card.revealed ? ' aria-disabled="true"' : '') + (card.mine ? ' aria-pressed="true"' : '') + '>' +
         '<span class="cn-card-inner">' +
           '<span class="cn-face cn-front">' + keyMark + tags + '<span class="cn-word" style="--fs:' + baseFont(card.word) + 'px">' + esc(card.word) + '</span>' + votes + '</span>' +
           (card.revealed ? '<span class="cn-face cn-back c-' + card.color + '"><img src="' + ART[card.color] + '" alt="" draggable="false"><span class="cn-back-word">' + esc(card.word) + '</span></span>' : '') +
@@ -716,6 +741,10 @@ $(function() {
 
   // ทำไมชนะ/แพ้ — บอกชื่อทีมที่พลาด (ไม่ใช่ "อีกทีม" ที่อ่านแล้วงงว่าทีมไหน)
   function winWhy() {
+    if (S.coop && S.winner) {
+      if (S.winner === S.coop.team) return 'เจอสายลับครบ · ฝ่ายตรงข้ามเหลือ ' + (S.coop.score || 0) + ' ใบ = คะแนน';
+      return { assassin: 'เปิดเจอมือสังหาร', gift: 'เปิดสายลับฝ่ายตรงข้ามใบสุดท้าย', covered: 'สายลับฝ่ายตรงข้ามถูกปิดครบก่อน' }[S.winReason] || '';
+    }
     const loser = S.winner ? (S.winner === 'red' ? 'blue' : 'red') : null;
     const assassin = (S.board || []).find(c => c.revealed && c.color === 'assassin');
     if (S.winReason === 'assassin' && loser) return TEAM[loser] + 'เปิด' + (assassin ? ' "' + assassin.word + '" ' : '') + 'เจอมือสังหาร';
@@ -731,11 +760,15 @@ $(function() {
     if (S.phase !== 'finished') { el.hidden = true; return; }
     const self = me();
     const won = self.team && S.winner && self.team === S.winner;
-    const mine = !self.team ? 'คุณดูอยู่ข้างสนาม' : (won ? '🎉 ทีมคุณชนะ!' : 'ทีมคุณแพ้ — แก้มือรอบหน้า');
+    const coopWon = S.coop && S.winner === S.coop.team;
+    const mine = S.coop ? '🤝 โหมดร่วมมือ · ไม่นับสถิติ' : (!self.team ? 'คุณดูอยู่ข้างสนาม' : (won ? '🎉 ทีมคุณชนะ!' : 'ทีมคุณแพ้ — แก้มือรอบหน้า'));
     const t = S.teams || {};
+    const head = S.coop && S.winner
+      ? (coopWon ? '🎉 ชนะ! คะแนน ' + (S.coop.score || 0) + '/8' : '💥 แพ้ — ลองใหม่')
+      : (S.winner ? '🏆 ' + TEAM[S.winner] + 'ชนะ!' : 'จบเกม');
     el.hidden = false;
-    el.className = 'cn-result' + (S.winner ? ' is-' + S.winner : '');
-    el.innerHTML = '<h2>' + (S.winner ? '🏆 ' + TEAM[S.winner] + 'ชนะ!' : 'จบเกม') + '</h2>' +
+    el.className = 'cn-result' + (S.coop ? (S.winner ? ' is-' + S.coop.team : '') : (S.winner ? ' is-' + S.winner : ''));
+    el.innerHTML = '<h2>' + head + '</h2>' +
       '<p>' + esc(winWhy()) + '</p>' +
       '<div class="me">' + mine + '</div>' +
       '<p class="cn-result-back" id="cnResultBack" role="timer">' + (backRemainSec() ? 'กลับห้องรออัตโนมัติใน ' + backRemainSec() + ' วิ' : '') + '</p>' +
@@ -756,6 +789,11 @@ $(function() {
 
   function renderLog() {
     const cols = ['red', 'blue'].map(team => {
+      if (S.coop && S.coop.team !== team) {
+        const covered = (S.board || []).filter(c => c.revealed && c.color === team);
+        return '<div class="cn-log-col is-' + team + '"><div class="cn-log-head">ฝ่ายตรงข้าม (เปิด/ปิดแล้ว)</div>' +
+          (covered.length ? '<div class="cn-log-picks">' + covered.map(c => '<span class="cn-chip c-' + team + '">' + esc(c.word) + '</span>').join('') + '</div>' : '<div class="cn-empty">ยังไม่มี</div>') + '</div>';
+      }
       const items = (S.clueLog || []).filter(e => e.team === team).slice().reverse();
       const body = items.length ? items.map(e => {
         const live = S.phase === 'guess' && e.turn === S.turnNumber;
@@ -790,15 +828,19 @@ $(function() {
     const inner = document.getElementById('cnDockInner');
     let key;
     if (S.phase === 'finished') key = 'fin:' + (S.isHost ? 'host' : 'p');
-    else if (self.canGiveClue) key = 'clue:' + S.turnNumber;
+    else if (self.canGiveClue) key = 'clue:' + S.turnNumber + (self.canCover ? ':bonus' : '');
     else if (self.canGuess) key = 'guess:' + S.step;
-    else key = 'wait:' + S.phase + ':' + S.currentTeam + ':' + self.role + ':' + voteSignature();
+    else if (self.canCover) key = 'cover:' + S.turnNumber;
+    else key = 'wait:' + S.phase + ':' + S.currentTeam + ':' + self.role + ':' + (self.canFlag ? 'flag:' : '') + voteSignature();
 
     if (key.startsWith('clue:')) {
       if (dockKey === key) { validateClueInput(); return; }
       dockKey = key;
       if (clueNumber !== 'inf' && !(clueNumber >= 0 && clueNumber <= 9)) clueNumber = 1;
-      inner.innerHTML = '<form class="cn-clueform" id="cnClueForm" autocomplete="off">' +
+      // ปิดโบนัสแล้ววาดฟอร์มใหม่ — เก็บคำที่พิมพ์ค้างไว้
+      const typed = (document.getElementById('cnClueWord') || {}).value || '';
+      inner.innerHTML = (self.canCover ? '<p class="cn-bonus">🎁 โบนัสทักท้วง: แตะการ์ดทีมคุณ 1 ใบเพื่อปิด แล้วค่อยใบ้ (ใบ้เลย = ไม่ใช้โบนัส)</p>' : '') +
+        '<form class="cn-clueform" id="cnClueForm" autocomplete="off">' +
         '<input id="cnClueWord" class="cn-input" type="text" inputmode="text" maxlength="30" placeholder="คำใบ้ 1 คำ เช่น ทะเล" aria-label="คำใบ้" enterkeyhint="send">' +
         '<div class="cn-clue-row">' +
           '<div class="cn-stepper" role="group" aria-label="ใบ้กี่ใบ">' +
@@ -811,10 +853,16 @@ $(function() {
         '</div>' +
         '<p id="cnClueErr" class="cn-preview" aria-live="polite"></p>' +
         '</form>';
+      if (typed) document.getElementById('cnClueWord').value = typed;
       validateClueInput();
       return;
     }
     dockKey = key;
+    if (key.startsWith('cover:')) {
+      inner.innerHTML = '<div class="cn-wait">🕶️ แตะสายลับ' + esc(TEAM[self.coverColor] || '') + ' 1 ใบเพื่อปิด</div>' +
+        '<p class="cn-hint">ตาฝ่ายตรงข้าม (ไม่มีคนเล่น) — คุณเลือกเองว่าจะปิดใบไหน' + ((S.settings || {}).clueSeconds ? ' · หมดเวลา = สุ่มปิดให้' : '') + '</p>';
+      return;
+    }
     if (key.startsWith('fin')) {
       // หัวห้อง = พาทุกคนกลับตอนนี้ · คนอื่น = กลับห้องรอก่อนคนเดียว (ที่เหลือดูกุญแจต่อได้)
       inner.innerHTML = '<div class="cn-row"><button type="button" id="cnShareBtn" class="cn-btn">แชร์ผล</button>' +
@@ -843,7 +891,9 @@ $(function() {
       return;
     }
     const d = describeNow();
-    inner.innerHTML = '<div class="cn-wait">' + esc(d.title) + '</div>' + (S.phase === 'guess' ? voteListHtml() : '') + (self.role === 'spymaster' && S.phase !== 'finished' ? '<p class="cn-hint">คุณเห็นกุญแจ — อย่าหันจอให้ใครเห็น</p>' : '');
+    inner.innerHTML = '<div class="cn-wait">' + esc(d.title) + '</div>' + (S.phase === 'guess' ? voteListHtml() : '') +
+      (self.canFlag ? '<button type="button" id="cnFlagBtn" class="cn-btn cn-btn--flag">🚩 คำใบ้ "' + esc((S.clue || {}).word || '') + '" ผิดกติกา</button>' : '') +
+      (self.role === 'spymaster' && S.phase !== 'finished' ? '<p class="cn-hint">คุณเห็นกุญแจ — อย่าหันจอให้ใครเห็น · ห้ามแชท</p>' : '');
   }
 
   // ใครเสนอใบไหนอยู่ — โชว์ชื่อในแถบล่าง (บนการ์ดมีแค่จุด)
@@ -907,7 +957,7 @@ $(function() {
   }
   function paintSkip() {
     const btn = document.getElementById('cnSkipBtn');
-    const show = !!S.isHost && S.status === 'playing' && (S.phase === 'clue' || S.phase === 'guess');
+    const show = !!S.isHost && S.status === 'playing' && (S.phase === 'clue' || S.phase === 'guess' || S.phase === 'cover');
     btn.hidden = !show;
     if (!show) return;
     const wait = skipWaitSec();
@@ -933,7 +983,7 @@ $(function() {
         $('#cnResultBack').text(remain > 0 ? 'กลับห้องรออัตโนมัติใน ' + remain + ' วิ' : 'กำลังกลับห้องรอ...');
         return;
       }
-      const total = ((S.phase === 'clue' ? (S.settings || {}).clueSeconds : (S.settings || {}).guessSeconds) || 0) * 1000;
+      const total = ((S.phase === 'guess' ? (S.settings || {}).guessSeconds : (S.settings || {}).clueSeconds) || 0) * 1000;
       if (!S.phaseEndsAt || !total) {
         $('#cnTimerNum').text('∞');
         wrap.classList.add('is-idle');
@@ -955,14 +1005,22 @@ $(function() {
   // ---------- fx ----------
   function consumeFx() {
     const list = S.fx || [];
-    if (firstRender) { seenFx = list.reduce((m, f) => Math.max(m, f.id || 0), 0); return; }
+    if (firstRender) {
+      seenFx = list.reduce((m, f) => Math.max(m, f.id || 0), 0);
+      // เปิดเกม: บอกว่าทีมไหนเริ่มก่อน (ทีมที่มี 9 คำ = ไฟบนกุญแจ)
+      if (S.status === 'playing' && S.turnNumber === 1 && S.phase === 'clue' && !(S.clueLog || []).length) {
+        banner(S.coop ? '🤝 โหมดร่วมมือ · หา 9 คำ' : TEAM[S.startingTeam] + 'เริ่มก่อน · 9 คำ', 'c-' + S.startingTeam);
+      }
+      return;
+    }
     list.filter(f => (f.id || 0) > seenFx).forEach(f => {
       seenFx = Math.max(seenFx, f.id || 0);
       if (f.type === 'reveal') {
         const myTeam = me().team;
         const card = (S.board || [])[f.index];
         const w = card && card.word ? '"' + card.word + '" ' : '';
-        if (f.color === 'assassin') { banner('💀 ' + w + 'มือสังหาร!', 'c-assassin'); haptic([40, 60, 120]); }
+        if (f.how === 'cover') { banner('🕶️ ปิด ' + w + '(' + COLOR_NAME[f.color] + ')', 'c-' + f.color); haptic(12); }
+        else if (f.color === 'assassin') { banner('💀 ' + w + 'มือสังหาร!', 'c-assassin'); haptic([40, 60, 120]); }
         else if (f.color === f.team) { banner('✅ ' + w + COLOR_NAME[f.color], 'c-' + f.color); haptic(20); }
         else if (f.color === 'neutral') { banner('🚶 ' + w + 'คนเดินถนน — จบเทิร์น', 'c-neutral'); haptic([20, 40, 20]); }
         else { banner('❌ ' + w + COLOR_NAME[f.color] + '!', 'c-' + f.color); haptic([20, 40, 20]); }
@@ -971,9 +1029,13 @@ $(function() {
         banner('💬 "' + f.word + '" ' + numText(f.number), 'c-' + f.team);
       } else if (f.type === 'turn' && S.phase !== 'finished') {
         // บอกเหตุที่เปลี่ยนตา (ครบจำนวน/หมดเวลา/กดจบ/หัวห้องข้าม) · รอแบนเนอร์เปิดการ์ดจบก่อน
-        const why = ['limit', 'ended', 'clue-timeout', 'guess-timeout', 'no-operatives', 'no-spymaster', 'host-skip'].includes(f.reason) ? END_TEXT[f.reason] + ' · ' : '';
+        const why = ['limit', 'ended', 'clue-timeout', 'guess-timeout', 'no-operatives', 'no-spymaster', 'host-skip', 'flag'].includes(f.reason) ? END_TEXT[f.reason] + ' · ' : '';
         const wait = Date.now() - lastBannerAt < 1500 ? 1500 - (Date.now() - lastBannerAt) : 0;
-        setTimeout(() => banner(why + 'ตา' + TEAM[f.team], 'c-' + f.team), Math.max(wait, why ? 0 : 900));
+        const whose = f.phase === 'cover' ? 'ตาฝ่ายตรงข้าม (ปิด 1 ใบ)' : 'ตา' + TEAM[f.team];
+        setTimeout(() => banner(why + whose, 'c-' + f.team), Math.max(wait, why ? 0 : 900));
+      } else if (f.type === 'flag') {
+        banner('🚩 ' + (f.name || 'หัวหน้า') + ' ทักคำใบ้ "' + (f.word || '') + '"', 'c-' + f.team);
+        haptic([20, 40, 20]);
       } else if (f.type === 'promote') {
         toast((f.playerId === playerId ? 'คุณ' : f.name) + ' เป็นหัวหน้า' + TEAM[f.team] + 'แทน' + (f.playerId === playerId ? ' — ตอนนี้คุณเห็นกุญแจ' : ''), 'info');
       } else if (f.type === 'finish') {
@@ -1064,6 +1126,16 @@ $(function() {
   });
   $('#cnBoard').on('contextmenu', '.cn-card', function(e) { e.preventDefault(); });
   $('#cnBoard').on('click', '.cn-card', function(e) {
+    // หัวหน้าปิดคำ (ร่วมมือ / โบนัสทักท้วง): แตะใบที่เรืองแสง → ยืนยัน → ปิด
+    const coverEl = e.target.closest('.cn-card.can-cover');
+    if (coverEl && me().canCover) {
+      const card = (S.board || [])[Number(coverEl.dataset.i)];
+      if (!card || card.revealed) return;
+      haptic(8);
+      Swal.fire({ title: 'ปิด "' + card.word + '"?', text: S.phase === 'cover' ? 'ปิดสายลับฝ่ายตรงข้ามใบนี้ แล้วกลับมาตาทีมคุณ' : 'ปิดคำของทีมคุณ 1 ใบ (โบนัสทักท้วง)', showCancelButton: true, confirmButtonText: 'ปิดใบนี้', cancelButtonText: 'เลือกใหม่', background: '#1a2332', color: '#fff', confirmButtonColor: '#d9443c' })
+        .then(r => { if (r.isConfirmed) send('codenames_cover', { index: card.index }); });
+      return;
+    }
     const el = cardFromEvent(e);
     if (!el) return;
     if (pressFired) { pressFired = false; return; }
@@ -1081,6 +1153,13 @@ $(function() {
     Swal.fire({ title: 'จบเทิร์นเลยไหม?', text: 'ส่งตาให้อีกทีม', showCancelButton: true, confirmButtonText: 'จบเทิร์น', cancelButtonText: 'ทายต่อ', background: '#1a2332', color: '#fff', confirmButtonColor: '#d9443c' })
       .then(r => { if (r.isConfirmed) send('codenames_endTurn'); });
   });
+  $(document).on('click', '#cnFlagBtn', function() {
+    const c = S.clue || {};
+    Swal.fire({ icon: 'warning', title: 'ทักคำใบ้ "' + (c.word || '') + '"?', html: 'ผิดกติกา เช่น ใช้คำบนกระดาน ใบ้ตัวสะกด/ตำแหน่ง/เสียงพ้อง<br>→ จบเทิร์น' + esc(TEAM[c.team] || '') + 'ทันที + คุณปิดคำทีมตัวเองได้ 1 ใบ<br><b>ทีมละ 1 ครั้งต่อเกม</b>', showCancelButton: true, confirmButtonText: '🚩 ทักเลย', cancelButtonText: 'ไม่ทัก', background: '#1a2332', color: '#fff', confirmButtonColor: '#d9443c' })
+      .then(r => { if (r.isConfirmed) send('codenames_flag'); });
+  });
+  // หัวหน้าพิมพ์แชทระหว่างเกม → เซิร์ฟเวอร์ปฏิเสธ (กันใบ้นอกช่องคำใบ้)
+  socket.on('chatError', function(data) { toast((data && data.message) || 'ส่งข้อความไม่ได้', 'warning'); });
   $(document).on('input', '#cnClueWord', validateClueInput);
   $(document).on('click', '.cn-stepper .cn-num', function() {
     const step = this.dataset.step;
@@ -1128,7 +1207,7 @@ $(function() {
     const t = S.teams || {};
     window.partyPlay.shareResult({
       mode: 'สายลับคำใบ้',
-      headline: S.winner ? TEAM[S.winner] + 'ชนะ!' : 'จบเกมสายลับคำใบ้',
+      headline: S.coop && S.winner ? (S.winner === S.coop.team ? 'ร่วมมือชนะ! คะแนน ' + (S.coop.score || 0) + '/8' : 'ร่วมมือแพ้') : (S.winner ? TEAM[S.winner] + 'ชนะ!' : 'จบเกมสายลับคำใบ้'),
       sub: (WIN_TEXT[S.winReason] || '') + ' · ' + (S.turnNumber || 0) + ' เทิร์น',
       lines: ['red', 'blue'].map(team => TEAM[team] + ': ' + ((t[team] || {}).members || []).filter(m => !m.left).map(m => m.name + (m.role === 'spymaster' ? ' (หัวหน้า)' : '')).join(', ')),
       accent: S.winner === 'blue' ? '#5b9cf0' : '#ec5f55',
@@ -1140,9 +1219,11 @@ $(function() {
   function howToHtml() {
     return '<div class="cn-guide">' +
       '<h4>เป้าหมาย</h4><p>เปิดการ์ด<strong>สายลับของทีมตัวเอง</strong>ให้ครบก่อนอีกทีม · ทีมที่เริ่มก่อนมี 9 คำ อีกทีม 8 คำ</p>' +
-      '<h4>หัวหน้า</h4><p>เห็นกุญแจว่าคำไหนสีอะไร ใบ้ <strong>คำเดียว + ตัวเลข</strong> เช่น "ทะเล 2" · ห้ามใช้คำบนกระดาน ห้ามใบ้ด้วยท่าทาง · 0 หรือ ∞ = เปิดได้ไม่จำกัด</p>' +
+      '<h4>หัวหน้า</h4><p>เห็นกุญแจว่าคำไหนสีอะไร ใบ้ <strong>คำเดียว + ตัวเลข</strong> เช่น "ทะเล 2" · ห้ามใช้คำบนกระดานหรือส่วนของคำ ("รถ" ตอนมี "รถไฟ") · ห้ามใบ้ตัวสะกด/ตำแหน่ง · <strong>ห้ามแชท</strong> · 0 หรือ ∞ = เปิดได้ไม่จำกัด</p>' +
+      '<h4>🚩 ทักคำใบ้</h4><p>คำใบ้ผิดกติกา หัวหน้าอีกทีมกดทักได้ ทีมละ 1 ครั้ง → จบเทิร์นทันที + ทีมที่ทักปิดคำตัวเองได้ 1 ใบ</p>' +
       '<h4>ลูกทีม</h4><p>แตะการ์ดเพื่อเลือก ถ้าเกินครึ่งของลูกทีมที่ออนไลน์เลือกใบเดียวกันจะเปิดทันที หรือคนที่เลือกไว้กด <strong>เปิดเลย</strong> (หรือกดค้างที่ใบที่เลือกไว้) — กดค้างใบที่ยังไม่ได้เลือกแค่เลือก ไม่เปิด · เปิดได้ถึงตัวเลข + 1 ใบ</p>' +
-      '<h4>พลาด</h4><p>เปิดเจอคนเดินถนนหรือสายลับอีกทีม = จบเทิร์น · เจอ<strong>มือสังหาร</strong> = แพ้ทันที</p>' +
+      '<h4>พลาด</h4><p>เปิดเจอคนเดินถนนหรือสายลับอีกทีม = จบเทิร์น · เปิดคำสุดท้ายของอีกทีม = อีกทีมชนะ · เจอ<strong>มือสังหาร</strong> = แพ้ทันที</p>' +
+      '<h4>2–3 คน (ร่วมมือ)</h4><p>ทุกคนอยู่ทีมเดียว เริ่มก่อน 9 คำ · ตาอีกทีม หัวหน้าเลือกปิดสายลับฝ่ายตรงข้าม 1 ใบ · เจอครบก่อน = ชนะ (คะแนน = ฝ่ายตรงข้ามที่เหลือ) · ไม่นับสถิติ</p>' +
       '<div class="cn-guide-cards"><div><img src="' + ART.red + '" alt="">แดง</div><div><img src="' + ART.blue + '" alt="">น้ำเงิน</div><div><img src="' + ART.neutral + '" alt="">คนเดินถนน</div><div><img src="' + ART.assassin + '" alt="">มือสังหาร</div></div>' +
       '</div>';
   }

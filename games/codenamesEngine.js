@@ -5,11 +5,17 @@
  * ทีมที่เริ่มก่อนมีคำ 9 ใบ อีกทีม 8 · คนเดินถนน 7 · มือสังหาร 1
  * หัวหน้าใบ้ 1 คำ + ตัวเลข → ลูกทีมแตะเสนอการ์ด เสียงข้างมากเปิด หรือคนที่เสนอใบนั้นกด "เปิดเลย"
  *
+ * กติกาตามคู่มือ Codenames (CGE) — ดู rules/codenames/rules.md
+ * - โหมดร่วมมือ (2–3 คน หรือวงที่ไม่อยากแข่ง): มีทีมเดียว เริ่มก่อน 9 คำ · ตาอีกทีม หัวหน้าเลือกปิดสายลับ
+ *   ฝ่ายตรงข้าม 1 ใบ · เจอครบก่อน = ชนะ (คะแนน = สายลับฝ่ายตรงข้ามที่ยังเหลือ) · ฝ่ายตรงข้ามถูกปิดครบ/มือสังหาร = แพ้
+ * - คำใบ้ผิดกติกา: หัวหน้าอีกทีมเป็นคนตัดสิน (ตามคู่มือ) — กด "ทักท้วง" ได้ทีมละ 1 ครั้งต่อเกม
+ *   → จบเทิร์นทันที + หัวหน้าที่ทักปิดคำของทีมตัวเองได้ 1 ใบก่อนใบ้
+ *
  * ความลับ: สีของการ์ดที่ยังไม่เปิด (กุญแจ) ส่งให้เฉพาะหัวหน้า — buildClientState เป็นคนตัดสิน
  * ทุก action ตรวจฝั่งนี้: ตาใคร เฟสไหน บทอะไร การ์ดเปิดแล้วหรือยัง step ตรงไหม
  */
 
-const { WORDS } = require('./codenamesWords');
+const { WORDS, COMPOUND_SPLITS } = require('./codenamesWords');
 
 const MODE = 'codenames';
 const FINISHED_STATUS = 'codenames_finished';
@@ -24,8 +30,12 @@ const OTHER_TEAM_CARDS = 8;
 const NEUTRAL_CARDS = 7;
 const ASSASSIN_CARDS = 1;
 
-const MIN_PLAYERS = 4;
+// โหมดสองทีมต้อง 4 คน (หัวหน้า + ลูกทีม ทีมละ ≥1) · โหมดร่วมมือ 2 คนก็เล่นได้
+const MIN_PLAYERS = 2;
+const MIN_VERSUS_PLAYERS = 4;
 const MAX_PLAYERS = 12;
+// หัวหน้าอีกทีมทักคำใบ้ผิดกติกาได้กี่ครั้งต่อเกม (กันกดทักทุกคำ)
+const FLAGS_PER_TEAM = 1;
 const MAX_CLUE_NUMBER = 9;
 const INFINITE = 'inf';
 
@@ -93,6 +103,46 @@ function containsWord(haystack, needle) {
     return false;
 }
 
+// คำประสม: "รถ" ใน "รถไฟ", "ดำน้ำ" ใน "เรือดำน้ำ" → ใบ้ไม่ได้ (คู่มือ: ห้ามใช้ส่วนของคำประสมบนกระดาน)
+// ไทยไม่มีช่องว่างคั่นคำ: คำในคลังใช้ชิ้นส่วนที่เขียนไว้ (COMPOUND_SPLITS) · คำอื่นใช้ตัวตัดคำ (Intl.Segmenter)
+// โดยข้ามคำที่ตัดแล้วมีชิ้นตัวเดียว (มักเป็นคำทับศัพท์ที่ตัดมั่ว)
+// ส่วน = ชิ้นที่ต่อกันพอดี ยาว ≥ 2 ตัวอักษร ไม่ใช่ทั้งคำ — "หมา" ไม่ติด "หมากรุก" (หมาก|รุก)
+const wordSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter
+    ? new Intl.Segmenter('th', { granularity: 'word' })
+    : null;
+
+function splitPieces(word) {
+    const key = normalizeWord(word);
+    if (COMPOUND_SPLITS[key]) return COMPOUND_SPLITS[key].split('|').map(normalizeWord);
+    if (!wordSegmenter || !key) return [key];
+    const segs = Array.from(wordSegmenter.segment(key), part => part.segment);
+    return segs.every(seg => Array.from(seg).length >= 2) ? segs : [key];
+}
+
+const partsCache = new Map();
+function compoundParts(word) {
+    const key = normalizeWord(word);
+    if (partsCache.has(key)) return partsCache.get(key);
+    const pieces = splitPieces(key);
+    const found = new Set();
+    for (let i = 0; i < pieces.length; i += 1) {
+        let joined = '';
+        for (let j = i; j < pieces.length; j += 1) {
+            joined += pieces[j];
+            if (i === 0 && j === pieces.length - 1) break; // ทั้งคำ — ตรวจแยกอยู่แล้ว
+            if (Array.from(joined).length >= 2) found.add(joined);
+        }
+    }
+    const parts = Array.from(found);
+    if (partsCache.size > 4000) partsCache.clear();
+    partsCache.set(key, parts);
+    return parts;
+}
+
+function isCompoundPart(clue, boardWord) {
+    return compoundParts(boardWord).includes(normalizeWord(clue));
+}
+
 // ---------- helpers ----------
 
 function shuffle(items, rng = Math.random) {
@@ -124,6 +174,12 @@ function sanitizeClueSeconds(value) {
 function sanitizeGuessSeconds(value) {
     const n = Number(value);
     return GUESS_SECONDS_OPTIONS.includes(n) ? n : DEFAULT_GUESS_SECONDS;
+}
+
+// ทักท้วงคำใบ้ (หัวหน้าอีกทีมตัดสิน ตามคู่มือ) — ค่าเริ่ม: เปิด
+function sanitizeClueFlag(value) {
+    if (value === false || value === 'false' || value === 0 || value === '0' || value === 'off') return false;
+    return true;
 }
 
 function roomPlayer(room, playerId) {
@@ -159,7 +215,10 @@ function createInitialState() {
         clueLog: [],
         phaseEndsAt: null,
         phaseStartedAt: null,
-        settings: { clueSeconds: DEFAULT_CLUE_SECONDS, guessSeconds: DEFAULT_GUESS_SECONDS },
+        settings: { clueSeconds: DEFAULT_CLUE_SECONDS, guessSeconds: DEFAULT_GUESS_SECONDS, clueFlag: true },
+        coop: null,
+        flagsUsed: { red: 0, blue: 0 },
+        bonusCover: null,
         offlineSince: {},
         stuckSince: {},
         winner: null,
@@ -312,12 +371,24 @@ function shuffleTeams(room, rng = Math.random) {
     const first = rng() < 0.5 ? 'red' : 'blue';
     const next = { ...picks };
     const counts = { red: 0, blue: 0 };
+    // ไม่ถึง 4 คน แบ่งสองทีมไม่ได้ → ทุกคนอยู่ทีมเดียว (โหมดร่วมมือ)
+    const together = order.length < MIN_VERSUS_PLAYERS;
     order.forEach((member, index) => {
-        const team = index % 2 === 0 ? first : otherTeam(first);
+        const team = together || index % 2 === 0 ? first : otherTeam(first);
         next[member.playerId] = { team, role: counts[team] === 0 ? 'spymaster' : 'operative' };
         counts[team] += 1;
     });
     return writePicks(room, next);
+}
+
+// ทีมเดียวที่มีคน (อีกทีมว่าง) = โหมดร่วมมือ · คืนสีทีม หรือ null ถ้าเป็นโหมดสองทีม/ยังไม่มีใคร
+function coopTeamOf(members) {
+    const used = TEAMS.filter(team => members.some(m => m.team === team));
+    return used.length === 1 ? used[0] : null;
+}
+
+function lobbyCoopTeam(room) {
+    return coopTeamOf(lobbyMembers(room).filter(m => m.online && isTeam(m.team)));
 }
 
 // คืนข้อความภาษาไทยว่าทำไมยังเริ่มไม่ได้ หรือ null ถ้าพร้อม (นับเฉพาะคนออนไลน์)
@@ -331,7 +402,11 @@ function getStartBlockReason(room) {
     }
     const players = members.filter(m => isTeam(m.team));
     if (players.length > MAX_PLAYERS) return `เล่นได้สูงสุด ${MAX_PLAYERS} คน ให้บางคนเป็นผู้ชม`;
-    for (const team of TEAMS) {
+    if (players.length < MIN_PLAYERS) return `ต้องมีคนเล่นอย่างน้อย ${MIN_PLAYERS} คน (หัวหน้า 1 + ลูกทีม 1)`;
+    const coop = coopTeamOf(players);
+    if (!coop && players.length < MIN_VERSUS_PLAYERS) return `แข่งสองทีมต้องมี ${MIN_VERSUS_PLAYERS} คนขึ้นไป — ${players.length} คนให้อยู่ทีมเดียวกัน (โหมดร่วมมือ)`;
+    // โหมดร่วมมือ: ตรวจเฉพาะทีมที่มีคน · สองทีม: ตรวจทั้งสองทีม
+    for (const team of (coop ? [coop] : TEAMS)) {
         const inTeam = players.filter(m => m.team === team);
         const masters = inTeam.filter(m => m.role === 'spymaster');
         const ops = inTeam.filter(m => m.role === 'operative');
@@ -372,7 +447,9 @@ function startGame(room, rng = Math.random, now = Date.now()) {
     const reason = getStartBlockReason(room);
     if (reason) throw new Error(reason);
     const picks = lobbyPicks(room);
-    const startingTeam = rng() < 0.5 ? 'red' : 'blue';
+    const coopTeam = lobbyCoopTeam(room);
+    // คู่มือ: สองทีม = กุญแจบอกทีมเริ่ม (สุ่ม) · ร่วมมือ = ทีมผู้เล่นเริ่มก่อน
+    const startingTeam = coopTeam || (rng() < 0.5 ? 'red' : 'blue');
     const roster = (room.players || [])
         .filter(p => !isBotId(p.playerId))
         .map(p => {
@@ -391,6 +468,10 @@ function startGame(room, rng = Math.random, now = Date.now()) {
                 left: false
             };
         });
+    // ร่วมมือ: คนที่หลุดอยู่แต่เคยเลือกอีกทีม = ผู้ชม (อีกทีมต้องไม่มีคนเล่น)
+    if (coopTeam) {
+        roster.forEach(p => { if (p.team && p.team !== coopTeam) { p.team = null; p.role = 'spectator'; } });
+    }
     // หัวหน้าที่หลุดตอนเริ่มนับไม่ได้ — getStartBlockReason นับเฉพาะคนออนไลน์ ถ้ามีหัวหน้าซ้อน (ออฟไลน์) ให้เป็นลูกทีม
     TEAMS.forEach(team => {
         const masters = roster.filter(p => p.team === team && p.role === 'spymaster');
@@ -410,14 +491,20 @@ function startGame(room, rng = Math.random, now = Date.now()) {
         startedAt: new Date(now).toISOString(),
         settings: {
             clueSeconds: sanitizeClueSeconds(room.settings && room.settings.codenamesClueSeconds),
-            guessSeconds: sanitizeGuessSeconds(room.settings && room.settings.codenamesGuessSeconds)
-        }
+            guessSeconds: sanitizeGuessSeconds(room.settings && room.settings.codenamesGuessSeconds),
+            clueFlag: sanitizeClueFlag(room.settings && room.settings.codenamesClueFlag)
+        },
+        coop: coopTeam ? { team: coopTeam } : null
     };
     state.phaseEndsAt = state.settings.clueSeconds ? now + state.settings.clueSeconds * 1000 : null;
     state.phaseStartedAt = now;
     room.gameState = state;
-    pushHistory(state, '🎬', `เริ่มเกม — ${TEAM_LABEL[startingTeam]}เริ่มก่อน (${STARTING_TEAM_CARDS} คำ) · ${TEAM_LABEL[otherTeam(startingTeam)]} ${OTHER_TEAM_CARDS} คำ`, 'start', now);
-    pushFx(state, { type: 'start', team: startingTeam });
+    if (coopTeam) {
+        pushHistory(state, '🤝', `เริ่มเกมโหมดร่วมมือ — ${TEAM_LABEL[coopTeam]}หา ${STARTING_TEAM_CARDS} คำ ก่อนฝ่ายตรงข้ามถูกปิดครบ ${OTHER_TEAM_CARDS} คำ`, 'start', now);
+    } else {
+        pushHistory(state, '🎬', `เริ่มเกม — ${TEAM_LABEL[startingTeam]}เริ่มก่อน (${STARTING_TEAM_CARDS} คำ) · ${TEAM_LABEL[otherTeam(startingTeam)]} ${OTHER_TEAM_CARDS} คำ`, 'start', now);
+    }
+    pushFx(state, { type: 'start', team: startingTeam, coop: !!coopTeam });
     bumpStep(state);
     return state;
 }
@@ -447,6 +534,9 @@ function validateClueWord(state, rawWord) {
             ? `"${hit.word}" อยู่บนกระดาน ใช้เป็นคำใบ้ไม่ได้`
             : `คำใบ้มีคำว่า "${hit.word}" ที่อยู่บนกระดาน ลองคำอื่น`;
     }
+    // ส่วนของคำประสมบนกระดาน เช่น "รถ" ตอน "รถไฟ" ยังไม่เปิด (เปิดแล้ว = ไม่อยู่บนกระดานแล้ว ใช้ได้)
+    const part = (state.board || []).find(card => !card.revealed && isCompoundPart(word, card.word));
+    if (part) return `"${raw}" เป็นส่วนหนึ่งของ "${part.word}" บนกระดาน ลองคำอื่น`;
     return null;
 }
 
@@ -470,6 +560,8 @@ function submitClue(room, playerId, payload = {}, context = null, now = Date.now
     const word = String(payload.word).normalize('NFC').replace(/[​-‍⁠﻿]/g, '').trim();
     const maxGuesses = number === INFINITE || number === 0 ? null : number + 1;
     state.clue = { word, number, team: me.team, byId: me.playerId, byName: me.name, maxGuesses, turn: state.turnNumber };
+    // โบนัสปิดคำจากการทักท้วง ต้องใช้ก่อนใบ้ — ใบ้แล้วถือว่าสละสิทธิ์
+    if (state.bonusCover === me.team) state.bonusCover = null;
     state.guessesMade = 0;
     state.votes = {};
     state.phase = 'guess';
@@ -626,10 +718,14 @@ function hostSkipTurn(room, playerId, isHost, context = null, now = Date.now()) 
     assertPlaying(state);
     if (!isHost) throw new Error('เฉพาะหัวหน้าห้องที่ข้ามเทิร์นได้');
     assertStep(state, context);
-    if (state.phase !== 'clue' && state.phase !== 'guess') throw new Error('ตอนนี้ข้ามเทิร์นไม่ได้');
+    if (state.phase !== 'clue' && state.phase !== 'guess' && state.phase !== 'cover') throw new Error('ตอนนี้ข้ามเทิร์นไม่ได้');
     const wait = hostSkipWaitMs(state, now);
     if (wait > 0) throw new Error(`ข้ามได้เมื่อเทิร์นนี้ค้างนานเกิน ${Math.round(HOST_SKIP_AFTER_MS / 1000)} วิ (อีก ${Math.ceil(wait / 1000)} วิ)`);
     const me = rosterEntry(state, playerId);
+    if (state.phase === 'cover') {
+        pushHistory(state, '⏭️', `${me ? me.name : 'หัวหน้าห้อง'} (หัวหน้าห้อง) ข้ามการเลือก — สุ่มปิดให้ 1 ใบ`, 'pass', now);
+        return autoCover(room, now);
+    }
     pushHistory(state, '⏭️', `${me ? me.name : 'หัวหน้าห้อง'} (หัวหน้าห้อง) ข้ามเทิร์น${TEAM_LABEL[state.currentTeam]} ช่วง${state.phase === 'clue' ? 'ใบ้' : 'ทาย'} — ไป${TEAM_LABEL[otherTeam(state.currentTeam)]}`, 'pass', now);
     return passTurn(room, 'host-skip', now);
 }
@@ -651,6 +747,69 @@ function passTurn(room, reason, now = Date.now()) {
     }
     state.currentTeam = otherTeam(from);
     state.turnNumber = (Number(state.turnNumber) || 0) + 1;
+    // โหมดร่วมมือ: ตาฝ่ายตรงข้าม = หัวหน้าเลือกปิดสายลับฝ่ายตรงข้าม 1 ใบ (ไม่มีใบ้/ทาย)
+    state.phase = state.coop && state.currentTeam !== state.coop.team ? 'cover' : 'clue';
+    state.clue = null;
+    state.bonusCover = null;
+    state.guessesMade = 0;
+    state.votes = {};
+    state.stuckSince = {};
+    state.phaseEndsAt = state.settings.clueSeconds ? now + state.settings.clueSeconds * 1000 : null;
+    state.phaseStartedAt = now;
+    pushFx(state, { type: 'turn', team: state.currentTeam, reason, phase: state.phase });
+    bumpStep(state);
+    return state;
+}
+
+// ---------- ทักท้วงคำใบ้ / ปิดคำ ----------
+
+function flagsLeft(state, team) {
+    if (!state || state.coop || !(state.settings && state.settings.clueFlag) || !isTeam(team)) return 0;
+    return Math.max(0, FLAGS_PER_TEAM - (Number((state.flagsUsed || {})[team]) || 0));
+}
+
+// หัวหน้าอีกทีมทักว่าคำใบ้ผิดกติกา (คู่มือ: "ถ้าหัวหน้าอีกทีมยอม ก็ถือว่าใช้ได้") → จบเทิร์นทันที
+// + หัวหน้าที่ทักปิดคำของทีมตัวเองได้ 1 ใบก่อนใบ้ · ทักได้ระหว่างที่ลูกทีมกำลังทายคำใบ้นั้น
+function flagClue(room, playerId, context = null, now = Date.now()) {
+    const state = room.gameState;
+    assertPlaying(state);
+    assertStep(state, context);
+    if (state.coop) throw new Error('โหมดร่วมมือไม่มีการทักท้วง');
+    if (!(state.settings && state.settings.clueFlag)) throw new Error('ห้องนี้ปิดการทักท้วงคำใบ้');
+    if (state.phase !== 'guess' || !state.clue) throw new Error('ทักได้ตอนอีกทีมกำลังทายคำใบ้');
+    const me = rosterEntry(state, playerId);
+    if (!me || me.left || me.role !== 'spymaster') throw new Error('เฉพาะหัวหน้าทีมที่ทักท้วงได้');
+    if (me.team === state.currentTeam) throw new Error('ทักคำใบ้ของทีมตัวเองไม่ได้');
+    if (flagsLeft(state, me.team) <= 0) throw new Error('ทีมคุณใช้สิทธิ์ทักท้วงไปแล้ว');
+    state.flagsUsed = { red: 0, blue: 0, ...(state.flagsUsed || {}) };
+    state.flagsUsed[me.team] += 1;
+    const clue = state.clue;
+    pushHistory(state, '🚩', `${me.name} (หัวหน้า${TEAM_LABEL[me.team]}) ทักว่าคำใบ้ "${clue.word}" ผิดกติกา — จบเทิร์น${TEAM_LABEL[clue.team]}`, 'flag', now);
+    pushFx(state, { type: 'flag', team: me.team, against: clue.team, word: clue.word, name: me.name });
+    passTurn(room, 'flag', now);
+    state.bonusCover = me.team;
+    return state;
+}
+
+function coverReveal(room, index, actor, now, why) {
+    const state = room.gameState;
+    const card = state.board[index];
+    card.revealed = true;
+    card.revealedBy = actor ? actor.name : null;
+    card.revealedTeam = card.color;
+    card.revealedTurn = state.turnNumber;
+    card.covered = why;
+    pushFx(state, { type: 'reveal', index, color: card.color, team: card.color, how: 'cover' });
+    bumpStep(state);
+    return card;
+}
+
+// จบตาฝ่ายตรงข้าม (โหมดร่วมมือ) → กลับมาตาทีมผู้เล่น
+function endCover(room, now) {
+    const state = room.gameState;
+    const team = state.coop.team;
+    state.currentTeam = team;
+    state.turnNumber = (Number(state.turnNumber) || 0) + 1;
     state.phase = 'clue';
     state.clue = null;
     state.guessesMade = 0;
@@ -658,9 +817,63 @@ function passTurn(room, reason, now = Date.now()) {
     state.stuckSince = {};
     state.phaseEndsAt = state.settings.clueSeconds ? now + state.settings.clueSeconds * 1000 : null;
     state.phaseStartedAt = now;
-    pushFx(state, { type: 'turn', team: state.currentTeam, reason });
+    pushFx(state, { type: 'turn', team, reason: 'covered', phase: 'clue' });
     bumpStep(state);
     return state;
+}
+
+function afterCoopCover(room, card, now) {
+    const state = room.gameState;
+    const enemy = otherTeam(state.coop.team);
+    const left = remainingFor(state, enemy);
+    if (left === 0) {
+        pushHistory(state, '🕶️', `ปิด "${card.word}" — สายลับฝ่ายตรงข้ามถูกปิดครบ`, 'reveal', now);
+        return finishGame(room, enemy, 'covered', now);
+    }
+    pushHistory(state, '🕶️', `ตาฝ่ายตรงข้าม: ปิด "${card.word}" (เหลือ ${left})`, 'reveal', now);
+    return endCover(room, now);
+}
+
+// ปิดคำ: (1) โหมดร่วมมือ ตาฝ่ายตรงข้าม — หัวหน้าเลือกปิดสายลับฝ่ายตรงข้าม 1 ใบ
+//        (2) โบนัสทักท้วง — หัวหน้าที่ทักปิดคำของทีมตัวเอง 1 ใบ ก่อนใบ้
+function coverCard(room, playerId, index, context = null, now = Date.now()) {
+    const state = room.gameState;
+    assertPlaying(state);
+    assertStep(state, context);
+    const me = rosterEntry(state, playerId);
+    if (!me || me.left || me.role !== 'spymaster') throw new Error('เฉพาะหัวหน้าที่ปิดคำได้');
+    const i = assertCard(state, index);
+    const card = state.board[i];
+    if (state.phase === 'cover' && state.coop) {
+        if (me.team !== state.coop.team) throw new Error('คุณปิดคำไม่ได้');
+        const enemy = otherTeam(state.coop.team);
+        if (card.color !== enemy) throw new Error(`เลือกการ์ดสาย${TEAM_LABEL[enemy]}เท่านั้น`);
+        coverReveal(room, i, me, now, 'coop');
+        return afterCoopCover(room, card, now);
+    }
+    if (state.phase === 'clue' && state.bonusCover && state.bonusCover === me.team && state.currentTeam === me.team) {
+        if (card.color !== me.team) throw new Error(`เลือกการ์ดสาย${TEAM_LABEL[me.team]}ของทีมคุณเท่านั้น`);
+        state.bonusCover = null;
+        coverReveal(room, i, me, now, 'flag');
+        if (remainingFor(state, me.team) === 0) {
+            pushHistory(state, '🎯', `${me.name} ปิด "${card.word}" (โบนัสทักท้วง) — คำสุดท้ายของ${TEAM_LABEL[me.team]}`, 'reveal', now);
+            return finishGame(room, me.team, 'words', now);
+        }
+        pushHistory(state, '🎁', `${me.name} ปิด "${card.word}" ของ${TEAM_LABEL[me.team]} (โบนัสทักท้วง)`, 'reveal', now);
+        return state;
+    }
+    throw new Error('ตอนนี้ปิดคำไม่ได้');
+}
+
+// หมดเวลา/หัวห้องข้าม ตอนตาฝ่ายตรงข้าม (ร่วมมือ) → สุ่มปิด 1 ใบ
+function autoCover(room, now = Date.now(), rng = Math.random) {
+    const state = room.gameState;
+    const enemy = otherTeam(state.coop.team);
+    const options = (state.board || []).map((card, index) => ({ card, index })).filter(x => x.card.color === enemy && !x.card.revealed);
+    if (!options.length) return finishGame(room, enemy, 'covered', now);
+    const pick = options[Math.floor(rng() * options.length)] || options[0];
+    coverReveal(room, pick.index, null, now, 'coop-auto');
+    return afterCoopCover(room, pick.card, now);
 }
 
 function finishGame(room, winner, reason, now = Date.now()) {
@@ -678,7 +891,17 @@ function finishGame(room, winner, reason, now = Date.now()) {
         assassin: 'อีกทีมเปิดเจอมือสังหาร',
         forfeit: 'อีกทีมไม่เหลือผู้เล่น'
     }[reason] || '';
-    if (state.winner) {
+    if (state.coop && state.winner) {
+        const won = state.winner === state.coop.team;
+        state.coopScore = won ? remainingFor(state, otherTeam(state.coop.team)) : 0;
+        const why = {
+            words: `เจอสายลับครบ — คะแนน ${state.coopScore}/${OTHER_TEAM_CARDS}`,
+            assassin: 'เปิดเจอมือสังหาร',
+            gift: 'เปิดสายลับฝ่ายตรงข้ามใบสุดท้าย',
+            covered: 'สายลับฝ่ายตรงข้ามถูกปิดครบ'
+        }[reason] || '';
+        pushHistory(state, won ? '🏆' : '💥', `${won ? 'ชนะ' : 'แพ้'}!${why ? ' — ' + why : ''}`, 'finished', now);
+    } else if (state.winner) {
         pushHistory(state, '🏆', `${TEAM_LABEL[state.winner]}ชนะ!${text ? ' — ' + text : ''}`, 'finished', now);
     } else {
         pushHistory(state, '🏁', reason === 'abandoned' ? 'ไม่เหลือลูกทีมให้ทายทั้งสองทีม — จบเกม ไม่นับผล' : 'จบเกม — ไม่มีผู้ชนะ', 'finished', now);
@@ -717,7 +940,8 @@ function handlePlayerLeft(room, playerId, now = Date.now()) {
     pushHistory(state, '🚪', `${me.name} ออกจากเกม (${TEAM_LABEL[me.team]})`, 'left', now);
 
     if (activeMembers(state, me.team).length === 0) {
-        return finishGame(room, otherTeam(me.team), 'forfeit', now);
+        // ร่วมมือ: ทีมเดียวออกหมด = ไม่มีใครเล่นแล้ว ไม่นับผล
+        return state.coop ? finishGame(room, null, 'abandoned', now) : finishGame(room, otherTeam(me.team), 'forfeit', now);
     }
     if (me.role === 'spymaster') {
         me.role = 'retired';
@@ -798,6 +1022,21 @@ function tick(room, now = Date.now()) {
         }
     });
 
+    // ร่วมมือ ตาฝ่ายตรงข้าม: รอหัวหน้าเลือก · หมดเวลา = สุ่มปิดให้
+    if (state.phase === 'cover') {
+        if (state.phaseEndsAt && now >= state.phaseEndsAt) {
+            pushHistory(state, '⏭️', 'หมดเวลาเลือก — สุ่มปิดให้ 1 ใบ', 'pass', now);
+            autoCover(room, now);
+            return true;
+        }
+        const sig = onlineSignature(room);
+        if (sig !== state.onlineSignature) {
+            state.onlineSignature = sig;
+            changed = true;
+        }
+        return changed;
+    }
+
     // ทีมที่ถึงตาแต่เล่นไม่ได้ (ไม่มีลูกทีมออนไลน์ หรือช่วงใบ้แต่หัวหน้าหลุดนาน) → ข้ามเทิร์น
     const team = state.currentTeam;
     const master = spymasterOf(state, team);
@@ -840,6 +1079,15 @@ function canSeeKey(state, viewerId) {
     return !!(me && !me.left && (me.role === 'spymaster' || me.role === 'retired'));
 }
 
+// คู่มือ: หัวหน้าห้ามสื่ออะไรนอกจากคำใบ้ 1 คำ + ตัวเลข — ออนไลน์ "แชท" คือช่องใบ้เพิ่ม
+// คนที่เห็นกุญแจ (หัวหน้า/อดีตหัวหน้า) จึงพิมพ์แชทห้องไม่ได้ระหว่างเกม · จบเกมแล้วคุยได้ตามปกติ
+function chatBlockReason(room, playerId) {
+    const state = room && room.gameState;
+    if (!state || state.status !== 'playing') return null;
+    if (!canSeeKey(state, playerId)) return null;
+    return 'หัวหน้าเห็นกุญแจ พิมพ์แชทไม่ได้ระหว่างเกม — ใบ้ได้ทางช่องคำใบ้เท่านั้น';
+}
+
 function publicMember(room, p) {
     return {
         playerId: p.playerId,
@@ -866,6 +1114,14 @@ function buildClientState(room, viewerId, now = Date.now()) {
         (voterNames[index] = voterNames[index] || []).push(voter.name);
     });
     const isMyTurn = !!(me && !me.left && me.team === state.currentTeam && state.status === 'playing');
+    const coopTeam = state.coop ? state.coop.team : null;
+    const playing = state.status === 'playing';
+    const amSpymaster = !!(me && !me.left && me.role === 'spymaster');
+    // ปิดคำ: ร่วมมือ (ตาฝ่ายตรงข้าม) หรือโบนัสทักท้วง (ก่อนใบ้)
+    let coverColor = null;
+    if (playing && amSpymaster && state.phase === 'cover' && coopTeam && me.team === coopTeam) coverColor = otherTeam(coopTeam);
+    else if (playing && amSpymaster && state.phase === 'clue' && state.bonusCover === me.team && isMyTurn) coverColor = me.team;
+    const canFlag = !!(playing && amSpymaster && state.phase === 'guess' && state.clue && me.team !== state.currentTeam && flagsLeft(state, me.team) > 0);
     const roster = (state.roster || []).map(p => publicMember(room, p));
     const teams = {};
     TEAMS.forEach(team => {
@@ -891,6 +1147,9 @@ function buildClientState(room, viewerId, now = Date.now()) {
         hostSkipAfterMs: HOST_SKIP_AFTER_MS,
         serverNow: now,
         settings: state.settings,
+        coop: state.coop ? { team: state.coop.team, enemy: otherTeam(state.coop.team), score: state.coopScore == null ? null : state.coopScore } : null,
+        bonusCover: state.bonusCover || null,
+        flagsLeft: { red: flagsLeft(state, 'red'), blue: flagsLeft(state, 'blue') },
         keyVisible: showKey,
         board: (state.board || []).map((card, index) => ({
             index,
@@ -898,6 +1157,9 @@ function buildClientState(room, viewerId, now = Date.now()) {
             revealed: !!card.revealed,
             color: card.revealed || showKey ? card.color : null,
             revealedBy: card.revealed ? card.revealedBy || null : null,
+            covered: card.revealed ? card.covered || null : null,
+            // ส่วนของคำประสม (ข้อมูลสาธารณะจากตัวคำ) — ให้ช่องพิมพ์คำใบ้เตือนได้ทันที
+            parts: card.revealed ? [] : compoundParts(card.word),
             votes: card.revealed ? [] : (voterNames[index] || []),
             mine: !card.revealed && votes[viewerId] === index
         })),
@@ -929,15 +1191,18 @@ function buildClientState(room, viewerId, now = Date.now()) {
             isMyTurn,
             canGiveClue: isMyTurn && me.role === 'spymaster' && state.phase === 'clue',
             canGuess: isMyTurn && me.role === 'operative' && state.phase === 'guess',
-            canEndTurn: isMyTurn && me.role === 'operative' && state.phase === 'guess' && (state.guessesMade || 0) > 0
-        } : { playerId: viewerId, team: null, role: 'spectator', left: false, isMyTurn: false, canGiveClue: false, canGuess: false, canEndTurn: false },
+            canEndTurn: isMyTurn && me.role === 'operative' && state.phase === 'guess' && (state.guessesMade || 0) > 0,
+            canCover: !!coverColor,
+            coverColor,
+            canFlag
+        } : { playerId: viewerId, team: null, role: 'spectator', left: false, isMyTurn: false, canGiveClue: false, canGuess: false, canEndTurn: false, canCover: false, coverColor: null, canFlag: false },
         isHost: room.admin === viewerId,
         winner: state.winner || null,
         winReason: state.winReason || null,
         history: (state.history || []).slice(-30),
         fx: state.fx || [],
         returnLobbyEndsAt: state.returnLobbyEndsAt || null,
-        limits: { minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS, maxClueNumber: MAX_CLUE_NUMBER }
+        limits: { minPlayers: MIN_PLAYERS, minVersusPlayers: MIN_VERSUS_PLAYERS, maxPlayers: MAX_PLAYERS, maxClueNumber: MAX_CLUE_NUMBER }
     };
 }
 
@@ -948,6 +1213,8 @@ function buildResult(room) {
         mode: MODE,
         winner: state.winner,
         winReason: state.winReason,
+        coop: !!state.coop,
+        coopScore: state.coop ? (state.coopScore || 0) : null,
         players: (state.roster || [])
             .filter(p => isTeam(p.team) && !p.left && !isBotId(p.playerId))
             .map(p => ({ playerId: p.playerId, name: p.name, team: p.team, role: p.role, won: p.team === state.winner })),
@@ -959,7 +1226,7 @@ function buildResult(room) {
 module.exports = {
     id: MODE,
     label: 'สายลับคำใบ้',
-    description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน',
+    description: 'สองทีมแข่งกันหาสายลับบนกระดาน 25 คำ — หัวหน้าใบ้คำเดียว ลูกทีมช่วยกันเปิด ระวังมือสังหาร · 4–12 คน (2–3 คนเล่นทีมเดียวได้)',
     minPlayers: MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
     finishedReturnMs: FINISHED_RETURN_MS,
@@ -982,6 +1249,9 @@ module.exports = {
     NO_OPERATIVE_GRACE_MS,
     HOST_SKIP_AFTER_MS,
     MAX_CLUE_GRAPHEMES,
+    MIN_PLAYERS,
+    MIN_VERSUS_PLAYERS,
+    FLAGS_PER_TEAM,
     INFINITE,
     WORDS,
     graphemes,
@@ -991,6 +1261,9 @@ module.exports = {
     otherTeam,
     sanitizeClueSeconds,
     sanitizeGuessSeconds,
+    sanitizeClueFlag,
+    isCompoundPart,
+    compoundParts,
     createInitialState,
     createPlayerState,
     resetRoomGame,
@@ -1008,6 +1281,12 @@ module.exports = {
     endTurn,
     hostSkipTurn,
     hostSkipWaitMs,
+    flagClue,
+    flagsLeft,
+    coverCard,
+    autoCover,
+    chatBlockReason,
+    lobbyCoopTeam,
     passTurn,
     handlePlayerLeft,
     tick,

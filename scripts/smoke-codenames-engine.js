@@ -143,9 +143,13 @@ const setOnline = (room, id, online) => { room.players.find(p => p.playerId === 
     engine.pickTeam(room, 'p3', { team: 'blue', role: 'spymaster' });
     assert(!room.settings.codenamesTeams.p2, 'คนที่ออกจากห้องถูกล้างออก');
 
+    // ไม่ถึง 4 คน: สุ่มทีม = ทุกคนอยู่ทีมเดียว (โหมดร่วมมือ ตามคู่มือ) เริ่มได้
     const few = makeRoom(3);
     engine.shuffleTeams(few, mulberry32(3));
-    assert(/อย่างน้อย 4 คน/.test(engine.getStartBlockReason(few)), '3 คนเริ่มไม่ได้');
+    const fewTeams = new Set(Object.values(few.settings.codenamesTeams).map(p => p.team));
+    assert(fewTeams.size === 1 && engine.getStartBlockReason(few) === null, '3 คนสุ่มแล้วอยู่ทีมเดียว เริ่มได้: ' + engine.getStartBlockReason(few));
+    const solo = makeRoom(1);
+    assert(/อย่างน้อย 2 คน/.test(engine.getStartBlockReason(solo)), 'คนเดียวเริ่มไม่ได้');
 
     for (let n = 4; n <= 12; n += 1) {
         for (let seed = 1; seed <= 30; seed += 1) {

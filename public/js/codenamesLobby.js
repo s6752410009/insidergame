@@ -2,10 +2,12 @@
  * ข้อมูลทีมอยู่ใน roomUpdate.settings.codenamesTeams (สาธารณะ) · เซิร์ฟเวอร์ตรวจซ้ำทุกครั้งตอนกดเริ่ม */
 (function attachCodenamesLobby(global) {
     var TEAM = { red: 'ทีมแดง', blue: 'ทีมน้ำเงิน' };
-    var MIN_PLAYERS = 4;
+    var MIN_PLAYERS = 2;          // โหมดร่วมมือ (ทีมเดียว)
+    var MIN_VERSUS_PLAYERS = 4;   // แข่งสองทีม
     var MAX_PLAYERS = 12;
     var CLUE_OPTIONS = [[0, 'ปิด'], [90, '90 วิ'], [120, '120 วิ']];
     var GUESS_OPTIONS = [[0, 'ปิด'], [60, '60 วิ'], [90, '90 วิ'], [120, '120 วิ']];
+    var FLAG_OPTIONS = [[1, 'เปิด'], [0, 'ปิด']];
     var ctx = { socket: null, playerId: null, isAdmin: function() { return false; } };
     var busy = false;
     var latestPayload = null;
@@ -50,7 +52,7 @@
             '.cnl-timer-label{font-size:0.82rem;color:var(--cnl-muted);min-width:64px}',
             '.cnl-seg{display:flex;gap:4px;flex:1 1 auto}',
             '.cnl-seg .cnl-btn{flex:1 1 0;min-width:0;padding:6px 4px;font-size:0.8rem}',
-            '.cnl-note{margin:0;font-size:0.78rem;color:var(--cnl-muted)}',
+            '.cnl-note,.cnl-tip{margin:0;font-size:0.78rem;color:var(--cnl-muted)}',
             '.cnl-status{margin:10px 0 0;padding:8px 10px;border-radius:10px;font-size:0.86rem;font-weight:600;line-height:1.4}',
             '.cnl-status.is-bad{background:oklch(0.3 0.08 60 / 0.45);color:#fde68a}',
             '.cnl-status.is-ok{background:oklch(0.32 0.08 150 / 0.45);color:#bbf7d0}',
@@ -83,7 +85,10 @@
         }
         var players = online.filter(function(m) { return m.team; });
         if (players.length > MAX_PLAYERS) return 'เล่นได้สูงสุด ' + MAX_PLAYERS + ' คน ให้บางคนเป็นผู้ชม';
-        var teams = ['red', 'blue'];
+        if (players.length < MIN_PLAYERS) return 'ต้องมีคนเล่นอย่างน้อย ' + MIN_PLAYERS + ' คน (หัวหน้า 1 + ลูกทีม 1)';
+        var coop = coopTeam(players);
+        if (!coop && players.length < MIN_VERSUS_PLAYERS) return 'แข่งสองทีมต้องมี ' + MIN_VERSUS_PLAYERS + ' คนขึ้นไป — ' + players.length + ' คนให้อยู่ทีมเดียวกัน (โหมดร่วมมือ)';
+        var teams = coop ? [coop] : ['red', 'blue'];
         for (var i = 0; i < teams.length; i += 1) {
             var inTeam = players.filter(function(m) { return m.team === teams[i]; });
             var masters = inTeam.filter(function(m) { return m.role === 'spymaster'; });
@@ -93,6 +98,12 @@
             if (!ops.length) return TEAM[teams[i]] + 'ต้องมีลูกทีมอย่างน้อย 1 คน';
         }
         return null;
+    }
+
+    // ทีมเดียวที่มีคน = โหมดร่วมมือ (เหมือน engine.coopTeamOf)
+    function coopTeam(players) {
+        var used = ['red', 'blue'].filter(function(team) { return players.some(function(m) { return m.team === team; }); });
+        return used.length === 1 ? used[0] : null;
     }
 
     function nameRow(m, extra) {
@@ -137,11 +148,16 @@
         var settings = (payload && payload.settings) || {};
         var clue = settings.codenamesClueSeconds === undefined ? 120 : settings.codenamesClueSeconds;
         var guess = settings.codenamesGuessSeconds === undefined ? 0 : settings.codenamesGuessSeconds;
+        var flag = settings.codenamesClueFlag === false ? 0 : 1;
+        var coop = coopTeam(list.filter(function(m) { return m.online && m.team; }));
         var spectators = list.filter(function(m) { return m.role === 'spectator'; });
         var unassigned = list.filter(function(m) { return !m.role; });
         var reason = blockReason(payload);
+        var okText = coop
+            ? '🤝 โหมดร่วมมือ — ' + TEAM[coop] + 'เล่นทีมเดียว พร้อมเริ่มแล้ว (ไม่นับสถิติ)'
+            : 'ทีมพร้อมแล้ว — หัวหน้าห้องกดเริ่มได้เลย';
         return [
-            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#fde68a;">🕵️ สายลับคำใบ้ · 4–12 คน · 2 ทีม</div>',
+            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#fde68a;">🕵️ สายลับคำใบ้ · 4–12 คน 2 ทีม · 2–3 คนเล่นทีมเดียว</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">หัวหน้าเห็นว่าคำไหนเป็นสายลับทีมตัวเอง ใบ้คำเดียว + ตัวเลข ลูกทีมช่วยกันเปิด — ระวังมือสังหาร</p>',
             '<div class="cnl">',
             '<div class="cnl-teams">', teamHtml('red', list, me), teamHtml('blue', list, me), '</div>',
@@ -156,9 +172,11 @@
             '<div class="cnl-timers">',
             '<div class="cnl-timer"><span class="cnl-timer-label">เวลาใบ้</span>' + segHtml('codenamesClueSeconds', CLUE_OPTIONS, clue, admin) + '</div>',
             '<div class="cnl-timer"><span class="cnl-timer-label">เวลาทาย</span>' + segHtml('codenamesGuessSeconds', GUESS_OPTIONS, guess, admin) + '</div>',
+            '<div class="cnl-timer"><span class="cnl-timer-label">🚩 ทักคำใบ้</span>' + segHtml('codenamesClueFlag', FLAG_OPTIONS, flag, admin) + '</div>',
+            '<p class="cnl-tip">ทักคำใบ้ = หัวหน้าอีกทีมกดได้ทีมละ 1 ครั้ง ถ้าคำใบ้ผิดกติกา</p>',
             admin ? '' : '<p class="cnl-note">หัวหน้าห้องเป็นคนตั้งเวลา</p>',
             '</div>',
-            '<p class="cnl-status ' + (reason ? 'is-bad' : 'is-ok') + '" role="status">' + esc(reason || 'ทีมพร้อมแล้ว — หัวหน้าห้องกดเริ่มได้เลย') + '</p>',
+            '<p class="cnl-status ' + (reason ? 'is-bad' : 'is-ok') + '" role="status">' + esc(reason || okText) + '</p>',
             '</div>'
         ].join('');
     }
@@ -203,7 +221,9 @@
             var timer = event.target.closest('[data-cn-timer]');
             if (timer && !timer.disabled) {
                 var update = {};
-                update[timer.getAttribute('data-cn-timer')] = Number(timer.getAttribute('data-cn-value'));
+                var key = timer.getAttribute('data-cn-timer');
+                var value = Number(timer.getAttribute('data-cn-value'));
+                update[key] = key === 'codenamesClueFlag' ? value === 1 : value;
                 emit('updateRoom', update);
             }
         });

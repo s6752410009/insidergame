@@ -9352,6 +9352,18 @@ io.sockets.on('connection', function(socket) {
         handleCodenamesCommand(socket, callback, (room, playerId) =>
             codenamesRuntime.hostSkipTurn(room, playerId, codenamesContext(data)));
     });
+
+    // หัวหน้าอีกทีมทักว่าคำใบ้ผิดกติกา (ทีมละ 1 ครั้ง) → จบเทิร์น + ได้ปิดคำตัวเอง 1 ใบ
+    safeOn(socket, 'codenames_flag', function(data, callback) {
+        handleCodenamesCommand(socket, callback, (room, playerId) =>
+            codenamesRuntime.engine.flagClue(room, playerId, codenamesContext(data), Date.now()));
+    });
+
+    // หัวหน้าปิดคำ: โหมดร่วมมือ (ตาฝ่ายตรงข้าม) หรือโบนัสทักท้วง
+    safeOn(socket, 'codenames_cover', function(data, callback) {
+        handleCodenamesCommand(socket, callback, (room, playerId) =>
+            codenamesRuntime.engine.coverCard(room, playerId, data?.index, codenamesContext(data), Date.now()));
+    });
     // ===== END CODENAMES =====
 
     // ===== WAVELENGTH (คลื่นความคิด) =====
@@ -10829,6 +10841,15 @@ io.sockets.on('connection', function(socket) {
         if (room.settings.gameMode === 'drawguess' && roomManager.isRoomGameInProgress(room)) {
             io.to(socket.id).emit('chatError', { message: 'ระหว่างเกมพิมพ์ในช่องทายคำแทนนะ' });
             return;
+        }
+
+        // สายลับคำใบ้: หัวหน้า (เห็นกุญแจ) ห้ามแชทระหว่างเกม — คู่มือห้ามใบ้ทางอื่นนอกจากคำใบ้
+        if (room.settings.gameMode === 'codenames') {
+            const codenamesChatBlock = codenamesRuntime.engine.chatBlockReason(room, playerId);
+            if (codenamesChatBlock) {
+                io.to(socket.id).emit('chatError', { message: codenamesChatBlock });
+                return;
+            }
         }
 
         if (room.settings.gameMode === 'werewolf') {
