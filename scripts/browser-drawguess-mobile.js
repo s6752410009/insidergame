@@ -2,6 +2,7 @@
  * เล่นวาดแล้วทายในเบราว์เซอร์จริง: มือถือ 390×844 สามเครื่อง + เดสก์ท็อป 1280×900 หนึ่งเครื่อง
  * สร้างห้องผ่านฟอร์มจริง → ห้องรอ → เริ่มเกม → เลือกคำ/วาดด้วยเมาส์/พิมพ์ทาย ครบทุกตา → โพเดียม → เล่นอีกรอบ
  * คนวาดกด "✅ วาดเสร็จแล้ว" (แตะ 2 ครั้ง) → ทุกคนเห็นเวลาเหลือ ≤ 15 วิ · ตัวนับทายถูก · เฉลยบอกคนวาดต่อไป · สรุปรายคนตอนจบ
+ * กติกา: หัวห้องใส่ 📝 คำของห้อง (ผสม = 1 ใน 3 ตัวเลือก) · การ์ดคำมีป้าย ง่าย/กลาง/ยาก · คนทายกด 🚩 เขียนตัวหนังสือ → นับ 1/2 → กดซ้ำยกเลิก
  * ทุกจังหวะเช็ก: ไม่มี JS/console error · ไม่เลื่อนแนวนอน · ข้อความไม่ล้น · ปุ่มแตะได้ ≥ 44px · ช่องทายอยู่ในจอ
  *
  * รัน: npm run smoke:drawguess:mobile   (ภาพ: DRAWGUESS_SHOT_DIR หรือโฟลเดอร์ชั่วคราว)
@@ -167,6 +168,26 @@ async function layoutProblems(page) {
         await host.page.evaluate(() => { const el = document.querySelector('.dg-lobby-set'); if (el) el.scrollIntoView({ block: 'center' }); });
         await host.page.screenshot({ path: lobbyShot, fullPage: false });
         shots.push(lobbyShot);
+        // 📝 คำของห้อง: หัวห้องพิมพ์ในกล่อง → ปุ่มบอกจำนวน · คนอื่นเห็นแค่จำนวน กดไม่ได้
+        await host.page.click('#dgLobbyCustom');
+        await host.page.waitForSelector('.swal2-textarea', { state: 'visible' });
+        await host.page.fill('.swal2-textarea', 'ครูสมศรี, ร้านป้าแดง\nหมาบ้านเรา, ครูสมศรี');
+        await delay(200);
+        const customShot = path.join(SHOT_DIR, '01b-custom-words-390.png');
+        await host.page.screenshot({ path: customShot, fullPage: false });
+        shots.push(customShot);
+        await host.page.click('.swal2-confirm');
+        await waitFor(async () => /3 คำ/.test(await host.page.$eval('#dgLobbyCustom', el => el.textContent).catch(() => '')), 5000, 'ปุ่มคำของห้องบอก 3 คำ');
+        await waitFor(async () => /3 คำ/.test(await b.page.$eval('#dgLobbyCustom', el => el.textContent).catch(() => '')), 5000, 'คนอื่นเห็นจำนวนคำของห้อง');
+        assert(!/ร้านป้าแดง/.test(await b.page.textContent('.dg-lobby-set')), 'คนอื่นไม่เห็นรายการคำของห้องบนจอ');
+        const hintPressed = await host.page.$$eval('.dg-lobby-opt[data-dg-key="drawguessHints"][aria-pressed="true"]', els => els.map(e => e.textContent.trim()));
+        assert(hintPressed.join() === '💡 เปิด', 'คำใบ้ค่าเริ่ม = เปิด');
+        await host.page.evaluate(() => { const el = document.querySelector('.dg-lobby-set'); if (el) el.scrollIntoView({ block: 'center' }); });
+        const lobbyShot2 = path.join(SHOT_DIR, '01c-room-lobby-custom-390.png');
+        await host.page.screenshot({ path: lobbyShot2, fullPage: false });
+        shots.push(lobbyShot2);
+        const lobbyProblems = await host.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1 ? ['horizontal scroll'] : []);
+        assert(lobbyProblems.length === 0, 'ห้องรอ: ' + lobbyProblems.join());
         const notAdminDisabled = await b.page.$$eval('.dg-lobby-opt', els => els.every(e => e.disabled));
         assert(notAdminDisabled, 'คนที่ไม่ใช่หัวห้องแก้ค่าไม่ได้');
 
@@ -255,6 +276,8 @@ async function layoutProblems(page) {
         const d1 = await findDrawer();
         const guessers1 = players.filter(p => p !== d1);
         await snap('10-choose', [d1, guessers1[0], desk === d1 ? guessers1[1] : desk]);
+        const cards = await d1.page.$$eval('.dg-choice', els => els.map(e => e.textContent));
+        assert(cards.length === 3 && /ง่าย/.test(cards[0]) && cards.some(t => /คำของห้อง/.test(t)), 'การ์ดคำ: ป้ายระดับ + 1 ใบเป็นคำของห้อง ' + cards.join(' | '));
         await d1.page.click('.dg-choice[data-index="0"]');
         await waitFor(async () => (await phaseOf(d1)) === 'draw', 5000, 'เข้าช่วงวาด');
         const word1 = await readWord(d1);
@@ -277,6 +300,21 @@ async function layoutProblems(page) {
         await guess(guessers1[1], word1 + 'จ๋า');
         await waitFor(async () => guessers1[1].page.$eval('#dgToast', el => el.classList.contains('is-on') && /เกือบ/.test(el.textContent)), 3000, 'ขึ้นเกือบแล้ว');
         await snap('11-draw', [d1, guessers1[1]], { wait: 150 });
+        // 🚩 เขียนตัวหนังสือ: คนทายเห็นปุ่มบนภาพ · คนวาดไม่เห็นจนมีคนแจ้ง · แจ้ง → 1/2 · กดซ้ำยกเลิก
+        const reporter = guessers1.find(p => !p.desktop) || guessers1[1];
+        assert(await reporter.page.$eval('#dgReportBtn', el => !el.hidden && el.getBoundingClientRect().height >= 44), 'คนทายเห็นปุ่ม 🚩');
+        assert(await d1.page.$eval('#dgReportBtn', el => el.hidden), 'คนวาดไม่เห็น 🚩 ตอนยังไม่มีคนแจ้ง');
+        await reporter.page.click('#dgReportBtn');
+        await reporter.page.waitForSelector('.swal2-confirm', { state: 'visible' });
+        assert(/เขียนตัวหนังสือ/.test(await reporter.page.textContent('.swal2-popup')), 'ถามยืนยันก่อนแจ้ง');
+        await reporter.page.click('.swal2-confirm');
+        await waitFor(async () => /1\/2/.test(await d1.page.$eval('#dgReportBtn', el => el.hidden ? '' : el.textContent)), 4000, 'คนวาดเห็น 🚩 1/2');
+        await waitFor(async () => reporter.page.$eval('#dgReportBtn', el => el.classList.contains('is-on')), 3000, 'ปุ่มคนแจ้งเป็นสีแดง');
+        assert(/แจ้งว่าเขียนตัวหนังสือ/.test(await d1.page.textContent('#dgFeed')), 'แชทบอกว่ามีคนแจ้ง');
+        await snap('11b-report', [d1, reporter], { wait: 300 });
+        await reporter.page.click('#dgReportBtn');
+        await waitFor(async () => d1.page.$eval('#dgReportBtn', el => el.hidden), 4000, 'ยกเลิกแจ้ง → คนวาดไม่เห็น 🚩');
+        assert(await phaseOf(d1) === 'draw', 'ยังวาดต่อ (ไม่ครบเสียง)');
         // รอคำใบ้เปิดอย่างน้อย 1 ตัว (คำ 1 ตัวอักษรไม่มีคำใบ้)
         const letters = await guessers1[0].page.$$eval('.dg-mask .slot', els => els.length);
         if (letters >= 3) {
