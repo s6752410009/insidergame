@@ -1587,12 +1587,12 @@
         roundLabel: 'เวลาช่วงคุย:'
       },
       undercover: {
-        minPlayers: 4,
+        minPlayers: 3,
         maxPlayers: 10,
         label: 'คำใครไม่เหมือน',
         startLabel: '🫥 แจกคำ',
         readyText: 'พร้อมแล้ว แจกคำได้เลย',
-        waitingText: 'รอผู้เล่นอย่างน้อย 4 คนก่อนเริ่ม',
+        waitingText: 'รอผู้เล่นอย่างน้อย 3 คนก่อนเริ่ม',
         roundLabel: 'เวลาต่อช่วง:'
       },
       coup: {
@@ -2163,21 +2163,8 @@
             '</p>'
           ].join('');
         } else if (resolvedMode === 'undercover') {
-          const mrWhiteOn = !!(settings && settings.undercoverMrWhite);
           lobbySpotlight.style.display = 'block';
-          lobbySpotlight.innerHTML = [
-            '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#fde68a;">🫥 คำใครไม่เหมือน · 4–10 คน</div>',
-            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
-            'ทุกคนได้คำเดียวกัน ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหา · 7 คนขึ้นไปมีสายแฝง 2 คน · Mr. White (ไม่มีคำ) ใช้ตอน 6 คนขึ้นไป',
-            '</p>',
-            '<button type="button" class="uc-mw-toggle" id="ucMrWhiteToggle" aria-pressed="' + (mrWhiteOn ? 'true' : 'false') + '"' + (isAdmin ? '' : ' disabled') + '>',
-            (mrWhiteOn ? '✓ ' : '') + 'Mr. White: ' + (mrWhiteOn ? 'เปิด' : 'ปิด'),
-            '</button>',
-            // เปิดไว้แต่คนยังไม่ถึง 6 = เกมนี้จะไม่มี Mr. White — บอกก่อนเริ่ม ไม่ให้งงทีหลัง
-            (mrWhiteOn && Array.isArray(payload && payload.players) && payload.players.length < 6
-              ? '<p class="uc-mw-note" style="margin:6px 0 0; color:#fde68a; font-size:0.82em;">ตอนนี้ ' + payload.players.length + ' คน — Mr. White จะมีในเกมเมื่อครบ 6 คน</p>'
-              : '')
-          ].join('');
+          lobbySpotlight.innerHTML = buildUndercoverLobbyHtml(settings, payload);
         } else if (resolvedMode === 'coup') {
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = [
@@ -2470,6 +2457,47 @@
       });
     }
 
+    // ต้องตรงกับ getRoleCounts ใน games/undercoverEngine.js
+    function undercoverRoleCounts(count, mrWhiteOn, wanted) {
+      let undercover = wanted === 'auto' ? (count >= 10 ? 3 : (count >= 7 ? 2 : 1)) : Number(wanted);
+      let mrWhite = mrWhiteOn && count >= 5 ? 1 : 0;
+      const tooMany = function() { return count - undercover - mrWhite <= undercover + mrWhite; };
+      while (undercover > 1 && tooMany()) undercover -= 1;
+      if (mrWhite && tooMany()) mrWhite = 0;
+      return { undercover: undercover, mrWhite: mrWhite, civilian: Math.max(0, count - undercover - mrWhite) };
+    }
+
+    function buildUndercoverLobbyHtml(settings, payload) {
+      const mrWhiteOn = !settings || settings.undercoverMrWhite !== false;
+      const wanted = [1, 2, 3].indexOf(Number(settings && settings.undercoverCount)) >= 0 ? String(Number(settings.undercoverCount)) : 'auto';
+      const tieRule = ['speak', 'revote', 'none'].indexOf(settings && settings.undercoverTieRule) >= 0 ? settings.undercoverTieRule : 'speak';
+      const count = Array.isArray(payload && payload.players) ? payload.players.length : 0;
+      const dis = isAdmin ? '' : ' disabled';
+      const opt = function(value, label, current) { return '<option value="' + value + '"' + (value === current ? ' selected' : '') + '>' + label + '</option>'; };
+      const preview = count >= 3 ? undercoverRoleCounts(count, mrWhiteOn, wanted) : null;
+      return [
+        '<div class="lobby-spotlight-pill" style="background:rgba(245,200,107,0.16); color:#fde68a;">🫥 คำใครไม่เหมือน · 3–10 คน</div>',
+        '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+        'ทุกคนได้คำเดียวกัน ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหา · <strong>Mr. White</strong> ไม่มีคำ',
+        '</p>',
+        '<div class="cc-lobby-opts">',
+        '<select id="ucLobbyCount" aria-label="จำนวนสายแฝง"' + dis + '>',
+        opt('auto', '🕶️ สายแฝง: ตามจำนวนคน', wanted), opt('1', '🕶️ สายแฝง 1 คน', wanted), opt('2', '🕶️ สายแฝง 2 คน', wanted), opt('3', '🕶️ สายแฝง 3 คน', wanted),
+        '</select>',
+        '<button type="button" class="uc-mw-toggle" id="ucMrWhiteToggle" aria-pressed="' + (mrWhiteOn ? 'true' : 'false') + '"' + dis + '>',
+        (mrWhiteOn ? '✓ ' : '') + '❔ Mr. White: ' + (mrWhiteOn ? 'เปิด' : 'ปิด'),
+        '</button>',
+        '<select id="ucLobbyTie" aria-label="โหวตเสมอ"' + dis + '>',
+        opt('speak', '⚖️ เสมอ: ใบ้เพิ่มแล้วโหวตใหม่', tieRule), opt('revote', '⚖️ เสมอ: โหวตใหม่เลย', tieRule), opt('none', '⚖️ เสมอ: ไม่มีใครออก', tieRule),
+        '</select>',
+        '</div>',
+        preview
+          ? '<p class="uc-mw-note" style="margin:8px 0 0; color:#fde68a; font-size:0.85em;">ตอนนี้ ' + count + ' คน → พลเมือง ' + preview.civilian + ' · สายแฝง ' + preview.undercover + (preview.mrWhite ? ' · Mr. White 1' : '') +
+            (mrWhiteOn && !preview.mrWhite ? ' (Mr. White มีเมื่อครบ 5 คน)' : '') + '</p>'
+          : '<p class="uc-mw-note" style="margin:8px 0 0; color:#9fb3c8; font-size:0.85em;">แนะนำ: 3–6 คน สายแฝง 1 · 7–9 คน สายแฝง 2 · 10 คน สายแฝง 3 · Mr. White ตั้งแต่ 5 คน</p>'
+      ].join('');
+    }
+
     function showUndercoverLobbyGuide() {
       Swal.fire({
         title: '🫥 คำใครไม่เหมือน เล่นยังไง',
@@ -2477,9 +2505,10 @@
           '<p><strong>ทุกคนได้คำเดียวกัน</strong> ยกเว้นสายแฝงที่ได้คำคล้าย ๆ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน</p>' +
           '<p>1. แตะการ์ดดูคำ แล้วกดพร้อม</p>' +
           '<p>2. ใบ้คนละ 1 คำตามคิว พูดปากเปล่า ห้ามพูดคำตรง ๆ</p>' +
-          '<p>3. โหวตคนที่คำไม่เหมือน · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ</p>' +
-          '<p>4. เปิดบทคนที่ออก · Mr. White ถ้าถูกโหวตออกได้ทายคำพลเมือง ถูก = ชนะทันที</p>' +
-          '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อรอดถึง 2 คนสุดท้าย</p></div>',
+          '<p>3. โหวตคนที่คำไม่เหมือน · เสมอ = คนที่เสมอใบ้เพิ่ม แล้วโหวตใหม่ (เปลี่ยนได้ในห้อง)</p>' +
+          '<p>4. เปิดบทคนที่ออก · Mr. White ถ้าถูกโหวตออกได้ทายคำพลเมือง 1 ครั้ง ถูก = ชนะทันที</p>' +
+          '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อเหลือพลเมืองแค่ 1 คน</p>' +
+          '<p>แต้มฝั่งชนะ: พลเมือง +2 · Mr. White +6 · สายแฝง +10</p></div>',
         background: '#151d2a',
         color: '#fff',
         confirmButtonColor: '#e2493b',
@@ -3356,6 +3385,15 @@
       const next = this.getAttribute('aria-pressed') !== 'true';
       this.disabled = true;
       socket.emit('updateRoom', { undercoverMrWhite: next }, function(res) {
+        if (!res || !res.success) {
+          Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
+        }
+      });
+    });
+    $(document).on('change', '#ucLobbyCount, #ucLobbyTie', function() {
+      if (!isAdmin) return;
+      const update = this.id === 'ucLobbyCount' ? { undercoverCount: this.value } : { undercoverTieRule: this.value };
+      socket.emit('updateRoom', update, function(res) {
         if (!res || !res.success) {
           Swal.fire({ icon: 'error', title: (res && res.error) || 'ตั้งค่าไม่สำเร็จ', background: '#1e1e1e', color: '#fff' });
         }

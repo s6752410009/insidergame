@@ -1025,6 +1025,7 @@ function recordUndercoverGameEnd(roomId, gameResult) {
             resultText: `${winner.label || winner.team}ชนะ`,
             civilianWord: pair?.civilian || null,
             undercoverWord: pair?.undercover || null,
+            points: Number(winner.points && winner.points[player.playerId]) || 0,
             playerCount: players.length
         });
         if (stat.gameHistory.length > MAX_GAME_HISTORY) {

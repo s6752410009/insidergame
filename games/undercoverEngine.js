@@ -1,13 +1,18 @@
 /**
- * คำใครไม่เหมือน (Undercover / 谁是卧底) — 4–10 คน เล่นหน้ากัน พูดใบ้ด้วยปาก
+ * คำใครไม่เหมือน (Undercover / 谁是卧底) — 3–10 คน เล่นหน้ากัน พูดใบ้ด้วยปาก
+ * กติกาตามแอป Undercover (Yanstar) — ดู rules/undercover/rules.md
  *
  * พลเมืองทุกคนได้คำ A · สายแฝงได้คำ B ที่คล้ายกันแต่ไม่เหมือน (ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน)
- * Mr. White (ถ้าหัวห้องเปิด และมี 6 คนขึ้นไป) ไม่ได้คำ และรู้ตัวว่าเป็น Mr. White
+ * Mr. White (เปิดเป็นค่าเริ่ม มีเมื่อ 5 คนขึ้นไป) ไม่ได้คำ และรู้ตัวว่าเป็น Mr. White
+ * จำนวนบทแนะนำ: 3–6 คน สายแฝง 1 · 7–9 คน สายแฝง 2 · 10 คน สายแฝง 3 (+ Mr. White 1 ตั้งแต่ 5 คน)
  *
  * รอบ: ดูคำ (reveal) → ใบ้ทีละคน (clue) → โหวตออก 1 คน (vote) → เฉลยบท (elimination)
+ *      โหวตเสมอ (ค่าเริ่ม 'speak'): คนที่เสมอใบ้เพิ่มคนละ 1 คำ แล้วคนที่เหลือโหวตใหม่เฉพาะคนที่เสมอ
+ *      เสมออีก = รอบนั้นไม่มีใครออก
  *      ถ้าคนที่ออกเป็น Mr. White ได้ทายคำพลเมือง 1 ครั้ง (mrwhite) ทายถูก = Mr. White ชนะทันที
  * ชนะ: พลเมืองชนะเมื่อฝ่ายแฝง (สายแฝง + Mr. White) ออกหมด
- *      ฝ่ายแฝงชนะเมื่อเหลือคนรอด 2 คนและมีฝ่ายแฝงอย่างน้อย 1 คน (หรือพลเมืองหมด)
+ *      ฝ่ายแฝงชนะเมื่อเหลือพลเมืองแค่ 1 คน (หรือไม่เหลือ)
+ * แต้ม (สะสมในห้อง): พลเมืองชนะ 2 · Mr. White ชนะ 6 · สายแฝงชนะ 10
  *
  * ทุกคำสั่งจาก client ต้องแนบ step (เพิ่มทุกครั้งที่เฟส/คนพูดเปลี่ยน) — กดค้างจากจอเก่าจะถูกปัด
  */
@@ -17,9 +22,15 @@ const path = require('path');
 const { gameAssetImage } = require('./gameAssets');
 
 const MODE = 'undercover';
-const MIN_PLAYERS = 4;
+const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 10;
-const MR_WHITE_MIN_PLAYERS = 6;
+const MR_WHITE_MIN_PLAYERS = 5;
+// ค่าตั้งห้อง: จำนวนสายแฝง ('auto' = ตามจำนวนคน) · วิธีตัดสินโหวตเสมอ
+const UNDERCOVER_COUNT_OPTIONS = ['auto', 1, 2, 3];
+const TIE_RULES = ['speak', 'revote', 'none'];
+const DEFAULT_TIE_RULE = 'speak';
+// แต้มต่อเกมของคนฝั่งที่ชนะ (ตามแอป Undercover)
+const ROLE_POINTS = { civilian: 2, mrwhite: 6, undercover: 10 };
 const CLUE_MAX_LENGTH = 40;
 const GUESS_MAX_LENGTH = 40;
 // โหวตเสมอ/ไม่มีใครโหวตติดกันกี่รอบถึงถือว่าวงหาตัวไม่เจอ — ฝ่ายแฝงรอด (กันเกมวนไม่จบเมื่อโต๊ะ AFK)
@@ -164,12 +175,40 @@ function cleanText(text, maxLength) {
         .slice(0, maxLength);
 }
 
-function getRoleCounts(playerCount, mrWhiteEnabled) {
+function sanitizeUndercoverCount(value) {
+    if (value === undefined || value === null || value === '' || value === 'auto') return 'auto';
+    const count = Number(value);
+    return UNDERCOVER_COUNT_OPTIONS.includes(count) ? count : 'auto';
+}
+
+function sanitizeTieRule(value) {
+    return TIE_RULES.includes(value) ? value : DEFAULT_TIE_RULE;
+}
+
+/** Mr. White เปิดเป็นค่าเริ่ม — ปิดเฉพาะเมื่อหัวห้องตั้ง false */
+function isMrWhiteEnabled(settings) {
+    return !settings || settings.undercoverMrWhite !== false;
+}
+
+function recommendedUndercovers(playerCount) {
+    if (playerCount >= 10) return 3;
+    if (playerCount >= 7) return 2;
+    return 1;
+}
+
+/**
+ * จำนวนบทจริงของเกม — พลเมืองต้องมากกว่าฝ่ายแฝงเสมอ (ไม่งั้นเกมจบตั้งแต่ยังไม่เริ่ม)
+ * หัวห้องเลือกสายแฝงมากเกินไปจะถูกลดลงเอง ลดสายแฝงจนเหลือ 1 ก่อน แล้วค่อยตัด Mr. White
+ */
+function getRoleCounts(playerCount, mrWhiteEnabled, undercoverSetting = 'auto') {
     const count = Number(playerCount) || 0;
-    return {
-        undercover: count >= 7 ? 2 : 1,
-        mrWhite: mrWhiteEnabled && count >= MR_WHITE_MIN_PLAYERS ? 1 : 0
-    };
+    const wanted = sanitizeUndercoverCount(undercoverSetting);
+    let undercover = wanted === 'auto' ? recommendedUndercovers(count) : wanted;
+    let mrWhite = mrWhiteEnabled && count >= MR_WHITE_MIN_PLAYERS ? 1 : 0;
+    const tooMany = () => count - undercover - mrWhite <= undercover + mrWhite;
+    while (undercover > 1 && tooMany()) undercover -= 1;
+    if (mrWhite && tooMany()) mrWhite = 0;
+    return { undercover, mrWhite };
 }
 
 // ---------------------------------------------------------------- state
@@ -191,6 +230,9 @@ function createInitialState() {
         votes: {},
         voteCandidates: [],
         isRevote: false,
+        tieBreak: null,
+        tieRule: DEFAULT_TIE_RULE,
+        points: {},
         lastElimination: null,
         mrWhiteGuess: null,
         clues: [],
@@ -353,7 +395,7 @@ function startGame(room) {
     }
 
     const pair = pickWordPair(room);
-    const counts = getRoleCounts(count, !!room.settings?.undercoverMrWhite);
+    const counts = getRoleCounts(count, isMrWhiteEnabled(room.settings), room.settings?.undercoverCount);
     const shuffled = shuffle(state.players.map(player => player.playerId));
     const undercoverIds = new Set(shuffled.slice(0, counts.undercover));
     const mrWhiteIds = new Set(shuffled.slice(counts.undercover, counts.undercover + counts.mrWhite));
@@ -375,6 +417,7 @@ function startGame(room) {
     state.pair = { id: pair.id, category: pair.category, civilian: pair.civilian, undercover: pair.undercover };
     state.usedPairIds = pair.usedPairIds;
     state.roleCounts = counts;
+    state.tieRule = sanitizeTieRule(room.settings?.undercoverTieRule);
     state.startOffset = Math.floor(Math.random() * count);
     state.rosterSnapshot = state.players.map(player => ({
         playerId: player.playerId,
@@ -450,11 +493,13 @@ function buildSpeakerOrder(room) {
     const alive = getAlivePlayers(room);
     if (!alive.length) return [];
     const offset = ((state.startOffset || 0) + Math.max(0, state.round - 1)) % alive.length;
-    let order = alive.slice(offset).concat(alive.slice(0, offset));
-    // Mr. White ห้ามพูดคนแรก (ไม่มีคำให้เกาะ) — เลื่อนไปคนถัดไปที่ไม่ใช่ Mr. White
+    return mrWhiteNotFirst(alive.slice(offset).concat(alive.slice(0, offset))).map(player => player.playerId);
+}
+
+/** Mr. White ห้ามพูดคนแรก (ไม่มีคำให้เกาะ) — เลื่อนไปคนถัดไปที่ไม่ใช่ Mr. White */
+function mrWhiteNotFirst(order) {
     const firstOk = order.findIndex(player => player.role !== 'mrwhite');
-    if (firstOk > 0) order = order.slice(firstOk).concat(order.slice(0, firstOk));
-    return order.map(player => player.playerId);
+    return firstOk > 0 ? order.slice(firstOk).concat(order.slice(0, firstOk)) : order;
 }
 
 function currentSpeakerId(state) {
@@ -467,6 +512,7 @@ function startClueRound(room) {
     state.votes = {};
     state.voteCandidates = [];
     state.isRevote = false;
+    state.tieBreak = null;
     state.speakerOrder = buildSpeakerOrder(room);
     state.speakerIndex = -1;
     pushHistory(room, '🗣️', `รอบที่ ${state.round} — ใบ้คนละ 1 คำ ตามลำดับ`, 'round');
@@ -488,7 +534,7 @@ function advanceSpeaker(room) {
     }
     state.speakerIndex = index;
     if (index >= state.speakerOrder.length) {
-        return startVote(room, null);
+        return startVote(room, state.tieBreak ? state.tieBreak.candidates : null);
     }
     setPhase(room, 'clue', CLUE_MS);
     return state;
@@ -507,7 +553,9 @@ function submitClueDone(room, playerId, context = {}) {
     }
     player.spokeRound = state.round;
     if (text) {
-        state.clues = [...(state.clues || []), { round: state.round, playerId, name: player.name, text }].slice(-80);
+        const clue = { round: state.round, playerId, name: player.name, text };
+        if (state.tieBreak) clue.tiebreak = true;
+        state.clues = [...(state.clues || []), clue].slice(-80);
         pushHistory(room, '💬', `${player.name}: “${text}”`, 'clue');
     } else {
         pushHistory(room, '🗣️', `${player.name} ใบ้แล้ว`, 'clue');
@@ -528,8 +576,32 @@ function skipSpeaker(room, actorId, context = {}) {
 
 // ---------------------------------------------------------------- vote
 
+/**
+ * โหวตเสมอ (กติกา 'speak'): คนที่เสมอใบ้เพิ่มคนละ 1 คำตามลำดับเดิม แล้วโหวตใหม่เฉพาะคนที่เสมอ
+ * (แอป Undercover: "Voted players give 1 more description each, and the remaining players re-vote")
+ */
+function startTieBreak(room, candidates) {
+    const state = room.gameState;
+    const order = state.speakerOrder || [];
+    const seated = order.filter(id => candidates.includes(id))
+        .concat(candidates.filter(id => !order.includes(id)))
+        .map(id => getPlayer(room, id))
+        .filter(player => player && player.alive);
+    state.tieBreak = { candidates: seated.map(player => player.playerId) };
+    state.votes = {};
+    state.voteCandidates = [...state.tieBreak.candidates];
+    state.isRevote = false;
+    state.speakerOrder = mrWhiteNotFirst(seated).map(player => player.playerId);
+    state.speakerIndex = -1;
+    const names = seated.map(player => player.name).join(' / ');
+    pushHistory(room, '⚖️', `โหวตเสมอ — ${names} ใบ้เพิ่มคนละ 1 คำ แล้วโหวตใหม่`, 'tiebreak');
+    pushFx(room, { kind: 'tiebreak', candidates: [...state.tieBreak.candidates] });
+    return advanceSpeaker(room);
+}
+
 function startVote(room, candidates) {
     const state = room.gameState;
+    state.tieBreak = null;
     state.votes = {};
     state.isRevote = Array.isArray(candidates) && candidates.length > 0;
     state.voteCandidates = state.isRevote
@@ -547,8 +619,17 @@ function startVote(room, candidates) {
     return state;
 }
 
+/** โหวตตัดสินเสมอ: คนที่ไม่ได้เสมอเป็นคนโหวต (ถ้าทุกคนที่อยู่ในวงเสมอกันหมด ทุกคนโหวตได้) */
+function revoteVoterIds(room) {
+    const state = room.gameState;
+    const alive = getAlivePlayers(room).map(player => player.playerId);
+    const outsiders = alive.filter(id => !(state.voteCandidates || []).includes(id) && isPresent(room, id));
+    return outsiders.length ? outsiders : alive;
+}
+
 function validVoteTargets(room, voterId) {
     const state = room.gameState;
+    if (state.isRevote && !revoteVoterIds(room).includes(voterId)) return [];
     return (state.voteCandidates || []).filter(id => id !== voterId && getPlayer(room, id)?.alive);
 }
 
@@ -567,6 +648,9 @@ function submitVote(room, playerId, targetPlayerId, context = {}) {
     assertAlivePlayer(room, playerId);
     if (Object.prototype.hasOwnProperty.call(state.votes, playerId)) throw new Error('โหวตไปแล้ว');
     if (targetPlayerId === playerId) throw new Error('โหวตตัวเองไม่ได้');
+    if (state.isRevote && !revoteVoterIds(room).includes(playerId)) {
+        throw new Error('คุณเสมออยู่ — รอบนี้ให้คนอื่นโหวต');
+    }
     if (!validVoteTargets(room, playerId).includes(targetPlayerId)) {
         throw new Error(state.isRevote ? 'โหวตรอบนี้เลือกได้เฉพาะคนที่เสมอ' : 'เลือกผู้เล่นที่ยังอยู่ในเกม');
     }
@@ -598,23 +682,37 @@ function resolveVotes(room) {
         return eliminate(room, leaders[0], { counts, votes: voteMap });
     }
 
-    if (leaders.length > 1 && !state.isRevote) {
+    const rule = sanitizeTieRule(state.tieRule);
+    if (leaders.length > 1 && !state.isRevote && rule !== 'none') {
         pushFx(room, { kind: 'tie', candidates: leaders });
-        return startVote(room, leaders);
+        return rule === 'speak' ? startTieBreak(room, leaders) : startVote(room, leaders);
     }
 
-    // เสมอซ้ำ หรือไม่มีใครโหวต — รอบนี้ไม่มีใครออก
-    state.staleRounds = (state.staleRounds || 0) + 1;
+    // เสมอ (ซ้ำ) หรือไม่มีใครโหวต — รอบนี้ไม่มีใครออก
+    const message = leaders.length > 1
+        ? (state.isRevote ? 'เสมออีก — รอบนี้ไม่มีใครออก' : 'โหวตเสมอ — รอบนี้ไม่มีใครออก')
+        : 'ไม่มีใครโหวต — รอบนี้ไม่มีใครออก';
+    return endRoundWithoutElimination(room, leaders.length > 1 ? 'tie' : 'novotes', message, { counts, votes: voteMap });
+}
+
+/**
+ * จบรอบโดยไม่มีใครถูกโหวตออก
+ * reason 'left' = คนที่เสมอออกจากห้องไปเอง (มีคนหายจากวงแล้ว ไม่นับเป็นรอบที่โหวตไม่ลง)
+ */
+function endRoundWithoutElimination(room, reason, message, tally = {}) {
+    const state = room.gameState;
+    state.tieBreak = null;
+    if (reason !== 'left') state.staleRounds = (state.staleRounds || 0) + 1;
     state.lastElimination = {
         round: state.round,
         playerId: null,
         name: null,
         role: null,
-        reason: leaders.length > 1 ? 'tie' : 'novotes',
-        counts,
-        votes: voteMap
+        reason,
+        counts: tally.counts || {},
+        votes: tally.votes || {}
     };
-    pushHistory(room, '🤝', leaders.length > 1 ? 'เสมออีก — รอบนี้ไม่มีใครออก' : 'ไม่มีใครโหวต — รอบนี้ไม่มีใครออก', 'noelim');
+    pushHistory(room, '🤝', message, 'noelim');
     pushFx(room, { kind: 'elimination', playerId: null });
     if (state.staleRounds >= MAX_STALE_ROUNDS) {
         return finishGame(room, 'undercover', `วงโหวตไม่ลงติดกัน ${MAX_STALE_ROUNDS} รอบ — ฝ่ายแฝงรอด`);
@@ -706,8 +804,9 @@ function checkWinner(room) {
         finishGame(room, 'civilians', 'จับฝ่ายแฝงได้ครบ');
         return true;
     }
-    if (civAlive === 0 || alive.length <= 2) {
-        finishGame(room, 'undercover', 'ฝ่ายแฝงรอดถึงสองคนสุดท้าย');
+    // แอป Undercover: ฝ่ายแฝงชนะเมื่อรอดจน "เหลือพลเมืองแค่ 1 คน"
+    if (civAlive <= 1) {
+        finishGame(room, 'undercover', civAlive === 1 ? 'เหลือพลเมืองแค่ 1 คน — ฝ่ายแฝงรอด' : 'พลเมืองหมดวง — ฝ่ายแฝงรอด');
         return true;
     }
     return false;
@@ -715,17 +814,20 @@ function checkWinner(room) {
 
 function finishGame(room, team, reason) {
     const state = room.gameState;
+    if (state.phase === 'finished') return state;
     const roster = getRosterWithRoles(room);
     const winnerIds = roster
         .filter(player => (team === 'civilians'
             ? player.role === 'civilian'
             : (team === 'mrwhite' ? player.role === 'mrwhite' : isUndercoverSide(player))))
         .map(player => player.playerId);
+    state.points = awardPoints(room, roster, winnerIds);
     state.winner = {
         team,
         label: TEAM_LABELS[team] || team,
         reason,
         winnerIds,
+        points: { ...state.points },
         name: `${TEAM_LABELS[team] || team}ชนะ`
     };
     state.phase = 'finished';
@@ -736,6 +838,25 @@ function finishGame(room, team, reason) {
     pushHistory(room, '🏆', `${TEAM_LABELS[team] || team}ชนะ — ${reason}`, 'winner');
     pushFx(room, { kind: 'finish', team });
     return state;
+}
+
+/** แต้มของเกมนี้ (เฉพาะฝั่งที่ชนะ) + บวกเข้าคะแนนสะสมของห้อง (หายเมื่อห้องปิด) */
+function awardPoints(room, roster, winnerIds) {
+    const points = {};
+    const winners = new Set(winnerIds);
+    const scores = room.undercoverScores && typeof room.undercoverScores === 'object' ? room.undercoverScores : {};
+    roster.forEach(player => {
+        const earned = winners.has(player.playerId) ? (ROLE_POINTS[player.role] || 0) : 0;
+        points[player.playerId] = earned;
+        const prev = scores[player.playerId] || { points: 0, games: 0 };
+        scores[player.playerId] = {
+            name: player.name || prev.name || 'ผู้เล่น',
+            points: (Number(prev.points) || 0) + earned,
+            games: (Number(prev.games) || 0) + 1
+        };
+    });
+    room.undercoverScores = scores;
+    return points;
 }
 
 function getRosterWithRoles(room) {
@@ -770,7 +891,9 @@ function autoResolvePhase(room, now = Date.now()) {
         return advanceSpeaker(room);
     }
     if (state.phase === 'vote') {
-        const missing = getAlivePlayers(room).filter(player => !Object.prototype.hasOwnProperty.call(state.votes, player.playerId));
+        const missing = getAlivePlayers(room)
+            .filter(player => validVoteTargets(room, player.playerId).length > 0)
+            .filter(player => !Object.prototype.hasOwnProperty.call(state.votes, player.playerId));
         if (missing.length) pushHistory(room, '⏰', `หมดเวลาโหวต — ${missing.length} คนงดออกเสียง`, 'timeout');
         return resolveVotes(room);
     }
@@ -814,6 +937,14 @@ function handlePlayerLeft(room, playerId) {
         return room.gameState;
     }
     if (state.phase === 'clue') {
+        if (state.tieBreak) {
+            state.tieBreak.candidates = state.tieBreak.candidates.filter(id => id !== playerId);
+            state.voteCandidates = state.voteCandidates.filter(id => id !== playerId);
+            // คนที่เสมอออกจากห้องไปเอง = คู่เสมอหายไปแล้ว ไม่ต้องโหวตตัดสิน
+            if (state.tieBreak.candidates.length < 2) {
+                return endRoundWithoutElimination(room, 'left', `${player.name} ที่เสมออยู่ออกจากเกม — รอบนี้ไม่โหวตต่อ`);
+            }
+        }
         if (currentSpeakerId(state) === playerId) return advanceSpeaker(room);
         return state;
     }
@@ -823,8 +954,11 @@ function handlePlayerLeft(room, playerId) {
             if (state.votes[voterId] === playerId) delete state.votes[voterId];
         });
         state.voteCandidates = state.voteCandidates.filter(id => id !== playerId);
-        // โหวตซ้ำเหลือคนเสมอไม่ถึง 2 = ไม่มีอะไรให้เลือกแล้ว สรุปผลจากเสียงที่มี
-        if ((state.isRevote && state.voteCandidates.length < 2) || allVoted(room)) resolveVotes(room);
+        // โหวตตัดสินเสมอ แต่คนที่เสมอออกไปเองจนเหลือไม่ถึง 2 = ไม่มีใครถูกโหวตออกเพิ่ม
+        if (state.isRevote && state.voteCandidates.length < 2) {
+            return endRoundWithoutElimination(room, 'left', `${player.name} ที่เสมออยู่ออกจากเกม — รอบนี้ไม่โหวตต่อ`);
+        }
+        if (allVoted(room)) resolveVotes(room);
         return room.gameState;
     }
     return state;
@@ -882,6 +1016,9 @@ function buildClientState(room, viewerPlayerId) {
         hasVoted: votePhase && Object.prototype.hasOwnProperty.call(state.votes || {}, viewer.playerId),
         voteTargetId: votePhase ? (state.votes || {})[viewer.playerId] || null : null,
         voteTargets: votePhase && viewer.alive ? validVoteTargets(room, viewer.playerId) : [],
+        canVote: votePhase && viewer.alive && validVoteTargets(room, viewer.playerId).length > 0,
+        isTied: (votePhase && !!state.isRevote) || (state.phase === 'clue' && !!state.tieBreak)
+            ? (state.voteCandidates || []).includes(viewer.playerId) : false,
         canGuess: state.phase === 'mrwhite' && !!state.mrWhiteGuess?.pending && state.mrWhiteGuess.playerId === viewer.playerId
     } : null;
 
@@ -899,6 +1036,9 @@ function buildClientState(room, viewerPlayerId) {
         returnLobbyEndsAt: state.returnLobbyEndsAt || null,
         tableMode: room?.settings?.tableMode || 'inPerson',
         roleCounts: { ...(state.roleCounts || {}) },
+        tieRule: sanitizeTieRule(state.tieRule),
+        tieBreak: state.phase === 'clue' && state.tieBreak ? { candidates: [...state.tieBreak.candidates] } : null,
+        rolePoints: { ...ROLE_POINTS },
         aliveCount: getAlivePlayers(room).length,
         readyCount: alivePlayers.filter(player => player.ready).length,
         readyTotal: alivePlayers.length,
@@ -929,6 +1069,8 @@ function buildClientState(room, viewerPlayerId) {
         } : null,
         clues: (state.clues || []).map(clue => ({ ...clue })),
         winner: isFinished && state.winner ? { ...state.winner, winnerIds: [...(state.winner.winnerIds || [])] } : null,
+        points: isFinished ? { ...(state.points || {}) } : null,
+        roomScores: isFinished ? roomScoreboard(room) : null,
         pair: isFinished && state.pair ? { civilian: state.pair.civilian, undercover: state.pair.undercover, category: state.pair.category } : null,
         history: (state.history || []).slice(0, 30),
         self,
@@ -939,6 +1081,14 @@ function buildClientState(room, viewerPlayerId) {
         timers: { reveal: REVEAL_MS, clue: CLUE_MS, vote: VOTE_MS, mrwhite: MRWHITE_MS, result: RESULT_MS },
         fx: state.fx || []
     };
+}
+
+/** คะแนนสะสมในห้องนี้ เรียงมากไปน้อย */
+function roomScoreboard(room) {
+    const scores = room?.undercoverScores && typeof room.undercoverScores === 'object' ? room.undercoverScores : {};
+    return Object.entries(scores)
+        .map(([playerId, entry]) => ({ playerId, name: entry.name, points: Number(entry.points) || 0, games: Number(entry.games) || 0 }))
+        .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, 'th'));
 }
 
 /** /m สำหรับแอดมินเว็บเท่านั้น — app.js ต้องเช็กสิทธิ์ก่อนเรียก */
@@ -962,10 +1112,14 @@ function buildAdminReveal(room) {
 module.exports = {
     id: MODE,
     label: 'คำใครไม่เหมือน',
-    description: 'ทุกคนได้คำเหมือนกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 4–10 คน',
+    description: 'ทุกคนได้คำเหมือนกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 3–10 คน',
     minPlayers: MIN_PLAYERS,
     maxPlayers: MAX_PLAYERS,
     MR_WHITE_MIN_PLAYERS,
+    UNDERCOVER_COUNT_OPTIONS,
+    TIE_RULES,
+    DEFAULT_TIE_RULE,
+    ROLE_POINTS,
     ROLE_DEFINITIONS,
     TEAM_LABELS,
     WORD_PAIRS,
@@ -980,6 +1134,11 @@ module.exports = {
     normalizeWord,
     clueRevealsWord,
     getRoleCounts,
+    recommendedUndercovers,
+    sanitizeUndercoverCount,
+    sanitizeTieRule,
+    isMrWhiteEnabled,
+    roomScoreboard,
     createInitialState,
     createPlayerState,
     resetRoomGame,

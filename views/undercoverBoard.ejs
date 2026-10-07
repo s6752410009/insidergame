@@ -61,6 +61,14 @@
   }
   .uc-chip:hover { background: var(--uc-surface-2); color: var(--uc-ink); }
   .uc-chip.is-danger { color: oklch(0.8 0.1 25); }
+  .uc-chip.is-exit { border-color: oklch(0.62 0.16 25 / 0.7); color: oklch(0.86 0.08 25); }
+  .uc-tie { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: color-mix(in oklch, var(--uc-accent) 22%, var(--uc-sunken)); color: var(--uc-ink); font-weight: 700; font-size: 0.92rem; }
+  .uc-final .pts { font-family: var(--uc-display); font-weight: 700; color: var(--uc-gold); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .uc-board { width: 100%; max-width: 440px; display: grid; gap: 4px; padding: 0; margin: 0; list-style: none; text-align: left; }
+  .uc-board li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 10px; background: var(--uc-sunken); font-size: 0.9rem; }
+  .uc-board li b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .uc-board li .n { font-family: var(--uc-display); font-weight: 700; color: var(--uc-gold); font-variant-numeric: tabular-nums; }
+  .uc-board li.is-me { box-shadow: inset 0 0 0 1px var(--uc-gold); }
   .uc-chip:focus-visible, .uc-tap:focus-visible, .uc-vote-tile:focus-visible { outline: 2px solid var(--uc-gold); outline-offset: 2px; }
 
   /* ---------- phase steps ---------- */
@@ -309,6 +317,7 @@
       <h1 class="uc-room"><%= room.name %></h1>
     </div>
     <div class="uc-tools">
+      <button type="button" id="ucExitBtn" class="uc-chip is-exit" aria-label="ออกจากห้อง">🚪 ออก</button>
       <button type="button" id="ucHowTo" class="uc-chip" aria-label="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
       <button type="button" id="ucSidebarBtn" class="uc-chip" aria-expanded="false" aria-controls="playerSidebar" aria-label="ผู้เล่น">👥<span class="t">ผู้เล่น</span></button>
       <% if (room.admin) { %>
@@ -396,6 +405,7 @@ $(function() {
 
   let state = <%- JSON.stringify(typeof undercoverState !== 'undefined' && undercoverState ? undercoverState : {}).replace(/</g, '\\u003c') %>;
   let allowNavigation = false;
+  let leaving = false; // กดออกแล้ว — ห้ามดึงกลับเข้าห้อง/เกม
   let stageKey = '';
   let timerHandle = null;
   let seenFxSeq = Math.max(0, ...((state.fx || []).map(f => f.seq || 0)));
@@ -497,6 +507,11 @@ $(function() {
         ? { title: 'รอคนอื่นดูคำ', sub: 'พร้อมแล้ว ' + s.readyCount + '/' + s.readyTotal + ' คน', mine: false }
         : { title: 'แตะการ์ดเพื่อดูคำของคุณ', sub: 'จำไว้ แล้วกด “พร้อม” · อย่าให้คนข้าง ๆ เห็น', mine: true };
     }
+    if (s.phase === 'clue' && s.tieBreak) {
+      const tiedNames = (s.tieBreak.candidates || []).map(id => id === playerId ? 'คุณ' : nameOf(id)).join(' / ');
+      if (self.isSpeaker) return { title: 'เสมอ! ใบ้เพิ่มอีก 1 คำ', sub: 'ใบ้ให้วงเชื่อว่าคำคุณเหมือนเขา · เสร็จแล้วกด “พูดเสร็จ”', mine: true };
+      return { title: 'เสมอ! ' + tiedNames + ' ใบ้เพิ่ม', sub: 'ฟังให้ดี เดี๋ยวโหวตใหม่เฉพาะคนที่เสมอ', mine: false };
+    }
     if (s.phase === 'clue') {
       if (self.isSpeaker) return { title: 'ตาคุณพูด!', sub: 'ใบ้ 1 คำเกี่ยวกับคำของคุณ ห้ามพูดคำตรง ๆ · เสร็จแล้วกด “พูดเสร็จ”', mine: true };
       const nextId = nextSpeakerId();
@@ -507,6 +522,7 @@ $(function() {
       const v = s.vote || {};
       if (self.hasVoted) return { title: 'โหวตแล้ว — รอคนอื่น', sub: 'โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน', mine: false };
       const tied = (v.candidates || []).map(id => id === playerId ? 'คุณ' : nameOf(id)).join(' / ');
+      if (!self.canVote) return { title: 'คุณเสมออยู่ — รอคนอื่นโหวต', sub: 'เสมอกัน: ' + tied + ' · โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน', mine: false };
       return { title: v.isRevote ? 'เสมอ! โหวตใหม่' : 'โหวตคนที่คำไม่เหมือน', sub: v.isRevote ? 'เสมอกัน: ' + tied + ' · เลือกได้เฉพาะคนที่เสมอ ถ้าเสมออีก รอบนี้ไม่มีใครออก' : 'แตะชื่อ แล้วกดยืนยัน · โหวตตัวเองไม่ได้', mine: true };
     }
     if (s.phase === 'mrwhite') {
@@ -515,7 +531,7 @@ $(function() {
     }
     if (s.phase === 'elimination') {
       const last = s.lastElimination || {};
-      if (!last.playerId) return { title: 'รอบนี้ไม่มีใครออก', sub: 'ไปรอบต่อไป ใบ้ใหม่อีกรอบ', mine: false };
+      if (!last.playerId) return { title: 'รอบนี้ไม่มีใครถูกโหวตออก', sub: 'ไปรอบต่อไป ใบ้ใหม่อีกรอบ', mine: false };
       return { title: last.name + ' เป็น' + (last.role ? last.role.name : ''), sub: 'เดี๋ยวไปรอบต่อไป', mine: false };
     }
     return { title: 'รอเริ่มเกม', sub: '', mine: false };
@@ -536,7 +552,7 @@ $(function() {
   // ---------- stage ----------
   function computeStageKey() {
     const self = state.self || {};
-    return [state.phase, state.step, self.alive, self.ready, self.hasVoted, self.canGuess, (state.vote || {}).isRevote].join('|');
+    return [state.phase, state.step, self.alive, self.ready, self.hasVoted, self.canVote, self.canGuess, (state.vote || {}).isRevote, !!state.tieBreak].join('|');
   }
 
   function renderStage() {
@@ -562,7 +578,8 @@ $(function() {
         return '<li class="' + cls + '"><b>' + (i + 1) + '</b><span>' + (id === playerId ? 'คุณ' : esc(nameOf(id))) + '</span></li>';
       }).join('');
       const remote = s.tableMode === 'remote';
-      html = '<div class="uc-speaker' + (self.isSpeaker ? ' is-me' : '') + '"><div class="uc-speaker-ring">' + avatar(sp, 72) + '</div>' +
+      html = (s.tieBreak ? '<p class="uc-tie">⚖️ เสมอ — ใบ้เพิ่มคนละ 1 คำ แล้วโหวตใหม่</p>' : '') +
+        '<div class="uc-speaker' + (self.isSpeaker ? ' is-me' : '') + '"><div class="uc-speaker-ring">' + avatar(sp, 72) + '</div>' +
         '<p class="uc-speaker-name">' + (self.isSpeaker ? 'ตาคุณ' : esc(sp.name || '')) + '</p></div>' +
         '<ol class="uc-order" aria-label="ลำดับการพูด">' + order + '</ol>';
       if (self.isSpeaker) {
@@ -578,12 +595,13 @@ $(function() {
       if (self.alive) html += wordCardHtml({ id: 'ucPeekCard', small: true, open: false }) + '<p class="uc-hint">ลืมคำ? แตะการ์ดดูแป๊บเดียว</p>';
     } else if (s.phase === 'vote') {
       const v = s.vote || {};
-      if (self.alive && !self.hasVoted) {
+      if (v.isRevote) html = '<p class="uc-tie">⚖️ โหวตใหม่ เฉพาะ ' + esc((v.candidates || []).map(id => id === playerId ? 'คุณ' : nameOf(id)).join(' / ')) + '</p>';
+      if (self.canVote && !self.hasVoted) {
         const targets = self.voteTargets || [];
         if (pickedVote && (targets.indexOf(pickedVote) < 0 || pickedVoteStep !== s.step)) pickedVote = null;
         const lastClues = {};
         (s.clues || []).filter(c => c.round === s.round).forEach(c => { lastClues[c.playerId] = c.text; });
-        html = '<div class="uc-vote-grid" role="radiogroup" aria-label="เลือกคนที่จะโหวตออก">' + targets.map(function(id) {
+        html += '<div class="uc-vote-grid" role="radiogroup" aria-label="เลือกคนที่จะโหวตออก">' + targets.map(function(id) {
           const p = playerById(id) || {};
           return '<button type="button" role="radio" class="uc-vote-tile' + (pickedVote === id ? ' is-picked' : '') + '" data-target="' + esc(id) + '" aria-checked="' + (pickedVote === id ? 'true' : 'false') + '">' +
             avatar(p, 36) + '<span class="uc-vote-copy"><span class="uc-vote-name">' + esc(p.name) + '</span>' +
@@ -592,7 +610,7 @@ $(function() {
           '<div class="uc-actions"><button type="button" id="ucVoteConfirm" class="ui-btn ui-btn--primary ui-btn--lg"' + (pickedVote ? '' : ' disabled') + '>' +
           (pickedVote ? 'โหวต ' + esc(nameOf(pickedVote)) : 'เลือกคนก่อน') + '</button></div>';
       } else {
-        html = '<p class="uc-result-sub">' + (self.hasVoted ? 'คุณโหวต <b>' + esc(nameOf(self.voteTargetId)) + '</b>' : (self.alive === false ? 'คุณออกจากเกมแล้ว — รอดูผลโหวต' : 'คุณไม่ได้โหวตรอบนี้')) + '</p>' +
+        html += '<p class="uc-result-sub">' + (self.hasVoted ? 'คุณโหวต <b>' + esc(nameOf(self.voteTargetId)) + '</b>' : (self.alive === false ? 'คุณออกจากเกมแล้ว — รอดูผลโหวต' : (self.isTied ? 'คุณเสมออยู่ — รอบนี้ให้คนอื่นโหวต' : 'คุณไม่ได้โหวตรอบนี้'))) + '</p>' +
           '<p class="uc-count" id="ucVoteCount"></p>';
       }
       if (self.alive) html += wordCardHtml({ id: 'ucPeekCard', small: true, open: false });
@@ -614,7 +632,8 @@ $(function() {
           html += '<p class="uc-result-sub">' + (s.mrWhiteGuess.guess ? 'ทายว่า “' + esc(s.mrWhiteGuess.guess) + '” — ผิด' : 'ไม่ได้ทายทันเวลา — นับว่าทายผิด') + '</p>';
         }
       } else {
-        html = '<div style="font-size:3rem" aria-hidden="true">🤝</div><p class="uc-result-title">' + (last.reason === 'tie' ? 'เสมออีกรอบ' : 'ไม่มีใครโหวต') + '</p><p class="uc-result-sub">รอบนี้ไม่มีใครออก</p>';
+        const noTitle = last.reason === 'tie' ? 'โหวตเสมอ' : (last.reason === 'left' ? 'คนที่เสมอออกจากเกม' : 'ไม่มีใครโหวต');
+        html = '<div style="font-size:3rem" aria-hidden="true">🤝</div><p class="uc-result-title">' + noTitle + '</p><p class="uc-result-sub">รอบนี้ไม่มีใครถูกโหวตออก</p>';
       }
       if (tally) html += '<ul class="uc-votelist" aria-label="ผลโหวต">' + tally + '</ul>';
       html += self.isHost
@@ -656,10 +675,15 @@ $(function() {
       return ((w.winnerIds || []).indexOf(b.playerId) >= 0) - ((w.winnerIds || []).indexOf(a.playerId) >= 0);
     }).map(function(p) {
       const win = (w.winnerIds || []).indexOf(p.playerId) >= 0;
+      const pts = Number((s.points || {})[p.playerId]) || 0;
       return '<li class="' + (win ? 'is-winner' : '') + '">' + (p.role ? '<img src="' + esc(p.role.image) + '" alt="">' : '') +
         '<span class="who"><b>' + esc(p.name) + (p.isSelf ? ' (คุณ)' : '') + '</b><span>' + (p.role ? esc(p.role.name) : '') + (win ? ' · ชนะ' : '') +
         (p.left ? ' · ออกกลางเกม' : (p.alive ? ' · รอดถึงจบ' : ' · ถูกโหวตออกรอบ ' + (p.eliminatedRound || '-'))) + '</span></span>' +
-        '<span class="w">' + esc(p.word || 'ไม่มีคำ') + '</span></li>';
+        '<span class="w">' + esc(p.word || 'ไม่มีคำ') + '</span>' +
+        '<span class="pts" aria-label="แต้ม">' + (pts ? '+' + pts : '0') + '</span></li>';
+    }).join('');
+    const board = (s.roomScores || []).slice(0, 12).map(function(r, i) {
+      return '<li class="' + (r.playerId === playerId ? 'is-me' : '') + '"><span>' + (i + 1) + '</span><b>' + esc(r.name) + '</b><span class="n">' + r.points + ' แต้ม</span></li>';
     }).join('');
     const guess = s.mrWhiteGuess && !s.mrWhiteGuess.pending && s.mrWhiteGuess.guess
       ? '<p class="uc-result-sub">Mr. White ทาย “' + esc(s.mrWhiteGuess.guess) + '” — ' + (s.mrWhiteGuess.correct ? 'ถูก!' : 'ผิด') + '</p>' : '';
@@ -667,6 +691,8 @@ $(function() {
       '<div class="uc-pair"><div class="uc-pair-item civ"><small>คำพลเมือง</small><strong>' + esc(pair.civilian || '-') + '</strong></div>' +
       '<div class="uc-pair-item und"><small>คำสายแฝง</small><strong>' + esc(pair.undercover || '-') + '</strong></div></div>' +
       '<ul class="uc-final">' + rows + '</ul>' +
+      '<p class="uc-hint">แต้มฝั่งชนะ: พลเมือง +2 · Mr. White +6 · สายแฝง +10</p>' +
+      (board ? '<p class="uc-clues-head">คะแนนสะสมในห้องนี้</p><ol class="uc-board" aria-label="คะแนนสะสม">' + board + '</ol>' : '') +
       (self.isHost ? '' : '<p class="uc-hint">รอหัวห้องกด “เล่นอีกรอบ” หรือกลับห้องรอได้เลย</p>') +
       '<div class="uc-actions">' +
         (self.isHost ? '<button type="button" id="ucRestartBtn" class="ui-btn ui-btn--primary">เล่นอีกรอบ (คำใหม่)</button>' : '') +
@@ -685,7 +711,8 @@ $(function() {
     }
     if (s.phase === 'vote') {
       const v = s.vote || {};
-      const waiting = (s.players || []).filter(p => p.alive && p.online && !p.hasVoted).map(p => p.name);
+      const tiedOut = v.isRevote && (v.voterCount || 0) < (s.aliveCount || 0) ? (v.candidates || []) : [];
+      const waiting = (s.players || []).filter(p => p.alive && p.online && !p.hasVoted && tiedOut.indexOf(p.playerId) < 0).map(p => p.name);
       $('#ucVoteCount').text('โหวตแล้ว ' + v.votedCount + '/' + v.voterCount + ' คน' + (waiting.length ? ' · รอ ' + waiting.join(', ') : ''));
     }
   }
@@ -696,8 +723,9 @@ $(function() {
     if (!p.alive) return p.left ? 'ออกจากเกม' : 'ถูกโหวตออก รอบ ' + (p.eliminatedRound || '-');
     if (!p.online) return 'ออฟไลน์';
     if (s.phase === 'reveal') return p.ready ? 'พร้อมแล้ว' : 'กำลังดูคำ';
+    if (s.phase === 'clue' && s.tieBreak) return p.isSpeaker ? 'กำลังใบ้เพิ่ม' : ((s.tieBreak.candidates || []).indexOf(p.playerId) >= 0 ? 'เสมอ รอใบ้เพิ่ม' : 'รอโหวต');
     if (s.phase === 'clue') return p.isSpeaker ? 'กำลังพูด' : (p.spoke ? 'ใบ้แล้ว' : 'รอพูด');
-    if (s.phase === 'vote') return p.hasVoted ? 'โหวตแล้ว' : 'กำลังเลือก';
+    if (s.phase === 'vote') return p.hasVoted ? 'โหวตแล้ว' : ((s.vote && s.vote.isRevote && (s.vote.candidates || []).indexOf(p.playerId) >= 0 && (s.vote.voterCount || 0) < (s.aliveCount || 0)) ? 'เสมออยู่' : 'กำลังเลือก');
     return 'ยังอยู่ในวง';
   }
   function renderSeats() {
@@ -772,6 +800,7 @@ $(function() {
     const last = events[events.length - 1];
     if (last.kind === 'round') flashBanner('รอบที่ ' + last.round + ' · เริ่มใบ้');
     else if (last.kind === 'vote') flashBanner(last.isRevote ? 'เสมอ! โหวตใหม่' : 'ถึงเวลาโหวต');
+    else if (last.kind === 'tiebreak') flashBanner('เสมอ! ใบ้เพิ่มคนละคำ');
     else if (last.kind === 'mrwhite') flashBanner(last.correct ? 'Mr. White ทายถูก!' : 'Mr. White ทายผิด');
     else if (last.kind === 'finish') flashBanner('จบเกม!');
     if (window.haptics && typeof window.haptics.tap === 'function' && last.kind !== 'deal') { try { window.haptics.tap(); } catch (e) {} }
@@ -781,7 +810,7 @@ $(function() {
     const self = state.self;
     if (state.phase === 'clue' && self.isSpeaker) {
       window.partyPlay.pingTurn({ key: 'uc-clue-' + state.step, title: 'ตาคุณพูด', subtitle: 'ใบ้ 1 คำ แล้วกดพูดเสร็จ' });
-    } else if (state.phase === 'vote' && self.alive && !self.hasVoted) {
+    } else if (state.phase === 'vote' && self.canVote && !self.hasVoted) {
       window.partyPlay.pingTurn({ key: 'uc-vote-' + state.step, title: 'ถึงเวลาโหวต', subtitle: 'เลือกคนที่คำไม่เหมือน' });
     } else if (state.phase === 'mrwhite' && self.canGuess) {
       window.partyPlay.pingTurn({ key: 'uc-guess-' + state.step, title: 'ทายคำ!', subtitle: 'ทายถูกชนะทันที' });
@@ -813,7 +842,7 @@ $(function() {
       busy = false;
       if (res && !res.success) {
         Swal.fire({ icon: 'error', title: res.error || 'ทำรายการไม่สำเร็จ', background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b' });
-        socket.emit('undercover_requestState', { roomId: roomId, playerId: playerId });
+        if (!leaving) socket.emit('undercover_requestState', { roomId: roomId, playerId: playerId });
       }
       if (onDone) onDone(res);
     });
@@ -897,6 +926,11 @@ $(function() {
     });
   });
 
+  function tieRuleText() {
+    if (state.tieRule === 'none') return 'เสมอ = รอบนี้ไม่มีใครออก';
+    if (state.tieRule === 'revote') return 'เสมอ = คนที่ไม่เสมอโหวตใหม่เฉพาะคนที่เสมอ · เสมออีก = ไม่มีใครออก';
+    return 'เสมอ = คนที่เสมอใบ้เพิ่มคนละ 1 คำ แล้วคนที่เหลือโหวตใหม่ · เสมออีก = ไม่มีใครออก';
+  }
   $('#ucHowTo').on('click', function() {
     Swal.fire({
       title: 'คำใครไม่เหมือน เล่นยังไง',
@@ -904,9 +938,11 @@ $(function() {
         '<p><strong>ทุกคนได้คำเดียวกัน</strong> ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน</p>' +
         '<p>1. แตะการ์ดดูคำ แล้วกดพร้อม</p>' +
         '<p>2. ใบ้คนละ 1 คำตามลำดับ (พูดปากเปล่า) ห้ามพูดคำตรง ๆ · พูดจบกด <strong>“พูดเสร็จ”</strong> คนถัดไปได้พูดทันที ไม่ต้องรอเวลาหมด</p>' +
-        '<p>3. โหวตคนที่คิดว่าคำไม่เหมือน · ทุกคนโหวตครบ = เปิดผลทันที · เสมอ = โหวตใหม่เฉพาะคนที่เสมอ 1 ครั้ง</p>' +
-        '<p>4. เปิดบทคนที่ออก · <strong>Mr. White</strong> (ไม่มีคำ) ถ้าถูกโหวตออกได้ทายคำพลเมือง ถูก = ชนะทันที</p>' +
-        '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อรอดถึง 2 คนสุดท้าย</p>' +
+        '<p>3. โหวตคนที่คิดว่าคำไม่เหมือน · ทุกคนโหวตครบ = เปิดผลทันที</p>' +
+        '<p>' + tieRuleText() + '</p>' +
+        '<p>4. เปิดบทคนที่ออก · <strong>Mr. White</strong> (ไม่มีคำ · ไม่พูดคนแรก) ถ้าถูกโหวตออกได้ทายคำพลเมือง 1 ครั้ง ถูก = ชนะทันที</p>' +
+        '<p><strong>พลเมืองชนะ</strong> เมื่อฝ่ายแฝงออกหมด · <strong>ฝ่ายแฝงชนะ</strong> เมื่อเหลือพลเมืองแค่ 1 คน</p>' +
+        '<p>แต้มฝั่งชนะ: พลเมือง +2 · Mr. White +6 · สายแฝง +10</p>' +
         '<p style="color:#9fb3c8">เวลา: ดูคำ 30 วิ · พูดคนละ 45 วิ · โหวต 60 วิ · Mr. White ทาย 30 วิ</p></div>',
       background: '#151d2a', color: '#fff', confirmButtonColor: '#e2493b', confirmButtonText: 'เข้าใจแล้ว'
     });
@@ -929,27 +965,58 @@ $(function() {
   $('#ucSidebarBtn').on('click', function() { setSidebarOpen(!$('#playerSidebar').hasClass('open')); });
   $('#closeSidebarBtn, #sidebarOverlay').on('click', function() { setSidebarOpen(false); });
   $(document).on('keydown', function(e) { if (e.key === 'Escape' && $('#playerSidebar').hasClass('open')) setSidebarOpen(false); });
-  $('#leaveRoomBtn').on('click', function() {
+  // ออกจากห้อง: บอกผลที่ตามมาตามจังหวะของเกมตอนนี้
+  function exitConsequences() {
+    const s = state; const self = s.self || {};
+    const me = playerById(playerId);
+    if (!s.phase || s.phase === 'lobby' || s.phase === 'finished') return ['เกมจบแล้ว — ออกได้เลย ไม่เสียอะไร'];
+    if (!me) return ['คุณดูอยู่เฉย ๆ — ออกได้เลย'];
+    if (self.alive === false && !self.canGuess) return ['คุณถูกโหวตออกแล้ว — ออกได้ เกมเดินต่อ', 'ผลแพ้/ชนะนับตามฝั่งของคุณตอนจบเกม'];
+    const lines = [];
+    if (self.canGuess) lines.push('ยังไม่ได้ทายคำ = นับว่าทายผิด');
+    else if (self.isSpeaker) lines.push('ตอนนี้ตาคุณพูด — ตาจะข้ามไปคนต่อไป');
+    else if (s.phase === 'vote' && !self.hasVoted && self.canVote) lines.push('โหวตของคุณจะไม่นับ');
+    lines.push('คุณจะตกรอบ และทุกคนจะเห็นบทของคุณ');
+    lines.push('ผลแพ้/ชนะนับตามฝั่งของคุณตอนจบเกม');
+    if (self.isHost) lines.push('หัวห้องจะย้ายไปให้คนอื่น');
+    return lines;
+  }
+  function leaveTable() {
+    if (leaving) return;
+    leaving = true;
+    allowNavigation = true;
+    let gone = false;
+    const go = function() { if (gone) return; gone = true; window.location.href = '/rooms?playerId=' + playerId; };
+    setTimeout(go, 4000); // ไม่มีคำตอบใน 4 วิ ก็ออกเลย
+    socket.emit('leaveRoom', { roomId: roomId, playerId: playerId }, go);
+  }
+  function confirmExit() {
     Swal.fire({
-      icon: 'question', title: 'ออกจากห้อง?', text: 'ออกกลางเกม = นับว่าตกรอบ', showCancelButton: true,
-      confirmButtonText: 'ออก', cancelButtonText: 'ยกเลิก', background: '#151d2a', color: '#fff'
-    }).then(r => {
-      if (r.isConfirmed) {
-        allowNavigation = true;
-        socket.emit('leaveRoom', {}, function() { window.location.href = '/rooms?playerId=' + playerId; });
-      }
-    });
-  });
+      icon: 'question',
+      title: 'ออกจากห้อง?',
+      html: '<ul style="text-align:left; margin:0; padding-left:1.2em; line-height:1.55;">' + exitConsequences().map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>',
+      showCancelButton: true,
+      confirmButtonText: 'ออกจากห้อง',
+      cancelButtonText: 'อยู่ต่อ',
+      confirmButtonColor: '#e2493b',
+      reverseButtons: true,
+      background: '#151d2a',
+      color: '#fff'
+    }).then(r => { if (r.isConfirmed) leaveTable(); });
+  }
+  $('#ucExitBtn').on('click', confirmExit);
+  $('#leaveRoomBtn').on('click', function() { setSidebarOpen(false); confirmExit(); });
   window.addEventListener('beforeunload', function(e) { if (!allowNavigation && state.phase && state.phase !== 'finished') e.preventDefault(); });
 
   socket.on('connect', function() {
+    if (leaving) return;
     $('#ucConn').hide();
     socket.emit('initPlayer', playerId);
     socket.emit('setRoom', { roomId: roomId, playerId: playerId });
     socket.emit('undercover_requestState', { roomId: roomId, playerId: playerId });
   });
-  socket.on('disconnect', function() { $('#ucConn').show(); });
-  socket.on('undercoverState', render);
+  socket.on('disconnect', function() { if (!leaving) $('#ucConn').show(); });
+  socket.on('undercoverState', function(next) { if (!leaving) render(next); });
   socket.on('roomUpdate', function(data) {
     if (!data || !data.players) return;
     $('#onlinePlayerList').html(data.players.map(p =>
@@ -959,15 +1026,16 @@ $(function() {
         (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:#9fb3c8;">ออฟไลน์</span>' : '') +
       '</li>').join(''));
   });
-  function goLobby() { allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
+  function goLobby() { if (leaving) return; allowNavigation = true; window.location.href = '/room/' + roomId + '?playerId=' + playerId; }
   socket.on('redirectToLobby', goLobby);
   socket.on('restartGame', goLobby);
   socket.on('returnToLobby', function(data) {
     state.returnLobbyEndsAt = Number(data && data.endsAt) || (Date.now() + (Number(data && data.countdown) || 20) * 1000);
     tickTimer();
   });
-  socket.on('gameStarting', function() { allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
+  socket.on('gameStarting', function() { if (leaving) return; allowNavigation = true; window.location.href = '/game/' + roomId + '?playerId=' + playerId; });
   socket.on('kickedFromRoom', function(data) {
+    if (leaving) return;
     allowNavigation = true;
     Swal.fire({ icon: 'error', title: 'ถูกเตะออกจากห้อง', text: (data && data.reason) || '', background: '#151d2a', color: '#fff' })
       .then(() => { window.location.href = '/rooms?playerId=' + playerId; });

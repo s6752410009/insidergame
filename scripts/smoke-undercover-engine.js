@@ -38,7 +38,12 @@ function makeRoom(playerCount, options = {}) {
         name: 'UndercoverTest',
         admin: 'p0',
         players,
-        settings: { gameMode: 'undercover', undercoverMrWhite: !!options.mrWhite },
+        settings: {
+            gameMode: 'undercover',
+            undercoverMrWhite: !!options.mrWhite,
+            undercoverCount: options.undercoverCount,
+            undercoverTieRule: options.tieRule
+        },
         gameState: engine.createInitialState()
     };
 }
@@ -107,10 +112,11 @@ console.log(`✓ คู่คำ ${engine.WORD_PAIRS.length} คู่ ไม่
 }
 
 // ---------------------------------------------------------------- setup
-for (let n = 4; n <= 10; n += 1) {
+for (let n = 3; n <= 10; n += 1) {
     const counts = engine.getRoleCounts(n, true);
-    assert(counts.undercover === (n >= 7 ? 2 : 1), `${n} คน ต้องมีสายแฝง ${n >= 7 ? 2 : 1}`);
-    assert(counts.mrWhite === (n >= 6 ? 1 : 0), `${n} คน Mr. White ต้อง ${n >= 6 ? 1 : 0}`);
+    const wantUc = n >= 10 ? 3 : (n >= 7 ? 2 : 1);
+    assert(counts.undercover === wantUc, `${n} คน ต้องมีสายแฝง ${wantUc}`);
+    assert(counts.mrWhite === (n >= 5 ? 1 : 0), `${n} คน Mr. White ต้อง ${n >= 5 ? 1 : 0}`);
     assert(engine.getRoleCounts(n, false).mrWhite === 0, 'ปิด Mr. White ต้องไม่มี');
     const room = started(n, { mrWhite: true });
     assert(byRole(room, 'undercover').length === counts.undercover, 'จำนวนสายแฝงตอนแจกไม่ตรง');
@@ -122,14 +128,14 @@ for (let n = 4; n <= 10; n += 1) {
     assert(byRole(room, 'mrwhite').every(p => p.word === null), 'Mr. White ต้องไม่มีคำ');
     assert(room.gameState.phase === 'reveal' && room.gameState.phaseEndsAt > Date.now(), 'เริ่มที่ช่วงดูคำพร้อมเวลา');
 }
-throwsWith(() => started(3), /4–10/, 'ต่ำกว่า 4 คนต้องเริ่มไม่ได้');
-throwsWith(() => started(11), /4–10/, 'เกิน 10 คนต้องเริ่มไม่ได้');
+throwsWith(() => started(2), /3–10/, 'ต่ำกว่า 3 คนต้องเริ่มไม่ได้');
+throwsWith(() => started(11), /3–10/, 'เกิน 10 คนต้องเริ่มไม่ได้');
 {
-    const room = started(6, { offline: [5] });
-    assert(room.gameState.players.length === 5, 'แจกเฉพาะคนที่ออนไลน์');
-    assert(!room.gameState.players.some(p => p.playerId === 'p5'), 'คนออฟไลน์ต้องไม่ได้บท');
-    assert(byRole(room, 'mrwhite').length === 0, '5 คนออนไลน์ Mr. White ต้องไม่มีแม้เปิดตั้งค่า');
-    throwsWith(() => started(5, { offline: [3, 4] }), /4–10/, 'ออนไลน์ไม่ถึง 4 ต้องเริ่มไม่ได้');
+    const room = started(5, { offline: [4], mrWhite: true });
+    assert(room.gameState.players.length === 4, 'แจกเฉพาะคนที่ออนไลน์');
+    assert(!room.gameState.players.some(p => p.playerId === 'p4'), 'คนออฟไลน์ต้องไม่ได้บท');
+    assert(byRole(room, 'mrwhite').length === 0, '4 คนออนไลน์ Mr. White ต้องไม่มีแม้เปิดตั้งค่า');
+    throwsWith(() => started(5, { offline: [2, 3, 4] }), /3–10/, 'ออนไลน์ไม่ถึง 3 ต้องเริ่มไม่ได้');
 }
 console.log('✓ จำนวนบท / แจกเฉพาะคนออนไลน์ / คำพลเมือง-สายแฝง');
 
@@ -201,7 +207,7 @@ function assertNoLeak(room, label) {
     console.log('✓ จบแบบพลเมืองชนะ');
 }
 
-// ---------------------------------------------------------------- ending: undercover wins (2 left)
+// ---------------------------------------------------------------- ending: undercover wins (เหลือพลเมือง 1)
 {
     const room = started(4);
     const uc = byRole(room, 'undercover')[0];
@@ -213,10 +219,10 @@ function assertNoLeak(room, label) {
         voteOut(room, civ.playerId);
         toNextRound(room);
     }
-    assert(room.gameState.winner.team === 'undercover', 'เหลือ 2 คนมีสายแฝงต้องชนะ');
-    assert(alive(room).length === 2 && alive(room).some(p => p.playerId === uc.playerId), 'สายแฝงต้องรอดถึง 2 คนสุดท้าย');
+    assert(room.gameState.winner.team === 'undercover', 'เหลือพลเมือง 1 คน สายแฝงต้องชนะ');
+    assert(alive(room).length === 2 && alive(room).some(p => p.playerId === uc.playerId), 'สายแฝงต้องรอดจนเหลือพลเมือง 1');
     assert(room.gameState.winner.winnerIds.join() === uc.playerId, 'ผู้ชนะ = สายแฝง');
-    console.log('✓ จบแบบสายแฝงรอดถึง 2 คนสุดท้าย');
+    console.log('✓ จบแบบสายแฝงรอดจนเหลือพลเมือง 1 คน');
 }
 
 // ---------------------------------------------------------------- Mr. White
@@ -263,20 +269,15 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
 
 // คนเริ่มพูดวนทุกรอบ
 {
-    const room = started(7);
+    const room = started(7, { tieRule: 'none' });
     readyAll(room);
     const firsts = [speaker(room)];
     for (let r = 0; r < 2; r += 1) {
         speakAll(room);
-        // โหวตเสมอสองรอบ = ไม่มีใครออก → คนในวงเท่าเดิม
+        // กติกาเสมอ 'none': โหวตเสมอ = ไม่มีใครออก → คนในวงเท่าเดิม
         const ids = alive(room).map(p => p.playerId);
         ids.forEach((id, idx) => engine.submitVote(room, id, ids[(idx + 1) % ids.length], S(room)));
-        assert(room.gameState.isRevote, 'เสมอต้องโหวตใหม่');
-        const cands = room.gameState.voteCandidates;
-        alive(room).forEach((p, idx) => {
-            const targets = cands.filter(c => c !== p.playerId);
-            engine.submitVote(room, p.playerId, targets[idx % targets.length], S(room));
-        });
+        assert(room.gameState.phase === 'elimination' && room.gameState.lastElimination.playerId === null, 'เสมอ (none) = ไม่มีใครออก');
         toNextRound(room);
         firsts.push(speaker(room));
     }
@@ -294,16 +295,21 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
     engine.submitVote(room, b, a, S(room));
     engine.submitVote(room, c, a, S(room));
     engine.submitVote(room, d, b, S(room));
-    assert(room.gameState.phase === 'vote' && room.gameState.isRevote, 'เสมอครั้งแรก = โหวตใหม่');
+    // ค่าเริ่ม 'speak': คนที่เสมอใบ้เพิ่มคนละ 1 คำก่อน
+    assert(room.gameState.phase === 'clue' && room.gameState.tieBreak, 'เสมอครั้งแรก = คนที่เสมอใบ้เพิ่ม');
+    assert(room.gameState.speakerOrder.slice().sort().join() === [a, b].sort().join(), 'ใบ้เพิ่มเฉพาะคนที่เสมอ');
+    assert(room.gameState.round === 1, 'ใบ้เพิ่มยังเป็นรอบเดิม');
+    throwsWith(() => engine.submitClueDone(room, c, S(room)), /ยังไม่ถึงตาคุณ/, 'คนที่ไม่เสมอไม่ได้ใบ้เพิ่ม');
+    speakAll(room);
+    assert(room.gameState.phase === 'vote' && room.gameState.isRevote, 'ใบ้เพิ่มครบ = โหวตใหม่');
     assert(room.gameState.voteCandidates.sort().join() === [a, b].sort().join(), 'โหวตใหม่เฉพาะคนที่เสมอ');
     throwsWith(() => engine.submitVote(room, c, d, S(room)), /เฉพาะคนที่เสมอ/, 'โหวตใหม่เลือกคนนอกไม่ได้');
-    engine.submitVote(room, a, b, S(room));
-    engine.submitVote(room, b, a, S(room));
+    throwsWith(() => engine.submitVote(room, a, b, S(room)), /เสมออยู่/, 'คนที่เสมอไม่ได้โหวตรอบตัดสิน');
     engine.submitVote(room, c, a, S(room));
     engine.submitVote(room, d, b, S(room));
     assert(room.gameState.phase === 'elimination' && room.gameState.lastElimination.playerId === null, 'เสมอซ้ำ = ไม่มีใครออก');
     assert(alive(room).length === 4, 'ไม่มีใครถูกคัดออก');
-    console.log('✓ เสมอ → โหวตใหม่ → เสมออีก ไม่มีใครออก');
+    console.log('✓ เสมอ → ใบ้เพิ่ม → คนที่เหลือโหวตใหม่ → เสมออีก ไม่มีใครออก');
 }
 {
     // เสมอ/ไม่มีใครโหวตติดกัน MAX_STALE_ROUNDS รอบ → ฝ่ายแฝงรอด (กันเกมไม่จบ)
@@ -494,9 +500,10 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
     engine.submitVote(room, b, a, S(room));
     engine.submitVote(room, c, a, S(room));
     engine.submitVote(room, d, b, S(room));
-    assert(room.gameState.isRevote, 'ต้องโหวตซ้ำ');
+    assert(room.gameState.tieBreak, 'ต้องเข้าใบ้เพิ่มเพราะเสมอ');
     engine.handlePlayerLeft(room, a);
-    assert(room.gameState.phase !== 'vote', 'ผู้เข้าชิงเหลือคนเดียว ต้องไม่ค้างที่โหวต');
+    assert(room.gameState.phase !== 'vote' && room.gameState.phase !== 'clue', 'คนเสมอออกตอนใบ้เพิ่ม ต้องไม่ค้าง');
+    assert(alive(room).every(p => p.playerId !== b) === false, 'อีกคนที่เสมอต้องไม่ถูกคัดออกแทน');
 }
 {
     // เหมือน roomManager.leaveRoom: ตัดคนออกจาก players ก่อน แล้วค่อยเรียก handlePlayerLeft
@@ -569,8 +576,12 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
     const rand = n => Math.floor(Math.random() * n);
 
     for (let g = 0; g < GAMES; g += 1) {
-        const n = 4 + rand(7);
-        const room = started(n, { mrWhite: Math.random() < 0.6 });
+        const n = 3 + rand(8);
+        const room = started(n, {
+            mrWhite: Math.random() < 0.6,
+            undercoverCount: engine.UNDERCOVER_COUNT_OPTIONS[rand(4)],
+            tieRule: engine.TIE_RULES[rand(3)]
+        });
         const roster = room.gameState.players.map(p => ({ id: p.playerId, role: p.role }));
         let lastStep = room.gameState.step;
         let actions = 0;
@@ -619,6 +630,7 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
             if (s.phase !== 'finished') {
                 assert(side >= 1 || s.phase === 'mrwhite', 'ฝ่ายแฝงหมดแล้วเกมต้องจบ (ยกเว้นรอ Mr. White ทาย)');
                 assert(aliveNow.length >= 2, 'เหลือน้อยกว่า 2 คนเกมต้องจบ');
+                if (s.phase !== 'mrwhite') assert(aliveNow.length - side >= 2, 'เหลือพลเมือง 1 คนเกมต้องจบ');
                 assert(s.phaseEndsAt, 'ทุกเฟสต้องมีเวลาหมด (กันค้าง)');
             }
             if (s.phase === 'clue') {
@@ -640,6 +652,10 @@ function gameWithMrWhiteVotedOut(guessCorrect) {
         if (w.team === 'civilians') assert(winnerRoles.every(r => r === 'civilian'), 'ผู้ชนะฝั่งพลเมืองต้องเป็นพลเมือง');
         if (w.team === 'undercover') assert(winnerRoles.every(r => r !== 'civilian'), 'ผู้ชนะฝั่งแฝงต้องไม่ใช่พลเมือง');
         if (w.team === 'mrwhite') assert(winnerRoles.join() === 'mrwhite', 'Mr. White ชนะคนเดียว');
+        roster.forEach(r => {
+            const want = w.winnerIds.includes(r.id) ? engine.ROLE_POINTS[r.role] : 0;
+            assert(room.gameState.points[r.id] === want, `แต้ม ${r.role} ไม่ตรง`);
+        });
         assert(engine.getScoringPlayers(room).length === roster.length, 'นับสถิติทุกคนที่ได้บท');
         const finalView = engine.buildClientState(room, roster[0].id);
         assert(finalView.pair && finalView.winner, 'จบแล้วต้องเปิดคู่คำและผู้ชนะ');
