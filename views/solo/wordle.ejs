@@ -88,6 +88,15 @@
         cursor: pointer;
         transition: background-color 0.18s ease-out, transform 0.08s ease-out;
     }
+    .wd-hard { font-size: 0.8rem; font-weight: 700; line-height: 1; }
+    #wd-opts-btn.is-hard { background: oklch(0.45 0.14 25 / 0.55); border-color: oklch(0.7 0.15 25 / 0.7); color: var(--wd-ink); }
+    #wd-opts-btn.is-hard .fa-cog { display: none; }
+    .wd-hard[hidden] { display: none; }
+    .wd-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; cursor: pointer; }
+    .wd-opt b { display: block; color: var(--wd-ink); }
+    .wd-opt span span { display: block; color: var(--wd-soft); font-size: 0.86rem; line-height: 1.45; }
+    .wd-opt input { width: 26px; height: 26px; accent-color: var(--wd-gold); margin: 0; }
+    .wd-opt-note { margin: 0 0 12px; color: var(--wd-muted, var(--wd-soft)); font-size: 0.84rem; }
     .wd-icon:hover { background: var(--wd-surface-2); color: var(--wd-ink); }
     .wd-icon:active { transform: scale(0.94); }
     .wd-icon:focus-visible, .wd-key:focus-visible, .wd-tab:focus-visible { outline: 2px solid var(--wd-gold); outline-offset: 2px; }
@@ -363,6 +372,7 @@
             <h1><%= soloGame.title %></h1>
             <span class="wd-no" id="wd-no" aria-live="polite">#–</span>
         </div>
+        <button type="button" class="wd-icon" id="wd-opts-btn" aria-label="ตั้งค่า"><i class="fas fa-cog" aria-hidden="true"></i><span class="wd-hard" id="wd-hard-badge" hidden>ยาก</span></button>
         <button type="button" class="wd-icon" id="wd-help" aria-label="วิธีเล่น"><i class="fas fa-question" aria-hidden="true"></i></button>
         <button type="button" class="wd-icon" id="wd-stats-btn" aria-label="สถิติและอันดับ"><i class="fas fa-chart-bar" aria-hidden="true"></i></button>
     </div>
@@ -411,8 +421,24 @@
             <div class="wd-ex-row"><div class="wd-tile is-filled">ห</div><div class="wd-tile" data-state="absent">ม</div><div class="wd-tile is-filled">อ</div><div class="wd-tile is-filled">น</div></div>
             <p class="wd-ex-note"><b>เทา</b> ไม่มีตัวนี้ในคำ</p>
         </div>
+        <p><b>โหมดยาก</b> (ปุ่ม <i class="fas fa-cog" aria-hidden="true"></i>): ตัวที่เป็นเขียว/ทองแล้วต้องใช้ในคำถัดไป · เปิดได้ก่อนทายคำแรก</p>
         <p>ปุ่ม <b>ฆ ศ ษ</b> สลับไปพยัญชนะที่ใช้น้อย รวมถึงไม้ตรี ไม้จัตวา และการันต์ · เล่นจบแล้วแชร์ผลแบบไม่เฉลยให้เพื่อนได้</p>
         <button type="button" class="ui-btn ui-btn--primary" data-close>เริ่มเล่น</button>
+    </div>
+</div>
+
+<div class="wd-sheet-bg" id="wd-opts" hidden>
+    <div class="wd-sheet" role="dialog" aria-modal="true" aria-labelledby="wd-opts-title">
+        <div class="wd-sheet-head">
+            <h2 id="wd-opts-title">ตั้งค่า</h2>
+            <button type="button" class="wd-icon" data-close aria-label="ปิด"><i class="fas fa-times" aria-hidden="true"></i></button>
+        </div>
+        <label class="wd-opt">
+            <span><b>โหมดยาก</b><span>ตัวที่เปิดเจอแล้ว (เขียว/ทอง) ต้องใช้ในคำต่อไป</span></span>
+            <input type="checkbox" id="wd-hard-toggle">
+        </label>
+        <p class="wd-opt-note" id="wd-hard-note">เปิดได้ก่อนทายคำแรกของวัน · จำไว้ในเครื่องนี้</p>
+        <button type="button" class="ui-btn ui-btn--primary" data-close>ตกลง</button>
     </div>
 </div>
 

@@ -245,4 +245,103 @@ test('recordResult rejects client-submitted results', () => {
     assert.throws(() => game.recordResult(null, { won: true }), /บันทึกผลอัตโนมัติ/);
 });
 
+// ---------- ตัวซ้ำให้สีแบบ Wordle ต้นฉบับเป๊ะ (เทียบกับอัลกอริทึมต้นฉบับ) ----------
+// ต้นฉบับ: เขียวก่อน แล้วไล่ซ้ายไปขวา ตัวไหนในคำตอบยังเหลือ (นับจำนวน) = ทอง ไม่งั้น = เทา
+function referenceWordle(guess, answer) {
+    const out = guess.map(() => 'absent');
+    const left = {};
+    answer.forEach((ch, i) => { if (guess[i] !== ch) left[ch] = (left[ch] || 0) + 1; });
+    guess.forEach((ch, i) => { if (ch === answer[i]) out[i] = 'correct'; });
+    guess.forEach((ch, i) => {
+        if (out[i] === 'correct') return;
+        if (left[ch] > 0) { out[i] = 'present'; left[ch] -= 1; }
+    });
+    return out;
+}
+test('duplicates: matches original Wordle on known cases', () => {
+    // ต้นฉบับ: คำตอบ ABBEY ทาย BABES → ทอง ทอง เขียว เขียว เทา · ทาย KEBAB → เทา ทอง เขียว ทอง ทอง(B ที่สองยังเหลือ 1)
+    const map = { A: 'ก', B: 'ข', E: 'ค', Y: 'ง', S: 'จ', K: 'ฉ', O: 'ช' };
+    const t = w => w.split('').map(c => map[c]);
+    const sc = (g, a) => W.scoreGuess(t(g), t(a)).states;
+    assert.deepStrictEqual(sc('BABES', 'ABBEY'), ['present', 'present', 'correct', 'correct', 'absent']);
+    assert.deepStrictEqual(sc('KEBAB', 'ABBEY'), ['absent', 'present', 'correct', 'present', 'present']);
+    assert.deepStrictEqual(sc('ABYSS', 'ABBEY'), ['correct', 'correct', 'present', 'absent', 'absent']);
+    // ตัวซ้ำเกินจำนวนในคำตอบ: ตัวหลังเป็นเทา · ตัวที่ถูกที่ได้เขียวก่อนแม้อยู่ขวา
+    assert.deepStrictEqual(sc('SOOOS', 'OSAAA'), ['present', 'present', 'absent', 'absent', 'absent']);
+    assert.deepStrictEqual(sc('BBAAA', 'ABBEY'), ['present', 'correct', 'present', 'absent', 'absent']);
+});
+test('duplicates: random fuzz equals original algorithm', () => {
+    const letters = ['ก', 'ข', 'ค', 'ง'];
+    let seed = 7;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    for (let n = 0; n < 20000; n++) {
+        const len = 4 + (n % 2);
+        const pick = () => Array.from({ length: len }, () => letters[Math.floor(rnd() * letters.length)]);
+        const g = pick();
+        const a = pick();
+        assert.deepStrictEqual(W.scoreGuess(g, a).states, referenceWordle(g, a), `${g.join('')} vs ${a.join('')}`);
+    }
+});
+
+// ---------- โหมดยาก ----------
+const R = (guess, answer) => { const c = W.toCells(guess); const r = W.scoreGuess(c, W.toCells(answer)); return { cells: c, states: r.states, near: r.near }; };
+test('hard mode: greens must stay, yellows must be reused', () => {
+    // คำตอบ กาแฟ · ทาย กล้วย → ก เขียว
+    const rows = [R('กล้วย', 'กาแฟ')];
+    assert.strictEqual(rows[0].states[0], 'correct');
+    assert.match(W.hardModeError(rows, W.toCells('มะยม')), /ช่องที่ 1 ต้องเป็น ก/);
+    assert.strictEqual(W.hardModeError(rows, W.toCells('กาแฟ')), null, 'answer always passes');
+    // คำตอบ ลำไย · ทาย ไข่ไก่ → ไ ช่อง 1 ทอง (ไ ช่อง 3 เขียว)
+    const rows2 = [R('ไข่ไก่', 'ลำไย')];
+    assert.deepStrictEqual(rows2[0].states, ['absent', 'absent', 'correct', 'absent']);
+    assert.match(W.hardModeError(rows2, W.toCells('ต้มยำ')), /ช่องที่ 3 ต้องเป็น ไ/);
+    // ทองต้องมีในคำถัดไป
+    const rows3 = [R('ลูกชิ้น', 'ปลาทู')];
+    assert.strictEqual(rows3[0].states[0], 'present');
+    assert.match(W.hardModeError(rows3, W.toCells('ต้มยำ')), /ต้องมีตัว ล/);
+    assert.strictEqual(W.hardModeError(rows3, W.toCells('ปลาทู')), null);
+    // ทอง+จุดเขียว: ตัวหลักต้องอยู่ช่องเดิม
+    const rows4 = [{ cells: ['ต', 'น', 'ไ', 'ม'], states: ['present', 'absent', 'correct', 'present'], near: [true, false, false, true] }];
+    assert.match(W.hardModeError(rows4, ['ก', 'น', 'ไ', 'ม้']), /ช่องที่ 1 ต้องใช้ตัว ต/);
+    assert.strictEqual(W.hardModeError(rows4, ['ต้', 'น', 'ไ', 'ม้']), null);
+    // ตัวเทาใช้ซ้ำได้ (ต้นฉบับไม่ห้าม)
+    assert.strictEqual(W.hardModeError([R('ต้มยำ', 'ปลาทู')], W.toCells('ต้มยำ'.replace('ต้ม', 'ต้ม'))), null);
+});
+test('hard mode server: on before first guess only, off any time, enforced, share has *', () => {
+    const t0 = Date.UTC(2026, 9, 7, 5);
+    const puzzle = W.puzzleNumber(t0);
+    const answer = answerFor(puzzle);
+    const ac = W.toCells(answer);
+    const words = Array.from(ALLOWED).filter(w => { const c = W.toCells(w); return c && c.length === ac.length; });
+    // คำแรกที่มีเขียว/ทองอย่างน้อยหนึ่งช่อง และคำที่สองที่ละเมิด
+    let first = null;
+    let bad = null;
+    for (const w of words) {
+        if (w === answer) continue;
+        const r = R(w, answer);
+        if (!r.states.some(x => x !== 'absent')) continue;
+        const v = words.find(x => x !== w && x !== answer && W.hardModeError([r], W.toCells(x)));
+        if (v) { first = w; bad = v; break; }
+    }
+    assert.ok(first && bad, 'found sample words');
+    let d = applyGuess(null, first, puzzle, t0, { hard: true });
+    assert.strictEqual(d.today.hard, true);
+    assert.strictEqual(buildState(d, t0).hard, true);
+    let err = null;
+    try { applyGuess(d, bad, puzzle, t0, { hard: true }); } catch (e) { err = e; }
+    assert.ok(err instanceof GuessError && err.code === 'hard_mode' && /โหมดยาก/.test(err.message), 'violation rejected');
+    // ปิดกลางเกมได้ แล้วคำเดิมผ่าน
+    const off = applyGuess(d, bad, puzzle, t0, { hard: false });
+    assert.strictEqual(off.today.hard, false);
+    // เปิดกลางเกมไม่ได้
+    let soft = applyGuess(null, first, puzzle, t0, { hard: false });
+    soft = applyGuess(soft, bad, puzzle, t0, { hard: true });
+    assert.strictEqual(soft.today.hard, false, 'cannot switch on after first guess');
+    // ไม่ส่ง hard มา = คงค่าเดิมของข้อนี้
+    d = applyGuess(d, answer, puzzle, t0);
+    assert.ok(d.today.done && d.today.won && d.today.hard);
+    assert.match(W.shareText(puzzle, [['correct'], ['correct']], true, true), / 2\/6\*\n/);
+    assert.doesNotMatch(W.shareText(puzzle, [['correct']], true, false), /\*/);
+});
+
 console.log(`${process.exitCode ? 'FAIL' : 'OK'} — ${passed} tests passed (answers ${ANSWERS.length}, allowed ${ALLOWED.size})`);

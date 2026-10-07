@@ -224,6 +224,8 @@ async function perform(page, mv, stats) {
         assert((await page.textContent('#stWins')).trim() === '1 / 1', 'stats show 1 / 1');
         const apiStats = await page.evaluate(() => fetch('/api/solo/solitaire/stats').then(r => r.json()));
         assert(apiStats.data && apiStats.data.wins === 1 && apiStats.data.modes[1].bestMs >= 95000, 'server stats updated');
+        const shownScore = Number((await page.textContent('#winScore')).trim());
+        assert(shownScore > 0 && shownScore === apiStats.data.lastWin.score && apiStats.data.lastWin.scoring === 'standard', `win shows standard score ${shownScore} = server`);
 
         // เล่นอีกตา → โหมดจั่ว 3
         await page.click('#btnAgain');
@@ -251,6 +253,39 @@ async function perform(page, mv, stats) {
         await page.waitForFunction(() => fetch('/api/solo/solitaire/stats').then(r => r.json()).then(b => b.data && b.data.games === 2), null, { timeout: 8000, polling: 500 });
         await page.screenshot({ path: path.join(SHOTS, '08-full.png'), fullPage: true });
         await layoutChecks(page, 'after loss');
+
+        // เวกัส จั่ว 1: เริ่ม −52, วนกองไม่ได้ + ทางกลับรายการเกม
+        await page.click('#solNew');
+        await page.waitForSelector('#dlgNew[open]');
+        await page.click('#dlgNew [data-draw="1"]');
+        await page.click('#dlgNew [data-scoring="vegas"]');
+        assert(await page.locator('#vegasNote').isVisible() && /วนกองได้ 1 รอบ/.test(await page.textContent('#vegasNote')), 'vegas note explains the pass limit');
+        await layoutChecks(page, 'new game dialog (vegas)');
+        await page.screenshot({ path: path.join(SHOTS, '10-vegas-dialog.png') });
+        await page.click('#btnDeal');
+        await page.waitForFunction(() => window.__solitaire.game.scoring === 'vegas' && window.__solitaire.game.log === '');
+        await delay(900);
+        assert((await page.textContent('#solScore')).trim() === '−52' && /เวกัส/.test(await page.textContent('#solScoreLabel')), 'vegas score starts at −52');
+        assert(/เวกัส/.test(await page.textContent('#solMode')), 'mode line says vegas');
+        for (let k = 0; k < 24; k++) await page.evaluate(() => window.__solitaire.move('D--'));
+        await delay(400);
+        assert(await page.locator('.sol-stock.is-spent').count() === 1, 'stock shows it cannot be recycled');
+        const sbox = await page.locator('.sol-stock').boundingBox();
+        await tap(page, { x: sbox.x + sbox.width / 2, y: sbox.y + sbox.height / 2 });
+        await page.waitForFunction(() => /วนกองครบ/.test(document.getElementById('solToast').textContent), null, { timeout: 2000 });
+        assert((await page.evaluate(() => window.__solitaire.game.log.length / 3)) === 24, 'recycle refused in vegas draw-1');
+        await page.screenshot({ path: path.join(SHOTS, '11-vegas-spent.png') });
+        await layoutChecks(page, 'vegas board');
+        const prefsSaved = await page.evaluate(() => JSON.parse(localStorage.getItem('solitaire:v1:prefs')));
+        assert(prefsSaved.scoring === 'vegas', 'scoring choice saved on this device');
+        // ทางกลับ: ปุ่ม ← เกมเดี่ยว อยู่ในจอ · ตาที่เล่นค้างกลับมาได้
+        const back = page.locator('.ui-footer-bar a.ui-back');
+        assert(await back.isVisible() && /^\/solo/.test(await back.getAttribute('href')), 'back to game list visible while playing');
+        await back.click();
+        await page.waitForURL(u => new URL(u).pathname === '/solo');
+        await page.goto(`${server.base}/solo/solitaire`);
+        await page.waitForFunction(() => window.__solitaire && window.__solitaire.game.scoring === 'vegas' && window.__solitaire.game.log.length === 72);
+        assert(true, 'leaving keeps the game (restored with vegas rules)');
         await ctx.close();
 
         // เดสก์ท็อป

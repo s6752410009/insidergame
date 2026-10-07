@@ -9,6 +9,7 @@
     var CACHE_KEY = 'wordle:state:v1';
     var DRAFT_KEY = 'wordle:draft:v1';
     var INTRO_KEY = 'wordle:intro:v1';
+    var HARD_KEY = 'wordle:hard:v1'; // โหมดยาก (ตั้งในเครื่อง)
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var myId = root.getAttribute('data-player') || '';
 
@@ -50,7 +51,12 @@
         tabLb: document.getElementById('wd-tab-lb'),
         panelStats: document.getElementById('wd-panel-stats'),
         panelLb: document.getElementById('wd-panel-lb'),
-        lb: document.getElementById('wd-lb')
+        lb: document.getElementById('wd-lb'),
+        opts: document.getElementById('wd-opts'),
+        hardToggle: document.getElementById('wd-hard-toggle'),
+        hardNote: document.getElementById('wd-hard-note'),
+        hardBadge: document.getElementById('wd-hard-badge'),
+        optsBtn: document.getElementById('wd-opts-btn')
     };
 
     var state = null;        // สถานะจาก server
@@ -285,6 +291,7 @@
             keys: next.keys || {},
             done: Boolean(next.done),
             won: Boolean(next.won),
+            hard: Boolean(next.hard),
             answer: next.answer || null,
             answerCells: next.answerCells || null,
             stats: next.stats || null
@@ -300,7 +307,27 @@
         store(CACHE_KEY, Object.assign({}, state, { savedAt: Date.now(), deadline: deadline }));
     }
 
+    function wantHard() { return load(HARD_KEY) === true; }
+
+    /** ป้าย/สวิตช์โหมดยาก: เปิดได้เฉพาะก่อนทายคำแรก (ปิดได้ทุกเมื่อ) เหมือนต้นฉบับ */
+    function renderHard() {
+        var done = !!(state && state.done);
+        var started = !!(state && state.guesses.length) && !done;
+        var pref = wantHard();
+        var active = done ? !!state.hard : (started ? !!state.hard && pref : pref);
+        // ปุ่มตั้งค่ากลายเป็นป้าย "ยาก" สีแดงตอนเล่นโหมดยาก (ไม่กินที่หัวจอเพิ่ม)
+        els.hardBadge.hidden = !active;
+        els.optsBtn.classList.toggle('is-hard', active);
+        els.optsBtn.setAttribute('aria-label', active ? 'ตั้งค่า (โหมดยากเปิดอยู่)' : 'ตั้งค่า');
+        els.hardToggle.checked = done ? pref : active;
+        els.hardToggle.disabled = started && !state.hard; // เริ่มข้อแล้ว เปิดเพิ่มไม่ได้ (ปิดได้)
+        els.hardNote.textContent = done
+            ? 'ข้อวันนี้จบแล้ว · ตั้งไว้ใช้กับข้อพรุ่งนี้'
+            : (started && !state.hard ? 'ทายไปแล้ว — เปิดโหมดยากได้ข้อพรุ่งนี้' : 'เปิดได้ก่อนทายคำแรกของวัน · จำไว้ในเครื่องนี้');
+    }
+
     function renderAll() {
+        renderHard();
         renderBoard();
         renderDraftRow();
         paintKeys();
@@ -339,7 +366,10 @@
     function sendGuess(word) {
         busy = true;
         syncEnter();
-        request('POST', API + '/guess', { guess: word, puzzle: state ? state.puzzle : null })
+        var started = !!(state && state.guesses.length);
+        // เริ่มข้อแล้ว: ส่งค่าของข้อนี้ (ปิดกลางเกมได้ แต่เปิดเพิ่มไม่ได้)
+        var hard = started ? !!state.hard && wantHard() : wantHard();
+        request('POST', API + '/guess', { guess: word, puzzle: state ? state.puzzle : null, hard: hard })
             .then(function (res) {
                 var json = res.json || {};
                 if (res.ok && json.success) {
@@ -347,6 +377,7 @@
                     pending = null;
                     var rowIndex = state ? state.guesses.length : 0;
                     applyState(json, { keepDraft: true });
+                    renderHard();
                     draft = [];
                     store(DRAFT_KEY, null);
                     revealRow(rowIndex);
@@ -650,7 +681,7 @@
         openModal(els.sheet);
         selectTab(tab || 'stats');
     }
-    [els.howto, els.sheet].forEach(function (bg) {
+    [els.howto, els.sheet, els.opts].forEach(function (bg) {
         bg.addEventListener('click', function (e) {
             if (e.target === bg || e.target.closest('[data-close]')) {
                 closeModal(bg);
@@ -662,7 +693,7 @@
     // ---------- แชร์ ----------
     function shareResult() {
         if (!state || !state.done) return;
-        var text = W.shareText(state.puzzle, state.guesses.map(function (g) { return g.states; }), state.won);
+        var text = W.shareText(state.puzzle, state.guesses.map(function (g) { return g.states; }), state.won, state.hard);
         var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
         if (coarse && navigator.share) {
             navigator.share({ text: text }).catch(function (err) {
@@ -708,6 +739,12 @@
     els.back.addEventListener('click', pressBack);
     els.enter.addEventListener('click', submit);
     document.getElementById('wd-help').addEventListener('click', function () { openModal(els.howto); });
+    document.getElementById('wd-opts-btn').addEventListener('click', function () { renderHard(); openModal(els.opts); });
+    els.hardToggle.addEventListener('change', function () {
+        // ปิดกลางเกม = ข้อนี้ไม่ใช่โหมดยากแล้ว (ส่ง hard:false ไปกับคำถัดไป)
+        store(HARD_KEY, els.hardToggle.checked ? true : null);
+        renderHard();
+    });
     document.getElementById('wd-stats-btn').addEventListener('click', function () { openSheet('stats'); });
     document.getElementById('wd-done-stats').addEventListener('click', function () { openSheet('stats'); });
     document.getElementById('wd-done-share').addEventListener('click', shareResult);
@@ -717,11 +754,12 @@
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-            if (!els.sheet.hidden) closeModal(els.sheet);
+            if (!els.opts.hidden) closeModal(els.opts);
+            else if (!els.sheet.hidden) closeModal(els.sheet);
             else if (!els.howto.hidden) { closeModal(els.howto); store(INTRO_KEY, 1); }
             return;
         }
-        if (!els.sheet.hidden || !els.howto.hidden) return;
+        if (!els.sheet.hidden || !els.howto.hidden || !els.opts.hidden) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (document.querySelector('.swal2-container, .promo-overlay')) return;
         var tag = e.target && e.target.tagName;

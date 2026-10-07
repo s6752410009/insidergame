@@ -3,6 +3,12 @@
  *
  * กติกา/การวัดมือ/เด้ง ใช้ของโต๊ะหลายคน (games/pokdengEngine.js) ตรงๆ:
  *   evaluateHand · judge · shouldBotDraw · describeCard · buildDeck
+ *   ลำดับ: ป๊อก > ตอง > สเตรทฟลัช > เรียง > เซียน > แต้ม · เรียง 2-3-4 … Q-K-A (A-2-3 ไม่นับ)
+ *   เด้ง: 2 ใบดอกเดียว/คู่ ×2 · 3 ใบดอกเดียว ×3 · ตอง/สเตรทฟลัช ×5 · เรียง/เซียน ×3
+ *
+ * กติกาที่เลือกได้ (ตั้งในเครื่อง ส่งมากับทุกครั้งที่ลงเดิมพัน ล็อกไว้ทั้งมือ) = กติกาห้องของโต๊ะหลายคน:
+ *   straights (ค่าเริ่ม เปิด) — นับเรียง/สเตรทฟลัช · mustDraw (ค่าเริ่ม ปิด) — 2 ใบต่ำกว่า 4 แต้มต้องจั่ว
+ * เจ้ามือ "จับ": 2 ใบ ≥ 4 แต้ม เปิดวัดกับขา 3 ใบได้เลยโดยไม่จั่ว (บอทจับเมื่อได้ 4–5 แต้มแล้วเราจั่ว)
  *
  * หนึ่ง "รอบ" (run): เริ่ม 1,000 ชิป (ชิปเล่นๆ ไม่ผูกกระเป๋า ไม่มีมูลค่าจริง)
  *   ลง 10–500 ต่อมือ → แจก 2 ใบ (สลับ ผู้เล่น/เจ้ามือ) → ป๊อกฝั่งไหน เปิดวัดทันที
@@ -21,6 +27,33 @@ const START_CHIPS = 1000;
 const MIN_BET = 10;
 const MAX_BET = 500;
 const MAX_HANDS_PER_RUN = 100000; // กันตัวเลขบวม ไม่มีใครเล่นถึง
+const DEFAULT_RULES = Object.freeze({ straights: true, mustDraw: false });
+
+/** กติกาที่ผู้เล่นเลือก (ค่าแปลก ๆ = ค่าเริ่มต้น) */
+function sanitizeRules(raw) {
+    const r = raw && typeof raw === 'object' ? raw : {};
+    return { straights: r.straights !== false, mustDraw: r.mustDraw === true };
+}
+
+function rulesOfHand(hand) {
+    return sanitizeRules(hand && hand.rules);
+}
+
+function evalWith(cards, rules) {
+    return pd.evaluateHand(cards, { ...pd.DEFAULT_RULES, ...sanitizeRules(rules) });
+}
+
+/** ถือ 2 ใบ ไม่ป๊อก ต่ำกว่า 4 แต้ม + เปิดกติกา "ต่ำกว่า 4 ต้องจั่ว" */
+function mustDrawNow(cards, rules) {
+    if (!sanitizeRules(rules).mustDraw || !Array.isArray(cards) || cards.length !== 2) return false;
+    const ev = evalWith(cards, rules);
+    return !ev.pok && ev.points < pd.MUST_DRAW_BELOW;
+}
+
+/** เจ้ามือถือ 2 ใบ ≥ 4 แต้ม = จับได้ */
+function canDealerCatch(cards, rules) {
+    return Array.isArray(cards) && cards.length === 2 && evalWith(cards, rules).points >= pd.CATCH_MIN_POINTS;
+}
 
 function uniformRng(rng) {
     return typeof rng === 'function' ? rng : Math.random;
@@ -47,6 +80,7 @@ function createRun({ now = Date.now(), runId = null } = {}) {
         hand: null, // { no, bet, deck, player, dealer, playerDrew }
         lastResult: null,
         lastBet: 50,
+        rules: { ...DEFAULT_RULES }, // กติกาของมือล่าสุด
         peak: START_CHIPS,
         hands: 0,
         wins: 0,
@@ -79,6 +113,7 @@ function validateBet(run, amount) {
  * ลงเดิมพัน + แจกไพ่ · ถ้ามีป๊อก (ฝั่งใดฝั่งหนึ่ง) วัดผลทันที
  * @param opts.rng     () => [0,1)
  * @param opts.deck    (เทสต์เท่านั้น) สำรับที่เรียงไว้ — pop จากท้าย
+ * @param opts.rules   { straights, mustDraw } ที่ผู้เล่นเลือก (ล็อกไว้ทั้งมือ)
  * @returns run (mutated)
  */
 function placeBet(run, amount, opts = {}) {
@@ -93,14 +128,16 @@ function placeBet(run, amount, opts = {}) {
         player.push(deck.pop());
         dealer.push(deck.pop());
     }
+    const rules = sanitizeRules(opts.rules);
     run.chips -= bet;
     run.lastBet = bet;
     run.handNo += 1;
-    run.hand = { no: run.handNo, bet, deck, player, dealer, playerDrew: false, dealerDrew: false };
+    run.rules = rules;
+    run.hand = { no: run.handNo, bet, deck, player, dealer, rules, playerDrew: false, dealerDrew: false, dealerCaught: false };
     run.phase = 'draw';
 
-    const dealerEval = pd.evaluateHand(dealer);
-    const playerEval = pd.evaluateHand(player);
+    const dealerEval = evalWith(dealer, rules);
+    const playerEval = evalWith(player, rules);
     // ป๊อกฝั่งไหนก็เปิดวัดเลย (ผู้เล่นป๊อก = ไม่ต้องจั่ว และเจ้ามือไม่จั่วแก้ เหมือนโต๊ะหลายคน)
     if (dealerEval.pok || playerEval.pok) return settle(run);
     return run;
@@ -110,12 +147,19 @@ function placeBet(run, amount, opts = {}) {
 function playerAct(run, wantDraw, opts = {}) {
     if (run.phase !== 'draw' || !run.hand) throw new Error('ยังไม่ถึงตาจั่ว');
     const hand = run.hand;
+    const rules = rulesOfHand(hand);
+    if (!wantDraw && mustDrawNow(hand.player, rules)) {
+        throw new Error(`ต่ำกว่า ${pd.MUST_DRAW_BELOW} แต้มต้องจั่ว (กติกาที่เลือกไว้)`);
+    }
     if (wantDraw) {
         hand.player.push(hand.deck.pop());
         hand.playerDrew = true;
     }
-    const dealerPoints = pd.evaluateHand(hand.dealer).points;
-    if (pd.shouldBotDraw(dealerPoints, uniformRng(opts.rng))) {
+    const dealerPoints = evalWith(hand.dealer, rules).points;
+    // จับ: เราจั่วมาแล้ว (3 ใบ) และเจ้ามือได้ 4–5 แต้ม → เปิดวัดเลย ไม่เสี่ยงจั่ว (เหมือนบอทโต๊ะหลายคน)
+    if (hand.player.length === 3 && canDealerCatch(hand.dealer, rules) && dealerPoints <= 5) {
+        hand.dealerCaught = true;
+    } else if (pd.shouldBotDraw(dealerPoints, uniformRng(opts.rng)) || mustDrawNow(hand.dealer, rules)) {
         hand.dealer.push(hand.deck.pop());
         hand.dealerDrew = true;
     }
@@ -124,8 +168,9 @@ function playerAct(run, wantDraw, opts = {}) {
 
 function settle(run) {
     const hand = run.hand;
-    const playerEval = pd.evaluateHand(hand.player);
-    const dealerEval = pd.evaluateHand(hand.dealer);
+    const rules = rulesOfHand(hand);
+    const playerEval = evalWith(hand.player, rules);
+    const dealerEval = evalWith(hand.dealer, rules);
     const verdict = pd.judge(playerEval, dealerEval);
     const bet = hand.bet;
     let delta = 0;
@@ -160,6 +205,8 @@ function settle(run) {
         chipsAfter: run.chips,
         playerDrew: !!hand.playerDrew,
         dealerDrew: !!hand.dealerDrew,
+        dealerCaught: !!hand.dealerCaught,
+        rules,
         player: { cards: [...hand.player], eval: publicEval(playerEval) },
         dealer: { cards: [...hand.dealer], eval: publicEval(dealerEval) }
     };
@@ -204,6 +251,8 @@ function publicView(run) {
         maxBet: maxBetFor(run),
         lastBet: run.lastBet,
         startChips: START_CHIPS,
+        rules: sanitizeRules(run.rules),
+        mustDrawBelow: pd.MUST_DRAW_BELOW,
         run: {
             peak: run.peak,
             hands: run.hands,
@@ -219,10 +268,13 @@ function publicView(run) {
         lastResult: null
     };
     if (run.phase === 'draw' && run.hand) {
-        const ev = pd.evaluateHand(run.hand.player);
+        const rules = rulesOfHand(run.hand);
+        const ev = evalWith(run.hand.player, rules);
         view.hand = {
             no: run.hand.no,
             bet: run.hand.bet,
+            rules,
+            mustDraw: mustDrawNow(run.hand.player, rules),
             player: { cards: describeAll(run.hand.player), eval: publicEval(ev) },
             dealer: { cardCount: run.hand.dealer.length }
         };
@@ -304,8 +356,8 @@ function reviveRun(raw) {
         const h = raw.hand;
         if (!h || !Array.isArray(h.deck) || !Array.isArray(h.player) || !Array.isArray(h.dealer)) return null;
         try {
-            pd.evaluateHand(h.player);
-            pd.evaluateHand(h.dealer);
+            evalWith(h.player, h.rules);
+            evalWith(h.dealer, h.rules);
         } catch (error) {
             return null;
         }
@@ -317,6 +369,10 @@ module.exports = {
     START_CHIPS,
     MIN_BET,
     MAX_BET,
+    DEFAULT_RULES,
+    sanitizeRules,
+    mustDrawNow,
+    canDealerCatch,
     createRun,
     placeBet,
     playerAct,

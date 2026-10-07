@@ -13,6 +13,7 @@
     const CHIP_VALUES = [10, 50, 100, 500];
     const INTRO_KEY = 'pokdengsolo.intro.v1';
     const BET_KEY = 'pokdengsolo.bet';
+    const RULES_KEY = 'pokdengsolo.rules.v1';
 
     const boot = readBoot();
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -25,6 +26,8 @@
     let retryFn = null;
     let shownChips = null;
     let boardBest = null;
+    // กติกาที่เลือกเอง (แทนกติกาห้องของโต๊ะหลายคน) — เก็บในเครื่อง ส่งไปกับทุกครั้งที่ลงเดิมพัน
+    let rules = readRules();
 
     document.documentElement.classList.add('pds-active');
 
@@ -34,6 +37,12 @@
     }
     function safeGet(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } }
     function safeSet(key, value) { try { window.localStorage.setItem(key, value); } catch (e) { /* โหมดส่วนตัว */ } }
+    function readRules() {
+        let raw = null;
+        try { raw = JSON.parse(safeGet(RULES_KEY) || 'null'); } catch (e) { raw = null; }
+        raw = raw && typeof raw === 'object' ? raw : {};
+        return { straights: raw.straights !== false, mustDraw: raw.mustDraw === true };
+    }
     function esc(text) {
         return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
     }
@@ -327,12 +336,15 @@
         }
         if (S.phase === 'draw' && S.hand) {
             const ev = S.hand.player.eval;
+            const forced = !!S.hand.mustDraw;
             box.innerHTML =
                 '<div class="pds-row">' +
                     '<button type="button" class="pds-btn pds-btn--draw" data-act="draw"' + dis + '>จั่ว <small>+1 ใบ</small></button>' +
-                    '<button type="button" class="pds-btn pds-btn--stay" data-act="stay"' + dis + '>อยู่ <small>' + esc(ev.points) + ' แต้ม</small></button>' +
+                    '<button type="button" class="pds-btn pds-btn--stay" data-act="stay"' + (busy || forced ? ' disabled' : '') + '>อยู่ <small>' + esc(ev.points) + ' แต้ม</small></button>' +
                 '</div>' +
-                '<div class="pds-hint">เจ้ามือจั่วเมื่อได้ 0–3 แต้ม · 4 แต้มลุ้นครึ่งๆ · 5 ขึ้นไปอยู่</div>';
+                '<div class="pds-hint">' + (forced
+                    ? 'ต่ำกว่า ' + (S.mustDrawBelow || 4) + ' แต้มต้องจั่ว (กติกาที่เลือก)'
+                    : 'เจ้ามือ 0–3 จั่ว · 4 ลุ้นครึ่งๆ · ถ้าเราจั่ว เจ้ามือ 4–5 “จับ” เลย') + '</div>';
             return;
         }
         clampBet();
@@ -357,7 +369,7 @@
     }
 
     function describeResultStatus(r) {
-        if (!r) return ['วางเดิมพันแล้วกดแจกไพ่', 'ลง 10–500 ต่อมือ · ป๊อก 8/9 เปิดชนะทันที'];
+        if (!r) return ['วางเดิมพันแล้วกดแจกไพ่', 'ลง 10–500 ต่อมือ · ป๊อก 8/9 เปิดวัดทันที'];
         if (r.outcome === 'win') return ['ชนะ ' + signed(r.delta) + (r.multiplier > 1 ? ' · ' + dengWord(r.multiplier) : ''), 'ลงมือต่อไปได้เลย'];
         if (r.outcome === 'lose') return ['แพ้ ' + signed(r.delta) + (r.multiplier > 1 ? ' · เจ้ามือ' + dengWord(r.multiplier) : ''), r.short ? 'เสียไม่เกินชิปที่มี' : 'แก้มือได้ ลงต่อเลย'];
         return ['เสมอ · ได้เดิมพันคืน', 'ลงมือต่อไปได้เลย'];
@@ -473,7 +485,7 @@
         const clearing = clearTable();
         let res;
         try {
-            res = await api('POST', '/bet', { amount, hand });
+            res = await api('POST', '/bet', { amount, hand, rules });
         } catch (error) {
             await clearing;
             busy = false;
@@ -597,12 +609,16 @@
         badge.hidden = false;
         badge.className = 'pds-badge is-thinking';
         badge.textContent = 'คิด';
-        setStatus('ตาเจ้ามือ', 'จั่วเมื่อได้ 0–3 แต้ม');
+        setStatus('ตาเจ้ามือ', 'จั่วเมื่อได้ 0–3 แต้ม · 4 ขึ้นไปจับได้');
         await sleep(700);
         if (r.dealerDrew) {
             badge.className = 'pds-badge';
             badge.textContent = 'จั่ว';
             await dealCard('pdsDealerCards', null, { third: true });
+        } else if (r.dealerCaught) {
+            badge.className = 'pds-badge';
+            badge.textContent = 'จับ!';
+            setStatus('เจ้ามือจับ!', 'เปิดวัดกับ 3 ใบของเราเลย ไม่จั่ว');
         } else {
             badge.className = 'pds-badge';
             badge.textContent = 'อยู่';
@@ -736,13 +752,33 @@
         return '<ol class="pds-steps">' +
             '<li><div><b>ลงเดิมพัน 10–500</b><p>แตะชิปเพื่อเพิ่มยอด แล้วกดแจกไพ่</p></div></li>' +
             '<li><div><b>ได้ 2 ใบ</b><p>รวมได้ 8 หรือ 9 = <b>ป๊อก</b> เปิดวัดทันที · เจ้ามือป๊อกก็เปิดทันทีเหมือนกัน</p></div></li>' +
-            '<li><div><b>จั่วหรืออยู่</b><p>จั่วเพิ่มได้ 1 ใบ แล้วเจ้ามือบอทจั่ว (0–3 แต้มจั่วเสมอ · 4 แต้มลุ้นครึ่งๆ)</p></div></li>' +
+            '<li><div><b>จั่วหรืออยู่</b><p>จั่วเพิ่มได้ 1 ใบ แล้วตาเจ้ามือ (0–3 แต้มจั่วเสมอ · 4 แต้มลุ้นครึ่งๆ)</p></div></li>' +
+            '<li><div><b>เจ้ามือ “จับ”</b><p>เจ้ามือ 2 ใบได้ 4 แต้มขึ้นไป เปิดวัดกับเราได้เลยไม่ต้องจั่ว · บอทจับเมื่อได้ 4–5 แต้มแล้วเราจั่ว</p></div></li>' +
             '<li><div><b>วัดแต้ม</b><p>ชนะได้ เดิมพัน × เด้งของเรา · แพ้เสีย เดิมพัน × เด้งเจ้ามือ (ไม่เกินชิปที่มี)</p></div></li>' +
             '</ol>' +
+            '<h3>กติกาเลือกได้ (⚙️ กติกา)</h3><p>นับเรียง/สเตรทฟลัช (เปิดไว้) · ต่ำกว่า 4 ต้องจั่ว (ปิดไว้) — ใช้ตั้งแต่มือถัดไป</p>' +
             '<h3>เป้าหมาย</h3><p>เริ่ม 1,000 ชิป ปั้นให้สูงที่สุดก่อนหมดตัว — <b>ชิปสูงสุดที่เคยถึง</b> ขึ้นตารางอันดับทั้งเว็บ</p>' +
             '<p>ชิปเล่นๆ ไม่ผูกกับกระเป๋า ไม่มีมูลค่าจริง · เซิร์ฟเวอร์สับไพ่และแจกเอง รีเฟรชหน้าก็เล่นต่อจากเดิม</p>';
     }
-    $('pdsRankBtn').addEventListener('click', () => openSheet('อันดับไพ่ป๊อกเด้ง', rankGuideHtml()));
+    $('pdsRankBtn').addEventListener('click', () => openSheet('อันดับไพ่ป๊อกเด้ง', rankGuideHtml() +
+        (rules.straights ? '' : '<p style="margin-top:6px;"><b>ตอนนี้ปิดเรียง/สเตรทฟลัชไว้</b> — 3 ใบเรียงกันนับแต้มปกติ</p>')));
+
+    // ---------- กติกาที่เลือกได้ ----------
+    function rulesHtml() {
+        const row = (key, title, desc) => '<label class="pds-rule"><input type="checkbox" data-rule="' + key + '"' + (rules[key] ? ' checked' : '') + '>' +
+            '<span><b>' + title + '</b><span class="pds-rankdesc">' + desc + '</span></span></label>';
+        return row('straights', 'นับเรียง / สเตรทฟลัช', 'ปิด = 3 ใบเรียงกันนับแต้มธรรมดา') +
+            row('mustDraw', 'ต่ำกว่า 4 ต้องจั่ว', 'ทั้งเราและเจ้ามือ 2 ใบต่ำกว่า 4 แต้ม อยู่ไม่ได้') +
+            '<p style="margin-top:10px;">ใช้ตั้งแต่มือถัดไป · จำไว้ในเครื่องนี้</p>';
+    }
+    $('pdsRulesBtn').addEventListener('click', () => openSheet('กติกาโต๊ะ', rulesHtml(), { closeText: 'ตกลง' }));
+    $('pdsSheetBody').addEventListener('change', e => {
+        const box = e.target.closest('[data-rule]');
+        if (!box) return;
+        rules = Object.assign({}, rules, { [box.dataset.rule]: !!box.checked });
+        safeSet(RULES_KEY, JSON.stringify(rules));
+        renderActions();
+    });
     $('pdsHowBtn').addEventListener('click', () => openSheet('ป๊อกเด้งท้าเจ้ามือ เล่นยังไง', howToHtml()));
 
     // ---------- actions ----------

@@ -14,6 +14,12 @@
  *   ต้นทาง  w = กองเปิด, 0-6 = กองล่าง, A-D = ช่องเก็บของดอกนั้น
  *   ปลายทาง 0-6 = กองล่าง, F = ช่องเก็บ (ดอกของไพ่เอง)
  *   D-- = จั่วจากกองคว่ำ (หรือพลิกกองเปิดกลับเมื่อกองคว่ำหมด)
+ *
+ * คะแนน (เก็บใน state.score คิดจาก log เสมอ — ย้อนตา = คะแนนย้อนด้วย):
+ *   ปกติ (Windows Solitaire "Standard"): กองเปิด→กองล่าง +5 · ขึ้นช่องเก็บ +10 · หงายไพ่กองล่าง +5
+ *     ช่องเก็บ→กองล่าง −15 · วนกอง: จั่ว 1 ผ่านฟรี 1 รอบ แล้ว −100 ต่อรอบ / จั่ว 3 ฟรี 3 รอบ แล้ว −20 ต่อรอบ
+ *     คะแนนไม่ต่ำกว่า 0 · วนกองได้ไม่จำกัด
+ *   เวกัส: เริ่ม −52 · ขึ้นช่องเก็บ +5 ต่อใบ · ช่องเก็บ→กองล่าง −5 · วนกองได้จำกัด (จั่ว 1 = รอบเดียว / จั่ว 3 = 3 รอบ)
  */
 (function (root, factory) {
     if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -28,6 +34,14 @@
     const RANK_FILES = ['', 'a', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'j', 'q', 'k'];
     const FOUNDATION_CODES = ['A', 'B', 'C', 'D'];
     const MAX_LOG_MOVES = 3000;
+    const SCORINGS = ['standard', 'vegas'];
+    const FREE_PASSES = { 1: 1, 3: 3 };   // ปกติ: ผ่านกองได้ฟรีกี่รอบก่อนโดนหัก
+    const RECYCLE_PENALTY = { 1: 100, 3: 20 };
+    const VEGAS_PASSES = { 1: 1, 3: 3 };  // เวกัส: ผ่านกองได้ทั้งหมดกี่รอบ
+    const VEGAS_START = -52;
+
+    function isValidScoring(v) { return SCORINGS.indexOf(v) >= 0; }
+    function passLimit(draw, scoring) { return scoring === 'vegas' ? VEGAS_PASSES[draw] : 0; }
 
     const rankOf = c => (c % 13) + 1;
     const suitOf = c => Math.floor(c / 13);
@@ -62,10 +76,15 @@
     function isValidSeed(seed) { return Number.isInteger(seed) && seed >= 0 && seed <= 0xFFFFFFFF; }
     function isValidDraw(draw) { return draw === 1 || draw === 3; }
 
-    /** แจกไพ่: กองล่างกองที่ i มี i+1 ใบ ใบบนสุดหงาย ที่เหลือ 24 ใบเป็นกองคว่ำ */
-    function deal(seed, draw) {
+    /**
+     * แจกไพ่: กองล่างกองที่ i มี i+1 ใบ ใบบนสุดหงาย ที่เหลือ 24 ใบเป็นกองคว่ำ
+     * scoring = 'standard' (ค่าเริ่ม วนกองไม่จำกัด) | 'vegas' (วนกองจำกัด)
+     */
+    function deal(seed, draw, scoring) {
         if (!isValidSeed(seed)) throw new Error('bad seed');
         if (!isValidDraw(draw)) throw new Error('bad draw');
+        const mode = scoring === undefined || scoring === null ? 'standard' : scoring;
+        if (!isValidScoring(mode)) throw new Error('bad scoring');
         const deck = shuffledDeck(seed);
         const t = [[], [], [], [], [], [], []];
         let k = 0;
@@ -78,12 +97,28 @@
             h: [0, 1, 2, 3, 4, 5, 6],      // จำนวนใบคว่ำก้นกองของแต่ละกองล่าง
             stock: deck.slice(k).reverse(), // ใบบนสุด = ท้าย array
             waste: [],                      // ใบบนสุด = ท้าย array
-            f: [0, 0, 0, 0]                 // rank สูงสุดในช่องเก็บของแต่ละดอก
+            f: [0, 0, 0, 0],                // rank สูงสุดในช่องเก็บของแต่ละดอก
+            scoring: mode,
+            passes: 0,                      // วนกองเปิดกลับไปแล้วกี่ครั้ง
+            limit: passLimit(draw, mode),   // ผ่านกองได้ทั้งหมดกี่รอบ (0 = ไม่จำกัด)
+            score: mode === 'vegas' ? VEGAS_START : 0
         };
     }
 
     function clone(s) {
-        return { draw: s.draw, t: s.t.map(p => p.slice()), h: s.h.slice(), stock: s.stock.slice(), waste: s.waste.slice(), f: s.f.slice() };
+        return {
+            draw: s.draw, t: s.t.map(p => p.slice()), h: s.h.slice(), stock: s.stock.slice(), waste: s.waste.slice(), f: s.f.slice(),
+            scoring: s.scoring || 'standard', passes: s.passes || 0, limit: s.limit || 0, score: s.score || 0
+        };
+    }
+
+    /** วนกองเปิดกลับได้อีกไหม (เวกัสจำกัดรอบ) */
+    function canRecycle(s) {
+        return !s.stock.length && s.waste.length > 0 && (!s.limit || (s.passes || 0) + 1 < s.limit);
+    }
+    /** ผ่านกองได้อีกกี่รอบหลังรอบนี้ (null = ไม่จำกัด) */
+    function recyclesLeft(s) {
+        return s.limit ? Math.max(0, s.limit - 1 - (s.passes || 0)) : null;
     }
 
     function canStack(card, onto) { return isRed(card) !== isRed(onto) && rankOf(card) === rankOf(onto) - 1; }
@@ -108,7 +143,7 @@
 
     function isLegal(s, move) {
         if (!move) return false;
-        if (move.draw) return s.stock.length > 0 || s.waste.length > 0;
+        if (move.draw) return s.stock.length > 0 || canRecycle(s);
         const n = move.n;
         if (!Number.isInteger(n) || n < 1) return false;
         if (typeof move.from === 'number') {
@@ -133,6 +168,11 @@
     function applyMove(state, move) {
         if (!isLegal(state, move)) return null;
         const s = clone(state);
+        const vegas = s.scoring === 'vegas';
+        const bump = n => {
+            s.score += n;
+            if (!vegas && s.score < 0) s.score = 0; // แบบปกติคะแนนไม่ติดลบ
+        };
         if (move.draw) {
             if (s.stock.length) {
                 const take = Math.min(s.draw, s.stock.length);
@@ -140,9 +180,12 @@
             } else {
                 s.stock = s.waste.reverse();
                 s.waste = [];
+                s.passes += 1;
+                if (!vegas && s.passes + 1 > FREE_PASSES[s.draw]) bump(-RECYCLE_PENALTY[s.draw]);
             }
             return s;
         }
+        const hiddenBefore = typeof move.from === 'number' ? s.h[move.from] : 0;
         let cards;
         if (move.from === 'w') cards = [s.waste.pop()];
         else if (typeof move.from === 'number') {
@@ -157,6 +200,17 @@
         }
         if (move.to === 'F') s.f[suitOf(cards[0])] = rankOf(cards[0]);
         else Array.prototype.push.apply(s.t[move.to], cards);
+
+        const fromF = FOUNDATION_CODES.indexOf(move.from) >= 0;
+        if (vegas) {
+            if (move.to === 'F') bump(5);
+            else if (fromF) bump(-5);
+        } else {
+            if (move.to === 'F') bump(10);
+            else if (move.from === 'w') bump(5);
+            else if (fromF) bump(-15);
+            if (typeof move.from === 'number' && s.h[move.from] < hiddenBefore) bump(5); // หงายไพ่กองล่าง
+        }
         return s;
     }
 
@@ -192,11 +246,11 @@
         return out;
     }
 
-    /** เล่นซ้ำจาก seed → { ok, state, moves, failedAt } */
-    function replay(seed, draw, log) {
+    /** เล่นซ้ำจาก seed → { ok, state, moves, failedAt } (state.score = คะแนนตามแบบที่เลือก) */
+    function replay(seed, draw, log, scoring) {
         const codes = splitLog(log || '');
         if (!codes || codes.length > MAX_LOG_MOVES) return { ok: false, state: null, moves: 0, failedAt: 0 };
-        let s = deal(seed, draw);
+        let s = deal(seed, draw, scoring);
         for (let i = 0; i < codes.length; i++) {
             const next = applyMove(s, decodeMove(codes[i]));
             if (!next) return { ok: false, state: s, moves: i, failedAt: i };
@@ -240,7 +294,7 @@
             const card = suit * 13 + s.f[suit] - 1;
             for (let to = 0; to < 7; to++) if (canTableau(s, card, to)) out.push({ from: FOUNDATION_CODES[suit], to, n: 1 });
         }
-        if (s.stock.length || s.waste.length) out.push({ draw: true });
+        if (isLegal(s, { draw: true })) out.push({ draw: true });
         return out;
     }
 
@@ -271,8 +325,9 @@
         const steps = Math.ceil(total / sim.draw) + 2;
         for (let i = 0; i < steps; i++) {
             if (sim.waste.length) seen.push(sim.waste[sim.waste.length - 1]);
-            if (!sim.stock.length && !sim.waste.length) break;
-            sim = applyMove(sim, { draw: true });
+            const next = applyMove(sim, { draw: true });
+            if (!next) break; // หมดกอง หรือวนครบรอบที่เวกัสให้แล้ว
+            sim = next;
         }
         return seen;
     }
@@ -361,7 +416,7 @@
             if (score > bestScore) { bestScore = score; best = m; }
         }
         if (best) return best;
-        if (s.stock.length || s.waste.length) return hasProgress(s) ? { draw: true } : null;
+        if (isLegal(s, { draw: true })) return hasProgress(s) ? { draw: true } : null;
         return null;
     }
 
@@ -397,6 +452,7 @@
                     for (let to = 0; to < 7 && !mv; to++) if (canTableau(s, w, to)) mv = { from: 'w', to, n: 1 };
                 }
                 if (!mv) mv = { draw: true };
+                if (mv.draw && !isLegal(s, mv)) return null;
                 idle++;
                 if (idle > 200) return null;
             } else idle = 0;
@@ -413,6 +469,8 @@
 
     return {
         SUIT_KEYS, SUIT_SYMBOLS, SUIT_THAI, RANK_LABELS, FOUNDATION_CODES, MAX_LOG_MOVES,
+        SCORINGS, FREE_PASSES, RECYCLE_PENALTY, VEGAS_PASSES, VEGAS_START,
+        isValidScoring, passLimit, canRecycle, recyclesLeft,
         rankOf, suitOf, isRed, cardFile, cardLabel, cardThai,
         mulberry32, shuffledDeck, isValidSeed, isValidDraw,
         deal, clone, canTableau, canFoundation, isWon, isLegal, applyMove,

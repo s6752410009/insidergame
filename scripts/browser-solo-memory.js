@@ -197,6 +197,17 @@ async function tap(page, i) {
         assert((await page.textContent('#mmMoves')) === '3', 'moves restored after refresh');
         assert((await page.$$('.mm-card.is-matched')).length === 4, 'matched cards restored');
 
+        // ทางกลับรายการเกมเห็นตลอดระหว่างเล่น · ออกแล้วกลับมา เกมยังอยู่
+        const back = page.locator('.ui-footer-bar a.ui-back');
+        const inView = await back.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1 && r.height >= 44; });
+        assert(await back.isVisible() && inView && /^\/solo/.test(await back.getAttribute('href')), 'back to game list visible while playing');
+        await back.click();
+        await page.waitForURL(u => new URL(u).pathname === '/solo');
+        await page.goto(`${base}/solo/memory`);
+        await page.waitForSelector('#mmPause:not([hidden])');
+        await page.click('#mmResumeBtn');
+        assert((await page.textContent('#mmMoves')) === '3' && (await page.$$('.mm-card.is-matched')).length === 4, 'leaving via back keeps the game');
+
         // พักเกม: ซ่อนกระดาน เวลาไม่เดิน
         await tap(page, (await pairsOnBoard(page))[0][0]);
         await page.click('#mmPauseBtn');

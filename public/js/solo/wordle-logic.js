@@ -170,6 +170,37 @@
         return { states, near, keys };
     }
 
+    /**
+     * โหมดยาก (แบบ Wordle ต้นฉบับ): ตัวที่เปิดเจอแล้วต้องใช้ในคำต่อไป
+     *   เขียว = ช่องนั้นต้องเป็นตัวเดิมเป๊ะ · ทอง+จุดเขียว = ช่องนั้นต้องใช้ตัวหลักเดิม
+     *   ทอง = ต้องมีตัวหลักนั้นที่ไหนก็ได้ · ตัวเทาใช้ซ้ำได้ (ต้นฉบับก็ไม่ห้าม)
+     * ตรวจช่องเขียวก่อน แล้วค่อยตัวทอง เหมือนต้นฉบับ
+     * @param prevRows [{ cells, states, near }] คำที่ทายไปแล้ว
+     * @returns ข้อความภาษาไทยถ้าผิดกติกา หรือ null ถ้าผ่าน
+     */
+    function hardModeError(prevRows, guessCells) {
+        const rows = Array.isArray(prevRows) ? prevRows : [];
+        const g = (guessCells || []).map(splitCell);
+        for (const row of rows) {
+            for (let i = 0; i < row.cells.length; i++) {
+                if (row.states[i] === 'correct' && guessCells[i] !== row.cells[i]) {
+                    return 'โหมดยาก: ช่องที่ ' + (i + 1) + ' ต้องเป็น ' + row.cells[i];
+                }
+                if (row.states[i] === 'present' && row.near && row.near[i] && (!g[i] || g[i].base !== splitCell(row.cells[i]).base)) {
+                    return 'โหมดยาก: ช่องที่ ' + (i + 1) + ' ต้องใช้ตัว ' + splitCell(row.cells[i]).base;
+                }
+            }
+        }
+        for (const row of rows) {
+            for (let i = 0; i < row.cells.length; i++) {
+                if (row.states[i] !== 'present' || (row.near && row.near[i])) continue;
+                const base = splitCell(row.cells[i]).base;
+                if (!g.some(cell => cell.base === base)) return 'โหมดยาก: ต้องมีตัว ' + base;
+            }
+        }
+        return null;
+    }
+
     function mergeKeys(into, keys) {
         const out = Object.assign({}, into || {});
         Object.keys(keys || {}).forEach(k => { out[k] = better(out[k], keys[k]); });
@@ -263,10 +294,11 @@
 
     // ---------- แชร์ ----------
     const EMOJI = { correct: '🟩', present: '🟨', absent: '⬛' };
-    function shareText(puzzle, rows, won) {
+    function shareText(puzzle, rows, won, hard) {
         const grid = rows.map(states => states.map(s => EMOJI[s] || '⬛').join('')).join('\n');
         const score = won ? rows.length : 'X';
-        return `ทายคำรายวัน #${puzzle} ${score}/${MAX_GUESSES}\n\n${grid}\ninsider-th.me/solo/wordle`;
+        // * = เล่นโหมดยาก (เหมือนต้นฉบับ)
+        return `ทายคำรายวัน #${puzzle} ${score}/${MAX_GUESSES}${hard ? '*' : ''}\n\n${grid}\ninsider-th.me/solo/wordle`;
     }
 
     // ---------- การพิมพ์บนคีย์บอร์ด ----------
@@ -321,6 +353,7 @@
         canonical,
         splitCell,
         scoreGuess,
+        hardModeError,
         mergeKeys,
         isWin,
         bangkokDay,

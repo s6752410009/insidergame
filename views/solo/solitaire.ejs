@@ -41,7 +41,7 @@
         user-select: none;
     }
     .sol *, .sol *::before, .sol *::after, .sol-dialog * { box-sizing: border-box; }
-    .sol-play { display: grid; gap: 10px; min-width: 0; }
+    .sol-play { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
 
     /* ---------- แถบบน ---------- */
     .sol-top { display: flex; align-items: center; gap: 10px; min-height: 48px; }
@@ -52,6 +52,12 @@
     .sol-meter { display: grid; justify-items: center; min-width: 58px; padding: 4px 8px; border-radius: 10px; background: var(--navy-2); border: 1px solid var(--line); }
     .sol-meter span { font-size: 0.68rem; color: var(--muted); line-height: 1.2; }
     .sol-meter b { font-family: var(--display); font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    @media (max-width: 420px) {
+        .sol-top { gap: 8px; }
+        .sol-meters { gap: 4px; }
+        .sol-meter { min-width: 46px; padding: 4px 5px; }
+        .sol-meter b { font-size: 0.98rem; }
+    }
     .sol-icon-btn { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border-radius: 12px; }
     .sol-icon-btn svg { width: 20px; height: 20px; }
 
@@ -89,6 +95,8 @@
     .sol-stock { cursor: pointer; }
     .sol-stock svg { width: 42%; height: auto; opacity: 0; transition: opacity 0.2s; }
     .sol-stock.can-recycle svg { opacity: 0.85; }
+    .sol-stock.is-spent { opacity: 0.45; cursor: not-allowed; }
+    .sol-note { margin: 0; font-size: 0.82rem; color: var(--muted); }
     .sol-stock-count {
         position: absolute; left: 0; top: 0; z-index: 400;
         min-width: 22px; height: 20px; padding: 0 5px; border-radius: 10px;
@@ -240,7 +248,7 @@
     .sol-field { display: grid; gap: 6px; }
     .sol-field > span { font-size: 0.85rem; color: var(--muted); }
     .sol-warn { padding: 10px 12px; border-radius: 12px; background: oklch(0.55 0.16 25 / 0.16); color: oklch(0.88 0.06 25) !important; font-size: 0.9rem; }
-    .sol-win-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .sol-win-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .sol-win-grid .sol-stat { text-align: center; background: var(--navy-2); }
     .sol-badge { justify-self: start; padding: 4px 10px; border-radius: 999px; background: oklch(0.84 0.12 85 / 0.16); color: var(--gold); font-weight: 600; font-size: 0.85rem; }
     .sol-save { font-size: 0.85rem; }
@@ -269,6 +277,7 @@
             <div class="sol-meters" aria-live="off">
                 <div class="sol-meter"><span>เวลา</span><b id="solTime">0:00</b></div>
                 <div class="sol-meter"><span>ตา</span><b id="solMoves">0</b></div>
+                <div class="sol-meter"><span id="solScoreLabel">คะแนน</span><b id="solScore">0</b></div>
             </div>
             <button type="button" class="ui-btn sol-icon-btn" id="solHelp" aria-label="วิธีเล่น">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.3-2.7 4"/><circle cx="12" cy="17.6" r="0.6" fill="currentColor"/></svg>
@@ -321,6 +330,8 @@
             <li><b>2</b><span>กองล่างต่อไพ่ <strong>ลดลงทีละ 1 สลับสีแดง–ดำ</strong> ช่องว่างวางได้เฉพาะ K</span></li>
             <li><b>3</b><span><strong>แตะไพ่</strong> แล้วมันจะไปที่ที่ดีที่สุดเอง หรือ <strong>ลาก</strong> ไปวางเองก็ได้</span></li>
             <li><b>4</b><span>ไม่มีทางไป แตะ <strong>กองคว่ำมุมซ้ายบน</strong> เพื่อจั่ว หมดกองแล้วแตะอีกทีเพื่อวนใหม่</span></li>
+            <li><b>5</b><span><strong>คะแนน</strong> ขึ้นช่องเก็บ +10 · กองเปิดลงกองล่าง +5 · หงายไพ่ +5 · เอาลงจากช่องเก็บ −15 · วนกองเกินรอบฟรี (จั่ว 1: 1 รอบ / จั่ว 3: 3 รอบ) หัก 100 / 20</span></li>
+            <li><b>6</b><span><strong>เวกัส</strong> (เลือกตอนแจกใหม่): เริ่ม −52 ได้ใบละ 5 ที่ขึ้นช่องเก็บ วนกองได้จำกัด จั่ว 1 = รอบเดียว · จั่ว 3 = 3 รอบ</span></li>
         </ol>
         <div class="sol-dialog-actions">
             <button class="ui-btn ui-btn--primary" value="ok" autofocus>เข้าใจแล้ว เริ่มเลย</button>
@@ -345,6 +356,14 @@
                 <button type="button" data-deal="random">สุ่มล้วน<small>อาจไม่มีทางชนะ</small></button>
             </div>
         </div>
+        <div class="sol-field">
+            <span>นับคะแนน</span>
+            <div class="sol-seg" role="group" aria-label="นับคะแนน">
+                <button type="button" data-scoring="standard">ปกติ<small>วนกองไม่จำกัด</small></button>
+                <button type="button" data-scoring="vegas">เวกัส<small>วนกองจำกัด</small></button>
+            </div>
+        </div>
+        <p class="sol-note" id="vegasNote" hidden></p>
         <p class="sol-warn" id="newWarn" hidden>ตานี้ยังไม่จบ ถ้าแจกใหม่จะนับเป็นแพ้ และสถิติชนะติดกันจะเริ่มใหม่</p>
         <div class="sol-dialog-actions">
             <button class="ui-btn ui-btn--primary" value="deal" id="btnDeal">แจกไพ่</button>
@@ -360,6 +379,7 @@
         <div class="sol-win-grid">
             <div class="sol-stat"><span>เวลา</span><b id="winTime">0:00</b></div>
             <div class="sol-stat"><span>จำนวนตา</span><b id="winMoves">0</b></div>
+            <div class="sol-stat"><span id="winScoreLabel">คะแนน</span><b id="winScore">0</b></div>
             <div class="sol-stat"><span>ชนะติดกัน</span><b id="winStreak">1</b></div>
         </div>
         <p class="sol-save" id="winSave">กำลังบันทึกผล…</p>

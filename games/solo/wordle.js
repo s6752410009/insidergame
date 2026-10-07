@@ -2,7 +2,8 @@
  * ทายคำรายวัน (Thai Wordle) — คำตอบอยู่ฝั่ง server เท่านั้น
  *
  *   GET  /api/solo/wordle/today   ข้อวันนี้ + คำที่ผู้เล่นทายไปแล้ว (+ เฉลยเมื่อจบ)
- *   POST /api/solo/wordle/guess   { guess, puzzle } → สีของแต่ละช่อง, บันทึกความคืบหน้า/สตรีค
+ *   POST /api/solo/wordle/guess   { guess, puzzle, hard? } → สีของแต่ละช่อง, บันทึกความคืบหน้า/สตรีค
+ *     hard = โหมดยาก (ตั้งในเครื่อง) — เปิดได้ก่อนทายคำแรกของข้อเท่านั้น ปิดได้ทุกเมื่อ (เหมือนต้นฉบับ)
  *
  * คำตอบ: games/solo/wordle/answers.json (คัดมือ คำไทยทั่วไป 4 ช่อง)
  * คำที่ทายได้: games/solo/wordle/allowed.txt (คลังคำ PyThaiNLP words_th, CC0 + คำตอบทั้งหมด)
@@ -41,7 +42,7 @@ function normalizeData(data) {
     out.dist = Array.isArray(out.dist) && out.dist.length === W.MAX_GUESSES ? out.dist.slice() : base.dist.slice();
     const today = out.today && typeof out.today === 'object' ? out.today : null;
     out.today = today && Number.isFinite(today.puzzle)
-        ? { puzzle: today.puzzle, guesses: Array.isArray(today.guesses) ? today.guesses.slice(0, W.MAX_GUESSES) : [], done: Boolean(today.done), won: Boolean(today.won) }
+        ? { puzzle: today.puzzle, guesses: Array.isArray(today.guesses) ? today.guesses.slice(0, W.MAX_GUESSES) : [], done: Boolean(today.done), won: Boolean(today.won), hard: Boolean(today.hard) }
         : null;
     return out;
 }
@@ -81,6 +82,7 @@ function buildState(data, nowMs) {
         keys,
         done: today.done,
         won: today.won,
+        hard: Boolean(today.hard),
         answer: today.done ? answer : null,
         answerCells: today.done ? answerCells : null,
         stats: publicStats(d, puzzle),
@@ -102,7 +104,7 @@ class GuessError extends Error {
 }
 
 /** ทาย 1 ครั้ง — pure: รับ data เดิม คืน data ใหม่ (throw GuessError ถ้าไม่ผ่าน) */
-function applyGuess(prevData, rawGuess, clientPuzzle, nowMs) {
+function applyGuess(prevData, rawGuess, clientPuzzle, nowMs, opts) {
     const now = nowMs == null ? Date.now() : nowMs;
     const puzzle = todayPuzzle(now);
     if (clientPuzzle != null && Number(clientPuzzle) !== puzzle) {
@@ -124,6 +126,22 @@ function applyGuess(prevData, rawGuess, clientPuzzle, nowMs) {
     const today = d.today && d.today.puzzle === puzzle ? d.today : { puzzle, guesses: [], done: false, won: false };
     if (today.done) throw new GuessError('ข้อวันนี้จบแล้ว พรุ่งนี้มาใหม่นะ', 'done');
     if (today.guesses.includes(word)) throw new GuessError('ทายคำนี้ไปแล้ว', 'repeat');
+
+    // โหมดยาก: เปิดได้ตอนยังไม่ทายเลย ปิดได้ทุกเมื่อ
+    const wantHard = opts && typeof opts.hard === 'boolean' ? opts.hard : null;
+    let hard = Boolean(today.hard);
+    if (wantHard === false) hard = false;
+    else if (wantHard === true && today.guesses.length === 0) hard = true;
+    if (hard) {
+        const rows = today.guesses.map(prev => {
+            const prevCells = W.toCells(prev);
+            const sc = W.scoreGuess(prevCells, answerCells);
+            return { cells: prevCells, states: sc.states, near: sc.near };
+        });
+        const why = W.hardModeError(rows, cells);
+        if (why) throw new GuessError(why, 'hard_mode');
+    }
+    today.hard = hard;
 
     const scored = W.scoreGuess(cells, answerCells);
     today.guesses = today.guesses.concat(word);
@@ -197,7 +215,7 @@ module.exports = {
                 // อ่าน-แก้-เขียน แบบ synchronous ต่อจากนี้ — คำขอซ้อนกันจึงไม่ทับกัน
                 const body = req.body || {};
                 const prev = helpers.soloStats.getData(playerId, GAME_ID);
-                const next = applyGuess(prev, body.guess, body.puzzle);
+                const next = applyGuess(prev, body.guess, body.puzzle, null, { hard: typeof body.hard === 'boolean' ? body.hard : undefined });
                 helpers.soloStats.setData(playerId, GAME_ID, next);
                 return res.json({ success: true, ...buildState(next) });
             } catch (error) {
