@@ -662,6 +662,10 @@ function createRoom(roomData, creatorPlayerId) {
             pokerAnte: Math.max(10, Number(normalizedRoomData.pokerAnte) || 500),
             pokerTableType: normalizedRoomData.pokerTableType === 'cash' ? 'cash' : 'fun',
             pokdengRotateDealer: gameMode === 'pokdeng' && normalizedRoomData.pokdengRotateDealer === true,
+            pokdengStraights: gameMode === 'pokdeng' ? normalizedRoomData.pokdengStraights !== false : undefined,
+            pokdengMustDraw: gameMode === 'pokdeng' ? normalizedRoomData.pokdengMustDraw === true : undefined,
+            pokdengMaxBet: gameMode !== 'pokdeng' ? undefined
+                : ([100, 200, 500].includes(Number(normalizedRoomData.pokdengMaxBet)) ? Number(normalizedRoomData.pokdengMaxBet) : 500),
             codenamesClueSeconds: gameMode === 'codenames' ? gameEngine.sanitizeClueSeconds(normalizedRoomData.codenamesClueSeconds) : undefined,
             codenamesGuessSeconds: gameMode === 'codenames' ? gameEngine.sanitizeGuessSeconds(normalizedRoomData.codenamesGuessSeconds) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
@@ -871,7 +875,7 @@ function leaveRoom(roomId, playerId) {
     room.players.splice(playerIndex, 1);
     
     // ลบออกจาก gameState.players ด้วย
-    // engine ที่ประกาศ keepSeatOnLeave (เช่น ไพ่โกหก) ใช้ gameState.players เป็นลำดับตา —
+    // engine ที่ประกาศ keepSeatOnLeave (เช่น ไพ่โกหก, ป๊อกเด้ง) ใช้ gameState.players เป็นลำดับตา —
     // ระหว่างเล่นเก็บที่นั่งไว้ให้ engine.handlePlayerLeft ทำเครื่องหมายออก/ส่งตาต่อเอง
     // (ถ้าลบตรงนี้ engine จะหาคนออกไม่เจอ แล้วตาค้างที่คนที่ไม่อยู่แล้ว)
     const keepSeatForEngine = wasGameActive && getGameEngine(room.settings?.gameMode)?.keepSeatOnLeave === true;
@@ -1085,8 +1089,15 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (updates.pokerAnte !== undefined) {
         room.settings.pokerAnte = Math.max(10, Number(updates.pokerAnte) || 500);
     }
-    if (updates.pokdengRotateDealer !== undefined) {
+    // ระหว่างเล่น แบบเจ้ามือเปลี่ยนผ่านปุ่มในโต๊ะ (ก่อนแจกมือแรก) เท่านั้น
+    if (updates.pokdengRotateDealer !== undefined && !(room.settings.gameMode === 'pokdeng' && isRoomGameInProgress(room))) {
         room.settings.pokdengRotateDealer = updates.pokdengRotateDealer === true;
+    }
+    // กติกาโต๊ะป๊อกเด้ง — เปลี่ยนได้ตอนอยู่ห้องรอเท่านั้น (เกมอ่านค่าตอนเปิดโต๊ะ)
+    if (room.settings.gameMode === 'pokdeng' && !isRoomGameInProgress(room)) {
+        if (updates.pokdengStraights !== undefined) room.settings.pokdengStraights = updates.pokdengStraights !== false;
+        if (updates.pokdengMustDraw !== undefined) room.settings.pokdengMustDraw = updates.pokdengMustDraw === true;
+        if ([100, 200, 500].includes(Number(updates.pokdengMaxBet))) room.settings.pokdengMaxBet = Number(updates.pokdengMaxBet);
     }
     if (room.settings.gameMode === 'codenames') {
         const codenamesEngine = getGameEngine('codenames');

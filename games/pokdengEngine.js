@@ -8,9 +8,16 @@
  * → เจ้ามือจั่ว/อยู่ → วัดกับทุกขาพร้อมกัน → สรุปผล → มือต่อไป
  *
  * แต้ม = ผลรวม mod 10 (A=1, 2–9 ตามหน้า, 10/J/Q/K = 0)
- * ลำดับ: ป๊อก (2 ใบ 8/9) > ตอง > เรียง > เซียน > แต้มปกติ
+ * ลำดับ: ป๊อก (2 ใบ 8/9) > ตอง > สเตรทฟลัช > เรียง > เซียน (J/Q/K ล้วน) > แต้มปกติ
+ *   เรียง = 2-3-4 … Q-K-A (A-2-3 กับ K-A-2 ไม่นับ — 2 ต่ำสุด A สูงสุด ตามวงไทย)
  * เด้ง (ตัวคูณของฝั่งที่ชนะ): 2 ใบดอกเดียวกัน/คู่ = 2 · 3 ใบดอกเดียวกัน = 3
- *   ตอง = 5 · เรียง = 3 · เซียน = 3
+ *   ตอง = 5 · สเตรทฟลัช = 5 · เรียง = 3 · เซียน = 3
+ * เจ้ามือ 2 ใบ ≥ 4 แต้ม "จับ" ได้: วัดกับขาที่ถือ 3 ใบ (หรือ 2 ใบ) ก่อน แล้วค่อยจั่ว/อยู่สู้ที่เหลือ
+ *
+ * กติกาห้อง (room.settings → state.rules, ล็อกตอนเปิดโต๊ะ):
+ *   pokdengStraights (ค่าเริ่ม เปิด) — นับเรียง/สเตรทฟลัช · ปิด = นับแต้มปกติ
+ *   pokdengMustDraw (ค่าเริ่ม ปิด) — 2 ใบต่ำกว่า 4 แต้มต้องจั่ว (ทั้งขาและเจ้ามือ)
+ *   pokdengMaxBet (100/200/500 ค่าเริ่ม 500) — อั้นเดิมพันสูงสุดต่อมือ
  */
 
 const { gameAssetImage } = require('./gameAssets');
@@ -20,7 +27,13 @@ const DEALER_BANK = 5000;
 const REBUY_CHIPS = 1000;
 const MIN_BET = 10;
 const TABLE_MAX_BET = 500;
+const MAX_BET_OPTIONS = [100, 200, 500];
+const MUST_DRAW_BELOW = 4;   // กติกาห้อง "ต่ำกว่า 4 ต้องจั่ว"
+const CATCH_MIN_POINTS = 4;  // เจ้ามือต่ำกว่า 4 แต้ม จับไม่ได้ (กติกาทั่วไป)
+const DEFAULT_RULES = Object.freeze({ straights: true, mustDraw: false, maxBet: TABLE_MAX_BET });
 const MAX_EMPTY_HANDS = 3;
+// คนจริงที่หมดเวลาลงเดิมพันติดกันครบเท่านี้ = พักโต๊ะ (ไม่ลงให้อีก) จนกว่าจะกด "กลับมาเล่น"
+const AFK_BET_TIMEOUTS = 2;
 
 const BET_MS = Number(process.env.POKDENG_BET_MS) || 20000;
 const DEAL_MS = Number(process.env.POKDENG_DEAL_MS) || 2600;
@@ -41,7 +54,17 @@ const RANK_ORDER_LOW = { A: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 1
 const FACES = new Set(['J', 'Q', 'K']);
 const CARD_BACK = gameAssetImage('poker', 'back');
 
-const TIER = { NORMAL: 0, SIAN: 1, STRAIGHT: 2, TONG: 3, POK: 4 };
+const TIER = { NORMAL: 0, SIAN: 1, STRAIGHT: 2, STRAIGHT_FLUSH: 3, TONG: 4, POK: 5 };
+
+/** กติกาห้องจาก room.settings (ค่าแปลก ๆ = ค่าเริ่มต้น) */
+function sanitizeRules(settings) {
+    const maxBet = Number(settings?.pokdengMaxBet);
+    return {
+        straights: settings?.pokdengStraights !== false,
+        mustDraw: settings?.pokdengMustDraw === true,
+        maxBet: MAX_BET_OPTIONS.includes(maxBet) ? maxBet : TABLE_MAX_BET
+    };
+}
 const DENG_WORD = { 1: '', 2: 'สองเด้ง', 3: 'สามเด้ง', 5: 'ห้าเด้ง' };
 
 // ---------- ไพ่ ----------
@@ -97,10 +120,9 @@ function shuffle(items, rng = Math.random) {
 function straightTop(cards) {
     const ranks = cards.map(c => c.rank);
     if (new Set(ranks).size !== 3) return 0;
-    const low = ranks.map(r => RANK_ORDER_LOW[r]).sort((a, b) => a - b);
-    if (low[1] === low[0] + 1 && low[2] === low[1] + 1) return low[2]; // A-2-3 … J-Q-K
-    const high = ranks.map(r => (r === 'A' ? 14 : RANK_ORDER_LOW[r])).sort((a, b) => a - b);
-    if (high[1] === high[0] + 1 && high[2] === high[1] + 1) return high[2]; // Q-K-A
+    // 2 ต่ำสุด A สูงสุด: 2-3-4 … Q-K-A · A-2-3 / K-A-2 ไม่นับเรียง
+    const order = ranks.map(r => (r === 'A' ? 14 : RANK_ORDER_LOW[r])).sort((a, b) => a - b);
+    if (order[1] === order[0] + 1 && order[2] === order[1] + 1) return order[2];
     return 0;
 }
 
@@ -108,7 +130,7 @@ function straightTop(cards) {
  * วัดมือ 2–3 ใบ
  * @returns {{points, tier, tierValue, deng, pok, name, label, cardCount, special}}
  */
-function evaluateHand(cardIds) {
+function evaluateHand(cardIds, rules = DEFAULT_RULES) {
     const cards = (cardIds || []).map(parseCard);
     if (cards.length < 2 || cards.length > 3) {
         throw new Error('ต้องมีไพ่ 2–3 ใบ');
@@ -130,18 +152,23 @@ function evaluateHand(cardIds) {
         }
     } else {
         const tong = cards.every(c => c.rank === cards[0].rank);
-        const top = straightTop(cards);
+        const top = rules && rules.straights === false ? 0 : straightTop(cards);
         const sian = cards.every(c => FACES.has(c.rank));
         if (tong) {
             tier = TIER.TONG;
             tierValue = RANK_VALUE[cards[0].rank];
             deng = 5;
             name = 'ตอง';
+        } else if (top && sameSuit) {
+            tier = TIER.STRAIGHT_FLUSH;
+            tierValue = top;
+            deng = 5;
+            name = 'สเตรทฟลัช';
         } else if (top) {
             tier = TIER.STRAIGHT;
             tierValue = top;
             deng = 3;
-            name = sameSuit ? 'เรียง (ดอกเดียวกัน)' : 'เรียง';
+            name = 'เรียง';
         } else if (sian) {
             tier = TIER.SIAN;
             tierValue = 0;
@@ -154,7 +181,7 @@ function evaluateHand(cardIds) {
 
     if (!name) name = points === 0 ? 'บอด' : `${points} แต้ม`;
     const dengWord = DENG_WORD[deng] || '';
-    const special = tier === TIER.TONG || tier === TIER.STRAIGHT || tier === TIER.SIAN;
+    const special = tier === TIER.TONG || tier === TIER.STRAIGHT_FLUSH || tier === TIER.STRAIGHT || tier === TIER.SIAN;
     const label = special ? `${name} · ${deng} เด้ง` : (dengWord ? `${name} ${dengWord}` : name);
     return {
         points,
@@ -203,6 +230,10 @@ function createInitialState() {
         deck: [],
         dealerId: null,
         rotateDealer: false,
+        rules: { ...DEFAULT_RULES },
+        settledRows: [],
+        dealerHandStart: 0,
+        handShortfall: false,
         handNumber: 0,
         step: 0,
         turnNumber: 0,
@@ -240,6 +271,8 @@ function createPlayerState(player) {
         revealed: false,
         done: false,
         drew: false,
+        betTimeouts: 0,
+        sittingOut: false,
         handsPlayed: 0,
         handsDealt: 0,
         left: false
@@ -250,8 +283,24 @@ function resetRoomGame(room) {
     return {
         ...createInitialState(),
         rotateDealer: !!room?.settings?.pokdengRotateDealer,
+        rules: sanitizeRules(room?.settings),
         players: (room.players || []).map(createPlayerState)
     };
+}
+
+function rulesOf(room) {
+    return room?.gameState?.rules || DEFAULT_RULES;
+}
+
+function evalFor(room, cards) {
+    return evaluateHand(cards, rulesOf(room));
+}
+
+/** กติกาห้อง "ต่ำกว่า 4 ต้องจั่ว": ถือ 2 ใบ ไม่ป๊อก แต้มต่ำกว่า 4 */
+function mustDrawNow(room, player) {
+    if (!rulesOf(room).mustDraw || !player || (player.hand || []).length !== 2) return false;
+    const ev = evalFor(room, player.hand);
+    return !ev.pok && ev.points < MUST_DRAW_BELOW;
 }
 
 function getPlayer(room, playerId) {
@@ -317,8 +366,8 @@ function seatOrderFrom(room, fromId) {
     return rows;
 }
 
-function maxBetFor(player) {
-    return Math.max(0, Math.min(Number(player.chips) || 0, TABLE_MAX_BET));
+function maxBetFor(room, player) {
+    return Math.max(0, Math.min(Number(player.chips) || 0, rulesOf(room).maxBet));
 }
 
 function canRebuy(player) {
@@ -343,11 +392,12 @@ function syncSeats(room) {
     });
     state.players.forEach(p => {
         if (!roomEntry(room, p.playerId)) p.left = true;
+        else if (p.left) p.left = false; // กลับเข้าห้องมาใหม่ = นั่งที่เดิมด้วยชิปเดิม ตั้งแต่มือนี้
     });
 }
 
 function isDealerEligible(room, player) {
-    return !!player && isConnected(room, player) && (Number(player.chips) || 0) >= MIN_BET;
+    return !!player && isConnected(room, player) && !player.sittingOut && (Number(player.chips) || 0) >= MIN_BET;
 }
 
 function nextEligibleDealer(room, fromId) {
@@ -389,6 +439,7 @@ function resetHandFlags(player) {
     player.revealed = false;
     player.done = false;
     player.drew = false;
+    player.settled = false;
 }
 
 function startHand(room) {
@@ -400,6 +451,8 @@ function startHand(room) {
     state.deck = [];
     state.lastResult = null;
     state.readyIds = [];
+    state.settledRows = [];
+    state.handShortfall = false;
 
     const previousDealer = state.dealerId;
     const dealer = pickDealer(room);
@@ -407,6 +460,13 @@ function startHand(room) {
         return finishTable(room, 'ไม่มีใครเป็นเจ้ามือต่อได้ — จบโต๊ะ');
     }
     state.dealerId = dealer.playerId;
+    // คนที่พักโต๊ะ (หมดเวลาลงเดิมพันติดกัน) ข้ามมือไปเลย ไม่ต้องรอนาฬิกา
+    state.players.forEach(p => {
+        if (p.sittingOut && p.playerId !== dealer.playerId) {
+            p.decided = true;
+            p.skipped = true;
+        }
+    });
     if (!state.players.some(p => couldBet(room, p))) {
         return finishTable(room, 'เหลือแค่เจ้ามือ — จบโต๊ะ');
     }
@@ -419,7 +479,7 @@ function startHand(room) {
         pushFx(room, { kind: 'dealer', playerId: dealer.playerId });
     }
     setPhase(room, 'bet', BET_MS);
-    pushHistory(room, '🪙', `มือที่ ${state.handNumber} — ลงเดิมพัน (${MIN_BET}–${TABLE_MAX_BET})`, 'bet');
+    pushHistory(room, '🪙', `มือที่ ${state.handNumber} — ลงเดิมพัน (${MIN_BET}–${rulesOf(room).maxBet})`, 'bet');
     pushFx(room, { kind: 'bet-open', handNumber: state.handNumber });
     return state;
 }
@@ -460,6 +520,7 @@ function pendingBettors(room) {
         p.playerId !== room.gameState.dealerId
         && !p.left
         && !p.decided
+        && !p.sittingOut
         && isConnected(room, p)
         && (p.chips >= MIN_BET || !p.rebuyUsed));
 }
@@ -482,7 +543,7 @@ function submitBet(room, playerId, amount, context = null) {
     if (player.chips < MIN_BET) throw new Error('ชิปไม่พอ — กดขอชิปใหม่ก่อน');
     const value = Number(amount);
     if (!Number.isFinite(value) || Math.floor(value) !== value) throw new Error('ยอดเดิมพันไม่ถูกต้อง');
-    const max = maxBetFor(player);
+    const max = maxBetFor(room, player);
     if (value < MIN_BET) throw new Error(`ลงขั้นต่ำ ${MIN_BET}`);
     if (value > max) throw new Error(`ลงได้สูงสุด ${max}`);
 
@@ -491,6 +552,7 @@ function submitBet(room, playerId, amount, context = null) {
     player.lastBet = value;
     player.decided = true;
     player.inHand = true;
+    player.betTimeouts = 0;
     pushFx(room, { kind: 'chips', playerId, amount: value });
     return afterBetChange(room);
 }
@@ -505,8 +567,30 @@ function submitSkip(room, playerId, context = null) {
     if (player.decided) throw new Error('ตัดสินใจมือนี้ไปแล้ว');
     player.decided = true;
     player.skipped = true;
+    player.betTimeouts = 0;
     pushHistory(room, '💤', `${player.name} ข้ามมือนี้`);
     return afterBetChange(room);
+}
+
+/** พักโต๊ะอยู่ → กลับมาเล่น (ถ้ายังอยู่ช่วงลงเดิมพัน ลงมือนี้ได้เลย) */
+function submitSitIn(room, playerId) {
+    const state = assertCanAct(room);
+    const player = getPlayer(room, playerId);
+    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
+    if (!player.sittingOut) throw new Error('คุณไม่ได้พักโต๊ะ');
+    sitIn(room, player);
+    return state;
+}
+
+function sitIn(room, player) {
+    const state = room.gameState;
+    player.sittingOut = false;
+    player.betTimeouts = 0;
+    if (state.phase === 'bet' && player.playerId !== state.dealerId && player.skipped && !player.inHand) {
+        player.decided = false;
+        player.skipped = false;
+    }
+    pushHistory(room, '🙋', `${player.name} กลับมาเล่น`);
 }
 
 function submitRebuy(room, playerId) {
@@ -548,6 +632,9 @@ function dealHand(room) {
         ? room.riggedDeck.splice(0)
         : shuffle(buildDeck());
     const order = [...seatOrderFrom(room, dealer.playerId).filter(p => p.inHand), dealer];
+    state.settledRows = [];
+    state.handShortfall = false;
+    state.dealerHandStart = dealer.chips;
     dealer.hand = [];
     dealer.done = false;
     dealer.revealed = false;
@@ -556,7 +643,7 @@ function dealHand(room) {
     }
     bettors.forEach(p => { p.handsPlayed += 1; });
 
-    const dealerEval = evaluateHand(dealer.hand);
+    const dealerEval = evalFor(room, dealer.hand);
     pushFx(room, { kind: 'deal', order: order.map(p => p.playerId), handNumber: state.handNumber });
     pushHistory(room, '🃏', `แจกไพ่คนละ 2 ใบ (${bettors.length} ขา)`, 'deal');
 
@@ -569,7 +656,7 @@ function dealHand(room) {
     }
 
     bettors.forEach(p => {
-        const ev = evaluateHand(p.hand);
+        const ev = evalFor(room, p.hand);
         if (ev.pok) {
             p.revealed = true;
             p.done = true;
@@ -601,8 +688,10 @@ function advanceDraw(room) {
     // ขาที่หลุด/ออกไป = อยู่ (ไม่จั่ว) ทันที ไม่ต้องรอเวลา
     let next = nextDrawer(room);
     while (next && !isConnected(room, next)) {
+        const forced = mustDrawNow(room, next);
+        if (forced) drawCard(room, next);
         next.done = true;
-        pushHistory(room, '⏭️', `${next.name} ไม่อยู่ — อยู่อัตโนมัติ`);
+        pushHistory(room, '⏭️', `${next.name} ไม่อยู่ — ${forced ? 'ต่ำกว่า 4 จั่วให้' : 'อยู่'}อัตโนมัติ`);
         next = nextDrawer(room);
     }
     if (next) {
@@ -620,9 +709,9 @@ function beginDealerTurn(room) {
     state.toActPlayerId = dealer ? dealer.playerId : null;
     if (!dealer) return settleHand(room);
     // ทุกขาป๊อกหมด — เจ้ามือจั่วไปก็ไม่เปลี่ยนผล วัดเลย
-    if (handPlayers(room).every(p => evaluateHand(p.hand.slice(0, 2)).pok)) return settleHand(room);
+    if (handPlayers(room).every(p => evalFor(room, p.hand.slice(0, 2)).pok)) return settleHand(room);
     if (!isConnected(room, dealer)) {
-        const ev = evaluateHand(dealer.hand);
+        const ev = evalFor(room, dealer.hand);
         if (ev.points <= 3) drawCard(room, dealer);
         pushHistory(room, '⏭️', `เจ้ามือไม่อยู่ — ${dealer.hand.length === 3 ? 'จั่วให้' : 'อยู่ให้'}อัตโนมัติ`);
         return settleHand(room);
@@ -639,6 +728,7 @@ function submitDraw(room, playerId, wantDraw, context = null) {
     if (state.toActPlayerId !== playerId) throw new Error('ยังไม่ถึงตาคุณ');
     const player = getPlayer(room, playerId);
     if (!player || !player.inHand || player.done) throw new Error('คุณไม่ได้อยู่ในมือนี้');
+    if (!wantDraw && mustDrawNow(room, player)) throw new Error(`ต่ำกว่า ${MUST_DRAW_BELOW} แต้มต้องจั่ว (กติกาห้อง)`);
     if (wantDraw) {
         drawCard(room, player);
         pushHistory(room, '🂠', `${player.name} จั่ว`);
@@ -657,6 +747,8 @@ function submitDealerDecision(room, playerId, wantDraw, context = null) {
     assertContext(state, context);
     if (state.dealerId !== playerId) throw new Error('คุณไม่ใช่เจ้ามือ');
     const dealer = getPlayer(room, playerId);
+    if (dealer.hand.length !== 2) throw new Error('เจ้ามือตัดสินใจไปแล้ว');
+    if (!wantDraw && mustDrawNow(room, dealer)) throw new Error(`ต่ำกว่า ${MUST_DRAW_BELOW} แต้มต้องจั่ว (กติกาห้อง)`);
     if (wantDraw) {
         drawCard(room, dealer);
         pushHistory(room, '🂠', `เจ้ามือ ${dealer.name} จั่ว`);
@@ -667,21 +759,56 @@ function submitDealerDecision(room, playerId, wantDraw, context = null) {
     return settleHand(room);
 }
 
+/** ขาที่ยังไม่ถูกวัด แยกตามจำนวนไพ่ (ใช้ตอนเจ้ามือ "จับ") */
+function catchTargets(room, group) {
+    return handPlayers(room).filter(p => !p.settled && p.hand.length === group);
+}
+
+function canDealerCatch(room, dealer) {
+    return !!dealer && dealer.hand.length === 2 && evalFor(room, dealer.hand).points >= CATCH_MIN_POINTS;
+}
+
+/**
+ * เจ้ามือ "จับ" — ใช้ไพ่ 2 ใบของเจ้ามือ วัดกับทุกขาที่ถือ group ใบ (3 หรือ 2) ก่อน
+ * แล้วเจ้ามือยังจั่ว/อยู่สู้ขาที่เหลือได้ (เจ้ามือต่ำกว่า 4 แต้ม จับไม่ได้)
+ */
+function submitDealerCatch(room, playerId, group, context = null) {
+    const state = assertCanAct(room);
+    if (state.phase !== 'dealer') throw new Error('ยังไม่ถึงตาเจ้ามือ');
+    assertContext(state, context);
+    if (state.dealerId !== playerId) throw new Error('คุณไม่ใช่เจ้ามือ');
+    const size = Number(group);
+    if (size !== 2 && size !== 3) throw new Error('จับได้แค่ขา 2 ใบ หรือ 3 ใบ');
+    const dealer = getPlayer(room, playerId);
+    if (dealer.hand.length !== 2) throw new Error('จั่วแล้วจับไม่ได้');
+    if (!canDealerCatch(room, dealer)) throw new Error(`เจ้ามือต่ำกว่า ${CATCH_MIN_POINTS} แต้ม จับไม่ได้ — จั่วหรืออยู่`);
+    const targets = catchTargets(room, size);
+    if (!targets.length) throw new Error(`ไม่มีขาที่ถือ ${size} ใบให้จับ`);
+    const dealerEval = evalFor(room, dealer.hand);
+    dealer.revealed = true;
+    settleGroup(room, targets, dealerEval, true);
+    pushHistory(room, '🫴', `เจ้ามือ ${dealer.name} จับ ${size} ใบ (${targets.length} ขา) ด้วย${dealerEval.label}`, 'catch');
+    pushFx(room, { kind: 'catch', playerId, group: size, ids: targets.map(p => p.playerId) });
+    if (!handPlayers(room).some(p => !p.settled)) return settleHand(room);
+    state.turnNumber += 1;
+    setPhase(room, 'dealer', DEALER_MS);
+    return state;
+}
+
 // ---------- วัดและจ่าย ----------
 
-function settleHand(room) {
+/**
+ * วัดและจ่ายกลุ่มหนึ่งกับมือเจ้ามือ (ทั้งตอนจับ และตอนเปิดวัดที่เหลือ)
+ * ขาที่แพ้จ่ายเข้าเจ้ามือก่อน แล้วเจ้ามือจ่ายขาที่ชนะ (ไม่พอ = แบ่งตามสัดส่วน)
+ */
+function settleGroup(room, players, dealerEval, caught) {
     const state = room.gameState;
     const dealer = getPlayer(room, state.dealerId);
-    const players = handPlayers(room);
-    const dealerEval = evaluateHand(dealer.hand);
-    const dealerStart = dealer.chips;
-    dealer.revealed = true;
-    dealer.done = true;
-
     const rows = players.map(p => {
         p.revealed = true;
         p.done = true;
-        const ev = evaluateHand(p.hand);
+        p.settled = true;
+        const ev = evalFor(room, p.hand);
         const verdict = judge(ev, dealerEval);
         return { player: p, ev, ...verdict, bet: p.bet, owed: verdict.outcome === 'win' ? p.bet * verdict.multiplier : 0, paid: 0, delta: 0 };
     });
@@ -736,10 +863,10 @@ function settleHand(room) {
         r.short = r.won < r.owed;
     });
     dealer.chips = pool;
-    const dealerDelta = dealer.chips - dealerStart;
+    rows.forEach(r => { r.player.bet = 0; });
+    if (shortfall) state.handShortfall = true;
 
-    players.forEach(p => { p.bet = 0; });
-    const describe = r => ({
+    const described = rows.map(r => ({
         playerId: r.player.playerId,
         name: r.player.name,
         cards: r.player.hand.map(describeCard),
@@ -753,12 +880,35 @@ function settleHand(room) {
         bet: r.bet,
         delta: r.delta,
         short: !!r.short,
-        chips: r.player.chips
-    });
+        chips: r.player.chips,
+        caught: !!caught,
+        dealerLabel: dealerEval.label
+    }));
+    state.settledRows = [...(state.settledRows || []), ...described];
+    return described;
+}
+
+function settleHand(room) {
+    const state = room.gameState;
+    const dealer = getPlayer(room, state.dealerId);
+    const dealerEval = evalFor(room, dealer.hand);
+    dealer.revealed = true;
+    dealer.done = true;
+    const remaining = handPlayers(room).filter(p => !p.settled);
+    if (remaining.length) settleGroup(room, remaining, dealerEval, false);
+
+    const seatIndex = id => {
+        const at = (state.drawOrder || []).indexOf(id);
+        return at < 0 ? 999 : at;
+    };
+    const rows = [...(state.settledRows || [])].sort((a, b) => seatIndex(a.playerId) - seatIndex(b.playerId));
+    // จำนวนชิปล่าสุดของแต่ละขา (ขาที่โดนจับก่อน ชิปไม่เปลี่ยนหลังจากนั้นอยู่แล้ว)
+    rows.forEach(r => { const p = getPlayer(room, r.playerId); if (p) r.chips = p.chips; });
+    const dealerDelta = dealer.chips - (Number(state.dealerHandStart) || 0);
     state.lastResult = {
         handNumber: state.handNumber,
         empty: false,
-        shortfall,
+        shortfall: !!state.handShortfall,
         dealer: {
             playerId: dealer.playerId,
             name: dealer.name,
@@ -771,7 +921,7 @@ function settleHand(room) {
             delta: dealerDelta,
             chips: dealer.chips
         },
-        rows: rows.map(describe)
+        rows
     };
     state.toActPlayerId = null;
     const wins = rows.filter(r => r.outcome === 'win').length;
@@ -846,7 +996,7 @@ function nextHand(room, playerId) {
 
 /** คนจริงที่ยังต่ออยู่ (ไม่นับบอท) — ใช้ตัดสินว่า "พร้อมครบ" */
 function connectedHumans(room) {
-    return room.gameState.players.filter(p => !isBotId(p.playerId) && isConnected(room, p));
+    return room.gameState.players.filter(p => !isBotId(p.playerId) && isConnected(room, p) && !p.sittingOut);
 }
 
 function allHumansReady(room) {
@@ -864,6 +1014,7 @@ function submitReady(room, playerId) {
     if (state.phase !== 'result') throw new Error('ยังไม่จบมือ');
     const player = getPlayer(room, playerId);
     if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
+    if (player.sittingOut) sitIn(room, player);
     const ready = new Set(state.readyIds || []);
     ready.add(playerId);
     state.readyIds = [...ready];
@@ -878,12 +1029,26 @@ function previewNextDealer(room) {
     return nextEligibleDealer(room, state.dealerId);
 }
 
+/** เปลี่ยนแบบเจ้ามือได้ก่อนแจกไพ่มือแรกเท่านั้น — หลังจากนั้นกองเจ้ามือ 5,000 จะปนกับชิปขาไพ่ */
+function isRotateLocked(state) {
+    return !(Number(state.handNumber) <= 1 && state.phase === 'bet');
+}
+
 function setRotateDealer(room, playerId, enabled) {
     const state = assertCanAct(room);
     if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่ตั้งค่าเจ้ามือได้');
-    state.rotateDealer = !!enabled;
-    if (room.settings) room.settings.pokdengRotateDealer = !!enabled;
-    pushHistory(room, '🔁', enabled ? 'หมุนเจ้ามือทุกตา (เริ่มมือหน้า)' : 'เจ้ามือคงที่ (เริ่มมือหน้า)');
+    if (isRotateLocked(state)) throw new Error('เปลี่ยนแบบเจ้ามือได้ก่อนแจกไพ่มือแรกเท่านั้น');
+    const rotate = !!enabled;
+    if (rotate === !!state.rotateDealer) return state;
+    state.rotateDealer = rotate;
+    if (room.settings) room.settings.pokdengRotateDealer = rotate;
+    // ปรับกองหัวห้องให้ตรงแบบเจ้ามือ: คงที่ = ถือ 5,000 · หมุน = 1,000 เท่าทุกคน (ทุนปรับตาม ชิปรวมยังเท่าทุน)
+    const host = getPlayer(room, room.admin);
+    if (host && !(Number(host.bet) > 0) && host.chips === host.buyIn && !host.rebuyUsed) {
+        host.chips = rotate ? START_CHIPS : DEALER_BANK;
+        host.buyIn = host.chips;
+    }
+    pushHistory(room, '🔁', rotate ? `หมุนเจ้ามือทุกตา · ทุกคนเริ่ม ${START_CHIPS}` : `เจ้ามือคงที่ · หัวห้องถือ ${DEALER_BANK}`);
     return state;
 }
 
@@ -897,7 +1062,15 @@ function autoResolvePhase(room) {
     if (state.phase === 'bet') {
         pendingBettors(room).forEach(p => {
             if (isBotId(p.playerId) && canRebuy(p)) applyRebuy(room, p, true);
-            if (p.chips >= MIN_BET && isConnected(room, p)) {
+            if (!isBotId(p.playerId)) p.betTimeouts = (Number(p.betTimeouts) || 0) + 1;
+            if (!isBotId(p.playerId) && p.betTimeouts >= AFK_BET_TIMEOUTS) {
+                // หมดเวลาติดกันครบ = ไม่อยู่หน้าจอ → พักโต๊ะ ไม่ลงให้ จนกว่าจะกดกลับมาเล่น
+                p.sittingOut = true;
+                p.decided = true;
+                p.skipped = true;
+                pushHistory(room, '💤', `${p.name} หมดเวลา ${AFK_BET_TIMEOUTS} มือติด — พักโต๊ะ`);
+                pushFx(room, { kind: 'sitout', playerId: p.playerId });
+            } else if (p.chips >= MIN_BET && isConnected(room, p)) {
                 p.chips -= MIN_BET;
                 p.bet = MIN_BET;
                 p.lastBet = p.lastBet || MIN_BET;
@@ -916,15 +1089,17 @@ function autoResolvePhase(room) {
     if (state.phase === 'draw') {
         const actor = getPlayer(room, state.toActPlayerId);
         if (actor && !actor.done) {
+            const forced = mustDrawNow(room, actor);
+            if (forced) drawCard(room, actor);
             actor.done = true;
-            pushHistory(room, '⏰', `${actor.name} หมดเวลา — อยู่`);
+            pushHistory(room, '⏰', `${actor.name} หมดเวลา — ${forced ? `ต่ำกว่า ${MUST_DRAW_BELOW} จั่วให้` : 'อยู่'}`);
         }
         return advanceDraw(room);
     }
     if (state.phase === 'dealer') {
         const dealer = getPlayer(room, state.dealerId);
         if (dealer && dealer.hand.length === 2) {
-            const ev = evaluateHand(dealer.hand);
+            const ev = evalFor(room, dealer.hand);
             if (ev.points <= 3) {
                 drawCard(room, dealer);
                 pushHistory(room, '⏰', `เจ้ามือหมดเวลา — จั่วให้ (${ev.points} แต้ม)`);
@@ -938,12 +1113,12 @@ function autoResolvePhase(room) {
     return state;
 }
 
-function botBetAmount(player, rng = Math.random) {
+function botBetAmount(room, player, rng = Math.random) {
     const choices = [20, 30, 50, 50, 100, 100, 150, 200];
     const pick = choices[Math.floor(rng() * choices.length)];
     const scaled = Math.max(MIN_BET, Math.round((player.chips * 0.08) / 10) * 10);
     const want = Math.min(pick, scaled);
-    return Math.max(MIN_BET, Math.min(maxBetFor(player), want));
+    return Math.max(MIN_BET, Math.min(maxBetFor(room, player), want));
 }
 
 function playBotTurns(room, rng = Math.random) {
@@ -958,7 +1133,7 @@ function playBotTurns(room, rng = Math.random) {
                 if (room.gameState.phase !== 'bet') return;
                 try {
                     if (canRebuy(bot)) applyRebuy(room, bot, true);
-                    if (bot.chips >= MIN_BET) submitBet(room, bot.playerId, botBetAmount(bot, rng));
+                    if (bot.chips >= MIN_BET) submitBet(room, bot.playerId, botBetAmount(room, bot, rng));
                     else submitSkip(room, bot.playerId);
                     acted = true;
                 } catch (error) {
@@ -971,16 +1146,21 @@ function playBotTurns(room, rng = Math.random) {
     if (state.phase === 'draw') {
         const actor = getPlayer(room, state.toActPlayerId);
         if (!actor || !isBotId(actor.playerId)) return false;
-        const ev = evaluateHand(actor.hand);
-        submitDraw(room, actor.playerId, shouldBotDraw(ev.points, rng));
+        const ev = evalFor(room, actor.hand);
+        submitDraw(room, actor.playerId, shouldBotDraw(ev.points, rng) || mustDrawNow(room, actor));
         return true;
     }
 
     if (state.phase === 'dealer') {
         const dealer = getPlayer(room, state.dealerId);
         if (!dealer || !isBotId(dealer.playerId)) return false;
-        const ev = evaluateHand(dealer.hand);
-        submitDealerDecision(room, dealer.playerId, shouldBotDraw(ev.points, rng));
+        const ev = evalFor(room, dealer.hand);
+        // 4–5 แต้ม: จับขา 3 ใบ (ส่วนใหญ่จั่วมาเพราะแต้มน้อย) ก่อน แล้วค่อยตัดสินใจสู้ขา 2 ใบ
+        if (canDealerCatch(room, dealer) && ev.points <= 5 && catchTargets(room, 3).length) {
+            submitDealerCatch(room, dealer.playerId, 3);
+            return true;
+        }
+        submitDealerDecision(room, dealer.playerId, shouldBotDraw(ev.points, rng) || mustDrawNow(room, dealer));
         return true;
     }
     return false;
@@ -1010,6 +1190,10 @@ function handlePlayerLeft(room, playerId) {
 
     if (others.length < 2) {
         return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบโต๊ะ');
+    }
+    // คนจริงออกหมด เหลือแต่บอท — จบโต๊ะ ไม่ให้บอทแจกวนอยู่ฝ่ายเดียว
+    if (!others.some(p => !isBotId(p.playerId))) {
+        return finishTable(room, 'คนจริงออกหมดแล้ว — จบโต๊ะ');
     }
 
     if (playerId === state.dealerId && inHandPhase) {
@@ -1050,22 +1234,28 @@ function getAvailableActions(room, viewerId) {
         canSkip: false,
         canDraw: false,
         canDealerDecide: false,
+        canCatch3: false,
+        canCatch2: false,
+        catch3Count: 0,
+        catch2Count: 0,
+        mustDraw: false,
         canRebuy: false,
         canNext: false,
         canReady: false,
         canEnd: isHost && playing,
-        canToggleRotate: isHost && playing,
+        canToggleRotate: isHost && playing && !isRotateLocked(state),
+        canSitIn: false,
         minBet: MIN_BET,
-        maxBet: player ? maxBetFor(player) : 0,
+        maxBet: player ? maxBetFor(room, player) : 0,
         defaultBet: 0
     };
     if (!player || player.left || !playing) return base;
     const isDealer = state.dealerId === viewerId;
-    const actions = { ...base, canRebuy: canRebuy(player) };
+    const actions = { ...base, canRebuy: canRebuy(player), canSitIn: !!player.sittingOut };
     if (state.phase === 'bet' && !isDealer && !player.decided && player.chips >= MIN_BET) {
         actions.canBet = true;
         actions.canSkip = true;
-        actions.defaultBet = Math.max(MIN_BET, Math.min(maxBetFor(player), player.lastBet || MIN_BET));
+        actions.defaultBet = Math.max(MIN_BET, Math.min(maxBetFor(room, player), player.lastBet || MIN_BET));
     }
     // ชิปหมดแต่ยังขอชิปใหม่ได้: ให้ข้ามมือนี้ได้ด้วย ไม่งั้นทั้งโต๊ะต้องรอนาฬิกาเดิมพันหมด
     if (state.phase === 'bet' && !isDealer && !player.decided && actions.canRebuy) {
@@ -1073,16 +1263,26 @@ function getAvailableActions(room, viewerId) {
     }
     if (state.phase === 'draw' && state.toActPlayerId === viewerId && player.inHand && !player.done) {
         actions.canDraw = true;
+        actions.mustDraw = mustDrawNow(room, player);
     }
-    if (state.phase === 'dealer' && isDealer) actions.canDealerDecide = true;
+    if (state.phase === 'dealer' && isDealer && player.hand.length === 2) {
+        actions.canDealerDecide = true;
+        actions.mustDraw = mustDrawNow(room, player);
+        if (canDealerCatch(room, player)) {
+            actions.catch3Count = catchTargets(room, 3).length;
+            actions.catch2Count = catchTargets(room, 2).length;
+            actions.canCatch3 = actions.catch3Count > 0;
+            actions.canCatch2 = actions.catch2Count > 0;
+        }
+    }
     if (state.phase === 'result' && isHost) actions.canNext = true;
     if (state.phase === 'result' && !isBotId(viewerId) && !(state.readyIds || []).includes(viewerId)) actions.canReady = true;
     return actions;
 }
 
-function publicEval(cards) {
+function publicEval(room, cards) {
     if (!cards || cards.length < 2) return null;
-    const ev = evaluateHand(cards);
+    const ev = evalFor(room, cards);
     return { points: ev.points, deng: ev.deng, label: ev.label, pok: ev.pok, special: ev.special, name: ev.name };
 }
 
@@ -1116,11 +1316,12 @@ function buildClientState(room, viewerId) {
             isDealer: p.playerId === state.dealerId,
             isTurn: p.playerId === state.toActPlayerId,
             rebuyUsed: p.rebuyUsed,
+            sittingOut: !!p.sittingOut,
             net: p.chips - p.buyIn + (p.bet || 0),
             cardCount: (p.hand || []).length,
             revealed: !!p.revealed,
             cards: open ? (p.hand || []).map(describeCard) : null,
-            eval: open ? publicEval(p.hand) : null
+            eval: open ? publicEval(room, p.hand) : null
         };
     };
 
@@ -1144,8 +1345,12 @@ function buildClientState(room, viewerId) {
         dealerId: state.dealerId,
         dealerName: dealer ? dealer.name : null,
         rotateDealer: !!state.rotateDealer,
+        rotateLocked: isRotateLocked(state),
         isHost: room.admin === viewerId,
-        limits: { minBet: MIN_BET, maxBet: TABLE_MAX_BET, startChips: START_CHIPS, dealerBank: DEALER_BANK, rebuy: REBUY_CHIPS },
+        limits: { minBet: MIN_BET, maxBet: rulesOf(room).maxBet, startChips: START_CHIPS, dealerBank: DEALER_BANK, rebuy: REBUY_CHIPS },
+        rules: { ...rulesOf(room), mustDrawBelow: MUST_DRAW_BELOW, catchMinPoints: CATCH_MIN_POINTS },
+        // ขาที่เจ้ามือจับไปแล้วระหว่างตาเจ้ามือ (ไพ่เปิดแล้วทั้งคู่ ไม่มีความลับ)
+        settledRows: state.phase === 'dealer' ? (state.settledRows || []) : [],
         timers: { bet: BET_MS, draw: DRAW_MS, dealer: DEALER_MS, result: RESULT_MS },
         lastResult: showdown ? state.lastResult : null,
         standings: finished ? state.standings : null,
@@ -1164,10 +1369,11 @@ function buildClientState(room, viewerId) {
             inHand: viewer.inHand,
             done: viewer.done,
             rebuyUsed: viewer.rebuyUsed,
+            sittingOut: !!viewer.sittingOut,
             isDealer: viewer.playerId === state.dealerId,
             left: !!viewer.left,
             cards: (viewer.hand || []).map(describeCard),
-            eval: publicEval(viewer.hand)
+            eval: publicEval(room, viewer.hand)
         } : null,
         players: (state.players || []).map(seat),
         availableActions: getAvailableActions(room, viewerId),
@@ -1184,6 +1390,7 @@ function totalBuyIn(room) {
 }
 
 module.exports = {
+    keepSeatOnLeave: true, // roomManager.leaveRoom เก็บที่นั่งไว้ให้ handlePlayerLeft (คืนเดิมพัน · เปลี่ยนเจ้ามือ)
     id: 'pokdeng',
     label: 'ป๊อกเด้ง',
     description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน',
@@ -1194,6 +1401,11 @@ module.exports = {
     REBUY_CHIPS,
     MIN_BET,
     TABLE_MAX_BET,
+    AFK_BET_TIMEOUTS,
+    MAX_BET_OPTIONS,
+    MUST_DRAW_BELOW,
+    CATCH_MIN_POINTS,
+    DEFAULT_RULES,
     TIER,
     CARD_BACK,
     createInitialState,
@@ -1204,8 +1416,11 @@ module.exports = {
     submitBet,
     submitSkip,
     submitRebuy,
+    submitSitIn,
     submitDraw,
     submitDealerDecision,
+    submitDealerCatch,
+    sanitizeRules,
     nextHand,
     submitReady,
     previewNextDealer,

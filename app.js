@@ -8905,6 +8905,11 @@ io.sockets.on('connection', function(socket) {
             pokdengRuntime.engine.submitRebuy(room, playerId));
     });
 
+    safeOn(socket, 'pokdeng_sitin', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitSitIn(room, playerId));
+    });
+
     safeOn(socket, 'pokdeng_draw', function(data, callback) {
         handlePokDengCommand(socket, callback, (room, playerId) =>
             pokdengRuntime.engine.submitDraw(room, playerId, data?.draw === true, pokdengContext(data)));
@@ -8913,6 +8918,12 @@ io.sockets.on('connection', function(socket) {
     safeOn(socket, 'pokdeng_dealer', function(data, callback) {
         handlePokDengCommand(socket, callback, (room, playerId) =>
             pokdengRuntime.engine.submitDealerDecision(room, playerId, data?.draw === true, pokdengContext(data)));
+    });
+
+    // เจ้ามือ "จับ" ขา 3 ใบ / 2 ใบ ก่อนจั่ว
+    safeOn(socket, 'pokdeng_dealer_catch', function(data, callback) {
+        handlePokDengCommand(socket, callback, (room, playerId) =>
+            pokdengRuntime.engine.submitDealerCatch(room, playerId, data?.group, pokdengContext(data)));
     });
 
     safeOn(socket, 'pokdeng_next', function(data, callback) {
