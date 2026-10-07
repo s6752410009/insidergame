@@ -3,6 +3,11 @@ const ROLE_CITIZEN = 'citizen';
 
 const REVEAL_PHASE_MS = Math.max(1000, Number(process.env.SPYFALL_REVEAL_PHASE_MS) || 5000);
 const VOTE_PHASE_MS = 90 * 1000;
+// โหวตเห็นด้วย/ไม่เห็นด้วยกับคำกล่าวหา และเวลาเลือกคนที่จะกล่าวหาตอนหมดเวลา
+const ACCUSE_VOTE_MS = Math.max(1000, Number(process.env.SPYFALL_ACCUSE_VOTE_MS) || 60 * 1000);
+const FINAL_PICK_MS = Math.max(1000, Number(process.env.SPYFALL_FINAL_PICK_MS) || 30 * 1000);
+// คู่มือ: 3–8 คน
+const MIN_PLAYERS = 3;
 
 const { gameAssetImage } = require('./gameAssets');
 
@@ -14,14 +19,14 @@ const ROLE_DEFINITIONS = {
         icon: '🕵️',
         image: SPYFALL_IMAGE('citizen'),
         title: 'พลเมือง',
-        summary: 'คุณรู้สถานที่และบทในที่นั้น — ถาม–ตอบให้จับสายลับโดยไม่เปิดเผยตรงๆ'
+        summary: 'คุณรู้สถานที่และบทในที่นั้น — ถาม–ตอบหาสายลับ อย่าบอกสถานที่ตรงๆ'
     },
     [ROLE_SPY]: {
         id: ROLE_SPY,
         icon: '🕶️',
         image: SPYFALL_IMAGE('spy'),
         title: 'สายลับ',
-        summary: 'คุณไม่รู้สถานที่ — เนียนตอบให้รอด ถ้าโหวตแล้วจับคุณไม่ได้ หรือทายสถานที่ถูก คุณชนะ (ทายผิดแพ้ทันที)'
+        summary: 'คุณไม่รู้สถานที่ — เนียนตอบให้รอด ไม่โดนจับ = ชนะ · หยุดเวลาทายสถานที่ได้ 1 ครั้ง (ถูกชนะ ผิดแพ้)'
     }
 };
 
@@ -85,11 +90,28 @@ function pickRandom(items) {
     return items[Math.floor(Math.random() * items.length)];
 }
 
+
+// ===== ค่าตั้งห้อง (กติกาจริง: เป็นเอกฉันท์, เล่นหลายรอบ) =====
+const ROUND_OPTIONS = [1, 3, 5];
+const DEFAULT_ROUNDS = 5; // คู่มือ: "แนะนำเล่น 5 รอบ"
+const VOTE_MODE_UNANIMOUS = 'unanimous';
+const VOTE_MODE_MAJORITY = 'majority';
+
+function sanitizeRounds(value) {
+    const n = Number(value);
+    return ROUND_OPTIONS.includes(n) ? n : DEFAULT_ROUNDS;
+}
+
+function sanitizeVoteMode(value) {
+    return value === VOTE_MODE_MAJORITY ? VOTE_MODE_MAJORITY : VOTE_MODE_UNANIMOUS;
+}
+
 function createInitialState() {
     return {
         mode: 'spyfall',
         status: 'waiting',
         phase: 'lobby',
+        voteMode: VOTE_MODE_UNANIMOUS,
         locationId: null,
         locationName: null,
         locationIcon: null,
@@ -105,14 +127,21 @@ function createInitialState() {
         lastAction: 0,
         phaseEndsAt: null,
         statsRecordedAt: null,
-        // ลำดับถาม–ตอบ (ไม่บังคับ แค่บอกว่าตาใครถาม): คนที่ถูกถามจะได้ถามต่อ
+        // ลำดับถาม–ตอบ: เจ้ามือถามก่อน คนที่ถูกถามได้ถามต่อ (ห้ามถามกลับคนที่เพิ่งถามเรา)
         askerId: null,
         lastAskerId: null,
         questionCount: 0,
         timesAsked: {},
-        // ปุ่ม "พร้อมโหวต" — เกินครึ่งของคนออนไลน์กด = ข้ามไปโหวตได้เลย ไม่ต้องรอหมดเวลา
+        // ปุ่ม "พร้อมโหวต" — เกินครึ่งของคนออนไลน์กด = ข้ามเวลาที่เหลือ
         readyToVote: {},
-        returnLobbyAt: null
+        // หยุดเวลากล่าวหา: คนละครั้งต่อรอบ
+        stopUsed: {},
+        accusation: null,
+        pausedRemainingMs: null,
+        finalRound: null,
+        match: null,
+        returnLobbyAt: null,
+        nextRoundAt: null
     };
 }
 
@@ -150,6 +179,7 @@ function resetRoomGame(room) {
 }
 
 function getPlayer(room, playerId) {
+    if (!playerId) return null;
     return room.gameState.players.find(player => player.playerId === playerId) || null;
 }
 
@@ -170,8 +200,9 @@ function setPhaseDeadline(room, durationMs) {
 }
 
 function getDiscussionMs(room) {
-    const seconds = Number(room?.settings?.roundTime || 300);
-    const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 300;
+    // คู่มือ: รอบละ 8 นาที
+    const seconds = Number(room?.settings?.roundTime || 480);
+    const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 480;
     return safeSeconds * 1000;
 }
 
@@ -179,6 +210,27 @@ function getVoteMs(room) {
     const seconds = Number(room?.settings?.spyfallVoteSeconds || 90);
     const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 90;
     return safeSeconds * 1000;
+}
+
+// โหวตเห็นด้วย/ไม่เห็นด้วยกับคำกล่าวหา — กดปุ่มเดียว ไม่ต้องนาน
+function getAccuseVoteMs(room) {
+    return Math.min(ACCUSE_VOTE_MS, getVoteMs(room));
+}
+
+function getFinalPickMs() {
+    return FINAL_PICK_MS;
+}
+
+function getPhaseDurationMs(room, phase) {
+    if (phase === 'reveal') return REVEAL_PHASE_MS;
+    if (phase === 'discussion') return getDiscussionMs(room);
+    if (phase === 'accuse') return getAccuseVoteMs(room);
+    if (phase === 'final') return room?.gameState?.accusation ? getAccuseVoteMs(room) : getFinalPickMs();
+    return getVoteMs(room);
+}
+
+function isUnanimousMode(room) {
+    return room?.gameState?.voteMode !== VOTE_MODE_MAJORITY;
 }
 
 function getAllLocations() {
@@ -241,7 +293,7 @@ function pushHistory(room, icon, text, tone = 'neutral') {
         tone,
         at: new Date().toISOString()
     });
-    room.gameState.history = room.gameState.history.slice(0, 24);
+    room.gameState.history = room.gameState.history.slice(0, 30);
 }
 
 function assignRoles(room, spyPlayerId, location) {
@@ -260,54 +312,134 @@ function assignRoles(room, spyPlayerId, location) {
     assignLocationRoles(room, location, spyPlayerId);
 }
 
-function startGame(room) {
-    const lobbyPlayers = (room.players || []).filter(player => player.playerId);
-    if (lobbyPlayers.length < 4) {
-        throw new Error('ต้องมีผู้เล่นอย่างน้อย 4 คน');
-    }
+function getOnlinePlayers(room) {
+    return getActivePlayers(room).filter(player => isPlayerOnline(room, player.playerId));
+}
 
+function countLobbyPlayers(room) {
+    return (room.players || []).filter(player => player.playerId).length;
+}
+
+// ===== แมตช์หลายรอบ =====
+function createMatch(room) {
+    return {
+        round: 0,
+        totalRounds: sanitizeRounds(room?.settings?.spyfallRounds),
+        scores: {},
+        names: {},
+        dealerId: null,
+        rounds: [],
+        over: false,
+        winnerIds: []
+    };
+}
+
+function syncMatchRoster(room) {
+    const match = room.gameState.match;
+    room.gameState.players.forEach(player => {
+        if (match.scores[player.playerId] === undefined) {
+            match.scores[player.playerId] = 0;
+        }
+        match.names[player.playerId] = player.name;
+    });
+}
+
+function beginRound(room, match, voteMode, dealerHint) {
     room.gameState = resetRoomGame(room);
+    const state = room.gameState;
+    state.voteMode = voteMode;
+    state.match = match;
+    match.round += 1;
+    syncMatchRoster(room);
+
     const activePlayers = getActivePlayers(room);
+    const onlinePlayers = activePlayers.filter(player => isPlayerOnline(room, player.playerId));
+    const pool = onlinePlayers.length ? onlinePlayers : activePlayers;
+    // เจ้ามือ: รอบแรกสุ่ม · รอบถัดไป = สายลับรอบก่อน (ถ้ายังอยู่)
+    const dealer = (dealerHint && pool.find(player => player.playerId === dealerHint)) || pickRandom(pool);
+    match.dealerId = dealer.playerId;
+
     const location = pickRandom(getAllLocations());
     // สายลับต้องเป็นคนที่ออนไลน์ตอนเริ่ม — ไม่งั้นเกมไม่มีสายลับเล่นจริง
-    const onlinePlayers = activePlayers.filter(player => isPlayerOnline(room, player.playerId));
-    const spyPlayer = pickRandom(onlinePlayers.length ? onlinePlayers : activePlayers);
+    const spyPlayer = pickRandom(pool);
 
-    room.gameState.locationId = location.id;
-    room.gameState.locationName = location.name;
-    room.gameState.locationIcon = location.icon;
-    room.gameState.locationImage = location.image || (location.id ? SPYFALL_IMAGE(location.id) : null);
-    room.gameState.locationHint = location.hint;
-    room.gameState.spyPlayerId = spyPlayer.playerId;
-    room.gameState.spyName = spyPlayer.name || null;
-    room.gameState.votes = {};
-    room.gameState.voteCounts = {};
-    room.gameState.winner = null;
-    room.gameState.statsRecordedAt = null;
-    room.gameState.spyGuess = null;
-    room.gameState.lastAction = Date.now();
-    room.gameState.roundStartedAt = Date.now();
+    state.locationId = location.id;
+    state.locationName = location.name;
+    state.locationIcon = location.icon;
+    state.locationImage = location.image || (location.id ? SPYFALL_IMAGE(location.id) : null);
+    state.locationHint = location.hint;
+    state.spyPlayerId = spyPlayer.playerId;
+    state.spyName = spyPlayer.name || null;
+    state.spyGuess = null;
+    state.lastAction = Date.now();
+    state.roundStartedAt = Date.now();
 
     assignRoles(room, spyPlayer.playerId, location);
     // roster ตอนแจกบท — คนออกกลางเกม (โดยเฉพาะสายลับ) ยังต้องถูกนับสถิติ
-    room.gameState.rosterSnapshot = room.gameState.players.map(player => ({
+    state.rosterSnapshot = state.players.map(player => ({
         playerId: player.playerId,
         name: player.name,
         role: player.role
     }));
     moveToRevealPhase(room);
-    return room.gameState;
+    return state;
+}
+
+function startGame(room) {
+    if (countLobbyPlayers(room) < MIN_PLAYERS) {
+        throw new Error(`ต้องมีผู้เล่นอย่างน้อย ${MIN_PLAYERS} คน`);
+    }
+    const match = createMatch(room);
+    const voteMode = sanitizeVoteMode(room?.settings?.spyfallVoteMode);
+    return beginRound(room, match, voteMode, null);
+}
+
+function isMatchOver(room) {
+    const match = room?.gameState?.match;
+    return !match || !!match.over;
+}
+
+// รอบต่อไปในแมตช์เดิม — คะแนนสะสมต่อ, สายลับรอบที่แล้วเป็นเจ้ามือ
+function startNextRound(room) {
+    const state = room?.gameState;
+    if (!state || state.phase !== 'finished' || !state.match) {
+        throw new Error('ยังไม่จบรอบนี้');
+    }
+    if (state.match.over) {
+        throw new Error('ครบทุกรอบแล้ว');
+    }
+    if (countLobbyPlayers(room) < MIN_PLAYERS) {
+        throw new Error(`ต้องมีผู้เล่นอย่างน้อย ${MIN_PLAYERS} คน`);
+    }
+    const lastSpyId = state.spyPlayerId;
+    return beginRound(room, state.match, state.voteMode, lastSpyId);
+}
+
+// ผู้เล่นเหลือไม่พอเล่นรอบต่อไป → จบแมตช์ตรงนี้ (ใช้ตอนจะเริ่มรอบถัดไปไม่ได้)
+function endMatchEarly(room) {
+    const match = room?.gameState?.match;
+    if (!match || match.over) return false;
+    match.over = true;
+    match.endedEarly = true;
+    match.winnerIds = computeMatchWinners(match);
+    return true;
+}
+
+function computeMatchWinners(match) {
+    const entries = Object.entries(match.scores || {});
+    if (!entries.length) return [];
+    const top = Math.max(...entries.map(([, score]) => score));
+    if (top <= 0) return [];
+    return entries.filter(([, score]) => score === top).map(([id]) => id);
 }
 
 function moveToRevealPhase(room) {
     room.gameState.phase = 'reveal';
     room.gameState.status = 'spyfall_reveal';
     setPhaseDeadline(room, REVEAL_PHASE_MS);
-    pushHistory(room, '🎭', 'แจกสถานที่และบทในที่นั้นแล้ว — จำให้แม่น หรือเล่นให้เนียน', 'gold');
-}
-
-function getOnlinePlayers(room) {
-    return getActivePlayers(room).filter(player => isPlayerOnline(room, player.playerId));
+    const match = room.gameState.match;
+    const dealer = getPlayer(room, match?.dealerId);
+    pushHistory(room, '🎭', `รอบ ${match?.round || 1}/${match?.totalRounds || 1} — แจกสถานที่และบทแล้ว${dealer ? ` · เจ้ามือ ${dealer.name}` : ''}`, 'gold');
 }
 
 function pickFirstAsker(room) {
@@ -317,23 +449,29 @@ function pickFirstAsker(room) {
 }
 
 function moveToDiscussionPhase(room) {
-    room.gameState.phase = 'discussion';
-    room.gameState.status = 'spyfall_discussion';
-    room.gameState.votes = {};
-    room.gameState.readyToVote = {};
-    room.gameState.questionCount = 0;
-    room.gameState.timesAsked = {};
-    room.gameState.lastAskerId = null;
-    room.gameState.players.forEach(player => {
+    const state = room.gameState;
+    state.phase = 'discussion';
+    state.status = 'spyfall_discussion';
+    state.votes = {};
+    state.readyToVote = {};
+    state.questionCount = 0;
+    state.timesAsked = {};
+    state.lastAskerId = null;
+    state.stopUsed = {};
+    state.accusation = null;
+    state.pausedRemainingMs = null;
+    state.players.forEach(player => {
         player.hasVoted = false;
         player.voteTargetId = null;
     });
     setPhaseDeadline(room, getDiscussionMs(room));
     pushHistory(room, '💬', 'เริ่มถาม–ตอบ — อย่าเปิดเผยสถานที่ตรงๆ', 'teal');
-    const firstAsker = pickFirstAsker(room);
-    room.gameState.askerId = firstAsker ? firstAsker.playerId : null;
+    // คู่มือ: เจ้ามือถามคนแรก
+    const dealer = getPlayer(room, state.match?.dealerId);
+    const firstAsker = dealer && isPlayerOnline(room, dealer.playerId) ? dealer : pickFirstAsker(room);
+    state.askerId = firstAsker ? firstAsker.playerId : null;
     if (firstAsker) {
-        pushHistory(room, '🎤', `${firstAsker.name} ได้ถามก่อน — เลือก 1 คนแล้วถามได้เลย`, 'teal');
+        pushHistory(room, '🎤', `${firstAsker.name}${firstAsker === dealer ? ' (เจ้ามือ)' : ''} ถามก่อน — เลือก 1 คนแล้วถามได้เลย`, 'teal');
     }
 }
 
@@ -343,16 +481,33 @@ const VOTE_REASON_TEXT = {
     ready: 'ผู้เล่นเกินครึ่งพร้อมโหวต — เริ่มโหวตจับสายลับ'
 };
 
+const FINAL_REASON_TEXT = {
+    timeout: 'หมดเวลา — ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ',
+    host: 'หัวหน้าห้องจบช่วงคุย — ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ',
+    ready: 'ผู้เล่นเกินครึ่งพร้อมโหวต — ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ'
+};
+
+// โหมดเสียงข้างมาก (ค่าตั้งห้อง): โหวตลับพร้อมกันครั้งเดียว
 function moveToVotePhase(room, reason = 'timeout') {
     room.gameState.phase = 'vote';
     room.gameState.status = 'spyfall_vote';
     room.gameState.votes = {};
+    room.gameState.accusation = null;
     room.gameState.players.forEach(player => {
         player.hasVoted = false;
         player.voteTargetId = null;
     });
     setPhaseDeadline(room, getVoteMs(room));
     pushHistory(room, reason === 'timeout' ? '🗳️' : '⏭️', VOTE_REASON_TEXT[reason] || VOTE_REASON_TEXT.timeout, 'amber');
+}
+
+// จบเวลาคุย: เป็นเอกฉันท์ → ไล่กล่าวหา · เสียงข้างมาก → โหวตลับ
+function endDiscussion(room, reason = 'timeout') {
+    if (isUnanimousMode(room)) {
+        enterFinalRound(room, reason);
+    } else {
+        moveToVotePhase(room, reason);
+    }
 }
 
 function getReadyNeeded(room) {
@@ -365,11 +520,15 @@ function getReadyCount(room) {
     return getActivePlayers(room).filter(player => ready[player.playerId] && isPlayerOnline(room, player.playerId)).length;
 }
 
-// คนที่ถูกถามจะได้เป็นคนถามคนต่อไป (กติกา Spyfall มาตรฐาน) — ปุ่มนี้แค่ช่วยบอกตา ไม่ได้บังคับใคร
-function passQuestion(room, playerId, targetPlayerId, options = {}) {
+function assertSpyfall(room) {
     if (!room?.gameState || room.settings?.gameMode !== 'spyfall') {
         throw new Error('ไม่พบเกมนี้');
     }
+}
+
+// คนที่ถูกถามจะได้เป็นคนถามคนต่อไป · ห้ามถามกลับคนที่เพิ่งถามเรา
+function passQuestion(room, playerId, targetPlayerId, options = {}) {
+    assertSpyfall(room);
     if (room.gameState.phase !== 'discussion') {
         throw new Error('ส่งคำถามได้เฉพาะช่วงคุย');
     }
@@ -391,6 +550,9 @@ function passQuestion(room, playerId, targetPlayerId, options = {}) {
     if (targetPlayerId === fromId) {
         throw new Error('ถามตัวเองไม่ได้ — เลือกคนอื่น');
     }
+    if (room.gameState.lastAskerId && targetPlayerId === room.gameState.lastAskerId && getActivePlayers(room).length > 2) {
+        throw new Error('ห้ามถามกลับคนที่เพิ่งถามคุณ — เลือกคนอื่น');
+    }
     const from = getPlayer(room, fromId);
     room.gameState.lastAskerId = fromId;
     room.gameState.askerId = targetPlayerId;
@@ -403,9 +565,7 @@ function passQuestion(room, playerId, targetPlayerId, options = {}) {
 }
 
 function toggleReadyToVote(room, playerId) {
-    if (!room?.gameState || room.settings?.gameMode !== 'spyfall') {
-        throw new Error('ไม่พบเกมนี้');
-    }
+    assertSpyfall(room);
     if (room.gameState.phase !== 'discussion') {
         throw new Error('กดพร้อมโหวตได้เฉพาะช่วงคุย');
     }
@@ -430,7 +590,7 @@ function checkReadyToVote(room) {
     const count = getReadyCount(room);
     const needed = getReadyNeeded(room);
     if (count >= needed) {
-        moveToVotePhase(room, 'ready');
+        endDiscussion(room, 'ready');
         room.gameState.lastAction = Date.now();
         return { advanced: true, phase: room.gameState.phase, count, needed };
     }
@@ -455,6 +615,234 @@ function ensureAskerPresent(room) {
     return true;
 }
 
+// ===== กล่าวหา (หยุดเวลา) — ต้องเห็นด้วยทุกคน ยกเว้นคนถูกกล่าวหา =====
+function getAccusationVoters(room) {
+    const accusation = room.gameState.accusation;
+    if (!accusation) return [];
+    return getActivePlayers(room).filter(player => player.playerId !== accusation.suspectId);
+}
+
+function openAccusation(room, accuserId, suspectId, kind) {
+    const accuser = getPlayer(room, accuserId);
+    const suspect = getPlayer(room, suspectId);
+    room.gameState.accusation = {
+        accuserId,
+        accuserName: accuser?.name || '',
+        suspectId,
+        suspectName: suspect?.name || '',
+        kind,
+        votes: { [accuserId]: true },
+        startedAt: Date.now()
+    };
+    setPhaseDeadline(room, getAccuseVoteMs(room));
+    room.gameState.lastAction = Date.now();
+}
+
+function stopClockAccuse(room, playerId, suspectId) {
+    assertSpyfall(room);
+    const state = room.gameState;
+    if (!isUnanimousMode(room)) {
+        throw new Error('ห้องนี้ใช้โหวตแบบเสียงข้างมาก — รอโหวตตอนจบเวลา');
+    }
+    if (state.phase !== 'discussion') {
+        throw new Error('หยุดเวลากล่าวหาได้เฉพาะตอนเวลายังเดิน');
+    }
+    const accuser = getPlayer(room, playerId);
+    if (!accuser) {
+        throw new Error('ไม่พบผู้เล่น');
+    }
+    if (state.stopUsed?.[playerId]) {
+        throw new Error('รอบนี้คุณกล่าวหาไปแล้ว (ได้คนละครั้งต่อรอบ)');
+    }
+    const suspect = getPlayer(room, suspectId);
+    if (!suspect || suspectId === playerId) {
+        throw new Error('เลือกคนที่จะกล่าวหาไม่ถูกต้อง');
+    }
+    state.stopUsed = state.stopUsed || {};
+    state.stopUsed[playerId] = true;
+    state.pausedRemainingMs = Math.max(0, (state.phaseEndsAt || Date.now()) - Date.now());
+    state.phase = 'accuse';
+    state.status = 'spyfall_accuse';
+    openAccusation(room, playerId, suspectId, 'stop');
+    pushHistory(room, '🛑', `${accuser.name} หยุดเวลา กล่าวหา ${suspect.name} ว่าเป็นสายลับ — ทุกคน (ยกเว้น ${suspect.name}) ต้องเห็นด้วย`, 'amber');
+    return { ...checkAccusation(room), phase: room.gameState.phase };
+}
+
+// ช่วงไล่กล่าวหาหลังหมดเวลา: คนที่ถึงตาเลือกคนที่จะกล่าวหา
+function finalAccuse(room, playerId, suspectId) {
+    assertSpyfall(room);
+    const state = room.gameState;
+    if (state.phase !== 'final' || !state.finalRound) {
+        throw new Error('ยังไม่ถึงช่วงไล่กล่าวหา');
+    }
+    if (state.accusation) {
+        throw new Error('กำลังโหวตคำกล่าวหาอยู่');
+    }
+    const turnId = state.finalRound.order[state.finalRound.index];
+    if (turnId !== playerId) {
+        const turnPlayer = getPlayer(room, turnId);
+        throw new Error(`ตอนนี้ตาของ ${turnPlayer?.name || 'คนอื่น'} กล่าวหา`);
+    }
+    const accuser = getPlayer(room, playerId);
+    const suspect = getPlayer(room, suspectId);
+    if (!accuser || !suspect || suspectId === playerId) {
+        throw new Error('เลือกคนที่จะกล่าวหาไม่ถูกต้อง');
+    }
+    openAccusation(room, playerId, suspectId, 'final');
+    pushHistory(room, '👉', `${accuser.name} กล่าวหา ${suspect.name} — ทุกคน (ยกเว้น ${suspect.name}) ต้องเห็นด้วย`, 'amber');
+    return { ...checkAccusation(room), phase: room.gameState.phase };
+}
+
+function voteAccusation(room, playerId, agree) {
+    assertSpyfall(room);
+    const state = room.gameState;
+    const accusation = state.accusation;
+    if (!accusation || (state.phase !== 'accuse' && state.phase !== 'final')) {
+        throw new Error('ตอนนี้ไม่มีคำกล่าวหาให้โหวต');
+    }
+    if (!getPlayer(room, playerId)) {
+        throw new Error('ไม่พบผู้เล่น');
+    }
+    if (playerId === accusation.suspectId) {
+        throw new Error('คนถูกกล่าวหาไม่ได้โหวต');
+    }
+    if (accusation.votes[playerId] !== undefined) {
+        throw new Error('คุณโหวตไปแล้ว');
+    }
+    accusation.votes[playerId] = agree === true;
+    state.lastAction = Date.now();
+    return { ...checkAccusation(room), phase: state.phase };
+}
+
+// ตรวจผลคำกล่าวหา: มีคนไม่เห็นด้วย = ล้ม · ทุกคนที่ออนไลน์เห็นด้วย = เปิดการ์ด
+// timeout: คนที่ยังไม่โหวต = ไม่เห็นด้วย
+function checkAccusation(room, options = {}) {
+    const state = room.gameState;
+    const accusation = state.accusation;
+    if (!accusation) return { resolved: false };
+    const voters = getAccusationVoters(room);
+    const anyNo = voters.some(player => accusation.votes[player.playerId] === false);
+    if (anyNo) {
+        failAccusation(room, 'no');
+        return { resolved: true, convicted: false };
+    }
+    const onlineVoters = voters.filter(player => isPlayerOnline(room, player.playerId) || accusation.votes[player.playerId] !== undefined);
+    const allYes = onlineVoters.length > 0 && onlineVoters.every(player => accusation.votes[player.playerId] === true);
+    if (allYes) {
+        convictSuspect(room);
+        return { resolved: true, convicted: true };
+    }
+    if (options.timeout) {
+        failAccusation(room, 'timeout');
+        return { resolved: true, convicted: false };
+    }
+    return { resolved: false };
+}
+
+function failAccusation(room, why) {
+    const state = room.gameState;
+    const accusation = state.accusation;
+    state.accusation = null;
+    const noVoters = Object.entries(accusation.votes || {})
+        .filter(([, value]) => value === false)
+        .map(([id]) => getPlayer(room, id)?.name)
+        .filter(Boolean);
+    const whyText = why === 'timeout'
+        ? 'หมดเวลาโหวต (ไม่โหวต = ไม่เห็นด้วย)'
+        : (noVoters.length ? `${noVoters.join(', ')} ไม่เห็นด้วย` : 'ไม่เป็นเอกฉันท์');
+    pushHistory(room, '✋', `คำกล่าวหา ${accusation.suspectName} ไม่ผ่าน — ${whyText}`, 'neutral');
+    if (accusation.kind === 'stop') {
+        resumeClock(room);
+    } else {
+        advanceFinalRound(room);
+    }
+}
+
+function resumeClock(room) {
+    const state = room.gameState;
+    const remaining = Number(state.pausedRemainingMs) || 0;
+    state.pausedRemainingMs = null;
+    if (remaining <= 0) {
+        enterFinalRound(room, 'timeout');
+        return;
+    }
+    state.phase = 'discussion';
+    state.status = 'spyfall_discussion';
+    setPhaseDeadline(room, remaining);
+    ensureAskerPresent(room);
+    pushHistory(room, '▶️', 'เวลาเดินต่อ — ถาม–ตอบต่อได้เลย', 'teal');
+}
+
+function convictSuspect(room) {
+    const state = room.gameState;
+    const accusation = state.accusation;
+    const suspectIsSpy = accusation.suspectId === state.spyPlayerId;
+    state.accusation = null;
+    state.accusedPlayerId = accusation.suspectId;
+    if (suspectIsSpy) {
+        finishRound(room, {
+            team: 'citizens',
+            reason: 'convicted_spy',
+            accusedPlayerId: accusation.suspectId,
+            accusedName: accusation.suspectName,
+            accuserId: accusation.accuserId,
+            accuserName: accusation.accuserName
+        });
+    } else {
+        finishRound(room, {
+            team: 'spy',
+            reason: 'convicted_innocent',
+            accusedPlayerId: accusation.suspectId,
+            accusedName: accusation.suspectName,
+            accuserId: accusation.accuserId,
+            accuserName: accusation.accuserName
+        });
+    }
+}
+
+// ===== ไล่กล่าวหาหลังหมดเวลา (เริ่มจากเจ้ามือ วนตามที่นั่ง) =====
+function buildFinalOrder(room) {
+    const players = getActivePlayers(room);
+    const dealerIndex = players.findIndex(player => player.playerId === room.gameState.match?.dealerId);
+    const start = dealerIndex >= 0 ? dealerIndex : 0;
+    return players.slice(start).concat(players.slice(0, start)).map(player => player.playerId);
+}
+
+function isFinalTurnPlayable(room, playerId) {
+    return !!getPlayer(room, playerId) && isPlayerOnline(room, playerId);
+}
+
+function enterFinalRound(room, reason = 'timeout') {
+    const state = room.gameState;
+    state.phase = 'final';
+    state.status = 'spyfall_final';
+    state.accusation = null;
+    state.pausedRemainingMs = null;
+    state.finalRound = { order: buildFinalOrder(room), index: -1, reason };
+    pushHistory(room, reason === 'timeout' ? '⏰' : '⏭️', FINAL_REASON_TEXT[reason] || FINAL_REASON_TEXT.timeout, 'amber');
+    advanceFinalRound(room);
+}
+
+function advanceFinalRound(room) {
+    const state = room.gameState;
+    const final = state.finalRound;
+    if (!final) return;
+    state.accusation = null;
+    let next = final.index + 1;
+    while (next < final.order.length && !isFinalTurnPlayable(room, final.order[next])) {
+        next += 1;
+    }
+    final.index = next;
+    if (next >= final.order.length) {
+        state.finalRound = { ...final, done: true };
+        finishRound(room, { team: 'spy', reason: 'no_conviction' });
+        return;
+    }
+    setPhaseDeadline(room, getFinalPickMs());
+    const turnPlayer = getPlayer(room, final.order[next]);
+    pushHistory(room, '👉', `ตา ${turnPlayer?.name || 'ผู้เล่น'} เลือกคนที่จะกล่าวหา`, 'amber');
+}
+
 function everyoneVoted(room) {
     return getActivePlayers(room).every(player => {
         if (!isPlayerOnline(room, player.playerId)) {
@@ -464,6 +852,117 @@ function everyoneVoted(room) {
     });
 }
 
+// ===== คะแนน (คู่มือ) =====
+// สายลับชนะ 2 · ได้ 4 ถ้าคนบริสุทธิ์ถูกจับ หรือทายสถานที่ถูก
+// สายลับแพ้: พลเมืองคนละ 1 · คนเริ่มคำกล่าวหาที่จับได้ +1
+function computeRoundPoints(room, result) {
+    const state = room.gameState;
+    const points = {};
+    const roster = getScoringPlayers(room);
+    if (result.team === 'spy') {
+        const spyPoints = (result.reason === 'convicted_innocent' || result.reason === 'spy_guess_right' || result.reason === 'majority_innocent') ? 4 : 2;
+        points[state.spyPlayerId] = spyPoints;
+    } else {
+        roster.forEach(player => {
+            if (player.playerId !== state.spyPlayerId && getPlayer(room, player.playerId)) {
+                points[player.playerId] = 1;
+            }
+        });
+        if (result.reason === 'convicted_spy' && result.accuserId && points[result.accuserId] !== undefined) {
+            points[result.accuserId] += 1;
+        }
+    }
+    return points;
+}
+
+const TEAM_LABELS = {
+    convicted_spy: 'จับสายลับได้ — พลเมืองชนะ',
+    convicted_innocent: 'จับผิดคน — สายลับชนะ',
+    no_conviction: 'ไม่มีใครถูกจับ — สายลับรอด',
+    spy_guess_right: 'สายลับทายสถานที่ถูก — สายลับชนะ',
+    spy_guess_wrong: 'สายลับทายสถานที่ผิด — พลเมืองชนะ',
+    spy_left: 'สายลับหนีออกจากเกม — พลเมืองชนะ',
+    majority_spy: 'พลเมืองชนะ',
+    majority_innocent: 'สายลับรอด',
+    majority_none: 'สายลับรอด'
+};
+
+function finishRound(room, result) {
+    const state = room.gameState;
+    const spyPlayer = getPlayer(room, state.spyPlayerId);
+    const spyDisplayName = spyPlayer?.name || state.spyName || 'ไม่ทราบ';
+    const points = computeRoundPoints(room, result);
+    const match = state.match;
+
+    state.phase = 'finished';
+    state.status = 'spyfall_finished';
+    state.phaseEndsAt = null;
+    state.accusation = null;
+    state.pausedRemainingMs = null;
+
+    if (match) {
+        syncMatchRoster(room);
+        Object.entries(points).forEach(([playerId, value]) => {
+            match.scores[playerId] = (match.scores[playerId] || 0) + value;
+        });
+        match.rounds.push({
+            round: match.round,
+            spyId: state.spyPlayerId,
+            spyName: spyDisplayName,
+            team: result.team,
+            reason: result.reason,
+            locationName: state.locationName,
+            points
+        });
+        if (match.round >= match.totalRounds) {
+            match.over = true;
+            match.winnerIds = computeMatchWinners(match);
+        }
+    }
+
+    state.winner = {
+        team: result.team,
+        reason: result.reason,
+        teamLabel: TEAM_LABELS[result.reason] || (result.team === 'citizens' ? 'พลเมืองชนะ' : 'สายลับรอด'),
+        spyPlayerId: state.spyPlayerId,
+        spyName: spyDisplayName,
+        spyLeft: result.reason === 'spy_left',
+        spyGuess: result.spyGuess || null,
+        accusedPlayerId: result.accusedPlayerId || null,
+        accusedName: result.accusedName || null,
+        accuserId: result.accuserId || null,
+        accuserName: result.accuserName || null,
+        locationId: state.locationId,
+        locationName: state.locationName,
+        locationIcon: state.locationIcon,
+        locationImage: state.locationImage,
+        voteCounts: result.voteCounts || {},
+        topVotes: result.topVotes || 0,
+        wasTie: !!result.wasTie,
+        points,
+        round: match?.round || 1,
+        totalRounds: match?.totalRounds || 1,
+        matchOver: !match || !!match.over
+    };
+    state.lastAction = Date.now();
+
+    const historyText = {
+        convicted_spy: `ทุกคนเห็นด้วย — ${result.accusedName} คือสายลับจริง! สถานที่คือ ${state.locationName}`,
+        convicted_innocent: `ทุกคนเห็นด้วย แต่ ${result.accusedName} ไม่ใช่สายลับ — สายลับ ${spyDisplayName} ชนะ (สถานที่: ${state.locationName})`,
+        no_conviction: `ไม่มีคำกล่าวหาไหนผ่าน — สายลับ ${spyDisplayName} รอด (สถานที่: ${state.locationName})`,
+        spy_left: `สายลับ ${spyDisplayName} หนีออกจากเกม — พลเมืองชนะ! สถานที่คือ ${state.locationName}`
+    }[result.reason] || null;
+    if (historyText) {
+        pushHistory(room, result.team === 'citizens' ? '🎉' : '🕶️', historyText, result.team === 'citizens' ? 'green' : 'red');
+    }
+    if (match?.over && match.totalRounds > 1) {
+        const names = (match.winnerIds || []).map(id => match.names[id]).filter(Boolean);
+        pushHistory(room, '🏆', names.length ? `ครบ ${match.totalRounds} รอบ — ${names.join(', ')} คะแนนสูงสุด` : `ครบ ${match.totalRounds} รอบ`, 'gold');
+    }
+    return state;
+}
+
+// โหมดเสียงข้างมาก: นับโหวตลับ — เสียงสูงสุดคนเดียวเท่านั้นที่ถูกจับ (เสมอ = สายลับรอด)
 function resolveVotes(room) {
     if (room.gameState.phase === 'finished') {
         return room.gameState;
@@ -475,7 +974,7 @@ function resolveVotes(room) {
         voteCounts[player.playerId] = 0;
     });
 
-    Object.values(room.gameState.votes).forEach(targetId => {
+    Object.values(room.gameState.votes || {}).forEach(targetId => {
         if (targetId && Object.prototype.hasOwnProperty.call(voteCounts, targetId)) {
             voteCounts[targetId] += 1;
         }
@@ -505,73 +1004,93 @@ function resolveVotes(room) {
     room.gameState.accusedPlayerId = accusedPlayerId;
 
     const spyPlayer = getPlayer(room, room.gameState.spyPlayerId);
-    // สายลับออกจากห้องไปแล้ว → พลเมืองชนะทันที (ไม่งั้นรอบนี้จับสายลับไม่ได้เลย)
     const spyLeft = !spyPlayer;
     const accusedIsSpy = accusedPlayerId === room.gameState.spyPlayerId;
-    const citizensWin = spyLeft || (accusedIsSpy && topVotes > 0);
-
-    const winnerTeam = citizensWin ? 'citizens' : 'spy';
     const accusedPlayer = accusedPlayerId ? getPlayer(room, accusedPlayerId) : null;
-    const spyDisplayName = spyPlayer?.name || room.gameState.spyName || 'ไม่ทราบ';
+    let reason;
+    if (spyLeft) reason = 'spy_left';
+    else if (accusedIsSpy && topVotes > 0) reason = 'majority_spy';
+    else if (accusedPlayer) reason = 'majority_innocent';
+    else reason = 'majority_none';
 
-    room.gameState.phase = 'finished';
-    room.gameState.status = 'spyfall_finished';
-    room.gameState.phaseEndsAt = null;
-    room.gameState.winner = {
-        team: winnerTeam,
-        teamLabel: citizensWin
-            ? (spyLeft ? 'สายลับหนีออกจากเกม — พลเมืองชนะ' : 'พลเมืองชนะ')
-            : 'สายลับรอด',
-        spyPlayerId: room.gameState.spyPlayerId,
-        spyName: spyDisplayName,
-        spyLeft,
+    finishRound(room, {
+        team: (reason === 'spy_left' || reason === 'majority_spy') ? 'citizens' : 'spy',
+        reason,
         accusedPlayerId,
         accusedName: accusedPlayer?.name || (tiedIds.length > 1 ? 'เสมอ — สายลับรอด' : 'ไม่มีใครโดนโหวตสูงสุด'),
-        locationId: room.gameState.locationId,
-        locationName: room.gameState.locationName,
-        locationIcon: room.gameState.locationIcon,
-        locationImage: room.gameState.locationImage,
         voteCounts,
         topVotes,
         wasTie: tiedIds.length > 1
-    };
+    });
 
-    pushHistory(
-        room,
-        citizensWin ? '🎉' : '🕶️',
-        spyLeft
-            ? `สายลับ ${spyDisplayName} หนีออกจากเกม — พลเมืองชนะ! สถานที่คือ ${room.gameState.locationName}`
-            : citizensWin
+    if (reason !== 'spy_left') {
+        const spyDisplayName = room.gameState.winner.spyName;
+        pushHistory(
+            room,
+            reason === 'majority_spy' ? '🎉' : '🕶️',
+            reason === 'majority_spy'
                 ? `จับสายลับ ${spyDisplayName} ได้! สถานที่คือ ${room.gameState.locationName}`
                 : `สายลับ ${spyDisplayName} รอด — สถานที่คือ ${room.gameState.locationName}`,
-        citizensWin ? 'green' : 'red'
-    );
-
+            reason === 'majority_spy' ? 'green' : 'red'
+        );
+    }
     return room.gameState;
 }
 
-// เรียกหลังผู้เล่นถูกเอาออกจาก gameState แล้ว — ถ้าคนที่ออกคือสายลับ ให้จบเกมทันที
+const LIVE_PHASES = ['reveal', 'discussion', 'accuse', 'final', 'vote'];
+
+// เรียกหลังผู้เล่นถูกเอาออกจาก gameState แล้ว
 function handlePlayerLeft(room, playerId) {
-    if (!room?.gameState) {
+    const state = room?.gameState;
+    if (!state) {
         return null;
     }
-    const phase = room.gameState.phase;
-    if (!phase || phase === 'finished') {
+    const phase = state.phase;
+    if (!LIVE_PHASES.includes(phase)) {
         return null;
     }
-    if (playerId !== room.gameState.spyPlayerId) {
-        // คนธรรมดาออก: ส่งตาถามต่อ + เช็กว่าที่เหลือพร้อมโหวตครบหรือยัง
-        if (room.gameState.readyToVote) {
-            delete room.gameState.readyToVote[playerId];
+    if (playerId === state.spyPlayerId) {
+        // สายลับออก → พลเมืองชนะทันที
+        pushHistory(room, '🚪', 'สายลับออกจากเกม — จบรอบทันที', 'amber');
+        finishRound(room, { team: 'citizens', reason: 'spy_left' });
+        return state;
+    }
+    if (state.readyToVote) {
+        delete state.readyToVote[playerId];
+    }
+    if (state.stopUsed) {
+        delete state.stopUsed[playerId];
+    }
+    if (state.votes) {
+        delete state.votes[playerId];
+    }
+    const accusation = state.accusation;
+    if (accusation) {
+        delete accusation.votes[playerId];
+        if (accusation.suspectId === playerId) {
+            // คนถูกกล่าวหาออก → ยกเลิกคำกล่าวหานี้ (คนกล่าวหาได้สิทธิ์คืน)
+            state.accusation = null;
+            pushHistory(room, '🚪', `${accusation.suspectName} ออกจากเกม — ยกเลิกคำกล่าวหา`, 'neutral');
+            if (accusation.kind === 'stop') {
+                if (state.stopUsed) delete state.stopUsed[accusation.accuserId];
+                resumeClock(room);
+            } else {
+                setPhaseDeadline(room, getFinalPickMs());
+            }
+            return null;
         }
-        ensureAskerPresent(room);
-        if (phase === 'discussion' && getReadyCount(room) > 0) {
-            checkReadyToVote(room);
-        }
+        checkAccusation(room);
         return null;
     }
-    pushHistory(room, '🚪', 'สายลับออกจากเกม — จบเกมทันที', 'amber');
-    return resolveVotes(room);
+    if (phase === 'final' && state.finalRound && state.finalRound.order[state.finalRound.index] === playerId) {
+        advanceFinalRound(room);
+        return null;
+    }
+    ensureAskerPresent(room);
+    if (phase === 'discussion' && getReadyCount(room) > 0) {
+        checkReadyToVote(room);
+    }
+    return null;
 }
 
 // ผู้เล่นที่ต้องนับสถิติ = คนที่อยู่ตอนนี้ + คนที่ออกกลางเกม (จาก roster ตอนเริ่ม)
@@ -582,14 +1101,14 @@ function getScoringPlayers(room) {
     return current.concat(roster.filter(player => player.playerId && !presentIds.has(player.playerId)));
 }
 
-// สายลับทายสถานที่ (ได้ครั้งเดียว ช่วงคุยหรือโหวต): ถูก = สายลับชนะทันที, ผิด = สายลับแพ้ทันที
+// สายลับหยุดเวลาทายสถานที่ (ครั้งเดียว · เฉพาะตอนเวลายังเดิน): ถูก = ชนะ 4, ผิด = แพ้
 function guessLocation(room, playerId, locationId) {
-    if (!room?.gameState || room.settings?.gameMode !== 'spyfall') {
-        throw new Error('ไม่พบเกมนี้');
-    }
+    assertSpyfall(room);
     const phase = room.gameState.phase;
-    if (phase !== 'discussion' && phase !== 'vote') {
-        throw new Error('ทายสถานที่ได้เฉพาะช่วงคุยหรือช่วงโหวต');
+    if (phase !== 'discussion') {
+        throw new Error(phase === 'accuse'
+            ? 'มีคนหยุดเวลากล่าวหาอยู่ — ทายได้ตอนเวลาเดินต่อ'
+            : 'ทายสถานที่ได้เฉพาะตอนเวลายังเดิน (ช่วงคุย)');
     }
     if (!playerId || playerId !== room.gameState.spyPlayerId || !getPlayer(room, playerId)) {
         throw new Error('เฉพาะสายลับเท่านั้นที่ทายสถานที่ได้');
@@ -605,38 +1124,23 @@ function guessLocation(room, playerId, locationId) {
     const correct = guessed.id === room.gameState.locationId;
     const spyPlayer = getPlayer(room, playerId);
     const spyDisplayName = spyPlayer?.name || room.gameState.spyName || 'ไม่ทราบ';
-    room.gameState.spyGuess = { locationId: guessed.id, locationName: guessed.name, correct };
-
-    room.gameState.phase = 'finished';
-    room.gameState.status = 'spyfall_finished';
-    room.gameState.phaseEndsAt = null;
+    const spyGuess = { locationId: guessed.id, locationName: guessed.name, correct };
+    room.gameState.spyGuess = spyGuess;
     room.gameState.accusedPlayerId = null;
-    room.gameState.winner = {
-        team: correct ? 'spy' : 'citizens',
-        teamLabel: correct ? 'สายลับทายสถานที่ถูก — สายลับชนะ' : 'สายลับทายสถานที่ผิด — พลเมืองชนะ',
-        spyPlayerId: room.gameState.spyPlayerId,
-        spyName: spyDisplayName,
-        spyLeft: false,
-        spyGuess: { locationId: guessed.id, locationName: guessed.name, correct },
-        accusedPlayerId: null,
-        accusedName: '— (สายลับทายสถานที่)',
-        locationId: room.gameState.locationId,
-        locationName: room.gameState.locationName,
-        locationIcon: room.gameState.locationIcon,
-        locationImage: room.gameState.locationImage,
-        voteCounts: {},
-        topVotes: 0,
-        wasTie: false
-    };
-    room.gameState.lastAction = Date.now();
     pushHistory(
         room,
         correct ? '🕶️' : '🎉',
         correct
-            ? `สายลับ ${spyDisplayName} ทายถูกว่าเป็น ${guessed.name} — สายลับชนะ!`
+            ? `สายลับ ${spyDisplayName} หยุดเวลา ทายถูกว่าเป็น ${guessed.name} — สายลับชนะ!`
             : `สายลับ ${spyDisplayName} ทาย ${guessed.name} ผิด (ที่จริงคือ ${room.gameState.locationName}) — พลเมืองชนะ!`,
         correct ? 'red' : 'green'
     );
+    finishRound(room, {
+        team: correct ? 'spy' : 'citizens',
+        reason: correct ? 'spy_guess_right' : 'spy_guess_wrong',
+        spyGuess,
+        accusedName: '— (สายลับทายสถานที่)'
+    });
     return { resolved: true, correct, phase: room.gameState.phase };
 }
 
@@ -647,20 +1151,37 @@ function endDiscussionEarly(room) {
     if (room.gameState.phase !== 'discussion') {
         throw new Error('จบช่วงคุยได้เฉพาะตอนถาม–ตอบ');
     }
-    moveToVotePhase(room, 'host');
+    endDiscussion(room, 'host');
     room.gameState.lastAction = Date.now();
     return { advanced: true, phase: room.gameState.phase };
 }
 
 function advancePhase(room) {
-    const phase = room.gameState.phase;
+    const state = room.gameState;
+    const phase = state.phase;
     if (phase === 'reveal') {
         moveToDiscussionPhase(room);
-        return { advanced: true, phase: room.gameState.phase };
+        return { advanced: true, phase: state.phase };
     }
     if (phase === 'discussion') {
-        moveToVotePhase(room);
+        endDiscussion(room, 'timeout');
         return { advanced: true, phase: room.gameState.phase };
+    }
+    if (phase === 'accuse') {
+        checkAccusation(room, { timeout: true });
+        return { advanced: true, phase: room.gameState.phase, finished: room.gameState.phase === 'finished' };
+    }
+    if (phase === 'final') {
+        if (state.accusation) {
+            checkAccusation(room, { timeout: true });
+        } else {
+            const turnPlayer = getPlayer(room, state.finalRound?.order?.[state.finalRound.index]);
+            if (turnPlayer) {
+                pushHistory(room, '⏭️', `${turnPlayer.name} ไม่ได้เลือกใคร — ข้ามไปคนต่อไป`, 'neutral');
+            }
+            advanceFinalRound(room);
+        }
+        return { advanced: true, phase: room.gameState.phase, finished: room.gameState.phase === 'finished' };
     }
     if (phase === 'vote') {
         resolveVotes(room);
@@ -677,6 +1198,22 @@ function autoResolvePhase(room) {
     if (room.gameState.phase === 'vote' && everyoneVoted(room)) {
         resolveVotes(room);
         return { resolved: true, phase: room.gameState.phase, autoResolved: false };
+    }
+
+    // คนที่ยังไม่โหวตคำกล่าวหาหลุดไป → ที่เหลือเห็นด้วยครบ = ตัดสินเลย
+    if (room.gameState.accusation) {
+        const check = checkAccusation(room);
+        if (check.resolved) {
+            return { resolved: true, phase: room.gameState.phase, autoResolved: false };
+        }
+    }
+
+    // ตาไล่กล่าวหาเป็นของคนที่หลุด → ข้าม
+    const final = room.gameState.finalRound;
+    if (room.gameState.phase === 'final' && !room.gameState.accusation && final
+        && !isFinalTurnPlayable(room, final.order[final.index])) {
+        advanceFinalRound(room);
+        return { resolved: true, phase: room.gameState.phase, autoResolved: true };
     }
 
     const now = Date.now();
@@ -728,6 +1265,32 @@ function submitVote(room, playerId, targetPlayerId) {
     return { resolved: false, phase: room.gameState.phase };
 }
 
+function buildMatchView(room) {
+    const match = room.gameState.match;
+    if (!match) return null;
+    const present = new Set(getActivePlayers(room).map(player => player.playerId));
+    const scoreboard = Object.keys(match.scores)
+        .map(playerId => ({
+            playerId,
+            name: match.names[playerId] || 'ผู้เล่น',
+            score: match.scores[playerId] || 0,
+            present: present.has(playerId)
+        }))
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    const dealer = getPlayer(room, match.dealerId);
+    return {
+        round: match.round,
+        totalRounds: match.totalRounds,
+        dealerId: match.dealerId,
+        dealerName: dealer?.name || match.names[match.dealerId] || null,
+        over: !!match.over,
+        endedEarly: !!match.endedEarly,
+        winnerIds: [...(match.winnerIds || [])],
+        scoreboard,
+        rounds: match.rounds.map(entry => ({ ...entry, points: { ...entry.points } }))
+    };
+}
+
 function buildClientState(room, playerId) {
     const self = getPlayer(room, playerId);
     if (!self) {
@@ -738,23 +1301,51 @@ function buildClientState(room, playerId) {
     const lastAskerPlayer = state.phase === 'discussion' && state.lastAskerId ? getPlayer(room, state.lastAskerId) : null;
 
     const isSpy = self.role === ROLE_SPY;
-    const isFinished = room.gameState.phase === 'finished';
+    const isFinished = state.phase === 'finished';
     const showLocation = !isSpy || isFinished;
+    const unanimous = isUnanimousMode(room);
+    const accusation = state.accusation;
+    const final = state.finalRound;
+    const finalTurnId = state.phase === 'final' && final && !final.done ? final.order[final.index] : null;
+    const finalTurnPlayer = finalTurnId ? getPlayer(room, finalTurnId) : null;
+
+    let accusationView = null;
+    if (accusation) {
+        const voters = getAccusationVoters(room);
+        accusationView = {
+            kind: accusation.kind,
+            accuserId: accusation.accuserId,
+            accuserName: accusation.accuserName,
+            suspectId: accusation.suspectId,
+            suspectName: accusation.suspectName,
+            isSuspect: accusation.suspectId === self.playerId,
+            canVote: accusation.suspectId !== self.playerId && accusation.votes[self.playerId] === undefined,
+            myVote: accusation.votes[self.playerId] === undefined ? null : accusation.votes[self.playerId],
+            yes: voters.filter(player => accusation.votes[player.playerId] === true).length,
+            needed: voters.filter(player => isPlayerOnline(room, player.playerId) || accusation.votes[player.playerId] !== undefined).length,
+            waitingNames: voters
+                .filter(player => accusation.votes[player.playerId] === undefined && isPlayerOnline(room, player.playerId))
+                .map(player => player.name)
+        };
+    }
 
     return {
         roomId: room.roomId,
         roundId: state.roundStartedAt || null,
         mode: 'spyfall',
-        status: room.gameState.status,
-        phase: room.gameState.phase,
-        phaseEndsAt: room.gameState.phaseEndsAt || null,
-        winner: room.gameState.winner,
+        voteMode: unanimous ? VOTE_MODE_UNANIMOUS : VOTE_MODE_MAJORITY,
+        status: state.status,
+        phase: state.phase,
+        phaseEndsAt: state.phaseEndsAt || null,
+        pausedRemainingMs: state.phase === 'accuse' ? (state.pausedRemainingMs || 0) : null,
+        winner: state.winner,
+        match: buildMatchView(room),
         location: showLocation ? {
-            id: room.gameState.locationId,
-            icon: room.gameState.locationIcon,
-            image: room.gameState.locationImage,
-            name: room.gameState.locationName,
-            hint: room.gameState.locationHint
+            id: state.locationId,
+            icon: state.locationIcon,
+            image: state.locationImage,
+            name: state.locationName,
+            hint: state.locationHint
         } : null,
         locationPool: isSpy && !isFinished
             ? getAllLocations().map(location => ({
@@ -764,8 +1355,17 @@ function buildClientState(room, playerId) {
                 name: location.name
             }))
             : null,
-        canGuessLocation: isSpy && !room.gameState.spyGuess
-            && (room.gameState.phase === 'discussion' || room.gameState.phase === 'vote'),
+        canGuessLocation: isSpy && !state.spyGuess && state.phase === 'discussion',
+        canAccuse: unanimous && state.phase === 'discussion' && !(state.stopUsed || {})[self.playerId],
+        accuseUsed: !!(state.stopUsed || {})[self.playerId],
+        accusation: accusationView,
+        finalTurn: state.phase === 'final' && final ? {
+            accuserId: finalTurnId,
+            accuserName: finalTurnPlayer?.name || null,
+            isMyTurn: !!finalTurnId && finalTurnId === self.playerId && !accusation,
+            position: Math.min(final.index + 1, final.order.length),
+            total: final.order.length
+        } : null,
         self: {
             playerId: self.playerId,
             name: self.name,
@@ -775,19 +1375,22 @@ function buildClientState(room, playerId) {
             role: self.role,
             roleInfo: self.roleInfo,
             isSpy,
+            isDealer: state.match?.dealerId === self.playerId,
             locationRoleTitle: !isSpy ? (self.locationRoleTitle || null) : null,
             hasVoted: self.hasVoted,
             voteTargetId: self.voteTargetId
         },
-        players: room.gameState.players.map(player => ({
+        players: state.players.map(player => ({
             playerId: player.playerId,
             name: player.name,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame || 'none',
             color: player.color,
             isSelf: player.playerId === self.playerId,
-            hasVoted: room.gameState.phase === 'vote' ? !!room.gameState.votes[player.playerId] : false,
-            voteCount: room.gameState.voteCounts?.[player.playerId] || 0,
+            isDealer: state.match?.dealerId === player.playerId,
+            hasVoted: state.phase === 'vote' ? !!state.votes[player.playerId] : false,
+            voteCount: state.voteCounts?.[player.playerId] || 0,
+            accuseUsed: !!(state.stopUsed || {})[player.playerId],
             roleTitle: isFinished
                 ? (player.role === ROLE_SPY
                     ? ROLE_DEFINITIONS[ROLE_SPY].title
@@ -798,14 +1401,14 @@ function buildClientState(room, playerId) {
                 : null,
             isSpy: isFinished ? player.role === ROLE_SPY : null
         })),
-        votes: room.gameState.phase === 'vote' && self.hasVoted
+        votes: state.phase === 'vote' && self.hasVoted
             ? { [self.playerId]: self.voteTargetId }
             : {},
         voteProgress: {
-            submitted: Object.keys(room.gameState.votes || {}).length,
+            submitted: Object.keys(state.votes || {}).length,
             total: getActivePlayers(room).filter(player => isPlayerOnline(room, player.playerId)).length
         },
-        accusedPlayerId: isFinished ? room.gameState.accusedPlayerId : null,
+        accusedPlayerId: isFinished ? state.accusedPlayerId : null,
         turn: state.phase === 'discussion' ? {
             askerId: askerPlayer ? askerPlayer.playerId : null,
             askerName: askerPlayer ? askerPlayer.name : null,
@@ -821,12 +1424,15 @@ function buildClientState(room, playerId) {
             self: !!(state.readyToVote || {})[self.playerId]
         } : null,
         returnLobbyAt: isFinished ? (state.returnLobbyAt || null) : null,
-        history: room.gameState.history || [],
+        nextRoundAt: isFinished ? (state.nextRoundAt || null) : null,
+        history: state.history || [],
         phaseTips: {
             reveal: 'จำสถานที่และบทของคุณ — อีกไม่กี่วิจะเริ่มคุย',
             discussion: 'ถาม–ตอบทีละคน — คนที่ถูกถามจะได้ถามคนต่อไป',
+            accuse: 'หยุดเวลาแล้ว — โหวตว่าเห็นด้วยไหม (ต้องเห็นด้วยทุกคน)',
+            final: 'หมดเวลา — ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ',
             vote: 'โหวตเลือก 1 คนที่คิดว่าเป็นสายลับ (ไม่ใช่เลือกสถานที่)',
-            finished: 'เกมจบแล้ว — ดูเฉลยด้านล่าง'
+            finished: 'จบรอบแล้ว — ดูเฉลยด้านล่าง'
         }
     };
 }
@@ -834,8 +1440,8 @@ function buildClientState(room, playerId) {
 module.exports = {
     id: 'spyfall',
     label: 'Spyfall',
-    description: 'สายลับในสถานที่ — พลเมืองรู้ที่และบทในที่นั้น สายลับไม่รู้ คุยแล้วโหวตจับ',
-    minPlayers: 4,
+    description: 'สายลับในสถานที่ — พลเมืองรู้ที่และบทในที่นั้น สายลับไม่รู้ ถามตอบแล้วกล่าวหาจับ',
+    minPlayers: MIN_PLAYERS,
     maxPlayers: 8,
     ROLE_SPY,
     ROLE_CITIZEN,
@@ -843,16 +1449,28 @@ module.exports = {
     LOCATIONS,
     REVEAL_PHASE_MS,
     VOTE_PHASE_MS,
+    ROUND_OPTIONS,
+    DEFAULT_ROUNDS,
+    VOTE_MODE_UNANIMOUS,
+    VOTE_MODE_MAJORITY,
+    sanitizeRounds,
+    sanitizeVoteMode,
     createInitialState,
     createPlayerState,
     resetRoomGame,
     startGame,
+    startNextRound,
+    endMatchEarly,
+    isMatchOver,
     advancePhase,
     endDiscussionEarly,
     passQuestion,
     toggleReadyToVote,
     checkReadyToVote,
     ensureAskerPresent,
+    stopClockAccuse,
+    finalAccuse,
+    voteAccusation,
     everyoneVoted,
     autoResolvePhase,
     submitVote,
@@ -863,6 +1481,8 @@ module.exports = {
     buildClientState,
     getDiscussionMs,
     getVoteMs,
+    getAccuseVoteMs,
+    getPhaseDurationMs,
     getAllLocations,
     getLocationRolePool
 };

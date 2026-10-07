@@ -647,6 +647,9 @@ function createRoom(roomData, creatorPlayerId) {
             traitorOptional: normalizedRoomData.traitorOptional !== undefined ? normalizedRoomData.traitorOptional : true,
             dualTraitorMode: normalizedRoomData.dualTraitorMode || false,
             spyfallVoteSeconds: spyfallVoteMinutes != null ? Math.round(spyfallVoteMinutes * 60) : 90,
+            // Spyfall: จำนวนรอบในแมตช์ (คู่มือแนะนำ 5) · แบบโหวต เอกฉันท์ (คู่มือ) / เสียงข้างมาก
+            spyfallRounds: gameMode === 'spyfall' ? gameEngine.sanitizeRounds(normalizedRoomData.spyfallRounds) : undefined,
+            spyfallVoteMode: gameMode === 'spyfall' ? gameEngine.sanitizeVoteMode(normalizedRoomData.spyfallVoteMode) : undefined,
             undercoverMrWhite: gameMode === 'undercover' ? normalizedRoomData.undercoverMrWhite === true : false,
             werewolfRoles,
             wolfCount,
@@ -1123,6 +1126,12 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
     if (room.settings.gameMode === 'coup' && !isRoomGameInProgress(room) && updates.coupActionSeconds !== undefined) {
         room.settings.coupActionSeconds = getGameEngine('coup').sanitizeActionSeconds(updates.coupActionSeconds);
+    }
+    // กติกา Spyfall — เปลี่ยนได้ตอนอยู่ห้องรอเท่านั้น (เกมอ่านค่าตอนเริ่มแมตช์)
+    if (room.settings.gameMode === 'spyfall' && !isRoomGameInProgress(room)) {
+        const spyfallEngine = getGameEngine('spyfall');
+        if (updates.spyfallRounds !== undefined) room.settings.spyfallRounds = spyfallEngine.sanitizeRounds(updates.spyfallRounds);
+        if (updates.spyfallVoteMode !== undefined) room.settings.spyfallVoteMode = spyfallEngine.sanitizeVoteMode(updates.spyfallVoteMode);
     }
     if (room.settings.gameMode === 'setthi' && !isRoomGameInProgress(room) && updates.setthiMinutes !== undefined) {
         room.settings.setthiMinutes = getGameEngine('setthi').sanitizeMinutes(updates.setthiMinutes);

@@ -926,7 +926,7 @@ $(function() {
         { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต · 3–20 คน', minPlayers: 3, maxPlayers: 20 },
-        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 4–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วโหวตจับ', minPlayers: 4, maxPlayers: 8 },
+        { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 3–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วกล่าวหาจับ', minPlayers: 3, maxPlayers: 8 },
         { id: 'undercover', label: 'คำใครไม่เหมือน', description: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำแล้วโหวตหาคนคำไม่เหมือน · 4–10 คน', minPlayers: 4, maxPlayers: 10 },
         { id: 'coup', label: 'Coup', description: 'เกมโค่นอำนาจ 2–6 คน — โกหกได้ ท้าได้ ใครเหลือการ์ดคนสุดท้ายชนะ', minPlayers: 2, maxPlayers: 6 },
         { id: 'avalon', label: 'อวาลอน', description: 'อัศวินโต๊ะกลม 5–10 คน — ฝ่ายดีทำภารกิจ ฝ่ายร้ายแฝงตัว มือสังหารล่าเมอร์ลิน', minPlayers: 5, maxPlayers: 10 },
@@ -1137,8 +1137,8 @@ $(function() {
                 cover: '/assets/games/spyfall/cover.jpg',
                 badge: '🕶️ สายลับ สถานที่',
                 title: 'Spyfall',
-                summary: 'ทุกคนรู้สถานที่และบทในที่นั้นยกเว้นสายลับ — คุยแล้วโหวตจับ',
-                bullets: ['4-8 คน', 'บทในสถานที่คนละบท', 'รอบเดียวจบ', 'ไม่ต้องมีคนคุมเกม']
+                summary: 'ทุกคนรู้สถานที่และบทในที่นั้นยกเว้นสายลับ — ถามตอบแล้วกล่าวหาจับ',
+                bullets: ['3-8 คน', 'บทในสถานที่คนละบท', 'รอบละ 8 นาที สะสมแต้ม', 'ไม่ต้องมีคนคุมเกม']
             },
             undercover: {
                 tone: 'linear-gradient(135deg, rgba(245,200,107,0.2), rgba(15,22,32,0.92))',
@@ -1701,6 +1701,24 @@ $(function() {
                         <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · ไม่เกี่ยวกับกระเป๋าชิป · ลงขั้นต่ำ 10 · แบบเจ้ามือเปลี่ยนได้ก่อนแจกมือแรกเท่านั้น</div>
                     </div>
 
+                    <div class="room-form-group" id="spyfallRulesGroup" role="group" aria-labelledby="spyfallRulesLabel" style="display:none;">
+                        <div class="room-form-label" id="spyfallRulesLabel"><span class="icon">🕶️</span> กติกา Spyfall:</div>
+                        <div style="display:grid; gap:10px;">
+                            <label style="display:grid; gap:6px; color:#ddd; font-size:0.9em;">จำนวนรอบ (สะสมแต้ม)
+                                <select id="spyfallRounds" class="search-box" style="min-height:48px; width:100%;">
+                                    <option value="1">รอบเดียว</option>
+                                    <option value="3">3 รอบ</option>
+                                    <option value="5" selected>5 รอบ (ตามคู่มือ)</option>
+                                </select>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                                <input type="checkbox" id="spyfallMajority" style="accent-color:#14b8a6; width:20px; height:20px;">
+                                <span>โหวตเสียงข้างมาก (หมดเวลาแล้วโหวตลับครั้งเดียว) — ปิด = กล่าวหาแบบเอกฉันท์ตามคู่มือ</span>
+                            </label>
+                        </div>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">คู่มือ: รอบละ 8 นาที · ใครก็หยุดเวลากล่าวหาได้คนละครั้ง · เปลี่ยนได้ในห้องรอ</div>
+                    </div>
+
                     <div class="room-form-group" id="codenamesTimerGroup" role="group" aria-labelledby="codenamesTimerLabel" style="display:none;">
                         <div class="room-form-label" id="codenamesTimerLabel"><span class="icon">🕵️</span> เวลาต่อเทิร์น:</div>
                         <div style="display:grid; gap:8px;">
@@ -2084,6 +2102,7 @@ $(function() {
                     if (document.getElementById('pokdengTableGroup')) document.getElementById('pokdengTableGroup').style.display = selectedMode === 'pokdeng' ? 'block' : 'none';
                     if (selectedMode === 'codenames') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('codenamesTimerGroup')) document.getElementById('codenamesTimerGroup').style.display = selectedMode === 'codenames' ? 'block' : 'none';
+                    if (document.getElementById('spyfallRulesGroup')) document.getElementById('spyfallRulesGroup').style.display = selectedMode === 'spyfall' ? 'block' : 'none';
                     if (selectedMode === 'wavelength') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('wavelengthLapsGroup')) document.getElementById('wavelengthLapsGroup').style.display = selectedMode === 'wavelength' ? 'block' : 'none';
                     if (selectedMode === 'drawguess') createRoundTimeGroup.style.display = 'none';
@@ -2109,7 +2128,7 @@ $(function() {
                         maxPlayersSlider.value = '6';
                     }
 
-                    if (selectedMode === 'spyfall' && !['4', '5', '6', '7', '8'].includes(maxPlayersSlider.value)) {
+                    if (selectedMode === 'spyfall' && !['3', '4', '5', '6', '7', '8'].includes(maxPlayersSlider.value)) {
                         maxPlayersSlider.value = '6';
                     }
 
@@ -2142,7 +2161,7 @@ $(function() {
                         updateSliderBackground(maxPlayersSlider);
                     }
 
-                    if (selectedMode === 'spyfall' && Number(maxPlayersSlider.value) < 4) {
+                    if (selectedMode === 'spyfall' && Number(maxPlayersSlider.value) < 3) {
                         maxPlayersSlider.value = '4';
                         maxPlayersValue.textContent = maxPlayersSlider.value;
                         updateSliderBackground(maxPlayersSlider);
@@ -2262,6 +2281,8 @@ $(function() {
                     pokdengMaxBet: gameMode === 'pokdeng' ? Number((document.getElementById('pokdengMaxBet') || {}).value || 500) : undefined,
                     pokdengStraights: gameMode === 'pokdeng' ? !!(document.getElementById('pokdengStraights') || { checked: true }).checked : undefined,
                     pokdengMustDraw: gameMode === 'pokdeng' && !!(document.getElementById('pokdengMustDraw') || {}).checked,
+                    spyfallRounds: gameMode === 'spyfall' ? Number((document.getElementById('spyfallRounds') || {}).value || 5) : undefined,
+                    spyfallVoteMode: gameMode === 'spyfall' ? (((document.getElementById('spyfallMajority') || {}).checked) ? 'majority' : 'unanimous') : undefined,
                     codenamesClueSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesClueSeconds') || {}).value || 120) : undefined,
                     codenamesGuessSeconds: gameMode === 'codenames' ? Number((document.getElementById('codenamesGuessSeconds') || {}).value || 0) : undefined,
                     wavelengthLaps: gameMode === 'wavelength'
@@ -2527,20 +2548,23 @@ $(function() {
     function buildSpyfallGuideHtml() {
         return [
             '<div class="bm-guide-inner">',
-            '<p class="bm-guide-lead">🕶️ Spyfall: ทุกคนรู้สถานที่ ยกเว้นสายลับ 1 คน</p>',
+            '<p class="bm-guide-lead">🕶️ Spyfall: ทุกคนรู้สถานที่ ยกเว้นสายลับ 1 คน · 3–8 คน</p>',
             '<div class="bm-guide-section"><h4>บทบาท</h4><ul>',
-            '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ + บทในที่นั้น ถาม–ตอบเพื่อจับสายลับ</li>',
+            '<li><b>🕵️ พลเมือง</b> — เห็นสถานที่ + <strong>บทในที่นั้น</strong> (คนละบท)</li>',
             '<li><b>🕶️ สายลับ</b> — ไม่เห็นสถานที่ ต้องเดาจากคำถาม</li>',
             '</ul></div>',
-            '<div class="bm-guide-section"><h4>3 ช่วง</h4><ol>',
-            '<li><b>เปิดบท</b> — จำสถานที่และบทของคุณ</li>',
-            '<li><b>คุย</b> — ผลัดกันถาม: คนที่ถูกถามตอบแล้วได้ถามต่อ · เกินครึ่งกด "พร้อมโหวต" ข้ามไปโหวตได้เลย</li>',
-            '<li><b>โหวต</b> — เลือก 1 คนที่คิดว่าเป็นสายลับ แล้วกดยืนยัน</li>',
+            '<div class="bm-guide-section"><h4>เล่นยังไง (รอบละ 8 นาที)</h4><ol>',
+            '<li><b>🎤 ถาม–ตอบ</b> — เจ้ามือถามก่อน · คนที่ถูกถามตอบ แล้วถามคนอื่นต่อ (ห้ามถามกลับคนที่เพิ่งถามเรา)</li>',
+            '<li><b>🛑 กล่าวหา</b> — ใครก็หยุดเวลาได้คนละ 1 ครั้งต่อรอบ · ทุกคนยกเว้นคนถูกกล่าวหาต้องเห็นด้วย ✅ ถึงเปิดการ์ด · มีคนไม่เห็นด้วย = เวลาเดินต่อ</li>',
+            '<li><b>🎯 สายลับทายสถานที่</b> — หยุดเวลาทายได้ 1 ครั้ง ตอนเวลายังเดิน · ถูกชนะ ผิดแพ้</li>',
+            '<li><b>⏰ หมดเวลา</b> — ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ · ไม่มีใครถูกจับ = สายลับรอด</li>',
             '</ol></div>',
-            '<div class="bm-guide-section"><h4>ชนะ</h4><ul>',
-            '<li><b>พลเมือง</b> — โหวตโดนสายลับ</li>',
-            '<li><b>สายลับ</b> — โหวตพลาดหรือเสมอ หรือทายสถานที่ถูก (ทายผิดแพ้ทันที)</li>',
+            '<div class="bm-guide-section"><h4>คะแนนต่อรอบ</h4><ul>',
+            '<li><b>สายลับ</b> — รอด 2 · จับผิดคน หรือทายถูก 4</li>',
+            '<li><b>พลเมือง</b> — จับสายลับได้ หรือสายลับทายผิด คนละ 1 · คนเริ่มกล่าวหาที่จับได้ +1</li>',
+            '<li>เล่นหลายรอบ · สายลับรอบก่อนเป็นเจ้ามือ · ครบรอบ แต้มรวมสูงสุดชนะ</li>',
             '</ul></div>',
+            '<div class="bm-guide-section"><h4>ตั้งได้ในห้อง</h4><p>จำนวนรอบ 1/3/5 (ค่าเริ่ม 5) · โหวตเสียงข้างมาก: หมดเวลาแล้วโหวตลับครั้งเดียว</p></div>',
             '</div>'
         ].join('');
     }
