@@ -256,10 +256,12 @@ const SCENARIOS = {
     // → คนที่เหลือโหวตครบแล้ว สรุปผลทันที ไม่ต้องรอหมดเวลา
     insider: {
         mode: 'insider', stateEvent: null, count: 4, root: '#insExitBtn', button: '#insExitBtn',
+        // ข้ามโหวตรอบ 1 (ถามว่าคนทายคือ Insider ไหม) ไปโหวตชี้ตัวเลย — เทสนี้ดูแค่การออกช่วงโหวต
+        roomOptions: { insiderGuesserVote: false },
         async beforeStart(ctx) {
             for (const p of ctx.players) {
                 p.events = [];
-                ['newRole', 'startGame', 'displayVote2', 'vote2Ended'].forEach(name => p.socket.on(name, payload => p.events.push({ name, payload })));
+                ['newRole', 'startGame', 'insiderDiscussion', 'displayVote2', 'vote2Ended'].forEach(name => p.socket.on(name, payload => p.events.push({ name, payload })));
             }
         },
         async run(ctx) {
@@ -283,13 +285,17 @@ const SCENARIOS = {
             await openGamePage(browser, base, roomId, observer, ctx.root);
             await delay(1500);
             assert((await exitVisible(leaver.page, ctx.button)) === 'ok', 'ปุ่มออกช่วงคุย: ' + await exitVisible(leaver.page, ctx.button));
-            gm.socket.emit('wordFound');
+            // กติกาจริง: ผู้ดำเนินเกมบอกว่าใครทายถูก → ช่วงคุย → จบคุยแล้วเข้าโหวต
+            gm.socket.emit('wordFound', { guesserId: observer.id });
+            await waitFor(() => ev(observer, 'insiderDiscussion'), 8000, 'ช่วงคุยหลังทายถูก');
+            gm.socket.emit('insiderEndDiscussion');
             await waitFor(() => ev(observer, 'displayVote2'), 8000, 'เปิดโหวต');
             const vote = ev(observer, 'displayVote2').payload;
             const voteStart = Date.now();
             const nameOf = id => (vote.progress.targets.find(t => t.playerId === id) || {}).name;
-            for (const p of others.filter(x => x !== leaver)) {
-                p.socket.emit('vote2', { player: nameOf(p.id), vote: vote.players.find(c => c.playerId !== p.id).playerId });
+            // ผู้ดำเนินเกมโหวตด้วย (ตามคู่มือ) — ทุกคนยกเว้นคนที่จะออก
+            for (const p of players.filter(x => x !== leaver)) {
+                p.socket.emit('vote2', { player: nameOf(p.id), vote: players.find(c => c !== p && c !== gm).id });
             }
             await leaver.page.waitForFunction(() => document.body.classList.contains('ins-voting'), null, { timeout: 8000 }).catch(async e => {
                 const info = await leaver.page.evaluate(() => ({ url: location.href, cls: document.body.className, vote: !!document.querySelector('#vote2') && getComputedStyle(document.querySelector('#vote2')).display }));
