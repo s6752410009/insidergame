@@ -105,6 +105,7 @@
     "smoke:colorcards:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-colorcards-play.js",
     "smoke:colorcards:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-colorcards.js",
     "smoke:setthi": "node scripts/smoke-setthi-engine.js",
+    "smoke:setthi:gold": "node scripts/smoke-setthi-gold.js",
     "smoke:setthi:play": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-setthi-play.js",
     "smoke:setthi:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-setthi.js",
     "smoke:setthi:exit": "node scripts/browser-exit-everywhere.js setthi",

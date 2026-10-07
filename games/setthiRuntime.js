@@ -6,6 +6,7 @@
  */
 
 const engine = require('./setthiEngine');
+const skills = require('./setthiSkills');
 
 const MODE = 'setthi';
 const STATE_EVENT = 'setthiState';
@@ -213,9 +214,35 @@ module.exports = function createSetthiRuntime(getDeps) {
                 reason: state.finishReason
             });
         }
+        awardGold(room);
         clearTimers(room.roomId);
         notifyGameEndAfterRecord(room);
         scheduleFinishedGameReturnToLobby(room);
+    }
+
+    /**
+     * 🪙 รางวัลจบเกม — คิดจาก state ฝั่งเซิร์ฟเวอร์ · ร้านกันซ้ำด้วย gameId (รีสตาร์ตแล้ว finalize ซ้ำก็ไม่ได้เพิ่ม)
+     * ผลเก็บใน state.goldRewards ให้หน้าจบเกมโชว์ "+N 🪙" (แต่ละคนเห็นของตัวเอง)
+     */
+    function awardGold(room) {
+        const state = room.gameState;
+        const { setthiGold } = deps();
+        if (!state || !setthiGold || !state.gameId || state.goldRewards) return;
+        try {
+            const rewards = skills.computeRewards(state);
+            const granted = setthiGold.awardGame(state.gameId, rewards);
+            const out = {};
+            Object.keys(rewards).forEach(id => {
+                const r = rewards[id];
+                const g = granted[id] || { granted: 0, capped: false, gold: null };
+                out[id] = { total: g.granted, requested: r.total, parts: r.parts, reason: r.reason, botGame: !!r.botGame, capped: !!g.capped, pending: !!g.pending, gold: g.gold };
+            });
+            state.goldRewards = out;
+            // เซฟทันที (ไม่รอหน่วง) — รางวัลกับเครื่องหมายกันซ้ำอยู่แถวเดียวกัน
+            if (typeof setthiGold.persistNow === 'function') setthiGold.persistNow();
+        } catch (error) {
+            console.error('[setthi] gold award failed:', error.message);
+        }
     }
 
     function emitRoomState(room) {
@@ -263,9 +290,17 @@ module.exports = function createSetthiRuntime(getDeps) {
         engine.handlePlayerLeft(room, playerId);
     }
 
+    /** เริ่มเกม: ล็อกสกิลที่ติดตั้งของแต่ละคนไว้ใน state (เปลี่ยนในร้านกลางเกมไม่มีผล) · บอทไม่มีสกิล */
     function startGame(room) {
         clearTimers(room.roomId);
-        engine.startGame(room);
+        const { setthiGold } = deps();
+        const loadouts = {};
+        if (setthiGold && room.settings && room.settings.setthiSkills !== false) {
+            (room.players || []).forEach(p => {
+                if (!engine.isBotId(p.playerId)) loadouts[p.playerId] = setthiGold.equippedSkills(p.playerId);
+            });
+        }
+        engine.startGame(room, undefined, { skills: loadouts });
     }
 
     function gameEndNotification(room) {

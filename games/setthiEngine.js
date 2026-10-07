@@ -22,6 +22,8 @@
  */
 
 const B = require('./setthiBoard');
+const SK = require('./setthiSkills');
+const { randomUUID } = require('crypto');
 
 const MODE = 'setthi';
 const MIN_PLAYERS = 2;
@@ -165,6 +167,8 @@ function createInitialState() {
         rollHold: null,
         testDice: [],
         statsRecordedAt: null,
+        gameId: null,
+        goldRewards: null,
         returnLobbyEndsAt: null
     };
 }
@@ -1881,6 +1885,8 @@ function startGame(room, rng = rand, options = {}) {
     const state = resetRoomGame(room);
     const at = now();
     state.status = 'playing';
+    // id เกมนี้ (ไม่ใช้ rng ของเกม — ลำดับเลขสุ่มของเทสไม่เปลี่ยน) · ใช้กันให้รางวัล 🪙 ซ้ำ
+    state.gameId = typeof options.gameId === 'string' && options.gameId ? options.gameId.slice(0, 80) : `g_${randomUUID()}`;
     state.config = normalizeConfig(room.settings || {});
     state.seats = roster.map((p, i) => ({
         playerId: p.playerId,
@@ -2405,6 +2411,8 @@ function buildClientState(room, viewerId) {
         finishReason: state.phase === 'finished' ? state.finishReason : null,
         winType: state.phase === 'finished' ? state.winType || null : null,
         endCause: state.phase === 'finished' ? state.endCause || null : null,
+        // 🪙 รางวัลของคนดูคนเดียว (ไม่ส่งของคนอื่น)
+        reward: state.phase === 'finished' && state.goldRewards && viewerId && state.goldRewards[viewerId] ? { ...state.goldRewards[viewerId] } : null,
         history: (state.history || []).slice(0, 40),
         returnLobbyEndsAt: state.returnLobbyEndsAt || null,
         fxSeq: Number(state.fxSeq) || 0,

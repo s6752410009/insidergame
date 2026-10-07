@@ -146,6 +146,20 @@ const soloStatSchema = new mongoose.Schema({
 soloStatSchema.index({ playerId: 1, gameId: 1 }, { unique: true });
 const SoloStat = mongoose.model('SoloStat', soloStatSchema);
 
+// เศรษฐี 🪙 เหรียญทอง + เลเวลสกิล (สกุลแยกจากชิป) · awarded = gameId ที่ให้รางวัลไปแล้ว (กันให้ซ้ำหลังรีสตาร์ต)
+const setthiGoldSchema = new mongoose.Schema({
+    playerId: { type: String, required: true, unique: true, index: true },
+    gold: { type: Number, default: 0 },
+    skills: { type: mongoose.Schema.Types.Mixed, default: {} },
+    loadout: { type: [String], default: [] },
+    dayKey: { type: String, default: null },
+    earnedToday: { type: Number, default: 0 },
+    botEarnedToday: { type: Number, default: 0 },
+    history: { type: Array, default: [] },
+    awarded: { type: Array, default: [] }
+}, { timestamps: true, minimize: false });
+const SetthiGold = mongoose.model('SetthiGold', setthiGoldSchema);
+
 module.exports = {
     Player,
     PlayerStats,
@@ -154,5 +168,6 @@ module.exports = {
     RoomSnapshot,
     SeasonArchive,
     Wallet,
-    SoloStat
+    SoloStat,
+    SetthiGold
 };

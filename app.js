@@ -52,6 +52,7 @@ const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
 const soloStats = require('./managers/soloStatsManager');
+const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
@@ -101,7 +102,7 @@ const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomMa
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer }));
+const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
 const spyfallReturnTimeouts = new Map();
 // Spyfall: เวลาให้อ่านเฉลยก่อนพากลับห้องรอ (เดิม 3 วิ อ่านไม่ทัน) + นับถอยหลังอีก 5 วิ
 const SPYFALL_RETURN_DELAY_MS = Number(process.env.SPYFALL_RETURN_DELAY_MS) || 20000;
@@ -10949,7 +10950,7 @@ async function flushAndExit(signal) {
     console.log(`[insider] ${signal} received — flushing wallets`);
     try {
         await Promise.race([
-            Promise.all([walletManager.persistNow(), soloStats.persistNow()]),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -10990,6 +10991,7 @@ async function startServer() {
         // ต้องโหลดหลัง connectDB เหมือนกัน — ไฟล์ wallets.json หายทุก deploy บน Render
         await walletManager.initWalletManager();
         await soloStats.initSoloStatsManager();
+        await setthiGold.initSetthiGoldManager();
 
         if (!devFast) {
             const repairedStatsNames = await statsManager.repairStatsPlayerNames(playerManager.getAllPlayers());
@@ -10999,6 +11001,10 @@ async function startServer() {
         }
     } catch (e) {
         console.log('⚠️ Starting without MongoDB:', e.message);
+        // ขั้นก่อนหน้าพัง → ร้าน 🪙 ยังต้องโหลด (ไม่งั้นรางวัลค้างคิว อัปเกรดไม่ได้ทั้งวัน)
+        if (!setthiGold.isReady()) {
+            try { await setthiGold.initSetthiGoldManager(); } catch (error) { console.error('[setthiGold] init failed:', error.message); }
+        }
     } finally {
         resolveCoreManagersReady();
     }
