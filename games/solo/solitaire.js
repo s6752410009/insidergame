@@ -4,6 +4,7 @@
  * กันโกง: ผลชนะต้องแนบลำดับการเดิน (log) มาด้วย server จะ replay จาก seed ด้วย engine ตัวเดียวกับ client
  * ต้องจบที่เก็บไพ่ครบ 52 ใบจริง, จำนวนตาต้องตรงกับ log และเวลาต้องไม่เร็วเกินมนุษย์
  * ผลแพ้ (ยอมแพ้/เริ่มเกมใหม่กลางคัน) ตรวจแค่รูปแบบ — ส่งมาก็มีแต่เสียสถิติตัวเอง
+ * scoring = 'standard' (ค่าเริ่ม) | 'vegas' — replay ด้วยกติกาเดียวกัน (เวกัสวนกองจำกัด) คะแนนคิดฝั่ง server
  */
 
 const E = require('../../public/js/solo/solitaire-engine');
@@ -21,7 +22,7 @@ function formatMs(ms) {
     return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-function emptyMode() { return { games: 0, wins: 0, bestMs: null, bestMoves: null }; }
+function emptyMode() { return { games: 0, wins: 0, bestMs: null, bestMoves: null, bestScore: null, vegasWins: 0 }; }
 
 function normalize(prev) {
     const d = prev && typeof prev === 'object' ? prev : {};
@@ -48,6 +49,8 @@ function recordResult(prevData, payload, ctx) {
     if (outcome !== 'win' && outcome !== 'loss') throw new Error('ผลเกมไม่ถูกต้อง');
     const draw = Number(p.draw);
     if (!E.isValidDraw(draw)) throw new Error('โหมดจั่วไม่ถูกต้อง');
+    const scoring = p.scoring === undefined || p.scoring === null ? 'standard' : p.scoring;
+    if (!E.isValidScoring(scoring)) throw new Error('แบบนับคะแนนไม่ถูกต้อง');
     const seed = Number(p.seed);
     if (!E.isValidSeed(seed)) throw new Error('ข้อมูลสำรับไม่ถูกต้อง');
     const timeMs = Number(p.timeMs);
@@ -59,15 +62,17 @@ function recordResult(prevData, payload, ctx) {
     // ส่งซ้ำ (เน็ตหลุดแล้ว retry) → ไม่นับซ้ำ
     if (data.recent.includes(gameId)) return data;
 
+    let score = null;
     if (outcome === 'win') {
         const log = typeof p.log === 'string' ? p.log : '';
-        const result = E.replay(seed, draw, log);
+        const result = E.replay(seed, draw, log, scoring);
         if (!result.ok || !E.isWon(result.state)) throw new Error('ตรวจเกมนี้แล้วยังเก็บไพ่ไม่ครบ');
         if (result.moves !== moves) throw new Error('จำนวนตาไม่ตรงกับการเดิน');
         if (timeMs < E.minPlausibleWinMs(moves)) throw new Error('เวลาเร็วเกินจริง');
         const winKey = `${draw}:${seed}`;
         if (data.recentWins.includes(winKey)) throw new Error('บันทึกชัยชนะของสำรับนี้ไปแล้ว');
         data.recentWins = data.recentWins.concat(winKey).slice(-RECENT_WINS);
+        score = result.state.score;
     } else if (moves < 1) {
         throw new Error('ยังไม่ได้เล่น ไม่ต้องบันทึก');
     }
@@ -82,7 +87,9 @@ function recordResult(prevData, payload, ctx) {
         data.bestStreak = Math.max(data.bestStreak, data.streak);
         if (mode.bestMs == null || timeMs < mode.bestMs) mode.bestMs = timeMs;
         if (mode.bestMoves == null || moves < mode.bestMoves) mode.bestMoves = moves;
-        data.lastWin = { draw, timeMs, moves, at: (ctx && ctx.now ? ctx.now : new Date()).toISOString() };
+        if (scoring === 'vegas') mode.vegasWins += 1;
+        else if (mode.bestScore == null || score > mode.bestScore) mode.bestScore = score;
+        data.lastWin = { draw, timeMs, moves, scoring, score, at: (ctx && ctx.now ? ctx.now : new Date()).toISOString() };
     } else {
         data.streak = 0;
     }

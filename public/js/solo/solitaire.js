@@ -16,7 +16,7 @@
     const $ = id => document.getElementById(id);
     const board = $('solBoard');
     const els = {
-        time: $('solTime'), moves: $('solMoves'), mode: $('solMode'),
+        time: $('solTime'), moves: $('solMoves'), mode: $('solMode'), score: $('solScore'), scoreLabel: $('solScoreLabel'),
         undo: $('solUndo'), hint: $('solHint'), newBtn: $('solNew'), help: $('solHelp'),
         auto: $('solAuto'), toast: $('solToast')
     };
@@ -45,9 +45,11 @@
     }
     function haptic(p) { if (typeof window.gameHaptic === 'function') window.gameHaptic(p); }
 
-    const prefs = Object.assign({ draw: 1, deal: 'winnable' }, load(KEY_PREFS, {}));
+    // ตั้งค่าในเครื่อง: จั่ว 1/3 · สำรับ · นับคะแนนแบบปกติ (วนกองไม่จำกัด) หรือเวกัส (วนกองจำกัด)
+    const prefs = Object.assign({ draw: 1, deal: 'winnable', scoring: 'standard' }, load(KEY_PREFS, {}));
     if (!E.isValidDraw(prefs.draw)) prefs.draw = 1;
     if (prefs.deal !== 'random') prefs.deal = 'winnable';
+    if (!E.isValidScoring(prefs.scoring)) prefs.scoring = 'standard';
 
     // ------------------------------------------------------------ game state
     let game = null;   // { id, seed, draw, deal, log, elapsed, won, reported }
@@ -82,13 +84,13 @@
         save(KEY_GAME, Object.assign({}, game, { elapsed: Math.round(elapsedNow()) }));
     }
 
-    function newGame(draw, deal) {
+    function newGame(draw, deal, scoring) {
         pauseClock();
         if (game && !game.won && game.log.length) {
-            enqueue({ gameId: game.id, outcome: 'loss', draw: game.draw, seed: game.seed, timeMs: Math.round(game.elapsed), moves: game.log.length / 3, deal: game.deal });
+            enqueue({ gameId: game.id, outcome: 'loss', draw: game.draw, seed: game.seed, timeMs: Math.round(game.elapsed), moves: game.log.length / 3, deal: game.deal, scoring: game.scoring });
         }
-        game = { id: randomId(), seed: pickSeed(draw, deal), draw, deal, log: '', elapsed: 0, won: false };
-        state = E.deal(game.seed, game.draw);
+        game = { id: randomId(), seed: pickSeed(draw, deal), draw, deal, scoring: E.isValidScoring(scoring) ? scoring : 'standard', log: '', elapsed: 0, won: false };
+        state = E.deal(game.seed, game.draw, game.scoring);
         stuckShownAt = -1;
         persist();
         renderAll({ deal: true });
@@ -97,9 +99,10 @@
     function restore() {
         const saved = load(KEY_GAME, null);
         if (!saved || saved.won || !E.isValidSeed(saved.seed) || !E.isValidDraw(saved.draw)) return false;
-        const r = E.replay(saved.seed, saved.draw, saved.log || '');
+        const scoring = E.isValidScoring(saved.scoring) ? saved.scoring : 'standard';
+        const r = E.replay(saved.seed, saved.draw, saved.log || '', scoring);
         if (!r.ok) return false;
-        game = { id: String(saved.id || randomId()), seed: saved.seed, draw: saved.draw, deal: saved.deal === 'random' ? 'random' : 'winnable', log: saved.log || '', elapsed: Number(saved.elapsed) || 0, won: false };
+        game = { id: String(saved.id || randomId()), seed: saved.seed, draw: saved.draw, deal: saved.deal === 'random' ? 'random' : 'winnable', scoring, log: saved.log || '', elapsed: Number(saved.elapsed) || 0, won: false };
         state = r.state;
         renderAll({ instant: true });
         startClock();
@@ -232,8 +235,9 @@
         stockCount.style.transform = 'translate(' + (geo.colX(0) + geo.cw - 18) + 'px,' + (geo.topY + geo.ch - 14) + 'px)';
         stockCount.textContent = String(state.stock.length);
         stockCount.hidden = state.stock.length === 0;
-        slot.stock.classList.toggle('can-recycle', !state.stock.length && state.waste.length > 0);
-        slot.stock.setAttribute('aria-label', state.stock.length ? 'จั่วไพ่ (เหลือ ' + state.stock.length + ' ใบ)' : 'วนกองเปิดกลับ');
+        slot.stock.classList.toggle('can-recycle', E.canRecycle(state));
+        slot.stock.classList.toggle('is-spent', !state.stock.length && state.waste.length > 0 && !E.canRecycle(state));
+        slot.stock.setAttribute('aria-label', state.stock.length ? 'จั่วไพ่ (เหลือ ' + state.stock.length + ' ใบ)' : (E.canRecycle(state) ? 'วนกองเปิดกลับ' : 'วนกองครบแล้ว'));
 
         const pos = positions();
         let maxBottom = geo.tabY + geo.ch;
@@ -289,7 +293,13 @@
     function updateHud() {
         els.moves.textContent = String(game.log.length / 3);
         els.time.textContent = fmt(elapsedNow());
-        els.mode.textContent = 'จั่ว ' + game.draw + ' ใบ · ' + (game.deal === 'winnable' ? 'ชนะได้แน่นอน' : 'สุ่มล้วน');
+        const vegas = game.scoring === 'vegas';
+        const left = E.recyclesLeft(state);
+        els.mode.textContent = 'จั่ว ' + game.draw + ' ใบ · ' + (vegas
+            ? 'เวกัส · ' + (left ? 'วนได้อีก ' + left + ' รอบ' : 'รอบสุดท้าย')
+            : (game.deal === 'winnable' ? 'ชนะได้แน่นอน' : 'สุ่มล้วน'));
+        els.scoreLabel.textContent = vegas ? 'เวกัส $' : 'คะแนน';
+        els.score.textContent = (state.score < 0 ? '−' : '') + Math.abs(state.score);
         els.undo.disabled = !game.log.length || game.won || busy;
         els.hint.disabled = game.won || busy;
         const canAuto = !game.won && !busy && E.allRevealed(state) && !!E.autoCompletePlan(state);
@@ -322,7 +332,7 @@
     function undo() {
         if (busy || !game.log.length || game.won) return;
         const log = game.log.slice(0, -3);
-        const r = E.replay(game.seed, game.draw, log);
+        const r = E.replay(game.seed, game.draw, log, game.scoring);
         if (!r.ok) return;
         game.log = log;
         state = r.state;
@@ -383,6 +393,11 @@
     function drawStock() {
         if (busy || game.won) return;
         if (!state.stock.length && !state.waste.length) return;
+        if (!E.isLegal(state, { draw: true })) {
+            flash(slot.stock, 'is-nope');
+            toast('เวกัส: วนกองครบ ' + state.limit + ' รอบแล้ว ใช้ไพ่ที่เปิดอยู่ต่อ', 2400);
+            return;
+        }
         commit({ draw: true });
     }
 
@@ -548,8 +563,10 @@
         haptic([20, 60, 30]);
         const before = stats ? stats.modes && stats.modes[game.draw] : null;
         const isBest = !before || before.bestMs == null || timeMs < before.bestMs;
-        enqueue({ gameId: game.id, outcome: 'win', draw: game.draw, seed: game.seed, timeMs, moves, log: game.log, deal: game.deal }, true);
+        enqueue({ gameId: game.id, outcome: 'win', draw: game.draw, seed: game.seed, timeMs, moves, log: game.log, deal: game.deal, scoring: game.scoring }, true);
         $('winTime').textContent = fmt(timeMs);
+        $('winScoreLabel').textContent = game.scoring === 'vegas' ? 'เวกัส $' : 'คะแนน';
+        $('winScore').textContent = (state.score < 0 ? '−' : '') + Math.abs(state.score);
         $('winMoves').textContent = String(moves);
         $('winStreak').textContent = String(((stats && stats.streak) || 0) + 1);
         $('winBadge').hidden = !isBest || !(before && before.wins);
@@ -712,14 +729,18 @@
         if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
     }
 
-    const pending = { draw: prefs.draw, deal: prefs.deal };
+    const pending = { draw: prefs.draw, deal: prefs.deal, scoring: prefs.scoring };
     function syncSeg() {
         document.querySelectorAll('#dlgNew [data-draw]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.draw) === pending.draw)));
         document.querySelectorAll('#dlgNew [data-deal]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.deal === pending.deal)));
+        document.querySelectorAll('#dlgNew [data-scoring]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scoring === pending.scoring)));
+        $('vegasNote').hidden = pending.scoring !== 'vegas';
+        $('vegasNote').textContent = 'เวกัส: จั่ว ' + pending.draw + ' ใบ วนกองได้ ' + E.VEGAS_PASSES[pending.draw] + ' รอบ' + (pending.deal === 'winnable' ? ' · สำรับ “ชนะได้แน่นอน” อาจชนะไม่ได้' : '');
     }
     function openNew() {
         pending.draw = game ? game.draw : prefs.draw;
         pending.deal = game ? game.deal : prefs.deal;
+        pending.scoring = game ? game.scoring : prefs.scoring;
         syncSeg();
         $('newWarn').hidden = !(game && !game.won && game.log.length);
         openDialog('dlgNew');
@@ -741,12 +762,13 @@
 
         document.querySelectorAll('#dlgNew [data-draw]').forEach(b => b.addEventListener('click', () => { pending.draw = Number(b.dataset.draw); syncSeg(); }));
         document.querySelectorAll('#dlgNew [data-deal]').forEach(b => b.addEventListener('click', () => { pending.deal = b.dataset.deal; syncSeg(); }));
+        document.querySelectorAll('#dlgNew [data-scoring]').forEach(b => b.addEventListener('click', () => { pending.scoring = b.dataset.scoring; syncSeg(); }));
         $('dlgNew').addEventListener('close', () => {
             if ($('dlgNew').returnValue !== 'deal') return;
-            prefs.draw = pending.draw; prefs.deal = pending.deal;
+            prefs.draw = pending.draw; prefs.deal = pending.deal; prefs.scoring = pending.scoring;
             save(KEY_PREFS, prefs);
             stopCascade();
-            newGame(prefs.draw, prefs.deal);
+            newGame(prefs.draw, prefs.deal, prefs.scoring);
         });
         $('dlgWin').addEventListener('close', () => {
             const v = $('dlgWin').returnValue;
@@ -754,7 +776,7 @@
             // ปัดทิ้ง/ปุ่มย้อนกลับของมือถือ = ปิดดูโต๊ะที่ชนะ ไม่แจกใหม่ทันที
             if (v !== 'again') { stopCascade(); toast('ชนะแล้ว! กด “เกมใหม่” เมื่อพร้อมเล่นตาต่อไป', 2600); return; }
             stopCascade();
-            newGame(game.draw, game.deal);
+            newGame(game.draw, game.deal, game.scoring);
         });
         $('dlgStuck').addEventListener('close', () => {
             const v = $('dlgStuck').returnValue;
@@ -790,7 +812,7 @@
     buildBoard();
     wire();
     renderStats();
-    if (!restore()) newGame(prefs.draw, prefs.deal);
+    if (!restore()) newGame(prefs.draw, prefs.deal, prefs.scoring);
     loadLeaderboard();
     flush();
     if (!load(KEY_INTRO, 0)) setTimeout(() => openDialog('dlgHelp'), 350);

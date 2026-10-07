@@ -195,4 +195,105 @@ for (const draw of [1, 3]) {
     check(game.leaderboardOrder === 'asc', 'leaderboard ascending');
 }
 
+// ---------------------------------------------------------------- scoring (Windows Standard) + Vegas
+{
+    // ปกติ: กองเปิด→กองล่าง +5 · กองเปิด→ช่องเก็บ +10 · กองล่าง→ช่องเก็บ +10 (+5 ถ้าหงายใบใต้) · ช่องเก็บ→กองล่าง −15
+    const s = blank();
+    s.t[0] = [card(9, 0), card(8, 1)];
+    s.t[1] = [card(4, 0), card(1, 3)]; s.h[1] = 1;        // (4♠ คว่ำ) A♦
+    s.waste = [card(2, 3), card(7, 2)];                     // 2♦ ใต้ 7♣
+    let x = E.applyMove(s, { from: 'w', to: 0, n: 1 });
+    check(x.score === 5, 'waste → tableau +5');
+    x = E.applyMove(x, { from: 1, to: 'F', n: 1 });
+    check(x.score === 20 && x.h[1] === 0, 'tableau → foundation +10, turn over +5');
+    x = E.applyMove(x, { from: 'w', to: 'F', n: 1 });
+    check(x.score === 30, 'waste → foundation +10');
+    const back = blank();
+    back.f[3] = 2; back.t[0] = [card(3, 0)];               // 2♦ ลงบน 3♠
+    back.score = 10;
+    check(E.applyMove(back, { from: 'D', to: 0, n: 1 }).score === 0, 'foundation → tableau −15, floored at 0');
+    check(E.applyMove(blank(), { from: 'w', to: 0, n: 1 }) === null, 'illegal move unchanged');
+    const t2t = blank();
+    t2t.t[0] = [card(9, 0), card(8, 1)]; t2t.t[1] = [card(10, 1)];
+    check(E.applyMove(t2t, { from: 0, to: 1, n: 2 }).score === 0, 'tableau → tableau 0 (no card turned)');
+}
+{
+    // วนกอง: จั่ว 1 ผ่านฟรี 1 รอบ แล้ว −100 ทุกครั้ง · จั่ว 3 ฟรี 3 รอบ แล้ว −20
+    const one = blank(1);
+    one.waste = [card(5, 0)]; one.score = 250;
+    let y = E.applyMove(one, { draw: true });
+    check(y.passes === 1 && y.score === 150, 'draw-1 first recycle −100');
+    y = E.applyMove(y, { draw: true }); y = E.applyMove(y, { draw: true });
+    check(y.passes === 2 && y.score === 50, 'draw-1 second recycle −100');
+    y = E.applyMove(E.applyMove(y, { draw: true }), { draw: true });
+    check(y.score === 0, 'draw-1 score never below 0');
+    const three = blank(3);
+    three.waste = [card(5, 0)]; three.score = 100;
+    let z = three;
+    const scores = [];
+    for (let i = 0; i < 4; i++) { z = E.applyMove(z, { draw: true }); z = E.applyMove(z, { draw: true }); scores.push(z.score); }
+    check(JSON.stringify(scores) === JSON.stringify([100, 100, 80, 60]), 'draw-3: passes 2–3 free, 4th pass on −20 each (' + scores + ')');
+    check(E.canRecycle(E.applyMove(three, { draw: true })) === false && E.canRecycle(three), 'canRecycle only when stock empty');
+}
+{
+    // เวกัส: เริ่ม −52, +5 ต่อใบที่ขึ้น, −5 ถ้าเอาลง, วนกองจำกัด (จั่ว 1 = 1 รอบ, จั่ว 3 = 3 รอบ)
+    const v1 = E.deal(777, 1, 'vegas');
+    check(v1.score === -52 && v1.limit === 1 && v1.scoring === 'vegas', 'vegas starts at −52 with 1 pass (draw 1)');
+    check(E.deal(777, 1).limit === 0 && E.deal(777, 1).score === 0, 'standard: unlimited passes, score 0');
+    let v = v1;
+    while (v.stock.length) v = E.applyMove(v, { draw: true });
+    check(!E.isLegal(v, { draw: true }) && !E.canRecycle(v) && E.recyclesLeft(v) === 0, 'vegas draw-1: no recycle after the only pass');
+    check(!E.legalMoves(v).some(m => m.draw), 'legalMoves has no draw when passes are used up');
+    check(E.applyMove(v, { draw: true }) === null, 'recycle refused by applyMove');
+    E.hint(v); E.hasProgress(v); // ต้องไม่พัง
+    check(E.replay(777, 1, 'D--'.repeat(25), 'vegas').ok === false, 'replay refuses a 25th draw (recycle) in vegas draw-1');
+    check(E.replay(777, 1, 'D--'.repeat(25)).ok === true, 'standard allows the recycle');
+    let v3 = E.deal(777, 3, 'vegas');
+    let recycles = 0;
+    for (let i = 0; i < 100 && E.isLegal(v3, { draw: true }); i++) {
+        const wasEmpty = !v3.stock.length;
+        v3 = E.applyMove(v3, { draw: true });
+        if (wasEmpty) recycles++;
+    }
+    check(recycles === 2 && v3.passes === 2, 'vegas draw-3: 3 passes = 2 recycles');
+    const vf = blank(); vf.scoring = 'vegas'; vf.score = -52;
+    vf.t[0] = [card(1, 0)];
+    const vf2 = E.applyMove(vf, { from: 0, to: 'F', n: 1 });
+    check(vf2.score === -47, 'vegas +5 per card to foundation');
+    vf2.t[1] = [card(2, 1)];
+    check(E.applyMove(vf2, { from: 'A', to: 1, n: 1 }).score === -52, 'vegas −5 back from foundation (can go negative)');
+    throws(() => E.deal(1, 1, 'cheat'), /scoring/, 'unknown scoring rejected');
+}
+{
+    // server: คะแนนคิดจาก replay · เวกัสตรวจด้วยกติกาวนจำกัด
+    const { seed, draw, moves } = solvedExample;
+    const log = enc(moves);
+    const ctx = { playerId: 'p1', now: new Date('2026-09-29T10:00:00Z') };
+    const std = game.recordResult(null, { gameId: 'gs000001', outcome: 'win', draw, seed, timeMs: 200000, moves: moves.length, log }, ctx);
+    const expect = E.replay(seed, draw, log).state.score;
+    check(std.lastWin.scoring === 'standard' && std.lastWin.score === expect && std.modes[draw].bestScore === expect && expect > 0, 'standard win stores server score ' + expect);
+    const vr = E.replay(seed, draw, log, 'vegas');
+    if (vr.ok && E.isWon(vr.state)) {
+        const vd = game.recordResult(null, { gameId: 'gv000001', outcome: 'win', draw, seed, timeMs: 200000, moves: moves.length, log, scoring: 'vegas' }, ctx);
+        check(vd.lastWin.scoring === 'vegas' && vd.lastWin.score === 208 && vd.modes[draw].vegasWins === 1, 'vegas win: 52 cards × 5 − 52 = 208');
+    } else {
+        throws(() => game.recordResult(null, { gameId: 'gv000001', outcome: 'win', draw, seed, timeMs: 200000, moves: moves.length, log, scoring: 'vegas' }, ctx), /ไม่ครบ/, 'win that needs extra passes is rejected in vegas');
+    }
+    throws(() => game.recordResult(null, { gameId: 'gv000002', outcome: 'win', draw, seed, timeMs: 200000, moves: moves.length, log, scoring: 'x' }, ctx), /คะแนน/, 'bad scoring rejected');
+    // หาเกมที่ต้องวนกองเกินที่เวกัสให้ → server ต้องปฏิเสธ
+    let rejectedOnce = false;
+    for (const sd of SEEDS[1].slice(0, 10)) {
+        const sol = solve(sd, 1, { maxNodes: 150000 });
+        if (!sol || !sol.moves) continue;
+        const l = enc(sol.moves);
+        let st = E.deal(sd, 1); let rec = 0;
+        sol.moves.forEach(m => { if (m.draw && !st.stock.length) rec++; st = E.applyMove(st, m); });
+        if (rec === 0) continue;
+        throws(() => game.recordResult(null, { gameId: 'gv0000' + sd.toString(36).slice(0, 4), outcome: 'win', draw: 1, seed: sd, timeMs: 400000, moves: sol.moves.length, log: l, scoring: 'vegas' }, ctx), /ไม่ครบ/, 'vegas rejects a win that recycled the stock');
+        rejectedOnce = true;
+        break;
+    }
+    check(rejectedOnce, 'found a recycling solution to test vegas rejection');
+}
+
 console.log(`smoke-solo-solitaire: ${passed} checks passed`);
