@@ -213,6 +213,34 @@ async function identity() {
             console.log(`  รีสตาร์ตกลางมือ ${back.handNo} แล้วเล่นต่อได้`);
         }
 
+        // ---------- กติกาที่เลือกในเครื่อง (ส่งมากับการลงเดิมพัน) ----------
+        {
+            const who = await identity();
+            let T = (await call(who.j, 'POST', `${API}/start`, {})).data.state;
+            assert(T.rules.straights === true && T.rules.mustDraw === false, 'ค่าเริ่มต้น: นับเรียง · ไม่บังคับจั่ว');
+            let forcedSeen = false;
+            for (let i = 0; i < 40 && !forcedSeen && T.phase !== 'busted'; i += 1) {
+                const b = await call(who.j, 'POST', `${API}/bet`, { amount: 10, hand: T.handNo + 1, rules: { mustDraw: true, straights: false, junk: 1 } });
+                assert(b.status === 200 && b.data.state.rules.mustDraw === true && b.data.state.rules.straights === false && !('junk' in b.data.state.rules), 'กติกาที่ส่งมาถูกกรองแล้วใช้กับมือนี้');
+                T = b.data.state;
+                if (T.phase !== 'draw') continue;
+                if (T.hand.mustDraw) {
+                    forcedSeen = true;
+                    const stay = await call(who.j, 'POST', `${API}/act`, { action: 'stay', hand: T.handNo });
+                    assert(stay.status === 400 && /ต้องจั่ว/.test(stay.data.error) && stay.data.state.phase === 'draw', 'ต่ำกว่า 4 กดอยู่ → 400 มือยังค้าง');
+                    const draw = await call(who.j, 'POST', `${API}/act`, { action: 'draw', hand: T.handNo });
+                    assert(draw.status === 200 && draw.data.state.lastResult.player.cards.length === 3, 'จั่วแล้ววัดผล');
+                    assert(draw.data.state.lastResult.rules.mustDraw === true, 'ผลมือบอกกติกาที่ใช้');
+                    T = draw.data.state;
+                } else {
+                    const act = await call(who.j, 'POST', `${API}/act`, { action: 'stay', hand: T.handNo });
+                    assert(act.status === 200, '4 แต้มขึ้นไป อยู่ได้');
+                    T = act.data.state;
+                }
+            }
+            assert(forcedSeen, 'เจอมือที่ต้องจั่วอย่างน้อยหนึ่งครั้ง');
+        }
+
         // ---------- rate limit ----------
         const other = await identity();
         let limited = 0;

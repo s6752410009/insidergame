@@ -62,6 +62,7 @@
     transition: background-color 0.18s ease-out, transform 0.08s ease-out;
   }
   .pds-pill:hover { background: var(--surface-2); }
+  .pds-pill--icon { width: 44px; padding: 0; font-size: 1.05rem; }
   .pds-pill:active { transform: scale(0.96); }
   .pds :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
@@ -248,6 +249,9 @@
   .pds-rankno { font-family: var(--display); font-weight: 700; color: var(--gold); text-align: center; }
   .pds-rankname { font-weight: 700; }
   .pds-rankdesc { display: block; font-size: 0.78rem; color: var(--muted); }
+  .pds-rule { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: center; min-height: 56px; padding: 8px 0; border-top: 1px solid var(--line-soft); cursor: pointer; }
+  .pds-rule:first-child { border-top: 0; }
+  .pds-rule input { width: 24px; height: 24px; accent-color: var(--gold); margin: 0; }
   .pds-deng { display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--gold); color: var(--gold-ink); font-family: var(--display); font-weight: 700; font-size: 0.72rem; }
   .pds-mini { display: flex; gap: 2px; }
   .pds-mini img { width: 24px; height: 34px; border-radius: 3px; }
@@ -306,6 +310,7 @@
       <h1 class="pds-title">ป๊อกเด้งท้าเจ้ามือ</h1>
     </div>
     <div class="pds-tools">
+      <button type="button" class="pds-pill pds-pill--icon" id="pdsRulesBtn" aria-haspopup="dialog" aria-label="กติกาโต๊ะ" title="กติกาโต๊ะ">⚙️</button>
       <button type="button" class="pds-pill" id="pdsRankBtn" aria-haspopup="dialog">อันดับไพ่</button>
       <button type="button" class="pds-pill" id="pdsHowBtn" aria-haspopup="dialog">วิธีเล่น</button>
     </div>

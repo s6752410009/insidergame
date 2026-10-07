@@ -4,7 +4,8 @@
  * เซิร์ฟเวอร์เป็นคนสับ/แจก/ตัดสินทั้งหมด (กันโกง) — client แค่ส่ง "ลงเท่าไหร่" กับ "จั่ว/อยู่"
  *   POST /api/solo/pokdengsolo/start  { fresh?: true }   เริ่มรอบใหม่ (หรือคืนรอบเดิมที่ยังเล่นอยู่)
  *   GET  /api/solo/pokdengsolo/state                     สถานะรอบปัจจุบัน + สถิติ
- *   POST /api/solo/pokdengsolo/bet    { amount, hand }   ลงเดิมพัน + แจกไพ่ (hand = เลขมือที่คาดไว้ กันกดซ้ำ)
+ *   POST /api/solo/pokdengsolo/bet    { amount, hand, rules? }   ลงเดิมพัน + แจกไพ่ (hand = เลขมือที่คาดไว้ กันกดซ้ำ)
+ *                                     rules = { straights, mustDraw } ที่ตั้งไว้ในเครื่อง — ล็อกไว้ทั้งมือ
  *   POST /api/solo/pokdengsolo/act    { action: 'draw'|'stay', hand }
  *
  * ที่เก็บข้อมูล (ผ่าน soloStats):
@@ -135,7 +136,7 @@ module.exports = {
                 return res.status(409).json({ success: false, error: 'สถานะโต๊ะเปลี่ยนไปแล้ว', ...payload(run, soloStats.getData(playerId, GAME_ID)) });
             }
             try {
-                engine.placeBet(run, body.amount, { rng: cryptoRng });
+                engine.placeBet(run, body.amount, { rng: cryptoRng, rules: engine.sanitizeRules(body.rules) });
             } catch (error) {
                 return res.status(400).json({ success: false, error: error.message, ...payload(run, soloStats.getData(playerId, GAME_ID)) });
             }
@@ -165,7 +166,11 @@ module.exports = {
             if (run.phase !== 'draw' || (Number.isInteger(expected) && expected !== run.handNo)) {
                 return res.status(409).json({ success: false, error: 'ยังไม่ถึงตาจั่ว', ...payload(run, soloStats.getData(playerId, GAME_ID)) });
             }
-            engine.playerAct(run, action === 'draw', { rng: cryptoRng });
+            try {
+                engine.playerAct(run, action === 'draw', { rng: cryptoRng });
+            } catch (error) {
+                return res.status(400).json({ success: false, error: error.message, ...payload(run, soloStats.getData(playerId, GAME_ID)) });
+            }
             saveRun(soloStats, playerId, run);
             const stats = engine.applyHandToStats(soloStats.getData(playerId, GAME_ID), run);
             soloStats.setData(playerId, GAME_ID, stats);

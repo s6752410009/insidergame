@@ -189,13 +189,19 @@ function freshRun(chips) {
         for (let i = 0; i < 400 && run.phase !== 'busted'; i += 1) {
             const bet = Math.min(engine.maxBetFor(run), 10 * (1 + Math.floor(Math.random() * 50)));
             const before = run.chips;
-            engine.placeBet(run, bet);
+            const rules = { straights: Math.random() < 0.7, mustDraw: Math.random() < 0.4 };
+            engine.placeBet(run, bet, { rules });
             if (run.phase === 'draw') {
                 const seen = [...run.hand.player, ...run.hand.dealer, ...run.hand.deck];
                 if (new Set(seen).size !== 52) throw new Error('FAIL: สำรับไม่ครบ 52 ใบ');
-                engine.playerAct(run, pd.evaluateHand(run.hand.player).points <= 4);
+                const forced = engine.mustDrawNow(run.hand.player, rules);
+                engine.playerAct(run, forced || pd.evaluateHand(run.hand.player).points <= 4);
             }
             const res = run.lastResult;
+            if (rules.mustDraw && !res.player.eval.pok && !res.dealer.eval.pok && res.player.cards.length === 2 && res.player.eval.points < 4) throw new Error('FAIL: ต่ำกว่า 4 แต่ไม่ได้จั่ว');
+            if (res.dealerCaught && !(res.dealer.cards.length === 2 && res.player.cards.length === 3 && res.dealer.eval.points >= 4 && res.dealer.eval.points <= 5)) throw new Error('FAIL: จับผิดเงื่อนไข');
+            if (res.dealerCaught && res.dealerDrew) throw new Error('FAIL: จับแล้วยังจั่ว');
+            if (!rules.straights && /เรียง|สเตรท/.test(res.player.eval.name + res.dealer.eval.name)) throw new Error('FAIL: ปิดเรียงแล้วยังนับเรียง');
             if (!Number.isInteger(run.chips) || run.chips < 0) throw new Error('FAIL: ชิปติดลบ/ไม่ใช่จำนวนเต็ม');
             if (run.chips !== before + res.delta) throw new Error('FAIL: ชิปไม่ตรงกับ delta');
             if (res.outcome === 'win' && res.delta !== res.bet * res.multiplier) throw new Error('FAIL: จ่ายชนะผิด');
@@ -218,6 +224,104 @@ function freshRun(chips) {
     assert(entry.score === 4250 && entry.label === '4,250 ชิป', 'อันดับใช้จุดสูงสุด');
     assert(/4,250/.test(game.summary({ bestPeak: 4250, handsPlayed: 12, pokCount: 3 })), 'สรุปบนการ์ด');
     assert(game.leaderboardOrder === 'desc', 'มากก่อน');
+}
+
+// ================= 11) กติกาไทยแบบเดียวกับโต๊ะหลายคน (rules/pokdeng) =================
+{
+    // สเตรทฟลัช = ชั้นของตัวเอง ห้าเด้ง
+    const run = freshRun();
+    engine.placeBet(run, 100, { deck: rig('2H', 'KS', '3H', 'QS', '4H', '2D') });
+    engine.playerAct(run, true, { rng: always(0.99) });
+    const r = run.lastResult;
+    assert(r.player.eval.name === 'สเตรทฟลัช' && r.multiplier === 5 && r.delta === 500, 'สเตรทฟลัช 2-3-4 โพแดง ห้าเด้ง');
+    // ลำดับ: ตอง > สเตรทฟลัช > เรียง > เซียน
+    const tong = pd.evaluateHand(['2S', '2H', '2D']);
+    const sf = pd.evaluateHand(['4H', '5H', '6H']);
+    const st = pd.evaluateHand(['4C', '5H', '6S']);
+    const sian = pd.evaluateHand(['JS', 'QD', 'QH']);
+    assert(pd.judge(tong, sf).outcome === 'win' && pd.judge(sf, st).outcome === 'win' && pd.judge(st, sian).outcome === 'win', 'ตอง > สเตรทฟลัช > เรียง > เซียน');
+}
+{
+    // A-2-3 ไม่ใช่เรียง · Q-K-A เป็นเรียง
+    const a = freshRun();
+    engine.placeBet(a, 10, { deck: rig('AS', 'KS', '2H', 'QC', '3D', '2D') });
+    engine.playerAct(a, true, { rng: always(0.99) });
+    assert(a.lastResult.player.eval.name === '6 แต้ม' && a.lastResult.multiplier === 1, 'A-2-3 = 6 แต้มธรรมดา');
+    const b = freshRun();
+    engine.placeBet(b, 10, { deck: rig('QS', 'KC', 'KH', '10C', 'AD', '2D') });
+    engine.playerAct(b, true, { rng: always(0.99) });
+    assert(b.lastResult.player.eval.name === 'เรียง' && b.lastResult.multiplier === 3, 'Q-K-A = เรียง สามเด้ง');
+}
+{
+    // ปิดเรียง: 3 ใบเรียงกันนับแต้มปกติ (และสเตรทฟลัชกลายเป็นสามเด้งดอกเดียว)
+    const run = freshRun();
+    engine.placeBet(run, 10, { deck: rig('2C', 'KS', '3H', 'QS', '4S', '2D'), rules: { straights: false } });
+    engine.playerAct(run, true, { rng: always(0.99) });
+    assert(run.lastResult.player.eval.name === '9 แต้ม' && run.lastResult.multiplier === 1 && run.lastResult.rules.straights === false, 'ปิดเรียง 2-3-4 = 9 แต้ม');
+    const sf = freshRun();
+    engine.placeBet(sf, 10, { deck: rig('2H', 'KS', '3H', 'QS', '4H', '2D'), rules: { straights: false } });
+    engine.playerAct(sf, true, { rng: always(0.99) });
+    assert(sf.lastResult.player.eval.name === '9 แต้ม' && sf.lastResult.multiplier === 3, 'ปิดเรียง 2-3-4 ดอกเดียว = 9 แต้มสามเด้ง');
+}
+{
+    // ต่ำกว่า 4 ต้องจั่ว
+    const run = freshRun();
+    engine.placeBet(run, 10, { deck: rig('AS', 'KS', 'AH', 'QS', '5D', '2D'), rules: { mustDraw: true } });
+    const view = engine.publicView(run);
+    assert(view.hand.mustDraw === true && view.hand.rules.mustDraw === true, 'หน้าเว็บรู้ว่าต้องจั่ว');
+    throws(() => engine.playerAct(run, false), /ต้องจั่ว/, '2 แต้ม อยู่ไม่ได้');
+    assert(run.phase === 'draw' && run.hand.player.length === 2, 'ปฏิเสธแล้วไม่แตะมือ');
+    engine.playerAct(run, true, { rng: always(0.99) });
+    assert(run.lastResult.player.cards.length === 3, 'จั่วได้ตามปกติ');
+    const ok = freshRun();
+    engine.placeBet(ok, 10, { deck: rig('2S', 'KS', '2H', 'QS'), rules: { mustDraw: true } });
+    assert(engine.publicView(ok).hand.mustDraw === false, '4 แต้ม ไม่บังคับ');
+    engine.playerAct(ok, false, { rng: always(0.99) });
+    assert(ok.lastResult.player.cards.length === 2, '4 แต้ม อยู่ได้');
+    const off = freshRun();
+    engine.placeBet(off, 10, { deck: rig('AS', 'KS', 'AH', 'QS') });
+    engine.playerAct(off, false, { rng: always(0.99) });
+    assert(off.lastResult.player.cards.length === 2, 'ค่าเริ่มต้น (ปิด) 2 แต้มอยู่ได้');
+}
+{
+    // เจ้ามือจับ: เราจั่ว 3 ใบ เจ้ามือ 2 ใบ 4–5 แต้ม → เปิดวัดเลย ไม่จั่ว (rng ไหนก็ตาม)
+    const a = freshRun();
+    engine.placeBet(a, 10, { deck: rig('AS', '2C', 'AH', '2D', 'KD', '9S') });
+    engine.playerAct(a, true, { rng: always(0) });
+    assert(a.lastResult.dealerCaught && !a.lastResult.dealerDrew && a.lastResult.dealer.cards.length === 2, 'เจ้ามือ 4 แต้ม จับขา 3 ใบ');
+    assert(a.lastResult.outcome === 'lose', '2 แต้ม แพ้ 4 แต้มที่จับ');
+    const b = freshRun();
+    engine.placeBet(b, 10, { deck: rig('AS', '2C', 'AH', '3D', 'KD', '9S') });
+    engine.playerAct(b, true, { rng: always(0) });
+    assert(b.lastResult.dealerCaught, 'เจ้ามือ 5 แต้ม จับ');
+    const c = freshRun();
+    engine.placeBet(c, 10, { deck: rig('AS', '3C', 'AH', '3D', 'KD', '9S') });
+    engine.playerAct(c, true, { rng: always(0) });
+    assert(!c.lastResult.dealerCaught && !c.lastResult.dealerDrew, 'เจ้ามือ 6 แต้ม อยู่ (ไม่นับเป็นจับ)');
+    const d = freshRun();
+    engine.placeBet(d, 10, { deck: rig('AS', '2C', 'AH', '2D', '9S') });
+    engine.playerAct(d, false, { rng: always(0.2) });
+    assert(!d.lastResult.dealerCaught && d.lastResult.dealerDrew, 'เราอยู่ 2 ใบ เจ้ามือ 4 แต้มยังลุ้นจั่วตามเดิม');
+    const e = freshRun();
+    engine.placeBet(e, 10, { deck: rig('AS', 'AC', 'AH', '2D', 'KD', '9S') });
+    engine.playerAct(e, true, { rng: always(0.99) });
+    assert(!e.lastResult.dealerCaught && e.lastResult.dealerDrew, 'เจ้ามือ 3 แต้ม จับไม่ได้ ต้องจั่ว');
+    assert(engine.canDealerCatch(['2C', '2D']) && !engine.canDealerCatch(['AC', '2D']) && !engine.canDealerCatch(['2C', '2D', 'KD']), 'จับได้เมื่อ 2 ใบ ≥ 4 แต้ม');
+}
+{
+    // ป๊อกจบมือทันที: ผู้เล่นจั่วไม่ได้ เจ้ามือจั่วแก้ไม่ได้
+    const run = freshRun();
+    engine.placeBet(run, 10, { deck: rig('AS', '4C', '2H', '4D'), rules: { mustDraw: true } }); // เราได้ 3 แต้ม แต่เจ้ามือป๊อก 8
+    assert(run.phase === 'bet' && run.lastResult.player.cards.length === 2 && run.lastResult.outcome === 'lose', 'เจ้ามือป๊อก = วัดทันที แม้เปิดต้องจั่ว');
+    throws(() => engine.playerAct(run, true), /ยังไม่ถึง/, 'หลังป๊อกจั่วไม่ได้');
+}
+{
+    const junk = engine.sanitizeRules({ straights: 'no', mustDraw: 'yes', extra: 1 });
+    assert(junk.straights === true && junk.mustDraw === false && Object.keys(junk).length === 2, 'กติกาแปลก ๆ = ค่าเริ่มต้น');
+    const run = freshRun();
+    engine.placeBet(run, 10, { deck: rig('AS', 'KS', 'AH', 'QS'), rules: { mustDraw: true } });
+    const back = engine.reviveRun(JSON.parse(JSON.stringify(run)));
+    assert(back.hand.rules.mustDraw === true, 'กติกาติดไปกับมือที่ค้าง (รีเฟรชแล้วยังเหมือนเดิม)');
 }
 
 console.log(`✅ smoke-solo-pokdengsolo: ${passed} assertions passed`);

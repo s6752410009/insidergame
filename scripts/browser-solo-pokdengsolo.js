@@ -301,6 +301,81 @@ async function layoutProblems(page) {
             await pc.close();
         }
 
+        // ---------- กติกาที่เลือกได้ (⚙️) + ทางกลับระหว่างเล่น ----------
+        {
+            const pr = await ctx.newPage();
+            pr.on('pageerror', e => errors.push('rules pageerror: ' + e.message));
+            await pr.goto(`${BASE}/solo/pokdengsolo`, { waitUntil: 'domcontentloaded' });
+            let a2 = await waitReady(pr);
+            if (a2 === 'newrun') { await pr.click('[data-act="newrun"]'); a2 = await waitReady(pr); }
+            await pr.click('#pdsRulesBtn');
+            await pr.waitForSelector('#pdsSheet:not([hidden]) [data-rule="mustDraw"]');
+            assert(await pr.isChecked('[data-rule="straights"]') && !(await pr.isChecked('[data-rule="mustDraw"]')), 'ค่าเริ่ม: นับเรียง เปิด · ต่ำกว่า 4 ต้องจั่ว ปิด');
+            await pr.click('[data-rule="mustDraw"]');
+            await pr.waitForTimeout(300);
+            await shot(pr, '12-rules-390');
+            probs = await layoutProblems(pr);
+            assert(probs.length === 0, 'layout กติกา: ' + probs.join(' | '));
+            await pr.click('#pdsSheetClose');
+            const saved = await pr.evaluate(() => JSON.parse(localStorage.getItem('pokdengsolo.rules.v1') || 'null'));
+            assert(saved && saved.mustDraw === true && saved.straights === true, 'จำกติกาไว้ในเครื่อง');
+            await pr.reload({ waitUntil: 'domcontentloaded' });
+            a2 = await waitReady(pr);
+            await pr.click('#pdsRulesBtn');
+            assert(await pr.isChecked('[data-rule="mustDraw"]'), 'รีเฟรชแล้วกติกายังอยู่');
+            await pr.keyboard.press('Escape');
+            let forced = false;
+            let drawSeen = false;
+            let ours = false; // มือที่ค้างจากก่อนเปิดกติกา ใช้กติกาเดิม (ล็อกตอนแจก) — นับเฉพาะมือที่เราแจกหลังตั้งค่า
+            for (let i = 0; i < 60 && !forced; i += 1) {
+                if (a2 === 'newrun') { await pr.click('[data-act="newrun"]'); a2 = await waitReady(pr); }
+                if (a2 === 'deal') {
+                    ours = true;
+                    await pr.click('[data-act="clear"]');
+                    await pr.click('[data-chip="10"]');
+                    await pr.click('[data-act="deal"]');
+                    a2 = await waitReady(pr);
+                }
+                if (a2 !== 'draw') continue;
+                if (!drawSeen) {
+                    drawSeen = true;
+                    // ทางกลับรายการเกมเห็นชัดตลอด (มือค้างไว้ที่เซิร์ฟเวอร์ ไม่เสียเดิมพัน)
+                    const back = pr.locator('.ui-footer-bar a.ui-back[href^="/solo"]');
+                    const where = await back.evaluate(el => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: innerHeight, vis: getComputedStyle(el).visibility }; });
+                    assert(await back.isVisible() && where.top >= 0 && where.bottom <= where.h + 1, 'ปุ่ม ← เกมเดี่ยว อยู่ในจอระหว่างจั่ว ' + JSON.stringify(where));
+                }
+                const pts = (await pr.textContent('#pdsPlayerLabel')).trim();
+                const low = /^(บอด|[0-3] แต้ม)/.test(pts);
+                if (low && ours) {
+                    forced = true;
+                    assert(await pr.isDisabled('[data-act="stay"]'), 'ต่ำกว่า 4 ปุ่มอยู่กดไม่ได้');
+                    assert(/ต้องจั่ว/.test(await pr.textContent('#pdsActions .pds-hint')), 'บอกว่าต้องจั่ว');
+                    await shot(pr, '13-must-draw-390');
+                    await pr.click('[data-act="draw"]');
+                } else {
+                    await pr.click(low ? '[data-act="draw"]' : '[data-act="stay"]');
+                }
+                a2 = await waitReady(pr);
+            }
+            assert(forced, 'เจอมือต่ำกว่า 4 ที่ต้องจั่ว');
+            if (a2 === 'draw') { await pr.click('[data-act="draw"]'); a2 = await waitReady(pr); }
+            if (a2 === 'deal') {
+                await pr.click('[data-act="clear"]');
+                await pr.click('[data-chip="10"]');
+                await pr.click('[data-act="deal"]');
+                a2 = await waitReady(pr);
+            }
+            if (a2 === 'draw') {
+                const chips = (await pr.textContent('#pdsChips')).trim();
+                await pr.click('.ui-footer-bar a.ui-back');
+                await pr.waitForURL(u => new URL(u).pathname === '/solo', { timeout: 10000 });
+                assert(new URL(pr.url()).pathname === '/solo', 'กดกลับกลางมือ → หน้ารายการเกมเดี่ยว');
+                await pr.goto(`${BASE}/solo/pokdengsolo`, { waitUntil: 'domcontentloaded' });
+                assert((await waitReady(pr)) === 'draw' && (await pr.textContent('#pdsChips')).trim() === chips, 'กลับมาแล้วมือเดิมยังรออยู่ ชิปไม่หาย');
+            }
+            await pr.close();
+        }
+
         assert(errors.length === 0, 'ไม่มี error ในหน้า: ' + errors.join(' | '));
         console.log(`✅ browser-solo-pokdengsolo: ${passed} assertions passed (${hands} hands on mobile)`);
     } finally {
