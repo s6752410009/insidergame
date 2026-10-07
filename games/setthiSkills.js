@@ -22,21 +22,21 @@ const UPGRADE_COST = [100, 250, 500, 900, 1500];
  * key = ชื่อจุดลุ้นใน engine (proc key) ถ้าเป็นสกิลสุ่ม
  */
 const SKILLS = [
-    { id: 'double', icon: '🎲', name: 'ดับเบิล', key: 'double', unit: 'pct', values: [0, 1, 2, 3, 4, 5],
+    { id: 'double', icon: '🎲', name: 'ดับเบิล', key: 'double', unit: 'pct', values: [0, 2, 4, 6, 8, 10],
         line: 'ทอยได้ดับเบิลบ่อยขึ้น', proc: 'ดับเบิล!', detail: 'ทอยไม่ได้ดับเบิล มีโอกาสกลายเป็นดับเบิล (ไม่ทำให้ติดเกาะ)' },
-    { id: 'fly', icon: '✈️', name: 'บินทันที', key: 'fly', unit: 'pct', values: [0, 6, 12, 18, 24, 30],
+    { id: 'fly', icon: '✈️', name: 'บินทันที', key: 'fly', unit: 'pct', values: [0, 15, 30, 45, 60, 75],
         line: 'ตกทัวร์ บินได้เลยตานี้', proc: 'บินได้เลย!', detail: 'ตกช่องทัวร์ มีโอกาสเลือกที่บินได้ทันที ไม่ต้องรอตาหน้า' },
-    { id: 'start2x', icon: '💰', name: 'Start ×2', key: 'start2x', unit: 'pct', values: [0, 5, 10, 15, 20, 25],
+    { id: 'start2x', icon: '💰', name: 'Start ×2', key: 'start2x', unit: 'pct', values: [0, 3, 5, 8, 10, 12],
         line: 'ผ่านจุดเริ่ม ได้เงิน ×2', proc: 'Start ×2!', detail: 'ผ่านจุดเริ่ม มีโอกาสได้เงินเดือนสองเท่า' },
-    { id: 'escape', icon: '🏝️', name: 'หนีเกาะ', key: 'escape', unit: 'pct', values: [0, 8, 16, 24, 32, 40],
+    { id: 'escape', icon: '🏝️', name: 'หนีเกาะ', key: 'escape', unit: 'pct', values: [0, 10, 20, 30, 40, 50],
         line: 'ติดเกาะ หนีออกได้ทันที', proc: 'หนีเกาะ!', detail: 'ติดเกาะแล้วทอยไม่ได้ดับเบิล มีโอกาสหนีออกเลย' },
-    { id: 'tollShield', icon: '🛡️', name: 'ลดค่าผ่านทาง', key: 'tollHalf', unit: 'pct', values: [0, 4, 8, 12, 16, 20],
+    { id: 'tollShield', icon: '🛡️', name: 'ลดค่าผ่านทาง', key: 'tollHalf', unit: 'pct', values: [0, 3, 6, 9, 12, 15],
         line: 'ค่าผ่านทาง ลดครึ่ง', proc: 'ค่าผ่านทางลดครึ่ง!', detail: 'จ่ายค่าผ่านทาง มีโอกาสจ่ายแค่ครึ่งเดียว' },
-    { id: 'builder', icon: '🏗️', name: 'ส่วนลดก่อสร้าง', key: null, unit: 'off', values: [0, 2, 4, 6, 8, 10],
+    { id: 'builder', icon: '🏗️', name: 'ส่วนลดก่อสร้าง', key: null, unit: 'off', values: [0, 1, 2, 3, 4, 5],
         line: 'ซื้อ/สร้าง ถูกลง', proc: 'ส่วนลดก่อสร้าง', detail: 'ซื้อที่และสร้างบ้าน ถูกลงทุกครั้ง' },
-    { id: 'luck', icon: '🃏', name: 'ดวงดี', key: 'luck', unit: 'pct', values: [0, 4, 8, 12, 16, 20],
+    { id: 'luck', icon: '🃏', name: 'ดวงดี', key: 'luck', unit: 'pct', values: [0, 10, 20, 30, 40, 50],
         line: 'เลี่ยงการ์ดร้าย', proc: 'ดวงดี! เลี่ยงการ์ดร้าย', detail: 'เปิดได้การ์ดร้าย มีโอกาสเปลี่ยนเป็นการ์ดดี' },
-    { id: 'festival', icon: '🎪', name: 'งานวัด', key: null, unit: 'bonus', values: [0, 5, 10, 15, 20, 20],
+    { id: 'festival', icon: '🎪', name: 'งานวัด', key: null, unit: 'bonus', values: [0, 3, 6, 9, 12, 15],
         line: 'งานวัดเมืองเรา เก็บแพงขึ้น', proc: 'งานวัด ×3!', detail: 'เมืองงานวัดของเรา ค่าผ่านทางเพิ่ม · Lv5 เปิดงานเริ่ม ×3' }
 ];
 const SKILL_IDS = SKILLS.map(s => s.id);

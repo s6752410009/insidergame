@@ -207,8 +207,8 @@ async function endScreen(browser) {
         await waitGold(m.page, 900);
         assert(await lv(m.page, 'start2x') === 1, 'อัปแล้วหลอด 1 ขั้น');
         assert(await m.page.locator('.sh-slot:not(.is-empty)').count() === 1, 'สกิลแรกเข้าช่องให้เอง');
-        assert((await m.page.locator('.sk[data-skill="start2x"] .sk-now').textContent()).includes('5%'), 'โชว์ % ตอนนี้');
-        assert((await m.page.locator('.sk[data-skill="start2x"] .sk-next').textContent()).includes('10%'), 'โชว์ % ถัดไป');
+        assert((await m.page.locator('.sk[data-skill="start2x"] .sk-now').textContent()).includes('3%'), 'โชว์ % ตอนนี้');
+        assert((await m.page.locator('.sk[data-skill="start2x"] .sk-next').textContent()).includes('5%'), 'โชว์ % ถัดไป');
 
         // กดรัว 2 ครั้งติด (dblclick) = ได้ขั้นเดียว
         await m.page.dblclick('[data-up="start2x"]');
