@@ -179,6 +179,7 @@ async function layoutProblems(page) {
         async function snap(label) {
             await delay(450);
             for (const v of viewers) {
+                assert(await v.page.isVisible('#ucExitBtn'), `${label}/${v.tag}: ปุ่ม 🚪 ออก ต้องเห็นทุกเฟส`);
                 const problems = await layoutProblems(v.page);
                 assert(problems.length === 0, `${label}/${v.tag}: layout ${problems.join(' | ')}`);
                 assert(v.errors.length === 0, `${label}/${v.tag}: ${v.errors.join(' | ')}`);
@@ -203,7 +204,7 @@ async function layoutProblems(page) {
         }
         async function botVote(b, targetId) {
             await waitFor(() => view(b).phase === 'vote' || view(b).phase !== 'clue', 4000, 'state โหวตมาถึง');
-            if (view(b).phase !== 'vote' || !view(b).self.alive || view(b).self.hasVoted) return;
+            if (view(b).phase !== 'vote' || !view(b).self.alive || view(b).self.hasVoted || !view(b).self.canVote) return;
             const res = await ack(b.socket, 'undercover_vote', { step: view(b).step, targetPlayerId: targetId });
             assert(res?.success, 'บอทโหวตไม่ได้: ' + JSON.stringify(res));
         }
@@ -327,7 +328,7 @@ async function layoutProblems(page) {
             await waitFor(() => hostView().speakerId !== sp || hostView().phase !== 'clue', 4000, 'next speaker r3');
         }
         await delay(400);
-        // โหวตเสมอ 2:2 ระหว่างสายแฝงกับพลเมือง Y → โหวตใหม่ ต้องไม่มีชื่อที่เลือกไว้ก่อนเสมอติดมา
+        // โหวตเสมอ 2:2 ระหว่างสายแฝงกับพลเมือง Y → สองคนนี้ใบ้เพิ่ม → คนที่เหลือโหวตใหม่ ต้องไม่มีชื่อที่เลือกไว้ก่อนเสมอติดมา
         const aliveIds = hostView().players.filter(p => p.alive).map(p => p.playerId);
         const yId = aliveIds.find(id => id !== uc.id && id !== host.id);
         let alt = 0;
@@ -339,8 +340,28 @@ async function layoutProblems(page) {
             if (page) { await pageVote(page, t); await page.click('#ucVoteConfirm'); await delay(250); }
             else await botVote(b, t);
         }
+        await waitFor(() => hostView().phase === 'clue' && hostView().tieBreak, 5000, 'tie-break clues');
+        await delay(600);
+        for (const v of viewers) {
+            assert(/เสมอ/.test(await v.page.textContent('#ucNow')), `${v.tag}: ช่วงใบ้เพิ่มต้องบอกว่าเสมอ`);
+        }
+        await snap('09a-tiebreak-clue');
+        guard = 0;
+        while (hostView().phase === 'clue' && guard++ < 4) {
+            const sp = hostView().speakerId;
+            assert([uc.id, yId].includes(sp), 'ใบ้เพิ่มเฉพาะคนที่เสมอ');
+            const page = pageOf(bots.find(b => b.id === sp));
+            if (page) await page.click('#ucClueDoneBtn');
+            else await botSpeak(bots.find(x => x.id === sp), 'ใบ้เพิ่ม');
+            await waitFor(() => hostView().speakerId !== sp || hostView().phase !== 'clue', 4000, 'next tie-break speaker');
+        }
         await waitFor(() => hostView().phase === 'vote' && hostView().vote.isRevote, 5000, 'revote');
         await delay(600);
+        for (const v of viewers) {
+            if (![uc.id, yId].includes(v.bot.id) || !view(liveBots()[0]).players.find(p => p.playerId === v.bot.id)?.alive) continue;
+            assert(!(await v.page.$('#ucVoteConfirm')), `${v.tag}: คนที่เสมอต้องไม่มีปุ่มโหวต`);
+            assert(/เสมออยู่/.test(await v.page.textContent('#ucNowTitle')), `${v.tag}: คนที่เสมอต้องเห็นว่ารอคนอื่นโหวต`);
+        }
         for (const v of viewers) {
             if (!(await v.page.$('#ucVoteConfirm'))) continue;
             assert(await v.page.$eval('#ucVoteConfirm', b => b.disabled), `${v.tag}: โหวตใหม่ต้องไม่มีตัวเลือกเดิมค้าง`);
@@ -367,6 +388,7 @@ async function layoutProblems(page) {
             assert(/พลเมืองชนะ/.test(txt) && /คำสายแฝง/.test(txt), `${v.tag}: หน้าจบต้องบอกผู้ชนะและเปิดคำ`);
             assert(/ถูกโหวตออกรอบ 1/.test(txt) && /รอดถึงจบ/.test(txt), `${v.tag}: หน้าจบต้องบอกว่าใครออกรอบไหน`);
             assert(/คุณเป็น/.test(await v.page.textContent('#ucNowSub')), `${v.tag}: หน้าจบต้องบอกว่าตัวเองเป็นบทไหน`);
+            assert(/\+2/.test(txt) && /คะแนนสะสมในห้องนี้/.test(txt), `${v.tag}: หน้าจบต้องโชว์แต้ม +2 และคะแนนสะสม`);
         }
 
         // desktop

@@ -1147,7 +1147,7 @@ $(function() {
                 badge: '🫥 ใบ้คำ จับคนคำไม่เหมือน',
                 title: 'คำใครไม่เหมือน',
                 summary: 'ทุกคนได้คำเดียวกัน ยกเว้นสายแฝงที่ได้คำคล้าย ๆ — ใบ้คนละคำ แล้วโหวตหาว่าใครคำไม่เหมือน',
-                bullets: ['4-10 คน', 'เล่นหน้ากัน พูดใบ้', 'มี Mr. White ให้เปิดได้', 'ไม่ต้องมีคนคุมเกม']
+                bullets: ['3-10 คน', 'เล่นหน้ากัน พูดใบ้', 'มี Mr. White (ไม่มีคำ)', 'ไม่ต้องมีคนคุมเกม']
             },
             coup: {
                 tone: 'linear-gradient(135deg, rgba(168,85,247,0.24), rgba(18,7,26,0.92))',
@@ -1698,9 +1698,9 @@ $(function() {
                         <div class="room-form-label" id="undercoverSettingsLabel"><span class="icon">🫥</span> ตั้งค่าคำใครไม่เหมือน:</div>
                         <div style="display:grid; gap:8px;">
                             <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
-                                <span style="min-width:96px;">สายแฝง</span>
+                                <span style="min-width:64px;">สายแฝง</span>
                                 <select id="undercoverCount" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(245,200,107,0.4); background:#1a2332; color:#fff; font:inherit;">
-                                    <option value="auto" selected>ตามจำนวนคน (แนะนำ)</option>
+                                    <option value="auto" selected>ตามจำนวนคน</option>
                                     <option value="1">1 คน</option>
                                     <option value="2">2 คน</option>
                                     <option value="3">3 คน</option>
@@ -1711,9 +1711,9 @@ $(function() {
                                 <span>❔ มี Mr. White (ไม่มีคำ · 5 คนขึ้นไป)</span>
                             </label>
                             <label style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#ddd;">
-                                <span style="min-width:96px;">โหวตเสมอ</span>
+                                <span style="min-width:64px;">โหวตเสมอ</span>
                                 <select id="undercoverTieRule" style="flex:1; min-width:140px; min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:#1a2332; color:#fff; font:inherit;">
-                                    <option value="speak" selected>คนที่เสมอใบ้เพิ่ม แล้วโหวตใหม่</option>
+                                    <option value="speak" selected>ใบ้เพิ่มแล้วโหวตใหม่</option>
                                     <option value="revote">โหวตใหม่เลย</option>
                                     <option value="none">ไม่มีใครออก</option>
                                 </select>

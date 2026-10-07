@@ -295,6 +295,9 @@
   }
   @media (max-width: 440px) {
     .uc-tools .uc-chip .t { display: none; }
+    /* 🚪 ออก + ไอคอน 3 ปุ่มให้อยู่แถวเดียว ไม่ดันชื่อห้องลงสองแถว */
+    .uc-tools { max-width: 68%; gap: 4px; }
+    .uc-chip.is-exit { padding: 0 10px; }
   }
   @media (max-width: 380px) {
     .uc-steps li .label { font-size: 0.74rem; }
@@ -497,7 +500,7 @@ $(function() {
     }
     if (self.alive === false && s.phase !== 'mrwhite') {
       let doing = 'ดูต่อได้';
-      if (s.phase === 'clue') doing = 'ตอนนี้ตาของ ' + (sp ? sp.name : '...') + ' พูด';
+      if (s.phase === 'clue') doing = (s.tieBreak ? 'เสมอ — ตาของ ' : 'ตอนนี้ตาของ ') + (sp ? sp.name : '...') + (s.tieBreak ? ' ใบ้เพิ่ม' : ' พูด');
       else if (s.phase === 'vote') doing = 'วงกำลังโหวต ' + ((s.vote || {}).votedCount || 0) + '/' + ((s.vote || {}).voterCount || 0) + ' คน';
       else if (s.phase === 'reveal') doing = 'วงกำลังดูคำ';
       return { title: 'คุณถูกโหวตออกแล้ว', sub: doing + ' · ห้ามบอกใบ้คนในวงนะ', mine: false };
