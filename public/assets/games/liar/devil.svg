@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336" role="img" aria-label="Devil card">
+  <rect width="240" height="336" rx="18" fill="#1c0606"/>
+  <rect x="8" y="8" width="224" height="320" rx="12" fill="#2a0a0a" stroke="#ef4444" stroke-width="2"/>
+  <text x="20" y="42" font-family="Georgia, serif" font-size="22" font-weight="700" fill="#f87171">666</text>
+  <text x="220" y="318" font-family="Georgia, serif" font-size="22" font-weight="700" fill="#f87171" text-anchor="end" transform="rotate(180 196 310)">666</text>
+  <path d="M82 118 C70 96 72 74 84 58 C88 82 98 96 110 104 Z" fill="#dc2626"/>
+  <path d="M158 118 C170 96 168 74 156 58 C152 82 142 96 130 104 Z" fill="#dc2626"/>
+  <circle cx="120" cy="152" r="50" fill="#b91c1c"/>
+  <path d="M96 140 L112 148 L96 152 Z" fill="#fde047"/>
+  <path d="M144 140 L128 148 L144 152 Z" fill="#fde047"/>
+  <path d="M96 172 Q120 196 144 172 Q120 184 96 172 Z" fill="#1c0606"/>
+  <path d="M106 176 L110 184 L114 177 Z M126 177 L130 184 L134 176 Z" fill="#fef2f2"/>
+  <path d="M120 202 L114 214 L120 210 L126 214 Z" fill="#7f1d1d"/>
+  <path d="M168 220 C196 236 188 268 164 270 L172 262 L160 258 C176 252 180 236 162 228 Z" fill="#dc2626"/>
+  <text x="120" y="262" text-anchor="middle" font-family="Georgia, serif" font-size="26" font-weight="700" fill="#fecaca">DEVIL</text>
+  <text x="120" y="296" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#fca5a5">ลงใบเดียว</text>
+</svg>
