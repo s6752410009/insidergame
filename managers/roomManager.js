@@ -643,9 +643,13 @@ function createRoom(roomData, creatorPlayerId) {
         settings: {
             gameMode,
             maxPlayers: clampMaxPlayers(gameEngine, normalizedRoomData.maxPlayers, 1),
-            roundTime: gameMode === 'werewolf' ? 5 * 60 : (Number(normalizedRoomData.roundTime) || 5) * 60,
-            traitorOptional: normalizedRoomData.traitorOptional !== undefined ? normalizedRoomData.traitorOptional : true,
+            roundTime: gameMode === 'werewolf' ? 5 * 60
+                : (gameMode === 'insider' ? Math.round(gameEngine.sanitizeRoundMinutes(normalizedRoomData.roundTime) * 60) : (Number(normalizedRoomData.roundTime) || 5) * 60),
+            // Insider: กล่องจริงมีจอมบงการทุกรอบ — "อาจไม่มีจอมบงการ" เป็นกติกาเสริม ปิดไว้ก่อน
+            traitorOptional: normalizedRoomData.traitorOptional === true,
             dualTraitorMode: normalizedRoomData.dualTraitorMode || false,
+            // Insider R7: โหวตก่อนว่าคนทายถูกคือจอมบงการไหม (กติกาจริง) — ปิด = โหวตชี้ตัวรอบเดียว
+            insiderGuesserVote: gameMode === 'insider' ? gameEngine.sanitizeGuesserVote(normalizedRoomData.insiderGuesserVote) : undefined,
             spyfallVoteSeconds: spyfallVoteMinutes != null ? Math.round(spyfallVoteMinutes * 60) : 90,
             // Spyfall: จำนวนรอบในแมตช์ (คู่มือแนะนำ 5) · แบบโหวต เอกฉันท์ (คู่มือ) / เสียงข้างมาก
             spyfallRounds: gameMode === 'spyfall' ? gameEngine.sanitizeRounds(normalizedRoomData.spyfallRounds) : undefined,
@@ -1060,11 +1064,20 @@ function updateRoom(roomId, adminPlayerId, updates) {
     }
 
     if (updates.roundTime !== undefined && room.settings.gameMode !== 'werewolf') {
-        room.settings.roundTime = updates.roundTime * 60; // แปลงนาทีเป็นวินาที
+        // แปลงนาทีเป็นวินาที — เดิมคูณตรงๆ (ส่ง string/ติดลบ/ล้านนาทีมาได้)
+        if (room.settings.gameMode === 'insider') {
+            room.settings.roundTime = Math.round(getGameEngine('insider').sanitizeRoundMinutes(updates.roundTime) * 60);
+        } else if (Number.isFinite(Number(updates.roundTime)) && Number(updates.roundTime) > 0) {
+            room.settings.roundTime = Math.min(60, Number(updates.roundTime)) * 60;
+        }
     }
 
     if (updates.traitorOptional !== undefined) {
-        room.settings.traitorOptional = updates.traitorOptional;
+        room.settings.traitorOptional = updates.traitorOptional === true;
+    }
+
+    if (updates.insiderGuesserVote !== undefined && room.settings.gameMode === 'insider') {
+        room.settings.insiderGuesserVote = getGameEngine('insider').sanitizeGuesserVote(updates.insiderGuesserVote);
     }
     
     // อัปเดตโหมด 2 จอมบงการ (ต้องมีผู้เล่น 5+ คนถึงจะเปิดได้)
@@ -1672,6 +1685,7 @@ function getActiveRooms() {
 module.exports = {
     initRoomManager,
     schedulePersistRooms,
+    flushPersistRooms,
     createRoom,
     joinRoom,
     leaveRoom,

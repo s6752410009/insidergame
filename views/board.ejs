@@ -85,7 +85,7 @@
         <div id="wordTimerBar" class="word-timer-bar"></div>
         <div id="wordTimerText" class="word-timer-text">30</div>
     </div>
-    <p style="color:#9aa6c0; font-size:0.82rem; margin:8px 0 0; text-align:center;">คุณคือ <strong style="color:#51cf66;">ผู้ดำเนินเกม</strong> — ตั้งคำให้ทุกคนทาย แล้วตอบคำถามในแชทว่า ใช่/ไม่ใช่/อาจจะ</p>
+    <p style="color:#9aa6c0; font-size:0.82rem; margin:8px 0 0; text-align:center;">คุณคือ <strong style="color:#51cf66;">ผู้ดำเนินเกม</strong> — ตั้งคำให้ทุกคนทาย แล้วตอบคำถามในแชทได้แค่ ใช่ / ไม่ใช่ / ไม่รู้</p>
     <!-- Word suggestion picker (แสดงเมื่อ GM กดส่งโดยไม่พิมพ์คำ) -->
     <div id="wordSuggestionPanel" style="display:none; margin-top:14px; background:linear-gradient(145deg,#1a1b2e,#16213e); border:1px solid rgba(255,255,255,0.1); border-radius:18px; padding:18px; max-width:420px; margin-left:auto; margin-right:auto;">
         <div style="color:#f1c40f; font-size:1rem; font-weight:700; margin-bottom:12px; text-align:center;">🎲 เลือก 1 คำจาก 5 ตัวเลือก</div>
@@ -137,9 +137,31 @@
         </div>
     </div>
     <%# ทางลัด "ทายถูกแล้ว": ผู้ดำเนินเกม (คนที่รู้คำ) หรือหัวห้องกด — ไม่ต้องรอนาฬิกาหมด %>
-    <button type="button" id="wordFoundBtn" class="ui-btn ui-btn--primary ui-btn--lg ins-cta" hidden>✅ มีคนทายถูกแล้ว → ไปโหวต</button>
+    <button type="button" id="wordFoundBtn" class="ui-btn ui-btn--primary ui-btn--lg ins-cta" hidden>✅ มีคนทายถูกแล้ว</button>
     <p id="countdownHelp" class="ins-help"></p>
     <button type="button" id="openChatFromCountdown" class="ui-btn ins-cta ins-cta--ghost">💬 เปิดแชทถาม–ตอบ</button>
+</div>
+
+<%# กติกาจริง: ทายถูก → คุยเท่าเวลาที่ใช้ถาม → โหวตคนทายถูก → ชี้ตัว (rules/insider/rules.md) %>
+<div id="insDiscussion" class="hidden ins-phase">
+    <div class="ins-phase__kicker">🎯 ทายถูกแล้ว!</div>
+    <div class="ins-phase__title"><strong id="insGuesserName"></strong> ทายถูก</div>
+    <div class="ins-phase__word">คำลับ: <strong id="insDiscussionWord"></strong></div>
+    <div class="ins-phase__timer"><span class="ins-timer-label">คุยหาจอมบงการ</span><span id="insDiscussionTimer">0:00</span></div>
+    <p id="insDiscussionHelp" class="ins-help"></p>
+    <button type="button" id="insEndDiscussionBtn" class="ui-btn ui-btn--primary ui-btn--lg ins-cta" hidden>🗳️ คุยพอแล้ว → โหวต</button>
+    <button type="button" id="openChatFromDiscussion" class="ui-btn ins-cta ins-cta--ghost">💬 เปิดแชท</button>
+</div>
+
+<div id="insVote1" class="hidden ins-phase">
+    <div class="ins-phase__kicker">🗳️ โหวตรอบ 1 · เหลือ <span id="insVote1Timer">15</span> วิ</div>
+    <div class="ins-phase__title"><strong id="insVote1Guesser"></strong> คือจอมบงการไหม?</div>
+    <p id="insVote1Help" class="ins-help">ใช่เกินครึ่ง = เปิดบทคนนี้เลย · ไม่ถึง = ไปชี้ตัว</p>
+    <div class="ins-vote1-btns">
+        <button type="button" class="ui-btn ui-btn--lg ins-cta ins-vote1-btn" data-vote1="yes">✅ ใช่</button>
+        <button type="button" class="ui-btn ui-btn--lg ins-cta ins-vote1-btn" data-vote1="no">❌ ไม่ใช่</button>
+    </div>
+    <p id="insVote1Status" class="ins-help"></p>
 </div>
 
 <div id="voteForm">
@@ -159,7 +181,7 @@
         <div id="dualTraitorModeIndicator" style="display:none; background:linear-gradient(135deg,#e74c3c,#a93226); padding:8px 12px; border-radius:12px; margin-bottom:12px; text-align:center;">
             <span style="font-size:0.9rem; font-weight:700; color:#fff;">🔴🔴 เลือก 2 คน</span>
         </div>
-        <p id="vote2GmNote" class="ins-help ins-help--box" hidden>คุณเป็น <strong>ผู้ดำเนินเกม</strong> — รอบนี้ไม่ต้องโหวต ดูคะแนนสดด้านล่างได้เลย</p>
+        <p id="vote2GmNote" class="ins-help ins-help--box" hidden></p>
         <div class="vote2-choices" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;"></div>
         <div id="vote2SelectedInfo" class="vote2-selection-info" style="margin-top:10px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
             <div class="selection-counter" style="margin-bottom:8px;">
@@ -227,7 +249,7 @@
         <span class="gm-quick-label">🎭 ตอบด่วน:</span>
         <button class="gm-reply-btn gm-yes" data-reply="yes" title="ใช่">✅ ใช่</button>
         <button class="gm-reply-btn gm-no" data-reply="no" title="ไม่ใช่">❌ ไม่ใช่</button>
-        <button class="gm-reply-btn gm-maybe" data-reply="maybe" title="อาจจะ">🤔 อาจจะ</button>
+        <button class="gm-reply-btn gm-maybe" data-reply="maybe" title="ไม่รู้">🤷 ไม่รู้</button>
     </div>
     
     <!-- ย้าย chat-input-wrap มาไว้ที่นี่ (ด้านล่างสุด) -->
@@ -2169,6 +2191,21 @@
 .ins-help--box { padding: 10px 12px; border-radius: 12px; background: oklch(0.78 0.17 150 / 0.1); border: 1px solid oklch(0.78 0.17 150 / 0.3); margin-bottom: 12px; }
 .ins-help[hidden] { display: none !important; }
 
+/* ช่วงคุย / โหวตรอบ 1 */
+.ins-phase { flex-direction: column; align-items: center; gap: 10px; padding: 0 16px 104px; text-align: center; font-family: 'Bai Jamjuree', sans-serif; color: var(--ins-ink); }
+.ins-phase__kicker { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--ins-warn); }
+.ins-phase__title { font-family: 'Chakra Petch', 'Bai Jamjuree', sans-serif; font-size: 1.3rem; font-weight: 700; overflow-wrap: anywhere; }
+.ins-phase__word { font-size: 1rem; }
+.ins-phase__word strong { color: var(--ins-warn); font-size: 1.15rem; overflow-wrap: anywhere; }
+.ins-phase__timer { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ins-phase__timer .ins-timer-label { font-size: 0.9rem; font-weight: 600; color: var(--ins-muted); }
+#insDiscussionTimer { font-family: 'Chakra Petch', 'Orbitron', sans-serif; font-size: clamp(2.6rem, 15vw, 3.8rem); line-height: 1; color: var(--ins-warn); }
+.ins-phase .ui-btn.ins-cta { width: min(100%, 360px); }
+.ins-vote1-btns { display: flex; gap: 10px; width: min(100%, 360px); }
+.ins-vote1-btns .ui-btn { flex: 1 1 0; min-height: 56px; }
+.ins-vote1-btn.is-picked { outline: 3px solid var(--ins-warn); outline-offset: 2px; }
+.ins-vote1-btns[hidden] { display: none !important; }
+
 /* โหวต: pill ในฟีดสดแยกกันชัด + ปุ่มยืนยันใหญ่ */
 #vote2LiveFeedList { display: flex; flex-wrap: wrap; gap: 6px; }
 #vote2 #confirmVote2Btn { min-height: 48px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2250,27 +2287,37 @@ $(function() {
     var insiderPhase = '<%= status || "" %>';
     var rolePanelTimer = null;
 
-    // ผี (รอบไม่มีจอมบงการ) ไม่มีสิทธิ์โหวตเหมือนผู้ดำเนินเกม — เดิม server ทิ้งเงียบ จอขึ้นว่าส่งแล้ว
+    // ผี (รอบไม่มีจอมบงการ) ไม่มีสิทธิ์โหวต · ผู้ดำเนินเกมโหวตด้วย (กติกาจริง)
     var myIsGhost = <%= player.isGhost ? 'true' : 'false' %>;
+    // R2: ผู้ดำเนินเกมเปิดเผยตัว · คนทายถูก (Guesser) ใช้ตอนโหวต/ตัดสินเสมอ
+    var insiderMaster = <%- typeof insiderMasterJson !== 'undefined' ? insiderMasterJson : 'null' %>;
+    var insGuesserId = null;
+    var insGuesserName = '';
+    var insTiebreak = false;
     function isGmNow() { return myRole === GM_ROLE; }
-    function cannotVote() { return isGmNow() || myIsGhost; }
+    function amGuesser() { return !!insGuesserId && insGuesserId === playerId; }
+    function cannotVote() { return myIsGhost || (insTiebreak && !amGuesser()); }
     function renderVoteEligibility() {
-        $('#vote2GmNote').prop('hidden', !cannotVote()).html(myIsGhost && !isGmNow()
-            ? 'รอบนี้คุณเป็น <strong>ผี 👻</strong> — ไม่มีสิทธิ์โหวต ดูคะแนนสดด้านล่างได้เลย'
-            : 'คุณเป็น <strong>ผู้ดำเนินเกม</strong> — รอบนี้ไม่ต้องโหวต ดูคะแนนสดด้านล่างได้เลย');
+        var note = '';
+        if (myIsGhost) note = 'รอบนี้คุณเป็น <strong>ผี 👻</strong> — ไม่มีสิทธิ์โหวต ดูคะแนนสดด้านล่างได้เลย';
+        else if (insTiebreak && !amGuesser()) note = 'คะแนนเสมอ — รอ <strong>' + escapeHtml(insGuesserName || 'คนทายถูก') + '</strong> (คนทายถูก) เลือกตัดสิน';
+        else if (insTiebreak) note = 'คะแนนเสมอ — คุณทายถูก <strong>เลือกตัดสิน 1 คน</strong>';
+        else if (isGmNow()) note = 'คุณเป็น <strong>ผู้ดำเนินเกม</strong> — โหวตด้วยได้';
+        $('#vote2GmNote').prop('hidden', !note).html(note);
         var $sub = $('#vote2Subtitle').contents().first();
-        if ($sub.length) $sub[0].textContent = cannotVote() ? 'รอทุกคนโหวต · เหลือ ' : 'แตะการ์ด แล้วกดยืนยัน · เหลือ ';
+        if ($sub.length) $sub[0].textContent = cannotVote() ? 'รอโหวต · เหลือ ' : 'แตะการ์ด แล้วกดยืนยัน · เหลือ ';
     }
+    function masterLabel() { return insiderMaster && insiderMaster.name ? insiderMaster.name : 'ผู้ดำเนินเกม'; }
     function roleKey(role) {
         if (role === GM_ROLE) return 'gm';
         if (role === TRAITOR_ROLE) return 'traitor';
         return 'citizen';
     }
     function roleHint() {
-        var revealed = ['word', 'in_progress', 'vote2', 'end'].indexOf(insiderPhase) !== -1;
+        var revealed = ['word', 'in_progress', 'discussion', 'vote1', 'vote2', 'tiebreak', 'end'].indexOf(insiderPhase) !== -1;
         if (myRole === GM_ROLE) {
             return revealed
-                ? 'ตอบคำถามในแชทด้วยปุ่ม ✅ ใช่ / ❌ ไม่ใช่ / 🤔 อาจจะ ห้ามบอกคำตรงๆ · มีคนพูดคำลับถูกเมื่อไหร่ กด “มีคนทายถูกแล้ว”'
+                ? 'ตอบคำถามในแชทด้วยปุ่ม ✅ ใช่ / ❌ ไม่ใช่ / 🤷 ไม่รู้ ห้ามบอกคำตรงๆ · มีคนพูดคำลับถูกเมื่อไหร่ กด “มีคนทายถูกแล้ว” แล้วเลือกคนทาย'
                 : 'ตั้งคำลับให้ทุกคนทาย แล้วกดเปิดเผยคำ';
         }
         if (myRole === TRAITOR_ROLE) {
@@ -2278,7 +2325,7 @@ $(function() {
                 ? 'คุณรู้คำลับ — แอบถามนำให้ทุกคนทายถูกก่อนหมดเวลา แต่อย่าให้ใครจับได้'
                 : 'รอผู้ดำเนินเกมเปิดเผยคำ แล้วคุณจะเห็นคำลับคนเดียว';
         }
-        return 'คุณไม่รู้คำลับ — ถามคำถามแบบใช่/ไม่ใช่ในแชทเพื่อทายให้ถูก แล้วช่วยกันจับจอมบงการ';
+        return 'คุณไม่รู้คำลับ — ถาม ' + masterLabel() + ' แบบใช่/ไม่ใช่ในแชทเพื่อทายให้ถูก แล้วช่วยกันจับจอมบงการ';
     }
     function renderRoleChip() {
         if (!myRole) {
@@ -2959,6 +3006,7 @@ $(function() {
     
     // ตัวแปรสำหรับโหมด 2 จอมบงการ
     let currentNumTraitors = 1;
+    let insVote1Sent = false;
     let selectedVotes = [];
     let hasSubmittedVote2 = false;
     let lastVote2Result = null;
@@ -3112,7 +3160,25 @@ $(function() {
 
     // ฟังก์ชันซ่อน element เกมทั้งหมด - ใช้ก่อนแสดง step ใหม่ (ไม่มี vote1 แล้ว)
     function hideAllGameElements() {
-        $('#waiting, #reset .role, #chooseWord, #reveal button, #revealTimerHint, #word, #startGame, #countdown, #vote2, #vote2Result, #status').hide();
+        $('#waiting, #reset .role, #chooseWord, #reveal button, #revealTimerHint, #word, #startGame, #countdown, #insDiscussion, #insVote1, #vote2, #vote2Result, #status').hide();
+        stopInsPhaseCountdown();
+    }
+
+    // นับถอยหลังของช่วงคุย/โหวตรอบ 1 — คิดจากเวลาจบที่ server ส่งมา (refresh แล้วตรง)
+    var insPhaseInterval = null;
+    function stopInsPhaseCountdown() {
+        if (insPhaseInterval) { clearInterval(insPhaseInterval); insPhaseInterval = null; }
+    }
+    function startInsPhaseCountdown(endsAt, $el, asClock) {
+        stopInsPhaseCountdown();
+        var deadline = Number(endsAt) || Date.now();
+        function tick() {
+            var left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+            $el.text(asClock ? (Math.floor(left / 60) + ':' + (left % 60 < 10 ? '0' : '') + (left % 60)) : left);
+            if (left <= 0) stopInsPhaseCountdown();
+        }
+        tick();
+        insPhaseInterval = setInterval(tick, 250);
     }
 
     // ช่วงทายคำ: ปุ่ม "ทายถูกแล้ว" ให้ผู้ดำเนินเกม (คนที่รู้คำ) และหัวห้อง + ข้อความบอกว่าบทนี้ต้องทำอะไร
@@ -3123,10 +3189,10 @@ $(function() {
         $('#wordFoundBtn').prop('hidden', !canDeclare);
         let help;
         if (isGmNow()) {
-            help = 'เปิดแชทแล้วตอบคำถามด้วยปุ่ม <strong>✅ ใช่ / ❌ ไม่ใช่ / 🤔 อาจจะ</strong><br>มีคนพูดคำลับถูกเมื่อไหร่ กด <strong>มีคนทายถูกแล้ว</strong> ได้ทันที';
+            help = 'เปิดแชทแล้วตอบด้วยปุ่ม <strong>✅ ใช่ / ❌ ไม่ใช่ / 🤷 ไม่รู้</strong><br>มีคนพูดคำลับถูก กด <strong>มีคนทายถูกแล้ว</strong> แล้วเลือกคนทาย';
         } else {
-            help = 'ถามคำถามแบบ ใช่/ไม่ใช่ ในแชท แล้วพิมพ์คำที่คิดว่าใช่<br>ทายถูกเมื่อไหร่ ผู้ดำเนินเกมจะกดไปโหวตหาจอมบงการ' +
-                (isRoomAdmin ? ' (หัวห้องกดแทนได้)' : '');
+            help = '🎙️ ผู้ดำเนินเกม: <strong>' + escapeHtml(masterLabel()) + '</strong><br>ถามแบบ ใช่/ไม่ใช่ ในแชท แล้วพิมพ์คำที่คิดว่าใช่' +
+                (isRoomAdmin ? '<br>(หัวห้องกด “มีคนทายถูก” แทนได้)' : '');
         }
         help += '<br><strong>หมดเวลาก่อนทายถูก = ทุกคนแพ้</strong>';
         $('#countdownHelp').html(help);
@@ -3143,12 +3209,13 @@ $(function() {
 
     // "ทำไมฉันชนะ/แพ้" — ใช้กติกาเดียวกับ statsManager.recordInsiderGameEnd
     function explainMiss(result, sortedVotes) {
+        if (result.decidedBy === 'vote1') return `โหวตว่า ${result.pickedName || 'คนทายถูก'} (คนทายถูก) คือจอมบงการ — แต่ไม่ใช่`;
         if (result.hasTraitor === false) return 'รอบนี้ไม่มีจอมบงการ แต่มีคนโดนโหวต';
         if ((result.numTraitors || 1) === 2) return 'ต้องจับจอมบงการให้ได้ทั้ง 2 คน — ' + (result.finalTraitorName || '');
         const top = sortedVotes[0];
-        const second = sortedVotes[1];
         if (!top || !top.nbVote2) return 'ไม่มีใครโหวตทันเวลา จอมบงการเลยรอด';
-        if (second && second.nbVote2 === top.nbVote2) return `คะแนนโหวตเสมอกัน (${top.nbVote2} เสียง) — ต้องมีคนได้คะแนนสูงสุดคนเดียวถึงจะจับได้`;
+        if (result.decidedBy === 'tie-unresolved') return `คะแนนเสมอ และ${result.guesserName ? ' ' + result.guesserName : 'คนทายถูก'} ไม่ได้เลือกตัดสิน — ไม่มีใครโดนจับ`;
+        if (result.pickedName) return `${result.tie ? 'เสมอ คนทายถูกเลือก ' : 'โหวตผิดคน — '}${result.pickedName} ไม่ใช่จอมบงการ`;
         if (top.role && top.role !== TRAITOR_ROLE) return `โหวตผิดคน — ${top.name} ไม่ใช่จอมบงการ`;
         return 'จอมบงการหลุดรอดไปได้';
     }
@@ -3163,7 +3230,8 @@ $(function() {
                 : { win: true, why: 'พลเมืองจับจอมบงการไม่สำเร็จ — ' + explainMiss(result, sortedVotes) };
         }
         return result.hasWon
-            ? { win: true, why: result.hasTraitor === false ? 'รอบนี้ไม่มีจอมบงการ และไม่มีใครโดนโหวตผิด' : 'ทายคำถูก และโหวตจับจอมบงการได้' }
+            ? { win: true, why: result.hasTraitor === false ? 'รอบนี้ไม่มีจอมบงการ และไม่มีใครโดนโหวตผิด'
+                : (result.decidedBy === 'vote1' ? 'โหวตรอบแรกจับคนทายถูกได้ — เขาคือจอมบงการ' : 'ทายคำถูก และโหวตจับจอมบงการได้') }
             : { win: false, why: explainMiss(result, sortedVotes) };
     }
 
@@ -3195,6 +3263,15 @@ $(function() {
         } else {
             title = isWin ? 'พลเมืองชนะแล้ว! 🏆' : 'พลเมืองโหวตพลาด!';
             body = isWin ? 'ไม่มีจอมบงการในเกมนี้ (รอบผู้เล่นผี)' : 'ไม่มีจอมบงการในเกมนี้ แต่คุณก็ยังโหวตพลาด';
+        }
+
+        if (!result.everyoneLoses) {
+            const how = [];
+            if (result.guesserName) how.push(`🎯 คนทายถูก: <strong style="color:#fff;">${escapeHtml(result.guesserName)}</strong>`);
+            const gv = result.guesserVote;
+            if (gv && typeof gv.yes === 'number') how.push(`🗳️ รอบ 1 “คนทายถูกคือจอมบงการ?” ใช่ ${gv.yes} · ไม่ใช่ ${gv.no}`);
+            if (result.decidedBy === 'guesser-vote' || result.decidedBy === 'tiebreak') how.push(`⚖️ เสมอ — คนทายถูกตัดสินเลือก ${escapeHtml(result.pickedName || '-')}`);
+            if (how.length) body += '<div style="margin-top:8px; line-height:1.6;">' + how.join('<br>') + '</div>';
         }
 
         return `<div style="background:${bgColor}; border:1px solid ${borderColor}; border-radius:14px; padding:14px 16px; margin-bottom:10px; text-align:center;">
@@ -3529,32 +3606,70 @@ $(function() {
         e.preventDefault();
     });
 
-    // ทายถูกแล้ว → ไปโหวตทันที ไม่ต้องรอนาฬิกาหมด (ย้อนไม่ได้ จึงถามยืนยันก่อน)
+    // ทายถูกแล้ว → เลือก "ใคร" ทายถูก (กติกาจริง: คนทายถูกเป็นเป้าโหวตรอบ 1 และตัดสินเมื่อเสมอ) → ไปช่วงคุย
     $('#wordFoundBtn').on('click', function(e) {
         e.preventDefault();
         const $btn = $(this);
         if ($btn.prop('disabled')) return;
-        const go = function() {
-            $btn.prop('disabled', true).text('กำลังไปโหวต…');
-            socket.emit('wordFound');
-            setTimeout(function() { $btn.prop('disabled', false).text('✅ มีคนทายถูกแล้ว → ไปโหวต'); }, 3000);
+        const resetBtn = function() { $btn.prop('disabled', false).text('✅ มีคนทายถูกแล้ว'); };
+        const go = function(guesserId) {
+            $btn.prop('disabled', true).text('กำลังไปช่วงคุย…');
+            socket.emit('wordFound', { guesserId: guesserId });
+            setTimeout(resetBtn, 3000);
         };
-        if (!window.Swal) { go(); return; }
-        // หัวห้องที่ไม่ใช่ผู้ดำเนินเกมไม่รู้คำ — ห้ามโชว์คำลับในกล่องยืนยัน
-        const wordLine = isGmNow() && mySecretWord
-            ? 'มีคนพูดคำว่า <strong>' + escapeHtml(mySecretWord) + '</strong> ถูกแล้วใช่ไหม?'
-            : 'ผู้ดำเนินเกมยืนยันแล้วว่ามีคนทายคำลับถูก?';
-        Swal.fire({
-            title: 'ทายถูกแล้ว?',
-            html: wordLine + '<br><small>นาฬิกาจะหยุด แล้วทุกคนไปโหวตหาจอมบงการทันที</small>',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'ใช่ ไปโหวต',
-            cancelButtonText: 'ยังก่อน',
-            reverseButtons: true,
-            background: '#1e1e2e',
-            color: '#fff'
-        }).then(function(result) { if (result.isConfirmed) go(); });
+        socket.emit('insiderGuessCandidates', {}, function(res) {
+            const list = (res && res.ok && Array.isArray(res.players)) ? res.players : [];
+            if (!list.length) { showNotification('⚠️ ไม่พบรายชื่อผู้เล่น ลองใหม่อีกครั้ง', 'warning', 2500); return; }
+            if (!window.Swal) { go(list[0].playerId); return; }
+            // หัวห้องที่ไม่ใช่ผู้ดำเนินเกมไม่รู้คำ — ห้ามโชว์คำลับในกล่องยืนยัน
+            const wordLine = isGmNow() && mySecretWord
+                ? 'ใครพูดคำว่า <strong>' + escapeHtml(mySecretWord) + '</strong> ถูก?'
+                : 'ใครทายคำลับถูก?';
+            const buttons = list.map(function(p) {
+                return '<button type="button" class="swal2-styled ins-guesser-pick" data-guesser="' + escapeHtml(p.playerId) + '" style="display:block; width:100%; margin:6px 0; min-height:48px; background:#2a2d3a; color:#fff; border:1px solid rgba(255,255,255,0.15);">🎯 ' + escapeHtml(p.name) + '</button>';
+            }).join('');
+            Swal.fire({
+                title: 'ทายถูกแล้ว!',
+                html: wordLine + '<div style="margin-top:10px;">' + buttons + '</div><small>นาฬิกาจะหยุด แล้วคุยหาจอมบงการ</small>',
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'ยังก่อน',
+                background: '#1e1e2e',
+                color: '#fff',
+                didOpen: function(popup) {
+                    $(popup).on('click', '.ins-guesser-pick', function() {
+                        const id = $(this).attr('data-guesser');
+                        Swal.close();
+                        go(id);
+                    });
+                }
+            });
+        });
+    });
+
+    $('#insEndDiscussionBtn').on('click', function(e) {
+        e.preventDefault();
+        const $btn = $(this);
+        if ($btn.prop('disabled')) return;
+        $btn.prop('disabled', true);
+        socket.emit('insiderEndDiscussion');
+        setTimeout(function() { $btn.prop('disabled', false); }, 2500);
+    });
+
+    $('#openChatFromDiscussion').on('click', function() {
+        if (!$('#chatBox').is(':visible')) $('#toggleChat').trigger('click');
+    });
+
+    $(document).on('click', '.ins-vote1-btn', function(e) {
+        e.preventDefault();
+        if (insVote1Sent || myIsGhost || amGuesser()) return;
+        const choice = $(this).attr('data-vote1');
+        insVote1Sent = true;
+        $('.ins-vote1-btn').prop('disabled', true);
+        $(this).addClass('is-picked');
+        socket.emit('vote1', { vote: choice });
+        $('#insVote1Status').text('ส่งแล้ว: ' + (choice === 'yes' ? '✅ ใช่' : '❌ ไม่ใช่') + ' · รอคนอื่น…');
+        soundNotify('ding');
     });
 
     $('#openChatFromCountdown').on('click', function() {
@@ -3810,6 +3925,11 @@ $(function() {
         hasSubmittedVote2 = false;
         selectedVotes = [];
         countdownUiReady = false;
+        insGuesserId = null;
+        insGuesserName = '';
+        insTiebreak = false;
+        insVote1Sent = false;
+        if (data.masterName) insiderMaster = { playerId: data.masterId || null, name: data.masterName };
         
         // เก็บข้อมูลโหมด 2 จอมบงการ
         currentNumTraitors = data.numTraitors || 1;
@@ -3855,7 +3975,7 @@ $(function() {
                 } else {
                     console.log('[newRole] Others - showing wait');
                     $("#waiting").removeClass('hidden').show();
-                    $('#waiting p').html('<span style="color:#fff;">รอ <strong>ผู้ดำเนินเกม</strong> ตั้งคำลับแล้วเปิดเผย… (ไม่เกิน 30 วิ)</span>');
+                    $('#waiting p').html('<span style="color:#fff;">🎙️ ผู้ดำเนินเกม: <strong>' + escapeHtml(masterLabel()) + '</strong><br>รอตั้งคำลับแล้วเปิดเผย… (ไม่เกิน 30 วิ)</span>');
                 }
             }, 5000);
         } else {
@@ -3890,7 +4010,7 @@ $(function() {
                 $('#word').empty().append(message).append($('<small class="ins-help" style="display:block;">').text(
                     myPlayer.role == 'จอมบงการ'
                         ? 'มีแค่คุณกับผู้ดำเนินเกมที่รู้คำนี้ — แอบนำทางให้ทุกคนทายถูก แต่อย่าให้ใครจับได้'
-                        : 'ตอบคำถามในแชทได้แค่ ใช่ / ไม่ใช่ / อาจจะ'
+                        : 'ตอบคำถามในแชทได้แค่ ใช่ / ไม่ใช่ / ไม่รู้'
                 ));
             } else {
                 $('#word').empty()
@@ -3912,10 +4032,76 @@ $(function() {
     // wordFound ถูกเปลี่ยนให้ไป displayVote2 เลยจาก server
     // ไม่ต้องมี listener แยกแล้ว
 
+    // ===== ช่วงคุย (R6): คำลับเปิดให้ทุกคน เวลา = เวลาที่ใช้ถามไป =====
+    socket.on('insiderDiscussion', function(data) {
+        data = data || {};
+        hideAllGameElements();
+        insiderPhase = 'discussion';
+        insGuesserId = data.guesserId || null;
+        insGuesserName = data.guesserName || '';
+        $('#insGuesserName').text(insGuesserName || '-');
+        $('#insDiscussionWord').text(data.word || '-');
+        const canEnd = isGmNow() || isRoomAdmin;
+        $('#insEndDiscussionBtn').prop('hidden', !canEnd);
+        const next = data.hasGuesserVote
+            ? 'จบแล้วโหวต: <strong>' + escapeHtml(insGuesserName) + '</strong> คือจอมบงการไหม?'
+            : 'จบแล้วโหวตชี้ตัวจอมบงการ';
+        $('#insDiscussionHelp').html((amGuesser() ? 'คุณทายถูก! ' : '') + 'ใครนำทางเก่งผิดปกติ? · ' + next);
+        renderRoleChip();
+        $('#insDiscussion').removeClass('hidden').css('display', 'flex');
+        startInsPhaseCountdown(data.endsAt, $('#insDiscussionTimer'), true);
+        soundNotify('ding');
+    });
+
+    // ===== โหวตรอบ 1 (R7): คนทายถูกคือจอมบงการไหม — ทุกคนยกเว้นคนทายถูก =====
+    function renderVote1Status(progress) {
+        progress = progress || {};
+        const total = progress.totalEligibleVoters || 0;
+        const done = progress.totalSubmittedVoters || 0;
+        const mine = (progress.submittedIds || []).indexOf(playerId) !== -1;
+        if (mine && !insVote1Sent) {
+            insVote1Sent = true;
+            $('.ins-vote1-btn').prop('disabled', true);
+        }
+        let text = 'โหวตแล้ว ' + done + '/' + total;
+        if (amGuesser()) text = 'คุณทายถูก — รอคนอื่นโหวต · ' + text;
+        else if (myIsGhost) text = 'รอบนี้คุณเป็นผี 👻 ไม่ต้องโหวต · ' + text;
+        else if (insVote1Sent) text = 'ส่งแล้ว · ' + text;
+        $('#insVote1Status').text(text);
+    }
+    socket.on('displayVote1', function(data) {
+        data = data || {};
+        hideAllGameElements();
+        insiderPhase = 'vote1';
+        insGuesserId = data.guesserId || insGuesserId;
+        insGuesserName = data.guesserName || insGuesserName;
+        insVote1Sent = false;
+        $('#insVote1Guesser').text(insGuesserName || '-');
+        const canVote = !amGuesser() && !myIsGhost;
+        $('.ins-vote1-btns').prop('hidden', !canVote);
+        $('.ins-vote1-btn').prop('disabled', !canVote).removeClass('is-picked');
+        document.body.classList.add('ins-voting');
+        renderVote1Status(data.progress);
+        $('#insVote1').removeClass('hidden').css('display', 'flex');
+        startInsPhaseCountdown(data.vote1EndsAt, $('#insVote1Timer'), false);
+        soundNotify('popup');
+    });
+    socket.on('vote1Progress', function(progress) {
+        renderVote1Status(progress);
+    });
+    socket.on('vote1Ended', function(summary) {
+        summary = summary || {};
+        showNotification('🗳️ ใช่ ' + (summary.yes || 0) + ' · ไม่ใช่ ' + (summary.no || 0) + ' — ไม่เกินครึ่ง ไปชี้ตัวจอมบงการ', 'warning', 3500);
+    });
+
     socket.on('displayVote2', function(data) {
         // รองรับทั้ง format เก่า (array) และ format ใหม่ (object)
         const players = Array.isArray(data) ? data : data.players;
-        const numTraitors = data.numTraitors || 1;
+        insTiebreak = !!(data && data.tiebreak);
+        if (data && data.guesserId) insGuesserId = data.guesserId;
+        if (data && data.guesserName) insGuesserName = data.guesserName;
+        // ตัดสินเสมอ = เลือก 1 คนเสมอ
+        const numTraitors = insTiebreak ? 1 : (data.numTraitors || 1);
         
         // เก็บค่าสำหรับการเลือก
         currentNumTraitors = numTraitors;
@@ -3937,32 +4123,39 @@ $(function() {
             $('#maxSelect').text('2');
         } else {
             $('#dualTraitorModeIndicator').hide();
-            $('#vote2Title').text('คิดว่าใครคือจอมบงการ?');
+            $('#vote2Title').text(insTiebreak ? '⚖️ เสมอ! คนทายถูกตัดสิน' : 'คิดว่าใครคือจอมบงการ?');
             $('#maxSelect').text('1');
         }
-        insiderPhase = 'vote2';
+        $('#vote2LiveBoard').toggle(!insTiebreak);
+        insiderPhase = insTiebreak ? 'tiebreak' : 'vote2';
         document.body.classList.add('ins-voting');
         renderVoteEligibility();
         
         updateVoteSelection();
         renderVote2Progress(data.progress);
-        syncSubmittedVote2FromProgress(data.progress);
+        if (!insTiebreak) syncSubmittedVote2FromProgress(data.progress);
         $('#vote2').removeClass('hidden').fadeIn();
         startVote2Countdown(data.vote2EndsAt);
         soundNotify('popup');
         
-        if (numTraitors === 2) {
+        if (insTiebreak) {
+            showNotification(amGuesser() ? '⚖️ คะแนนเสมอ — คุณทายถูก เลือกตัดสิน 1 คน' : '⚖️ คะแนนเสมอ — รอคนทายถูกตัดสิน', 'warning', 4000);
+        } else if (numTraitors === 2) {
             showNotification('🎯 โหมด 2 จอมบงการ! เลือก 2 คนที่คิดว่าเป็นจอมบงการ', 'warning', 5000);
         } else {
-            showNotification('🎯 หยุดเวลา! โหวตหาจอมบงการ', 'warning', 3000);
+            showNotification('🎯 ชี้ตัว! โหวตหาจอมบงการ', 'warning', 3000);
         }
     });
 
     // server ปฏิเสธโหวต — บอกเหตุผล และปลดล็อกให้เลือกใหม่ (ถ้ายังมีสิทธิ์)
     socket.on('voteError', function(data) {
         showNotification('⚠️ ' + ((data && data.message) || 'โหวตไม่สำเร็จ'), 'warning', 3500);
-        // locked = ไม่มีสิทธิ์โหวตเลย (ผู้ดำเนินเกม/ผี) → ล็อกการ์ดพร้อมคำอธิบาย
-        if (data && data.locked && !isGmNow()) myIsGhost = true;
+        if (data && data.phase === 'vote1') {
+            if (!data.locked) { insVote1Sent = false; $('.ins-vote1-btn').prop('disabled', false).removeClass('is-picked'); }
+            return;
+        }
+        // locked = ไม่มีสิทธิ์โหวต (ผี / รอคนทายถูกตัดสินเสมอ) → ล็อกการ์ดพร้อมคำอธิบาย
+        if (data && data.locked && !insTiebreak) myIsGhost = true;
         renderVoteEligibility();
         setVote2InteractionLocked(false);
     });
@@ -4122,8 +4315,9 @@ $(function() {
         $("#countdown").removeClass('hidden').show();
     });
 
-    socket.on('startGame', function() {
+    socket.on('startGame', function(data) {
         console.log('[startGame event] Received');
+        if (data && data.masterName) insiderMaster = { playerId: data.masterId || null, name: data.masterName };
         hideAllGameElements();
         insiderPhase = 'in_progress';
         renderCountdownControls();
@@ -4216,7 +4410,7 @@ $(function() {
         var emoji, reactionClass;
         if (reactionType === 'yes') { emoji = '✅ ใช่'; reactionClass = 'yes'; }
         else if (reactionType === 'no') { emoji = '❌ ไม่ใช่'; reactionClass = 'no'; }
-        else { emoji = '🤔 อาจจะ'; reactionClass = 'maybe'; }
+        else { emoji = '🤷 ไม่รู้'; reactionClass = 'maybe'; }
         $targetMsg.addClass('gm-answered');
         $targetMsg.find('.chat-message-bubble').append('<span class="gm-reaction ' + reactionClass + '">' + emoji + '</span>');
     }

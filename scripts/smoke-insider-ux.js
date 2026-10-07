@@ -1,18 +1,18 @@
 /**
  * Insider UX regression — กันบัคที่เจอตอนไล่ use case บนมือถือ (390×844)
  *
- *  1. ผู้ดำเนินเกม (ไม่ใช่หัวห้อง) กด "มีคนทายถูกแล้ว" ได้เอง → ไปโหวตทันที
+ *  1. ผู้ดำเนินเกม (ไม่ใช่หัวห้อง) กด "มีคนทายถูกแล้ว" ได้เอง → เลือกคนทาย → ช่วงคุย → โหวตรอบ 1 → ชี้ตัว
  *     คนอื่นที่ไม่ใช่ผู้ดำเนินเกม/หัวห้อง กดไม่ได้ และได้ข้อความบอกเหตุผล
  *  2. ปุ่มตอบด่วน ใช่/ไม่ใช่ ถูกจำในประวัติแชท + ชื่อผู้ตอบมาจาก server (ไม่เชื่อ client)
  *  3. refresh กลางเกม: ประวัติแชท (พร้อมคำตอบของผู้ดำเนินเกม) กลับมาครบ
  *  4. หน้าเว็บของพลเมืองไม่มีคำลับอยู่ใน HTML เลย / จอมบงการ-ผู้ดำเนินเกมมี (ปุ่มดูบทของฉัน)
  *  5. CSS ของกระดานถูก render จริง (เดิมอยู่ใต้ contentFor('style') ที่ layout ไม่มี)
- *  6. โหวต: แตะการ์ด = แค่เลือก (ยังไม่ส่ง) ต้องกดยืนยัน / ผู้ดำเนินเกมกดการ์ดไม่ได้
+ *  6. โหวต: แตะการ์ด = แค่เลือก (ยังไม่ส่ง) ต้องกดยืนยัน / ผู้ดำเนินเกมโหวตด้วย (กติกาจริง)
  *  7. จบเกม: ไม่มี modal ทึบบังผล ปุ่มเล่นอีกรอบ/กลับห้องกดได้จริง + บอกว่า "คุณชนะ/แพ้ เพราะ…"
  *  8. เล่นอีกรอบบนหน้าเดิม: ผู้ดำเนินเกมคนใหม่ (ที่โหลดหน้ามาตอนเป็นบทอื่น) มีปุ่มเปิดเผยคำ
  *  9. แชท escape ครั้งเดียว ("A & B" ไม่กลายเป็น "A &amp; B") และ HTML ไม่ถูก render
  * 10. ผลจบเกมไม่มี socketId / ฟิลด์ภายในของผู้เล่น
- * 11. คนที่ไม่มีสิทธิ์โหวต (ผู้ดำเนินเกม/ผี) ส่งโหวต → ได้เหตุผล ไม่ใช่เงียบ
+ * 11. คนที่ไม่มีสิทธิ์โหวต (คนทายถูกในรอบ 1 / ผี) ส่งโหวต → ได้เหตุผล ไม่ใช่เงียบ
  *
  * รัน: ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-insider-ux.js
  */
@@ -86,7 +86,7 @@ function track(player) {
     const s = player.socket;
     player.events = [];
     ['newRole', 'revealWord', 'startGame', 'displayVote2', 'vote2Progress', 'vote2Ended', 'notAuthorized',
-        'newMessage', 'gmReactionReceived', 'chatHistory'].forEach(name => {
+        'newMessage', 'gmReactionReceived', 'chatHistory', 'insiderDiscussion', 'displayVote1', 'vote1Ended'].forEach(name => {
         s.on(name, payload => player.events.push({ name, payload }));
     });
 }
@@ -237,15 +237,66 @@ async function main() {
         assert(!/Failed to persist rooms/.test(serverLogs), 'persist ห้องพังช่วงทายคำ (Timeout อยู่ใน gameState)');
         results.push('ช่วงทายคำ: persist ห้องได้ ไม่ circular');
 
-        // 1b. GM (ไม่ใช่หัวห้อง) refresh กลางช่วงทายคำ แล้วกดปุ่ม "มีคนทายถูกแล้ว" บนจอ → ทุกคนไปโหวต
+        // 1b. GM (ไม่ใช่หัวห้อง) refresh กลางช่วงทายคำ แล้วกด "มีคนทายถูกแล้ว" → เลือกคนทาย → ช่วงคุย
         const gmPage = await openBoard(browser, base, roomId, gm);
         await gmPage.waitForSelector('#wordFoundBtn', { state: 'visible', timeout: 5000 })
             .catch(() => { throw new Error('ผู้ดำเนินเกม refresh แล้วไม่มีปุ่ม "มีคนทายถูกแล้ว"'); });
         await gmPage.click('#wordFoundBtn');
-        await gmPage.click('.swal2-confirm');
-        assert(await waitFor(host.events, e => e.name === 'displayVote2'), 'GM กดทายถูกแล้วไม่ไปโหวต');
+        await gmPage.waitForSelector('.ins-guesser-pick', { timeout: 5000 })
+            .catch(() => { throw new Error('กดทายถูกแล้วไม่มีให้เลือกคนทาย'); });
+        const pickNames = await gmPage.$$eval('.ins-guesser-pick', els => els.map(e => e.textContent));
+        assert(!pickNames.some(n => n.includes(reaction.payload.gmName)), 'ผู้ดำเนินเกมอยู่ในรายชื่อคนทายถูก');
+        await gmPage.click('.ins-guesser-pick >> nth=0');
+        const disc = (await waitFor(host.events, e => e.name === 'insiderDiscussion', 5000));
+        assert(disc, 'เลือกคนทายแล้วไม่ไปช่วงคุย');
+        const guesser = players.find(p => p.playerId === disc.payload.guesserId);
+        assert(guesser && guesser !== gm, 'คนทายถูกผิด');
+        await citizenPage.waitForSelector('#insDiscussion', { state: 'visible', timeout: 5000 });
+        const discUi = await citizenPage.evaluate(() => ({
+            word: document.querySelector('#insDiscussionWord').textContent,
+            timer: document.querySelector('#insDiscussionTimer').textContent,
+            endBtnHidden: document.querySelector('#insEndDiscussionBtn').hidden
+        }));
+        assert(discUi.word === SECRET, 'ช่วงคุยต้องเฉลยคำลับให้ทุกคน ' + JSON.stringify(discUi));
+        assert(/^\d+:\d\d$/.test(discUi.timer), 'ช่วงคุยไม่มีนาฬิกา ' + JSON.stringify(discUi));
+        if (citizen !== host) assert(discUi.endBtnHidden, 'พลเมืองเห็นปุ่มจบช่วงคุย');
+        results.push('ทายถูก: ผู้ดำเนินเกมเลือกคนทาย → ช่วงคุย เฉลยคำ + นาฬิกา');
+
+        // จบช่วงคุย → โหวตรอบ 1 (คนทายถูกคือจอมบงการไหม)
+        await gmPage.click('#insEndDiscussionBtn');
+        assert(await waitFor(host.events, e => e.name === 'displayVote1', 5000), 'จบช่วงคุยแล้วไม่ไปโหวตรอบ 1');
+        // 11. คนทายถูกส่งโหวตรอบ 1 → ได้เหตุผล
+        const gRaw = await connect(base);
+        const gRawEvents = [];
+        gRaw.on('voteError', p => gRawEvents.push(p));
+        gRaw.emit('initPlayer', guesser.playerId);
+        gRaw.emit('setRoom', { roomId, playerId: guesser.playerId });
+        await delay(500);
+        gRaw.emit('vote1', { vote: 'yes' });
+        await delay(800);
+        gRaw.close();
+        assert(gRawEvents.some(e => /คนทายถูก/.test(e.message)), 'คนทายถูกโหวตรอบ 1 แล้วเงียบ ไม่มีเหตุผล');
+        results.push('โหวตไม่มีสิทธิ์: ได้เหตุผล ไม่เงียบ');
+        const pages = new Map([[citizen, citizenPage], [gm, gmPage]]);
+        if (traitorPage) pages.set(traitor, traitorPage);
+        for (const p of players) {
+            if (p === guesser) continue;
+            const page = pages.get(p);
+            if (page) {
+                await page.waitForSelector('.ins-vote1-btn[data-vote1="no"]', { state: 'visible', timeout: 5000 });
+                await page.click('.ins-vote1-btn[data-vote1="no"]');
+            } else {
+                p.socket.emit('vote1', { vote: 'no' });
+            }
+        }
+        if (pages.has(guesser)) {
+            const hidden = await pages.get(guesser).evaluate(() => document.querySelector('.ins-vote1-btns').hidden);
+            assert(hidden, 'คนทายถูกเห็นปุ่มโหวตรอบ 1');
+        }
+        assert(await waitFor(host.events, e => e.name === 'vote1Ended', 8000), 'โหวตรอบ 1 ไม่จบ');
+        assert(await waitFor(host.events, e => e.name === 'displayVote2', 5000), 'รอบ 1 ไม่ผ่านแล้วไม่ไปชี้ตัว');
         await citizenPage.waitForSelector('.btn-vote2-player', { timeout: 5000 });
-        results.push('wordFound: ผู้ดำเนินเกมกดเองได้ → โหวตทันที');
+        results.push('โหวตรอบ 1: ทุกคนยกเว้นคนทายถูก (ผู้ดำเนินเกมด้วย) → ไม่ผ่าน → ชี้ตัว');
 
         // 5. CSS กระดานถูก render (เครื่องหมายถูกซ่อนจนกว่าจะเลือก)
         const checkOpacity = await citizenPage.evaluate(() => getComputedStyle(document.querySelector('.btn-vote2-player .checkmark')).opacity);
@@ -265,28 +316,17 @@ async function main() {
         assert(prog, 'กดยืนยันแล้วโหวตไม่ถึง server');
         results.push('โหวต: แตะ=เลือก เปลี่ยนใจได้ กดยืนยันถึงส่ง');
 
-        // 11. ผู้ดำเนินเกมส่งโหวตตรงๆ → ได้เหตุผล (เดิม server ทิ้งเงียบ)
-        const gmRaw = await connect(base);
-        const gmRawEvents = [];
-        gmRaw.on('voteError', p => gmRawEvents.push(p));
-        gmRaw.emit('initPlayer', gm.playerId);
-        gmRaw.emit('setRoom', { roomId, playerId: gm.playerId });
-        await delay(500);
-        const gmVoteInfo = (await waitFor(host.events, e => e.name === 'displayVote2')).payload;
-        // ชื่อผู้ดำเนินเกมจาก server (ได้มาตอนตอบด่วน) — vote2 ต้องส่งชื่อตัวเอง
-        gmRaw.emit('vote2', { player: reaction.payload.gmName, vote: gmVoteInfo.players[0].playerId });
-        await delay(800);
-        gmRaw.close();
-        assert(gmRawEvents.some(e => /ผู้ดำเนินเกม/.test(e.message)), 'ผู้ดำเนินเกมส่งโหวตแล้วเงียบ ไม่มีเหตุผล');
-        results.push('โหวตไม่มีสิทธิ์: ได้เหตุผล ไม่เงียบ');
-
-        // GM: การ์ดกดไม่ได้ + มีคำอธิบาย
+        // ผู้ดำเนินเกมโหวตได้ (กติกาจริง) — การ์ดกดได้ + บอกว่าโหวตด้วยได้
         const gmVote = await gmPage.evaluate(() => ({
-            note: !document.querySelector('#vote2GmNote').hidden,
-            disabled: [...document.querySelectorAll('.btn-vote2-player')].every(b => b.disabled)
+            note: document.querySelector('#vote2GmNote').textContent,
+            enabled: [...document.querySelectorAll('.btn-vote2-player')].some(b => !b.disabled)
         }));
-        assert(gmVote.note && gmVote.disabled, 'ผู้ดำเนินเกมกดโหวตได้/ไม่มีคำอธิบาย ' + JSON.stringify(gmVote));
-        results.push('ผู้ดำเนินเกม: การ์ดโหวตล็อก + บอกว่าไม่ต้องโหวต');
+        assert(gmVote.enabled && /โหวตด้วย/.test(gmVote.note), 'ผู้ดำเนินเกมโหวตไม่ได้ ' + JSON.stringify(gmVote));
+        await gmPage.click('.btn-vote2-player >> nth=0');
+        await gmPage.click('#confirmVote2Btn');
+        assert(await waitFor(host.events, e => e.name === 'vote2Progress'
+            && e.payload.voterChoices.some(c => c.voterId === gm.playerId), 5000), 'โหวตของผู้ดำเนินเกมไม่ถึง server');
+        results.push('ผู้ดำเนินเกม: โหวตชี้ตัวได้');
 
         // ที่เหลือโหวตผ่าน socket → จบเกม (vote2 ต้องส่งชื่อตัวเองมาด้วย — เอาจาก progress.targets)
         const vote = (await waitFor(host.events, e => e.name === 'displayVote2')).payload;
@@ -307,7 +347,7 @@ async function main() {
         const ended = await waitFor(host.events, e => e.name === 'vote2Ended', 5000);
         assert(ended, 'host ไม่ได้รับผลจบเกม');
         const endJson = JSON.stringify(ended.payload);
-        assert(!/socketId|permission|vote2"|_voting/.test(endJson), 'ผลจบเกมรั่วฟิลด์ภายใน: ' + endJson.slice(0, 300));
+        assert(!/socketId|permission|"vote[12]":|_voting/.test(endJson), 'ผลจบเกมรั่วฟิลด์ภายใน: ' + endJson.slice(0, 300));
         assert(ended.payload.voteDetail.every(v => Object.keys(v).every(k => ['name', 'role', 'nbVote2', 'isGhost'].includes(k))), 'voteDetail มีฟิลด์เกิน');
         results.push('ผลจบเกม: ไม่มี socketId/ฟิลด์ภายใน');
 
@@ -359,4 +399,4 @@ async function main() {
     process.exit(0);
 }
 
-main().catch(e => { console.error('❌', e.message); process.exit(1); });
+main().catch(e => { console.error('❌', e.message); if (process.env.DEBUG_LOGS) console.error(serverLogs.slice(-6000)); process.exit(1); });

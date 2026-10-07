@@ -48,6 +48,7 @@ const gameSettingsManager = require('./managers/gameSettingsManager');
 const seasonManager = require('./managers/seasonManager');
 const adminMessageManager = require('./managers/adminMessageManager');
 const { getGameEngine, getAvailableGameModes, isPokerMode } = require('./games/engineRegistry');
+const insiderEngine = require('./games/insiderEngine');
 const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
@@ -111,7 +112,9 @@ const SPYFALL_NEXT_ROUND_MS = Number(process.env.SPYFALL_NEXT_ROUND_MS) || 25000
 const insiderVoteTimeouts = new Map();
 const insiderReturnTimeouts = new Map();
 const finishedReturnTimeouts = new Map();
+const INSIDER_VOTE1_MS = 15000;
 const INSIDER_VOTE2_MS = 15000;
+const INSIDER_TIEBREAK_MS = 15000;
 // หน้าผลมีเฉลยบท + คำลับ + เหตุผลแพ้ชนะ — 5 วิอ่านไม่ทัน (มีปุ่มกลับห้องเลย/เล่นอีกรอบให้กดก่อนได้)
 const INSIDER_RETURN_MS = 15000;
 const FINISHED_RETURN_MS = 10000;
@@ -453,6 +456,17 @@ function resetGame(gameState) {
     gameState.status = '';
     gameState.statsRecorded = false;
     gameState.rosterSnapshot = null;
+    gameState.countdownEndsAt = null;
+    gameState.questionSeconds = null;
+    gameState.guesserId = null;
+    gameState.guesserName = null;
+    gameState.discussionEndsAt = null;
+    gameState.discussionSeconds = null;
+    gameState.vote1EndsAt = null;
+    gameState.vote2EndsAt = null;
+    gameState.tiebreak = null;
+    gameState.tiebreakAsked = false;
+    gameState.tiebreakPick = null;
 }
 
 /**
@@ -605,58 +619,9 @@ function isPlayerApproved(playerId) {
     return player.approved !== false;
 }
 
-/**
- * Check if everybody has voted
- * Bug #5 Fix: ข้ามผู้เล่นที่ disconnect (ไม่มี socketId) ด้วย
- */
-function everybodyHasVoted(gameState, voteNumber) {
-    // ดึง online players จาก room (ต้องมี socketId)
-    const hasVoted1 = (currentValue) => {
-        // ถ้าเป็น ghost หรือ โหวตแล้ว = ถือว่าโหวตแล้ว
-        // ถ้า disconnect (ไม่มี socketId) ก็ข้ามไป
-        return currentValue.isGhost || currentValue.vote1 !== null || !currentValue.socketId;
-    };
-    const hasVoted2 = (currentValue) => {
-        // GM ไม่ต้องโหวต vote2
-        if (currentValue.role === gameMasterRole) return true;
-        return currentValue.isGhost || currentValue.vote2 !== null || !currentValue.socketId;
-    };
-
-    if(voteNumber == 1) {
-        return gameState.players.every(hasVoted1);
-    } else {
-        return gameState.players.every(hasVoted2);
-    }
-}
-
-/**
- * Reset votes
- */
-function resetVote(gameState, voteNumber) {
-    gameState.players.forEach(function(player) {
-        if(voteNumber === 1) {
-            player.vote1 = null;
-        } else {
-            player.vote2 = null;
-            player.nbVote2 = 0;
-        }
-    });
-}
-
-function buildInsiderVoteCandidates(gameState) {
-    return gameState.players
-        .filter(player => player.role !== gameMasterRole && !player.isGhost)
-        .map(player => ({
-            playerId: player.playerId,
-            name: player.name,
-            color: player.color,
-            avatar: player.avatar || '👤',
-            avatarFrame: player.avatarFrame || 'none'
-        }));
-}
-
 function emitInsiderRoleState(room, targetSocketId = null, targetPlayerId = null) {
     const numTraitors = room.gameState.players.filter(player => player.role === traitorRole).length;
+    const master = getInsiderMaster(room.gameState);
     const send = (socketId, playerId) => {
         const player = room.gameState.players.find(candidate => candidate.playerId === playerId);
         if (!socketId || !player) return;
@@ -665,7 +630,10 @@ function emitInsiderRoleState(room, targetSocketId = null, targetPlayerId = null
             isGhost: !!player.isGhost,
             status: room.gameState.status,
             dualTraitorMode: !!room.settings.dualTraitorMode,
-            numTraitors
+            numTraitors,
+            // R2: ผู้ดำเนินเกมเปิดเผยตัว (คนอื่นรู้ว่าต้องถามใคร) — จอมบงการยังลับ
+            masterName: master ? master.name : null,
+            masterId: master ? master.playerId : null
         });
     };
 
@@ -692,129 +660,6 @@ function emitInsiderWordState(room, targetSocketId = null, targetPlayerId = null
         return;
     }
     room.players.forEach(player => send(player.socketId, player.playerId));
-}
-
-/**
- * Check if player is not game master
- */
-function isNotGameMaster(player) {
-    return player.role !== gameMasterRole;
-}
-
-/**
- * Check if player is ghost
- */
-function isGhostPlayer(player) {
-    return player.isGhost;
-}
-
-/**
- * Add vote count for vote2 - รองรับทั้ง string (1 คน) และ array (2 คน)
- */
-function addPlayerVote2(gameState, playerVote) {
-    if (playerVote == null || playerVote === '') return;
-    // รองรับทั้ง string และ array
-    const votes = Array.isArray(playerVote) ? playerVote : [playerVote];
-    
-    votes.forEach(function(voteTarget) {
-        gameState.players.forEach(function(player) {
-            if(voteTarget === player.name || voteTarget === player.playerId) {
-                player.nbVote2 += 1;
-            }
-        });
-    });
-}
-
-/**
- * Build vote2 progress so clients can render live vote counts and voter lists.
- */
-function buildVote2Progress(gameState) {
-    const voteTargets = gameState.players
-        .filter(isNotGameMaster)
-        .map(function(player) {
-            return {
-                playerId: player.playerId,
-                name: player.name,
-                count: 0,
-                voters: []
-            };
-        });
-    const targetMap = new Map(voteTargets.map(function(target) {
-        return [target.playerId || target.name, target];
-    }));
-    const eligibleVoters = gameState.players.filter(function(player) {
-        return player.role !== gameMasterRole && !player.isGhost && !!player.socketId;
-    });
-    const voterChoices = [];
-
-    eligibleVoters.forEach(function(player) {
-        if (player.vote2 === null || typeof player.vote2 === 'undefined') {
-            return;
-        }
-
-        const submittedVotes = Array.isArray(player.vote2) ? player.vote2 : [player.vote2];
-        const voteValues = submittedVotes.filter(Boolean);
-        const targetNames = [];
-
-        voteValues.forEach(function(voteTarget) {
-            const targetPlayer = gameState.players.find(function(candidate) {
-                return candidate.playerId === voteTarget || candidate.name === voteTarget;
-            });
-            if (!targetPlayer) return;
-
-            const voteSummary = targetMap.get(targetPlayer.playerId || targetPlayer.name);
-            if (voteSummary) {
-                voteSummary.count += 1;
-                voteSummary.voters.push(player.name);
-            }
-            targetNames.push(targetPlayer.name);
-        });
-
-        voterChoices.push({
-            voterId: player.playerId,
-            voterName: player.name,
-            voteValues: voteValues,
-            targets: targetNames
-        });
-    });
-
-    return {
-        targets: voteTargets,
-        voterChoices: voterChoices,
-        pendingVoters: eligibleVoters
-            .filter(function(player) {
-                return player.vote2 === null || typeof player.vote2 === 'undefined';
-            })
-            .map(function(player) {
-                return player.name;
-            }),
-        totalEligibleVoters: eligibleVoters.length,
-        totalSubmittedVoters: voterChoices.length
-    };
-}
-
-/**
- * Compare votes for sorting
- */
-function compareVote(a, b) {
-    if (a.nbVote2 < b.nbVote2) return 1;
-    if (b.nbVote2 < a.nbVote2) return -1;
-    return 0;
-}
-
-/**
- * Process vote1 result
- */
-function processVote1Result(gameState) {
-    const voteResult = {'up': 0, 'down': 0};
-    gameState.players.forEach(function(player) {
-        if(player.vote1 == '1') {
-            voteResult.up += 1;
-        } else if(!isGhostPlayer(player)) {
-            voteResult.down += 1;
-        }
-    });
-    gameState.resultVote1 = voteResult;
 }
 
 /**
@@ -918,45 +763,6 @@ function scheduleFinishedGameReturnToLobby(room) {
     finishedReturnTimeouts.set(roomId, timeoutId);
 }
 
-function startInsiderVote2(room) {
-    if (!room || !room.gameState) return;
-    // เปิดโหวตได้จากช่วงคุยเท่านั้น — กัน replay หลังจบ (ล้างโหวต/บันทึกสถิติซ้ำ)
-    if (room.gameState.status !== 'in_progress') return;
-    const roomId = room.roomId;
-    if (roomCountdowns.has(roomId)) {
-        clearInterval(roomCountdowns.get(roomId));
-        roomCountdowns.delete(roomId);
-    }
-    room.gameState.countdownEndsAt = null;
-    resetVote(room.gameState, 2);
-    room.gameState.status = 'vote2';
-    room.gameState.vote2EndsAt = Date.now() + INSIDER_VOTE2_MS;
-    const numTraitors = room.gameState.players.filter(p => p.role === traitorRole).length;
-    io.to(roomId).emit('displayVote2', {
-        players: buildInsiderVoteCandidates(room.gameState),
-        numTraitors: numTraitors,
-        progress: buildVote2Progress(room.gameState),
-        vote2EndsAt: room.gameState.vote2EndsAt
-    });
-    scheduleInsiderVote2Timer(room);
-}
-
-function scheduleInsiderVote2Timer(room) {
-    if (!room?.roomId || room.gameState.status !== 'vote2') return;
-    clearInsiderVoteTimer(room.roomId);
-    const endsAt = Number(room.gameState.vote2EndsAt) || 0;
-    if (!endsAt) return;
-    const delay = Math.max(250, endsAt - Date.now());
-    const timeoutId = setTimeout(() => {
-        insiderVoteTimeouts.delete(room.roomId);
-        const current = roomManager.getRoom(room.roomId);
-        if (!current || current.gameState.status !== 'vote2') return;
-        sendChatMessageToRoom(io, current.roomId, 'System', 'หมดเวลาโหวต — สรุปผลจากคนที่โหวตแล้ว', '#f39c12');
-        finalizeInsiderVote2(current);
-    }, delay);
-    insiderVoteTimeouts.set(room.roomId, timeoutId);
-}
-
 function resetInsiderRoomAfterGame(room) {
     room.gameState = {
         players: room.gameState.players.map(p => ({
@@ -1001,25 +807,6 @@ function scheduleInsiderReturnToLobby(room) {
     insiderReturnTimeouts.set(roomId, timeoutId);
 }
 
-function finalizeInsiderVote2(room) {
-    if (!room?.gameState || room.gameState.status !== 'vote2') return;
-    clearInsiderVoteTimer(room.roomId);
-    processVote2Result(room.gameState);
-    room.gameState.status = 'end';
-    room.gameState.vote2EndsAt = null;
-    io.to(room.roomId).emit('vote2Ended', room.gameState.resultVote2);
-    recordInsiderStatsOnce(room);
-    scheduleInsiderReturnToLobby(room);
-}
-
-// ผู้เล่นที่ต้องนับสถิติ = คนที่อยู่ตอนนี้ + คนที่ออกกลางเกม (จาก roster ตอนแจกบท)
-function getInsiderScoringPlayers(gameState) {
-    const current = Array.isArray(gameState?.players) ? gameState.players : [];
-    const roster = Array.isArray(gameState?.rosterSnapshot) ? gameState.rosterSnapshot : [];
-    const presentIds = new Set(current.map(p => p.playerId));
-    return current.concat(roster.filter(p => p.playerId && !presentIds.has(p.playerId)));
-}
-
 function recordInsiderStatsOnce(room) {
     if (!room?.gameState || room.gameState.statsRecorded) return;
     room.gameState.statsRecorded = true;
@@ -1062,101 +849,302 @@ function endInsiderGameOnTimeout(room) {
     scheduleInsiderReturnToLobby(room);
 }
 
-function advanceInsiderToVote2(io, room) {
+// ==================== INSIDER: เฟสหลังทายถูก (กติกาจริง rules/insider/rules.md) ====================
+// in_progress (ถาม–ตอบ) → discussion (คุย = เวลาที่ใช้ถาม) → vote1 (คนทายถูกคือจอมบงการไหม)
+// → vote2 (ชี้ตัว) → tiebreak (เสมอ: คนทายถูกตัดสิน) → end
+// timer ทุกเฟสเก็บเวลาจบใน gameState (persist/restart ได้) ส่วน timeout จริงอยู่ใน insiderVoteTimeouts (ทีละอัน)
+
+function getInsiderMaster(gameState) {
+    return (gameState?.players || []).find(p => p.role === gameMasterRole) || null;
+}
+
+// R2: ผู้ดำเนินเกมเปิดเผยตัวต่อทุกคน (ในกล่องจริงหงายป้าย) — จอมบงการยังลับ
+function announceInsiderMaster(room) {
+    const master = getInsiderMaster(room?.gameState);
+    if (!master) return;
+    sendChatMessageToRoom(io, room.roomId, 'System',
+        `🎙️ ผู้ดำเนินเกมรอบนี้: ${master.name} — รู้คำลับ ตอบได้แค่ ใช่ / ไม่ใช่ / ไม่รู้`, '#51cf66');
+}
+
+function clearInsiderQuestionCountdown(roomId) {
+    if (roomCountdowns.has(roomId)) {
+        clearInterval(roomCountdowns.get(roomId));
+        roomCountdowns.delete(roomId);
+    }
+}
+
+// นาฬิกาถาม–ตอบ: นับจาก countdownEndsAt (ไม่ใช่ตัวนับในหน่วยความจำ) — restart server แล้วตั้งต่อได้
+function armInsiderQuestionCountdown(room) {
+    if (!room?.roomId) return;
+    const roomId = room.roomId;
+    clearInsiderQuestionCountdown(roomId);
+    const endsAt = Number(room.gameState?.countdownEndsAt) || 0;
+    if (!endsAt || room.gameState.status !== 'in_progress') return;
+    const interval = setInterval(function() {
+        const current = roomManager.getRoom(roomId);
+        if (!current || current.gameState?.status !== 'in_progress' || Number(current.gameState.countdownEndsAt) !== endsAt) {
+            clearInterval(interval);
+            if (roomCountdowns.get(roomId) === interval) roomCountdowns.delete(roomId);
+            return;
+        }
+        const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        io.to(roomId).emit('countdownUpdate', left);
+        if (left <= 0) {
+            // R5: หมดเวลาโดยยังไม่มีใครทายถูก → ทุกคนแพ้
+            endInsiderGameOnTimeout(current);
+        }
+    }, 1000);
+    roomCountdowns.set(roomId, interval);
+}
+
+function buildInsiderDiscussionPayload(room) {
+    const gs = room.gameState;
+    return {
+        guesserId: gs.guesserId || null,
+        guesserName: gs.guesserName || null,
+        word: gs.word || null,
+        endsAt: gs.discussionEndsAt || null,
+        seconds: gs.discussionSeconds || null,
+        hasGuesserVote: room.settings.insiderGuesserVote !== false && insiderEngine.countInsiders(gs) <= 1
+    };
+}
+
+function buildInsiderVote1Payload(room) {
+    const gs = room.gameState;
+    return {
+        guesserId: gs.guesserId || null,
+        guesserName: gs.guesserName || null,
+        word: gs.word || null,
+        vote1EndsAt: gs.vote1EndsAt || null,
+        progress: insiderEngine.buildVote1Progress(gs)
+    };
+}
+
+function buildInsiderVote2Payload(room) {
+    const gs = room.gameState;
+    const tiebreak = gs.status === 'tiebreak';
+    const tiedIds = tiebreak && gs.tiebreak ? gs.tiebreak.candidates || [] : null;
+    const candidates = insiderEngine.vote2Candidates(gs)
+        .filter(p => !tiedIds || tiedIds.includes(p.playerId))
+        .map(p => ({
+            playerId: p.playerId,
+            name: p.name,
+            color: p.color,
+            avatar: p.avatar || '👤',
+            avatarFrame: p.avatarFrame || 'none'
+        }));
+    return {
+        players: candidates,
+        numTraitors: insiderEngine.countInsiders(gs),
+        progress: insiderEngine.buildVote2Progress(gs),
+        vote2EndsAt: tiebreak ? (gs.tiebreak?.endsAt || null) : (gs.vote2EndsAt || null),
+        guesserId: gs.guesserId || null,
+        guesserName: gs.guesserName || null,
+        word: gs.word || null,
+        tiebreak,
+        guesserVote: gs.resultVote1 || null
+    };
+}
+
+// เฟสที่มี timer ตัวเดียว → ตั้ง timeout ตามเวลาจบที่เก็บใน gameState
+function getInsiderPhaseDeadline(gs) {
+    if (!gs) return 0;
+    if (gs.status === 'discussion') return Number(gs.discussionEndsAt) || 0;
+    if (gs.status === 'vote1') return Number(gs.vote1EndsAt) || 0;
+    if (gs.status === 'vote2') return Number(gs.vote2EndsAt) || 0;
+    if (gs.status === 'tiebreak') return Number(gs.tiebreak?.endsAt) || 0;
+    return 0;
+}
+
+function resolveInsiderPhaseTimeout(room) {
+    const status = room?.gameState?.status;
+    if (status === 'discussion') {
+        endInsiderDiscussion(room, 'timeout');
+    } else if (status === 'vote1') {
+        sendChatMessageToRoom(io, room.roomId, 'System', 'หมดเวลาโหวต — สรุปผลจากคนที่โหวตแล้ว', '#f39c12');
+        finalizeInsiderVote1(room);
+    } else if (status === 'vote2') {
+        sendChatMessageToRoom(io, room.roomId, 'System', 'หมดเวลาโหวต — สรุปผลจากคนที่โหวตแล้ว', '#f39c12');
+        finalizeInsiderVote2(room);
+    } else if (status === 'tiebreak') {
+        finalizeInsiderTiebreak(room);
+    }
+}
+
+function scheduleInsiderPhaseTimer(room) {
+    if (!room?.roomId) return;
+    clearInsiderVoteTimer(room.roomId);
+    const endsAt = getInsiderPhaseDeadline(room.gameState);
+    if (!endsAt) return;
+    const status = room.gameState.status;
+    const delay = Math.max(250, endsAt - Date.now());
+    const timeoutId = setTimeout(() => {
+        insiderVoteTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.gameState?.status !== status) return;
+        resolveInsiderPhaseTimeout(current);
+    }, delay);
+    insiderVoteTimeouts.set(room.roomId, timeoutId);
+}
+
+// restart server / ห้องร้าง: ตั้ง timer ทุกเฟสใหม่ หรือสรุปผลทันทีถ้าเลยเวลาแล้ว
+function syncInsiderPhaseTimers(room, options = {}) {
+    const gs = room?.gameState;
+    if (!gs) return;
+    if (gs.status === 'in_progress') {
+        if (gs.countdownEndsAt && Number(gs.countdownEndsAt) <= Date.now()) {
+            endInsiderGameOnTimeout(room);
+        } else if (!options.onlyOverdue && !roomCountdowns.has(room.roomId)) {
+            armInsiderQuestionCountdown(room);
+        }
+        return;
+    }
+    const deadline = getInsiderPhaseDeadline(gs);
+    if (!deadline) return;
+    if (deadline <= Date.now()) {
+        resolveInsiderPhaseTimeout(room);
+    } else if (!options.onlyOverdue) {
+        scheduleInsiderPhaseTimer(room);
+    }
+}
+
+/** R6 — ผู้ดำเนินเกม/หัวห้องยืนยันว่า "ใคร" ทายถูก → คำลับเปิดให้ทุกคน → คุยเท่ากับเวลาที่ใช้ถาม */
+function startInsiderDiscussion(room, guesser) {
+    const gs = room.gameState;
+    const remaining = gs.countdownEndsAt ? Math.max(0, (Number(gs.countdownEndsAt) - Date.now()) / 1000) : 0;
+    const questionSeconds = Number(gs.questionSeconds) || Number(room.settings.roundTime) || 300;
+    const seconds = insiderEngine.discussionSeconds(questionSeconds, remaining);
+    clearInsiderQuestionCountdown(room.roomId);
+    clearInsiderVoteTimer(room.roomId);
+    gs.countdownEndsAt = null;
+    gs.guesserId = guesser.playerId;
+    gs.guesserName = guesser.name;
+    gs.status = 'discussion';
+    gs.discussionSeconds = seconds;
+    gs.discussionEndsAt = Date.now() + seconds * 1000;
+    gs.resultVote1 = null;
+    gs.tiebreak = null;
+    gs.tiebreakAsked = false;
+    gs.tiebreakPick = null;
+    io.to(room.roomId).emit('insiderDiscussion', buildInsiderDiscussionPayload(room));
+    sendChatMessageToRoom(io, room.roomId, 'System',
+        `🎯 ${guesser.name} ทายถูก! คำลับคือ “${gs.word || '-'}” — คุยหาจอมบงการ ${seconds} วิ`, '#2ecc71');
+    scheduleInsiderPhaseTimer(room);
+}
+
+/** จบช่วงคุย (หมดเวลา หรือผู้ดำเนินเกม/หัวห้องกด "โหวตเลย") */
+function endInsiderDiscussion(room, reason = 'timeout') {
+    const gs = room?.gameState;
+    if (!gs || gs.status !== 'discussion') return;
+    clearInsiderVoteTimer(room.roomId);
+    gs.discussionEndsAt = null;
+    const guesser = insiderEngine.findGuesser(gs);
+    const useGuesserVote = room.settings.insiderGuesserVote !== false
+        && insiderEngine.countInsiders(gs) <= 1
+        && !!guesser;
+    if (useGuesserVote) {
+        startInsiderVote1(room);
+    } else {
+        startInsiderVote2(room);
+    }
+}
+
+function startInsiderVote1(room) {
+    const gs = room.gameState;
+    gs.players.forEach(p => { p.vote1 = null; });
+    gs.status = 'vote1';
+    gs.vote1EndsAt = Date.now() + INSIDER_VOTE1_MS;
+    io.to(room.roomId).emit('displayVote1', buildInsiderVote1Payload(room));
+    scheduleInsiderPhaseTimer(room);
+    // ทุกคนหลุดหมด (ไม่มีใครมีสิทธิ์) → สรุปเลย ไม่ต้องรอ
+    if (insiderEngine.vote1Voters(gs).length === 0) finalizeInsiderVote1(room);
+}
+
+function finalizeInsiderVote1(room) {
+    const gs = room?.gameState;
+    if (!gs || gs.status !== 'vote1') return;
+    clearInsiderVoteTimer(room.roomId);
+    gs.vote1EndsAt = null;
+    const summary = insiderEngine.resolveVote1(gs);
+    gs.resultVote1 = summary;
+    if (summary.majority) {
+        // R7: เสียงข้างมากว่า "ใช่" → เปิดบทคนทายถูก จบเกม
+        gs.resultVote2 = insiderEngine.buildVote1Result(gs);
+        finishInsiderRound(room);
+        return;
+    }
+    io.to(room.roomId).emit('vote1Ended', { ...summary, guesserName: gs.guesserName || null });
+    sendChatMessageToRoom(io, room.roomId, 'System',
+        `🗳️ ${gs.guesserName || 'คนทายถูก'} ใช่จอมบงการไหม: ใช่ ${summary.yes} · ไม่ใช่ ${summary.no} — ไม่เกินครึ่ง ไปชี้ตัวจอมบงการ`, '#f39c12');
     startInsiderVote2(room);
 }
 
-/**
- * Process vote2 result - รองรับ 1 หรือ 2 จอมบงการ
- */
-function processVote2Result(gameState) {
-    gameState.players.forEach(function(player) {
-        addPlayerVote2(gameState, player.vote2);
-    });
-    
-    const votePlayers = gameState.players.filter(isNotGameMaster);
-    votePlayers.sort(compareVote);
-
-    // หาจอมบงการทั้งหมด (อาจมี 1 หรือ 2 คน) — รวมคนที่ออกกลางเกมจาก roster
-    const allTraitors = getInsiderScoringPlayers(gameState).filter(p => p.role === traitorRole);
-    const numTraitors = allTraitors.length;
-    let hasTraitorInGame = numTraitors > 0;
-    const presentIds = new Set(gameState.players.map(p => p.playerId));
-    const leftTraitors = allTraitors.filter(p => !presentIds.has(p.playerId));
-
-    let hasWon;
-    let finalResultTraitorName = '';
-    
-    // หาผู้เล่นที่ได้โหวตสูงสุด (อาจมีหลายคนที่ได้โหวตเท่ากัน)
-    const topVotedPlayer = votePlayers[0];
-    const secondVotedPlayer = votePlayers[1];
-
-    if (leftTraitors.length > 0) {
-        // จอมบงการหนีออกจากเกม → พลเมืองชนะ (คนหนีบันทึกเป็นแพ้)
-        hasWon = true;
-        finalResultTraitorName = allTraitors.map(t => t.name).join(' และ ') + ' (ออกจากเกม)';
-    } else if (hasTraitorInGame) {
-        if (numTraitors === 1) {
-            // กรณีจอมบงการ 1 คน - logic เดิม
-            if (topVotedPlayer && topVotedPlayer.role === traitorRole && (secondVotedPlayer ? topVotedPlayer.nbVote2 > secondVotedPlayer.nbVote2 : true)) {
-                hasWon = true;
-                finalResultTraitorName = topVotedPlayer.name;
-            } else {
-                hasWon = false;
-                finalResultTraitorName = allTraitors[0].name;
-            }
-        } else {
-            // กรณีจอมบงการ 2 คน - ต้องจับได้ทั้งคู่ถึงจะชนะ
-            // หาว่าผู้เล่นที่ได้โหวตสูงสุด 2 อันดับแรกเป็นจอมบงการหรือไม่
-            const top2Voted = votePlayers.slice(0, 2);
-            const traitorsCaught = top2Voted.filter(p => p.role === traitorRole);
-            
-            // ต้องจับได้ทั้ง 2 คน และต้องมีโหวตมากกว่าคนอื่น
-            const thirdVotedPlayer = votePlayers[2];
-            const secondHasMoreVotesThanThird = !thirdVotedPlayer || (secondVotedPlayer && secondVotedPlayer.nbVote2 > thirdVotedPlayer.nbVote2);
-            
-            if (traitorsCaught.length === 2 && secondHasMoreVotesThanThird) {
-                hasWon = true;
-                finalResultTraitorName = traitorsCaught.map(t => t.name).join(' และ ');
-            } else if (traitorsCaught.length === 1) {
-                hasWon = false; // จับได้แค่คนเดียว
-                const uncaughtTraitor = allTraitors.find(t => !traitorsCaught.includes(t));
-                finalResultTraitorName = `จับได้ ${traitorsCaught[0].name} แต่พลาด ${uncaughtTraitor.name}`;
-            } else {
-                hasWon = false;
-                finalResultTraitorName = allTraitors.map(t => t.name).join(' และ ');
-            }
-        }
-    } else {
-        if (topVotedPlayer && topVotedPlayer.isGhost && (secondVotedPlayer ? topVotedPlayer.nbVote2 > secondVotedPlayer.nbVote2 : true)) {
-            hasWon = true;
-            finalResultTraitorName = topVotedPlayer.name + ' (ไม่มีจอมบงการ)';
-        } else if (!topVotedPlayer || (topVotedPlayer && !topVotedPlayer.isGhost && topVotedPlayer.nbVote2 === 0)) {
-            hasWon = true;
-            finalResultTraitorName = 'ไม่มีจอมบงการ';
-        } else {
-            hasWon = false;
-            finalResultTraitorName = 'ไม่มีจอมบงการ (แต่ผู้เล่นโหวตพลาด)';
-        }
-    }
-
-    gameState.resultVote2 = { 
-        hasWon: hasWon, 
-        // ส่งให้ทุกคนตอนจบ — เฉพาะที่หน้าผลใช้ ห้ามแนบ object ผู้เล่นทั้งก้อน (socketId, permission, โหวตดิบ ฯลฯ)
-        voteDetail: votePlayers.map(player => ({
-            name: player.name,
-            role: player.role,
-            nbVote2: player.nbVote2 || 0,
-            isGhost: !!player.isGhost
-        })),
-        hasTraitor: hasTraitorInGame,
-        numTraitors: numTraitors, // เพิ่มจำนวนจอมบงการ
-        finalTraitorName: finalResultTraitorName,
-        word: gameState.word || null, // เฉลยคำลับตอนจบ
-        // เพิ่มบทบาททุกคนสำหรับเฉลยตอนจบ
-        allRoles: getInsiderScoringPlayers(gameState).map(p => ({ name: p.name, role: p.role }))
-    };
+function startInsiderVote2(room) {
+    if (!room || !room.gameState) return;
+    // เปิดโหวตได้หลังทายถูกเท่านั้น — กัน replay หลังจบ (ล้างโหวต/บันทึกสถิติซ้ำ)
+    if (!['discussion', 'vote1'].includes(room.gameState.status)) return;
+    const gs = room.gameState;
+    clearInsiderQuestionCountdown(room.roomId);
+    clearInsiderVoteTimer(room.roomId);
+    gs.countdownEndsAt = null;
+    gs.discussionEndsAt = null;
+    gs.players.forEach(p => { p.vote2 = null; p.nbVote2 = 0; });
+    gs.status = 'vote2';
+    gs.vote2EndsAt = Date.now() + INSIDER_VOTE2_MS;
+    io.to(room.roomId).emit('displayVote2', buildInsiderVote2Payload(room));
+    scheduleInsiderPhaseTimer(room);
 }
+
+function finishInsiderRound(room) {
+    const gs = room.gameState;
+    clearInsiderVoteTimer(room.roomId);
+    clearInsiderQuestionCountdown(room.roomId);
+    gs.status = 'end';
+    gs.vote1EndsAt = null;
+    gs.vote2EndsAt = null;
+    gs.discussionEndsAt = null;
+    if (gs.tiebreak) gs.tiebreak.endsAt = null;
+    io.to(room.roomId).emit('vote2Ended', gs.resultVote2);
+    recordInsiderStatsOnce(room);
+    scheduleInsiderReturnToLobby(room);
+}
+
+function finalizeInsiderVote2(room) {
+    const gs = room?.gameState;
+    if (!gs || gs.status !== 'vote2') return;
+    clearInsiderVoteTimer(room.roomId);
+    gs.vote2EndsAt = null;
+    const outcome = insiderEngine.processVote2Result(gs, { allowTiebreak: true });
+    if (outcome.needsTiebreak) {
+        startInsiderTiebreak(room, outcome.tied);
+        return;
+    }
+    finishInsiderRound(room);
+}
+
+/** R8 — คะแนนเสมอ: คนทายถูกเลือกตัดสินจากคนที่เสมอ */
+function startInsiderTiebreak(room, tiedIds) {
+    const gs = room.gameState;
+    gs.status = 'tiebreak';
+    gs.tiebreakAsked = true;
+    gs.tiebreakPick = null;
+    gs.tiebreak = { candidates: tiedIds.slice(), endsAt: Date.now() + INSIDER_TIEBREAK_MS };
+    const names = gs.players.filter(p => tiedIds.includes(p.playerId)).map(p => p.name).join(', ');
+    sendChatMessageToRoom(io, room.roomId, 'System',
+        `⚖️ คะแนนเสมอ (${names}) — ${gs.guesserName || 'คนทายถูก'} เป็นคนตัดสิน`, '#f39c12');
+    io.to(room.roomId).emit('displayVote2', buildInsiderVote2Payload(room));
+    scheduleInsiderPhaseTimer(room);
+}
+
+function finalizeInsiderTiebreak(room) {
+    const gs = room?.gameState;
+    if (!gs || gs.status !== 'tiebreak') return;
+    clearInsiderVoteTimer(room.roomId);
+    insiderEngine.processVote2Result(gs, { allowTiebreak: false });
+    finishInsiderRound(room);
+}
+
+const getInsiderScoringPlayers = insiderEngine.getScoringPlayers;
 
 /**
  * Check if socket is admin of room
@@ -3784,10 +3772,12 @@ function handleMidGamePlayerRemoval(room, playerId) {
         }
         if (!room.settings.gameMode || room.settings.gameMode === 'insider') {
             try {
-                if (!cancelInsiderRoundWithoutMaster(room) && room.gameState.status === 'vote2') {
-                    // คนออกระหว่างโหวต — คนที่เหลือโหวตครบแล้วก็สรุปเลย ไม่ต้องรอหมดเวลา
-                    io.to(room.roomId).emit('vote2Progress', buildVote2Progress(room.gameState));
-                    if (everybodyHasVoted(room.gameState, 2)) finalizeInsiderVote2(room);
+                if (!cancelInsiderRoundWithoutMaster(room)) {
+                    // คนที่ออกเป็นคนสุดท้ายที่ยังไม่โหวต → สรุปผลเลย ไม่ต้องรอหมดเวลา
+                    const gs = room.gameState;
+                    if (gs.status === 'vote1' && insiderEngine.hasEveryoneVoted(gs, 'vote1')) finalizeInsiderVote1(room);
+                    else if (gs.status === 'vote2' && insiderEngine.hasEveryoneVoted(gs, 'vote2')) finalizeInsiderVote2(room);
+                    else if (gs.status === 'tiebreak' && !insiderEngine.findGuesser(gs)) finalizeInsiderTiebreak(room);
                 }
             } catch (error) {
                 console.error('[insider] cancel without master failed:', error?.message || error);
@@ -4251,12 +4241,9 @@ function recoverGamePhaseTimers() {
             setthiRuntime.recover(room);
         }
 
-        if ((!room.settings.gameMode || room.settings.gameMode === 'insider') && room.gameState.status === 'vote2') {
-            if (room.gameState.vote2EndsAt && room.gameState.vote2EndsAt <= Date.now()) {
-                finalizeInsiderVote2(room);
-            } else {
-                scheduleInsiderVote2Timer(room);
-            }
+        if (!room.settings.gameMode || room.settings.gameMode === 'insider') {
+            // ถาม–ตอบ / คุย / โหวต — เดิมกู้แค่ vote2 นาฬิกาถาม–ตอบหายหลัง restart ห้องค้างตลอด
+            syncInsiderPhaseTimers(room);
         }
     });
 }
@@ -4335,11 +4322,8 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'setthi' && roomManager.isRoomGameInProgress(room)) {
             setthiRuntime.forceResolve(room);
         }
-        if ((!room.settings.gameMode || room.settings.gameMode === 'insider')
-            && room.gameState.status === 'vote2'
-            && room.gameState.vote2EndsAt
-            && room.gameState.vote2EndsAt <= Date.now()) {
-            finalizeInsiderVote2(room);
+        if (!room.settings.gameMode || room.settings.gameMode === 'insider') {
+            syncInsiderPhaseTimers(room, { onlyOverdue: true });
         }
 
         clearCoupPhaseTimer(candidate.roomId);
@@ -5579,11 +5563,16 @@ app.get('/game/:roomId', async function(req, res) {
         status: room.gameState.status,
         resultVote1: room.gameState.resultVote1,
         resultVote2: room.gameState.resultVote2,
+        // R2: ผู้ดำเนินเกมเปิดเผยตัว — ทุกคนรู้ว่าใครคุมเกม (ใช้ตอนเลือกคนทายถูก/ข้อความรอ)
+        insiderMasterJson: safeJsonForScript((function() {
+            const master = (!room.settings.gameMode || room.settings.gameMode === 'insider') ? getInsiderMaster(room.gameState) : null;
+            return master ? { playerId: master.playerId, name: master.name } : null;
+        })()),
         // คำลับสำหรับปุ่ม "ดูบทของฉัน" — เฉพาะผู้ดำเนินเกม/จอมบงการ และหลังเปิดเผยคำแล้วเท่านั้น
         secretWordJson: safeJsonForScript(
             gameStatePlayer
             && (gameStatePlayer.role === gameMasterRole || gameStatePlayer.role === traitorRole)
-            && ['word', 'in_progress', 'vote2', 'end'].includes(room.gameState.status)
+            && ['word', 'in_progress', 'discussion', 'vote1', 'vote2', 'tiebreak', 'end'].includes(room.gameState.status)
                 ? (room.gameState.word || null)
                 : null
         )
@@ -6524,7 +6513,8 @@ io.sockets.on('connection', function(socket) {
             io.emit('roomListUpdate', roomManager.getAllRooms());
             
             if (typeof callback === 'function') {
-                callback({ success: true, room: room });
+                // ห้ามส่ง room ทั้งก้อน — มี gameState (คำลับ/บทของทุกคน) หัวห้องกดแก้ห้องกลางเกมแล้วส่องได้
+                callback({ success: true, room: buildRoomUpdatePayload(room) });
             }
         } catch (error) {
             console.error('Error updating room:', error);
@@ -7721,21 +7711,22 @@ io.sockets.on('connection', function(socket) {
                     const gs = room.gameState;
                     const insiderStatus = gs.status;
                     if (insiderStatus === 'in_progress') {
-                        // ช่วงคุย — คืนค่า countdown ที่เหลือ
+                        // ช่วงถาม–ตอบ — คืนค่า countdown ที่เหลือ (+ ตั้งนาฬิกาใหม่ถ้าหาย เช่นหลัง restart)
                         let remaining = 0;
                         if (gs.countdownEndsAt) {
                             remaining = Math.max(0, Math.ceil((gs.countdownEndsAt - Date.now()) / 1000));
                         }
                         io.to(socket.id).emit('countdownUpdate', remaining);
-                    } else if (insiderStatus === 'vote2') {
-                        const numTraitors = gs.players.filter(p => p.role === traitorRole).length;
-                        io.to(socket.id).emit('displayVote2', {
-                            players: buildInsiderVoteCandidates(gs),
-                            numTraitors: numTraitors,
-                            progress: buildVote2Progress(gs),
-                            vote2EndsAt: gs.vote2EndsAt || null
-                        });
-                        scheduleInsiderVote2Timer(room);
+                        if (!roomCountdowns.has(room.roomId)) syncInsiderPhaseTimers(room);
+                    } else if (insiderStatus === 'discussion') {
+                        io.to(socket.id).emit('insiderDiscussion', buildInsiderDiscussionPayload(room));
+                        if (!insiderVoteTimeouts.has(room.roomId)) syncInsiderPhaseTimers(room);
+                    } else if (insiderStatus === 'vote1') {
+                        io.to(socket.id).emit('displayVote1', buildInsiderVote1Payload(room));
+                        if (!insiderVoteTimeouts.has(room.roomId)) syncInsiderPhaseTimers(room);
+                    } else if (insiderStatus === 'vote2' || insiderStatus === 'tiebreak') {
+                        io.to(socket.id).emit('displayVote2', buildInsiderVote2Payload(room));
+                        if (!insiderVoteTimeouts.has(room.roomId)) syncInsiderPhaseTimers(room);
                     } else if (insiderStatus === 'end' && gs.resultVote2) {
                         io.to(socket.id).emit('vote2Ended', gs.resultVote2);
                     } else if (insiderStatus === 'word' && gs.word) {
@@ -10370,26 +10361,7 @@ io.sockets.on('connection', function(socket) {
                 console.log('[startGameFromLobby] Auto-set word:', currentRoom.gameState.word);
 
                 // ส่งบทบาทแบบส่วนตัวให้แต่ละคน (ไม่ broadcast)
-                console.log('[startGameFromLobby] Sending roles to', currentRoom.players.length, 'players');
-                currentRoom.players.forEach(p => {
-                    if (p.socketId) {
-                        const gamePlayer = currentRoom.gameState.players.find(gp => gp.playerId === p.playerId);
-                        if (gamePlayer) {
-                            console.log(`[startGameFromLobby] Sending role to ${p.playerName} (${p.socketId}): ${gamePlayer.role}`);
-                            io.to(p.socketId).emit('newRole', {
-                                role: gamePlayer.role,
-                                isGhost: !!gamePlayer.isGhost,
-                                status: currentRoom.gameState.status,
-                                dualTraitorMode: !!currentRoom.settings.dualTraitorMode,
-                                numTraitors: currentRoom.gameState.players.filter(candidate => candidate.role === traitorRole).length
-                            });
-                        } else {
-                            console.log(`[startGameFromLobby] WARNING: No gamePlayer found for ${p.playerName}`);
-                        }
-                    } else {
-                        console.log(`[startGameFromLobby] WARNING: No socketId for ${p.playerName}`);
-                    }
-                });
+                emitInsiderRoleState(currentRoom);
 
                 // ส่ง event ให้ทุกคนใน room redirect ไปหน้าเกม
                 // ส่ง 2 ทางเพื่อกันเคส client บางตัวไม่ได้ join socket.io room จริงๆ
@@ -10405,6 +10377,7 @@ io.sockets.on('connection', function(socket) {
 
                 const insiderModeMsg = currentRoom.settings.dualTraitorMode ? ' · โหมด 2 จอมบงการ' : '';
                 sendChatMessageToRoom(io, roomId, 'System', `เกม Insider เริ่มแล้ว${insiderModeMsg}`, '#9b59b6');
+                announceInsiderMaster(currentRoom);
                 logGameStartFromRoom(currentRoom, insiderModeMsg);
 
                 room.gameStarting = false;
@@ -10458,9 +10431,16 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
-        // กำลังโหวตหาจอมบงการอยู่ — หัวห้องสุ่มรอบใหม่ทับไม่ได้ ผลโหวตจะหาย (แอดมินเว็บยังทำได้เผื่อห้องค้าง)
-        if (room.gameState.status === 'vote2' && !isSiteAdminPlayer(socket.playerId)) {
+        // ทายถูกแล้ว (คุย/โหวต) — หัวห้องสุ่มรอบใหม่ทับไม่ได้ ผลจะหาย (แอดมินเว็บยังทำได้เผื่อห้องค้าง)
+        if (['discussion', 'vote1', 'vote2', 'tiebreak'].includes(room.gameState.status) && !isSiteAdminPlayer(socket.playerId)) {
             io.to(socket.id).emit('notAuthorized', { message: 'กำลังโหวตอยู่ รอผลโหวตก่อนค่อยเริ่มรอบใหม่' });
+            return;
+        }
+
+        // R1: ต้องมีคนออนไลน์อย่างน้อย 4 (เล่นอีกรอบหลังมีคนออก)
+        const onlineForRematch = (room.gameState.players || []).filter(p => !!p.socketId).length;
+        if (onlineForRematch < insiderEngine.minPlayers) {
+            io.to(socket.id).emit('notAuthorized', { message: `ต้องมีผู้เล่นออนไลน์อย่างน้อย ${insiderEngine.minPlayers} คน` });
             return;
         }
 
@@ -10488,6 +10468,7 @@ io.sockets.on('connection', function(socket) {
         // Send chat notification
         const modeMsg = numTraitors === 2 ? ' (โหมด 2 จอมบงการ!)' : '';
         sendChatMessageToRoom(io, roomId, 'System', `เริ่มเกมใหม่! บทบาทถูกสุ่มแล้ว${modeMsg}`, '#9b59b6');
+        announceInsiderMaster(room);
         logGameStartFromRoom(room, modeMsg);
     });
 
@@ -10612,8 +10593,24 @@ io.sockets.on('connection', function(socket) {
         if (typeof callback === 'function') callback({ ok: true });
     });
 
-    // Word found - ไปโหวต 2 เลย (ตัดโหวต 1 ออก)
-    safeOn(socket, 'wordFound', function() {
+    // รายชื่อคนที่เป็น "คนทายถูก" ได้ (ทุกคนยกเว้นผู้ดำเนินเกม) — ให้ปุ่มทายถูกของผู้ดำเนินเกม/หัวห้อง
+    safeOn(socket, 'insiderGuessCandidates', function(data, callback) {
+        if (typeof callback !== 'function') return;
+        const room = socket.roomId ? roomManager.getRoom(socket.roomId) : null;
+        if (!room || room.gameState?.status !== 'in_progress') return callback({ ok: false, error: 'wrong_phase' });
+        const caller = room.gameState.players.find(p => p.playerId === socket.playerId);
+        const isMaster = !!caller && caller.role === gameMasterRole;
+        if (!isMaster && !isAdminSocket(room, socket)) return callback({ ok: false, error: 'not_allowed' });
+        callback({
+            ok: true,
+            players: room.gameState.players
+                .filter(p => insiderEngine.canBeGuesser(p))
+                .map(p => ({ playerId: p.playerId, name: p.name, online: !!p.socketId }))
+        });
+    });
+
+    // ทายถูก (R6) — ผู้ดำเนินเกม (หรือหัวห้องกดแทน) บอกว่า "ใคร" พูดคำลับถูก → ไปช่วงคุย
+    safeOn(socket, 'wordFound', function(data) {
         const roomId = socket.roomId;
         if (!roomId) return;
 
@@ -10627,31 +10624,38 @@ io.sockets.on('connection', function(socket) {
             io.to(socket.id).emit('notAuthorized', { message: 'เฉพาะผู้ดำเนินเกมหรือหัวห้องที่กดยืนยันว่าทายถูกได้' });
             return;
         }
-        // เฉพาะช่วงคุยเท่านั้น — กันเปิดโหวตก่อนเปิดคำ หรือ replay หลังจบเกม
+        // เฉพาะช่วงถาม–ตอบเท่านั้น — กันเปิดโหวตก่อนเปิดคำ หรือ replay หลังจบเกม
         if (room.gameState.status !== 'in_progress') return;
 
-        const callerName = caller ? caller.name : 'หัวห้อง';
-        sendChatMessageToRoom(io, roomId, 'System', `✅ ${callerName} ยืนยันว่ามีคนทายคำลับถูก — โหวตหาจอมบงการ!`, '#2ecc71');
-        // ไปโหวต 2 เลย ไม่ต้องผ่านโหวต 1 (ใช้ helper เดียวกับ timeout)
-        advanceInsiderToVote2(io, room);
+        const guesserId = data && typeof data === 'object' ? String(data.guesserId || '') : '';
+        const guesser = room.gameState.players.find(p => p.playerId === guesserId);
+        if (!insiderEngine.canBeGuesser(guesser)) {
+            io.to(socket.id).emit('notAuthorized', { message: 'เลือกคนที่ทายคำลับถูกก่อน (ผู้ดำเนินเกมทายเองไม่ได้)' });
+            return;
+        }
+
+        startInsiderDiscussion(room, guesser);
     });
 
-    // Display vote2 (vote1 ถูกตัดออกแล้ว - ไปโหวต 2 เลยตอน wordFound)
-    safeOn(socket, 'displayVote2', function() {
+    // จบช่วงคุยก่อนเวลา (กติกาจริง: คุยจนทุกคนพอใจ หรือทรายหมด) — ผู้ดำเนินเกม/หัวห้อง
+    // ชื่อ event เดิม displayVote2 ยังรับไว้ (ปุ่มเก่าของหัวห้อง)
+    function handleEndDiscussion() {
         const roomId = socket.roomId;
         if (!roomId) return;
-
         const room = roomManager.getRoom(roomId);
-        if (!room) return;
+        if (!room || room.gameState.status !== 'discussion') return;
+        const caller = room.gameState.players.find(p => p.playerId === socket.playerId);
+        const isMaster = !!caller && caller.role === gameMasterRole;
+        if (!isMaster && !isAdminSocket(room, socket)) {
+            io.to(socket.id).emit('notAuthorized', { message: 'เฉพาะผู้ดำเนินเกมหรือหัวห้องที่กดไปโหวตได้' });
+            return;
+        }
+        endInsiderDiscussion(room, 'manual');
+    }
+    safeOn(socket, 'insiderEndDiscussion', handleEndDiscussion);
+    safeOn(socket, 'displayVote2', handleEndDiscussion);
 
-        // ต้องเป็น admin เท่านั้น
-        if (!isAdminSocket(room, socket)) return;
-        if (room.gameState.status !== 'in_progress') return;
-
-        startInsiderVote2(room);
-    });
-
-    // Vote1
+    // Vote1 (R7) — คนทายถูกคือจอมบงการไหม: ทุกคนยกเว้นคนทายถูก (ผู้ดำเนินเกมโหวตด้วย)
     safeOn(socket, 'vote1', function(object) {
         const roomId = socket.roomId;
         if (!roomId) return;
@@ -10661,35 +10665,31 @@ io.sockets.on('connection', function(socket) {
 
         const playerId = socket.playerId;
         if (!playerId) return;
-
         if (!object || typeof object !== 'object') return;
+        if (room.gameState.status !== 'vote1') return;
+
         const player = room.gameState.players.find(p => p.playerId === playerId);
-        if (!player || object.player !== player.name) return;
-
-        // ตรวจสอบสถานะเกม
-        if (room.gameState.status !== 'vote1') {
-            console.log(`[vote1] Wrong game status: ${room.gameState.status}`);
+        const denied = insiderEngine.voteDenyReason(room.gameState, player, 'vote1');
+        if (denied) {
+            io.to(socket.id).emit('voteError', { phase: 'vote1', message: denied, locked: true });
             return;
         }
-
-        // ป้องกันโหวตซ้ำ (double-check with lock flag)
-        if (player.vote1 !== null || player._votingInProgress1) {
-            console.log(`[vote1] Player ${player.name} already voted or voting in progress`);
+        const choice = object.vote === 'yes' || object.vote === true ? 'yes'
+            : (object.vote === 'no' || object.vote === false ? 'no' : null);
+        if (!choice) {
+            io.to(socket.id).emit('voteError', { phase: 'vote1', message: 'เลือก ใช่ หรือ ไม่ใช่' });
             return;
         }
-        player._votingInProgress1 = true;
+        if (player.vote1 === 'yes' || player.vote1 === 'no') return; // ส่งแล้ว แก้ไม่ได้
 
-        player.vote1 = object.vote;
-        player._votingInProgress1 = false;
-
-        if(everybodyHasVoted(room.gameState, 1)) {
-            processVote1Result(room.gameState);
-            io.to(roomId).emit('vote1Ended', room.gameState.resultVote1);
-            room.gameState.status = 'vote2';
+        player.vote1 = choice;
+        io.to(roomId).emit('vote1Progress', insiderEngine.buildVote1Progress(room.gameState));
+        if (insiderEngine.hasEveryoneVoted(room.gameState, 'vote1')) {
+            finalizeInsiderVote1(room);
         }
     });
 
-    // Vote2
+    // Vote2 (R8) — ชี้ตัวจอมบงการ: ทุกคนโหวต (รวมผู้ดำเนินเกม/คนทายถูก) · tiebreak = คนทายถูกเลือกจากคนที่เสมอ
     safeOn(socket, 'vote2', function(object) {
         const roomId = socket.roomId;
         if (!roomId) return;
@@ -10705,41 +10705,40 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
+        const status = room.gameState.status;
+        if (status !== 'vote2' && status !== 'tiebreak') return;
+
         const player = room.gameState.players.find(p => p.playerId === playerId);
-        if (!player || object.player !== player.name) return;
-        // เดิมทิ้งเงียบ — จอยังขึ้นว่า "ส่งโหวตแล้ว" ทั้งที่ไม่นับ บอกเหตุผลแทน
-        if (player.role === gameMasterRole) {
-            io.to(socket.id).emit('voteError', { message: 'ผู้ดำเนินเกมไม่ต้องโหวตในรอบนี้', locked: true });
-            return;
-        }
-        if (player.isGhost) {
-            io.to(socket.id).emit('voteError', { message: 'รอบนี้คุณเป็นผี 👻 ไม่มีสิทธิ์โหวต — รอดูผลได้เลย', locked: true });
+        if (!player) return;
+        const denied = insiderEngine.voteDenyReason(room.gameState, player, status);
+        if (denied) {
+            io.to(socket.id).emit('voteError', { message: denied, locked: true });
             return;
         }
 
-        // ตรวจสอบสถานะเกม
-        if (room.gameState.status !== 'vote2') {
-            console.log(`[vote2] Wrong game status: ${room.gameState.status}`);
-            return;
-        }
-
-        // ป้องกันโหวตซ้ำ (double-check with lock flag)
-        if (player.vote2 !== null || player._votingInProgress2) {
-            console.log(`[vote2] Player ${player.name} already voted or voting in progress`);
-            return;
-        }
-        // รอบไม่มีจอมบงการ (ผี) ก็โหวต 1 คนเหมือนปกติ — ห้ามให้ UI ต่างจนรู้ตัว และ client ส่ง 1 เสมอ
-        const expectedChoices = Math.max(1, room.gameState.players.filter(candidate => candidate.role === traitorRole).length);
         const rawChoices = Array.isArray(object.votes) ? object.votes : [object.vote];
-        const candidates = buildInsiderVoteCandidates(room.gameState);
+        const candidateIds = buildInsiderVote2Payload(room).players.map(c => c.playerId);
         const candidateByKey = new Map();
-        candidates.forEach(candidate => {
-            candidateByKey.set(candidate.playerId, candidate.playerId);
-            candidateByKey.set(candidate.name, candidate.playerId);
+        room.gameState.players.forEach(p => {
+            if (!candidateIds.includes(p.playerId)) return;
+            candidateByKey.set(p.playerId, p.playerId);
+            candidateByKey.set(p.name, p.playerId);
         });
-        const normalizedChoices = rawChoices.map(choice => candidateByKey.get(choice)).filter(Boolean);
-        const uniqueChoices = Array.from(new Set(normalizedChoices));
+        const uniqueChoices = Array.from(new Set(rawChoices.map(choice => candidateByKey.get(choice)).filter(Boolean)));
 
+        if (status === 'tiebreak') {
+            if (uniqueChoices.length !== 1 || rawChoices.length !== 1) {
+                io.to(socket.id).emit('voteError', { message: 'เลือก 1 คนจากคนที่คะแนนเสมอ' });
+                return;
+            }
+            room.gameState.tiebreakPick = uniqueChoices[0];
+            finalizeInsiderTiebreak(room);
+            return;
+        }
+
+        if (player.vote2 !== null && typeof player.vote2 !== 'undefined') return; // ส่งแล้ว
+        // รอบไม่มีจอมบงการ (ผี) ก็โหวต 1 คนเหมือนปกติ — ห้ามให้ UI ต่างจนรู้ตัว
+        const expectedChoices = Math.max(1, insiderEngine.countInsiders(room.gameState));
         if (uniqueChoices.length !== expectedChoices || rawChoices.length !== expectedChoices) {
             io.to(socket.id).emit('voteError', {
                 message: expectedChoices === 2 ? 'เลือกผู้ต้องสงสัย 2 คนและห้ามเลือกซ้ำ' : 'เลือกผู้ต้องสงสัย 1 คน'
@@ -10747,91 +10746,43 @@ io.sockets.on('connection', function(socket) {
             return;
         }
 
-        player._votingInProgress2 = true;
         player.vote2 = expectedChoices === 1 ? uniqueChoices[0] : uniqueChoices;
-        player._votingInProgress2 = false;
+        io.to(roomId).emit('vote2Progress', insiderEngine.buildVote2Progress(room.gameState));
 
-        io.to(roomId).emit('vote2Progress', buildVote2Progress(room.gameState));
-
-        if (everybodyHasVoted(room.gameState, 2)) {
+        if (insiderEngine.hasEveryoneVoted(room.gameState, 'vote2')) {
             finalizeInsiderVote2(room);
         }
     });
 
-    // Start game
+    // Start game — เริ่มนาฬิกาถาม–ตอบ (R4)
     safeOn(socket, 'startGame', function() {
-        console.log('[startGame] Received from socket:', socket.id);
-        console.log('[startGame] socket.roomId:', socket.roomId, 'socket.playerId:', socket.playerId);
-        
         const roomId = socket.roomId;
-        if (!roomId) {
-            console.log('[startGame] No roomId, ignoring');
-            return;
-        }
+        if (!roomId) return;
 
         const room = roomManager.getRoom(roomId);
-        if (!room) {
-            console.log('[startGame] Room not found:', roomId);
-            return;
-        }
-        
-        console.log('[startGame] Room admin:', room.admin, 'Socket playerId:', socket.playerId);
+        if (!room) return;
 
         if (!isAdminSocket(room, socket)) {
-            console.log('[startGame] Not admin, rejecting');
             io.to(socket.id).emit('notAuthorized', { message: 'ต้องเป็นแอดมินเท่านั้น' });
             return;
         }
 
-        // เริ่มนับเวลาคุยได้เฉพาะหลังเปิดคำแล้ว (กันเริ่มซ้ำ/รีสตาร์ทกลางโหวต)
-        if (room.gameState.status !== 'word') {
-            console.log('[startGame] Wrong status, ignoring:', room.gameState.status);
-            return;
-        }
+        // เริ่มนับเวลาได้เฉพาะหลังเปิดคำแล้ว (กันเริ่มซ้ำ/รีสตาร์ทกลางโหวต)
+        if (room.gameState.status !== 'word') return;
+        if (!actionAllowedCooldown(room.gameState, 2)) return;
 
-        if (!actionAllowedCooldown(room.gameState, 2)) {
-            console.log('[startGame] Cooldown active, ignoring');
-            return;
-        }
-
-        let counter = room.settings.roundTime || 300;
-        // เก็บเวลาหมดไว้เพื่อ resync ตอน reconnect/reload
+        const counter = Math.max(1, Math.round(Number(room.settings.roundTime) || 300));
+        room.gameState.questionSeconds = counter;
+        // เก็บเวลาหมดไว้เพื่อ resync ตอน reconnect/reload/restart
         room.gameState.countdownEndsAt = Date.now() + counter * 1000;
-        
-        // Clear existing countdown
-        if (roomCountdowns.has(roomId)) {
-            clearInterval(roomCountdowns.get(roomId));
-        }
-
-        // Emit initial countdown value immediately
-        io.to(roomId).emit('countdownUpdate', counter);
-        console.log('[startGame] Initial countdown:', counter);
-
-        const countdownInterval = setInterval(function() {
-            counter--;
-            io.to(roomId).emit('countdownUpdate', counter);
-            if (counter <= 0) {
-                clearInterval(countdownInterval);
-                roomCountdowns.delete(roomId);
-                room.gameState.countdownEndsAt = null;
-                console.log('[startGame] Countdown finished for room:', roomId);
-                // หมดเวลาคุยโดยยังทายคำไม่ได้ → ทุกคนแพ้ (กติกาจริงของ Insider)
-                if (room.gameState.status === 'in_progress') {
-                    endInsiderGameOnTimeout(room);
-                }
-            }
-        }, 1000);
-
-        roomCountdowns.set(roomId, countdownInterval);
-        // ห้ามเก็บ Timeout ไว้ใน gameState — persist ห้องเป็น JSON แล้วพัง (circular) ทั้งช่วงทายคำ
-        // ตัว interval อยู่ใน roomCountdowns แล้ว เวลาหมดใช้ countdownEndsAt
-
-        io.to(roomId).emit('startGame', {});
-        console.log('[startGame] Game started in room:', roomId);
         room.gameState.status = 'in_progress';
-        
-        // Send chat notification
-        sendChatMessageToRoom(io, roomId, 'System', 'เกมเริ่มแล้ว!', '#2ecc71');
+
+        io.to(roomId).emit('countdownUpdate', counter);
+        armInsiderQuestionCountdown(room);
+
+        const master = getInsiderMaster(room.gameState);
+        io.to(roomId).emit('startGame', { masterName: master ? master.name : null, masterId: master ? master.playerId : null });
+        sendChatMessageToRoom(io, roomId, 'System', 'เริ่มจับเวลาถาม–ตอบแล้ว!', '#2ecc71');
     });
 
     // Send message
@@ -10950,6 +10901,16 @@ io.sockets.on('connection', function(socket) {
             if (hasOtherActiveSockets) {
                 console.log(`[Disconnect] Player ${playerId} has other active sockets, skipping cleanup`);
                 socketRoomMap.delete(socket.id);
+                // แท็บที่ปิดเป็นตัวที่ห้องจำไว้ → ย้ายไปแท็บที่ยังเปิดอยู่ ไม่งั้นข้อความส่วนตัว
+                // (บท/คำลับ/ผลโหวต) ส่งไปหา socket ที่ตายแล้ว แท็บที่เหลือไม่ได้รับเลย
+                const room = roomManager.getRoom(roomId);
+                const member = room?.players?.find(p => p.playerId === playerId);
+                if (member && member.socketId === socket.id) {
+                    const others = Array.from(io.sockets.sockets.values())
+                        .filter(s => s.playerId === playerId && s.id !== socket.id && s.connected);
+                    const next = others.find(s => s.roomId === roomId) || others[0];
+                    if (next) roomManager.updatePlayerSocketId(roomId, playerId, next.id);
+                }
                 return;
             }
             
@@ -11062,7 +11023,8 @@ async function flushAndExit(signal) {
     console.log(`[insider] ${signal} received — flushing wallets`);
     try {
         await Promise.race([
-            Promise.all([walletManager.persistNow(), soloStats.persistNow()]),
+            // ห้องด้วย — เดิมเซฟแค่ตามรอบ sweep รีสตาร์ตกลางเกมแล้วกู้ state เก่า (เช่น Insider ยังอยู่ช่วงเปิดคำ)
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), roomManager.flushPersistRooms()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {

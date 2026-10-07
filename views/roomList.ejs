@@ -923,7 +923,7 @@ $(function() {
     const playerId = '<%= player.playerId %>';
     const isSiteAdminViewer = <%= player.isSiteAdmin ? 'true' : 'false' %>;
     const defaultGameModes = [
-        { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 3, maxPlayers: 10 },
+        { id: 'insider', label: 'Insider', description: 'เกมจับจอมบงการและอ่านเกม', minPlayers: 4, maxPlayers: 10 },
         { id: 'blackmarket', label: 'Black Market', description: 'ตลาดมืด 4-7 คน กวาดของเถื่อน เปิดดีล และหักหลัง', minPlayers: 4, maxPlayers: 7 },
         { id: 'werewolf', label: 'Werewolf', description: 'เกมล่าหมาป่าที่มีบทพิเศษ กลางคืนใช้สกิล กลางวันคุยและโหวต · 3–20 คน', minPlayers: 3, maxPlayers: 20 },
         { id: 'spyfall', label: 'Spyfall', description: 'สายลับในสถานที่ 3–8 คน — แต่ละคนมีบทในที่นั้น สายลับไม่รู้ที่ ถามตอบแล้วกล่าวหาจับ', minPlayers: 3, maxPlayers: 8 },
@@ -1927,6 +1927,15 @@ $(function() {
                             <input type="range" id="roundTime" class="room-slider" min="1" max="10" value="5">
                         </div>
                     </div>
+
+                    <div class="room-form-group" id="insiderRulesGroup" role="group" aria-labelledby="insiderRulesLabel">
+                        <div class="room-form-label" id="insiderRulesLabel"><span class="icon">🗳️</span> การโหวต:</div>
+                        <label style="display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); cursor:pointer; color:#ddd;">
+                            <input type="checkbox" id="insiderGuesserVote" checked style="accent-color:#c084fc; width:20px; height:20px;">
+                            <span>โหวตก่อนว่า “คนทายถูก” คือจอมบงการไหม (กติกาจริง)</span>
+                        </label>
+                        <div style="margin-top:8px; color:#aaa; font-size:0.85em;">ทายถูกแล้วคุยเท่าเวลาที่ใช้ถาม · ไม่ถึงครึ่ง = ชี้ตัวจอมบงการ · เสมอ = คนทายถูกตัดสิน</div>
+                    </div>
                     
                     <div class="room-form-group">
                         <label class="room-form-label">
@@ -2143,10 +2152,11 @@ $(function() {
                     if (selectedMode === 'coup') createRoundTimeGroup.style.display = 'none';
                     if (document.getElementById('coupSettingsGroup')) document.getElementById('coupSettingsGroup').style.display = selectedMode === 'coup' ? 'block' : 'none';
                     if (document.getElementById('setthiSettingsGroup')) document.getElementById('setthiSettingsGroup').style.display = selectedMode === 'setthi' ? 'block' : 'none';
+                    if (document.getElementById('insiderRulesGroup')) document.getElementById('insiderRulesGroup').style.display = selectedMode === 'insider' ? 'block' : 'none';
                     roundTimeLabelText.textContent = selectedMode === 'blackmarket'
                         ? 'เวลาเดินเกมต่อยก:'
                         : (selectedMode === 'coup' || selectedMode === 'liar' || selectedMode === 'poker5' || selectedMode === 'poker4' ? 'เวลาคิดต่อตา:'
-                            : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : 'เวลาเล่นต่อรอบ:'));
+                            : (isWerewolfMode ? 'เวลาต่อช่วงกลางวัน/กลางคืน:' : (selectedMode === 'insider' ? 'เวลาถาม–ตอบ (กติกาจริง 5 นาที):' : 'เวลาเล่นต่อรอบ:')));
 
                     const sliderMin = Number(modeConfig.minPlayers || 3);
                     const sliderMax = Number(modeConfig.maxPlayers || 10);
@@ -2328,7 +2338,8 @@ $(function() {
                     colorcardsStacking: gameMode === 'colorcards' && !!(document.getElementById('colorcardsStacking') || {}).checked,
                     setthiMinutes: gameMode === 'setthi' ? Number((document.getElementById('setthiMinutes') || {}).value || 30) : undefined,
                     coupActionSeconds: gameMode === 'coup' ? Number((document.getElementById('coupActionSeconds') || {}).value || 60) : undefined,
-                    colorcardsMulti: gameMode === 'colorcards' ? !!(document.getElementById('colorcardsMulti') || { checked: true }).checked : undefined
+                    colorcardsMulti: gameMode === 'colorcards' ? !!(document.getElementById('colorcardsMulti') || { checked: true }).checked : undefined,
+                    insiderGuesserVote: gameMode === 'insider' ? !!(document.getElementById('insiderGuesserVote') || { checked: true }).checked : undefined
                 };
             }
             }).then((result) => {

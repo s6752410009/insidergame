@@ -3,6 +3,7 @@
  *
  * - /m (admin_request_word_roles): หัวห้องธรรมดาโดนปฏิเสธ · site admin ได้
  * - wordFound ก่อนเปิดคำ = ไม่มีผล · หลังจบเกม replay ไม่ได้ · สถิติบันทึกครั้งเดียว
+ * - ทายถูก → คุย → โหวตรอบ 1 (คนทายถูกคือจอมบงการไหม) → ชี้ตัว (ผู้ดำเนินเกมโหวตด้วย)
  * - หมดเวลาคุยโดยยังทายคำไม่ได้ = ทุกคนแพ้ (สถิติแพ้ทุกคน)
  * - Spyfall: สายลับทายสถานที่ผิด = แพ้ทันที (บันทึกสถิติ)
  *
@@ -152,17 +153,36 @@ async function testInsiderFlow(adminId) {
     await waitFor(host, 'revealWord');
     host.socket.emit('startGame');
     await waitFor(host, 'startGame');
+    // ทายถูกต้องบอกว่าใครทาย — ผู้ดำเนินเกมเป็นคนทายเองไม่ได้
     mark = Date.now();
-    host.socket.emit('wordFound');
-    const vote = await waitFor(host, 'displayVote2', null, 5000, mark);
-    const expected = Math.max(1, vote.numTraitors || 0);
+    host.socket.emit('wordFound', { guesserId: gmClient.playerId });
+    await waitFor(host, 'notAuthorized', null, 5000, mark);
+    const guesserClient = clients.find(c => roles.get(c.playerId).role !== GM && !roles.get(c.playerId).isGhost);
+    mark = Date.now();
+    host.socket.emit('wordFound', { guesserId: guesserClient.playerId });
+    const disc = await waitFor(host, 'insiderDiscussion', null, 5000, mark);
+    assert(disc.guesserId === guesserClient.playerId && disc.word, 'discussion should name the guesser and reveal the word: ' + JSON.stringify(disc));
+    assert(disc.endsAt - Date.now() >= 25000, 'discussion should last ≥30 s (time used, floor 30 s)');
+    host.socket.emit('insiderEndDiscussion');
+    const v1 = await waitFor(host, 'displayVote1', null, 5000, mark);
+    assert(v1.guesserId === guesserClient.playerId, 'vote1 should be about the guesser');
+    // คนทายถูกโหวตรอบ 1 ไม่ได้
+    const gMark = Date.now();
+    guesserClient.socket.emit('vote1', { vote: 'yes' });
+    await waitFor(guesserClient, 'voteError', e => e && e.phase === 'vote1', 5000, gMark);
     for (const c of clients) {
-        const r = roles.get(c.playerId);
-        if (r.role === GM || r.isGhost) continue;
-        const me = vote.players.find(p => p.playerId === c.playerId);
-        const choices = vote.players.filter(p => p.playerId !== c.playerId).slice(0, expected).map(p => p.playerId);
-        const name = me ? me.name : null;
-        c.socket.emit('vote2', { player: name, votes: choices });
+        if (c === guesserClient || roles.get(c.playerId).isGhost) continue;
+        c.socket.emit('vote1', { vote: 'no' });
+    }
+    await waitFor(host, 'vote1Ended', null, 10000, mark);
+    const vote = await waitFor(host, 'displayVote2', null, 5000, mark);
+    assert(!vote.players.some(p => p.playerId === gmClient.playerId), 'the Master is not a suspect');
+    const expected = Math.max(1, vote.numTraitors || 0);
+    // ทุกคนชี้คนเดียวกัน (รวมผู้ดำเนินเกม) → ไม่เสมอ
+    const targets = vote.players.slice(0, expected).map(p => p.playerId);
+    for (const c of clients) {
+        if (roles.get(c.playerId).isGhost) continue;
+        c.socket.emit('vote2', expected === 1 ? { vote: targets[0] } : { votes: targets });
     }
     const ended = await waitFor(host, 'vote2Ended', null, 20000, mark);
     assert(typeof ended.hasWon === 'boolean', 'vote2Ended missing result');
@@ -173,11 +193,12 @@ async function testInsiderFlow(adminId) {
 
     // replay หลังจบ → ต้องไม่เปิดโหวตใหม่ และไม่บันทึกซ้ำ
     mark = Date.now();
-    host.socket.emit('wordFound');
+    host.socket.emit('wordFound', { guesserId: guesserClient.playerId });
     host.socket.emit('displayVote2');
+    host.socket.emit('insiderEndDiscussion');
     host.socket.emit('startGame');
     await delay(1500);
-    assert(!seen(host, 'displayVote2', mark), 'wordFound after end must not reopen the vote');
+    assert(!seen(host, 'displayVote2', mark) && !seen(host, 'insiderDiscussion', mark) && !seen(host, 'displayVote1', mark), 'wordFound after end must not reopen the vote');
     assert(!seen(host, 'vote2Ended', mark), 'no second result after end');
     const statsReplay = readStats();
     clients.forEach(c => assert(statsReplay[c.playerId].modeStats.insider.games === 1, 'stats must not double-record'));
@@ -187,7 +208,7 @@ async function testInsiderFlow(adminId) {
 }
 
 async function testInsiderTimeout() {
-    const clients = [await makeClient(), await makeClient(), await makeClient()];
+    const clients = [await makeClient(), await makeClient(), await makeClient(), await makeClient()];
     const [host] = clients;
     // roundTime เป็นนาที: 0.05 นาที = 3 วินาที
     const roomId = await setupRoom(clients, { name: `RulesTimeout ${Date.now()}`, gameMode: 'insider', roundTime: 0.05 });
@@ -254,15 +275,16 @@ async function testResetBlockedDuringVote() {
     host.socket.emit('startGame');
     await waitFor(host, 'startGame');
     let mark = Date.now();
-    host.socket.emit('wordFound');
-    await waitFor(host, 'displayVote2', null, 5000, mark);
+    const guesser = clients.find(c => roles.get(c.playerId).role !== GM);
+    host.socket.emit('wordFound', { guesserId: guesser.playerId });
+    await waitFor(host, 'insiderDiscussion', null, 5000, mark);
     await delay(2200); // พ้น cooldown ของ resetGame
     mark = Date.now();
     host.socket.emit('resetGame');
     await waitFor(host, 'notAuthorized', null, 5000, mark);
     await delay(800);
     assert(!seen(host, 'newRole', mark), 'host must not reshuffle roles in the middle of the vote');
-    console.log('7. host cannot reset the round during the vote ✓');
+    console.log('7. host cannot reset the round after the word is guessed ✓');
     clients.forEach(c => c.socket.close());
 }
 
@@ -288,12 +310,31 @@ async function testMasterLeavesCancelsRound() {
     clients.forEach(c => c.socket.close());
 }
 
+async function testInsiderNeedsFourPlayers() {
+    const clients = [await makeClient(), await makeClient(), await makeClient()];
+    const [host, ...others] = clients;
+    await delay(300);
+    const created = await emitAck(host.socket, 'createRoom', { playerId: host.playerId, maxPlayers: 8, name: `Rules3 ${Date.now()}`, gameMode: 'insider', roundTime: 5 });
+    assert(created?.success, 'createRoom failed');
+    host.socket.emit('setRoom', { roomId: created.roomId, playerId: host.playerId });
+    for (const c of others) {
+        await emitAck(c.socket, 'joinRoom', { roomId: created.roomId, playerId: c.playerId });
+        c.socket.emit('setRoom', { roomId: created.roomId, playerId: c.playerId });
+    }
+    await delay(600);
+    const started = await emitAck(host.socket, 'startGameFromLobby', { roomId: created.roomId });
+    assert(started && started.success === false && /4/.test(started.error || ''), '3 players must not start Insider: ' + JSON.stringify(started));
+    console.log('0. Insider needs 4 players (3 rejected) ✓');
+    clients.forEach(c => c.socket.close());
+}
+
 async function main() {
     // ต้อง seed site admin ก่อนบูต (server โหลด players.json ตอนเริ่ม)
     const adminId = randomUUID();
     seedSiteAdmin(adminId);
     const server = await bootServer();
     try {
+        await testInsiderNeedsFourPlayers();
         await testInsiderFlow(adminId);
         await testInsiderTimeout();
         await testResetBlockedDuringVote();
