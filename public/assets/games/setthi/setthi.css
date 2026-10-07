@@ -930,6 +930,25 @@ html.st-active {
 .st-rank-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .st-rank-name small { display: block; color: var(--st-muted); font-weight: 500; font-size: 0.76rem; }
 .st-rank-worth { font-family: var(--st-display); font-weight: 700; white-space: nowrap; }
+.st-end-gold { margin: 2px 0 4px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(160deg, oklch(0.36 0.07 80 / 0.55), oklch(0.24 0.035 258 / 0.9)); border: 1px solid oklch(0.85 0.12 82 / 0.55); text-align: left; }
+.st-end-gold-top { display: flex; align-items: center; gap: 10px; }
+.st-end-gold-coin { font-size: 1.9rem; line-height: 1; }
+.st-end-gold.is-play .st-end-gold-coin { animation: st-gold-spin 0.9s var(--st-pop) 0.4s both; }
+@keyframes st-gold-spin { from { transform: rotateY(0) scale(0.4); opacity: 0; } to { transform: rotateY(720deg) scale(1); opacity: 1; } }
+.st-end-gold-n { flex: 1; font: 700 2rem/1 var(--st-display); color: var(--st-gold); font-variant-numeric: tabular-nums; }
+.st-end-gold.is-done .st-end-gold-n { animation: st-gold-pop 0.45s var(--st-pop); }
+@keyframes st-gold-pop { 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.st-end-gold-shop { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 12px; background: var(--st-gold); color: var(--st-gold-ink); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.st-end-gold-shop:hover { text-decoration: none; color: var(--st-gold-ink); }
+.st-end-gold-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font-size: 0.88rem; }
+.st-end-gold-list li { display: flex; justify-content: space-between; gap: 10px; color: var(--st-text); }
+.st-end-gold-list b { font-family: var(--st-display); color: var(--st-gold); white-space: nowrap; }
+.st-end-gold-list b.is-minus { color: var(--st-muted); }
+.st-end-gold.is-play .st-end-gold-list li { animation: st-gold-line 0.35s var(--st-ease) both; animation-delay: calc(0.65s + var(--k) * 0.16s); }
+@keyframes st-gold-line { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.st-end-gold-why { margin-top: 6px; font-size: 0.8rem; color: var(--st-muted); }
+.st-end-gold-bal { margin-top: 6px; font-size: 0.8rem; color: var(--st-muted); text-align: right; }
+@media (prefers-reduced-motion: reduce) { .st-end-gold * { animation: none !important; } }
 .st-end-btns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .st-end-note { font-size: 0.78rem; color: var(--st-muted); }
 

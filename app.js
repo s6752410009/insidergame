@@ -4815,6 +4815,8 @@ app.use(function(req, res, next) {
                     const gameStatus = room.gameState.status;
                     
                     // ถ้าเกมกำลังดำเนินอยู่ (ไม่ใช่ '' หรือ 'waiting') ให้ดึงกลับ
+                    // เศรษฐีจบแล้ว (หน้าจบเกมกด 🏪 ร้าน) = ให้เข้าร้านได้ ไม่ดึงกลับ
+                    if (req.path === '/setthi/shop' && room.gameState.phase === 'finished') break;
                     if (gameStatus && gameStatus !== '' && gameStatus !== 'waiting' && gameStatus !== 'ended') {
                         // ดึงกลับไปหน้าเกม
                         return res.redirect('/game/' + room.roomId);

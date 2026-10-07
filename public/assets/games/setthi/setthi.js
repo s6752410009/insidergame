@@ -1432,6 +1432,7 @@
     paintDebug();
     syncSheets();
     if (S.phase === 'finished' && !running && !endShown) showEnd(false, true);
+    else if (S.phase === 'finished' && endShown && S.reward && el.end.classList.contains('is-on') && !document.getElementById('stEndGold')) showEnd(false, true);
   }
 
   function renderStrip() {
@@ -2062,12 +2063,14 @@
       (mono ? '<div class="st-end-mono" data-wintype="' + esc(S.winType || '') + '">' + esc(mono) + '</div>' : '') +
       '<h2 class="st-end-title">' + esc(title) + '</h2>' +
       '<p class="st-end-reason">' + esc(S.finishReason || '') + '</p>' +
+      goldHtml(S.reward) +
       '<div class="st-podium">' + pod + '</div>' +
       '<div class="st-ranks">' + list + '</div>' +
       '<div class="st-end-btns">' + btn('stEndBack', 'เล่นอีกตา', { primary: true }) + btn('stEndShare', 'แชร์ผล') + btn('stEndExit', '🚪 ออก') + '</div>' +
       btn('stEndClose', 'ดูกระดาน', {}) +
       '<div class="st-end-note" id="stEndNote">เงินในเกม ไม่มีมูลค่าจริง</div></div>';
     el.end.classList.add('is-on');
+    playGold(S.reward, celebrate);
     if (celebrate && !reduceMotion) {
       sfx.fanfare();
       el.end.querySelectorAll('.st-pod-block').forEach(function(b, k) { b.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1.06)', offset: 0.8 }, { transform: 'scaleY(1)' }], { duration: 700, delay: [200, 500, 0][k], easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }); });
@@ -2075,6 +2078,51 @@
       confetti(80);
     }
   }
+  // ---------- 🪙 รางวัลจบเกม ----------
+  function goldHtml(r) {
+    if (!r) return '';
+    var why = r.reason === 'debug' ? '🛠 ใช้เมนูทดสอบ — เกมนี้ไม่ได้เหรียญ'
+      : r.reason === 'short' ? 'เกมสั้นไป (ไม่ถึงรอบ 3) — ไม่ได้เหรียญ'
+      : r.capped ? (r.total ? 'ถึงเพดานวันนี้ ได้บางส่วน' : 'ถึงเพดานวันนี้แล้ว — พรุ่งนี้มาใหม่') : '';
+    var lines = (r.parts || []).map(function(p, k) {
+      return '<li style="--k:' + k + '"><span>' + esc(p.label) + '</span><b class="' + (p.amount < 0 ? 'is-minus' : '') + '">' + (p.amount < 0 ? '−' : '+') + Math.abs(p.amount).toLocaleString('en-US') + '</b></li>';
+    }).join('');
+    return '<div class="st-end-gold" id="stEndGold" data-total="' + (r.total || 0) + '">' +
+      '<div class="st-end-gold-top"><span class="st-end-gold-coin" aria-hidden="true">🪙</span><b class="st-end-gold-n" id="stEndGoldN" aria-label="ได้เหรียญทอง ' + (r.total || 0) + '">+' + (r.total || 0).toLocaleString('en-US') + '</b>' +
+      '<a class="st-end-gold-shop" href="/setthi/shop' + (roomId ? '?room=' + encodeURIComponent(roomId) : '') + '">🏪 ร้าน</a></div>' +
+      (lines ? '<ul class="st-end-gold-list">' + lines + '</ul>' : '') +
+      (r.capped && r.requested > r.total ? '<div class="st-end-gold-why">ควรได้ +' + r.requested + ' · ' + esc(why) + '</div>' : why ? '<div class="st-end-gold-why">' + esc(why) + '</div>' : '') +
+      (typeof r.gold === 'number' ? '<div class="st-end-gold-bal">ยอดรวม 🪙 ' + r.gold.toLocaleString('en-US') + '</div>' : '') +
+      '</div>';
+  }
+  function playGold(r, celebrate) {
+    var box = document.getElementById('stEndGold');
+    if (!box || !r) return;
+    var node = document.getElementById('stEndGoldN');
+    var total = r.total || 0;
+    if (!celebrate || reduceMotion || !total) { box.classList.add('is-done'); return; }
+    box.classList.add('is-play');
+    node.textContent = '+0';
+    var t0 = null;
+    var delayMs = 650 + (r.parts || []).length * 160;
+    setTimeout(function() {
+      requestAnimationFrame(function step(t) {
+        if (t0 === null) t0 = t;
+        var k = Math.min(1, (t - t0) / 900);
+        var e = 1 - Math.pow(1 - k, 3);
+        node.textContent = '+' + Math.round(total * e).toLocaleString('en-US');
+        if (k < 1) requestAnimationFrame(step);
+        else {
+          box.classList.add('is-done');
+          sfx.coin();
+          var at = centerOf(node);
+          burst(at, ['#f5c86b', '#fff3c4', '#d9a441'], 18, 70);
+        }
+      });
+    }, delayMs);
+    (r.parts || []).forEach(function(p, k) { setTimeout(function() { if (p.amount > 0) sfx.tick(); }, 650 + k * 160); });
+  }
+
   function confetti(n) {
     if (reduceMotion) return;
     var layer = document.createElement('div');
