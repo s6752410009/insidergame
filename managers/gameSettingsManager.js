@@ -21,7 +21,8 @@ const DEFAULT_SETTINGS = {
         insider: {
             defaultMaxPlayers: 8,
             defaultRoundTimeMinutes: 5,
-            traitorOptional: true,
+            // กล่องจริงมีจอมบงการทุกรอบ — "บางรอบไม่มีจอมบงการ" เป็นกติกาเสริม (rules/insider/rules.md)
+            traitorOptional: false,
             dualTraitorDefault: false
         },
         werewolf: {
@@ -245,7 +246,7 @@ function getModeDefaults(modeId) {
         defaultVoteTimeMinutes: stored.defaultVoteTimeMinutes != null
             ? Number(stored.defaultVoteTimeMinutes)
             : 1.5,
-        traitorOptional: stored.traitorOptional !== false,
+        traitorOptional: stored.traitorOptional === true,
         dualTraitorDefault: !!stored.dualTraitorDefault
     };
 }

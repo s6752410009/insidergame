@@ -1551,12 +1551,12 @@
     let isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
     const currentModeMeta = {
       insider: {
-        minPlayers: 3,
+        minPlayers: 4,
         maxPlayers: 10,
         label: 'Insider',
         startLabel: '🎮 เริ่มเกม',
         readyText: 'พร้อมแล้ว! กดเริ่มเกมได้เลยเมื่อทุกคนพร้อม',
-        waitingText: 'รอผู้เล่นครบอย่างน้อย 3 คนก่อนเริ่มเกม',
+        waitingText: 'รอผู้เล่นครบอย่างน้อย 4 คนก่อนเริ่มเกม',
         roundLabel: 'เวลาเล่นต่อรอบ:'
       },
       werewolf: {
@@ -2304,6 +2304,29 @@
             '<button type="button" class="uc-mw-toggle" id="wwLobbyDeadRoles" aria-pressed="' + (wwDeadRoles ? 'true' : 'false') + '"' + wwDis + '>' + (wwDeadRoles ? '✓ ' : '') + '👻 คนตายเห็นบททุกคน: ' + (wwDeadRoles ? 'เปิด' : 'ปิด') + '</button>',
             '</div>',
             '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.82em; line-height:1.45;">ถ้าเล่นต่อหน้ากัน คนที่ตายแล้วห้ามบอกใครเด็ดขาด' + (isAdmin ? '' : ' · หัวห้องเป็นคนตั้งค่า') + '</p>'
+          ].join('');
+        } else if (resolvedMode === 'insider') {
+          // กติกาจริง (Oink): ถาม–ตอบ 5 นาที · ทายถูกแล้วคุย · โหวตคนทายถูกก่อน แล้วชี้ตัว
+          const insMinutes = Math.round((Number(settings && settings.roundTime) || 300) / 60);
+          const insGuesserVote = !(settings && settings.insiderGuesserVote === false);
+          const insGhost = !!(settings && settings.traitorOptional === true);
+          const insDis = isAdmin ? '' : ' disabled';
+          const insOptions = [3, 4, 5, 6, 8, 10];
+          if (insOptions.indexOf(insMinutes) === -1) insOptions.push(insMinutes);
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = [
+            '<div class="lobby-spotlight-pill" style="background:rgba(155,89,182,0.22); color:#e9d5ff;">🎯 Insider · 4–10 คน</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.88em; line-height:1.45;">',
+            'ถามผู้ดำเนินเกมแบบ ใช่/ไม่ใช่ ทายคำลับ · ทายถูกแล้วคุยเท่าเวลาที่ใช้ถาม · โหวตจับจอมบงการ',
+            '</p>',
+            '<div class="cc-lobby-opts" id="insLobbyOpts">',
+            '<select id="insLobbyMinutes" aria-label="เวลาถามตอบ"' + insDis + '>',
+            insOptions.sort(function(a, b) { return a - b; }).map(function(v) { return '<option value="' + v + '"' + (v === insMinutes ? ' selected' : '') + '>⏱️ ถาม–ตอบ ' + v + ' นาที' + (v === 5 ? ' (กติกาจริง)' : '') + '</option>'; }).join(''),
+            '</select>',
+            '<button type="button" class="uc-mw-toggle" id="insLobbyGuesserVote" aria-pressed="' + (insGuesserVote ? 'true' : 'false') + '"' + insDis + '>' + (insGuesserVote ? '✓ ' : '') + '🗳️ โหวตคนทายถูกก่อน: ' + (insGuesserVote ? 'เปิด' : 'ปิด') + '</button>',
+            '<button type="button" class="uc-mw-toggle" id="insLobbyGhost" aria-pressed="' + (insGhost ? 'true' : 'false') + '"' + insDis + '>' + (insGhost ? '✓ ' : '') + '👻 บางรอบไม่มีจอมบงการ: ' + (insGhost ? 'เปิด' : 'ปิด') + '</button>',
+            '</div>',
+            '<p style="margin:8px 0 0; color:#cbd5e1; font-size:0.82em; line-height:1.45;">ค่าเริ่มต้น = กติกาจริง' + (isAdmin ? '' : ' · หัวห้องเป็นคนตั้งค่า') + '</p>'
           ].join('');
         } else {
           lobbySpotlight.style.display = 'none';
@@ -3448,6 +3471,15 @@
         }
       });
     }
+    $(document).on('change', '#insLobbyMinutes', function() { updateColorCardsSetting({ roundTime: Number(this.value) }); });
+    $(document).on('click', '#insLobbyGuesserVote', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ insiderGuesserVote: this.getAttribute('aria-pressed') !== 'true' });
+    });
+    $(document).on('click', '#insLobbyGhost', function() {
+      this.disabled = true;
+      updateColorCardsSetting({ traitorOptional: this.getAttribute('aria-pressed') !== 'true' });
+    });
     $(document).on('change', '#wwLobbyNight', function() { updateColorCardsSetting({ werewolfNightSeconds: Number(this.value) }); });
     $(document).on('change', '#wwLobbyDay', function() { updateColorCardsSetting({ werewolfDaySeconds: Number(this.value) }); });
     $(document).on('change', '#wwLobbyVote', function() { updateColorCardsSetting({ werewolfVoteSeconds: Number(this.value) }); });

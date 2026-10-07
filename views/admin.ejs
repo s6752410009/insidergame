@@ -4243,8 +4243,8 @@ $(function() {
             if (mode.id === 'insider') {
                 extraFields += `
                     <label style="display:flex; align-items:center; gap:8px; color:#ddd; font-size:0.9em; margin-bottom:8px; cursor:pointer;">
-                        <input type="checkbox" class="mode-traitor-optional" data-mode="insider" ${modeStored.traitorOptional !== false ? 'checked' : ''}>
-                        จอมบงการไม่บังคับ
+                        <input type="checkbox" class="mode-traitor-optional" data-mode="insider" ${modeStored.traitorOptional === true ? 'checked' : ''}>
+                        จอมบงการไม่บังคับ (บางรอบไม่มีจอมบงการ · กติกาจริงปิด)
                     </label>
                     <label style="display:flex; align-items:center; gap:8px; color:#ddd; font-size:0.9em; cursor:pointer;">
                         <input type="checkbox" class="mode-dual-traitor" data-mode="insider" ${modeStored.dualTraitorDefault ? 'checked' : ''}>
