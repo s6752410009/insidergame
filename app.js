@@ -8315,7 +8315,7 @@ io.sockets.on('connection', function(socket) {
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
             const botNames = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทแก้วตา'];
-            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦉'];
+            const botAvatars = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄'];
             const botColors = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#16a085'];
 
             liarBotAddInFlight.add(room.roomId);
