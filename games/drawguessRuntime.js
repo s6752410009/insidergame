@@ -43,6 +43,7 @@ module.exports = function createDrawGuessRuntime(getDeps) {
         try {
             if (engine.tick(room, Date.now())) emitRoomState(room);
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(roomId, '[drawguess] tick failed', error);
             console.error('[drawguess] tick failed:', error.message);
         }
     }
@@ -119,6 +120,7 @@ module.exports = function createDrawGuessRuntime(getDeps) {
                     rounds: state.settings?.rounds || 0
                 });
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(roomId, '[drawguess] record stats failed', error);
                 console.error('[drawguess] record stats failed:', error.message);
             }
         }

@@ -64,6 +64,7 @@ module.exports = function createPokDengRuntime(getDeps) {
                 engine.autoResolvePhase(current);
                 emitRoomState(current);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[pokdeng] auto resolve failed', error);
                 console.error('[pokdeng] auto resolve failed:', error.message);
             }
         }, delay);
@@ -82,6 +83,7 @@ module.exports = function createPokDengRuntime(getDeps) {
             try {
                 if (engine.playBotTurns(current)) emitRoomState(current);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[pokdeng] bots failed', error);
                 console.error('[pokdeng] bots failed:', error.message);
             }
         }, base + Math.floor(Math.random() * 600));

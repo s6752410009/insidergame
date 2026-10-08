@@ -44,6 +44,7 @@ module.exports = function createWavelengthRuntime(getDeps) {
                 engine.autoResolvePhase(current);
                 emitRoomState(current);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[wavelength] auto resolve failed', error);
                 console.error('[wavelength] auto resolve failed:', error.message);
             }
         }, delay);
@@ -117,6 +118,7 @@ module.exports = function createWavelengthRuntime(getDeps) {
                 rounds: state.round
             });
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[wavelength] record stats failed', error);
             console.error('[wavelength] record stats failed:', error.message);
         }
         clearTimers(room.roomId);
@@ -139,6 +141,7 @@ module.exports = function createWavelengthRuntime(getDeps) {
         try {
             engine.refreshPresence(room);
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[wavelength] presence failed', error);
             console.error('[wavelength] presence failed:', error.message);
         }
         emitRoomState(room);

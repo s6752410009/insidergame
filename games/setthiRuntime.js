@@ -90,6 +90,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             if (engine.tick(live)) emitRoomState(live);
             else syncPhaseTimer(live);
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(roomId, '[setthi] tick failed', error);
             console.error('[setthi] tick failed:', error.message);
         }
     }
@@ -135,6 +136,7 @@ module.exports = function createSetthiRuntime(getDeps) {
                 if (engine.playBotTurns(live)) emitRoomState(live);
                 else scheduleBots(live);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[setthi] bots failed', error);
                 console.error('[setthi] bots failed:', error.message);
                 // บอทพัง (ไม่ควรเกิด) — ปล่อยให้ autopilot ตามเวลาพาเกมเดินต่อ
                 syncPhaseTimer(live);
@@ -245,6 +247,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             // เซฟทันที (ไม่รอหน่วง) — รางวัลกับเครื่องหมายกันซ้ำอยู่แถวเดียวกัน
             if (typeof setthiGold.persistNow === 'function') setthiGold.persistNow();
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[setthi] gold award failed', error);
             console.error('[setthi] gold award failed:', error.message);
         }
     }
@@ -270,6 +273,7 @@ module.exports = function createSetthiRuntime(getDeps) {
                 return;
             }
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[setthi] recover failed', error);
             console.error('[setthi] recover failed:', error.message);
         }
         syncPhaseTimer(room);
@@ -284,6 +288,7 @@ module.exports = function createSetthiRuntime(getDeps) {
             room.gameState.phaseEndsAt = Date.now() - 1;
             engine.tick(room);
         } catch (error) {
+            if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[setthi] forceResolve failed', error);
             console.error('[setthi] forceResolve failed:', error.message);
         }
         emitRoomState(room);

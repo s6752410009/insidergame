@@ -3946,6 +3946,16 @@ $(function() {
     const LOG_META_LABELS = { playerId: 'ผู้เล่น', playerCount: 'จำนวนคน', round: 'ยกที่', amount: 'จำนวน', enabled: 'เปิด', kind: 'ชนิด', event: 'event', players: 'ผู้เล่น', humans: 'คน', bots: 'บอท', settings: 'ตั้งค่า', reason: 'เหตุผล', winner: 'ผู้ชนะ' };
     const LOG_KEY_EVENTS = new Set(['game_start', 'game_end', 'game_abort', 'game_start_failed', 'table_end', 'player_left_midgame', 'player_kicked']);
     const LOG_PAGE = 200;
+    // ป้ายเกมที่เรียนจาก log จริง (รวมเกมเดี่ยว solo_* ที่ไม่มีใน ROOM_MODE_LABELS)
+    const logModeLabels = new Map();
+    function learnLogModeLabels(list) {
+        (list || []).forEach(log => {
+            if (log && log.gameMode && log.gameModeLabel && !logModeLabels.has(log.gameMode)) logModeLabels.set(log.gameMode, log.gameModeLabel);
+        });
+    }
+    function logModeOptionLabel(mode) {
+        return ROOM_MODE_LABELS[mode] || logModeLabels.get(mode) || mode;
+    }
     const logView = {
         cat: readLogPref('adminLogCat', 'important'),
         mode: 'all',
@@ -4035,7 +4045,7 @@ $(function() {
         if (logView.mode !== 'all') modes.add(logView.mode);
         const options = ['<option value="all">ทุกเกม</option>']
             .concat(Array.from(modes)
-                .map(mode => [mode, formatRoomModeLabel(mode)])
+                .map(mode => [mode, logModeOptionLabel(mode)])
                 .sort((x, y) => x[1].localeCompare(y[1], 'th'))
                 .map(([mode, label]) => `<option value="${escapeHtml(mode)}">${escapeHtml(label)}</option>`));
         const $select = $('#lgMode');
@@ -4166,6 +4176,7 @@ $(function() {
                 return;
             }
             logView.loaded = true;
+            learnLogModeLabels(response.logs);
             setLogItems(response.logs || [], !reset);
             logView.counts = response.counts || logView.counts;
             logView.modes = response.modes || logView.modes;
@@ -4185,7 +4196,9 @@ $(function() {
     // log ใหม่: ถ้ากำลังเลื่อนอ่านอยู่หรือกดหยุดไว้ ไม่ดึงหน้าจอกลับขึ้นบน — โชว์ปุ่ม "มีรายการใหม่" แทน
     let logRenderQueued = false;
     socket.on('adminLog', function(logEntry) {
-        if (!logEntry || !logView.loaded || !logInScope(logEntry)) return;
+        if (!logEntry || !logView.loaded) return;
+        learnLogModeLabels([logEntry]);
+        if (!logInScope(logEntry)) return;
         if (logView.counts) {
             LOG_CATS.forEach(cat => {
                 if (logMatchesCat(logEntry, cat.id)) logView.counts[cat.id] = Number(logView.counts[cat.id] || 0) + 1;

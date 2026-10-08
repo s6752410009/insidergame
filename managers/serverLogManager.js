@@ -95,11 +95,13 @@ function classify(entry) {
     else if (entry.category === 'admin') bucket = 'admin';
     else if (entry.category === 'system') bucket = 'system';
     else if (entry.category === 'join' || entry.category === 'leave') bucket = 'room';
-    else if (entry.category === 'game' && (KEY_EVENTS.has(event) || (entry.meta && entry.meta.kind === 'winner'))) bucket = 'game';
+    // บรรทัด "ผู้ชนะ" ใน history ของแต่ละเกมซ้ำกับ game_end อยู่แล้ว — ให้เป็น detail
+    else if (entry.category === 'game' && KEY_EVENTS.has(event)) bucket = 'game';
     else bucket = 'detail';
     const important = bucket === 'error' || bucket === 'admin' || bucket === 'system' || bucket === 'game'
         || KEY_EVENTS.has(event);
-    return { bucket, important: important && !(bot && bucket === 'detail'), bot };
+    // บอทเดิน/บอทออกห้อง ไม่ใช่เรื่องที่แอดมินต้องดู
+    return { bucket, important: important && !(bot && (bucket === 'detail' || bucket === 'room')), bot };
 }
 
 /** แปลงอะไรก็ได้ที่หน้าตาเป็น log ให้เป็นรูปแบบมาตรฐาน (ใช้ทั้งตอนเขียนใหม่และตอนโหลดไฟล์/DB) */
