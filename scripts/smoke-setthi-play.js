@@ -493,11 +493,25 @@ async function scenarioB(base) {
     const H2 = await makeClient(base, 'B-two');
     const H3 = await makeClient(base, 'B-three');
     await delay(300);
+    // B0: ห้องตั้งไว้ 4 ที่ แต่เกมรับได้ 6 → หัวห้องกดเพิ่มบอท ห้องขยายให้เอง จนเต็มขีดของเกม (6)
+    {
+        const solo = await makeClient(base, 'B0-solo');
+        await delay(200);
+        const soloRoom = await createRoom(solo, { name: 'เศรษฐีคนเดียว', settings: { setthiMinutes: 0, maxPlayers: 4 } });
+        const fill = await ack(solo.socket, 'setthi_addBots', { roomId: soloRoom, count: 5 });
+        assert(fill.success && fill.added === 3, 'ห้องยังว่าง → เติมถึงที่ตั้งไว้ 4 ที่ก่อน: ' + JSON.stringify(fill));
+        for (const n of [5, 6]) {
+            const more = await ack(solo.socket, 'setthi_addBots', { roomId: soloRoom, count: 1 });
+            assert(more.success && more.added === 1, `ห้องเต็ม 4 แล้วกดเพิ่มบอท → ขยายเป็น ${n} ที่: ` + JSON.stringify(more));
+        }
+        const over = await ack(solo.socket, 'setthi_addBots', { roomId: soloRoom, count: 1 });
+        assert(!over.success || over.added === 0, 'เกินขีดเกม 6 คน เพิ่มไม่ได้');
+        await ack(solo.socket, 'leaveRoom', { roomId: soloRoom });
+        solo.socket.close();
+    }
     let roomId = await createRoom(H1, { name: 'วงเศรษฐี B', settings: { setthiMinutes: 0, maxPlayers: 4 } });
     await joinAll(roomId, [H2, H3]);
     assert((await ack(H1.socket, 'setthi_addBots', { roomId, count: 1 })).success, 'เพิ่มบอท');
-    let r = await ack(H1.socket, 'setthi_addBots', { roomId, count: 3 });
-    assert(r.success && r.added === 0 || !r.success, 'ห้องเต็ม 4 คน');
     await start(H1, [H1, H2, H3], roomId);
     assert(last(H1).seats.length === 4, '4 ที่นั่ง');
     await drive([H1, H2, H3], { act: true, timeoutMs: 60000, stop: (S, st) => st.actions >= 8 && S.phase === 'roll' && S.history.some(h => /^บอท/.test(h.text)) });

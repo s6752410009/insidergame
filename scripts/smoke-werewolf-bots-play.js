@@ -211,11 +211,12 @@ async function runHumanGame(base, label) {
             assert(!denied.success && /หัวหน้าห้อง/.test(denied.error), 'คนที่ไม่ใช่หัวห้องต้องเติมบอทไม่ได้');
             const many = await ack(host.socket, 'werewolf_addBots', { roomId, count: 30 });
             assert(many.success && many.added === 6, 'เติมได้จนเต็มห้อง 8 ที่: ' + JSON.stringify(many));
-            const full = await ack(host.socket, 'werewolf_addBots', { roomId, count: 1 });
-            assert(!full.success && /เต็ม/.test(full.error), 'ห้องเต็มต้องเติมไม่ได้');
+            // ห้องเต็มตามที่ตั้งไว้แล้ว หัวห้องกดเพิ่มอีก = ขยายห้องทีละที่ (ไม่เกินขีดเกม 20)
+            const grow = await ack(host.socket, 'werewolf_addBots', { roomId, count: 1 });
+            assert(grow.success && grow.added === 1, 'ห้องเต็ม 8 แล้วกดเพิ่ม → ขยายเป็น 9 ที่: ' + JSON.stringify(grow));
             host.socket.close();
             guest.socket.close();
-            console.log('A) เติมบอท: เฉพาะหัวห้อง · เต็มห้องแล้วหยุด ✓');
+            console.log('A) เติมบอท: เฉพาะหัวห้อง · เติมถึงที่ตั้งไว้ · กดเพิ่มอีกห้องขยายเอง ✓');
         }
 
         const acted = await runGame(base, 'B 1+5 หัวห้องกดพร้อม/โหวต', 5, 'act');

@@ -481,8 +481,9 @@ function readStats() {
         const roomC = await createRoom(human, { maxPlayers: 4, settings: { colorcardsTurnSeconds: 20 } });
         r = await ack(human.socket, 'colorcards_addBots', { roomId: roomC, count: 5 });
         assert(r.success && r.added === 3, 'เพิ่มบอทได้ถึงเต็มห้อง: ' + JSON.stringify(r));
+        // ห้องเต็มตามที่ตั้งไว้ (4) แล้วกดเพิ่มอีก → ห้องขยายเป็น 5 (ขีดเกม 10)
         r = await ack(human.socket, 'colorcards_addBots', { roomId: roomC, count: 1 });
-        assert(!r.success, 'ห้องเต็มเพิ่มบอทไม่ได้');
+        assert(r.success && r.added === 1, 'ห้องเต็มแล้วกดเพิ่ม → ขยายห้อง: ' + JSON.stringify(r));
         await start(human, [human], roomC);
         const statsC = await drive([human], human, { timeoutMs: 120000 });
         const finC = last(human);
@@ -490,7 +491,7 @@ function readStats() {
         const botTurns = finC.history.filter(h => /บอท/.test(h.text)).length;
         assert(botTurns > 0, 'บอทได้เล่นจริง');
         assert(!finC.history.some(h => /บอท/.test(h.text) && /หมดเวลา/.test(h.text)), 'บอทไม่ปล่อยให้หมดเวลา');
-        console.log(`7. คน 1 + บอท 3 จบเกม (คนลง ${statsC.plays} · คนลงหลายใบ ${statsC.multiPlays} · บอทมีบันทึก ${botTurns} รายการ · ผู้ชนะ ${finC.winner.name}) ✓`);
+        console.log(`7. คน 1 + บอท 4 จบเกม (คนลง ${statsC.plays} · คนลงหลายใบ ${statsC.multiPlays} · บอทมีบันทึก ${botTurns} รายการ · ผู้ชนะ ${finC.winner.name}) ✓`);
         await delay(800);
         rows = readStats();
         assert(!rows.some(x => String(x.playerId).startsWith('bot_')), 'ไม่บันทึกสถิติบอท');

@@ -3472,6 +3472,22 @@ const PARTY_BOT_COLORS = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c',
  * หัวห้อง (หรือแอดมินเว็บ) เติมบอทในห้องรอ — กติกาเดียวกับ liar/colorcards_addBots
  * บอทเป็นผู้เล่นปลอมที่ socketId ขึ้นต้น bot_socket_ (นับว่าออนไลน์) และไม่ถูกบันทึกลงไฟล์ผู้เล่น/สถิติ
  */
+/**
+ * ที่นั่งสำหรับเพิ่มบอท
+ * - ห้องยังมีที่ว่าง → เติมได้ถึง "จำนวนผู้เล่นสูงสุด" ที่หัวห้องตั้งไว้ (ปุ่มเติมเต็มห้องไม่ขยายห้องเอง)
+ * - ห้องเต็มตามที่ตั้งไว้แล้ว แต่เกมยังรับได้อีก → หัวห้องกดเพิ่มบอท = ตั้งใจให้มีคนเพิ่ม ขยายห้องเท่าที่ขอ (ไม่เกินขีดของเกม)
+ * เดิมห้องเศรษฐีตั้งไว้ 4 ที่ → ใส่บอทได้แค่ 3 ทั้งที่เกมเล่นได้ 6 คน
+ */
+function botSeatCap(room, modeCap, requested) {
+    const cap = Math.max(1, Number(modeCap) || 10);
+    const current = Math.min(cap, Number(room.settings.maxPlayers || cap));
+    if (room.players.length < current) return current;
+    const wanted = Math.max(1, Math.floor(Number(requested) || 1));
+    const grown = Math.min(cap, room.players.length + wanted);
+    if (grown > current) room.settings.maxPlayers = grown;
+    return Math.max(current, grown);
+}
+
 async function addPartyBotsToRoom(socket, data, { mode, seatCap: modeCap, inFlight }) {
     const roomId = data?.roomId || socket.roomId;
     const requesterId = socket.playerId;
@@ -3484,7 +3500,7 @@ async function addPartyBotsToRoom(socket, data, { mode, seatCap: modeCap, inFlig
     if (roomManager.isRoomGameInProgress(room) || room.gameStarting) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
     if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-    const seatCap = Math.min(modeCap, Number(room.settings.maxPlayers || modeCap));
+    const seatCap = botSeatCap(room, modeCap, data?.count);
     const remaining = Math.max(0, seatCap - room.players.length);
     if (!remaining) throw new Error('ห้องเต็มแล้ว');
     const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
@@ -8310,7 +8326,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (liarBotAddInFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(8, Number(room.settings.maxPlayers || 8));
+            const seatCap = botSeatCap(room, 8, data?.count);
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
@@ -9163,10 +9179,7 @@ io.sockets.on('connection', function(socket) {
                 throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
             }
 
-            const seatCap = Math.min(
-                Number(getGameEngine(room.settings.gameMode)?.maxPlayers || 10),
-                Number(room.settings.maxPlayers || 10)
-            );
+            const seatCap = botSeatCap(room, Number(getGameEngine(room.settings.gameMode)?.maxPlayers || 10), data?.count);
             const remaining = Math.max(0, seatCap - room.players.length);
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
@@ -9328,7 +9341,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(10, Number(room.settings.maxPlayers || 10));
+            const seatCap = botSeatCap(room, 10, data?.count);
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
@@ -9549,7 +9562,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(setthiRuntime.engine.maxPlayers, Number(room.settings.maxPlayers || setthiRuntime.engine.maxPlayers));
+            const seatCap = botSeatCap(room, setthiRuntime.engine.maxPlayers, data?.count);
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
@@ -9986,7 +9999,7 @@ io.sockets.on('connection', function(socket) {
             if (roomManager.isRoomGameInProgress(room)) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
             if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
 
-            const seatCap = Math.min(10, Number(room.settings.maxPlayers || 10));
+            const seatCap = botSeatCap(room, 10, data?.count);
             const remaining = Math.max(0, seatCap - room.players.length);
             if (!remaining) throw new Error('ห้องเต็มแล้ว');
             const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
