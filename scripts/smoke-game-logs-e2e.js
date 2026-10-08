@@ -32,6 +32,20 @@ const SUITES = {
 };
 const modes = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SUITES);
 
+// smoke บางตัวจบด้วย process.exit() ก่อนปิดเซิร์ฟเวอร์ลูก — เก็บเฉพาะ app.js ที่ใช้โฟลเดอร์ข้อมูลของรอบนี้
+function reapServers(dataDir) {
+    if (process.platform === 'win32') return;
+    const list = spawnSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' }).stdout || '';
+    list.split('\n').forEach(line => {
+        const match = /^\s*(\d+)\s+(.*)$/.exec(line);
+        if (!match || !match[2].includes(path.join(ROOT, 'app.js'))) return;
+        const env = spawnSync('ps', ['eww', '-o', 'command=', '-p', match[1]], { encoding: 'utf8' }).stdout || '';
+        if (env.includes(`GAME_DATA_DIR=${dataDir}`)) {
+            try { process.kill(Number(match[1]), 'SIGTERM'); } catch (error) { /* จบไปแล้ว */ }
+        }
+    });
+}
+
 let passed = 0;
 const failures = [];
 function check(condition, message) {
@@ -46,9 +60,13 @@ for (const mode of modes) {
     }
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `insider-e2e-${mode}-`));
     const startedAt = Date.now();
+    // บาง smoke ตั้งพอร์ตเริ่มต้นไว้ (เช่น 8831) ซึ่งชนช่วงพอร์ตของโปรแกรมอื่นได้ — ส่งพอร์ตว่างให้เสมอ
+    const smokePort = spawnSync(process.execPath, ['-e', "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close();})"], { encoding: 'utf8' }).stdout.trim();
     const run = spawnSync(process.execPath, [path.join(__dirname, script)], {
         cwd: ROOT,
-        env: { ...process.env, GAME_DATA_DIR: dir, MONGO_URL: '', ALLOW_LEGACY_SOCKET_IDENTITY: '1' },
+        env: { ...process.env, GAME_DATA_DIR: dir, MONGO_URL: '', ALLOW_LEGACY_SOCKET_IDENTITY: '1', SMOKE_PORT: smokePort,
+            // smoke บางตัว (wavelength) ตั้ง GAME_DATA_DIR เอง — ชี้ไฟล์ log ตรงๆ ให้อ่านได้เสมอ
+            SERVER_LOGS_FILE: path.join(dir, 'serverLogs.ndjson') },
         encoding: 'utf8',
         timeout: 9 * 60 * 1000
     });
@@ -70,7 +88,8 @@ for (const mode of modes) {
     check(botLines.every(log => !log.important), `[${mode}] บรรทัดบอทไม่ขึ้น "สำคัญ" (${botLines.length})`);
     const errors = logs.filter(log => log.category === 'error');
     console.log(`  ${mode.padEnd(11)} ${run.status === 0 ? 'ok ' : 'FAIL'} ${seconds}s · start ${starts.length} · end ${ends.length} · lines ${ofMode.length} · bot ${botLines.length} · error ${errors.length}${errors.length ? ' → ' + errors.slice(0, 2).map(log => log.message).join(' | ') : ''}`);
-    fs.rmSync(dir, { recursive: true, force: true });
+    reapServers(dir);
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (error) { /* โฟลเดอร์ชั่วคราว ลบไม่ได้ก็ปล่อย */ }
 }
 
 if (failures.length) {
