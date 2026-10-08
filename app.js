@@ -105,12 +105,12 @@ const liarPhaseTimeouts = new Map();
 const pokerPhaseTimeouts = new Map();
 const pokerBotTimeouts = new Map();
 const pokerBotAddInFlight = new Set();
-const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
-const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
-const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
+const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
+const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
+const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
 const spyfallReturnTimeouts = new Map();
 // Spyfall: เวลาให้อ่านเฉลยก่อนพากลับห้องรอ (เดิม 3 วิ อ่านไม่ทัน) + นับถอยหลังอีก 5 วิ
 const SPYFALL_RETURN_DELAY_MS = Number(process.env.SPYFALL_RETURN_DELAY_MS) || 20000;
@@ -139,9 +139,9 @@ const adminTokens = new Map();
 // Lightweight anti-spam window for the public support inbox.
 const supportMessageRateLimits = new Map();
 
-// เก็บ server activity logs (เก็บ 500 logs ล่าสุด)
-const serverLogs = [];
-const MAX_SERVER_LOGS = 2000;
+// บันทึกกิจกรรมหลังบ้าน — แยกโควตาต่อประเภท เก็บถาวร (Mongo หรือไฟล์) ดู managers/serverLogManager.js
+const serverLogStore = require('./managers/serverLogManager');
+const adminQueries = require('./managers/adminQueries');
 
 const ROOM_OFFLINE_GRACE_MS = 10 * 60 * 1000;
 const ROOM_SWEEP_INTERVAL_MS = 60 * 1000;
@@ -1408,14 +1408,19 @@ function msSinceExplicitLeave(roomId, playerId) {
     return elapsed;
 }
 
-function detachPlayerFromOtherRooms(socket, playerId, keepRoomId) {
+function detachPlayerFromOtherRooms(socket, playerId, keepRoomId, reason = 'switch_room') {
+    const snapshots = new Map(roomManager.findRoomIdsForPlayer(playerId)
+        .filter(roomId => roomId !== keepRoomId)
+        .map(roomId => [roomId, snapshotRoomForLog(roomId)]));
     const result = roomManager.leavePlayerFromOtherRooms(playerId, keepRoomId);
     (result.closed || []).forEach(roomId => {
         if (socket) socket.leave(roomId);
+        logPlayerRemoval(snapshots.get(roomId), null, playerId, reason);
         clearAllRoomTimers(roomId);
     });
     (result.updated || []).forEach(updatedRoom => {
         if (socket) socket.leave(updatedRoom.roomId);
+        logPlayerRemoval(snapshots.get(updatedRoom.roomId), updatedRoom, playerId, reason);
         handleMidGamePlayerRemoval(updatedRoom, playerId);
         io.to(updatedRoom.roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
         broadcastGameStateForRoom(updatedRoom);
@@ -1744,17 +1749,65 @@ function buildGameEndNotification(room) {
     return null;
 }
 
-function notifyGameEndAfterRecord(room) {
+// options.chat === false: จดแค่ log หลังบ้าน ไม่ส่งข้อความในห้อง (เช่นโป๊กเกอร์ที่จบทุกมือ)
+function notifyGameEndAfterRecord(room, options = {}) {
+    if (!room?.roomId) return;
+    invalidateAdminSnapshot(); // สถิติเพิ่งเปลี่ยน
     const notification = buildGameEndNotification(room);
+    const style = getGameModeLogStyle(room.settings.gameMode);
+    const people = summarizeRoomPeople(room);
     if (!notification) {
+        // ทุกเกมต้องมีบรรทัด "จบเกม" แม้ไม่มีสรุปผล (เช่นโหมดใหม่ที่ยังไม่มี gameEndNotification)
+        addServerLog(io, 'game', room.roomId, `${style.emoji} ${style.label} จบเกม · ${people.total} คน`, 'success', {
+            gameMode: room.settings.gameMode,
+            meta: { event: 'game_end', playerCount: people.total, humans: people.humans, bots: people.bots }
+        });
         return;
     }
 
-    sendChatMessageToRoom(io, room.roomId, 'System', notification.chatMessage, notification.chatColor);
-    addServerLog(io, 'game', room.roomId, notification.logMessage, notification.logType, {
+    if (options.chat !== false) {
+        sendChatMessageToRoom(io, room.roomId, 'System', notification.chatMessage, notification.chatColor);
+    }
+    // ผลเกม "แพ้หมด" ไม่ใช่ error ของระบบ — ไม่ให้ไปปนถัง Error
+    const logType = notification.logType === 'error' ? 'warning' : (notification.logType || 'success');
+    addServerLog(io, 'game', room.roomId, notification.logMessage, logType, {
         gameMode: room.settings.gameMode,
-        meta: notification.meta
+        meta: { ...(notification.meta || {}), humans: people.humans, bots: people.bots, event: 'game_end' }
     });
+}
+
+// คน/บอทในโต๊ะ — ใช้คนที่อยู่ในเกม (gameState.players) ก่อน ไม่มีก็ใช้คนในห้อง
+function summarizeRoomPeople(room) {
+    const inGame = Array.isArray(room?.gameState?.players) && room.gameState.players.length
+        ? room.gameState.players
+        : (room?.players || []);
+    const ids = new Set();
+    const names = [];
+    let bots = 0;
+    inGame.forEach(player => {
+        const playerId = player.playerId || player.id;
+        if (!playerId || ids.has(playerId)) return;
+        ids.add(playerId);
+        const isBot = playerManager.isBotPlayerId(playerId);
+        if (isBot) bots += 1;
+        names.push(`${player.playerName || player.name || playerId}${isBot ? ' 🤖' : ''}`);
+    });
+    return { total: ids.size, humans: ids.size - bots, bots, names };
+}
+
+// ตั้งค่าห้องแบบย่อสำหรับ log เริ่มเกม — ไม่เอารหัสผ่านห้อง
+const START_LOG_SETTING_SKIP = new Set(['password', 'locked', 'gameMode', 'name']);
+function summarizeRoomSettings(settings = {}) {
+    const parts = [];
+    Object.entries(settings || {}).forEach(([key, value]) => {
+        if (START_LOG_SETTING_SKIP.has(key) || value === undefined || value === null || value === '') return;
+        if (Array.isArray(value)) {
+            if (value.length) parts.push(`${key}=${value.slice(0, 12).join('/')}`);
+        } else if (typeof value !== 'object' && value !== false) {
+            parts.push(`${key}=${value}`);
+        }
+    });
+    return parts.slice(0, 16).join(', ').slice(0, 380);
 }
 
 function logGameStartFromRoom(room, extra = '') {
@@ -1763,14 +1816,25 @@ function logGameStartFromRoom(room, extra = '') {
     }
 
     const style = getGameModeLogStyle(room.settings.gameMode);
-    const playerCount = room.players.filter(player => player.socketId).length;
+    const people = summarizeRoomPeople(room);
+    const playerCount = people.total || room.players.filter(player => player.socketId).length;
     addServerLog(
         io,
         'game',
         room.roomId,
-        `${style.emoji} ${style.label} เริ่มเกม (${playerCount} คน)${extra}`,
+        `${style.emoji} ${style.label} เริ่มเกม (${playerCount} คน${people.bots ? `, บอท ${people.bots}` : ''})${extra}`,
         'success',
-        { gameMode: room.settings.gameMode, meta: { playerCount, event: 'game_start' } }
+        {
+            gameMode: room.settings.gameMode,
+            meta: {
+                playerCount,
+                humans: people.humans,
+                bots: people.bots,
+                players: people.names.join(', ').slice(0, 380),
+                settings: summarizeRoomSettings(room.settings),
+                event: 'game_start'
+            }
+        }
     );
 }
 
@@ -1784,36 +1848,64 @@ function logGameStartFromRoom(room, extra = '') {
  * @param {Object} [options] - Optional: { gameMode, meta }
  */
 function addServerLog(io, category, roomId, message, type = 'info', options = {}) {
-    const room = roomId ? roomManager.getRoom(roomId) : null;
-    const roomName = room ? room.name : roomId || 'ระบบ';
-    const gameMode = options.gameMode || room?.settings?.gameMode || null;
-    const modeStyle = gameMode ? getGameModeLogStyle(gameMode) : null;
-    
-    const logEntry = {
-        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        timestamp: new Date().toISOString(),
-        category: category,
-        roomId: roomId || null,
-        roomName: roomName,
-        gameMode,
-        gameModeLabel: modeStyle ? `${modeStyle.emoji} ${modeStyle.label}` : null,
-        message: message,
-        type: type,
-        meta: options.meta && typeof options.meta === 'object' ? options.meta : null
-    };
-    
-    // Add to beginning of array (newest first)
-    serverLogs.unshift(logEntry);
-    
-    // Keep only MAX_SERVER_LOGS
-    if (serverLogs.length > MAX_SERVER_LOGS) {
-        serverLogs.length = MAX_SERVER_LOGS;
+    try {
+        const room = roomId ? roomManager.getRoom(roomId) : null;
+        const roomName = options.roomName || (room ? room.name : roomId || 'ระบบ');
+        const gameMode = options.gameMode || room?.settings?.gameMode || null;
+        const modeStyle = gameMode ? getGameModeLogStyle(gameMode) : null;
+        let meta = options.meta && typeof options.meta === 'object' ? { ...options.meta } : null;
+
+        // บรรทัดระหว่างเล่นที่บอทเป็นคนทำ → ติดป้าย bot (ไม่ขึ้นมุมมอง "สำคัญ" + มีเพดานต่อห้องของตัวเอง)
+        if (category === 'game' && room && !(meta && (meta.bot !== undefined || meta.isBot !== undefined))
+            && !serverLogStore.KEY_EVENTS.has(meta?.event) && isBotActorLine(room, message)) {
+            meta = { ...(meta || {}), bot: true };
+        }
+
+        const logEntry = serverLogStore.add({
+            timestamp: new Date().toISOString(),
+            category,
+            roomId: roomId || null,
+            roomName,
+            gameMode,
+            gameModeLabel: options.gameModeLabel || (modeStyle ? `${modeStyle.emoji} ${modeStyle.label}` : null),
+            message,
+            type,
+            meta
+        });
+        if (!logEntry) return null;
+
+        adminSockets.forEach(socketId => {
+            io.to(socketId).emit('adminLog', logEntry);
+        });
+        return logEntry;
+    } catch (error) {
+        // จด log ไม่ได้ ห้ามทำเกมพัง
+        console.error('[serverLogs] add failed:', error.message);
+        return null;
     }
-    
-    // Broadcast to all admin sockets
-    adminSockets.forEach(socketId => {
-        io.to(socketId).emit('adminLog', logEntry);
+}
+
+// ใครเป็นคนทำในบรรทัดนี้: ชื่อผู้เล่นที่โผล่ก่อนสุดในข้อความ (history ของทุกเกมขึ้นต้นด้วยชื่อคนทำ)
+function isBotActorLine(room, message) {
+    const players = Array.isArray(room.players) ? room.players : [];
+    if (!players.some(player => playerManager.isBotPlayerId(player.playerId))) return false;
+    const text = String(message || '');
+    let firstIndex = Infinity;
+    let firstLength = 0;
+    let actorIsBot = false;
+    players.forEach(player => {
+        const name = String(player.playerName || '').trim();
+        if (!name) return;
+        const index = text.indexOf(name);
+        // ชื่อซ้อนกัน ("บอท" กับ "บอท2") ตำแหน่งเดียวกัน → เอาชื่อที่ยาวกว่า
+        if (index >= 0 && (index < firstIndex || (index === firstIndex && name.length > firstLength))) {
+            firstIndex = index;
+            firstLength = name.length;
+            actorIsBot = playerManager.isBotPlayerId(player.playerId);
+        }
     });
+    if (firstIndex !== Infinity) return actorIsBot;
+    return /\[🤖|บอท/.test(text);
 }
 
 /**
@@ -1875,16 +1967,57 @@ installCrashGuards();
  *   - ถ้ามี callback ตอบ { success:false } กลับไป ไม่ปล่อยให้ค้าง
  *   - ผู้เล่นคนอื่นในห้อง (และห้องอื่น) ไม่รู้สึกอะไรเลย
  */
+// error ใน timer/บอท/engine ที่เดิมแค่ console.error — ให้ขึ้นแท็บ Logs พร้อมห้อง/โหมดเกมด้วย
+// กันสแปม: error ข้อความเดียวกันในห้องเดียวกัน จดได้ครั้งเดียวต่อ 30 วิ
+const gameErrorThrottle = new Map();
+function reportGameError(roomOrId, label, error) {
+    try {
+        const roomId = roomOrId && typeof roomOrId === 'object' ? roomOrId.roomId : (roomOrId || null);
+        const message = error?.message || String(error);
+        const key = `${roomId}|${label}|${message}`;
+        const now = Date.now();
+        if (now - (gameErrorThrottle.get(key) || 0) < 30000) return;
+        gameErrorThrottle.set(key, now);
+        if (gameErrorThrottle.size > 500) {
+            gameErrorThrottle.forEach((at, entryKey) => { if (now - at > 30000) gameErrorThrottle.delete(entryKey); });
+        }
+        const room = roomId ? roomManager.getRoom(roomId) : null;
+        addServerLog(io, 'error', roomId, `${label}: ${message}`, 'error', {
+            meta: { event: 'game_error', phase: room?.gameState?.phase || room?.gameState?.status || null }
+        });
+    } catch (logError) {
+        console.error('[serverLogs] reportGameError failed:', logError.message);
+    }
+}
+
+const SAFE_SOCKET_HANDLER = Symbol('safeSocketHandler');
+
 function safeOn(socket, eventName, handler) {
-    socket.on(eventName, function(...args) {
+    socket.on(eventName, wrapSocketHandler(socket, eventName, handler));
+}
+
+// ห่อ socket.on ทุกตัวของ connection นี้ด้วยตาข่ายเดียวกับ safeOn
+// เดิม handler ที่ลงทะเบียนด้วย socket.on ตรงๆ (เกือบ 60 ตัว: werewolf/blackmarket/spyfall/admin/เริ่มเกม ฯลฯ)
+// throw แล้วไม่มี log หลังบ้านเลย — ไปโผล่แค่ uncaughtException ไม่มีห้อง/โหมดเกม
+function guardSocketHandlers(socket) {
+    const rawOn = socket.on.bind(socket);
+    socket.on = function(eventName, handler) {
+        if (typeof handler !== 'function' || handler[SAFE_SOCKET_HANDLER]) return rawOn(eventName, handler);
+        return rawOn(eventName, wrapSocketHandler(socket, eventName, handler));
+    };
+}
+
+function wrapSocketHandler(socket, eventName, handler) {
+    const wrapped = function(...args) {
         const done = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
 
         const report = error => {
             console.error(`[socket:${eventName}] player=${socket.playerId || '-'} room=${socket.roomId || '-'}`, error);
             try {
+                const room = socket.roomId ? roomManager.getRoom(socket.roomId) : null;
                 addServerLog(io, 'error', socket.roomId || null,
-                    `event "${eventName}" ล้มเหลว: ${error.message}`, 'error',
-                    { meta: { playerId: socket.playerId || null } });
+                    `event "${eventName}" ล้มเหลว: ${error?.message || error}`, 'error',
+                    { meta: { event: 'socket_error', socketEvent: eventName, playerId: socket.playerId || null, phase: room?.gameState?.phase || room?.gameState?.status || null } });
             } catch (logError) {
                 console.error('[socket] จดบันทึก error ไม่ได้:', logError.message);
             }
@@ -1906,7 +2039,9 @@ function safeOn(socket, eventName, handler) {
         } catch (error) {
             report(error);
         }
-    });
+    };
+    wrapped[SAFE_SOCKET_HANDLER] = true;
+    return wrapped;
 }
 
 function buildRoomUpdatePayload(room) {
@@ -2346,6 +2481,7 @@ function scheduleWerewolfBots(room) {
                 werewolfBotTimeouts.set(current.roomId, { timeoutId: retryId, dueAt: Date.now() + 1000, key: 'retry' });
             }
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[werewolf] bots failed', error);
             console.error('[werewolf] bots failed:', error.message);
         }
     }, delay + 20);
@@ -2403,6 +2539,7 @@ function syncBlackMarketPhaseTimer(room) {
             syncBlackMarketPhaseTimer(roomManager.getRoom(room.roomId) || room);
             scheduleBlackMarketBots(room.roomId);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[blackmarket] overdue auto resolve failed', error);
             console.error('[blackmarket] overdue auto resolve failed:', {
                 roomId: room.roomId,
                 phase,
@@ -2457,6 +2594,7 @@ function syncBlackMarketPhaseTimer(room) {
             syncBlackMarketPhaseTimer(roomManager.getRoom(currentRoom.roomId) || currentRoom);
             scheduleBlackMarketBots(currentRoom.roomId);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[blackmarket] auto resolve failed', error);
             console.error('[blackmarket] auto resolve failed:', {
                 roomId: room.roomId,
                 phase,
@@ -2491,6 +2629,7 @@ function forceResolveStuckBlackMarketRoom(room, { onlyOverdue = false } = {}) {
                 break;
             }
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[blackmarket] force resolve failed', error);
             console.error('[blackmarket] force resolve failed:', {
                 roomId: room.roomId,
                 phase: room.gameState.phase,
@@ -2533,6 +2672,7 @@ function advanceBlackMarketAfterDisconnect(room) {
             scheduleBlackMarketBots(room.roomId);
         }
     } catch (error) {
+        reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[blackmarket] resolve after disconnect failed', error);
         console.error('[blackmarket] resolve after disconnect failed:', error?.message || error);
     }
 }
@@ -2607,6 +2747,7 @@ async function runBotsForRoom(room) {
                     break;
                 }
             } catch (err) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), `Bot ${bot.name} failed market purchase`, err);
                 console.error(`Bot ${bot.name} failed market purchase:`, err.message);
             }
         }
@@ -2676,7 +2817,7 @@ async function runBotsForRoom(room) {
             try {
                 const result = blackMarketEngine.submitAction(room, bot.playerId, actionType, targetPlayerId, itemId);
                 const roundNum = room.gameState?.roundNumber || 1;
-                const targetPlayer = targetPlayerId ? (room.players.find(p => p.id === targetPlayerId)?.name || targetPlayerId) : null;
+                const targetPlayer = targetPlayerId ? (room.players.find(p => p.playerId === targetPlayerId)?.playerName || targetPlayerId) : null;
                 const targetText = targetPlayer ? ` เล็งเป้า: ${targetPlayer}` : '';
                 const itemText = itemId ? ` ของ: ${itemId}` : '';
                 addServerLog(io, 'game', room.roomId, `[🤖 บอท] ${bot.name} ล็อกแผน: ${actionType}${targetText}${itemText} (ยกที่ ${roundNum})`, 'info', {
@@ -2707,6 +2848,7 @@ async function runBotsForRoom(room) {
                     break;
                 }
             } catch (err) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), `Bot ${bot.name} failed action submission`, err);
                 console.error(`Bot ${bot.name} failed action submission:`, err.message);
             }
         }
@@ -2796,6 +2938,9 @@ function startSpyfallNextRound(room) {
     } catch (error) {
         if (engine.endMatchEarly(room)) {
             sendChatMessageToRoom(io, room.roomId, 'System', `เริ่มรอบต่อไปไม่ได้ (${error.message}) — จบเกม กลับห้องรอ`, '#f39c12');
+            addServerLog(io, 'game', room.roomId, `🕵️ Spyfall จบแมตช์ก่อนครบรอบ — ${error.message}`, 'warning', {
+                gameMode: 'spyfall', meta: { event: 'game_abort', reason: 'next_round_failed' }
+            });
         }
         scheduleSpyfallReturnToLobby(room);
         emitSpyfallRoomState(room);
@@ -2899,6 +3044,7 @@ function syncSpyfallPhaseTimer(room) {
         try {
             runSpyfallAutoResolve(room, phase);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[spyfall] overdue auto resolve failed', error);
             console.error('[spyfall] overdue auto resolve failed:', {
                 roomId: room.roomId,
                 phase,
@@ -2934,6 +3080,7 @@ function syncSpyfallPhaseTimer(room) {
         try {
             runSpyfallAutoResolve(currentRoom, phase);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[spyfall] auto resolve failed', error);
             console.error('[spyfall] auto resolve failed:', {
                 roomId: room.roomId,
                 phase,
@@ -3046,6 +3193,7 @@ function syncUndercoverPhaseTimer(room) {
         try {
             getGameEngine('undercover').autoResolvePhase(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[undercover] auto resolve failed', error);
             console.error('[undercover] auto resolve failed:', error.message);
         }
         emitUndercoverRoomState(current);
@@ -3107,6 +3255,7 @@ function finalizeUndercoverGameIfNeeded(room) {
             roomName: room.name
         });
     } catch (error) {
+        reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[undercover] record stats failed', error);
         console.error('[undercover] record stats failed:', error.message);
     }
     clearUndercoverPhaseTimer(room.roomId);
@@ -3162,6 +3311,7 @@ function syncCoupPhaseTimer(room) {
             getGameEngine('coup').autoResolvePhase(current);
             emitCoupRoomState(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[coup] auto resolve failed', error);
             console.error('[coup] auto resolve failed:', error.message);
         }
     }, delay);
@@ -3201,6 +3351,7 @@ function scheduleCoupBots(room) {
             if (coupBots.playBotTurns(current)) emitCoupRoomState(current);
             else scheduleCoupBots(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[coup] bot turn failed', error);
             console.error('[coup] bot turn failed:', error.message);
         }
     }, delay + 20);
@@ -3279,6 +3430,7 @@ function applyCoupOfflineAutoPass(room) {
     try {
         return getGameEngine('coup').autoPassOffline(room, offline);
     } catch (error) {
+        reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[coup] offline auto-pass failed', error);
         console.error('[coup] offline auto-pass failed:', error.message);
         return false;
     }
@@ -3366,6 +3518,7 @@ function syncAvalonPhaseTimer(room) {
             getGameEngine('avalon').autoResolvePhase(current);
             emitAvalonRoomState(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[avalon] auto resolve failed', error);
             console.error('[avalon] auto resolve failed:', error.message);
         }
     }, delay);
@@ -3454,6 +3607,9 @@ function finalizeAvalonGameIfNeeded(room) {
     clearAvalonPhaseTimer(room.roomId);
     if (state.winner.abandoned) {
         sendChatMessageToRoom(io, room.roomId, 'System', state.winner.text || 'เกมถูกยกเลิก', '#f39c12');
+        addServerLog(io, 'game', room.roomId, `🏰 อวาลอน ยกเลิกกลางคัน — ${state.winner.text || 'คนไม่พอ'}`, 'warning', {
+            gameMode: 'avalon', meta: { event: 'game_abort', reason: state.winner.reason || 'abandoned' }
+        });
     } else {
         notifyGameEndAfterRecord(room);
     }
@@ -3568,6 +3724,7 @@ function scheduleLiarBots(room) {
         try {
             if (engine.playBotTurn(current)) emitLiarRoomState(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[liar] bot turn failed', error);
             console.error('[liar] bot turn failed:', error.message);
         }
     }, delay);
@@ -3608,6 +3765,7 @@ function syncLiarPhaseTimer(room) {
             getGameEngine('liar').autoResolvePhase(current);
             emitLiarRoomState(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[liar] auto resolve failed', error);
             console.error('[liar] auto resolve failed:', error.message);
         }
     }, delay);
@@ -3791,6 +3949,7 @@ function schedulePokerBots(room) {
             const changed = getGameEngine(current.settings.gameMode).playBotTurns(current);
             if (changed) emitPokerRoomState(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[poker] bots failed', error);
             console.error('[poker] bots failed:', error.message);
         }
     }, pokerBotDelayMs(state.phase));
@@ -3816,6 +3975,7 @@ function syncPokerPhaseTimer(room) {
             getGameEngine(current.settings.gameMode).autoResolvePhase(current);
             emitPokerRoomState(current);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[poker] auto resolve failed', error);
             console.error('[poker] auto resolve failed:', error.message);
         }
     }, delay);
@@ -3879,6 +4039,15 @@ function finalizePokerHandIfNeeded(room) {
             handNumber: state.handNumber
         });
         state.statsRecordedAt = new Date().toISOString();
+        // เดิมโป๊กเกอร์ไม่มี log จบมือ/จบโต๊ะเลย (ข้อความในห้องมีอยู่แล้ว เลยจดแค่หลังบ้าน)
+        notifyGameEndAfterRecord(room, { chat: false });
+    }
+    if (state.phase === 'finished' && !state.tableEndLoggedAt) {
+        state.tableEndLoggedAt = new Date().toISOString();
+        addServerLog(io, 'game', room.roomId, `${getGameModeLogStyle(room.settings.gameMode).emoji} ${getGameModeLogStyle(room.settings.gameMode).label} ปิดโต๊ะ — ${state.winner?.name ? state.winner.name + ' ชนะทั้งโต๊ะ' : 'เหลือผู้เล่นไม่พอ'} (มือที่ ${state.handNumber || 0})`, 'success', {
+            gameMode: room.settings.gameMode,
+            meta: { event: 'table_end', handNumber: state.handNumber || 0, winnerName: state.winner?.name || null }
+        });
     }
     if (state.phase === 'finished') {
         clearPokerPhaseTimer(room.roomId);
@@ -3941,11 +4110,78 @@ function cancelInsiderRoundWithoutMaster(room) {
     clearInsiderVoteTimer(roomId);
     clearInsiderReturnTimer(roomId);
     resetInsiderRoomAfterGame(room);
+    addServerLog(io, 'game', roomId, '🎯 Insider ยกเลิกรอบ — ผู้ดำเนินเกมออกจากห้อง (ไม่นับสถิติ)', 'warning', {
+        gameMode: 'insider', meta: { event: 'game_abort', reason: 'master_left' }
+    });
     sendChatMessageToRoom(io, roomId, 'System', 'ผู้ดำเนินเกมออกจากห้อง รอบนี้ยกเลิก (ไม่นับสถิติ) เริ่มรอบใหม่ได้เลย', '#f39c12');
     io.to(roomId).emit('redirectToLobby', { roomId, reason: 'master-left' });
     io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
     io.emit('roomListUpdate', roomManager.getAllRooms());
     return true;
+}
+
+// ---------- log การออกจากห้อง (ทุกทาง: ออกเอง/ปิดหน้า/หลุด/ถูกเตะ/แบน/ลบบัญชี/ย้ายห้อง) ----------
+const LEAVE_REASON_LABELS = {
+    leave: 'ออกเอง',
+    beacon: 'ปิดหน้าเว็บ',
+    disconnect: 'หลุดการเชื่อมต่อนานเกินเวลา',
+    kick: 'หัวห้องเตะออก',
+    admin_kick: 'แอดมินเตะออก',
+    ban: 'ถูกแบน',
+    deleted: 'บัญชีถูกลบ',
+    switch_room: 'ย้ายไปห้องอื่น'
+};
+
+// ถ่ายข้อมูลห้องไว้ก่อนเอาคนออก — ห้องอาจถูกลบไปพร้อมคนสุดท้าย
+function snapshotRoomForLog(roomId) {
+    const room = roomId ? roomManager.getRoom(roomId) : null;
+    if (!room) return null;
+    return {
+        roomId: room.roomId,
+        roomName: room.name,
+        gameMode: room.settings?.gameMode || null,
+        inProgress: roomManager.isRoomGameInProgress(room),
+        phase: room.gameState?.phase || room.gameState?.status || null
+    };
+}
+
+function logPlayerRemoval(snapshot, roomAfter, playerId, reason = 'leave', extraMeta = {}) {
+    if (!snapshot) return;
+    try {
+        const player = playerManager.getPlayer(playerId);
+        const name = player?.playerName || extraMeta.playerName || playerId;
+        const reasonLabel = LEAVE_REASON_LABELS[reason] || reason;
+        const closed = !roomAfter;
+        const isKick = reason === 'kick' || reason === 'admin_kick';
+        let message;
+        let event = null;
+        if (snapshot.inProgress) {
+            event = isKick ? 'player_kicked' : 'player_left_midgame';
+            message = `${name} ${isKick ? 'ถูกเตะออก' : 'ออก'}กลางเกม (${reasonLabel})${closed ? ' — ไม่มีคนเหลือ ห้องปิด เกมจบกลางคัน' : ''}`;
+        } else if (isKick) {
+            event = 'player_kicked';
+            message = `${name} ถูก${reason === 'admin_kick' ? 'แอดมิน' : 'หัวห้อง'}เตะออกจากห้อง${closed ? ' — ห้องปิด' : ''}`;
+        } else {
+            message = `${name} ออกจากห้อง${reason === 'leave' ? '' : ` (${reasonLabel})`}${closed ? ' — ห้องปิด' : ''}`;
+        }
+        const meta = {
+            playerId,
+            reason,
+            ...(snapshot.inProgress ? { phase: snapshot.phase } : {}),
+            ...(closed ? { roomClosed: true } : {}),
+            ...(playerManager.isBotPlayerId(playerId) ? { bot: true } : {}),
+            ...extraMeta,
+            ...(event ? { event } : {})
+        };
+        delete meta.playerName;
+        addServerLog(io, 'leave', snapshot.roomId, message, snapshot.inProgress || isKick ? 'warning' : 'info', {
+            roomName: snapshot.roomName,
+            gameMode: snapshot.gameMode,
+            meta
+        });
+    } catch (error) {
+        console.error('[serverLogs] leave log failed:', error.message);
+    }
 }
 
 function handleMidGamePlayerRemoval(room, playerId) {
@@ -3964,6 +4200,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
                     else if (gs.status === 'tiebreak' && !insiderEngine.findGuesser(gs)) finalizeInsiderTiebreak(room);
                 }
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[insider] cancel without master failed', error);
                 console.error('[insider] cancel without master failed:', error?.message || error);
             }
         }
@@ -3971,6 +4208,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('spyfall').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[spyfall] handlePlayerLeft failed', error);
                 console.error('[spyfall] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -3978,6 +4216,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('undercover').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[undercover] handlePlayerLeft failed', error);
                 console.error('[undercover] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -3985,6 +4224,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('coup').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[coup] handlePlayerLeft failed', error);
                 console.error('[coup] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -3992,6 +4232,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('avalon').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[avalon] handlePlayerLeft failed', error);
                 console.error('[avalon] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -3999,6 +4240,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('liar').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[liar] handlePlayerLeft failed', error);
                 console.error('[liar] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4006,6 +4248,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine(room.settings.gameMode).handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[poker] handlePlayerLeft failed', error);
                 console.error('[poker] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4013,6 +4256,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 pokdengRuntime.handleLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[pokdeng] handlePlayerLeft failed', error);
                 console.error('[pokdeng] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4020,6 +4264,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 codenamesRuntime.handleLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[codenames] handlePlayerLeft failed', error);
                 console.error('[codenames] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4027,6 +4272,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 wavelengthRuntime.handleLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[wavelength] handlePlayerLeft failed', error);
                 console.error('[wavelength] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4034,6 +4280,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 drawguessRuntime.handleLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[drawguess] handlePlayerLeft failed', error);
                 console.error('[drawguess] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4041,6 +4288,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 colorcardsRuntime.handleLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[colorcards] handlePlayerLeft failed', error);
                 console.error('[colorcards] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4048,6 +4296,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 setthiRuntime.handleLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[setthi] handlePlayerLeft failed', error);
                 console.error('[setthi] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4055,6 +4304,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('werewolf').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[werewolf] handlePlayerLeft failed', error);
                 console.error('[werewolf] handlePlayerLeft failed:', error?.message || error);
             }
         }
@@ -4062,12 +4312,14 @@ function handleMidGamePlayerRemoval(room, playerId) {
             try {
                 getGameEngine('blackmarket').handlePlayerLeft(room, playerId);
             } catch (error) {
+                reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[blackmarket] handlePlayerLeft failed', error);
                 console.error('[blackmarket] handlePlayerLeft failed:', error?.message || error);
             }
             scheduleBlackMarketBots(room.roomId);
         }
         broadcastGameStateForRoom(room);
     } catch (error) {
+        reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[game] mid-game removal resync failed', error);
         console.error('[game] mid-game removal resync failed:', error?.message || error);
     }
 }
@@ -4190,6 +4442,7 @@ function syncWerewolfPhaseTimer(room) {
             );
             emitWerewolfRoomState(room);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[werewolf] overdue auto resolve failed', error);
             console.error('[werewolf] overdue auto resolve failed:', {
                 roomId: room.roomId,
                 phase,
@@ -4286,6 +4539,7 @@ function syncWerewolfPhaseTimer(room) {
 
             emitWerewolfRoomState(currentRoom);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[werewolf] auto resolve failed', error);
             console.error('[werewolf] auto resolve failed:', {
                 roomId: room.roomId,
                 phase,
@@ -4313,6 +4567,7 @@ function forceResolveStuckWerewolfRoom(room, { onlyOverdue = false } = {}) {
         try {
             werewolfEngine.autoResolvePhase(room);
         } catch (error) {
+            reportGameError(typeof room !== 'undefined' ? room : (typeof roomId !== 'undefined' ? roomId : null), '[werewolf] force resolve failed', error);
             console.error('[werewolf] force resolve failed:', {
                 roomId: room.roomId,
                 phase: room.gameState.phase,
@@ -4644,8 +4899,23 @@ function getPlayerRoomMembership(playerId) {
     return memberships;
 }
 
-function classifyPlayerForAdmin(player, stat, bannedPlayerIds = new Set()) {
-    const memberships = getPlayerRoomMembership(player.playerId);
+// ห้องของผู้เล่นทุกคนในรอบเดียว — เดิมเรียก getPlayerRoomMembership ต่อคน (ซึ่งไล่ getAllRooms ทั้งหมดทุกครั้ง)
+// ผู้เล่น 8,000 × ห้อง 150 = ล้านกว่ารอบ บล็อก event loop ~25 วิ ทุกครั้งที่เปิด/รีเฟรชหลังบ้าน
+function buildRoomMembershipIndex() {
+    const index = new Map();
+    roomManager.forEachRoom(room => {
+        (room.players || []).forEach(member => {
+            if (!member?.playerId) return;
+            const list = index.get(member.playerId) || [];
+            list.push({ roomId: room.roomId, roomName: room.name, online: !!member.socketId, isAdmin: room.admin === member.playerId });
+            index.set(member.playerId, list);
+        });
+    });
+    return index;
+}
+
+function classifyPlayerForAdmin(player, stat, bannedPlayerIds = new Set(), membershipIndex = null) {
+    const memberships = membershipIndex ? (membershipIndex.get(player.playerId) || []) : getPlayerRoomMembership(player.playerId);
     const totalGames = stat?.totalGames || 0;
     const isAutoNamed = playerManager.isAutoGeneratedName(player.playerName);
     const defaultProfile = playerManager.isDefaultProfile(player);
@@ -4693,10 +4963,11 @@ function getAdminPlayersData() {
     const stats = statsManager.getAllStats();
     const statsByPlayerId = new Map(stats.map(stat => [stat.playerId, stat]));
     const bannedPlayerIds = new Set(playerManager.getAllBannedPlayers().map(ban => ban.playerId));
+    const membershipIndex = buildRoomMembershipIndex();
 
     const annotatedPlayers = players
         .filter(player => !playerManager.isBotPlayerId(player.playerId))
-        .map(player => classifyPlayerForAdmin(player, statsByPlayerId.get(player.playerId), bannedPlayerIds));
+        .map(player => classifyPlayerForAdmin(player, statsByPlayerId.get(player.playerId), bannedPlayerIds, membershipIndex));
     const cleanupCandidates = annotatedPlayers.filter(player => player.isCleanupCandidate);
     const siteAdmins = annotatedPlayers
         .filter(player => player.isSiteAdmin)
@@ -4715,6 +4986,50 @@ function getAdminPlayersData() {
             siteAdmins: siteAdmins.length
         }
     };
+}
+
+// ---------- ข้อมูลหลังบ้าน: คำนวณครั้งเดียว ใช้ซ้ำสั้นๆ ----------
+// หลายแท็บ/หลายแอดมิน/รีเฟรชทุก 15 วิ ไม่ต้องคำนวณใหม่ทุกครั้ง · แอดมินแก้อะไร → ล้าง cache ทันที
+const ADMIN_SNAPSHOT_TTL_MS = Number(process.env.ADMIN_SNAPSHOT_TTL_MS) || 3000;
+let adminSnapshotCache = null;
+
+function invalidateAdminSnapshot() {
+    adminSnapshotCache = null;
+}
+
+function getAdminSnapshot(options = {}) {
+    const now = Date.now();
+    if (!options.fresh && adminSnapshotCache && now - adminSnapshotCache.at < ADMIN_SNAPSHOT_TTL_MS) return adminSnapshotCache;
+    const playersData = getAdminPlayersData();
+    const rooms = roomManager.getAllRooms().map(room => {
+        const fullRoom = roomManager.getRoom(room.roomId);
+        return { ...room, playerNames: fullRoom ? fullRoom.players.map(p => p.playerName) : [] };
+    });
+    const playerStats = statsManager.getAllStats().map(stat => ({
+        ...stat,
+        playerName: resolveDisplayPlayerName(stat.playerId, stat.playerName)
+    }));
+    const bannedPlayers = playerManager.getAllBannedPlayers();
+    adminSnapshotCache = {
+        at: now,
+        playersData,
+        rooms,
+        playerStats,
+        bannedPlayers,
+        summary: {
+            totalPlayers: playersData.annotatedPlayers.length,
+            totalRooms: rooms.length,
+            playingRooms: rooms.filter(room => room.gameStatus === 'playing').length,
+            bannedPlayers: bannedPlayers.length,
+            totalGames: Math.floor(playerStats.reduce((sum, stat) => sum + (stat.totalGames || 0), 0) / 2),
+            statsRows: playerStats.length,
+            siteAdmins: playersData.siteAdmins.length,
+            cleanupCandidates: playersData.cleanupCandidates.length,
+            playerSummary: playersData.summary,
+            unreadMessages: adminMessageManager.getUnreadAdminCount()
+        }
+    };
+    return adminSnapshotCache;
 }
 
 function emitRoomUpdatesForPlayer(playerId) {
@@ -4745,8 +5060,10 @@ async function removePlayerCompletely(playerId, options = {}) {
         connectedSocket.disconnect(true);
     });
 
-    roomManager.getAllRooms().forEach(roomInfo => {
-        const updatedRoom = roomManager.leaveRoom(roomInfo.roomId, playerId);
+    roomManager.findRoomIdsForPlayer(playerId).forEach(roomId => {
+        const snapshot = snapshotRoomForLog(roomId);
+        const updatedRoom = roomManager.leaveRoom(roomId, playerId);
+        logPlayerRemoval(snapshot, updatedRoom, playerId, 'deleted');
         if (updatedRoom) {
             handleMidGamePlayerRemoval(updatedRoom, playerId);
         }
@@ -5222,7 +5539,9 @@ app.post('/api/leave-room', express.text({ type: '*/*' }), function(req, res) {
         }
         
         if (roomId && playerId) {
+            const snapshot = roomManager.getRoom(roomId)?.players?.some(p => p.playerId === playerId) ? snapshotRoomForLog(roomId) : null;
             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
+            logPlayerRemoval(snapshot, updatedRoom, playerId, 'beacon');
             if (updatedRoom) {
                 handleMidGamePlayerRemoval(updatedRoom, playerId);
                 io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(updatedRoom));
@@ -5380,6 +5699,27 @@ app.get('/solo/:gameId', function(req, res, next) {
     });
 });
 
+// เกมเดี่ยวไม่มีห้อง — log ใช้ gameMode "solo_<id>" ให้กรองตามเกมในแท็บ Logs ได้
+function logSoloGame(playerId, gameMeta, message, type = 'info', meta = {}) {
+    if (!gameMeta) return;
+    const name = resolveDisplayPlayerName(playerId, playerId);
+    addServerLog(io, 'game', null, `${gameMeta.emoji || '🎮'} ${gameMeta.title} — ${name} ${message}`, type, {
+        roomName: 'เกมเดี่ยว',
+        gameMode: `solo_${gameMeta.id}`,
+        gameModeLabel: `${gameMeta.emoji || '🎮'} ${gameMeta.title}`,
+        meta: { playerId, ...meta }
+    });
+}
+
+function pickPrimitiveFields(source, skip = []) {
+    const out = {};
+    Object.entries(source || {}).forEach(([key, value]) => {
+        if (skip.includes(key)) return;
+        if (['string', 'number', 'boolean'].includes(typeof value)) out[key] = typeof value === 'string' ? value.slice(0, 60) : value;
+    });
+    return out;
+}
+
 const soloApi = express.Router({ mergeParams: true });
 soloApi.use(function(req, res, next) {
     const game = soloGames.getSoloGame(req.params.gameId);
@@ -5399,6 +5739,10 @@ soloApi.post('/result', async function(req, res) {
         const prev = soloStats.getData(playerId, game.meta.id) || null;
         const next = game.recordResult(prev, req.body || {}, { playerId, now: new Date() });
         soloStats.setData(playerId, game.meta.id, next);
+        logSoloGame(playerId, game.meta, 'จบเกม', 'success', {
+            event: 'game_end',
+            ...pickPrimitiveFields(req.body, ['log', 'seed', 'runId'])
+        });
         return res.json({
             success: true,
             data: next,
@@ -5426,7 +5770,9 @@ soloGames.listSoloGames().forEach(meta => {
         getPlayerId: getTrustedPlayerId,
         soloStats,
         rateLimit: soloRateLimit,
-        ensurePersistedPlayer
+        ensurePersistedPlayer,
+        // จด log หลังบ้าน (เริ่ม/จบ/ผลแต่ละตา) ของเกมนี้
+        log: (playerId, message, type, meta) => logSoloGame(playerId, game.meta, message, type, meta || {})
     });
     app.use(`/api/solo/${meta.id}`, router);
 });
@@ -6082,6 +6428,58 @@ app.get('/admin', function(req, res) {
     res.render('admin.ejs', { adminToken: adminToken });
 });
 
+// ดาวน์โหลดข้อมูลหลังบ้านทั้งก้อน — ดึงเฉพาะตอนกดปุ่ม ไม่ได้โหลดมาค้างไว้บนหน้า
+app.get('/admin/api/export/:kind', requireAdminSession, function(req, res) {
+    res.setHeader('Cache-Control', 'no-store');
+    const snapshot = getAdminSnapshot();
+    if (req.params.kind === 'stats') {
+        return res.json({ success: true, playerStats: snapshot.playerStats.map(adminQueries.projectStat) });
+    }
+    if (req.params.kind === 'all') {
+        return res.json({
+            success: true,
+            players: snapshot.playersData.annotatedPlayers,
+            siteAdmins: snapshot.playersData.siteAdmins,
+            rooms: snapshot.rooms,
+            playerStats: snapshot.playerStats,
+            bannedPlayers: snapshot.bannedPlayers,
+            playerSummary: snapshot.playersData.summary,
+            cleanupCandidates: snapshot.playersData.cleanupCandidates
+        });
+    }
+    return res.status(404).json({ success: false, error: 'unknown export' });
+});
+
+// ดาวน์โหลด log ตามตัวกรองที่เลือก — เดินทีละหน้าจากที่เก็บ (ไม่ใช่แค่ที่โหลดไว้บนหน้าเว็บ)
+app.get('/admin/api/logs/export', requireAdminSession, async function(req, res) {
+    const query = {
+        cat: String(req.query.cat || 'all'),
+        mode: req.query.mode ? String(req.query.mode) : null,
+        roomId: req.query.roomId ? String(req.query.roomId) : null,
+        q: req.query.q ? String(req.query.q) : ''
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="server_logs_${stamp}.txt"`);
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+        for await (const entry of serverLogStore.exportEntries(query)) {
+            const time = new Date(entry.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false });
+            const mode = entry.gameModeLabel ? `[${entry.gameModeLabel}] ` : '';
+            const room = entry.roomId ? `[${entry.roomName}] ` : '';
+            const meta = entry.meta ? ` ${JSON.stringify(entry.meta)}` : '';
+            const bot = entry.bot ? ' [bot]' : '';
+            if (!res.write(`[${time}] [${String(entry.category || '').toUpperCase()}]${bot} ${mode}${room}${entry.message}${meta}\n`)) {
+                await new Promise(resolve => res.once('drain', resolve));
+            }
+        }
+        res.end();
+    } catch (error) {
+        console.error('[logs export]', error);
+        res.end(`\n[export failed: ${error.message}]\n`);
+    }
+});
+
 app.get('/admin/api/messages', requireAdminSession, function(req, res) {
     res.json({
         success: true,
@@ -6291,6 +6689,7 @@ app.get('/adminPlayer', function(req, res) {
 // ==================== SOCKET.IO HANDLERS ====================
 
 io.sockets.on('connection', function(socket) {
+    guardSocketHandlers(socket);
     socket.emit('buildId', BUILD_ID);
     console.log('Socket connected:', socket.id);
     const sessionPlayerId = getSessionPlayerId(socket);
@@ -6569,8 +6968,19 @@ io.sockets.on('connection', function(socket) {
                 roomCountdowns.delete(roomId);
             }
 
+            const wasPlaying = roomManager.isRoomGameInProgress(room);
+            const endedMode = room.settings.gameMode;
+            const endedName = room.name;
             const { room: refreshedRoom, removedPlayers } = roomManager.endTableSession(roomId, playerId);
             refundStalePokerEscrows('หัวห้องจบโต๊ะ');
+            {
+                const style = getGameModeLogStyle(endedMode);
+                addServerLog(io, 'game', roomId, `${style.emoji} ${style.label} หัวห้องจบโต๊ะ${wasPlaying ? ' ระหว่างเกม (จบกลางคัน)' : ''}${refreshedRoom ? '' : ' — ห้องปิด'}`, 'warning', {
+                    roomName: endedName,
+                    gameMode: endedMode,
+                    meta: { event: wasPlaying ? 'game_abort' : 'table_end', reason: 'host_end_table', playerId, removedOffline: removedPlayers.length }
+                });
+            }
 
             if (!refreshedRoom) {
                 io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -6643,7 +7053,7 @@ io.sockets.on('connection', function(socket) {
 
         const hintedRoomId = (data && data.roomId) || socket.roomId;
         roomManager.findRoomIdsForPlayer(playerId).forEach(roomId => markExplicitLeave(roomId, playerId));
-        const result = detachPlayerFromOtherRooms(socket, playerId, null);
+        const result = detachPlayerFromOtherRooms(socket, playerId, null, 'leave');
         socketRoomMap.delete(socket.id);
         socket.roomId = null;
 
@@ -6651,7 +7061,6 @@ io.sockets.on('connection', function(socket) {
         (result.updated || []).forEach(room => {
             if (player) {
                 sendChatMessageToRoom(io, room.roomId, 'System', `${player.playerName} ออกจากห้อง`, '#e74c3c');
-                addServerLog(io, 'leave', room.roomId, `${player.playerName} ออกจากห้อง`, 'warning');
             }
         });
         // timer ของห้องที่ปิดถูกเคลียร์ใน detachPlayerFromOtherRooms แล้ว
@@ -6699,10 +7108,12 @@ io.sockets.on('connection', function(socket) {
             }
 
             // Now kick player from room data
+            const kickSnapshot = snapshotRoomForLog(roomId);
             roomManager.kickPlayer(roomId, adminPlayerId, targetPlayerId);
 
             // Update remaining players
             const updatedRoom = roomManager.getRoom(roomId);
+            logPlayerRemoval(kickSnapshot, updatedRoom, targetPlayerId, 'kick', { by: adminPlayerId });
             if (updatedRoom) {
                 handleMidGamePlayerRemoval(updatedRoom, targetPlayerId);
 
@@ -6904,6 +7315,36 @@ io.sockets.on('connection', function(socket) {
         return adminSockets.has(socketId);
     }
 
+    // แอดมินสั่งอะไรที่เปลี่ยนข้อมูล → ตาราง/ตัวเลขต้องเห็นผลทันที ไม่รอ cache หมดอายุ
+    const ADMIN_READ_EVENTS = new Set(['admin_authenticate', 'admin_getData', 'admin_getSummary', 'admin_getPlayers', 'admin_getSiteAdmins',
+        'admin_getRooms', 'admin_getBanned', 'admin_getStats', 'admin_getPlayerStat', 'admin_searchPlayers', 'admin_getLogs',
+        'admin_getRoomDetails', 'admin_getGameSettings', 'admin_getWords', 'admin_seasonPreview', 'admin_getRecoveryCode']);
+    socket.use((packet, next) => {
+        const eventName = packet[0];
+        if (typeof eventName === 'string' && eventName.startsWith('admin_') && !ADMIN_READ_EVENTS.has(eventName) && adminSockets.has(socket.id)) {
+            invalidateAdminSnapshot();
+            // ล้างอีกรอบตอนตอบกลับ (handler async อาจแก้ข้อมูลเสร็จทีหลัง) — หน้าเว็บโหลดใหม่หลังได้คำตอบเสมอ
+            const last = packet[packet.length - 1];
+            if (typeof last === 'function') {
+                packet[packet.length - 1] = (...args) => {
+                    invalidateAdminSnapshot();
+                    last(...args);
+                };
+            }
+        }
+        next();
+    });
+
+    // จดทุกอย่างที่แอดมินทำ (แท็บ Logs → แอดมิน) — เดิมหลาย action ไม่จดเลย
+    function adminAudit(message, meta = {}, roomId = null, type = 'warning') {
+        const room = roomId ? roomManager.getRoom(roomId) : null;
+        addServerLog(io, 'admin', roomId, `Admin ${message}`, type, {
+            roomName: meta.roomName || room?.name,
+            gameMode: meta.gameMode || room?.settings?.gameMode || null,
+            meta: { ...meta, roomName: undefined, gameMode: undefined }
+        });
+    }
+
     // Admin: Get all data for dashboard
     socket.on('admin_getData', function(callback) {
         try {
@@ -6915,25 +7356,12 @@ io.sockets.on('connection', function(socket) {
                 return;
             }
             
-            // ดึงข้อมูลผู้เล่นทั้งหมด
-            const adminPlayersData = getAdminPlayersData();
-            
-            // ดึงข้อมูลห้องทั้งหมด พร้อมชื่อผู้เล่นในห้อง
-            const allRooms = roomManager.getAllRooms();
-            const roomsWithPlayers = allRooms.map(room => {
-                const fullRoom = roomManager.getRoom(room.roomId);
-                return {
-                    ...room,
-                    playerNames: fullRoom ? fullRoom.players.map(p => p.playerName) : []
-                };
-            });
-            
-            // ดึงสถิติผู้เล่นทั้งหมด
-            const playerStats = statsManager.getAllStats().map(stat => ({
-                ...stat,
-                playerName: resolveDisplayPlayerName(stat.playerId, stat.playerName)
-            }));
-            
+            // (รูปแบบเดิม — หน้าแอดมินใหม่ไม่ได้ใช้แล้ว เก็บไว้ให้สคริปต์/เทสเก่า) ใช้ snapshot เดียวกับแท็บต่างๆ
+            const snapshot = getAdminSnapshot({ fresh: true });
+            const adminPlayersData = snapshot.playersData;
+            const roomsWithPlayers = snapshot.rooms;
+            const playerStats = snapshot.playerStats;
+
             if (typeof callback === 'function') {
                 callback({
                     success: true,
@@ -6941,7 +7369,7 @@ io.sockets.on('connection', function(socket) {
                     siteAdmins: adminPlayersData.siteAdmins,
                     rooms: roomsWithPlayers,
                     playerStats: playerStats,
-                    bannedPlayers: playerManager.getAllBannedPlayers(),
+                    bannedPlayers: snapshot.bannedPlayers,
                     playerSummary: adminPlayersData.summary,
                     cleanupCandidates: adminPlayersData.cleanupCandidates
                 });
@@ -6954,63 +7382,80 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
-    // Admin: Get server logs
-    socket.on('admin_getLogs', function(data, callback) {
-        try {
+    // ---------- หลังบ้านแบบโหลดทีละแท็บ/ทีละหน้า (แทน admin_getData ก้อนใหญ่) ----------
+    function adminHandler(eventName, produce) {
+        socket.on(eventName, async function(data, callback) {
+            const done = typeof data === 'function' ? data : callback;
+            if (typeof done !== 'function') return;
             if (!isAdminAuthenticated(socket.id)) {
-                if (typeof callback === 'function') {
-                    callback({ success: false, error: 'Unauthorized' });
-                }
+                done({ success: false, error: 'Unauthorized - กรุณา login ก่อน' });
                 return;
             }
-            
-            const { filter, gameMode: modeFilter, limit } = data || {};
-            let logs = [...serverLogs]; // Clone array
-            
-            // Filter by category if specified
-            if (filter && filter !== 'all') {
-                logs = logs.filter(log => log.category === filter);
+            try {
+                done({ success: true, ...(await produce(data && typeof data === 'object' ? data : {})) });
+            } catch (error) {
+                console.error(`[${eventName}]`, error);
+                done({ success: false, error: error.message });
             }
+        });
+    }
 
-            if (modeFilter && modeFilter !== 'all') {
-                logs = logs.filter(log => log.gameMode === modeFilter);
+    adminHandler('admin_getSummary', () => ({ summary: getAdminSnapshot().summary }));
+    adminHandler('admin_getPlayers', query => adminQueries.queryPlayers(getAdminSnapshot().playersData.annotatedPlayers, query));
+    adminHandler('admin_getSiteAdmins', () => ({ siteAdmins: getAdminSnapshot().playersData.siteAdmins.map(adminQueries.projectPlayer) }));
+    adminHandler('admin_getRooms', query => adminQueries.queryRooms(getAdminSnapshot().rooms, query));
+    adminHandler('admin_getBanned', () => ({ bannedPlayers: getAdminSnapshot().bannedPlayers }));
+    adminHandler('admin_getStats', query => adminQueries.queryStats(getAdminSnapshot().playerStats, query));
+    // แก้สถิติรายคน — ดึงเต็มเฉพาะคนที่กดแก้
+    adminHandler('admin_getPlayerStat', query => {
+        const playerId = String(query.playerId || '');
+        const stat = statsManager.getStats(playerId);
+        return { stat: stat ? { ...stat, playerName: resolveDisplayPlayerName(playerId, stat.playerName) } : null };
+    });
+    // เลือกผู้เล่นมาตั้ง site admin — ค้นทีละน้อย ไม่ส่งรายชื่อทั้งเว็บ
+    adminHandler('admin_searchPlayers', query => {
+        const text = String(query.search || '').trim().toLowerCase();
+        const limit = Math.max(1, Math.min(300, Number(query.limit) || 100));
+        const rows = getAdminSnapshot().playersData.annotatedPlayers
+            .filter(player => !(query.excludeSiteAdmins && player.isSiteAdmin))
+            .filter(player => !text || `${player.playerName || ''} ${player.playerId}`.toLowerCase().includes(text))
+            .sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0))
+            .slice(0, limit)
+            .map(player => ({ playerId: player.playerId, playerName: player.playerName, displayName: player.displayName, lastSeen: player.lastSeen }));
+        return { players: rows };
+    });
+
+    // Admin: Get server logs — กรอง/แบ่งหน้าฝั่ง server จากที่เก็บจริง (Mongo หรือไฟล์)
+    // { cat, mode, q, roomId, before, limit } · รองรับรูปแบบเก่า { filter, gameMode, limit }
+    socket.on('admin_getLogs', async function(data, callback) {
+        const done = typeof data === 'function' ? data : callback;
+        try {
+            if (!isAdminAuthenticated(socket.id)) {
+                if (typeof done === 'function') done({ success: false, error: 'Unauthorized' });
+                return;
             }
-            
-            // Limit results
-            if (limit && limit > 0) {
-                logs = logs.slice(0, limit);
-            }
-            
-            if (typeof callback === 'function') {
-                callback({ success: true, logs: logs });
+            const result = await serverLogStore.query(data && typeof data === 'object' ? data : {});
+            if (typeof done === 'function') {
+                done({ success: true, ...result, retention: serverLogStore.retention() });
             }
         } catch (error) {
-            if (typeof callback === 'function') {
-                callback({ success: false, error: error.message });
-            }
+            console.error('[admin_getLogs]', error);
+            if (typeof done === 'function') done({ success: false, error: error.message });
         }
     });
 
-    // Admin: Clear server logs
-    socket.on('admin_clearLogs', function(callback) {
+    // Admin: Clear server logs (ลบจากที่เก็บจริงด้วย ไม่ใช่แค่ memory)
+    socket.on('admin_clearLogs', async function(callback) {
         try {
             if (!isAdminAuthenticated(socket.id)) {
-                if (typeof callback === 'function') {
-                    callback({ success: false, error: 'Unauthorized' });
-                }
+                if (typeof callback === 'function') callback({ success: false, error: 'Unauthorized' });
                 return;
             }
-            
-            serverLogs.length = 0;
-            addServerLog(io, 'admin', null, 'Logs ถูกล้างโดย Admin', 'warning');
-            
-            if (typeof callback === 'function') {
-                callback({ success: true });
-            }
+            await serverLogStore.clear();
+            addServerLog(io, 'admin', null, 'Logs ถูกล้างโดย Admin', 'warning', { meta: { event: 'logs_cleared' } });
+            if (typeof callback === 'function') callback({ success: true });
         } catch (error) {
-            if (typeof callback === 'function') {
-                callback({ success: false, error: error.message });
-            }
+            if (typeof callback === 'function') callback({ success: false, error: error.message });
         }
     });
 
@@ -7036,6 +7481,7 @@ io.sockets.on('connection', function(socket) {
             
             // แบนผู้เล่น พร้อมระยะเวลา
             playerManager.banPlayer(playerId, player.playerName, reason || 'ไม่ระบุเหตุผล', 'Admin', durationHours);
+            adminAudit(`แบน ${player.playerName} (${durationHours ? durationHours + ' ชม.' : 'ถาวร'}) — ${reason || 'ไม่ระบุเหตุผล'}`, { event: 'admin_ban', playerId, durationHours: durationHours || null });
             
             // สร้างข้อความแจ้งเตือน
             const durationText = durationHours === null ? 'ถาวร' : `${durationHours} ชั่วโมง`;
@@ -7054,7 +7500,9 @@ io.sockets.on('connection', function(socket) {
                             message: banMessage
                         });
                     }
+                    const banSnapshot = playerInRoom ? snapshotRoomForLog(roomInfo.roomId) : null;
                     const bannedRoom = roomManager.leaveRoom(roomInfo.roomId, playerId);
+                    logPlayerRemoval(banSnapshot, bannedRoom, playerId, 'ban');
                     if (bannedRoom) {
                         handleMidGamePlayerRemoval(bannedRoom, playerId);
                     }
@@ -7081,6 +7529,7 @@ io.sockets.on('connection', function(socket) {
             
             const { playerId } = data;
             playerManager.unbanPlayer(playerId);
+            adminAudit(`ปลดแบน ${resolveDisplayPlayerName(playerId, playerId)}`, { event: 'admin_unban', playerId }, null, 'info');
             callback({ success: true });
         } catch (error) {
             console.error('Error unbanning player:', error);
@@ -7102,6 +7551,7 @@ io.sockets.on('connection', function(socket) {
             const { playerId, newName } = data;
             const updateResult = await playerManager.adminUpdatePlayerName(playerId, newName);
             roomManager.syncPlayerProfile(playerId, { playerName: updateResult.newName });
+            adminAudit(`เปลี่ยนชื่อผู้เล่นเป็น ${updateResult.newName}`, { event: 'admin_rename', playerId }, null, 'info');
             statsManager.updatePlayerNameInStats(playerId, updateResult.newName);
             callback({ success: true });
         } catch (error) {
@@ -7121,6 +7571,7 @@ io.sockets.on('connection', function(socket) {
 
             const { playerId, isSiteAdmin } = data || {};
             const updatedPlayer = await playerManager.setSiteAdmin(playerId, isSiteAdmin);
+            adminAudit(`${isSiteAdmin ? 'ตั้ง' : 'ถอด'} site admin: ${updatedPlayer?.playerName || playerId}`, { event: 'admin_set_site_admin', playerId, isSiteAdmin: Boolean(isSiteAdmin) });
             emitRoomUpdatesForPlayer(playerId);
             io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, player: updatedPlayer });
@@ -7140,6 +7591,8 @@ io.sockets.on('connection', function(socket) {
         if (!playerManager.getPlayer(playerId)) {
             return callback({ success: false, error: 'ไม่พบผู้เล่น' });
         }
+        // ไม่จดรหัสลง log — จดแค่ว่ามีการขอดู
+        adminAudit(`ขอดูลิงก์กู้บัญชีของ ${resolveDisplayPlayerName(playerId, playerId)}`, { event: 'admin_recovery_code', playerId });
         callback({ success: true, recoveryCode: await playerManager.ensureRecoveryCode(playerId) });
     });
 
@@ -7154,6 +7607,7 @@ io.sockets.on('connection', function(socket) {
 
             const { playerName } = data || {};
             const createdPlayer = await playerManager.createSiteAdmin(playerName);
+            adminAudit(`สร้างบัญชี site admin ${createdPlayer.playerName}`, { event: 'admin_create_site_admin', playerId: createdPlayer.playerId });
             io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({
                 success: true,
@@ -7178,7 +7632,9 @@ io.sockets.on('connection', function(socket) {
             }
             
             const { playerId } = data;
+            const deletedName = resolveDisplayPlayerName(playerId, playerId);
             await removePlayerCompletely(playerId);
+            adminAudit(`ลบผู้เล่น ${deletedName}`, { event: 'admin_delete_player', playerId });
             io.emit('roomListUpdate', roomManager.getAllRooms());
             
             callback({ success: true });
@@ -7216,6 +7672,7 @@ io.sockets.on('connection', function(socket) {
             }
             
             io.emit('roomListUpdate', roomManager.getAllRooms());
+            adminAudit(`ลบผู้เล่น ${deletedCount} คน`, { event: 'admin_bulk_delete_players', count: deletedCount });
             callback({ success: true, deletedCount });
         } catch (error) {
             console.error('Error bulk deleting players:', error);
@@ -7247,6 +7704,7 @@ io.sockets.on('connection', function(socket) {
             }
             
             io.emit('roomListUpdate', roomManager.getAllRooms());
+            adminAudit(`ลบผู้เล่น ${deletedCount} คน`, { event: 'admin_bulk_delete_players', count: deletedCount });
             callback({ success: true, deletedCount });
         } catch (error) {
             console.error('Error deleting all players:', error);
@@ -7279,6 +7737,8 @@ io.sockets.on('connection', function(socket) {
                 }
             });
             
+            adminAudit(`ปิดห้อง "${room.name}" (${room.players.length} คน${roomManager.isRoomGameInProgress(room) ? ', กำลังเล่นอยู่' : ''})`,
+                { event: 'admin_close_room', wasPlaying: roomManager.isRoomGameInProgress(room) }, roomId);
             roomManager.forceCloseRoom(roomId);
             refundStalePokerEscrows('แอดมินปิดห้อง');
             io.emit('roomListUpdate', roomManager.getAllRooms());
@@ -7303,6 +7763,7 @@ io.sockets.on('connection', function(socket) {
             
             const { roomId } = data;
             roomManager.unlockRoom(roomId);
+            adminAudit('ปลดล็อกห้อง', { event: 'admin_unlock_room' }, roomId, 'info');
             io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true });
         } catch (error) {
@@ -7335,6 +7796,8 @@ io.sockets.on('connection', function(socket) {
                 roomCountdowns.delete(roomId);
             }
             
+            adminAudit(`รีเซ็ตเกมในห้อง "${room.name}"${roomManager.isRoomGameInProgress(room) ? ' (เกมกำลังเล่นอยู่ — จบกลางคัน)' : ''}`,
+                { event: 'admin_reset_room', wasPlaying: roomManager.isRoomGameInProgress(room) }, roomId);
             // Reset game state
             roomManager.resetRoomGame(roomId);
             
@@ -7362,6 +7825,7 @@ io.sockets.on('connection', function(socket) {
             
             const { playerId } = data;
             await statsManager.resetPlayerStats(playerId);
+            adminAudit(`รีเซ็ตสถิติของ ${resolveDisplayPlayerName(playerId, playerId)}`, { event: 'admin_reset_stats', playerId });
             callback({ success: true });
         } catch (error) {
             console.error('Error resetting player stats:', error);
@@ -7599,6 +8063,7 @@ io.sockets.on('connection', function(socket) {
             }
             
             const count = roomManager.clearEmptyRooms();
+            adminAudit(`ลบห้องว่าง ${count} ห้อง`, { event: 'admin_clear_empty_rooms', count }, null, 'info');
             io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, count });
         } catch (error) {
@@ -7631,7 +8096,9 @@ io.sockets.on('connection', function(socket) {
                 }
             });
             
+            const playingCount = allRooms.filter(roomInfo => roomInfo.gameStatus === 'playing').length;
             const count = roomManager.clearAllRooms();
+            adminAudit(`ปิดห้องทั้งหมด ${count} ห้อง (กำลังเล่น ${playingCount})`, { event: 'admin_clear_all_rooms', count, playingCount });
             io.emit('roomListUpdate', roomManager.getAllRooms());
             callback({ success: true, count });
         } catch (error) {
@@ -7653,6 +8120,7 @@ io.sockets.on('connection', function(socket) {
             
             const { message } = data;
             io.emit('systemBroadcast', { message, timestamp: Date.now() });
+            adminAudit(`ประกาศถึงทุกคน: ${String(message || '').slice(0, 200)}`, { event: 'admin_broadcast' }, null, 'info');
             callback({ success: true });
         } catch (error) {
             console.error('Error broadcasting:', error);
@@ -7740,7 +8208,9 @@ io.sockets.on('connection', function(socket) {
             }
             
             // Remove from room
+            const adminKickSnapshot = snapshotRoomForLog(roomId);
             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
+            logPlayerRemoval(adminKickSnapshot, updatedRoom, playerId, 'admin_kick', { by: 'admin' });
 
             // Update room for others
             if (updatedRoom) {
@@ -9445,6 +9915,7 @@ io.sockets.on('connection', function(socket) {
                 setthiRuntime.emitRoomState(room);
             }
         } catch (error) {
+            reportGameError(socket.roomId || null, '[setthi] cancel hold on disconnect failed', error);
             console.error('[setthi] cancel hold on disconnect failed:', error.message);
         }
     });
@@ -10755,6 +11226,9 @@ io.sockets.on('connection', function(socket) {
                     // ถ้า startGame ล้มกลางคัน ต้องปลดธง gameStarting เสมอ
                     // ไม่งั้นห้องนี้กดเริ่มเกมไม่ได้อีกเลย (ติด "เกมกำลังเริ่มอยู่แล้ว" ถาวร)
                     console.error('Error in deferred game start:', deferredError);
+                    addServerLog(io, 'error', roomId, `เริ่มเกมไม่สำเร็จ: ${deferredError.message}`, 'error', {
+                        meta: { event: 'game_start_failed', playerId: socket.playerId || null }
+                    });
                     room.gameStarting = false;
                     io.to(roomId).emit('gameStartCancelled', { error: deferredError.message || 'เริ่มเกมไม่สำเร็จ ลองใหม่อีกครั้ง' });
                 }
@@ -10763,6 +11237,9 @@ io.sockets.on('connection', function(socket) {
             if (typeof callback === 'function') callback({ success: true, message: 'เกมจะเริ่มใน 3 วินาที...' });
         } catch (error) {
             console.error('Error starting game from lobby:', error);
+            addServerLog(io, 'error', socket.roomId || null, `เริ่มเกมไม่สำเร็จ: ${error.message}`, 'error', {
+                meta: { event: 'game_start_failed', playerId: socket.playerId || null }
+            });
             if (typeof callback === 'function') callback({ success: false, error: error.message });
         }
     });
@@ -11329,7 +11806,9 @@ io.sockets.on('connection', function(socket) {
                                     if (roomCheck) {
                                         const stillDisconnected = roomCheck.players.find(p => p.playerId === playerId && !p.socketId);
                                         if (stillDisconnected) {
+                                            const disconnectSnapshot = snapshotRoomForLog(roomId);
                                             const updatedRoom = roomManager.leaveRoom(roomId, playerId);
+                                            logPlayerRemoval(disconnectSnapshot, updatedRoom, playerId, 'disconnect');
                                             if (updatedRoom) {
                                                 handleMidGamePlayerRemoval(updatedRoom, playerId);
                                                 sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} ออกจากห้อง (Timeout)`, '#e74c3c');
@@ -11381,17 +11860,8 @@ function onServerListening() {
     console.log(`Server started on port ${PORT}`);
     console.log('Multi-Room Insider Game is ready!');
 
-    serverLogs.unshift({
-        id: Date.now() + '-startup',
-        timestamp: new Date().toISOString(),
-        category: 'system',
-        roomId: null,
-        roomName: 'ระบบ',
-        gameMode: null,
-        gameModeLabel: null,
-        message: '🚀 Server เริ่มทำงานแล้ว',
-        type: 'success',
-        meta: null
+    addServerLog(io, 'system', null, '🚀 Server เริ่มทำงานแล้ว', 'success', {
+        meta: { event: 'server_start', logStore: serverLogStore.isUsingDatabase() ? 'mongo' : 'file' }
     });
 
     voidCashPokerHandsOnBoot();
@@ -11407,7 +11877,7 @@ async function flushAndExit(signal) {
     try {
         await Promise.race([
             // ห้องด้วย — เดิมเซฟแค่ตามรอบ sweep รีสตาร์ตกลางเกมแล้วกู้ state เก่า (เช่น Insider ยังอยู่ช่วงเปิดคำ)
-            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms()]),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms(), serverLogStore.flush()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -11416,6 +11886,8 @@ async function flushAndExit(signal) {
     process.exit(0);
 }
 process.on('SIGTERM', () => flushAndExit('SIGTERM'));
+// ตายแบบไม่มี SIGTERM (เช่น process.exit จากที่อื่น) — log ที่ค้างคิวเขียนลงไฟล์แบบ sync
+process.on('exit', () => serverLogStore.flushSyncOnExit());
 process.on('SIGINT', () => flushAndExit('SIGINT'));
 
 async function startServer() {
@@ -11437,6 +11909,8 @@ async function startServer() {
 
         await adminMessageManager.initAdminMessageManager();
         console.log('✅ Admin Message Manager initialized');
+
+        await serverLogStore.init();
 
         const restoredRooms = await roomManager.initRoomManager();
         console.log(`✅ Room Manager initialized (${restoredRooms} room(s) restored)`);
@@ -11461,6 +11935,9 @@ async function startServer() {
         // ขั้นก่อนหน้าพัง → ร้าน 🪙 ยังต้องโหลด (ไม่งั้นรางวัลค้างคิว อัปเกรดไม่ได้ทั้งวัน)
         if (!setthiGold.isReady()) {
             try { await setthiGold.initSetthiGoldManager(); } catch (error) { console.error('[setthiGold] init failed:', error.message); }
+        }
+        if (!serverLogStore.isReady()) {
+            try { await serverLogStore.init({ useDatabase: false }); } catch (error) { console.error('[serverLogs] init failed:', error.message); }
         }
     } finally {
         resolveCoreManagersReady();

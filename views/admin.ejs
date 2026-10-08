@@ -959,6 +959,26 @@
         box-shadow: var(--ad-shadow-sm);
     }
     .lg-more { display: block; width: 100%; margin-top: 10px; }
+    .table-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+    .table-pager[hidden] { display: none; }
+    .table-pager .btn-admin { margin: 0; min-height: 40px; min-width: 44px; }
+    .table-pager .btn-admin:disabled { opacity: 0.4; cursor: default; }
+    .table-pager-info { color: var(--ad-text-mute); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+    .lg-room {
+        padding: 0; border: 0; background: none; color: inherit; font: inherit;
+        text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer;
+    }
+    .lg-room:hover, .lg-room:focus-visible { color: var(--ad-text); }
+    .lg-bot { color: var(--ad-text-mute); white-space: nowrap; }
+    .lg-row--bot .lg-msg { color: var(--ad-text-dim); }
+    .lg-room-chip {
+        display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+        min-height: 36px; margin: 0 0 12px; padding: 0 14px;
+        border-radius: 999px; border: 1px solid var(--ad-blue);
+        background: color-mix(in srgb, var(--ad-blue) 14%, transparent); color: var(--ad-text);
+        font: inherit; font-size: 0.9rem; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .lg-room-chip .lg-room-name { overflow: hidden; text-overflow: ellipsis; }
     @media (max-width: 600px) {
         .lg-tools { width: 100%; display: grid; grid-template-columns: auto 1fr 1fr; }
         .lg-tools .btn-admin { width: 100%; padding: 0 10px; }
@@ -1334,6 +1354,7 @@
                     </tbody>
                 </table>
             </div>
+            <nav class="table-pager" id="playersPager" aria-label="เปลี่ยนหน้า" hidden></nav>
         </div>
     </div>
 
@@ -1428,6 +1449,7 @@
                     </tbody>
                 </table>
             </div>
+            <nav class="table-pager" id="roomsPager" aria-label="เปลี่ยนหน้า" hidden></nav>
         </div>
     </div>
     
@@ -1522,6 +1544,7 @@
                     </tbody>
                 </table>
             </div>
+            <nav class="table-pager" id="statsPager" aria-label="เปลี่ยนหน้า" hidden></nav>
         </div>
     </div>
     
@@ -1531,7 +1554,7 @@
             <div class="lg-head">
                 <div class="lg-head-text">
                     <h2 class="lg-title">📋 บันทึกกิจกรรม</h2>
-                    <p class="lg-sub">เก็บ 2,000 รายการล่าสุด · หายเมื่อเซิร์ฟเวอร์รีสตาร์ต</p>
+                    <p class="lg-sub" id="lgRetention">เก็บ 7 วัน · แต่ละประเภทมีโควตาของตัวเอง · ไม่หายตอนรีสตาร์ต</p>
                 </div>
                 <div class="lg-tools">
                     <button type="button" class="lg-live is-on" id="lgLive" aria-pressed="true" title="หยุดไว้ = รายการใหม่ไม่เด้งเข้ามาระหว่างอ่าน">
@@ -1550,6 +1573,7 @@
                     <option value="all">ทุกเกม</option>
                 </select>
             </div>
+            <button type="button" class="lg-room-chip" id="lgRoomChip" hidden title="กลับไปดูทุกห้อง">🚪 เฉพาะห้อง <strong class="lg-room-name"></strong> <span aria-hidden="true">✕</span></button>
 
             <div class="lg-list-wrap">
                 <button type="button" class="lg-newpill" id="lgNewPill" hidden>↑ มีรายการใหม่</button>
@@ -1673,7 +1697,6 @@
 <script>
 $(function() {
     const socket = window.appSocket || io();
-    let allData = {};
     let isAuthenticated = false;
     let selectedInboxPlayerId = null;
     let adminInboxThreads = [];
@@ -1684,6 +1707,7 @@ $(function() {
             statusFilter: 'all',
             sortCol: 'lastSeen',
             sortDir: 'desc',
+            page: 1,
             selectedIds: new Set()
         },
         rooms: {
@@ -1691,16 +1715,20 @@ $(function() {
             modeFilter: 'all',
             statusFilter: 'all',
             sortCol: 'players',
-            sortDir: 'desc'
+            sortDir: 'desc',
+            page: 1
         },
         stats: {
             search: '',
             modeFilter: 'all',
             sortCol: 'games',
             sortDir: 'desc',
+            page: 1,
             selectedIds: new Set()
         }
     };
+    const TABLE_PAGE_SIZE = 50;
+    let adminSummary = null;
     const WEREWOLF_ROLE_META = [
         { id: 'villager', label: 'ชาวบ้าน', emoji: '🙂' },
         { id: 'werewolf', label: 'หมาป่า', emoji: '🐺' },
@@ -1793,13 +1821,17 @@ $(function() {
     // Admin token จาก server (ใช้ re-authenticate ได้ภายใน 60 วินาที)
     const adminToken = '<%= adminToken %>';
 
+    // socket ที่ยืนยันตัวแล้ว — event 'connect' ครั้งแรกไม่ต้องยืนยันซ้ำ (เดิมโหลดทุกอย่าง 2 รอบตอนเปิดหน้า)
+    let authenticatedSocketId = null;
     function authenticateAdminSocket(options) {
         const silent = Boolean(options?.silent);
         socket.emit('admin_authenticate', { token: adminToken }, function(response) {
             if (response.success) {
                 isAuthenticated = true;
+                authenticatedSocketId = socket.id;
                 loadData();
-                loadLogs();
+                // Logs โหลดเมื่อเปิดแท็บ (หรือโหลดซ้ำหลัง reconnect ถ้าเคยเปิดแล้ว)
+                if (logView.loaded || $('#tab-logs').hasClass('active')) loadLogs();
                 loadGameSettingsTab();
                 loadAdminInbox();
             } else if (!silent) {
@@ -1831,6 +1863,10 @@ $(function() {
         if (tab === 'messages') {
             loadAdminInbox();
         }
+        if (tab === 'logs' && !logView.loaded && !logView.loading) {
+            loadLogs();
+        }
+        loadTabData(tab);
     });
 
     $('#adminInboxBell').on('click', function() {
@@ -1838,45 +1874,59 @@ $(function() {
         document.querySelector('.tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     
-    // Search players
+    // ค้นหา/กรอง/เรียง ทำฝั่ง server — เปลี่ยนตัวกรองแล้วโหลดหน้าแรกใหม่
+    const filterTimers = {};
+    function refetchSoon(key, fetcher) {
+        clearTimeout(filterTimers[key]);
+        filterTimers[key] = setTimeout(fetcher, 250);
+    }
+
     $('#searchPlayers').on('input', function() {
         dashboardState.players.search = $(this).val() || '';
-        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
+        dashboardState.players.page = 1;
+        refetchSoon('players', fetchPlayers);
     });
 
     $('#playerTypeFilter').on('change', function() {
         dashboardState.players.typeFilter = $(this).val() || 'all';
-        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
+        dashboardState.players.page = 1;
+        fetchPlayers();
     });
 
     $('#playerStatusFilter').on('change', function() {
         dashboardState.players.statusFilter = $(this).val() || 'all';
-        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
+        dashboardState.players.page = 1;
+        fetchPlayers();
     });
 
     $('#searchRooms').on('input', function() {
         dashboardState.rooms.search = $(this).val() || '';
-        updateRoomsTable(allData.rooms || []);
+        dashboardState.rooms.page = 1;
+        refetchSoon('rooms', fetchRooms);
     });
 
     $('#roomModeFilter').on('change', function() {
         dashboardState.rooms.modeFilter = $(this).val() || 'all';
-        updateRoomsTable(allData.rooms || []);
+        dashboardState.rooms.page = 1;
+        fetchRooms();
     });
 
     $('#roomStatusFilter').on('change', function() {
         dashboardState.rooms.statusFilter = $(this).val() || 'all';
-        updateRoomsTable(allData.rooms || []);
+        dashboardState.rooms.page = 1;
+        fetchRooms();
     });
 
     $('#searchStats').on('input', function() {
         dashboardState.stats.search = $(this).val() || '';
-        updateStatsTable(allData.playerStats || []);
+        dashboardState.stats.page = 1;
+        refetchSoon('stats', fetchStats);
     });
 
     $('#statsModeFilter').on('change', function() {
         dashboardState.stats.modeFilter = $(this).val() || 'all';
-        updateStatsTable(allData.playerStats || []);
+        dashboardState.stats.page = 1;
+        fetchStats();
     });
 
     function updateSortIcons(selector, activeCol, dir) {
@@ -1893,7 +1943,8 @@ $(function() {
             dashboardState.players.sortDir = col === 'name' || col === 'category' || col === 'id' ? 'asc' : 'desc';
         }
         updateSortIcons('.sortable:not(.room-sortable):not(.stats-sortable)', dashboardState.players.sortCol, dashboardState.players.sortDir);
-        updatePlayersTable(allData.players || [], allData.bannedPlayers || []);
+        dashboardState.players.page = 1;
+        fetchPlayers();
     };
 
     window.setRoomSort = function(col) {
@@ -1904,7 +1955,8 @@ $(function() {
             dashboardState.rooms.sortDir = col === 'name' || col === 'id' || col === 'mode' ? 'asc' : 'desc';
         }
         updateSortIcons('.room-sortable', dashboardState.rooms.sortCol, dashboardState.rooms.sortDir);
-        updateRoomsTable(allData.rooms || []);
+        dashboardState.rooms.page = 1;
+        fetchRooms();
     };
 
     window.setStatsSort = function(col) {
@@ -1915,61 +1967,159 @@ $(function() {
             dashboardState.stats.sortDir = col === 'name' ? 'asc' : 'desc';
         }
         updateSortIcons('.stats-sortable', dashboardState.stats.sortCol, dashboardState.stats.sortDir);
-        updateStatsTable(allData.playerStats || []);
+        dashboardState.stats.page = 1;
+        fetchStats();
     };
     
-    // Load data from server
+    // โหลดเฉพาะตัวเลขสรุป + แท็บที่เปิดอยู่ (แท็บอื่นโหลดตอนกดเปิด) — เดิมดึงทุกอย่างก้อนเดียว (admin_getData)
+    function handleAdminResponse(response) {
+        if (response && response.success) return true;
+        if (response && /Unauthorized/.test(response.error || '') && !Swal.isVisible()) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Session หมดอายุ',
+                text: 'กรุณา login ใหม่',
+                confirmButtonText: 'Login'
+            }).then(() => {
+                window.location.href = '/admin/login';
+            });
+        }
+        return false;
+    }
+
+    function activeTabName() {
+        return $('.tab-btn.active').data('tab');
+    }
+
+    function loadTabData(tab) {
+        if (!isAuthenticated) return;
+        if (tab === 'players') fetchPlayers();
+        else if (tab === 'admins') fetchSiteAdmins();
+        else if (tab === 'rooms') fetchRooms();
+        else if (tab === 'banned') fetchBanned();
+        else if (tab === 'stats') fetchStats();
+    }
+
     window.loadData = function() {
         if (!isAuthenticated) {
             return;
         }
-        socket.emit('admin_getData', function(response) {
-            if (response.success) {
-                allData = response;
-                updateStats(response);
-                updatePlayersTable(response.players, response.bannedPlayers);
-                updateSiteAdminsTable(response.siteAdmins || []);
-                updateRoomsTable(response.rooms);
-                updateBannedTable(response.bannedPlayers);
-                updateStatsTable(response.playerStats);
-            } else if (response.error === 'Unauthorized - กรุณา login ก่อน') {
-                // Token หมดอายุ หรือยังไม่ได้ authenticate
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Session หมดอายุ',
-                    text: 'กรุณา login ใหม่',
-                    confirmButtonText: 'Login'
-                }).then(() => {
-                    window.location.href = '/admin/login';
-                });
-            }
-        });
+        loadSummary();
+        loadTabData(activeTabName());
     };
+
+    function loadSummary() {
+        socket.emit('admin_getSummary', {}, function(response) {
+            if (!handleAdminResponse(response)) return;
+            adminSummary = response.summary;
+            updateStats(response.summary);
+        });
+    }
+
+    const tableRequestSeq = { players: 0, rooms: 0, stats: 0 };
+    function tableQuery(key) {
+        const state = dashboardState[key];
+        const { selectedIds, ...query } = state;
+        return { ...query, pageSize: TABLE_PAGE_SIZE };
+    }
+
+    function fetchPlayers() {
+        const seq = ++tableRequestSeq.players;
+        socket.emit('admin_getPlayers', tableQuery('players'), function(response) {
+            if (seq !== tableRequestSeq.players || !handleAdminResponse(response)) return;
+            dashboardState.players.page = response.page;
+            updatePlayersTable(response);
+        });
+    }
+
+    function fetchSiteAdmins() {
+        socket.emit('admin_getSiteAdmins', {}, function(response) {
+            if (!handleAdminResponse(response)) return;
+            updateSiteAdminsTable(response.siteAdmins || []);
+        });
+    }
+
+    function fetchRooms() {
+        const seq = ++tableRequestSeq.rooms;
+        socket.emit('admin_getRooms', tableQuery('rooms'), function(response) {
+            if (seq !== tableRequestSeq.rooms || !handleAdminResponse(response)) return;
+            dashboardState.rooms.page = response.page;
+            updateRoomsTable(response);
+        });
+    }
+
+    function fetchBanned() {
+        socket.emit('admin_getBanned', {}, function(response) {
+            if (!handleAdminResponse(response)) return;
+            updateBannedTable(response.bannedPlayers || []);
+        });
+    }
+
+    function fetchStats() {
+        const seq = ++tableRequestSeq.stats;
+        socket.emit('admin_getStats', tableQuery('stats'), function(response) {
+            if (seq !== tableRequestSeq.stats || !handleAdminResponse(response)) return;
+            dashboardState.stats.page = response.page;
+            updateStatsTable(response);
+        });
+    }
+
+    function renderPager(selector, result, onPage) {
+        const $pager = $(selector);
+        if (!result || result.pages <= 1) {
+            $pager.prop('hidden', true).empty();
+            return;
+        }
+        $pager.prop('hidden', false).html(`
+            <button type="button" class="btn-admin btn-refresh" data-page="1" ${result.page <= 1 ? 'disabled' : ''} aria-label="หน้าแรก">«</button>
+            <button type="button" class="btn-admin btn-refresh" data-page="${result.page - 1}" ${result.page <= 1 ? 'disabled' : ''}>‹ ก่อนหน้า</button>
+            <span class="table-pager-info">หน้า ${result.page.toLocaleString('th-TH')} / ${result.pages.toLocaleString('th-TH')}</span>
+            <button type="button" class="btn-admin btn-refresh" data-page="${result.page + 1}" ${result.page >= result.pages ? 'disabled' : ''}>ถัดไป ›</button>
+            <button type="button" class="btn-admin btn-refresh" data-page="${result.pages}" ${result.page >= result.pages ? 'disabled' : ''} aria-label="หน้าสุดท้าย">»</button>
+        `);
+        $pager.find('button[data-page]').on('click', function() {
+            onPage(Number($(this).data('page')));
+        });
+    }
+
+    function pageRangeText(result, unit) {
+        if (!result.filtered) return `แสดง 0 จาก ${result.total.toLocaleString('th-TH')} ${unit}`;
+        const from = (result.page - 1) * result.pageSize + 1;
+        const to = Math.min(result.filtered, from + result.rows.length - 1);
+        const scope = result.filtered === result.total ? '' : ` (ทั้งหมด ${result.total.toLocaleString('th-TH')})`;
+        return `แสดง ${from.toLocaleString('th-TH')}–${to.toLocaleString('th-TH')} จาก ${result.filtered.toLocaleString('th-TH')} ${unit}${scope}`;
+    }
     
-    function updateStats(data) {
-        $('#totalPlayers').text(data.players.length);
-        $('#totalRooms').text(data.rooms.length);
-        $('#playingRooms').text(data.rooms.filter(r => r.gameStatus === 'playing').length);
-        $('#bannedPlayers').text(data.bannedPlayers ? data.bannedPlayers.length : 0);
-        const totalGames = data.playerStats.reduce((sum, p) => sum + (p.totalGames || 0), 0) / 2;
-        $('#totalGames').text(Math.floor(totalGames));
-        $('#realPlayers').text(data.playerSummary?.realPlayers || 0);
-        $('#ghostPlayers').text(data.playerSummary?.cleanupCandidates || 0);
-        $('#summaryRealPlayers').text(data.playerSummary?.realPlayers || 0);
-        $('#summaryGuestActivePlayers').text(data.playerSummary?.guestActivePlayers || 0);
-        $('#summaryGuestIdlePlayers').text(data.playerSummary?.guestIdlePlayers || 0);
-        $('#summaryCleanupCandidates').text(data.playerSummary?.cleanupCandidates || 0);
-        $('#cleanupSummaryText').text(`cleanup candidate = guest อัตโนมัติที่ไม่เคยเล่น, ไม่อยู่ในห้อง, ไม่ถูกแบน, และใช้โปรไฟล์ default อยู่ จำนวนล่าสุด ${data.cleanupCandidates ? data.cleanupCandidates.length : 0} คน`);
-        $('#siteAdminsMeta').text(`site admin ทั้งหมด ${data.siteAdmins ? data.siteAdmins.length : 0} คน`);
+    function updateStats(summary) {
+        $('#totalPlayers').text(summary.totalPlayers);
+        $('#totalRooms').text(summary.totalRooms);
+        $('#playingRooms').text(summary.playingRooms);
+        $('#bannedPlayers').text(summary.bannedPlayers || 0);
+        $('#totalGames').text(summary.totalGames || 0);
+        $('#realPlayers').text(summary.playerSummary?.realPlayers || 0);
+        $('#ghostPlayers').text(summary.playerSummary?.cleanupCandidates || 0);
+        $('#summaryRealPlayers').text(summary.playerSummary?.realPlayers || 0);
+        $('#summaryGuestActivePlayers').text(summary.playerSummary?.guestActivePlayers || 0);
+        $('#summaryGuestIdlePlayers').text(summary.playerSummary?.guestIdlePlayers || 0);
+        $('#summaryCleanupCandidates').text(summary.playerSummary?.cleanupCandidates || 0);
+        $('#cleanupSummaryText').text(`cleanup candidate = guest อัตโนมัติที่ไม่เคยเล่น, ไม่อยู่ในห้อง, ไม่ถูกแบน, และใช้โปรไฟล์ default อยู่ จำนวนล่าสุด ${summary.cleanupCandidates || 0} คน`);
+        $('#siteAdminsMeta').text(`site admin ทั้งหมด ${summary.siteAdmins || 0} คน`);
         $('#serverTime').text(new Date().toLocaleString('th-TH'));
+        if (summary.statsRows > 0) {
+            $('#clearAllStatsBtn').show();
+            $('#resetSeasonBtn').show();
+        } else {
+            $('#clearAllStatsBtn').hide();
+            $('#resetSeasonBtn').hide();
+        }
     }
 
     function isPlayerRecent(player) {
         return Boolean(player.lastSeen) && (Date.now() - new Date(player.lastSeen).getTime()) < 5 * 60 * 1000;
     }
 
-    function getPlayerStatusKey(player, bannedIds) {
-        if (bannedIds.includes(player.playerId)) return 'banned';
+    function getPlayerStatusKey(player) {
+        if (player.isBanned) return 'banned';
         if (player.isCleanupCandidate) return 'cleanup';
         return isPlayerRecent(player) ? 'online' : 'offline';
     }
@@ -1988,13 +2138,16 @@ $(function() {
         });
     }
 
-    function updatePlayersTable(players, bannedPlayers) {
+    function updatePlayersTable(result) {
         const $table = $('#playersTable');
         $table.empty();
 
-        const playerList = Array.isArray(players) ? [...players] : [];
-        pruneSelection(dashboardState.players.selectedIds, new Set(playerList.map(player => player.playerId)));
-        if (playerList.length === 0) {
+        const filteredPlayers = result.rows || [];
+        renderPager('#playersPager', result, function(page) {
+            dashboardState.players.page = page;
+            fetchPlayers();
+        });
+        if (result.total === 0) {
             $table.html('<tr><td colspan="8" class="empty-message">ไม่มีผู้เล่น</td></tr>');
             $('#playersTableMeta').text('ไม่มีผู้เล่น');
             $('#selectAllPlayers').prop('checked', false);
@@ -2002,63 +2155,9 @@ $(function() {
             return;
         }
 
-        const bannedIds = (bannedPlayers || []).map(b => b.playerId);
-
-        playerList.sort((a, b) => {
-            let valA, valB;
-            switch(dashboardState.players.sortCol) {
-                case 'name':
-                    valA = (a.playerName || '').toLowerCase();
-                    valB = (b.playerName || '').toLowerCase();
-                    break;
-                case 'category':
-                    valA = a.category || '';
-                    valB = b.category || '';
-                    break;
-                case 'id':
-                    valA = a.playerId || '';
-                    valB = b.playerId || '';
-                    break;
-                case 'status':
-                    const getStatusScore = p => {
-                        const key = getPlayerStatusKey(p, bannedIds);
-                        if (key === 'online') return 3;
-                        if (key === 'offline') return 2;
-                        if (key === 'cleanup') return 1;
-                        return 0;
-                    };
-                    valA = getStatusScore(a);
-                    valB = getStatusScore(b);
-                    break;
-                case 'games':
-                    valA = a.totalGames || 0;
-                    valB = b.totalGames || 0;
-                    break;
-                case 'lastSeen':
-                default:
-                    valA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
-                    valB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
-                    break;
-            }
-            return compareValues(valA, valB, dashboardState.players.sortDir)
-                || compareValues((a.playerName || '').toLowerCase(), (b.playerName || '').toLowerCase(), 'asc');
-        });
-
-        const filteredPlayers = playerList.filter(function(player) {
-            const search = dashboardState.players.search.trim().toLowerCase();
-            const typeFilter = dashboardState.players.typeFilter;
-            const statusFilter = dashboardState.players.statusFilter;
-            const text = `${player.playerName || ''} ${player.playerId || ''} ${player.category || ''}`.toLowerCase();
-            const statusKey = getPlayerStatusKey(player, bannedIds);
-            const matchesSearch = !search || text.includes(search);
-            const matchesType = typeFilter === 'all' || (player.category || 'unknown') === typeFilter;
-            const matchesStatus = statusFilter === 'all' || statusKey === statusFilter;
-            return matchesSearch && matchesType && matchesStatus;
-        });
-
         if (filteredPlayers.length === 0) {
             $table.html('<tr><td colspan="8" class="empty-message">ไม่พบผู้เล่นที่ตรงเงื่อนไข</td></tr>');
-            $('#playersTableMeta').text(`แสดง 0 จาก ${playerList.length} คน`);
+            $('#playersTableMeta').text(pageRangeText(result, 'คน'));
             $('#selectAllPlayers').prop('checked', false);
             updateSelectedPlayersCount();
             return;
@@ -2066,7 +2165,7 @@ $(function() {
 
         filteredPlayers.forEach(function(player) {
             const lastSeen = player.lastSeen ? new Date(player.lastSeen).toLocaleString('th-TH') : '-';
-            const isBanned = bannedIds.includes(player.playerId);
+            const isBanned = Boolean(player.isBanned);
             const isRecent = isPlayerRecent(player);
             const categoryClass = player.category === 'ghost'
                 ? 'status-ghost'
@@ -2122,7 +2221,7 @@ $(function() {
             $table.append(row);
         });
 
-        $('#playersTableMeta').text(`แสดง ${filteredPlayers.length} จาก ${playerList.length} คน`);
+        $('#playersTableMeta').text(pageRangeText(result, 'คน'));
         $('#playersTable .player-checkbox').on('change', function() {
             const playerId = $(this).data('player-id');
             if ($(this).is(':checked')) {
@@ -2172,68 +2271,24 @@ $(function() {
         $('#siteAdminsMeta').text(`site admin ${adminList.length} คน`);
     }
 
-    function updateRoomsTable(rooms) {
+    function updateRoomsTable(result) {
         const $table = $('#roomsTable');
         $table.empty();
 
-        const roomList = Array.isArray(rooms) ? [...rooms] : [];
-        if (roomList.length === 0) {
+        const filteredRooms = result.rows || [];
+        renderPager('#roomsPager', result, function(page) {
+            dashboardState.rooms.page = page;
+            fetchRooms();
+        });
+        if (result.total === 0) {
             $table.html('<tr><td colspan="7" class="empty-message">ไม่มีห้อง</td></tr>');
             $('#roomsTableMeta').text('ไม่มีห้อง');
             return;
         }
 
-        roomList.sort(function(a, b) {
-            let valA;
-            let valB;
-            switch (dashboardState.rooms.sortCol) {
-                case 'name':
-                    valA = (a.name || '').toLowerCase();
-                    valB = (b.name || '').toLowerCase();
-                    break;
-                case 'id':
-                    valA = (a.roomId || '').toLowerCase();
-                    valB = (b.roomId || '').toLowerCase();
-                    break;
-                case 'mode':
-                    valA = (a.gameMode || 'insider').toLowerCase();
-                    valB = (b.gameMode || 'insider').toLowerCase();
-                    break;
-                case 'status':
-                    valA = a.gameStatus === 'playing' ? 1 : 0;
-                    valB = b.gameStatus === 'playing' ? 1 : 0;
-                    break;
-                case 'locked':
-                    valA = a.locked ? 1 : 0;
-                    valB = b.locked ? 1 : 0;
-                    break;
-                case 'players':
-                default:
-                    valA = Number(a.playerCount || 0);
-                    valB = Number(b.playerCount || 0);
-                    break;
-            }
-            return compareValues(valA, valB, dashboardState.rooms.sortDir)
-                || compareValues((a.name || '').toLowerCase(), (b.name || '').toLowerCase(), 'asc');
-        });
-
-        const filteredRooms = roomList.filter(function(room) {
-            const search = dashboardState.rooms.search.trim().toLowerCase();
-            const modeFilter = dashboardState.rooms.modeFilter;
-            const statusFilter = dashboardState.rooms.statusFilter;
-            const mode = room.gameMode || 'insider';
-            const status = room.gameStatus === 'playing' ? 'playing' : 'waiting';
-            const lockStatus = room.locked ? 'locked' : 'unlocked';
-            const haystack = `${room.name || ''} ${room.roomId || ''} ${mode} ${(room.playerNames || []).join(' ')}`.toLowerCase();
-            const matchesSearch = !search || haystack.includes(search);
-            const matchesMode = modeFilter === 'all' || mode === modeFilter;
-            const matchesStatus = statusFilter === 'all' || status === statusFilter || lockStatus === statusFilter;
-            return matchesSearch && matchesMode && matchesStatus;
-        });
-
         if (filteredRooms.length === 0) {
             $table.html('<tr><td colspan="7" class="empty-message">ไม่พบห้องที่ตรงเงื่อนไข</td></tr>');
-            $('#roomsTableMeta').text(`แสดง 0 จาก ${roomList.length} ห้อง`);
+            $('#roomsTableMeta').text(pageRangeText(result, 'ห้อง'));
             return;
         }
 
@@ -2262,7 +2317,7 @@ $(function() {
             $table.append(row);
         });
 
-        $('#roomsTableMeta').text(`แสดง ${filteredRooms.length} จาก ${roomList.length} ห้อง`);
+        $('#roomsTableMeta').text(pageRangeText(result, 'ห้อง'));
     }
 
     function updateBannedTable(bannedPlayers) {
@@ -2317,22 +2372,16 @@ $(function() {
         });
     }
     
-    function updateStatsTable(stats) {
+    function updateStatsTable(result) {
         const $table = $('#statsTable');
         $table.empty();
 
-        const statList = Array.isArray(stats) ? [...stats] : [];
-        pruneSelection(dashboardState.stats.selectedIds, new Set(statList.map(stat => stat.playerId)));
-        // แสดง/ซ่อนปุ่ม Clear All และปุ่มปิด Season
-        if (statList.length > 0) {
-            $('#clearAllStatsBtn').show();
-            $('#resetSeasonBtn').show();
-        } else {
-            $('#clearAllStatsBtn').hide();
-            $('#resetSeasonBtn').hide();
-        }
-        
-        if (statList.length === 0) {
+        const filteredStats = result.rows || [];
+        renderPager('#statsPager', result, function(page) {
+            dashboardState.stats.page = page;
+            fetchStats();
+        });
+        if (result.total === 0) {
             $table.html('<tr><td colspan="11" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
             $('#statsTableMeta').text('ไม่มีข้อมูลสถิติ');
             $('#selectAllStats').prop('checked', false);
@@ -2340,82 +2389,9 @@ $(function() {
             return;
         }
 
-        statList.sort(function(a, b) {
-            const winRateA = a.totalGames > 0 ? Math.round((a.wins / a.totalGames) * 100) : 0;
-            const winRateB = b.totalGames > 0 ? Math.round((b.wins / b.totalGames) * 100) : 0;
-            let valA;
-            let valB;
-            switch (dashboardState.stats.sortCol) {
-                case 'name':
-                    valA = (a.playerName || '').toLowerCase();
-                    valB = (b.playerName || '').toLowerCase();
-                    break;
-                case 'wins':
-                    valA = Number(a.wins || 0);
-                    valB = Number(b.wins || 0);
-                    break;
-                case 'losses':
-                    valA = Number(a.losses || 0);
-                    valB = Number(b.losses || 0);
-                    break;
-                case 'winRate':
-                    valA = winRateA;
-                    valB = winRateB;
-                    break;
-                case 'games':
-                default:
-                    valA = Number(a.totalGames || 0);
-                    valB = Number(b.totalGames || 0);
-                    break;
-            }
-            return compareValues(valA, valB, dashboardState.stats.sortDir)
-                || compareValues((a.playerName || '').toLowerCase(), (b.playerName || '').toLowerCase(), 'asc');
-        });
-
-        const filteredStats = statList.filter(function(stat) {
-            const search = dashboardState.stats.search.trim().toLowerCase();
-            const modeFilter = dashboardState.stats.modeFilter;
-            const haystack = `${stat.playerName || ''} ${stat.playerId || ''}`.toLowerCase();
-            const hasInsider = Number(stat.modeStats?.insider?.games || 0) > 0;
-            const hasWerewolf = Number(stat.modeStats?.werewolf?.games || 0) > 0;
-            const hasBlackMarket = Number(stat.modeStats?.blackmarket?.games || 0) > 0;
-            const hasSpyfall = Number(stat.modeStats?.spyfall?.games || 0) > 0;
-            const hasUndercover = Number(stat.modeStats?.undercover?.games || 0) > 0;
-            const hasCoup = Number(stat.modeStats?.coup?.games || 0) > 0;
-            const hasAvalon = Number(stat.modeStats?.avalon?.games || 0) > 0;
-            const hasLiar = Number(stat.modeStats?.liar?.games || 0) > 0;
-            const hasPoker5 = Number(stat.modeStats?.poker5?.games || 0) > 0;
-            const hasPoker4 = Number(stat.modeStats?.poker4?.games || 0) > 0;
-            const hasPokDeng = Number(stat.modeStats?.pokdeng?.games || 0) > 0;
-            const hasCodenames = Number(stat.modeStats?.codenames?.games || 0) > 0;
-            const hasWavelength = Number(stat.modeStats?.wavelength?.games || 0) > 0;
-            const hasDrawGuess = Number(stat.modeStats?.drawguess?.games || 0) > 0;
-            const hasColorCards = Number(stat.modeStats?.colorcards?.games || 0) > 0;
-            const hasSetthi = Number(stat.modeStats?.setthi?.games || 0) > 0;
-            const matchesSearch = !search || haystack.includes(search);
-            const matchesMode = modeFilter === 'all'
-                || (modeFilter === 'has-insider' && hasInsider)
-                || (modeFilter === 'has-werewolf' && hasWerewolf)
-                || (modeFilter === 'has-blackmarket' && hasBlackMarket)
-                || (modeFilter === 'has-spyfall' && hasSpyfall)
-                || (modeFilter === 'has-undercover' && hasUndercover)
-                || (modeFilter === 'has-coup' && hasCoup)
-                || (modeFilter === 'has-avalon' && hasAvalon)
-                || (modeFilter === 'has-liar' && hasLiar)
-                || (modeFilter === 'has-poker5' && hasPoker5)
-                || (modeFilter === 'has-poker4' && hasPoker4)
-                || (modeFilter === 'has-codenames' && hasCodenames)
-                || (modeFilter === 'has-pokdeng' && hasPokDeng)
-                || (modeFilter === 'has-wavelength' && hasWavelength)
-                || (modeFilter === 'has-drawguess' && hasDrawGuess)
-                || (modeFilter === 'has-colorcards' && hasColorCards)
-                || (modeFilter === 'has-setthi' && hasSetthi);
-            return matchesSearch && matchesMode;
-        });
-
         if (filteredStats.length === 0) {
             $table.html('<tr><td colspan="11" class="empty-message">ไม่พบข้อมูลสถิติที่ตรงเงื่อนไข</td></tr>');
-            $('#statsTableMeta').text(`แสดง 0 จาก ${statList.length} รายการ`);
+            $('#statsTableMeta').text(pageRangeText(result, 'รายการ'));
             $('#selectAllStats').prop('checked', false);
             updateSelectedStatsCount();
             return;
@@ -2444,7 +2420,7 @@ $(function() {
             $table.append(row);
         });
 
-        $('#statsTableMeta').text(`แสดง ${filteredStats.length} จาก ${statList.length} รายการ`);
+        $('#statsTableMeta').text(pageRangeText(result, 'รายการ'));
         $('#statsTable .stat-checkbox').on('change', function() {
             const playerId = $(this).data('player-id');
             if ($(this).is(':checked')) {
@@ -2667,9 +2643,14 @@ $(function() {
     };
 
     window.addExistingSiteAdmin = function() {
-        const candidates = (allData.players || []).filter(function(player) {
-            return !player.isSiteAdmin;
+        // ดึงเฉพาะผู้เล่นที่ออนไลน์ล่าสุด 300 คน (เดิมใช้รายชื่อผู้เล่นทั้งเว็บที่โหลดค้างไว้)
+        socket.emit('admin_searchPlayers', { excludeSiteAdmins: true, limit: 300 }, function(response) {
+            if (!handleAdminResponse(response)) return;
+            showAddExistingSiteAdmin(response.players || []);
         });
+    };
+
+    function showAddExistingSiteAdmin(candidates) {
 
         if (!candidates.length) {
             Swal.fire({ icon: 'info', title: 'ไม่มีผู้เล่นให้เพิ่ม', text: 'ตอนนี้ผู้เล่นทั้งหมดเป็น site admin อยู่แล้ว', background: '#1e1e1e', color: '#fff' });
@@ -2709,7 +2690,7 @@ $(function() {
             });
             window.setSiteAdmin(result.value, true, selectedPlayer?.displayName || selectedPlayer?.playerName || 'ผู้เล่น');
         });
-    };
+    }
 
     window.closeRoom = function(roomId, roomName) {
         Swal.fire({
@@ -2783,7 +2764,13 @@ $(function() {
     
     // แก้ไขสถิติผู้เล่น (Admin เทพ!)
     window.editPlayerStats = function(playerId) {
-        const stat = (allData.playerStats || []).find(item => item.playerId === playerId);
+        socket.emit('admin_getPlayerStat', { playerId }, function(response) {
+            if (!handleAdminResponse(response)) return;
+            showEditPlayerStats(playerId, response.stat);
+        });
+    };
+
+    function showEditPlayerStats(playerId, stat) {
         if (!stat) {
             Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลสถิติ', background: '#1e1e1e', color: '#fff' });
             return;
@@ -3108,7 +3095,7 @@ $(function() {
                 });
             }
         });
-    };
+    }
     
     // ลบสถิติผู้เล่นรายคน
     window.deletePlayerStats = function(playerId, playerName) {
@@ -3395,13 +3382,27 @@ $(function() {
         });
     };
     
-    window.exportStats = function() {
-        if (!allData.playerStats) return;
+    async function fetchAdminExport(kind) {
+        const response = await fetch('/admin/api/export/' + kind, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'ดาวน์โหลดไม่สำเร็จ');
+        return data;
+    }
+
+    // ดึงสถิติทั้งหมดเฉพาะตอนกดดาวน์โหลด (ไม่รวม gameHistory)
+    window.exportStats = async function() {
+        let playerStats;
+        try {
+            playerStats = (await fetchAdminExport('stats')).playerStats || [];
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'ดาวน์โหลดไม่สำเร็จ', text: error.message, background: '#1e1e1e', color: '#fff' });
+            return;
+        }
         
         const roleHeaders = WEREWOLF_ROLE_META.map(role => `${role.label} Count`).join(',');
         const blackMarketRoleHeaders = BLACKMARKET_ROLE_META.map(role => `${role.label} Count`).join(',');
         let csv = `Player Name,Total Games,Wins,Losses,Win Rate,Insider Games,Insider Wins,Insider Losses,Werewolf Games,Werewolf Wins,Werewolf Losses,Black Market Games,Black Market Wins,Black Market Losses,Spyfall Games,Spyfall Wins,Spyfall Losses,Coup Games,Coup Wins,Coup Losses,Liar Games,Liar Wins,Liar Losses,Poker5 Games,Poker5 Wins,Poker5 Losses,Poker4 Games,Poker4 Wins,Poker4 Losses,GM Count,Traitor Count,Citizen Count,${roleHeaders},${blackMarketRoleHeaders}\n`;
-        allData.playerStats.forEach(s => {
+        playerStats.forEach(s => {
             const winRate = s.totalGames > 0 ? Math.round((s.wins / s.totalGames) * 100) : 0;
             const werewolfCounts = WEREWOLF_ROLE_META.map(role => s.roleStats?.werewolf?.[role.id] || 0).join(',');
             const blackMarketCounts = BLACKMARKET_ROLE_META.map(role => s.roleStats?.blackmarket?.[role.id] || 0).join(',');
@@ -3411,8 +3412,16 @@ $(function() {
         downloadCSV(csv, 'player_stats.csv');
     };
     
-    window.exportAllData = function() {
-        const dataStr = JSON.stringify(allData, null, 2);
+    window.exportAllData = async function() {
+        let data;
+        try {
+            data = await fetchAdminExport('all');
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'ดาวน์โหลดไม่สำเร็จ', text: error.message, background: '#1e1e1e', color: '#fff' });
+            return;
+        }
+        delete data.success;
+        const dataStr = JSON.stringify(data, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -3632,7 +3641,7 @@ $(function() {
     };
     
     window.deleteAllPlayers = function() {
-        const totalPlayers = (allData.players || []).length;
+        const totalPlayers = adminSummary ? adminSummary.totalPlayers : 0;
         
         Swal.fire({
             title: '💥 ลบผู้เล่นทั้งหมด',
@@ -3859,7 +3868,6 @@ $(function() {
     };
     
     // ========== Logs Functions ==========
-    let serverLogs = [];
     const ROOM_MODE_LABELS = {
         insider: '🎯 Insider',
         werewolf: '🐺 Werewolf',
@@ -3909,8 +3917,9 @@ $(function() {
 
     // ---------- แท็บ Logs ----------
     // แยก "เรื่องที่แอดมินต้องสนใจ" ออกจาก log ระหว่างเล่น ซึ่งมีเยอะกว่ามาก
+    // ข้อมูลมาจากที่เก็บบน server (Mongo/ไฟล์) ทีละหน้า — กรอง/ค้นหา/นับฝั่ง server · log ใหม่เข้ามาสดทาง socket
     const LOG_CATS = [
-        { id: 'important', label: '⭐ สำคัญ', hint: 'Error, สิ่งที่แอดมินทำ, ระบบ, เริ่มเกม/ผลเกม' },
+        { id: 'important', label: '⭐ สำคัญ', hint: 'Error, สิ่งที่แอดมินทำ, ระบบ, เริ่มเกม/จบเกม/ออกกลางเกม (ไม่รวมบรรทัดของบอท)' },
         { id: 'error', label: '❌ Error' },
         { id: 'admin', label: '🛡️ แอดมิน' },
         { id: 'game', label: '🎮 ในเกม' },
@@ -3919,19 +3928,40 @@ $(function() {
         { id: 'all', label: 'ทั้งหมด' }
     ];
     const LOG_ICONS = { join: '➡️', leave: '⬅️', game: '🎮', admin: '🛡️', error: '❌', chat: '💬', system: '⚙️' };
-    // event/kind เป็นรหัสภายใน ไม่ช่วยแอดมินอ่าน (ยังอยู่ในไฟล์ที่ดาวน์โหลด)
-    const LOG_META_HIDDEN = new Set(['event', 'kind']);
+    // event/kind/bot เป็นรหัสภายใน ไม่ช่วยแอดมินอ่าน (ยังอยู่ในไฟล์ที่ดาวน์โหลด)
+    const LOG_META_HIDDEN = new Set(['event', 'kind', 'bot', 'isBot']);
     // log บางเกมขึ้นต้นด้วยอีโมจิคนละตัวกับป้ายเกม
     const LOG_MESSAGE_PREFIX = { undercover: '🕵️' };
-    const LOG_META_LABELS = { playerId: 'ผู้เล่น', playerCount: 'จำนวนคน', round: 'ยกที่', amount: 'จำนวน', enabled: 'เปิด', kind: 'ชนิด', event: 'event' };
+    const LOG_META_LABELS = { playerId: 'ผู้เล่น', playerCount: 'จำนวนคน', round: 'ยกที่', amount: 'จำนวน', enabled: 'เปิด', kind: 'ชนิด', event: 'event', players: 'ผู้เล่น', humans: 'คน', bots: 'บอท', settings: 'ตั้งค่า', reason: 'เหตุผล', winner: 'ผู้ชนะ' };
+    const LOG_KEY_EVENTS = new Set(['game_start', 'game_end', 'game_abort', 'game_start_failed', 'table_end', 'player_left_midgame', 'player_kicked']);
     const LOG_PAGE = 200;
+    // ป้ายเกมที่เรียนจาก log จริง (รวมเกมเดี่ยว solo_* ที่ไม่มีใน ROOM_MODE_LABELS)
+    const logModeLabels = new Map();
+    function learnLogModeLabels(list) {
+        (list || []).forEach(log => {
+            if (log && log.gameMode && log.gameModeLabel && !logModeLabels.has(log.gameMode)) logModeLabels.set(log.gameMode, log.gameModeLabel);
+        });
+    }
+    function logModeOptionLabel(mode) {
+        return ROOM_MODE_LABELS[mode] || logModeLabels.get(mode) || mode;
+    }
     const logView = {
         cat: readLogPref('adminLogCat', 'important'),
         mode: 'all',
         query: '',
-        limit: LOG_PAGE,
+        roomId: null,
+        roomName: '',
+        items: [],
+        ids: new Set(),
+        counts: null,
+        modes: [],
+        nextCursor: null,
+        hasMore: false,
+        loaded: false,
+        loading: false,
+        reqSeq: 0,
         live: true,
-        pending: 0
+        pendingItems: []
     };
 
     function readLogPref(key, fallback) {
@@ -3941,14 +3971,19 @@ $(function() {
         try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
     }
 
+    // ต้องตรงกับ matchesView ใน managers/serverLogManager.js (ใช้กับ log สดที่เข้ามาทาง socket)
+    function logIsImportant(log) {
+        if (typeof log.important === 'boolean') return log.important;
+        const event = log.meta && log.meta.event;
+        return log.category === 'error' || log.type === 'error' || log.category === 'admin' || log.category === 'system'
+            || LOG_KEY_EVENTS.has(event) || (log.category === 'game' && log.type === 'success' && !(log.meta && log.meta.bot));
+    }
     function logMatchesCat(log, cat) {
         switch (cat) {
             case 'all': return true;
+            case 'important': return logIsImportant(log);
             case 'room': return log.category === 'join' || log.category === 'leave';
             case 'error': return log.category === 'error' || log.type === 'error';
-            case 'important':
-                return log.category === 'error' || log.type === 'error' || log.category === 'admin' || log.category === 'system'
-                    || (log.category === 'game' && log.type === 'success');
             default: return log.category === cat;
         }
     }
@@ -3970,27 +4005,22 @@ $(function() {
     }
 
     function logSearchText(log) {
-        if (!log._search) {
-            log._search = [log.message, log.roomName, logModeLabel(log), log.meta ? Object.values(log.meta).join(' ') : '']
-                .join(' ').toLowerCase();
-        }
-        return log._search;
+        return [log.message, log.roomName, logModeLabel(log), log.gameMode, log.meta ? Object.values(log.meta).join(' ') : '']
+            .join(' ').toLowerCase();
     }
 
-    // ตัวกรองเกม + คำค้น (ยังไม่กรองประเภท — ใช้นับตัวเลขบนปุ่มประเภทด้วย)
-    function logsInScope() {
+    // log สดอยู่ในตัวกรองเกม/ห้อง/คำค้นที่เปิดอยู่ไหม (ยังไม่ดูประเภท — ใช้นับตัวเลขบนปุ่มด้วย)
+    function logInScope(log) {
         const q = logView.query.trim().toLowerCase();
-        return serverLogs.filter(log =>
-            (logView.mode === 'all' || log.gameMode === logView.mode) && (!q || logSearchText(log).includes(q)));
+        return (logView.mode === 'all' || log.gameMode === logView.mode)
+            && (!logView.roomId || log.roomId === logView.roomId)
+            && (!q || logSearchText(log).includes(q));
     }
 
-    function getFilteredLogs() {
-        return logsInScope().filter(log => logMatchesCat(log, logView.cat));
-    }
-
-    function renderLogCats(scope) {
+    function renderLogCats() {
+        const counts = logView.counts || {};
         const html = LOG_CATS.map(cat => {
-            const count = scope.filter(log => logMatchesCat(log, cat.id)).length;
+            const count = Number(counts[cat.id] || 0);
             const active = cat.id === logView.cat;
             const tone = cat.id === 'error' && count > 0 ? ' is-alert' : '';
             return `<button type="button" class="lg-cat${active ? ' is-active' : ''}${tone}" data-cat="${cat.id}" aria-pressed="${active}"${cat.hint ? ` title="${escapeHtml(cat.hint)}"` : ''}>
@@ -4000,11 +4030,11 @@ $(function() {
     }
 
     function renderLogModes() {
-        const seen = new Map();
-        serverLogs.forEach(log => { if (log.gameMode && !seen.has(log.gameMode)) seen.set(log.gameMode, logModeLabel(log)); });
-        if (logView.mode !== 'all' && !seen.has(logView.mode)) seen.set(logView.mode, formatRoomModeLabel(logView.mode));
+        const modes = new Set(logView.modes || []);
+        if (logView.mode !== 'all') modes.add(logView.mode);
         const options = ['<option value="all">ทุกเกม</option>']
-            .concat(Array.from(seen.entries())
+            .concat(Array.from(modes)
+                .map(mode => [mode, logModeOptionLabel(mode)])
                 .sort((x, y) => x[1].localeCompare(y[1], 'th'))
                 .map(([mode, label]) => `<option value="${escapeHtml(mode)}">${escapeHtml(label)}</option>`));
         const $select = $('#lgMode');
@@ -4013,6 +4043,15 @@ $(function() {
             $select.html(next).data('html', next);
         }
         $select.val(logView.mode);
+    }
+
+    function renderLogRoomChip() {
+        const $chip = $('#lgRoomChip');
+        if (!logView.roomId) {
+            $chip.prop('hidden', true);
+            return;
+        }
+        $chip.prop('hidden', false).find('.lg-room-name').text(logView.roomName || logView.roomId);
     }
 
     function logDayLabel(dt) {
@@ -4027,7 +4066,7 @@ $(function() {
         if (!log.meta || typeof log.meta !== 'object') return '';
         const rows = Object.entries(log.meta)
             .filter(([key, value]) => !LOG_META_HIDDEN.has(key) && value !== null && value !== undefined && value !== '')
-            .map(([key, value]) => `<dt>${escapeHtml(LOG_META_LABELS[key] || key)}</dt><dd>${escapeHtml(String(value))}</dd>`);
+            .map(([key, value]) => `<dt>${escapeHtml(LOG_META_LABELS[key] || key)}</dt><dd>${escapeHtml(typeof value === 'object' ? JSON.stringify(value) : String(value))}</dd>`);
         if (!rows.length) return '';
         return `<details class="lg-meta"><summary>รายละเอียด</summary><dl>${rows.join('')}</dl></details>`;
     }
@@ -4037,8 +4076,12 @@ $(function() {
         const time = dt.toLocaleTimeString('th-TH', { hour12: false });
         const isError = log.category === 'error' || log.type === 'error';
         const tone = isError ? 'error' : (log.category === 'admin' ? 'admin' : (log.type === 'success' ? 'success' : (log.type === 'warning' ? 'warning' : 'info')));
-        const ctx = [logModeLabel(log), log.roomId ? log.roomName : ''].filter(Boolean).map(escapeHtml).join(' · ');
-        return `<div class="lg-row lg-row--${tone}">
+        const modeLabel = logModeLabel(log);
+        const roomButton = log.roomId && log.roomId !== logView.roomId
+            ? `<button type="button" class="lg-room" data-room-id="${escapeHtml(log.roomId)}" data-room-name="${escapeHtml(log.roomName || log.roomId)}" title="ดูทุกบรรทัดของห้องนี้">${escapeHtml(log.roomName || log.roomId)}</button>`
+            : (log.roomId ? escapeHtml(log.roomName || log.roomId) : '');
+        const ctx = [modeLabel ? escapeHtml(modeLabel) : '', roomButton, log.bot ? '<span class="lg-bot">🤖 บอท</span>' : ''].filter(Boolean).join(' · ');
+        return `<div class="lg-row lg-row--${tone}${log.bot ? ' lg-row--bot' : ''}">
             <span class="lg-ico" aria-hidden="true">${LOG_ICONS[log.category] || '•'}</span>
             <div class="lg-body">
                 <div class="lg-msg">${escapeHtml(cleanLogMessage(log))}</div>
@@ -4050,25 +4093,25 @@ $(function() {
     }
 
     function renderLogs() {
-        const scope = logsInScope();
-        const filtered = scope.filter(log => logMatchesCat(log, logView.cat));
-        renderLogCats(scope);
+        renderLogCats();
         renderLogModes();
-        logView.pending = 0;
-        $('#lgNewPill').prop('hidden', true);
+        renderLogRoomChip();
+        $('#lgNewPill').prop('hidden', logView.pendingItems.length === 0);
 
         const $container = $('#logsContainer');
-        if (filtered.length === 0) {
-            const why = serverLogs.length === 0 ? 'ยังไม่มีกิจกรรม' : 'ไม่มีรายการที่ตรงกับตัวกรองนี้';
+        const items = logView.items;
+        if (items.length === 0) {
+            const why = logView.loading ? 'กำลังโหลด...'
+                : (logView.counts && logView.counts.all === 0 && !logView.query && logView.mode === 'all' && !logView.roomId
+                    ? 'ยังไม่มีกิจกรรม' : 'ไม่มีรายการที่ตรงกับตัวกรองนี้');
             $container.html(`<div class="empty-message lg-empty">${why}</div>`);
             $('#lgMore').prop('hidden', true);
             return;
         }
 
-        const shown = filtered.slice(0, logView.limit);
         let lastDay = '';
         const parts = [];
-        shown.forEach(log => {
+        items.forEach(log => {
             const day = logDayLabel(new Date(log.timestamp));
             if (day !== lastDay) {
                 parts.push(`<div class="lg-day">${escapeHtml(day)}</div>`);
@@ -4077,34 +4120,93 @@ $(function() {
             parts.push(renderLogRow(log));
         });
         $container.html(parts.join(''));
-        const rest = filtered.length - shown.length;
-        $('#lgMore').prop('hidden', rest <= 0).text(`แสดงเพิ่ม (เหลืออีก ${rest.toLocaleString('th-TH')})`);
+        const total = logView.counts ? Number(logView.counts[logView.cat] || 0) : 0;
+        const rest = Math.max(0, total - items.length);
+        $('#lgMore')
+            .prop('hidden', !logView.hasMore)
+            .prop('disabled', logView.loading)
+            .text(logView.loading ? 'กำลังโหลด...' : (rest > 0 ? `แสดงเพิ่ม (เหลืออีก ${rest.toLocaleString('th-TH')})` : 'แสดงเพิ่ม'));
+    }
+
+    function setLogItems(list, append) {
+        if (!append) {
+            logView.items = [];
+            logView.ids = new Set();
+        }
+        list.forEach(log => {
+            if (logView.ids.has(log.id)) return;
+            logView.ids.add(log.id);
+            logView.items.push(log);
+        });
+    }
+
+    // reset = ตัวกรองเปลี่ยน (โหลดหน้าแรกใหม่) · ไม่ reset = "แสดงเพิ่ม" (หน้าถัดไปจากที่เก็บ)
+    function fetchLogs(reset) {
+        if (!isAuthenticated) return;
+        const seq = ++logView.reqSeq;
+        logView.loading = true;
+        if (reset) {
+            logView.pendingItems = [];
+            logView.nextCursor = null;
+        }
+        renderLogs();
+        socket.emit('admin_getLogs', {
+            cat: logView.cat,
+            mode: logView.mode,
+            q: logView.query.trim(),
+            roomId: logView.roomId,
+            before: reset ? null : logView.nextCursor,
+            limit: LOG_PAGE
+        }, function(response) {
+            if (seq !== logView.reqSeq) return; // มีคำขอใหม่กว่าแล้ว
+            logView.loading = false;
+            if (!response || !response.success) {
+                renderLogs();
+                return;
+            }
+            logView.loaded = true;
+            learnLogModeLabels(response.logs);
+            setLogItems(response.logs || [], !reset);
+            logView.counts = response.counts || logView.counts;
+            logView.modes = response.modes || logView.modes;
+            logView.hasMore = Boolean(response.hasMore);
+            logView.nextCursor = response.nextCursor || null;
+            if (response.retention) {
+                $('#lgRetention').text(`เก็บ ${response.retention.days} วัน · แต่ละประเภทมีโควตาของตัวเอง · ไม่หายตอนรีสตาร์ต`);
+            }
+            renderLogs();
+        });
     }
 
     function loadLogs() {
-        socket.emit('admin_getLogs', { filter: 'all', gameMode: 'all', limit: 2000 }, function(response) {
-            if (response && response.success) {
-                serverLogs = response.logs || [];
-                renderLogs();
-            }
-        });
+        fetchLogs(true);
     }
 
     // log ใหม่: ถ้ากำลังเลื่อนอ่านอยู่หรือกดหยุดไว้ ไม่ดึงหน้าจอกลับขึ้นบน — โชว์ปุ่ม "มีรายการใหม่" แทน
     let logRenderQueued = false;
     socket.on('adminLog', function(logEntry) {
-        serverLogs.unshift(logEntry);
-        if (serverLogs.length > 2000) serverLogs.length = 2000;
-        const reading = !logView.live || $('#logsContainer').scrollTop() > 40;
-        if (reading) {
-            const scope = logsInScope();
-            if (scope[0] === logEntry && logMatchesCat(logEntry, logView.cat)) {
-                logView.pending += 1;
-                $('#lgNewPill').prop('hidden', false).text(`↑ มีรายการใหม่ ${logView.pending}`);
-            }
-            renderLogCats(scope);
+        if (!logEntry || !logView.loaded) return;
+        learnLogModeLabels([logEntry]);
+        if (!logInScope(logEntry)) return;
+        if (logView.counts) {
+            LOG_CATS.forEach(cat => {
+                if (logMatchesCat(logEntry, cat.id)) logView.counts[cat.id] = Number(logView.counts[cat.id] || 0) + 1;
+            });
+        }
+        if (logEntry.gameMode && !logView.modes.includes(logEntry.gameMode)) logView.modes.push(logEntry.gameMode);
+        if (!logMatchesCat(logEntry, logView.cat) || logView.ids.has(logEntry.id)) {
+            renderLogCats();
             return;
         }
+        const reading = !logView.live || $('#logsContainer').scrollTop() > 40;
+        if (reading) {
+            logView.pendingItems.unshift(logEntry);
+            $('#lgNewPill').prop('hidden', false).text(`↑ มีรายการใหม่ ${logView.pendingItems.length}`);
+            renderLogCats();
+            return;
+        }
+        logView.ids.add(logEntry.id);
+        logView.items.unshift(logEntry);
         if (logRenderQueued) return;
         logRenderQueued = true;
         requestAnimationFrame(function() {
@@ -4113,17 +4215,23 @@ $(function() {
         });
     });
 
+    function showPendingLogs() {
+        const fresh = logView.pendingItems.filter(log => !logView.ids.has(log.id));
+        fresh.forEach(log => logView.ids.add(log.id));
+        logView.items = fresh.concat(logView.items);
+        logView.pendingItems = [];
+        renderLogs();
+    }
+
     $('#lgCats').on('click', '.lg-cat', function() {
         logView.cat = $(this).data('cat');
-        logView.limit = LOG_PAGE;
         writeLogPref('adminLogCat', logView.cat);
-        renderLogs();
+        fetchLogs(true);
         $('#logsContainer').scrollTop(0);
     });
     $('#lgMode').on('change', function() {
         logView.mode = $(this).val();
-        logView.limit = LOG_PAGE;
-        renderLogs();
+        fetchLogs(true);
     });
     let logSearchTimer = null;
     $('#lgSearch').on('input', function() {
@@ -4131,29 +4239,39 @@ $(function() {
         clearTimeout(logSearchTimer);
         logSearchTimer = setTimeout(function() {
             logView.query = value;
-            logView.limit = LOG_PAGE;
-            renderLogs();
-        }, 150);
+            fetchLogs(true);
+        }, 250);
+    });
+    $('#logsContainer').on('click', '.lg-room', function() {
+        logView.roomId = String($(this).data('room-id'));
+        logView.roomName = String($(this).data('room-name') || '');
+        fetchLogs(true);
+        $('#logsContainer').scrollTop(0);
+    });
+    $('#lgRoomChip').on('click', function() {
+        logView.roomId = null;
+        logView.roomName = '';
+        fetchLogs(true);
     });
     $('#lgMore').on('click', function() {
-        logView.limit += LOG_PAGE;
-        renderLogs();
+        if (logView.loading || !logView.hasMore) return;
+        fetchLogs(false);
     });
     $('#lgNewPill').on('click', function() {
-        renderLogs();
+        showPendingLogs();
         $('#logsContainer').scrollTop(0);
     });
     $('#lgLive').on('click', function() {
         logView.live = !logView.live;
         $(this).toggleClass('is-on', logView.live).attr('aria-pressed', String(logView.live));
         $(this).find('.lg-live-label').text(logView.live ? 'สด' : 'หยุดไว้');
-        if (logView.live) renderLogs();
+        if (logView.live) showPendingLogs();
     });
     
     window.clearLogs = function() {
         Swal.fire({
             title: '🗑️ ล้างบันทึกทั้งหมด?',
-            text: 'ลบทุกรายการบนเซิร์ฟเวอร์ (ไม่ใช่แค่ที่กรองอยู่) ย้อนคืนไม่ได้',
+            text: 'ลบทุกรายการในที่เก็บบนเซิร์ฟเวอร์ (ไม่ใช่แค่ที่กรองอยู่) ย้อนคืนไม่ได้',
             showCancelButton: true,
             confirmButtonText: 'ล้าง',
             cancelButtonText: 'ยกเลิก',
@@ -4172,31 +4290,28 @@ $(function() {
         });
     };
     
-    // ดาวน์โหลดเฉพาะที่กรองอยู่ตอนนี้
+    // ดาวน์โหลดตามตัวกรองที่เลือกอยู่ — server เดินทุกหน้าจากที่เก็บ (ไม่ใช่แค่ที่โหลดไว้บนจอ)
     window.exportLogs = function() {
-        const filtered = getFilteredLogs();
-        if (filtered.length === 0) {
+        const total = logView.counts ? Number(logView.counts[logView.cat] || 0) : logView.items.length;
+        if (total === 0) {
             Swal.fire({ icon: 'warning', title: 'ไม่มีรายการให้ดาวน์โหลด', background: '#1e1e1e', color: '#fff' });
             return;
         }
-        const logsText = filtered.map(l => {
-            const time = new Date(l.timestamp).toLocaleString('th-TH');
-            const modeLabel = logModeLabel(l) ? `[${logModeLabel(l)}] ` : '';
-            const metaLabel = l.meta ? ` ${JSON.stringify(l.meta)}` : '';
-            return `[${time}] [${String(l.category || '').toUpperCase()}] ${modeLabel}${l.roomId ? '[' + l.roomName + '] ' : ''}${l.message}${metaLabel}`;
-        }).join('\n');
-        const blob = new Blob([logsText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
+        const params = new URLSearchParams({ cat: logView.cat });
+        if (logView.mode !== 'all') params.set('mode', logView.mode);
+        if (logView.roomId) params.set('roomId', logView.roomId);
+        if (logView.query.trim()) params.set('q', logView.query.trim());
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'server_logs_' + new Date().toISOString().slice(0,10) + '.txt';
+        a.href = '/admin/api/logs/export?' + params.toString();
+        a.download = 'server_logs_' + new Date().toISOString().slice(0, 10) + '.txt';
+        document.body.appendChild(a);
         a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        a.remove();
     };
     
     // Load logs after authentication
     socket.on('connect', function() {
-        if (isAuthenticated) {
+        if (isAuthenticated && socket.id !== authenticatedSocketId) {
             authenticateAdminSocket({ silent: true });
         }
     });

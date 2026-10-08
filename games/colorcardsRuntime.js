@@ -66,6 +66,7 @@ module.exports = function createColorCardsRuntime(getDeps) {
                 engine.autoResolvePhase(live);
                 emitRoomState(live);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[colorcards] auto resolve failed', error);
                 console.error('[colorcards] auto resolve failed:', error.message);
             }
         }, delay);
@@ -92,6 +93,7 @@ module.exports = function createColorCardsRuntime(getDeps) {
                 if (engine.playBotTurns(live)) emitRoomState(live);
                 else scheduleBots(live);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[colorcards] bots failed', error);
                 console.error('[colorcards] bots failed:', error.message);
             }
         }, delay + 20);

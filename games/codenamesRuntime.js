@@ -51,6 +51,7 @@ module.exports = function createCodenamesRuntime(getDeps) {
             try {
                 if (engine.tick(current, Date.now())) emitRoomState(current);
             } catch (error) {
+                if (typeof deps().reportGameError === 'function') deps().reportGameError(room, '[codenames] tick failed', error);
                 console.error('[codenames] tick failed:', error.message);
             }
         }, TICK_MS);

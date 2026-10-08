@@ -54,11 +54,13 @@ async function getFreePort() {
         socket.close();
         if (after !== 200 && after !== 302) {
             console.error(`❌ เซิร์ฟเวอร์ล้มหลังยิง ${events.length} events (HTTP ${after}) — ผู้เล่นทุกห้องจะหลุดพร้อมกัน`);
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         }
         console.log(`✅ ยิง ${events.length} events × ${junk.length} payload พิลึก แล้วเซิร์ฟเวอร์ยังตอบปกติ (HTTP ${after})`);
-        process.exit(0);
     } finally {
+        // เดิม process.exit() ใน try ทำให้ finally ไม่ทำงาน — เซิร์ฟเวอร์ลูกค้างรันต่อหลังเทสจบ
         child.kill('SIGTERM');
+        setTimeout(() => process.exit(process.exitCode || 0), 500);
     }
 })().catch(e => { console.error('❌', e.message); process.exit(1); });

@@ -217,7 +217,17 @@ module.exports = {
                 const prev = helpers.soloStats.getData(playerId, GAME_ID);
                 const next = applyGuess(prev, body.guess, body.puzzle, null, { hard: typeof body.hard === 'boolean' ? body.hard : undefined });
                 helpers.soloStats.setData(playerId, GAME_ID, next);
-                return res.json({ success: true, ...buildState(next) });
+                const state = buildState(next);
+                if (typeof helpers.log === 'function') {
+                    const before = buildState(prev);
+                    if (!before.done && state.done) {
+                        helpers.log(playerId, state.won ? `ทายถูก (${state.guesses?.length || '?'} ครั้ง)` : 'ทายไม่ถูกวันนี้', state.won ? 'success' : 'info',
+                            { event: 'game_end', puzzle: state.puzzle, won: Boolean(state.won), guesses: state.guesses?.length || null });
+                    } else if (!(before.guesses && before.guesses.length) && state.guesses && state.guesses.length === 1) {
+                        helpers.log(playerId, 'เริ่มทายคำวันนี้', 'success', { event: 'game_start', puzzle: state.puzzle });
+                    }
+                }
+                return res.json({ success: true, ...state });
             } catch (error) {
                 if (error instanceof GuessError) {
                     const payload = { success: false, error: error.message, code: error.code };

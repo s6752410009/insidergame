@@ -113,6 +113,11 @@
      *   (ฝั่ง server ให้ query ชนะ session จึง rebind กลับมาเป็นเราเสมอ — จบใน 1 redirect)
      */
     function ensurePlayerIdInUrl() {
+        // หลังบ้าน /admin ไม่ผูก identity ผู้เล่น (server ข้าม middleware นี้) — เดิม reload หน้า /admin ซ้ำทุกครั้งที่เปิด
+        // เพราะไม่มี meta playerId → โหลดข้อมูลหลังบ้านทั้งชุด 2 รอบ
+        if (/^\/admin(\/|$)/.test(window.location.pathname)) {
+            return true;
+        }
         const playerId = getOrCreatePlayerId();
         const urlPlayerId = getPlayerIdFromUrl();
         const serverPlayerId = getServerPlayerId();

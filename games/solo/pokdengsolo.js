@@ -116,6 +116,7 @@ module.exports = {
             saveRun(soloStats, playerId, run);
             const stats = engine.applyRunStartToStats(soloStats.getData(playerId, GAME_ID), run);
             soloStats.setData(playerId, GAME_ID, stats);
+            if (typeof helpers.log === 'function') helpers.log(playerId, 'เริ่มรอบใหม่', 'success', { event: 'game_start', runId: run.runId || null });
             return res.json(payload(run, stats));
         });
 

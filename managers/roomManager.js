@@ -78,25 +78,26 @@ function schedulePersistRooms() {
     }, 250);
 }
 
-function flushPersistRooms() {
+function flushPersistRooms(options = { force: true }) {
     if (persistTimer) {
         clearTimeout(persistTimer);
         persistTimer = null;
     }
     persistQueued = false;
-    return persistRooms().catch(error => {
+    return persistRooms(options).catch(error => {
         console.error('[RoomManager] Failed to persist rooms:', error.message);
     });
 }
 
-function serializeRoom(room) {
+// stamp = เวลาที่ใส่แทนช่องว่าง (null = ใช้ทำลายนิ้วมือ ไม่ให้เวลาปัจจุบันทำให้ "เปลี่ยน" ทุกรอบ)
+function serializeRoom(room, stamp = nowIso()) {
     return {
         roomId: room.roomId,
         name: room.name,
         players: (room.players || []).map(player => ({
             ...player,
             socketId: null,
-            disconnectedAt: player.disconnectedAt || nowIso()
+            disconnectedAt: player.disconnectedAt || stamp
         })),
         admin: room.admin,
         settings: room.settings,
@@ -105,11 +106,18 @@ function serializeRoom(room) {
         rejoinableGamePlayers: room.rejoinableGamePlayers instanceof Map
             ? Array.from(room.rejoinableGamePlayers.entries())
             : [],
-        createdAt: room.createdAt || nowIso(),
-        zeroOnlineSince: room.zeroOnlineSince || nowIso(),
+        createdAt: room.createdAt || stamp,
+        zeroOnlineSince: room.zeroOnlineSince || stamp,
         lastAbandonedAt: room.lastAbandonedAt || null
     };
 }
+
+// Mongo: เขียนเฉพาะห้องที่เปลี่ยนจากรอบก่อน — เดิม bulkWrite ทุกห้อง (payload เต็ม) ทุกครั้งที่ห้องไหนขยับ
+// (ทุก 250 มิลลิวินาทีตอนมีคนเล่น) ห้อง 150 ห้อง = upsert 150 ก้อนต่อรอบ
+// เวลา "หลุดตอนไหน" ของคนที่ยังออนไลน์อิงเวลาที่เขียน → เขียนครบทุกห้องอย่างน้อยทุก 60 วิ และตอนปิดเซิร์ฟเวอร์
+const persistedFingerprints = new Map();
+const FULL_PERSIST_INTERVAL_MS = 60 * 1000;
+let lastFullPersistAt = 0;
 
 function hydrateRoom(raw) {
     if (!raw || !raw.roomId) return null;
@@ -145,10 +153,21 @@ function persistRoomsToFileSync(payload) {
     fs.renameSync(temporaryFile, ROOMS_FILE);
 }
 
-async function persistRooms() {
-    const payload = Array.from(rooms.values()).map(serializeRoom);
-
+async function persistRooms(options = {}) {
     if (useDatabase && RoomSnapshot) {
+        const payload = [];
+        const fingerprints = new Map();
+        const full = options.force === true || Date.now() - lastFullPersistAt > FULL_PERSIST_INTERVAL_MS;
+        if (full) lastFullPersistAt = Date.now();
+        rooms.forEach(room => {
+            const fingerprint = JSON.stringify(serializeRoom(room, null));
+            if (!full && persistedFingerprints.get(room.roomId) === fingerprint) return;
+            fingerprints.set(room.roomId, fingerprint);
+            payload.push(serializeRoom(room));
+        });
+        Array.from(persistedFingerprints.keys()).forEach(roomId => {
+            if (!rooms.has(roomId)) persistedFingerprints.delete(roomId);
+        });
         const ops = payload.map(room => ({
             updateOne: {
                 filter: { roomId: room.roomId },
@@ -165,6 +184,7 @@ async function persistRooms() {
 
         if (ops.length > 0) {
             await RoomSnapshot.bulkWrite(ops, { ordered: false });
+            fingerprints.forEach((fingerprint, roomId) => persistedFingerprints.set(roomId, fingerprint));
         }
 
         // ลบเฉพาะห้องที่เราสั่งลบเอง — เดิมใช้ $nin keepIds และ deleteMany({})
@@ -186,6 +206,7 @@ async function persistRooms() {
 
     pendingRoomDeletes.clear();
 
+    const payload = Array.from(rooms.values()).map(room => serializeRoom(room));
     persistRoomsToFileSync(payload);
     return payload.length;
 }
@@ -726,7 +747,7 @@ function createRoom(roomData, creatorPlayerId) {
     
     // เพิ่มผู้สร้างเป็นผู้เล่นคนแรก
     joinRoom(roomId, creatorPlayerId, null, normalizedRoomData.password);
-    flushPersistRooms();
+    flushPersistRooms({ force: false }); // ห้องใหม่เท่านั้นที่เปลี่ยน
     
     return room;
 }
