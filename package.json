@@ -68,6 +68,8 @@
     "smoke:admin:logs:store": "node scripts/smoke-server-logs.js",
     "smoke:game:logs": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-game-logs.js",
     "smoke:game:logs:e2e": "node scripts/smoke-game-logs-e2e.js",
+    "smoke:admin:tables:browser": "node scripts/smoke-admin-tables-browser.js",
+    "smoke:admin:perf": "node scripts/smoke-admin-perf.js",
     "perf:admin:data": "node scripts/gen-admin-perf-data.js",
     "perf:admin": "node scripts/perf-admin.js",
     "smoke:avatar:frame": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-avatar-frame.js",

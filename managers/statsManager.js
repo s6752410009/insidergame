@@ -319,11 +319,21 @@ async function saveStats() {
     }
 }
 
+// Mongo: เขียนเฉพาะคนที่สถิติเปลี่ยน — เดิม bulkWrite สถิติ "ทุกคนในเว็บ" (รวม gameHistory) ทุกครั้งที่เกมจบ
+// ผู้เล่นหลักพันคน = upsert หลักพันก้อนต่อหนึ่งเกม
+const dirtyStatIds = new Set();
+function markStatDirty(playerId) {
+    if (playerId && !isBotPlayerId(playerId)) dirtyStatIds.add(playerId);
+}
+
 async function saveStatsToDB() {
+    const ids = Array.from(dirtyStatIds);
+    dirtyStatIds.clear();
     try {
         const bulkOps = [];
-        for (const [playerId, stat] of stats.entries()) {
-            if (isBotPlayerId(playerId)) continue;
+        for (const playerId of ids) {
+            const stat = stats.get(playerId);
+            if (!stat || isBotPlayerId(playerId)) continue;
             bulkOps.push({
                 updateOne: {
                     filter: { playerId },
@@ -333,10 +343,12 @@ async function saveStatsToDB() {
             });
         }
         if (bulkOps.length > 0) {
-            await PlayerStats.bulkWrite(bulkOps);
+            await PlayerStats.bulkWrite(bulkOps, { ordered: false });
         }
     } catch (e) {
         console.error('Error saving stats to MongoDB:', e.message);
+        // เขียนไม่ผ่าน → รอบหน้าลองใหม่
+        ids.forEach(id => dirtyStatIds.add(id));
         // Fallback to JSON
         saveStatsToFile();
     }
@@ -366,6 +378,8 @@ function isPlaceholderPlayerName(playerName) {
  */
 function initializeStats(playerId, playerName) {
     if (isBotPlayerId(playerId)) return null;
+    // คนเรียกได้ stat ไปแก้ต่อ → นับว่าเปลี่ยน
+    markStatDirty(playerId);
     if (!stats.has(playerId)) {
         stats.set(playerId, createDefaultStatsRecord(playerId, playerName));
     }
@@ -1325,6 +1339,7 @@ function getGameHistory(playerId, limit = 20) {
 function updatePlayerNameInStats(playerId, newName) {
     if (stats.has(playerId)) {
         stats.get(playerId).playerName = newName;
+        markStatDirty(playerId);
         saveStats();
     }
 }
@@ -1345,6 +1360,7 @@ async function repairStatsPlayerNames(players) {
         const restoredName = playersById.get(stat.playerId);
         if (!isPlaceholderPlayerName(restoredName)) {
             stat.playerName = restoredName;
+            markStatDirty(stat.playerId);
             repairedPlayers.push({ playerId: stat.playerId, playerName: restoredName });
         }
     }
@@ -1374,6 +1390,7 @@ async function resetPlayerStats(playerId) {
         const currentStat = stats.get(playerId);
         const stat = createDefaultStatsRecord(playerId, currentStat.playerName);
         stats.set(playerId, stat);
+        markStatDirty(playerId);
         await saveStats();
         return true;
     }
@@ -1391,6 +1408,7 @@ async function resetAllStatsForNewSeason() {
 
     for (const [playerId, stat] of stats.entries()) {
         stats.set(playerId, createDefaultStatsRecord(playerId, stat.playerName));
+        markStatDirty(playerId);
         resetCount++;
     }
 
@@ -1453,21 +1471,9 @@ async function editPlayerStats(playerId, newData) {
         });
     }
     
-    // บันทึก
+    // บันทึก (Mongo: เขียนแถวนี้แถวเดียว)
+    markStatDirty(playerId);
     await saveStats();
-    
-    // ถ้าใช้ MongoDB อัพเดทใน DB ด้วย
-    if (useDatabase && PlayerStats) {
-        try {
-            await PlayerStats.updateOne(
-                { playerId },
-                { $set: stat },
-                { upsert: true }
-            );
-        } catch (e) {
-            console.error('Error updating stats in MongoDB:', e.message);
-        }
-    }
     
     return stat;
 }
@@ -1478,6 +1484,7 @@ async function editPlayerStats(playerId, newData) {
 async function deletePlayerStats(playerId) {
     if (stats.has(playerId)) {
         stats.delete(playerId);
+        dirtyStatIds.delete(playerId);
         
         // ถ้าใช้ MongoDB ต้องลบจาก DB ด้วย
         if (useDatabase && PlayerStats) {
@@ -1500,6 +1507,7 @@ async function deletePlayerStats(playerId) {
 async function clearAllStats() {
     const count = stats.size;
     stats.clear();
+    dirtyStatIds.clear();
     
     // ถ้าใช้ MongoDB ต้องลบทั้งหมดจาก DB ด้วย
     if (useDatabase && PlayerStats) {
@@ -1523,6 +1531,7 @@ async function bulkDeleteStats(playerIds) {
     playerIds.forEach(playerId => {
         if (stats.has(playerId)) {
             stats.delete(playerId);
+            dirtyStatIds.delete(playerId);
             deletedCount++;
         }
     });
