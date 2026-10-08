@@ -15,6 +15,7 @@
     "uuid": "^8.3.2"
   },
   "scripts": {
+    "play:multi": "node scripts/play-multi.js",
     "dev": "nodemon scripts/dev-server.js",
     "dev:simple": "node scripts/dev-server.js",
     "dev:fast": "bash scripts/dev-from-tmp.sh",
