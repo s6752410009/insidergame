@@ -5,7 +5,7 @@
  *  C) 1 คน + บอท 7 · หัวห้องไม่กดอะไรเลย (นาฬิกาเดินแทน) → เกมจบ
  *  D) 1 คน + บอท 19 (โต๊ะ 20) · หัวห้องกดเล่น → เกมจบ
  *  ทุกเกม: แชทบอทมาจากบอทที่ยังมีชีวิต ในช่วงประชุม เป็นประโยคกลาง · ไม่มีบทบอทหลุดใน state
- *  E) สถิติ: หัวห้องนับ บอทไม่นับ · หัวห้องออก → ห้องบอทล้วนปิด
+ *  E) สถิติ: เกมที่มีบอทไม่นับให้ใครเลย · เกมคนล้วน 3 คนยังนับ · หัวห้องออก → ห้องบอทล้วนปิด
  *
  * รัน: npm run smoke:werewolf:bots
  */
@@ -164,6 +164,33 @@ async function runGame(base, label, botCount, hostMode) {
     return { host, roomId, final };
 }
 
+/** เกมคนล้วน 3 คน (ไม่มีบอท) — ทุกคนกดพร้อม/ข้าม/โหวตสุ่ม — ใช้เทียบว่าสถิติยังนับ */
+async function runHumanGame(base, label) {
+    const clients = [];
+    for (let i = 0; i < 3; i += 1) clients.push(await makeClient(base, `คน${i}-${label}`));
+    const [host, ...guests] = clients;
+    const roomId = await createRoom(host, 'WolfHumans ' + label, 8);
+    for (const guest of guests) {
+        assert((await ack(guest.socket, 'joinRoom', { roomId, playerId: guest.id })).success, `${label}: แขก join ไม่ได้`);
+        guest.socket.emit('setRoom', { roomId, playerId: guest.id });
+    }
+    await delay(300);
+    const started = await ack(host.socket, 'startGameFromLobby', { roomId });
+    assert(started.success, `${label}: เริ่มเกมไม่ได้ ${JSON.stringify(started)}`);
+    await waitFor(() => clients.every(c => last(c) && last(c).phase === 'night'), 15000, 'night 1 (humans)');
+    const done = clients.map(() => new Set());
+    const startedAt = Date.now();
+    while (last(host).phase !== 'finished') {
+        if (Date.now() - startedAt > 240000) throw new Error(`${label}: เกมไม่จบใน 4 นาที`);
+        for (let i = 0; i < clients.length; i += 1) await hostAct(clients[i], done[i]);
+        await delay(150);
+    }
+    const final = last(host);
+    assert(!final.players.some(p => String(p.playerId).startsWith('bot_')), `${label}: ต้องไม่มีบอท`);
+    console.log(`  ${label}: จบใน ${((Date.now() - startedAt) / 1000).toFixed(1)}s · วันที่ ${final.dayNumber} · ผู้ชนะ ${final.winner}`);
+    return clients;
+}
+
 (async () => {
     const port = await getFreePort();
     const server = await bootServer(port);
@@ -194,11 +221,22 @@ async function runGame(base, label, botCount, hostMode) {
 
         await delay(800);
         const statsFile = path.join(process.env.GAME_DATA_DIR, 'playerStats.json');
-        assert(fs.existsSync(statsFile), 'ไม่พบไฟล์สถิติ');
-        const stats = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
-        assert(!Object.keys(stats).some(id => id.startsWith('bot_')), 'บอทต้องไม่เข้าไฟล์สถิติ');
-        assert(stats[acted.host.id] && stats[idle.host.id], 'หัวห้องต้องได้สถิติ');
-        console.log('E1) สถิติ: หัวห้องนับ บอทไม่ถูกบันทึก ✓');
+        const readStats = () => (fs.existsSync(statsFile) ? JSON.parse(fs.readFileSync(statsFile, 'utf8')) : {});
+        {
+            const stats = readStats();
+            assert(!Object.keys(stats).some(id => id.startsWith('bot_')), 'บอทต้องไม่เข้าไฟล์สถิติ');
+            [acted, idle].forEach(game => {
+                const games = stats[game.host.id]?.modeStats?.werewolf?.games || 0;
+                assert(games === 0, `เกมที่มีบอทต้องไม่นับสถิติให้หัวห้อง (${games})`);
+            });
+        }
+        const humans = await runHumanGame(base, 'E คนล้วน 3 คน');
+        await waitFor(() => {
+            const stats = readStats();
+            return humans.every(c => (stats[c.id]?.modeStats?.werewolf?.games || 0) === 1);
+        }, 6000, 'สถิติเกมคนล้วน');
+        humans.forEach(c => c.socket.close());
+        console.log('E1) สถิติ: เกมมีบอทไม่นับให้ใคร (บอทไม่ถูกบันทึก) · เกมคนล้วนนับครบ ✓');
 
         {
             const lister = await makeClient(base, 'ดูห้อง');
