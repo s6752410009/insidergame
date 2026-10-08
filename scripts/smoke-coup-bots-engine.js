@@ -6,6 +6,7 @@
  *  C) คน 1 + บอท: คนไม่กดอะไรเลย (หมดเวลาทุกครั้ง) — เกมต้องจบได้
  * ทุกเกม: ไม่มี exception · การ์ดรวม 15 ใบตลอด · เหรียญไม่ติดลบ · ผู้ชนะเป็นคนที่รอดจริง
  * และบอทตัดสินใจจากข้อมูลที่ตัวเองเห็นเท่านั้น (เทสปิดตา: สลับการ์ดคว่ำของคนอื่นแล้วการตัดสินใจต้องเหมือนเดิม)
+ * ความฉลาด: จำรายคู่แข่ง (พิสูจน์จริง/โดนจับโกหก/อ้างเกินมือ) · บลัฟตามบุคลิกเดิม · เล็งผู้นำ · ช่วงท้ายตัวต่อตัว
  *
  * รัน: node scripts/smoke-coup-bots-engine.js   (SEEDS=300 เพื่อเพิ่มรอบ)
  */
@@ -246,9 +247,130 @@ function targetedChecks() {
     assert(!bots.playBotTurns(r4, { now: Date.now() }), 'ยังไม่ถึงเวลา บอทต้องยังไม่ตอบ');
 }
 
+/** เติมบันทึกเกม (ข้อความเดียวกับที่ engine เขียน) แล้วให้บอทอ่าน */
+let fakeClock = 0;
+function say(room, text, kind = null) {
+    fakeClock += 1;
+    room.gameState.history = [{ icon: '·', text, kind, at: `t${fakeClock}`, turn: room.gameState.turnNumber }, ...room.gameState.history].slice(0, 40);
+    bots.observe(room);
+}
+const cardTh = id => engine.CARD_DEFINITIONS[id].thaiName;
+
+function smartChecks() {
+    // A) ความจำรายคู่แข่ง: พิสูจน์ว่าพูดจริงมาตลอด = ไม่ค่อยท้า · โดนจับโกหกบ่อย = ท้าบ่อย
+    const duel = setup => {
+        Math.random = mulberry32(77);
+        const room = makeRoom(2, 1);
+        const [human, bot] = room.gameState.players;
+        human.influence = ['captain', 'contessa'];
+        bot.influence = ['assassin', 'ambassador'];
+        room.gameState.currentPlayerId = human.playerId;
+        setup(room, human, bot);
+        say(room, `${human.name} ประกาศ เก็บภาษี`);
+        engine.submitAction(room, human.playerId, 'tax');
+        const p = bots.challengeChance(room, bot, human.playerId, 'duke');
+        let challenges = 0;
+        for (let i = 0; i < 40; i += 1) if (bots.decideRespond(room, bot, mulberry32(500 + i)).response === 'challenge') challenges += 1;
+        return { p, challenges };
+    };
+    const fresh = duel(() => {});
+    const honest = duel((room, h, b) => {
+        for (let i = 0; i < 2; i += 1) {
+            say(room, `${h.name} ประกาศ เก็บภาษี`);
+            say(room, `${b.name} ท้า ${h.name} แล้วแพ้ — ${h.name} มี ${cardTh('duke')} จริง`, 'challenge');
+        }
+    });
+    const liar = duel((room, h, b) => {
+        for (let i = 0; i < 2; i += 1) {
+            say(room, `${h.name} ประกาศ เก็บภาษี`);
+            say(room, `${b.name} ท้า ${h.name} แล้วชนะ — ไม่มี ${cardTh('duke')} จริง`, 'challenge');
+        }
+    });
+    assert(honest.p < fresh.p && fresh.p < liar.p, `โอกาสโกหกต้องเรียง พิสูจน์แล้ว < ใหม่ < โกหกประจำ (${honest.p.toFixed(2)} / ${fresh.p.toFixed(2)} / ${liar.p.toFixed(2)})`);
+    assert(liar.challenges >= 30, `คนโกหกประจำต้องโดนท้าเกือบทุกครั้ง (${liar.challenges}/40)`);
+    assert(honest.challenges <= 6, `คนที่พิสูจน์ว่าพูดจริงต้องไม่ค่อยโดนท้า (${honest.challenges}/40)`);
+
+    // B) อ้างการ์ดหลายแบบเกินมือ (มี 2 ใบ อ้าง 4 แบบ) — อย่างน้อยครึ่งต้องโกหก
+    {
+        Math.random = mulberry32(78);
+        const room = makeRoom(3, 1);
+        const [human, bot] = room.gameState.players;
+        say(room, `${human.name} ประกาศ เก็บภาษี`);
+        say(room, `${human.name} ประกาศ ขโมย ใส่ ${bot.name}`);
+        say(room, `${human.name} ประกาศ ลอบสังหาร ใส่ ${bot.name}`);
+        say(room, `${human.name} ขวางด้วย ${cardTh('contessa')}`, 'block');
+        assert(bots.pHolds(room, bot, human, 'duke') <= 0.45, 'อ้าง 4 แบบทั้งที่มี 2 ใบ ต้องไม่เชื่อว่าถือดยุค: ' + bots.pHolds(room, bot, human, 'duke').toFixed(2));
+        say(room, `${human.name} แลกเปลี่ยนการ์ดกับกองกลาง`);
+        assert(bots.pHolds(room, bot, human, 'duke') < 0.45, 'แลกการ์ดแล้ว คำอ้างเก่าไม่ช่วยให้น่าเชื่อขึ้น');
+    }
+
+    // C) บุคลิกเดิม: เคยบลัฟดยุคไว้ → บลัฟต่อก็บลัฟดยุค ไม่สุ่มการ์ดใหม่
+    {
+        Math.random = mulberry32(79);
+        const room = makeRoom(3, 0);
+        const bot = room.gameState.players.find(p => p.playerId === room.gameState.currentPlayerId);
+        bot.influence = ['contessa', 'contessa'];
+        bot.coins = 3;
+        say(room, `${bot.name} ประกาศ เก็บภาษี`);
+        say(room, `${bot.name} ประกาศ เก็บภาษี`);
+        const counts = {};
+        for (let i = 0; i < 80; i += 1) {
+            const c = bots.chooseAction(room, bot, mulberry32(900 + i));
+            counts[c.actionId] = (counts[c.actionId] || 0) + 1;
+        }
+        const bluffs = (counts.tax || 0) + (counts.steal || 0) + (counts.assassinate || 0) + (counts.exchange || 0);
+        assert(bluffs === 0 || (counts.tax || 0) / bluffs >= 0.7, 'บลัฟต้องตรงกับการ์ดที่เคยอ้าง (ดยุค): ' + JSON.stringify(counts));
+    }
+
+    // D) เลือกเป้าเป็นผู้นำ (เหรียญเยอะ การ์ดครบ อ้างนักฆ่า) ไม่ใช่คนที่แทบไม่มีพิษภัย
+    {
+        Math.random = mulberry32(80);
+        const room = makeRoom(4, 0);
+        const s = room.gameState;
+        const bot = s.players.find(p => p.playerId === s.currentPlayerId);
+        const [leader, weak1, weak2] = s.players.filter(p => p !== bot);
+        bot.coins = 7;
+        leader.coins = 6;
+        weak1.coins = 1; weak1.revealed = [weak1.influence.pop()];
+        weak2.coins = 1;
+        say(room, `${leader.name} ประกาศ ลอบสังหาร ใส่ ${weak2.name}`);
+        let hits = 0;
+        for (let i = 0; i < 40; i += 1) {
+            const c = bots.chooseAction(room, bot, mulberry32(1300 + i));
+            if (c.actionId === 'coup' && c.target.playerId === leader.playerId) hits += 1;
+        }
+        assert(hits >= 28, `7 เหรียญต้องรัฐประหารผู้นำเป็นส่วนใหญ่ (${hits}/40)`);
+    }
+
+    // E) ตัวต่อตัวช่วงท้าย: คู่แข่ง 8 เหรียญ (ตาหน้ารัฐประหารได้) เราเหลือใบเดียว ถือกัปตัน → ขโมยตัดเหรียญ
+    {
+        Math.random = mulberry32(81);
+        const room = makeRoom(2, 0);
+        const s = room.gameState;
+        const bot = s.players.find(p => p.playerId === s.currentPlayerId);
+        const opp = s.players.find(p => p !== bot);
+        bot.revealed = [bot.influence.pop()];
+        bot.influence = ['captain'];
+        bot.coins = 2;
+        opp.coins = 8;
+        let steals = 0;
+        for (let i = 0; i < 40; i += 1) if (bots.chooseAction(room, bot, mulberry32(1500 + i)).actionId === 'steal') steals += 1;
+        assert(steals >= 30, `ต้องขโมยตัดเหรียญคู่แข่งก่อนโดนรัฐประหาร (${steals}/40)`);
+        // คู่แข่งเหลือใบเดียว เรามี 3 เหรียญ + นักฆ่าจริง → ลอบสังหารปิดเกม
+        bot.influence = ['assassin'];
+        bot.coins = 3;
+        opp.coins = 2;
+        opp.revealed = [opp.influence.pop()];
+        let kills = 0;
+        for (let i = 0; i < 40; i += 1) if (bots.chooseAction(room, bot, mulberry32(1600 + i)).actionId === 'assassinate') kills += 1;
+        assert(kills >= 30, `คู่แข่งเหลือใบเดียว ถือนักฆ่า 3 เหรียญ ต้องลอบสังหาร (${kills}/40)`);
+    }
+}
+
 (function main() {
     const seeds = Number(process.env.SEEDS) || 120;
     targetedChecks();
+    smartChecks();
     for (let seed = 1; seed <= seeds; seed += 1) {
         for (let count = 2; count <= 6; count += 1) {
             playGame(seed, count, 'none');
