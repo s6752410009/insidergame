@@ -4,7 +4,8 @@
  *  B) 1 คน + บอท 5 · หัวห้องกดแค่ "พร้อม/ข้าม/โหวต" → เกมจบ
  *  C) 1 คน + บอท 7 · หัวห้องไม่กดอะไรเลย (นาฬิกาเดินแทน) → เกมจบ
  *  D) 1 คน + บอท 19 (โต๊ะ 20) · หัวห้องกดเล่น → เกมจบ
- *  ทุกเกม: แชทบอทมาจากบอทที่ยังมีชีวิต ในช่วงประชุม เป็นประโยคกลาง · ไม่มีบทบอทหลุดใน state
+ *  ทุกเกม: แชทบอทมาจากบอทที่ยังมีชีวิต ในช่วงประชุม เป็นประโยคจากชุดแม่แบบ · ไม่มีบทบอทหลุดใน state
+ *     หัวห้องพิมพ์แชทกลางวัน (บอทอ่านคำอ้างบท/การชี้ตัว) ต้องไม่ทำให้บอท error
  *  E) สถิติ: เกมที่มีบอทไม่นับให้ใครเลย · เกมคนล้วน 3 คนยังนับ · หัวห้องออก → ห้องบอทล้วนปิด
  *
  * รัน: npm run smoke:werewolf:bots
@@ -15,7 +16,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
 const { io } = require('socket.io-client');
-const { CHAT_LINES } = require('../games/werewolfBots');
+const { isBotChatLine } = require('../games/werewolfBots');
 
 const SKIP = '__skip__';
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -85,7 +86,7 @@ async function makeClient(base, name) {
         const s = client.states[client.states.length - 1];
         client.botChats.push({ ...m, phase: s && s.phase });
         assert(!m.channel || m.channel === 'public', 'บอทต้องไม่พูดในแชทหมาป่า/ผี: ' + m.channel);
-        assert(CHAT_LINES.includes(m.message), 'บอทพูดประโยคนอกชุดกลาง: ' + m.message);
+        assert(isBotChatLine(m.message), 'บอทพูดประโยคนอกชุดแม่แบบ: ' + m.message);
         if (s) {
             const speaker = s.players.find(p => p.playerId === m.playerId);
             assert(speaker && speaker.alive, 'บอทที่ตายแล้วต้องเงียบ');
@@ -123,6 +124,9 @@ async function hostAct(host, done) {
         }
         await ack(host.socket, 'werewolf_skipNight', {});
     } else if (s.phase === 'day-discussion') {
+        // คนจริงพูดในวง (บอทอ่านคำอ้างบท/การชี้ตัวจากแชทนี้) แล้วกดข้าม
+        const other = s.players.find(p => p.alive && !p.isSelf);
+        if (other) host.socket.emit('sendMessage', { message: `ผมเป็นชาวบ้านนะ ผมสงสัย ${other.name}` });
         await ack(host.socket, 'werewolf_skipDiscussion', {});
     } else if (s.phase === 'day-vote') {
         const others = s.players.filter(p => p.alive && !p.isSelf);

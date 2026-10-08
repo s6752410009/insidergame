@@ -11213,6 +11213,10 @@ io.sockets.on('connection', function(socket) {
             }
         }
 
+        // บอทหมาป่า "ฟัง" แชทกลางวันของคนจริง (ข้อมูลสาธารณะ: อ้างบท/ผลตรวจ/ชี้ตัว/ขอให้โหวต)
+        if (room.settings.gameMode === 'werewolf' && ['day-discussion', 'day-vote'].includes(room.gameState?.phase)) {
+            try { werewolfBots.noteChat(room, playerId, safeMessage); } catch (error) { /* อ่านไม่ออกก็ข้าม */ }
+        }
         sendChatMessageToRoom(io, roomId, player.playerName, safeMessage, player.color, data.replyTo, playerId, player.avatar || '👤', player.avatarFrame || 'none');
     });
 
