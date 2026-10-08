@@ -382,7 +382,20 @@ function initializeStats(playerId, playerName) {
  * @param {string} roomId - ID ของห้อง
  * @param {Object} gameResult - ผลการเล่นเกม { resultVote2, players, word, roomName }
  */
+// เกมที่มีบอทร่วมโต๊ะ ไม่นับสถิติ/อันดับให้ใครเลย (กันปั๊มชนะกับบอท) — เจ้าของเว็บสั่ง 2026-10-08
+function gameResultHasBot(gameResult) {
+    try {
+        return /"bot_[^"]*"/.test(JSON.stringify(gameResult || {}));
+    } catch (error) {
+        return false;
+    }
+}
+
 function recordGameEnd(roomId, gameResult) {
+    if (gameResultHasBot(gameResult)) {
+        return;
+    }
+
     if (gameResult?.mode === 'werewolf') {
         return recordWerewolfGameEnd(roomId, gameResult);
     }
@@ -1588,6 +1601,7 @@ function getLeaderboard(limit, mode) {
 loadStatsFromFile();
 
 module.exports = {
+    gameResultHasBot,
     initStatsManager,
     recordGameEnd,
     getStats,
