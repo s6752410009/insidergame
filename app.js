@@ -139,9 +139,8 @@ const adminTokens = new Map();
 // Lightweight anti-spam window for the public support inbox.
 const supportMessageRateLimits = new Map();
 
-// เก็บ server activity logs (เก็บ 500 logs ล่าสุด)
-const serverLogs = [];
-const MAX_SERVER_LOGS = 2000;
+// บันทึกกิจกรรมหลังบ้าน — แยกโควตาต่อประเภท เก็บถาวร (Mongo หรือไฟล์) ดู managers/serverLogManager.js
+const serverLogStore = require('./managers/serverLogManager');
 
 const ROOM_OFFLINE_GRACE_MS = 10 * 60 * 1000;
 const ROOM_SWEEP_INTERVAL_MS = 60 * 1000;
@@ -1784,36 +1783,64 @@ function logGameStartFromRoom(room, extra = '') {
  * @param {Object} [options] - Optional: { gameMode, meta }
  */
 function addServerLog(io, category, roomId, message, type = 'info', options = {}) {
-    const room = roomId ? roomManager.getRoom(roomId) : null;
-    const roomName = room ? room.name : roomId || 'ระบบ';
-    const gameMode = options.gameMode || room?.settings?.gameMode || null;
-    const modeStyle = gameMode ? getGameModeLogStyle(gameMode) : null;
-    
-    const logEntry = {
-        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        timestamp: new Date().toISOString(),
-        category: category,
-        roomId: roomId || null,
-        roomName: roomName,
-        gameMode,
-        gameModeLabel: modeStyle ? `${modeStyle.emoji} ${modeStyle.label}` : null,
-        message: message,
-        type: type,
-        meta: options.meta && typeof options.meta === 'object' ? options.meta : null
-    };
-    
-    // Add to beginning of array (newest first)
-    serverLogs.unshift(logEntry);
-    
-    // Keep only MAX_SERVER_LOGS
-    if (serverLogs.length > MAX_SERVER_LOGS) {
-        serverLogs.length = MAX_SERVER_LOGS;
+    try {
+        const room = roomId ? roomManager.getRoom(roomId) : null;
+        const roomName = options.roomName || (room ? room.name : roomId || 'ระบบ');
+        const gameMode = options.gameMode || room?.settings?.gameMode || null;
+        const modeStyle = gameMode ? getGameModeLogStyle(gameMode) : null;
+        let meta = options.meta && typeof options.meta === 'object' ? { ...options.meta } : null;
+
+        // บรรทัดระหว่างเล่นที่บอทเป็นคนทำ → ติดป้าย bot (ไม่ขึ้นมุมมอง "สำคัญ" + มีเพดานต่อห้องของตัวเอง)
+        if (category === 'game' && room && !(meta && (meta.bot !== undefined || meta.isBot !== undefined))
+            && !serverLogStore.KEY_EVENTS.has(meta?.event) && isBotActorLine(room, message)) {
+            meta = { ...(meta || {}), bot: true };
+        }
+
+        const logEntry = serverLogStore.add({
+            timestamp: new Date().toISOString(),
+            category,
+            roomId: roomId || null,
+            roomName,
+            gameMode,
+            gameModeLabel: modeStyle ? `${modeStyle.emoji} ${modeStyle.label}` : null,
+            message,
+            type,
+            meta
+        });
+        if (!logEntry) return null;
+
+        adminSockets.forEach(socketId => {
+            io.to(socketId).emit('adminLog', logEntry);
+        });
+        return logEntry;
+    } catch (error) {
+        // จด log ไม่ได้ ห้ามทำเกมพัง
+        console.error('[serverLogs] add failed:', error.message);
+        return null;
     }
-    
-    // Broadcast to all admin sockets
-    adminSockets.forEach(socketId => {
-        io.to(socketId).emit('adminLog', logEntry);
+}
+
+// ใครเป็นคนทำในบรรทัดนี้: ชื่อผู้เล่นที่โผล่ก่อนสุดในข้อความ (history ของทุกเกมขึ้นต้นด้วยชื่อคนทำ)
+function isBotActorLine(room, message) {
+    const players = Array.isArray(room.players) ? room.players : [];
+    if (!players.some(player => playerManager.isBotPlayerId(player.playerId))) return false;
+    const text = String(message || '');
+    let firstIndex = Infinity;
+    let firstLength = 0;
+    let actorIsBot = false;
+    players.forEach(player => {
+        const name = String(player.playerName || '').trim();
+        if (!name) return;
+        const index = text.indexOf(name);
+        // ชื่อซ้อนกัน ("บอท" กับ "บอท2") ตำแหน่งเดียวกัน → เอาชื่อที่ยาวกว่า
+        if (index >= 0 && (index < firstIndex || (index === firstIndex && name.length > firstLength))) {
+            firstIndex = index;
+            firstLength = name.length;
+            actorIsBot = playerManager.isBotPlayerId(player.playerId);
+        }
     });
+    if (firstIndex !== Infinity) return actorIsBot;
+    return /\[🤖|บอท/.test(text);
 }
 
 /**
@@ -6066,6 +6093,36 @@ app.get('/admin', function(req, res) {
     res.render('admin.ejs', { adminToken: adminToken });
 });
 
+// ดาวน์โหลด log ตามตัวกรองที่เลือก — เดินทีละหน้าจากที่เก็บ (ไม่ใช่แค่ที่โหลดไว้บนหน้าเว็บ)
+app.get('/admin/api/logs/export', requireAdminSession, async function(req, res) {
+    const query = {
+        cat: String(req.query.cat || 'all'),
+        mode: req.query.mode ? String(req.query.mode) : null,
+        roomId: req.query.roomId ? String(req.query.roomId) : null,
+        q: req.query.q ? String(req.query.q) : ''
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="server_logs_${stamp}.txt"`);
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+        for await (const entry of serverLogStore.exportEntries(query)) {
+            const time = new Date(entry.timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false });
+            const mode = entry.gameModeLabel ? `[${entry.gameModeLabel}] ` : '';
+            const room = entry.roomId ? `[${entry.roomName}] ` : '';
+            const meta = entry.meta ? ` ${JSON.stringify(entry.meta)}` : '';
+            const bot = entry.bot ? ' [bot]' : '';
+            if (!res.write(`[${time}] [${String(entry.category || '').toUpperCase()}]${bot} ${mode}${room}${entry.message}${meta}\n`)) {
+                await new Promise(resolve => res.once('drain', resolve));
+            }
+        }
+        res.end();
+    } catch (error) {
+        console.error('[logs export]', error);
+        res.end(`\n[export failed: ${error.message}]\n`);
+    }
+});
+
 app.get('/admin/api/messages', requireAdminSession, function(req, res) {
     res.json({
         success: true,
@@ -6938,63 +6995,37 @@ io.sockets.on('connection', function(socket) {
         }
     });
 
-    // Admin: Get server logs
-    socket.on('admin_getLogs', function(data, callback) {
+    // Admin: Get server logs — กรอง/แบ่งหน้าฝั่ง server จากที่เก็บจริง (Mongo หรือไฟล์)
+    // { cat, mode, q, roomId, before, limit } · รองรับรูปแบบเก่า { filter, gameMode, limit }
+    socket.on('admin_getLogs', async function(data, callback) {
+        const done = typeof data === 'function' ? data : callback;
         try {
             if (!isAdminAuthenticated(socket.id)) {
-                if (typeof callback === 'function') {
-                    callback({ success: false, error: 'Unauthorized' });
-                }
+                if (typeof done === 'function') done({ success: false, error: 'Unauthorized' });
                 return;
             }
-            
-            const { filter, gameMode: modeFilter, limit } = data || {};
-            let logs = [...serverLogs]; // Clone array
-            
-            // Filter by category if specified
-            if (filter && filter !== 'all') {
-                logs = logs.filter(log => log.category === filter);
-            }
-
-            if (modeFilter && modeFilter !== 'all') {
-                logs = logs.filter(log => log.gameMode === modeFilter);
-            }
-            
-            // Limit results
-            if (limit && limit > 0) {
-                logs = logs.slice(0, limit);
-            }
-            
-            if (typeof callback === 'function') {
-                callback({ success: true, logs: logs });
+            const result = await serverLogStore.query(data && typeof data === 'object' ? data : {});
+            if (typeof done === 'function') {
+                done({ success: true, ...result, retention: serverLogStore.retention() });
             }
         } catch (error) {
-            if (typeof callback === 'function') {
-                callback({ success: false, error: error.message });
-            }
+            console.error('[admin_getLogs]', error);
+            if (typeof done === 'function') done({ success: false, error: error.message });
         }
     });
 
-    // Admin: Clear server logs
-    socket.on('admin_clearLogs', function(callback) {
+    // Admin: Clear server logs (ลบจากที่เก็บจริงด้วย ไม่ใช่แค่ memory)
+    socket.on('admin_clearLogs', async function(callback) {
         try {
             if (!isAdminAuthenticated(socket.id)) {
-                if (typeof callback === 'function') {
-                    callback({ success: false, error: 'Unauthorized' });
-                }
+                if (typeof callback === 'function') callback({ success: false, error: 'Unauthorized' });
                 return;
             }
-            
-            serverLogs.length = 0;
-            addServerLog(io, 'admin', null, 'Logs ถูกล้างโดย Admin', 'warning');
-            
-            if (typeof callback === 'function') {
-                callback({ success: true });
-            }
+            await serverLogStore.clear();
+            addServerLog(io, 'admin', null, 'Logs ถูกล้างโดย Admin', 'warning', { meta: { event: 'logs_cleared' } });
+            if (typeof callback === 'function') callback({ success: true });
         } catch (error) {
-            if (typeof callback === 'function') {
-                callback({ success: false, error: error.message });
-            }
+            if (typeof callback === 'function') callback({ success: false, error: error.message });
         }
     });
 
@@ -11368,17 +11399,8 @@ function onServerListening() {
     console.log(`Server started on port ${PORT}`);
     console.log('Multi-Room Insider Game is ready!');
 
-    serverLogs.unshift({
-        id: Date.now() + '-startup',
-        timestamp: new Date().toISOString(),
-        category: 'system',
-        roomId: null,
-        roomName: 'ระบบ',
-        gameMode: null,
-        gameModeLabel: null,
-        message: '🚀 Server เริ่มทำงานแล้ว',
-        type: 'success',
-        meta: null
+    addServerLog(io, 'system', null, '🚀 Server เริ่มทำงานแล้ว', 'success', {
+        meta: { event: 'server_start', logStore: serverLogStore.isUsingDatabase() ? 'mongo' : 'file' }
     });
 
     voidCashPokerHandsOnBoot();
@@ -11394,7 +11416,7 @@ async function flushAndExit(signal) {
     try {
         await Promise.race([
             // ห้องด้วย — เดิมเซฟแค่ตามรอบ sweep รีสตาร์ตกลางเกมแล้วกู้ state เก่า (เช่น Insider ยังอยู่ช่วงเปิดคำ)
-            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms()]),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms(), serverLogStore.flush()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -11403,6 +11425,8 @@ async function flushAndExit(signal) {
     process.exit(0);
 }
 process.on('SIGTERM', () => flushAndExit('SIGTERM'));
+// ตายแบบไม่มี SIGTERM (เช่น process.exit จากที่อื่น) — log ที่ค้างคิวเขียนลงไฟล์แบบ sync
+process.on('exit', () => serverLogStore.flushSyncOnExit());
 process.on('SIGINT', () => flushAndExit('SIGINT'));
 
 async function startServer() {
@@ -11424,6 +11448,8 @@ async function startServer() {
 
         await adminMessageManager.initAdminMessageManager();
         console.log('✅ Admin Message Manager initialized');
+
+        await serverLogStore.init();
 
         const restoredRooms = await roomManager.initRoomManager();
         console.log(`✅ Room Manager initialized (${restoredRooms} room(s) restored)`);
@@ -11448,6 +11474,9 @@ async function startServer() {
         // ขั้นก่อนหน้าพัง → ร้าน 🪙 ยังต้องโหลด (ไม่งั้นรางวัลค้างคิว อัปเกรดไม่ได้ทั้งวัน)
         if (!setthiGold.isReady()) {
             try { await setthiGold.initSetthiGoldManager(); } catch (error) { console.error('[setthiGold] init failed:', error.message); }
+        }
+        if (!serverLogStore.isReady()) {
+            try { await serverLogStore.init({ useDatabase: false }); } catch (error) { console.error('[serverLogs] init failed:', error.message); }
         }
     } finally {
         resolveCoreManagersReady();

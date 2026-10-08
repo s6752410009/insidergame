@@ -959,6 +959,21 @@
         box-shadow: var(--ad-shadow-sm);
     }
     .lg-more { display: block; width: 100%; margin-top: 10px; }
+    .lg-room {
+        padding: 0; border: 0; background: none; color: inherit; font: inherit;
+        text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer;
+    }
+    .lg-room:hover, .lg-room:focus-visible { color: var(--ad-text); }
+    .lg-bot { color: var(--ad-text-mute); white-space: nowrap; }
+    .lg-row--bot .lg-msg { color: var(--ad-text-dim); }
+    .lg-room-chip {
+        display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+        min-height: 36px; margin: 0 0 12px; padding: 0 14px;
+        border-radius: 999px; border: 1px solid var(--ad-blue);
+        background: color-mix(in srgb, var(--ad-blue) 14%, transparent); color: var(--ad-text);
+        font: inherit; font-size: 0.9rem; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .lg-room-chip .lg-room-name { overflow: hidden; text-overflow: ellipsis; }
     @media (max-width: 600px) {
         .lg-tools { width: 100%; display: grid; grid-template-columns: auto 1fr 1fr; }
         .lg-tools .btn-admin { width: 100%; padding: 0 10px; }
@@ -1531,7 +1546,7 @@
             <div class="lg-head">
                 <div class="lg-head-text">
                     <h2 class="lg-title">📋 บันทึกกิจกรรม</h2>
-                    <p class="lg-sub">เก็บ 2,000 รายการล่าสุด · หายเมื่อเซิร์ฟเวอร์รีสตาร์ต</p>
+                    <p class="lg-sub" id="lgRetention">เก็บ 7 วัน · แต่ละประเภทมีโควตาของตัวเอง · ไม่หายตอนรีสตาร์ต</p>
                 </div>
                 <div class="lg-tools">
                     <button type="button" class="lg-live is-on" id="lgLive" aria-pressed="true" title="หยุดไว้ = รายการใหม่ไม่เด้งเข้ามาระหว่างอ่าน">
@@ -1550,6 +1565,7 @@
                     <option value="all">ทุกเกม</option>
                 </select>
             </div>
+            <button type="button" class="lg-room-chip" id="lgRoomChip" hidden title="กลับไปดูทุกห้อง">🚪 เฉพาะห้อง <strong class="lg-room-name"></strong> <span aria-hidden="true">✕</span></button>
 
             <div class="lg-list-wrap">
                 <button type="button" class="lg-newpill" id="lgNewPill" hidden>↑ มีรายการใหม่</button>
@@ -1799,7 +1815,8 @@ $(function() {
             if (response.success) {
                 isAuthenticated = true;
                 loadData();
-                loadLogs();
+                // Logs โหลดเมื่อเปิดแท็บ (หรือโหลดซ้ำหลัง reconnect ถ้าเคยเปิดแล้ว)
+                if (logView.loaded || $('#tab-logs').hasClass('active')) loadLogs();
                 loadGameSettingsTab();
                 loadAdminInbox();
             } else if (!silent) {
@@ -1830,6 +1847,9 @@ $(function() {
         }
         if (tab === 'messages') {
             loadAdminInbox();
+        }
+        if (tab === 'logs' && !logView.loaded && !logView.loading) {
+            loadLogs();
         }
     });
 
@@ -3859,7 +3879,6 @@ $(function() {
     };
     
     // ========== Logs Functions ==========
-    let serverLogs = [];
     const ROOM_MODE_LABELS = {
         insider: '🎯 Insider',
         werewolf: '🐺 Werewolf',
@@ -3909,8 +3928,9 @@ $(function() {
 
     // ---------- แท็บ Logs ----------
     // แยก "เรื่องที่แอดมินต้องสนใจ" ออกจาก log ระหว่างเล่น ซึ่งมีเยอะกว่ามาก
+    // ข้อมูลมาจากที่เก็บบน server (Mongo/ไฟล์) ทีละหน้า — กรอง/ค้นหา/นับฝั่ง server · log ใหม่เข้ามาสดทาง socket
     const LOG_CATS = [
-        { id: 'important', label: '⭐ สำคัญ', hint: 'Error, สิ่งที่แอดมินทำ, ระบบ, เริ่มเกม/ผลเกม' },
+        { id: 'important', label: '⭐ สำคัญ', hint: 'Error, สิ่งที่แอดมินทำ, ระบบ, เริ่มเกม/จบเกม/ออกกลางเกม (ไม่รวมบรรทัดของบอท)' },
         { id: 'error', label: '❌ Error' },
         { id: 'admin', label: '🛡️ แอดมิน' },
         { id: 'game', label: '🎮 ในเกม' },
@@ -3919,19 +3939,30 @@ $(function() {
         { id: 'all', label: 'ทั้งหมด' }
     ];
     const LOG_ICONS = { join: '➡️', leave: '⬅️', game: '🎮', admin: '🛡️', error: '❌', chat: '💬', system: '⚙️' };
-    // event/kind เป็นรหัสภายใน ไม่ช่วยแอดมินอ่าน (ยังอยู่ในไฟล์ที่ดาวน์โหลด)
-    const LOG_META_HIDDEN = new Set(['event', 'kind']);
+    // event/kind/bot เป็นรหัสภายใน ไม่ช่วยแอดมินอ่าน (ยังอยู่ในไฟล์ที่ดาวน์โหลด)
+    const LOG_META_HIDDEN = new Set(['event', 'kind', 'bot', 'isBot']);
     // log บางเกมขึ้นต้นด้วยอีโมจิคนละตัวกับป้ายเกม
     const LOG_MESSAGE_PREFIX = { undercover: '🕵️' };
-    const LOG_META_LABELS = { playerId: 'ผู้เล่น', playerCount: 'จำนวนคน', round: 'ยกที่', amount: 'จำนวน', enabled: 'เปิด', kind: 'ชนิด', event: 'event' };
+    const LOG_META_LABELS = { playerId: 'ผู้เล่น', playerCount: 'จำนวนคน', round: 'ยกที่', amount: 'จำนวน', enabled: 'เปิด', kind: 'ชนิด', event: 'event', players: 'ผู้เล่น', humans: 'คน', bots: 'บอท', settings: 'ตั้งค่า', reason: 'เหตุผล', winner: 'ผู้ชนะ' };
+    const LOG_KEY_EVENTS = new Set(['game_start', 'game_end', 'game_abort', 'game_start_failed', 'table_end', 'player_left_midgame', 'player_kicked']);
     const LOG_PAGE = 200;
     const logView = {
         cat: readLogPref('adminLogCat', 'important'),
         mode: 'all',
         query: '',
-        limit: LOG_PAGE,
+        roomId: null,
+        roomName: '',
+        items: [],
+        ids: new Set(),
+        counts: null,
+        modes: [],
+        nextCursor: null,
+        hasMore: false,
+        loaded: false,
+        loading: false,
+        reqSeq: 0,
         live: true,
-        pending: 0
+        pendingItems: []
     };
 
     function readLogPref(key, fallback) {
@@ -3941,14 +3972,19 @@ $(function() {
         try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
     }
 
+    // ต้องตรงกับ matchesView ใน managers/serverLogManager.js (ใช้กับ log สดที่เข้ามาทาง socket)
+    function logIsImportant(log) {
+        if (typeof log.important === 'boolean') return log.important;
+        const event = log.meta && log.meta.event;
+        return log.category === 'error' || log.type === 'error' || log.category === 'admin' || log.category === 'system'
+            || LOG_KEY_EVENTS.has(event) || (log.category === 'game' && log.type === 'success' && !(log.meta && log.meta.bot));
+    }
     function logMatchesCat(log, cat) {
         switch (cat) {
             case 'all': return true;
+            case 'important': return logIsImportant(log);
             case 'room': return log.category === 'join' || log.category === 'leave';
             case 'error': return log.category === 'error' || log.type === 'error';
-            case 'important':
-                return log.category === 'error' || log.type === 'error' || log.category === 'admin' || log.category === 'system'
-                    || (log.category === 'game' && log.type === 'success');
             default: return log.category === cat;
         }
     }
@@ -3970,27 +4006,22 @@ $(function() {
     }
 
     function logSearchText(log) {
-        if (!log._search) {
-            log._search = [log.message, log.roomName, logModeLabel(log), log.meta ? Object.values(log.meta).join(' ') : '']
-                .join(' ').toLowerCase();
-        }
-        return log._search;
+        return [log.message, log.roomName, logModeLabel(log), log.gameMode, log.meta ? Object.values(log.meta).join(' ') : '']
+            .join(' ').toLowerCase();
     }
 
-    // ตัวกรองเกม + คำค้น (ยังไม่กรองประเภท — ใช้นับตัวเลขบนปุ่มประเภทด้วย)
-    function logsInScope() {
+    // log สดอยู่ในตัวกรองเกม/ห้อง/คำค้นที่เปิดอยู่ไหม (ยังไม่ดูประเภท — ใช้นับตัวเลขบนปุ่มด้วย)
+    function logInScope(log) {
         const q = logView.query.trim().toLowerCase();
-        return serverLogs.filter(log =>
-            (logView.mode === 'all' || log.gameMode === logView.mode) && (!q || logSearchText(log).includes(q)));
+        return (logView.mode === 'all' || log.gameMode === logView.mode)
+            && (!logView.roomId || log.roomId === logView.roomId)
+            && (!q || logSearchText(log).includes(q));
     }
 
-    function getFilteredLogs() {
-        return logsInScope().filter(log => logMatchesCat(log, logView.cat));
-    }
-
-    function renderLogCats(scope) {
+    function renderLogCats() {
+        const counts = logView.counts || {};
         const html = LOG_CATS.map(cat => {
-            const count = scope.filter(log => logMatchesCat(log, cat.id)).length;
+            const count = Number(counts[cat.id] || 0);
             const active = cat.id === logView.cat;
             const tone = cat.id === 'error' && count > 0 ? ' is-alert' : '';
             return `<button type="button" class="lg-cat${active ? ' is-active' : ''}${tone}" data-cat="${cat.id}" aria-pressed="${active}"${cat.hint ? ` title="${escapeHtml(cat.hint)}"` : ''}>
@@ -4000,11 +4031,11 @@ $(function() {
     }
 
     function renderLogModes() {
-        const seen = new Map();
-        serverLogs.forEach(log => { if (log.gameMode && !seen.has(log.gameMode)) seen.set(log.gameMode, logModeLabel(log)); });
-        if (logView.mode !== 'all' && !seen.has(logView.mode)) seen.set(logView.mode, formatRoomModeLabel(logView.mode));
+        const modes = new Set(logView.modes || []);
+        if (logView.mode !== 'all') modes.add(logView.mode);
         const options = ['<option value="all">ทุกเกม</option>']
-            .concat(Array.from(seen.entries())
+            .concat(Array.from(modes)
+                .map(mode => [mode, formatRoomModeLabel(mode)])
                 .sort((x, y) => x[1].localeCompare(y[1], 'th'))
                 .map(([mode, label]) => `<option value="${escapeHtml(mode)}">${escapeHtml(label)}</option>`));
         const $select = $('#lgMode');
@@ -4013,6 +4044,15 @@ $(function() {
             $select.html(next).data('html', next);
         }
         $select.val(logView.mode);
+    }
+
+    function renderLogRoomChip() {
+        const $chip = $('#lgRoomChip');
+        if (!logView.roomId) {
+            $chip.prop('hidden', true);
+            return;
+        }
+        $chip.prop('hidden', false).find('.lg-room-name').text(logView.roomName || logView.roomId);
     }
 
     function logDayLabel(dt) {
@@ -4027,7 +4067,7 @@ $(function() {
         if (!log.meta || typeof log.meta !== 'object') return '';
         const rows = Object.entries(log.meta)
             .filter(([key, value]) => !LOG_META_HIDDEN.has(key) && value !== null && value !== undefined && value !== '')
-            .map(([key, value]) => `<dt>${escapeHtml(LOG_META_LABELS[key] || key)}</dt><dd>${escapeHtml(String(value))}</dd>`);
+            .map(([key, value]) => `<dt>${escapeHtml(LOG_META_LABELS[key] || key)}</dt><dd>${escapeHtml(typeof value === 'object' ? JSON.stringify(value) : String(value))}</dd>`);
         if (!rows.length) return '';
         return `<details class="lg-meta"><summary>รายละเอียด</summary><dl>${rows.join('')}</dl></details>`;
     }
@@ -4037,8 +4077,12 @@ $(function() {
         const time = dt.toLocaleTimeString('th-TH', { hour12: false });
         const isError = log.category === 'error' || log.type === 'error';
         const tone = isError ? 'error' : (log.category === 'admin' ? 'admin' : (log.type === 'success' ? 'success' : (log.type === 'warning' ? 'warning' : 'info')));
-        const ctx = [logModeLabel(log), log.roomId ? log.roomName : ''].filter(Boolean).map(escapeHtml).join(' · ');
-        return `<div class="lg-row lg-row--${tone}">
+        const modeLabel = logModeLabel(log);
+        const roomButton = log.roomId && log.roomId !== logView.roomId
+            ? `<button type="button" class="lg-room" data-room-id="${escapeHtml(log.roomId)}" data-room-name="${escapeHtml(log.roomName || log.roomId)}" title="ดูทุกบรรทัดของห้องนี้">${escapeHtml(log.roomName || log.roomId)}</button>`
+            : (log.roomId ? escapeHtml(log.roomName || log.roomId) : '');
+        const ctx = [modeLabel ? escapeHtml(modeLabel) : '', roomButton, log.bot ? '<span class="lg-bot">🤖 บอท</span>' : ''].filter(Boolean).join(' · ');
+        return `<div class="lg-row lg-row--${tone}${log.bot ? ' lg-row--bot' : ''}">
             <span class="lg-ico" aria-hidden="true">${LOG_ICONS[log.category] || '•'}</span>
             <div class="lg-body">
                 <div class="lg-msg">${escapeHtml(cleanLogMessage(log))}</div>
@@ -4050,25 +4094,25 @@ $(function() {
     }
 
     function renderLogs() {
-        const scope = logsInScope();
-        const filtered = scope.filter(log => logMatchesCat(log, logView.cat));
-        renderLogCats(scope);
+        renderLogCats();
         renderLogModes();
-        logView.pending = 0;
-        $('#lgNewPill').prop('hidden', true);
+        renderLogRoomChip();
+        $('#lgNewPill').prop('hidden', logView.pendingItems.length === 0);
 
         const $container = $('#logsContainer');
-        if (filtered.length === 0) {
-            const why = serverLogs.length === 0 ? 'ยังไม่มีกิจกรรม' : 'ไม่มีรายการที่ตรงกับตัวกรองนี้';
+        const items = logView.items;
+        if (items.length === 0) {
+            const why = logView.loading ? 'กำลังโหลด...'
+                : (logView.counts && logView.counts.all === 0 && !logView.query && logView.mode === 'all' && !logView.roomId
+                    ? 'ยังไม่มีกิจกรรม' : 'ไม่มีรายการที่ตรงกับตัวกรองนี้');
             $container.html(`<div class="empty-message lg-empty">${why}</div>`);
             $('#lgMore').prop('hidden', true);
             return;
         }
 
-        const shown = filtered.slice(0, logView.limit);
         let lastDay = '';
         const parts = [];
-        shown.forEach(log => {
+        items.forEach(log => {
             const day = logDayLabel(new Date(log.timestamp));
             if (day !== lastDay) {
                 parts.push(`<div class="lg-day">${escapeHtml(day)}</div>`);
@@ -4077,34 +4121,90 @@ $(function() {
             parts.push(renderLogRow(log));
         });
         $container.html(parts.join(''));
-        const rest = filtered.length - shown.length;
-        $('#lgMore').prop('hidden', rest <= 0).text(`แสดงเพิ่ม (เหลืออีก ${rest.toLocaleString('th-TH')})`);
+        const total = logView.counts ? Number(logView.counts[logView.cat] || 0) : 0;
+        const rest = Math.max(0, total - items.length);
+        $('#lgMore')
+            .prop('hidden', !logView.hasMore)
+            .prop('disabled', logView.loading)
+            .text(logView.loading ? 'กำลังโหลด...' : (rest > 0 ? `แสดงเพิ่ม (เหลืออีก ${rest.toLocaleString('th-TH')})` : 'แสดงเพิ่ม'));
+    }
+
+    function setLogItems(list, append) {
+        if (!append) {
+            logView.items = [];
+            logView.ids = new Set();
+        }
+        list.forEach(log => {
+            if (logView.ids.has(log.id)) return;
+            logView.ids.add(log.id);
+            logView.items.push(log);
+        });
+    }
+
+    // reset = ตัวกรองเปลี่ยน (โหลดหน้าแรกใหม่) · ไม่ reset = "แสดงเพิ่ม" (หน้าถัดไปจากที่เก็บ)
+    function fetchLogs(reset) {
+        if (!isAuthenticated) return;
+        const seq = ++logView.reqSeq;
+        logView.loading = true;
+        if (reset) {
+            logView.pendingItems = [];
+            logView.nextCursor = null;
+        }
+        renderLogs();
+        socket.emit('admin_getLogs', {
+            cat: logView.cat,
+            mode: logView.mode,
+            q: logView.query.trim(),
+            roomId: logView.roomId,
+            before: reset ? null : logView.nextCursor,
+            limit: LOG_PAGE
+        }, function(response) {
+            if (seq !== logView.reqSeq) return; // มีคำขอใหม่กว่าแล้ว
+            logView.loading = false;
+            if (!response || !response.success) {
+                renderLogs();
+                return;
+            }
+            logView.loaded = true;
+            setLogItems(response.logs || [], !reset);
+            logView.counts = response.counts || logView.counts;
+            logView.modes = response.modes || logView.modes;
+            logView.hasMore = Boolean(response.hasMore);
+            logView.nextCursor = response.nextCursor || null;
+            if (response.retention) {
+                $('#lgRetention').text(`เก็บ ${response.retention.days} วัน · แต่ละประเภทมีโควตาของตัวเอง · ไม่หายตอนรีสตาร์ต`);
+            }
+            renderLogs();
+        });
     }
 
     function loadLogs() {
-        socket.emit('admin_getLogs', { filter: 'all', gameMode: 'all', limit: 2000 }, function(response) {
-            if (response && response.success) {
-                serverLogs = response.logs || [];
-                renderLogs();
-            }
-        });
+        fetchLogs(true);
     }
 
     // log ใหม่: ถ้ากำลังเลื่อนอ่านอยู่หรือกดหยุดไว้ ไม่ดึงหน้าจอกลับขึ้นบน — โชว์ปุ่ม "มีรายการใหม่" แทน
     let logRenderQueued = false;
     socket.on('adminLog', function(logEntry) {
-        serverLogs.unshift(logEntry);
-        if (serverLogs.length > 2000) serverLogs.length = 2000;
-        const reading = !logView.live || $('#logsContainer').scrollTop() > 40;
-        if (reading) {
-            const scope = logsInScope();
-            if (scope[0] === logEntry && logMatchesCat(logEntry, logView.cat)) {
-                logView.pending += 1;
-                $('#lgNewPill').prop('hidden', false).text(`↑ มีรายการใหม่ ${logView.pending}`);
-            }
-            renderLogCats(scope);
+        if (!logEntry || !logView.loaded || !logInScope(logEntry)) return;
+        if (logView.counts) {
+            LOG_CATS.forEach(cat => {
+                if (logMatchesCat(logEntry, cat.id)) logView.counts[cat.id] = Number(logView.counts[cat.id] || 0) + 1;
+            });
+        }
+        if (logEntry.gameMode && !logView.modes.includes(logEntry.gameMode)) logView.modes.push(logEntry.gameMode);
+        if (!logMatchesCat(logEntry, logView.cat) || logView.ids.has(logEntry.id)) {
+            renderLogCats();
             return;
         }
+        const reading = !logView.live || $('#logsContainer').scrollTop() > 40;
+        if (reading) {
+            logView.pendingItems.unshift(logEntry);
+            $('#lgNewPill').prop('hidden', false).text(`↑ มีรายการใหม่ ${logView.pendingItems.length}`);
+            renderLogCats();
+            return;
+        }
+        logView.ids.add(logEntry.id);
+        logView.items.unshift(logEntry);
         if (logRenderQueued) return;
         logRenderQueued = true;
         requestAnimationFrame(function() {
@@ -4113,17 +4213,23 @@ $(function() {
         });
     });
 
+    function showPendingLogs() {
+        const fresh = logView.pendingItems.filter(log => !logView.ids.has(log.id));
+        fresh.forEach(log => logView.ids.add(log.id));
+        logView.items = fresh.concat(logView.items);
+        logView.pendingItems = [];
+        renderLogs();
+    }
+
     $('#lgCats').on('click', '.lg-cat', function() {
         logView.cat = $(this).data('cat');
-        logView.limit = LOG_PAGE;
         writeLogPref('adminLogCat', logView.cat);
-        renderLogs();
+        fetchLogs(true);
         $('#logsContainer').scrollTop(0);
     });
     $('#lgMode').on('change', function() {
         logView.mode = $(this).val();
-        logView.limit = LOG_PAGE;
-        renderLogs();
+        fetchLogs(true);
     });
     let logSearchTimer = null;
     $('#lgSearch').on('input', function() {
@@ -4131,29 +4237,39 @@ $(function() {
         clearTimeout(logSearchTimer);
         logSearchTimer = setTimeout(function() {
             logView.query = value;
-            logView.limit = LOG_PAGE;
-            renderLogs();
-        }, 150);
+            fetchLogs(true);
+        }, 250);
+    });
+    $('#logsContainer').on('click', '.lg-room', function() {
+        logView.roomId = String($(this).data('room-id'));
+        logView.roomName = String($(this).data('room-name') || '');
+        fetchLogs(true);
+        $('#logsContainer').scrollTop(0);
+    });
+    $('#lgRoomChip').on('click', function() {
+        logView.roomId = null;
+        logView.roomName = '';
+        fetchLogs(true);
     });
     $('#lgMore').on('click', function() {
-        logView.limit += LOG_PAGE;
-        renderLogs();
+        if (logView.loading || !logView.hasMore) return;
+        fetchLogs(false);
     });
     $('#lgNewPill').on('click', function() {
-        renderLogs();
+        showPendingLogs();
         $('#logsContainer').scrollTop(0);
     });
     $('#lgLive').on('click', function() {
         logView.live = !logView.live;
         $(this).toggleClass('is-on', logView.live).attr('aria-pressed', String(logView.live));
         $(this).find('.lg-live-label').text(logView.live ? 'สด' : 'หยุดไว้');
-        if (logView.live) renderLogs();
+        if (logView.live) showPendingLogs();
     });
     
     window.clearLogs = function() {
         Swal.fire({
             title: '🗑️ ล้างบันทึกทั้งหมด?',
-            text: 'ลบทุกรายการบนเซิร์ฟเวอร์ (ไม่ใช่แค่ที่กรองอยู่) ย้อนคืนไม่ได้',
+            text: 'ลบทุกรายการในที่เก็บบนเซิร์ฟเวอร์ (ไม่ใช่แค่ที่กรองอยู่) ย้อนคืนไม่ได้',
             showCancelButton: true,
             confirmButtonText: 'ล้าง',
             cancelButtonText: 'ยกเลิก',
@@ -4172,26 +4288,23 @@ $(function() {
         });
     };
     
-    // ดาวน์โหลดเฉพาะที่กรองอยู่ตอนนี้
+    // ดาวน์โหลดตามตัวกรองที่เลือกอยู่ — server เดินทุกหน้าจากที่เก็บ (ไม่ใช่แค่ที่โหลดไว้บนจอ)
     window.exportLogs = function() {
-        const filtered = getFilteredLogs();
-        if (filtered.length === 0) {
+        const total = logView.counts ? Number(logView.counts[logView.cat] || 0) : logView.items.length;
+        if (total === 0) {
             Swal.fire({ icon: 'warning', title: 'ไม่มีรายการให้ดาวน์โหลด', background: '#1e1e1e', color: '#fff' });
             return;
         }
-        const logsText = filtered.map(l => {
-            const time = new Date(l.timestamp).toLocaleString('th-TH');
-            const modeLabel = logModeLabel(l) ? `[${logModeLabel(l)}] ` : '';
-            const metaLabel = l.meta ? ` ${JSON.stringify(l.meta)}` : '';
-            return `[${time}] [${String(l.category || '').toUpperCase()}] ${modeLabel}${l.roomId ? '[' + l.roomName + '] ' : ''}${l.message}${metaLabel}`;
-        }).join('\n');
-        const blob = new Blob([logsText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
+        const params = new URLSearchParams({ cat: logView.cat });
+        if (logView.mode !== 'all') params.set('mode', logView.mode);
+        if (logView.roomId) params.set('roomId', logView.roomId);
+        if (logView.query.trim()) params.set('q', logView.query.trim());
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'server_logs_' + new Date().toISOString().slice(0,10) + '.txt';
+        a.href = '/admin/api/logs/export?' + params.toString();
+        a.download = 'server_logs_' + new Date().toISOString().slice(0, 10) + '.txt';
+        document.body.appendChild(a);
         a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        a.remove();
     };
     
     // Load logs after authentication

@@ -160,7 +160,36 @@ const setthiGoldSchema = new mongoose.Schema({
 }, { timestamps: true, minimize: false });
 const SetthiGold = mongoose.model('SetthiGold', setthiGoldSchema);
 
+// บันทึกกิจกรรมหลังบ้าน (แท็บ Logs) — เดิมอยู่แค่ใน memory หายทุก deploy
+// TTL บน timestamp ลบของเก่ากว่า LOG_RETENTION_DAYS เอง · โควตาต่อถัง/ต่อห้อง ตัดเป็นรอบใน serverLogManager
+const LOG_RETENTION_SECONDS = Math.round((Number(process.env.LOG_RETENTION_DAYS) > 0 ? Number(process.env.LOG_RETENTION_DAYS) : 7) * 86400);
+const serverLogSchema = new mongoose.Schema({
+    logId: { type: String, required: true },
+    timestamp: { type: Date, required: true },
+    category: { type: String, required: true },
+    type: { type: String, default: 'info' },
+    bucket: { type: String, required: true },
+    important: { type: Boolean, default: false },
+    bot: { type: Boolean, default: false },
+    roomId: { type: String, default: null },
+    roomName: { type: String, default: null },
+    gameMode: { type: String, default: null },
+    gameModeLabel: { type: String, default: null },
+    message: { type: String, default: '' },
+    meta: { type: mongoose.Schema.Types.Mixed, default: null }
+}, { versionKey: false, minimize: false });
+// logId เรียงตามเวลาอยู่แล้ว (เวลา + ลำดับ) — ใช้เรียง/แบ่งหน้าแทน timestamp
+serverLogSchema.index({ logId: -1 }, { unique: true });
+serverLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: LOG_RETENTION_SECONDS });
+serverLogSchema.index({ important: 1, logId: -1 });
+serverLogSchema.index({ bucket: 1, logId: -1 });
+serverLogSchema.index({ category: 1, logId: -1 });
+serverLogSchema.index({ gameMode: 1, logId: -1 });
+serverLogSchema.index({ roomId: 1, bucket: 1, bot: 1, logId: -1 });
+const ServerLog = mongoose.model('ServerLog', serverLogSchema);
+
 module.exports = {
+    ServerLog,
     Player,
     PlayerStats,
     BannedPlayer,
