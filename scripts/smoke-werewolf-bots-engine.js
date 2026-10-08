@@ -6,8 +6,12 @@
  *  C) คน 1 + บอท: คนไม่กดอะไรเลย (นาฬิกาเดินแทน)
  *  D) โต๊ะบทกำหนดเอง: บทใหม่ทั้ง 5 + บทสกิลครบ เพื่อให้ทุกบทได้ลงมือจริง
  * ทุกเกม: ไม่มี exception · ไม่ค้าง (จบภายใน 60 วัน) · ผู้ชนะถูกต้อง · คืนแรกหมาป่า/ฆาตกรไม่ลงมือ
- * · หมาป่าไม่โหวต/ไม่กัดหมาป่า · บอทที่ตายแล้วไม่ทำอะไร ไม่แชท · แชทเป็นประโยคกลางๆ เท่านั้น
+ * · หมาป่าไม่โหวต/ไม่กัดหมาป่า · บอทที่ตายแล้วไม่ทำอะไร ไม่แชท · แชทมาจากชุดแม่แบบ (≤ 2 ประโยค/คน/วัน)
+ *   ท่าทีคนบ้ามาจากคนบ้าเท่านั้น · หมาป่าไม่เคยหลุดว่าตัวเองเป็นหมาป่า
  * · state ที่ส่งให้คนไม่มีความจำของบอท
+ *  E) ความฉลาด: ไม่โหวตคนที่ดูเป็นคนบ้า · เชื่อผลตรวจที่น่าเชื่อ · จับคนอ้างผู้หยั่งรู้ปลอม · เปลี่ยนโหวตตามข้อมูลใหม่
+ *     · ศาลเตี้ย/พรานยิงเมื่อมีหลักฐาน · คนบ้าบอทมีท่าทีแบบเนียนๆ
+ *  F) เทสปิดตา: สลับบทของคนที่ยังไม่เปิดบท → การตัดสินใจของบอทต้องเหมือนเดิม (ไม่แอบดูบทคนอื่น)
  *
  * รัน: node scripts/smoke-werewolf-bots-engine.js   (SEEDS=40 เพื่อเพิ่มรอบ)
  */
@@ -66,7 +70,7 @@ function makeRoom(n, humans, settings, forcedRoles = null) {
     return room;
 }
 
-const tally = { games: 0, days: 0, winners: {}, timers: { night: 0, 'day-discussion': 0, 'day-vote': 0 }, chats: 0, roleActs: {}, maxDays: 0, sizes: new Set() };
+const tally = { games: 0, days: 0, winners: {}, timers: { night: 0, 'day-discussion': 0, 'day-vote': 0 }, chats: 0, chatKinds: {}, roleActs: {}, maxDays: 0, sizes: new Set() };
 
 function noteActions(room, seen) {
     const s = room.gameState;
@@ -148,6 +152,7 @@ function playGame(seed, n, humanMode, forcedRoles = null) {
     const label = `seed ${seed} · ${n} คน · คน=${humanMode}${forcedRoles ? ' · บทกำหนด' : ''}`;
     const human = room.gameState.players.find(p => !bots.isBotId(p.playerId));
     const seen = new Set();
+    const chatCount = {};
     const humanDone = new Set();
     let loops = 0;
     let fakeNow = 1_000_000;
@@ -162,7 +167,14 @@ function playGame(seed, n, humanMode, forcedRoles = null) {
             const speaker = room.gameState.players.find(p => p.playerId === chat.playerId);
             assert(speaker && speaker.alive !== false, `${label}: บอทที่ตายแล้วแชท`);
             assert(before === 'day-discussion', `${label}: บอทแชทนอกช่วงประชุม (${before})`);
-            assert(bots.CHAT_LINES.includes(chat.text), `${label}: บอทแชทประโยคนอกชุดกลาง`);
+            assert(bots.isBotChatLine(chat.text), `${label}: บอทแชทประโยคนอกชุดแม่แบบ: ${chat.text}`);
+            // ท่าทีคนบ้าเป็นของคนบ้าเท่านั้น · หมาป่าไม่เคยพูดว่าตัวเองเป็นหมาป่า
+            if (/^fool(Subtle|Beg|Wolf)$/.test(chat.kind || '')) assert(speaker.role === 'fool', `${label}: ${speaker.role} พูดประโยคของคนบ้า`);
+            if (isWolfRole(speaker.role)) assert(!/หมาป่าก็ได้|เป็นหมาป่า/.test(chat.text), `${label}: หมาป่าบอทหลุดว่าตัวเองเป็นหมาป่า`);
+            const perBot = `${room.gameState.dayNumber}:${chat.playerId}`;
+            chatCount[perBot] = (chatCount[perBot] || 0) + 1;
+            assert(chatCount[perBot] <= 2, `${label}: บอทพูดเกิน 2 ประโยคต่อวัน (สแปม)`);
+            tally.chatKinds[chat.kind] = (tally.chatKinds[chat.kind] || 0) + 1;
             tally.chats += 1;
         });
         noteActions(room, seen);
@@ -256,10 +268,173 @@ function targetedChecks() {
     assert(bots.playBotTurns(timed, { now: t0 + 60000 }).changed, 'ผ่านไปนานพอบอทต้องลงมือ');
 }
 
+/** ตั้งโต๊ะบทกำหนด แล้วพาไปถึงกลางวันของวันที่ day (ไม่มีใครตาย) */
+function dayRoom(roles, humans = 0, phase = 'day-vote', day = 2) {
+    Math.random = mulberry32(roles.length * 17 + humans);
+    const room = makeRoom(roles.length, humans, { gameMode: 'werewolf', werewolfRoles: [...new Set(roles.filter(r => r !== 'villager'))] }, roles);
+    room.gameState.phase = phase;
+    room.gameState.dayNumber = day;
+    room.gameState.dayVotes = {};
+    room.gameState.discussionSkips = {};
+    bots.observe(room, 1);
+    return room;
+}
+
+function smartChecks() {
+    // 1) คนบ้า: คนที่ขอให้โหวต/อ้างว่าเป็นหมาป่า (แชทคนจริง) + โดนรุมเมื่อวาน → ชาวบ้านไม่โหวต
+    {
+        const roles = ['fool', 'werewolf', 'werewolf', 'seer', 'villager', 'villager', 'villager', 'doctor', 'villager'];
+        const room = dayRoom(roles, 1, 'day-discussion');
+        const [fool] = room.gameState.players;
+        bots.noteChat(room, fool.playerId, 'โหวตผมเลย ผมเป็นหมาป่าเอง 555');
+        bots.noteChat(room, 'h1', 'ผมไม่ได้เป็นหมาป่านะ'); // ไม่ใช่ท่าที (ตรวจว่าไม่นับมั่ว) — h1 คือคนบ้าเองด้วย ไม่เพิ่มอะไร
+        room.gameState.botBrain.votes['1'] = Object.fromEntries(room.gameState.players.slice(1, 6).map(p => [p.playerId, fool.playerId]));
+        room.gameState.phase = 'day-vote';
+        const villagers = room.gameState.players.filter(p => p.role === 'villager' || p.role === 'doctor');
+        villagers.forEach(v => {
+            const view = bots.assess(room, v).map.get(fool.playerId);
+            assert(view.F > 0.5, `ชาวบ้านต้องสงสัยว่าคนที่ขอให้โหวตคือคนบ้า (F=${view.F.toFixed(2)})`);
+            assert(bots.chooseVote(room, v).target !== fool.playerId, 'ชาวบ้านบอทต้องไม่โหวตคนที่ดูเป็นคนบ้า');
+        });
+        const wolf = room.gameState.players[1];
+        assert(bots.chooseVote(room, wolf).target !== fool.playerId, 'หมาป่าบอทก็ไม่อยากให้คนบ้าชนะ');
+    }
+    // 2) ผู้หยั่งรู้ (น่าเชื่อ) บอกว่า "ดี" → คนที่โดนรุมไม่ถูกโหวต · ผู้หยั่งรู้บอก "ไม่ดี" → ทุกคนโหวตตาม
+    {
+        const roles = ['werewolf', 'werewolf', 'seer', 'villager', 'villager', 'villager', 'doctor', 'villager'];
+        const room = dayRoom(roles);
+        const [w1, , seer, suspect] = room.gameState.players;
+        const brain = room.gameState.botBrain;
+        brain.votes['1'] = Object.fromEntries(room.gameState.players.filter(p => p !== suspect).slice(0, 5).map(p => [p.playerId, suspect.playerId]));
+        seer.seerHistory = [{ dayNumber: 1, targetPlayerId: suspect.playerId, resultCode: 'good' }, { dayNumber: 2, targetPlayerId: w1.playerId, resultCode: 'bad' }];
+        room.gameState.phase = 'day-discussion';
+        const said = bots.decideChat(room, seer, 0);
+        assert(said && said.kind === 'claim' && said.claim.results[w1.playerId] === 'bad', 'ผู้หยั่งรู้บอทเจอหมาป่าต้องเปิดผล: ' + JSON.stringify(said));
+        assert(bots.isBotChatLine(said.text) && said.text.includes(w1.name), 'ประโยคเปิดผลต้องอยู่ในแม่แบบและมีชื่อเป้า');
+        brain.claims[seer.playerId] = { role: 'seer', day: 2, seq: 1, results: { ...said.claim.results } };
+        room.gameState.phase = 'day-vote';
+        room.gameState.players.filter(p => ['villager', 'doctor'].includes(p.role) && p !== suspect).forEach(v => {
+            const choice = bots.chooseVote(room, v);
+            assert(choice.target === w1.playerId, `ชาวบ้านต้องโหวตคนที่ผู้หยั่งรู้บอกว่าไม่ดี (ได้ ${choice.target})`);
+            assert(choice.target !== suspect.playerId, 'คนที่ผู้หยั่งรู้บอกว่าดีต้องไม่ถูกโหวต');
+        });
+    }
+    // 3) อ้างผู้หยั่งรู้ชนกัน: คนที่โดนหมาป่ากัดตายคือตัวจริง → อีกคนโกหก โดนโหวต
+    {
+        const roles = ['werewolf', 'werewolf', 'seer', 'villager', 'villager', 'villager', 'doctor', 'villager', 'villager'];
+        const room = dayRoom(roles, 0, 'day-vote', 3);
+        const [w1, w2, seer, c] = room.gameState.players;
+        const brain = room.gameState.botBrain;
+        brain.claims[seer.playerId] = { role: 'seer', day: 2, seq: 1, results: { [w1.playerId]: 'bad' } };
+        brain.claims[w2.playerId] = { role: 'seer', day: 2, seq: 2, results: { [c.playerId]: 'bad' } };
+        seer.alive = false;
+        brain.deaths[seer.playerId] = { day: 3, cause: 'wolf-attack' };
+        room.gameState.players.filter(p => p.role === 'villager' && p !== c).forEach(v => {
+            const A = bots.assess(room, v);
+            assert(A.kappa[w2.playerId] <= 0.1, 'คนอ้างผู้หยั่งรู้ที่ยังรอด (อีกคนโดนกัดตาย) ต้องหมดความน่าเชื่อ');
+            const pick = bots.chooseVote(room, v).target;
+            assert(pick === w1.playerId || pick === w2.playerId, `ต้องโหวตหมาป่า (ได้ ${pick})`);
+        });
+    }
+    // 4) เปลี่ยนโหวตเมื่อวงโหวตไปทางอื่นที่สมเหตุผล (ไม่ยึดโหวตแรกตลอด) และไม่สลับไปมา
+    {
+        const roles = ['werewolf', 'werewolf', 'villager', 'villager', 'villager', 'villager', 'villager', 'villager'];
+        const room = makeRoom(roles.length, roles.length - 1, { gameMode: 'werewolf', werewolfRoles: ['werewolf'] }, roles.slice().reverse());
+        const bot = room.gameState.players.find(p => bots.isBotId(p.playerId));
+        room.gameState.phase = 'day-vote';
+        room.gameState.dayNumber = 2;
+        room.gameState.dayVotes = {};
+        bots.observe(room, 1);
+        bots.playBotTurns(room, { force: true, rng: mulberry32(9), now: 5 });
+        const first = room.gameState.dayVotes[bot.playerId];
+        assert(first, 'บอทต้องโหวตก่อน');
+        const z = room.gameState.players.find(p => p.playerId !== bot.playerId && p.playerId !== first && !bots.isBotId(p.playerId));
+        room.gameState.players.filter(p => !bots.isBotId(p.playerId) && p !== z).slice(0, 5).forEach(p => {
+            room.gameState.dayVotes[p.playerId] = z.playerId;
+        });
+        room.gameState.lastAction = 12345;
+        bots.playBotTurns(room, { force: true, rng: mulberry32(10), now: 6 });
+        assert(room.gameState.dayVotes[bot.playerId] === z.playerId, `บอทต้องเปลี่ยนไปโหวตตามวงที่เข้าท่า (${first} → ${room.gameState.dayVotes[bot.playerId]})`);
+        bots.playBotTurns(room, { force: true, rng: mulberry32(11), now: 7 });
+        assert(room.gameState.dayVotes[bot.playerId] === z.playerId, 'ไม่มีข้อมูลใหม่ บอทต้องไม่เปลี่ยนกลับไปมา');
+    }
+    // 5) คนบ้าบอท: ไม่อ้างบท มีท่าทีชวนสงสัยบ้าง (เนียนๆ)
+    {
+        const roles = ['fool', 'werewolf', 'seer', 'villager', 'villager', 'villager', 'doctor'];
+        const room = dayRoom(roles, 0, 'day-discussion', 1);
+        const fool = room.gameState.players[0];
+        const kinds = [];
+        for (let d = 1; d <= 12; d += 1) {
+            room.gameState.dayNumber = d;
+            [0, 1].forEach(slot => { const said = bots.decideChat(room, fool, slot); if (said) kinds.push(said.kind); });
+        }
+        assert(kinds.some(k => /^fool(Subtle|Beg|Wolf)$/.test(k)), 'คนบ้าบอทต้องมีท่าทีชวนสงสัยบ้าง: ' + kinds);
+        assert(!kinds.includes('claim') && !kinds.includes('defend'), 'คนบ้าบอทต้องไม่อ้างบท');
+        assert(kinds.filter(k => /^fool(Subtle|Beg|Wolf)$/.test(k)).length <= 9, 'คนบ้าบอทต้องไม่โจ่งแจ้งทุกวัน');
+    }
+    // 6) ศาลเตี้ย/พราน: ยิงคนที่ผู้หยั่งรู้ (น่าเชื่อ) บอกว่าไม่ดี ไม่ยิงมั่ว
+    {
+        const roles = ['werewolf', 'werewolf', 'seer', 'vigilante', 'villager', 'villager', 'villager', 'hunter'];
+        const room = dayRoom(roles, 0, 'night', 3);
+        room.gameState.nightActions = {};
+        const [w1, , seer, vig] = room.gameState.players;
+        const hunter = room.gameState.players[7];
+        const noInfo = bots.planNight(room, vig, mulberry32(1));
+        assert(noInfo.every(step => step.target === SKIP), 'ไม่มีหลักฐาน ศาลเตี้ยต้องไม่ยิง');
+        room.gameState.botBrain.claims[seer.playerId] = { role: 'seer', day: 2, seq: 1, results: { [w1.playerId]: 'bad' } };
+        assert(bots.planNight(room, vig, mulberry32(2))[0].target === w1.playerId, 'ศาลเตี้ยต้องยิงคนที่ผู้หยั่งรู้บอกว่าไม่ดี');
+        assert(bots.planNight(room, hunter, mulberry32(3))[0].target === w1.playerId, 'พรานต้องยิงคนที่ผู้หยั่งรู้บอกว่าไม่ดี');
+    }
+}
+
+/** บอทต้องไม่แอบดูบทคนอื่น: สลับบทของคนที่ยังไม่เปิดบท แล้วการตัดสินใจต้องเหมือนเดิม */
+function blindfoldCheck(seeds) {
+    let compared = 0;
+    for (let seed = 1; seed <= seeds; seed += 1) {
+        Math.random = mulberry32(seed * 101);
+        const rng = mulberry32(seed);
+        const n = 8 + (seed % 7);
+        const room = makeRoom(n, 0, randomSettings(rng));
+        for (let step = 0; step < 400 && !room.gameState.winner; step += 1) {
+            const s = room.gameState;
+            if (['night', 'day-discussion', 'day-vote'].includes(s.phase) && step % 3 === 0) {
+                const alive = s.players.filter(p => p.alive !== false && bots.isBotId(p.playerId));
+                const bot = alive[step % alive.length];
+                const decide = () => JSON.stringify({
+                    vote: s.phase === 'day-vote' ? bots.chooseVote(room, bot).target : null,
+                    chat: s.phase === 'day-discussion' ? [0, 1].map(slot => (bots.decideChat(room, bot, slot) || {}).text || null) : null,
+                    night: s.phase === 'night' && bot.role !== 'witch' ? bots.planNight(room, bot, mulberry32(step)) : null
+                });
+                const before = decide();
+                const hidden = s.players.filter(p => p !== bot && p.alive !== false && !p.mayorRevealed && !p.princeRevealed
+                    && !(isWolfRole(bot.role) && isWolfRole(p.role)));
+                const saved = hidden.map(p => [p.role, p.roleInfo]);
+                hidden.forEach((p, i) => {
+                    const [role, info] = saved[(i + 1) % saved.length];
+                    p.role = role;
+                    p.roleInfo = info;
+                });
+                // หมาป่ารู้จักเพื่อน: ถ้าสลับแล้วมีหมาป่าใหม่โผล่ในกลุ่มที่สลับ ข้าม (ข้อมูลที่หมาป่าเห็นเปลี่ยนจริง)
+                const wolfViewChanged = isWolfRole(bot.role) && hidden.some((p, i) => isWolfRole(p.role) !== isWolfRole(saved[i][0]));
+                const after = decide();
+                hidden.forEach((p, i) => { p.role = saved[i][0]; p.roleInfo = saved[i][1]; });
+                if (!wolfViewChanged && hidden.length > 1) {
+                    assert(before === after, `seed ${seed}: บอท ${bot.role} ตัดสินใจเปลี่ยนเมื่อบทคนอื่น (ที่มองไม่เห็น) ถูกสลับ\n${before}\n${after}`);
+                    compared += 1;
+                }
+            }
+            if (!bots.playBotTurns(room, { force: true, rng, now: 1e6 + step * 1000 }).changed) E.autoResolvePhase(room);
+        }
+    }
+    return compared;
+}
+
 (function main() {
     const seeds = Number(process.env.SEEDS) || 12;
     targetedChecks();
+    smartChecks();
     leakCheck();
+    const blindCompared = blindfoldCheck(Number(process.env.BLIND_SEEDS) || 30);
     const sizes = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20];
     for (let seed = 1; seed <= seeds; seed += 1) {
         sizes.forEach(n => {
@@ -284,5 +459,7 @@ function targetedChecks() {
     console.log(`werewolf bots: ${tally.games} เกมจบครบ · ขนาด ${[...tally.sizes].sort((a, b) => a - b).join('/')} คน · เฉลี่ย ${(tally.days / tally.games).toFixed(1)} วัน (สูงสุด ${tally.maxDays})`);
     console.log(`  ผู้ชนะ ${JSON.stringify(tally.winners)} · รอนาฬิกา ${JSON.stringify(tally.timers)} · แชท ${tally.chats}`);
     console.log(`  บทที่ลงมือ ${JSON.stringify(tally.roleActs)}`);
+    console.log(`  ประโยคบอท ${JSON.stringify(tally.chatKinds)}`);
+    console.log(`  เทสปิดตา (สลับบทคนอื่น) ${blindCompared} จุด`);
     console.log(`✅ smoke:werewolf:bots:engine ผ่าน ${checks} checks`);
 })();

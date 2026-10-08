@@ -494,6 +494,9 @@ function readStats() {
         await delay(800);
         rows = readStats();
         assert(!rows.some(x => String(x.playerId).startsWith('bot_')), 'ไม่บันทึกสถิติบอท');
+        // เกมที่มีบอทร่วมโต๊ะไม่นับสถิติให้ใครเลย (เกมคนล้วน A/B ด้านบนยังนับตามปกติ)
+        const humanRow = rows.find(x => x.playerId === human.id);
+        assert(!(humanRow && humanRow.modeStats?.colorcards?.games), 'เกมที่มีบอทต้องไม่นับสถิติให้คน: ' + JSON.stringify(humanRow?.modeStats?.colorcards));
         // เล่นใหม่แล้วคนเดียวออก → ห้องบอทล้วนถูกปิด
         await ack(human.socket, 'returnFinishedToLobby', { roomId: roomC });
         await delay(500);
@@ -503,7 +506,7 @@ function readStats() {
         await delay(500);
         const list = await new Promise(res => human.socket.emit('getRoomList', x => res(x)));
         assert(!(list.rooms || []).some(x => x.roomId === roomC), 'คนสุดท้ายออก ห้องบอทล้วนถูกปิด');
-        console.log('8. ไม่บันทึกสถิติบอท · คนสุดท้ายออก ปิดห้องบอทล้วน ✓');
+        console.log('8. เกมมีบอทไม่นับสถิติให้ใคร (บอทก็ไม่ถูกบันทึก) · คนสุดท้ายออก ปิดห้องบอทล้วน ✓');
 
         // ================= D) ลงหลายใบผ่าน socket =================
         const D = [];

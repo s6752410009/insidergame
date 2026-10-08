@@ -241,14 +241,13 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         const statsFile = path.join(process.env.GAME_DATA_DIR, 'playerStats.json');
         const stats = fs.existsSync(statsFile) ? JSON.parse(fs.readFileSync(statsFile, 'utf8')) : {};
         const rows = Array.isArray(stats) ? stats : Object.values(stats);
-        const hostStat = rows.find(row => row.playerId === host.id);
-        assert(hostStat && hostStat.modeStats?.pokdeng?.games === 1, 'บันทึกสถิติป๊อกเด้งของหัวห้อง 1 เกม: ' + JSON.stringify(hostStat?.modeStats?.pokdeng));
-        const p1Stat = rows.find(row => row.playerId === p1.id);
-        assert(p1Stat && p1Stat.modeStats.pokdeng.games === 1, 'p1 บันทึก 1 เกม');
-        const expectWin = fin.standings.find(row => row.playerId === p1.id).net > 0;
-        assert((p1Stat.modeStats.pokdeng.wins === 1) === expectWin, 'ชนะ/แพ้ตามกำไร');
+        // เกมที่มีบอทร่วมโต๊ะไม่นับสถิติให้ใครเลย (กันปั๊มชนะกับบอท) — คนจริงทั้ง 3 ต้องไม่ได้สถิติ
+        [host, p1, p2].forEach(p => {
+            const row = rows.find(r => r.playerId === p.id);
+            assert(!(row && row.modeStats?.pokdeng?.games), `โต๊ะที่มีบอทต้องไม่นับสถิติให้ ${p.name}: ` + JSON.stringify(row?.modeStats?.pokdeng));
+        });
         assert(!rows.some(row => String(row.playerId).startsWith('bot_')), 'ไม่บันทึกสถิติบอท');
-        console.log('6. สถิติบันทึกครั้งเดียว ชนะ = จบแล้วชิปเกินทุน ✓');
+        console.log('6. โต๊ะที่มีบอท: ไม่นับสถิติให้ใครเลย ✓');
 
         const back = new Promise(res => host.socket.once('redirectToLobby', () => res(true)));
         const ret = await ack(host.socket, 'returnFinishedToLobby', { roomId });
@@ -266,10 +265,10 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         assert(again.success, 'เปิดโต๊ะใหม่ได้อีกรอบ');
         await waitFor(() => last(p1)?.phase === 'bet' && last(p1).handNumber === 1, 15000, 'new table');
         await delay(2000);
-        const stats2 = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+        const stats2 = fs.existsSync(statsFile) ? JSON.parse(fs.readFileSync(statsFile, 'utf8')) : {};
         const hostStat2 = (Array.isArray(stats2) ? stats2 : Object.values(stats2)).find(row => row.playerId === host.id);
-        assert(hostStat2.modeStats.pokdeng.games === 1, 'สถิติยังเป็น 1 (ไม่บันทึกซ้ำ)');
-        console.log('7. กลับห้องรอ → เปิดโต๊ะใหม่ได้ · สถิติไม่ซ้ำ ✓');
+        assert(!(hostStat2 && hostStat2.modeStats?.pokdeng?.games), 'โต๊ะที่มีบอทยังไม่นับสถิติ');
+        console.log('7. กลับห้องรอ → เปิดโต๊ะใหม่ได้ ✓');
 
         // ---------- 8. กติกาห้องเปิด: อั้น 100 · ต่ำกว่า 4 ต้องจั่ว · ไม่นับเรียง · เจ้ามือจับ ----------
         let v8 = last(p1);
@@ -353,6 +352,58 @@ const ctx = s => ({ step: s.step, phase: s.phase, handNumber: s.handNumber });
         const hostSeat = last(p1).players.find(p => p.playerId === host.id);
         assert(!hostSeat || hostSeat.left, 'หัวห้องเดิมถูกทำเครื่องหมายว่าออกแล้ว');
         console.log(`9. เจ้ามือออกจากห้อง (${midPhase}) → ${midPhase !== 'result' ? 'ยกเลิกมือ คืนเดิมพัน · ' : ''}p1 เป็นหัวห้อง/เจ้ามือ ✓`);
+
+        // ---------- 10. โต๊ะคนล้วน 2 คน (ไม่มีบอท) → สถิติยังนับครบ ชนะ = จบแล้วชิปเกินทุน ----------
+        {
+            const pair = [];
+            for (let i = 0; i < 2; i += 1) {
+                const socket = await conn(base);
+                const id = randomUUID();
+                socket.emit('initPlayer', id);
+                const states = [];
+                socket.on('pokdengState', st => states.push(st));
+                pair.push({ socket, id, states, name: 'Q' + i });
+            }
+            await delay(400);
+            const [qHost, qGuest] = pair;
+            const made = await ack(qHost.socket, 'createRoom', { playerId: qHost.id, name: 'ป๊อกเด้งคนล้วน', gameMode: 'pokdeng', maxPlayers: 6 });
+            assert(made?.success, 'สร้างห้องคนล้วนไม่ได้');
+            qHost.socket.emit('setRoom', { roomId: made.roomId, playerId: qHost.id });
+            assert((await ack(qGuest.socket, 'joinRoom', { roomId: made.roomId, playerId: qGuest.id }))?.success, 'join ห้องคนล้วนไม่ได้');
+            qGuest.socket.emit('setRoom', { roomId: made.roomId, playerId: qGuest.id });
+            await delay(400);
+            assert((await ack(qHost.socket, 'startGameFromLobby', { roomId: made.roomId }))?.success, 'เริ่มโต๊ะคนล้วนไม่ได้');
+            let ended = false;
+            for (let guard = 0; guard < 600 && last(qGuest)?.phase !== 'finished'; guard += 1) {
+                const v0 = last(qGuest);
+                if (v0 && v0.phase === 'result' && v0.handNumber >= 2 && !ended) {
+                    assert((await ack(qHost.socket, 'pokdeng_end', {})).success, 'หัวห้องจบโต๊ะคนล้วนได้');
+                    ended = true;
+                }
+                if (v0 && v0.phase === 'result' && !ended) await ack(qHost.socket, 'pokdeng_next', {});
+                for (const p of pair) {
+                    const v = last(p);
+                    if (!v || v.phase === 'finished') continue;
+                    const a = v.availableActions || {};
+                    if (a.canBet && v.phase === 'bet') await ack(p.socket, 'pokdeng_bet', { amount: Math.min(a.maxBet, 100), ...ctx(v) });
+                    else if (a.canDraw) await ack(p.socket, 'pokdeng_draw', { draw: (v.self.eval ? v.self.eval.points : 0) <= 4, ...ctx(v) });
+                    else if (a.canDealerDecide) await ack(p.socket, 'pokdeng_dealer', { draw: (v.self.eval ? v.self.eval.points : 0) <= 3, ...ctx(v) });
+                }
+                await delay(120);
+            }
+            await waitFor(() => last(qGuest)?.phase === 'finished', 20000, 'โต๊ะคนล้วนจบ');
+            const finQ = last(qGuest);
+            const readRows = () => {
+                const raw = fs.existsSync(statsFile) ? JSON.parse(fs.readFileSync(statsFile, 'utf8')) : {};
+                return Array.isArray(raw) ? raw : Object.values(raw);
+            };
+            await waitFor(() => pair.every(p => readRows().find(r => r.playerId === p.id)?.modeStats?.pokdeng?.games === 1), 6000, 'สถิติโต๊ะคนล้วน');
+            const qRow = readRows().find(r => r.playerId === qGuest.id);
+            const qWin = finQ.standings.find(r => r.playerId === qGuest.id).net > 0;
+            assert((qRow.modeStats.pokdeng.wins === 1) === qWin, 'โต๊ะคนล้วน: ชนะ/แพ้ตามกำไร');
+            pair.forEach(p => { try { p.socket.close(); } catch (e) { /* ignore */ } });
+            console.log('10. โต๊ะคนล้วน 2 คน → สถิติบันทึกครบ ชนะ = ชิปเกินทุน ✓');
+        }
 
         assert(!/\[pokdeng\].*failed/.test(server.logs()), 'server log มี error ของป๊อกเด้ง:\n' + server.logs().split('\n').filter(l => /pokdeng/.test(l)).slice(-5).join('\n'));
         players.forEach(p => { try { p.socket.close(); } catch (e) { /* ignore */ } });

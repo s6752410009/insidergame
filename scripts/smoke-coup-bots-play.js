@@ -3,7 +3,8 @@
  *  A) หัวห้องเติมบอทในห้องรอ (ทีละตัว + หลายตัว) · คนอื่นเติมไม่ได้ · ห้องเต็ม 6 ที่แล้วเติมไม่ได้
  *  B) เริ่มเกม 1 คน + บอท 5 · หัวห้อง "ไม่กดอะไรเลย" → เกมต้องจบเอง
  *  C) เริ่มเกม 1 คน + บอท 2 · หัวห้องกดเล่นสุ่มตามที่กติกาให้ → เกมต้องจบ
- *  D) ระหว่างเกมเติมบอทไม่ได้ · state ที่หัวห้องได้ไม่มีการ์ดคว่ำของบอท · บอทไม่เข้าสถิติ
+ *  D) ระหว่างเกมเติมบอทไม่ได้ · state ที่หัวห้องได้ไม่มีการ์ดคว่ำของบอท
+ *     สถิติ: เกมที่มีบอทไม่นับให้ใครเลย · เกมคนล้วน 2 คนยังนับตามปกติ
  *  E) หัวห้องออก (เหลือแต่บอท) → ห้องปิด
  *
  * รัน: npm run smoke:coup:bots   (SMOKE_PORT=xxxx เพื่อกำหนดพอร์ต)
@@ -171,6 +172,30 @@ async function runGame(base, label, botCount, hostMode) {
     return { host, roomId, final };
 }
 
+/** เกมคนล้วน 2 คน (ไม่มีบอท) — ทั้งคู่กดสุ่ม — ใช้เทียบว่าสถิติยังนับ */
+async function runHumanGame(base, label) {
+    const host = await makeClient(base, 'คนA-' + label);
+    const guest = await makeClient(base, 'คนB-' + label);
+    const roomId = await createRoom(host, 'CoupHumans ' + label);
+    assert((await ack(guest.socket, 'joinRoom', { roomId, playerId: guest.id })).success, `${label}: แขก join ไม่ได้`);
+    guest.socket.emit('setRoom', { roomId, playerId: guest.id });
+    await delay(200);
+    const started = await ack(host.socket, 'startGameFromLobby', { roomId });
+    assert(started.success, `${label}: เริ่มเกมไม่ได้ ${JSON.stringify(started)}`);
+    await waitFor(() => last(host) && last(host).phase !== 'lobby', 10000, 'coup start (humans)');
+    const startedAt = Date.now();
+    while (last(host).phase !== 'finished') {
+        if (Date.now() - startedAt > 180000) throw new Error(`${label}: เกมไม่จบใน 3 นาที`);
+        await playRandom(host);
+        await playRandom(guest);
+        await delay(120);
+    }
+    const final = last(host);
+    assert(!final.players.some(p => String(p.playerId).startsWith('bot_')), `${label}: ต้องไม่มีบอท`);
+    console.log(`  ${label}: จบใน ${((Date.now() - startedAt) / 1000).toFixed(1)}s · ${final.turnNumber} ตา · ผู้ชนะ ${final.winner.name}`);
+    return [host, guest];
+}
+
 (async () => {
     const port = await getFreePort();
     const server = await bootServer(port);
@@ -204,23 +229,35 @@ async function runGame(base, label, botCount, hostMode) {
         await runGame(base, 'C2 1+3 หัวห้องเล่น', 3, 'random');
         console.log('B/C) เกมจบเองทั้งแบบหัวห้องนิ่งและเล่นเอง ✓');
 
-        // ---- D) สถิติ: มีหัวห้อง ไม่มีบอท ----
+        // ---- D) สถิติ: เกมที่มีบอทร่วมโต๊ะไม่นับให้ใครเลย (ทั้งคนและบอท) · เกมคนล้วนยังนับตามปกติ ----
         await delay(800);
         const statsFile = path.join(process.env.GAME_DATA_DIR, 'playerStats.json');
-        if (fs.existsSync(statsFile)) {
-            const stats = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+        const readStats = () => (fs.existsSync(statsFile) ? JSON.parse(fs.readFileSync(statsFile, 'utf8')) : {});
+        {
+            const stats = readStats();
             const ids = Object.keys(stats);
             assert(!ids.some(id => id.startsWith('bot_')), 'บอทต้องไม่เข้าไฟล์สถิติ');
-            assert(ids.includes(idle.host.id) && ids.includes(played.host.id), 'หัวห้องต้องได้สถิติเกม');
-            assert(stats[idle.host.id].modeStats.coup.games >= 1, 'สถิติ coup ของหัวห้องต้องนับ');
-        } else {
-            throw new Error('ไม่พบไฟล์สถิติหลังจบเกม');
+            [idle, played].forEach(game => {
+                const games = stats[game.host.id]?.modeStats?.coup?.games || 0;
+                assert(games === 0, `เกมที่มีบอทต้องไม่นับสถิติให้หัวห้อง (${games})`);
+            });
+        }
+        const humans = await runHumanGame(base, 'D คนล้วน 2 คน');
+        await waitFor(() => {
+            const stats = readStats();
+            return humans.every(c => (stats[c.id]?.modeStats?.coup?.games || 0) === 1);
+        }, 6000, 'สถิติเกมคนล้วน');
+        {
+            const stats = readStats();
+            const wins = humans.map(c => stats[c.id].modeStats.coup.wins || 0);
+            assert(wins.reduce((a, b) => a + b, 0) === 1, 'เกมคนล้วน: ผู้ชนะได้ 1 ชนะ: ' + wins);
         }
         const playersFile = path.join(process.env.GAME_DATA_DIR, 'players.json');
         if (fs.existsSync(playersFile)) {
             assert(!fs.readFileSync(playersFile, 'utf8').includes('"bot_'), 'บอทต้องไม่ถูกบันทึกลงไฟล์ผู้เล่น');
         }
-        console.log('D) สถิติ: หัวห้องนับ บอทไม่ถูกบันทึก ✓');
+        humans.forEach(c => c.socket.close());
+        console.log('D) สถิติ: เกมมีบอทไม่นับให้ใคร · เกมคนล้วนนับครบ ✓');
 
         // ---- E) หัวห้องออก → ห้องที่เหลือแต่บอทปิด ----
         {
