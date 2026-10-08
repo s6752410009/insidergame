@@ -6,7 +6,7 @@
  *  C) คน 1 + บอท: คนไม่กดอะไรเลย (นาฬิกาเดินแทน)
  *  D) โต๊ะบทกำหนดเอง: บทใหม่ทั้ง 5 + บทสกิลครบ เพื่อให้ทุกบทได้ลงมือจริง
  * ทุกเกม: ไม่มี exception · ไม่ค้าง (จบภายใน 60 วัน) · ผู้ชนะถูกต้อง · คืนแรกหมาป่า/ฆาตกรไม่ลงมือ
- * · หมาป่าไม่โหวต/ไม่กัดหมาป่า · บอทที่ตายแล้วไม่ทำอะไร ไม่แชท · แชทมาจากชุดแม่แบบ (≤ 2 ประโยค/คน/วัน)
+ * · หมาป่าไม่กัดหมาป่า · โหวตหมาป่าได้แค่ตอนทิ้งเพื่อนที่โดนไล่แน่แล้ว (นานๆ ครั้ง) · บอทที่ตายแล้วไม่ทำอะไร ไม่แชท · แชทมาจากชุดแม่แบบ (≤ 2 ประโยค/คน/วัน)
  *   ท่าทีคนบ้ามาจากคนบ้าเท่านั้น · หมาป่าไม่เคยหลุดว่าตัวเองเป็นหมาป่า
  * · state ที่ส่งให้คนไม่มีความจำของบอท
  *  E) ความฉลาด: ไม่โหวตคนที่ดูเป็นคนบ้า · เชื่อผลตรวจที่น่าเชื่อ · จับคนอ้างผู้หยั่งรู้ปลอม · เปลี่ยนโหวตตามข้อมูลใหม่
@@ -70,7 +70,7 @@ function makeRoom(n, humans, settings, forcedRoles = null) {
     return room;
 }
 
-const tally = { games: 0, days: 0, winners: {}, timers: { night: 0, 'day-discussion': 0, 'day-vote': 0 }, chats: 0, chatKinds: {}, roleActs: {}, maxDays: 0, sizes: new Set() };
+const tally = { wolfDayVotes: 0, buses: 0, games: 0, days: 0, winners: {}, timers: { night: 0, 'day-discussion': 0, 'day-vote': 0 }, chats: 0, chatKinds: {}, roleActs: {}, maxDays: 0, sizes: new Set() };
 
 function noteActions(room, seen) {
     const s = room.gameState;
@@ -103,12 +103,28 @@ function noteActions(room, seen) {
         if (p.role === 'prince' && p.princeRevealed && !seen.has('prince:' + p.playerId)) { seen.add('prince:' + p.playerId); tally.roleActs['prince-survived'] = (tally.roleActs['prince-survived'] || 0) + 1; }
     });
     if (s.wolvesSickNight && !seen.has('sick:' + s.wolvesSickNight)) { seen.add('sick:' + s.wolvesSickNight); tally.roleActs['diseased-sick'] = (tally.roleActs['diseased-sick'] || 0) + 1; }
-    // หมาป่าบอทโหวตกลางวัน: ไม่โหวตหมาป่า
-    Object.entries(s.dayVotes || {}).forEach(([voterId, targetId]) => {
-        const voter = s.players.find(p => p.playerId === voterId);
-        const target = s.players.find(p => p.playerId === targetId);
-        if (bots.isBotId(voterId) && voter && isWolfRole(voter.role) && target) assert(!isWolfRole(target.role), 'หมาป่าบอทโหวตหมาป่า');
-    });
+    // หมาป่าบอทโหวตกลางวัน: โหวตหมาป่าได้แค่ตอน "ทิ้งเพื่อน" ที่รอดไม่ได้แล้วจากหลักฐานสาธารณะ
+    //   (เสียงคนนอกฝูงพอไล่อยู่แล้ว เผื่อ 1 เสียงที่เปลี่ยนใจในจังหวะเดียวกัน · หรือโดนจอมเปิดโปงชี้แล้ว)
+    if (s.phase === 'day-vote') {
+        const alive = s.players.filter(p => p.alive !== false);
+        const total = alive.reduce((sum, p) => sum + (p.mayorRevealed ? 2 : 1), 0);
+        const threshold = Math.floor(total / 2) + 1;
+        Object.entries(s.dayVotes || {}).forEach(([voterId, targetId]) => {
+            const voter = s.players.find(p => p.playerId === voterId);
+            const target = s.players.find(p => p.playerId === targetId);
+            if (!bots.isBotId(voterId) || !voter || !isWolfRole(voter.role) || !target) return;
+            const tag = `vote:${s.dayNumber}:${voterId}:${targetId}`;
+            if (seen.has(tag)) return;
+            seen.add(tag);
+            tally.wolfDayVotes += 1;
+            if (!isWolfRole(target.role)) return;
+            tally.buses += 1;
+            const outside = Object.entries(s.dayVotes).filter(([v, t]) => t === targetId && !isWolfRole(s.players.find(p => p.playerId === v)?.role))
+                .reduce((sum, [v]) => sum + (s.players.find(p => p.playerId === v)?.mayorRevealed ? 2 : 1), 0);
+            const exposed = s.botBrain?.known?.[targetId] && isWolfRole(s.botBrain.known[targetId]);
+            assert(exposed || outside >= threshold - 1, `หมาป่าบอทโหวตเพื่อนทั้งที่เพื่อนยังไม่โดนไล่แน่ (คนนอกฝูง ${outside}/${threshold})`);
+        });
+    }
 }
 
 function humanAct(room, human, rng, done) {
@@ -237,7 +253,7 @@ function targetedChecks() {
     room.gameState.dayNumber = 2;
     const scores = room.gameState.players.filter(p => p !== seer).map(p => ({ id: p.playerId, s: bots.voteScore(room, seer, p) }));
     assert(scores.sort((a, b) => b.s - a.s)[0].id === wolf.playerId, 'ผู้หยั่งรู้บอทต้องโหวตคนที่ตรวจเจอว่าไม่ดี');
-    // หมาป่าบอทไม่มีวันให้คะแนนหมาป่า
+    // หมาป่าบอทไม่ให้คะแนนเพื่อนหมาป่า (เว้นแต่เพื่อนรอดไม่ได้แล้ว — ดู busCheck)
     const wolves = makeRoom(6, 0, { gameMode: 'werewolf', werewolfRoles: ['werewolf'] }, ['werewolf', 'werewolf', 'villager', 'villager', 'villager', 'villager']);
     assert(bots.voteScore(wolves, wolves.gameState.players[0], wolves.gameState.players[1]) === null, 'หมาป่าบอทต้องไม่โหวตหมาป่า');
     // คืนแรก: หมาป่าบอทแค่กดพร้อม ไม่ได้ส่งเป้า
@@ -387,6 +403,33 @@ function smartChecks() {
     }
 }
 
+/** ทิ้งเพื่อน (bus): ทำเฉพาะเมื่อเพื่อนรอดไม่ได้แล้ว · เพื่อนแค่โดนสงสัยยังไม่ทิ้ง */
+function busCheck() {
+    const roles = ['werewolf', 'werewolf', 'werewolf', 'villager', 'villager', 'villager', 'villager', 'villager', 'villager', 'villager'];
+    const setup = outsideVotes => {
+        const room = dayRoom(roles, 0, 'day-vote', 2);
+        const [, mate] = room.gameState.players;
+        const villagers = room.gameState.players.filter(p => p.role === 'villager');
+        room.gameState.dayVotes = Object.fromEntries(villagers.slice(0, outsideVotes).map(p => [p.playerId, mate.playerId]));
+        return { room, mate, wolves: room.gameState.players.filter(p => p.role === 'werewolf' && p !== mate) };
+    };
+    // เสียงคนนอกฝูง 3/6 — ยังไม่พอไล่ หมาป่าต้องไม่ทิ้งเพื่อน
+    {
+        const { room, mate, wolves } = setup(3);
+        wolves.forEach(w => assert(bots.chooseVote(room, w).target !== mate.playerId, 'เพื่อนแค่โดนสงสัย หมาป่าต้องไม่โหวตทิ้ง'));
+        wolves.forEach(w => assert(bots.voteScore(room, w, mate) === null, 'เพื่อนยังรอดได้ ต้องไม่ให้คะแนนเพื่อน'));
+    }
+    // เสียงคนนอกฝูง 7/6 (ครบเกณฑ์ไล่อยู่แล้ว) — ทิ้งได้ (ไม่จำเป็นต้องทุกตัว)
+    let busedSomewhere = false;
+    for (let seed = 0; seed < 6 && !busedSomewhere; seed += 1) {
+        const { room, mate, wolves } = setup(7);
+        room.roomId = `bus-${seed}`;
+        room.gameState.dayNumber = 2 + seed;
+        busedSomewhere = wolves.some(w => bots.chooseVote(room, w).target === mate.playerId);
+    }
+    assert(busedSomewhere, 'เพื่อนโดนไล่แน่แล้ว หมาป่าควรโหวตร่วมบ้าง (ทิ้งเพื่อนให้ตัวเองดูเป็นชาวบ้าน)');
+}
+
 /** บอทต้องไม่แอบดูบทคนอื่น: สลับบทของคนที่ยังไม่เปิดบท แล้วการตัดสินใจต้องเหมือนเดิม */
 function blindfoldCheck(seeds) {
     let compared = 0;
@@ -433,6 +476,7 @@ function blindfoldCheck(seeds) {
     const seeds = Number(process.env.SEEDS) || 12;
     targetedChecks();
     smartChecks();
+    busCheck();
     leakCheck();
     const blindCompared = blindfoldCheck(Number(process.env.BLIND_SEEDS) || 30);
     const sizes = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20];
@@ -461,5 +505,8 @@ function blindfoldCheck(seeds) {
     console.log(`  บทที่ลงมือ ${JSON.stringify(tally.roleActs)}`);
     console.log(`  ประโยคบอท ${JSON.stringify(tally.chatKinds)}`);
     console.log(`  เทสปิดตา (สลับบทคนอื่น) ${blindCompared} จุด`);
+    // ทิ้งเพื่อนต้องเป็นเรื่องนานๆ ครั้ง ไม่ใช่นิสัย
+    assert(tally.buses <= tally.wolfDayVotes * 0.08, `หมาป่าบอททิ้งเพื่อนบ่อยเกินไป (${tally.buses}/${tally.wolfDayVotes})`);
+    console.log(`  หมาป่าทิ้งเพื่อน ${tally.buses} ครั้ง จากโหวตกลางวันของหมาป่า ${tally.wolfDayVotes} ครั้ง`);
     console.log(`✅ smoke:werewolf:bots:engine ผ่าน ${checks} checks`);
 })();

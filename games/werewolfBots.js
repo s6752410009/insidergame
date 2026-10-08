@@ -14,6 +14,13 @@
  * การโหวต: คิดเป็นกำไร/ขาดทุน — ไล่หมาป่า +, ไล่ชาวบ้าน −, ไล่คนบ้า = แพ้ทั้งโต๊ะ (−มาก) · ไม่มีหลักฐานพอ → ข้าม
  *   (ยกเว้นหมาป่าใกล้ครองเมือง) · โหวตแล้วเปลี่ยนได้เมื่อเห็นข้อมูลใหม่ (วงโหวตเปลี่ยน/มีคนอ้างบท)
  *
+ * ฝั่งหมู่บ้านมีนิสัยต่างกัน (PERSONAS: รอบคอบ / ใจร้อน / ตามกระแส) — เชื่อคำอ้างไม่เท่ากัน ต้องการหลักฐานไม่เท่ากัน
+ *   ตามวงโหวตไม่เท่ากัน บางคนพลาดผลตรวจในแชท · ผู้หยั่งรู้รอบคอบเก็บผลไว้ก่อน ใจร้อนเปิดทันที
+ *   (ทั้งวงจึงไม่โหวตพร้อมกันเหมือนสมองเดียว) · กลางคืนคิดคนเดียวได้รอบคอบ นิสัยไม่มีผล
+ * ฝูงหมาป่าเล่นเป็นทีม (ใช้แค่ที่ฝูงรู้จริง = ใครเป็นพวก): ตกลงกันว่าใครเป็นคนอ้างบทปลอม (ผู้หยั่งรู้/นักพยากรณ์) ทีละตัว
+ *   · โหวตตามวงของคนนอกฝูง ไม่รุมเป้าเดียวกันเป็นก้อน ไม่เป็นคนเดียวที่โหวตใคร · ทิ้งเพื่อน (bus) เฉพาะตอนที่เพื่อนโดนไล่แน่แล้ว
+ *   · กลางคืนกัดคนที่น่าเชื่อ/ตัวตรวจ แต่ไม่กัดคนที่ฝูงเคยโหวตไล่ คนที่ตัวปลอมบอกว่า "ไม่ดี" หรือคนที่หมู่บ้านกำลังสงสัย
+ *
  * แชทของบอทเป็นประโยคสั้นจากชุดแม่แบบ (CHAT_LINES + CHAT_TEMPLATES) ใส่ได้แค่ชื่อผู้เล่น/ชื่อบท/ผลตรวจ
  *   — ไม่มีประโยคที่บอกว่าใครเป็นเพื่อนหมาป่า · บอทที่ตายแล้วเงียบ · คนละไม่เกิน 2 ประโยคต่อวัน
  *
@@ -32,8 +39,18 @@ const MAX_CHAT_PER_BOT = 2;
 const MAX_NEUTRAL_PER_DAY = 3; // ประโยคทักทาย/กลางๆ ทั้งวงไม่เกิน 3 (เรื่องสำคัญ เช่น เปิดผลตรวจ ไม่นับ)
 
 // น้ำหนักการตัดสินใจโหวต (หน่วย = "ไล่หมาป่าได้ 1 ตัว")
-const FOOL_COST = 5;       // ไล่คนบ้า = คนบ้าชนะทันที ทุกคนแพ้
+const FOOL_COST = 2.5;     // ไล่คนบ้า = คนบ้าชนะทันที ทุกคนแพ้ (ยังกลัวพอให้คนบ้าชนะไม่ถึง 10%)
 const MISLYNCH_COST = 0.3; // ไล่ชาวบ้านผิดตัว
+// หมาป่า (ปรับด้วย npm run sim:werewolf:bots ให้หมาป่าชนะราว 45–50% ในโต๊ะไม่มีบทเดี่ยว)
+const BUS_RATE = 0.75;      // โอกาสที่หมาป่าแต่ละตัวโหวตทิ้งเพื่อนที่รอดไม่ได้แล้ว (โหวตคนนอกฝูงพอไล่อยู่แล้ว / โดนเปิดโปง)
+const WOLF_BAND = 1.0;      // น้ำหนักการตามวงโหวตของคนนอกฝูง (กลมกลืน)
+const WOLF_STACK = 0.35;    // โทษของการรุมเป้าเดียวกับเพื่อนในฝูงทั้งที่ไม่มีคนนอกฝูงโหวตด้วย
+const WOLF_SOLO = 0.4;      // ไม่อยากเป็นคนเดียวที่โหวตใคร (ไม่มีใครนอกฝูงโหวตด้วย) — ข้ามดีกว่า
+const SEER_PUSH = 0.8;      // อยากไล่ผู้หยั่งรู้ที่น่าเชื่อ — เต็มที่ก็ต่อเมื่อหมู่บ้านโหวตเขาอยู่แล้ว
+const NIGHT_OWNVOTE = 1.0;  // ไม่กัดคนที่ฝูงเคยโหวตไล่ (กัดแล้วคนโหวตเขาดูเป็นหมาป่าทันที)
+const NIGHT_HEAT = 0.5;     // ไม่กัดคนที่หมู่บ้านกำลังสงสัย — ปล่อยให้หมู่บ้านไล่เอง
+const FAKE_COUNTER = 0.9;   // ผู้หยั่งรู้จริงชี้เพื่อนในฝูง → ตัวที่ฝูงเลือกอ้างแย้ง
+const FAKE_LATER = 0.14;    // ยังไม่มีใครอ้าง (วันที่ 2 ขึ้นไป) → ชิงอ้างก่อน
 
 // ประโยคกลางๆ ไม่อ้างบท ไม่ชี้ตัวใคร
 const CHAT_LINES = [
@@ -73,6 +90,22 @@ const TELL_WEIGHT = { foolSubtle: 0.45, foolBeg: 1.4, foolWolf: 1.8, humanBeg: 1
 
 const SEER_ROLES = ['seer', 'apprenticeSeer', 'oracle'];
 const POWER_ROLES = ['seer', 'apprenticeSeer', 'oracle', 'doctor', 'bodyguard', 'witch', 'hunter', 'vigilante', 'tracker', 'cleric', 'revealer', 'mayor', 'prince', 'diseased', 'lycan'];
+
+// นิสัยของบอทฝั่งหมู่บ้าน (คงที่ทั้งเกม เดาจาก id ห้อง+ผู้เล่น ไม่ได้ดูบทใคร) — ทำให้ทั้งวงไม่คิดเหมือนกันเป๊ะ
+//   trust = เชื่อคำอ้างง่าย/ยาก · skip = ต้องมีหลักฐานแค่ไหนถึงยอมโหวต · band = ตามวงโหวตแค่ไหน
+//   history = ดูประวัติโหวตละเอียดแค่ไหน · attention = โอกาสที่ทันเห็นผลตรวจแต่ละอันในแชท
+const PERSONAS = {
+    cautious: { trust: -0.08, skip: 0.12, band: 0.7, history: 0.85, attention: 0.95, reveal: 0.15 },
+    aggressive: { trust: 0, skip: -0.12, band: 0.9, history: 0.45, attention: 0.85, reveal: 0.7 },
+    follower: { trust: 0.12, skip: 0, band: 1.6, history: 0.2, attention: 0.5, reveal: 0.35 }
+};
+const TRUST_SPREAD = 0.6;   // แต่ละคนเชื่อคนอ้างแต่ละคนต่างกันได้ ±0.3
+
+function personaOf(room, bot) {
+    if (!bot || isWolf(bot) || bot.role === 'fool') return null;
+    const h = hashOf(`persona:${room.roomId}:${bot.playerId}`);
+    return PERSONAS[h < 0.34 ? 'cautious' : (h < 0.67 ? 'aggressive' : 'follower')];
+}
 
 function isBotId(playerId) {
     return String(playerId || '').startsWith('bot_');
@@ -372,11 +405,12 @@ function consistentWithRole(role, code, actualRole, P) {
 }
 
 /** ความน่าเชื่อของทุกคนที่อ้างบท (0–1) จากมุมของบอทตัวนี้ */
-function credibilities(room, b, bot, P) {
+function credibilities(room, b, bot, P, careful = false) {
     const byRole = {};
     Object.entries(b.claims).forEach(([id, claim]) => { (byRole[claim.role] || (byRole[claim.role] = [])).push(id); });
     const own = ownResults(bot);
     const wolfBot = isWolf(bot);
+    const pp = careful ? null : personaOf(room, bot);
     const out = {};
     Object.entries(byRole).forEach(([role, ids]) => {
         ids.sort((x, y) => b.claims[x].seq - b.claims[y].seq);
@@ -386,8 +420,12 @@ function credibilities(room, b, bot, P) {
             const player = getPlayer(room, id);
             let kappa;
             if (!k) kappa = 0.03;
-            else if (ids.length <= k) kappa = role === 'villager' ? 0.5 : (SEER_ROLES.includes(role) ? 0.8 : 0.65);
+            else if (ids.length <= k) kappa = role === 'villager' ? 0.5 : (SEER_ROLES.includes(role) ? 0.72 : 0.65);
             else kappa = Math.min(0.7, (k / ids.length) * (index < k ? 1.25 : 0.75));
+            // คนแต่ละแบบเชื่อคำอ้างไม่เท่ากัน (คนตามกระแสเชื่อง่าย คนรอบคอบเชื่อยาก) — เฉพาะความน่าเชื่อตั้งต้น หลักฐานแข็งด้านล่างยังชนะ
+            if (pp && id !== bot.playerId && kappa > 0.05) {
+                kappa = Math.min(0.85, Math.max(0.05, kappa + pp.trust + TRUST_SPREAD * (hashOf(`trust:${bot.playerId}>${id}`) - 0.5)));
+            }
             const death = b.deaths[id];
             if (death && death.cause === 'wolf-attack' && role !== 'villager') kappa = Math.max(kappa, 0.9);
             Object.entries(claim.results || {}).forEach(([targetId, code]) => {
@@ -479,13 +517,15 @@ function dayVotesList(b) {
  * ความน่าจะเป็นของทุกคนที่ยังมีชีวิต (นอกจากตัวเอง) จากมุมของบอท
  * คืน { map: Map playerId → { W, F, S, V, hard, protects, reasons }, kappa, P }
  */
-function assess(room, bot) {
+function assess(room, bot, careful = false) {
     const state = room.gameState;
     const b = brain(state);
     const P = planInfo(room);
     const day = Number(state.dayNumber) || 0;
     const wolfBot = isWolf(bot);
-    const kappa = credibilities(room, b, bot, P);
+    // careful = คิดกลางคืนตามลำพัง (ทบทวนแชทได้ครบ ไม่โดนวงโหวตพาไป) — นิสัยไม่มีผล
+    const pp = careful ? null : personaOf(room, bot);
+    const kappa = credibilities(room, b, bot, P, careful);
     const others = state.players.filter(p => p.alive !== false && p.playerId !== bot.playerId);
 
     // ---- จำนวนบทที่น่าจะยังรอด (ในกลุ่มที่ยังไม่รู้บท) ----
@@ -541,6 +581,8 @@ function assess(room, bot) {
         });
         Object.entries(b.claims).forEach(([claimerId, claim]) => {
             if (claimerId === bot.playerId || claimerId === id || !claim.results || claim.results[id] === undefined) return;
+            // ไม่ใช่ทุกคนตามแชททัน — บางคนพลาดผลตรวจบางอัน
+            if (pp && hashOf(`att:${bot.playerId}>${claimerId}:${id}`) > pp.attention) return;
             const k = kappa[claimerId] ?? 0.5;
             if (k <= 0.05) return;
             post = mixClaim(post, resultLR(claim.role, claim.results[id], P), k * 0.95);
@@ -622,6 +664,8 @@ function assess(room, bot) {
                 entry.reasons.bloc = heated;
             }
         });
+        // ไม่ใช่ทุกคนจำประวัติโหวตได้ละเอียด (คนตามกระแสแทบไม่ดู)
+        if (pp) factor = Math.pow(factor, pp.history);
         const noise = Math.exp(0.5 * (hashOf(`${bot.playerId}>${id}@${day}`) - 0.5));
         const scaled = scale(entry, { W: factor * noise });
         Object.assign(entry, { W: scaled.W, F: scaled.F, S: scaled.S, V: scaled.V });
@@ -663,6 +707,38 @@ function liveVotes(room) {
     return tally;
 }
 
+const voteWeight = player => (player && player.mayorRevealed ? 2 : 1);
+
+/**
+ * วงโหวตวันนี้จากมุมฝูงหมาป่า (ฝูงรู้ว่าใครเป็นพวก — ข้อมูลที่ที่นั่งหมาป่าเห็นจริง)
+ * tally = เสียงจากคนนอกฝูงต่อเป้า · mates = เพื่อนในฝูงที่โหวตเป้านั้นอยู่ · threshold = เสียงที่ต้องได้เพื่อไล่ออก
+ */
+function packVoteView(room) {
+    const state = room.gameState;
+    const alive = alivePlayers(room);
+    const total = alive.reduce((sum, p) => sum + voteWeight(p), 0);
+    const view = { tally: {}, mates: {}, voted: 0, total, threshold: Math.floor(total / 2) + 1 };
+    if (state.phase !== 'day-vote') return view;
+    Object.entries(state.dayVotes || {}).forEach(([voterId, targetId]) => {
+        const voter = getPlayer(room, voterId);
+        if (!voter || voter.alive === false) return;
+        if (isWolf(voter)) {
+            if (targetId && targetId !== SKIP) (view.mates[targetId] || (view.mates[targetId] = [])).push(voterId);
+            return;
+        }
+        view.voted += voteWeight(voter);
+        if (targetId && targetId !== SKIP) view.tally[targetId] = (view.tally[targetId] || 0) + voteWeight(voter);
+    });
+    return view;
+}
+
+/** เพื่อนหมาป่ารอดไม่ได้แล้วจากหลักฐานสาธารณะ: โดนเปิดโปง หรือเสียงคนนอกฝูงพอไล่ออกอยู่แล้วโดยไม่ต้องมีหมาป่าช่วย */
+function mateDoomed(room, b, mate, view) {
+    const kr = knownRole(room, b, mate);
+    if (kr && roleCat(kr) === 'W') return true;
+    return (view.tally[mate.playerId] || 0) >= view.threshold;
+}
+
 function accusationsToday(room, b) {
     const today = b.accuse[String(room.gameState.dayNumber)] || {};
     const count = {};
@@ -679,27 +755,42 @@ function voteValues(room, bot, A) {
     const alive = alivePlayers(room).length;
     const out = [];
     const wolfBot = isWolf(bot);
+    const pack = wolfBot ? packVoteView(room) : null;
+    const pp = personaOf(room, bot);
+    const day = Number(state.dayNumber) || 0;
     // เกมนิ่งนานๆ ต้องยอมเสี่ยงมากขึ้น (กลัวคนบ้าน้อยลง) ไม่งั้นเกมไม่จบ
     const foolCost = FOOL_COST / (1 + 0.5 * stallDays(room));
     A.map.forEach((entry, id) => {
         const target = getPlayer(room, id);
         if (!target || target.alive === false) return;
         let ev;
+        let band = ((live[id] || 0) / Math.max(1, alive)) * 0.6 + Math.min(3, accused[id] || 0) * 0.04;
+        if (wolfBot && isWolf(target)) {
+            // ทิ้งเพื่อน (bus): เฉพาะเมื่อเพื่อนรอดไม่ได้แล้วจากหลักฐานสาธารณะ และไม่ใช่ทุกตัว — โหวตร่วมแล้วดูเป็นชาวบ้าน
+            if (!mateDoomed(room, b, target, pack) || hashOf(`bus:${bot.playerId}>${id}@${day}`) >= BUS_RATE) return;
+            out.push({ id, ev: 0.9, band: 0.3, entry, bus: true });
+            return;
+        }
         if (wolfBot) {
-            if (isWolf(target)) return;
             ev = entry.V * 0.6 + entry.S * 1.1 - entry.F * foolCost;
+            // กลมกลืน: ตามวงที่คนนอกฝูงโหวตอยู่ · ไม่รุมเป้าเดียวกับเพื่อนถ้าคนอื่นไม่ได้โหวตด้วย (โหวตเป็นก้อน = โป๊ะ)
+            band = ((pack.tally[id] || 0) / Math.max(1, alive)) * WOLF_BAND + Math.min(3, accused[id] || 0) * 0.04;
+            const stacked = (pack.mates[id] || []).filter(m => m !== bot.playerId).length;
+            if (stacked && !pack.tally[id]) ev -= WOLF_STACK * stacked;
+            if (state.phase === 'day-vote' && !pack.tally[id]) ev -= WOLF_SOLO;
             const claim = b.claims[id];
-            if (claim && SEER_ROLES.includes(claim.role) && (A.kappa[id] ?? 0) >= 0.5) ev += 0.8;
+            // ผู้หยั่งรู้ที่น่าเชื่อ: อยากไล่ แต่ร่วมก็ต่อเมื่อหมู่บ้านโหวตอยู่แล้ว (โหวตไล่ผู้หยั่งรู้คนเดียว = โป๊ะ)
+            if (claim && SEER_ROLES.includes(claim.role) && (A.kappa[id] ?? 0) >= 0.5) {
+                ev += SEER_PUSH * Math.min(1, (pack.voted ? (pack.tally[id] || 0) / pack.voted : 0) * 2.5);
+            }
             if (target.mayorRevealed) ev += 0.3;
-            // คนที่โหวตหมาป่า = อันตราย
-            dayVotesList(b).forEach(({ votes }) => { if (votes[id] && isWolf(getPlayer(room, votes[id]))) ev += 0.25; });
             ev += (hashOf(`w:${bot.playerId}>${id}@${state.dayNumber}`) - 0.5) * 0.5;
         } else if (bot.role === 'serialKiller') {
             ev = entry.W * 1 + entry.V * 0.5 - entry.F * foolCost;
         } else {
             ev = entry.W * 1 + entry.S * 0.85 - entry.F * foolCost - entry.V * MISLYNCH_COST;
         }
-        const band = ((live[id] || 0) / Math.max(1, alive)) * 0.6 + Math.min(3, accused[id] || 0) * 0.04;
+        if (pp) band *= pp.band;
         out.push({ id, ev, band, entry });
     });
     return out.sort((x, y) => (y.ev + y.band) - (x.ev + x.band));
@@ -716,7 +807,7 @@ function chooseVote(room, bot) {
     }
     const A = assess(room, bot);
     const values = voteValues(room, bot, A);
-    const skipValue = -urgency(room, bot, A) + 0.05;
+    const skipValue = -urgency(room, bot, A) + 0.05 + (personaOf(room, bot)?.skip || 0);
     const top = values[0];
     if (!top || top.ev + top.band <= skipValue || (top.entry.F >= 0.5 && stallDays(room) < 3)) return { target: SKIP, ev: 0, values, A, skipValue };
     return { target: top.id, ev: top.ev, values, A, skipValue };
@@ -725,7 +816,6 @@ function chooseVote(room, bot) {
 /** คะแนน "อยากไล่ออก" ของบอทต่อเป้าหนึ่ง (null = ไม่มีวันเลือก) */
 function voteScore(room, bot, target) {
     if (!target || target.playerId === bot.playerId || target.alive === false) return null;
-    if (isWolf(bot) && isWolf(target)) return null;
     const A = assess(room, bot);
     const entry = voteValues(room, bot, A).find(v => v.id === target.playerId);
     return entry ? entry.ev + entry.band : null;
@@ -794,7 +884,7 @@ function planNight(room, bot, rng) {
     const firstNight = engine.isFirstNight(room);
     const night = Number(state.dayNumber) || 1;
     const others = alivePlayers(room).filter(p => p.playerId !== bot.playerId);
-    const A = assess(room, bot);
+    const A = assess(room, bot, true);
     const entryOf = id => A.map.get(id) || { W: 0, F: 0, S: 0, V: 1, hard: 0 };
     const noise = (id, salt) => hashOf(`${salt}:${bot.playerId}>${id}@${night}`);
 
@@ -807,12 +897,17 @@ function planNight(room, bot, rng) {
             const pack = wolfPackPick(room, bot.playerId);
             if (pack && allowed.includes(pack)) return [{ target: pack }];
             const keys = keyPlayers(room, A);
+            const fake = b.pack.fakeClaimer && getPlayer(room, b.pack.fakeClaimer)?.alive !== false ? b.claims[b.pack.fakeClaimer] : null;
             const ranked = rankTargets(room, bot, t => {
                 if (!allowed.includes(t.playerId) || isWolf(t)) return null;
                 const e = entryOf(t.playerId);
                 let score = rng() * 1.2;
                 const key = keys.find(k => k.player.playerId === t.playerId);
                 if (key) score += 1.5 * key.value;
+                // คนที่ตัวปลอมของฝูงบอกว่า "ไม่ดี" — กัดตายเท่ากับยอมรับว่าโกหก
+                if (fake && isBadCode(fake.results?.[t.playerId])) score -= 3;
+                // คนที่หมู่บ้านสงสัยอยู่ เก็บไว้ให้หมู่บ้านไล่เองตอนกลางวัน
+                score -= NIGHT_HEAT * Math.min(1.5, heatOn(room, b, t.playerId));
                 // เพื่อนในฝูงอ้างผู้หยั่งรู้แข่งกับคนนี้อยู่ — กัดตอนนี้เท่ากับยืนยันว่าเขาพูดจริง ไปลากออกตอนกลางวันแทน
                 const claim = b.claims[t.playerId];
                 if (claim && b.pack.fakeClaimer && b.claims[b.pack.fakeClaimer]?.role === claim.role
@@ -820,7 +915,11 @@ function planNight(room, bot, rng) {
                 // กัดแล้วไม่ตาย = มีคนเฝ้า หรือเป็นคนบ้า/ฆาตกร — ไม่เปลืองคืน
                 score -= 2.5 * (b.pack.survivors[t.playerId] || 0);
                 score -= 3 * (e.F + e.S);
-                dayVotesList(b).forEach(({ votes }) => { if (votes[t.playerId] && isWolf(getPlayer(room, votes[t.playerId]))) score += 0.8; });
+                dayVotesList(b).forEach(({ votes }) => {
+                    if (votes[t.playerId] && isWolf(getPlayer(room, votes[t.playerId]))) score += 0.8;
+                    // คนที่ฝูงเคยโหวตไล่ — กัดตายเท่ากับบอกทุกคนว่าคนที่โหวตเขาคือหมาป่า
+                    score -= NIGHT_OWNVOTE * Object.entries(votes).filter(([v, tt]) => tt === t.playerId && isWolf(getPlayer(room, v))).length;
+                });
                 Object.values(b.accuse).forEach(today => { if (today[t.playerId] && isWolf(getPlayer(room, today[t.playerId]))) score += 0.6; });
                 return score;
             }, others);
@@ -950,6 +1049,16 @@ function pressReady(room, bot) {
     }
 }
 
+/** หมาป่าตัวที่ฝูงให้เป็นคนอ้างบทปลอม: ตัวที่โดนสงสัยน้อยที่สุด (ทุกตัวในฝูงคิดตรงกัน) */
+function designatedLiar(room, b) {
+    const wolves = alivePlayers(room).filter(p => isWolf(p) && !b.claims[p.playerId]);
+    if (!wolves.length) return null;
+    const day = Number(room.gameState.dayNumber) || 0;
+    return wolves
+        .map(p => ({ id: p.playerId, score: heatOn(room, b, p.playerId) + 0.3 * hashOf(`liar:${p.playerId}@${day}`) }))
+        .sort((x, y) => x.score - y.score)[0].id;
+}
+
 // ---------- แชทกลางวัน ----------
 
 function fill(template, values) {
@@ -1028,7 +1137,8 @@ function decideChat(room, bot, slot) {
         let reveal = false;
         if (myClaim && fresh.length) reveal = true;
         else if (!myClaim && Object.keys(results).length) {
-            if (badAlive) reveal = hashOf(`reveal:${bot.playerId}:${day}`) < 0.85;
+            // เจอหมาป่า: คนใจร้อนเปิดทันที · คนรอบคอบเก็บไว้ก่อน (กลัวโดนกัด อยากได้ผลเพิ่ม) แต่ยังโหวตคนนั้นอยู่
+            if (badAlive) reveal = hashOf(`reveal:${bot.playerId}:${day}`) < (personaOf(room, bot)?.reveal ?? 0.85);
             else if (rivalId || heat >= 0.6 || unknownHeated || goodHeated) reveal = true;
             else if (day >= 3 && Object.keys(results).length >= 2) reveal = hashOf(`reveal2:${bot.playerId}:${day}`) < 0.5;
         }
@@ -1040,31 +1150,45 @@ function decideChat(room, bot, slot) {
         }
     }
 
-    // ---- หมาป่า: อ้างตัวเป็นผู้หยั่งรู้ปลอม (ทั้งฝูงไม่เกิน 1 ตัว) ----
-    if (isWolf(bot) && P.count.seer) {
+    // ---- หมาป่า: อ้างบทตรวจปลอม (ผู้หยั่งรู้/นักพยากรณ์) — ฝูงมีคนอ้างได้ทีละตัว ----
+    if (isWolf(bot) && (P.count.seer || P.count.oracle)) {
         const pack = b.pack;
+        const liveFake = pack.fakeClaimer && getPlayer(room, pack.fakeClaimer)?.alive !== false ? pack.fakeClaimer : null;
         const realClaims = Object.entries(b.claims).filter(([id, c]) => SEER_ROLES.includes(c.role) && !isWolf(getPlayer(room, id)));
-        const wolfAccuser = realClaims.find(([, c]) => Object.entries(c.results || {})
+        const wolfAccuser = realClaims.find(([id, c]) => getPlayer(room, id)?.alive !== false && Object.entries(c.results || {})
             .some(([t, code]) => isBadCode(code) && isWolf(getPlayer(room, t)) && getPlayer(room, t).alive !== false));
         const A = assess(room, bot);
-        const victims = voteValues(room, bot, A).filter(v => v.entry.F < 0.15 && !(v.id in (myClaim?.results || {})));
-        if (pack.fakeClaimer === bot.playerId && myClaim) {
-            // ประกาศผลปลอมวันละคน (บางทีฟอกเพื่อนหมาป่าว่า "ดี")
+        const victims = voteValues(room, bot, A).filter(v => !v.bus && v.entry.F < 0.15 && !(v.id in (myClaim?.results || {})));
+        const badCode = role => (role === 'oracle' ? 'werewolf' : 'bad');
+        const goodCode = role => (role === 'oracle' ? 'villager' : 'good');
+        if (liveFake === bot.playerId && myClaim && SEER_ROLES.includes(myClaim.role)) {
+            // ประกาศผลปลอมวันละคน (บางทีฟอกเพื่อนหมาป่าว่า "ดี") · ชี้คนที่หมู่บ้านสงสัยอยู่แล้ว ให้ดูเข้าทาง
             if (me.fakeDay !== day && slot === 0) {
                 const mate = alivePlayers(room).find(p => isWolf(p) && p.playerId !== bot.playerId && !(p.playerId in myClaim.results));
-                const result = mate && hashOf(`mate:${bot.playerId}:${day}`) < 0.4 ? { [mate.playerId]: 'good' } : (victims[0] ? { [victims[0].id]: 'bad' } : null);
-                if (result) return { kind: 'claim', text: claimLine(room, 'seer', result), claim: { role: 'seer', results: result }, fake: true };
+                const heated = victims.filter(v => !b.claims[v.id]).sort((x, y) => heatOn(room, b, y.id) - heatOn(room, b, x.id))[0];
+                const mark = heated || victims[0];
+                const result = mate && hashOf(`mate:${bot.playerId}:${day}`) < 0.4 ? { [mate.playerId]: goodCode(myClaim.role) } : (mark ? { [mark.id]: badCode(myClaim.role) } : null);
+                if (result) return { kind: 'claim', text: claimLine(room, myClaim.role, result), claim: { role: myClaim.role, results: result }, fake: true };
             }
-        } else if (!pack.fakeClaimer && !myClaim) {
+        } else if (!liveFake && !myClaim && designatedLiar(room, b) === bot.playerId) {
+            // ฝูงตกลงกันว่าใครเป็นคนอ้าง (ตัวที่โดนสงสัยน้อยสุด) — ตัวอื่นเงียบไว้ ไม่อ้างชนกันเอง
             let target = null;
-            if (wolfAccuser && hashOf(`counter:${bot.playerId}:${day}`) < 0.6) target = wolfAccuser[0];
-            else if (!realClaims.length && day >= 2 && hashOf(`fake:${bot.playerId}:${day}`) < 0.14 && victims[0]) target = victims[0].id;
-            if (target) {
-                const results = { [target]: 'bad' };
+            let role = null;
+            const liveReal = realClaims.filter(([id]) => getPlayer(room, id)?.alive !== false);
+            const heated = victims.filter(v => !b.claims[v.id]).sort((x, y) => heatOn(room, b, y.id) - heatOn(room, b, x.id))[0];
+            if (wolfAccuser && hashOf(`counter:${bot.playerId}:${day}`) < FAKE_COUNTER) {
+                target = wolfAccuser[0];
+                role = wolfAccuser[1].role;
+            } else if (!wolfAccuser && !liveReal.length && day >= 2 && hashOf(`fake:${bot.playerId}:${day}`) < FAKE_LATER) {
+                target = (heated || victims[0])?.id || null;
+                role = P.count.seer && (!P.count.oracle || hashOf(`fakerole:${bot.playerId}`) < 0.7) ? 'seer' : 'oracle';
+            }
+            if (target && role) {
+                const results = { [target]: badCode(role) };
                 if (wolfAccuser && slot === 1) {
-                    return { kind: 'counter', text: fill(CHAT_TEMPLATES.counter[0], { a: nameOf(target), role: roleThai('seer') }), claim: { role: 'seer', results }, fake: true };
+                    return { kind: 'counter', text: fill(CHAT_TEMPLATES.counter[0], { a: nameOf(target), role: roleThai(role) }), claim: { role, results }, fake: true };
                 }
-                return { kind: 'claim', text: claimLine(room, 'seer', results), claim: { role: 'seer', results }, fake: true };
+                return { kind: 'claim', text: claimLine(room, role, results), claim: { role, results }, fake: true };
             }
         }
     }
@@ -1108,7 +1232,16 @@ function decideChat(room, bot, slot) {
                 return { kind: 'trustDead', text: fill(CHAT_TEMPLATES.trustDead[0], { a: nameOf(martyr[0]) }), accuse: badTarget };
             }
         }
-        const top = values[0];
+        let top = values[0];
+        if (isWolf(bot)) {
+            // หมาป่าชี้ตามที่หมู่บ้านสงสัยอยู่แล้ว (ฟังดูมีเหตุผล) · ไม่ชี้ซ้ำคนที่เพื่อนในฝูงเพิ่งชี้ถ้าคนอื่นไม่ได้ชี้ด้วย
+            const today = b.accuse[String(day)] || {};
+            const byPack = id => Object.entries(today).some(([v, t]) => t === id && v !== bot.playerId && isWolf(getPlayer(room, v)));
+            const byOthers = id => Object.entries(today).some(([v, t]) => t === id && !isWolf(getPlayer(room, v)));
+            top = values.filter(v => !v.bus)
+                .map(v => ({ ...v, ev: v.ev + 0.6 * Math.min(1.5, heatOn(room, b, v.id)) - (byPack(v.id) && !byOthers(v.id) ? 0.5 : 0) }))
+                .sort((x, y) => y.ev - x.ev)[0];
+        }
         if (top && top.ev > 0.25) {
             const bloc = villageSide ? top.entry.reasons.bloc : null;
             if (bloc && getPlayer(room, bloc) && hashOf(`bloc:${bot.playerId}:${day}`) < 0.6) {
