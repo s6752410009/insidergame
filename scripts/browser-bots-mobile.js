@@ -42,7 +42,8 @@ function bootServer(port) {
             COUP_ACTION_MS: '2500',
             COUP_RESPOND_MS: '2500',
             COUP_DECIDE_MS: '2500',
-            WEREWOLF_BOT_MS: '300'
+            WEREWOLF_BOT_MS: '300',
+            WEREWOLF_PHASE_MS: '6000'
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });

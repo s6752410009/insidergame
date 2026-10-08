@@ -85,6 +85,10 @@ const werewolfPhaseTimeouts = new Map();
 
 // เก็บ timeout ช่วงคั่นก่อน broadcast phase ถัดไปของ Werewolf
 const werewolfTransitionTimeouts = new Map();
+// บอทหมาป่า (games/werewolfBots.js) — นาฬิกาตัดสินใจของบอทแยกจากนาฬิกาเฟส
+const werewolfBots = require('./games/werewolfBots');
+const werewolfBotTimeouts = new Map();
+const werewolfBotAddInFlight = new Set();
 
 // เก็บ timeout สำหรับ phase อัตโนมัติของ Black Market
 const blackMarketPhaseTimeouts = new Map();
@@ -2250,7 +2254,8 @@ function emitWerewolfState(room, targetSocketId = null, playerId = null) {
     }
 
     room.players.forEach(player => {
-        if (player.socketId) {
+        // บอทไม่มีหน้าจอ — ไม่ต้องสร้าง state ให้ (โต๊ะ 20 คนประหยัดไปเยอะ)
+        if (player.socketId && !werewolfBots.isBotId(player.playerId)) {
             emitWerewolfStateToSocket(room, player.socketId, player.playerId);
             emitWerewolfChatHistory(room, player.socketId, player.playerId);
         }
@@ -2284,7 +2289,67 @@ function emitWerewolfRoomState(room) {
     clearWerewolfTransitionTimer(room.roomId);
     syncWerewolfPhaseTimer(room);
     emitWerewolfState(room);
+    scheduleWerewolfBots(room);
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+}
+
+function clearWerewolfBotTimer(roomId) {
+    const timer = werewolfBotTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        werewolfBotTimeouts.delete(roomId);
+    }
+}
+
+/**
+ * บอทหมาป่าลงมือตามเวลาคิดของแต่ละตัว (games/werewolfBots.js) — ตั้งใหม่ทุกครั้งที่ state ถูกส่งออก
+ * คำสั่งของบอทผ่าน engine ตัวเดียวกับคนกด แล้วเดินต่อแบบเดียวกับ socket handler (maybeAutoEndNight ฯลฯ)
+ * นาฬิกาเฟส/หัวห้องกดข้ามยังทำงานเหมือนเดิม — บอทไม่ได้แทนที่ของเดิม
+ */
+function scheduleWerewolfBots(room) {
+    if (!room || room.settings.gameMode !== 'werewolf') return;
+    // ช่วงคั่นเฟส (หน้าจอยังไม่เห็นเฟสใหม่) — บอทรอให้ state ถูกส่งออกก่อน
+    if (werewolfTransitionTimeouts.has(room.roomId)) return;
+    werewolfBots.observe(room);
+    const delay = werewolfBots.botDelay(room);
+    if (delay === null) {
+        clearWerewolfBotTimer(room.roomId);
+        return;
+    }
+    const dueAt = Date.now() + delay;
+    const key = `${room.gameState.phase}:${room.gameState.dayNumber}`;
+    const existing = werewolfBotTimeouts.get(room.roomId);
+    if (existing && existing.key === key && Math.abs(existing.dueAt - dueAt) < 40) return;
+    clearWerewolfBotTimer(room.roomId);
+    const timeoutId = setTimeout(() => {
+        werewolfBotTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'werewolf') return;
+        try {
+            const result = werewolfBots.playBotTurns(current);
+            result.chats.forEach(chat => {
+                const seat = current.players.find(player => player.playerId === chat.playerId);
+                const gamePlayer = current.gameState.players.find(player => player.playerId === chat.playerId);
+                // พูดได้เฉพาะบอทที่ยังมีชีวิต ในช่วงประชุมเช้า (แชทสาธารณะ)
+                if (!seat || !gamePlayer || gamePlayer.alive === false || current.gameState.phase !== 'day-discussion') return;
+                sendChatMessageToRoom(io, current.roomId, seat.playerName, chat.text, seat.color, null, seat.playerId, seat.avatar || '🤖', seat.avatarFrame || 'none');
+            });
+            if (result.changed) {
+                emitWerewolfRoomState(current);
+            } else {
+                // ไม่มีอะไรเปลี่ยน (คำสั่งโดนปฏิเสธ) — พักสักวิ กันวนถี่ แล้วค่อยลองใหม่
+                const retryId = setTimeout(() => {
+                    if (werewolfBotTimeouts.get(current.roomId)?.timeoutId === retryId) werewolfBotTimeouts.delete(current.roomId);
+                    const again = roomManager.getRoom(current.roomId);
+                    if (again && again.settings.gameMode === 'werewolf') scheduleWerewolfBots(again);
+                }, 1000);
+                werewolfBotTimeouts.set(current.roomId, { timeoutId: retryId, dueAt: Date.now() + 1000, key: 'retry' });
+            }
+        } catch (error) {
+            console.error('[werewolf] bots failed:', error.message);
+        }
+    }, delay + 20);
+    werewolfBotTimeouts.set(room.roomId, { timeoutId, dueAt, key });
 }
 
 function clearBlackMarketPhaseTimer(roomId, resetPhaseEndsAt = true) {
@@ -3399,9 +3464,9 @@ function finalizeAvalonGameIfNeeded(room) {
 // หน้าตาบอทชุดเดียวกับเกมอื่น (ชื่อ "บอท…" + เลขท้าย id กันชื่อซ้ำ) — รองรับโต๊ะใหญ่ถึง 20 ที่
 const PARTY_BOT_NAMES = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทสายฝน', 'บอทแก้วตา', 'บอทก้องภพ',
     'บอทมะลิ', 'บอทเอกชัย', 'บอทจันทร์เพ็ญ', 'บอทธนา', 'บอทนภา', 'บอทปิติ', 'บอทวีระ', 'บอทอรุณ', 'บอทพิมพ์ใจ', 'บอทกล้า'];
-const PARTY_BOT_AVATARS = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄', '🐲', '🦁', '🐨', '🐵', '🐙', '🦉', '🐧', '🐻', '🐰', '🐹', '🦝', '🐮'];
-const PARTY_BOT_COLORS = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad', '#e91e63', '#00bcd4',
-    '#16a085', '#d35400', '#c0392b', '#27ae60', '#2980b9', '#f1c40f', '#7f8c8d', '#ff6b81', '#6c5ce7', '#00b894'];
+// อวาตาร์/สีต้องอยู่ในชุดที่ playerManager อนุญาต (AVAILABLE_AVATARS / AVAILABLE_COLORS) ไม่งั้นโดนปฏิเสธ
+const PARTY_BOT_AVATARS = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄', '🐲', '🦁', '😀', '😎', '🎭', '🐱', '🐶', '🐵', '🤡', '🧙', '🦸', '🎩'];
+const PARTY_BOT_COLORS = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad', '#e91e63', '#00bcd4', '#ff5722', '#ffeb3b'];
 
 /**
  * หัวห้อง (หรือแอดมินเว็บ) เติมบอทในห้องรอ — กติกาเดียวกับ liar/colorcards_addBots
@@ -3439,7 +3504,7 @@ async function addPartyBotsToRoom(socket, data, { mode, seatCap: modeCap, inFlig
             }
             await playerManager.createOrGetPlayer(botId, { approved: true });
             await playerManager.updatePlayerName(botId, `${PARTY_BOT_NAMES[slot]} ${botId.slice(-3)}`);
-            await playerManager.updatePlayerColor(botId, PARTY_BOT_COLORS[slot]);
+            await playerManager.updatePlayerColor(botId, PARTY_BOT_COLORS[slot % PARTY_BOT_COLORS.length]);
             await playerManager.updatePlayerAvatar(botId, PARTY_BOT_AVATARS[slot]);
             if (roomManager.isRoomGameInProgress(room) || room.gameStarting || room.players.length >= seatCap) break;
             roomManager.joinRoom(roomId, botId, `bot_socket_${uuidv4()}`, null, { bypassLock: true });
@@ -4045,6 +4110,7 @@ function clearWerewolfPhaseTimer(roomId, resetPhaseEndsAt = true) {
     if (!resetPhaseEndsAt) {
         return;
     }
+    clearWerewolfBotTimer(roomId);
 
     const room = roomManager.getRoom(roomId);
     if (room && room.settings.gameMode === 'werewolf' && room.gameState) {
@@ -8284,6 +8350,18 @@ io.sockets.on('connection', function(socket) {
         try {
             const result = await addPartyBotsToRoom(socket, data, {
                 mode: 'coup', seatCap: getGameEngine('coup').maxPlayers, inFlight: coupBotAddInFlight
+            });
+            done({ success: true, ...result });
+        } catch (error) {
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
+    });
+
+    safeOn(socket, 'werewolf_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        try {
+            const result = await addPartyBotsToRoom(socket, data, {
+                mode: 'werewolf', seatCap: getGameEngine('werewolf').maxPlayers, inFlight: werewolfBotAddInFlight
             });
             done({ success: true, ...result });
         } catch (error) {

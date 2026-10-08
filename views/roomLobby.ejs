@@ -1535,6 +1535,7 @@
         <button type="button" id="btnColorCardsAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'colorcards' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnLiarAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'liar' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnCoupAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'coup' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
+        <button type="button" id="btnWerewolfAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'werewolf' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnSetthiAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'setthi' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnBlackMarketAddBots" class="btn-admin-small btn-add-bots <%= ((room.gameMode === 'blackmarket' || isPokerLobbyRoom) && room.isAdmin) ? '' : 'is-hidden' %>"><%= isPokerLobbyRoom ? '🤖 เพิ่มบอท' : '🤖 เติมบอทเพื่อทดสอบ' %></button>
       </div>
@@ -2219,6 +2220,7 @@
       setElementHidden('#btnColorCardsAddBots', !(isAdmin && resolvedMode === 'colorcards'));
       setElementHidden('#btnLiarAddBots', !(isAdmin && resolvedMode === 'liar'));
       setElementHidden('#btnCoupAddBots', !(isAdmin && resolvedMode === 'coup'));
+      setElementHidden('#btnWerewolfAddBots', !(isAdmin && resolvedMode === 'werewolf'));
       setElementHidden('#btnSetthiHowTo', resolvedMode !== 'setthi');
       setElementHidden('#btnSetthiAddBots', !(isAdmin && resolvedMode === 'setthi'));
       const pokerHowToBtn = document.getElementById('btnPokerHowTo');
@@ -3850,8 +3852,8 @@
       });
     });
 
-    // Coup: เติมบอททีละตัว ให้เทสคนเดียวได้ครบวง
-    [['#btnCoupAddBots', 'coup_addBots']].forEach(function(entry) {
+    // Coup / หมาป่า: เติมบอททีละตัว ให้เทสคนเดียวได้ครบวง
+    [['#btnCoupAddBots', 'coup_addBots'], ['#btnWerewolfAddBots', 'werewolf_addBots']].forEach(function(entry) {
       $(document).on('click', entry[0], function() {
         const btn = $(this);
         if (btn.data('loading')) return;

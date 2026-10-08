@@ -411,7 +411,11 @@ function sanitizeWerewolfSettings(input = {}, current = {}) {
     return result;
 }
 
+// เทสเท่านั้น: ย่อทุกช่วงให้เท่ากัน (แบบ COUP_ACTION_MS) — ค่าในห้องจริงยังมาจากตัวเลือกของหัวห้อง
+const ENV_PHASE_MS = Number(process.env.WEREWOLF_PHASE_MS) || 0;
+
 function getPhaseDurationMs(room, phase) {
+    if (ENV_PHASE_MS) return ENV_PHASE_MS;
     const settings = sanitizeWerewolfSettings({}, room?.settings || {});
     if (phase === 'night') return settings.werewolfNightSeconds * 1000;
     if (phase === 'day-discussion') return settings.werewolfDaySeconds * 1000;
@@ -3866,5 +3870,14 @@ module.exports = {
     useRevealAction,
     autoResolvePhase,
     handlePlayerLeft,
+    // บอท (games/werewolfBots.js) ใช้ตัวช่วยชุดเดียวกับที่สร้างหน้าจอของผู้เล่น
+    getNightActionOptions,
+    getRequiredNightActors,
+    hasNightActionSubmitted,
+    isPlayerReadyForMorning,
+    isWerewolfRole,
+    isFirstNight,
+    canWolvesHuntTonight,
+    getWeightedTarget,
     buildClientState
 };
