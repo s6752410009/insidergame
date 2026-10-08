@@ -1120,5 +1120,10 @@ module.exports = {
     handlePlayerLeft,
     getAvailableActions,
     getActionMenu,
+    // บอท (games/coupBots.js) ใช้ตัดสินใจจากข้อมูลเดียวกับที่หน้าเว็บของผู้เล่นเห็น
+    getAvailableResponses,
+    getPendingResponders,
+    getPendingBlockResponders,
+    getEligibleBlockers,
     buildClientState
 };

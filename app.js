@@ -93,6 +93,9 @@ const blackMarketPhaseTimeouts = new Map();
 const spyfallPhaseTimeouts = new Map();
 const undercoverPhaseTimeouts = new Map();
 const coupPhaseTimeouts = new Map();
+const coupBots = require('./games/coupBots');
+const coupBotTimeouts = new Map();
+const coupBotAddInFlight = new Set();
 const avalonPhaseTimeouts = new Map();
 const liarPhaseTimeouts = new Map();
 const pokerPhaseTimeouts = new Map();
@@ -3063,6 +3066,7 @@ function clearCoupPhaseTimer(roomId, resetPhaseEndsAt = true) {
         coupPhaseTimeouts.delete(roomId);
     }
     if (!resetPhaseEndsAt) return;
+    clearCoupBotTimer(roomId);
     const room = roomManager.getRoom(roomId);
     if (room?.gameState) room.gameState.phaseEndsAt = null;
 }
@@ -3099,6 +3103,45 @@ function syncCoupPhaseTimer(room) {
     coupPhaseTimeouts.set(room.roomId, { timeoutId, endsAt: state.phaseEndsAt });
 }
 
+function clearCoupBotTimer(roomId) {
+    const timer = coupBotTimeouts.get(roomId);
+    if (timer) {
+        clearTimeout(timer.timeoutId);
+        coupBotTimeouts.delete(roomId);
+    }
+}
+
+/**
+ * บอท Coup ตัดสินใจตามเวลาคิดของตัวเอง (games/coupBots.js) — ตั้งนาฬิกาใหม่ทุกครั้งที่ state ถูกส่งออก
+ * นาฬิกาเฟสปกติ (syncCoupPhaseTimer) ยังทำงานเหมือนเดิม ถ้าบอทพลาดอะไร เกมก็ไม่ค้าง
+ */
+function scheduleCoupBots(room) {
+    if (!room || room.settings.gameMode !== 'coup') return;
+    coupBots.observe(room);
+    const delay = coupBots.botDelay(room);
+    if (delay === null) {
+        clearCoupBotTimer(room.roomId);
+        return;
+    }
+    const dueAt = Date.now() + delay;
+    const step = room.gameState.step;
+    const existing = coupBotTimeouts.get(room.roomId);
+    if (existing && existing.step === step && Math.abs(existing.dueAt - dueAt) < 40) return;
+    clearCoupBotTimer(room.roomId);
+    const timeoutId = setTimeout(() => {
+        coupBotTimeouts.delete(room.roomId);
+        const current = roomManager.getRoom(room.roomId);
+        if (!current || current.settings.gameMode !== 'coup') return;
+        try {
+            if (coupBots.playBotTurns(current)) emitCoupRoomState(current);
+            else scheduleCoupBots(current);
+        } catch (error) {
+            console.error('[coup] bot turn failed:', error.message);
+        }
+    }, delay + 20);
+    coupBotTimeouts.set(room.roomId, { timeoutId, dueAt, step });
+}
+
 function buildCoupStatePayload(room, playerId) {
     if (!room || room.settings.gameMode !== 'coup') return null;
     return getGameEngine('coup').buildClientState(room, playerId);
@@ -3115,7 +3158,7 @@ function emitCoupState(room, targetSocketId = null, playerId = null) {
     }
 
     room.players.forEach(player => {
-        if (player.socketId) {
+        if (player.socketId && !coupBots.isBotId(player.playerId)) {
             io.to(player.socketId).emit('coupState', buildCoupStatePayload(room, player.playerId));
         }
     });
@@ -3195,6 +3238,7 @@ function emitCoupRoomState(room) {
     flushCoupHistoryToLogs(room);
     finalizeCoupGameIfNeeded(room);
     emitCoupState(room);
+    scheduleCoupBots(room);
     io.to(room.roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
 }
 
@@ -3349,6 +3393,64 @@ function finalizeAvalonGameIfNeeded(room) {
         notifyGameEndAfterRecord(room);
     }
     scheduleFinishedGameReturnToLobby(room);
+}
+
+// ==================== บอท (Coup / Werewolf) ====================
+// หน้าตาบอทชุดเดียวกับเกมอื่น (ชื่อ "บอท…" + เลขท้าย id กันชื่อซ้ำ) — รองรับโต๊ะใหญ่ถึง 20 ที่
+const PARTY_BOT_NAMES = ['บอทสมชาย', 'บอทสมหญิง', 'บอทสมศักดิ์', 'บอทวิชัย', 'บอทปราณี', 'บอทมานี', 'บอทชูใจ', 'บอทสายฝน', 'บอทแก้วตา', 'บอทก้องภพ',
+    'บอทมะลิ', 'บอทเอกชัย', 'บอทจันทร์เพ็ญ', 'บอทธนา', 'บอทนภา', 'บอทปิติ', 'บอทวีระ', 'บอทอรุณ', 'บอทพิมพ์ใจ', 'บอทกล้า'];
+const PARTY_BOT_AVATARS = ['🤖', '👻', '🦊', '🐼', '👽', '🐸', '🐯', '🦄', '🐲', '🦁', '🐨', '🐵', '🐙', '🦉', '🐧', '🐻', '🐰', '🐹', '🦝', '🐮'];
+const PARTY_BOT_COLORS = ['#f39c12', '#9b59b6', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#e67e22', '#8e44ad', '#e91e63', '#00bcd4',
+    '#16a085', '#d35400', '#c0392b', '#27ae60', '#2980b9', '#f1c40f', '#7f8c8d', '#ff6b81', '#6c5ce7', '#00b894'];
+
+/**
+ * หัวห้อง (หรือแอดมินเว็บ) เติมบอทในห้องรอ — กติกาเดียวกับ liar/colorcards_addBots
+ * บอทเป็นผู้เล่นปลอมที่ socketId ขึ้นต้น bot_socket_ (นับว่าออนไลน์) และไม่ถูกบันทึกลงไฟล์ผู้เล่น/สถิติ
+ */
+async function addPartyBotsToRoom(socket, data, { mode, seatCap: modeCap, inFlight }) {
+    const roomId = data?.roomId || socket.roomId;
+    const requesterId = socket.playerId;
+    const room = roomManager.getRoom(roomId);
+    if (!room) throw new Error('ไม่พบห้อง');
+    if (room.settings.gameMode !== mode) throw new Error('โหมดนี้เพิ่มบอทไม่ได้');
+    if (room.admin !== requesterId && !isSiteAdminPlayer(requesterId)) {
+        throw new Error('เฉพาะหัวหน้าห้องหรือแอดมินที่เพิ่มบอทได้');
+    }
+    if (roomManager.isRoomGameInProgress(room) || room.gameStarting) throw new Error('เกมเริ่มไปแล้ว เพิ่มบอทไม่ได้');
+    if (inFlight.has(room.roomId)) throw new Error('กำลังเพิ่มบอทอยู่ รอสักครู่');
+
+    const seatCap = Math.min(modeCap, Number(room.settings.maxPlayers || modeCap));
+    const remaining = Math.max(0, seatCap - room.players.length);
+    if (!remaining) throw new Error('ห้องเต็มแล้ว');
+    const wanted = Math.min(remaining, Math.max(1, Math.floor(Number(data?.count) || 1)));
+
+    inFlight.add(room.roomId);
+    let added = 0;
+    try {
+        for (let i = 0; i < wanted; i += 1) {
+            if (roomManager.getRoom(roomId) !== room) break;
+            if (roomManager.isRoomGameInProgress(room) || room.gameStarting || room.players.length >= seatCap) break;
+            const botId = `bot_${uuidv4()}`;
+            // ชื่อไม่ซ้ำกับบอทที่นั่งอยู่แล้ว (โต๊ะหมาป่า 20 คนจะได้ไม่มีบอทสมชาย 3 ตัว)
+            const usedNames = new Set(room.players.map(player => String(player.playerName || '').split(' ')[0]));
+            let slot = room.players.length % PARTY_BOT_NAMES.length;
+            for (let tries = 0; tries < PARTY_BOT_NAMES.length && usedNames.has(PARTY_BOT_NAMES[slot]); tries += 1) {
+                slot = (slot + 1) % PARTY_BOT_NAMES.length;
+            }
+            await playerManager.createOrGetPlayer(botId, { approved: true });
+            await playerManager.updatePlayerName(botId, `${PARTY_BOT_NAMES[slot]} ${botId.slice(-3)}`);
+            await playerManager.updatePlayerColor(botId, PARTY_BOT_COLORS[slot]);
+            await playerManager.updatePlayerAvatar(botId, PARTY_BOT_AVATARS[slot]);
+            if (roomManager.isRoomGameInProgress(room) || room.gameStarting || room.players.length >= seatCap) break;
+            roomManager.joinRoom(roomId, botId, `bot_socket_${uuidv4()}`, null, { bypassLock: true });
+            added += 1;
+        }
+    } finally {
+        inFlight.delete(room.roomId);
+    }
+    io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
+    io.emit('roomListUpdate', roomManager.getAllRooms());
+    return { added };
 }
 
 // ==================== LIAR / โกหก ====================
@@ -4189,6 +4291,7 @@ function recoverGamePhaseTimers() {
                 return;
             }
             syncCoupPhaseTimer(room);
+            scheduleCoupBots(room);
         }
 
         if (room.settings.gameMode === 'avalon') {
@@ -7879,6 +7982,7 @@ io.sockets.on('connection', function(socket) {
         }
         syncCoupPhaseTimer(room);
         emitCoupState(room, socket.id, playerId);
+        scheduleCoupBots(room);
     });
 
     // ทุก action ของ Coup ใช้ทางเดียวกัน: เรียก engine แล้ว broadcast state ใหม่
@@ -8170,6 +8274,18 @@ io.sockets.on('connection', function(socket) {
             io.to(roomId).emit('roomUpdate', buildRoomUpdatePayload(room));
             io.emit('roomListUpdate', roomManager.getAllRooms());
             done({ success: true, added });
+        } catch (error) {
+            done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
+        }
+    });
+
+    safeOn(socket, 'coup_addBots', async function(data, callback) {
+        const done = typeof callback === 'function' ? callback : function() {};
+        try {
+            const result = await addPartyBotsToRoom(socket, data, {
+                mode: 'coup', seatCap: getGameEngine('coup').maxPlayers, inFlight: coupBotAddInFlight
+            });
+            done({ success: true, ...result });
         } catch (error) {
             done({ success: false, error: error.message || 'เพิ่มบอทไม่สำเร็จ' });
         }
