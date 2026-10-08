@@ -188,10 +188,11 @@ const SCENARIOS = {
     },
     // ---------------- สายลับคำใบ้ 5 คน: หัวหน้าทีมที่ถึงตาออกตอนใบ้ → ลูกทีมเป็นหัวหน้าแทน เล่นต่อ
     codenames: {
-        mode: 'codenames', stateEvent: 'codenamesState', count: 5, root: '#cnRoot', button: '#cnLeaveBtn',
+        mode: 'codenames', stateEvent: 'codenamesState', count: 6, root: '#cnRoot', button: '#cnLeaveBtn',
         async beforeStart(ctx) {
-            const [p1, p2, p3, p4, p5] = ctx.players;
-            const picks = [[p1, 'red', 'spymaster'], [p2, 'red', 'operative'], [p3, 'red', 'operative'], [p4, 'blue', 'spymaster'], [p5, 'blue', 'operative']];
+            const [p1, p2, p3, p4, p5, p6] = ctx.players;
+            const picks = [[p1, 'red', 'spymaster'], [p2, 'red', 'operative'], [p3, 'red', 'operative'], [p4, 'blue', 'spymaster'], [p5, 'blue', 'operative'], [p6, 'blue', 'operative']];
+            // ทีมละ 3 — ทีมไหนเริ่ม (สุ่ม) หัวหน้าออกแล้วยังเหลือ 2 คนเล่นต่อได้ (ทีม 2 คนเหลือคนเดียว = ตาไปอีกทีม ถูกกติกา แต่ไม่ใช่สิ่งที่เทสนี้ดู)
             for (const [p, team, role] of picks) {
                 const r = await ack(p.socket, 'codenames_pickTeam', { team, role });
                 assert(r && r.success, 'เลือกทีม ' + p.label + ': ' + JSON.stringify(r));

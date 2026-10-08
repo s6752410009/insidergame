@@ -605,7 +605,7 @@ function readStats() {
         assert((await ack(esm.socket, 'codenames_clue', { word: pickClue(s.board, 5), number: 2, ...ctx(s) })).success, 'E ใบ้');
         await waitFor(() => last(eosm).phase === 'guess' && last(eosm).self.canFlag, 4000, 'flag button');
         r = await ack(eop.socket, 'codenames_flag', ctx(last(eop)));
-        assert(r.success === false && /เฉพาะหัวหน้า/.test(r.error), 'ลูกทีมทักไม่ได้');
+        assert(r.success === false && /เฉพาะหัวหน้า/.test(r.error), 'ลูกทีมทักไม่ได้: ' + JSON.stringify(r));
         r = await ack(eosm.socket, 'codenames_flag', ctx(last(eosm)));
         assert(r.success, 'หัวหน้าอีกทีมทัก: ' + JSON.stringify(r));
         await waitFor(() => last(eosm).currentTeam === eo && last(eosm).phase === 'clue' && last(eosm).self.canCover, 4000, 'flag ends turn + bonus');
