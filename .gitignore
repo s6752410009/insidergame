@@ -13,6 +13,7 @@ data/adminMessages.json
 data/wallets.json
 data/soloStats.json
 data/soloStats.json.bak
+data/serverLogs.ndjson
 data/wallets.json.bak
 data/*.tmp
 # Editor-local
