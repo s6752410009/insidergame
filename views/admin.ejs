@@ -193,6 +193,31 @@
         background: rgba(255,255,255,0.05);
     }
     
+    .player-color.admin-google-thumb {
+        width: 28px;
+        height: 28px;
+        overflow: hidden;
+        position: relative;
+    }
+    .admin-google-thumb img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+    .admin-google-badge {
+        margin-left: 8px;
+        background: rgba(66, 133, 244, 0.18);
+        color: #8ab4f8;
+        border: 1px solid rgba(66, 133, 244, 0.45);
+    }
+    .admin-google-email {
+        font-size: 0.78em;
+        color: #8ab4f8;
+        word-break: break-all;
+    }
     .player-color {
         width: 20px;
         height: 20px;
@@ -1306,6 +1331,11 @@
                             <option value="banned">ถูกแบน</option>
                             <option value="cleanup">cleanup candidate</option>
                         </select>
+                        <select id="playerGoogleFilter" class="search-box" style="width: auto;" aria-label="กรองตามการผูก Google">
+                            <option value="all">Google: ทั้งหมด</option>
+                            <option value="linked">ผูก Google แล้ว</option>
+                            <option value="unlinked">ยังไม่ผูก Google</option>
+                        </select>
                     </div>
                     <button class="btn-admin btn-warning" onclick="previewGhostCleanup()">🔎 พรีวิว cleanup</button>
                     <button class="btn-admin btn-danger" onclick="runGhostCleanup()">🧹 ล้าง ghost</button>
@@ -1330,6 +1360,11 @@
                 <div class="player-summary-card">
                     <h4>Cleanup Candidates</h4>
                     <div class="value" id="summaryCleanupCandidates">0</div>
+                </div>
+                <div class="player-summary-card">
+                    <h4>ผูก Google</h4>
+                    <div class="value" id="summaryGoogleLinked">0</div>
+                    <div class="last-seen" id="summaryGooglePhoto">ใช้รูป Google 0 คน</div>
                 </div>
             </div>
             <div class="cleanup-note" id="cleanupSummaryText">ระบบจะมอง ghost เป็น guest ชื่ออัตโนมัติที่ยังไม่เคยเล่น ไม่มีห้องค้าง และยังใช้โปรไฟล์ default</div>
@@ -1706,6 +1741,7 @@ $(function() {
             search: '',
             typeFilter: 'all',
             statusFilter: 'all',
+            googleFilter: 'all',
             sortCol: 'lastSeen',
             sortDir: 'desc',
             page: 1,
@@ -1896,6 +1932,12 @@ $(function() {
 
     $('#playerStatusFilter').on('change', function() {
         dashboardState.players.statusFilter = $(this).val() || 'all';
+        dashboardState.players.page = 1;
+        fetchPlayers();
+    });
+
+    $('#playerGoogleFilter').on('change', function() {
+        dashboardState.players.googleFilter = $(this).val() || 'all';
         dashboardState.players.page = 1;
         fetchPlayers();
     });
@@ -2103,6 +2145,8 @@ $(function() {
         $('#summaryGuestActivePlayers').text(summary.playerSummary?.guestActivePlayers || 0);
         $('#summaryGuestIdlePlayers').text(summary.playerSummary?.guestIdlePlayers || 0);
         $('#summaryCleanupCandidates').text(summary.playerSummary?.cleanupCandidates || 0);
+        $('#summaryGoogleLinked').text(summary.playerSummary?.googleLinkedPlayers || 0);
+        $('#summaryGooglePhoto').text(`ใช้รูป Google ${summary.playerSummary?.googlePhotoPlayers || 0} คน`);
         $('#cleanupSummaryText').text(`cleanup candidate = guest อัตโนมัติที่ไม่เคยเล่น, ไม่อยู่ในห้อง, ไม่ถูกแบน, และใช้โปรไฟล์ default อยู่ จำนวนล่าสุด ${summary.cleanupCandidates || 0} คน`);
         $('#siteAdminsMeta').text(`site admin ทั้งหมด ${summary.siteAdmins || 0} คน`);
         $('#serverTime').text(new Date().toLocaleString('th-TH'));
@@ -2137,6 +2181,25 @@ $(function() {
                 selectedIds.delete(id);
             }
         });
+    }
+
+    // รูป Google เป็น thumbnail (โหลดไม่ขึ้น → กลับเป็นจุดสีเดิม) — URL ผ่าน allow-list ฝั่ง server แล้ว
+    function adminPlayerThumb(player) {
+        const color = escapeHtml(player.color || '#888');
+        if (!player.googlePicture || !/^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(player.googlePicture)) {
+            return `<span class="player-color" style="background: ${color}"></span>`;
+        }
+        return `<span class="player-color admin-google-thumb" style="background: ${color}; border-color: ${color}">`
+            + `<img src="${escapeHtml(player.googlePicture)}" alt="" width="28" height="28" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`
+            + `</span>`;
+    }
+
+    // ป้าย Google + อีเมล (เห็นเฉพาะแอดมิน)
+    function adminGoogleBadge(player) {
+        if (!player.googleLinked) return '';
+        const photoNote = player.useGooglePhoto ? ' · ใช้รูปเป็นโปรไฟล์' : '';
+        return `<span class="status-badge admin-google-badge" title="ผูกบัญชี Google แล้ว${photoNote}">G Google</span>`
+            + `<div class="last-seen admin-google-email" data-google-email>${escapeHtml(player.googleEmail || '(ไม่มีอีเมล)')}${photoNote}</div>`;
     }
 
     function updatePlayersTable(result) {
@@ -2199,9 +2262,10 @@ $(function() {
                 <tr data-player-id="${player.playerId}" data-player-category="${escapeHtml(player.category || 'unknown')}">
                     <td><input type="checkbox" class="player-checkbox" data-player-id="${player.playerId}" data-player-name="${escapeHtml(player.playerName)}" ${dashboardState.players.selectedIds.has(player.playerId) ? 'checked' : ''}></td>
                     <td>
-                        <span class="player-color" style="background: ${player.color}"></span>
+                        ${adminPlayerThumb(player)}
                         ${displayName}
                         ${siteAdminBadge}
+                        ${adminGoogleBadge(player)}
                         ${player.isCleanupCandidate ? '<div class="last-seen" style="color:#f39c12;">candidate for cleanup</div>' : ''}
                     </td>
                     <td>${categoryBadge}</td>

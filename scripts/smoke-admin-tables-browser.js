@@ -151,6 +151,26 @@ async function run() {
             await page.waitForFunction(() => /จาก 25 คน/.test(document.querySelector('#playersTableMeta')?.textContent || ''), null, { timeout: TIMEOUT_MS });
             assert(await page.locator('#playersTable tr[data-player-id]').count() === 25, `${tag} กรองแบน 25 คน`);
             await page.locator('#playerStatusFilter').selectOption('all');
+
+            // ผูก Google: ตัวเลขสรุป + กรอง linked/unlinked + ป้าย/รูป/อีเมลในแถว
+            // ตัวสร้างข้อมูลผูก Google ให้ทุกคนที่ index ลงท้าย 5 (120 คน) — รอบมือถือคนหนึ่งอาจถูกลบไปแล้ว
+            const linkedProbe = await page.evaluate(() => new Promise(resolve => window.appSocket.emit('admin_getPlayers', { googleFilter: 'linked', pageSize: 1 }, resolve)));
+            const expectedLinked = linkedProbe.filtered;
+            assert(expectedLinked === 120 || (expectedPlayers < PLAYERS && expectedLinked === 119), `${tag} server กรองผูก Google ได้ ${expectedLinked}`);
+            assert(await page.locator('#summaryGoogleLinked').innerText() === String(expectedLinked), `${tag} สรุปผูก Google ${expectedLinked}`);
+            await page.locator('#playerGoogleFilter').selectOption('linked');
+            await page.waitForFunction(n => new RegExp('จาก ' + n.toLocaleString('th-TH') + ' คน').test(document.querySelector('#playersTableMeta')?.textContent || ''), expectedLinked, { timeout: TIMEOUT_MS });
+            const linkedRows = page.locator('#playersTable tr[data-player-id]');
+            assert(await linkedRows.count() === 50, `${tag} กรองผูก Google หน้าแรก 50 แถว`);
+            assert(await page.locator('#playersTable .admin-google-badge').count() === 50, `${tag} ทุกแถวมีป้าย Google`);
+            const thumb = page.locator('#playersTable .admin-google-thumb img').first();
+            assert(await thumb.getAttribute('referrerpolicy') === 'no-referrer', `${tag} รูป Google ไม่ส่ง referrer`);
+            assert(/@example\.com/.test(await page.locator('#playersTable [data-google-email]').first().innerText()), `${tag} โชว์อีเมล Google ให้แอดมิน`);
+            await page.locator('#playerGoogleFilter').selectOption('unlinked');
+            await page.waitForFunction(n => new RegExp('จาก ' + n.toLocaleString('th-TH') + ' คน').test(document.querySelector('#playersTableMeta')?.textContent || ''), expectedPlayers - expectedLinked, { timeout: TIMEOUT_MS });
+            assert(await page.locator('#playersTable .admin-google-badge').count() === 0, `${tag} ยังไม่ผูก = ไม่มีป้าย Google`);
+            await page.locator('#playerGoogleFilter').selectOption('all');
+            await page.waitForFunction(() => document.querySelectorAll('#playersTable tr[data-player-id]').length === 50, null, { timeout: TIMEOUT_MS });
             await page.locator('th[data-sort="name"]').first().click();
             await page.waitForTimeout(600);
             const sortedPage = await page.evaluate(() => new Promise(resolve => window.appSocket.emit('admin_getPlayers', { sortCol: 'name', sortDir: 'asc', pageSize: 50 }, resolve)));

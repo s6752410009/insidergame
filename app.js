@@ -4943,9 +4943,16 @@ function classifyPlayerForAdmin(player, stat, bannedPlayerIds = new Set(), membe
         categoryLabel = totalGames > 0 ? 'guest ที่เคยเล่น' : 'guest อัตโนมัติ';
     }
 
+    // ข้อมูล Google เห็นเฉพาะหลังบ้าน (snapshot นี้ส่งให้แอดมินเท่านั้น)
+    const googleLink = playerManager.getGoogleLink(player.playerId);
+
     return {
         ...player,
         displayName: buildDisplayPlayerName(player.playerId, player.playerName),
+        googleLinked: Boolean(googleLink),
+        googleEmail: googleLink?.email || null,
+        googlePicture: googleLink?.picture || null,
+        useGooglePhoto: Boolean(player.useGooglePhoto),
         totalGames,
         hasStats: !!stat,
         statsLastPlayedAt: stat?.lastPlayedAt || null,
@@ -4987,7 +4994,9 @@ function getAdminPlayersData() {
             guestActivePlayers: annotatedPlayers.filter(player => player.category === 'guest-active').length,
             guestIdlePlayers: annotatedPlayers.filter(player => player.category === 'guest-idle').length,
             cleanupCandidates: cleanupCandidates.length,
-            siteAdmins: siteAdmins.length
+            siteAdmins: siteAdmins.length,
+            googleLinkedPlayers: annotatedPlayers.filter(player => player.googleLinked).length,
+            googlePhotoPlayers: annotatedPlayers.filter(player => player.googleLinked && player.useGooglePhoto && player.googlePicture).length
         }
     };
 }

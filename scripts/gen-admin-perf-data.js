@@ -56,6 +56,15 @@ function makePlayers(count) {
             createdAt: new Date(now - int(90) * 86400000).toISOString(),
             lastSeen: new Date(now - int(30 * 86400) * 1000).toISOString()
         };
+        // ทุกคนที่ i ลงท้าย 5 ผูก Google (ไม่ใช้ rand → ชุดสุ่มเดิมไม่เปลี่ยน) ครึ่งหนึ่งเปิดใช้รูป
+        if (i % 10 === 5) {
+            Object.assign(players[playerId], {
+                googleSub: `perf-sub-${i}`,
+                googleEmail: `perf${i}@example.com`,
+                googlePicture: `https://lh3.googleusercontent.com/a/perf-${i}=s96-c`,
+                useGooglePhoto: i % 20 === 5
+            });
+        }
     }
     return players;
 }

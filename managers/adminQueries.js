@@ -69,6 +69,10 @@ function projectPlayer(player) {
         isPendingApproval: Boolean(player.isPendingApproval),
         approved: player.approved,
         isSiteAdmin: Boolean(player.isSiteAdmin),
+        googleLinked: Boolean(player.googleLinked),
+        googleEmail: player.googleEmail || null,
+        googlePicture: player.googlePicture || null,
+        useGooglePhoto: Boolean(player.useGooglePhoto),
         totalGames: player.totalGames || 0,
         lastSeen: player.lastSeen || null,
         inRooms: (player.inRooms || []).map(room => ({ roomId: room.roomId, roomName: room.roomName, online: room.online }))
@@ -79,13 +83,16 @@ function queryPlayers(players, query = {}, now = Date.now()) {
     const search = lower(query.search).trim();
     const typeFilter = query.typeFilter || 'all';
     const statusFilter = query.statusFilter || 'all';
+    const googleFilter = query.googleFilter || 'all'; // all | linked | unlinked
     const sortCol = query.sortCol || 'lastSeen';
     const dir = query.sortDir === 'asc' ? 'asc' : 'desc';
 
     const filtered = players.filter(player => {
         if (typeFilter !== 'all' && (player.category || 'unknown') !== typeFilter) return false;
         if (statusFilter !== 'all' && playerStatusKey(player, now) !== statusFilter) return false;
-        if (search && !`${player.playerName || ''} ${player.playerId || ''} ${player.category || ''}`.toLowerCase().includes(search)) return false;
+        if (googleFilter === 'linked' && !player.googleLinked) return false;
+        if (googleFilter === 'unlinked' && player.googleLinked) return false;
+        if (search && !`${player.playerName || ''} ${player.playerId || ''} ${player.category || ''} ${player.googleEmail || ''}`.toLowerCase().includes(search)) return false;
         return true;
     });
     const value = player => {
