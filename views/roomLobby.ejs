@@ -3225,7 +3225,7 @@
         const $row = $(`
           <div class="lobby-player-item">
             <div class="lobby-player-main">
-              <span class="lobby-player-avatar clickable-avatar" data-player-id="${p.playerId}" style="cursor:pointer; margin-right:6px;" title="ดูโปรไฟล์">${window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: color, playerName: p.playerName }, { size: 30 })}</span>
+              <span class="lobby-player-avatar clickable-avatar" data-player-id="${p.playerId}" style="cursor:pointer; margin-right:6px;" title="ดูโปรไฟล์">${window.renderPlayerAvatar({ playerId: p.playerId, avatar: p.avatar, avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: color, playerName: p.playerName }, { size: 30 })}</span>
               <span class="lobby-player-name" style="color:${color};">${safeName}</span>
               ${onlineBadge}
               ${isAdminPlayer ? '<span class="lobby-player-admin-badge" style="margin-left:6px;">👑</span>' : ''}
@@ -3461,7 +3461,7 @@
         // Player message - with avatar
         $msg = $(`
           <div class="chat-msg ${msgClass}">
-            <div class="chat-avatar clickable-avatar" data-player-id="${targetPlayerId}" title="ดูโปรไฟล์ ${safeName}">${window.renderPlayerAvatar({ avatar: avatar, avatarFrame: data.avatarFrame, color: playerColor, playerName: safeName }, { size: 34 })}</div>
+            <div class="chat-avatar clickable-avatar" data-player-id="${targetPlayerId}" title="ดูโปรไฟล์ ${safeName}">${window.renderPlayerAvatar({ playerId: data.playerId, avatar: avatar, avatarFrame: data.avatarFrame, avatarImage: data.avatarImage, color: playerColor, playerName: safeName }, { size: 34 })}</div>
             <div class="chat-content">
               <div class="chat-msg-bubble" style="border: 1px solid ${playerColor};">
                 <div class="chat-msg-name clickable-avatar" data-player-id="${targetPlayerId}" style="color:${playerColor};">${safeName}</div>
@@ -4466,7 +4466,7 @@
             <div class="profile-modal-header">
               <div class="profile-modal-avatar">
                 <div class="profile-modal-avatar-inner" style="background: ${data.color}20; border-color: ${data.color};">
-                  ${data.avatar}
+                  ${window.PlayerAvatar.renderContent(data, { size: 64 })}
                 </div>
                 ${frameStyle !== 'none' ? '<div class="profile-modal-avatar-frame" style="background: ' + frameStyle + ';"></div>' : ''}
               </div>

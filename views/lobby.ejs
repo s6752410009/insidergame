@@ -17,7 +17,8 @@
             <div class="home-avatar" id="homeAvatar"
                  data-avatar="<%= player.avatar || '👤' %>"
                  data-frame="<%= player.avatarFrame || 'none' %>"
-                 data-color="<%= player.color %>"><%= player.avatar || '👤' %></div>
+                 data-color="<%= player.color %>"
+                 data-image="<%= player.avatarImage || '' %>"><%- renderPlayerAvatar(player, { size: 64 }) %></div>
             <div class="home-who">
                 <p class="home-kicker">สวัสดี</p>
                 <h1 class="home-name"><%= player.playerName %></h1>
@@ -157,6 +158,7 @@ $(function() {
         box.innerHTML = window.PlayerAvatar.render({
             avatar: box.getAttribute('data-avatar') || '👤',
             avatarFrame: box.getAttribute('data-frame') || 'none',
+            avatarImage: box.getAttribute('data-image') || null,
             color: box.getAttribute('data-color')
         }, { size: 64 });
     })();
@@ -210,7 +212,7 @@ $(function() {
     function buildLeaderboardItem(entry) {
         const rankClass = entry.rank <= 3 ? 'rank-' + entry.rank : 'rank-other';
         const avatarHtml = window.PlayerAvatar
-            ? window.PlayerAvatar.render({ avatar: entry.avatar, avatarFrame: entry.avatarFrame, color: entry.color, playerName: entry.playerName }, { size: 44 })
+            ? window.PlayerAvatar.render({ playerId: entry.playerId, avatar: entry.avatar, avatarFrame: entry.avatarFrame, avatarImage: entry.avatarImage, color: entry.color, playerName: entry.playerName }, { size: 44 })
             : escapeHtml(entry.avatar || '👤');
         const isMe = entry.playerId === playerId;
         return `
@@ -692,7 +694,7 @@ $(function() {
                     <div class="profile-modal-header">
                         <div class="profile-modal-avatar">
                             ${window.PlayerAvatar
-                                ? window.PlayerAvatar.render({ avatar: data.avatar, avatarFrame: data.avatarFrame, color: data.color, playerName: data.playerName }, { size: 72 })
+                                ? window.PlayerAvatar.render({ playerId: data.playerId, avatar: data.avatar, avatarFrame: data.avatarFrame, avatarImage: data.avatarImage, color: data.color, playerName: data.playerName }, { size: 72 })
                                 : escapeHtml(data.avatar || '👤')}
                         </div>
                         <div>

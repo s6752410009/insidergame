@@ -163,8 +163,10 @@
             const $row = $('<div class="chat-message-row"></div>').append(
                 showAvatar
                     ? global.renderPlayerAvatar({
+                        playerId: data.playerId,
                         avatar: data.avatar,
                         avatarFrame: data.avatarFrame,
+                        avatarImage: data.avatarImage,
                         color: data.color,
                         playerName: data.displayName || data.playerName
                     }, { size: 30, className: 'chat-message-avatar' })
