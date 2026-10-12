@@ -539,7 +539,7 @@ $(function() {
   }
   function avatar(p, size) {
     if (typeof window.renderPlayerAvatar === 'function') {
-      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 30 });
+      return window.renderPlayerAvatar({ playerId: p.playerId, avatar: p.avatar, avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: p.color, playerName: p.name }, { size: size || 30 });
     }
     return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
   }
@@ -1467,7 +1467,7 @@ $(function() {
     if (!data || !data.players) return;
     if (data.admin && data.admin !== S.hostId) { S.hostId = data.admin; renderChrome(); renderResults(); }
     $('#dgRoomPlayers').html(data.players.map(p =>
-      '<li>' + avatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 28) +
+      '<li>' + avatar({ playerId: p.playerId, avatar: p.avatar, avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: p.color, name: p.displayName || p.playerName }, 28) +
         '<span class="nm">' + esc(p.displayName || p.playerName) + (p.playerId === data.admin ? ' 👑' : '') + '</span>' +
         (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:#9fb3c8;">ออฟไลน์</span>' : '') +
       '</li>').join(''));

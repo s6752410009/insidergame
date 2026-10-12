@@ -1076,7 +1076,7 @@ $(function() {
   })();
   function avatarHtml(player, size) {
     if (typeof window.renderPlayerAvatar === 'function') {
-      return window.renderPlayerAvatar({ avatar: player.avatar, avatarFrame: player.avatarFrame, color: player.color, playerName: player.name }, { size: size || 26 });
+      return window.renderPlayerAvatar({ playerId: player.playerId, avatar: player.avatar, avatarFrame: player.avatarFrame, avatarImage: player.avatarImage, color: player.color, playerName: player.name }, { size: size || 26 });
     }
     return '<span>' + escapeHtml(player.avatar || '👤') + '</span>';
   }

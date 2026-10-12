@@ -680,7 +680,7 @@
             }
             $('pdsBoard').innerHTML = entries.map(e => {
                 const av = typeof window.renderPlayerAvatar === 'function'
-                    ? window.renderPlayerAvatar({ avatar: e.avatar, avatarFrame: e.avatarFrame, color: e.color, playerName: e.playerName }, { size: 28 })
+                    ? window.renderPlayerAvatar({ playerId: e.playerId, avatar: e.avatar, avatarFrame: e.avatarFrame, avatarImage: e.avatarImage, color: e.color, playerName: e.playerName }, { size: 28 })
                     : '<span aria-hidden="true">' + esc(e.avatar || '👤') + '</span>';
                 return '<li class="' + (e.playerId === boot.playerId ? 'is-me' : '') + '">' +
                     '<span class="pds-rank">' + e.rank + '</span>' +

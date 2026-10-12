@@ -499,7 +499,7 @@ $(function() {
   function signed(n) { n = Number(n) || 0; return (n > 0 ? '+' : (n < 0 ? '−' : '')) + fmt(Math.abs(n)); }
   function avatarHtml(p, size) {
     if (typeof window.renderPlayerAvatar === 'function') {
-      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 26 });
+      return window.renderPlayerAvatar({ playerId: p.playerId, avatar: p.avatar, avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: p.color, playerName: p.name }, { size: size || 26 });
     }
     return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
   }
