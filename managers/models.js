@@ -57,6 +57,10 @@ const playerSchema = new mongoose.Schema({
     // ผูกบัญชี Google (ไม่บังคับ) — sub คือ id ถาวรของบัญชี Google
     googleSub: { type: String, index: true, sparse: true },
     googleEmail: { type: String },
+    // รูปโปรไฟล์ Google (https://*.googleusercontent.com …=s96-c) — อัปเดตทุกครั้งที่ล็อกอิน Google
+    googlePicture: { type: String },
+    // ผู้เล่นเลือกใช้รูป Google แทน emoji (ค่าเริ่มต้นปิด)
+    useGooglePhoto: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     lastSeen: { type: Date, default: Date.now }
 }, { timestamps: true });

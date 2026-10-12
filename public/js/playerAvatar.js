@@ -29,6 +29,36 @@
             .replace(/>/g, '&gt;');
     }
 
+    // รูปจาก Google — รับเฉพาะ https://*.googleusercontent.com แล้วบังคับขนาด =s96-c
+    // ใช้ทั้งฝั่ง server (ตอนเก็บ/ส่ง payload) และฝั่ง client (ก่อนใส่ลง <img>) เป็นตัวเดียวกัน
+    const AVATAR_IMAGE_SIZE_SUFFIX = '=s96-c';
+    const AVATAR_IMAGE_MAX_LENGTH = 1024;
+    const AVATAR_IMAGE_PATH_RE = /^\/[A-Za-z0-9\-_.~\/=]+$/;
+
+    function normalizeAvatarImageUrl(value) {
+        if (typeof value !== 'string') return null;
+        const raw = value.trim();
+        if (!raw || raw.length > AVATAR_IMAGE_MAX_LENGTH) return null;
+        let url;
+        try {
+            url = new URL(raw);
+        } catch (error) {
+            return null;
+        }
+        if (url.protocol !== 'https:') return null;
+        if (url.username || url.password || url.port) return null;
+        const host = url.hostname.toLowerCase();
+        if (!/^[a-z0-9-]+(\.[a-z0-9-]+)*\.googleusercontent\.com$/.test(host)) return null;
+        let path = url.pathname;
+        if (!AVATAR_IMAGE_PATH_RE.test(path) || path.indexOf('..') !== -1) return null;
+        // ตัดตัวเลือกขนาดเดิม (เช่น =s96-c, =s400) ทิ้งแล้วใส่ =s96-c เสมอ
+        const lastSlash = path.lastIndexOf('/');
+        const eq = path.indexOf('=', lastSlash);
+        if (eq !== -1) path = path.slice(0, eq);
+        if (path.length <= 1 || path.endsWith('/')) return null;
+        return 'https://' + host + path + AVATAR_IMAGE_SIZE_SUFFIX;
+    }
+
     function getFrameStyle(frameId) {
         return FRAME_STYLES[frameId] || 'none';
     }
@@ -50,28 +80,68 @@
         const frameStyle = getFrameStyle(frameId);
         const color = p.color || '#94a3b8';
         const title = o.title || p.displayName || p.playerName || '';
+        const emoji = escapeAttr(p.avatar || '👤');
+        // บอทไม่มีรูปจริงเสมอ ต่อให้ payload หลุดมา
+        const isBot = p.isBot || String(p.playerId || '').indexOf('bot_') === 0;
+        const imageUrl = !isBot && o.image !== false ? normalizeAvatarImageUrl(p.avatarImage) : null;
 
         const frameLayer = frameStyle !== 'none'
             ? '<span class="pa-frame' + (ANIMATED_FRAMES.has(frameId) ? ' pa-frame-animated' : '') +
               '" style="background:' + escapeAttr(frameStyle) + ';"></span>'
             : '';
 
+        // รูปโหลดไม่ขึ้น (ลิงก์หมดอายุ/ถูกบล็อก) → ลบ <img> ทิ้งแล้วโชว์ emoji เดิม
+        const inner = imageUrl
+            ? '<img class="pa-img" src="' + escapeAttr(imageUrl) + '" alt="" width="' + size + '" height="' + size + '"' +
+              ' loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false"' +
+              ' onerror="this.parentNode.classList.remove(\'pa-has-img\');this.remove();">' +
+              '<span class="pa-emoji">' + emoji + '</span>'
+            : emoji;
+
         return '<span class="player-avatar ' + escapeAttr(o.className || '') + '"' +
             ' style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.5) + 'px;"' +
             ' data-frame="' + escapeAttr(frameId) + '"' +
             (title ? ' title="' + escapeAttr(title) + '"' : '') + '>' +
                 frameLayer +
-                '<span class="pa-inner" style="background:' + escapeAttr(color) + '22;border-color:' + escapeAttr(color) + ';">' +
-                    escapeAttr(p.avatar || '👤') +
+                '<span class="pa-inner' + (imageUrl ? ' pa-has-img' : '') + '" style="background:' + escapeAttr(color) + '22;border-color:' + escapeAttr(color) + ';">' +
+                    inner +
                 '</span>' +
             '</span>';
     }
 
-    global.PlayerAvatar = {
+    /**
+     * สำหรับที่ที่มีกล่อง avatar ของตัวเองอยู่แล้ว (ไม่ใช้ .player-avatar)
+     * คืน <img> + emoji สำรอง ถ้ามีรูป ไม่งั้นคืน emoji ล้วน (escape แล้ว)
+     */
+    function renderAvatarContent(player, options) {
+        const p = player || {};
+        const o = options || {};
+        const size = Number(o.size) || 40;
+        const emoji = o.emojiHtml != null ? String(o.emojiHtml) : escapeAttr(p.avatar || '👤');
+        const isBot = p.isBot || String(p.playerId || '').indexOf('bot_') === 0;
+        const imageUrl = isBot ? null : normalizeAvatarImageUrl(p.avatarImage);
+        if (!imageUrl) return emoji;
+        return '<span class="pa-content pa-has-img" style="width:' + size + 'px;height:' + size + 'px;">' +
+            '<img class="pa-img" src="' + escapeAttr(imageUrl) + '" alt="" width="' + size + '" height="' + size + '"' +
+            ' loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false"' +
+            ' onerror="this.parentNode.classList.remove(\'pa-has-img\');this.remove();">' +
+            '<span class="pa-emoji">' + emoji + '</span></span>';
+    }
+
+    const api = {
         FRAME_STYLES: FRAME_STYLES,
         getFrameStyle: getFrameStyle,
         hasFrame: hasFrame,
-        render: renderPlayerAvatar
+        normalizeAvatarImageUrl: normalizeAvatarImageUrl,
+        render: renderPlayerAvatar,
+        renderContent: renderAvatarContent
     };
-    global.renderPlayerAvatar = renderPlayerAvatar;
+
+    // ใช้ไฟล์เดียวกันทั้งเบราว์เซอร์ (window.PlayerAvatar) และ Node (require)
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = api;
+    } else {
+        global.PlayerAvatar = api;
+        global.renderPlayerAvatar = renderPlayerAvatar;
+    }
 })(typeof window !== 'undefined' ? window : globalThis);

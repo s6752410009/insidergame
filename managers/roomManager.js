@@ -1354,6 +1354,16 @@ function markPlayerActive(roomId, playerId) {
     return room;
 }
 
+// avatarImage มีเฉพาะคนที่เปิดใช้รูป Google — ไม่มีก็ลบ key ทิ้ง payload จะได้ไม่พก null ไปทุกที่
+function setAvatarImage(target, avatarImage) {
+    if (!target) return;
+    if (avatarImage && !isBotPlayerId(target.playerId)) {
+        target.avatarImage = avatarImage;
+    } else {
+        delete target.avatarImage;
+    }
+}
+
 function syncPlayerProfile(playerId, updates = {}) {
     rooms.forEach(room => {
         const roomPlayer = room.players.find(player => player.playerId === playerId);
@@ -1362,6 +1372,7 @@ function syncPlayerProfile(playerId, updates = {}) {
             if (updates.color !== undefined) roomPlayer.color = updates.color;
             if (updates.avatar !== undefined) roomPlayer.avatar = updates.avatar;
             if (updates.avatarFrame !== undefined) roomPlayer.avatarFrame = updates.avatarFrame;
+            if (updates.avatarImage !== undefined) setAvatarImage(roomPlayer, updates.avatarImage);
         }
 
         const gameStatePlayer = room.gameState.players.find(player => player.playerId === playerId);
@@ -1370,6 +1381,7 @@ function syncPlayerProfile(playerId, updates = {}) {
             if (updates.color !== undefined) gameStatePlayer.color = updates.color;
             if (updates.avatar !== undefined) gameStatePlayer.avatar = updates.avatar;
             if (updates.avatarFrame !== undefined) gameStatePlayer.avatarFrame = updates.avatarFrame;
+            if (updates.avatarImage !== undefined) setAvatarImage(gameStatePlayer, updates.avatarImage);
         }
     });
 }

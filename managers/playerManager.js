@@ -19,13 +19,16 @@ try {
 }
 
 const { PLAYERS_FILE, BANNED_FILE } = require('./dataPaths');
+const { normalizeAvatarImageUrl } = require('../public/js/playerAvatar');
 
 // Memory cache
 const players = new Map();
 const bannedPlayers = new Map();
 // playerId -> รหัสกู้บัญชี (ห้ามใส่ใน object ผู้เล่น เพราะ object นั้นถูกส่งให้ client)
 const recoveryCodes = new Map();
-// playerId -> { sub, email } บัญชี Google ที่ผูกไว้ (เก็บแยกด้วยเหตุผลเดียวกัน)
+// playerId -> { sub, email, picture } บัญชี Google ที่ผูกไว้ (เก็บแยกด้วยเหตุผลเดียวกัน)
+// picture อยู่ตรงนี้ ไม่อยู่ใน object ผู้เล่น — จะโผล่ไปหน้าเว็บคนอื่นเป็น player.avatarImage
+// ก็ต่อเมื่อเจ้าของเปิด useGooglePhoto เท่านั้น (ดู refreshAvatarImage)
 const googleLinks = new Map();
 
 function isBotPlayerId(playerId) {
@@ -101,17 +104,25 @@ async function loadPlayersFromDB() {
         dbPlayers.forEach(p => {
             if (isBotPlayerId(p.playerId)) return;
             if (p.recoveryCode) recoveryCodes.set(p.playerId, p.recoveryCode);
-            if (p.googleSub) googleLinks.set(p.playerId, { sub: p.googleSub, email: p.googleEmail || null });
+            if (p.googleSub) {
+                googleLinks.set(p.playerId, {
+                    sub: p.googleSub,
+                    email: p.googleEmail || null,
+                    picture: normalizeAvatarImageUrl(p.googlePicture)
+                });
+            }
             players.set(p.playerId, {
                 playerId: p.playerId,
                 playerName: p.playerName,
                 color: p.color || '#3498db',
                 avatar: p.avatar || '👤',
                 avatarFrame: p.avatarFrame || 'none',
+                useGooglePhoto: Boolean(p.useGooglePhoto),
                 isSiteAdmin: Boolean(p.isSiteAdmin),
                 createdAt: p.createdAt,
                 lastSeen: p.lastSeen
             });
+            refreshAvatarImage(p.playerId);
         });
         console.log(`Loaded ${players.size} players from MongoDB`);
     } catch (e) {
@@ -153,10 +164,19 @@ function loadPlayersFromFile() {
                     continue;
                 }
                 // รหัสกู้บัญชีเก็บแยกจาก object ผู้เล่น — object นี้ถูกส่งออกไปหน้าเว็บหลายที่
-                const { recoveryCode, googleSub, googleEmail, ...publicFields } = player || {};
+                // avatarImage คำนวณใหม่ทุกครั้ง ไม่เชื่อค่าที่ค้างในไฟล์
+                const { recoveryCode, googleSub, googleEmail, googlePicture, avatarImage, ...publicFields } = player || {};
                 if (recoveryCode) recoveryCodes.set(playerId, recoveryCode);
-                if (googleSub) googleLinks.set(playerId, { sub: googleSub, email: googleEmail || null });
+                if (googleSub) {
+                    googleLinks.set(playerId, {
+                        sub: googleSub,
+                        email: googleEmail || null,
+                        picture: normalizeAvatarImageUrl(googlePicture)
+                    });
+                }
+                publicFields.useGooglePhoto = Boolean(publicFields.useGooglePhoto);
                 players.set(playerId, publicFields);
+                refreshAvatarImage(playerId);
             }
             console.log(`Loaded ${players.size} players from file`);
             if (droppedBots > 0) {
@@ -195,10 +215,15 @@ async function savePlayers() {
             if (isBotPlayerId(playerId)) continue;
             const recoveryCode = recoveryCodes.get(playerId);
             const google = googleLinks.get(playerId);
+            const { avatarImage, ...storedFields } = player; // ค่าที่คำนวณได้ ไม่ต้องเก็บ
             playersData[playerId] = {
-                ...player,
+                ...storedFields,
                 ...(recoveryCode ? { recoveryCode } : {}),
-                ...(google ? { googleSub: google.sub, googleEmail: google.email } : {})
+                ...(google ? {
+                    googleSub: google.sub,
+                    googleEmail: google.email,
+                    ...(google.picture ? { googlePicture: google.picture } : {})
+                } : {})
             };
         }
         fs.writeFileSync(PLAYERS_FILE, JSON.stringify(playersData, null, 2), 'utf8');
@@ -359,26 +384,96 @@ function getGoogleLink(playerId) {
     return googleLinks.get(playerId) || null;
 }
 
-async function linkGoogleAccount(playerId, sub, email) {
-    if (!players.has(playerId) || isBotPlayerId(playerId)) throw new Error('Player not found');
-    const owner = findPlayerByGoogleSub(sub);
-    if (owner && owner.playerId !== playerId) throw new Error('บัญชี Google นี้ผูกกับผู้เล่นอื่นอยู่แล้ว');
-    googleLinks.set(playerId, { sub, email: email || null });
+function getGooglePicture(playerId) {
+    return googleLinks.get(playerId)?.picture || null;
+}
+
+/**
+ * player.avatarImage = รูป Google ที่โชว์ให้คนอื่นเห็นได้
+ * มีค่าเฉพาะตอนผูก Google + มีรูป + เจ้าของเปิด useGooglePhoto และไม่ใช่บอท
+ * (ไม่เก็บลงไฟล์/DB — คำนวณจาก googleLinks ทุกครั้ง)
+ */
+function refreshAvatarImage(playerId) {
+    const player = players.get(playerId);
+    if (!player) return null;
+    const picture = isBotPlayerId(playerId) ? null : getGooglePicture(playerId);
+    if (player.useGooglePhoto && picture) {
+        player.avatarImage = picture;
+    } else {
+        delete player.avatarImage;
+    }
+    return player.avatarImage || null;
+}
+
+async function persistGoogleLink(playerId) {
+    const link = googleLinks.get(playerId);
     if (useDatabase && Player) {
-        await Player.updateOne({ playerId }, { googleSub: sub, googleEmail: email || null });
+        if (link) {
+            await Player.updateOne({ playerId }, {
+                googleSub: link.sub,
+                googleEmail: link.email || null,
+                ...(link.picture ? { googlePicture: link.picture } : { $unset: { googlePicture: 1 } })
+            });
+        } else {
+            await Player.updateOne({ playerId }, { $unset: { googleSub: 1, googleEmail: 1, googlePicture: 1 }, useGooglePhoto: false });
+        }
     } else {
         savePlayers();
     }
 }
 
+async function linkGoogleAccount(playerId, sub, email, picture = null) {
+    if (!players.has(playerId) || isBotPlayerId(playerId)) throw new Error('Player not found');
+    const owner = findPlayerByGoogleSub(sub);
+    if (owner && owner.playerId !== playerId) throw new Error('บัญชี Google นี้ผูกกับผู้เล่นอื่นอยู่แล้ว');
+    googleLinks.set(playerId, { sub, email: email || null, picture: normalizeAvatarImageUrl(picture) });
+    refreshAvatarImage(playerId);
+    await persistGoogleLink(playerId);
+}
+
+/**
+ * ล็อกอิน Google ซ้ำ → อัปเดตอีเมล/รูปล่าสุด (คนเปลี่ยนรูปใน Google จะเห็นรูปใหม่)
+ * คืน true ถ้า avatarImage ที่คนอื่นเห็นเปลี่ยน
+ */
+async function refreshGoogleProfile(playerId, { email, picture } = {}) {
+    const link = googleLinks.get(playerId);
+    if (!link) return false;
+    const before = players.get(playerId)?.avatarImage || null;
+    link.picture = normalizeAvatarImageUrl(picture);
+    if (email) link.email = String(email);
+    const after = refreshAvatarImage(playerId);
+    await persistGoogleLink(playerId);
+    return before !== after;
+}
+
 async function unlinkGoogleAccount(playerId) {
     if (!googleLinks.has(playerId)) return;
     googleLinks.delete(playerId);
+    const player = players.get(playerId);
+    if (player) player.useGooglePhoto = false;
+    refreshAvatarImage(playerId);
+    await persistGoogleLink(playerId);
+}
+
+/**
+ * เปิด/ปิดใช้รูป Google เป็นรูปโปรไฟล์ — เปิดได้เฉพาะตอนผูก Google และมีรูปแล้ว
+ */
+async function setUseGooglePhoto(playerId, enabled) {
+    const player = players.get(playerId);
+    if (!player || isBotPlayerId(playerId)) throw new Error('Player not found');
+    const next = Boolean(enabled);
+    if (next) {
+        if (!googleLinks.has(playerId)) throw new Error('ต้องผูกบัญชี Google ก่อน');
+        if (!getGooglePicture(playerId)) throw new Error('ยังไม่มีรูปจาก Google — เข้าด้วย Google อีกครั้งเพื่อดึงรูป');
+    }
+    player.useGooglePhoto = next;
+    refreshAvatarImage(playerId);
     if (useDatabase && Player) {
-        await Player.updateOne({ playerId }, { $unset: { googleSub: 1, googleEmail: 1 } });
+        await Player.updateOne({ playerId }, { useGooglePhoto: next });
     } else {
         savePlayers();
     }
+    return player;
 }
 
 // ============ Player Functions ============
@@ -409,6 +504,7 @@ async function createOrGetPlayer(playerId = null, options = {}) {
         color: getColorForPlayerId(newPlayerId),
         avatar: '👤',
         avatarFrame: 'none',
+        useGooglePhoto: false,
         isSiteAdmin: false,
         approved: options.approved !== false,
         isBot: isBotPlayerId(newPlayerId),
@@ -814,6 +910,10 @@ module.exports = {
     getRecoveryCode,
     findPlayerByGoogleSub,
     getGoogleLink,
+    getGooglePicture,
+    refreshAvatarImage,
+    refreshGoogleProfile,
+    setUseGooglePhoto,
     linkGoogleAccount,
     unlinkGoogleAccount
 };

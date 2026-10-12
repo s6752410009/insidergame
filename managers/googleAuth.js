@@ -6,6 +6,7 @@
  */
 
 const crypto = require('crypto');
+const { normalizeAvatarImageUrl } = require('../public/js/playerAvatar');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
@@ -40,7 +41,9 @@ async function loadKeys(forceRefresh = false) {
 }
 
 /**
- * คืน { sub, email, name } ถ้า token ถูกต้อง ไม่งั้น throw
+ * คืน { sub, email, name, picture } ถ้า token ถูกต้อง ไม่งั้น throw
+ * picture มาจาก claim ใน token ที่ตรวจลายเซ็นแล้วเท่านั้น (ไม่รับจาก client)
+ * และผ่าน allow-list https://*.googleusercontent.com — ไม่ผ่าน = null
  */
 async function verifyGoogleIdToken(idToken) {
     if (!isEnabled()) throw new Error('ยังไม่ได้เปิดใช้การล็อกอินด้วย Google');
@@ -72,7 +75,8 @@ async function verifyGoogleIdToken(idToken) {
     return {
         sub: String(payload.sub),
         email: payload.email ? String(payload.email) : null,
-        name: payload.name ? String(payload.name) : null
+        name: payload.name ? String(payload.name) : null,
+        picture: normalizeAvatarImageUrl(payload.picture)
     };
 }
 

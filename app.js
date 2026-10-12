@@ -5049,6 +5049,23 @@ function emitRoomUpdatesForPlayer(playerId) {
     });
 }
 
+// รูป Google ที่คนอื่นเห็น (player.avatarImage) เปลี่ยน — เปิด/ปิดใช้รูป, ล็อกอินได้รูปใหม่, ยกเลิกผูก
+// อัปเดตก๊อปปี้ในห้อง/สถานะเกม แล้วส่ง state ใหม่ให้ห้องที่ผู้เล่นอยู่ (emoji กลับมาทันทีตอนปิด)
+function broadcastAvatarImageChange(playerId) {
+    const player = playerManager.getPlayer(playerId);
+    roomManager.syncPlayerProfile(playerId, { avatarImage: player?.avatarImage || null });
+    emitRoomUpdatesForPlayer(playerId);
+    roomManager.findRoomIdsForPlayer(playerId).forEach(roomId => {
+        const room = roomManager.getRoom(roomId);
+        if (!room) return;
+        try {
+            broadcastGameStateForRoom(room);
+        } catch (error) {
+            console.error('[avatar] broadcast game state failed:', error.message);
+        }
+    });
+}
+
 async function removePlayerCompletely(playerId, options = {}) {
     const { deleteStats = true, reason = 'บัญชีของคุณถูกลบโดยแอดมิน' } = options;
 
@@ -5426,6 +5443,10 @@ app.post('/api/auth/google', async function(req, res) {
         if (linkedPlayer) {
             playerId = linkedPlayer.playerId;
             action = 'login';
+            // รูป Google อัปเดตทุกครั้งที่ล็อกอิน — ถ้าเปิดใช้รูปอยู่ ห้องที่เล่นอยู่เห็นรูปใหม่ทันที
+            if (await playerManager.refreshGoogleProfile(playerId, { email: google.email, picture: google.picture })) {
+                broadcastAvatarImageChange(playerId);
+            }
         } else {
             const currentId = getTrustedPlayerId(req);
             if (currentId && playerManager.getGoogleLink(currentId)) {
@@ -5437,7 +5458,7 @@ app.post('/api/auth/google', async function(req, res) {
             playerId = currentId || uuidv4();
             await ensurePersistedPlayer(playerId);
             await playerManager.ensureRecoveryCode(playerId);
-            await playerManager.linkGoogleAccount(playerId, google.sub, google.email);
+            await playerManager.linkGoogleAccount(playerId, google.sub, google.email, google.picture);
             action = 'linked';
         }
 
@@ -5448,6 +5469,8 @@ app.post('/api/auth/google', async function(req, res) {
             action,
             playerId,
             email: google.email,
+            hasPicture: Boolean(playerManager.getGooglePicture(playerId)),
+            useGooglePhoto: Boolean(playerManager.getPlayer(playerId)?.useGooglePhoto),
             recoveryCode: playerManager.getRecoveryCode(playerId)
         });
     } catch (error) {
@@ -5459,7 +5482,9 @@ app.post('/api/auth/google', async function(req, res) {
 app.post('/api/auth/google/unlink', async function(req, res) {
     const playerId = getTrustedPlayerId(req);
     if (!playerId) return res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
+    const hadImage = Boolean(playerManager.getPlayer(playerId)?.avatarImage);
     await playerManager.unlinkGoogleAccount(playerId);
+    if (hadImage) broadcastAvatarImageChange(playerId);
     return res.json({ success: true });
 });
 
