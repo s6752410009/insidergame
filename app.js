@@ -57,8 +57,8 @@ const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
-// (Render ตั้ง RENDER_GIT_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
-const BUILD_ID = String(process.env.RENDER_GIT_COMMIT || Date.now()).slice(0, 12);
+// (Render ตั้ง RENDER_GIT_COMMIT · Coolify ตั้ง SOURCE_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
+const BUILD_ID = String(process.env.RENDER_GIT_COMMIT || process.env.SOURCE_COMMIT || Date.now()).slice(0, 12);
 
 app.locals.appVersion = APP_VERSION;
 

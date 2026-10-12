@@ -1,0 +1,17 @@
+node_modules
+.git
+.github
+.cursor
+.claude
+*.log
+data/*.json
+!data/gameSettings.json
+data/backups
+data/*.ndjson
+data/*.bak
+data/*.tmp
+public/assets/games/*/*.png
+scripts/
+docs/
+rules/
+tests/

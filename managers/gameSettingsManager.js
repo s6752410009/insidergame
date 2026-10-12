@@ -7,7 +7,23 @@ const path = require('path');
 const { getGameEngine, getAvailableGameModes, normalizeGameMode } = require('../games/engineRegistry');
 const spyfallEngine = require('../games/spyfallEngine');
 
-const SETTINGS_FILE = path.join(__dirname, '../data/gameSettings.json');
+// ไฟล์ตั้งค่าเกมอยู่ในโฟลเดอร์ข้อมูล (GAME_DATA_DIR = volume ถาวรบนเซิร์ฟเวอร์) ไม่งั้นแอดมินตั้งค่าแล้วหายทุก deploy
+// ครั้งแรกที่ยังไม่มีไฟล์ คัดลอกค่าเริ่มต้นจาก data/gameSettings.json ใน repo
+const REPO_SETTINGS_FILE = path.join(__dirname, '../data/gameSettings.json');
+const SETTINGS_FILE = (() => {
+    if (!process.env.GAME_DATA_DIR) return REPO_SETTINGS_FILE;
+    const target = path.join(path.resolve(process.env.GAME_DATA_DIR), 'gameSettings.json');
+    try {
+        if (!fs.existsSync(target) && fs.existsSync(REPO_SETTINGS_FILE)) {
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            fs.copyFileSync(REPO_SETTINGS_FILE, target);
+        }
+    } catch (error) {
+        console.warn('gameSettings: ใช้ไฟล์ใน repo แทน —', error.message);
+        return REPO_SETTINGS_FILE;
+    }
+    return target;
+})();
 const WORDS_DIR = path.join(__dirname, '../words');
 
 const DEFAULT_PROFANITY = [
