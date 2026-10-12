@@ -425,7 +425,7 @@ $(function() {
   }
   function avatar(p, size) {
     if (typeof window.renderPlayerAvatar === 'function') {
-      return window.renderPlayerAvatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, playerName: p.name }, { size: size || 32 });
+      return window.renderPlayerAvatar({ playerId: p.playerId, avatar: p.avatar, avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: p.color, playerName: p.name }, { size: size || 32 });
     }
     return '<span aria-hidden="true">' + esc(p.avatar || '👤') + '</span>';
   }
@@ -1024,7 +1024,7 @@ $(function() {
     if (!data || !data.players) return;
     $('#onlinePlayerList').html(data.players.map(p =>
       '<li style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.08);">' +
-        avatar({ avatar: p.avatar, avatarFrame: p.avatarFrame, color: p.color, name: p.displayName || p.playerName }, 28) +
+        avatar({ playerId: p.playerId, avatar: p.avatar, avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: p.color, name: p.displayName || p.playerName }, 28) +
         '<span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.displayName || p.playerName) + '</span>' +
         (p.online === false ? '<span style="margin-left:auto; font-size:0.78rem; color:#9fb3c8;">ออฟไลน์</span>' : '') +
       '</li>').join(''));

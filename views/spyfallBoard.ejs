@@ -720,8 +720,10 @@ $(function() {
   // รูปผู้เล่น + กรอบ ใช้ตัว render กลาง (playerAvatar.js) ให้ตรงกับหน้าอื่น
   function playerAvatarHtml(player, size) {
     const meta = {
+      playerId: player && player.playerId,
       avatar: (player && player.avatar) || '👤',
       avatarFrame: player && player.avatarFrame,
+      avatarImage: player && player.avatarImage,
       color: (player && player.color) || '#5eead4',
       playerName: player && (player.displayName || player.name || player.playerName)
     };
