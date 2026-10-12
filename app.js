@@ -64,7 +64,11 @@ app.locals.appVersion = APP_VERSION;
 
 // Load settings (including admin password)
 const settings = JSON.parse(fs.readFileSync('./settings.json', 'utf8'));
-const ADMIN_PASSWORD = settings.adminPassword || 'admin123';
+// รหัสแอดมินจริงมาจากค่าบนเซิร์ฟเวอร์ (ADMIN_PASSWORD) เท่านั้น — repo เป็นสาธารณะ settings.json จึงเป็นแค่รหัสทดสอบในเครื่อง
+// production ที่ไม่ได้ตั้ง ADMIN_PASSWORD = ปิดล็อกอินแอดมิน (ไม่ใช้รหัสจาก repo / admin123)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+    || (process.env.NODE_ENV === 'production' ? null : (settings.adminPassword || 'admin123'));
+if (!ADMIN_PASSWORD) console.warn('⚠️ ADMIN_PASSWORD ไม่ได้ตั้ง — ปิดล็อกอินหน้าแอดมิน');
 const ALLOW_LEGACY_SOCKET_IDENTITY = process.env.ALLOW_LEGACY_SOCKET_IDENTITY === '1';
 
 // Constants from roomManager
@@ -6402,12 +6406,27 @@ app.get('/admin/login', function(req, res) {
 });
 
 // Admin Login POST
+// กันเดารหัส: ผิดเกิน 10 ครั้งใน 15 นาทีต่อ IP = ล็อก
+const adminLoginFails = new Map();
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_LOGIN_MAX_FAILS = 10;
 app.post('/admin/login', function(req, res) {
+    const ip = req.ip || 'unknown';
+    const now = Date.now();
+    const rec = adminLoginFails.get(ip);
+    if (rec && now - rec.first > ADMIN_LOGIN_WINDOW_MS) adminLoginFails.delete(ip);
+    const current = adminLoginFails.get(ip);
+    if (current && current.count >= ADMIN_LOGIN_MAX_FAILS) {
+        return res.status(429).render('adminLogin.ejs', { error: 'ลองผิดหลายครั้งเกินไป รอ 15 นาทีแล้วลองใหม่' });
+    }
     const password = req.body.password;
-    if (password === ADMIN_PASSWORD) {
+    if (ADMIN_PASSWORD && typeof password === 'string' && password === ADMIN_PASSWORD) {
+        adminLoginFails.delete(ip);
         req.session.isAdmin = true;
         res.redirect('/admin');
     } else {
+        if (current) current.count += 1; else adminLoginFails.set(ip, { first: now, count: 1 });
+        if (adminLoginFails.size > 5000) adminLoginFails.clear();
         res.render('adminLogin.ejs', { error: 'รหัสผ่านไม่ถูกต้อง' });
     }
 });
