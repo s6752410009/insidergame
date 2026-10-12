@@ -1041,7 +1041,15 @@
   .room-chat-messages {
     display: flex;
     flex-direction: column;
+    /* กล่องแชทสูงคงที่ เลื่อนดูในกล่อง — เดิมหน้าห้องรอยาวขึ้นเรื่อยๆ ตามจำนวนข้อความ (เข้า/ออกห้องก็นับ) */
+    height: min(56vh, 520px);
+    max-height: min(56vh, 520px);
+    overscroll-behavior: contain;
   }
+  /* แจ้งเตือนระบบ (เข้า/ออกห้อง) ให้เล็ก ไม่กินที่เท่าข้อความคุยกัน */
+  .room-chat-messages .chat-msg.system-msg { margin: 2px 0; }
+  .room-chat-messages .chat-msg.system-msg .chat-msg-bubble { padding: 3px 10px; font-size: 0.82em; opacity: 0.85; }
+  .room-chat-messages .chat-msg.system-msg .chat-msg-meta { display: none; }
   
   /* Clickable Avatar */
   .clickable-avatar {
