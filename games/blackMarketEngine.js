@@ -6,6 +6,7 @@ const BETRAY_STEAL_CASH = 2;
 
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 function blackMarketImage(id) {
     return gameAssetImage('blackmarket', id);
 }
@@ -345,6 +346,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         permission: context.isAdmin ? 'admin' : null,
         role: '',
         roleInfo: null,
@@ -377,7 +379,8 @@ function resetRoomGame(room) {
             playerName: player.playerName,
             color: player.color,
             avatar: player.avatar,
-            avatarFrame: player.avatarFrame
+            avatarFrame: player.avatarFrame,
+            ...avatarImageField(player)
         }, {
             socketId: player.socketId,
             isAdmin: player.permission === 'admin'
@@ -1331,6 +1334,7 @@ function buildClientState(room, playerId) {
             name: player.name,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame || 'none',
+            ...avatarImageField(player),
             color: player.color,
             alive: player.alive !== false,
             // คนอื่นเห็นแต้มที่ไม่รวมโบนัสลับของบทบาท (ไม่งั้นแต้มที่เด้งบอกบทได้) — เปิดหมดตอนตาย/จบเกม

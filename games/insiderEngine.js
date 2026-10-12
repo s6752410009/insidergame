@@ -1,3 +1,4 @@
+const { avatarImageField } = require('../public/js/playerAvatar');
 // Insider (Oink Games) — state + กติกาแบบ pure function (ไม่ยุ่ง socket/timer) ให้ app.js เรียก และเทสต์ได้ตรงๆ
 // กติกาจริง: rules/insider/rules.md
 const defaultRole = 'พลเมือง';
@@ -31,6 +32,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         role: '',
         vote1: null,
         vote2: null,
@@ -49,7 +51,8 @@ function resetRoomGame(room) {
                 playerName: player.playerName,
                 color: player.color,
                 avatar: player.avatar,
-                avatarFrame: player.avatarFrame
+                avatarFrame: player.avatarFrame,
+                ...avatarImageField(player)
             }, {
                 socketId: player.socketId,
                 isAdmin: player.permission === 'admin'

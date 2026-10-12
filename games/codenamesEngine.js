@@ -17,6 +17,7 @@
 
 const { WORDS, COMPOUND_SPLITS } = require('./codenamesWords');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const MODE = 'codenames';
 const FINISHED_STATUS = 'codenames_finished';
 const TEAMS = ['red', 'blue'];
@@ -238,7 +239,8 @@ function createPlayerState(player) {
         name: displayName(player),
         color: player.color || '#f5c86b',
         avatar: player.avatar || '👤',
-        avatarFrame: player.avatarFrame || 'none'
+        avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player)
     };
 }
 
@@ -463,6 +465,7 @@ function startGame(room, rng = Math.random, now = Date.now()) {
                 color: p.color || '#f5c86b',
                 avatar: p.avatar || '👤',
                 avatarFrame: p.avatarFrame || 'none',
+                ...avatarImageField(p),
                 team,
                 role,
                 left: false
@@ -1095,6 +1098,7 @@ function publicMember(room, p) {
         color: p.color,
         avatar: p.avatar,
         avatarFrame: p.avatarFrame,
+        ...avatarImageField(p),
         team: p.team,
         role: p.role,
         left: !!p.left,

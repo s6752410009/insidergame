@@ -6,6 +6,7 @@
  */
 
 const playerManager = require('./playerManager');
+const { avatarImageField } = require('../public/js/playerAvatar');
 const { normalizeGameMode, getGameEngine } = require('../games/engineRegistry');
 const gameSettingsManager = require('./gameSettingsManager');
 const fs = require('fs');
@@ -142,6 +143,12 @@ function hydrateRoom(raw) {
         if (inferred) room.settings.gameMode = inferred;
         room._modeRepaired = inferred && inferred !== previousMode;
     }
+    // รูป Google ที่ค้างใน snapshot อาจเก่า (ผู้เล่นปิดใช้รูปไปแล้ว) — ยึดค่าปัจจุบันจาก playerManager
+    const resyncAvatarImage = target => {
+        if (target && target.playerId) setAvatarImage(target, playerManager.getPlayer(target.playerId)?.avatarImage);
+    };
+    room.players.forEach(resyncAvatarImage);
+    if (room.gameState && Array.isArray(room.gameState.players)) room.gameState.players.forEach(resyncAvatarImage);
     return room;
 }
 
@@ -799,6 +806,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
             room.players[existingPlayerIndex].lastActiveAt = nowIso();
             room.players[existingPlayerIndex].disconnectedAt = null;
         }
+        setAvatarImage(room.players[existingPlayerIndex], player.avatarImage);
         if (!isBotPlayerId(playerId)) {
             leavePlayerFromOtherRooms(playerId, room.roomId);
         }
@@ -813,6 +821,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         socketId: socketId,
         permission: playerId === room.admin ? 'admin' : null,
         joinedAt: nowIso(),
@@ -823,7 +832,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
     // เพิ่มใน gameState.players ด้วย (สำหรับเกม)
     // Bug #5 Fix: เพิ่ม socketId เพื่อใช้เช็คว่า online หรือไม่
     if (rejoinableGamePlayer && isRoomGameActive(room)) {
-        room.gameState.players.push({
+        const rejoined = {
             ...rejoinableGamePlayer,
             name: player.playerName,
             color: player.color,
@@ -831,7 +840,9 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
             avatarFrame: player.avatarFrame || 'none',
             socketId,
             permission: playerId === room.admin ? 'admin' : null
-        });
+        };
+        setAvatarImage(rejoined, player.avatarImage);
+        room.gameState.players.push(rejoined);
         room.rejoinableGamePlayers.delete(playerId);
     } else {
         if (!room.gameState) {
@@ -855,6 +866,7 @@ function joinRoom(roomId, playerId, socketId = null, password = null, options = 
                 color: player.color,
                 avatar: player.avatar || '👤',
                 avatarFrame: player.avatarFrame || 'none',
+                ...avatarImageField(player),
                 socketId,
                 permission: playerId === room.admin ? 'admin' : null
             });
@@ -953,7 +965,8 @@ function leaveRoom(roomId, playerId) {
                     playerName: roomPlayer.playerName,
                     color: roomPlayer.color,
                     avatar: roomPlayer.avatar || '👤',
-                    avatarFrame: roomPlayer.avatarFrame || 'none'
+                    avatarFrame: roomPlayer.avatarFrame || 'none',
+                    ...avatarImageField(roomPlayer)
                 } : null
             });
         }
@@ -1364,8 +1377,25 @@ function setAvatarImage(target, avatarImage) {
     }
 }
 
+// บางเกมเก็บก๊อปปี้ข้อมูลผู้เล่นไว้ในโครงสร้างของตัวเอง (ที่นั่ง, roster, ledger)
+// เดินหา object ที่เป็นของผู้เล่นคนนี้ (playerId ตรง + มี avatarFrame) แล้วอัปเดตรูปให้ด้วย
+// จำกัดความลึก — gameState ไม่ลึก และกันวนลูป
+function syncAvatarImageDeep(node, playerId, avatarImage, depth = 0, seen = new Set()) {
+    if (!node || typeof node !== 'object' || depth > 5 || seen.has(node)) return;
+    seen.add(node);
+    if (node.playerId === playerId && 'avatarFrame' in node) setAvatarImage(node, avatarImage);
+    const children = node instanceof Map ? node.values() : (Array.isArray(node) ? node : Object.values(node));
+    for (const child of children) {
+        if (child && typeof child === 'object') syncAvatarImageDeep(child, playerId, avatarImage, depth + 1, seen);
+    }
+}
+
 function syncPlayerProfile(playerId, updates = {}) {
     rooms.forEach(room => {
+        if (updates.avatarImage !== undefined && room.players.some(player => player.playerId === playerId)) {
+            syncAvatarImageDeep(room.gameState, playerId, updates.avatarImage);
+            if (room.rejoinableGamePlayers instanceof Map) syncAvatarImageDeep(room.rejoinableGamePlayers, playerId, updates.avatarImage);
+        }
         const roomPlayer = room.players.find(player => player.playerId === playerId);
         if (roomPlayer) {
             if (updates.playerName !== undefined) roomPlayer.playerName = updates.playerName;

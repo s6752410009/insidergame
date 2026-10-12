@@ -128,7 +128,21 @@
             '<span class="pa-emoji">' + emoji + '</span></span>';
     }
 
+    /**
+     * ฝั่ง server: ใส่ใน payload สาธารณะด้วย `...PlayerAvatar.avatarImageField(player)`
+     * ได้ { avatarImage } เฉพาะคนที่เปิดใช้รูป Google (player.avatarImage มีค่า) และไม่ใช่บอท
+     * ไม่งั้นได้ {} — payload ไม่มี key นี้เลย
+     */
+    function avatarImageField(player) {
+        if (!player || !player.avatarImage) return {};
+        const playerId = String(player.playerId || player.id || '');
+        if (player.isBot || playerId.indexOf('bot_') === 0) return {};
+        const url = normalizeAvatarImageUrl(player.avatarImage);
+        return url ? { avatarImage: url } : {};
+    }
+
     const api = {
+        avatarImageField: avatarImageField,
         FRAME_STYLES: FRAME_STYLES,
         getFrameStyle: getFrameStyle,
         hasFrame: hasFrame,

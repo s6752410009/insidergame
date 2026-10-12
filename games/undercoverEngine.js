@@ -18,6 +18,7 @@
  */
 
 const fs = require('fs');
+const { avatarImageField } = require('../public/js/playerAvatar');
 const path = require('path');
 const { gameAssetImage } = require('./gameAssets');
 
@@ -256,6 +257,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         permission: context.isAdmin ? 'admin' : null,
         role: null,
         word: null,
@@ -987,6 +989,7 @@ function buildClientState(room, viewerPlayerId) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame,
+            ...avatarImageField(player),
             alive: player.alive,
             left: !!player.left,
             online: isOnline(room, player.playerId),

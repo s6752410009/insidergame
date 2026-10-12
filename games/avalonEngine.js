@@ -11,6 +11,7 @@
 
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const IMG = id => gameAssetImage('avalon', id);
 
 const MIN_PLAYERS = 5;
@@ -211,6 +212,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         socketId: context.socketId || null,
         permission: context.isAdmin ? 'admin' : null
     };
@@ -411,6 +413,7 @@ function startGame(room) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         seat: index,
         role: roles[index],
         team: ROLE_DEFINITIONS[roles[index]].team,
@@ -1041,6 +1044,7 @@ function buildClientState(room, viewerPlayerId) {
                 color: seat.color,
                 avatar: seat.avatar,
                 avatarFrame: seat.avatarFrame,
+                ...avatarImageField(seat),
                 seat: seat.seat,
                 isSelf: seat.playerId === viewerPlayerId,
                 // ช่วงลอบสังหารไม่มีหัวหน้าแล้ว — ไม่โชว์มงกุฎค้าง

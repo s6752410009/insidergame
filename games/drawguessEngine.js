@@ -17,6 +17,7 @@
  */
 
 const fs = require('fs');
+const { avatarImageField } = require('../public/js/playerAvatar');
 const path = require('path');
 
 const MODE = 'drawguess';
@@ -396,6 +397,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         permission: context.isAdmin ? 'admin' : null,
         socketId: context.socketId || null
     };
@@ -493,6 +495,7 @@ function syncRoster(room, now = Date.now()) {
                 color: player.color,
                 avatar: player.avatar || '👤',
                 avatarFrame: player.avatarFrame || 'none',
+                ...avatarImageField(player),
                 joinedTurn: state.turnNo
             };
             if (!(id in state.scores)) state.scores[id] = 0;
@@ -506,6 +509,8 @@ function syncRoster(room, now = Date.now()) {
         known.color = player.color || known.color;
         known.avatar = player.avatar || known.avatar;
         known.avatarFrame = player.avatarFrame || known.avatarFrame;
+        if (player.avatarImage) known.avatarImage = avatarImageField(player).avatarImage;
+        else delete known.avatarImage;
         if (state.departed[id]) {
             delete state.departed[id];
             known.joinedTurn = state.turnNo;
@@ -542,6 +547,7 @@ function startGame(room, now = Date.now()) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame,
+            ...avatarImageField(player),
             joinedTurn: 0
         };
         state.scores[player.playerId] = 0;
@@ -999,6 +1005,7 @@ function computeStandings(state) {
         avatar: state.roster[id].avatar,
         color: state.roster[id].color,
         avatarFrame: state.roster[id].avatarFrame,
+        ...avatarImageField(state.roster[id]),
         score: state.scores[id] || 0,
         left: !!state.departed[id],
         hits: state.tally?.[id]?.hits || 0,
@@ -1273,6 +1280,7 @@ function buildClientState(room, viewerId, now = Date.now()) {
             color: info.color,
             avatar: info.avatar || '👤',
             avatarFrame: info.avatarFrame || 'none',
+            ...avatarImageField(info),
             score: state.scores?.[id] || 0,
             isDrawer: id === state.drawerId && inTurn,
             guessed: !!(state.guessed && state.guessed[id]) && phase !== 'lobby',

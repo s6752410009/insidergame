@@ -22,6 +22,7 @@
  */
 
 const B = require('./setthiBoard');
+const { avatarImageField } = require('../public/js/playerAvatar');
 const SK = require('./setthiSkills');
 const { randomUUID } = require('crypto');
 
@@ -193,7 +194,8 @@ function createPlayerState(player) {
         name: player.playerName || player.name || 'ผู้เล่น',
         color: player.color || '#f5c86b',
         avatar: player.avatar || '👤',
-        avatarFrame: player.avatarFrame || 'none'
+        avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player)
     };
 }
 
@@ -637,6 +639,7 @@ function computeStandings(room, winnerId = null) {
         name: seat.name,
         avatar: seat.avatar,
         avatarFrame: seat.avatarFrame,
+        ...avatarImageField(seat),
         token: seat.token,
         tokenColor: seat.tokenColor,
         isBot: isBotId(seat.playerId),
@@ -1993,6 +1996,7 @@ function startGame(room, rng = rand, options = {}) {
         color: p.color || '#f5c86b',
         avatar: p.avatar || '👤',
         avatarFrame: p.avatarFrame || 'none',
+        ...avatarImageField(p),
         token: i,
         tokenColor: TOKEN_COLORS[i % TOKEN_COLORS.length],
         colorName: TOKEN_COLOR_NAMES[i % TOKEN_COLOR_NAMES.length],
@@ -2468,6 +2472,7 @@ function buildClientState(room, viewerId) {
             name: seat.name,
             avatar: seat.avatar,
             avatarFrame: seat.avatarFrame,
+            ...avatarImageField(seat),
             color: seat.color,
             token: seat.token,
             tokenColor: seat.tokenColor,

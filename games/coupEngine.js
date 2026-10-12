@@ -15,6 +15,7 @@
 
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const COUP_IMAGE = id => gameAssetImage('coup', id);
 
 const CARD_DEFINITIONS = {
@@ -160,6 +161,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         permission: context.isAdmin ? 'admin' : null,
         influence: [],   // การ์ดที่ยังคว่ำอยู่ (ความลับ)
         revealed: [],    // การ์ดที่หงายแล้ว (เปิดเผย)
@@ -176,7 +178,8 @@ function resetRoomGame(room) {
             playerName: player.playerName,
             color: player.color,
             avatar: player.avatar,
-            avatarFrame: player.avatarFrame
+            avatarFrame: player.avatarFrame,
+            ...avatarImageField(player)
         }, { isAdmin: player.permission === 'admin' }))
     };
 }
@@ -1044,6 +1047,7 @@ function buildClientState(room, viewerPlayerId) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame,
+            ...avatarImageField(player),
             coins: player.coins,
             alive: player.alive,
             // ระหว่างแลกการ์ด การ์ดในมือถูกย้ายไปกองตัวเลือกชั่วคราว — นับเท่าที่จะได้เก็บคืน

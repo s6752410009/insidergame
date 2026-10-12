@@ -11,6 +11,7 @@
 
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const LIAR_IMAGE = id => gameAssetImage('liar', id);
 const CARD_BACK = LIAR_IMAGE('back');
 
@@ -134,6 +135,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         permission: context.isAdmin ? 'admin' : null,
         hand: [],
         lives: STARTING_LIVES,
@@ -153,7 +155,8 @@ function resetRoomGame(room) {
             playerName: player.playerName,
             color: player.color,
             avatar: player.avatar,
-            avatarFrame: player.avatarFrame
+            avatarFrame: player.avatarFrame,
+            ...avatarImageField(player)
         }, { isAdmin: player.permission === 'admin' }))
     };
 }
@@ -402,7 +405,7 @@ function startGame(room) {
     state.deckSeats = state.players.length;
     // ลำดับที่นั่งเดิม — ใช้ใส่ที่นั่งคืนตอนมีคนออก (roomManager ลบออกจาก players ก่อน engine เห็น)
     state.seats = state.players.map(p => ({
-        playerId: p.playerId, name: p.name, color: p.color, avatar: p.avatar, avatarFrame: p.avatarFrame
+        playerId: p.playerId, name: p.name, color: p.color, avatar: p.avatar, avatarFrame: p.avatarFrame, ...avatarImageField(p)
     }));
     state.players.forEach(player => {
         player.lives = state.punishment === 'lives' ? STARTING_LIVES : 1;
@@ -604,7 +607,8 @@ function restoreLeftSeat(room, playerId) {
             playerName: snapshot?.name || seat.name || 'ผู้เล่น',
             color: seat.color,
             avatar: seat.avatar,
-            avatarFrame: seat.avatarFrame
+            avatarFrame: seat.avatarFrame,
+            ...avatarImageField(seat)
         }),
         lives: snapshot ? snapshot.lives : 0,
         shots: snapshot ? snapshot.shots : 0,
@@ -825,6 +829,7 @@ function buildClientState(room, viewerPlayerId) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame,
+            ...avatarImageField(player),
             lives: player.lives,
             // ยิงไปแล้วกี่นัด (ทุกคนเห็น) — ช่องที่มีกระสุน (bullet) ห้ามส่งออกไป
             shots: Number(player.shots) || 0,

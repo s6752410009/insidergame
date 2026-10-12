@@ -6,6 +6,7 @@
  */
 
 const walletManager = require('../managers/walletManager');
+const { avatarImageField } = require('../public/js/playerAvatar');
 const {
     CARD_BACK,
     CATEGORY,
@@ -151,6 +152,7 @@ function createPlayerState(player) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         hand: [],
         kept: [],
         ready: false,
@@ -1400,6 +1402,7 @@ function buildClientState(room, viewerPlayerId) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame,
+            ...avatarImageField(player),
             stack: player.stack,
             sittingOut: player.sittingOut,
             ready: player.ready,

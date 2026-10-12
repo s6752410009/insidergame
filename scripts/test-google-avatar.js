@@ -134,6 +134,32 @@ async function rejects(promise, pattern, message) {
     const evil = PlayerAvatar.render({ avatar: '<b>', avatarImage: 'https://evil.example/x.png' });
     check(!evil.includes('<img') && evil.includes('&lt;b&gt;'), 'disallowed URL ignored and emoji escaped');
 
+    console.log('public payloads (room + game state)');
+    check(JSON.stringify(PlayerAvatar.avatarImageField({ playerId: 'x', avatarImage: verified.picture })) === JSON.stringify({ avatarImage: verified.picture }), 'avatarImageField passes allowed image');
+    check(Object.keys(PlayerAvatar.avatarImageField({ playerId: 'bot_1', avatarImage: verified.picture })).length === 0, 'avatarImageField drops bots');
+    check(Object.keys(PlayerAvatar.avatarImageField({ playerId: 'x' })).length === 0, 'avatarImageField omits key when no image');
+    const roomManager = require('../managers/roomManager');
+    const pm = require('../managers/playerManager'); // roomManager ใช้ตัวนี้ (cache ล่าสุด)
+    const hostId = randomUUID();
+    const photoId = randomUUID();
+    await pm.createOrGetPlayer(hostId);
+    await pm.createOrGetPlayer(photoId);
+    await pm.linkGoogleAccount(photoId, 'sub-room-' + randomUUID(), 'room@example.com', verified.picture);
+    await pm.setUseGooglePhoto(photoId, true);
+    const room = roomManager.createRoom({ name: 'avatar test', gameMode: 'werewolf', maxPlayers: 8 }, hostId);
+    roomManager.joinRoom(room.roomId, hostId, 'sock-host');
+    roomManager.joinRoom(room.roomId, photoId, 'sock-photo');
+    const live = roomManager.getRoom(room.roomId);
+    const roomPhoto = live.players.find(p => p.playerId === photoId);
+    const roomHost = live.players.find(p => p.playerId === hostId);
+    const gamePhoto = live.gameState.players.find(p => p.playerId === photoId);
+    check(roomPhoto.avatarImage === verified.picture, 'room player carries avatarImage when opted in');
+    check(gamePhoto && gamePhoto.avatarImage === verified.picture, 'game-state player carries avatarImage');
+    check(!('avatarImage' in roomHost), 'players without photo have no avatarImage key');
+    await pm.setUseGooglePhoto(photoId, false);
+    roomManager.syncPlayerProfile(photoId, { avatarImage: pm.getPlayer(photoId).avatarImage || null });
+    check(!('avatarImage' in roomPhoto) && !('avatarImage' in gamePhoto), 'opt-out sync removes avatarImage from room + game state');
+
     console.log(`\nPASS test-google-avatar: ${passed} checks`);
     process.exit(0);
 })().catch(error => {

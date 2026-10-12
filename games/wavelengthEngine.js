@@ -16,6 +16,7 @@
 
 const { CARDS } = require('./wavelengthCards');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const MODE = 'wavelength';
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -206,6 +207,7 @@ function createPlayerState(player) {
         color: player.color || '#f5c86b',
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         score: 0,
         gives: 0,
         // false = เข้ามากลางเกม รอเข้าร่วมรอบหน้า
@@ -281,6 +283,7 @@ function syncLedger(room) {
             color: p.color,
             avatar: p.avatar,
             avatarFrame: p.avatarFrame,
+            ...avatarImageField(p),
             score: p.score,
             gives: p.gives,
             roundsPlayed: p.roundsPlayed,
@@ -937,6 +940,7 @@ function revealRound(room, env = null) {
             color: p.color,
             avatar: p.avatar,
             avatarFrame: p.avatarFrame,
+            ...avatarImageField(p),
             pin: p.pin,
             distance: scored.distance,
             points: scored.points,
@@ -1309,6 +1313,7 @@ function buildClientState(room, viewerId) {
         color: p.color,
         avatar: p.avatar,
         avatarFrame: p.avatarFrame,
+        ...avatarImageField(p),
         score: p.score,
         gives: p.gives,
         active: !!p.active,
@@ -1342,6 +1347,7 @@ function buildClientState(room, viewerId) {
                 color: live ? live.color : row.color,
                 avatar: live ? live.avatar : row.avatar,
                 avatarFrame: live ? live.avatarFrame : row.avatarFrame,
+                ...avatarImageField(live || row),
                 score: live ? live.score : row.score,
                 left: !live
             };

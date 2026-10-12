@@ -22,6 +22,7 @@
 
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const START_CHIPS = 1000;
 const DEALER_BANK = 5000;
 const REBUY_CHIPS = 1000;
@@ -259,6 +260,7 @@ function createPlayerState(player) {
         color: player.color || '#f5c86b',
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         chips: START_CHIPS,
         buyIn: START_CHIPS,
         rebuyUsed: false,
@@ -1302,6 +1304,7 @@ function buildClientState(room, viewerId) {
             color: p.color,
             avatar: p.avatar,
             avatarFrame: p.avatarFrame,
+            ...avatarImageField(p),
             chips: p.chips,
             bet: p.bet,
             decided: p.decided,

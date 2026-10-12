@@ -1,5 +1,6 @@
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 function werewolfRoleImage(id) {
     return gameAssetImage('werewolf', id);
 }
@@ -857,6 +858,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         role: '',
         roleInfo: null,
         alive: true,
@@ -1329,7 +1331,8 @@ function resetRoomGame(room) {
             playerName: player.playerName,
             color: player.color,
             avatar: player.avatar,
-            avatarFrame: player.avatarFrame
+            avatarFrame: player.avatarFrame,
+            ...avatarImageField(player)
         }, {
             socketId: player.socketId,
             isAdmin: player.permission === 'admin'
@@ -3796,6 +3799,7 @@ function buildClientState(room, viewerPlayerId, options = {}) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame || 'none',
+            ...avatarImageField(player),
             alive: player.alive !== false,
             isSelf: player.playerId === viewerPlayerId,
             revealedRole: isFinished

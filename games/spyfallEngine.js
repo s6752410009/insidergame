@@ -11,6 +11,7 @@ const MIN_PLAYERS = 3;
 
 const { gameAssetImage } = require('./gameAssets');
 
+const { avatarImageField } = require('../public/js/playerAvatar');
 const SPYFALL_IMAGE = (id) => gameAssetImage('spyfall', id);
 
 const ROLE_DEFINITIONS = {
@@ -153,6 +154,7 @@ function createPlayerState(player, context = {}) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         permission: context.isAdmin ? 'admin' : null,
         role: '',
         roleInfo: null,
@@ -170,7 +172,8 @@ function resetRoomGame(room) {
             playerName: player.playerName,
             color: player.color,
             avatar: player.avatar,
-            avatarFrame: player.avatarFrame
+            avatarFrame: player.avatarFrame,
+            ...avatarImageField(player)
         }, {
             socketId: player.socketId,
             isAdmin: player.permission === 'admin'
@@ -1372,6 +1375,7 @@ function buildClientState(room, playerId) {
             color: self.color,
             avatar: self.avatar,
             avatarFrame: self.avatarFrame || 'none',
+            ...avatarImageField(self),
             role: self.role,
             roleInfo: self.roleInfo,
             isSpy,
@@ -1385,6 +1389,7 @@ function buildClientState(room, playerId) {
             name: player.name,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame || 'none',
+            ...avatarImageField(player),
             color: player.color,
             isSelf: player.playerId === self.playerId,
             isDealer: state.match?.dealerId === player.playerId,

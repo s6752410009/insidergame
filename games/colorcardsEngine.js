@@ -1,3 +1,4 @@
+const { avatarImageField } = require('../public/js/playerAvatar');
 /**
  * ไพ่ทิ้งสี — เกมไพ่สีแบบทิ้งให้หมดมือ 2–10 คน (ใส่บอทได้)
  *
@@ -156,7 +157,8 @@ function createPlayerState(player) {
         name: player.playerName || player.name || 'ผู้เล่น',
         color: player.color || '#f5c86b',
         avatar: player.avatar || '👤',
-        avatarFrame: player.avatarFrame || 'none'
+        avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player)
     };
 }
 
@@ -334,6 +336,7 @@ function startGame(room, rng = Math.random, options = {}) {
         color: p.color || '#f5c86b',
         avatar: p.avatar || '👤',
         avatarFrame: p.avatarFrame || 'none',
+        ...avatarImageField(p),
         hand: [],
         score: 0,
         roundsWon: 0,
@@ -1182,6 +1185,7 @@ function buildClientState(room, viewerId) {
             color: seat.color,
             avatar: seat.avatar,
             avatarFrame: seat.avatarFrame,
+            ...avatarImageField(seat),
             count: seat.hand.length,
             score: seat.score,
             roundsWon: seat.roundsWon,

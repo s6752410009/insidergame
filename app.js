@@ -52,6 +52,9 @@ const insiderEngine = require('./games/insiderEngine');
 const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
+// ตัว render รูปผู้เล่นตัวเดียวกับฝั่งเบราว์เซอร์ (public/js/playerAvatar.js) — ใช้ใน EJS + payload
+const PlayerAvatar = require('./public/js/playerAvatar');
+const { avatarImageField } = PlayerAvatar;
 const soloStats = require('./managers/soloStatsManager');
 const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
@@ -786,6 +789,7 @@ function resetInsiderRoomAfterGame(room) {
             color: p.color,
             avatar: p.avatar || '👤',
             avatarFrame: p.avatarFrame || 'none',
+            ...avatarImageField(p),
             isGhost: !!p.isGhost,
             role: null,
             vote1: null,
@@ -943,7 +947,8 @@ function buildInsiderVote2Payload(room) {
             name: p.name,
             color: p.color,
             avatar: p.avatar || '👤',
-            avatarFrame: p.avatarFrame || 'none'
+            avatarFrame: p.avatarFrame || 'none',
+            ...avatarImageField(p)
         }));
     return {
         players: candidates,
@@ -1486,7 +1491,7 @@ function broadcastChatToAdmins(io, roomId, payload, channel = 'public') {
 /**
  * Send chat message to room
  */
-function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo = null, playerId = null, avatar = '👤', avatarFrame = 'none') {
+function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo = null, playerId = null, avatar = '👤', avatarFrame = 'none', avatarImage = null) {
     const messageId = `msg-${nextMessageId++}`;
     let messageType = 'player';
     const displayName = playerName === 'System' ? playerName : buildDisplayPlayerName(playerId, playerName);
@@ -1513,6 +1518,7 @@ function sendChatMessageToRoom(io, roomId, playerName, message, color, replyTo =
         playerId: playerId,
         avatar: avatar,
         avatarFrame: avatarFrame || 'none',
+        ...avatarImageField({ playerId, avatarImage }),
         isSiteAdmin: isSiteAdmin,
         messageType: messageType,
         timestamp: new Date().toLocaleTimeString('th-TH', { 
@@ -2062,6 +2068,7 @@ function buildRoomUpdatePayload(room) {
             color: player.color,
             avatar: player.avatar,
             avatarFrame: player.avatarFrame,
+            ...avatarImageField(player),
             isSiteAdmin: isSiteAdminPlayer(player.playerId),
             permission: player.permission,
             online: !!player.socketId
@@ -2223,6 +2230,7 @@ function sendWerewolfNightTeamMessage(io, room, player, message, replyTo = null)
         playerId: player.playerId,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         isSiteAdmin: isSiteAdminPlayer(player.playerId),
         messageType: 'wolf-team',
         timestamp: new Date().toLocaleTimeString('th-TH', {
@@ -2272,6 +2280,7 @@ function sendWerewolfGhostMessage(io, room, player, message, replyTo = null) {
         playerId: player.playerId,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         isSiteAdmin: isSiteAdminPlayer(player.playerId),
         messageType: 'ghost',
         timestamp: new Date().toLocaleTimeString('th-TH', {
@@ -5219,6 +5228,9 @@ app.use(function(req, res, next) {
     res.locals.publicBaseUrl = PUBLIC_BASE_URL;
     res.locals.safeJson = safeJsonForScript;
     res.locals.googleClientId = googleAuth.GOOGLE_CLIENT_ID || null;
+    // EJS: <%- renderPlayerAvatar(player, { size: 64 }) %> — HTML ชุดเดียวกับ window.renderPlayerAvatar
+    res.locals.renderPlayerAvatar = PlayerAvatar.render;
+    res.locals.renderAvatarContent = PlayerAvatar.renderContent;
     res.locals.buildId = BUILD_ID;
     next();
 });
@@ -5711,6 +5723,7 @@ function soloLeaderboard(gameId, limit = 20) {
                 color: player.color,
                 avatar: player.avatar || '👤',
                 avatarFrame: player.avatarFrame || 'none',
+                ...avatarImageField(player),
                 score: Number(entry.score),
                 label: entry.label || String(entry.score)
             };
@@ -6661,6 +6674,7 @@ function enrichLeaderboardEntries(entries) {
             playerName: resolveDisplayPlayerName(entry.playerId, entry.playerName),
             avatar: player?.avatar || '👤',
             avatarFrame: player?.avatarFrame || 'none',
+            ...avatarImageField(player),
             color: player?.color || '#3498db'
         };
     });
@@ -6715,6 +6729,7 @@ app.get('/api/player/:playerId/profile', function(req, res) {
         color: player.color,
         avatar: player.avatar || '👤',
         avatarFrame: player.avatarFrame || 'none',
+        ...avatarImageField(player),
         createdAt: player.createdAt,
         stats: stats ? {
             totalGames: stats.totalGames,
@@ -11760,7 +11775,7 @@ io.sockets.on('connection', function(socket) {
         if (room.settings.gameMode === 'werewolf' && ['day-discussion', 'day-vote'].includes(room.gameState?.phase)) {
             try { werewolfBots.noteChat(room, playerId, safeMessage); } catch (error) { /* อ่านไม่ออกก็ข้าม */ }
         }
-        sendChatMessageToRoom(io, roomId, player.playerName, safeMessage, player.color, data.replyTo, playerId, player.avatar || '👤', player.avatarFrame || 'none');
+        sendChatMessageToRoom(io, roomId, player.playerName, safeMessage, player.color, data.replyTo, playerId, player.avatar || '👤', player.avatarFrame || 'none', player.avatarImage || null);
     });
 
     // GM Quick Reaction (ผู้ดำเนินเกมตอบด่วน)
