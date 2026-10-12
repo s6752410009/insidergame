@@ -1283,3 +1283,12 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 .st-toll.is-huge { background: linear-gradient(160deg, oklch(0.5 0.2 27), oklch(0.32 0.12 22)); border-color: #ffe28a; transform-origin: 50% 50%; }
 .st-toll.is-huge b { font-size: 2.4rem; color: #fff4d6; text-shadow: 0 2px 0 oklch(0.3 0.12 27), 0 0 18px oklch(0.75 0.18 40); }
 .st-salary.is-double { color: #45f09a; }
+
+/* รูป Google บนโทเคน (playerAvatar.js renderContent) — เต็มวงตามขนาดโทเคน */
+.st-token .pa-content { width: 100% !important; height: 100% !important; }
+.st-token .pa-has-img .pa-img { border-radius: 50%; }
+/* กรอบโปรไฟล์ = ขอบ gradient รอบโทเคน */
+.st-token[data-frame] {
+  border-color: transparent;
+  background: radial-gradient(circle at 34% 28%, oklch(1 0 0 / 0.7), transparent 40%) padding-box, var(--tk) padding-box, var(--pa-frame) border-box;
+}

@@ -255,6 +255,7 @@
   .cn-roster.is-blue h3 { color: var(--cn-blue-ink); }
   .cn-member { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.84rem; }
   .cn-member .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cn-member .cn-member-avatar { font-size: 11px; }
   .cn-member .dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--cn-good); }
   .cn-member.is-off { opacity: 0.5; }
   .cn-member.is-off .dot { background: var(--cn-muted); }
@@ -806,13 +807,20 @@ $(function() {
     $('#cnLog').html(cols.join(''));
   }
 
+  // รูปผู้เล่น + กรอบ (รูป Google ถ้าเปิดใช้) จากตัว render กลาง
+  function memberAvatar(m) {
+    return typeof window.renderPlayerAvatar === 'function'
+      ? window.renderPlayerAvatar({ playerId: m.playerId, avatar: m.avatar, avatarFrame: m.avatarFrame, avatarImage: m.avatarImage, color: m.color, playerName: m.name }, { size: 22, className: 'cn-member-avatar' })
+      : '';
+  }
+
   function renderTeams() {
     const t = S.teams || {};
     $('#cnTeams').html(['red', 'blue'].map(team => {
       const members = ((t[team] || {}).members || []).filter(m => !m.left);
       members.sort((a, b) => (a.role === 'spymaster' ? -1 : 0) - (b.role === 'spymaster' ? -1 : 0));
       return '<div class="cn-roster is-' + team + '"><h3>' + TEAM[team] + '</h3>' + members.map(m =>
-        '<div class="cn-member' + (m.online ? '' : ' is-off') + (m.playerId === playerId ? ' is-me' : '') + '"><span class="dot" aria-hidden="true"></span>' +
+        '<div class="cn-member' + (m.online ? '' : ' is-off') + (m.playerId === playerId ? ' is-me' : '') + '"><span class="dot" aria-hidden="true"></span>' + memberAvatar(m) +
         '<span class="nm">' + esc(m.name) + '</span>' + (m.role === 'spymaster' ? '<span class="tag">หัวหน้า</span>' : '') + (m.online ? '' : '<span class="tag">หลุด</span>') + '</div>').join('') + '</div>';
     }).join(''));
     const spect = (S.spectators || []).filter(m => !m.left);

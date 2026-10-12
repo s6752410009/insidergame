@@ -88,9 +88,27 @@
   var PHOTO_BASE = '/assets/games/setthi/photos/';
   var NO_PHOTO = { chance: 1, tax: 1 };
   function placeSrc(name, size) { return NO_PHOTO[name] ? artSrc(name) : PHOTO_BASE + name + '-' + (size || 't') + '.webp'; }
+  /** หน้าโทเคน: รูป Google (ถ้าเจ้าของเปิดใช้) ไม่งั้น emoji — ตัว render กลาง playerAvatar.js */
+  function tokenFace(seat) {
+    var emoji = '<span>' + esc(seat.avatar || '👤') + '</span>';
+    var PA = window.PlayerAvatar;
+    return PA && seat.avatarImage ? PA.renderContent(seat, { size: 40, emojiHtml: emoji }) : emoji;
+  }
+  /** กรอบโปรไฟล์ = ขอบโทเคนเป็น gradient ของกรอบ (สีโทเคนยังอยู่ข้างใน ให้แยกคนได้เหมือนเดิม) */
+  function tokenFrameAttr(seat) {
+    var PA = window.PlayerAvatar;
+    var frame = seat && seat.avatarFrame;
+    if (!PA || !frame || !PA.hasFrame(frame)) return '';
+    return ' data-frame="' + esc(frame) + '"';
+  }
+  function tokenStyle(seat) {
+    var PA = window.PlayerAvatar;
+    var frame = seat && seat.avatarFrame;
+    return '--tk:' + esc(seat.tokenColor) + (PA && frame && PA.hasFrame(frame) ? ';--pa-frame:' + esc(PA.getFrameStyle(frame)) : '');
+  }
   function tokenHtml(seat, extra) {
     if (!seat) return '<span class="st-token" style="--tk:#6c7a93"><span>🏦</span></span>';
-    return '<span class="st-token ' + (extra || '') + '" style="--tk:' + esc(seat.tokenColor) + '" title="' + esc(seat.name) + '"><span>' + esc(seat.avatar || '👤') + '</span></span>';
+    return '<span class="st-token ' + (extra || '') + '"' + tokenFrameAttr(seat) + ' style="' + tokenStyle(seat) + '" title="' + esc(seat.name) + '">' + tokenFace(seat) + '</span>';
   }
   /** เครื่องหมายเจ้าของบนธง: อวาตาร์ (ถ้าไม่ซ้ำใคร) ไม่งั้นเลขที่นั่ง — คู่กับสี ให้คนตาบอดสีแยกได้ */
   function markOf(seat) {
@@ -391,13 +409,20 @@
   }
   function ensureTokens(state) {
     (state.seats || []).forEach(function(s) {
-      if (tokenEls[s.playerId]) return;
-      var t = document.createElement('div');
-      t.className = 'st-token st-piece';
-      t.style.setProperty('--tk', s.tokenColor);
-      t.innerHTML = '<span>' + esc(s.avatar || '👤') + '</span>';
-      el.tokens.appendChild(t);
-      tokenEls[s.playerId] = t;
+      // หน้าตาโทเคนเปลี่ยนได้กลางเกม (เปิด/ปิดใช้รูป Google) — เทียบ key แล้ววาดใหม่เฉพาะตอนเปลี่ยน
+      var faceKey = (s.avatar || '') + '|' + (s.avatarImage || '') + '|' + (s.avatarFrame || '');
+      var t = tokenEls[s.playerId];
+      if (!t) {
+        t = document.createElement('div');
+        t.className = 'st-token st-piece';
+        el.tokens.appendChild(t);
+        tokenEls[s.playerId] = t;
+      }
+      if (t.getAttribute('data-face') === faceKey) return;
+      t.setAttribute('data-face', faceKey);
+      t.setAttribute('style', (t.getAttribute('style') || '').replace(/--tk:[^;]*;?|--pa-frame:[^;]*;?/g, '') + ';' + tokenStyle(s));
+      if (tokenFrameAttr(s)) t.setAttribute('data-frame', s.avatarFrame); else t.removeAttribute('data-frame');
+      t.innerHTML = tokenFace(s);
     });
   }
   function placeTokens(model, skipId) {
