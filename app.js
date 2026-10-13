@@ -5885,9 +5885,17 @@ app.get('/how-to-play', function(req, res) {
         .filter(role => role && role.id && role.image)
         .map(role => ({ id: role.id, thaiName: role.thaiName, team: role.team, image: role.image }))
         .sort((a, b) => (teamOrder[a.team] ?? 9) - (teamOrder[b.team] ?? 9));
+    // จำนวนผู้เล่นของแต่ละเกม อ่านจาก engine ตรง ๆ หน้าวิธีเล่นจะได้ไม่ค้างตัวเลขเก่า
+    const gameLimits = {};
+    ['insider', 'werewolf', 'spyfall', 'undercover', 'avalon', 'blackmarket', 'coup', 'liar', 'poker5', 'poker4',
+        'pokdeng', 'colorcards', 'codenames', 'wavelength', 'drawguess', 'setthi'].forEach(id => {
+        const engine = getGameEngine(id);
+        if (engine && engine.minPlayers) gameLimits[id] = { min: engine.minPlayers, max: engine.maxPlayers };
+    });
     res.render('howToPlay.ejs', {
         pokerRankGuide: rankGuideForClient(),
-        werewolfRoleGallery
+        werewolfRoleGallery,
+        gameLimits
     });
 });
 

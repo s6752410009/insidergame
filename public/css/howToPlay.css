@@ -1,0 +1,1218 @@
+:root {
+  --guide-bg: #07080c;
+  --guide-surface: #12141c;
+  --guide-panel: rgba(255, 255, 255, 0.06);
+  --guide-ink: #ebeef6;
+  --guide-muted: #9aa7b9;
+  --guide-line: rgba(148, 176, 255, 0.12);
+  --guide-accent: #ff4466;
+  --guide-accent-2: #5bc0ff;
+  --guide-deep: #b8324a;
+  --guide-gold: #f0c14d;
+  --guide-shadow: 0 24px 56px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.content {
+  background:
+    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(91, 192, 255, 0.14), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 92% 0%, rgba(255, 68, 102, 0.11), transparent 50%),
+    radial-gradient(ellipse 120% 80% at 50% 120%, rgba(240, 193, 77, 0.06), transparent 45%),
+    linear-gradient(180deg, #05060a 0%, #0e1018 40%, #08090e 100%);
+}
+
+.guide-page {
+  max-width: 1180px;
+  margin: 24px auto 40px;
+  padding: 0 18px 24px;
+  color: var(--guide-ink);
+  font-family: 'Bai Jamjuree', sans-serif;
+  text-align: left;
+}
+
+.guide-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  background:
+    radial-gradient(ellipse 120% 80% at 100% -20%, rgba(91, 192, 255, 0.12), transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(255, 68, 102, 0.08), transparent 40%),
+    linear-gradient(155deg, #13151f 0%, #0f1118 50%, #0c0e14 100%);
+  box-shadow: var(--guide-shadow);
+}
+
+.guide-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(91, 192, 255, 0.12);
+  color: var(--guide-accent-2);
+  border: 1px solid rgba(91, 192, 255, 0.22);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guide-title {
+  margin: 0;
+  max-width: 12ch;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4.6rem);
+  line-height: 0.94;
+  letter-spacing: -0.03em;
+}
+
+.guide-copy {
+  max-width: 62ch;
+  margin: 16px 0 0;
+  color: var(--guide-muted);
+  font-size: 1.03rem;
+  line-height: 1.72;
+}
+
+.guide-card {
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #161822 0%, #101219 100%);
+  box-shadow: var(--guide-shadow);
+}
+
+.guide-card.mode-insider {
+  border-color: rgba(255, 68, 102, 0.35);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(255, 68, 102, 0.12), transparent 55%),
+    linear-gradient(180deg, #1a1518 0%, #121016 55%, #0e0d10 100%);
+}
+
+.guide-card.mode-werewolf {
+  border-color: rgba(91, 192, 255, 0.32);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(91, 192, 255, 0.11), transparent 55%),
+    linear-gradient(180deg, #141820 0%, #0f131a 55%, #0c0f14 100%);
+}
+
+.guide-card.mode-blackmarket {
+  border-color: rgba(240, 193, 77, 0.32);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(240, 193, 77, 0.1), transparent 55%),
+    linear-gradient(180deg, #181612 0%, #121110 55%, #0e0d0b 100%);
+}
+
+.guide-card.mode-coup {
+  border-color: rgba(196, 141, 255, 0.35);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(168, 85, 247, 0.12), transparent 55%),
+    linear-gradient(180deg, #18141f 0%, #121018 55%, #0e0c12 100%);
+}
+
+.guide-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guide-card.mode-insider .guide-mode-badge {
+  background: rgba(255, 68, 102, 0.14);
+  color: #ff8a9d;
+  border: 1px solid rgba(255, 68, 102, 0.35);
+}
+
+.guide-card.mode-werewolf .guide-mode-badge {
+  background: rgba(91, 192, 255, 0.12);
+  color: #8fd4ff;
+  border: 1px solid rgba(91, 192, 255, 0.35);
+}
+
+.guide-card.mode-blackmarket .guide-mode-badge {
+  background: rgba(240, 193, 77, 0.12);
+  color: #efd07a;
+  border: 1px solid rgba(240, 193, 77, 0.32);
+}
+
+.guide-card.mode-coup .guide-mode-badge {
+  background: rgba(196, 141, 255, 0.14);
+  color: #d4b3ff;
+  border: 1px solid rgba(196, 141, 255, 0.35);
+}
+
+.guide-card.mode-avalon {
+  border-color: rgba(110, 163, 245, 0.35);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(59, 110, 200, 0.16), transparent 55%),
+    linear-gradient(180deg, #121826 0%, #0f141f 55%, #0b0f18 100%);
+}
+.guide-card.mode-avalon .guide-mode-badge {
+  background: rgba(110, 163, 245, 0.14);
+  color: #a9c8ff;
+  border: 1px solid rgba(110, 163, 245, 0.35);
+}
+.guide-avalon-roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.guide-avalon-role { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
+.guide-avalon-role img { width: 100%; max-width: 120px; height: auto; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 8px; border: 2px solid rgba(232, 185, 90, 0.75); box-shadow: 0 6px 14px rgba(0,0,0,0.45); background: #141a2a; }
+.guide-avalon-role strong { font-size: 0.86rem; }
+.guide-credit { margin: 10px 0 0; font-size: 0.74rem; color: #8f9bb3; }
+.guide-credit a { color: #c9b27a; }
+.guide-avalon-role span { font-size: 0.76rem; color: #aab4c8; line-height: 1.35; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .guide-avalon-roles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.guide-card.mode-undercover {
+  border-color: rgba(245, 200, 107, 0.34);
+  background: linear-gradient(180deg, #1a2332 0%, #141b27 60%, #10151e 100%);
+}
+
+.guide-card.mode-undercover .guide-mode-badge {
+  background: rgba(245, 200, 107, 0.14);
+  color: #fde68a;
+  border: 1px solid rgba(245, 200, 107, 0.38);
+}
+
+.guide-card.mode-liar {
+  border-color: rgba(248, 113, 113, 0.35);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(220, 38, 38, 0.14), transparent 55%),
+    linear-gradient(180deg, #1c1212 0%, #141010 55%, #0e0c0c 100%);
+}
+
+.guide-card.mode-liar .guide-mode-badge {
+  background: rgba(220, 38, 38, 0.18);
+  color: #fecaca;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.guide-card.mode-poker {
+  border-color: rgba(74, 222, 128, 0.32);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(22, 101, 52, 0.18), transparent 55%),
+    linear-gradient(180deg, #101814 0%, #0e1410 55%, #0c100e 100%);
+}
+
+.guide-card.mode-poker .guide-mode-badge {
+  background: rgba(22, 101, 52, 0.2);
+  color: #bbf7d0;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+}
+
+.guide-card.mode-poker4 {
+  border-color: rgba(248, 113, 113, 0.32);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(153, 27, 27, 0.2), transparent 55%),
+    linear-gradient(180deg, #181010 0%, #14100e 55%, #100c0c 100%);
+}
+
+.guide-card.mode-poker4 .guide-mode-badge {
+  background: rgba(153, 27, 27, 0.22);
+  color: #fecaca;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.guide-card.mode-pokdeng {
+  border-color: rgba(245, 200, 107, 0.3);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(179, 38, 46, 0.22), transparent 55%),
+    linear-gradient(180deg, #1a0f10 0%, #150d0e 55%, #110b0c 100%);
+}
+
+.guide-card.mode-pokdeng .guide-mode-badge {
+  background: rgba(179, 38, 46, 0.25);
+  color: #fde68a;
+  border: 1px solid rgba(245, 200, 107, 0.4);
+}
+
+.guide-card.mode-drawguess {
+  border-color: rgba(125, 211, 252, 0.3);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(56, 189, 248, 0.2), transparent 55%),
+    linear-gradient(180deg, #111c2a 0%, #0f1824 55%, #0c141e 100%);
+}
+
+.guide-card.mode-drawguess .guide-mode-badge {
+  background: rgba(56, 189, 248, 0.2);
+  color: #bae6fd;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+}
+
+.guide-card.mode-codenames {
+  border-color: rgba(245, 200, 107, 0.3);
+  background:
+    radial-gradient(ellipse 80% 70% at 0% -20%, rgba(229, 72, 77, 0.16), transparent 60%),
+    radial-gradient(ellipse 80% 70% at 100% -20%, rgba(59, 130, 246, 0.18), transparent 60%),
+    linear-gradient(180deg, #1a2332 0%, #141b27 60%, #10151e 100%);
+}
+
+.guide-card.mode-codenames .guide-mode-badge {
+  background: rgba(245, 200, 107, 0.14);
+  color: #fde68a;
+  border: 1px solid rgba(245, 200, 107, 0.38);
+}
+
+.guide-card.mode-wavelength {
+  border-color: rgba(94, 234, 212, 0.28);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(20, 184, 166, 0.2), transparent 55%),
+    linear-gradient(180deg, #0f1b2b 0%, #0d1726 55%, #0b1320 100%);
+}
+
+.guide-card.mode-wavelength .guide-mode-badge {
+  background: rgba(20, 184, 166, 0.2);
+  color: #99f6e4;
+  border: 1px solid rgba(94, 234, 212, 0.4);
+}
+
+.wl-howto-dial { display: block; width: min(100%, 320px); height: auto; margin: 12px auto 4px; }
+
+.guide-card.mode-colorcards {
+  border-color: rgba(96, 165, 250, 0.32);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(37, 99, 235, 0.22), transparent 55%),
+    linear-gradient(180deg, #1a2332 0%, #151c2a 55%, #111722 100%);
+}
+
+.guide-card.mode-colorcards .guide-mode-badge {
+  background: rgba(37, 99, 235, 0.22);
+  color: #f5c86b;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+}
+
+.cc-howto-swatches { display: inline-flex; gap: 4px; vertical-align: middle; margin-right: 8px; }
+
+.guide-card.mode-setthi {
+  border-color: rgba(245, 200, 107, 0.36);
+  background:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(245, 200, 107, 0.18), transparent 55%),
+    linear-gradient(180deg, #1a2332 0%, #151c2a 55%, #111722 100%);
+}
+.guide-card.mode-setthi .guide-mode-badge {
+  background: rgba(245, 200, 107, 0.16);
+  color: #f5c86b;
+  border: 1px solid rgba(245, 200, 107, 0.45);
+}
+.st-howto-bands { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+.st-howto-bands i { width: 10px; height: 18px; border-radius: 3px; display: inline-block; }
+.cc-howto-swatches i { width: 16px; height: 22px; border-radius: 4px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); }
+
+.pd-howto-cards { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+.pd-howto-cards img { width: 26px; height: 36px; border-radius: 3px; }
+
+.guide-poker-ranks {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.guide-poker-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(74, 222, 128, 0.12);
+}
+
+.guide-poker-rank-n {
+  flex: 0 0 1.3em;
+  color: #f5c86b;
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.guide-poker-mini {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.guide-poker-mini img {
+  width: 34px;
+  height: 48px;
+  border-radius: 5px;
+  object-fit: cover;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+  background: #0b1a12;
+}
+
+.guide-poker-copy b {
+  display: block;
+  color: var(--guide-ink);
+  font-size: 0.95rem;
+}
+
+.guide-poker-copy small {
+  color: var(--guide-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.guide-coup-roles {
+  display: grid;
+  /* คอลัมน์แคบ (หน้าจอกว้างแบ่ง 3 คอลัมน์) ห้ามบีบการ์ดจนตัวหนังสือแตกทีละคำ */
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.guide-coup-role {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 10px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(196, 141, 255, 0.18);
+  text-align: left;
+}
+
+.guide-coup-role img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: top center;
+  background: #1c1030;
+}
+
+.guide-coup-role strong,
+.guide-coup-role span {
+  padding: 0 10px;
+}
+
+.guide-coup-role strong {
+  color: #f3f6fc;
+  font-size: 0.92rem;
+}
+
+.guide-coup-role span {
+  color: #c8d2e3;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.ww-howto-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ww-howto-role {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+}
+
+.ww-howto-role img {
+  display: block;
+  width: 100%;
+  max-width: 96px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 45%, #24345a, #0b1020 72%);
+  border: 1px solid rgba(250, 204, 21, 0.28);
+}
+
+.ww-howto-role.team-werewolf img { border-color: rgba(239, 68, 68, 0.5); }
+.ww-howto-role.team-solo img { border-color: rgba(168, 85, 247, 0.5); }
+
+.ww-howto-role figcaption {
+  color: #c8d2e3;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.ww-howto-credit {
+  margin: 10px 0 0;
+  color: #8b97ab;
+  font-size: 0.74rem;
+}
+
+.ww-howto-credit a { color: #a5b4fc; }
+
+@media (max-width: 900px) {
+  .guide-coup-roles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .guide-coup-roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ===== สอน Coup แบบเห็นภาพ =====
+   กติกาแบบลิสต์อ่านแล้วยังเล่นไม่เป็น เพราะของยากคือ "ลำดับตอบโต้"
+   ส่วนนี้เลยเป็นลำดับขั้น + ตัวอย่างเล่นจริง แทนการเพิ่มบูลเล็ต */
+
+.guide-sub {
+  margin: 26px 0 12px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.06rem;
+  font-weight: 700;
+  color: #d4b3ff;
+}
+
+.guide-steps {
+  display: grid;
+  gap: 10px;
+  counter-reset: coupstep;
+}
+
+.guide-step {
+  position: relative;
+  padding: 12px 14px 12px 46px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(196, 141, 255, 0.18);
+  line-height: 1.6;
+}
+
+.guide-step::before {
+  counter-increment: coupstep;
+  content: counter(coupstep);
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.4);
+  border: 1px solid rgba(196, 141, 255, 0.45);
+  color: #e9ddff;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.guide-step strong { color: var(--guide-ink); }
+.guide-step .guide-step-note { color: var(--guide-muted); font-size: 0.92em; }
+
+/* ท้า กับ ขวาง สับสนกันบ่อยที่สุด วางคู่กันให้เทียบเห็นๆ */
+.guide-versus {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.guide-versus-side {
+  padding: 14px;
+  border-radius: 14px;
+  line-height: 1.6;
+}
+
+.guide-versus-side h4 {
+  margin: 0 0 8px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1rem;
+}
+
+.guide-versus-side p { margin: 0 0 6px; font-size: 0.94rem; }
+.guide-versus-side p:last-child { margin-bottom: 0; }
+
+.guide-versus-side.is-challenge {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+.guide-versus-side.is-challenge h4 { color: #ffa8b4; }
+
+.guide-versus-side.is-block {
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(196, 141, 255, 0.3);
+}
+.guide-versus-side.is-block h4 { color: #d4b3ff; }
+
+/* ตัวอย่างเล่นจริง — ทำหน้าตาเหมือนบันทึกเกมในกระดาน */
+.guide-replay {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(196, 141, 255, 0.2);
+  margin-bottom: 12px;
+}
+
+.guide-replay-title {
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 700;
+  color: #d4b3ff;
+  margin-bottom: 10px;
+}
+
+.guide-replay-line {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 7px 0;
+  line-height: 1.58;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.guide-replay-line:first-of-type { border-top: 0; }
+.guide-replay-line .guide-replay-ico { font-size: 1.05em; text-align: center; }
+.guide-replay-line b { color: var(--guide-ink); }
+
+.guide-replay-out {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.3);
+  color: #b8f5da;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.guide-replay-out.is-bad {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+  color: #ffc7ce;
+}
+
+.guide-tips { display: grid; gap: 8px; }
+.guide-tip {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 200, 107, 0.09);
+  border: 1px solid rgba(245, 200, 107, 0.26);
+  color: #f0e2c4;
+  line-height: 1.6;
+}
+.guide-tip strong { color: #f5c86b; }
+
+@media (max-width: 560px) {
+  .guide-versus { grid-template-columns: 1fr; }
+  .guide-step { padding-left: 42px; }
+}
+
+.guide-card h2,
+.guide-card h3 {
+  margin: 0;
+  font-family: 'Chakra Petch', sans-serif;
+  color: var(--guide-ink);
+  letter-spacing: -0.02em;
+}
+
+.guide-card p {
+  color: var(--guide-muted);
+  line-height: 1.72;
+  font-weight: 500;
+}
+
+.guide-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.guide-list-item {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--guide-panel);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #c8d2e3;
+  line-height: 1.6;
+}
+
+.guide-list-item strong {
+  color: #f3f6fc;
+  font-weight: 700;
+}
+
+.guide-faq {
+  display: grid;
+  gap: 12px;
+}
+
+.guide-faq-item {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--guide-muted);
+}
+
+.guide-faq-item strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--guide-ink);
+}
+
+@media (max-width: 640px) {
+  .guide-page {
+    padding: 0 12px 20px;
+  }
+
+  .guide-hero,
+  .guide-card {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .guide-title {
+    max-width: none;
+    font-size: 2.4rem;
+  }
+}
+
+/* ---------- สารบัญ + แถบกระโดดไปเกม ---------- */
+:root { --guide-jump-h: 64px; }
+
+/* style.css ตั้ง scroll-behavior: smooth ไว้ทั้งเว็บ — คนที่ปิด motion ให้กระโดดทันที */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+}
+
+.guide-jump-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--guide-ink);
+  font-family: 'Bai Jamjuree', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.guide-jump-chip:hover,
+.guide-jump-chip:focus-visible {
+  color: #fff;
+  text-decoration: none;
+  background: rgba(91, 192, 255, 0.14);
+  border-color: rgba(91, 192, 255, 0.45);
+}
+
+.guide-jump-chip:focus-visible {
+  outline: 2px solid var(--guide-accent-2);
+  outline-offset: 2px;
+}
+
+.guide-jump-chip .guide-jump-ico {
+  font-size: 1.05em;
+}
+
+.guide-jump-chip.is-active {
+  color: #07080c;
+  background: var(--guide-accent-2);
+  border-color: var(--guide-accent-2);
+}
+
+/* ---------- ส่วนที่พับได้ (รายละเอียดเสริม) ---------- */
+.guide-fold {
+  margin-top: 26px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.guide-fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--guide-ink);
+  border-radius: 18px;
+}
+
+.guide-fold > summary::-webkit-details-marker { display: none; }
+
+.guide-fold > summary::after {
+  content: '+';
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--guide-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.guide-fold[open] > summary::after { content: '−'; }
+
+.guide-fold > summary:focus-visible {
+  outline: 2px solid var(--guide-accent-2);
+  outline-offset: 2px;
+}
+
+.guide-fold-hint {
+  display: block;
+  margin-top: 2px;
+  font-family: 'Bai Jamjuree', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--guide-muted);
+}
+
+.guide-fold-body {
+  padding: 2px 14px 14px;
+}
+
+.guide-fold-body > .guide-replay:first-child,
+.guide-fold-body > .pk-rank-list:first-child { margin-top: 0; }
+
+.guide-faq-item.guide-fold {
+  margin-top: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.guide-faq-item.guide-fold > summary {
+  font-family: 'Bai Jamjuree', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.guide-faq-item .guide-fold-body {
+  padding: 0 18px 16px;
+  line-height: 1.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-jump-chip { transition: none; }
+}
+
+/* =====================================================================
+   เลย์เอาต์ใหม่: แถบสลับเกม (sticky) + อ่านทีละเกมในคอลัมน์กว้างเดียว
+   ข้อความกว้างไม่เกิน ~70ch ส่วนแกลเลอรีการ์ดกว้างได้ถึง 1100px
+   ===================================================================== */
+.guide-page {
+  --hp-prose: min(70ch, 720px);
+  --hp-wide: 1100px;
+  max-width: calc(var(--hp-wide) + 32px);
+  margin: 12px auto 40px;
+  padding: 0 16px 24px;
+}
+
+.guide-title {
+  max-width: none;
+  margin-top: 14px;
+  font-size: clamp(2rem, 4.2vw, 3.2rem);
+  line-height: 1.05;
+}
+
+/* ---------- แถบสลับเกม ---------- */
+.hp-switch {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  margin: 0 -16px 16px;
+  padding: 8px 16px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  background: rgba(9, 10, 16, 0.92);
+  border-bottom: 1px solid var(--guide-line);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.hp-switch-scroll {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+}
+
+.hp-switch-scroll::-webkit-scrollbar { display: none; }
+.hp-switch .guide-jump-chip { padding: 0 13px; font-size: 0.9rem; }
+
+/* จอกว้าง: ชิปตัดบรรทัดได้ เห็นครบทุกเกมโดยไม่ต้องเลื่อนข้าง */
+@media (min-width: 1024px) {
+  .hp-switch-scroll {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .hp-switch .guide-jump-chip { min-height: 38px; }
+}
+
+/* ---------- หน้ารวม: การ์ดเลือกเกม ---------- */
+.guide-hero { padding: clamp(20px, 3vw, 34px); }
+
+.hp-picker { margin-top: 18px; }
+
+.guide-hero .hp-picker-label {
+  margin: 22px 0 10px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--guide-gold);
+}
+
+.hp-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hp-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 176, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--guide-ink);
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.hp-tile:hover,
+.hp-tile:focus-visible {
+  color: #fff;
+  text-decoration: none;
+  background: rgba(91, 192, 255, 0.1);
+  border-color: rgba(91, 192, 255, 0.45);
+}
+
+.hp-tile-ico { flex: 0 0 auto; font-size: 1.7rem; line-height: 1; }
+.hp-tile-copy { display: grid; gap: 1px; min-width: 0; }
+.hp-tile-copy b { font-size: 1.02rem; }
+.hp-tile-copy small { color: var(--guide-muted); font-size: 0.85rem; line-height: 1.35; }
+.hp-tile-copy em { color: #8fd4ff; font-size: 0.78rem; font-style: normal; }
+
+/* ---------- หนึ่งเกม = หนึ่งคอลัมน์อ่าน ---------- */
+.hp-game {
+  display: grid;
+  grid-template-columns:
+    [full-start] minmax(0, 1fr)
+    [prose-start] minmax(0, var(--hp-prose))
+    [prose-end] minmax(0, 1fr) [full-end];
+  margin-top: 18px;
+  padding: clamp(18px, 3.2vw, 40px) clamp(16px, 3.2vw, 40px);
+  scroll-margin-top: 72px;
+}
+
+.hp-game > * { grid-column: prose; min-width: 0; }
+
+.hp-game > .hp-wide,
+.hp-game > .guide-coup-roles,
+.hp-game > .guide-avalon-roles,
+.hp-game > .ww-howto-roles,
+.hp-game > .pk-rank-list,
+.hp-game > .hp-pager { grid-column: full; }
+
+.hp-game h2 { font-size: clamp(1.45rem, 2.6vw, 2rem); line-height: 1.2; margin: 10px 0 0; }
+.hp-game > p { font-size: 1.04rem; margin: 12px 0 0; }
+.hp-game .guide-list-item { font-size: 1rem; }
+
+.hp-game-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
+.hp-game-top .guide-mode-badge { margin: 0; }
+
+.hp-more {
+  color: #8fd4ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hp-more:hover { color: #fff; }
+
+.hp-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hp-facts li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #c8d2e3;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+/* หัวข้อย่อยในเกม */
+.hp-game h3,
+.hp-game .guide-sub { margin: 30px 0 10px; font-size: 1.2rem; }
+
+/* ขั้นตอนแบบมีเลข */
+.hp-steps {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: hp-step;
+}
+
+.hp-steps > li {
+  position: relative;
+  padding: 10px 14px 10px 48px;
+  border-radius: 14px;
+  background: var(--guide-panel);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #c8d2e3;
+  line-height: 1.6;
+  counter-increment: hp-step;
+}
+
+.hp-steps > li::before {
+  content: counter(hp-step);
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(240, 193, 77, 0.16);
+  color: var(--guide-gold);
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.hp-steps > li strong { color: #f3f6fc; }
+
+/* บูลเล็ตสั้นแบบมีไอคอน */
+.hp-points {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hp-points > li {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr);
+  gap: 8px;
+  color: #c8d2e3;
+  line-height: 1.6;
+}
+
+.hp-points > li > i { font-style: normal; text-align: center; }
+.hp-points strong { color: #f3f6fc; }
+
+/* ก่อนหน้า / ทุกเกม / ถัดไป */
+.hp-pager {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 34px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hp-pager a {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--guide-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hp-pager a:hover { border-color: rgba(91, 192, 255, 0.45); color: #fff; }
+.hp-pager small { color: var(--guide-muted); font-size: 0.78rem; font-weight: 500; }
+.hp-pager-next { text-align: right; }
+.hp-pager-all { place-items: center; color: var(--guide-gold) !important; }
+
+@media (max-width: 520px) {
+  .hp-pager { grid-template-columns: 1fr 1fr; }
+  .hp-pager-all { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ---------- แกลเลอรีการ์ด: แตะเพื่อดูภาพใหญ่ ---------- */
+.hp-cards {
+  --hp-card-min: 150px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--hp-card-min), 42vw), 1fr));
+  gap: 14px;
+  margin: 16px 0 4px;
+}
+
+.hp-cards.is-small { --hp-card-min: 120px; }
+.hp-cards.is-large { --hp-card-min: 190px; }
+
+.hp-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: zoom-in;
+  text-align: left;
+  min-width: 0;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.hp-card:hover { border-color: rgba(255, 255, 255, 0.22); }
+.hp-card:focus-visible { outline: 2px solid var(--guide-accent-2); outline-offset: 2px; }
+
+.hp-card-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: var(--hp-art, 5 / 7);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0d1018;
+}
+
+.hp-card-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hp-card-art.is-contain > img { object-fit: contain; }
+
+.hp-card figcaption { display: grid; gap: 3px; }
+.hp-card figcaption b { color: #f3f6fc; font-size: 0.98rem; line-height: 1.3; }
+.hp-card .hp-does { color: #c8d2e3; font-size: 0.86rem; line-height: 1.45; }
+.hp-card .hp-when { color: var(--guide-muted); font-size: 0.8rem; line-height: 1.4; }
+.hp-card .hp-when::before { content: '⏱ '; }
+.hp-card .hp-tag {
+  justify-self: start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  color: #c8d2e3;
+}
+
+.hp-group-label {
+  margin: 22px 0 0;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.hp-zoom {
+  width: min(92vw, 460px);
+  max-height: 92vh;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  background: #11131b;
+  color: var(--guide-ink);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+
+.hp-zoom::backdrop { background: rgba(3, 4, 8, 0.78); }
+.hp-zoom-box { position: relative; padding: 16px; overflow: auto; max-height: 92vh; font-family: 'Bai Jamjuree', sans-serif; }
+
+.hp-zoom-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.hp-zoom-art > .hp-card-art { width: min(100%, 360px); margin: 0 auto; border-radius: 14px; }
+.hp-zoom-cap figcaption { display: grid; gap: 6px; margin-top: 14px; }
+.hp-zoom-cap b { font-size: 1.2rem; color: #fff; }
+.hp-zoom-cap .hp-does { color: #d6deea; font-size: 1rem; line-height: 1.55; }
+.hp-zoom-cap .hp-when { color: var(--guide-muted); font-size: 0.92rem; line-height: 1.5; }
+.hp-zoom-cap .hp-when::before { content: '⏱ '; }
+.hp-zoom-cap .hp-tag { justify-self: start; padding: 1px 8px; border-radius: 999px; font-size: 0.78rem; background: rgba(255,255,255,0.08); }
+
+/* ---------- เริ่มวงแรก + คำถามบ่อย ---------- */
+.hp-faq {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 18px;
+  margin-top: 18px;
+  scroll-margin-top: 72px;
+}
+
+.hp-faq-col {
+  padding: clamp(18px, 3vw, 28px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, #161822 0%, #101219 100%);
+  scroll-margin-top: 72px;
+}
+
+.hp-faq-col h2 { margin: 0 0 12px; font-family: 'Chakra Petch', sans-serif; font-size: 1.3rem; }
+
+/* ---------- โหมดอ่านทีละเกม (มี JS) ---------- */
+.hp-tabs .hp-game[hidden] { display: none; }
+.hp-tabs.has-game .hp-home { display: none; }
+
+@media (max-width: 640px) {
+  .guide-page { padding: 0 12px 20px; }
+  .hp-switch { margin: 0 -12px 12px; padding-left: 12px; padding-right: 12px; }
+  .hp-game { padding: 18px 14px; border-radius: 22px; }
+}
