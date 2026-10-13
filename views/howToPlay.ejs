@@ -874,20 +874,83 @@
       <%- guideNav('codenames') %>
     </article>
 
+    <%
+      // หน้าปัดแบบเดียวกับ wavelengthBoard.ejs (viewBox 400×214 · แถบ 2-3-4-3-2 · เข็มทอง)
+      const wlDial = function (target, needle, showBands) {
+        const CX = 200, CY = 200;
+        const polar = (v, r) => { const a = (180 - v * 1.8) * Math.PI / 180; return { x: CX + r * Math.cos(a), y: CY - r * Math.sin(a) }; };
+        const f = n => n.toFixed(1);
+        const wedge = (c, h, r) => { const a = polar(c - h, r), b = polar(c + h, r); return 'M' + CX + ' ' + CY + ' L' + f(a.x) + ' ' + f(a.y) + ' A' + r + ' ' + r + ' 0 0 1 ' + f(b.x) + ' ' + f(b.y) + ' Z'; };
+        let ticks = '';
+        for (let v = 0; v <= 100; v += 5) {
+          const major = v % 25 === 0; const a = polar(v, 176), b = polar(v, major ? 160 : 167);
+          ticks += '<line x1="' + f(a.x) + '" y1="' + f(a.y) + '" x2="' + f(b.x) + '" y2="' + f(b.y) + '" stroke="#cbd5e1" stroke-opacity="' + (major ? 0.55 : 0.28) + '" stroke-width="' + (major ? 2.2 : 1.4) + '" stroke-linecap="round"/>';
+        }
+        let bands = '';
+        if (showBands) {
+          [[18, '#f2c66d'], [11, '#f08a5d'], [4, '#5eead4']].forEach(([h, c]) => { bands += '<path d="' + wedge(target, h, 196) + '" fill="' + c + '"/>'; });
+          [[0, 4], [-7.5, 3], [7.5, 3], [-14.5, 2], [14.5, 2]].forEach(([u, pts]) => {
+            const p = polar(target + u, 150);
+            bands += '<text x="' + f(p.x) + '" y="' + f(p.y) + '" text-anchor="middle" dominant-baseline="central" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="' + (pts === 4 ? 17 : 14) + '" fill="#0b1626" transform="rotate(' + f((target + u - 50) * 1.8) + ' ' + f(p.x) + ' ' + f(p.y) + ')">' + pts + '</text>';
+          });
+        } else {
+          bands = '<path d="M16 200 A184 184 0 0 1 384 200 Z" fill="#1c2b42"/>';
+        }
+        let nd = '';
+        if (needle != null) {
+          const tip = polar(needle, 142), knob = polar(needle, 150);
+          nd = '<line x1="200" y1="200" x2="' + f(tip.x) + '" y2="' + f(tip.y) + '" stroke="#f5c86b" stroke-width="5" stroke-linecap="round"/>' +
+            '<circle cx="' + f(knob.x) + '" cy="' + f(knob.y) + '" r="15" fill="#0f1a2b" stroke="#f5c86b" stroke-width="3.5"/><circle cx="' + f(knob.x) + '" cy="' + f(knob.y) + '" r="7" fill="#f5c86b"/>';
+        }
+        return '<svg class="wl-dial-svg" viewBox="0 0 400 214" role="img" aria-label="หน้าปัดคลื่นความคิด">' +
+          '<defs><radialGradient id="wlhFace" cx="200" cy="200" r="190" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0f1a2b"/><stop offset="0.7" stop-color="#16263b"/><stop offset="1" stop-color="#1d3049"/></radialGradient>' +
+          '<linearGradient id="wlhRing" x1="16" y1="0" x2="384" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5eead4"/><stop offset="0.5" stop-color="#f5c86b"/><stop offset="1" stop-color="#fb8a6b"/></linearGradient>' +
+          '<clipPath id="wlhClip"><path d="M16 200 A184 184 0 0 1 384 200 Z"/></clipPath></defs>' +
+          '<path d="M16 200 A184 184 0 0 1 384 200 Z" fill="url(#wlhFace)"/><g clip-path="url(#wlhClip)">' + bands + '</g>' +
+          '<path d="M16 200 A184 184 0 0 1 384 200" fill="none" stroke="url(#wlhRing)" stroke-width="7" stroke-linecap="round"/>' + ticks + nd +
+          '<circle cx="200" cy="200" r="13" fill="#0f1a2b" stroke="#f5c86b" stroke-width="3"/><circle cx="200" cy="200" r="4.5" fill="#f5c86b"/></svg>';
+      };
+      const wlSpectrum = (l, r) => '<div class="wl-spec"><span class="wl-spec-l">' + l + '</span><span class="wl-spec-a" aria-hidden="true">↔</span><span class="wl-spec-r">' + r + '</span></div>';
+    %>
     <article class="guide-card hp-game mode-wavelength" id="wavelength">
-      <%- guideHead('wavelength') %>
+      <%- guideHead('wavelength', ['🔵 ทีมฟ้า vs 🟠 ทีมส้ม', '🏁 ถึง 10 แต้มก่อนชนะ']) %>
       <h2>ใบ้ 1 คำ แล้วทีมช่วยกันหมุนเข็มไปตรงเป้า</h2>
-      <p>การ์ดมีคำตรงข้าม เช่น <strong>ร้อน ↔ เย็น</strong> ผู้ใบ้เห็นเป้าลับบนหน้าปัดคนเดียว แล้วพิมพ์คำใบ้ที่อยู่ตรงเป้า (ค่อนไปทางเย็น → “ไอติม”) เล่น 3–12 คน ตามกติกาบอร์ดเกม Wavelength</p>
-      <img class="wl-howto-dial" src="/assets/games/wavelength/emblem.svg" alt="หน้าปัดคลื่นความคิด มีแถบคะแนน 2 3 4 3 2" width="320" height="180" loading="lazy">
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>👥 แข่งทีม</strong> (ค่าเริ่มต้น · 4 คนขึ้นไป) สุ่มแบ่ง 🔵 ทีมฟ้า / 🟠 ทีมส้ม ผลัดกันเล่น · ทีมที่เริ่มทีหลังได้ 1 แต้มตั้งต้น · ผู้ใบ้วนกันในทีม</div>
-        <div class="guide-list-item"><strong>ผู้ใบ้</strong> เลือกการ์ด 1 จาก 2 ใบ (สุ่มใหม่ได้ 1 ครั้ง) · คำใบ้ไม่เกิน 40 ตัวอักษร ห้ามคำบนการ์ด ห้ามตัวเลข · 60 วิ ไม่ทัน = เสียตา · ใบ้แล้วห้ามใบ้เพิ่ม</div>
-        <div class="guide-list-item"><strong>ทีมหมุนเข็มเดียวกัน</strong> ใครในทีมก็ลากได้ ทุกคนเห็น · กด ✅ ตกลงครบ = ล็อก · ขยับเข็ม = ตกลงใหม่ · 90 วิ</div>
-        <div class="guide-list-item"><strong>ทีมโน้นทาย ⬅️/➡️</strong> เป้าอยู่ซ้ายหรือขวาของเข็ม ถูกได้ +1 (ถ้าเข็มเป๊ะ = ไม่ได้) · เสียงข้างมากชนะ</div>
-        <div class="guide-list-item"><strong>แต้ม</strong> เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 · 🔁 เป๊ะแต่ยังตามหลัง = เล่นต่ออีกตา · ถึง 10 ก่อนชนะ · เสมอที่ 10+ = ต่อตายทีมละตา</div>
-        <div class="guide-list-item"><strong>🤝 ร่วมมือ</strong> ทุกคนทีมเดียว 7 การ์ด · เป๊ะได้ 3 + การ์ดโบนัส 1 ใบ · จบแล้วดูตารางคะแนน 16+ = ชนะ (3 คนเลือกแข่งทีม = เล่นโหมดนี้)</div>
-        <div class="guide-list-item"><strong>🙋 แข่งเดี่ยว</strong> ต่างคนต่างหมุนเข็มตัวเอง 4/3/2 · ผู้ใบ้ได้ค่าเฉลี่ย · ใบ้คนละ 1–2 รอบโต๊ะ แต้มสูงสุดชนะ</div>
+      <p>การ์ดมีคำตรงข้ามสองฝั่ง ผู้ใบ้เห็นเป้าลับบนหน้าปัดคนเดียว แล้วพิมพ์คำใบ้ที่อยู่ตรงตำแหน่งนั้น เช่น เป้าค่อนไปทาง “เย็น” → ใบ้ว่า “ไอติม”</p>
+
+      <h3 class="guide-sub">การ์ดและหน้าปัด</h3>
+      <div class="hp-cards hp-wide" style="--hp-card-max: 235px">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดคำตรงข้ามขนาดใหญ่">
+          <div class="hp-card-art wl-art" style="--hp-art: 400 / 214">
+            <div class="wl-spec-stack"><%- wlSpectrum('ร้อน', 'เย็น') %><%- wlSpectrum('จืด', 'เผ็ด') %></div>
+          </div>
+          <figcaption><b>🃏 การ์ดคำตรงข้าม</b><span class="hp-does">ผู้ใบ้เลือก 1 จาก 2 ใบ (สุ่มใหม่ได้ 1 ครั้ง) ซ้ายคือฝั่งหนึ่ง ขวาคืออีกฝั่ง</span><span class="hp-when">เลือกใบที่คิดคำใบ้ออกง่าย</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูหน้าปัดที่ผู้ใบ้เห็นขนาดใหญ่">
+          <div class="hp-card-art wl-art" style="--hp-art: 400 / 214"><%- wlDial(72, null, true) %></div>
+          <figcaption><b>🎯 เป้าลับ (ผู้ใบ้เห็นคนเดียว)</b><span class="hp-does">ตรงกลางเป้า 4 แต้ม ถัดออกมา 3 และ 2 · ตัวอย่างนี้ค่อนไปทาง “เย็น”</span><span class="hp-when">ใบ้คำที่อยู่ตรงตำแหน่งนี้บนสเกล</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูเข็มของทีมขนาดใหญ่">
+          <div class="hp-card-art wl-art" style="--hp-art: 400 / 214"><%- wlDial(72, 64, false) %></div>
+          <figcaption><b>🧭 เข็มของทีม</b><span class="hp-does">ทีมเห็นแค่เข็ม ไม่เห็นเป้า ใครในทีมก็ลากได้ ทุกคนเห็นเข็มเดียวกัน</span><span class="hp-when">คุยกันแล้วกด ✅ ตกลงให้ครบ</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูผลเฉลยขนาดใหญ่">
+          <div class="hp-card-art wl-art" style="--hp-art: 400 / 214"><%- wlDial(72, 64, true) %></div>
+          <figcaption><b>🎉 เฉลย</b><span class="hp-does">เปิดเป้า เข็มตกแถบไหนได้แต้มตามนั้น · ตัวอย่างนี้ได้ 3</span><span class="hp-when">อีกทีมทายซ้าย/ขวาก่อนเฉลย</span></figcaption>
+        </figure>
       </div>
+
+      <h3 class="guide-sub">หนึ่งตา (แข่งทีม)</h3>
+      <ol class="hp-steps">
+        <li><strong>💬 ผู้ใบ้ใบ้</strong> ภายใน 60 วิ ไม่เกิน 40 ตัวอักษร ห้ามคำบนการ์ด ห้ามตัวเลข · ไม่ทัน = เสียตา · ใบ้แล้วห้ามใบ้เพิ่ม</li>
+        <li><strong>🧭 ทีมหมุนเข็ม</strong> 90 วิ · กด ✅ ตกลงครบ = ล็อก · ขยับเข็ม = ต้องตกลงใหม่</li>
+        <li><strong>⬅️➡️ อีกทีมทาย</strong> เป้าอยู่ซ้ายหรือขวาของเข็ม (25 วิ เสียงข้างมาก) · ถูก +1 (ถ้าเข็มเป๊ะ = ไม่ได้)</li>
+        <li><strong>🎯 เฉลย</strong> เป๊ะ 4 · ใกล้มาก 3 · เฉียด 2 · ผู้ใบ้วนกันในทีม</li>
+      </ol>
+      <ul class="hp-points">
+        <li><i>🏁</i><span><strong>ถึง 10 แต้มก่อนชนะ</strong> · ทีมที่เริ่มทีหลังได้ 1 แต้มตั้งต้น · 🔁 เป๊ะแต่ยังตามหลัง = เล่นต่ออีกตา · เสมอที่ 10+ = ต่อตายทีมละตา</span></li>
+        <li><i>🤝</i><span><strong>ร่วมมือ</strong> ทุกคนทีมเดียว 7 การ์ด · เป๊ะได้ 3 + การ์ดโบนัส 1 ใบ · 16 แต้มขึ้นไป = ชนะ · เล่น 3 คนเลือกแข่งทีม = เล่นโหมดนี้</span></li>
+        <li><i>🙋</i><span><strong>แข่งเดี่ยว</strong> ต่างคนต่างหมุนเข็มตัวเอง 4/3/2 · ผู้ใบ้ได้ค่าเฉลี่ย · ใบ้คนละ 1–2 รอบโต๊ะ แต้มสูงสุดชนะ</span></li>
+      </ul>
       <%- guideNav('wavelength') %>
     </article>
 

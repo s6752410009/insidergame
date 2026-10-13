@@ -1456,3 +1456,15 @@ body.content {
 .st-die2.is-one i { background: oklch(0.6 0.19 27); width: 80%; height: 80%; }
 .st-skills td:nth-child(2) { white-space: normal; min-width: 180px; }
 .hp-game > p.hp-note { font-size: 0.86rem; margin-top: 8px; color: var(--guide-muted); }
+
+/* คลื่นความคิด: หน้าปัด SVG + การ์ดคำตรงข้ามแบบบนกระดาน */
+.wl-art { background: radial-gradient(ellipse at 50% 100%, #16263b, #0b1320 75%); padding: 6% 4% 0; align-items: flex-end; }
+.wl-art .wl-dial-svg { width: 100%; height: auto; display: block; }
+.wl-spec-stack { display: grid; gap: 10px; width: 100%; align-self: center; padding-bottom: 6%; }
+.wl-spec { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; }
+.wl-spec-l, .wl-spec-r { padding: 6px 10px; border-radius: 12px; font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 0.95rem; }
+.wl-spec-l { background: oklch(0.85 0.12 182 / 0.14); color: #5eead4; border: 1px solid oklch(0.85 0.12 182 / 0.35); }
+.wl-spec-r { background: oklch(0.75 0.15 32 / 0.14); color: oklch(0.85 0.1 40); border: 1px solid oklch(0.75 0.15 32 / 0.4); text-align: right; }
+.wl-spec-a { color: #94a3b8; }
+.hp-zoom-art .wl-spec-l, .hp-zoom-art .wl-spec-r { font-size: 1.3rem; }
+.hp-zoom-art > .wl-art { width: 100%; }
