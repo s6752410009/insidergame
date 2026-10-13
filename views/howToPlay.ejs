@@ -758,18 +758,74 @@
       <%- guideNav('pokdeng') %>
     </article>
 
+    <%
+      // หน้าไพ่แบบเดียวกับ faceHtml() ใน colorcardsBoard.ejs (HTML + SVG ไม่ใช้รูป)
+      const ccShape = {
+        r: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0.8 L9.4 8.8 H0.6Z"/></svg>',
+        y: '<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4.2"/></svg>',
+        g: '<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" rx="1.2"/></svg>',
+        b: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0.3 L9.7 5 L5 9.7 L0.3 5Z"/></svg>'
+      };
+      const ccGlyph = {
+        skip: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 32 C9 12 36 10 41 28"/><path d="M33 25 L41 30 L45 21"/><circle cx="24" cy="37" r="5" fill="currentColor" stroke="none"/></svg>',
+        rev: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17 H37"/><path d="M30 10 L38 17 L30 24"/><path d="M39 31 H11"/><path d="M18 24 L10 31 L18 38"/></svg>',
+        pinwheel: '<svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(45 24 24)"><rect x="8.5" y="8.5" width="14" height="14" rx="3.5" fill="oklch(0.62 0.21 27)"/><rect x="25.5" y="8.5" width="14" height="14" rx="3.5" fill="oklch(0.85 0.16 90)"/><rect x="25.5" y="25.5" width="14" height="14" rx="3.5" fill="oklch(0.64 0.17 150)"/><rect x="8.5" y="25.5" width="14" height="14" rx="3.5" fill="oklch(0.6 0.17 255)"/></g></svg>'
+      };
+      const ccFace = function (kind, color, value) {
+        let index = '';
+        let big = '';
+        if (kind === 'num') {
+          index = String(value);
+          big = '<span class="cc-big' + (value === 6 || value === 9 ? ' is-69' : '') + '">' + value + '</span>';
+        } else if (kind === 'skip' || kind === 'rev') {
+          index = '<span class="cc-mini-glyph" style="display:inline-flex;">' + ccGlyph[kind].replace('stroke-width="5"', 'stroke-width="7"') + '</span>';
+          big = ccGlyph[kind];
+        } else if (kind === 'd2') {
+          index = '+2';
+          big = '<span class="cc-plus">+2</span>';
+        } else if (kind === 'wild') {
+          index = '<span class="cc-mini-glyph" style="display:inline-flex;">' + ccGlyph.pinwheel + '</span>';
+          big = ccGlyph.pinwheel;
+        } else {
+          index = '+4';
+          big = '<span class="cc-wild-stack"><span class="cc-plus">+4</span>' + ccGlyph.pinwheel + '</span>';
+        }
+        const shape = color ? ccShape[color] : '';
+        return '<span class="cc-card cc-c-' + (color || 'w') + '"><span class="cc-face"></span>' +
+          '<span class="cc-idx tl">' + index + shape + '</span><span class="cc-glyph">' + big + '</span>' +
+          '<span class="cc-idx br">' + index + shape + '</span></span>';
+      };
+      const ccCard = function (kind, color, value, name, does, when) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูไพ่' + name.replace(/<[^>]+>/g, '') + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art ccx" role="img" aria-label="' + name.replace(/<[^>]+>/g, '') + '">' + ccFace(kind, color, value) + '</div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+    %>
     <article class="guide-card hp-game mode-colorcards" id="colorcards">
-      <%- guideHead('colorcards') %>
+      <%- guideHead('colorcards', ['🃏 คนละ 7 ใบ', '🤖 มีบอท']) %>
       <h2>ลงสีหรือเลขให้ตรง ทิ้งให้หมดมือก่อนชนะ</h2>
-      <p>แจกคนละ 7 ใบ ไล่ลงทีละคน ลงไพ่ที่สีเดียวกันหรือเลข/สัญลักษณ์เดียวกับใบบนกอง ไม่มีใบลง (หรือไม่อยากลง) ให้จั่ว 1 ใบ ถ้าใบที่จั่วลงได้ลงต่อได้เลย ไม่งั้นผ่าน หมดเวลา (15/20/30 วิ ตามห้อง) = จั่วให้แล้วผ่าน เล่น 2–10 คน ใส่บอทได้</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><span class="cc-howto-swatches"><i style="background:#d9473a"></i><i style="background:#f2c230"></i><i style="background:#2f9e5b"></i><i style="background:#3b7be0"></i></span><strong>กอง 108 ใบ</strong> 4 สี (แดง ▲ เหลือง ● เขียว ■ น้ำเงิน ◆) สีละ 0–9 · ข้าม · กลับทิศ · +2 และไพ่ดำ เปลี่ยนสี 4 ใบ +4 อีก 4 ใบ</div>
-        <div class="guide-list-item"><strong>ไพ่พิเศษ</strong> ข้าม = ข้ามคนถัดไป · กลับทิศ = เปลี่ยนทิศ (เล่น 2 คน = ข้าม) · +2 = คนถัดไปจั่ว 2 แล้วโดนข้าม · เปลี่ยนสี = เลือกสีใหม่ · +4 = เลือกสี + คนถัดไปจั่ว 4 แล้วโดนข้าม</div>
-        <div class="guide-list-item"><strong>ลงหลายใบ</strong> เลขเดียวกัน (หรือข้าม/กลับทิศ/+2 เหมือนกัน) คนละสีก็ได้ ลงพร้อมกันได้ ใบแรกต้องลงได้ ใบสุดท้ายอยู่บนกอง · ข้าม ×2 = ข้าม 2 คน · +2 ×2 = จั่ว 4 · เปลี่ยนสี/+4 ลงทีละใบ</div>
-        <div class="guide-list-item"><strong>+4 ลงได้ทุกเมื่อ</strong> ไม่มีกติกาท้าว่ามีสีตรงหรือเปล่า · หัวห้องเปิด <strong>ซ้อน +2/+4</strong> ได้ (คนที่ไม่มีซ้อนรับทั้งหมด)</div>
-        <div class="guide-list-item"><strong>เหลือใบเดียว!</strong> ก่อนลงใบรองสุดท้ายกดปุ่ม "เหลือใบเดียว!" ถ้าลืม คนอื่นกด "จับได้!" ทันก่อนหมดเวลาสั้น ๆ = จั่ว 2</div>
-        <div class="guide-list-item"><strong>ชนะ + แต้ม</strong> หมดมือก่อนชนะรอบ ได้แต้ม = ไพ่ในมือคนอื่น (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50) · ตั้งห้องเล่น 1 รอบ หรือใครถึง 300/500 แต้มก่อน</div>
+      <p>ไล่ลงทีละคน ลงไพ่ที่<strong>สีเดียวกัน</strong>หรือ<strong>เลข/สัญลักษณ์เดียวกัน</strong>กับใบบนกอง ไม่มีใบลง (หรือไม่อยากลง) ให้จั่ว 1 ใบ จั่วได้ใบที่ลงได้ลงต่อได้เลย ไม่งั้นผ่าน</p>
+
+      <h3 class="guide-sub">ไพ่ในกอง 108 ใบ</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 62 / 88">
+        <%- ccCard('num', 'r', 7, 'ไพ่เลข 0–9', '4 สี มีสัญลักษณ์กันสับสน: แดง ▲ เหลือง ● เขียว ■ น้ำเงิน ◆ · 6 กับ 9 มีขีดใต้', 'สีหรือเลขตรงกับใบบนกอง') %>
+        <%- ccCard('skip', 'g', 0, 'ข้าม', 'คนถัดไปโดนข้าม · ลง 2 ใบ = ข้าม 2 คน', 'คนถัดไปใกล้หมดมือ') %>
+        <%- ccCard('rev', 'y', 0, 'กลับทิศ', 'เปลี่ยนทิศการเล่น · เล่น 2 คน = ข้าม · ลง 2 ใบ = ทิศเดิม', 'ส่งตากลับไปหาคนที่ไพ่เยอะ') %>
+        <%- ccCard('d2', 'b', 0, '+2', 'คนถัดไปจั่ว 2 แล้วโดนข้าม · ลง 2 ใบ = จั่ว 4', 'ถ่วงคนที่เหลือไพ่น้อย') %>
+        <%- ccCard('wild', '', 0, 'เปลี่ยนสี', 'ลงได้ทุกเมื่อ แล้วเลือกสีใหม่', 'ไม่มีสีที่ลงได้ หรือจะเปลี่ยนเป็นสีที่มือเยอะ') %>
+        <%- ccCard('d4', '', 0, '+4', 'เลือกสี + คนถัดไปจั่ว 4 แล้วโดนข้าม · ลงได้ทุกเมื่อ ไม่มีกติกาท้า', 'เก็บไว้ปิดเกมหรือหยุดคนใกล้ชนะ') %>
       </div>
+      <p class="hp-note">สีละ 0–9 · ข้าม · กลับทิศ · +2 · และไพ่ดำ เปลี่ยนสี 4 ใบ · +4 อีก 4 ใบ</p>
+
+      <h3 class="guide-sub">ลูกเล่นที่ควรรู้</h3>
+      <ul class="hp-points">
+        <li><i>🃏</i><span><strong>ลงหลายใบ</strong> เลขเดียวกัน (หรือข้าม/กลับทิศ/+2 เหมือนกัน) คนละสีก็ได้ ลงพร้อมกันได้ ใบแรกต้องลงได้ ใบสุดท้ายอยู่บนกอง · เปลี่ยนสี/+4 ลงทีละใบ · จั่วแล้วลงหลายใบไม่ได้ · หัวห้องปิดได้</span></li>
+        <li><i>📚</i><span><strong>ซ้อน +2/+4</strong> (หัวห้องเปิด) +2 ทับได้แค่ +2 · +4 ทับได้ทั้ง +2 และ +4 · คนที่ไม่ซ้อนจั่วทั้งหมดแล้วเสียตา</span></li>
+        <li><i>☝️</i><span><strong>เหลือใบเดียว!</strong> ก่อนลงใบรองสุดท้ายกดปุ่ม (หรือกดทันหลังลงก็ได้ ถ้ายังไม่มีใครจับ) · ลืม คนอื่นกด “จับได้!” ภายใน 4 วิ = จั่ว 2</span></li>
+        <li><i>🎴</i><span><strong>ใบเปิดกองแรก</strong> +4 สับคืน · ข้าม = คนแรกโดนข้าม · กลับทิศ = เจ้ามือเริ่มแล้วเล่นทวนทิศ · +2 = คนแรกจั่ว 2 เสียตา · เปลี่ยนสี = คนแรกลงสีไหนก็ได้</span></li>
+        <li><i>⏱</i><span>ตาละ 15/20/30 วิ ตามห้อง หมดเวลา = จั่วให้แล้วผ่าน (ค้างซ้อนอยู่ = จั่วทั้งกอง) · หมดเวลา 2 ตาติด ตาต่อไปเหลือ 6 วิ จนกว่าจะลงเอง</span></li>
+        <li><i>🏆</i><span><strong>ชนะ + แต้ม</strong> หมดมือก่อนชนะรอบ ได้แต้ม = ไพ่ในมือคนอื่น (เลข = ตามหน้า · ข้าม/กลับทิศ/+2 = 20 · เปลี่ยนสี/+4 = 50) · ตั้งห้องเล่น 1 รอบ หรือใครถึง 300/500 แต้มก่อน</span></li>
+      </ul>
       <%- guideNav('colorcards') %>
     </article>
 
