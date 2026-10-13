@@ -31,6 +31,8 @@ const DEFAULT_CAPS = {
     room: envNumber('LOG_CAP_ROOM', 6000),
     game: envNumber('LOG_CAP_GAME', 6000),
     detail: envNumber('LOG_CAP_DETAIL', 15000),
+    // แชทโลก — ถังของตัวเอง แชทรัวๆ ไม่ดัน log ในเกมหลุด
+    chat: envNumber('LOG_CAP_CHAT', 5000),
     // ต่อห้อง (เฉพาะ detail) — เกมบอทเกมเดียวกินโควตาห้องอื่นไม่ได้
     detailPerRoom: envNumber('LOG_CAP_DETAIL_PER_ROOM', 800),
     botPerRoom: envNumber('LOG_CAP_BOT_PER_ROOM', 300)
@@ -38,10 +40,10 @@ const DEFAULT_CAPS = {
 
 // Mongo: memory เป็นแค่สำรองตอนต่อ DB ไม่ได้ เลยเก็บน้อยกว่า
 const HOT_CAPS = {
-    error: 500, admin: 500, system: 300, room: 500, game: 800, detail: 1500, detailPerRoom: 200, botPerRoom: 80
+    error: 500, admin: 500, system: 300, room: 500, game: 800, detail: 1500, chat: 500, detailPerRoom: 200, botPerRoom: 80
 };
 
-const BUCKETS = ['error', 'admin', 'system', 'room', 'game', 'detail'];
+const BUCKETS = ['error', 'admin', 'system', 'room', 'game', 'detail', 'chat'];
 const CATEGORIES = new Set(['join', 'leave', 'game', 'admin', 'error', 'chat', 'system']);
 // เหตุการณ์ระดับเกม — ต้องไม่โดนบรรทัดระหว่างเล่นดันหลุด และขึ้นในมุมมอง "สำคัญ"
 const KEY_EVENTS = new Set([
@@ -49,7 +51,7 @@ const KEY_EVENTS = new Set([
     'player_left_midgame', 'player_kicked'
 ]);
 // มุมมองบนหน้าแอดมิน (ปุ่มประเภท)
-const VIEWS = ['important', 'error', 'admin', 'game', 'room', 'system', 'all'];
+const VIEWS = ['important', 'error', 'admin', 'game', 'room', 'system', 'chat', 'all'];
 
 const META_MAX_KEYS = 16;
 const MESSAGE_MAX = 1000;
@@ -94,6 +96,7 @@ function classify(entry) {
     if (entry.category === 'error' || entry.type === 'error') bucket = 'error';
     else if (entry.category === 'admin') bucket = 'admin';
     else if (entry.category === 'system') bucket = 'system';
+    else if (entry.category === 'chat') bucket = 'chat';
     else if (entry.category === 'join' || entry.category === 'leave') bucket = 'room';
     // บรรทัด "ผู้ชนะ" ใน history ของแต่ละเกมซ้ำกับ game_end อยู่แล้ว — ให้เป็น detail
     else if (entry.category === 'game' && KEY_EVENTS.has(event)) bucket = 'game';
@@ -137,6 +140,7 @@ function matchesView(entry, view) {
         case 'admin': return entry.category === 'admin';
         case 'game': return entry.category === 'game';
         case 'system': return entry.category === 'system';
+        case 'chat': return entry.category === 'chat';
         default: return true;
     }
 }
@@ -421,6 +425,7 @@ function viewToMongo(view) {
         case 'admin': return { category: 'admin' };
         case 'game': return { category: 'game' };
         case 'system': return { category: 'system' };
+        case 'chat': return { category: 'chat' };
         default: return {};
     }
 }

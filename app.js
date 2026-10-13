@@ -152,6 +152,10 @@ const supportMessageRateLimits = new Map();
 // บันทึกกิจกรรมหลังบ้าน — แยกโควตาต่อประเภท เก็บถาวร (Mongo หรือไฟล์) ดู managers/serverLogManager.js
 const serverLogStore = require('./managers/serverLogManager');
 const adminQueries = require('./managers/adminQueries');
+// แชทโลก — ที่เก็บ + กติกา + socket (ดู managers/worldChat*.js)
+const worldChatStore = require('./managers/worldChatManager');
+const { createWorldChatService } = require('./managers/worldChatService');
+const { createWorldChatHub } = require('./managers/worldChatSocket');
 
 const ROOM_OFFLINE_GRACE_MS = 10 * 60 * 1000;
 const ROOM_SWEEP_INTERVAL_MS = 60 * 1000;
@@ -6849,6 +6853,70 @@ app.get('/adminPlayer', function(req, res) {
     res.redirect('/');
 });
 
+// ==================== WORLD CHAT ====================
+
+const worldChatService = createWorldChatService({
+    store: worldChatStore,
+    getPlayer: playerId => playerManager.getPlayer(playerId),
+    getGamesPlayed: playerId => statsManager.getStats(playerId)?.totalGames || 0,
+    isGoogleLinked: playerId => Boolean(playerManager.getGoogleLink(playerId)),
+    isBanned: playerId => isPlayerBanEnforced(playerId),
+    isApproved: playerId => isPlayerApproved(playerId),
+    isSiteAdmin: playerId => isSiteAdminPlayer(playerId),
+    isBot: playerId => playerManager.isBotPlayerId(playerId),
+    avatarImageField
+});
+
+// สถานะห้องสดๆ สำหรับการ์ด "เชิญมาเล่น" (ห้องเต็ม/เริ่มเกมแล้ว/ปิดไปแล้ว)
+function worldChatLiveRoom(roomId) {
+    const room = roomManager.getRoom(roomId);
+    if (!room) return { status: 'closed' };
+    const count = room.players.filter(player => !playerManager.isBotPlayerId(player.playerId)).length;
+    const max = room.settings.maxPlayers;
+    let status = 'open';
+    if (!roomManager.isRoomJoinable(room)) {
+        status = roomManager.getRoomGameStatusLabel(room) === 'playing' ? 'playing' : 'full';
+    }
+    return { status, count: room.players.length, max, humans: count };
+}
+
+// ห้องที่ผู้เล่นอยู่ตอนนี้ (จากฝั่ง server เท่านั้น) — ต้องยังรับคนเพิ่มได้ถึงจะชวน
+function worldChatInviteRoom(socket, playerId) {
+    const candidates = [];
+    if (socket.roomId) candidates.push(socket.roomId);
+    getPlayerRoomMembership(playerId).forEach(entry => candidates.push(entry.roomId));
+    for (const roomId of candidates) {
+        const room = roomManager.getRoom(roomId);
+        if (!room || !room.players.some(player => player.playerId === playerId)) continue;
+        if (roomManager.getRoomGameStatusLabel(room) === 'playing') continue;
+        if (room.players.length >= room.settings.maxPlayers) continue;
+        const style = getGameModeLogStyle(room.settings.gameMode);
+        return {
+            roomId: room.roomId,
+            roomName: room.name,
+            gameMode: room.settings.gameMode,
+            gameLabel: style.label,
+            emoji: style.emoji,
+            count: room.players.length,
+            max: room.settings.maxPlayers,
+            locked: Boolean(room.settings.locked)
+        };
+    }
+    return null;
+}
+
+const worldChatHub = createWorldChatHub({
+    io,
+    service: worldChatService,
+    store: worldChatStore,
+    getPlayerId: socket => socket.playerId || getSessionPlayerId(socket) || null,
+    describeInviteRoom: worldChatInviteRoom,
+    liveRoom: worldChatLiveRoom,
+    getPlayerName: playerId => playerManager.getPlayer(playerId)?.playerName || null,
+    getAdminSocketIds: () => adminSockets,
+    log: (category, message, type, meta) => addServerLog(io, category, null, message, type, { roomName: 'แชทโลก', meta })
+});
+
 // ==================== SOCKET.IO HANDLERS ====================
 
 io.sockets.on('connection', function(socket) {
@@ -6857,6 +6925,11 @@ io.sockets.on('connection', function(socket) {
     console.log('Socket connected:', socket.id);
     const sessionPlayerId = getSessionPlayerId(socket);
     if (sessionPlayerId) socket.playerId = sessionPlayerId;
+    worldChatHub.attach(socket);
+    worldChatHub.attachAdmin(socket, {
+        isAdmin: target => adminSockets.has(target.id),
+        audit: (message, meta, type) => addServerLog(io, 'admin', null, `Admin ${message}`, type || 'warning', { roomName: 'แชทโลก', meta })
+    });
 
     // ========== ROOM MANAGEMENT EVENTS ==========
 
@@ -7481,7 +7554,8 @@ io.sockets.on('connection', function(socket) {
     // แอดมินสั่งอะไรที่เปลี่ยนข้อมูล → ตาราง/ตัวเลขต้องเห็นผลทันที ไม่รอ cache หมดอายุ
     const ADMIN_READ_EVENTS = new Set(['admin_authenticate', 'admin_getData', 'admin_getSummary', 'admin_getPlayers', 'admin_getSiteAdmins',
         'admin_getRooms', 'admin_getBanned', 'admin_getStats', 'admin_getPlayerStat', 'admin_searchPlayers', 'admin_getLogs',
-        'admin_getRoomDetails', 'admin_getGameSettings', 'admin_getWords', 'admin_seasonPreview', 'admin_getRecoveryCode']);
+        'admin_getRoomDetails', 'admin_getGameSettings', 'admin_getWords', 'admin_seasonPreview', 'admin_getRecoveryCode',
+        'admin_worldChatGet', 'admin_worldChatTest']);
     socket.use((packet, next) => {
         const eventName = packet[0];
         if (typeof eventName === 'string' && eventName.startsWith('admin_') && !ADMIN_READ_EVENTS.has(eventName) && adminSockets.has(socket.id)) {
@@ -7645,6 +7719,7 @@ io.sockets.on('connection', function(socket) {
             // แบนผู้เล่น พร้อมระยะเวลา
             playerManager.banPlayer(playerId, player.playerName, reason || 'ไม่ระบุเหตุผล', 'Admin', durationHours);
             adminAudit(`แบน ${player.playerName} (${durationHours ? durationHours + ' ชม.' : 'ถาวร'}) — ${reason || 'ไม่ระบุเหตุผล'}`, { event: 'admin_ban', playerId, durationHours: durationHours || null });
+            worldChatHub.notifyPlayerStatus(playerId);
             
             // สร้างข้อความแจ้งเตือน
             const durationText = durationHours === null ? 'ถาวร' : `${durationHours} ชั่วโมง`;
@@ -7692,6 +7767,7 @@ io.sockets.on('connection', function(socket) {
             
             const { playerId } = data;
             playerManager.unbanPlayer(playerId);
+            worldChatHub.notifyPlayerStatus(playerId);
             adminAudit(`ปลดแบน ${resolveDisplayPlayerName(playerId, playerId)}`, { event: 'admin_unban', playerId }, null, 'info');
             callback({ success: true });
         } catch (error) {
@@ -12040,7 +12116,7 @@ async function flushAndExit(signal) {
     try {
         await Promise.race([
             // ห้องด้วย — เดิมเซฟแค่ตามรอบ sweep รีสตาร์ตกลางเกมแล้วกู้ state เก่า (เช่น Insider ยังอยู่ช่วงเปิดคำ)
-            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms(), serverLogStore.flush()]),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms(), serverLogStore.flush(), worldChatStore.persistNow()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -12050,7 +12126,10 @@ async function flushAndExit(signal) {
 }
 process.on('SIGTERM', () => flushAndExit('SIGTERM'));
 // ตายแบบไม่มี SIGTERM (เช่น process.exit จากที่อื่น) — log ที่ค้างคิวเขียนลงไฟล์แบบ sync
-process.on('exit', () => serverLogStore.flushSyncOnExit());
+process.on('exit', () => {
+    serverLogStore.flushSyncOnExit();
+    worldChatStore.flushSyncOnExit();
+});
 process.on('SIGINT', () => flushAndExit('SIGINT'));
 
 async function startServer() {
@@ -12074,6 +12153,9 @@ async function startServer() {
         console.log('✅ Admin Message Manager initialized');
 
         await serverLogStore.init();
+
+        await worldChatStore.init();
+        console.log(`✅ World chat initialized (${worldChatStore.listMessages({ includeHidden: true }).length} messages, ${worldChatStore.isUsingDatabase() ? 'mongo' : 'file'})`);
 
         const restoredRooms = await roomManager.initRoomManager();
         console.log(`✅ Room Manager initialized (${restoredRooms} room(s) restored)`);
@@ -12101,6 +12183,9 @@ async function startServer() {
         }
         if (!serverLogStore.isReady()) {
             try { await serverLogStore.init({ useDatabase: false }); } catch (error) { console.error('[serverLogs] init failed:', error.message); }
+        }
+        if (!worldChatStore.isReady()) {
+            try { await worldChatStore.init({ useDatabase: false }); } catch (error) { console.error('[worldChat] init failed:', error.message); }
         }
     } finally {
         resolveCoreManagersReady();
