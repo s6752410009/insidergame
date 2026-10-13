@@ -1081,17 +1081,22 @@ body.content {
 
 /* ---------- แกลเลอรีการ์ด: แตะเพื่อดูภาพใหญ่ ---------- */
 .hp-cards {
-  --hp-card-min: 150px;
-  --hp-card-max: 230px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(var(--hp-card-min), 40vw), var(--hp-card-max)));
+  --hp-card-max: 190px;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 14px;
   margin: 16px 0 4px;
 }
 
-.hp-cards.is-small { --hp-card-min: 116px; --hp-card-max: 170px; }
-.hp-cards.is-large { --hp-card-min: 190px; --hp-card-max: 300px; }
+.hp-cards.is-small { --hp-card-max: 150px; }
+.hp-cards.is-large { --hp-card-max: 260px; }
+.hp-cards > .hp-card { flex: 0 1 var(--hp-card-max); }
+
+/* มือถือ: แถวละ 2 ใบเสมอ ให้ตัวหนังสือในคำอธิบายไม่บีบ */
+@media (max-width: 560px) {
+  .hp-cards > .hp-card { flex-basis: calc(50% - 7px); }
+}
 
 .hp-card {
   margin: 0;
