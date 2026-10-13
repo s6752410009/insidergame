@@ -1275,3 +1275,24 @@ body.content {
 .guide-page .hp-game h2 { font-size: clamp(1.45rem, 2.6vw, 2rem) !important; margin: 10px 0 0 !important; }
 .guide-page .hp-faq-col h2 { font-size: 1.3rem !important; margin: 0 0 12px !important; }
 .guide-page .guide-hero .hp-picker-label { font-size: 0.9rem !important; margin: 22px 0 10px !important; }
+
+/* ไพ่โกหก: ไพ่ SVG ทั้งใบ + ปืนแบบเดียวกับบนกระดาน (liarBoard.ejs gunMeter) */
+.lr-art { background: transparent; }
+.lr-guns { display: grid; gap: 8px; margin: 12px 0 0; }
+.lr-gun-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: oklch(0.24 0.03 150 / 0.55);
+  border: 1px solid oklch(0.85 0.05 85 / 0.18);
+}
+.lr-gun-row small { color: var(--guide-muted); font-size: 0.86rem; }
+.lr-gun { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; line-height: 1.1; font-size: 1.15rem; font-weight: 700; }
+.lr-gun-pips { display: inline-flex; gap: 4px; }
+.lr-gun-pip { width: 13px; height: 13px; border-radius: 50%; border: 2px solid oklch(0.85 0.05 85 / 0.75); }
+.lr-gun-pip.is-used { background: oklch(0.4 0.02 150); border-color: oklch(0.4 0.02 150); }
+.lr-gun-odds { color: oklch(0.8 0.03 140); font-size: 0.95rem; }
+.lr-gun-odds.is-hot { color: oklch(0.7 0.18 25); }

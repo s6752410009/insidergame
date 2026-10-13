@@ -601,20 +601,59 @@
       <%- guideNav('coup') %>
     </article>
 
+    <%
+      const lrCard = function (img, name, does, when, label) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูไพ่' + label + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art is-contain lr-art"><img src="/assets/games/liar/' + img + '.svg" alt="ไพ่' + label + '" width="240" height="336" loading="lazy" decoding="async"></div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+      const lrGun = function (used, label) {
+        let pips = '';
+        for (let i = 0; i < 6; i++) pips += '<span class="lr-gun-pip' + (i < used ? ' is-used' : '') + '"></span>';
+        const left = 6 - used;
+        return '<div class="lr-gun-row"><span class="lr-gun">🔫<span class="lr-gun-pips">' + pips + '</span><span class="lr-gun-odds' + (left <= 2 ? ' is-hot' : '') + '">1/' + left + '</span></span><small>' + label + '</small></div>';
+      };
+    %>
     <article class="guide-card hp-game mode-liar" id="liar">
-      <%- guideHead('liar') %>
+      <%- guideHead('liar', ['⏱ ~10 นาที', '🤖 มีบอท']) %>
       <h2>ลงไพ่คว่ำ อ้างว่าเป็นไพ่บนโต๊ะ ใครแพ้ต้องลั่นไก</h2>
-      <p>กติกาแบบ Liar's Bar: ไพ่ A K Q อย่างละ 6 + โจ๊กเกอร์ 2 ทุกรอบแจกคนละ 5 ใบ แล้วสุ่มไพ่บนโต๊ะ เช่น คิง ถึงตาลง 1–3 ใบคว่ำ อ้างว่าเป็นคิง — โกหกได้ คนถัดไปลงต่อหรือท้า</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>เป้าหมาย</strong> รอดคนสุดท้าย ไม่ใช่ทิ้งไพ่ให้หมดมือ</div>
-        <div class="guide-list-item"><strong>กดโกหก!</strong> หงายไพ่ มีใบไม่ตรงแม้ใบเดียว = คนลงแพ้ · ตรงหมด = คนท้าแพ้ แล้วเริ่มรอบใหม่</div>
-        <div class="guide-list-item"><strong>🔫 คนแพ้ลั่นไก</strong> ปืนของตัวเอง 6 ช่อง กระสุน 1 นัด ยิงแล้วช่องเลื่อน โอกาสโดนเพิ่มทุกนัด (1/6 → 1/5 → …) ปัง = ตกรอบ</div>
-        <div class="guide-list-item"><strong>ไพ่หมดมือ</strong> ข้ามตาจนจบรอบ · เหลือคนเดียวที่มีไพ่ = ต้องกดโกหก!</div>
-        <div class="guide-list-item"><strong>โจ๊กเกอร์</strong> นับเป็นไพ่บนโต๊ะเสมอ · คนโดนจับโกหกได้เริ่มรอบใหม่</div>
-        <div class="guide-list-item"><strong>ตั้งห้อง</strong> เปลี่ยนเป็นหัวใจ 3 ดวงแทนปืนได้ · เปิด 😈 ไพ่ปีศาจ: ลงใบเดียว โดนท้า = ทุกคนยกเว้นคนลงรับโทษ</div>
-        <div class="guide-list-item"><strong>หมดเวลา</strong> ตาละ 30 วิ ระบบลงใบแรกให้ · ต้องท้า = ท้าให้</div>
-        <div class="guide-list-item"><strong>เพื่อนไม่ครบ 3</strong> หัวห้องกด 🤖 เพิ่มบอท ในห้องรอได้</div>
+      <p>กติกาแบบ Liar's Bar ทุกรอบแจกคนละ 5 ใบ แล้วสุ่ม<strong>ไพ่บนโต๊ะ</strong> (A, K หรือ Q) ถึงตาลง 1–3 ใบคว่ำ แล้วอ้างว่าเป็นไพ่บนโต๊ะ โกหกได้ คนถัดไปจะลงต่อหรือกด “โกหก!” ก็ได้</p>
+
+      <h3 class="guide-sub">ไพ่ในสำรับ</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 240 / 336">
+        <%- lrCard('ace', 'A ♠ เอซ', 'ไพ่ปกติ ตรงกับโต๊ะเมื่อโต๊ะเป็น A', 'โต๊ะ A ลงจริงได้เลย', 'เอซ') %>
+        <%- lrCard('king', 'K ♥ คิง', 'ไพ่ปกติ ตรงกับโต๊ะเมื่อโต๊ะเป็น K', 'ไม่ตรงโต๊ะ = ใช้บลัฟ', 'คิง') %>
+        <%- lrCard('queen', 'Q ♦ ควีน', 'ไพ่ปกติ ตรงกับโต๊ะเมื่อโต๊ะเป็น Q', 'ไม่ตรงโต๊ะ = ใช้บลัฟ', 'ควีน') %>
+        <%- lrCard('joker', '🃏 โจ๊กเกอร์', 'นับเป็นไพ่บนโต๊ะเสมอ', 'ลงปนกับไพ่ปลอมให้ดูน่าเชื่อ', 'โจ๊กเกอร์') %>
+        <%- lrCard('devil', '😈 ไพ่ปีศาจ', 'ต้องลงใบเดียว นับว่าจริง · ถ้าโดนท้า ทุกคนยกเว้นคนลงรับโทษ เริ่มจากคนท้า', 'หัวห้องเปิดเท่านั้น · ใช้ได้ตอนเหลือ 3 คนขึ้นไป', 'ปีศาจ') %>
       </div>
+      <p class="hp-note">3–4 คน: A K Q อย่างละ 6 + โจ๊กเกอร์ 2 · 5–8 คน ใช้ 2 สำรับ (อย่างละ 12 + โจ๊กเกอร์ 4) · ไพ่ปีศาจแทนไพ่บนโต๊ะ 1 ใบต่อรอบ และอาจไม่ถูกแจกเลย</p>
+
+      <h3 class="guide-sub">กด “โกหก!” แล้วเกิดอะไร</h3>
+      <ol class="hp-steps">
+        <li><strong>หงายไพ่ที่เพิ่งลง</strong> มีใบไม่ตรงแม้ใบเดียว = คนลงแพ้ · ตรงหมด (รวมโจ๊กเกอร์) = คนท้าแพ้</li>
+        <li><strong>คนแพ้ลั่นไกปืนของตัวเอง</strong> ปัง = ตกรอบ · แชะ = รอด</li>
+        <li><strong>เริ่มรอบใหม่</strong> แจกใหม่ สุ่มไพ่บนโต๊ะใหม่ · คนโดนจับโกหกเริ่มก่อน (ถ้ายังรอด) ไม่งั้นคนถัดจากคนท้าเริ่ม</li>
+      </ol>
+
+      <h3 class="guide-sub">🔫 ปืนลูกโม่ 6 ช่อง</h3>
+      <div class="lr-guns">
+        <%- lrGun(0, 'เริ่มเกม โอกาสโดน 1/6') %>
+        <%- lrGun(2, 'รอดมาแล้ว 2 นัด โอกาส 1/4') %>
+        <%- lrGun(4, 'รอด 4 นัด เหลือ 1/2 — ตัวแดง = อันตราย') %>
+      </div>
+      <ul class="hp-points">
+        <li><i>🎯</i><span>ทุกคนมีปืนของตัวเอง กระสุน 1 นัด ตำแหน่งสุ่มครั้งเดียวตอนเริ่มเกม <strong>ไม่หมุนใหม่</strong> นัดที่ยิงไปแล้วนับต่อข้ามรอบ</span></li>
+        <li><i>❤️</i><span>หัวห้องเปลี่ยนเป็น <strong>หัวใจ 3 ดวง</strong> แทนปืนได้ แพ้เสีย 1 ดวง หมด = ตกรอบ</span></li>
+      </ul>
+
+      <h3 class="guide-sub">ข้อควรรู้</h3>
+      <ul class="hp-points">
+        <li><i>🏆</i><span><strong>ชนะ</strong> รอดคนสุดท้าย ไม่ใช่ทิ้งไพ่ให้หมดมือ</span></li>
+        <li><i>✋</i><span>ไพ่หมดมือ ข้ามตาจนจบรอบ · เหลือคนเดียวที่มีไพ่ = ต้องกด “โกหก!”</span></li>
+        <li><i>⏱</i><span>ตาละ 30 วิ หมดเวลาระบบลงใบแรกให้ (ต้องท้า = ท้าให้) · ตาที่แล้วหมดเวลา ตานี้เหลือ 12 วิ</span></li>
+        <li><i>🤖</i><span>หัวห้องกด 🤖 เพิ่มบอทในห้องรอได้จนครบ 8 ที่</span></li>
+      </ul>
       <%- guideNav('liar') %>
     </article>
 
