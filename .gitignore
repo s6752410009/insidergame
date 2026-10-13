@@ -28,3 +28,4 @@ public/assets/games/*/*.png
 # Test screenshots from browser-google-avatar.js (regenerated each run)
 screenshots/google-avatar/
 screenshots/seo/
+screenshots/world-chat/

@@ -81,6 +81,8 @@
     "smoke:worldchat:filter": "node scripts/smoke-world-chat-filter.js",
     "smoke:worldchat:store": "node scripts/smoke-world-chat-store.js",
     "smoke:worldchat:socket": "node scripts/smoke-world-chat-socket.js",
+    "smoke:worldchat:browser": "node scripts/browser-world-chat.js",
+    "smoke:worldchat": "node scripts/smoke-world-chat-filter.js && node scripts/smoke-world-chat-store.js && node scripts/smoke-world-chat-socket.js",
     "smoke:identity": "node scripts/smoke-identity.js",
     "test:google:avatar": "node scripts/test-google-avatar.js",
     "smoke:google:avatar:browser": "node scripts/browser-google-avatar.js",
