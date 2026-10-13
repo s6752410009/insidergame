@@ -419,6 +419,7 @@ loadSettings();
 reloadInsiderWords();
 
 module.exports = {
+    DEFAULT_PROFANITY,
     DEFAULT_SETTINGS,
     getSettings,
     updateSettings,

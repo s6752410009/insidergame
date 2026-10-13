@@ -192,7 +192,16 @@ serverLogSchema.index({ gameMode: 1, logId: -1 });
 serverLogSchema.index({ roomId: 1, bucket: 1, bot: 1, logId: -1 });
 const ServerLog = mongoose.model('ServerLog', serverLogSchema);
 
+// แชทโลก — ข้อความล่าสุด 200 + รายการคำ + คนที่โดนห้ามพิมพ์ เก็บเป็นเอกสารเดียว (ดู managers/worldChatManager.js)
+const worldChatStateSchema = new mongoose.Schema({
+    key: { type: String, required: true, unique: true, index: true },
+    payload: { type: mongoose.Schema.Types.Mixed, required: true },
+    updatedAt: { type: Date, default: Date.now }
+}, { timestamps: true, minimize: false });
+const WorldChatState = mongoose.model('WorldChatState', worldChatStateSchema);
+
 module.exports = {
+    WorldChatState,
     ServerLog,
     Player,
     PlayerStats,

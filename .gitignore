@@ -14,6 +14,8 @@ data/wallets.json
 data/soloStats.json
 data/soloStats.json.bak
 data/serverLogs.ndjson
+data/worldChat.json
+data/worldChat.json.broken-*
 data/wallets.json.bak
 data/*.tmp
 # Editor-local

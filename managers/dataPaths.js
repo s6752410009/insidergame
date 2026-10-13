@@ -28,5 +28,6 @@ module.exports = {
     SEASONS_FILE: process.env.SEASONS_FILE || dataFile('seasons.json'),
     ROOMS_FILE: process.env.ROOMS_FILE || dataFile('rooms.json'),
     ADMIN_MESSAGES_FILE: process.env.ADMIN_MESSAGES_FILE || dataFile('adminMessages.json'),
+    WORLD_CHAT_FILE: process.env.WORLD_CHAT_FILE || dataFile('worldChat.json'),
     BACKUP_DIR: dataFile('backups')
 };
