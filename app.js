@@ -5188,6 +5188,17 @@ async function cleanupGhostPlayers(options = {}) {
 
 app.set('trust proxy', 1);
 
+// โดเมนหลักเดียว (SEO): www.<โดเมน> → <โดเมน> แบบ 301 ทั้งหน้าและไฟล์ — ไม่งั้น Google เห็นหน้าซ้ำ 2 ชุด
+// ข้าม /ping (healthcheck) และ socket.io (ต่อ websocket ค้างอยู่ไม่ต้องย้าย)
+const CANONICAL_HOST = (() => { try { return new URL(PUBLIC_BASE_URL).host.toLowerCase(); } catch (e) { return ''; } })();
+app.use(function(req, res, next) {
+    const host = String(req.headers.host || '').toLowerCase();
+    if (CANONICAL_HOST && host === 'www.' + CANONICAL_HOST && req.path !== '/ping' && !req.path.startsWith('/socket.io')) {
+        return res.redirect(301, 'https://' + CANONICAL_HOST + req.originalUrl);
+    }
+    next();
+});
+
 const sessionMiddleware = session({
     secret: SESSION_SECRET,
     resave: false,
