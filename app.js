@@ -59,7 +59,8 @@ const soloStats = require('./managers/soloStatsManager');
 const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
 const { registerSeoGameRoutes } = require('./games/seoPages');
-const { listSeoGames, CATEGORIES: SEO_GAME_CATEGORIES } = require('./games/seoContent');
+const { listSeoGames, getSeoGame, CATEGORIES: SEO_GAME_CATEGORIES } = require('./games/seoContent');
+const { buildSitemapXml } = require('./games/sitemap');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
 // (Render ตั้ง RENDER_GIT_COMMIT · Coolify ตั้ง SOURCE_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
@@ -275,7 +276,10 @@ function isCrawlerRequest(req) {
 }
 
 function isIndexablePublicPath(pathname = '/') {
-    return pathname === '/' || pathname === '/rooms' || pathname === '/how-to-play';
+    if (pathname === '/' || pathname === '/rooms' || pathname === '/how-to-play' || pathname === '/solo') return true;
+    // เกมเล่นคนเดียว /solo/<id> ที่มีอยู่จริง (อยู่ใน sitemap) — บอทค้นหาต้องได้หน้าเกมจริง ไม่ใช่หน้า bootstrap
+    const soloMatch = /^\/solo\/([a-z0-9_-]+)$/i.exec(pathname);
+    return Boolean(soloMatch && soloGames.getSoloGame(soloMatch[1]));
 }
 
 function shouldUseSeoPreview(req) {
@@ -417,6 +421,23 @@ function buildSeoMetadata(req) {
         }
     };
 
+    const soloMatch = /^\/solo\/([a-z0-9_-]+)$/i.exec(pathname);
+    const soloSeo = soloMatch ? getSeoGame(soloMatch[1]) : null;
+    if (pathname === '/solo') {
+        pageMap['/solo'] = {
+            title: 'เกมเล่นคนเดียวออนไลน์ฟรี ทายคำรายวัน โซลิแทร์ ป๊อกเด้ง',
+            description: 'ไม่มีเพื่อนออนไลน์ก็เล่นได้ เกมเล่นคนเดียวฟรีบนเว็บ ทายคำรายวันภาษาไทย จับคู่การ์ดความจำ ไพ่โซลิแทร์ และป๊อกเด้งท้าเจ้ามือ พร้อมตารางอันดับ',
+            keywords: 'เกมเล่นคนเดียว, เกมทายคำรายวัน, โซลิแทร์ ออนไลน์, ป๊อกเด้ง เล่นคนเดียว, เกมจับคู่การ์ด'
+        };
+    } else if (soloSeo && soloSeo.solo && soloGames.getSoloGame(soloSeo.id)) {
+        pageMap[pathname] = {
+            title: `${soloSeo.name} — เล่นเลย | เกมเล่นคนเดียวฟรี`,
+            description: soloSeo.description,
+            keywords: soloSeo.keywords.join(', '),
+            ogImage: buildCanonicalUrl(soloSeo.ogImage)
+        };
+    }
+
     const page = pageMap[pathname] || {
         title: 'Insider Game Thailand',
         description: 'เว็บเกมปาร์ตี้ออนไลน์สำหรับเล่นกับเพื่อน',
@@ -448,14 +469,14 @@ function buildSeoMetadata(req) {
         ogType: 'website',
         ogTitle: page.title,
         ogDescription: page.description,
-        ogImage: defaultImage,
+        ogImage: page.ogImage || defaultImage,
         ogImageAlt: 'เกมปาร์ตี้ออนไลน์ เล่นกับเพื่อนฟรี — insider-th.me',
         ogImageWidth: 1200,
         ogImageHeight: 630,
         twitterCard: 'summary_large_image',
         twitterTitle: page.title,
         twitterDescription: page.description,
-        twitterImage: defaultImage,
+        twitterImage: page.ogImage || defaultImage,
         siteName: 'Insider Game Thailand',
         structuredData: buildStructuredData(pathname, canonicalUrl)
     };
@@ -5214,9 +5235,11 @@ app.get('/robots.txt', (req, res) => {
     res.sendFile(__dirname + '/public/robots.txt');
 });
 
+// sitemap สร้างสดจากรายชื่อเกม (games/sitemap.js) — เพิ่มเกมใหม่แล้วขึ้นเอง
 app.get('/sitemap.xml', (req, res) => {
     res.type('application/xml');
-    res.sendFile(__dirname + '/public/sitemap.xml');
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(buildSitemapXml(buildCanonicalUrl));
 });
 
 app.get(['/llms.txt', '/ai.txt'], (req, res) => {

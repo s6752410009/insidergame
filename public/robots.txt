@@ -1,5 +1,7 @@
+# หน้าเกม /games/<id> เปิดให้ index (Disallow: /game/ มีทับ / ปิดท้าย จึงไม่บล็อก /games/)
 User-agent: *
 Allow: /
+Allow: /games/
 
 Disallow: /socket.io/
 Disallow: /admin

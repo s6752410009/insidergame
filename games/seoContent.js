@@ -18,6 +18,9 @@
 
 const { getAvailableGameModes } = require('./engineRegistry');
 
+// วันที่เนื้อหาหน้าเกมเปลี่ยนล่าสุด (ใช้เป็น lastmod ใน sitemap) — เกมไหนแก้เนื้อหาเฉพาะ ใส่ updated: 'YYYY-MM-DD' ในก้อนของเกมนั้น
+const CONTENT_UPDATED = '2026-10-13';
+
 const GAMES = [
     {
         id: 'insider',
@@ -620,4 +623,4 @@ const CATEGORIES = [
     { id: 'solo', label: 'เล่นคนเดียว' }
 ];
 
-module.exports = { getSeoGame, listSeoGames, CATEGORIES, formatPlayers };
+module.exports = { getSeoGame, listSeoGames, CATEGORIES, CONTENT_UPDATED, formatPlayers };
