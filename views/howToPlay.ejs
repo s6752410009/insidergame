@@ -218,19 +218,48 @@
     </article>
 
     <article class="guide-card hp-game mode-spyfall" id="spyfall">
-      <%- guideHead('spyfall') %>
+      <%- guideHead('spyfall', ['⏱ รอบละ 8 นาที', '🔁 1/3/5 รอบ']) %>
       <h2>รู้สถานที่ จับสายลับ</h2>
-      <p>ทุกคนได้สถานที่เดียวกัน (และบทในที่นั้นคนละบท) ยกเว้นสายลับ 1 คนที่ต้องเดาจากคำถาม–คำตอบโดยไม่เปิดเผยตัว</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>เป้าหมาย</strong> พลเมืองจับสายลับ · สายลับหลบรอด หรือทายสถานที่ให้ถูก</div>
-        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 3-8 คน รอบละ 8 นาที เล่นหลายรอบสะสมแต้ม</div>
-        <div class="guide-list-item"><strong>🎤 ถาม–ตอบ</strong> เจ้ามือถามก่อน · คนที่ถูกถามตอบ แล้วถามคนอื่นต่อ · ห้ามถามกลับคนที่เพิ่งถามเรา</div>
-        <div class="guide-list-item"><strong>🛑 กล่าวหา</strong> ใครก็หยุดเวลาได้คนละ 1 ครั้งต่อรอบ · ทุกคนยกเว้นคนถูกกล่าวหาต้องเห็นด้วย ถึงเปิดการ์ด · มีคนไม่เห็นด้วย = เวลาเดินต่อ</div>
-        <div class="guide-list-item"><strong>🎯 สายลับทาย</strong> หยุดเวลาทายสถานที่ได้ 1 ครั้ง ตอนเวลายังเดิน · ถูกชนะ ผิดแพ้</div>
-        <div class="guide-list-item"><strong>⏰ หมดเวลา</strong> ไล่กล่าวหาทีละคน เริ่มจากเจ้ามือ · ไม่มีใครถูกจับ = สายลับรอด</div>
-        <div class="guide-list-item"><strong>🏆 คะแนน</strong> สายลับรอด 2 · จับผิดคนหรือทายถูก 4 · จับสายลับได้ พลเมืองคนละ 1 คนเริ่มกล่าวหา +1 · สายลับรอบก่อนเป็นเจ้ามือรอบใหม่</div>
-        <div class="guide-list-item"><strong>ตั้งได้ในห้อง</strong> จำนวนรอบ 1/3/5 · โหวตเสียงข้างมาก (หมดเวลาแล้วโหวตลับครั้งเดียว)</div>
+      <p>ทุกคนได้สถานที่เดียวกันและบทในที่นั้นคนละบท ยกเว้น<strong>สายลับ 1 คน</strong>ที่ไม่รู้ว่าอยู่ที่ไหน ต้องฟังคำถาม–คำตอบแล้วเนียนให้รอด</p>
+
+      <h3 class="guide-sub">การ์ดที่แต่ละคนเห็น</h3>
+      <div class="hp-cards hp-wide is-large" style="--hp-art: 1 / 1">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดพลเมืองขนาดใหญ่">
+          <div class="hp-card-art sf-card"><img src="/assets/games/spyfall/beach.webp" alt="การ์ดสถานที่ชายหาด" width="512" height="512" loading="lazy" decoding="async"><span class="sf-card-copy"><small>พลเมือง · บทของคุณ</small><b>ไลฟ์การ์ด</b><em>🏖️ ชายหาด</em></span></div>
+          <figcaption><b>🙂 พลเมือง</b><span class="hp-does">เห็นสถานที่กับบทของตัวเอง ทุกคนอยู่ที่เดียวกัน</span><span class="hp-when">ถามตอบให้พวกเดียวกันรู้ แต่อย่าชัดจนสายลับเดาออก</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดสายลับขนาดใหญ่">
+          <div class="hp-card-art sf-card is-spy"><img src="/assets/games/spyfall/spy.webp" alt="การ์ดสายลับ" width="1024" height="1024" loading="lazy" decoding="async"><span class="sf-card-copy"><small>คุณคือ</small><b>🕶️ สายลับ</b><em>ไม่รู้สถานที่</em></span></div>
+          <figcaption><b>🕶️ สายลับ</b><span class="hp-does">ไม่รู้สถานที่ แต่เห็นรายชื่อสถานที่ทั้งหมด ขีดฆ่าตัวที่ไม่ใช่ได้</span><span class="hp-when">ฟังคำตอบ แล้วหยุดเวลาทายสถานที่ตอนมั่นใจ</span></figcaption>
+        </figure>
       </div>
+
+      <h3 class="guide-sub">ตัวอย่างการ์ดสถานที่</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 1 / 1">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูสถานที่โรงพยาบาลขนาดใหญ่"><div class="hp-card-art"><img src="/assets/games/spyfall/hospital.webp" alt="โรงพยาบาล" width="512" height="512" loading="lazy" decoding="async"></div><figcaption><b>🏥 โรงพยาบาล</b><span class="hp-does">แพทย์ · พยาบาล · เภสัชกร · ญาติผู้ป่วย</span></figcaption></figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูสถานที่สถานีอวกาศขนาดใหญ่"><div class="hp-card-art"><img src="/assets/games/spyfall/space.webp" alt="สถานีอวกาศ" width="512" height="512" loading="lazy" decoding="async"></div><figcaption><b>🚀 สถานีอวกาศ</b><span class="hp-does">ผู้บัญชาการ · นักบินอวกาศ · วิศวกรระบบ</span></figcaption></figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูสถานที่วัดขนาดใหญ่"><div class="hp-card-art"><img src="/assets/games/spyfall/temple.webp" alt="วัด" width="512" height="512" loading="lazy" decoding="async"></div><figcaption><b>🛕 วัด</b><span class="hp-does">พระ · เณร · ผู้มาทำบุญ · พ่อค้าเครื่องบูชา</span></figcaption></figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูสถานที่คาสิโนขนาดใหญ่"><div class="hp-card-art"><img src="/assets/games/spyfall/casino.webp" alt="คาสิโน" width="512" height="512" loading="lazy" decoding="async"></div><figcaption><b>🎰 คาสิโน</b><span class="hp-does">เจ้ามือ · นักพนัน · รปภ. · ผู้จัดการพื้น</span></figcaption></figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูสถานที่สนามบินขนาดใหญ่"><div class="hp-card-art"><img src="/assets/games/spyfall/airport.webp" alt="สนามบิน" width="512" height="512" loading="lazy" decoding="async"></div><figcaption><b>✈️ สนามบิน</b><span class="hp-does">พนักงานเช็กอิน · นักเดินทาง · ไกด์ทัวร์</span></figcaption></figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูสถานที่โรงเรียนขนาดใหญ่"><div class="hp-card-art"><img src="/assets/games/spyfall/school.webp" alt="โรงเรียน" width="512" height="512" loading="lazy" decoding="async"></div><figcaption><b>🏫 โรงเรียน</b><span class="hp-does">ครู · นักเรียน · ภารโรง · บรรณารักษ์</span></figcaption></figure>
+      </div>
+      <p class="hp-note">มีทั้งหมด 20 สถานที่ สถานที่ละ 8 บท (แอดมินเพิ่มสถานที่ได้)</p>
+
+      <h3 class="guide-sub">หนึ่งรอบเล่นยังไง</h3>
+      <ol class="hp-steps">
+        <li><strong>🎤 ถาม–ตอบ</strong> เจ้ามือถามก่อน · คนที่ถูกถามตอบ แล้วถามคนอื่นต่อ · ห้ามถามกลับคนที่เพิ่งถามเรา</li>
+        <li><strong>🛑 กล่าวหา</strong> ใครก็หยุดเวลาได้คนละ 1 ครั้งต่อรอบ · <strong>ทุกคนยกเว้นคนถูกกล่าวหาต้องเห็นด้วย</strong>ถึงเปิดการ์ด · ไม่โหวตใน 60 วิ = ไม่เห็นด้วย · มีคนไม่เห็นด้วย = เวลาเดินต่อ</li>
+        <li><strong>🎯 สายลับทาย</strong> หยุดเวลาทายสถานที่ได้ 1 ครั้งตอนเวลายังเดิน (ไม่ใช่ระหว่างกล่าวหา) · ถูกชนะ ผิดแพ้</li>
+        <li><strong>⏰ หมดเวลา</strong> ไล่ชี้ตัวทีละคน เริ่มจากเจ้ามือ คนละ 30 วิ · ไม่มีใครถูกจับ = สายลับรอด · กด “พร้อมโหวต” เกินครึ่ง = ข้ามเวลาที่เหลือ</li>
+      </ol>
+
+      <h3 class="guide-sub">คะแนน (เล่นหลายรอบ)</h3>
+      <ul class="hp-points">
+        <li><i>🕶️</i><span>สายลับรอด <strong>+2</strong> · จับผิดคน หรือทายสถานที่ถูก <strong>+4</strong></span></li>
+        <li><i>🙂</i><span>จับสายลับได้ พลเมืองคนละ <strong>+1</strong> คนเริ่มกล่าวหา +1 · สายลับทายผิด พลเมืองคนละ +1</span></li>
+        <li><i>🔁</i><span>สายลับรอบก่อนเป็นเจ้ามือรอบใหม่ · ค่าเริ่ม 5 รอบ (ตั้ง 1/3/5) แต้มรวมสูงสุดชนะ</span></li>
+        <li><i>🗳️</i><span>ตั้งเป็น <strong>โหวตเสียงข้างมาก</strong>ได้: ไม่มีการหยุดเวลากล่าวหา หมดเวลาแล้วโหวตลับครั้งเดียว (90 วิ) เสมอ = สายลับรอด</span></li>
+      </ul>
       <%- guideNav('spyfall') %>
     </article>
 

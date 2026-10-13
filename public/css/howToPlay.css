@@ -938,7 +938,7 @@ body.content {
 .hp-game > .pk-rank-list,
 .hp-game > .hp-pager { grid-column: full; }
 
-.hp-game h2 { font-size: clamp(1.45rem, 2.6vw, 2rem); line-height: 1.2; margin: 10px 0 0; }
+.guide-page .hp-game h2 { font-size: clamp(1.45rem, 2.6vw, 2rem); line-height: 1.2; margin: 10px 0 0; }
 .hp-game > p { font-size: 1.04rem; margin: 12px 0 0; }
 .hp-game .guide-list-item { font-size: 1rem; }
 
@@ -981,8 +981,8 @@ body.content {
 }
 
 /* หัวข้อย่อยในเกม */
-.hp-game h3,
-.hp-game .guide-sub { margin: 30px 0 10px; font-size: 1.2rem; }
+.guide-page .hp-game h3,
+.guide-page .hp-game .guide-sub { margin: 30px 0 10px; font-size: 1.2rem; }
 
 /* ขั้นตอนแบบมีเลข */
 .hp-steps {
@@ -1252,3 +1252,21 @@ body.content {
 .ww-cards .hp-card.team-village .hp-card-art { box-shadow: inset 0 0 0 2px rgba(250, 204, 21, 0.28); }
 .ww-cards .hp-card.team-solo .hp-card-art { box-shadow: inset 0 0 0 2px rgba(168, 85, 247, 0.55); }
 .hp-points > li, .hp-steps > li { font-size: 1rem; }
+
+/* Spyfall: การ์ดบทบนรูปสถานที่ แบบบนกระดาน */
+.sf-card > img { filter: brightness(0.62); }
+.sf-card-copy {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: grid;
+  gap: 2px;
+  padding: 14px 12px 12px;
+  text-align: center;
+  background: linear-gradient(180deg, transparent, rgba(4, 12, 14, 0.88) 45%);
+}
+.sf-card-copy small { color: #99f6e4; font-size: 0.72rem; font-weight: 600; }
+.sf-card-copy b { color: #fff; font-size: 1.15rem; line-height: 1.2; }
+.sf-card-copy em { color: #fbbf24; font-style: normal; font-weight: 700; font-size: 0.95rem; }
+.sf-card.is-spy .sf-card-copy { background: linear-gradient(180deg, transparent, rgba(30, 6, 8, 0.9) 45%); }
+.sf-card.is-spy .sf-card-copy small { color: #fecaca; }
+.hp-zoom-art .sf-card-copy b { font-size: 1.6rem; }
