@@ -896,21 +896,20 @@ $(function() {
     if (!shouldHide) {
         // Show patch notes popup
         Swal.fire({
-            title: '🤖 v<%= appVersion %> — เล่นกับบอทได้ใน Coup + Werewolf!',
+            title: '💬 v<%= appVersion %> — แชทโลก + รูปโปรไฟล์ Google!',
             html: `
                 <div style="text-align: left; color: #ccc; max-height: 400px; overflow-y: auto;">
                     ${seasonResetNoticeHtml}
                     <p style="color: #f6c453; font-size: 0.95em; line-height: 1.65; margin-bottom: 15px;">
-                        ไม่มีเพื่อนก็เล่นได้! สร้างห้อง <strong>👑 Coup</strong> หรือ <strong>🐺 Werewolf</strong> แล้วกด <strong>“🤖 เพิ่มบอท”</strong> — หรือเล่น <strong>💰 เศรษฐี</strong> กับบอทได้ถึง 6 คน
+                        กดปุ่ม <strong>💬 แชทโลก</strong> มุมซ้ายล่าง คุยกับทุกคนในเว็บ หาเพื่อนเล่น หรือกด <strong>📣 ชวน</strong> จากห้องของคุณ
                     </p>
 
                     <div style="background: rgba(22, 101, 52, 0.18); padding: 14px; border: 1px solid rgba(74, 222, 128, 0.28); border-radius: 12px; margin-bottom: 15px;">
                         <ul style="margin: 0; padding-left: 20px; font-size: 0.92em; color: #ddd; line-height: 1.7;">
-                            <li>🤖 <strong>บอทฉลาดแบบคน</strong> — Coup จำว่าใครชอบบลัฟ · Werewolf อ้างบท จับคนบ้า หมาป่าหลอกเป็นทีม</li>
-                            <li>🎨 <strong>ภาพตัวละครใหม่</strong> — Werewolf การ์ตูนครบ 20 บท · Coup &amp; Avalon ภาพวาดสวยๆ</li>
-                            <li>🧭 <strong>Coup &amp; Avalon เล่นง่ายขึ้น</strong> — ปุ่มบอกได้/เสียชัด บอกว่าเสียการ์ดเพราะอะไร มีเวลาให้เห็นตลอด</li>
-                            <li>💰 <strong>เศรษฐี</strong> 6 คน + 🏪 ร้านสกิล — ชนะได้ 🪙 เอาไปอัปสกิล</li>
-                            <li>📊 เกมที่มีบอทไม่นับสถิติ — อันดับแฟร์สำหรับทุกคน</li>
+                            <li>💬 <strong>แชทโลก</strong> — คุยค้างไว้ได้ ชวนเพื่อนเข้าห้องได้ · คำหยาบโดนกรอง กด 🚩 รายงานได้</li>
+                            <li>🖼️ <strong>ใช้รูป Google เล่นเกม</strong> — เชื่อม Google แล้วเปิดสวิตช์ในโปรไฟล์ (แท็บแต่งตัว)</li>
+                            <li>📖 <strong>หน้ากฎการเล่นใหม่</strong> — กว้าง อ่านง่าย ใช้การ์ดจริงในเกมอธิบายทุกเกม</li>
+                            <li>🤖 เล่นกับบอทได้ใน Coup, Werewolf, เศรษฐี และอีกหลายเกม</li>
                         </ul>
                     </div>
 
