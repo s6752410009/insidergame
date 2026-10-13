@@ -56,6 +56,18 @@ function createWorldChatHub(deps) {
         };
     }
 
+    // ห้องที่ชวนได้ตอนนี้ (ให้หน้าเว็บโชว์ปุ่ม "ชวนเข้าห้อง") — หาจากฝั่ง server เท่านั้น
+    function meFor(socket, playerId) {
+        const me = statusFor(playerId);
+        if (me.canSend && playerId && typeof deps.describeInviteRoom === 'function') {
+            const room = deps.describeInviteRoom(socket, playerId);
+            me.inviteRoom = room ? { roomName: room.roomName, gameLabel: room.gameLabel, emoji: room.emoji, count: room.count, max: room.max } : null;
+        } else {
+            me.inviteRoom = null;
+        }
+        return me;
+    }
+
     function broadcastMessage(message) {
         io.to(ROOM).emit('worldChat:message', service.toPublic(message, deps.liveRoom));
     }
@@ -112,7 +124,7 @@ function createWorldChatHub(deps) {
                 success: true,
                 unread,
                 latestAt: visible.length ? visible[visible.length - 1].createdAt : null,
-                me: statusFor(playerId)
+                me: meFor(socket, playerId)
             });
         });
 
@@ -120,7 +132,7 @@ function createWorldChatHub(deps) {
             const done = pickCallback(data, callback);
             socket.join(ROOM);
             const playerId = deps.getPlayerId(socket);
-            respond(done, { success: true, messages: service.history(deps.liveRoom), me: statusFor(playerId) });
+            respond(done, { success: true, messages: service.history(deps.liveRoom), me: meFor(socket, playerId) });
         });
 
         on('worldChat:send', (data, callback) => {

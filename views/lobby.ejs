@@ -1,6 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/home.css?v=2">
+<link rel="stylesheet" href="/static/css/worldChat.css?v=1">
 <%
     const homeGames = stats ? (stats.totalGames || 0) : 0;
     const homeWins = stats ? (stats.wins || 0) : 0;
@@ -147,6 +148,7 @@
 <!-- No footer needed -->
 
 <%- contentFor('script') %>
+<script src="/static/js/worldChat.js?v=1"></script>
 <script>
 $(function() {
     // เก็บ playerId ใน sessionStorage สำหรับ tab นี้

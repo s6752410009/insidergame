@@ -1,6 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/pokerHands.css">
+<link rel="stylesheet" href="/static/css/worldChat.css?v=1">
 <style>
     :root {
         --room-bg: #09090b;
@@ -923,6 +924,7 @@
 
 <%- contentFor('script') %>
 <script src="/js/pokerRankChart.js?v=20261007rules"></script>
+<script src="/static/js/worldChat.js?v=1"></script>
 <script>
 $(function() {
     const socket = window.appSocket || io();
@@ -1405,13 +1407,55 @@ $(function() {
                 rooms = response.rooms;
                 renderRoomList();
             }
+            if (pendingInviteRoomId) {
+                const inviteRoomId = pendingInviteRoomId;
+                pendingInviteRoomId = null;
+                joinRoomFromInvite(inviteRoomId);
+            }
         });
     });
+
+    // การ์ด "เชิญมาเล่น" ในแชทโลก → ใช้ทางเดียวกับแตะการ์ดห้อง (ถามรหัสถ้าห้องล็อก, ห้องเต็ม/กำลังเล่นแจ้งเหมือนเดิม)
+    function joinRoomFromInvite(roomId) {
+        const id = String(roomId || '');
+        const card = $('.room-card').filter(function() { return String($(this).attr('data-room-id')) === id; });
+        if (card.length) {
+            card.first().trigger('click');
+            return;
+        }
+        Swal.fire({
+            icon: 'info',
+            title: 'ห้องนี้ปิดไปแล้ว',
+            text: 'ลองเลือกห้องอื่นในรายการ หรือสร้างห้องใหม่',
+            background: '#1e1e1e',
+            color: '#fff',
+            confirmButtonColor: '#e74c3c'
+        });
+    }
+    window.WorldChatJoinRoom = function(roomId) {
+        socket.emit('getRoomList', function(response) {
+            if (response && response.success) {
+                rooms = response.rooms;
+                renderRoomList();
+            }
+            joinRoomFromInvite(roomId);
+        });
+    };
 
     let rooms = [];
 
     // แสดง message จาก URL param (ถ้ามี)
     const urlParams = new URLSearchParams(window.location.search);
+    // /rooms?join=<roomId> จากการ์ดเชิญในแชทโลกหน้าอื่น — ใช้ครั้งเดียวแล้วลบออกจาก URL
+    let pendingInviteRoomId = (function() {
+        const requested = String(urlParams.get('join') || '').trim();
+        return /^[A-Za-z0-9_-]{1,40}$/.test(requested) ? requested : null;
+    })();
+    if (urlParams.has('join') && window.history && window.history.replaceState) {
+        const joinCleanUrl = new URL(window.location.href);
+        joinCleanUrl.searchParams.delete('join');
+        window.history.replaceState(window.history.state, '', joinCleanUrl.pathname + joinCleanUrl.search + joinCleanUrl.hash);
+    }
     // ลิงก์จากหน้าเกม (/games/<id>) มาเป็น /rooms?mode=<id> → เปิดหน้าสร้างห้องโดยเลือกเกมนั้นไว้ให้แล้ว
     // ใช้ครั้งเดียว แล้วลบออกจาก URL (กดสร้างห้องเองรอบหลัง หรือรีเฟรช จะได้หน้าเลือกเกมตามปกติ)
     let pendingCreateMode = (function() {

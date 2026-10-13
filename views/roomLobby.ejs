@@ -643,6 +643,22 @@
     color: #fff;
   }
 
+  .btn-world-invite {
+    margin-left: auto;
+    margin-right: 8px;
+    min-height: 36px;
+    padding: 6px 12px;
+    border: 1px dashed rgba(241, 196, 15, 0.6);
+    border-radius: 12px;
+    background: transparent;
+    color: #f1c40f;
+    font-size: 0.85em;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-world-invite:hover { background: rgba(241, 196, 15, 0.1); }
+  .btn-world-invite:disabled { opacity: 0.6; cursor: wait; }
   .btn-edit-room {
     background: #f39c12;
     color: #111;
@@ -1520,6 +1536,7 @@
     <div class="room-card-dark lobby-player-list">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h3 style="margin:0;">👥 ผู้เล่นในห้อง</h3>
+        <button type="button" id="btnWorldChatInvite" class="btn-world-invite" title="ส่งการ์ดชวนเข้าห้องนี้ไปที่แชทโลก">📣 ชวนในแชทโลก</button>
         <button id="btnViewRolesLobby" class="is-hidden" style="background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:12px; padding:6px 12px; font-size:0.85em; cursor:pointer;">🎭 บทบาท</button>
       </div>
       <div id="lobbyPlayers"></div>
@@ -1623,6 +1640,26 @@
     let currentWerewolfRoles = <%- safeJson(typeof room !== 'undefined' && Array.isArray(room.werewolfRoles) ? room.werewolfRoles : []) %>;
     const initialRoomPayload = <%- safeJson(typeof initialRoomPayload !== 'undefined' ? initialRoomPayload : null) %>;
     let latestRoomPayload = initialRoomPayload ? { ...initialRoomPayload } : null;
+
+    // 📣 ส่งการ์ด "เชิญมาเล่น" ของห้องนี้ไปแชทโลก (server หาห้องจากตัวตนเอง ไม่ส่ง roomId ไป)
+    $('#btnWorldChatInvite').on('click', function() {
+      const button = this;
+      button.disabled = true;
+      socket.emit('worldChat:invite', {}, function(response) {
+        button.disabled = false;
+        const ok = response && response.success;
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: ok ? 'success' : 'info',
+          title: ok ? 'ส่งการ์ดชวนไปแชทโลกแล้ว 📣' : ((response && response.error) || 'ชวนไม่สำเร็จ'),
+          background: '#1e1e1e',
+          color: '#fff',
+          timer: ok ? 2200 : 3800,
+          showConfirmButton: false
+        });
+      });
+    });
     let isAdmin = <%= room.isAdmin ? 'true' : 'false' %>;
     const currentModeMeta = {
       insider: {
