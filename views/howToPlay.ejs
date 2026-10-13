@@ -1312,14 +1312,14 @@
       var chip = chips[id];
       if (chip) {
         var target = chip.offsetLeft - (scroller.clientWidth - chip.offsetWidth) / 2;
-        scroller.scrollTo({ left: Math.max(0, target), behavior: 'auto' });
+        scroller.scrollTo({ left: Math.max(0, target), behavior: 'instant' });
       }
     }
 
     function scrollToEl(el) {
       var barH = bar ? bar.getBoundingClientRect().height : 0;
       var y = el.getBoundingClientRect().top + window.scrollY - barH - 10;
-      window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+      window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
     }
 
     // เปิดเกมตาม #id · id ที่อยู่ข้างในเกม (เช่นหัวข้อย่อย) ก็เปิดเกมนั้นแล้วเลื่อนไปหา
@@ -1336,7 +1336,7 @@
       if (opts && opts.noScroll) return;
       if (game) scrollToEl(el);
       else if (el && id !== 'top') scrollToEl(el);
-      else window.scrollTo({ top: 0, behavior: 'auto' });
+      else window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
     function currentId() { return decodeURIComponent(location.hash.slice(1)); }
