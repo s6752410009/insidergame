@@ -86,6 +86,8 @@
     const googleOn = typeof googleClientId !== 'undefined' && googleClientId;
     const googleLinked = typeof viewerGoogleLinked !== 'undefined' && viewerGoogleLinked;
     const googleEmail = typeof viewerGoogleEmail !== 'undefined' ? viewerGoogleEmail : null;
+    const googlePicture = typeof viewerGooglePicture !== 'undefined' ? viewerGooglePicture : null;
+    const useGooglePhoto = typeof viewerUseGooglePhoto !== 'undefined' && viewerUseGooglePhoto && Boolean(googlePicture);
     const chipBalance = typeof chips === 'number' ? chips : null;
 %>
 <style>
@@ -450,6 +452,28 @@
         border-radius: 14px;
         background: var(--pf-surface);
     }
+    /* ---------- ใช้รูปจาก Google ---------- */
+    .pf-gphoto-toggle {
+        display: flex; align-items: center; gap: var(--space-md);
+        width: 100%; min-height: 56px; padding: var(--space-sm) var(--space-md);
+        border-radius: 12px; border: 1px solid var(--pf-line);
+        background: var(--pf-surface-2); color: var(--pf-ink);
+        font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+    }
+    .pf-gphoto-toggle:disabled { opacity: 0.6; cursor: progress; }
+    .pf-gphoto-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+    .pf-gphoto-label { flex: 1 1 auto; min-width: 0; }
+    .pf-gphoto-switch {
+        position: relative; flex: 0 0 auto; width: 46px; height: 26px; border-radius: 999px;
+        background: var(--pf-sunken); border: 1px solid var(--pf-line); transition: background 0.2s var(--ease-out);
+    }
+    .pf-gphoto-switch::after {
+        content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%;
+        background: var(--pf-muted); transition: transform 0.2s var(--ease-out), background 0.2s;
+    }
+    .pf-gphoto-toggle[aria-checked="true"] .pf-gphoto-switch { background: var(--pf-good); border-color: transparent; }
+    .pf-gphoto-toggle[aria-checked="true"] .pf-gphoto-switch::after { transform: translateX(20px); background: #fff; }
+    @media (prefers-reduced-motion: reduce) { .pf-gphoto-switch, .pf-gphoto-switch::after { transition: none; } }
     .pf-option.is-recommended { background: color-mix(in oklch, var(--pf-good) 8%, var(--pf-surface)); }
     .pf-option-head { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
     .pf-option-head .pf-h { font-size: 1.05rem; }
@@ -528,7 +552,9 @@
             <section class="pf-pass" aria-label="บัตรนักเล่น">
                 <div class="pf-pass-avatar" id="pfAvatar"
                      data-avatar="<%= player.avatar || '👤' %>"
-                     data-frame="<%= player.avatarFrame || 'none' %>"></div>
+                     data-frame="<%= player.avatarFrame || 'none' %>"
+                     data-google-picture="<%= googlePicture || '' %>"
+                     data-use-google-photo="<%= useGooglePhoto ? '1' : '' %>"></div>
                 <div>
                     <p class="pf-kicker"><%= lastPlayed ? 'เล่นล่าสุด ' + lastPlayed : 'ยังไม่เคยเล่น' %></p>
                     <h1 class="pf-name" id="pfName"><%= player.playerName %></h1>
@@ -632,6 +658,23 @@
                         <% }); %>
                     </div>
                 </div>
+
+                <% if (googleLinked) { %>
+                <div class="pf-block pf-gphoto" id="pfGooglePhoto">
+                    <% if (googlePicture) { %>
+                        <button type="button" class="pf-gphoto-toggle" id="googlePhotoToggle" role="switch"
+                                aria-checked="<%= useGooglePhoto ? 'true' : 'false' %>">
+                            <img class="pf-gphoto-img" src="<%= googlePicture %>" alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+                            <span class="pf-gphoto-label">ใช้รูปจาก Google เป็นรูปโปรไฟล์</span>
+                            <span class="pf-gphoto-switch" aria-hidden="true"></span>
+                        </button>
+                        <p class="pf-hint">เปิดแล้วทุกคนในห้องจะเห็นรูปนี้แทน emoji · ปิดเมื่อไหร่ก็กลับเป็น emoji</p>
+                    <% } else { %>
+                        <p class="pf-hint" id="googlePhotoHint"><i class="fab fa-google" aria-hidden="true"></i> อยากใช้รูปจาก Google? เข้าด้วย Google อีกครั้งเพื่อดึงรูป</p>
+                        <% if (googleOn) { %><div data-google-signin data-google-text="continue_with"></div><% } %>
+                    <% } %>
+                </div>
+                <% } %>
 
                 <div class="pf-block">
                     <h2 class="pf-h">หน้าตา</h2>
@@ -772,6 +815,8 @@
     var state = {
         avatar: document.getElementById('pfAvatar').getAttribute('data-avatar') || '👤',
         frame: document.getElementById('pfAvatar').getAttribute('data-frame') || 'none',
+        googlePicture: document.getElementById('pfAvatar').getAttribute('data-google-picture') || null,
+        useGooglePhoto: document.getElementById('pfAvatar').getAttribute('data-use-google-photo') === '1',
         color: '<%= player.color %>',
         name: document.getElementById('pfName').textContent
     };
@@ -801,7 +846,7 @@
         var box = document.getElementById('pfAvatar');
         var size = window.innerWidth < 420 ? 84 : 104;
         box.innerHTML = window.PlayerAvatar
-            ? PlayerAvatar.render({ avatar: state.avatar, avatarFrame: state.frame, color: state.color, playerName: state.name }, { size: size })
+            ? PlayerAvatar.render({ avatar: state.avatar, avatarFrame: state.frame, avatarImage: state.useGooglePhoto ? state.googlePicture : null, color: state.color, playerName: state.name }, { size: size })
             : '<span style="font-size:48px">' + state.avatar + '</span>';
         if (bump && !reducedMotion) {
             box.classList.add('is-bumped');
@@ -916,7 +961,7 @@
                 b.setAttribute('data-frame', frame.id);
                 b.setAttribute('aria-pressed', frame.id === state.frame ? 'true' : 'false');
                 b.innerHTML = window.PlayerAvatar
-                    ? PlayerAvatar.render({ avatar: state.avatar, avatarFrame: frame.id, color: state.color }, { size: 44 })
+                    ? PlayerAvatar.render({ avatar: state.avatar, avatarFrame: frame.id, avatarImage: state.useGooglePhoto ? state.googlePicture : null, color: state.color }, { size: 44 })
                     : frame.name;
                 frameBox.appendChild(b);
             });
@@ -932,7 +977,7 @@
     function refreshFramePreviews() {
         document.querySelectorAll('#frameSelection .pf-pick').forEach(function(b) {
             if (!window.PlayerAvatar) return;
-            b.innerHTML = PlayerAvatar.render({ avatar: state.avatar, avatarFrame: b.getAttribute('data-frame'), color: state.color }, { size: 44 });
+            b.innerHTML = PlayerAvatar.render({ avatar: state.avatar, avatarFrame: b.getAttribute('data-frame'), avatarImage: state.useGooglePhoto ? state.googlePicture : null, color: state.color }, { size: 44 });
         });
     }
 
@@ -967,6 +1012,29 @@
         renderPass(true);
     }
     document.getElementById('avatarSelection').addEventListener('click', pickHandler('avatar'));
+
+    /* ---------- ใช้รูปจาก Google (กดครั้งเดียว) ---------- */
+    var gToggle = document.getElementById('googlePhotoToggle');
+    function setGooglePhoto(enabled) {
+        var previous = state.useGooglePhoto;
+        state.useGooglePhoto = enabled;
+        if (gToggle) { gToggle.setAttribute('aria-checked', enabled ? 'true' : 'false'); gToggle.disabled = true; }
+        renderPass(true);
+        return postJson('/profile/useGooglePhoto', { enabled: enabled }).then(function(res) {
+            if (!res.success) throw new Error(res.error || 'บันทึกไม่สำเร็จ');
+            toast(enabled ? 'ใช้รูปจาก Google แล้ว ✓' : 'กลับไปใช้ emoji แล้ว ✓');
+        }).catch(function(err) {
+            state.useGooglePhoto = previous;
+            if (gToggle) gToggle.setAttribute('aria-checked', previous ? 'true' : 'false');
+            renderPass(false);
+            toast(err.message || 'บันทึกไม่สำเร็จ', true);
+        }).then(function() { if (gToggle) gToggle.disabled = false; });
+    }
+    if (gToggle) {
+        gToggle.addEventListener('click', function() { setGooglePhoto(!state.useGooglePhoto); });
+    }
+    // googleSignIn.js ถามหลังผูก Google → ตอบ "ใช้เลย" แล้วเรียกตัวนี้
+    window.insiderUseGooglePhoto = function() { return setGooglePhoto(true); };
     document.getElementById('frameSelection').addEventListener('click', pickHandler('frame'));
 
     /* ---------- บัญชี ---------- */

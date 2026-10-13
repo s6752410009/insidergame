@@ -5305,6 +5305,9 @@ app.use(async function(req, res, next) {
         res.locals.viewerRecoveryCode = playerManager.getRecoveryCode(playerId);
         res.locals.viewerGoogleEmail = playerManager.getGoogleLink(playerId)?.email || null;
         res.locals.viewerGoogleLinked = Boolean(playerManager.getGoogleLink(playerId));
+        // รูป Google ของตัวเอง (ไว้โชว์ตัวอย่าง/ปุ่มเปิดใช้ในหน้าโปรไฟล์) — เห็นแค่เจ้าของ
+        res.locals.viewerGooglePicture = playerManager.getGooglePicture(playerId);
+        res.locals.viewerUseGooglePhoto = Boolean(playerManager.getPlayer(playerId)?.useGooglePhoto);
     } else {
         // ไม่มี playerId ใน URL → ส่ง redirect script ให้ client สร้าง playerId ใหม่และกลับมา
         // ไม่สร้าง player ถาวรที่ server ทันที เพื่อกัน ghost players
@@ -6642,6 +6645,23 @@ app.post('/profile/updateAvatarFrame', async function(req, res) {
         res.json({ success: true });
     } catch (error) {
         res.json({ success: false, error: error.message });
+    }
+});
+
+// เปิด/ปิดใช้รูปจาก Google เป็นรูปโปรไฟล์ (ต้องผูก Google และมีรูปแล้ว)
+// เปลี่ยนแล้วส่ง state ใหม่ให้ห้องที่อยู่ทันที — ปิด = emoji กลับมาใน broadcast ถัดไป
+app.post('/profile/useGooglePhoto', async function(req, res) {
+    try {
+        const playerId = req.playerId;
+        if (!playerId || playerId === SEO_PREVIEW_PLAYER_ID) {
+            return res.status(403).json({ success: false, error: 'เปิดหน้าใหม่แล้วลองอีกครั้ง' });
+        }
+        const before = playerManager.getPlayer(playerId)?.avatarImage || null;
+        const player = await playerManager.setUseGooglePhoto(playerId, req.body?.enabled === true || req.body?.enabled === 'true');
+        if ((player.avatarImage || null) !== before) broadcastAvatarImageChange(playerId);
+        return res.json({ success: true, useGooglePhoto: Boolean(player.useGooglePhoto), avatarImage: player.avatarImage || null });
+    } catch (error) {
+        return res.status(400).json({ success: false, error: error.message || 'บันทึกไม่สำเร็จ' });
     }
 });
 

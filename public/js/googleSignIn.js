@@ -41,7 +41,9 @@
             }
             store('insiderGamePlayerId', res.playerId);
             store('insiderGameRecoveryCode', res.recoveryCode);
-            try { sessionStorage.setItem(WELCOME_KEY, res.action + '|' + (res.email || '')); } catch (e) {}
+            // มีรูป Google แต่ยังไม่ได้เปิดใช้ → หลัง reload ถามว่าจะใช้เป็นรูปโปรไฟล์ไหม
+            var offerPhoto = res.hasPicture && !res.useGooglePhoto ? '1' : '';
+            try { sessionStorage.setItem(WELCOME_KEY, res.action + '|' + (res.email || '') + '|' + offerPhoto); } catch (e) {}
             location.replace(cleanUrl());
         }).catch(function() {
             notify('error', 'เชื่อมต่อไม่ได้', 'ลองใหม่อีกครั้ง');
@@ -64,6 +66,39 @@
         });
     }
 
+    function enableGooglePhoto() {
+        if (typeof window.insiderUseGooglePhoto === 'function') return window.insiderUseGooglePhoto();
+        return fetch('/profile/useGooglePhoto', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: true })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+            if (!res.success) throw new Error(res.error || 'บันทึกไม่สำเร็จ');
+            notify('success', 'ใช้รูปจาก Google แล้ว', 'ทุกคนในห้องจะเห็นรูปนี้ ปิดได้ที่หน้าโปรไฟล์');
+        }).catch(function(err) {
+            notify('error', 'ใช้รูปไม่สำเร็จ', err.message);
+        });
+    }
+
+    // ถามครั้งเดียวหลังผูก Google (หรือหลังเข้า Google จากหน้าโปรไฟล์เพื่อดึงรูป)
+    function offerGooglePhoto(title, text) {
+        if (!window.Swal) return;
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: 'ใช้รูปจาก Google เป็นรูปโปรไฟล์',
+            cancelButtonText: 'ไว้ก่อน',
+            background: '#1e1e2e',
+            color: '#fff',
+            customClass: { confirmButton: 'js-use-google-photo' }
+        }).then(function(result) {
+            if (result && result.isConfirmed) enableGooglePhoto();
+        });
+    }
+
     // ข้อความต้อนรับหลัง reload
     function showWelcome() {
         var raw = null;
@@ -71,6 +106,15 @@
         if (!raw) return;
         var parts = raw.split('|');
         var email = parts[1] ? ' (' + parts[1] + ')' : '';
+        var offerPhoto = parts[2] === '1';
+        if (offerPhoto && parts[0] === 'linked') {
+            offerGooglePhoto('ผูกบัญชีกับ Google แล้ว', 'ใช้รูปจาก Google' + email + ' เป็นรูปโปรไฟล์เลยไหม? เปลี่ยนกลับเป็น emoji ได้ทุกเมื่อที่หน้าโปรไฟล์');
+            return;
+        }
+        if (offerPhoto && parts[0] === 'login' && location.pathname.indexOf('/profile') === 0) {
+            offerGooglePhoto('ดึงรูปจาก Google แล้ว', 'ใช้รูปนี้เป็นรูปโปรไฟล์เลยไหม?');
+            return;
+        }
         if (parts[0] === 'login') {
             notify('success', 'ยินดีต้อนรับกลับ!', 'เข้าบัญชีเดิมด้วย Google' + email + ' แล้ว ถ้วยและสถิติอยู่ครบ');
         } else {
