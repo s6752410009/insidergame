@@ -5935,11 +5935,45 @@ app.get('/how-to-play', function(req, res) {
         .filter(role => role && role.id && role.image)
         .map(role => ({ id: role.id, thaiName: role.thaiName, team: role.team, image: role.image }))
         .sort((a, b) => (teamOrder[a.team] ?? 9) - (teamOrder[b.team] ?? 9));
+    // จำนวนผู้เล่นของแต่ละเกม อ่านจาก engine ตรง ๆ หน้าวิธีเล่นจะได้ไม่ค้างตัวเลขเก่า
+    const gameLimits = {};
+    ['insider', 'werewolf', 'spyfall', 'undercover', 'avalon', 'blackmarket', 'coup', 'liar', 'poker5', 'poker4',
+        'pokdeng', 'colorcards', 'codenames', 'wavelength', 'drawguess', 'setthi'].forEach(id => {
+        const engine = getGameEngine(id);
+        if (engine && engine.minPlayers) gameLimits[id] = { min: engine.minPlayers, max: engine.maxPlayers };
+    });
     res.render('howToPlay.ejs', {
         pokerRankGuide: rankGuideForClient(),
-        werewolfRoleGallery
+        werewolfRoleGallery,
+        gameLimits,
+        setthiGuide: howToSetthiGuide()
     });
 });
+
+// การ์ดโอกาส + ไอคอนของเศรษฐีสำหรับหน้าวิธีเล่น: ใช้ข้อมูลการ์ดจริง (setthiBoard.CARDS)
+// และวาดไอคอนด้วย setthi-art.js ตัวเดียวกับกระดาน (รันในกล่อง vm ครั้งเดียวแล้วจำไว้)
+let howToSetthiGuideCache = null;
+function howToSetthiGuide() {
+    if (howToSetthiGuideCache) return howToSetthiGuideCache;
+    let icons = {};
+    try {
+        const src = fs.readFileSync(path.join(__dirname, 'public', 'assets', 'games', 'setthi', 'setthi-art.js'), 'utf8');
+        const sandbox = { window: {} };
+        require('vm').runInNewContext(src, sandbox, { timeout: 500 });
+        icons = (sandbox.window.SetthiArt && sandbox.window.SetthiArt.ICONS) || {};
+    } catch (err) {
+        icons = {};
+    }
+    const board = require('./games/setthiBoard');
+    howToSetthiGuideCache = {
+        icons,
+        cards: board.CARDS.map(card => ({ id: card.id, title: card.title, type: card.effect.type, icon: card.icon })),
+        skills: setthiSkillDefs.SKILLS.map(s => ({ id: s.id, icon: s.icon, name: s.name, detail: s.detail, unit: s.unit, values: s.values })),
+        upgradeCost: setthiSkillDefs.UPGRADE_COST,
+        loadout: setthiSkillDefs.LOADOUT_SIZE
+    };
+    return howToSetthiGuideCache;
+}
 
 // Game/Board page จริง
 app.get('/game/:roomId', async function(req, res) {

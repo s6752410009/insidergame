@@ -76,6 +76,7 @@
     "smoke:room:cleanup": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-room-cleanup.js",
     "smoke:rooms:persist": "node scripts/smoke-room-persist-mongo.js",
     "smoke:boards:console": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-boards-console.js",
+    "smoke:howto": "node scripts/smoke-how-to-play.js",
     "smoke:identity": "node scripts/smoke-identity.js",
     "test:google:avatar": "node scripts/test-google-avatar.js",
     "smoke:google:avatar:browser": "node scripts/browser-google-avatar.js",
