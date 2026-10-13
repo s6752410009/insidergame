@@ -423,6 +423,8 @@ try { sessionStorage.insiderPromoSeen = '1'; localStorage.setItem('${firstPlayKe
             if (coupCard) { await coupCard.scrollIntoViewIfNeeded(); await shot(page, 'page-howto-coup-' + tag); }
             const roles = await page.$('#coup img');
             if (roles) { await roles.scrollIntoViewIfNeeded(); await shot(page, 'page-howto-coup-cards-' + tag); }
+            // หน้าวิธีเล่นแสดงทีละเกม — เปิดแท็บอวาลอนก่อน
+            await page.goto(`${base}/how-to-play#avalon`, { waitUntil: 'networkidle' });
             const av = await page.$('#avalon img');
             if (av) { await av.scrollIntoViewIfNeeded(); await shot(page, 'page-howto-avalon-cards-' + tag); }
             await ctx.close();
