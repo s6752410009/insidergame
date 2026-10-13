@@ -78,6 +78,7 @@
     "smoke:boards:console": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-boards-console.js",
     "smoke:identity": "node scripts/smoke-identity.js",
     "test:google:avatar": "node scripts/test-google-avatar.js",
+    "smoke:google:avatar:browser": "node scripts/browser-google-avatar.js",
     "smoke:logout:browser": "node scripts/smoke-logout-browser.js",
     "smoke:solo:memory": "node scripts/smoke-solo-memory.js",
     "smoke:solo:memory:api": "node scripts/smoke-solo-memory-api.js",

@@ -459,13 +459,14 @@ async function unlinkGoogleAccount(playerId) {
  * เปิด/ปิดใช้รูป Google เป็นรูปโปรไฟล์ — เปิดได้เฉพาะตอนผูก Google และมีรูปแล้ว
  */
 async function setUseGooglePhoto(playerId, enabled) {
-    const player = players.get(playerId);
-    if (!player || isBotPlayerId(playerId)) throw new Error('Player not found');
+    if (isBotPlayerId(playerId)) throw new Error('Player not found');
     const next = Boolean(enabled);
     if (next) {
         if (!googleLinks.has(playerId)) throw new Error('ต้องผูกบัญชี Google ก่อน');
         if (!getGooglePicture(playerId)) throw new Error('ยังไม่มีรูปจาก Google — เข้าด้วย Google อีกครั้งเพื่อดึงรูป');
     }
+    const player = players.get(playerId);
+    if (!player) throw new Error('Player not found');
     player.useGooglePhoto = next;
     refreshAvatarImage(playerId);
     if (useDatabase && Player) {

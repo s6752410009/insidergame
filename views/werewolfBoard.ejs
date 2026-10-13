@@ -1092,7 +1092,7 @@
     function wwStageStyle(color, frameId) {
       const frame = window.PlayerAvatar && frameId && window.PlayerAvatar.hasFrame(frameId) ? window.PlayerAvatar.getFrameStyle(frameId) : null;
       return frame
-        ? 'background:' + escapeHtml(color) + ' padding-box, ' + escapeHtml(frame) + ' border-box;border-color:transparent;'
+        ? 'background:linear-gradient(' + escapeHtml(color) + ',' + escapeHtml(color) + ') padding-box, ' + escapeHtml(frame) + ' border-box;border-color:transparent;'
         : 'background:' + escapeHtml(color) + ';';
     }
 

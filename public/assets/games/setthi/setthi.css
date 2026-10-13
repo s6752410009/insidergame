@@ -1290,5 +1290,6 @@ html.st-active .chat-box { top: calc(60px + env(safe-area-inset-top, 0px)); bott
 /* กรอบโปรไฟล์ = ขอบ gradient รอบโทเคน */
 .st-token[data-frame] {
   border-color: transparent;
-  background: radial-gradient(circle at 34% 28%, oklch(1 0 0 / 0.7), transparent 40%) padding-box, var(--tk) padding-box, var(--pa-frame) border-box;
+  background: radial-gradient(circle at 34% 28%, oklch(1 0 0 / 0.7), transparent 40%) padding-box, linear-gradient(var(--tk), var(--tk)) padding-box, var(--pa-frame) border-box;
+  /* สีเดี่ยวอยู่ได้แค่ชั้นสุดท้าย — ห่อเป็น gradient ไม่งั้นทั้งบรรทัดใช้ไม่ได้ */
 }

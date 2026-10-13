@@ -22,3 +22,6 @@ data/*.tmp
 # ต้นฉบับ AI art (34MB) — เว็บใช้ .webp ที่ commit แล้ว, .jpg เป็น fallback
 # ต้นฉบับอยู่บนเครื่อง + iCloud ไม่ต้องถ่วง repo
 public/assets/games/*/*.png
+
+# Test screenshots from browser-google-avatar.js (regenerated each run)
+screenshots/google-avatar/
