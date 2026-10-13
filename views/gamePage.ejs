@@ -1,0 +1,141 @@
+<%
+  // หน้า landing ของเกม (/games/:gameId) — หน้าเดี่ยว ไม่ใช้ layout หลัก: ไม่มี socket.io / jQuery / playerIdentity
+  // เนื้อหาทั้งหมดมาจาก games/seoContent.js ผ่าน games/seoPages.js
+  const s = seo || {};
+  const v = typeof buildId !== 'undefined' ? buildId : '1';
+  const catLabel = {};
+  (categories || []).forEach(function (c) { catLabel[c.id] = c.label; });
+%><!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title><%= s.title %></title>
+  <meta name="description" content="<%= s.description %>">
+  <% if (s.keywords) { %><meta name="keywords" content="<%= s.keywords %>"><% } %>
+  <meta name="robots" content="<%= s.robots %>">
+  <link rel="canonical" href="<%= s.canonical %>">
+  <% if (!notFound) { %>
+  <link rel="alternate" hreflang="th-TH" href="<%= s.canonical %>">
+  <meta property="og:type" content="<%= s.ogType %>">
+  <meta property="og:url" content="<%= s.canonical %>">
+  <meta property="og:title" content="<%= s.title %>">
+  <meta property="og:description" content="<%= s.description %>">
+  <meta property="og:image" content="<%= s.ogImage %>">
+  <% if (s.ogImageWidth) { %><meta property="og:image:width" content="<%= s.ogImageWidth %>">
+  <meta property="og:image:height" content="<%= s.ogImageHeight %>"><% } %>
+  <meta property="og:image:alt" content="<%= s.ogImageAlt %>">
+  <meta property="og:locale" content="th_TH">
+  <meta property="og:site_name" content="<%= s.siteName %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= s.title %>">
+  <meta name="twitter:description" content="<%= s.description %>">
+  <meta name="twitter:image" content="<%= s.ogImage %>">
+  <meta name="twitter:image:alt" content="<%= s.ogImageAlt %>">
+  <% } %>
+  <% if (s.structuredData && s.structuredData.length) { %>
+  <script type="application/ld+json"><%- JSON.stringify(s.structuredData).replace(/</g, '\\u003c') %></script>
+  <% } %>
+  <meta name="theme-color" content="#1a1730">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="/static/image/favicon-96x96.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/gamePage.css?v=<%= v %>">
+</head>
+<body>
+  <header class="gp-top">
+    <a class="gp-brand" href="/">🎲 insider-th.me</a>
+    <nav class="gp-topnav" aria-label="เมนูหลัก">
+      <a href="/rooms">ห้องเกม</a>
+      <a href="/how-to-play">วิธีเล่น</a>
+      <a href="/solo">เล่นคนเดียว</a>
+    </nav>
+  </header>
+
+<% if (notFound) { %>
+  <main class="gp-page">
+    <h1 class="gp-h1">ไม่พบเกมนี้</h1>
+    <p class="gp-intro">ลิงก์อาจพิมพ์ผิด หรือเกมนี้ถูกเปลี่ยนชื่อแล้ว ลองเลือกจากเกมทั้งหมดด้านล่าง</p>
+    <p><a class="gp-cta" href="/">🏠 กลับหน้าแรก</a></p>
+  </main>
+<% } else { %>
+  <main class="gp-page">
+    <nav class="gp-crumbs" aria-label="breadcrumb">
+      <a href="/">หน้าแรก</a><span aria-hidden="true">›</span>
+      <% if (game.solo) { %><a href="/solo">เล่นคนเดียว</a><span aria-hidden="true">›</span><% } %>
+      <span aria-current="page"><%= game.name %></span>
+    </nav>
+
+    <section class="gp-hero">
+      <p class="gp-kicker"><span aria-hidden="true"><%= game.emoji %></span> <%= catLabel[game.category] || 'เกมปาร์ตี้' %></p>
+      <h1 class="gp-h1"><%= game.h1 %></h1>
+      <p class="gp-intro"><%= game.intro %></p>
+      <ul class="gp-chips" aria-label="ข้อมูลเกม">
+        <li><span aria-hidden="true">👥</span> <%= game.playersLabel %></li>
+        <li><span aria-hidden="true">⏱</span> <%= game.time %></li>
+        <li><span aria-hidden="true">🆓</span> ฟรี ไม่ต้องโหลดแอป</li>
+      </ul>
+      <a class="gp-cta" id="gpCta" href="<%= game.playUrl %>" data-mode="<%= game.solo ? '' : game.id %>">
+        <%= game.solo ? '🎮 เล่นเกมนี้เลย' : '🎮 สร้างห้องเล่นเกมนี้' %>
+      </a>
+      <p class="gp-cta-note"><%= game.solo ? 'เล่นคนเดียวได้ทันที ไม่ต้องสร้างห้อง' : 'สร้างห้องแล้วส่งลิงก์ให้เพื่อน เล่นบนมือถือหรือคอมก็ได้' %></p>
+    </section>
+
+    <section class="gp-section" aria-labelledby="gpHowTo">
+      <h2 id="gpHowTo">เล่นยังไง</h2>
+      <ol class="gp-steps">
+        <% game.howTo.forEach(function (step) { %><li><%= step %></li><% }); %>
+      </ol>
+      <a class="gp-more" href="<%= game.rulesUrl %>">กฎละเอียด →</a>
+    </section>
+
+    <figure class="gp-cover">
+      <img src="<%= game.cover %>" alt="<%= game.coverAlt %>" width="<%= coverSize.width %>" height="<%= coverSize.height %>" loading="lazy" decoding="async">
+    </figure>
+
+    <section class="gp-section" aria-labelledby="gpFaq">
+      <h2 id="gpFaq">คำถามที่พบบ่อย</h2>
+      <div class="gp-faq">
+        <% game.faq.forEach(function (item) { %>
+        <details>
+          <summary><%= item.q %></summary>
+          <p><%= item.a %></p>
+        </details>
+        <% }); %>
+      </div>
+    </section>
+
+    <section class="gp-section" aria-labelledby="gpSimilar">
+      <h2 id="gpSimilar">เกมที่คล้ายกัน</h2>
+      <ul class="gp-cards">
+        <% similar.forEach(function (g) { %>
+        <li><a href="<%= g.path %>"><span class="gp-card-ico" aria-hidden="true"><%= g.emoji %></span><b><%= g.name %></b><small><%= g.players %></small></a></li>
+        <% }); %>
+      </ul>
+    </section>
+
+    <p class="gp-cta-again"><a class="gp-cta gp-cta--small" href="<%= game.playUrl %>"><%= game.solo ? '🎮 เล่นเกมนี้เลย' : '🎮 สร้างห้องเล่นเกมนี้' %></a></p>
+  </main>
+<% } %>
+
+  <footer class="gp-foot">
+    <h2 class="gp-foot-h">เกมทั้งหมด</h2>
+    <ul class="gp-all">
+      <% allGames.forEach(function (g) { %>
+      <li><a href="<%= g.path %>"<% if (game && g.id === game.id) { %> aria-current="page"<% } %>><span aria-hidden="true"><%= g.emoji %></span> <%= g.name %></a></li>
+      <% }); %>
+    </ul>
+    <nav class="gp-foot-links" aria-label="ลิงก์ท้ายหน้า">
+      <a href="/">หน้าแรก</a>
+      <a href="/rooms">ห้องเกม</a>
+      <a href="/how-to-play">วิธีเล่นทุกเกม</a>
+      <a href="/solo">เล่นคนเดียว</a>
+      <a href="/privacy">ความเป็นส่วนตัว</a>
+      <a href="/terms">ข้อตกลง</a>
+    </nav>
+  </footer>
+</body>
+</html>

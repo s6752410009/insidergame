@@ -1412,6 +1412,17 @@ $(function() {
 
     // แสดง message จาก URL param (ถ้ามี)
     const urlParams = new URLSearchParams(window.location.search);
+    // ลิงก์จากหน้าเกม (/games/<id>) มาเป็น /rooms?mode=<id> → เปิดหน้าสร้างห้องโดยเลือกเกมนั้นไว้ให้แล้ว
+    // ใช้ครั้งเดียว แล้วลบออกจาก URL (กดสร้างห้องเองรอบหลัง หรือรีเฟรช จะได้หน้าเลือกเกมตามปกติ)
+    let pendingCreateMode = (function() {
+        const requested = String(urlParams.get('mode') || '').trim().toLowerCase();
+        return requested && gameModes.some(function(mode) { return mode.id === requested; }) ? requested : null;
+    })();
+    if (urlParams.has('mode') && window.history && window.history.replaceState) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('mode');
+        window.history.replaceState(window.history.state, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+    }
     const msg = urlParams.get('msg');
     if (msg) {
         const messages = {
@@ -2291,7 +2302,8 @@ $(function() {
                     syncModeQuickPick();
                 }
 
-                const urlMode = new URLSearchParams(window.location.search).get('mode');
+                const urlMode = pendingCreateMode;
+                pendingCreateMode = null;
                 if (urlMode && modeConfigById[urlMode]) {
                     selectedGameMode = urlMode;
                     selectedGameModeInput.value = urlMode;
@@ -2913,6 +2925,10 @@ $(function() {
     $('#howToPlayBtn').on('click', function() {
         showGlobalGameGuide();
     });
+
+    if (pendingCreateMode) {
+        $('#createRoomBtn').trigger('click');
+    }
 
     $(document).on('click', '.global-guide-tab-btn', function() {
         const id = $(this).data('guide-id');

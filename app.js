@@ -58,6 +58,7 @@ const { avatarImageField } = PlayerAvatar;
 const soloStats = require('./managers/soloStatsManager');
 const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
+const { registerSeoGameRoutes } = require('./games/seoPages');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
 // (Render ตั้ง RENDER_GIT_COMMIT · Coolify ตั้ง SOURCE_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
@@ -5211,6 +5212,10 @@ app.get(['/llms.txt', '/ai.txt'], (req, res) => {
     res.type('text/plain');
     res.sendFile(__dirname + '/public/llms.txt');
 });
+
+// หน้า landing ของแต่ละเกม /games/:gameId — หน้า public สำหรับค้นหา ไม่ต้องมีบัญชี ไม่ใช้ socket
+// ต้องอยู่ก่อน middleware ผูก playerId (ไม่งั้นคนมาใหม่/บอทค้นหาจะได้หน้า bootstrap แทนเนื้อหา)
+registerSeoGameRoutes(app, { buildCanonicalUrl, buildId: BUILD_ID });
 
 // In INSIDER_DEV_FAST mode the HTTP server accepts requests before the
 // player/stats managers finish loading — hold requests until they are ready,
