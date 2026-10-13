@@ -1532,3 +1532,30 @@ body.content {
 .uc-wordcard.is-mrwhite .uc-word-copy b { font-size: 1.2rem; color: #6b7280; }
 .hp-zoom-art .uc-word-copy b { font-size: 2.8rem; }
 .hp-zoom-art .uc-word-copy small { font-size: 1rem; }
+
+/* เล่นคนเดียว */
+.guide-card.mode-solo { border-color: rgba(129, 140, 248, 0.32); }
+.solo-game { scroll-margin-top: 80px; }
+.solo-game .guide-sub { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.solo-game .guide-sub .hp-more { font-family: 'Bai Jamjuree', sans-serif; font-size: 0.9rem; }
+.hp-game > .solo-game { display: grid; grid-template-columns: inherit; grid-column: full; }
+.wd-art { background: oklch(0.2 0.03 262); }
+.wd-board2 { display: grid; gap: 6px; }
+.wd-row2 { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; }
+.wd-tile2 { display: grid; place-items: center; height: 44px; border-radius: 10px; font-family: 'Bai Jamjuree', sans-serif; font-weight: 600; font-size: 1.25rem; line-height: 1.5; }
+.wd-tile2[data-state="correct"] { background: oklch(0.67 0.13 158); color: oklch(0.99 0.01 158); }
+.wd-tile2[data-state="present"] { background: oklch(0.84 0.13 84); color: oklch(0.24 0.04 262); }
+.wd-tile2[data-state="absent"] { background: oklch(0.34 0.02 262); color: oklch(0.8 0.02 262); }
+.hp-zoom-art .wd-row2 { grid-template-columns: repeat(4, 64px); }
+.hp-zoom-art .wd-tile2 { height: 64px; font-size: 1.8rem; }
+.hp-zoom-art > .wd-art { width: 100%; }
+.mm-art { background: #1b2233; padding: 8%; }
+.mm-art > img { border-radius: 10px; }
+.hp-game > .solo-game > * { grid-column: prose; min-width: 0; }
+.hp-game > .solo-game > .hp-wide { grid-column: full; }
+.hp-game p a, .hp-game li a, .hp-faq a { color: #8fd4ff; text-decoration: underline; text-underline-offset: 2px; }
+.guide-card.mode-solo .guide-mode-badge { background: rgba(129, 140, 248, 0.14); color: #c7d2fe; border: 1px solid rgba(129, 140, 248, 0.38); }
+@media (min-width: 1024px) {
+  .hp-switch-scroll { gap: 5px; }
+  .hp-switch .guide-jump-chip { padding: 0 10px; font-size: 0.86rem; gap: 5px; }
+}

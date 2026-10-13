@@ -22,13 +22,15 @@
     { id: 'codenames', game: 'codenames', ico: '🕵️', label: 'สายลับคำใบ้', blurb: 'ใบ้คำเดียว ให้ทีมเปิดสายลับให้ครบ', group: 'team' },
     { id: 'wavelength', game: 'wavelength', ico: '📡', label: 'คลื่นความคิด', blurb: 'ใบ้ 1 คำ ทีมหมุนเข็มให้ตรงเป้า', group: 'team' },
     { id: 'drawguess', game: 'drawguess', ico: '🎨', label: 'วาดแล้วทาย', blurb: 'ผลัดกันวาด ที่เหลือแข่งกันทาย', group: 'team' },
-    { id: 'setthi', game: 'setthi', ico: '💰', label: 'เศรษฐี', blurb: 'ทอยเต๋า ซื้อเมือง ผูกขาดชนะ', group: 'board' }
+    { id: 'setthi', game: 'setthi', ico: '💰', label: 'เศรษฐี', blurb: 'ทอยเต๋า ซื้อเมือง ผูกขาดชนะ', group: 'board' },
+    { id: 'solo', game: 'solo', ico: '🕹️', label: 'เล่นคนเดียว', blurb: 'ทายคำรายวัน จับคู่ โซลิแทร์ ป๊อกเด้งท้าเจ้ามือ', group: 'solo' }
   ];
   const guideGroups = [
     { id: 'talk', label: 'คุย จับโกหก หาตัวการ' },
     { id: 'cards', label: 'ไพ่ บลัฟ วัดดวง' },
     { id: 'team', label: 'แข่งทีม ใบ้คำ วาดรูป' },
-    { id: 'board', label: 'เกมกระดาน' }
+    { id: 'board', label: 'เกมกระดาน' },
+    { id: 'solo', label: 'เล่นคนเดียว' }
   ];
   const guideLimits = (typeof gameLimits !== 'undefined' && gameLimits) ? gameLimits : {};
   const guidePlayers = function (game) {
@@ -36,13 +38,13 @@
     return lim && lim.min ? (lim.min === lim.max ? lim.min + ' คน' : lim.min + '–' + lim.max + ' คน') : '';
   };
   // หัวของแต่ละเกม: ป้าย ชื่อ ข้อมูลสั้น และลิงก์ไปหน้าของเกมนั้น
-  const guideHead = function (id, facts) {
+  const guideHead = function (id, facts, href) {
     const g = guideGames.find(x => x.id === id) || { id: id, game: id, ico: '', label: id };
     const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const players = guidePlayers(g.game);
     const all = (players ? ['👥 ' + players] : []).concat(facts || []);
     return '<div class="hp-game-top"><div class="guide-mode-badge">' + esc(g.ico + ' ' + g.label) + '</div>' +
-      '<a class="hp-more" href="/games/' + esc(g.game) + '">หน้าเกมนี้ →</a></div>' +
+      '<a class="hp-more" href="' + esc(href || ('/games/' + g.game)) + '">หน้าเกมนี้ →</a></div>' +
       (all.length ? '<ul class="hp-facts">' + all.map(f => '<li>' + esc(f) + '</li>').join('') + '</ul>' : '');
   };
   // ท้ายแต่ละเกม: ไปเกมก่อนหน้า / ถัดไป
@@ -1174,6 +1176,67 @@
       <% } %>
       <p class="guide-credit">รูปเมืองจาก Unsplash และ Wikimedia Commons · <a href="/assets/games/setthi/photos/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
       <%- guideNav('setthi') %>
+    </article>
+
+    <%
+      const wdRow = row => '<span class="wd-row2">' + row.map(([ch, st]) => '<span class="wd-tile2" data-state="' + st + '">' + ch + '</span>').join('') + '</span>';
+    %>
+    <article class="guide-card hp-game mode-solo" id="solo">
+      <%- guideHead('solo', ['🕹️ 4 เกม', '🏆 มีตารางอันดับ'], '/solo') %>
+      <h2>ไม่มีเพื่อนออนไลน์ก็เล่นได้</h2>
+      <p>เกมเล่นคนเดียว 4 เกมที่หน้า <a href="/solo">เล่นคนเดียว</a> เข้าเล่นได้เลย ไม่ต้องสร้างห้อง</p>
+
+      <section class="solo-game" id="wordle">
+        <h3 class="guide-sub">🟩 ทายคำรายวัน <a class="hp-more" href="/solo/wordle">เล่นเลย →</a></h3>
+        <div class="hp-cards hp-wide is-large">
+          <figure class="hp-card" tabindex="0" role="button" aria-label="ดูตัวอย่างทายคำขนาดใหญ่">
+            <div class="hp-card-art wd-art" style="--hp-art: 4 / 3"><span class="wd-board2"><%- wdRow([['ไ', 'present'], ['ก่', 'absent'], ['ต้', 'present'], ['ร', 'absent']]) %><%- wdRow([['ต้', 'correct'], ['น', 'correct'], ['ไ', 'correct'], ['ม้', 'correct']]) %></span></div>
+            <figcaption><b>คำวันนี้: ต้นไม้</b><span class="hp-does">🟩 ถูกช่อง · 🟨 มีในคำแต่อยู่ช่องอื่น · ⬛ ไม่มีในคำ</span><span class="hp-when">1 ช่อง = ตัวอักษรหลักรวมสระบน/ล่างและวรรณยุกต์</span></figcaption>
+          </figure>
+        </div>
+        <ul class="hp-points">
+          <li><i>📅</i><span>คำไทย 4 ช่อง วันละคำ ทายได้ 6 ครั้ง ข้อใหม่ทุกวันตามเวลาไทย · คำที่ทายต้องอยู่ในคลังคำ</span></li>
+          <li><i>🟢</i><span>จุดเขียวที่มุมช่อง = ตัวอักษรถูกช่องแล้ว แต่สระหรือวรรณยุกต์ยังไม่ตรง · โหมดยากต้องใช้คำใบ้ที่ได้มาแล้ว</span></li>
+        </ul>
+      </section>
+
+      <section class="solo-game" id="memory">
+        <h3 class="guide-sub">🧠 จับคู่การ์ดความจำ <a class="hp-more" href="/solo/memory">เล่นเลย →</a></h3>
+        <div class="hp-cards hp-wide is-small" style="--hp-art: 1 / 1">
+          <figure class="hp-card" tabindex="0" role="button" aria-label="ดูหลังการ์ดขนาดใหญ่"><div class="hp-card-art is-contain mm-art"><img src="/assets/games/solo/memory/back.svg" alt="หลังการ์ด" width="200" height="200" loading="lazy" decoding="async"></div><figcaption><b>หลังการ์ด</b><span class="hp-does">แตะเปิดทีละ 2 ใบ</span></figcaption></figure>
+          <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดคู่ขนาดใหญ่"><div class="hp-card-art mm-art"><img src="/assets/games/solo/memory/faces/city/beach.webp" alt="การ์ดชายหาด" width="200" height="200" loading="lazy" decoding="async"></div><figcaption><b>ตรงกัน</b><span class="hp-does">เปิดค้างไว้ ได้คู่ละ 100 · ถูกต่อเนื่องคอมโบ +50</span></figcaption></figure>
+          <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดไม่ตรงขนาดใหญ่"><div class="hp-card-art mm-art"><img src="/assets/games/solo/memory/faces/city/bank.webp" alt="การ์ดธนาคาร" width="200" height="200" loading="lazy" decoding="async"></div><figcaption><b>ไม่ตรง</b><span class="hp-does">คว่ำกลับ จำตำแหน่งไว้</span></figcaption></figure>
+        </div>
+        <ul class="hp-points">
+          <li><i>🎚️</i><span>ง่าย 6 คู่ · กลาง 8 · ยาก 12 · <strong>ประจำวัน 10 คู่</strong> กระดานเหมือนกันทุกคน เล่นได้วันละครั้ง จัดอันดับตามเวลา</span></li>
+          <li><i>⭐</i><span>3 ดาวถ้าเปิดไม่เกิน คู่ × 1.6 ครั้ง · 2 ดาวถ้าไม่เกิน คู่ × 2.2 · มี 4 สำรับ: หมาป่า อัศวิน ตลาดมืด สายลับ</span></li>
+        </ul>
+      </section>
+
+      <section class="solo-game" id="solitaire">
+        <h3 class="guide-sub">♠️ ไพ่โซลิแทร์ <a class="hp-more" href="/solo/solitaire">เล่นเลย →</a></h3>
+        <div class="hp-cards hp-wide is-large">
+          <%- pkHand(['kh', 'qs', 'jd'], 'ต่อลงทีละ 1 สลับสี', 'K♥ → Q♠ → J♦ ลดลงทีละ 1 แดง/ดำสลับกัน · ช่องว่างวางได้แค่ K', '') %>
+          <%- pkHand(['as', '2s', '3s'], 'ขึ้นช่องเก็บตามดอก', 'จาก A ถึง K ดอกเดียวกัน · เก็บครบ 52 ใบ = ชนะ', '') %>
+        </div>
+        <ul class="hp-points">
+          <li><i>🃏</i><span>แจก 7 กอง กองที่ 1–7 มี 1–7 ใบ หงายแค่ใบบนสุด · จั่วจากกองคว่ำทีละ 1 หรือ 3 ใบ · แบบปกติวนกองได้ไม่จำกัด แบบเวกัสวนได้จำกัด</span></li>
+          <li><i>↩️</i><span>มีปุ่มย้อน คำใบ้ และเก็บอัตโนมัติ · แตะไพ่ให้ไปเองได้</span></li>
+        </ul>
+      </section>
+
+      <section class="solo-game" id="pokdengsolo">
+        <h3 class="guide-sub">🃏 ป๊อกเด้งท้าเจ้ามือ <a class="hp-more" href="/solo/pokdengsolo">เล่นเลย →</a></h3>
+        <div class="hp-cards hp-wide is-large">
+          <%- pkHand(['4h', '5h'], 'ป๊อก 9 สองเด้ง', 'ป๊อกเปิดวัดทันที · ดอกเดียวกัน = ได้ 2 เท่า', '') %>
+          <%- pkHand(['/assets/games/pokdeng/chip-100.svg'], 'ลง 10–500 ต่อมือ', 'เริ่ม 1,000 ชิป (ชิปเล่น ๆ ไม่ผูกกระเป๋า) · เหลือไม่ถึง 10 = หมดตัว', '') %>
+        </div>
+        <ul class="hp-points">
+          <li><i>🤖</i><span>ดวล 1 ต่อ 1 กับเจ้ามือบอท · ไม่ป๊อก เลือกจั่วหรืออยู่ · เจ้ามือจั่วเมื่อได้ 0–3 แต้ม (4 แต้มลุ้นครึ่ง ๆ) · เจ้ามือ 2 ใบ 4 แต้มขึ้นไปจับขา 3 ใบได้</span></li>
+          <li><i>🏆</i><span>ลำดับมือและเด้งเหมือน <a href="#pokdeng">ป๊อกเด้ง</a> · ตารางอันดับนับชิปสูงสุดที่เคยมี</span></li>
+        </ul>
+      </section>
+      <%- guideNav('solo') %>
     </article>
   </div>
 
