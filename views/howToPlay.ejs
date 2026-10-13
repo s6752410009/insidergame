@@ -293,46 +293,52 @@
     </article>
 
     <article class="guide-card hp-game mode-coup" id="coup">
-      <%- guideHead('coup') %>
+      <%- guideHead('coup', ['⏱ ~15 นาที', '🤖 มีบอท']) %>
       <h2>โกหกได้ ท้าได้ ใครรอดคนสุดท้ายชนะ</h2>
-      <p>ทุกคนได้การ์ดตัวละครคว่ำไว้ 2 ใบ กับ 2 เหรียญ ในตาของตัวเองประกาศใช้พลังของตัวละครใดก็ได้ <strong>แม้ไม่มีการ์ดใบนั้นจริง</strong> ใครไม่เชื่อก็ท้าเปิดได้ ถ้าโกหกแล้วโดนจับ เสียการ์ด 1 ใบ ถ้าท้าผิด คนท้าเสียเอง</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>เป้าหมาย</strong> เป็นคนสุดท้ายที่ยังเหลือการ์ดคว่ำ</div>
-        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 2-6 คน จบใน 15 นาที เล่นแค่ 2 คนก็สนุก (เล่น 2 คน คนเริ่มก่อนได้แค่ 1 เหรียญ)</div>
-        <div class="guide-list-item"><strong>ใครเริ่มก่อน</strong> เกมแรกคนแรกในรายชื่อห้องเริ่ม เกมต่อไปผู้ชนะเกมที่แล้วเริ่มก่อน แล้ววนตามลำดับในรายชื่อ</div>
-        <div class="guide-list-item"><strong>ทุกตาเลือก 1 อย่าง</strong> รับรายได้ +1 · เงินช่วยเหลือ +2 · รัฐประหาร จ่าย 7 บังคับคู่แข่งเปิดการ์ด · หรือใช้พลังตัวละคร</div>
-        <div class="guide-list-item"><strong>ขวางได้ด้วย</strong> ท่านหญิงกันลอบสังหาร · กัปตัน/ทูตกันขโมย · ดยุคกันเงินช่วยเหลือ — และการขวางก็โดนท้าได้เหมือนกัน</div>
-        <div class="guide-list-item"><strong>ข้อควรรู้</strong> มีเหรียญครบ 10 ต้องทำรัฐประหารเท่านั้น และรัฐประหารขวางไม่ได้ · ขโมยจากคนที่มี 1 เหรียญได้แค่ 1 · ตกรอบแล้วเหรียญคืนกองกลาง</div>
-        <div class="guide-list-item"><strong>เวลา</strong> เลือกแอ็กชันตาละ 30/60/90 วิ (หัวห้องตั้ง) หมดเวลา = รับรายได้ให้อัตโนมัติ · ช่วงท้า/ขวาง 20 วิ ใครหลุดออฟไลน์ถือว่าปล่อยผ่าน</div>
-      </div>
-      <div class="guide-coup-roles">
-        <article class="guide-coup-role">
-          <img src="/assets/games/coup/duke.webp" alt="ดยุค" width="160" height="214" loading="lazy">
-          <strong>👑 ดยุค</strong>
-          <span>เก็บภาษี +3 · ขวางเงินช่วยเหลือ</span>
-        </article>
-        <article class="guide-coup-role">
-          <img src="/assets/games/coup/assassin.webp" alt="นักฆ่า" width="160" height="214" loading="lazy">
-          <strong>🗡️ นักฆ่า</strong>
-          <span>จ่าย 3 สั่งเปิดการ์ด 1 ใบ</span>
-        </article>
-        <article class="guide-coup-role">
-          <img src="/assets/games/coup/captain.webp" alt="กัปตัน" width="160" height="214" loading="lazy">
-          <strong>⚓ กัปตัน</strong>
-          <span>ขโมย 2 เหรียญ · ขวางการขโมยได้</span>
-        </article>
-        <article class="guide-coup-role">
-          <img src="/assets/games/coup/ambassador.webp" alt="ทูต" width="160" height="214" loading="lazy">
-          <strong>🕊️ ทูต</strong>
-          <span>แลกการ์ดในมือ · ขวางการขโมยได้</span>
-        </article>
-        <article class="guide-coup-role">
-          <img src="/assets/games/coup/contessa.webp" alt="ท่านหญิง" width="160" height="214" loading="lazy">
-          <strong>🛡️ ท่านหญิง</strong>
-          <span>ขวางการลอบสังหารได้</span>
-        </article>
+      <p>ทุกคนถือการ์ดตัวละครคว่ำ 2 ใบ กับ 2 เหรียญ ในตาตัวเองประกาศใช้พลังของตัวละครไหนก็ได้ <strong>แม้ไม่มีการ์ดใบนั้นจริง</strong> ใครไม่เชื่อก็ท้า โกหกแล้วโดนจับเสียการ์ด 1 ใบ ท้าผิดคนท้าเสียเอง</p>
+      <ul class="hp-points">
+        <li><i>🏆</i><span><strong>ชนะ</strong> เป็นคนสุดท้ายที่ยังเหลือการ์ดคว่ำ · เสียครบ 2 ใบ = ตกรอบ (ออกกลางเกมก็นับว่าตกรอบ)</span></li>
+        <li><i>🎬</i><span><strong>เริ่ม</strong> เกมแรกคนแรกในรายชื่อห้อง เกมต่อไปผู้ชนะเริ่มก่อน · เล่น 2 คน คนเริ่มได้แค่ 1 เหรียญ</span></li>
+        <li><i>🤖</i><span><strong>เพื่อนไม่ครบ</strong> หัวห้องกด 🤖 เพิ่มบอทในห้องรอได้จนครบ 6 ที่ บอทเล่นจากข้อมูลที่ทุกคนเห็นเท่านั้น</span></li>
+      </ul>
+
+      <h3 class="guide-sub">การ์ดตัวละคร 5 แบบ (แบบละ 3 ใบ)</h3>
+      <div class="hp-cards hp-wide" style="--hp-art: 2 / 3">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดดยุคขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/coup/duke.webp" alt="การ์ดดยุค" width="512" height="768" loading="lazy" decoding="async"></div>
+          <figcaption><b>👑 ดยุค</b><span class="hp-does">เก็บภาษี +3 เหรียญ · ขวางเงินช่วยเหลือของใครก็ได้</span><span class="hp-when">อยากรวยเร็วให้ถึง 7 เหรียญ</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดนักฆ่าขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/coup/assassin.webp" alt="การ์ดนักฆ่า" width="512" height="768" loading="lazy" decoding="async"></div>
+          <figcaption><b>🗡️ นักฆ่า</b><span class="hp-does">จ่าย 3 เหรียญ ลอบสังหาร — เป้าหมายเปิดการ์ดทิ้ง 1 ใบ</span><span class="hp-when">มี 3–6 เหรียญ ยังไม่พอรัฐประหาร</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดกัปตันขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/coup/captain.webp" alt="การ์ดกัปตัน" width="512" height="768" loading="lazy" decoding="async"></div>
+          <figcaption><b>⚓ กัปตัน</b><span class="hp-does">ขโมย 2 เหรียญ (เป้ามี 1 ได้ 1) · ขวางการขโมย</span><span class="hp-when">ตัดเงินคนที่ใกล้ 7 เหรียญ</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดทูตขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/coup/ambassador.webp" alt="การ์ดทูต" width="512" height="768" loading="lazy" decoding="async"></div>
+          <figcaption><b>🕊️ ทูต</b><span class="hp-does">จั่ว 2 ใบ เลือกเก็บ แล้วคืนกอง 2 ใบ (เหลือใบเดียว เลือก 1 จาก 3) · ขวางการขโมย</span><span class="hp-when">มือถูกเดาออก อยากเปลี่ยนการ์ด</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดท่านหญิงขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/coup/contessa.webp" alt="การ์ดท่านหญิง" width="512" height="768" loading="lazy" decoding="async"></div>
+          <figcaption><b>🛡️ ท่านหญิง</b><span class="hp-does">ไม่มีท่าของตัวเอง · ขวางการลอบสังหาร</span><span class="hp-when">โดนลอบสังหาร (บลัฟแล้วโดนท้า = เสีย 2 ใบรวด)</span></figcaption>
+        </figure>
       </div>
       <p class="guide-credit">ภาพ: ภาพวาดยุคเรอเนซองส์ (สาธารณสมบัติ) · <a href="/assets/games/coup/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
+
+      <h3 class="guide-sub">ท่าที่ทุกคนทำได้ ไม่ต้องอ้างการ์ด</h3>
+      <ul class="hp-points">
+        <li><i>🪙</i><span><strong>รับรายได้ +1</strong> ไม่มีใครขวางหรือท้าได้</span></li>
+        <li><i>💶</i><span><strong>เงินช่วยเหลือ +2</strong> ใครก็อ้างดยุคขวางได้</span></li>
+        <li><i>💥</i><span><strong>รัฐประหาร จ่าย 7</strong> เป้าหมายเสียการ์ด 1 ใบ ขวางไม่ได้ ท้าไม่ได้ · มีครบ 10 เหรียญต้องรัฐประหารเท่านั้น</span></li>
+      </ul>
+
+      <h3 class="guide-sub">ใครขวางได้ · เวลา</h3>
+      <ul class="hp-points">
+        <li><i>🎯</i><span>ลอบสังหารกับขโมย <strong>ขวางได้เฉพาะคนที่โดน</strong> · เงินช่วยเหลือ ใครในวงก็ขวางได้ · การขวาง <strong>ใครก็ท้าได้</strong></span></li>
+        <li><i>⏱</i><span>เลือกท่าตาละ 30/60/90 วิ (ค่าเริ่ม 60) หมดเวลา = รับรายได้ให้ · ช่วงท้า/ขวาง 20 วิ ไม่กด = ปล่อยผ่าน · เลือกการ์ดทิ้ง/แลกการ์ด 30 วิ</span></li>
+      </ul>
 
       <h3 class="guide-sub">หนึ่งตาเล่นยังไง — เรียงตามลำดับ</h3>
       <div class="guide-steps">
