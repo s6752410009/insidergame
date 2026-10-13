@@ -59,6 +59,7 @@ const soloStats = require('./managers/soloStatsManager');
 const setthiGold = require('./managers/setthiGoldManager');
 const soloGames = require('./games/solo');
 const { registerSeoGameRoutes } = require('./games/seoPages');
+const { listSeoGames, CATEGORIES: SEO_GAME_CATEGORIES } = require('./games/seoContent');
 
 // เวอร์ชันโค้ดที่รันอยู่ — หน้าเว็บที่เปิดค้างจาก deploy ก่อนจะเทียบแล้วรีโหลดเอง
 // (Render ตั้ง RENDER_GIT_COMMIT · Coolify ตั้ง SOURCE_COMMIT ให้ทุก deploy; รันในเครื่องใช้เวลาเปิดเซิร์ฟเวอร์แทน)
@@ -283,38 +284,44 @@ function shouldUseSeoPreview(req) {
 
 function buildStructuredData(pathname, canonicalUrl) {
     if (pathname === '/') {
+        const games = listSeoGames();
         return [
             {
                 '@context': 'https://schema.org',
                 '@type': 'WebSite',
                 name: 'Insider Game Thailand',
-                alternateName: 'Insider Game + Werewolf Online',
+                alternateName: ['insider-th.me', 'เกมปาร์ตี้ออนไลน์ เล่นกับเพื่อนฟรี'],
                 url: buildCanonicalUrl('/'),
-                inLanguage: ['th', 'en'],
-                description: 'เว็บเล่นเกม Insider, Werewolf และ Black Market ออนไลน์ฟรี เล่นกับเพื่อนได้ทันทีบนมือถือและเดสก์ท็อปโดยไม่ต้องติดตั้งแอป'
+                inLanguage: 'th',
+                description: 'เว็บรวมเกมปาร์ตี้ออนไลน์ภาษาไทย เล่นกับเพื่อนฟรีบนมือถือและคอม ไม่ต้องติดตั้งแอป'
             },
             {
                 '@context': 'https://schema.org',
                 '@type': 'WebApplication',
-                name: 'Insider Game + Werewolf Online',
+                name: 'Insider Game Thailand',
                 url: canonicalUrl,
                 applicationCategory: 'GameApplication',
                 operatingSystem: 'Web Browser',
-                inLanguage: ['th', 'en'],
+                inLanguage: 'th',
                 browserRequirements: 'Requires JavaScript. Works on modern mobile and desktop browsers.',
                 offers: {
                     '@type': 'Offer',
                     price: '0',
                     priceCurrency: 'THB'
                 },
-                featureList: [
-                    'เล่น Insider ออนไลน์',
-                    'เล่น Werewolf ออนไลน์',
-                    'เล่น Black Market ออนไลน์',
-                    'สร้างห้องและเล่นกับเพื่อน',
-                    'ใช้งานผ่านเว็บโดยไม่ต้องติดตั้งแอป'
-                ],
-                description: 'แพลตฟอร์มเกมปาร์ตี้บนเว็บสำหรับเล่น Insider, Werewolf และ Black Market กับเพื่อนแบบหลายคน'
+                featureList: games.map(game => `เล่น ${game.name} ออนไลน์`),
+                description: 'แพลตฟอร์มเกมปาร์ตี้บนเว็บ สร้างห้องแล้วส่งลิงก์ให้เพื่อน เล่น Werewolf, Coup, Avalon, Codenames, ป๊อกเด้ง, เศรษฐี และอีกหลายเกม'
+            },
+            {
+                '@context': 'https://schema.org',
+                '@type': 'ItemList',
+                name: 'เกมทั้งหมด',
+                itemListElement: games.map((game, index) => ({
+                    '@type': 'ListItem',
+                    position: index + 1,
+                    name: game.name,
+                    url: buildCanonicalUrl(game.path)
+                }))
             }
         ];
     }
@@ -324,11 +331,11 @@ function buildStructuredData(pathname, canonicalUrl) {
             {
                 '@context': 'https://schema.org',
                 '@type': 'CollectionPage',
-                name: 'ห้องเกม Insider, Werewolf และ Black Market',
+                name: 'ห้องเกมออนไลน์ สร้างห้องเล่นกับเพื่อน',
                 url: canonicalUrl,
                 isPartOf: buildCanonicalUrl('/'),
                 inLanguage: 'th',
-                description: 'หน้ารวมห้องเกมสำหรับสร้างห้องใหม่หรือเข้าห้องเดิมเพื่อเล่น Insider, Werewolf และ Black Market ออนไลน์'
+                description: 'หน้ารวมห้องเกม สร้างห้องใหม่หรือเข้าห้องเพื่อน เล่นเกมปาร์ตี้ออนไลน์ทุกเกมของเว็บ'
             }
         ];
     }
@@ -338,8 +345,8 @@ function buildStructuredData(pathname, canonicalUrl) {
             {
                 '@context': 'https://schema.org',
                 '@type': 'Article',
-                headline: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall, Coup และไพ่โกหก ออนไลน์',
-                description: 'คู่มือสรุปวิธีเล่นทุกโหมดของ Insider Game Thailand พร้อมเงื่อนไขการชนะและวิธีเริ่มเกมกับเพื่อน',
+                headline: 'วิธีเล่นทุกเกม: Werewolf, Coup, Avalon, ป๊อกเด้ง, เศรษฐี และอีกมาก',
+                description: 'คู่มือวิธีเล่นทุกเกมของ Insider Game Thailand พร้อมเงื่อนไขการชนะ ภาพการ์ด และวิธีเริ่มเกมกับเพื่อน',
                 inLanguage: 'th',
                 url: canonicalUrl,
                 mainEntityOfPage: canonicalUrl,
@@ -388,23 +395,25 @@ function buildStructuredData(pathname, canonicalUrl) {
 function buildSeoMetadata(req) {
     const pathname = req.path || '/';
     const canonicalUrl = buildCanonicalUrl(pathname);
-    const defaultImage = buildCanonicalUrl('/static/image/title.jpg');
+    // ภาพแชร์รวมของเว็บ 1200×630 (scripts/build-og-images.js)
+    const defaultImage = buildCanonicalUrl('/static/og/home.jpg');
     const isIndexable = isIndexablePublicPath(pathname);
+    const modeCount = getAvailableGameModes().length;
     const pageMap = {
         '/': {
-            title: 'Insider Game + Werewolf Online | เล่นฟรีกับเพื่อนบนเว็บ',
-            description: 'เล่นเกม Insider, Werewolf และ Black Market ออนไลน์ฟรีกับเพื่อน สร้างห้องไว เล่นบนมือถือหรือเดสก์ท็อปได้โดยไม่ต้องโหลดแอป',
-            keywords: 'insider game online, werewolf online, black market game, เกม insider ออนไลน์, เกม werewolf ออนไลน์, เกมปาร์ตี้เล่นกับเพื่อน, เกมหมาป่า, social deduction game thailand'
+            title: 'เกมปาร์ตี้ออนไลน์ เล่นกับเพื่อนฟรี | Werewolf Coup ป๊อกเด้ง',
+            description: `รวม ${modeCount} เกมปาร์ตี้ออนไลน์ภาษาไทย เล่นกับเพื่อนฟรี Werewolf, Insider, Coup, Avalon, Codenames, ป๊อกเด้ง, เศรษฐี และเกมเล่นคนเดียว ไม่ต้องโหลดแอป`,
+            keywords: 'เกมเล่นกับเพื่อนออนไลน์, เกมปาร์ตี้ออนไลน์, werewolf ออนไลน์ ภาษาไทย, coup เกมออนไลน์, avalon ออนไลน์, codenames ภาษาไทย, ป๊อกเด้งออนไลน์, เกมเศรษฐีออนไลน์, insider เกมออนไลน์, เกมวงเหล้า, เกมเล่นกับเพื่อนฟรี'
         },
         '/rooms': {
-            title: 'Rooms | สร้างห้องและเข้าห้องเล่น Insider, Werewolf, Black Market',
-            description: 'รวมรายชื่อห้องเกมและหน้าสร้างห้องสำหรับ Insider, Werewolf และ Black Market เลือกโหมด ตั้งค่าห้อง และเริ่มเล่นกับเพื่อนได้ทันที',
-            keywords: 'สร้างห้องเกมออนไลน์, ห้อง insider, ห้อง werewolf, ห้อง black market, join room party game, multiplayer room browser'
+            title: `ห้องเกมออนไลน์ สร้างห้องเล่นกับเพื่อน | ${modeCount} เกมปาร์ตี้ฟรี`,
+            description: `สร้างห้องหรือเข้าห้องเพื่อน เล่น ${modeCount} เกมปาร์ตี้ออนไลน์ฟรี Werewolf, Coup, Avalon, Codenames, ป๊อกเด้ง, ไพ่ทิ้งสี, เศรษฐี ส่งลิงก์ชวนเพื่อนได้ทันที`,
+            keywords: 'สร้างห้องเกมออนไลน์, เกมเล่นกับเพื่อนออนไลน์, ห้อง werewolf, ห้อง coup, ห้องป๊อกเด้ง, เกมปาร์ตี้หลายคน'
         },
         '/how-to-play': {
-            title: 'วิธีเล่น Insider, Werewolf, Black Market, Spyfall, Coup, ไพ่โกหก | คู่มือครบทุกโหมด',
-            description: 'อ่านวิธีเล่นแบบสั้นเข้าใจเร็วครบทั้ง Insider, Werewolf, Black Market, Spyfall, Coup และไพ่โกหก พร้อมเงื่อนไขการชนะ จำนวนผู้เล่นที่เหมาะ และวิธีเริ่มเล่นบนเว็บ',
-            keywords: 'วิธีเล่น insider, วิธีเล่น werewolf, วิธีเล่น black market, วิธีเล่น spyfall, วิธีเล่น coup, วิธีเล่นไพ่โกหก, กติกา coup, เกมโค่นอำนาจ, social deduction guide thailand, party game rules'
+            title: 'วิธีเล่นทุกเกม กติกา Werewolf Coup Avalon ป๊อกเด้ง เศรษฐี',
+            description: 'วิธีเล่นและกติกาครบทุกเกม Insider, Werewolf, Spyfall, Avalon, Coup, ไพ่โกหก, ป๊อกเด้ง, ไพ่ทิ้งสี, Codenames, Wavelength, วาดแล้วทาย, เศรษฐี พร้อมภาพการ์ด',
+            keywords: 'วิธีเล่น werewolf, กติกา coup, วิธีเล่น avalon, วิธีเล่นป๊อกเด้ง, วิธีเล่น codenames, วิธีเล่น spyfall, กติกาเกมเศรษฐี, วิธีเล่นไพ่โกหก, วิธีเล่น insider'
         }
     };
 
@@ -440,7 +449,9 @@ function buildSeoMetadata(req) {
         ogTitle: page.title,
         ogDescription: page.description,
         ogImage: defaultImage,
-        ogImageAlt: 'Insider Game Thailand cover art',
+        ogImageAlt: 'เกมปาร์ตี้ออนไลน์ เล่นกับเพื่อนฟรี — insider-th.me',
+        ogImageWidth: 1200,
+        ogImageHeight: 630,
         twitterCard: 'summary_large_image',
         twitterTitle: page.title,
         twitterDescription: page.description,
@@ -4872,7 +4883,7 @@ function getRenderablePlayer(playerId) {
     if (playerId === SEO_PREVIEW_PLAYER_ID) {
         return {
             playerId: SEO_PREVIEW_PLAYER_ID,
-            playerName: 'Guest Preview',
+            playerName: 'ผู้มาเยือน',
             color: '#3498db',
             avatar: '👤',
             avatarFrame: 'none',
@@ -5579,6 +5590,8 @@ app.get('/', function(req, res) {
     res.render('lobby.ejs', {
         player: player,
         stats: stats,
+        seoGames: listSeoGames(),
+        seoCategories: SEO_GAME_CATEGORIES,
         currentSeason: seasonManager.getCurrentSeason(),
         lastSeason: lastSeasonFull
             ? { ...lastSeasonSummary, topThree: lastSeasonFull.entries.slice(0, 3) }

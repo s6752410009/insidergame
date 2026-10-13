@@ -507,6 +507,49 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
 .home .leaderboard-wins { font-size: 1.3rem !important; }
 .home .leaderboard-page-jump-label { margin: 0; font-weight: 500; }
 
+/* ---------- เกมทั้งหมด (H1 ของหน้า + ลิงก์ไปหน้าเกม) ---------- */
+.home-catalog { margin-top: 32px; display: grid; gap: 10px; }
+.home-catalog-h1 {
+    margin: 0;
+    font-family: var(--hm-display);
+    font-size: clamp(1.35rem, 1.1rem + 1.2vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--hm-ink);
+}
+.home-catalog-lead { margin: 0 0 6px; color: var(--hm-soft); font-size: 0.95rem; max-width: 70ch; }
+.home-catalog-cat {
+    margin: 8px 0 0;
+    font-family: var(--hm-display);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--hm-muted);
+}
+.home-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.home-catalog-grid a {
+    display: grid;
+    gap: 2px;
+    height: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--hm-surface);
+    color: var(--hm-ink);
+    text-decoration: none;
+    transition: background-color 0.15s var(--hm-ease);
+}
+.home-catalog-grid a:hover { background: var(--hm-surface-2); }
+.home-catalog-ico { font-size: 1.35rem; line-height: 1.2; }
+.home-catalog-grid b { font-weight: 600; line-height: 1.3; }
+.home-catalog-grid small { color: var(--hm-muted); font-size: 0.8rem; }
+
 @keyframes hmRise { from { opacity: 0; transform: translateY(12px); } }
 @keyframes hmFade { from { opacity: 0; } }
 

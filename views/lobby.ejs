@@ -1,6 +1,6 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/home.css?v=1">
+<link rel="stylesheet" href="/static/css/home.css?v=2">
 <%
     const homeGames = stats ? (stats.totalGames || 0) : 0;
     const homeWins = stats ? (stats.wins || 0) : 0;
@@ -21,7 +21,7 @@
                  data-image="<%= player.avatarImage || '' %>"><%- renderPlayerAvatar(player, { size: 64 }) %></div>
             <div class="home-who">
                 <p class="home-kicker">สวัสดี</p>
-                <h1 class="home-name"><%= player.playerName %></h1>
+                <p class="home-name"><%= player.playerName %></p>
                 <% if (homeGoogleOn && homeGoogleLinked) { %>
                     <span class="home-tag"><i class="fab fa-google" aria-hidden="true"></i> บัญชีปลอดภัย</span>
                 <% } %>
@@ -93,6 +93,27 @@
         <div class="leaderboard-pagination" id="leaderboardPagination"></div>
     </section>
   </div>
+
+    <!-- เกมทั้งหมด: หัวเรื่องหลักของหน้า (H1) + ลิงก์ไปหน้าของแต่ละเกม /games/<id>
+         render ฝั่ง server ให้คนมาใหม่และบอทค้นหาเห็นครบ ไม่ต้องรอ JS -->
+    <% const catalog = typeof seoGames !== 'undefined' && Array.isArray(seoGames) ? seoGames : []; %>
+    <% if (catalog.length) { %>
+    <section class="home-catalog" aria-labelledby="homeCatalogTitle">
+        <h1 class="home-catalog-h1">เกมปาร์ตี้ออนไลน์ เล่นกับเพื่อนฟรี</h1>
+        <p class="home-catalog-lead">เล่นบนเว็บได้ทันที ไม่ต้องโหลดแอป สร้างห้องแล้วส่งลิงก์ให้เพื่อน — Werewolf, Coup, Avalon, Codenames, ป๊อกเด้ง, เศรษฐี และอีกหลายเกม ภาษาไทยทั้งหมด</p>
+        <h2 class="home-h" id="homeCatalogTitle">เกมทั้งหมด</h2>
+        <% (seoCategories || []).forEach(function (cat) {
+             const inCat = catalog.filter(function (g) { return g.category === cat.id; });
+             if (!inCat.length) return; %>
+        <h3 class="home-catalog-cat"><%= cat.label %></h3>
+        <ul class="home-catalog-grid">
+            <% inCat.forEach(function (g) { %>
+            <li><a href="<%= g.path %>"><span class="home-catalog-ico" aria-hidden="true"><%= g.emoji %></span><b><%= g.name %></b><small><%= g.playersLabel %></small></a></li>
+            <% }); %>
+        </ul>
+        <% }); %>
+    </section>
+    <% } %>
 
     <!-- Bottom Links (Admin link hidden - access via /admin/login) -->
     <!-- <div class="bottom-links">
