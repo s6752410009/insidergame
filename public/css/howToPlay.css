@@ -1380,3 +1380,13 @@ body.content {
   .hp-switch-scroll { gap: 5px; }
   .hp-switch .guide-jump-chip { padding: 0 10px; font-size: 0.86rem; gap: 5px; }
 }
+
+/* แถบสลับเกมต้อง sticky ได้: body กับ .container-fluid ตั้ง overflow-x: hidden ทั้งเว็บ
+   ซึ่งทำให้กลายเป็นกล่องเลื่อน (overflow-y: auto) ที่ไม่ได้เลื่อนจริง → sticky ไม่ติด
+   clip ตัดขอบเหมือนเดิมแต่ไม่สร้างกล่องเลื่อน (เบราว์เซอร์เก่าที่ไม่รู้จัก clip ก็แค่แถบไม่ติดบน) */
+body.content,
+body.content .container-fluid {
+  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
+}

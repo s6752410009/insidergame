@@ -88,9 +88,11 @@ async function newPage(browser, viewport, opts = {}) {
     const errors = [];
     const bytes = { total: 0 };
     page.on('pageerror', err => errors.push('pageerror: ' + err.message));
+    // น้ำหนักหน้าแบบที่ส่งจริงบนสาย (บีบอัดแล้ว) จาก DevTools protocol
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Network.enable');
+    cdp.on('Network.loadingFinished', e => { bytes.total += e.encodedDataLength || 0; });
     page.on('response', res => {
-        const len = Number(res.headers()['content-length'] || 0);
-        bytes.total += len;
         if (res.status() >= 400 && !/socket\.io|favicon/.test(res.url())) errors.push(res.status() + ' ' + res.url());
     });
     page.on('requestfailed', req => {
@@ -105,7 +107,8 @@ async function loadAllImages(page, id) {
         const el = document.getElementById(sectionId);
         const top = el.getBoundingClientRect().top + window.scrollY;
         for (let y = top; y < top + el.offsetHeight; y += Math.max(300, window.innerHeight * 0.8)) {
-            window.scrollTo(0, y);
+            // style.css ตั้ง scroll-behavior: smooth ทั้งเว็บ — ต้อง instant ไม่งั้นแอนิเมชันค้างไปทับการคลิกถัดไป
+            window.scrollTo({ top: y, behavior: 'instant' });
             await new Promise(r => setTimeout(r, 40));
         }
     }, id);
@@ -124,6 +127,8 @@ async function runViewport(browser, baseUrl, vp, shotDir) {
     const { ctx, page, errors, bytes } = await newPage(browser, vp);
     await page.goto(baseUrl + '/how-to-play', { waitUntil: 'networkidle' });
     const overviewKb = Math.round(bytes.total / 1024);
+    // เดิมทั้งหน้า ~2MB (รูปทุกเกมโหลดหมด) — ตอนนี้หน้าแรกไม่มีรูปเกมเลย ต้องเบากว่านั้นมาก
+    check(overviewKb < 1024, `${tag} overview weighs ${overviewKb}KB on the wire`);
 
     const ids = await page.$$eval('#hp-switch [data-jump]', els => els.map(el => el.getAttribute('data-jump')));
     const games = ids.filter(id => id !== 'top' && id !== 'faq');
@@ -166,12 +171,19 @@ async function runViewport(browser, baseUrl, vp, shotDir) {
                 const el = document.getElementById(gameId);
                 const gallery = el.querySelector('.hp-cards');
                 const bar = document.getElementById('hp-switch').getBoundingClientRect().height;
-                window.scrollTo(0, gallery.getBoundingClientRect().top + window.scrollY - bar - 60);
+                window.scrollTo({ top: gallery.getBoundingClientRect().top + window.scrollY - bar - 60, behavior: 'instant' });
             }, id);
             await page.waitForTimeout(250);
             await page.screenshot({ path: path.join(shotDir, `howto-${id}-${vp.name}.png`) });
         }
     }
+
+    // แถบสลับเกมต้องติดบนจอเมื่อเลื่อนลงลึก ๆ
+    const barTop = await page.evaluate(() => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+        return document.getElementById('hp-switch').getBoundingClientRect().top;
+    });
+    check(Math.abs(barTop) <= 1, `${tag} game switcher is not sticky (top ${Math.round(barTop)})`);
 
     // คำถามบ่อย + ปุ่ม back กลับไปเกมก่อนหน้า
     await page.click('#hp-switch [data-jump="faq"]');
@@ -251,7 +263,7 @@ async function runNoJs(browser, baseUrl) {
     try {
         for (const vp of VIEWPORTS) {
             const kb = await runViewport(browser, baseUrl, vp, shotDir);
-            console.log(`  ${vp.name} ${vp.width}x${vp.height}: all games ok · overview ~${kb}KB (content-length)`);
+            console.log(`  ${vp.name} ${vp.width}x${vp.height}: all games ok · overview ${kb}KB transferred`);
         }
         await runDeepLinks(browser, baseUrl);
         console.log('  deep links ok');
