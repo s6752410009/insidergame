@@ -955,18 +955,64 @@
     </article>
 
     <article class="guide-card hp-game mode-drawguess" id="drawguess">
-      <%- guideHead('drawguess') %>
+      <%- guideHead('drawguess', ['🔁 2–4 รอบ', '✏️ วาด 60–100 วิ']) %>
       <h2>ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ</h2>
-      <p>เล่น 3–12 คน ทุกรอบทุกคนได้วาดคนละ 1 ตาตามลำดับที่นั่ง (หัวห้องตั้ง 2–4 รอบ) คนวาดเลือก 1 ใน 3 คำ (ง่าย / กลาง / ยาก) ภายใน 12 วิ แล้ววาดภายใน 60–100 วิ คนอื่นพิมพ์ทายได้ไม่จำกัด</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>ห้ามเขียนตัวหนังสือ</strong> คนวาดห้ามเขียนตัวหนังสือหรือตัวเลขบนภาพ · ถ้าเขียน คนทายกด 🚩 บนภาพ แจ้งเกินครึ่ง = ตานี้ไม่นับแต้มทุกคน</div>
-        <div class="guide-list-item"><strong>ทายถูก</strong> คำไม่โผล่ให้คนอื่นเห็น เห็นแค่ “✅ ชื่อ ทายถูก!” · ทายถูกแล้วพิมพ์คุยได้ เห็นเฉพาะคนวาดกับคนที่ถูกแล้ว</div>
-        <div class="guide-list-item"><strong>เกือบแล้ว!</strong> พิมพ์ต่างจากคำตอบแค่ตัวเดียว หรือเป็นส่วนหนึ่งของคำตอบ จะขึ้นเตือนให้เห็นคนเดียว</div>
-        <div class="guide-list-item"><strong>คำใบ้</strong> ช่อง _ _ _ บอกจำนวนตัว (1 ช่อง = ตัวอักษรกับสระ/วรรณยุกต์ที่ติดกัน) · พ้นช่วงแรก ตัวอักษรค่อย ๆ เปิด ไม่เกินราว 40% · หัวห้องปิดใบ้ได้</div>
-        <div class="guide-list-item"><strong>วาดเสร็จแล้ว</strong> คนวาดกด “✅ วาดเสร็จแล้ว” ได้ตาละครั้ง เวลาที่เหลือตัดเหลือ 15 วิ (แต้มคนทายไม่ลด) · ทุกคนทายถูกแล้ว ตาจบทันที</div>
-        <div class="guide-list-item"><strong>แต้ม</strong> ทายถูกเร็วได้เยอะ + โบนัสคนที่ 1–4 · คนวาดได้ +40 ต่อคนที่ทายถูก · ครบทุกรอบ แต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</div>
-        <div class="guide-list-item"><strong>คำ</strong> คำไทย 400+ คำ 8 หมวด เลือกหมวดเดียวหรือรวมก็ได้ ในเกมเดียวไม่มีคำซ้ำ · หัวห้องใส่ <strong>📝 คำของห้อง</strong> เองได้ (ผสม หรือใช้เฉพาะคำของห้องเมื่อมี 10 คำขึ้นไป)</div>
+      <p>ทุกรอบทุกคนได้วาดคนละ 1 ตาตามลำดับที่นั่ง คนวาดเลือก 1 ใน 3 คำ แล้ววาดให้คนอื่นทาย คนทายพิมพ์ได้ไม่จำกัด</p>
+
+      <h3 class="guide-sub">หน้าจอในเกม</h3>
+      <div class="hp-cards hp-wide is-large">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูหน้าเลือกคำขนาดใหญ่">
+          <div class="hp-card-art dg-art" style="--hp-art: 4 / 3">
+            <div class="dg-pick">
+              <p class="dg-pick-kicker">เลือกคำที่จะวาด · 12 วิ</p>
+              <div class="dg-choices2">
+                <span class="dg-choice2"><b>แมว</b><small>สัตว์</small><em class="lv-1">ง่าย</em></span>
+                <span class="dg-choice2"><b>ม้า</b><small>สัตว์</small><em class="lv-2">กลาง</em></span>
+                <span class="dg-choice2"><b>แมลงปอ</b><small>สัตว์</small><em class="lv-3">ยาก</em></span>
+              </div>
+            </div>
+          </div>
+          <figcaption><b>📝 เลือก 1 ใน 3 คำ</b><span class="hp-does">ง่าย / กลาง / ยาก ภายใน 12 วิ (ไม่เลือก ระบบสุ่มให้)</span><span class="hp-when">คำยากวาดลำบาก แต่คนทายก็ได้แต้มตามความเร็ว</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูกระดานวาดขนาดใหญ่">
+          <div class="hp-card-art dg-art is-paper" style="--hp-art: 4 / 3">
+            <svg class="dg-doodle" viewBox="0 0 160 120" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M52 92c-6-16-2-36 12-44 12-7 30-6 40 2 13 10 14 30 6 42" stroke="#1f2430" stroke-width="3"/>
+              <path d="M62 50l-6-18 16 10M98 48l8-17-17 9" stroke="#1f2430" stroke-width="3"/>
+              <circle cx="72" cy="64" r="3" fill="#1f2430"/><circle cx="92" cy="64" r="3" fill="#1f2430"/>
+              <path d="M80 72l-3 3h6zM80 75v4M80 79c-3 3-7 3-9 0M80 79c3 3 7 3 9 0" stroke="#e2493b" stroke-width="2.4"/>
+              <path d="M58 72H40M58 77l-17 4M102 72h18M102 77l17 4" stroke="#8a8f98" stroke-width="2"/>
+              <path d="M112 90c14 0 22-8 18-20" stroke="#f28c28" stroke-width="3"/>
+              <path d="M50 94h66" stroke="#4caf50" stroke-width="3"/>
+            </svg>
+            <span class="dg-hint">_ _ _ <small>3 ช่อง</small></span>
+            <span class="dg-palette" aria-hidden="true"><i style="background:#1f2430"></i><i style="background:#e2493b"></i><i style="background:#f28c28"></i><i style="background:#f7d038"></i><i style="background:#4caf50"></i><i style="background:#3b82f6"></i><i style="background:#8b5cf6"></i><i style="background:#ec6fa8"></i></span>
+          </div>
+          <figcaption><b>🎨 กระดานวาด</b><span class="hp-does">กระดาษสีครีม 12 สี · ช่อง _ _ _ บอกจำนวนตัว (1 ช่อง = ตัวอักษรกับสระ/วรรณยุกต์ที่ติดกัน)</span><span class="hp-when">ห้ามเขียนตัวหนังสือหรือตัวเลขบนภาพ</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูแชททายขนาดใหญ่">
+          <div class="hp-card-art dg-art" style="--hp-art: 4 / 3">
+            <div class="dg-chat">
+              <span class="dg-msg"><b>บี</b> หมา?</span>
+              <span class="dg-msg is-close">🔥 เกือบแล้ว! <small>(เห็นคนเดียว)</small></span>
+              <span class="dg-msg is-ok">✅ เอ ทายถูก!</span>
+              <span class="dg-msg is-ok">✅ ซี ทายถูก!</span>
+            </div>
+          </div>
+          <figcaption><b>💬 พิมพ์ทาย</b><span class="hp-does">ทายถูก คำไม่โผล่ให้คนอื่นเห็น ขึ้นแค่ “✅ ชื่อ ทายถูก!”</span><span class="hp-when">ต่างแค่ตัวเดียว หรือเป็นส่วนหนึ่งของคำ จะขึ้น “เกือบแล้ว!”</span></figcaption>
+        </figure>
       </div>
+
+      <h3 class="guide-sub">กติกาสั้น ๆ</h3>
+      <ul class="hp-points">
+        <li><i>🚩</i><span><strong>เขียนตัวหนังสือ</strong> คนทายกด 🚩 บนภาพ แจ้งเกินครึ่ง = ตานี้ไม่นับแต้มทุกคน</span></li>
+        <li><i>💡</i><span><strong>คำใบ้</strong> พ้นช่วงแรก (ราว 30% ของเวลา) ตัวอักษรค่อย ๆ เปิด ไม่เกินราว 40% · หัวห้องปิดใบ้ได้</span></li>
+        <li><i>🗨️</i><span>ทายถูกแล้วพิมพ์คุยได้ เห็นเฉพาะคนวาดกับคนที่ถูกแล้ว</span></li>
+        <li><i>✅</i><span><strong>วาดเสร็จแล้ว</strong> คนวาดกดได้ตาละครั้ง เวลาที่เหลือตัดเหลือ 15 วิ (แต้มคนทายไม่ลด) · ทุกคนทายถูก ตาจบทันที</span></li>
+        <li><i>🏆</i><span><strong>แต้ม</strong> ทายถูกได้ 60–300 ตามความเร็ว + โบนัสคนที่ 1–4 (50/35/20/10) · คนวาดได้ +40 ต่อคนที่ทายถูก · ครบทุกรอบ แต้มรวมสูงสุดชนะ (เสมอ = ชนะร่วม)</span></li>
+        <li><i>📚</i><span><strong>คำ</strong> คำไทย 400+ คำ 8 หมวด เลือกหมวดเดียวหรือรวม ในเกมเดียวไม่มีคำซ้ำ · หัวห้องใส่ <strong>📝 คำของห้อง</strong> ได้ถึง 200 คำ (ผสม หรือใช้เฉพาะคำของห้องเมื่อมี 10 คำขึ้นไป)</span></li>
+        <li><i>⚙️</i><span>หัวห้องตั้ง 2/3/4 รอบ · เวลาวาด 60/80/100 วิ (ค่าเริ่ม 80)</span></li>
+      </ul>
       <%- guideNav('drawguess') %>
     </article>
 

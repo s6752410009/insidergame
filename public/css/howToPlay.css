@@ -1468,3 +1468,47 @@ body.content {
 .wl-spec-a { color: #94a3b8; }
 .hp-zoom-art .wl-spec-l, .hp-zoom-art .wl-spec-r { font-size: 1.3rem; }
 .hp-zoom-art > .wl-art { width: 100%; }
+
+/* วาดแล้วทาย: กระดาษวาด + ปุ่มเลือกคำ + แชท (ย่อจาก drawguessBoard.ejs) */
+.dg-art { background: oklch(0.17 0.03 255); padding: 8px; }
+.dg-art.is-paper { background: #fffdf6; box-shadow: 0 0 0 1px oklch(0.48 0.04 255 / 0.5); }
+.dg-doodle { width: 82%; height: 82%; }
+.dg-hint { position: absolute; left: 8px; top: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(15, 26, 43, 0.85); color: #fde68a; font-family: 'Chakra Petch', sans-serif; font-weight: 700; letter-spacing: 0.12em; font-size: 0.85rem; }
+.dg-hint small { letter-spacing: 0; color: #cbd5e1; font-weight: 500; font-size: 0.7rem; }
+.dg-palette { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 3px; }
+.dg-palette i { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,0.25); }
+.dg-pick { display: grid; gap: 8px; width: 100%; text-align: center; }
+.dg-pick-kicker { margin: 0; font-family: 'Chakra Petch', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; color: oklch(0.85 0.12 85); }
+.dg-choices2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.dg-choice2 {
+  display: grid; gap: 1px; justify-items: center; align-content: center; min-height: 64px; padding: 6px 4px; border-radius: 12px;
+  border: 2px solid color-mix(in oklch, oklch(0.85 0.12 85) 55%, transparent);
+  background: oklch(0.22 0.035 255); color: oklch(0.96 0.01 90);
+}
+.dg-choice2 b { font-family: 'Chakra Petch', sans-serif; font-size: 0.98rem; line-height: 1.15; overflow-wrap: anywhere; }
+.dg-choice2 small { font-size: 0.66rem; color: oklch(0.78 0.12 225); font-weight: 600; }
+.dg-choice2 em { font-style: normal; padding: 0 6px; border-radius: 999px; font-size: 0.64rem; font-weight: 700; background: oklch(0.14 0.026 255); }
+.dg-choice2 .lv-1 { color: oklch(0.8 0.15 155); }
+.dg-choice2 .lv-2 { color: oklch(0.78 0.12 225); }
+.dg-choice2 .lv-3 { color: oklch(0.68 0.19 28); }
+.dg-chat { display: grid; gap: 6px; width: 100%; align-self: end; }
+.dg-msg { justify-self: start; padding: 4px 10px; border-radius: 12px; background: oklch(0.27 0.04 255); color: #e2e8f0; font-size: 0.85rem; }
+.dg-msg b { color: oklch(0.78 0.12 225); margin-right: 4px; }
+.dg-msg.is-close { background: oklch(0.35 0.08 70 / 0.6); color: oklch(0.88 0.12 80); }
+.dg-msg.is-close small { color: #cbd5e1; }
+.dg-msg.is-ok { background: oklch(0.4 0.1 155 / 0.45); color: oklch(0.9 0.12 155); }
+.hp-zoom-art > .dg-art { width: 100%; }
+.hp-zoom-art .dg-choice2 b { font-size: 1.3rem; }
+.hp-zoom-art .dg-msg { font-size: 1.05rem; }
+/* style.css ตั้ง .content ul li ใหญ่กว่าตัวหนังสือหน้านี้ */
+.guide-page .hp-points > li,
+.guide-page .hp-steps > li { font-size: 1rem; line-height: 1.6; }
+.guide-page .hp-picker-grid > li,
+.guide-page .hp-switch-scroll > li,
+.guide-page .hp-facts > li { line-height: normal; }
+.guide-page .hp-facts > li { font-size: 0.84rem; }
+/* mobile.css (≤768px) บังคับ .content ul li เป็น 14px/20px ด้วย !important — ภาษาไทยอ่านยาก */
+.guide-page .hp-points > li { font-size: 1rem !important; line-height: 1.6 !important; }
+.guide-page .hp-facts > li { font-size: 0.84rem !important; line-height: 1.4 !important; }
+.guide-page .hp-picker-grid > li,
+.guide-page .hp-switch-scroll > li { font-size: 1rem !important; line-height: normal !important; }
