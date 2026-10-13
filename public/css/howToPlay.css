@@ -1296,3 +1296,23 @@ body.content {
 .lr-gun-pip.is-used { background: oklch(0.4 0.02 150); border-color: oklch(0.4 0.02 150); }
 .lr-gun-odds { color: oklch(0.8 0.03 140); font-size: 0.95rem; }
 .lr-gun-odds.is-hot { color: oklch(0.7 0.18 25); }
+
+/* มือไพ่ตัวอย่าง (ไพ่ 5 ใบ / สี่ใบเก / ป๊อกเด้ง) วางซ้อนบนพื้นสักหลาด */
+.hp-card-art.hp-hand {
+  aspect-ratio: auto;
+  min-height: 0;
+  padding: 14px 10px 14px 22px;
+  background: radial-gradient(ellipse at 50% 30%, #1d6b45, #0d3a26 75%);
+  box-shadow: inset 0 0 0 1px rgba(245, 200, 107, 0.22);
+}
+.hp-card-art.hp-hand > img {
+  width: 36%;
+  max-width: 78px;
+  height: auto;
+  margin-left: -12px;
+  border-radius: 6px;
+  object-fit: contain;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+.hp-zoom-art > .hp-card-art.hp-hand { padding: 26px 18px 26px 40px; }
+.hp-zoom-art > .hp-card-art.hp-hand > img { max-width: 120px; margin-left: -18px; }

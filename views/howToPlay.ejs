@@ -119,6 +119,16 @@
       const pokerGuideRows = (typeof pokerRankGuide !== 'undefined' && Array.isArray(pokerRankGuide) && pokerRankGuide.length)
         ? pokerRankGuide.map((row, index) => Object.assign({}, pokerGuideFallback[index] || {}, row))
         : pokerGuideFallback;
+      // มือไพ่ตัวอย่างจากรูปไพ่จริงของเกม (public/assets/games/poker/<rank><suit>.svg)
+      const pkHand = function (cards, name, does, when) {
+        const imgs = cards.map(c => {
+          const src = /^\//.test(c) ? c : '/assets/games/poker/' + c + '.svg';
+          return '<img src="' + src + '" alt="" width="250" height="350" loading="lazy" decoding="async">';
+        }).join('');
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูมือ' + name.replace(/<[^>]+>/g, '') + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art hp-hand">' + imgs + '</div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
     %>
 
     <article class="guide-card hp-game mode-insider" id="insider">
@@ -658,96 +668,93 @@
     </article>
 
     <article class="guide-card hp-game mode-poker" id="poker5">
-      <%- guideHead('poker5') %>
+      <%- guideHead('poker5', ['🤖 บอทเฉพาะโต๊ะเล่นสนุก']) %>
       <h2>ได้ 5 ทิ้ง 2 ลงชิปรอบเดียว แล้วเปิด 3 ใบเทียบ</h2>
-      <p>ทุกคนวางกองก่อนแจก แล้วสู้ ตาม เกทับ หรือหมอบได้ มือใหญ่กินกอง เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>เล่นสนุก</strong> ได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 ไม่เก็บผล</div>
-        <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>
-        <div class="guide-list-item"><strong>วางกองก่อนแจก</strong> ตาละ 500 ทุกคนวางลงกองกลางก่อนได้ไพ่</div>
-        <div class="guide-list-item"><strong>มือเท่ากัน</strong> ดูใบใหญ่สุด แล้วดูดอก ♠ &gt; ♥ &gt; ♦ &gt; ♣ — ไพ่คนละใบ จึงไม่มีเสมอ</div>
-        <div class="guide-list-item"><strong>หมดเวลาลงชิป</strong> ยังไม่มีใครสู้ = ผ่านให้ · มีคนสู้ = หมอบ</div>
-      </div>
-      <p class="pk-rank-kicker">ใหญ่ → เล็ก</p>
-      <div class="pk-rank-list">
+      <p>ทุกคนวางกองก่อนแจก ได้ไพ่ 5 ใบ เลือกเก็บ 3 ใบที่ดีที่สุด แล้วสู้ ตาม เกทับ หรือหมอบ มือใหญ่สุดกินกอง</p>
+      <ol class="hp-steps">
+        <li><strong>💰 วางกอง</strong> ทุกคนวางเท่ากันก่อนแจก (หัวห้องตั้ง 100–2,000 ค่าเริ่ม 500) · ลงขั้นต่ำและเกทับขั้นต่ำเท่ากับกองนี้</li>
+        <li><strong>🃏 ได้ 5 ทิ้ง 2</strong> ใน 30 วิ · หมดเวลาระบบเลือก 3 ใบที่ดีที่สุดให้</li>
+        <li><strong>🪙 ลงชิปรอบเดียว</strong> ตาละ 20 วิ · หมดเวลา: ยังไม่มีใครสู้ = ผ่าน · มีคนสู้แล้ว = หมอบ</li>
+        <li><strong>👀 เปิดเทียบ</strong> ไพ่ 3 ใบใหญ่สุดกินกอง · ไพ่ที่ทิ้ง 2 ใบหงายให้ดูด้วย</li>
+      </ol>
+
+      <h3 class="guide-sub">ลำดับมือ ใหญ่ → เล็ก</h3>
+      <div class="hp-cards hp-wide is-large">
         <% pokerGuideRows.forEach((row, index) => { %>
-          <div class="pk-rank-item">
-            <div class="pk-rank-n"><%= index + 1 %></div>
-            <div class="pk-rank-cards">
-              <% (row.example || []).forEach((card) => { %>
-                <img src="<%= card.image %>" alt="<%= row.name %>">
-              <% }) %>
-            </div>
-            <div class="pk-rank-copy">
-              <b><%= row.name %></b>
-              <small><%= row.hint %></small>
-            </div>
-          </div>
+          <%- pkHand((row.example || []).map(c => c.image), (index + 1) + '. ' + row.name, row.hint) %>
         <% }) %>
       </div>
+      <ul class="hp-points">
+        <li><i>⚖️</i><span><strong>มือเท่ากัน</strong> ดูใบใหญ่สุด (เอซใหญ่สุดเวลาเทียบ แม้นับแต้มเป็น 1) แล้วดูดอก ♠ &gt; ♥ &gt; ♦ &gt; ♣ — ไพ่ไม่ซ้ำกัน จึงไม่มีเสมอ</span></li>
+        <li><i>👑</i><span>J-Q-K คนละดอก = <strong>เซียน</strong> · ดอกเดียวกัน = <strong>เรียงสี</strong></span></li>
+      </ul>
+
+      <h3 class="guide-sub">สองแบบโต๊ะ</h3>
+      <ul class="hp-points">
+        <li><i>🎉</i><span><strong>เล่นสนุก</strong> ได้ชิป 10,000 ชนะเก็บยอด · ชิปเหลือน้อยกว่ากองตอนเริ่มมือ ระบบรีเซ็ตเป็น 10,000 · ไม่เก็บผล · ใส่บอทได้</span></li>
+        <li><i>💎</i><span><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย · รับชิปเพิ่มได้วันละครั้ง · ชิปไม่พอวางกอง = นั่งดูมือนั้น · ใส่บอทไม่ได้</span></li>
+      </ul>
       <%- guideNav('poker5') %>
     </article>
 
     <article class="guide-card hp-game mode-poker4" id="poker4">
-      <%- guideHead('poker4') %>
+      <%- guideHead('poker4', ['🤖 บอทเฉพาะโต๊ะเล่นสนุก']) %>
       <h2>ได้ 4 ทิ้ง 2 ลงชิปรอบแรก ได้ใบที่ 3 แล้วลงชิปอีกรอบ</h2>
-      <p>แบบ "2 ใบเก" ของวงไทย: ลงชิปรอบแรกตอนถือ 2 ใบ แล้วคนที่ยังไม่หมอบได้ใบที่ 3 คว่ำ เห็นเองคนเดียว (หัวห้องตั้งให้หงายให้ทั้งโต๊ะเห็นได้) แล้วลงชิปอีกรอบ ค่อยเปิดเทียบ ไม่มีใบที่ 4 เล่น 2–10 คน หัวห้องเพิ่มบอทได้ถ้าเพื่อนยังไม่ครบ</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>เล่นสนุก</strong> ได้ชิป 10,000 ชนะเก็บยอด เงินไม่พอเล่นเติม 10,000 ไม่เก็บผล</div>
-        <div class="guide-list-item"><strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ชนะได้ไป แพ้หาย รับชิปเพิ่มได้วันละครั้งตอนเล่น</div>
-        <div class="guide-list-item"><strong>หมอบ</strong> ไม่ได้ใบที่ 3 กินกองไม่ได้</div>
+      <p>แบบ “2 ใบเก” ของวงไทย ลงชิปสองรอบ: รอบแรกตอนถือ 2 ใบ รอบสองหลังได้ใบที่ 3 แล้วค่อยเปิดเทียบ ไม่มีใบที่ 4</p>
+      <ol class="hp-steps">
+        <li><strong>💰 วางกอง</strong> ทุกคนวางเท่ากันก่อนแจก (หัวห้องตั้ง 100–2,000 ค่าเริ่ม 500)</li>
+        <li><strong>🃏 ได้ 4 ทิ้ง 2</strong> ใน 30 วิ · หมดเวลาระบบเลือก 2 ใบที่ดีที่สุดให้</li>
+        <li><strong>🪙 ลงชิปรอบแรก</strong> สู้ ตาม เกทับ หรือหมอบ (ตาละ 20 วิ) · หมอบ = ไม่ได้ใบที่ 3 กินกองไม่ได้</li>
+        <li><strong>🂠 ได้ใบที่ 3</strong> คว่ำ เห็นเองคนเดียว (หัวห้องตั้งให้หงายให้ทั้งโต๊ะเห็นได้)</li>
+        <li><strong>🪙 ลงชิปรอบสอง</strong> แล้วเปิดเทียบ มือใหญ่สุดกินกอง</li>
+      </ol>
+      <div class="hp-cards hp-wide is-large">
+        <%- pkHand(['8h', '9h', 'back'], 'ถือ 2 ใบ รอใบที่ 3', '8♥ 9♥ ลุ้นเรียงสี (7♥ หรือ 10♥) หรือสี (♥ ใบไหนก็ได้)', 'มือแบบนี้น่าสู้ในรอบแรก') %>
+        <%- pkHand(['8h', '9h', '10h'], 'ได้ใบที่ 3 = เรียงสี', '8♥ 9♥ 10♥ มือใหญ่อันดับ 2 รองจากตอง', 'เกทับเต็มที่ในรอบสอง') %>
       </div>
-      <details class="guide-fold">
-        <summary><span>ลำดับไพ่ ใหญ่ → เล็ก<span class="guide-fold-hint">ลำดับเดียวกับไพ่ 5 ใบ · ตอง เรียงสี เซียน เรียง สี แต้ม</span></span></summary>
-        <div class="guide-fold-body">
-      <p class="pk-rank-kicker">ใหญ่ → เล็ก</p>
-      <div class="pk-rank-list">
-        <% pokerGuideRows.forEach((row, index) => { %>
-          <div class="pk-rank-item">
-            <div class="pk-rank-n"><%= index + 1 %></div>
-            <div class="pk-rank-cards">
-              <% (row.example || []).forEach((card) => { %>
-                <img src="<%= card.image %>" alt="<%= row.name %>">
-              <% }) %>
-            </div>
-            <div class="pk-rank-copy">
-              <b><%= row.name %></b>
-              <small><%= row.hint %></small>
-            </div>
-          </div>
-        <% }) %>
-      </div>
-        </div>
-      </details>
+      <p class="hp-note">ลำดับมือเหมือนไพ่ 5 ใบทุกอย่าง: ตอง &gt; เรียงสี &gt; เซียน &gt; เรียง &gt; สี &gt; แต้ม — <a href="#poker5">ดูตัวอย่างครบที่ไพ่ 5 ใบ</a></p>
+      <ul class="hp-points">
+        <li><i>🎉</i><span><strong>เล่นสนุก</strong> ชิป 10,000 ไม่เก็บผล ใส่บอทได้ · <strong>เล่นเก็บชิป</strong> ใช้ชิปในบัญชี ใส่บอทไม่ได้</span></li>
+      </ul>
       <%- guideNav('poker4') %>
     </article>
 
     <article class="guide-card hp-game mode-pokdeng" id="pokdeng">
-      <%- guideHead('pokdeng') %>
+      <%- guideHead('pokdeng', ['🤖 มีบอท', '🪙 ชิปในโต๊ะไม่มีมูลค่าจริง']) %>
       <h2>แจก 2 ใบ ป๊อกเปิดเลย จั่วเพิ่มได้ 1 ใบ แล้ววัดกับเจ้ามือ</h2>
-      <p>ขาไพ่ลงเดิมพัน 10 ถึงอั้นของห้อง (ค่าเริ่ม 500) แล้วได้ไพ่คนละ 2 ใบ แต้ม = หลักหน่วยของผลรวม (A = 1, 10/J/Q/K = 0) ได้ 8 หรือ 9 = ป๊อก เปิดทันทีไม่ต้องจั่ว ถ้าเจ้ามือป๊อก เปิดวัดทุกคนเลย ที่เหลือไล่จั่วเพิ่มได้ 1 ใบ แล้วถึงตาเจ้ามือ: 4 แต้มขึ้นไป<strong>จับ</strong>ขาที่ถือ 3 ใบ (หรือ 2 ใบ) วัดก่อนได้ แล้วจั่ว/อยู่สู้ขาที่เหลือ เล่น 2–10 คน (รวมเจ้ามือ) ใส่บอทได้</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</strong> ทุกคนเริ่ม 1,000 ไม่เกี่ยวกับกระเป๋าชิป หมดตัวขอชิปใหม่ได้ 1 ครั้ง</div>
-        <div class="guide-list-item"><strong>เจ้ามือ</strong> หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือหมุนเจ้ามือทุกตา (ทุกคนเริ่ม 1,000) · เปลี่ยนได้ก่อนแจกมือแรกเท่านั้น · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</div>
-        <div class="guide-list-item"><strong>จับ</strong> เจ้ามือ 2 ใบ 4 แต้มขึ้นไป เปิดวัดขาที่ถือ 3 ใบ หรือ 2 ใบก่อนได้ แล้วค่อยจั่ว/อยู่สู้ขาที่เหลือ · ต่ำกว่า 4 จับไม่ได้</div>
-        <div class="guide-list-item"><strong>ตั้งได้ในห้อง</strong> อั้น 100/200/500 · นับไพ่เรียงหรือไม่ (ค่าเริ่ม นับ) · ต่ำกว่า 4 ต้องจั่ว ทั้งขาไพ่และเจ้ามือ (ค่าเริ่ม ปิด)</div>
-        <div class="guide-list-item"><strong>ไม่อยู่หน้าจอ</strong> หมดเวลาลงเดิมพันครั้งแรก ลงขั้นต่ำให้ · 2 มือติด = พักโต๊ะ ไม่ลงให้อีก กด “กลับมาเล่น” เมื่อพร้อม</div>
-        <div class="guide-list-item"><strong>เด้ง</strong> ชนะได้ เดิมพัน × เด้งของมือที่ชนะ · 2 ใบดอกเดียวกันหรือคู่ = 2 เด้ง · 3 ใบดอกเดียวกัน = 3 เด้ง</div>
-        <div class="guide-list-item"><strong>ชนะโต๊ะ</strong> จบโต๊ะแล้วชิปมากกว่าทุน (รวมที่ขอใหม่) = ชนะ นับเจ้ามือด้วย</div>
+      <p>แต้ม = หลักหน่วยของผลรวม (A = 1 · 10 J Q K = 0) ได้ 8 หรือ 9 จาก 2 ใบแรก = <strong>ป๊อก</strong> เปิดทันที ไม่ต้องจั่ว</p>
+      <ol class="hp-steps">
+        <li><strong>🪙 ลงเดิมพัน</strong> 10 ถึงอั้นของห้อง (100/200/500 ค่าเริ่ม 500) แล้วได้ไพ่คนละ 2 ใบ</li>
+        <li><strong>⚡ ป๊อก</strong> ใครป๊อกเปิดเลย · เจ้ามือป๊อก = เปิดวัดทุกคนทันที</li>
+        <li><strong>🃏 จั่วหรืออยู่</strong> ขาไพ่ไล่ตัดสินใจจั่วเพิ่มได้ 1 ใบ · หมดเวลา = อยู่</li>
+        <li><strong>🎯 ตาเจ้ามือ</strong> 2 ใบได้ 4 แต้มขึ้นไป <strong>จับ</strong>ขาที่ถือ 3 ใบ หรือ 2 ใบ วัดก่อนได้ แล้วจั่ว/อยู่สู้ขาที่เหลือ · หมดเวลา เจ้ามือ 3 แต้มลงมาจั่วให้</li>
+        <li><strong>💸 จ่าย</strong> ชนะได้ เดิมพัน × เด้งของมือตัวเอง · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ</li>
+      </ol>
+
+      <h3 class="guide-sub">อันดับไพ่ ใหญ่ → เล็ก</h3>
+      <div class="hp-cards hp-wide is-large">
+        <%- pkHand(['9s', 'kh'], 'ป๊อก 9', 'ชนะทุกอย่าง ยกเว้นป๊อก 9 อีกมือ (เท่ากัน = เสมอ) · 1 เด้ง', '2 ใบแรกเท่านั้น ชนะแม้เจอตอง') %>
+        <%- pkHand(['4h', '5h'], 'ป๊อก 9 สองเด้ง', 'ป๊อกที่ดอกเดียวกันหรือเป็นคู่ = 2 เด้ง', '') %>
+        <%- pkHand(['3s', '5d'], 'ป๊อก 8', 'แพ้ป๊อก 9 อย่างเดียว · 1 เด้ง (คู่/ดอกเดียว 2 เด้ง)', '') %>
+        <%- pkHand(['7s', '7h', '7d'], 'ตอง', 'สามใบหน้าเดียวกัน · 5 เด้ง · ตองเทียบกัน A ใหญ่สุด 2 เล็กสุด', '') %>
+        <%- pkHand(['4h', '5h', '6h'], 'สเตรทฟลัช', 'เรียงและดอกเดียวกัน · 5 เด้ง', '') %>
+        <%- pkHand(['4c', '5h', '6s'], 'เรียง', '2-3-4 ถึง Q-K-A (A-2-3 กับ K-A-2 ไม่นับ) · J-Q-K ก็เป็นเรียง · 3 เด้ง', '') %>
+        <%- pkHand(['js', 'qd', 'jh'], 'เซียน', 'J Q K ล้วน และมีใบซ้ำ (เช่น J Q J) · 3 เด้ง · เซียนเจอเซียน = เสมอ', '') %>
+        <%- pkHand(['2c', '5c', 'kc'], '7 แต้ม สามเด้ง', '3 ใบดอกเดียวกัน (ไม่เรียง) = 3 เด้ง', '') %>
+        <%- pkHand(['2h', '5h'], '7 แต้ม สองเด้ง', '2 ใบดอกเดียวกัน หรือเป็นคู่ = 2 เด้ง', '') %>
+        <%- pkHand(['3c', '4d'], '7 แต้ม', 'แต้มธรรมดา 1 เด้ง · แต้มเท่ากัน = เสมอ คืนเดิมพัน (2 ใบเจอ 3 ใบก็เสมอ)', '') %>
+        <%- pkHand(['10s', 'kh'], 'บอด (0 แต้ม)', 'เล็กสุด · ควรจั่วเพิ่ม', '') %>
       </div>
-      <details class="guide-fold">
-        <summary><span>อันดับไพ่ ใหญ่ → เล็ก<span class="guide-fold-hint">ป๊อก ตอง สเตรทฟลัช เรียง เซียน แต้ม</span></span></summary>
-        <div class="guide-fold-body">
-          <div class="guide-list">
-            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/9s.svg" alt=""><img src="/assets/games/poker/kh.svg" alt=""></span><strong>ป๊อก 9 / ป๊อก 8</strong> ชนะทุกอย่าง (ป๊อก 9 &gt; ป๊อก 8)</div>
-            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/7s.svg" alt=""><img src="/assets/games/poker/7h.svg" alt=""><img src="/assets/games/poker/7d.svg" alt=""></span><strong>ตอง</strong> สามใบหน้าเดียวกัน · 5 เด้ง</div>
-            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/4h.svg" alt=""><img src="/assets/games/poker/5h.svg" alt=""><img src="/assets/games/poker/6h.svg" alt=""></span><strong>สเตรทฟลัช</strong> เรียงและดอกเดียวกัน · 5 เด้ง</div>
-            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/4c.svg" alt=""><img src="/assets/games/poker/5h.svg" alt=""><img src="/assets/games/poker/6s.svg" alt=""></span><strong>เรียง</strong> 2-3-4 ถึง Q-K-A (A-2-3 กับ K-A-2 ไม่นับ) · 3 เด้ง</div>
-            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/js.svg" alt=""><img src="/assets/games/poker/qd.svg" alt=""><img src="/assets/games/poker/jh.svg" alt=""></span><strong>เซียน</strong> J Q K ล้วน · 3 เด้ง</div>
-            <div class="guide-list-item"><span class="pd-howto-cards"><img src="/assets/games/poker/2d.svg" alt=""><img src="/assets/games/poker/6d.svg" alt=""></span><strong>แต้ม 9 → 0</strong> แต้มมากชนะ · เท่ากัน = เสมอ คืนเดิมพัน</div>
-          </div>
-        </div>
-      </details>
+      <p class="hp-note">3 ใบที่มีคู่ไม่ได้เด้ง · โต๊ะที่ปิด “นับไพ่เรียง” ไพ่เรียงนับเป็นแต้มธรรมดา (ดอกเดียวกันยังได้สามเด้ง) และ J-Q-K นับเป็นเซียน</p>
+
+      <h3 class="guide-sub">ตั้งค่าห้อง · กติกาโต๊ะ</h3>
+      <ul class="hp-points">
+        <li><i>🏦</i><span><strong>เจ้ามือ</strong> หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือหมุนเจ้ามือทุกตา (ทุกคนเริ่ม 1,000) · เปลี่ยนได้ก่อนแจกมือแรกเท่านั้น · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</span></li>
+        <li><i>⚙️</i><span>อั้น 100/200/500 · นับไพ่เรียง (ค่าเริ่ม นับ) · ต่ำกว่า 4 ต้องจั่ว ทั้งขาไพ่และเจ้ามือ (ค่าเริ่ม ปิด) · ล็อกเมื่อเริ่มโต๊ะ</span></li>
+        <li><i>💤</i><span>หมดเวลาลงเดิมพันครั้งแรก ลงขั้นต่ำให้ · 2 มือติด = พักโต๊ะ กด “กลับมาเล่น” เมื่อพร้อม · ไม่มีใครลงเดิมพัน 3 มือติด = จบโต๊ะ</span></li>
+        <li><i>🪙</i><span>ทุกคนเริ่ม 1,000 ไม่เกี่ยวกับกระเป๋าชิป หมดตัวขอใหม่ได้ 1 ครั้ง · จบโต๊ะแล้วชิปมากกว่าทุน (รวมที่ขอใหม่) = ชนะ นับเจ้ามือด้วย</span></li>
+        <li><i>🤖</i><span>หัวห้องเพิ่มบอทได้ บอทขอชิปใหม่เอง · อยากเล่นคนเดียว ลอง <a href="/solo/pokdengsolo">ป๊อกเด้งท้าเจ้ามือ</a></span></li>
+      </ul>
       <%- guideNav('pokdeng') %>
     </article>
 
