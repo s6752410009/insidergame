@@ -907,17 +907,131 @@
       <%- guideNav('drawguess') %>
     </article>
 
+    <%
+      const stG = (typeof setthiGuide !== 'undefined' && setthiGuide) ? setthiGuide : { icons: {}, cards: [], skills: [], upgradeCost: [], loadout: 3 };
+      const stCardText = {
+        k01: 'เดินหน้า 3 ช่อง แล้วทำตามช่องที่ตก',
+        k02: 'เดินไปจุดเริ่ม รับเงินเดือน',
+        k03: 'เมืองของเรา 1 เมืองขึ้น 1 ขั้นฟรี',
+        k04: 'ค่าผ่านทางครั้งหน้าฟรี หรือกันการ์ดโจมตี 1 ครั้ง',
+        k05: 'ค่าผ่านทางครั้งหน้าจ่ายครึ่งเดียว',
+        k06: 'ไปติดเกาะร้างทันที',
+        k07: 'จ่าย ฿1,000',
+        k08: 'เลือกเมืองของเราจัดงานวัด ค่าผ่านทาง ×2',
+        k09: 'รับ ฿2,000',
+        k10: 'ไปช่องทัวร์ ตาหน้าบินไปช่องไหนก็ได้',
+        k11: 'เก็บไว้ ติดเกาะแล้วออกฟรี',
+        k12: 'เก็บไว้ ซื้อต่อครั้งหน้าลดครึ่งราคา',
+        k13: 'เมืองคู่แข่ง 1 เมืองคืนแบงก์ เจ้าของได้ครึ่งราคา',
+        k14: 'เมืองคู่แข่งที่สร้างแล้วลดลง 1 ขั้น',
+        k15: 'สลับเมืองเรา 1 เมืองกับเมืองคู่แข่ง',
+        k16: 'ต้องยกเมือง 1 เมืองให้คนที่จนที่สุด',
+        k17: 'เดินไปเมืองงานวัด แล้วจ่ายค่าผ่านทาง'
+      };
+      const stBad = { k06: 1, k07: 1, k16: 1, k17: 1 };
+      const stCity = function (photo, name, band, price, does, when) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูช่อง' + name + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art st-tile-art" style="--band:' + band + '"><img src="/assets/games/setthi/photos/' + photo + '-t.webp" alt="" width="160" height="160" loading="lazy" decoding="async"><i class="st-tile-band"></i><span class="st-tile-name">' + name + '</span><span class="st-tile-price">' + price + '</span></div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+      const stLand = function (img, name, does, when, extra) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดู' + name.replace(/<[^>]+>/g, '') + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art is-contain st-land-art"><img src="/assets/games/setthi/' + img + '" alt="" width="240" height="240" loading="lazy" decoding="async">' + (extra || '') + '</div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+      const stDie = function (n) {
+        const pips = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
+        let h = '';
+        for (let k = 1; k <= 9; k += 1) if (pips[n].indexOf(k) >= 0) h += '<i style="grid-area:' + Math.ceil(k / 3) + '/' + (((k - 1) % 3) + 1) + '"></i>';
+        return '<span class="st-die2' + (n === 1 ? ' is-one' : '') + '">' + h + '</span>';
+      };
+    %>
     <article class="guide-card hp-game mode-setthi" id="setthi">
-      <%- guideHead('setthi') %>
+      <%- guideHead('setthi', ['⏱ 20–60 นาที (หัวห้องตั้ง)', '🤖 มีบอท', '💵 เงินในเกม ไม่มีมูลค่าจริง']) %>
       <h2>ทอยเต๋า ซื้อเมือง สร้างจนเป็นแลนด์มาร์ก ผูกขาดชนะ</h2>
-      <p>กระดาน 32 ช่อง เมืองไทย 20 เมือง (ยโสธรถึงสุขุมวิท) แหล่งท่องเที่ยว 4 แห่ง ทุกคนเริ่ม ฿15,000 ผ่านจุดเริ่มรับ ฿3,000 · ช่องที่มีเจ้าของเป็นสีของคนนั้นทั้งช่อง ดูกระดานแล้วรู้ทันทีว่าใครถือที่ไหน · 2–6 คน ใส่บอทได้ · เงินในเกม ไม่มีมูลค่าจริง</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>กดค้างทอย</strong> เข็มกวาดช้า ๆ ปล่อยตอนแรง = แต้มมักสูงขึ้น · บางครั้งช่องเขียวโผล่แล้วค้างไว้ ปล่อยในช่อง = ลุ้นดับเบิล · ดับเบิลทอยอีก 3 ครั้งติด = เกาะร้าง</div>
-        <div class="guide-list-item"><strong>ซื้อ + สร้างในแผ่นเดียว</strong> ตกเมืองว่าง เลือกที่ดิน → บ้าน → ตึก → โรงแรม ได้ในครั้งเดียว (รอบแรกถึงบ้าน) · มีโรงแรมแล้วตกซ้ำ = สร้างแลนด์มาร์ก · ตกแลนด์มาร์กตัวเองได้โบนัส + ดาว (สูงสุด ⭐4)</div>
-        <div class="guide-list-item"><strong>ค่าผ่านทาง + ซื้อต่อ</strong> ตกที่คนอื่นจ่ายค่าผ่านทาง แล้วซื้อต่อได้ราคา 2 เท่าของมูลค่า · แลนด์มาร์กกับแหล่งท่องเที่ยวซื้อต่อไม่ได้</div>
-        <div class="guide-list-item"><strong>ช่องมุม</strong> ทอยตกจุดเริ่มพอดี = อัปเมืองฟรี 1 ขั้น · เกาะร้าง ออกด้วยดับเบิล/จ่าย/รอ 3 ตา · งานวัด ค่าผ่านทาง ×2 (เลือกซ้ำซ้อนถึง ×16) · ทัวร์ ตาหน้าแตะช่องไหนก็ได้ (เดินหน้าเสมอ)</div>
-        <div class="guide-list-item"><strong>ชนะ</strong> ผูกขาด 3 สี / ทุกช่องในแถวเดียว / ท่องเที่ยวครบ 4 แห่ง = ชนะทันที · คนอื่นล้มละลายหมด · หรือหมดเวลาที่หัวห้องตั้ง แล้วทรัพย์สินรวมสูงสุดชนะ</div>
+      <p>กระดาน 32 ช่อง เมืองไทย 20 เมือง 8 กลุ่มสี และแหล่งท่องเที่ยว 4 แห่ง ทุกคนเริ่ม ฿15,000 ผ่านจุดเริ่มรับ ฿3,000 · ช่องที่มีเจ้าของเปลี่ยนเป็นสีของคนนั้นทั้งช่อง</p>
+
+      <h3 class="guide-sub">🎲 ทอยเต๋า</h3>
+      <div class="st-dice-row">
+        <span class="st-dice2" role="img" aria-label="ลูกเต๋า 3 กับ 3 ดับเบิล"><%- stDie(3) %><%- stDie(3) %></span>
+        <ul class="hp-points">
+          <li><i>👆</i><span><strong>กดค้างแล้วปล่อย</strong> เข็มกวาดช้า ๆ ปล่อยตอนแรง = แต้มมักสูงขึ้น · บางครั้งช่องเขียวโผล่ ปล่อยในช่อง = ลุ้นดับเบิล</span></li>
+          <li><i>🔁</i><span><strong>ดับเบิล</strong> (หน้าเท่ากัน) ทอยอีกครั้ง · ดับเบิล 3 ครั้งติด = ไปเกาะร้าง</span></li>
+        </ul>
       </div>
+
+      <h3 class="guide-sub">เมือง สร้างทีละขั้น</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 1 / 1">
+        <%- stCity('chiangrai', 'เชียงราย', '#cc4f95', '฿1,200', 'กลุ่มบานเย็น (ล้านนา) 2 เมือง · ตกช่องว่าง = ซื้อได้', 'ครบสีทั้งกลุ่ม ค่าผ่านทาง ×2') %>
+        <%- stCity('chiangmai', 'เชียงใหม่', '#ecbc2c', '฿2,100', 'กลุ่มขมิ้น (เมืองท่องเที่ยว) 3 เมือง', 'แวะบ่อย ค่าผ่านทางคุ้ม') %>
+        <%- stCity('siam', 'สยาม', '#3d64d8', '฿2,800', 'กลุ่มกรมท่า (ใจกลางกรุงเทพฯ) แพงสุด', 'มีเงินพอค่อยลงทุน') %>
+      </div>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 1 / 1">
+        <%- stLand('land/b-land.svg', 'ที่ดิน', 'ราคาเต็มของเมือง · ค่าผ่านทาง 30%', 'ซื้อก่อน กันคนอื่น') %>
+        <%- stLand('land/b-house.svg', '🏠 บ้าน', 'เพิ่ม 50% ของราคา · ค่าผ่านทาง ×1', 'รอบแรกสร้างได้ถึงบ้าน') %>
+        <%- stLand('land/b-building.svg', '🏢 ตึก', 'เพิ่ม 100% · ค่าผ่านทาง ×2.2', '') %>
+        <%- stLand('land/b-hotel.svg', '🏨 โรงแรม', 'เพิ่ม 150% · ค่าผ่านทาง ×3.5', '') %>
+        <%- stLand('photos/sukhumvit-t.webp', '🏛️ แลนด์มาร์ก', 'มีโรงแรมแล้วตกซ้ำ สร้างได้ (เพิ่ม 200%) · ค่าผ่านทาง ×6 · ซื้อต่อไม่ได้ ถูกการ์ดโจมตีไม่ได้', 'ตกแลนด์มาร์กตัวเองได้โบนัส + ⭐ (สูงสุด ⭐4 = ค่าผ่านทาง ×2)', '<span class="st-lm-stars">⭐2</span>') %>
+      </div>
+      <p class="hp-note">ตกเมืองว่าง เลือกซื้อที่ดินและสร้างต่อได้ในแผ่นเดียว · ตัวอย่างเมือง ฿1,000: ที่ดิน 1,000 · บ้าน +500 · ตึก +1,000 · โรงแรม +1,500 · แลนด์มาร์ก +2,000</p>
+
+      <h3 class="guide-sub">ช่องมุม</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 1 / 1">
+        <%- stLand('land/go.svg', 'จุดเริ่ม', 'ผ่านรับ ฿3,000 · ทอยตกพอดี = อัปเมืองฟรี 1 ขั้น', '') %>
+        <%- stLand('land/island.svg', 'เกาะร้าง', 'ออกด้วยดับเบิล · จ่าย ฿1,000 · หรือรอ 3 ตา', 'มีการ์ดหนีเกาะ ออกฟรี') %>
+        <%- stLand('land/festival.svg', 'งานวัด', 'เลือกช่องของเราจัดงาน ค่าผ่านทาง ×2 · เลือกซ้ำซ้อน ×4 → ×8 → ×16', 'มีได้ทีละ 1 เมือง') %>
+        <%- stLand('land/tour.svg', 'ทัวร์ทั่วไทย', 'จ่าย ฿500 ตาหน้าบินไปช่องไหนก็ได้ (ผ่านจุดเริ่มรับเงินเดือน)', 'บินไปซื้อเมืองที่ขาดให้ครบสี') %>
+      </div>
+      <p class="hp-note">ช่องภาษี = จ่าย 10% ของมูลค่าทรัพย์สิน · แหล่งท่องเที่ยวราคา ฿3,000 ค่าผ่านทาง ฿600 / 1,600 / 3,500 / 6,000 ตามจำนวนที่ถือ</p>
+
+      <% if (stG.cards.length) { %>
+      <h3 class="guide-sub">🃏 การ์ดโอกาส (<%= stG.cards.length %> ใบ · ตกช่องโอกาสจั่ว 1 ใบ)</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 23 / 31">
+        <% stG.cards.forEach(function (card) {
+             const kind = card.type === 'attack' ? 'is-attack' : (card.type === 'keep' ? 'is-keep' : (stBad[card.id] ? 'is-bad' : ''));
+             const tag = card.type === 'attack' ? 'โจมตี' : (card.type === 'keep' ? 'เก็บไว้ใช้' : (stBad[card.id] ? 'การ์ดร้าย' : 'การ์ดดี')); %>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ด<%= card.title %>ขนาดใหญ่">
+          <div class="hp-card-art st-chance <%= kind %>">
+            <span class="st-chance-kicker">โอกาส</span>
+            <span class="st-chance-art"><%- stG.icons[card.icon] || stG.icons.chance || '' %></span>
+            <span class="st-chance-title"><%= card.title %></span>
+          </div>
+          <figcaption><b><%= card.title %></b><span class="hp-does"><%= stCardText[card.id] || '' %></span><span class="hp-tag"><%= tag %></span></figcaption>
+        </figure>
+        <% }) %>
+      </div>
+      <p class="hp-note">แลนด์มาร์กกับการ์ดนางฟ้าของเจ้าของ กันการ์ดโจมตีได้</p>
+      <% } %>
+
+      <h3 class="guide-sub">ค่าผ่านทาง · ซื้อต่อ · ล้มละลาย</h3>
+      <ul class="hp-points">
+        <li><i>💸</i><span><strong>ค่าผ่านทาง</strong> = ราคาที่ดิน × ตัวคูณตามขั้น · ถือครบทั้งกลุ่มสี ×2 · ดาวแลนด์มาร์กเพิ่มดาวละ 25%</span></li>
+        <li><i>🤝</i><span><strong>ซื้อต่อ</strong> ตกที่คนอื่น จ่ายค่าผ่านทางแล้วซื้อต่อได้ราคา 2 เท่าของมูลค่า เจ้าของปฏิเสธไม่ได้ · ซื้อแล้วสร้างต่อได้ทันที (แต่ไม่ถึงแลนด์มาร์กในตานั้น) · แลนด์มาร์กกับแหล่งท่องเที่ยวซื้อต่อไม่ได้</span></li>
+        <li><i>🏚️</i><span><strong>เงินไม่พอจ่าย</strong> ขายช่องคืนแบงก์ได้ครึ่งราคา · ขายหมดยังไม่พอ = ล้มละลาย ที่ดินคืนแบงก์ · ไม่มีประมูล ไม่มีแลก ไม่มีจำนอง</span></li>
+      </ul>
+
+      <h3 class="guide-sub">🏆 ชนะ</h3>
+      <ul class="hp-points">
+        <li><i>🎨</i><span><strong>ผูกขาด 3 สี</strong> · <strong>ทุกช่องในแถวเดียว</strong> (รวมแหล่งท่องเที่ยวในแถวนั้น) · <strong>ท่องเที่ยวครบ 4 แห่ง</strong> = ชนะทันที (ซื้อต่อแล้วครบก็ชนะ)</span></li>
+        <li><i>💀</i><span>คนอื่นล้มละลายหมด · หรือหมดเวลาที่หัวห้องตั้ง (20/30/45/60 นาที หรือไม่จำกัด ค่าเริ่ม 30) แล้วทรัพย์สินรวมสูงสุดชนะ</span></li>
+      </ul>
+
+      <% if (stG.skills.length) { %>
+      <h3 class="guide-sub">🏪 สกิลจากร้านเศรษฐี</h3>
+      <p>ใช้ 🪙 เหรียญทองที่ได้จากการเล่นซื้อสกิลที่ <a href="/setthi/shop">ร้านเศรษฐี</a> สกิลละ 5 เลเวล (<%= stG.upgradeCost.join(' / ') %> เหรียญ) · ติดตัวเข้าเกมได้ <%= stG.loadout %> สกิล · หัวห้องปิดสกิลได้ · บอทไม่มีสกิล</p>
+      <div class="hp-table-wrap">
+        <table class="hp-table st-skills">
+          <thead><tr><th>สกิล</th><th>ทำอะไร</th><th>Lv1 → Lv5</th></tr></thead>
+          <tbody>
+            <% stG.skills.forEach(function (sk) { const u = sk.unit === 'off' ? '% ถูกลง' : (sk.unit === 'bonus' ? '% แพงขึ้น' : '%'); %>
+            <tr><td><%= sk.icon %> <%= sk.name %></td><td><%= sk.detail %></td><td><%= sk.values[1] %> → <%= sk.values[sk.values.length - 1] %><%= u %></td></tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <p class="hp-note">เหรียญทอง: จบเกม +20 · ชนะ +100 ถึง +300 ตามวิธีชนะ · สร้างแลนด์มาร์ก/ซื้อต่อ +10 (สูงสุด +100) · เล่นกับบอทได้ครึ่งเดียว · ออกก่อนหรือจบก่อนรอบ 3 ไม่ได้เหรียญ</p>
+      <% } %>
+      <p class="guide-credit">รูปเมืองจาก Unsplash และ Wikimedia Commons · <a href="/assets/games/setthi/photos/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
       <%- guideNav('setthi') %>
     </article>
   </div>
