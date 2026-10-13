@@ -1512,3 +1512,23 @@ body.content {
 .guide-page .hp-facts > li { font-size: 0.84rem !important; line-height: 1.4 !important; }
 .guide-page .hp-picker-grid > li,
 .guide-page .hp-switch-scroll > li { font-size: 1rem !important; line-height: normal !important; }
+
+/* Insider: กล่องบทกับคำลับแบบบนกระดาน (style.css .role / #word) */
+.ins-art { aspect-ratio: auto; min-height: 180px; flex-direction: column; justify-content: center; gap: 8px; padding: 12px; background: #15181c; text-align: center; color: #fff; }
+.ins-role, .ins-word { width: 100%; padding: 8px 10px; border-radius: 10px; background: #23272b; font-size: 0.85rem; }
+.ins-role strong { display: block; font-size: 1.25rem; }
+.ins-word strong { display: block; font-size: 1.4rem; color: #fde68a; }
+.ins-word small { display: block; margin-top: 4px; color: #9aa6c0; font-size: 0.72rem; line-height: 1.35; }
+.hp-zoom-art .ins-role, .hp-zoom-art .ins-word { font-size: 1.05rem; }
+.hp-zoom-art .ins-role strong { font-size: 1.7rem; }
+.hp-zoom-art .ins-word strong { font-size: 2rem; }
+.hp-zoom-art > .ins-art { width: 100%; }
+
+/* คำใครไม่เหมือน: การ์ดคำบน card-front.svg แบบเดียวกับกระดาน */
+.uc-art { background: transparent; }
+.uc-word-copy { position: absolute; left: 12%; right: 12%; top: 30%; bottom: 30%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #2a2116; }
+.uc-word-copy small { font-family: 'Chakra Petch', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; color: #8a6d3b; }
+.uc-word-copy b { font-family: 'Chakra Petch', sans-serif; font-size: 1.6rem; line-height: 1.1; }
+.uc-wordcard.is-mrwhite .uc-word-copy b { font-size: 1.2rem; color: #6b7280; }
+.hp-zoom-art .uc-word-copy b { font-size: 2.8rem; }
+.hp-zoom-art .uc-word-copy small { font-size: 1rem; }

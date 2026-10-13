@@ -131,20 +131,38 @@
       };
     %>
 
+    <%
+      const insCard = function (role, color, word, help, name, does, when) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ด' + name.replace(/^\S+\s/, '') + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art ins-art"><div class="ins-role">คุณคือ <strong style="color:' + color + '">' + role + '</strong></div>' +
+          '<div class="ins-word">' + word + '<small>' + help + '</small></div></div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+    %>
     <article class="guide-card hp-game mode-insider" id="insider">
-      <%- guideHead('insider') %>
-      <h2>ทายคำ แล้วจับคนที่รู้คำ</h2>
-      <p>ผู้ดำเนินเกม (ทุกคนรู้ว่าใคร) รู้คำลับ · จอมบงการก็แอบรู้ ต้องนำทางให้ทายถูกโดยไม่โดนจับ</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>บท</strong> 🟢 ผู้ดำเนินเกม 1 · 🔴 จอมบงการ 1 (ลับ) · 🔵 ที่เหลือพลเมือง</div>
-        <div class="guide-list-item"><strong>1. ถาม–ตอบ 5 นาที</strong> ถามผู้ดำเนินเกม ตอบได้แค่ ✅ ใช่ / ❌ ไม่ใช่ / 🤷 ไม่รู้</div>
-        <div class="guide-list-item"><strong>หมดเวลา</strong> ยังไม่มีใครทายถูก = <strong>ทุกคนแพ้</strong> (จอมบงการด้วย)</div>
-        <div class="guide-list-item"><strong>2. ทายถูก</strong> ผู้ดำเนินเกมกดเลือกคนทายถูก · คุยหาจอมบงการ <strong>นานเท่าเวลาที่ใช้ถาม</strong></div>
-        <div class="guide-list-item"><strong>3. โหวตรอบ 1</strong> “คนทายถูกคือจอมบงการไหม?” ใช่เกินครึ่ง = เปิดบทเลย · เสมอ = ไม่ผ่าน</div>
-        <div class="guide-list-item"><strong>4. ชี้ตัว</strong> ทุกคนโหวต 1 คน (ผู้ดำเนินเกมด้วย) · เสมอ = คนทายถูกตัดสิน</div>
-        <div class="guide-list-item"><strong>ใครชนะ</strong> จับจอมบงการได้ = ผู้ดำเนินเกม + พลเมืองชนะ · ไม่ได้ = จอมบงการชนะ</div>
-        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 4–8 คน (เว็บให้ถึง 10) · หัวห้องเปิดโหมด 2 จอมบงการได้ตอน 5 คนขึ้นไป</div>
+      <%- guideHead('insider', ['⏱ 5–10 นาที', '🗳️ โหวต 2 ขั้น']) %>
+      <h2>ทายคำ แล้วจับคนที่แอบรู้คำ</h2>
+      <p>ผู้ดำเนินเกม (ทุกคนรู้ว่าใคร) รู้คำลับ · จอมบงการก็แอบรู้ ต้องนำทางให้วงทายถูกโดยไม่โดนจับ</p>
+
+      <h3 class="guide-sub">บทบาทบนจอแต่ละคน</h3>
+      <div class="hp-cards hp-wide is-large">
+        <%- insCard('ผู้ดำเนินเกม', '#51cf66', 'คำลับคือ <strong>ช้าง</strong>', 'ตอบคำถามในแชทได้แค่ ใช่ / ไม่ใช่ / ไม่รู้', '🟢 ผู้ดำเนินเกม', 'ตั้งคำ (พิมพ์เอง หรือเลือก 1 ใน 5 คำสุ่ม ใน 30 วิ) แล้วตอบได้แค่ ✅ ใช่ / ❌ ไม่ใช่ / 🤷 ไม่รู้', 'มีคนทายถูก กด “มีคนทายถูกแล้ว” แล้วเลือกคนนั้น') %>
+        <%- insCard('จอมบงการ', '#ff6b6b', 'คำลับคือ <strong>ช้าง</strong>', 'มีแค่คุณกับผู้ดำเนินเกมที่รู้คำนี้ — แอบนำทางให้ทุกคนทายถูก แต่อย่าให้ใครจับได้', '🔴 จอมบงการ (ลับ)', 'รู้คำแต่ต้องทำตัวเหมือนพลเมือง ถามนำให้วงทายถูกทันเวลา', 'อย่าเป็นคนทายถูกเองถ้าไม่จำเป็น') %>
+        <%- insCard('พลเมือง', '#74c0fc', 'คุณเป็นพลเมือง — ไม่เห็นคำลับ', 'ช่วยกันถามคำถามแบบใช่/ไม่ใช่ในแชทเพื่อทายคำให้ถูกก่อนหมดเวลา', '🔵 พลเมือง', 'ไม่รู้คำ ถามคำถามใช่/ไม่ใช่ ทายให้ถูก แล้วจับจอมบงการ', 'จำไว้ว่าใครถามนำเก่งเกินไป') %>
       </div>
+
+      <h3 class="guide-sub">หนึ่งรอบ</h3>
+      <ol class="hp-steps">
+        <li><strong>❓ ถาม–ตอบ</strong> ถามผู้ดำเนินเกมในแชท (ค่าเริ่ม 5 นาที หัวห้องตั้ง 3–10) · หมดเวลายังไม่มีใครทายถูก = <strong>ทุกคนแพ้</strong> (จอมบงการด้วย)</li>
+        <li><strong>✅ ทายถูก</strong> ผู้ดำเนินเกมหรือหัวห้องกดเลือกคนทายถูก · คุยหาจอมบงการ <strong>นานเท่าเวลาที่ใช้ถาม</strong> (อย่างน้อย 30 วิ กดจบก่อนได้)</li>
+        <li><strong>🗳️ โหวตขั้นที่ 1</strong> “คนทายถูกคือจอมบงการไหม?” (15 วิ) · ใช่เกินครึ่ง = เปิดบทเลย: ใช่จริง พลเมืองชนะ · ไม่ใช่ <strong>จอมบงการชนะ</strong> · ไม่ถึงครึ่ง (เสมอด้วย) = ไปขั้นที่ 2</li>
+        <li><strong>👉 โหวตขั้นที่ 2 ชี้ตัว</strong> ทุกคนชี้ 1 คน (ผู้ดำเนินเกมด้วย 15 วิ) · เสมอ = ถ้าคนทายถูกโหวตหนึ่งในคนที่เสมอ เลือกคนนั้นเลย ไม่งั้นคนทายถูกเลือกใน 15 วิ ไม่เลือก = จอมบงการรอด</li>
+      </ol>
+      <ul class="hp-points">
+        <li><i>🏆</i><span><strong>ใครชนะ</strong> จับจอมบงการได้ = ผู้ดำเนินเกม + พลเมืองชนะ · ไม่ได้ = จอมบงการชนะ · จอมบงการออกกลางเกม = พลเมืองชนะ</span></li>
+        <li><i>⚙️</i><span><strong>ตั้งค่า</strong> “โหวตคนทายถูกก่อน” (ค่าเริ่ม เปิด · ปิด = ข้ามไปชี้ตัวเลย) · 2 จอมบงการ (5 คนขึ้นไป) · “บางรอบไม่มีจอมบงการ” (โอกาส 1% พลเมือง 1 คนกลายเป็นผี โหวตไม่ได้)</span></li>
+        <li><i>👥</i><span><strong>2 จอมบงการ</strong> ข้ามโหวตขั้นที่ 1 · 2 อันดับแรกของการชี้ตัวต้องเป็นจอมบงการทั้งคู่ และอันดับ 2 ต้องได้มากกว่าอันดับ 3</span></li>
+      </ul>
       <%- guideNav('insider') %>
     </article>
 
@@ -273,36 +291,50 @@
       <%- guideNav('spyfall') %>
     </article>
 
+    <%
+      const ucRole = function (img, name, does, when) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ด' + name.replace(/^\S+\s/, '') + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art is-contain uc-art" style="--hp-art: 240 / 336"><img src="/assets/games/undercover/' + img + '.svg" alt="' + name.replace(/^\S+\s/, '') + '" width="240" height="336" loading="lazy" decoding="async"></div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+      const ucWord = function (label, word, name, does, when, white) {
+        return '<figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดคำ' + word + 'ขนาดใหญ่">' +
+          '<div class="hp-card-art uc-art uc-wordcard' + (white ? ' is-mrwhite' : '') + '" style="--hp-art: 240 / 336"><img src="/assets/games/undercover/card-front.svg" alt="" width="240" height="336" loading="lazy" decoding="async">' +
+          '<span class="uc-word-copy"><small>' + label + '</small><b>' + word + '</b></span></div>' +
+          '<figcaption><b>' + name + '</b><span class="hp-does">' + does + '</span>' + (when ? '<span class="hp-when">' + when + '</span>' : '') + '</figcaption></figure>';
+      };
+    %>
     <article class="guide-card hp-game mode-undercover" id="undercover">
-      <%- guideHead('undercover') %>
+      <%- guideHead('undercover', ['⏱ รอบละ 3–5 นาที', '🗣️ ใบ้ปากเปล่าหรือพิมพ์']) %>
       <h2>ใบ้คนละคำ หาคนที่คำไม่เหมือน</h2>
-      <p>ทุกคนได้คำเดียวกัน ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ แต่ไม่ใช่ (เช่น กาแฟ / ชา) — ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน ต้องฟังคำใบ้ของคนอื่นแล้วเดาเอง</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>เป้าหมาย</strong> พลเมืองโหวตฝ่ายแฝงออกให้หมด · ฝ่ายแฝงรอดจนเหลือพลเมืองแค่ 1 คน</div>
-        <div class="guide-list-item"><strong>เหมาะกับ</strong> วง 3-10 คนที่นั่งด้วยกัน รอบละ 3-5 นาที</div>
-        <div class="guide-list-item"><strong>กี่คนเป็นอะไร</strong> 3–6 คน สายแฝง 1 · 7–9 คน สายแฝง 2 · 10 คน สายแฝง 3 · Mr. White 1 คนตั้งแต่ 5 คน (หัวห้องปรับได้)</div>
-        <div class="guide-list-item"><strong>หนึ่งรอบ</strong> แตะการ์ดดูคำ → ใบ้คนละ 1 คำตามคิว (พูดปากเปล่า ห้ามพูดคำตรง ๆ) → โหวตออก 1 คน → เปิดบทคนที่ออก</div>
-        <div class="guide-list-item"><strong>เสมอ</strong> คนที่เสมอใบ้เพิ่มคนละ 1 คำ แล้วคนที่เหลือโหวตใหม่เฉพาะคนที่เสมอ · เสมออีก = รอบนั้นไม่มีใครออก</div>
-        <div class="guide-list-item"><strong>Mr. White</strong> ไม่ได้คำเลย ต้องเนียนตามวง ไม่ได้พูดคนแรก · ถ้าถูกโหวตออกได้ทายคำพลเมือง 1 ครั้ง ทายถูก = ชนะคนเดียวทันที</div>
-        <div class="guide-list-item"><strong>แต้ม</strong> ฝั่งที่ชนะได้แต้มสะสมในห้อง: พลเมือง +2 · Mr. White +6 · สายแฝง +10</div>
+      <p>ทุกคนได้คำเดียวกัน ยกเว้น<strong>สายแฝง</strong>ที่ได้คำคล้าย ๆ แต่ไม่ใช่ (เช่น กาแฟ / ชา) ไม่มีใครรู้ว่าตัวเองอยู่ฝั่งไหน ต้องฟังคำใบ้ของคนอื่นแล้วเดาเอง</p>
+
+      <h3 class="guide-sub">การ์ดคำ (แตะดูคำ ไม่บอกว่าอยู่ฝั่งไหน)</h3>
+      <div class="hp-cards hp-wide">
+        <%- ucWord('คำของคุณ', 'กาแฟ', '☕ คำของคนส่วนใหญ่', 'พลเมืองทุกคนเห็นคำนี้', 'ใบ้ให้พวกเดียวกันรู้ แต่อย่าชัดจนสายแฝงเดาออก') %>
+        <%- ucWord('คำของคุณ', 'ชา', '🍵 คำของสายแฝง', 'คล้ายแต่ไม่ใช่ สายแฝงไม่รู้ตัวว่าคำต่าง', 'ได้ยินคำใบ้แปลก ๆ อาจเป็นเราเองที่คำต่าง') %>
+        <%- ucWord('MR. WHITE', 'ไม่มีคำ', '❔ Mr. White', 'ไม่ได้คำเลย ต้องเนียนตามวง · ไม่ได้พูดคนแรก', 'ฟังคำใบ้คนอื่นให้มากที่สุด', true) %>
       </div>
-      <div class="guide-coup-roles">
-        <article class="guide-coup-role">
-          <img src="/assets/games/undercover/civilian.svg" alt="พลเมือง" width="160" height="224" loading="lazy">
-          <strong>🙂 พลเมือง</strong>
-          <span>ได้คำเดียวกับคนส่วนใหญ่</span>
-        </article>
-        <article class="guide-coup-role">
-          <img src="/assets/games/undercover/undercover.svg" alt="สายแฝง" width="160" height="224" loading="lazy">
-          <strong>🕶️ สายแฝง</strong>
-          <span>ได้คำคล้ายแต่ไม่ใช่</span>
-        </article>
-        <article class="guide-coup-role">
-          <img src="/assets/games/undercover/mrwhite.svg" alt="Mr. White" width="160" height="224" loading="lazy">
-          <strong>❔ Mr. White</strong>
-          <span>ไม่มีคำ ทายถูกชนะ</span>
-        </article>
+
+      <h3 class="guide-sub">บทที่เปิดตอนโดนโหวตออก</h3>
+      <div class="hp-cards hp-wide is-small">
+        <%- ucRole('civilian', '🙂 พลเมือง', 'ได้คำเดียวกับคนส่วนใหญ่ · ชนะเมื่อโหวตฝ่ายแฝงออกหมด', '') %>
+        <%- ucRole('undercover', '🕶️ สายแฝง', 'ได้คำคล้าย · ชนะเมื่อรอดจนเหลือพลเมือง 1 คน', '') %>
+        <%- ucRole('mrwhite', '❔ Mr. White', 'ถูกโหวตออก ได้ทายคำพลเมือง 1 ครั้ง · ถูก = ชนะคนเดียวทันที', '') %>
       </div>
+
+      <h3 class="guide-sub">หนึ่งรอบ</h3>
+      <ol class="hp-steps">
+        <li><strong>👀 ดูคำ</strong> แตะการ์ดดูคำ (30 วิ)</li>
+        <li><strong>🗣️ ใบ้คนละ 1 คำตามคิว</strong> คนละ 45 วิ พูดปากเปล่าหรือพิมพ์ (ไม่เกิน 40 ตัว ห้ามมีคำของตัวเอง) · หัวห้องข้ามคนพูดได้</li>
+        <li><strong>🗳️ โหวตออก 1 คน</strong> (60 วิ) แล้วเปิดบทคนที่ออก</li>
+        <li><strong>⚖️ เสมอ</strong> (ค่าเริ่ม) คนที่เสมอใบ้เพิ่มคนละ 1 คำ แล้วโหวตใหม่เฉพาะคนที่เสมอ · เสมออีก = รอบนั้นไม่มีใครออก · หัวห้องตั้งเป็นโหวตใหม่ทันที หรือไม่มีใครออกเลยก็ได้</li>
+      </ol>
+      <ul class="hp-points">
+        <li><i>👥</i><span><strong>กี่คนเป็นอะไร</strong> 3–6 คน สายแฝง 1 · 7–9 คน 2 · 10 คน 3 · Mr. White 1 คนตั้งแต่ 5 คน · หัวห้องปรับได้ แต่พลเมืองต้องมากกว่าฝ่ายแฝงเสมอ</span></li>
+        <li><i>⏳</i><span>3 รอบติดไม่มีใครถูกโหวตออก = ฝ่ายแฝงชนะ</span></li>
+        <li><i>🏆</i><span><strong>แต้มสะสมในห้อง</strong> พลเมืองชนะ +2 คนละ · ฝ่ายแฝงชนะ สายแฝง +10 Mr. White +6 · Mr. White ทายถูกชนะคนเดียว +6</span></li>
+      </ul>
       <%- guideNav('undercover') %>
     </article>
 
