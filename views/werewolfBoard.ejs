@@ -484,6 +484,9 @@
   .player-row.pending-decision { border-color: rgba(248,113,113,0.2); }
   .player-row.completed-decision { border-color: rgba(34,197,94,0.18); }
   .player-seat-number { position: absolute; top: 4px; left: 6px; font-size: 0.68rem; font-weight: 700; color: #97a4bf; }
+  .player-avatar-stage .pa-content, .target-card-avatar .pa-content, .chat-avatar .pa-content, .win-player-avatar .pa-content { width: 100% !important; height: 100% !important; }
+  .target-card-avatar .pa-content, .target-card-avatar .pa-img { border-radius: inherit; }
+  .win-player-avatar .pa-content { width: 40px !important; height: 40px !important; }
   .player-avatar-stage { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; border: 2px solid rgba(255,255,255,0.12); }
   .player-row.dead .player-avatar-stage { filter: grayscale(0.7); border-color: rgba(255,255,255,0.05); opacity: 0.6; }
   .player-row.self-seat .player-avatar-stage { border-color: rgba(250,204,21,0.8); box-shadow: 0 0 12px rgba(250,204,21,0.3); }
@@ -1078,6 +1081,19 @@
 
     function activateViewportLock() {
       document.documentElement.classList.add('ww-active');
+    }
+
+    // หน้า avatar ผู้เล่น: รูป Google (ถ้าเปิดใช้) + emoji สำรอง — ตัว render กลาง playerAvatar.js
+    function wwAvatarFace(p, size) {
+      const emoji = escapeHtml((p && p.avatar) || '👤');
+      return window.PlayerAvatar && p ? window.PlayerAvatar.renderContent(p, { size: size, emojiHtml: emoji }) : emoji;
+    }
+    // กรอบโปรไฟล์บนที่นั่ง = ขอบ gradient (พื้นยังเป็นสีผู้เล่น)
+    function wwStageStyle(color, frameId) {
+      const frame = window.PlayerAvatar && frameId && window.PlayerAvatar.hasFrame(frameId) ? window.PlayerAvatar.getFrameStyle(frameId) : null;
+      return frame
+        ? 'background:' + escapeHtml(color) + ' padding-box, ' + escapeHtml(frame) + ' border-box;border-color:transparent;'
+        : 'background:' + escapeHtml(color) + ';';
     }
 
     function escapeHtml(value) {
@@ -3144,8 +3160,9 @@
         const revealedRoleId = player.roleId || player.role || player.revealedRole;
         const avatarEmoji = player.revealedRole
           ? roleIcon(revealedRoleId, 'game-icon')
-          : (player.avatar || '👤');
+          : wwAvatarFace(player, 52);
         const avatarBg = player.color || '#2563eb';
+        const stageStyle = wwStageStyle(avatarBg, player.revealedRole ? null : player.avatarFrame);
         const isPending = isVote && player.alive && pendingIds.has(player.playerId);
         const isCompleted = isVote && player.alive && completedIds.has(player.playerId);
         const isNightTarget = isNight && nightTargetableIds.has(player.playerId);
@@ -3184,7 +3201,7 @@
         $root.append(`
           <div class="player-row ${player.alive ? '' : 'dead'} ${player.isSelf ? 'self-seat' : ''} ${player.revealedRole ? 'revealed-seat' : ''} ${isPending ? 'pending-decision' : ''} ${isCompleted ? 'completed-decision' : ''} ${isNightTarget ? 'night-targetable' : ''} ${isTarget ? 'seat-target' : ''} ${isRevealTarget ? 'reveal-target' : ''} ${isTargetSelected ? 'target-selected' : ''}" data-player-id="${escapeHtml(player.playerId)}" ${isTarget ? 'role="button" tabindex="0"' : ''}>
             <div class="player-seat-number">${seatNumber}</div>
-            <div class="player-avatar-stage" style="background:${escapeHtml(avatarBg)};">${avatarEmoji}</div>
+            <div class="player-avatar-stage${player.revealedRole ? '' : ' has-face'}" style="${stageStyle}">${avatarEmoji}</div>
             <div class="player-name">${escapeHtml(player.name)}</div>
             ${statusParts.join('')}
           </div>
@@ -4392,7 +4409,7 @@
       const canReply = !isSystem;
       const replyButton = canReply ? `<button class="chat-reply-btn" type="button" title="ตอบกลับ">↩</button>` : '';
       const swipeIndicator = canReply ? '<div class="swipe-reply-indicator">↪ ตอบกลับ</div>' : '';
-      const avatarMarkup = isSystem ? '' : `<div class="chat-avatar">${avatar}</div>`;
+      const avatarMarkup = isSystem ? '' : `<div class="chat-avatar">${wwAvatarFace({ playerId: data.playerId, avatar: avatar, avatarImage: data.avatarImage }, 32)}</div>`;
       const nameColor = !isSystem && data.color ? data.color : '#f4f6fb';
 
       $area.append(`
@@ -4661,7 +4678,7 @@
             <div class="target-card-particle-layer" aria-hidden="true"></div>
             <div class="target-card-head">
               <div class="target-card-title">
-                <div class="target-card-avatar" style="background:${escapeHtml(roomPlayer.color || 'rgba(255,255,255,0.08)')};">${escapeHtml(roomPlayer.avatar || '👤')}</div>
+                <div class="target-card-avatar" style="background:${escapeHtml(roomPlayer.color || 'rgba(255,255,255,0.08)')};">${wwAvatarFace(roomPlayer, 50)}</div>
                 <div class="target-card-text">
                   <div class="target-card-name"><strong>${escapeHtml(target.name)}</strong></div>
                   <div class="target-card-meta">
@@ -6001,7 +6018,7 @@
         var roleMeta = resolveRoleMeta(p.roleId || p.role || roleName);
 
         gridHtml += '<div class="win-player-card ' + teamClass + ' ' + deadClass + '">';
-        gridHtml += '<div class="win-player-avatar">' + (p.avatar || '👤') + '</div>';
+        gridHtml += '<div class="win-player-avatar">' + wwAvatarFace(p, 40) + '</div>';
         gridHtml += '<div class="win-player-name" style="color:' + escapeHtml(p.color || '#fff') + ';">' + escapeHtml(p.name) + '</div>';
         gridHtml += '<div class="win-player-role">' + renderRoleLabel(roleMeta, { name: roleName, iconClass: 'game-icon game-icon-sm' }) + '</div>';
         gridHtml += statusHtml;

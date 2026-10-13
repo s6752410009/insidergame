@@ -1255,6 +1255,8 @@ function buildStandings(room) {
             playerId: player.playerId,
             name: player.name,
             avatar: player.avatar,
+            avatarFrame: player.avatarFrame || 'none',
+            ...avatarImageField(player),
             roleId: player.role,
             roleTitle: player.roleInfo?.title || player.role,
             alive: player.alive !== false,

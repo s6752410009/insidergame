@@ -2778,6 +2778,14 @@
       }
     }
 
+    // รูปผู้เล่น + กรอบ (รูป Google ถ้าเปิดใช้) — ตัว render กลาง playerAvatar.js
+    function bmFace(p, size) {
+      if (!p) return '';
+      return window.renderPlayerAvatar
+        ? window.renderPlayerAvatar({ playerId: p.playerId, avatar: p.avatar || '🎩', avatarFrame: p.avatarFrame, avatarImage: p.avatarImage, color: p.color, playerName: p.name }, { size: size })
+        : escapeHtml(p.avatar || '');
+    }
+
     function escapeHtml(value) {
       return String(value || '')
         .replace(/&/g, '&amp;')
@@ -4164,7 +4172,7 @@
       const html = (currentState.players || []).map(player => `
         <div class="bm-player ${player.isSelf ? 'bm-player-self' : ''} ${player.alive ? '' : 'bm-player-dead'}">
           <div class="bm-player-head">
-            <div class="bm-player-name">${escapeHtml(player.avatar)} ${escapeHtml(player.name)}</div>
+            <div class="bm-player-name">${bmFace(player, 26)} ${escapeHtml(player.name)}</div>
             <div class="bm-tag">${gameIcon({ id: player.roleId, icon: player.roleIcon, alt: player.roleTitle, inline: true })} ${escapeHtml(player.roleTitle)}</div>
           </div>
           <div class="bm-player-copy">${player.alive ? 'ยังอยู่ในเกม' : 'หลุดจากโต๊ะแล้ว'}${player.isSelf ? ' • นี่คือตัวคุณ' : ''}</div>
@@ -4319,7 +4327,7 @@
         return '<div class="' + cls + '">' +
           '<div class="bm-standing-rank">' + Number(row.rank || 0) + '</div>' +
           '<div>' +
-            '<div class="bm-standing-name">' + escapeHtml(row.avatar || '') + ' ' + escapeHtml(row.name || '-') +
+            '<div class="bm-standing-name">' + bmFace(row, 24) + ' ' + escapeHtml(row.name || '-') +
               (row.playerId === playerId ? ' <span class="bm-rs-you">คุณ</span>' : '') +
               (row.isWinner ? ' 👑' : '') + '</div>' +
             '<div class="bm-standing-meta">' + escapeHtml(row.roleTitle || '-') + ' · ' + (row.alive ? 'รอดถึงจบ' : '💀 หลุดจากโต๊ะ') +

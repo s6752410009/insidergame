@@ -2402,7 +2402,10 @@ $(function() {
                 const playerNameHtml = `<span style="color: ${player.color || '#333'};">${escapeHtml(player.displayName || player.playerName)}</span>`;
                 const adminBadge = isAdmin ? ' <span style="color: #e74c3c;">👑</span>' : '';
                 const siteAdminBadge = player.isSiteAdmin ? ' <span class="status-badge status-banned" style="margin-left:6px;">[แอดมิน]</span>' : '';
-                $('#onlinePlayerList').append(`<li><i class="fas fa-circle status-online"></i> ${playerNameHtml}${adminBadge}${siteAdminBadge}</li>`);
+                const faceHtml = window.renderPlayerAvatar
+                    ? window.renderPlayerAvatar({ playerId: player.playerId, avatar: player.avatar, avatarFrame: player.avatarFrame, avatarImage: player.avatarImage, color: player.color, playerName: player.playerName }, { size: 22 }) + ' '
+                    : '';
+                $('#onlinePlayerList').append(`<li><i class="fas fa-circle status-online"></i> ${faceHtml}${playerNameHtml}${adminBadge}${siteAdminBadge}</li>`);
                 
                 // Add to kick select (exclude current player and admin)
                 if (!isCurrentPlayer && !isAdmin) {
@@ -2990,7 +2993,9 @@ $(function() {
                 <span class="checkmark">✓</span>
                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:1.5rem; background:rgba(255,255,255,0.1); padding:5px; border-radius:10px;">${escapeHtml(avatar)}</span>
+                        ${window.renderPlayerAvatar
+                            ? window.renderPlayerAvatar({ playerId: player.playerId, avatar: avatar, avatarFrame: player.avatarFrame, avatarImage: player.avatarImage, color: accentColor, playerName: displayName }, { size: 38, className: 'vote2-face' })
+                            : `<span style="font-size:1.5rem; background:rgba(255,255,255,0.1); padding:5px; border-radius:10px;">${escapeHtml(avatar)}</span>`}
                         <span style="font-size:1rem; font-weight:600; color:#fff;">${escapeHtml(displayName)}</span>
                         ${player.isGhost ? '<span style="font-size:0.75rem; padding:2px 6px; background:#e67e22; color:#fff; border-radius:8px;">ผี</span>' : ''}
                         ${isSelf ? '<span style="font-size:0.75rem; padding:2px 6px; background:#3498db; color:#fff; border-radius:8px;">คุณ</span>' : ''}
