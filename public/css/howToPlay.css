@@ -1316,3 +1316,34 @@ body.content {
 }
 .hp-zoom-art > .hp-card-art.hp-hand { padding: 26px 18px 26px 40px; }
 .hp-zoom-art > .hp-card-art.hp-hand > img { max-width: 120px; margin-left: -18px; }
+
+/* สายลับคำใบ้: การ์ดคำแบบบนกระดาน (codenamesBoard.ejs .cn-card) */
+.cn-art { border-radius: 9px; }
+.cn-art.is-front {
+  background: linear-gradient(180deg, oklch(0.95 0.025 85), oklch(0.9 0.035 82));
+  color: oklch(0.24 0.04 255);
+  box-shadow: inset 0 0 0 1px oklch(0.6 0.08 80 / 0.55);
+}
+.cn-art.key-red { background: linear-gradient(180deg, oklch(0.56 0.18 27), oklch(0.5 0.17 27)); color: oklch(0.98 0.01 27); }
+.cn-art.key-assassin { background: linear-gradient(180deg, oklch(0.27 0.015 260), oklch(0.2 0.012 260)); color: oklch(0.8 0.14 25); box-shadow: inset 0 0 0 2px oklch(0.62 0.2 25); }
+.cn-art-front { font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 1.4rem; }
+.hp-zoom-art .cn-art-front { font-size: 2.4rem; }
+.cn-art-mark { position: absolute; top: 6px; right: 8px; font-size: 0.9rem; }
+.cn-art.c-red { background: oklch(0.5 0.17 27); }
+.cn-art.c-blue { background: oklch(0.48 0.14 258); }
+.cn-art.c-neutral { background: oklch(0.83 0.05 80); }
+.cn-art.c-assassin { background: oklch(0.2 0.012 260); }
+.cn-art > img { object-position: center 32%; }
+.cn-art-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 6px 4px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
+  color: #fff;
+  background: oklch(0.12 0.02 255 / 0.72);
+}
+.cn-art.c-neutral .cn-art-word { background: oklch(0.3 0.04 70 / 0.75); }
