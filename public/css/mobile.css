@@ -273,10 +273,11 @@ body {
         flex-direction: column !important;
     }
     
+    /* แชทห้องรอสูงคงที่ตามความสูงจอ (เดิม 180px เล็กไป) — เลื่อนดูในกล่อง ไม่ยืดหน้า */
     .room-chat-messages {
-        height: 180px !important;
-        max-height: 180px !important;
-        min-height: 180px !important;
+        height: min(46vh, 380px) !important;
+        max-height: min(46vh, 380px) !important;
+        min-height: 200px !important;
         overflow-y: auto !important;
         flex-shrink: 0 !important;
     }
@@ -287,8 +288,8 @@ body {
     }
     
     #lobbyChatMessages {
-        height: 180px !important;
-        max-height: 180px !important;
+        height: min(46vh, 380px) !important;
+        max-height: min(46vh, 380px) !important;
     }
     
     /* ปุ่มเริ่มเกม - ต้องแสดงเสมอ */
