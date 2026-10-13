@@ -711,7 +711,7 @@
             list.innerHTML = entries.map(e =>
                 '<li class="' + (e.playerId === BOOT.playerId ? 'is-me' : '') + '">' +
                 '<span class="sol-rank">' + e.rank + '</span>' +
-                '<span class="sol-ava" aria-hidden="true">' + escapeHtml(e.avatar || '👤') + '</span>' +
+                '<span class="sol-ava" aria-hidden="true">' + (window.PlayerAvatar ? window.PlayerAvatar.renderContent(e, { size: 24, emojiHtml: escapeHtml(e.avatar || '👤') }) : escapeHtml(e.avatar || '👤')) + '</span>' +
                 '<span class="sol-name">' + escapeHtml(e.playerName || 'ผู้เล่น') + '</span>' +
                 '<span class="sol-time">' + escapeHtml(e.label) + '</span></li>'
             ).join('');

@@ -219,7 +219,7 @@
         }
         list.innerHTML = boardEntries.map(e => `<li class="mm-lb-row${e.playerId === BOOT.playerId ? ' is-me' : ''}">
             <span class="mm-lb-rank">${e.rank}</span>
-            <span class="mm-lb-ava" aria-hidden="true">${esc(e.avatar || '👤')}</span>
+            <span class="mm-lb-ava" aria-hidden="true">${window.PlayerAvatar ? window.PlayerAvatar.renderContent(e, { size: 24, emojiHtml: esc(e.avatar || '👤') }) : esc(e.avatar || '👤')}</span>
             <span class="mm-lb-name">${esc(e.playerName)}</span>
             <span class="mm-lb-score">${esc(e.label)}</span>
         </li>`).join('');

@@ -3808,7 +3808,7 @@
             <div class="bm-simple-pick-grid">
               ${targets.map(player => `
                 <button type="button" class="bm-target-btn bm-simple-pick-btn" data-pick-action="intel" data-target-player-id="${escapeHtml(player.playerId)}">
-                  ${escapeHtml(player.avatar)} ${escapeHtml(player.name)} <span class="bm-outcome">→ ดูข่าว</span>
+                  ${bmFace(player, 22)} ${escapeHtml(player.name)} <span class="bm-outcome">→ ดูข่าว</span>
                 </button>
               `).join('')}
             </div>
@@ -3927,7 +3927,7 @@
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="intel" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    ${bmFace(player, 22)} ${escapeHtml(player.name)}
                     <small>ดูเงิน ไฟ และของที่โผล่</small>
                   </button>
                 `).join('') || '<div class="bm-empty">ไม่มีเป้าให้สืบ</div>'}
@@ -3942,7 +3942,7 @@
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="deal" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    ${bmFace(player, 22)} ${escapeHtml(player.name)}
                     <small>ปิดดีลแล้วทั้งคู่ได้ 👑 และ 💵</small>
                   </button>
                 `).join('') || '<div class="bm-empty">ไม่มีคนเหลือให้ต่อดีล</div>'}
@@ -3957,7 +3957,7 @@
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="betray" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    ${bmFace(player, 22)} ${escapeHtml(player.name)}
                     <small>สำเร็จเมื่ออีกฝ่ายเปิดดีลใส่คุณ</small>
                   </button>
                 `).join('') || '<div class="bm-empty">ไม่มีเป้าให้แทงหลัง</div>'}
@@ -3972,7 +3972,7 @@
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="raid" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction ? 'disabled' : ''}>
-                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    ${bmFace(player, 22)} ${escapeHtml(player.name)}
                     <small>ชิงเงินหรือของจากกระเป๋า</small>
                   </button>
                 `).join('') || '<div class="bm-empty">ไม่มีเป้าให้ปล้น</div>'}
@@ -3987,7 +3987,7 @@
               <div class="bm-target-list">
                 ${targets.map(player => `
                   <button class="bm-target-btn action-submit" data-action-type="hit" data-target-player-id="${escapeHtml(player.playerId)}" ${pendingAction || !actionHelp.canHit ? 'disabled' : ''}>
-                    ${escapeHtml(player.avatar)} ${escapeHtml(player.name)}
+                    ${bmFace(player, 22)} ${escapeHtml(player.name)}
                     <small>${actionHelp.canHit ? '🔫 ใช้ปืน + 💵 เปิดงาน' : hitDisabledReason}</small>
                   </button>
                 `).join('') || '<div class="bm-empty">ไม่มีเป้าให้เปิดงาน</div>'}

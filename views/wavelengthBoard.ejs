@@ -153,6 +153,7 @@
     font-size: 0.7rem; font-weight: 700; color: var(--wl-ink); white-space: nowrap;
     transform: translate(-50%, -50%);
   }
+  .wl-pin-dot .pa-content { width: 16px !important; height: 16px !important; }
   .wl-pin-dot { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; background: var(--pin-color, #fff); }
   .wl-pin-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .wl-pin.is-me { border-width: 2px; background: oklch(0.25 0.06 185 / 0.95); }
@@ -857,7 +858,7 @@ $(function() {
       const me = r.playerId === playerId;
       const title = [me ? 'คุณ' : r.name].concat(more || []).join(', ');
       return '<span class="wl-pin' + (me ? ' is-me' : '') + (animate && pos ? ' is-drop' : '') + '" title="' + esc(title) + '" style="' + (pos ? 'left:' + pos.left + '%; top:' + pos.top + '%; ' : 'visibility:hidden; ') + '--pin-color:' + esc(r.color || '#fff') + '; --d:' + (900 + i * 70) + 'ms">' +
-        '<span class="wl-pin-dot" aria-hidden="true">' + esc(r.avatar || '') + '</span><span class="wl-pin-name">' + esc(me ? 'คุณ' : r.name) + '</span>' +
+        '<span class="wl-pin-dot" aria-hidden="true">' + (window.PlayerAvatar ? window.PlayerAvatar.renderContent(r, { size: 16, emojiHtml: esc(r.avatar || '') }) : esc(r.avatar || '')) + '</span><span class="wl-pin-name">' + esc(me ? 'คุณ' : r.name) + '</span>' +
         (more && more.length ? '<span class="wl-pin-more">+' + more.length + '</span>' : '') + '</span>';
     };
     // วัดขนาดป้ายจริงก่อน (ซ่อนไว้)
