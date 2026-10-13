@@ -1,5 +1,6 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/adminWorldChat.css?v=1">
 <style>
     .admin-container {
         max-width: 1400px;
@@ -1281,6 +1282,7 @@
         <button class="tab-btn" data-tab="banned">🚫 รายการแบน</button>
         <button class="tab-btn" data-tab="stats">📊 สถิติ</button>
         <button class="tab-btn" data-tab="logs">📋 Logs</button>
+        <button class="tab-btn" data-tab="worldchat">💬 แชทโลก</button>
         <button class="tab-btn" data-tab="settings">🔧 ตั้งค่าเกม</button>
         <button class="tab-btn" data-tab="system">⚙️ ระบบ</button>
     </div>
@@ -1309,6 +1311,18 @@
         </div>
     </div>
     
+    <!-- World chat Tab (โหลดเมื่อเปิดแท็บ — public/js/adminWorldChat.js) -->
+    <div class="tab-content" id="tab-worldchat">
+        <div class="panel" id="awcRoot">
+            <div class="panel-header">
+                <h2>💬 แชทโลก</h2>
+                <div class="panel-actions">
+                    <button class="btn-admin btn-refresh" type="button" id="awcRefresh">🔄 รีเฟรช</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Players Tab -->
     <div class="tab-content active" id="tab-players">
         <div class="panel">
@@ -1730,6 +1744,7 @@
 </div>
 
 <%- contentFor('script') %>
+<script src="/static/js/adminWorldChat.js?v=1"></script>
 <script>
 $(function() {
     const socket = window.appSocket || io();
@@ -1902,6 +1917,9 @@ $(function() {
         }
         if (tab === 'logs' && !logView.loaded && !logView.loading) {
             loadLogs();
+        }
+        if (tab === 'worldchat' && window.AdminWorldChat) {
+            window.AdminWorldChat.load();
         }
         loadTabData(tab);
     });
