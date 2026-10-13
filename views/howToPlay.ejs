@@ -216,62 +216,114 @@
     </article>
 
     <article class="guide-card hp-game mode-avalon" id="avalon">
-      <%- guideHead('avalon') %>
+      <%- guideHead('avalon', ['⏱ ~30 นาที', '🏰 อัศวินโต๊ะกลม']) %>
       <h2>ฝ่ายดีทำภารกิจ ฝ่ายร้ายแฝงตัวบ่อนทำลาย</h2>
-      <p>เล่น 5–10 คน ทุกคนได้บทลับ ฝ่ายดีต้องทำ <strong>ภารกิจสำเร็จ 3 ใน 5</strong> ฝ่ายร้ายต้องทำให้ <strong>ล้ม 3 ครั้ง</strong> — ไม่มีใครตกรอบ ทุกคนเล่นจนจบ</p>
-      <div class="guide-list">
-        <div class="guide-list-item"><strong>กลางคืน</strong> แตะการ์ดดูบทของตัวเองเงียบ ๆ เมอร์ลินเห็นฝ่ายร้าย ฝ่ายร้ายเห็นกันเอง แล้วกดพร้อม</div>
-        <div class="guide-list-item"><strong>เลือกทีม</strong> หัวหน้า (มงกุฎ เวียนตามที่นั่ง) เลือกคนตามจำนวนบนเหรียญภารกิจ</div>
-        <div class="guide-list-item"><strong>โหวต</strong> ทุกคนกดเห็นด้วย/คัดค้านพร้อมกัน เปิดผลพร้อมกัน เห็นด้วยเกินครึ่งถึงผ่าน · ไม่ผ่านติดกัน 5 ครั้ง ฝ่ายร้ายชนะทันที</div>
-        <div class="guide-list-item"><strong>ภารกิจ</strong> ทีมลงการ์ดลับ ฝ่ายดีลงได้แค่ “สำเร็จ” ฝ่ายร้ายเลือกได้ · มีการ์ดล้ม 1 ใบก็ล้ม (ยกเว้นภารกิจ 4 ตอนเล่น 7+ คน ต้องล้ม 2 ใบ)</div>
-        <div class="guide-list-item"><strong>ลอบสังหาร</strong> ฝ่ายดีสำเร็จครบ 3 แล้ว ฝ่ายร้ายเปิดตัวคุยกัน (รวมโอเบรอน) แล้วมือสังหารแทงฝ่ายดีได้ 1 คน ถ้าโดนเมอร์ลิน ฝ่ายร้ายชนะ</div>
-        <div class="guide-list-item"><strong>ฝ่ายดี:ฝ่ายร้าย</strong> 5 คน 3:2 · 6 คน 4:2 · 7 คน 4:3 · 8 คน 5:3 · 9 คน 6:3 · 10 คน 6:4</div>
-        <div class="guide-list-item"><strong>บทเสริม</strong> หัวห้องเปิดได้ในห้องรอ: เพอร์ซิวัล · มอร์กานา · มอร์เดรด · โอเบรอน</div>
-        <div class="guide-list-item"><strong>🌊 นางแห่งทะเลสาบ</strong> (หัวห้องเปิดในห้องรอ · แนะนำ 7+ คน) เริ่มที่คนก่อนหัวหน้าคนแรก หลังภารกิจ 2, 3, 4 คนถือส่องฝ่ายของ 1 คน (เห็นแค่ดี/ร้าย คนเดียว จะบอกจริงหรือโกหกก็ได้) แล้วส่งต่อให้คนที่ถูกส่อง · ส่องคนที่เคยถือไม่ได้</div>
+      <p>ทุกคนได้บทลับ ฝ่ายดีต้องทำ <strong>ภารกิจสำเร็จ 3 ใน 5</strong> ฝ่ายร้ายต้องทำให้ <strong>ล้ม 3 ครั้ง</strong> ไม่มีใครตกรอบ ทุกคนเล่นจนจบ</p>
+
+      <h3 class="guide-sub">หนึ่งภารกิจเล่นยังไง</h3>
+      <ol class="hp-steps">
+        <li><strong>🌙 กลางคืน</strong> แตะการ์ดดูบทเงียบ ๆ · เมอร์ลินเห็นฝ่ายร้าย ฝ่ายร้ายเห็นกันเอง แล้วกดพร้อม</li>
+        <li><strong>👑 หัวหน้าเลือกทีม</strong> ตามจำนวนบนช่องภารกิจ · หัวหน้าคนแรกสุ่ม แล้วมงกุฎเวียนไปคนถัดไป<strong>หลังโหวตทุกครั้ง</strong> ผ่านหรือไม่ผ่านก็ตาม</li>
+        <li><strong>🗳️ ทุกคนโหวตทีม</strong> พร้อมกัน เห็นด้วยเกินครึ่งถึงผ่าน (เสมอ = ไม่ผ่าน) · ไม่ผ่าน 5 ครั้งในภารกิจเดียว = ฝ่ายร้ายชนะทันที</li>
+        <li><strong>🃏 ทีมลงการ์ดภารกิจลับ</strong> ฝ่ายดีลงได้แค่ “สำเร็จ” ฝ่ายร้ายเลือกได้ · มีการ์ดล้ม 1 ใบก็ล้ม (ภารกิจ 4 ตอนเล่น 7+ คน ต้องล้ม 2 ใบ)</li>
+        <li><strong>🗡️ ลอบสังหาร</strong> ฝ่ายดีสำเร็จครบ 3 แล้ว ฝ่ายร้ายเปิดตัวคุยกัน (รวมโอเบรอน) แล้วมือสังหารแทงฝ่ายดี 1 คน · โดนเมอร์ลิน = ฝ่ายร้ายพลิกชนะ</li>
+      </ol>
+
+      <h3 class="guide-sub">เหรียญและการ์ดบนโต๊ะ</h3>
+      <div class="hp-cards hp-wide is-small" style="--hp-art: 1 / 1">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูมงกุฎหัวหน้าขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/crown.svg" alt="มงกุฎหัวหน้า" width="120" height="120" loading="lazy" decoding="async"></div>
+          <figcaption><b>👑 มงกุฎหัวหน้า</b><span class="hp-does">อยู่ที่หัวหน้าตานี้ คนเลือกทีมไปภารกิจ</span><span class="hp-when">เวียนไปคนถัดไปหลังโหวตทุกครั้ง</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูเหรียญเห็นด้วยขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/vote-approve.svg" alt="เหรียญเห็นด้วย" width="120" height="120" loading="lazy" decoding="async"></div>
+          <figcaption><b>✅ เห็นด้วย</b><span class="hp-does">โหวตให้ทีมนี้ไปภารกิจ</span><span class="hp-when">ไว้ใจทุกคนในทีม · ไม่กดใน 60 วิ = นับเป็นเห็นด้วย</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูเหรียญคัดค้านขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/vote-reject.svg" alt="เหรียญคัดค้าน" width="120" height="120" loading="lazy" decoding="async"></div>
+          <figcaption><b>❌ คัดค้าน</b><span class="hp-does">ไม่ให้ทีมนี้ไป มงกุฎเวียนต่อ</span><span class="hp-when">สงสัยมีฝ่ายร้ายในทีม (ระวังครบ 5 ครั้ง)</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดภารกิจสำเร็จขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/quest-success.webp" alt="การ์ดภารกิจสำเร็จ" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>🏆 การ์ดสำเร็จ</b><span class="hp-does">ลงคว่ำตอนไปภารกิจ ฝ่ายดีลงได้แค่ใบนี้</span><span class="hp-when">ฝ่ายร้ายลงหลอกก็ได้ เพื่อเก็บความไว้ใจ</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดภารกิจล้มขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/quest-fail.webp" alt="การ์ดภารกิจล้ม" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>💥 การ์ดล้ม</b><span class="hp-does">มี 1 ใบภารกิจก็ล้ม (ภารกิจ 4 ตอน 7+ คน ต้อง 2 ใบ)</span><span class="hp-when">ฝ่ายร้ายเท่านั้น · ไม่ลงใน 45 วิ = สำเร็จให้</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูเหรียญผลภารกิจขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/token-success.svg" alt="เหรียญภารกิจสำเร็จ" width="120" height="120" loading="lazy" decoding="async"></div>
+          <figcaption><b>🔵 เหรียญสำเร็จ</b><span class="hp-does">วางบนช่องภารกิจที่ผ่าน ครบ 3 = ฝ่ายดีเกือบชนะ</span><span class="hp-when">นับบนแถบภารกิจ 5 ช่อง</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูเหรียญภารกิจล้มขนาดใหญ่">
+          <div class="hp-card-art is-contain"><img src="/assets/games/avalon/token-fail.svg" alt="เหรียญภารกิจล้ม" width="120" height="120" loading="lazy" decoding="async"></div>
+          <figcaption><b>🔴 เหรียญล้ม</b><span class="hp-does">วางบนช่องภารกิจที่ล้ม ครบ 3 = ฝ่ายร้ายชนะ</span><span class="hp-when">ดูว่าใครอยู่ในทีมที่ล้ม</span></figcaption>
+        </figure>
       </div>
-      <div class="guide-avalon-roles">
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/merlin.webp" alt="เมอร์ลิน" width="120" height="168" loading="lazy">
-          <strong>เมอร์ลิน</strong>
-          <span>เห็นฝ่ายร้าย (ยกเว้นมอร์เดรด) ห้ามให้ถูกจับได้</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/percival.webp" alt="เพอร์ซิวัล" width="120" height="168" loading="lazy">
-          <strong>เพอร์ซิวัล</strong>
-          <span>เห็นเมอร์ลิน+มอร์กานา แยกไม่ออก</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/loyal.webp" alt="อัศวินผู้ภักดี" width="120" height="168" loading="lazy">
-          <strong>อัศวินผู้ภักดี</strong>
-          <span>ฝ่ายดี ไม่รู้อะไร</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/assassin.webp" alt="มือสังหาร" width="120" height="168" loading="lazy">
-          <strong>มือสังหาร</strong>
-          <span>แทงเมอร์ลินตอนท้ายเพื่อพลิกเกม</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/morgana.webp" alt="มอร์กานา" width="120" height="168" loading="lazy">
-          <strong>มอร์กานา</strong>
-          <span>ปลอมเป็นเมอร์ลินให้เพอร์ซิวัลเห็น</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/mordred.webp" alt="มอร์เดรด" width="120" height="168" loading="lazy">
-          <strong>มอร์เดรด</strong>
-          <span>เมอร์ลินมองไม่เห็น</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/oberon.webp" alt="โอเบรอน" width="120" height="168" loading="lazy">
-          <strong>โอเบรอน</strong>
-          <span>ฝ่ายร้ายที่ไม่รู้จักพวกเดียวกัน</span>
-        </article>
-        <article class="guide-avalon-role">
-          <img src="/assets/games/avalon/minion.webp" alt="สมุนมอร์เดรด" width="120" height="168" loading="lazy">
-          <strong>สมุนมอร์เดรด</strong>
-          <span>ฝ่ายร้าย รู้จักพวกเดียวกัน</span>
-        </article>
+
+      <h3 class="guide-sub">บทบาท</h3>
+      <p class="hp-group-label" style="color:#a9c8ff">🛡️ ฝ่ายดี</p>
+      <div class="hp-cards hp-wide">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดเมอร์ลินขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/merlin.webp" alt="การ์ดเมอร์ลิน" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>เมอร์ลิน</b><span class="hp-does">เห็นฝ่ายร้ายทุกคน ยกเว้นมอร์เดรด · มีทุกเกม</span><span class="hp-when">ชี้ทางอ้อม ๆ อย่าให้มือสังหารจับได้</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดเพอร์ซิวัลขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/percival.webp" alt="การ์ดเพอร์ซิวัล" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>เพอร์ซิวัล</b><span class="hp-does">เห็นเมอร์ลินกับมอร์กานา แต่แยกไม่ออกว่าใครเป็นใคร</span><span class="hp-when">ปกป้องเมอร์ลินตัวจริง</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดอัศวินผู้ภักดีขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/loyal.webp" alt="การ์ดอัศวินผู้ภักดี" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>อัศวินผู้ภักดี</b><span class="hp-does">ฝ่ายดี ไม่รู้ข้อมูลอะไรเลย</span><span class="hp-when">จับตาว่าใครอยู่ในทีมที่ล้ม</span></figcaption>
+        </figure>
+      </div>
+      <p class="hp-group-label" style="color:#ff9aa8">🗡️ ฝ่ายร้าย</p>
+      <div class="hp-cards hp-wide">
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดมือสังหารขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/assassin.webp" alt="การ์ดมือสังหาร" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>มือสังหาร</b><span class="hp-does">ตอนจบแทงฝ่ายดี 1 คน ถ้าโดนเมอร์ลิน ฝ่ายร้ายชนะ · มีทุกเกม</span><span class="hp-when">สังเกตว่าใครรู้มากเกินไป</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดมอร์กานาขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/morgana.webp" alt="การ์ดมอร์กานา" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>มอร์กานา</b><span class="hp-does">เพอร์ซิวัลเห็นเป็นเมอร์ลินอีกคน</span><span class="hp-when">แสดงเป็นเมอร์ลินให้เพอร์ซิวัลงง</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดมอร์เดรดขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/mordred.webp" alt="การ์ดมอร์เดรด" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>มอร์เดรด</b><span class="hp-does">เมอร์ลินมองไม่เห็น</span><span class="hp-when">เข้าทีมได้เนียนที่สุด</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดโอเบรอนขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/oberon.webp" alt="การ์ดโอเบรอน" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>โอเบรอน</b><span class="hp-does">ไม่รู้จักพวกเดียวกัน พวกเดียวกันก็ไม่รู้จักเขา (เมอร์ลินเห็น)</span><span class="hp-when">ลงการ์ดล้มเองโดยไม่มีใครนัด</span></figcaption>
+        </figure>
+        <figure class="hp-card" tabindex="0" role="button" aria-label="ดูการ์ดสมุนมอร์เดรดขนาดใหญ่">
+          <div class="hp-card-art"><img src="/assets/games/avalon/minion.webp" alt="การ์ดสมุนมอร์เดรด" width="360" height="504" loading="lazy" decoding="async"></div>
+          <figcaption><b>สมุนมอร์เดรด</b><span class="hp-does">ฝ่ายร้ายธรรมดา รู้จักพวกเดียวกัน</span><span class="hp-when">ช่วยกันทำภารกิจล้ม</span></figcaption>
+        </figure>
       </div>
       <p class="guide-credit">ภาพ: N. C. Wyeth, The Boy's King Arthur (1917, สาธารณสมบัติ) · <a href="/assets/games/avalon/CREDITS.md" target="_blank" rel="noopener">เครดิตภาพ</a></p>
+
+      <h3 class="guide-sub">จำนวนคนในแต่ละภารกิจ</h3>
+      <div class="hp-table-wrap">
+        <table class="hp-table">
+          <thead><tr><th>ผู้เล่น</th><th>ดี : ร้าย</th><th>ภารกิจ 1–5</th></tr></thead>
+          <tbody>
+            <tr><td>5</td><td>3 : 2</td><td>2 · 3 · 2 · 3 · 3</td></tr>
+            <tr><td>6</td><td>4 : 2</td><td>2 · 3 · 4 · 3 · 4</td></tr>
+            <tr><td>7</td><td>4 : 3</td><td>2 · 3 · 3 · 4* · 4</td></tr>
+            <tr><td>8</td><td>5 : 3</td><td>3 · 4 · 4 · 5* · 5</td></tr>
+            <tr><td>9</td><td>6 : 3</td><td>3 · 4 · 4 · 5* · 5</td></tr>
+            <tr><td>10</td><td>6 : 4</td><td>3 · 4 · 4 · 5* · 5</td></tr>
+          </tbody>
+        </table>
+        <p class="hp-note">* ต้องมีการ์ดล้ม 2 ใบภารกิจถึงล้ม</p>
+      </div>
+
+      <h3 class="guide-sub">ตั้งค่าห้อง · เวลา</h3>
+      <ul class="hp-points">
+        <li><i>🎭</i><span><strong>บทเสริม</strong> เมอร์ลินกับมือสังหารมีทุกเกม · หัวห้องเพิ่มเพอร์ซิวัล มอร์กานา มอร์เดรด โอเบรอนได้ในห้องรอ</span></li>
+        <li><i>🌊</i><span><strong>นางแห่งทะเลสาบ</strong> (แนะนำ 7+ คน) หลังภารกิจ 2, 3, 4 คนถือส่องฝ่ายของ 1 คน (เห็นแค่ดี/ร้าย จะบอกจริงหรือโกหกก็ได้) แล้วส่งต่อให้คนที่ถูกส่อง · ส่องคนที่เคยถือไม่ได้</span></li>
+        <li><i>⏱</i><span>กลางคืน 30 วิ · เลือกทีม 90 วิ (หมดเวลา ระบบเลือกให้) · โหวต 60 วิ · ภารกิจ 45 วิ · ลอบสังหาร 120 วิ (หมดเวลา สุ่มแทง)</span></li>
+      </ul>
       <%- guideNav('avalon') %>
     </article>
 

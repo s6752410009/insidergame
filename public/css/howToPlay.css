@@ -1218,3 +1218,25 @@ body.content {
   .hp-switch { margin: 0 -12px 12px; padding-left: 12px; padding-right: 12px; }
   .hp-game { padding: 18px 14px; border-radius: 22px; }
 }
+
+/* ตารางสั้น ๆ (เช่น จำนวนคนต่อภารกิจ) */
+.hp-table-wrap { max-width: 100%; overflow-x: auto; }
+.hp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  color: #c8d2e3;
+}
+.hp-table th,
+.hp-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  white-space: nowrap;
+}
+.hp-table th { color: var(--guide-muted); font-size: 0.82rem; font-weight: 600; }
+.hp-table td:first-child { color: #f3f6fc; font-weight: 700; }
+.hp-note { margin: 6px 0 0; color: var(--guide-muted); font-size: 0.84rem; }
+.hp-game > p.guide-credit,
+.hp-game > p.ww-howto-credit { font-size: 0.78rem; margin-top: 10px; color: #8f9bb3; }
+.hp-game > p.hp-group-label { font-size: 1rem; margin-top: 22px; }
