@@ -1270,3 +1270,8 @@ body.content {
 .sf-card.is-spy .sf-card-copy { background: linear-gradient(180deg, transparent, rgba(30, 6, 8, 0.9) 45%); }
 .sf-card.is-spy .sf-card-copy small { color: #fecaca; }
 .hp-zoom-art .sf-card-copy b { font-size: 1.6rem; }
+
+/* mobile.css บังคับ .content h2 เป็น 16–18px ด้วย !important ทั้งเว็บ — หน้านี้ต้องการหัวข้อตามขนาดของมันเอง */
+.guide-page .hp-game h2 { font-size: clamp(1.45rem, 2.6vw, 2rem) !important; margin: 10px 0 0 !important; }
+.guide-page .hp-faq-col h2 { font-size: 1.3rem !important; margin: 0 0 12px !important; }
+.guide-page .guide-hero .hp-picker-label { font-size: 0.9rem !important; margin: 22px 0 10px !important; }
