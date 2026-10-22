@@ -84,6 +84,7 @@
         <div class="leaderboard-seasons" id="leaderboardSeasons"></div>
         <div class="leaderboard-modes" id="leaderboardModes" role="group" aria-label="เลือกโหมด"></div>
         <div class="leaderboard-season-note" id="leaderboardSeasonNote"></div>
+        <div class="leaderboard-self" id="leaderboardSelf" aria-live="polite"></div>
         <div class="leaderboard-list" id="leaderboardList">
             <div class="skeleton-row"><span class="skeleton-circle"></span><span class="skeleton-line w60"></span><span class="skeleton-line w15"></span></div>
             <div class="skeleton-row"><span class="skeleton-circle"></span><span class="skeleton-line w50"></span><span class="skeleton-line w15"></span></div>
@@ -230,6 +231,42 @@ $(function() {
         $('#leaderboardList').html('<div class="leaderboard-empty">' + message + '</div>');
         $('#leaderboardMeta').text(message);
         $('#leaderboardPagination').empty();
+        renderLeaderboardSelf();
+    }
+
+    function renderLeaderboardSelf() {
+        var $self = $('#leaderboardSelf');
+        var entry = leaderboardState.entries.find(function(item) {
+            return String(item.playerId) === String(playerId);
+        });
+
+        if (!entry) {
+            var emptyMessage = leaderboardState.activeSeason !== CURRENT_SEASON_KEY
+                ? 'คุณยังไม่มีอันดับใน season นี้'
+                : (leaderboardState.activeMode !== 'all'
+                    ? 'คุณยังไม่มีสถิติในโหมดนี้'
+                    : 'เล่นเกมเพื่อเข้าร่วม leaderboard');
+
+            $self
+                .removeClass('leaderboard-self-empty')
+                .addClass('leaderboard-self-empty')
+                .html(
+                    '<span class="leaderboard-self-label">👤 อันดับของคุณ</span>' +
+                    '<span class="leaderboard-self-detail">' + emptyMessage + '</span>'
+                );
+            return;
+        }
+
+        $self
+            .removeClass('leaderboard-self-empty')
+            .html(
+                '<span class="leaderboard-self-label">👤 อันดับของคุณ</span>' +
+                '<span class="leaderboard-self-detail">' +
+                    '<span class="leaderboard-self-rank">#' + entry.rank + '</span>' +
+                    ' จาก ' + leaderboardState.entries.length + ' คน · ' +
+                    entry.wins + ' ชนะ · ' + entry.winRate + '% win' +
+                '</span>'
+            );
     }
 
     function buildLeaderboardItem(entry) {
@@ -391,6 +428,8 @@ $(function() {
         for (var i = 0; i < visibleEntries.length; i++) {
             $list.append(buildLeaderboardItem(visibleEntries[i]));
         }
+
+        renderLeaderboardSelf();
 
         var metaText = 'อันดับ ' + (startIndex + 1) + '-' + (startIndex + visibleEntries.length) +
             ' จาก ' + totalEntries + ' คน';
@@ -1065,4 +1104,3 @@ $(function() {
     };
 });
 </script>
-

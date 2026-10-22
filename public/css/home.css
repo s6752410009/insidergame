@@ -213,6 +213,24 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
 .leaderboard-season-tab.is-active { background: color-mix(in oklch, var(--hm-gold) 18%, var(--hm-surface)); border-color: transparent; color: var(--hm-gold); cursor: default; }
 .leaderboard-season-note { font-size: 0.85rem; color: var(--hm-soft); }
 .leaderboard-season-note:empty { display: none; }
+.leaderboard-self {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in oklch, var(--hm-gold) 35%, transparent);
+    border-left: 4px solid var(--hm-gold);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--hm-gold) 10%, var(--hm-surface));
+    color: var(--hm-ink);
+}
+.leaderboard-self:empty { display: none; }
+.leaderboard-self-label { color: var(--hm-gold); font-weight: 700; }
+.leaderboard-self-detail { color: var(--hm-soft); font-size: 0.88rem; text-align: right; }
+.leaderboard-self-rank { margin-right: 5px; color: var(--hm-ink); font-family: var(--hm-display); font-weight: 700; }
+.leaderboard-self-empty { border-left-color: var(--hm-muted); background: var(--hm-sunken); }
+.leaderboard-self-empty .leaderboard-self-label { color: var(--hm-ink); }
 
 .leaderboard-list { display: grid; gap: 8px; min-height: 0; }
 .leaderboard-item {
@@ -571,6 +589,8 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
     .home-pass { padding: 20px 16px 14px; column-gap: 12px; }
     .home-tally dd { font-size: 1.2rem; }
     .home-nav .ui-btn { font-size: 0.88rem; gap: 4px; }
+    .leaderboard-self { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .leaderboard-self-detail { text-align: left; }
     .home .leaderboard-item { grid-template-columns: 1.6rem 44px minmax(0, 1fr); gap: 10px !important; padding-right: 12px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
