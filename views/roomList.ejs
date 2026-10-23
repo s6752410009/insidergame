@@ -945,6 +945,7 @@ $(function() {
         { id: 'pokdeng', label: 'ป๊อกเด้ง', description: 'แจก 2 ใบ ป๊อก 8/9 เปิดเลย จั่วเพิ่มได้ 1 ใบ วัดกับเจ้ามือ ดอกเดียวกันได้เด้ง — 2–10 คน', minPlayers: 2, maxPlayers: 10 },
         { id: 'wavelength', label: 'คลื่นความคิด', description: 'ผู้ใบ้เห็นเป้าลับบนหน้าปัด ใบ้ 1 คำ แล้วทุกคนหมุนเข็มทายว่าอยู่ตรงไหน — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
         { id: 'drawguess', label: 'วาดแล้วทาย', description: 'ผลัดกันวาด ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ — 3–12 คน', minPlayers: 3, maxPlayers: 12 },
+        { id:'slave',label:'สลาฟ',description:'4 คน · ลงไพ่ให้หมด ขึ้นเป็นคิง แลกไพ่รอบหน้า เติมบอทได้',minPlayers:4,maxPlayers:4 },
         { id: 'colorcards', label: 'ไพ่ทิ้งสี', description: 'ลงไพ่ให้สีหรือเลขตรงกัน ทิ้งให้หมดมือก่อนชนะ เหลือใบเดียวต้องกดบอก — 2–10 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 10 },
         { id: 'setthi', label: 'เศรษฐี', description: 'ทอยเต๋าซื้อเมืองทั่วไทย สร้างจนเป็นแลนด์มาร์ก ซื้อต่อ 2 เท่า ผูกขาดชนะทันที — 2–6 คน ใส่บอทได้', minPlayers: 2, maxPlayers: 6 }
     ];
@@ -1245,6 +1246,7 @@ $(function() {
                 summary: 'ผลัดกันวาดคำลับบนจอ ที่เหลือแข่งกันพิมพ์ทาย ทายเร็วได้แต้มเยอะ คนวาดได้แต้มตามคนที่ทายถูก',
                 bullets: ['3-12 คน', 'คำไทย 400+ คำ 8 หมวด', 'ตาละ 60-100 วิ', 'มีคำใบ้ค่อย ๆ เปิด']
             },
+            slave: { tone:'oklch(.25 .04 155)',border:'oklch(.7 .08 85)',cover:'/assets/games/slave/cover.svg',badge:'♠ 4 คน · ขึ้นเป็นคิง',title:'สลาฟ',summary:'ลงไพ่ให้หมดมือก่อน ตองตัดเดี่ยว โฟร์ตัดคู่ แลกไพ่รอบหน้า',bullets:['4 คน','เติมบอทได้','30 วินาทีต่อตา','แลกไพ่ 2 / 1 ใบ'] },
             colorcards: {
                 tone: 'linear-gradient(135deg, rgba(56,132,220,0.3), rgba(16,22,40,0.92))',
                 border: 'rgba(245,200,107,0.34)',
@@ -1342,11 +1344,12 @@ $(function() {
         poker5: ['cards'],
         poker4: ['cards'],
         pokdeng: ['cards'],
+        slave: ['cards'],
         colorcards: ['cards'],
         setthi: ['board']
     };
     const NEW_MODE_IDS = ['drawguess', 'codenames', 'wavelength', 'colorcards'];
-    NEW_MODE_IDS.push('setthi');
+    NEW_MODE_IDS.push('setthi', 'slave');
 
     function buildModeCategoryChipsHtml(modeItems) {
         const present = new Set();
@@ -1533,7 +1536,7 @@ $(function() {
                                 : (room.gameMode === 'liar' ? 'ไพ่โกหก'
                                     : (room.gameMode === 'poker5' ? 'ไพ่ 5 ใบ'
                                         : (room.gameMode === 'poker4' ? 'สี่ใบเก'
-                                            : (room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : room.gameMode === 'wavelength' ? 'คลื่นความคิด' : room.gameMode === 'colorcards' ? 'ไพ่ทิ้งสี' : room.gameMode === 'setthi' ? 'เศรษฐี' : 'Insider')))))))
+                                            : (room.gameMode === 'slave' ? 'สลาฟ' : room.gameMode === 'pokdeng' ? 'ป๊อกเด้ง' : room.gameMode === 'wavelength' ? 'คลื่นความคิด' : room.gameMode === 'colorcards' ? 'ไพ่ทิ้งสี' : room.gameMode === 'setthi' ? 'เศรษฐี' : 'Insider')))))))
             );
             const modeBadgeStyle = room.gameMode === 'werewolf'
                 ? 'background: linear-gradient(135deg, #34495e, #111827);'

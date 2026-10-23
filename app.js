@@ -7,6 +7,7 @@
 const express = require('express');
 const compression = require('compression');
 const app = express();
+if (process.env.APP_ENV === 'staging') app.use((req,res,next) => { res.setHeader('X-Robots-Tag','noindex, nofollow'); next(); });
 
 var server = require('http').createServer(app),
     ent = require('ent'),
@@ -119,6 +120,7 @@ const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManage
 const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
+const slaveRuntime = require('./games/slaveRuntime')(() => ({ io, roomManager, reportGameError, buildRoomUpdatePayload }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
 const spyfallReturnTimeouts = new Map();
@@ -778,6 +780,7 @@ function returnFinishedGameToLobby(roomId) {
     wavelengthRuntime.clearTimers(roomId);
     drawguessRuntime.clearTimers(roomId);
     colorcardsRuntime.clearTimers(roomId);
+    slaveRuntime.clearTimers(roomId);
     setthiRuntime.clearTimers(roomId);
     roomManager.resetRoomGame(roomId);
     const refreshedRoom = roomManager.getRoom(roomId);
@@ -1416,6 +1419,7 @@ function clearAllRoomTimers(roomId) {
     wavelengthRuntime.clearTimers(roomId);
     drawguessRuntime.clearTimers(roomId);
     colorcardsRuntime.clearTimers(roomId);
+    slaveRuntime.clearTimers(roomId);
     setthiRuntime.clearTimers(roomId);
     clearInsiderVoteTimer(roomId);
     clearInsiderReturnTimer(roomId);
@@ -4135,6 +4139,8 @@ function broadcastGameStateForRoom(room) {
         wavelengthRuntime.emitRoomState(room);
     } else if (room.settings.gameMode === 'drawguess') {
         drawguessRuntime.emitRoomState(room);
+    } else if (room.settings.gameMode === 'slave') {
+        slaveRuntime.emitRoomState(room);
     } else if (room.settings.gameMode === 'colorcards') {
         colorcardsRuntime.emitRoomState(room);
     } else if (room.settings.gameMode === 'setthi') {
@@ -4334,6 +4340,7 @@ function handleMidGamePlayerRemoval(room, playerId) {
                 console.error('[drawguess] handlePlayerLeft failed:', error?.message || error);
             }
         }
+        if (room.settings.gameMode === 'slave') slaveRuntime.handleLeft(room, playerId);
         if (room.settings.gameMode === 'colorcards') {
             try {
                 colorcardsRuntime.handleLeft(room, playerId);
@@ -4724,6 +4731,7 @@ function recoverGamePhaseTimers() {
             drawguessRuntime.recover(room);
         }
 
+        if (room.settings.gameMode === 'slave') slaveRuntime.recover(room);
         if (room.settings.gameMode === 'colorcards') {
             colorcardsRuntime.recover(room);
         }
@@ -4807,6 +4815,7 @@ function runRoomCleanupSweep() {
         if (room.settings.gameMode === 'wavelength' && roomManager.isRoomGameInProgress(room)) {
             wavelengthRuntime.forceResolve(room);
         }
+        if (room.settings.gameMode === 'slave' && roomManager.isRoomGameInProgress(room)) slaveRuntime.forceResolve(room);
         if (room.settings.gameMode === 'colorcards' && roomManager.isRoomGameInProgress(room)) {
             colorcardsRuntime.forceResolve(room);
         }
@@ -4826,6 +4835,7 @@ function runRoomCleanupSweep() {
         codenamesRuntime.clearTimers(candidate.roomId);
         wavelengthRuntime.clearTimers(candidate.roomId);
         colorcardsRuntime.clearTimers(candidate.roomId);
+        slaveRuntime.clearTimers(candidate.roomId);
         setthiRuntime.clearTimers(candidate.roomId);
         clearWerewolfPhaseTimer(candidate.roomId);
         clearWerewolfTransitionTimer(candidate.roomId);
@@ -6251,6 +6261,14 @@ app.get('/game/:roomId', async function(req, res) {
         });
     }
 
+    if (room.settings.gameMode === 'slave') {
+        return res.render('slaveBoard.ejs', {
+            player: gameStatePlayer, playerInfo: playerInRoom,
+            room: { roomId: room.roomId, name: room.name, admin: room.admin === req.playerId },
+            slaveState: slaveRuntime.buildPayload(room, playerId)
+        });
+    }
+
     if (room.settings.gameMode === 'colorcards') {
         return res.render('colorcardsBoard.ejs', {
             player: gameStatePlayer,
@@ -7169,6 +7187,8 @@ io.sockets.on('connection', function(socket) {
         } else if (refreshedRoom?.settings?.gameMode === 'drawguess') {
             drawguessRuntime.emitState(refreshedRoom, socket.id, playerId);
             drawguessRuntime.emitCanvas(refreshedRoom, socket.id);
+        } else if (refreshedRoom?.settings?.gameMode === 'slave') {
+            slaveRuntime.emitState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'colorcards') {
             colorcardsRuntime.emitState(refreshedRoom, socket.id, playerId);
         } else if (refreshedRoom?.settings?.gameMode === 'setthi') {
@@ -7206,6 +7226,7 @@ io.sockets.on('connection', function(socket) {
             wavelengthRuntime.clearTimers(roomId);
             drawguessRuntime.clearTimers(roomId);
             colorcardsRuntime.clearTimers(roomId);
+    slaveRuntime.clearTimers(roomId);
             setthiRuntime.clearTimers(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
@@ -7273,6 +7294,8 @@ io.sockets.on('connection', function(socket) {
                 wavelengthRuntime.emitRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'drawguess') {
                 drawguessRuntime.emitRoomState(refreshedRoom);
+            } else if (refreshedRoom.settings.gameMode === 'slave') {
+                slaveRuntime.emitRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'colorcards') {
                 colorcardsRuntime.emitRoomState(refreshedRoom);
             } else if (refreshedRoom.settings.gameMode === 'setthi') {
@@ -8703,6 +8726,8 @@ io.sockets.on('connection', function(socket) {
             } else if (room.settings.gameMode === 'drawguess') {
                 drawguessRuntime.emitState(room, socket.id, playerId);
                 drawguessRuntime.emitCanvas(room, socket.id);
+            } else if (room.settings.gameMode === 'slave') {
+                slaveRuntime.emitState(room, socket.id, playerId);
             } else if (room.settings.gameMode === 'colorcards') {
                 colorcardsRuntime.emitState(room, socket.id, playerId);
             } else if (room.settings.gameMode === 'setthi') {
@@ -10612,6 +10637,34 @@ io.sockets.on('connection', function(socket) {
     });
     // ===== END DRAWGUESS =====
 
+    // Slave: authenticated room context only; never accept a caller-supplied player identity.
+    safeOn(socket, 'slave_requestState', data => {
+        const room = getSocketRoom(socket, 'slave');
+        if (room && (!data?.roomId || data.roomId === room.roomId)) slaveRuntime.emitState(room, socket.id, socket.playerId);
+    });
+    for (const [event, action] of Object.entries({
+        slave_play: (r,id,d) => slaveRuntime.engine.playCards(r,id,d?.cardIds,d?.step),
+        slave_pass: (r,id,d) => slaveRuntime.engine.passTurn(r,id,d?.step),
+        slave_exchange: (r,id,d) => slaveRuntime.engine.exchangeCards(r,id,d?.cardIds,d?.step),
+        slave_nextRound: (r,id) => slaveRuntime.engine.nextRound(r,id)
+    })) safeOn(socket, event, (data, callback) => {
+        const done = typeof callback === 'function' ? callback : () => {};
+        try {
+            const room = getSocketRoom(socket, 'slave');
+            if (!room || data?.roomId !== room.roomId) throw new Error('ไม่พบโต๊ะของคุณ');
+            action(room, socket.playerId, data);
+            slaveRuntime.emitRoomState(room);
+            done({ success: true });
+        } catch (error) { done({ success:false, error:error.message }); }
+    });
+    safeOn(socket, 'slave_addBots', async (data, callback) => {
+        const done = typeof callback === 'function' ? callback : () => {};
+        try {
+            const result = await addPartyBotsToRoom(socket, data, { mode:'slave', seatCap:4, inFlight:slaveRuntime.botAddInFlight });
+            done({ success:true, ...result });
+        } catch(error) { done({ success:false, error:error.message }); }
+    });
+
     // ===== COLORCARDS (ไพ่ทิ้งสี) =====
     // ไพ่ในมือส่งทีละ socket ผ่าน colorcardsRuntime.emitState เท่านั้น · ทุกคำสั่งตรวจตา/เฟส/กติกาใน engine
 
@@ -11316,6 +11369,16 @@ io.sockets.on('connection', function(socket) {
                         'เศรษฐีเริ่มแล้ว — ทอยเต๋า ซื้อเมือง สร้างแลนด์มาร์ก ผูกขาดชนะ (เงินในเกม ไม่มีมูลค่าจริง)', '#f5c86b');
                     logGameStartFromRoom(currentRoom);
                     setthiRuntime.emitRoomState(currentRoom);
+                    currentRoom.gameStarting = false;
+                    return;
+                }
+
+                if (currentRoom.settings.gameMode === 'slave') {
+                    slaveRuntime.startGame(currentRoom);
+                    io.to(roomId).emit('gameStarting', { roomId });
+                    currentOnlinePlayers.forEach(p => { if (p.socketId) io.to(p.socketId).emit('gameStarting', { roomId }); });
+                    logGameStartFromRoom(currentRoom);
+                    slaveRuntime.emitRoomState(currentRoom);
                     currentRoom.gameStarting = false;
                     return;
                 }

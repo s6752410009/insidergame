@@ -32,6 +32,7 @@ const ENGINES = {
 ENGINES.codenames = codenamesEngine;
 ENGINES.drawguess = drawguessEngine;
 ENGINES.setthi = setthiEngine;
+ENGINES.slave = require('./slaveEngine');
 
 function isPokerMode(gameMode) {
     return gameMode === 'poker5' || gameMode === 'poker4';

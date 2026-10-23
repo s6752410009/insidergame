@@ -1557,6 +1557,8 @@
         
         <button id="btnEditRoom" class="btn-admin-small btn-edit-room">⚙️ แก้ไขห้อง</button>
         <button type="button" id="btnPokDengAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'pokdeng' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
+        <button type="button" id="btnSlaveBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'slave' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เติมบอทให้ครบ 4 คน</button>
+        <button type="button" id="btnSlaveRules" class="btn-admin-small <%= room.gameMode === 'slave' ? '' : 'is-hidden' %>">♠ กติกาสลาฟ</button>
         <button type="button" id="btnColorCardsAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'colorcards' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnLiarAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'liar' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
         <button type="button" id="btnCoupAddBots" class="btn-admin-small btn-add-bots <%= (room.gameMode === 'coup' && room.isAdmin) ? '' : 'is-hidden' %>">🤖 เพิ่มบอท</button>
@@ -1770,6 +1772,7 @@
         waitingText: 'รอผู้เล่นอย่างน้อย 2 คน (ใส่บอทได้)',
         roundLabel: 'เวลาเกม:'
       },
+      slave: { minPlayers:4, maxPlayers:4, label:'สลาฟ', startLabel:'♠ แจกไพ่สลาฟ', readyText:'พร้อมแล้ว แจกไพ่ได้เลย', waitingText:'รอผู้เล่นครบ 4 คน หรือเติมบอท', roundLabel:'เวลาคิดต่อตา:' },
       colorcards: {
         minPlayers: 2,
         maxPlayers: 10,
@@ -2000,6 +2003,7 @@
       if (compactMode === 'drawguess' || compactMode === 'วาดแล้วทาย') {
         return 'drawguess';
       }
+      if (compactMode === 'slave' || compactMode === 'สลาฟ') return 'slave';
       if (compactMode === 'colorcards' || compactMode === 'ไพ่ทิ้งสี' || compactMode === 'ทิ้งสี') {
         return 'colorcards';
       }
@@ -2166,6 +2170,7 @@
       if (normalizedMode === 'drawguess') {
         return { kicker: '🎨 ห้องวาดแล้วทาย', pills: [] };
       }
+      if (normalizedMode === 'slave') return { kicker:'♠ โต๊ะสลาฟ 4 คน', pills:[] };
       if (normalizedMode === 'colorcards') {
         return { kicker: '🃏 โต๊ะไพ่ทิ้งสี', pills: [] };
       }
@@ -2261,6 +2266,8 @@
       setElementHidden('#btnWavelengthHowTo', resolvedMode !== 'wavelength');
       setElementHidden('#btnPokDengAddBots', !(isAdmin && resolvedMode === 'pokdeng'));
       setElementHidden('#btnDrawGuessHowTo', resolvedMode !== 'drawguess');
+      setElementHidden('#btnSlaveBots', !(isAdmin && resolvedMode === 'slave'));
+      setElementHidden('#btnSlaveRules', resolvedMode !== 'slave');
       setElementHidden('#btnColorCardsHowTo', resolvedMode !== 'colorcards');
       setElementHidden('#btnColorCardsAddBots', !(isAdmin && resolvedMode === 'colorcards'));
       setElementHidden('#btnLiarAddBots', !(isAdmin && resolvedMode === 'liar'));
@@ -3875,6 +3882,17 @@
       });
     });
 
+    $(document).on('click', '#btnSlaveBots', function() {
+      const btn=$(this); if(btn.data('loading'))return;
+      btn.data('loading',true).prop('disabled',true);
+      socket.emit('slave_addBots',{roomId:roomId,count:3},function(res){
+        btn.data('loading',false).prop('disabled',false);
+        if(!res || !res.success) Swal.fire({icon:'error',title:'เติมบอทไม่ได้',text:res?.error || 'ลองใหม่อีกครั้ง'});
+      });
+    });
+    $(document).on('click', '#btnSlaveRules', function() {
+      Swal.fire({title:'สลาฟ 4 คน',html:'คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด<br>♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว คู่ ตอง โฟร์ ให้ใหญ่กว่า · ตองตัดเดี่ยว โฟร์ตัดคู่<br>ผ่านแล้วรอกองใหม่ · รอบแรกเปิดด้วย 3♣<br>คิง↔สลาฟแลก 2 ใบ / ควีน↔รองสลาฟแลก 1 ใบ<br>เลือกไพ่คืนจากมือเดิม แล้วสลาฟเปิดรอบใหม่<br>ไม่ใช้ไพ่เรียง คิงตกชั้น หรือปฏิวัติ'});
+    });
     $(document).on('click', '#btnColorCardsAddBots', function() {
       const btn = $(this);
       if (btn.data('loading')) return;

@@ -292,6 +292,7 @@ const FINISHED_GAME_STATUSES = new Set([
     'wavelength_finished',
     'drawguess_finished',
     'colorcards_finished',
+    'slave_finished',
     'setthi_finished',
     'end',
     'finished'
