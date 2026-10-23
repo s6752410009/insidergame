@@ -1,81 +1,39 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
-<style>
-html.slave-active body.content{background:oklch(.21 .035 155)!important;color:oklch(.95 .015 85);margin:0!important;padding:0!important}
-.slave-active header,.slave-active .footer,.slave-active #music-controls{display:none!important}
-.slave{--cream:oklch(.95 .025 85);--gold:oklch(.83 .12 85);font-family:'Bai Jamjuree',sans-serif;max-width:960px;margin:auto;padding:16px 16px 36px;text-align:left}
-.slave *{box-sizing:border-box}.slave h1,.slave h2{font-family:'Chakra Petch',sans-serif}.slave h1{font-size:1.5rem;margin:0}.slave h2{font-size:1.15rem}
-.sl-top,.sl-actions{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.sl-top{padding-bottom:16px;border-bottom:1px solid oklch(.8 .06 150/.25)}
-.slave button,.slave a.sl-link{font:inherit;min-height:44px;border-radius:8px;padding:8px 16px;cursor:pointer;border:1px solid oklch(.7 .07 150/.45);background:oklch(.29 .04 155);color:var(--cream);text-decoration:none}
-.slave button:focus-visible,.slave a:focus-visible{outline:3px solid var(--gold);outline-offset:3px}.slave button:disabled{opacity:.45;cursor:default}.slave button.primary{background:var(--gold);color:oklch(.22 .03 85);font-weight:700}
-.sl-seats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:20px 0}.sl-seat{padding:10px 8px;min-width:0;border:1px solid oklch(.75 .06 155/.3);border-radius:8px}.sl-seat.turn{border-color:var(--gold);background:oklch(.33 .05 155)}.sl-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sl-meta{font-size:.85rem;opacity:.8}
-.sl-table{min-height:200px;padding:20px 8px;text-align:center;border-radius:45%;background:oklch(.27 .045 155);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px}.sl-pile{display:flex;gap:6px;justify-content:center}
-.slave .sl-card{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:space-between;width:64px;height:92px;min-height:92px;padding:7px;background:var(--cream);color:oklch(.23 .025 160);border:2px solid transparent;border-radius:7px;font-family:'Chakra Petch',sans-serif;font-size:1.25rem;font-weight:700;box-shadow:0 3px 4px oklch(.1 .03 155/.2)}.slave .sl-card.red{color:oklch(.49 .18 25)}.slave .sl-card span:last-child{align-self:flex-end;font-size:1.5rem}.slave .sl-card.selected{transform:translateY(-10px);border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
-.sl-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:16px 0;min-height:110px}.sl-hand .sl-card{transition:transform .15s ease-out}.slave{padding-bottom:110px}.sl-actions{position:fixed;bottom:0;left:0;right:0;margin:0 auto;max-width:960px;padding:12px 8px calc(12px + env(safe-area-inset-bottom));background:oklch(.21 .035 155);border-top:1px solid oklch(.7 .05 150/.3);z-index:10;gap:6px}.sl-actions button{padding:8px 10px}.sl-help{font-size:.9rem;opacity:.9;line-height:1.7}.sl-status{font-size:1.15rem;font-weight:600;margin:20px 0 8px}.sl-alert{min-height:24px;color:oklch(.9 .13 85)}#slError{color:oklch(.85 .13 35)}.sl-actions{justify-content:center;margin:12px 0}.sl-history{margin-top:24px;opacity:.8;font-size:.875rem}.sl-history li{padding:3px 0}.sl-ranks{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:16px 0}.slave details{margin-top:24px;border-top:1px solid oklch(.7 .05 150/.3);padding-top:16px}.slave summary{cursor:pointer;min-height:44px}
-@media(max-width:520px){.slave{padding:12px}.sl-seats{grid-template-columns:repeat(2,minmax(0,1fr));margin:12px 0}.sl-table{min-height:160px}.slave .sl-card{width:54px;height:78px;min-height:78px;font-size:1.1rem}.sl-hand{gap:6px}.sl-top h1{font-size:1.25rem}.sl-top button{padding:8px 10px}}
-@media(prefers-reduced-motion:reduce){.sl-hand .sl-card{transition:none}}
-html.slave-active,html.slave-active body,html.slave-active .container-fluid,html.slave-active .container-fluid>.row{background:oklch(.21 .035 155)!important;background-image:none!important}
-.slave-active .container-fluid{margin:0!important;padding:0!important;max-width:none!important}.slave-active .container-fluid>.row{margin:0!important}.slave-active .col-lg-12{padding:0!important}.slave .sl-actions{margin:0 auto!important}
-</style>
+<link href="/static/css/slave.css?v=2" rel="stylesheet">
+<script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
-  <div class="sl-top"><div><div class="sl-meta">โต๊ะ <%= room.roomId %> · STAGING</div><h1>สลาฟ <span id="slRound"></span></h1></div><div><button id="slSound" aria-pressed="true">เสียง เปิด</button> <a class="sl-link" href="/room/<%= room.roomId %>">ห้องรอ</a></div></div>
+  <div class="sl-top">
+    <div class="sl-brand"><span class="sl-brand-mark" aria-hidden="true">♠</span><div><h1>SLAVE <span>สลาฟ · <span id="slRound"></span></span></h1><div class="sl-meta">โต๊ะ <%= room.roomId %> · STAGING</div></div></div>
+    <div class="sl-tools"><button id="slSound" aria-pressed="false">เปิดเสียงเกม</button><button id="slMusic" aria-pressed="true">♫ เพลง เปิด</button><a class="sl-link" href="/room/<%= room.roomId %>">ห้องรอ ↗</a></div>
+  </div>
   <div id="slConnection" class="sl-alert" role="status"></div>
-  <section id="slSeats" class="sl-seats" aria-label="ผู้เล่นทั้งโต๊ะ"></section>
-  <section class="sl-table" aria-label="กองกลาง"><div id="slPileText">เปิดกองใหม่</div><div id="slPile" class="sl-pile"></div><div id="slClock" class="sl-meta"></div></section>
-  <div id="slRanks" class="sl-ranks"></div>
-  <div id="slStatus" class="sl-status" role="status" aria-live="polite"></div>
-  <div id="slError" class="sl-alert" role="alert"></div>
-  <section id="slHand" class="sl-hand" aria-label="ไพ่ในมือคุณ"></section>
-  <div class="sl-actions"><button id="slHint">แนะนำไพ่</button><button id="slClear">ยกเลิกเลือก</button><button id="slPlay" class="primary">ลงไพ่</button><button id="slPass">ผ่าน</button><button id="slNext" class="primary" hidden>แจกไพ่รอบถัดไป</button></div>
-  <details><summary>กติกาโต๊ะนี้</summary><div class="sl-help">4 คน คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด · ดอก ♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว / คู่ / ตอง / โฟร์หน้าเดียวกัน ต้องใหญ่กว่ากองเดิม · ตองตัดเดี่ยว · โฟร์ตัดคู่<br>ผ่านแล้วพักจนกองใหม่ ทุกคนผ่าน คนลงล่าสุดเปิดใหม่ ถ้าคนนั้นหมดมือ คนถัดไปที่ยังเล่นอยู่เริ่ม<br>รอบแรกเปิดด้วยชุดที่มี 3♣ · รอบต่อไปสลาฟเริ่ม<br>คิงเลือกคืน 2 ใบจากมือเดิมแลกกับไพ่สูงสุดของสลาฟ · ควีนเลือกคืน 1 ใบแลกกับรองสลาฟ<br>ไม่ใช้ไพ่เรียง / คิงตกชั้น / ปฏิวัติ · หมดเวลา 30 วิ ระบบลงหรือผ่านให้ · แลกไพ่ภายใน 60 วิ</div></details>
-  <details><summary>เหตุการณ์ล่าสุด</summary><ol id="slHistory" class="sl-history"></ol></details>
+  <p id="slAudioHint" class="sl-audio-hint">แตะหน้าจอเพื่อเริ่มเสียงเกมและเพลง</p>
+  <div class="sl-arena">
+    <div class="sl-felt" aria-hidden="true"><div class="sl-table-print">SLAVE<small>♣ &nbsp; ♦ &nbsp; ♥ &nbsp; ♠</small></div></div>
+    <section id="slSeats" class="sl-seats" aria-label="ผู้เล่นทั้งโต๊ะ"></section>
+    <section class="sl-table" aria-label="กองกลาง"><div id="slPileText" class="sl-pile-label"></div><div id="slPile" class="sl-pile"></div><div id="slClock" class="sl-clock" role="timer"></div></section>
+    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div class="sl-result-crown" aria-hidden="true">♛</div><h2 id="slResultTitle">จบรอบแล้ว!</h2><div id="slRanks" class="sl-ranks"></div></section>
+  </div>
+  <section id="slPlayerZone" class="sl-player-zone" aria-label="พื้นที่เล่นของคุณ">
+    <div class="sl-status-row"><div id="slStatus" class="sl-status" role="status" aria-live="polite"></div><div id="slHandMeta" class="sl-hand-meta"></div></div>
+    <div id="slTurnTrack" class="sl-turn-track" aria-hidden="true"><span></span></div>
+    <div id="slError" class="sl-alert" role="alert"></div>
+    <div id="slHand" class="sl-hand" role="group" aria-label="ไพ่ในมือคุณ"></div>
+    <div class="sl-actions"><button id="slHint">✧ แนะนำไพ่</button><button id="slClear">ยกเลิกเลือก</button><button id="slPlay" class="primary">ลงไพ่</button><button id="slPass">ผ่าน</button><button id="slNext" class="primary" hidden>แจกไพ่รอบถัดไป ↻</button></div>
+    <p id="slActionHelp" class="sl-action-help"></p>
+  </section>
+  <div class="sl-under-table">
+    <details><summary>กติกาโต๊ะนี้ ⌄</summary><div class="sl-help">4 คน คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด · ดอก ♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว / คู่ / ตอง / โฟร์หน้าเดียวกัน ต้องใหญ่กว่ากองเดิม · ตองตัดเดี่ยว · โฟร์ตัดคู่<br>ผ่านแล้วพักจนกองใหม่ ทุกคนผ่าน คนลงล่าสุดเปิดใหม่ ถ้าคนนั้นหมดมือ คนถัดไปที่ยังเล่นอยู่เริ่ม<br>รอบแรกเปิดด้วยชุดที่มี 3♣ · รอบต่อไปสลาฟเริ่ม<br>คิงเลือกคืน 2 ใบจากมือเดิมแลกกับไพ่สูงสุดของสลาฟ · ควีนเลือกคืน 1 ใบแลกกับรองสลาฟ<br>ไม่ใช้ไพ่เรียง / คิงตกชั้น / ปฏิวัติ · หมดเวลา 30 วิ ระบบลงหรือผ่านให้ · แลกไพ่ภายใน 60 วิ</div></details>
+    <details><summary>บันทึกการลงไพ่ ⌄</summary><ol id="slHistory" class="sl-history"></ol></details>
+    <div class="sl-short-rule">หมดมือก่อน เป็นคิง<br>3 → 2 &nbsp; · &nbsp; ♣ ♦ ♥ ♠</div>
+  </div>
 </main>
 <script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/slaveAudio.js?v=2"></script>
+<script src="/static/js/slaveBoard.js?v=2"></script>
 <script>
-document.documentElement.classList.add('slave-active');
 document.addEventListener('DOMContentLoaded',function(){
-  const playerId=<%- safeJson(playerInfo.playerId) %>, roomId=<%- safeJson(room.roomId) %>;
-  let S=<%- safeJson(slaveState) %>,selected=new Set(),pending=false,seenStep=-1;
-  const socket=io(),$=id=>document.getElementById(id),esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let sound=localStorage.getItem('slaveSound')!=='off';
-  let audio=null;
-  document.addEventListener('pointerdown',()=>{try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();audio.resume();}catch(e){}},{once:true});
-  function ding(){if(!sound||!audio||audio.state!=='running')return;const o=audio.createOscillator(),g=audio.createGain();o.connect(g);g.connect(audio.destination);o.frequency.value=660;g.gain.setValueAtTime(.08,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.25);o.start();o.stop(audio.currentTime+.25);}
-  function soundLabel(){$('slSound').textContent='เสียง '+(sound?'เปิด':'ปิด');$('slSound').setAttribute('aria-pressed',sound);}
-  $('slSound').onclick=()=>{sound=!sound;localStorage.setItem('slaveSound',sound?'on':'off');soundLabel();};soundLabel();
-  function card(c,button){return '<'+(button?'button type="button"':'div')+' class="sl-card '+(c.red?'red ':'')+(selected.has(c.id)&&button?'selected':'')+'" '+(button?'data-card="'+c.id+'" aria-label="'+esc(c.label)+'" aria-pressed="'+selected.has(c.id)+'"':'')+'><span>'+esc(c.rank)+'</span><span>'+esc(c.suit)+'</span></'+(button?'button':'div')+'>';}
-  function render(next){
-    if(next.step<S.step)return;
-    if(next.step!==S.step){selected.clear();pending=false;}
-    S=next;
-    if(seenStep!==S.step){if(S.canPlay||S.self?.exchangeCount)ding();seenStep=S.step;}
-    $('slRound').textContent='· รอบ '+S.round;
-    $('slSeats').innerHTML=S.seats.map(p=>'<div class="sl-seat '+(p.playerId===S.turnId?'turn':'')+'"><div class="sl-name">'+esc(p.avatar)+' '+esc(p.name)+(p.playerId===playerId?' (คุณ)':'')+'</div><div>'+p.count+' ใบ '+(p.isBot?'· บอท':'')+'</div><div class="sl-meta">'+esc(p.place?['คิง','ควีน','รองสลาฟ','สลาฟ'][p.place-1]:(p.passed?'ผ่านแล้ว':p.title||''))+'</div></div>').join('');
-    $('slPile').innerHTML=(S.top?.cards||[]).map(c=>card(c,false)).join('');
-    $('slPileText').textContent=S.top?'ไพ่ของ '+(S.seats.find(p=>p.playerId===S.top.playerId)?.name||''):'เปิดกองใหม่';
-    $('slHand').innerHTML=(S.self?.hand||[]).map(c=>card(c,true)).join('');
-    const exchange=S.self?.exchangeCount||0,turn=S.seats.find(p=>p.playerId===S.turnId);
-    $('slStatus').textContent=S.phase==='finished'?'โต๊ะหยุดแล้ว มีคนออกจากห้อง':S.phase==='round-end'?(S.isHost?'จบรอบแล้ว พร้อมแลกไพ่รอบหน้า':'รอหัวห้องแจกไพ่รอบถัดไป'):S.phase==='exchange'?(exchange?'เลือกไพ่คืน '+exchange+' ใบจากมือคุณ':'รอคิงและควีนเลือกไพ่คืน'):(S.canPlay?'ถึงตาคุณ · เลือกไพ่แล้วกดลง':'รอ '+(turn?.name||'ผู้เล่น'));
-    $('slPlay').textContent=exchange?'ยืนยันคืน '+exchange+' ใบ':'ลงไพ่'+(selected.size?' '+selected.size+' ใบ':'');
-    $('slPlay').disabled=pending||(!S.canPlay&&!exchange)||!selected.size||(exchange&&selected.size!==exchange);
-    $('slPass').disabled=pending||!S.canPass;
-    $('slHint').disabled=pending||(!S.canPlay&&!exchange);
-    $('slNext').hidden=!(S.phase==='round-end'&&S.isHost);
-    $('slNext').disabled=pending;
-    $('slRanks').innerHTML=(S.standings||[]).map(p=>'<span>'+p.place+'. '+esc(p.name)+' · '+esc(p.title)+'</span>').join('');
-    $('slHistory').innerHTML=(S.history||[]).slice(-8).map(t=>'<li>'+esc(t)+'</li>').join('');tick();
-  }
-  $('slHand').onclick=e=>{const b=e.target.closest('[data-card]');if(!b||pending||(!S.canPlay&&!S.self?.exchangeCount))return;const id=Number(b.dataset.card);if(selected.has(id))selected.delete(id);else if(selected.size<4)selected.add(id);render(S);};
-  function command(event){if(pending||!socket.connected)return;pending=true;$('slError').textContent='';render(S);socket.timeout(8000).emit(event,{roomId,step:S.step,cardIds:[...selected]},(err,res)=>{pending=false;if(err||!res?.success){$('slError').textContent=err?'เชื่อมต่อไม่สำเร็จ กำลังขอสถานะใหม่':res?.error||'ทำรายการไม่สำเร็จ';socket.emit('slave_requestState',{roomId});}render(S);});}
-  $('slPlay').onclick=()=>command(S.phase==='exchange'?'slave_exchange':'slave_play');$('slPass').onclick=()=>command('slave_pass');$('slNext').onclick=()=>command('slave_nextRound');
-  $('slClear').onclick=()=>{selected.clear();render(S);};
-  $('slHint').onclick=()=>{selected=new Set(S.self?.exchangeCount?S.self.hand.slice(0,S.self.exchangeCount).map(c=>c.id):(S.legalMoves?.[0]||[]));render(S);};
-  function bind(){socket.emit('initPlayer',playerId);socket.emit('setRoom',{roomId,playerId});socket.emit('slave_requestState',{roomId});}
-  socket.on('connect',()=>{$('slConnection').textContent='';pending=false;bind();});socket.on('disconnect',()=>{$('slConnection').textContent='กำลังเชื่อมต่อกลับ…';});socket.on('slaveState',render);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&socket.connected)bind();});
-  ['redirectToLobby','restartGame'].forEach(event=>socket.on(event,()=>location.href='/room/'+roomId));
-  socket.on('kickedFromRoom',()=>location.href='/rooms');
-  function tick(){$('slClock').textContent=S.phaseEndsAt?'เหลือ '+Math.max(0,Math.ceil((S.phaseEndsAt-Date.now())/1000))+' วินาที':'';}
-  setInterval(tick,500);render(S);
+  window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>});
 });
 </script>

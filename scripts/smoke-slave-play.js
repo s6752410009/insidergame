@@ -32,13 +32,77 @@ async function run(){
  ok(S.seats.length===4,'four seats');ok(S.self.hand.length===13,'13 cards');
  ok(!(await ack(host,'slave_play',{roomId:'wrong',step:S.step,cardIds:[0]})).success,'room mismatch');
  ok(!(await ack(host,'slave_play',{roomId,step:-1,cardIds:[0]})).success,'stale rejected');
- for(const width of [390,1280]){
-  const c=await browser.newContext({viewport:{width,height:900}}),p=await c.newPage();p.on('pageerror',e=>errors.push(e.message));
-  await p.goto(base+'/game/'+roomId+'?playerId='+id);await p.waitForSelector('#slHand .sl-card');await sleep(300);
+ for(const width of [320,390,1280]){
+  const uiId=randomUUID(),uiHost=await client(uiId);
+  const uiRoom=(await ack(uiHost,'createRoom',{playerId:uiId,name:'โต๊ะเสียง '+width,gameMode:'slave',maxPlayers:4})).roomId;
+  uiHost.emit('setRoom',{roomId:uiRoom,playerId:uiId});await sleep(100);
+  ok((await ack(uiHost,'slave_addBots',{roomId:uiRoom,count:3})).added===3,'UI table bots');
+  ok((await ack(uiHost,'startGameFromLobby',{roomId:uiRoom})).success,'UI table start');
+  const c=await browser.newContext({viewport:{width,height:900},reducedMotion:width===320?'reduce':'no-preference'}),p=await c.newPage();p.on('pageerror',e=>errors.push(e.message));
+  // Measure actual PCM delivered to the speakers. A changed button label is not an audio test.
+  await p.addInitScript(()=>{
+   const connect=AudioNode.prototype.connect;
+   window.audioOutput={peak:0,contexts:[],events:[]};
+   AudioNode.prototype.connect=function(destination,...args){
+    if(destination instanceof AudioDestinationNode){
+     const analyser=this.context.createAnalyser();analyser.fftSize=2048;
+     connect.call(this,analyser);connect.call(analyser,destination);
+     window.audioOutput.contexts.push(this.context);
+     const data=new Float32Array(analyser.fftSize);
+     setInterval(()=>{analyser.getFloatTimeDomainData(data);let peak=0;for(const v of data)peak=Math.max(peak,Math.abs(v));window.audioOutput.peak=Math.max(window.audioOutput.peak,peak);},10);
+     return destination;
+    }
+    return connect.call(this,destination,...args);
+   };
+   document.addEventListener('DOMContentLoaded',()=>{
+    const cue=SlaveAudio.prototype.cue;
+    SlaveAudio.prototype.cue=function(name){if(this.ready)window.audioOutput.events.push(name);return cue.call(this,name);};
+   });
+  });
+  await p.goto(base+'/game/'+uiRoom+'?playerId='+uiId);await p.waitForSelector('#slHand .sl-card');await sleep(300);
   ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow '+width);
-  await p.locator('#slSound').click();ok((await p.locator('#slSound').innerText()).includes('ปิด'),'sound off');
-  await p.reload();await p.waitForSelector('#slHand .sl-card');ok((await p.locator('#slSound').innerText()).includes('ปิด'),'mute persists after reload');
-  await p.screenshot({path:path.join(shots,'board-'+width+'.png'),fullPage:true});await c.close();
+  ok(await p.locator('.sl-seat').count()===4,'four seats around table');
+  ok(await p.locator('.sl-backs').count()===3,'three concealed opponent hands');
+  await p.locator('#slSound').click();await sleep(800);
+  ok(await p.locator('#slSound').getAttribute('aria-pressed')==='true','first sound click enables audio');
+  ok(await p.evaluate(()=>audioOutput.peak>.015),'nonzero speaker PCM after first gesture '+width);
+  ok(await p.evaluate(()=>audioOutput.contexts.some(c=>c.state==='running')),'audio context running');
+  await sleep(700);await p.evaluate(()=>{audioOutput.peak=0;});await sleep(550);
+  ok(await p.evaluate(()=>audioOutput.peak>.003),'background music produces sustained PCM');
+  await p.locator('#slMusic').click();await sleep(900);
+  await p.evaluate(()=>{audioOutput.peak=0;});await sleep(350);
+  ok(await p.evaluate(()=>audioOutput.peak<.001),'music switch really silences background audio');
+  // Human turn must remain playable and keep keyboard focus when selecting cards.
+  await wait(async()=>{
+   if(await p.locator('#slHint').isEnabled())return true;
+   if(await p.locator('#slPass').isEnabled())await p.locator('#slPass').click();
+   return false;
+  },'human legal turn');
+  const turnCues=await p.evaluate(()=>audioOutput.events.filter(e=>e==='turn').length);
+  ok(turnCues>0,'turn received before gesture is audible after unlock');
+  await p.locator('#slHint').click();await sleep(150);
+  ok(await p.locator('#slPlay').isEnabled(),'hint selects a legal move');
+  ok(await p.evaluate(()=>document.activeElement.id==='slHint'),'focus survives selection');
+  ok(await p.evaluate(()=>audioOutput.peak>.005),'card selection produces audio');
+  ok(await p.evaluate(()=>audioOutput.events.filter(e=>e==='turn').length)===turnCues,'selection does not replay turn cue');
+  await p.evaluate(()=>{audioOutput.peak=0;});
+  const before=await p.locator('#slHand .sl-card').count();
+  await p.locator('#slPlay').click();await wait(async()=>await p.locator('#slHand .sl-card').count()<before,'played cards leave hand');
+  await sleep(500);ok(await p.evaluate(()=>audioOutput.peak>.005),'played cards produce audio');
+  ok(await p.evaluate(()=>audioOutput.events.includes('play')),'server play event has a cue');
+  await p.locator('#slSound').click();await sleep(800);await p.evaluate(()=>{audioOutput.peak=0;});await sleep(200);
+  ok(await p.locator('#slSound').getAttribute('aria-pressed')==='false','sound off');
+  ok(await p.evaluate(()=>audioOutput.peak<.001),'master mute really silences audio');
+  await p.evaluate(()=>{audioOutput.peak=0;});await p.locator('#slSound').click();await sleep(500);
+  ok(await p.evaluate(()=>audioOutput.peak>.01),'unmute has an audible preview');
+  await p.evaluate(()=>Promise.all(audioOutput.contexts.map(c=>c.suspend())));await sleep(100);
+  await p.evaluate(()=>{audioOutput.peak=0;});await p.locator('#slSound').click();await sleep(500);
+  ok(await p.evaluate(()=>audioOutput.peak>.01),'interrupted context resumes with audible preview');
+  await p.locator('#slSound').click();
+  await p.reload();await p.waitForSelector('#slHand .sl-card');await sleep(800);
+  ok(await p.locator('#slSound').innerText()==='เสียง ปิด','mute persists after reload');
+  ok(await p.locator('#slMusic').getAttribute('aria-pressed')==='false','music preference persists');
+  await p.screenshot({path:path.join(shots,'board-'+width+'.png'),fullPage:true});await c.close();uiHost.disconnect();
  }
  host.emit('setRoom',{roomId,playerId:id});host.emit('slave_requestState',{roomId});await sleep(150);
  const end=Date.now()+120000;let rounds=0;
@@ -56,6 +120,6 @@ async function run(){
  }
  ok(rounds===2,'human and three bots finish two rounds');
  ok(errors.length===0,'browser errors: '+errors.join(';'));
- console.log('Slave integration: '+checks+' checks passed · lobby, bots, 2 full rounds, exchange, authorization, responsive UI, reconnect/reload · screenshots '+shots);
+ console.log('Slave integration: '+checks+' checks passed · lobby, bots, 2 full rounds, exchange, authorization, 320/390/1280px UI, actual WebAudio PCM, music/master mute, selection/play cues, focus, reduced motion, reconnect/reload · screenshots '+shots);
 }
 run().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{host?.disconnect();other?.disconnect();await browser?.close();server?.kill('SIGTERM');});
