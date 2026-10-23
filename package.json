@@ -11,8 +11,7 @@
     "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.18.2",
     "mongoose": "^9.0.2",
-    "socket.io": "^4.8.1",
-    "uuid": "^8.3.2"
+    "socket.io": "^4.8.1"
   },
   "scripts": {
     "play:multi": "node scripts/play-multi.js",
