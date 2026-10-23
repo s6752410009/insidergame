@@ -31,7 +31,7 @@ module.exports = getDeps => {
         roomManager.schedulePersistRooms();
         io.to(room.roomId).emit('roomUpdate',buildRoomUpdatePayload(room));
     }
-    function recover(room){if(room.gameState.status==='playing'){engine.autoResolvePhase(room);schedule(room);}}
+    function recover(room){if(room.gameState.status==='playing'){if(engine.autoResolvePhase(room))emitRoomState(room);else schedule(room);}}
     return {engine,botAddInFlight,clearTimers,emitState,emitRoomState,recover,scheduleBots:schedule,
         startGame:room=>{clearTimers(room.roomId);engine.startGame(room);},
         buildPayload:engine.buildClientState,

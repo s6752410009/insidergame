@@ -7226,7 +7226,7 @@ io.sockets.on('connection', function(socket) {
             wavelengthRuntime.clearTimers(roomId);
             drawguessRuntime.clearTimers(roomId);
             colorcardsRuntime.clearTimers(roomId);
-    slaveRuntime.clearTimers(roomId);
+            slaveRuntime.clearTimers(roomId);
             setthiRuntime.clearTimers(roomId);
             clearInsiderVoteTimer(roomId);
             clearInsiderReturnTimer(roomId);
