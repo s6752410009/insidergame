@@ -60,6 +60,7 @@
     font-size: 0.88rem; font-weight: 600; cursor: pointer; white-space: nowrap;
   }
   .uc-chip:hover { background: var(--uc-surface-2); color: var(--uc-ink); }
+  .uc-chip.is-sound-off { color: var(--uc-muted); }
   .uc-chip.is-danger { color: oklch(0.8 0.1 25); }
   .uc-chip.is-exit { border-color: oklch(0.62 0.16 25 / 0.7); color: oklch(0.86 0.08 25); }
   .uc-tie { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: color-mix(in oklch, var(--uc-accent) 22%, var(--uc-sunken)); color: var(--uc-ink); font-weight: 700; font-size: 0.92rem; }
@@ -320,7 +321,8 @@
       <h1 class="uc-room"><%= room.name %></h1>
     </div>
     <div class="uc-tools">
-      <button type="button" id="ucExitBtn" class="uc-chip is-exit" aria-label="ออกจากห้อง">🚪 ออก</button>
+      <button type="button" id="ucExitBtn" class="uc-chip is-exit" aria-label="ออกจากห้อง">🚪<span class="t">ออก</span></button>
+      <button type="button" id="ucSoundBtn" class="uc-chip" aria-pressed="true" aria-label="ปิดเสียงเกม">🔊<span class="t">เสียง</span></button>
       <button type="button" id="ucHowTo" class="uc-chip" aria-label="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
       <button type="button" id="ucSidebarBtn" class="uc-chip" aria-expanded="false" aria-controls="playerSidebar" aria-label="ผู้เล่น">👥<span class="t">ผู้เล่น</span></button>
       <% if (room.admin) { %>
@@ -415,9 +417,59 @@ $(function() {
   let pickedVote = null;
   let pickedVoteStep = null; // เลือกค้างไว้จากโหวตรอบก่อน/ก่อนเสมอ ห้ามติดมาเป็นค่าเริ่มต้น
   let busy = false;
+  let audioUnlocked = false;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const BACK = '/assets/games/undercover/back.svg';
   const FRONT = '/assets/games/undercover/card-front.svg';
+  const ambience = new Audio('/sound/bgm.mp3');
+  ambience.loop = true;
+  ambience.preload = 'auto';
+  ambience.volume = 0.1;
+  let soundOn = window.partyPlay && typeof window.partyPlay.isSoundEnabled === 'function'
+    ? window.partyPlay.isSoundEnabled()
+    : true;
+
+  function audioPhaseIsLive() {
+    return ['reveal', 'clue', 'vote', 'elimination', 'mrwhite'].indexOf(state.phase) >= 0;
+  }
+  function updateSoundButton() {
+    const button = document.getElementById('ucSoundBtn');
+    if (!button) return;
+    button.classList.toggle('is-sound-off', !soundOn);
+    button.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+    button.setAttribute('aria-label', soundOn ? 'ปิดเสียงเกม' : 'เปิดเสียงเกม');
+    button.innerHTML = (soundOn ? '🔊' : '🔇') + '<span class="t">เสียง</span>';
+  }
+  function syncAmbience() {
+    if (!soundOn || !audioPhaseIsLive() || document.hidden) {
+      ambience.pause();
+      return;
+    }
+    ambience.play().catch(function() {});
+  }
+  function unlockGameAudio() {
+    if (!soundOn) return;
+    const wasUnlocked = audioUnlocked;
+    const unlock = window.partyPlay && typeof window.partyPlay.unlockAudio === 'function'
+      ? window.partyPlay.unlockAudio()
+      : Promise.resolve(true);
+    syncAmbience();
+    Promise.resolve(unlock).then(function(ok) {
+      audioUnlocked = ok !== false;
+      if (!wasUnlocked && audioUnlocked) pingNeed(true);
+    }).catch(function() {});
+  }
+  function playCue(src, volume) {
+    if (!soundOn || !audioUnlocked) return;
+    const cue = new Audio(src);
+    cue.volume = volume || 0.35;
+    cue.play().catch(function() {});
+  }
+
+  document.addEventListener('pointerdown', unlockGameAudio, true);
+  document.addEventListener('keydown', unlockGameAudio, true);
+  document.addEventListener('visibilitychange', syncAmbience);
+  updateSoundButton();
 
   function esc(text) {
     return String(text == null ? '' : text).replace(/[&<>"']/g, c =>
@@ -588,7 +640,8 @@ $(function() {
       if (self.isSpeaker) {
         html += '<div class="uc-field"><label for="ucClueInput">' + (remote ? 'พิมพ์คำใบ้ให้ทุกคนเห็น' : 'พิมพ์คำใบ้ (ไม่บังคับ · พูดปากเปล่าได้เลย)') + '</label>' +
           '<input id="ucClueInput" class="uc-input" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="เช่น ดื่มตอนเช้า"></div>' +
-          '<div class="uc-actions"><button type="button" id="ucClueDoneBtn" class="ui-btn ui-btn--primary ui-btn--lg">พูดเสร็จ</button></div>';
+          '<div class="uc-actions"><button type="button" id="ucClueDoneBtn" class="ui-btn ui-btn--primary ui-btn--lg"' + (remote ? ' disabled' : '') + '>' + (remote ? 'ส่งคำใบ้' : 'ฉันพูดคำใบ้แล้ว') + '</button></div>' +
+          '<p class="uc-hint">' + (remote ? 'ต้องพิมพ์คำใบ้ก่อน ระบบจึงจะไปคิวถัดไปและเปิดโหวตเมื่อครบทุกคน' : 'พูดคำใบ้ให้คนในวงได้ยินก่อน แล้วค่อยกดปุ่มนี้') + '</p>';
       } else if (self.isHost) {
         html += '<div class="uc-actions"><button type="button" id="ucSkipBtn" class="ui-btn ui-btn--ghost">ข้ามตา ' + esc(sp.name || '') + '</button></div>';
       }
@@ -801,23 +854,33 @@ $(function() {
     if (!events.length) return;
     seenFxSeq = events[events.length - 1].seq;
     const last = events[events.length - 1];
-    if (last.kind === 'round') flashBanner('รอบที่ ' + last.round + ' · เริ่มใบ้');
-    else if (last.kind === 'vote') flashBanner(last.isRevote ? 'เสมอ! โหวตใหม่' : 'ถึงเวลาโหวต');
-    else if (last.kind === 'tiebreak') flashBanner('เสมอ! ใบ้เพิ่มคนละคำ');
+    if (last.kind === 'round') { flashBanner('รอบที่ ' + last.round + ' · เริ่มใบ้'); playCue('/sound/go.mp3', 0.2); }
+    else if (last.kind === 'vote') { flashBanner(last.isRevote ? 'เสมอ! โหวตใหม่' : 'ถึงเวลาโหวต'); playCue('/sound/popup.mp3', 0.18); }
+    else if (last.kind === 'tiebreak') { flashBanner('เสมอ! ใบ้เพิ่มคนละคำ'); playCue('/sound/popup.mp3', 0.22); }
     else if (last.kind === 'mrwhite') flashBanner(last.correct ? 'Mr. White ทายถูก!' : 'Mr. White ทายผิด');
-    else if (last.kind === 'finish') flashBanner('จบเกม!');
+    else if (last.kind === 'finish') { flashBanner('จบเกม!'); playCue('/sound/tada.mp3', 0.3); }
     if (window.haptics && typeof window.haptics.tap === 'function' && last.kind !== 'deal') { try { window.haptics.tap(); } catch (e) {} }
   }
-  function pingNeed() {
+  function pingNeed(force) {
     if (!window.partyPlay || !state.self) return;
     const self = state.self;
+    let opts = null;
     if (state.phase === 'clue' && self.isSpeaker) {
-      window.partyPlay.pingTurn({ key: 'uc-clue-' + state.step, title: 'ตาคุณพูด', subtitle: 'ใบ้ 1 คำ แล้วกดพูดเสร็จ' });
+      opts = { key: 'uc-clue-' + state.step, title: 'ตาคุณพูด', subtitle: 'ใบ้ 1 คำ แล้วกดยืนยัน' };
     } else if (state.phase === 'vote' && self.canVote && !self.hasVoted) {
-      window.partyPlay.pingTurn({ key: 'uc-vote-' + state.step, title: 'ถึงเวลาโหวต', subtitle: 'เลือกคนที่คำไม่เหมือน' });
+      opts = { key: 'uc-vote-' + state.step, title: 'ถึงเวลาโหวต', subtitle: 'เลือกคนที่คำไม่เหมือน' };
     } else if (state.phase === 'mrwhite' && self.canGuess) {
-      window.partyPlay.pingTurn({ key: 'uc-guess-' + state.step, title: 'ทายคำ!', subtitle: 'ทายถูกชนะทันที' });
+      opts = { key: 'uc-guess-' + state.step, title: 'ทายคำ!', subtitle: 'ทายถูกชนะทันที' };
     }
+    if (!opts) return;
+    const storageKey = 'uc-last-turn-ping-' + roomId;
+    let previous = '';
+    try { previous = sessionStorage.getItem(storageKey) || ''; } catch (error) {}
+    if (!force && previous === opts.key) return;
+    try { sessionStorage.setItem(storageKey, opts.key); } catch (error) {}
+    if (force && typeof window.partyPlay.resetPing === 'function') window.partyPlay.resetPing();
+    playCue('/sound/ding.mp3', 0.34);
+    window.partyPlay.pingTurn(opts);
   }
 
   function render(next) {
@@ -835,6 +898,7 @@ $(function() {
     tickTimer();
     playFx();
     pingNeed();
+    syncAmbience();
   }
 
   // ---------- commands ----------
@@ -852,8 +916,25 @@ $(function() {
     setTimeout(function() { busy = false; }, 4000);
   }
 
+  $(document).on('click', '#ucSoundBtn', function() {
+    soundOn = !soundOn;
+    if (window.partyPlay && typeof window.partyPlay.setSoundEnabled === 'function') window.partyPlay.setSoundEnabled(soundOn);
+    else { try { localStorage.setItem('ig-sound-enabled', soundOn ? 'on' : 'off'); } catch (error) {} }
+    updateSoundButton();
+    if (soundOn) unlockGameAudio(); else ambience.pause();
+  });
   $(document).on('click', '#ucReadyBtn', function() { this.disabled = true; send('undercover_ready'); });
-  $(document).on('click', '#ucClueDoneBtn', function() { this.disabled = true; send('undercover_clueDone', { text: ($('#ucClueInput').val() || '').trim() }, function(res) { if (res && !res.success) $('#ucClueDoneBtn').prop('disabled', false); }); });
+  $(document).on('input', '#ucClueInput', function() {
+    if (state.tableMode === 'remote') $('#ucClueDoneBtn').prop('disabled', !this.value.trim());
+  });
+  $(document).on('click', '#ucClueDoneBtn', function() {
+    const text = ($('#ucClueInput').val() || '').trim();
+    if (state.tableMode === 'remote' && !text) return;
+    this.disabled = true;
+    send('undercover_clueDone', { text: text }, function(res) {
+      if (res && !res.success) $('#ucClueDoneBtn').prop('disabled', state.tableMode === 'remote' && !($('#ucClueInput').val() || '').trim());
+    });
+  });
   $(document).on('keydown', '#ucClueInput', function(e) { if (e.key === 'Enter') { e.preventDefault(); $('#ucClueDoneBtn').trigger('click'); } });
   $(document).on('click', '#ucSkipBtn', function() {
     const sp = playerById(state.speakerId);

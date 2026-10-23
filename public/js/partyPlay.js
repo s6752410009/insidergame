@@ -73,6 +73,10 @@
     var pingHideTimer = null;
     var firstPlayTimer = null;
     var ready = false;
+    var soundEnabled = true;
+    var audioUnlockBound = false;
+
+    try { soundEnabled = localStorage.getItem('ig-sound-enabled') !== 'off'; } catch (error) {}
 
     function injectCss() {
         if (document.getElementById('partyPlayStyle')) return;
@@ -120,25 +124,77 @@
         return node;
     }
 
-    function beep() {
+    function audioContext() {
         try {
             var Ctx = global.AudioContext || global.webkitAudioContext;
-            if (!Ctx) return;
-            if (!beep.ctx) beep.ctx = new Ctx();
-            var ctx = beep.ctx;
-            if (ctx.state === 'suspended') ctx.resume();
+            if (!Ctx || !soundEnabled) return null;
+            if (!audioContext.ctx) audioContext.ctx = new Ctx();
+            return audioContext.ctx;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function unlockAudio() {
+        var ctx = audioContext();
+        if (!ctx) return Promise.resolve(false);
+        if (ctx.state === 'running') return Promise.resolve(true);
+        try {
+            var result = ctx.resume();
+            return result && typeof result.then === 'function'
+                ? result.then(function() { return ctx.state === 'running'; }).catch(function() { return false; })
+                : Promise.resolve(ctx.state === 'running');
+        } catch (error) {
+            return Promise.resolve(false);
+        }
+    }
+
+    function bindAudioUnlock() {
+        if (audioUnlockBound) return;
+        audioUnlockBound = true;
+        var unlock = function() {
+            unlockAudio();
+            document.removeEventListener('pointerdown', unlock, true);
+            document.removeEventListener('keydown', unlock, true);
+        };
+        document.addEventListener('pointerdown', unlock, true);
+        document.addEventListener('keydown', unlock, true);
+    }
+
+    function setSoundEnabled(on) {
+        soundEnabled = on !== false;
+        try { localStorage.setItem('ig-sound-enabled', soundEnabled ? 'on' : 'off'); } catch (error) {}
+        if (soundEnabled) {
+            bindAudioUnlock();
+            unlockAudio();
+        }
+        return soundEnabled;
+    }
+
+    function beep() {
+        if (!soundEnabled) return;
+        unlockAudio().then(function(ok) {
+            if (!ok) return;
+            var ctx = audioContext();
+            if (!ctx) return;
             var osc = ctx.createOscillator();
+            var upper = ctx.createOscillator();
             var gain = ctx.createGain();
             osc.type = 'triangle';
-            osc.frequency.value = 880;
+            upper.type = 'sine';
+            osc.frequency.value = 740;
+            upper.frequency.value = 1110;
             gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+            gain.gain.exponentialRampToValueAtTime(0.11, ctx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.34);
             osc.connect(gain);
+            upper.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
-            osc.stop(ctx.currentTime + 0.24);
-        } catch (error) {}
+            upper.start(ctx.currentTime + 0.07);
+            osc.stop(ctx.currentTime + 0.36);
+            upper.stop(ctx.currentTime + 0.36);
+        }).catch(function() {});
     }
 
     var pingCompact = false;
@@ -333,6 +389,7 @@
     function startSession(mode, socket) {
         injectCss();
         ready = true;
+        bindAudioUnlock();
         if (socket) attach(socket);
         showFirstPlay(mode);
     }
@@ -341,6 +398,9 @@
         pingTurn: pingTurn,
         setCompactPing: setCompactPing,
         resetPing: resetPing,
+        unlockAudio: unlockAudio,
+        setSoundEnabled: setSoundEnabled,
+        isSoundEnabled: function() { return soundEnabled; },
         shareResult: shareResult,
         startSession: startSession,
         attach: attach,

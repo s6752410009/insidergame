@@ -550,6 +550,9 @@ function submitClueDone(room, playerId, context = {}) {
     if (currentSpeakerId(state) !== playerId) throw new Error('ยังไม่ถึงตาคุณพูด');
 
     const text = cleanText(context.text, CLUE_MAX_LENGTH);
+    if ((room.settings?.tableMode || 'inPerson') === 'remote' && !text) {
+        throw new Error('โหมดเล่นออนไลน์ต้องพิมพ์คำใบ้ก่อน จึงจะไปโหวตได้');
+    }
     if (text && player.word && clueRevealsWord(text, player.word)) {
         throw new Error('ห้ามพิมพ์คำของตัวเองตรง ๆ — ใบ้อ้อม ๆ');
     }

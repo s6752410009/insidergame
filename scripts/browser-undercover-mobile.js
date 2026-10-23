@@ -180,6 +180,7 @@ async function layoutProblems(page) {
             await delay(450);
             for (const v of viewers) {
                 assert(await v.page.isVisible('#ucExitBtn'), `${label}/${v.tag}: ปุ่ม 🚪 ออก ต้องเห็นทุกเฟส`);
+                assert(await v.page.isVisible('#ucSoundBtn'), `${label}/${v.tag}: ปุ่มเปิดปิดเสียงต้องเห็นทุกเฟส`);
                 const problems = await layoutProblems(v.page);
                 assert(problems.length === 0, `${label}/${v.tag}: layout ${problems.join(' | ')}`);
                 assert(v.errors.length === 0, `${label}/${v.tag}: ${v.errors.join(' | ')}`);
@@ -211,6 +212,13 @@ async function layoutProblems(page) {
 
         // ---------- reveal
         await snap('01-reveal-closed');
+        const soundPage = viewers[0].page;
+        await soundPage.click('#ucSoundBtn');
+        assert(await soundPage.getAttribute('#ucSoundBtn', 'aria-pressed') === 'false', 'ปิดเสียงแล้วสถานะปุ่มต้องเปลี่ยน');
+        assert(await soundPage.evaluate(() => localStorage.getItem('ig-sound-enabled')) === 'off', 'ปิดเสียงต้องจำค่าบนอุปกรณ์');
+        await soundPage.click('#ucSoundBtn');
+        assert(await soundPage.getAttribute('#ucSoundBtn', 'aria-pressed') === 'true', 'เปิดเสียงแล้วสถานะปุ่มต้องเปลี่ยน');
+        assert(await soundPage.evaluate(() => localStorage.getItem('ig-sound-enabled')) === 'on', 'เปิดเสียงต้องจำค่าบนอุปกรณ์');
         for (const v of viewers) await v.page.click('#ucWordCard');
         await delay(700);
         for (const v of viewers) {

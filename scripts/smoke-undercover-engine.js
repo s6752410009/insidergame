@@ -42,7 +42,8 @@ function makeRoom(playerCount, options = {}) {
             gameMode: 'undercover',
             undercoverMrWhite: !!options.mrWhite,
             undercoverCount: options.undercoverCount,
-            undercoverTieRule: options.tieRule
+            undercoverTieRule: options.tieRule,
+            tableMode: options.tableMode === 'remote' ? 'remote' : 'inPerson'
         },
         gameState: engine.createInitialState()
     };
@@ -138,6 +139,35 @@ throwsWith(() => started(11), /3–10/, 'เกิน 10 คนต้องเ�
     throwsWith(() => started(5, { offline: [2, 3, 4] }), /3–10/, 'ออนไลน์ไม่ถึง 3 ต้องเริ่มไม่ได้');
 }
 console.log('✓ จำนวนบท / แจกเฉพาะคนออนไลน์ / คำพลเมือง-สายแฝง');
+
+// ---------------------------------------------------------------- clue-before-vote use cases
+{
+    const room = started(4, { tableMode: 'remote' });
+    readyAll(room);
+    const first = speaker(room);
+    throwsWith(
+        () => engine.submitClueDone(room, first, { ...S(room), text: '   ' }),
+        /ต้องพิมพ์คำใบ้ก่อน/,
+        'ออนไลน์: ห้ามข้ามเข้าช่วงโหวตโดยไม่ส่งคำใบ้'
+    );
+    assert(room.gameState.phase === 'clue' && speaker(room) === first, 'ออนไลน์: คำใบ้ว่างต้องไม่เดินคิว');
+    let guard = 0;
+    while (room.gameState.phase === 'clue' && guard++ < 10) {
+        engine.submitClueDone(room, speaker(room), { ...S(room), text: `ใบ้รอบ ${guard}` });
+    }
+    assert(room.gameState.phase === 'vote', 'ออนไลน์: ทุกคนส่งคำใบ้ครบแล้วจึงเปิดโหวต');
+}
+{
+    const room = started(4, { tableMode: 'inPerson' });
+    readyAll(room);
+    const order = [...room.gameState.speakerOrder];
+    const first = speaker(room);
+    engine.submitClueDone(room, first, S(room));
+    assert(room.gameState.phase === 'clue' && speaker(room) === order[1], 'เล่นวงเดียวกัน: กดรับรองว่าพูดแล้วต้องไปคนถัดไป');
+    speakAll(room);
+    assert(room.gameState.phase === 'vote', 'เล่นวงเดียวกัน: ต้องรับรองว่าพูดครบทุกคนก่อนเปิดโหวต');
+    console.log('✓ use case พูด/พิมพ์คำใบ้ครบก่อนโหวต แยกออนไลน์กับเล่นวงเดียวกัน');
+}
 
 // ---------------------------------------------------------------- secrets
 function assertNoLeak(room, label) {
