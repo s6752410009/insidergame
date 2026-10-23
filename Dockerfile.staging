@@ -11,4 +11,4 @@ USER node
 VOLUME ["/data"]
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=3 CMD wget -qO- http://127.0.0.1:3000/ping >/dev/null 2>&1 || exit 1
-CMD ["node", "scripts/staging-server.js"]
+CMD ["node", "staging-server.js"]

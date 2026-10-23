@@ -8,7 +8,7 @@ Feature branch: `staging-slave`. Production remains on `main`.
 - Coolify resource: `insidergame-staging-slave` (`sggzxe4plp6pc5rcsqmtwci4`).
 - URL: https://sggzxe4plp6pc5rcsqmtwci4.212.85.24.89.sslip.io/rooms
 - Build file: `/Dockerfile.staging`, port 3000, one container.
-- Entrypoint: `scripts/staging-server.js`. It clears MongoDB settings, disables Google/admin login, and uses isolated JSON files under `/data`. Never copy production database credentials into this app.
+- Entrypoint: `staging-server.js`. It clears MongoDB settings, disables Google/admin login, and uses isolated JSON files under `/data`. Never copy production database credentials into this app.
 - The Coolify project currently groups this staging resource under the existing `production` environment. It is a separate application/container/domain, not the live `insidergame` resource (`om54lzgq0obvujd39rkenkmd`). Always verify the application UUID before deploying.
 - Staging data is disposable. Session signing keys regenerate on restart unless `STAGING_SESSION_SECRET` is configured. Use a dedicated persistent volume and stable staging secret if long-lived test accounts are needed.
 - Search indexing is blocked with the domain setting and `X-Robots-Tag`.
