@@ -53,4 +53,8 @@ Engine tests simulate 300 tables and 900 rounds with card conservation, legal cu
 
 Staging does not yet write Slave win/loss records to the global leaderboard. Add scoring and optional house-rule switches after playtesting this ruleset.
 
+## Illustrated game skin (2026-10-24)
+
+`public/css/slave-game.css` adds the warm wood/emerald cloth theme, character frames, countdown rings, raised action controls and medal-style results over the existing responsive layout. The local portrait atlas and exact generation prompt are documented in [slave-art.md](slave-art.md). Keep the art local; never depend on a Codex generated-images path at runtime. Cached seat rendering prevents selection clicks from restarting portrait animations or replacing countdown elements. The UX fixtures also verify image decoding, preserved custom avatars and reduced motion, alongside the existing 13 viewport and gameplay checks.
+
 Rule references: https://thaiplayingcard.com/how-to-play-8/ and https://dronkapp.com/th/slave-card-game/ . House rules differ between sources; the table guide documents the exact implemented behavior.

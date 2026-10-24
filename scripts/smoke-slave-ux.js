@@ -85,7 +85,7 @@ async function fixture(page, payload, id = 'p0') {
     if (pathname === '/socket.io/socket.io.js') return route.fulfill({ contentType: 'text/javascript', body: mockSocket });
     if (pathname.startsWith('/static/')) {
       const file = path.join(root, 'public', pathname.slice(8));
-      return route.fulfill({ contentType: file.endsWith('.css') ? 'text/css' : 'text/javascript', body: fs.readFileSync(file) });
+      return route.fulfill({ contentType: file.endsWith('.jpg') ? 'image/jpeg' : file.endsWith('.css') ? 'text/css' : 'text/javascript', body: fs.readFileSync(file) });
     }
     return route.fulfill({ contentType: 'text/css', body: '' });
   });
@@ -130,6 +130,10 @@ async function browserChecks() {
     const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
     const p = await context.newPage(); p.on('pageerror', e => errors.push(e.message));
     await fixture(p, opening);
+    const atlas = await p.evaluate(async () => { const image = new Image(); image.src = '/static/img/slave/portraits-v1.jpg'; await image.decode(); return { width: image.naturalWidth, height: image.naturalHeight }; });
+    ok(atlas.width >= 512 && atlas.width === atlas.height, 'local character atlas decodes correctly');
+    ok(await p.locator('.sl-portrait').count() === 4, 'all four default characters use portrait art');
+    await p.evaluate(() => { window.seatBeforeSelection = document.querySelector('.seat-self .sl-avatar'); });
     const label = width + 'x' + height;
     await geometry(p, label + ' opening');
     ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'opening rule beside hand ' + label);
@@ -139,6 +143,8 @@ async function browserChecks() {
     ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'invalid opening has concrete reason');
     ok(!(await p.locator('#slPlay').isEnabled()), 'invalid opening cannot be submitted');
     await p.locator('#slClear').click(); await p.locator('[data-card="0"]').click();
+    ok(await p.evaluate(() => window.seatBeforeSelection === document.querySelector('.seat-self .sl-avatar')), 'selection preserves portrait and countdown DOM');
+    ok(await p.locator('.seat-self .sl-avatar').evaluate(el => getComputedStyle(el).animationName) === 'none', 'reduced motion disables portrait animation');
     ok(await p.locator('#slPlay').isEnabled(), 'first valid move enabled');
     ok((await p.locator('#slPlay').innerText()).includes('3♣'), 'submit names selected card');
     await geometry(p, label + ' selected');
@@ -169,6 +175,17 @@ async function browserChecks() {
     ok(await p.locator('#slPlay').isEnabled(), 'complete exchange selection enabled');
     await geometry(p, label + ' exchange');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'exchange-' + label + '.png'), fullPage: false });
+    await context.close();
+  }
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const p = await context.newPage(), custom = clone(opening);
+    custom.seats[0].avatar = '😎';
+    await fixture(p, custom);
+    ok((await p.locator('.seat-self .sl-avatar').innerText()).includes('😎'), 'custom player emoji is preserved');
+    custom.step++; custom.seats[0].avatar = 'https://example.test/avatar.jpg';
+    await deliver(p, custom);
+    ok(await p.locator('.seat-self .sl-avatar img').getAttribute('src') === custom.seats[0].avatar, 'custom player image is preserved');
     await context.close();
   }
   for (let i = 1; i < 4; i++) {

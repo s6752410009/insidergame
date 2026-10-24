@@ -5,7 +5,7 @@
     const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
     const socket = global.io(), guide = global.SlaveGuide;
-    let state = initial, selected = new Set(), pending = false, last = null, handKey = '', pileKey = '', warned = '';
+    let state = initial, selected = new Set(), pending = false, last = null, handKey = '', pileKey = '', seatKey = '', warned = '';
     const audio = new global.SlaveAudio(soundLabel);
     function soundLabel() {
       $('slSound').textContent = !audio.enabled ? 'เสียง ปิด' : audio.ready ? '♪ เสียง เปิด' : 'เปิดเสียงเกม';
@@ -35,17 +35,22 @@
     function avatar(value) {
       const text = String(value || '♠');
       if (/^(https:\/\/|\/[^/])/.test(text)) return '<img src="' + esc(text) + '" alt="" referrerpolicy="no-referrer">';
+      const portrait = { '👤': 'player', '👻': 'ghost', '🦊': 'fox', '🐼': 'panda' }[text];
+      if (portrait) return '<span class="sl-portrait portrait-' + portrait + '"></span>';
       return esc(text);
     }
     function seats() {
+      const nextKey = JSON.stringify([state.phase, state.turnId, state.self?.exchangeCount, state.seats]);
+      if (nextKey === seatKey) return;
+      seatKey = nextKey;
       const selfIndex = state.seats.findIndex(p => p.playerId === playerId);
       const ordered = [...state.seats.slice(selfIndex), ...state.seats.slice(0, selfIndex)];
       const positions = ['self', 'left', 'top', 'right'];
       $('slSeats').innerHTML = ordered.map((p, i) => {
-        const self = p.playerId === playerId, turn = p.playerId === state.turnId && state.phase === 'turn';
-        const label = p.place ? titles[p.place - 1] : p.passed ? 'ผ่านแล้ว' : turn ? (self ? 'ตาคุณ' : 'กำลังคิด…') : !p.online && !p.isBot ? 'รอเชื่อมต่อ' : p.title || (p.isBot ? 'บอท' : 'พร้อมเล่น');
+        const self = p.playerId === playerId, turn = (p.playerId === state.turnId && state.phase === 'turn') || (self && Boolean(state.self?.exchangeCount));
+        const label = p.place ? titles[p.place - 1] : p.passed ? 'ผ่านแล้ว' : turn ? (state.phase === 'exchange' ? 'เลือกไพ่คืน' : self ? 'ตาคุณ' : 'กำลังเล่น…') : !p.online && !p.isBot ? 'รอเชื่อมต่อ' : p.title || (p.isBot ? 'บอท' : 'พร้อมเล่น');
         const backs = !self && !p.place ? '<div class="sl-backs" aria-hidden="true">' + Array.from({ length: Math.min(p.count, 8) }, (_, j) => '<i class="sl-back" style="--r:' + (j - Math.min(p.count, 8) / 2) * 3 + 'deg"></i>').join('') + '</div>' : '';
-        return '<div class="sl-seat seat-' + positions[i] + (turn ? ' turn' : '') + (p.passed ? ' passed' : '') + '"' + (turn ? ' aria-current="true"' : '') + '><div class="sl-avatar" aria-hidden="true">' + avatar(p.avatar) + '</div><div class="sl-seat-info"><div class="sl-name">' + esc(self ? 'คุณ · ' + p.name : p.name) + '</div><span class="sl-seat-label">' + esc(label) + '</span>' + (self ? '' : '<span class="sl-count"><strong>' + p.count + '</strong> ใบ</span>') + '</div>' + backs + '</div>';
+        return '<div class="sl-seat seat-' + positions[i] + (turn ? ' turn' : '') + (p.passed ? ' passed' : '') + '"' + (turn ? ' aria-current="true"' : '') + '><div class="sl-avatar" aria-hidden="true"><svg class="sl-avatar-timer" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="25" pathLength="100"/></svg>' + avatar(p.avatar) + '</div><div class="sl-seat-info"><div class="sl-name">' + esc(self ? 'คุณ · ' + p.name : p.name) + '</div><span class="sl-seat-label">' + esc(label) + '</span>' + (self ? '' : '<span class="sl-count"><strong>' + p.count + '</strong> ใบ</span>') + '</div>' + backs + '</div>';
       }).join('');
     }
     function animate(el, name) {
@@ -74,6 +79,10 @@
       const newPileKey = state.top ? state.top.playerId + ':' + state.top.cards.map(c => c.id).join(',') : '';
       if (newPileKey !== pileKey || !$('slPile').children.length) {
         $('slPile').innerHTML = state.top ? state.top.cards.map((c, i) => card(c, false, i, state.top.cards.length)).join('') : '<div class="sl-empty-pile" aria-hidden="true">♠</div>';
+        const actor = state.seats.findIndex(p => p.playerId === state.top?.playerId), me = state.seats.findIndex(p => p.playerId === playerId);
+        const from = (actor - me + 4) % 4;
+        $('slPile').style.setProperty('--play-x', from === 1 ? '-80px' : from === 3 ? '80px' : '0px');
+        $('slPile').style.setProperty('--play-y', from === 0 ? '60px' : from === 2 ? '-60px' : '0px');
         if (state.top && previous) animate($('slPile'), 'just-played');
         pileKey = newPileKey;
       }
@@ -178,6 +187,8 @@
       $('slTurnTrack').hidden = !active || !timed;
       $('slTurnTrack').classList.toggle('urgent', Boolean(urgent));
       $('slTurnTrack').style.setProperty('--remaining', Math.min(1, remaining / (state.phase === 'exchange' ? 60 : 30)));
+      $('slSeats').style.setProperty('--turn-remaining', Math.min(1, remaining / (state.phase === 'exchange' ? 60 : 30)));
+      $('slSeats').classList.toggle('urgent', Boolean(urgent));
       const warningKey = state.round + ':' + state.step + ':' + remaining;
       if (active && urgent && remaining > 0 && warningKey !== warned) { warned = warningKey; audio.cue('warning'); }
     }
