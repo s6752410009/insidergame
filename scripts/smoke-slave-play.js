@@ -63,6 +63,16 @@ async function run(){
   ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow '+width);
   ok(await p.locator('.sl-seat').count()===4,'four seats around table');
   ok(await p.locator('.sl-backs').count()===3,'three concealed opponent hands');
+  if(width===390){
+   await p.evaluate(()=>Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,5000))]));
+   for(const viewport of [{width:375,height:667},{width:667,height:375},{width:568,height:320},{width:821,height:700}]){
+    await p.setViewportSize(viewport);
+    const clipped=await p.evaluate(()=>['#slStatus','#slHand .sl-card','#slPlay','#slPass','#slHint','#slClear'].flatMap(selector=>[...document.querySelectorAll(selector)]).filter(el=>el.getClientRects().length).map(el=>({label:el.id||el.dataset.card,rect:el.getBoundingClientRect().toJSON()})).filter(({rect:r})=>r.left< -1||r.right>innerWidth+1||r.top< -1||r.bottom>innerHeight+1));
+    ok(!clipped.length,'real-server turn fits '+viewport.width+'x'+viewport.height+': '+JSON.stringify(clipped));
+    await p.screenshot({path:path.join(shots,'real-'+viewport.width+'x'+viewport.height+'.png'),fullPage:false});
+   }
+   await p.setViewportSize({width,height:900});
+  }
   await p.locator('#slSound').click();await sleep(800);
   ok(await p.locator('#slSound').getAttribute('aria-pressed')==='true','first sound click enables audio');
   ok(await p.evaluate(()=>audioOutput.peak>.015),'nonzero speaker PCM after first gesture '+width);

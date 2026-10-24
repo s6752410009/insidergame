@@ -29,6 +29,7 @@ Turns time out after 30 seconds; exchanges after 60 seconds. Timeouts choose a l
 ```sh
 npm run smoke:slave
 npm run smoke:slave:play
+npm run smoke:slave:ux
 ```
 
 Engine tests simulate 300 tables and 900 rounds with card conservation, legal cuts, passing, rankings, tax exchange, serialized state, stale commands, privacy, timeout and departure cases. Integration tests boot an isolated local server and Chromium, test a human with three real runtime bots for two rounds, reject outsiders and excess seats, and inspect 320/390/1280px layouts, reduced motion, legal card selection, focus preservation, sound persistence and reload/reconnect. Undercover regression smoke tests also pass.
@@ -41,6 +42,14 @@ Engine tests simulate 300 tables and 900 rounds with card conservation, legal cu
 - `slaveSound` is the master sound preference and `slaveMusic` separately controls music; both persist in localStorage with storage-denial fallback. The main sound button displays an unlock action until the context is running, then toggles mute. Enabling sound plays a preview. Do not replace this with a one-shot gesture listener: that caused silent first turns.
 - Audio integration checks attach an analyser to the real browser destination and measure nonzero PCM for unlock, sustained music, selection, play, unmute and interrupted-context recovery. They also verify actual silence for music/master mute and suppress duplicate turn cues on selection. The old substring check was invalid: Thai `เปิด` contains `ปิด`, so compare exact labels or `aria-pressed`.
 - Chromium PCM confirms signal generation/routing, not a physical speaker's volume or iOS Safari audio-session behavior. Include one real iPhone/Android speaker playtest before promoting to production.
+
+## Guided play and compact screens (2026-10-24)
+
+- `public/js/slaveGuide.js` explains only the legal move arrays supplied by the server. It marks cards that can complete the current selection, names valid submissions (for example `ลงคู่ 5`), distinguishes incomplete sets from illegal selections, and explains the 3♣ opening, mixed ranks, cuts and no-move/pass state. The first opening highlights 3♣ before optional additional 3s. Do not implement a second rules engine or treat guidance as authorization.
+- `buildClientState` adds public `openingRequired` and `exchangeProgress: {done,total}`. Progress contains counts only; it must never expose another player's selected returns or hand. Own `exchangeCount` remains authoritative for whether a return selection is required.
+- `.sl-screen` contains one turn inside the available dynamic viewport. Rules/history remain below it. Short portrait phones compact the table and use two readable rows of 13 cards; landscape phones place the table beside the hand. The grid hand extends through 820px to avoid the former 701–800px overflow. Preserve at least 44px touch targets and keep the hand, current instruction, timer and play/pass controls visible together.
+- Results lead with the current player's rank and the next round's receive/return amounts. Exchange help explains original-hand selection to King/Queen and automatic tribute to Vice-Slave/Slave. Submitted players see a waiting message and progress; controls that cannot apply are hidden. This does not add a ready-state protocol: the host starts the next round when friends are ready.
+- `smoke:slave:ux` renders the actual EJS/CSS/client with deterministic engine-generated fixtures. It verifies guide agreement through a full engine round, opening/pair/triple-cut/no-move selection, same-step round endings, all four rank consequences, exchange submission/privacy, and no-scroll turn geometry with 44px targets across 13 portrait/landscape viewports. The socket is a fixture; keep `smoke:slave:play` for real server/bot/audio coverage and real-font short-screen checks.
 
 Staging does not yet write Slave win/loss records to the global leaderboard. Add scoring and optional house-rule switches after playtesting this ruleset.
 

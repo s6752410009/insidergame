@@ -171,7 +171,8 @@
     "solitaire:seeds": "node scripts/gen-solitaire-seeds.js",
     "smoke:poker:audit": "node scripts/smoke-poker-engine.js && ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-poker-play.js",
     "smoke:slave": "node scripts/smoke-slave.js",
-    "smoke:slave:play": "node scripts/smoke-slave-play.js"
+    "smoke:slave:play": "node scripts/smoke-slave-play.js",
+    "smoke:slave:ux": "node scripts/smoke-slave-ux.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

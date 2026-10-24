@@ -1,28 +1,32 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
-<link href="/static/css/slave.css?v=2" rel="stylesheet">
+<link href="/static/css/slave.css?v=3" rel="stylesheet">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
+  <div class="sl-screen">
   <div class="sl-top">
     <div class="sl-brand"><span class="sl-brand-mark" aria-hidden="true">♠</span><div><h1>SLAVE <span>สลาฟ · <span id="slRound"></span></span></h1><div class="sl-meta">โต๊ะ <%= room.roomId %> · STAGING</div></div></div>
     <div class="sl-tools"><button id="slSound" aria-pressed="false">เปิดเสียงเกม</button><button id="slMusic" aria-pressed="true">♫ เพลง เปิด</button><a class="sl-link" href="/room/<%= room.roomId %>">ห้องรอ ↗</a></div>
   </div>
   <div id="slConnection" class="sl-alert" role="status"></div>
   <p id="slAudioHint" class="sl-audio-hint">แตะหน้าจอเพื่อเริ่มเสียงเกมและเพลง</p>
+  <div id="slPlayArea" class="sl-play-area">
   <div class="sl-arena">
     <div class="sl-felt" aria-hidden="true"><div class="sl-table-print">SLAVE<small>♣ &nbsp; ♦ &nbsp; ♥ &nbsp; ♠</small></div></div>
     <section id="slSeats" class="sl-seats" aria-label="ผู้เล่นทั้งโต๊ะ"></section>
     <section class="sl-table" aria-label="กองกลาง"><div id="slPileText" class="sl-pile-label"></div><div id="slPile" class="sl-pile"></div><div id="slClock" class="sl-clock" role="timer"></div></section>
-    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div class="sl-result-crown" aria-hidden="true">♛</div><h2 id="slResultTitle">จบรอบแล้ว!</h2><div id="slRanks" class="sl-ranks"></div></section>
+    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div class="sl-result-crown" aria-hidden="true">♛</div><h2 id="slResultTitle">จบรอบแล้ว!</h2><p id="slResultNext" class="sl-result-next"></p><div id="slRanks" class="sl-ranks"></div></section>
   </div>
   <section id="slPlayerZone" class="sl-player-zone" aria-label="พื้นที่เล่นของคุณ">
-    <div class="sl-status-row"><div id="slStatus" class="sl-status" role="status" aria-live="polite"></div><div id="slHandMeta" class="sl-hand-meta"></div></div>
+    <div class="sl-status-row"><div id="slStatus" class="sl-status" role="status" aria-live="polite"></div><div class="sl-hand-meta"><span id="slHandMeta"></span><span id="slHandClock" role="timer"></span></div></div>
     <div id="slTurnTrack" class="sl-turn-track" aria-hidden="true"><span></span></div>
     <div id="slError" class="sl-alert" role="alert"></div>
+    <p id="slActionHelp" class="sl-action-help" role="status" aria-live="polite"></p>
     <div id="slHand" class="sl-hand" role="group" aria-label="ไพ่ในมือคุณ"></div>
-    <div class="sl-actions"><button id="slHint">✧ แนะนำไพ่</button><button id="slClear">ยกเลิกเลือก</button><button id="slPlay" class="primary">ลงไพ่</button><button id="slPass">ผ่าน</button><button id="slNext" class="primary" hidden>แจกไพ่รอบถัดไป ↻</button></div>
-    <p id="slActionHelp" class="sl-action-help"></p>
+    <div id="slActions" class="sl-actions"><button id="slHint">✧ เลือกชุดที่ลงได้</button><button id="slClear">ยกเลิกเลือก</button><button id="slPlay" class="primary" aria-describedby="slActionHelp">ลงไพ่</button><button id="slPass">ผ่าน</button><button id="slNext" class="primary" hidden>รอบถัดไป · แลกไพ่ ↻</button></div>
   </section>
+  </div>
+  </div>
   <div class="sl-under-table">
     <details><summary>กติกาโต๊ะนี้ ⌄</summary><div class="sl-help">4 คน คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด · ดอก ♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว / คู่ / ตอง / โฟร์หน้าเดียวกัน ต้องใหญ่กว่ากองเดิม · ตองตัดเดี่ยว · โฟร์ตัดคู่<br>ผ่านแล้วพักจนกองใหม่ ทุกคนผ่าน คนลงล่าสุดเปิดใหม่ ถ้าคนนั้นหมดมือ คนถัดไปที่ยังเล่นอยู่เริ่ม<br>รอบแรกเปิดด้วยชุดที่มี 3♣ · รอบต่อไปสลาฟเริ่ม<br>คิงเลือกคืน 2 ใบจากมือเดิมแลกกับไพ่สูงสุดของสลาฟ · ควีนเลือกคืน 1 ใบแลกกับรองสลาฟ<br>ไม่ใช้ไพ่เรียง / คิงตกชั้น / ปฏิวัติ · หมดเวลา 30 วิ ระบบลงหรือผ่านให้ · แลกไพ่ภายใน 60 วิ</div></details>
     <details><summary>บันทึกการลงไพ่ ⌄</summary><ol id="slHistory" class="sl-history"></ol></details>
@@ -31,7 +35,8 @@
 </main>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/static/js/slaveAudio.js?v=2"></script>
-<script src="/static/js/slaveBoard.js?v=2"></script>
+<script src="/static/js/slaveGuide.js?v=3"></script>
+<script src="/static/js/slaveBoard.js?v=3"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>});

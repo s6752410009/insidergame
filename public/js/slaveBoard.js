@@ -4,7 +4,7 @@
     const $ = id => document.getElementById(id);
     const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
-    const socket = global.io();
+    const socket = global.io(), guide = global.SlaveGuide;
     let state = initial, selected = new Set(), pending = false, last = null, handKey = '', pileKey = '', warned = '';
     const audio = new global.SlaveAudio(soundLabel);
     function soundLabel() {
@@ -77,7 +77,7 @@
         if (state.top && previous) animate($('slPile'), 'just-played');
         pileKey = newPileKey;
       }
-      $('slPileText').textContent = state.phase === 'exchange' ? 'แลกไพ่ก่อนเริ่มรอบ' : state.top ? (state.seats.find(p => p.playerId === state.top.playerId)?.name || '') + ' ลง ' + state.top.cards.length + ' ใบ' : 'กองใหม่ · ใครจะเปิดก่อน?';
+      $('slPileText').textContent = state.phase === 'exchange' ? 'เลือกคืนแล้ว ' + (state.exchangeProgress?.done || 0) + '/2 คน · แลกพร้อมกัน' : state.top ? (state.seats.find(p => p.playerId === state.top.playerId)?.name || '') + ' ลง' + guide.setName(state.top.cards) : state.openingRequired ? 'ผู้ถือ 3♣ เปิดกองก่อน' : 'กองใหม่ · ลงชุดไหนก็ได้';
       const hand = state.self?.hand || [], newHandKey = state.round + ':' + hand.map(c => c.id).join(',');
       if (newHandKey !== handKey) {
         $('slHand').classList.remove('dealing');
@@ -86,17 +86,25 @@
         handKey = newHandKey;
       }
       const exchange = state.self?.exchangeCount || 0, actionable = Boolean(state.canPlay || exchange);
+      const advice = guide.analyze(state, selected), candidates = new Set(advice.candidates);
       $('slHand').querySelectorAll('[data-card]').forEach(b => {
-        const on = selected.has(Number(b.dataset.card));
+        const id = Number(b.dataset.card), on = selected.has(id), playable = actionable && candidates.has(id);
         b.classList.toggle('selected', on); b.setAttribute('aria-pressed', String(on));
+        b.classList.toggle('playable', Boolean(playable));
+        b.classList.toggle('unavailable', actionable && !playable && !on);
+        b.classList.toggle('invalid-selection', on && advice.invalid);
+        b.dataset.playable = String(Boolean(playable));
+        b.setAttribute('aria-label', hand.find(c => c.id === id).label + (actionable ? playable ? ' · ใช้ในชุดที่ลงได้' : ' · ยังลงชุดนี้ไม่ได้' : ''));
         b.setAttribute('aria-disabled', String(!actionable || pending));
       });
       const turn = state.seats.find(p => p.playerId === state.turnId);
+      const self = state.seats.find(p => p.playerId === playerId);
+      const ownResult = state.standings?.find(p => p.playerId === playerId);
       $('slPlayerZone').classList.toggle('is-your-turn', actionable);
-      $('slStatus').textContent = state.phase === 'finished' ? 'โต๊ะหยุดแล้ว · มีคนออกจากห้อง' : state.phase === 'round-end' ? (state.isHost ? 'พร้อมแล้ว แจกไพ่รอบต่อไปเลย' : 'รอหัวห้องแจกไพ่รอบถัดไป') : state.phase === 'exchange' ? (exchange ? 'เลือกไพ่คืน ' + exchange + ' ใบ' : 'รอคิงและควีนแลกไพ่') : state.canPlay ? '✦ ถึงตาคุณแล้ว!' : 'รอ ' + (turn?.name || 'ผู้เล่น') + ' ลงไพ่';
+      $('slStatus').textContent = state.phase === 'finished' ? 'โต๊ะหยุดแล้ว · มีคนออกจากห้อง' : state.phase === 'round-end' ? (state.isHost ? 'เริ่มรอบถัดไปได้เมื่อเพื่อนพร้อม' : 'รอหัวห้องเริ่มรอบถัดไป') : state.phase === 'exchange' ? (exchange ? self.title + ' · เลือกคืน ' + exchange + ' ใบ' : self?.title === 'คิง' || self?.title === 'ควีน' ? 'เลือกคืนแล้ว · รอแลกไพ่' : self?.title + ' · ระบบแลกไพ่ให้') : state.canPlay ? '✦ ถึงตาคุณแล้ว!' : self?.passed ? 'คุณผ่านแล้ว · รอกองใหม่' : self?.place ? 'หมดมือแล้ว · อันดับ ' + self.place : 'รอ ' + (turn?.name || 'ผู้เล่น') + ' ลงไพ่';
       $('slHandMeta').textContent = hand.length + ' ใบในมือ' + (selected.size ? ' · เลือก ' + selected.size : '');
-      $('slPlay').textContent = pending ? 'กำลังส่ง…' : exchange ? 'คืนไพ่ ' + exchange + ' ใบ' : selected.size ? 'ลง ' + selected.size + ' ใบ →' : 'เลือกไพ่เพื่อลง';
-      const legal = exchange ? selected.size === exchange : state.legalMoves?.some(move => move.length === selected.size && move.every(id => selected.has(id)));
+      $('slPlay').textContent = pending ? 'กำลังส่ง…' : advice.label;
+      const legal = advice.legal;
       $('slPlay').disabled = pending || !socket.connected || !actionable || !selected.size || !legal;
       $('slPass').disabled = pending || !socket.connected || !state.canPass;
       $('slHint').disabled = pending || !actionable || (!exchange && !state.legalMoves?.length);
@@ -104,11 +112,22 @@
       $('slNext').hidden = !(state.phase === 'round-end' && state.isHost);
       $('slNext').disabled = pending || !socket.connected;
       const ended = ['round-end', 'finished'].includes(state.phase);
+      $('slActions').hidden = (state.phase === 'exchange' && !exchange) || (ended && !(state.phase === 'round-end' && state.isHost));
+      if (ended) $('slHandMeta').textContent = ownResult ? 'อันดับ ' + ownResult.place : '';
       ['slPlay', 'slPass', 'slHint', 'slClear'].forEach(id => { $(id).hidden = ended; });
-      $('slActionHelp').textContent = ended ? 'กลับห้องรอได้จากมุมขวาบน' : exchange ? 'เลือกจากไพ่ในมือเดิม · แลกพร้อมกันทั้งโต๊ะ' : state.canPlay ? (!state.legalMoves?.length ? 'ไม่มีไพ่ที่ลงได้ · กดผ่านเพื่อรอกองใหม่' : selected.size && !legal ? 'ชุดนี้ยังลงไม่ได้ · ลองกดแนะนำไพ่' : state.top ? 'ลงชุดที่ใหญ่กว่า หรือกดผ่าน' : 'ลงเดี่ยว คู่ ตอง หรือโฟร์หน้าเดียวกัน') : 'เรียงไพ่ให้แล้ว · 3 ต่ำสุด ไปจนถึง 2 สูงสุด';
+      const mustPass = Boolean(state.canPlay && state.canPass && !state.legalMoves?.length);
+      if (mustPass) $('slPlay').hidden = true;
+      $('slPass').classList.toggle('primary', mustPass);
+      $('slPass').textContent = mustPass ? 'ผ่าน · รอกองใหม่' : 'ผ่าน';
+      $('slHint').textContent = exchange ? '✧ เลือกไพ่ต่ำคืน' : '✧ เลือกชุดที่ลงได้';
+      $('slHand').hidden = ended;
+      $('slPlayArea').classList.toggle('is-round-end', ended);
+      $('slActionHelp').classList.toggle('invalid', actionable && advice.invalid);
+      $('slActionHelp').textContent = ended ? state.phase === 'finished' ? 'กลับห้องรอเพื่อจัดผู้เล่นใหม่ได้จากมุมขวาบน' : state.isHost ? 'เริ่มรอบใหม่แล้วจะแลกไพ่ตามอันดับ · กติกาเดิมทั้งโต๊ะ' : 'รอบใหม่เริ่มเมื่อหัวห้องกด · ไพ่ใหม่คนละ 13 ใบ' : state.phase === 'exchange' ? guide.exchange(state, playerId) + (exchange && selected.size ? ' · เลือกแล้ว ' + selected.size + '/' + exchange : '') : state.canPlay ? advice.message : self?.place ? 'ดูเพื่อนเล่นต่อได้ · พอจบรอบจะแสดงไพ่ที่คุณต้องแลก' : self?.passed ? 'ผ่านแล้วพักกองนี้ · ทุกคนผ่านเมื่อไร คุณกลับมาเล่นกองใหม่ได้' : guide.requirement(state);
       $('slResults').hidden = state.phase !== 'round-end';
-      $('slResultTitle').textContent = state.standings?.[0]?.playerId === playerId ? 'คุณได้เป็นคิง!' : 'คิงรอบนี้ คือ ' + (state.standings?.[0]?.name || '…');
-      $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank"><span class="sl-rank-place">' + p.place + '</span><div><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div><small>' + esc(p.title) + '</small></div></div>').join('');
+      $('slResultTitle').textContent = ownResult ? 'อันดับ ' + ownResult.place + ' · คุณเป็น' + ownResult.title : 'จบรอบแล้ว';
+      $('slResultNext').textContent = guide.benefit(ownResult?.place);
+      $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank' + (p.playerId === playerId ? ' is-self' : '') + '"><span class="sl-rank-place">' + p.place + '</span><div><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div><small>' + esc(p.title) + '</small></div></div>').join('');
       $('slHistory').innerHTML = (state.history || []).slice(-8).reverse().map(t => '<li>' + esc(t) + '</li>').join('');
       tick();
     }
@@ -149,7 +168,9 @@
     function tick() {
       const remaining = state.phaseEndsAt ? Math.max(0, Math.ceil((state.phaseEndsAt - Date.now()) / 1000)) : 0;
       const timed = ['turn', 'exchange'].includes(state.phase) && state.phaseEndsAt;
-      $('slClock').textContent = timed ? remaining + ' วินาที' : '';
+      const shown = Math.min(remaining, state.phase === 'exchange' ? 60 : 30);
+      $('slClock').textContent = timed ? shown + ' วินาที' : '';
+      $('slHandClock').textContent = timed ? ' · ' + shown + ' วิ' : '';
       $('slClock').hidden = !timed;
       const active = state.canPlay || state.self?.exchangeCount;
       const urgent = timed && remaining <= 5;
