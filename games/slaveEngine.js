@@ -186,7 +186,7 @@ function handlePlayerLeft(room,id) {
 function buildClientState(room,id) {
     const s=state(room),p=seat(room,id),ex=s.exchanges?.find(e=>e.to===id);
     return {mode:MODE,roomId:room.roomId,status:s.status,phase:s.phase,round:s.round,step:s.step,turnId:s.turnId,phaseEndsAt:s.phaseEndsAt,
-        isHost:room.admin===id,openingRequired:!!s.firstPlay,
+        debugUsed:!!s.debugUsed,isHost:room.admin===id,openingRequired:!!s.firstPlay,
         exchangeProgress:s.phase==='exchange'?{done:s.exchangeDone.length,total:2}:null,
         top:s.top?{playerId:s.top.playerId,cards:s.top.cards.map(describeCard)}:null,
         seats:s.seats.map(p=>({playerId:p.playerId,name:p.name,avatar:p.avatar,count:p.hand.length,isBot:isBotId(p.playerId),title:p.title||null,place:s.finishOrder?.indexOf(p.playerId)+1||null,passed:s.passed?.includes(p.playerId),online:!!room.players.find(e=>e.playerId===p.playerId)?.socketId})),

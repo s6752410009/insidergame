@@ -1,6 +1,6 @@
 (function (global) {
   'use strict';
-  global.mountSlaveBoard = function ({ playerId, roomId, initial }) {
+  global.mountSlaveBoard = function ({ playerId, roomId, initial, canDebug = false }) {
     const $ = id => document.getElementById(id);
     const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
@@ -40,6 +40,8 @@
     };
     $('slMusic').onclick = () => { audio.setMusic(!audio.music); if (audio.enabled) audio.unlock(); };
     soundLabel();
+    let navigating = false;
+    const tools = global.mountSlaveTools({ socket, playerId, roomId, getState: () => state, canDebug, audio, onLeaving: () => { navigating = true; } });
     function card(c, button, index, count) {
       const tag = button ? 'button' : 'div';
       return '<' + tag + (button ? ' type="button" data-card="' + c.id + '" aria-label="' + esc(c.label) + '" aria-pressed="false"' : ' aria-label="' + esc(c.label) + '"') +
@@ -156,7 +158,7 @@
       $('slResultNext').textContent = guide.benefit(ownResult?.place);
       $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><small class="sl-rank-title">' + esc(p.title) + '</small><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div></div></div>').join('');
       $('slHistory').innerHTML = (state.history || []).slice(-8).reverse().map(t => '<li>' + esc(t) + '</li>').join('');
-      tick();
+      tick(); tools.onState();
     }
     $('slHand').onclick = e => {
       const b = e.target.closest('[data-card]');
@@ -185,12 +187,12 @@
       selected = new Set(state.self?.exchangeCount ? state.self.hand.slice(0, state.self.exchangeCount).map(c => c.id) : (state.legalMoves?.[0] || []));
       audio.cue('select'); render(state);
     };
-    function bind() { socket.emit('initPlayer', playerId); socket.emit('setRoom', { roomId, playerId }); socket.emit('slave_requestState', { roomId }); }
+    function bind() { if (navigating || tools.isLeaving()) return; socket.emit('initPlayer', playerId); socket.emit('setRoom', { roomId, playerId }); socket.emit('slave_requestState', { roomId }); tools.requestHistory(); }
     socket.on('connect', () => { $('slConnection').textContent = ''; pending = false; bind(); render(state); });
     socket.on('disconnect', () => { $('slConnection').textContent = 'กำลังเชื่อมต่อกลับ…'; pending = false; render(state); });
     socket.on('slaveState', render);
     document.addEventListener('visibilitychange', () => { if (!document.hidden && socket.connected) bind(); });
-    ['redirectToLobby', 'restartGame'].forEach(event => socket.on(event, () => { location.href = '/room/' + roomId; }));
+    ['redirectToLobby', 'restartGame'].forEach(event => socket.on(event, () => { navigating = true; location.href = '/room/' + roomId + '?playerId=' + encodeURIComponent(playerId); }));
     socket.on('kickedFromRoom', () => { location.href = '/rooms'; });
     function tick() {
       const remaining = state.phaseEndsAt ? Math.max(0, Math.ceil((state.phaseEndsAt - Date.now()) / 1000)) : 0;

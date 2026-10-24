@@ -74,7 +74,7 @@ function ruleChecks() {
 }
 function markup(payload, id) {
   const template = fs.readFileSync(path.join(root, 'views/slaveBoard.ejs'), 'utf8');
-  const body = ejs.render(template, { contentFor: () => '', room: initialRoom, playerInfo: { playerId: id }, slaveState: payload, safeJson: v => JSON.stringify(v).replace(/</g, '\\u003c') });
+  const body = ejs.render(template, { contentFor: () => '', slaveDebugAllowed: true, room: initialRoom, playerInfo: { playerId: id }, slaveState: payload, safeJson: v => JSON.stringify(v).replace(/</g, '\\u003c') });
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="content">' + body + '</body></html>';
 }
 const mockSocket = `window.__commands=[];window.__socket={connected:true,handlers:{},on(e,fn){this.handlers[e]=fn;return this},emit(e,data,cb){window.__commands.push({event:e,data});if(cb)cb(null,{success:true})},timeout(){return this}};window.io=()=>window.__socket;`;
@@ -153,6 +153,22 @@ async function browserChecks() {
     await p.evaluate(() => { window.seatBeforeSelection = document.querySelector('.seat-self .sl-avatar'); });
     const label = width + 'x' + height;
     await geometry(p, label + ' opening');
+    for (const id of ['slChat', 'slExit', 'slDebug']) {
+      const r = await p.locator('#' + id).boundingBox();
+      ok(r && r.x >= 0 && r.y >= 0 && r.x + r.width <= width + 1 && r.y + r.height <= height && r.height >= 44, label + ' reachable toolbar ' + id);
+    }
+    await p.locator('#slChat').click();
+    ok(await p.locator('#slChatDialog').isVisible(), label + ' chat opens');
+    await p.locator('#slChatInput').fill('/m'); await p.locator('#slChatInput').press('Enter');
+    ok(await p.locator('#slDebugDialog').isVisible(), label + ' slash command opens debug');
+    ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'sendMessage' && c.data.message === '/m'))), label + ' slash command is private');
+    await p.locator('[data-sl-close="slDebugDialog"]').click();
+    await p.locator('#slExit').click();
+    ok(await p.locator('#slExitDialog').isVisible(), label + ' exit confirmation opens');
+    ok((await p.locator('#slExitText').innerText()).includes('ทุกคน'), label + ' exit explains table consequence');
+    await p.locator('[data-sl-close="slExitDialog"]').click();
+    ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'endTableSession'))), label + ' cancel does not stop game');
+
     ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'opening rule beside hand ' + label);
     ok(await p.locator('[data-card="0"]').getAttribute('data-playable') === 'true', 'opening legal card marked');
     ok(await p.locator('[data-card="4"]').getAttribute('data-playable') === 'false', 'opening illegal card distinguished');

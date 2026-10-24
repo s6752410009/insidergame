@@ -120,6 +120,7 @@ const pokdengRuntime = require('./games/pokdengRuntime')(() => ({ io, roomManage
 const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
+const slaveDebug = require('./games/slaveDebug');
 const slaveRuntime = require('./games/slaveRuntime')(() => ({ io, roomManager, reportGameError, buildRoomUpdatePayload }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
@@ -6265,7 +6266,8 @@ app.get('/game/:roomId', async function(req, res) {
         return res.render('slaveBoard.ejs', {
             player: gameStatePlayer, playerInfo: playerInRoom,
             room: { roomId: room.roomId, name: room.name, admin: room.admin === req.playerId },
-            slaveState: slaveRuntime.buildPayload(room, playerId)
+            slaveState: slaveRuntime.buildPayload(room, playerId),
+            slaveDebugAllowed: process.env.APP_ENV === 'staging' && (room.admin === playerId || isSiteAdminPlayer(playerId))
         });
     }
 
@@ -10656,6 +10658,36 @@ io.sockets.on('connection', function(socket) {
             slaveRuntime.emitRoomState(room);
             done({ success: true });
         } catch (error) { done({ success:false, error:error.message }); }
+    });
+    // Returning a member to the lobby must stop the four-seat round before navigating.
+    // Keep their room membership so /room does not rejoin or redirect them into the active board.
+    safeOn(socket, 'slave_returnLobby', (data, callback) => {
+        const done = typeof callback === 'function' ? callback : () => {};
+        try {
+            const room = getSocketRoom(socket, 'slave');
+            if (!room || data?.roomId !== room.roomId) throw new Error('ไม่พบโต๊ะของคุณ');
+            if (room.gameStarting) throw new Error('กำลังเริ่มเกมใหม่');
+            if (roomManager.isRoomGameInProgress(room)) slaveRuntime.handleLeft(room, socket.playerId);
+            slaveRuntime.clearTimers(room.roomId);
+            slaveRuntime.emitRoomState(room);
+            done({ success: true });
+        } catch (error) { done({ success: false, error: error.message }); }
+    });
+    // Debug information is private to this authorized socket, never included in slaveState/roomUpdate.
+    safeOn(socket, 'slave_debug', (data, callback) => {
+        const done = typeof callback === 'function' ? callback : () => {};
+        try {
+            const room = getSocketRoom(socket, 'slave');
+            if (!room || data?.roomId !== room.roomId) throw new Error('ไม่พบโต๊ะของคุณ');
+            if (process.env.APP_ENV !== 'staging' || !(room.admin === socket.playerId || isSiteAdminPlayer(socket.playerId))) throw new Error('/m ใช้ได้เฉพาะหัวห้องหรือแอดมินบน staging');
+            if (room.gameStarting || !room.gameState?.seats?.length) throw new Error('รอให้แจกไพ่ก่อน');
+            slaveDebug.run(room, socket.playerId, data?.action, data?.step);
+            if (data?.action !== 'inspect') {
+                slaveRuntime.emitRoomState(room);
+                addServerLog(io, 'admin', room.roomId, 'Slave /m: ' + data.action, 'warning', { gameMode: 'slave', meta: { event: 'slave_debug', playerId: socket.playerId, action: data.action } });
+            }
+            done({ success: true, ...slaveDebug.snapshot(room) });
+        } catch (error) { done({ success: false, error: error.message }); }
     });
     safeOn(socket, 'slave_addBots', async (data, callback) => {
         const done = typeof callback === 'function' ? callback : () => {};
