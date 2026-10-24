@@ -1,17 +1,28 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link href="/static/css/slave.css?v=3" rel="stylesheet">
-<link href="/static/css/slave-game.css?v=6" rel="stylesheet">
+<link href="/static/css/slave-game.css?v=7" rel="stylesheet">
 <link rel="preload" as="image" href="/static/img/slave/portraits-v1.jpg">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
   <div class="sl-screen">
   <div class="sl-top">
     <div class="sl-brand"><span class="sl-brand-mark" aria-hidden="true">♛</span><div><h1>SLAVE <span>สลาฟ · <span id="slRound"></span></span></h1><div class="sl-meta">โต๊ะ #<%= room.roomId %> · STAGING <span id="slDebugUsed" hidden>· ทดสอบ /m</span></div></div></div>
-    <div class="sl-tools"><button id="slSound" aria-pressed="false">เปิดเสียงเกม</button><button id="slMusic" aria-pressed="true">♫ เพลง เปิด</button><button id="slChat" aria-haspopup="dialog" aria-label="เปิดแชทห้อง">แชท <span id="slChatUnread" hidden></span></button><button id="slDebug" aria-haspopup="dialog" hidden>/m</button><button id="slExit" aria-haspopup="dialog">ออกจากเกม</button></div>
+    <div class="sl-tools"><button id="slSound" aria-pressed="false">เปิดเสียงเกม</button><button id="slMusic" aria-pressed="true">♫ เพลง เปิด</button><button id="slChat" aria-haspopup="dialog" aria-label="เปิดแชทห้อง">แชท <span id="slChatUnread" hidden></span></button><button id="slDebug" aria-controls="slDebugDock" aria-expanded="false" aria-pressed="false" hidden>/m</button><button id="slExit" aria-haspopup="dialog">ออกจากเกม</button></div>
   </div>
   <div id="slConnection" class="sl-alert" role="status"></div>
   <p id="slAudioHint" class="sl-audio-hint">แตะหน้าจอเพื่อเริ่มเสียงเกมและเพลง</p>
+  <aside id="slDebugDock" class="sl-debug-dock" aria-label="เมนูทดสอบ /m" hidden>
+    <div id="slDebugActions" class="sl-debug-actions">
+      <label class="sl-peek"><input id="slPeekHands" type="checkbox"> เปิดหน้าไพ่</label>
+      <div class="sl-debug-scroll" aria-label="คำสั่งทดสอบ" tabindex="0">
+        <button data-sl-debug="auto">เดินตาให้</button><button data-sl-debug="finish">จบรอบอัตโนมัติ</button><button data-sl-debug="next">รอบถัดไป</button><button data-sl-debug="exchange">แลกไพ่ให้ครบ</button><button data-sl-debug="restart">แจกใหม่</button><button data-sl-debug="inspect">รีเฟรช</button>
+        <button data-sl-cue="turn">เสียงถึงตา</button><button data-sl-cue="play">เสียงลงไพ่</button><button data-sl-cue="win">เสียงชนะ</button><button data-sl-cue="warning">เสียงเตือน</button>
+      </div>
+    </div>
+    <span id="slDebugNote" class="sl-sr-only" role="status"></span><p id="slToolError" class="sl-tool-error" role="alert"></p>
+    <button id="slDebugFold" aria-label="ย่อเมนู /m" title="ย่อเมนู · ไพ่ยังเปิดอยู่">−</button>
+  </aside>
   <div id="slPlayArea" class="sl-play-area">
   <div class="sl-arena">
     <div class="sl-felt" aria-hidden="true"><div class="sl-table-print"><svg viewBox="0 0 100 60"><path d="M12 15 30 31 50 5 70 31 88 15 79 49H21Z" fill="currentColor"/><path d="M23 55H77" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="12" cy="13" r="5" fill="currentColor"/><circle cx="50" cy="6" r="5" fill="currentColor"/><circle cx="88" cy="13" r="5" fill="currentColor"/></svg><strong>SLAVE</strong><small>♣ &nbsp; ♦ &nbsp; ♥ &nbsp; ♠</small></div></div>
@@ -44,23 +55,13 @@
   <h2 id="slExitTitle">ออกจากเกมไปห้องรอ?</h2><p id="slExitText"></p><p id="slExitError" class="sl-tool-error" role="alert"></p>
   <div class="sl-dialog-actions"><button data-sl-close="slExitDialog" autofocus>เล่นต่อ</button><button id="slConfirmExit" class="primary">ออกไปห้องรอ</button></div>
 </dialog>
-<dialog id="slDebugDialog" class="sl-dialog sl-debug-dialog" aria-labelledby="slDebugTitle">
-  <div class="sl-dialog-head"><h2 id="slDebugTitle">/m เมนูทดสอบสลาฟ</h2><button data-sl-close="slDebugDialog" aria-label="ปิดเมนูทดสอบ">×</button></div>
-  <p class="sl-dialog-subtitle">เฉพาะ staging · คำสั่งเปลี่ยนสถานะมีผลกับโต๊ะนี้</p><p id="slToolError" class="sl-tool-error" role="alert"></p>
-  <div id="slDebugActions">
-    <label class="sl-peek"><input id="slPeekHands" type="checkbox"> ดูไพ่ทั้งโต๊ะ (เห็นเฉพาะคุณ)</label><div id="slDebugHands" class="sl-debug-hands"></div>
-    <div class="sl-debug-buttons"><button data-sl-debug="auto">เดินตาปัจจุบันให้</button><button data-sl-debug="finish">เล่นอัตโนมัติจนจบรอบ</button><button data-sl-debug="next">รอบถัดไป · แลกไพ่</button><button data-sl-debug="exchange">แลกไพ่อัตโนมัติให้ครบ</button><button data-sl-debug="inspect">รีเฟรชข้อมูล</button><button data-sl-debug="restart">แจกใหม่ · เริ่มรอบ 1</button></div>
-    <details><summary>ทดสอบเสียงเกม</summary><div class="sl-debug-buttons"><button data-sl-cue="turn">เสียงถึงตา</button><button data-sl-cue="play">เสียงลงไพ่</button><button data-sl-cue="win">เสียงชนะ</button><button data-sl-cue="warning">เสียงเตือน</button></div></details>
-    <p id="slDebugNote" role="status"></p>
-  </div>
-</dialog>
 <dialog id="slRestartDialog" class="sl-dialog sl-confirm" aria-labelledby="slRestartTitle"><h2 id="slRestartTitle">แจกใหม่ทั้งโต๊ะ?</h2><p>ยกเลิกรอบนี้แล้วเริ่มรอบแรกใหม่ ทุกคนรับไพ่ใหม่ 13 ใบ</p><div class="sl-dialog-actions"><button data-sl-close="slRestartDialog" autofocus>ยกเลิก</button><button id="slConfirmRestart" class="primary">แจกใหม่</button></div></dialog>
 </main>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/static/js/slaveAudio.js?v=2"></script>
 <script src="/static/js/slaveGuide.js?v=3"></script>
-<script src="/static/js/slaveTools.js?v=6"></script>
-<script src="/static/js/slaveBoard.js?v=6"></script>
+<script src="/static/js/slaveTools.js?v=7"></script>
+<script src="/static/js/slaveBoard.js?v=7"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>,canDebug:<%= typeof slaveDebugAllowed !== 'undefined' && slaveDebugAllowed ? 'true' : 'false' %>});

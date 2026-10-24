@@ -68,9 +68,37 @@ async function runEnvironment(env, port) {
     await wait(async () => await page.locator('#slChatUnread').isVisible(), 'unread notification');
     await page.locator('#slChat').click(); ok(await page.locator('#slChatUnread').isHidden(), 'opening chat clears unread');
     await page.locator('#slChatInput').fill('/m'); await page.locator('#slChatInput').press('Enter');
-    ok(await page.locator('#slDebugDialog').isVisible(), 'slash command opens debug menu');
+    ok(await page.locator('#slDebugDock').isVisible(), 'slash command opens debug menu');
     ok(!guest.messages.some(m => m.message === '/m'), 'slash command never enters room chat');
-    await page.locator('#slPeekHands').check(); await wait(async () => await page.locator('.sl-debug-card').count() === 52, 'private peek renders all cards');
+    await page.locator('#slPeekHands').check(); await wait(async () => await page.locator('.sl-revealed-card').count() === 39, 'private opponent faces render at their seats');
+    ok(await page.locator(':modal').count() === 0, 'debug leaves table interactive with no modal');
+    for (let n=0;n<80;n++) {
+      if (guest.state.turnId===host.id) {
+        await wait(async()=>await page.locator('#slHint').isEnabled()||await page.locator('#slPass').isEnabled(),'human UI catches up');
+        if (await page.locator('#slHint').isEnabled()) break;
+        const step=guest.state.step; await page.locator('#slPass').click(); await wait(()=>guest.state.step>step,'normal pass while debug open');
+      } else {
+        const step=guest.state.step;
+        ok((await ack(host.socket,'slave_debug',{roomId,action:'auto',step})).success,'advance to playable human turn');
+        await wait(()=>guest.state.step>step,'updated debug turn');
+      }
+    }
+    await page.locator('#slHint').click();
+    const ownCount=await page.locator('#slHand .sl-card').count();
+    await page.locator('#slPlay').click();
+    await wait(async()=>await page.locator('#slHand .sl-card').count()<ownCount,'normal human play while debug tools are open');
+    ok(await page.locator('#slDebugDock').isVisible(), 'normal play keeps nonmodal debug tools open');
+    await wait(async()=>await page.locator('.sl-revealed-card').count()>0,'fresh private faces after normal play');
+    const facesBeforeFold=await page.locator('.sl-revealed-card').count();
+    await page.locator('#slDebugFold').click();
+    ok(await page.locator('.sl-revealed-card').count()===facesBeforeFold, 'fold preserves visible opponent faces');
+    const autoStep=guest.state.step;
+    ok((await ack(host.socket,'slave_debug',{roomId,action:'auto',step:autoStep})).success,'other player advances while folded');
+    await wait(()=>guest.state.step>autoStep,'other player state');
+    await wait(async()=>await page.locator('.sl-revealed-card').count()===guest.state.seats.filter(p=>p.playerId!==host.id).reduce((n,p)=>n+p.count,0),'private revealed counts update while folded');
+    await context.setOffline(true); await wait(async()=>await page.locator('.sl-revealed-card').count()===0,'disconnect clears cached private faces');
+    await context.setOffline(false); await wait(async()=>await page.locator('.sl-revealed-card').count()>0,'reconnect refreshes revealed hands');
+    await page.locator('#slDebug').click();
     for (const action of ['auto', 'finish', 'next', 'exchange']) {
       const before = guest.state.step;
       await page.locator('[data-sl-debug="' + action + '"]').click();
@@ -83,7 +111,7 @@ async function runEnvironment(env, port) {
     await page.locator('[data-sl-close="slRestartDialog"]').click(); ok(guest.state.round === 2, 'cancel redeal preserves round');
     await page.locator('[data-sl-debug="restart"]').click(); await page.locator('#slConfirmRestart').click();
     await wait(() => guest.state.round === 1, 'confirmed redeal');
-    await page.locator('[data-sl-close="slDebugDialog"]').click();
+    await page.locator('#slDebugFold').click();
     await page.reload(); await page.locator('#slChat').click(); await wait(async () => (await page.locator('#slChatMessages').innerText()).includes(text), 'chat history after reload');
     await page.locator('[data-sl-close="slChatDialog"]').click();
     // A non-host returns to this lobby without losing membership or being redirected into the board.

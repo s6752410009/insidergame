@@ -77,12 +77,12 @@ function markup(payload, id) {
   const body = ejs.render(template, { contentFor: () => '', slaveDebugAllowed: true, room: initialRoom, playerInfo: { playerId: id }, slaveState: payload, safeJson: v => JSON.stringify(v).replace(/</g, '\\u003c') });
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="content">' + body + '</body></html>';
 }
-const mockSocket = `window.__commands=[];window.__socket={connected:true,handlers:{},on(e,fn){this.handlers[e]=fn;return this},emit(e,data,cb){window.__commands.push({event:e,data});if(cb)cb(null,{success:true})},timeout(){return this}};window.io=()=>window.__socket;`;
+const mockSocket = `window.__commands=[];window.__socket={connected:true,handlers:{},on(e,fn){this.handlers[e]=fn;return this},emit(e,data,cb){window.__commands.push({event:e,data});if(cb)cb(null,{success:true})},timeout(){return this}};window.io=()=>window.__socket;const emit=window.__socket.emit;window.__socket.emit=function(e,data,cb){if(e==='slave_debug'){window.__commands.push({event:e,data});const s=window.__debugState;cb(null,{success:true,step:s.step,phase:s.phase,hands:s.seats.map(p=>({playerId:p.playerId,name:p.name,cards:window.__fixtureHands.find(h=>h.playerId===p.playerId).cards.slice(0,p.count)}))});return;}return emit.call(this,e,data,cb)};`;
 async function fixture(page, payload, id = 'p0') {
   await page.route('**/*', route => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === '/') return route.fulfill({ contentType: 'text/html', body: markup(payload, id) });
-    if (pathname === '/socket.io/socket.io.js') return route.fulfill({ contentType: 'text/javascript', body: mockSocket });
+    if (pathname === '/socket.io/socket.io.js') return route.fulfill({ contentType: 'text/javascript', body: 'window.__debugState=' + JSON.stringify(payload) + ';window.__fixtureHands=' + JSON.stringify(initialRoom.gameState.seats.map(p => ({playerId:p.playerId,cards:p.hand.map(engine.describeCard)}))) + ';' + mockSocket });
     if (pathname.startsWith('/static/')) {
       const file = path.join(root, 'public', pathname.slice(8));
       return route.fulfill({ contentType: file.endsWith('.jpg') ? 'image/jpeg' : file.endsWith('.css') ? 'text/css' : 'text/javascript', body: fs.readFileSync(file) });
@@ -93,7 +93,7 @@ async function fixture(page, payload, id = 'p0') {
   await page.waitForSelector('#slHand .sl-card');
 }
 async function deliver(page, payload) {
-  await page.evaluate(s => window.__socket.handlers.slaveState(s), payload);
+  await page.evaluate(s => { window.__debugState = s; window.__socket.handlers.slaveState(s); }, payload);
 }
 async function geometry(page, label) {
   const result = await page.evaluate(() => {
@@ -115,7 +115,7 @@ async function geometry(page, label) {
     const visible = el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';
     const backs = [...document.querySelectorAll('.sl-backs')].filter(visible).map(el => {
       const count = Number(el.dataset.cardCount), r = el.getBoundingClientRect();
-      return { count, drawn: el.querySelectorAll('.sl-back').length, x: r.x, right: r.right, y: r.y, bottom: r.bottom, hidden: [...el.children].some(c => !visible(c)), privateFaces: el.querySelectorAll('[data-card],.sl-corner,.sl-pip').length };
+      return { count, drawn: el.querySelectorAll('.sl-back,.sl-revealed-card').length, x: r.x, right: r.right, y: r.y, bottom: r.bottom, hidden: [...el.children].some(c => !visible(c)), privateFaces: el.querySelectorAll('[data-card],.sl-corner,.sl-pip').length };
     });
     const ranks = [...document.querySelectorAll('#slRanks .sl-rank')].filter(visible).map(el => {
       const r = el.getBoundingClientRect(); return { x:r.x,right:r.right,y:r.y,bottom:r.bottom };
@@ -160,9 +160,22 @@ async function browserChecks() {
     await p.locator('#slChat').click();
     ok(await p.locator('#slChatDialog').isVisible(), label + ' chat opens');
     await p.locator('#slChatInput').fill('/m'); await p.locator('#slChatInput').press('Enter');
-    ok(await p.locator('#slDebugDialog').isVisible(), label + ' slash command opens debug');
+    ok(await p.locator('#slDebugDock').isVisible(), label + ' slash command opens inline debug');
+    ok(await p.locator(':modal').count() === 0, label + ' debug does not create a modal or backdrop');
+    await p.locator('#slPeekHands').check();
+    ok(await p.locator('#slSeats .sl-revealed-card').count() === 39, label + ' all opponent faces are at their table seats');
+    await geometry(p, label + ' debug peek');
+    const hiddenFaces = await p.locator('.sl-revealed-card').evaluateAll(els => els.filter(el => { const r=el.getBoundingClientRect(); return r.x<0||r.right>innerWidth+1||r.y<0||r.bottom>innerHeight+1; }).length);
+    ok(!hiddenFaces, label + ' every revealed card stays on screen');
+    await p.locator('[data-card="0"]').click(); ok(await p.locator('#slPlay').isEnabled(), label + ' can select and play with debug open');
+    await p.locator('#slClear').click();
+    if ([320,375,667,1280].includes(width)) await p.screenshot({path:path.join(shots,'live-debug-'+label+'.png')});
+    await p.locator('#slDebugFold').click();
+    ok(await p.locator('#slSeats .sl-revealed-card').count() === 39, label + ' folded tools preserve live revealed hands');
+    await p.locator('#slDebug').click(); await p.locator('#slPeekHands').uncheck();
+    ok(await p.locator('.sl-revealed-card').count() === 0 && await p.locator('.sl-back').count() === 39, label + ' turning peek off restores private backs');
     ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'sendMessage' && c.data.message === '/m'))), label + ' slash command is private');
-    await p.locator('[data-sl-close="slDebugDialog"]').click();
+    await p.locator('#slDebugFold').click();
     await p.locator('#slExit').click();
     ok(await p.locator('#slExitDialog').isVisible(), label + ' exit confirmation opens');
     ok((await p.locator('#slExitText').innerText()).includes('ทุกคน'), label + ' exit explains table consequence');
@@ -212,12 +225,14 @@ async function browserChecks() {
     await geometry(p, label + ' exchange');
     ok(await p.locator('#slSeats [data-role="unranked"]').count() === 0, 'assigned ranks stay visible during exchange');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'exchange-' + label + '.png'), fullPage: false });
+    await p.locator('#slDebug').click(); await p.locator('#slPeekHands').check(); await p.locator('#slDebugFold').click();
     const shrinking = clone(opening); shrinking.step = 5;
     shrinking.seats[1].count = 1; shrinking.seats[2].count = 0; shrinking.seats[2].place = 1; shrinking.seats[3].count = 7;
     await deliver(p, shrinking);
-    ok(await p.locator('.seat-left .sl-back').count() === 1, 'one remaining card draws one back');
-    ok(await p.locator('.seat-top .sl-back').count() === 0 && await p.locator('.seat-top .sl-no-cards').isVisible(), 'empty hand clears backs and displays finished label');
-    ok(await p.locator('.seat-right .sl-back').count() === 7, 'hand count decreases after an update');
+    ok(await p.locator('.seat-left .sl-back,.seat-left .sl-revealed-card').count() === 1, 'one remaining card draws one back');
+    ok(await p.locator('.seat-top .sl-back,.seat-top .sl-revealed-card').count() === 0 && await p.locator('.seat-top .sl-no-cards').isVisible(), 'empty hand clears backs and displays finished label');
+    ok(await p.locator('.seat-right .sl-back,.seat-right .sl-revealed-card').count() === 7, 'hand count decreases after an update');
+    ok(await p.locator('#slSeats .sl-revealed-card').count() === 8, label + ' folded peek updates after server turn');
     await geometry(p, label + ' updated counts');
     await context.close();
   }
