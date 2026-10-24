@@ -1,7 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link href="/static/css/slave.css?v=3" rel="stylesheet">
-<link href="/static/css/slave-game.css?v=4" rel="stylesheet">
+<link href="/static/css/slave-game.css?v=5" rel="stylesheet">
 <link rel="preload" as="image" href="/static/img/slave/portraits-v1.jpg">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
@@ -17,7 +17,7 @@
     <div class="sl-felt" aria-hidden="true"><div class="sl-table-print"><svg viewBox="0 0 100 60"><path d="M12 15 30 31 50 5 70 31 88 15 79 49H21Z" fill="currentColor"/><path d="M23 55H77" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="12" cy="13" r="5" fill="currentColor"/><circle cx="50" cy="6" r="5" fill="currentColor"/><circle cx="88" cy="13" r="5" fill="currentColor"/></svg><strong>SLAVE</strong><small>♣ &nbsp; ♦ &nbsp; ♥ &nbsp; ♠</small></div></div>
     <section id="slSeats" class="sl-seats" aria-label="ผู้เล่นทั้งโต๊ะ"></section>
     <section class="sl-table" aria-label="กองกลาง"><div id="slPileText" class="sl-pile-label"></div><div id="slPile" class="sl-pile"></div><div id="slClock" class="sl-clock" role="timer"></div></section>
-    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div class="sl-result-crown" aria-hidden="true">♛</div><h2 id="slResultTitle">จบรอบแล้ว!</h2><p id="slResultNext" class="sl-result-next"></p><div id="slRanks" class="sl-ranks"></div></section>
+    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div id="slResultEmblem" class="sl-result-crown"></div><h2 id="slResultTitle">จบรอบแล้ว!</h2><p id="slResultNext" class="sl-result-next"></p><div id="slRanks" class="sl-ranks"></div></section>
   </div>
   <section id="slPlayerZone" class="sl-player-zone" aria-label="พื้นที่เล่นของคุณ">
     <div class="sl-status-row"><div id="slStatus" class="sl-status" role="status" aria-live="polite"></div><div class="sl-hand-meta"><span id="slHandMeta"></span><span id="slHandClock" role="timer"></span></div></div>
@@ -38,7 +38,7 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/static/js/slaveAudio.js?v=2"></script>
 <script src="/static/js/slaveGuide.js?v=3"></script>
-<script src="/static/js/slaveBoard.js?v=4"></script>
+<script src="/static/js/slaveBoard.js?v=5"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>});

@@ -112,10 +112,25 @@ async function geometry(page, label) {
       const card = el.getBoundingClientRect();
       return [...el.querySelectorAll('.sl-corner,.sl-pip')].filter(ink => ink.getClientRects().length).map(ink => ({card,ink:ink.getBoundingClientRect()})).filter(({card:c,ink:i})=>i.left<c.left-1||i.right>c.right+1||i.top<c.top-1||i.bottom>c.bottom+1).map(()=>el.dataset.card);
     });
-    return { width: innerWidth, height: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth + 1, rects, cards, clippedInk };
+    const visible = el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';
+    const backs = [...document.querySelectorAll('.sl-backs')].filter(visible).map(el => {
+      const count = Number(el.dataset.cardCount), r = el.getBoundingClientRect();
+      return { count, drawn: el.querySelectorAll('.sl-back').length, x: r.x, right: r.right, y: r.y, bottom: r.bottom, hidden: [...el.children].some(c => !visible(c)), privateFaces: el.querySelectorAll('[data-card],.sl-corner,.sl-pip').length };
+    });
+    const ranks = [...document.querySelectorAll('#slRanks .sl-rank')].filter(visible).map(el => {
+      const r = el.getBoundingClientRect(); return { x:r.x,right:r.right,y:r.y,bottom:r.bottom };
+    });
+    return { width: innerWidth, height: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth + 1, rects, cards, clippedInk, backs, ranks };
   });
   ok(!result.overflow, label + ' has no horizontal overflow');
   ok(!result.clippedInk.length, label + ' ranks and suits stay inside card faces: ' + result.clippedInk.join(','));
+  if (!label.includes('round end') && !label.includes('result')) ok(result.backs.length === 3, label + ' all three opponent hands visible, including top');
+  for (const b of result.backs) {
+    ok(b.count === b.drawn && !b.hidden, label + ' exactly one visible back per public card: ' + JSON.stringify(b));
+    ok(!b.privateFaces, label + ' opponent backs contain no card faces or ids');
+    ok(b.x >= -1 && b.right <= result.width + 1 && b.y >= -1 && b.bottom <= result.height + 1, label + ' opponent hand within screen: ' + JSON.stringify(b));
+  }
+  for (const r of result.ranks) ok(r.x >= 0 && r.right <= result.width && r.y >= 0 && r.bottom <= result.height, label + ' rank award visible: ' + JSON.stringify(r));
   for (const r of [...result.rects, ...result.cards]) {
     ok(r.x >= -1 && r.right <= result.width + 1 && r.y >= -1 && r.bottom <= result.height + 1, label + ' visible without scrolling: ' + JSON.stringify(r));
     if (r.id.startsWith('sl') && !['slStatus', 'slActionHelp', 'slHand'].includes(r.id)) ok(r.height >= 44, label + ' control touch height ' + r.id);
@@ -133,6 +148,8 @@ async function browserChecks() {
     const atlas = await p.evaluate(async () => { const image = new Image(); image.src = '/static/img/slave/portraits-v1.jpg'; await image.decode(); return { width: image.naturalWidth, height: image.naturalHeight }; });
     ok(atlas.width >= 512 && atlas.width === atlas.height, 'local character atlas decodes correctly');
     ok(await p.locator('.sl-portrait').count() === 4, 'all four default characters use portrait art');
+    ok(await p.locator('#slSeats [data-role="unranked"]').count() === 4, 'first round does not invent ranks');
+    ok(await p.locator('.sl-back').count() === 39, 'opening draws all 13 backs for every opponent');
     await p.evaluate(() => { window.seatBeforeSelection = document.querySelector('.seat-self .sl-avatar'); });
     const label = width + 'x' + height;
     await geometry(p, label + ' opening');
@@ -165,6 +182,9 @@ async function browserChecks() {
     // End-of-round can arrive with the same step as the final move.
     await deliver(p, { ...ended[0], step: 3 });
     ok((await p.locator('#slResultTitle').innerText()).includes('คุณเป็นคิง'), 'own result is the headline');
+    ok(await p.locator('#slResultEmblem [data-role="king"]').count() === 1, 'personal award uses king art');
+    for (const role of ['king', 'queen', 'commoner', 'slave']) ok(await p.locator('#slRanks [data-role="' + role + '"] svg').count() === 1, 'distinct SVG rank art ' + role);
+    ok(await p.locator('#slRanks [data-role]').evaluateAll(els => new Set(els.map(el => el.innerHTML)).size) === 4, 'all four role silhouettes differ');
     ok((await p.locator('#slResultNext').innerText()).includes('2 ใบ'), 'result explains upcoming exchange');
     ok(await p.locator('#slNext').isVisible(), 'host next-round action visible');
     await geometry(p, label + ' round end');
@@ -174,7 +194,15 @@ async function browserChecks() {
     await p.locator('#slHint').click();
     ok(await p.locator('#slPlay').isEnabled(), 'complete exchange selection enabled');
     await geometry(p, label + ' exchange');
+    ok(await p.locator('#slSeats [data-role="unranked"]').count() === 0, 'assigned ranks stay visible during exchange');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'exchange-' + label + '.png'), fullPage: false });
+    const shrinking = clone(opening); shrinking.step = 5;
+    shrinking.seats[1].count = 1; shrinking.seats[2].count = 0; shrinking.seats[2].place = 1; shrinking.seats[3].count = 7;
+    await deliver(p, shrinking);
+    ok(await p.locator('.seat-left .sl-back').count() === 1, 'one remaining card draws one back');
+    ok(await p.locator('.seat-top .sl-back').count() === 0 && await p.locator('.seat-top .sl-no-cards').isVisible(), 'empty hand clears backs and displays finished label');
+    ok(await p.locator('.seat-right .sl-back').count() === 7, 'hand count decreases after an update');
+    await geometry(p, label + ' updated counts');
     await context.close();
   }
   {
@@ -194,6 +222,7 @@ async function browserChecks() {
     ok((await p.locator('#slActionHelp').innerText()).includes(i === 1 ? 'คืน 1 ใบ' : 'อัตโนมัติ'), 'exchange for rank ' + (i + 1));
     await deliver(p, { ...ended[i], step: exchanging[i].step + 1 });
     ok((await p.locator('#slResultTitle').innerText()).includes(titles[i]), 'own result for rank ' + (i + 1));
+    ok(await p.locator('#slResultEmblem [data-role="' + ['king','queen','commoner','slave'][i] + '"]').count() === 1, 'own emblem matches rank ' + (i + 1));
     ok(await p.locator('#slNext').isHidden(), 'non-host sees no next-round button');
     await geometry(p, 'rank ' + (i + 1) + ' result');
     await context.close();

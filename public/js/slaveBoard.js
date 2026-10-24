@@ -4,6 +4,20 @@
     const $ = id => document.getElementById(id);
     const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
+    const roles = ['king', 'queen', 'commoner', 'slave'];
+    // Public rank art only; rank 3 keeps the existing exchange rules.
+    function roleIcon(role) {
+      const art = {
+        king: '<path fill="#ffda66" d="m11 24 12 9 9-17 9 17 12-9-5 27H16z"/><path fill="#fff0af" d="M29 7h6v5h5v5h-5v8h-6v-8h-5v-5h5z"/><path fill="#bd682b" d="M16 46h32v8H16z"/><path fill="#fbe7a4" d="M18 47h28v3H18z"/><path fill="#d84d47" d="m32 32 5 6-5 6-5-6z"/>',
+        queen: '<path fill="#ffe9ac" d="m10 29 12 7 10-14 10 14 12-7-7 23H17z"/><circle fill="#fff8d9" cx="10" cy="26" r="4"/><circle fill="#fff8d9" cx="32" cy="17" r="5"/><circle fill="#fff8d9" cx="54" cy="26" r="4"/><path fill="#da557b" d="M32 44c-12-7-7-15 0-9 7-6 12 2 0 9"/><path stroke="#ba763b" stroke-width="4" d="M18 51h28"/>',
+        commoner: '<path fill="#285857" stroke="#b0d5c3" stroke-width="2" d="M10 55c0-15 10-23 22-23s22 8 22 23z"/><path fill="#f6d0a0" d="M26 28h12v13l-6 6-6-6z"/><ellipse fill="#f6d0a0" cx="32" cy="23" rx="11" ry="14"/><path fill="#573e31" d="M21 24C15 7 38 1 44 18l-1 9-5-12c-3 7-12 7-17 9"/><path fill="#e4f0d6" d="m25 36 7 9-6 5-7-12zm14 0-7 9 6 5 7-12z"/>',
+        slave: '<path fill="none" stroke="#f4d1a0" stroke-width="10" stroke-linecap="round" d="m9 15 11 12m35-12L44 27"/><g fill="#687f88" stroke="#d8e0da" stroke-width="3"><rect x="11" y="22" width="18" height="23" rx="7" transform="rotate(-25 20 33)"/><rect x="35" y="22" width="18" height="23" rx="7" transform="rotate(25 44 33)"/></g><path fill="none" stroke="#e5e3cf" stroke-width="4" stroke-linecap="round" d="m25 39 7 8 7-8"/><circle fill="#263d45" cx="19" cy="33" r="3"/><circle fill="#263d45" cx="45" cy="33" r="3"/>'
+      };
+      return '<svg class="sl-role-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">' + (art[role] || art.commoner) + '</svg>';
+    }
+    function roleBadge(role, label) {
+      return '<span class="sl-role-badge role-' + role + '" data-role="' + role + '" role="img" aria-label="' + esc(label) + '">' + roleIcon(role) + '</span>';
+    }
     const socket = global.io(), guide = global.SlaveGuide;
     let state = initial, selected = new Set(), pending = false, last = null, handKey = '', pileKey = '', seatKey = '', warned = '';
     const audio = new global.SlaveAudio(soundLabel);
@@ -49,8 +63,11 @@
       $('slSeats').innerHTML = ordered.map((p, i) => {
         const self = p.playerId === playerId, turn = (p.playerId === state.turnId && state.phase === 'turn') || (self && Boolean(state.self?.exchangeCount));
         const label = p.place ? titles[p.place - 1] : p.passed ? 'ผ่านแล้ว' : turn ? (state.phase === 'exchange' ? 'เลือกไพ่คืน' : self ? 'ตาคุณ' : 'กำลังเล่น…') : !p.online && !p.isBot ? 'รอเชื่อมต่อ' : p.title || (p.isBot ? 'บอท' : 'พร้อมเล่น');
-        const backs = !self && !p.place ? '<div class="sl-backs" aria-hidden="true">' + Array.from({ length: Math.min(p.count, 8) }, (_, j) => '<i class="sl-back" style="--r:' + (j - Math.min(p.count, 8) / 2) * 3 + 'deg"></i>').join('') + '</div>' : '';
-        return '<div class="sl-seat seat-' + positions[i] + (turn ? ' turn' : '') + (p.passed ? ' passed' : '') + '"' + (turn ? ' aria-current="true"' : '') + '><div class="sl-avatar" aria-hidden="true"><svg class="sl-avatar-timer" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="25" pathLength="100"/></svg>' + avatar(p.avatar) + '</div><div class="sl-seat-info"><div class="sl-name">' + esc(self ? 'คุณ · ' + p.name : p.name) + '</div><span class="sl-seat-label">' + esc(label) + '</span>' + (self ? '' : '<span class="sl-count"><strong>' + p.count + '</strong> ใบ</span>') + '</div>' + backs + '</div>';
+        const count = Math.max(0, Math.min(13, Number(p.count) || 0));
+        const rank = p.place || titles.indexOf(p.title) + 1;
+        const role = roles[rank - 1] || 'unranked';
+        const backs = !self ? '<div class="sl-backs" data-card-count="' + count + '" style="--cards:' + count + '" aria-hidden="true">' + (count ? Array.from({ length: count }, (_, j) => '<i class="sl-back" style="--r:' + (j - (count - 1) / 2) * 2 + 'deg;--card-index:' + j + '"></i>').join('') : '<span class="sl-no-cards">หมดมือ</span>') + '</div>' : '';
+        return '<div class="sl-seat seat-' + positions[i] + (turn ? ' turn' : '') + (p.passed ? ' passed' : '') + '"' + (turn ? ' aria-current="true"' : '') + '><div class="sl-avatar-wrap"><div class="sl-avatar" aria-hidden="true"><svg class="sl-avatar-timer" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="25" pathLength="100"/></svg>' + avatar(p.avatar) + '</div>' + roleBadge(role, rank ? titles[rank - 1] : 'ยังไม่มีอันดับ') + '</div><div class="sl-seat-info"><div class="sl-name">' + esc(self ? 'คุณ · ' + p.name : p.name) + '</div><span class="sl-seat-label">' + esc(label) + '</span>' + (self ? '' : '<span class="sl-count" aria-label="เหลือไพ่ ' + count + ' ใบ"><strong>' + count + '</strong> ใบ</span>') + '</div>' + backs + '</div>';
       }).join('');
     }
     function animate(el, name) {
@@ -134,9 +151,10 @@
       $('slActionHelp').classList.toggle('invalid', actionable && advice.invalid);
       $('slActionHelp').textContent = ended ? state.phase === 'finished' ? 'กลับห้องรอเพื่อจัดผู้เล่นใหม่ได้จากมุมขวาบน' : state.isHost ? 'เริ่มรอบใหม่แล้วจะแลกไพ่ตามอันดับ · กติกาเดิมทั้งโต๊ะ' : 'รอบใหม่เริ่มเมื่อหัวห้องกด · ไพ่ใหม่คนละ 13 ใบ' : state.phase === 'exchange' ? guide.exchange(state, playerId) + (exchange && selected.size ? ' · เลือกแล้ว ' + selected.size + '/' + exchange : '') : state.canPlay ? advice.message : self?.place ? 'ดูเพื่อนเล่นต่อได้ · พอจบรอบจะแสดงไพ่ที่คุณต้องแลก' : self?.passed ? 'ผ่านแล้วพักกองนี้ · ทุกคนผ่านเมื่อไร คุณกลับมาเล่นกองใหม่ได้' : guide.requirement(state);
       $('slResults').hidden = state.phase !== 'round-end';
+      $('slResultEmblem').innerHTML = ownResult ? roleBadge(roles[ownResult.place - 1], ownResult.title) : '';
       $('slResultTitle').textContent = ownResult ? 'อันดับ ' + ownResult.place + ' · คุณเป็น' + ownResult.title : 'จบรอบแล้ว';
       $('slResultNext').textContent = guide.benefit(ownResult?.place);
-      $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank' + (p.playerId === playerId ? ' is-self' : '') + '"><span class="sl-rank-place">' + p.place + '</span><div><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div><small>' + esc(p.title) + '</small></div></div>').join('');
+      $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><small class="sl-rank-title">' + esc(p.title) + '</small><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div></div></div>').join('');
       $('slHistory').innerHTML = (state.history || []).slice(-8).reverse().map(t => '<li>' + esc(t) + '</li>').join('');
       tick();
     }
