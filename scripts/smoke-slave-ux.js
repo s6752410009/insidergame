@@ -197,7 +197,11 @@ async function browserChecks() {
     await p.evaluate(() => { window.seatBeforeSelection = document.querySelector('.seat-self .sl-avatar'); });
     const label = width + 'x' + height;
     await geometry(p, label + ' opening');
-    for (const id of ['slChat', 'slExit', 'slDebug']) {
+    ok(await p.locator('#slDebug').isHidden(), label + ' debug shortcut stays hidden before slash command');
+    ok(await p.locator('#slDebugDock').isHidden(), label + ' debug dock starts hidden');
+    ok(!(await p.locator('#slChatInput').getAttribute('placeholder')).includes('/m'), label + ' chat placeholder does not advertise debug command');
+    ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'slave_debug'))), label + ' ordinary play sends no debug requests');
+    for (const id of ['slChat', 'slExit']) {
       const r = await p.locator('#' + id).boundingBox();
       ok(r && r.x >= 0 && r.y >= 0 && r.x + r.width <= width + 1 && r.y + r.height <= height && r.height >= 44, label + ' reachable toolbar ' + id);
     }
@@ -205,6 +209,9 @@ async function browserChecks() {
     ok(await p.locator('#slChatDialog').isVisible(), label + ' chat opens');
     await p.locator('#slChatInput').fill('/m'); await p.locator('#slChatInput').press('Enter');
     ok(await p.locator('#slDebugDock').isVisible(), label + ' slash command opens inline debug');
+    ok(await p.locator('#slDebug').isVisible(), label + ' slash command reveals the debug shortcut for this page');
+    const debugButton = await p.locator('#slDebug').boundingBox();
+    ok(debugButton && debugButton.x >= 0 && debugButton.y >= 0 && debugButton.x + debugButton.width <= width + 1 && debugButton.y + debugButton.height <= height && debugButton.height >= 44, label + ' unlocked debug shortcut is reachable');
     ok(await p.locator(':modal').count() === 0, label + ' debug does not create a modal or backdrop');
     await p.locator('#slPeekHands').check();
     ok(await p.locator('#slSeats .sl-revealed-card').count() === 39, label + ' all opponent faces are at their table seats');
@@ -303,6 +310,12 @@ async function browserChecks() {
     ok(await p.locator('.seat-right .sl-back,.seat-right .sl-revealed-card').count() === 7, 'hand count decreases after an update');
     ok(await p.locator('#slSeats .sl-revealed-card').count() === 8, label + ' folded peek updates after server turn');
     await geometry(p, label + ' updated counts');
+    if (width === 390 && height === 844) {
+      await p.reload(); await p.waitForSelector('#slHand .sl-card');
+      ok(await p.locator('#slDebug').isHidden() && await p.locator('#slDebugDock').isHidden(), 'reload requires a fresh typed slash command instead of persisting debug unlock');
+      ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'slave_debug'))), 'reload does not silently inspect private hands');
+      ok(await p.locator('.sl-revealed-card').count() === 0, 'reload restores concealed opponent cards');
+    }
     await context.close();
   }
   {

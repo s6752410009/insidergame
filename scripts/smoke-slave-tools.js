@@ -19,6 +19,26 @@ async function selectGuidedMove(page) {
   ok(await page.locator('#slPlay').isEnabled(), 'live card guidance completes a legal selection');
 }
 function invariant(room) { const ids = [...room.gameState.played, ...room.gameState.seats.flatMap(p => p.hand)]; ok(ids.length === 52 && new Set(ids).size === 52, 'debug preserves the complete unique deck'); }
+function watchDebugRequests(page) {
+  const sent = [];
+  page.on('websocket', socket => socket.on('framesent', frame => {
+    if (typeof frame.payload === 'string' && frame.payload.includes('"slave_debug"')) sent.push(frame.payload);
+  }));
+  return sent;
+}
+async function deniedSlashCommand(page, sent, label) {
+  ok(await page.locator('#slDebug').isHidden() && await page.locator('#slDebugDock').isHidden(), label + ' starts without debug UI');
+  ok(sent.length === 0, label + ' ordinary play sends no private inspect request');
+  await page.locator('#slChat').click();
+  await page.locator('#slChatInput').fill('/m'); await page.locator('#slChatInput').press('Enter');
+  await page.waitForFunction(() => Boolean(document.getElementById('slChatError').textContent.trim()));
+  ok(await page.locator('#slChatDialog').isVisible(), label + ' denial stays in chat');
+  ok(await page.locator('#slChatError').isVisible(), label + ' denial explains why the command is unavailable');
+  ok(await page.locator('#slDebug').isHidden() && await page.locator('#slDebugDock').isHidden(), label + ' denied command reveals no debug UI');
+  ok(await page.locator('.sl-revealed-card').count() === 0, label + ' denied command reveals no private cards');
+  ok(sent.length === 0, label + ' denied command sends no debug request');
+  await page.locator('[data-sl-close="slChatDialog"]').click();
+}
 function engineChecks() {
   const room = { admin: 'p0', players: Array.from({ length: 4 }, (_, i) => ({ playerId: 'p' + i, socketId: 's' + i })) };
   E.startGame(room); invariant(room);
@@ -59,12 +79,22 @@ async function runEnvironment(env, port) {
     const before = host.state.step;
     ok(!(await ack(host.socket, 'slave_debug', { roomId, action: 'finish', step: before })).success, 'production denies mutating debug');
     await delay(100); ok(host.state.step === before, 'production denied mutation preserves state');
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } }), page = await context.newPage();
+    const sent = watchDebugRequests(page);
+    await page.goto(base + '/game/' + roomId + '?playerId=' + host.id); await page.waitForSelector('#slHand .sl-card');
+    await deniedSlashCommand(page, sent, 'production host');
+    await delay(100); ok(!guest.messages.some(m => m.message === '/m'), 'production slash command is never broadcast to another player');
+    await context.close();
   } else {
     ok(reveal.success && reveal.hands.length === 4 && reveal.hands.every(p => p.cards.length === 13), 'host-only inspect gets all 52 cards');
     ok(guest.states.every(s => s.seats.every(p => !p.hand && !p.cards)), 'guest normal stream has no private debug hands');
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } }), page = await context.newPage();
+    const sent = watchDebugRequests(page);
     const errors = []; page.on('pageerror', e => errors.push(e.message));
-    await page.goto(base + '/game/' + roomId + '?playerId=' + host.id); await page.waitForSelector('#slChat');
+    await page.goto(base + '/game/' + roomId + '?playerId=' + host.id); await page.waitForSelector('#slHand .sl-card');
+    ok(await page.locator('#slDebug').isHidden() && await page.locator('#slDebugDock').isHidden(), 'authorized staging host still starts without debug UI');
+    ok(sent.length === 0, 'authorized staging host sends no debug requests before slash command');
+    ok(!(await page.locator('#slChatInput').getAttribute('placeholder')).includes('/m'), 'normal chat does not advertise debug command');
     await page.locator('#slChat').click(); ok(await page.locator('#slChatDialog').isVisible(), 'real chat dialog opens');
     const text = '<img src=x onerror=alert(1)> แชทสลาฟ ' + randomUUID();
     await page.locator('#slChatInput').fill(text); await page.locator('#slChatInput').press('Enter');
@@ -77,6 +107,8 @@ async function runEnvironment(env, port) {
     await page.locator('#slChat').click(); ok(await page.locator('#slChatUnread').isHidden(), 'opening chat clears unread');
     await page.locator('#slChatInput').fill('/m'); await page.locator('#slChatInput').press('Enter');
     ok(await page.locator('#slDebugDock').isVisible(), 'slash command opens debug menu');
+    ok(await page.locator('#slDebug').isVisible(), 'authorized slash command reveals header toggle');
+    await wait(() => sent.length > 0, 'authorized command inspects debug state');
     ok(!guest.messages.some(m => m.message === '/m'), 'slash command never enters room chat');
     await page.locator('#slPeekHands').check(); await wait(async () => await page.locator('.sl-revealed-card').count() === 39, 'private opponent faces render at their seats');
     ok(await page.locator(':modal').count() === 0, 'debug leaves table interactive with no modal');
@@ -121,12 +153,20 @@ async function runEnvironment(env, port) {
     await page.locator('[data-sl-debug="restart"]').click(); await page.locator('#slConfirmRestart').click();
     await wait(() => guest.state.round === 1, 'confirmed redeal');
     await page.locator('#slDebugFold').click();
-    await page.reload(); await page.locator('#slChat').click(); await wait(async () => (await page.locator('#slChatMessages').innerText()).includes(text), 'chat history after reload');
+    const beforeReload = sent.length;
+    await page.reload(); await page.waitForSelector('#slHand .sl-card');
+    ok(await page.locator('#slDebug').isHidden() && await page.locator('#slDebugDock').isHidden(), 'reload clears debug unlock and keeps tools hidden');
+    ok(await page.locator('.sl-revealed-card').count() === 0, 'reload restores concealed opponent hands');
+    ok(sent.length === beforeReload, 'reload sends no automatic debug inspect request');
+    await page.locator('#slChat').click(); await wait(async () => (await page.locator('#slChatMessages').innerText()).includes(text), 'chat history after reload');
     await page.locator('[data-sl-close="slChatDialog"]').click();
     // A non-host returns to this lobby without losing membership or being redirected into the board.
     const guestContext = await browser.newContext({ viewport: { width: 375, height: 667 } }), guestPage = await guestContext.newPage();
-    await guestPage.goto(base + '/game/' + roomId + '?playerId=' + guest.id); await guestPage.waitForSelector('#slExit');
+    const guestSent = watchDebugRequests(guestPage);
+    await guestPage.goto(base + '/game/' + roomId + '?playerId=' + guest.id); await guestPage.waitForSelector('#slHand .sl-card');
     ok(await guestPage.locator('#slDebug').isHidden(), 'non-host has no debug shortcut');
+    await deniedSlashCommand(guestPage, guestSent, 'non-host staging member');
+    await delay(100); ok(!host.messages.some(m => m.message === '/m'), 'non-host slash command is never broadcast to another player');
     await guestPage.locator('#slExit').click(); await guestPage.locator('[data-sl-close="slExitDialog"]').click();
     ok(guestPage.url().includes('/game/'), 'cancel exit stays in game');
     await guestPage.locator('#slExit').click(); await guestPage.locator('#slConfirmExit').click();

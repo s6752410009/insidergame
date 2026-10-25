@@ -32,7 +32,11 @@
       event.preventDefault();
       const text = $('slChatInput').value.trim();
       if (!text) return;
-      if (text.toLowerCase() === '/m') { $('slChatInput').value = ''; close($('slChatDialog')); openDebug(); return; }
+      if (text.toLowerCase() === '/m') {
+        $('slChatInput').value = '';
+        if (!canDebug) { $('slChatError').textContent = '/m ใช้ได้เฉพาะหัวห้องหรือแอดมินบน staging'; return; }
+        $('slChatError').textContent = ''; close($('slChatDialog')); openDebug(); return;
+      }
       if (!socket.connected) { $('slChatError').textContent = 'กำลังเชื่อมต่อกลับ ลองส่งอีกครั้ง'; return; }
       socket.emit('sendMessage', { message: text }); $('slChatInput').value = ''; $('slChatError').textContent = '';
     };
@@ -110,11 +114,13 @@
       });
     }
     function openDebug() {
+      if (!canDebug) return;
+      $('slDebug').hidden = false;
       $('slDebugDock').hidden = false; document.querySelector('.slave').classList.add('has-debug-dock'); $('slDebug').setAttribute('aria-expanded', 'true');
-      if (!canDebug) { error('/m ใช้ได้เฉพาะหัวห้องหรือแอดมินบน staging'); return; }
       $('slPeekHands').focus(); debug();
     }
-    $('slDebug').hidden = !canDebug; $('slDebug').onclick = () => { if ($('slDebugDock').hidden) openDebug(); else foldDebug(); };
+    // Discover only through a private chat command; never persist an unlock across reloads.
+    $('slDebug').hidden = true; $('slDebug').onclick = () => { if ($('slDebugDock').hidden) openDebug(); else foldDebug(); };
     $('slDebugActions').hidden = !canDebug;
     $('slDebugFold').onclick = foldDebug;
     $('slDebugDock').addEventListener('keydown', event => { if (event.key === 'Escape') foldDebug(); });
