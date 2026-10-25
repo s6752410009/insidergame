@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-/** Real four-human Slave rounds -> public profiles/leaderboard + authenticated admin stats/logs. */
+/** Real four-human Slave rounds -> public profiles/leaderboard + authenticated admin stats/logs.
+ * Defaults to production feature gates; SLAVE_HISTORY_ENV=staging also exercises the staging configuration.
+ * NODE_ENV=test and legacy socket identity are limited to this isolated localhost server.
+ */
 require('./isolateTestData');
 const assert = require('node:assert/strict');
 const http = require('node:http');
@@ -9,6 +12,8 @@ const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const { createRequire } = require('node:module');
 const ROOT = process.env.SLAVE_HISTORY_APP_ROOT || path.join(__dirname, '..');
+const HISTORY_ENV = process.env.SLAVE_HISTORY_ENV || 'production';
+if (!['production', 'staging'].includes(HISTORY_ENV)) throw new Error('SLAVE_HISTORY_ENV must be production or staging');
 const { io } = createRequire(path.join(ROOT, 'package.json'))('socket.io-client');
 const ADMIN_PASSWORD = 'local-slave-history-' + randomUUID();
 let checks = 0, child, base, output = '';
@@ -52,7 +57,7 @@ async function boot(number) {
     output = '';
     base = 'http://127.0.0.1:' + number;
     child = spawn(process.execPath, [path.join(ROOT, 'app.js')], {
-        cwd:ROOT, env:{ ...process.env, PORT:String(number), NODE_ENV:'test', APP_ENV:'staging', MONGO_URL:'',
+        cwd:ROOT, env:{ ...process.env, PORT:String(number), NODE_ENV:'test', APP_ENV:HISTORY_ENV, MONGO_URL:'', MONGODB_URI:'',
             ADMIN_PASSWORD, ALLOW_LEGACY_SOCKET_IDENTITY:'1', SLAVE_BOT_MS:'60000', INSIDER_DEV_FAST:'0' },
         stdio:['ignore', 'pipe', 'pipe']
     });
@@ -102,6 +107,32 @@ function privateKeys(value) {
     const forbidden = new Set(['hand', 'hands', 'cards', 'recoveryCode', 'googleSub', 'googleEmail', 'password', 'returns', 'deck', 'slaveLatestResult']);
     return Object.entries(value).flatMap(([key, item]) => (forbidden.has(key) ? [key] : []).concat(privateKeys(item)));
 }
+async function checkEnvironment(players, roomId) {
+    const page = await request('GET', '/game/' + roomId + '?playerId=' + encodeURIComponent(players[0].id));
+    ok(page.status === 200 && page.body.includes('id="slHand"'), HISTORY_ENV + ' serves the actual four-human Slave board');
+    const meta = (/<div class="sl-meta">([\s\S]*?)<\/div>/.exec(page.body) || [])[1];
+    ok(typeof meta === 'string', 'rendered table metadata is available for environment checks');
+    ok(/id="slDebug"[^>]*\bhidden\b/.test(page.body) && /id="slDebugDock"[^>]*\bhidden\b/.test(page.body), 'debug controls start hidden on the rendered board');
+    if (HISTORY_ENV === 'staging') {
+        ok(meta.includes('STAGING'), 'staging table identifies the test environment');
+        ok(/canDebug:true\s*\}\)/.test(page.body), 'staging host receives the authorized debug boot flag');
+        ok(/noindex/i.test(page.headers['x-robots-tag'] || ''), 'staging response remains excluded from search indexing');
+        return;
+    }
+    ok(!meta.includes('STAGING'), 'production table does not display the staging label');
+    ok(/canDebug:false\s*\}\)/.test(page.body), 'production host receives no debug authorization in the rendered board');
+    ok(!/noindex/i.test(page.headers['x-robots-tag'] || ''), 'production board has no staging noindex response header');
+    const publicPage = await request('GET', '/how-to-play#slave');
+    ok(publicPage.status === 200 && !/noindex/i.test(publicPage.headers['x-robots-tag'] || ''), 'production public manual has no staging noindex response header');
+    const before = structuredClone(players[0].state);
+    const inspect = await ack(players[0].socket, 'slave_debug', { roomId, action:'inspect' });
+    ok(inspect.success === false && !inspect.hands && privateKeys(inspect).length === 0, 'production denies host inspection and reveals no private cards');
+    const mutate = await ack(players[0].socket, 'slave_debug', { roomId, action:'finish', step:before.step });
+    ok(mutate.success === false, 'production denies host mutating debug requests');
+    players.forEach(player => player.socket.emit('slave_requestState', { roomId }));
+    await delay(100);
+    ok(players.every(player => player.state?.phase === before.phase && player.state?.step === before.step && !player.state?.debugUsed), 'denied production debug leaves the four-human game ranked and unchanged');
+}
 async function finishRound(players, roomId) {
     for (let n = 0; n < 1000; n += 1) {
         const state = players[0].state;
@@ -124,7 +155,7 @@ async function finishRound(players, roomId) {
         const response = await ack(actor.socket, event, { roomId, step:actor.state.step, ...payload });
         ok(response.success, 'legal human socket action succeeds: ' + event);
         await wait(() => players.every(player => player.state?.phase === 'round-end' || player.state?.step > previous), 'all humans receive next step');
-        // No /m requests, engine mutation, or private opponent hands are used to finish the round.
+        // No successful /m request, engine mutation, or private opponent hands are used to finish the round.
         ok(players.every(player => !privateKeys(player.state.seats).length), 'opponents stay concealed during actual play');
     }
     throw new Error('Slave round did not finish');
@@ -160,6 +191,7 @@ async function main() {
     ok(!(await ack(players[1].socket, 'admin_getStats', { modeFilter:'has-slave' })).success, 'ordinary user cannot read admin stats');
     ok((await ack(players[0].socket, 'startGameFromLobby', { roomId })).success, 'start four-human game');
     await wait(() => players.every(player => player.state?.phase === 'turn'), 'four private initial states');
+    await checkEnvironment(players, roomId);
     const results = [await finishRound(players, roomId)];
     await checkProfiles(players, results, 1);
     ok((await ack(players[0].socket, 'slave_nextRound', { roomId })).success, 'host begins next round');
@@ -206,7 +238,7 @@ async function main() {
     ok(aborts.length === 1 && aborts[0].meta.ranked === false, 'early exit creates one unranked abandonment record');
     ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 2, 'abandoned third round creates no winner result');
     await checkProfiles(players, results, 2);
-    console.log(JSON.stringify({ ok:true, checks, humanPlayers:4, completedRounds:2, abortedRounds:1, profile:true, leaderboard:true, adminStats:true, adminLogs:true, restart:true, isolatedData:true }));
+    console.log(JSON.stringify({ ok:true, environment:HISTORY_ENV, checks, humanPlayers:4, completedRounds:2, abortedRounds:1, profile:true, leaderboard:true, adminStats:true, adminLogs:true, restart:true, isolatedData:true, productionGuards:HISTORY_ENV === 'production' }));
 }
 main().catch(error => { console.error(error.stack || error.message); process.exitCode = 1; }).finally(async () => {
     for (const socket of sockets) socket.disconnect();
