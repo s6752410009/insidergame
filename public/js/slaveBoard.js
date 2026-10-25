@@ -46,7 +46,7 @@
       const tag = button ? 'button' : 'div';
       return '<' + tag + (button ? ' type="button" data-card="' + c.id + '" aria-label="' + esc(c.label) + '" aria-pressed="false"' : ' aria-label="' + esc(c.label) + '"') +
         ' class="sl-card ' + (c.red ? 'red' : '') + '" style="--i:' + index + ';--fan:' + (index - (count - 1) / 2) + '">' +
-        '<span class="sl-corner">' + esc(c.rank) + '<small>' + esc(c.suit) + '</small></span><span class="sl-pip" aria-hidden="true">' + esc(c.suit) + '</span><span class="sl-corner bottom" aria-hidden="true">' + esc(c.rank) + '<small>' + esc(c.suit) + '</small></span></' + tag + '>';
+        (button ? '<span class="sl-card-guide" aria-hidden="true" hidden>↑</span>' : '') + '<span class="sl-corner">' + esc(c.rank) + '<small>' + esc(c.suit) + '</small></span><span class="sl-pip" aria-hidden="true">' + esc(c.suit) + '</span><span class="sl-corner bottom" aria-hidden="true">' + esc(c.rank) + '<small>' + esc(c.suit) + '</small></span></' + tag + '>';
     }
     function avatar(value) {
       const text = String(value || '♠');
@@ -115,16 +115,18 @@
         handKey = newHandKey;
       }
       const exchange = state.self?.exchangeCount || 0, actionable = Boolean(state.canPlay || exchange);
+      const guiding = actionable && socket.connected && !pending;
       const advice = guide.analyze(state, selected), candidates = new Set(advice.candidates);
       $('slHand').querySelectorAll('[data-card]').forEach(b => {
-        const id = Number(b.dataset.card), on = selected.has(id), playable = actionable && candidates.has(id);
+        const id = Number(b.dataset.card), on = selected.has(id), playable = guiding && candidates.has(id);
         b.classList.toggle('selected', on); b.setAttribute('aria-pressed', String(on));
         b.classList.toggle('playable', Boolean(playable));
-        b.classList.toggle('unavailable', actionable && !playable && !on);
+        b.classList.toggle('unavailable', guiding && !playable && !on);
+        b.querySelector('.sl-card-guide').hidden = !playable || on;
         b.classList.toggle('invalid-selection', on && advice.invalid);
         b.dataset.playable = String(Boolean(playable));
-        b.setAttribute('aria-label', hand.find(c => c.id === id).label + (actionable ? playable ? ' · ใช้ในชุดที่ลงได้' : ' · ยังลงชุดนี้ไม่ได้' : ''));
-        b.setAttribute('aria-disabled', String(!actionable || pending));
+        b.setAttribute('aria-label', hand.find(c => c.id === id).label + (on ? ' · เลือกแล้ว แตะเพื่อยกเลิก' : guiding ? playable ? exchange ? ' · เลือกคืนได้' : ' · เลือกต่อชุดที่ลงได้' : ' · ยังใช้กับชุดนี้ไม่ได้' : ''));
+        b.setAttribute('aria-disabled', String(!guiding));
       });
       const turn = state.seats.find(p => p.playerId === state.turnId);
       const self = state.seats.find(p => p.playerId === playerId);
@@ -136,23 +138,23 @@
       const legal = advice.legal;
       $('slPlay').disabled = pending || !socket.connected || !actionable || !selected.size || !legal;
       $('slPass').disabled = pending || !socket.connected || !state.canPass;
-      $('slHint').disabled = pending || !actionable || (!exchange && !state.legalMoves?.length);
       $('slClear').disabled = !selected.size || pending;
       $('slNext').hidden = !(state.phase === 'round-end' && state.isHost);
       $('slNext').disabled = pending || !socket.connected;
       const ended = ['round-end', 'finished'].includes(state.phase);
       $('slActions').hidden = (state.phase === 'exchange' && !exchange) || (ended && !(state.phase === 'round-end' && state.isHost));
       if (ended) $('slHandMeta').textContent = ownResult ? 'อันดับ ' + ownResult.place : '';
-      ['slPlay', 'slPass', 'slHint', 'slClear'].forEach(id => { $(id).hidden = ended; });
+      ['slPlay', 'slPass', 'slClear'].forEach(id => { $(id).hidden = ended; });
       const mustPass = Boolean(state.canPlay && state.canPass && !state.legalMoves?.length);
       if (mustPass) $('slPlay').hidden = true;
       $('slPass').classList.toggle('primary', mustPass);
       $('slPass').textContent = mustPass ? 'ผ่าน · รอกองใหม่' : 'ผ่าน';
-      $('slHint').textContent = exchange ? '✧ เลือกไพ่ต่ำคืน' : '✧ เลือกชุดที่ลงได้';
+      if (exchange) $('slPass').hidden = true;
       $('slHand').hidden = ended;
       $('slPlayArea').classList.toggle('is-round-end', ended);
-      $('slActionHelp').classList.toggle('invalid', actionable && advice.invalid);
-      $('slActionHelp').textContent = ended ? state.phase === 'finished' ? 'กลับห้องรอเพื่อจัดผู้เล่นใหม่ได้จากมุมขวาบน' : state.isHost ? 'เริ่มรอบใหม่แล้วจะแลกไพ่ตามอันดับ · กติกาเดิมทั้งโต๊ะ' : 'รอบใหม่เริ่มเมื่อหัวห้องกด · ไพ่ใหม่คนละ 13 ใบ' : state.phase === 'exchange' ? guide.exchange(state, playerId) + (exchange && selected.size ? ' · เลือกแล้ว ' + selected.size + '/' + exchange : '') : state.canPlay ? advice.message : self?.place ? 'ดูเพื่อนเล่นต่อได้ · พอจบรอบจะแสดงไพ่ที่คุณต้องแลก' : self?.passed ? 'ผ่านแล้วพักกองนี้ · ทุกคนผ่านเมื่อไร คุณกลับมาเล่นกองใหม่ได้' : guide.requirement(state);
+      $('slActionHelp').classList.toggle('invalid', guiding && advice.invalid);
+      $('slActionHelp').classList.toggle('ready', guiding && advice.legal);
+      $('slActionHelp').textContent = ended ? state.phase === 'finished' ? 'กลับห้องรอเพื่อจัดผู้เล่นใหม่ได้จากมุมขวาบน' : state.isHost ? 'เริ่มรอบใหม่แล้วจะแลกไพ่ตามอันดับ · กติกาเดิมทั้งโต๊ะ' : 'รอบใหม่เริ่มเมื่อหัวห้องกด · ไพ่ใหม่คนละ 13 ใบ' : pending ? 'กำลังส่งไพ่…' : !socket.connected ? 'กำลังเชื่อมต่อกลับ · รอข้อมูลไพ่ล่าสุด' : state.phase === 'exchange' ? exchange ? advice.message : guide.exchange(state, playerId) : state.canPlay ? advice.message : self?.place ? 'ดูเพื่อนเล่นต่อได้ · พอจบรอบจะแสดงไพ่ที่คุณต้องแลก' : self?.passed ? 'ผ่านแล้วพักกองนี้ · ทุกคนผ่านเมื่อไร คุณกลับมาเล่นกองใหม่ได้' : guide.requirement(state);
       $('slResults').hidden = state.phase !== 'round-end';
       $('slResultEmblem').innerHTML = ownResult ? roleBadge(roles[ownResult.place - 1], ownResult.title) : '';
       $('slResultTitle').textContent = ownResult ? 'อันดับ ' + ownResult.place + ' · คุณเป็น' + ownResult.title : 'จบรอบแล้ว';
@@ -163,7 +165,7 @@
     }
     $('slHand').onclick = e => {
       const b = e.target.closest('[data-card]');
-      if (!b || pending || (!state.canPlay && !state.self?.exchangeCount)) return;
+      if (!b || pending || !socket.connected || (!state.canPlay && !state.self?.exchangeCount)) return;
       const id = Number(b.dataset.card), max = state.self?.exchangeCount || 4;
       if (selected.has(id)) selected.delete(id); else if (selected.size < max) selected.add(id); else return;
       audio.cue('select'); render(state);
@@ -184,10 +186,6 @@
     $('slPass').onclick = () => command('slave_pass');
     $('slNext').onclick = () => command('slave_nextRound');
     $('slClear').onclick = () => { selected.clear(); render(state); };
-    $('slHint').onclick = () => {
-      selected = new Set(state.self?.exchangeCount ? state.self.hand.slice(0, state.self.exchangeCount).map(c => c.id) : (state.legalMoves?.[0] || []));
-      audio.cue('select'); render(state);
-    };
     function bind() { if (navigating || tools.isLeaving()) return; socket.emit('initPlayer', playerId); socket.emit('setRoom', { roomId, playerId }); socket.emit('slave_requestState', { roomId }); tools.requestHistory(); }
     socket.on('connect', () => { $('slConnection').textContent = ''; pending = false; bind(); render(state); });
     socket.on('disconnect', () => { $('slConnection').textContent = 'กำลังเชื่อมต่อกลับ…'; pending = false; render(state); });

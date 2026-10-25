@@ -10,6 +10,14 @@ const ok = (v, label) => { assert.ok(v, label); checks++; };
 const delay = ms => new Promise(r => setTimeout(r, ms));
 async function wait(fn, label, timeout = 20000) { const end = Date.now() + timeout; while (Date.now() < end) { if (await fn()) return; await delay(30); } throw new Error('Timeout: ' + label); }
 const ack = (s, e, d) => new Promise((resolve, reject) => s.timeout(8000).emit(e, d, (err, res) => err ? reject(err) : resolve(res)));
+async function selectGuidedMove(page) {
+  for (let n = 0; n < 4 && !await page.locator('#slPlay').isEnabled(); n++) {
+    const next = page.locator('#slHand [data-playable="true"][aria-pressed="false"]').first();
+    ok(await next.count() === 1, 'live card guide offers a compatible next card');
+    await next.click();
+  }
+  ok(await page.locator('#slPlay').isEnabled(), 'live card guidance completes a legal selection');
+}
 function invariant(room) { const ids = [...room.gameState.played, ...room.gameState.seats.flatMap(p => p.hand)]; ok(ids.length === 52 && new Set(ids).size === 52, 'debug preserves the complete unique deck'); }
 function engineChecks() {
   const room = { admin: 'p0', players: Array.from({ length: 4 }, (_, i) => ({ playerId: 'p' + i, socketId: 's' + i })) };
@@ -74,8 +82,8 @@ async function runEnvironment(env, port) {
     ok(await page.locator(':modal').count() === 0, 'debug leaves table interactive with no modal');
     for (let n=0;n<80;n++) {
       if (guest.state.turnId===host.id) {
-        await wait(async()=>await page.locator('#slHint').isEnabled()||await page.locator('#slPass').isEnabled(),'human UI catches up');
-        if (await page.locator('#slHint').isEnabled()) break;
+        await wait(async()=>await page.locator('#slHand [data-playable="true"]').count()||await page.locator('#slPass').isEnabled(),'human UI catches up');
+        if (await page.locator('#slHand [data-playable="true"]').count()) break;
         const step=guest.state.step; await page.locator('#slPass').click(); await wait(()=>guest.state.step>step,'normal pass while debug open');
       } else {
         const step=guest.state.step;
@@ -83,7 +91,8 @@ async function runEnvironment(env, port) {
         await wait(()=>guest.state.step>step,'updated debug turn');
       }
     }
-    await page.locator('#slHint').click();
+    ok(await page.locator('#slHint').count() === 0, 'obsolete select-set button is absent');
+    await selectGuidedMove(page);
     const ownCount=await page.locator('#slHand .sl-card').count();
     await page.locator('#slPlay').click();
     await wait(async()=>await page.locator('#slHand .sl-card').count()<ownCount,'normal human play while debug tools are open');

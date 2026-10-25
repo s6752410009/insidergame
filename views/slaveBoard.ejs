@@ -1,7 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
-<link href="/static/css/slave.css?v=3" rel="stylesheet">
-<link href="/static/css/slave-game.css?v=8" rel="stylesheet">
+<link href="/static/css/slave.css?v=4" rel="stylesheet">
+<link href="/static/css/slave-game.css?v=9" rel="stylesheet">
 <link rel="preload" as="image" href="/static/img/slave/portraits-v1.jpg">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
@@ -35,8 +35,8 @@
     <div id="slTurnTrack" class="sl-turn-track" aria-hidden="true"><span></span></div>
     <div id="slError" class="sl-alert" role="alert"></div>
     <p id="slActionHelp" class="sl-action-help" role="status" aria-live="polite"></p>
-    <div id="slHand" class="sl-hand" role="group" aria-label="ไพ่ในมือคุณ"></div>
-    <div id="slActions" class="sl-actions"><button id="slHint">✧ เลือกชุดที่ลงได้</button><button id="slClear">ยกเลิกเลือก</button><button id="slPlay" class="primary" aria-describedby="slActionHelp">ลงไพ่</button><button id="slPass">ผ่าน</button><button id="slNext" class="primary" hidden>รอบถัดไป · แลกไพ่ ↻</button></div>
+    <div id="slHand" class="sl-hand" role="group" aria-label="ไพ่ในมือคุณ" aria-describedby="slActionHelp"></div>
+    <div id="slActions" class="sl-actions"><button id="slPlay" class="primary" aria-describedby="slActionHelp">ลงไพ่</button><button id="slPass">ผ่าน</button><button id="slClear" aria-label="ยกเลิกไพ่ที่เลือกทั้งหมด" title="ยกเลิกไพ่ที่เลือกทั้งหมด">ยกเลิกเลือก</button><button id="slNext" class="primary" hidden>รอบถัดไป · แลกไพ่ ↻</button></div>
   </section>
   </div>
   </div>
@@ -59,9 +59,9 @@
 </main>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/static/js/slaveAudio.js?v=2"></script>
-<script src="/static/js/slaveGuide.js?v=3"></script>
+<script src="/static/js/slaveGuide.js?v=4"></script>
 <script src="/static/js/slaveTools.js?v=7"></script>
-<script src="/static/js/slaveBoard.js?v=8"></script>
+<script src="/static/js/slaveBoard.js?v=9"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>,canDebug:<%= typeof slaveDebugAllowed !== 'undefined' && slaveDebugAllowed ? 'true' : 'false' %>});

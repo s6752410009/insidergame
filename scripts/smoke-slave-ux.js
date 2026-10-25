@@ -21,6 +21,7 @@ function turnFixture(hand, top, moves) {
 }
 const pair = turnFixture([8, 9, 10, 12, 13, 16, 17, 18, 19, 24, 28, 40, 44], [4, 5], [[8, 9], [8, 10], [9, 10], [12, 13], [16, 17], [16, 18], [16, 19], [17, 18], [17, 19], [18, 19], [16, 17, 18, 19]]);
 const noMove = turnFixture([0, 4, 8], [51], []);
+const weakPair = turnFixture([0, 1, 8, 9], [4, 5], [[8, 9]]);
 const cut = turnFixture([8, 9, 10, 12], [51], [[8, 9, 10]]);
 const endRoom = room();
 endRoom.gameState.phase = 'round-end';
@@ -97,7 +98,7 @@ async function deliver(page, payload) {
 }
 async function geometry(page, label) {
   const result = await page.evaluate(() => {
-    const ids = ['slStatus', 'slActionHelp', 'slHand', 'slPlay', 'slPass', 'slHint', 'slClear', 'slNext'];
+    const ids = ['slStatus', 'slActionHelp', 'slHand', 'slPlay', 'slPass', 'slClear', 'slNext'];
     const rects = [];
     for (const id of ids) {
       const el = document.getElementById(id);
@@ -151,7 +152,7 @@ async function geometry(page, label) {
   }
 }
 async function enabledControlsHitTest(page, label) {
-  const targets = await page.evaluate(() => ['slPlay', 'slPass', 'slHint', 'slClear', 'slNext'].map(id => document.getElementById(id)).filter(el => el && !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden').map(el => {
+  const targets = await page.evaluate(() => ['slPlay', 'slPass', 'slClear', 'slNext'].map(id => document.getElementById(id)).filter(el => el && !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden').map(el => {
     const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     return { id: el.id, receivesPointer: Boolean(hit && (hit === el || el.contains(hit))), interceptedBy: hit && (hit.id || hit.className || hit.tagName) };
   }));
@@ -227,6 +228,9 @@ async function browserChecks() {
     ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'endTableSession'))), label + ' cancel does not stop game');
 
     ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'opening rule beside hand ' + label);
+    ok(await p.locator('#slHint').count() === 0, label + ' no separate choose-a-set button');
+    ok((await p.locator('#slActionHelp').innerText()).includes('↑'), label + ' automatic guidance explains the in-hand marker');
+    ok(await p.locator('#slHand [aria-pressed="true"]').count() === 0, label + ' guidance never selects or plays cards for the player');
     ok(await p.locator('[data-card="0"]').getAttribute('data-playable') === 'true', 'opening legal card marked');
     ok(await p.locator('[data-card="4"]').getAttribute('data-playable') === 'false', 'opening illegal card distinguished');
     await p.locator('[data-card="4"]').click();
@@ -240,20 +244,37 @@ async function browserChecks() {
     await geometry(p, label + ' selected');
     if ([320,375,667,821,1280,2137].includes(width)) await p.screenshot({ path: path.join(shots, 'opening-' + label + '.png'), fullPage: false });
     await deliver(p, { ...pair, step: 2 });
+    if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-options-' + label + '.png'), fullPage: false });
     await p.locator('[data-card="8"]').click();
+    if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-partial-' + label + '.png'), fullPage: false });
     ok((await p.locator('#slActionHelp').innerText()).includes('อีก 1'), 'partial pair instruction');
     ok(await p.locator('[data-card="9"]').getAttribute('data-playable') === 'true', 'matching pair highlighted');
     ok(await p.locator('[data-card="12"]').getAttribute('data-playable') === 'false', 'other rank not highlighted');
+    await p.locator('[data-card="12"]').click();
+    ok((await p.locator('#slActionHelp').innerText()).includes('หลายหน้า'), 'mixed ranks give a concrete correction');
+    ok(!(await p.locator('#slPlay').isEnabled()), 'mixed ranks cannot be submitted');
+    await p.locator('[data-card="12"]').click();
+    ok(await p.locator('[data-card="9"]').getAttribute('data-playable') === 'true', 'undoing a wrong card restores matching guidance');
     await p.locator('[data-card="9"]').click();
     ok(await p.locator('#slPlay').isEnabled(), 'completed pair enabled');
     ok((await p.locator('#slPlay').innerText()) === 'ลงคู่ 5 →', 'pair submit named correctly');
-    await deliver(p, { ...noMove, step: 3 });
+    await p.locator('#slClear').click();
+    ok(await p.locator('[data-card="12"]').getAttribute('data-playable') === 'true', 'clearing selection offers all legal starting ranks again');
+    await deliver(p, { ...weakPair, step: 3 });
+    await p.locator('[data-card="0"]').click(); await p.locator('[data-card="1"]').click();
+    ok((await p.locator('#slActionHelp').innerText()).includes('ไม่ใหญ่กว่า'), 'weaker pair explains why it cannot beat the pile');
+    ok(!(await p.locator('#slPlay').isEnabled()), 'weaker pair cannot be submitted');
+    await deliver(p, { ...pair, step: 4, turnId: 'p1', canPlay: false, canPass: false });
+    ok(await p.locator('#slHand [data-playable="true"]').count() === 0, 'waiting turn shows no misleading playable cards');
+    ok(!(await p.locator('#slPlay').isEnabled()), 'waiting player cannot submit a move');
+    await deliver(p, { ...noMove, step: 5 });
     ok(await p.locator('#slPlay').isHidden(), 'no impossible disabled primary move');
     ok(await p.locator('#slPass').isEnabled(), 'pass available when no moves');
     ok((await p.locator('#slPass').getAttribute('class')).includes('primary'), 'pass becomes primary');
+    ok(await p.locator('#slHand [data-playable="true"]').count() === 0 && (await p.locator('#slActionHelp').innerText()).includes('ผ่าน'), 'no legal move clears highlights and explains pass');
     await geometry(p, label + ' pass only');
     // End-of-round can arrive with the same step as the final move.
-    await deliver(p, { ...ended[0], step: 3 });
+    await deliver(p, { ...ended[0], step: 5 });
     ok((await p.locator('#slResultTitle').innerText()).includes('คุณเป็นคิง'), 'own result is the headline');
     ok(await p.locator('#slResultEmblem [data-role="king"]').count() === 1, 'personal award uses king art');
     for (const role of ['king', 'queen', 'commoner', 'slave']) ok(await p.locator('#slRanks [data-role="' + role + '"] svg').count() === 1, 'distinct SVG rank art ' + role);
@@ -262,15 +283,19 @@ async function browserChecks() {
     ok(await p.locator('#slNext').isVisible(), 'host next-round action visible');
     await geometry(p, label + ' round end');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'result-' + label + '.png'), fullPage: false });
-    await deliver(p, { ...exchanging[0], step: 4 });
+    await deliver(p, { ...exchanging[0], step: 6 });
     ok((await p.locator('#slActionHelp').innerText()).includes('มือเดิมคืน 2 ใบ'), 'king exchange explains original hand');
-    await p.locator('#slHint').click();
+    ok(await p.locator('#slHand [data-playable="true"]').count() === exchanging[0].self.hand.length, 'exchange highlights all cards eligible for returning');
+    await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').first().click();
+    ok(!(await p.locator('#slPlay').isEnabled()) && (await p.locator('#slActionHelp').innerText()).includes('1/2'), 'exchange explains one of two chosen and prevents early submit');
+    await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').first().click();
     ok(await p.locator('#slPlay').isEnabled(), 'complete exchange selection enabled');
+    ok(await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').count() === 0, 'full exchange selection stops suggesting extra cards');
     await geometry(p, label + ' exchange');
     ok(await p.locator('#slSeats [data-role="unranked"]').count() === 0, 'assigned ranks stay visible during exchange');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'exchange-' + label + '.png'), fullPage: false });
     await p.locator('#slDebug').click(); await p.locator('#slPeekHands').check(); await p.locator('#slDebugFold').click();
-    const shrinking = clone(opening); shrinking.step = 5;
+    const shrinking = clone(opening); shrinking.step = 7;
     shrinking.seats[1].count = 1; shrinking.seats[2].count = 0; shrinking.seats[2].place = 1; shrinking.seats[3].count = 7;
     await deliver(p, shrinking);
     ok(await p.locator('.seat-left .sl-back,.seat-left .sl-revealed-card').count() === 1, 'one remaining card draws one back');

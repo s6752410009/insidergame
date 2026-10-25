@@ -9,6 +9,16 @@ let server,browser,host,other,logs='',S,checks=0;
 function ok(v,msg){assert.ok(v,msg);checks++;}
 async function wait(fn,label,timeout=20000){const end=Date.now()+timeout;while(Date.now()<end){if(await fn())return;await sleep(25);}throw new Error('Timeout '+label+'\n'+logs.slice(-1500));}
 function ack(s,event,data){return new Promise((resolve,reject)=>{s.timeout(8000).emit(event,data,(err,res)=>err?reject(err):resolve(res));});}
+async function selectGuidedMove(page){
+ let chosen;
+ for(let n=0;n<4&&!await page.locator('#slPlay').isEnabled();n++){
+  const next=page.locator('#slHand [data-playable="true"][aria-pressed="false"]').first();
+  ok(await next.count()===1,'in-hand guide offers a legal next card');
+  chosen=await next.getAttribute('data-card');await next.click();
+ }
+ ok(await page.locator('#slPlay').isEnabled(),'following card highlights completes a legal move');
+ return chosen;
+}
 async function client(id,onState){const s=io(base,{transports:['websocket'],forceNew:true});await wait(()=>s.connected,'connect');s.emit('initPlayer',id);if(onState)s.on('slaveState',onState);await sleep(200);return s;}
 async function run(){
  server=spawn(process.execPath,['app.js'],{cwd:root,env:{...process.env,PORT:String(port),MONGO_URL:'',ALLOW_LEGACY_SOCKET_IDENTITY:'1',SLAVE_BOT_MS:'35'},stdio:['ignore','pipe','pipe']});
@@ -67,7 +77,7 @@ async function run(){
    await p.evaluate(()=>Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,5000))]));
    for(const viewport of [{width:375,height:667},{width:667,height:375},{width:568,height:320},{width:821,height:700}]){
     await p.setViewportSize(viewport);
-    const clipped=await p.evaluate(()=>['#slStatus','#slHand .sl-card','#slPlay','#slPass','#slHint','#slClear'].flatMap(selector=>[...document.querySelectorAll(selector)]).filter(el=>el.getClientRects().length).map(el=>({label:el.id||el.dataset.card,rect:el.getBoundingClientRect().toJSON()})).filter(({rect:r})=>r.left< -1||r.right>innerWidth+1||r.top< -1||r.bottom>innerHeight+1));
+    const clipped=await p.evaluate(()=>['#slStatus','#slHand .sl-card','#slPlay','#slPass','#slClear'].flatMap(selector=>[...document.querySelectorAll(selector)]).filter(el=>el.getClientRects().length).map(el=>({label:el.id||el.dataset.card,rect:el.getBoundingClientRect().toJSON()})).filter(({rect:r})=>r.left< -1||r.right>innerWidth+1||r.top< -1||r.bottom>innerHeight+1));
     ok(!clipped.length,'real-server turn fits '+viewport.width+'x'+viewport.height+': '+JSON.stringify(clipped));
     await p.screenshot({path:path.join(shots,'real-'+viewport.width+'x'+viewport.height+'.png'),fullPage:false});
    }
@@ -84,15 +94,15 @@ async function run(){
   ok(await p.evaluate(()=>audioOutput.peak<.001),'music switch really silences background audio');
   // Human turn must remain playable and keep keyboard focus when selecting cards.
   await wait(async()=>{
-   if(await p.locator('#slHint').isEnabled())return true;
+   if(await p.locator('#slHand [data-playable="true"]').count())return true;
    if(await p.locator('#slPass').isEnabled())await p.locator('#slPass').click();
    return false;
   },'human legal turn');
   const turnCues=await p.evaluate(()=>audioOutput.events.filter(e=>e==='turn').length);
   ok(turnCues>0,'turn received before gesture is audible after unlock');
-  await p.locator('#slHint').click();await sleep(150);
-  ok(await p.locator('#slPlay').isEnabled(),'hint selects a legal move');
-  ok(await p.evaluate(()=>document.activeElement.id==='slHint'),'focus survives selection');
+  ok(await p.locator('#slHint').count()===0,'obsolete select-set button is absent');
+  const guidedCard=await selectGuidedMove(p);await sleep(150);
+  ok(await p.locator('[data-card="'+guidedCard+'"]').evaluate(el=>document.activeElement===el),'card keeps keyboard focus after guided selection');
   ok(await p.evaluate(()=>audioOutput.peak>.005),'card selection produces audio');
   ok(await p.evaluate(()=>audioOutput.events.filter(e=>e==='turn').length)===turnCues,'selection does not replay turn cue');
   await p.evaluate(()=>{audioOutput.peak=0;});

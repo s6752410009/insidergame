@@ -12,6 +12,61 @@ ok(!E.beats(E.combination([48]),E.combination([0,1,2])),'single cannot beat trip
 ok(!E.combination([0,0]),'duplicate cards rejected');
 ok(!E.combination([0,4]),'mixed ranks rejected');
 ok(E.beats(E.combination([5,7]),E.combination([4,6])),'pair suit tiebreak');
+/* Insert after existing basic engine assertions in scripts/smoke-slave.js. */
+const G=require('../public/js/slaveGuide');
+function guideFixture(hand, top=null, opening=false) {
+ const r=room();E.startGame(r);
+ const s=r.gameState;
+ s.phase='turn';s.turnId='bot_0';s.firstPlay=opening;
+ s.seats[0].hand=hand.slice();
+ s.top=top?{...E.combination(top),playerId:'bot_1'}:null;
+ return E.buildClientState(r,'bot_0');
+}
+function guideChoice(state, ids) { return G.analyze(state,new Set(ids)); }
+function sameIds(actual, expected, label) {
+ ok(JSON.stringify(actual.slice().sort((a,b)=>a-b))===JSON.stringify(expected.slice().sort((a,b)=>a-b)),label);
+}
+const openingGuide=guideFixture([0,1,2,3,4,5],null,true);
+sameIds(guideChoice(openingGuide,[]).candidates,[0],'guide first opening starts at required 3 clubs');
+const openingSingle=guideChoice(openingGuide,[0]);
+ok(openingSingle.legal,'3 clubs alone is a legal opening');
+sameIds(openingSingle.candidates,[0,1,2,3],'after required card, guide offers same-rank opening expansions');
+const openingPartial=guideChoice(openingGuide,[1]);
+ok(!openingPartial.legal,'3 diamonds without required 3 clubs is not ready');
+sameIds(openingPartial.candidates,[0,1,2,3],'opening selection can be repaired by adding 3 clubs');
+ok(!guideChoice(openingGuide,[4]).candidates.length,'unrelated opening rank has no compatible move');
+
+const freshGuide=guideFixture([4,5,6,7,8,9]);
+sameIds(guideChoice(freshGuide,[]).candidates,[4,5,6,7,8,9],'fresh pile makes every hand card available');
+const singleGuide=guideChoice(freshGuide,[4]);
+ok(singleGuide.legal,'fresh pile selection can be played as a single');
+sameIds(singleGuide.candidates,[4,5,6,7],'fresh single offers same-rank expansions only');
+const mixedGuide=guideChoice(freshGuide,[4,8]);
+ok(!mixedGuide.legal&&mixedGuide.invalid&&!mixedGuide.candidates.length,'mixed-rank selection is invalid without invented suggestions');
+const missingGuide=guideChoice(freshGuide,[51]);
+ok(!missingGuide.legal&&missingGuide.invalid&&!missingGuide.candidates.length,'stale card selection is invalid');
+
+const cutSingleGuide=guideFixture([4,5,6,7,48,51],[49]);
+sameIds(guideChoice(cutSingleGuide,[]).candidates,[4,5,6,7,51],'single answer includes suit winner and lower triple cuts, excludes losing single');
+const partialTriple=guideChoice(cutSingleGuide,[4,5]);
+ok(!partialTriple.legal&&!partialTriple.invalid,'partial legal triple is incomplete, not invalid');
+sameIds(partialTriple.candidates,[4,5,6,7],'partial triple offers compatible third cards only');
+const fullTriple=guideChoice(cutSingleGuide,[4,5,6]);
+ok(fullTriple.legal,'low triple is a valid cut against highest-rank single');
+sameIds(fullTriple.candidates,[4,5,6],'complete triple cannot expand into illegal quad against a single');
+
+const cutPairGuide=guideFixture([4,5,6,7,50,51],[48,49]);
+const partialQuad=guideChoice(cutPairGuide,[4,5]);
+ok(!partialQuad.legal&&!partialQuad.invalid,'losing pair may be completed into cutting quad');
+sameIds(partialQuad.candidates,[4,5,6,7],'partial quad guides remaining same-rank cards');
+ok(guideChoice(cutPairGuide,[4,5,6,7]).legal,'lowest quad cuts highest-rank pair');
+ok(guideChoice(cutPairGuide,[50,51]).legal,'same-rank higher-suit pair remains valid');
+
+const noMoveGuide=guideFixture([4,5,48,51],[8,9,10]);
+const noMove=guideChoice(noMoveGuide,[]);
+ok(!noMove.legal&&!noMove.candidates.length,'no legal move offers no highlighted cards');
+ok(noMove.message.includes('ผ่าน'),'no legal move explains passing');
+
 const invalid=room();invalid.players.pop();assert.throws(()=>E.startGame(invalid));
 const sample=room();E.startGame(sample,()=>.5);const id=sample.gameState.turnId,p=sample.gameState.seats.find(p=>p.playerId===id);
 const before=JSON.stringify(sample.gameState);

@@ -18,34 +18,37 @@
   function analyze(state, selection) {
     const ids = [...selection], hand = state.self?.hand || [], count = state.self?.exchangeCount || 0;
     const cards = ids.map(id => hand.find(c => c.id === id)).filter(Boolean);
-    if (count) return {
-      legal: ids.length === count && cards.length === count,
-      candidates: hand.map(c => c.id),
-      message: 'เลือกไพ่คืน ' + count + ' ใบจากมือเดิม · เลือกแล้ว ' + ids.length + '/' + count,
-      label: 'ยืนยันคืน ' + count + ' ใบ',
-      invalid: false
-    };
+    if (count) {
+      const legal = ids.length === count && cards.length === count;
+      return {
+        legal,
+        candidates: legal ? ids : hand.map(c => c.id),
+        message: legal ? 'เลือกครบ ' + count + ' ใบแล้ว · กดยืนยันคืนไพ่' : ids.length ? 'เลือกแล้ว ' + ids.length + '/' + count + ' · แตะไพ่ ↑ อีก ' + (count - ids.length) + ' ใบ' : 'แตะไพ่ ↑ เลือกจากมือเดิมคืน ' + count + ' ใบ',
+        label: legal ? 'ยืนยันคืน ' + count + ' ใบ' : 'เลือกคืนอีก ' + (count - ids.length) + ' ใบ',
+        invalid: false
+      };
+    }
     const moves = state.legalMoves || [];
     const matches = moves.filter(move => ids.every(id => move.includes(id)));
     const legal = ids.length > 0 && matches.some(move => move.length === ids.length);
-    let message = requirement(state), invalid = false;
+    let message = state.openingRequired ? 'แตะไพ่ ↑ 3♣ เพื่อเปิดกอง · เพิ่มหน้า 3 เป็นชุดได้' : !state.top ? 'แตะไพ่ ↑ เพื่อเริ่มชุด · เดี่ยว คู่ ตอง หรือโฟร์หน้าเดียวกัน' : 'แตะไพ่ ↑ · ' + requirement(state), invalid = false;
     if (state.canPlay && !moves.length) message = 'ไม่มีชุดที่ชนะกองนี้ · กดผ่านเพื่อรอกองใหม่';
     else if (ids.length) {
       if (cards.length !== ids.length) { message = 'ไพ่ในมือเปลี่ยนแล้ว · เลือกชุดใหม่'; invalid = true; }
-      else if (cards.some(c => c.rank !== cards[0].rank)) { message = 'ชุดนี้มีหลายหน้า · เลือกไพ่หน้าเดียวกัน เช่น คู่ 8'; invalid = true; }
-      else if (state.openingRequired && !ids.includes(0)) { message = 'ตาแรกต้องมี 3♣ · ยกเลิกชุดนี้ แล้วเลือก 3♣ ก่อน'; invalid = true; }
-      else if (legal) message = 'ลง' + setName(cards) + ' ได้ · กดยืนยันด้านล่าง';
+      else if (cards.some(c => c.rank !== cards[0].rank)) { message = 'ชุดนี้มีหลายหน้า · แตะยกเลิกใบที่ต่างหน้า'; invalid = true; }
+      else if (state.openingRequired && !ids.includes(0)) { message = matches.length ? 'ตาแรกต้องมี 3♣ · แตะไพ่ ↑ 3♣ เพิ่ม' : 'ตาแรกต้องมี 3♣ · ยกเลิกชุดนี้ แล้วเลือก 3♣ ก่อน'; invalid = !matches.length; }
+      else if (legal) message = 'ลง' + setName(cards) + ' ได้ · กดปุ่มลงไพ่';
       else if (matches.length) {
         const size = Math.min(...matches.map(move => move.length));
-        message = 'เลือกเพิ่มอีก ' + (size - ids.length) + ' ใบให้ครบ' + names[size] + 'หน้าเดียวกัน';
+        message = 'แตะไพ่ ↑ เลือกเพิ่มอีก ' + (size - ids.length) + ' ใบให้ครบ' + names[size] + 'หน้า ' + cards[0].rank;
       } else {
         invalid = true;
         const topCount = state.top?.cards.length;
-        message = topCount === ids.length ? 'ชุดนี้ยังไม่ใหญ่กว่ากองกลาง · เทียบหน้าไพ่ก่อน แล้วเทียบดอก ♣ ♦ ♥ ♠' : requirement(state);
+        message = topCount === ids.length ? 'ชุดนี้ยังไม่ใหญ่กว่ากองกลาง · ยกเลิกแล้วเลือกไพ่ใหม่' : requirement(state);
       }
     }
     const candidates = state.openingRequired && !ids.length ? moves.length ? [0] : [] : [...new Set(matches.flat())];
-    return { legal, candidates, message, invalid, label: legal ? 'ลง' + setName(cards) + ' →' : ids.length ? 'เลือกชุดที่ลงได้' : 'เลือกไพ่เพื่อลง' };
+    return { legal, candidates, message, invalid, label: legal ? 'ลง' + setName(cards) + ' →' : ids.length ? matches.length ? 'เลือกเพิ่มอีก ' + (Math.min(...matches.map(move => move.length)) - ids.length) + ' ใบ' : 'เลือกไพ่ใหม่' : 'เลือกไพ่เพื่อลง' };
   }
   function benefit(place) {
     return [
