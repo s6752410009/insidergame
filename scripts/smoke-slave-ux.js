@@ -256,6 +256,19 @@ async function browserChecks() {
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-partial-' + label + '.png'), fullPage: false });
     ok((await p.locator('#slActionHelp').innerText()).includes('อีก 1'), 'partial pair instruction');
     ok(await p.locator('[data-card="9"]').getAttribute('data-playable') === 'true', 'matching pair highlighted');
+    if ([1280,2137].includes(width)) {
+      const nextCard = await p.locator('[data-card="9"]').evaluate(card => {
+        const corner = card.querySelector('.sl-corner:not(.bottom)'), rect = corner.getBoundingClientRect();
+        const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return {
+          onScreen: x >= 0 && x < innerWidth && y >= 0 && y < innerHeight && rect.width > 0 && rect.height > 0,
+          receivesPointer: Boolean(hit && (hit === card || card.contains(hit))),
+          coveredBy: hit && (hit.closest('[data-card]')?.dataset.card || hit.id || hit.tagName)
+        };
+      });
+      ok(nextCard.onScreen && nextCard.receivesPointer, label + ' next compatible card rank and suit remain visible and selectable after its neighbor is selected: ' + JSON.stringify(nextCard));
+    }
     ok(await p.locator('[data-card="12"]').getAttribute('data-playable') === 'false', 'other rank not highlighted');
     await p.locator('[data-card="12"]').click();
     ok((await p.locator('#slActionHelp').innerText()).includes('หลายหน้า'), 'mixed ranks give a concrete correction');

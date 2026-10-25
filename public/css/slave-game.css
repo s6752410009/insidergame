@@ -301,6 +301,7 @@ html.slave-active body:before{
 }
 
 /* Automatic guidance stays on the hand; it never chooses a move for the player. */
+.slave .sl-hand .sl-card.selected{z-index:var(--i)!important}
 .slave .sl-hand .sl-card.playable:not(.selected){border-color:oklch(.68 .14 148);box-shadow:0 0 0 1px oklch(.68 .14 148),0 3px 0 oklch(.4 .075 150),0 7px 8px oklch(.12 .025 50/.5)}
 .slave .sl-hand .sl-card.unavailable{background:oklch(.78 .03 120);border-color:oklch(.62 .03 130);color:oklch(.34 .035 155)}
 .slave .sl-hand .sl-card.red.unavailable{color:oklch(.46 .12 26)}
