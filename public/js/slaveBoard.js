@@ -69,7 +69,7 @@
         const rank = p.place || titles.indexOf(p.title) + 1;
         const role = roles[rank - 1] || 'unranked';
         const backs = !self ? '<div class="sl-backs" data-card-count="' + count + '" style="--cards:' + count + '" aria-hidden="true">' + (count ? Array.from({ length: count }, (_, j) => '<i class="sl-back" style="--r:' + (j - (count - 1) / 2) * 2 + 'deg;--card-index:' + j + '"></i>').join('') : '<span class="sl-no-cards">หมดมือ</span>') + '</div>' : '';
-        return '<div data-player-id="' + esc(p.playerId) + '" class="sl-seat seat-' + positions[i] + (turn ? ' turn' : '') + (p.passed ? ' passed' : '') + '"' + (turn ? ' aria-current="true"' : '') + '><div class="sl-avatar-wrap"><div class="sl-avatar" aria-hidden="true"><svg class="sl-avatar-timer" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="25" pathLength="100"/></svg>' + avatar(p.avatar) + '</div>' + roleBadge(role, rank ? titles[rank - 1] : 'ยังไม่มีอันดับ') + '</div><div class="sl-seat-info"><div class="sl-name">' + esc(self ? 'คุณ · ' + p.name : p.name) + '</div><span class="sl-seat-label">' + esc(label) + '</span>' + (self ? '' : '<span class="sl-count" aria-label="เหลือไพ่ ' + count + ' ใบ"><strong>' + count + '</strong> ใบ</span>') + '</div>' + backs + '</div>';
+        return '<div data-player-id="' + esc(p.playerId) + '" class="sl-seat seat-' + positions[i] + (turn ? ' turn' : '') + (p.passed ? ' passed' : '') + '"' + (turn ? ' aria-current="true"' : '') + '><div class="sl-avatar-wrap"><div class="sl-avatar" aria-hidden="true"><svg class="sl-avatar-timer" viewBox="0 0 100 100"><rect x="4" y="4" width="92" height="92" rx="25" pathLength="100"/></svg>' + avatar(p.avatar) + '</div>' + roleBadge(role, rank ? titles[rank - 1] : 'ยังไม่มีอันดับ') + '</div><div class="sl-seat-info"><div class="sl-name">' + esc(self ? 'คุณ · ' + p.name : p.name) + '</div><span class="sl-seat-label">' + '<span class="sl-seat-label-text">' + esc(label) + '</span>' + (self ? '' : '<span class="sl-seat-clock" role="timer" hidden></span>') + '</span>' + (self ? '' : '<span class="sl-count" aria-label="เหลือไพ่ ' + count + ' ใบ"><strong>' + count + '</strong> ใบ</span>') + '</div>' + backs + '</div>';
       }).join('');
     }
     function animate(el, name) {
@@ -105,6 +105,7 @@
         if (state.top && previous) animate($('slPile'), 'just-played');
         pileKey = newPileKey;
       }
+      $('slPile').hidden = state.phase === 'exchange';
       $('slPileText').textContent = state.phase === 'exchange' ? 'เลือกคืนแล้ว ' + (state.exchangeProgress?.done || 0) + '/2 คน · แลกพร้อมกัน' : state.top ? (state.seats.find(p => p.playerId === state.top.playerId)?.name || '') + ' ลง' + guide.setName(state.top.cards) : state.openingRequired ? 'ผู้ถือ 3♣ เปิดกองก่อน' : 'กองใหม่ · ลงชุดไหนก็ได้';
       const hand = state.self?.hand || [], newHandKey = state.round + ':' + hand.map(c => c.id).join(',');
       if (newHandKey !== handKey) {
@@ -196,21 +197,34 @@
     socket.on('kickedFromRoom', () => { location.href = '/rooms'; });
     function tick() {
       const remaining = state.phaseEndsAt ? Math.max(0, Math.ceil((state.phaseEndsAt - Date.now()) / 1000)) : 0;
-      const timed = ['turn', 'exchange'].includes(state.phase) && state.phaseEndsAt;
+      const timingPhase = ['turn', 'exchange'].includes(state.phase);
+      const timed = Boolean(timingPhase && state.phaseEndsAt);
       const shown = Math.min(remaining, state.phase === 'exchange' ? 60 : 30);
-      $('slClock').textContent = timed ? shown + ' วินาที' : '';
-      $('slHandClock').textContent = timed ? ' · ' + shown + ' วิ' : '';
-      $('slClock').hidden = !timed;
-      const active = state.canPlay || state.self?.exchangeCount;
+      const active = Boolean(state.canPlay || state.self?.exchangeCount);
+      const ownSeat = state.seats.find(p => p.playerId === playerId);
+      const clockText = timed ? remaining > 0 ? (active ? 'เหลือ ' : state.phase === 'exchange' ? 'แลกไพ่ ' : 'ตานี้ ') + shown + ' วิ' : 'หมดเวลา · รอระบบ' : timingPhase ? 'ไม่จับเวลา' : '';
+      $('slClock').textContent = clockText;
+      $('slHandClock').textContent = clockText ? (timed && remaining === 0 ? 'รอระบบ' : clockText) : '';
+      $('slClock').hidden = !timingPhase;
       const urgent = timed && remaining <= 5;
-      $('slClock').classList.toggle('urgent', Boolean(urgent));
+      const ownUrgent = Boolean(active && !ownSeat?.isBot && urgent);
+      $('slClock').classList.toggle('urgent', ownUrgent);
+      $('slStatus').closest('.sl-status-row').classList.toggle('is-urgent', ownUrgent);
       $('slTurnTrack').hidden = !active || !timed;
-      $('slTurnTrack').classList.toggle('urgent', Boolean(urgent));
+      $('slTurnTrack').classList.toggle('urgent', ownUrgent);
       $('slTurnTrack').style.setProperty('--remaining', Math.min(1, remaining / (state.phase === 'exchange' ? 60 : 30)));
       $('slSeats').style.setProperty('--turn-remaining', Math.min(1, remaining / (state.phase === 'exchange' ? 60 : 30)));
       $('slSeats').classList.toggle('urgent', Boolean(urgent));
+      $('slSeats').querySelectorAll('.sl-seat-clock').forEach(clock => {
+        const seat = clock.closest('[data-player-id]');
+        const current = state.phase === 'turn' && seat.dataset.playerId === state.turnId;
+        clock.hidden = !current;
+        clock.textContent = !current ? '' : !timed ? 'ไม่จับเวลา' : remaining > 0 ? shown + ' วิ' : 'รอระบบ';
+        clock.setAttribute('aria-label', current ? !timed ? 'ไม่จับเวลา' : remaining > 0 ? 'เหลือเวลา ' + shown + ' วินาที' : 'หมดเวลา กำลังรอระบบ' : '');
+        clock.classList.toggle('urgent', Boolean(current && urgent));
+      });
       const warningKey = state.round + ':' + state.step + ':' + remaining;
-      if (active && urgent && remaining > 0 && warningKey !== warned) { warned = warningKey; audio.cue('warning'); }
+      if (ownUrgent && remaining > 0 && warningKey !== warned) { warned = warningKey; audio.cue('warning'); }
     }
     setInterval(tick, 250);
     render(initial);

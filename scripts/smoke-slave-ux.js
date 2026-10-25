@@ -120,9 +120,22 @@ async function geometry(page, label) {
     const ranks = [...document.querySelectorAll('#slRanks .sl-rank')].filter(visible).map(el => {
       const r = el.getBoundingClientRect(); return { x:r.x,right:r.right,y:r.y,bottom:r.bottom };
     });
-    return { width: innerWidth, height: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth + 1, rects, cards, clippedInk, backs, ranks };
+    const clippedText = [...document.querySelectorAll('#slStatus,#slActionHelp,#slPileText')].filter(visible).filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map(el => el.id);
+    const ordinaryNames = document.querySelector('.slave').classList.contains('has-revealed-hands') ? [] : [...document.querySelectorAll('#slSeats .sl-name')].filter(visible).map(el => ({ text: el.textContent, size: parseFloat(getComputedStyle(el).fontSize) }));
+    const arena = document.querySelector('.sl-arena').getBoundingClientRect(), zone = document.getElementById('slPlayerZone').getBoundingClientRect();
+    const self = document.querySelector('.seat-self'), status = document.getElementById('slStatus');
+    const compactLandscape = innerWidth > innerHeight && innerHeight <= 540;
+    const proximity = compactLandscape ? null : { tableToTray: zone.top - arena.bottom, selfToStatus: self && visible(self) ? status.getBoundingClientRect().top - self.getBoundingClientRect().bottom : null };
+    return { width: innerWidth, height: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth + 1, rects, cards, clippedInk, clippedText, ordinaryNames, proximity, backs, ranks };
   });
   ok(!result.overflow, label + ' has no horizontal overflow');
+  ok(!result.clippedText.length, label + ' status, action help and pile caption are not clipped: ' + result.clippedText.join(','));
+  if (result.proximity) {
+    ok(result.proximity.tableToTray <= 24, label + ' hand tray stays close to the table: ' + result.proximity.tableToTray);
+    if (result.proximity.selfToStatus !== null) ok(result.proximity.selfToStatus <= 40, label + ' own turn status stays close to own seat: ' + result.proximity.selfToStatus);
+  }
+  const nameMinimum = result.width > 820 && result.height > 540 ? 15 : 10;
+  for (const name of result.ordinaryNames) ok(name.size >= nameMinimum, label + ' readable player name ' + name.size + 'px: ' + name.text);
   ok(!result.clippedInk.length, label + ' ranks and suits stay inside card faces: ' + result.clippedInk.join(','));
   if (!label.includes('round end') && !label.includes('result')) ok(result.backs.length === 3, label + ' all three opponent hands visible, including top');
   for (const b of result.backs) {
@@ -137,10 +150,40 @@ async function geometry(page, label) {
     if (!r.id.startsWith('sl')) ok(r.width >= 43.9 && r.height >= 44, label + ' card touch target ' + r.id);
   }
 }
+async function enabledControlsHitTest(page, label) {
+  const targets = await page.evaluate(() => ['slPlay', 'slPass', 'slHint', 'slClear', 'slNext'].map(id => document.getElementById(id)).filter(el => el && !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden').map(el => {
+    const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return { id: el.id, receivesPointer: Boolean(hit && (hit === el || el.contains(hit))), interceptedBy: hit && (hit.id || hit.className || hit.tagName) };
+  }));
+  ok(targets.length > 0, label + ' has an enabled main control');
+  for (const target of targets) ok(target.receivesPointer, label + ' enabled control receives pointer events: ' + JSON.stringify(target));
+}
+async function timerChecks() {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  const p = await context.newPage(), now = 1700000000000;
+  // Keep interval ticks running while fixing wall time, so five seconds is exact.
+  await p.addInitScript(fixed => { Date.now = () => fixed; }, now);
+  const ownTurn = { ...clone(opening), turnId: 'p0', canPlay: true, phaseEndsAt: now + 5000 };
+  await fixture(p, ownTurn);
+  await p.waitForFunction(() => document.getElementById('slHandClock').textContent.includes('เหลือ 5 วิ'));
+  ok(await p.locator('#slHandClock').isVisible(), 'own turn has a visible five-second hand timer');
+  ok(await p.locator('.sl-status-row').evaluate(el => el.classList.contains('is-urgent')), 'own five-second turn makes the status row urgent');
+  ok(await p.locator('#slSeats .sl-seat-clock:visible').count() === 0, 'own turn does not add an opponent timer');
+  const opponentTurn = { ...ownTurn, step: ownTurn.step + 1, turnId: 'p1', canPlay: false, canPass: false };
+  await deliver(p, opponentTurn);
+  await p.waitForFunction(() => document.getElementById('slHandClock').textContent.includes('ตานี้ 5 วิ'));
+  ok(await p.locator('#slSeats .sl-seat-clock:visible').count() === 1, 'waiting turn shows exactly one opponent timer');
+  const currentClock = p.locator('.sl-seat.turn .sl-seat-info .sl-seat-clock');
+  ok(await currentClock.isVisible() && (await currentClock.innerText()).includes('5'), 'opponent countdown is beside the current player name');
+  await deliver(p, { ...ended[0], step: opponentTurn.step + 1 });
+  await p.waitForFunction(() => !document.querySelector('.sl-status-row').classList.contains('is-urgent'));
+  ok(await p.locator('#slSeats .sl-seat-clock:visible').count() === 0, 'untimed result hides every opponent timer');
+  await context.close();
+}
 async function browserChecks() {
   browser = await chromium.launch();
   const errors = [];
-  const sizes = [[320,568],[360,640],[375,667],[390,844],[768,1024],[800,700],[820,700],[821,700],[1280,800],[568,320],[667,375],[844,390],[1024,512]];
+  const sizes = [[320,568],[360,640],[375,667],[390,844],[768,1024],[800,700],[820,700],[821,700],[1280,800],[568,320],[667,375],[844,390],[1024,512],[2137,1011]];
   for (const [width, height] of sizes) {
     const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
     const p = await context.newPage(); p.on('pageerror', e => errors.push(e.message));
@@ -168,8 +211,9 @@ async function browserChecks() {
     const hiddenFaces = await p.locator('.sl-revealed-card').evaluateAll(els => els.filter(el => { const r=el.getBoundingClientRect(); return r.x<0||r.right>innerWidth+1||r.y<0||r.bottom>innerHeight+1; }).length);
     ok(!hiddenFaces, label + ' every revealed card stays on screen');
     await p.locator('[data-card="0"]').click(); ok(await p.locator('#slPlay').isEnabled(), label + ' can select and play with debug open');
+    await enabledControlsHitTest(p, label + ' debug selected');
     await p.locator('#slClear').click();
-    if ([320,375,667,1280].includes(width)) await p.screenshot({path:path.join(shots,'live-debug-'+label+'.png')});
+    if ([320,375,667,1280,2137].includes(width)) await p.screenshot({path:path.join(shots,'live-debug-'+label+'.png')});
     await p.locator('#slDebugFold').click();
     ok(await p.locator('#slSeats .sl-revealed-card').count() === 39, label + ' folded tools preserve live revealed hands');
     await p.locator('#slDebug').click(); await p.locator('#slPeekHands').uncheck();
@@ -194,7 +238,7 @@ async function browserChecks() {
     ok(await p.locator('#slPlay').isEnabled(), 'first valid move enabled');
     ok((await p.locator('#slPlay').innerText()).includes('3♣'), 'submit names selected card');
     await geometry(p, label + ' selected');
-    if ([320,375,667,821,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'opening-' + label + '.png'), fullPage: false });
+    if ([320,375,667,821,1280,2137].includes(width)) await p.screenshot({ path: path.join(shots, 'opening-' + label + '.png'), fullPage: false });
     await deliver(p, { ...pair, step: 2 });
     await p.locator('[data-card="8"]').click();
     ok((await p.locator('#slActionHelp').innerText()).includes('อีก 1'), 'partial pair instruction');
@@ -258,9 +302,10 @@ async function browserChecks() {
     await geometry(p, 'rank ' + (i + 1) + ' result');
     await context.close();
   }
+  await timerChecks();
   ok(errors.length === 0, 'no browser errors: ' + errors.join('; '));
 }
 (async () => {
   ruleChecks(); await browserChecks();
-  console.log('Slave UX: ' + checks + ' checks passed · real engine legal sets, 13 viewports, opening/pair/cut/pass, all ranks/exchanges, same-step results, 44px targets, visible turn controls · screenshots ' + shots);
+  console.log('Slave UX: ' + checks + ' checks passed · real engine legal sets, 14 viewports, readable names/proximity, unblocked debug controls, own/opponent timers, opening/pair/cut/pass, all ranks/exchanges, same-step results, 44px targets, visible turn controls · screenshots ' + shots);
 })().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => { await browser?.close(); });

@@ -1,7 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link href="/static/css/slave.css?v=3" rel="stylesheet">
-<link href="/static/css/slave-game.css?v=7" rel="stylesheet">
+<link href="/static/css/slave-game.css?v=8" rel="stylesheet">
 <link rel="preload" as="image" href="/static/img/slave/portraits-v1.jpg">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
@@ -61,7 +61,7 @@
 <script src="/static/js/slaveAudio.js?v=2"></script>
 <script src="/static/js/slaveGuide.js?v=3"></script>
 <script src="/static/js/slaveTools.js?v=7"></script>
-<script src="/static/js/slaveBoard.js?v=7"></script>
+<script src="/static/js/slaveBoard.js?v=8"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>,canDebug:<%= typeof slaveDebugAllowed !== 'undefined' && slaveDebugAllowed ? 'true' : 'false' %>});
