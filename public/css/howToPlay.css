@@ -1390,3 +1390,11 @@ body.content .container-fluid {
   overflow-x: clip;
   overflow-y: visible;
 }
+
+/* สลาฟ: ตัวอย่างใช้ภาพไพ่ชุดเดียวกับเกมอื่น ลำดับอ่านได้แม้จอแคบ */
+.guide-card.mode-slave { border-color: rgba(226, 190, 111, 0.32); }
+.guide-card.mode-slave .guide-mode-badge { background: rgba(226, 190, 111, 0.12); color: #f5d990; border-color: rgba(226, 190, 111, 0.32); }
+.hp-slave-order { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; padding: 0; list-style: none; }
+.hp-slave-order li { display: grid; place-items: center; min-width: 30px; min-height: 38px; padding: 4px 7px; border: 1px solid rgba(245, 217, 144, 0.3); border-radius: 5px; background: #f8efd9; color: #173c30; font-size: 1.05rem; font-weight: 700; }
+.hp-slave-sets .hp-hand { min-height: 130px; }
+.hp-slave-sets .hp-hand > img { width: 30%; }

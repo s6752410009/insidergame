@@ -25,7 +25,7 @@ const VIEWPORTS = [
     { name: 'tablet', width: 768, height: 1024 },
     { name: 'desktop', width: 1440, height: 900 }
 ];
-const SHOT_GAMES = ['coup', 'werewolf', 'colorcards', 'setthi', 'pokdeng'];
+const SHOT_GAMES = ['coup', 'werewolf', 'colorcards', 'setthi', 'pokdeng', 'slave'];
 const MAX_PROSE_PX = 760;
 
 function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -132,7 +132,7 @@ async function runViewport(browser, baseUrl, vp, shotDir) {
 
     const ids = await page.$$eval('#hp-switch [data-jump]', els => els.map(el => el.getAttribute('data-jump')));
     const games = ids.filter(id => id !== 'top' && id !== 'faq');
-    check(games.length >= 17, `${tag} expected 17+ game tabs, got ${games.length}`);
+    check(games.length >= 18 && games.includes('slave'), `${tag} expected 18+ game tabs including Slave, got ${games.join(',')}`);
     check(await page.isVisible('#top'), `${tag} overview hero not visible`);
     check((await page.$$('.hp-tile')).length === games.length, `${tag} picker tiles do not match game tabs`);
     check(await horizontalOverflow(page) <= 0, `${tag} horizontal scroll on overview`);
@@ -166,6 +166,24 @@ async function runViewport(browser, baseUrl, vp, shotDir) {
         const broken = await loadAllImages(page, id);
         check(broken.length === 0, `${tag} #${id}: images not loaded: ${broken.join(', ')}`);
         check(await horizontalOverflow(page) <= 0, `${tag} #${id}: horizontal scroll`);
+        if (id === 'slave') {
+            const slave = await page.evaluate(() => {
+                const el = document.getElementById('slave');
+                return {
+                    ranks: Array.from(el.querySelectorAll('.hp-slave-order li'), li => li.textContent),
+                    sections: ['slave-ranks', 'slave-exchange', 'slave-controls'].every(id => !!el.querySelector('#' + id)),
+                    text: el.textContent.replace(/\s+/g, ' '),
+                    play: el.querySelector('.hp-more').getAttribute('href'),
+                    samples: el.querySelectorAll('.hp-slave-sets .hp-card').length
+                };
+            });
+            check(slave.ranks.join(',') === '3,4,5,6,7,8,9,10,J,Q,K,A,2', `${tag} Slave rank order is wrong`);
+            check(slave.sections && slave.samples === 4, `${tag} Slave missing rules, exchange, controls or playable-set examples`);
+            const playUrl = new URL(slave.play, 'http://localhost');
+            check(playUrl.pathname === '/rooms' && playUrl.searchParams.get('mode') === 'slave', `${tag} Slave play link does not open its rooms: ${slave.play}`);
+            check(['3♣', 'ตอง 3 ก็ตัดเดี่ยว 2♠ ได้', 'โฟร์ไม่ใช้ตัดเดี่ยวหรือตอง', 'ผ่านแล้วพักกองนี้', 'เลือกคืนจากมือเดิมก่อนรับไพ่', 'ลูกศรเหนือไพ่', '30 วินาที', '60 วินาที', 'หยุดรอบสำหรับทุกคน'].every(t => slave.text.includes(t)), `${tag} Slave missing implemented-rule or UI guidance`);
+            check(!slave.text.includes('/m'), `${tag} private debug instructions leaked into the player manual`);
+        }
         if (shotDir && SHOT_GAMES.includes(id) && vp.name !== 'tablet') {
             await page.evaluate(gameId => {
                 const el = document.getElementById(gameId);
@@ -218,6 +236,8 @@ async function runDeepLinks(browser, baseUrl) {
     const vp = VIEWPORTS[0];
     const cases = [
         ['coup', 'coup', 'coup'],
+        ['slave', 'slave', 'slave'],
+        ['slave-exchange', 'slave', 'slave-exchange'],
         ['poker5', 'poker5', 'poker5'],
         ['memory', 'solo', 'memory'],
         ['getting-started', null, 'getting-started']
@@ -246,6 +266,7 @@ async function runNoJs(browser, baseUrl) {
     const visible = await page.$$eval('.hp-game', els => els.filter(el => el.offsetHeight > 200).length);
     const total = await page.$$eval('.hp-game', els => els.length);
     check(visible === total, `no-JS: only ${visible}/${total} games visible`);
+    check(await page.isVisible('#slave') && (await page.locator('#slave-exchange').count()) === 1, 'no-JS: Slave manual or exchange rules are missing');
     check(await horizontalOverflow(page) <= 0, 'no-JS: horizontal scroll');
     await ctx.close();
 }

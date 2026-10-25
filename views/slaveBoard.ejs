@@ -1,13 +1,13 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link href="/static/css/slave.css?v=4" rel="stylesheet">
-<link href="/static/css/slave-game.css?v=10" rel="stylesheet">
+<link href="/static/css/slave-game.css?v=11" rel="stylesheet">
 <link rel="preload" as="image" href="/static/img/slave/portraits-v1.jpg">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
   <div class="sl-screen">
   <div class="sl-top">
-    <div class="sl-brand"><span class="sl-brand-mark" aria-hidden="true">♛</span><div><h1>SLAVE <span>สลาฟ · <span id="slRound"></span></span></h1><div class="sl-meta">โต๊ะ #<%= room.roomId %> · STAGING <span id="slDebugUsed" hidden>· ทดสอบ /m</span></div></div></div>
+    <div class="sl-brand"><span class="sl-brand-mark" aria-hidden="true">♛</span><div><h1>SLAVE <span>สลาฟ · <span id="slRound"></span></span></h1><div class="sl-meta">โต๊ะ #<%= room.roomId %><%= typeof isStaging !== 'undefined' && isStaging ? ' · STAGING' : '' %> <span id="slDebugUsed" hidden>· ทดสอบ /m</span></div></div></div>
     <div class="sl-tools"><button id="slSound" aria-pressed="false">เปิดเสียงเกม</button><button id="slMusic" aria-pressed="true">♫ เพลง เปิด</button><button id="slChat" aria-haspopup="dialog" aria-label="เปิดแชทห้อง">แชท <span id="slChatUnread" hidden></span></button><button id="slDebug" aria-controls="slDebugDock" aria-expanded="false" aria-pressed="false" hidden>/m</button><button id="slExit" aria-haspopup="dialog">ออกจากเกม</button></div>
   </div>
   <div id="slConnection" class="sl-alert" role="status"></div>
@@ -41,7 +41,7 @@
   </div>
   </div>
   <div class="sl-under-table">
-    <details><summary>กติกาโต๊ะนี้ ⌄</summary><div class="sl-help">4 คน คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด · ดอก ♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว / คู่ / ตอง / โฟร์หน้าเดียวกัน ต้องใหญ่กว่ากองเดิม · ตองตัดเดี่ยว · โฟร์ตัดคู่<br>ผ่านแล้วพักจนกองใหม่ ทุกคนผ่าน คนลงล่าสุดเปิดใหม่ ถ้าคนนั้นหมดมือ คนถัดไปที่ยังเล่นอยู่เริ่ม<br>รอบแรกเปิดด้วยชุดที่มี 3♣ · รอบต่อไปสลาฟเริ่ม<br>คิงเลือกคืน 2 ใบจากมือเดิมแลกกับไพ่สูงสุดของสลาฟ · ควีนเลือกคืน 1 ใบแลกกับรองสลาฟ<br>ไม่ใช้ไพ่เรียง / คิงตกชั้น / ปฏิวัติ · หมดเวลา 30 วิ ระบบลงหรือผ่านให้ · แลกไพ่ภายใน 60 วิ</div></details>
+    <details><summary>กติกาโต๊ะนี้ ⌄</summary><div class="sl-help">4 คน คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด · ดอก ♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว / คู่ / ตอง / โฟร์หน้าเดียวกัน ต้องใหญ่กว่ากองเดิม · ตองตัดเดี่ยว · โฟร์ตัดคู่<br>ผ่านแล้วพักจนกองใหม่ ทุกคนผ่าน คนลงล่าสุดเปิดใหม่ ถ้าคนนั้นหมดมือ คนถัดไปที่ยังเล่นอยู่เริ่ม<br>รอบแรกเปิดด้วยชุดที่มี 3♣ · รอบต่อไปสลาฟเริ่ม<br>คิงเลือกคืน 2 ใบจากมือเดิมแลกกับไพ่สูงสุดของสลาฟ · ควีนเลือกคืน 1 ใบแลกกับรองสลาฟ<br>ไม่ใช้ไพ่เรียง / คิงตกชั้น / ปฏิวัติ · หมดเวลา 30 วิ ระบบลงหรือผ่านให้ · แลกไพ่ภายใน 60 วิ<br><a class="sl-manual-link" href="/how-to-play#slave" target="_blank" rel="noopener">อ่านคู่มือสลาฟพร้อมตัวอย่างไพ่ ↗</a></div></details>
     <details><summary>บันทึกการลงไพ่ ⌄</summary><ol id="slHistory" class="sl-history"></ol></details>
     <div class="sl-short-rule">หมดมือก่อน เป็นคิง<br>3 → 2 &nbsp; · &nbsp; ♣ ♦ ♥ ♠</div>
   </div>

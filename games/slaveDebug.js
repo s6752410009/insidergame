@@ -9,7 +9,7 @@ function auto(room) {
 }
 function run(room, id, action, step) {
   if (!ACTIONS.includes(action)) throw new Error('ไม่รู้จักคำสั่งทดสอบ');
-  if (action === 'inspect') return;
+  if (action === 'inspect') { room.gameState.debugUsed = true; return; }
   if (step !== room.gameState.step) throw new Error('ตาเปลี่ยนแล้ว กรุณาลองใหม่');
   const s = room.gameState;
   if (action === 'auto') auto(room);

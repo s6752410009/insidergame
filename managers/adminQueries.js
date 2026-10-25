@@ -12,7 +12,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
 const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 const STATS_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover', 'coup', 'avalon', 'liar',
-    'poker5', 'poker4', 'pokdeng', 'codenames', 'wavelength', 'drawguess', 'colorcards', 'setthi'];
+    'poker5', 'poker4', 'pokdeng', 'codenames', 'wavelength', 'drawguess', 'colorcards', 'setthi', 'slave'];
 
 function compareValues(a, b, dir) {
     if (a < b) return dir === 'asc' ? -1 : 1;

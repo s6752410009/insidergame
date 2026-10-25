@@ -1,4 +1,5 @@
 <%- contentFor('content') %>
+<link rel="stylesheet" href="/static/css/playerProfile.css?v=1">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/coupGuide.css">
 <link rel="stylesheet" href="/static/css/pokerHands.css">
@@ -1574,6 +1575,7 @@
 <%- include('partials/footerNav', { back: { label: 'รายชื่อห้อง', id: 'btnLeaveRoom', asButton: true } }) %>
 
 <%- contentFor('script') %>
+<script src="/static/js/playerProfile.js?v=1"></script>
 <script src="/js/pokerRankChart.js?v=20261007rules"></script>
 <script src="/js/coupGuide.js"></script>
 <script src="/js/codenamesLobby.js?v=3"></script>
@@ -3891,7 +3893,7 @@
       });
     });
     $(document).on('click', '#btnSlaveRules', function() {
-      Swal.fire({title:'สลาฟ 4 คน',html:'คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด<br>♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว คู่ ตอง โฟร์ ให้ใหญ่กว่า · ตองตัดเดี่ยว โฟร์ตัดคู่<br>ผ่านแล้วรอกองใหม่ · รอบแรกเปิดด้วย 3♣<br>คิง↔สลาฟแลก 2 ใบ / ควีน↔รองสลาฟแลก 1 ใบ<br>เลือกไพ่คืนจากมือเดิม แล้วสลาฟเปิดรอบใหม่<br>ไม่ใช้ไพ่เรียง คิงตกชั้น หรือปฏิวัติ'});
+      Swal.fire({title:'สลาฟ 4 คน',html:'คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด<br>♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว คู่ ตอง โฟร์ ให้ใหญ่กว่า · ตองตัดเดี่ยว โฟร์ตัดคู่<br>ผ่านแล้วรอกองใหม่ · รอบแรกเปิดด้วย 3♣<br>คิง↔สลาฟแลก 2 ใบ / ควีน↔รองสลาฟแลก 1 ใบ<br>เลือกไพ่คืนจากมือเดิม แล้วสลาฟเปิดรอบใหม่<br>ไม่ใช้ไพ่เรียง คิงตกชั้น หรือปฏิวัติ<br><a href="/how-to-play#slave" target="_blank" rel="noopener">อ่านคู่มือพร้อมตัวอย่างไพ่ ↗</a>'});
     });
     $(document).on('click', '#btnColorCardsAddBots', function() {
       const btn = $(this);
@@ -4506,8 +4508,6 @@
       window.location.href = '/game/' + roomId + '?playerId=' + playerId;
     });
     
-    // กรอบมาจาก /static/js/playerAvatar.js แหล่งเดียว จะได้ไม่หลุดกันระหว่างหน้า
-    const frameStyles = window.PlayerAvatar.FRAME_STYLES;
     
     // Click on avatar to view profile
     $(document).on('click', '.clickable-avatar', function() {
@@ -4517,86 +4517,9 @@
     
     // Show player profile modal
     function showPlayerProfile(targetPlayerId) {
-      $.get('/api/player/' + targetPlayerId + '/profile', function(data) {
-        const frameStyle = frameStyles[data.avatarFrame] || 'none';
-        const joinedDate = new Date(data.createdAt).toLocaleDateString('th-TH');
-        const lastPlayed = data.stats?.lastPlayedAt ? new Date(data.stats.lastPlayedAt).toLocaleDateString('th-TH') : 'ยังไม่เคยเล่น';
-        
-        const stats = data.stats || { totalGames: 0, wins: 0, losses: 0, winRate: 0, roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 }, winByRole: { winAsTraitor: 0, winAsCitizen: 0 } };
-        
-        const html = `
-          <div class="profile-modal-content">
-            <div class="profile-modal-header">
-              <div class="profile-modal-avatar">
-                <div class="profile-modal-avatar-inner" style="background: ${data.color}20; border-color: ${data.color};">
-                  ${window.PlayerAvatar.renderContent(data, { size: 64 })}
-                </div>
-                ${frameStyle !== 'none' ? '<div class="profile-modal-avatar-frame" style="background: ' + frameStyle + ';"></div>' : ''}
-              </div>
-              <div>
-                <h2 class="profile-modal-name" style="color: ${data.color};">${$('<div>').text(data.playerName).html()}</h2>
-                <p class="profile-modal-joined">เข้าร่วมเมื่อ: ${joinedDate}</p>
-              </div>
-            </div>
-            
-            <div class="profile-modal-stats">
-              <div class="profile-stat-box">
-                <div class="profile-stat-value" style="color: #3498db;">${stats.totalGames}</div>
-                <div class="profile-stat-label">เกมที่เล่น</div>
-              </div>
-              <div class="profile-stat-box">
-                <div class="profile-stat-value" style="color: #2ecc71;">${stats.wins}</div>
-                <div class="profile-stat-label">ชนะ</div>
-              </div>
-              <div class="profile-stat-box">
-                <div class="profile-stat-value" style="color: #f39c12;">${stats.winRate}%</div>
-                <div class="profile-stat-label">Win Rate</div>
-              </div>
-            </div>
-            
-            <div class="profile-roles">
-              <h4>🎭 สถิติบทบาท</h4>
-              <div class="profile-role-row">
-                <span>🟢 ผู้ดำเนินเกม</span>
-                <span>${stats.roleStats.gameMasterCount} ครั้ง</span>
-              </div>
-              <div class="profile-role-row">
-                <span>🔴 จอมบงการ</span>
-                <span>${stats.roleStats.traitorCount} ครั้ง (ชนะ ${stats.winByRole.winAsTraitor})</span>
-              </div>
-              <div class="profile-role-row">
-                <span>🔵 พลเมือง</span>
-                <span>${stats.roleStats.citizenCount} ครั้ง (ชนะ ${stats.winByRole.winAsCitizen})</span>
-              </div>
-              <div class="profile-role-row">
-                <span>🕐 เล่นล่าสุด</span>
-                <span>${lastPlayed}</span>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        Swal.fire({
-          title: '',
-          html: html,
-          background: '#1a1a2e',
-          color: '#fff',
-          showConfirmButton: true,
-          confirmButtonText: 'ปิด',
-          confirmButtonColor: '#e74c3c',
-          width: 400
-        });
-      }).fail(function() {
-        Swal.fire({
-          icon: 'error',
-          title: 'ไม่พบข้อมูล',
-          text: 'ไม่สามารถโหลดโปรไฟล์ได้',
-          background: '#1e1e1e',
-          color: '#fff',
-          confirmButtonColor: '#e74c3c'
-        });
-      });
+      window.PlayerProfile.show(targetPlayerId);
     }
+
   });
 
   // ปุ่ม ? สอนติดตั้ง PWA

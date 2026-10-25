@@ -113,6 +113,7 @@ GAME_MODES.push('codenames');
 GAME_MODES.push('drawguess');
 GAME_MODES.push('colorcards');
 GAME_MODES.push('setthi');
+GAME_MODES.push('slave');
 
 function createDefaultModeStats() {
     return {
@@ -131,7 +132,8 @@ function createDefaultModeStats() {
         wavelength: { games: 0, wins: 0, losses: 0 },
         drawguess: { games: 0, wins: 0, losses: 0 },
         colorcards: { games: 0, wins: 0, losses: 0 },
-        setthi: { games: 0, wins: 0, losses: 0 }
+        setthi: { games: 0, wins: 0, losses: 0 },
+        slave: { games: 0, wins: 0, losses: 0 }
     };
 }
 
@@ -157,6 +159,7 @@ function createDefaultStatsRecord(playerId, playerName) {
         roleStats: createDefaultRoleStats(),
         winByRole: createDefaultWinByRole(),
         modeStats: createDefaultModeStats(),
+        slaveLatestResult: null,
         lastPlayedAt: null,
         gameHistory: []
     };
@@ -238,6 +241,17 @@ function normalizeStatsShape(rawStat = {}, fallbackPlayerId = null, fallbackPlay
     stat.gameHistory = Array.isArray(rawStat.gameHistory)
         ? rawStat.gameHistory.map(normalizeGameHistoryEntry).filter(Boolean).slice(0, MAX_GAME_HISTORY)
         : [];
+
+    // Internal high-water mark survives the 20-entry public history limit.
+    const latestSlave = rawStat.slaveLatestResult || stat.gameHistory.find(entry => entry.mode === 'slave' && entry.resultId);
+    if (latestSlave && typeof latestSlave.resultId === 'string' && typeof latestSlave.gameId === 'string'
+        && Number.isInteger(latestSlave.round) && latestSlave.round > 0
+        && Number.isFinite(new Date(latestSlave.endedAt).getTime())) {
+        stat.slaveLatestResult = {
+            resultId:latestSlave.resultId, gameId:latestSlave.gameId, round:latestSlave.round,
+            endedAt:new Date(latestSlave.endedAt).toISOString()
+        };
+    }
 
     return stat;
 }
@@ -464,6 +478,10 @@ function recordGameEnd(roomId, gameResult) {
 
     if (gameResult?.mode === 'setthi') {
         return recordSetthiGameEnd(roomId, gameResult);
+    }
+
+    if (gameResult?.mode === 'slave') {
+        return recordSlaveRoundEnd(roomId, gameResult);
     }
 
     return recordInsiderGameEnd(roomId, gameResult);
@@ -897,6 +915,46 @@ function recordColorCardsGameEnd(roomId, gameResult) {
     });
 
     saveStats();
+}
+
+/** สลาฟ: บันทึกทุกรอบที่จบครบ 4 อันดับ คิงชนะ — เกมทดสอบ/บอท/ยกเลิกไม่เพิ่มอันดับ */
+function recordSlaveRoundEnd(roomId, gameResult) {
+    const { standings, roomName, round, resultId, gameId, startedAt, endedAt, debugUsed, abandoned } = gameResult;
+    if (debugUsed || abandoned || !resultId || !gameId || !Number.isInteger(round) || round < 1
+        || typeof endedAt !== 'string' || !Number.isFinite(new Date(endedAt).getTime())
+        || !Array.isArray(standings) || standings.length !== 4
+        || new Set(standings.map(row => row && row.playerId)).size !== 4
+        || standings.some((row, index) => !row || !row.playerId || row.place !== index + 1 || isBotPlayerId(row.playerId))) return false;
+    const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
+    const gameTimestamp = new Date(endedAt).toISOString();
+    let recorded = false;
+    standings.forEach(row => {
+        const stat = initializeStats(row.playerId, row.name);
+        if (!stat) return;
+        const latest = stat.slaveLatestResult;
+        // Reject old room snapshots even after their result fell out of the public history.
+        if ((latest && (latest.resultId === resultId || (latest.gameId === gameId && latest.round >= round)
+            || new Date(latest.endedAt).getTime() > new Date(gameTimestamp).getTime()))
+            || stat.gameHistory.some(entry => entry.mode === 'slave' && entry.resultId === resultId)) return;
+        const won = row.place === 1;
+        stat.totalGames += 1;
+        stat.modeStats.slave.games += 1;
+        stat[won ? 'wins' : 'losses'] += 1;
+        stat.modeStats.slave[won ? 'wins' : 'losses'] += 1;
+        stat.lastPlayedAt = gameTimestamp;
+        stat.slaveLatestResult = { resultId, gameId, round, endedAt:gameTimestamp };
+        stat.gameHistory.unshift({
+            mode:'slave', date:gameTimestamp, roomId, roomName:roomName || 'ไม่ทราบ',
+            resultId, gameId, round, startedAt:startedAt || null, endedAt:gameTimestamp,
+            won, role:titles[row.place - 1], title:titles[row.place - 1], place:row.place, playerCount:4,
+            winnerName:standings[0].name || 'ไม่ทราบ',
+            resultText:`รอบ ${round} · อันดับ ${row.place}/4 · ${titles[row.place - 1]}`
+        });
+        stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
+        recorded = true;
+    });
+    if (recorded) saveStats();
+    return recorded;
 }
 
 /** เศรษฐี: คนที่ทรัพย์สินรวมสูงสุด (หรือรอดคนสุดท้าย) ชนะ — เสมอกันชนะร่วม · ไม่บันทึกบอท */

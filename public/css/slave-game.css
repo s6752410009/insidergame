@@ -313,3 +313,5 @@ html.slave-active body:before{
   .sl-card-guide{top:3px;left:auto;right:3px;width:14px;height:14px;font-size:12px}
   .sl-actions #slClear{font-size:0}.sl-actions #slClear:after{content:'✕';font-size:.875rem}
 }
+
+.sl-manual-link{display:inline-block;color:var(--gold);text-decoration:underline;text-underline-offset:3px;padding:8px 0;min-height:44px}

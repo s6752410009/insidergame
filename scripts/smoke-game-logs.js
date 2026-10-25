@@ -18,7 +18,7 @@ const { getGameEngine } = require('../games/engineRegistry');
 
 const ROOT = path.join(__dirname, '..');
 const ALL_MODES = ['insider', 'werewolf', 'blackmarket', 'spyfall', 'undercover', 'coup', 'avalon', 'liar',
-    'poker5', 'poker4', 'pokdeng', 'codenames', 'wavelength', 'drawguess', 'colorcards', 'setthi'];
+    'poker5', 'poker4', 'pokdeng', 'codenames', 'wavelength', 'drawguess', 'colorcards', 'setthi', 'slave'];
 const MODES = process.argv.slice(2).length ? process.argv.slice(2) : ALL_MODES;
 
 let passed = 0;

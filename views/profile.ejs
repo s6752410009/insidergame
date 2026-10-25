@@ -26,7 +26,8 @@
         { id: 'wavelength', icon: '📡', label: 'คลื่นความคิด' },
         { id: 'drawguess', icon: '🎨', label: 'วาดแล้วทาย' },
         { id: 'colorcards', icon: '🃏', label: 'ไพ่ทิ้งสี' },
-        { id: 'setthi', icon: '💰', label: 'เศรษฐี' }
+        { id: 'setthi', icon: '💰', label: 'เศรษฐี' },
+        { id: 'slave', icon: '♠', label: 'สลาฟ' }
     ];
     const modeById = {};
     MODES.forEach(m => { modeById[m.id] = m; });
@@ -430,6 +431,7 @@
     }
     .pf-result.is-win { background: color-mix(in oklch, var(--pf-gold) 22%, transparent); color: var(--pf-gold); }
     .pf-result.is-loss { background: var(--pf-sunken); color: var(--pf-loss); }
+    .pf-result.is-place { background: var(--pf-sunken); color: var(--pf-soft); }
     .pf-game-icon { font-size: 1.3rem; text-align: center; color: var(--pf-ink); }
     .pf-game-main { min-width: 0; }
     .pf-game-title { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -602,13 +604,14 @@
                                     <span class="pf-mode-icon<%= m.tone === 'red' ? ' is-red' : '' %>" aria-hidden="true"><%= m.icon %></span>
                                     <span>
                                         <span class="pf-mode-name"><%= m.label %></span>
-                                        <span class="pf-mode-count"> · <%= m.games %> เกม · ชนะ <%= m.wins %> แพ้ <%= m.losses %></span>
+                                        <span class="pf-mode-count"> · <%= m.games %> <%= m.id === 'slave' ? 'รอบ · คิง' : 'เกม · ชนะ' %> <%= m.wins %><% if (m.id !== 'slave') { %> แพ้ <%= m.losses %><% } %></span>
                                     </span>
                                     <span class="pf-mode-rate"><%= m.rate %>%</span>
                                     <span class="pf-meter" role="img" aria-label="อัตราชนะ <%= m.rate %>%"><span style="--rate: <%= m.rate %>%;"></span></span>
                                 </li>
                             <% }); %>
                         </ul>
+                        <% if (playedModes.some(m => m.id === 'slave')) { %><p class="pf-hint">สลาฟนับสถิติโต๊ะคนเล่น 4 คนเมื่อจบรอบ · อันดับ 1 (คิง) นับเป็นชนะ</p><% } %>
                         <% if (untriedModes.length) { %>
                             <p class="pf-untried">ยังไม่เคยลอง: <%= untriedModes.map(m => m.icon + ' ' + m.label).join(' · ') %></p>
                         <% } %>
@@ -697,7 +700,8 @@
                 <% } else { %>
                     <div class="pf-games">
                         <% history.forEach(function(game) {
-                            const mode = modeById[game.mode] || modeById.insider;
+                            const mode = modeById[game.mode || 'insider'] || { label: 'เกมอื่น', icon: '🎮' };
+                            const placed = game.mode === 'slave' && Number(game.place) >= 1 && Number(game.place) <= 4;
                             const when = ago(game.date);
                             const role = game.role && game.role !== 'ไม่ทราบ' ? game.role : null;
                             const room = game.roomName && game.roomName !== mode.label ? game.roomName : null;
@@ -705,7 +709,7 @@
                         %>
                             <details class="pf-game">
                                 <summary>
-                                    <span class="pf-result <%= game.won ? 'is-win' : 'is-loss' %>"><%= game.won ? 'ชนะ' : 'แพ้' %></span>
+                                    <span class="pf-result <%= game.won ? 'is-win' : (placed ? 'is-place' : 'is-loss') %>"><%= placed ? 'อันดับ ' + game.place : (game.won ? 'ชนะ' : 'แพ้') %></span>
                                     <span class="pf-game-icon<%= mode.tone === 'red' ? ' is-red' : '' %>" aria-hidden="true"><%= mode.icon %></span>
                                     <span class="pf-game-main">
                                         <span class="pf-game-title"><%= mode.label %></span>
@@ -714,7 +718,10 @@
                                     <span class="pf-game-when"><%= when || '' %></span>
                                 </summary>
                                 <p class="pf-game-body">
-                                    <% if (game.mode === 'werewolf') { %>
+                                    <% if (game.mode === 'slave') { %>
+                                        <span><%= game.resultText || ('รอบ ' + (game.round || 1) + ' · อันดับ ' + (game.place || '—') + '/4 · ' + (game.title || game.role || '')) %></span>
+                                        <% if (game.winnerName) { %><span>คิง <%= game.winnerName %></span><% } %>
+                                    <% } else if (game.mode === 'werewolf') { %>
                                         <span>ทีม <%= game.team === 'werewolf' ? 'หมาป่า 🐾' : 'ชาวบ้าน 🏡' %></span>
                                         <span>ทีมชนะ <%= game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน') %></span>
                                         <span>จบวันที่ <%= game.dayNumber || 0 %></span>

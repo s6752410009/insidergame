@@ -42,6 +42,8 @@ async function deniedSlashCommand(page, sent, label) {
 function engineChecks() {
   const room = { admin: 'p0', players: Array.from({ length: 4 }, (_, i) => ({ playerId: 'p' + i, socketId: 's' + i })) };
   E.startGame(room); invariant(room);
+  D.run(room, 'p0', 'inspect');
+  ok(room.gameState.debugUsed === true, 'inspecting private hands marks the table unranked');
   const before = JSON.stringify(room.gameState);
   assert.throws(() => D.run(room, 'p0', 'auto', -1)); ok(JSON.stringify(room.gameState) === before, 'stale debug cannot mutate');
   assert.throws(() => D.run(room, 'p0', 'unknown', room.gameState.step));

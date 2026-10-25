@@ -28,7 +28,8 @@ const SUITES = {
     wavelength: 'smoke-wavelength-play.js',
     drawguess: 'smoke-drawguess-play.js',
     colorcards: 'smoke-colorcards-play.js',
-    setthi: 'smoke-setthi-play.js'
+    setthi: 'smoke-setthi-play.js',
+    slave: 'smoke-slave-play.js'
 };
 const modes = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SUITES);
 

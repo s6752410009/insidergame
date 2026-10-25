@@ -1,4 +1,5 @@
 <%- contentFor('content') %>
+<link rel="stylesheet" href="/static/css/playerProfile.css?v=1">
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/home.css?v=2">
 <link rel="stylesheet" href="/static/css/worldChat.css?v=1">
@@ -149,6 +150,7 @@
 <!-- No footer needed -->
 
 <%- contentFor('script') %>
+<script src="/static/js/playerProfile.js?v=1"></script>
 <script src="/static/js/worldChat.js?v=1"></script>
 <script>
 $(function() {
@@ -172,8 +174,6 @@ $(function() {
     });
     
     // Frame styles lookup
-    // กรอบมาจาก /static/js/playerAvatar.js แหล่งเดียว จะได้ไม่หลุดกันระหว่างหน้า
-    const frameStyles = window.PlayerAvatar.FRAME_STYLES;
 
     // รูปผู้เล่นบนบัตร — ใช้ตัว render กลางเหมือนหน้าโปรไฟล์ (มีกรอบด้วย)
     (function renderHomeAvatar() {
@@ -206,6 +206,7 @@ $(function() {
         { id: 'drawguess', label: 'วาดแล้วทาย' },
         { id: 'colorcards', label: 'ไพ่ทิ้งสี' },
         { id: 'setthi', label: 'เศรษฐี' },
+        { id: 'slave', label: 'สลาฟ' },
         { id: 'blackmarket', label: 'Black Market' }
     ];
     var leaderboardState = {
@@ -644,256 +645,9 @@ $(function() {
     
     // Show player profile modal
     function showPlayerProfile(targetPlayerId) {
-        const blackMarketRoleMeta = [
-            { id: 'boss', icon: '🎩', label: 'เจ้าพ่อ' },
-            { id: 'broker', icon: '🕴️', label: 'นายหน้า' },
-            { id: 'smuggler', icon: '🚚', label: 'คนส่งของ' },
-            { id: 'fixer', icon: '🧹', label: 'คนเคลียร์ทาง' },
-            { id: 'hitman', icon: '🔫', label: 'มือเก็บงาน' },
-            { id: 'mole', icon: '🕶️', label: 'สายข่าว' },
-            { id: 'doubleAgent', icon: '🃏', label: 'สองหน้า' }
-        ];
-
-        $.get('/api/player/' + targetPlayerId + '/profile', function(data) {
-            const frameStyle = frameStyles[data.avatarFrame] || 'none';
-            const joinedDate = new Date(data.createdAt).toLocaleDateString('th-TH');
-            const lastPlayed = data.stats?.lastPlayedAt ? new Date(data.stats.lastPlayedAt).toLocaleDateString('th-TH') : 'ยังไม่เคยเล่น';
-            
-            const stats = data.stats || {
-                totalGames: 0,
-                wins: 0,
-                losses: 0,
-                winRate: 0,
-                roleStats: { gameMasterCount: 0, traitorCount: 0, citizenCount: 0 },
-                winByRole: { winAsTraitor: 0, winAsCitizen: 0 },
-                modeStats: {
-                    insider: { games: 0, wins: 0, losses: 0 },
-                    werewolf: { games: 0, wins: 0, losses: 0 },
-                    blackmarket: { games: 0, wins: 0, losses: 0 },
-                    spyfall: { games: 0, wins: 0, losses: 0 }
-                }
-            };
-            const blackMarketRoleStats = blackMarketRoleMeta.filter(function(role) {
-                return Number(stats.roleStats?.blackmarket?.[role.id] || 0) > 0;
-            });
-            const blackMarketRoleHtml = blackMarketRoleStats.length
-                ? blackMarketRoleStats.map(function(role) {
-                    return `
-                        <div class="profile-role-row">
-                            <span>${role.icon} ${role.label}</span>
-                            <span>${stats.roleStats.blackmarket[role.id] || 0} ครั้ง (ชนะ ${stats.winByRole?.blackmarket?.[role.id] || 0})</span>
-                        </div>
-                    `;
-                }).join('')
-                : '<div class="profile-role-row"><span>🎩 บทตลาดมืด</span><span>ยังไม่มีสถิติ</span></div>';
-            
-            const history = Array.isArray(stats.gameHistory) ? stats.gameHistory.slice(0, 5) : [];
-            const historyHtml = history.length > 0
-                ? history.map(function(game) {
-                    const mode = game.mode || 'insider';
-                    const isWerewolf = mode === 'werewolf';
-                    const isBlackMarket = mode === 'blackmarket';
-                    const isSpyfall = mode === 'spyfall';
-                    const isUndercover = mode === 'undercover';
-                    const isCoup = mode === 'coup';
-                    const isAvalon = mode === 'avalon';
-                    const isLiar = mode === 'liar';
-                    const isPoker5 = mode === 'poker5';
-                    const isPoker4 = mode === 'poker4';
-                    const modeLabel = isWerewolf ? '🐺 Werewolf'
-                        : (isBlackMarket ? '🎩 Black Market'
-                            : (isSpyfall ? '🕵️ Spyfall' : isUndercover ? '🫥 คำใครไม่เหมือน'
-                                : (isCoup ? '👑 Coup'
-                                    : isAvalon ? '🏰 อวาลอน'
-                                    : (isLiar ? '🃏 ไพ่โกหก'
-                                        : (isPoker5 ? '♠ ไพ่ 5 ใบ'
-                                            : (isPoker4 ? '♦ สี่ใบเก' : (mode === 'pokdeng' ? '🎴 ป๊อกเด้ง' : (mode === 'codenames' ? '🕵️ สายลับคำใบ้' : (mode === 'wavelength' ? '📡 คลื่นความคิด' : (mode === 'drawguess' ? '🎨 วาดแล้วทาย' : (mode === 'colorcards' ? '🃏 ไพ่ทิ้งสี' : (mode === 'setthi' ? '💰 เศรษฐี' : '🎯 Insider'))))))))))));
-                    const modeClass = isWerewolf ? 'werewolf' : (isBlackMarket ? 'blackmarket' : (isSpyfall ? 'spyfall' : (isCoup || isAvalon ? 'coup' : (isLiar ? 'liar' : (isPoker5 || isPoker4 ? 'coup' : 'insider')))));
-                    const detailPrimary = isWerewolf
-                        ? 'ทีมชนะ: ' + escapeHtml(game.winnerLabel || (game.winner === 'werewolf' ? 'หมาป่า' : 'ชาวบ้าน'))
-                        : (isBlackMarket
-                            ? 'เจ้าโต๊ะ: ' + escapeHtml(game.winnerLabel || 'ไม่ทราบ')
-                            : (isSpyfall
-                                ? 'สถานที่: ' + escapeHtml(game.location || 'ไม่ทราบ')
-                                : (isCoup || isLiar || isAvalon || isUndercover || mode === 'pokdeng' || mode === 'codenames' || mode === 'wavelength' || mode === 'drawguess' || mode === 'colorcards' || mode === 'setthi'
-                                    ? escapeHtml(game.resultText || ((game.winnerName || 'คนอื่น') + ' รอดเป็นคนสุดท้าย'))
-                                    : 'จอมบงการ: ' + escapeHtml(game.traitor || 'ไม่ทราบ'))));
-                    const detailSecondary = isWerewolf
-                        ? (game.survived ? 'อยู่รอดจนจบ' : 'ไม่รอดจนจบ')
-                        : (isBlackMarket
-                            ? `👑 ${Number(game.influence || 0)} • 💵 ${Number(game.cash || 0)} • 🔥 ${Number(game.heat || 0)}`
-                            : (isSpyfall
-                                ? `สายลับ: ${escapeHtml(game.spyName || 'ไม่ทราบ')} • ${game.citizensWon ? 'พลเมืองชนะ' : 'สายลับรอด'}`
-                                : (isAvalon ? (game.role ? 'บท: ' + escapeHtml(game.role) : '')
-                                    : (isUndercover ? escapeHtml((game.civilianWord || '-') + ' / ' + (game.undercoverWord || '-'))
-                                    : (isCoup || isLiar || mode === 'pokdeng' || mode === 'wavelength' || mode === 'drawguess' || mode === 'colorcards' || mode === 'setthi' ? '' : (mode === 'codenames' ? (game.role ? 'บท: ' + escapeHtml(game.role) : '') : escapeHtml(game.word || 'ไม่ทราบคำ')))))));
-                    const gameDate = game.date
-                        ? new Date(game.date).toLocaleString('th-TH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                        : '-';
-
-                    return `
-                        <div class="profile-history-item ${game.won ? 'won' : 'lost'}">
-                            <div class="profile-history-top">
-                                <span>${game.won ? '🏆 ชนะ' : '💔 แพ้'} · ${escapeHtml(game.role || 'ไม่ทราบบท')}</span>
-                                <span class="profile-history-mode ${modeClass}">${modeLabel}</span>
-                            </div>
-                            <div class="profile-history-meta">
-                                <span>🏠 ${escapeHtml(game.roomName || 'ไม่ทราบห้อง')}</span>
-                                <span>👥 ${game.playerCount || 0} คน</span>
-                                <span>🕒 ${gameDate}</span>
-                            </div>
-                            <div class="profile-history-meta" style="margin-top: 4px;">
-                                <span>${detailPrimary}</span>
-                                <span>${detailSecondary}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('')
-                : '<div class="profile-history-empty">ยังไม่มีประวัติให้ดู</div>';
-
-            const html = `
-                <div class="profile-modal-content">
-                    <div class="profile-modal-header">
-                        <div class="profile-modal-avatar">
-                            ${window.PlayerAvatar
-                                ? window.PlayerAvatar.render({ playerId: data.playerId, avatar: data.avatar, avatarFrame: data.avatarFrame, avatarImage: data.avatarImage, color: data.color, playerName: data.playerName }, { size: 72 })
-                                : escapeHtml(data.avatar || '👤')}
-                        </div>
-                        <div>
-                            <h2 class="profile-modal-name" style="color: ${data.color};">${escapeHtml(data.playerName)}</h2>
-                            <p class="profile-modal-joined">เข้าร่วมเมื่อ: ${joinedDate}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-modal-stats">
-                        <div class="profile-stat-box">
-                            <div class="profile-stat-value">${stats.totalGames}</div>
-                            <div class="profile-stat-label">เกมที่เล่น</div>
-                        </div>
-                        <div class="profile-stat-box">
-                            <div class="profile-stat-value is-win">${stats.wins}</div>
-                            <div class="profile-stat-label">ชนะ</div>
-                        </div>
-                        <div class="profile-stat-box">
-                            <div class="profile-stat-value">${stats.winRate}%</div>
-                            <div class="profile-stat-label">อัตราชนะ</div>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-roles">
-                        <h4>🎭 สถิติบทบาท</h4>
-                        <div class="profile-role-row">
-                            <span>🟢 ผู้ดำเนินเกม</span>
-                            <span>${stats.roleStats.gameMasterCount} ครั้ง</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🔴 จอมบงการ</span>
-                            <span>${stats.roleStats.traitorCount} ครั้ง (ชนะ ${stats.winByRole.winAsTraitor})</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🔵 พลเมือง</span>
-                            <span>${stats.roleStats.citizenCount} ครั้ง (ชนะ ${stats.winByRole.winAsCitizen})</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🕐 เล่นล่าสุด</span>
-                            <span>${lastPlayed}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🎯 Insider</span>
-                            <span>${stats.modeStats?.insider?.games || 0} เกม</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🐺 Werewolf</span>
-                            <span>${stats.modeStats?.werewolf?.games || 0} เกม</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🎩 Black Market</span>
-                            <span>${stats.modeStats?.blackmarket?.games || 0} เกม · ชนะ ${stats.modeStats?.blackmarket?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🕵️ Spyfall</span>
-                            <span>${stats.modeStats?.spyfall?.games || 0} เกม · ชนะ ${stats.modeStats?.spyfall?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🫥 คำใครไม่เหมือน</span>
-                            <span>${stats.modeStats?.undercover?.games || 0} เกม · ชนะ ${stats.modeStats?.undercover?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>👑 Coup</span>
-                            <span>${stats.modeStats?.coup?.games || 0} เกม · ชนะ ${stats.modeStats?.coup?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🏰 อวาลอน</span>
-                            <span>${stats.modeStats?.avalon?.games || 0} เกม · ชนะ ${stats.modeStats?.avalon?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🃏 ไพ่โกหก</span>
-                            <span>${stats.modeStats?.liar?.games || 0} เกม · ชนะ ${stats.modeStats?.liar?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>♠ ไพ่ 5 ใบ</span>
-                            <span>${stats.modeStats?.poker5?.games || 0} เกม · ชนะ ${stats.modeStats?.poker5?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>♦ สี่ใบเก</span>
-                            <span>${stats.modeStats?.poker4?.games || 0} เกม · ชนะ ${stats.modeStats?.poker4?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🎴 ป๊อกเด้ง</span>
-                            <span>${stats.modeStats?.pokdeng?.games || 0} เกม · ชนะ ${stats.modeStats?.pokdeng?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🕵️ สายลับคำใบ้</span>
-                            <span>${stats.modeStats?.codenames?.games || 0} เกม · ชนะ ${stats.modeStats?.codenames?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>📡 คลื่นความคิด</span>
-                            <span>${stats.modeStats?.wavelength?.games || 0} เกม · ชนะ ${stats.modeStats?.wavelength?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🎨 วาดแล้วทาย</span>
-                            <span>${stats.modeStats?.drawguess?.games || 0} เกม · ชนะ ${stats.modeStats?.drawguess?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>🃏 ไพ่ทิ้งสี</span>
-                            <span>${stats.modeStats?.colorcards?.games || 0} เกม · ชนะ ${stats.modeStats?.colorcards?.wins || 0}</span>
-                        </div>
-                        <div class="profile-role-row">
-                            <span>💰 เศรษฐี</span>
-                            <span>${stats.modeStats?.setthi?.games || 0} เกม · ชนะ ${stats.modeStats?.setthi?.wins || 0}</span>
-                        </div>
-                        ${blackMarketRoleHtml}
-                    </div>
-
-                    <div class="profile-history">
-                        <h4>📜 5 เกมล่าสุด</h4>
-                        <div class="profile-history-list">${historyHtml}</div>
-                    </div>
-                </div>
-            `;
-            
-            Swal.fire({
-                title: '',
-                html: html,
-                background: 'oklch(0.22 0.035 285)',
-                color: '#fff',
-                showConfirmButton: true,
-                confirmButtonText: 'ปิด',
-                confirmButtonColor: '#e2493b',
-                width: 620
-            });
-        }).fail(function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'ไม่พบข้อมูล',
-                text: 'ไม่สามารถโหลดโปรไฟล์ได้',
-                background: 'oklch(0.22 0.035 285)',
-                color: '#fff',
-                confirmButtonColor: '#e2493b'
-            });
-        });
+      window.PlayerProfile.show(targetPlayerId);
     }
-    
+
     // Escape HTML helper
     function escapeHtml(text) {
         const div = document.createElement('div');

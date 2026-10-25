@@ -1,4 +1,4 @@
-const { randomInt } = require('node:crypto');
+const { randomInt, randomUUID } = require('node:crypto');
 const MODE = 'slave';
 const ranks = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const suits = ['♣','♦','♥','♠'];
@@ -18,7 +18,12 @@ function requireMember(room, id) {
     if (!p || p.left || !room.players.some(e => e.playerId === id)) throw new Error('คุณไม่ได้อยู่ในโต๊ะนี้');
     return p;
 }
-function log(s, text) { s.history.push(text); s.history = s.history.slice(-20); }
+function log(s, text, kind = 'action', playerId = null) {
+    s.history.push(text); s.history = s.history.slice(-20);
+    // Only public actions belong here. Never include hands or selected exchange returns.
+    s.auditSequence = (Number(s.auditSequence) || 0) + 1;
+    s.auditHistory = (s.auditHistory || []).concat({ seq:s.auditSequence, at:new Date().toISOString(), round:s.round, kind, playerId, text }).slice(-100);
+}
 function deadline(s) { s.step += 1; s.phaseEndsAt = Date.now() + (s.phase === 'exchange' ? 60000 : 30000); }
 function combination(ids) {
     if (!Array.isArray(ids) || ids.length < 1 || ids.length > 4 || new Set(ids).size !== ids.length) return null;
@@ -50,7 +55,8 @@ function closeRound(s) {
     s.standings = s.finishOrder.map((id,i) => ({ playerId:id, name:s.seats.find(p=>p.playerId===id).name, place:i+1, title:titles[i] }));
     s.seats.forEach(p => { p.title = titles[s.finishOrder.indexOf(p.playerId)]; });
     s.phase = 'round-end'; s.turnId = null; s.phaseEndsAt = null;
-    log(s, 'จบรอบ · ' + s.standings.map(p=>p.name+' '+p.title).join(' · '));
+    s.roundEndedAt = new Date().toISOString();
+    log(s, 'จบรอบ · ' + s.standings.map(p=>p.name+' '+p.title).join(' · '), 'round-end');
     return true;
 }
 function advance(s, actorId) {
@@ -60,7 +66,7 @@ function advance(s, actorId) {
         const last = s.top?.playerId || actorId;
         s.top = null; s.passed = [];
         s.turnId = active(s).some(p=>p.playerId===last) ? last : nextEligible(s,last);
-        log(s, 'ทุกคนผ่าน · เปิดกองใหม่');
+        log(s, 'ทุกคนผ่าน · เปิดกองใหม่', 'pile-clear');
     } else s.turnId = nextEligible(s, actorId);
     deadline(s);
 }
@@ -73,23 +79,23 @@ function startRound(room, rng) {
         [deck[i],deck[j]]=[deck[j],deck[i]];
     }
     s.seats.forEach((p,i) => { p.hand=deck.slice(i*13,i*13+13).sort((a,b)=>a-b); p.left=false; });
-    Object.assign(s, { round:s.round+1, phase:'turn', status:'playing', top:null, passed:[], finishOrder:[], played:[], exchangeDone:[], exchanges:[], standings:null });
+    Object.assign(s, { round:s.round+1, roundStartedAt:new Date().toISOString(), roundEndedAt:null, phase:'turn', status:'playing', top:null, passed:[], finishOrder:[], played:[], exchangeDone:[], exchanges:[], standings:null });
     if (previous) {
         s.exchanges = [[0,3,2],[1,2,1]].map(([hi,lo,count])=>({ from:previous[lo].playerId, to:previous[hi].playerId, count }));
         // Select returns from the original hands, then transfer simultaneously.
         s.phase='exchange'; s.openingId=previous[3].playerId; s.turnId=null;
-        log(s,'รอบ '+s.round+' · คิงเลือกคืน 2 ใบ / ควีนเลือกคืน 1 ใบ');
+        log(s,'รอบ '+s.round+' · คิงเลือกคืน 2 ใบ / ควีนเลือกคืน 1 ใบ', 'round-start');
     } else {
         s.turnId=s.seats.find(p=>p.hand.includes(0)).playerId;
         s.firstPlay=true;
-        log(s,'รอบแรก · ผู้ถือ 3♣ เปิดกองโดยต้องมี 3♣');
+        log(s,'รอบแรก · ผู้ถือ 3♣ เปิดกองโดยต้องมี 3♣', 'round-start');
     }
     deadline(s);
 }
 function startGame(room, rng) {
     const players=room.players.filter(p=>p.socketId || isBotId(p.playerId));
     if(players.length!==4) throw new Error('สลาฟต้องมี 4 คนพอดี เติมบอทให้ครบได้');
-    room.gameState={...createInitialState(), players:players.map(createPlayerState), seats:players.map(p=>({...createPlayerState(p),hand:[]}))};
+    room.gameState={...createInitialState(), gameId:randomUUID(), startedAt:new Date().toISOString(), players:players.map(createPlayerState), seats:players.map(p=>({...createPlayerState(p),hand:[]}))};
     startRound(room,rng);
 }
 function validateTurn(room,id,step) {
@@ -105,14 +111,14 @@ function playCards(room,id,ids,step) {
     if(!beats(c,s.top)) throw new Error('ต้องลงไพ่ใหญ่กว่า หรือตองตัดเดี่ยว / โฟร์ตัดคู่');
     p.hand=p.hand.filter(card=>!ids.includes(card)); s.played.push(...ids); s.firstPlay=false;
     s.top={...c,playerId:id};
-    log(s,p.name+' ลง '+ids.map(card=>describeCard(card).label).join(' '));
-    if(!p.hand.length) { s.finishOrder.push(id); log(s,p.name+' หมดมืออันดับ '+s.finishOrder.length); }
+    log(s,p.name+' ลง '+ids.map(card=>describeCard(card).label).join(' '), 'play', id);
+    if(!p.hand.length) { s.finishOrder.push(id); log(s,p.name+' หมดมืออันดับ '+s.finishOrder.length, 'placed', id); }
     advance(s,id);
 }
 function passTurn(room,id,step) {
     const p=validateTurn(room,id,step),s=state(room);
     if(!s.top) throw new Error('เปิดกองใหม่ต้องลงไพ่');
-    s.passed.push(id); log(s,p.name+' ผ่าน'); advance(s,id);
+    s.passed.push(id); log(s,p.name+' ผ่าน', 'pass', id); advance(s,id);
 }
 function exchangeCards(room,id,ids,step) {
     const p=requireMember(room,id),s=state(room);
@@ -128,7 +134,7 @@ function exchangeCards(room,id,ids,step) {
             high.hand=high.hand.filter(c=>!e.returns.includes(c)).concat(tribute).sort((a,b)=>a-b);
         });
         s.exchanges=[]; s.phase='turn'; s.turnId=s.openingId; s.firstPlay=false;
-        log(s,'แลกไพ่ครบแล้ว · สลาฟเปิดกอง');
+        log(s,'แลกไพ่ครบแล้ว · สลาฟเปิดกอง', 'exchange');
     }
     deadline(s);
 }
@@ -180,8 +186,9 @@ function handlePlayerLeft(room,id) {
     const p=seat(room,id); if(!p)return;
     p.left=true;
     const s=state(room);
+    if (['turn','exchange'].includes(s.phase)) s.abandoned = { playerId:id, name:p.name, at:new Date().toISOString(), reason:'player-left' };
     s.phase='finished'; s.status='slave_finished'; s.turnId=null; s.phaseEndsAt=null;
-    log(s,p.name+' ออกจากห้อง · กลับห้องรอเพื่อจัดโต๊ะใหม่');
+    log(s,p.name+' ออกจากห้อง · กลับห้องรอเพื่อจัดโต๊ะใหม่', 'left', id);
 }
 function buildClientState(room,id) {
     const s=state(room),p=seat(room,id),ex=s.exchanges?.find(e=>e.to===id);

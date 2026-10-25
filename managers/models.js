@@ -75,6 +75,8 @@ const playerStatsSchema = new mongoose.Schema({
     roleStats: { type: mongoose.Schema.Types.Mixed, default: createDefaultRoleStats },
     winByRole: { type: mongoose.Schema.Types.Mixed, default: createDefaultWinByRole },
     modeStats: { type: mongoose.Schema.Types.Mixed, default: createDefaultModeStats },
+    // Internal Slave result high-water mark; public profiles expose only an explicit stats whitelist.
+    slaveLatestResult: { type: mongoose.Schema.Types.Mixed, default: null },
     lastPlayedAt: { type: Date },
     gameHistory: { type: Array, default: [] }
 }, { timestamps: true });

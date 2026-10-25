@@ -121,7 +121,7 @@ const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomMa
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const slaveDebug = require('./games/slaveDebug');
-const slaveRuntime = require('./games/slaveRuntime')(() => ({ io, roomManager, reportGameError, buildRoomUpdatePayload }));
+const slaveRuntime = require('./games/slaveRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
 const spyfallReturnTimeouts = new Map();
@@ -1619,6 +1619,7 @@ const GAME_MODE_LOG_STYLES = {
 };
 GAME_MODE_LOG_STYLES.codenames = { label: 'สายลับคำใบ้', emoji: '🕵️', badgeBg: 'rgba(96,165,250,0.2)', badgeColor: '#bfdbfe' };
 GAME_MODE_LOG_STYLES.drawguess = { label: 'วาดแล้วทาย', emoji: '🎨', badgeBg: 'rgba(56,189,248,0.18)', badgeColor: '#bae6fd' };
+GAME_MODE_LOG_STYLES.slave = { label: 'สลาฟ', emoji: '🃏', badgeBg: 'rgba(34,139,93,0.22)', badgeColor: '#c9f3dc' };
 GAME_MODE_LOG_STYLES.setthi = { label: 'เศรษฐี', emoji: '💰', badgeBg: 'rgba(245,200,107,0.22)', badgeColor: '#fde68a' };
 
 function getGameModeLogStyle(gameMode) {
@@ -1638,6 +1639,7 @@ function buildGameEndNotification(room) {
     }
 
     const mode = room.settings.gameMode;
+    if (mode === 'slave') return slaveRuntime.gameEndNotification(room);
     const gameState = room.gameState;
     const playerCount = Array.isArray(gameState.players)
         ? gameState.players.length
@@ -6005,7 +6007,7 @@ app.get('/how-to-play', function(req, res) {
     // จำนวนผู้เล่นของแต่ละเกม อ่านจาก engine ตรง ๆ หน้าวิธีเล่นจะได้ไม่ค้างตัวเลขเก่า
     const gameLimits = {};
     ['insider', 'werewolf', 'spyfall', 'undercover', 'avalon', 'blackmarket', 'coup', 'liar', 'poker5', 'poker4',
-        'pokdeng', 'colorcards', 'codenames', 'wavelength', 'drawguess', 'setthi'].forEach(id => {
+        'pokdeng', 'colorcards', 'codenames', 'wavelength', 'drawguess', 'setthi', 'slave'].forEach(id => {
         const engine = getGameEngine(id);
         if (engine && engine.minPlayers) gameLimits[id] = { min: engine.minPlayers, max: engine.maxPlayers };
     });
@@ -6267,6 +6269,7 @@ app.get('/game/:roomId', async function(req, res) {
             player: gameStatePlayer, playerInfo: playerInRoom,
             room: { roomId: room.roomId, name: room.name, admin: room.admin === req.playerId },
             slaveState: slaveRuntime.buildPayload(room, playerId),
+            isStaging: process.env.APP_ENV === 'staging',
             slaveDebugAllowed: process.env.APP_ENV === 'staging' && (room.admin === playerId || isSiteAdminPlayer(playerId))
         });
     }
@@ -10681,8 +10684,9 @@ io.sockets.on('connection', function(socket) {
             if (!room || data?.roomId !== room.roomId) throw new Error('ไม่พบโต๊ะของคุณ');
             if (process.env.APP_ENV !== 'staging' || !(room.admin === socket.playerId || isSiteAdminPlayer(socket.playerId))) throw new Error('/m ใช้ได้เฉพาะหัวห้องหรือแอดมินบน staging');
             if (room.gameStarting || !room.gameState?.seats?.length) throw new Error('รอให้แจกไพ่ก่อน');
+            const wasDebugUsed = !!room.gameState.debugUsed;
             slaveDebug.run(room, socket.playerId, data?.action, data?.step);
-            if (data?.action !== 'inspect') {
+            if (data?.action !== 'inspect' || !wasDebugUsed) {
                 slaveRuntime.emitRoomState(room);
                 addServerLog(io, 'admin', room.roomId, 'Slave /m: ' + data.action, 'warning', { gameMode: 'slave', meta: { event: 'slave_debug', playerId: socket.playerId, action: data.action } });
             }

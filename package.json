@@ -173,7 +173,11 @@
     "smoke:slave": "node scripts/smoke-slave.js",
     "smoke:slave:play": "node scripts/smoke-slave-play.js",
     "smoke:slave:ux": "node scripts/smoke-slave-ux.js",
-    "smoke:slave:tools": "node scripts/smoke-slave-tools.js"
+    "smoke:slave:tools": "node scripts/smoke-slave-tools.js",
+    "smoke:slave:records": "node scripts/smoke-slave-records.js",
+    "smoke:profile": "node scripts/smoke-player-profile.js",
+    "smoke:slave:history:e2e": "node scripts/smoke-slave-history-e2e.js",
+    "smoke:profile:browser": "node scripts/smoke-player-profile-browser.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
