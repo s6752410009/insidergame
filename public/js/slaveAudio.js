@@ -10,6 +10,7 @@
       this.onChange = onChange;
       this.context = null;
       this.pendingTurn = null;
+      this.pendingResultCue = null;
       this.turnKey = null;
       this.pendingDeal = true;
       this.unlocked = false;
@@ -48,6 +49,11 @@
         // A turn received before the first gesture must still be heard after unlock.
         if (this.pendingDeal) { this.pendingDeal = false; this.cue('deal'); }
         if (this.pendingTurn) { this.pendingTurn = null; this.cue('turn'); }
+        if (this.pendingResultCue) {
+          const resultCue = this.pendingResultCue;
+          this.pendingResultCue = null;
+          this.cue(resultCue);
+        }
         this.startMusic();
         this.onChange?.();
         return true;
@@ -103,7 +109,13 @@
       source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
     }
     cue(name) {
-      if (!this.ready || document.hidden) return;
+      if (!this.ready || document.hidden) {
+        // Result states can arrive before the first user gesture (or while a
+        // mobile tab is backgrounded). Keep the important cue until audio is
+        // unlocked instead of silently dropping the winner announcement.
+        if (this.enabled && (name === 'win' || name === 'end')) this.pendingResultCue = name;
+        return;
+      }
       switch (name) {
         case 'deal': for (let i = 0; i < 5; i++) this.paper(i * .065, .15); break;
         case 'select': this.tone(760, 0, .045, .07, 'triangle'); break;
