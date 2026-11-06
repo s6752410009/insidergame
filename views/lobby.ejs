@@ -1,7 +1,7 @@
 <%- contentFor('content') %>
 <link rel="stylesheet" href="/static/css/playerProfile.css?v=1">
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/home.css?v=3">
+<link rel="stylesheet" href="/static/css/home.css?v=<%= typeof buildId !== 'undefined' ? buildId : 'release-20261106' %>">
 <link rel="stylesheet" href="/static/css/worldChat.css?v=1">
 <%
     const homeGames = stats ? (stats.totalGames || 0) : 0;
