@@ -79,7 +79,7 @@ function startRound(room, rng) {
         [deck[i],deck[j]]=[deck[j],deck[i]];
     }
     s.seats.forEach((p,i) => { p.hand=deck.slice(i*13,i*13+13).sort((a,b)=>a-b); p.left=false; });
-    Object.assign(s, { round:s.round+1, roundStartedAt:new Date().toISOString(), roundEndedAt:null, phase:'turn', status:'playing', top:null, passed:[], finishOrder:[], played:[], exchangeDone:[], exchanges:[], standings:null });
+    Object.assign(s, { round:s.round+1, roundStartedAt:new Date().toISOString(), roundEndedAt:null, phase:'turn', status:'playing', top:null, passed:[], finishOrder:[], played:[], exchangeDone:[], exchanges:[], exchangeReceipts:{}, standings:null });
     if (previous) {
         s.exchanges = [[0,3,2],[1,2,1]].map(([hi,lo,count])=>({ from:previous[lo].playerId, to:previous[hi].playerId, count }));
         // Select returns from the original hands, then transfer simultaneously.
@@ -130,6 +130,9 @@ function exchangeCards(room,id,ids,step) {
     if(s.exchangeDone.length===2) {
         s.exchanges.forEach(e=>{
             const low=seat(room,e.from),high=seat(room,e.to), tribute=low.hand.slice(-e.count);
+            s.exchangeReceipts ||= {};
+            s.exchangeReceipts[e.from] = { round:s.round, partnerId:e.to, sent:tribute.slice(), received:e.returns.slice() };
+            s.exchangeReceipts[e.to] = { round:s.round, partnerId:e.from, sent:e.returns.slice(), received:tribute.slice() };
             low.hand=low.hand.filter(c=>!tribute.includes(c)).concat(e.returns).sort((a,b)=>a-b);
             high.hand=high.hand.filter(c=>!e.returns.includes(c)).concat(tribute).sort((a,b)=>a-b);
         });
@@ -197,7 +200,10 @@ function buildClientState(room,id) {
         exchangeProgress:s.phase==='exchange'?{done:s.exchangeDone.length,total:2}:null,
         top:s.top?{playerId:s.top.playerId,cards:s.top.cards.map(describeCard)}:null,
         seats:s.seats.map(p=>({playerId:p.playerId,name:p.name,avatar:p.avatar,count:p.hand.length,isBot:isBotId(p.playerId),title:p.title||null,place:s.finishOrder?.indexOf(p.playerId)+1||null,passed:s.passed?.includes(p.playerId),online:!!room.players.find(e=>e.playerId===p.playerId)?.socketId})),
-        self:p?{hand:p.hand.map(describeCard),exchangeCount:s.phase==='exchange'&&ex&&!s.exchangeDone.includes(id)?ex.count:0}:null,
+        self:p?{hand:p.hand.map(describeCard),exchangeCount:s.phase==='exchange'&&ex&&!s.exchangeDone.includes(id)?ex.count:0,
+            exchangeReceipt:s.exchangeReceipts?.[id]?{...s.exchangeReceipts[id],sent:s.exchangeReceipts[id].sent.map(describeCard),received:s.exchangeReceipts[id].received.map(describeCard)}:null}:null,
+        resultRecorded:s.statsRecordedRound===s.round && !s.debugUsed && !s.abandoned,
+        ranked:!s.debugUsed && !s.abandoned && !s.seats.some(player=>isBotId(player.playerId)),
         canPlay:s.phase==='turn'&&s.turnId===id,canPass:s.phase==='turn'&&s.turnId===id&&!!s.top,
         legalMoves:legalMoves(room,id),standings:s.standings||null,history:s.history};
 }

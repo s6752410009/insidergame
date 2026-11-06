@@ -6061,6 +6061,7 @@ app.get('/game/:roomId', async function(req, res) {
     }
 
     const playerInRoom = room.players.find(p => p.playerId === playerId);
+    if (!playerInRoom && isSiteAdminPlayer(playerId)) return res.redirect('/admin/observe/' + encodeURIComponent(roomId));
     
     // ถ้าไม่อยู่ในห้อง → กลับไป room lobby (ให้ join ใหม่)
     // ยกเว้นคนที่กดออกเอง (เช่นกดย้อนกลับหลังออก) — ส่งไปหน้ารวมห้อง ไม่ดึงกลับเข้าห้อง
@@ -6270,7 +6271,7 @@ app.get('/game/:roomId', async function(req, res) {
             room: { roomId: room.roomId, name: room.name, admin: room.admin === req.playerId },
             slaveState: slaveRuntime.buildPayload(room, playerId),
             isStaging: process.env.APP_ENV === 'staging',
-            slaveDebugAllowed: process.env.APP_ENV === 'staging' && (room.admin === playerId || isSiteAdminPlayer(playerId))
+            slaveDebugAllowed: isSiteAdminPlayer(playerId) || (process.env.APP_ENV === 'staging' && room.admin === playerId)
         });
     }
 
@@ -6404,6 +6405,7 @@ app.get('/room/:roomId', async function(req, res) {
     // (werewolf_finished ฯลฯ) ไม่ใช่ waiting แต่ก็ไม่ใช่กำลังเล่น
     // เดิมเช็คดิบทำให้ปุ่ม "กลับห้อง" ตอนจบเกมเด้งกลับหน้าเกมทันที กดยังไงก็ไม่ไป
     const playerInRoomAlready = room.players.find(p => p.playerId === playerId);
+    if (!playerInRoomAlready && isSiteAdminPlayer(playerId)) return res.redirect('/admin/observe/' + encodeURIComponent(roomId));
     if (playerInRoomAlready && roomManager.isRoomGameInProgress(room)) {
         return res.redirect('/game/' + roomId + '?playerId=' + playerId);
     }
@@ -6601,6 +6603,14 @@ app.get('/admin/logout', function(req, res) {
 });
 
 // Admin Dashboard (protected)
+app.get('/admin/observe/:roomId', function(req, res) {
+    if (!req.session.isAdmin && !isSiteAdminPlayer(req.playerId)) return res.status(403).send('เฉพาะแอดมินเว็บ');
+    const room = roomManager.getRoom(req.params.roomId);
+    if (!room) return res.status(404).send('ไม่พบห้อง');
+    res.set('Cache-Control', 'no-store');
+    res.render('adminObserver.ejs', { roomId:room.roomId, roomName:room.name });
+});
+
 app.get('/admin', function(req, res) {
     if (!req.session.isAdmin) {
         return res.redirect('/admin/login');
@@ -7043,6 +7053,10 @@ io.sockets.on('connection', function(socket) {
 
             const roomBeforeJoin = roomManager.getRoom(roomId);
             const alreadyInRoom = !!(roomBeforeJoin && roomBeforeJoin.players.some(p => p.playerId === playerId));
+            if (roomBeforeJoin && !alreadyInRoom && isSiteAdminPlayer(playerId)) {
+                if (typeof callback === 'function') callback({ success:true, roomId, observer:true, url:'/admin/observe/' + encodeURIComponent(roomId) });
+                return;
+            }
             const room = roomManager.joinRoom(
                 roomId,
                 playerId,
@@ -7589,6 +7603,55 @@ io.sockets.on('connection', function(socket) {
     function isAdminAuthenticated(socketId) {
         return adminSockets.has(socketId);
     }
+
+    async function observerAuthorized() {
+        if (isSiteAdminPlayer(socket.playerId) || isAdminAuthenticated(socket.id)) return true;
+        const session = socket.request.session;
+        if (!session?.reload) return false;
+        return new Promise(resolve => session.reload(error => resolve(!error && !!session.isAdmin)));
+    }
+    safeOn(socket, 'admin_observeRoom', async (data, callback) => {
+        const done = typeof callback === 'function' ? callback : () => {};
+        if (!await observerAuthorized()) {
+            if (socket.observerRoomId) socket.leave(socket.observerRoomId);
+            socket.observerRoomId = null;
+            return done({ success:false, error:'เฉพาะแอดมินเว็บ' });
+        }
+        const room = roomManager.getRoom(data?.roomId);
+        if (!room) return done({ success:false, error:'ไม่พบห้อง' });
+        // Observers use their own sockets and never enter player/presence maps.
+        if (socket.roomId) return done({ success:false, error:'เปิดโหมด Ghost ในแท็บใหม่' });
+        if (socket.observerRoomId && socket.observerRoomId !== room.roomId) socket.leave(socket.observerRoomId);
+        socket.observerRoomId = room.roomId;
+        socket.join(room.roomId);
+        const s = room.gameState || {};
+        done({ success:true, room:buildRoomUpdatePayload(room), chat:room.chatHistory || [],
+            game:{ phase:s.phase || s.status, round:s.round || null,
+                history:Array.isArray(s.history) ? s.history.filter(item=>typeof item==='string').slice(-20) : [] },
+            slave:room.settings.gameMode === 'slave' && s.seats?.length ? slaveRuntime.buildPayload(room, '__admin_observer__') : null });
+    });
+    safeOn(socket, 'admin_observerMessage', async (data, callback) => {
+        const done = typeof callback === 'function' ? callback : () => {};
+        if (!await observerAuthorized()) return done({ success:false, error:'เฉพาะแอดมินเว็บ' });
+        const room = roomManager.getRoom(socket.observerRoomId);
+        if (!room || data?.roomId !== room.roomId) return done({ success:false, error:'เปิดห้องแบบ Ghost ก่อน' });
+        const message = typeof data.message === 'string' ? data.message.trim() : '';
+        if (!message || message.length > 500) return done({ success:false, error:'พิมพ์ข้อความ 1–500 ตัวอักษร' });
+        if (Date.now() - (socket.observerMessageAt || 0) < 800) return done({ success:false, error:'รอสักครู่ก่อนส่งอีกครั้ง' });
+        socket.observerMessageAt = Date.now();
+        if (message.toLowerCase() === '/m') {
+            if (room.settings.gameMode !== 'slave' || !room.gameState.seats?.length) return done({ success:false, error:'/m ใช้หลังแจกไพ่สลาฟ' });
+            slaveDebug.run(room, socket.playerId, 'inspect');
+            slaveRuntime.emitRoomState(room);
+            addServerLog(io, 'admin', room.roomId, 'Admin Ghost /m inspect', 'warning', { gameMode:'slave' });
+            return done({ success:true, debug:slaveDebug.snapshot(room) });
+        }
+        const player = playerManager.getPlayer(socket.playerId);
+        const safe = gameSettingsManager.filterProfanity(message.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+        sendChatMessageToRoom(io, room.roomId, (player?.playerName || 'Admin') + ' [Ghost Admin]', safe, player?.color || '#f5c86b', null, socket.playerId || null);
+        addServerLog(io, 'admin', room.roomId, 'Admin Ghost ส่งข้อความในห้อง', 'info', { meta:{ event:'admin_observer_message' } });
+        done({ success:true });
+    });
 
     // แอดมินสั่งอะไรที่เปลี่ยนข้อมูล → ตาราง/ตัวเลขต้องเห็นผลทันที ไม่รอ cache หมดอายุ
     const ADMIN_READ_EVENTS = new Set(['admin_authenticate', 'admin_getData', 'admin_getSummary', 'admin_getPlayers', 'admin_getSiteAdmins',
@@ -10682,7 +10745,7 @@ io.sockets.on('connection', function(socket) {
         try {
             const room = getSocketRoom(socket, 'slave');
             if (!room || data?.roomId !== room.roomId) throw new Error('ไม่พบโต๊ะของคุณ');
-            if (process.env.APP_ENV !== 'staging' || !(room.admin === socket.playerId || isSiteAdminPlayer(socket.playerId))) throw new Error('/m ใช้ได้เฉพาะหัวห้องหรือแอดมินบน staging');
+            if (!(isSiteAdminPlayer(socket.playerId) || (process.env.APP_ENV === 'staging' && room.admin === socket.playerId))) throw new Error('/m ใช้ได้เฉพาะแอดมินเว็บ หรือหัวห้องบน staging');
             if (room.gameStarting || !room.gameState?.seats?.length) throw new Error('รอให้แจกไพ่ก่อน');
             const wasDebugUsed = !!room.gameState.debugUsed;
             slaveDebug.run(room, socket.playerId, data?.action, data?.step);
@@ -12104,7 +12167,7 @@ io.sockets.on('connection', function(socket) {
         if (roomId && playerId) {
             // เช็คว่า player มี socket อื่นที่ยัง active อยู่หรืสไม่ (เช่น เปิดหลายแท็บ)
             const hasOtherActiveSockets = Array.from(io.sockets.sockets.values()).some(
-                s => s.playerId === playerId && s.id !== socket.id && s.connected
+                s => s.playerId === playerId && s.id !== socket.id && s.connected && !s.observerRoomId
             );
             
             if (hasOtherActiveSockets) {
@@ -12116,7 +12179,7 @@ io.sockets.on('connection', function(socket) {
                 const member = room?.players?.find(p => p.playerId === playerId);
                 if (member && member.socketId === socket.id) {
                     const others = Array.from(io.sockets.sockets.values())
-                        .filter(s => s.playerId === playerId && s.id !== socket.id && s.connected);
+                        .filter(s => s.playerId === playerId && s.id !== socket.id && s.connected && !s.observerRoomId);
                     const next = others.find(s => s.roomId === roomId) || others[0];
                     if (next) roomManager.updatePlayerSocketId(roomId, playerId, next.id);
                 }

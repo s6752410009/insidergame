@@ -43,6 +43,9 @@ function ruleChecks() {
   ok(!guide.analyze(pair, [8]).legal && guide.analyze(pair, [8]).message.includes('อีก 1'), 'partial pair tells how to complete it');
   ok(guide.analyze(pair, [8]).candidates.includes(9) && !guide.analyze(pair, [8]).candidates.includes(12), 'only compatible next cards highlighted');
   ok(guide.analyze(pair, [8, 9]).label === 'ลงคู่ 5 →', 'legal button identifies the set');
+  const pairOfTwos = turnFixture([48,49,50,51], [44,45], [[48,49],[48,50],[48,51],[49,50],[49,51],[50,51]]);
+  ok(guide.select(pairOfTwos, [], 51).size === 2 && guide.select(pairOfTwos, [], 51).has(51), 'tapping one 2 selects the smallest legal pair containing that 2');
+  ok(guide.select(exchanging[0], [], exchanging[0].self.hand[0].id).size === 1, 'exchange still requires explicit individual return choices');
   ok(guide.analyze(cut, [8, 9]).message.includes('อีก 1'), 'triple cut explains third card');
   ok(guide.analyze(cut, [8, 9, 10]).legal, 'triple beats single 2 spades');
   ok(guide.analyze(noMove, []).message.includes('ผ่าน'), 'no-move instruction is actionable');
@@ -56,6 +59,12 @@ function ruleChecks() {
   ok(submitted.exchangeProgress.done === 1 && !submitted.self.exchangeCount, 'own submitted exchange is visible');
   ok(guide.exchange(submitted, 'p0').includes('เรียบร้อย'), 'submitted exchange says wait for other player');
   ok(!JSON.stringify(submitted).includes('returns'), 'exchange progress never reveals returned cards');
+  engine.exchangeCards(endRoom, 'p1', endRoom.gameState.seats[1].hand.slice(0, 1), endRoom.gameState.step);
+  for (const seat of endRoom.gameState.seats) {
+    const payload = engine.buildClientState(endRoom, seat.playerId);
+    ok(payload.self.exchangeReceipt.received.length === (['p0','p3'].includes(seat.playerId) ? 2 : 1), 'each player sees the correct private received cards');
+    ok(!Object.hasOwn(payload, 'exchangeReceipts') && payload.seats.every(p => !p.hand && !p.exchangeReceipt), 'no other player receives a private exchange receipt');
+  }
   // Compare against the engine over a full real round, including each legal partial set.
   const r = room();
   let steps = 0;
@@ -253,6 +262,8 @@ async function browserChecks() {
     await deliver(p, { ...pair, step: 2 });
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-options-' + label + '.png'), fullPage: false });
     await p.locator('[data-card="8"]').click();
+    ok(await p.locator('#slHand [aria-pressed="true"]').count() === 2 && await p.locator('#slPlay').isEnabled(), 'one tap selects a complete legal pair without playing it');
+    await p.locator('[data-card="9"]').click();
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-partial-' + label + '.png'), fullPage: false });
     ok((await p.locator('#slActionHelp').innerText()).includes('อีก 1'), 'partial pair instruction');
     ok(await p.locator('[data-card="9"]').getAttribute('data-playable') === 'true', 'matching pair highlighted');
@@ -314,8 +325,18 @@ async function browserChecks() {
     await geometry(p, label + ' exchange');
     ok(await p.locator('#slSeats [data-role="unranked"]').count() === 0, 'assigned ranks stay visible during exchange');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'exchange-' + label + '.png'), fullPage: false });
+    const received = clone(exchanging[0]);
+    received.step = 7; received.phase = 'turn'; received.self.exchangeCount = 0;
+    received.self.exchangeReceipt = { round:received.round, partnerId:'p3', sent:cards([0, 1]), received:received.self.hand.slice(-2) };
+    await deliver(p, received);
+    ok(await p.locator('#slExchangeNotice').isVisible(), 'exchange receipt appears after transfer');
+    ok(await p.locator('#slExchangeCards .sent .sl-card').count() === 2 && await p.locator('#slExchangeCards .received .sl-card').count() === 2, 'receipt separates sent and received card faces');
+    ok(await p.locator('#slHand .just-received').count() === 2, 'new cards are marked in the hand');
+    ok(await p.locator('#slExchangeCards .received .sl-card').first().evaluate(el => getComputedStyle(el).animationName) === 'none', 'receipt respects reduced motion');
+    await p.locator('#slExchangeClose').click();
+    ok(await p.locator('#slExchangeNotice').isHidden() && await p.locator('#slExchangeDetails').isVisible(), 'receipt closes without blocking play and remains available below table');
     await p.locator('#slDebug').click(); await p.locator('#slPeekHands').check(); await p.locator('#slDebugFold').click();
-    const shrinking = clone(opening); shrinking.step = 7;
+    const shrinking = clone(opening); shrinking.step = 8;
     shrinking.seats[1].count = 1; shrinking.seats[2].count = 0; shrinking.seats[2].place = 1; shrinking.seats[3].count = 7;
     await deliver(p, shrinking);
     ok(await p.locator('.seat-left .sl-back,.seat-left .sl-revealed-card').count() === 1, 'one remaining card draws one back');
@@ -354,6 +375,33 @@ async function browserChecks() {
     await context.close();
   }
   await timerChecks();
+  {
+    const context = await browser.newContext({ viewport:{width:390,height:844} });
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      window.__announcements = [];
+      document.addEventListener('DOMContentLoaded', () => {
+        const Original = window.SlaveAudio;
+        window.SlaveAudio = class extends Original {
+          announce(...args) { window.__announcements.push(args); super.announce(...args); }
+        };
+      });
+    });
+    await fixture(page, opening);
+    const firstFinish = clone(opening); firstFinish.step++;
+    firstFinish.seats[1].place = 1; firstFinish.seats[1].count = 0;
+    await deliver(page, firstFinish);
+    ok(await page.locator('#slAnnouncement').isVisible(), 'first finisher is announced while others still play');
+    ok(await page.evaluate(() => __announcements.length === 1 && __announcements[0][1] === 'win'), 'first finisher triggers winning sound before round end');
+    await deliver(page, firstFinish);
+    ok(await page.evaluate(() => __announcements.length === 1), 'duplicate state cannot replay winner announcement');
+    const result = clone(ended[0]); result.step = firstFinish.step; result.resultRecorded = true; result.ranked = false;
+    result.seats[0].place = 4; result.seats[1].place = 1; result.seats[2].place = 2; result.seats[3].place = 3;
+    await deliver(page, result);
+    ok(await page.evaluate(() => __announcements.length === 2 && __announcements[1][0].includes('รอบนี้คุณแพ้')), 'own losing placement is announced even at the same step');
+    ok((await page.locator('#slRecordStatus').innerText()).includes('บันทึกประวัติแล้ว'), 'unranked result confirms saved history');
+    await context.close();
+  }
   ok(errors.length === 0, 'no browser errors: ' + errors.join('; '));
 }
 (async () => {

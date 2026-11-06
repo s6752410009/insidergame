@@ -1,0 +1,12 @@
+<%- contentFor('content') %>
+<link rel="stylesheet" href="/static/css/admin-observer.css?v=1">
+<main class="admin-observer">
+  <header><div><h1><%= roomName %></h1><p>Ghost Admin · ไม่กินที่นั่ง · ไม่ร่วมโหวตหรือรับสถิติ</p></div><a href="/rooms">กลับรายชื่อห้อง</a></header>
+  <p id="observerStatus" role="status">กำลังเชื่อมต่อ…</p>
+  <div class="observer-columns">
+    <section aria-labelledby="observerGameTitle"><h2 id="observerGameTitle">สถานะโต๊ะ</h2><p id="observerPhase"></p><ul id="observerPlayers"></ul><div id="observerPile"></div><ol id="observerHistory"></ol><details id="observerDebug" hidden><summary>ไพ่ทั้งโต๊ะ · โหมดทดสอบ /m</summary><p>การใช้ /m ทำให้รอบนี้ไม่นับสถิติ</p><div id="observerHands"></div></details></section>
+    <section aria-labelledby="observerChatTitle"><h2 id="observerChatTitle">แชทในห้อง</h2><ol id="observerChat" role="log" aria-live="polite"></ol><form id="observerForm"><label for="observerInput">ข้อความจากผู้ดูแล · พิมพ์ /m เพื่อดูไพ่สลาฟ</label><textarea id="observerInput" maxlength="500" rows="2" required></textarea><button type="submit">ส่งข้อความ</button></form><p id="observerError" role="alert"></p></section>
+  </div>
+</main>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/adminObserver.js?v=1" defer data-room-id="<%= roomId %>"></script>

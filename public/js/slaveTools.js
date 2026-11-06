@@ -34,7 +34,7 @@
       if (!text) return;
       if (text.toLowerCase() === '/m') {
         $('slChatInput').value = '';
-        if (!canDebug) { $('slChatError').textContent = '/m ใช้ได้เฉพาะหัวห้องหรือแอดมินบน staging'; return; }
+        if (!canDebug) { $('slChatError').textContent = '/m ใช้ได้เฉพาะแอดมินเว็บ หรือหัวห้องบน staging'; return; }
         $('slChatError').textContent = ''; close($('slChatDialog')); openDebug(); return;
       }
       if (!socket.connected) { $('slChatError').textContent = 'กำลังเชื่อมต่อกลับ ลองส่งอีกครั้ง'; return; }

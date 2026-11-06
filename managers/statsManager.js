@@ -420,7 +420,7 @@ function gameResultHasBot(gameResult) {
 }
 
 function recordGameEnd(roomId, gameResult) {
-    if (gameResultHasBot(gameResult)) {
+    if (gameResult?.mode !== 'slave' && gameResultHasBot(gameResult)) {
         return;
     }
 
@@ -924,11 +924,13 @@ function recordSlaveRoundEnd(roomId, gameResult) {
         || typeof endedAt !== 'string' || !Number.isFinite(new Date(endedAt).getTime())
         || !Array.isArray(standings) || standings.length !== 4
         || new Set(standings.map(row => row && row.playerId)).size !== 4
-        || standings.some((row, index) => !row || !row.playerId || row.place !== index + 1 || isBotPlayerId(row.playerId))) return false;
+        || standings.some((row, index) => !row || !row.playerId || row.place !== index + 1)) return false;
     const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
+    const ranked = !standings.some(row => isBotPlayerId(row.playerId));
     const gameTimestamp = new Date(endedAt).toISOString();
     let recorded = false;
     standings.forEach(row => {
+        if (isBotPlayerId(row.playerId)) return;
         const stat = initializeStats(row.playerId, row.name);
         if (!stat) return;
         const latest = stat.slaveLatestResult;
@@ -937,18 +939,20 @@ function recordSlaveRoundEnd(roomId, gameResult) {
             || new Date(latest.endedAt).getTime() > new Date(gameTimestamp).getTime()))
             || stat.gameHistory.some(entry => entry.mode === 'slave' && entry.resultId === resultId)) return;
         const won = row.place === 1;
-        stat.totalGames += 1;
-        stat.modeStats.slave.games += 1;
-        stat[won ? 'wins' : 'losses'] += 1;
-        stat.modeStats.slave[won ? 'wins' : 'losses'] += 1;
+        if (ranked) {
+            stat.totalGames += 1;
+            stat.modeStats.slave.games += 1;
+            stat[won ? 'wins' : 'losses'] += 1;
+            stat.modeStats.slave[won ? 'wins' : 'losses'] += 1;
+        }
         stat.lastPlayedAt = gameTimestamp;
         stat.slaveLatestResult = { resultId, gameId, round, endedAt:gameTimestamp };
         stat.gameHistory.unshift({
             mode:'slave', date:gameTimestamp, roomId, roomName:roomName || 'ไม่ทราบ',
-            resultId, gameId, round, startedAt:startedAt || null, endedAt:gameTimestamp,
+            resultId, gameId, round, ranked, startedAt:startedAt || null, endedAt:gameTimestamp,
             won, role:titles[row.place - 1], title:titles[row.place - 1], place:row.place, playerCount:4,
             winnerName:standings[0].name || 'ไม่ทราบ',
-            resultText:`รอบ ${round} · อันดับ ${row.place}/4 · ${titles[row.place - 1]}`
+            resultText:`รอบ ${round} · อันดับ ${row.place}/4 · ${titles[row.place - 1]}${ranked ? '' : ' · เล่นกับบอท · ไม่นับอันดับ'}`
         });
         stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
         recorded = true;

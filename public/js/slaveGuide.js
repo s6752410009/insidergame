@@ -66,5 +66,20 @@
     if (title === 'สลาฟ') return 'ส่งไพ่สูงสุด 2 ใบให้คิงอัตโนมัติ · รอรับคืน 2 ใบ แล้วคุณเปิดกองก่อน';
     return 'ส่งไพ่สูงสุด 1 ใบให้ควีนอัตโนมัติ · รอรับคืน 1 ใบ';
   }
-  return { analyze, requirement, setName, benefit, exchange };
+  function select(state, selection, id) {
+    const next = new Set(selection);
+    if (next.has(id)) { next.delete(id); return next; }
+    const max = state.self?.exchangeCount || 4;
+    if (next.size >= max) return next;
+    next.add(id);
+    // Complete the smallest server-authorized set. Single plays and exchange
+    // returns stay manual; a pair (including a pair of 2s) needs just one tap.
+    if (!state.self?.exchangeCount && state.top?.cards.length > 1) {
+      const moves = (state.legalMoves || []).filter(move => [...next].every(card => move.includes(card)));
+      moves.sort((a, b) => a.length - b.length || Math.max(...a) - Math.max(...b));
+      if (moves.length) return new Set(moves[0]);
+    }
+    return next;
+  }
+  return { analyze, requirement, setName, benefit, exchange, select };
 });

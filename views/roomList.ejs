@@ -1520,7 +1520,7 @@ $(function() {
             const isPlaying = room.gameStatus === 'playing';
             const isFinished = room.gameStatus === 'finished';
             const isStuck = room.isStuck || (isPlaying && (room.onlineCount || 0) === 0);
-            const isJoinable = room.isJoinable !== false && (!isPlaying || room.gameMode === 'wavelength') && !isStuck;
+            const isJoinable = isSiteAdminViewer || (room.isJoinable !== false && (!isPlaying || room.gameMode === 'wavelength') && !isStuck);
             const isDualTraitor = room.settings && room.settings.dualTraitorMode && room.gameMode === 'insider';
             const onlineCount = room.onlineCount || 0;
             const playerPercentage = (onlineCount / room.maxPlayers) * 100;
@@ -1603,6 +1603,11 @@ $(function() {
             const joinable = $(this).data('joinable') === 1 || $(this).data('joinable') === '1';
             const room = rooms.find(r => r.roomId === roomId);
 
+            if (isSiteAdminViewer) {
+                window.location.href = '/admin/observe/' + encodeURIComponent(roomId);
+                return;
+            }
+
             if (!joinable) {
                 Swal.fire({
                     icon: 'info',
@@ -1657,7 +1662,7 @@ $(function() {
     function joinRoom(roomId, password) {
         socket.emit('joinRoom', { roomId: roomId, password: password, playerId: playerId }, function(response) {
             if (response.success) {
-                window.location.href = '/room/' + roomId + '?playerId=' + playerId;
+                window.location.href = response.observer ? response.url : '/room/' + roomId + '?playerId=' + playerId;
             } else {
                 Swal.fire({
                     icon: 'error',

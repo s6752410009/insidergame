@@ -87,7 +87,13 @@ async function main() {
     ok(leaderboard.length === 4 && leaderboard.every(row => row.mode === 'slave' && row.totalGames === 2), 'Slave leaderboard uses only Slave results');
     const bots = createRoom('bots', 'bots', true);
     finishRound(bots);
-    ok(bots.players.filter(player => !engine.isBotId(player.playerId)).every(player => !stats.getStats(player.playerId)), 'bot table never adds human ranked stats');
+    ok(bots.players.filter(player => !engine.isBotId(player.playerId)).every(player => stats.getStats(player.playerId)?.totalGames === 0 && stats.getStats(player.playerId).gameHistory[0].ranked === false), 'bot table saves unranked human history without ranked totals');
+    const botHistoryCount = stats.getStats(bots.players[0].playerId).gameHistory.length;
+    runtime.recover(bots); runtime.emitRoomState(bots);
+    ok(stats.getStats(bots.players[0].playerId).gameHistory.length === botHistoryCount, 'bot history deduplicates recovery');
+    engine.nextRound(bots, bots.admin); runtime.emitRoomState(bots); finishRound(bots);
+    ok(stats.getStats(bots.players[0].playerId).gameHistory.length === 2 && stats.getStats(bots.players[0].playerId).totalGames === 0, 'consecutive bot rounds persist without returning to lobby');
+    ok(!stats.getLeaderboard(undefined, 'slave').some(row => row.playerId.startsWith('bots-')), 'bot history never enters leaderboard');
     ok(ends.at(-1).meta.ranked === false && ends.at(-1).meta.standings.length === 4, 'bot table still has complete unranked admin result');
     const debug = createRoom('debug');
     debug.gameState.debugUsed = true;

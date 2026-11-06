@@ -1,4 +1,4 @@
-// Invoke only after the socket handler checks staging, membership and host/admin authorization.
+// Invoke only after server-side site-admin or staging-host authorization.
 const engine = require('./slaveEngine');
 const ACTIONS = ['inspect', 'auto', 'finish', 'exchange', 'next', 'restart'];
 function auto(room) {

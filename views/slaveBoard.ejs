@@ -1,7 +1,7 @@
 <%- contentFor('content') %>
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 <link href="/static/css/slave.css?v=4" rel="stylesheet">
-<link href="/static/css/slave-game.css?v=11" rel="stylesheet">
+<link href="/static/css/slave-game.css?v=12" rel="stylesheet">
 <link rel="preload" as="image" href="/static/img/slave/portraits-v1.jpg">
 <script>document.documentElement.classList.add('slave-active');</script>
 <main class="slave">
@@ -28,7 +28,9 @@
     <div class="sl-felt" aria-hidden="true"><div class="sl-table-print"><svg viewBox="0 0 100 60"><path d="M12 15 30 31 50 5 70 31 88 15 79 49H21Z" fill="currentColor"/><path d="M23 55H77" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="12" cy="13" r="5" fill="currentColor"/><circle cx="50" cy="6" r="5" fill="currentColor"/><circle cx="88" cy="13" r="5" fill="currentColor"/></svg><strong>SLAVE</strong><small>♣ &nbsp; ♦ &nbsp; ♥ &nbsp; ♠</small></div></div>
     <section id="slSeats" class="sl-seats" aria-label="ผู้เล่นทั้งโต๊ะ"></section>
     <section class="sl-table" aria-label="กองกลาง"><div id="slPileText" class="sl-pile-label"></div><div id="slPile" class="sl-pile"></div><div id="slClock" class="sl-clock" role="timer"></div></section>
-    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div id="slResultEmblem" class="sl-result-crown"></div><h2 id="slResultTitle">จบรอบแล้ว!</h2><p id="slResultNext" class="sl-result-next"></p><div id="slRanks" class="sl-ranks"></div></section>
+    <aside id="slExchangeNotice" class="sl-exchange-notice" aria-label="ผลการแลกไพ่ของคุณ" hidden><strong>แลกไพ่แล้ว</strong><div id="slExchangeCards" aria-live="polite"></div><button id="slExchangeClose" type="button">ดูไพ่ในมือ</button></aside>
+    <div id="slAnnouncement" class="sl-announcement" role="status" aria-live="polite" hidden></div>
+    <section id="slResults" class="sl-results" aria-label="ผลรอบนี้" hidden><div id="slResultEmblem" class="sl-result-crown"></div><h2 id="slResultTitle">จบรอบแล้ว!</h2><p id="slResultNext" class="sl-result-next"></p><p id="slRecordStatus" role="status"></p><div id="slRanks" class="sl-ranks"></div></section>
   </div>
   <section id="slPlayerZone" class="sl-player-zone" aria-label="พื้นที่เล่นของคุณ">
     <div class="sl-status-row"><div id="slStatus" class="sl-status" role="status" aria-live="polite"></div><div class="sl-hand-meta"><span id="slHandMeta"></span><span id="slHandClock" role="timer"></span></div></div>
@@ -41,6 +43,7 @@
   </div>
   </div>
   <div class="sl-under-table">
+    <details id="slExchangeDetails" hidden><summary>ไพ่ที่แลกรอบนี้</summary><div id="slExchangeReceipt" class="sl-exchange-receipt"></div></details>
     <details><summary>กติกาโต๊ะนี้ ⌄</summary><div class="sl-help">4 คน คนละ 13 ใบ · 3 ต่ำสุด → 2 สูงสุด · ดอก ♣ &lt; ♦ &lt; ♥ &lt; ♠<br>ลงเดี่ยว / คู่ / ตอง / โฟร์หน้าเดียวกัน ต้องใหญ่กว่ากองเดิม · ตองตัดเดี่ยว · โฟร์ตัดคู่<br>ผ่านแล้วพักจนกองใหม่ ทุกคนผ่าน คนลงล่าสุดเปิดใหม่ ถ้าคนนั้นหมดมือ คนถัดไปที่ยังเล่นอยู่เริ่ม<br>รอบแรกเปิดด้วยชุดที่มี 3♣ · รอบต่อไปสลาฟเริ่ม<br>คิงเลือกคืน 2 ใบจากมือเดิมแลกกับไพ่สูงสุดของสลาฟ · ควีนเลือกคืน 1 ใบแลกกับรองสลาฟ<br>ไม่ใช้ไพ่เรียง / คิงตกชั้น / ปฏิวัติ · หมดเวลา 30 วิ ระบบลงหรือผ่านให้ · แลกไพ่ภายใน 60 วิ<br><a class="sl-manual-link" href="/how-to-play#slave" target="_blank" rel="noopener">อ่านคู่มือสลาฟพร้อมตัวอย่างไพ่ ↗</a></div></details>
     <details><summary>บันทึกการลงไพ่ ⌄</summary><ol id="slHistory" class="sl-history"></ol></details>
     <div class="sl-short-rule">หมดมือก่อน เป็นคิง<br>3 → 2 &nbsp; · &nbsp; ♣ ♦ ♥ ♠</div>
@@ -58,10 +61,10 @@
 <dialog id="slRestartDialog" class="sl-dialog sl-confirm" aria-labelledby="slRestartTitle"><h2 id="slRestartTitle">แจกใหม่ทั้งโต๊ะ?</h2><p>ยกเลิกรอบนี้แล้วเริ่มรอบแรกใหม่ ทุกคนรับไพ่ใหม่ 13 ใบ</p><div class="sl-dialog-actions"><button data-sl-close="slRestartDialog" autofocus>ยกเลิก</button><button id="slConfirmRestart" class="primary">แจกใหม่</button></div></dialog>
 </main>
 <script src="/socket.io/socket.io.js"></script>
-<script src="/static/js/slaveAudio.js?v=3"></script>
-<script src="/static/js/slaveGuide.js?v=4"></script>
-<script src="/static/js/slaveTools.js?v=8"></script>
-<script src="/static/js/slaveBoard.js?v=9"></script>
+<script src="/static/js/slaveAudio.js?v=4"></script>
+<script src="/static/js/slaveGuide.js?v=5"></script>
+<script src="/static/js/slaveTools.js?v=9"></script>
+<script src="/static/js/slaveBoard.js?v=10"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   window.mountSlaveBoard({playerId:<%- safeJson(playerInfo.playerId) %>,roomId:<%- safeJson(room.roomId) %>,initial:<%- safeJson(slaveState) %>,canDebug:<%= typeof slaveDebugAllowed !== 'undefined' && slaveDebugAllowed ? 'true' : 'false' %>});

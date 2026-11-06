@@ -192,6 +192,15 @@ async function main() {
     ok((await ack(players[0].socket, 'startGameFromLobby', { roomId })).success, 'start four-human game');
     await wait(() => players.every(player => player.state?.phase === 'turn'), 'four private initial states');
     await checkEnvironment(players, roomId);
+    ok(!(await ack(players[1].socket, 'admin_observeRoom', { roomId })).success, 'ordinary member cannot use ghost observer');
+    ok(!(await ack(players[1].socket, 'admin_observerMessage', { roomId, message:'forged ghost' })).success, 'ordinary member cannot forge ghost messages');
+    const observed = await ack(adminSocket, 'admin_observeRoom', { roomId });
+    ok(observed.success && observed.room.totalPlayerCount === 4 && observed.slave.self === null, 'admin watches full active table with no seat or private hand');
+    const stepBeforeGhostChat = players[0].state.step;
+    ok((await ack(adminSocket, 'admin_observerMessage', { roomId, message:'Ghost test <script>' })).success, 'ghost admin sends public chat without membership');
+    const ghostChat = await ack(adminSocket, 'admin_observeRoom', { roomId });
+    ok(ghostChat.chat.at(-1).message.includes('&lt;script&gt;') && ghostChat.room.totalPlayerCount === 4, 'ghost chat is escaped and never increases player count');
+    ok(players[0].state.step === stepBeforeGhostChat, 'ghost chat does not advance turn');
     const results = [await finishRound(players, roomId)];
     await checkProfiles(players, results, 1);
     ok((await ack(players[0].socket, 'slave_nextRound', { roomId })).success, 'host begins next round');
@@ -238,7 +247,25 @@ async function main() {
     ok(aborts.length === 1 && aborts[0].meta.ranked === false, 'early exit creates one unranked abandonment record');
     ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 2, 'abandoned third round creates no winner result');
     await checkProfiles(players, results, 2);
-    console.log(JSON.stringify({ ok:true, environment:HISTORY_ENV, checks, humanPlayers:4, completedRounds:2, abortedRounds:1, profile:true, leaderboard:true, adminStats:true, adminLogs:true, restart:true, isolatedData:true, productionGuards:HISTORY_ENV === 'production' }));
+    ok((await ack(adminSocket, 'admin_setSiteAdmin', { playerId:players[0].id, isSiteAdmin:true })).success, 'grant site admin in isolated data');
+    const inspection = await ack(players[0].socket, 'slave_debug', { roomId, action:'inspect' });
+    ok(inspection.success && inspection.hands.length === 4, 'site admin can use /m on production');
+    ok(!(await ack(players[2].socket, 'slave_debug', { roomId, action:'inspect' })).success, 'ordinary players remain unable to inspect hands');
+    let watcher = await connect(randomUUID());
+    ok((await ack(watcher.socket, 'createRoom', { playerId:watcher.id, name:'Other room', gameMode:'insider' })).success, 'persist separate observer identity');
+    const watcherId = watcher.id;
+    watcher.socket.disconnect();
+    watcher = await connect(watcherId);
+    ok((await ack(adminSocket, 'admin_setSiteAdmin', { playerId:watcher.id, isSiteAdmin:true })).success, 'grant separate ghost admin identity');
+    const ghostJoin = await ack(watcher.socket, 'joinRoom', { roomId, playerId:watcher.id });
+    ok(ghostJoin.success && ghostJoin.observer, 'site admin room entry uses ghost mode');
+    const watched = await ack(watcher.socket, 'admin_observeRoom', { roomId });
+    ok(watched.success && watched.room.totalPlayerCount === 4 && !watched.room.players.some(p=>p.playerId===watcher.id), 'ghost identity never becomes a fifth player');
+    const ghostInspect = await ack(watcher.socket, 'admin_observerMessage', { roomId, message:'/m' });
+    ok(ghostInspect.success && ghostInspect.debug.hands.length === 4, 'ghost admin can inspect Slave without a seat');
+    ok((await ack(adminSocket, 'admin_setSiteAdmin', { playerId:watcher.id, isSiteAdmin:false })).success, 'revoke ghost admin for authorization check');
+    ok(!(await ack(watcher.socket, 'admin_observeRoom', { roomId })).success, 'revoked admin cannot keep observing');
+    console.log(JSON.stringify({ ok:true, environment:HISTORY_ENV, checks, humanPlayers:4, completedRounds:2, abortedRounds:1, profile:true, leaderboard:true, adminStats:true, adminLogs:true, ghost:true, restart:true, isolatedData:true, productionGuards:HISTORY_ENV === 'production' }));
 }
 main().catch(error => { console.error(error.stack || error.message); process.exitCode = 1; }).finally(async () => {
     for (const socket of sockets) socket.disconnect();

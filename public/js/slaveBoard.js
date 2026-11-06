@@ -21,6 +21,37 @@
     const socket = global.io(), guide = global.SlaveGuide;
     let state = initial, selected = new Set(), pending = false, last = null, handKey = '', pileKey = '', seatKey = '', warned = '';
     const audio = new global.SlaveAudio(soundLabel);
+    let receiptKey = '', announcementTimer, exchangeTimer;
+    $('slExchangeClose').onclick = () => { $('slExchangeNotice').hidden = true; };
+    function roundFeedback(previous) {
+      if (previous && previous.round === state.round) {
+        const placed = state.seats.filter(p => p.place && !previous.seats.find(old => old.playerId === p.playerId)?.place);
+        if (placed.length) {
+          const text = placed.sort((a, b) => a.place - b.place).map(p => (p.playerId === playerId ? 'คุณ' : p.name) + (p.place === 1 ? ' ชนะ เป็นคิง!' : ' ได้อันดับ ' + p.place + ' เป็น' + titles[p.place - 1] + (p.playerId === playerId ? ' รอบนี้คุณแพ้' : ''))).join(' · ');
+          audio.announce(text, placed.some(p => p.place === 1) ? 'win' : 'end');
+          $('slAnnouncement').textContent = text;
+          $('slAnnouncement').hidden = state.phase === 'round-end';
+          clearTimeout(announcementTimer);
+          announcementTimer = setTimeout(() => { $('slAnnouncement').hidden = true; }, 4500);
+        } else if (state.phase === 'round-end' && previous.phase !== 'round-end') audio.announce('จบรอบแล้ว ' + (state.seats.find(p => p.playerId === playerId)?.place === 1 ? 'คุณชนะ' : 'รอบนี้คุณแพ้'));
+      }
+      const receipt = state.self?.exchangeReceipt;
+      const key = receipt ? state.round + ':' + JSON.stringify(receipt) : '';
+      if (key !== receiptKey) {
+        receiptKey = key;
+        clearTimeout(exchangeTimer);
+        $('slExchangeNotice').hidden = !receipt;
+        $('slExchangeDetails').hidden = !receipt;
+        if (receipt) {
+          const partner = state.seats.find(p => p.playerId === receipt.partnerId);
+          const html = '<p>แลกกับ ' + esc(partner?.name || 'ผู้เล่น') + '</p>' + [['sent', 'ส่งออก'], ['received', 'รับเข้า']].map(([kind, label]) => '<div class="sl-exchange-group ' + kind + '"><span>' + label + '</span><div class="sl-exchange-cards">' + receipt[kind].map((c, i) => card(c, false, i, receipt[kind].length)).join('') + '</div></div>').join('');
+          $('slExchangeCards').innerHTML = html;
+          $('slExchangeReceipt').innerHTML = html;
+          exchangeTimer = setTimeout(() => { $('slExchangeNotice').hidden = true; }, 5500);
+        }
+      }
+      if (state.phase === 'round-end' || (previous && state.round !== previous.round)) $('slAnnouncement').hidden = true;
+    }
     function soundLabel() {
       $('slSound').textContent = !audio.enabled ? 'เสียง ปิด' : audio.ready ? '♪ เสียง เปิด' : 'เปิดเสียงเกม';
       $('slSound').setAttribute('aria-pressed', String(audio.enabled && audio.ready));
@@ -84,13 +115,14 @@
       if (changed) {
         if (previous) {
           if (state.round !== previous.round) audio.cue('deal');
-          else if (state.phase === 'round-end' && previous.phase !== 'round-end') audio.cue(state.standings?.[0]?.playerId === playerId ? 'win' : 'end');
+          else if (state.phase === 'round-end' && previous.phase !== 'round-end') { /* announced with placements below */ }
           else if (previous.phase === 'exchange' && state.phase === 'turn') audio.cue('exchange');
           else if (state.top && JSON.stringify(state.top) !== JSON.stringify(previous.top)) audio.cue('play');
           else if (!state.top && previous.top) audio.cue('clear');
           else if (state.seats.filter(p => p.passed).length > previous.seats.filter(p => p.passed).length) audio.cue('pass');
         }
         audio.turn(Boolean(state.canPlay || state.self?.exchangeCount), state.round + ':' + state.step);
+        roundFeedback(previous);
         last = state;
       }
       $('slRound').textContent = 'รอบ ' + state.round;
@@ -120,6 +152,8 @@
       $('slHand').querySelectorAll('[data-card]').forEach(b => {
         const id = Number(b.dataset.card), on = selected.has(id), playable = guiding && candidates.has(id);
         b.classList.toggle('selected', on); b.setAttribute('aria-pressed', String(on));
+        b.classList.toggle('just-received', Boolean(state.self?.exchangeReceipt?.received.some(c => c.id === id)));
+        b.title = state.self?.exchangeReceipt?.received.some(c => c.id === id) ? 'รับเข้าจากการแลกไพ่' : '';
         b.classList.toggle('playable', Boolean(playable));
         b.classList.toggle('unavailable', guiding && !playable && !on);
         b.querySelector('.sl-card-guide').hidden = !playable || on;
@@ -159,6 +193,7 @@
       $('slResultEmblem').innerHTML = ownResult ? roleBadge(roles[ownResult.place - 1], ownResult.title) : '';
       $('slResultTitle').textContent = ownResult ? 'อันดับ ' + ownResult.place + ' · คุณเป็น' + ownResult.title : 'จบรอบแล้ว';
       $('slResultNext').textContent = guide.benefit(ownResult?.place);
+      $('slRecordStatus').textContent = state.debugUsed ? 'รอบทดสอบ · ไม่นับสถิติ' : !state.resultRecorded ? 'กำลังบันทึกผลรอบนี้…' : state.ranked ? 'บันทึกประวัติและ leaderboard แล้ว' : 'บันทึกประวัติแล้ว · เล่นกับบอท ไม่นับ leaderboard';
       $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><small class="sl-rank-title">' + esc(p.title) + '</small><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div></div></div>').join('');
       $('slHistory').innerHTML = (state.history || []).slice(-8).reverse().map(t => '<li>' + esc(t) + '</li>').join('');
       tick(); tools.onState();
@@ -166,8 +201,8 @@
     $('slHand').onclick = e => {
       const b = e.target.closest('[data-card]');
       if (!b || pending || !socket.connected || (!state.canPlay && !state.self?.exchangeCount)) return;
-      const id = Number(b.dataset.card), max = state.self?.exchangeCount || 4;
-      if (selected.has(id)) selected.delete(id); else if (selected.size < max) selected.add(id); else return;
+      const id = Number(b.dataset.card);
+      selected = guide.select(state, selected, id);
       audio.cue('select'); render(state);
     };
     function command(event) {

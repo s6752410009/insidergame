@@ -1,4 +1,20 @@
 /* Illustrated game skin. Layout, legal selection and compact-screen sizing stay in slave.css. */
+.sl-exchange-notice{position:absolute;z-index:8;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(300px,calc(100% - 24px));max-height:90%;overflow:auto;padding:12px;border:2px solid var(--gold);border-radius:12px;background:var(--ink);color:var(--cream);text-align:center;box-sizing:border-box}
+.sl-exchange-notice p,.sl-exchange-receipt p{margin:4px 0;font-size:.75rem}
+.sl-exchange-notice button{min-height:44px;margin-top:8px}
+.sl-exchange-group{display:inline-flex;vertical-align:top;flex-direction:column;gap:6px;margin:6px 10px;font-size:.75rem}
+.sl-exchange-cards{display:flex;gap:5px}
+.slave .sl-exchange-cards .sl-card{width:44px;height:62px;min-height:62px;margin:0;padding:3px;transform:none;font-size:1rem}
+.slave .sl-exchange-cards .sl-pip{font-size:1.25rem}
+.sl-exchange-notice .sent .sl-card{animation:sl-send-receipt .4s cubic-bezier(.22,1,.36,1) both}
+.sl-exchange-notice .received .sl-card{animation:sl-receive-receipt .4s .3s cubic-bezier(.22,1,.36,1) both}
+.sl-hand .sl-card.just-received{outline:2px solid var(--gold);outline-offset:-4px}
+.sl-hand .sl-card.just-received:after{content:'รับเข้า';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--cream);font-size:10px;padding:1px 3px;white-space:nowrap;border-radius:3px}
+.sl-announcement{position:absolute;z-index:7;top:40%;left:50%;transform:translateX(-50%);width:max-content;max-width:75%;padding:10px 16px;background:var(--ink);border:1px solid var(--gold);border-radius:12px;color:var(--cream);text-align:center;pointer-events:none}
+#slRecordStatus{font-size:.6875rem;margin:0;color:var(--muted)}
+@keyframes sl-send-receipt{from{opacity:.3;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sl-receive-receipt{from{opacity:.3;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.sl-exchange-notice .sl-card{animation:none!important}}
 html.slave-active{background:oklch(.23 .035 55)!important}
 html.slave-active body.content,html.slave-active .container-fluid,html.slave-active .container-fluid>.row{background:transparent!important;background-image:none!important}
 html.slave-active body:before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 50% 25%,oklch(.42 .055 70/.7),transparent 65%),repeating-linear-gradient(0deg,transparent 0 112px,oklch(.1 .02 50/.22) 113px 116px),repeating-linear-gradient(92deg,oklch(.27 .038 55) 0 3px,oklch(.25 .035 55) 4px 10px,oklch(.28 .04 55) 11px 17px)}

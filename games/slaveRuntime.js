@@ -61,7 +61,7 @@ module.exports = getDeps => {
         if (!s.roundEndedAt || !Number.isFinite(new Date(s.roundEndedAt).getTime())) s.roundEndedAt = new Date().toISOString();
         const id = resultId(s);
         const { statsManager, notifyGameEndAfterRecord } = getDeps();
-        if (isRanked(s) && statsManager) statsManager.recordGameEnd(room.roomId, {
+        if (!s.debugUsed && statsManager) statsManager.recordGameEnd(room.roomId, {
             mode:MODE, resultId:id, gameId:s.gameId, round:s.round, roomName:room.name,
             startedAt:s.roundStartedAt, endedAt:s.roundEndedAt, debugUsed:!!s.debugUsed,
             standings:s.standings.map(row => ({ playerId:row.playerId, name:row.name, place:row.place, title:row.title }))
@@ -113,7 +113,7 @@ module.exports = getDeps => {
         const result = standings.map(row => `${row.place}. ${row.name} (${row.title})`).join(' · ');
         return {
             chatMessage:`จบรอบ ${s.round}! ${winnerName} เป็นคิง`, chatColor:'#f5c86b',
-            logMessage:`🃏 สลาฟ จบรอบ ${s.round} — ${result}${!isRanked(s) ? ' · ไม่นับสถิติ (บอท/ทดสอบ)' : ''}`,
+            logMessage:`🃏 สลาฟ จบรอบ ${s.round} — ${result}${!isRanked(s) ? ' · ไม่นับอันดับ (บอท/ทดสอบ)' : ''}`,
             logType:'success',
             meta:{ gameId:s.gameId, resultId:resultId(s), round:s.round, playerCount:standings.length, winnerName,
                 ranked:isRanked(s), debugUsed:!!s.debugUsed, startedAt:s.roundStartedAt || null, endedAt:s.roundEndedAt || null,

@@ -3906,6 +3906,7 @@ $(function() {
                     html: `
                         <div style="text-align: left; color: #ddd;">
                             <p><strong>Room ID:</strong> <code>${roomId}</code></p>
+                            <p><a class="action-btn" href="/admin/observe/${encodeURIComponent(roomId)}" target="_blank" rel="noopener">ดูห้องแบบ Ghost · ไม่กินที่นั่ง</a></p>
                             <p><strong>โหมด:</strong> ${formatRoomModeLabel(room.gameMode || room.settings?.gameMode)}</p>
                             <p><strong>สถานะ:</strong> ${room.gameStatus === 'playing' ? '🎮 กำลังเล่น' : (room.gameStatus === 'finished' ? '🏁 จบเกม' : '⏳ รอผู้เล่น')}</p>
                             <p><strong>Phase:</strong> ${room.gamePhase || '-'}</p>
