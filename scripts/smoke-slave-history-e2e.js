@@ -248,6 +248,13 @@ async function main() {
     ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 2, 'abandoned third round creates no winner result');
     await checkProfiles(players, results, 2);
     ok((await ack(adminSocket, 'admin_setSiteAdmin', { playerId:players[0].id, isSiteAdmin:true })).success, 'grant site admin in isolated data');
+    const siteAdminPage = await request('GET', '/game/' + roomId + '?playerId=' + encodeURIComponent(players[0].id));
+    const siteAdminCookie = (siteAdminPage.headers['set-cookie'] || []).map(value => value.split(';')[0]).join('; ');
+    ok(Boolean(siteAdminCookie), 'site admin browser receives authenticated identity cookie');
+    const ghostPage = await request('GET', '/admin/observe/' + roomId, '', { cookie:siteAdminCookie });
+    ok(ghostPage.status === 200 && ghostPage.body.includes('observerForm'), 'site-admin cookie opens Ghost HTTP page without dashboard login');
+    const forgedGhostPage = await request('GET', '/admin/observe/' + roomId + '?playerId=' + encodeURIComponent(players[0].id));
+    ok(forgedGhostPage.status === 403, 'public player ID cannot forge Ghost HTTP access');
     const inspection = await ack(players[0].socket, 'slave_debug', { roomId, action:'inspect' });
     ok(inspection.success && inspection.hands.length === 4, 'site admin can use /m on production');
     ok(!(await ack(players[2].socket, 'slave_debug', { roomId, action:'inspect' })).success, 'ordinary players remain unable to inspect hands');

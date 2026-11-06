@@ -6604,7 +6604,7 @@ app.get('/admin/logout', function(req, res) {
 
 // Admin Dashboard (protected)
 app.get('/admin/observe/:roomId', function(req, res) {
-    if (!req.session.isAdmin && !isSiteAdminPlayer(req.playerId)) return res.status(403).send('เฉพาะแอดมินเว็บ');
+    if (!req.session.isAdmin && !isSiteAdminPlayer(getTrustedPlayerId(req))) return res.status(403).send('เฉพาะแอดมินเว็บ');
     const room = roomManager.getRoom(req.params.roomId);
     if (!room) return res.status(404).send('ไม่พบห้อง');
     res.set('Cache-Control', 'no-store');
