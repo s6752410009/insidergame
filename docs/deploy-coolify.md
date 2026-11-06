@@ -52,6 +52,6 @@ Coolify: http://212.85.24.89:8000 · repo: `s6752410009/insidergame` (branch `ma
 5. **ปิด Render**: Render → service → Settings → **Suspend** (และปิด Auto-Deploy) — ไม่ลบทิ้งจนกว่าจะมั่นใจ 1–2 วัน
 
 ## 7. หลังย้าย
-- push ขึ้น `main` แล้ว Coolify deploy เอง (GitHub App webhook) — เหมือน Render เดิม
+- push ขึ้น `main` แล้วรอ GitHub Actions `Release checks passed` ก่อนกด Deploy ตั้ง Auto deploy เป็น **Manual deployments only** และเปิด Include Source Commit in Build; Dockerfile ตรวจ CI ของ SHA ที่ build อีกชั้น ดู [CI release](ci-release.md)
 - ความปลอดภัย: หน้า Coolify ตอนนี้เป็น http ธรรมดาบน IP — แนะนำตั้งโดเมนให้แผง (เช่น `coolify.insider-th.me`) + HTTPS ใน Coolify Settings และปิดพอร์ต 8000 จากภายนอกด้วย firewall ของ VPS
 - สำรองข้อมูล: ข้อมูลหลักอยู่ใน Mongo (Atlas มี backup ของมันเอง) · volume `/data` สำรองได้จาก Coolify Storages

@@ -770,7 +770,7 @@
     </div>
     <div id="roleAnnouncementTeam" class="role-announce-team">-</div>
     <div id="roleAnnouncementDescription" class="role-announce-desc">รอสักครู่ ระบบกำลังแจกบทบาท</div>
-    <div id="roleAnnouncementHint" class="role-announce-hint">อ่านบทของคุณให้ครบ แล้วเตรียมตัดสินใจเมื่อถึงตา</div>
+    <div id="roleAnnouncementHint" class="role-announce-hint">บทลับของคุณ</div>
   </div>
 </div>
 
@@ -783,9 +783,9 @@
       <div class="ww-topbar-meta"><span id="mobilePhaseLabel"><%= werewolfState?.phase || 'lobby' %></span> · <span id="mobilePhaseCountdown">-</span></div>
     </div>
     <div class="ww-topbar-actions">
-      <button id="openModeGuide" class="ww-topbar-btn">วิธีเล่น</button>
+      <button id="openModeGuide" class="ww-topbar-btn" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">วิธีเล่น</button>
       <button id="openRoleCatalogMobile" class="ww-topbar-btn" type="button">บทบาท</button>
-      <button id="leaveWerewolfRoom" class="ww-topbar-btn danger ww-leave-btn" type="button" data-testid="ww-leave">🚪 ออก</button>
+      <button data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม" id="leaveWerewolfRoom" class="ww-topbar-btn danger ww-leave-btn" type="button" data-testid="ww-leave">🚪 ออก</button>
     </div>
   </div>
 
@@ -3467,7 +3467,7 @@
       // Skill results vs role guide in hint bar
       var noteItems = buildNoteItems(notes, role ? role.id : null);
       var noteParts = partitionNoteItems(noteItems);
-      var notesHtml = buildSkillResultBannerHtml(noteParts.skillResults) + buildGuidePillsHtml(noteParts.guideNotes);
+      var notesHtml = buildSkillResultBannerHtml(noteParts.skillResults);
 
       if (winner) {
         var btns = '';
@@ -3504,7 +3504,7 @@
           }
           var nightWaitText = amDead
             ? '😴 รอเช้า...'
-            : '😴 คืนนี้คุณไม่มีสกิล — รอได้เลย คืนจะจบเองเมื่อคนมีสกิลเลือกครบ';
+            : '😴 รอเช้า';
           var nightReadyMeta = nightSkipNeeded > 0 && !amDead ? '<span class="hint-sep">·</span><span class="hint-text">🌅 พร้อม ' + nightSkipCount + '/' + nightSkipNeeded + '</span>' : '';
           var focusClassIdle = (nightState.canSkip && !nightState.hasSkipped) ? ' hint-focus' : '';
           $hint.html('<div class="hint-bar hint-night' + focusClassIdle + '">' + rolePill + '<span class="hint-text">' + nightWaitText + '</span>' + nightReadyMeta + nightWaitReason + nightSkipHtml + seerTagHtml + oracleTagHtml + newsHtml + notesHtml + '</div>');

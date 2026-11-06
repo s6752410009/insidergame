@@ -122,3 +122,26 @@ body:has(.ui-footer-bar) {
     .ui-btn { transition: none; }
     .ui-btn:active { transform: none; }
 }
+
+/* แถบแบรนด์ไม่กินพื้นที่เล่นบนมือถือ และใช้กลับหน้าแรกได้ */
+header.app-header { height:64px !important; min-height:0; padding:8px 16px !important; background:none !important; }
+header.app-header img { width:144px !important; max-width:100% !important; height:40px !important; max-height:40px !important; object-fit:cover; }
+header.app-header a:focus-visible { outline:2px solid #f5c86b; outline-offset:4px; }
+
+/* Secondary game controls use the same visible icon at every screen size. */
+button[data-control-icon] { position:relative; display:inline-flex; align-items:center; justify-content:center; flex:0 0 44px !important; width:44px !important; min-width:44px !important; min-height:44px !important; padding:8px !important; font-size:0 !important; gap:0 !important; }
+button[data-control-icon]::before { content:'' !important; display:block; width:22px; height:22px; margin:0 !important; background:currentColor; -webkit-mask:var(--control-icon) center/contain no-repeat; mask:var(--control-icon) center/contain no-repeat; }
+button[data-control-icon]::after { content:none !important; }
+button[data-control-icon] > :not(.unread-dot):not(#slChatUnread) { display:none !important; }
+button[data-control-icon] .unread-dot,button[data-control-icon] #slChatUnread { position:absolute; top:2px; right:2px; font-size:10px; line-height:1; }
+button[data-control-icon="sound"][aria-pressed="false"]::after,button[data-control-icon="music"][aria-pressed="false"]::after { content:'' !important; position:absolute; width:27px; height:2px; border-radius:2px; transform:rotate(-45deg); background:currentColor; box-shadow:0 0 0 2px var(--control-cutout,#222); }
+button[data-control-icon][aria-pressed="false"] { opacity:.7; }
+button[data-control-icon="sound"] { --control-icon:url("/static/assets/ui/sound.svg"); }
+button[data-control-icon="music"] { --control-icon:url("/static/assets/ui/music.svg"); }
+button[data-control-icon="chat"] { --control-icon:url("/static/assets/ui/chat.svg"); }
+button[data-control-icon="exit"] { --control-icon:url("/static/assets/ui/exit.svg"); }
+button[data-control-icon="help"] { --control-icon:url("/static/assets/ui/help.svg"); }
+button[data-control-icon="close"] { --control-icon:url("/static/assets/ui/close.svg"); }
+button[data-control-icon="pass"] { --control-icon:url("/static/assets/ui/pass.svg"); }
+button[data-control-icon="play"] { --control-icon:url("/static/assets/ui/play.svg"); }
+button[data-control-icon="exchange"] { --control-icon:url("/static/assets/ui/exchange.svg"); }

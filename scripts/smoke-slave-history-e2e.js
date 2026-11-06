@@ -58,7 +58,7 @@ async function boot(number) {
     base = 'http://127.0.0.1:' + number;
     child = spawn(process.execPath, [path.join(ROOT, 'app.js')], {
         cwd:ROOT, env:{ ...process.env, PORT:String(number), NODE_ENV:'test', APP_ENV:HISTORY_ENV, MONGO_URL:'', MONGODB_URI:'',
-            ADMIN_PASSWORD, ALLOW_LEGACY_SOCKET_IDENTITY:'1', SLAVE_BOT_MS:'60000', INSIDER_DEV_FAST:'0' },
+            ADMIN_PASSWORD, ALLOW_LEGACY_SOCKET_IDENTITY:'1', SLAVE_BOT_MS:'60000', SLAVE_ROUND_BREAK_MS:'200', SLAVE_RESULT_MS:'2000', INSIDER_DEV_FAST:'0' },
         stdio:['ignore', 'pipe', 'pipe']
     });
     child.stdout.on('data', chunk => { output += chunk; });
@@ -80,6 +80,7 @@ async function connect(id) {
     sockets.add(socket);
     const client = { id, socket, state:null, states:[] };
     socket.on('slaveState', state => { client.state = state; client.states.push(state); });
+    socket.on('redirectToLobby', () => { client.returned = true; });
     await wait(() => socket.connected, 'socket connection');
     if (id) { socket.emit('initPlayer', id); await delay(100); }
     return client;
@@ -136,7 +137,7 @@ async function checkEnvironment(players, roomId) {
 async function finishRound(players, roomId) {
     for (let n = 0; n < 1000; n += 1) {
         const state = players[0].state;
-        if (state?.phase === 'round-end') return structuredClone(state);
+        if (['round-end','finished'].includes(state?.phase)) return structuredClone(state);
         ok(Boolean(state), 'live round state is available');
         let actor, event, payload;
         if (state.phase === 'exchange') {
@@ -154,7 +155,7 @@ async function finishRound(players, roomId) {
         const previous = state.step;
         const response = await ack(actor.socket, event, { roomId, step:actor.state.step, ...payload });
         ok(response.success, 'legal human socket action succeeds: ' + event);
-        await wait(() => players.every(player => player.state?.phase === 'round-end' || player.state?.step > previous), 'all humans receive next step');
+        await wait(() => players.every(player => ['round-end','finished'].includes(player.state?.phase) || player.state?.step > previous), 'all humans receive next step');
         // No successful /m request, engine mutation, or private opponent hands are used to finish the round.
         ok(players.every(player => !privateKeys(player.state.seats).length), 'opponents stay concealed during actual play');
     }
@@ -163,8 +164,9 @@ async function finishRound(players, roomId) {
 async function checkProfiles(players, results, expectedGames) {
     for (const player of players) {
         const profile = await json('/api/player/' + player.id + '/profile');
+        if (!expectedGames) { ok(!profile.stats?.totalGames && !(profile.stats?.gameHistory || []).length, 'first round has not recorded a game'); continue; }
         ok(profile.stats?.totalGames === expectedGames && profile.stats.modeStats?.slave?.games === expectedGames, 'other-user profile exposes Slave counts');
-        const expectedWins = results.filter(result => result.standings[0].playerId === player.id).length;
+        const expectedWins = results.filter(result => result.matchComplete && result.matchStandings.find(row => row.playerId === player.id)?.place === 1).length;
         ok(profile.stats.modeStats.slave.wins === expectedWins && profile.stats.modeStats.slave.losses === expectedGames - expectedWins, 'only each round King receives the win');
         const history = profile.stats.gameHistory;
         ok(history.length === expectedGames && history.every(entry => entry.mode === 'slave'), 'other-user profile keeps completed-round history');
@@ -202,51 +204,38 @@ async function main() {
     ok(ghostChat.chat.at(-1).message.includes('&lt;script&gt;') && ghostChat.room.totalPlayerCount === 4, 'ghost chat is escaped and never increases player count');
     ok(players[0].state.step === stepBeforeGhostChat, 'ghost chat does not advance turn');
     const results = [await finishRound(players, roomId)];
-    await checkProfiles(players, results, 1);
-    ok((await ack(players[0].socket, 'slave_nextRound', { roomId })).success, 'host begins next round');
-    await wait(() => players.every(player => player.state?.phase === 'exchange'), 'exchange starts without leaving the table');
+    await checkProfiles(players, results, 0);
+    await wait(() => players.every(player => player.state?.round === 2 && player.state.phase === 'exchange'), 'round two starts automatically with private exchanges');
     results.push(await finishRound(players, roomId));
-    await checkProfiles(players, results, 2);
+    ok(results[1].matchComplete && results[1].matchStandings.reduce((sum,row) => sum+row.score,0) === 20, 'two-round score total is 20');
+    await checkProfiles(players, results, 1);
     const board = await json('/api/leaderboard?mode=slave');
-    ok(board.length === 4 && board.every(row => row.mode === 'slave' && row.totalGames === 2), 'public Slave leaderboard contains four humans and both rounds');
-    const statRows = await ack(adminSocket, 'admin_getStats', { modeFilter:'has-slave', pageSize:20 });
-    ok(statRows.success && statRows.rows.length === 4 && statRows.rows.every(row => row.modeStats?.slave?.games === 2), 'admin mode filter finds Slave player totals');
-    const insiderRows = await ack(adminSocket, 'admin_getStats', { modeFilter:'has-insider', pageSize:20 });
-    ok(insiderRows.success && insiderRows.rows.length === 0, 'admin game filter separates Slave from Insider');
-    let roomLogs = await logs(adminSocket, roomId);
-    ok(roomLogs.filter(log => log.meta?.event === 'game_start').length === 1, 'one game start audit');
-    const ends = roomLogs.filter(log => log.meta?.event === 'game_end');
-    ok(ends.length === 2 && ends.every(log => log.important && log.gameMode === 'slave' && log.roomName === 'Slave history integration'), 'two completed rounds have important room-specific admin logs');
-    ok(ends.every(log => log.meta.ranked === true && log.meta.debugUsed === false && Array.isArray(log.meta.standings) && log.meta.standings.length === 4), 'ranked round summary retains all four places');
-    ok(roomLogs.some(log => log.meta?.event === 'slave_history' && log.meta.kind === 'play') && roomLogs.some(log => log.meta?.kind === 'exchange'), 'admin has public play and exchange progress history');
-    ok(privateKeys(roomLogs).length === 0 && !JSON.stringify(roomLogs).includes('test-room-secret'), 'logs omit room passwords and private hands');
-    for (let n = 0; n < 3; n += 1) players.forEach(player => player.socket.emit('slave_requestState', { roomId }));
-    await delay(100);
-    ok((await logs(adminSocket, roomId)).filter(log => log.meta?.event === 'game_end').length === 2, 'state refresh does not duplicate completed-round logs');
-    await checkProfiles(players, results, 2);
+    ok(board.length === 4 && board.every(row => row.mode === 'slave' && row.totalGames === 1), 'public leaderboard counts one complete two-round game');
+    const statRows = await ack(adminSocket,'admin_getStats',{modeFilter:'has-slave',pageSize:20});
+    ok(statRows.success && statRows.rows.length === 4 && statRows.rows.every(row => row.modeStats.slave.games === 1), 'admin sees one game per player');
+    let roomLogs = await logs(adminSocket,roomId);
+    ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 1, 'one completed-match admin log');
+    ok(privateKeys(roomLogs).length === 0 && !JSON.stringify(roomLogs).includes('test-room-secret'), 'logs omit private hands and room password');
+    for (let n=0;n<3;n++) players.forEach(player => player.socket.emit('slave_requestState',{roomId}));
+    await checkProfiles(players,results,1);
+    await wait(() => players.every(player => player.returned), 'all four clients automatically return to lobby');
     const ids = players.map(player => player.id);
-    // Graceful restart exercises the same JSON persistence path used by recovery after deployment.
-    await stop();
-    for (const socket of sockets) socket.disconnect();
-    sockets.clear();
-    await boot(number);
-    adminSocket = await admin();
-    await checkProfiles(ids.map(id => ({ id })), results, 2);
-    roomLogs = await logs(adminSocket, roomId);
-    ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 2, 'completed-round logs survive JSON restart without duplication');
+    await stop(); for (const socket of sockets) socket.disconnect(); sockets.clear();
+    await boot(number); adminSocket = await admin();
+    await checkProfiles(ids.map(id => ({id})),results,1);
+    ok((await logs(adminSocket,roomId)).filter(log => log.meta?.event === 'game_end').length === 1, 'JSON restart never duplicates completed match');
     players = [];
-    for (const id of ids) { const player = await connect(id); players.push(player); bind(player, roomId); }
-    await wait(() => players.every(player => player.state?.phase === 'round-end'), 'completed table recovers for all four humans');
-    ok((await ack(players[0].socket, 'slave_nextRound', { roomId })).success, 'recovered table starts another round');
-    await wait(() => players.every(player => player.state?.phase === 'exchange'), 'recovered exchange');
-    ok((await ack(players[1].socket, 'slave_returnLobby', { roomId })).success, 'human leaves during exchange');
-    await wait(() => players[0].state?.phase === 'finished', 'table stops on abandonment');
-    players[0].socket.emit('slave_requestState', { roomId });
-    roomLogs = await logs(adminSocket, roomId);
-    const aborts = roomLogs.filter(log => log.meta?.event === 'game_abort');
-    ok(aborts.length === 1 && aborts[0].meta.ranked === false, 'early exit creates one unranked abandonment record');
-    ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 2, 'abandoned third round creates no winner result');
-    await checkProfiles(players, results, 2);
+    for (const id of ids) { const player = await connect(id); players.push(player); bind(player,roomId); }
+    const lobby = await request('GET','/room/'+roomId+'?playerId='+encodeURIComponent(ids[0]));
+    ok(lobby.status === 200 && lobby.body.includes('btnStartGameLobby'), 'lobby reset survives restart');
+    ok((await ack(players[0].socket,'startGameFromLobby',{roomId})).success, 'new game starts from lobby');
+    await wait(() => players.every(player => player.state?.phase === 'turn' && player.state.round === 1), 'fresh match starts at round one');
+    ok((await ack(players[1].socket,'slave_returnLobby',{roomId})).success, 'human leaves an unfinished match');
+    await wait(() => players[0].state?.phase === 'finished','abandoned game stops');
+    roomLogs = await logs(adminSocket,roomId);
+    ok(roomLogs.filter(log => log.meta?.event === 'game_abort').length === 1, 'one unranked abandonment record');
+    ok(roomLogs.filter(log => log.meta?.event === 'game_end').length === 1, 'abandoned match does not create another win');
+    await checkProfiles(players,results,1);
     ok((await ack(adminSocket, 'admin_setSiteAdmin', { playerId:players[0].id, isSiteAdmin:true })).success, 'grant site admin in isolated data');
     const siteAdminPage = await request('GET', '/game/' + roomId + '?playerId=' + encodeURIComponent(players[0].id));
     const siteAdminCookie = (siteAdminPage.headers['set-cookie'] || []).map(value => value.split(';')[0]).join('; ');

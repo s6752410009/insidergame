@@ -804,11 +804,11 @@
 <div class="pk-page">
   <div class="pk-hud">
     <div class="pk-hud-left">
-      <button type="button" id="pkLeaveRoomBtn" class="pk-hud-exit" title="ออกจากห้อง">🚪 ออก</button>
+      <button type="button" id="pkLeaveRoomBtn" class="pk-hud-exit" title="ออกจากห้อง" data-control-icon="exit" aria-label="ออกจากเกม">🚪 ออก</button>
       <% if (room.admin) { %>
       <button type="button" id="pkEndGameBtn" class="pk-hud-ico is-danger" title="กลับห้องรอ" aria-label="กลับห้องรอ">⏹</button>
       <% } %>
-      <button type="button" id="pkHowToOpen" class="pk-hud-ico" title="วิธีเล่น" aria-label="วิธีเล่น">📖</button>
+      <button type="button" id="pkHowToOpen" class="pk-hud-ico" title="วิธีเล่น" aria-label="วิธีเล่น" data-control-icon="help">📖</button>
       <button type="button" id="pkSidebarBtn" class="pk-hud-ico" title="ผู้เล่น" aria-label="ผู้เล่น" aria-expanded="false" aria-controls="playerSidebar">👥</button>
     </div>
     <div class="pk-hud-mid">
@@ -871,7 +871,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่งข้อความ">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span></button>
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span></button>
 <div id="pkDebug" class="pk-debug" hidden>
   <div class="pk-debug-head" id="pkDebugHead">
     <span class="pk-debug-title">/m DEBUG</span>

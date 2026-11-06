@@ -354,9 +354,9 @@
       <div class="av-title" role="heading" aria-level="1"><%= room.name %></div>
     </div>
     <div class="av-top-actions">
-      <button type="button" id="avExitBtn" class="av-chip av-chip--exit">🚪 ออก</button>
+      <button type="button" id="avExitBtn" class="av-chip av-chip--exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
       <button type="button" id="avRoleBtn" class="av-chip" aria-label="ดูบทของฉัน">บทของฉัน</button>
-      <button type="button" id="avHowBtn" class="av-chip" aria-label="วิธีเล่น">?<span class="av-chip-label">วิธีเล่น</span></button>
+      <button type="button" id="avHowBtn" class="av-chip" aria-label="วิธีเล่น" data-control-icon="help" title="วิธีเล่น">?<span class="av-chip-label">วิธีเล่น</span></button>
       <button type="button" id="avPlayersBtn" class="av-chip" aria-label="ผู้เล่น" aria-expanded="false" aria-controls="playerSidebar">☰</button>
     </div>
   </div>
@@ -430,7 +430,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

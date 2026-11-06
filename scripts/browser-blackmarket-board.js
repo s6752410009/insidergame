@@ -214,7 +214,7 @@ async function main() {
 
     try {
         server = await spawnServer();
-        browser = await chromium.launch({ headless: true });
+        browser = await chromium.launch(require('./browserOptions')());
         const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
         await context.addInitScript(() => { try { sessionStorage.insiderPromoSeen = '1'; } catch (error) {} });
         const page = await context.newPage();
@@ -236,7 +236,7 @@ async function main() {
         }, null, { timeout: BROWSER_TIMEOUT_MS });
 
         await Promise.all([
-            page.waitForURL(/\/room\/[A-Za-z0-9-]+\?playerId=/, { timeout: BROWSER_TIMEOUT_MS }),
+            page.waitForURL(/\/room\/[A-Za-z0-9-]+(?:[?#]|$)/, { timeout: BROWSER_TIMEOUT_MS }),
             page.click('.swal2-confirm')
         ]);
 
@@ -261,17 +261,15 @@ async function main() {
         }, null, { timeout: BROWSER_TIMEOUT_MS });
 
         await page.click('#btnStartGameLobby');
-        await page.waitForURL(/\/game\/[A-Za-z0-9-]+\?playerId=/, { timeout: BROWSER_TIMEOUT_MS });
+        await page.waitForURL(/\/game\/[A-Za-z0-9-]+(?:[?#]|$)/, { timeout: BROWSER_TIMEOUT_MS });
         await page.waitForSelector('.bm-shell', { timeout: BROWSER_TIMEOUT_MS });
         await page.waitForSelector('#guidePanel .bm-guide-step', { timeout: BROWSER_TIMEOUT_MS, state: 'attached' });
-        // UX: การ์ด "วิธีเล่นแบบสั้น" (partyPlay) กับทัวร์ของโต๊ะห้ามเด้งซ้อนกัน
-        const firstPlay = await page.waitForSelector('#ppFirstPlay', { timeout: 4000 }).catch(() => null);
-        if (firstPlay) {
-            await page.waitForTimeout(1200);
-            const stacked = await page.evaluate(() => document.getElementById('bmTourOverlay')?.classList.contains('active'));
-            assert(!stacked, 'board tour must wait until the first-play card is dismissed');
-            await page.click('#ppFirstPlay .pp-skip');
-        }
+        // เข้ากระดานแล้วเล่นได้เลย; ทัวร์เปิดเฉพาะเมื่อผู้เล่นร้องขอจากวิธีเล่น
+        assert(await page.locator('#ppFirstPlay').count() === 0, 'no first-play tutorial over the live game');
+        assert(await page.locator('#bmTourOverlay.active').count() === 0, 'tour must not open automatically');
+        await page.click('.bm-table-menu > summary');
+        await page.click('#bmHowToOpen');
+        await page.click('#bmTourReplay');
         await page.waitForSelector('#bmTourOverlay.active', { timeout: BROWSER_TIMEOUT_MS });
 
         assert(await page.locator('#bmTourHole').count() === 0, 'spotlight hole element should not render');
@@ -314,7 +312,7 @@ async function main() {
         assert(/ตลาดมืด|ลงมือ/.test(boardMetrics.stageTitle), `missing phase-specific stage title: ${boardMetrics.stageTitle}`);
         assert(/คนบนโต๊ะ/.test(boardMetrics.playersTitle), `missing players panel title: ${boardMetrics.playersTitle}`);
         assert(/ผู้ดำเนินเกมประกาศ/.test(boardMetrics.announcerTitle), `missing announcer title: ${boardMetrics.announcerTitle}`);
-        assert(boardMetrics.announcerNoteCount >= 1, `expected announcer notes, received ${boardMetrics.announcerNoteCount}`);
+        assert(boardMetrics.announcerNoteCount === 0, 'extra announcer notes remain collapsed until requested');
         assert(boardMetrics.tourTitle.length > 0, 'spotlight tour title did not render');
         assert(boardMetrics.hasHowToButton, 'how to play button did not render');
         assert(boardMetrics.hasPrevButton, 'spotlight previous button did not render');
@@ -323,6 +321,7 @@ async function main() {
         await page.keyboard.press('Escape');
         await page.waitForFunction(() => !document.getElementById('bmTourOverlay')?.classList.contains('active'), null, { timeout: BROWSER_TIMEOUT_MS });
 
+        await page.click('.bm-table-menu > summary');
         await page.click('#bmHowToOpen');
         await page.waitForSelector('#bmHowToOverlay.active', { timeout: BROWSER_TIMEOUT_MS });
 

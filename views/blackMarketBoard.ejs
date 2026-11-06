@@ -135,7 +135,7 @@
 
   .bm-topbar {
     position: relative;
-    z-index: 1;
+    z-index: 3;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -2055,6 +2055,43 @@
     .bm-stat-label { font-size: 0.7rem; letter-spacing: 0; }
     .bm-pill { max-width: 100%; }
   }
+
+  /* ให้ของที่ซื้อและแผนที่เลือกอยู่ในพื้นที่เล่นตั้งแต่เปิดจอ */
+  .bm-table-menu { position:relative; }
+  .bm-table-menu > summary { cursor:pointer; padding:8px 12px; min-height:40px; color:var(--bm-gold); white-space:nowrap; }
+  .bm-table-tools { position:absolute; right:0; top:100%; z-index:100; width:230px; display:grid; gap:8px; padding:12px; background:#171510; border:1px solid var(--bm-line); border-radius:12px; box-shadow:0 12px 32px #0008; }
+  .bm-top-meta { align-items:center; }
+  .bm-card-role > .bm-card-header { display:none; }
+  .bm-card-role { padding:10px 14px; }
+  .bm-self-line { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .bm-role-details > summary { cursor:pointer; min-height:36px; display:flex; align-items:center; gap:6px; color:var(--bm-gold); font-weight:700; }
+  .bm-role-details .game-icon { width:28px; height:28px; }
+  .bm-role-details p { margin:8px 0; max-width:45ch; font-size:.85rem; }
+  .bm-wallet { display:flex; gap:12px; align-items:center; }
+  .bm-wallet .bm-stat { padding:0; background:none; border:0; }
+  .bm-wallet .bm-stat-value { display:inline; font-size:1rem; }
+  .bm-inventory-compact { margin-top:6px; }
+  .bm-heat-warning { color:#fca5a5; margin:6px 0; }
+  .bm-sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  @media(max-width:640px) {
+    .bm-topbar { padding:10px 14px; gap:8px; }
+    .bm-title { font-size:1.35rem; }
+    .bm-kicker { display:none; }
+    .bm-top-meta { flex-wrap:wrap; }
+    .bm-top-meta > .bm-chip { flex:1 1 auto; padding:6px 8px; min-height:32px; font-size:.75rem; }
+    .bm-top-meta .bm-table-tools .bm-chip { flex:auto; min-height:44px; }
+    .bm-now-bar { margin:8px 14px; padding:10px 12px; }
+    .bm-now-bar-text { font-size:1rem; }
+    .bm-grid { padding:8px 14px; gap:12px; }
+    .bm-card { padding:12px; }
+    .bm-market-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .bm-offer { padding:10px; }
+    .bm-offer-visual { max-width:80px; margin:auto; }
+    .bm-offer-outcome { font-size:.75rem; min-height:2.4em; }
+    .bm-offer-name { font-size:.95rem; }
+    .bm-self-line { gap:4px 8px; }
+    .bm-wallet { gap:10px; }
+  }
 </style>
 
 <div class="bm-page">
@@ -2071,21 +2108,21 @@
       <div class="bm-brand">
         <div class="bm-kicker">🎩 โต๊ะตลาดมืด</div>
         <div class="bm-title"><%= room.name %></div>
-        <div class="bm-subtitle">สะสม 👑 ให้มากสุดใน 5 ยก</div>
       </div>
       <div class="bm-top-meta">
-        <button id="bmExitBtn" type="button" class="bm-chip bm-chip-exit">🚪 ออก</button>
-        <div class="bm-chip">🆔 <span><%= room.roomId %></span></div>
-        <div class="bm-chip">👥 <span><%= room.playerCount %>/<%= room.maxPlayers %></span></div>
         <div id="phaseChip" class="bm-chip phase-market">🛒 เปิดตลาด</div>
         <div id="roundChip" class="bm-chip">🌒 ยก 1 / 5</div>
         <div id="bmTimerChip" class="bm-chip bm-timer-chip" style="display:none;" title="เวลาที่เหลือในเฟสนี้ หมดเวลาแล้วระบบจะปิดยกให้อัตโนมัติ">⏳ --:--</div>
-        <button id="bmHowToOpen" type="button" class="bm-chip">📖 วิธีเล่น</button>
-        <button id="bmTourReplay" type="button" class="bm-chip">✨ พาทัวร์โต๊ะ</button>
+        <details class="bm-table-menu"><summary aria-label="เมนูโต๊ะ" title="เมนูโต๊ะ">⋯</summary><div class="bm-table-tools">
+        <button id="bmExitBtn" type="button" class="bm-chip bm-chip-exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
+        <div class="bm-chip">🆔 <span><%= room.roomId %></span></div>
+        <div class="bm-chip">👥 <span><%= room.playerCount %>/<%= room.maxPlayers %></span></div>
+        <button id="bmHowToOpen" type="button" class="bm-chip" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">📖 วิธีเล่น</button>
         <% if (room.admin === true) { %>
         <button id="bmEndGameBtn" type="button" class="bm-chip" title="รีเซ็ตเกมและลบผู้เล่นที่หลุด">⏹ จบเกม</button>
         <% } %>
-        <button id="bmAudioToggle" type="button" class="bm-chip bm-audio-chip">🔇 เปิดเสียงพิธี</button>
+        <button id="bmAudioToggle" type="button" class="bm-chip bm-audio-chip" data-control-icon="sound" aria-label="เสียงเกม" title="เสียงเกม">🔇 เปิดเสียง</button>
+        </div></details>
       </div>
     </div>
 
@@ -2093,9 +2130,9 @@
 
     <div id="bmRoundSummary" class="bm-round-summary" style="display:none;" aria-live="polite"></div>
 
-    <div id="bmFlowGuide" class="bm-flow-guide" aria-label="ลำดับการเล่นในหนึ่งยก"></div>
 
-    <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div>
+
+
 
     <div class="bm-mobile-tabs">
       <button class="bm-mobile-tab-btn active" type="button" data-tab="game">🎮 เล่นยกนี้</button>
@@ -2186,7 +2223,7 @@
       <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่งข้อความ">ส่ง</button>
     </div>
   </div>
-  <button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span></button>
+  <button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span></button>
 
   <div id="bmTourOverlay" class="bm-tour-overlay" aria-hidden="true">
     <div id="bmTourCard" class="bm-tour-card" role="dialog" aria-modal="true" aria-live="polite" aria-label="Black Market onboarding" tabindex="-1">
@@ -2219,7 +2256,7 @@
       </div>
 
       <!-- Tab Content 1: Rules & Roles -->
-      <div id="bmManualTabGuide">
+      <div id="bmManualTabGuide">    <div id="bmFlowGuide" class="bm-flow-guide" aria-label="ลำดับการเล่นในหนึ่งยก"></div>    <div id="bmAnnouncerBar" class="bm-announcer bm-announcer-collapsed" aria-live="polite"></div><button id="bmTourReplay" type="button" class="bm-btn alt">พาทัวร์โต๊ะ</button>
         <div class="bm-manual-grid">
           <div id="bmHowToOverview" class="bm-manual-column"></div>
           <div id="bmHowToRole" class="bm-manual-column"></div>
@@ -2323,18 +2360,16 @@
     let currentState = <%- safeJson(typeof blackMarketState !== 'undefined' ? blackMarketState : {}) %>;
     const initialChatHistory = <%- safeJson(typeof chatHistory !== 'undefined' ? chatHistory : []) %>;
     let allowNavigation = false;
-    let hasRenderedOnce = false;
     let ceremonyTimer = null;
     let audioContext = null;
     let audioEnabled = false;
     let spotlightActive = false;
     let spotlightStepIndex = 0;
-    let spotlightStarted = false;
     let spotlightRestoreFocus = null;
     let howToActive = false;
     let howToRestoreFocus = null;
     let showAdvancedActions = false;
-    let announcerExpanded = window.innerWidth > 640;
+    let announcerExpanded = false;
     let simplePickMode = null;
     let guideExpanded = false;
 
@@ -2627,8 +2662,9 @@
 
     function updateAudioToggle() {
       $('#bmAudioToggle')
+        .attr('aria-pressed', String(audioEnabled))
         .toggleClass('live', audioEnabled)
-        .text(audioEnabled ? '🔊 เสียงพิธีพร้อม' : '🔇 เปิดเสียงพิธี');
+        .text(audioEnabled ? '🔊 เสียงเปิด' : '🔇 เปิดเสียง');
     }
 
     async function unlockAudio() {
@@ -2700,81 +2736,12 @@
     }
 
     function handleCeremony(previousState, nextState) {
-      if (!nextState) {
-        return;
-      }
-
-      const nextRound = Number(nextState.roundNumber || 0);
-
-      if (!hasRenderedOnce) {
-        hasRenderedOnce = true;
-        if (nextState.phase === 'finished' && nextState.winner) {
-          showCeremony({
-            kicker: '👑 ปิดโต๊ะ',
-            title: winnerHeadline(nextState.winner),
-            copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
-            tone: 'red',
-            sound: 'close',
-            duration: 3200
-          });
-        } else if (nextState.phase === 'market' && nextRound > 0) {
-          showCeremony({
-            kicker: `🛒 ตลาดมืดเปิดแล้ว (ยก ${nextRound})`,
-            title: 'ล็อตใหม่ขึ้นโต๊ะแล้ว',
-            copy: 'เลือกซื้อสินค้าหรือไอเทมเถื่อนเพื่อเตรียมทำแผนการต่อไป',
-            tone: 'gold',
-            sound: 'open'
-          });
-        } else if (nextState.phase === 'action') {
-          showCeremony({
-            kicker: `🎯 ช่วงวางแผนลงมือ (ยก ${nextRound})`,
-            title: 'ถึงเวลาลงมือลับ',
-            copy: 'เลือกการลงมือ: ปล้น สั่งเก็บ ดีล หรือส่งของ เพื่อชิงอิทธิพล',
-            tone: 'gold',
-            sound: 'open'
-          });
-        }
-        return;
-      }
-
-      const previousRound = Number(previousState?.roundNumber || 0);
-
-      // Check for phase transitions first
-      if (previousState?.phase !== nextState.phase) {
-        if (nextState.phase === 'finished' && nextState.winner) {
-          showCeremony({
-            kicker: '👑 ปิดโต๊ะ',
-            title: winnerHeadline(nextState.winner),
-            copy: nextState.winner.reason || 'คืนนี้มีคนยึดโต๊ะนี้ไปแล้ว',
-            tone: 'red',
-            sound: 'close',
-            duration: 3200
-          });
-        } else if (nextState.phase === 'market') {
-          showCeremony({
-            kicker: `🛒 ตลาดมืดเปิดแล้ว (ยก ${nextRound})`,
-            title: 'สินค้าล็อตใหม่ขึ้นโต๊ะ',
-            copy: 'เลือกลงทุนซื้อสินค้า เกราะป้องกัน หรือพาสปอร์ต ก่อนตลาดวาย',
-            tone: 'gold',
-            sound: 'open'
-          });
-        } else if (nextState.phase === 'action') {
-          showCeremony({
-            kicker: `🎯 ช่วงวางแผนลงมือ (ยก ${nextRound})`,
-            title: 'แผนการลับเริ่มทำงาน',
-            copy: 'เลือกแผน 1 อย่าง: ส่งของ ดีล ปล้น สั่งเก็บ หรือหมอบต่ำ',
-            tone: 'gold',
-            sound: 'open'
-          });
-        }
-      } else if (nextState.phase === 'market' && nextRound > previousRound) {
-        showCeremony({
-          kicker: `🛒 ตลาดมืดเปิดแล้ว (ยก ${nextRound})`,
-          title: 'ล็อตใหม่ขึ้นโต๊ะแล้ว',
-          copy: 'เลือกของให้ไว ก่อนดีลและมีดจะเริ่มเดิน',
-          tone: 'gold',
-          sound: 'open'
-        });
+      if (!nextState) return;
+      if (nextState.phase === 'finished' && nextState.winner && previousState?.phase !== 'finished') {
+        showCeremony({ kicker: '👑 จบเกม', title: winnerHeadline(nextState.winner),
+          copy: nextState.winner.reason || '', tone: 'red', sound: 'close', duration: 3200 });
+      } else if (previousState && previousState.phase !== nextState.phase) {
+        playCeremony('open');
       }
     }
 
@@ -3290,9 +3257,8 @@
           sub = (lockText || '') + ' · เปลี่ยนใจได้จนกว่าทุกคนจะเลือกครบ';
           locked = true;
         } else {
-          main = 'ขั้นที่ 1: เลือกของจากตลาด';
-          sub = 'ซื้อ 1 ชิ้น หรือกด「ผ่าน — ไม่ซื้อ」· ของที่ซื้อไว้ใช้ตอน「ลงมือ」' + (lockText ? ' · ' + lockText : '') + ' · ไม่เลือกก่อนหมดเวลา = ผ่าน';
-          cta = 'ไปที่ตลาดมืด';
+          main = 'เลือกซื้อของ';
+          sub = lockText;
         }
       } else if (phase === 'action') {
         if (status.pendingAction) {
@@ -3300,9 +3266,8 @@
           sub = (lockText || '') + ' · เปลี่ยนใจได้จนกว่าทุกคนจะล็อกครบ';
           locked = true;
         } else {
-          main = 'ขั้นที่ 2: เลือกแผน 1 อย่าง';
-          sub = 'แนะนำ: ส่งของ (ได้อิทธิพล) · สืบข่าว (ดูเป้า) · ผ่าน (ไม่ทำ) · แผนลับกด「ดูแผนหลักทั้งหมด」' + (lockText ? ' · ' + lockText : '') + ' · ไม่เลือกก่อนหมดเวลา = ผ่าน';
-          cta = 'ไปเลือกแผน';
+          main = 'เลือกแผน';
+          sub = lockText;
         }
       } else if (phase === 'finished') {
         main = 'เกมจบแล้ว';
@@ -3321,10 +3286,9 @@
       $('#bmNowBar')
         .toggleClass('locked', locked)
         .html(
-          '<div class="bm-now-bar-label">ทำอะไรตอนนี้</div>' +
           '<div class="bm-now-bar-text">' + escapeHtml(main) + '</div>' +
           (sub ? '<div class="bm-now-bar-sub">' + escapeHtml(sub) + '</div>' : '') +
-          (waitingText && (phase === 'market' || phase === 'action') ? '<div class="bm-waiting-names">⏳ ' + escapeHtml(waitingText) + '</div>' : '') +
+          (locked && waitingText && (phase === 'market' || phase === 'action') ? '<div class="bm-waiting-names">⏳ ' + escapeHtml(waitingText) + '</div>' : '') +
           (cta ? '<button type="button" id="bmNowBarGo" class="bm-now-bar-go">' + escapeHtml(cta) + '</button>' : '') +
           (actionsHtml ? '<div class="bm-now-bar-actions">' + actionsHtml + '</div>' : '')
         );
@@ -3681,66 +3645,23 @@
       renderSpotlightStep();
     }
 
-    function maybeStartSpotlight() {
-      if (spotlightStarted || !currentState || !currentState.playerRole || !currentState.playerRole.id) {
-        return;
-      }
-      spotlightStarted = true;
-      // อย่าเปิดทัวร์ซ้อนกับการ์ด "วิธีเล่นแบบสั้น" ของ partyPlay (เดิมเด้งพร้อมกันสองชั้น)
-      const startWhenClear = function(triesLeft) {
-        if (document.getElementById('ppFirstPlay') && triesLeft > 0) {
-          window.setTimeout(function() { startWhenClear(triesLeft - 1); }, 400);
-          return;
-        }
-        openSpotlight(false);
-      };
-      window.setTimeout(function() { startWhenClear(40); }, 500);
-    }
-
     function renderRolePanel() {
       const role = currentState.playerRole || {};
       const self = getSelf();
-      const maxRounds = Number(currentState.maxRounds || 5);
-      $('#selfStateChip').html(self.alive ? 'ยังอยู่' : 'ออกจากเกม');
+      $('#selfStateChip').text(self.alive ? 'ยังอยู่' : 'ออกจากเกม');
       $('#rolePanel').html(`
-        <div class="bm-role-wrap">
-          <div class="bm-role-icon">${gameIcon(role, 'game-icon game-icon-hero')}</div>
-          <div>
-            <div class="bm-role-title">
-              <div class="bm-role-name">${escapeHtml(role.title || 'ยังไม่เปิดบท')}</div>
-            </div>
-            ${role.summary ? `<div class="bm-role-copy" style="margin-top:6px;font-weight:700;color:#fff;">จุดเด่น: ${escapeHtml(plainBmCopy(role.summary))}</div>` : ''}
-            ${role.ability ? `<div class="bm-role-copy" style="margin-top:4px;color:var(--bm-gold);font-size:0.9em;">สกิล: ${escapeHtml(plainBmCopy(role.ability))}</div>` : ''}
-            <div class="bm-role-copy" style="margin-top:6px;color:#9aa6c0;font-size:0.85em;">เป้าหมาย: อิทธิพลสูงสุดใน ${maxRounds} ยก</div>
+        <div class="bm-self-line">
+          <details class="bm-role-details"><summary>${gameIcon(role, 'game-icon')} ${escapeHtml(role.title || 'บทของคุณ')}</summary>
+            <p>${escapeHtml(plainBmCopy(role.ability || role.summary || ''))}</p>
+          </details>
+          <div class="bm-wallet" aria-label="สถานะของคุณ">
+            <span class="bm-stat" title="เงิน"><span aria-hidden="true">💵</span> <b class="bm-stat-value">${Number(self.cash || 0)}</b><span class="bm-sr-only"> เงิน</span></span>
+            <span class="bm-stat" title="อิทธิพล"><span aria-hidden="true">👑</span> <b class="bm-stat-value">${Number(self.influence || 0)}</b><span class="bm-sr-only"> อิทธิพล</span></span>
+            <span class="bm-stat" title="ค่าหัว ถึง 5 เสียเงินและอิทธิพลยกละ 1"><span aria-hidden="true">🔥</span> <b class="bm-stat-value">${Number(self.heat || 0)}/5</b><span class="bm-sr-only"> ค่าหัว</span></span>
           </div>
         </div>
-        <div class="bm-stats">
-          <div class="bm-stat">
-            <div class="bm-stat-label">เงินดำ</div>
-            <div class="bm-stat-value">${Number(self.cash || 0)}</div>
-          </div>
-          <div class="bm-stat">
-            <div class="bm-stat-label">อิทธิพล</div>
-            <div class="bm-stat-value">${Number(self.influence || 0)}</div>
-          </div>
-          <div class="bm-stat" ${Number(self.heat || 0) >= 5 ? 'style="background:rgba(127,29,29,0.35);border-radius:8px;"' : ''}>
-            <div class="bm-stat-label">ค่าหัว</div>
-            <div class="bm-stat-value" ${Number(self.heat || 0) >= 5 ? 'style="color:#fca5a5;"' : ''}>${Number(self.heat || 0)}</div>
-            <div style="font-size:10px;color:${Number(self.heat || 0) >= 5 ? '#fca5a5' : '#94a3b8'};line-height:1.2;margin-top:2px;">${Number(self.heat || 0) >= 5 ? 'จบยกนี้ โดนปรับเงินและอิทธิพล' : 'ถึง 5 จะโดนปรับ'}</div>
-          </div>
-        </div>
-        <div class="bm-card-note" style="margin-top:8px;font-size:11.5px;">ชนะเมื่ออิทธิพลมากสุดหลังครบ ${maxRounds} ยก หรือเหลือรอดคนสุดท้าย</div>
-        <div style="margin-top:12px;">
-          <div class="bm-card-note" style="margin-bottom:8px;">🎒 ของในมือ</div>
-          <div class="bm-inventory-compact">
-            ${(self.inventory || []).length ? (self.inventory || []).map(item => `
-              <span class="bm-item-compact">
-                <span class="bm-item-compact-thumb">${gameIcon(item, 'game-icon')}</span>
-                <span>${escapeHtml(item.name)}</span>
-              </span>
-            `).join('') : '<span class="bm-muted">มือเปล่า</span>'}
-          </div>
-        </div>
+        ${Number(self.heat || 0) >= 5 ? '<p class="bm-heat-warning">ค่าหัวสูง: จบยกเสีย 💵 1 และ 👑 1</p>' : ''}
+        ${(self.inventory || []).length ? '<div class="bm-inventory-compact">' + self.inventory.map(item => `<span class="bm-item-compact">${gameIcon(item, 'game-icon')} ${escapeHtml(item.name)}</span>`).join('') + '</div>' : ''}
       `);
     }
 
@@ -3867,7 +3788,7 @@
             <span class="bm-outcome">→ ไม่ทำ</span>
           </button>
         </div>
-        <div class="bm-action-hint">💡 ทางได้ 👑 หลัก ๆ คือ <b>ส่งของ</b> กับ <b>ดีล</b> — ดีลปิดได้เมื่อ <b>ทั้งคู่กดเข้าดีลใส่กันในยกเดียวกัน</b> ระวังโดน <b>หักหลัง</b></div>
+
         <button type="button" id="bmToggleAdvanced" class="bm-toggle-advanced">${advancedLabel}</button>
         ${showAdvancedActions ? '<div class="bm-advanced-stage">' + buildActionStageAdvanced() + '</div>' : ''}
       `;
@@ -4413,7 +4334,6 @@
       if (spotlightActive) {
         positionSpotlight();
       }
-      maybeStartSpotlight();
     }
 
     let phaseTimerInterval = null;
@@ -4770,7 +4690,12 @@
     });
 
     $(document).on('click', '#bmAudioToggle', function() {
-      unlockAudio();
+      if (audioEnabled) { audioEnabled = false; updateAudioToggle(); }
+      else unlockAudio();
+    });
+
+    $(document).on('click', '.bm-table-tools button', function() {
+      this.closest('details').open = false;
     });
 
     $(document).on('click', '#bmHowToOpen', function() {
@@ -4801,6 +4726,7 @@
     });
 
     $(document).on('click', '#bmTourReplay', function() {
+      closeHowTo();
       openSpotlight(true);
     });
 

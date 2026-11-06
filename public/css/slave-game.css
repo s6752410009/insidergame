@@ -331,3 +331,58 @@ html.slave-active body:before{
 }
 
 .sl-manual-link{display:inline-block;color:var(--gold);text-decoration:underline;text-underline-offset:3px;padding:8px 0;min-height:44px}
+
+/* One continuous hand in every viewport: preserve order, expose every rank. */
+.slave .sl-player-zone .sl-hand { display:flex; flex-wrap:nowrap; justify-content:center; align-items:center; gap:0; min-height:0; width:100%; padding:24px 8px 12px; overflow:visible; }
+.slave .sl-player-zone .sl-hand .sl-card { flex:0 0 var(--hand-card-width,64px); width:var(--hand-card-width,64px); max-width:none; height:var(--hand-card-height,91px); min-height:var(--hand-card-height,91px); margin:0; --r:0deg; --lift:0px; font-size:1.15rem; }
+.slave .sl-player-zone .sl-hand .sl-card + .sl-card { margin-left:calc(var(--hand-step,24px) - var(--hand-card-width,64px)); }
+.slave .sl-player-zone .sl-hand .sl-card.playable:not(.selected) { --lift:-4px; }
+.slave .sl-player-zone .sl-hand .sl-card.selected { --lift:-16px; outline:2px solid oklch(.9 .15 88); outline-offset:-2px; }
+.slave .sl-player-zone .sl-hand .sl-card .sl-corner:not(.bottom) { left:4px; top:4px; }
+.slave .sl-player-zone .sl-hand .sl-card .sl-pip { font-size:1.5rem; }
+.sl-card-guide { display:none !important; }
+.sl-hand .sl-card.just-received:after { content:'↙'; font-size:16px; }
+.slave .sl-actions #slPass { background:oklch(.88 .13 88); color:oklch(.23 .04 55); border:2px solid oklch(.98 .03 90); border-bottom:4px solid oklch(.52 .09 70); text-shadow:none; font-weight:800; box-shadow:0 2px 0 #0005; }
+.slave .sl-actions #slPass:hover:enabled { background:oklch(.94 .12 90); }
+.slave .sl-actions #slPass:before { content:''; display:inline-block; width:20px; height:20px; margin-right:6px; background:currentColor; mask:url('/static/assets/ui/pass.svg') center/contain no-repeat; vertical-align:middle; }
+.slave .sl-actions button:disabled { opacity:.42; }
+.sl-score { margin-left:auto; color:var(--gold); font-size:1.5rem; font-variant-numeric:tabular-nums; }
+.sl-score-breakdown { color:var(--muted); }
+.slave .sl-tools { gap:4px; }
+.slave .sl-tools button[data-control-icon] { border-radius:50%; }
+.slave .sl-actions #slClear { width:44px; min-width:44px; }
+.sl-action-help[hidden] { display:none; }
+@media(max-width:820px) {
+ .sl-top { flex-wrap:wrap; gap:4px; }
+ .sl-brand-mark { width:32px; height:38px; margin:0; font-size:1.6rem; }
+ .slave .sl-top h1 { font-size:1.15rem; }
+ .sl-top h1 > span { display:block; font-size:.7rem; margin:0; }
+ .sl-brand { min-width:100px; gap:4px; }
+ .sl-meta { font-size:.6rem; }
+ .sl-actions { min-height:48px; }
+ .slave .sl-actions #slPlay { font-size:1rem; }
+ .slave .sl-actions #slPass { font-size:.95rem; min-width:84px; }
+ .sl-rank { gap:5px; }
+ .sl-score { font-size:1.15rem; }
+}
+
+/* Pressing an already raised card must not move its hit target below the finger. */
+.slave .sl-player-zone .sl-hand .sl-card:active:enabled { transform:translateY(var(--lift,0px)); }
+.slave .sl-actions #slPass { display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; }
+.slave .sl-actions #slPass:before { flex:0 0 20px; margin:0; }
+@media(max-width:820px) {
+ .slave .sl-actions { display:grid; grid-template-columns:minmax(0,1fr) 96px 44px; gap:6px; }
+ .slave .sl-actions:has(#slClear[hidden]) { grid-template-columns:minmax(0,1fr) 96px; }
+}
+
+@media(max-width:820px) {
+ .slave .sl-actions #slPlay { grid-column:1; grid-row:1; }
+ .slave .sl-actions #slPass { grid-column:2; grid-row:1; }
+ .slave .sl-actions #slPass.primary { grid-column:1/3; }
+ .slave .sl-actions #slClear { grid-column:3; grid-row:1; }
+ .slave .sl-actions #slNext { grid-column:1/-1; grid-row:1; }
+}
+@media(max-height:350px) and (orientation:landscape) {
+ .slave .sl-player-zone .sl-hand { padding:16px 8px 8px; }
+ .slave .sl-player-zone .sl-hand .sl-card { height:64px; min-height:64px; }
+}

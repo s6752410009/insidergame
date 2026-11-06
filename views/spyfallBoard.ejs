@@ -564,12 +564,12 @@
         <p class="sf-subtitle">ถาม–ตอบให้เนียน แล้วจับสายลับ</p>
       </div>
       <div class="sf-top-meta">
-        <button type="button" id="sfExitBtn" class="sf-chip sf-chip-btn sf-chip-exit">🚪 ออก</button>
+        <button type="button" id="sfExitBtn" class="sf-chip sf-chip-btn sf-chip-exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
         <span id="sfRoundChip" class="sf-chip sf-round-chip" style="display:none;"></span>
         <span class="sf-chip">🆔 <%= room.roomId %></span>
         <span class="sf-chip" id="sfPlayerCountChip">👥 <%= room.playerCount %>/<%= room.maxPlayers %></span>
         <span id="phaseChip" class="sf-chip sf-phase">🎭 รอเริ่ม</span>
-        <button type="button" id="sfHowToOpen" class="sf-chip sf-chip-btn">📖 วิธีเล่น</button>
+        <button type="button" id="sfHowToOpen" class="sf-chip sf-chip-btn" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">📖 วิธีเล่น</button>
         <button type="button" id="sfSidebarBtn" class="sf-chip sf-chip-btn"><i class="fas fa-users"></i> ผู้เล่น</button>
         <%# แสดงเสมอแล้วซ่อนด้วย JS — หัวหน้าห้องคนใหม่ (คนเดิมออก) จะได้ปุ่มทันทีไม่ต้องรีเฟรช %>
         <button type="button" id="sfEndGameBtn" class="sf-chip sf-chip-btn sf-chip-danger"<% if (!room.admin) { %> style="display:none;"<% } %>>⏹ ยุติเกม</button>
@@ -646,7 +646,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os');
 const ejs = require('ejs'), { chromium } = require('playwright');
 const engine = require('../games/slaveEngine'), guide = require('../public/js/slaveGuide');
-const root = path.join(__dirname, '..'), shots = fs.mkdtempSync(path.join(os.tmpdir(), 'slave-ux-'));
+const root = path.join(__dirname, '..'), shots = require('./testArtifacts')('slave-ux');
 const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
 let checks = 0, browser;
 const ok = (value, label) => { assert.ok(value, label); checks++; };
@@ -29,6 +29,9 @@ endRoom.gameState.standings = endRoom.gameState.seats.map((p, i) => ({ playerId:
 endRoom.gameState.finishOrder = ['p0', 'p1', 'p2', 'p3'];
 endRoom.gameState.seats.forEach((p, i) => { p.title = titles[i]; });
 endRoom.gameState.turnId = null; endRoom.gameState.phaseEndsAt = null;
+endRoom.gameState.roundResults = [{round:1,standings:clone(endRoom.gameState.standings)}];
+endRoom.gameState.matchStandings = engine.scoreRounds(endRoom.gameState);
+endRoom.gameState.roundAdvanceAt = Date.now()+6500;
 const ended = [0, 1, 2, 3].map(i => engine.buildClientState(endRoom, 'p' + i));
 engine.nextRound(endRoom, 'p0');
 const exchanging = [0, 1, 2, 3].map(i => engine.buildClientState(endRoom, 'p' + i));
@@ -85,7 +88,7 @@ function ruleChecks() {
 function markup(payload, id) {
   const template = fs.readFileSync(path.join(root, 'views/slaveBoard.ejs'), 'utf8');
   const body = ejs.render(template, { contentFor: () => '', slaveDebugAllowed: true, room: initialRoom, playerInfo: { playerId: id }, slaveState: payload, safeJson: v => JSON.stringify(v).replace(/</g, '\\u003c') });
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="content">' + body + '</body></html>';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/css/ui-kit.css"></head><body class="content">' + body + '</body></html>';
 }
 const mockSocket = `window.__commands=[];window.__socket={connected:true,handlers:{},on(e,fn){this.handlers[e]=fn;return this},emit(e,data,cb){window.__commands.push({event:e,data});if(cb)cb(null,{success:true})},timeout(){return this}};window.io=()=>window.__socket;const emit=window.__socket.emit;window.__socket.emit=function(e,data,cb){if(e==='slave_debug'){window.__commands.push({event:e,data});const s=window.__debugState;cb(null,{success:true,step:s.step,phase:s.phase,hands:s.seats.map(p=>({playerId:p.playerId,name:p.name,cards:window.__fixtureHands.find(h=>h.playerId===p.playerId).cards.slice(0,p.count)}))});return;}return emit.call(this,e,data,cb)};`;
 async function fixture(page, payload, id = 'p0') {
@@ -95,7 +98,7 @@ async function fixture(page, payload, id = 'p0') {
     if (pathname === '/socket.io/socket.io.js') return route.fulfill({ contentType: 'text/javascript', body: 'window.__debugState=' + JSON.stringify(payload) + ';window.__fixtureHands=' + JSON.stringify(initialRoom.gameState.seats.map(p => ({playerId:p.playerId,cards:p.hand.map(engine.describeCard)}))) + ';' + mockSocket });
     if (pathname.startsWith('/static/')) {
       const file = path.join(root, 'public', pathname.slice(8));
-      return route.fulfill({ contentType: file.endsWith('.jpg') ? 'image/jpeg' : file.endsWith('.css') ? 'text/css' : 'text/javascript', body: fs.readFileSync(file) });
+      return route.fulfill({ contentType: file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.jpg') ? 'image/jpeg' : file.endsWith('.css') ? 'text/css' : 'text/javascript', body: fs.readFileSync(file) });
     }
     return route.fulfill({ contentType: 'text/css', body: '' });
   });
@@ -191,7 +194,7 @@ async function timerChecks() {
   await context.close();
 }
 async function browserChecks() {
-  browser = await chromium.launch();
+  browser = await chromium.launch(require('./browserOptions')());
   const errors = [];
   const sizes = [[320,568],[360,640],[375,667],[390,844],[768,1024],[800,700],[820,700],[821,700],[1280,800],[568,320],[667,375],[844,390],[1024,512],[2137,1011]];
   for (const [width, height] of sizes) {
@@ -227,7 +230,7 @@ async function browserChecks() {
     await geometry(p, label + ' debug peek');
     const hiddenFaces = await p.locator('.sl-revealed-card').evaluateAll(els => els.filter(el => { const r=el.getBoundingClientRect(); return r.x<0||r.right>innerWidth+1||r.y<0||r.bottom>innerHeight+1; }).length);
     ok(!hiddenFaces, label + ' every revealed card stays on screen');
-    await p.locator('[data-card="0"]').click(); ok(await p.locator('#slPlay').isEnabled(), label + ' can select and play with debug open');
+    await p.locator('[data-card="0"]').click({position:{x:8,y:12}}); ok(await p.locator('#slPlay').isEnabled(), label + ' can select and play with debug open');
     await enabledControlsHitTest(p, label + ' debug selected');
     await p.locator('#slClear').click();
     if ([320,375,667,1280,2137].includes(width)) await p.screenshot({path:path.join(shots,'live-debug-'+label+'.png')});
@@ -243,16 +246,18 @@ async function browserChecks() {
     await p.locator('[data-sl-close="slExitDialog"]').click();
     ok(!(await p.evaluate(() => window.__commands.some(c => c.event === 'endTableSession'))), label + ' cancel does not stop game');
 
-    ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'opening rule beside hand ' + label);
+    ok((await p.locator('#slPileText').innerText()).includes('3♣'), 'opening requirement stays on the pile ' + label);
     ok(await p.locator('#slHint').count() === 0, label + ' no separate choose-a-set button');
-    ok((await p.locator('#slActionHelp').innerText()).includes('↑'), label + ' automatic guidance explains the in-hand marker');
+    ok(await p.locator('#slActionHelp').isHidden(), label + ' no tutorial paragraph before selecting');
+    ok(await p.locator('#slHand .sl-card').evaluateAll(cards => new Set(cards.map(card => card.offsetTop)).size === 1), label + ' all 13 cards use one row');
+    ok(await p.locator('#slSound').evaluate(el => getComputedStyle(el).fontSize === '0px' && getComputedStyle(el,'::before').maskImage !== 'none'), 'sound is a visible icon with an accessible name');
     ok(await p.locator('#slHand [aria-pressed="true"]').count() === 0, label + ' guidance never selects or plays cards for the player');
     ok(await p.locator('[data-card="0"]').getAttribute('data-playable') === 'true', 'opening legal card marked');
     ok(await p.locator('[data-card="4"]').getAttribute('data-playable') === 'false', 'opening illegal card distinguished');
-    await p.locator('[data-card="4"]').click();
+    await p.locator('[data-card="4"]').click({position:{x:8,y:12}});
     ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'invalid opening has concrete reason');
     ok(!(await p.locator('#slPlay').isEnabled()), 'invalid opening cannot be submitted');
-    await p.locator('#slClear').click(); await p.locator('[data-card="0"]').click();
+    await p.locator('#slClear').click(); await p.locator('[data-card="0"]').click({position:{x:8,y:12}});
     ok(await p.evaluate(() => window.seatBeforeSelection === document.querySelector('.seat-self .sl-avatar')), 'selection preserves portrait and countdown DOM');
     ok(await p.locator('.seat-self .sl-avatar').evaluate(el => getComputedStyle(el).animationName) === 'none', 'reduced motion disables portrait animation');
     ok(await p.locator('#slPlay').isEnabled(), 'first valid move enabled');
@@ -261,11 +266,11 @@ async function browserChecks() {
     if ([320,375,667,821,1280,2137].includes(width)) await p.screenshot({ path: path.join(shots, 'opening-' + label + '.png'), fullPage: false });
     await deliver(p, { ...pair, step: 2 });
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-options-' + label + '.png'), fullPage: false });
-    await p.locator('[data-card="8"]').click();
+    await p.locator('[data-card="8"]').click({position:{x:8,y:12}});
     ok(await p.locator('#slHand [aria-pressed="true"]').count() === 2 && await p.locator('#slPlay').isEnabled(), 'one tap selects a complete legal pair without playing it');
-    await p.locator('[data-card="9"]').click();
+    await p.locator('[data-card="9"]').click({position:{x:8,y:12}});
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-partial-' + label + '.png'), fullPage: false });
-    ok((await p.locator('#slActionHelp').innerText()).includes('อีก 1'), 'partial pair instruction');
+    ok(!(await p.locator('#slPlay').isEnabled()), 'partial pair cannot be submitted');
     ok(await p.locator('[data-card="9"]').getAttribute('data-playable') === 'true', 'matching pair highlighted');
     if ([1280,2137].includes(width)) {
       const nextCard = await p.locator('[data-card="9"]').evaluate(card => {
@@ -281,18 +286,18 @@ async function browserChecks() {
       ok(nextCard.onScreen && nextCard.receivesPointer, label + ' next compatible card rank and suit remain visible and selectable after its neighbor is selected: ' + JSON.stringify(nextCard));
     }
     ok(await p.locator('[data-card="12"]').getAttribute('data-playable') === 'false', 'other rank not highlighted');
-    await p.locator('[data-card="12"]').click();
+    await p.locator('[data-card="12"]').click({position:{x:8,y:12}});
     ok((await p.locator('#slActionHelp').innerText()).includes('หลายหน้า'), 'mixed ranks give a concrete correction');
     ok(!(await p.locator('#slPlay').isEnabled()), 'mixed ranks cannot be submitted');
-    await p.locator('[data-card="12"]').click();
+    await p.locator('[data-card="12"]').click({position:{x:8,y:12}});
     ok(await p.locator('[data-card="9"]').getAttribute('data-playable') === 'true', 'undoing a wrong card restores matching guidance');
-    await p.locator('[data-card="9"]').click();
+    await p.locator('[data-card="9"]').click({position:{x:8,y:12}});
     ok(await p.locator('#slPlay').isEnabled(), 'completed pair enabled');
-    ok((await p.locator('#slPlay').innerText()) === 'ลงคู่ 5 →', 'pair submit named correctly');
+    ok((await p.locator('#slPlay').innerText()) === 'ลงคู่ 5', 'pair submit named correctly');
     await p.locator('#slClear').click();
     ok(await p.locator('[data-card="12"]').getAttribute('data-playable') === 'true', 'clearing selection offers all legal starting ranks again');
     await deliver(p, { ...weakPair, step: 3 });
-    await p.locator('[data-card="0"]').click(); await p.locator('[data-card="1"]').click();
+    await p.locator('[data-card="0"]').click({position:{x:8,y:12}}); await p.locator('[data-card="1"]').click({position:{x:8,y:12}});
     ok((await p.locator('#slActionHelp').innerText()).includes('ไม่ใหญ่กว่า'), 'weaker pair explains why it cannot beat the pile');
     ok(!(await p.locator('#slPlay').isEnabled()), 'weaker pair cannot be submitted');
     await deliver(p, { ...pair, step: 4, turnId: 'p1', canPlay: false, canPass: false });
@@ -302,24 +307,24 @@ async function browserChecks() {
     ok(await p.locator('#slPlay').isHidden(), 'no impossible disabled primary move');
     ok(await p.locator('#slPass').isEnabled(), 'pass available when no moves');
     ok((await p.locator('#slPass').getAttribute('class')).includes('primary'), 'pass becomes primary');
-    ok(await p.locator('#slHand [data-playable="true"]').count() === 0 && (await p.locator('#slActionHelp').innerText()).includes('ผ่าน'), 'no legal move clears highlights and explains pass');
+    ok(await p.locator('#slHand [data-playable="true"]').count() === 0 && (await p.locator('#slPass').innerText()) === 'ผ่าน', 'no legal move clears highlights and shows a clear pass action');
     await geometry(p, label + ' pass only');
     // End-of-round can arrive with the same step as the final move.
     await deliver(p, { ...ended[0], step: 5 });
-    ok((await p.locator('#slResultTitle').innerText()).includes('คุณเป็นคิง'), 'own result is the headline');
+    ok((await p.locator('#slResultTitle').innerText()).includes('คิง'), 'own result is the headline');
     ok(await p.locator('#slResultEmblem [data-role="king"]').count() === 1, 'personal award uses king art');
     for (const role of ['king', 'queen', 'commoner', 'slave']) ok(await p.locator('#slRanks [data-role="' + role + '"] svg').count() === 1, 'distinct SVG rank art ' + role);
     ok(await p.locator('#slRanks [data-role]').evaluateAll(els => new Set(els.map(el => el.innerHTML)).size) === 4, 'all four role silhouettes differ');
-    ok((await p.locator('#slResultNext').innerText()).includes('2 ใบ'), 'result explains upcoming exchange');
+    ok((await p.locator('#slResultNext').innerText()).includes('รอบ 2'), 'result shows countdown to round two');
     ok(await p.locator('#slNext').isVisible(), 'host next-round action visible');
     await geometry(p, label + ' round end');
     if ([375,667].includes(width)) await p.screenshot({ path: path.join(shots, 'result-' + label + '.png'), fullPage: false });
     await deliver(p, { ...exchanging[0], step: 6 });
-    ok((await p.locator('#slActionHelp').innerText()).includes('มือเดิมคืน 2 ใบ'), 'king exchange explains original hand');
+    ok((await p.locator('#slPlay').innerText()).includes('0/2'), 'exchange progress is on the action itself');
     ok(await p.locator('#slHand [data-playable="true"]').count() === exchanging[0].self.hand.length, 'exchange highlights all cards eligible for returning');
-    await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').first().click();
-    ok(!(await p.locator('#slPlay').isEnabled()) && (await p.locator('#slActionHelp').innerText()).includes('1/2'), 'exchange explains one of two chosen and prevents early submit');
-    await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').first().click();
+    await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').first().click({position:{x:8,y:12}});
+    ok(!(await p.locator('#slPlay').isEnabled()) && (await p.locator('#slPlay').innerText()).includes('1/2'), 'exchange explains one of two chosen and prevents early submit');
+    await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').first().click({position:{x:8,y:12}});
     ok(await p.locator('#slPlay').isEnabled(), 'complete exchange selection enabled');
     ok(await p.locator('#slHand [data-playable="true"][aria-pressed="false"]').count() === 0, 'full exchange selection stops suggesting extra cards');
     await geometry(p, label + ' exchange');
@@ -366,7 +371,7 @@ async function browserChecks() {
   for (let i = 1; i < 4; i++) {
     const context = await browser.newContext({ viewport: { width: 375, height: 667 }, reducedMotion: 'reduce' });
     const p = await context.newPage(); await fixture(p, exchanging[i], 'p' + i);
-    ok((await p.locator('#slActionHelp').innerText()).includes(i === 1 ? 'คืน 1 ใบ' : 'อัตโนมัติ'), 'exchange for rank ' + (i + 1));
+    ok((await p.locator('#slStatus').innerText()).includes(i === 1 ? 'คืนไพ่' : 'รอแลก'), 'exchange state for rank ' + (i + 1));
     await deliver(p, { ...ended[i], step: exchanging[i].step + 1 });
     ok((await p.locator('#slResultTitle').innerText()).includes(titles[i]), 'own result for rank ' + (i + 1));
     ok(await p.locator('#slResultEmblem [data-role="' + ['king','queen','commoner','slave'][i] + '"]').count() === 1, 'own emblem matches rank ' + (i + 1));
@@ -399,7 +404,23 @@ async function browserChecks() {
     result.seats[0].place = 4; result.seats[1].place = 1; result.seats[2].place = 2; result.seats[3].place = 3;
     await deliver(page, result);
     ok(await page.evaluate(() => __announcements.length === 2 && __announcements[1][0].includes('รอบนี้คุณแพ้')), 'own losing placement is announced even at the same step');
-    ok((await page.locator('#slRecordStatus').innerText()).includes('บันทึกประวัติแล้ว'), 'unranked result confirms saved history');
+    ok(await page.locator('#slRecordStatus').isHidden(), 'first-round screen does not claim that a whole game was saved');
+    await context.close();
+  }
+  {
+    const r = room();
+    for (let round=1;round<=2;round++) {
+      for (let n=0;n<1000 && ['turn','exchange'].includes(r.gameState.phase);n++) { r.gameState.phaseEndsAt=1; engine.autoResolvePhase(r); }
+      if (round === 1) engine.nextRound(r,r.admin);
+    }
+    const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+    const p = await context.newPage(); await fixture(p,opening);
+    await deliver(p,{...engine.buildClientState(r,'p0'),resultRecorded:true});
+    ok(await p.locator('#slExchangeNotice').isHidden(), 'old exchange receipt never covers final match scores');
+    ok(await p.locator('#slResults').isVisible() && await p.locator('#slNext').isHidden(), 'final match shows results without a third-round action');
+    ok(await p.locator('#slRanks .sl-score').count() === 4 && (await p.locator('#slResultNext').innerText()).includes('⌂'), 'all four totals and lobby countdown are visible');
+    await geometry(p,'match result');
+    await p.screenshot({path:path.join(shots,'match-final-mobile.png')});
     await context.close();
   }
   ok(errors.length === 0, 'no browser errors: ' + errors.join('; '));

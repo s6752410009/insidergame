@@ -4,8 +4,8 @@ const {randomUUID}=require('node:crypto'),{io}=require('socket.io-client'),{chro
 const assert=require('node:assert/strict');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const root=path.join(__dirname,'..'),port=Number(process.env.SLAVE_TEST_PORT)||8487,base='http://127.0.0.1:'+port;
-const shots=fs.mkdtempSync(path.join(os.tmpdir(),'slave-shots-'));
-let server,browser,host,other,logs='',S,checks=0;
+const shots=require('./testArtifacts')('slave-play');
+let server,browser,host,other,logs='',S,checks=0;const clients=new Set();
 function ok(v,msg){assert.ok(v,msg);checks++;}
 async function wait(fn,label,timeout=20000){const end=Date.now()+timeout;while(Date.now()<end){if(await fn())return;await sleep(25);}throw new Error('Timeout '+label+'\n'+logs.slice(-1500));}
 function ack(s,event,data){return new Promise((resolve,reject)=>{s.timeout(8000).emit(event,data,(err,res)=>err?reject(err):resolve(res));});}
@@ -14,17 +14,17 @@ async function selectGuidedMove(page){
  for(let n=0;n<4&&!await page.locator('#slPlay').isEnabled();n++){
   const next=page.locator('#slHand [data-playable="true"][aria-pressed="false"]').first();
   ok(await next.count()===1,'in-hand guide offers a legal next card');
-  chosen=await next.getAttribute('data-card');await next.click();
+  chosen=await next.getAttribute('data-card');await next.click({position:{x:8,y:12}});
  }
  ok(await page.locator('#slPlay').isEnabled(),'following card highlights completes a legal move');
  return chosen;
 }
-async function client(id,onState){const s=io(base,{transports:['websocket'],forceNew:true});await wait(()=>s.connected,'connect');s.emit('initPlayer',id);if(onState)s.on('slaveState',onState);await sleep(200);return s;}
+async function client(id,onState){const s=io(base,{transports:['websocket'],forceNew:true});clients.add(s);await wait(()=>s.connected,'connect');s.emit('initPlayer',id);if(onState)s.on('slaveState',onState);await sleep(200);return s;}
 async function run(){
  server=spawn(process.execPath,['app.js'],{cwd:root,env:{...process.env,PORT:String(port),MONGO_URL:'',ALLOW_LEGACY_SOCKET_IDENTITY:'1',SLAVE_BOT_MS:'35'},stdio:['ignore','pipe','pipe']});
  server.stdout.on('data',c=>logs+=c);server.stderr.on('data',c=>logs+=c);
  await wait(()=>logs.includes('Server started on port '+port),'startup');
- browser=await chromium.launch();
+ browser=await chromium.launch(require('./browserOptions')());
  const id=randomUUID();host=await client(id,s=>{S=s;ok(s.seats.every(p=>p.hand===undefined),'hidden hands');});
  const created=await ack(host,'createRoom',{playerId:id,name:'สลาฟทดสอบ',gameMode:'slave',maxPlayers:4});ok(created.success,JSON.stringify(created));const roomId=created.roomId;
  host.emit('setRoom',{roomId,playerId:id});await sleep(200);
@@ -77,6 +77,7 @@ async function run(){
    await p.evaluate(()=>Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,5000))]));
    for(const viewport of [{width:375,height:667},{width:667,height:375},{width:568,height:320},{width:821,height:700}]){
     await p.setViewportSize(viewport);
+    await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const clipped=await p.evaluate(()=>['#slStatus','#slHand .sl-card','#slPlay','#slPass','#slClear'].flatMap(selector=>[...document.querySelectorAll(selector)]).filter(el=>el.getClientRects().length).map(el=>({label:el.id||el.dataset.card,rect:el.getBoundingClientRect().toJSON()})).filter(({rect:r})=>r.left< -1||r.right>innerWidth+1||r.top< -1||r.bottom>innerHeight+1));
     ok(!clipped.length,'real-server turn fits '+viewport.width+'x'+viewport.height+': '+JSON.stringify(clipped));
     await p.screenshot({path:path.join(shots,'real-'+viewport.width+'x'+viewport.height+'.png'),fullPage:false});
@@ -120,13 +121,14 @@ async function run(){
   ok(await p.evaluate(()=>audioOutput.peak>.01),'interrupted context resumes with audible preview');
   await p.locator('#slSound').click();
   await p.reload();await p.waitForSelector('#slHand .sl-card');await sleep(800);
-  ok(await p.locator('#slSound').innerText()==='เสียง ปิด','mute persists after reload');
+  ok(await p.locator('#slSound').getAttribute('aria-pressed')==='false','mute persists after reload');
   ok(await p.locator('#slMusic').getAttribute('aria-pressed')==='false','music preference persists');
   await p.screenshot({path:path.join(shots,'board-'+width+'.png'),fullPage:true});await c.close();uiHost.disconnect();
  }
  host.emit('setRoom',{roomId,playerId:id});host.emit('slave_requestState',{roomId});await sleep(150);
  const end=Date.now()+120000;let rounds=0;
  while(Date.now()<end){
+  if(S.matchComplete){rounds=2;break;}
   if(S.phase==='round-end'){
    rounds++;ok(S.standings.length===4,'complete rankings');
    if(rounds===2)break;
@@ -142,4 +144,4 @@ async function run(){
  ok(errors.length===0,'browser errors: '+errors.join(';'));
  console.log('Slave integration: '+checks+' checks passed · lobby, bots, 2 full rounds, exchange, authorization, 320/390/1280px UI, actual WebAudio PCM, music/master mute, selection/play cues, focus, reduced motion, reconnect/reload · screenshots '+shots);
 }
-run().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{host?.disconnect();other?.disconnect();await browser?.close();server?.kill('SIGTERM');});
+run().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{for(const client of clients)client.disconnect();host?.disconnect();other?.disconnect();await browser?.close();server?.kill('SIGTERM');});

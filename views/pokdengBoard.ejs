@@ -377,9 +377,9 @@
       <span class="pd-fun">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</span>
     </div>
     <div class="pd-tools">
-      <button type="button" id="pdExitBtn" class="pd-pill pd-pill--exit">🚪 ออก</button>
+      <button type="button" id="pdExitBtn" class="pd-pill pd-pill--exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
       <button type="button" id="pdRankBtn" class="pd-pill">อันดับไพ่</button>
-      <button type="button" id="pdHowBtn" class="pd-pill">วิธีเล่น</button>
+      <button type="button" id="pdHowBtn" class="pd-pill" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">วิธีเล่น</button>
       <button type="button" id="pdRotateBtn" class="pd-pill <%= room.admin ? '' : 'is-static' %>" aria-pressed="false">เจ้ามือ: คงที่</button>
       <button type="button" id="pdSidebarBtn" class="pd-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
       <button type="button" id="pdEndBtn" class="pd-pill pd-pill--danger"<%= room.admin ? '' : ' hidden' %>>จบโต๊ะ</button>
@@ -453,7 +453,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 
@@ -829,16 +829,8 @@ $(function() {
   }
 
   function drawTip(ev, a) {
-    if (!ev) return '';
-    let tip = ev.points <= 3 ? 'แต้มน้อย ส่วนใหญ่จั่ว' : (ev.points >= 6 ? 'แต้มดี ส่วนใหญ่อยู่' : 'ครึ่งๆ ลองเสี่ยงดู');
-    if (a.mustDraw) tip = 'ต่ำกว่า 4 แต้ม ต้องจั่ว (กติกาห้อง)';
-    if (ev.deng >= 2 && !a.mustDraw) tip += ' · ถือสองเด้งอยู่ จั่วแล้วเด้งอาจหาย';
-    if (a.canDealerDecide) {
-      const caught = (S.settledRows || []).length;
-      const waiting = (S.players || []).filter(p => p.inHand && !p.isDealer).length - caught;
-      tip += ' · แล้วเปิดวัด ' + waiting + ' ขาพร้อมกัน';
-    }
-    return tip;
+    if (a.mustDraw) return 'ต่ำกว่า 4 แต้ม ต้องจั่ว';
+    return ev && ev.deng >= 2 ? 'จั่วเพิ่มอาจเสียสองเด้ง' : '';
   }
 
   function renderActions() {
@@ -874,10 +866,10 @@ $(function() {
             (a.canCatch2 ? '<button type="button" id="pdCatch2Btn" class="pd-btn">จับ 2 ใบ (' + a.catch2Count + ' ขา)</button>' : '') +
           '</div>'
         : '';
-      const catchHint = catchRow ? '<div class="pd-hint">จับ = เปิดวัดกลุ่มนั้นด้วยไพ่ 2 ใบของคุณก่อน แล้วค่อยจั่ว/อยู่สู้ที่เหลือ</div>' : '';
+      const catchHint = '';
       html = catchRow + '<div class="pd-actions-row">' +
         '<button type="button" id="pdStayBtn" class="pd-btn pd-btn--big"' + (a.mustDraw ? ' disabled aria-disabled="true" title="ต่ำกว่า 4 แต้มต้องจั่ว"' : '') + '>อยู่</button>' +
-        '<button type="button" id="pdDrawBtn" class="pd-btn pd-btn--primary pd-btn--big">จั่วไพ่</button>' +
+        '<button type="button" id="pdDrawBtn" class="pd-btn pd-btn--primary pd-btn--big">จั่ว 1 ใบ</button>' +
         '</div>' + (tip ? '<div class="pd-hint">' + esc(tip) + '</div>' : '') + catchHint;
     } else if (S.phase === 'result') {
       const need = Number(S.readyNeeded) || 0;

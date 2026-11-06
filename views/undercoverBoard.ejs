@@ -321,9 +321,9 @@
       <h1 class="uc-room"><%= room.name %></h1>
     </div>
     <div class="uc-tools">
-      <button type="button" id="ucExitBtn" class="uc-chip is-exit" aria-label="ออกจากห้อง">🚪<span class="t">ออก</span></button>
-      <button type="button" id="ucSoundBtn" class="uc-chip" aria-pressed="true" aria-label="ปิดเสียงเกม">🔊<span class="t">เสียง</span></button>
-      <button type="button" id="ucHowTo" class="uc-chip" aria-label="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
+      <button type="button" id="ucExitBtn" class="uc-chip is-exit" aria-label="ออกจากห้อง" data-control-icon="exit" title="ออกจากเกม">🚪<span class="t">ออก</span></button>
+      <button type="button" id="ucSoundBtn" class="uc-chip" aria-pressed="true" aria-label="ปิดเสียงเกม" data-control-icon="sound" title="เสียงเกม">🔊<span class="t">เสียง</span></button>
+      <button type="button" id="ucHowTo" class="uc-chip" aria-label="วิธีเล่น" data-control-icon="help" title="วิธีเล่น">📖<span class="t">วิธีเล่น</span></button>
       <button type="button" id="ucSidebarBtn" class="uc-chip" aria-expanded="false" aria-controls="playerSidebar" aria-label="ผู้เล่น">👥<span class="t">ผู้เล่น</span></button>
       <% if (room.admin) { %>
       <button type="button" id="ucEndGameBtn" class="uc-chip is-danger" aria-label="จบเกม">⏹<span class="t">จบเกม</span></button>
@@ -392,7 +392,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

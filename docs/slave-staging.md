@@ -1,3 +1,5 @@
+> เอกสารด้านล่างเป็นบันทึกพัฒนาตามวัน กติกาปัจจุบันใช้ [play-flow.md](play-flow.md): หนึ่งเกมสองรอบ รวมคะแนน 4/3/2/1 เสมอชนะร่วม จบแล้วกลับล็อบบี้อัตโนมัติ ไพ่แถวเดียวและปุ่มไอคอน ใช้ [ci-release.md](ci-release.md) สำหรับการทดสอบก่อน deploy แทนคำสั่งปล่อยรุ่นเก่า
+
 # Slave staging
 
 Primary local checkout: `/Users/nursego/Developer/insidergame-main`.

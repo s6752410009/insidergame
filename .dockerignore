@@ -15,3 +15,5 @@ scripts/
 docs/
 rules/
 tests/
+
+test-artifacts/

@@ -29,3 +29,6 @@ public/assets/games/*/*.png
 screenshots/google-avatar/
 screenshots/seo/
 screenshots/world-chat/
+
+# Isolated release test output (uploaded by CI)
+test-artifacts/

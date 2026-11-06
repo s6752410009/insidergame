@@ -462,8 +462,8 @@
         <h1 class="cp-title"><%= room.name %></h1>
       </div>
       <div class="cp-meta">
-        <button type="button" id="cpExitBtn" class="cp-chip cp-chip-btn cp-chip-exit">🚪 ออก</button>
-        <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn" aria-label="วิธีเล่น">📖<span class="cp-chip-label"> วิธีเล่น</span></button>
+        <button type="button" id="cpExitBtn" class="cp-chip cp-chip-btn cp-chip-exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
+        <button type="button" id="cpHowToOpen" class="cp-chip cp-chip-btn" aria-label="วิธีเล่น" data-control-icon="help" title="วิธีเล่น">📖<span class="cp-chip-label"> วิธีเล่น</span></button>
         <button type="button" id="cpSidebarBtn" class="cp-chip cp-chip-btn" aria-label="ผู้เล่น">👥<span class="cp-chip-label"> ผู้เล่น</span></button>
         <% if (room.admin) { %>
         <button type="button" id="cpEndGameBtn" class="cp-chip cp-chip-btn cp-chip-danger" aria-label="จบเกม">⏹<span class="cp-chip-label"> จบเกม</span></button>
@@ -534,7 +534,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

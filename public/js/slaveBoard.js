@@ -24,7 +24,11 @@
     let receiptKey = '', announcementTimer, exchangeTimer;
     $('slExchangeClose').onclick = () => { $('slExchangeNotice').hidden = true; };
     function roundFeedback(previous) {
-      if (previous && previous.round === state.round) {
+      if (previous && state.matchComplete && !previous.matchComplete) {
+        const winners = (state.matchStandings || []).filter(row => row.place === 1);
+        const won = winners.some(row => row.playerId === playerId);
+        audio.announce(won ? 'คุณชนะเกม!' : 'จบเกมแล้ว', won ? 'win' : 'end');
+      } else if (previous && previous.round === state.round) {
         const placed = state.seats.filter(p => p.place && !previous.seats.find(old => old.playerId === p.playerId)?.place);
         if (placed.length) {
           const text = placed.sort((a, b) => a.place - b.place).map(p => (p.playerId === playerId ? 'คุณ' : p.name) + (p.place === 1 ? ' ชนะ เป็นคิง!' : ' ได้อันดับ ' + p.place + ' เป็น' + titles[p.place - 1] + (p.playerId === playerId ? ' รอบนี้คุณแพ้' : ''))).join(' · ');
@@ -40,7 +44,7 @@
       if (key !== receiptKey) {
         receiptKey = key;
         clearTimeout(exchangeTimer);
-        $('slExchangeNotice').hidden = !receipt;
+        $('slExchangeNotice').hidden = !receipt || ['round-end','finished'].includes(state.phase);
         $('slExchangeDetails').hidden = !receipt;
         if (receipt) {
           const partner = state.seats.find(p => p.playerId === receipt.partnerId);
@@ -50,15 +54,17 @@
           exchangeTimer = setTimeout(() => { $('slExchangeNotice').hidden = true; }, 5500);
         }
       }
-      if (state.phase === 'round-end' || (previous && state.round !== previous.round)) $('slAnnouncement').hidden = true;
+      if (['round-end','finished'].includes(state.phase)) { $('slExchangeNotice').hidden = true; clearTimeout(exchangeTimer); }
+      if (['round-end','finished'].includes(state.phase) || (previous && state.round !== previous.round)) $('slAnnouncement').hidden = true;
     }
     function soundLabel() {
-      $('slSound').textContent = !audio.enabled ? 'เสียง ปิด' : audio.ready ? '♪ เสียง เปิด' : 'เปิดเสียงเกม';
+      $('slSound').textContent = '';
       $('slSound').setAttribute('aria-pressed', String(audio.enabled && audio.ready));
-      $('slSound').title = audio.ready ? 'ปิดเสียงทั้งหมด' : 'เปิดเสียงและลองฟัง';
-      $('slMusic').textContent = '♫ เพลง ' + (audio.music ? 'เปิด' : 'ปิด');
+      $('slSound').title = audio.ready ? 'ปิดเสียงเกม' : 'เปิดเสียงเกม';
+      $('slMusic').textContent = '';
       $('slMusic').setAttribute('aria-pressed', String(audio.music));
-      $('slAudioHint').hidden = !audio.enabled || audio.ready;
+      $('slMusic').title = audio.music ? 'ปิดเพลงประกอบ' : 'เปิดเพลงประกอบ';
+      $('slAudioHint').hidden = true;
     }
     // Retry on subsequent gestures as mobile browsers may interrupt a context after backgrounding.
     function gesture(e) { if (!e.target.closest('#slSound') && !audio.ready) audio.unlock(); }
@@ -125,7 +131,7 @@
         roundFeedback(previous);
         last = state;
       }
-      $('slRound').textContent = 'รอบ ' + state.round;
+      $('slRound').textContent = state.round + ' / ' + (state.maxRounds || 2);
       seats();
       const newPileKey = state.top ? state.top.playerId + ':' + state.top.cards.map(c => c.id).join(',') : '';
       if (newPileKey !== pileKey || !$('slPile').children.length) {
@@ -164,11 +170,13 @@
       });
       const turn = state.seats.find(p => p.playerId === state.turnId);
       const self = state.seats.find(p => p.playerId === playerId);
-      const ownResult = state.standings?.find(p => p.playerId === playerId);
+      const ownResult = (state.matchComplete ? state.matchStandings : state.standings)?.find(p => p.playerId === playerId);
       $('slPlayerZone').classList.toggle('is-your-turn', actionable);
-      $('slStatus').textContent = state.phase === 'finished' ? 'โต๊ะหยุดแล้ว · มีคนออกจากห้อง' : state.phase === 'round-end' ? (state.isHost ? 'เริ่มรอบถัดไปได้เมื่อเพื่อนพร้อม' : 'รอหัวห้องเริ่มรอบถัดไป') : state.phase === 'exchange' ? (exchange ? self.title + ' · เลือกคืน ' + exchange + ' ใบ' : self?.title === 'คิง' || self?.title === 'ควีน' ? 'เลือกคืนแล้ว · รอแลกไพ่' : self?.title + ' · ระบบแลกไพ่ให้') : state.canPlay ? '✦ ถึงตาคุณแล้ว!' : self?.passed ? 'คุณผ่านแล้ว · รอกองใหม่' : self?.place ? 'หมดมือแล้ว · อันดับ ' + self.place : 'รอ ' + (turn?.name || 'ผู้เล่น') + ' ลงไพ่';
-      $('slHandMeta').textContent = hand.length + ' ใบในมือ' + (selected.size ? ' · เลือก ' + selected.size : '');
-      $('slPlay').textContent = pending ? 'กำลังส่ง…' : advice.label;
+      $('slStatus').textContent = state.matchComplete ? '🏁 จบเกม' : state.phase === 'finished' ? 'โต๊ะหยุดแล้ว' : state.phase === 'round-end' ? 'จบรอบ 1 / 2' : state.phase === 'exchange' ? (exchange ? '↔ คืนไพ่ ' + selected.size + '/' + exchange : '↔ รอแลกไพ่') : state.canPlay ? '✦ ตาคุณ' : self?.passed ? '⏭ ผ่านแล้ว' : self?.place ? '♛ อันดับ ' + self.place : 'ตา ' + (turn?.name || 'ผู้เล่น');
+      $('slHandMeta').textContent = '♣ ' + hand.length + (selected.size ? ' · ✓ ' + selected.size : '');
+      $('slHandMeta').setAttribute('aria-label', 'ไพ่ ' + hand.length + ' ใบ เลือกแล้ว ' + selected.size + ' ใบ');
+      const chosenCards = hand.filter(c => selected.has(c.id));
+      $('slPlay').textContent = pending ? '…' : exchange ? 'แลก ' + selected.size + '/' + exchange : chosenCards.length ? 'ลง' + guide.setName(chosenCards) : 'ลงไพ่';
       const legal = advice.legal;
       $('slPlay').disabled = pending || !socket.connected || !actionable || !selected.size || !legal;
       $('slPass').disabled = pending || !socket.connected || !state.canPass;
@@ -179,24 +187,27 @@
       $('slActions').hidden = (state.phase === 'exchange' && !exchange) || (ended && !(state.phase === 'round-end' && state.isHost));
       if (ended) $('slHandMeta').textContent = ownResult ? 'อันดับ ' + ownResult.place : '';
       ['slPlay', 'slPass', 'slClear'].forEach(id => { $(id).hidden = ended; });
+      $('slClear').hidden = ended || !selected.size;
       const mustPass = Boolean(state.canPlay && state.canPass && !state.legalMoves?.length);
       if (mustPass) $('slPlay').hidden = true;
       $('slPass').classList.toggle('primary', mustPass);
-      $('slPass').textContent = mustPass ? 'ผ่าน · รอกองใหม่' : 'ผ่าน';
+      $('slPass').textContent = 'ผ่าน';
       if (exchange) $('slPass').hidden = true;
       $('slHand').hidden = ended;
       $('slPlayArea').classList.toggle('is-round-end', ended);
       $('slActionHelp').classList.toggle('invalid', guiding && advice.invalid);
       $('slActionHelp').classList.toggle('ready', guiding && advice.legal);
-      $('slActionHelp').textContent = ended ? state.phase === 'finished' ? 'กลับห้องรอเพื่อจัดผู้เล่นใหม่ได้จากมุมขวาบน' : state.isHost ? 'เริ่มรอบใหม่แล้วจะแลกไพ่ตามอันดับ · กติกาเดิมทั้งโต๊ะ' : 'รอบใหม่เริ่มเมื่อหัวห้องกด · ไพ่ใหม่คนละ 13 ใบ' : pending ? 'กำลังส่งไพ่…' : !socket.connected ? 'กำลังเชื่อมต่อกลับ · รอข้อมูลไพ่ล่าสุด' : state.phase === 'exchange' ? exchange ? advice.message : guide.exchange(state, playerId) : state.canPlay ? advice.message : self?.place ? 'ดูเพื่อนเล่นต่อได้ · พอจบรอบจะแสดงไพ่ที่คุณต้องแลก' : self?.passed ? 'ผ่านแล้วพักกองนี้ · ทุกคนผ่านเมื่อไร คุณกลับมาเล่นกองใหม่ได้' : guide.requirement(state);
-      $('slResults').hidden = state.phase !== 'round-end';
+      $('slActionHelp').textContent = guiding && advice.invalid ? advice.message : '';
+      $('slActionHelp').hidden = !$('slActionHelp').textContent;
+      $('slResults').hidden = !(state.phase === 'round-end' || state.matchComplete);
       $('slResultEmblem').innerHTML = ownResult ? roleBadge(roles[ownResult.place - 1], ownResult.title) : '';
-      $('slResultTitle').textContent = ownResult ? 'อันดับ ' + ownResult.place + ' · คุณเป็น' + ownResult.title : 'จบรอบแล้ว';
-      $('slResultNext').textContent = guide.benefit(ownResult?.place);
-      $('slRecordStatus').textContent = state.debugUsed ? 'รอบทดสอบ · ไม่นับสถิติ' : !state.resultRecorded ? 'กำลังบันทึกผลรอบนี้…' : state.ranked ? 'บันทึกประวัติและ leaderboard แล้ว' : 'บันทึกประวัติแล้ว · เล่นกับบอท ไม่นับ leaderboard';
-      $('slRanks').innerHTML = (state.standings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><small class="sl-rank-title">' + esc(p.title) + '</small><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div></div></div>').join('');
+      $('slResultTitle').textContent = state.matchComplete ? (ownResult?.place === 1 ? (state.matchStandings.filter(row => row.place === 1).length > 1 ? 'ชนะร่วม!' : 'ชนะเกม!') : 'จบเกม') : ownResult ? ownResult.title + ' · +' + (5-ownResult.place) : 'จบรอบ 1';
+      $('slRecordStatus').hidden = !state.matchComplete;
+      $('slRecordStatus').textContent = state.debugUsed ? '/m · ไม่นับสถิติ' : state.resultRecorded ? '✓ บันทึกแล้ว' + (state.ranked ? ' · 🏆' : ' · 🤖') : 'กำลังบันทึก…';
+      $('slRecordStatus').title = state.ranked ? 'บันทึกประวัติและอันดับหนึ่งเกมแล้ว' : 'เล่นกับบอท เก็บประวัติแต่ไม่นับอันดับ';
+      $('slRanks').innerHTML = (state.matchStandings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div><small class="sl-score-breakdown">' + p.roundScores.join(' + ') + '</small></div><strong class="sl-score" aria-label="' + p.score + ' คะแนน">' + p.score + '</strong></div>').join('');
       $('slHistory').innerHTML = (state.history || []).slice(-8).reverse().map(t => '<li>' + esc(t) + '</li>').join('');
-      tick(); tools.onState();
+      layoutHand(); tick(); tools.onState();
     }
     $('slHand').onclick = e => {
       const b = e.target.closest('[data-card]');
@@ -228,7 +239,25 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden && socket.connected) bind(); });
     ['redirectToLobby', 'restartGame'].forEach(event => socket.on(event, () => { navigating = true; location.href = '/room/' + roomId + '?playerId=' + encodeURIComponent(playerId); }));
     socket.on('kickedFromRoom', () => { location.href = '/rooms'; });
+    function layoutHand() {
+      const count = state.self?.hand?.length || 0;
+      if (!count || $('slHand').hidden) return;
+      const width = Math.max(160, $('slHand').clientWidth-16);
+      const cardWidth = Math.min(88, Math.max(54, width/7));
+      const step = count > 1 ? Math.min(cardWidth+6, (width-cardWidth)/(count-1)) : 0;
+      $('slHand').style.setProperty('--hand-card-width', cardWidth+'px');
+      $('slHand').style.setProperty('--hand-card-height', Math.round(cardWidth*1.42)+'px');
+      $('slHand').style.setProperty('--hand-step', step+'px');
+    }
+    if (global.ResizeObserver) new ResizeObserver(layoutHand).observe($('slHand'));
+    global.addEventListener('resize', layoutHand);
     function tick() {
+      const transitionAt = state.matchComplete ? state.returnLobbyAt : state.roundAdvanceAt;
+      if (transitionAt) {
+        const seconds = Math.max(0, Math.ceil((transitionAt-Date.now())/1000));
+        $('slResultNext').textContent = (state.matchComplete ? '⌂' : '↔ รอบ 2') + ' · ' + seconds + 's';
+        $('slResultNext').setAttribute('aria-label', (state.matchComplete ? 'กลับห้องรอใน ' : 'เริ่มรอบสองใน ') + seconds + ' วินาที');
+      } else $('slResultNext').textContent = '';
       const remaining = state.phaseEndsAt ? Math.max(0, Math.ceil((state.phaseEndsAt - Date.now()) / 1000)) : 0;
       const timingPhase = ['turn', 'exchange'].includes(state.phase);
       const timed = Boolean(timingPhase && state.phaseEndsAt);

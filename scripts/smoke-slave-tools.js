@@ -14,7 +14,7 @@ async function selectGuidedMove(page) {
   for (let n = 0; n < 4 && !await page.locator('#slPlay').isEnabled(); n++) {
     const next = page.locator('#slHand [data-playable="true"][aria-pressed="false"]').first();
     ok(await next.count() === 1, 'live card guide offers a compatible next card');
-    await next.click();
+    await next.click({position:{x:8,y:12}});
   }
   ok(await page.locator('#slPlay').isEnabled(), 'live card guidance completes a legal selection');
 }
@@ -182,6 +182,6 @@ async function runEnvironment(env, port) {
   clients.forEach(s => s.disconnect()); clients = [];
   server.kill('SIGTERM'); await new Promise(resolve => server.once('exit', resolve)); server = null;
 }
-(async () => { engineChecks(); browser = await chromium.launch(); await runEnvironment('staging', 8488); await runEnvironment('production', 8489); console.log('Slave tools: ' + checks + ' checks passed · chat/history/XSS/unread, private /m, host/non-host exit, debug deck invariants, staging authorization and production denial'); })()
+(async () => { engineChecks(); browser = await chromium.launch(require('./browserOptions')()); await runEnvironment('staging', 8488); await runEnvironment('production', 8489); console.log('Slave tools: ' + checks + ' checks passed · chat/history/XSS/unread, private /m, host/non-host exit, debug deck invariants, staging authorization and production denial'); })()
   .catch(e => { console.error(e); process.exitCode = 1; })
   .finally(async () => { clients.forEach(s => s.disconnect()); await browser?.close(); server?.kill('SIGTERM'); });

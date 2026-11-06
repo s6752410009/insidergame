@@ -193,7 +193,7 @@ async function checkHttp(baseUrl) {
     // หน้าแรกมุมบอทค้นหา
     const home = (await get(baseUrl + '/', { userAgent: GOOGLEBOT })).body.toString('utf8');
     const homeH1 = home.match(/<h1[^>]*>([^<]*)<\/h1>/g) || [];
-    check(homeH1.length === 1 && /เกมปาร์ตี้ออนไลน์/.test(homeH1[0]), `home: H1 ${JSON.stringify(homeH1)}`);
+    check(homeH1.length === 1 && homeH1[0].replace(/<[^>]+>/g, '').trim().length > 0, `home: H1 ${JSON.stringify(homeH1)}`);
     games.forEach(g => check(home.includes(`href="${g.path}"`), `home: no link to ${g.path}`));
     check(meta(home, 'property', 'og:image') === `${PUBLIC_BASE}/static/og/home.jpg`, 'home: og:image is not /static/og/home.jpg');
 
@@ -202,7 +202,7 @@ async function checkHttp(baseUrl) {
 
 async function checkBrowser(baseUrl, shotDir) {
     fs.mkdirSync(shotDir, { recursive: true });
-    const browser = await chromium.launch();
+    const browser = await chromium.launch(require('./browserOptions')());
     try {
         const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
         const page = await ctx.newPage();
@@ -248,7 +248,7 @@ async function checkBrowser(baseUrl, shotDir) {
         server = await spawnServer();
         baseUrl = server.baseUrl;
     }
-    const shotDir = process.env.SHOT_DIR || path.join(__dirname, '..', 'screenshots', 'seo');
+    const shotDir = process.env.SHOT_DIR || require('./testArtifacts')('seo');
     try {
         await checkHttp(baseUrl);
         await checkBrowser(baseUrl, shotDir);

@@ -107,9 +107,9 @@ const passer=sample.gameState.turnId;E.passTurn(sample,passer,sample.gameState.s
 ok(sample.gameState.passed.includes(passer),'pass recorded');
 for(let game=0;game<300;game++){
  const r=room();E.startGame(r);invariant(r);
- for(let round=0;round<3;round++){
+ for(let round=0;round<2;round++){
   let safety=0;
-  while(r.gameState.phase!=='round-end'){
+  while(['turn','exchange'].includes(r.gameState.phase)){
    ok(E.playBotTurns(r),'bot makes progress');invariant(r);
    ok(++safety<600,'round bounded');
    if(safety===10){const saved=JSON.parse(JSON.stringify(r));r.gameState=saved.gameState;}
@@ -117,7 +117,7 @@ for(let game=0;game<300;game++){
   const s=r.gameState;
   ok(new Set(s.finishOrder).size===4,'four unique rankings');
   ok(s.standings[0].title==='คิง'&&s.standings[3].title==='สลาฟ','titles');
-  if(round<2){
+  if(round<1){
    const old=s.standings.map(p=>p.playerId);
    E.nextRound(r,r.admin);ok(r.gameState.phase==='exchange','next round exchange');
    const original=new Map(r.gameState.seats.map(p=>[p.playerId,p.hand.slice()]));
@@ -130,7 +130,10 @@ for(let game=0;game<300;game++){
    ok(r.gameState.seats.every(p=>p.hand.length===13),'13 cards after exchange');
   }
  }
+ ok(r.gameState.matchComplete && r.gameState.phase==='finished','two rounds finish the match');
+ ok(r.gameState.matchStandings.reduce((sum,row)=>sum+row.score,0)===20,'two rounds distribute 20 points');
+ assert.throws(()=>E.nextRound(r,r.admin));
 }
 const timeout=room();E.startGame(timeout);timeout.gameState.phaseEndsAt=Date.now()-1;ok(E.autoResolvePhase(timeout),'timeout progresses');
 E.handlePlayerLeft(timeout,timeout.players[0].playerId);ok(timeout.gameState.status==='slave_finished','leave ends safely');
-console.log('Slave: '+checks+' assertions passed · 300 tables / 900 rounds · bots, exchange, privacy, stale commands, persistence, timeout, leave');
+console.log('Slave: '+checks+' assertions passed · 300 tables / 600 rounds · bots, exchange, privacy, stale commands, persistence, timeout, leave');

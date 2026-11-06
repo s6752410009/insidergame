@@ -20,7 +20,7 @@ function run(room, id, action, step) {
   if (action === 'finish') {
     if (!['turn', 'exchange'].includes(s.phase)) throw new Error('รอบนี้จบแล้ว');
     for (let n = 0; n < 1000 && ['turn', 'exchange'].includes(s.phase); n++) auto(room);
-    if (s.phase !== 'round-end') throw new Error('ไม่สามารถจบรอบอัตโนมัติได้');
+    if (!['round-end','finished'].includes(s.phase)) throw new Error('ไม่สามารถจบรอบอัตโนมัติได้');
   }
   if (action === 'next') engine.nextRound(room, room.admin);
   if (action === 'restart') {

@@ -893,10 +893,10 @@
             <div class="room-hero">
                 <div class="room-kicker">🎲 รายชื่อห้อง</div>
                 <h1>🎮 ห้องเกม</h1>
-                <div class="room-hero-copy">เลือกห้องที่เปิดอยู่ หรือกดสร้างห้องใหม่แล้วรอคนเข้ามาครบ</div>
+
             </div>
             <div class="room-controls">
-                <input type="text" id="searchRoomInput" placeholder="🔍 ค้นหาห้องด้วยเลข Room ID">
+                <input type="search" id="searchRoomInput" aria-label="ค้นหาเลขห้อง" placeholder="ค้นหาเลขห้อง">
                 <button id="howToPlayBtn" class="btn-room">📖 วิธีเล่น</button>
                 <button id="refreshBtn" class="btn-room">🔄 รีเฟรช</button>
                 <button id="createRoomBtn" class="btn-room">➕ สร้างห้อง</button>
@@ -913,7 +913,7 @@
 
             <div id="noRooms">
                 <p>ยังไม่มีห้องเปิดอยู่ตอนนี้</p>
-                <p>กด "สร้างห้อง" เพื่อเปิดวงใหม่แล้วรอคนเข้ามาเล่น</p>
+                <button type="button" class="btn-room" id="createFirstRoomBtn">＋ สร้างห้อง</button>
             </div>
         </div>
     </div>
@@ -1386,16 +1386,15 @@ $(function() {
     function buildModeSpotlightHtml(modeId, modeItems) {
         const mode = (modeItems || []).find(function(item) { return item.id === modeId; }) || (modeItems || [])[0] || defaultGameModes[0];
         const spotlight = getModeSpotlightMeta(mode?.id);
-        const bullets = (spotlight.bullets || []).map(function(item) { return `<li>${escapeHtml(item)}</li>`; }).join('');
+        const playersLabel = mode.minPlayers === mode.maxPlayers ? `${mode.minPlayers} คน` : `${mode.minPlayers}–${mode.maxPlayers} คน`;
         return `
             <div class="mode-spotlight">
                 <img class="ms-art" src="${escapeHtml(spotlight.cover || '')}" alt="">
                 <div class="ms-body">
                     <div class="ms-kicker">${escapeHtml(spotlight.badge || '')}</div>
                     <div class="ms-title">${escapeHtml(spotlight.title || mode?.label || '')}</div>
-                    ${spotlight.summary ? `<p class="ms-summary">${escapeHtml(spotlight.summary)}</p>` : ''}
+                    <p class="ms-summary">${escapeHtml(playersLabel)}</p>
                 </div>
-                ${bullets ? `<ul class="ms-bullets">${bullets}</ul>` : ''}
                 ${mode?.id === 'setthi' ? '<a class="ms-shop" href="/setthi/shop" id="setthiShopLink">🏪 ร้านสกิล · 🪙 เหรียญทอง</a>' : ''}
                 <button type="button" class="ms-change" id="modeChangeBtn">↺ เปลี่ยนเกม</button>
             </div>
@@ -1677,6 +1676,7 @@ $(function() {
     }
 
     // Create room popup
+    $('#createFirstRoomBtn').on('click', function() { $('#createRoomBtn').trigger('click'); });
     $('#createRoomBtn').on('click', function() {
         Swal.fire({
             title: '🎮 เลือกเกม',
@@ -1689,7 +1689,7 @@ $(function() {
             html: `
                 <div style="font-family: 'Rajdhani', sans-serif;">
                     <div class="gp" id="gamePickStep">
-                        <p class="gp-intro" id="modeQuickPickLabel">แตะเกมที่อยากเล่น แล้วค่อยตั้งค่าห้องต่อ</p>
+                        <p class="gp-intro" id="modeQuickPickLabel">เลือกเกม</p>
                         <div class="gp-cats" id="modeCategoryChips" role="group" aria-label="หมวดเกม">
                             ${buildModeCategoryChipsHtml(gameModes)}
                         </div>
@@ -1700,13 +1700,13 @@ $(function() {
 
                     <div id="roomSetupStep" hidden>
                     <div id="modeSpotlight"></div>
+                    <details id="roomCustomSettings" class="room-advanced-details"><summary>⚙️ ตั้งค่าห้อง</summary><div class="room-advanced-body">
 
                     <div class="room-form-group">
                         <label class="room-form-label" for="roomName">
                             <span class="icon">📝</span> ชื่อห้อง:
                         </label>
                         <input id="roomName" class="room-form-input" placeholder="ไม่กรอกได้ ระบบจะตั้งชื่อให้" maxlength="20">
-                        <div style="margin-top:8px; color:#aaa; font-size:0.9em;">ปล่อยว่างได้ ระบบตั้งชื่อตามเกมให้</div>
                         <input id="selectedGameMode" type="hidden" value="insider">
                     </div>
 
@@ -2040,8 +2040,8 @@ $(function() {
                         </label>
                     </div>
 
-                    <details class="room-advanced-details">
-                    <summary>ปรับห้องเพิ่มเติม</summary>
+                    <div class="room-more-settings">
+                    <h3 style="font-size:1rem;">ปรับห้องเพิ่มเติม</h3>
                     <div class="room-advanced-body">
                     <div class="room-form-group">
                         <label class="room-form-label" for="maxPlayers">
@@ -2107,7 +2107,8 @@ $(function() {
                         <input id="password" class="room-form-input" placeholder="รหัสผ่าน 4 หลัก" maxlength="4" pattern="[0-9]*" inputmode="numeric">
                     </div>
                     </div>
-                    </details>
+                    </div>
+                    </div></details>
                     </div>
                 </div>
             `,
@@ -2152,7 +2153,7 @@ $(function() {
                     gamePickStep.hidden = !picking;
                     roomSetupStep.hidden = picking;
                     Swal.getPopup().classList.toggle('is-picking', picking);
-                    Swal.getTitle().textContent = picking ? '🎮 เลือกเกม' : '⚙️ ตั้งค่าห้อง';
+                    Swal.getTitle().textContent = picking ? '🎮 เลือกเกม' : 'สร้างห้อง';
                     Swal.getConfirmButton().style.display = picking ? 'none' : '';
                     Swal.resetValidationMessage();
                     const container = Swal.getHtmlContainer();

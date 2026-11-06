@@ -917,14 +917,31 @@ function recordColorCardsGameEnd(roomId, gameResult) {
     saveStats();
 }
 
-/** สลาฟ: บันทึกทุกรอบที่จบครบ 4 อันดับ คิงชนะ — เกมทดสอบ/บอท/ยกเลิกไม่เพิ่มอันดับ */
+/** สลาฟ: แมตช์ใหม่รวม 2 รอบเป็น 1 เกม รองรับผลรอบแบบเก่าเพื่ออ่านประวัติเดิม */
 function recordSlaveRoundEnd(roomId, gameResult) {
-    const { standings, roomName, round, resultId, gameId, startedAt, endedAt, debugUsed, abandoned } = gameResult;
+    const { standings, roomName, round, resultId, gameId, startedAt, endedAt, debugUsed, abandoned, matchFormat, roundResults } = gameResult;
     if (debugUsed || abandoned || !resultId || !gameId || !Number.isInteger(round) || round < 1
         || typeof endedAt !== 'string' || !Number.isFinite(new Date(endedAt).getTime())
         || !Array.isArray(standings) || standings.length !== 4
         || new Set(standings.map(row => row && row.playerId)).size !== 4
-        || standings.some((row, index) => !row || !row.playerId || row.place !== index + 1)) return false;
+        || standings.some((row, index) => !row || !row.playerId || (matchFormat !== 'two-rounds' && row.place !== index + 1))) return false;
+    if (matchFormat === 'two-rounds') {
+        if (round !== 2 || !Array.isArray(roundResults) || roundResults.length !== 2) return false;
+        const points = Object.fromEntries(standings.map(row => [row.playerId, 0]));
+        for (let i=0; i<2; i++) {
+            const result = roundResults[i];
+            if (result?.round !== i+1 || !Array.isArray(result.standings) || result.standings.length !== 4
+                || new Set(result.standings.map(row => row?.playerId)).size !== 4) return false;
+            for (let j=0; j<4; j++) {
+                const row = result.standings[j];
+                if (!row || !Object.hasOwn(points, row.playerId) || row.place !== j+1) return false;
+                points[row.playerId] += 4-j;
+            }
+        }
+        if (standings.some((row, i) => row.score !== points[row.playerId]
+            || (i && row.score > standings[i-1].score)
+            || row.place !== 1+standings.filter(other => other.score > row.score).length)) return false;
+    }
     const titles = ['คิง', 'ควีน', 'รองสลาฟ', 'สลาฟ'];
     const ranked = !standings.some(row => isBotPlayerId(row.playerId));
     const gameTimestamp = new Date(endedAt).toISOString();
@@ -951,8 +968,10 @@ function recordSlaveRoundEnd(roomId, gameResult) {
             mode:'slave', date:gameTimestamp, roomId, roomName:roomName || 'ไม่ทราบ',
             resultId, gameId, round, ranked, startedAt:startedAt || null, endedAt:gameTimestamp,
             won, role:titles[row.place - 1], title:titles[row.place - 1], place:row.place, playerCount:4,
-            winnerName:standings[0].name || 'ไม่ทราบ',
-            resultText:`รอบ ${round} · อันดับ ${row.place}/4 · ${titles[row.place - 1]}${ranked ? '' : ' · เล่นกับบอท · ไม่นับอันดับ'}`
+            winnerName:standings.filter(winner => winner.place === 1).map(winner => winner.name).join(', ') || 'ไม่ทราบ',
+            ...(matchFormat === 'two-rounds' ? { totalRounds:2, score:row.score,
+                roundScores:roundResults.map(result => 5-result.standings.find(entry => entry.playerId === row.playerId).place) } : {}),
+            resultText:(matchFormat === 'two-rounds' ? `2 รอบ · ${row.score} คะแนน · อันดับ ${row.place}/4` : `รอบ ${round} · อันดับ ${row.place}/4 · ${titles[row.place - 1]}`) + (ranked ? '' : ' · เล่นกับบอท · ไม่นับอันดับ')
         });
         stat.gameHistory = stat.gameHistory.slice(0, MAX_GAME_HISTORY);
         recorded = true;

@@ -72,7 +72,6 @@
     <section class="gp-hero">
       <p class="gp-kicker"><span aria-hidden="true"><%= game.emoji %></span> <%= catLabel[game.category] || 'เกมปาร์ตี้' %></p>
       <h1 class="gp-h1"><%= game.h1 %></h1>
-      <p class="gp-intro"><%= game.intro %></p>
       <ul class="gp-chips" aria-label="ข้อมูลเกม">
         <li><span aria-hidden="true">👥</span> <%= game.playersLabel %></li>
         <li><span aria-hidden="true">⏱</span> <%= game.time %></li>
@@ -84,13 +83,15 @@
       <p class="gp-cta-note"><%= game.solo ? 'เล่นคนเดียวได้ทันที ไม่ต้องสร้างห้อง' : 'สร้างห้องแล้วส่งลิงก์ให้เพื่อน เล่นบนมือถือหรือคอมก็ได้' %></p>
     </section>
 
-    <section class="gp-section" aria-labelledby="gpHowTo">
-      <h2 id="gpHowTo">เล่นยังไง</h2>
+    <details class="gp-section gp-help">
+      <summary id="gpHowTo">วิธีเล่น</summary>
+      <p class="gp-intro"><%= game.intro %></p>
+
       <ol class="gp-steps">
         <% game.howTo.forEach(function (step) { %><li><%= step %></li><% }); %>
       </ol>
       <a class="gp-more" href="<%= game.rulesUrl %>">กฎละเอียด →</a>
-    </section>
+    </details>
 
     <figure class="gp-cover">
       <img src="<%= game.cover %>" alt="<%= game.coverAlt %>" width="<%= coverSize.width %>" height="<%= coverSize.height %>" loading="lazy" decoding="async">

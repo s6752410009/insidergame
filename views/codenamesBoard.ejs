@@ -412,8 +412,8 @@
     </div>
   </div>
   <div class="cn-tools">
-    <button type="button" id="cnLeaveBtn" class="cn-pill cn-pill--exit">🚪 ออก</button>
-    <button type="button" id="cnHowBtn" class="cn-pill">วิธีเล่น</button>
+    <button type="button" id="cnLeaveBtn" class="cn-pill cn-pill--exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
+    <button type="button" id="cnHowBtn" class="cn-pill" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">วิธีเล่น</button>
     <button type="button" id="cnSkipBtn" class="cn-pill" hidden>ข้ามเทิร์น</button>
     <button type="button" id="cnEndBtn" class="cn-pill is-danger"<%= room.admin ? '' : ' hidden' %>>จบเกม</button>
   </div>
@@ -477,7 +477,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

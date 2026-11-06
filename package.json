@@ -30,6 +30,8 @@
     "smoke:blackmarket:board:browser": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/browser-blackmarket-board.js",
     "smoke:blackmarket:stats": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/integration-blackmarket-stats.js",
     "smoke:blackmarket:engine": "node scripts/test-blackmarket-engine.js",
+    "smoke:play:flow": "node scripts/browser-play-flow.js",
+    "smoke:blackmarket:strategy": "node scripts/smoke-blackmarket-strategy.js",
     "smoke:blackmarket:bots": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-blackmarket-bots.js",
     "smoke:blackmarket:exit": "node scripts/browser-exit-everywhere.js blackmarket",
     "smoke:spyfall": "ALLOW_LEGACY_SOCKET_IDENTITY=1 node scripts/smoke-spyfall.js",
@@ -177,7 +179,9 @@
     "smoke:slave:records": "node scripts/smoke-slave-records.js",
     "smoke:profile": "node scripts/smoke-player-profile.js",
     "smoke:slave:history:e2e": "node scripts/smoke-slave-history-e2e.js",
-    "smoke:profile:browser": "node scripts/smoke-player-profile-browser.js"
+    "smoke:profile:browser": "node scripts/smoke-player-profile-browser.js",
+    "test:release": "node scripts/test-release.js",
+    "deploy:check": "node scripts/deploy-readiness.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

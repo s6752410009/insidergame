@@ -1,5 +1,8 @@
 const { randomInt, randomUUID } = require('node:crypto');
 const MODE = 'slave';
+const MAX_ROUNDS = 2;
+const ROUND_BREAK_MS = Math.max(20, Number(process.env.SLAVE_ROUND_BREAK_MS) || 6500);
+const RESULT_MS = Math.max(20, Number(process.env.SLAVE_RESULT_MS) || 10000);
 const ranks = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const suits = ['♣','♦','♥','♠'];
 const titles = ['คิง','ควีน','รองสลาฟ','สลาฟ'];
@@ -9,7 +12,7 @@ function describeCard(id) {
     return { id, rank: ranks[Math.floor(id / 4)], suit: suits[id % 4], red: [1,2].includes(id % 4), label: ranks[Math.floor(id / 4)] + suits[id % 4] };
 }
 function createPlayerState(p) { return { playerId: p.playerId, name: p.playerName || p.name || 'ผู้เล่น', avatar: p.avatar || '👤', color: p.color }; }
-function createInitialState() { return { mode: MODE, status: 'waiting', phase: 'lobby', players: [], seats: [], step: 0, round: 0, history: [] }; }
+function createInitialState() { return { mode: MODE, status: 'waiting', phase: 'lobby', players: [], seats: [], step: 0, round: 0, maxRounds:MAX_ROUNDS, roundResults:[], matchStandings:null, matchComplete:false, history: [] }; }
 function resetRoomGame(room) { return { ...createInitialState(), players: room.players.map(createPlayerState) }; }
 function state(room) { return room.gameState; }
 function seat(room, id) { return state(room).seats.find(p => p.playerId === id); }
@@ -47,6 +50,16 @@ function nextEligible(s, after) {
     }
     return null;
 }
+function scoreRounds(s) {
+    const rows = s.seats.map(player => {
+        const roundScores = (s.roundResults || []).map(round => 5 - round.standings.find(row => row.playerId === player.playerId).place);
+        return { playerId:player.playerId, name:player.name, roundScores, score:roundScores.reduce((sum, n) => sum+n, 0) };
+    }).sort((a,b) => b.score-a.score);
+    return rows.map((row,index) => {
+        const place = rows.findIndex(other => other.score === row.score)+1;
+        return { ...row, place, title:titles[place-1] };
+    });
+}
 function closeRound(s) {
     const remaining = active(s);
     if (remaining.length > 1) return false;
@@ -56,6 +69,17 @@ function closeRound(s) {
     s.seats.forEach(p => { p.title = titles[s.finishOrder.indexOf(p.playerId)]; });
     s.phase = 'round-end'; s.turnId = null; s.phaseEndsAt = null;
     s.roundEndedAt = new Date().toISOString();
+    s.maxRounds ||= MAX_ROUNDS;
+    s.roundResults ||= [];
+    if (!s.roundResults.some(result => result.round === s.round)) s.roundResults.push({ round:s.round,
+        startedAt:s.roundStartedAt, endedAt:s.roundEndedAt, standings:s.standings.map(row => ({...row})) });
+    s.matchStandings = scoreRounds(s);
+    if (s.round >= s.maxRounds) {
+        s.matchComplete = true; s.phase = 'finished'; s.status = 'slave_finished';
+        s.matchEndedAt = s.roundEndedAt; s.returnLobbyAt = Date.now()+RESULT_MS;
+        s.roundAdvanceAt = null;
+    } else s.roundAdvanceAt = Date.now()+ROUND_BREAK_MS;
+
     log(s, 'จบรอบ · ' + s.standings.map(p=>p.name+' '+p.title).join(' · '), 'round-end');
     return true;
 }
@@ -73,13 +97,14 @@ function advance(s, actorId) {
 function startRound(room, rng) {
     const s = state(room);
     const previous = s.standings;
+    if (s.round >= (s.maxRounds || MAX_ROUNDS)) throw new Error('ครบ 2 รอบแล้ว เริ่มเกมใหม่จากห้องรอ');
     let deck = Array.from({length:52}, (_,i)=>i);
     for (let i=51;i>0;i--) {
         const j = rng ? Math.floor(rng()*(i+1)) : randomInt(i+1);
         [deck[i],deck[j]]=[deck[j],deck[i]];
     }
     s.seats.forEach((p,i) => { p.hand=deck.slice(i*13,i*13+13).sort((a,b)=>a-b); p.left=false; });
-    Object.assign(s, { round:s.round+1, roundStartedAt:new Date().toISOString(), roundEndedAt:null, phase:'turn', status:'playing', top:null, passed:[], finishOrder:[], played:[], exchangeDone:[], exchanges:[], exchangeReceipts:{}, standings:null });
+    Object.assign(s, { round:s.round+1, roundStartedAt:new Date().toISOString(), roundEndedAt:null, roundAdvanceAt:null, returnLobbyAt:null, phase:'turn', status:'playing', top:null, passed:[], finishOrder:[], played:[], exchangeDone:[], exchanges:[], exchangeReceipts:{}, standings:null });
     if (previous) {
         s.exchanges = [[0,3,2],[1,2,1]].map(([hi,lo,count])=>({ from:previous[lo].playerId, to:previous[hi].playerId, count }));
         // Select returns from the original hands, then transfer simultaneously.
@@ -204,27 +229,29 @@ function botActor(room) {
 }
 function playBotTurns(room) { const id=botActor(room); if(!id)return false; autoAct(room,id); return true; }
 function handlePlayerLeft(room,id) {
+    if (state(room).matchComplete) return;
     const p=seat(room,id); if(!p)return;
     p.left=true;
     const s=state(room);
-    if (['turn','exchange'].includes(s.phase)) s.abandoned = { playerId:id, name:p.name, at:new Date().toISOString(), reason:'player-left' };
-    s.phase='finished'; s.status='slave_finished'; s.turnId=null; s.phaseEndsAt=null;
+    if (!s.matchComplete && ['turn','exchange','round-end'].includes(s.phase)) s.abandoned = { playerId:id, name:p.name, at:new Date().toISOString(), reason:'player-left' };
+    s.phase='finished'; s.status='slave_finished'; s.turnId=null; s.phaseEndsAt=null; s.roundAdvanceAt=null; s.returnLobbyAt=null;
     log(s,p.name+' ออกจากห้อง · กลับห้องรอเพื่อจัดโต๊ะใหม่', 'left', id);
 }
 function buildClientState(room,id) {
     const s=state(room),p=seat(room,id),ex=s.exchanges?.find(e=>e.to===id);
-    return {mode:MODE,roomId:room.roomId,status:s.status,phase:s.phase,round:s.round,step:s.step,turnId:s.turnId,phaseEndsAt:s.phaseEndsAt,
+    return {mode:MODE,roomId:room.roomId,status:s.status,phase:s.phase,round:s.round,maxRounds:s.maxRounds || MAX_ROUNDS,matchComplete:!!s.matchComplete,
+        matchStandings:s.matchStandings || null,roundResults:s.roundResults || [],roundAdvanceAt:s.roundAdvanceAt || null,returnLobbyAt:s.returnLobbyAt || null,step:s.step,turnId:s.turnId,phaseEndsAt:s.phaseEndsAt,
         debugUsed:!!s.debugUsed,isHost:room.admin===id,openingRequired:!!s.firstPlay,
         exchangeProgress:s.phase==='exchange'?{done:s.exchangeDone.length,total:2}:null,
         top:s.top?{playerId:s.top.playerId,cards:s.top.cards.map(describeCard)}:null,
         seats:s.seats.map(p=>({playerId:p.playerId,name:p.name,avatar:p.avatar,count:p.hand.length,isBot:isBotId(p.playerId),title:p.title||null,place:s.finishOrder?.indexOf(p.playerId)+1||null,passed:s.passed?.includes(p.playerId),online:!!room.players.find(e=>e.playerId===p.playerId)?.socketId})),
         self:p?{hand:p.hand.map(describeCard),exchangeCount:s.phase==='exchange'&&ex&&!s.exchangeDone.includes(id)?ex.count:0,
             exchangeReceipt:s.exchangeReceipts?.[id]?{...s.exchangeReceipts[id],sent:s.exchangeReceipts[id].sent.map(describeCard),received:s.exchangeReceipts[id].received.map(describeCard)}:null}:null,
-        resultRecorded:s.statsRecordedRound===s.round && !s.debugUsed && !s.abandoned,
+        resultRecorded:s.statsRecordedGameId===s.gameId && !!s.matchComplete && !s.debugUsed && !s.abandoned,
         ranked:!s.debugUsed && !s.abandoned && !s.seats.some(player=>isBotId(player.playerId)),
         canPlay:s.phase==='turn'&&s.turnId===id,canPass:s.phase==='turn'&&s.turnId===id&&!!s.top,
         legalMoves:legalMoves(room,id),standings:s.standings||null,history:s.history};
 }
 module.exports={id:MODE,label:'สลาฟ',description:'ไพ่สลาฟ 4 คน · ลงไพ่ให้หมด ขึ้นเป็นคิง เติมบอทได้',minPlayers:4,maxPlayers:4,keepSeatOnLeave:true,
-    createInitialState,createPlayerState,resetRoomGame,startGame,startRound,describeCard,combination,beats,playCards,passTurn,exchangeCards,nextRound,
+    MAX_ROUNDS,scoreRounds,createInitialState,createPlayerState,resetRoomGame,startGame,startRound,describeCard,combination,beats,playCards,passTurn,exchangeCards,nextRound,
     autoResolvePhase,playBotTurns,botNeedsTurn:room=>!!botActor(room),botDelay:()=>900,isBotId,handlePlayerLeft,buildClientState,legalMoves,chooseBotMove};

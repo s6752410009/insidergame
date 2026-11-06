@@ -1,7 +1,7 @@
 <%- contentFor('content') %>
 <link rel="stylesheet" href="/static/css/playerProfile.css?v=1">
 <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/home.css?v=2">
+<link rel="stylesheet" href="/static/css/home.css?v=3">
 <link rel="stylesheet" href="/static/css/worldChat.css?v=1">
 <%
     const homeGames = stats ? (stats.totalGames || 0) : 0;
@@ -35,15 +35,14 @@
             </dl>
             <% if (homeGoogleOn && !homeGoogleLinked) { %>
                 <div class="home-signin">
-                    <p>ล็อกอินด้วย Gmail เก็บถ้วยและสถิติไว้ ไม่หายแม้เปลี่ยนเครื่อง (ไม่บังคับ)</p>
+                    <p>เก็บสถิติข้ามเครื่องด้วย Google</p>
                     <div data-google-signin></div>
                 </div>
             <% } %>
         </section>
 
         <!-- ปุ่มหลักของหน้า -->
-        <a href="/rooms?playerId=<%= player.playerId %>" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block home-play">🎮 เริ่มเกม</a>
-        <p class="home-play-hint">เข้าห้องเพื่อน หรือสร้างห้องใหม่</p>
+        <a href="/rooms?playerId=<%= player.playerId %>" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block home-play">🎮 สร้างห้อง / เข้าห้อง</a>
         <a href="/solo" class="ui-btn ui-btn--lg ui-btn--block home-solo">🕹️ เล่นคนเดียว</a>
 
         <ul class="home-nav" aria-label="เมนู">
@@ -76,8 +75,28 @@
     </div>
     <% } %>
 
+    <% const catalog = typeof gameCards !== 'undefined' && Array.isArray(gameCards) ? gameCards : []; %>
+    <section class="home-main home-picker" aria-labelledby="homeCatalogTitle">
+      <div class="home-picker-head">
+        <h1 id="homeCatalogTitle">วันนี้เล่นอะไร?</h1>
+        <a href="/rooms">เข้าห้องเพื่อน →</a>
+      </div>
+      <div class="home-game-grid">
+        <% catalog.forEach(function(g) { %>
+        <article class="home-game">
+          <a class="home-game-play" href="<%= g.playUrl %>" aria-label="<%= g.solo ? 'เล่น' : 'สร้างห้อง' %> <%= g.name %>">
+            <img src="<%= g.cover %>" alt="" loading="lazy" width="320" height="168">
+            <span class="home-game-name"><%= g.name %></span>
+            <span class="home-game-meta"><%= g.playersLabel %><span aria-hidden="true"><%= g.solo ? '▶' : '＋' %></span></span>
+          </a>
+          <a class="home-game-info" href="<%= g.path %>" aria-label="รายละเอียด <%= g.name %>">รายละเอียด</a>
+        </article>
+        <% }); %>
+      </div>
+    </section>
+
     <!-- Leaderboard -->
-    <section class="home-main home-board" aria-labelledby="leaderboardTitle">
+    <section class="home-board" aria-labelledby="leaderboardTitle">
         <div class="home-board-head">
             <h2 class="home-h" id="leaderboardTitle">🏆 อันดับ</h2>
             <div class="leaderboard-meta" id="leaderboardMeta">กำลังโหลด...</div>
@@ -97,40 +116,18 @@
     </section>
   </div>
 
-    <!-- เกมทั้งหมด: หัวเรื่องหลักของหน้า (H1) + ลิงก์ไปหน้าของแต่ละเกม /games/<id>
-         render ฝั่ง server ให้คนมาใหม่และบอทค้นหาเห็นครบ ไม่ต้องรอ JS -->
-    <% const catalog = typeof seoGames !== 'undefined' && Array.isArray(seoGames) ? seoGames : []; %>
-    <% if (catalog.length) { %>
-    <section class="home-catalog" aria-labelledby="homeCatalogTitle">
-        <h1 class="home-catalog-h1">เกมปาร์ตี้ออนไลน์ เล่นกับเพื่อนฟรี</h1>
-        <p class="home-catalog-lead">เล่นบนเว็บได้ทันที ไม่ต้องโหลดแอป สร้างห้องแล้วส่งลิงก์ให้เพื่อน — Werewolf, Coup, Avalon, Codenames, ป๊อกเด้ง, เศรษฐี และอีกหลายเกม ภาษาไทยทั้งหมด</p>
-        <h2 class="home-h" id="homeCatalogTitle">เกมทั้งหมด</h2>
-        <% (seoCategories || []).forEach(function (cat) {
-             const inCat = catalog.filter(function (g) { return g.category === cat.id; });
-             if (!inCat.length) return; %>
-        <h3 class="home-catalog-cat"><%= cat.label %></h3>
-        <ul class="home-catalog-grid">
-            <% inCat.forEach(function (g) { %>
-            <li><a href="<%= g.path %>"><span class="home-catalog-ico" aria-hidden="true"><%= g.emoji %></span><b><%= g.name %></b><small><%= g.playersLabel %></small></a></li>
-            <% }); %>
-        </ul>
-        <% }); %>
-    </section>
-    <% } %>
-
+    <button type="button" id="homeUpdates" class="home-updates">อัปเดต v<%= appVersion %></button>
     <!-- Bottom Links (Admin link hidden - access via /admin/login) -->
     <!-- <div class="bottom-links">
         <a href="/admin" class="bottom-link admin">🛠️ Admin Dashboard</a>
     </div> -->
 </main>
 
-<!-- ปุ่มลอย: ซ้อนแนวตั้งมุมขวาล่าง ขนาดเท่ากัน ไม่ทับกันเอง (หน้า .home เว้นที่ท้ายหน้าไว้ให้แล้ว) -->
-<nav class="home-fabs" aria-label="ลิงก์เสริม">
-    <button type="button" class="home-fab" onclick="showInstallGuide()" aria-label="ติดตั้งแอป" title="ติดตั้งแอป"><span aria-hidden="true">📲</span><span class="home-fab-label" aria-hidden="true">ติดตั้งแอป</span></button>
-    <a class="home-fab" href="/support" aria-label="ติดต่อแอดมิน" title="ติดต่อแอดมิน"><span aria-hidden="true">✉️</span><span class="home-fab-label" aria-hidden="true">ติดต่อแอดมิน</span></a>
-    <button type="button" class="home-fab is-donate" id="donateBtn" aria-label="Donate สนับสนุนผู้พัฒนา" title="Donate"><span aria-hidden="true">☕</span><span class="home-fab-label" aria-hidden="true">Donate</span></button>
+<nav class="home-links" aria-label="ลิงก์เสริม">
+    <button type="button" onclick="showInstallGuide()">ติดตั้งแอป</button>
+    <a href="/support">ติดต่อแอดมิน</a>
+    <button type="button" id="donateBtn">สนับสนุนผู้พัฒนา</button>
 </nav>
-
 
 <!-- Donate Modal -->
 <div id="donateModal" class="donate-modal">
@@ -675,19 +672,9 @@ $(function() {
     //    ตอนออกเวอร์ชันใหม่ต้องมาแก้ที่นี่ด้วย ไม่งั้นป้ายจะขึ้นเลขใหม่แต่เล่าเรื่องเก่า
     //    (v5.4.0 เคยขึ้นว่า "เปิดโต๊ะใหม่ครบ 3 แบบ" ซึ่งเป็นข้อความค้างจากยุค Spyfall)
     const patchVersion = '<%= appVersion %>';
-    // ผูก key กับเลข season ด้วย — พอรีแรงค์ใหม่ ทุกคนจะได้เห็นประกาศอีกครั้งแม้เคยกด "ไม่แสดงอีก 7 วัน"
-    const patchSeenKey = `hide_patch_${patchVersion}_s<%= currentSeason.number %>_${playerId}`;
-    // ประกาศรีแรงค์เรนเดอร์เป็น HTML ไว้แล้ว (ชื่อผู้เล่นผ่าน escape ของ EJS) ค่อยหยิบมาใส่ popup
     const seasonResetNoticeEl = document.getElementById('seasonResetNotice');
     const seasonResetNoticeHtml = seasonResetNoticeEl ? seasonResetNoticeEl.innerHTML : '';
-    const hideUntil = localStorage.getItem(patchSeenKey);
-    const now = Date.now();
-    
-    // Check if popup should be hidden (user ticked "don't show for 7 days")
-    const shouldHide = hideUntil && parseInt(hideUntil) > now;
-    
-    if (!shouldHide) {
-        // Show patch notes popup
+    $('#homeUpdates').on('click', function() {
         Swal.fire({
             title: '💬 v<%= appVersion %> — แชทโลก + รูปโปรไฟล์ Google!',
             html: `
@@ -780,12 +767,6 @@ $(function() {
                     </p>
                 </div>
                 
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
-                    <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: #888; font-size: 0.85em;">
-                        <input type="checkbox" id="hidePatchFor7Days" style="width: 16px; height: 16px; cursor: pointer;">
-                        <span>ไม่แสดงอีก 7 วัน</span>
-                    </label>
-                </div>
             `,
             icon: 'info',
             confirmButtonText: '👍 เข้าใจแล้ว!',
@@ -796,16 +777,8 @@ $(function() {
             customClass: {
                 popup: 'patch-notes-popup'
             }
-        }).then(() => {
-            // Check if user ticked the checkbox
-            const hideCheckbox = document.getElementById('hidePatchFor7Days');
-            if (hideCheckbox && hideCheckbox.checked) {
-                // Hide for 7 days
-                const sevenDaysFromNow = Date.now() + (7 * 24 * 60 * 60 * 1000);
-                localStorage.setItem(patchSeenKey, sevenDaysFromNow.toString());
-            }
         });
-    }
+    });
 
     // ==================== INSTALL GUIDE ====================
     window.showInstallGuide = function() {

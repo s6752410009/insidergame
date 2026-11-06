@@ -50,6 +50,7 @@ const seasonManager = require('./managers/seasonManager');
 const adminMessageManager = require('./managers/adminMessageManager');
 const { getGameEngine, getAvailableGameModes, isPokerMode } = require('./games/engineRegistry');
 const insiderEngine = require('./games/insiderEngine');
+const blackMarketBots = require('./games/blackMarketBots');
 const { rankGuideForClient } = require('./games/pokerHands');
 const walletManager = require('./managers/walletManager');
 const googleAuth = require('./managers/googleAuth');
@@ -2768,18 +2769,7 @@ async function runBotsForRoom(room) {
             const clientState = blackMarketEngine.buildClientState(room, bot.playerId);
             if (!clientState) continue;
             
-            const affordableOffers = (clientState.marketOffers || []).filter(item => item.affordable);
-
-            let chosenItemId = blackMarketEngine.PASS_CHOICE;
-            if (affordableOffers.length > 0 && Math.random() > 0.15) {
-                // Pick a random affordable item, with preference for cargo items
-                const cargoOffers = affordableOffers.filter(item => item.type === 'cargo');
-                if (cargoOffers.length > 0 && Math.random() > 0.4) {
-                    chosenItemId = cargoOffers[Math.floor(Math.random() * cargoOffers.length)].id;
-                } else {
-                    chosenItemId = affordableOffers[Math.floor(Math.random() * affordableOffers.length)].id;
-                }
-            }
+            const chosenItemId = blackMarketBots.choosePurchase(clientState);
 
             try {
                 const result = blackMarketEngine.submitMarketPurchase(room, bot.playerId, chosenItemId);
@@ -2825,51 +2815,7 @@ async function runBotsForRoom(room) {
             const clientState = blackMarketEngine.buildClientState(room, bot.playerId);
             if (!clientState) continue;
 
-            const targets = (clientState.players || []).filter(player => player.alive && player.playerId !== bot.playerId);
-            const cargoItems = clientState.actionHelp?.cargoItems || [];
-
-            let actionType = 'pass';
-            let targetPlayerId = null;
-            let itemId = null;
-
-            if (cargoItems.length > 0) {
-                // If has cargo, 75% chance to deliver
-                if (Math.random() > 0.25) {
-                    actionType = 'deliver';
-                    itemId = cargoItems[0].id;
-                }
-            }
-
-            if (actionType === 'pass' && clientState.actionHelp?.canHit && targets.length > 0) {
-                // If has gun and cash, 60% chance to hit a target
-                if (Math.random() > 0.4) {
-                    actionType = 'hit';
-                    targetPlayerId = targets[Math.floor(Math.random() * targets.length)].playerId;
-                }
-            }
-
-            if (actionType === 'pass' && targets.length > 0) {
-                // Choose between deal, betray, raid, intel, laylow, guard
-                const rand = Math.random();
-                const target = targets[Math.floor(Math.random() * targets.length)].playerId;
-                if (rand < 0.35) {
-                    actionType = 'deal';
-                    targetPlayerId = target;
-                } else if (rand < 0.55) {
-                    actionType = 'betray';
-                    targetPlayerId = target;
-                } else if (rand < 0.75) {
-                    actionType = 'raid';
-                    targetPlayerId = target;
-                } else if (rand < 0.85) {
-                    actionType = 'intel';
-                    targetPlayerId = target;
-                } else if (rand < 0.92) {
-                    actionType = 'laylow';
-                } else {
-                    actionType = 'guard';
-                }
-            }
+            const { actionType, targetPlayerId = null, itemId = null } = blackMarketBots.chooseAction(clientState);
 
             try {
                 const result = blackMarketEngine.submitAction(room, bot.playerId, actionType, targetPlayerId, itemId);
@@ -5642,6 +5588,12 @@ app.get('/', function(req, res) {
         player: player,
         stats: stats,
         seoGames: listSeoGames(),
+        gameCards: getAvailableGameModes().map(mode => getSeoGame(mode.id) || {
+            id: mode.id, name: mode.label, solo: false,
+            cover: `/assets/games/${mode.id}/cover.svg`,
+            playersLabel: mode.minPlayers === mode.maxPlayers ? `${mode.minPlayers} คน` : `${mode.minPlayers}–${mode.maxPlayers} คน`,
+            playUrl: `/rooms?mode=${mode.id}`, path: `/how-to-play#${mode.id}`
+        }).concat(listSeoGames().filter(game => game.solo)),
         seoCategories: SEO_GAME_CATEGORIES,
         currentSeason: seasonManager.getCurrentSeason(),
         lastSeason: lastSeasonFull

@@ -224,3 +224,6 @@ a:focus-visible { outline: 2px solid var(--gp-gold); outline-offset: 2px; border
 @media (prefers-reduced-motion: reduce) {
     .gp-cta { transition: none; }
 }
+
+.gp-help > summary { cursor:pointer; padding:12px 0; font-size:1.2rem; font-weight:700; }
+.gp-help > summary:focus-visible { outline:2px solid currentColor; outline-offset:4px; }

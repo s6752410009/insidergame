@@ -478,9 +478,9 @@
       <h1 class="cc-title"><%= room.name %></h1>
     </div>
     <div class="cc-tools">
-      <button type="button" id="ccExitBtn" class="cc-pill cc-pill--exit">🚪 ออก</button>
-      <button type="button" id="ccHowBtn" class="cc-pill">วิธีเล่น</button>
-      <button type="button" id="ccSoundBtn" class="cc-pill" aria-pressed="true">เสียง: เปิด</button>
+      <button type="button" id="ccExitBtn" class="cc-pill cc-pill--exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
+      <button type="button" id="ccHowBtn" class="cc-pill" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">วิธีเล่น</button>
+      <button type="button" id="ccSoundBtn" class="cc-pill" aria-pressed="true" data-control-icon="sound" aria-label="เสียงเกม" title="เสียงเกม">เสียง: เปิด</button>
       <button type="button" id="ccSidebarBtn" class="cc-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
       <% if (room.admin) { %>
       <button type="button" id="ccEndBtn" class="cc-pill cc-pill--danger">จบเกม</button>
@@ -585,7 +585,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 
@@ -1044,9 +1044,9 @@ $(function() {
       }
       if (!hint) {
         if (myTurn && group.length > 1) hint = groupNote();
-        else if (myTurn && group.length && addableIds().length) hint = 'แตะใบ "เพิ่มได้" เพื่อลงพร้อมกัน · แตะซ้ำ = ลงใบนี้';
-        else if (myTurn && group.length) hint = 'แตะอีกครั้ง หรือปัดขึ้น เพื่อลงใบนี้';
-        else if (myTurn && a.canPlay) hint = 'ลงได้ ' + (self.playable || []).length + ' ใบ — แตะไพ่ที่ยกขึ้นเพื่อเลือก';
+        else if (myTurn && group.length && addableIds().length) hint = 'เลือกเพิ่มได้';
+        else if (myTurn && group.length) hint = 'เลือกแล้ว';
+        else if (myTurn && a.canPlay) hint = 'ลงได้ ' + (self.playable || []).length + ' ใบ';
         else if (!myTurn) hint = 'ไพ่ในมือ ' + self.hand.length + ' ใบ';
       }
     } else if (self && !self.left && S.phase !== 'turn') {

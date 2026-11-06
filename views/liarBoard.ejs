@@ -343,9 +343,9 @@
       <h1 class="lr-title"><%= room.name %></h1>
     </div>
     <div class="lr-meta">
-      <button type="button" id="lrExitBtn" class="lr-chip lr-chip-btn lr-chip-exit">🚪 ออก</button>
+      <button type="button" id="lrExitBtn" class="lr-chip lr-chip-btn lr-chip-exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
       <span class="lr-chip">ห้อง <%= room.roomId %></span>
-      <button type="button" id="lrHowToOpen" class="lr-chip lr-chip-btn">📖 วิธีเล่น</button>
+      <button type="button" id="lrHowToOpen" class="lr-chip lr-chip-btn" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">📖 วิธีเล่น</button>
       <button type="button" id="lrSidebarBtn" class="lr-chip lr-chip-btn" aria-expanded="false" aria-controls="playerSidebar">👥 ผู้เล่น</button>
       <% if (room.admin) { %>
       <button type="button" id="lrEndGameBtn" class="lr-chip lr-chip-btn lr-chip-danger">⏹ จบเกม</button>
@@ -417,7 +417,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   💬 แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

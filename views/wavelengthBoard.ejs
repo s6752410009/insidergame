@@ -426,8 +426,8 @@
       <h1 class="wl-title"><%= room.name %></h1>
     </div>
     <div class="wl-tools">
-      <button type="button" id="wlExitBtn" class="wl-pill wl-pill--exit">🚪 ออก</button>
-      <button type="button" id="wlHowBtn" class="wl-pill">วิธีเล่น</button>
+      <button type="button" id="wlExitBtn" class="wl-pill wl-pill--exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
+      <button type="button" id="wlHowBtn" class="wl-pill" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">วิธีเล่น</button>
       <button type="button" id="wlSidebarBtn" class="wl-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
       <button type="button" id="wlSkipBtn" class="wl-pill" hidden>ข้ามตานี้</button>
       <button type="button" id="wlEndBtn" class="wl-pill wl-pill--danger" <%= room.admin ? '' : 'hidden' %>>จบเกม</button>
@@ -547,7 +547,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

@@ -15,9 +15,9 @@
       <span class="st-clock-txt" id="stClockTxt">--:--</span>
     </div>
     <div class="st-tools">
-      <button type="button" class="st-fast st-exit" id="stExitBtn">🚪 ออก</button>
+      <button type="button" class="st-fast st-exit" id="stExitBtn" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
       <button type="button" class="st-fast" id="stFastBtn" aria-pressed="false" aria-label="เร่งเกม (บอทเล่นเร็วขึ้น ฉากสั้นลง)"><span aria-hidden="true">⏩</span><span class="st-fast-txt"> เร่ง</span></button>
-      <button type="button" class="st-icon-btn" id="stHowBtn" aria-label="วิธีเล่น">?</button>
+      <button type="button" class="st-icon-btn" id="stHowBtn" aria-label="วิธีเล่น" data-control-icon="help" title="วิธีเล่น">?</button>
       <button type="button" class="st-icon-btn" id="stMenuBtn" aria-label="ผู้เล่นและเมนู" aria-expanded="false" aria-controls="stSidebar">☰</button>
     </div>
   </div>
@@ -145,7 +145,7 @@
 <aside id="stSidebar" class="st-sidebar" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="stPlayerTitle">
   <h4 id="stPlayerTitle">ผู้เล่นในห้อง</h4>
   <ul id="onlinePlayerList" style="list-style:none; padding:0; margin:0 0 16px;"></ul>
-  <button id="stSoundBtn" type="button" class="st-btn" style="width:100%; margin-bottom:8px;" aria-pressed="true">🔊 เสียง: เปิด</button>
+  <button id="stSoundBtn" type="button" class="st-btn" style="width:100%; margin-bottom:8px;" aria-pressed="true" data-control-icon="sound" aria-label="เสียงเกม" title="เสียงเกม">🔊 เสียง: เปิด</button>
   <% if (room.admin) { %>
   <button id="stEndBtn" type="button" class="st-btn st-btn--danger" style="width:100%; margin-bottom:8px;">จบเกมเลย (นับทรัพย์สิน)</button>
   <% } %>
@@ -173,7 +173,7 @@
     <button type="button" id="sendChat" class="btn-chat-send" aria-label="ส่ง">ส่ง</button>
   </div>
 </div>
-<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox">
+<button type="button" id="toggleChat" class="chat-toggle" aria-expanded="false" aria-controls="chatBox" data-control-icon="chat" aria-label="แชท" title="แชท">
   แชท <span id="chatUnreadDot" class="unread-dot" style="display:none;"></span>
 </button>
 

@@ -8,13 +8,17 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
+# Every production build, including a manual Coolify Deploy, must use an exact green CI commit.
+ARG SOURCE_COMMIT
+COPY ci/verify-release.cjs /tmp/verify-release.cjs
+RUN SOURCE_COMMIT="$SOURCE_COMMIT" node /tmp/verify-release.cjs && rm /tmp/verify-release.cjs
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY . .
 
 # Coolify ส่ง SOURCE_COMMIT มาเป็น build arg → ใช้เป็นเลข build (cache-busting ไฟล์ static)
-ARG SOURCE_COMMIT
 ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 
 RUN mkdir -p /data && chown -R node:node /data /app
