@@ -254,8 +254,19 @@ async function browserChecks() {
     ok(await p.locator('#slHand [aria-pressed="true"]').count() === 0, label + ' guidance never selects or plays cards for the player');
     ok(await p.locator('[data-card="0"]').getAttribute('data-playable') === 'true', 'opening legal card marked');
     ok(await p.locator('[data-card="4"]').getAttribute('data-playable') === 'false', 'opening illegal card distinguished');
+    const emphasis = await p.evaluate(() => {
+      const legal = document.querySelector('#slHand [data-card="0"]'), other = document.querySelector('#slHand [data-card="4"]');
+      return { legal:legal.getBoundingClientRect().height, other:other.getBoundingClientRect().height,
+        legalTop:legal.getBoundingClientRect().top, otherTop:other.getBoundingClientRect().top,
+        sameSlot:legal.offsetTop === other.offsetTop, selectable:!other.disabled && other.getAttribute('aria-disabled') === 'false' };
+    });
+    ok(emphasis.legal > emphasis.other * 1.1 && emphasis.legalTop < emphasis.otherTop, label + ' playable cards are visibly larger and raised');
+    ok(emphasis.sameSlot && emphasis.selectable, label + ' quieter cards retain one row and can still be selected');
+
     await p.locator('[data-card="4"]').click({position:{x:8,y:12}});
     ok((await p.locator('#slActionHelp').innerText()).includes('3♣'), 'invalid opening has concrete reason');
+    ok(await p.locator('[data-card="4"]').evaluate(el => el.classList.contains('selected') && Number(getComputedStyle(el).getPropertyValue('--hand-card-scale')) >= 1), 'a smaller card expands when selected even if the set needs correction');
+
     ok(!(await p.locator('#slPlay').isEnabled()), 'invalid opening cannot be submitted');
     await p.locator('#slClear').click(); await p.locator('[data-card="0"]').click({position:{x:8,y:12}});
     ok(await p.evaluate(() => window.seatBeforeSelection === document.querySelector('.seat-self .sl-avatar')), 'selection preserves portrait and countdown DOM');
@@ -266,7 +277,13 @@ async function browserChecks() {
     if ([320,375,667,821,1280,2137].includes(width)) await p.screenshot({ path: path.join(shots, 'opening-' + label + '.png'), fullPage: false });
     await deliver(p, { ...pair, step: 2 });
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-options-' + label + '.png'), fullPage: false });
-    await p.locator('[data-card="8"]').click({position:{x:8,y:12}});
+
+    const steady = await p.locator('[data-card="8"]').boundingBox();
+    await p.mouse.move(steady.x + 8, steady.y + 12);
+    await p.mouse.down();
+    const pressed = await p.locator('[data-card="8"]').boundingBox();
+    ok(Math.abs(steady.width - pressed.width) < .1 && Math.abs(steady.y - pressed.y) < .1, label + ' pressing a raised card never shrinks or moves its hit target');
+    await p.mouse.up();
     ok(await p.locator('#slHand [aria-pressed="true"]').count() === 2 && await p.locator('#slPlay').isEnabled(), 'one tap selects a complete legal pair without playing it');
     await p.locator('[data-card="9"]').click({position:{x:8,y:12}});
     if ([375,1280].includes(width)) await p.screenshot({ path: path.join(shots, 'guide-partial-' + label + '.png'), fullPage: false });
@@ -302,6 +319,8 @@ async function browserChecks() {
     ok(!(await p.locator('#slPlay').isEnabled()), 'weaker pair cannot be submitted');
     await deliver(p, { ...pair, step: 4, turnId: 'p1', canPlay: false, canPass: false });
     ok(await p.locator('#slHand [data-playable="true"]').count() === 0, 'waiting turn shows no misleading playable cards');
+    ok(await p.locator('#slHand .sl-card').evaluateAll(cards => cards.every(el => getComputedStyle(el).getPropertyValue('--hand-card-scale').trim() === '1')), 'waiting turn returns all cards to neutral size');
+
     ok(!(await p.locator('#slPlay').isEnabled()), 'waiting player cannot submit a move');
     await deliver(p, { ...noMove, step: 5 });
     ok(await p.locator('#slPlay').isHidden(), 'no impossible disabled primary move');
@@ -421,6 +440,29 @@ async function browserChecks() {
     ok(await p.locator('#slRanks .sl-score').count() === 4 && (await p.locator('#slResultNext').innerText()).includes('⌂'), 'all four totals and lobby countdown are visible');
     await geometry(p,'match result');
     await p.screenshot({path:path.join(shots,'match-final-mobile.png')});
+    await context.close();
+  }
+  // Real motion must settle into the live guidance, rather than the deal animation's final frame.
+  for (const width of [375, 1280]) {
+    const context = await browser.newContext({ viewport: {width, height: width === 375 ? 812 : 900}, reducedMotion: 'no-preference' });
+    const p = await context.newPage(); p.on('pageerror', error => errors.push(error.message));
+    await fixture(p, opening);
+    await p.waitForFunction(() => [...document.querySelectorAll('#slHand .sl-card')].every(card => card.getAnimations().every(animation => animation.playState !== 'running')));
+    const dealt = await p.locator('[data-card="0"]').boundingBox(), quiet = await p.locator('[data-card="4"]').boundingBox();
+    ok(dealt.height > quiet.height * 1.1, 'deal animation releases control to current hand emphasis');
+    const high = turnFixture([13,15,17,18,30,38,40,44,46,47,48,49], [43], [[44],[46],[47],[48],[49],[44,46,47]]);
+    await deliver(p, {...high, step:2});
+    await p.waitForFunction(() => [...document.querySelectorAll('#slHand .sl-card')].every(card => card.getAnimations().every(animation => animation.playState !== 'running')));
+    const ace = await p.locator('[data-card="44"]').boundingBox(), six = await p.locator('[data-card="13"]').boundingBox();
+    ok(ace.height > six.height * 1.1 && ace.y < six.y, 'A and 2 stand out against K spades while lower cards stay quieter');
+    await geometry(p, 'smart hand ' + width);
+    await p.screenshot({path:path.join(shots, 'smart-hand-' + width + '.png')});
+    await p.locator('[data-card="13"]').click({position:{x:8,y:12}});
+    ok(await p.locator('[data-card="13"]').getAttribute('aria-pressed') === 'true', 'smaller card is selectable with normal animation');
+    ok(!(await p.locator('#slPlay').isEnabled()), 'emphasis never bypasses the legal-move check');
+    await p.locator('#slClear').click();
+    await p.locator('[data-card="44"]').click({position:{x:8,y:12}});
+    ok(await p.locator('#slPlay').isEnabled(), 'highlighted single remains playable after clearing a quieter card');
     await context.close();
   }
   ok(errors.length === 0, 'no browser errors: ' + errors.join('; '));
