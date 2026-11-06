@@ -42,7 +42,8 @@
         </section>
 
         <!-- ปุ่มหลักของหน้า -->
-        <a href="/rooms?playerId=<%= player.playerId %>" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block home-play">🎮 สร้างห้อง / เข้าห้อง</a>
+        <a href="/rooms?playerId=<%= player.playerId %>" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block home-play">🎮 เริ่มเกม</a>
+        <p class="home-play-hint">เข้าห้องเพื่อน หรือสร้างห้องใหม่</p>
         <a href="/solo" class="ui-btn ui-btn--lg ui-btn--block home-solo">🕹️ เล่นคนเดียว</a>
 
         <ul class="home-nav" aria-label="เมนู">
@@ -75,30 +76,10 @@
     </div>
     <% } %>
 
-    <% const catalog = typeof gameCards !== 'undefined' && Array.isArray(gameCards) ? gameCards : []; %>
-    <section class="home-main home-picker" aria-labelledby="homeCatalogTitle">
-      <div class="home-picker-head">
-        <h1 id="homeCatalogTitle">วันนี้เล่นอะไร?</h1>
-        <a href="/rooms">เข้าห้องเพื่อน →</a>
-      </div>
-      <div class="home-game-grid">
-        <% catalog.forEach(function(g) { %>
-        <article class="home-game">
-          <a class="home-game-play" href="<%= g.playUrl %>" aria-label="<%= g.solo ? 'เล่น' : 'สร้างห้อง' %> <%= g.name %>">
-            <img src="<%= g.cover %>" alt="" loading="lazy" width="320" height="168">
-            <span class="home-game-name"><%= g.name %></span>
-            <span class="home-game-meta"><%= g.playersLabel %><span aria-hidden="true"><%= g.solo ? '▶' : '＋' %></span></span>
-          </a>
-          <a class="home-game-info" href="<%= g.path %>" aria-label="รายละเอียด <%= g.name %>">รายละเอียด</a>
-        </article>
-        <% }); %>
-      </div>
-    </section>
-
     <!-- Leaderboard -->
-    <section class="home-board" aria-labelledby="leaderboardTitle">
+    <section class="home-main home-board" aria-labelledby="leaderboardTitle">
         <div class="home-board-head">
-            <h2 class="home-h" id="leaderboardTitle">🏆 อันดับ</h2>
+            <h1 class="home-h" id="leaderboardTitle">🏆 อันดับ</h1>
             <div class="leaderboard-meta" id="leaderboardMeta">กำลังโหลด...</div>
         </div>
         <div class="leaderboard-seasons" id="leaderboardSeasons"></div>

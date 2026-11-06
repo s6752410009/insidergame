@@ -9,7 +9,7 @@ const groups = {
     integration: [ ['smoke-slave-history-e2e'], ['smoke-slave-history-e2e', { SLAVE_HISTORY_ENV: 'staging' }],
         ['smoke-blackmarket-flow'], ['smoke-blackmarket-bots'], ['integration-blackmarket-stats'] ],
     'slave-browser': [ ['smoke-slave-ux'], ['smoke-slave-tools'], ['smoke-slave-play'] ],
-    'website-browser': [ ['browser-play-flow'], ['browser-blackmarket-board'], ['smoke-seo'] ]
+    'website-browser': [ ['browser-play-flow'], ['browser-leaderboard-rank'], ['browser-blackmarket-board'], ['smoke-seo'] ]
 };
 const requested = process.argv.slice(2);
 const selected = requested.length ? requested : Object.keys(groups);

@@ -5588,12 +5588,6 @@ app.get('/', function(req, res) {
         player: player,
         stats: stats,
         seoGames: listSeoGames(),
-        gameCards: getAvailableGameModes().map(mode => getSeoGame(mode.id) || {
-            id: mode.id, name: mode.label, solo: false,
-            cover: `/assets/games/${mode.id}/cover.svg`,
-            playersLabel: mode.minPlayers === mode.maxPlayers ? `${mode.minPlayers} คน` : `${mode.minPlayers}–${mode.maxPlayers} คน`,
-            playUrl: `/rooms?mode=${mode.id}`, path: `/how-to-play#${mode.id}`
-        }).concat(listSeoGames().filter(game => game.solo)),
         seoCategories: SEO_GAME_CATEGORIES,
         currentSeason: seasonManager.getCurrentSeason(),
         lastSeason: lastSeasonFull

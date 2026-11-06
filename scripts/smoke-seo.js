@@ -7,7 +7,7 @@
  *  - ลิงก์ภายในทุกอันในหน้าเกมตอบ 200 · ลิงก์ "หน้าเกมนี้ →" ในหน้าวิธีเล่นตอบ 200 ทุกอัน
  *  - CTA ของเกมหลายคนชี้ /rooms?mode=<id> · เกมเล่นคนเดียวชี้ /solo/<id>
  *  - sitemap.xml มีทุกหน้า · id ที่ไม่รู้จัก = 404
- *  - หน้าแรก (มุมบอทค้นหา) มี H1 เดียว และลิงก์ไปทุกหน้าเกม
+ *  - หน้าแรก (มุมบอทค้นหา) มี H1 เดียว ปุ่มเริ่มเกม/เล่นคนเดียว และไม่มีรายการเกม
  * เบราว์เซอร์ (390×844):
  *  - กด CTA ของหน้าเกม → หน้าห้องเปิดขั้นตั้งค่าห้องโดยเลือกเกมนั้นไว้แล้ว
  *  - ภาพหน้าจอ 3 หน้า และไม่มีเลื่อนข้าง
@@ -194,7 +194,8 @@ async function checkHttp(baseUrl) {
     const home = (await get(baseUrl + '/', { userAgent: GOOGLEBOT })).body.toString('utf8');
     const homeH1 = home.match(/<h1[^>]*>([^<]*)<\/h1>/g) || [];
     check(homeH1.length === 1 && homeH1[0].replace(/<[^>]+>/g, '').trim().length > 0, `home: H1 ${JSON.stringify(homeH1)}`);
-    games.forEach(g => check(home.includes(`href="${g.path}"`), `home: no link to ${g.path}`));
+    check(home.includes('home-play') && home.includes('href="/solo"'), 'home: play entry points missing');
+    check(!/home-(game-grid|picker|catalog)/.test(home), 'home: unwanted game catalog');
     check(meta(home, 'property', 'og:image') === `${PUBLIC_BASE}/static/og/home.jpg`, 'home: og:image is not /static/og/home.jpg');
 
     console.log(`http: ${games.length} game pages, ${internalLinks.size} internal links, ${howtoLinks.length} how-to links, ${locs.size} sitemap URLs`);

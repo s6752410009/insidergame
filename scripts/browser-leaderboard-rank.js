@@ -111,7 +111,7 @@ async function main() {
 
     try {
         server = await startServer();
-        browser = await chromium.launch({ headless: true });
+        browser = await chromium.launch(require('./browserOptions')());
         const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
         await page.goto(`${server.baseUrl}/?playerId=${PLAYER_ID}`, { waitUntil: 'domcontentloaded', timeout: TIMEOUT });
 

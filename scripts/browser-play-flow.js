@@ -76,20 +76,26 @@ async function main() {
         await page.goto(base, { waitUntil: 'networkidle' });
         await delay(1500);
         assert.equal(await page.locator('.swal2-container,.promo-overlay').count(), 0, 'Fresh home should be ready to play without dismissing popups');
-        assert(await page.locator('.home-game-play').count() >= 17, 'All game entries available');
-        assert(await page.locator('.home-picker').evaluate(el => el.getBoundingClientRect().top < 300), 'Game picker above the fold');
-        assert(await page.locator('.home-picker').evaluate(el => el.compareDocumentPosition(document.querySelector('.home-board')) & Node.DOCUMENT_POSITION_FOLLOWING), 'Games before leaderboard');
-        assert.equal(await page.locator('.home-game-play[href*="mode=slave"]').count(), 1, 'Direct create link');
-        assert.equal(await page.locator('.home-game-play[href^="/solo/solitaire"]').count(), 1, 'Solo entry goes directly to solo game');
+        assert.equal(await page.locator('.home-picker,.home-game,.home-catalog').count(), 0, 'Home has no game catalog');
+        assert.equal(await page.locator('.home-play').textContent(), '🎮 เริ่มเกม');
+        assert.equal(new URL(await page.locator('.home-play').getAttribute('href'), base).pathname, '/rooms');
+        assert.equal(new URL(await page.locator('.home-solo').getAttribute('href'), base).pathname, '/solo');
+        assert(await page.locator('.home-nav a[href^="/profile"]').isVisible());
+        assert(await page.locator('.home-nav a[href^="/settings"]').isVisible());
+        const desktop = await page.evaluate(() => ({ side: document.querySelector('.home-side').getBoundingClientRect().toJSON(), board: document.querySelector('.home-board').getBoundingClientRect().toJSON() }));
+        assert(desktop.board.left > desktop.side.right && Math.abs(desktop.board.top - desktop.side.top) < 4, 'Leaderboard beside profile at the top');
+        await noOverflow(page, 'home desktop');
         await page.screenshot({ path: path.join(artifacts, 'home-desktop.png') });
         await page.setViewportSize({ width: 390, height: 844 });
         await noOverflow(page, 'home mobile');
+        assert(await page.locator('.home-tally').isVisible(), 'Player stats visible on mobile');
+        assert(await page.locator('.home-board').evaluate(el => el.getBoundingClientRect().top > document.querySelector('.home-side').getBoundingClientRect().bottom), 'Leaderboard below profile on mobile');
         await page.screenshot({ path: path.join(artifacts, 'home-mobile.png') });
         await page.locator('#homeUpdates').click();
         await page.waitForSelector('.patch-notes-popup');
         await page.locator('.swal2-confirm').click();
         await home.close();
-        console.log('PASS home: immediate game picker, direct links, updates on demand, mobile layout');
+        console.log('PASS home: classic profile/start/settings + leaderboard, no catalog, mobile stats, updates on demand');
 
         const modes = getAvailableGameModes().filter(mode => !process.env.PLAY_FLOW_MODES || process.env.PLAY_FLOW_MODES.split(',').includes(mode.id));
         for (const mode of modes) {

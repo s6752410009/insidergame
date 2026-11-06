@@ -138,6 +138,7 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
     letter-spacing: 0.02em;
     box-shadow: 0 10px 24px -12px color-mix(in oklch, var(--hm-accent) 70%, transparent);
 }
+.home-play-hint { margin: -4px 0 0; text-align: center; font-size: 0.85rem; color: var(--hm-muted); }
 .home .home-solo { height: 52px; border-radius: 14px; font-family: var(--hm-display); font-weight: 700; margin-top: 4px; }
 
 /* ---------- เมนูรอง ---------- */
@@ -345,8 +346,8 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
 .leaderboard-page-jump-input.is-invalid { border-color: var(--hm-accent); }
 .leaderboard-page-jump-of { font-variant-numeric: tabular-nums; }
 
-/* เมนูรองอยู่ท้ายหน้า ไม่ลอยบังการ์ดเกม */
-.home-links { max-width:1180px; margin:0 auto 24px; padding:0 16px; display:flex; flex-wrap:wrap; gap:8px 20px; justify-content:center; }
+/* ลิงก์เสริมท้ายหน้า */
+.home-links { max-width:980px; margin:0 auto 24px; padding:0 16px; display:flex; flex-wrap:wrap; gap:8px 20px; justify-content:center; }
 .home-links > a,.home-links > button { border:0; background:none; padding:10px 0; color:var(--hm-soft); cursor:pointer; font:inherit; text-decoration:underline; text-underline-offset:3px; }
 .home-links > a:focus-visible,.home-links > button:focus-visible { outline:2px solid var(--hm-gold); outline-offset:3px; }
 
@@ -467,7 +468,7 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
 @keyframes hmRise { from { opacity: 0; transform: translateY(12px); } }
 @keyframes hmFade { from { opacity: 0; } }
 
-/* ---------- desktop: บัญชีซ้าย, เกมขวา ---------- */
+/* ---------- desktop: โปรไฟล์และเริ่มเกมซ้าย, อันดับขวา ---------- */
 @media (min-width: 880px) {
     .home { padding-top: 16px; padding-bottom: 24px; }
     .home-layout { grid-template-columns: 340px minmax(0, 1fr); gap: 32px; align-items: start; }
@@ -493,32 +494,5 @@ body:has(.home) > .container-fluid { padding-bottom: 0; margin-bottom: 0; min-he
     .home-pass, .leaderboard-item, .donate-modal-content { animation: none; }
     .leaderboard-mode-tab, .leaderboard-page { transition: none; }
 }
-
-/* เลือกเกมจากหน้าแรก โดยไม่ต้องอ่านคู่มือหรือเลือกซ้ำอีกหน้า */
-.home-picker { display:grid; gap:16px; }
-.home-picker-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-.home-picker h1 { margin:0; font:700 1.55rem/1.3 var(--hm-display); }
-.home-picker-head > a { color:var(--hm-gold); font-size:.9rem; }
-.home-game-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px 12px; }
-.home-game { min-width:0; }
-.home-game-play { display:grid; gap:6px; color:var(--hm-ink); text-decoration:none; }
-.home-game-play img { width:100%; height:auto; aspect-ratio:1.9; object-fit:cover; border-radius:10px; background:var(--hm-surface); transition:transform .18s var(--hm-ease); }
-.home-game-play:hover img { transform:translateY(-3px); }
-.home-game-name { font-weight:700; line-height:1.3; }
-.home-game-meta { display:flex; justify-content:space-between; gap:4px; color:var(--hm-soft); font-size:.8rem; }
-.home-game-meta > span { color:var(--hm-gold); font-size:1rem; }
-.home-game-info { display:inline-block; padding:4px 0; color:var(--hm-muted); font-size:.75rem; text-underline-offset:3px; }
-.home-board { grid-column:1/-1; margin-top:16px; padding-top:24px; border-top:1px solid var(--hm-line); }
-@media (min-width:880px) { .home { max-width:1180px; } .home-layout { grid-template-columns:280px minmax(0,1fr); } .home-side { position:static; } }
-@media (max-width:879px) {
- .home-layout { gap:20px; }
- .home-side { grid-template-columns:1fr 1fr; gap:8px; }
- .home-pass { grid-column:1/-1; padding:14px 16px; clip-path:none; border-radius:12px; }
- .home-tally { display:none; }
- .home-side .home-play,.home-side .home-solo { height:48px; margin:0; font-size:1rem; }
- .home-nav { grid-column:1/-1; margin:0; }
- .home-game-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 12px; }
-}
-@media (prefers-reduced-motion:reduce) { .home-game-play img { transition:none; } .home-game-play:hover img { transform:none; } }
 
 .home-updates { margin-top:24px; padding:10px 0; border:0; background:none; color:var(--hm-muted); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
