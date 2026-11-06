@@ -11,7 +11,6 @@
       this.context = null;
       this.pendingTurn = null;
       this.pendingResultCue = null;
-      this.pendingAnnouncement = null;
       this.turnKey = null;
       this.pendingDeal = true;
       this.unlocked = false;
@@ -55,11 +54,6 @@
           this.pendingResultCue = null;
           this.cue(resultCue);
         }
-        if (this.pendingAnnouncement) {
-          const text = this.pendingAnnouncement;
-          this.pendingAnnouncement = null;
-          this.speak(text);
-        }
         this.startMusic();
         this.onChange?.();
         return true;
@@ -74,8 +68,7 @@
       if (this.master) this.master.gain.setTargetAtTime(value ? .65 : 0, this.context.currentTime, .015);
       if (!value) {
         this.stopMusic();
-        this.pendingResultCue = this.pendingAnnouncement = null;
-        global.speechSynthesis?.cancel();
+        this.pendingResultCue = null;
       }
       this.onChange?.();
     }
@@ -93,23 +86,10 @@
       this.pendingTurn = key;
       if (this.ready) { this.pendingTurn = null; this.cue('turn'); }
     }
-    announce(text, cue = 'end') {
+    announce(_text, cue = 'end') {
       if (!this.enabled) return;
       this.cue(cue);
-      if (!this.ready || document.hidden) {
-        this.pendingAnnouncement = text;
-        if (!document.hidden) this.unlock();
-      } else this.speak(text);
-    }
-    speak(text) {
-      if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return;
-      const utterance = new global.SpeechSynthesisUtterance(text);
-      utterance.lang = 'th-TH';
-      const voice = global.speechSynthesis.getVoices().find(voice => voice.lang.startsWith('th'));
-      if (voice) utterance.voice = voice;
-      utterance.rate = 1;
-      global.speechSynthesis.cancel();
-      global.speechSynthesis.speak(utterance);
+      if (!this.ready && !document.hidden) this.unlock();
     }
     tone(frequency, delay, duration, volume, type = 'sine', bus) {
       const ctx = this.context, at = ctx.currentTime + delay;
