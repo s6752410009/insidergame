@@ -9,3 +9,5 @@
 - Both HTTP and socket handlers enforce admin authorization. Regular users cannot use observation or observer chat; revoking site-admin rights ends observation on refresh. Session-authenticated dashboard admins are supported as well.
 
 Validation: `smoke:slave`, `smoke:slave:records`, `smoke:slave:history:e2e`, `smoke:slave:ux`, and `smoke:slave:play`. Browser tests can use an installed Chromium executable when the Playwright browser cache is absent.
+
+Bot play prioritizes finishing the hand, otherwise leads the lowest rank as a complete set. Against an existing pile it chooses the cheapest equal-size winning set before using a triple/quad cut. It uses only its own cards and public pile, and never changes the legal-move ordering used by clients or the existing human timeout fallback.

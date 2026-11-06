@@ -68,6 +68,32 @@ ok(!noMove.legal&&!noMove.candidates.length,'no legal move offers no highlighted
 ok(noMove.message.includes('ผ่าน'),'no legal move explains passing');
 
 const invalid=room();invalid.players.pop();assert.throws(()=>E.startGame(invalid));
+function botFixture(hand,top=null,opening=false) {
+ const r=room();E.startGame(r);
+ Object.assign(r.gameState,{phase:'turn',turnId:'bot_0',firstPlay:opening,
+  top:top?{...E.combination(top),playerId:'bot_1'}:null});
+ r.gameState.seats[0].hand=hand.slice();
+ return r;
+}
+sameIds(E.chooseBotMove(botFixture([4,44,45,46]),'bot_0'),[4],'bot leads low single before a high triple');
+sameIds(E.chooseBotMove(botFixture([4,5,44,45,46,47]),'bot_0'),[4,5],'bot keeps low pair together instead of leading high quad');
+sameIds(E.chooseBotMove(botFixture([8,9,10,48],[4]),'bot_0'),[8],'bot uses low winning single before spending triple cut or 2');
+sameIds(E.chooseBotMove(botFixture([8,9,10,11,12,13,48,49],[4,5]),'bot_0'),[8,9],'bot uses lowest winning pair before cutting with quad');
+sameIds(E.chooseBotMove(botFixture([4,5,6,8,9,10],[51]),'bot_0'),[4,5,6],'bot uses cheapest triple when a cut is necessary');
+sameIds(E.chooseBotMove(botFixture([4,5,6,7,8,9,10,11],[50,51]),'bot_0'),[4,5,6,7],'bot uses cheapest quad when a pair cut is necessary');
+sameIds(E.chooseBotMove(botFixture([48,49,50],[4]),'bot_0'),[48,49,50],'bot spends high finishing set to go out immediately');
+sameIds(E.chooseBotMove(botFixture([0,1,2,48,49,50,51],null,true),'bot_0'),[0,1,2],'bot opening includes 3 clubs and keeps the opening triple together');
+sameIds(E.chooseBotMove(botFixture([45,47,48],[44]),'bot_0'),[45],'bot uses cheapest winning suit, not a 2');
+ok(E.chooseBotMove(botFixture([4,5],[51]),'bot_0')===null,'bot passes when no legal response exists');
+const privateBot=botFixture([4,5,44,45,46]);
+const legalBefore=E.legalMoves(privateBot,'bot_0');
+const choiceBefore=E.chooseBotMove(privateBot,'bot_0');
+ok(JSON.stringify(E.legalMoves(privateBot,'bot_0'))===JSON.stringify(legalBefore),'bot strategy does not reorder client legal moves');
+privateBot.gameState.seats.slice(1).forEach(p=>{p.hand=[48,49,50,51];});
+sameIds(E.chooseBotMove(privateBot,'bot_0'),choiceBefore,'bot choice does not depend on private opponent cards');
+const runtimeBot=botFixture([4,44,45,46]);
+ok(E.playBotTurns(runtimeBot),'runtime plays a bot move');
+sameIds(runtimeBot.gameState.played.slice(-1),[4],'runtime uses the low-first bot policy');
 const sample=room();E.startGame(sample,()=>.5);const id=sample.gameState.turnId,p=sample.gameState.seats.find(p=>p.playerId===id);
 const before=JSON.stringify(sample.gameState);
 assert.throws(()=>E.playCards(sample,id,[0],-1));ok(before===JSON.stringify(sample.gameState),'stale command leaves state unchanged');

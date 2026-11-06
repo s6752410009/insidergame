@@ -161,13 +161,31 @@ function legalMoves(room,id) {
     }
     return moves.sort((a,b)=> b.length-a.length || Math.max(...a)-Math.max(...b));
 }
+function chooseBotMove(room,id) {
+    const moves=legalMoves(room,id);
+    if(!moves.length) return null;
+    const s=state(room),hand=seat(room,id).hand;
+    // Only the bot's own cards and the public pile inform this choice.
+    // Going out takes priority even when the last set is high.
+    const finish=moves.find(move=>move.length===hand.length);
+    if(finish) return finish;
+    return moves.sort((a,b)=>{
+        if(!s.top) {
+            // Shed the lowest rank first, keeping its pair/triple/quad together.
+            return Math.floor(a[0]/4)-Math.floor(b[0]/4) || b.length-a.length || Math.max(...a)-Math.max(...b);
+        }
+        // Use the cheapest ordinary response before spending a cutting set.
+        const aCut=Number(a.length!==s.top.count),bCut=Number(b.length!==s.top.count);
+        return aCut-bCut || Math.max(...a)-Math.max(...b);
+    })[0];
+}
 function autoAct(room,id) {
     const s=state(room);
     if(s.phase==='exchange') {
         const e=s.exchanges.find(e=>e.to===id&&!s.exchangeDone.includes(id));
         if(e) exchangeCards(room,id,seat(room,id).hand.slice(0,e.count),s.step);
     } else {
-        const move=legalMoves(room,id)[0];
+        const move=isBotId(id)?chooseBotMove(room,id):legalMoves(room,id)[0];
         if(move) playCards(room,id,move,s.step); else passTurn(room,id,s.step);
     }
 }
@@ -209,4 +227,4 @@ function buildClientState(room,id) {
 }
 module.exports={id:MODE,label:'สลาฟ',description:'ไพ่สลาฟ 4 คน · ลงไพ่ให้หมด ขึ้นเป็นคิง เติมบอทได้',minPlayers:4,maxPlayers:4,keepSeatOnLeave:true,
     createInitialState,createPlayerState,resetRoomGame,startGame,startRound,describeCard,combination,beats,playCards,passTurn,exchangeCards,nextRound,
-    autoResolvePhase,playBotTurns,botNeedsTurn:room=>!!botActor(room),botDelay:()=>900,isBotId,handlePlayerLeft,buildClientState,legalMoves};
+    autoResolvePhase,playBotTurns,botNeedsTurn:room=>!!botActor(room),botDelay:()=>900,isBotId,handlePlayerLeft,buildClientState,legalMoves,chooseBotMove};
