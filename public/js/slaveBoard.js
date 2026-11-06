@@ -155,17 +155,20 @@
       const exchange = state.self?.exchangeCount || 0, actionable = Boolean(state.canPlay || exchange);
       const guiding = actionable && socket.connected && !pending;
       const advice = guide.analyze(state, selected), candidates = new Set(advice.candidates);
+      const recommended = new Set(guiding ? guide.recommend(state, selected) : []);
       $('slHand').querySelectorAll('[data-card]').forEach(b => {
         const id = Number(b.dataset.card), on = selected.has(id), playable = guiding && candidates.has(id);
         b.classList.toggle('selected', on); b.setAttribute('aria-pressed', String(on));
         b.classList.toggle('just-received', Boolean(state.self?.exchangeReceipt?.received.some(c => c.id === id)));
         b.title = state.self?.exchangeReceipt?.received.some(c => c.id === id) ? 'รับเข้าจากการแลกไพ่' : '';
         b.classList.toggle('playable', Boolean(playable));
+        b.classList.toggle('recommended', Boolean(playable && recommended.has(id)));
+        b.dataset.recommended = String(Boolean(playable && recommended.has(id)));
         b.classList.toggle('unavailable', guiding && !playable && !on);
         b.querySelector('.sl-card-guide').hidden = !playable || on;
         b.classList.toggle('invalid-selection', on && advice.invalid);
         b.dataset.playable = String(Boolean(playable));
-        b.setAttribute('aria-label', hand.find(c => c.id === id).label + (on ? ' · เลือกแล้ว แตะเพื่อยกเลิก' : guiding ? playable ? exchange ? ' · เลือกคืนได้' : ' · เลือกต่อชุดที่ลงได้' : ' · ยังใช้กับชุดนี้ไม่ได้' : ''));
+        b.setAttribute('aria-label', hand.find(c => c.id === id).label + (on ? ' · เลือกแล้ว แตะเพื่อยกเลิก' : guiding ? playable ? exchange ? ' · เลือกคืนได้' : recommended.has(id) ? ' · ชุดแนะนำ' : ' · เลือกต่อชุดที่ลงได้' : ' · ยังใช้กับชุดนี้ไม่ได้' : ''));
         b.setAttribute('aria-disabled', String(!guiding));
       });
       const turn = state.seats.find(p => p.playerId === state.turnId);

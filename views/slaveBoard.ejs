@@ -62,7 +62,7 @@
 </main>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/static/js/slaveAudio.js?v=5"></script>
-<script src="/static/js/slaveGuide.js?v=5"></script>
+<script src="/static/js/slaveGuide.js?v=<%= typeof buildId !== 'undefined' ? buildId : 'smart-hand-20261106' %>"></script>
 <script src="/static/js/slaveTools.js?v=9"></script>
 <script src="/static/js/slaveBoard.js?v=<%= typeof buildId !== 'undefined' ? buildId : 'release-20261106' %>"></script>
 <script>

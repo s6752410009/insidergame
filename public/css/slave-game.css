@@ -336,11 +336,12 @@ html.slave-active body:before{
 .slave .sl-player-zone .sl-hand { display:flex; flex-wrap:nowrap; justify-content:center; align-items:center; gap:0; min-height:0; width:100%; padding:24px 8px 12px; overflow:visible; }
 .slave .sl-player-zone .sl-hand .sl-card { flex:0 0 var(--hand-card-width,64px); width:var(--hand-card-width,64px); max-width:none; height:var(--hand-card-height,91px); min-height:var(--hand-card-height,91px); margin:0; --r:0deg; --lift:0px; --hand-card-scale:1; font-size:1.15rem; transform-origin:left bottom; transform:translateY(var(--lift)) scale(var(--hand-card-scale)); transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .16s,border-color .16s,background-color .16s; }
 .slave .sl-player-zone .sl-hand .sl-card + .sl-card { margin-left:calc(var(--hand-step,24px) - var(--hand-card-width,64px)); }
-/* Emphasis follows server-authorized sets, not just the printed rank. */
-.slave .sl-player-zone .sl-hand .sl-card.playable:not(.selected) { --lift:-9px; --hand-card-scale:1.035; }
+/* Distinguish a suggested set from other legal options; every card remains selectable. */
+.slave .sl-player-zone .sl-hand .sl-card.playable:not(.selected) { --lift:0px; --hand-card-scale:.97; border-color:oklch(.6 .07 148); box-shadow:0 3px 0 oklch(.4 .055 150),0 6px 8px oklch(.12 .025 50/.4); }
+.slave .sl-player-zone .sl-hand .sl-card.recommended:not(.selected) { --lift:-11px; --hand-card-scale:1.055; border-color:oklch(.76 .16 148); box-shadow:0 0 0 1px oklch(.76 .16 148),0 4px 0 oklch(.4 .075 150),0 8px 12px oklch(.12 .025 50/.5); }
 .slave .sl-player-zone .sl-hand .sl-card.unavailable { --lift:4px; --hand-card-scale:.92; background:oklch(.87 .025 95); border-color:oklch(.68 .025 100); }
 .slave .sl-player-zone .sl-hand.dealing .sl-card { animation-fill-mode:backwards; }
-.slave .sl-player-zone .sl-hand .sl-card.selected { --lift:-16px; --hand-card-scale:1.04; outline:2px solid oklch(.9 .15 88); outline-offset:-2px; }
+.slave .sl-player-zone .sl-hand .sl-card.selected { --lift:-16px; --hand-card-scale:1.065; outline:2px solid oklch(.9 .15 88); outline-offset:-2px; }
 .slave .sl-player-zone .sl-hand .sl-card .sl-corner:not(.bottom) { left:4px; top:4px; }
 .slave .sl-player-zone .sl-hand .sl-card .sl-pip { font-size:1.5rem; }
 .sl-card-guide { display:none !important; }
@@ -391,7 +392,7 @@ html.slave-active body:before{
 }
 
 @media(max-height:350px) and (orientation:landscape) {
- .slave .sl-player-zone .sl-hand .sl-card.playable:not(.selected) { --lift:-7px; }
+ .slave .sl-player-zone .sl-hand .sl-card.recommended:not(.selected) { --lift:-7px; }
  .slave .sl-player-zone .sl-hand .sl-card.selected { --lift:-12px; }
 }
 @media(prefers-reduced-motion:reduce) {

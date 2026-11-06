@@ -50,6 +50,29 @@
     const candidates = state.openingRequired && !ids.length ? moves.length ? [0] : [] : [...new Set(matches.flat())];
     return { legal, candidates, message, invalid, label: legal ? 'ลง' + setName(cards) + ' →' : ids.length ? matches.length ? 'เลือกเพิ่มอีก ' + (Math.min(...matches.map(move => move.length)) - ids.length) + ' ใบ' : 'เลือกไพ่ใหม่' : 'เลือกไพ่เพื่อลง' };
   }
+  // Rank only the moves authorized by the server, using the player's own hand.
+  // Prefer shedding intact sets, keep 2s for control, and avoid spending a cut
+  // when an inexpensive ordinary response exists. Finishing the hand wins out.
+  function recommend(state, selection = []) {
+    if (!state.canPlay || state.self?.exchangeCount) return [];
+    const hand = state.self?.hand || [], selected = [...selection];
+    const owned = new Set(hand.map(card => card.id));
+    const counts = new Map();
+    hand.forEach(card => { const rank = Math.floor(card.id / 4); counts.set(rank, (counts.get(rank) || 0) + 1); });
+    const moves = (state.legalMoves || []).filter(move => move.length && move.every(id => owned.has(id)) && selected.every(id => move.includes(id)));
+    function cost(move) {
+      if (move.length === hand.length) return -100000;
+      const rank = Math.floor(move[0] / 4), group = counts.get(rank), splitsSet = group > move.length;
+      const splitCost = splitsSet ? (group >= 3 ? 38 : 18) : 0;
+      const controlCost = rank === 12 ? 32 : 0;
+      const cutCost = state.top && move.length > state.top.cards.length ? 40 : 0;
+      // Fresh piles lead low; responses balance shedding cards with preserving control.
+      const rankCost = rank * (state.top ? 2 : 200);
+      return rankCost + splitCost + controlCost + cutCost - move.length * 18;
+    }
+    moves.sort((a, b) => cost(a) - cost(b) || Math.max(...a) - Math.max(...b));
+    return moves[0]?.slice() || [];
+  }
   function benefit(place) {
     return [
       '',
@@ -81,5 +104,5 @@
     }
     return next;
   }
-  return { analyze, requirement, setName, benefit, exchange, select };
+  return { analyze, recommend, requirement, setName, benefit, exchange, select };
 });
