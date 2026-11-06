@@ -8,10 +8,11 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# Every production build, including a manual Coolify Deploy, must use an exact green CI commit.
+# Require green CI, or one explicitly authorized locally tested commit during a CI outage.
 ARG SOURCE_COMMIT
+ARG LOCAL_VERIFIED_RELEASE_COMMIT
 COPY ci/verify-release.cjs /tmp/verify-release.cjs
-RUN SOURCE_COMMIT="$SOURCE_COMMIT" node /tmp/verify-release.cjs && rm /tmp/verify-release.cjs
+RUN SOURCE_COMMIT="$SOURCE_COMMIT" LOCAL_VERIFIED_RELEASE_COMMIT="$LOCAL_VERIFIED_RELEASE_COMMIT" node /tmp/verify-release.cjs && rm /tmp/verify-release.cjs
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force

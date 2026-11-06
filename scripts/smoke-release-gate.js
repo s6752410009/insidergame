@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { verify } = require('../ci/verify-release.cjs');
+const { verify, verifyRelease } = require('../ci/verify-release.cjs');
 const sha = 'a'.repeat(40);
 const check = { id: 1, head_sha: sha, app: { slug: 'github-actions' }, status: 'completed', conclusion: 'success', check_suite: { id: 42 }, html_url: 'https://github.com/check' };
 const workflow = { head_sha: sha, check_suite_id: 42, path: '.github/workflows/release-checks.yml' };
@@ -8,6 +8,11 @@ function api(checks = [check], workflows = [workflow]) {
 }
 (async () => {
     assert.equal(await verify(sha, api()), check.html_url);
+    const offline = async () => { throw new Error('offline'); };
+    assert.equal((await verifyRelease(sha, { localVerifiedCommit: sha, request: offline })).source, 'user-authorized-local-tests');
+    for (const approved of ['', 'main', 'b'.repeat(40)]) await assert.rejects(verifyRelease(sha, { localVerifiedCommit: approved, request: offline }), /offline/);
+    for (const value of ['', 'abc123', undefined]) await assert.rejects(verifyRelease(value, { localVerifiedCommit: value, request: offline }), /SOURCE_COMMIT/);
+    assert.equal((await verifyRelease(sha, { request: api() })).source, 'github-ci');
     for (const value of [undefined, '', 'main', 'abc123', 'z'.repeat(40)]) await assert.rejects(verify(value, api()), /SOURCE_COMMIT/);
     for (const checks of [[], [{ ...check, head_sha: 'b'.repeat(40) }], [{ ...check, app: { slug: 'other-app' } }],
         [{ ...check, status: 'in_progress' }], [{ ...check, conclusion: 'failure' }], [{ ...check, conclusion: 'cancelled' }],

@@ -23,3 +23,11 @@ GitHub Actions `.github/workflows/release-checks.yml` รันเมื่อ p
 การตรวจผ่าน public GitHub API ไม่ใช้ token ถ้า API จำกัดอัตราหรือใช้งานไม่ได้ การ build ใหม่จะหยุดให้ลองใหม่ ไม่มีการข้าม CI อัตโนมัติ การกด Deploy ไม่ได้เรียก CI ใหม่เอง: ให้กด Run workflow เมื่ออยากทดสอบ commit เดิมซ้ำ
 
 ห้ามเปลี่ยน build pack, Dockerfile หรือปิด Include Source Commit เพื่อข้าม gate โดยไม่ได้ทบทวน release workflow ก่อน Staging ใช้ Dockerfile.staging และข้อมูลแยกตามเดิม
+
+## ข้อยกเว้นชั่วคราวเมื่อ GitHub Actions ใช้งานไม่ได้
+
+วันที่ 2026-11-06 GitHub ปฏิเสธทุก job เพราะบัญชีติดปัญหา billing ผู้ใช้ยืนยันให้ deploy UI/UX โดยใช้ผลทดสอบในเครื่องที่ผ่านครบทั้งสี่กลุ่ม
+
+ตั้ง `LOCAL_VERIFIED_RELEASE_COMMIT` ใน Coolify เป็น SHA เต็ม 40 ตัวของ commit ที่อนุมัติ เปิด Available at Buildtime และปิด Available at Runtime ด่าน build อนุญาตเฉพาะเมื่อค่านี้ตรงกับ SOURCE_COMMIT ทุกตัว จึงไม่ใช่การปิด CI ถาวร และไม่อนุญาต commit ถัดไปโดยอัตโนมัติ Log build ระบุ `user-authorized-local-tests` แยกจาก `github-ci` ชัดเจน
+
+ตรวจห้อง/ขอคำยืนยันหากเกมกำลังเล่นตามเดิม ลบตัวแปรข้อยกเว้นหลัง deploy สำเร็จ เมื่อ billing กลับมาใช้งานได้ให้รัน CI แล้วใช้ทางปกติ

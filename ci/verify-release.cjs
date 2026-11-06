@@ -26,6 +26,16 @@ async function verify(sha, request = fetch) {
     if (!workflowRun) throw new Error('Deploy blocked: check did not originate from the release workflow');
     return check.html_url;
 }
-if (require.main === module) verify(process.env.SOURCE_COMMIT).then(url => console.log('CI verified for ' + process.env.SOURCE_COMMIT + ': ' + url))
+async function verifyRelease(sha, { localVerifiedCommit = '', request } = {}) {
+    // An operator may approve one locally tested commit while hosted CI is unavailable.
+    // Empty/malformed values and any subsequent commit still require real GitHub CI.
+    if (/^[a-f0-9]{40}$/.test(sha || '') && sha === localVerifiedCommit) {
+        return { source: 'user-authorized-local-tests', sha };
+    }
+    return { source: 'github-ci', sha, url: await verify(sha, request) };
+}
+if (require.main === module) verifyRelease(process.env.SOURCE_COMMIT, {
+    localVerifiedCommit: process.env.LOCAL_VERIFIED_RELEASE_COMMIT
+}).then(result => console.log('Release verification: ' + JSON.stringify(result)))
     .catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { verify };
+module.exports = { verify, verifyRelease };
