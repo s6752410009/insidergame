@@ -5,18 +5,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
 const groups = {
-    rules: [ ['smoke-release-gate'], ['smoke-slave'], ['smoke-slave-records'], ['test-blackmarket-engine'], ['smoke-blackmarket-strategy'] ],
-    integration: [ ['smoke-slave-history-e2e'], ['smoke-slave-history-e2e', { SLAVE_HISTORY_ENV: 'staging' }],
+    rules: [ ['smoke-admin-analytics'], ['smoke-release-gate'], ['smoke-slave'], ['smoke-slave-records'], ['test-blackmarket-engine'], ['smoke-blackmarket-strategy'] ],
+    integration: [ ['smoke-admin-perf'], ['smoke-slave-history-e2e'], ['smoke-slave-history-e2e', { SLAVE_HISTORY_ENV: 'staging' }],
         ['smoke-blackmarket-flow'], ['smoke-blackmarket-bots'], ['integration-blackmarket-stats'] ],
     'slave-browser': [ ['smoke-slave-ux'], ['smoke-slave-tools'], ['smoke-slave-play'] ],
-    'website-browser': [ ['browser-play-flow'], ['browser-leaderboard-rank'], ['browser-blackmarket-board'], ['smoke-seo'] ]
+    'website-browser': [ ['smoke-admin-insights-browser'], ['smoke-admin-tables-browser'], ['browser-play-flow'], ['browser-leaderboard-rank'], ['browser-blackmarket-board'], ['smoke-seo'] ]
 };
 const requested = process.argv.slice(2);
 const selected = requested.length ? requested : Object.keys(groups);
 if (selected.some(group => !groups[group])) throw new Error('Unknown release test group: ' + selected.join(', '));
 const artifacts = path.resolve(process.env.TEST_ARTIFACT_DIR || path.join(root, 'test-artifacts'));
 fs.mkdirSync(artifacts, { recursive: true });
-const env = { ...process.env, NODE_ENV: 'test', MONGO_URL: '', MONGODB_URI: '', ALLOW_LEGACY_SOCKET_IDENTITY: '1', TEST_ARTIFACT_DIR: artifacts };
+const env = { ...process.env, NODE_ENV: 'test', MONGO_URL: '', MONGODB_URI: '', TEST_MONGO_URL: '', ALLOW_LEGACY_SOCKET_IDENTITY: '1', TEST_ARTIFACT_DIR: artifacts };
 for (const key of ['GAME_DATA_DIR', 'SMOKE_USE_REAL_DATA', 'BASE_URL', 'SLAVE_HISTORY_APP_ROOT', 'PLAY_FLOW_MODES', 'SHOT_DIR', 'APP_ENV']) delete env[key];
 let active;
 function kill() { if (active) { try { process.kill(-active.pid, 'SIGKILL'); } catch (_) {} } }

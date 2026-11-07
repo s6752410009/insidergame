@@ -310,7 +310,7 @@
       <h1 class="pds-title">ป๊อกเด้งท้าเจ้ามือ</h1>
     </div>
     <div class="pds-tools">
-      <button type="button" class="pds-pill pds-pill--icon" id="pdsRulesBtn" aria-haspopup="dialog" aria-label="กติกาโต๊ะ" title="กติกาโต๊ะ">⚙️</button>
+      <button type="button" class="pds-pill pds-pill--icon" id="pdsRulesBtn" aria-haspopup="dialog" aria-label="กติกา" title="กติกา">⚙️</button>
       <button type="button" class="pds-pill" id="pdsRankBtn" aria-haspopup="dialog">อันดับไพ่</button>
       <button type="button" class="pds-pill" id="pdsHowBtn" aria-haspopup="dialog">วิธีเล่น</button>
     </div>
@@ -350,7 +350,7 @@
         <img src="/assets/games/poker/back.svg" alt=""><img src="/assets/games/poker/back.svg" alt=""><img src="/assets/games/poker/back.svg" alt="">
       </div>
       <div class="pds-status">
-        <div class="pds-status-text" id="pdsStatus" role="status" aria-live="polite">กำลังโหลดโต๊ะ…</div>
+        <div class="pds-status-text" id="pdsStatus" role="status" aria-live="polite">กำลังโหลดเกม…</div>
         <div class="pds-status-sub" id="pdsStatusSub"></div>
       </div>
       <div class="pds-pot is-empty" id="pdsPot">
@@ -411,4 +411,4 @@
 <%- include('../partials/footerNav', { back: { href: '/solo', label: 'เกมเดี่ยว' } }) %>
 
 <%- contentFor('script') %>
-<script src="/js/solo/pokdengsolo.js"></script>
+<script src="/static/js/solo/pokdengsolo.js?v=<%= typeof buildId !== 'undefined' ? buildId : 'copy-20261107' %>"></script>

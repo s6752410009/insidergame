@@ -18,7 +18,7 @@ function state(room) { return room.gameState; }
 function seat(room, id) { return state(room).seats.find(p => p.playerId === id); }
 function requireMember(room, id) {
     const p = seat(room, id);
-    if (!p || p.left || !room.players.some(e => e.playerId === id)) throw new Error('คุณไม่ได้อยู่ในโต๊ะนี้');
+    if (!p || p.left || !room.players.some(e => e.playerId === id)) throw new Error('คุณไม่ได้อยู่ในห้องนี้');
     return p;
 }
 function log(s, text, kind = 'action', playerId = null) {
@@ -170,7 +170,7 @@ function nextRound(room,id) {
     requireMember(room,id);
     if(room.admin!==id) throw new Error('หัวห้องเป็นคนเริ่มรอบใหม่');
     if(state(room).phase!=='round-end') throw new Error('รอบนี้ยังไม่จบ');
-    if(state(room).seats.some(p=>p.left)) throw new Error('มีคนออกจากโต๊ะ กลับห้องรอเพื่อจัดผู้เล่นใหม่');
+    if(state(room).seats.some(p=>p.left)) throw new Error('มีคนออกจากเกม กลับห้องรอเพื่อจัดผู้เล่นใหม่');
     startRound(room);
 }
 function legalMoves(room,id) {
@@ -235,7 +235,7 @@ function handlePlayerLeft(room,id) {
     const s=state(room);
     if (!s.matchComplete && ['turn','exchange','round-end'].includes(s.phase)) s.abandoned = { playerId:id, name:p.name, at:new Date().toISOString(), reason:'player-left' };
     s.phase='finished'; s.status='slave_finished'; s.turnId=null; s.phaseEndsAt=null; s.roundAdvanceAt=null; s.returnLobbyAt=null;
-    log(s,p.name+' ออกจากห้อง · กลับห้องรอเพื่อจัดโต๊ะใหม่', 'left', id);
+    log(s,p.name+' ออกจากห้อง · กลับห้องรอเพื่อจัดผู้เล่นใหม่', 'left', id);
 }
 function buildClientState(room,id) {
     const s=state(room),p=seat(room,id),ex=s.exchanges?.find(e=>e.to===id);

@@ -89,7 +89,7 @@ module.exports = getDeps => {
         const { io, addServerLog } = getDeps();
         if (typeof addServerLog !== 'function') return;
         resultId(s);
-        addServerLog(io, 'game', room.roomId, `🃏 สลาฟ ยกเลิกรอบ ${s.round} — ${s.abandoned.name || 'ผู้เล่น'} ออกจากโต๊ะ · ไม่นับสถิติ`, 'warning', {
+        addServerLog(io, 'game', room.roomId, `🃏 สลาฟ ยกเลิกรอบ ${s.round} — ${s.abandoned.name || 'ผู้เล่น'} ออกจากเกม · ไม่นับสถิติ`, 'warning', {
             gameMode:MODE,
             meta:{ event:'game_abort', gameId:s.gameId, round:s.round, reason:s.abandoned.reason,
                 playerId:s.abandoned.playerId, endedAt:s.abandoned.at, debugUsed:!!s.debugUsed, ranked:false, playerCount:s.seats.length }

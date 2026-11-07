@@ -175,7 +175,7 @@
       const self = state.seats.find(p => p.playerId === playerId);
       const ownResult = (state.matchComplete ? state.matchStandings : state.standings)?.find(p => p.playerId === playerId);
       $('slPlayerZone').classList.toggle('is-your-turn', actionable);
-      $('slStatus').textContent = state.matchComplete ? '🏁 จบเกม' : state.phase === 'finished' ? 'โต๊ะหยุดแล้ว' : state.phase === 'round-end' ? 'จบรอบ 1 / 2' : state.phase === 'exchange' ? (exchange ? '↔ คืนไพ่ ' + selected.size + '/' + exchange : '↔ รอแลกไพ่') : state.canPlay ? '✦ ตาคุณ' : self?.passed ? '⏭ ผ่านแล้ว' : self?.place ? '♛ อันดับ ' + self.place : 'ตา ' + (turn?.name || 'ผู้เล่น');
+      $('slStatus').textContent = state.matchComplete ? '🏁 จบเกม' : state.phase === 'finished' ? 'หยุดเล่นแล้ว' : state.phase === 'round-end' ? 'จบรอบ 1 / 2' : state.phase === 'exchange' ? (exchange ? '↔ คืนไพ่ ' + selected.size + '/' + exchange : '↔ รอแลกไพ่') : state.canPlay ? '✦ ตาคุณ' : self?.passed ? '⏭ ผ่านแล้ว' : self?.place ? '♛ อันดับ ' + self.place : 'ตา ' + (turn?.name || 'ผู้เล่น');
       $('slHandMeta').textContent = '♣ ' + hand.length + (selected.size ? ' · ✓ ' + selected.size : '');
       $('slHandMeta').setAttribute('aria-label', 'ไพ่ ' + hand.length + ' ใบ เลือกแล้ว ' + selected.size + ' ใบ');
       const chosenCards = hand.filter(c => selected.has(c.id));

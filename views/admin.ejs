@@ -1228,21 +1228,22 @@
         }
     }
 </style>
+<link rel="stylesheet" href="/static/css/admin-dashboard.css?v=<%= typeof buildId !== 'undefined' ? buildId : 'admin-shell-1' %>">
 
 <div class="admin-container">
     <div class="admin-header">
-        <h1>🛠️ Admin Dashboard</h1>
+        <h1>จัดการ Insider</h1>
         <div class="admin-header-actions">
-            <button type="button" class="admin-inbox-bell" id="adminInboxBell" aria-label="เปิดกล่องข้อความ">
-                🔔<span class="admin-inbox-badge" id="adminInboxBadge">0</span>
+            <button type="button" class="admin-inbox-bell" id="adminInboxBell" aria-label="เปิดกล่องข้อความ" title="เปิดกล่องข้อความ">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM10 21h4"/></svg><span class="admin-inbox-badge" id="adminInboxBadge">0</span>
             </button>
-            <a href="/" class="btn-admin btn-refresh" style="text-decoration: none;">← กลับหน้าแรก</a>
-            <a href="/admin/logout" class="btn-admin btn-danger" style="text-decoration: none; margin-left: 10px;">🚪 ออกจากระบบ</a>
+            <a href="/" class="btn-admin btn-refresh" aria-label="กลับหน้าแรก" title="กลับหน้าแรก"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m11 5-7 7 7 7M4 12h16"/></svg><span class="admin-header-label">กลับหน้าแรก</span></a>
+            <a href="/admin/logout" class="btn-admin btn-danger" aria-label="ออกจากระบบ" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 3H3v18h6M9 12h12m-5-5 5 5-5 5"/></svg><span class="admin-header-label">ออกจากระบบ</span></a>
         </div>
     </div>
     
     <!-- Stats Overview -->
-    <div class="stats-grid">
+    <div class="stats-grid" aria-hidden="true">
         <div class="stat-card players">
             <h3>👥 ผู้เล่นทั้งหมด</h3>
             <div class="stat-value" id="totalPlayers">0</div>
@@ -1260,7 +1261,7 @@
             <div class="stat-value" id="bannedPlayers">0</div>
         </div>
         <div class="stat-card games">
-            <h3>📊 เกมที่เล่นแล้ว</h3>
+            <h3 title="ผลรวมจำนวนรอบที่ผู้เล่นแต่ละคนเล่น">📊 จำนวนครั้งที่เล่นรวม</h3>
             <div class="stat-value" id="totalGames">0</div>
         </div>
         <div class="stat-card real">
@@ -1274,18 +1275,21 @@
     </div>
     
     <!-- Tabs -->
-    <div class="tabs">
-        <button class="tab-btn" data-tab="messages">✉️ ข้อความ <span class="admin-tab-badge" id="adminInboxTabBadge">0</span></button>
-        <button class="tab-btn active" data-tab="players">👥 ผู้เล่น</button>
-        <button class="tab-btn" data-tab="admins">🛡️ Site Admin</button>
-        <button class="tab-btn" data-tab="rooms">🏠 ห้อง</button>
-        <button class="tab-btn" data-tab="banned">🚫 รายการแบน</button>
-        <button class="tab-btn" data-tab="stats">📊 สถิติ</button>
-        <button class="tab-btn" data-tab="logs">📋 Logs</button>
-        <button class="tab-btn" data-tab="worldchat">💬 แชทโลก</button>
-        <button class="tab-btn" data-tab="settings">🔧 ตั้งค่าเกม</button>
-        <button class="tab-btn" data-tab="system">⚙️ ระบบ</button>
-    </div>
+    <nav class="tabs" aria-label="เมนูแอดมิน">
+        <button type="button" class="tab-btn active" data-tab="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>ภาพรวม</span></button>
+        <button type="button" class="tab-btn" data-tab="players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v2"/></svg><span>ผู้เล่น</span></button>
+        <button type="button" class="tab-btn" data-tab="messages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg><span>ข้อความ</span> <span class="admin-tab-badge" id="adminInboxTabBadge">0</span></button>
+        <button type="button" class="tab-btn" data-tab="admins"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="m8 12 3 3 5-6"/></svg><span>ผู้ดูแล</span></button>
+        <button type="button" class="tab-btn" data-tab="rooms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m3 10 9-7 9 7v11H3zM9 21v-8h6v8"/></svg><span>ห้องเกม</span></button>
+        <button type="button" class="tab-btn" data-tab="banned"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></svg><span>รายการแบน</span></button>
+        <button type="button" class="tab-btn" data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 21V11h4v10m4 0V3h4v18m4 0v-7M2 21h20"/></svg><span>สถิติผู้เล่น</span></button>
+        <button type="button" class="tab-btn" data-tab="logs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg><span>บันทึกกิจกรรม</span></button>
+        <button type="button" class="tab-btn" data-tab="worldchat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M21 11a8 8 0 0 1-8 8H8l-5 3V7a4 4 0 0 1 4-4h6a8 8 0 0 1 8 8Z"/><path d="M7 8h9M7 12h6"/></svg><span>แชทโลก</span></button>
+        <button type="button" class="tab-btn" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></svg><span>ตั้งค่าเกม</span></button>
+        <button type="button" class="tab-btn" data-tab="system"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6h.01M7 17h.01M11 6h6M11 17h6"/></svg><span>ระบบ</span></button>
+    </nav>
+
+    <div class="tab-content active" id="tab-overview"><%- include('partials/adminInsights', {embedded:true}) %></div>
 
     <div class="tab-content" id="tab-messages">
         <div class="panel">
@@ -1324,7 +1328,7 @@
     </div>
 
     <!-- Players Tab -->
-    <div class="tab-content active" id="tab-players">
+    <div class="tab-content" id="tab-players">
         <div class="panel">
             <div class="panel-header">
                 <h2>👥 จัดการผู้เล่น</h2>
@@ -1336,14 +1340,14 @@
                             <option value="real">ผู้เล่นจริง</option>
                             <option value="guest-active">guest ที่เคยเล่น</option>
                             <option value="guest-idle">guest อัตโนมัติ</option>
-                            <option value="ghost">ghost/cleanup</option>
+                            <option value="ghost">บัญชีรอตรวจสอบ</option>
                         </select>
                         <select id="playerStatusFilter" class="search-box" style="width: auto;">
                             <option value="all">ทุกสถานะ</option>
                             <option value="online">ออนไลน์</option>
                             <option value="offline">ออฟไลน์</option>
                             <option value="banned">ถูกแบน</option>
-                            <option value="cleanup">cleanup candidate</option>
+                            <option value="cleanup">รอตรวจสอบ</option>
                         </select>
                         <select id="playerGoogleFilter" class="search-box" style="width: auto;" aria-label="กรองตามการผูก Google">
                             <option value="all">Google: ทั้งหมด</option>
@@ -1351,10 +1355,12 @@
                             <option value="unlinked">ยังไม่ผูก Google</option>
                         </select>
                     </div>
+                    <details class="admin-more-actions"><summary>จัดการข้อมูลผู้เล่น</summary><div class="admin-more-actions-body">
                     <button class="btn-admin btn-warning" onclick="previewGhostCleanup()">🔎 พรีวิว cleanup</button>
                     <button class="btn-admin btn-danger" onclick="runGhostCleanup()">🧹 ล้าง ghost</button>
                     <button class="btn-admin btn-danger" onclick="deleteSelectedPlayers()" id="btnDeleteSelected" style="display: none;">🗑️ ลบที่เลือก (<span id="selectedPlayerCount">0</span>)</button>
                     <button class="btn-admin btn-danger" onclick="deleteAllPlayers()">💥 ลบทั้งหมด</button>
+                    </div></details>
                     <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
                 </div>
             </div>
@@ -1372,7 +1378,7 @@
                     <div class="value" id="summaryGuestIdlePlayers">0</div>
                 </div>
                 <div class="player-summary-card">
-                    <h4>Cleanup Candidates</h4>
+                    <h4>บัญชีรอตรวจสอบ</h4>
                     <div class="value" id="summaryCleanupCandidates">0</div>
                 </div>
                 <div class="player-summary-card">
@@ -1381,7 +1387,7 @@
                     <div class="last-seen" id="summaryGooglePhoto">ใช้รูป Google 0 คน</div>
                 </div>
             </div>
-            <div class="cleanup-note" id="cleanupSummaryText">ระบบจะมอง ghost เป็น guest ชื่ออัตโนมัติที่ยังไม่เคยเล่น ไม่มีห้องค้าง และยังใช้โปรไฟล์ default</div>
+            <details class="admin-cleanup-info"><summary>เกณฑ์คัดกรองบัญชีที่ไม่ได้ใช้งาน</summary><div class="cleanup-note" id="cleanupSummaryText">ระบบจะมอง ghost เป็น guest ชื่ออัตโนมัติที่ยังไม่เคยเล่น ไม่มีห้องค้าง และยังใช้โปรไฟล์ default</div></details>
             <div class="table-meta" id="playersTableMeta">กำลังโหลดข้อมูลผู้เล่น...</div><p class="table-scroll-hint">← เลื่อนซ้าย–ขวาเพื่อดูตารางทั้งหมด →</p>
             
             <div class="table-container">
@@ -1393,7 +1399,7 @@
                             <th class="sortable" data-sort="category" style="cursor:pointer;" onclick="setSort('category')">ประเภท <span class="sort-icon"></span></th>
                             <th class="sortable" data-sort="id" style="cursor:pointer;" onclick="setSort('id')">Player ID <span class="sort-icon"></span></th>
                             <th class="sortable" data-sort="status" style="cursor:pointer;" onclick="setSort('status')">สถานะ <span class="sort-icon"></span></th>
-                            <th class="sortable" data-sort="games" style="cursor:pointer;" onclick="setSort('games')">เกม <span class="sort-icon"></span></th>
+                            <th class="sortable" data-sort="games" style="cursor:pointer;" onclick="setSort('games')">เล่น <span class="sort-icon"></span></th>
                             <th class="sortable" data-sort="lastSeen" style="cursor:pointer;" onclick="setSort('lastSeen')">ออนไลน์ล่าสุด <span class="sort-icon"></span></th>
                             <th>จัดการ</th>
                         </tr>
@@ -1542,32 +1548,34 @@
                 <div class="panel-actions">
                     <div class="filters-row">
                         <input type="text" class="search-box" id="searchStats" placeholder="🔍 ค้นหาสถิติผู้เล่น">
-                        <select id="statsModeFilter" class="search-box" style="width: auto;">
-                            <option value="all">ทุกโหมด</option>
-                            <option value="has-insider">มี Insider</option>
-                            <option value="has-werewolf">มี Werewolf</option>
-                            <option value="has-blackmarket">มี Black Market</option>
-                            <option value="has-spyfall">มี Spyfall</option>
-                            <option value="has-undercover">มีคำใครไม่เหมือน</option>
-                            <option value="has-coup">มี Coup</option>
-                            <option value="has-avalon">มี อวาลอน</option>
-                            <option value="has-liar">มีไพ่โกหก</option>
-                            <option value="has-poker5">มีไพ่ 5 ใบ</option>
-                            <option value="has-poker4">มีสี่ใบเก</option>
-                            <option value="has-pokdeng">มีป๊อกเด้ง</option>
-                            <option value="has-codenames">มีสายลับคำใบ้</option>
-                            <option value="has-wavelength">มีคลื่นความคิด</option>
-                            <option value="has-drawguess">มีวาดแล้วทาย</option>
-                            <option value="has-colorcards">มีไพ่ทิ้งสี</option>
-                            <option value="has-setthi">มีเศรษฐี</option>
-                            <option value="has-slave">มีสลาฟ</option>
+                        <select id="statsModeFilter" class="search-box" style="width: auto;" aria-label="ผู้เล่นที่เคยเล่นเกม">
+                            <option value="all">ผู้เล่นทั้งหมด</option>
+                            <option value="has-insider">เคยเล่น Insider</option>
+                            <option value="has-werewolf">เคยเล่น Werewolf</option>
+                            <option value="has-blackmarket">เคยเล่น Black Market</option>
+                            <option value="has-spyfall">เคยเล่น Spyfall</option>
+                            <option value="has-undercover">เคยเล่นคำใครไม่เหมือน</option>
+                            <option value="has-coup">เคยเล่น Coup</option>
+                            <option value="has-avalon">เคยเล่น อวาลอน</option>
+                            <option value="has-liar">เคยเล่นไพ่โกหก</option>
+                            <option value="has-poker5">เคยเล่นไพ่ 5 ใบ</option>
+                            <option value="has-poker4">เคยเล่นสี่ใบเก</option>
+                            <option value="has-pokdeng">เคยเล่นป๊อกเด้ง</option>
+                            <option value="has-codenames">เคยเล่นสายลับคำใบ้</option>
+                            <option value="has-wavelength">เคยเล่นคลื่นความคิด</option>
+                            <option value="has-drawguess">เคยเล่นวาดแล้วทาย</option>
+                            <option value="has-colorcards">เคยเล่นไพ่ทิ้งสี</option>
+                            <option value="has-setthi">เคยเล่นเศรษฐี</option>
+                            <option value="has-slave">เคยเล่นสลาฟ</option>
                         </select>
                     </div>
+                    <details class="admin-more-actions"><summary>จัดการข้อมูลสถิติ</summary><div class="admin-more-actions-body">
                     <button class="btn-admin btn-warning" onclick="resetSeason()" id="resetSeasonBtn" style="display:none;">🏆 ปิด Season / รีแรงค์</button>
                     <button class="btn-admin btn-primary" onclick="openImportSeason()">🗂️ นำเข้า Season ย้อนหลัง</button>
                     <button class="btn-admin btn-danger" onclick="clearAllStats()" id="clearAllStatsBtn" style="display:none;">🗑️ ลบทั้งหมด</button>
                     <button class="btn-admin btn-warning" onclick="deleteSelectedStats()" id="deleteSelectedBtn" style="display:none;">🗑️ ลบที่เลือก (<span id="selectedStatsCount">0</span>)</button>
-                    <button class="btn-admin btn-primary" onclick="exportStats()">📥 Export CSV</button>
+                    </div></details>
+                    <button class="btn-admin btn-primary" onclick="exportStats()">📥 ดาวน์โหลด CSV</button>
                     <button class="btn-admin btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
                 </div>
             </div>
@@ -1579,23 +1587,23 @@
                         <tr>
                             <th style="width:40px;"><input type="checkbox" id="selectAllStats" onchange="toggleSelectAllStats(this)"></th>
                             <th class="sortable stats-sortable" data-sort="name" style="cursor:pointer;" onclick="setStatsSort('name')">ผู้เล่น <span class="sort-icon"></span></th>
-                            <th class="sortable stats-sortable" data-sort="games" style="cursor:pointer;" onclick="setStatsSort('games')">เกม <span class="sort-icon"></span></th>
+                            <th class="sortable stats-sortable" data-sort="games" style="cursor:pointer;" onclick="setStatsSort('games')">เล่น <span class="sort-icon"></span></th>
                             <th class="sortable stats-sortable" data-sort="wins" style="cursor:pointer;" onclick="setStatsSort('wins')">ชนะ <span class="sort-icon"></span></th>
                             <th class="sortable stats-sortable" data-sort="losses" style="cursor:pointer;" onclick="setStatsSort('losses')">แพ้ <span class="sort-icon"></span></th>
-                            <th class="sortable stats-sortable" data-sort="winRate" style="cursor:pointer;" onclick="setStatsSort('winRate')">Win% <span class="sort-icon"></span></th>
-                            <th>แยกตามโหมด</th>
-                            <th>Insider</th>
-                            <th>Werewolf</th>
-                            <th>Black Market</th>
-                            <th>จัดการ</th>
+                            <th class="sortable stats-sortable" data-sort="winRate" style="cursor:pointer;" onclick="setStatsSort('winRate')">ชนะ % <span class="sort-icon"></span></th>
+                                                        <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="statsTable">
-                        <tr><td colspan="11" class="empty-message">กำลังโหลด...</td></tr>
+                        <tr><td colspan="7" class="empty-message">กำลังโหลด...</td></tr>
                     </tbody>
                 </table>
             </div>
             <nav class="table-pager" id="statsPager" aria-label="เปลี่ยนหน้า" hidden></nav>
+            <section class="admin-stat-detail" id="playerStatsDetail" aria-labelledby="playerStatsDetailTitle" hidden>
+                <div class="admin-stat-detail-head"><h3 id="playerStatsDetailTitle" tabindex="-1">รายละเอียดผู้เล่น</h3><button type="button" class="action-btn" id="closePlayerStatsDetail" aria-label="ปิดรายละเอียด">ปิด</button></div>
+                <div id="playerStatsDetailBody" aria-live="polite"></div>
+            </section>
         </div>
     </div>
     
@@ -1701,6 +1709,7 @@
                 <h2>⚡ Quick Actions</h2>
             </div>
             <div class="quick-actions">
+                <details class="admin-more-actions"><summary>ล้างข้อมูลห้องเกม</summary><div class="admin-more-actions-body">
                 <button class="quick-action-btn warning" onclick="clearEmptyRooms()">
                     <span class="icon">🧹</span>
                     ล้างห้องว่าง
@@ -1709,6 +1718,7 @@
                     <span class="icon">💥</span>
                     ล้างห้องทั้งหมด
                 </button>
+                </div></details>
                 <button class="quick-action-btn success" onclick="exportAllData()">
                     <span class="icon">📥</span>
                     Export ข้อมูลทั้งหมด
@@ -1805,75 +1815,6 @@ $(function() {
         { id: 'doubleAgent', label: 'สองหน้า', emoji: '🃏' }
     ];
 
-    function renderModeSummary(modeStats) {
-        const insider = modeStats?.insider || {};
-        const werewolf = modeStats?.werewolf || {};
-        const blackmarket = modeStats?.blackmarket || {};
-        const spyfall = modeStats?.spyfall || {};
-        const undercover = modeStats?.undercover || {};
-        const coup = modeStats?.coup || {};
-        const avalon = modeStats?.avalon || {};
-        const liar = modeStats?.liar || {};
-        const poker5 = modeStats?.poker5 || {};
-        const poker4 = modeStats?.poker4 || {};
-        const pokdeng = modeStats?.pokdeng || {};
-        const codenames = modeStats?.codenames || {};
-        const wavelength = modeStats?.wavelength || {};
-        const drawguess = modeStats?.drawguess || {};
-        const colorcards = modeStats?.colorcards || {};
-        const setthi = modeStats?.setthi || {};
-        const slave = modeStats?.slave || {};
-        return `
-            <div style="display:grid; gap:6px; min-width:170px;">
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🎯 Insider ${insider.games || 0} เกม</span><span class="status-badge status-online">🏆 ${insider.wins || 0}W</span><span class="status-badge status-offline">💀 ${insider.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">🐺 Werewolf ${werewolf.games || 0} เกม</span><span class="status-badge status-online">🏆 ${werewolf.wins || 0}W</span><span class="status-badge status-offline">💀 ${werewolf.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">🎩 Black Market ${blackmarket.games || 0} เกม</span><span class="status-badge status-online">🏆 ${blackmarket.wins || 0}W</span><span class="status-badge status-offline">💀 ${blackmarket.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🕵️ Spyfall ${spyfall.games || 0} เกม</span><span class="status-badge status-online">🏆 ${spyfall.wins || 0}W</span><span class="status-badge status-offline">💀 ${spyfall.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🫥 คำใครไม่เหมือน ${undercover.games || 0} เกม</span><span class="status-badge status-online">🏆 ${undercover.wins || 0}W</span><span class="status-badge status-offline">💀 ${undercover.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">👑 Coup ${coup.games || 0} เกม</span><span class="status-badge status-online">🏆 ${coup.wins || 0}W</span><span class="status-badge status-offline">💀 ${coup.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🏰 อวาลอน ${avalon.games || 0} เกม</span><span class="status-badge status-online">🏆 ${avalon.wins || 0}W</span><span class="status-badge status-offline">💀 ${avalon.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">🃏 ไพ่โกหก ${liar.games || 0} เกม</span><span class="status-badge status-online">🏆 ${liar.wins || 0}W</span><span class="status-badge status-offline">💀 ${liar.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">♠ ไพ่ 5 ใบ ${poker5.games || 0} เกม</span><span class="status-badge status-online">🏆 ${poker5.wins || 0}W</span><span class="status-badge status-offline">💀 ${poker5.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-banned">♦ สี่ใบเก ${poker4.games || 0} เกม</span><span class="status-badge status-online">🏆 ${poker4.wins || 0}W</span><span class="status-badge status-offline">💀 ${poker4.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">🎴 ป๊อกเด้ง ${pokdeng.games || 0} เกม</span><span class="status-badge status-online">🏆 ${pokdeng.wins || 0}W</span><span class="status-badge status-offline">💀 ${pokdeng.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🕵️ สายลับคำใบ้ ${codenames.games || 0} เกม</span><span class="status-badge status-online">🏆 ${codenames.wins || 0}W</span><span class="status-badge status-offline">💀 ${codenames.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">📡 คลื่นความคิด ${wavelength.games || 0} เกม</span><span class="status-badge status-online">🏆 ${wavelength.wins || 0}W</span><span class="status-badge status-offline">💀 ${wavelength.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-online">🎨 วาดแล้วทาย ${drawguess.games || 0} เกม</span><span class="status-badge status-online">🏆 ${drawguess.wins || 0}W</span><span class="status-badge status-offline">💀 ${drawguess.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-playing">🃏 ไพ่ทิ้งสี ${colorcards.games || 0} เกม</span><span class="status-badge status-online">🏆 ${colorcards.wins || 0}W</span><span class="status-badge status-offline">💀 ${colorcards.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">💰 เศรษฐี ${setthi.games || 0} เกม</span><span class="status-badge status-online">🏆 ${setthi.wins || 0}W</span><span class="status-badge status-offline">💀 ${setthi.losses || 0}L</span></div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;"><span class="status-badge status-waiting">♠ สลาฟ ${slave.games || 0} รอบ</span><span class="status-badge status-online">👑 คิง ${slave.wins || 0}</span><span class="status-badge status-offline">อันดับ 2–4 ${slave.losses || 0}</span></div>
-            </div>
-        `;
-    }
-
-    function renderInsiderRoleSummary(roleStats) {
-        return `
-            <div style="display:flex; flex-wrap:wrap; gap:6px; min-width:150px;">
-                <span class="status-badge status-playing">👑 GM ${roleStats?.gameMasterCount || 0}</span>
-                <span class="status-badge status-banned">🔴 ทรยศ ${roleStats?.traitorCount || 0}</span>
-                <span class="status-badge status-online">🔵 พลเมือง ${roleStats?.citizenCount || 0}</span>
-            </div>
-        `;
-    }
-
-    function renderWerewolfRoleSummary(roleStats) {
-        const nonZeroRoles = WEREWOLF_ROLE_META.filter(role => Number(roleStats?.werewolf?.[role.id] || 0) > 0);
-        if (!nonZeroRoles.length) {
-            return '<span style="color:#888;">ยังไม่มีสถิติ Werewolf</span>';
-        }
-
-        return `<div style="display:flex; flex-wrap:wrap; gap:6px; min-width:220px;">${nonZeroRoles.map(role => `<span class="status-badge status-guest">${role.emoji} ${role.label} ${roleStats.werewolf[role.id] || 0}</span>`).join('')}</div>`;
-    }
-
-    function renderBlackMarketRoleSummary(roleStats, winByRole) {
-        const nonZeroRoles = BLACKMARKET_ROLE_META.filter(role => Number(roleStats?.blackmarket?.[role.id] || 0) > 0);
-        if (!nonZeroRoles.length) {
-            return '<span style="color:#888;">ยังไม่มีสถิติ Black Market</span>';
-        }
-
-        return `<div style="display:flex; flex-wrap:wrap; gap:6px; min-width:240px;">${nonZeroRoles.map(role => `<span class="status-badge status-banned">${role.emoji} ${role.label} ${roleStats.blackmarket[role.id] || 0} <small style="opacity:0.85;">W${winByRole?.blackmarket?.[role.id] || 0}</small></span>`).join('')}</div>`;
-    }
-    
     // Admin token จาก server (ใช้ re-authenticate ได้ภายใน 60 วินาที)
     const adminToken = '<%= adminToken %>';
 
@@ -1907,7 +1848,7 @@ $(function() {
     authenticateAdminSocket();
     
     // Tab switching
-    $('.tab-btn').on('click', function() {
+    $('.tab-btn[data-tab]').on('click', function() {
         const tab = $(this).data('tab');
         $('.tab-btn').removeClass('active');
         $(this).addClass('active');
@@ -2464,12 +2405,13 @@ $(function() {
         $table.empty();
 
         const filteredStats = result.rows || [];
+        if (statDetailPlayerId && !filteredStats.some(stat => stat.playerId === statDetailPlayerId)) closePlayerStatsDetail(false);
         renderPager('#statsPager', result, function(page) {
             dashboardState.stats.page = page;
             fetchStats();
         });
         if (result.total === 0) {
-            $table.html('<tr><td colspan="11" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
+            $table.html('<tr><td colspan="7" class="empty-message">ไม่มีข้อมูลสถิติ</td></tr>');
             $('#statsTableMeta').text('ไม่มีข้อมูลสถิติ');
             $('#selectAllStats').prop('checked', false);
             updateSelectedStatsCount();
@@ -2477,7 +2419,7 @@ $(function() {
         }
 
         if (filteredStats.length === 0) {
-            $table.html('<tr><td colspan="11" class="empty-message">ไม่พบข้อมูลสถิติที่ตรงเงื่อนไข</td></tr>');
+            $table.html('<tr><td colspan="7" class="empty-message">ไม่พบข้อมูลสถิติที่ตรงเงื่อนไข</td></tr>');
             $('#statsTableMeta').text(pageRangeText(result, 'รายการ'));
             $('#selectAllStats').prop('checked', false);
             updateSelectedStatsCount();
@@ -2487,26 +2429,36 @@ $(function() {
         filteredStats.forEach(function(stat) {
             const winRate = stat.totalGames > 0 ? Math.round((stat.wins / stat.totalGames) * 100) : 0;
             const row = `
-                <tr data-player-id="${stat.playerId}">
-                    <td><input type="checkbox" class="stat-checkbox" data-player-id="${stat.playerId}" data-player-name="${escapeHtml(stat.playerName || 'Unknown')}" ${dashboardState.stats.selectedIds.has(stat.playerId) ? 'checked' : ''}></td>
-                    <td>${escapeHtml(stat.playerName || 'Unknown')}</td>
+                <tr data-player-id="${escapeHtml(stat.playerId)}">
+                    <td><input type="checkbox" class="stat-checkbox" data-player-id="${escapeHtml(stat.playerId)}" data-player-name="${escapeHtml(stat.playerName || 'Unknown')}" ${dashboardState.stats.selectedIds.has(stat.playerId) ? 'checked' : ''}></td>
+                    <td class="stat-player-name"><span>${escapeHtml(stat.playerName || 'ไม่ระบุชื่อ')}</span></td>
                     <td>${stat.totalGames || 0}</td>
-                    <td style="color: #2ecc71;">${stat.wins || 0}</td>
-                    <td style="color: #e74c3c;">${stat.losses || 0}</td>
-                    <td style="color: ${winRate >= 50 ? '#2ecc71' : '#e74c3c'};">${winRate}%</td>
-                    <td>${renderModeSummary(stat.modeStats)}</td>
-                    <td>${renderInsiderRoleSummary(stat.roleStats)}</td>
-                    <td>${renderWerewolfRoleSummary(stat.roleStats)}</td>
-                    <td>${renderBlackMarketRoleSummary(stat.roleStats, stat.winByRole)}</td>
-                    <td>
-                        <button class="action-btn edit" onclick="editPlayerStats('${stat.playerId}')">แก้ไข</button>
-                        <button class="action-btn kick" onclick="deletePlayerStats('${stat.playerId}', '${escapeHtml(stat.playerName)}')">ลบ</button>
+                    <td class="stat-wins">${stat.wins || 0}</td>
+                    <td class="stat-losses">${stat.losses || 0}</td>
+                    <td class="${winRate >= 50 ? 'stat-wins' : 'stat-losses'}">${winRate}%</td>
+                    <td class="stat-actions"><div class="admin-row-actions">
+                        <button type="button" class="action-btn info" data-stat-action="details" aria-label="ดูรายละเอียด" title="ดูรายละเอียด" aria-controls="playerStatsDetail" aria-expanded="false">${adminStatIcon('info')}</button>
+                        <button type="button" class="action-btn edit" data-stat-action="edit" aria-label="แก้ไขสถิติ" title="แก้ไขสถิติ">${adminStatIcon('edit')}</button>
+                        <button type="button" class="action-btn kick" data-stat-action="delete" aria-label="ลบสถิติ" title="ลบสถิติ">${adminStatIcon('delete')}</button>
+                    </div>
                     </td>
                 </tr>
             `;
-            $table.append(row);
+            const $row = $(row);
+            $row.find('[data-stat-action]').on('click', function() {
+                const action = this.getAttribute('data-stat-action');
+                if (action === 'details') showPlayerStatsDetail(stat.playerId, this);
+                else if (action === 'edit') editPlayerStats(stat.playerId);
+                else if (action === 'delete') deletePlayerStats(stat.playerId, stat.playerName);
+            });
+            $table.append($row);
         });
 
+        if (statDetailPlayerId) {
+            const row = Array.from(document.querySelectorAll('#statsTable tr[data-player-id]')).find(row => row.dataset.playerId === statDetailPlayerId);
+            statDetailTrigger = row?.querySelector('[data-stat-action="details"]') || null;
+            statDetailTrigger?.setAttribute('aria-expanded', 'true');
+        }
         $('#statsTableMeta').text(pageRangeText(result, 'รายการ'));
         $('#statsTable .stat-checkbox').on('change', function() {
             const playerId = $(this).data('player-id');
@@ -2522,6 +2474,69 @@ $(function() {
         $('#selectAllStats').prop('checked', visibleCheckboxes.length > 0 && visibleCheckboxes.filter(':checked').length === visibleCheckboxes.length);
     }
     
+    function adminStatIcon(name) {
+        const paths = {
+            info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
+            edit: '<path d="m16 3 5 5-12 12-6 1 1-6zM13 6l5 5"/>',
+            delete: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>'
+        };
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">${paths[name]}</svg>`;
+    }
+
+    let statDetailRequest = 0;
+    let statDetailTrigger = null;
+    let statDetailPlayerId = null;
+    function closePlayerStatsDetail(restoreFocus) {
+        statDetailRequest += 1;
+        $('#playerStatsDetail').prop('hidden', true);
+        if (statDetailTrigger) {
+            statDetailTrigger.setAttribute('aria-expanded', 'false');
+            if (restoreFocus && statDetailTrigger.isConnected) statDetailTrigger.focus();
+        }
+        statDetailTrigger = null;
+        statDetailPlayerId = null;
+    }
+    $('#closePlayerStatsDetail').on('click', function() { closePlayerStatsDetail(true); });
+
+    function showPlayerStatsDetail(playerId, trigger) {
+        closePlayerStatsDetail(false);
+        const request = statDetailRequest;
+        statDetailTrigger = trigger;
+        statDetailPlayerId = playerId;
+        trigger.setAttribute('aria-expanded', 'true');
+        $('#playerStatsDetailTitle').text('รายละเอียดผู้เล่น');
+        $('#playerStatsDetailBody').text('กำลังโหลด…');
+        $('#playerStatsDetail').prop('hidden', false);
+        socket.emit('admin_getPlayerStat', { playerId }, function(response) {
+            if (request !== statDetailRequest) return;
+            if (!response?.success || !response.stat) {
+                $('#playerStatsDetailBody').text(response?.error || 'โหลดรายละเอียดไม่สำเร็จ');
+                return;
+            }
+            const stat = response.stat;
+            const labels = { insider:'Insider', werewolf:'หมาป่า', blackmarket:'ตลาดมืด', spyfall:'Spyfall', undercover:'คำใครไม่เหมือน', coup:'Coup', avalon:'อวาลอน', liar:'ไพ่โกหก', poker5:'ไพ่ 5 ใบ', poker4:'สี่ใบเก', pokdeng:'ป๊อกเด้ง', codenames:'สายลับคำใบ้', wavelength:'คลื่นความคิด', drawguess:'วาดแล้วทาย', colorcards:'ไพ่ทิ้งสี', setthi:'เศรษฐี', slave:'สลาฟ' };
+            const count = value => Math.max(0, Number(value) || 0).toLocaleString('th-TH');
+            const played = Object.entries(stat.modeStats || {}).filter(([, value]) => Number(value?.games) > 0);
+            $('#playerStatsDetailTitle').text(stat.playerName || 'ไม่ระบุชื่อ');
+            const roles = [];
+            [['gameMasterCount', 'ผู้ดำเนินเกม'], ['traitorCount', 'Insider'], ['citizenCount', 'พลเมือง']].forEach(([key, label]) => {
+                if (Number(stat.roleStats?.[key]) > 0) roles.push(['Insider', label, stat.roleStats[key], key === 'traitorCount' ? stat.winByRole?.winAsTraitor : key === 'citizenCount' ? stat.winByRole?.winAsCitizen : null]);
+            });
+            [['werewolf', WEREWOLF_ROLE_META], ['blackmarket', BLACKMARKET_ROLE_META]].forEach(([mode, meta]) => {
+                Object.entries(stat.roleStats?.[mode] || {}).forEach(([role, value]) => {
+                    if (Number(value) > 0) roles.push([labels[mode], meta.find(item => item.id === role)?.label || role, value, stat.winByRole?.[mode]?.[role]]);
+                });
+            });
+            const roleRows = roles.map(([mode, role, value, wins]) => `<tr><th scope="row">${escapeHtml(mode)}</th><td>${escapeHtml(role)}</td><td>${count(value)}</td><td>${wins == null ? '—' : count(wins)}</td></tr>`).join('');
+            const roleDetails = roles.length ? `<details class="admin-stat-roles"><summary>จำนวนครั้งตามบทบาท</summary><div class="table-container"><table><thead><tr><th>เกม</th><th>บทบาท</th><th>ครั้ง</th><th>ชนะ</th></tr></thead><tbody>${roleRows}</tbody></table></div></details>` : '';
+            const rows = played.map(([mode, value]) => `<tr><th scope="row">${escapeHtml(labels[mode] || mode)}</th><td>${count(value.games)}</td><td>${count(value.wins)}</td><td>${count(value.losses)}</td></tr>`).join('');
+            $('#playerStatsDetailBody').html(`<p class="admin-stat-total">เล่นทั้งหมด <strong>${count(stat.totalGames)}</strong> ครั้ง</p>`
+                + (played.length ? `<div class="table-container"><table class="admin-mode-table"><thead><tr><th>เกม</th><th>เล่น</th><th>ชนะ</th><th>แพ้</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p>ยังไม่มีรอบที่เล่น</p>') + roleDetails);
+        });
+        document.getElementById('playerStatsDetailTitle').focus({ preventScroll: true });
+        document.getElementById('playerStatsDetail').scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    }
+
     // ========== Admin Actions ==========
     
     window.setPlayerApproval = function(playerId, approved, playerName) {
@@ -3050,7 +3065,7 @@ $(function() {
                     </div>
                     <div style="margin-top:16px; padding:14px; border-radius:12px; background:rgba(245,200,107,0.1); border:1px solid rgba(245,200,107,0.25);">
                         <div style="font-weight:700; color:#fde68a; margin-bottom:6px;">♠ สลาฟ</div>
-                        <p style="color:#bbb; margin:0 0 10px; font-size:.85em;">นับต่อรอบที่จบ · คิงเป็นผู้ชนะ · ไม่รวมโต๊ะที่มีบอทและรอบทดสอบ /m</p>
+                        <p style="color:#bbb; margin:0 0 10px; font-size:.85em;">นับเมื่อเล่นครบ 2 รอบ · คะแนนรวมสูงสุดชนะ · ไม่นับเกมบอทและเกมทดสอบ</p>
                         <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
                             <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">รอบ</label><input type="number" id="editModeSlaveGames" class="swal2-input" value="${slaveMode.games || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
                             <div><label style="display:block; margin-bottom:5px; color:#888; font-size:0.85em;">คิง</label><input type="number" id="editModeSlaveWins" class="swal2-input" value="${slaveMode.wins || 0}" min="0" style="margin:0; width:100%; box-sizing:border-box;"></div>
@@ -3203,7 +3218,7 @@ $(function() {
     window.deletePlayerStats = function(playerId, playerName) {
         Swal.fire({
             title: '🗑️ ลบสถิติ',
-            html: `ต้องการลบสถิติของ <strong>${playerName}</strong>?<br><span style="color:#e74c3c;">ข้อมูลจะถูกลบถาวร!</span>`,
+            html: `ต้องการลบสถิติของ <strong>${escapeHtml(playerName)}</strong>?<br><span style="color:#e74c3c;">ข้อมูลจะถูกลบถาวร!</span>`,
             showCancelButton: true,
             confirmButtonText: 'ลบ',
             cancelButtonText: 'ยกเลิก',
@@ -3231,7 +3246,7 @@ $(function() {
             title: '🗂️ นำเข้า Season ย้อนหลัง',
             html:
                 '<div style="text-align:left; color:#ccc; font-size:0.9em;">' +
-                '<p style="margin:0 0 8px;">วางรายชื่อ <b>บรรทัดละคน</b> รูปแบบ: <code>ชื่อ, ชนะ, เกมทั้งหมด</code> (เกมไม่ใส่ก็ได้)</p>' +
+                '<p style="margin:0 0 8px;">วางรายชื่อ <b>บรรทัดละคน</b> รูปแบบ: <code>ชื่อ, ชนะ, รอบทั้งหมด</code> (จำนวนรอบไม่ใส่ก็ได้)</p>' +
                 '<div style="display:flex; gap:8px; margin-bottom:8px;">' +
                 '<input id="impSeasonNum" type="number" min="1" value="1" class="swal2-input" style="width:110px; margin:0;" placeholder="เลข season">' +
                 '<input id="impSetCurrent" type="number" min="2" value="2" class="swal2-input" style="width:150px; margin:0;" placeholder="season ปัจจุบัน">' +

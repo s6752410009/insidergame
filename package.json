@@ -181,7 +181,9 @@
     "smoke:slave:history:e2e": "node scripts/smoke-slave-history-e2e.js",
     "smoke:profile:browser": "node scripts/smoke-player-profile-browser.js",
     "test:release": "node scripts/test-release.js",
-    "deploy:check": "node scripts/deploy-readiness.js"
+    "deploy:check": "node scripts/deploy-readiness.js",
+    "smoke:admin:analytics": "node scripts/smoke-admin-analytics.js",
+    "smoke:admin:insights:browser": "node scripts/smoke-admin-insights-browser.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

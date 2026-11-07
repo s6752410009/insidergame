@@ -459,7 +459,7 @@ function startHand(room) {
     const previousDealer = state.dealerId;
     const dealer = pickDealer(room);
     if (!dealer) {
-        return finishTable(room, 'ไม่มีใครเป็นเจ้ามือต่อได้ — จบโต๊ะ');
+        return finishTable(room, 'ไม่มีใครเป็นเจ้ามือต่อได้ — จบเกม');
     }
     state.dealerId = dealer.playerId;
     // คนที่พักโต๊ะ (หมดเวลาลงเดิมพันติดกัน) ข้ามมือไปเลย ไม่ต้องรอนาฬิกา
@@ -470,7 +470,7 @@ function startHand(room) {
         }
     });
     if (!state.players.some(p => couldBet(room, p))) {
-        return finishTable(room, 'เหลือแค่เจ้ามือ — จบโต๊ะ');
+        return finishTable(room, 'เหลือแค่เจ้ามือ — จบเกม');
     }
 
     state.handNumber += 1;
@@ -481,7 +481,7 @@ function startHand(room) {
         pushFx(room, { kind: 'dealer', playerId: dealer.playerId });
     }
     setPhase(room, 'bet', BET_MS);
-    pushHistory(room, '🪙', `มือที่ ${state.handNumber} — ลงเดิมพัน (${MIN_BET}–${rulesOf(room).maxBet})`, 'bet');
+    pushHistory(room, '🪙', `รอบที่ ${state.handNumber} — ลงเดิมพัน (${MIN_BET}–${rulesOf(room).maxBet})`, 'bet');
     pushFx(room, { kind: 'bet-open', handNumber: state.handNumber });
     return state;
 }
@@ -502,7 +502,7 @@ function startGame(room) {
             host.buyIn = DEALER_BANK;
         }
     }
-    pushHistory(room, '🎬', `เปิดโต๊ะป๊อกเด้ง — ชิปในโต๊ะคนละ ${START_CHIPS}${state.rotateDealer ? ' · หมุนเจ้ามือทุกตา' : ` · เจ้ามือถือ ${DEALER_BANK}`}`);
+    pushHistory(room, '🎬', `เริ่มเกมป๊อกเด้ง — ชิปในเกมคนละ ${START_CHIPS}${state.rotateDealer ? ' · หมุนเจ้ามือทุกตา' : ` · เจ้ามือถือ ${DEALER_BANK}`}`);
     startHand(room);
     return room.gameState;
 }
@@ -512,7 +512,7 @@ function startGame(room) {
 function assertCanAct(room) {
     const state = room.gameState;
     if (!state || state.status !== 'playing' || state.phase === 'finished' || state.phase === 'lobby') {
-        throw new Error('โต๊ะยังไม่เปิดหรือจบแล้ว');
+        throw new Error('เกมยังไม่เริ่มหรือจบแล้ว');
     }
     return state;
 }
@@ -539,9 +539,9 @@ function submitBet(room, playerId, amount, context = null) {
     if (state.phase !== 'bet') throw new Error('ยังไม่ถึงช่วงลงเดิมพัน');
     assertContext(state, context);
     const player = getPlayer(room, playerId);
-    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
+    if (!player || player.left) throw new Error('คุณไม่ได้อยู่ในห้องนี้');
     if (playerId === state.dealerId) throw new Error('เจ้ามือไม่ต้องลงเดิมพัน');
-    if (player.decided) throw new Error('ลงเดิมพันมือนี้ไปแล้ว');
+    if (player.decided) throw new Error('ลงเดิมพันรอบนี้ไปแล้ว');
     if (player.chips < MIN_BET) throw new Error('ชิปไม่พอ — กดขอชิปใหม่ก่อน');
     const value = Number(amount);
     if (!Number.isFinite(value) || Math.floor(value) !== value) throw new Error('ยอดเดิมพันไม่ถูกต้อง');
@@ -564,13 +564,13 @@ function submitSkip(room, playerId, context = null) {
     if (state.phase !== 'bet') throw new Error('ยังไม่ถึงช่วงลงเดิมพัน');
     assertContext(state, context);
     const player = getPlayer(room, playerId);
-    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
-    if (playerId === state.dealerId) throw new Error('เจ้ามือข้ามมือไม่ได้');
-    if (player.decided) throw new Error('ตัดสินใจมือนี้ไปแล้ว');
+    if (!player || player.left) throw new Error('คุณไม่ได้อยู่ในห้องนี้');
+    if (playerId === state.dealerId) throw new Error('เจ้ามือข้ามรอบไม่ได้');
+    if (player.decided) throw new Error('ตัดสินใจรอบนี้ไปแล้ว');
     player.decided = true;
     player.skipped = true;
     player.betTimeouts = 0;
-    pushHistory(room, '💤', `${player.name} ข้ามมือนี้`);
+    pushHistory(room, '💤', `${player.name} ข้ามรอบนี้`);
     return afterBetChange(room);
 }
 
@@ -578,8 +578,8 @@ function submitSkip(room, playerId, context = null) {
 function submitSitIn(room, playerId) {
     const state = assertCanAct(room);
     const player = getPlayer(room, playerId);
-    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
-    if (!player.sittingOut) throw new Error('คุณไม่ได้พักโต๊ะ');
+    if (!player || player.left) throw new Error('คุณไม่ได้อยู่ในห้องนี้');
+    if (!player.sittingOut) throw new Error('คุณไม่ได้พักเล่น');
     sitIn(room, player);
     return state;
 }
@@ -598,9 +598,9 @@ function sitIn(room, player) {
 function submitRebuy(room, playerId) {
     const state = assertCanAct(room);
     const player = getPlayer(room, playerId);
-    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
-    if (player.rebuyUsed) throw new Error('ขอชิปใหม่ได้ครั้งเดียวต่อโต๊ะ');
-    if (Number(player.bet) > 0) throw new Error('รอจบมือนี้ก่อน');
+    if (!player || player.left) throw new Error('คุณไม่ได้อยู่ในห้องนี้');
+    if (player.rebuyUsed) throw new Error('ขอชิปใหม่ได้ครั้งเดียวต่อเกม');
+    if (Number(player.bet) > 0) throw new Error('รอจบรอบนี้ก่อน');
     if (player.chips >= MIN_BET) throw new Error('ยังมีชิปพอเล่น');
     applyRebuy(room, player);
     return state;
@@ -619,9 +619,9 @@ function dealHand(room) {
     state.toActPlayerId = null;
     if (!bettors.length || !dealer) {
         state.emptyHands = (Number(state.emptyHands) || 0) + 1;
-        pushHistory(room, '💤', 'ไม่มีใครลงเดิมพันมือนี้');
+        pushHistory(room, '💤', 'ไม่มีใครลงเดิมพันรอบนี้');
         if (state.emptyHands >= MAX_EMPTY_HANDS) {
-            return finishTable(room, `ไม่มีใครลงเดิมพัน ${MAX_EMPTY_HANDS} มือติด — จบโต๊ะ`);
+            return finishTable(room, `ไม่มีใครลงเดิมพัน ${MAX_EMPTY_HANDS} รอบติดกัน — จบเกม`);
         }
         state.lastResult = { empty: true, rows: [], dealer: null, shortfall: false };
         state.readyIds = [];
@@ -729,7 +729,7 @@ function submitDraw(room, playerId, wantDraw, context = null) {
     assertContext(state, context);
     if (state.toActPlayerId !== playerId) throw new Error('ยังไม่ถึงตาคุณ');
     const player = getPlayer(room, playerId);
-    if (!player || !player.inHand || player.done) throw new Error('คุณไม่ได้อยู่ในมือนี้');
+    if (!player || !player.inHand || player.done) throw new Error('คุณไม่ได้เล่นรอบนี้');
     if (!wantDraw && mustDrawNow(room, player)) throw new Error(`ต่ำกว่า ${MUST_DRAW_BELOW} แต้มต้องจั่ว (กติกาห้อง)`);
     if (wantDraw) {
         drawCard(room, player);
@@ -928,7 +928,7 @@ function settleHand(room) {
     state.toActPlayerId = null;
     const wins = rows.filter(r => r.outcome === 'win').length;
     const losses = rows.filter(r => r.outcome === 'lose').length;
-    pushHistory(room, '🏁', `มือที่ ${state.handNumber}: เจ้ามือ${dealerEval.label} · ขาชนะ ${wins} แพ้ ${losses} · เจ้ามือ ${dealerDelta >= 0 ? '+' : ''}${dealerDelta}`, 'result');
+    pushHistory(room, '🏁', `รอบที่ ${state.handNumber}: เจ้ามือ${dealerEval.label} · ขาชนะ ${wins} แพ้ ${losses} · เจ้ามือ ${dealerDelta >= 0 ? '+' : ''}${dealerDelta}`, 'result');
     pushFx(room, { kind: 'reveal', handNumber: state.handNumber });
     state.readyIds = [];
     setPhase(room, 'result', RESULT_MS);
@@ -978,21 +978,21 @@ function finishTable(room, reason) {
         ? { playerId: top.playerId, name: top.name, net: top.net }
         : { playerId: null, name: 'ไม่มีใครได้กำไร', net: 0 };
     bumpStep(room);
-    pushHistory(room, '🏁', reason || 'จบโต๊ะ', 'finished');
+    pushHistory(room, '🏁', reason || 'จบเกม', 'finished');
     pushFx(room, { kind: 'finished' });
     return state;
 }
 
 function endTable(room, playerId) {
     const state = assertCanAct(room);
-    if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่จบโต๊ะได้');
-    return finishTable(room, 'หัวห้องจบโต๊ะ');
+    if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่จบเกมได้');
+    return finishTable(room, 'หัวห้องจบเกม');
 }
 
 function nextHand(room, playerId) {
     const state = assertCanAct(room);
-    if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่เริ่มมือต่อไปได้');
-    if (state.phase !== 'result') throw new Error('ยังไม่จบมือ');
+    if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่เริ่มรอบต่อไปได้');
+    if (state.phase !== 'result') throw new Error('ยังไม่จบรอบ');
     return startHand(room);
 }
 
@@ -1013,9 +1013,9 @@ function allHumansReady(room) {
  */
 function submitReady(room, playerId) {
     const state = assertCanAct(room);
-    if (state.phase !== 'result') throw new Error('ยังไม่จบมือ');
+    if (state.phase !== 'result') throw new Error('ยังไม่จบรอบ');
     const player = getPlayer(room, playerId);
-    if (!player || player.left) throw new Error('คุณไม่ได้นั่งโต๊ะนี้');
+    if (!player || player.left) throw new Error('คุณไม่ได้อยู่ในห้องนี้');
     if (player.sittingOut) sitIn(room, player);
     const ready = new Set(state.readyIds || []);
     ready.add(playerId);
@@ -1039,7 +1039,7 @@ function isRotateLocked(state) {
 function setRotateDealer(room, playerId, enabled) {
     const state = assertCanAct(room);
     if (room.admin !== playerId) throw new Error('มีแค่หัวห้องที่ตั้งค่าเจ้ามือได้');
-    if (isRotateLocked(state)) throw new Error('เปลี่ยนแบบเจ้ามือได้ก่อนแจกไพ่มือแรกเท่านั้น');
+    if (isRotateLocked(state)) throw new Error('เปลี่ยนแบบเจ้ามือได้ก่อนแจกไพ่รอบแรกเท่านั้น');
     const rotate = !!enabled;
     if (rotate === !!state.rotateDealer) return state;
     state.rotateDealer = rotate;
@@ -1070,7 +1070,7 @@ function autoResolvePhase(room) {
                 p.sittingOut = true;
                 p.decided = true;
                 p.skipped = true;
-                pushHistory(room, '💤', `${p.name} หมดเวลา ${AFK_BET_TIMEOUTS} มือติด — พักโต๊ะ`);
+                pushHistory(room, '💤', `${p.name} หมดเวลา ${AFK_BET_TIMEOUTS} รอบติดกัน — พักเล่น`);
                 pushFx(room, { kind: 'sitout', playerId: p.playerId });
             } else if (p.chips >= MIN_BET && isConnected(room, p)) {
                 p.chips -= MIN_BET;
@@ -1185,22 +1185,22 @@ function handlePlayerLeft(room, playerId) {
     const player = getPlayer(room, playerId);
     if (!player || player.left) return state;
     player.left = true;
-    pushHistory(room, '🚪', `${player.name} ออกจากโต๊ะ`);
+    pushHistory(room, '🚪', `${player.name} ออกจากห้อง`);
 
     const others = state.players.filter(p => !p.left && roomEntry(room, p.playerId));
     const inHandPhase = ['bet', 'deal', 'draw', 'dealer'].includes(state.phase);
 
     if (others.length < 2) {
-        return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบโต๊ะ');
+        return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบเกม');
     }
     // คนจริงออกหมด เหลือแต่บอท — จบโต๊ะ ไม่ให้บอทแจกวนอยู่ฝ่ายเดียว
     if (!others.some(p => !isBotId(p.playerId))) {
-        return finishTable(room, 'คนจริงออกหมดแล้ว — จบโต๊ะ');
+        return finishTable(room, 'คนจริงออกหมดแล้ว — จบเกม');
     }
 
     if (playerId === state.dealerId && inHandPhase) {
         refundBets(room);
-        pushHistory(room, '↩️', 'เจ้ามือออกกลางมือ — ยกเลิกมือนี้ คืนเดิมพันทุกคน');
+        pushHistory(room, '↩️', 'เจ้ามือออกกลางรอบ — ยกเลิกรอบนี้ คืนเดิมพันทุกคน');
         return startHand(room);
     }
 

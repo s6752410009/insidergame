@@ -1,0 +1,41 @@
+<link rel="stylesheet" href="/static/css/admin-insights.css?v=<%= typeof buildId !== 'undefined' ? buildId : 'insights-2' %>">
+<main class="insights" id="adminInsights">
+    <div class="insights-header">
+        <div><% if (!embedded) { %><a class="insights-back" href="/admin">← แอดมิน</a><% } %><h1><%= embedded ? 'ภาพรวม' : 'สถิติการใช้งาน' %></h1></div>
+        <div class="insights-header-actions"><span id="insightScopeNote" class="insights-scope" title="แสดงเฉพาะประวัติที่ยังเก็บอยู่">7 วัน</span><button class="insights-button insights-icon-button" id="insightRefresh" type="button" aria-label="รีเฟรชข้อมูล" title="รีเฟรช"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button></div>
+    </div>
+    <div class="insights-toolbar">
+        <form class="insights-filters" id="insightFilters">
+            <label><span class="insights-sr-only">ช่วงเวลา</span><select id="insightDays" name="days"><option value="1">วันนี้</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option></select></label>
+            <label><span class="insights-sr-only">เกม</span><select id="insightMode" name="mode"><option value="all">ทุกเกม</option></select></label>
+        </form>
+        <p class="insights-status" id="insightStatus" role="status" aria-live="polite">กำลังโหลด…</p>
+    </div>
+    <p class="insights-error" id="insightError" role="alert" hidden></p>
+    <div id="insightContent" hidden>
+        <section class="insights-live" aria-label="สถานะล่าสุด"><span class="insights-dot" aria-hidden="true"></span><div id="insightLive">—</div></section>
+        <dl class="insights-totals" id="insightTotals"></dl>
+        <div class="insights-main-grid">
+            <section class="insights-section insights-chart-section"><div class="insights-section-head"><h2>การเล่นแต่ละวัน</h2><div class="insights-legend"><span>เริ่มเล่น</span><span>เล่นจบ</span></div></div><div class="insights-chart-frame"><div id="insightDailyAxis" class="insights-chart-axis" aria-hidden="true"></div><div id="insightDaily" class="insights-daily"></div></div></section>
+            <section class="insights-section insights-ranking"><div class="insights-section-head"><h2>เกมยอดนิยม</h2><span class="insights-muted">ครั้งที่เริ่มเล่น</span></div><div id="insightGames"></div></section>
+        </div>
+        <div class="insights-secondary-grid">
+            <section class="insights-section"><div class="insights-section-head"><h2>ช่วงเวลาที่คนเล่น</h2><span class="insights-muted" id="insightPeak"></span></div><div class="insights-hours" id="insightHours"></div></section>
+            <section class="insights-section"><div class="insights-section-head"><h2>ผู้เล่น</h2><span class="insights-muted">กดชื่อดูประวัติ</span></div><div id="insightPeople" class="insights-people"></div></section>
+        </div>
+        <section class="insights-section insights-activity-section" id="insightActivitySection">
+            <div class="insights-section-head"><h2>กิจกรรมล่าสุด</h2><button class="insights-button insights-icon-button" id="insightExport" type="button" aria-label="ดาวน์โหลด CSV หน้านี้" title="ดาวน์โหลด CSV หน้านี้"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/></svg></button></div>
+            <form class="insights-activity-filters" id="insightActivityFilters">
+                <label><span class="insights-sr-only">ผู้เล่น</span><input id="insightPlayer" name="playerId" placeholder="รหัสผู้เล่น" aria-label="รหัสผู้เล่น" maxlength="80" autocomplete="off"></label>
+                <label><span class="insights-sr-only">กิจกรรม</span><select id="insightKind" name="kind"><option value="all">ทุกกิจกรรม</option><option value="start">เริ่มเล่น</option><option value="end">เล่นจบ</option><option value="join">เข้าห้อง</option><option value="leave">ออกห้อง</option><option value="admin">แอดมิน</option><option value="error">ข้อผิดพลาด</option><option value="detail">ระหว่างเล่น</option><option value="abort">หยุดกลางเกม</option></select></label>
+                <label class="insights-search"><span class="insights-sr-only">ค้นหา</span><input id="insightSearch" name="search" placeholder="ค้นหาชื่อ / ห้อง / กิจกรรม" aria-label="ค้นหาชื่อ ห้อง หรือกิจกรรม" maxlength="100" type="search"></label>
+                <button class="insights-button" id="insightClear" type="button" hidden>ล้าง</button>
+            </form>
+            <div class="insights-table-heading" aria-hidden="true"><span>เวลา</span><span>ผู้เล่น</span><span>เกม</span><span>กิจกรรม</span></div>
+            <ol class="insights-timeline" id="insightActivity" tabindex="0" aria-label="กิจกรรมล่าสุด"></ol>
+            <div class="insights-table-footer"><p class="insights-muted" id="insightActivityMeta"></p><nav class="insights-pager" aria-label="หน้ากิจกรรม"><button class="insights-button insights-icon-button" id="insightPrev" type="button" aria-label="ก่อนหน้า">‹</button><span id="insightPage"></span><button class="insights-button insights-icon-button" id="insightNext" type="button" aria-label="ถัดไป">›</button></nav></div>
+        </section>
+        <p id="insightCoverage" class="insights-sr-only"></p>
+    </div>
+</main>
+<script src="/static/js/adminInsights.js?v=<%= typeof buildId !== 'undefined' ? buildId : 'insights-2' %>" defer></script>

@@ -217,7 +217,7 @@ const gs = room => room.gameState;
 const P = (room, id) => gs(room).players.find(p => p.playerId === id);
 const ctx = room => ({ step: gs(room).step, phase: gs(room).phase, handNumber: gs(room).handNumber });
 
-/** คนจริงที่ต่ออยู่ลงขั้นต่ำให้ครบ (กันหมดเวลาติดกันจนโดนพักโต๊ะในเทสต์ที่เดินด้วยนาฬิกา) */
+/** คนจริงที่ต่ออยู่ลงขั้นต่ำให้ครบ (กันหมดเวลาติดกันจนโดนพักเล่นในเทสต์ที่เดินด้วยนาฬิกา) */
 function betAll(room, amount = engine.MIN_BET) {
     const s = gs(room);
     if (s.phase !== 'bet') return;
@@ -403,7 +403,7 @@ function rig(room, hands, draws = []) {
     throws(() => engine.submitBet(room, 'p1', 501), /สูงสุด/, 'เกินเพดานโต๊ะ');
     throws(() => engine.submitBet(room, 'p1', 12.5), /ไม่ถูกต้อง/, 'ทศนิยม');
     throws(() => engine.submitBet(room, 'p1', 'abc'), /ไม่ถูกต้อง/, 'ไม่ใช่ตัวเลข');
-    throws(() => engine.submitBet(room, 'nobody', 50), /ไม่ได้นั่ง/, 'คนนอกโต๊ะ');
+    throws(() => engine.submitBet(room, 'nobody', 50), /ไม่ได้อยู่ในห้อง/, 'คนนอกโต๊ะ');
     throws(() => engine.submitDraw(room, 'p1', true), /ยังไม่ถึงช่วงจั่ว/, 'จั่วตอนลงเดิมพัน');
     throws(() => engine.submitBet(room, 'p1', 50, { step: 999 }), /จังหวะเปลี่ยน/, 'step ผิด');
     P(room, 'p1').chips = 40;
@@ -412,7 +412,7 @@ function rig(room, hands, draws = []) {
     engine.submitBet(room, 'p1', 50);
     throws(() => engine.submitBet(room, 'p1', 50), /ไปแล้ว/, 'ลงซ้ำ');
     throws(() => engine.submitSkip(room, 'p1'), /ไปแล้ว/, 'ลงแล้วข้ามไม่ได้');
-    throws(() => engine.endTable(room, 'p1'), /หัวห้อง/, 'คนอื่นจบโต๊ะไม่ได้');
+    throws(() => engine.endTable(room, 'p1'), /หัวห้อง/, 'คนอื่นจบเกมไม่ได้');
     throws(() => engine.setRotateDealer(room, 'p2', true), /หัวห้อง/, 'คนอื่นตั้งหมุนเจ้ามือไม่ได้');
     engine.submitSkip(room, 'p2');
     assert(gs(room).phase === 'deal' || gs(room).phase === 'result', 'ครบแล้วแจก');
@@ -444,7 +444,7 @@ function rig(room, hands, draws = []) {
     assert(s.phase === 'bet' && s.handNumber === 2, 'หมดเวลาสรุปผล = มือต่อไป');
     conservation(room, 'timeouts');
 
-    // ไม่มีใครลง 3 มือติด → จบโต๊ะ
+    // ไม่มีใครลง 3 รอบติดกัน → จบเกม
     const idle = makeRoom(2);
     for (let i = 0; i < 3; i += 1) {
         engine.submitSkip(idle, 'p1');
@@ -452,7 +452,7 @@ function rig(room, hands, draws = []) {
         gs(idle).phaseEndsAt = Date.now() - 1;
         engine.autoResolvePhase(idle);
     }
-    assert(gs(idle).phase === 'finished', 'ข้าม 3 มือติดต้องจบโต๊ะ ไม่ค้าง');
+    assert(gs(idle).phase === 'finished', 'ข้าม 3 รอบติดกันต้องจบเกม ไม่ค้าง');
 }
 
 // ================= 10) หมุนเจ้ามือ =================
@@ -474,7 +474,7 @@ function rig(room, hands, draws = []) {
     assert(P(room, 'p2').hand.length === 0, 'คนหลุดไม่ได้ไพ่');
     conservation(room, 'rotate');
     // แบบเจ้ามือล็อกหลังแจกมือแรก (ไม่งั้นกองเจ้ามือ 5,000 ปนเป็นชิปขาไพ่)
-    throws(() => engine.setRotateDealer(room, 'p0', false), /ก่อนแจกไพ่มือแรก/, 'มือ 4 เปลี่ยนแบบเจ้ามือไม่ได้');
+    throws(() => engine.setRotateDealer(room, 'p0', false), /ก่อนแจกไพ่รอบแรก/, 'มือ 4 เปลี่ยนแบบเจ้ามือไม่ได้');
     assert(s.rotateDealer === true && engine.buildClientState(room, 'p0').availableActions.canToggleRotate === false, 'ยังหมุนอยู่ · ปุ่มสลับปิด');
     assert(engine.buildClientState(room, 'p0').rotateLocked === true, 'client รู้ว่าล็อกแล้ว');
 }
@@ -499,7 +499,7 @@ function rig(room, hands, draws = []) {
     engine.submitBet(room, 'p1', 50, ctx(room));
     engine.submitBet(room, 'p2', 50, ctx(room));
     assert(s.phase !== 'bet', 'แจกแล้ว');
-    throws(() => engine.setRotateDealer(room, 'p0', false), /ก่อนแจกไพ่มือแรก/, 'แจกมือแรกแล้ว ล็อก');
+    throws(() => engine.setRotateDealer(room, 'p0', false), /ก่อนแจกไพ่รอบแรก/, 'แจกมือแรกแล้ว ล็อก');
     let g = 0;
     while (s.phase !== 'result' && g < 20) { s.phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(room); g += 1; }
     engine.nextHand(room, 'p0');
@@ -508,7 +508,7 @@ function rig(room, hands, draws = []) {
     conservation(room, 'toggle-play');
 }
 
-// ================= 10c) ไม่อยู่หน้าจอ: หมดเวลาลงเดิมพัน 2 ครั้งติด → พักโต๊ะ =================
+// ================= 10c) ไม่อยู่หน้าจอ: หมดเวลาลงเดิมพัน 2 ครั้งติด → พักเล่น =================
 {
     const room = makeRoom(4);
     const s = gs(room);
@@ -522,38 +522,38 @@ function rig(room, hands, draws = []) {
     assert(P(room, 'p2').betTimeouts === 0, 'กดข้ามเอง ไม่นับว่าหมดเวลา');
     toResult();
     engine.nextHand(room, 'p0');
-    // มือ 2: p3 หมดเวลาอีก → พักโต๊ะ ไม่ลงให้
+    // มือ 2: p3 หมดเวลาอีก → พักเล่น ไม่ลงให้
     engine.submitBet(room, 'p1', 50, ctx(room));
     engine.submitBet(room, 'p2', 50, ctx(room));
     assert(s.phase === 'bet', 'ยังรอ p3');
     const chipsBefore = P(room, 'p3').chips;
     s.phaseEndsAt = Date.now() - 1;
     engine.autoResolvePhase(room);
-    assert(P(room, 'p3').sittingOut && !P(room, 'p3').inHand && P(room, 'p3').chips === chipsBefore, 'หมดเวลาครั้งที่ 2 = พักโต๊ะ ไม่เสียชิป');
-    assert(s.history.some(h => /พักโต๊ะ/.test(h.text)), 'บันทึกโต๊ะบอกว่าพักโต๊ะ');
+    assert(P(room, 'p3').sittingOut && !P(room, 'p3').inHand && P(room, 'p3').chips === chipsBefore, 'หมดเวลาครั้งที่ 2 = พักเล่น ไม่เสียชิป');
+    assert(s.history.some(h => /พักเล่น/.test(h.text)), 'บันทึกโต๊ะบอกว่าพักเล่น');
     let v3 = engine.buildClientState(room, 'p3');
-    assert(v3.self.sittingOut && v3.availableActions.canSitIn && v3.players.find(p => p.playerId === 'p3').sittingOut, 'client เห็นสถานะพักโต๊ะ + ปุ่มกลับมาเล่น');
+    assert(v3.self.sittingOut && v3.availableActions.canSitIn && v3.players.find(p => p.playerId === 'p3').sittingOut, 'client เห็นสถานะพักเล่น + ปุ่มกลับมาเล่น');
     toResult();
-    assert(engine.buildClientState(room, 'p1').readyNeeded === 3, 'คนพักโต๊ะไม่ต้องกดพร้อม (รอ 3 คน)');
+    assert(engine.buildClientState(room, 'p1').readyNeeded === 3, 'คนพักเล่นไม่ต้องกดพร้อม (รอ 3 คน)');
     engine.nextHand(room, 'p0');
-    // มือ 3: คนอื่นลงครบ = แจกทันที ไม่รอนาฬิกาของคนพักโต๊ะ
-    assert(P(room, 'p3').decided && P(room, 'p3').skipped, 'มือใหม่ คนพักโต๊ะข้ามอัตโนมัติ');
+    // มือ 3: คนอื่นลงครบ = แจกทันที ไม่รอนาฬิกาของคนพักเล่น
+    assert(P(room, 'p3').decided && P(room, 'p3').skipped, 'มือใหม่ คนพักเล่นข้ามอัตโนมัติ');
     engine.submitBet(room, 'p1', 50, ctx(room));
     engine.submitBet(room, 'p2', 50, ctx(room));
-    assert(s.phase !== 'bet', 'ไม่ต้องรอคนพักโต๊ะ');
-    throws(() => engine.submitSitIn(room, 'p1'), /ไม่ได้พักโต๊ะ/, 'คนที่ไม่ได้พัก กดกลับมาเล่นไม่ได้');
+    assert(s.phase !== 'bet', 'ไม่ต้องรอคนพักเล่น');
+    throws(() => engine.submitSitIn(room, 'p1'), /ไม่ได้พักเล่น/, 'คนที่ไม่ได้พัก กดกลับมาเล่นไม่ได้');
     engine.submitSitIn(room, 'p3'); // กลับมากลางมือ = มือหน้าลงได้
     assert(!P(room, 'p3').sittingOut && !P(room, 'p3').inHand, 'กลับมากลางมือ ยังไม่ได้ไพ่มือนี้');
     toResult();
     engine.nextHand(room, 'p0');
     assert(!P(room, 'p3').decided && engine.buildClientState(room, 'p3').availableActions.canBet, 'มือหน้าลงเดิมพันได้ตามปกติ');
-    // พักโต๊ะแล้วกลับมาช่วงลงเดิมพัน → ลงมือนี้ได้เลย
+    // พักเล่นแล้วกลับมาช่วงลงเดิมพัน → ลงมือนี้ได้เลย
     engine.submitBet(room, 'p1', 50, ctx(room));
     engine.submitBet(room, 'p2', 50, ctx(room));
     P(room, 'p3').betTimeouts = 1;
     s.phaseEndsAt = Date.now() - 1;
     engine.autoResolvePhase(room);
-    assert(P(room, 'p3').sittingOut, 'นับต่อ: ครั้งที่ 2 พักโต๊ะ');
+    assert(P(room, 'p3').sittingOut, 'นับต่อ: ครั้งที่ 2 พักเล่น');
     toResult();
     engine.nextHand(room, 'p0');
     engine.submitSitIn(room, 'p3');
@@ -568,20 +568,20 @@ function rig(room, hands, draws = []) {
     while (gs(r2).phase !== 'result' && g < 30) { betAll(r2); if (gs(r2).phase !== 'result') { gs(r2).phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(r2); } g += 1; }
     engine.submitReady(r2, 'p2');
     assert(!P(r2, 'p2').sittingOut, 'กดพร้อม = กลับมาเล่น');
-    // บอทไม่โดนพักโต๊ะ · เจ้ามือหมุนข้ามคนพักโต๊ะ
+    // บอทไม่โดนพักเล่น · เจ้ามือหมุนข้ามคนพักเล่น
     const r3 = makeRoom(4, { rotate: true });
     P(r3, 'p1').sittingOut = true;
     g = 0;
     while (gs(r3).phase !== 'result' && g < 30) { betAll(r3); if (gs(r3).phase !== 'result') { gs(r3).phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(r3); } g += 1; }
     engine.nextHand(r3, 'p0');
-    assert(gs(r3).dealerId === 'p2', 'หมุนเจ้ามือข้ามคนพักโต๊ะ: ' + gs(r3).dealerId);
+    assert(gs(r3).dealerId === 'p2', 'หมุนเจ้ามือข้ามคนพักเล่น: ' + gs(r3).dealerId);
     const rb = makeRoom(3, { bots: true });
     for (let i = 0; i < 4; i += 1) {
         g = 0;
         while (gs(rb).phase !== 'result' && g < 30) { gs(rb).phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(rb); g += 1; }
         if (gs(rb).phase === 'result') engine.nextHand(rb, 'p0');
     }
-    assert(gs(rb).players.every(p => !p.sittingOut), 'บอทหมดเวลาไม่โดนพักโต๊ะ');
+    assert(gs(rb).players.every(p => !p.sittingOut), 'บอทหมดเวลาไม่โดนพักเล่น');
 }
 
 // ================= 10d) เจ้ามือ "จับ" ขา 3 ใบ / 2 ใบ ก่อนจั่ว =================
@@ -622,7 +622,7 @@ function rig(room, hands, draws = []) {
     throws(() => engine.submitDealerCatch(room, 'p0', 3, ctx(room)), /ไม่มีขาที่ถือ 3 ใบ/, 'จับกลุ่มเดิมซ้ำไม่ได้');
     engine.submitDealerDecision(room, 'p0', true, ctx(room)); // + 5D = 9
     assert(s.phase === 'result', 'จั่วแล้ววัดที่เหลือ');
-    throws(() => engine.submitDealerCatch(room, 'p0', 2, ctx(room)), /ยังไม่ถึงตาเจ้ามือ/, 'จบมือแล้วจับไม่ได้');
+    throws(() => engine.submitDealerCatch(room, 'p0', 2, ctx(room)), /ยังไม่ถึงตาเจ้ามือ/, 'จบรอบแล้วจับไม่ได้');
     const by = id => s.lastResult.rows.find(r => r.playerId === id);
     assert(s.lastResult.rows.length === 4, 'สรุปผลครบทุกขา');
     assert(by('p1').caught && /4 แต้ม/.test(by('p1').dealerLabel), 'แถวที่โดนจับบอกมือเจ้ามือที่ใช้วัด');
@@ -632,7 +632,7 @@ function rig(room, hands, draws = []) {
     assert(s.lastResult.rows.map(r => r.playerId).join(',') === 'p1,p2,p3,p4', 'เรียงแถวตามลำดับที่นั่ง');
     conservation(room, 'catch3');
 
-    // จับครบทั้งสองกลุ่ม = จบมือ ไม่ต้องจั่ว · เจ้ามือ 3 แต้ม จับไม่ได้
+    // จับครบทั้งสองกลุ่ม = จบรอบ ไม่ต้องจั่ว · เจ้ามือ 3 แต้ม จับไม่ได้
     s.phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(room);
     rig(room, { p1: ['2S', '3H'], p2: ['9H', 'KD'], p3: ['6S', 'KS'], p4: ['3C', '2D'], p0: ['4H', '3D'] }, ['AC', 'KH', 'QH']);
     ['p1', 'p2', 'p3', 'p4'].forEach(id => engine.submitBet(room, id, 50, ctx(room)));
@@ -645,7 +645,7 @@ function rig(room, hands, draws = []) {
     engine.submitDealerCatch(room, 'p0', 2, ctx(room)); // p2 ป๊อก 9, p3 6, p4 5 vs 7
     assert(s.phase === 'dealer', 'ยังเหลือขา 3 ใบ');
     engine.submitDealerCatch(room, 'p0', 3, ctx(room));
-    assert(s.phase === 'result' && P(room, 'p0').hand.length === 2, 'จับครบทุกขา = จบมือ ไม่ได้จั่ว');
+    assert(s.phase === 'result' && P(room, 'p0').hand.length === 2, 'จับครบทุกขา = จบรอบ ไม่ได้จั่ว');
     const by2 = id => s.lastResult.rows.find(r => r.playerId === id);
     assert(by2('p2').outcome === 'win' && by2('p3').outcome === 'lose' && by2('p4').outcome === 'lose' && by2('p1').outcome === 'lose', 'วัดกับ 7 แต้มของเจ้ามือถูก');
     conservation(room, 'catch-both');
@@ -802,7 +802,7 @@ var g;
     assert(P(room2, 'p2').chips === 1000 && P(room2, 'p3').chips === 1000, 'คืนเดิมพันครบ');
     conservation(room2, 'dealer-left');
 
-    // ออกจนเหลือคนเดียว → จบโต๊ะ
+    // ออกจนเหลือคนเดียว → จบเกม
     room2.players = room2.players.filter(p => p.playerId === 'p1' || p.playerId === 'p2');
     engine.handlePlayerLeft(room2, 'p3');
     assert(s2.phase === 'bet', 'เหลือ 2 คนยังเล่นต่อ');
@@ -811,17 +811,17 @@ var g;
     assert(s2.phase === 'deal', 'แจกแล้ว');
     room2.players = room2.players.filter(p => p.playerId === 'p1');
     engine.handlePlayerLeft(room2, 'p2');
-    assert(s2.phase === 'finished' && s2.status === 'pokdeng_finished', 'เหลือแค่เจ้ามือ → จบโต๊ะ');
+    assert(s2.phase === 'finished' && s2.status === 'pokdeng_finished', 'เหลือแค่เจ้ามือ → จบเกม');
     assert(P(room2, 'p2').chips === 1000 && P(room2, 'p2').bet === 0, 'จบกลางมือ คืนเดิมพัน');
     conservation(room2, 'finish-left');
 }
 
-// ================= 11b) คนจริงออกหมด = จบโต๊ะ · กลับเข้าห้อง = นั่งที่เดิม =================
+// ================= 11b) คนจริงออกหมด = จบเกม · กลับเข้าห้อง = นั่งที่เดิม =================
 {
     const room = makeRoom(4, { bots: true }); // p0 + bot_1..3
     room.players = room.players.filter(p => p.playerId !== 'p0');
     engine.handlePlayerLeft(room, 'p0');
-    assert(gs(room).phase === 'finished' && /คนจริงออกหมด/.test(gs(room).history[0].text), 'เหลือแต่บอท → จบโต๊ะ ไม่แจกวน');
+    assert(gs(room).phase === 'finished' && /คนจริงออกหมด/.test(gs(room).history[0].text), 'เหลือแต่บอท → จบเกม ไม่แจกวน');
     conservation(room, 'bots-only');
 
     const r2 = makeRoom(4);
@@ -840,7 +840,7 @@ var g;
     conservation(r2, 'rejoin');
 }
 
-// ================= 12) จบโต๊ะ + สถิติครั้งเดียว =================
+// ================= 12) จบเกม + สถิติครั้งเดียว =================
 {
     const room = makeRoom(3);
     const s = gs(room);
@@ -850,7 +850,7 @@ var g;
     let guard = 0;
     while (s.phase !== 'result' && guard < 20) { s.phaseEndsAt = Date.now() - 1; engine.autoResolvePhase(room); guard += 1; }
     engine.endTable(room, 'p0');
-    assert(s.phase === 'finished' && s.standings.length === 3, 'จบโต๊ะมีตารางสรุป');
+    assert(s.phase === 'finished' && s.standings.length === 3, 'จบเกมมีตารางสรุป');
     const top = s.standings[0];
     assert(top.playerId === 'p1' && top.net === 100 && top.won, 'p1 กำไร 100 = ชนะ');
     assert(s.standings.find(r => r.playerId === 'p2').won === false, 'p2 ขาดทุน = แพ้');
@@ -920,7 +920,7 @@ var g;
     assert(s.phase === 'bet' && s.handNumber === hand + 1, 'คนที่ต่ออยู่พร้อมครบ → มือต่อไปทันที');
     assert(s.dealerId === 'p1', 'เจ้ามือตรงกับที่บอกล่วงหน้า');
     assert(s.readyIds.length === 0, 'มือใหม่ล้างรายการพร้อม');
-    throws(() => engine.submitReady(room, 'p2'), /ยังไม่จบมือ/, 'กดพร้อมนอกช่วงสรุปผลไม่ได้');
+    throws(() => engine.submitReady(room, 'p2'), /ยังไม่จบรอบ/, 'กดพร้อมนอกช่วงสรุปผลไม่ได้');
     // คนสุดท้ายที่ยังไม่พร้อมออกจากห้อง → ที่เหลือพร้อมครบ ไปต่อเลย
     room.players.find(p => p.playerId === 'p3').socketId = 's3';
     toResult();
@@ -1052,7 +1052,7 @@ var g;
                 void beforeStep;
             }
             if (s.phase !== 'finished') engine.endTable(room, room.admin);
-            assert(s.phase === 'finished', 'จบโต๊ะได้เสมอ');
+            assert(s.phase === 'finished', 'จบเกมได้เสมอ');
             conservation(room, `end ${t}`);
             const net = s.standings.reduce((sum, r) => sum + r.net, 0);
             const unplayed = s.players.filter(p => !(p.handsPlayed > 0 || p.handsDealt > 0)).reduce((sum, p) => sum + p.chips - p.buyIn, 0);

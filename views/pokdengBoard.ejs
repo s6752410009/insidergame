@@ -372,9 +372,9 @@
 <div class="pd" id="pdRoot">
   <div class="pd-top">
     <div style="min-width:0;">
-      <div class="pd-kicker">ป๊อกเด้ง · <span id="pdHandNo">มือที่ -</span></div>
+      <div class="pd-kicker">ป๊อกเด้ง · <span id="pdHandNo">รอบที่ -</span></div>
       <h1 class="pd-title"><%= room.name %></h1>
-      <span class="pd-fun">ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง</span>
+      <span class="pd-fun">ชิปในเกมนี้ ไม่มีมูลค่าจริง</span>
     </div>
     <div class="pd-tools">
       <button type="button" id="pdExitBtn" class="pd-pill pd-pill--exit" data-control-icon="exit" aria-label="ออกจากเกม" title="ออกจากเกม">🚪 ออก</button>
@@ -382,7 +382,7 @@
       <button type="button" id="pdHowBtn" class="pd-pill" data-control-icon="help" aria-label="วิธีเล่น" title="วิธีเล่น">วิธีเล่น</button>
       <button type="button" id="pdRotateBtn" class="pd-pill <%= room.admin ? '' : 'is-static' %>" aria-pressed="false">เจ้ามือ: คงที่</button>
       <button type="button" id="pdSidebarBtn" class="pd-pill" aria-expanded="false" aria-controls="playerSidebar">ผู้เล่น</button>
-      <button type="button" id="pdEndBtn" class="pd-pill pd-pill--danger"<%= room.admin ? '' : ' hidden' %>>จบโต๊ะ</button>
+      <button type="button" id="pdEndBtn" class="pd-pill pd-pill--danger"<%= room.admin ? '' : ' hidden' %>>จบเกม</button>
     </div>
   </div>
 
@@ -396,7 +396,7 @@
     <div id="pdNowBar" class="pd-now-bar"></div>
   </div>
 
-  <section class="pd-table" aria-label="โต๊ะป๊อกเด้ง">
+  <section class="pd-table" aria-label="กระดานป๊อกเด้ง">
     <div id="pdDealer" class="pd-dealer"></div>
     <div class="pd-center">
       <div class="pd-deck" id="pdDeck" aria-hidden="true">
@@ -404,7 +404,7 @@
       </div>
       <div class="pd-pot" id="pdPot">
         <img src="/assets/games/pokdeng/chip-100.svg" alt="">
-        <div><div class="pd-pot-label">เดิมพันบนโต๊ะ</div><div class="pd-pot-amount" id="pdPotAmount">0</div></div>
+        <div><div class="pd-pot-label">เดิมพันรวม</div><div class="pd-pot-amount" id="pdPotAmount">0</div></div>
       </div>
     </div>
     <div id="pdSeats" class="pd-seats"></div>
@@ -413,7 +413,7 @@
   <section id="pdResults" class="pd-results" hidden></section>
 
   <details class="pd-history">
-    <summary>บันทึกโต๊ะ</summary>
+    <summary>ประวัติการเล่น</summary>
     <div id="pdFeed" class="pd-feed"></div>
   </details>
 
@@ -475,7 +475,7 @@ $(function() {
   const CARD_BACK = '/assets/games/poker/back.svg';
   const CHIP = v => '/assets/games/pokdeng/chip-' + v + '.svg';
   const CHIP_VALUES = [10, 50, 100, 500];
-  const PHASE_LABEL = { bet: 'ลงเดิมพัน', deal: 'แจกไพ่', draw: 'จั่วไพ่', dealer: 'ตาเจ้ามือ', result: 'สรุปผล', finished: 'จบโต๊ะ', lobby: 'รอเริ่ม' };
+  const PHASE_LABEL = { bet: 'ลงเดิมพัน', deal: 'แจกไพ่', draw: 'จั่วไพ่', dealer: 'ตาเจ้ามือ', result: 'สรุปผล', finished: 'จบเกม', lobby: 'รอเริ่ม' };
 
   let allowNavigation = false;
   let leaving = false; // กดออกแล้ว — ห้ามดึงกลับเข้าห้อง/เกม
@@ -581,14 +581,14 @@ $(function() {
     const phase = S.phase;
     const dealerName = S.dealerName || 'เจ้ามือ';
     const acts = S.availableActions || {};
-    if (phase === 'finished') return { text: 'จบโต๊ะแล้ว — ดูสรุปชิปด้านล่าง', mine: false };
-    if (!self) return { text: 'กำลังดูโต๊ะ', mine: false };
-    if (self.sittingOut) return { text: 'คุณพักโต๊ะอยู่ — กด "กลับมาเล่น" เพื่อลงมือต่อไป', mine: true };
+    if (phase === 'finished') return { text: 'จบเกมแล้ว — ดูสรุปชิปด้านล่าง', mine: false };
+    if (!self) return { text: 'กำลังดูเกม', mine: false };
+    if (self.sittingOut) return { text: 'คุณพักเล่นอยู่ — กด "กลับมาเล่น" เพื่อเล่นรอบต่อไป', mine: true };
     if (phase === 'bet') {
       if (self.isDealer) return { text: 'คุณเป็นเจ้ามือ — รอขาไพ่ลงเดิมพัน', mine: false };
       if (acts.canBet) return { text: 'เลือกยอดแล้วกดลงเดิมพัน', mine: true };
-      if (acts.canRebuy) return { text: 'ชิปหมด — ขอชิปใหม่ หรือข้ามมือนี้', mine: true };
-      if (self.skipped) return { text: 'คุณข้ามมือนี้ — รอมือหน้า', mine: false };
+      if (acts.canRebuy) return { text: 'ชิปหมด — ขอชิปใหม่ หรือข้ามรอบนี้', mine: true };
+      if (self.skipped) return { text: 'คุณข้ามรอบนี้ — รอรอบหน้า', mine: false };
       if (self.decided) return { text: 'ลงแล้ว ' + fmt(self.bet) + ' — รอคนอื่น', mine: false };
       return { text: 'ชิปไม่พอเล่นต่อ — ดูเพื่อนเล่นได้', mine: false };
     }
@@ -615,37 +615,37 @@ $(function() {
         if (mine.outcome === 'lose') return { text: 'คุณแพ้ ' + signed(mine.delta) + ' ชิป', mine: false };
         return { text: 'เสมอ — ได้เดิมพันคืน', mine: false };
       }
-      if (mine && mine.isDealer) return { text: 'เจ้ามือมือนี้ ' + signed(mine.delta) + ' ชิป', mine: mine.delta > 0 };
-      return { text: 'สรุปผลมือนี้', mine: false };
+      if (mine && mine.isDealer) return { text: 'รอบนี้คุณเป็นเจ้ามือ · ' + signed(mine.delta) + ' ชิป', mine: mine.delta > 0 };
+      return { text: 'สรุปผลรอบนี้', mine: false };
     }
-    return { text: 'รอเริ่มโต๊ะ', mine: false };
+    return { text: 'รอเริ่มเกม', mine: false };
   }
 
   function timerHint() {
     switch (S.phase) {
-      case 'bet': return 'หมดเวลา = ลงขั้นต่ำ ' + ((S.limits && S.limits.minBet) || 10) + ' · 2 ครั้งติด = พักโต๊ะ';
+      case 'bet': return 'หมดเวลา = ลงขั้นต่ำ ' + ((S.limits && S.limits.minBet) || 10) + ' · 2 ครั้งติด = พักเล่น';
       case 'deal': return 'กำลังเปิดไพ่';
       case 'draw': return (S.rules && S.rules.mustDraw) ? 'หมดเวลา = อยู่ (ต่ำกว่า 4 = จั่วให้)' : 'หมดเวลา = อยู่';
       case 'dealer': return 'หมดเวลา = จั่วถ้า 0–3 แต้ม';
-      case 'result': return 'มือต่อไปอัตโนมัติ';
+      case 'result': return 'รอบต่อไปอัตโนมัติ';
       default: return '';
     }
   }
 
   function renderTop() {
-    $('#pdHandNo').text(S.handNumber ? 'มือที่ ' + S.handNumber : 'เตรียมโต๊ะ');
+    $('#pdHandNo').text(S.handNumber ? 'รอบที่ ' + S.handNumber : 'เตรียมเกม');
     const rotate = !!S.rotateDealer;
     const host = !!S.isHost && S.phase !== 'finished';
     const canToggle = !!(S.availableActions && S.availableActions.canToggleRotate);
     $('#pdRotateBtn').text((rotate ? 'เจ้ามือ: หมุนทุกตา' : 'เจ้ามือ: คงที่') + (canToggle ? ' ⇄' : ''))
       .attr('aria-pressed', rotate ? 'true' : 'false')
       .attr('aria-disabled', canToggle ? 'false' : 'true')
-      .attr('title', canToggle ? 'แตะเพื่อสลับ (ได้ก่อนแจกมือแรกเท่านั้น)' : (host ? 'ล็อกแล้ว — เปลี่ยนได้ก่อนแจกมือแรก' : 'หัวห้องเป็นคนตั้ง'))
+      .attr('title', canToggle ? 'แตะเพื่อสลับ (ได้ก่อนแจกไพ่รอบแรกเท่านั้น)' : (host ? 'ล็อกแล้ว — เปลี่ยนได้ก่อนแจกไพ่รอบแรก' : 'หัวห้องเป็นคนตั้ง'))
       .toggleClass('is-static', !canToggle);
     $('#pdEndBtn').prop('hidden', !host);
     $('#pdRoot').attr('data-phase', S.phase || '');
     const now = describeNow();
-    $('#pdNowPhase').text((PHASE_LABEL[S.phase] || '') + (S.handNumber ? ' · มือที่ ' + S.handNumber : ''));
+    $('#pdNowPhase').text((PHASE_LABEL[S.phase] || '') + (S.handNumber ? ' · รอบที่ ' + S.handNumber : ''));
     $('#pdNowCopy').text(now.text);
     $('#pdNow').toggleClass('is-mine', !!now.mine);
     $('#pdNowHint').text(timerHint());
@@ -680,14 +680,14 @@ $(function() {
   function seatStatus(p) {
     if (p.left) return { text: 'ออกแล้ว', hot: false };
     if (!p.online && !p.isBot) return { text: 'หลุด', hot: false };
-    if (p.sittingOut) return { text: 'พักโต๊ะ', hot: false };
+    if (p.sittingOut) return { text: 'พักเล่น', hot: false };
     if (S.phase === 'bet') {
-      if (p.skipped) return { text: 'ข้ามมือนี้', hot: false };
+      if (p.skipped) return { text: 'ข้ามรอบนี้', hot: false };
       if (p.decided) return { text: 'ลงแล้ว', hot: false };
       if (p.chips < 10) return { text: p.rebuyUsed ? 'ชิปหมด' : 'ชิปหมด · ขอใหม่ได้', hot: false };
       return { text: 'กำลังเลือกยอด…', hot: true };
     }
-    if (!p.inHand) return { text: p.skipped ? 'ข้ามมือนี้' : 'ไม่ได้ลง', hot: false };
+    if (!p.inHand) return { text: p.skipped ? 'ข้ามรอบนี้' : 'ไม่ได้ลง', hot: false };
     if (p.revealed && p.eval && p.eval.pok && S.phase !== 'result') return { text: 'ป๊อก ' + p.eval.points + '!', hot: true };
     if (p.isTurn) return { text: 'กำลังคิด…', hot: true };
     if (S.phase === 'draw' || S.phase === 'dealer' || S.phase === 'deal') {
@@ -761,7 +761,7 @@ $(function() {
     const seat = selfSeat();
     if (!self || !seat) {
       $('#pdMeCards').html('');
-      $('#pdMeInfo').html('<div class="pd-me-sub">คุณกำลังดูโต๊ะนี้</div>');
+      $('#pdMeInfo').html('<div class="pd-me-sub">คุณกำลังดูห้องนี้</div>');
       return;
     }
     // จบโต๊ะแล้ว ไพ่มือสุดท้ายค้างไว้ทำให้งง — ตารางสรุปอยู่ในกล่องเดียวกันแทน
@@ -855,7 +855,7 @@ $(function() {
           '<img src="' + CHIP(v) + '" alt=""></button>').join('') + '</div></div>' +
         quickHtml(a) +
         '<div class="pd-actions-row">' +
-          '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามมือ</button>' +
+          '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามรอบ</button>' +
           betButtonHtml() +
         '</div></div>';
     } else if (a.canDraw || a.canDealerDecide) {
@@ -875,15 +875,15 @@ $(function() {
       const need = Number(S.readyNeeded) || 0;
       const ready = (S.readyIds || []).length;
       if (a.canNext) {
-        html = '<button type="button" id="pdNextBtn" class="pd-btn pd-btn--primary pd-btn--big">มือต่อไป</button>' +
+        html = '<button type="button" id="pdNextBtn" class="pd-btn pd-btn--primary pd-btn--big">รอบต่อไป</button>' +
           (ready ? '<div class="pd-hint">พร้อมแล้ว ' + ready + '/' + need + ' คน</div>' : '');
       } else if (a.canReady) {
-        html = '<button type="button" id="pdReadyBtn" class="pd-btn pd-btn--primary pd-btn--big">พร้อมมือต่อไป' + (need > 1 ? ' (' + ready + '/' + need + ')' : '') + '</button>';
+        html = '<button type="button" id="pdReadyBtn" class="pd-btn pd-btn--primary pd-btn--big">พร้อมรอบต่อไป' + (need > 1 ? ' (' + ready + '/' + need + ')' : '') + '</button>';
       } else {
         html = '<div class="pd-wait">พร้อมแล้ว — รออีก ' + Math.max(0, need - ready) + ' คน หรือหมดเวลา</div>';
       }
       if (S.nextDealer) {
-        html += '<div class="pd-next-dealer">มือหน้า: ' + (S.nextDealer.playerId === playerId ? 'คุณเป็นเจ้ามือ' : esc(S.nextDealer.name) + ' เป็นเจ้ามือ') + '</div>';
+        html += '<div class="pd-next-dealer">รอบหน้า: ' + (S.nextDealer.playerId === playerId ? 'คุณเป็นเจ้ามือ' : esc(S.nextDealer.name) + ' เป็นเจ้ามือ') + '</div>';
       }
     } else if (self && self.isDealer && S.phase === 'bet') {
       html = '<div class="pd-wait">รอขาไพ่ลงเดิมพัน แล้วแจกอัตโนมัติ</div>';
@@ -893,18 +893,18 @@ $(function() {
       if (myPok) wait = 'คุณป๊อก — ไม่ต้องจั่ว รอเปิดวัด';
       else if (self && self.inHand && self.done && S.phase === 'draw') wait = 'ตัดสินใจแล้ว — รอคนอื่น';
       else if (self && self.isDealer && S.phase !== 'dealer') wait = 'รอขาไพ่จั่วให้ครบ แล้วถึงตาคุณ (เจ้ามือ)';
-      else if (self && !self.inHand && !self.isDealer) wait = 'มือนี้คุณไม่ได้ลง — ดูเพื่อนเล่นได้';
+      else if (self && !self.inHand && !self.isDealer) wait = 'รอบนี้คุณไม่ได้ลง — ดูเพื่อนเล่นได้';
       html = '<div class="pd-wait">' + wait + '</div>';
     } else if (self && self.decided && S.phase === 'bet') {
-      html = '<div class="pd-wait">' + (self.skipped ? 'ข้ามมือนี้แล้ว' : 'ลงแล้ว ' + fmt(self.bet) + ' — รอแจกไพ่') + '</div>';
+      html = '<div class="pd-wait">' + (self.skipped ? 'ข้ามรอบนี้แล้ว' : 'ลงแล้ว ' + fmt(self.bet) + ' — รอแจกไพ่') + '</div>';
     }
     if (a.canSitIn && S.phase !== 'finished') {
       html = '<button type="button" id="pdSitInBtn" class="pd-btn pd-btn--primary pd-btn--big">กลับมาเล่น</button>' +
-        '<div class="pd-hint">หมดเวลาลงเดิมพัน 2 มือติด เลยพักโต๊ะไว้ให้ ไม่เสียชิป</div>';
+        '<div class="pd-hint">หมดเวลาลงเดิมพัน 2 รอบติดกัน เลยให้พักเล่นก่อน ไม่เสียชิป</div>';
     }
     if (a.canRebuy && S.phase !== 'finished') {
       html += '<div class="pd-actions-row">' +
-        (a.canSkip && !a.canBet ? '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามมือ</button>' : '') +
+        (a.canSkip && !a.canBet ? '<button type="button" id="pdSkipBtn" class="pd-btn pd-btn--ghost" style="flex:0 0 auto;">ข้ามรอบ</button>' : '') +
         '<button type="button" id="pdRebuyBtn" class="pd-btn">ขอชิปใหม่ +' + fmt((S.limits && S.limits.rebuy) || 1000) + ' (ได้ครั้งเดียว)</button></div>';
     }
     $('#pdActions').html(html);
@@ -917,7 +917,7 @@ $(function() {
 
   function renderFinished() {
     const rows = S.standings || [];
-    const title = S.winner && S.winner.playerId ? esc(S.winner.name) + ' กำไรสูงสุด' : 'จบโต๊ะ — ไม่มีใครได้กำไร';
+    const title = S.winner && S.winner.playerId ? esc(S.winner.name) + ' กำไรสูงสุด' : 'จบเกม — ไม่มีใครได้กำไร';
     return '<p class="pd-final-title">' + title + '</p>' +
       '<div class="pd-standings">' + rows.map(function(r, i) {
         const cls = r.net > 0 ? 'is-win' : (r.net < 0 ? 'is-lose' : 'is-push');
@@ -956,7 +956,7 @@ $(function() {
     }).join('');
     const d = r.dealer;
     $('#pdResults').prop('hidden', false).html(
-      '<h2>ผลมือที่ ' + r.handNumber + '</h2>' +
+      '<h2>ผลรอบที่ ' + r.handNumber + '</h2>' +
       (d ? '<p class="pd-results-note">เจ้ามือ ' + esc(d.name) + ': ' + mini(d.cards) + esc(niceLabel(d.label)) + ' · ' + signed(d.delta) + ' ชิป</p>' : '') +
       '<p class="pd-results-note">ชนะได้ เดิมพัน × เด้งของขา · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ</p>' +
       (r.shortfall ? '<p class="pd-results-note">เจ้ามือชิปไม่พอจ่าย — แบ่งจ่ายตามสัดส่วน</p>' : '') +
@@ -1084,7 +1084,7 @@ $(function() {
         }
         if (window.gameHaptic) window.gameHaptic([16, 30, 16]);
       } else if (e.kind === 'finished') {
-        banner('จบโต๊ะ');
+        banner('จบเกม');
       }
     });
   }
@@ -1245,8 +1245,8 @@ $(function() {
     if (!window.partyPlay || !S.standings) return;
     window.partyPlay.shareResult({
       mode: 'ป๊อกเด้ง',
-      headline: S.winner && S.winner.playerId ? S.winner.name + ' กำไรสูงสุด' : 'จบโต๊ะป๊อกเด้ง',
-      sub: S.handNumber + ' มือ · ชิปในโต๊ะ ไม่มีมูลค่าจริง',
+      headline: S.winner && S.winner.playerId ? S.winner.name + ' กำไรสูงสุด' : 'จบเกมป๊อกเด้ง',
+      sub: S.handNumber + ' รอบ · ชิปในเกม ไม่มีมูลค่าจริง',
       lines: S.standings.slice(0, 6).map((r, i) => (i + 1) + '. ' + r.name + ' ' + signed(r.net)),
       accent: '#f5c86b',
       fileName: 'pokdeng-result'
@@ -1255,7 +1255,7 @@ $(function() {
   $('#pdRotateBtn').on('click', function() {
     if (!(S.availableActions && S.availableActions.canToggleRotate)) {
       const mode = S.rotateDealer ? 'หมุนเจ้ามือทุกตา' : 'เจ้ามือคงที่';
-      const why = S.isHost ? ' — ล็อกแล้วหลังแจกมือแรก' : ' — หัวห้องเป็นคนตั้ง';
+      const why = S.isHost ? ' — ล็อกแล้วหลังแจกไพ่รอบแรก' : ' — หัวห้องเป็นคนตั้ง';
       Swal.fire({ toast: true, position: 'top', icon: 'info', title: mode + why, showConfirmButton: false, timer: 2200, background: '#2a1416', color: '#fff' });
       return;
     }
@@ -1265,8 +1265,8 @@ $(function() {
   });
   $('#pdEndBtn').on('click', function() {
     Swal.fire({
-      icon: 'warning', title: 'จบโต๊ะเลยไหม?', text: 'สรุปชิปทุกคนแล้วกลับห้องรอ (มือที่ค้างอยู่คืนเดิมพัน)',
-      showCancelButton: true, confirmButtonText: 'จบโต๊ะ', cancelButtonText: 'เล่นต่อ', background: '#1f1214', color: '#fff', confirmButtonColor: '#b3262e'
+      icon: 'warning', title: 'จบเกมเลยไหม?', text: 'สรุปชิปทุกคนแล้วกลับห้องรอ ถ้ารอบนี้ยังไม่จบ จะคืนเดิมพัน',
+      showCancelButton: true, confirmButtonText: 'จบเกม', cancelButtonText: 'เล่นต่อ', background: '#1f1214', color: '#fff', confirmButtonColor: '#b3262e'
     }).then(r => { if (r.isConfirmed) send('pokdeng_end'); });
   });
 
@@ -1287,26 +1287,26 @@ $(function() {
     const noStraights = S.rules && S.rules.straights === false;
     const shown = noStraights ? rows.filter(r => r[0] !== 'สเตรทฟลัช' && r[0] !== 'เรียง') : rows;
     return '<div class="pd-guide">' +
-      (noStraights ? '<p style="margin:0 0 8px; color:oklch(0.85 0.1 85); font-size:0.86rem;">โต๊ะนี้ไม่นับไพ่เรียง — ไพ่เรียงนับแต้มธรรมดา (ดอกเดียวกันยังได้สามเด้ง)</p>' : '') +
+      (noStraights ? '<p style="margin:0 0 8px; color:oklch(0.85 0.1 85); font-size:0.86rem;">ห้องนี้ไม่นับไพ่เรียง — ไพ่เรียงนับแต้มธรรมดา (ดอกเดียวกันยังได้สามเด้ง)</p>' : '') +
       shown.map((r, i) => '<div class="pd-rankrow"><span class="pd-rankno">' + (i + 1) + '</span>' +
         '<span><span class="pd-rankname">' + r[0] + '</span> ' + (r[3] ? '<span class="pd-deng">' + r[3] + '</span>' : '') +
         '<span class="pd-rankdesc">' + r[1] + '</span></span>' + miniCards(r[2]) + '</div>').join('') +
       '<h4>เด้ง = ตัวคูณของคนชนะ</h4>' +
       '<div class="pd-rankrow"><span class="pd-rankno">×2</span><span><span class="pd-rankname">สองเด้ง</span><span class="pd-rankdesc">2 ใบดอกเดียวกัน หรือคู่</span></span>' + miniCards(['8h', 'kh']) + '</div>' +
       '<div class="pd-rankrow"><span class="pd-rankno">×3</span><span><span class="pd-rankname">สามเด้ง</span><span class="pd-rankdesc">3 ใบดอกเดียวกัน</span></span>' + miniCards(['2c', '5c', 'qc']) + '</div>' +
-      '<p style="margin-top:8px; color:oklch(0.78 0.03 50); font-size:0.84rem;">แต้ม = หลักหน่วยของผลรวม · A = 1 · 10/J/Q/K = 0 · ชนะได้ เดิมพัน × เด้งของมือที่ชนะ · ตอง/เรียง/เซียน นับเฉพาะ 3 ใบ · ตองเจอตอง ตองใหญ่ชนะ · เรียงเจอเรียง ใบบนสุดใหญ่ชนะ</p>' +
+      '<p style="margin-top:8px; color:oklch(0.78 0.03 50); font-size:0.84rem;">แต้ม = หลักหน่วยของผลรวม · A = 1 · 10/J/Q/K = 0 · ชนะได้ เดิมพัน × เด้งของไพ่ที่ชนะ · ตอง/เรียง/เซียน นับเฉพาะ 3 ใบ · ตองเจอตอง ตองใหญ่ชนะ · เรียงเจอเรียง ใบบนสุดใหญ่ชนะ</p>' +
       '</div>';
   }
   function howToHtml() {
     return '<div class="pd-guide">' +
-      '<h4>1. ลงเดิมพัน</h4><p>ทุกขา (ยกเว้นเจ้ามือ) ลง 10–' + fmt((S.limits && S.limits.maxBet) || 500) + ' (อั้นของห้อง) ภายใน 20 วิ · แตะชิปเพื่อเพิ่ม แตะพลาดกด <b>↶ ย้อน</b> · ไม่เลือก = ลงขั้นต่ำให้ · หมดเวลา 2 มือติด = พักโต๊ะ (กด <b>กลับมาเล่น</b>)</p>' +
+      '<h4>1. ลงเดิมพัน</h4><p>ทุกขา (ยกเว้นเจ้ามือ) ลง 10–' + fmt((S.limits && S.limits.maxBet) || 500) + ' (อั้นของห้อง) ภายใน 20 วิ · แตะชิปเพื่อเพิ่ม แตะพลาดกด <b>↶ ย้อน</b> · ไม่เลือก = ลงขั้นต่ำให้ · หมดเวลา 2 รอบติดกัน = พักเล่น (กด <b>กลับมาเล่น</b>)</p>' +
       '<h4>2. แจก 2 ใบ</h4><p>ได้ 8 หรือ 9 = <b>ป๊อก</b> เปิดเลย ไม่ต้องจั่ว · ถ้าเจ้ามือป๊อก เปิดวัดทุกคนทันที</p>' +
-      '<h4>3. จั่วหรืออยู่</h4><p>ไล่ทีละคน จั่วเพิ่มได้ 1 ใบ (15 วิ ไม่เลือก = อยู่)' + ((S.rules && S.rules.mustDraw) ? ' · <b>โต๊ะนี้ต่ำกว่า 4 แต้มต้องจั่ว</b> ทั้งขาไพ่และเจ้ามือ' : '') + '</p>' +
+      '<h4>3. จั่วหรืออยู่</h4><p>ไล่ทีละคน จั่วเพิ่มได้ 1 ใบ (15 วิ ไม่เลือก = อยู่)' + ((S.rules && S.rules.mustDraw) ? ' · <b>ห้องนี้ต่ำกว่า 4 แต้มต้องจั่ว</b> ทั้งขาไพ่และเจ้ามือ' : '') + '</p>' +
       '<h4>4. ตาเจ้ามือ</h4><p>เจ้ามือ 4 แต้มขึ้นไป <b>จับ</b>ได้: เปิดวัดขาที่ถือ 3 ใบ (หรือ 2 ใบ) ด้วยไพ่ 2 ใบก่อน แล้วค่อยจั่ว/อยู่สู้ขาที่เหลือ · ต่ำกว่า 4 จับไม่ได้</p>' +
-      '<h4>5. วัดกับเจ้ามือ</h4><p>ชนะได้ เดิมพัน × เด้งของมือคุณ · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ · แต้มเท่ากัน = เสมอ คืนเดิมพัน</p>' +
-      '<h4>6. มือต่อไป</h4><p>ดูผลแล้วกด <b>พร้อมมือต่อไป</b> — ทุกคนพร้อมครบ ไปต่อทันที ไม่ต้องรอเวลา (หัวห้องกดข้ามได้)</p>' +
-      '<h4>ชิป</h4><p>ชิปในโต๊ะนี้ ไม่มีมูลค่าจริง · เริ่มคนละ 1,000 · หมดตัวขอชิปใหม่ได้ 1 ครั้ง · จบโต๊ะแล้วชิปเกินทุน = ชนะ</p>' +
-      '<h4>เจ้ามือ</h4><p>หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือเลือก <b>หมุนเจ้ามือทุกตา</b> (ทุกคนเริ่ม 1,000) · เปลี่ยนได้ก่อนแจกมือแรกเท่านั้น · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</p>' +
+      '<h4>5. วัดกับเจ้ามือ</h4><p>ชนะได้ เดิมพัน × เด้งของไพ่คุณ · แพ้เสีย เดิมพัน × เด้งของเจ้ามือ · แต้มเท่ากัน = เสมอ คืนเดิมพัน</p>' +
+      '<h4>6. รอบต่อไป</h4><p>ดูผลแล้วกด <b>พร้อมรอบต่อไป</b> — ทุกคนพร้อมครบ ไปต่อทันที ไม่ต้องรอเวลา (หัวห้องกดข้ามได้)</p>' +
+      '<h4>ชิป</h4><p>ชิปในเกมนี้ ไม่มีมูลค่าจริง · เริ่มคนละ 1,000 · หมดตัวขอชิปใหม่ได้ 1 ครั้ง · จบเกมแล้วชิปเกินทุน = ชนะ</p>' +
+      '<h4>เจ้ามือ</h4><p>หัวห้องเป็นเจ้ามือ (ถือ 5,000) หรือเลือก <b>หมุนเจ้ามือทุกตา</b> (ทุกคนเริ่ม 1,000) · เปลี่ยนได้ก่อนแจกไพ่รอบแรกเท่านั้น · เจ้ามือชิปไม่พอจ่าย = แบ่งจ่ายตามสัดส่วน</p>' +
       '</div>';
   }
   function guidePopup(title, html) {
@@ -1333,16 +1333,16 @@ $(function() {
     const live = ['bet', 'deal', 'draw', 'dealer'].indexOf(phase) >= 0;
     const lines = [];
     if (phase === 'finished') {
-      lines.push('โต๊ะจบแล้ว — กลับไปหน้ารวมห้อง');
+      lines.push('เกมจบแล้ว — กลับไปหน้ารวมห้อง');
     } else {
-      if (self.isDealer && live) lines.push('คุณเป็นเจ้ามือ — มือนี้ยกเลิก คืนเดิมพันทุกคน แล้วคนถัดไปเป็นเจ้ามือแทน');
-      else if (self.isDealer) lines.push('คุณเป็นเจ้ามือ — มือหน้าคนถัดไปเป็นเจ้ามือแทน');
-      else if (phase === 'bet' && self.bet > 0) lines.push('เดิมพันมือนี้ ' + fmt(self.bet) + ' ยังไม่แจกไพ่ — คืนให้ก่อนออก');
-      else if (self.inHand && live) lines.push('มือนี้คุณลง ' + fmt(self.bet) + ' แล้ว — ไพ่ของคุณ "อยู่" ไม่จั่วเพิ่ม และยังวัดกับเจ้ามือตามปกติ');
+      if (self.isDealer && live) lines.push('คุณเป็นเจ้ามือ — รอบนี้ยกเลิก คืนเดิมพันทุกคน แล้วคนถัดไปเป็นเจ้ามือแทน');
+      else if (self.isDealer) lines.push('คุณเป็นเจ้ามือ — รอบหน้าคนถัดไปเป็นเจ้ามือแทน');
+      else if (phase === 'bet' && self.bet > 0) lines.push('เดิมพันรอบนี้ ' + fmt(self.bet) + ' ยังไม่แจกไพ่ — คืนให้ก่อนออก');
+      else if (self.inHand && live) lines.push('รอบนี้คุณลง ' + fmt(self.bet) + ' แล้ว — ไพ่ของคุณ "อยู่" ไม่จั่วเพิ่ม และยังวัดกับเจ้ามือตามปกติ');
       const others = (S.players || []).filter(p => !p.left && !p.isSelf).length;
-      lines.push(others < 2 ? 'เหลือไม่ถึง 2 คน — โต๊ะจะจบ' : 'โต๊ะเล่นต่อโดยไม่มีคุณ');
+      lines.push(others < 2 ? 'เหลือไม่ถึง 2 คน — เกมจะจบ' : 'เกมเล่นต่อโดยไม่มีคุณ');
       if (S.isHost) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น');
-      lines.push('ชิปในโต๊ะนี้ (ไม่มีมูลค่าจริง) หายไปพร้อมกับคุณ');
+      lines.push('ชิปในเกมนี้ไม่มีมูลค่าจริง และไม่ติดตัวไปด้วย');
     }
     return lines;
   }
@@ -1417,7 +1417,7 @@ $(function() {
     const rows = (data.players || []).map(p => '<div style="margin:6px 0; text-align:left;"><strong>' + esc(p.name) + '</strong>' +
       (p.isDealer ? ' (เจ้ามือ)' : '') + ' · ' + fmt(p.chips) + ' ชิป' + (p.bet ? ' · ลง ' + fmt(p.bet) : '') +
       '<br>' + esc((p.cards || []).join(' ') || '—') + (p.label ? ' · ' + esc(p.label) : '') + '</div>').join('');
-    Swal.fire({ title: '/m ไพ่ทั้งโต๊ะ', html: rows, background: '#1f1214', color: '#fff' });
+    Swal.fire({ title: '/m ไพ่ของทุกคน', html: rows, background: '#1f1214', color: '#fff' });
   });
   socket.on('pokdeng_admin_reveal_denied', function() {
     Swal.fire({ icon: 'error', title: 'ดูไพ่ไม่ได้', text: 'คำสั่ง /m ใช้ได้เฉพาะแอดมินเว็บ', background: '#1f1214', color: '#fff' });

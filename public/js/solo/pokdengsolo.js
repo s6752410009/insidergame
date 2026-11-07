@@ -285,7 +285,7 @@
         $('pdsRunPeak').textContent = fmt(S.run.peak);
         const best = Math.max((stats && stats.bestPeak) || 0, S.run.peak || 0);
         $('pdsBestPeak').textContent = fmt(best);
-        $('pdsKicker').textContent = 'เล่นคนเดียว · ' + (S.phase === 'draw' ? 'มือที่ ' + S.handNo : (S.run.hands ? 'เล่นไป ' + fmt(S.run.hands) + ' มือ' : 'รอบใหม่'));
+        $('pdsKicker').textContent = 'เล่นคนเดียว · ' + (S.phase === 'draw' ? 'รอบที่ ' + S.handNo : (S.run.hands ? 'เล่นไป ' + fmt(S.run.hands) + ' รอบ' : 'เกมใหม่'));
     }
 
     function renderStats() {
@@ -293,16 +293,16 @@
         const run = S ? S.run : null;
         const cells = [
             ['สูงสุดตลอดกาล', fmt(Math.max(s.bestPeak || 0, run ? run.peak : 0)), true],
-            ['มือทั้งหมด', fmt(s.handsPlayed || 0)],
-            ['ชนะสุดต่อมือ', s.biggestWin ? '+' + fmt(s.biggestWin) : '–'],
+            ['รอบทั้งหมด', fmt(s.handsPlayed || 0)],
+            ['ชนะสูงสุดต่อรอบ', s.biggestWin ? '+' + fmt(s.biggestWin) : '–'],
             ['ป๊อก', fmt(s.pokCount || 0)],
             ['ชนะ – แพ้', fmt(s.wins || 0) + ' – ' + fmt(s.losses || 0)],
-            ['รอบที่เล่น', fmt(s.runs || 0)]
+            ['เกมที่เล่น', fmt(s.runs || 0)]
         ];
         $('pdsStats').innerHTML = cells.map(c =>
             '<div class="pds-stat' + (c[2] ? ' is-best' : '') + '"><span class="pds-stat-label">' + c[0] + '</span><span class="pds-stat-value">' + c[1] + '</span></div>'
         ).join('');
-        $('pdsRunSub').textContent = run ? 'รอบนี้ ' + fmt(run.hands) + ' มือ · ป๊อก ' + fmt(run.poks) + ' · ชนะสุด ' + (run.biggestWin ? '+' + fmt(run.biggestWin) : '–') : '';
+        $('pdsRunSub').textContent = run ? 'เกมนี้ ' + fmt(run.hands) + ' รอบ · ป๊อก ' + fmt(run.poks) + ' · ชนะสูงสุด ' + (run.biggestWin ? '+' + fmt(run.biggestWin) : '–') : '';
     }
 
     function clampBet() {
@@ -315,7 +315,7 @@
     function renderActions() {
         const box = $('pdsActions');
         if (!S) {
-            box.innerHTML = '<div class="pds-hint">กำลังโหลดโต๊ะ…</div>';
+            box.innerHTML = '<div class="pds-hint">กำลังโหลดเกม…</div>';
             return;
         }
         const dis = busy ? ' disabled' : '';
@@ -324,13 +324,13 @@
             const isBest = stats && run.peak >= stats.bestPeak && run.peak > S.startChips;
             box.innerHTML = '<div class="pds-bust">' +
                 '<h2>หมดตัวแล้ว!</h2>' +
-                '<p style="color:var(--soft);">รอบนี้เล่นไป ' + fmt(run.hands) + ' มือ' + (isBest ? ' · <span class="pds-newbest">ทำสถิติใหม่!</span>' : '') + '</p>' +
+                '<p style="color:var(--soft);">เกมนี้เล่นไป ' + fmt(run.hands) + ' รอบ' + (isBest ? ' · <span class="pds-newbest">ทำสถิติใหม่!</span>' : '') + '</p>' +
                 '<div class="pds-bust-grid">' +
                     '<div><b>' + fmt(run.peak) + '</b><span>ชิปสูงสุด</span></div>' +
                     '<div><b>' + (run.biggestWin ? '+' + fmt(run.biggestWin) : '–') + '</b><span>ชนะมากสุด</span></div>' +
                     '<div><b>' + fmt(run.poks) + '</b><span>ป๊อก</span></div>' +
                 '</div>' +
-                '<button type="button" class="pds-btn pds-btn--primary" data-act="newrun"' + dis + '>เริ่มรอบใหม่ · 1,000 ชิป</button>' +
+                '<button type="button" class="pds-btn pds-btn--primary" data-act="newrun"' + dis + '>เริ่มเกมใหม่ · 1,000 ชิป</button>' +
             '</div>';
             return;
         }
@@ -361,7 +361,7 @@
             '<div class="pds-row">' +
                 '<button type="button" class="pds-btn pds-btn--sm" data-act="clear"' + dis + '>ล้าง</button>' +
                 '<button type="button" class="pds-btn pds-btn--sm" data-act="double"' + (busy || !betAmount || betAmount * 2 > max ? ' disabled' : '') + '>×2</button>' +
-                '<button type="button" class="pds-btn pds-btn--sm" data-act="max"' + dis + '>สุด ' + fmt(max) + '</button>' +
+                '<button type="button" class="pds-btn pds-btn--sm" data-act="max"' + dis + '>สูงสุด ' + fmt(max) + '</button>' +
             '</div>' +
             '<button type="button" class="pds-btn pds-btn--primary" data-act="deal"' + (can ? '' : ' disabled') + '>' +
                 (betAmount >= S.minBet ? 'แจกไพ่ · ลง ' + fmt(betAmount) : 'แตะชิปเพื่อลงเดิมพัน') + '</button>' +
@@ -369,10 +369,10 @@
     }
 
     function describeResultStatus(r) {
-        if (!r) return ['วางเดิมพันแล้วกดแจกไพ่', 'ลง 10–500 ต่อมือ · ป๊อก 8/9 เปิดวัดทันที'];
-        if (r.outcome === 'win') return ['ชนะ ' + signed(r.delta) + (r.multiplier > 1 ? ' · ' + dengWord(r.multiplier) : ''), 'ลงมือต่อไปได้เลย'];
+        if (!r) return ['วางเดิมพันแล้วกดแจกไพ่', 'ลง 10–500 ต่อรอบ · ป๊อก 8/9 เปิดวัดทันที'];
+        if (r.outcome === 'win') return ['ชนะ ' + signed(r.delta) + (r.multiplier > 1 ? ' · ' + dengWord(r.multiplier) : ''), 'ลงเดิมพันรอบต่อไปได้เลย'];
         if (r.outcome === 'lose') return ['แพ้ ' + signed(r.delta) + (r.multiplier > 1 ? ' · เจ้ามือ' + dengWord(r.multiplier) : ''), r.short ? 'เสียไม่เกินชิปที่มี' : 'แก้มือได้ ลงต่อเลย'];
-        return ['เสมอ · ได้เดิมพันคืน', 'ลงมือต่อไปได้เลย'];
+        return ['เสมอ · ได้เดิมพันคืน', 'ลงเดิมพันรอบต่อไปได้เลย'];
     }
 
     /** วาดโต๊ะตามสถานะโดยไม่มีแอนิเมชัน (โหลดหน้า / ซิงก์ใหม่) */
@@ -389,7 +389,7 @@
             setLabel('pdsPlayerLabel', S.hand.player.eval);
             setLabel('pdsDealerLabel', null);
             setPot(S.hand.bet);
-            setStatus('จั่วเพิ่ม หรือ อยู่?', 'มือที่ ' + S.handNo + ' · ลง ' + fmt(S.hand.bet));
+            setStatus('จั่วเพิ่ม หรือ อยู่?', 'รอบที่ ' + S.handNo + ' · ลง ' + fmt(S.hand.bet));
             return;
         }
         const r = S.lastResult;
@@ -403,7 +403,7 @@
             setLabel('pdsPlayerLabel', null);
             setLabel('pdsDealerLabel', null);
         }
-        const st = S.phase === 'busted' ? ['หมดตัว — จบรอบนี้', 'เริ่มรอบใหม่ได้ทันที'] : describeResultStatus(r);
+        const st = S.phase === 'busted' ? ['หมดตัว — จบเกมนี้', 'เริ่มเกมใหม่ได้ทันที'] : describeResultStatus(r);
         setStatus(st[0], st[1]);
     }
 
@@ -431,7 +431,7 @@
             return;
         }
         if (!res.ok) {
-            showError((res.data && res.data.error) || 'โหลดโต๊ะไม่สำเร็จ', res.status === 403 ? () => location.reload() : loadState);
+            showError((res.data && res.data.error) || 'โหลดเกมไม่สำเร็จ', res.status === 403 ? () => location.reload() : loadState);
             return;
         }
         adopt(res.data);
@@ -457,7 +457,7 @@
         }
         busy = false;
         adopt(res.data);
-        if (!res.ok) showError((res.data && res.data.error) || 'เริ่มรอบไม่สำเร็จ', res.status === 403 ? () => location.reload() : null);
+        if (!res.ok) showError((res.data && res.data.error) || 'เริ่มเกมไม่สำเร็จ', res.status === 403 ? () => location.reload() : null);
         if (S && fresh) {
             await clearTable();
             setPot(0);
@@ -516,9 +516,9 @@
         const playerCards = result ? result.player.cards : S.hand.player.cards;
         const dealerCards = result ? result.dealer.cards : [null, null];
         const playerEval = result ? result.player.eval : S.hand.player.eval;
-        setStatus('แจกไพ่…', 'มือที่ ' + hand + ' · ลง ' + fmt(bet));
+        setStatus('แจกไพ่…', 'รอบที่ ' + hand + ' · ลง ' + fmt(bet));
         // ยังไม่อัปเดต HUD ทั้งหมด — ผลมือ (ถ้ามีป๊อก) มากับ response แล้ว แต่ต้องรอเปิดไพ่ก่อน
-        $('pdsKicker').textContent = 'เล่นคนเดียว · มือที่ ' + hand;
+        $('pdsKicker').textContent = 'เล่นคนเดียว · รอบที่ ' + hand;
         const pEls = [];
         const dEls = [];
         for (let i = 0; i < 2; i += 1) {
@@ -661,7 +661,7 @@
         shownChips = before;
         renderHud({ tween: true });
         renderStats();
-        const st = S.phase === 'busted' ? ['หมดตัว — จบรอบนี้', 'เริ่มรอบใหม่ได้ทันที'] : describeResultStatus(r);
+        const st = S.phase === 'busted' ? ['หมดตัว — จบเกมนี้', 'เริ่มเกมใหม่ได้ทันที'] : describeResultStatus(r);
         setStatus(st[0], st[1]);
         if (S.phase === 'busted') await sleep(900);
         if (stats && stats.bestPeak && boardBest != null && stats.bestPeak > boardBest) loadBoard();
@@ -756,7 +756,7 @@
             '<li><div><b>เจ้ามือ “จับ”</b><p>เจ้ามือ 2 ใบได้ 4 แต้มขึ้นไป เปิดวัดกับเราได้เลยไม่ต้องจั่ว · บอทจับเมื่อได้ 4–5 แต้มแล้วเราจั่ว</p></div></li>' +
             '<li><div><b>วัดแต้ม</b><p>ชนะได้ เดิมพัน × เด้งของเรา · แพ้เสีย เดิมพัน × เด้งเจ้ามือ (ไม่เกินชิปที่มี)</p></div></li>' +
             '</ol>' +
-            '<h3>กติกาเลือกได้ (⚙️ กติกา)</h3><p>นับเรียง/สเตรทฟลัช (เปิดไว้) · ต่ำกว่า 4 ต้องจั่ว (ปิดไว้) — ใช้ตั้งแต่มือถัดไป</p>' +
+            '<h3>กติกาเลือกได้ (⚙️ กติกา)</h3><p>นับเรียง/สเตรทฟลัช (เปิดไว้) · ต่ำกว่า 4 ต้องจั่ว (ปิดไว้) — ใช้ตั้งแต่รอบถัดไป</p>' +
             '<h3>เป้าหมาย</h3><p>เริ่ม 1,000 ชิป ปั้นให้สูงที่สุดก่อนหมดตัว — <b>ชิปสูงสุดที่เคยถึง</b> ขึ้นตารางอันดับทั้งเว็บ</p>' +
             '<p>ชิปเล่นๆ ไม่ผูกกับกระเป๋า ไม่มีมูลค่าจริง · เซิร์ฟเวอร์สับไพ่และแจกเอง รีเฟรชหน้าก็เล่นต่อจากเดิม</p>';
     }
@@ -769,9 +769,9 @@
             '<span><b>' + title + '</b><span class="pds-rankdesc">' + desc + '</span></span></label>';
         return row('straights', 'นับเรียง / สเตรทฟลัช', 'ปิด = 3 ใบเรียงกันนับแต้มธรรมดา') +
             row('mustDraw', 'ต่ำกว่า 4 ต้องจั่ว', 'ทั้งเราและเจ้ามือ 2 ใบต่ำกว่า 4 แต้ม อยู่ไม่ได้') +
-            '<p style="margin-top:10px;">ใช้ตั้งแต่มือถัดไป · จำไว้ในเครื่องนี้</p>';
+            '<p style="margin-top:10px;">ใช้ตั้งแต่รอบถัดไป · จำไว้ในเครื่องนี้</p>';
     }
-    $('pdsRulesBtn').addEventListener('click', () => openSheet('กติกาโต๊ะ', rulesHtml(), { closeText: 'ตกลง' }));
+    $('pdsRulesBtn').addEventListener('click', () => openSheet('กติกาเกม', rulesHtml(), { closeText: 'ตกลง' }));
     $('pdsSheetBody').addEventListener('change', e => {
         const box = e.target.closest('[data-rule]');
         if (!box) return;
@@ -810,13 +810,13 @@
     restart.type = 'button';
     restart.className = 'pds-pill';
     restart.style.cssText = 'float:right; min-height:36px; margin-top:-6px; font-size:0.8rem;';
-    restart.textContent = 'เริ่มรอบใหม่';
+    restart.textContent = 'เริ่มเกมใหม่';
     restart.addEventListener('click', () => {
         if (busy || !S) return;
-        if (S.phase === 'draw') { showError('เล่นมือนี้ให้จบก่อนค่อยเริ่มรอบใหม่', null); return; }
+        if (S.phase === 'draw') { showError('เล่นรอบนี้ให้จบก่อนค่อยเริ่มเกมใหม่', null); return; }
         if (S.phase === 'busted') { startRun(true); return; }
-        openSheet('เริ่มรอบใหม่?', '<p>ชิปรอบนี้ (' + fmt(S.chips) + ') จะหายไป แล้วเริ่มใหม่ที่ 1,000 ชิป · สถิติสูงสุดที่ทำไว้ยังอยู่ครบ</p>' +
-            '<button type="button" class="pds-btn" data-sheet-act="confirm-newrun" style="width:100%; margin-top:10px;">เริ่มรอบใหม่เลย</button>', { closeText: 'เล่นรอบนี้ต่อ' });
+        openSheet('เริ่มเกมใหม่?', '<p>ชิปในเกมนี้ (' + fmt(S.chips) + ') จะหายไป แล้วเริ่มใหม่ที่ 1,000 ชิป · สถิติสูงสุดที่ทำไว้ยังอยู่ครบ</p>' +
+            '<button type="button" class="pds-btn" data-sheet-act="confirm-newrun" style="width:100%; margin-top:10px;">เริ่มเกมใหม่เลย</button>', { closeText: 'เล่นเกมนี้ต่อ' });
     });
     runTitle.parentNode.insertBefore(restart, runTitle);
 

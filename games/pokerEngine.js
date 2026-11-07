@@ -243,7 +243,7 @@ function finishTable(room, reason) {
     state.status = 'poker_finished';
     state.phaseEndsAt = null;
     state.toActPlayerId = null;
-    pushHistory(room, '🏁', reason || 'จบโต๊ะ');
+    pushHistory(room, '🏁', reason || 'จบเกม');
     return state;
 }
 
@@ -601,7 +601,7 @@ function startHand(room) {
     state.handUid = makeHandUid();
     state.escrowIds = [];
     if (state.players.length < 2 || !collectAnte(room)) {
-        return finishTable(room, 'เหลือผู้เล่นหรือชิปไม่พอเริ่มมือนี้ — จบโต๊ะ');
+        return finishTable(room, 'เหลือผู้เล่นหรือชิปไม่พอเริ่มรอบนี้ — จบเกม');
     }
     state.handNumber += 1;
     state.lastResult = null;
@@ -614,7 +614,7 @@ function startHand(room) {
     state.toActPlayerId = null;
     dealHands(room);
     setPhase(room, 'select', SELECT_MS);
-    pushHistory(room, '🃏', `มือที่ ${state.handNumber} — วางกองก่อนแจก ${state.ante} รวม ${state.pot}`, 'deal');
+    pushHistory(room, '🃏', `รอบที่ ${state.handNumber} — วางกองก่อนแจก ${state.ante} รวม ${state.pot}`, 'deal');
     pushFx(room, { kind: 'deal', count: meta.dealCount });
     return state;
 }
@@ -638,11 +638,11 @@ function submitSelect(room, playerId, cardIds) {
     const state = room.gameState;
     if (state.phase !== 'select') throw new Error('ยังไม่ถึงตาเลือกไพ่');
     const player = getPlayer(room, playerId);
-    if (!player || player.sittingOut) throw new Error('คุณไม่ได้ลงมือนี้');
+    if (!player || player.sittingOut) throw new Error('คุณไม่ได้ลงรอบนี้');
 
     const chosen = Array.isArray(cardIds) ? cardIds.map(String) : [];
     if (chosen.length !== meta.selectCount) {
-        throw new Error('เลือก 2 ใบที่จะทิ้งคืนกลาง');
+        throw new Error('เลือกไพ่ 2 ใบที่จะทิ้ง');
     }
     const hand = [...player.hand];
     chosen.forEach(cardId => {
@@ -746,7 +746,7 @@ function submitBet(room, playerId, action, amount) {
     const state = room.gameState;
     if (state.phase !== 'bet') throw new Error('ยังไม่ถึงตาเดิมพัน');
     const player = getPlayer(room, playerId);
-    if (!player || player.sittingOut || player.folded) throw new Error('คุณไม่ได้ลงมือนี้');
+    if (!player || player.sittingOut || player.folded) throw new Error('คุณไม่ได้ลงรอบนี้');
     if (state.toActPlayerId && state.toActPlayerId !== playerId) throw new Error('ยังไม่ถึงตาคุณ');
     if (player.allIn) throw new Error('หมดหน้าตักไปแล้ว');
 
@@ -794,7 +794,7 @@ function submitBet(room, playerId, action, amount) {
         const raiseTo = want || minRaiseTo;
         const need = raiseTo - player.streetBet;
         if (raiseTo < minRaiseTo && player.stack > need) throw new Error(`เกทับอย่างน้อยถึง ${minRaiseTo}`);
-        if (need <= 0) throw new Error('ยอดเกทับต้องสูงกว่าของโต๊ะ');
+        if (need <= 0) throw new Error('ยอดเกทับต้องสูงกว่ายอดเดิมพันปัจจุบัน');
         const taken = putStreetBet(room, player, need);
         if (player.streetBet <= currentBet && !player.allIn) throw new Error('เกทับไม่ถึง');
         if (player.streetBet > currentBet) {
@@ -818,7 +818,7 @@ function submitBet(room, playerId, action, amount) {
         pushSay(room, player, 'allin', taken);
         pushHistory(room, '💀', `${player.name} หมดหน้าตัก ${taken}`);
     } else {
-        throw new Error('แอ็กชันไม่รู้จัก');
+        throw new Error('ทำรายการนี้ไม่ได้');
     }
 
     return continueBet(room, player);
@@ -843,7 +843,7 @@ function continueBet(room, lastActor) {
 
 function awardFoldWin(room, winner) {
     const state = room.gameState;
-    if (!winner) return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบโต๊ะ');
+    if (!winner) return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบเกม');
     const settled = settlePots(room, null);
     const pot = settled.paid;
     winner.bestName = 'คนอื่นหมอบ';
@@ -993,7 +993,7 @@ function finishReveal(room) {
 function nextHand(room) {
     const state = room.gameState;
     if (state.phase !== 'between' && state.phase !== 'reveal') {
-        throw new Error('ยังไม่จบมือ');
+        throw new Error('ยังไม่จบรอบ');
     }
     state.dealerIndex = pickDealerIndex(state, true);
     return startHand(room);
@@ -1203,7 +1203,7 @@ function handlePlayerLeft(room, playerId) {
         player.folded = true;
         player.ready = true;
         player.acted = true;
-        pushHistory(room, '🚪', `${player.name} ออกจากมือนี้`);
+        pushHistory(room, '🚪', `${player.name} ออกจากรอบนี้`);
     }
 
     const inHand = ['select', 'bet', 'deal3', 'reveal'].includes(state.phase);
@@ -1213,7 +1213,7 @@ function handlePlayerLeft(room, playerId) {
         if (alive[0]) awardFoldWin(room, alive[0]);
         pruneAbsentPlayers(room);
         if (state.players.length < 2) {
-            return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบโต๊ะ');
+            return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบเกม');
         }
         if (state.phase !== 'finished') setPhase(room, 'between', BETWEEN_MS);
         return state;
@@ -1222,7 +1222,7 @@ function handlePlayerLeft(room, playerId) {
     pruneAbsentPlayers(room);
 
     if (state.players.length < 2) {
-        return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบโต๊ะ');
+        return finishTable(room, 'เหลือผู้เล่นไม่พอ — จบเกม');
     }
     if (state.phase === 'select' && seatedPlayers(room).every(p => p.ready)) return afterSelect(room);
     if (state.phase === 'bet' && (streetComplete(room) || livePlayers(room).length <= 1)) {

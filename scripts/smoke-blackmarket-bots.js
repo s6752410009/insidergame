@@ -278,6 +278,18 @@ async function main() {
 
         // Play the game until finished
         while (state && state.phase !== 'finished') {
+            // Bots may eliminate the human. A spectator must watch them finish,
+            // not submit a purchase/action which the engine correctly rejects.
+            if (state.self?.alive === false) {
+                assert(state.players.some(player => player.playerId === human.playerId && player.alive === false), 'eliminated human is visible in the public state');
+                const previousPhase = state.phase;
+                const previousRound = state.roundNumber;
+                console.log(`[Round ${previousRound}] Human eliminated; watching bots continue...`);
+                state = await onceWithTimeout(human.socket, 'blackmarketState', payload => payload
+                    && payload.roomId === roomId && (payload.phase === 'finished'
+                        || payload.phase !== previousPhase || payload.roundNumber !== previousRound), 60000);
+                continue;
+            }
             if (state.phase === 'market' && !timerDrivenRound) {
                 timerDrivenRound = Number(state.roundNumber || 1);
                 console.log(`[Round ${state.roundNumber}] Human skips market; waiting for the timer to resolve it...`);
@@ -301,7 +313,7 @@ async function main() {
                     playerId: human.playerId,
                     itemId: choice
                 });
-                assert(response && response.success, 'Market purchase failed');
+                assert(response && response.success, 'Market purchase failed: ' + JSON.stringify(response));
 
                 // Wait for phase transition
                 state = await onceWithTimeout(
@@ -320,7 +332,7 @@ async function main() {
                     playerId: human.playerId,
                     ...actionPayload
                 });
-                assert(response && response.success, 'Action submit failed');
+                assert(response && response.success, 'Action submit failed: ' + JSON.stringify(response));
 
                 // Wait for phase transition to next market or finished
                 // หลังตลาดหมดเวลา บอทต้องล็อกแผนเองแล้ว — มนุษย์กดครบคนสุดท้ายต้องปิดยกทันที ไม่ต้องรอ timer 30 วิ

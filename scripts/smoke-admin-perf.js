@@ -174,6 +174,19 @@ async function largeDataset() {
         assert(logsPage.counts.error === seededErrors && logsPage.counts.admin === seededAdmin, `error/admin อยู่ครบ ไม่โดน detail ดันหลุด (${logsPage.counts.error}/${seededErrors} · ${logsPage.counts.admin}/${seededAdmin})`);
         const older = (await emit('admin_getLogs', { cat: 'all', limit: 200, before: logsPage.nextCursor })).response;
         assert(older.logs.length === 200 && older.logs[0].id < logsPage.logs[199].id, 'แสดงเพิ่มดึงหน้าเก่ากว่าจากที่เก็บ');
+        // Include the new retained-log analytics scan while /ping is probed concurrently.
+        const insightsAt = Date.now();
+        const insightsResponse = await request('GET', `${base}/admin/api/insights?days=7`, null, { cookie });
+        const insights = JSON.parse(insightsResponse.body);
+        const insightsMs = Date.now() - insightsAt;
+        assert(insightsResponse.status === 200 && insights.success, 'insights ชุดใหญ่โหลดได้');
+        assert(insights.activity.rows.length === 50 && insights.activity.total > 15000, 'insights แบ่งหน้า 50 ไม่ส่งกิจกรรมทั้งหมด');
+        assert(Buffer.byteLength(insightsResponse.body) < 120 * 1024, 'insights payload < 120KB');
+        assert(insightsMs < 1500, `insights scan < 1.5s (${insightsMs}ms)`);
+        const nextInsights = JSON.parse((await request('GET', `${base}/admin/api/insights?days=7&page=2`, null, { cookie })).body);
+        assert(nextInsights.activity.page === 2 && nextInsights.activity.rows[0].id !== insights.activity.rows[0].id, 'insights cached source แบ่งหน้าต่อได้');
+        assert(nextInsights.summary.starts === insights.summary.starts, 'เปลี่ยนหน้ากิจกรรมไม่เปลี่ยนจำนวนเริ่มเกม');
+        report.push(`insights ${insightsMs}ms ${(Buffer.byteLength(insightsResponse.body) / 1024).toFixed(1)}KB`);
         pinging = false;
         await pinger;
         assert(worstPing < 800, `/ping ระหว่างโหลดหลังบ้าน < 800ms (แย่สุด ${worstPing}ms)`);

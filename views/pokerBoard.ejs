@@ -889,10 +889,10 @@
 <div id="pkRankOverlay" class="pk-rank-overlay"></div>
 <aside id="pkRankDrawer" class="pk-rank-drawer" role="dialog" aria-modal="true" aria-labelledby="pkRankTitle" aria-hidden="true">
   <div class="pk-rank-head">
-    <h3 id="pkRankTitle">มือไพ่</h3>
+    <h3 id="pkRankTitle">ลำดับไพ่</h3>
     <button type="button" id="pkRankClose" class="pk-rank-close" aria-label="ปิด">✕</button>
   </div>
-  <div id="pkRankYou" class="pk-rank-you">กำลังดูมือ...</div>
+  <div id="pkRankYou" class="pk-rank-you">กำลังดูไพ่...</div>
   <div id="pkRankList"></div>
 </aside>
 
@@ -1341,7 +1341,7 @@ $(function() {
     const kept = hand.filter(function(card, index) { return selectedIds.indexOf(card.id + ':' + index) < 0; });
     const keptKey = kept.map(function(card) { return card.id; }).sort().join(',');
     const bestKey = ((state.liveHand && state.liveHand.cards) || []).map(function(card) { return card.id; }).sort().join(',');
-    if (bestKey && keptKey === bestKey) return 'มือคุณ: ' + bestLabel + ' — เลือกทิ้งใบอ่อนสุดให้แล้ว';
+    if (bestKey && keptKey === bestKey) return 'ไพ่ของคุณ: ' + bestLabel + ' — เลือกทิ้งใบอ่อนสุดให้แล้ว';
     let label = rankFromPeekCards(kept);
     if (label && state.mode === 'poker4') label += ' · รอใบ 3';
     return 'ถ้าเก็บแบบนี้: ' + (label || '-') + ' · แนะนำ: ' + bestLabel;
@@ -1733,7 +1733,7 @@ $(function() {
     }
     const hand = shortHandTitle(r.handTitle || r.handName);
     if (r.winners.length > 1) {
-      return r.winners.map(name).join(' + ') + ' แบ่งกอง ' + (r.pot || 0) + ' · มือสูงสุด ' + hand;
+      return r.winners.map(name).join(' + ') + ' แบ่งกอง ' + (r.pot || 0) + ' · ไพ่สูงสุด ' + hand;
     }
     return name(r.winners[0]) + ' ชนะด้วย ' + hand + ' · ได้ ' + (r.winners[0].amount || r.pot || 0);
   }
@@ -1745,12 +1745,12 @@ $(function() {
     const paid = Number(self.committed) || 0;
     if (self.folded) return 'คุณหมอบ' + (paid ? ' · เสีย ' + paid : '');
     if (got > 0) return 'คุณชนะ · ได้ ' + got + (paid ? ' (ลงไป ' + paid + ')' : '');
-    return 'คุณแพ้มือนี้' + (paid ? ' · เสีย ' + paid : '');
+    return 'คุณแพ้รอบนี้' + (paid ? ' · เสีย ' + paid : '');
   }
   function nowText(state) {
     if (state.phase === 'select') {
       const need = state.availableActions && state.availableActions.selectCount;
-      if (state.self && state.self.sittingOut) return 'มือนี้คุณนั่งพัก · คนอื่นกำลังเลือกทิ้ง';
+      if (state.self && state.self.sittingOut) return 'รอบนี้คุณนั่งพัก · คนอื่นกำลังเลือกทิ้ง';
       if (state.self && state.self.ready) {
         const seated = (state.players || []).filter(function(p) { return !p.sittingOut; });
         const ready = seated.filter(function(p) { return p.ready; }).length;
@@ -1763,11 +1763,11 @@ $(function() {
       const round = state.betRounds > 1 ? (Number(state.street) >= 2 ? ' (รอบสอง)' : ' (รอบแรก)') : '';
       return mine ? 'ตาคุณลงชิป' + round : ((state.toActName || 'รอคนอื่น') + ' กำลังลงชิป' + round);
     }
-    if (state.phase === 'deal3') return state.thirdCard === 'up' ? 'กำลังหงายใบที่ 3 ให้ทั้งโต๊ะดู' : 'กำลังแจกใบที่ 3 (คว่ำ เห็นเองคนเดียว)';
+    if (state.phase === 'deal3') return state.thirdCard === 'up' ? 'กำลังหงายใบที่ 3 ให้ทุกคนดู' : 'กำลังแจกใบที่ 3 (คว่ำ เห็นเองคนเดียว)';
     if (state.phase === 'reveal') return resultText(state);
-    if (state.phase === 'finished') return 'จบโต๊ะแล้ว — กำลังกลับห้องรอ';
-    if (state.phase === 'between') return (state.lastResult ? resultText(state) : 'จบมือ') + ' — รอแจกมือถัดไป';
-    return 'รอเริ่มมือ';
+    if (state.phase === 'finished') return 'จบเกมแล้ว — กำลังกลับห้องรอ';
+    if (state.phase === 'between') return (state.lastResult ? resultText(state) : 'จบรอบ') + ' — รอแจกไพ่รอบถัดไป';
+    return 'รอเริ่มรอบ';
   }
   function timerHint(state) {
     const actions = state.availableActions || {};
@@ -1916,7 +1916,7 @@ $(function() {
     if (state.self && state.self.sittingOut && state.phase !== 'finished') {
       // เดิมคนที่ถูกพักมือ (ชิปไม่พอ/หลุด) เห็นแค่ "ไม่มีไพ่ในมือ" ไม่รู้ว่าทำไม
       const broke = state.tableType === 'cash' && state.wallet && Number(state.wallet.balance) < Number(state.ante || 0);
-      $('#pkHint').text('มือนี้คุณนั่งพัก — ' + (broke ? 'ชิปในกระเป๋าไม่พอวางกอง ' + state.ante : 'ได้ไพ่มือถัดไป'));
+      $('#pkHint').text('รอบนี้คุณนั่งพัก — ' + (broke ? 'ชิปในกระเป๋าไม่พอวางกอง ' + state.ante : 'ได้ไพ่รอบถัดไป'));
     } else if (showdown && state.self && state.self.folded) {
       $('#pkHint').text(selfResultText(state) || 'คุณหมอบแล้ว');
     } else if (showdown) {
@@ -1929,7 +1929,7 @@ $(function() {
     } else if (actions.canSelect && rankLabel) {
       $('#pkHint').text(selectHint(state, actions, rankLabel));
     } else if (rankLabel) {
-      $('#pkHint').text('มือคุณ: ' + rankLabel);
+      $('#pkHint').text('ไพ่ของคุณ: ' + rankLabel);
     } else {
       $('#pkHint').text('');
     }
@@ -1992,7 +1992,7 @@ $(function() {
       buttons += '<div class="pk-more-actions"><button type="button" id="pkBetMoreToggle" class="pk-btn pk-btn-raise" aria-expanded="' + (betMoreOpen ? 'true' : 'false') + '" aria-controls="pkMorePanel">' + (betMoreOpen ? 'ซ่อนเพิ่มเดิมพัน ▴' : (actions.canRaise ? 'เกทับ / หมดหน้าตัก ▾' : 'สู้ / หมดหน้าตัก ▾')) + '</button></div>' +
         '<div id="pkMorePanel" class="pk-more-panel"' + (betMoreOpen ? '' : ' hidden') + '>' + moreButtons + '</div>';
     }
-    if (actions.canNext && isRoomAdmin) buttons += '<button type="button" id="pkNextBtn" class="pk-btn pk-btn-play">มือถัดไป</button>';
+    if (actions.canNext && isRoomAdmin) buttons += '<button type="button" id="pkNextBtn" class="pk-btn pk-btn-play">รอบถัดไป</button>';
     const actionSig = [state.phase, !!actions.toAct, !!actions.canSelect, selectedIds.length, maxPick, !!actions.canFold, !!actions.canCheck, !!actions.canCall, actions.callAmount || 0, !!actions.canBet, !!actions.canRaise, !!actions.canAllIn, chipAmount, actions.minRaiseTo || 0, actions.minBet || 0, betMoreOpen].join('|');
     if (actionSig !== lastActionSig) {
       lastActionSig = actionSig;
@@ -2028,8 +2028,8 @@ $(function() {
     const live = state.liveHand || {};
     const liveTitle = live.title || live.categoryName;
     $('#pkRankYou').html(liveTitle
-      ? '<span>มือคุณตอนนี้</span>' + escapeHtml(shortHandTitle(liveTitle) + (live.categoryName === 'รอใบที่ 3' ? ' · รอใบที่ 3' : ''))
-      : '<span>มือคุณตอนนี้</span>ยังไม่มีไพ่');
+      ? '<span>ไพ่ของคุณตอนนี้</span>' + escapeHtml(shortHandTitle(liveTitle) + (live.categoryName === 'รอใบที่ 3' ? ' · รอใบที่ 3' : ''))
+      : '<span>ไพ่ของคุณตอนนี้</span>ยังไม่มีไพ่');
     const cat = live.categoryName === 'รอใบที่ 3' ? 'แต้ม' : (live.categoryName || '');
     const html = window.pokerRankChart
       ? '<p class="pk-rank-kicker">ใหญ่ → เล็ก</p>' + window.pokerRankChart.chartHtml(state.rankGuide, cat)
@@ -2127,7 +2127,7 @@ $(function() {
       Swal.fire({
         icon: 'warning',
         title: 'หมดหน้าตัก ' + (actions.maxBet || 0) + ' ชิป?',
-        text: cash ? 'ลงชิปในกระเป๋าทั้งหมดที่มี ย้อนไม่ได้' : 'ลงชิปบนโต๊ะทั้งหมดที่มี ย้อนไม่ได้',
+        text: cash ? 'ลงชิปในกระเป๋าทั้งหมดที่มี ย้อนไม่ได้' : 'ลงชิปที่มีทั้งหมด ย้อนไม่ได้',
         showCancelButton: true,
         confirmButtonText: 'หมดหน้าตัก',
         cancelButtonText: 'ยกเลิก',
@@ -2210,24 +2210,24 @@ $(function() {
     const paid = Number(self && self.committed) || 0;
     const lines = [];
     if (handInPlay() && self && !self.sittingOut) {
-      lines.push(self.folded ? 'คุณหมอบมือนี้ไปแล้ว' : 'มือนี้ถือว่าหมอบ');
+      lines.push(self.folded ? 'คุณหมอบรอบนี้ไปแล้ว' : 'รอบนี้ถือว่าหมอบ');
       if (paid > 0) {
         lines.push('ชิปที่ลงกองไปแล้ว ' + paid + ' ชิป อยู่ในกองต่อ ไม่ได้คืน' +
-          (cash ? ' — โต๊ะเก็บชิป: ชิปนี้หักจากบัญชีคุณไปแล้วจริง' : ''));
+          (cash ? ' — โหมดเก็บชิป: ชิปนี้หักจากบัญชีคุณไปแล้วจริง' : ''));
       }
     } else if (cash) {
-      lines.push('ตอนนี้ไม่ได้ลงมือไหนอยู่ ชิปในบัญชีคุณครบ');
+      lines.push('ตอนนี้คุณไม่ได้เล่นรอบไหน ชิปในบัญชียังอยู่ครบ');
     } else {
-      lines.push('ชิปเล่นสนุกบนโต๊ะนี้ไม่ติดตัวไป');
+      lines.push('ชิปเล่นสนุกในห้องนี้ไม่ติดตัวไป');
     }
     lines.push('เกมเล่นต่อโดยไม่มีคุณ');
-    if (isRoomAdmin) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น (เหลือแต่บอท = ปิดโต๊ะ)');
+    if (isRoomAdmin) lines.push('คุณเป็นหัวห้อง — หัวห้องจะย้ายไปคนอื่น (เหลือแต่บอท = ปิดห้อง)');
     return lines.join(' · ');
   }
   function endWarningText() {
     const pot = Number(currentState && currentState.pot) || 0;
     if (handInPlay() && pot > 0 && currentState.tableType === 'cash') {
-      return 'มือนี้ยังไม่จบ — ยกเลิกมือนี้ แล้วคืนชิปที่ทุกคนลงไว้ (กองกลาง ' + pot + ' ชิป) ให้เจ้าของครบทุกคน';
+      return 'รอบนี้ยังไม่จบ — ยกเลิกรอบนี้ แล้วคืนชิปที่ทุกคนลงไว้ (กองกลาง ' + pot + ' ชิป) ให้เจ้าของครบทุกคน';
     }
     return 'ทุกคนจะถูกส่งกลับห้องรอ';
   }

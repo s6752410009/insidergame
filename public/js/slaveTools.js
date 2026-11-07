@@ -43,7 +43,7 @@
     $('slChatInput').onkeydown = event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('slChatForm').requestSubmit(); } };
     document.querySelectorAll('[data-sl-close]').forEach(button => { button.onclick = () => close($(button.dataset.slClose)); });
     $('slExit').onclick = () => {
-      $('slExitText').textContent = getState().isHost ? 'จบเกมนี้และพาทุกคนกลับห้องรอเดิม รอบที่กำลังเล่นจะหยุด แต่ยังอยู่ห้องเดิมด้วยกัน' : 'ออกจากเกมแล้วกลับห้องรอเดิม โต๊ะสลาฟต้องมี 4 คน รอบที่กำลังเล่นจึงหยุดสำหรับทุกคน';
+      $('slExitText').textContent = getState().isHost ? 'จบเกมนี้และพาทุกคนกลับห้องรอเดิม รอบที่กำลังเล่นจะหยุด แต่ยังอยู่ห้องเดิมด้วยกัน' : 'ออกจากเกมแล้วกลับห้องรอเดิม สลาฟต้องมี 4 คน รอบที่กำลังเล่นจึงหยุดสำหรับทุกคน';
       show($('slExitDialog'));
     };
     $('slConfirmExit').onclick = () => {

@@ -156,6 +156,7 @@ const supportMessageRateLimits = new Map();
 // บันทึกกิจกรรมหลังบ้าน — แยกโควตาต่อประเภท เก็บถาวร (Mongo หรือไฟล์) ดู managers/serverLogManager.js
 const serverLogStore = require('./managers/serverLogManager');
 const adminQueries = require('./managers/adminQueries');
+const adminAnalytics = require('./managers/adminAnalytics').createAdminAnalytics(serverLogStore);
 // แชทโลก — ที่เก็บ + กติกา + socket (ดู managers/worldChat*.js)
 const worldChatStore = require('./managers/worldChatManager');
 const { createWorldChatService } = require('./managers/worldChatService');
@@ -1811,11 +1812,12 @@ function notifyGameEndAfterRecord(room, options = {}) {
     const notification = buildGameEndNotification(room);
     const style = getGameModeLogStyle(room.settings.gameMode);
     const people = summarizeRoomPeople(room);
+    const activity = { participantIds:people.humanIds, debugUsed:!!room.gameState?.debugUsed };
     if (!notification) {
         // ทุกเกมต้องมีบรรทัด "จบเกม" แม้ไม่มีสรุปผล (เช่นโหมดใหม่ที่ยังไม่มี gameEndNotification)
         addServerLog(io, 'game', room.roomId, `${style.emoji} ${style.label} จบเกม · ${people.total} คน`, 'success', {
             gameMode: room.settings.gameMode,
-            meta: { event: 'game_end', playerCount: people.total, humans: people.humans, bots: people.bots }
+            meta: { event: 'game_end', ...activity, playerCount: people.total, humans: people.humans, bots: people.bots }
         });
         return;
     }
@@ -1827,17 +1829,20 @@ function notifyGameEndAfterRecord(room, options = {}) {
     const logType = notification.logType === 'error' ? 'warning' : (notification.logType || 'success');
     addServerLog(io, 'game', room.roomId, notification.logMessage, logType, {
         gameMode: room.settings.gameMode,
-        meta: { ...(notification.meta || {}), humans: people.humans, bots: people.bots, event: 'game_end' }
+        meta: { event:'game_end', ...activity, humans:people.humans, bots:people.bots, ...(notification.meta || {}) }
     });
 }
 
 // คน/บอทในโต๊ะ — ใช้คนที่อยู่ในเกม (gameState.players) ก่อน ไม่มีก็ใช้คนในห้อง
 function summarizeRoomPeople(room) {
-    const inGame = Array.isArray(room?.gameState?.players) && room.gameState.players.length
+    const inGame = Array.isArray(room?.gameState?.seats) && room.gameState.seats.length
+        ? room.gameState.seats
+        : Array.isArray(room?.gameState?.players) && room.gameState.players.length
         ? room.gameState.players
         : (room?.players || []);
     const ids = new Set();
     const names = [];
+    const humanIds = [];
     let bots = 0;
     inGame.forEach(player => {
         const playerId = player.playerId || player.id;
@@ -1845,9 +1850,10 @@ function summarizeRoomPeople(room) {
         ids.add(playerId);
         const isBot = playerManager.isBotPlayerId(playerId);
         if (isBot) bots += 1;
+        else humanIds.push(String(playerId));
         names.push(`${player.playerName || player.name || playerId}${isBot ? ' 🤖' : ''}`);
     });
-    return { total: ids.size, humans: ids.size - bots, bots, names };
+    return { total: ids.size, humans: ids.size - bots, bots, names, humanIds };
 }
 
 // ตั้งค่าห้องแบบย่อสำหรับ log เริ่มเกม — ไม่เอารหัสผ่านห้อง
@@ -1882,6 +1888,9 @@ function logGameStartFromRoom(room, extra = '') {
         {
             gameMode: room.settings.gameMode,
             meta: {
+                participantIds:people.humanIds,
+                gameId:room.gameState?.gameId || null,
+                debugUsed:!!room.gameState?.debugUsed,
                 playerCount,
                 humans: people.humans,
                 bots: people.bots,
@@ -4178,7 +4187,7 @@ function logPlayerRemoval(snapshot, roomAfter, playerId, reason = 'leave', extra
             ...extraMeta,
             ...(event ? { event } : {})
         };
-        delete meta.playerName;
+        meta.playerName = name;
         addServerLog(io, 'leave', snapshot.roomId, message, snapshot.inProgress || isKick ? 'warning' : 'info', {
             roomName: snapshot.roomName,
             gameMode: snapshot.gameMode,
@@ -5039,7 +5048,7 @@ function getAdminSnapshot(options = {}) {
             totalRooms: rooms.length,
             playingRooms: rooms.filter(room => room.gameStatus === 'playing').length,
             bannedPlayers: bannedPlayers.length,
-            totalGames: Math.floor(playerStats.reduce((sum, stat) => sum + (stat.totalGames || 0), 0) / 2),
+            totalGames: playerStats.reduce((sum, stat) => sum + (stat.totalGames || 0), 0),
             statsRows: playerStats.length,
             siteAdmins: playersData.siteAdmins.length,
             cleanupCandidates: playersData.cleanupCandidates.length,
@@ -6561,9 +6570,33 @@ app.get('/admin', function(req, res) {
     if (!req.session.isAdmin) {
         return res.redirect('/admin/login');
     }
+    res.set('Cache-Control', 'no-store');
     // สร้าง token ชั่วคราวสำหรับ authenticate socket
     const adminToken = generateAdminToken();
     res.render('admin.ejs', { adminToken: adminToken });
+});
+
+// Insights are read-only and require the same authenticated admin session as exports.
+app.get('/admin/insights', function(req, res) {
+    if (!req.session.isAdmin) return res.redirect('/admin/login');
+    res.set('Cache-Control', 'no-store');
+    res.render('adminInsights.ejs');
+});
+app.get('/admin/api/insights', requireAdminSession, async function(req, res) {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const analytics = await adminAnalytics.get(req.query, { players:playerManager.getAllPlayers() });
+        const rooms = roomManager.getAllRooms();
+        const connected = new Set();
+        rooms.forEach(info => (roomManager.getRoom(info.roomId)?.players || []).forEach(p => {
+            if (p.socketId && !playerManager.isBotPlayerId(p.playerId)) connected.add(p.playerId);
+        }));
+        res.json({ success:true, ...analytics, live:{ rooms:rooms.length,
+            playingRooms:rooms.filter(r => r.gameStatus === 'playing').length, humansInRooms:connected.size } });
+    } catch (error) {
+        console.error('[admin insights]', error.message);
+        res.status(503).json({ success:false, error:'โหลดข้อมูลไม่สำเร็จ ลองอีกครั้ง' });
+    }
 });
 
 // ดาวน์โหลดข้อมูลหลังบ้านทั้งก้อน — ดึงเฉพาะตอนกดปุ่ม ไม่ได้โหลดมาค้างไว้บนหน้า
@@ -7053,7 +7086,7 @@ io.sockets.on('connection', function(socket) {
                 const joinedPlayer = playerManager.getPlayer(playerId);
                 if (joinedPlayer) {
                     sendChatMessageToRoom(io, joinedRoomId, 'System', `${joinedPlayer.playerName} เข้าห้อง`, '#3498db');
-                    addServerLog(io, 'join', joinedRoomId, `${joinedPlayer.playerName} เข้าห้อง`, 'info');
+                    addServerLog(io, 'join', joinedRoomId, `${joinedPlayer.playerName} เข้าห้อง`, 'info', { meta:{ playerId, playerName:joinedPlayer.playerName } });
                 }
             }
 
@@ -8714,7 +8747,7 @@ io.sockets.on('connection', function(socket) {
                 const player = playerManager.getPlayer(playerId);
                 if (player) {
                     sendChatMessageToRoom(io, roomId, 'System', `${player.playerName} เข้าห้อง`, '#3498db');
-                    addServerLog(io, 'join', roomId, `${player.playerName} เข้าห้อง`, 'info');
+                    addServerLog(io, 'join', roomId, `${player.playerName} เข้าห้อง`, 'info', { meta:{ playerId, playerName:player.playerName } });
                 }
             }
 

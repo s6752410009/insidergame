@@ -74,7 +74,10 @@ function sanitizeMeta(meta) {
     for (const [key, value] of Object.entries(meta)) {
         if (count >= META_MAX_KEYS) break;
         if (value === undefined || typeof value === 'function') continue;
-        if (value !== null && typeof value === 'object') {
+        // Stable human IDs for up to 20 seats must not be cut halfway by the generic metadata cap.
+        if (key === 'participantIds' && Array.isArray(value)) {
+            out[key] = [...new Set(value.filter(id => typeof id === 'string' && id.length <= 80))].slice(0, 20);
+        } else if (value !== null && typeof value === 'object') {
             try {
                 const text = JSON.stringify(value);
                 out[key] = text.length > 400 ? text.slice(0, 400) + '…' : value;

@@ -195,9 +195,9 @@ module.exports = function createPokDengRuntime(getDeps) {
             ? `${top.name} กำไรสูงสุด +${top.net}`
             : 'ไม่มีใครได้กำไร';
         return {
-            chatMessage: `จบโต๊ะป๊อกเด้ง! ${text} (${state.handNumber || 0} มือ)`,
+            chatMessage: `จบเกมป๊อกเด้ง! ${text} (${state.handNumber || 0} รอบ)`,
             chatColor: '#f5c86b',
-            logMessage: `🎴 ป๊อกเด้ง จบ — ${text} · ${state.handNumber || 0} มือ · ${playerCount} คน`,
+            logMessage: `🎴 ป๊อกเด้ง จบ — ${text} · ${state.handNumber || 0} รอบ · ${playerCount} คน`,
             logType: 'success',
             meta: { winnerName: top?.name || null, net: top?.net || 0, playerCount, handNumber: state.handNumber || 0 }
         };
