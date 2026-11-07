@@ -53,7 +53,7 @@ function period(raw = {}, now = Date.now(), firstAt = null) {
 function eventKind(log) {
     const e = log.meta?.event;
     if (e === 'game_start') return 'start';
-    if (e === 'game_end') return 'end';
+    if (e === 'game_end' || e === 'round_end') return 'end';
     if (e === 'game_abort' || e === 'table_end') return 'abort';
     if (log.category === 'error' || log.type === 'error') return 'error';
     return ['join', 'leave', 'admin', 'system', 'chat'].includes(log.category)
@@ -137,7 +137,7 @@ async function buildReport(entries, raw, context) {
         people = new Map(),
         modes = new Map(),
         buckets = new Map(),
-        debugGames = new Set();
+        debugGames = new Set(context.debugGames || []);
     const rows = [],
         tail = new Array(50),
         offset = (q.page - 1) * 50;
@@ -294,7 +294,7 @@ async function buildReport(entries, raw, context) {
         q.page = pages;
     }
     summary.uniqueHumans = unique.size;
-    return {
+    const result = {
         generatedAt: new Date(now).toISOString(),
         query: q,
         coverage: {
@@ -338,5 +338,18 @@ async function buildReport(entries, raw, context) {
             .map(([mode, label]) => ({ mode, label }))
             .sort((a, b) => a.mode.localeCompare(b.mode)),
     };
+    if (context.captureInternal)
+        result.internalPeople = [...people.values()].map((person) => ({
+            ...person,
+            hourMask: hourly.reduce(
+                (mask, set, hour) =>
+                    set.has(person.playerId) ? mask | (1 << hour) : mask,
+                0,
+            ),
+            played: [...games.values()].some((game) =>
+                game.humans.has(person.playerId),
+            ),
+        }));
+    return result;
 }
-module.exports = { buildReport, period };
+module.exports = { buildReport, period, publicRow };

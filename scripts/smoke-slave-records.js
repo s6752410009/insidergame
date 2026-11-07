@@ -147,32 +147,37 @@ async function main() {
     stats.recordGameEnd('old-table', ledgerResult('ledger-game-a', 1, ledgerStart + 1));
     ok(stats.getStats('ledger-0').modeStats.slave.games === 34, 'high-water guard survives JSON restart with evicted history');
     const loop=createRoom('continuous','continuous',false,'continuous');
-    finishRound(loop); engine.nextRound(loop,loop.admin); finishRound(loop);
-    const completed=structuredClone(loop);
-    const oldId=loop.gameState.gameId,oldStep=loop.gameState.step,oldRoles=loop.gameState.standings.map(row=>row.playerId);
-    ok(loop.gameState.matchComplete && loop.gameState.nextMatchAt && !loop.gameState.returnLobbyAt,'continuous mode records a complete two-round game without a lobby deadline');
-    ok(counters(loop).every(stat=>stat.totalGames===1),'continuous first match records exactly once');
-    loop.gameState.nextMatchAt=Date.now()-1;runtime.recover(loop);
-    await new Promise(resolve=>setTimeout(resolve,50));runtime.clearTimers(loop.roomId);
-    ok(loop.gameState.gameId!==oldId && loop.gameState.phase==='exchange' && loop.gameState.gameNumber===2,'continuous timer deals next game without returning to lobby');
-    ok(loop.gameState.step>oldStep && loop.gameState.roundResults.length===0,'next game clears scores while preserving monotonic step');
-    ok(loop.gameState.exchanges[0].from===oldRoles[3] && loop.gameState.exchanges[0].to===oldRoles[0],'next game exchanges using last round placements');
-    ok(engine.buildClientState(loop,loop.admin).sessionRound===3,'continuous client displays global round three');
-    ok(starts.some(row=>row.roomId===loop.roomId && row.gameId===loop.gameState.gameId),'automatic next game emits a new start event');
-    finishRound(loop);engine.nextRound(loop,loop.admin);finishRound(loop);
-    ok(counters(loop).every(stat=>stat.totalGames===2&&stat.gameHistory.length===2),'four continuous rounds save two distinct games');
-    runtime.finalizeRoundIfNeeded(completed);
-    ok(counters(loop).every(stat=>stat.totalGames===2),'old continuous snapshot cannot duplicate earlier results');
-    loop.players.pop();loop.gameState.nextMatchAt=Date.now()-1;runtime.recover(loop);
-    await new Promise(resolve=>setTimeout(resolve,50));runtime.clearTimers(loop.roomId);
-    ok(loop.gameState.phase==='lobby','continuous mode returns to lobby if players leave after the result');
+    const loopId=loop.gameState.gameId;let previousStep=loop.gameState.step;
+    for(let round=1;round<=6;round++) {
+        finishRound(loop);
+        ok(loop.gameState.round===round && !loop.gameState.matchComplete && loop.gameState.phase==='round-end','continuous round ends without ending the session');
+        ok(loop.gameState.gameId===loopId && !loop.gameState.nextMatchAt && !loop.gameState.returnLobbyAt,'continuous session identity never resets every two rounds');
+        ok(counters(loop).every(stat=>stat.totalGames===round),'continuous round records one result immediately');
+        ok(loop.gameState.matchStandings===null && loop.gameState.roundResults.length<=1,'continuous mode keeps no aggregate-score winner or growing round array');
+        const order=loop.gameState.standings.map(row=>row.playerId);
+        const saved=structuredClone(loop);saved.gameState.statsRecordedRound=round-1;
+        const endCount=ends.length;runtime.finalizeRoundIfNeeded(saved);
+        ok(ends.length===endCount && counters(loop).every(stat=>stat.totalGames===round),'stale continuous snapshot cannot replay a round');
+        engine.nextRound(loop,loop.admin);runtime.emitRoomState(loop);runtime.clearTimers(loop.roomId);
+        ok(loop.gameState.exchanges[0].from===order[3] && loop.gameState.exchanges[0].to===order[0],'next exchange uses the preceding round king and slave');
+        ok(loop.gameState.seats.find(p=>p.playerId===order[0]).title==='คิง' && loop.gameState.seats.find(p=>p.playerId===order[1]).title==='ควีน','king and queen titles remain during the next deal');
+        ok(loop.gameState.step>previousStep && engine.buildClientState(loop,loop.admin).sessionRound===round+1,'session round and step stay monotonic');previousStep=loop.gameState.step;
+    }
+    ok(!starts.some(row=>row.roomId===loop.roomId),'continuous play never starts another two-round game');
+    const completedStateForMigration=room=>({...structuredClone(room.gameState),standings:room.gameState.seats.map((p,i)=>({playerId:p.playerId,name:p.name,place:i+1,title:['คิง','ควีน','รองสลาฟ','สลาฟ'][i]}))});
+    const migrating=structuredClone(loop);migrating.roomId='migrating';migrating.gameState={...structuredClone(completedStateForMigration(loop)),continuous:true,continuousVersion:undefined,gameNumber:3,round:2,matchComplete:true,matchEndedAt:'2026-01-01T00:00:00Z',phase:'finished',status:'slave_finished',statsRecordedGameId:loopId,gameId:loopId};
+    rooms.set(migrating.roomId,migrating);runtime.recover(migrating);runtime.clearTimers(migrating.roomId);
+    ok(migrating.gameState.round===6 && migrating.gameState.phase==='round-end' && !migrating.gameState.matchComplete,'deployed two-round looping snapshots migrate to an endless round break');
+    ok(migrating.gameState.statsRecordedRound===6 && !migrating.gameState.matchEndedAt,'migration does not replay an already recorded two-round result or retain its end time');
+    const staleLoop=structuredClone(room);staleLoop.gameState.continuous=true;staleLoop.gameState.continuousVersion=undefined;staleLoop.gameState.gameNumber=3;delete staleLoop.gameState.statsRecordedGameId;
+    runtime.recover(staleLoop);runtime.clearTimers(staleLoop.roomId);
+    ok(staleLoop.gameState.round===6 && staleLoop.gameState.statsRecordedRound===6 && counters(room).every(stat=>stat.totalGames===1),'old loop snapshot with stale checkpoint reuses its original result ID rather than adding round six');
     const loopBots=createRoom('continuous-bots','continuous-bots',true,'continuous');
-    finishRound(loopBots);engine.nextRound(loopBots,loopBots.admin);finishRound(loopBots);
-    engine.continueGame(loopBots);finishRound(loopBots);engine.nextRound(loopBots,loopBots.admin);finishRound(loopBots);
-    ok(loopBots.players.filter(p=>!engine.isBotId(p.playerId)).every(p=>stats.getStats(p.playerId).gameHistory.length===2 && stats.getStats(p.playerId).totalGames===0),'continuous games with bots keep history without leaderboard totals');
+    for(let n=0;n<4;n++){finishRound(loopBots);engine.nextRound(loopBots,loopBots.admin);runtime.clearTimers(loopBots.roomId);}
+    ok(loopBots.players.filter(p=>!engine.isBotId(p.playerId)).every(p=>stats.getStats(p.playerId).gameHistory.length===4 && stats.getStats(p.playerId).totalGames===0),'continuous bot rounds keep history without leaderboard totals');
     const loopDebug=createRoom('continuous-debug','continuous-debug',false,'continuous');loopDebug.gameState.debugUsed=true;
-    finishRound(loopDebug);engine.nextRound(loopDebug,loopDebug.admin);finishRound(loopDebug);engine.continueGame(loopDebug);
-    ok(loopDebug.gameState.debugUsed,'continuous continuation cannot clear debug exclusion');
+    for(let n=0;n<3;n++){finishRound(loopDebug);engine.nextRound(loopDebug,loopDebug.admin);runtime.clearTimers(loopDebug.roomId);}
+    ok(loopDebug.gameState.debugUsed && loopDebug.players.every(p=>!stats.getStats(p.playerId)),'endless rounds cannot clear debug exclusion');
     console.log(JSON.stringify({ ok:true, checks, rounds:10, humans:4, logs:logs.length, isolatedData:true }));
 }
 main().catch(error => { console.error(error.stack); process.exitCode = 1; }).finally(() => {

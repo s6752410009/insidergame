@@ -41,13 +41,39 @@ jobs:
           path: test-artifacts/
           retention-days: 7
           if-no-files-found: warn
+  daily-mongo:
+    name: Daily summaries (MongoDB)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      mongo:
+        image: mongo:7.0.14
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DAILY_TEST_MONGO_URL: mongodb://127.0.0.1:27017
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --include=dev
+      - run: node scripts/smoke-activity-daily-mongo.js
   release-checks:
     name: Release checks passed
     if: always()
-    needs: [tests]
+    needs: [tests, daily-mongo]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every suite to pass
         env:
           TEST_RESULT: ${{ needs.tests.result }}
-        run: test "$TEST_RESULT" = success
+          MONGO_RESULT: ${{ needs.daily-mongo.result }}
+        run: test "$TEST_RESULT" = success && test "$MONGO_RESULT" = success

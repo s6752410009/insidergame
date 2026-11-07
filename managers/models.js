@@ -196,10 +196,20 @@ const ServerLog = mongoose.model('ServerLog', serverLogSchema);
 
 // Independent activity history: no TTL and no diagnostic-log quota.
 const activityArchiveSchema = new mongoose.Schema({
-    _id:{type:String},at:{type:Date,required:true},entry:{type:mongoose.Schema.Types.Mixed,required:true}
+    _id:{type:String},at:{type:Date,required:true},entry:{type:mongoose.Schema.Types.Mixed,required:true},
+    dailyVersion:Number,dailyRebuild:Boolean,debug:Boolean,gameKey:String
 },{versionKey:false,minimize:false});
 activityArchiveSchema.index({at:-1,'entry.id':-1});
+activityArchiveSchema.index({dailyVersion:1,at:-1,'entry.id':-1});
+activityArchiveSchema.index({'entry.gameMode':1,at:-1,'entry.id':-1});
+activityArchiveSchema.index({debug:1,gameKey:1});
+activityArchiveSchema.index({gameKey:1});
 const ActivityArchive=mongoose.model('ActivityArchive',activityArchiveSchema);
+const activityDailySchema=new mongoose.Schema({
+    _id:String,version:Number,day:String,mode:String,data:mongoose.Schema.Types.Mixed,checkpointIds:[String]
+},{versionKey:false,minimize:false});
+activityDailySchema.index({version:1,day:1,mode:1});
+const ActivityDaily=mongoose.model('ActivityDaily',activityDailySchema);
 
 
 // แชทโลก — ข้อความล่าสุด 200 + รายการคำ + คนที่โดนห้ามพิมพ์ เก็บเป็นเอกสารเดียว (ดู managers/worldChatManager.js)
@@ -213,6 +223,7 @@ const WorldChatState = mongoose.model('WorldChatState', worldChatStateSchema);
 module.exports = {
     WorldChatState,
     ActivityArchive,
+    ActivityDaily,
     ServerLog,
     Player,
     PlayerStats,

@@ -22,14 +22,7 @@ module.exports = getDeps => {
             if (!current || current.settings.gameMode !== MODE || current.gameState.gameId !== s.gameId) return;
             try {
                 if (current.gameState.phase === 'round-end') { engine.nextRound(current, current.admin); emitRoomState(current); }
-                else if (current.gameState.matchComplete) {
-                    finalizeRoundIfNeeded(current);
-                    if(engine.canContinueGame(current)) {
-                        engine.continueGame(current);
-                        getDeps().logGameStartFromRoom?.(current);
-                        emitRoomState(current);
-                    } else returnToLobby(current);
-                }
+                else if (current.gameState.matchComplete) returnToLobby(current);
             } catch (error) { getDeps().reportGameError(current, '[slave] round transition', error); }
         }, Math.max(20, transitionAt-Date.now()));
         if (engine.botNeedsTurn(room)) timer.bot = setTimeout(() => {
@@ -72,23 +65,27 @@ module.exports = getDeps => {
     }
     function finalizeRoundIfNeeded(room) {
         const s = room.gameState;
-        if (!s.matchComplete || !Array.isArray(s.matchStandings) || s.matchStandings.length !== 4 || s.statsRecordedGameId === s.gameId) return;
+        const continuous = !!s.continuous;
+        const standings = continuous ? s.standings : s.matchStandings;
+        if (!Array.isArray(standings) || standings.length !== 4
+            || (continuous ? s.phase !== 'round-end' || s.statsRecordedRound >= s.round : !s.matchComplete || s.statsRecordedGameId === s.gameId)) return;
         // A completed result remains valid when somebody leaves the result screen afterward.
         if (!['round-end', 'finished'].includes(s.phase) || s.abandoned) return;
         if (!s.roundEndedAt || !Number.isFinite(new Date(s.roundEndedAt).getTime())) s.roundEndedAt = new Date().toISOString();
         const id = resultId(s);
         const { statsManager, notifyGameEndAfterRecord } = getDeps();
-        if (!s.debugUsed && statsManager) statsManager.recordGameEnd(room.roomId, {
+        let recorded = false;
+        if (!s.debugUsed && statsManager) recorded = statsManager.recordGameEnd(room.roomId, {
             mode:MODE, resultId:id, gameId:s.gameId, round:s.round, roomName:room.name,
-            startedAt:s.startedAt, endedAt:s.matchEndedAt || s.roundEndedAt, debugUsed:!!s.debugUsed,
-            matchFormat:s.legacyRound ? 'legacy-round' : 'two-rounds', roundResults:s.roundResults,
-            standings:s.matchStandings.map(row => ({ ...row }))
+            startedAt:continuous ? s.roundStartedAt : s.startedAt, endedAt:continuous ? s.roundEndedAt : s.matchEndedAt || s.roundEndedAt, debugUsed:!!s.debugUsed,
+            matchFormat:continuous ? 'continuous-round' : s.legacyRound ? 'legacy-round' : 'two-rounds', roundResults:s.roundResults,
+            standings:standings.map(row => ({ ...row }))
         });
-        // Both rounds are one game; resync/recovery must never count the match twice.
+        // Persist the round/session checkpoint before resync or recovery can replay the result.
         s.statsRecordedGameId = s.gameId;
         s.statsRecordedRound = s.round;
         s.statsRecordedAt = new Date().toISOString();
-        if (typeof notifyGameEndAfterRecord === 'function') notifyGameEndAfterRecord(room, { chat:false });
+        if ((!continuous || recorded) && typeof notifyGameEndAfterRecord === 'function') notifyGameEndAfterRecord(room, { chat:false });
     }
     function recordAbandonmentIfNeeded(room) {
         const s = room.gameState;
@@ -121,9 +118,28 @@ module.exports = getDeps => {
     }
     function recover(room) {
         const s = room.gameState;
+        // Convert previously shipped two-round looping snapshots without replaying their results.
+        if (s.continuous && s.continuousVersion !== 2) {
+            // An old finished match may have persisted stats before its room checkpoint.
+            // Reconcile with its original two-round ID before changing the round number.
+            if (s.matchComplete && s.statsRecordedGameId !== s.gameId) {
+                s.continuous = false;
+                try { finalizeRoundIfNeeded(room); } finally { s.continuous = true; }
+            }
+            const alreadyRecorded = s.matchComplete && s.statsRecordedGameId === s.gameId;
+            s.round = ((s.gameNumber || 1)-1)*2+s.round;
+            s.continuousVersion = 2; s.gameNumber = 1; s.maxRounds = null;
+            if (alreadyRecorded) s.statsRecordedRound = s.round;
+            if (s.matchComplete && s.standings?.length === 4) {
+                s.phase='round-end'; s.status='playing';
+                s.roundAdvanceAt=Date.now()+(Number(process.env.SLAVE_ROUND_BREAK_MS)||6500);
+            }
+            s.matchComplete=false; s.matchStandings=null; s.matchEndedAt=null; s.nextMatchAt=null; s.returnLobbyAt=null;
+            s.roundResults=[];
+        }
         // Tables saved by the old endless-round format finish their current round.
         // Previously recorded results remain untouched; the next lobby start uses two rounds.
-        if (!Number.isInteger(s.maxRounds) && s.seats?.length) {
+        if (!s.continuous && !Number.isInteger(s.maxRounds) && s.seats?.length) {
             s.legacyRound = true;
             s.maxRounds = Math.max(1, Number(s.round) || 1);
             if (s.phase === 'round-end' && s.standings?.length === 4) {
@@ -155,14 +171,14 @@ module.exports = getDeps => {
         const s = room.gameState;
         const standings = s.matchStandings || s.standings || [];
         const winnerName = standings.filter(row => row.place === 1).map(row => row.name).join(', ') || 'ไม่ทราบ';
-        const result = standings.map(row => `${row.place}. ${row.name} (${row.score ?? 0} คะแนน)`).join(' · ');
-        const format = s.legacyRound ? 'รอบ ' + s.round : 'เกม 2 รอบ';
+        const result = standings.map(row => `${row.place}. ${row.name} (${s.continuous ? row.title : (row.score ?? 0) + ' คะแนน'})`).join(' · ');
+        const format = s.continuous || s.legacyRound ? 'รอบ ' + s.round : 'เกม 2 รอบ';
         return {
             chatMessage:`จบ${format}! ${winnerName} ชนะ`, chatColor:'#f5c86b',
-            logMessage:`🃏 สลาฟ จบ${format} — ${result}${!isRanked(s) ? ' · ไม่นับอันดับ (บอท/ทดสอบ)' : ''}`,
+            logMessage:`🃏 สลาฟ ${s.continuous ? format : 'จบ'+format} — ${result}${!isRanked(s) ? ' · ไม่นับอันดับ (บอท/ทดสอบ)' : ''}`,
             logType:'success',
-            meta:{ gameId:s.gameId, resultId:resultId(s), round:s.round, playerCount:standings.length, winnerName,
-                ranked:isRanked(s), debugUsed:!!s.debugUsed, startedAt:s.startedAt || null, endedAt:s.roundEndedAt || null,
+            meta:{ ...(s.continuous ? {event:'round_end'} : {}), gameId:s.gameId, resultId:resultId(s), round:s.round, playerCount:standings.length, winnerName,
+                ranked:isRanked(s), debugUsed:!!s.debugUsed, startedAt:(s.continuous ? s.roundStartedAt : s.startedAt) || null, endedAt:s.roundEndedAt || null,
                 standings:standings.map(row => ({ name:String(row.name || '').slice(0, 32), place:row.place, title:row.title, score:row.score, roundScores:row.roundScores })) }
         };
     }

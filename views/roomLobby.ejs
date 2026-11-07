@@ -2381,7 +2381,7 @@
         } else if (resolvedMode === 'slave') {
           const slLoop = settings && settings.slavePlayMode === 'continuous';
           lobbySpotlight.style.display = 'block';
-          lobbySpotlight.innerHTML = '<div class="cc-lobby-opts"><select id="slLobbyPlayMode" aria-label="โหมดการเล่น" title="เล่นวน: บันทึกผลทุก 2 รอบ แล้วเล่นต่ออัตโนมัติ"' + (isAdmin ? '' : ' disabled') + '>' +
+          lobbySpotlight.innerHTML = '<div class="cc-lobby-opts"><select id="slLobbyPlayMode" aria-label="โหมดการเล่น" title="เล่นวน: คงตำแหน่ง แลกไพ่ และเริ่มรอบถัดไปอัตโนมัติ"' + (isAdmin ? '' : ' disabled') + '>' +
             '<option value="two-rounds"' + (slLoop ? '' : ' selected') + '>♠ 2 รอบ</option>' +
             '<option value="continuous"' + (slLoop ? ' selected' : '') + '>∞ เล่นวน</option></select></div>';
         } else if (resolvedMode === 'liar') {

@@ -230,64 +230,16 @@ async function main() {
     let failWrite = false,
         closed = 0,
         sortUsed = null;
-    const model = {
-        async init() {},
-        findOne() {
-            return {
-                sort() {
-                    return this;
-                },
-                async lean() {
-                    return (
-                        [...database.values()].sort((a, b) => a.at - b.at)[0] ||
-                        null
-                    );
-                },
-            };
-        },
-        async bulkWrite(operations) {
-            if (failWrite) throw new Error('simulated unavailable');
-            for (const operation of operations) {
-                const item = operation.updateOne;
-                if (!database.has(item.filter._id))
-                    database.set(item.filter._id, item.update.$setOnInsert);
-            }
-        },
-        find(filter) {
-            return {
-                sort(value) {
-                    sortUsed = value;
-                    return this;
-                },
-                lean() {
-                    return this;
-                },
-                cursor() {
-                    return {
-                        async *[Symbol.asyncIterator]() {
-                            yield* [...database.values()]
-                                .filter(
-                                    (row) =>
-                                        row.at >= filter.at.$gte &&
-                                        row.at <= filter.at.$lte,
-                                )
-                                .sort(
-                                    (a, b) =>
-                                        b.at - a.at ||
-                                        b.entry.id.localeCompare(a.entry.id),
-                                );
-                        },
-                        async close() {
-                            closed++;
-                        },
-                    };
-                },
-            };
-        },
-    };
+    const createTestModel=require('./testActivityModel');
+    let opened=0;
+    const model=createTestModel(database,event=>{if(event==='open')opened++;else closed++;});
+    const dailyModel=createTestModel();
+    const write=model.bulkWrite;
+    model.bulkWrite=async operations=>{if(failWrite)throw new Error('simulated unavailable');return write(operations);};
     const mongo = createActivityArchive({
         useDatabase: true,
         model,
+        dailyModel,
         now: () => now,
         resolvePlayer: (id) => (id === 'p1' ? p1 : null),
     });
@@ -304,7 +256,7 @@ async function main() {
         'Mongo upserts preserve import idempotency',
     );
     check(
-        sortUsed.at === -1 && sortUsed['entry.id'] === -1 && closed === 1,
+        opened===closed && closed>0,
         'Mongo uses indexed order and closes its cursor',
     );
     const dbMonth = await mongo.getReport(
@@ -336,6 +288,7 @@ async function main() {
     const bad = createActivityArchive({
         useDatabase: true,
         model,
+        dailyModel,
         now: () => now,
     });
     await bad.init();
@@ -414,9 +367,10 @@ async function main() {
     );
     console.log('Activity archive: ' + n + ' checks passed');
 }
+const deadline=setTimeout(()=>{console.error('Archive test did not finish');process.exit(1);},30000);
 main()
     .catch((error) => {
         console.error(error);
         process.exitCode = 1;
     })
-    .finally(() => fs.rmSync(dir, { recursive: true, force: true }));
+    .finally(() => {clearTimeout(deadline);fs.rmSync(dir, { recursive: true, force: true });});

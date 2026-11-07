@@ -190,28 +190,42 @@ async function continuousPlay(number, adminSocket) {
     ok((await ack(players[0].socket,'startGameFromLobby',{roomId})).success,'continuous game starts');
     await wait(()=>players.every(p=>p.state?.continuous&&p.state.phase==='turn'),'continuous setting reaches every player');
     ok(!(await ack(players[0].socket,'updateRoom',{slavePlayMode:'two-rounds'})).success,'mode is locked during play');
-    const results=[await finishRound(players,roomId)];
-    await wait(()=>players.every(p=>p.state?.round===2&&p.state.phase==='exchange'),'continuous second round');
-    results.push(await finishRound(players,roomId));await checkProfiles(players,results,1);
-    ok(results[1].nextMatchAt && !results[1].returnLobbyAt,'continuous result schedules another game');
-    await wait(()=>players.every(p=>p.state?.gameNumber===2&&p.state.phase==='exchange'),'next game starts automatically');
-    ok(players.every(p=>!p.returned && p.state.sessionRound===3),'four players remain on board into round three');
-    const ids=players.map(p=>p.id);
+    const results=[];
+    for(let round=1;round<=2;round++){
+        results.push(await finishRound(players,roomId));
+        ok(!results.at(-1).matchComplete && results.at(-1).phase==='round-end','continuous round has no game over');
+        await wait(()=>players.every(p=>p.state?.round===round+1&&p.state.phase==='exchange'),'next continuous exchange');
+    }
+    const checkContinuousProfiles = async count => {
+        for (const player of players) {
+            const profile = await json('/api/player/' + player.id + '/profile');
+            ok(profile.stats?.modeStats?.slave?.games === count && profile.stats.gameHistory.length === Math.min(count, 5), 'public profile counts every round and limits its preview to five');
+            const detail = await ack(adminSocket, 'admin_getPlayerStat', { playerId:player.id });
+            const history = detail.stat?.gameHistory || [];
+            ok(detail.success && history.length === count && new Set(history.map(row => row.resultId)).size === count, 'admin history retains every distinct continuous result');
+            ok(history.every(row => row.round >= 1 && !row.totalRounds), 'continuous history contains round placements rather than two-round aggregates');
+        }
+    };
+    await checkContinuousProfiles(2);
+    ok(players.every(p=>!p.returned && p.state.sessionRound===3),'all players remain on the same board at round three');
+    const ids=players.map(p=>p.id),roundThree=players[0].state;
     await stop();for(const socket of sockets)socket.disconnect();sockets.clear();
     await boot(number);adminSocket=await admin();players=[];
     for(const id of ids){const player=await connect(id);players.push(player);bind(player,roomId);}
-    await wait(()=>players.every(p=>p.state?.continuous&&p.state.gameNumber===2&&p.state.phase==='exchange'),'continuous exchange restored after restart');
-    await checkProfiles(players,results,1);
-    results.push(await finishRound(players,roomId));
-    await wait(()=>players.every(p=>p.state?.round===2&&p.state.gameNumber===2&&p.state.phase==='exchange'),'continuous fourth round');
-    results.push(await finishRound(players,roomId));await checkProfiles(players,results,2);
-    const history=await logs(adminSocket,roomId);
-    const ends=history.filter(row=>row.meta?.event==='game_end');
-    ok(ends.length===2 && new Set(ends.map(row=>row.meta.gameId)).size===2,'continuous history records two distinct game ends');
-    ok(history.filter(row=>row.meta?.event==='game_start').length>=2,'continuous starts are visible in admin activity');
-    const board=await json('/api/leaderboard?mode=slave');
-    ok(ids.every(id=>board.some(row=>row.playerId===id&&row.totalGames===2)),'continuous human results appear in leaderboard');
-    ok(players.every(p=>!p.returned),'continuous results never force a lobby redirect');
+    await wait(()=>players.every(p=>p.state?.continuous&&p.state.round===3&&p.state.phase==='exchange'),'endless exchange restored after restart');
+    ok(players[0].state.seats.every((seat,i)=>seat.title===roundThree.seats[i].title),'restart preserves king/queen positions');
+    for(let round=3;round<=6;round++){
+        results.push(await finishRound(players,roomId));
+        ok(!results.at(-1).matchComplete && !results.at(-1).returnLobbyAt && !results.at(-1).nextMatchAt,'continuous result never schedules a new game');
+        await wait(()=>players.every(p=>p.state?.round===round+1&&p.state.phase==='exchange'),'continuous round '+(round+1));
+    }
+    await checkContinuousProfiles(6);
+    const history=await logs(adminSocket,roomId),ends=history.filter(row=>row.meta?.event==='round_end');
+    ok(ends.length===6 && new Set(ends.map(row=>row.meta.gameId)).size===1,'six round results share one stable continuous session');
+    ok(history.filter(row=>row.meta?.event==='game_start').length===1 && !history.some(row=>row.meta?.event==='game_end'),'continuous session has no repeated game start/end');
+    const board=await json('/api/leaderboard?mode=slave');ok(ids.every(id=>board.some(row=>row.playerId===id&&row.totalGames===6)),'endless human rounds appear in leaderboard');
+    ok(players.every(p=>!p.returned),'continuous play never forces a lobby redirect');
+
 }
 async function main() {
     const number = await port();
@@ -301,7 +315,7 @@ async function main() {
     ok((await ack(adminSocket, 'admin_setSiteAdmin', { playerId:watcher.id, isSiteAdmin:false })).success, 'revoke ghost admin for authorization check');
     ok(!(await ack(watcher.socket, 'admin_observeRoom', { roomId })).success, 'revoked admin cannot keep observing');
     await continuousPlay(number,adminSocket);
-    console.log(JSON.stringify({ ok:true, environment:HISTORY_ENV, checks, humanPlayers:4, completedRounds:6, continuous:true, abortedRounds:1, profile:true, leaderboard:true, adminStats:true, adminLogs:true, ghost:true, restart:true, isolatedData:true, productionGuards:HISTORY_ENV === 'production' }));
+    console.log(JSON.stringify({ ok:true, environment:HISTORY_ENV, checks, humanPlayers:4, completedRounds:8, continuous:true, abortedRounds:1, profile:true, leaderboard:true, adminStats:true, adminLogs:true, ghost:true, restart:true, isolatedData:true, productionGuards:HISTORY_ENV === 'production' }));
 }
 main().catch(error => { console.error(error.stack || error.message); process.exitCode = 1; }).finally(async () => {
     for (const socket of sockets) socket.disconnect();

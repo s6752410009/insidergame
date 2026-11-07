@@ -3,6 +3,13 @@ const fs = require('node:fs'),
     path = require('node:path'),
     crypto = require('node:crypto');
 const { buildReport, period } = require('./activityReport');
+const {
+    createActivityDaily,
+    VERSION,
+    dayOf,
+    gameKey,
+    debugEntry,
+} = require('./activityDaily');
 const fields = [
     'event',
     'kind',
@@ -71,7 +78,7 @@ function keyOf(entry) {
         resultId &&
         resultId.length <= 80 &&
         !/^(?:null|undefined|unknown|none|0)$/i.test(resultId);
-    return entry.meta?.event === 'game_end' && hasResult
+    return ['game_end', 'round_end'].includes(entry.meta?.event) && hasResult
         ? 'result:' +
               crypto
                   .createHash('sha256')
@@ -98,13 +105,199 @@ function createActivityArchive(options = {}) {
         inflight = new Map();
     let firstAt = null;
     const now = options.now || Date.now;
+    const dailyFlags = new Map();
+    let daily = null,
+        dailyTask = null,
+        dailyTimer = null;
+    const envelope = (key, entry) => ({
+        _id: key,
+        at: new Date(entry.timestamp),
+        entry,
+        dailyVersion: 0,
+        dailyRebuild: !!gameKey(entry) && debugEntry(entry),
+        debug: debugEntry(entry),
+        gameKey: gameKey(entry),
+    });
+    const bounds = (day) => {
+        const start = Date.parse(day + 'T00:00:00+07:00');
+        return { $gte: new Date(start), $lt: new Date(start + 86400000) };
+    };
+    const records = () =>
+        [...memory].map(([key, entry]) => ({
+            ...envelope(key, entry),
+            dailyVersion: dailyFlags.has(key) ? 0 : VERSION,
+            dailyRebuild: dailyFlags.get(key) === true,
+        }));
+    const source = {
+        async prepareDebug() {
+            if (usingDatabase) {
+                const dirty = await Model.distinct('gameKey', {
+                    dailyVersion: 0,
+                    debug: true,
+                    gameKey: { $ne: null },
+                });
+                if (dirty.length)
+                    await Model.updateMany(
+                        { gameKey: { $in: dirty } },
+                        { $set: { dailyVersion: 0, dailyRebuild: true } },
+                    );
+                return new Set(
+                    await Model.distinct('gameKey', {
+                        debug: true,
+                        gameKey: { $ne: null },
+                    }),
+                );
+            }
+            const values = records(),
+                dirty = new Set(
+                    values
+                        .filter(
+                            (record) =>
+                                record.dailyVersion === 0 &&
+                                record.debug &&
+                                record.gameKey,
+                        )
+                        .map((record) => record.gameKey),
+                );
+            for (const record of values)
+                if (dirty.has(record.gameKey)) dailyFlags.set(record._id, true);
+            return new Set(
+                values
+                    .filter((record) => record.debug && record.gameKey)
+                    .map((record) => record.gameKey),
+            );
+        },
+        async pending(limit, at) {
+            if (usingDatabase)
+                return Model.find({
+                    dailyVersion: 0,
+                    at: { $lte: new Date(at) },
+                })
+                    .sort({ at: -1, 'entry.id': -1 })
+                    .limit(limit)
+                    .lean();
+            return records()
+                .filter(
+                    (record) => record.dailyVersion === 0 && record.at <= at,
+                )
+                .sort(
+                    (a, b) =>
+                        b.entry.timestamp.localeCompare(a.entry.timestamp) ||
+                        b.entry.id.localeCompare(a.entry.id),
+                )
+                .slice(0, limit);
+        },
+        async ack(ids) {
+            for (let i = 0; i < ids.length; i += 500) {
+                const chunk = ids.slice(i, i + 500);
+                if (usingDatabase)
+                    await Model.updateMany(
+                        { _id: { $in: chunk } },
+                        {
+                            $set: {
+                                dailyVersion: VERSION,
+                                dailyRebuild: false,
+                            },
+                        },
+                    );
+                else chunk.forEach((id) => dailyFlags.delete(id));
+            }
+        },
+        async *bucket(day, mode, at) {
+            if (usingDatabase) {
+                const cursor = Model.find({
+                    at: { ...bounds(day), $lte: new Date(at) },
+                    'entry.gameMode': mode || null,
+                })
+                    .sort({ at: -1, 'entry.id': -1 })
+                    .lean()
+                    .cursor({ batchSize: 500 });
+                try {
+                    for await (const record of cursor) yield record;
+                } finally {
+                    await cursor.close();
+                }
+            } else
+                for (const record of records()
+                    .filter(
+                        (record) =>
+                            dayOf(record.at) === day &&
+                            (record.entry.gameMode || '') === mode &&
+                            record.at <= at,
+                    )
+                    .sort(
+                        (a, b) =>
+                            b.entry.timestamp.localeCompare(
+                                a.entry.timestamp,
+                            ) || b.entry.id.localeCompare(a.entry.id),
+                    ))
+                    yield record;
+        },
+        async page(range, mode, offset, limit) {
+            if (range.to < range.from) return [];
+            if (usingDatabase)
+                return Model.find(
+                    {
+                        at: {
+                            $gte: new Date(range.from),
+                            $lte: new Date(range.to),
+                        },
+                        ...(mode !== 'all' ? { 'entry.gameMode': mode } : {}),
+                    },
+                    { entry: 1, _id: 0 },
+                )
+                    .sort({ at: -1, 'entry.id': -1 })
+                    .skip(offset)
+                    .limit(limit)
+                    .lean();
+            return records()
+                .filter(
+                    (record) =>
+                        record.at >= range.from &&
+                        record.at <= range.to &&
+                        (mode === 'all' || record.entry.gameMode === mode),
+                )
+                .sort(
+                    (a, b) =>
+                        b.entry.timestamp.localeCompare(a.entry.timestamp) ||
+                        b.entry.id.localeCompare(a.entry.id),
+                )
+                .slice(offset, offset + limit);
+        },
+    };
+    function dailyJob(work) {
+        const job = (dailyTask || Promise.resolve())
+            .catch(() => {})
+            .then(async () => {
+                const at = now();
+                const debugGames = await daily.refresh(at);
+                return work ? work(at, debugGames) : undefined;
+            });
+        dailyTask = job;
+        return job.finally(() => {
+            if (dailyTask === job) dailyTask = null;
+        });
+    }
+    function scheduleDaily() {
+        if (options.dailyRefreshMs === 0 || importing || !daily || dailyTimer)
+            return;
+        dailyTimer = setTimeout(() => {
+            dailyTimer = null;
+            dailyJob().catch(() => {});
+        }, 2000);
+        dailyTimer.unref?.();
+    }
+
     function add(raw) {
         const entry = project(raw, options.resolvePlayer);
         if (!entry) return;
         const key = keyOf(entry);
         if (!usingDatabase && memory.has(key)) return;
         if (!firstAt || entry.timestamp < firstAt) firstAt = entry.timestamp;
-        if (!usingDatabase) memory.set(key, entry);
+        if (!usingDatabase) {
+            memory.set(key, entry);
+            dailyFlags.set(key, false);
+        }
         pending.set(key, entry);
         if (ready && !timer) {
             timer = setTimeout(() => {
@@ -134,8 +327,7 @@ function createActivityArchive(options = {}) {
                             filter: { _id: key },
                             update: {
                                 $setOnInsert: {
-                                    at: new Date(entry.timestamp),
-                                    entry,
+                                    ...envelope(key, entry),
                                 },
                             },
                             upsert: true,
@@ -158,6 +350,7 @@ function createActivityArchive(options = {}) {
         try {
             await flushing;
             unavailable = null;
+            scheduleDaily();
         } catch (error) {
             for (const [key, entry] of batch)
                 if (!pending.has(key)) pending.set(key, entry);
@@ -202,6 +395,50 @@ function createActivityArchive(options = {}) {
                 }
             }
         }
+        if (usingDatabase) {
+            // Migrate envelopes once; raw entries stay unchanged and remain the repair source.
+            const cursor = Model.find(
+                { dailyVersion: { $exists: false } },
+                { entry: 1 },
+            )
+                .lean()
+                .cursor({ batchSize: 500 });
+            let batch = [];
+            try {
+                for await (const record of cursor) {
+                    const { _id, at, entry, ...metadata } = envelope(
+                        record._id,
+                        record.entry,
+                    );
+                    batch.push({
+                        updateOne: {
+                            filter: { _id: record._id },
+                            update: { $set: metadata },
+                        },
+                    });
+                    if (batch.length === 500) {
+                        await Model.bulkWrite(batch, { ordered: false });
+                        batch = [];
+                    }
+                }
+                if (batch.length)
+                    await Model.bulkWrite(batch, { ordered: false });
+            } finally {
+                await cursor.close();
+            }
+        }
+        daily = createActivityDaily({
+            source,
+            model: usingDatabase
+                ? options.dailyModel || require('./models').ActivityDaily
+                : null,
+            file: options.dailyFile || file + '.daily.json',
+        });
+        await daily.init();
+        if (!usingDatabase && daily.loadedCount() !== memory.size) {
+            await daily.resetFile();
+            for (const key of memory.keys()) dailyFlags.set(key, false);
+        }
         ready = true;
         await flush();
         return {
@@ -233,6 +470,7 @@ function createActivityArchive(options = {}) {
         if (before && after && before !== after)
             throw new Error('Activity source changed during import');
         await flush();
+        await dailyJob();
         cache.clear();
         importing = false;
         return count;
@@ -293,13 +531,21 @@ function createActivityArchive(options = {}) {
             if (!inflight.has(key))
                 inflight.set(
                     key,
-                    buildReport(stream(raw), raw, {
-                        now: now(),
-                        firstAt,
-                        source: usingDatabase
-                            ? 'mongo-archive'
-                            : 'file-archive',
-                        players: context.players || [],
+                    dailyJob((at, debugGames) => {
+                        const reportContext = {
+                            now: at,
+                            firstAt,
+                            source: usingDatabase
+                                ? 'mongo-archive'
+                                : 'file-archive',
+                            players: context.players || [],
+                            debugGames,
+                        };
+                        return !range.query.playerId &&
+                            !range.query.search &&
+                            range.query.kind === 'all'
+                            ? daily.report(raw, reportContext, debugGames)
+                            : buildReport(stream(raw), raw, reportContext);
                     })
                         .then((value) => {
                             cache.set(key, { at: now(), result: value });

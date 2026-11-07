@@ -1,15 +1,17 @@
 # ตรวจ CI ก่อน deploy
 
-GitHub Actions `.github/workflows/release-checks.yml` รันเมื่อ push main/codex branch, เปิด PR ไป main และกด Run workflow เอง ใช้ Node 24 และ Playwright Chromium บน Ubuntu โดยไม่มี production credentials หรือ MongoDB จริง
+GitHub Actions `.github/workflows/release-checks.yml` รันเมื่อ push main/codex branch, เปิด PR ไป main และกด Run workflow เอง ใช้ Node 24 และ Playwright Chromium บน Ubuntu โดยไม่มี production credentials และใช้ MongoDB แยกเฉพาะทดสอบ
 
 `npm run test:release` รันทั้งหมด หรือระบุกลุ่ม `rules`, `integration`, `slave-browser`, `website-browser` ได้:
 
-- rules: deploy gate, สลาฟ 300 โต๊ะ/600 รอบ, ผลรวมสองรอบและการบันทึก, Black Market engine/strategy
+- rules: daily-summary parity/checkpoint recovery, deploy gate, สลาฟ 300 โต๊ะ/600 รอบ, ผลรวมสองรอบและการบันทึก, Black Market engine/strategy
 - integration: สลาฟสี่คนจริงทั้ง production/staging, ประวัติ/อันดับ/restart/ghost admin, Black Market socket/bots/stats
 - slave-browser: 14 ขนาดจอ, chat/admin tools, เล่นจริงกับบอทและเสียง WebAudio
 - website-browser: หน้าแรก → สร้าง → ล็อบบี้ → กระดาน 17 เกมและ 4 เกมเดี่ยว, Black Market, SEO/ลิงก์
 
-ทุกกลุ่มต้องผ่านจึงได้ check `Release checks passed` ไม่มี path filter ที่ปล่อยข้ามการตรวจ เก็บ log/ภาพใน Actions artifacts 7 วัน ข้อมูลเกมเป็น temporary directory และ runner ล้าง DB/URL overrides เสมอ
+งาน daily-mongo รัน MongoDB 7.0.14 แยก ตรวจยอดตรงกับ raw archive การแก้ debug ย้อนหลังระหว่างมี log ใหม่ และ index ของการแบ่งหน้า
+
+ทุกกลุ่มและ daily-mongo ต้องผ่านจึงได้ check `Release checks passed` ไม่มี path filter ที่ปล่อยข้ามการตรวจ เก็บ log/ภาพใน Actions artifacts 7 วัน ข้อมูลเกมเป็น temporary directory และ runner ล้าง DB/URL overrides เสมอ
 
 ## Coolify
 

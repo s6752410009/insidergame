@@ -132,7 +132,7 @@
         last = state;
       }
       $('slRound').textContent = state.continuous ? (state.sessionRound || state.round) + ' · ∞' : state.round + ' / ' + (state.maxRounds || 2);
-      $('slRound').title = state.continuous ? 'เล่นวน · เกมที่ ' + (state.gameNumber || 1) : 'จบเกมเมื่อครบ 2 รอบ';
+      $('slRound').title = state.continuous ? 'เล่นวน · คงตำแหน่งเพื่อแลกไพ่รอบถัดไป' : 'จบเกมเมื่อครบ 2 รอบ';
       seats();
       const newPileKey = state.top ? state.top.playerId + ':' + state.top.cards.map(c => c.id).join(',') : '';
       if (newPileKey !== pileKey || !$('slPile').children.length) {
@@ -187,6 +187,7 @@
       $('slClear').disabled = !selected.size || pending;
       $('slNext').hidden = !(state.phase === 'round-end' && state.isHost);
       $('slNext').disabled = pending || !socket.connected;
+      $('slNext').textContent = '↔ รอบ ' + (state.continuous ? (state.sessionRound || state.round) + 1 : 2);
       const ended = ['round-end', 'finished'].includes(state.phase);
       $('slActions').hidden = (state.phase === 'exchange' && !exchange) || (ended && !(state.phase === 'round-end' && state.isHost));
       if (ended) $('slHandMeta').textContent = ownResult ? 'อันดับ ' + ownResult.place : '';
@@ -205,11 +206,11 @@
       $('slActionHelp').hidden = !$('slActionHelp').textContent;
       $('slResults').hidden = !(state.phase === 'round-end' || state.matchComplete);
       $('slResultEmblem').innerHTML = ownResult ? roleBadge(roles[ownResult.place - 1], ownResult.title) : '';
-      $('slResultTitle').textContent = state.matchComplete ? (ownResult?.place === 1 ? (state.matchStandings.filter(row => row.place === 1).length > 1 ? 'ชนะร่วม!' : 'ชนะเกม!') : 'จบเกม') : ownResult ? ownResult.title + ' · +' + (5-ownResult.place) : 'จบรอบ 1';
-      $('slRecordStatus').hidden = !state.matchComplete;
+      $('slResultTitle').textContent = state.matchComplete ? (ownResult?.place === 1 ? (state.matchStandings.filter(row => row.place === 1).length > 1 ? 'ชนะร่วม!' : 'ชนะเกม!') : 'จบเกม') : ownResult ? ownResult.title + (state.continuous ? '' : ' · +' + (5-ownResult.place)) : 'จบรอบ 1';
+      $('slRecordStatus').hidden = !state.matchComplete && !(state.continuous && state.phase === 'round-end');
       $('slRecordStatus').textContent = state.debugUsed ? '/m · ไม่นับสถิติ' : state.resultRecorded ? '✓ บันทึกแล้ว' + (state.ranked ? ' · 🏆' : ' · 🤖') : 'กำลังบันทึก…';
-      $('slRecordStatus').title = state.ranked ? 'บันทึกประวัติและอันดับหนึ่งเกมแล้ว' : 'เล่นกับบอท เก็บประวัติแต่ไม่นับอันดับ';
-      $('slRanks').innerHTML = (state.matchStandings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div><small class="sl-score-breakdown">' + p.roundScores.join(' + ') + '</small></div><strong class="sl-score" aria-label="' + p.score + ' คะแนน">' + p.score + '</strong></div>').join('');
+      $('slRecordStatus').title = state.ranked ? (state.continuous ? 'บันทึกผลรอบนี้แล้ว' : 'บันทึกประวัติและอันดับหนึ่งเกมแล้ว') : 'เล่นกับบอท เก็บประวัติแต่ไม่นับอันดับ';
+      $('slRanks').innerHTML = (state.continuous ? state.standings || [] : state.matchStandings || []).map(p => '<div class="sl-rank role-' + roles[p.place - 1] + (p.playerId === playerId ? ' is-self' : '') + '">' + roleBadge(roles[p.place - 1], p.title) + '<span class="sl-rank-place" aria-label="อันดับ ' + p.place + '">' + p.place + '</span><div class="sl-rank-person"><div class="sl-name">' + esc(p.name) + (p.playerId === playerId ? ' (คุณ)' : '') + '</div><small class="sl-score-breakdown">' + (state.continuous ? esc(p.title) : p.roundScores.join(' + ')) + '</small></div><strong class="sl-score" aria-label="' + (state.continuous ? p.place : p.score) + (state.continuous ? ' อันดับ' : ' คะแนน') + '">' + (state.continuous ? '' : p.score) + '</strong></div>').join('');
       $('slHistory').innerHTML = (state.history || []).slice(-8).reverse().map(t => '<li>' + esc(t) + '</li>').join('');
       layoutHand(); tick(); tools.onState();
     }
