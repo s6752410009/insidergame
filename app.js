@@ -12290,8 +12290,11 @@ process.on('SIGINT', () => flushAndExit('SIGINT'));
 
 async function initializeActivityArchive() {
     try {
+        console.log('[activity archive] initializing independent history');
         await activityArchive.init();
-        await activityArchive.importLogs(serverLogStore);
+        console.log('[activity archive] importing retained logs');
+        const imported = await activityArchive.importLogs(serverLogStore);
+        console.log(`[activity archive] ready (${imported} retained records imported)`);
     } catch(error) {
         console.error('[activity archive] initialization unavailable:',error.message);
         const retry=setTimeout(initializeActivityArchive,30000);retry.unref?.();
@@ -12319,7 +12322,9 @@ async function startServer() {
         console.log('✅ Admin Message Manager initialized');
 
         await serverLogStore.init();
-        await initializeActivityArchive();
+        // Backfill must not delay HTTP/WebSocket readiness or deployment healthchecks.
+        // Insights stay unavailable until the archive finishes importing.
+        void initializeActivityArchive();
 
         await worldChatStore.init();
         console.log(`✅ World chat initialized (${worldChatStore.listMessages({ includeHidden: true }).length} messages, ${worldChatStore.isUsingDatabase() ? 'mongo' : 'file'})`);

@@ -6,7 +6,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const groups = {
     rules: [ ['smoke-activity-archive'], ['smoke-liar-engine'], ['smoke-server-logs'], ['smoke-admin-analytics'], ['smoke-release-gate'], ['smoke-slave'], ['smoke-slave-records'], ['test-blackmarket-engine'], ['smoke-blackmarket-strategy'] ],
-    integration: [ ['smoke-admin-perf'], ['smoke-slave-history-e2e'], ['smoke-slave-history-e2e', { SLAVE_HISTORY_ENV: 'staging' }],
+    integration: [ ['smoke-admin-startup'], ['smoke-admin-perf'], ['smoke-slave-history-e2e'], ['smoke-slave-history-e2e', { SLAVE_HISTORY_ENV: 'staging' }],
         ['smoke-blackmarket-flow'], ['smoke-blackmarket-bots'], ['integration-blackmarket-stats'] ],
     'slave-browser': [ ['smoke-slave-ux'], ['smoke-slave-tools'], ['smoke-slave-play'] ],
     'website-browser': [ ['smoke-admin-insights-browser'], ['smoke-admin-tables-browser'], ['browser-play-flow'], ['browser-leaderboard-rank'], ['browser-blackmarket-board'], ['smoke-seo'] ]

@@ -175,6 +175,13 @@ async function largeDataset() {
         const older = (await emit('admin_getLogs', { cat: 'all', limit: 200, before: logsPage.nextCursor })).response;
         assert(older.logs.length === 200 && older.logs[0].id < logsPage.logs[199].id, 'แสดงเพิ่มดึงหน้าเก่ากว่าจากที่เก็บ');
         // Include the new retained-log analytics scan while /ping is probed concurrently.
+        // HTTP is ready before historical backfill. Keep measuring /ping during import,
+        // then benchmark complete analytics rather than treating startup's 503 as data.
+        const archiveDeadline = Date.now() + 30000;
+        while (!output.includes('[activity archive] ready (') && Date.now() < archiveDeadline) {
+            await new Promise(resolve => setTimeout(resolve, 25));
+        }
+        assert(output.includes('[activity archive] ready ('), 'archive backfill completes before insights benchmark');
         const insightsAt = Date.now();
         const insightsResponse = await request('GET', `${base}/admin/api/insights?days=7`, null, { cookie });
         const insights = JSON.parse(insightsResponse.body);
