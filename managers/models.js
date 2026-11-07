@@ -194,6 +194,14 @@ serverLogSchema.index({ gameMode: 1, logId: -1 });
 serverLogSchema.index({ roomId: 1, bucket: 1, bot: 1, logId: -1 });
 const ServerLog = mongoose.model('ServerLog', serverLogSchema);
 
+// Independent activity history: no TTL and no diagnostic-log quota.
+const activityArchiveSchema = new mongoose.Schema({
+    _id:{type:String},at:{type:Date,required:true},entry:{type:mongoose.Schema.Types.Mixed,required:true}
+},{versionKey:false,minimize:false});
+activityArchiveSchema.index({at:-1,'entry.id':-1});
+const ActivityArchive=mongoose.model('ActivityArchive',activityArchiveSchema);
+
+
 // แชทโลก — ข้อความล่าสุด 200 + รายการคำ + คนที่โดนห้ามพิมพ์ เก็บเป็นเอกสารเดียว (ดู managers/worldChatManager.js)
 const worldChatStateSchema = new mongoose.Schema({
     key: { type: String, required: true, unique: true, index: true },
@@ -204,6 +212,7 @@ const WorldChatState = mongoose.model('WorldChatState', worldChatStateSchema);
 
 module.exports = {
     WorldChatState,
+    ActivityArchive,
     ServerLog,
     Player,
     PlayerStats,

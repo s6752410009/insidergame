@@ -51,6 +51,8 @@ assert((startView.fx || []).some(item => item.kind === 'deal'), 'เริ่ม
 const first = room.gameState.players[0];
 setTurn(room, first.playerId);
 engine.submitPlay(room, first.playerId, [first.hand[0]]);
+assert(room.gameState.history.find(item => item.kind === 'play')?.playerId === first.playerId, 'ประวัติลงไพ่ต้องมีรหัสผู้เล่นจริง');
+assert(room.gameState.history.find(item => item.kind === 'play')?.playerName === first.name, 'ประวัติลงไพ่ต้องเก็บชื่อผู้เล่น');
 assert(room.gameState.lastPlay?.count === 1, 'ลง 1 ใบแล้วต้องมี lastPlay');
 assert(room.gameState.currentPlayerId !== first.playerId, 'ตาต้องไปคนถัดไป');
 
@@ -63,6 +65,7 @@ setTurn(truthRoom, actor.playerId);
 engine.submitPlay(truthRoom, actor.playerId, [target, 'JOKER']);
 setTurn(truthRoom, challenger.playerId);
 engine.submitChallenge(truthRoom, challenger.playerId);
+assert(truthRoom.gameState.history.find(item => item.kind === 'reveal-truth')?.playerId === challenger.playerId, 'ประวัติท้าต้องผูกกับผู้ท้า');
 assert(challenger.lives === 2, 'ท้าของจริงต้องเสียชีวิตเอง');
 assert(actor.lives === 3, 'คนลงของจริงไม่เสียชีวิต');
 assert(truthRoom.gameState.lastPlay === null, 'ท้าแล้วต้องเปิดรอบใหม่');

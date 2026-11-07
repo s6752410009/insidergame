@@ -1,7 +1,8 @@
 'use strict';
 
-// Analytics describe retained diagnostic logs, normally seven days. Bucket/per-room
-// quotas can remove history earlier: this is not an all-time games warehouse.
+// The retained-log adapter remains available for tools and legacy callers.
+// Production delegates to the independent durable activity archive below.
+const { recordedNames, profileFields } = require('./activityIdentity');
 const DAY = 86400000;
 const BKK = 7 * 3600000;
 const CAP = 100000;
@@ -43,7 +44,7 @@ function kindOf(log, meta) {
     return 'detail';
 }
 
-function actorsOf(meta, names) {
+function actorsOf(meta, names, profiles) {
     const ids = new Set();
     const playerId = id(meta.playerId);
     const actorId = id(meta.actorId);
@@ -60,7 +61,8 @@ function actorsOf(meta, names) {
         playerId: player,
         playerName: names.get(player)
             || ((player === playerId || (!playerId && player === actorId)) ? text(meta.playerName, 160) : '')
-            || player
+            || player,
+        ...profileFields(profiles.get(player))
     }));
 }
 
@@ -79,11 +81,13 @@ function* buildSteps(entries, rawQuery, context) {
     const today = Math.floor((now + BKK) / DAY) * DAY - BKK;
     const from = Math.max(today - (Math.ceil(query.days) - 1) * DAY, now - retentionDays * DAY);
     const names = new Map();
+    const profiles = new Map();
     for (const player of Array.isArray(context.players) ? context.players : []) {
         if (!player || typeof player !== 'object') continue;
         const playerId = id(player.playerId);
         const name = text(player.playerName, 160);
         if (playerId && name) names.set(playerId, name);
+        if (playerId) profiles.set(playerId, player);
     }
 
     const rows = [];
@@ -102,7 +106,7 @@ function* buildSteps(entries, rawQuery, context) {
         if (at < from) continue;
         const meta = log.meta && typeof log.meta === 'object' && !Array.isArray(log.meta) ? log.meta : {};
         const mode = id(log.gameMode);
-        const players = actorsOf(meta, names);
+        const players = actorsOf(meta, names, profiles);
         const humanIds = players.map(p => p.playerId).filter(human);
         const bot = log.bot === true || meta.bot === true || meta.isBot === true
             || (typeof meta.bots === 'number' && meta.bots > 0) || players.some(p => !human(p.playerId));
@@ -113,6 +117,7 @@ function* buildSteps(entries, rawQuery, context) {
             kind: kindOf(log, meta), mode, modeLabel: text(log.gameModeLabel, 160) || mode,
             roomId: text(log.roomId, 160) || null, roomName: text(log.roomName, 160) || null,
             message: text(log.message, 1000), players, bot,
+            recordedNames:recordedNames(log),
             debug: log.debug === true || meta.debug === true || meta.debugUsed === true || /\bDEBUG\b/i.test(text(log.message, 1000)),
             at, humanIds, botOnly, resultId: meaningful(meta.resultId), gameId: meaningful(meta.gameId)
         };
@@ -170,7 +175,7 @@ function* buildSteps(entries, rawQuery, context) {
                 hours[hour].add(player.playerId);
                 let person = people.get(player.playerId);
                 if (!person) {
-                    person = { playerId: player.playerId, playerName: player.playerName, events: 0, lastAt: row.timestamp, starts: 0, ends: 0 };
+                    person = { playerId: player.playerId, playerName: player.playerName, ...profileFields(profiles.get(player.playerId)), events: 0, lastAt: row.timestamp, starts: 0, ends: 0 };
                     people.set(player.playerId, person);
                 }
                 person.events++;
@@ -197,12 +202,13 @@ function* buildSteps(entries, rawQuery, context) {
         }
         if (query.kind !== 'all' && row.kind !== query.kind) continue;
         if (search && ![row.id, row.message, row.mode, row.modeLabel, row.roomId, row.roomName,
-            ...row.players.flatMap(p => [p.playerId, p.playerName])].join(' ').toLowerCase().includes(search)) continue;
+            ...row.players.flatMap(p => [p.playerId, p.playerName]), ...row.recordedNames].join(' ').toLowerCase().includes(search)) continue;
         // Explicit allowlist: never return log metadata or current private player fields.
         activity.push({
             id: row.id, timestamp: row.timestamp, kind: row.kind, mode: row.mode,
             modeLabel: row.modeLabel, roomId: row.roomId, roomName: row.roomName,
-            message: row.message, players: row.players, bot: row.bot, debug: row.debug
+            message: row.message, players: row.players, bot: row.bot, debug: row.debug,
+            ...(row.recordedNames.length ? { recordedNames:row.recordedNames } : {})
         });
     }
     summary.uniqueHumans = unique.size;
@@ -238,6 +244,7 @@ function buildAnalytics(entries, query = {}, context = {}) {
 }
 
 function createAdminAnalytics(logStore, options = {}) {
+    if (typeof logStore?.getReport === 'function') return {get:(query,context)=>logStore.getReport(query,context)};
     if (!logStore || typeof logStore.exportEntries !== 'function') throw new TypeError('Analytics requires a log store');
     const now = typeof options.now === 'function' ? options.now : Date.now;
     let cached = null;

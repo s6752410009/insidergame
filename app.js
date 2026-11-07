@@ -156,7 +156,9 @@ const supportMessageRateLimits = new Map();
 // บันทึกกิจกรรมหลังบ้าน — แยกโควตาต่อประเภท เก็บถาวร (Mongo หรือไฟล์) ดู managers/serverLogManager.js
 const serverLogStore = require('./managers/serverLogManager');
 const adminQueries = require('./managers/adminQueries');
-const adminAnalytics = require('./managers/adminAnalytics').createAdminAnalytics(serverLogStore);
+const activityArchive = require('./managers/activityArchive').createActivityArchive({ resolvePlayer:id=>playerManager.getPlayer(id) });
+serverLogStore.setEntrySink(entry=>activityArchive.add(entry));
+const adminAnalytics = require('./managers/adminAnalytics').createAdminAnalytics(activityArchive);
 // แชทโลก — ที่เก็บ + กติกา + socket (ดู managers/worldChat*.js)
 const worldChatStore = require('./managers/worldChatManager');
 const { createWorldChatService } = require('./managers/worldChatService');
@@ -1918,6 +1920,7 @@ function addServerLog(io, category, roomId, message, type = 'info', options = {}
         const gameMode = options.gameMode || room?.settings?.gameMode || null;
         const modeStyle = gameMode ? getGameModeLogStyle(gameMode) : null;
         let meta = options.meta && typeof options.meta === 'object' ? { ...options.meta } : null;
+        if(meta?.playerId && !meta.playerName){const actor=playerManager.getPlayer(meta.playerId);if(actor)meta={...meta,playerName:actor.playerName};}
 
         // บรรทัดระหว่างเล่นที่บอทเป็นคนทำ → ติดป้าย bot (ไม่ขึ้นมุมมอง "สำคัญ" + มีเพดานต่อห้องของตัวเอง)
         if (category === 'game' && room && !(meta && (meta.bot !== undefined || meta.isBot !== undefined))
@@ -3824,7 +3827,7 @@ function flushLiarHistoryToLogs(room) {
             room.roomId,
             `🃏 ${item.icon || ''} ${item.text || ''}`.replace(/\s+/g, ' ').trim(),
             item.kind === 'winner' ? 'success' : 'info',
-            { gameMode: 'liar', meta: { kind: item.kind || null, event: 'liar_history' } }
+            { gameMode: 'liar', meta: { kind:item.kind || null, event:'liar_history', playerId:item.playerId || null, playerName:item.playerName || null } }
         );
     });
 
@@ -12268,7 +12271,7 @@ async function flushAndExit(signal) {
     try {
         await Promise.race([
             // ห้องด้วย — เดิมเซฟแค่ตามรอบ sweep รีสตาร์ตกลางเกมแล้วกู้ state เก่า (เช่น Insider ยังอยู่ช่วงเปิดคำ)
-            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms(), serverLogStore.flush(), worldChatStore.persistNow()]),
+            Promise.all([walletManager.persistNow(), soloStats.persistNow(), setthiGold.persistNow(), roomManager.flushPersistRooms(), serverLogStore.flush(), activityArchive.flush(), worldChatStore.persistNow()]),
             new Promise(resolve => setTimeout(resolve, 5000))
         ]);
     } catch (error) {
@@ -12280,9 +12283,20 @@ process.on('SIGTERM', () => flushAndExit('SIGTERM'));
 // ตายแบบไม่มี SIGTERM (เช่น process.exit จากที่อื่น) — log ที่ค้างคิวเขียนลงไฟล์แบบ sync
 process.on('exit', () => {
     serverLogStore.flushSyncOnExit();
+    activityArchive.flushSyncOnExit();
     worldChatStore.flushSyncOnExit();
 });
 process.on('SIGINT', () => flushAndExit('SIGINT'));
+
+async function initializeActivityArchive() {
+    try {
+        await activityArchive.init();
+        await activityArchive.importLogs(serverLogStore);
+    } catch(error) {
+        console.error('[activity archive] initialization unavailable:',error.message);
+        const retry=setTimeout(initializeActivityArchive,30000);retry.unref?.();
+    }
+}
 
 async function startServer() {
     const devFast = process.env.INSIDER_DEV_FAST === '1';
@@ -12305,6 +12319,7 @@ async function startServer() {
         console.log('✅ Admin Message Manager initialized');
 
         await serverLogStore.init();
+        await initializeActivityArchive();
 
         await worldChatStore.init();
         console.log(`✅ World chat initialized (${worldChatStore.listMessages({ includeHidden: true }).length} messages, ${worldChatStore.isUsingDatabase() ? 'mongo' : 'file'})`);

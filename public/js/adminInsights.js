@@ -4,6 +4,9 @@
     if (!root) return;
     const $ = id => document.getElementById(id);
     const fields = { days:$('insightDays'), mode:$('insightMode'), playerId:$('insightPlayer'), kind:$('insightKind'), search:$('insightSearch') };
+    const monthInput=$('insightMonth');
+    const currentMonth=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'}).slice(0,7);
+    monthInput.value=currentMonth;monthInput.max=currentMonth;
     const number = value => (Number(value) || 0).toLocaleString('th-TH');
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const date = value => { const d = new Date(value); return Number.isFinite(d.getTime()) ? d.toLocaleString('th-TH', { timeZone:'Asia/Bangkok', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—'; };
@@ -19,7 +22,7 @@
         user:'<circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/>'
     };
     const icon = name => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || paths.detail) + '</svg>';
-    const avatar = name => '<span class="insights-avatar" aria-hidden="true">' + esc(Array.from(String(name || '?'))[0]) + '</span>';
+    const avatar = player => window.renderPlayerAvatar ? window.renderPlayerAvatar(player,{size:28,className:'insights-profile',title:player.playerName || ''}) : '<span class="insights-avatar" aria-hidden="true">👤</span>';
     let page = 1, response = null, controller = null, sequence = 0, timer;
     const params = new URLSearchParams(location.search);
     for (const [key, input] of Object.entries(fields)) {
@@ -28,12 +31,17 @@
     }
     // A mode in a copied URL is resolved against the server's actual mode list on first load.
     let requestedMode = params.get('mode') || 'all';
-    async function load() {
+    if(['all','month'].includes(params.get('period'))) fields.days.value=params.get('period');
+    if(/^20\d{2}-(0[1-9]|1[0-2])$/.test(params.get('month')||'')) monthInput.value=params.get('month');
+    $('insightMonthWrap').hidden=fields.days.value!=='month';
+    async function load(force=false) {
         clearTimeout(timer);
         controller?.abort(); controller = new AbortController();
         const seq = ++sequence;
         const query = new URLSearchParams({page:String(page)});
         for (const [key, input] of Object.entries(fields)) query.set(key, key === 'mode' && requestedMode !== 'all' ? requestedMode : input.value);
+        if(['all','month'].includes(fields.days.value)){query.set('period',fields.days.value);if(fields.days.value==='month')query.set('month',monthInput.value);}
+        if(force===true)query.set('fresh','1');
         root.setAttribute('aria-busy','true'); $('insightStatus').textContent = 'กำลังโหลดข้อมูล…'; $('insightError').hidden = true;
         try {
             const res = await fetch('/admin/api/insights?' + query, { credentials:'same-origin', cache:'no-store', signal:controller.signal });
@@ -46,6 +54,7 @@
             $('insightStatus').textContent = 'อัปเดต ' + date(data.generatedAt);
             const url = new URLSearchParams();
             for (const [key, input] of Object.entries(fields)) if (input.value && input.value !== 'all' && !(key === 'days' && input.value === '7')) url.set(key === 'playerId' ? 'focusPlayer' : key,input.value);
+            if(['all','month'].includes(fields.days.value)){url.delete('days');url.set('period',fields.days.value);if(fields.days.value==='month')url.set('month',monthInput.value);}
             history.replaceState(null,'',location.pathname + (url.size ? '?' + url : ''));
         } catch (error) {
             if (seq !== sequence || error.name === 'AbortError') return;
@@ -59,7 +68,10 @@
         fields.mode.innerHTML = '<option value="all">ทุกเกม</option>' + data.modes.map(m => '<option value="' + esc(m.mode) + '">' + esc(m.label) + '</option>').join('');
         fields.mode.value = wantedMode; requestedMode = 'all';
         if (![...fields.days.options].some(o => o.value === String(data.query.days))) { const option = new Option(number(data.query.days) + ' วัน',String(data.query.days)); fields.days.add(option); }
-        fields.days.value = String(data.query.days);
+        fields.days.value = data.query.period || String(data.query.days);
+        $('insightMonthWrap').hidden=fields.days.value!=='month';
+        if(data.query.month)monthInput.value=data.query.month;
+        $('insightChartTitle').textContent=data.query.period==='all'?'การเล่นแต่ละเดือน':data.query.period==='month'?new Date(data.query.month+'-01T00:00:00+07:00').toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',month:'long',year:'numeric'}):'การเล่นแต่ละวัน';
         $('insightLive').innerHTML = '<span>' + icon('users') + '<strong>' + number(live.humansInRooms) + '</strong> คน</span><span>' + icon('start') + '<strong>' + number(live.playingRooms) + '</strong> ห้องกำลังเล่น</span><span>' + icon('room') + '<strong>' + number(live.rooms) + '</strong> ห้อง</span>';
         const totals = [
             ['เริ่มเล่น',s.starts,'start','มีบอทเล่นด้วย ' + number(s.botStarts) + ' ครั้ง'],
@@ -75,36 +87,43 @@
         const maxDaily = Math.max(1,...data.daily.flatMap(d => [d.starts,d.ends]));
         $('insightDailyAxis').innerHTML = '<span>' + number(maxDaily) + '</span><span>' + number(Math.round(maxDaily/2)) + '</span><span>0</span>';
         $('insightDaily').innerHTML = data.daily.map(d => {
-            const label = new Date(d.date + 'T00:00:00+07:00').toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short'});
+            const label = d.label || new Date(d.date + 'T00:00:00+07:00').toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short'});
             const description = label + ' · เริ่มเล่น ' + number(d.starts) + ' · เล่นจบ ' + number(d.ends);
             return '<div class="insights-daily-row" role="img" tabindex="0" aria-label="' + esc(description) + '" title="' + esc(description) + '"><span class="insights-day-values">' + number(d.starts) + ' / ' + number(d.ends) + '</span><span class="insights-day-plot" aria-hidden="true"><span style="height:' + (100*d.starts/maxDaily).toFixed(2) + '%"></span><span style="height:' + (100*d.ends/maxDaily).toFixed(2) + '%"></span></span><span class="insights-day-date">' + esc(label) + '</span></div>';
         }).join('');
+        $('insightDaily').classList.toggle('insights-daily--line',data.daily.length>10);
+        if(data.daily.length>10){
+            const x=i=>12+i*616/Math.max(1,data.daily.length-1), y=n=>174-160*n/maxDaily;
+            const path=key=>data.daily.map((d,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(d[key]).toFixed(1)).join(' ');
+            $('insightDaily').innerHTML='<svg class="insights-trend" viewBox="0 0 640 188" preserveAspectRatio="none" role="img" aria-label="กราฟเริ่มเล่นและเล่นจบ"><path d="'+path('starts')+'" stroke="#f3cb70"/><path d="'+path('ends')+'" stroke="#92baf8"/>'+data.daily.map((d,i)=>'<g><title>'+esc((d.label||d.date)+' · เริ่มเล่น '+d.starts+' · เล่นจบ '+d.ends)+'</title><circle cx="'+x(i)+'" cy="'+y(d.starts)+'" r="3" fill="#f3cb70"/><circle cx="'+x(i)+'" cy="'+y(d.ends)+'" r="3" fill="#92baf8"/></g>').join('')+'</svg><div class="insights-trend-labels">'+data.daily.filter((d,i)=>i%Math.ceil(data.daily.length/5)===0||i===data.daily.length-1).map(d=>'<span>'+esc(d.label||String(Number(d.date.slice(-2))))+'</span>').join('')+'</div>'+data.daily.map(d=>'<span class="insights-daily-row insights-sr-only">'+esc(d.label||d.date)+' เริ่ม '+d.starts+' จบ '+d.ends+'</span>').join('');
+        }
         const maxHour = Math.max(1,...data.hourly.map(h => h.uniqueHumans));
         const peak = data.hourly.reduce((best,h) => h.uniqueHumans > best.uniqueHumans ? h : best,{hour:0,uniqueHumans:0});
         $('insightPeak').textContent = peak.uniqueHumans ? 'สูงสุด ' + String(peak.hour).padStart(2,'0') + ':00 น.' : '—';
         $('insightHours').innerHTML = data.hourly.map(h => '<div class="insights-hour" role="img" tabindex="0" aria-label="' + h.hour + ':00 น. ' + number(h.uniqueHumans) + ' คน" title="' + h.hour + ':00 น. ' + number(h.uniqueHumans) + ' คน"><span class="insights-hour-bar" style="height:' + (100*h.uniqueHumans/maxHour).toFixed(2) + '%"></span>' + (h.hour%3===0 ? '<span class="insights-hour-label">' + String(h.hour).padStart(2,'0') + '</span>' : '') + '</div>').join('');
-        $('insightPeople').innerHTML = data.people.length ? data.people.map((p,i) => '<button type="button" class="insights-person" data-player="' + esc(p.playerId) + '"' + (i >= 6 ? ' hidden' : '') + ' title="' + esc(p.playerId) + '">' + avatar(p.playerName) + '<span class="insights-person-name">' + esc(p.playerName || p.playerId) + '</span><small>' + number(p.events) + '</small></button>').join('') + (data.people.length > 6 ? '<button type="button" class="insights-button" data-show-people>ดูเพิ่ม</button>' : '') : empty('ยังไม่มีประวัติผู้เล่น');
+        $('insightPeople').innerHTML = data.people.length ? data.people.map((p,i) => '<button type="button" class="insights-person" data-player="' + esc(p.playerId) + '"' + (i >= 6 ? ' hidden' : '') + ' title="' + esc(p.playerId) + '">' + avatar(p) + '<span class="insights-person-name">' + esc(p.playerName || p.playerId) + '</span><small>' + number(p.events) + '</small></button>').join('') + (data.people.length > 6 ? '<button type="button" class="insights-button" data-show-people>ดูเพิ่ม</button>' : '') : empty('ยังไม่มีประวัติผู้เล่น');
         const a = data.activity;
         $('insightActivityMeta').textContent = number(a.total) + ' รายการ';
         $('insightActivity').innerHTML = a.rows.length ? a.rows.map((e,index) => {
-            const person = e.players.find(p => !p.playerId.startsWith('bot_'));
-            const player = person ? avatar(person.playerName) + '<button class="insights-player-link" type="button" data-player="' + esc(person.playerId) + '" title="' + esc(person.playerId) + '">' + esc(person.playerName || person.playerId) + '</button>' + (e.players.length > 1 ? '<small>+' + number(e.players.length-1) + '</small>' : '') : '<span class="insights-muted">' + (['system','admin','error'].includes(e.kind) ? 'ระบบ' : '—') + '</span>';
+            const person = e.players.find(p => !p.playerId.startsWith('bot_')) || e.players[0];
+            const player = person ? avatar(person) + '<button class="insights-player-link" type="button" data-player="' + esc(person.playerId) + '" title="' + esc(person.playerId) + '">' + esc(person.playerName || person.playerId) + '</button>' + (e.players.length > 1 ? '<small>+' + number(e.players.length-1) + '</small>' : '') : e.recordedNames?.length ? '<span class="insights-recorded-name" title="ชื่อจากประวัติเดิม">' + esc(e.recordedNames.join(', ')) + '</span>' : '<span class="insights-muted">' + (['system','admin','error'].includes(e.kind) ? 'ระบบ' : '—') + '</span>';
             return '<li class="insights-event"><div class="insights-event-line"><time datetime="' + esc(e.timestamp) + '">' + esc(date(e.timestamp)) + '</time><div class="insights-event-user">' + player + '</div><span class="insights-event-mode" title="' + esc(e.roomName || e.roomId || '') + '">' + esc(e.modeLabel || '—') + '</span><span class="insights-event-kind insights-event-kind--' + esc(e.kind) + '">' + icon(e.kind) + esc(kinds[e.kind] || e.kind) + '</span><button type="button" class="insights-button insights-icon-button insights-expand" data-detail="' + index + '" aria-expanded="false" aria-controls="insightDetail' + index + '" aria-label="ดูรายละเอียดกิจกรรม">' + icon('more') + '</button></div><div id="insightDetail' + index + '" class="insights-detail-body" hidden><div class="insights-event-message">' + esc(e.message) + '</div><div>' + esc(e.roomName || e.roomId || '') + (e.bot ? ' · มีบอท' : '') + (e.debug ? ' · ทดสอบ' : '') + '</div><div class="insights-detail-players">' + e.players.map(p => '<button class="insights-player-link" type="button" data-player="' + esc(p.playerId) + '" title="' + esc(p.playerId) + '">' + esc(p.playerName || p.playerId) + '</button>').join('') + '</div></div></li>';
         }).join('') : empty('ไม่พบกิจกรรม');
         $('insightPage').textContent = number(a.page) + ' / ' + number(a.pages); $('insightPrev').disabled = a.page <= 1; $('insightNext').disabled = a.page >= a.pages; $('insightExport').disabled = !a.rows.length;
         $('insightClear').hidden = !fields.playerId.value && !fields.search.value && fields.kind.value === 'all';
-        const sourceNote = 'ประวัติย้อนหลังสูงสุด ' + number(coverage.retentionDays) + ' วัน บางรายการอาจถูกลบก่อน' + (coverage.truncated ? ' · ข้อมูลไม่ครบ' : '') + ' · เวลาไทย';
+        const sourceNote = coverage.persistent ? (coverage.recordedSince ? 'มีประวัติตั้งแต่ ' + date(coverage.recordedSince) + ' · ข้อมูลก่อนหน้านั้นไม่มีบันทึก' : 'ยังไม่มีประวัติ') : 'ประวัติย้อนหลังสูงสุด ' + number(coverage.retentionDays) + ' วัน';
         $('insightCoverage').textContent = sourceNote;
-        $('insightScopeNote').textContent = 'ย้อนหลัง ' + number(coverage.retentionDays) + ' วัน';
+        $('insightScopeNote').textContent = data.query.period==='all'?'ทั้งหมด':data.query.period==='month'?new Date(data.query.month+'-01T00:00:00+07:00').toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',month:'short',year:'numeric'}):'ย้อนหลัง '+number(data.query.days)+' วัน';
         $('insightScopeNote').title = sourceNote;
-        $('insightStatus').dataset.coverage = String(coverage.retentionDays);
+        $('insightStatus').dataset.coverage = coverage.persistent?'archive':String(coverage.retentionDays);
     }
     function resetAndLoad() { page=1; load(); }
     $('insightFilters').addEventListener('submit', e => {e.preventDefault();resetAndLoad();});
     $('insightActivityFilters').addEventListener('submit', e => {e.preventDefault();resetAndLoad();});
-    fields.days.addEventListener('change', resetAndLoad); fields.mode.addEventListener('change', () => {requestedMode='all';resetAndLoad();}); fields.kind.addEventListener('change', resetAndLoad);
+    fields.days.addEventListener('change',()=>{$('insightMonthWrap').hidden=fields.days.value!=='month';resetAndLoad();});
+    monthInput.addEventListener('change',()=>{if(monthInput.checkValidity()&&monthInput.value)resetAndLoad();}); fields.mode.addEventListener('change', () => {requestedMode='all';resetAndLoad();}); fields.kind.addEventListener('change', resetAndLoad);
     for (const input of [fields.playerId,fields.search]) input.addEventListener('input', () => { clearTimeout(timer); timer=setTimeout(resetAndLoad,300); });
-    $('insightRefresh').addEventListener('click',load);
+    $('insightRefresh').addEventListener('click',()=>load(true));
     $('insightPrev').addEventListener('click', () => {page--;load();}); $('insightNext').addEventListener('click', () => {page++;load();});
     $('insightClear').addEventListener('click', () => {fields.playerId.value='';fields.search.value='';fields.kind.value='all';resetAndLoad();});
     root.addEventListener('click', e => {

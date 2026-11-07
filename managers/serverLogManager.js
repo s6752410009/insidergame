@@ -464,6 +464,7 @@ function createServerLogManager(options = {}) {
     let countsCache = new Map();
     let modesCache = null;
     let ready = false;
+    let entrySink = null;
     let writesSincePrune = 0;
     let pruneSoon = null;
 
@@ -705,7 +706,9 @@ function createServerLogManager(options = {}) {
             }, 1000);
             if (pruneSoon.unref) pruneSoon.unref();
         }
-        return toPublic(entry);
+        const result=toPublic(entry);
+        if(entrySink){try{entrySink(result);}catch(error){console.error('[activity archive] capture failed');}}
+        return result;
     }
 
     async function queryDb(query) {
@@ -773,6 +776,7 @@ function createServerLogManager(options = {}) {
         let sent = 0;
         while (sent < maxEntries) {
             const page = await query({ ...queryOptions, before, limit: 1000 });
+            if (queryOptions.requirePersistentSource && page.source === 'memory-fallback') throw new Error('Full server-log source unavailable');
             for (const entry of page.logs) {
                 yield entry;
                 sent += 1;
@@ -811,6 +815,7 @@ function createServerLogManager(options = {}) {
     return {
         init,
         add,
+        setEntrySink: sink => { entrySink=typeof sink === 'function' ? sink : null; },
         query,
         exportEntries,
         clear,

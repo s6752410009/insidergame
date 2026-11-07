@@ -182,6 +182,7 @@
     "smoke:profile:browser": "node scripts/smoke-player-profile-browser.js",
     "test:release": "node scripts/test-release.js",
     "deploy:check": "node scripts/deploy-readiness.js",
+    "smoke:admin:archive": "node scripts/smoke-activity-archive.js",
     "smoke:admin:analytics": "node scripts/smoke-admin-analytics.js",
     "smoke:admin:insights:browser": "node scripts/smoke-admin-insights-browser.js"
   },

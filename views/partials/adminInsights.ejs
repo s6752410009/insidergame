@@ -6,8 +6,9 @@
     </div>
     <div class="insights-toolbar">
         <form class="insights-filters" id="insightFilters">
-            <label><span class="insights-sr-only">ช่วงเวลา</span><select id="insightDays" name="days"><option value="1">วันนี้</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option></select></label>
+            <label><span class="insights-sr-only">ช่วงเวลา</span><select id="insightDays" name="days"><option value="all">ทั้งหมด</option><option value="month">เลือกเดือน</option><option value="1">วันนี้</option><option value="3">3 วันล่าสุด</option><option value="7" selected>7 วันล่าสุด</option></select></label>
             <label><span class="insights-sr-only">เกม</span><select id="insightMode" name="mode"><option value="all">ทุกเกม</option></select></label>
+        <label id="insightMonthWrap" hidden><span class="insights-sr-only">เดือน</span><input id="insightMonth" type="month" aria-label="เลือกเดือน"></label>
         </form>
         <p class="insights-status" id="insightStatus" role="status" aria-live="polite">กำลังโหลด…</p>
     </div>
@@ -16,7 +17,7 @@
         <section class="insights-live" aria-label="สถานะล่าสุด"><span class="insights-dot" aria-hidden="true"></span><div id="insightLive">—</div></section>
         <dl class="insights-totals" id="insightTotals"></dl>
         <div class="insights-main-grid">
-            <section class="insights-section insights-chart-section"><div class="insights-section-head"><h2>การเล่นแต่ละวัน</h2><div class="insights-legend"><span>เริ่มเล่น</span><span>เล่นจบ</span></div></div><div class="insights-chart-frame"><div id="insightDailyAxis" class="insights-chart-axis" aria-hidden="true"></div><div id="insightDaily" class="insights-daily"></div></div></section>
+            <section class="insights-section insights-chart-section"><div class="insights-section-head"><h2 id="insightChartTitle">การเล่นแต่ละวัน</h2><div class="insights-legend"><span>เริ่มเล่น</span><span>เล่นจบ</span></div></div><div class="insights-chart-frame"><div id="insightDailyAxis" class="insights-chart-axis" aria-hidden="true"></div><div id="insightDaily" class="insights-daily"></div></div></section>
             <section class="insights-section insights-ranking"><div class="insights-section-head"><h2>เกมยอดนิยม</h2><span class="insights-muted">ครั้งที่เริ่มเล่น</span></div><div id="insightGames"></div></section>
         </div>
         <div class="insights-secondary-grid">

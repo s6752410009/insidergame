@@ -174,9 +174,10 @@ function getHolders(room) {
     return room.gameState.players.filter(p => p.alive && p.hand.length > 0);
 }
 
-function pushHistory(room, icon, text, kind = null) {
+function pushHistory(room, icon, text, kind = null, playerId = null) {
+    const actor=playerId ? room.gameState.players.find(p=>p.playerId===playerId) : null;
     room.gameState.history = [
-        { icon, text, kind, at: new Date().toISOString() },
+        { icon, text, kind, at: new Date().toISOString(), ...(actor ? {playerId:actor.playerId,playerName:actor.name} : {}) },
         ...(room.gameState.history || [])
     ].slice(0, 40);
 }
@@ -335,7 +336,7 @@ function checkWinner(room) {
     state.currentPlayerId = null;
     state.forcedCall = false;
     state.lastPlay = null;
-    pushHistory(room, '🏆', `${state.winner.name} เป็นผู้รอดคนสุดท้าย!`, 'winner');
+    pushHistory(room, '🏆', `${state.winner.name} เป็นผู้รอดคนสุดท้าย!`, 'winner',state.winner.playerId);
     return true;
 }
 
@@ -375,21 +376,21 @@ function punish(room, playerId, reason) {
         const died = player.shots >= player.bullet;
         if (died) {
             eliminate(room, player, reason || 'shot');
-            pushHistory(room, '💥', `${player.name} ลั่นไก — ปัง! ตกรอบ (นัดที่ ${player.shots})`, 'eliminated');
+            pushHistory(room, '💥', `${player.name} ลั่นไก — ปัง! ตกรอบ (นัดที่ ${player.shots})`, 'eliminated',player.playerId);
         } else {
             const left = CHAMBERS - player.shots;
-            pushHistory(room, '🔫', `${player.name} ลั่นไก — แชะ… รอด (ยิงไป ${player.shots}/${CHAMBERS} · นัดหน้าโดน 1 ใน ${left})`, reason || 'shot');
+            pushHistory(room, '🔫', `${player.name} ลั่นไก — แชะ… รอด (ยิงไป ${player.shots}/${CHAMBERS} · นัดหน้าโดน 1 ใน ${left})`, reason || 'shot',player.playerId);
         }
         return { playerId, died, shots: player.shots, lives: player.alive ? 1 : 0 };
     }
 
     player.lives = Math.max(0, player.lives - 1);
     if (player.lives > 0) {
-        pushHistory(room, '💔', `${player.name} เสียหัวใจ 1 ดวง เหลือ ${player.lives}`, reason || 'life');
+        pushHistory(room, '💔', `${player.name} เสียหัวใจ 1 ดวง เหลือ ${player.lives}`, reason || 'life',player.playerId);
         return { playerId, died: false, shots: 0, lives: player.lives };
     }
     eliminate(room, player, reason || 'life');
-    pushHistory(room, '💀', `${player.name} หัวใจหมด — ตกรอบแล้ว`, 'eliminated');
+    pushHistory(room, '💀', `${player.name} หัวใจหมด — ตกรอบแล้ว`, 'eliminated',player.playerId);
     return { playerId, died: true, shots: 0, lives: 0 };
 }
 
@@ -463,7 +464,7 @@ function submitPlay(room, playerId, cardIds, options = {}) {
     };
     state.lastReveal = null;
     const emptied = player.hand.length === 0 ? ' · ไพ่หมดมือ' : '';
-    pushHistory(room, '🂠', `${player.name} ลง ${taken.length} ใบ บอกว่าเป็น ${rank.thaiName}${emptied}`, 'play');
+    pushHistory(room, '🂠', `${player.name} ลง ${taken.length} ใบ บอกว่าเป็น ${rank.thaiName}${emptied}`, 'play',player.playerId);
     pushFx(room, { kind: 'play', fromId: playerId, count: taken.length });
 
     return beginTurn(room, playerId);
@@ -510,11 +511,11 @@ function submitChallenge(room, playerId, options = {}) {
     state.forcedCall = false;
 
     if (outcome === 'truth') {
-        pushHistory(room, '✅', `${challenger.name} ท้าแล้วพลาด — ${actorName} ลง ${rank.thaiName} จริง (${shown})`, 'reveal-truth');
+        pushHistory(room, '✅', `${challenger.name} ท้าแล้วพลาด — ${actorName} ลง ${rank.thaiName} จริง (${shown})`, 'reveal-truth',challenger.playerId);
     } else if (outcome === 'lie') {
-        pushHistory(room, '🚨', `${challenger.name} จับได้! ${actorName} โกหก (${shown})`, 'reveal-lie');
+        pushHistory(room, '🚨', `${challenger.name} จับได้! ${actorName} โกหก (${shown})`, 'reveal-lie',challenger.playerId);
     } else {
-        pushHistory(room, '😈', `${challenger.name} ท้าโดนไพ่ปีศาจของ ${actorName} — ทุกคนยกเว้น ${actorName} รับโทษ`, 'reveal-devil');
+        pushHistory(room, '😈', `${challenger.name} ท้าโดนไพ่ปีศาจของ ${actorName} — ทุกคนยกเว้น ${actorName} รับโทษ`, 'reveal-devil',challenger.playerId);
     }
 
     const reason = outcome === 'lie' ? 'caught' : (outcome === 'truth' ? 'challenge-fail' : 'devil');
@@ -573,13 +574,13 @@ function autoResolvePhase(room) {
         // นับก่อนสั่ง — beginTurn ของตาถัดไปอ่านค่านี้ (กรณีวนกลับมาคนเดิม)
         actor.idleStrikes = (Number(actor.idleStrikes) || 0) + 1;
         if (state.lastPlay && (state.forcedCall || !actor.hand.length)) {
-            pushHistory(room, '⏰', `${actor.name} หมดเวลา — ท้าอัตโนมัติ`);
+            pushHistory(room, '⏰', `${actor.name} หมดเวลา — ท้าอัตโนมัติ`,null,actor.playerId);
             return submitChallenge(room, actor.playerId, { auto: true });
         }
         if (!actor.hand.length) {
             return beginTurn(room, nextAlive(room, actor.playerId, p => p.alive && p.hand.length > 0)?.playerId || actor.playerId);
         }
-        pushHistory(room, '⏰', `${actor.name} หมดเวลา — ลง 1 ใบอัตโนมัติ`);
+        pushHistory(room, '⏰', `${actor.name} หมดเวลา — ลง 1 ใบอัตโนมัติ`,null,actor.playerId);
         return submitPlay(room, actor.playerId, [actor.hand[0]], { auto: true });
     } catch (error) {
         return beginTurn(room, nextAlive(room, actor.playerId)?.playerId || actor.playerId);
@@ -632,7 +633,7 @@ function handlePlayerLeft(room, playerId) {
     if (!player || !player.alive) return state;
 
     eliminate(room, player, 'left');
-    pushHistory(room, '🚪', `${player.name} ออกจากเกม — นับว่าตกรอบ`);
+    pushHistory(room, '🚪', `${player.name} ออกจากเกม — นับว่าตกรอบ`,null,player.playerId);
 
     if (checkWinner(room)) return state;
 

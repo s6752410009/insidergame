@@ -69,9 +69,19 @@ function seed(dataDir) {
     add('game', 'insider', `legacy-noidentity ${NAME} เริ่มเกม`, { event: 'game_start' }, 2 * 86400000 + 60000);
     fs.writeFileSync(path.join(dataDir, 'serverLogs.ndjson'), rows.slice().reverse().map(row => JSON.stringify(row)).join('\n') + '\n');
     const players = Object.fromEntries(['p1', 'p2'].map(playerId => [playerId,
-        { playerId, playerName: NAME, color: '#3498db', avatar: '🙂', approved: true,
+        { playerId, playerName: NAME, color: '#3498db', avatar: playerId === 'p1' ? '👽' : '🐼', avatarFrame:playerId === 'p1' ? 'rainbow' : 'bronze', useGooglePhoto:playerId === 'p1', googleSub:playerId+'-fixture-subject', googlePicture:'https://lh3.googleusercontent.com/a/insights-profile=s400', approved: true,
             createdAt: new Date(now).toISOString(), lastSeen: new Date(now).toISOString() }]));
     fs.writeFileSync(path.join(dataDir, 'players.json'), JSON.stringify(players));
+    const old = new Date(now); old.setUTCMonth(old.getUTCMonth()-2); old.setUTCDate(3);
+    const oldMonth = new Date(old.getTime()+7*3600000).toISOString().slice(0,7);
+    const historical = [
+        {id:'archived-start',meta:{event:'game_start',participantIds:['p1']},message:'ชื่อเดียวกัน เริ่มเล่น'},
+        {id:'archived-end',meta:{event:'game_end',playerId:'p1',playerName:NAME},message:'ชื่อเดียวกัน เล่นจบ'},
+        {id:'archived-join',category:'join',meta:{},message:NAME+' เข้าห้อง'},
+        {id:'archived-action',meta:{event:'liar_history'},message:'🃏 🂠 '+NAME+' ลง 1 ใบ บอกว่าเป็น เอซ'}
+    ].map((entry,index)=>({category:'game',type:'info',gameMode:'liar',gameModeLabel:'ไพ่โกหก',roomId:'old-room',roomName:'ห้องเก่า',timestamp:new Date(old.getTime()+index*1000).toISOString(),...entry}));
+    fs.writeFileSync(path.join(dataDir,'activityArchive.ndjson'),historical.map(entry=>JSON.stringify({key:'log:'+entry.id,entry})).join('\n')+'\n');
+    rows.oldMonth=oldMonth;
     return rows;
 }
 
@@ -134,7 +144,8 @@ async function apiChecks(context, base, fixture) {
     assert(Number.isFinite(Date.parse(all.generatedAt)), 'generatedAt is a timestamp');
     equal(all.live, { rooms: 0, playingRooms: 0, humansInRooms: 0 }, 'local fixture has no live rooms');
     equal(all.query.days, 7, 'default seven-day query');
-    equal(all.coverage.retentionDays, 7, 'retention coverage');
+    equal(all.coverage.retentionDays, null, 'archive has no diagnostic retention limit');
+    equal(all.coverage.persistent, true, 'history persists independently of logs');
     assert(Number.isFinite(Date.parse(all.coverage.from)) && Number.isFinite(Date.parse(all.coverage.to)), 'coverage has a valid range');
     assert(Number.isFinite(Date.parse(all.coverage.oldestEventAt)), 'coverage includes oldest event');
     equal(all.coverage.truncated, false, 'small fixture is not truncated');
@@ -224,7 +235,9 @@ async function visit(page, url, expected = {}) {
         playerId: document.querySelector('#insightPlayer').value,
         kind: document.querySelector('#insightKind').value,
         search: document.querySelector('#insightSearch').value,
-        page: Number(document.querySelector('#insightPage').textContent.split('/')[0].trim())
+        page: Number(document.querySelector('#insightPage').textContent.split('/')[0].trim()),
+        ...(['all','month'].includes(document.querySelector('#insightDays').value)?{period:document.querySelector('#insightDays').value}:{}),
+        ...(document.querySelector('#insightDays').value==='month'?{month:document.querySelector('#insightMonth').value}:{})
     }));
     for (const [key, value] of Object.entries(expected)) equal(String(query[key]), String(value), `navigation ${key} filter`);
     const data = await api(page.context(), new URL(url).origin, query);
@@ -266,14 +279,19 @@ async function layout(page, tag) {
     equal(problems, [], `${tag} controls and content fit viewport`);
     equal(await page.locator('.insights-header').evaluate(element => getComputedStyle(element).backgroundImage), 'none', `${tag} insights header does not inherit the global branding background`);
     equal(await page.locator('.insights-header').evaluate(element => element.tagName === 'HEADER'), false, `${tag} insights heading avoids global header styles`);
-    const dailyBars = await page.locator('#insightDaily .insights-day-plot > span').evaluateAll(elements => elements.map(element => {
-        const rect = element.getBoundingClientRect(); return { width: rect.width, height: rect.height };
-    }));
-    assert(dailyBars.filter(bar => bar.width > 0 && bar.height > 0).length >= 3, `${tag} both recent daily values and legacy start draw positive vertical bars`);
-    const track = await page.locator('#insightGames [data-mode="coup"] .insights-track').boundingBox();
-    assert(track && track.width > 0 && track.height > 0, `${tag} Coup ranking track has positive dimensions`);
-    const fill = await page.locator('#insightGames [data-mode="coup"] .insights-track > span').boundingBox();
-    assert(fill && fill.width > 0 && fill.height > 0 && fill.width <= track.width + 1 && fill.height <= track.height + 1, `${tag} Coup ranking bar is visible within its track`);
+    if (await page.locator('#insightDaily .insights-trend').count()) {
+        const paths=await page.locator('#insightDaily .insights-trend > path').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('d')));
+        assert(paths.length===2 && paths.every(value=>value && !/NaN|Infinity/.test(value)),`${tag} both monthly trend paths are finite`);
+    } else {
+        const dailyBars = await page.locator('#insightDaily .insights-day-plot > span').evaluateAll(elements => elements.map(element => {
+            const rect = element.getBoundingClientRect(); return { width: rect.width, height: rect.height };
+        }));
+        assert(dailyBars.filter(bar => bar.width > 0 && bar.height > 0).length >= 2, `${tag} start and end bars are visible`);
+    }
+    const track = await page.locator('#insightGames [data-mode] .insights-track').first().boundingBox();
+    assert(track && track.width > 0 && track.height > 0, `${tag} ranking track has positive dimensions`);
+    const fill = await page.locator('#insightGames [data-mode] .insights-track > span').first().boundingBox();
+    assert(fill && fill.width > 0 && fill.height > 0 && fill.width <= track.width + 1 && fill.height <= track.height + 1, `${tag} ranking bar is visible within its track`);
 }
 async function exportPage(page, expected) {
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#insightExport').click()]);
@@ -348,6 +366,27 @@ async function browserChecks(page, base, width, artifacts) {
     await page.locator('#insightActivitySection').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(artifacts, `insights-${width}-activity.png`), animations: 'disabled' });
     await page.evaluate(() => window.scrollTo(0, 0));
+
+    const photo=page.locator('#insightPeople [data-player="p1"] .pa-img');
+    equal(await photo.count(),1,`${tag} profile photo is rendered`);
+    equal(await photo.getAttribute('referrerpolicy'),'no-referrer',`${tag} photo does not send referrer`);
+    equal(await page.locator('#insightPeople [data-player="p1"] .player-avatar').getAttribute('data-frame'),'rainbow',`${tag} actual profile frame rendered`);
+    assert((await page.locator('#insightPeople [data-player="p2"] .player-avatar').textContent()).includes('🐼'),`${tag} emoji avatar rendered`);
+    const allTime=await load(page,()=>page.locator('#insightDays').selectOption('all'),{period:'all'});
+    summary(allTime,{starts:7,ends:3,joins:61},`${tag} all time includes older archive`);
+    const historical=await load(page,()=>page.locator('#insightDays').selectOption('month'),{period:'month'});
+    const oldMonth=await page.evaluate(()=>{const date=new Date();date.setUTCMonth(date.getUTCMonth()-2);date.setUTCDate(3);return new Date(date.getTime()+7*3600000).toISOString().slice(0,7);});
+    const old=await load(page,()=>page.locator('#insightMonth').fill(oldMonth),{period:'month',month:oldMonth});
+    summary(old,{starts:1,ends:1,uniqueHumans:1,joins:1},`${tag} selected old month`);
+    equal(old.activity.total,4,`${tag} old activities retained`);
+    equal(await page.locator('.insights-recorded-name').count(),2,`${tag} old join/action names shown without guessed IDs`);
+    assert((await page.locator('.insights-recorded-name').allTextContents()).every(value=>value===NAME),`${tag} recorded names display as names`);
+    assert(await page.locator('#insightDaily .insights-trend').isVisible(),`${tag} monthly chart fits without 31 cramped columns`);
+    await layout(page,`${tag} month`);
+    await page.screenshot({path:path.join(artifacts,`insights-month-${width}.png`),animations:'disabled'});
+    const restoredPeriod=await visit(page,page.url(),{mode:'all'});
+    equal(restoredPeriod.query.month,oldMonth,`${tag} month is preserved on reload`);
+    await load(page,()=>page.locator('#insightDays').selectOption('7'),{days:'7'});
 
     const filteredMode = await load(page, () => page.locator('#insightMode').selectOption('insider'), { mode: 'insider' });
     summary(filteredMode, { starts: 2, ends: 1, uniqueHumans: 1, joins: 0 }, `${tag} mode`);
@@ -452,6 +491,7 @@ async function run() {
         const viewports = [{ width: 1280, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 780 }];
         for (const viewport of viewports) {
             const context = await browser.newContext({ viewport, locale: 'th-TH', acceptDownloads: true });
+            await context.route('https://lh3.googleusercontent.com/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9X8AAAAASUVORK5CYII=','base64')}));
             context.setDefaultTimeout(TIMEOUT_MS);
             const errors = [];
             try {
