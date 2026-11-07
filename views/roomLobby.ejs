@@ -2217,7 +2217,7 @@
       if (normalizedMode === 'drawguess') {
         return { kicker: '🎨 ห้องวาดแล้วทาย', pills: [] };
       }
-      if (normalizedMode === 'slave') return { kicker:'♠ โต๊ะสลาฟ 4 คน', pills:[] };
+      if (normalizedMode === 'slave') return { kicker:'♠ สลาฟ · 4 คน', pills:[] };
       if (normalizedMode === 'colorcards') {
         return { kicker: '🃏 โต๊ะไพ่ทิ้งสี', pills: [] };
       }
@@ -2378,6 +2378,12 @@
         } else if (resolvedMode === 'avalon') {
           lobbySpotlight.style.display = 'block';
           lobbySpotlight.innerHTML = buildAvalonLobbyHtml(payload);
+        } else if (resolvedMode === 'slave') {
+          const slLoop = settings && settings.slavePlayMode === 'continuous';
+          lobbySpotlight.style.display = 'block';
+          lobbySpotlight.innerHTML = '<div class="cc-lobby-opts"><select id="slLobbyPlayMode" aria-label="โหมดการเล่น" title="เล่นวน: บันทึกผลทุก 2 รอบ แล้วเล่นต่ออัตโนมัติ"' + (isAdmin ? '' : ' disabled') + '>' +
+            '<option value="two-rounds"' + (slLoop ? '' : ' selected') + '>♠ 2 รอบ</option>' +
+            '<option value="continuous"' + (slLoop ? ' selected' : '') + '>∞ เล่นวน</option></select></div>';
         } else if (resolvedMode === 'liar') {
           const lrLives = settings && settings.liarPunishment === 'lives';
           const lrDevil = !!(settings && settings.liarDevil === true);
@@ -3856,6 +3862,7 @@
       this.disabled = true;
       updateColorCardsSetting({ spyfallVoteMode: this.getAttribute('aria-pressed') === 'true' ? 'unanimous' : 'majority' });
     });
+    $(document).on('change', '#slLobbyPlayMode', function() { updateColorCardsSetting({ slavePlayMode:this.value }); });
     $(document).on('change', '#ccLobbyTarget', function() { updateColorCardsSetting({ colorcardsTarget: Number(this.value) }); });
     $(document).on('change', '#ccLobbyTurn', function() { updateColorCardsSetting({ colorcardsTurnSeconds: Number(this.value) }); });
     $(document).on('click', '#ccLobbyStack', function() {

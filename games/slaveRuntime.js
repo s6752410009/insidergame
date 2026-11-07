@@ -10,19 +10,26 @@ module.exports = getDeps => {
     }
     function schedule(room) {
         const s = room.gameState;
-        const key = `${s.step}:${s.phase}:${s.roundAdvanceAt || s.returnLobbyAt || ''}`;
+        const key = `${s.step}:${s.phase}:${s.roundAdvanceAt || s.nextMatchAt || s.returnLobbyAt || ''}`;
         if (timers.get(room.roomId)?.key === key) return;
         clearTimers(room.roomId);
-        if (s.status !== 'playing' && !s.returnLobbyAt) return;
+        if (s.status !== 'playing' && !s.returnLobbyAt && !s.nextMatchAt) return;
         const live = () => getDeps().roomManager.getRoom(room.roomId);
         const timer = { key };
-        const transitionAt = s.roundAdvanceAt || s.returnLobbyAt;
+        const transitionAt = s.roundAdvanceAt || s.nextMatchAt || s.returnLobbyAt;
         if (transitionAt) timer.transition = setTimeout(() => {
             const current = live();
             if (!current || current.settings.gameMode !== MODE || current.gameState.gameId !== s.gameId) return;
             try {
                 if (current.gameState.phase === 'round-end') { engine.nextRound(current, current.admin); emitRoomState(current); }
-                else if (current.gameState.matchComplete) returnToLobby(current);
+                else if (current.gameState.matchComplete) {
+                    finalizeRoundIfNeeded(current);
+                    if(engine.canContinueGame(current)) {
+                        engine.continueGame(current);
+                        getDeps().logGameStartFromRoom?.(current);
+                        emitRoomState(current);
+                    } else returnToLobby(current);
+                }
             } catch (error) { getDeps().reportGameError(current, '[slave] round transition', error); }
         }, Math.max(20, transitionAt-Date.now()));
         if (engine.botNeedsTurn(room)) timer.bot = setTimeout(() => {

@@ -131,7 +131,8 @@
         roundFeedback(previous);
         last = state;
       }
-      $('slRound').textContent = state.round + ' / ' + (state.maxRounds || 2);
+      $('slRound').textContent = state.continuous ? (state.sessionRound || state.round) + ' · ∞' : state.round + ' / ' + (state.maxRounds || 2);
+      $('slRound').title = state.continuous ? 'เล่นวน · เกมที่ ' + (state.gameNumber || 1) : 'จบเกมเมื่อครบ 2 รอบ';
       seats();
       const newPileKey = state.top ? state.top.playerId + ':' + state.top.cards.map(c => c.id).join(',') : '';
       if (newPileKey !== pileKey || !$('slPile').children.length) {
@@ -175,7 +176,7 @@
       const self = state.seats.find(p => p.playerId === playerId);
       const ownResult = (state.matchComplete ? state.matchStandings : state.standings)?.find(p => p.playerId === playerId);
       $('slPlayerZone').classList.toggle('is-your-turn', actionable);
-      $('slStatus').textContent = state.matchComplete ? '🏁 จบเกม' : state.phase === 'finished' ? 'หยุดเล่นแล้ว' : state.phase === 'round-end' ? 'จบรอบ 1 / 2' : state.phase === 'exchange' ? (exchange ? '↔ คืนไพ่ ' + selected.size + '/' + exchange : '↔ รอแลกไพ่') : state.canPlay ? '✦ ตาคุณ' : self?.passed ? '⏭ ผ่านแล้ว' : self?.place ? '♛ อันดับ ' + self.place : 'ตา ' + (turn?.name || 'ผู้เล่น');
+      $('slStatus').textContent = state.matchComplete ? '🏁 จบเกม' : state.phase === 'finished' ? 'หยุดเล่นแล้ว' : state.phase === 'round-end' ? (state.continuous ? 'จบรอบ ' + (state.sessionRound || state.round) : 'จบรอบ 1 / 2') : state.phase === 'exchange' ? (exchange ? '↔ คืนไพ่ ' + selected.size + '/' + exchange : '↔ รอแลกไพ่') : state.canPlay ? '✦ ตาคุณ' : self?.passed ? '⏭ ผ่านแล้ว' : self?.place ? '♛ อันดับ ' + self.place : 'ตา ' + (turn?.name || 'ผู้เล่น');
       $('slHandMeta').textContent = '♣ ' + hand.length + (selected.size ? ' · ✓ ' + selected.size : '');
       $('slHandMeta').setAttribute('aria-label', 'ไพ่ ' + hand.length + ' ใบ เลือกแล้ว ' + selected.size + ' ใบ');
       const chosenCards = hand.filter(c => selected.has(c.id));
@@ -255,11 +256,11 @@
     if (global.ResizeObserver) new ResizeObserver(layoutHand).observe($('slHand'));
     global.addEventListener('resize', layoutHand);
     function tick() {
-      const transitionAt = state.matchComplete ? state.returnLobbyAt : state.roundAdvanceAt;
+      const transitionAt = state.matchComplete ? (state.nextMatchAt || state.returnLobbyAt) : state.roundAdvanceAt;
       if (transitionAt) {
         const seconds = Math.max(0, Math.ceil((transitionAt-Date.now())/1000));
-        $('slResultNext').textContent = (state.matchComplete ? '⌂' : '↔ รอบ 2') + ' · ' + seconds + 's';
-        $('slResultNext').setAttribute('aria-label', (state.matchComplete ? 'กลับห้องรอใน ' : 'เริ่มรอบสองใน ') + seconds + ' วินาที');
+        $('slResultNext').textContent = (state.nextMatchAt ? '↻ เกมถัดไป' : state.matchComplete ? '⌂' : '↔ รอบ ' + (state.continuous ? (state.sessionRound || state.round)+1 : 2)) + ' · ' + seconds + 's';
+        $('slResultNext').setAttribute('aria-label', (state.nextMatchAt ? 'เริ่มเกมถัดไปใน ' : state.matchComplete ? 'กลับห้องรอใน ' : state.continuous ? 'เริ่มรอบถัดไปใน ' : 'เริ่มรอบสองใน ') + seconds + ' วินาที');
       } else $('slResultNext').textContent = '';
       const remaining = state.phaseEndsAt ? Math.max(0, Math.ceil((state.phaseEndsAt - Date.now()) / 1000)) : 0;
       const timingPhase = ['turn', 'exchange'].includes(state.phase);

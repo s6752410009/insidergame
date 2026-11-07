@@ -122,7 +122,7 @@ const codenamesRuntime = require('./games/codenamesRuntime')(() => ({ io, roomMa
 const wavelengthRuntime = require('./games/wavelengthRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const drawguessRuntime = require('./games/drawguessRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, filterText: text => gameSettingsManager.filterProfanity(text) }));
 const slaveDebug = require('./games/slaveDebug');
-const slaveRuntime = require('./games/slaveRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord }));
+const slaveRuntime = require('./games/slaveRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, logGameStartFromRoom }));
 const colorcardsRuntime = require('./games/colorcardsRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby }));
 const setthiRuntime = require('./games/setthiRuntime')(() => ({ io, roomManager, statsManager, addServerLog, reportGameError, buildRoomUpdatePayload, notifyGameEndAfterRecord, scheduleFinishedGameReturnToLobby, isSiteAdminPlayer, setthiGold }));
 const spyfallReturnTimeouts = new Map();

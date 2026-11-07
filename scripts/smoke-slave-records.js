@@ -7,20 +7,21 @@ const createRuntime = require('../games/slaveRuntime');
 let stats = require('../managers/statsManager');
 let checks = 0;
 function ok(value, message) { assert.ok(value, message); checks += 1; }
-const rooms = new Map(), logs = [], ends = [], states = [];
+const rooms = new Map(), logs = [], ends = [], states = [], starts = [];
 let persistCount = 0;
 const runtime = createRuntime(() => ({
     io:{ to:id => ({ emit:(event, data) => states.push({ id, event, data }) }) },
     roomManager:{ getRoom:id => rooms.get(id), schedulePersistRooms:() => { persistCount += 1; } },
     buildRoomUpdatePayload:room => ({ roomId:room.roomId, phase:room.gameState.phase }),
     statsManager:stats,
+    logGameStartFromRoom:room => starts.push({roomId:room.roomId,gameId:room.gameState.gameId}),
     addServerLog:(io, category, roomId, message, type, options) => logs.push({ category, roomId, message, type, ...options }),
     notifyGameEndAfterRecord:(room, options) => ends.push({ roomId:room.roomId, options, ...runtime.gameEndNotification(room) }),
     reportGameError:(room, message, error) => { throw error; }
 }));
-function createRoom(id, prefix = id, bot = false) {
+function createRoom(id, prefix = id, bot = false, playMode = 'two-rounds') {
     const players = Array.from({ length:4 }, (_, index) => ({ playerId:bot && index === 3 ? 'bot_' + prefix : prefix + '-' + index, playerName:'ผู้เล่น ' + index, socketId:prefix + '-socket-' + index }));
-    const room = { roomId:id, name:'โต๊ะทดสอบ ' + id, players, admin:players[0].playerId, settings:{ gameMode:'slave' } };
+    const room = { roomId:id, name:'โต๊ะทดสอบ ' + id, players, admin:players[0].playerId, settings:{ gameMode:'slave', slavePlayMode:playMode } };
     rooms.set(id, room);
     runtime.startGame(room);
     runtime.emitRoomState(room);
@@ -145,6 +146,33 @@ async function main() {
     stats = require('../managers/statsManager');
     stats.recordGameEnd('old-table', ledgerResult('ledger-game-a', 1, ledgerStart + 1));
     ok(stats.getStats('ledger-0').modeStats.slave.games === 34, 'high-water guard survives JSON restart with evicted history');
+    const loop=createRoom('continuous','continuous',false,'continuous');
+    finishRound(loop); engine.nextRound(loop,loop.admin); finishRound(loop);
+    const completed=structuredClone(loop);
+    const oldId=loop.gameState.gameId,oldStep=loop.gameState.step,oldRoles=loop.gameState.standings.map(row=>row.playerId);
+    ok(loop.gameState.matchComplete && loop.gameState.nextMatchAt && !loop.gameState.returnLobbyAt,'continuous mode records a complete two-round game without a lobby deadline');
+    ok(counters(loop).every(stat=>stat.totalGames===1),'continuous first match records exactly once');
+    loop.gameState.nextMatchAt=Date.now()-1;runtime.recover(loop);
+    await new Promise(resolve=>setTimeout(resolve,50));runtime.clearTimers(loop.roomId);
+    ok(loop.gameState.gameId!==oldId && loop.gameState.phase==='exchange' && loop.gameState.gameNumber===2,'continuous timer deals next game without returning to lobby');
+    ok(loop.gameState.step>oldStep && loop.gameState.roundResults.length===0,'next game clears scores while preserving monotonic step');
+    ok(loop.gameState.exchanges[0].from===oldRoles[3] && loop.gameState.exchanges[0].to===oldRoles[0],'next game exchanges using last round placements');
+    ok(engine.buildClientState(loop,loop.admin).sessionRound===3,'continuous client displays global round three');
+    ok(starts.some(row=>row.roomId===loop.roomId && row.gameId===loop.gameState.gameId),'automatic next game emits a new start event');
+    finishRound(loop);engine.nextRound(loop,loop.admin);finishRound(loop);
+    ok(counters(loop).every(stat=>stat.totalGames===2&&stat.gameHistory.length===2),'four continuous rounds save two distinct games');
+    runtime.finalizeRoundIfNeeded(completed);
+    ok(counters(loop).every(stat=>stat.totalGames===2),'old continuous snapshot cannot duplicate earlier results');
+    loop.players.pop();loop.gameState.nextMatchAt=Date.now()-1;runtime.recover(loop);
+    await new Promise(resolve=>setTimeout(resolve,50));runtime.clearTimers(loop.roomId);
+    ok(loop.gameState.phase==='lobby','continuous mode returns to lobby if players leave after the result');
+    const loopBots=createRoom('continuous-bots','continuous-bots',true,'continuous');
+    finishRound(loopBots);engine.nextRound(loopBots,loopBots.admin);finishRound(loopBots);
+    engine.continueGame(loopBots);finishRound(loopBots);engine.nextRound(loopBots,loopBots.admin);finishRound(loopBots);
+    ok(loopBots.players.filter(p=>!engine.isBotId(p.playerId)).every(p=>stats.getStats(p.playerId).gameHistory.length===2 && stats.getStats(p.playerId).totalGames===0),'continuous games with bots keep history without leaderboard totals');
+    const loopDebug=createRoom('continuous-debug','continuous-debug',false,'continuous');loopDebug.gameState.debugUsed=true;
+    finishRound(loopDebug);engine.nextRound(loopDebug,loopDebug.admin);finishRound(loopDebug);engine.continueGame(loopDebug);
+    ok(loopDebug.gameState.debugUsed,'continuous continuation cannot clear debug exclusion');
     console.log(JSON.stringify({ ok:true, checks, rounds:10, humans:4, logs:logs.length, isolatedData:true }));
 }
 main().catch(error => { console.error(error.stack); process.exitCode = 1; }).finally(() => {

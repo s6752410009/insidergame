@@ -12,7 +12,8 @@ function describeCard(id) {
     return { id, rank: ranks[Math.floor(id / 4)], suit: suits[id % 4], red: [1,2].includes(id % 4), label: ranks[Math.floor(id / 4)] + suits[id % 4] };
 }
 function createPlayerState(p) { return { playerId: p.playerId, name: p.playerName || p.name || 'ผู้เล่น', avatar: p.avatar || '👤', color: p.color }; }
-function createInitialState() { return { mode: MODE, status: 'waiting', phase: 'lobby', players: [], seats: [], step: 0, round: 0, maxRounds:MAX_ROUNDS, roundResults:[], matchStandings:null, matchComplete:false, history: [] }; }
+function sanitizePlayMode(value) { return value === 'continuous' ? 'continuous' : 'two-rounds'; }
+function createInitialState() { return { continuous:false, gameNumber:1, nextMatchAt:null, mode: MODE, status: 'waiting', phase: 'lobby', players: [], seats: [], step: 0, round: 0, maxRounds:MAX_ROUNDS, roundResults:[], matchStandings:null, matchComplete:false, history: [] }; }
 function resetRoomGame(room) { return { ...createInitialState(), players: room.players.map(createPlayerState) }; }
 function state(room) { return room.gameState; }
 function seat(room, id) { return state(room).seats.find(p => p.playerId === id); }
@@ -76,7 +77,9 @@ function closeRound(s) {
     s.matchStandings = scoreRounds(s);
     if (s.round >= s.maxRounds) {
         s.matchComplete = true; s.phase = 'finished'; s.status = 'slave_finished';
-        s.matchEndedAt = s.roundEndedAt; s.returnLobbyAt = Date.now()+RESULT_MS;
+        s.matchEndedAt = s.roundEndedAt;
+        s.returnLobbyAt = s.continuous ? null : Date.now()+RESULT_MS;
+        s.nextMatchAt = s.continuous ? Date.now()+RESULT_MS : null;
         s.roundAdvanceAt = null;
     } else s.roundAdvanceAt = Date.now()+ROUND_BREAK_MS;
 
@@ -120,7 +123,24 @@ function startRound(room, rng) {
 function startGame(room, rng) {
     const players=room.players.filter(p=>p.socketId || isBotId(p.playerId));
     if(players.length!==4) throw new Error('สลาฟต้องมี 4 คนพอดี เติมบอทให้ครบได้');
-    room.gameState={...createInitialState(), gameId:randomUUID(), startedAt:new Date().toISOString(), players:players.map(createPlayerState), seats:players.map(p=>({...createPlayerState(p),hand:[]}))};
+    room.gameState={...createInitialState(), continuous:sanitizePlayMode(room.settings?.slavePlayMode)==='continuous', gameId:randomUUID(), startedAt:new Date().toISOString(), players:players.map(createPlayerState), seats:players.map(p=>({...createPlayerState(p),hand:[]}))};
+    startRound(room,rng);
+}
+// Each pair of rounds is a separate recorded game, even during continuous play.
+function canContinueGame(room) {
+    const s=state(room);
+    return !!s.continuous && !!s.matchComplete && s.seats.length===4 && s.seats.every(seat=>
+        room.players.some(player=>player.playerId===seat.playerId && (player.socketId || isBotId(player.playerId))));
+}
+function continueGame(room, rng) {
+    if(!canContinueGame(room)) throw new Error('รอผู้เล่นครบ 4 คนก่อนเริ่มเกมต่อไป');
+    const previous=state(room);
+    room.gameState={...createInitialState(), continuous:true, gameNumber:(previous.gameNumber||1)+1,
+        gameId:randomUUID(), startedAt:new Date().toISOString(), players:previous.players,
+        seats:previous.seats.map(player=>({...player,hand:[]})), standings:previous.standings,
+        step:previous.step, debugUsed:!!previous.debugUsed,
+        history:previous.history||[], auditSequence:previous.auditSequence||0,
+        auditHistory:previous.auditHistory||[], lastLoggedAuditSequence:previous.lastLoggedAuditSequence||0};
     startRound(room,rng);
 }
 function validateTurn(room,id,step) {
@@ -239,7 +259,7 @@ function handlePlayerLeft(room,id) {
 }
 function buildClientState(room,id) {
     const s=state(room),p=seat(room,id),ex=s.exchanges?.find(e=>e.to===id);
-    return {mode:MODE,roomId:room.roomId,status:s.status,phase:s.phase,round:s.round,maxRounds:s.maxRounds || MAX_ROUNDS,matchComplete:!!s.matchComplete,
+    return {mode:MODE,roomId:room.roomId,status:s.status,phase:s.phase,round:s.round,continuous:!!s.continuous,gameNumber:s.gameNumber||1,sessionRound:((s.gameNumber||1)-1)*MAX_ROUNDS+s.round,nextMatchAt:s.nextMatchAt||null,maxRounds:s.maxRounds || MAX_ROUNDS,matchComplete:!!s.matchComplete,
         matchStandings:s.matchStandings || null,roundResults:s.roundResults || [],roundAdvanceAt:s.roundAdvanceAt || null,returnLobbyAt:s.returnLobbyAt || null,step:s.step,turnId:s.turnId,phaseEndsAt:s.phaseEndsAt,
         debugUsed:!!s.debugUsed,isHost:room.admin===id,openingRequired:!!s.firstPlay,
         exchangeProgress:s.phase==='exchange'?{done:s.exchangeDone.length,total:2}:null,
@@ -253,5 +273,5 @@ function buildClientState(room,id) {
         legalMoves:legalMoves(room,id),standings:s.standings||null,history:s.history};
 }
 module.exports={id:MODE,label:'สลาฟ',description:'ไพ่สลาฟ 4 คน · ลงไพ่ให้หมด ขึ้นเป็นคิง เติมบอทได้',minPlayers:4,maxPlayers:4,keepSeatOnLeave:true,
-    MAX_ROUNDS,scoreRounds,createInitialState,createPlayerState,resetRoomGame,startGame,startRound,describeCard,combination,beats,playCards,passTurn,exchangeCards,nextRound,
+    MAX_ROUNDS,sanitizePlayMode,canContinueGame,continueGame,scoreRounds,createInitialState,createPlayerState,resetRoomGame,startGame,startRound,describeCard,combination,beats,playCards,passTurn,exchangeCards,nextRound,
     autoResolvePhase,playBotTurns,botNeedsTurn:room=>!!botActor(room),botDelay:()=>900,isBotId,handlePlayerLeft,buildClientState,legalMoves,chooseBotMove};

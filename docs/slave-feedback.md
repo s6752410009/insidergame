@@ -1,6 +1,6 @@
 # Slave round feedback and admin observation
 
-- Each completed round saves immediately, before the next exchange, without returning to the lobby. Human tables count toward the leaderboard; tables with bots save human history with `ranked:false` and do not change totals, wins or losses. Bots do not get profile records. Debug/abandoned rounds remain excluded. Result IDs still prevent replay after reconnect/restart.
+- A game consists of two rounds scored 4/3/2/1 per round; highest total wins, including ties. Each completed game saves immediately before the next transition. Human tables count toward the leaderboard; tables with bots save human history with `ranked:false` and do not change totals, wins or losses. Bots do not get profile records. Debug/abandoned rounds remain excluded. Result IDs still prevent replay after reconnect/restart.
 - Placements trigger synthesized sound effects and on-screen text immediately, including the first finisher while the others continue. No spoken narration or speech synthesis is used. Browser audio restrictions still require an initial user gesture; physical speakers and mobile Safari need real-device testing.
 - `self.exchangeReceipt` contains only that recipient's sent/received cards and partner. It survives reconnect for the current round, is replaced on the next deal, and never appears on another player's seat or in public logs. The table shows a dismissible transfer animation, labels incoming cards, and retains a receipt below the table. Reduced motion keeps the labels without animation.
 - When answering a multi-card pile, tapping a card selects the smallest server-authorized combination containing it, including pairs of 2s. Selection never submits automatically. Tap selected cards to adjust the combination; exchange choices remain individual.
@@ -11,3 +11,10 @@
 Validation: `smoke:slave`, `smoke:slave:records`, `smoke:slave:history:e2e`, `smoke:slave:ux`, and `smoke:slave:play`. Browser tests can use an installed Chromium executable when the Playwright browser cache is absent.
 
 Bot play prioritizes finishing the hand, otherwise leads the lowest rank as a complete set. Against an existing pile it chooses the cheapest equal-size winning set before using a triple/quad cut. It uses only its own cards and public pile, and never changes the legal-move ordering used by clients or the existing human timeout fallback.
+
+
+## Room play mode
+
+The host can choose **♠ 2 รอบ** (default) or **∞ เล่นวน** in the room lobby. Play mode is validated server-side and locked while playing or waiting for the next continuous game.
+
+Continuous mode saves one complete game every two rounds, shows the result, then deals the next game without a lobby redirect. The exchange uses the preceding round placements. Each new game has a fresh game ID and score sheet, while action steps remain monotonic to reject stale commands. The board shows the total session round and ∞. Human games count toward rankings; games with bots retain history only. Debug exclusion carries forward. Missing/disconnected players at the result transition return the remaining group to the lobby. Active snapshots preserve the mode, scores and exchange state after restart.

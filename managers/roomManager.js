@@ -727,6 +727,7 @@ function createRoom(roomData, creatorPlayerId) {
             codenamesClueFlag: gameMode === 'codenames' ? gameEngine.sanitizeClueFlag(normalizedRoomData.codenamesClueFlag) : undefined,
             codenamesTeams: gameMode === 'codenames' ? {} : undefined,
             wavelengthLaps: Number(normalizedRoomData.wavelengthLaps) === 2 ? 2 : 1,
+            slavePlayMode: gameMode === 'slave' ? gameEngine.sanitizePlayMode(normalizedRoomData.slavePlayMode) : undefined,
             liarPunishment: gameMode === 'liar' ? gameEngine.sanitizePunishment(normalizedRoomData.liarPunishment) : undefined,
             liarDevil: gameMode === 'liar' ? gameEngine.sanitizeDevil(normalizedRoomData.liarDevil) : undefined,
             wavelengthMode: gameMode === 'wavelength' ? sanitizeWavelengthMode(normalizedRoomData.wavelengthMode) : undefined,
@@ -1110,6 +1111,10 @@ function updateRoom(roomId, adminPlayerId, updates) {
         throw new Error('เกมกำลังเล่นอยู่ แก้ห้องไม่ได้');
     }
 
+    if (room.settings.gameMode === 'slave' && updates.slavePlayMode !== undefined
+        && (isRoomGameInProgress(room) || room.gameState.nextMatchAt)) {
+        throw new Error('เปลี่ยนโหมดได้ในห้องรอ');
+    }
     // อัปเดตชื่อห้อง
     if (updates.name !== undefined) {
         room.name = updates.name;
@@ -1204,6 +1209,9 @@ function updateRoom(roomId, adminPlayerId, updates) {
     if (room.settings.gameMode === 'drawguess'
         && DRAWGUESS_SETTING_KEYS.some(key => updates[key] !== undefined)) {
         Object.assign(room.settings, sanitizeDrawGuessSettings({ ...room.settings, ...updates }));
+    }
+    if (room.settings.gameMode === 'slave' && updates.slavePlayMode !== undefined) {
+        room.settings.slavePlayMode = getGameEngine('slave').sanitizePlayMode(updates.slavePlayMode);
     }
     if (room.settings.gameMode === 'colorcards' && !isRoomGameInProgress(room)) {
         if ([15, 20, 30].includes(Number(updates.colorcardsTurnSeconds))) room.settings.colorcardsTurnSeconds = Number(updates.colorcardsTurnSeconds);

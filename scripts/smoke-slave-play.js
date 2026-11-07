@@ -36,6 +36,15 @@ async function run(){
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/room/'+roomId+'?playerId='+id);await page.waitForSelector('#btnSlaveBots');await sleep(700);
  ok(await page.locator('#btnSlaveRules').isVisible(),'slave guide visible');
+ await page.locator('#lobbySettings > summary').click();
+ ok(await page.locator('#slLobbyPlayMode').inputValue()==='two-rounds','default room mode is two rounds');
+ await page.locator('#slLobbyPlayMode').selectOption('continuous');
+ await sleep(250);await page.reload();await page.waitForSelector('#lobbySettings');await page.locator('#lobbySettings > summary').click();await page.waitForSelector('#slLobbyPlayMode');
+ ok(await page.locator('#slLobbyPlayMode').inputValue()==='continuous','continuous setting persists after reload');
+ ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'continuous setting fits mobile lobby');
+ await page.screenshot({path:path.join(shots,'lobby-continuous-mobile.png'),fullPage:true});
+ await page.locator('#slLobbyPlayMode').selectOption('two-rounds');await sleep(250);
+
  await page.screenshot({path:path.join(shots,'lobby-mobile.png'),fullPage:true});
  await ctx.close();host.emit('setRoom',{roomId,playerId:id});await sleep(200);
  ok((await ack(host,'startGameFromLobby',{roomId})).success,'start');await wait(()=>S?.phase==='turn','dealt');
@@ -44,7 +53,7 @@ async function run(){
  ok(!(await ack(host,'slave_play',{roomId,step:-1,cardIds:[0]})).success,'stale rejected');
  for(const width of [320,390,1280]){
   const uiId=randomUUID(),uiHost=await client(uiId);
-  const uiRoom=(await ack(uiHost,'createRoom',{playerId:uiId,name:'โต๊ะเสียง '+width,gameMode:'slave',maxPlayers:4})).roomId;
+  const uiRoom=(await ack(uiHost,'createRoom',{playerId:uiId,name:'โต๊ะเสียง '+width,gameMode:'slave',maxPlayers:4,slavePlayMode:width===1280?'continuous':'two-rounds'})).roomId;
   uiHost.emit('setRoom',{roomId:uiRoom,playerId:uiId});await sleep(100);
   ok((await ack(uiHost,'slave_addBots',{roomId:uiRoom,count:3})).added===3,'UI table bots');
   ok((await ack(uiHost,'startGameFromLobby',{roomId:uiRoom})).success,'UI table start');
@@ -72,6 +81,7 @@ async function run(){
   await p.goto(base+'/game/'+uiRoom+'?playerId='+uiId);await p.waitForSelector('#slHand .sl-card');await sleep(300);
   ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow '+width);
   ok(await p.locator('.sl-seat').count()===4,'four seats around table');
+  if(width===1280)ok((await p.locator('#slRound').innerText()).includes('∞'),'continuous creation mode reaches the live board');
   ok(await p.locator('.sl-backs').count()===3,'three concealed opponent hands');
   if(width===390){
    await p.evaluate(()=>Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,5000))]));

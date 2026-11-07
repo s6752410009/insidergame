@@ -206,6 +206,19 @@ async function timerChecks() {
   await deliver(p, { ...ended[0], step: opponentTurn.step + 1 });
   await p.waitForFunction(() => !document.querySelector('.sl-status-row').classList.contains('is-urgent'));
   ok(await p.locator('#slSeats .sl-seat-clock:visible').count() === 0, 'untimed result hides every opponent timer');
+  const continuousResult={...ended[0],phase:'finished',status:'slave_finished',matchComplete:true,continuous:true,round:2,sessionRound:2,gameNumber:1,nextMatchAt:now+5000,returnLobbyAt:null,resultRecorded:true,step:opponentTurn.step+2};
+  await deliver(p,continuousResult);
+  ok((await p.locator('#slRound').innerText()).includes('∞'),'continuous header shows infinity');
+  ok((await p.locator('#slResultNext').innerText()).includes('เกมถัดไป'),'continuous result promises next game instead of lobby');
+  ok((await p.locator('#slResultNext').getAttribute('aria-label')).includes('5 วินาที'),'continuous transition has accessible countdown');
+  await p.screenshot({path:path.join(shots,'continuous-result-mobile.png'),fullPage:true});
+  await deliver(p,{...ownTurn,continuous:true,gameNumber:2,sessionRound:3,round:1,step:opponentTurn.step+3});
+  ok((await p.locator('#slRound').innerText())==='3 · ∞','next game displays round three in the session');
+  ok(await p.locator('#slResults').isHidden(),'next deal clears the old result');
+  await deliver(p,{...ended[0],continuous:true,gameNumber:2,sessionRound:3,round:1,roundAdvanceAt:now+5000,step:opponentTurn.step+4});
+  ok((await p.locator('#slResultNext').innerText()).includes('รอบ 4'),'continuous round break names the next session round');
+
+
   await context.close();
 }
 async function browserChecks() {
